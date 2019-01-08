@@ -1,10 +1,11 @@
-var path = require('path');
 import path from 'path';
+import generate from 'markdown-it-testgen';
 
-var generate = require('markdown-it-testgen');
+// these are some markdown-it tests to ensure that I haven't broken anything
+// I've probably broken something else instead
 
 describe('markdown-it', function() {
-  var md = require('../')({
+  var md = require('./parse').markdownParser({
     html: true,
     langPrefix: '',
     typographer: true,
