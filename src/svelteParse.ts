@@ -79,3 +79,8 @@ export function svelte_block(state, startLine, endLine, silent) {
 export function svelteRenderer(tokens, idx) {
   return tokens[idx].content;
 }
+
+export function svelte(md) {
+  md.block.ruler.before('table', 'svelte_block', svelte_block);
+  md.renderer.rules['svelte_block'] = svelteRenderer;
+}

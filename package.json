@@ -44,8 +44,6 @@
     "typescript-eslint-parser": "^21.0.2"
   },
   "dependencies": {
-    "@blocker/markdown-it-mixed-html-fix": "^0.1.0",
-    "markdown-it": "^8.4.2",
-    "markdown-it-jsx": "^1.1.0"
+    "markdown-it": "^8.4.2"
   }
 }

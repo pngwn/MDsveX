@@ -1,12 +1,8 @@
 import MarkdownIt from 'markdown-it';
-import { svelte_block, svelteRenderer } from './svelteParse';
+import { svelte } from './svelteParse';
 
 export function markdownParser(options) {
-  const md = new MarkdownIt(options);
-
-  md.block.ruler.before('table', 'svelte_block', svelte_block);
-  md.renderer.rules['svelte_block'] = svelteRenderer;
-  return md;
+  return new MarkdownIt(options).use(svelte);
 }
 
 export function parse(markdownString: string): string {
