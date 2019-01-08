@@ -1,4 +1,3 @@
-import MarkdownIt from 'markdown-it';
 import { HTML_OPEN_CLOSE_TAG_RE } from './regex';
 
 const svelteBlock = [
@@ -6,7 +5,9 @@ const svelteBlock = [
   [new RegExp(HTML_OPEN_CLOSE_TAG_RE.source + '\\s*$'), /^$/, false],
 ];
 
-function svelte_block(state, startLine, endLine, silent) {
+// these are basically the block_html parser and renderer for markdown-it with custom regex
+
+export function svelte_block(state, startLine, endLine, silent) {
   var i,
     nextLine,
     token,
@@ -75,16 +76,6 @@ function svelte_block(state, startLine, endLine, silent) {
   return true;
 }
 
-function svelteRenderer(tokens, idx) {
+export function svelteRenderer(tokens, idx) {
   return tokens[idx].content;
-}
-
-export function parse(markdownString: string): string {
-  const md = new MarkdownIt({ html: true });
-
-  md.block.ruler.before('table', 'svelte_block', svelte_block);
-  md.renderer.rules['svelte_block'] = svelteRenderer;
-
-  const html = md.render(markdownString);
-  return html;
 }

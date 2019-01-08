@@ -1,4 +1,4 @@
-import { parse } from './main';
+import { parse } from './parse';
 
 test('it should transform markdown into html', () => {
   const md = `# Hello World

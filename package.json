@@ -27,6 +27,7 @@
     "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-typescript": "^0.14.0",
     "jest": "^23.6.0",
+    "markdown-it-testgen": "^0.1.4",
     "prettier": "^1.15.3",
     "prettier-eslint": "^8.8.2",
     "rollup": "^1.0.1",
