@@ -3,7 +3,6 @@ import commonjs from 'rollup-plugin-commonjs';
 import typescript from 'rollup-plugin-typescript';
 import pkg from './package.json';
 
-
 const opts = {
   plugins: [
     resolve({ preferBuiltins: true }),

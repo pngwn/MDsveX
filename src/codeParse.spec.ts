@@ -91,7 +91,6 @@ import Counter3 from './Counter3.html';
   const html = parse(md);
 
   expect(html.body.trim()).toBe('<h1>some title</h1>');
-  console.log(html);
   expect(html.scriptContent[2].trim()).toBe(
     "import Counter3 from './Counter3.html';"
   );
@@ -130,7 +129,6 @@ import Counter3 from './Counter3.html';
 <li>a</li>
 <li>list</li>
 </ul>`);
-  console.log(html);
   expect(html.scriptContent[2].trim()).toBe(
     "import Counter3 from './Counter3.html';"
   );

@@ -1,4 +1,4 @@
-import { parse } from './parse';
+import { parse, preprocess } from './parse';
 
 test('it should transform markdown into html', () => {
   const md = `# Hello World
@@ -110,6 +110,15 @@ test('inline components should also be fine and treated like inline html element
   expect(parse(md).body).toBe(html);
 });
 
+test('inline components should also be fine and treated like inline html elements even when wrapped with inline markdown', () => {
+  const md = `This is my _<Counter prop={0} />_ and it is exciting`;
+
+  const html = `<p>This is my <em><Counter prop={0} /></em> and it is exciting</p>
+`;
+
+  expect(parse(md).body).toBe(html);
+});
+
 test('svelte components with strange names should be left intact', () => {
   const md = `<CounterCounterManyCaps prop={0} />`;
 
@@ -192,4 +201,34 @@ test('block svelte:* components should be allowed children: #2', () => {
 </svelte:head>`;
 
   expect(parse(md).body).toBe(html);
+});
+
+describe('preprocess', () => {
+  test('it should process some svexy files and return a valid svelte component', () => {
+    const md = `<svelte:meta />
+
+# Hello world
+
+I like cheese
+
+\`\`\`js exec
+import Something from './Somewhere.html';
+\`\`\`
+
+<Something prop={thingy} />
+`;
+
+    const html = `<svelte:meta />
+<h1>Hello world</h1>
+<p>I like cheese</p>
+<Something prop={thingy} />
+
+<script>
+import Something from './Somewhere.html';
+</script>
+`;
+    expect(
+      preprocess.markup({ content: md, filename: 'thing.svexy' }).code
+    ).toBe(html);
+  });
 });

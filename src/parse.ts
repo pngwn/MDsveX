@@ -16,16 +16,23 @@ export function parse(
     scripts.push(v);
   });
 
-  scripts = scripts.filter(v => v === '\n')
+  scripts = scripts.filter(v => v === '\n');
 
   return { body: md.render(markdownString), scriptContent: scripts };
 }
 
 export const preprocess = {
   markup: ({ content, filename }) => {
-    if (extname(filename) !== 'svexy') return;
+    if (extname(filename) !== '.svexy') return;
 
     const { body, scriptContent } = parse(content);
-    console.log(scriptContent);
+
+    return {
+      code: `${body}
+<script>
+${scriptContent.join('\n')}</script>
+`,
+      map: '',
+    };
   },
 };
