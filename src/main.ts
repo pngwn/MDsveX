@@ -2,7 +2,7 @@ import MarkdownIt from 'markdown-it';
 import { HTML_OPEN_CLOSE_TAG_RE } from './regex';
 
 const svelteBlock = [
-  [/^<(svelte:head)(?=(\s|>|$))/i, /<\/(script|pre|style)>/i, true],
+  [/^<(svelte:head)(?=(\s|>|$))/i, /<\/(svelte:head)>/i, true],
   [new RegExp(HTML_OPEN_CLOSE_TAG_RE.source + '\\s*$'), /^$/, false],
 ];
 

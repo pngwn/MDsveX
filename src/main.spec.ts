@@ -114,6 +114,37 @@ test('it should leave svelte:* components with attributes intact', () => {
   expect(parse(md)).toBe(html);
 });
 
+test('block svelte:* components should be allowed children: #1', () => {
+  const md = `<svelte:head><title>My Title</title></svelte:head>`;
+
+  const html = `<svelte:head><title>My Title</title></svelte:head>`;
+
+  expect(parse(md)).toBe(html);
+});
+
+test('block svelte:* components should be allowed children: #2', () => {
+  const md = `
+<svelte:head>
+  <title>My Title</title>
+  <link rel="stylesheet" type="text/css" href="theme.css" />
+  <style>
+    h1 {color:red;}
+    p {color:blue;}
+  </style>
+</svelte:head>`;
+
+  const html = `<svelte:head>
+  <title>My Title</title>
+  <link rel="stylesheet" type="text/css" href="theme.css" />
+  <style>
+    h1 {color:red;}
+    p {color:blue;}
+  </style>
+</svelte:head>`;
+
+  expect(parse(md)).toBe(html);
+});
+
 test('it should leave svelte components intact', () => {
   const md = `<Counter />`;
 
@@ -142,6 +173,23 @@ test('it should leave svelte components with attributes intact avec curly braces
   const md = `<Counter prop={0} />`;
 
   const html = `<Counter prop={0} />`;
+
+  expect(parse(md)).toBe(html);
+});
+
+test('inline components should also be fine and treated like inline html elements', () => {
+  const md = `This is my <Counter prop={0} />`;
+
+  const html = `<p>This is my <Counter prop={0} /></p>
+`;
+
+  expect(parse(md)).toBe(html);
+});
+
+test('svelte components with strange names should be left intact', () => {
+  const md = `<CounterCounterManyCaps prop={0} />`;
+
+  const html = `<CounterCounterManyCaps prop={0} />`;
 
   expect(parse(md)).toBe(html);
 });
