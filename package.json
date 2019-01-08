@@ -1,0 +1,50 @@
+{
+  "name": "mdsvex",
+  "version": "0.1",
+  "description": "Markdown Preprocessor for Svelte",
+  "main": "dist/main.cjs.js",
+  "module": "dist/main.es.js",
+  "scripts": {
+    "build": "rollup -c",
+    "lint": "eslint 'src/**' 'test/*.js'",
+    "test": "yarn lint & jest --verbose",
+    "test:watch": "jest --verbose --watch",
+    "test:cov": "yarn lint && jest --verbose --coverage"
+  },
+  "keywords": [
+    "test",
+    "preprocessor",
+    "mdx",
+    "markdown"
+  ],
+  "author": "pngwn <hello@pngwn.io>",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^23.3.11",
+    "@types/node": "^10.12.12",
+    "eslint": "^5.9.0",
+    "eslint-import-resolver-typescript": "^1.1.1",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-typescript": "^0.14.0",
+    "jest": "^23.6.0",
+    "prettier": "^1.15.3",
+    "prettier-eslint": "^8.8.2",
+    "rollup": "^1.0.1",
+    "rollup-plugin-commonjs": "^9.2.0",
+    "rollup-plugin-node-resolve": "^3.4.0",
+    "rollup-plugin-svelte": "^4.4.0",
+    "rollup-plugin-typescript": "^1.0.0",
+    "svelte": "3.0.0-alpha16",
+    "ts-jest": "^23.10.5",
+    "ts-lib": "^0.0.5",
+    "ts-node": "^7.0.1",
+    "tslib": "^1.9.3",
+    "typescript": "^3.2.1",
+    "typescript-eslint-parser": "^21.0.2"
+  },
+  "dependencies": {
+    "@blocker/markdown-it-mixed-html-fix": "^0.1.0",
+    "markdown-it": "^8.4.2",
+    "markdown-it-jsx": "^1.1.0"
+  }
+}

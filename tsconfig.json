@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "diagnostics": true,
+    "noImplicitThis": true,
+    "noEmitOnError": true,
+    "lib": ["es5", "es6", "es2017", "dom"],
+    "importHelpers": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "module": "esnext",
+    "allowJs": true,
+    "baseUrl": ".", // This must be specified if "paths" is.
+    "paths": {
+      "*.html": ["/test/fixtures/typings.d.ts"] // This mapping is relative to "baseUrl"
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "test", "*test*"]
+}

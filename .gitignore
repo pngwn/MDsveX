@@ -1,0 +1,30 @@
+
+# macOS stuff
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# duh
+/node_modules/
+
+# build
+dist
+
+# logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# testy stuff
+coverage
+.nyc_output
+
+# editor
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
