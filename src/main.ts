@@ -1,7 +1,9 @@
 import MarkdownIt from 'markdown-it';
+import { HTML_OPEN_CLOSE_TAG_RE } from './regex';
 
 const svelteBlock = [
   [/^<(svelte:head)(?=(\s|>|$))/i, /<\/(script|pre|style)>/i, true],
+  [new RegExp(HTML_OPEN_CLOSE_TAG_RE.source + '\\s*$'), /^$/, false],
 ];
 
 function svelte_block(state, startLine, endLine, silent) {
@@ -82,8 +84,7 @@ export function parse(markdownString: string): string {
 
   md.block.ruler.before('table', 'svelte_block', svelte_block);
   md.renderer.rules['svelte_block'] = svelteRenderer;
-  // console.log(md.block.ruler.__rules__);
-  console.log(md.renderer);
+
   const html = md.render(markdownString);
   return html;
 }

@@ -76,3 +76,40 @@ test('it should leave svelte:* components intact: #1', () => {
 
   expect(parse(md)).toBe(html);
 });
+
+test('it should leave svelte:* components intact: #2', () => {
+  const md = `<svelte:meta />`;
+
+  const html = `<svelte:meta />`;
+
+  expect(parse(md)).toBe(html);
+});
+
+test('it should leave svelte:* components intact: #3', () => {
+  const md = `<p>hi</p>
+  <svelte:meta />`;
+
+  const html = `<p>hi</p>
+  <svelte:meta />`;
+
+  expect(parse(md)).toBe(html);
+});
+
+test('it should leave svelte:* components intact: #4', () => {
+  const md = `hi
+
+  <svelte:meta />`;
+
+  const html = `<p>hi</p>
+  <svelte:meta />`;
+
+  expect(parse(md)).toBe(html);
+});
+
+test('it should leave svelte:* components with attributes intact', () => {
+  const md = `<svelte:meta namespace="svg" />`;
+
+  const html = `<svelte:meta namespace="svg" />`;
+
+  expect(parse(md)).toBe(html);
+});

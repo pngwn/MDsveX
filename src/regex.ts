@@ -12,31 +12,12 @@ var attr_value =
 
 var attribute = '(?:\\s+' + attr_name + '(?:\\s*=\\s*' + attr_value + ')?)';
 
-var open_tag = '<[A-Za-z][A-Za-z0-9\\-]*' + attribute + '*\\s*\\/?>';
+var open_tag = '<[A-Za-z][A-Za-z0-9\\-]*:*[a-zA-Z]+' + attribute + '*\\s*\\/?>';
 
 var close_tag = '<\\/[A-Za-z][A-Za-z0-9\\-]*\\s*>';
-var comment = '<!---->|<!--(?:-?[^>-])(?:-?[^-])*-->';
-var processing = '<[?].*?[?]>';
-var declaration = '<![A-Z]+\\s+[^>]*>';
-var cdata = '<!\\[CDATA\\[[\\s\\S]*?\\]\\]>';
 
-var HTML_TAG_RE = new RegExp(
-  '^(?:' +
-    open_tag +
-    '|' +
-    close_tag +
-    '|' +
-    comment +
-    '|' +
-    processing +
-    '|' +
-    declaration +
-    '|' +
-    cdata +
-    ')'
-);
 var HTML_OPEN_CLOSE_TAG_RE = new RegExp(
   '^(?:' + open_tag + '|' + close_tag + ')'
 );
 
-export { HTML_TAG_RE, HTML_OPEN_CLOSE_TAG_RE };
+export { HTML_OPEN_CLOSE_TAG_RE };
