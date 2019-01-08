@@ -113,3 +113,35 @@ test('it should leave svelte:* components with attributes intact', () => {
 
   expect(parse(md)).toBe(html);
 });
+
+test('it should leave svelte components intact', () => {
+  const md = `<Counter />`;
+
+  const html = `<Counter />`;
+
+  expect(parse(md)).toBe(html);
+});
+
+test('it should leave svelte components with attributes intact', () => {
+  const md = `<Counter prop="myprop" />`;
+
+  const html = `<Counter prop="myprop" />`;
+
+  expect(parse(md)).toBe(html);
+});
+
+test('it should leave svelte components with attributes intact avec curly braces', () => {
+  const md = `<Counter prop="{0}" />`;
+
+  const html = `<Counter prop="{0}" />`;
+
+  expect(parse(md)).toBe(html);
+});
+
+test('it should leave svelte components with attributes intact avec curly braces sans quotes', () => {
+  const md = `<Counter prop={0} />`;
+
+  const html = `<Counter prop={0} />`;
+
+  expect(parse(md)).toBe(html);
+});
