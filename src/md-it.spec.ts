@@ -5,12 +5,15 @@ import generate from 'markdown-it-testgen';
 // I've probably broken something else instead
 
 describe('markdown-it', function() {
-  var md = require('./parse').markdownParser({
-    html: true,
-    langPrefix: '',
-    typographer: true,
-    linkify: true,
-  });
+  var md = require('./parse').createParser(
+    {
+      html: true,
+      langPrefix: '',
+      typographer: true,
+      linkify: true,
+    },
+    () => {}
+  );
 
   generate(path.join(__dirname, 'fixtures/markdown-it'), md);
 });

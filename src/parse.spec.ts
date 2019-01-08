@@ -10,7 +10,7 @@ I am a paragraph.
 <p>I am a paragraph.</p>
 `;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('it should leave html intact', () => {
@@ -27,7 +27,7 @@ I am a paragraph.
 <p>I am also a paragraph</p>
 `;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('it should leave svelte components intact: #1', () => {
@@ -46,7 +46,7 @@ I am a paragraph.
 <Counter count="{0}"/>
 `;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('it should leave svelte components intact: #2', () => {
@@ -66,7 +66,7 @@ I am a paragraph.
 <p id="hello">I am also a paragraph</p>
 `;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('it should leave svelte components intact: #3', () => {
@@ -74,7 +74,7 @@ test('it should leave svelte components intact: #3', () => {
 
   const html = `<Counter />`;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('it should leave svelte components with attributes intact', () => {
@@ -82,7 +82,7 @@ test('it should leave svelte components with attributes intact', () => {
 
   const html = `<Counter prop="myprop" />`;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('it should leave svelte components with attributes intact avec curly braces', () => {
@@ -90,7 +90,7 @@ test('it should leave svelte components with attributes intact avec curly braces
 
   const html = `<Counter prop="{0}" />`;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('it should leave svelte components with attributes intact avec curly braces sans quotes', () => {
@@ -98,7 +98,7 @@ test('it should leave svelte components with attributes intact avec curly braces
 
   const html = `<Counter prop={0} />`;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('inline components should also be fine and treated like inline html elements', () => {
@@ -107,7 +107,7 @@ test('inline components should also be fine and treated like inline html element
   const html = `<p>This is my <Counter prop={0} /></p>
 `;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('svelte components with strange names should be left intact', () => {
@@ -115,7 +115,7 @@ test('svelte components with strange names should be left intact', () => {
 
   const html = `<CounterCounterManyCaps prop={0} />`;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('it should leave svelte:* components intact: #1', () => {
@@ -123,7 +123,7 @@ test('it should leave svelte:* components intact: #1', () => {
 
   const html = `<svelte:head></svelte:head>`;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('it should leave svelte:* components intact: #2', () => {
@@ -131,7 +131,7 @@ test('it should leave svelte:* components intact: #2', () => {
 
   const html = `<svelte:meta />`;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('it should leave svelte:* components intact: #3', () => {
@@ -141,7 +141,7 @@ test('it should leave svelte:* components intact: #3', () => {
   const html = `<p>hi</p>
   <svelte:meta />`;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('it should leave svelte:* components intact: #4', () => {
@@ -152,7 +152,7 @@ test('it should leave svelte:* components intact: #4', () => {
   const html = `<p>hi</p>
   <svelte:meta />`;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('it should leave svelte:* components with attributes intact', () => {
@@ -160,7 +160,7 @@ test('it should leave svelte:* components with attributes intact', () => {
 
   const html = `<svelte:meta namespace="svg" />`;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('block svelte:* components should be allowed children: #1', () => {
@@ -168,7 +168,7 @@ test('block svelte:* components should be allowed children: #1', () => {
 
   const html = `<svelte:head><title>My Title</title></svelte:head>`;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
 
 test('block svelte:* components should be allowed children: #2', () => {
@@ -191,5 +191,5 @@ test('block svelte:* components should be allowed children: #2', () => {
   </style>
 </svelte:head>`;
 
-  expect(parse(md)).toBe(html);
+  expect(parse(md).body).toBe(html);
 });
