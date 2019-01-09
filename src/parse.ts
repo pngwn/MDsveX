@@ -10,6 +10,8 @@ const defaultOpts = {
   extension: '.svexy',
 };
 
+// everything is up in everyones business.
+
 export function mdsvex({
   parser = md => md,
   markdownOptions = {},
@@ -19,8 +21,11 @@ export function mdsvex({
   markdownOptions: any;
   extension: string;
 } = defaultOpts) {
+  // scope. i should look at this.
   let scripts = [];
 
+  // this allows the user to modify the instance of markdown-it
+  // necessary if they want to add custom plugins, etc.
   const md = parser(new MarkdownIt({ ...markdownOptions, html: true }))
     .use(svelte)
     .use(codeExec, v => {
@@ -36,6 +41,9 @@ export function mdsvex({
       const { attributes, body } = fm(content);
       const html = md.render(body);
 
+      // we don't want a script tag to be appended if there is no script content
+      // that could cause problems when svelte compiles the component
+
       let scriptTag = '';
 
       if (Object.keys(attributes).length > 0 || scripts.length > 0) {
@@ -46,6 +54,8 @@ export function mdsvex({
           scripts = [];
         }
 
+        // this makes yaml font-matter available in the conponent if any is present
+        // should it handle JSON front-matter as well?
         if (Object.keys(attributes).length > 0) {
           scriptTag += `const _fm = ${JSON.stringify(attributes)};`;
         }

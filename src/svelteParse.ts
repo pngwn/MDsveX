@@ -1,5 +1,7 @@
 import { HTML_OPEN_CLOSE_TAG_RE } from './regex';
 
+// some custom regex, matches a bit more than just svelte tags
+// i should simplyify the regex at some point
 const svelteBlock = [
   [/^<(svelte:head)(?=(\s|>|$))/i, /<\/(svelte:head)>/i, true],
   [new RegExp(HTML_OPEN_CLOSE_TAG_RE.source + '\\s*$'), /^$/, false],
@@ -77,6 +79,11 @@ export function svelte_block(state, startLine, endLine, silent) {
 }
 
 export function svelteRenderer(tokens, idx) {
+  console.log(tokens[idx].content);
+  console.log(tokens[idx].content);
+  console.log(tokens[idx].content);
+  console.log(tokens[idx].content);
+  console.log(tokens[idx].content);
   return tokens[idx].content;
 }
 
