@@ -1,4 +1,4 @@
-import { parse, preprocess } from './parse';
+import { mdsvex } from './parse';
 
 test('it should transform markdown into html', () => {
   const md = `# Hello World
@@ -10,7 +10,9 @@ I am a paragraph.
 <p>I am a paragraph.</p>
 `;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('it should leave html intact', () => {
@@ -27,7 +29,9 @@ I am a paragraph.
 <p>I am also a paragraph</p>
 `;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('it should leave svelte components intact: #1', () => {
@@ -46,7 +50,9 @@ I am a paragraph.
 <Counter count="{0}"/>
 `;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('it should leave svelte components intact: #2', () => {
@@ -66,7 +72,9 @@ I am a paragraph.
 <p id="hello">I am also a paragraph</p>
 `;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('it should leave svelte components intact: #3', () => {
@@ -74,7 +82,9 @@ test('it should leave svelte components intact: #3', () => {
 
   const html = `<Counter />`;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('it should leave svelte components with attributes intact', () => {
@@ -82,7 +92,9 @@ test('it should leave svelte components with attributes intact', () => {
 
   const html = `<Counter prop="myprop" />`;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('it should leave svelte components with attributes intact avec curly braces', () => {
@@ -90,7 +102,9 @@ test('it should leave svelte components with attributes intact avec curly braces
 
   const html = `<Counter prop="{0}" />`;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('it should leave svelte components with attributes intact avec curly braces sans quotes', () => {
@@ -98,7 +112,9 @@ test('it should leave svelte components with attributes intact avec curly braces
 
   const html = `<Counter prop={0} />`;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('inline components should also be fine and treated like inline html elements', () => {
@@ -107,7 +123,9 @@ test('inline components should also be fine and treated like inline html element
   const html = `<p>This is my <Counter prop={0} /></p>
 `;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('inline components should also be fine and treated like inline html elements even when wrapped with inline markdown', () => {
@@ -116,7 +134,9 @@ test('inline components should also be fine and treated like inline html element
   const html = `<p>This is my <em><Counter prop={0} /></em> and it is exciting</p>
 `;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('svelte components with strange names should be left intact', () => {
@@ -124,7 +144,9 @@ test('svelte components with strange names should be left intact', () => {
 
   const html = `<CounterCounterManyCaps prop={0} />`;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('it should leave svelte:* components intact: #1', () => {
@@ -132,7 +154,9 @@ test('it should leave svelte:* components intact: #1', () => {
 
   const html = `<svelte:head></svelte:head>`;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('it should leave svelte:* components intact: #2', () => {
@@ -140,7 +164,9 @@ test('it should leave svelte:* components intact: #2', () => {
 
   const html = `<svelte:meta />`;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('it should leave svelte:* components intact: #3', () => {
@@ -150,7 +176,9 @@ test('it should leave svelte:* components intact: #3', () => {
   const html = `<p>hi</p>
   <svelte:meta />`;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('it should leave svelte:* components intact: #4', () => {
@@ -161,7 +189,9 @@ test('it should leave svelte:* components intact: #4', () => {
   const html = `<p>hi</p>
   <svelte:meta />`;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('it should leave svelte:* components with attributes intact', () => {
@@ -169,7 +199,9 @@ test('it should leave svelte:* components with attributes intact', () => {
 
   const html = `<svelte:meta namespace="svg" />`;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('block svelte:* components should be allowed children: #1', () => {
@@ -177,7 +209,9 @@ test('block svelte:* components should be allowed children: #1', () => {
 
   const html = `<svelte:head><title>My Title</title></svelte:head>`;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 test('block svelte:* components should be allowed children: #2', () => {
@@ -200,7 +234,9 @@ test('block svelte:* components should be allowed children: #2', () => {
   </style>
 </svelte:head>`;
 
-  expect(parse(md).body).toBe(html);
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
 });
 
 describe('preprocess', () => {
@@ -212,7 +248,7 @@ describe('preprocess', () => {
 I like cheese
 
 \`\`\`js exec
-import Something from './Somewhere.html';
+import Something from './Somewhere';
 \`\`\`
 
 <Something prop={thingy} />
@@ -224,11 +260,11 @@ import Something from './Somewhere.html';
 <Something prop={thingy} />
 
 <script>
-import Something from './Somewhere.html';
-</script>
-`;
-    expect(
-      preprocess.markup({ content: md, filename: 'thing.svexy' }).code
-    ).toBe(html);
+import Something from './Somewhere';
+
+</script>`;
+    expect(mdsvex().markup({ content: md, filename: 'thing.svexy' }).code).toBe(
+      html
+    );
   });
 });

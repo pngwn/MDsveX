@@ -44,6 +44,7 @@
     "typescript-eslint-parser": "^21.0.2"
   },
   "dependencies": {
+    "front-matter": "^3.0.1",
     "markdown-it": "^8.4.2"
   }
 }

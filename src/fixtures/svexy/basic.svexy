@@ -1,7 +1,7 @@
 ---
 hello: 'some text'
 nothello: 'some otehr text'
-list: [1, 2, 3, word, other word];
+list: [1, 2, 3, word, other word]
 ---
 
 # Hello World

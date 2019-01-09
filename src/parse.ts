@@ -2,37 +2,61 @@ import MarkdownIt from 'markdown-it';
 import { svelte } from './svelteParse';
 import { codeExec } from './codeParse';
 import { extname } from 'path';
+import fm from 'front-matter';
 
-export function createParser(options, cb) {
-  return new MarkdownIt(options).use(svelte).use(codeExec, cb);
-}
+const defaultOpts = {
+  parser: md => md,
+  markdownOptions: {},
+  extension: '.svexy',
+};
 
-export function parse(
-  markdownString: string
-): { body: string; scriptContent: string[] } {
+export function mdsvex({
+  parser = md => md,
+  markdownOptions = {},
+  extension = '.svexy',
+}: {
+  parser?: Function;
+  markdownOptions: any;
+  extension: string;
+} = defaultOpts) {
   let scripts = [];
 
-  const md = createParser({ html: true }, v => {
-    scripts.push(v);
-  });
+  const md = parser(new MarkdownIt({ ...markdownOptions, html: true }))
+    .use(svelte)
+    .use(codeExec, v => {
+      scripts.push(v);
+    });
 
-  scripts = scripts.filter(v => v === '\n');
+  scripts = scripts.filter(v => v === '\n' || v === '');
 
-  return { body: md.render(markdownString), scriptContent: scripts };
+  return {
+    markup: ({ content, filename }) => {
+      if (extname(filename) !== extension) return;
+
+      const { attributes, body } = fm(content);
+      const html = md.render(body);
+
+      let scriptTag = '';
+
+      if (Object.keys(attributes).length > 0 || scripts.length > 0) {
+        scriptTag += `\n<script>\n`;
+
+        if (scripts.length > 0) {
+          scriptTag += `${scripts.join('')}`;
+          scripts = [];
+        }
+
+        if (Object.keys(attributes).length > 0) {
+          scriptTag += `const _fm = ${JSON.stringify(attributes)};`;
+        }
+
+        scriptTag += `\n</script>`;
+      }
+
+      return {
+        code: `${html}${scriptTag}`,
+        map: '',
+      };
+    },
+  };
 }
-
-export const preprocess = {
-  markup: ({ content, filename }) => {
-    if (extname(filename) !== '.svexy') return;
-
-    const { body, scriptContent } = parse(content);
-
-    return {
-      code: `${body}
-<script>
-${scriptContent.join('\n')}</script>
-`,
-      map: '',
-    };
-  },
-};

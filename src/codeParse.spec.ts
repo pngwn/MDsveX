@@ -1,4 +1,4 @@
-import { parse } from './parse';
+import { mdsvex } from './parse';
 
 test('`js exec` fenced blocks should not be rendered', () => {
   const md = `
@@ -13,9 +13,17 @@ hi
 
 `;
 
-  const html = parse(md);
+  const html = mdsvex().markup({ content: md, filename: 'file.svexy' });
 
-  expect(html.body).toBe('');
+  expect(html.code).toBe(`
+<script>
+
+some stuff
+more stuff
+
+hi
+
+</script>`);
 });
 
 test('`js` fenced blocks should  be rendered', () => {
@@ -31,9 +39,9 @@ hi
 
 `;
 
-  const html = parse(md);
+  const html = mdsvex().markup({ content: md, filename: 'file.svexy' });
 
-  expect(html.body).not.toBe('');
+  expect(html.code).not.toBe('');
 });
 
 test('the contents of `js exec` should also be returned', () => {
@@ -44,12 +52,14 @@ import Counter from './Counter.html';
 \`\`\`
 `;
 
-  const html = parse(md);
+  const html = mdsvex().markup({ content: md, filename: 'file.svexy' });
 
-  expect(html.body).toBe('');
-  expect(html.scriptContent[0].trim()).toBe(
-    "import Counter from './Counter.html';"
-  );
+  expect(html.code).toBe(`
+<script>
+import Counter from './Counter.html';
+
+</script>`);
+  // expect(html.code.trim()).toBe("import Counter from './Counter.html';");
 });
 
 test('the contents of `js exec` should also be returned even if there are several', () => {
@@ -66,12 +76,16 @@ import Counter3 from './Counter3.html';
 \`\`\`
 `;
 
-  const html = parse(md);
+  const html = mdsvex().markup({ content: md, filename: 'file.svexy' });
 
-  expect(html.body).toBe('');
-  expect(html.scriptContent[2].trim()).toBe(
-    "import Counter3 from './Counter3.html';"
-  );
+  expect(html.code).toBe(`
+<script>
+import Counter from './Counter.html';
+import Counter2 from './Counter2.html';
+import Counter3 from './Counter3.html';
+
+</script>`);
+  //expect(html.code.trim()).toBe("import Counter3 from './Counter3.html';");
 });
 
 test('`js exec` blocks and markdown should be parsed correctly: #1', () => {
@@ -88,12 +102,16 @@ import Counter3 from './Counter3.html';
 \`\`\`
 `;
 
-  const html = parse(md);
+  const html = mdsvex().markup({ content: md, filename: 'file.svexy' });
 
-  expect(html.body.trim()).toBe('<h1>some title</h1>');
-  expect(html.scriptContent[2].trim()).toBe(
-    "import Counter3 from './Counter3.html';"
-  );
+  expect(html.code.trim()).toBe(`<h1>some title</h1>
+
+<script>
+import Counter from './Counter.html';
+import Counter2 from './Counter2.html';
+import Counter3 from './Counter3.html';
+
+</script>`);
 });
 
 test('`js exec` blocks and markdown should be parsed correctly: #2', () => {
@@ -119,17 +137,22 @@ import Counter3 from './Counter3.html';
 \`\`\`
 `;
 
-  const html = parse(md);
+  const html = mdsvex().markup({ content: md, filename: 'file.svexy' });
 
-  expect(html.body.trim()).toBe(`<h1>some title</h1>
+  expect(html.code.trim()).toBe(`<h1>some title</h1>
 <p>some text here</p>
 <p>and some text here:</p>
 <ul>
 <li>and</li>
 <li>a</li>
 <li>list</li>
-</ul>`);
-  expect(html.scriptContent[2].trim()).toBe(
-    "import Counter3 from './Counter3.html';"
-  );
+</ul>
+
+<script>
+import Counter from './Counter.html';
+import Counter2 from './Counter2.html';
+import Counter3 from './Counter3.html';
+
+</script>`);
+  //expect(html.code.trim()).toBe("import Counter3 from './Counter3.html';");
 });
