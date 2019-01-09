@@ -1,6 +1,6 @@
 {
   "name": "mdsvex",
-  "version": "0.1",
+  "version": "0.1.0",
   "description": "Markdown preprocessor for Svelte",
   "main": "dist/main.cjs.js",
   "module": "dist/main.es.js",
@@ -37,6 +37,7 @@
     "prettier-eslint": "^8.8.2",
     "rollup": "^1.0.1",
     "rollup-plugin-commonjs": "^9.2.0",
+    "rollup-plugin-json": "^3.1.0",
     "rollup-plugin-node-resolve": "^3.4.0",
     "rollup-plugin-svelte": "^4.4.0",
     "rollup-plugin-typescript": "^1.0.0",
