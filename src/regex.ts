@@ -3,6 +3,7 @@
 
 // pretty much the standard markdown-it regex
 // added some things to handle svelte:* tags
+// should be fine, might break randomly
 
 const attr_name = '[a-zA-Z_:][a-zA-Z0-9:._-]*';
 

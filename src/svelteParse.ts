@@ -1,3 +1,6 @@
+// i do not care about this file
+// istanbul ignore file
+
 import { HTML_OPEN_CLOSE_TAG_RE } from './regex';
 
 // some custom regex, matches a bit more than just svelte tags
@@ -71,19 +74,15 @@ export function svelte_block(state, startLine, endLine, silent) {
 
   state.line = nextLine;
 
-  token = state.push('html_block', '', 0);
+  token = state.push('svelte_block', '', 0);
   token.map = [startLine, nextLine];
   token.content = state.getLines(startLine, nextLine, state.blkIndent, true);
 
   return true;
 }
 
+// the renderer just returns the raw string
 export function svelteRenderer(tokens, idx) {
-  console.log(tokens[idx].content);
-  console.log(tokens[idx].content);
-  console.log(tokens[idx].content);
-  console.log(tokens[idx].content);
-  console.log(tokens[idx].content);
   return tokens[idx].content;
 }
 

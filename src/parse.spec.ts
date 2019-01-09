@@ -452,3 +452,37 @@ belong to the previous footnote <a href="#fnref2" class="footnote-backref">â†©ï¸
     }).code
   ).toBe(html);
 });
+
+test('YAML fonrt-matter should be injected into the component script tag', () => {
+  const md = `---
+hello: 'hi'
+list: [1, 2, 3]
+---
+
+# hello
+`;
+
+  const html = `<h1>hello</h1>
+
+<script>
+const _fm = {"hello":"hi","list":[1,2,3]};
+</script>`;
+
+  expect(
+    mdsvex().markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});
+
+test('files with the wrong filename should return nothing fromt he function', () => {
+  const md = `whatever`;
+
+  expect(
+    mdsvex().markup({
+      content: md,
+      filename: 'thing.html',
+    })
+  ).toBe(undefined);
+});

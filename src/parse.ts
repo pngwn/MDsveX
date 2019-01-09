@@ -23,7 +23,7 @@ export function mdsvex({
   markdownOptions = {},
   extension = '.svexy',
 }: svexOptions = defaultOpts) {
-  // scope. i should look at this.
+  // whatever
   let scripts = [];
 
   // this allows the user to modify the instance of markdown-it
@@ -33,8 +33,6 @@ export function mdsvex({
     .use(codeExec, v => {
       scripts.push(v);
     });
-
-  scripts = scripts.filter(v => v === '\n' || v === '');
 
   return {
     markup: ({ content, filename }) => {
