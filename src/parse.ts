@@ -12,15 +12,17 @@ const defaultOpts = {
 
 // everything is up in everyones business.
 
+export interface svexOptions {
+  parser?: Function;
+  markdownOptions?: object;
+  extension?: string;
+}
+
 export function mdsvex({
   parser = md => md,
   markdownOptions = {},
   extension = '.svexy',
-}: {
-  parser?: Function;
-  markdownOptions: any;
-  extension: string;
-} = defaultOpts) {
+}: svexOptions = defaultOpts) {
   // scope. i should look at this.
   let scripts = [];
 

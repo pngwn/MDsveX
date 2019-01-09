@@ -1,7 +1,7 @@
 {
   "name": "mdsvex",
   "version": "0.1",
-  "description": "Markdown Preprocessor for Svelte",
+  "description": "Markdown preprocessor for Svelte",
   "main": "dist/main.cjs.js",
   "module": "dist/main.es.js",
   "scripts": {
@@ -15,7 +15,8 @@
     "test",
     "preprocessor",
     "mdx",
-    "markdown"
+    "markdown",
+    "svelte"
   ],
   "author": "pngwn <hello@pngwn.io>",
   "license": "MIT",
@@ -26,7 +27,9 @@
     "eslint-import-resolver-typescript": "^1.1.1",
     "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-typescript": "^0.14.0",
+    "highlight.js": "^9.13.1",
     "jest": "^23.6.0",
+    "markdown-it-container": "^2.0.0",
     "markdown-it-testgen": "^0.1.4",
     "prettier": "^1.15.3",
     "prettier-eslint": "^8.8.2",

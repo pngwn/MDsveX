@@ -1,4 +1,5 @@
 import { mdsvex } from './parse';
+import hljs from 'highlight.js';
 
 test('it should transform markdown into html', () => {
   const md = `# Hello World
@@ -239,9 +240,8 @@ test('block svelte:* components should be allowed children: #2', () => {
   );
 });
 
-describe('preprocess', () => {
-  test('it should process some svexy files and return a valid svelte component', () => {
-    const md = `<svelte:meta />
+test('it should process some svexy files and return a valid svelte component', () => {
+  const md = `<svelte:meta />
 
 # Hello world
 
@@ -254,7 +254,7 @@ import Something from './Somewhere';
 <Something prop={thingy} />
 `;
 
-    const html = `<svelte:meta />
+  const html = `<svelte:meta />
 <h1>Hello world</h1>
 <p>I like cheese</p>
 <Something prop={thingy} />
@@ -263,8 +263,93 @@ import Something from './Somewhere';
 import Something from './Somewhere';
 
 </script>`;
-    expect(mdsvex().markup({ content: md, filename: 'thing.svexy' }).code).toBe(
-      html
-    );
-  });
+  expect(mdsvex().markup({ content: md, filename: 'thing.svexy' }).code).toBe(
+    html
+  );
+});
+
+test('markdown-it options that ae passed should be applied: typographer', () => {
+  const md = `
+(c) (C) (r) (R) (tm) (TM) (p) (P) +-
+
+test.. test... test..... test?..... test!....
+
+!!!!!! ???? ,, -- ---`;
+
+  const html = `<p>© © ® ® ™ ™ § § ±</p>
+<p>test… test… test… test?.. test!..</p>
+<p>!!! ??? , – —</p>
+`;
+
+  expect(
+    mdsvex({ markdownOptions: { typographer: true } }).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});
+
+test('markdown-it options that ae passed should be applied: linkify', () => {
+  const md = `www.google.com`;
+
+  const html = `<p><a href="http://www.google.com">www.google.com</a></p>
+`;
+
+  expect(
+    mdsvex({ markdownOptions: { linkify: true } }).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});
+
+test('markdown-it options that ae passed should be applied: linkify', () => {
+  const md = `www.google.com`;
+
+  const html = `<p><a href="http://www.google.com">www.google.com</a></p>
+`;
+
+  expect(
+    mdsvex({ markdownOptions: { linkify: true } }).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});
+
+test('markdown-it options that ae passed should be applied: highlight', () => {
+  const md = `\`\`\` js
+  var foo = function (bar) {
+    return bar++;
+  };
+
+  console.log(foo(5));
+  \`\`\``;
+
+  const html = `<pre><code class="language-js">  <span class="hljs-keyword">var</span> foo = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">bar</span>) </span>{
+    <span class="hljs-keyword">return</span> bar++;
+  };
+
+  <span class="hljs-built_in">console</span>.log(foo(<span class="hljs-number">5</span>));
+</code></pre>
+`;
+
+  expect(
+    mdsvex({
+      markdownOptions: {
+        highlight: function(str, lang) {
+          if (lang && hljs.getLanguage(lang)) {
+            try {
+              return hljs.highlight(lang, str).value;
+            } catch (__) {}
+          }
+
+          return ''; // use external default escaping
+        },
+      },
+    }).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
 });
