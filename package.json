@@ -4,6 +4,7 @@
   "description": "Markdown preprocessor for Svelte",
   "main": "dist/main.cjs.js",
   "module": "dist/main.es.js",
+  "repository": "https://github.com/pngwn/MDsveX",
   "scripts": {
     "build": "rollup -c",
     "lint": "eslint 'src/**' 'test/*.js'",
@@ -46,6 +47,9 @@
     "tslib": "^1.9.3",
     "typescript": "^3.2.1",
     "typescript-eslint-parser": "^21.0.2"
+  },
+  "peerDependencies": {
+    "svelte": "3.x"
   },
   "dependencies": {
     "front-matter": "^3.0.1",
