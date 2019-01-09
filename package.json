@@ -30,6 +30,7 @@
     "highlight.js": "^9.13.1",
     "jest": "^23.6.0",
     "markdown-it-container": "^2.0.0",
+    "markdown-it-footnote": "^3.0.1",
     "markdown-it-testgen": "^0.1.4",
     "prettier": "^1.15.3",
     "prettier-eslint": "^8.8.2",

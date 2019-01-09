@@ -1,5 +1,8 @@
-import { mdsvex } from './parse';
 import hljs from 'highlight.js';
+import container from 'markdown-it-container';
+import footnote from 'markdown-it-footnote';
+
+import { mdsvex } from './parse';
 
 test('it should transform markdown into html', () => {
   const md = `# Hello World
@@ -303,20 +306,6 @@ test('markdown-it options that ae passed should be applied: linkify', () => {
   ).toBe(html);
 });
 
-test('markdown-it options that ae passed should be applied: linkify', () => {
-  const md = `www.google.com`;
-
-  const html = `<p><a href="http://www.google.com">www.google.com</a></p>
-`;
-
-  expect(
-    mdsvex({ markdownOptions: { linkify: true } }).markup({
-      content: md,
-      filename: 'thing.svexy',
-    }).code
-  ).toBe(html);
-});
-
 test('markdown-it options that ae passed should be applied: highlight', () => {
   const md = `\`\`\` js
   var foo = function (bar) {
@@ -347,6 +336,116 @@ test('markdown-it options that ae passed should be applied: highlight', () => {
           return ''; // use external default escaping
         },
       },
+    }).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});
+
+test('markdown-it plugins should be correctly applied: #1', () => {
+  const md = `::: example
+I am some text
+:::
+`;
+
+  const html = `<div class="example">
+<p>I am some text</p>
+</div>
+`;
+
+  expect(
+    mdsvex({
+      parser: md => md.use(container, 'example'),
+    }).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});
+
+test('markdown-it plugins should be correctly applied: #2', () => {
+  const md = `Here is a footnote reference,[^1] and another.[^longnote]
+
+[^1]: Here is the footnote
+
+[^longnote]: Here's one with multiple blocks.
+
+    Subsequent paragraphs are indented to show that they
+belong to the previous footnote
+
+This paragraph won’t be part of the note, because it
+isn’t indented.
+`;
+
+  const html = `<p>Here is a footnote reference,<sup class="footnote-ref"><a href="#fn1" id="fnref1">[1]</a></sup> and another.<sup class="footnote-ref"><a href="#fn2" id="fnref2">[2]</a></sup></p>
+<p>This paragraph won’t be part of the note, because it
+isn’t indented.</p>
+<hr class="footnotes-sep">
+<section class="footnotes">
+<ol class="footnotes-list">
+<li id="fn1" class="footnote-item"><p>Here is the footnote <a href="#fnref1" class="footnote-backref">↩︎</a></p>
+</li>
+<li id="fn2" class="footnote-item"><p>Here’s one with multiple blocks.</p>
+<p>Subsequent paragraphs are indented to show that they
+belong to the previous footnote <a href="#fnref2" class="footnote-backref">↩︎</a></p>
+</li>
+</ol>
+</section>
+`;
+
+  expect(
+    mdsvex({
+      markdownOptions: { typographer: true },
+      parser: md => md.use(footnote),
+    }).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});
+
+test('multiple markdown-it plugins should be correctly applied!!!', () => {
+  const md = `::: example
+I am some text
+:::
+
+Here is a footnote reference,[^1] and another.[^longnote]
+
+[^1]: Here is the footnote
+
+[^longnote]: Here's one with multiple blocks.
+
+    Subsequent paragraphs are indented to show that they
+belong to the previous footnote
+
+This paragraph won’t be part of the note, because it
+isn’t indented.
+`;
+
+  const html = `<div class="example">
+<p>I am some text</p>
+</div>
+<p>Here is a footnote reference,<sup class="footnote-ref"><a href="#fn1" id="fnref1">[1]</a></sup> and another.<sup class="footnote-ref"><a href="#fn2" id="fnref2">[2]</a></sup></p>
+<p>This paragraph won’t be part of the note, because it
+isn’t indented.</p>
+<hr class="footnotes-sep">
+<section class="footnotes">
+<ol class="footnotes-list">
+<li id="fn1" class="footnote-item"><p>Here is the footnote <a href="#fnref1" class="footnote-backref">↩︎</a></p>
+</li>
+<li id="fn2" class="footnote-item"><p>Here’s one with multiple blocks.</p>
+<p>Subsequent paragraphs are indented to show that they
+belong to the previous footnote <a href="#fnref2" class="footnote-backref">↩︎</a></p>
+</li>
+</ol>
+</section>
+`;
+
+  expect(
+    mdsvex({
+      markdownOptions: { typographer: true },
+      parser: md => md.use(footnote).use(container, 'example'),
     }).markup({
       content: md,
       filename: 'thing.svexy',
