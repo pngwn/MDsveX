@@ -2,6 +2,7 @@ import MarkdownIt from 'markdown-it';
 import { svelte } from './svelteParse';
 import { codeExec } from './codeParse';
 import { extname } from 'path';
+import { escapeCurly } from './escapeCurly';
 import fm from 'front-matter';
 
 const defaultOpts = {
@@ -30,6 +31,7 @@ export function mdsvex({
   // necessary if they want to add custom plugins, etc.
   const md = parser(new MarkdownIt({ ...markdownOptions, html: true }))
     .use(svelte)
+    .use(escapeCurly)
     .use(codeExec, v => {
       scripts.push(v);
     });

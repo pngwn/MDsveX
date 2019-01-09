@@ -20,8 +20,12 @@ import Counter from './Counter.html';
 - His mother calls him when he gets up to late.
 
 ```js
-// Some actual JS code
+// Some actual rendered code
 const fn = str => str.toUpperCase();
+
+function(str) {
+  return str;
+}
 ```
 
 ```js exec

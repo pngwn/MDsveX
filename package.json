@@ -53,6 +53,7 @@
     "svelte": "3.x"
   },
   "dependencies": {
+    "entities": "^1.1.2",
     "front-matter": "^3.0.1",
     "markdown-it": "^8.4.2"
   }

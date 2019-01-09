@@ -58,7 +58,7 @@ var UNESCAPE_ALL_RE = new RegExp(
 
 var DIGITAL_ENTITY_TEST_RE = /^#((?:x[a-f0-9]{1,8}|[0-9]{1,8}))/i;
 
-var entities = require('./entities');
+var entities = require('entities/maps/entities.json');
 
 function replaceEntityPattern(match, name) {
   var code = 0;
@@ -104,7 +104,7 @@ var HTML_REPLACEMENTS = {
   '>': '&gt;',
   '"': '&quot;',
   '{': '&#123;',
-  '}': '$#125;',
+  '}': '&#125;',
 };
 
 function replaceUnsafeChar(ch) {

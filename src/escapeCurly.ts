@@ -1,5 +1,17 @@
 import { unescapeAll, escapeHtml } from './escapeCurlyUtil';
 
+function code_inline(tokens, idx, options, env, slf) {
+  var token = tokens[idx];
+
+  return (
+    '<code' +
+    slf.renderAttrs(token) +
+    '>' +
+    escapeHtml(tokens[idx].content) +
+    '</code>'
+  );
+}
+
 function code_block(tokens, idx, options, env, slf) {
   var token = tokens[idx];
 
@@ -70,4 +82,10 @@ function fence(tokens, idx, options, env, slf) {
     highlighted +
     '</code></pre>\n'
   );
+}
+
+export function escapeCurly(md) {
+  md.renderer.rules.code_block = code_block;
+  md.renderer.rules.code_inline = code_inline;
+  md.renderer.rules.fence = fence;
 }

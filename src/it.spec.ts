@@ -23,7 +23,12 @@ async function generateBundle(entry, options?: svexOptions) {
 test('it should compile as a valid svelte component with out throwing', async () => {
   const path = join(__dirname, 'fixtures/svexy/basic.svexy');
 
-  expect(async () => await generateBundle(path)).not.toThrow();
+  try {
+    const bundle = await generateBundle(path);
+    expect(bundle).toBeTruthy();
+  } catch (e) {
+    throw new Error(e);
+  }
 });
 
 test('it should take some options', async () => {
