@@ -7,7 +7,7 @@
   "repository": "https://github.com/pngwn/MDsveX",
   "scripts": {
     "build": "rollup -c",
-    "lint": "eslint 'src/**' 'test/*.js'",
+    "lint": "eslint 'src/**' 'test/*.ts'",
     "test": "yarn lint & jest --verbose",
     "test:watch": "jest --verbose --watch",
     "test:cov": "yarn lint && jest --verbose --coverage"

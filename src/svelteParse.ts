@@ -1,5 +1,5 @@
-// i do not care about this file
 // istanbul ignore file
+/* eslint-disable */
 
 import { HTML_OPEN_CLOSE_TAG_RE } from './regex';
 

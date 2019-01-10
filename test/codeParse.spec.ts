@@ -1,4 +1,4 @@
-import { mdsvex } from './parse';
+import { mdsvex } from '../src/parse';
 
 test('`js exec` fenced blocks should not be rendered', () => {
   const md = `

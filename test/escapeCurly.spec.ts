@@ -1,5 +1,5 @@
-import { mdsvex } from './parse';
-import { replaceCurlies } from './escapeCurly';
+import { mdsvex } from '../src/parse';
+import { replaceCurlies } from '../src/escapeCurly';
 
 test('replaceCurlies should replace curlies', () => {
   const str = `{}`;
@@ -35,7 +35,7 @@ const obj = { hello: 'hi' };
 \`\`\``;
 
   expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code)
-    .toBe(`<pre><code class=\"language-js\">function() &#123;
+    .toBe(`<pre><code class="language-js">function() &#123;
   return true;
 &#125;
 

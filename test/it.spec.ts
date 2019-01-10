@@ -4,7 +4,8 @@ import svelte from 'rollup-plugin-svelte';
 import { join } from 'path';
 import container from 'markdown-it-container';
 
-import { mdsvex, svexOptions } from './parse';
+/* eslint-disable-next-line */
+import { mdsvex, svexOptions } from '../src/parse';
 
 async function generateBundle(entry, options?: svexOptions) {
   const bundle = await rollup({

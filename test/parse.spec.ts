@@ -2,7 +2,7 @@ import hljs from 'highlight.js';
 import container from 'markdown-it-container';
 import footnote from 'markdown-it-footnote';
 
-import { mdsvex } from './parse';
+import { mdsvex } from '../src/parse';
 
 test('it should transform markdown into html', () => {
   const md = `# Hello World
@@ -326,11 +326,13 @@ test('markdown-it options that are passed should be applied: highlight', () => {
   expect(
     mdsvex({
       markdownOptions: {
-        highlight: function(str, lang) {
+        highlight(str, lang) {
           if (lang && hljs.getLanguage(lang)) {
             try {
               return hljs.highlight(lang, str).value;
-            } catch (__) {}
+            } catch (e) {
+              throw new Error(e);
+            }
           }
 
           return ''; // use external default escaping
