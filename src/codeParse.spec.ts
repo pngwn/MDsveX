@@ -59,7 +59,6 @@ import Counter from './Counter.html';
 import Counter from './Counter.html';
 
 </script>`);
-  // expect(html.code.trim()).toBe("import Counter from './Counter.html';");
 });
 
 test('the contents of `js exec` should also be returned even if there are several', () => {
@@ -85,7 +84,6 @@ import Counter2 from './Counter2.html';
 import Counter3 from './Counter3.html';
 
 </script>`);
-  //expect(html.code.trim()).toBe("import Counter3 from './Counter3.html';");
 });
 
 test('`js exec` blocks and markdown should be parsed correctly: #1', () => {
@@ -154,5 +152,4 @@ import Counter2 from './Counter2.html';
 import Counter3 from './Counter3.html';
 
 </script>`);
-  //expect(html.code.trim()).toBe("import Counter3 from './Counter3.html';");
 });

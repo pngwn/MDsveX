@@ -315,9 +315,9 @@ test('markdown-it options that are passed should be applied: highlight', () => {
   console.log(foo(5));
   \`\`\``;
 
-  const html = `<pre><code class="language-js">  <span class="hljs-keyword">var</span> foo = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">bar</span>) </span>{
+  const html = `<pre><code class="language-js">  <span class="hljs-keyword">var</span> foo = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">bar</span>) </span>&#123;
     <span class="hljs-keyword">return</span> bar++;
-  };
+  &#125;;
 
   <span class="hljs-built_in">console</span>.log(foo(<span class="hljs-number">5</span>));
 </code></pre>

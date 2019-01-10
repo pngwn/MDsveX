@@ -1,4 +1,29 @@
 import { mdsvex } from './parse';
+import { replaceCurlies } from './escapeCurly';
+
+test('replaceCurlies should replace curlies', () => {
+  const str = `{}`;
+  expect(replaceCurlies(str)).toBe('&#123;&#125;');
+});
+
+test('replaceCurlies should replace curlies even woth other text inbetween', () => {
+  const str = `{ variable }`;
+  expect(replaceCurlies(str)).toBe('&#123; variable &#125;');
+});
+
+test('replaceCurlies should replace multiple curlies', () => {
+  const str = `{ variable } { variable } { variable } { variable }`;
+  expect(replaceCurlies(str)).toBe(
+    '&#123; variable &#125; &#123; variable &#125; &#123; variable &#125; &#123; variable &#125;'
+  );
+});
+
+test('replaceCurlies should replace multiple curlies in strange configurations', () => {
+  const str = `{ variable }}}[]{}{}}} { variable } { variable } { variable }`;
+  expect(replaceCurlies(str)).toBe(
+    '&#123; variable &#125;&#125;&#125;[]&#123;&#125;&#123;&#125;&#125;&#125; &#123; variable &#125; &#123; variable &#125; &#123; variable &#125;'
+  );
+});
 
 test('escape curly braces in fenced code blocks', () => {
   const md = `\`\`\`js

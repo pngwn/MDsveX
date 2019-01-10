@@ -1,95 +1,19 @@
-// TODO: write a new renderer to replace this.
-// If I clone an replace these renderers, performing the transforms on the
-// output and returning that, it should be sufficient
-
-import { unescapeAll, escapeHtml } from './escapeCurlyUtil';
-
-function code_inline(tokens, idx, options, env, slf) {
-  var token = tokens[idx];
-
-  return (
-    '<code' +
-    slf.renderAttrs(token) +
-    '>' +
-    escapeHtml(tokens[idx].content) +
-    '</code>'
-  );
-}
-
-function code_block(tokens, idx, options, env, slf) {
-  var token = tokens[idx];
-
-  return (
-    '<pre' +
-    slf.renderAttrs(token) +
-    '><code>' +
-    escapeHtml(tokens[idx].content) +
-    '</code></pre>\n'
-  );
-}
-
-function fence(tokens, idx, options, env, slf) {
-  var token = tokens[idx],
-    info = token.info ? unescapeAll(token.info).trim() : '',
-    langName = '',
-    highlighted,
-    i,
-    tmpAttrs,
-    tmpToken;
-
-  if (info) {
-    langName = info.split(/\s+/g)[0];
-  }
-
-  if (options.highlight) {
-    highlighted =
-      options.highlight(token.content, langName) || escapeHtml(token.content);
-  } else {
-    highlighted = escapeHtml(token.content);
-  }
-
-  if (highlighted.indexOf('<pre') === 0) {
-    return highlighted + '\n';
-  }
-
-  // If language exists, inject class gently, without modifying original token.
-  // May be, one day we will add .clone() for token and simplify this part, but
-  // now we prefer to keep things local.
-  if (info) {
-    i = token.attrIndex('class');
-    tmpAttrs = token.attrs ? token.attrs.slice() : [];
-
-    if (i < 0) {
-      tmpAttrs.push(['class', options.langPrefix + langName]);
-    } else {
-      tmpAttrs[i][1] += ' ' + options.langPrefix + langName;
-    }
-
-    // Fake token just to render attributes
-    tmpToken = {
-      attrs: tmpAttrs,
-    };
-
-    return (
-      '<pre><code' +
-      slf.renderAttrs(tmpToken) +
-      '>' +
-      highlighted +
-      '</code></pre>\n'
-    );
-  }
-
-  return (
-    '<pre><code' +
-    slf.renderAttrs(token) +
-    '>' +
-    highlighted +
-    '</code></pre>\n'
-  );
+export function replaceCurlies(str) {
+  return str.replace(/{/g, '&#123;').replace(/}/g, '&#125;');
 }
 
 export function escapeCurly(md) {
-  md.renderer.rules.code_block = code_block;
-  md.renderer.rules.code_inline = code_inline;
-  md.renderer.rules.fence = fence;
+  const default_code_inline = md.renderer.rules.code_inline;
+  const default_code_block = md.renderer.rules.code_block;
+  const default_fence = md.renderer.rules.fence;
+
+  md.renderer.rules.code_block = function(tokens, idx, options, env, slf) {
+    return replaceCurlies(default_code_block(tokens, idx, options, env, slf));
+  };
+  md.renderer.rules.code_inline = function(tokens, idx, options, env, slf) {
+    return replaceCurlies(default_code_inline(tokens, idx, options, env, slf));
+  };
+  md.renderer.rules.fence = function(tokens, idx, options, env, slf) {
+    return replaceCurlies(default_fence(tokens, idx, options, env, slf));
+  };
 }

@@ -30,8 +30,7 @@ export function mdsvex({
     .use(codeExec);
 
   // store the executable script content on the md object
-  // a parser would be the best place to do this but we can get
-  // the required info more easily this way
+  // there isn't really a greta place to store this
   md.svx = [];
 
   return {
