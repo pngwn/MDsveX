@@ -11,8 +11,6 @@ const defaultOpts = {
   extension: '.svexy',
 };
 
-// everything is up in everyones business.
-
 export interface svexOptions {
   parser?: Function;
   markdownOptions?: object;
@@ -24,17 +22,17 @@ export function mdsvex({
   markdownOptions = {},
   extension = '.svexy',
 }: svexOptions = defaultOpts) {
-  // whatever
-  let scripts = [];
-
   // this allows the user to modify the instance of markdown-it
   // necessary if they want to add custom plugins, etc.
   const md = parser(new MarkdownIt({ ...markdownOptions, html: true }))
     .use(svelte)
     .use(escapeCurly)
-    .use(codeExec, v => {
-      scripts.push(v);
-    });
+    .use(codeExec);
+
+  // store the executable script content on the md object
+  // a parser would be the best place to do this but we can get
+  // the required info more easily this way
+  md.svx = [];
 
   return {
     markup: ({ content, filename }) => {
@@ -45,28 +43,34 @@ export function mdsvex({
 
       // we don't want a script tag to be appended if there is no script content
       // that could cause problems when svelte compiles the component
+      let scripts = '';
 
-      let scriptTag = '';
+      const isAttributes = Object.keys(attributes).length > 0;
+      const isExec = md.svx.length > 0;
 
-      if (Object.keys(attributes).length > 0 || scripts.length > 0) {
-        scriptTag += `\n<script>\n`;
-
-        if (scripts.length > 0) {
-          scriptTag += `${scripts.join('')}`;
-          scripts = [];
+      if (isAttributes || isExec) {
+        if (isExec) {
+          scripts += `${md.svx.join('')}`;
         }
 
-        // this makes yaml font-matter available in the conponent if any is present
-        // should it handle JSON front-matter as well?
-        if (Object.keys(attributes).length > 0) {
-          scriptTag += `const _fm = ${JSON.stringify(attributes)};`;
+        // this makes yaml font-matter available in the component if any is present
+        // I'm not sure if these should be available as individual variable
+        // concerned about clashes
+        if (isAttributes) {
+          scripts += `const _fm = ${JSON.stringify(attributes)};`;
         }
 
-        scriptTag += `\n</script>`;
+        scripts = `
+<script>
+${scripts}
+</script>`;
+
+        // reset the scripts store or we're in trouble
+        md.svx = [];
       }
 
       return {
-        code: `${html}${scriptTag}`,
+        code: `${html}${scripts}`,
         map: '',
       };
     },

@@ -271,7 +271,7 @@ import Something from './Somewhere';
   );
 });
 
-test('markdown-it options that ae passed should be applied: typographer', () => {
+test('markdown-it options that are passed should be applied: typographer', () => {
   const md = `
 (c) (C) (r) (R) (tm) (TM) (p) (P) +-
 
@@ -292,7 +292,7 @@ test.. test... test..... test?..... test!....
   ).toBe(html);
 });
 
-test('markdown-it options that ae passed should be applied: linkify', () => {
+test('markdown-it options that are passed should be applied: linkify', () => {
   const md = `www.google.com`;
 
   const html = `<p><a href="http://www.google.com">www.google.com</a></p>
@@ -306,7 +306,7 @@ test('markdown-it options that ae passed should be applied: linkify', () => {
   ).toBe(html);
 });
 
-test('markdown-it options that ae passed should be applied: highlight', () => {
+test('markdown-it options that are passed should be applied: highlight', () => {
   const md = `\`\`\` js
   var foo = function (bar) {
     return bar++;
@@ -453,7 +453,7 @@ belong to the previous footnote <a href="#fnref2" class="footnote-backref">â†©ï¸
   ).toBe(html);
 });
 
-test('YAML fonrt-matter should be injected into the component script tag', () => {
+test('YAML front-matter should be injected into the component script tag', () => {
   const md = `---
 hello: 'hi'
 list: [1, 2, 3]
@@ -476,7 +476,7 @@ const _fm = {"hello":"hi","list":[1,2,3]};
   ).toBe(html);
 });
 
-test('files with the wrong filename should return nothing fromt he function', () => {
+test('files with the wrong filename should return nothing from the function', () => {
   const md = `whatever`;
 
   expect(

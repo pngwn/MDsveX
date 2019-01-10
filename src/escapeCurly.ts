@@ -1,3 +1,7 @@
+// TODO: write a new renderer to replace this.
+// If I clone an replace these renderers, performing the transforms on the
+// output and returning that, it should be sufficient
+
 import { unescapeAll, escapeHtml } from './escapeCurlyUtil';
 
 function code_inline(tokens, idx, options, env, slf) {

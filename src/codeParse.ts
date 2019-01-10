@@ -1,11 +1,11 @@
-export function codeExec(md, cb) {
+export function codeExec(md) {
   // copy the default fence renderer
   const defaultRender = md.renderer.rules['fence'];
 
-  // execute the cb function and return an empty string to ensure nothing is rendered
   md.renderer.rules['fence'] = function(tokens, idx, options, env, self) {
     if (tokens[idx].info === 'js exec') {
-      cb(tokens[idx].content);
+      // add the script content to the svx property but return nothing
+      md.svx = md.svx.concat(tokens[idx].content);
       return '';
     }
 

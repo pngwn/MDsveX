@@ -1,3 +1,7 @@
+// These are markdown-it utils
+// if they don't work, we have bigger problems
+// istanbul ignore file
+
 var _hasOwnProperty = Object.prototype.hasOwnProperty;
 
 function has(object, key) {
