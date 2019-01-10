@@ -1,5 +1,5 @@
 import { mdsvex } from '../src/parse';
-import { replaceCurlies } from '../src/escapeCurly';
+import { replaceCurlies } from '../src/md/escapeCurly';
 
 test('replaceCurlies should replace curlies', () => {
   const str = `{}`;

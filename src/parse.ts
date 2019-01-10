@@ -1,8 +1,8 @@
 import MarkdownIt from 'markdown-it';
-import { svelte } from './svelteParse';
-import { codeExec } from './codeParse';
+import { svelte } from './md/svelteParse';
+import { codeExec } from './md/codeParse';
 import { extname } from 'path';
-import { escapeCurly } from './escapeCurly';
+import { escapeCurly } from './md/escapeCurly';
 import fm from 'front-matter';
 
 const defaultOpts = {
