@@ -1,6 +1,6 @@
 {
   "name": "mdsvex",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Markdown preprocessor for Svelte",
   "main": "dist/main.cjs.js",
   "module": "dist/main.es.js",
