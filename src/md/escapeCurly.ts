@@ -1,3 +1,6 @@
+// is this really enough? is it too simple to be true?
+// if anything break catastrophically, it wasn't my fault
+
 export function replaceCurlies(str) {
   return str.replace(/{/g, '&#123;').replace(/}/g, '&#125;');
 }
