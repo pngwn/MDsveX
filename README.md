@@ -24,7 +24,7 @@ It uses [markdown-it](https://github.com/markdown-it/markdown-it) to parse the m
 
 - [Install](#install-it)
 - [Config](#use-it)
-- [More Info](#please-more.)
+- [More Info](#please-more)
   - [Running actual code](#executing-yavaScript)
   - [YAML variables](#break-out-your-try-square)
   - [Escaped curlywurlies](#curlywurly-be-gone)
@@ -61,7 +61,7 @@ Add it as a preprocessor to you rollup or webpack config:
           highlight: (str, lang) => whatever(str, lang)
         },
       }),
-	  }
+    }
   ]
 }
 ```
@@ -150,13 +150,13 @@ plugins: [
       preprocess: mdsvex({
         parser: md => md.use(myMagicalPlugin)
         // this is the actual instance of markdown-it that will be used to parse things
-        // my fancy stuff gets added afterwards and it could break on of your plugins
+        // my fancy stuff gets added afterwards and it could break one of your plugins
         // if it does, i'm sorry
         // i didn't mean for it to be this way
         // i never intended to cause you distress
         // i will try to be better
       }),
-	  }
+    }
   ]
 ```
 
