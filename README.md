@@ -86,6 +86,8 @@ let number = 500;
 Inline components <Counter count="{5}" /> are absolute fine too.
 ````
 
+Use `js exec` blocks instead of script blocks because you can have as many `js exec` blocks ayou want. And I can't remember if I tested script blocks.
+
 ### Break out your try-square
 
 You can add some YAML front-matter if you like. The variables and values defined in YAML front-matter are injected into the component's script tag and are available in the MDsveX file. They are in an object named `_fm` (this might change at some point):
