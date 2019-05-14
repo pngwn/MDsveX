@@ -22,6 +22,8 @@ The chart is rendered inside our MDsveX document.
 
 It uses [markdown-it](https://github.com/markdown-it/markdown-it) to parse the markdown, mainly due to the availability of plugins (which you can easily add). If this decision upsets you then I'm sorry.
 
+---
+
 - [Install](#install-it)
 - [Config](#use-it)
 - [More Info](#please-more)
