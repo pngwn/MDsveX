@@ -1,9 +1,10 @@
 import MarkdownIt from 'markdown-it';
 import { svelte } from './md/svelteParse';
 import { codeExec } from './md/codeParse';
-import { extname } from 'path';
+import * as p from 'path-browserify';
 import { escapeCurly } from './md/escapeCurly';
 import fm from 'front-matter';
+const extname = p.default.extname;
 
 const defaultOpts = {
   parser: md => md,
@@ -52,7 +53,7 @@ export function mdsvex({
           scripts += `${md.svx.join('')}`;
         }
 
-        // this makes yaml font-matter available in the component if any is present
+        // this makes yaml front-matter available in the component if any is present
         // I'm not sure if these should be available as individual variable
         // concerned about clashes
         if (isAttributes) {

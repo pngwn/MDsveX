@@ -55,6 +55,8 @@
   "dependencies": {
     "entities": "^1.1.2",
     "front-matter": "^3.0.1",
-    "markdown-it": "^8.4.2"
+    "markdown-it": "^8.4.2",
+    "path-browserify": "^1.0.0",
+    "punycode": "^2.1.1"
   }
 }
