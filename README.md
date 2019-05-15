@@ -1,5 +1,7 @@
 # MDsveX
 
+_do ya think I'm svexy?_
+
 A markdown preprocessor for Svelte components. Basically [MDX](https://github.com/mdx-js/mdx) for Svelte.
 
 This preprocessor allows you use Svelte components in your markdown, or markdown in your svelte components.
@@ -22,14 +24,16 @@ The chart is rendered inside our MDsveX document.
 
 It uses [markdown-it](https://github.com/markdown-it/markdown-it) to parse the markdown, mainly due to the availability of plugins (which you can easily add). If this decision upsets you then I'm sorry.
 
-- [Install](#Install-it)
-- [Config](#Use-it)
-- [More Info](#Please,-more.)
-  - Running actual code
-  - YAML variables
-  - Escaped curlywurlies
-  - Markdown-it plugins
-- What sucks?
+---
+
+- [Install](#install-it)
+- [Config](#use-it)
+- [More Info](#please-more)
+  - [Running actual code](#executing-yavaScript)
+  - [YAML variables](#break-out-your-try-square)
+  - [Escaped curlywurlies](#curlywurly-be-gone)
+  - [Markdown-it plugins](#markdown-plugins)
+- [What sucks?](#what-cant-i-do)
 
 ## Install it
 
@@ -60,7 +64,7 @@ Add it as a preprocessor to you rollup or webpack config:
           highlight: (str, lang) => whatever(str, lang)
         },
       }),
-	  }
+    }
   ]
 }
 ```
@@ -82,6 +86,8 @@ let number = 500;
 
 Inline components <Counter count="{5}" /> are absolute fine too.
 ````
+
+Use `js exec` blocks instead of script blocks because you can have as many `js exec` blocks ayou want. And I can't remember if I tested script blocks.
 
 ### Break out your try-square
 
@@ -149,13 +155,13 @@ plugins: [
       preprocess: mdsvex({
         parser: md => md.use(myMagicalPlugin)
         // this is the actual instance of markdown-it that will be used to parse things
-        // my fancy stuff gets added afterwards and it could break on of your plugins
+        // my fancy stuff gets added afterwards and it could break one of your plugins
         // if it does, i'm sorry
         // i didn't mean for it to be this way
         // i never intended to cause you distress
         // i will try to be better
       }),
-	  }
+    }
   ]
 ```
 
