@@ -7,6 +7,8 @@ A markdown preprocessor for Svelte components. Basically [MDX](https://github.co
 
 This preprocessor allows you use Svelte components in your markdown, or markdown in your svelte components.
 
+[Try it](https://mdsvex.pngwn.io/)
+
 You can do this:
 
 ````jsx
