@@ -9,6 +9,12 @@ export function codeExec(md) {
       return '';
     }
 
+    if (tokens[idx].info === 'js module') {
+      // add the script content to the svx property but return nothing
+      md.svxmod = md.svxmod.concat(tokens[idx].content);
+      return '';
+    }
+
     // if there is no match, revert to the standard fence renderer
     return defaultRender(tokens, idx, options, env, self);
   };

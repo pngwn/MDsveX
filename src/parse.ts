@@ -33,6 +33,7 @@ export function mdsvex({
   // store the executable script content on the md object
   // there isn't really a greta place to store this
   md.svx = [];
+  md.svxmod = [];
 
   return {
     markup: ({ content, filename }) => {
@@ -43,14 +44,20 @@ export function mdsvex({
 
       // we don't want a script tag to be appended if there is no script content
       // that could cause problems when svelte compiles the component
-      let scripts = '';
+      let scripts = '',
+        modules = '';
 
       const isAttributes = Object.keys(attributes).length > 0;
       const isExec = md.svx.length > 0;
+      const isMod = md.svxmod.length > 0;
 
-      if (isAttributes || isExec) {
+      if (isAttributes || isExec || isMod) {
         if (isExec) {
           scripts += `${md.svx.join('')}`;
+        }
+
+        if (isMod) {
+          modules += `${md.svxmod.join('')}`;
         }
 
         // this makes yaml front-matter available in the component if any is present
@@ -60,17 +67,28 @@ export function mdsvex({
           scripts += `const _fm = ${JSON.stringify(attributes)};`;
         }
 
-        scripts = `
+        scripts =
+          isExec || isAttributes
+            ? `
 <script>
 ${scripts}
-</script>`;
+</script>`
+            : '';
 
-        // reset the scripts store or we're in trouble
+        modules = isMod
+          ? `
+<script context="module">
+${modules}
+</script>`
+          : '';
+
+        // reset the script and modules or we're in trouble
         md.svx = [];
+        md.svxmod = [];
       }
 
       return {
-        code: `${html}${scripts}`,
+        code: `${html}${scripts}${modules}`,
         map: '',
       };
     },

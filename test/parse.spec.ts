@@ -488,3 +488,85 @@ test('files with the wrong filename should return nothing from the function', ()
     })
   ).toBe(undefined);
 });
+
+test('module scripts should be supported', () => {
+  const md = `<svelte:meta />
+
+# Hello world
+
+I like cheese
+
+\`\`\`js module
+  export function random(str) {
+    str.toUpperCase(str);
+  }
+\`\`\`
+
+<Something prop={thingy} />
+`;
+
+  const html = `<svelte:meta />
+<h1>Hello world</h1>
+<p>I like cheese</p>
+<Something prop={thingy} />
+
+<script context="module">
+  export function random(str) {
+    str.toUpperCase(str);
+  }
+
+</script>`;
+  expect(mdsvex().markup({ content: md, filename: 'thing.svexy' }).code).toBe(
+    html
+  );
+});
+
+test('multiple module scripts should be merged into one', () => {
+  const md = `<svelte:meta />
+
+# Hello world
+
+I like cheese
+
+\`\`\`js module
+  export function random(str) {
+    str.toUpperCase(str);
+  }
+\`\`\`
+
+\`\`\`js module
+  export function another(str) {
+    str.toUpperCase(str);
+  }
+\`\`\`
+
+<Something prop={thingy} />
+
+\`\`\`js module
+  export function anothernother(str) {
+    str.toUpperCase(str);
+  }
+\`\`\`
+`;
+
+  const html = `<svelte:meta />
+<h1>Hello world</h1>
+<p>I like cheese</p>
+<Something prop={thingy} />
+
+<script context="module">
+  export function random(str) {
+    str.toUpperCase(str);
+  }
+  export function another(str) {
+    str.toUpperCase(str);
+  }
+  export function anothernother(str) {
+    str.toUpperCase(str);
+  }
+
+</script>`;
+  expect(mdsvex().markup({ content: md, filename: 'thing.svexy' }).code).toBe(
+    html
+  );
+});
