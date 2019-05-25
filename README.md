@@ -31,10 +31,11 @@ It uses [markdown-it](https://github.com/markdown-it/markdown-it) to parse the m
 - [Install](#install-it)
 - [Config](#use-it)
 - [More Info](#please-more)
-  - [Running actual code](#executing-yavaScript)
-  - [YAML variables](#break-out-your-try-square)
-  - [Escaped curlywurlies](#curlywurly-be-gone)
-  - [Markdown-it plugins](#markdown-plugins)
+  - [Running actual code](#executing-code)
+  - [YAML variables](#fron-matter)
+  - [Escaped curlywurlies](#escaped-curlywurlies)
+  - [Markdown-it plugins](#markdown-it-plugins)
+  - [Custom Layouts](#custom-layouts)
 - [What sucks?](#what-cant-i-do)
 
 ## Install it
@@ -47,10 +48,12 @@ npm i mdsvex # or yarn add mdsvex
 
 ### Use it
 
-Add it as a preprocessor to you rollup or webpack config:
+Add it as a preprocessor to you rollup or webpack config, the mdsvex preprocessor function is a named import from the `mdsvex` module:
 
 ```js
-{
+import { mdsvex } from 'mdsvex';
+
+export default {
   ...boringConfigStuff,
   plugins: [
     svelte({
@@ -58,6 +61,7 @@ Add it as a preprocessor to you rollup or webpack config:
       extensions: ['svelte', '.svexy', '.svx'], // here actually
       preprocess: mdsvex({
         extension: '.svx', // the default is '.svexy', if you lack taste, you might want to change it
+        layout: path.join(__dirname, './DefaultLayout.svelte'), // this needs to be an absolute path
         parser: md => md.use(SomePlugin) // you can add markdown-it plugins if the feeling takes you
         // you can add markdown-it options here, html is always true
         markdownOptions: {
@@ -73,7 +77,7 @@ Add it as a preprocessor to you rollup or webpack config:
 
 ## Please, more.
 
-### Executing YavaScript
+### Executing Code
 
 You can 'execute' javascript by defining a `js exec` fenced code block, these components and variables will then be available within the MDsveX file:
 
@@ -104,7 +108,7 @@ You can also create [module scripts](https://svelte.dev/docs#script_context_modu
 
 ````
 
-### Break out your try-square
+### Front-Matter
 
 You can add some YAML front-matter if you like. The variables and values defined in YAML front-matter are injected into the component's script tag and are available in the MDsveX file. They are in an object named `_fm` (this might change at some point):
 
@@ -121,11 +125,11 @@ import Counter from './path/to/Counter.svelte';
 <Counter count="{_fm.number}" />
 ````
 
-### Curlywurly be gone!
+### Escaped Curlywurlies
 
-Curlywurlies (`{` and `}`) are pretty special in Svelte components but this might be annoying when you're writing code snippets in fenced code blocks, so MDSveX escapes them cos it's nice like that:
+Curlywurlies (`{` and `}`) are pretty special in Svelte components but this might be annoying when you're writing code snippets in fenced code blocks, so MDSveX escapes any curlywurlies non-executable in fenced code blocks:
 
-The below is perfectly safe: the curlywurlies, which would normally cause some kind of difficulty, are escaped and should not bother you.
+The below is perfectly safe: the curlywurlies, which would normally cause issues, are escaped and should not bother you.
 
 ````jsx
 ```js
@@ -159,7 +163,7 @@ let text = { text: "Some random text." }
 { text.text }
 ````
 
-#### Markdown plugins
+### markdown-it plugins
 
 You can add your own `markdown-it` plugins if you are feeling adventurous. You do it in your rollup or webpack config and you do it like this:
 
@@ -170,15 +174,47 @@ plugins: [
       preprocess: mdsvex({
         parser: md => md.use(myMagicalPlugin)
         // this is the actual instance of markdown-it that will be used to parse things
-        // my fancy stuff gets added afterwards and it could break one of your plugins
-        // if it does, i'm sorry
-        // i didn't mean for it to be this way
-        // i never intended to cause you distress
-        // i will try to be better
+        // mdsvex adds it's mofifications after yours
+        // this could potentially break things
       }),
     }
   ]
 ```
+
+### Custom layouts
+
+You can add custom layouts to any individual MDsveX file or define a global default. You can optionally add a global Layout by adding an option to MDsveX. This needs to be an absolute path to a Svelte component with a `slot` element (so we can slot the actual MDsveX file in). Use `path.join(__dirname, './path/to/file.svelte')` or similar to avoid tragedy:
+
+```js
+import { mdsvex } from 'mdsvex';
+import path from 'path';
+
+export default {
+  ...boringConfigStuff,
+  plugins: [
+    svelte({
+      preprocess: mdsvex({
+        layout: path.join(__dirname, './DefaultLayout.svelte'),
+      }),
+    }
+  ]
+}
+```
+
+You can also add a layout to an individual MDsveX file by declaring it in YAML front-matter under the `layout` property. When defined in front-matter, paths are relative to the location of that file:
+
+```yaml
+---
+layout: ./path/to/file.svelte
+---
+# Your markdown goes here
+```
+
+Layouts defined in front-matter always take priority over global layouts, if they are defined. If there is no global layout then the local layout will still be used.
+
+Layout components will receive all front-matter properties as props, so you can use things like titles, dates or cover images in your layout component and do snazzy stuff, without the headache of doing it manually. All front-matter values will be passed down, simply `export let` those values in your layout to make use of them. If you try to use a value in a layout that isn't defined in front-matter then Svelte will complain and your page will be plagued with `undefined` and broken-ness (unless you set defaults in the layout).
+
+These are all just Svelte components at the end of the day, so refer to the Svelte [tutorial](https://svelte.dev/tutorial) and [documentation](https://svelte.dev/docs) if you are unsure how it all works. A Sapper/MDsveX template is also in the works (and by 'in the works' I mean that I haven't started it yet).
 
 ## What can't I do?
 
