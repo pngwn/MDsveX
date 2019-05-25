@@ -1,6 +1,7 @@
 import hljs from 'highlight.js';
 import container from 'markdown-it-container';
 import footnote from 'markdown-it-footnote';
+import { join } from 'path';
 
 import { mdsvex } from '../src/parse';
 
@@ -569,4 +570,110 @@ I like cheese
   expect(mdsvex().markup({ content: md, filename: 'thing.svexy' }).code).toBe(
     html
   );
+});
+
+test('Layouts defined in YAML front-matter should wrap the html', () => {
+  const md = `---
+layout: ./myLayoutFile.svelte
+hello: 'hi'
+list: [1, 2, 3]
+---
+
+# hello
+`;
+
+  const html = `
+<Layout {..._fm}>
+<h1>hello</h1>
+</Layout>
+
+<script>
+const _fm = {"layout":"./myLayoutFile.svelte","hello":"hi","list":[1,2,3]};
+import Layout from './myLayoutFile.svelte';
+</script>`;
+
+  expect(
+    mdsvex().markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});
+
+test('default layouts passed as options should be used when there is no layout defined in front-matter', () => {
+  const md = `---
+hello: 'hi'
+list: [1, 2, 3]
+---
+
+# hello
+`;
+
+  const html = `
+<Layout {..._fm}>
+<h1>hello</h1>
+</Layout>
+
+<script>
+const _fm = {"hello":"hi","list":[1,2,3]};
+import Layout from '${join(__dirname, './myDefaultLayoutFile.svelte')}';
+</script>`;
+
+  expect(
+    mdsvex({ layout: join(__dirname, './myDefaultLayoutFile.svelte') }).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});
+
+test('default layouts passed as options should be used even when there is no front-matter', () => {
+  const md = `
+# hello
+`;
+
+  const html = `
+<Layout >
+<h1>hello</h1>
+</Layout>
+
+<script>
+
+import Layout from '${join(__dirname, './myDefaultLayoutFile.svelte')}';
+</script>`;
+
+  expect(
+    mdsvex({ layout: join(__dirname, './myDefaultLayoutFile.svelte') }).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});
+
+test('layouts defined in front-matter should take priority over the default layout', () => {
+  const md = `---
+layout: ./myLayoutFile.svelte
+hello: 'hi'
+list: [1, 2, 3]
+---
+
+# hello
+`;
+
+  const html = `
+<Layout {..._fm}>
+<h1>hello</h1>
+</Layout>
+
+<script>
+const _fm = {"layout":"./myLayoutFile.svelte","hello":"hi","list":[1,2,3]};
+import Layout from './myLayoutFile.svelte';
+</script>`;
+
+  expect(
+    mdsvex({ layout: join(__dirname, './myDefaultLayoutFile.svelte') }).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
 });
