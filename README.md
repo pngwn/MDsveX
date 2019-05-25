@@ -89,7 +89,20 @@ let number = 500;
 Inline components <Counter count="{5}" /> are absolute fine too.
 ````
 
-Use `js exec` blocks instead of script blocks because you can have as many `js exec` blocks ayou want. And I can't remember if I tested script blocks.
+Use `js exec` blocks instead of script blocks because you can have as many `js exec` blocks as you want. And I can't remember if I tested script blocks.
+
+You can also create [module scripts](https://svelte.dev/docs#script_context_module), if you so desire, by using `js module`:
+
+````jsx
+```js module
+  export function someFunction(value) {
+    // some stuff here
+  }
+```
+
+<Counter />
+
+````
 
 ### Break out your try-square
 
