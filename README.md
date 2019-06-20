@@ -58,7 +58,7 @@ export default {
   plugins: [
     svelte({
       // whatever file extension you want to use has to go here as well
-      extensions: ['svelte', '.svexy', '.svx'], // here actually
+      extensions: ['.svelte', '.svexy', '.svx'], // here actually
       preprocess: mdsvex({
         extension: '.svx', // the default is '.svexy', if you lack taste, you might want to change it
         layout: path.join(__dirname, './DefaultLayout.svelte'), // this needs to be an absolute path
@@ -67,7 +67,7 @@ export default {
         markdownOptions: {
           typographer: true,
           linkify: true,
-          highlight: (str, lang) => whatever(str, lang)
+          highlight: (str, lang) => whatever(str, lang) // this should be a real function if you want to highlight
         },
       }),
     }
