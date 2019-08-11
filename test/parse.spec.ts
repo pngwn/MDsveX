@@ -154,6 +154,28 @@ test('inline components should also be fine and treated like inline html element
   );
 });
 
+test('markdown images using expressions as their source should be left intact', () => {
+  const md = `![]({thumbnailURL})`;
+
+  const html = `<p><img src="{thumbnailURL}" alt=""></p>
+`;
+
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
+});
+
+test('markdown links using expressions as their source should be left intact', () => {
+  const md = `[hi]({link})`;
+
+  const html = `<p><a href="{link}">hi</a></p>
+`;
+
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
+});
+
 test('svelte components with strange names should be left intact', () => {
   const md = `<CounterCounterManyCaps prop={0} />`;
 

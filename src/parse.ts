@@ -1,5 +1,6 @@
 import MarkdownIt from 'markdown-it';
 import { svelte } from './md/svelteParse';
+import { sourceExpressions } from './md/imageExpressionParse';
 import { codeExec } from './md/codeParse';
 import * as p from 'path-browserify';
 import { escapeCurly } from './md/escapeCurly';
@@ -30,7 +31,8 @@ export function mdsvex({
   const md = parser(new MarkdownIt({ ...markdownOptions, html: true }))
     .use(svelte)
     .use(escapeCurly)
-    .use(codeExec);
+    .use(codeExec)
+    .use(sourceExpressions);
   // store the executable script content on the md object
   // there isn't really a greta place to store this
   md.svx = [];
