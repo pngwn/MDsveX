@@ -71,7 +71,7 @@ export function mdsvex({
       }
 
       // front-matter defined layouts get priority
-      let layoutComponent = attributes.layout || layout;
+      const layoutComponent = attributes.layout || layout;
 
       // import the layout but it could still be undefined
       scripts += layoutComponent
