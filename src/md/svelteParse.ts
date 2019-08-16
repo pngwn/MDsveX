@@ -19,7 +19,7 @@ const svelteBlock = [
   [/{\/await/, /}/, false],
 
   [/^<(svelte:head)(?=(\s|>|$))/i, /<\/(svelte:head)>/i, true],
-  [new RegExp(HTML_OPEN_CLOSE_TAG_RE.source + '\\s*$'), /^$/, false],
+  [new RegExp(HTML_OPEN_CLOSE_TAG_RE.source), /^$/, false],
 ];
 
 // these are basically the block_html parser and renderer for markdown-it with custom regex

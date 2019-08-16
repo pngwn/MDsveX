@@ -132,6 +132,16 @@ test('it should leave svelte components with attributes + complex expressions in
   );
 });
 
+test('it should leave svelte components with attributes + complex expressions intact without quotes2', () => {
+  const md = `<Counter prop={() => val >= 27 ? runFunc() : runFunc2() }>Hello</Counter>`;
+
+  const html = `<Counter prop={() => val >= 27 ? runFunc() : runFunc2() }>Hello</Counter>`;
+
+  expect(mdsvex().markup({ content: md, filename: 'file.svexy' }).code).toBe(
+    html
+  );
+});
+
 test('inline components should also be fine and treated like inline html elements', () => {
   const md = `This is my <Counter prop={0} />`;
 
