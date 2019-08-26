@@ -70,7 +70,7 @@ export default {
           highlight: (str, lang) => whatever(str, lang) // this should be a real function if you want to highlight
         },
       }),
-    }
+    })
   ]
 }
 ```
