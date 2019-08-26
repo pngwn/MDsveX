@@ -62,7 +62,7 @@ export default {
       preprocess: mdsvex({
         extension: '.svx', // the default is '.svexy', if you lack taste, you might want to change it
         layout: path.join(__dirname, './DefaultLayout.svelte'), // this needs to be an absolute path
-        parser: md => md.use(SomePlugin) // you can add markdown-it plugins if the feeling takes you
+        parser: md => md.use(SomePlugin), // you can add markdown-it plugins if the feeling takes you
         // you can add markdown-it options here, html is always true
         markdownOptions: {
           typographer: true,
