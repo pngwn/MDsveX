@@ -6,6 +6,18 @@ import { HTML_OPEN_CLOSE_TAG_RE } from './regex';
 // some custom regex, matches a bit more than just svelte tags
 // i should simplyify the regex at some point
 const svelteBlock = [
+  [/{#each/, /}/, false],
+  [/{\/each/, /}/, false],
+
+  [/{#if/, /}/, false],
+  [/{\/if/, /}/, false],
+  [/{:else/, /}/, false],
+
+  [/{#await/, /}/, false],
+  [/{:then/, /}/, false],
+  [/{:catch/, /}/, false],
+  [/{\/await/, /}/, false],
+
   [/^<(svelte:head)(?=(\s|>|$))/i, /<\/(svelte:head)>/i, true],
   [new RegExp(HTML_OPEN_CLOSE_TAG_RE.source + '\\s*$'), /^$/, false],
 ];
@@ -28,12 +40,13 @@ export function svelte_block(state, startLine, endLine, silent) {
     return false;
   }
 
-  if (state.src.charCodeAt(pos) !== 0x3c /* < */) {
-    return false;
-  }
+  // This prevents Svelte block syntax
+  // if (state.src.charCodeAt(pos) !== 0x3c /* < */) {
+  //   return false;
+  // }
 
   lineText = state.src.slice(pos, max);
-
+  
   for (i = 0; i < svelteBlock.length; i++) {
     //@ts-ignore
     if (svelteBlock[i][0].test(lineText)) {

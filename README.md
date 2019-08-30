@@ -36,7 +36,6 @@ It uses [markdown-it](https://github.com/markdown-it/markdown-it) to parse the m
   - [Escaped curlywurlies](#escaped-curlywurlies)
   - [Markdown-it plugins](#markdown-it-plugins)
   - [Custom Layouts](#custom-layouts)
-- [What sucks?](#what-cant-i-do)
 
 ## Install it
 
@@ -216,6 +215,3 @@ Layout components will receive all front-matter properties as props, so you can 
 
 These are all just Svelte components at the end of the day, so refer to the Svelte [tutorial](https://svelte.dev/tutorial) and [documentation](https://svelte.dev/docs) if you are unsure how it all works. A Sapper/MDsveX template is also in the works (and by 'in the works' I mean that I haven't started it yet).
 
-## What can't I do?
-
-You can't use Svelte block syntax `{# ... }` at least not yet anyway. Maybe never.
