@@ -40,13 +40,15 @@ export function svelte_block(state, startLine, endLine, silent) {
     return false;
   }
 
-  // This prevents Svelte block syntax
-  // if (state.src.charCodeAt(pos) !== 0x3c /* < */) {
-  //   return false;
-  // }
+  if (
+    state.src.charCodeAt(pos) !== 0x3c /* < */ &&
+    state.src.charCodeAt(pos) !== 0x7b /* { */
+  ) {
+    return false;
+  }
 
   lineText = state.src.slice(pos, max);
-  
+
   for (i = 0; i < svelteBlock.length; i++) {
     //@ts-ignore
     if (svelteBlock[i][0].test(lineText)) {

@@ -3,7 +3,7 @@ export function sourceExpressions(md) {
   md.normalizeLink = url => {
     return normalize(url)
       .trim()
-      .replace(/^(%7B)([^]+)(%7D)$/, (_, open_curly, src, close_curly) => {
+      .replace(/^%7B([^]+)%7D$/, (_, src) => {
         return '{' + src + '}';
       });
   };
