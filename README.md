@@ -32,7 +32,8 @@ It uses [markdown-it](https://github.com/markdown-it/markdown-it) to parse the m
 - [Config](#use-it)
 - [More Info](#please-more)
   - [Running actual code](#executing-code)
-  - [YAML variables](#fron-matter)
+  - [Styling](#styling)
+  - [YAML variables](#front-matter)
   - [Escaped curlywurlies](#escaped-curlywurlies)
   - [Markdown-it plugins](#markdown-it-plugins)
   - [Custom Layouts](#custom-layouts)
@@ -106,6 +107,46 @@ You can also create [module scripts](https://svelte.dev/docs#script_context_modu
 <Counter />
 
 ````
+
+### Styling
+
+If you wish to style your markdown _inside_ an MDsveX file then you can do so with a `css style` fenced code block. Fenced style blocks ensure `style` elements are _always_ top level, which is required by Svelte, and prevents any problems with markdown interpreting your styles as text. You can use multiple fenced style blocks if you wish, they will be combined into a single style element:
+
+````jsx
+# Hello friends
+
+```css style
+  h1 {
+    font-weight: 100;
+  }
+```
+````
+
+You can also use compile to js languages if you so desire, simply change `css` to the language of your choosing. Languages other than `css` applies a `lang="language"` attribute to the processed component allowing other Svelte preprocessors to transform those styles into plain CSS, as required by Svelte:
+
+````jsx
+# Hello friends
+
+```scss style
+  h1 {
+    font-weight: 100;
+  }
+```
+````
+
+Will produce:
+
+```svelte
+<h1>Hello friends</h1>
+
+<style lang="scss>
+  h1 {
+    font-weight: 100
+  }
+</style>
+```
+
+Magic!
 
 ### Front-Matter
 
