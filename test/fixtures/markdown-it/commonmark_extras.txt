@@ -23,6 +23,26 @@ Issue #55:
 .
 
 
+Reference labels: 'i̇θωkå'.toUpperCase() is 'İΘΩKÅ', but these should still be equivalent
+.
+[İϴΩKÅ]
+
+[i̇θωkå]: /url
+.
+<p><a href="/url">İϴΩKÅ</a></p>
+.
+
+
+Reference labels: support ligatures (equivalent according to unicode case folding)
+.
+[ﬀﬁﬂ]
+
+[fffifl]: /url
+.
+<p><a href="/url">ﬀﬁﬂ</a></p>
+.
+
+
 Issue #35. `<` should work as punctuation
 .
 an **(:**<br>
@@ -190,16 +210,6 @@ bar
 </ul>
 .
 
-Info string in fenced code block can't contain marker used for the fence
-.
-~~~test~
-
-~~~test`
-.
-<p>~~~test~</p>
-<pre><code class="test`"></code></pre>
-.
-
 Tabs should be stripped from the beginning of the line
 .
  foo
@@ -213,12 +223,12 @@ baz</p>
 
 Tabs should not cause hardbreak, EOL tabs aren't stripped in commonmark 0.27
 .
-foo1	
-foo2    
+foo1
+foo2
 bar
 .
-<p>foo1	
-foo2<br>
+<p>foo1
+foo2
 bar</p>
 .
 
@@ -485,11 +495,6 @@ Coverage. Various tags not interrupting blockquotes because of indentation:
 
 > foo
     # not a heading
-
-> foo
-    ```
-    not a fence
-    ```
 .
 <blockquote>
 <p>foo
@@ -499,8 +504,14 @@ Coverage. Various tags not interrupting blockquotes because of indentation:
 <p>foo
 # not a heading</p>
 </blockquote>
-<blockquote>
-<p>foo
-<code>not a fence</code></p>
-</blockquote>
+.
+
+Coverage, entities with code > 10FFFF. Made this way for compatibility with commonmark.js.
+.
+&#x110000;
+
+&#x1100000;
+.
+<p>�</p>
+<p>&amp;#x1100000;</p>
 .

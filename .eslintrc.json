@@ -41,13 +41,17 @@
     "plugin:import/errors",
     "plugin:import/warnings"
   ],
-  "plugins": ["typescript", "import"],
-  "parser": "typescript-eslint-parser",
+  "plugins": ["@typescript-eslint", "import"],
+  "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "ecmaVersion": 6,
     "sourceType": "module"
   },
   "settings": {
-    "import/resolver": { "typescript": {} }
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      }
+    }
   }
 }
