@@ -728,3 +728,202 @@ export const _metadata = {"layout":"./myLayoutFile.svelte","hello":"hi","list":[
     }).code
   ).toBe(html);
 });
+
+test('fenced style blocks should be added to the component', () => {
+  const md = `
+# hello
+
+\`\`\`css style
+.hello {
+  font-weight: 500;
+}
+\`\`\`
+`;
+
+  const html = `<h1>hello</h1>
+
+<style>
+.hello {
+  font-weight: 500;
+}
+
+</style>`;
+
+  expect(
+    mdsvex({}).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});
+
+test('multiple style blocks should be smooshed into one', () => {
+  const md = `
+# hello
+
+\`\`\`css style
+.hello {
+  font-weight: 500;
+}
+\`\`\`
+
+\`\`\`css style
+.hello2 {
+  font-weight: 500;
+}
+\`\`\`
+`;
+
+  const html = `<h1>hello</h1>
+
+<style>
+.hello {
+  font-weight: 500;
+}
+.hello2 {
+  font-weight: 500;
+}
+
+</style>`;
+
+  expect(
+    mdsvex({}).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});
+
+test('fenced style blocks should be added to the component with the source language intact', () => {
+  const md = `
+# hello
+
+\`\`\`scss style
+.hello {
+  font-weight: 500;
+}
+\`\`\`
+`;
+
+  const html = `<h1>hello</h1>
+
+<style lang="scss">
+.hello {
+  font-weight: 500;
+}
+
+</style>`;
+
+  expect(
+    mdsvex({}).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});
+
+test('multiple style blocks should be smooshed into one even if they are no plain css', () => {
+  const md = `
+# hello
+
+\`\`\`scss style
+.hello {
+  font-weight: 500;
+}
+\`\`\`
+
+\`\`\`scss style
+.hello2 {
+  font-weight: 500;
+}
+\`\`\`
+`;
+
+  const html = `<h1>hello</h1>
+
+<style lang="scss">
+.hello {
+  font-weight: 500;
+}
+.hello2 {
+  font-weight: 500;
+}
+
+</style>`;
+
+  expect(
+    mdsvex({}).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});
+
+test('using different styling languages in a single file should throw an error', () => {
+  const md = `
+# hello
+
+\`\`\`css style
+.hello {
+  font-weight: 500;
+}
+\`\`\`
+
+\`\`\`scss style
+.hello2 {
+  font-weight: 500;
+}
+\`\`\`
+`;
+
+  expect(
+    () =>
+      mdsvex({}).markup({
+        content: md,
+        filename: 'thing.svexy',
+      }).code
+  ).toThrowError('Do not mix styling languages in a single file.');
+});
+
+test('fenced style blocks should always be top level even when used with layouts', () => {
+  const md = `---
+layout: ./myLayoutFile.svelte
+hello: 'hi'
+list: [1, 2, 3]
+---
+
+# hello
+
+\`\`\`css style
+.hello {
+  font-weight: 500;
+}
+\`\`\`
+`;
+
+  const html = `
+<Layout {..._metadata}>
+<h1>hello</h1>
+</Layout>
+
+<script>
+
+import Layout from './myLayoutFile.svelte';
+</script>
+<script context="module">
+export const _metadata = {"layout":"./myLayoutFile.svelte","hello":"hi","list":[1,2,3]};
+</script>
+<style>
+.hello {
+  font-weight: 500;
+}
+
+</style>`;
+
+  expect(
+    mdsvex({}).markup({
+      content: md,
+      filename: 'thing.svexy',
+    }).code
+  ).toBe(html);
+});

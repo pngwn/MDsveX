@@ -37,6 +37,7 @@ export function mdsvex({
   // there isn't really a greta place to store this
   md.svx = [];
   md.svxmod = [];
+  md.svxstyles = ['', []];
 
   return {
     markup: ({ content, filename }) => {
@@ -49,10 +50,12 @@ export function mdsvex({
       // that could cause problems when svelte compiles the component
       let scripts = '';
       let modules = '';
+      let styles = '';
 
       const isAttributes = Object.keys(attributes).length > 0;
       const isExec = md.svx.length > 0;
       const isMod = md.svxmod.length > 0;
+      const isStyles = md.svxstyles[0].length > 0 && md.svxstyles[1].length > 0;
 
       if (isAttributes || isExec || isMod) {
         if (isExec) {
@@ -94,12 +97,20 @@ export function mdsvex({
           ? '\n<script>\n' + scripts + '\n</script>'
           : '';
 
+      styles = isStyles
+        ? '\n<style' +
+          (md.svxstyles[0] !== 'css' ? ` lang="${md.svxstyles[0]}"` : '') +
+          '>\n' +
+          md.svxstyles[1].join('') +
+          '\n</style>'
+        : '';
+
       // reset the script and modules or we're in trouble
       md.svx = [];
       md.svxmod = [];
 
       return {
-        code: `${html}${scripts}${modules}`,
+        code: `${html}${scripts}${modules}${styles}`,
         map: '',
       };
     },
