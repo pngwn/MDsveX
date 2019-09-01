@@ -66,12 +66,12 @@ export default {
         markdownOptions: {
           typographer: true,
           linkify: true,
-          highlight: (str, lang) => whatever(str, lang) // this should be a real function if you want to highlight
+          highlight: (str, lang) => whatever(str, lang), // this should be a real function if you want to highlight
         },
       }),
-    })
-  ]
-}
+    }),
+  ],
+};
 ```
 
 ## Please, more.
@@ -109,7 +109,7 @@ You can also create [module scripts](https://svelte.dev/docs#script_context_modu
 
 ### Front-Matter
 
-You can add some YAML front-matter if you like. The variables and values defined in YAML front-matter are injected into the component's script tag and are available in the MDsveX file. They are in an object named `_fm` (this might change at some point):
+You can add some YAML front-matter if you like. The variables and values defined in YAML front-matter are injected into the component's module script tag and are available in the MDsveX file. They are contained in an object named `_metadata`:
 
 ````jsx
 ---
@@ -121,8 +121,14 @@ import Counter from './path/to/Counter.svelte';
 
 ```
 
-<Counter count="{_fm.number}" />
+<Counter count="{_metadata.number}" />
 ````
+
+This object is also exported from the module script tag, allowing you to import this metadata from the component for use elsewhere:
+
+```js
+import { _metadata } from './article.svexy';
+```
 
 ### Escaped Curlywurlies
 
@@ -155,7 +161,7 @@ let number = 500;
 let text = { text: "Some random text." }
 ```
 
-# { _fm.title }
+# { _metadata.title }
 
 <Counter count="{number}" />
 
@@ -214,4 +220,3 @@ Layouts defined in front-matter always take priority over global layouts, if the
 Layout components will receive all front-matter properties as props, so you can use things like titles, dates or cover images in your layout component and do snazzy stuff, without the headache of doing it manually. All front-matter values will be passed down, simply `export let` those values in your layout to make use of them. If you try to use a value in a layout that isn't defined in front-matter then Svelte will complain and your page will be plagued with `undefined` and broken-ness (unless you set defaults in the layout).
 
 These are all just Svelte components at the end of the day, so refer to the Svelte [tutorial](https://svelte.dev/tutorial) and [documentation](https://svelte.dev/docs) if you are unsure how it all works. A Sapper/MDsveX template is also in the works (and by 'in the works' I mean that I haven't started it yet).
-
