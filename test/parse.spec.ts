@@ -509,8 +509,8 @@ list: [1, 2, 3]
 
   const html = `<h1>hello</h1>
 
-<script>
-const _fm = {"hello":"hi","list":[1,2,3]};
+<script context="module">
+export const _metadata = {"hello":"hi","list":[1,2,3]};
 </script>`;
 
   expect(
@@ -625,13 +625,16 @@ list: [1, 2, 3]
 `;
 
   const html = `
-<Layout {..._fm}>
+<Layout {..._metadata}>
 <h1>hello</h1>
 </Layout>
 
 <script>
-const _fm = {"layout":"./myLayoutFile.svelte","hello":"hi","list":[1,2,3]};
+
 import Layout from './myLayoutFile.svelte';
+</script>
+<script context="module">
+export const _metadata = {"layout":"./myLayoutFile.svelte","hello":"hi","list":[1,2,3]};
 </script>`;
 
   expect(
@@ -652,13 +655,16 @@ list: [1, 2, 3]
 `;
 
   const html = `
-<Layout {..._fm}>
+<Layout {..._metadata}>
 <h1>hello</h1>
 </Layout>
 
 <script>
-const _fm = {"hello":"hi","list":[1,2,3]};
+
 import Layout from '${join(__dirname, './myDefaultLayoutFile.svelte')}';
+</script>
+<script context="module">
+export const _metadata = {"hello":"hi","list":[1,2,3]};
 </script>`;
 
   expect(
@@ -703,13 +709,16 @@ list: [1, 2, 3]
 `;
 
   const html = `
-<Layout {..._fm}>
+<Layout {..._metadata}>
 <h1>hello</h1>
 </Layout>
 
 <script>
-const _fm = {"layout":"./myLayoutFile.svelte","hello":"hi","list":[1,2,3]};
+
 import Layout from './myLayoutFile.svelte';
+</script>
+<script context="module">
+export const _metadata = {"layout":"./myLayoutFile.svelte","hello":"hi","list":[1,2,3]};
 </script>`;
 
   expect(

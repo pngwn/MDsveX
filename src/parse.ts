@@ -59,16 +59,18 @@ export function mdsvex({
           scripts += `${md.svx.join('')}`;
         }
 
-        if (isMod) {
+        if (isMod || isAttributes) {
           modules += `${md.svxmod.join('')}`;
-          modules = '\n<script context="module">\n' + modules + '\n</script>';
-        }
 
-        // this makes yaml front-matter available in the component if any is present
-        // I'm not sure if these should be available as individual variables
-        // concerned about clashes
-        if (isAttributes) {
-          scripts += `const _fm = ${JSON.stringify(attributes)};`;
+          // this makes yaml front-matter available in the component if any is present
+          // I'm not sure if these should be available as individual variables
+          // concerned about clashes
+          if (isAttributes) {
+            modules += `export const _metadata = ${JSON.stringify(
+              attributes
+            )};`;
+          }
+          modules = '\n<script context="module">\n' + modules + '\n</script>';
         }
       }
 
@@ -82,13 +84,13 @@ export function mdsvex({
 
       // and wrap the html with it, if it exists
       html = layoutComponent
-        ? `\n<Layout ${isAttributes ? '{..._fm}' : ''}>\n` +
+        ? `\n<Layout ${isAttributes ? '{..._metadata}' : ''}>\n` +
           html.trim() +
           '\n</Layout>\n'
         : html;
 
       scripts =
-        isExec || isAttributes || layoutComponent
+        isExec || layoutComponent
           ? '\n<script>\n' + scripts + '\n</script>'
           : '';
 
