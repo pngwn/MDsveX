@@ -75,6 +75,14 @@ export default {
 };
 ```
 
+> ⚠️ MAKE SURE TO DOCUMENT THIS IN BOTH CLIENT AND SERVER PLUGIN CODE in rollup/webpack
+
+Also, when you run `sapper dev`, you have to run it with the `--ext` flag, like this:
+
+```
+"start": "sapper dev --ext '.svexy .svelte'",
+```
+
 ## Please, more.
 
 ### Executing Code
