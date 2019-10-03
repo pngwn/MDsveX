@@ -22,14 +22,7 @@
     "arrow-spacing": 2,
     "no-inner-declarations": 0
   },
-  "overrides": [
-    {
-      "files": ["**.d.ts"],
-      "rules": {
-        "import/export": 0
-      }
-    }
-  ],
+
   "env": {
     "es6": true,
     "browser": true,
@@ -41,8 +34,7 @@
     "plugin:import/errors",
     "plugin:import/warnings"
   ],
-  "plugins": ["@typescript-eslint", "import"],
-  "parser": "@typescript-eslint/parser",
+  "plugins": ["import"],
   "parserOptions": {
     "ecmaVersion": 6,
     "sourceType": "module"
@@ -50,7 +42,7 @@
   "settings": {
     "import/resolver": {
       "node": {
-        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+        "extensions": [".js"]
       }
     }
   }

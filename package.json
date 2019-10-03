@@ -22,41 +22,34 @@
   "author": "pngwn <hello@pngwn.io>",
   "license": "MIT",
   "devDependencies": {
+    "@babel/core": "^7.6.2",
+    "@babel/preset-env": "^7.6.2",
     "@types/jest": "^24.0.18",
-    "@types/node": "^12.7.3",
-    "@typescript-eslint/eslint-plugin": "^2.0.0",
-    "@typescript-eslint/parser": "^2.0.0",
+    "@types/node": "^12.7.10",
+    "add": "^2.0.6",
+    "babel-jest": "^24.9.0",
     "eslint": "^6.3.0",
     "eslint-plugin-import": "^2.18.2",
     "highlight.js": "^9.15.10",
     "jest": "^24.9.0",
-    "markdown-it-container": "^2.0.0",
-    "markdown-it-footnote": "^3.0.2",
-    "markdown-it-testgen": "^0.1.6",
     "prettier": "^1.18.2",
     "prettier-eslint": "^9.0.0",
+    "remark-parse": "^7.0.1",
+    "remark-rehype": "^5.0.0",
     "rollup": "^1.20.3",
     "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-json": "^4.0.0",
     "rollup-plugin-node-resolve": "^5.2.0",
     "rollup-plugin-svelte": "^5.1.0",
-    "rollup-plugin-typescript": "^1.0.0",
     "svelte": "^3.9.1",
-    "ts-jest": "^24.0.2",
-    "ts-lib": "^0.0.5",
-    "ts-node": "^8.3.0",
-    "tslib": "^1.10.0",
-    "typescript": "^3.6.2",
-    "typescript-eslint-parser": "^22.0.0"
+    "unified": "^8.4.1",
+    "yarn": "^1.19.0"
   },
   "peerDependencies": {
     "svelte": "3.x"
   },
   "dependencies": {
-    "entities": "^2.0.0",
     "front-matter": "^3.0.1",
-    "markdown-it": "^9.1.0",
-    "path-browserify": "^1.0.0",
-    "punycode": "^2.1.1"
+    "path-browserify": "^1.0.0"
   }
 }
