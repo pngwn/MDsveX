@@ -41,7 +41,7 @@ const printSummary = harness => {
 
 // I might clean this up at some point
 
-export const mochaTapLike = verbose => async stream => {
+export const reporter = verbose => async stream => {
 	print('TAP version 13\n');
 
 	const output = [];

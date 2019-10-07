@@ -23,7 +23,6 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"devDependencies": {
-		"@lorenzofox3/for-await": "^0.2.0",
 		"@types/node": "^12.7.10",
 		"cheap-watch": "^1.0.2",
 		"eslint": "^6.3.0",
@@ -43,9 +42,7 @@
 		"rollup-plugin-json": "^4.0.0",
 		"rollup-plugin-node-resolve": "^5.2.0",
 		"rollup-plugin-svelte": "^5.1.0",
-		"stringify-object": "^3.3.0",
 		"svelte": "^3.9.1",
-		"tap-min": "^2.0.0",
 		"unified": "^8.4.1",
 		"yarn": "^1.19.0",
 		"zora": "^3.0.3"

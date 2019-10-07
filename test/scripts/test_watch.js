@@ -2,12 +2,11 @@ import CheapWatch from 'cheap-watch';
 const { createHarness } = require('zora');
 
 import { run } from './test';
-import { mochaTapLike } from './reporter';
+import { reporter } from './reporter';
 
-// console.log(process.argv[2], process.argv[3] === '--verbose');
+const verbose = process.argv[2] === '--verbose';
 
-const report = harness =>
-	harness.report(mochaTapLike(process.argv[2] === '--verbose'));
+const report = harness => harness.report(reporter(verbose));
 
 const run_tests = () => {
 	const harness = createHarness();
