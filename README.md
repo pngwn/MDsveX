@@ -69,6 +69,7 @@ export default {
           linkify: true,
           highlight: (str, lang) => whatever(str, lang), // this should be a real function if you want to highlight
         },
+        outputMeta: false, // you can pass your frontmatter metadata to separate json files
       }),
     }),
   ],
@@ -179,6 +180,8 @@ This object is also exported from the module script tag, allowing you to import 
 ```js
 import { _metadata } from './article.svexy';
 ```
+
+Also you may need to export your metadata to a separate json file. You can do that by passing `outputMeta` to your MDSveX config.
 
 ### Escaped Curlywurlies
 

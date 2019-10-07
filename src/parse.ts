@@ -5,12 +5,16 @@ import { codeExec } from './md/codeParse';
 import * as p from 'path-browserify';
 import { escapeCurly } from './md/escapeCurly';
 import fm from 'front-matter';
+import fs from 'fs';
+import path from 'path';
+
 const extname = p.default.extname;
 
 const defaultOpts = {
   parser: md => md,
   markdownOptions: {},
   extension: '.svexy',
+  outputMeta: false,
 };
 
 export interface svexOptions {
@@ -18,6 +22,7 @@ export interface svexOptions {
   markdownOptions?: object;
   extension?: string;
   layout?: boolean | string;
+  outputMeta?: boolean;
 }
 
 export function mdsvex({
@@ -25,6 +30,7 @@ export function mdsvex({
   markdownOptions = {},
   extension = '.svexy',
   layout,
+  outputMeta = false,
 }: svexOptions = defaultOpts) {
   // this allows the user to modify the instance of markdown-it
   // necessary if they want to add custom plugins, etc.
@@ -69,10 +75,21 @@ export function mdsvex({
           // I'm not sure if these should be available as individual variables
           // concerned about clashes
           if (isAttributes) {
-            modules += `export const _metadata = ${JSON.stringify(
-              attributes
-            )};`;
+            const json = JSON.stringify(attributes);
+
+            modules += `export const _metadata = ${json};`;
+
+            if (outputMeta) {
+              fs.writeFile(
+                filename.replace(extension, '.json'),
+                json,
+                (err) => {
+                  if (err) throw err;
+                }
+              );
+            }
           }
+
           modules = '\n<script context="module">\n' + modules + '\n</script>';
         }
       }
