@@ -78,7 +78,7 @@ export function mdsvex({
 
             modules += `export const _metadata = ${json};`;
 
-            if (outputMeta) {
+            if (outputMeta && !fs.existsSync(filename.replace(extension, '.json'))) {
               fs.writeFile(
                 filename.replace(extension, '.json'),
                 json,
