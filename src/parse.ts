@@ -6,7 +6,6 @@ import * as p from 'path-browserify';
 import { escapeCurly } from './md/escapeCurly';
 import fm from 'front-matter';
 import fs from 'fs';
-import path from 'path';
 
 const extname = p.default.extname;
 
