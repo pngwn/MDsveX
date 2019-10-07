@@ -1,8 +1,8 @@
 const RE_SVELTE_SELFCLOSING =
-	'\\s*<svelte:([a-z]+) (?:(?:[a-z:]+(?:="*[a-z]+"*)*)\\s*)*\\/>';
+	'\\s*<svelte:([a-z]+) (?:(?:[a-z:]+(?:="*[^]+"*)*)\\s*)*\\/>';
 const RE_SVELTE_START =
-	'\\s*<svelte:([a-z]+)\\s*(?:(?:[a-z:]+(?:="*[a-z]+"*)*)\\s*)*>';
-const RE_SVELTE_END = '\\s*<\\/\\s*svelte:([a-z]+)\\s*>';
+	'\\s*<svelte:([a-z]+)\\s*(?:(?:[a-z:]+(?:="*[^]+"*)*)\\s*)*>';
+const RE_SVELTE_END = '\\s*<\\/\\s*svelte:([^]+)\\s*>';
 
 const RE_SVELTE_TAG = new RegExp(
 	RE_SVELTE_SELFCLOSING + '|' + RE_SVELTE_START + '|' + RE_SVELTE_END

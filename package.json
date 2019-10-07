@@ -1,55 +1,60 @@
 {
-  "name": "mdsvex",
-  "version": "0.4.0",
-  "description": "Markdown preprocessor for Svelte",
-  "main": "dist/main.cjs.js",
-  "module": "dist/main.es.js",
-  "repository": "https://github.com/pngwn/MDsveX",
-  "scripts": {
-    "build": "rollup -c",
-    "lint": "eslint 'src/' 'test/' --ext .js,.ts",
-    "test": "yarn lint & jest --verbose",
-    "test:watch": "jest --verbose --watch",
-    "test:cov": "yarn lint && jest --verbose --coverage"
-  },
-  "keywords": [
-    "test",
-    "preprocessor",
-    "mdx",
-    "markdown",
-    "svelte"
-  ],
-  "author": "pngwn <hello@pngwn.io>",
-  "license": "MIT",
-  "devDependencies": {
-    "@babel/core": "^7.6.2",
-    "@babel/preset-env": "^7.6.2",
-    "@types/jest": "^24.0.18",
-    "@types/node": "^12.7.10",
-    "add": "^2.0.6",
-    "babel-jest": "^24.9.0",
-    "eslint": "^6.3.0",
-    "eslint-plugin-import": "^2.18.2",
-    "highlight.js": "^9.15.10",
-    "jest": "^24.9.0",
-    "prettier": "^1.18.2",
-    "prettier-eslint": "^9.0.0",
-    "remark-parse": "^7.0.1",
-    "remark-rehype": "^5.0.0",
-    "rollup": "^1.20.3",
-    "rollup-plugin-commonjs": "^10.1.0",
-    "rollup-plugin-json": "^4.0.0",
-    "rollup-plugin-node-resolve": "^5.2.0",
-    "rollup-plugin-svelte": "^5.1.0",
-    "svelte": "^3.9.1",
-    "unified": "^8.4.1",
-    "yarn": "^1.19.0"
-  },
-  "peerDependencies": {
-    "svelte": "3.x"
-  },
-  "dependencies": {
-    "front-matter": "^3.0.1",
-    "path-browserify": "^1.0.0"
-  }
+	"name": "mdsvex",
+	"version": "0.4.0",
+	"description": "Markdown preprocessor for Svelte",
+	"main": "dist/main.cjs.js",
+	"module": "dist/main.es.js",
+	"repository": "https://github.com/pngwn/MDsveX",
+	"scripts": {
+		"build": "rollup -c",
+		"lint": "eslint 'src/' 'test/' --ext .js,.ts",
+		"test": "node -r esm ./test/scripts/test_run.js | tap-min",
+		"test:watch": "node -r esm ./test/scripts/test_watch.js --verbose",
+		"test:cov": "yarn lint && jest --verbose --coverage",
+		"postinstall": "patch-package"
+	},
+	"keywords": [
+		"test",
+		"preprocessor",
+		"mdx",
+		"markdown",
+		"svelte"
+	],
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT",
+	"devDependencies": {
+		"@lorenzofox3/for-await": "^0.2.0",
+		"@types/node": "^12.7.10",
+		"cheap-watch": "^1.0.2",
+		"eslint": "^6.3.0",
+		"eslint-plugin-import": "^2.18.2",
+		"esm": "^3.2.25",
+		"highlight.js": "^9.15.10",
+		"jest-diff": "^24.9.0",
+		"kleur": "^3.0.3",
+		"patch-package": "^6.2.0",
+		"postinstall-postinstall": "^2.0.0",
+		"prettier": "^1.18.2",
+		"prettier-eslint": "^9.0.0",
+		"remark-parse": "^7.0.1",
+		"remark-rehype": "^5.0.0",
+		"rollup": "^1.20.3",
+		"rollup-plugin-commonjs": "^10.1.0",
+		"rollup-plugin-json": "^4.0.0",
+		"rollup-plugin-node-resolve": "^5.2.0",
+		"rollup-plugin-svelte": "^5.1.0",
+		"stringify-object": "^3.3.0",
+		"svelte": "^3.9.1",
+		"tap-min": "^2.0.0",
+		"unified": "^8.4.1",
+		"yarn": "^1.19.0",
+		"zora": "^3.0.3"
+	},
+	"peerDependencies": {
+		"svelte": "3.x"
+	},
+	"dependencies": {
+		"front-matter": "^3.0.1",
+		"path-browserify": "^1.0.0"
+	}
 }

@@ -1,7 +1,7 @@
 {
 	"root": true,
 	"rules": {
-		"indent": ["error", "tab"],
+		"indent": ["error", "tab", { "SwitchCase": 1 }],
 		"semi": [2, "always"],
 		"keyword-spacing": [2, { "before": true, "after": true }],
 		"space-before-blocks": [2, "always"],
@@ -36,8 +36,11 @@
 	],
 	"plugins": ["import"],
 	"parserOptions": {
-		"ecmaVersion": 6,
-		"sourceType": "module"
+		"ecmaVersion": 9,
+		"sourceType": "module",
+		"ecmaFeatures": {
+			"experimentalObjectRestSpread": true
+		}
 	},
 	"settings": {
 		"import/resolver": {

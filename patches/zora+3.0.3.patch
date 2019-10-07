@@ -1,0 +1,31 @@
+diff --git a/node_modules/zora/dist/bundle/index.js b/node_modules/zora/dist/bundle/index.js
+index 1ea6cc1..16cb547 100644
+--- a/node_modules/zora/dist/bundle/index.js
++++ b/node_modules/zora/dist/bundle/index.js
+@@ -1,3 +1,4 @@
++// prettierignore
+ 'use strict';
+ 
+ Object.defineProperty(exports, '__esModule', { value: true });
+@@ -377,14 +378,15 @@ const assert = (collect, offset) => {
+         collect(item);
+         return item;
+     };
++    function test(description, spec, opts = defaultTestOptions) {
++        const subTest = tester(description, spec, Object.assign({}, defaultTestOptions, opts, { offset: offset + 1 }));
++        collect(subTest);
++        return subTest.routine;
++    }
+     return Object.assign(Object.create(AssertPrototype, { collect: { value: actualCollect } }), {
+-        test(description, spec, opts = defaultTestOptions) {
+-            const subTest = tester(description, spec, Object.assign({}, defaultTestOptions, opts, { offset: offset + 1 }));
+-            collect(subTest);
+-            return subTest.routine;
+-        },
++        test,
+         skip(description, spec = noop, opts = defaultTestOptions) {
+-            return this.test(description, spec, Object.assign({}, opts, { skip: true }));
++            return test(description, spec, Object.assign({}, opts, { skip: true }));
+         }
+     });
+ };
