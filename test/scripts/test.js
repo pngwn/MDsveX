@@ -14,7 +14,7 @@ const TEST_DIR = resolve(__dirname, '../');
 //		]
 //	]
 
-let file_map = [];
+const file_map = [];
 
 const dirs = readdirSync(TEST_DIR).filter(name => name !== 'scripts');
 const is_dir = path => existsSync(path) && lstatSync(path).isDirectory();

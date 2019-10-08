@@ -42,7 +42,8 @@ const printSummary = harness => {
 // I might clean this up at some point
 
 export const reporter = verbose => async stream => {
-	print('TAP version 13\n');
+	console.clear();
+	print('TAP version 13');
 
 	const output = [];
 
@@ -130,7 +131,7 @@ export const reporter = verbose => async stream => {
 	}
 
 	results.forEach(({ name, suites }) => {
-		print(green().bold(`> ${name}`));
+		print(green().bold(`\n> ${name}`));
 		suites.forEach(({ name, tests, pass }) => {
 			const label = pass ? bgGreen(` ok `) : bgRed(` not ok `);
 			print(
