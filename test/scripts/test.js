@@ -95,6 +95,9 @@ export const run = (test, { path, isNew, deleted } = {}) => {
 		delete require.cache[path];
 	} else {
 		// no args means a fresh call so build the whole map
+		for (const key in require.cache) {
+			delete require.cache[key];
+		}
 		build_file_map(dirs);
 	}
 	file_map.forEach(([dir_name, , files]) => {

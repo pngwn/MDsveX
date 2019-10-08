@@ -9,18 +9,28 @@ const eat = value => node => ({
 export default function(test) {
 	// console.log(test);
 	const svelte_blocks = [
-		['each', 'basic', '#each array as el', '#each [1, 2, 3, 4] as el'],
-		['else', 'basic', ':else x'],
-		['if', 'basic', '#if condition'],
-		['else if', 'basic', '#else if condition'],
-		['await', 'basic', '#await promise'],
-		['then', 'basic', ':then resolved_promise'],
-		['catch', 'basic', ':catch error'],
+		[
+			'each',
+			'basic',
+			'#each array as el',
+			'#each [{a: {hello: []}, {a: {b: {c: {}}}}} as {a, b: { c, d }}',
+		],
+		['else', 'basic', ':else', false],
+		['if', 'basic', '#if condition', '#if new Array([123] === {a, b, c})'],
+		[
+			'else if',
+			'basic',
+			'#else if condition',
+			'#else if new Array([123] === {a, b, c})',
+		],
+		['await', 'basic', '#await promise', '#await new Promise((r, r) => r())'],
+		['then', 'basic', ':then resolved_promise', '#then {a, b: { c, d }}'],
+		['catch', 'basic', ':catch error', ':catch {a, b: { c, d }}'],
 		['html', 'basic', '@html html'],
 		['debug', 'basic', '@debug breakpoint'],
 	];
 
-	svelte_blocks.forEach(([name, desc, block]) => {
+	svelte_blocks.forEach(([name, desc, block, advanced]) => {
 		test(`${name}: it should it should correctly match and parse any svelte block`, t => {
 			t.equal(
 				parse_svelte_block(eat, `{${block}}`, false),
@@ -51,6 +61,21 @@ export default function(test) {
 				},
 				'with random stuff after it'
 			);
+
+			if (advanced) {
+				t.equal(
+					parse_svelte_block(eat, `{${advanced}}`, false),
+					{
+						value: `{${advanced}}`,
+						node: {
+							value: `{${advanced}}`,
+							name,
+							type: 'svelteBlock',
+						},
+					},
+					'a more advanced case'
+				);
+			}
 		});
 	});
 	// console.log('boo', name);
