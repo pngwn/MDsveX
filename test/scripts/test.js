@@ -18,6 +18,7 @@ const file_map = [];
 
 const dirs = readdirSync(TEST_DIR).filter(name => name !== 'scripts');
 const is_dir = path => existsSync(path) && lstatSync(path).isDirectory();
+
 // Subtests cannot be nested in further subdirectories
 // Deep nesting is the devil
 
