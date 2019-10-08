@@ -19,6 +19,32 @@ export default function(test) {
 	svelte_tags.forEach(([name, component]) => {
 		test(`${name}: it should it should correctly match and parse any svelte tag`, t => {
 			t.equal(
+				parse_svelte_tag(eat, `<${component}>`, false),
+				{
+					value: `<${component}>`,
+					node: {
+						value: `<${component}>`,
+						name,
+						type: 'svelteTag',
+					},
+				},
+				'opening tags'
+			);
+
+			t.equal(
+				parse_svelte_tag(eat, `</ ${component}>`, false),
+				{
+					value: `</ ${component}>`,
+					node: {
+						value: `</ ${component}>`,
+						name,
+						type: 'svelteTag',
+					},
+				},
+				'closing tags'
+			);
+
+			t.equal(
 				parse_svelte_tag(eat, `<${component} />`, false),
 				{
 					value: `<${component} />`,
@@ -28,7 +54,7 @@ export default function(test) {
 						type: 'svelteTag',
 					},
 				},
-				'without attributes'
+				'void tags'
 			);
 
 			t.equal(

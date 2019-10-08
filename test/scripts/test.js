@@ -59,7 +59,7 @@ const build_file_map = dirs => dirs.forEach(handle_top_level(TEST_DIR));
 
 // everything changed when the mutation nation attacked
 
-export const run = (test, { path, isNew, isDir, deleted } = {}) => {
+export const run = (test, { path, isNew, deleted } = {}) => {
 	if (isNew) {
 		// add file to map
 		// check if its a dir

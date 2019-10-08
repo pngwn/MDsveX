@@ -1,10 +1,8 @@
-// const SVELTE_TAGS = ['component', 'self', 'window', 'body', 'options'];
 const RE_SVELTE_SELFCLOSING =
 	'\\s*<svelte:([a-z]+) (?:(?:[a-z:]+(?:="*[^]+"*)*)\\s*)*\\/>';
 const RE_SVELTE_START =
 	'\\s*<svelte:([a-z]+)\\s*(?:(?:[a-z:]+(?:="*[^]+"*)*)\\s*)*>';
-
-const RE_SVELTE_END = '\\s*<\\/\\s*svelte:([a-z]+)\\s*>';
+const RE_SVELTE_END = '\\s*<\\/\\s*svelte:([^]+)\\s*>';
 
 const RE_SVELTE_TAG = new RegExp(
 	RE_SVELTE_SELFCLOSING + '|' + RE_SVELTE_START + '|' + RE_SVELTE_END
@@ -19,7 +17,7 @@ export function parse_svelte_tag(eat, value, silent) {
 		return eat(match[0])({
 			type: 'svelteTag',
 			value: match[0],
-			name: match[1] || match[2] || match[3],
+			name: match[1],
 		});
 	}
 }
