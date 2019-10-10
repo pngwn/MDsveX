@@ -1,9 +1,14 @@
-const RE_SVELTE_BLOCK_START = /{[#:/@]/;
-const RE_SVELTE_BLOCK = /{[#:/@](else if|[a-z]+).*}$/;
-export function parse_svelte_block(eat, value, silent) {
-	const match = RE_SVELTE_BLOCK_START.exec(value);
+// these regex don't check if it is a valid block name
+// i want to defer to svelte's compiler errors so i don't end up reimplementing the svelte parser
+// 'else if' is a special case due to the annoying whitespace
 
-	if (match) {
+const RE_SVELTE_BLOCK_START = /{[#:/@]/;
+const RE_SVELTE_BLOCK = /^{[#:/@](else if|[a-z]+).*}$/;
+
+export function parse_svelte_block(eat, value, silent) {
+	const is_svelte_block = RE_SVELTE_BLOCK_START.exec(value);
+
+	if (is_svelte_block) {
 		if (silent) return true;
 
 		let cbPos = 0;
@@ -15,12 +20,12 @@ export function parse_svelte_block(eat, value, silent) {
 			pos++;
 		}
 
-		const match_2 = RE_SVELTE_BLOCK.exec(value.substring(0, pos));
+		const match = RE_SVELTE_BLOCK.exec(value.substring(0, pos));
 
-		return eat(match_2[0])({
+		return eat(match[0])({
 			type: 'svelteBlock',
-			value: match_2[0],
-			name: match_2[1],
+			value: match[0],
+			name: match[1],
 		});
 	}
 }

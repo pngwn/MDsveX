@@ -1,25 +1,31 @@
-// const SVELTE_TAGS = ['component', 'self', 'window', 'body', 'options'];
-const RE_SVELTE_SELFCLOSING =
-	'\\s*<svelte:([a-z]+) (?:(?:[a-z:]+(?:="*[^]+"*)*)\\s*)*\\/>';
-const RE_SVELTE_START =
-	'\\s*<svelte:([a-z]+)\\s*(?:(?:[a-z:]+(?:="*[^]+"*)*)\\s*)*>';
+// these regex don't check if it is a valid svelte tag name
+// i want to defer to svelte's compiler errors so i don't end up reimplementing the svelte parser
 
-const RE_SVELTE_END = '\\s*<\\/\\s*svelte:([a-z]+)\\s*>';
-
-const RE_SVELTE_TAG = new RegExp(
-	RE_SVELTE_SELFCLOSING + '|' + RE_SVELTE_START + '|' + RE_SVELTE_END
-);
+const RE_SVELTE_TAG = /^<(?:[\\/\s])*svelte:([a-z]*).*>$/;
+const RE_SVELTE_TAG_START = /^\s{0,3}<([\\/\s])*svelte:/;
 
 export function parse_svelte_tag(eat, value, silent) {
-	const match = RE_SVELTE_TAG.exec(value);
+	const is_svelte_tag = RE_SVELTE_TAG_START.exec(value);
 
-	if (match) {
+	if (is_svelte_tag) {
 		if (silent) return true;
+
+		const trimmed_value = value.trim();
+		let cbPos = 0;
+		let pos = 1;
+
+		while (cbPos > -1) {
+			if (trimmed_value[pos].match(/</)) cbPos++;
+			if (trimmed_value[pos].match(/>/)) cbPos--;
+			pos++;
+		}
+
+		const match = RE_SVELTE_TAG.exec(trimmed_value.substring(0, pos));
 
 		return eat(match[0])({
 			type: 'svelteTag',
 			value: match[0],
-			name: match[1] || match[2] || match[3],
+			name: match[1],
 		});
 	}
 }

@@ -58,16 +58,16 @@ export default function(test) {
 			);
 
 			t.equal(
-				parse_svelte_tag(eat, `  		  		<${component} />`, false),
+				parse_svelte_tag(eat, `   <${component} />`, false),
 				{
-					value: `  		  		<${component} />`,
+					value: `<${component} />`,
 					node: {
-						value: `  		  		<${component} />`,
+						value: `<${component} />`,
 						name,
 						type: 'svelteTag',
 					},
 				},
-				`ignoring whitespace`
+				`ignoring whitespace (max 3)`
 			);
 
 			const output = parse_svelte_tag(
@@ -89,6 +89,4 @@ export default function(test) {
 			);
 		});
 	});
-
-	// console.log('boo', name);
 }
