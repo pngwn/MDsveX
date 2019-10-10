@@ -48,7 +48,7 @@ export default function(test) {
 			t.equal(
 				parse_svelte_block(eat, `   {${block}}`, false),
 				{
-					value: `{${block}}`,
+					value: `   {${block}}`,
 					node: {
 						value: `{${block}}`,
 						name,

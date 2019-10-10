@@ -60,7 +60,7 @@ export default function(test) {
 			t.equal(
 				parse_svelte_tag(eat, `   <${component} />`, false),
 				{
-					value: `<${component} />`,
+					value: `   <${component} />`,
 					node: {
 						value: `<${component} />`,
 						name,
