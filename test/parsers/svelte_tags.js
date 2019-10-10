@@ -70,6 +70,12 @@ export default function(test) {
 				`ignoring whitespace (max 3)`
 			);
 
+			t.equal(
+				parse_svelte_tag(eat, `    <${component} />`, false),
+				undefined,
+				`no match if whitespace > 3`
+			);
+
 			const output = parse_svelte_tag(
 				eat,
 				`<${component} foo=bar quu="quux" hello on:click foo={bar} />`,
