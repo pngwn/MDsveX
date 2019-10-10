@@ -46,6 +46,25 @@ export default function(test) {
 			);
 
 			t.equal(
+				parse_svelte_block(eat, `   {${block}}`, false),
+				{
+					value: `{${block}}`,
+					node: {
+						value: `{${block}}`,
+						name,
+						type: 'svelteBlock',
+					},
+				},
+				'with whitespace (max 3)'
+			);
+
+			t.equal(
+				parse_svelte_block(eat, `    {${block}}`, false),
+				undefined,
+				'no match with whitespace > 3'
+			);
+
+			t.equal(
 				parse_svelte_block(
 					eat,
 					`{${block}}hello jesus /n/n iam a paragraph with words \n\n #hello everyone`,

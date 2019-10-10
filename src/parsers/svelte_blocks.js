@@ -2,8 +2,8 @@
 // i want to defer to svelte's compiler errors so i don't end up reimplementing the svelte parser
 // 'else if' is a special case due to the annoying whitespace
 
-const RE_SVELTE_BLOCK_START = /{[#:/@]/;
-const RE_SVELTE_BLOCK = /^{[#:/@](else if|[a-z]+).*}$/;
+const RE_SVELTE_BLOCK_START = /^\s{0,3}{[#:/@]/;
+const RE_SVELTE_BLOCK = /^\s{0,3}{[#:/@](else if|[a-z]+).*}$/;
 
 export function parse_svelte_block(eat, value, silent) {
 	const is_svelte_block = RE_SVELTE_BLOCK_START.exec(value);
@@ -11,16 +11,17 @@ export function parse_svelte_block(eat, value, silent) {
 	if (is_svelte_block) {
 		if (silent) return true;
 
+		const trimmed_value = value.trim();
 		let cbPos = 0;
 		let pos = 1;
 
 		while (cbPos > -1) {
-			if (value[pos].match(/{/)) cbPos++;
-			if (value[pos].match(/}/)) cbPos--;
+			if (trimmed_value[pos].match(/{/)) cbPos++;
+			if (trimmed_value[pos].match(/}/)) cbPos--;
 			pos++;
 		}
 
-		const match = RE_SVELTE_BLOCK.exec(value.substring(0, pos));
+		const match = RE_SVELTE_BLOCK.exec(trimmed_value.substring(0, pos));
 
 		return eat(match[0])({
 			type: 'svelteBlock',
