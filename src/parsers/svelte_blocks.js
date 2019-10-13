@@ -2,8 +2,8 @@
 // i want to defer to svelte's compiler errors so i don't end up reimplementing the svelte parser
 // 'else if' is a special case due to the annoying whitespace
 
-const RE_SVELTE_BLOCK_START = /(^\s{0,3}){[#:/@]/;
-const RE_SVELTE_BLOCK = /^\s{0,3}{[#:/@](else if|[a-z]+).*}$/;
+const RE_SVELTE_BLOCK_START = /(^\s*){[#:/@]/;
+const RE_SVELTE_BLOCK = /^{[#:/@](else if|[a-z]+).*}$/;
 
 export function parse_svelte_block(eat, value, silent) {
 	const is_svelte_block = RE_SVELTE_BLOCK_START.exec(value);

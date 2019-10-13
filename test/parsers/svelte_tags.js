@@ -67,13 +67,7 @@ export default function(test) {
 						type: 'svelteTag',
 					},
 				},
-				`ignoring whitespace (max 3)`
-			);
-
-			t.equal(
-				parse_svelte_tag(eat, `    <${component} />`, false),
-				undefined,
-				`no match if whitespace > 3`
+				`ignoring whitespace`
 			);
 
 			const output = parse_svelte_tag(

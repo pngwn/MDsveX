@@ -23,6 +23,7 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"devDependencies": {
+		"@starptech/prettyhtml-hast-to-html": "^0.10.0",
 		"@types/node": "^12.7.10",
 		"cheap-watch": "^1.0.2",
 		"eslint": "^6.3.0",
@@ -35,7 +36,6 @@
 		"postinstall-postinstall": "^2.0.0",
 		"prettier": "^1.18.2",
 		"prettier-eslint": "^9.0.0",
-		"rehype-raw": "^4.0.1",
 		"remark-parse": "^7.0.1",
 		"remark-rehype": "^5.0.0",
 		"rollup": "^1.20.3",
@@ -51,8 +51,5 @@
 	"peerDependencies": {
 		"svelte": "3.x"
 	},
-	"dependencies": {
-		"front-matter": "^3.0.1",
-		"path-browserify": "^1.0.0"
-	}
+	"dependencies": {}
 }
