@@ -2,6 +2,7 @@ import unified from 'unified';
 import markdown from 'remark-parse';
 import remark2rehype from 'remark-rehype';
 import hast_to_html from '@starptech/prettyhtml-hast-to-html';
+import frontmatter from 'remark-frontmatter';
 
 import { mdsvex_parser } from './parsers/';
 import { mdsvex_transformer } from './transformers/';
@@ -16,6 +17,7 @@ function stringify(options = {}) {
 
 const tree = unified()
 	.use(markdown)
+	.use(frontmatter)
 	.use(mdsvex_parser)
 	.use(mdsvex_transformer)
 	.use(remark2rehype, {
@@ -28,6 +30,11 @@ const tree = unified()
 	})
 	.process(
 		`
+---
+hello: friends
+hello_other: friends
+---
+
 <svelte:component this={foo}/>
 <Component />
 
