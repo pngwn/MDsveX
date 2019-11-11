@@ -12,7 +12,6 @@ export function mdsvex_transformer() {
 				vFile.messages.push(['YAML failed to parse', e]);
 			}
 		});
-		console.log(tree);
 		return tree;
 	}
 }

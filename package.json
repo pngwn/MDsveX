@@ -8,7 +8,7 @@
 	"scripts": {
 		"build": "rollup -c",
 		"lint": "eslint 'src/' 'test/' --ext .js,.ts",
-		"test": "node -r esm ./test/scripts/test_run.js | tap-min",
+		"test": "node -r esm ./test/scripts/test_run.js --verbose",
 		"test:watch": "node -r esm ./test/scripts/test_watch.js --verbose",
 		"test:cov": "yarn lint && jest --verbose --coverage",
 		"postinstall": "patch-package"
@@ -37,9 +37,12 @@
 		"postinstall-postinstall": "^2.0.0",
 		"prettier": "^1.18.2",
 		"prettier-eslint": "^9.0.0",
+		"remark-containers": "^1.1.1",
 		"remark-frontmatter": "^1.3.2",
 		"remark-parse": "^7.0.1",
 		"remark-rehype": "^5.0.0",
+		"retext": "^7.0.1",
+		"retext-smartypants": "^3.0.3",
 		"rollup": "^1.20.3",
 		"rollup-plugin-commonjs": "^10.1.0",
 		"rollup-plugin-json": "^4.0.0",
