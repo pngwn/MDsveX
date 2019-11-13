@@ -25,7 +25,7 @@ export function parse_svelte_block(eat, value, silent) {
 
 		return eat(is_svelte_block[1] + match[0])({
 			type: 'svelteBlock',
-			value: match[0],
+			value: `${is_svelte_block[1]}${match[0]}`,
 			name: match[1],
 		});
 	}

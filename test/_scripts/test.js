@@ -1,6 +1,6 @@
 import { lstatSync, existsSync, readdirSync } from 'fs';
 import { resolve } from 'path';
-import { bgRed } from 'kleur';
+import { bgRed, cyan } from 'kleur';
 
 const TEST_DIR = resolve(__dirname, '../');
 
@@ -24,14 +24,14 @@ const is_dir = path => existsSync(path) && lstatSync(path).isDirectory();
 
 const handle_second_level = (dir, dir_path) =>
 	readdirSync(dir_path)
-		.filter(name => name !== 'scripts')
+		.filter(name => name !== '.DS_Store')
 		.forEach(file => {
 			const file_path = resolve(dir_path, file);
 			if (is_dir(file_path)) {
 				console.log(
 					`\n${bgRed(
 						'Error: Do not nest test files more than one level deep!'
-					)}\n`
+					)}\n${cyan(`path: ${file_path}`)}\n`
 				);
 				process.exit(1);
 			} else {
@@ -50,9 +50,12 @@ const handle_top_level = abs_prefix => dir => {
 
 		handle_second_level(dir, dir_path);
 	} else {
-		throw new Error(
-			'No top level test files! Put them in an appropriately named directory.'
+		console.log(
+			`\n${bgRed(
+				'No top level test files! Put them in an appropriately named directory.'
+			)}\n${cyan(`path: ${dir_path}`)}\n`
 		);
+		process.exit(1);
 	}
 };
 
@@ -98,7 +101,8 @@ export const run = (test, { path, isNew, deleted } = {}) => {
 		for (const key in require.cache) {
 			delete require.cache[key];
 		}
-		build_file_map(dirs);
+
+		build_file_map(dirs.filter(f => f !== '.DS_Store' && !f.startsWith('_')));
 	}
 	file_map.forEach(([dir_name, , files]) => {
 		test(dir_name, t => {

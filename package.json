@@ -8,8 +8,8 @@
 	"scripts": {
 		"build": "rollup -c",
 		"lint": "eslint 'src/' 'test/' --ext .js,.ts",
-		"test": "node -r esm ./test/scripts/test_run.js --verbose",
-		"test:watch": "node -r esm ./test/scripts/test_watch.js --verbose",
+		"test": "node -r esm ./test/_scripts/test_run.js --verbose",
+		"test:watch": "node -r esm ./test/_scripts/test_watch.js --verbose",
 		"test:cov": "yarn lint && jest --verbose --coverage",
 		"postinstall": "patch-package"
 	},

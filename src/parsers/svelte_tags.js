@@ -1,7 +1,7 @@
 // these regex don't check if it is a valid svelte tag name
 // i want to defer to svelte's compiler errors so i don't end up reimplementing the svelte parser
 
-const RE_SVELTE_TAG = /^<(?:[\\/\s])*svelte:([a-z]*).*>$/;
+const RE_SVELTE_TAG = /^<(?:[\\/\s])*svelte:([a-z]*)(?:.|\n)*>$/;
 const RE_SVELTE_TAG_START = /(^\s*)<([\\/\s])*svelte:/;
 
 export function parse_svelte_tag(eat, value, silent) {

@@ -30,11 +30,11 @@
 		"jest": true
 	},
 	"extends": [
-		"eslint:recommended",
-		"plugin:import/errors",
-		"plugin:import/warnings"
+		"eslint:recommended"
+		// "plugin:import/errors",
+		// "plugin:import/warnings"
 	],
-	"plugins": ["import"],
+	// "plugins": ["import"],
 	"parserOptions": {
 		"ecmaVersion": 9,
 		"sourceType": "module",

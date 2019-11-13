@@ -50,7 +50,7 @@ export default function(test) {
 				{
 					value: `     {${block}}`,
 					node: {
-						value: `{${block}}`,
+						value: `     {${block}}`,
 						name,
 						type: 'svelteBlock',
 					},

@@ -79,30 +79,30 @@ export function transform({
 	return processor;
 }
 
-const tree = transform({
-	remarkPlugins: [containers],
-	smartypants: true,
-}).process(
-	`
----
-hello: friends
-hello_other: friends
----
+// const tree = transform({
+// 	remarkPlugins: [containers],
+// 	smartypants: true,
+// }).process(
+// 	`
+// ---
+// hello: friends
+// hello_other: friends
+// ---
 
-<svelte:component this={foo}/>
-<Component />
+// <svelte:component this={foo}/>
+// <Component />
 
-He said, "A 'simple' english sentence..."
+// He said, "A 'simple' english sentence..."
 
-Where can I find an ATM machine?
+// Where can I find an ATM machine?
 
-He’s pretty set on beating your butt for sheriff.
+// He’s pretty set on beating your butt for sheriff.
 
-::: div outer
-hello
-:::
+// ::: div outer
+// hello
+// :::
 
-`
-);
+// `
+// );
 
-tree.then(v => console.log('hello', v, v.messages));
+// tree.then(v => console.log('hello', v, v.messages));
