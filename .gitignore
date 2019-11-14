@@ -28,3 +28,5 @@ coverage
 !.vscode/launch.json
 !.vscode/extensions.json
 
+#config
+config.js

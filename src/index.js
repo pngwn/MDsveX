@@ -7,8 +7,7 @@ import frontmatter from 'remark-frontmatter';
 import visit from 'unist-util-visit';
 import retext from 'retext';
 import smartypants from 'retext-smartypants';
-
-import containers from 'remark-containers';
+import external from 'remark-external-links';
 
 import { mdsvex_parser } from './parsers/';
 import { mdsvex_transformer } from './transformers/';
@@ -42,6 +41,55 @@ function smartypants_processor(options = {}) {
 	return transformer;
 }
 
+const entites = [
+	[/</g, '&lt;'],
+	[/>/g, '&gt;'],
+	[/{/g, '&#123;'],
+	[/}/g, '&#125;'],
+];
+
+function code() {
+	function transformer(tree) {
+		visit(tree, 'code', node => {
+			for (let i = 0; i < entites.length; i += 1) {
+				node.value = node.value.replace(entites[i][0], entites[i][1]);
+			}
+		});
+
+		// visit(tree, 'link', node => {
+		// 	console.log()
+		// });
+	}
+	return transformer;
+}
+
+function html() {
+	function transformer(tree) {
+		if (
+			tree.children[2] &&
+			tree.children[2].children &&
+			tree.children[2].children[1]
+		) {
+			console.log(tree.children[tree.children.length - 1].children[0]);
+		}
+		visit(tree, 'element', node => {
+			if (node.tagName === 'a' && node.properties.href) {
+				node.properties.href = node.properties.href
+					.replace(/%7B/g, '{')
+					.replace(/%7D/g, '}');
+			}
+
+			if (node.tagName === 'img' && node.properties.src) {
+				node.properties.src = node.properties.src
+					.replace(/%7B/g, '{')
+					.replace(/%7D/g, '}');
+			}
+		});
+	}
+
+	return transformer;
+}
+
 export function transform({
 	remarkPlugins = [],
 	rehypePlugins = [],
@@ -49,6 +97,8 @@ export function transform({
 } = {}) {
 	const MDAST = unified()
 		.use(markdown)
+		.use(external, { target: false, rel: ['nofollow'] })
+		.use(code)
 		.use(frontmatter)
 		.use(mdsvex_parser)
 		.use(mdsvex_transformer);
@@ -67,7 +117,7 @@ export function transform({
 	const HAST = MDAST.use(remark2rehype, {
 		allowDangerousHTML: true,
 		allowDangerousCharacters: true,
-	});
+	}).use(html);
 
 	apply_plugins(rehypePlugins, HAST);
 
