@@ -2,16 +2,15 @@ import resolve from 'rollup-plugin-node-resolve';
 import commonjs from 'rollup-plugin-commonjs';
 import json from 'rollup-plugin-json';
 import builtins from 'rollup-plugin-node-builtins';
+import globals from 'rollup-plugin-node-globals';
 
 import pkg from './package.json';
-
-const plugins = [commonjs(), json()];
 
 console.log(pkg.browser, pkg.main, pkg.module);
 
 export default [
 	{
-		plugins: [resolve({ preferBuiltins: true }), ...plugins],
+		plugins: [resolve({ preferBuiltins: true }), commonjs(), json()],
 		input: 'src/index.js',
 		output: [
 			{ file: pkg.module, format: 'es', sourcemap: false },
@@ -19,11 +18,7 @@ export default [
 		],
 	},
 	{
-		plugins: [
-			...plugins,
-			resolve({ preferBuiltins: false, browser: true }),
-			builtins(),
-		],
+		plugins: [resolve(), commonjs(), json(), globals(), builtins()],
 		input: 'src/index.js',
 		output: [{ file: pkg.browser, format: 'es', sourcemap: false }],
 	},
