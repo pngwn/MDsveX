@@ -1,7 +1,3 @@
-if (global === undefined) {
-	window.global = window;
-}
-
 import unified from 'unified';
 import markdown from 'remark-parse';
 import remark2rehype from 'remark-rehype';
