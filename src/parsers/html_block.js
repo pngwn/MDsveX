@@ -1,7 +1,5 @@
 import { openCloseTag } from './re_tag';
 
-module.exports = blockHtml;
-
 const tab = '\t';
 const space = ' ';
 const lineFeed = '\n';
