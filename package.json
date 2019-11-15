@@ -36,7 +36,6 @@
 		"js-yaml": "^3.13.1",
 		"kleur": "^3.0.3",
 		"node-fetch": "^2.6.0",
-		"patch-package": "^6.2.0",
 		"postinstall-postinstall": "^2.0.0",
 		"prettier": "^1.18.2",
 		"prettier-eslint": "^9.0.0",
@@ -66,5 +65,7 @@
 	"peerDependencies": {
 		"svelte": "3.x"
 	},
-	"dependencies": {}
+	"dependencies": {
+		"patch-package": "^6.2.0"
+	}
 }
