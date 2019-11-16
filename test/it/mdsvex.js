@@ -206,13 +206,15 @@ Hello friends, how are we today
 		});
 
 		t.equal(
+			output.code,
 			`
 <script>
   import Layout_MDSVEX_DEFAULT from 'path/to/layout';
 </script>
 
-<Layout_MDSVEX_DEFAULT><h1>hello</h1></Layout_MDSVEX_DEFAULT>`,
-			output.code
+<Layout_MDSVEX_DEFAULT>
+<h1>hello</h1>
+</Layout_MDSVEX_DEFAULT>`
 		);
 	});
 
@@ -235,6 +237,7 @@ Hello friends, how are we today
 		});
 
 		t.equal(
+			output.code,
 			`<script>
   import Layout_MDSVEX_DEFAULT from 'path/to/layout';
   export let x = 1;
@@ -245,9 +248,10 @@ Hello friends, how are we today
   }
 </style>
 <Layout_MDSVEX_DEFAULT>
+
 <h1>hello</h1>
-</Layout_MDSVEX_DEFAULT>`,
-			output.code
+
+</Layout_MDSVEX_DEFAULT>`
 		);
 	});
 
@@ -276,6 +280,7 @@ boo boo boo
 		});
 
 		t.equal(
+			output.code,
 			`<script>
   import Layout_MDSVEX_DEFAULT from 'path/to/layout';
   export let x = 1;
@@ -286,13 +291,11 @@ boo boo boo
   }
 </style>
 <svelte:window />
-<Layout_MDSVEX_DEFAULT><h1>hello</h1>
-
+<Layout_MDSVEX_DEFAULT>
+<h1>hello</h1>
 <p>hello friends</p>
-
-
-<p>boo boo boo</p></Layout_MDSVEX_DEFAULT>`,
-			output.code
+<p>boo boo boo</p>
+</Layout_MDSVEX_DEFAULT>`
 		);
 	});
 }

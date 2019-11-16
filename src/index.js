@@ -65,13 +65,7 @@ function code() {
 
 const attrs = `(?:\\s{0,1}[a-zA-z]+=(?:"){0,1}[a-zA-Z0-9]+(?:"){0,1})*`;
 
-// const RE_MODULE_SCRIPT = new RegExp(
-// 	`^(<script` +
-// 		attrs +
-// 		`(?:\\s{0,1}(?:context)+=(?:"){0,1}(?:module)+(?:"){0,1}){1,}` +
-// 		attrs +
-// 		`>)[^]+?<\\/script>`
-// );
+const RE_BLANK = /^\n+$|^\s+$/;
 
 const RE_SCRIPT = new RegExp(`^(<script` + attrs + `>)`);
 //const RE_STYLES = new RegExp(`^(<style` + attrs + `>)[^]+?<\\/style>`);
@@ -110,10 +104,19 @@ function html(layout) {
 				if (
 					(node.children[i].type !== 'raw' &&
 						(node.children[i].type === 'text' &&
-							/\n+/.exec(node.children[i].value))) ||
+							RE_BLANK.exec(node.children[i].value))) ||
 					!node.children[i].value
 				) {
-					parts.html.push(node.children[i]);
+					if (
+						!parts.html[parts.html.length - 1] ||
+						!(
+							RE_BLANK.exec(node.children[i].value) &&
+							RE_BLANK.exec(parts.html[parts.html.length - 1].value)
+						)
+					) {
+						parts.html.push(node.children[i]);
+					}
+
 					continue children;
 				}
 
@@ -156,7 +159,6 @@ function html(layout) {
 				});
 			}
 
-
 			const { special, html, instance, module: _module, css } = parts;
 
 			const _import = `import Layout_MDSVEX_DEFAULT from '${layout}';`;
@@ -184,10 +186,11 @@ function html(layout) {
 				...special,
 				{ type: 'raw', value: special[0] ? '\n' : '' },
 				{ type: 'raw', value: '<Layout_MDSVEX_DEFAULT>' },
+				{ type: 'raw', value: '\n' },
 				...html,
+				{ type: 'raw', value: '\n' },
 				{ type: 'raw', value: '</Layout_MDSVEX_DEFAULT>' },
 			];
-
 		});
 	}
 

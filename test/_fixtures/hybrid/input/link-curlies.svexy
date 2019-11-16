@@ -11,6 +11,8 @@ Hello I am text and this is a [link]({link} "{title}").
 
 Hello I am text and this is a [link]({link}{link} "{title}").
 
+[Compound link](/base/{variable})
+
 ![some image]({link}).
 
 ![some image]({link} "Some title").
