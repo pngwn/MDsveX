@@ -207,11 +207,9 @@ Hello friends, how are we today
 
 		t.equal(
 			`
-
 <script>
   import Layout_MDSVEX_DEFAULT from 'path/to/layout';
 </script>
-
 
 <Layout_MDSVEX_DEFAULT><h1>hello</h1></Layout_MDSVEX_DEFAULT>`,
 			output.code
@@ -237,8 +235,7 @@ Hello friends, how are we today
 		});
 
 		t.equal(
-			`
-<script>
+			`<script>
   import Layout_MDSVEX_DEFAULT from 'path/to/layout';
   export let x = 1;
 </script>
@@ -250,6 +247,51 @@ Hello friends, how are we today
 <Layout_MDSVEX_DEFAULT>
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`,
+			output.code
+		);
+	});
+
+	test('custom layouts should work - when everything is in a random order', async t => {
+		const output = await mdsvex({ layout: 'path/to/layout' }).markup({
+			content: `
+# hello
+
+<script>
+  export let x = 1;
+</script>
+
+hello friends
+
+<svelte:window />
+
+<style>
+  h1 {
+    color: pink;
+  }
+</style>
+
+boo boo boo
+`,
+			filename: 'file.svexy',
+		});
+
+		t.equal(
+			`<script>
+  import Layout_MDSVEX_DEFAULT from 'path/to/layout';
+  export let x = 1;
+</script>
+<style>
+  h1 {
+    color: pink;
+  }
+</style>
+<svelte:window />
+<Layout_MDSVEX_DEFAULT><h1>hello</h1>
+
+<p>hello friends</p>
+
+
+<p>boo boo boo</p></Layout_MDSVEX_DEFAULT>`,
 			output.code
 		);
 	});

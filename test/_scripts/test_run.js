@@ -12,6 +12,7 @@ const run_tests = (opts = {}) => {
 	const { test } = harness;
 
 	run(test, opts);
+
 	report(harness);
 };
 

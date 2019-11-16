@@ -17,7 +17,10 @@ const print = (message, offset = 0) => {
 };
 
 const printBailout = message => {
-	print('Bail out! Unhandled error.', message);
+	// console.log(message);
+	console.log(bgRed('Bail out! Unhandled error.'));
+	console.log(message.data.stack);
+	//print('Bail out! Unhandled error.', message.data, message.offset);
 };
 
 const printSummary = harness => {
@@ -51,6 +54,8 @@ export const reporter = verbose => async stream => {
 		output.push(message);
 	}
 
+	// console.log('hello', output);
+
 	const results = [];
 	let cat = -1;
 	let suite = -1;
@@ -61,7 +66,7 @@ export const reporter = verbose => async stream => {
 	let time = 0;
 
 	for (let i = 0; i < output.length; i++) {
-		if (output[i].type === 'BAILOUT') printBailout();
+		if (output[i].type === 'BAIL_OUT') printBailout(output[i]);
 		// directory
 		if (output[i].offset === 0) {
 			if (output[i].type === 'TEST_START') {

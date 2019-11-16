@@ -3,6 +3,7 @@ import markdown from 'remark-parse';
 import remark2rehype from 'remark-rehype';
 import hast_to_html from '@starptech/prettyhtml-hast-to-html';
 import frontmatter from 'remark-frontmatter';
+import { parse } from 'svelte/compiler';
 
 import visit from 'unist-util-visit';
 import retext from 'retext';
@@ -64,16 +65,16 @@ function code() {
 
 const attrs = `(?:\\s{0,1}[a-zA-z]+=(?:"){0,1}[a-zA-Z0-9]+(?:"){0,1})*`;
 
-const RE_MODULE_SCRIPT = new RegExp(
-	`^(<script` +
-		attrs +
-		`(?:\\s{0,1}(?:context)+=(?:"){0,1}(?:module)+(?:"){0,1}){1,}` +
-		attrs +
-		`>)[^]+?<\\/script>`
-);
+// const RE_MODULE_SCRIPT = new RegExp(
+// 	`^(<script` +
+// 		attrs +
+// 		`(?:\\s{0,1}(?:context)+=(?:"){0,1}(?:module)+(?:"){0,1}){1,}` +
+// 		attrs +
+// 		`>)[^]+?<\\/script>`
+// );
 
-const RE_SCRIPT = new RegExp(`^(<script` + attrs + `>)[^]+?<\\/script>`);
-const RE_STYLES = new RegExp(`^(<style` + attrs + `>)[^]+?<\\/style>`);
+const RE_SCRIPT = new RegExp(`^(<script` + attrs + `>)`);
+//const RE_STYLES = new RegExp(`^(<style` + attrs + `>)[^]+?<\\/style>`);
 
 function html(layout) {
 	function transformer(tree) {
@@ -95,98 +96,98 @@ function html(layout) {
 
 		// breaks positioning
 		visit(tree, 'root', node => {
-			const nodes = [];
-			const instances = {
-				match: false,
-				nodes: [],
-			};
-			const modules = {
-				match: false,
-				nodes: [],
-			};
-			const styles = {
-				match: false,
-				nodes: [],
-			};
-
 			// don't even ask
 
+			const parts = {
+				special: [],
+				html: [],
+				instance: [],
+				module: [],
+				css: [],
+			};
+
 			children: for (let i = 0; i < node.children.length; i += 1) {
-				if (node.children[i].type != 'raw' || !node.children[i].value) {
-					nodes.push(node.children[i]);
+				if (
+					(node.children[i].type !== 'raw' &&
+						(node.children[i].type === 'text' &&
+							/\n+/.exec(node.children[i].value))) ||
+					!node.children[i].value
+				) {
+					parts.html.push(node.children[i]);
 					continue children;
 				}
 
-				let start = 0;
-				let depth = 0;
-				let started = false;
+				const result = parse(node.children[i].value);
 
-				for (let c = 0; c < node.children[i].value.length; c += 1) {
+				const _parts = result.html.children.map(v => {
 					if (
-						node.children[i].value[c] === '<' &&
-						node.children[i].value[c + 1] !== '/'
+						v.type === 'Options' ||
+						v.type === 'Head' ||
+						v.type === 'Window' ||
+						v.type === 'Body'
 					) {
-						depth += 1;
-						started = true;
+						return ['special', v.start, v.end];
+					} else {
+						return ['html', v.start, v.end];
 					}
-					if (
-						node.children[i].value[c] === '<' &&
-						node.children[i].value[c + 1] === '/'
-					)
-						depth -= 1;
+				});
 
-					if (started && depth === 0) {
-						if (node.children[i].value[c] === '>') {
-							const value = node.children[i].value
-								.substring(start, c + 1)
-								.trim();
-							let match;
-							if ((match = RE_MODULE_SCRIPT.exec(value))) {
-								modules.match = match;
-								modules.nodes.push({ type: 'raw', meta: 'module', value });
-							} else if ((match = RE_SCRIPT.exec(value))) {
-								instances.match = match;
-								instances.nodes.push({ type: 'raw', meta: 'instance', value });
-							} else if ((match = RE_STYLES.exec(value))) {
-								styles.match = match;
-								styles.nodes.push({ type: 'raw', meta: 'style', value });
-							} else {
-								nodes.push({ type: 'raw', value });
-							}
-
-							start = c + 1;
-							started = false;
-						}
-					}
+				if (result.module) {
+					_parts.push(['module', result.module.start, result.module.end]);
 				}
+
+				if (result.css) {
+					_parts.push(['css', result.css.start, result.css.end]);
+				}
+
+				if (result.instance) {
+					_parts.push(['instance', result.instance.start, result.instance.end]);
+				}
+
+				const sorted = _parts.sort((a, b) => a[1] - b[1]);
+
+				sorted.forEach(next => {
+					if (!parts[next[0]]) parts.html.push(next);
+
+					parts[next[0]].push({
+						type: 'raw',
+						value: node.children[i].value.substring(next[1], next[2]),
+					});
+				});
 			}
 
+
+			const { special, html, instance, module: _module, css } = parts;
+
 			const _import = `import Layout_MDSVEX_DEFAULT from '${layout}';`;
-			if (!instances.match) {
-				instances.nodes.push({
+			if (!instance[0]) {
+				instance.push({
 					type: 'raw',
 					value: `\n<script>\n  ${_import}\n</script>\n`,
 				});
 			} else {
-				instances.nodes[0].value = instances.nodes[0].value.replace(
-					instances.match[1],
-					`${instances.match[1]}\n  ${_import}`
+				instance[0].value = instance[0].value.replace(
+					RE_SCRIPT,
+					`$1\n  ${_import}`
 				);
 			}
 
 			// please clean this up
 
 			node.children = [
-				...modules.nodes,
-				{ type: 'raw', value: '\n' },
-				...instances.nodes,
-				{ type: 'raw', value: '\n' },
-				...styles.nodes,
-				{ type: 'raw', value: '\n' },
+				..._module,
+				{ type: 'raw', value: _module[0] ? '\n' : '' },
+				...instance,
+				{ type: 'raw', value: instance[0] ? '\n' : '' },
+				...css,
+				{ type: 'raw', value: css[0] ? '\n' : '' },
+				...special,
+				{ type: 'raw', value: special[0] ? '\n' : '' },
 				{ type: 'raw', value: '<Layout_MDSVEX_DEFAULT>' },
-				...nodes,
+				...html,
 				{ type: 'raw', value: '</Layout_MDSVEX_DEFAULT>' },
 			];
+
 		});
 	}
 
@@ -253,7 +254,6 @@ export const mdsvex = ({
 	return {
 		markup: async ({ content, filename }) => {
 			if (filename.split('.').pop() !== extension.split('.').pop()) return;
-
 			const parser = transform({
 				remarkPlugins,
 				rehypePlugins,
