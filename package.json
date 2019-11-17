@@ -40,7 +40,6 @@
 		"js-yaml": "^3.13.1",
 		"kleur": "^3.0.3",
 		"node-fetch": "^2.6.0",
-		"postinstall-postinstall": "^2.0.0",
 		"prettier": "^1.19.1",
 		"prettier-eslint": "^9.0.0",
 		"rehype-slug": "^2.0.3",

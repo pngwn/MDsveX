@@ -2,7 +2,7 @@ import retext from 'retext';
 import smartypants from 'retext-smartypants';
 import visit from 'unist-util-visit';
 import yaml from 'js-yaml';
-const svelte = require('svelte/compiler');
+import * as svelte from 'svelte/compiler';
 
 const parse = svelte.parse || svelte.default.parse;
 

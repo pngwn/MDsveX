@@ -26,7 +26,6 @@ export default [
 			globals(),
 			builtins(),
 		],
-		external: ['svelte/compiler'],
 		input: 'src/index.js',
 		output: [{ file: pkg.browser, format: 'es', sourcemap: false }],
 	},
