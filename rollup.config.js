@@ -3,7 +3,6 @@ import commonjs from 'rollup-plugin-commonjs';
 import json from 'rollup-plugin-json';
 import builtins from 'rollup-plugin-node-builtins';
 import globals from 'rollup-plugin-node-globals';
-import replace from '@rollup/plugin-replace';
 
 import pkg from './package.json';
 
@@ -21,10 +20,6 @@ export default [
 	},
 	{
 		plugins: [
-			// replace({
-			// 	include: 'node_modules',
-			// 	'process.cwd()': `() => '/'`,
-			// }),
 			resolve(),
 			commonjs({ 'svelte/compiler': ['parse'] }),
 			json(),
