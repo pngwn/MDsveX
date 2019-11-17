@@ -183,6 +183,8 @@ export function transform_hast({ layout }) {
 				vFile.data.fm &&
 				`export const metadata = ${JSON.stringify(vFile.data.fm)};`;
 
+			// don't @ me
+
 			const _layout =
 				vFile.data.fm &&
 				vFile.data.fm.layout !== undefined &&
@@ -194,7 +196,7 @@ export function transform_hast({ layout }) {
 
 			const layout_import =
 				_layout && `import Layout_MDSVEX_DEFAULT from '${_layout}';`;
-			console.log(_layout, vFile.data.fm, layout_import);
+
 			// add the layout if w are using one, resuing the existing script if one exists
 			if (_layout && !instance[0]) {
 				instance.push({

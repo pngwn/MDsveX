@@ -27,6 +27,14 @@
     "@types/istanbul-reports" "^1.1.1"
     "@types/yargs" "^13.0.0"
 
+"@rollup/plugin-replace@^2.2.1":
+  version "2.2.1"
+  resolved "https://registry.yarnpkg.com/@rollup/plugin-replace/-/plugin-replace-2.2.1.tgz#94af20cb3d70cccdcec991d1f97dd373936ec544"
+  integrity sha512-dgq5ijT8fK18KTb1inenZ61ivTayV7pvbz2+ivT+VN20BOgJVM1fqoBETqGHKgFVm/J9BhR82mQyAtxfpPv1lQ==
+  dependencies:
+    magic-string "^0.25.2"
+    rollup-pluginutils "^2.6.0"
+
 "@starptech/prettyhtml-hast-to-html@^0.10.0":
   version "0.10.0"
   resolved "https://registry.yarnpkg.com/@starptech/prettyhtml-hast-to-html/-/prettyhtml-hast-to-html-0.10.0.tgz#82397cdd751a737fac68d66da23f2b3a63800040"
@@ -2935,7 +2943,7 @@ rollup-plugin-svelte@^5.1.1:
     rollup-pluginutils "^2.3.3"
     sourcemap-codec "^1.4.4"
 
-rollup-pluginutils@^2.3.1:
+rollup-pluginutils@^2.3.1, rollup-pluginutils@^2.6.0:
   version "2.8.2"
   resolved "https://registry.yarnpkg.com/rollup-pluginutils/-/rollup-pluginutils-2.8.2.tgz#72f2af0748b592364dbd3389e600e5a9444a351e"
   integrity sha512-EEp9NhnUkwY8aif6bxgovPHMoMoNr2FulJziTndpt5H9RdwC47GSGuII9XxpSdzVGM0GWrNPHV6ie1LTNJPaLQ==
