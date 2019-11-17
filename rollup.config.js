@@ -12,6 +12,7 @@ export default [
 	{
 		plugins: [resolve({ preferBuiltins: true }), commonjs(), json()],
 		input: 'src/index.js',
+		external: ['svelte/compiler'],
 		output: [
 			{ file: pkg.module, format: 'es', sourcemap: false },
 			{ file: pkg.main, format: 'cjs', sourcemap: false },
@@ -25,6 +26,7 @@ export default [
 			globals(),
 			builtins(),
 		],
+		external: ['svelte/compiler'],
 		input: 'src/index.js',
 		output: [{ file: pkg.browser, format: 'es', sourcemap: false }],
 	},
