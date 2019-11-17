@@ -113,7 +113,7 @@ export function transform_hast({ layout }) {
 				if (
 					(node.children[i].type !== 'raw' &&
 						node.children[i].type === 'text' &&
-							RE_BLANK.exec(node.children[i].value)) ||
+						RE_BLANK.exec(node.children[i].value)) ||
 					!node.children[i].value
 				) {
 					if (
@@ -184,11 +184,17 @@ export function transform_hast({ layout }) {
 				`export const metadata = ${JSON.stringify(vFile.data.fm)};`;
 
 			const _layout =
-				vFile.data.fm && vFile.data.fm.layout ? vFile.data.fm.layout : layout;
+				vFile.data.fm &&
+				vFile.data.fm.layout !== undefined &&
+				vFile.data.fm.layout === false
+					? false
+					: vFile.data.fm && vFile.data.fm.layout
+						? vFile.data.fm.layout
+						: layout;
 
 			const layout_import =
 				_layout && `import Layout_MDSVEX_DEFAULT from '${_layout}';`;
-
+			console.log(_layout, vFile.data.fm, layout_import);
 			// add the layout if w are using one, resuing the existing script if one exists
 			if (_layout && !instance[0]) {
 				instance.push({

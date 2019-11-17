@@ -563,4 +563,32 @@ number: 999
 			output.code
 		);
 	});
+
+	test('layout: false in front matter should remove any layouts', async t => {
+		const output = await mdsvex({ layout: 'other/path/to/layout' }).markup({
+			content: `---
+layout: false
+---
+
+<script context="module">
+	let thing = 27;
+</script>
+
+# hello
+`,
+			filename: 'file.svexy',
+		});
+
+		t.equal(
+			`<script context="module">
+	export const metadata = {"layout":false};
+	let thing = 27;
+</script>
+
+
+<h1>hello</h1>
+`,
+			output.code
+		);
+	});
 }
