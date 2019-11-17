@@ -2,7 +2,7 @@ import retext from 'retext';
 import smartypants from 'retext-smartypants';
 import visit from 'unist-util-visit';
 import yaml from 'js-yaml';
-import svelte from 'svelte/compiler';
+const svelte = require('svelte/compiler');
 
 const parse = svelte.parse || svelte.default.parse;
 
@@ -130,7 +130,13 @@ export function transform_hast({ layout }) {
 					continue children;
 				}
 
-				const result = parse(node.children[i].value);
+				let result;
+				try {
+					result = parse(node.children[i].value);
+				} catch (e) {
+					parts.html.push(node.children[i]);
+					continue children;
+				}
 
 				// svelte special tags that have to be top level
 

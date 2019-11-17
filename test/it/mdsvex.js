@@ -527,6 +527,55 @@ number: 999
 		);
 	});
 
+	test('Custom layout can be set via frontmatter - strange formatting', async t => {
+		const output = await mdsvex().markup({
+			content: `---
+layout: ./path/to/layout
+string: value
+string2: 'value2'
+array: [1, 2, 3]
+number: 999
+---
+
+<script context="module">
+	let thing = 27;
+
+
+
+
+
+
+</script>
+
+# hello
+`,
+			filename: 'file.svexy',
+		});
+
+		t.equal(
+			`<script context="module">
+	export const metadata = {"layout":"./path/to/layout","string":"value","string2":"value2","array":[1,2,3],"number":999};
+	let thing = 27;
+
+
+
+
+
+
+</script>
+
+<script>
+	import Layout_MDSVEX_DEFAULT from './path/to/layout';
+</script>
+
+<Layout_MDSVEX_DEFAULT {...metadata}>
+
+<h1>hello</h1>
+</Layout_MDSVEX_DEFAULT>`,
+			output.code
+		);
+	});
+
 	test('layouts provided via frontmatter should overwrite defaults', async t => {
 		const output = await mdsvex({ layout: 'other/path/to/layout' }).markup({
 			content: `---
