@@ -206,15 +206,15 @@ Hello friends, how are we today
 		});
 
 		t.equal(
-			output.code,
 			`
 <script>
-  import Layout_MDSVEX_DEFAULT from 'path/to/layout';
+	import Layout_MDSVEX_DEFAULT from 'path/to/layout';
 </script>
 
 <Layout_MDSVEX_DEFAULT>
 <h1>hello</h1>
-</Layout_MDSVEX_DEFAULT>`
+</Layout_MDSVEX_DEFAULT>`,
+			output.code
 		);
 	});
 
@@ -237,9 +237,8 @@ Hello friends, how are we today
 		});
 
 		t.equal(
-			output.code,
 			`<script>
-  import Layout_MDSVEX_DEFAULT from 'path/to/layout';
+	import Layout_MDSVEX_DEFAULT from 'path/to/layout';
   export let x = 1;
 </script>
 <style>
@@ -251,7 +250,45 @@ Hello friends, how are we today
 
 <h1>hello</h1>
 
-</Layout_MDSVEX_DEFAULT>`
+</Layout_MDSVEX_DEFAULT>`,
+			output.code
+		);
+	});
+
+	test('custom layouts should work - when there are script tags with random attributes', async t => {
+		const output = await mdsvex({ layout: 'path/to/layout' }).markup({
+			content: `
+<script type="ts" lang=whatever thing="whatsit" doodaa=thingamabob>
+  export let x = 1;
+</script>
+
+# hello
+
+<style>
+  h1 {
+    color: pink;
+  }
+</style>
+`,
+			filename: 'file.svexy',
+		});
+
+		t.equal(
+			`<script type="ts" lang=whatever thing="whatsit" doodaa=thingamabob>
+	import Layout_MDSVEX_DEFAULT from 'path/to/layout';
+  export let x = 1;
+</script>
+<style>
+  h1 {
+    color: pink;
+  }
+</style>
+<Layout_MDSVEX_DEFAULT>
+
+<h1>hello</h1>
+
+</Layout_MDSVEX_DEFAULT>`,
+			output.code
 		);
 	});
 
@@ -280,9 +317,8 @@ boo boo boo
 		});
 
 		t.equal(
-			output.code,
 			`<script>
-  import Layout_MDSVEX_DEFAULT from 'path/to/layout';
+	import Layout_MDSVEX_DEFAULT from 'path/to/layout';
   export let x = 1;
 </script>
 <style>
@@ -295,7 +331,162 @@ boo boo boo
 <h1>hello</h1>
 <p>hello friends</p>
 <p>boo boo boo</p>
-</Layout_MDSVEX_DEFAULT>`
+</Layout_MDSVEX_DEFAULT>`,
+			output.code
+		);
+	});
+
+	test('YAML front-matter should be injected into the component module script', async t => {
+		const output = await mdsvex().markup({
+			content: `---
+string: value
+string2: 'value2'
+array: [1, 2, 3]
+number: 999
+---
+
+# hello
+`,
+			filename: 'file.svexy',
+		});
+
+		t.equal(
+			`<script context="module">
+	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+</script>
+
+<h1>hello</h1>
+`,
+			output.code
+		);
+	});
+
+	test('YAML front-matter should be injected into the component module script - even if there is already a module script', async t => {
+		const output = await mdsvex().markup({
+			content: `---
+string: value
+string2: 'value2'
+array: [1, 2, 3]
+number: 999
+---
+
+<script context="module">
+	let thing = 27;
+</script>
+
+# hello
+`,
+			filename: 'file.svexy',
+		});
+
+		t.equal(
+			`<script context="module">
+	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+	let thing = 27;
+</script>
+
+
+<h1>hello</h1>
+`,
+			output.code
+		);
+	});
+
+	test('YAML front-matter should be injected into the component module script - even if there is already a module script with unquoted attributes', async t => {
+		const output = await mdsvex().markup({
+			content: `---
+string: value
+string2: 'value2'
+array: [1, 2, 3]
+number: 999
+---
+
+<script context=module>
+	let thing = 27;
+</script>
+
+# hello
+`,
+			filename: 'file.svexy',
+		});
+
+		t.equal(
+			`<script context=module>
+	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+	let thing = 27;
+</script>
+
+
+<h1>hello</h1>
+`,
+			output.code
+		);
+	});
+
+	test('YAML front-matter should be injected into the component module script - even if there is already a module script with random attributes', async t => {
+		const output = await mdsvex().markup({
+			content: `---
+string: value
+string2: 'value2'
+array: [1, 2, 3]
+number: 999
+---
+
+<script type="ts" lang=whatever context=module thing="whatsit" doodaa=thingamabob>
+	let thing = 27;
+</script>
+
+# hello
+`,
+			filename: 'file.svexy',
+		});
+
+		t.equal(
+			`<script type="ts" lang=whatever context=module thing="whatsit" doodaa=thingamabob>
+	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+	let thing = 27;
+</script>
+
+
+<h1>hello</h1>
+`,
+			output.code
+		);
+	});
+
+	test('YAML front-matter should be injected passed to custom layouts', async t => {
+		const output = await mdsvex({ layout: 'path/to/layout' }).markup({
+			content: `---
+string: value
+string2: 'value2'
+array: [1, 2, 3]
+number: 999
+---
+
+<script context="module">
+	let thing = 27;
+</script>
+
+# hello
+`,
+			filename: 'file.svexy',
+		});
+
+		t.equal(
+			`<script context="module">
+	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+	let thing = 27;
+</script>
+
+<script>
+	import Layout_MDSVEX_DEFAULT from 'path/to/layout';
+</script>
+
+<Layout_MDSVEX_DEFAULT {string} {string2} {array} {number}>
+
+<h1>hello</h1>
+</Layout_MDSVEX_DEFAULT>`,
+			output.code
 		);
 	});
 }

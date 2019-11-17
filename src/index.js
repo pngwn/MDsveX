@@ -2,8 +2,11 @@ import unified from 'unified';
 import markdown from 'remark-parse';
 import remark2rehype from 'remark-rehype';
 import hast_to_html from '@starptech/prettyhtml-hast-to-html';
+// import frontmatter from 'front-matter';
 import frontmatter from 'remark-frontmatter';
 import { parse } from 'svelte/compiler';
+
+import VFile from 'vfile';
 
 import visit from 'unist-util-visit';
 import retext from 'retext';
@@ -11,7 +14,7 @@ import smartypants from 'retext-smartypants';
 import external from 'remark-external-links';
 
 import { mdsvex_parser } from './parsers/';
-import { mdsvex_transformer } from './transformers/';
+import { parse_yaml } from './transformers/';
 
 function stringify(options = {}) {
 	this.Compiler = compiler;
@@ -64,14 +67,24 @@ function code() {
 }
 
 const attrs = `(?:\\s{0,1}[a-zA-z]+=(?:"){0,1}[a-zA-Z0-9]+(?:"){0,1})*`;
+const context = `(?:\\s{0,1}context)=(?:"){0,1}module(?:"){0,1}`;
 
 const RE_BLANK = /^\n+$|^\s+$/;
 
 const RE_SCRIPT = new RegExp(`^(<script` + attrs + `>)`);
+
+const RE_MODULE_SCRIPT = new RegExp(
+	`^(<script` + attrs + context + attrs + `>)`
+);
+
 //const RE_STYLES = new RegExp(`^(<style` + attrs + `>)[^]+?<\\/style>`);
 
-function html(layout) {
-	function transformer(tree) {
+// let fm = false;
+
+function html({ layout }) {
+	return transformer;
+
+	function transformer(tree, vFile) {
 		visit(tree, 'element', node => {
 			if (node.tagName === 'a' && node.properties.href) {
 				node.properties.href = node.properties.href
@@ -85,10 +98,11 @@ function html(layout) {
 					.replace(/%7D/g, '}');
 			}
 		});
+		console.log('HELLO', vFile.data);
 
-		if (!layout) return;
-
+		if (!layout && !vFile.data.fm) return;
 		// breaks positioning
+
 		visit(tree, 'root', node => {
 			// don't even ask
 
@@ -161,16 +175,38 @@ function html(layout) {
 
 			const { special, html, instance, module: _module, css } = parts;
 
-			const _import = `import Layout_MDSVEX_DEFAULT from '${layout}';`;
-			if (!instance[0]) {
+			const layout_import =
+				layout && `import Layout_MDSVEX_DEFAULT from '${layout}';`;
+			const fm =
+				vFile.data.fm &&
+				`export const metadata = ${JSON.stringify(vFile.data.fm)};`;
+			const fm_key =
+				fm &&
+				Object.keys(vFile.data.fm)
+					.map(k => `{${k}}`)
+					.join(' ');
+
+			if (layout && !instance[0]) {
 				instance.push({
 					type: 'raw',
-					value: `\n<script>\n  ${_import}\n</script>\n`,
+					value: `\n<script>\n\t${layout_import}\n</script>\n`,
 				});
-			} else {
+			} else if (layout) {
 				instance[0].value = instance[0].value.replace(
 					RE_SCRIPT,
-					`$1\n  ${_import}`
+					`$1\n\t${layout_import}`
+				);
+			}
+
+			if (!_module[0] && fm) {
+				_module.push({
+					type: 'raw',
+					value: `<script context="module">\n\t${fm}\n</script>`,
+				});
+			} else if (fm) {
+				_module[0].value = _module[0].value.replace(
+					RE_MODULE_SCRIPT,
+					`$1\n\t${fm}`
 				);
 			}
 
@@ -185,16 +221,19 @@ function html(layout) {
 				{ type: 'raw', value: css[0] ? '\n' : '' },
 				...special,
 				{ type: 'raw', value: special[0] ? '\n' : '' },
-				{ type: 'raw', value: '<Layout_MDSVEX_DEFAULT>' },
+				{
+					type: 'raw',
+					value: layout
+						? `<Layout_MDSVEX_DEFAULT${fm ? ` ${fm_key}` : ''}>`
+						: '',
+				},
 				{ type: 'raw', value: '\n' },
 				...html,
 				{ type: 'raw', value: '\n' },
-				{ type: 'raw', value: '</Layout_MDSVEX_DEFAULT>' },
+				{ type: 'raw', value: layout ? '</Layout_MDSVEX_DEFAULT>' : '' },
 			];
 		});
 	}
-
-	return transformer;
 }
 
 export function transform({
@@ -205,11 +244,32 @@ export function transform({
 } = {}) {
 	const toMDAST = unified()
 		.use(markdown)
+		.use(mdsvex_parser)
 		.use(external, { target: false, rel: ['nofollow'] })
 		.use(code)
 		.use(frontmatter)
-		.use(mdsvex_parser)
-		.use(mdsvex_transformer);
+		.use(parse_yaml)
+		.use(log);
+	function log() {
+		return logger;
+		function logger(_, file) {
+			console.log('DATA 1: ', file.data); // 'Hi!'
+		}
+	}
+
+	function log2() {
+		return logger;
+		function logger(_, file) {
+			console.log('DATA 2: ', file.data); // 'Hi!'
+		}
+	}
+
+	function log3() {
+		return logger;
+		function logger(_, file) {
+			console.log('DATA 3: ', file.data); // 'Hi!'
+		}
+	}
 
 	if (smartypants) {
 		toMDAST.use(
@@ -218,7 +278,7 @@ export function transform({
 		);
 	}
 
-	// plugins : [ [plugin, opts] ] | [ plugin ]
+	// [[plugin, opts]] | [plugin];
 
 	apply_plugins(remarkPlugins, toMDAST);
 
@@ -227,7 +287,9 @@ export function transform({
 			allowDangerousHTML: true,
 			allowDangerousCharacters: true,
 		})
-		.use(html, layout);
+		.use(log2)
+		.use(log3)
+		.use(html, { layout });
 
 	apply_plugins(rehypePlugins, toHAST);
 
@@ -254,16 +316,28 @@ export const mdsvex = ({
 	extension = '.svexy',
 	layout = false,
 } = defaults) => {
+	const parser = transform({
+		remarkPlugins,
+		rehypePlugins,
+		smartypants,
+		layout,
+	});
+
 	return {
 		markup: async ({ content, filename }) => {
 			if (filename.split('.').pop() !== extension.split('.').pop()) return;
-			const parser = transform({
-				remarkPlugins,
-				rehypePlugins,
-				smartypants,
-				layout,
-			});
 
+			// const { attributes, body } = frontmatter(content);
+			// const has_fm = !!Object.keys(attributes).length;
+			// const file = {
+			// 	contents: body,
+			// 	...(has_fm ? { fm: attributes } : {}),
+			// };
+			// if (has_fm) {
+			// 	fm = attributes;
+			// } else {
+			// 	fm = false;
+			// }
 			const parsed = await parser.process(content);
 
 			return { code: parsed.contents };

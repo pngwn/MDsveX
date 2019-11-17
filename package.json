@@ -31,6 +31,7 @@
 		"eslint": "^6.3.0",
 		"eslint-plugin-import": "^2.18.2",
 		"esm": "^3.2.25",
+		"front-matter": "^3.0.2",
 		"highlight.js": "^9.15.10",
 		"jest-diff": "^24.9.0",
 		"js-yaml": "^3.13.1",
@@ -59,6 +60,7 @@
 		"rollup-plugin-svelte": "^5.1.0",
 		"svelte": "^3.14.1",
 		"unified": "^8.4.1",
+		"vfile": "^4.0.2",
 		"yarn": "^1.19.0",
 		"zora": "^3.0.3"
 	},

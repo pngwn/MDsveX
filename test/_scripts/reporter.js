@@ -49,12 +49,9 @@ export const reporter = verbose => async stream => {
 	print('TAP version 13');
 
 	const output = [];
-
 	for await (const message of stream) {
 		output.push(message);
 	}
-
-	// console.log('hello', output);
 
 	const results = [];
 	let cat = -1;
