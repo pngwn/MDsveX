@@ -178,26 +178,25 @@ export function transform_hast({ layout }) {
 
 			const { special, html, instance, module: _module, css } = parts;
 
-			const layout_import =
-				layout && `import Layout_MDSVEX_DEFAULT from '${layout}';`;
-
 			const fm =
 				vFile.data.fm &&
 				`export const metadata = ${JSON.stringify(vFile.data.fm)};`;
 
-			const fm_key =
-				fm &&
-				Object.keys(vFile.data.fm)
-					.map(k => `{${k}}`)
-					.join(' ');
+			const _layout =
+				vFile.data.fm && vFile.data.fm.layout ? vFile.data.fm.layout : layout;
+
+			console.log(_layout, fm);
+
+			const layout_import =
+				_layout && `import Layout_MDSVEX_DEFAULT from '${_layout}';`;
 
 			// add the layout if w are using one, resuing the existing script if one exists
-			if (layout && !instance[0]) {
+			if (_layout && !instance[0]) {
 				instance.push({
 					type: 'raw',
 					value: `\n<script>\n\t${layout_import}\n</script>\n`,
 				});
-			} else if (layout) {
+			} else if (_layout) {
 				instance[0].value = instance[0].value.replace(
 					RE_SCRIPT,
 					`$1\n\t${layout_import}`
@@ -230,14 +229,14 @@ export function transform_hast({ layout }) {
 				{ type: 'raw', value: special[0] ? '\n' : '' },
 				{
 					type: 'raw',
-					value: layout
-						? `<Layout_MDSVEX_DEFAULT${fm ? ` ${fm_key}` : ''}>`
+					value: _layout
+						? `<Layout_MDSVEX_DEFAULT${fm ? ' {...metadata}' : ''}>`
 						: '',
 				},
 				{ type: 'raw', value: '\n' },
 				...html,
 				{ type: 'raw', value: '\n' },
-				{ type: 'raw', value: layout ? '</Layout_MDSVEX_DEFAULT>' : '' },
+				{ type: 'raw', value: _layout ? '</Layout_MDSVEX_DEFAULT>' : '' },
 			];
 		});
 	}
