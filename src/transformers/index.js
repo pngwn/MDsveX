@@ -4,6 +4,8 @@ import visit from 'unist-util-visit';
 import yaml from 'js-yaml';
 import { parse } from 'svelte/compiler';
 
+// extract the yaml from 'yaml' nodes and put them in the vfil for later use
+
 export function parse_yaml() {
 	return transformer;
 
@@ -17,6 +19,9 @@ export function parse_yaml() {
 		});
 	}
 }
+
+// in code nodes replace the character witrh the html entities
+// maybe I'll need more of these
 
 const entites = [
 	[/</g, '&lt;'],
@@ -36,6 +41,9 @@ export function escape_code() {
 	return transformer;
 }
 
+// special case - process nodes with retext and smarypants
+// retext plugins can't work generally due to the difficulties in converting between the two trees
+
 export function smartypants_transformer(options = {}) {
 	const processor = retext().use(smartypants, options);
 
@@ -46,6 +54,8 @@ export function smartypants_transformer(options = {}) {
 	}
 	return transformer;
 }
+
+// regex for scripts and attributes
 
 const attrs = `(?:\\s{0,1}[a-zA-z]+=(?:"){0,1}[a-zA-Z0-9]+(?:"){0,1})*`;
 const context = `(?:\\s{0,1}context)=(?:"){0,1}module(?:"){0,1}`;
@@ -62,6 +72,7 @@ export function transform_hast({ layout }) {
 	return transformer;
 
 	function transformer(tree, vFile) {
+		// we need to keep { and } intact for svelte, so reverse the escaping in links and images
 		visit(tree, 'element', node => {
 			if (node.tagName === 'a' && node.properties.href) {
 				node.properties.href = node.properties.href
@@ -76,12 +87,15 @@ export function transform_hast({ layout }) {
 			}
 		});
 
+		// the rest only applies to layouts and front matter
+		// this currently breaks position data svelte preprocessors don't currently support sourcemaps
+		// i'll fix this when they do
+
 		if (!layout && !vFile.data.fm) return;
-		// breaks positioning
 
 		visit(tree, 'root', node => {
-			// don't even ask
-
+			// since we are wrapping and replacing we need to keep track of the different component 'parts'
+			// many special tags cannot be wrapped nor  can style or script tags
 			const parts = {
 				special: [],
 				html: [],
@@ -89,6 +103,10 @@ export function transform_hast({ layout }) {
 				module: [],
 				css: [],
 			};
+
+			// iterate through all top level child nodes and assign them to the correct 'part'
+			// anything that is a normal HAST node gets stored as HTML untouched
+			// everything else gets parsed by the svelte parser
 
 			children: for (let i = 0; i < node.children.length; i += 1) {
 				if (
@@ -112,6 +130,8 @@ export function transform_hast({ layout }) {
 
 				const result = parse(node.children[i].value);
 
+				// svelte special tags that have to be top level
+
 				const _parts = result.html.children.map(v => {
 					if (
 						v.type === 'Options' ||
@@ -125,23 +145,30 @@ export function transform_hast({ layout }) {
 					}
 				});
 
+				// module scripts
+
 				if (result.module) {
 					_parts.push(['module', result.module.start, result.module.end]);
 				}
+
+				// style elements
 
 				if (result.css) {
 					_parts.push(['css', result.css.start, result.css.end]);
 				}
 
+				// instance scripts
+
 				if (result.instance) {
 					_parts.push(['instance', result.instance.start, result.instance.end]);
 				}
 
+				// sort them to ensure the array is in the order they appear in the source, no gaps
+				// this might not be necessary any more, i forget
 				const sorted = _parts.sort((a, b) => a[1] - b[1]);
 
+				// push the nodes into the correct 'part' since they are sorted everything should be in the correct order
 				sorted.forEach(next => {
-					if (!parts[next[0]]) parts.html.push(next);
-
 					parts[next[0]].push({
 						type: 'raw',
 						value: node.children[i].value.substring(next[1], next[2]),
@@ -164,6 +191,7 @@ export function transform_hast({ layout }) {
 					.map(k => `{${k}}`)
 					.join(' ');
 
+			// add the layout if w are using one, resuing the existing script if one exists
 			if (layout && !instance[0]) {
 				instance.push({
 					type: 'raw',
@@ -176,6 +204,7 @@ export function transform_hast({ layout }) {
 				);
 			}
 
+			// inject the frontmatter into the module script if there is any, resuing the existing module script if one exists
 			if (!_module[0] && fm) {
 				_module.push({
 					type: 'raw',
@@ -188,6 +217,8 @@ export function transform_hast({ layout }) {
 				);
 			}
 
+			// smoosh it all together in an order that makes sense,
+			// if using a layout we only wrap the html and nothing else
 			node.children = [
 				..._module,
 				{ type: 'raw', value: _module[0] ? '\n' : '' },
