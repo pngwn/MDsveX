@@ -185,8 +185,6 @@ export function transform_hast({ layout }) {
 			const _layout =
 				vFile.data.fm && vFile.data.fm.layout ? vFile.data.fm.layout : layout;
 
-			console.log(_layout, fm);
-
 			const layout_import =
 				_layout && `import Layout_MDSVEX_DEFAULT from '${_layout}';`;
 
