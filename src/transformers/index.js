@@ -2,7 +2,8 @@ import retext from 'retext';
 import smartypants from 'retext-smartypants';
 import visit from 'unist-util-visit';
 import yaml from 'js-yaml';
-import * as svelte from 'svelte/compiler';
+import svelte from 'svelte/compiler';
+
 const parse = svelte.parse || svelte.default.parse;
 
 // extract the yaml from 'yaml' nodes and put them in the vfil for later use
