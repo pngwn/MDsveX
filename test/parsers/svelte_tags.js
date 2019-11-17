@@ -7,7 +7,6 @@ const eat = value => node => ({
 });
 
 export default function(test) {
-	// console.log(test);
 	const svelte_tags = [
 		['component', 'svelte:component'],
 		['self', 'svelte:self'],

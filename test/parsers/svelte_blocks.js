@@ -7,7 +7,6 @@ const eat = value => node => ({
 });
 
 export default function(test) {
-	// console.log(test);
 	const svelte_blocks = [
 		[
 			'each',
@@ -91,5 +90,4 @@ export default function(test) {
 			}
 		});
 	});
-	// console.log('boo', name);
 }
