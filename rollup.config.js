@@ -18,7 +18,13 @@ export default [
 		],
 	},
 	{
-		plugins: [resolve(), commonjs(), json(), globals(), builtins()],
+		plugins: [
+			resolve(),
+			commonjs({ 'svelte/compiler': ['parse'] }),
+			json(),
+			globals(),
+			builtins(),
+		],
 		input: 'src/index.js',
 		output: [{ file: pkg.browser, format: 'es', sourcemap: false }],
 	},

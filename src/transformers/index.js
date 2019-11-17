@@ -2,7 +2,8 @@ import retext from 'retext';
 import smartypants from 'retext-smartypants';
 import visit from 'unist-util-visit';
 import yaml from 'js-yaml';
-import { parse } from 'svelte/compiler';
+import * as svelte from 'svelte/compiler';
+const { parse } = svelte;
 
 // extract the yaml from 'yaml' nodes and put them in the vfil for later use
 
@@ -111,8 +112,8 @@ export function transform_hast({ layout }) {
 			children: for (let i = 0; i < node.children.length; i += 1) {
 				if (
 					(node.children[i].type !== 'raw' &&
-						(node.children[i].type === 'text' &&
-							RE_BLANK.exec(node.children[i].value))) ||
+						node.children[i].type === 'text' &&
+							RE_BLANK.exec(node.children[i].value)) ||
 					!node.children[i].value
 				) {
 					if (
