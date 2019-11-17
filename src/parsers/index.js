@@ -1,5 +1,5 @@
-import { parse_svelte_tag } from './svelte_tags';
-import { parse_svelte_block } from './svelte_blocks';
+import { parse_svelte_tag } from './svelte';
+import { parse_svelte_block } from './svelte';
 import { blockHtml } from './html_block';
 
 export function mdsvex_parser() {
