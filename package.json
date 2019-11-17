@@ -14,6 +14,9 @@
 		"test:cov": "yarn lint && jest --verbose --coverage",
 		"generate_files": "node -r esm ./test/_scripts/generate_markdown_html.js"
 	},
+	"files": [
+		"dist/*"
+	],
 	"keywords": [
 		"test",
 		"preprocessor",
