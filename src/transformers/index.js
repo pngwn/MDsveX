@@ -34,11 +34,14 @@ const entites = [
 
 export function escape_code() {
 	function transformer(tree) {
-		visit(tree, 'code', node => {
+		visit(tree, 'code', escape);
+		visit(tree, 'inlineCode', escape);
+
+		function escape(node) {
 			for (let i = 0; i < entites.length; i += 1) {
 				node.value = node.value.replace(entites[i][0], entites[i][1]);
 			}
-		});
+		}
 	}
 	return transformer;
 }

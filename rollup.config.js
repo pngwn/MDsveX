@@ -29,4 +29,22 @@ export default [
 		input: 'src/index.js',
 		output: [{ file: pkg.browser, format: 'es', sourcemap: false }],
 	},
+	{
+		plugins: [
+			resolve(),
+			commonjs({ 'svelte/compiler': ['parse'] }),
+			json(),
+			globals(),
+			builtins(),
+		],
+		input: 'src/index.js',
+		output: [
+			{
+				file: 'dist/mdsvex.js',
+				name: 'mdsvex',
+				format: 'umd',
+				sourcemap: false,
+			},
+		],
+	},
 ];
