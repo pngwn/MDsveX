@@ -51,6 +51,7 @@ npm i mdsvex # or yarn add mdsvex
 Add it as a preprocessor to you rollup or webpack config, the mdsvex preprocessor function is a named import from the `mdsvex` module:
 
 ```js
+import * as path from "path";
 import { mdsvex } from 'mdsvex';
 
 export default {
