@@ -263,8 +263,86 @@ export function transform_hast({ layout }) {
 	}
 }
 
-export function highlight_blocks(highlight_fn) {
+// highlighting stuff
+
+// { [lang]: { path, deps: pointer to key } }
+const langs = {};
+const cached_langs = {};
+let Prism;
+
+const make_path = (base_path, id) => base_path.replace('{id}', id);
+
+// we need to get all language metadata
+// also track if they depend on other languages so we can autoload without breaking
+
+function get_lang_info(name, lang_meta, base_path) {
+	const _lang_meta = {
+		path: `prismjs/${make_path(base_path, name)}`,
+		deps: [],
+	};
+
+	let aliases = [];
+
+	if (lang_meta.require) {
+		if (Array.isArray(lang_meta.require)) {
+			lang_meta.require.forEach(id => _lang_meta.deps.push(id));
+		} else {
+			_lang_meta.deps.push(_lang_meta.require);
+		}
+	}
+
+	if (lang_meta.peerDependencies) {
+		if (Array.isArray(lang_meta.peerDependencies)) {
+			lang_meta.peerDependencies.forEach(id => _lang_meta.deps.push(id));
+		} else {
+			_lang_meta.deps.push(lang_meta.peerDependencies);
+		}
+	}
+
+	if (lang_meta.alias) {
+		if (Array.isArray(lang_meta.alias)) {
+			aliases = lang_meta.alias;
+		} else {
+			aliases.push(_lang_meta.alias);
+		}
+	}
+
+	return [{ ..._lang_meta, aliases }, aliases];
+}
+
+function load_language_metadata() {
+	const { meta, ...languages } = require('prismjs/components.json').languages;
+
+	for (const lang in languages) {
+		const [lang_info, aliases] = get_lang_info(
+			lang,
+			languages[lang],
+			meta.path
+		);
+
+		langs[lang] = lang_info;
+		aliases.forEach(_n => {
+			langs[_n] = langs[lang];
+		});
+	}
+}
+
+function load_language(lang) {
+	if (!langs[lang]) return;
+	if (cached_langs[lang]) return;
+
+	langs[lang].deps.forEach(name => load_language(name));
+
+	require(langs[lang].path);
+	cached_langs[name] = true;
+	langs[lang].aliases.forEach(alias => (cached_langs[alias] = true));
+}
+
+export function highlight_blocks({ highlighter: highlight_fn }) {
+	console.log('HL', highlight_fn);
 	if (!highlight_fn) return;
+
+	load_language_metadata();
 
 	return function(tree, vFile) {
 		visit(tree, 'code', node => {
@@ -274,10 +352,6 @@ export function highlight_blocks(highlight_fn) {
 	};
 }
 
-const langs = {};
-const cached_langs = {};
-let Prism;
-
 const escape_curlies = str =>
 	str.replace(/[{}]/g, c => ({ '{': '&#123;', '}': '&#125;' }[c]));
 
@@ -286,11 +360,7 @@ export function code_highlight(code, lang) {
 
 	if (!Prism) Prism = require('prismjs');
 
-	if (_lang === 'svelte' || _lang === 'sv') {
-		cached_langs[_lang] = require(`prism-svelte`);
-	} else if (_lang && !cached_langs[_lang]) {
-		cached_langs[_lang] = require(`prismjs/components/${_lang}.js`);
-	}
+	load_language(_lang);
 
 	return `<pre class="language-${lang}">
   <code class="language-${lang || ''}">

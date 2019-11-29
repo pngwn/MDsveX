@@ -11,6 +11,8 @@ import {
 	escape_code,
 	transform_hast,
 	smartypants_transformer,
+	highlight_blocks,
+	code_highlight,
 } from './transformers/';
 
 function stringify(options = {}) {
@@ -47,7 +49,8 @@ export function transform({
 		.use(external, { target: false, rel: ['nofollow'] })
 		.use(escape_code, { blocks: !!highlight })
 		.use(frontmatter)
-		.use(parse_yaml);
+		.use(parse_yaml)
+		.use(highlight_blocks, { highlighter: highlight });
 
 	if (smartypants) {
 		toMDAST.use(
@@ -81,9 +84,8 @@ const defaults = {
 	smartypants: true,
 	extension: '.svexy',
 	layout: false,
+	highlight: code_highlight,
 };
-
-const code_highlight = false;
 
 export const mdsvex = ({
 	remarkPlugins = [],
