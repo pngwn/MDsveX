@@ -3,6 +3,7 @@ import smartypants from 'retext-smartypants';
 import visit from 'unist-util-visit';
 import yaml from 'js-yaml';
 import * as svelte from 'svelte/compiler';
+import escape from 'escape-html';
 
 const parse = svelte.parse || svelte.default.parse;
 
@@ -32,8 +33,12 @@ const entites = [
 	[/}/g, '&#125;'],
 ];
 
-export function escape_code() {
+export function escape_code({ highlight }) {
 	function transformer(tree) {
+		if (!highlight) {
+			visit(tree, 'code', escape);
+		}
+
 		visit(tree, 'inlineCode', escape);
 
 		function escape(node) {
@@ -256,4 +261,44 @@ export function transform_hast({ layout }) {
 			];
 		});
 	}
+}
+
+export function highlight_blocks(highlight_fn) {
+	if (!highlight_fn) return;
+
+	return function(tree, vFile) {
+		visit(tree, 'code', node => {
+			node.type = 'html';
+			node.value = highlight_fn(node.value, node.lang, vFile.messages);
+		});
+	};
+}
+
+const langs = {};
+const cached_langs = {};
+let Prism;
+
+const escape_curlies = str =>
+	str.replace(/[{}]/g, c => ({ '{': '&#123;', '}': '&#125;' }[c]));
+
+export function code_highlight(code, lang) {
+	const _lang = langs[lang] || false;
+
+	if (!Prism) Prism = require('prismjs');
+
+	if (_lang === 'svelte' || _lang === 'sv') {
+		cached_langs[_lang] = require(`prism-svelte`);
+	} else if (_lang && !cached_langs[_lang]) {
+		cached_langs[_lang] = require(`prismjs/components/${_lang}.js`);
+	}
+
+	return `<pre class="language-${lang}">
+  <code class="language-${lang || ''}">
+${
+	_lang
+		? escape_curlies(Prism.highlight(code, Prism.languages[_lang], _lang))
+		: escape_curlies(escape(code))
+}
+  </code>
+</pre>`;
 }
