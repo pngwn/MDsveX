@@ -33,9 +33,9 @@ const entites = [
 	[/}/g, '&#125;'],
 ];
 
-export function escape_code({ highlight }) {
+export function escape_code({ blocks }) {
 	function transformer(tree) {
-		if (!highlight) {
+		if (!blocks) {
 			visit(tree, 'code', escape);
 		}
 
@@ -267,43 +267,46 @@ export function transform_hast({ layout }) {
 
 // { [lang]: { path, deps: pointer to key } }
 const langs = {};
-const cached_langs = {};
 let Prism;
 
 const make_path = (base_path, id) => base_path.replace('{id}', id);
 
 // we need to get all language metadata
 // also track if they depend on other languages so we can autoload without breaking
+// i don't actually know what the require key means but it sounds important
 
 function get_lang_info(name, lang_meta, base_path) {
 	const _lang_meta = {
+		name,
 		path: `prismjs/${make_path(base_path, name)}`,
-		deps: [],
+		deps: new Set(),
 	};
 
-	let aliases = [];
+	const aliases = new Set();
+
+	// todo: DRY this up
 
 	if (lang_meta.require) {
 		if (Array.isArray(lang_meta.require)) {
-			lang_meta.require.forEach(id => _lang_meta.deps.push(id));
+			lang_meta.require.forEach(id => _lang_meta.deps.add(id));
 		} else {
-			_lang_meta.deps.push(_lang_meta.require);
+			_lang_meta.deps.add(lang_meta.require);
 		}
 	}
 
 	if (lang_meta.peerDependencies) {
 		if (Array.isArray(lang_meta.peerDependencies)) {
-			lang_meta.peerDependencies.forEach(id => _lang_meta.deps.push(id));
+			lang_meta.peerDependencies.forEach(id => _lang_meta.deps.add(id));
 		} else {
-			_lang_meta.deps.push(lang_meta.peerDependencies);
+			_lang_meta.deps.add(lang_meta.peerDependencies);
 		}
 	}
 
 	if (lang_meta.alias) {
 		if (Array.isArray(lang_meta.alias)) {
-			aliases = lang_meta.alias;
+			lang_meta.alias.forEach(id => aliases.add(id));
 		} else {
-			aliases.push(_lang_meta.alias);
+			aliases.add(lang_meta.alias);
 		}
 	}
 
@@ -329,17 +332,13 @@ function load_language_metadata() {
 
 function load_language(lang) {
 	if (!langs[lang]) return;
-	if (cached_langs[lang]) return;
 
 	langs[lang].deps.forEach(name => load_language(name));
 
 	require(langs[lang].path);
-	cached_langs[name] = true;
-	langs[lang].aliases.forEach(alias => (cached_langs[alias] = true));
 }
 
 export function highlight_blocks({ highlighter: highlight_fn }) {
-	console.log('HL', highlight_fn);
 	if (!highlight_fn) return;
 
 	load_language_metadata();
@@ -359,14 +358,17 @@ export function code_highlight(code, lang) {
 	const _lang = langs[lang] || false;
 
 	if (!Prism) Prism = require('prismjs');
-
-	load_language(_lang);
+	if (!Prism.languages[_lang.name]) {
+		load_language(_lang.name);
+	}
 
 	return `<pre class="language-${lang}">
   <code class="language-${lang || ''}">
 ${
 	_lang
-		? escape_curlies(Prism.highlight(code, Prism.languages[_lang], _lang))
+		? escape_curlies(
+			Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
+		  )
 		: escape_curlies(escape(code))
 }
   </code>
