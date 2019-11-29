@@ -34,7 +34,6 @@ const entites = [
 
 export function escape_code() {
 	function transformer(tree) {
-		// visit(tree, 'code', escape);
 		visit(tree, 'inlineCode', escape);
 
 		function escape(node) {

@@ -39,12 +39,13 @@ export function transform({
 	rehypePlugins = [],
 	smartypants,
 	layout,
+	highlight,
 } = {}) {
 	const toMDAST = unified()
 		.use(markdown)
 		.use(mdsvex_parser)
 		.use(external, { target: false, rel: ['nofollow'] })
-		.use(escape_code)
+		.use(escape_code, { blocks: !!highlight })
 		.use(frontmatter)
 		.use(parse_yaml);
 
@@ -82,18 +83,22 @@ const defaults = {
 	layout: false,
 };
 
+const code_highlight = false;
+
 export const mdsvex = ({
 	remarkPlugins = [],
 	rehypePlugins = [],
 	smartypants = true,
 	extension = '.svexy',
 	layout = false,
+	highlight = code_highlight,
 } = defaults) => {
 	const parser = transform({
 		remarkPlugins,
 		rehypePlugins,
 		smartypants,
 		layout,
+		highlight,
 	});
 
 	return {

@@ -13,8 +13,10 @@ Hello I am text and this is a [link]({link}{link} "{title}").
 
 [Compound link](/base/{variable})
 
-![some image]({link}).
+![some image1]({link})
 
-![some image]({link} "Some title").
+![some image2]({assets}/file.jpg "Some title text")
 
-![some image]({link} "{title}").
+![some image3]({link} "Some title")
+
+![some image4]({link} "{title}")
