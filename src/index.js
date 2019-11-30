@@ -1,3 +1,5 @@
+import { join } from 'path';
+
 import unified from 'unified';
 import markdown from 'remark-parse';
 import external from 'remark-external-links';
@@ -87,6 +89,26 @@ const defaults = {
 	highlight: code_highlight,
 };
 
+function resolve_layout(layout_path) {
+	try {
+		require.resolve(layout_path);
+		return layout_path;
+	} catch (e) {
+		try {
+			const _path = join(process.cwd(), layout_path);
+			require.resolve(_path);
+			return _path;
+		} catch (e) {
+			throw new Error(
+				`The layout path you provided couldn't be found at either ${layout_path} or ${join(
+					process.cwd(),
+					layout_path
+				)}. Please double-check it and try again.`
+			);
+		}
+	}
+}
+
 export const mdsvex = ({
 	remarkPlugins = [],
 	rehypePlugins = [],
@@ -95,11 +117,23 @@ export const mdsvex = ({
 	layout = false,
 	highlight = code_highlight,
 } = defaults) => {
+	let _layout;
+
+	if (typeof layout === 'string') {
+		_layout = resolve_layout(layout);
+	} else if (Array.isArray(layout)) {
+		_layout = {};
+
+		for (const name in layout) {
+			_layout[name] = resolve_layout(layout[name]);
+		}
+	}
+
 	const parser = transform({
 		remarkPlugins,
 		rehypePlugins,
 		smartypants,
-		layout,
+		layout: _layout,
 		highlight,
 	});
 

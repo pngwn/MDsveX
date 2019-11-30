@@ -211,7 +211,7 @@ export function transform_hast({ layout }) {
 			const layout_import =
 				_layout && `import Layout_MDSVEX_DEFAULT from '${_layout}';`;
 
-			// add the layout if w are using one, resuing the existing script if one exists
+			// add the layout if w are using one, reusing the existing script if one exists
 			if (_layout && !instance[0]) {
 				instance.push({
 					type: 'raw',
