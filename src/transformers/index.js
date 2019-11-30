@@ -77,6 +77,19 @@ const RE_MODULE_SCRIPT = new RegExp(
 	`^(<script` + attrs + context + attrs + `>)`
 );
 
+function map_layout_to_path(filename, layout_map) {
+	console.log(filename, layout_map);
+	const match = Object.keys(layout_map).find(l =>
+		new RegExp(`\\/${l}\\/`).test(filename)
+	);
+
+	if (match) {
+		return match;
+	} else {
+		return layout_map['*'] ? '*' : undefined;
+	}
+}
+
 export function transform_hast({ layout }) {
 	return transformer;
 
@@ -99,6 +112,7 @@ export function transform_hast({ layout }) {
 		// the rest only applies to layouts and front matter
 		// this currently breaks position data svelte preprocessors don't currently support sourcemaps
 		// i'll fix this when they do
+		// console.log(layout);
 
 		if (!layout && !vFile.data.fm) return;
 
@@ -198,15 +212,55 @@ export function transform_hast({ layout }) {
 				`export const metadata = ${JSON.stringify(vFile.data.fm)};`;
 
 			// don't @ me
+			// update: i have forgotten why i did this
 
-			const _layout =
-				vFile.data.fm &&
-				vFile.data.fm.layout !== undefined &&
-				vFile.data.fm.layout === false
-					? false
-					: vFile.data.fm && vFile.data.fm.layout
-						? vFile.data.fm.layout
-						: layout;
+			// false or undefined or string
+			const _fm_layout = vFile.data.fm && vFile.data.fm.layout;
+
+			let _layout;
+
+			// passing false in fm forces no layout
+			if (_fm_layout === false) _layout = false;
+			// no frontmatter layout provided
+			else if (_fm_layout === undefined) {
+				// both layouts undefined
+				if (layout === undefined) {
+					_layout = false;
+
+					// options layout was an object so map folder to layout
+				} else if (typeof layout === 'object' && layout !== null) {
+					_layout = map_layout_to_path(vFile.filename, layout);
+
+					if (_layout === undefined)
+						vFile.messages.push([
+							`Could not find a matching layout for ${vFile.filename}.`,
+						]);
+
+					// options layout is a string, so always use it
+				} else if (typeof layout === 'string') {
+					_layout = layout;
+				}
+
+				// front matter layout is a string
+			} else if (typeof _fm_layout === 'string') {
+				// options layout is an object so do a simple lookup
+				if (typeof layout === 'object' && layout !== null) {
+					_layout = layout[_fm_layout] || layout['*'];
+
+					if (_layout === undefined)
+						vFile.messages.push([
+							`Could not find a layout with the name ${_fm_layout} and no fall back ('*') was provided.`,
+						]);
+
+					// options layout is a string, so this doesn't make sense: recover but warn
+				} else if (typeof layout === 'string') {
+					_layout = layout;
+
+					vFile.messages.push([
+						`You attempted to apply a named layout in the front-matter of ${vFile.filename}, but did not provide any named layouts as options to preprocessor. `,
+					]);
+				}
+			}
 
 			const layout_import =
 				_layout && `import Layout_MDSVEX_DEFAULT from '${_layout}';`;

@@ -517,48 +517,53 @@ number: 999
 		);
 	});
 
-	// 	test('Custom layout can be set via frontmatter', async t => {
-	// 		const output = await mdsvex().markup({
-	// 			content: `---
-	// layout: ./test/_fixtures/Layout.svelte
-	// string: value
-	// string2: 'value2'
-	// array: [1, 2, 3]
-	// number: 999
-	// ---
+	test('Custom layouts can be an object of named layouts, mapping to folders', async t => {
+		const output = await mdsvex({
+			layouts: {
+				one: './test/_fixtures/Layout.svelte',
+				two: './test/_fixtures/LayoutTwo.svelte',
+			},
+		}).markup({
+			content: `---
+	layout: ./test/_fixtures/Layout.svelte
+	string: value
+	string2: 'value2'
+	array: [1, 2, 3]
+	number: 999
+	---
 
-	// <script context="module">
-	// 	let thing = 27;
-	// </script>
+	<script context="module">
+		let thing = 27;
+	</script>
 
-	// # hello
-	// `,
-	// 			filename: 'file.svexy',
-	// 		});
+	# hello
+	`,
+			filename: 'blah/one/file.svexy',
+		});
 
-	// 		t.equal(
-	// 			`<script context="module">
-	// 	export const metadata = {"layout":"${join(
-	// 		__dirname,
-	// 		'../_fixtures/Layout.svelte'
-	// 	)}","string":"value","string2":"value2","array":[1,2,3],"number":999};
-	// 	let thing = 27;
-	// </script>
+		t.equal(
+			`<script context="module">
+		export const metadata = {"layout":"${join(
+		__dirname,
+		'../_fixtures/Layout.svelte'
+	)}","string":"value","string2":"value2","array":[1,2,3],"number":999};
+		let thing = 27;
+	</script>
 
-	// <script>
-	// 	import Layout_MDSVEX_DEFAULT from '${join(
-	// 		__dirname,
-	// 		'../_fixtures/Layout.svelte'
-	// 	)}';
-	// </script>
+	<script>
+		import Layout_MDSVEX_DEFAULT from '${join(
+		__dirname,
+		'../_fixtures/Layout.svelte'
+	)}';
+	</script>
 
-	// <Layout_MDSVEX_DEFAULT {...metadata}>
+	<Layout_MDSVEX_DEFAULT {...metadata}>
 
-	// <h1>hello</h1>
-	// </Layout_MDSVEX_DEFAULT>`,
-	// 			output.code
-	// 		);
-	// 	});
+	<h1>hello</h1>
+	</Layout_MDSVEX_DEFAULT>`,
+			output.code
+		);
+	});
 
 	// 	test('Custom layout can be set via frontmatter - strange formatting', async t => {
 	// 		const output = await mdsvex().markup({

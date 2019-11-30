@@ -129,6 +129,8 @@ export const mdsvex = ({
 		}
 	}
 
+	// console.log(layout);
+
 	const parser = transform({
 		remarkPlugins,
 		rehypePlugins,
@@ -141,7 +143,7 @@ export const mdsvex = ({
 		markup: async ({ content, filename }) => {
 			if (filename.split('.').pop() !== extension.split('.').pop()) return;
 
-			const parsed = await parser.process(content);
+			const parsed = await parser.process({ contents: content, filename });
 
 			return { code: parsed.contents };
 		},
