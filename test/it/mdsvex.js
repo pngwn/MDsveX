@@ -519,141 +519,94 @@ number: 999
 
 	test('Custom layouts can be an object of named layouts, mapping to folders', async t => {
 		const output = await mdsvex({
-			layouts: {
+			layout: {
 				one: './test/_fixtures/Layout.svelte',
 				two: './test/_fixtures/LayoutTwo.svelte',
 			},
 		}).markup({
 			content: `---
-	layout: ./test/_fixtures/Layout.svelte
-	string: value
-	string2: 'value2'
-	array: [1, 2, 3]
-	number: 999
-	---
+string: value
+string2: 'value2'
+array: [1, 2, 3]
+number: 999
+---
 
-	<script context="module">
-		let thing = 27;
-	</script>
+<script context="module">
+	let thing = 27;
+</script>
 
 	# hello
 	`,
-			filename: 'blah/one/file.svexy',
+			filename: 'blah/two/file.svexy',
 		});
 
 		t.equal(
 			`<script context="module">
-		export const metadata = {"layout":"${join(
-		__dirname,
-		'../_fixtures/Layout.svelte'
-	)}","string":"value","string2":"value2","array":[1,2,3],"number":999};
-		let thing = 27;
-	</script>
+	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+	let thing = 27;
+</script>
 
-	<script>
-		import Layout_MDSVEX_DEFAULT from '${join(
+<script>
+	import Layout_MDSVEX_DEFAULT from '${join(
 		__dirname,
-		'../_fixtures/Layout.svelte'
+		'../_fixtures/LayoutTwo.svelte'
 	)}';
-	</script>
+</script>
 
-	<Layout_MDSVEX_DEFAULT {...metadata}>
+<Layout_MDSVEX_DEFAULT {...metadata}>
 
-	<h1>hello</h1>
-	</Layout_MDSVEX_DEFAULT>`,
+<h1>hello</h1>
+</Layout_MDSVEX_DEFAULT>`,
 			output.code
 		);
 	});
 
-	// 	test('Custom layout can be set via frontmatter - strange formatting', async t => {
-	// 		const output = await mdsvex().markup({
-	// 			content: `---
-	// layout: ./test/_fixtures/Layout.svelte
-	// string: value
-	// string2: 'value2'
-	// array: [1, 2, 3]
-	// number: 999
-	// ---
+	test('Custom layout can be set via frontmatter - strange formatting', async t => {
+		const output = await mdsvex({
+			layout: {
+				one: './test/_fixtures/Layout.svelte',
+				two: './test/_fixtures/LayoutTwo.svelte',
+			},
+		}).markup({
+			content: `---
+layout: one
+string: value
+string2: 'value2'
+array: [1, 2, 3]
+number: 999
+---
 
-	// <script context="module">
-	// 	let thing = 27;
+<script context="module">
+	let thing = 27;
 
-	// </script>
+</script>
 
-	// # hello
-	// `,
-	// 			filename: 'file.svexy',
-	// 		});
+# hello
+	`,
+			filename: 'blah/two/file.svexy',
+		});
 
-	// 		t.equal(
-	// 			`<script context="module">
-	// 	export const metadata = {"layout":"${join(
-	// 		__dirname,
-	// 		'../_fixtures/Layout.svelte'
-	// 	)}","string":"value","string2":"value2","array":[1,2,3],"number":999};
-	// 	let thing = 27;
+		t.equal(
+			`<script context="module">
+	export const metadata = {"layout":"one","string":"value","string2":"value2","array":[1,2,3],"number":999};
+	let thing = 27;
 
-	// </script>
+</script>
 
-	// <script>
-	// 	import Layout_MDSVEX_DEFAULT from '${join(
-	// 		__dirname,
-	// 		'../_fixtures/Layout.svelte'
-	// 	)}';
-	// </script>
+<script>
+	import Layout_MDSVEX_DEFAULT from '${join(
+		__dirname,
+		'../_fixtures/Layout.svelte'
+	)}';
+</script>
 
-	// <Layout_MDSVEX_DEFAULT {...metadata}>
+<Layout_MDSVEX_DEFAULT {...metadata}>
 
-	// <h1>hello</h1>
-	// </Layout_MDSVEX_DEFAULT>`,
-	// 			output.code
-	// 		);
-	// 	});
-
-	// 	test('layouts provided via frontmatter should overwrite defaults', async t => {
-	// 		const output = await mdsvex({
-	// 			layout: './test/_fixtures/LayoutTwo.svelte',
-	// 		}).markup({
-	// 			content: `---
-	// layout: ./test/fixtures/Layout.svelte
-	// string: value
-	// string2: 'value2'
-	// array: [1, 2, 3]
-	// number: 999
-	// ---
-
-	// <script context="module">
-	// 	let thing = 27;
-	// </script>
-
-	// # hello
-	// `,
-	// 			filename: 'file.svexy',
-	// 		});
-
-	// 		t.equal(
-	// 			`<script context="module">
-	// 	export const metadata = {"layout":"${join(
-	// 		__dirname,
-	// 		'../_fixtures/Layout.svelte'
-	// 	)}","string":"value","string2":"value2","array":[1,2,3],"number":999};
-	// 	let thing = 27;
-	// </script>
-
-	// <script>
-	// 	import Layout_MDSVEX_DEFAULT from '${join(
-	// 		__dirname,
-	// 		'../_fixtures/Layout.svelte'
-	// 	)}';
-	// </script>
-
-	// <Layout_MDSVEX_DEFAULT {...metadata}>
-
-	// <h1>hello</h1>
-	// </Layout_MDSVEX_DEFAULT>`,
-	// 			output.code
-	// 		);
-	// 	});
+<h1>hello</h1>
+</Layout_MDSVEX_DEFAULT>`,
+			output.code
+		);
+	});
 
 	test('layout: false in front matter should remove any layouts', async t => {
 		const output = await mdsvex({

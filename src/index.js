@@ -121,7 +121,7 @@ export const mdsvex = ({
 
 	if (typeof layout === 'string') {
 		_layout = resolve_layout(layout);
-	} else if (Array.isArray(layout)) {
+	} else if (typeof layout === 'object') {
 		_layout = {};
 
 		for (const name in layout) {
@@ -130,6 +130,7 @@ export const mdsvex = ({
 	}
 
 	// console.log(layout);
+	// if (layout) console.log('layout: ', layout);
 
 	const parser = transform({
 		remarkPlugins,
@@ -142,6 +143,8 @@ export const mdsvex = ({
 	return {
 		markup: async ({ content, filename }) => {
 			if (filename.split('.').pop() !== extension.split('.').pop()) return;
+
+			// if (filename === 'blah/one/file.svexy') console.log('layout: ', layout);
 
 			const parsed = await parser.process({ contents: content, filename });
 

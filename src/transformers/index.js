@@ -78,13 +78,12 @@ const RE_MODULE_SCRIPT = new RegExp(
 );
 
 function map_layout_to_path(filename, layout_map) {
-	console.log(filename, layout_map);
 	const match = Object.keys(layout_map).find(l =>
 		new RegExp(`\\/${l}\\/`).test(filename)
 	);
 
 	if (match) {
-		return match;
+		return layout_map[match];
 	} else {
 		return layout_map['*'] ? '*' : undefined;
 	}
@@ -95,6 +94,7 @@ export function transform_hast({ layout }) {
 
 	function transformer(tree, vFile) {
 		// we need to keep { and } intact for svelte, so reverse the escaping in links and images
+		// if anyone actually uses these characters for any reason i'll probably just cry
 		visit(tree, 'element', node => {
 			if (node.tagName === 'a' && node.properties.href) {
 				node.properties.href = node.properties.href
@@ -110,15 +110,15 @@ export function transform_hast({ layout }) {
 		});
 
 		// the rest only applies to layouts and front matter
-		// this currently breaks position data svelte preprocessors don't currently support sourcemaps
+		// this currently breaks position data
+		// svelte preprocessors don't currently support sourcemaps
 		// i'll fix this when they do
-		// console.log(layout);
 
 		if (!layout && !vFile.data.fm) return;
 
 		visit(tree, 'root', node => {
 			// since we are wrapping and replacing we need to keep track of the different component 'parts'
-			// many special tags cannot be wrapped nor  can style or script tags
+			// many special tags cannot be wrapped nor can style or script tags
 			const parts = {
 				special: [],
 				html: [],
@@ -211,10 +211,6 @@ export function transform_hast({ layout }) {
 				vFile.data.fm &&
 				`export const metadata = ${JSON.stringify(vFile.data.fm)};`;
 
-			// don't @ me
-			// update: i have forgotten why i did this
-
-			// false or undefined or string
 			const _fm_layout = vFile.data.fm && vFile.data.fm.layout;
 
 			let _layout;
@@ -224,6 +220,7 @@ export function transform_hast({ layout }) {
 			// no frontmatter layout provided
 			else if (_fm_layout === undefined) {
 				// both layouts undefined
+
 				if (layout === undefined) {
 					_layout = false;
 
@@ -254,7 +251,7 @@ export function transform_hast({ layout }) {
 
 					// options layout is a string, so this doesn't make sense: recover but warn
 				} else if (typeof layout === 'string') {
-					_layout = layout;
+					_layout = false;
 
 					vFile.messages.push([
 						`You attempted to apply a named layout in the front-matter of ${vFile.filename}, but did not provide any named layouts as options to preprocessor. `,
@@ -265,7 +262,7 @@ export function transform_hast({ layout }) {
 			const layout_import =
 				_layout && `import Layout_MDSVEX_DEFAULT from '${_layout}';`;
 
-			// add the layout if w are using one, reusing the existing script if one exists
+			// add the layout if we are using one, reusing the existing script if one exists
 			if (_layout && !instance[0]) {
 				instance.push({
 					type: 'raw',
@@ -338,7 +335,7 @@ function get_lang_info(name, lang_meta, base_path) {
 
 	const aliases = new Set();
 
-	// todo: DRY this up
+	// todo: DRY this up, it is literally identical
 
 	if (lang_meta.require) {
 		if (Array.isArray(lang_meta.require)) {
