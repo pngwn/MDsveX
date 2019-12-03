@@ -5,6 +5,8 @@ import yaml from 'js-yaml';
 import * as svelte from 'svelte/compiler';
 import escape from 'escape-html';
 
+// this needs a big old cleanup
+
 const parse = svelte.parse || svelte.default.parse;
 
 // extract the yaml from 'yaml' nodes and put them in the vfil for later use
@@ -94,7 +96,7 @@ export function transform_hast({ layout }) {
 
 	function transformer(tree, vFile) {
 		// we need to keep { and } intact for svelte, so reverse the escaping in links and images
-		// if anyone actually uses these characters for any reason i'll probably just cry
+		// if anyone actually uses these characters for any other reason i'll probably just cry
 		visit(tree, 'element', node => {
 			if (node.tagName === 'a' && node.properties.href) {
 				node.properties.href = node.properties.href
@@ -224,7 +226,11 @@ export function transform_hast({ layout }) {
 				if (layout === undefined) {
 					_layout = false;
 
-					// options layout was an object so map folder to layout
+					// a single layout was passed to options, so always use it
+				} else if (layout.__mdsvex_default) {
+					_layout = layout.__mdsvex_default;
+
+					// multiple layouts were passed to options, so map folder to layout
 				} else if (typeof layout === 'object' && layout !== null) {
 					_layout = map_layout_to_path(vFile.filename, layout);
 
@@ -232,35 +238,33 @@ export function transform_hast({ layout }) {
 						vFile.messages.push([
 							`Could not find a matching layout for ${vFile.filename}.`,
 						]);
-
-					// options layout is a string, so always use it
-				} else if (typeof layout === 'string') {
-					_layout = layout;
 				}
 
 				// front matter layout is a string
 			} else if (typeof _fm_layout === 'string') {
-				// options layout is an object so do a simple lookup
-				if (typeof layout === 'object' && layout !== null) {
+				// options layout is a string, so this doesn't make sense: recover but warn
+				if (layout.__mdsvex_default) {
+					_layout = false;
+
+					vFile.messages.push([
+						`You attempted to apply a named layout in the front-matter of ${vFile.filename}, but did not provide any named layouts as options to the preprocessor. `,
+					]);
+
+					// options layout is an object so do a simple lookup
+				} else if (typeof layout === 'object' && layout !== null) {
 					_layout = layout[_fm_layout] || layout['*'];
 
 					if (_layout === undefined)
 						vFile.messages.push([
 							`Could not find a layout with the name ${_fm_layout} and no fall back ('*') was provided.`,
 						]);
-
-					// options layout is a string, so this doesn't make sense: recover but warn
-				} else if (typeof layout === 'string') {
-					_layout = false;
-
-					vFile.messages.push([
-						`You attempted to apply a named layout in the front-matter of ${vFile.filename}, but did not provide any named layouts as options to preprocessor. `,
-					]);
 				}
 			}
 
+			console.log(_layout);
+
 			const layout_import =
-				_layout && `import Layout_MDSVEX_DEFAULT from '${_layout}';`;
+				_layout && `import Layout_MDSVEX_DEFAULT from '${_layout.path}';`;
 
 			// add the layout if we are using one, reusing the existing script if one exists
 			if (_layout && !instance[0]) {

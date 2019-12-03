@@ -117,20 +117,20 @@ export const mdsvex = ({
 	layout = false,
 	highlight = code_highlight,
 } = defaults) => {
-	let _layout;
+	const _layout = layout ? {} : layout;
 
 	if (typeof layout === 'string') {
-		_layout = resolve_layout(layout);
+		_layout.__mdsvex_default = { path: resolve_layout(layout) };
 	} else if (typeof layout === 'object') {
-		_layout = {};
-
 		for (const name in layout) {
-			_layout[name] = resolve_layout(layout[name]);
+			_layout[name] = { path: resolve_layout(layout[name]) };
 		}
 	}
 
-	// console.log(layout);
-	// if (layout) console.log('layout: ', layout);
+	// layout
+	// { layout: path, components: { [key: string] : [string] } }
+
+	// _layout = process_layouts(_layout);
 
 	const parser = transform({
 		remarkPlugins,
@@ -147,7 +147,7 @@ export const mdsvex = ({
 			// if (filename === 'blah/one/file.svexy') console.log('layout: ', layout);
 
 			const parsed = await parser.process({ contents: content, filename });
-
+			console.log(parsed.messages);
 			return { code: parsed.contents };
 		},
 	};
