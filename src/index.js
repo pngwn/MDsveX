@@ -1,4 +1,7 @@
 import { join } from 'path';
+import { readFileSync } from 'fs';
+
+import * as svelte from 'svelte/compiler';
 
 import unified from 'unified';
 import markdown from 'remark-parse';
@@ -109,6 +112,40 @@ function resolve_layout(layout_path) {
 	}
 }
 
+function process_layouts(layouts) {
+	const _layouts = layouts;
+
+	for (const key in _layouts) {
+		const layout = readFileSync(_layouts[key].path, { encoding: 'utf8' });
+		const ast = svelte.parse(layout);
+
+		if (ast.module) {
+			const component_export = ast.module.content.body.find(
+				node =>
+					node.type === 'ExportNamedDeclaration' &&
+					node.declaration.declarations[0].id.name === 'components'
+			);
+
+			_layouts[key].components =
+				component_export &&
+				component_export.declaration.declarations[0].init.properties.reduce(
+					(acc, { key, value }) => {
+						const _key = key.name;
+						const _value = {
+							name: value.name === _key ? `MdsvexC_${value.name}` : value.name,
+							original: value.name === _key ? value.name : null,
+						};
+
+						return { ...acc, [_key]: _value };
+					},
+					{}
+				);
+		}
+	}
+
+	return _layouts;
+}
+
 export const mdsvex = ({
 	remarkPlugins = [],
 	rehypePlugins = [],
@@ -117,7 +154,7 @@ export const mdsvex = ({
 	layout = false,
 	highlight = code_highlight,
 } = defaults) => {
-	const _layout = layout ? {} : layout;
+	let _layout = layout ? {} : layout;
 
 	if (typeof layout === 'string') {
 		_layout.__mdsvex_default = { path: resolve_layout(layout) };
@@ -130,7 +167,9 @@ export const mdsvex = ({
 	// layout
 	// { layout: path, components: { [key: string] : [string] } }
 
-	// _layout = process_layouts(_layout);
+	_layout = process_layouts(_layout);
+
+	console.log(_layout);
 
 	const parser = transform({
 		remarkPlugins,
@@ -144,10 +183,8 @@ export const mdsvex = ({
 		markup: async ({ content, filename }) => {
 			if (filename.split('.').pop() !== extension.split('.').pop()) return;
 
-			// if (filename === 'blah/one/file.svexy') console.log('layout: ', layout);
-
 			const parsed = await parser.process({ contents: content, filename });
-			console.log(parsed.messages);
+
 			return { code: parsed.contents };
 		},
 	};

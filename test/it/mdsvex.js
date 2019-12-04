@@ -637,4 +637,64 @@ layout: false
 			output.code
 		);
 	});
+
+	test('layout: allow custom components', async t => {
+		const output = await mdsvex({
+			layout: './test/_fixtures/LayoutWithComponents.svelte',
+		}).markup({
+			content: `---
+layout: false
+---
+
+<script context="module">
+	let thing = 27;
+</script>
+
+# hello
+`,
+			filename: 'file.svexy',
+		});
+
+		t.equal(
+			`<script context="module">
+	export const metadata = {"layout":false};
+	let thing = 27;
+</script>
+
+
+<h1>hello</h1>
+`,
+			output.code
+		);
+	});
+
+	test('layout: allow custom components', async t => {
+		const output = await mdsvex({
+			layout: './test/_fixtures/LayoutTwoWithComponents.svelte',
+		}).markup({
+			content: `---
+layout: false
+---
+
+<script context="module">
+	let thing = 27;
+</script>
+
+# hello
+`,
+			filename: 'file.svexy',
+		});
+
+		t.equal(
+			`<script context="module">
+	export const metadata = {"layout":false};
+	let thing = 27;
+</script>
+
+
+<h1>hello</h1>
+`,
+			output.code
+		);
+	});
 }

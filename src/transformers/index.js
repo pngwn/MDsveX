@@ -261,8 +261,6 @@ export function transform_hast({ layout }) {
 				}
 			}
 
-			console.log(_layout);
-
 			const layout_import =
 				_layout && `import Layout_MDSVEX_DEFAULT from '${_layout.path}';`;
 
