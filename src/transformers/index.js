@@ -112,7 +112,7 @@ export function transform_hast({ layout }) {
 		});
 
 		// the rest only applies to layouts and front matter
-		// this currently breaks position data
+		// this  breaks position data
 		// svelte preprocessors don't currently support sourcemaps
 		// i'll fix this when they do
 
@@ -292,7 +292,7 @@ export function transform_hast({ layout }) {
 				);
 			}
 
-			// inject the frontmatter into the module script if there is any, resuing the existing module script if one exists
+			// inject the frontmatter into the module script if there is any, reusing the existing module script if one exists
 			if (!_module[0] && fm) {
 				_module.push({
 					type: 'raw',
