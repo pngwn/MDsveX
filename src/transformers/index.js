@@ -261,8 +261,23 @@ export function transform_hast({ layout }) {
 				}
 			}
 
+			if (_layout && _layout.components) {
+				for (const component in _layout.components.map) {
+					visit(tree, 'element', node => {
+						if (node.tagName === component) {
+							node.tagName = `Components.${_layout.components.map[component].name}`;
+						}
+					});
+				}
+			}
+
 			const layout_import =
-				_layout && `import Layout_MDSVEX_DEFAULT from '${_layout.path}';`;
+				_layout &&
+				`import Layout_MDSVEX_DEFAULT${
+					_layout.components
+						? `, { ${_layout.components.export_name} as Components }`
+						: ''
+				} from '${_layout.path}';`;
 
 			// add the layout if we are using one, reusing the existing script if one exists
 			if (_layout && !instance[0]) {

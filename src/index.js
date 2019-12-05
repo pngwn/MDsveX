@@ -123,12 +123,20 @@ function process_layouts(layouts) {
 			const component_export = ast.module.content.body.find(
 				node =>
 					node.type === 'ExportNamedDeclaration' &&
-					node.declaration.declarations[0].id.name === 'components'
+					(node.declaration.declarations[0].id.name === 'components' ||
+						node.declaration.declarations[0].id.name === 'Components')
 			);
 
-			_layouts[key].components =
-				component_export &&
-				component_export.declaration.declarations[0].init.properties.reduce(
+			if (component_export) {
+				console.log(component_export.declaration.declarations);
+				_layouts[key].components = {};
+
+				_layouts[key].components.export_name =
+					component_export.declaration.declarations[0].id.name;
+
+				_layouts[
+					key
+				].components.map = component_export.declaration.declarations[0].init.properties.reduce(
 					(acc, { key, value }) => {
 						const _key = key.name;
 						const _value = {
@@ -140,6 +148,7 @@ function process_layouts(layouts) {
 					},
 					{}
 				);
+			}
 		}
 	}
 
@@ -163,9 +172,6 @@ export const mdsvex = ({
 			_layout[name] = { path: resolve_layout(layout[name]) };
 		}
 	}
-
-	// layout
-	// { layout: path, components: { [key: string] : [string] } }
 
 	_layout = process_layouts(_layout);
 

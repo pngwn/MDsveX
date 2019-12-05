@@ -642,9 +642,7 @@ layout: false
 		const output = await mdsvex({
 			layout: './test/_fixtures/LayoutWithComponents.svelte',
 		}).markup({
-			content: `---
-layout: false
----
+			content: `
 
 <script context="module">
 	let thing = 27;
@@ -657,13 +655,17 @@ layout: false
 
 		t.equal(
 			`<script context="module">
-	export const metadata = {"layout":false};
 	let thing = 27;
 </script>
 
+<script>
+	import Layout_MDSVEX_DEFAULT, { components as Components } from '/Users/peterallen/Projects/mdsvex/test/_fixtures/LayoutWithComponents.svelte';
+</script>
 
-<h1>hello</h1>
-`,
+<Layout_MDSVEX_DEFAULT>
+
+<Components.H1>hello</Components.H1>
+</Layout_MDSVEX_DEFAULT>`,
 			output.code
 		);
 	});
@@ -672,28 +674,33 @@ layout: false
 		const output = await mdsvex({
 			layout: './test/_fixtures/LayoutTwoWithComponents.svelte',
 		}).markup({
-			content: `---
-layout: false
----
+			content: `
 
 <script context="module">
 	let thing = 27;
 </script>
 
 # hello
+
+I am some paragraph text
 `,
 			filename: 'file.svexy',
 		});
 
 		t.equal(
 			`<script context="module">
-	export const metadata = {"layout":false};
 	let thing = 27;
 </script>
 
+<script>
+	import Layout_MDSVEX_DEFAULT, { components as Components } from '/Users/peterallen/Projects/mdsvex/test/_fixtures/LayoutTwoWithComponents.svelte';
+</script>
 
-<h1>hello</h1>
-`,
+<Layout_MDSVEX_DEFAULT>
+
+<Components.MdsvexC_h1>hello</Components.MdsvexC_h1>
+<Components.MdsvexC_p>I am some paragraph text</Components.MdsvexC_p>
+</Layout_MDSVEX_DEFAULT>`,
 			output.code
 		);
 	});
