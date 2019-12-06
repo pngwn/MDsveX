@@ -265,7 +265,7 @@ export function transform_hast({ layout }) {
 				for (const component in _layout.components.map) {
 					visit(tree, 'element', node => {
 						if (node.tagName === component) {
-							node.tagName = `Components.${_layout.components.map[component].name}`;
+							node.tagName = `Components.${component}`;
 						}
 					});
 				}

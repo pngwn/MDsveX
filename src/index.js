@@ -140,8 +140,7 @@ function process_layouts(layouts) {
 					(acc, { key, value }) => {
 						const _key = key.name;
 						const _value = {
-							name: value.name === _key ? `MdsvexC_${value.name}` : value.name,
-							original: value.name === _key ? value.name : null,
+							name: value.name === value.name,
 						};
 
 						return { ...acc, [_key]: _value };
