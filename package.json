@@ -43,7 +43,6 @@
 		"node-fetch": "^2.6.0",
 		"prettier": "^1.19.1",
 		"prettier-eslint": "^9.0.0",
-		"prismjs": "^1.17.1",
 		"rehype-slug": "^2.0.3",
 		"rehype-toc": "^2.2.2",
 		"remark-autolink-headings": "^5.2.1",
@@ -70,5 +69,7 @@
 	"peerDependencies": {
 		"svelte": "3.x"
 	},
-	"dependencies": {}
+	"dependencies": {
+		"prismjs": "^1.17.1"
+	}
 }
