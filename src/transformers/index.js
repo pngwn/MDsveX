@@ -81,7 +81,7 @@ const RE_MODULE_SCRIPT = new RegExp(
 
 function map_layout_to_path(filename, layout_map) {
 	const match = Object.keys(layout_map).find(l =>
-		new RegExp(`\\/${l}\\/`).test(filename)
+		new RegExp(`\\/${l}\\/`).test(filename.replace(process.cwd(), ''))
 	);
 
 	if (match) {
