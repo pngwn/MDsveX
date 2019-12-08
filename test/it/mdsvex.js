@@ -664,7 +664,7 @@ layout: false
 
 <Layout_MDSVEX_DEFAULT>
 
-<Components.H1>hello</Components.H1>
+<Components.h1>hello</Components.h1>
 </Layout_MDSVEX_DEFAULT>`,
 			output.code
 		);
@@ -698,8 +698,8 @@ I am some paragraph text
 
 <Layout_MDSVEX_DEFAULT>
 
-<Components.MdsvexC_h1>hello</Components.MdsvexC_h1>
-<Components.MdsvexC_p>I am some paragraph text</Components.MdsvexC_p>
+<Components.h1>hello</Components.h1>
+<Components.p>I am some paragraph text</Components.p>
 </Layout_MDSVEX_DEFAULT>`,
 			output.code
 		);
