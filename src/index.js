@@ -128,7 +128,6 @@ function process_layouts(layouts) {
 			);
 
 			if (component_export) {
-				console.log(component_export.declaration.declarations);
 				_layouts[key].components = {};
 
 				_layouts[key].components.export_name =
@@ -173,8 +172,6 @@ export const mdsvex = ({
 	}
 
 	_layout = process_layouts(_layout);
-
-	console.log(_layout);
 
 	const parser = transform({
 		remarkPlugins,
