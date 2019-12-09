@@ -6,13 +6,14 @@ import * as svelte from 'svelte/compiler';
 import unified from 'unified';
 import markdown from 'remark-parse';
 import external from 'remark-external-links';
-import frontmatter from 'remark-frontmatter';
+import extract_frontmatter from 'remark-frontmatter';
 import remark2rehype from 'remark-rehype';
 import hast_to_html from '@starptech/prettyhtml-hast-to-html';
 
 import { mdsvex_parser } from './parsers/';
 import {
-	parse_yaml,
+	default_frontmatter,
+	parse_frontmatter,
 	escape_code,
 	transform_hast,
 	smartypants_transformer,
@@ -44,17 +45,21 @@ const apply_plugins = (plugins, parser) => {
 export function transform({
 	remarkPlugins = [],
 	rehypePlugins = [],
+	frontmatter,
 	smartypants,
 	layout,
 	highlight,
 } = {}) {
+	const fm_opts = frontmatter
+		? frontmatter
+		: { parse: default_frontmatter, type: 'yaml', marker: '-' };
 	const toMDAST = unified()
 		.use(markdown)
 		.use(mdsvex_parser)
 		.use(external, { target: false, rel: ['nofollow'] })
 		.use(escape_code, { blocks: !!highlight })
-		.use(frontmatter)
-		.use(parse_yaml)
+		.use(extract_frontmatter, fm_opts)
+		.use(parse_frontmatter, { parse: fm_opts.parse, type: fm_opts.type })
 		.use(highlight_blocks, { highlighter: highlight });
 
 	if (smartypants) {
@@ -160,6 +165,7 @@ export const mdsvex = ({
 	extension = '.svexy',
 	layout = false,
 	highlight = code_highlight,
+	frontmatter,
 } = defaults) => {
 	let _layout = layout ? {} : layout;
 
@@ -179,6 +185,7 @@ export const mdsvex = ({
 		smartypants,
 		layout: _layout,
 		highlight,
+		frontmatter,
 	});
 
 	return {

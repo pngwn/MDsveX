@@ -6,6 +6,7 @@ import headings from 'remark-autolink-headings';
 import slug from 'remark-slug';
 import toc from 'rehype-toc';
 import rehype_slug from 'rehype-slug';
+import toml from 'toml';
 
 export default function(test) {
 	test('it should work', async t => {
@@ -517,6 +518,67 @@ number: 999
 		);
 	});
 
+	test('User can provide a frontmatter function for non-YAML frontmatter', async t => {
+		const parse_toml = (v, m) => {
+			try {
+				return toml.parse(v);
+			} catch (e) {
+				m.push(
+					'Parsing error on line ' +
+						e.line +
+						', column ' +
+						e.column +
+						': ' +
+						e.message
+				);
+			}
+		};
+		const output = await mdsvex({
+			layout: './test/_fixtures/Layout.svelte',
+			frontmatter: {
+				parse: parse_toml,
+				type: 'toml',
+				marker: '+',
+			},
+		}).markup({
+			content: `+++
+title = "TOML Example"
+
+[owner]
+name = "some name"
+dob = 1879-05-27T07:32:00-08:00 # First class dates
++++
+
+<script context="module">
+	let thing = 27;
+</script>
+
+# hello
+`,
+			filename: 'file.svexy',
+		});
+
+		t.equal(
+			`<script context="module">
+	export const metadata = {"title":"TOML Example","owner":{"name":"some name","dob":"1879-05-27T15:32:00.000Z"}};
+	let thing = 27;
+</script>
+
+<script>
+	import Layout_MDSVEX_DEFAULT from '${join(
+		__dirname,
+		'../_fixtures/Layout.svelte'
+	)}';
+</script>
+
+<Layout_MDSVEX_DEFAULT {...metadata}>
+
+<h1>hello</h1>
+</Layout_MDSVEX_DEFAULT>`,
+			output.code
+		);
+	});
+
 	test('Custom layouts can be an object of named layouts, mapping to folders', async t => {
 		const output = await mdsvex({
 			layout: {
@@ -665,6 +727,41 @@ layout: false
 <Layout_MDSVEX_DEFAULT>
 
 <Components.h1>hello</Components.h1>
+</Layout_MDSVEX_DEFAULT>`,
+			output.code
+		);
+	});
+
+	test('layout: allow custom components', async t => {
+		const output = await mdsvex({
+			layout: './test/_fixtures/LayoutTwoWithComponents.svelte',
+		}).markup({
+			content: `
+
+<script context="module">
+	let thing = 27;
+</script>
+
+# hello
+
+I am some paragraph text
+`,
+			filename: 'file.svexy',
+		});
+
+		t.equal(
+			`<script context="module">
+	let thing = 27;
+</script>
+
+<script>
+	import Layout_MDSVEX_DEFAULT, { components as Components } from '/Users/peterallen/Projects/mdsvex/test/_fixtures/LayoutTwoWithComponents.svelte';
+</script>
+
+<Layout_MDSVEX_DEFAULT>
+
+<Components.h1>hello</Components.h1>
+<Components.p>I am some paragraph text</Components.p>
 </Layout_MDSVEX_DEFAULT>`,
 			output.code
 		);

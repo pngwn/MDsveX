@@ -11,15 +11,22 @@ const parse = svelte.parse || svelte.default.parse;
 
 // extract the yaml from 'yaml' nodes and put them in the vfil for later use
 
-export function parse_yaml() {
+export function default_frontmatter(value, messages) {
+	try {
+		return yaml.safeLoad(value);
+	} catch (e) {
+		messages.push(['YAML failed to parse', e]);
+	}
+}
+
+export function parse_frontmatter({ parse, type }) {
 	return transformer;
 
 	function transformer(tree, vFile) {
-		visit(tree, 'yaml', node => {
-			try {
-				vFile.data.fm = yaml.safeLoad(node.value);
-			} catch (e) {
-				vFile.messages.push(['YAML failed to parse', e]);
+		visit(tree, type, node => {
+			const data = parse(node.value, vFile.messages);
+			if (data) {
+				vFile.data.fm = data;
 			}
 		});
 	}
