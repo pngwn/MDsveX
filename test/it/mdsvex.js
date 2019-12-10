@@ -376,6 +376,7 @@ number: 999
 		t.equal(
 			`<script context="module">
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+	const { string, string2, array, number } = metadata;
 </script>
 
 <h1>hello</h1>
@@ -405,6 +406,7 @@ number: 999
 		t.equal(
 			`<script context="module">
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+	const { string, string2, array, number } = metadata;
 	let thing = 27;
 </script>
 
@@ -436,6 +438,7 @@ number: 999
 		t.equal(
 			`<script context=module>
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+	const { string, string2, array, number } = metadata;
 	let thing = 27;
 </script>
 
@@ -467,6 +470,7 @@ number: 999
 		t.equal(
 			`<script type="ts" lang=whatever context=module thing="whatsit" doodaa=thingamabob>
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+	const { string, string2, array, number } = metadata;
 	let thing = 27;
 </script>
 
@@ -500,6 +504,7 @@ number: 999
 		t.equal(
 			`<script context="module">
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+	const { string, string2, array, number } = metadata;
 	let thing = 27;
 </script>
 
@@ -561,6 +566,7 @@ dob = 1879-05-27T07:32:00-08:00 # First class dates
 		t.equal(
 			`<script context="module">
 	export const metadata = {"title":"TOML Example","owner":{"name":"some name","dob":"1879-05-27T15:32:00.000Z"}};
+	const { title, owner } = metadata;
 	let thing = 27;
 </script>
 
@@ -605,6 +611,7 @@ number: 999
 		t.equal(
 			`<script context="module">
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+	const { string, string2, array, number } = metadata;
 	let thing = 27;
 </script>
 
@@ -651,6 +658,7 @@ number: 999
 		t.equal(
 			`<script context="module">
 	export const metadata = {"layout":"one","string":"value","string2":"value2","array":[1,2,3],"number":999};
+	const { layout, string, string2, array, number } = metadata;
 	let thing = 27;
 
 </script>
@@ -690,6 +698,7 @@ layout: false
 		t.equal(
 			`<script context="module">
 	export const metadata = {"layout":false};
+	const { layout } = metadata;
 	let thing = 27;
 </script>
 

@@ -218,7 +218,8 @@ export function transform_hast({ layout }) {
 
 			const fm =
 				vFile.data.fm &&
-				`export const metadata = ${JSON.stringify(vFile.data.fm)};`;
+				`export const metadata = ${JSON.stringify(vFile.data.fm)};\n` +
+					`\tconst { ${Object.keys(vFile.data.fm).join(', ')} } = metadata;`;
 
 			const _fm_layout = vFile.data.fm && vFile.data.fm.layout;
 
@@ -238,6 +239,7 @@ export function transform_hast({ layout }) {
 					_layout = layout.__mdsvex_default;
 
 					// multiple layouts were passed to options, so map folder to layout
+					// todo fallback layout
 				} else if (typeof layout === 'object' && layout !== null) {
 					_layout = map_layout_to_path(vFile.filename, layout);
 
