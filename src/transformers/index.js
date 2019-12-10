@@ -94,7 +94,7 @@ function map_layout_to_path(filename, layout_map) {
 	if (match) {
 		return layout_map[match];
 	} else {
-		return layout_map['*'] ? '*' : undefined;
+		return layout_map['_'] ? layout_map['_'] : undefined;
 	}
 }
 
@@ -239,7 +239,6 @@ export function transform_hast({ layout }) {
 					_layout = layout.__mdsvex_default;
 
 					// multiple layouts were passed to options, so map folder to layout
-					// todo fallback layout
 				} else if (typeof layout === 'object' && layout !== null) {
 					_layout = map_layout_to_path(vFile.filename, layout);
 

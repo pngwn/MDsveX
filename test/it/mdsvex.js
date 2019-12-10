@@ -709,6 +709,52 @@ layout: false
 		);
 	});
 
+	test('Fallback layouts should work', async t => {
+		const output = await mdsvex({
+			layout: {
+				one: './test/_fixtures/Layout.svelte',
+				two: './test/_fixtures/LayoutTwo.svelte',
+				_: './test/_fixtures/LayoutThree.svelte',
+			},
+		}).markup({
+			content: `---
+string: value
+string2: 'value2'
+array: [1, 2, 3]
+number: 999
+---
+
+<script context="module">
+	let thing = 27;
+</script>
+
+	# hello
+	`,
+			filename: 'blah/three/file.svexy',
+		});
+
+		t.equal(
+			`<script context="module">
+	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+	const { string, string2, array, number } = metadata;
+	let thing = 27;
+</script>
+
+<script>
+	import Layout_MDSVEX_DEFAULT from '${join(
+		__dirname,
+		'../_fixtures/LayoutThree.svelte'
+	)}';
+</script>
+
+<Layout_MDSVEX_DEFAULT {...metadata}>
+
+<h1>hello</h1>
+</Layout_MDSVEX_DEFAULT>`,
+			output.code
+		);
+	});
+
 	test('layout: allow custom components', async t => {
 		const output = await mdsvex({
 			layout: './test/_fixtures/LayoutWithComponents.svelte',
