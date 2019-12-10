@@ -1,1 +1,0 @@
-export { mdsvex } from './parse';
