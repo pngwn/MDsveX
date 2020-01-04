@@ -108,6 +108,7 @@ export function mdsvex({
       // reset the script and modules or we're in trouble
       md.svx = [];
       md.svxmod = [];
+      md.svxstyles = ['', []];
 
       return {
         code: `${html}${scripts}${modules}${styles}`,
