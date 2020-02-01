@@ -92,7 +92,7 @@ const defaults = {
 	remarkPlugins: [],
 	rehypePlugins: [],
 	smartypants: true,
-	extension: '.svexy',
+	extension: '.svx',
 	layout: false,
 	highlight: code_highlight,
 };
@@ -162,7 +162,7 @@ export const mdsvex = ({
 	remarkPlugins = [],
 	rehypePlugins = [],
 	smartypants = true,
-	extension = '.svexy',
+	extension = '.svx',
 	layout = false,
 	highlight = code_highlight,
 	frontmatter,
