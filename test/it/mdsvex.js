@@ -12,7 +12,7 @@ export default function(test) {
 	test('it should work', async t => {
 		const output = await mdsvex().markup({
 			content: `# hello`,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(output.code, `<h1>hello</h1>`);
@@ -29,7 +29,7 @@ Hello friends, how are we today
 
 :::
       `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -52,7 +52,7 @@ Hello friends, how are we today
 
 :::
     `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -76,7 +76,7 @@ Hello friends, how are we today
 
 :::
     `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -95,7 +95,7 @@ Hello friends, how are we today
 ## Two
 
 ### Three`,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -119,7 +119,7 @@ Hello friends, how are we today
 ## Two
 
 ### Three`,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -145,7 +145,7 @@ Hello friends, how are we today
 ## Two
 
 ### Three`,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -167,7 +167,7 @@ Hello friends, how are we today
 			smartypants: true,
 		}).markup({
 			content: `"Hello friends!" 'This is some stuff...'`,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(`<p>“Hello friends!” ‘This is some stuff…’</p>`, output.code);
@@ -178,7 +178,7 @@ Hello friends, how are we today
 			smartypants: { dashes: 'oldschool', ellipses: false },
 		}).markup({
 			content: `hello---friend...`,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(`<p>hello—friend...</p>`, output.code);
@@ -207,7 +207,7 @@ Hello friends, how are we today
 			layout: './test/_fixtures/Layout.svelte',
 		}).markup({
 			content: `# hello`,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -243,7 +243,7 @@ Hello friends, how are we today
   }
 </style>
 `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -285,7 +285,7 @@ Hello friends, how are we today
   }
 </style>
 `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -333,7 +333,7 @@ hello friends
 
 boo boo boo
 `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -370,7 +370,7 @@ number: 999
 
 # hello
 `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -400,7 +400,7 @@ number: 999
 
 # hello
 `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -432,7 +432,7 @@ number: 999
 
 # hello
 `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -464,7 +464,7 @@ number: 999
 
 # hello
 `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -498,7 +498,7 @@ number: 999
 
 # hello
 `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -560,7 +560,7 @@ dob = 1879-05-27T07:32:00-08:00 # First class dates
 
 # hello
 `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -605,7 +605,7 @@ number: 999
 
 	# hello
 	`,
-			filename: 'blah/two/file.svexy',
+			filename: 'blah/two/file.svx',
 		});
 
 		t.equal(
@@ -652,7 +652,7 @@ number: 999
 
 # hello
 	`,
-			filename: 'blah/two/file.svexy',
+			filename: 'blah/two/file.svx',
 		});
 
 		t.equal(
@@ -692,7 +692,7 @@ layout: false
 
 # hello
 `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -730,7 +730,7 @@ number: 999
 
 	# hello
 	`,
-			filename: 'blah/three/file.svexy',
+			filename: 'blah/three/file.svx',
 		});
 
 		t.equal(
@@ -767,7 +767,7 @@ number: 999
 
 # hello
 `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -801,7 +801,7 @@ number: 999
 
 I am some paragraph text
 `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(
@@ -836,7 +836,7 @@ I am some paragraph text
 
 I am some paragraph text
 `,
-			filename: 'file.svexy',
+			filename: 'file.svx',
 		});
 
 		t.equal(

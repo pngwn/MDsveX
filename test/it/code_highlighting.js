@@ -8,7 +8,7 @@ export default function(test) {
 const some_var = whatever;
 \`\`\`
     `,
-			filename: 'thing.svexy',
+			filename: 'thing.svx',
 		});
 
 		t.equal(
@@ -29,7 +29,7 @@ const some_var = whatever;
 </script>
 \`\`\`
     `,
-			filename: 'thing.svexy',
+			filename: 'thing.svx',
 		});
 
 		t.equal(
@@ -50,7 +50,7 @@ const some_var = whatever;
 const thing = 'string';
 \`\`\`
     `,
-			filename: 'thing.svexy',
+			filename: 'thing.svx',
 		});
 
 		t.equal(
@@ -72,7 +72,7 @@ function() {
 }
 \`\`\`
     `,
-			filename: 'thing.svexy',
+			filename: 'thing.svx',
 		});
 
 		t.equal(
@@ -96,7 +96,7 @@ name = gets.chomp
 puts "Hello #{name}."
 \`\`\`
     `,
-			filename: 'thing.svexy',
+			filename: 'thing.svx',
 		});
 
 		t.equal(
@@ -123,7 +123,7 @@ DEFINITIONS LIST
     (: '/', SINGLE DEFINITION :).
 \`\`\`
     `,
-			filename: 'thing.svexy',
+			filename: 'thing.svx',
 		});
 
 		t.equal(
@@ -152,7 +152,7 @@ DEFINITIONS LIST
 i am some code
 \`\`\`
     `,
-			filename: 'thing.svexy',
+			filename: 'thing.svx',
 		});
 
 		t.equal(`<code class="somecode">i am some code</code>`, output.code);
