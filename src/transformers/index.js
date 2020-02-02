@@ -2,12 +2,10 @@ import retext from 'retext';
 import smartypants from 'retext-smartypants';
 import visit from 'unist-util-visit';
 import yaml from 'js-yaml';
-import * as svelte from 'svelte/compiler';
+import { parse } from 'svelte/compiler';
 import escape from 'escape-html';
 
 // this needs a big old cleanup
-
-const parse = svelte.parse || svelte.default.parse;
 
 // extract the yaml from 'yaml' nodes and put them in the vfil for later use
 
@@ -390,32 +388,36 @@ function get_lang_info(name, lang_meta, base_path) {
 }
 
 function load_language_metadata() {
-	const { meta, ...languages } = require('prismjs/components.json').languages;
+	if (!process.browser) {
+		const { meta, ...languages } = require('prismjs/components.json').languages;
 
-	for (const lang in languages) {
-		const [lang_info, aliases] = get_lang_info(
-			lang,
-			languages[lang],
-			meta.path
-		);
+		for (const lang in languages) {
+			const [lang_info, aliases] = get_lang_info(
+				lang,
+				languages[lang],
+				meta.path
+			);
 
-		langs[lang] = lang_info;
-		aliases.forEach(_n => {
-			langs[_n] = langs[lang];
-		});
+			langs[lang] = lang_info;
+			aliases.forEach(_n => {
+				langs[_n] = langs[lang];
+			});
+		}
 	}
 }
 
 function load_language(lang) {
-	if (!langs[lang]) return;
+	if (!process.browser) {
+		if (!langs[lang]) return;
 
-	langs[lang].deps.forEach(name => load_language(name));
+		langs[lang].deps.forEach(name => load_language(name));
 
-	require(langs[lang].path);
+		require(langs[lang].path);
+	}
 }
 
 export function highlight_blocks({ highlighter: highlight_fn }) {
-	if (!highlight_fn) return;
+	if (!highlight_fn || process.browser) return;
 
 	load_language_metadata();
 
@@ -431,14 +433,15 @@ const escape_curlies = str =>
 	str.replace(/[{}]/g, c => ({ '{': '&#123;', '}': '&#125;' }[c]));
 
 export function code_highlight(code, lang) {
-	const _lang = langs[lang] || false;
+	if (!process.browser) {
+		const _lang = langs[lang] || false;
 
-	if (!Prism) Prism = require('prismjs');
-	if (!Prism.languages[_lang.name]) {
-		load_language(_lang.name);
-	}
+		if (!Prism) Prism = require('prismjs');
+		if (!Prism.languages[_lang.name]) {
+			load_language(_lang.name);
+		}
 
-	return `<pre class="language-${lang}">
+		return `<pre class="language-${lang}">
   <code class="language-${lang || ''}">
 ${
 	_lang
@@ -449,4 +452,11 @@ ${
 }
   </code>
 </pre>`;
+	} else {
+		return `<pre class="language-${lang}">
+  <code class="language-${lang || ''}">
+${escape_curlies(escape(code))}
+  </code>
+</pre>`;
+	}
 }

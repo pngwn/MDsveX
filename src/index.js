@@ -1,8 +1,6 @@
 import { join } from 'path';
-import { readFileSync } from 'fs';
-
-import * as svelte from 'svelte/compiler';
-
+import fs from 'fs';
+import { parse } from 'svelte/compiler';
 import unified from 'unified';
 import markdown from 'remark-parse';
 import external from 'remark-external-links';
@@ -121,8 +119,8 @@ function process_layouts(layouts) {
 	const _layouts = layouts;
 
 	for (const key in _layouts) {
-		const layout = readFileSync(_layouts[key].path, { encoding: 'utf8' });
-		const ast = svelte.parse(layout);
+		const layout = fs.readFileSync(_layouts[key].path, { encoding: 'utf8' });
+		const ast = parse(layout);
 
 		if (ast.module) {
 			const component_export = ast.module.content.body.find(

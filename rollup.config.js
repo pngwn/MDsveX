@@ -6,11 +6,13 @@ import globals from 'rollup-plugin-node-globals';
 
 import pkg from './package.json';
 
-console.log(pkg.browser, pkg.main, pkg.module);
-
 export default [
 	{
-		plugins: [resolve({ preferBuiltins: true }), commonjs(), json()],
+		plugins: [
+			resolve({ preferBuiltins: true }),
+			commonjs({ namedExports: { 'svelte/compiler': ['parse'] } }),
+			json(),
+		],
 		input: 'src/index.js',
 		external: ['svelte/compiler'],
 		output: [
@@ -18,33 +20,22 @@ export default [
 			{ file: pkg.main, format: 'cjs', sourcemap: false },
 		],
 	},
-	// {
-	// 	plugins: [
-	// 		resolve(),
-	// 		commonjs({ 'svelte/compiler': ['parse'] }),
-	// 		json(),
-	// 		globals(),
-	// 		builtins(),
-	// 	],
-	// 	input: 'src/index.js',
-	// 	output: [{ file: pkg.browser, format: 'es', sourcemap: false }],
-	// },
-	// {
-	// 	plugins: [
-	// 		resolve(),
-	// 		commonjs({ 'svelte/compiler': ['parse'] }),
-	// 		json(),
-	// 		globals(),
-	// 		builtins(),
-	// 	],
-	// 	input: 'src/index.js',
-	// 	output: [
-	// 		{
-	// 			file: 'dist/mdsvex.js',
-	// 			name: 'mdsvex',
-	// 			format: 'umd',
-	// 			sourcemap: false,
-	// 		},
-	// 	],
-	// },
+	{
+		plugins: [
+			resolve({ browser: true }),
+			commonjs({ namedExports: { 'svelte/compiler': ['parse'] } }),
+			json(),
+			globals(),
+			builtins(),
+		],
+		input: 'src/index.js',
+		output: [
+			{
+				file: 'dist/mdsvex.js',
+				name: 'mdsvex',
+				format: 'umd',
+				sourcemap: false,
+			},
+		],
+	},
 ];
