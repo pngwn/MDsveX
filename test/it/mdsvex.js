@@ -793,7 +793,7 @@ number: 999
 		}).markup({
 			content: `
 
-<script context="module"
+<script context="module">
 	let thing = 27;
 </script>
 
