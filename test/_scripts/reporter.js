@@ -199,7 +199,7 @@ export const reporter = verbose => async stream => {
 			}
 		});
 
-		throw new Error('fail');
+		process.exit(1);
 	}
 
 	const meta = {

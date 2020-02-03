@@ -11,9 +11,7 @@ const run_tests = async (opts = {}) => {
 	const harness = createHarness();
 	const { test } = harness;
 
-	const r = run(test, opts);
-
-	console.log(r);
+	run(test, opts);
 
 	report(harness);
 };
