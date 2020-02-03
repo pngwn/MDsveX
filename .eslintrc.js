@@ -29,7 +29,7 @@ module.exports = {
 		node: true,
 		jest: true,
 	},
-	extends: ['eslint:recommended'],
+	// extends: ['plugin:prettier/recommended'],
 	parserOptions: {
 		ecmaVersion: 9,
 		sourceType: 'module',

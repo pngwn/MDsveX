@@ -440,7 +440,7 @@ export function code_highlight(code, lang) {
 ${
 	_lang
 		? escape_curlies(
-				Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
+			Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
 		  )
 		: escape_curlies(escape(code))
 }
