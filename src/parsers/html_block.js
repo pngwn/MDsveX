@@ -32,9 +32,7 @@ export function blockHtml(eat, value, silent) {
 	let line;
 	let offset;
 	let character;
-	let count;
 	let sequence;
-	let subvalue;
 
 	const sequences = [
 		[rawOpenExpression, rawCloseExpression, true],
@@ -66,7 +64,7 @@ export function blockHtml(eat, value, silent) {
 	next = next === -1 ? length : next;
 	line = value.slice(index, next);
 	offset = -1;
-	count = sequences.length;
+	const count = sequences.length;
 
 	while (++offset < count) {
 		if (sequences[offset][0].test(line)) {
@@ -103,7 +101,7 @@ export function blockHtml(eat, value, silent) {
 		}
 	}
 
-	subvalue = value.slice(0, index);
+	const subvalue = value.slice(0, index);
 
 	return eat(subvalue)({ type: 'html', value: subvalue });
 }
