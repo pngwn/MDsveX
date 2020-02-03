@@ -198,6 +198,8 @@ export const reporter = verbose => async stream => {
 				});
 			}
 		});
+
+		throw new Error('fail');
 	}
 
 	const meta = {
