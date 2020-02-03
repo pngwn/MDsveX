@@ -96,6 +96,86 @@ function map_layout_to_path(filename, layout_map) {
 	}
 }
 
+function extract_parts(nodes) {
+	// since we are wrapping and replacing we need to keep track of the different component 'parts'
+	// many special tags cannot be wrapped nor can style or script tags
+	const parts = {
+		special: [],
+		html: [],
+		instance: [],
+		module: [],
+		css: [],
+	};
+
+	// iterate through all top level child nodes and assign them to the correct 'part'
+	// anything that is a normal HAST node gets stored as HTML untouched
+	// everything else gets parsed by the svelte parser
+
+	children: for (let i = 0; i < nodes.length; i += 1) {
+		const empty_node =
+			nodes[i].type === 'text' && RE_BLANK.exec(nodes[i].value);
+		console.log(parts.html, parts.html.length - 1);
+
+		// i no longer knwo why i did this
+
+		if (empty_node || !nodes[i].value) {
+			if (
+				!parts.html.length ||
+				!(
+					RE_BLANK.exec(nodes[i].value) &&
+					RE_BLANK.exec(parts.html[parts.html.length - 1].value)
+				)
+			) {
+				parts.html.push(nodes[i]);
+			}
+
+			continue children;
+		}
+
+		let result;
+		try {
+			result = parse(nodes[i].value);
+		} catch (e) {
+			parts.html.push(nodes[i]);
+			continue children;
+		}
+
+		// svelte special tags that have to be top level
+
+		const _parts = result.html.children.map(v => {
+			if (
+				v.type === 'Options' ||
+				v.type === 'Head' ||
+				v.type === 'Window' ||
+				v.type === 'Body'
+			) {
+				return ['special', v.start, v.end];
+			} else {
+				return ['html', v.start, v.end];
+			}
+		});
+
+		results: for (const key in result) {
+			if (key === 'html' || !result[key]) continue results;
+			_parts.push([key, result[key].start, result[key].end]);
+		}
+
+		// sort them to ensure the array is in the order they appear in the source, no gaps
+		// this might not be necessary any more, i forget
+		const sorted = _parts.sort((a, b) => a[1] - b[1]);
+
+		// push the nodes into the correct 'part' since they are sorted everything should be in the correct order
+		sorted.forEach(next => {
+			parts[next[0]].push({
+				type: 'raw',
+				value: nodes[i].value.substring(next[1], next[2]),
+			});
+		});
+	}
+
+	return parts;
+}
+
 export function transform_hast({ layout }) {
 	return transformer;
 
@@ -124,95 +204,9 @@ export function transform_hast({ layout }) {
 		if (!layout && !vFile.data.fm) return;
 
 		visit(tree, 'root', node => {
-			// since we are wrapping and replacing we need to keep track of the different component 'parts'
-			// many special tags cannot be wrapped nor can style or script tags
-			const parts = {
-				special: [],
-				html: [],
-				instance: [],
-				module: [],
-				css: [],
-			};
-
-			// iterate through all top level child nodes and assign them to the correct 'part'
-			// anything that is a normal HAST node gets stored as HTML untouched
-			// everything else gets parsed by the svelte parser
-
-			children: for (let i = 0; i < node.children.length; i += 1) {
-				if (
-					(node.children[i].type !== 'raw' &&
-						node.children[i].type === 'text' &&
-						RE_BLANK.exec(node.children[i].value)) ||
-					!node.children[i].value
-				) {
-					if (
-						!parts.html[parts.html.length - 1] ||
-						!(
-							RE_BLANK.exec(node.children[i].value) &&
-							RE_BLANK.exec(parts.html[parts.html.length - 1].value)
-						)
-					) {
-						parts.html.push(node.children[i]);
-					}
-
-					continue children;
-				}
-
-				let result;
-				try {
-					result = parse(node.children[i].value);
-				} catch (e) {
-					parts.html.push(node.children[i]);
-					continue children;
-				}
-
-				// svelte special tags that have to be top level
-
-				const _parts = result.html.children.map(v => {
-					if (
-						v.type === 'Options' ||
-						v.type === 'Head' ||
-						v.type === 'Window' ||
-						v.type === 'Body'
-					) {
-						return ['special', v.start, v.end];
-					} else {
-						return ['html', v.start, v.end];
-					}
-				});
-
-				// module scripts
-
-				if (result.module) {
-					_parts.push(['module', result.module.start, result.module.end]);
-				}
-
-				// style elements
-
-				if (result.css) {
-					_parts.push(['css', result.css.start, result.css.end]);
-				}
-
-				// instance scripts
-
-				if (result.instance) {
-					_parts.push(['instance', result.instance.start, result.instance.end]);
-				}
-
-				// sort them to ensure the array is in the order they appear in the source, no gaps
-				// this might not be necessary any more, i forget
-				const sorted = _parts.sort((a, b) => a[1] - b[1]);
-
-				// push the nodes into the correct 'part' since they are sorted everything should be in the correct order
-				sorted.forEach(next => {
-					parts[next[0]].push({
-						type: 'raw',
-						value: node.children[i].value.substring(next[1], next[2]),
-					});
-				});
-			}
-
-			const { special, html, instance, module: _module, css } = parts;
+			const { special, html, instance, module: _module, css } = extract_parts(
+				node.children
+			);
 
 			const fm =
 				vFile.data.fm &&
@@ -446,7 +440,7 @@ export function code_highlight(code, lang) {
 ${
 	_lang
 		? escape_curlies(
-			Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
+				Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
 		  )
 		: escape_curlies(escape(code))
 }
