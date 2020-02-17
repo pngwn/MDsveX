@@ -1,3 +1,8 @@
+Module._extensions['.js'] = function(module, filename) {
+	const content = fs.readFileSync(filename, 'utf8');
+	module._compile(content, filename);
+};
+
 import { createHarness } from 'zora';
 
 import { run } from './test';
