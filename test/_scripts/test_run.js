@@ -1,4 +1,4 @@
-const { createHarness } = require('zora');
+import { createHarness } from 'zora';
 
 import { run } from './test';
 import { reporter } from './reporter';
