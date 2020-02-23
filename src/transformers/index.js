@@ -414,15 +414,10 @@ export function highlight_blocks({ highlighter: highlight_fn, alias } = {}) {
 
 	load_language_metadata();
 
-	//{ beeboo: 'html' }
-	console.log(alias);
-
 	if (alias) {
 		for (const lang in alias) {
-			console.log(alias[lang]);
 			langs[lang] = langs[alias[lang]];
 		}
-		console.log(langs);
 	}
 
 	return function(tree, vFile) {
@@ -438,7 +433,7 @@ const escape_curlies = str =>
 
 export function code_highlight(code, lang) {
 	if (!process.browser) {
-		const _lang = langs[lang] || false;
+		let _lang = langs[lang] || false;
 
 		if (!Prism) Prism = require('prismjs');
 
@@ -447,7 +442,8 @@ export function code_highlight(code, lang) {
 		}
 
 		if (!_lang && Prism.languages[lang]) {
-			_lang[lang] = { name: lang };
+			langs[lang] = { name: lang };
+			_lang = langs[lang];
 		}
 
 		return `<pre class="language-${lang}">

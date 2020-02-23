@@ -171,4 +171,26 @@ i am some code
 			output.code
 		);
 	});
+
+	test('Should be possible to add additional highlighting grammars', async t => {
+		require('prismjs');
+		require('prism-svelte');
+		const output = await mdsvex({
+			highlight: { alias: { beeboo: 'html' } },
+		}).markup({
+			content: `
+\`\`\`svelte
+<h1>Title</h1>
+\`\`\`
+    `,
+			filename: 'thing.svx',
+		});
+
+		t.equal(
+			`<pre class="language-svelte">
+<code class="language-svelte"><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>h1</span><span class="token punctuation">></span></span>Title<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>h1</span><span class="token punctuation">></span></span></code>
+</pre>`,
+			output.code
+		);
+	});
 }

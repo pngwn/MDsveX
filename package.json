@@ -45,6 +45,7 @@
 		"node-fetch": "^2.6.0",
 		"prettier": "^1.19.1",
 		"prettier-eslint": "^9.0.0",
+		"prism-svelte": "^0.4.6",
 		"rehype-slug": "^2.0.3",
 		"rehype-toc": "^2.2.2",
 		"remark-autolink-headings": "^5.2.1",
