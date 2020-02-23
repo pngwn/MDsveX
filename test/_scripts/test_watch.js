@@ -7,7 +7,7 @@ import { reporter } from './reporter';
 
 const verbose = process.argv[2] === '--verbose';
 
-const report = harness => harness.report(reporter(verbose));
+const report = harness => harness.report(reporter(verbose, true));
 
 const run_tests = (opts = {}) => {
 	const harness = createHarness();

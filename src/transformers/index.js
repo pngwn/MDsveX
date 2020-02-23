@@ -409,10 +409,21 @@ function load_language(lang) {
 	}
 }
 
-export function highlight_blocks({ highlighter: highlight_fn }) {
+export function highlight_blocks({ highlighter: highlight_fn, alias } = {}) {
 	if (!highlight_fn || process.browser) return;
 
 	load_language_metadata();
+
+	//{ beeboo: 'html' }
+	console.log(alias);
+
+	if (alias) {
+		for (const lang in alias) {
+			console.log(alias[lang]);
+			langs[lang] = langs[alias[lang]];
+		}
+		console.log(langs);
+	}
 
 	return function(tree, vFile) {
 		visit(tree, 'code', node => {
@@ -430,26 +441,28 @@ export function code_highlight(code, lang) {
 		const _lang = langs[lang] || false;
 
 		if (!Prism) Prism = require('prismjs');
-		if (!Prism.languages[_lang.name]) {
+
+		if (_lang && !Prism.languages[_lang.name]) {
 			load_language(_lang.name);
 		}
 
+		if (!_lang && Prism.languages[lang]) {
+			_lang[lang] = { name: lang };
+		}
+
 		return `<pre class="language-${lang}">
-  <code class="language-${lang || ''}">
-${
+<code class="language-${lang || ''}">${
 	_lang
 		? escape_curlies(
 			Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
-		  )
+				  )
 		: escape_curlies(escape(code))
-}
-  </code>
+}</code>
 </pre>`;
 	} else {
 		return `<pre class="language-${lang}">
-  <code class="language-${lang || ''}">
-${escape_curlies(escape(code))}
-  </code>
+<code class="language-${lang || ''}">
+${escape_curlies(escape(code))}</code>
 </pre>`;
 	}
 }

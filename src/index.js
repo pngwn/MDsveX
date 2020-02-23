@@ -58,7 +58,7 @@ export function transform({
 		.use(escape_code, { blocks: !!highlight })
 		.use(extract_frontmatter, fm_opts)
 		.use(parse_frontmatter, { parse: fm_opts.parse, type: fm_opts.type })
-		.use(highlight_blocks, { highlighter: highlight });
+		.use(highlight_blocks, highlight);
 
 	if (smartypants) {
 		toMDAST.use(
@@ -92,7 +92,7 @@ const defaults = {
 	smartypants: true,
 	extension: '.svx',
 	layout: false,
-	highlight: code_highlight,
+	highlight: { highlighter: code_highlight },
 };
 
 function resolve_layout(layout_path) {
@@ -162,7 +162,7 @@ export const mdsvex = ({
 	smartypants = true,
 	extension = '.svx',
 	layout = false,
-	highlight = code_highlight,
+	highlight = { highlighter: code_highlight },
 	frontmatter,
 } = defaults) => {
 	let _layout = layout ? {} : layout;
@@ -173,6 +173,9 @@ export const mdsvex = ({
 		for (const name in layout) {
 			_layout[name] = { path: resolve_layout(layout[name]) };
 		}
+	}
+	if (highlight && highlight.highlighter === undefined) {
+		highlight.highlighter = code_highlight;
 	}
 
 	_layout = process_layouts(_layout);

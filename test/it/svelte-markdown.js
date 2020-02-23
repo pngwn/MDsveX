@@ -24,8 +24,6 @@ export default function(test) {
 				console.log(i, e);
 			}
 
-			console.log(path, result);
-
 			t.equal(
 				output.replace(/\n\n/, '\n').trim(),
 				result.code.replace(/\n\n/, '\n').trim()

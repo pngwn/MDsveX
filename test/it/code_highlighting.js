@@ -55,9 +55,7 @@ const thing = 'string';
 
 		t.equal(
 			`<pre class="language-js">
-  <code class="language-js">
-<span class="token keyword">const</span> thing <span class="token operator">=</span> <span class="token string">'string'</span><span class="token punctuation">;</span>
-  </code>
+<code class="language-js"><span class="token keyword">const</span> thing <span class="token operator">=</span> <span class="token string">'string'</span><span class="token punctuation">;</span></code>
 </pre>`,
 			output.code
 		);
@@ -68,7 +66,7 @@ const thing = 'string';
 			content: `
 \`\`\`js
 function() {
-  whatever;
+	whatever;
 }
 \`\`\`
     `,
@@ -77,11 +75,9 @@ function() {
 
 		t.equal(
 			`<pre class="language-js">
-  <code class="language-js">
-<span class="token keyword">function</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
-  whatever<span class="token punctuation">;</span>
-<span class="token punctuation">&#125;</span>
-  </code>
+<code class="language-js"><span class="token keyword">function</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
+	whatever<span class="token punctuation">;</span>
+<span class="token punctuation">&#125;</span></code>
 </pre>`,
 			output.code
 		);
@@ -101,11 +97,9 @@ puts "Hello #{name}."
 
 		t.equal(
 			`<pre class="language-ruby">
-  <code class="language-ruby">
-print <span class="token string">'Please type name >'</span>
+<code class="language-ruby">print <span class="token string">'Please type name >'</span>
 name <span class="token operator">=</span> gets<span class="token punctuation">.</span>chomp
-puts <span class="token string">"Hello <span class="token interpolation"><span class="token delimiter tag">#&#123;</span>name<span class="token delimiter tag">&#125;</span></span>."</span>
-  </code>
+puts <span class="token string">"Hello <span class="token interpolation"><span class="token delimiter tag">#&#123;</span>name<span class="token delimiter tag">&#125;</span></span>."</span></code>
 </pre>`,
 			output.code
 		);
@@ -128,14 +122,12 @@ DEFINITIONS LIST
 
 		t.equal(
 			`<pre class="language-ebnf">
-  <code class="language-ebnf">
-<span class="token definition rule keyword">SYNTAX</span> <span class="token operator">=</span> <span class="token rule">SYNTAX RULE</span><span class="token punctuation">,</span> <span class="token punctuation">(:</span> <span class="token rule">SYNTAX RULE</span> <span class="token punctuation">:)</span><span class="token punctuation">.</span>
+<code class="language-ebnf"><span class="token definition rule keyword">SYNTAX</span> <span class="token operator">=</span> <span class="token rule">SYNTAX RULE</span><span class="token punctuation">,</span> <span class="token punctuation">(:</span> <span class="token rule">SYNTAX RULE</span> <span class="token punctuation">:)</span><span class="token punctuation">.</span>
 <span class="token definition rule keyword">SYNTAX RULE</span>
   <span class="token operator">=</span> <span class="token rule">META IDENTIFIER</span><span class="token punctuation">,</span> <span class="token string">'='</span><span class="token punctuation">,</span> <span class="token rule">DEFINITIONS LIST</span><span class="token punctuation">,</span> <span class="token string">'.'</span><span class="token punctuation">.</span> <span class="token comment">(* '.' instead of ';' *)</span>
 <span class="token definition rule keyword">DEFINITIONS LIST</span>
   <span class="token operator">=</span> <span class="token rule">SINGLE DEFINITION</span><span class="token punctuation">,</span>
-    <span class="token punctuation">(:</span> <span class="token string">'/'</span><span class="token punctuation">,</span> <span class="token rule">SINGLE DEFINITION</span> <span class="token punctuation">:)</span><span class="token punctuation">.</span>
-  </code>
+    <span class="token punctuation">(:</span> <span class="token string">'/'</span><span class="token punctuation">,</span> <span class="token rule">SINGLE DEFINITION</span> <span class="token punctuation">:)</span><span class="token punctuation">.</span></code>
 </pre>`,
 			output.code
 		);
@@ -146,7 +138,9 @@ DEFINITIONS LIST
 			return `<code class="${lang}">${code}</code>`;
 		}
 
-		const output = await mdsvex({ highlight: _highlight }).markup({
+		const output = await mdsvex({
+			highlight: { highlighter: _highlight },
+		}).markup({
 			content: `
 \`\`\`somecode
 i am some code
@@ -156,5 +150,25 @@ i am some code
 		});
 
 		t.equal(`<code class="somecode">i am some code</code>`, output.code);
+	});
+
+	test('Should be possible to define a custom alias for a language', async t => {
+		const output = await mdsvex({
+			highlight: { alias: { beeboo: 'html' } },
+		}).markup({
+			content: `
+\`\`\`beeboo
+<h1>Title</h1>
+\`\`\`
+    `,
+			filename: 'thing.svx',
+		});
+
+		t.equal(
+			`<pre class="language-beeboo">
+<code class="language-beeboo"><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>h1</span><span class="token punctuation">></span></span>Title<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>h1</span><span class="token punctuation">></span></span></code>
+</pre>`,
+			output.code
+		);
 	});
 }

@@ -44,7 +44,7 @@ const printSummary = harness => {
 
 // I might clean this up at some point
 
-export const reporter = verbose => async stream => {
+export const reporter = (verbose, watch) => async stream => {
 	console.clear();
 	print('TAP version 13');
 
@@ -199,7 +199,7 @@ export const reporter = verbose => async stream => {
 			}
 		});
 
-		process.exit(1);
+		if (!watch) process.exit(1);
 	}
 
 	const meta = {
