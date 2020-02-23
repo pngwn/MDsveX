@@ -114,7 +114,6 @@ function extract_parts(nodes) {
 	children: for (let i = 0; i < nodes.length; i += 1) {
 		const empty_node =
 			nodes[i].type === 'text' && RE_BLANK.exec(nodes[i].value);
-		console.log(parts.html, parts.html.length - 1);
 
 		// i no longer knwo why i did this
 

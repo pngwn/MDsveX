@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'fs';
 import { join, basename } from 'path';
-import { transform } from '../../src';
+import { mdsvex } from '../../src';
 
 const PATH = join(__dirname, '../_fixtures/hybrid');
 const INPUT_PATH = join(PATH, 'input');
@@ -19,14 +19,16 @@ export default function(test) {
 		test(`it should correctly parse hybrid svelte-markdown files: ${path}`, async t => {
 			let result;
 			try {
-				result = await transform().process(input);
+				result = await mdsvex().markup({ content: input, filename: path });
 			} catch (e) {
 				console.log(i, e);
 			}
 
+			console.log(path, result);
+
 			t.equal(
 				output.replace(/\n\n/, '\n').trim(),
-				result.contents.replace(/\n\n/, '\n').trim()
+				result.code.replace(/\n\n/, '\n').trim()
 			);
 		});
 	});
