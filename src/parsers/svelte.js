@@ -1,7 +1,24 @@
+const void_els = [
+	'area',
+	'base',
+	'br',
+	'col',
+	'embed',
+	'hr',
+	'img',
+	'input',
+	'link',
+	'meta',
+	'param',
+	'source',
+	'track',
+	'wbr',
+];
+
 // these regex don't check if it is a valid svelte tag name
 // i want to defer to svelte's compiler errors so i don't end up reimplementing the svelte parser
 
-const RE_SVELTE_TAG = /^<(?:[\\/\s])*svelte:([a-z]*)(?:.|\n)*>$/;
+const RE_SVELTE_TAG = /^<svelte:([a-z]*)[\s\S]*(?:(?:svelte:[a-z]*)|(?:\/))>$/;
 const RE_SVELTE_TAG_START = /(^\s*)<([\\/\s])*svelte:/;
 
 export function parse_svelte_tag(eat, value, silent) {
@@ -21,7 +38,6 @@ export function parse_svelte_tag(eat, value, silent) {
 		}
 
 		const match = RE_SVELTE_TAG.exec(trimmed_value.substring(0, pos));
-
 		return eat(is_svelte_tag[1] + match[0])({
 			type: 'svelteTag',
 			value: match[0],

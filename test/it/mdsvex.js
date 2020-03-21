@@ -202,6 +202,43 @@ Hello friends, how are we today
 		t.equal(`<h1>hello</h1>`, output.code);
 	});
 
+	test('custom layouts should work - special tags', async t => {
+		const output = await mdsvex({
+			layout: './test/_fixtures/Layout.svelte',
+		}).markup({
+			content: `
+<svelte:head>
+  <meta property="og:title" content={title} />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="{host}{path}" />
+</svelte:head>
+
+# hello`,
+			filename: 'file.svx',
+		});
+
+		t.equal(
+			`
+<script>
+	import Layout_MDSVEX_DEFAULT from '${join(
+		__dirname,
+		'../_fixtures/Layout.svelte'
+	)}';
+</script>
+
+<svelte:head>
+  <meta property="og:title" content={title} />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="{host}{path}" />
+</svelte:head>
+<Layout_MDSVEX_DEFAULT>
+
+<h1>hello</h1>
+</Layout_MDSVEX_DEFAULT>`,
+			output.code
+		);
+	});
+
 	test('custom layouts should work', async t => {
 		const output = await mdsvex({
 			layout: './test/_fixtures/Layout.svelte',
