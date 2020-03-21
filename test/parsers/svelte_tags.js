@@ -17,8 +17,7 @@ export default function(test) {
 	];
 
 	test('svelte blocks with children should be correctly parsed', t => {
-		const s = `
-<svelte:head>
+		const s = `<svelte:head>
   <meta property="og:title" content={title} />
   <meta property="og:type" content="article" />
   <meta property="og:url" content="{host}{path}" />
@@ -28,17 +27,17 @@ export default function(test) {
 
 		t.equal(parse_svelte_tag(eat, s, false), {
 			value: `<svelte:head>
-	<meta property="og:title" content={title} />
-	<meta property="og:type" content="article" />
-	<meta property="og:url" content="{host}{path}" />
+  <meta property="og:title" content={title} />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="{host}{path}" />
 </svelte:head>`,
 			node: {
 				value: `<svelte:head>
-	<meta property="og:title" content={title} />
-	<meta property="og:type" content="article" />
-	<meta property="og:url" content="{host}{path}" />
+  <meta property="og:title" content={title} />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="{host}{path}" />
 </svelte:head>`,
-				name: '<svelte:head>',
+				name: 'head',
 				type: 'svelteTag',
 			},
 		});

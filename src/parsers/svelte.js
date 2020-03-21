@@ -30,14 +30,56 @@ export function parse_svelte_tag(eat, value, silent) {
 		const trimmed_value = value.trim();
 		let cbPos = 0;
 		let pos = 1;
+		let current_tag = '';
+		let in_tag_name = false;
 
 		while (cbPos > -1) {
-			if (trimmed_value[pos].match(/</)) cbPos++;
-			if (trimmed_value[pos].match(/>/)) cbPos--;
+			if (!trimmed_value[pos]) {
+				break;
+			}
+
+			if (trimmed_value[pos].match(/</)) {
+				cbPos++;
+				current_tag = '';
+				in_tag_name = true;
+			}
+
+			if (in_tag_name && trimmed_value[pos].match(/\s/)) {
+				in_tag_name = false;
+			}
+
+			if (in_tag_name && !trimmed_value[pos].match(/</)) {
+				current_tag += trimmed_value[pos];
+			}
+
+			const is_void = void_els.includes(current_tag);
+
+			if (
+				(is_void && trimmed_value[pos].match(/>/)) ||
+				(trimmed_value[pos - 1] + trimmed_value[pos]).match(/\/>/)
+			) {
+				cbPos--;
+			}
+
+			if ((trimmed_value[pos - 1] + trimmed_value[pos]).match(/<\//)) {
+				let inner_indent = 0;
+
+				while (inner_indent > -1) {
+					if (trimmed_value[pos].match(/>/)) {
+						pos++;
+						inner_indent -= 1;
+						cbPos -= 2;
+					} else {
+						pos++;
+					}
+				}
+			}
+
 			pos++;
 		}
 
-		const match = RE_SVELTE_TAG.exec(trimmed_value.substring(0, pos));
+		const match = RE_SVELTE_TAG.exec(trimmed_value.substring(0, pos).trim());
+
 		return eat(is_svelte_tag[1] + match[0])({
 			type: 'svelteTag',
 			value: match[0],
