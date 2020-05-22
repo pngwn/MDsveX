@@ -3,21 +3,38 @@ name: mdsvex
 on: [push, pull_request]
 
 jobs:
-  build:
+  lint:
+    name: Use Node.js ${{ matrix.node-version }}
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
-        node-version: [12.3]
-
+        node-version: [12]
+        os: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
-      - run: yarn
+      - uses: actions/setup-node@v1
+          with:
+            node-version: ${{ matrix.node-version }}
+      - run: yarn --frozen-lockfile
       - run: yarn lint
+        env:
+          CI: true
+          name: mdsvex
+
+  build-test:
+    name: Use Node.js ${{ matrix.node-version }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        node-version: [10, 12]
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v1
+          with:
+            node-version: ${{ matrix.node-version }}
+      - run: yarn
       - run: yarn test
       - run: yarn build
         env:
