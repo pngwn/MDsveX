@@ -1,4 +1,9 @@
+import { suite } from 'uvu';
+import * as assert from 'uvu/assert';
+
 import { parse_svelte_block } from '../../src/parsers';
+
+const blocks = suite('svelte-blocks');
 
 // I have no idea what the unified/ remark eat function returns but i need to fake it.
 const eat = value => node => ({
@@ -6,32 +11,33 @@ const eat = value => node => ({
 	node,
 });
 
-export default function(test) {
-	const svelte_blocks = [
-		[
-			'each',
-			'basic',
-			'#each array as el',
-			'#each [{a: {hello: []}, {a: {b: {c: {}}}}} as {a, b: { c, d }}',
-		],
-		['else', 'basic', ':else', false],
-		['if', 'basic', '#if condition', '#if new Array([123] === {a, b, c})'],
-		[
-			'else if',
-			'basic',
-			'#else if condition',
-			'#else if new Array([123] === {a, b, c})',
-		],
-		['await', 'basic', '#await promise', '#await new Promise((r, r) => r())'],
-		['then', 'basic', ':then resolved_promise', '#then {a, b: { c, d }}'],
-		['catch', 'basic', ':catch error', ':catch {a, b: { c, d }}'],
-		['html', 'basic', '@html html'],
-		['debug', 'basic', '@debug breakpoint'],
-	];
+const svelte_blocks = [
+	[
+		'each',
+		'basic',
+		'#each array as el',
+		'#each [{a: {hello: []}, {a: {b: {c: {}}}}} as {a, b: { c, d }}',
+	],
+	['else', 'basic', ':else', false],
+	['if', 'basic', '#if condition', '#if new Array([123] === {a, b, c})'],
+	[
+		'else if',
+		'basic',
+		'#else if condition',
+		'#else if new Array([123] === {a, b, c})',
+	],
+	['await', 'basic', '#await promise', '#await new Promise((r, r) => r())'],
+	['then', 'basic', ':then resolved_promise', '#then {a, b: { c, d }}'],
+	['catch', 'basic', ':catch error', ':catch {a, b: { c, d }}'],
+	['html', 'basic', '@html html'],
+	['debug', 'basic', '@debug breakpoint'],
+];
 
-	svelte_blocks.forEach(([name, desc, block, advanced]) => {
-		test(`${name}: it should it should correctly match and parse any svelte block`, t => {
-			t.equal(
+svelte_blocks.forEach(([name, desc, block, advanced]) => {
+	blocks(
+		`${name}: it should it should correctly match and parse any svelte block`,
+		() => {
+			assert.equal(
 				parse_svelte_block(eat, `{${block}}`, false),
 				{
 					value: `{${block}}`,
@@ -44,7 +50,7 @@ export default function(test) {
 				desc
 			);
 
-			t.equal(
+			assert.equal(
 				parse_svelte_block(eat, `     {${block}}`, false),
 				{
 					value: `     {${block}}`,
@@ -57,7 +63,7 @@ export default function(test) {
 				'with whitespace'
 			);
 
-			t.equal(
+			assert.equal(
 				parse_svelte_block(
 					eat,
 					`{${block}}hello jesus /n/n iam a paragraph with words \n\n #hello everyone`,
@@ -75,7 +81,7 @@ export default function(test) {
 			);
 
 			if (advanced) {
-				t.equal(
+				assert.equal(
 					parse_svelte_block(eat, `{${advanced}}`, false),
 					{
 						value: `{${advanced}}`,
@@ -88,6 +94,8 @@ export default function(test) {
 					'a more advanced case'
 				);
 			}
-		});
-	});
-}
+		}
+	);
+});
+
+blocks.run();

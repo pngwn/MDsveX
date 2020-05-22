@@ -1,3 +1,6 @@
+import { suite } from 'uvu';
+import * as assert from 'uvu/assert';
+
 import { readdirSync, readFileSync, existsSync, lstatSync } from 'fs';
 import { join, extname } from 'path';
 
@@ -22,21 +25,24 @@ const flatten = arr =>
 		[]
 	);
 
-export default function(test) {
-	let svelte_files;
-	try {
-		svelte_files = flatten(get_dir_path(PATH))
-			.filter(f => extname(f) === '.svelte')
-			.map(f => [f, readFileSync(f, { encoding: 'utf8' })]);
-	} catch (e) {
-		throw new Error(e);
-	}
+const svelte = suite('pure-svelte');
 
-	svelte_files.forEach(([path, file], i) => {
-		test(`it should correctly parse any svelte component: ${path.replace(
+let svelte_files;
+try {
+	svelte_files = flatten(get_dir_path(PATH))
+		.filter(f => extname(f) === '.svelte')
+		.map(f => [f, readFileSync(f, { encoding: 'utf8' })]);
+} catch (e) {
+	throw new Error(e);
+}
+
+svelte_files.forEach(([path, file], i) => {
+	svelte(
+		`it should correctly parse any svelte component: ${path.replace(
 			join(__dirname, '../_fixtures/svelte/'),
 			''
-		)}`, async t => {
+		)}`,
+		async () => {
 			let output;
 
 			try {
@@ -45,10 +51,12 @@ export default function(test) {
 				console.log(i, e);
 			}
 
-			t.equal(
+			assert.equal(
 				file.replace(/\n\n/g, '\n').trim(),
 				output.contents.replace(/\n\n/g, '\n').trim()
 			);
-		});
-	});
-}
+		}
+	);
+});
+
+svelte.run();

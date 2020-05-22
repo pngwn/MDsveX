@@ -1,3 +1,6 @@
+import { suite } from 'uvu';
+import * as assert from 'uvu/assert';
+
 import { join } from 'path';
 
 import { mdsvex } from '../../src/';
@@ -8,19 +11,20 @@ import toc from 'rehype-toc';
 import rehype_slug from 'rehype-slug';
 import toml from 'toml';
 
-export default function(test) {
-	test('it should work', async t => {
-		const output = await mdsvex().markup({
-			content: `# hello`,
-			filename: 'file.svx',
-		});
+const mdsvex_it = suite('mdsvex');
 
-		t.equal(output.code, `<h1>hello</h1>`);
+mdsvex_it('it should work', async () => {
+	const output = await mdsvex().markup({
+		content: `# hello`,
+		filename: 'file.svx',
 	});
 
-	test('it should accept a remark plugin', async t => {
-		const output = await mdsvex({ remarkPlugins: [containers] }).markup({
-			content: `
+	assert.equal(output.code, `<h1>hello</h1>`);
+});
+
+mdsvex_it('it should accept a remark plugin', async () => {
+	const output = await mdsvex({ remarkPlugins: [containers] }).markup({
+		content: `
 ::: div thingy
 
 Hello friends, how are we today
@@ -29,20 +33,20 @@ Hello friends, how are we today
 
 :::
       `,
-			filename: 'file.svx',
-		});
-
-		t.equal(
-			`<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`,
-			output.code
-		);
+		filename: 'file.svx',
 	});
 
-	test('it should accept remark plugins - plural', async t => {
-		const output = await mdsvex({
-			remarkPlugins: [containers, slug, headings],
-		}).markup({
-			content: `# Lorem ipsum 😪
+	assert.equal(
+		`<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`,
+		output.code
+	);
+});
+
+mdsvex_it('it should accept remark plugins - plural', async () => {
+	const output = await mdsvex({
+		remarkPlugins: [containers, slug, headings],
+	}).markup({
+		content: `# Lorem ipsum 😪
 
 ::: div thingy
 
@@ -52,21 +56,21 @@ Hello friends, how are we today
 
 :::
     `,
-			filename: 'file.svx',
-		});
-
-		t.equal(
-			`<h1 id="lorem-ipsum-"><a href="#lorem-ipsum-" aria-hidden="true"><span class="icon icon-link"></span></a>Lorem ipsum 😪</h1>
-<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`,
-			output.code
-		);
+		filename: 'file.svx',
 	});
 
-	test('it should accept remark plugins with options - plural', async t => {
-		const output = await mdsvex({
-			remarkPlugins: [containers, slug, [headings, { behavior: 'append' }]],
-		}).markup({
-			content: `# Lorem ipsum 😪
+	assert.equal(
+		`<h1 id="lorem-ipsum-"><a href="#lorem-ipsum-" aria-hidden="true"><span class="icon icon-link"></span></a>Lorem ipsum 😪</h1>
+<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`,
+		output.code
+	);
+});
+
+mdsvex_it('it should accept remark plugins with options - plural', async () => {
+	const output = await mdsvex({
+		remarkPlugins: [containers, slug, [headings, { behavior: 'append' }]],
+	}).markup({
+		content: `# Lorem ipsum 😪
 
 ::: div thingy
 
@@ -76,54 +80,54 @@ Hello friends, how are we today
 
 :::
     `,
-			filename: 'file.svx',
-		});
-
-		t.equal(
-			`<h1 id="lorem-ipsum-">Lorem ipsum 😪<a href="#lorem-ipsum-" aria-hidden="true"><span class="icon icon-link"></span></a></h1>
-<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`,
-			output.code
-		);
+		filename: 'file.svx',
 	});
 
-	test('it should accept a rehype plugin', async t => {
-		const output = await mdsvex({
-			rehypePlugins: [toc],
-		}).markup({
-			content: `# One
+	assert.equal(
+		`<h1 id="lorem-ipsum-">Lorem ipsum 😪<a href="#lorem-ipsum-" aria-hidden="true"><span class="icon icon-link"></span></a></h1>
+<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`,
+		output.code
+	);
+});
+
+mdsvex_it('it should accept a rehype plugin', async () => {
+	const output = await mdsvex({
+		rehypePlugins: [toc],
+	}).markup({
+		content: `# One
 
 ## Two
 
 ### Three`,
-			filename: 'file.svx',
-		});
+		filename: 'file.svx',
+	});
 
-		t.equal(
-			`<nav class="toc"><ol class="toc-level toc-level-1"><li class="toc-item toc-item-h1"><a class="toc-link toc-link-h1" href="#">One</a><ol
+	assert.equal(
+		`<nav class="toc"><ol class="toc-level toc-level-1"><li class="toc-item toc-item-h1"><a class="toc-link toc-link-h1" href="#">One</a><ol
   class="toc-level toc-level-2"
 ><li class="toc-item toc-item-h2"><a class="toc-link toc-link-h2" href="#">Two</a><ol
   class="toc-level toc-level-3"
 ><li class="toc-item toc-item-h3"><a class="toc-link toc-link-h3" href="#">Three</a></li></ol></li></ol></li></ol></nav><h1>One</h1>
 <h2>Two</h2>
 <h3>Three</h3>`,
-			output.code
-		);
-	});
+		output.code
+	);
+});
 
-	test('it should accept rehype plugins - plural', async t => {
-		const output = await mdsvex({
-			rehypePlugins: [rehype_slug, toc],
-		}).markup({
-			content: `# One
+mdsvex_it('it should accept rehype plugins - plural', async () => {
+	const output = await mdsvex({
+		rehypePlugins: [rehype_slug, toc],
+	}).markup({
+		content: `# One
 
 ## Two
 
 ### Three`,
-			filename: 'file.svx',
-		});
+		filename: 'file.svx',
+	});
 
-		t.equal(
-			`<nav class="toc"><ol class="toc-level toc-level-1"><li class="toc-item toc-item-h1"><a class="toc-link toc-link-h1" href="#one">One</a><ol
+	assert.equal(
+		`<nav class="toc"><ol class="toc-level toc-level-1"><li class="toc-item toc-item-h1"><a class="toc-link toc-link-h1" href="#one">One</a><ol
   class="toc-level toc-level-2"
 ><li class="toc-item toc-item-h2"><a class="toc-link toc-link-h2" href="#two">Two</a><ol
   class="toc-level toc-level-3"
@@ -132,24 +136,24 @@ Hello friends, how are we today
 >One</h1>
 <h2 id="two">Two</h2>
 <h3 id="three">Three</h3>`,
-			output.code
-		);
-	});
+		output.code
+	);
+});
 
-	test('it should accept rehype plugins with options - plural', async t => {
-		const output = await mdsvex({
-			rehypePlugins: [rehype_slug, [toc, { nav: false }]],
-		}).markup({
-			content: `# One
+mdsvex_it('it should accept rehype plugins with options - plural', async () => {
+	const output = await mdsvex({
+		rehypePlugins: [rehype_slug, [toc, { nav: false }]],
+	}).markup({
+		content: `# One
 
 ## Two
 
 ### Three`,
-			filename: 'file.svx',
-		});
+		filename: 'file.svx',
+	});
 
-		t.equal(
-			`<ol class="toc toc-level toc-level-1"><li class="toc-item toc-item-h1"><a class="toc-link toc-link-h1" href="#one">One</a><ol
+	assert.equal(
+		`<ol class="toc toc-level toc-level-1"><li class="toc-item toc-item-h1"><a class="toc-link toc-link-h1" href="#one">One</a><ol
   class="toc-level toc-level-2"
 ><li class="toc-item toc-item-h2"><a class="toc-link toc-link-h2" href="#two">Two</a><ol
   class="toc-level toc-level-3"
@@ -158,55 +162,55 @@ Hello friends, how are we today
 >One</h1>
 <h2 id="two">Two</h2>
 <h3 id="three">Three</h3>`,
-			output.code
-		);
+		output.code
+	);
+});
+
+mdsvex_it('it should respect the smartypants option', async () => {
+	const output = await mdsvex({
+		smartypants: true,
+	}).markup({
+		content: `"Hello friends!" 'This is some stuff...'`,
+		filename: 'file.svx',
 	});
 
-	test('it should respect the smartypants option', async t => {
-		const output = await mdsvex({
-			smartypants: true,
-		}).markup({
-			content: `"Hello friends!" 'This is some stuff...'`,
-			filename: 'file.svx',
-		});
+	assert.equal(`<p>“Hello friends!” ‘This is some stuff…’</p>`, output.code);
+});
 
-		t.equal(`<p>“Hello friends!” ‘This is some stuff…’</p>`, output.code);
+mdsvex_it('it should accept a smartypants options object', async () => {
+	const output = await mdsvex({
+		smartypants: { dashes: 'oldschool', ellipses: false },
+	}).markup({
+		content: `hello---friend...`,
+		filename: 'file.svx',
 	});
 
-	test('it should accept a smartypants options object', async t => {
-		const output = await mdsvex({
-			smartypants: { dashes: 'oldschool', ellipses: false },
-		}).markup({
-			content: `hello---friend...`,
-			filename: 'file.svx',
-		});
+	assert.equal(`<p>hello—friend...</p>`, output.code);
+});
 
-		t.equal(`<p>hello—friend...</p>`, output.code);
+mdsvex_it('only expected file extension names should work', async () => {
+	const output = await mdsvex().markup({
+		content: `# hello`,
+		filename: 'file.boo',
 	});
 
-	test('only expected file extension names should work', async t => {
-		const output = await mdsvex().markup({
-			content: `# hello`,
-			filename: 'file.boo',
-		});
+	assert.equal(undefined, output);
+});
 
-		t.equal(undefined, output);
+mdsvex_it('the extension name should be customisable', async () => {
+	const output = await mdsvex({ extension: '.jesus' }).markup({
+		content: `# hello`,
+		filename: 'file.jesus',
 	});
 
-	test('the extension name should be customisable', async t => {
-		const output = await mdsvex({ extension: '.jesus' }).markup({
-			content: `# hello`,
-			filename: 'file.jesus',
-		});
+	assert.equal(`<h1>hello</h1>`, output.code);
+});
 
-		t.equal(`<h1>hello</h1>`, output.code);
-	});
-
-	test('custom layouts should work - special tags', async t => {
-		const output = await mdsvex({
-			layout: './test/_fixtures/Layout.svelte',
-		}).markup({
-			content: `
+mdsvex_it('custom layouts should work - special tags', async () => {
+	const output = await mdsvex({
+		layout: './test/_fixtures/Layout.svelte',
+	}).markup({
+		content: `
 <svelte:head>
   <meta property="og:title" content={title} />
   <meta property="og:type" content="article" />
@@ -214,11 +218,11 @@ Hello friends, how are we today
 </svelte:head>
 
 # hello`,
-			filename: 'file.svx',
-		});
+		filename: 'file.svx',
+	});
 
-		t.equal(
-			`
+	assert.equal(
+		`
 <script>
 	import Layout_MDSVEX_DEFAULT from '${join(
 		__dirname,
@@ -235,20 +239,20 @@ Hello friends, how are we today
 
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`,
-			output.code
-		);
+		output.code
+	);
+});
+
+mdsvex_it('custom layouts should work', async () => {
+	const output = await mdsvex({
+		layout: './test/_fixtures/Layout.svelte',
+	}).markup({
+		content: `# hello`,
+		filename: 'file.svx',
 	});
 
-	test('custom layouts should work', async t => {
-		const output = await mdsvex({
-			layout: './test/_fixtures/Layout.svelte',
-		}).markup({
-			content: `# hello`,
-			filename: 'file.svx',
-		});
-
-		t.equal(
-			`
+	assert.equal(
+		`
 <script>
 	import Layout_MDSVEX_DEFAULT from '${join(
 		__dirname,
@@ -259,11 +263,13 @@ Hello friends, how are we today
 <Layout_MDSVEX_DEFAULT>
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`,
-			output.code
-		);
-	});
+		output.code
+	);
+});
 
-	test('custom layouts should work - when there are script tags', async t => {
+mdsvex_it(
+	'custom layouts should work - when there are script tags',
+	async () => {
 		const output = await mdsvex({
 			layout: './test/_fixtures/Layout.svelte',
 		}).markup({
@@ -283,7 +289,7 @@ Hello friends, how are we today
 			filename: 'file.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<script>
 	import Layout_MDSVEX_DEFAULT from '${join(
 		__dirname,
@@ -303,9 +309,12 @@ Hello friends, how are we today
 </Layout_MDSVEX_DEFAULT>`,
 			output.code
 		);
-	});
+	}
+);
 
-	test('custom layouts should work - when there are script tags with random attributes', async t => {
+mdsvex_it(
+	'custom layouts should work - when there are script tags with random attributes',
+	async () => {
 		const output = await mdsvex({
 			layout: './test/_fixtures/Layout.svelte',
 		}).markup({
@@ -325,7 +334,7 @@ Hello friends, how are we today
 			filename: 'file.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<script type="ts" lang=whatever thing="whatsit" doodaa=thingamabob>
 	import Layout_MDSVEX_DEFAULT from '${join(
 		__dirname,
@@ -345,9 +354,12 @@ Hello friends, how are we today
 </Layout_MDSVEX_DEFAULT>`,
 			output.code
 		);
-	});
+	}
+);
 
-	test('custom layouts should work - when everything is in a random order', async t => {
+mdsvex_it(
+	'custom layouts should work - when everything is in a random order',
+	async () => {
 		const output = await mdsvex({
 			layout: './test/_fixtures/Layout.svelte',
 		}).markup({
@@ -373,7 +385,7 @@ boo boo boo
 			filename: 'file.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<script>
 	import Layout_MDSVEX_DEFAULT from '${join(
 		__dirname,
@@ -394,9 +406,12 @@ boo boo boo
 </Layout_MDSVEX_DEFAULT>`,
 			output.code
 		);
-	});
+	}
+);
 
-	test('YAML front-matter should be injected into the component module script', async t => {
+mdsvex_it(
+	'YAML front-matter should be injected into the component module script',
+	async () => {
 		const output = await mdsvex().markup({
 			content: `---
 string: value
@@ -410,7 +425,7 @@ number: 999
 			filename: 'file.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<script context="module">
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
@@ -420,9 +435,12 @@ number: 999
 `,
 			output.code
 		);
-	});
+	}
+);
 
-	test('YAML front-matter should be injected into the component module script - even if there is already a module script', async t => {
+mdsvex_it(
+	'YAML front-matter should be injected into the component module script - even if there is already a module script',
+	async () => {
 		const output = await mdsvex().markup({
 			content: `---
 string: value
@@ -440,7 +458,7 @@ number: 999
 			filename: 'file.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<script context="module">
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
@@ -452,9 +470,12 @@ number: 999
 `,
 			output.code
 		);
-	});
+	}
+);
 
-	test('YAML front-matter should be injected into the component module script - even if there is already a module script with unquoted attributes', async t => {
+mdsvex_it(
+	'YAML front-matter should be injected into the component module script - even if there is already a module script with unquoted attributes',
+	async () => {
 		const output = await mdsvex().markup({
 			content: `---
 string: value
@@ -472,7 +493,7 @@ number: 999
 			filename: 'file.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<script context=module>
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
@@ -484,9 +505,12 @@ number: 999
 `,
 			output.code
 		);
-	});
+	}
+);
 
-	test('YAML front-matter should be injected into the component module script - even if there is already a module script with random attributes', async t => {
+mdsvex_it(
+	'YAML front-matter should be injected into the component module script - even if there is already a module script with random attributes',
+	async () => {
 		const output = await mdsvex().markup({
 			content: `---
 string: value
@@ -504,7 +528,7 @@ number: 999
 			filename: 'file.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<script type="ts" lang=whatever context=module thing="whatsit" doodaa=thingamabob>
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
@@ -516,9 +540,12 @@ number: 999
 `,
 			output.code
 		);
-	});
+	}
+);
 
-	test('YAML front-matter should be injected passed to custom layouts', async t => {
+mdsvex_it(
+	'YAML front-matter should be injected passed to custom layouts',
+	async () => {
 		const output = await mdsvex({
 			layout: './test/_fixtures/Layout.svelte',
 		}).markup({
@@ -538,7 +565,7 @@ number: 999
 			filename: 'file.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<script context="module">
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
@@ -558,9 +585,12 @@ number: 999
 </Layout_MDSVEX_DEFAULT>`,
 			output.code
 		);
-	});
+	}
+);
 
-	test('User can provide a frontmatter function for non-YAML frontmatter', async t => {
+mdsvex_it(
+	'User can provide a frontmatter function for non-YAML frontmatter',
+	async () => {
 		const parse_toml = (v, m) => {
 			try {
 				return toml.parse(v);
@@ -600,7 +630,7 @@ dob = 1879-05-27T07:32:00-08:00 # First class dates
 			filename: 'file.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<script context="module">
 	export const metadata = {"title":"TOML Example","owner":{"name":"some name","dob":"1879-05-27T15:32:00.000Z"}};
 	const { title, owner } = metadata;
@@ -620,9 +650,12 @@ dob = 1879-05-27T07:32:00-08:00 # First class dates
 </Layout_MDSVEX_DEFAULT>`,
 			output.code
 		);
-	});
+	}
+);
 
-	test('Custom layouts can be an object of named layouts, mapping to folders', async t => {
+mdsvex_it(
+	'Custom layouts can be an object of named layouts, mapping to folders',
+	async () => {
 		const output = await mdsvex({
 			layout: {
 				one: './test/_fixtures/Layout.svelte',
@@ -645,7 +678,7 @@ number: 999
 			filename: 'blah/two/file.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<script context="module">
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
@@ -665,9 +698,12 @@ number: 999
 </Layout_MDSVEX_DEFAULT>`,
 			output.code
 		);
-	});
+	}
+);
 
-	test('Custom layout can be set via frontmatter - strange formatting', async t => {
+mdsvex_it(
+	'Custom layout can be set via frontmatter - strange formatting',
+	async () => {
 		const output = await mdsvex({
 			layout: {
 				one: './test/_fixtures/Layout.svelte',
@@ -692,7 +728,7 @@ number: 999
 			filename: 'blah/two/file.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<script context="module">
 	export const metadata = {"layout":"one","string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { layout, string, string2, array, number } = metadata;
@@ -713,9 +749,12 @@ number: 999
 </Layout_MDSVEX_DEFAULT>`,
 			output.code
 		);
-	});
+	}
+);
 
-	test('layout: false in front matter should remove any layouts', async t => {
+mdsvex_it(
+	'layout: false in front matter should remove any layouts',
+	async () => {
 		const output = await mdsvex({
 			layout: './test/_fixtures/Layout.svelte',
 		}).markup({
@@ -732,7 +771,7 @@ layout: false
 			filename: 'file.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<script context="module">
 	export const metadata = {"layout":false};
 	const { layout } = metadata;
@@ -744,17 +783,18 @@ layout: false
 `,
 			output.code
 		);
-	});
+	}
+);
 
-	test('Fallback layouts should work', async t => {
-		const output = await mdsvex({
-			layout: {
-				one: './test/_fixtures/Layout.svelte',
-				two: './test/_fixtures/LayoutTwo.svelte',
-				_: './test/_fixtures/LayoutThree.svelte',
-			},
-		}).markup({
-			content: `---
+mdsvex_it('Fallback layouts should work', async () => {
+	const output = await mdsvex({
+		layout: {
+			one: './test/_fixtures/Layout.svelte',
+			two: './test/_fixtures/LayoutTwo.svelte',
+			_: './test/_fixtures/LayoutThree.svelte',
+		},
+	}).markup({
+		content: `---
 string: value
 string2: 'value2'
 array: [1, 2, 3]
@@ -767,11 +807,11 @@ number: 999
 
 	# hello
 	`,
-			filename: 'blah/three/file.svx',
-		});
+		filename: 'blah/three/file.svx',
+	});
 
-		t.equal(
-			`<script context="module">
+	assert.equal(
+		`<script context="module">
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
 	let thing = 27;
@@ -788,15 +828,15 @@ number: 999
 
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`,
-			output.code
-		);
-	});
+		output.code
+	);
+});
 
-	test('layout: allow custom components', async t => {
-		const output = await mdsvex({
-			layout: './test/_fixtures/LayoutWithComponents.svelte',
-		}).markup({
-			content: `
+mdsvex_it('layout: allow custom components', async () => {
+	const output = await mdsvex({
+		layout: './test/_fixtures/LayoutWithComponents.svelte',
+	}).markup({
+		content: `
 
 <script context="module">
 	let thing = 27;
@@ -804,11 +844,11 @@ number: 999
 
 # hello
 `,
-			filename: 'file.svx',
-		});
+		filename: 'file.svx',
+	});
 
-		t.equal(
-			`<script context="module">
+	assert.equal(
+		`<script context="module">
 	let thing = 27;
 </script>
 
@@ -820,15 +860,15 @@ number: 999
 
 <Components.h1>hello</Components.h1>
 </Layout_MDSVEX_DEFAULT>`,
-			output.code
-		);
-	});
+		output.code
+	);
+});
 
-	test('layout: allow custom components', async t => {
-		const output = await mdsvex({
-			layout: './test/_fixtures/LayoutTwoWithComponents.svelte',
-		}).markup({
-			content: `
+mdsvex_it('layout: allow custom components', async () => {
+	const output = await mdsvex({
+		layout: './test/_fixtures/LayoutTwoWithComponents.svelte',
+	}).markup({
+		content: `
 
 <script context="module">
 	let thing = 27;
@@ -838,11 +878,11 @@ number: 999
 
 I am some paragraph text
 `,
-			filename: 'file.svx',
-		});
+		filename: 'file.svx',
+	});
 
-		t.equal(
-			`<script context="module">
+	assert.equal(
+		`<script context="module">
 	let thing = 27;
 </script>
 
@@ -855,15 +895,15 @@ I am some paragraph text
 <Components.h1>hello</Components.h1>
 <Components.p>I am some paragraph text</Components.p>
 </Layout_MDSVEX_DEFAULT>`,
-			output.code
-		);
-	});
+		output.code
+	);
+});
 
-	test('layout: allow custom components', async t => {
-		const output = await mdsvex({
-			layout: './test/_fixtures/LayoutTwoWithComponents.svelte',
-		}).markup({
-			content: `
+mdsvex_it('layout: allow custom components', async () => {
+	const output = await mdsvex({
+		layout: './test/_fixtures/LayoutTwoWithComponents.svelte',
+	}).markup({
+		content: `
 
 <script context="module">
 	let thing = 27;
@@ -873,11 +913,11 @@ I am some paragraph text
 
 I am some paragraph text
 `,
-			filename: 'file.svx',
-		});
+		filename: 'file.svx',
+	});
 
-		t.equal(
-			`<script context="module">
+	assert.equal(
+		`<script context="module">
 	let thing = 27;
 </script>
 
@@ -890,7 +930,8 @@ I am some paragraph text
 <Components.h1>hello</Components.h1>
 <Components.p>I am some paragraph text</Components.p>
 </Layout_MDSVEX_DEFAULT>`,
-			output.code
-		);
-	});
-}
+		output.code
+	);
+});
+
+mdsvex_it.run();

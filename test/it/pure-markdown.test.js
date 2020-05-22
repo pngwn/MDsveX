@@ -1,3 +1,6 @@
+import { suite } from 'uvu';
+import * as assert from 'uvu/assert';
+
 import { readdirSync, readFileSync } from 'fs';
 import { join, basename } from 'path';
 import { transform } from '../../src';
@@ -6,17 +9,20 @@ const PATH = join(__dirname, '../_fixtures/markdown');
 const INPUT_PATH = join(PATH, 'input');
 const OUTPUT_PATH = join(PATH, 'output');
 
-export default function(test) {
-	const md_files = readdirSync(INPUT_PATH).map(p => [
-		p,
-		readFileSync(join(INPUT_PATH, p), { encoding: 'utf8' }),
-		readFileSync(join(OUTPUT_PATH, `${basename(p, '.md')}.html`), {
-			encoding: 'utf8',
-		}),
-	]);
+const markdown = suite('pure-markdown');
 
-	md_files.forEach(([path, input, output], i) => {
-		test(`it should correctly parse pure markdown files: ${path}`, async t => {
+const md_files = readdirSync(INPUT_PATH).map(p => [
+	p,
+	readFileSync(join(INPUT_PATH, p), { encoding: 'utf8' }),
+	readFileSync(join(OUTPUT_PATH, `${basename(p, '.md')}.html`), {
+		encoding: 'utf8',
+	}),
+]);
+
+md_files.forEach(([path, input, output], i) => {
+	markdown(
+		`it should correctly parse pure markdown files: ${path}`,
+		async () => {
 			// temp
 			if (path === 'literal-html-tags.md') return;
 
@@ -27,10 +33,12 @@ export default function(test) {
 				console.log(i, e);
 			}
 
-			t.equal(
+			assert.equal(
 				output.replace(/\n\n/, '\n').trim(),
 				result.contents.replace(/\n\n/, '\n').trim()
 			);
-		});
-	});
-}
+		}
+	);
+});
+
+markdown.run();

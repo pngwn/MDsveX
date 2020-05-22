@@ -1,26 +1,30 @@
+import { suite } from 'uvu';
+import * as assert from 'uvu/assert';
+
 import { mdsvex } from '../../src/';
 
-export default function(test) {
-	test('it should not highlight code when false is passed', async t => {
-		const output = await mdsvex({ highlight: false }).markup({
-			content: `
+const highlight = suite('code-highlighting');
+
+highlight('it should not highlight code when false is passed', async () => {
+	const output = await mdsvex({ highlight: false }).markup({
+		content: `
 \`\`\`js
 const some_var = whatever;
 \`\`\`
     `,
-			filename: 'thing.svx',
-		});
-
-		t.equal(
-			`<pre><code class="language-js">const some_var = whatever;
-</code></pre>`,
-			output.code
-		);
+		filename: 'thing.svx',
 	});
 
-	test('it should escape code when false is passed', async t => {
-		const output = await mdsvex({ highlight: false }).markup({
-			content: `
+	assert.equal(
+		`<pre><code class="language-js">const some_var = whatever;
+</code></pre>`,
+		output.code
+	);
+});
+
+highlight('it should escape code when false is passed', async () => {
+	const output = await mdsvex({ highlight: false }).markup({
+		content: `
 \`\`\`html
 <script>
   function() {
@@ -29,61 +33,63 @@ const some_var = whatever;
 </script>
 \`\`\`
     `,
-			filename: 'thing.svx',
-		});
+		filename: 'thing.svx',
+	});
 
-		t.equal(
-			`<pre><code class="language-html">&lt;script&gt;
+	assert.equal(
+		`<pre><code class="language-html">&lt;script&gt;
   function() &#123;
     whatever;
   &#125;
 &lt;/script&gt;
 </code></pre>`,
-			output.code
-		);
-	});
+		output.code
+	);
+});
 
-	test('it should highlight code when nothing is passed', async t => {
-		const output = await mdsvex().markup({
-			content: `
+highlight('it should highlight code when nothing is passed', async () => {
+	const output = await mdsvex().markup({
+		content: `
 \`\`\`js
 const thing = 'string';
 \`\`\`
     `,
-			filename: 'thing.svx',
-		});
-
-		t.equal(
-			`<pre class="language-js">
-<code class="language-js"><span class="token keyword">const</span> thing <span class="token operator">=</span> <span class="token string">'string'</span><span class="token punctuation">;</span></code>
-</pre>`,
-			output.code
-		);
+		filename: 'thing.svx',
 	});
 
-	test('it should escape when highlighting (kinda)', async t => {
-		const output = await mdsvex().markup({
-			content: `
+	assert.equal(
+		`<pre class="language-js">
+<code class="language-js"><span class="token keyword">const</span> thing <span class="token operator">=</span> <span class="token string">'string'</span><span class="token punctuation">;</span></code>
+</pre>`,
+		output.code
+	);
+});
+
+highlight('it should escape when highlighting (kinda)', async () => {
+	const output = await mdsvex().markup({
+		content: `
 \`\`\`js
 function() {
 	whatever;
 }
 \`\`\`
     `,
-			filename: 'thing.svx',
-		});
+		filename: 'thing.svx',
+	});
 
-		t.equal(
-			`<pre class="language-js">
+	assert.equal(
+		`<pre class="language-js">
 <code class="language-js"><span class="token keyword">function</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
 	whatever<span class="token punctuation">;</span>
 <span class="token punctuation">&#125;</span></code>
 </pre>`,
-			output.code
-		);
-	});
+		output.code
+	);
+});
 
-	test('it should highlight code when nothing is passed, with a non-default language', async t => {
+highlight(
+	'it should highlight code when nothing is passed, with a non-default language',
+	async () => {
 		const output = await mdsvex().markup({
 			content: `
 \`\`\`ruby
@@ -95,7 +101,7 @@ puts "Hello #{name}."
 			filename: 'thing.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<pre class="language-ruby">
 <code class="language-ruby">print <span class="token string">'Please type name >'</span>
 name <span class="token operator">=</span> gets<span class="token punctuation">.</span>chomp
@@ -103,9 +109,12 @@ puts <span class="token string">"Hello <span class="token interpolation"><span c
 </pre>`,
 			output.code
 		);
-	});
+	}
+);
 
-	test('it should highlight code when nothing is passed, with a more obscure language', async t => {
+highlight(
+	'it should highlight code when nothing is passed, with a more obscure language',
+	async () => {
 		const output = await mdsvex().markup({
 			content: `
 \`\`\`ebnf
@@ -120,7 +129,7 @@ DEFINITIONS LIST
 			filename: 'thing.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<pre class="language-ebnf">
 <code class="language-ebnf"><span class="token definition rule keyword">SYNTAX</span> <span class="token operator">=</span> <span class="token rule">SYNTAX RULE</span><span class="token punctuation">,</span> <span class="token punctuation">(:</span> <span class="token rule">SYNTAX RULE</span> <span class="token punctuation">:)</span><span class="token punctuation">.</span>
 <span class="token definition rule keyword">SYNTAX RULE</span>
@@ -131,9 +140,12 @@ DEFINITIONS LIST
 </pre>`,
 			output.code
 		);
-	});
+	}
+);
 
-	test('Should be possible to pass a custom highlight function ', async t => {
+highlight(
+	'Should be possible to pass a custom highlight function ',
+	async () => {
 		function _highlight(code, lang) {
 			return `<code class="${lang}">${code}</code>`;
 		}
@@ -149,10 +161,13 @@ i am some code
 			filename: 'thing.svx',
 		});
 
-		t.equal(`<code class="somecode">i am some code</code>`, output.code);
-	});
+		assert.equal(`<code class="somecode">i am some code</code>`, output.code);
+	}
+);
 
-	test('Should be possible to define a custom alias for a language', async t => {
+highlight(
+	'Should be possible to define a custom alias for a language',
+	async () => {
 		const output = await mdsvex({
 			highlight: { alias: { beeboo: 'html' } },
 		}).markup({
@@ -164,15 +179,18 @@ i am some code
 			filename: 'thing.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<pre class="language-beeboo">
 <code class="language-beeboo"><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>h1</span><span class="token punctuation">></span></span>Title<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>h1</span><span class="token punctuation">></span></span></code>
 </pre>`,
 			output.code
 		);
-	});
+	}
+);
 
-	test('Should be possible to add additional highlighting grammars', async t => {
+highlight(
+	'Should be possible to add additional highlighting grammars',
+	async () => {
 		require('prismjs');
 		require('prism-svelte');
 		const output = await mdsvex({
@@ -186,11 +204,13 @@ i am some code
 			filename: 'thing.svx',
 		});
 
-		t.equal(
+		assert.equal(
 			`<pre class="language-svelte">
 <code class="language-svelte"><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>h1</span><span class="token punctuation">></span></span>Title<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>h1</span><span class="token punctuation">></span></span></code>
 </pre>`,
 			output.code
 		);
-	});
-}
+	}
+);
+
+highlight.run();

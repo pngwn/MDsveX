@@ -1,4 +1,9 @@
+import { suite } from 'uvu';
+import * as assert from 'uvu/assert';
+
 import { parse_svelte_tag } from '../../src/parsers';
+
+const tags = suite('svelte-tags');
 
 // I have no idea what the unified/ remark eat function returns but i need to fake it.
 const eat = value => node => ({
@@ -6,18 +11,17 @@ const eat = value => node => ({
 	node,
 });
 
-export default function(test) {
-	const svelte_tags = [
-		['component', 'svelte:component'],
-		['self', 'svelte:self'],
-		['window', 'svelte:window'],
-		['body', 'svelte:body'],
-		['options', 'svelte:options'],
-		['head', 'svelte:head'],
-	];
+const svelte_tags = [
+	['component', 'svelte:component'],
+	['self', 'svelte:self'],
+	['window', 'svelte:window'],
+	['body', 'svelte:body'],
+	['options', 'svelte:options'],
+	['head', 'svelte:head'],
+];
 
-	test('svelte blocks with children should be correctly parsed', t => {
-		const s = `<svelte:head>
+tags('svelte blocks with children should be correctly parsed', () => {
+	const s = `<svelte:head>
   <meta property="og:title" content={title} />
   <meta property="og:type" content="article" />
   <meta property="og:url" content="{host}{path}" />
@@ -25,27 +29,29 @@ export default function(test) {
 
 # hello`;
 
-		t.equal(parse_svelte_tag(eat, s, false), {
+	assert.equal(parse_svelte_tag(eat, s, false), {
+		value: `<svelte:head>
+  <meta property="og:title" content={title} />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="{host}{path}" />
+</svelte:head>`,
+		node: {
 			value: `<svelte:head>
   <meta property="og:title" content={title} />
   <meta property="og:type" content="article" />
   <meta property="og:url" content="{host}{path}" />
 </svelte:head>`,
-			node: {
-				value: `<svelte:head>
-  <meta property="og:title" content={title} />
-  <meta property="og:type" content="article" />
-  <meta property="og:url" content="{host}{path}" />
-</svelte:head>`,
-				name: 'head',
-				type: 'svelteTag',
-			},
-		});
+			name: 'head',
+			type: 'svelteTag',
+		},
 	});
+});
 
-	svelte_tags.forEach(([name, component]) => {
-		test(`${name}: it should it should correctly match and parse any svelte tag`, t => {
-			t.equal(
+svelte_tags.forEach(([name, component]) => {
+	tags(
+		`${name}: it should it should correctly match and parse any svelte tag`,
+		() => {
+			assert.equal(
 				parse_svelte_tag(eat, `<${component}></ ${component}>`, false),
 				{
 					value: `<${component}></ ${component}>`,
@@ -58,20 +64,7 @@ export default function(test) {
 				'opening tags'
 			);
 
-			// t.equal(
-			// 	parse_svelte_tag(eat, `</ ${component}>`, false),
-			// 	{
-			// 		value: ``,
-			// 		node: {
-			// 			value: ``,
-			// 			name,
-			// 			type: 'svelteTag',
-			// 		},
-			// 	},
-			// 	'closing tags'
-			// );
-
-			t.equal(
+			assert.equal(
 				parse_svelte_tag(eat, `<${component} />`, false),
 				{
 					value: `<${component} />`,
@@ -84,7 +77,7 @@ export default function(test) {
 				'void tags'
 			);
 
-			t.equal(
+			assert.equal(
 				parse_svelte_tag(eat, `   <${component} />`, false),
 				{
 					value: `   <${component} />`,
@@ -102,7 +95,7 @@ export default function(test) {
 				`<${component} foo=bar quu="quux" hello on:click foo={bar} />`,
 				false
 			);
-			t.equal(
+			assert.equal(
 				output,
 				{
 					value: `<${component} foo=bar quu="quux" hello on:click foo={bar} />`,
@@ -114,6 +107,8 @@ export default function(test) {
 				},
 				'with attributes'
 			);
-		});
-	});
-}
+		}
+	);
+});
+
+tags.run();
