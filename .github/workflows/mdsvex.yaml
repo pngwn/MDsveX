@@ -13,8 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v1
-          with:
-            node-version: ${{ matrix.node-version }}
+        with:
+          node-version: ${{ matrix.node-version }}
       - run: yarn --frozen-lockfile
       - run: yarn lint
         env:
@@ -30,11 +30,10 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
       - uses: actions/checkout@v2
-
       - uses: actions/setup-node@v1
-          with:
-            node-version: ${{ matrix.node-version }}
-      - run: yarn
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: yarn --frozen-lockfile
       - run: yarn test
       - run: yarn build
         env:
