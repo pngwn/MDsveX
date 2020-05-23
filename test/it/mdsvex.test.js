@@ -2,6 +2,7 @@ import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
 import { join } from 'path';
+import { lines } from '../utils';
 
 import { mdsvex } from '../../src/';
 import containers from 'remark-containers';
@@ -19,7 +20,7 @@ mdsvex_it('it should work', async () => {
 		filename: 'file.svx',
 	});
 
-	assert.equal(output.code, `<h1>hello</h1>`);
+	assert.equal(lines(output.code), lines(`<h1>hello</h1>`));
 });
 
 mdsvex_it('it should accept a remark plugin', async () => {
@@ -37,8 +38,10 @@ Hello friends, how are we today
 	});
 
 	assert.equal(
-		`<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`,
-		output.code
+		lines(
+			`<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`
+		),
+		lines(output.code)
 	);
 });
 
@@ -60,9 +63,9 @@ Hello friends, how are we today
 	});
 
 	assert.equal(
-		`<h1 id="lorem-ipsum-"><a href="#lorem-ipsum-" aria-hidden="true"><span class="icon icon-link"></span></a>Lorem ipsum 😪</h1>
-<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`,
-		output.code
+		lines(`<h1 id="lorem-ipsum-"><a href="#lorem-ipsum-" aria-hidden="true"><span class="icon icon-link"></span></a>Lorem ipsum 😪</h1>
+<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`),
+		lines(output.code)
 	);
 });
 
@@ -84,9 +87,9 @@ Hello friends, how are we today
 	});
 
 	assert.equal(
-		`<h1 id="lorem-ipsum-">Lorem ipsum 😪<a href="#lorem-ipsum-" aria-hidden="true"><span class="icon icon-link"></span></a></h1>
-<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`,
-		output.code
+		lines(`<h1 id="lorem-ipsum-">Lorem ipsum 😪<a href="#lorem-ipsum-" aria-hidden="true"><span class="icon icon-link"></span></a></h1>
+<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`),
+		lines(output.code)
 	);
 });
 
@@ -103,14 +106,14 @@ mdsvex_it('it should accept a rehype plugin', async () => {
 	});
 
 	assert.equal(
-		`<nav class="toc"><ol class="toc-level toc-level-1"><li class="toc-item toc-item-h1"><a class="toc-link toc-link-h1" href="#">One</a><ol
+		lines(`<nav class="toc"><ol class="toc-level toc-level-1"><li class="toc-item toc-item-h1"><a class="toc-link toc-link-h1" href="#">One</a><ol
   class="toc-level toc-level-2"
 ><li class="toc-item toc-item-h2"><a class="toc-link toc-link-h2" href="#">Two</a><ol
   class="toc-level toc-level-3"
 ><li class="toc-item toc-item-h3"><a class="toc-link toc-link-h3" href="#">Three</a></li></ol></li></ol></li></ol></nav><h1>One</h1>
 <h2>Two</h2>
-<h3>Three</h3>`,
-		output.code
+<h3>Three</h3>`),
+		lines(output.code)
 	);
 });
 
@@ -127,7 +130,7 @@ mdsvex_it('it should accept rehype plugins - plural', async () => {
 	});
 
 	assert.equal(
-		`<nav class="toc"><ol class="toc-level toc-level-1"><li class="toc-item toc-item-h1"><a class="toc-link toc-link-h1" href="#one">One</a><ol
+		lines(`<nav class="toc"><ol class="toc-level toc-level-1"><li class="toc-item toc-item-h1"><a class="toc-link toc-link-h1" href="#one">One</a><ol
   class="toc-level toc-level-2"
 ><li class="toc-item toc-item-h2"><a class="toc-link toc-link-h2" href="#two">Two</a><ol
   class="toc-level toc-level-3"
@@ -135,8 +138,8 @@ mdsvex_it('it should accept rehype plugins - plural', async () => {
   id="one"
 >One</h1>
 <h2 id="two">Two</h2>
-<h3 id="three">Three</h3>`,
-		output.code
+<h3 id="three">Three</h3>`),
+		lines(output.code)
 	);
 });
 
@@ -153,7 +156,7 @@ mdsvex_it('it should accept rehype plugins with options - plural', async () => {
 	});
 
 	assert.equal(
-		`<ol class="toc toc-level toc-level-1"><li class="toc-item toc-item-h1"><a class="toc-link toc-link-h1" href="#one">One</a><ol
+		lines(`<ol class="toc toc-level toc-level-1"><li class="toc-item toc-item-h1"><a class="toc-link toc-link-h1" href="#one">One</a><ol
   class="toc-level toc-level-2"
 ><li class="toc-item toc-item-h2"><a class="toc-link toc-link-h2" href="#two">Two</a><ol
   class="toc-level toc-level-3"
@@ -161,8 +164,8 @@ mdsvex_it('it should accept rehype plugins with options - plural', async () => {
   id="one"
 >One</h1>
 <h2 id="two">Two</h2>
-<h3 id="three">Three</h3>`,
-		output.code
+<h3 id="three">Three</h3>`),
+		lines(output.code)
 	);
 });
 
@@ -174,7 +177,10 @@ mdsvex_it('it should respect the smartypants option', async () => {
 		filename: 'file.svx',
 	});
 
-	assert.equal(`<p>“Hello friends!” ‘This is some stuff…’</p>`, output.code);
+	assert.equal(
+		lines(`<p>“Hello friends!” ‘This is some stuff…’</p>`),
+		lines(output.code)
+	);
 });
 
 mdsvex_it('it should accept a smartypants options object', async () => {
@@ -185,7 +191,7 @@ mdsvex_it('it should accept a smartypants options object', async () => {
 		filename: 'file.svx',
 	});
 
-	assert.equal(`<p>hello—friend...</p>`, output.code);
+	assert.equal(lines(`<p>hello—friend...</p>`), lines(output.code));
 });
 
 mdsvex_it('only expected file extension names should work', async () => {
@@ -203,7 +209,7 @@ mdsvex_it('the extension name should be customisable', async () => {
 		filename: 'file.jesus',
 	});
 
-	assert.equal(`<h1>hello</h1>`, output.code);
+	assert.equal(lines(`<h1>hello</h1>`), lines(output.code));
 });
 
 mdsvex_it('custom layouts should work - special tags', async () => {
@@ -222,7 +228,7 @@ mdsvex_it('custom layouts should work - special tags', async () => {
 	});
 
 	assert.equal(
-		`
+		lines(`
 <script>
 	import Layout_MDSVEX_DEFAULT from '${join(
 		__dirname,
@@ -238,8 +244,8 @@ mdsvex_it('custom layouts should work - special tags', async () => {
 <Layout_MDSVEX_DEFAULT>
 
 <h1>hello</h1>
-</Layout_MDSVEX_DEFAULT>`,
-		output.code
+</Layout_MDSVEX_DEFAULT>`),
+		lines(output.code)
 	);
 });
 
@@ -252,7 +258,7 @@ mdsvex_it('custom layouts should work', async () => {
 	});
 
 	assert.equal(
-		`
+		lines(`
 <script>
 	import Layout_MDSVEX_DEFAULT from '${join(
 		__dirname,
@@ -262,8 +268,8 @@ mdsvex_it('custom layouts should work', async () => {
 
 <Layout_MDSVEX_DEFAULT>
 <h1>hello</h1>
-</Layout_MDSVEX_DEFAULT>`,
-		output.code
+</Layout_MDSVEX_DEFAULT>`),
+		lines(output.code)
 	);
 });
 
@@ -290,7 +296,7 @@ mdsvex_it(
 		});
 
 		assert.equal(
-			`<script>
+			lines(`<script>
 	import Layout_MDSVEX_DEFAULT from '${join(
 		__dirname,
 		'../_fixtures/Layout.svelte'
@@ -306,8 +312,8 @@ mdsvex_it(
 
 <h1>hello</h1>
 
-</Layout_MDSVEX_DEFAULT>`,
-			output.code
+</Layout_MDSVEX_DEFAULT>`),
+			lines(output.code)
 		);
 	}
 );
@@ -335,7 +341,7 @@ mdsvex_it(
 		});
 
 		assert.equal(
-			`<script type="ts" lang=whatever thing="whatsit" doodaa=thingamabob>
+			lines(`<script type="ts" lang=whatever thing="whatsit" doodaa=thingamabob>
 	import Layout_MDSVEX_DEFAULT from '${join(
 		__dirname,
 		'../_fixtures/Layout.svelte'
@@ -351,8 +357,8 @@ mdsvex_it(
 
 <h1>hello</h1>
 
-</Layout_MDSVEX_DEFAULT>`,
-			output.code
+</Layout_MDSVEX_DEFAULT>`),
+			lines(output.code)
 		);
 	}
 );
@@ -386,7 +392,7 @@ boo boo boo
 		});
 
 		assert.equal(
-			`<script>
+			lines(`<script>
 	import Layout_MDSVEX_DEFAULT from '${join(
 		__dirname,
 		'../_fixtures/Layout.svelte'
@@ -403,8 +409,8 @@ boo boo boo
 <h1>hello</h1>
 <p>hello friends</p>
 <p>boo boo boo</p>
-</Layout_MDSVEX_DEFAULT>`,
-			output.code
+</Layout_MDSVEX_DEFAULT>`),
+			lines(output.code)
 		);
 	}
 );
@@ -426,14 +432,14 @@ number: 999
 		});
 
 		assert.equal(
-			`<script context="module">
+			lines(`<script context="module">
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
 </script>
 
 <h1>hello</h1>
-`,
-			output.code
+`),
+			lines(output.code)
 		);
 	}
 );
@@ -459,7 +465,7 @@ number: 999
 		});
 
 		assert.equal(
-			`<script context="module">
+			lines(`<script context="module">
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
 	let thing = 27;
@@ -467,8 +473,8 @@ number: 999
 
 
 <h1>hello</h1>
-`,
-			output.code
+`),
+			lines(output.code)
 		);
 	}
 );
@@ -494,7 +500,7 @@ number: 999
 		});
 
 		assert.equal(
-			`<script context=module>
+			lines(`<script context=module>
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
 	let thing = 27;
@@ -502,8 +508,8 @@ number: 999
 
 
 <h1>hello</h1>
-`,
-			output.code
+`),
+			lines(output.code)
 		);
 	}
 );
@@ -529,7 +535,7 @@ number: 999
 		});
 
 		assert.equal(
-			`<script type="ts" lang=whatever context=module thing="whatsit" doodaa=thingamabob>
+			lines(`<script type="ts" lang=whatever context=module thing="whatsit" doodaa=thingamabob>
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
 	let thing = 27;
@@ -537,8 +543,8 @@ number: 999
 
 
 <h1>hello</h1>
-`,
-			output.code
+`),
+			lines(output.code)
 		);
 	}
 );
@@ -566,7 +572,7 @@ number: 999
 		});
 
 		assert.equal(
-			`<script context="module">
+			lines(`<script context="module">
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
 	let thing = 27;
@@ -582,8 +588,8 @@ number: 999
 <Layout_MDSVEX_DEFAULT {...metadata}>
 
 <h1>hello</h1>
-</Layout_MDSVEX_DEFAULT>`,
-			output.code
+</Layout_MDSVEX_DEFAULT>`),
+			lines(output.code)
 		);
 	}
 );
@@ -631,7 +637,7 @@ dob = 1879-05-27T07:32:00-08:00 # First class dates
 		});
 
 		assert.equal(
-			`<script context="module">
+			lines(`<script context="module">
 	export const metadata = {"title":"TOML Example","owner":{"name":"some name","dob":"1879-05-27T15:32:00.000Z"}};
 	const { title, owner } = metadata;
 	let thing = 27;
@@ -647,8 +653,8 @@ dob = 1879-05-27T07:32:00-08:00 # First class dates
 <Layout_MDSVEX_DEFAULT {...metadata}>
 
 <h1>hello</h1>
-</Layout_MDSVEX_DEFAULT>`,
-			output.code
+</Layout_MDSVEX_DEFAULT>`),
+			lines(output.code)
 		);
 	}
 );
@@ -679,7 +685,7 @@ number: 999
 		});
 
 		assert.equal(
-			`<script context="module">
+			lines(`<script context="module">
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
 	let thing = 27;
@@ -695,8 +701,8 @@ number: 999
 <Layout_MDSVEX_DEFAULT {...metadata}>
 
 <h1>hello</h1>
-</Layout_MDSVEX_DEFAULT>`,
-			output.code
+</Layout_MDSVEX_DEFAULT>`),
+			lines(output.code)
 		);
 	}
 );
@@ -729,7 +735,7 @@ number: 999
 		});
 
 		assert.equal(
-			`<script context="module">
+			lines(`<script context="module">
 	export const metadata = {"layout":"one","string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { layout, string, string2, array, number } = metadata;
 	let thing = 27;
@@ -746,8 +752,8 @@ number: 999
 <Layout_MDSVEX_DEFAULT {...metadata}>
 
 <h1>hello</h1>
-</Layout_MDSVEX_DEFAULT>`,
-			output.code
+</Layout_MDSVEX_DEFAULT>`),
+			lines(output.code)
 		);
 	}
 );
@@ -772,7 +778,7 @@ layout: false
 		});
 
 		assert.equal(
-			`<script context="module">
+			lines(`<script context="module">
 	export const metadata = {"layout":false};
 	const { layout } = metadata;
 	let thing = 27;
@@ -780,8 +786,8 @@ layout: false
 
 
 <h1>hello</h1>
-`,
-			output.code
+`),
+			lines(output.code)
 		);
 	}
 );
@@ -811,7 +817,7 @@ number: 999
 	});
 
 	assert.equal(
-		`<script context="module">
+		lines(`<script context="module">
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
 	let thing = 27;
@@ -827,8 +833,8 @@ number: 999
 <Layout_MDSVEX_DEFAULT {...metadata}>
 
 <h1>hello</h1>
-</Layout_MDSVEX_DEFAULT>`,
-		output.code
+</Layout_MDSVEX_DEFAULT>`),
+		lines(output.code)
 	);
 });
 
@@ -848,7 +854,7 @@ mdsvex_it('layout: allow custom components', async () => {
 	});
 
 	assert.equal(
-		`<script context="module">
+		lines(`<script context="module">
 	let thing = 27;
 </script>
 
@@ -859,8 +865,8 @@ mdsvex_it('layout: allow custom components', async () => {
 <Layout_MDSVEX_DEFAULT>
 
 <Components.h1>hello</Components.h1>
-</Layout_MDSVEX_DEFAULT>`,
-		output.code
+</Layout_MDSVEX_DEFAULT>`),
+		lines(output.code)
 	);
 });
 
@@ -882,7 +888,7 @@ I am some paragraph text
 	});
 
 	assert.equal(
-		`<script context="module">
+		lines(`<script context="module">
 	let thing = 27;
 </script>
 
@@ -894,8 +900,8 @@ I am some paragraph text
 
 <Components.h1>hello</Components.h1>
 <Components.p>I am some paragraph text</Components.p>
-</Layout_MDSVEX_DEFAULT>`,
-		output.code
+</Layout_MDSVEX_DEFAULT>`),
+		lines(output.code)
 	);
 });
 
@@ -917,7 +923,7 @@ I am some paragraph text
 	});
 
 	assert.equal(
-		`<script context="module">
+		lines(`<script context="module">
 	let thing = 27;
 </script>
 
@@ -929,8 +935,8 @@ I am some paragraph text
 
 <Components.h1>hello</Components.h1>
 <Components.p>I am some paragraph text</Components.p>
-</Layout_MDSVEX_DEFAULT>`,
-		output.code
+</Layout_MDSVEX_DEFAULT>`),
+		lines(output.code)
 	);
 });
 
