@@ -3,6 +3,7 @@ import * as assert from 'uvu/assert';
 
 import { readdirSync, readFileSync } from 'fs';
 import { join, basename } from 'path';
+import { lines } from '../utils';
 import { transform } from '../../src';
 
 const PATH = join(__dirname, '../_fixtures/markdown');
@@ -32,8 +33,7 @@ md_files.forEach(([path, input, output], i) => {
 			} catch (e) {
 				console.log(i, e);
 			}
-
-			assert.fixture(output.trim(), result.contents.trim());
+			assert.equal(lines(output), lines(result.contents));
 		}
 	);
 });

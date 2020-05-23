@@ -3,6 +3,8 @@ import * as assert from 'uvu/assert';
 
 import { readdirSync, readFileSync } from 'fs';
 import { join, basename } from 'path';
+import { lines } from '../utils';
+
 import { mdsvex } from '../../src';
 
 const PATH = join(__dirname, '../_fixtures/hybrid');
@@ -30,10 +32,7 @@ md_files.forEach(([path, input, output], i) => {
 				console.log(i, e);
 			}
 
-			assert.equal(
-				output.replace(/\n\n/, '\n').trim(),
-				result.code.replace(/\n\n/, '\n').trim()
-			);
+			assert.equal(lines(output), lines(result.code));
 		}
 	);
 });
