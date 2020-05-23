@@ -575,9 +575,8 @@ number: 999
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT from '${join(
-		__dirname,
-		'../_fixtures/Layout.svelte'
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(__dirname, '../_fixtures/Layout.svelte')
 	)}';
 </script>
 
@@ -640,9 +639,8 @@ dob = 1879-05-27T07:32:00-08:00 # First class dates
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT from '${join(
-		__dirname,
-		'../_fixtures/Layout.svelte'
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(__dirname, '../_fixtures/Layout.svelte')
 	)}';
 </script>
 
@@ -688,9 +686,8 @@ number: 999
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT from '${join(
-		__dirname,
-		'../_fixtures/LayoutTwo.svelte'
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(__dirname, '../_fixtures/LayoutTwo.svelte')
 	)}';
 </script>
 
@@ -739,9 +736,8 @@ number: 999
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT from '${join(
-		__dirname,
-		'../_fixtures/Layout.svelte'
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(__dirname, '../_fixtures/Layout.svelte')
 	)}';
 </script>
 
@@ -820,9 +816,8 @@ number: 999
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT from '${join(
-		__dirname,
-		'../_fixtures/LayoutThree.svelte'
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(__dirname, '../_fixtures/LayoutThree.svelte')
 	)}';
 </script>
 
@@ -855,11 +850,8 @@ mdsvex_it('layout: allow custom components', async () => {
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, { components as Components } from '${join(
-		process.cwd(),
-		'test',
-		'_fixtures',
-		'LayoutWithComponents.svelte'
+	import Layout_MDSVEX_DEFAULT, { components as Components } from '${to_posix(
+		join(process.cwd(), 'test', '_fixtures', 'LayoutWithComponents.svelte')
 	)}';
 </script>
 
@@ -894,11 +886,8 @@ I am some paragraph text
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, { components as Components } from '${join(
-		process.cwd(),
-		'test',
-		'_fixtures',
-		'LayoutTwoWithComponents.svelte'
+	import Layout_MDSVEX_DEFAULT, { components as Components } from '${to_posix(
+		join(process.cwd(), 'test', '_fixtures', 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
 
@@ -934,11 +923,8 @@ I am some paragraph text
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, { components as Components } from '${join(
-		process.cwd(),
-		'test',
-		'_fixtures',
-		'LayoutTwoWithComponents.svelte'
+	import Layout_MDSVEX_DEFAULT, { components as Components } from '${to_posix(
+		join(process.cwd(), 'test', '_fixtures', 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
 
