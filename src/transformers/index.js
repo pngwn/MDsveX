@@ -7,8 +7,7 @@ import escape from 'escape-html';
 
 // this needs a big old cleanup
 
-const is_win = process.platform === 'win32';
-const newline = is_win ? '\r\n' : '\n';
+const newline = '\n';
 // extract the yaml from 'yaml' nodes and put them in the vfil for later use
 
 export function default_frontmatter(value, messages) {
@@ -78,7 +77,7 @@ export function smartypants_transformer(options = {}) {
 const attrs = `(?:\\s{0,1}[a-zA-z]+=(?:"){0,1}[a-zA-Z0-9]+(?:"){0,1})*`;
 const context = `(?:\\s{0,1}context)=(?:"){0,1}module(?:"){0,1}`;
 
-const RE_BLANK = is_win ? /^\r\n+$|^\s+$/ : /^\n+$|^\s+$/;
+const RE_BLANK = /^\n+$|^\s+$/;
 
 const RE_SCRIPT = new RegExp(`^(<script` + attrs + `>)`);
 
