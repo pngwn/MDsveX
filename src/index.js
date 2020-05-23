@@ -95,13 +95,24 @@ const defaults = {
 	highlight: { highlighter: code_highlight },
 };
 
+function to_posix(_path) {
+	const isExtendedLengthPath = /^\\\\\?\\/.test(_path);
+	const hasNonAscii = /[^\u0000-\u0080]+/.test(_path); // eslint-disable-line no-control-regex
+
+	if (isExtendedLengthPath || hasNonAscii) {
+		return _path;
+	}
+
+	return _path.replace(/\\/g, '/');
+}
+
 function resolve_layout(layout_path) {
 	try {
-		return require.resolve(layout_path);
+		return to_posix(require.resolve(layout_path));
 	} catch (e) {
 		try {
 			const _path = join(process.cwd(), layout_path);
-			return require.resolve(_path);
+			return to_posix(require.resolve(_path));
 		} catch (e) {
 			throw new Error(
 				`The layout path you provided couldn't be found at either ${layout_path} or ${join(
