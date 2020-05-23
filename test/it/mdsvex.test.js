@@ -859,7 +859,12 @@ mdsvex_it('layout: allow custom components', async () => {
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, { components as Components } from '${process.cwd()}/test/_fixtures/LayoutWithComponents.svelte';
+	import Layout_MDSVEX_DEFAULT, { components as Components } from '${join(
+		process.cwd(),
+		'test',
+		'_fixtures',
+		'LayoutWithComponents.svelte'
+	)}';
 </script>
 
 <Layout_MDSVEX_DEFAULT>
@@ -893,7 +898,12 @@ I am some paragraph text
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, { components as Components } from '${process.cwd()}/test/_fixtures/LayoutTwoWithComponents.svelte';
+	import Layout_MDSVEX_DEFAULT, { components as Components } from '${join(
+		process.cwd(),
+		'test',
+		'_fixtures',
+		'LayoutTwoWithComponents.svelte'
+	)}';
 </script>
 
 <Layout_MDSVEX_DEFAULT>
@@ -928,7 +938,12 @@ I am some paragraph text
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, { components as Components } from '${process.cwd()}/test/_fixtures/LayoutTwoWithComponents.svelte';
+	import Layout_MDSVEX_DEFAULT, { components as Components } from '${join(
+		process.cwd(),
+		'test',
+		'_fixtures',
+		'LayoutTwoWithComponents.svelte'
+	)}';
 </script>
 
 <Layout_MDSVEX_DEFAULT>

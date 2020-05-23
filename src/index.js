@@ -115,6 +115,8 @@ function resolve_layout(layout_path) {
 	}
 }
 
+// handle custom components
+
 function process_layouts(layouts) {
 	const _layouts = layouts;
 
