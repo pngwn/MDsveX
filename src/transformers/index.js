@@ -7,6 +7,8 @@ import escape from 'escape-html';
 
 // this needs a big old cleanup
 
+const is_win = process.platform === 'win32';
+const newline = is_win ? '\r\n' : '\n';
 // extract the yaml from 'yaml' nodes and put them in the vfil for later use
 
 export function default_frontmatter(value, messages) {
@@ -76,7 +78,7 @@ export function smartypants_transformer(options = {}) {
 const attrs = `(?:\\s{0,1}[a-zA-z]+=(?:"){0,1}[a-zA-Z0-9]+(?:"){0,1})*`;
 const context = `(?:\\s{0,1}context)=(?:"){0,1}module(?:"){0,1}`;
 
-const RE_BLANK = /^\n+$|^\s+$/;
+const RE_BLANK = is_win ? /^\r\n+$|^\s+$/ : /^\n+$|^\s+$/;
 
 const RE_SCRIPT = new RegExp(`^(<script` + attrs + `>)`);
 
@@ -209,7 +211,7 @@ export function transform_hast({ layout }) {
 
 			const fm =
 				vFile.data.fm &&
-				`export const metadata = ${JSON.stringify(vFile.data.fm)};\n` +
+				`export const metadata = ${JSON.stringify(vFile.data.fm)};${newline}` +
 					`\tconst { ${Object.keys(vFile.data.fm).join(', ')} } = metadata;`;
 
 			const _fm_layout = vFile.data.fm && vFile.data.fm.layout;
@@ -282,12 +284,12 @@ export function transform_hast({ layout }) {
 			if (_layout && !instance[0]) {
 				instance.push({
 					type: 'raw',
-					value: `\n<script>\n\t${layout_import}\n</script>\n`,
+					value: `${newline}<script>${newline}\t${layout_import}${newline}</script>${newline}`,
 				});
 			} else if (_layout) {
 				instance[0].value = instance[0].value.replace(
 					RE_SCRIPT,
-					`$1\n\t${layout_import}`
+					`$1${newline}\t${layout_import}`
 				);
 			}
 
@@ -295,12 +297,12 @@ export function transform_hast({ layout }) {
 			if (!_module[0] && fm) {
 				_module.push({
 					type: 'raw',
-					value: `<script context="module">\n\t${fm}\n</script>`,
+					value: `<script context="module">${newline}\t${fm}${newline}</script>`,
 				});
 			} else if (fm) {
 				_module[0].value = _module[0].value.replace(
 					RE_MODULE_SCRIPT,
-					`$1\n\t${fm}`
+					`$1${newline}\t${fm}`
 				);
 			}
 
@@ -308,22 +310,22 @@ export function transform_hast({ layout }) {
 			// if using a layout we only wrap the html and nothing else
 			node.children = [
 				..._module,
-				{ type: 'raw', value: _module[0] ? '\n' : '' },
+				{ type: 'raw', value: _module[0] ? newline : '' },
 				...instance,
-				{ type: 'raw', value: instance[0] ? '\n' : '' },
+				{ type: 'raw', value: instance[0] ? newline : '' },
 				...css,
-				{ type: 'raw', value: css[0] ? '\n' : '' },
+				{ type: 'raw', value: css[0] ? newline : '' },
 				...special,
-				{ type: 'raw', value: special[0] ? '\n' : '' },
+				{ type: 'raw', value: special[0] ? newline : '' },
 				{
 					type: 'raw',
 					value: _layout
 						? `<Layout_MDSVEX_DEFAULT${fm ? ' {...metadata}' : ''}>`
 						: '',
 				},
-				{ type: 'raw', value: '\n' },
+				{ type: 'raw', value: newline },
 				...html,
-				{ type: 'raw', value: '\n' },
+				{ type: 'raw', value: newline },
 				{ type: 'raw', value: _layout ? '</Layout_MDSVEX_DEFAULT>' : '' },
 			];
 		});
