@@ -3,6 +3,7 @@ import * as assert from 'uvu/assert';
 
 import { join } from 'path';
 import { lines } from '../utils';
+import { to_posix } from '../../src/utils';
 
 import { mdsvex } from '../../src/';
 import containers from 'remark-containers';
@@ -230,9 +231,8 @@ mdsvex_it('custom layouts should work - special tags', async () => {
 	assert.equal(
 		lines(`
 <script>
-	import Layout_MDSVEX_DEFAULT from '${join(
-		__dirname,
-		'../_fixtures/Layout.svelte'
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(__dirname, '../_fixtures/Layout.svelte')
 	)}';
 </script>
 
@@ -260,9 +260,8 @@ mdsvex_it('custom layouts should work', async () => {
 	assert.equal(
 		lines(`
 <script>
-	import Layout_MDSVEX_DEFAULT from '${join(
-		__dirname,
-		'../_fixtures/Layout.svelte'
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(__dirname, '../_fixtures/Layout.svelte')
 	)}';
 </script>
 
@@ -297,9 +296,8 @@ mdsvex_it(
 
 		assert.equal(
 			lines(`<script>
-	import Layout_MDSVEX_DEFAULT from '${join(
-		__dirname,
-		'../_fixtures/Layout.svelte'
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(__dirname, '../_fixtures/Layout.svelte')
 	)}';
   export let x = 1;
 </script>
@@ -342,9 +340,8 @@ mdsvex_it(
 
 		assert.equal(
 			lines(`<script type="ts" lang=whatever thing="whatsit" doodaa=thingamabob>
-	import Layout_MDSVEX_DEFAULT from '${join(
-		__dirname,
-		'../_fixtures/Layout.svelte'
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(__dirname, '../_fixtures/Layout.svelte')
 	)}';
   export let x = 1;
 </script>
@@ -393,9 +390,8 @@ boo boo boo
 
 		assert.equal(
 			lines(`<script>
-	import Layout_MDSVEX_DEFAULT from '${join(
-		__dirname,
-		'../_fixtures/Layout.svelte'
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(__dirname, '../_fixtures/Layout.svelte')
 	)}';
   export let x = 1;
 </script>
