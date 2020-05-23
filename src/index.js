@@ -97,13 +97,11 @@ const defaults = {
 
 function resolve_layout(layout_path) {
 	try {
-		require.resolve(layout_path);
-		return layout_path;
+		return require.resolve(layout_path);
 	} catch (e) {
 		try {
 			const _path = join(process.cwd(), layout_path);
-			require.resolve(_path);
-			return _path;
+			return require.resolve(_path);
 		} catch (e) {
 			throw new Error(
 				`The layout path you provided couldn't be found at either ${layout_path} or ${join(
