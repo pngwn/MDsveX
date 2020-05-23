@@ -3670,10 +3670,10 @@ util-deprecate@~1.0.1:
   resolved "https://registry.yarnpkg.com/util-deprecate/-/util-deprecate-1.0.2.tgz#450d4dc9fa70de732762fbd2d4a28981419a0ccf"
   integrity sha1-RQ1Nyfpw3nMnYvvS1KKJgUGaDM8=
 
-uvu@^0.0.9:
-  version "0.0.9"
-  resolved "https://registry.yarnpkg.com/uvu/-/uvu-0.0.9.tgz#52441b0b5746c6f3a1968923295f8cca12c94ef1"
-  integrity sha512-aG6V/3ptACHdkTl7jUxAiV5ZoFWs6qGNUIMQEuDTHpqUAdlGVU0MORXFmlU0dRpVVWYQP/8sTVCgcadtmuqoLg==
+uvu@^0.0.10:
+  version "0.0.10"
+  resolved "https://registry.yarnpkg.com/uvu/-/uvu-0.0.10.tgz#0bf1a8db6e83dac895d9e1c3aef655b7d799492e"
+  integrity sha512-Hy/9loL8LnIjb7SGUBbOdhBOk4nFjCPjSC2YIYyS9FNcOxbX2WIenW4l4N9V6K7GxT0CSf4OwdoctJfLUV5xdA==
   dependencies:
     dequal "^1.0.0"
     diff "^4.0.2"

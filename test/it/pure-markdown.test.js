@@ -33,10 +33,7 @@ md_files.forEach(([path, input, output], i) => {
 				console.log(i, e);
 			}
 
-			assert.equal(
-				output.replace(/\n\n/, '\n').trim(),
-				result.contents.replace(/\n\n/, '\n').trim()
-			);
+			assert.fixture(output.trim(), result.contents.trim());
 		}
 	);
 });

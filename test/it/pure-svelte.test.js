@@ -8,6 +8,7 @@ import { transform } from '../../src';
 
 const PATH = join(__dirname, '../_fixtures/svelte');
 
+const is_win = process.platform === 'win32';
 const is_dir = path => existsSync(path) && lstatSync(path).isDirectory();
 
 const get_dir_path = d => {
@@ -51,10 +52,14 @@ svelte_files.forEach(([path, file], i) => {
 				console.log(i, e);
 			}
 
-			assert.equal(
-				file.replace(/\n\n/g, '\n').trim(),
-				output.contents.replace(/\n\n/g, '\n').trim()
-			);
+			const input = is_win
+				? file.replace(/\r\n\r\n/g, '\n').trim()
+				: file.replace(/\n\n/g, '\n').trim();
+			const expected = is_win
+				? output.contents.replace(/\r\n\r\n/g, '\n').trim()
+				: output.contents.replace(/\n\n/g, '\n').trim();
+
+			assert.fixture(input, expected);
 		}
 	);
 });
