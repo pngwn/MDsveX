@@ -64,8 +64,8 @@ Hello friends, how are we today
 	});
 
 	assert.equal(
-		lines(`<h1 id="lorem-ipsum-"><a href="#lorem-ipsum-" aria-hidden="true"><span class="icon icon-link"></span></a>Lorem ipsum 😪</h1>
-<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`),
+		lines(`<h1 id="lorem-ipsum-"><a href="#lorem-ipsum-" aria-hidden="true" tabindex="-1"><span class="icon icon-link"></span></a>Lorem ipsum 😪</h1>
+		<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`),
 		lines(output.code)
 	);
 });
@@ -88,7 +88,7 @@ Hello friends, how are we today
 	});
 
 	assert.equal(
-		lines(`<h1 id="lorem-ipsum-">Lorem ipsum 😪<a href="#lorem-ipsum-" aria-hidden="true"><span class="icon icon-link"></span></a></h1>
+		lines(`<h1 id="lorem-ipsum-">Lorem ipsum 😪<a href="#lorem-ipsum-" aria-hidden="true" tabindex="-1"><span class="icon icon-link"></span></a></h1>
 <div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`),
 		lines(output.code)
 	);
