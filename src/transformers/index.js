@@ -261,11 +261,11 @@ export function transform_hast({ layout }) {
 				}
 			}
 
-			if (_layout && _layout.components) {
-				for (const component in _layout.components.map) {
+			if (_layout && _layout.components && _layout.components.length) {
+				for (let i = 0; i < _layout.components.length; i++) {
 					visit(tree, 'element', node => {
-						if (node.tagName === component) {
-							node.tagName = `Components.${component}`;
+						if (node.tagName === _layout.components[i]) {
+							node.tagName = `Components.${_layout.components[i]}`;
 						}
 					});
 				}
@@ -274,9 +274,7 @@ export function transform_hast({ layout }) {
 			const layout_import =
 				_layout &&
 				`import Layout_MDSVEX_DEFAULT${
-					_layout.components
-						? `, { ${_layout.components.export_name} as Components }`
-						: ''
+					_layout.components ? `, * as Components` : ''
 				} from '${_layout.path}';`;
 
 			// add the layout if we are using one, reusing the existing script if one exists

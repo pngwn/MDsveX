@@ -1,8 +1,12 @@
 <script context="module">
-  import { P, H1, H2, H3 } from './components/';
+	import { P, H1, H2, H3 } from './components/';
 
-  export const components = { p: P, h1: H1, h2: H2, h3: H3 };
+	export const p = P;
+	export const h1 = H1;
+	export const h2 = H2;
+	export const h3 = H3;
 
+	export const fancypants = 'boo';
 </script>
 
-<slot></slot>
+<slot />

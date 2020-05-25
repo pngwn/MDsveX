@@ -1,8 +1,7 @@
 <script context="module">
-  import { p, h1, h2, h3 } from './components/';
+	import { p, h1, h2, h3 } from './components/';
 
-  export const components = { p, h1, h2, h3 };
-
+	export { p, h1, h2, h3 };
 </script>
 
-<slot></slot>
+<slot />

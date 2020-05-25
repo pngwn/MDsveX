@@ -850,7 +850,7 @@ mdsvex_it('layout: allow custom components', async () => {
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, { components as Components } from '${to_posix(
+	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
 		join(process.cwd(), 'test', '_fixtures', 'LayoutWithComponents.svelte')
 	)}';
 </script>
@@ -858,6 +858,52 @@ mdsvex_it('layout: allow custom components', async () => {
 <Layout_MDSVEX_DEFAULT>
 
 <Components.h1>hello</Components.h1>
+</Layout_MDSVEX_DEFAULT>`),
+		lines(output.code)
+	);
+});
+
+mdsvex_it('layout: allow custom components', async () => {
+	const output = await mdsvex({
+		layout: './test/_fixtures/LayoutThreeWithComponents.svelte',
+	}).markup({
+		content: `
+
+<script context="module">
+	let thing = 27;
+</script>
+
+# hello
+
+## hello
+
+### hello
+
+#### hello
+
+hello *hello* **hello**
+`,
+		filename: 'file.svx',
+	});
+
+	assert.equal(
+		lines(`<script context="module">
+	let thing = 27;
+</script>
+
+<script>
+	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
+		join(process.cwd(), 'test', '_fixtures', 'LayoutThreeWithComponents.svelte')
+	)}';
+</script>
+
+<Layout_MDSVEX_DEFAULT>
+
+<Components.h1>hello</Components.h1>
+<Components.h2>hello</Components.h2>
+<Components.h3>hello</Components.h3>
+<Components.h4>hello</Components.h4>
+<Components.p>hello <Components.em>hello</Components.em> <Components.strong>hello</Components.strong></Components.p>
 </Layout_MDSVEX_DEFAULT>`),
 		lines(output.code)
 	);
@@ -886,7 +932,7 @@ I am some paragraph text
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, { components as Components } from '${to_posix(
+	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
 		join(process.cwd(), 'test', '_fixtures', 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
@@ -923,7 +969,7 @@ I am some paragraph text
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, { components as Components } from '${to_posix(
+	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
 		join(process.cwd(), 'test', '_fixtures', 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>

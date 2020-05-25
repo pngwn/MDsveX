@@ -134,36 +134,38 @@ function process_layouts(layouts) {
 		const ast = parse(layout);
 
 		if (ast.module) {
-			const component_export = ast.module.content.body.find(
-				node =>
-					node.type === 'ExportNamedDeclaration' &&
-					(node.declaration.declarations[0].id.name === 'components' ||
-						node.declaration.declarations[0].id.name === 'Components')
+			const component_exports = ast.module.content.body.filter(
+				node => node.type === 'ExportNamedDeclaration'
 			);
 
-			if (component_export) {
-				_layouts[key].components = {};
+			if (component_exports.length) {
+				_layouts[key].components = [];
 
-				_layouts[key].components.export_name =
-					component_export.declaration.declarations[0].id.name;
+				for (let i = 0; i < component_exports.length; i++) {
+					if (
+						component_exports[i].specifiers &&
+						component_exports[i].specifiers.length
+					) {
+						for (let j = 0; j < component_exports[i].specifiers.length; j++) {
+							_layouts[key].components.push(
+								component_exports[i].specifiers[j].exported.name
+							);
+						}
+					} else if (component_exports[i].declaration.declarations) {
+						const declarations = component_exports[i].declaration.declarations;
 
-				_layouts[
-					key
-				].components.map = component_export.declaration.declarations[0].init.properties.reduce(
-					(acc, { key, value }) => {
-						const _key = key.name;
-						const _value = {
-							name: value.name === value.name,
-						};
-
-						return { ...acc, [_key]: _value };
-					},
-					{}
-				);
+						for (let j = 0; j < declarations.length; j++) {
+							_layouts[key].components.push(declarations[j].id.name);
+						}
+					} else if (component_exports[i].declaration) {
+						_layouts[key].components.push(
+							component_exports[i].declaration.id.name
+						);
+					}
+				}
 			}
 		}
 	}
-
 	return _layouts;
 }
 
@@ -190,6 +192,7 @@ export const mdsvex = ({
 	}
 
 	_layout = process_layouts(_layout);
+	// console.log(_layout);
 
 	const parser = transform({
 		remarkPlugins,
@@ -205,7 +208,6 @@ export const mdsvex = ({
 			if (filename.split('.').pop() !== extension.split('.').pop()) return;
 
 			const parsed = await parser.process({ contents: content, filename });
-
 			return { code: parsed.contents };
 		},
 	};
