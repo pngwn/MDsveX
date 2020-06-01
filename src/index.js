@@ -71,7 +71,7 @@ export function transform({
 
 	const toHAST = toMDAST
 		.use(remark2rehype, {
-			allowDangerousHTML: true,
+			allowDangerousHtml: true,
 			allowDangerousCharacters: true,
 		})
 		.use(transform_hast, { layout });
@@ -79,7 +79,7 @@ export function transform({
 	apply_plugins(rehypePlugins, toHAST);
 
 	const processor = toHAST.use(stringify, {
-		allowDangerousHTML: true,
+		allowDangerousHtml: true,
 		allowDangerousCharacters: true,
 	});
 
