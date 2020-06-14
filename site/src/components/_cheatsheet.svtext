@@ -1,0 +1,117 @@
+<div class="container">
+  <div class="box install">
+    <h2><a href="docs#install-it">Install</a></h2>
+
+Quick installation instructions.
+
+```bash
+npm i -D mdsvex
+```
+
+```bash
+yarn add --dev mdsvex
+```
+
+  </div>
+  <div class="box use">
+    <h2><a href="docs#use-it">Use</a></h2>
+
+Add mdsvex to your project
+
+```js
+svelte({
+  extensions: [
+    '.svelte',
+    '.svx'
+  ],
+  preprocess: mdsvex(config)
+})
+```
+  </div>
+  <div class="box config">
+    <h2><a href="/docs#options">Configure</a></h2>
+
+    <dl>
+      <dt>
+        <a href="docs#extension"><span>extension</span></a>
+      </dt>
+      <dd>use a custom extension</dd>
+      <dt>
+        <a href="docs#smartypants"><span>smartypants</a></span>
+      </dt>
+      <dd>fancy typography</dd>
+      <dt>
+        <a href="docs#layout"><span>layout</span></a>
+      </dt>
+      <dd>custom layouts</dd>
+      <dt>
+        <a href="docs#remarkplugins--rehypeplugins"><span>remarkPlugins</span></a>
+      </dt>
+      <dd>use remark plugins</dd>
+      <dt>
+        <a href="docs#remarkplugins--rehypeplugins"><span>rehypePlugins</span></a>
+      </dt>
+      <dd>use rehype plugins</dd>
+      <dt>
+        <a href="docs#highlight"><span>highlight</span></a>
+      </dt>
+      <dd>syntax highlighting</dd>
+      <dt>
+        <a href="docs#frontmatter"><span>frontmatter</span></a>
+      </dt>
+      <dd>change frontmatter language</dd>
+    </dl>
+
+  </div>
+
+  <div class="box layouts">
+    <h2><a href="docs#layouts">Layouts</a></h2>
+
+Custom layouts for mdsvex documents.
+
+<h3><a href="docs#named-layouts">named layouts</a></h3>
+
+Reference layouts by name.
+
+```svx
+---
+layout: blog
+---
+```
+
+<h3><a href="docs#disabling-layouts">disabling layouts</a></h3>
+
+Disable named layouts when needed.
+
+```svx
+---
+layout: false
+---
+```
+
+<h3><a href="docs#custom-components">custom components</a></h3>
+
+<p class="keep">Replace HTML elements with custom components.</p>
+
+  </div>
+
+  <div class="box frontmatter">
+    <h2><a href="docs#frontmatter-1">Frontmatter</a></h2>
+
+Use frontmatter values directly in markdown.
+
+```mdsvex
+---
+title: Fabuloso
+---
+
+# {title}
+```
+
+  </div>
+
+  <div class="box integrations">
+    <h2><a href="docs#integrations">Integrations</a></h2>
+    <p class="keep">Using mdsvex with other things</p>
+  </div>
+</div>
