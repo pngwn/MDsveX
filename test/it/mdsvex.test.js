@@ -5,7 +5,7 @@ import { join } from 'path';
 import { lines } from '../utils';
 import { to_posix } from '../../src/utils';
 
-import { mdsvex } from '../../src/';
+import { mdsvex, parse } from '../../src/';
 import containers from 'remark-containers';
 import headings from 'remark-autolink-headings';
 import slug from 'remark-slug';
@@ -962,6 +962,79 @@ I am some paragraph text
 `,
 		filename: 'file.svx',
 	});
+
+	assert.equal(
+		lines(`<script context="module">
+	let thing = 27;
+</script>
+
+<script>
+	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
+		join(process.cwd(), 'test', '_fixtures', 'LayoutTwoWithComponents.svelte')
+	)}';
+</script>
+
+<Layout_MDSVEX_DEFAULT>
+
+<Components.h1>hello</Components.h1>
+<Components.p>I am some paragraph text</Components.p>
+</Layout_MDSVEX_DEFAULT>`),
+		lines(output.code)
+	);
+});
+
+mdsvex_it('layout: allow custom components', async () => {
+	const output = await parse(
+		`
+<script context="module">
+	let thing = 27;
+</script>
+
+# hello
+
+I am some paragraph text
+`,
+		{
+			layout: './test/_fixtures/LayoutTwoWithComponents.svelte',
+		}
+	);
+
+	assert.equal(
+		lines(`<script context="module">
+	let thing = 27;
+</script>
+
+<script>
+	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
+		join(process.cwd(), 'test', '_fixtures', 'LayoutTwoWithComponents.svelte')
+	)}';
+</script>
+
+<Layout_MDSVEX_DEFAULT>
+
+<Components.h1>hello</Components.h1>
+<Components.p>I am some paragraph text</Components.p>
+</Layout_MDSVEX_DEFAULT>`),
+		lines(output.code)
+	);
+});
+
+mdsvex_it('layout: allow custom components', async () => {
+	const output = await parse(
+		`
+<script context="module">
+	let thing = 27;
+</script>
+
+# hello
+
+I am some paragraph text
+`,
+		{
+			layout: './test/_fixtures/LayoutTwoWithComponents.svelte',
+			extension: '.spooky',
+		}
+	);
 
 	assert.equal(
 		lines(`<script context="module">
