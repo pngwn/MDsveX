@@ -428,9 +428,10 @@ export function highlight_blocks({ highlighter: highlight_fn, alias } = {}) {
 }
 // escape curlies and backtick to avoid breaking out of {@html `here`} in .svelte
 const escape_svelty = str =>
-	str.replace(/[{}`]/g, c => ({ '{': '&#123;', '}': '&#125;','`':'&#96;' }[c]));
-
-
+	str.replace(
+		/[{}`]/g,
+		c => ({ '{': '&#123;', '}': '&#125;', '`': '&#96;' }[c])
+	);
 
 export function code_highlight(code, lang) {
 	if (!process.browser) {
@@ -448,9 +449,11 @@ export function code_highlight(code, lang) {
 		}
 
 		return `<pre class="language-${lang}">{@html \`
-<code class="language-${lang || ''}">${
-  escape_svelty( _lang ? Prism.highlight(code, Prism.languages[_lang.name], _lang.name) : escape(code))
-}</code>\`}
+<code class="language-${lang || ''}">${escape_svelty(
+	_lang
+		? Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
+		: escape(code)
+)}</code>\`}
 </pre>`;
 	} else {
 		return `<pre class="language-${lang}">{@html \`
