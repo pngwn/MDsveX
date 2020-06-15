@@ -213,11 +213,11 @@ export const mdsvex = ({
 	};
 };
 
-const _parse = (source, opts) =>
+const _compile = (source, opts) =>
 	mdsvex(opts).markup({
 		content: source,
 		filename:
 			(opts && opts.filename) || `file${(opts && opts.extension) || '.svx'}`,
 	});
 
-export { _parse as parse };
+export { _compile as compile };
