@@ -426,9 +426,11 @@ export function highlight_blocks({ highlighter: highlight_fn, alias } = {}) {
 		});
 	};
 }
+// escape curlies and backtick to avoid breaking out of {@html `here`} in .svelte
+const escape_svelty = str =>
+	str.replace(/[{}`]/g, c => ({ '{': '&#123;', '}': '&#125;','`':'&#96;' }[c]));
 
-const escape_curlies = str =>
-	str.replace(/[{}]/g, c => ({ '{': '&#123;', '}': '&#125;' }[c]));
+
 
 export function code_highlight(code, lang) {
 	if (!process.browser) {
@@ -445,19 +447,15 @@ export function code_highlight(code, lang) {
 			_lang = langs[lang];
 		}
 
-		return `<pre class="language-${lang}">
+		return `<pre class="language-${lang}">{@html \`
 <code class="language-${lang || ''}">${
-	_lang
-		? escape_curlies(
-			Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
-				  )
-		: escape_curlies(escape(code))
-}</code>
+  escape_svelty( _lang ? Prism.highlight(code, Prism.languages[_lang.name], _lang.name) : escape(code))
+}</code>\`}
 </pre>`;
 	} else {
-		return `<pre class="language-${lang}">
+		return `<pre class="language-${lang}">{@html \`
 <code class="language-${lang || ''}">
-${escape_curlies(escape(code))}</code>
+${escape_svelty(escape(code))}</code>\`}
 </pre>`;
 	}
 }
