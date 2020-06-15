@@ -42,6 +42,10 @@ yarn add --dev mdsvex
 
 ## Use it
 
+There are two named exports from `mdsvex` that can be used to transform mdsvex documents, `mdsvex` and `compile`. `mdsvex` is a Svelte preprocessor and is the preferred way to use this library. The `compile` function is useful when you wish to compile mdsvex documents to Svelte components directly, without hooking into the Svelte compiler.
+
+### `mdsvex`
+
 The `mdsvex` preprocessor function is a named import from the `mdsvex` module. Add it as a preprocessor to you rollup or webpack config, and tell the Svelte plugin or loader to also handle `.svx` files:
 
 ```js
@@ -60,6 +64,30 @@ export default {
 ```
 
 > If you don't like the `.svx` file extension, fear not, it is easily customised.
+
+### `compile`
+
+This option performs a very similar tasks to the preprocessor but it can be used directly, without needing to hook into the Svelte compiler, either directly or via a bundler. The compile option will transform valid mdsvex code into valid svelte code, it will perform no further actions such as resolving imports.
+
+It supports all of the same options as the preprocessor although the function signature is slightly different. The first argument should be the mdsvex source code you wish to compile, the second argument is an object of options.
+
+```js
+import { compile } from 'mdsvex';
+
+const transformed_code = compile(`
+<script>
+  import Chart from './Chart.svelte';
+</script>
+
+# Hello friends
+
+<Chart />
+`,
+	mdsvexOptions
+);
+```
+
+In addition to the standard mdsvex options, the options object can also take an optional `filename` property which will be passed to mdsvex. There is no significant advantage to doing this but this provided filename may be used for error reporting in the future. The extension you give to this filename must match the extension provided in the options (defaults to `.svx`).
 
 ## Options
 
