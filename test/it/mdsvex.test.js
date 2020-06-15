@@ -5,7 +5,7 @@ import { join } from 'path';
 import { lines } from '../utils';
 import { to_posix } from '../../src/utils';
 
-import { mdsvex, parse } from '../../src/';
+import { mdsvex, compile } from '../../src/';
 import containers from 'remark-containers';
 import headings from 'remark-autolink-headings';
 import slug from 'remark-slug';
@@ -984,7 +984,7 @@ I am some paragraph text
 });
 
 mdsvex_it('layout: allow custom components', async () => {
-	const output = await parse(
+	const output = await compile(
 		`
 <script context="module">
 	let thing = 27;
@@ -1020,7 +1020,7 @@ I am some paragraph text
 });
 
 mdsvex_it('layout: allow custom components', async () => {
-	const output = await parse(
+	const output = await compile(
 		`
 <script context="module">
 	let thing = 27;
