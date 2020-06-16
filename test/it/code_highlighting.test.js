@@ -87,6 +87,21 @@ function() {
 	);
 });
 
+highlight('it should escape characters with special meaning inside {@html} used by default highlighter', async () => {
+	const output = await mdsvex().markup({
+		content: `\`\`\`js
+const evil = '{ } \` \\t \\r \\n';
+\`\`\``,
+		filename: 'thing.svx',
+	});
+	assert.equal(
+		'<pre class="language-js">{@html `\n' +
+    '<code class="language-js"><span class="token keyword">const</span> evil <span class="token operator">=</span> <span class="token string">\'&#123; &#125; &#96; &#92;t &#92;r &#92;n\'</span><span class="token punctuation">;</span></code>`}\n' +
+    '</pre>',
+		output.code
+	);
+});
+
 highlight(
 	'it should highlight code when nothing is passed, with a non-default language',
 	async () => {

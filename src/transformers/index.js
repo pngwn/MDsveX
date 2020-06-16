@@ -426,12 +426,12 @@ export function highlight_blocks({ highlighter: highlight_fn, alias } = {}) {
 		});
 	};
 }
-// escape curlies and backtick to avoid breaking out of {@html `here`} in .svelte
+// escape curlies, backtick, \t, \r, \n to avoid breaking output of {@html `here`} in .svelte
 const escape_svelty = str =>
 	str.replace(
 		/[{}`]/g,
 		c => ({ '{': '&#123;', '}': '&#125;', '`': '&#96;' }[c])
-	);
+	).replace(/\\([trn])/g,'&#92;$1');
 
 export function code_highlight(code, lang) {
 	if (!process.browser) {
