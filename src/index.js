@@ -169,15 +169,23 @@ function process_layouts(layouts) {
 	return _layouts;
 }
 
-export const mdsvex = ({
-	remarkPlugins = [],
-	rehypePlugins = [],
-	smartypants = true,
-	extension = '.svx',
-	layout = false,
-	highlight = { highlighter: code_highlight },
-	frontmatter,
-} = defaults) => {
+export const mdsvex = (options = defaults) => {
+	const {
+		remarkPlugins = [],
+		rehypePlugins = [],
+		smartypants = true,
+		extension = '.svx',
+		layout = false,
+		highlight = { highlighter: code_highlight },
+		frontmatter,
+	} = options;
+
+	if (options.layouts) {
+		throw new Error(
+			`mdsvex: "layouts" is not a valid option. Did you mean "layout"?`
+		);
+	}
+
 	let _layout = layout ? {} : layout;
 
 	if (typeof layout === 'string') {
@@ -192,7 +200,6 @@ export const mdsvex = ({
 	}
 
 	_layout = process_layouts(_layout);
-	// console.log(_layout);
 
 	const parser = transform({
 		remarkPlugins,
