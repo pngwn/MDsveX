@@ -233,7 +233,7 @@ In some cases you may want different layouts for different types of document, to
 
 ```js
 mdsvex({
-	layouts: {
+	layout: {
 		blog: "./path/to/blog/layout.svelte",
 		article: "./path/to/article/layout.svelte",
 		_: "./path/to/fallback/layout.svelte"
@@ -427,7 +427,7 @@ In some cases you may want different layouts for different types of document. To
 
 ```js
 mdsvex({
-	layouts: {
+	layout: {
 		blog: "./path/to/blog/layout.svelte",
 		article: "./path/to/article/layout.svelte",
 		_: "./path/to/fallback/layout.svelte"
