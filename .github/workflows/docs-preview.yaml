@@ -1,4 +1,4 @@
-name: docs
+name: docs-deploy-preview
 defaults:
   run:
     working-directory: 'site'
@@ -19,7 +19,7 @@ jobs:
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v1.1
         with:
-          publish-dir: '__sapper__/export'
+          publish-dir: ''
           production-branch: master
           github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: "Deploy Preview"
