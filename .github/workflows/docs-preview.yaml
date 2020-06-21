@@ -1,4 +1,7 @@
 name: docs
+defaults:
+  run:
+    working-directory: 'site'
 
 on:
   pull_request:
