@@ -700,6 +700,43 @@ number: 999
 	}
 );
 
+mdsvex_it('Ensure no-one tries to pass a "layouts" option', async () => {
+	const output_fn = async () =>
+		await mdsvex({
+			layouts: {
+				one: './test/_fixtures/Layout.svelte',
+				two: './test/_fixtures/LayoutTwo.svelte',
+			},
+		}).markup({
+			content: `---
+string: value
+string2: 'value2'
+array: [1, 2, 3]
+number: 999
+---
+
+<script context="module">
+	let thing = 27;
+</script>
+
+	# hello
+	`,
+			filename: 'blah/two/file.svx',
+		});
+
+	try {
+		await output_fn();
+		assert.unreachable('should have thrown error');
+	} catch (e) {
+		assert.instance(e, Error, '~> returns a true Error instance');
+		assert.is(
+			e.message,
+			`mdsvex: "layouts" is not a valid option. Did you mean "layout"?`,
+			`passing the option 'layouts' should throw a nice friendly error`
+		);
+	}
+});
+
 mdsvex_it(
 	'Custom layout can be set via frontmatter - strange formatting',
 	async () => {

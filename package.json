@@ -62,7 +62,7 @@
 		"svelte": "^3.14.1",
 		"toml": "^3.0.0",
 		"unified": "^9.0.0",
-		"uvu": "^0.0.10"
+		"uvu": "^0.0.14"
 	},
 	"peerDependencies": {
 		"svelte": "3.x"
