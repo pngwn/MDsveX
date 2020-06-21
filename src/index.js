@@ -186,6 +186,29 @@ export const mdsvex = (options = defaults) => {
 		);
 	}
 
+	const unknown_opts = [];
+	const known_opts = [
+		'remarkPlugins',
+		'rehypePlugins',
+		'smartypants',
+		'extension',
+		'layout',
+		'highlight',
+		'frontmatter',
+	];
+
+	for (const opt in options) {
+		if (!known_opts.includes(opt)) unknown_opts.push(opt);
+	}
+
+	if (unknown_opts.length) {
+		console.warn(
+			`mdsvex: Received unknown options: ${unknown_opts.join(
+				', '
+			)}. Valid options are: ${known_opts.join(', ')}.`
+		);
+	}
+
 	let _layout = layout ? {} : layout;
 
 	if (typeof layout === 'string') {
