@@ -91,7 +91,26 @@ module.exports = {
 			}
 		]
 	}
-}
+};
+```
+
+If you want to use mdsvex without a bundler because you are your own person, then you can use `svelte.preprocess` directly:
+
+```js
+const svelte = require('svelte/compiler');
+const { mdsvex } = require(mdsvex);
+
+// This will give you a valid svelte component
+const preprocessed = await svelte.preprocess(
+	source, 
+	mdsvex(mdsvex_opts)
+);
+
+// Now you can compile it if you wish
+const compiled = svelte.compile(
+	preprocessed, 
+	compiler_options
+);
 ```
 
 > If you don't like the `.svx` file extension, fear not, it is easily customised.
