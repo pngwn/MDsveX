@@ -1,14 +1,4 @@
 name: docs
-defaults:
-  run:
-    working-directory: 'site'
-
-on:
-  pull_request:
-    branches:
-    - 'master'
-    paths:
-    - 'site/**'
 
 on:
   pull_request:
