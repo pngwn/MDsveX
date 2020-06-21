@@ -737,6 +737,48 @@ number: 999
 	}
 });
 
+mdsvex_it('Warn on receiving unknown options', async () => {
+	const output_fn = async () =>
+		await mdsvex({
+			bip: 'hi',
+			bop: 'ho',
+			boom: 'oh',
+			layout: {
+				one: './test/_fixtures/Layout.svelte',
+				two: './test/_fixtures/LayoutTwo.svelte',
+			},
+		}).markup({
+			content: `---
+string: value
+string2: 'value2'
+array: [1, 2, 3]
+number: 999
+---
+
+<script context="module">
+	let thing = 27;
+</script>
+
+	# hello
+	`,
+			filename: 'blah/two/file.svx',
+		});
+
+	// don't even ask
+	const console_warn = console.warn;
+	let warning = '';
+	console.warn = args => (warning = args);
+
+	await output_fn();
+
+	assert.equal(
+		warning,
+		'mdsvex: Received unknown options: bip, bop, boom. Valid options are: remarkPlugins, rehypePlugins, smartypants, extension, layout, highlight, frontmatter.'
+	);
+
+	console.warn = console_warn;
+});
+
 mdsvex_it(
 	'Custom layout can be set via frontmatter - strange formatting',
 	async () => {
