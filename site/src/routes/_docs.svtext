@@ -46,7 +46,9 @@ There are two named exports from `mdsvex` that can be used to transform mdsvex d
 
 ### `mdsvex`
 
-The `mdsvex` preprocessor function is a named import from the `mdsvex` module. Add it as a preprocessor to you rollup or webpack config, and tell the Svelte plugin or loader to also handle `.svx` files:
+The `mdsvex` preprocessor function is a named import from the `mdsvex` module. Add it as a preprocessor to you rollup or webpack config, and tell the Svelte plugin or loader to also handle `.svx` files.
+
+With rollup and `rollup-plugin-svelte`:
 
 ```js
 import { mdsvex } from "mdsvex";
@@ -61,6 +63,35 @@ export default {
 		})
 	]
 };
+```
+
+With webpack and `svelte-loader`:
+
+```js
+const { mdsvex } = require('mdsvex')
+
+// add ".svx" to the extensions array
+const extensions = ['.mjs', '.js', '.json', '.svelte', '.html', '.svx'];
+
+module.exports = {
+	...boring_config_stuff,
+	resolve: { alias, extensions, mainFields },
+	module: {
+		rules: [
+			{
+				// tell svelte-loader to handle svx files as well
+				test: /\.(svelte|html|svx)$/,
+				use: {
+					loader: 'svelte-loader',
+					options: {
+						...svelte_options,
+						preprocess: mdsvex()
+					}
+				}
+			}
+		]
+	}
+}
 ```
 
 > If you don't like the `.svx` file extension, fear not, it is easily customised.
