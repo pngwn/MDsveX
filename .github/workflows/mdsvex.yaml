@@ -1,6 +1,12 @@
 name: mdsvex
 
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore:
+    - 'site/**'
+  pull_request:
+    paths-ignore:
+    - 'site/**'
 
 jobs:
 
