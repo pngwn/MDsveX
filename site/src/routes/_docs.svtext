@@ -580,7 +580,7 @@ The following code block will break in a way that is both very bad and quite une
 		```
 ````
 
-The solution is to not do this. When working with fenced code blocks, do not indent them. This isn't an issue that can really be worked around, even if the parser did make assumptions about what you meant, because code blocks are designed to respect whitespace. Any fix would simply result in a different but equally frustrating failure. Don't indent code blocks. 
+The solution is to not do this. When working with fenced code blocks, do not indent them. This isn't an issue that can really be worked around, even if the parser did make assumptions about what you meant. Because code blocks are designed to respect whitespace, any fix would simply result in a different but equally frustrating failure. Don't indent code blocks. 
 
 [svelte]: https://svelte.dev/
 [mdx]: https://mdxjs.com/
