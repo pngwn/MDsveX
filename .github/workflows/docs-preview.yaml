@@ -1,0 +1,39 @@
+name: docs
+defaults:
+  run:
+    working-directory: 'site'
+
+on:
+  pull_request:
+    branches:
+    - 'master'
+    paths:
+    - 'site/**'
+
+on:
+  pull_request:
+    branches:
+      - 'master'
+    types: [opened, synchronize]
+    paths:
+    - 'site/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Deploy to Netlify
+        uses: nwtgck/actions-netlify@v1.1
+        with:
+          publish-dir: '__sapper__/export'
+          production-branch: master
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy Preview"
+          enable-pull-request-comment: false
+          enable-commit-comment: true
+          overwrites-pull-request-comment: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        timeout-minutes: 1
