@@ -43,9 +43,9 @@ jobs:
       id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
       with:
         path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-        key: ${{ matrix.node-version }}-${{ matrix.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
         restore-keys: |
-          ${{ matrix.node-version }}-${{ matrix.os }}-yarn-
+          ${{ runner.os }}-yarn-
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v1
         with:
