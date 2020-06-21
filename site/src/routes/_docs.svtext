@@ -566,9 +566,21 @@ _coming soon_
 
 ## Limitations
 
+### Indentation
+
 In markdown you can begin a code block by indenting 4 spaces. This doesn't not work in mdsvex as indentation is common with XML-based languages. Indenting 4 spaces will do nothing.
 
-There may be other limitations but I can't remember right now. I'll add more to this section as people create issues about things that I have broken but don't want to fix.
+In general you have a lot more flexibility when it comes to indenting code in mdsvex than you do in markdown because of the above change, however, you need to be very careful when indenting fenced code blocks. By which I mean, don't do it.
+
+The following code block will break in a way that is both very bad and quite unexpected:
+
+```mdsvex
+		```js
+					console.log('Hello, World!')
+		```
+````
+
+The solution is to not do this. When working with fenced code blocks, do not indent them. This isn't an issue that can really be worked around, even if the parser did make assumptions about what you meant, because code blocks are designed to respect whitespace. Any fix would simply result in a different but equally frustrating failure. Don't indent code blocks. 
 
 [svelte]: https://svelte.dev/
 [mdx]: https://mdxjs.com/
