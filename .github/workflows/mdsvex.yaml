@@ -11,10 +11,10 @@ jobs:
         node-version: [12]
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
       - uses: bahmutov/npm-install@v1
+      - uses: actions/setup-node@v1
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: ${{ matrix.node-version }}        
       - run: yarn lint
         env:
           CI: true
