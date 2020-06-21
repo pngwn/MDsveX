@@ -1,0 +1,10 @@
+account_id = "03a53ffe7b4926e8f6c4aa5e2ddf6b0f"
+name = "mdsvex-docs"
+type = "webpack"
+workers_dev = false
+zone_id = "24bb157d8df5f0d5e9b3ad7d11bfe309"
+route = "mdsvex.com/*"
+
+[site]
+bucket = "__sapper__/export"
+entry-point = "workers-site"
