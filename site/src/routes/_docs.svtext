@@ -637,6 +637,6 @@ The solution is to not do this. When working with fenced code blocks, do not ind
 [unified]: https://unifiedjs.com/
 [remark]: https://github.com/remarkjs
 [rehype]: https://github.com/rehypejs/rehype
-[remark_plugins]: https://github.com/remarkjs/remark/blob/master/doc/plugins.md#list-of-plugins
-[rehype_plugins]: https://github.com/rehypejs/rehype/blob/master/doc/plugins.md#list-of-plugins
+[remark_plugins]: https://github.com/remarkjs/remark/blob/main/doc/plugins.md#list-of-plugins
+[rehype_plugins]: https://github.com/rehypejs/rehype/blob/main/doc/plugins.md#list-of-plugins
 [prism]: https://prismjs.com/
