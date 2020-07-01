@@ -46,7 +46,7 @@ There are two named exports from `mdsvex` that can be used to transform mdsvex d
 
 ### `mdsvex`
 
-The `mdsvex` preprocessor function is a named import from the `mdsvex` module. Add it as a preprocessor to you rollup or webpack config, and tell the Svelte plugin or loader to also handle `.svx` files.
+The `mdsvex` preprocessor function is a named import from the `mdsvex` module. Add it as a preprocessor to your rollup or webpack config, and tell the Svelte plugin or loader to also handle `.svx` files.
 
 With rollup and `rollup-plugin-svelte`:
 
@@ -117,7 +117,7 @@ const compiled = svelte.compile(
 
 ### `compile`
 
-This option performs a very similar tasks to the preprocessor but it can be used directly, without needing to hook into the Svelte compiler, either directly or via a bundler. The compile option will transform valid mdsvex code into valid svelte code, it will perform no further actions such as resolving imports.
+This option performs a very similar task to the preprocessor but it can be used directly, without needing to hook into the Svelte compiler, either directly or via a bundler. The compile option will transform valid mdsvex code into valid svelte code, but it will perform no further actions such as resolving imports.
 
 It supports all of the same options as the preprocessor although the function signature is slightly different. The first argument should be the mdsvex source code you wish to compile, the second argument is an object of options.
 
@@ -298,7 +298,7 @@ remarkPlugins: Array<plugin> | Array<[plugin, plugin_options]>;
 rehypePlugins: Array<plugin> | Array<[plugin, plugin_options]>;
 ```
 
-mdsvex has a simple pipeline. Your source file is first parsed into a Markdown AST (MDAST), this is where remark plugins would run. Then it is converted into an HTML AST (HAST), this is where rehype plugins would be run. After this is it converted (stringified) into a valid Svelte component ready to be compiled.
+mdsvex has a simple pipeline. Your source file is first parsed into a Markdown AST (MDAST), this is where remark plugins would run. Then it is converted into an HTML AST (HAST), this is where rehype plugins would be run. After this it is converted (stringified) into a valid Svelte component ready to be compiled.
 
 [remark] and [rehype] have a vibrant plugin ecosystem and mdsvex allows you to pass any [remark plugins][remark_plugins] or [rehype plugins][rehype_plugins] as options, which will run on the remark and rehype ASTs at the correct point in the pipeline.
 
@@ -356,7 +356,7 @@ highlight: (code: string, lang: string) => string;
 Without any configuration, mdsvex will automatically highlight the syntax of over 100 languages using [PrismJS][prism], you simply need to add the language name to the fenced code block. Languages are loaded on-demand and cached for later use, this feature does not unnecessarily load all languages for highlighting purposes.
 
 
-If you wish to handle syntax-highlighting yourself, you can provide a custom highlight function via the `highlight` option. This options take a function as an argument. The function will recieve two parameters, the `code` to be highlighted and the `lang` defined in the fenced code-block, both are strings. You can use this information to highlight as you wish. The function should return a string of highlighted code.
+If you wish to handle syntax-highlighting yourself, you can provide a custom highlight function via the `highlight` option. This option takes a function as an argument. The function will recieve two parameters, the `code` to be highlighted and the `lang` defined in the fenced code-block, both are strings. You can use this information to highlight as you wish. The function should return a string of highlighted code.
 
 You can disable syntax highlighting by passing a function that does nothing:
 
@@ -485,7 +485,7 @@ mdsvex({
 });
 ```
 
-If you pass an object of named layouts, you can decide which layout to use on a file-by-file basis by declaraing it the frontmatter. For example, if you wanted to force a document to be wrapped with the `blog` layout you would do the following:
+If you pass an object of named layouts, you can decide which layout to use on a file-by-file basis by declaring it in the frontmatter. For example, if you wanted to force a document to be wrapped with the `blog` layout you would do the following:
 
 ```mdsvex
 ---
@@ -552,7 +552,7 @@ Custom components allow you to replace these elements with components. You can d
 </script>
 ```
 
-The named exports must be named after the actual element you want to replace (`p`, `blockquote`, etc.), the value must be the component you wish to replace them with. This makes certain named exports 'protected' API, make sure you don't use html names as export names for other values. Named exports whose names does not correspond to an HTML element will be ignored, so feel free to continue using them for other purposes as well. As these are named exports it is possible for the bundler to treeshake unused custom components, even if they are exported.
+The named exports must be named after the actual element you want to replace (`p`, `blockquote`, etc.), the value must be the component you wish to replace them with. This makes certain named exports 'protected' API, make sure you don't use html names as export names for other values. Named exports whose names do not correspond to an HTML element will be ignored, so feel free to continue using them for other purposes as well. As these are named exports it is possible for the bundler to treeshake unused custom components, even if they are exported.
 
 The above custom components would generate:
 
