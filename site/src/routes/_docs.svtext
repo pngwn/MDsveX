@@ -345,7 +345,7 @@ mdsvex({
 
 While these examples use `remarkPlugins`, the `rehypePlugins` option works in exactly the same way. You are free to use one or both of these options as you wish.
 
-Remark plugins work on the Markdown AST (MDAST) produced by remark, reype plugins work on the HTML AST (HAST) produced by rehype and it is possible to write your own custom plugins if the existing ones do not satisfy your needs!
+Remark plugins work on the Markdown AST (MDAST) produced by remark, rehype plugins work on the HTML AST (HAST) produced by rehype and it is possible to write your own custom plugins if the existing ones do not satisfy your needs!
 
 ### `highlight`
 
@@ -547,7 +547,7 @@ Custom components allow you to replace these elements with components. You can d
 
 ```svelte
 <script context="module">
-  import { h1, p li } from './components.js';
+  import { h1, p, li } from './components.js';
   export { h1, p, li };
 </script>
 ```
