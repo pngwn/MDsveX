@@ -20,7 +20,6 @@
 			'docs#use-it',
 			[
 				['mdsvex', 'docs#mdsvex-1', true],
-				['mdsvex with sapper', 'docs#mdsvex-with-sapper', true],
 				['compile', 'docs#compile', true],
 			],
 		],
@@ -47,7 +46,13 @@
 			],
 		],
 		['Frontmatter', 'docs#frontmatter-1'],
-		// ["Integrations", "docs#integrations"],
+    [
+      "Integrations", 
+      "docs#integrations",
+      [
+        ['sapper', 'docs#with-sapper', false],
+      ],
+    ],
 		['Limitations', 'docs#limitations'],
 	];
 
