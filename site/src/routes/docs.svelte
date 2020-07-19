@@ -20,6 +20,7 @@
 			'docs#use-it',
 			[
 				['mdsvex', 'docs#mdsvex-1', true],
+				['mdsvex with sapper', 'docs#mdsvex-with-sapper', true],
 				['compile', 'docs#compile', true],
 			],
 		],
