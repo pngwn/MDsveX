@@ -1232,10 +1232,10 @@ matchit@^1.0.0:
   dependencies:
     "@arr/every" "^1.0.0"
 
-mdsvex@^0.5.1-beta.2:
-  version "0.5.1-beta.2"
-  resolved "https://registry.yarnpkg.com/mdsvex/-/mdsvex-0.5.1-beta.2.tgz#d16b019672a39a6f3acd1f58fcb24c55e06d2bb7"
-  integrity sha512-7VAE7biO9uW3opk3zyQVJBZGuMK1/votkCOCuduD99mgcYYbT7rrIuDoMC619dD64ZKFAPUXEIgcXfNYraTCHw==
+mdsvex@^0.7.1-beta.3:
+  version "0.7.1-beta.3"
+  resolved "https://registry.yarnpkg.com/mdsvex/-/mdsvex-0.7.1-beta.3.tgz#a36e7e94e7ecb60dc1f712ea3e6fb0297c45226d"
+  integrity sha512-fBTxxefEj+wb5Ic77KWT2+JTmsjv5k62wFhfDfELc++eVSgLndKKyJxU28nghvNwiizrw/0CC04LXMDycjEPuQ==
   dependencies:
     prismjs "^1.17.1"
 
