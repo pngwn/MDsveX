@@ -46,13 +46,11 @@
 			],
 		],
 		['Frontmatter', 'docs#frontmatter-1'],
-    [
-      "Integrations", 
-      "docs#integrations",
-      [
-        ['sapper', 'docs#with-sapper', false],
-      ],
-    ],
+		[
+			'Integrations',
+			'docs#integrations',
+			[['sapper', 'docs#with-sapper', false]],
+		],
 		['Limitations', 'docs#limitations'],
 	];
 
@@ -71,9 +69,7 @@
 		}
 
 		const nodes = Array.from(root.children).filter(
-			v =>
-				(v.tagName === 'H2' || v.tagName === 'H3') &&
-				v.innerText !== 'Integrations' // its messing up my shit, will remove when I add the sidebar link for integrations
+			v => v.tagName === 'H2' || v.tagName === 'H3'
 		);
 
 		const last = nodes.length - 1;
