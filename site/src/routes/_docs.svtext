@@ -115,22 +115,6 @@ const compiled = svelte.compile(
 
 > If you don't like the `.svx` file extension, fear not, it is easily customised.
 
-### `mdsvex with sapper`
-
-To use mdsvex with sapper you need to put the above configurations both on the client and server of the rollup/webpack configurations, and you need to put the `--ext '.svelte .svx'` in the sapper scripts of package.json
-
-Or you can use the templates:
-- [Rollup](https://github.com/pngwn/sapper-mdsvex-template)
-
-  ```bash
-  npx degit "pngwn/sapper-mdsvex-template" my-app
-  ```
-- [Webpack](https://github.com/shiryel/sapper-mdsvex-template-webpack)
-  
-  ```bash
-  npx degit "shiryel/sapper-mdsvex-template-webpack" my-app
-  ```
-
 ### `compile`
 
 This option performs a very similar task to the preprocessor but it can be used directly, without needing to hook into the Svelte compiler, either directly or via a bundler. The compile option will transform valid mdsvex code into valid svelte code, but it will perform no further actions such as resolving imports.
@@ -646,7 +630,21 @@ Frontmatter also interacts with layouts, you can find more details in the [Layou
 
 ## Integrations
 
-_coming soon_
+### With Sapper
+
+To use mdsvex with sapper you need to add the mdsvex configuration to both the client and server sections of the rollup or webpack configuration. You will also need to add the CLI argument `--ext '.svelte .svx'` to all of the sapper scripts (`dev`, `build`, and `export`) in order to tell sapper that it should also allow `.svx` files to be page routes.
+  
+Or you can use the templates:
+- [Rollup](https://github.com/pngwn/sapper-mdsvex-template)
+
+  ```bash
+  npx degit "pngwn/sapper-mdsvex-template" my-app
+  ```
+- [Webpack](https://github.com/shiryel/sapper-mdsvex-template-webpack)
+  
+  ```bash
+  npx degit "shiryel/sapper-mdsvex-template-webpack" my-app
+  ```
 
 ## Limitations
 
