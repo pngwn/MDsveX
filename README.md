@@ -14,14 +14,12 @@ You can do this:
 <script>
   import { Chart } from '../components/Chart.svelte';
 </script>
-```
 
 # Here’s a chart
 
 The chart is rendered inside our MDsveX document.
 
 <Chart />
-
 ````
 
 https://mdsvex.com/
