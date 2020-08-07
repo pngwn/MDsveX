@@ -358,17 +358,17 @@ highlight: {
 
 Without any configuration, mdsvex will automatically highlight the syntax of over 100 languages using [PrismJS][prism], you simply need to add the language name to the fenced code block. Languages are loaded on-demand and cached for later use, this feature does not unnecessarily load all languages for highlighting purposes.
 
-Custom aliases for language names can be defined via the `alias` property of the highlight options. This property takes an object of key value pairs: the key should be the alias you wish to use, the value should be the language you wish to asign it to.
+Custom aliases for language names can be defined via the `alias` property of the highlight option. This property takes an object of key-value pairs: the key should be the alias you wish to define, the value should be the language you wish to asign it to.
 
 ```js
-const opts = {
+mdsvex({
 	highlight: {
 		alias: { yavascript: "javascript" }
 	}
-}
+})
 ```
 
-If you wish to handle syntax-highlighting yourself, you can provide a custom highlight function via the `highlight` option. This option should be an object with a `highlighter` property that takes a function as it's value. The function will recieve two arguments, the `code` to be highlighted and the `lang` defined in the fenced code-block, both are strings. You can use this information to highlight as you wish. The function should return a string of highlighted code.
+If you wish to handle syntax-highlighting yourself, you can provide a custom highlight function via the `highlighter` property.  The function will recieve two arguments, the `code` to be highlighted and the `lang` defined in the fenced code-block, both are strings. You can use this information to highlight as you wish. The function should return a string of highlighted code.
 
 You can disable syntax highlighting by passing a function that does nothing:
 
@@ -377,11 +377,11 @@ function highlighter(code, lang) {
 	return `<pre><code>${code}</code></pre>`;
 }
 
-const opts = {
+mdsvex({
 	highlight: {
 		highlighter
 	}
-}
+})
 ```
 
 ### `frontmatter`
