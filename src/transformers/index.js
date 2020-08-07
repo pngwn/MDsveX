@@ -428,13 +428,11 @@ export function highlight_blocks({ highlighter: highlight_fn, alias } = {}) {
 }
 // escape curlies, backtick, \t, \r, \n to avoid breaking output of {@html `here`} in .svelte
 const escape_svelty = str =>
-	str.replace(
-		/[{}`]/g,
-		c => ({ '{': '&#123;', '}': '&#125;', '`': '&#96;' }[c])
-	).replace(/\\([trn])/g,'&#92;$1');
+	str
+		.replace(/[{}`]/g, c => ({ '{': '&#123;', '}': '&#125;', '`': '&#96;' }[c]))
+		.replace(/\\([trn])/g, '&#92;$1');
 
 export function code_highlight(code, lang) {
-	const pre_class = `language-${lang}`;
 	if (!process.browser) {
 		let _lang = langs[lang] || false;
 
@@ -448,12 +446,14 @@ export function code_highlight(code, lang) {
 			langs[lang] = { name: lang };
 			_lang = langs[lang];
 		}
-		const highlighted = escape_svelty(_lang
-			? Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
-			: escape(code));
-		return `<pre class=${pre_class}>{@html \`<code class=${pre_class}>${highlighted}</code>\`}</pre>`;
+		const highlighted = escape_svelty(
+			_lang
+				? Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
+				: escape(code)
+		);
+		return `<pre class="language-${lang}">{@html \`<code class="language-${lang}">${highlighted}</code>\`}</pre>`;
 	} else {
 		const highlighted = escape_svelty(escape(code));
-		return `<pre class=${pre_class}>{@html \`<code class=${pre_class}>${highlighted}</code>\`}</pre>`;
+		return `<pre class="language-${lang}">{@html \`<code class="language-${lang}">${highlighted}</code>\`}</pre>`;
 	}
 }
