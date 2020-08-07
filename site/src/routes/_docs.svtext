@@ -102,13 +102,13 @@ const { mdsvex } = require(mdsvex);
 
 // This will give you a valid svelte component
 const preprocessed = await svelte.preprocess(
-	source, 
+	source,
 	mdsvex(mdsvex_opts)
 );
 
 // Now you can compile it if you wish
 const compiled = svelte.compile(
-	preprocessed, 
+	preprocessed,
 	compiler_options
 );
 ```
@@ -150,7 +150,7 @@ interface MdsvexOptions {
 	layout: string | { [name: string]: string };
 	remarkPlugins: Array<plugin> | Array<[plugin, plugin_options]>;
 	rehypePlugins: Array<plugin> | Array<[plugin, plugin_options]>;
-	highlight: Function;
+	highlight: { highlighter: Function };
 	frontmatter: { parse: Function; marker: string };
 }
 ```
@@ -350,18 +350,18 @@ Remark plugins work on the Markdown AST (MDAST) produced by remark, rehype plugi
 ### `highlight`
 
 ```ts
-highlight: (code: string, lang: string) => string;
+highlight: { highlighter: (code: string, lang: string) => string };
 ```
 
 Without any configuration, mdsvex will automatically highlight the syntax of over 100 languages using [PrismJS][prism], you simply need to add the language name to the fenced code block. Languages are loaded on-demand and cached for later use, this feature does not unnecessarily load all languages for highlighting purposes.
 
 
-If you wish to handle syntax-highlighting yourself, you can provide a custom highlight function via the `highlight` option. This option takes a function as an argument. The function will recieve two parameters, the `code` to be highlighted and the `lang` defined in the fenced code-block, both are strings. You can use this information to highlight as you wish. The function should return a string of highlighted code.
+If you wish to handle syntax-highlighting yourself, you can provide a custom highlight function via the `highlight` option. This option takes an object with a `highlighter` function as an argument. The function will recieve two parameters, the `code` to be highlighted and the `lang` defined in the fenced code-block, both are strings. You can use this information to highlight as you wish. The function should return a string of highlighted code.
 
 You can disable syntax highlighting by passing a function that does nothing:
 
 ```js
-function highlight(code, lang) {
+function highlighter(code, lang) {
 	return `<pre><code>${code}</code></pre>`;
 }
 ```
@@ -630,7 +630,7 @@ The following code block will break in a way that is both very bad and quite une
 		```
 ````
 
-The solution is to not do this. When working with fenced code blocks, do not indent them. This isn't an issue that can really be worked around, even if the parser did make assumptions about what you meant. Because code blocks are designed to respect whitespace, any fix would simply result in a different but equally frustrating failure. Don't indent code blocks. 
+The solution is to not do this. When working with fenced code blocks, do not indent them. This isn't an issue that can really be worked around, even if the parser did make assumptions about what you meant. Because code blocks are designed to respect whitespace, any fix would simply result in a different but equally frustrating failure. Don't indent code blocks.
 
 [svelte]: https://svelte.dev/
 [mdx]: https://mdxjs.com/
