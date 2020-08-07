@@ -434,6 +434,7 @@ const escape_svelty = str =>
 	).replace(/\\([trn])/g,'&#92;$1');
 
 export function code_highlight(code, lang) {
+	const pre_class = `language-${lang}`;
 	if (!process.browser) {
 		let _lang = langs[lang] || false;
 
@@ -447,18 +448,12 @@ export function code_highlight(code, lang) {
 			langs[lang] = { name: lang };
 			_lang = langs[lang];
 		}
-
-		return `<pre class="language-${lang}">{@html \`
-<code class="language-${lang || ''}">${escape_svelty(
-	_lang
-		? Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
-		: escape(code)
-)}</code>\`}
-</pre>`;
+		const highlighted = escape_svelty(_lang
+			? Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
+			: escape(code));
+		return `<pre class=${pre_class}>{@html \`<code class=${pre_class}>${highlighted}</code>\`}</pre>`;
 	} else {
-		return `<pre class="language-${lang}">{@html \`
-<code class="language-${lang || ''}">
-${escape_svelty(escape(code))}</code>\`}
-</pre>`;
+		const highlighted = escape_svelty(escape(code));
+		return `<pre class=${pre_class}>{@html \`<code class=${pre_class}>${highlighted}</code>\`}</pre>`;
 	}
 }
