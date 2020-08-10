@@ -10,8 +10,6 @@
 		"build": "rollup -c",
 		"lint": "eslint 'src/' 'test/' --ext .js,.ts",
 		"test": "uvu -r ts-node/register test test.ts$",
-		"test:watch": "node -r esm ./test/_scripts/test_watch.js --verbose",
-		"test:cov": "yarn lint && jest --verbose --coverage",
 		"generate_files": "node -r esm ./test/_scripts/generate_markdown_html.js"
 	},
 	"files": [
