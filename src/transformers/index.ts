@@ -1,16 +1,27 @@
+//@ts-ignore
 import retext from 'retext';
+//@ts-ignore
 import smartypants from 'retext-smartypants';
 import visit from 'unist-util-visit';
 import yaml from 'js-yaml';
 import { parse } from 'svelte/compiler';
 import escape from 'escape-html';
 
+import type { Transformer } from 'unified';
+import type { Node } from 'unist';
+import type { HTML, Text } from 'mdast';
+import type { Element } from 'hast';
+import { message } from 'vfile';
 // this needs a big old cleanup
 
 const newline = '\n';
 // extract the yaml from 'yaml' nodes and put them in the vfil for later use
 
-export function default_frontmatter(value, messages) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function default_frontmatter(
+	value: string, // eslint-disable-next-line @typescript-eslint/no-explicit-any
+	messages: any[] // eslint-disable-next-line @typescript-eslint/ban-types
+): string | object | undefined {
 	try {
 		return yaml.safeLoad(value);
 	} catch (e) {
@@ -18,58 +29,73 @@ export function default_frontmatter(value, messages) {
 	}
 }
 
-export function parse_frontmatter({ parse, type }) {
-	return transformer;
+type parser_frontmatter_options = {
+	parse: (
+		value: string, // eslint-disable-next-line @typescript-eslint/no-explicit-any
+		message: any[] // eslint-disable-next-line @typescript-eslint/no-explicit-any
+	) => undefined | { [x: string]: any };
+	type: string;
+};
 
-	function transformer(tree, vFile) {
-		visit(tree, type, node => {
+interface FrontMatterNode extends Node {
+	type: string;
+	value: string;
+}
+
+export function parse_frontmatter({
+	parse,
+	type,
+}: parser_frontmatter_options): Transformer {
+	const transformer: Transformer = (tree, vFile) => {
+		visit(tree, type, (node: FrontMatterNode) => {
 			const data = parse(node.value, vFile.messages);
 			if (data) {
+				// @ts-ignore
 				vFile.data.fm = data;
 			}
 		});
-	}
+	};
+
+	return transformer;
 }
 
 // in code nodes replace the character witrh the html entities
 // maybe I'll need more of these
 
-const entites = [
+const entites: Array<[RegExp, string]> = [
 	[/</g, '&lt;'],
 	[/>/g, '&gt;'],
 	[/{/g, '&#123;'],
 	[/}/g, '&#125;'],
 ];
 
-export function escape_code({ blocks }) {
-	function transformer(tree) {
+export function escape_code({ blocks }: { blocks: boolean }): Transformer {
+	return function (tree) {
 		if (!blocks) {
 			visit(tree, 'code', escape);
 		}
 
 		visit(tree, 'inlineCode', escape);
 
-		function escape(node) {
+		function escape(node: FrontMatterNode) {
 			for (let i = 0; i < entites.length; i += 1) {
 				node.value = node.value.replace(entites[i][0], entites[i][1]);
 			}
 		}
-	}
-	return transformer;
+	};
 }
 
 // special case - process nodes with retext and smarypants
 // retext plugins can't work generally due to the difficulties in converting between the two trees
 
-export function smartypants_transformer(options = {}) {
+export function smartypants_transformer(options = {}): Transformer {
 	const processor = retext().use(smartypants, options);
 
-	function transformer(tree) {
-		visit(tree, 'text', node => {
+	return function (tree) {
+		visit(tree, 'text', (node) => {
 			node.value = String(processor.processSync(node.value));
 		});
-	}
-	return transformer;
+	};
 }
 
 // regex for scripts and attributes
@@ -85,8 +111,11 @@ const RE_MODULE_SCRIPT = new RegExp(
 	`^(<script` + attrs + context + attrs + `>)`
 );
 
-function map_layout_to_path(filename, layout_map) {
-	const match = Object.keys(layout_map).find(l =>
+function map_layout_to_path(
+	filename: string,
+	layout_map: { [x: string]: string }
+): string | undefined {
+	const match = Object.keys(layout_map).find((l) =>
 		new RegExp(`\\/${l}\\/`).test(filename.replace(process.cwd(), ''))
 	);
 
@@ -97,10 +126,20 @@ function map_layout_to_path(filename, layout_map) {
 	}
 }
 
-function extract_parts(nodes) {
+type parts = {
+	special: Node[];
+	html: (HTML | Text | { [x: string]: any; type: any; value: any })[];
+	instance: Node[];
+	module: Node[];
+	css: Node[];
+};
+
+function extract_parts(
+	nodes: (HTML | Text | { [x: string]: any; type: any; value: any })[]
+): parts {
 	// since we are wrapping and replacing we need to keep track of the different component 'parts'
 	// many special tags cannot be wrapped nor can style or script tags
-	const parts = {
+	const parts: parts = {
 		special: [],
 		html: [],
 		instance: [],
@@ -132,7 +171,20 @@ function extract_parts(nodes) {
 			continue children;
 		}
 
-		let result;
+		// @ts-ignore
+		let result: {
+			html?:
+				| {
+						children?: any[] | undefined;
+						start: any;
+						end: any;
+						[x: string]: any;
+				  }
+				| undefined;
+			instance?: any;
+			module?: any;
+			// [x: string]: any;
+		};
 		try {
 			result = parse(nodes[i].value);
 		} catch (e) {
@@ -141,8 +193,13 @@ function extract_parts(nodes) {
 		}
 
 		// svelte special tags that have to be top level
+		if (!result.html?.children) return parts;
 
-		const _parts = result.html.children.map(v => {
+		const _parts: Array<[
+			'html' | 'css' | 'special' | 'instance' | 'module',
+			number,
+			number
+		]> = result.html.children.map((v) => {
 			if (
 				v.type === 'Options' ||
 				v.type === 'Head' ||
@@ -156,8 +213,13 @@ function extract_parts(nodes) {
 		});
 
 		results: for (const key in result) {
-			if (key === 'html' || !result[key]) continue results;
-			_parts.push([key, result[key].start, result[key].end]);
+			if (key === 'html' || !result[key as 'html' | 'instance' | 'module'])
+				continue results;
+			_parts.push([
+				key as 'html' | 'instance' | 'module',
+				result[key as 'html' | 'instance' | 'module'].start,
+				result[key as 'html' | 'instance' | 'module'].end,
+			]);
 		}
 
 		// sort them to ensure the array is in the order they appear in the source, no gaps
@@ -165,7 +227,7 @@ function extract_parts(nodes) {
 		const sorted = _parts.sort((a, b) => a[1] - b[1]);
 
 		// push the nodes into the correct 'part' since they are sorted everything should be in the correct order
-		sorted.forEach(next => {
+		sorted.forEach((next) => {
 			parts[next[0]].push({
 				type: 'raw',
 				value: nodes[i].value.substring(next[1], next[2]),
@@ -176,20 +238,22 @@ function extract_parts(nodes) {
 	return parts;
 }
 
-export function transform_hast({ layout }) {
-	return transformer;
-
-	function transformer(tree, vFile) {
+export function transform_hast({
+	layout,
+}: {
+	layout: { [x: string]: string } | 'string';
+}): Transformer {
+	return function transformer(tree, vFile) {
 		// we need to keep { and } intact for svelte, so reverse the escaping in links and images
 		// if anyone actually uses these characters for any other reason i'll probably just cry
-		visit(tree, 'element', node => {
-			if (node.tagName === 'a' && node.properties.href) {
+		visit<Element>(tree, 'element', (node) => {
+			if (node.tagName === 'a' && typeof node?.properties?.href === 'string') {
 				node.properties.href = node.properties.href
 					.replace(/%7B/g, '{')
 					.replace(/%7D/g, '}');
 			}
 
-			if (node.tagName === 'img' && node.properties.src) {
+			if (node.tagName === 'img' && typeof node?.properties?.src === 'string') {
 				node.properties.src = node.properties.src
 					.replace(/%7B/g, '{')
 					.replace(/%7D/g, '}');
@@ -201,9 +265,10 @@ export function transform_hast({ layout }) {
 		// svelte preprocessors don't currently support sourcemaps
 		// i'll fix this when they do
 
+		//@ts-ignore
 		if (!layout && !vFile.data.fm) return;
 
-		visit(tree, 'root', node => {
+		visit(tree, 'root', (node) => {
 			const { special, html, instance, module: _module, css } = extract_parts(
 				node.children
 			);
@@ -215,7 +280,7 @@ export function transform_hast({ layout }) {
 
 			const _fm_layout = vFile.data.fm && vFile.data.fm.layout;
 
-			let _layout;
+			let _layout: string | boolean;
 
 			// passing false in fm forces no layout
 			if (_fm_layout === false) _layout = false;
@@ -246,9 +311,15 @@ export function transform_hast({ layout }) {
 				if (layout.__mdsvex_default) {
 					_layout = false;
 
-					vFile.messages.push([
-						`You attempted to apply a named layout in the front-matter of ${vFile.filename}, but did not provide any named layouts as options to the preprocessor. `,
-					]);
+					vFile.messages.push(
+						message(
+							`You attempted to apply a named layout in the front-matter of ${vFile.filename}, but did not provide any named layouts as options to the preprocessor. `,
+							{
+								start: { line: 0, column: 0, offset: 0 },
+								end: { line: 0, column: 0, offset: 0 },
+							}
+						)
+					);
 
 					// options layout is an object so do a simple lookup
 				} else if (typeof layout === 'object' && layout !== null) {
@@ -263,7 +334,7 @@ export function transform_hast({ layout }) {
 
 			if (_layout && _layout.components && _layout.components.length) {
 				for (let i = 0; i < _layout.components.length; i++) {
-					visit(tree, 'element', node => {
+					visit(tree, 'element', (node) => {
 						if (node.tagName === _layout.components[i]) {
 							node.tagName = `Components.${_layout.components[i]}`;
 						}
@@ -326,7 +397,7 @@ export function transform_hast({ layout }) {
 				{ type: 'raw', value: _layout ? '</Layout_MDSVEX_DEFAULT>' : '' },
 			];
 		});
-	}
+	};
 }
 
 // highlighting stuff
@@ -354,7 +425,7 @@ function get_lang_info(name, lang_meta, base_path) {
 
 	if (lang_meta.require) {
 		if (Array.isArray(lang_meta.require)) {
-			lang_meta.require.forEach(id => _lang_meta.deps.add(id));
+			lang_meta.require.forEach((id) => _lang_meta.deps.add(id));
 		} else {
 			_lang_meta.deps.add(lang_meta.require);
 		}
@@ -362,7 +433,7 @@ function get_lang_info(name, lang_meta, base_path) {
 
 	if (lang_meta.peerDependencies) {
 		if (Array.isArray(lang_meta.peerDependencies)) {
-			lang_meta.peerDependencies.forEach(id => _lang_meta.deps.add(id));
+			lang_meta.peerDependencies.forEach((id) => _lang_meta.deps.add(id));
 		} else {
 			_lang_meta.deps.add(lang_meta.peerDependencies);
 		}
@@ -370,7 +441,7 @@ function get_lang_info(name, lang_meta, base_path) {
 
 	if (lang_meta.alias) {
 		if (Array.isArray(lang_meta.alias)) {
-			lang_meta.alias.forEach(id => aliases.add(id));
+			lang_meta.alias.forEach((id) => aliases.add(id));
 		} else {
 			aliases.add(lang_meta.alias);
 		}
@@ -391,7 +462,7 @@ function load_language_metadata() {
 			);
 
 			langs[lang] = lang_info;
-			aliases.forEach(_n => {
+			aliases.forEach((_n) => {
 				langs[_n] = langs[lang];
 			});
 		}
@@ -402,7 +473,7 @@ function load_language(lang) {
 	if (!process.browser) {
 		if (!langs[lang]) return;
 
-		langs[lang].deps.forEach(name => load_language(name));
+		langs[lang].deps.forEach((name) => load_language(name));
 
 		require(langs[lang].path);
 	}
@@ -419,17 +490,20 @@ export function highlight_blocks({ highlighter: highlight_fn, alias } = {}) {
 		}
 	}
 
-	return function(tree, vFile) {
-		visit(tree, 'code', node => {
+	return function (tree, vFile) {
+		visit(tree, 'code', (node) => {
 			node.type = 'html';
 			node.value = highlight_fn(node.value, node.lang, vFile.messages);
 		});
 	};
 }
 // escape curlies, backtick, \t, \r, \n to avoid breaking output of {@html `here`} in .svelte
-const escape_svelty = str =>
+const escape_svelty = (str) =>
 	str
-		.replace(/[{}`]/g, c => ({ '{': '&#123;', '}': '&#125;', '`': '&#96;' }[c]))
+		.replace(
+			/[{}`]/g,
+			(c) => ({ '{': '&#123;', '}': '&#125;', '`': '&#96;' }[c])
+		)
 		.replace(/\\([trn])/g, '&#92;$1');
 
 export function code_highlight(code, lang) {
