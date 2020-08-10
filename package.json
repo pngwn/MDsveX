@@ -40,7 +40,7 @@
 		"front-matter": "^4.0.0",
 		"js-yaml": "^3.13.1",
 		"node-fetch": "^2.6.0",
-		"prettier": "^1.19.1",
+		"prettier": "^2.0.5",
 		"prettier-eslint": "^9.0.0",
 		"prism-svelte": "^0.4.6",
 		"rehype-slug": "^3.0.0",

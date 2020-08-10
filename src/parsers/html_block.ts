@@ -1,3 +1,6 @@
+import type { Eat } from 'remark-parse';
+import type { Node } from 'unist';
+
 import { openCloseTag } from './re_tag';
 
 const tab = '\t';
@@ -19,7 +22,12 @@ const elementCloseExpression = /^$/;
 const otherElementOpenExpression = new RegExp(openCloseTag.source + '\\s*$');
 const fragmentOpenExpression = /^<>/;
 
-export function blockHtml(eat, value, silent) {
+//@ts-ignore
+export function blockHtml(
+	eat: Eat,
+	value: string,
+	silent: boolean
+): boolean | RegExp | Node {
 	const blocks = '[a-z\\.]*(\\.){0,1}[a-z][a-z0-9\\.]*';
 	const elementOpenExpression = new RegExp(
 		'^</?(' + blocks + ')(?=(\\s|/?>|$))',
@@ -34,7 +42,7 @@ export function blockHtml(eat, value, silent) {
 	let character;
 	let sequence;
 
-	const sequences = [
+	const sequences: Array<[RegExp, RegExp, boolean]> = [
 		[rawOpenExpression, rawCloseExpression, true],
 		[commentOpenExpression, commentCloseExpression, true],
 		[instructionOpenExpression, instructionCloseExpression, true],

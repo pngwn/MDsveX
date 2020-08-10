@@ -2,7 +2,7 @@ import { parse_svelte_tag } from './svelte';
 import { parse_svelte_block } from './svelte';
 import { blockHtml } from './html_block';
 
-export function mdsvex_parser() {
+export function mdsvex_parser(): void {
 	const Parser = this.Parser;
 	const block_tokenizers = Parser.prototype.blockTokenizers;
 	const methods = Parser.prototype.blockMethods;
@@ -16,7 +16,7 @@ export function mdsvex_parser() {
 	methods.splice(methods.indexOf('html'), 0, 'svelteTag');
 }
 
-function indentedCode() {
+function indentedCode(): boolean {
 	return true;
 }
 

@@ -1,4 +1,4 @@
-export function to_posix(_path) {
+export function to_posix(_path: string): string {
 	const isExtendedLengthPath = /^\\\\\?\\/.test(_path);
 	const hasNonAscii = /[^\u0000-\u0080]+/.test(_path); // eslint-disable-line no-control-regex
 
