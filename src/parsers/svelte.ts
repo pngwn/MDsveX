@@ -1,3 +1,6 @@
+import type { Eat } from 'remark-parse';
+import type { Node } from 'unist';
+
 const void_els = [
 	'area',
 	'base',
@@ -21,7 +24,11 @@ const void_els = [
 const RE_SVELTE_TAG = /^<svelte:([a-z]*)[\s\S]*(?:(?:svelte:[a-z]*)|(?:\/))>$/;
 const RE_SVELTE_TAG_START = /(^\s*)<([\\/\s])*svelte:/;
 
-export function parse_svelte_tag(eat, value, silent) {
+export function parse_svelte_tag(
+	eat: Eat,
+	value: string,
+	silent: boolean
+): true | Node {
 	const is_svelte_tag = RE_SVELTE_TAG_START.exec(value);
 
 	if (is_svelte_tag) {
@@ -95,7 +102,11 @@ export function parse_svelte_tag(eat, value, silent) {
 const RE_SVELTE_BLOCK_START = /(^\s*){[#:/@]/;
 const RE_SVELTE_BLOCK = /^{[#:/@](else if|[a-z]+).*}$/;
 
-export function parse_svelte_block(eat, value, silent) {
+export function parse_svelte_block(
+	eat: Eat,
+	value: string,
+	silent: boolean
+): true | Node {
 	const is_svelte_block = RE_SVELTE_BLOCK_START.exec(value);
 
 	if (is_svelte_block) {
