@@ -21,6 +21,7 @@ module.exports = {
 		'prefer-const': [2, { destructuring: 'all' }],
 		'arrow-spacing': 2,
 		'no-inner-declarations': 0,
+		'@typescript-eslint/ban-ts-comment': 'off',
 	},
 	ignorePatterns: ['/node_modules/', '/test/_fixtures/'],
 	env: {
@@ -29,7 +30,9 @@ module.exports = {
 		node: true,
 		jest: true,
 	},
-	// extends: ['plugin:prettier/recommended'],
+	parser: '@typescript-eslint/parser',
+	plugins: ['@typescript-eslint'],
+	extends: ['plugin:@typescript-eslint/recommended'],
 	parserOptions: {
 		ecmaVersion: 9,
 		sourceType: 'module',
@@ -37,11 +40,11 @@ module.exports = {
 			experimentalObjectRestSpread: true,
 		},
 	},
-	settings: {
-		'import/resolver': {
-			node: {
-				extensions: ['.js'],
-			},
-		},
-	},
+	// settings: {
+	// 	'import/resolver': {
+	// 		node: {
+	// 			extensions: ['.js'],
+	// 		},
+	// 	},
+	// },
 };

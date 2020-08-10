@@ -1,0 +1,22 @@
+{
+	"ts-node": {
+		"transpileOnly": true,
+		"compilerOptions": {
+			"module": "commonjs",
+			"esModuleInterop": true,
+			"noImplicitAny": true
+		},
+		"include": ["tests/**/*"]
+	},
+	"compilerOptions": {
+		"outDir": "build",
+		"target": "esnext",
+		"module": "esnext",
+		"noImplicitAny": true,
+		"moduleResolution": "node",
+		"forceConsistentCasingInFileNames": true,
+		"esModuleInterop": true
+	},
+	"include": ["@types/**/*", "src/**/*"],
+	"exclude": ["node_modules"]
+}
