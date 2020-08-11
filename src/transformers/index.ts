@@ -10,8 +10,8 @@ import escape from 'escape-html';
 import type { Transformer } from 'unified';
 import type { Node } from 'unist';
 import type { HTML, Text } from 'mdast';
-import type { Element } from 'hast';
-import { message } from 'vfile';
+import type { Element, Root } from 'hast';
+import { message, VFile } from 'vfile';
 // this needs a big old cleanup
 
 const newline = '\n';
@@ -128,15 +128,13 @@ function map_layout_to_path(
 
 type parts = {
 	special: Node[];
-	html: (HTML | Text | { [x: string]: any; type: any; value: any })[];
+	html: Array<Element | Text | (Node & { type: 'raw' })>;
 	instance: Node[];
 	module: Node[];
 	css: Node[];
 };
 
-function extract_parts(
-	nodes: (HTML | Text | { [x: string]: any; type: any; value: any })[]
-): parts {
+function extract_parts(nodes: Array<Element | Text>): parts {
 	// since we are wrapping and replacing we need to keep track of the different component 'parts'
 	// many special tags cannot be wrapped nor can style or script tags
 	const parts: parts = {
@@ -153,7 +151,7 @@ function extract_parts(
 
 	children: for (let i = 0; i < nodes.length; i += 1) {
 		const empty_node =
-			nodes[i].type === 'text' && RE_BLANK.exec(nodes[i].value);
+			nodes[i].type === 'text' && RE_BLANK.exec(nodes[i].value as string);
 
 		// i no longer knwo why i did this
 
@@ -161,8 +159,8 @@ function extract_parts(
 			if (
 				!parts.html.length ||
 				!(
-					RE_BLANK.exec(nodes[i].value) &&
-					RE_BLANK.exec(parts.html[parts.html.length - 1].value)
+					RE_BLANK.exec(nodes[i].value as string) &&
+					RE_BLANK.exec(parts.html[parts.html.length - 1].value as string)
 				)
 			) {
 				parts.html.push(nodes[i]);
@@ -186,7 +184,7 @@ function extract_parts(
 			// [x: string]: any;
 		};
 		try {
-			result = parse(nodes[i].value);
+			result = parse(nodes[i].value as string);
 		} catch (e) {
 			parts.html.push(nodes[i]);
 			continue children;
@@ -230,7 +228,7 @@ function extract_parts(
 		sorted.forEach((next) => {
 			parts[next[0]].push({
 				type: 'raw',
-				value: nodes[i].value.substring(next[1], next[2]),
+				value: (nodes[i].value as string).substring(next[1], next[2]),
 			});
 		});
 	}
@@ -238,12 +236,28 @@ function extract_parts(
 	return parts;
 }
 
+type MdsvexVFile = VFile & {
+	data?: {
+		fm?: Record<string, unknown>;
+	};
+};
+
+type MdsvexTransformer = (
+	node: Node,
+	file: MdsvexVFile,
+	next?: (
+		error: Error | null,
+		tree: Node,
+		file: VFile
+	) => Record<string, unknown>
+) => Error | Node | Promise<Node> | void | Promise<void>;
+
 export function transform_hast({
 	layout,
 }: {
 	layout: { [x: string]: string } | 'string';
-}): Transformer {
-	return function transformer(tree, vFile) {
+}): MdsvexTransformer {
+	return function transformer(tree, vFile: MdsvexVFile) {
 		// we need to keep { and } intact for svelte, so reverse the escaping in links and images
 		// if anyone actually uses these characters for any other reason i'll probably just cry
 		visit<Element>(tree, 'element', (node) => {
@@ -268,135 +282,145 @@ export function transform_hast({
 		//@ts-ignore
 		if (!layout && !vFile.data.fm) return;
 
-		visit(tree, 'root', (node) => {
-			const { special, html, instance, module: _module, css } = extract_parts(
-				node.children
-			);
+		visit<{ type: string; children: Array<Element | Text> }>(
+			tree,
+			'root',
+			(node) => {
+				const { special, html, instance, module: _module, css } = extract_parts(
+					node.children
+				);
 
-			const fm =
-				vFile.data.fm &&
-				`export const metadata = ${JSON.stringify(vFile.data.fm)};${newline}` +
-					`\tconst { ${Object.keys(vFile.data.fm).join(', ')} } = metadata;`;
+				const fm =
+					vFile?.data?.fm &&
+					`export const metadata = ${JSON.stringify(
+						vFile.data.fm
+					)};${newline}` +
+						`\tconst { ${Object.keys(vFile.data.fm).join(', ')} } = metadata;`;
 
-			const _fm_layout = vFile.data.fm && vFile.data.fm.layout;
+				const _fm_layout = vFile?.data?.fm?.layout;
 
-			let _layout: string | boolean;
+				let _layout: string | boolean;
 
-			// passing false in fm forces no layout
-			if (_fm_layout === false) _layout = false;
-			// no frontmatter layout provided
-			else if (_fm_layout === undefined) {
-				// both layouts undefined
+				// passing false in fm forces no layout
+				if (_fm_layout === false) _layout = false;
+				// no frontmatter layout provided
+				else if (_fm_layout === undefined) {
+					// both layouts undefined
 
-				if (layout === undefined) {
-					_layout = false;
+					if (layout === undefined) {
+						_layout = false;
 
-					// a single layout was passed to options, so always use it
-				} else if (layout.__mdsvex_default) {
-					_layout = layout.__mdsvex_default;
+						// a single layout was passed to options, so always use it
+					} else if (layout.__mdsvex_default) {
+						_layout = layout.__mdsvex_default;
 
-					// multiple layouts were passed to options, so map folder to layout
-				} else if (typeof layout === 'object' && layout !== null) {
-					_layout = map_layout_to_path(vFile.filename, layout);
+						// multiple layouts were passed to options, so map folder to layout
+					} else if (typeof layout === 'object' && layout !== null) {
+						_layout = map_layout_to_path(vFile.filename, layout);
 
-					if (_layout === undefined)
-						vFile.messages.push([
-							`Could not find a matching layout for ${vFile.filename}.`,
-						]);
+						if (_layout === undefined)
+							vFile.messages.push(
+								message(
+									`Could not find a matching layout for ${vFile.filename}.`
+								)
+							);
+					}
+
+					// front matter layout is a string
+				} else if (typeof _fm_layout === 'string') {
+					// options layout is a string, so this doesn't make sense: recover but warn
+					if (layout.__mdsvex_default) {
+						_layout = false;
+
+						vFile.messages.push(
+							message(
+								`You attempted to apply a named layout in the front-matter of ${vFile.filename}, but did not provide any named layouts as options to the preprocessor. `,
+								{
+									start: { line: 0, column: 0, offset: 0 },
+									end: { line: 0, column: 0, offset: 0 },
+								}
+							)
+						);
+
+						// options layout is an object so do a simple lookup
+					} else if (typeof layout === 'object' && layout !== null) {
+						_layout = layout[_fm_layout] || layout['*'];
+
+						if (_layout === undefined)
+							vFile.messages.push(
+								message(
+									`Could not find a layout with the name ${_fm_layout} and no fall back ('*') was provided.`
+								)
+							);
+					}
 				}
 
-				// front matter layout is a string
-			} else if (typeof _fm_layout === 'string') {
-				// options layout is a string, so this doesn't make sense: recover but warn
-				if (layout.__mdsvex_default) {
-					_layout = false;
-
-					vFile.messages.push(
-						message(
-							`You attempted to apply a named layout in the front-matter of ${vFile.filename}, but did not provide any named layouts as options to the preprocessor. `,
-							{
-								start: { line: 0, column: 0, offset: 0 },
-								end: { line: 0, column: 0, offset: 0 },
+				if (_layout && _layout.components && _layout.components.length) {
+					for (let i = 0; i < _layout.components.length; i++) {
+						visit(tree, 'element', (node) => {
+							if (node.tagName === _layout.components[i]) {
+								node.tagName = `Components.${_layout.components[i]}`;
 							}
-						)
-					);
-
-					// options layout is an object so do a simple lookup
-				} else if (typeof layout === 'object' && layout !== null) {
-					_layout = layout[_fm_layout] || layout['*'];
-
-					if (_layout === undefined)
-						vFile.messages.push([
-							`Could not find a layout with the name ${_fm_layout} and no fall back ('*') was provided.`,
-						]);
+						});
+					}
 				}
-			}
 
-			if (_layout && _layout.components && _layout.components.length) {
-				for (let i = 0; i < _layout.components.length; i++) {
-					visit(tree, 'element', (node) => {
-						if (node.tagName === _layout.components[i]) {
-							node.tagName = `Components.${_layout.components[i]}`;
-						}
+				const layout_import =
+					_layout &&
+					`import Layout_MDSVEX_DEFAULT${
+						_layout.components ? `, * as Components` : ''
+					} from '${_layout.path}';`;
+
+				// add the layout if we are using one, reusing the existing script if one exists
+				if (_layout && !instance[0]) {
+					instance.push({
+						type: 'raw',
+						value: `${newline}<script>${newline}\t${layout_import}${newline}</script>${newline}`,
 					});
+				} else if (_layout) {
+					instance[0].value = instance[0].value.replace(
+						RE_SCRIPT,
+						`$1${newline}\t${layout_import}`
+					);
 				}
+
+				// inject the frontmatter into the module script if there is any, reusing the existing module script if one exists
+				if (!_module[0] && fm) {
+					_module.push({
+						type: 'raw',
+						value: `<script context="module">${newline}\t${fm}${newline}</script>`,
+					});
+				} else if (fm) {
+					_module[0].value = _module[0].value.replace(
+						RE_MODULE_SCRIPT,
+						`$1${newline}\t${fm}`
+					);
+				}
+
+				// smoosh it all together in an order that makes sense,
+				// if using a layout we only wrap the html and nothing else
+				node.children = [
+					..._module,
+					{ type: 'raw', value: _module[0] ? newline : '' },
+					...instance,
+					{ type: 'raw', value: instance[0] ? newline : '' },
+					...css,
+					{ type: 'raw', value: css[0] ? newline : '' },
+					...special,
+					{ type: 'raw', value: special[0] ? newline : '' },
+					{
+						type: 'raw',
+						value: _layout
+							? `<Layout_MDSVEX_DEFAULT${fm ? ' {...metadata}' : ''}>`
+							: '',
+					},
+					{ type: 'raw', value: newline },
+					...html,
+					{ type: 'raw', value: newline },
+					{ type: 'raw', value: _layout ? '</Layout_MDSVEX_DEFAULT>' : '' },
+				];
 			}
-
-			const layout_import =
-				_layout &&
-				`import Layout_MDSVEX_DEFAULT${
-					_layout.components ? `, * as Components` : ''
-				} from '${_layout.path}';`;
-
-			// add the layout if we are using one, reusing the existing script if one exists
-			if (_layout && !instance[0]) {
-				instance.push({
-					type: 'raw',
-					value: `${newline}<script>${newline}\t${layout_import}${newline}</script>${newline}`,
-				});
-			} else if (_layout) {
-				instance[0].value = instance[0].value.replace(
-					RE_SCRIPT,
-					`$1${newline}\t${layout_import}`
-				);
-			}
-
-			// inject the frontmatter into the module script if there is any, reusing the existing module script if one exists
-			if (!_module[0] && fm) {
-				_module.push({
-					type: 'raw',
-					value: `<script context="module">${newline}\t${fm}${newline}</script>`,
-				});
-			} else if (fm) {
-				_module[0].value = _module[0].value.replace(
-					RE_MODULE_SCRIPT,
-					`$1${newline}\t${fm}`
-				);
-			}
-
-			// smoosh it all together in an order that makes sense,
-			// if using a layout we only wrap the html and nothing else
-			node.children = [
-				..._module,
-				{ type: 'raw', value: _module[0] ? newline : '' },
-				...instance,
-				{ type: 'raw', value: instance[0] ? newline : '' },
-				...css,
-				{ type: 'raw', value: css[0] ? newline : '' },
-				...special,
-				{ type: 'raw', value: special[0] ? newline : '' },
-				{
-					type: 'raw',
-					value: _layout
-						? `<Layout_MDSVEX_DEFAULT${fm ? ' {...metadata}' : ''}>`
-						: '',
-				},
-				{ type: 'raw', value: newline },
-				...html,
-				{ type: 'raw', value: newline },
-				{ type: 'raw', value: _layout ? '</Layout_MDSVEX_DEFAULT>' : '' },
-			];
-		});
+		);
 	};
 }
 
