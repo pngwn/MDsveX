@@ -237,6 +237,7 @@ function extract_parts(nodes: Array<Element | Text>): parts {
 }
 
 type MdsvexVFile = VFile & {
+	filename: string;
 	data?: {
 		fm?: Record<string, unknown>;
 	};
@@ -299,7 +300,8 @@ export function transform_hast({
 
 				const _fm_layout = vFile?.data?.fm?.layout;
 
-				let _layout: string | boolean;
+				type layout_obj = { components: []; path: string };
+				let _layout: string | boolean | undefined | layout_obj;
 
 				// passing false in fm forces no layout
 				if (_fm_layout === false) _layout = false;
@@ -311,7 +313,7 @@ export function transform_hast({
 						_layout = false;
 
 						// a single layout was passed to options, so always use it
-					} else if (layout.__mdsvex_default) {
+					} else if (typeof layout !== 'string' && layout.__mdsvex_default) {
 						_layout = layout.__mdsvex_default;
 
 						// multiple layouts were passed to options, so map folder to layout
@@ -329,7 +331,7 @@ export function transform_hast({
 					// front matter layout is a string
 				} else if (typeof _fm_layout === 'string') {
 					// options layout is a string, so this doesn't make sense: recover but warn
-					if (layout.__mdsvex_default) {
+					if (typeof layout !== 'string' && layout.__mdsvex_default) {
 						_layout = false;
 
 						vFile.messages.push(
@@ -355,11 +357,17 @@ export function transform_hast({
 					}
 				}
 
-				if (_layout && _layout.components && _layout.components.length) {
-					for (let i = 0; i < _layout.components.length; i++) {
+				if (
+					_layout &&
+					(_layout as layout_obj).components &&
+					(_layout as layout_obj).components.length
+				) {
+					for (let i = 0; i < (_layout as layout_obj).components.length; i++) {
 						visit(tree, 'element', (node) => {
-							if (node.tagName === _layout.components[i]) {
-								node.tagName = `Components.${_layout.components[i]}`;
+							if (node.tagName === (_layout as layout_obj).components[i]) {
+								node.tagName = `Components.${
+									(_layout as layout_obj).components[i]
+								}`;
 							}
 						});
 					}
@@ -368,8 +376,8 @@ export function transform_hast({
 				const layout_import =
 					_layout &&
 					`import Layout_MDSVEX_DEFAULT${
-						_layout.components ? `, * as Components` : ''
-					} from '${_layout.path}';`;
+						(_layout as layout_obj).components ? `, * as Components` : ''
+					} from '${(_layout as { path: string }).path}';`;
 
 				// add the layout if we are using one, reusing the existing script if one exists
 				if (_layout && !instance[0]) {
@@ -378,7 +386,7 @@ export function transform_hast({
 						value: `${newline}<script>${newline}\t${layout_import}${newline}</script>${newline}`,
 					});
 				} else if (_layout) {
-					instance[0].value = instance[0].value.replace(
+					instance[0].value = (instance[0].value as string).replace(
 						RE_SCRIPT,
 						`$1${newline}\t${layout_import}`
 					);
@@ -430,13 +438,20 @@ export function transform_hast({
 const langs = {};
 let Prism;
 
-const make_path = (base_path, id) => base_path.replace('{id}', id);
+const make_path = (base_path: string, id: string) =>
+	base_path.replace('{id}', id);
 
 // we need to get all language metadata
 // also track if they depend on other languages so we can autoload without breaking
 // i don't actually know what the require key means but it sounds important
 
-function get_lang_info(name, lang_meta, base_path) {
+type lang_meta = {
+	require?: string[];
+	peerDependencies?: string[];
+	alias?: string[];
+};
+
+function get_lang_info(name: string, lang_meta: lang_meta, base_path: string) {
 	const _lang_meta = {
 		name,
 		path: `prismjs/${make_path(base_path, name)}`,
@@ -474,9 +489,30 @@ function get_lang_info(name, lang_meta, base_path) {
 	return [{ ..._lang_meta, aliases }, aliases];
 }
 
+type rollup_process = NodeJS.Process & { browser: boolean };
+
+type prism_meta = {
+	path: string;
+	noCSS: boolean;
+	examplesPath: string;
+	addCheckAll: boolean;
+};
+
+type prism_lang = {
+	require?: string[];
+	peerDependencies?: string[];
+	alias?: string[];
+};
+
 function load_language_metadata() {
-	if (!process.browser) {
-		const { meta, ...languages } = require('prismjs/components.json').languages;
+	if (!(process as rollup_process).browser) {
+		const {
+			meta,
+			...languages
+		}: {
+			meta: prism_meta;
+			[x: string]: prism_lang; // eslint-disable-next-line @typescript-eslint/no-var-requires
+		} = require('prismjs/components.json').languages;
 
 		for (const lang in languages) {
 			const [lang_info, aliases] = get_lang_info(
