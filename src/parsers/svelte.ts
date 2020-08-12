@@ -28,7 +28,7 @@ export function parse_svelte_tag(
 	eat: Eat,
 	value: string,
 	silent: boolean
-): true | Node {
+): true | Node | undefined {
 	const is_svelte_tag = RE_SVELTE_TAG_START.exec(value);
 
 	if (is_svelte_tag) {
@@ -87,6 +87,8 @@ export function parse_svelte_tag(
 
 		const match = RE_SVELTE_TAG.exec(trimmed_value.substring(0, pos).trim());
 
+		if (!match) return;
+
 		return eat(is_svelte_tag[1] + match[0])({
 			type: 'svelteTag',
 			value: match[0],
@@ -106,7 +108,7 @@ export function parse_svelte_block(
 	eat: Eat,
 	value: string,
 	silent: boolean
-): true | Node {
+): true | Node | undefined {
 	const is_svelte_block = RE_SVELTE_BLOCK_START.exec(value);
 
 	if (is_svelte_block) {
@@ -123,6 +125,8 @@ export function parse_svelte_block(
 		}
 
 		const match = RE_SVELTE_BLOCK.exec(trimmed_value.substring(0, pos));
+
+		if (!match) return;
 
 		return eat(is_svelte_block[1] + match[0])({
 			type: 'svelteBlock',

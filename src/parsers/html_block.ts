@@ -27,7 +27,7 @@ export function blockHtml(
 	eat: Eat,
 	value: string,
 	silent: boolean
-): boolean | RegExp | Node {
+): boolean | RegExp | Node | undefined {
 	const blocks = '[a-z\\.]*(\\.){0,1}[a-z][a-z0-9\\.]*';
 	const elementOpenExpression = new RegExp(
 		'^</?(' + blocks + ')(?=(\\s|/?>|$))',
