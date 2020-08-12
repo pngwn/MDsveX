@@ -3,6 +3,7 @@ import { parse_svelte_block } from './svelte';
 import { blockHtml } from './html_block';
 
 export function mdsvex_parser(): void {
+	//@ts-ignore
 	const Parser = this.Parser;
 	const block_tokenizers = Parser.prototype.blockTokenizers;
 	const methods = Parser.prototype.blockMethods;

@@ -9,7 +9,7 @@ import escape from 'escape-html';
 
 import type { Transformer } from 'unified';
 import type { Node } from 'unist';
-import type { HTML, Text } from 'mdast';
+import type { HTML, Text, Code } from 'mdast';
 import type { Element, Root } from 'hast';
 import { message, VFile } from 'vfile';
 // this needs a big old cleanup
@@ -407,6 +407,7 @@ export function transform_hast({
 
 				// smoosh it all together in an order that makes sense,
 				// if using a layout we only wrap the html and nothing else
+				//@ts-ignore
 				node.children = [
 					..._module,
 					{ type: 'raw', value: _module[0] ? newline : '' },
@@ -435,8 +436,9 @@ export function transform_hast({
 // highlighting stuff
 
 // { [lang]: { path, deps: pointer to key } }
-const langs = {};
-let Prism;
+const langs: { [x: string]: lang_def } = {};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Prism: any;
 
 const make_path = (base_path: string, id: string) =>
 	base_path.replace('{id}', id);
@@ -451,14 +453,25 @@ type lang_meta = {
 	alias?: string[];
 };
 
-function get_lang_info(name: string, lang_meta: lang_meta, base_path: string) {
+type lang_def = {
+	aliases: Set<unknown>;
+	name: string;
+	path: string;
+	deps: Set<string>;
+};
+
+function get_lang_info(
+	name: string,
+	lang_meta: lang_meta,
+	base_path: string
+): [lang_def, Set<string>] {
 	const _lang_meta = {
 		name,
 		path: `prismjs/${make_path(base_path, name)}`,
-		deps: new Set(),
+		deps: new Set<string>(),
 	};
 
-	const aliases = new Set();
+	const aliases = new Set<string>();
 
 	// todo: DRY this up, it is literally identical
 
@@ -529,8 +542,8 @@ function load_language_metadata() {
 	}
 }
 
-function load_language(lang) {
-	if (!process.browser) {
+function load_language(lang: string) {
+	if (!(process as rollup_process).browser) {
 		if (!langs[lang]) return;
 
 		langs[lang].deps.forEach((name) => load_language(name));
@@ -539,8 +552,16 @@ function load_language(lang) {
 	}
 }
 
-export function highlight_blocks({ highlighter: highlight_fn, alias } = {}) {
-	if (!highlight_fn || process.browser) return;
+type custom_highlight = (code: string, lang: string | undefined) => string;
+
+export function highlight_blocks({
+	highlighter: highlight_fn,
+	alias,
+}: {
+	highlighter?: custom_highlight;
+	alias?: { [x: string]: string };
+} = {}): MdsvexTransformer | undefined {
+	if (!highlight_fn || (process as rollup_process).browser) return;
 
 	load_language_metadata();
 
@@ -550,25 +571,27 @@ export function highlight_blocks({ highlighter: highlight_fn, alias } = {}) {
 		}
 	}
 
-	return function (tree, vFile) {
-		visit(tree, 'code', (node) => {
+	return function (tree) {
+		visit<Code>(tree, 'code', (node) => {
+			//@ts-ignore
 			node.type = 'html';
-			node.value = highlight_fn(node.value, node.lang, vFile.messages);
+			node.value = highlight_fn(node.value, node.lang);
 		});
 	};
 }
 // escape curlies, backtick, \t, \r, \n to avoid breaking output of {@html `here`} in .svelte
-const escape_svelty = (str) =>
+const escape_svelty = (str: string) =>
 	str
 		.replace(
 			/[{}`]/g,
+			//@ts-ignore
 			(c) => ({ '{': '&#123;', '}': '&#125;', '`': '&#96;' }[c])
 		)
 		.replace(/\\([trn])/g, '&#92;$1');
 
-export function code_highlight(code, lang) {
-	if (!process.browser) {
-		let _lang = langs[lang] || false;
+export const code_highlight: custom_highlight = (code, lang) => {
+	if ((process as rollup_process).browser) {
+		let _lang = !!lang && langs[lang];
 
 		if (!Prism) Prism = require('prismjs');
 
@@ -576,8 +599,8 @@ export function code_highlight(code, lang) {
 			load_language(_lang.name);
 		}
 
-		if (!_lang && Prism.languages[lang]) {
-			langs[lang] = { name: lang };
+		if (!_lang && lang && Prism.languages[lang]) {
+			langs[lang] = { name: lang } as lang_def;
 			_lang = langs[lang];
 		}
 		const highlighted = escape_svelty(
@@ -590,4 +613,4 @@ export function code_highlight(code, lang) {
 		const highlighted = escape_svelty(escape(code));
 		return `<pre class="language-${lang}">{@html \`<code class="language-${lang}">${highlighted}</code>\`}</pre>`;
 	}
-}
+};
