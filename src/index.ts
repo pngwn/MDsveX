@@ -23,6 +23,7 @@ import {
 	highlight_blocks,
 	code_highlight,
 } from './transformers';
+import type { ExportNamedDeclaration } from 'estree';
 
 function stringify(options = {}) {
 	this.Compiler = compiler;
@@ -174,7 +175,7 @@ function process_layouts(layouts) {
 		if (ast.module) {
 			const component_exports = ast.module.content.body.filter(
 				(node) => node.type === 'ExportNamedDeclaration'
-			);
+			) as ExportNamedDeclaration[];
 
 			if (component_exports.length) {
 				_layouts[key].components = [];
@@ -189,7 +190,9 @@ function process_layouts(layouts) {
 								component_exports[i].specifiers[j].exported.name
 							);
 						}
+						//@ts-ignore
 					} else if (component_exports[i].declaration.declarations) {
+						//@ts-ignore
 						const declarations = component_exports[i].declaration.declarations;
 
 						for (let j = 0; j < declarations.length; j++) {
@@ -197,6 +200,7 @@ function process_layouts(layouts) {
 						}
 					} else if (component_exports[i].declaration) {
 						_layouts[key].components.push(
+							//@ts-ignore
 							component_exports[i].declaration.id.name
 						);
 					}
