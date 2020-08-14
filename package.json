@@ -5,9 +5,10 @@
 	"main": "dist/main.cjs.js",
 	"module": "dist/main.es.js",
 	"browser": "dist/main.browser.js",
+	"types": "dist/types/index.d.ts",
 	"repository": "https://github.com/pngwn/MDsveX",
 	"scripts": {
-		"build": "rollup -c",
+		"build": "tsc --emitDeclarationOnly --declaration && rollup -c",
 		"lint": "eslint 'src/' 'test/' --ext .js,.ts",
 		"test": "uvu -r ts-node/register test test.ts$",
 		"generate_files": "node -r esm ./test/_scripts/generate_markdown_html.js"
@@ -40,7 +41,6 @@
 		"escape-html": "^1.0.3",
 		"eslint": "^6.8.0",
 		"eslint-config-prettier": "^6.10.0",
-		"eslint-plugin-import": "^2.18.2",
 		"eslint-plugin-prettier": "^3.1.2",
 		"esm": "^3.2.25",
 		"front-matter": "^4.0.0",

@@ -40,11 +40,4 @@ module.exports = {
 			experimentalObjectRestSpread: true,
 		},
 	},
-	// settings: {
-	// 	'import/resolver': {
-	// 		node: {
-	// 			extensions: ['.js'],
-	// 		},
-	// 	},
-	// },
 };

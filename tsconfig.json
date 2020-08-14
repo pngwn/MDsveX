@@ -9,7 +9,7 @@
 		"include": ["tests/**/*"]
 	},
 	"compilerOptions": {
-		"outDir": "build",
+		"outDir": "dist/types",
 		"target": "esnext",
 		"module": "esnext",
 		"moduleResolution": "node",
