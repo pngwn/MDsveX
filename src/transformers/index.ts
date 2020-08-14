@@ -1,3 +1,10 @@
+import type { Transformer } from 'unified';
+import type { Node } from 'unist';
+import type { Text, Code } from 'mdast';
+import type { Element, Root } from 'hast';
+import type { VFileMessage } from 'vfile-message';
+
+import Message from 'vfile-message';
 //@ts-ignore
 import retext from 'retext';
 //@ts-ignore
@@ -6,13 +13,6 @@ import visit from 'unist-util-visit';
 import yaml from 'js-yaml';
 import { parse } from 'svelte/compiler';
 import escape from 'escape-html';
-
-import type { Transformer } from 'unified';
-import type { Node } from 'unist';
-import type { Text, Code } from 'mdast';
-import type { Element, Root } from 'hast';
-import { message, VFile } from 'vfile';
-import type { VFileMessage } from 'vfile-message';
 
 // this needs a big old cleanup
 
@@ -27,7 +27,7 @@ export function default_frontmatter(
 	try {
 		return yaml.safeLoad(value) as Record<string, unknown>;
 	} catch (e) {
-		messages.push(message('YAML failed to parse', e));
+		messages.push(new Message('YAML failed to parse', e));
 	}
 }
 
@@ -192,7 +192,7 @@ function extract_parts(nodes: Array<Element | Text>): parts {
 		}
 
 		// svelte special tags that have to be top level
-		if (!result.html?.children) return parts;
+		if (!result.html || !result.html.children) return parts;
 
 		const _parts: Array<[
 			'html' | 'css' | 'special' | 'instance' | 'module',
@@ -237,13 +237,6 @@ function extract_parts(nodes: Array<Element | Text>): parts {
 	return parts;
 }
 
-type MdsvexVFile = VFile & {
-	filename: string;
-	data: {
-		fm?: Record<string, unknown>;
-	};
-};
-
 export function transform_hast({
 	layout,
 }: {
@@ -253,13 +246,23 @@ export function transform_hast({
 		// we need to keep { and } intact for svelte, so reverse the escaping in links and images
 		// if anyone actually uses these characters for any other reason i'll probably just cry
 		visit<Element>(tree, 'element', (node) => {
-			if (node.tagName === 'a' && typeof node?.properties?.href === 'string') {
+			if (
+				node.tagName === 'a' &&
+				node &&
+				node.properties &&
+				typeof node.properties.href === 'string'
+			) {
 				node.properties.href = node.properties.href
 					.replace(/%7B/g, '{')
 					.replace(/%7D/g, '}');
 			}
 
-			if (node.tagName === 'img' && typeof node?.properties?.src === 'string') {
+			if (
+				node.tagName === 'img' &&
+				node &&
+				node.properties &&
+				typeof node.properties.src === 'string'
+			) {
 				node.properties.src = node.properties.src
 					.replace(/%7B/g, '{')
 					.replace(/%7D/g, '}');
@@ -288,8 +291,9 @@ export function transform_hast({
 						(vFile.data as { fm: Record<string, unknown> }).fm
 					).join(', ')} } = metadata;`;
 
-			const _fm_layout = (vFile?.data as { fm: Record<string, unknown> })?.fm
-				?.layout;
+			const _fm_layout =
+				(vFile.data as { fm: Record<string, unknown> }).fm &&
+				(vFile.data as { fm: Record<string, unknown> }).fm.layout;
 
 			type layout_obj = { components: []; path: string };
 			let _layout: string | boolean | undefined | layout_obj;
@@ -314,8 +318,10 @@ export function transform_hast({
 
 					if (_layout === undefined)
 						vFile.messages.push(
-							// @ts-ignore
-							message(`Could not find a matching layout for ${vFile.filename}.`)
+							new Message(
+								//@ts-ignore
+								`Could not find a matching layout for ${vFile.filename}.`
+							)
 						);
 				}
 
@@ -326,7 +332,7 @@ export function transform_hast({
 					_layout = false;
 
 					vFile.messages.push(
-						message(
+						new Message(
 							// @ts-ignore
 							`You attempted to apply a named layout in the front-matter of ${vFile.filename}, but did not provide any named layouts as options to the preprocessor. `,
 							{
@@ -342,7 +348,7 @@ export function transform_hast({
 
 					if (_layout === undefined)
 						vFile.messages.push(
-							message(
+							new Message(
 								`Could not find a layout with the name ${_fm_layout} and no fall back ('*') was provided.`
 							)
 						);
@@ -368,7 +374,7 @@ export function transform_hast({
 			const layout_import =
 				_layout &&
 				`import Layout_MDSVEX_DEFAULT${
-					(_layout as layout_obj).components ? `, * as Components` : ''
+					(_layout as layout_obj).components.length ? `, * as Components` : ''
 				} from '${(_layout as { path: string }).path}';`;
 
 			// add the layout if we are using one, reusing the existing script if one exists
@@ -555,7 +561,7 @@ export function highlight_blocks({
 	highlighter?: custom_highlight;
 	alias?: { [x: string]: string };
 } = {}): Transformer {
-	if (highlight_fn && (process as rollup_process).browser) {
+	if (highlight_fn && !(process as rollup_process).browser) {
 		load_language_metadata();
 
 		if (alias) {
@@ -566,7 +572,7 @@ export function highlight_blocks({
 	}
 
 	return function (tree) {
-		if (highlight_fn && (process as rollup_process).browser) {
+		if (highlight_fn && !(process as rollup_process).browser) {
 			visit<Code>(tree, 'code', (node) => {
 				//@ts-ignore
 				node.type = 'html';
@@ -586,7 +592,7 @@ const escape_svelty = (str: string) =>
 		.replace(/\\([trn])/g, '&#92;$1');
 
 export const code_highlight: custom_highlight = (code, lang) => {
-	if ((process as rollup_process).browser) {
+	if (!(process as rollup_process).browser) {
 		let _lang = !!lang && langs[lang];
 
 		if (!Prism) Prism = require('prismjs');
