@@ -2,15 +2,18 @@ import type { Processor } from 'unified';
 import type { Plugin } from 'unified';
 import type { VFileMessage } from 'vfile-message';
 import type { VFileContents } from 'vfile';
+import { Node } from 'unist';
 
 import { join } from 'path';
 import fs from 'fs';
 import { parse } from 'svelte/compiler';
 import unified from 'unified';
 import markdown from 'remark-parse';
+//@ts-ignore
 import external from 'remark-external-links';
 import extract_frontmatter from 'remark-frontmatter';
 import remark2rehype from 'remark-rehype';
+//@ts-ignore
 import hast_to_html from '@starptech/prettyhtml-hast-to-html';
 
 import { mdsvex_parser } from './parsers';
@@ -25,10 +28,10 @@ import {
 } from './transformers';
 import type { ExportNamedDeclaration } from 'estree';
 
-function stringify(options = {}) {
+function stringify(this: Processor, options = {}) {
 	this.Compiler = compiler;
 
-	function compiler(tree) {
+	function compiler(tree: Node): string {
 		return hast_to_html(tree, options);
 	}
 }
@@ -64,7 +67,7 @@ type smartypants_options =
 			dashes: boolean | 'oldschool' | 'inverted';
 	  };
 
-type layout = { [x: string]: { path: string; components?: string } };
+type layout = { [x: string]: { path: string; components: string[] } };
 
 type highlight = {
 	highlighter: (code: string, lang: string | undefined) => string;
@@ -110,9 +113,11 @@ export function transform({
 
 	const toHAST = toMDAST
 		.use(remark2rehype, {
+			// @ts-ignore
 			allowDangerousHtml: true,
 			allowDangerousCharacters: true,
 		})
+		// @ts-ignore
 		.use(transform_hast, { layout });
 
 	apply_plugins(rehypePlugins, toHAST);
@@ -134,7 +139,7 @@ const defaults = {
 	highlight: { highlighter: code_highlight },
 };
 
-function to_posix(_path) {
+function to_posix(_path: string): string {
 	const isExtendedLengthPath = /^\\\\\?\\/.test(_path);
 	const hasNonAscii = /[^\u0000-\u0080]+/.test(_path); // eslint-disable-line no-control-regex
 
@@ -145,7 +150,7 @@ function to_posix(_path) {
 	return _path.replace(/\\/g, '/');
 }
 
-function resolve_layout(layout_path) {
+function resolve_layout(layout_path: string): string {
 	try {
 		return to_posix(require.resolve(layout_path));
 	} catch (e) {
@@ -165,7 +170,9 @@ function resolve_layout(layout_path) {
 
 // handle custom components
 
-function process_layouts(layouts) {
+function process_layouts(
+	layouts: Record<string, { path: string; components: string[] }>
+) {
 	const _layouts = layouts;
 
 	for (const key in _layouts) {
@@ -218,12 +225,12 @@ type mdsvex_options = {
 	smartypants?: smartypants_options;
 	highlight?: highlight;
 	extension?: string;
-	layout: string | layout | boolean;
+	layout: string | Record<string, string> | boolean;
 };
 
-type preprocessor_return =
-	| { code: VFileContents; map?: string }
-	| Promise<{ code: VFileContents; map?: string }>;
+type preprocessor_return = Promise<
+	{ code: VFileContents; map?: string } | undefined
+>;
 
 type preprocessor = {
 	markup: (args: { content: string; filename: string }) => preprocessor_return;
@@ -270,14 +277,13 @@ export const mdsvex = (options: mdsvex_options = defaults): preprocessor => {
 		);
 	}
 
-	let _layout: layout =
-		typeof layout === 'boolean' || typeof layout === 'string' ? {} : layout;
+	let _layout: layout = {};
 
 	if (typeof layout === 'string') {
-		_layout.__mdsvex_default = { path: resolve_layout(layout) };
+		_layout.__mdsvex_default = { path: resolve_layout(layout), components: [] };
 	} else if (typeof layout === 'object') {
 		for (const name in layout) {
-			_layout[name] = { path: resolve_layout(layout[name]) };
+			_layout[name] = { path: resolve_layout(layout[name]), components: [] };
 		}
 	}
 	if (highlight && highlight.highlighter === undefined) {
@@ -300,7 +306,7 @@ export const mdsvex = (options: mdsvex_options = defaults): preprocessor => {
 			if (filename.split('.').pop() !== extension.split('.').pop()) return;
 
 			const parsed = await parser.process({ contents: content, filename });
-			return { code: parsed.contents };
+			return { code: parsed.contents, map: '' };
 		},
 	};
 };

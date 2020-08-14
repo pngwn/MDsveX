@@ -9,9 +9,11 @@ import escape from 'escape-html';
 
 import type { Transformer } from 'unified';
 import type { Node } from 'unist';
-import type { HTML, Text, Code } from 'mdast';
+import type { Text, Code } from 'mdast';
 import type { Element, Root } from 'hast';
 import { message, VFile } from 'vfile';
+import type { VFileMessage } from 'vfile-message';
+
 // this needs a big old cleanup
 
 const newline = '\n';
@@ -19,21 +21,21 @@ const newline = '\n';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function default_frontmatter(
-	value: string, // eslint-disable-next-line @typescript-eslint/no-explicit-any
-	messages: any[] // eslint-disable-next-line @typescript-eslint/ban-types
-): string | object | undefined {
+	value: string,
+	messages: VFileMessage[]
+): Record<string, unknown> | undefined {
 	try {
-		return yaml.safeLoad(value);
+		return yaml.safeLoad(value) as Record<string, unknown>;
 	} catch (e) {
-		messages.push(['YAML failed to parse', e]);
+		messages.push(message('YAML failed to parse', e));
 	}
 }
 
 type parser_frontmatter_options = {
 	parse: (
-		value: string, // eslint-disable-next-line @typescript-eslint/no-explicit-any
-		message: any[] // eslint-disable-next-line @typescript-eslint/no-explicit-any
-	) => undefined | { [x: string]: any };
+		fm: string,
+		messages: VFileMessage[]
+	) => undefined | Record<string, unknown>;
 	type: string;
 };
 
@@ -169,19 +171,18 @@ function extract_parts(nodes: Array<Element | Text>): parts {
 			continue children;
 		}
 
-		// @ts-ignore
 		let result: {
 			html?:
 				| {
-						children?: any[] | undefined;
-						start: any;
-						end: any;
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						children?: any[] | undefined; // eslint-disable-next-line @typescript-eslint/no-explicit-any
+						start: any; // eslint-disable-next-line @typescript-eslint/no-explicit-any
+						end: any; // eslint-disable-next-line @typescript-eslint/no-explicit-any
 						[x: string]: any;
 				  }
-				| undefined;
-			instance?: any;
+				| undefined; // eslint-disable-next-line @typescript-eslint/no-explicit-any
+			instance?: any; // eslint-disable-next-line @typescript-eslint/no-explicit-any
 			module?: any;
-			// [x: string]: any;
 		};
 		try {
 			result = parse(nodes[i].value as string);
@@ -238,27 +239,17 @@ function extract_parts(nodes: Array<Element | Text>): parts {
 
 type MdsvexVFile = VFile & {
 	filename: string;
-	data?: {
+	data: {
 		fm?: Record<string, unknown>;
 	};
 };
-
-type MdsvexTransformer = (
-	node: Node,
-	file: MdsvexVFile,
-	next?: (
-		error: Error | null,
-		tree: Node,
-		file: VFile
-	) => Record<string, unknown>
-) => Error | Node | Promise<Node> | void | Promise<void>;
 
 export function transform_hast({
 	layout,
 }: {
 	layout: { [x: string]: string } | 'string';
-}): MdsvexTransformer {
-	return function transformer(tree, vFile: MdsvexVFile) {
+}): Transformer {
+	return function transformer(tree, vFile) {
 		// we need to keep { and } intact for svelte, so reverse the escaping in links and images
 		// if anyone actually uses these characters for any other reason i'll probably just cry
 		visit<Element>(tree, 'element', (node) => {
@@ -281,155 +272,156 @@ export function transform_hast({
 		// i'll fix this when they do
 
 		//@ts-ignore
-		if (!layout && !vFile.data.fm) return;
+		if (!layout && !vFile.data.fm) return tree;
 
-		visit<{ type: string; children: Array<Element | Text> }>(
-			tree,
-			'root',
-			(node) => {
-				const { special, html, instance, module: _module, css } = extract_parts(
-					node.children
-				);
+		visit<Root>(tree, 'root', (node) => {
+			const { special, html, instance, module: _module, css } = extract_parts(
+				node.children as (Element | Text)[]
+			);
 
-				const fm =
-					vFile?.data?.fm &&
-					`export const metadata = ${JSON.stringify(
-						vFile.data.fm
-					)};${newline}` +
-						`\tconst { ${Object.keys(vFile.data.fm).join(', ')} } = metadata;`;
+			const fm =
+				(vFile.data as { fm: Record<string, unknown> }).fm &&
+				`export const metadata = ${JSON.stringify(
+					(vFile.data as { fm: Record<string, unknown> }).fm
+				)};${newline}` +
+					`\tconst { ${Object.keys(
+						(vFile.data as { fm: Record<string, unknown> }).fm
+					).join(', ')} } = metadata;`;
 
-				const _fm_layout = vFile?.data?.fm?.layout;
+			const _fm_layout = (vFile?.data as { fm: Record<string, unknown> })?.fm
+				?.layout;
 
-				type layout_obj = { components: []; path: string };
-				let _layout: string | boolean | undefined | layout_obj;
+			type layout_obj = { components: []; path: string };
+			let _layout: string | boolean | undefined | layout_obj;
 
-				// passing false in fm forces no layout
-				if (_fm_layout === false) _layout = false;
-				// no frontmatter layout provided
-				else if (_fm_layout === undefined) {
-					// both layouts undefined
+			// passing false in fm forces no layout
+			if (_fm_layout === false) _layout = false;
+			// no frontmatter layout provided
+			else if (_fm_layout === undefined) {
+				// both layouts undefined
 
-					if (layout === undefined) {
-						_layout = false;
+				if (layout === undefined) {
+					_layout = false;
 
-						// a single layout was passed to options, so always use it
-					} else if (typeof layout !== 'string' && layout.__mdsvex_default) {
-						_layout = layout.__mdsvex_default;
+					// a single layout was passed to options, so always use it
+				} else if (typeof layout !== 'string' && layout.__mdsvex_default) {
+					_layout = layout.__mdsvex_default;
 
-						// multiple layouts were passed to options, so map folder to layout
-					} else if (typeof layout === 'object' && layout !== null) {
-						_layout = map_layout_to_path(vFile.filename, layout);
+					// multiple layouts were passed to options, so map folder to layout
+				} else if (typeof layout === 'object' && layout !== null) {
+					// @ts-ignore
+					_layout = map_layout_to_path(vFile.filename, layout);
 
-						if (_layout === undefined)
-							vFile.messages.push(
-								message(
-									`Could not find a matching layout for ${vFile.filename}.`
-								)
-							);
-					}
+					if (_layout === undefined)
+						vFile.messages.push(
+							// @ts-ignore
+							message(`Could not find a matching layout for ${vFile.filename}.`)
+						);
+				}
 
-					// front matter layout is a string
-				} else if (typeof _fm_layout === 'string') {
-					// options layout is a string, so this doesn't make sense: recover but warn
-					if (typeof layout !== 'string' && layout.__mdsvex_default) {
-						_layout = false;
+				// front matter layout is a string
+			} else if (typeof _fm_layout === 'string') {
+				// options layout is a string, so this doesn't make sense: recover but warn
+				if (typeof layout !== 'string' && layout.__mdsvex_default) {
+					_layout = false;
 
+					vFile.messages.push(
+						message(
+							// @ts-ignore
+							`You attempted to apply a named layout in the front-matter of ${vFile.filename}, but did not provide any named layouts as options to the preprocessor. `,
+							{
+								start: { line: 0, column: 0, offset: 0 },
+								end: { line: 0, column: 0, offset: 0 },
+							}
+						)
+					);
+
+					// options layout is an object so do a simple lookup
+				} else if (typeof layout === 'object' && layout !== null) {
+					_layout = layout[_fm_layout] || layout['*'];
+
+					if (_layout === undefined)
 						vFile.messages.push(
 							message(
-								`You attempted to apply a named layout in the front-matter of ${vFile.filename}, but did not provide any named layouts as options to the preprocessor. `,
-								{
-									start: { line: 0, column: 0, offset: 0 },
-									end: { line: 0, column: 0, offset: 0 },
-								}
+								`Could not find a layout with the name ${_fm_layout} and no fall back ('*') was provided.`
 							)
 						);
-
-						// options layout is an object so do a simple lookup
-					} else if (typeof layout === 'object' && layout !== null) {
-						_layout = layout[_fm_layout] || layout['*'];
-
-						if (_layout === undefined)
-							vFile.messages.push(
-								message(
-									`Could not find a layout with the name ${_fm_layout} and no fall back ('*') was provided.`
-								)
-							);
-					}
 				}
-
-				if (
-					_layout &&
-					(_layout as layout_obj).components &&
-					(_layout as layout_obj).components.length
-				) {
-					for (let i = 0; i < (_layout as layout_obj).components.length; i++) {
-						visit(tree, 'element', (node) => {
-							if (node.tagName === (_layout as layout_obj).components[i]) {
-								node.tagName = `Components.${
-									(_layout as layout_obj).components[i]
-								}`;
-							}
-						});
-					}
-				}
-
-				const layout_import =
-					_layout &&
-					`import Layout_MDSVEX_DEFAULT${
-						(_layout as layout_obj).components ? `, * as Components` : ''
-					} from '${(_layout as { path: string }).path}';`;
-
-				// add the layout if we are using one, reusing the existing script if one exists
-				if (_layout && !instance[0]) {
-					instance.push({
-						type: 'raw',
-						value: `${newline}<script>${newline}\t${layout_import}${newline}</script>${newline}`,
-					});
-				} else if (_layout) {
-					instance[0].value = (instance[0].value as string).replace(
-						RE_SCRIPT,
-						`$1${newline}\t${layout_import}`
-					);
-				}
-
-				// inject the frontmatter into the module script if there is any, reusing the existing module script if one exists
-				if (!_module[0] && fm) {
-					_module.push({
-						type: 'raw',
-						value: `<script context="module">${newline}\t${fm}${newline}</script>`,
-					});
-				} else if (fm) {
-					_module[0].value = _module[0].value.replace(
-						RE_MODULE_SCRIPT,
-						`$1${newline}\t${fm}`
-					);
-				}
-
-				// smoosh it all together in an order that makes sense,
-				// if using a layout we only wrap the html and nothing else
-				//@ts-ignore
-				node.children = [
-					..._module,
-					{ type: 'raw', value: _module[0] ? newline : '' },
-					...instance,
-					{ type: 'raw', value: instance[0] ? newline : '' },
-					...css,
-					{ type: 'raw', value: css[0] ? newline : '' },
-					...special,
-					{ type: 'raw', value: special[0] ? newline : '' },
-					{
-						type: 'raw',
-						value: _layout
-							? `<Layout_MDSVEX_DEFAULT${fm ? ' {...metadata}' : ''}>`
-							: '',
-					},
-					{ type: 'raw', value: newline },
-					...html,
-					{ type: 'raw', value: newline },
-					{ type: 'raw', value: _layout ? '</Layout_MDSVEX_DEFAULT>' : '' },
-				];
 			}
-		);
+
+			if (
+				_layout &&
+				(_layout as layout_obj).components &&
+				(_layout as layout_obj).components.length
+			) {
+				for (let i = 0; i < (_layout as layout_obj).components.length; i++) {
+					visit(tree, 'element', (node) => {
+						if (node.tagName === (_layout as layout_obj).components[i]) {
+							node.tagName = `Components.${
+								(_layout as layout_obj).components[i]
+							}`;
+						}
+					});
+				}
+			}
+
+			const layout_import =
+				_layout &&
+				`import Layout_MDSVEX_DEFAULT${
+					(_layout as layout_obj).components ? `, * as Components` : ''
+				} from '${(_layout as { path: string }).path}';`;
+
+			// add the layout if we are using one, reusing the existing script if one exists
+			if (_layout && !instance[0]) {
+				instance.push({
+					type: 'raw',
+					value: `${newline}<script>${newline}\t${layout_import}${newline}</script>${newline}`,
+				});
+			} else if (_layout) {
+				instance[0].value = (instance[0].value as string).replace(
+					RE_SCRIPT,
+					`$1${newline}\t${layout_import}`
+				);
+			}
+
+			// inject the frontmatter into the module script if there is any, reusing the existing module script if one exists
+			if (!_module[0] && fm) {
+				_module.push({
+					type: 'raw',
+					value: `<script context="module">${newline}\t${fm}${newline}</script>`,
+				});
+			} else if (fm) {
+				// @ts-ignore
+				_module[0].value = _module[0].value.replace(
+					RE_MODULE_SCRIPT,
+					`$1${newline}\t${fm}`
+				);
+			}
+
+			// smoosh it all together in an order that makes sense,
+			// if using a layout we only wrap the html and nothing else
+			//@ts-ignore
+			node.children = [
+				..._module,
+				{ type: 'raw', value: _module[0] ? newline : '' },
+				...instance,
+				{ type: 'raw', value: instance[0] ? newline : '' },
+				...css,
+				{ type: 'raw', value: css[0] ? newline : '' },
+				...special,
+				{ type: 'raw', value: special[0] ? newline : '' },
+				{
+					type: 'raw',
+					value: _layout
+						? `<Layout_MDSVEX_DEFAULT${fm ? ' {...metadata}' : ''}>`
+						: '',
+				},
+				{ type: 'raw', value: newline },
+				...html,
+				{ type: 'raw', value: newline },
+				{ type: 'raw', value: _layout ? '</Layout_MDSVEX_DEFAULT>' : '' },
+			];
+		});
 	};
 }
 
@@ -517,15 +509,17 @@ type prism_lang = {
 	alias?: string[];
 };
 
+interface Meta {
+	meta: prism_meta;
+}
+
 function load_language_metadata() {
 	if (!(process as rollup_process).browser) {
 		const {
 			meta,
 			...languages
-		}: {
-			meta: prism_meta;
-			[x: string]: prism_lang; // eslint-disable-next-line @typescript-eslint/no-var-requires
-		} = require('prismjs/components.json').languages;
+		}: Record<string, prism_lang> & // eslint-disable-next-line
+			Meta = require('prismjs/components.json').languages;
 
 		for (const lang in languages) {
 			const [lang_info, aliases] = get_lang_info(
@@ -560,23 +554,25 @@ export function highlight_blocks({
 }: {
 	highlighter?: custom_highlight;
 	alias?: { [x: string]: string };
-} = {}): MdsvexTransformer | undefined {
-	if (!highlight_fn || (process as rollup_process).browser) return;
+} = {}): Transformer {
+	if (highlight_fn && (process as rollup_process).browser) {
+		load_language_metadata();
 
-	load_language_metadata();
-
-	if (alias) {
-		for (const lang in alias) {
-			langs[lang] = langs[alias[lang]];
+		if (alias) {
+			for (const lang in alias) {
+				langs[lang] = langs[alias[lang]];
+			}
 		}
 	}
 
 	return function (tree) {
-		visit<Code>(tree, 'code', (node) => {
-			//@ts-ignore
-			node.type = 'html';
-			node.value = highlight_fn(node.value, node.lang);
-		});
+		if (highlight_fn && (process as rollup_process).browser) {
+			visit<Code>(tree, 'code', (node) => {
+				//@ts-ignore
+				node.type = 'html';
+				node.value = highlight_fn(node.value, node.lang);
+			});
+		}
 	};
 }
 // escape curlies, backtick, \t, \r, \n to avoid breaking output of {@html `here`} in .svelte
