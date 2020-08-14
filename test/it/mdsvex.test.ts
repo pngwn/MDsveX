@@ -5,7 +5,7 @@ import { join } from 'path';
 import { lines } from '../utils';
 import { to_posix } from '../../src/utils';
 
-import { mdsvex, compile } from '../../src/';
+import { mdsvex, compile } from '../../src';
 import containers from 'remark-containers';
 import headings from 'remark-autolink-headings';
 import slug from 'remark-slug';
@@ -111,7 +111,8 @@ mdsvex_it('it should accept a rehype plugin', async () => {
   class="toc-level toc-level-2"
 ><li class="toc-item toc-item-h2"><a class="toc-link toc-link-h2" href="#">Two</a><ol
   class="toc-level toc-level-3"
-><li class="toc-item toc-item-h3"><a class="toc-link toc-link-h3" href="#">Three</a></li></ol></li></ol></li></ol></nav><h1>One</h1>
+><li class="toc-item toc-item-h3"><a class="toc-link toc-link-h3" href="#">Three</a></li></ol></li></ol></li></ol></nav>
+<h1>One</h1>
 <h2>Two</h2>
 <h3>Three</h3>`),
 		lines(output.code)
@@ -135,9 +136,8 @@ mdsvex_it('it should accept rehype plugins - plural', async () => {
   class="toc-level toc-level-2"
 ><li class="toc-item toc-item-h2"><a class="toc-link toc-link-h2" href="#two">Two</a><ol
   class="toc-level toc-level-3"
-><li class="toc-item toc-item-h3"><a class="toc-link toc-link-h3" href="#three">Three</a></li></ol></li></ol></li></ol></nav><h1
-  id="one"
->One</h1>
+><li class="toc-item toc-item-h3"><a class="toc-link toc-link-h3" href="#three">Three</a></li></ol></li></ol></li></ol></nav>
+<h1 id="one">One</h1>
 <h2 id="two">Two</h2>
 <h3 id="three">Three</h3>`),
 		lines(output.code)
@@ -161,9 +161,8 @@ mdsvex_it('it should accept rehype plugins with options - plural', async () => {
   class="toc-level toc-level-2"
 ><li class="toc-item toc-item-h2"><a class="toc-link toc-link-h2" href="#two">Two</a><ol
   class="toc-level toc-level-3"
-><li class="toc-item toc-item-h3"><a class="toc-link toc-link-h3" href="#three">Three</a></li></ol></li></ol></li></ol><h1
-  id="one"
->One</h1>
+><li class="toc-item toc-item-h3"><a class="toc-link toc-link-h3" href="#three">Three</a></li></ol></li></ol></li></ol>
+<h1 id="one">One</h1>
 <h2 id="two">Two</h2>
 <h3 id="three">Three</h3>`),
 		lines(output.code)
@@ -272,7 +271,7 @@ mdsvex_it('custom layouts should work', async () => {
 	);
 });
 
-mdsvex_it(
+mdsvex_it.only(
 	'custom layouts should work - when there are script tags',
 	async () => {
 		const output = await mdsvex({
@@ -703,6 +702,7 @@ number: 999
 mdsvex_it('Ensure no-one tries to pass a "layouts" option', async () => {
 	const output_fn = async () =>
 		await mdsvex({
+			//@ts-ignore
 			layouts: {
 				one: './test/_fixtures/Layout.svelte',
 				two: './test/_fixtures/LayoutTwo.svelte',
@@ -740,6 +740,7 @@ number: 999
 mdsvex_it('Warn on receiving unknown options', async () => {
 	const output_fn = async () =>
 		await mdsvex({
+			//@ts-ignore
 			bip: 'hi',
 			bop: 'ho',
 			boom: 'oh',
@@ -767,7 +768,7 @@ number: 999
 	// don't even ask
 	const console_warn = console.warn;
 	let warning = '';
-	console.warn = args => (warning = args);
+	console.warn = (args) => (warning = args);
 
 	await output_fn();
 

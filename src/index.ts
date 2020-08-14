@@ -1,8 +1,7 @@
-import type { Processor } from 'unified';
-import type { Plugin } from 'unified';
-import type { VFileMessage } from 'vfile-message';
-import type { VFileContents } from 'vfile';
+import type { ExportNamedDeclaration } from 'estree';
 import { Node } from 'unist';
+import type { Processor, Plugin } from 'unified';
+import type { VFileMessage } from 'vfile-message';
 
 import { join } from 'path';
 import fs from 'fs';
@@ -26,7 +25,6 @@ import {
 	highlight_blocks,
 	code_highlight,
 } from './transformers';
-import type { ExportNamedDeclaration } from 'estree';
 
 function stringify(this: Processor, options = {}) {
 	this.Compiler = compiler;
@@ -61,16 +59,17 @@ type frontmatter_options = {
 type smartypants_options =
 	| boolean
 	| {
-			quotes: boolean;
-			ellipses: boolean;
-			backticks: boolean | 'all';
-			dashes: boolean | 'oldschool' | 'inverted';
+			quotes?: boolean;
+			ellipses?: boolean;
+			backticks?: boolean | 'all';
+			dashes?: boolean | 'oldschool' | 'inverted';
 	  };
 
 type layout = { [x: string]: { path: string; components: string[] } };
 
 type highlight = {
-	highlighter: (code: string, lang: string | undefined) => string;
+	highlighter?: (code: string, lang: string | undefined) => string;
+	alias?: Record<string, string>;
 };
 
 type transformer_options = {
@@ -79,7 +78,7 @@ type transformer_options = {
 	frontmatter?: frontmatter_options;
 	smartypants?: smartypants_options;
 	layout?: layout;
-	highlight?: highlight;
+	highlight?: highlight | false;
 };
 
 export function transform({
@@ -100,7 +99,7 @@ export function transform({
 		.use(escape_code, { blocks: !!highlight })
 		.use(extract_frontmatter, [{ type: fm_opts.type, marker: fm_opts.marker }])
 		.use(parse_frontmatter, { parse: fm_opts.parse, type: fm_opts.type })
-		.use(highlight_blocks, highlight);
+		.use(highlight_blocks, highlight || {});
 
 	if (smartypants) {
 		toMDAST.use(
@@ -223,14 +222,12 @@ type mdsvex_options = {
 	rehypePlugins?: Plugin[];
 	frontmatter?: frontmatter_options;
 	smartypants?: smartypants_options;
-	highlight?: highlight;
+	highlight?: highlight | false;
 	extension?: string;
-	layout: string | Record<string, string> | boolean;
+	layout?: string | Record<string, string> | boolean;
 };
 
-type preprocessor_return = Promise<
-	{ code: VFileContents; map?: string } | undefined
->;
+type preprocessor_return = Promise<{ code: string; map?: string } | undefined>;
 
 type preprocessor = {
 	markup: (args: { content: string; filename: string }) => preprocessor_return;
@@ -306,14 +303,14 @@ export const mdsvex = (options: mdsvex_options = defaults): preprocessor => {
 			if (filename.split('.').pop() !== extension.split('.').pop()) return;
 
 			const parsed = await parser.process({ contents: content, filename });
-			return { code: parsed.contents, map: '' };
+			return { code: parsed.contents as string, map: '' };
 		},
 	};
 };
 
 const _compile = (
 	source: string,
-	opts: mdsvex_options & { filename: string }
+	opts: mdsvex_options & { filename?: string }
 ): preprocessor_return =>
 	mdsvex(opts).markup({
 		content: source,
