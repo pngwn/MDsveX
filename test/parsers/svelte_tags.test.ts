@@ -6,7 +6,7 @@ import { parse_svelte_tag } from '../../src/parsers';
 const tags = suite('svelte-tags');
 
 // I have no idea what the unified/ remark eat function returns but i need to fake it.
-const eat = value => node => ({
+const eat = (value) => (node) => ({
 	value,
 	node,
 });
@@ -28,7 +28,7 @@ tags('svelte blocks with children should be correctly parsed', () => {
 </svelte:head>
 
 # hello`;
-
+	//@ts-ignore
 	assert.equal(parse_svelte_tag(eat, s, false), {
 		value: `<svelte:head>
   <meta property="og:title" content={title} />
@@ -52,6 +52,7 @@ svelte_tags.forEach(([name, component]) => {
 		`${name}: it should it should correctly match and parse any svelte tag`,
 		() => {
 			assert.equal(
+				//@ts-ignore
 				parse_svelte_tag(eat, `<${component}></ ${component}>`, false),
 				{
 					value: `<${component}></ ${component}>`,
@@ -65,6 +66,7 @@ svelte_tags.forEach(([name, component]) => {
 			);
 
 			assert.equal(
+				//@ts-ignore
 				parse_svelte_tag(eat, `<${component} />`, false),
 				{
 					value: `<${component} />`,
@@ -78,6 +80,7 @@ svelte_tags.forEach(([name, component]) => {
 			);
 
 			assert.equal(
+				//@ts-ignore
 				parse_svelte_tag(eat, `   <${component} />`, false),
 				{
 					value: `   <${component} />`,
@@ -91,6 +94,7 @@ svelte_tags.forEach(([name, component]) => {
 			);
 
 			const output = parse_svelte_tag(
+				//@ts-ignore
 				eat,
 				`<${component} foo=bar quu="quux" hello on:click foo={bar} />`,
 				false
