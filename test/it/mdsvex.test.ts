@@ -271,7 +271,7 @@ mdsvex_it('custom layouts should work', async () => {
 	);
 });
 
-mdsvex_it.only(
+mdsvex_it(
 	'custom layouts should work - when there are script tags',
 	async () => {
 		const output = await mdsvex({
