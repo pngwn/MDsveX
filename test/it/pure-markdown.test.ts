@@ -12,7 +12,7 @@ const OUTPUT_PATH = join(PATH, 'output');
 
 const markdown = suite('pure-markdown');
 
-const md_files = readdirSync(INPUT_PATH).map(p => [
+const md_files = readdirSync(INPUT_PATH).map((p) => [
 	p,
 	readFileSync(join(INPUT_PATH, p), { encoding: 'utf8' }),
 	readFileSync(join(OUTPUT_PATH, `${basename(p, '.md')}.html`), {
