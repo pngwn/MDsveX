@@ -13,7 +13,7 @@ export default [
 			commonjs({ namedExports: { 'svelte/compiler': ['parse'] } }),
 			json(),
 		],
-		input: 'src/index.js',
+		input: 'src/index.ts',
 		external: ['svelte/compiler'],
 		output: [
 			{ file: pkg.module, format: 'es', sourcemap: false },

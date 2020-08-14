@@ -1,6 +1,6 @@
 import type { ExportNamedDeclaration } from 'estree';
 import { Node } from 'unist';
-import type { Processor, Plugin } from 'unified';
+import type { Processor, Plugin, Settings } from 'unified';
 import type { VFileMessage } from 'vfile-message';
 
 import { join } from 'path';
@@ -34,7 +34,10 @@ function stringify(this: Processor, options = {}) {
 	}
 }
 
-const apply_plugins = (plugins: Plugin[], parser: Processor) => {
+const apply_plugins = (
+	plugins: Array<[Plugin, Settings] | Plugin>,
+	parser: Processor
+) => {
 	plugins.forEach((plugin) => {
 		if (Array.isArray(plugin)) {
 			if (plugin[1]) parser.use(plugin[0], plugin[1]);
@@ -73,8 +76,8 @@ type highlight = {
 };
 
 type transformer_options = {
-	remarkPlugins?: Plugin[];
-	rehypePlugins?: Plugin[];
+	remarkPlugins?: Array<[Plugin, Settings] | Plugin>;
+	rehypePlugins?: Array<[Plugin, Settings] | Plugin>;
 	frontmatter?: frontmatter_options;
 	smartypants?: smartypants_options;
 	layout?: layout;
@@ -218,8 +221,8 @@ function process_layouts(
 }
 
 type mdsvex_options = {
-	remarkPlugins?: Plugin[];
-	rehypePlugins?: Plugin[];
+	remarkPlugins?: Array<[Plugin, Settings] | Plugin>;
+	rehypePlugins?: Array<[Plugin, Settings] | Plugin>;
 	frontmatter?: frontmatter_options;
 	smartypants?: smartypants_options;
 	highlight?: highlight | false;
