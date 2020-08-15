@@ -5,7 +5,7 @@
 	"main": "dist/main.cjs.js",
 	"module": "dist/main.es.js",
 	"browser": "dist/main.browser.js",
-	"types": "dist/types/index.d.ts",
+	"types": "dist/types/main.es.d.ts",
 	"repository": "https://github.com/pngwn/MDsveX",
 	"scripts": {
 		"build": "rollup -c && cp ./main.es.d.ts ./dist/es.main.d.ts",
