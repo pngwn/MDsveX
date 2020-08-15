@@ -8,7 +8,7 @@
 	"types": "dist/types/main.es.d.ts",
 	"repository": "https://github.com/pngwn/MDsveX",
 	"scripts": {
-		"build": "rollup -c && cp ./main.es.d.ts ./dist/es.main.d.ts",
+		"build": "rollup -c && cp ./main.es.d.ts ./dist/main.es.d.ts",
 		"lint": "eslint 'src/' 'test/' --ext .js,.ts",
 		"test": "uvu -r ts-node/register test test.ts$",
 		"generate_files": "node -r esm ./test/_scripts/generate_markdown_html.js"
