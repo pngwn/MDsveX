@@ -24,7 +24,7 @@ module.exports = {
 		'@typescript-eslint/ban-ts-comment': 'off',
 		'@typescript-eslint/no-misused-new': 'off',
 	},
-	ignorePatterns: ['/node_modules/', '/test/_fixtures/', '*.d.ts'],
+	ignorePatterns: ['/node_modules/', '/test/_fixtures/', 'public_types.ts'],
 	env: {
 		es6: true,
 		browser: true,
