@@ -22,8 +22,9 @@ module.exports = {
 		'arrow-spacing': 2,
 		'no-inner-declarations': 0,
 		'@typescript-eslint/ban-ts-comment': 'off',
+		'@typescript-eslint/no-misused-new': 'off',
 	},
-	ignorePatterns: ['/node_modules/', '/test/_fixtures/'],
+	ignorePatterns: ['/node_modules/', '/test/_fixtures/', '*.d.ts'],
 	env: {
 		es6: true,
 		browser: true,
