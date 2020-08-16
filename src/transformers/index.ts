@@ -250,15 +250,20 @@ function generate_layout({
 	layout_options: undefined | Layout;
 	layout_mode: LayoutMode;
 	filename: string;
-}): [string | false, string[] | false] {
+}): [string | false, string[] | false, { reason: string } | false] {
 	let selected_layout: LayoutMeta | undefined;
+	const error: { reason: string } = { reason: '' };
 
 	if (!layout_options || frontmatter_layout === false) {
-		return [false, false];
+		return [false, false, false];
 	} else if (layout_mode === 'single') {
 		selected_layout = layout_options.__mdsvex_default;
+		if (frontmatter_layout)
+			error.reason = `You attempted to apply a named layout in the front-matter of "${filename}", but did not provide any named layouts as options to the preprocessor. `;
 	} else if (frontmatter_layout) {
 		selected_layout = layout_options[frontmatter_layout];
+		if (!selected_layout)
+			error.reason = `Could not find a layout with the name "${frontmatter_layout}" and no fall back layout ("_") was provided.`;
 	} else {
 		selected_layout = map_layout_to_path(filename, layout_options);
 	}
@@ -268,6 +273,7 @@ function generate_layout({
 		selected_layout !== undefined &&
 			selected_layout.components.length > 0 &&
 			selected_layout.components,
+		error.reason ? error : false,
 	];
 }
 
@@ -332,13 +338,15 @@ export function transform_hast({
 					| undefined
 					| false);
 
-			const [import_script, components] = generate_layout({
+			const [import_script, components, error] = generate_layout({
 				frontmatter_layout: _fm_layout,
 				layout_options: layout,
 				layout_mode,
 				//@ts-ignore
 				filename: vFile.filename,
 			});
+
+			if (error) vFile.messages.push(new Message(error.reason));
 
 			if (components) {
 				for (let i = 0; i < components.length; i++) {
