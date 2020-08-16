@@ -230,8 +230,10 @@ function map_layout_to_path(
 	}
 }
 
-function generate_layout_import(layout: LayoutMeta | undefined) {
-	if (!layout) return '';
+function generate_layout_import(
+	layout: LayoutMeta | undefined
+): string | false {
+	if (!layout) return false;
 
 	return `import Layout_MDSVEX_DEFAULT${
 		layout.components.length ? `, * as Components` : ''
@@ -248,11 +250,11 @@ function generate_layout({
 	layout_options: undefined | Layout;
 	layout_mode: LayoutMode;
 	filename: string;
-}): [string, string[] | false] {
+}): [string | false, string[] | false] {
 	let selected_layout: LayoutMeta | undefined;
 
 	if (!layout_options || frontmatter_layout === false) {
-		return ['', false];
+		return [false, false];
 	} else if (layout_mode === 'single') {
 		selected_layout = layout_options.__mdsvex_default;
 	} else if (frontmatter_layout) {
@@ -338,64 +340,6 @@ export function transform_hast({
 				filename: vFile.filename,
 			});
 
-			// let _layout: string | false;
-
-			// // passing false in fm forces no layout
-			// if (_fm_layout === false) _layout = false;
-			// // no frontmatter layout provided
-			// else if (_fm_layout === undefined) {
-			// 	// both layouts undefined
-
-			// 	if (layout === undefined) {
-			// 		_layout = false;
-
-			// 		// a single layout was passed to options, so always use it
-			// 	} else if (typeof layout !== 'string' && layout.__mdsvex_default) {
-			// 		_layout = layout.__mdsvex_default;
-
-			// 		// multiple layouts were passed to options, so map folder to layout
-			// 	} else if (typeof layout === 'object' && layout !== null) {
-			// 		// @ts-ignore
-			// 		_layout = map_layout_to_path(vFile.filename, layout);
-
-			// 		if (_layout === undefined)
-			// 			vFile.messages.push(
-			// 				new Message(
-			// 					//@ts-ignore
-			// 					`Could not find a matching layout for ${vFile.filename}.`
-			// 				)
-			// 			);
-			// 	}
-
-			// 	// front matter layout is a string
-			// } else if (typeof _fm_layout === 'string') {
-			// 	// options layout is a string, so this doesn't make sense: recover but warn
-			// 	if (typeof layout !== 'string' && layout.__mdsvex_default) {
-			// 		_layout = false;
-
-			// 		vFile.messages.push(
-			// 			new Message(
-			// 				`You attempted to apply a named layout in the front-matter of ${vFile.filename}, but did not provide any named layouts as options to the preprocessor. `,
-			// 				{
-			// 					start: { line: 0, column: 0, offset: 0 },
-			// 					end: { line: 0, column: 0, offset: 0 },
-			// 				}
-			// 			)
-			// 		);
-
-			// 		// options layout is an object so do a simple lookup
-			// 	} else if (typeof layout === 'object' && layout !== null) {
-			// 		_layout = layout[_fm_layout] || layout['*'];
-
-			// 		if (_layout === undefined)
-			// 			vFile.messages.push(
-			// 				new Message(
-			// 					`Could not find a layout with the name ${_fm_layout} and no fall back ('*') was provided.`
-			// 				)
-			// 			);
-			// 	}
-			// }
-
 			if (components) {
 				for (let i = 0; i < components.length; i++) {
 					visit(tree, 'element', (node) => {
@@ -406,22 +350,16 @@ export function transform_hast({
 				}
 			}
 
-			const layout_import =
-				_layout &&
-				`import Layout_MDSVEX_DEFAULT${
-					(_layout as layout_obj).components.length ? `, * as Components` : ''
-				} from '${(_layout as { path: string }).path}';`;
-
 			// add the layout if we are using one, reusing the existing script if one exists
-			if (_layout && !instance[0]) {
+			if (import_script && !instance[0]) {
 				instance.push({
 					type: 'raw',
-					value: `${newline}<script>${newline}\t${layout_import}${newline}</script>${newline}`,
+					value: `${newline}<script>${newline}\t${import_script}${newline}</script>${newline}`,
 				});
-			} else if (_layout) {
+			} else if (import_script) {
 				instance[0].value = (instance[0].value as string).replace(
 					RE_SCRIPT,
-					`$1${newline}\t${layout_import}`
+					`$1${newline}\t${import_script}`
 				);
 			}
 
@@ -453,14 +391,14 @@ export function transform_hast({
 				{ type: 'raw', value: special[0] ? newline : '' },
 				{
 					type: 'raw',
-					value: _layout
+					value: import_script
 						? `<Layout_MDSVEX_DEFAULT${fm ? ' {...metadata}' : ''}>`
 						: '',
 				},
 				{ type: 'raw', value: newline },
 				...html,
 				{ type: 'raw', value: newline },
-				{ type: 'raw', value: _layout ? '</Layout_MDSVEX_DEFAULT>' : '' },
+				{ type: 'raw', value: import_script ? '</Layout_MDSVEX_DEFAULT>' : '' },
 			];
 		});
 	};

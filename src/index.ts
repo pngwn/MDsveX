@@ -57,15 +57,17 @@ const apply_plugins = (plugins: UnifiedPlugins, parser: Processor) => {
 	return parser;
 };
 
-export function transform({
-	remarkPlugins = [],
-	rehypePlugins = [],
-	frontmatter,
-	smartypants,
-	layout,
-	layout_mode,
-	highlight,
-}: TransformOptions): Processor {
+export function transform(
+	{
+		remarkPlugins = [],
+		rehypePlugins = [],
+		frontmatter,
+		smartypants,
+		layout,
+		layout_mode,
+		highlight,
+	}: TransformOptions = { layout_mode: 'single' }
+): Processor {
 	const fm_opts = frontmatter
 		? frontmatter
 		: { parse: default_frontmatter, type: 'yaml', marker: '-' };
@@ -232,7 +234,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 	}
 
 	let _layout: Layout = {};
-	let layout_mode: LayoutMode = 'named';
+	let layout_mode: LayoutMode = 'single';
 
 	if (typeof layout === 'string') {
 		_layout.__mdsvex_default = { path: resolve_layout(layout), components: [] };
@@ -247,7 +249,6 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 	}
 
 	_layout = process_layouts(_layout);
-
 	const parser = transform({
 		remarkPlugins,
 		rehypePlugins,
