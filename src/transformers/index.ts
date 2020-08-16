@@ -14,6 +14,20 @@ import yaml from 'js-yaml';
 import { parse } from 'svelte/compiler';
 import escape from 'escape-html';
 
+import type {
+	FrontMatterNode,
+	parser_frontmatter_options,
+	Parts,
+	PrismLanguage,
+	PrismMeta,
+	MdsvexLanguage,
+	RollupProcess,
+	Highlighter,
+	LayoutMode,
+	Layout,
+	LayoutMeta,
+} from '../types';
+
 // this needs a big old cleanup
 
 const newline = '\n';
@@ -29,19 +43,6 @@ export function default_frontmatter(
 	} catch (e) {
 		messages.push(new Message('YAML failed to parse', e));
 	}
-}
-
-type parser_frontmatter_options = {
-	parse: (
-		fm: string,
-		messages: VFileMessage[]
-	) => undefined | Record<string, unknown>;
-	type: string;
-};
-
-interface FrontMatterNode extends Node {
-	type: string;
-	value: string;
 }
 
 export function parse_frontmatter({
@@ -113,33 +114,10 @@ const RE_MODULE_SCRIPT = new RegExp(
 	`^(<script` + attrs + context + attrs + `>)`
 );
 
-function map_layout_to_path(
-	filename: string,
-	layout_map: { [x: string]: string }
-): string | undefined {
-	const match = Object.keys(layout_map).find((l) =>
-		new RegExp(`\\/${l}\\/`).test(filename.replace(process.cwd(), ''))
-	);
-
-	if (match) {
-		return layout_map[match];
-	} else {
-		return layout_map['_'] ? layout_map['_'] : undefined;
-	}
-}
-
-type parts = {
-	special: Node[];
-	html: Array<Element | Text | (Node & { type: 'raw' })>;
-	instance: Node[];
-	module: Node[];
-	css: Node[];
-};
-
-function extract_parts(nodes: Array<Element | Text>): parts {
+function extract_parts(nodes: Array<Element | Text>): Parts {
 	// since we are wrapping and replacing we need to keep track of the different component 'parts'
 	// many special tags cannot be wrapped nor can style or script tags
-	const parts: parts = {
+	const parts: Parts = {
 		special: [],
 		html: [],
 		instance: [],
@@ -237,10 +215,66 @@ function extract_parts(nodes: Array<Element | Text>): parts {
 	return parts;
 }
 
+function map_layout_to_path(
+	filename: string,
+	layout_map: Layout
+): LayoutMeta | undefined {
+	const match = Object.keys(layout_map).find((l) =>
+		new RegExp(`\\/${l}\\/`).test(filename.replace(process.cwd(), ''))
+	);
+
+	if (match) {
+		return layout_map[match];
+	} else {
+		return layout_map['_'] ? layout_map['_'] : undefined;
+	}
+}
+
+function generate_layout_import(layout: LayoutMeta | undefined) {
+	if (!layout) return '';
+
+	return `import Layout_MDSVEX_DEFAULT${
+		layout.components.length ? `, * as Components` : ''
+	} from '${layout.path}';`;
+}
+
+function generate_layout({
+	frontmatter_layout,
+	layout_options,
+	layout_mode,
+	filename,
+}: {
+	frontmatter_layout: false | undefined | string;
+	layout_options: undefined | Layout;
+	layout_mode: LayoutMode;
+	filename: string;
+}): [string, string[] | false] {
+	let selected_layout: LayoutMeta | undefined;
+
+	if (!layout_options || frontmatter_layout === false) {
+		return ['', false];
+	} else if (layout_mode === 'single') {
+		selected_layout = layout_options.__mdsvex_default;
+	} else if (frontmatter_layout) {
+		selected_layout = layout_options[frontmatter_layout];
+	} else {
+		selected_layout = map_layout_to_path(filename, layout_options);
+	}
+
+	return [
+		generate_layout_import(selected_layout),
+		selected_layout !== undefined &&
+			selected_layout.components.length > 0 &&
+			selected_layout.components,
+	];
+}
+
 export function transform_hast({
 	layout,
+	layout_mode,
 }: {
-	layout: { [x: string]: string } | 'string';
+	layout: Layout | undefined;
+	layout_mode: LayoutMode;
 }): Transformer {
 	return function transformer(tree, vFile) {
 		// we need to keep { and } intact for svelte, so reverse the escaping in links and images
@@ -248,7 +282,6 @@ export function transform_hast({
 		visit<Element>(tree, 'element', (node) => {
 			if (
 				node.tagName === 'a' &&
-				node &&
 				node.properties &&
 				typeof node.properties.href === 'string'
 			) {
@@ -259,7 +292,6 @@ export function transform_hast({
 
 			if (
 				node.tagName === 'img' &&
-				node &&
 				node.properties &&
 				typeof node.properties.src === 'string'
 			) {
@@ -293,79 +325,82 @@ export function transform_hast({
 
 			const _fm_layout =
 				(vFile.data as { fm: Record<string, unknown> }).fm &&
-				(vFile.data as { fm: Record<string, unknown> }).fm.layout;
+				((vFile.data as { fm: Record<string, unknown> }).fm.layout as
+					| string
+					| undefined
+					| false);
 
-			type layout_obj = { components: []; path: string };
-			let _layout: string | boolean | undefined | layout_obj;
+			const [import_script, components] = generate_layout({
+				frontmatter_layout: _fm_layout,
+				layout_options: layout,
+				layout_mode,
+				//@ts-ignore
+				filename: vFile.filename,
+			});
 
-			// passing false in fm forces no layout
-			if (_fm_layout === false) _layout = false;
-			// no frontmatter layout provided
-			else if (_fm_layout === undefined) {
-				// both layouts undefined
+			// let _layout: string | false;
 
-				if (layout === undefined) {
-					_layout = false;
+			// // passing false in fm forces no layout
+			// if (_fm_layout === false) _layout = false;
+			// // no frontmatter layout provided
+			// else if (_fm_layout === undefined) {
+			// 	// both layouts undefined
 
-					// a single layout was passed to options, so always use it
-				} else if (typeof layout !== 'string' && layout.__mdsvex_default) {
-					_layout = layout.__mdsvex_default;
+			// 	if (layout === undefined) {
+			// 		_layout = false;
 
-					// multiple layouts were passed to options, so map folder to layout
-				} else if (typeof layout === 'object' && layout !== null) {
-					// @ts-ignore
-					_layout = map_layout_to_path(vFile.filename, layout);
+			// 		// a single layout was passed to options, so always use it
+			// 	} else if (typeof layout !== 'string' && layout.__mdsvex_default) {
+			// 		_layout = layout.__mdsvex_default;
 
-					if (_layout === undefined)
-						vFile.messages.push(
-							new Message(
-								//@ts-ignore
-								`Could not find a matching layout for ${vFile.filename}.`
-							)
-						);
-				}
+			// 		// multiple layouts were passed to options, so map folder to layout
+			// 	} else if (typeof layout === 'object' && layout !== null) {
+			// 		// @ts-ignore
+			// 		_layout = map_layout_to_path(vFile.filename, layout);
 
-				// front matter layout is a string
-			} else if (typeof _fm_layout === 'string') {
-				// options layout is a string, so this doesn't make sense: recover but warn
-				if (typeof layout !== 'string' && layout.__mdsvex_default) {
-					_layout = false;
+			// 		if (_layout === undefined)
+			// 			vFile.messages.push(
+			// 				new Message(
+			// 					//@ts-ignore
+			// 					`Could not find a matching layout for ${vFile.filename}.`
+			// 				)
+			// 			);
+			// 	}
 
-					vFile.messages.push(
-						new Message(
-							// @ts-ignore
-							`You attempted to apply a named layout in the front-matter of ${vFile.filename}, but did not provide any named layouts as options to the preprocessor. `,
-							{
-								start: { line: 0, column: 0, offset: 0 },
-								end: { line: 0, column: 0, offset: 0 },
-							}
-						)
-					);
+			// 	// front matter layout is a string
+			// } else if (typeof _fm_layout === 'string') {
+			// 	// options layout is a string, so this doesn't make sense: recover but warn
+			// 	if (typeof layout !== 'string' && layout.__mdsvex_default) {
+			// 		_layout = false;
 
-					// options layout is an object so do a simple lookup
-				} else if (typeof layout === 'object' && layout !== null) {
-					_layout = layout[_fm_layout] || layout['*'];
+			// 		vFile.messages.push(
+			// 			new Message(
+			// 				`You attempted to apply a named layout in the front-matter of ${vFile.filename}, but did not provide any named layouts as options to the preprocessor. `,
+			// 				{
+			// 					start: { line: 0, column: 0, offset: 0 },
+			// 					end: { line: 0, column: 0, offset: 0 },
+			// 				}
+			// 			)
+			// 		);
 
-					if (_layout === undefined)
-						vFile.messages.push(
-							new Message(
-								`Could not find a layout with the name ${_fm_layout} and no fall back ('*') was provided.`
-							)
-						);
-				}
-			}
+			// 		// options layout is an object so do a simple lookup
+			// 	} else if (typeof layout === 'object' && layout !== null) {
+			// 		_layout = layout[_fm_layout] || layout['*'];
 
-			if (
-				_layout &&
-				(_layout as layout_obj).components &&
-				(_layout as layout_obj).components.length
-			) {
-				for (let i = 0; i < (_layout as layout_obj).components.length; i++) {
+			// 		if (_layout === undefined)
+			// 			vFile.messages.push(
+			// 				new Message(
+			// 					`Could not find a layout with the name ${_fm_layout} and no fall back ('*') was provided.`
+			// 				)
+			// 			);
+			// 	}
+			// }
+
+			if (components) {
+				for (let i = 0; i < components.length; i++) {
 					visit(tree, 'element', (node) => {
-						if (node.tagName === (_layout as layout_obj).components[i]) {
-							node.tagName = `Components.${
-								(_layout as layout_obj).components[i]
-							}`;
+						if (node.tagName === components[i]) {
+							node.tagName = `Components.${components[i]}`;
 						}
 					});
 				}
@@ -434,7 +469,7 @@ export function transform_hast({
 // highlighting stuff
 
 // { [lang]: { path, deps: pointer to key } }
-const langs: { [x: string]: lang_def } = {};
+const langs: { [x: string]: MdsvexLanguage } = {};
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Prism: any;
 
@@ -445,24 +480,11 @@ const make_path = (base_path: string, id: string) =>
 // also track if they depend on other languages so we can autoload without breaking
 // i don't actually know what the require key means but it sounds important
 
-type lang_meta = {
-	require?: string[];
-	peerDependencies?: string[];
-	alias?: string[];
-};
-
-type lang_def = {
-	aliases: Set<unknown>;
-	name: string;
-	path: string;
-	deps: Set<string>;
-};
-
 function get_lang_info(
 	name: string,
-	lang_meta: lang_meta,
+	lang_meta: PrismLanguage,
 	base_path: string
-): [lang_def, Set<string>] {
+): [MdsvexLanguage, Set<string>] {
 	const _lang_meta = {
 		name,
 		path: `prismjs/${make_path(base_path, name)}`,
@@ -500,31 +522,17 @@ function get_lang_info(
 	return [{ ..._lang_meta, aliases }, aliases];
 }
 
-type rollup_process = NodeJS.Process & { browser: boolean };
-
-type prism_meta = {
-	path: string;
-	noCSS: boolean;
-	examplesPath: string;
-	addCheckAll: boolean;
-};
-
-type prism_lang = {
-	require?: string[];
-	peerDependencies?: string[];
-	alias?: string[];
-};
-
+// workaround for ts weirdness - intersection types work better with interfaces vs object literals
 interface Meta {
-	meta: prism_meta;
+	meta: PrismMeta;
 }
 
 function load_language_metadata() {
-	if (!(process as rollup_process).browser) {
+	if (!(process as RollupProcess).browser) {
 		const {
 			meta,
 			...languages
-		}: Record<string, prism_lang> & // eslint-disable-next-line
+		}: Record<string, PrismLanguage> & // eslint-disable-next-line
 			Meta = require('prismjs/components.json').languages;
 
 		for (const lang in languages) {
@@ -543,7 +551,7 @@ function load_language_metadata() {
 }
 
 function load_language(lang: string) {
-	if (!(process as rollup_process).browser) {
+	if (!(process as RollupProcess).browser) {
 		if (!langs[lang]) return;
 
 		langs[lang].deps.forEach((name) => load_language(name));
@@ -552,16 +560,14 @@ function load_language(lang: string) {
 	}
 }
 
-type custom_highlight = (code: string, lang: string | undefined) => string;
-
 export function highlight_blocks({
 	highlighter: highlight_fn,
 	alias,
 }: {
-	highlighter?: custom_highlight;
+	highlighter?: Highlighter;
 	alias?: { [x: string]: string };
 } = {}): Transformer {
-	if (highlight_fn && !(process as rollup_process).browser) {
+	if (highlight_fn && !(process as RollupProcess).browser) {
 		load_language_metadata();
 
 		if (alias) {
@@ -572,7 +578,7 @@ export function highlight_blocks({
 	}
 
 	return function (tree) {
-		if (highlight_fn && !(process as rollup_process).browser) {
+		if (highlight_fn && !(process as RollupProcess).browser) {
 			visit<Code>(tree, 'code', (node) => {
 				//@ts-ignore
 				node.type = 'html';
@@ -591,8 +597,8 @@ const escape_svelty = (str: string) =>
 		)
 		.replace(/\\([trn])/g, '&#92;$1');
 
-export const code_highlight: custom_highlight = (code, lang) => {
-	if (!(process as rollup_process).browser) {
+export const code_highlight: Highlighter = (code, lang) => {
+	if (!(process as RollupProcess).browser) {
 		let _lang = !!lang && langs[lang];
 
 		if (!Prism) Prism = require('prismjs');
@@ -602,7 +608,7 @@ export const code_highlight: custom_highlight = (code, lang) => {
 		}
 
 		if (!_lang && lang && Prism.languages[lang]) {
-			langs[lang] = { name: lang } as lang_def;
+			langs[lang] = { name: lang } as MdsvexLanguage;
 			_lang = langs[lang];
 		}
 		const highlighted = escape_svelty(

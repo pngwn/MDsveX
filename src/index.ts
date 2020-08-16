@@ -1,7 +1,6 @@
 import type { ExportNamedDeclaration } from 'estree';
 import { Node } from 'unist';
-import type { Processor, Plugin, Settings } from 'unified';
-import type { VFileMessage } from 'vfile-message';
+import type { Processor } from 'unified';
 
 import { join } from 'path';
 import fs from 'fs';
@@ -26,6 +25,17 @@ import {
 	code_highlight,
 } from './transformers';
 
+import type {
+	TransformOptions,
+	MdsvexOptions,
+	MdsvexCompileOptions,
+	Layout,
+	Preprocessor,
+	PreprocessorReturn,
+	UnifiedPlugins,
+	LayoutMode,
+} from './types';
+
 function stringify(this: Processor, options = {}) {
 	this.Compiler = compiler;
 
@@ -34,10 +44,7 @@ function stringify(this: Processor, options = {}) {
 	}
 }
 
-const apply_plugins = (
-	plugins: Array<[Plugin, Settings] | Plugin>,
-	parser: Processor
-) => {
+const apply_plugins = (plugins: UnifiedPlugins, parser: Processor) => {
 	plugins.forEach((plugin) => {
 		if (Array.isArray(plugin)) {
 			if (plugin[1]) parser.use(plugin[0], plugin[1]);
@@ -50,48 +57,15 @@ const apply_plugins = (
 	return parser;
 };
 
-type frontmatter_options = {
-	parse: (
-		fm: string,
-		messages: VFileMessage[]
-	) => undefined | Record<string, unknown>;
-	type: string;
-	marker: string;
-};
-
-type smartypants_options =
-	| boolean
-	| {
-			quotes?: boolean;
-			ellipses?: boolean;
-			backticks?: boolean | 'all';
-			dashes?: boolean | 'oldschool' | 'inverted';
-	  };
-
-type layout = { [x: string]: { path: string; components: string[] } };
-
-type highlight = {
-	highlighter?: (code: string, lang: string | undefined) => string;
-	alias?: Record<string, string>;
-};
-
-type transformer_options = {
-	remarkPlugins?: Array<[Plugin, Settings] | Plugin>;
-	rehypePlugins?: Array<[Plugin, Settings] | Plugin>;
-	frontmatter?: frontmatter_options;
-	smartypants?: smartypants_options;
-	layout?: layout;
-	highlight?: highlight | false;
-};
-
 export function transform({
 	remarkPlugins = [],
 	rehypePlugins = [],
 	frontmatter,
 	smartypants,
 	layout,
+	layout_mode,
 	highlight,
-}: transformer_options = {}): Processor {
+}: TransformOptions): Processor {
 	const fm_opts = frontmatter
 		? frontmatter
 		: { parse: default_frontmatter, type: 'yaml', marker: '-' };
@@ -119,8 +93,7 @@ export function transform({
 			allowDangerousHtml: true,
 			allowDangerousCharacters: true,
 		})
-		// @ts-ignore
-		.use(transform_hast, { layout });
+		.use(transform_hast, { layout, layout_mode });
 
 	apply_plugins(rehypePlugins, toHAST);
 
@@ -137,7 +110,6 @@ const defaults = {
 	rehypePlugins: [],
 	smartypants: true,
 	extension: '.svx',
-	layout: false,
 	highlight: { highlighter: code_highlight },
 };
 
@@ -172,9 +144,7 @@ function resolve_layout(layout_path: string): string {
 
 // handle custom components
 
-function process_layouts(
-	layouts: Record<string, { path: string; components: string[] }>
-) {
+function process_layouts(layouts: Layout) {
 	const _layouts = layouts;
 
 	for (const key in _layouts) {
@@ -220,23 +190,7 @@ function process_layouts(
 	return _layouts;
 }
 
-type mdsvex_options = {
-	remarkPlugins?: Array<[Plugin, Settings] | Plugin>;
-	rehypePlugins?: Array<[Plugin, Settings] | Plugin>;
-	frontmatter?: frontmatter_options;
-	smartypants?: smartypants_options;
-	highlight?: highlight | false;
-	extension?: string;
-	layout?: string | Record<string, string> | boolean;
-};
-
-type preprocessor_return = Promise<{ code: string; map?: string } | undefined>;
-
-type preprocessor = {
-	markup: (args: { content: string; filename: string }) => preprocessor_return;
-};
-
-export const mdsvex = (options: mdsvex_options = defaults): preprocessor => {
+export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 	const {
 		remarkPlugins = [],
 		rehypePlugins = [],
@@ -277,11 +231,13 @@ export const mdsvex = (options: mdsvex_options = defaults): preprocessor => {
 		);
 	}
 
-	let _layout: layout = {};
+	let _layout: Layout = {};
+	let layout_mode: LayoutMode = 'named';
 
 	if (typeof layout === 'string') {
 		_layout.__mdsvex_default = { path: resolve_layout(layout), components: [] };
 	} else if (typeof layout === 'object') {
+		layout_mode = 'named';
 		for (const name in layout) {
 			_layout[name] = { path: resolve_layout(layout[name]), components: [] };
 		}
@@ -297,6 +253,7 @@ export const mdsvex = (options: mdsvex_options = defaults): preprocessor => {
 		rehypePlugins,
 		smartypants,
 		layout: _layout,
+		layout_mode,
 		highlight,
 		frontmatter,
 	});
@@ -313,8 +270,8 @@ export const mdsvex = (options: mdsvex_options = defaults): preprocessor => {
 
 const _compile = (
 	source: string,
-	opts: mdsvex_options & { filename?: string }
-): preprocessor_return =>
+	opts: MdsvexCompileOptions
+): PreprocessorReturn =>
 	mdsvex(opts).markup({
 		content: source,
 		filename:

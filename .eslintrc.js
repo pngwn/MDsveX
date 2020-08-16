@@ -1,3 +1,5 @@
+const { off } = require('process');
+
 module.exports = {
 	root: true,
 	rules: {
@@ -21,8 +23,10 @@ module.exports = {
 		'prefer-const': [2, { destructuring: 'all' }],
 		'arrow-spacing': 2,
 		'no-inner-declarations': 0,
+		'no-unused-vars': 'off',
 		'@typescript-eslint/ban-ts-comment': 'off',
 		'@typescript-eslint/no-misused-new': 'off',
+		'@typescript-eslint/no-unused-vars': 'off',
 	},
 	ignorePatterns: ['/node_modules/', '/test/_fixtures/', 'public_types.ts'],
 	env: {

@@ -2,8 +2,9 @@ import { parse_svelte_tag } from './svelte';
 import { parse_svelte_block } from './svelte';
 import { blockHtml } from './html_block';
 
-export function mdsvex_parser(): void {
-	//@ts-ignore
+import type { Processor } from 'unified';
+
+export function mdsvex_parser(this: Processor): void {
 	const Parser = this.Parser;
 	const block_tokenizers = Parser.prototype.blockTokenizers;
 	const methods = Parser.prototype.blockMethods;
