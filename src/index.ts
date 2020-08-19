@@ -1,6 +1,17 @@
 import type { ExportNamedDeclaration } from 'estree';
-import { Node } from 'unist';
+import type { Node } from 'unist';
 import type { Processor } from 'unified';
+
+import type {
+	TransformOptions,
+	MdsvexOptions,
+	MdsvexCompileOptions,
+	Layout,
+	Preprocessor,
+	PreprocessorReturn,
+	UnifiedPlugins,
+	LayoutMode,
+} from './types';
 
 import { join } from 'path';
 import fs from 'fs';
@@ -24,17 +35,6 @@ import {
 	highlight_blocks,
 	code_highlight,
 } from './transformers';
-
-import type {
-	TransformOptions,
-	MdsvexOptions,
-	MdsvexCompileOptions,
-	Layout,
-	Preprocessor,
-	PreprocessorReturn,
-	UnifiedPlugins,
-	LayoutMode,
-} from './types';
 
 function stringify(this: Processor, options = {}) {
 	this.Compiler = compiler;

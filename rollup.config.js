@@ -15,7 +15,6 @@ export default [
 			commonjs({ namedExports: { 'svelte/compiler': ['parse'] } }),
 			json(),
 			sucrase({ transforms: ['typescript'] }),
-			// dts(),
 		],
 		input: 'src/main.ts',
 		external: ['svelte/compiler'],

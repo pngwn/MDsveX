@@ -1,5 +1,4 @@
 import type { Transformer } from 'unified';
-import type { Node } from 'unist';
 import type { Text, Code } from 'mdast';
 import type { Element, Root } from 'hast';
 import type { VFileMessage } from 'vfile-message';

@@ -19,6 +19,9 @@ export interface FrontMatterNode extends Node {
 	value: string;
 }
 
+/**
+ * The mdsvex fragments after parsing the svelte bit
+ */
 export interface Parts {
 	special: Node[];
 	html: Array<Element | Text | (Node & { type: 'raw' })>;
@@ -55,10 +58,6 @@ export interface PrismMeta {
 	examplesPath: string;
 	addCheckAll: boolean;
 }
-
-// interface Meta {
-// 	meta: PrismMeta;
-// }
 
 /**
  * Extended `NodeJS.Process` to inlcude `browser` field
