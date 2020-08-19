@@ -4,6 +4,7 @@ import json from 'rollup-plugin-json';
 import builtins from 'rollup-plugin-node-builtins';
 import globals from 'rollup-plugin-node-globals';
 import sucrase from '@rollup/plugin-sucrase';
+import dts from 'rollup-plugin-dts';
 
 import pkg from './package.json';
 
@@ -14,12 +15,22 @@ export default [
 			commonjs({ namedExports: { 'svelte/compiler': ['parse'] } }),
 			json(),
 			sucrase({ transforms: ['typescript'] }),
+			// dts(),
 		],
-		input: 'src/index.ts',
+		input: 'src/main.ts',
 		external: ['svelte/compiler'],
 		output: [
 			{ file: pkg.module, format: 'es', sourcemap: false },
 			{ file: pkg.main, format: 'cjs', sourcemap: false },
+		],
+	},
+	{
+		plugins: [dts()],
+		input: 'src/main.ts',
+
+		output: [
+			{ file: 'dist/main.es.d.ts', format: 'es' },
+			{ file: 'dist/main.cjs.d.ts', format: 'cjs' },
 		],
 	},
 	{
@@ -31,7 +42,7 @@ export default [
 			globals(),
 			builtins(),
 		],
-		input: 'src/index.ts',
+		input: 'src/main.ts',
 		output: [
 			{
 				file: 'dist/mdsvex.js',

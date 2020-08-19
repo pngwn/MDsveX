@@ -45,9 +45,9 @@ function stringify(this: Processor, options = {}) {
 }
 
 const apply_plugins = (plugins: UnifiedPlugins, parser: Processor) => {
-	plugins.forEach((plugin) => {
+	(plugins as UnifiedPlugins).forEach((plugin) => {
 		if (Array.isArray(plugin)) {
-			if (plugin[1]) parser.use(plugin[0], plugin[1]);
+			if (plugin[1] && plugin[1]) parser.use(plugin[0], plugin[1]);
 			else parser.use(plugin[0]);
 		} else {
 			parser.use(plugin);
@@ -192,6 +192,21 @@ function process_layouts(layouts: Layout) {
 	return _layouts;
 }
 
+/**
+ * The svelte preprocessor for use with svelte.preprocess
+ *
+ * **options** - An options object with the following properties, all are optional.
+ *
+ * - `extension` - The extension to use for mdsvex files
+ * - `layout` - Layouts to apply to mdsvex documents
+ * - `frontmatter` - frontmatter options for documents
+ * - `highlight` - syntax highlighting options
+ * - `smartypants` - smart typography options
+ * - `remarkPlugins` - remark plugins to apply to the markdown
+ * - `rehypePlugins` - rehype plugins to apply to the rendered html
+ *
+ */
+
 export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 	const {
 		remarkPlugins = [],
@@ -268,6 +283,22 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 		},
 	};
 };
+
+/**
+ * The standalone compile function.
+ *
+ * - **source** - the source code to convert.
+ * - **options** - An options object with the following properties, all are optional.
+ *
+ *
+ * - `extension` - The extension to use for mdsvex files
+ * - `layout` - Layouts to apply to mdsvex documents
+ * - `frontmatter` - frontmatter options for documents
+ * - `highlight` - syntax highlighting options
+ * - `smartypants` - smart typography options
+ * - `remarkPlugins` - remark plugins to apply to the markdown
+ * - `rehypePlugins` - rehype plugins to apply to the rendered html
+ */
 
 const _compile = (
 	source: string,
