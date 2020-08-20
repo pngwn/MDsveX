@@ -8,9 +8,6 @@
 	"repository": "https://github.com/pngwn/MDsveX",
 	"scripts": {
 		"build": "rollup -c",
-		"lint": "eslint 'src/' 'test/' --ext .js,.ts",
-		"test": "uvu -r ts-node/register test test.ts$",
-		"generate_files": "node -r esm ./test/_scripts/generate_markdown_html.js",
 		"types": "dts-generator --project . --out dist/main.es.d.ts"
 	},
 	"files": [
@@ -34,20 +31,12 @@
 		"@types/estree": "^0.0.45",
 		"@types/hast": "^2.3.1",
 		"@types/js-yaml": "^3.12.5",
-		"@types/node": "^14.0.27",
 		"@typescript-eslint/eslint-plugin": "^3.9.0",
 		"@typescript-eslint/parser": "^3.9.0",
 		"escape-html": "^1.0.3",
-		"eslint": "^6.8.0",
-		"eslint-config-prettier": "^6.10.0",
-		"eslint-plugin-prettier": "^3.1.2",
-		"esm": "^3.2.25",
 		"front-matter": "^4.0.0",
 		"js-yaml": "^3.13.1",
 		"node-fetch": "^2.6.0",
-		"prettier": "^2.0.5",
-		"prettier-eslint": "^9.0.0",
-		"prism-svelte": "^0.4.6",
 		"rehype-slug": "^3.0.0",
 		"rehype-toc": "^3.0.1",
 		"remark-autolink-headings": "^6.0.0",
@@ -69,10 +58,7 @@
 		"rollup-plugin-svelte": "^5.1.1",
 		"svelte": "^3.14.1",
 		"toml": "^3.0.0",
-		"ts-node": "^8.10.2",
-		"typescript": "^3.9.7",
 		"unified": "^9.1.0",
-		"uvu": "^0.0.14",
 		"vfile": "^4.2.0"
 	},
 	"peerDependencies": {

@@ -9,7 +9,7 @@
 	"scripts": {
 		"build": "rollup -c",
 		"lint": "eslint 'src/' 'test/' --ext .js,.ts",
-		"test": "uvu -r ts-node/register test test.ts$",
+		"test": "uvu -r ts-node/register . test.ts$",
 		"generate_files": "node -r esm ./test/_scripts/generate_markdown_html.js",
 		"types": "dts-generator --project . --out dist/main.es.d.ts"
 	},
