@@ -214,7 +214,7 @@ mdsvex_it('the extension name should be customisable', async () => {
 
 mdsvex_it('custom layouts should work - special tags', async () => {
 	const output = await mdsvex({
-		layout: './test/_fixtures/Layout.svelte',
+		layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
 	}).markup({
 		content: `
 <svelte:head>
@@ -231,7 +231,7 @@ mdsvex_it('custom layouts should work - special tags', async () => {
 		lines(`
 <script>
 	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '../_fixtures/Layout.svelte')
+		join(__dirname, '..', '_fixtures', 'Layout.svelte')
 	)}';
 </script>
 
@@ -250,7 +250,7 @@ mdsvex_it('custom layouts should work - special tags', async () => {
 
 mdsvex_it('custom layouts should work', async () => {
 	const output = await mdsvex({
-		layout: './test/_fixtures/Layout.svelte',
+		layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
 	}).markup({
 		content: `# hello`,
 		filename: 'file.svx',
@@ -260,7 +260,7 @@ mdsvex_it('custom layouts should work', async () => {
 		lines(`
 <script>
 	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '../_fixtures/Layout.svelte')
+		join(__dirname, '..', '_fixtures', 'Layout.svelte')
 	)}';
 </script>
 
@@ -275,7 +275,7 @@ mdsvex_it(
 	'custom layouts should work - when there are script tags',
 	async () => {
 		const output = await mdsvex({
-			layout: './test/_fixtures/Layout.svelte',
+			layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
 		}).markup({
 			content: `
 <script>
@@ -296,7 +296,7 @@ mdsvex_it(
 		assert.equal(
 			lines(`<script>
 	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '../_fixtures/Layout.svelte')
+		join(__dirname, '..', '_fixtures', 'Layout.svelte')
 	)}';
   export let x = 1;
 </script>
@@ -319,7 +319,7 @@ mdsvex_it(
 	'custom layouts should work - when there are script tags with random attributes',
 	async () => {
 		const output = await mdsvex({
-			layout: './test/_fixtures/Layout.svelte',
+			layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
 		}).markup({
 			content: `
 <script type="ts" lang=whatever thing="whatsit" doodaa=thingamabob>
@@ -340,7 +340,7 @@ mdsvex_it(
 		assert.equal(
 			lines(`<script type="ts" lang=whatever thing="whatsit" doodaa=thingamabob>
 	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '../_fixtures/Layout.svelte')
+		join(__dirname, '..', '_fixtures', 'Layout.svelte')
 	)}';
   export let x = 1;
 </script>
@@ -363,7 +363,7 @@ mdsvex_it(
 	'custom layouts should work - when everything is in a random order',
 	async () => {
 		const output = await mdsvex({
-			layout: './test/_fixtures/Layout.svelte',
+			layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
 		}).markup({
 			content: `
 # hello
@@ -390,7 +390,7 @@ boo boo boo
 		assert.equal(
 			lines(`<script>
 	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '../_fixtures/Layout.svelte')
+		join(__dirname, '..', '_fixtures', 'Layout.svelte')
 	)}';
   export let x = 1;
 </script>
@@ -548,7 +548,7 @@ mdsvex_it(
 	'YAML front-matter should be injected passed to custom layouts',
 	async () => {
 		const output = await mdsvex({
-			layout: './test/_fixtures/Layout.svelte',
+			layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
 		}).markup({
 			content: `---
 string: value
@@ -575,7 +575,7 @@ number: 999
 
 <script>
 	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '../_fixtures/Layout.svelte')
+		join(__dirname, '..', '_fixtures', 'Layout.svelte')
 	)}';
 </script>
 
@@ -606,7 +606,7 @@ mdsvex_it(
 			}
 		};
 		const output = await mdsvex({
-			layout: './test/_fixtures/Layout.svelte',
+			layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
 			frontmatter: {
 				parse: parse_toml,
 				type: 'toml',
@@ -639,7 +639,7 @@ dob = 1879-05-27T07:32:00-08:00 # First class dates
 
 <script>
 	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '../_fixtures/Layout.svelte')
+		join(__dirname, '..', '_fixtures', 'Layout.svelte')
 	)}';
 </script>
 
@@ -657,8 +657,8 @@ mdsvex_it(
 	async () => {
 		const output = await mdsvex({
 			layout: {
-				one: './test/_fixtures/Layout.svelte',
-				two: './test/_fixtures/LayoutTwo.svelte',
+				one: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
+				two: join(__dirname, '..', '_fixtures', 'LayoutTwo.svelte'),
 			},
 		}).markup({
 			content: `---
@@ -686,7 +686,7 @@ number: 999
 
 <script>
 	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '../_fixtures/LayoutTwo.svelte')
+		join(__dirname, '..', '_fixtures', 'LayoutTwo.svelte')
 	)}';
 </script>
 
@@ -704,8 +704,8 @@ mdsvex_it('Ensure no-one tries to pass a "layouts" option', async () => {
 		await mdsvex({
 			//@ts-ignore
 			layouts: {
-				one: './test/_fixtures/Layout.svelte',
-				two: './test/_fixtures/LayoutTwo.svelte',
+				one: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
+				two: join(__dirname, '..', '_fixtures', 'LayoutTwo.svelte'),
 			},
 		}).markup({
 			content: `---
@@ -745,8 +745,8 @@ mdsvex_it('Warn on receiving unknown options', async () => {
 			bop: 'ho',
 			boom: 'oh',
 			layout: {
-				one: './test/_fixtures/Layout.svelte',
-				two: './test/_fixtures/LayoutTwo.svelte',
+				one: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
+				two: join(__dirname, '..', '_fixtures', 'LayoutTwo.svelte'),
 			},
 		}).markup({
 			content: `---
@@ -785,8 +785,8 @@ mdsvex_it(
 	async () => {
 		const output = await mdsvex({
 			layout: {
-				one: './test/_fixtures/Layout.svelte',
-				two: './test/_fixtures/LayoutTwo.svelte',
+				one: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
+				two: join(__dirname, '..', '_fixtures', 'LayoutTwo.svelte'),
 			},
 		}).markup({
 			content: `---
@@ -817,7 +817,7 @@ number: 999
 
 <script>
 	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '../_fixtures/Layout.svelte')
+		join(__dirname, '..', '_fixtures', 'Layout.svelte')
 	)}';
 </script>
 
@@ -834,7 +834,7 @@ mdsvex_it(
 	'layout: false in front matter should remove any layouts',
 	async () => {
 		const output = await mdsvex({
-			layout: './test/_fixtures/Layout.svelte',
+			layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
 		}).markup({
 			content: `---
 layout: false
@@ -867,9 +867,9 @@ layout: false
 mdsvex_it('Fallback layouts should work', async () => {
 	const output = await mdsvex({
 		layout: {
-			one: './test/_fixtures/Layout.svelte',
-			two: './test/_fixtures/LayoutTwo.svelte',
-			_: './test/_fixtures/LayoutThree.svelte',
+			one: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
+			two: join(__dirname, '..', '_fixtures', 'LayoutTwo.svelte'),
+			_: join(__dirname, '..', '_fixtures', 'LayoutThree.svelte'),
 		},
 	}).markup({
 		content: `---
@@ -897,7 +897,7 @@ number: 999
 
 <script>
 	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '../_fixtures/LayoutThree.svelte')
+		join(__dirname, '..', '_fixtures', 'LayoutThree.svelte')
 	)}';
 </script>
 
@@ -911,7 +911,7 @@ number: 999
 
 mdsvex_it('layout: allow custom components', async () => {
 	const output = await mdsvex({
-		layout: './test/_fixtures/LayoutWithComponents.svelte',
+		layout: join(__dirname, '..', '_fixtures', 'LayoutWithComponents.svelte'),
 	}).markup({
 		content: `
 
@@ -931,7 +931,7 @@ mdsvex_it('layout: allow custom components', async () => {
 
 <script>
 	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
-		join(process.cwd(), 'test', '_fixtures', 'LayoutWithComponents.svelte')
+		join(__dirname, '..', '_fixtures', 'LayoutWithComponents.svelte')
 	)}';
 </script>
 
@@ -945,7 +945,12 @@ mdsvex_it('layout: allow custom components', async () => {
 
 mdsvex_it('layout: allow custom components', async () => {
 	const output = await mdsvex({
-		layout: './test/_fixtures/LayoutThreeWithComponents.svelte',
+		layout: join(
+			__dirname,
+			'..',
+			'_fixtures',
+			'LayoutThreeWithComponents.svelte'
+		),
 	}).markup({
 		content: `
 
@@ -973,7 +978,7 @@ hello *hello* **hello**
 
 <script>
 	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
-		join(process.cwd(), 'test', '_fixtures', 'LayoutThreeWithComponents.svelte')
+		join(__dirname, '..', '_fixtures', 'LayoutThreeWithComponents.svelte')
 	)}';
 </script>
 
@@ -991,7 +996,12 @@ hello *hello* **hello**
 
 mdsvex_it('layout: allow custom components', async () => {
 	const output = await mdsvex({
-		layout: './test/_fixtures/LayoutTwoWithComponents.svelte',
+		layout: join(
+			__dirname,
+			'..',
+			'_fixtures',
+			'LayoutTwoWithComponents.svelte'
+		),
 	}).markup({
 		content: `
 
@@ -1013,7 +1023,7 @@ I am some paragraph text
 
 <script>
 	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
-		join(process.cwd(), 'test', '_fixtures', 'LayoutTwoWithComponents.svelte')
+		join(__dirname, '..', '_fixtures', 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
 
@@ -1028,7 +1038,12 @@ I am some paragraph text
 
 mdsvex_it('layout: allow custom components', async () => {
 	const output = await mdsvex({
-		layout: './test/_fixtures/LayoutTwoWithComponents.svelte',
+		layout: join(
+			__dirname,
+			'..',
+			'_fixtures',
+			'LayoutTwoWithComponents.svelte'
+		),
 	}).markup({
 		content: `
 
@@ -1050,7 +1065,7 @@ I am some paragraph text
 
 <script>
 	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
-		join(process.cwd(), 'test', '_fixtures', 'LayoutTwoWithComponents.svelte')
+		join(__dirname, '..', '_fixtures', 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
 
@@ -1075,7 +1090,12 @@ mdsvex_it('layout: allow custom components', async () => {
 I am some paragraph text
 `,
 		{
-			layout: './test/_fixtures/LayoutTwoWithComponents.svelte',
+			layout: join(
+				__dirname,
+				'..',
+				'_fixtures',
+				'LayoutTwoWithComponents.svelte'
+			),
 		}
 	);
 
@@ -1086,7 +1106,7 @@ I am some paragraph text
 
 <script>
 	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
-		join(process.cwd(), 'test', '_fixtures', 'LayoutTwoWithComponents.svelte')
+		join(__dirname, '..', '_fixtures', 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
 
@@ -1111,7 +1131,12 @@ mdsvex_it('layout: allow custom components', async () => {
 I am some paragraph text
 `,
 		{
-			layout: './test/_fixtures/LayoutTwoWithComponents.svelte',
+			layout: join(
+				__dirname,
+				'..',
+				'_fixtures',
+				'LayoutTwoWithComponents.svelte'
+			),
 			extension: '.spooky',
 		}
 	);
@@ -1123,7 +1148,7 @@ I am some paragraph text
 
 <script>
 	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
-		join(process.cwd(), 'test', '_fixtures', 'LayoutTwoWithComponents.svelte')
+		join(__dirname, '..', '_fixtures', 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
 
