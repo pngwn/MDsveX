@@ -12,6 +12,7 @@
 		"test": "run-p --race dev cy:run",
 		"generate-workers": "rollup -c rollup.workers.js"
 	},
+	"private": "true",
 	"dependencies": {
 		"compression": "^1.7.1",
 		"mdsvex": "^0.7.1-beta.3",
