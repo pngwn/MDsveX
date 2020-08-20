@@ -27,7 +27,7 @@ jobs:
       #     key: lint-yarn-${{ hashFiles('**/yarn.lock') }}
       #     restore-keys: |
       #       lint-yarn-
-      - run: npx pnpm add -g pnpm
+      - run: curl -L https://unpkg.com/@pnpm/self-installer | node
       - run: pnpm i --frozen-lockfile
       - run: pnpm lint
         env:
@@ -56,7 +56,7 @@ jobs:
       #     key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
       #     restore-keys: |
       #       ${{ runner.os }}-yarn-
-      - run: npx pnpm add -g pnpm
+      - run: curl -L https://unpkg.com/@pnpm/self-installer | node
       - run: pnpm i --frozen-lockfile
       - run: pnpm test
       - run: pnpm build --filter mdsvex
