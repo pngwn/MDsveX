@@ -12,8 +12,10 @@ import slug from 'remark-slug';
 import toc from 'rehype-toc';
 import rehype_slug from 'rehype-slug';
 import toml from 'toml';
+import VMessage, { VFileMessage } from 'vfile-message';
 
 const mdsvex_it = suite('mdsvex');
+const fix_dir = join(__dirname, '..', '_fixtures');
 
 mdsvex_it('it should work', async () => {
 	const output = await mdsvex().markup({
@@ -21,7 +23,7 @@ mdsvex_it('it should work', async () => {
 		filename: 'file.svx',
 	});
 
-	assert.equal(lines(output.code), lines(`<h1>hello</h1>`));
+	assert.equal(output && output && lines(output.code), lines(`<h1>hello</h1>`));
 });
 
 mdsvex_it('it should accept a remark plugin', async () => {
@@ -42,7 +44,7 @@ Hello friends, how are we today
 		lines(
 			`<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`
 		),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -66,7 +68,7 @@ Hello friends, how are we today
 	assert.equal(
 		lines(`<h1 id="lorem-ipsum-"><a href="#lorem-ipsum-" aria-hidden="true" tabindex="-1"><span class="icon icon-link"></span></a>Lorem ipsum 😪</h1>
 		<div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -90,7 +92,7 @@ Hello friends, how are we today
 	assert.equal(
 		lines(`<h1 id="lorem-ipsum-">Lorem ipsum 😪<a href="#lorem-ipsum-" aria-hidden="true" tabindex="-1"><span class="icon icon-link"></span></a></h1>
 <div class="thingy"><p>Hello friends, how are we today</p><Counter /></div>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -115,7 +117,7 @@ mdsvex_it('it should accept a rehype plugin', async () => {
 <h1>One</h1>
 <h2>Two</h2>
 <h3>Three</h3>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -140,7 +142,7 @@ mdsvex_it('it should accept rehype plugins - plural', async () => {
 <h1 id="one">One</h1>
 <h2 id="two">Two</h2>
 <h3 id="three">Three</h3>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -165,7 +167,7 @@ mdsvex_it('it should accept rehype plugins with options - plural', async () => {
 <h1 id="one">One</h1>
 <h2 id="two">Two</h2>
 <h3 id="three">Three</h3>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -179,7 +181,7 @@ mdsvex_it('it should respect the smartypants option', async () => {
 
 	assert.equal(
 		lines(`<p>“Hello friends!” ‘This is some stuff…’</p>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -191,7 +193,7 @@ mdsvex_it('it should accept a smartypants options object', async () => {
 		filename: 'file.svx',
 	});
 
-	assert.equal(lines(`<p>hello—friend...</p>`), lines(output.code));
+	assert.equal(lines(`<p>hello—friend...</p>`), output && lines(output.code));
 });
 
 mdsvex_it('only expected file extension names should work', async () => {
@@ -209,12 +211,12 @@ mdsvex_it('the extension name should be customisable', async () => {
 		filename: 'file.jesus',
 	});
 
-	assert.equal(lines(`<h1>hello</h1>`), lines(output.code));
+	assert.equal(lines(`<h1>hello</h1>`), output && lines(output.code));
 });
 
 mdsvex_it('custom layouts should work - special tags', async () => {
 	const output = await mdsvex({
-		layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
+		layout: join(fix_dir, 'Layout.svelte'),
 	}).markup({
 		content: `
 <svelte:head>
@@ -230,9 +232,7 @@ mdsvex_it('custom layouts should work - special tags', async () => {
 	assert.equal(
 		lines(`
 <script>
-	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'Layout.svelte')
-	)}';
+	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
 </script>
 
 <svelte:head>
@@ -244,13 +244,13 @@ mdsvex_it('custom layouts should work - special tags', async () => {
 
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
 mdsvex_it('custom layouts should work', async () => {
 	const output = await mdsvex({
-		layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
+		layout: join(fix_dir, 'Layout.svelte'),
 	}).markup({
 		content: `# hello`,
 		filename: 'file.svx',
@@ -259,15 +259,13 @@ mdsvex_it('custom layouts should work', async () => {
 	assert.equal(
 		lines(`
 <script>
-	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'Layout.svelte')
-	)}';
+	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
 </script>
 
 <Layout_MDSVEX_DEFAULT>
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -275,7 +273,7 @@ mdsvex_it(
 	'custom layouts should work - when there are script tags',
 	async () => {
 		const output = await mdsvex({
-			layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
+			layout: join(fix_dir, 'Layout.svelte'),
 		}).markup({
 			content: `
 <script>
@@ -295,9 +293,7 @@ mdsvex_it(
 
 		assert.equal(
 			lines(`<script>
-	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'Layout.svelte')
-	)}';
+	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
   export let x = 1;
 </script>
 <style>
@@ -310,7 +306,7 @@ mdsvex_it(
 <h1>hello</h1>
 
 </Layout_MDSVEX_DEFAULT>`),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -319,7 +315,7 @@ mdsvex_it(
 	'custom layouts should work - when there are script tags with random attributes',
 	async () => {
 		const output = await mdsvex({
-			layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
+			layout: join(fix_dir, 'Layout.svelte'),
 		}).markup({
 			content: `
 <script type="ts" lang=whatever thing="whatsit" doodaa=thingamabob>
@@ -339,9 +335,7 @@ mdsvex_it(
 
 		assert.equal(
 			lines(`<script type="ts" lang=whatever thing="whatsit" doodaa=thingamabob>
-	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'Layout.svelte')
-	)}';
+	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
   export let x = 1;
 </script>
 <style>
@@ -354,7 +348,7 @@ mdsvex_it(
 <h1>hello</h1>
 
 </Layout_MDSVEX_DEFAULT>`),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -363,7 +357,7 @@ mdsvex_it(
 	'custom layouts should work - when everything is in a random order',
 	async () => {
 		const output = await mdsvex({
-			layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
+			layout: join(fix_dir, 'Layout.svelte'),
 		}).markup({
 			content: `
 # hello
@@ -389,9 +383,7 @@ boo boo boo
 
 		assert.equal(
 			lines(`<script>
-	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'Layout.svelte')
-	)}';
+	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
   export let x = 1;
 </script>
 <style>
@@ -405,7 +397,7 @@ boo boo boo
 <p>hello friends</p>
 <p>boo boo boo</p>
 </Layout_MDSVEX_DEFAULT>`),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -434,7 +426,7 @@ number: 999
 
 <h1>hello</h1>
 `),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -469,7 +461,7 @@ number: 999
 
 <h1>hello</h1>
 `),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -504,7 +496,7 @@ number: 999
 
 <h1>hello</h1>
 `),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -539,7 +531,7 @@ number: 999
 
 <h1>hello</h1>
 `),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -548,7 +540,7 @@ mdsvex_it(
 	'YAML front-matter should be injected passed to custom layouts',
 	async () => {
 		const output = await mdsvex({
-			layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
+			layout: join(fix_dir, 'Layout.svelte'),
 		}).markup({
 			content: `---
 string: value
@@ -574,16 +566,14 @@ number: 999
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'Layout.svelte')
-	)}';
+	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
 </script>
 
 <Layout_MDSVEX_DEFAULT {...metadata}>
 
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -591,22 +581,24 @@ number: 999
 mdsvex_it(
 	'User can provide a frontmatter function for non-YAML frontmatter',
 	async () => {
-		const parse_toml = (v, m) => {
+		const parse_toml = (v: string, m: VFileMessage[]) => {
 			try {
 				return toml.parse(v);
 			} catch (e) {
 				m.push(
-					'Parsing error on line ' +
-						e.line +
-						', column ' +
-						e.column +
-						': ' +
-						e.message
+					new VMessage(
+						'Parsing error on line ' +
+							e.line +
+							', column ' +
+							e.column +
+							': ' +
+							e.message
+					)
 				);
 			}
 		};
 		const output = await mdsvex({
-			layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
+			layout: join(fix_dir, 'Layout.svelte'),
 			frontmatter: {
 				parse: parse_toml,
 				type: 'toml',
@@ -638,16 +630,14 @@ dob = 1879-05-27T07:32:00-08:00 # First class dates
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'Layout.svelte')
-	)}';
+	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
 </script>
 
 <Layout_MDSVEX_DEFAULT {...metadata}>
 
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -657,8 +647,8 @@ mdsvex_it(
 	async () => {
 		const output = await mdsvex({
 			layout: {
-				one: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
-				two: join(__dirname, '..', '_fixtures', 'LayoutTwo.svelte'),
+				one: join(fix_dir, 'Layout.svelte'),
+				two: join(fix_dir, 'LayoutTwo.svelte'),
 			},
 		}).markup({
 			content: `---
@@ -686,7 +676,7 @@ number: 999
 
 <script>
 	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'LayoutTwo.svelte')
+		join(fix_dir, 'LayoutTwo.svelte')
 	)}';
 </script>
 
@@ -694,7 +684,7 @@ number: 999
 
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -704,8 +694,8 @@ mdsvex_it('Ensure no-one tries to pass a "layouts" option', async () => {
 		await mdsvex({
 			//@ts-ignore
 			layouts: {
-				one: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
-				two: join(__dirname, '..', '_fixtures', 'LayoutTwo.svelte'),
+				one: join(fix_dir, 'Layout.svelte'),
+				two: join(fix_dir, 'LayoutTwo.svelte'),
 			},
 		}).markup({
 			content: `---
@@ -745,8 +735,8 @@ mdsvex_it('Warn on receiving unknown options', async () => {
 			bop: 'ho',
 			boom: 'oh',
 			layout: {
-				one: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
-				two: join(__dirname, '..', '_fixtures', 'LayoutTwo.svelte'),
+				one: join(fix_dir, 'Layout.svelte'),
+				two: join(fix_dir, 'LayoutTwo.svelte'),
 			},
 		}).markup({
 			content: `---
@@ -768,7 +758,7 @@ number: 999
 	// don't even ask
 	const console_warn = console.warn;
 	let warning = '';
-	console.warn = (args) => (warning = args);
+	console.warn = (args: string) => (warning = args);
 
 	await output_fn();
 
@@ -785,8 +775,8 @@ mdsvex_it(
 	async () => {
 		const output = await mdsvex({
 			layout: {
-				one: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
-				two: join(__dirname, '..', '_fixtures', 'LayoutTwo.svelte'),
+				one: join(fix_dir, 'Layout.svelte'),
+				two: join(fix_dir, 'LayoutTwo.svelte'),
 			},
 		}).markup({
 			content: `---
@@ -816,16 +806,14 @@ number: 999
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'Layout.svelte')
-	)}';
+	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
 </script>
 
 <Layout_MDSVEX_DEFAULT {...metadata}>
 
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -834,7 +822,7 @@ mdsvex_it(
 	'layout: false in front matter should remove any layouts',
 	async () => {
 		const output = await mdsvex({
-			layout: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
+			layout: join(fix_dir, 'Layout.svelte'),
 		}).markup({
 			content: `---
 layout: false
@@ -859,7 +847,7 @@ layout: false
 
 <h1>hello</h1>
 `),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -867,9 +855,9 @@ layout: false
 mdsvex_it('Fallback layouts should work', async () => {
 	const output = await mdsvex({
 		layout: {
-			one: join(__dirname, '..', '_fixtures', 'Layout.svelte'),
-			two: join(__dirname, '..', '_fixtures', 'LayoutTwo.svelte'),
-			_: join(__dirname, '..', '_fixtures', 'LayoutThree.svelte'),
+			one: join(fix_dir, 'Layout.svelte'),
+			two: join(fix_dir, 'LayoutTwo.svelte'),
+			_: join(fix_dir, 'LayoutThree.svelte'),
 		},
 	}).markup({
 		content: `---
@@ -897,7 +885,7 @@ number: 999
 
 <script>
 	import Layout_MDSVEX_DEFAULT from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'LayoutThree.svelte')
+		join(fix_dir, 'LayoutThree.svelte')
 	)}';
 </script>
 
@@ -905,13 +893,13 @@ number: 999
 
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
 mdsvex_it('layout: allow custom components', async () => {
 	const output = await mdsvex({
-		layout: join(__dirname, '..', '_fixtures', 'LayoutWithComponents.svelte'),
+		layout: join(fix_dir, 'LayoutWithComponents.svelte'),
 	}).markup({
 		content: `
 
@@ -931,7 +919,7 @@ mdsvex_it('layout: allow custom components', async () => {
 
 <script>
 	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'LayoutWithComponents.svelte')
+		join(fix_dir, 'LayoutWithComponents.svelte')
 	)}';
 </script>
 
@@ -939,7 +927,7 @@ mdsvex_it('layout: allow custom components', async () => {
 
 <Components.h1>hello</Components.h1>
 </Layout_MDSVEX_DEFAULT>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -978,7 +966,7 @@ hello *hello* **hello**
 
 <script>
 	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'LayoutThreeWithComponents.svelte')
+		join(fix_dir, 'LayoutThreeWithComponents.svelte')
 	)}';
 </script>
 
@@ -990,7 +978,7 @@ hello *hello* **hello**
 <Components.h4>hello</Components.h4>
 <Components.p>hello <Components.em>hello</Components.em> <Components.strong>hello</Components.strong></Components.p>
 </Layout_MDSVEX_DEFAULT>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -1023,7 +1011,7 @@ I am some paragraph text
 
 <script>
 	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'LayoutTwoWithComponents.svelte')
+		join(fix_dir, 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
 
@@ -1032,7 +1020,7 @@ I am some paragraph text
 <Components.h1>hello</Components.h1>
 <Components.p>I am some paragraph text</Components.p>
 </Layout_MDSVEX_DEFAULT>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -1065,7 +1053,7 @@ I am some paragraph text
 
 <script>
 	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'LayoutTwoWithComponents.svelte')
+		join(fix_dir, 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
 
@@ -1074,7 +1062,7 @@ I am some paragraph text
 <Components.h1>hello</Components.h1>
 <Components.p>I am some paragraph text</Components.p>
 </Layout_MDSVEX_DEFAULT>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -1106,7 +1094,7 @@ I am some paragraph text
 
 <script>
 	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'LayoutTwoWithComponents.svelte')
+		join(fix_dir, 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
 
@@ -1115,7 +1103,7 @@ I am some paragraph text
 <Components.h1>hello</Components.h1>
 <Components.p>I am some paragraph text</Components.p>
 </Layout_MDSVEX_DEFAULT>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -1148,7 +1136,7 @@ I am some paragraph text
 
 <script>
 	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
-		join(__dirname, '..', '_fixtures', 'LayoutTwoWithComponents.svelte')
+		join(fix_dir, 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
 
@@ -1157,7 +1145,7 @@ I am some paragraph text
 <Components.h1>hello</Components.h1>
 <Components.p>I am some paragraph text</Components.p>
 </Layout_MDSVEX_DEFAULT>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
