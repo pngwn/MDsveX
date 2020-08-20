@@ -33,7 +33,7 @@ md_files.forEach(([path, input, output], i) => {
 			} catch (e) {
 				console.log(i, e);
 			}
-			assert.equal(lines(output), lines(result.contents));
+			assert.equal(lines(output), result && lines(result.contents as string));
 		}
 	);
 });

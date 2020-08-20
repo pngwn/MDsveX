@@ -20,7 +20,7 @@ const some_var = whatever;
 		lines(`
 <pre><code class="language-js">const some_var = whatever;
 </code></pre>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -45,7 +45,7 @@ highlight('it should escape code when false is passed', async () => {
   &#125;
 &lt;/script&gt;
 </code></pre>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -63,7 +63,7 @@ const thing = 'string';
 		lines(
 			`<pre class="language-js">{@html \`<code class="language-js"><span class="token keyword">const</span> thing <span class="token operator">=</span> <span class="token string">'string'</span><span class="token punctuation">;</span></code>\`}</pre>`
 		),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -83,7 +83,7 @@ function() {
 		lines(`<pre class="language-js">{@html \`<code class="language-js"><span class="token keyword">function</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">&#123;</span>
 	whatever<span class="token punctuation">;</span>
 <span class="token punctuation">&#125;</span></code>\`}</pre>`),
-		lines(output.code)
+		output && lines(output.code)
 	);
 });
 
@@ -102,7 +102,7 @@ const evil = '{ } \` \\t \\r \\n';
 					'<code class="language-js"><span class="token keyword">const</span> evil <span class="token operator">=</span> <span class="token string">\'&#123; &#125; &#96; &#92;t &#92;r &#92;n\'</span><span class="token punctuation">;</span></code>`}' +
 					'</pre>'
 			),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -125,7 +125,7 @@ puts "Hello #{name}."
 			lines(`<pre class="language-ruby">{@html \`<code class="language-ruby">print <span class="token string">'Please type name >'</span>
 name <span class="token operator">=</span> gets<span class="token punctuation">.</span>chomp
 puts <span class="token string">"Hello <span class="token interpolation"><span class="token delimiter tag">#&#123;</span>name<span class="token delimiter tag">&#125;</span></span>."</span></code>\`}</pre>`),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -154,7 +154,7 @@ DEFINITIONS LIST
 <span class="token definition rule keyword">DEFINITIONS LIST</span>
   <span class="token operator">=</span> <span class="token rule">SINGLE DEFINITION</span><span class="token punctuation">,</span>
     <span class="token punctuation">(:</span> <span class="token string">'/'</span><span class="token punctuation">,</span> <span class="token rule">SINGLE DEFINITION</span> <span class="token punctuation">:)</span><span class="token punctuation">.</span></code>\`}</pre>`),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -162,7 +162,7 @@ DEFINITIONS LIST
 highlight(
 	'Should be possible to pass a custom highlight function ',
 	async () => {
-		function _highlight(code, lang) {
+		function _highlight(code: string, lang: string | undefined): string {
 			return `<code class="${lang}">${code}</code>`;
 		}
 
@@ -179,7 +179,7 @@ i am some code
 
 		assert.equal(
 			lines(`<code class="somecode">i am some code</code>`),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -202,7 +202,7 @@ highlight(
 			lines(
 				`<pre class="language-beeboo">{@html \`<code class="language-beeboo"><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>h1</span><span class="token punctuation">></span></span>Title<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>h1</span><span class="token punctuation">></span></span></code>\`}</pre>`
 			),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
@@ -227,7 +227,7 @@ highlight(
 			lines(
 				`<pre class="language-svelte">{@html \`<code class="language-svelte"><span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>h1</span><span class="token punctuation">></span></span>Title<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;/</span>h1</span><span class="token punctuation">></span></span></code>\`}</pre>`
 			),
-			lines(output.code)
+			output && lines(output.code)
 		);
 	}
 );
