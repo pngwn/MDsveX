@@ -9,20 +9,26 @@ import { transform } from '../../src';
 
 const PATH = join(__dirname, '../_fixtures/svelte');
 
-const is_dir = path => existsSync(path) && lstatSync(path).isDirectory();
+const is_dir = (path: string): boolean =>
+	existsSync(path) && lstatSync(path).isDirectory();
 
-const get_dir_path = d => {
+type string_arr = string | string_arr[];
+
+const get_dir_path = (d: string): string_arr => {
 	const out = readdirSync(d);
-	return out.map(f => {
+	return out.map((f) => {
 		const p = join(d, f);
 		if (is_dir(p)) return get_dir_path(p);
 		else return p;
 	});
 };
 
-const flatten = arr =>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const flatten = (arr: any) =>
 	arr.reduce(
-		(acc, next) => acc.concat(Array.isArray(next) ? flatten(next) : next),
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(acc: any, next: any) =>
+			acc.concat(Array.isArray(next) ? flatten(next) : next),
 		[]
 	);
 
@@ -30,9 +36,9 @@ const svelte = suite('pure-svelte');
 
 let svelte_files;
 try {
-	svelte_files = flatten(get_dir_path(PATH))
-		.filter(f => extname(f) === '.svelte')
-		.map(f => [f, readFileSync(f, { encoding: 'utf8' })]);
+	svelte_files = (flatten(get_dir_path(PATH)) as string[])
+		.filter((f: string) => extname(f) === '.svelte')
+		.map((f) => [f, readFileSync(f, { encoding: 'utf8' })]);
 } catch (e) {
 	throw new Error(e);
 }
@@ -52,7 +58,7 @@ svelte_files.forEach(([path, file], i) => {
 				console.log(i, e);
 			}
 
-			assert.equal(lines(file), lines(output.contents));
+			assert.equal(lines(file), output && lines(output.contents as string));
 		}
 	);
 });

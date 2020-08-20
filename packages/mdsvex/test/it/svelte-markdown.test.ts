@@ -13,7 +13,7 @@ const OUTPUT_PATH = join(PATH, 'output');
 
 const hybrid = suite('svelte-markdown');
 
-const md_files = readdirSync(INPUT_PATH).map(p => [
+const md_files = readdirSync(INPUT_PATH).map((p) => [
 	p,
 	readFileSync(join(INPUT_PATH, p), { encoding: 'utf8' }),
 	readFileSync(join(OUTPUT_PATH, `${basename(p, '.svx')}.svelte`), {
@@ -32,7 +32,7 @@ md_files.forEach(([path, input, output], i) => {
 				console.log(i, e);
 			}
 
-			assert.equal(lines(output), lines(result.code));
+			assert.equal(lines(output), result && lines(result.code));
 		}
 	);
 });

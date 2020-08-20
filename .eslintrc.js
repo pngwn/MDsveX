@@ -28,7 +28,12 @@ module.exports = {
 		'@typescript-eslint/no-misused-new': 'off',
 		'@typescript-eslint/no-unused-vars': 'off',
 	},
-	ignorePatterns: ['/node_modules/', '/test/_fixtures/', 'public_types.ts'],
+	ignorePatterns: [
+		'node_modules',
+		'!/packages/*/src/**',
+		'/packages/site/**',
+		'**/*fixtures/**',
+	],
 	env: {
 		es6: true,
 		browser: true,
@@ -41,8 +46,5 @@ module.exports = {
 	parserOptions: {
 		ecmaVersion: 9,
 		sourceType: 'module',
-		ecmaFeatures: {
-			experimentalObjectRestSpread: true,
-		},
 	},
 };
