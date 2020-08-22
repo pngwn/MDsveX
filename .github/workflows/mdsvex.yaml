@@ -44,12 +44,10 @@ jobs:
     steps:
       - name: Get windows pnpm cache path
         if: runner.os == 'windows'
-        id: pnpm-store-path
-        run: echo "::set-output name=dir::D:\.pnpm-store\v3"
+        run: echo "::set-env name=cache_path::D:\.pnpm-store\v3"
       - name: Get non-windows pnpm cache path
         if: runner.os != 'windows'
-        id: pnpm-store-path
-        run: echo "::set-output name=dir::~/.pnpm-store/v3"
+        run: echo "::set-env name=cache_path::~/.pnpm-store/v3"
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v1
         with:
@@ -60,7 +58,7 @@ jobs:
       - uses: actions/cache@v2
         id: pnpm-store
         with:
-          path: ${{ steps.pnpm-store-path.outputs.dir }}
+          path: $cache_path
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
