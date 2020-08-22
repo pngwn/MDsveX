@@ -58,7 +58,7 @@ jobs:
       #       ${{ runner.os }}-yarn-
       - run: curl -L https://unpkg.com/@pnpm/self-installer | node
       - run: pnpm i --frozen-lockfile
-      - run: pnpm test
+      - run: npm test
       - run: pnpm build --filter mdsvex
         env:
           CI: true
@@ -92,7 +92,7 @@ jobs:
           run_install: |
             - recursive: true
               args: [--frozen-lockfile]
-      - run: pnpm test
+      - run: npm test
       - run: pnpm build --filter mdsvex
         env:
           CI: true
