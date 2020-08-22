@@ -31,7 +31,6 @@ jobs:
         working-directory: 'packages/site'
       - name: Publish
         uses: cloudflare/wrangler-action@1.1.0
-        working-directory: 'packages/site'
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           workingDirectory: 'packages/site'
