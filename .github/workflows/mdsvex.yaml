@@ -82,7 +82,7 @@ jobs:
       - uses: actions/cache@v2
         id: pnpm-store # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
         with:
-          path: ${{ steps.pnpm-store-dir-path.outputs.dir }}
+          path: D:\.pnpm-store\v3
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
