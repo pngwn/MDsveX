@@ -8,7 +8,7 @@
 	"repository": "https://github.com/pngwn/MDsveX",
 	"scripts": {
 		"lint": "eslint . --ext .js,.ts",
-		"test": "uvu -r ts-node/register \".\" test.ts$"
+		"test": "uvu -r ts-node/register packages test.ts$"
 	},
 	"files": [
 		"dist/*"
