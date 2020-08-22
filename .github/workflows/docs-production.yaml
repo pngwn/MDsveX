@@ -26,7 +26,7 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
-      - run: pnpm --frozen-lockfile
+      - run: pnpm i --frozen-lockfile
       - run: pnpm run export
         working-directory: 'packages/site'
       - name: Publish
