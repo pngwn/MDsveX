@@ -76,6 +76,9 @@ jobs:
       - uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
+      - uses: pnpm/action-setup@v1.2.0
+        with:
+          version: 5
       - name: Get pnpm store directory path
         id: pnpm-store-dir-path
         run: echo "::set-output name=D:\.pnpm-store\v3"
@@ -86,13 +89,8 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
-      - uses: pnpm/action-setup@v1.2.0
-        with:
-          version: 5
-          run_install: |
-            - recursive: true
-              args: [--frozen-lockfile]
-      - run: npm test
+      - run: pnpm i --frozen-lockfile
+      - run: pnpm test
       - run: pnpm build --filter mdsvex
         env:
           CI: true
