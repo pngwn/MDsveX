@@ -52,7 +52,7 @@ jobs:
       - uses: actions/cache@v2
         id: pnpm-store
         with:
-          path: `~/.pnpm-store/v3
+          path: ~/.pnpm-store/v3
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
