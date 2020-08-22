@@ -31,7 +31,6 @@ jobs:
         working-directory: 'packages/site'
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v1.1
-        working-directory: 'packages/site'
         with:
           publish-dir: 'packages/site/__sapper__/export'
           production-branch: master
