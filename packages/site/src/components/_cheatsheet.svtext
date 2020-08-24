@@ -33,9 +33,9 @@ svelte({
 
     <dl>
       <dt>
-        <a href="docs#extension"><span>extension</span></a>
+        <a href="docs#extensions"><span>extensions</span></a>
       </dt>
-      <dd>use a custom extension</dd>
+      <dd>use custom extensions</dd>
       <dt>
         <a href="docs#smartypants"><span>smartypants</a></span>
       </dt>

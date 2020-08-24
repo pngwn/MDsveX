@@ -27,7 +27,7 @@
 			'Options',
 			'docs#options',
 			[
-				['extension', 'docs#extension', true],
+				['extensions', 'docs#extensions', true],
 				['smartypants', 'docs#smartypants', true],
 				['layout', 'docs#layout', true],
 				['remarkPlugins', 'docs#remarkplugins--rehypeplugins', true],

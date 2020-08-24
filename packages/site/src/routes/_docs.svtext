@@ -137,7 +137,7 @@ const transformed_code = compile(`
 );
 ```
 
-In addition to the standard mdsvex options, the options object can also take an optional `filename` property which will be passed to mdsvex. There is no significant advantage to doing this but this provided filename may be used for error reporting in the future. The extension you give to this filename must match the extension provided in the options (defaults to `.svx`).
+In addition to the standard mdsvex options, the options object can also take an optional `filename` property which will be passed to mdsvex. There is no significant advantage to doing this but this provided filename may be used for error reporting in the future. The extension you give to this filename must match one of the extensions provided in the options (defaults to `['.svx']`).
 
 ## Options
 
@@ -145,7 +145,7 @@ The preprocessor function accepts an object of options, that allow you to custom
 
 ```typescript
 interface MdsvexOptions {
-	extension: string;
+	extensions: string[];
 	smartypants: boolean | smartypantsOptions;
 	layout: string | { [name: string]: string };
 	remarkPlugins: Array<plugin> | Array<[plugin, plugin_options]>;
@@ -155,13 +155,13 @@ interface MdsvexOptions {
 }
 ```
 
-### `extension`
+### `extensions`
 
 ```ts
-extension: string = ".svx";
+extensions: string[] = [".svx"];
 ```
 
-The `extension` option allows you to set a custom file extension for files written in mdsvex; the default value is `.svx`. Whatever value you choose here must be passed to the `extensions` field of `rollup-plugin-svelte` or `svelte-loader`. If you do not change the default, you must still pass the extension name to the plugin or loader config.
+The `extensions` option allows you to set custom file extensions for files written in mdsvex; the default value is `['.svx']`. Whatever value you choose here must be passed to the `extensions` field of `rollup-plugin-svelte` or `svelte-loader`. If you do not change the default, you must still pass the extension name to the plugin or loader config.
 
 ```js
 export default {
@@ -170,7 +170,7 @@ export default {
 		svelte({
 			extensions: [".svelte", ".custom"],
 			preprocess: mdsvex({
-				extension: ".custom"
+				extensions: [".custom"]
 			})
 		})
 	]
