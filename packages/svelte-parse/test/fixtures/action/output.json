@@ -1,0 +1,59 @@
+// {
+// 	"html": {
+// 		"start": 0,
+// 		"end": 21,
+// 		"type": "Fragment",
+// 		"children": [
+// 			{
+// 				"start": 0,
+// 				"end": 21,
+// 				"type": "Element",
+// 				"name": "input",
+// 				"attributes": [
+// 					{
+// 						"start": 7,
+// 						"end": 20,
+// 						"type": "Action",
+// 						"name": "autofocus",
+// 						"modifiers": [],
+// 						"expression": null
+// 					}
+// 				],
+// 				"children": []
+// 			}
+// 		]
+// 	}
+// }
+
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "sv-element",
+			"name": "input",
+			"self_closing": true,
+			"attributes": [
+				{
+					"type": "directive",
+					"name": "use",
+					"specifier": "autofocus",
+					"value": "autofocus",
+					"shorthand": true,
+					"position": {
+						"start": { "row": 1, "col": 8, "offset": 7 },
+						"end": { "row": 1, "col": 21, "offset": 20 }
+					}
+				}
+			],
+			"position": {
+				"start": { "row": 1, "col": 1, "offset": 0 },
+				"end": { "row": 1, "col": 22, "offset": 21 }
+			}
+		}
+	],
+
+	"position": {
+		"start": { "row": 1, "col": 1, "offset": 0 },
+		"end": { "row": 1, "col": 22, "offset": 21 }
+	}
+}
