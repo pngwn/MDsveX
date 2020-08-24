@@ -179,6 +179,15 @@ importers:
       '@cloudflare/kv-asset-handler': 0.0.5
     specifiers:
       '@cloudflare/kv-asset-handler': ^0.0.5
+  packages/svelte-parse:
+    devDependencies:
+      '@rollup/plugin-sucrase': 3.1.0_rollup@2.26.5
+      rollup: 2.26.5
+      rollup-plugin-dts: 1.4.12_rollup@2.26.5
+    specifiers:
+      '@rollup/plugin-sucrase': ^3.1.0
+      rollup: ^2.26.5
+      rollup-plugin-dts: ^1.4.12
 lockfileVersion: 5.1
 packages:
   /@arr/every/1.0.1:
@@ -1163,12 +1172,37 @@ packages:
       rollup: ^1.20.0 || ^2.0.0
     resolution:
       integrity: sha512-PZ70LDNgIj8rL+3pKwKwTBOQ2c9JofXeLbWz+2V4/nCt4LqwYTNqxJJf1riTJsVARVzJdA0woIzUzjKZvL8TfA==
+  /@rollup/plugin-sucrase/3.1.0_rollup@2.26.5:
+    dependencies:
+      '@rollup/pluginutils': 3.1.0_rollup@2.26.5
+      rollup: 2.26.5
+      sucrase: 3.15.0
+    dev: true
+    engines:
+      node: '>=8.0.0'
+    peerDependencies:
+      rollup: ^1.20.0 || ^2.0.0
+    resolution:
+      integrity: sha512-PZ70LDNgIj8rL+3pKwKwTBOQ2c9JofXeLbWz+2V4/nCt4LqwYTNqxJJf1riTJsVARVzJdA0woIzUzjKZvL8TfA==
   /@rollup/pluginutils/3.1.0_rollup@2.26.4:
     dependencies:
       '@types/estree': 0.0.39
       estree-walker: 1.0.1
       picomatch: 2.2.2
       rollup: 2.26.4
+    dev: true
+    engines:
+      node: '>= 8.0.0'
+    peerDependencies:
+      rollup: ^1.20.0||^2.0.0
+    resolution:
+      integrity: sha512-GksZ6pr6TpIjHm8h9lSQ8pi8BE9VeubNT0OMJ3B5uZJ8pz73NPiqOtCog/x2/QzM1ENChPKxMDhiQuRHsqc+lg==
+  /@rollup/pluginutils/3.1.0_rollup@2.26.5:
+    dependencies:
+      '@types/estree': 0.0.39
+      estree-walker: 1.0.1
+      picomatch: 2.2.2
+      rollup: 2.26.5
     dev: true
     engines:
       node: '>= 8.0.0'
@@ -4174,6 +4208,17 @@ packages:
       typescript: ^3.9.7
     resolution:
       integrity: sha512-bL6MBXc8lK7D5b/tYbHaglxs4ZxMQTQilGA6Xm9KQBEj4h9ZwIDlAsvDooGjJ/cOw23r3POTRtSCEyTHxtzHJg==
+  /rollup-plugin-dts/1.4.12_rollup@2.26.5:
+    dependencies:
+      rollup: 2.26.5
+    dev: true
+    optionalDependencies:
+      '@babel/code-frame': 7.10.4
+    peerDependencies:
+      rollup: ^2.26.4
+      typescript: ^4.0.2
+    resolution:
+      integrity: sha512-1TIHkYbxXkwsqW/l//CuBu7Kc4oriCe7XEzFr5wHMAeRtgxSMjaNWiyB/4n7Tgv6NHe/Z1R4GJiualXTO4cc/A==
   /rollup-plugin-json/4.0.0:
     dependencies:
       rollup-pluginutils: 2.8.2
@@ -4299,6 +4344,15 @@ packages:
       fsevents: 2.1.3
     resolution:
       integrity: sha512-6+qsGuP0MXGd7vlYmk72utm1MrgZj5GfXibGL+cRkKQ9+ZL/BnFThDl0D5bcl7AqlzMjAQXRAwZX1HVm22M/4Q==
+  /rollup/2.26.5:
+    dev: true
+    engines:
+      node: '>=10.0.0'
+    hasBin: true
+    optionalDependencies:
+      fsevents: 2.1.3
+    resolution:
+      integrity: sha512-rCyFG3ZtQdnn9YwfuAVH0l/Om34BdO5lwCA0W6Hq+bNB21dVEBbCRxhaHOmu1G7OBFDWytbzAC104u7rxHwGjA==
   /run-async/2.4.1:
     dev: true
     engines:

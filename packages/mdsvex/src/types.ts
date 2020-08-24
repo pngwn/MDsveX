@@ -248,10 +248,7 @@ export interface MdsvexOptions {
 	/**
 	 * **extension** - the extension to use for mdsvex files. Default: `".svx"`. {@link https://mdsvex.com/docs#extension More details.}
 	 *
-	 *  *example:*
-	 * ```js
-	 * extension: ".svexy",
-	 * ```
+	 * **DEPRECATED:** use {@link MdsvexOptions.extensions } instead.
 	 */
 	extension?: string;
 	/**
