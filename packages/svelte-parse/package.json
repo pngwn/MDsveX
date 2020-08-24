@@ -4,6 +4,7 @@
 	"description": "An increidbly relaxed svelte-parser",
 	"main": "dist/index.js",
 	"scripts": {
+		"build": "rollup -c",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"keywords": [
@@ -13,5 +14,10 @@
 		"ast"
 	],
 	"author": "pngwn <hello@pngwn.io>",
-	"license": "MIT"
+	"license": "MIT",
+	"devDependencies": {
+		"@rollup/plugin-sucrase": "^3.1.0",
+		"rollup": "^2.26.5",
+		"rollup-plugin-dts": "^1.4.12"
+	}
 }
