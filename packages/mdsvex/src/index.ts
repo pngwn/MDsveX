@@ -198,6 +198,7 @@ function process_layouts(layouts: Layout) {
  * **options** - An options object with the following properties, all are optional.
  *
  * - `extension` - The extension to use for mdsvex files
+ * - `extensions` - The extensions to use for mdsvex files
  * - `layout` - Layouts to apply to mdsvex documents
  * - `frontmatter` - frontmatter options for documents
  * - `highlight` - syntax highlighting options
@@ -213,6 +214,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 		rehypePlugins = [],
 		smartypants = true,
 		extension = '.svx',
+		extensions,
 		layout = false,
 		highlight = { highlighter: code_highlight },
 		frontmatter,
@@ -231,6 +233,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 		'rehypePlugins',
 		'smartypants',
 		'extension',
+		'extensions',
 		'layout',
 		'highlight',
 		'frontmatter',
@@ -276,7 +279,8 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 
 	return {
 		markup: async ({ content, filename }) => {
-			if (filename.split('.').pop() !== extension.split('.').pop()) return;
+			const extensionsParts = (extensions || [extension]).map(ext => ext.split('.').pop());
+			if (!extensionsParts.includes(filename.split('.').pop())) return;
 
 			const parsed = await parser.process({ contents: content, filename });
 			return { code: parsed.contents as string, map: '' };
@@ -292,6 +296,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
  *
  *
  * - `extension` - The extension to use for mdsvex files
+ * - `extensions` - The extensions to use for mdsvex files
  * - `layout` - Layouts to apply to mdsvex documents
  * - `frontmatter` - frontmatter options for documents
  * - `highlight` - syntax highlighting options
@@ -307,7 +312,8 @@ const _compile = (
 	mdsvex(opts).markup({
 		content: source,
 		filename:
-			(opts && opts.filename) || `file${(opts && opts.extension) || '.svx'}`,
+			(opts && opts.filename) ||
+			`file${(opts && (opts.extensions && opts.extensions[0]) || opts.extension) || '.svx'}`,
 	});
 
 export { _compile as compile };

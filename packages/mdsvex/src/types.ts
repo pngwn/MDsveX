@@ -255,6 +255,15 @@ export interface MdsvexOptions {
 	 */
 	extension?: string;
 	/**
+	 * **extensions** - the extensions to use for mdsvex files. {@link https://mdsvex.com/docs#extensions More details.}
+	 *
+	 *  *example:*
+	 * ```js
+	 * extensions: [".svexy"],
+	 * ```
+	 */
+	extensions?: string[];
+	/**
 	 * **layout** - A string defining a single layout to use for everything or an object of named layouts. When using names layouts, a key of `_` will define the fallback layout. Default: `undefined` (no layouts). {@link https://mdsvex.com/docs#layouts More details.}
 	 *
 	 *  *examples:*
