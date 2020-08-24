@@ -206,7 +206,7 @@ mdsvex_it('only expected file extension names should work', async () => {
 });
 
 mdsvex_it('the extension name should be customisable', async () => {
-	const output = await mdsvex({ extension: '.jesus' }).markup({
+	const output = await mdsvex({ extensions: ['.jesus'] }).markup({
 		content: `# hello`,
 		filename: 'file.jesus',
 	});
@@ -764,7 +764,7 @@ number: 999
 
 	assert.equal(
 		warning,
-		'mdsvex: Received unknown options: bip, bop, boom. Valid options are: remarkPlugins, rehypePlugins, smartypants, extension, layout, highlight, frontmatter.'
+		'mdsvex: Received unknown options: bip, bop, boom. Valid options are: remarkPlugins, rehypePlugins, smartypants, extension, extensions, layout, highlight, frontmatter.'
 	);
 
 	console.warn = console_warn;
@@ -1125,7 +1125,7 @@ I am some paragraph text
 				'_fixtures',
 				'LayoutTwoWithComponents.svelte'
 			),
-			extension: '.spooky',
+			extensions: ['.spooky'],
 		}
 	);
 
