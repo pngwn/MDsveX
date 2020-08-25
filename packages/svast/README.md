@@ -6,6 +6,31 @@ This AST implements the [Unist](https://github.com/syntax-tree/unist) spec. I th
 
 This AST seeks to be language agnostic and has no opinion on the contents of any expression. Some Svelte syntax is impossible to parse in a language agnostic way, this specification does not conern itself with this problem right now.
 
+- [Base Unist Nodes](#base-unist-nodes)
+  - [`UnistNode`](#unistnode)
+  - [`UnistPosition`](#unistposition)
+  - [`UnistPoint`](#unistpoint)
+  - [`UnistData`](#unistdata)
+  - [`Unistparent`](#unistparent)
+- [SVAST Nodes](#svast-nodes)
+  - [`Parent`](#parent)
+  - [`Literal`](#literal)
+  - [`Root`](#root)
+  - [`Element`](#element)
+  - [`Component`](#component)
+  - [`Property`](#property)
+  - [`Directive`](#directive)
+  - [`Comment`](#comment)
+  - [`Text`](#text)
+  - [`VoidBlock`](#voidblock)
+  - [`BranchingBlock`](#branchingblock)
+  - [`EachBlock`](#eachblock)
+  - [`IfBlock`](#ifblock)
+  - [`AwaitBlock`](#awaitblock)
+  - [`Branch`](#branch)
+  - [`IfBranches`](#ifbranches)
+  - [`AwaitBranches`](#awaitbranches)
+
 ## Base Unist Nodes
 
 I have prefixed these with `Unist` for clarity. See [the actual spec](https://github.com/syntax-tree/unist)
