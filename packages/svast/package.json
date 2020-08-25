@@ -1,0 +1,23 @@
+{
+  "name": "svast",
+  "version": "0.0.1",
+  "description": "Types for svast, a Svelte AST specification",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pngwn/MDsveX/tree/master/packages/svast"
+  },
+  "keywords": [
+    "svelte",
+    "ast",
+    "svast"
+  ],
+  "author": "pngwn <hello@pngwn.io>",
+  "license": "MIT",
+  "dependencies": {
+    "@types/unist": "^2.0.3"
+  }
+}
