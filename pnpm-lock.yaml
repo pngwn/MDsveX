@@ -179,6 +179,11 @@ importers:
       '@cloudflare/kv-asset-handler': 0.0.5
     specifiers:
       '@cloudflare/kv-asset-handler': ^0.0.5
+  packages/svast:
+    dependencies:
+      '@types/unist': 2.0.3
+    specifiers:
+      '@types/unist': ^2.0.3
   packages/svelte-parse:
     devDependencies:
       '@rollup/plugin-sucrase': 3.1.0_rollup@2.26.5
