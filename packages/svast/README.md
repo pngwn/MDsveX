@@ -12,9 +12,9 @@ I have prefixed these with `Unist` for clarity. See [the actual spec](https://gi
 
 ```idl
 interface UnistNode {
-	type: string
-	data: UnistData?
-	position: UnistPosition?
+  type: string
+  data: UnistData?
+  position: UnistPosition?
 }
 ```
 
@@ -24,9 +24,9 @@ This is the base node that pretty much everything extends.
 
 ```idl
 interface UnistPosition {
-	start: UnistPoint
-	end: UnistPoint
-	indent: [number >= 1]?
+  start: UnistPoint
+  end: UnistPoint
+  indent: [number >= 1]?
 }
 ```
 
@@ -42,9 +42,9 @@ I do not understand what `indent` is right now.
 
 ```id
 interface UnistPoint {
-	line: number >= 1
-	column: number >= 1
-	offset: number >= 0?
+  line: number >= 1
+  column: number >= 1
+  offset: number >= 0?
 }
 ```
 
@@ -84,7 +84,7 @@ The `children` field is a list representing the children of a node.
 
 ```idl
 interface Parent <: UnistParent {
-	children: [Element | Component | Comment | Text | Expression | Block | SvelteTag]
+  children: [Element | Component | Comment | Text | Expression | Block | SvelteTag]
 }
 ```
 
@@ -94,7 +94,7 @@ A `Parent` is a node with children which is a list of nodes.
 
 ```idl
 interface Literal <: UnistLiteral {
-	value: string
+  value: string
 }
 ```
 
@@ -104,7 +104,7 @@ A node containing a value. It is that simple.
 
 ```idl
 interface Root <: Parent {
-	type: "root"
+  type: "root"
 }
 ```
 
@@ -114,11 +114,11 @@ The root node of a tree.
 
 ```idl
 interface Element <: Parent {
-	type: "svelteElement"
-	tagName: string
-	properties: [Property | Directive]
-	selfClosing: boolean
-	children: [Element | Comment | Text | Expression | Block | SvelteTag]
+  type: "svelteElement"
+  tagName: string
+  properties: [Property | Directive]
+  selfClosing: boolean
+  children: [Element | Comment | Text | Expression | Block | SvelteTag]
 }
 ```
 
@@ -143,18 +143,18 @@ Yields:
   type: 'svelteElement',
   tagName: 'input',
   properties: [{
-		type: 'svelteDirective',
-		name: 'on',
-		specifier: 'click',
-		modifiers: [{
-			type: 'modifier', value: 'preventDefault'
-		}],
-		value: [{
-			type: 'svelteExpression',
-			value: 'handleClick'
-		}]
-	}],
-	selfClosing: true,
+    type: 'svelteDirective',
+    name: 'on',
+    specifier: 'click',
+    modifiers: [{
+      type: 'modifier', value: 'preventDefault'
+    }],
+    value: [{
+      type: 'svelteExpression',
+      value: 'handleClick'
+    }]
+  }],
+  selfClosing: true,
   children: []
 }
 ```
@@ -163,7 +163,7 @@ Yields:
 
 ```idl
 interface Component <: Element {
-	type: "svelteComponent"
+  type: "svelteComponent"
 }
 ```
 
@@ -180,18 +180,18 @@ Yields:
   type: 'svelteElement',
   tagName: 'MyComponent',
   properties: [{
-		type: 'svelteDirective',
-		name: 'on',
-		specifier: 'click',
-		modifiers: [{
-			type: 'svelteModifier', value: 'preventDefault'
-		}],
-		value: [{
-			type: 'svelteExpression',
-			value: 'handleClick'
-		}]
-	}],
-	selfClosing: true,
+    type: 'svelteDirective',
+    name: 'on',
+    specifier: 'click',
+    modifiers: [{
+      type: 'svelteModifier', value: 'preventDefault'
+    }],
+    value: [{
+      type: 'svelteExpression',
+      value: 'handleClick'
+    }]
+  }],
+  selfClosing: true,
   children: []
 }
 ```
@@ -202,11 +202,11 @@ The `Component` interface extends the `Element` interface but with a different v
 
 ```idl
 interface Property <: UnistNode {
-	type: 'svelteProperty'
-	name: string
-	shorthandExpression: boolean
-	value: [Text | Expression]
-	modifiers: [Literal]
+  type: 'svelteProperty'
+  name: string
+  shorthandExpression: boolean
+  value: [Text | Expression]
+  modifiers: [Literal]
 }
 ```
 
@@ -233,21 +233,21 @@ Yields:
   type: 'svelteElement',
   tagName: 'a',
   properties: [{
-		type: 'svelteProperty',
-		name: 'name',
-		value: [{
-			type: 'text',
-			value: 'hello'
-		}, {
-			type: 'svelteExpression',
-			value: 'friend'
-		}, {
-			type: 'text',
-			value: '!'
-		}],
-		modifiers: [],
-	}],
-	selfClosing: true,
+    type: 'svelteProperty',
+    name: 'name',
+    value: [{
+      type: 'text',
+      value: 'hello'
+    }, {
+      type: 'svelteExpression',
+      value: 'friend'
+    }, {
+      type: 'text',
+      value: '!'
+    }],
+    modifiers: [],
+  }],
+  selfClosing: true,
   children: []
 }
 ```
@@ -256,8 +256,8 @@ Yields:
 
 ```idl
 interface Directive <: Property {
-	type: 'svelteDirective'
-	specifier: string
+  type: 'svelteDirective'
+  specifier: string
 }
 ```
 
@@ -284,28 +284,28 @@ Yields:
   type: 'svelteElement',
   tagName: 'a',
   properties: [{
-		type: 'svelteDirective',
-		name: 'class',
-		specifier: 'myclass',
-		value: [{
-			type: 'svelteExpression',
-			value: 'x ? y : z'
-		}],
-		modifiers: [],
-	}, {
-		type: 'svelteDirective',
-		name: 'on',
-		specifier: 'click',
-		value: [{
-			type: 'svelteExpression',
-			value: '(e) => fn(e)'
-		}],
-		modifiers: [{
-			type: 'svelteModifier',
-			value: 'preventDefault'}
-		],
-	}],
-	selfClosing: true,
+    type: 'svelteDirective',
+    name: 'class',
+    specifier: 'myclass',
+    value: [{
+      type: 'svelteExpression',
+      value: 'x ? y : z'
+    }],
+    modifiers: [],
+  }, {
+    type: 'svelteDirective',
+    name: 'on',
+    specifier: 'click',
+    value: [{
+      type: 'svelteExpression',
+      value: '(e) => fn(e)'
+    }],
+    modifiers: [{
+      type: 'svelteModifier',
+      value: 'preventDefault'}
+    ],
+  }],
+  selfClosing: true,
   children: []
 }
 ```
@@ -314,7 +314,7 @@ Yields:
 
 ```idl
 interface Comment <: Literal {
-	type: "comment"
+  type: "comment"
 }
 ```
 
@@ -338,7 +338,7 @@ Yields:
 
 ```idl
 interface Text <: Literal {
-	type: "text"
+  type: "text"
 }
 ```
 
@@ -356,13 +356,13 @@ Yields:
 
 ```js
 {
-	type: 'svelteElement',
-	tagName: 'div',
-	properties: [],
-	selfClosing: false,
-	children: [{
-		type: 'text',
-		value: 'Hello there'
-	}]
+  type: 'svelteElement',
+  tagName: 'div',
+  properties: [],
+  selfClosing: false,
+  children: [{
+    type: 'text',
+    value: 'Hello there'
+  }]
 }
 ```
