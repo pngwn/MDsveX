@@ -4,6 +4,8 @@
 
 This AST implements the [Unist](https://github.com/syntax-tree/unist) spec. I think. All node types that implement a unique interface are camelCased and prefixed with `svelte`. I have inlined the unist nodes that `svast` extends for reference but the canonical documentation in the unist repo should be prefered.
 
+This AST seeks to be language agnostic and has no opinion on the contents of any expression. Some Svelte syntax is impossible to parse in a language agnostic way, this specification does not conern itself with this problem right now.
+
 ## Base Unist Nodes
 
 I have prefixed these with `Unist` for clarity. See [the actual spec](https://github.com/syntax-tree/unist)
@@ -118,7 +120,7 @@ interface Element <: Parent {
   tagName: string
   properties: [Property | Directive]
   selfClosing: boolean
-  children: [Element | Comment | Text | Expression | Block | SvelteTag]
+  children: [Element | Comment | Text | Expression | Block | Special]
 }
 ```
 
@@ -365,4 +367,185 @@ Yields:
     value: 'Hello there'
   }]
 }
+```
+
+### `VoidBlock`
+
+```
+interface VoidBlock <: Node {
+  type: 'svelteVoidBlock'
+  name: string
+  expression: Expression
+}
+```
+
+The `VoidBlock` node represents a void block. Void blocks do not allow branches.
+
+The `name` field must be present and should be the name of the block.
+
+The `expression` field must be present and should be an `Expression` node containing the expression value for that block.
+
+For the following input:
+
+```svelte
+{@html `<p>something</p>`}
+```
+
+Yields:
+
+```js
+{
+  type: 'svelteVoidBlock',
+  name: 'html',
+  expression: {
+    type: 'svelteExpression',
+    value: '<p>something</p>'
+  }
+}
+```
+
+### `BranchingBlock`
+
+```
+interface BranchingBlock <: Parent {
+  type: 'svelteBranchingBlock'
+}
+```
+
+The `BrancingBlock` node represents a svelte Block that allows a single branch, a `path`.
+
+Standard blocks other than `each` extend this interface, as the standard blocks all have import, specific semantic information that relates only to them.
+
+The `expression` field must be present and should contain the rest of the contents of the unknown branching block. The expression node itself can be empty.
+
+The following input:
+
+```svelte
+{#custom someExpression}
+  Hello
+{custom}
+```
+
+Yields:
+
+```js
+{
+  type: 'svelteBranchingBlock',
+  name: 'custom',
+  path: Parent
+}
+```
+
+_Parser relevant: Branches are distinguished by nested `{:branchname}` qualifiers that meet a certain contract defined by the grammar. Unknown (non-standard) blocks are tolerated, unknown branches are not._
+
+### `EachBlock`
+
+```idl
+interface EachBlock <: BranchingBlock {
+  type: 'svelteEachBlock'
+  name: 'each'
+  itemName: Expression
+  itemIndex: Expression?
+  itemKey: Expression?
+}
+```
+
+The `EachBlock` node represents a svelte `#each` block.
+
+The `expression` field contains the collection that is being iterated. The value is an `Expression` node.
+
+The `itemName` field contains the identifier referring to a single element of the collection, during the loop. The value is an `Expression` node.
+
+The `itemIndex` field contains the identifier used to refer to the `index` of the iterated item during the loop, if one exists.
+
+The `itemKey` field is optional and contains the value that should be used as a key during the loop, if one exists. The presence of this field signifies that the each block is keyed.
+
+### `IfBlock`
+
+```idl
+interface IfBlock <: Node {
+  type: 'svelteIfBlock'
+  branches: IfBranches
+}
+```
+
+The `IfBlock` node represents a svelte `#if` block.
+
+The `branches` field implements the `IfBranch` interface and specifies the vbariouis branches of the `if` block.
+
+### `AwaitBlock`
+
+```idl
+interface IfBlock <: Node {
+  type: 'svelteIfBlock'
+  branches: AwaitBranches
+}
+```
+
+### `Branch`
+
+```idl
+interface Branch <: Parent {
+  type: 'svelteBranch'
+  name: string
+  expression: Expression
+}
+```
+
+TRhe `Branch` node describes a branch of a svelte block.
+
+The `expression` fields contains the expression associated with that branch.
+
+### `IfBranches`
+
+```idl
+interface IfBranches {
+  if: Branch
+  elseif: [Branch]?
+  else: Branch?
+}
+```
+
+The `IfBranch` node represents the possible branches of an `IfBlock`.
+
+The `if` field contains the first `if` branch of the block. The value is a single `Branch`.
+
+The `elseif` field contains a list of branches representing an arbitrary number of `:if else` clauses.
+
+The `else` field contains the final `:else` clause of an `#if` block. It contains a single `Branch`.
+
+### `AwaitBranches`
+
+```idl
+interface AwaitBranches {
+  pending: Branch
+  fulfilled: Branch
+  error: Branch?
+}
+```
+
+The `IfBranch` node represents the possible branches of an `IfBlock`.
+
+The `pending` field represents the first branch of the block representing the pending state. The value is a single `Branch`.
+
+The `fulfilled` field respresents the resolved branch of the block. The value is a single branch.
+
+The `error` field respresents the optional error clause of an `#await` block. It contains a single `Branch`.
+
+| EachBranches | ForBranches | AwaitBranches
+
+```svelte
+{#each expression as name}...{/each}
+{#each expression as name, index}...{/each}
+{#each expression as name (key)}...{/each}
+{#each expression as name, index (key)}...{/each}
+{#each  as name}...{:else}...{/each}
+
+{#if expression}...{/if}
+{#if expression}...{:else if expression}...{/if}
+{#if expression}...{:else}...{/if}
+
+{#await expression}...{:then name}...{:catch name}...{/await}
+{#await expression}...{:then name}...{/await}
+{#await expression then name}...{/await}
 ```
