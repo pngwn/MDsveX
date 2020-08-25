@@ -18,6 +18,7 @@ This AST seeks to be language agnostic and has no opinion on the contents of any
   - [`Root`](#root)
   - [`Element`](#element)
   - [`Component`](#component)
+  - [`BaseProperty`](#baseproperty)
   - [`Property`](#property)
   - [`Directive`](#directive)
   - [`Comment`](#comment)
@@ -111,7 +112,19 @@ The `children` field is a list representing the children of a node.
 
 ```idl
 interface Parent <: UnistParent {
-  children: [Element | Component | Comment | Text | Expression | Block | SvelteTag]
+  children: [
+    | SvelteElement
+		| SvelteComponent
+		| Comment
+		| Text
+		| SvelteExpression
+		| VoidBlock
+		| BranchingBlock
+		| IfBlock
+		| EachBlock
+		| AwaitBlock
+		| SvelteTag
+  ]
 }
 ```
 
@@ -137,19 +150,17 @@ interface Root <: Parent {
 
 The root node of a tree.
 
-### `Element`
+### `BaseTag`
 
 ```idl
-interface Element <: Parent {
-  type: "svelteElement"
+interface BaseTag <: Parent {
   tagName: string
   properties: [Property | Directive]
   selfClosing: boolean
-  children: [Element | Comment | Text | Expression | Block | Special]
 }
 ```
 
-Represents a DOM-element.
+The `BaseTag` node is the node that all element and component types extend.
 
 The `tagName` field contains the element's local name.
 
@@ -157,7 +168,53 @@ The `properties` field is a list of the element's attributes and directives. Thi
 
 The `selfClosing` field describes whether or not the source element was self closing or not. This isn't strictly abstract but is helpful in certain cases.
 
-This input:
+### `SvelteTag`
+
+```idl
+interface SvelteTag <: BaseTag {
+  type: "svelteTag"
+}
+```
+
+The `SvelteTag` represent special `svelte` namespace tag names such as `<svelte:self />`.
+
+The following input:
+
+```svelte
+<svelte:self this={Component} />
+```
+
+Yields:
+
+```js
+{
+  type: 'svelteTag',
+  tagName: 'self',
+  properties: [{
+    type: 'svelteProperty',
+    name: 'this',
+    modifiers: [],
+    value: [{
+      type: 'svelteExpression',
+      value: 'Component'
+    }]
+  }],
+  selfClosing: true,
+  children: []
+}
+```
+
+### `Element`
+
+```idl
+interface Element <: BaseTag {
+  type: "svelteElement"
+}
+```
+
+The `Element` node represents a DOM-element in Svelte.
+
+The following input:
 
 ```svelte
 <input on:click|preventDefault={handleClick} />
@@ -189,10 +246,12 @@ Yields:
 ### `Component`
 
 ```idl
-interface Component <: Element {
+interface Component <: BaseTag {
   type: "svelteComponent"
 }
 ```
+
+The `Component` interface represents Svelte components, PascalCased tags.
 
 This input:
 
@@ -223,17 +282,22 @@ Yields:
 }
 ```
 
-The `Component` interface extends the `Element` interface but with a different value for `type` in order to distinguish these nodes.
-
-### `Property`
+### `BaseProperty`
 
 ```idl
 interface Property <: UnistNode {
-  type: 'svelteProperty'
   name: string
   shorthand: boolean
   value: [Text | Expression]
   modifiers: [Literal]
+}
+```
+
+### `Property`
+
+```idl
+interface Property <: BaseProperty {
+  type: 'svelteProperty'
 }
 ```
 
@@ -245,7 +309,7 @@ The `shorthand` field signifies whether or not shorthand property syntax was use
 
 The `value` field is always a list of nodes that implement either the `Text` or `Expression` interfaces. In the case of shorthand property expressions, the `value` field will be a list with one node (an `Expression`) whose value is the same as the attribute name.
 
-The `modifiers` field represents any modifiers applied to a property name. In svelte this takes the form of `on:click|once|capture={...}`. This value should be a list of Literal nodes, describing the modifier name.
+The `modifiers` field represents any modifiers applied to a property name. In Svelte this takes the form of `on:click|once|capture={...}`. This value should be a list of Literal nodes, describing the modifier name.
 
 This input:
 
@@ -283,13 +347,13 @@ Yields:
 ### `Directive`
 
 ```idl
-interface Directive <: Property {
+interface Directive <: BaseProperty {
   type: 'svelteDirective'
   specifier: string
 }
 ```
 
-The `Directive` node represents a svelte directive `x:y={z}`, it is the same as the `Property` interface with a few small differences.
+The `Directive` node represents a Svelte directive `x:y={z}`.
 
 The `name` field reprsents the directive 'type', the part of the attrubute _before_ the `:`.
 
@@ -439,7 +503,7 @@ interface BranchingBlock <: Parent {
 }
 ```
 
-The `BrancingBlock` node represents a svelte Block that allows a single branch, a `path`.
+The `BrancingBlock` node represents a Svelte Block that allows a single branch, a `path`.
 
 Standard blocks other than `each` do not extend this interface, as the standard blocks all have more complex branching structures.
 
@@ -470,16 +534,16 @@ _Parser relevant: Branches are distinguished by nested `{:branchname}` qualifier
 ### `EachBlock`
 
 ```idl
-interface EachBlock <: BranchingBlock {
+export interface EachBlock <: SvelteParent {
   type: 'svelteEachBlock'
-  name: 'each'
+  expression: Expression
   itemName: Expression
   itemIndex: Expression?
   itemKey: Expression?
 }
 ```
 
-The `EachBlock` node represents a svelte `#each` block.
+The `EachBlock` node represents a Svelte `#each` block.
 
 The `expression` field is the collection that is being iterated. The value is an `Expression` node.
 
@@ -502,7 +566,6 @@ Yields:
 ```js
 {
   type: 'svelteEachBlock',
-  name: 'each',
   itemName: {
     type: 'svelteExpression',
     value: '{ some, thing }'
@@ -538,7 +601,7 @@ interface IfBlock <: Node {
 }
 ```
 
-The `IfBlock` node represents a svelte `#if` block.
+The `IfBlock` node represents a Svelte `#if` block.
 
 The `branches` field implements the `IfBranches` interface and specifies the various branches of the `if` block.
 
@@ -610,17 +673,17 @@ Yields:
 ### `AwaitBlock`
 
 ```idl
-interface IfBlock <: Node {
-  type: 'svelteIfBlock'
+interface AwaitBlock <: Node {
+  type: 'svelteAwaitBlock'
   branches: AwaitBranches
 }
 ```
 
-the `AwaitBlock` node represents a svelte `#await` block.
+the `AwaitBlock` node represents a Svelte `#await` block.
 
 The `branches` field implements the `AwaitBranch` interface and specifies the various branches of the `await` block.
 
-The follwing input:
+The following input:
 
 ```svelte
 {#await promise then value}
@@ -690,7 +753,7 @@ interface Branch <: Parent {
 }
 ```
 
-The `Branch` node describes a branch of a svelte block.
+The `Branch` node describes a branch of a Svelte block.
 
 The `expression` fields contains the expression associated with that branch.
 
