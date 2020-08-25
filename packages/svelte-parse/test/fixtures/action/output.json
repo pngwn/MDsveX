@@ -1,40 +1,13 @@
-// {
-// 	"html": {
-// 		"start": 0,
-// 		"end": 21,
-// 		"type": "Fragment",
-// 		"children": [
-// 			{
-// 				"start": 0,
-// 				"end": 21,
-// 				"type": "Element",
-// 				"name": "input",
-// 				"attributes": [
-// 					{
-// 						"start": 7,
-// 						"end": 20,
-// 						"type": "Action",
-// 						"name": "autofocus",
-// 						"modifiers": [],
-// 						"expression": null
-// 					}
-// 				],
-// 				"children": []
-// 			}
-// 		]
-// 	}
-// }
-
 {
 	"type": "root",
 	"children": [
 		{
-			"type": "sv-element",
+			"type": "svelteElement",
 			"name": "input",
-			"self_closing": true,
-			"attributes": [
+			"selfClosing": true,
+			"properties": [
 				{
-					"type": "directive",
+					"type": "svelteDirective",
 					"name": "use",
 					"specifier": "autofocus",
 					"value": "autofocus",

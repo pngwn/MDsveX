@@ -231,7 +231,7 @@ The `Component` interface extends the `Element` interface but with a different v
 interface Property <: UnistNode {
   type: 'svelteProperty'
   name: string
-  shorthandExpression: boolean
+  shorthand: boolean
   value: [Text | Expression]
   modifiers: [Literal]
 }
@@ -241,7 +241,7 @@ The `Property` node represents an element's properties and reflect HTML, SVG, AR
 
 The `name` field contains the exact name of the attribute or property as it is in the source. kebal-case names or not modified.
 
-The `shorthandExpression` field signifies whether or not shorthand property syntax was used (a bare `{value}`).
+The `shorthand` field signifies whether or not shorthand property syntax was used (a bare `{value}`).
 
 The `value` field is always a list of nodes that implement either the `Text` or `Expression` interfaces. In the case of shorthand property expressions, the `value` field will be a list with one node (an `Expression`) whose value is the same as the attribute name.
 
@@ -272,6 +272,7 @@ Yields:
       type: 'text',
       value: '!'
     }],
+    shorthand: false,
     modifiers: [],
   }],
   selfClosing: true,
@@ -294,7 +295,7 @@ The `name` field reprsents the directive 'type', the part of the attrubute _befo
 
 The `specificer` field describes the local implementation of that directive type. It is the part of the attribute name _after_ the `:` but before the `=` or a whitespace character.
 
-In the case of `shorthandExpression` being `true`, `value` will be a list of one `Expression` node with a value equal to the `specifier` value.
+In the case of `shorthand` being `true`, `value` will be a list of one `Expression` node with a value equal to the `specifier` value.
 
 The following input:
 
@@ -316,6 +317,7 @@ Yields:
       type: 'svelteExpression',
       value: 'x ? y : z'
     }],
+    shorthand: false,
     modifiers: [],
   }, {
     type: 'svelteDirective',
@@ -325,6 +327,7 @@ Yields:
       type: 'svelteExpression',
       value: '(e) => fn(e)'
     }],
+    shorthand: false,
     modifiers: [{
       type: 'svelteModifier',
       value: 'preventDefault'
