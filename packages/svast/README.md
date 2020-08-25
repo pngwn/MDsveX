@@ -471,7 +471,7 @@ interface IfBlock <: Node {
 
 The `IfBlock` node represents a svelte `#if` block.
 
-The `branches` field implements the `IfBranch` interface and specifies the vbariouis branches of the `if` block.
+The `branches` field implements the `IfBranch` interface and specifies the various branches of the `if` block.
 
 ### `AwaitBlock`
 
