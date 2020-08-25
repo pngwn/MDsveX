@@ -423,7 +423,7 @@ The following input:
 ```svelte
 {#custom someExpression}
   Hello
-{custom}
+{/custom}
 ```
 
 Yields:
@@ -432,7 +432,9 @@ Yields:
 {
   type: 'svelteBranchingBlock',
   name: 'custom',
-  path: Parent
+  children: [
+    { type: 'text', value: 'Hello' }
+  ]
 }
 ```
 
@@ -492,7 +494,7 @@ interface Branch <: Parent {
 }
 ```
 
-TRhe `Branch` node describes a branch of a svelte block.
+The `Branch` node describes a branch of a svelte block.
 
 The `expression` fields contains the expression associated with that branch.
 
@@ -531,21 +533,3 @@ The `pending` field represents the first branch of the block representing the pe
 The `fulfilled` field respresents the resolved branch of the block. The value is a single branch.
 
 The `error` field respresents the optional error clause of an `#await` block. It contains a single `Branch`.
-
-| EachBranches | ForBranches | AwaitBranches
-
-```svelte
-{#each expression as name}...{/each}
-{#each expression as name, index}...{/each}
-{#each expression as name (key)}...{/each}
-{#each expression as name, index (key)}...{/each}
-{#each  as name}...{:else}...{/each}
-
-{#if expression}...{/if}
-{#if expression}...{:else if expression}...{/if}
-{#if expression}...{:else}...{/if}
-
-{#await expression}...{:then name}...{:catch name}...{/await}
-{#await expression}...{:then name}...{/await}
-{#await expression then name}...{/await}
-```
