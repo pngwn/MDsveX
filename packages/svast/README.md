@@ -327,8 +327,8 @@ Yields:
     }],
     modifiers: [{
       type: 'svelteModifier',
-      value: 'preventDefault'}
-    ],
+      value: 'preventDefault'
+    }],
   }],
   selfClosing: true,
   children: []
