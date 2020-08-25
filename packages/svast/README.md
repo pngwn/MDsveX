@@ -126,11 +126,11 @@ interface Element <: Parent {
 
 Represents a DOM-element.
 
-The `tagName` field must always be present and represents the element's local name.
+The `tagName` field contains the element's local name.
 
-The `properties` field must always be present, even if empty, and is a list of the element's attributes and directives. This field is a list of nodes that implement the `Property` or `Directive` interfaces.
+The `properties` field is a list of the element's attributes and directives. This field is a list of nodes that implement the `Property` or `Directive` interfaces.
 
-The `selfClosing` field must be present and describes whether or not the source element was self closing or not. This isn't strictly abstract but is helpful in certain cases.
+The `selfClosing` field describes whether or not the source element was self closing or not. This isn't strictly abstract but is helpful in certain cases.
 
 This input:
 
@@ -212,15 +212,15 @@ interface Property <: UnistNode {
 }
 ```
 
-The `Property` node represents an elements properties and reflect HTML, SVG, ARIA, XML, XMLNS, or XLink attributes.
+The `Property` node represents an element's properties and reflect HTML, SVG, ARIA, XML, XMLNS, or XLink attributes.
 
-The `name` field must be present and represents the exact name of the attribute or property as it is in the source. kebal-case names or not modified.
+The `name` field contains the exact name of the attribute or property as it is in the source. kebal-case names or not modified.
 
-The `shorthandExpression` field must be present and signifies whether or not shorthand property syntax was used (a bare `{value}`).
+The `shorthandExpression` field signifies whether or not shorthand property syntax was used (a bare `{value}`).
 
-The `value` field must be present and is always a list of nodes that implement either the `Text` or `Expression` interfaces. In the case of shorthand property expressions, the `value` field will be a list with one node (an `Expression`) whose value is the same as the attribute name.
+The `value` field is always a list of nodes that implement either the `Text` or `Expression` interfaces. In the case of shorthand property expressions, the `value` field will be a list with one node (an `Expression`) whose value is the same as the attribute name.
 
-The `modifiers` field must be present, even if it is empty, and represents any modifiers applied to a property name. In svelte this takes the form of `on:click|once|capture={...}`. This value should be a list of Literal nodes, describing the modifier name.
+The `modifiers` field represents any modifiers applied to a property name. In svelte this takes the form of `on:click|once|capture={...}`. This value should be a list of Literal nodes, describing the modifier name.
 
 This input:
 
@@ -265,13 +265,11 @@ interface Directive <: Property {
 
 The `Directive` node represents a svelte directive `x:y={z}`, it is the same as the `Property` interface with a few small differences.
 
-The `name` field must be present, as with `Property`, but here represnts the directives 'type' the part of the attrubute _before_ the `:`.
+The `name` field reprsents the directive 'type', the part of the attrubute _before_ the `:`.
 
-The `specificer` must be present and is the describers the part of the attribute name _after_ the `:` but before the `=` or a whitespace character. In Svelte, this value specificies the local implementation of that directive type.
+The `specificer` field describes the local implementation of that directive type. It is the part of the attribute name _after_ the `:` but before the `=` or a whitespace character.
 
 In the case of `shorthandExpression` being `true`, `value` will be a list of one `Expression` node with a value equal to the `specifier` value.
-
-Everything else is the same as `Property`.
 
 The following input:
 
@@ -381,9 +379,9 @@ interface VoidBlock <: Node {
 
 The `VoidBlock` node represents a void block. Void blocks do not allow branches.
 
-The `name` field must be present and should be the name of the block.
+The `name` field is be the name of the block.
 
-The `expression` field must be present and should be an `Expression` node containing the expression value for that block.
+The `expression` field is an `Expression` node containing the expression value for that block.
 
 For the following input:
 
@@ -409,14 +407,15 @@ Yields:
 ```
 interface BranchingBlock <: Parent {
   type: 'svelteBranchingBlock'
+  expression: Expression
 }
 ```
 
 The `BrancingBlock` node represents a svelte Block that allows a single branch, a `path`.
 
-Standard blocks other than `each` extend this interface, as the standard blocks all have import, specific semantic information that relates only to them.
+Standard blocks other than `each` do not extend this interface, as the standard blocks all have more complex branching structures.
 
-The `expression` field must be present and should contain the rest of the contents of the unknown branching block. The expression node itself can be empty.
+The `expression` field contains the rest of the contents of the unknown branching block. The expression node itself can be empty.
 
 The following input:
 
@@ -454,26 +453,130 @@ interface EachBlock <: BranchingBlock {
 
 The `EachBlock` node represents a svelte `#each` block.
 
-The `expression` field contains the collection that is being iterated. The value is an `Expression` node.
+The `expression` field is the collection that is being iterated. The value is an `Expression` node.
 
-The `itemName` field contains the identifier referring to a single element of the collection, during the loop. The value is an `Expression` node.
+The `itemName` field is the identifier referring to a single element of the collection during the loop. The value is an `Expression` node.
 
-The `itemIndex` field contains the identifier used to refer to the `index` of the iterated item during the loop, if one exists.
+The `itemIndex` field is the identifier used to refer to the `index` of the iterated item during the loop, if one exists.
 
-The `itemKey` field is optional and contains the value that should be used as a key during the loop, if one exists. The presence of this field signifies that the each block is keyed.
+The `itemKey` field is optional and is the value that should be used as a key for eachitem, if one exists. The presence of this field signifies that the each block is keyed.
+
+The follwing input:
+
+```svelte
+{#each array.filter(v => v.prop) as { some, thing }, index (thing)}
+  <p>{some}</p>
+{/each}
+```
+
+Yields:
+
+```js
+{
+  type: 'svelteEachBlock'
+  name: 'each'
+  itemName: {
+    type: 'svelteExpression',
+    value: '{ some, thing }'
+  },
+  itemIndex: {
+    type: 'svelteExpression',
+    value: 'index'
+  },
+  itemKey: {
+    type: 'svelteExpression',
+    value: 'thing'
+  },
+  children: [{
+    type: 'svelteElement',
+    tagName: 'p',
+    properties: [],
+    selfClosing: false,
+    children: [{
+      type: 'svelteExpression',
+      value: 'some'
+    }]
+  }]
+}
+```
 
 ### `IfBlock`
 
 ```idl
 interface IfBlock <: Node {
   type: 'svelteIfBlock'
+  name: 'if'
   branches: IfBranches
 }
 ```
 
 The `IfBlock` node represents a svelte `#if` block.
 
-The `branches` field implements the `IfBranch` interface and specifies the various branches of the `if` block.
+The `branches` field implements the `IfBranches` interface and specifies the various branches of the `if` block.
+
+The follwing input:
+
+```svelte
+{#if condition}
+  hi
+{:else if condition2}
+  {boo}
+{else}
+  <p>bootoo</p>
+{/if}
+```
+
+Yields:
+
+```js
+{
+  type: 'svelteIfBlock',
+  name: 'if',
+  branches: {
+    if: {
+      type: 'svelteBranch',
+      name: 'if',
+      expression: {
+        type: 'svelteExpression',
+        value: 'condition'
+      },
+      children: [{
+        type: 'text',
+        value: 'condition'
+      }]
+    },
+    elseif: {
+      type: 'svelteBranch',
+      name: 'elseif',
+      expression: {
+        type: 'svelteExpression',
+        value: 'condition2'
+      },
+      children: [{
+        type: 'svelteExpression',
+        value: 'boo'
+      }]
+    },
+    else: {
+      type: 'svelteBranch',
+      name: 'if',
+      expression: {
+        type: 'svelteExpression',
+        value: ''
+      },
+      children: [{
+        type: 'svelteElement',
+        tagName: 'p',
+        properties: [],
+        selfClosing: false,
+        children: [{
+          type: 'text',
+          value: 'bootoo'
+        }]
+    }
+  }
+}
+```
 
 ### `AwaitBlock`
 
@@ -481,6 +584,69 @@ The `branches` field implements the `IfBranch` interface and specifies the vario
 interface IfBlock <: Node {
   type: 'svelteIfBlock'
   branches: AwaitBranches
+}
+```
+
+the `AwaitBlock` node represents a svelte `#await` block.
+
+The `branches` field implements the `AwaitBranch` interface and specifies the various branches of the `await` block.
+
+The follwing input:
+
+```svelte
+{#await promise then value}
+  {value}
+{:catch error}
+  <p>it errored</p>
+{/await}
+```
+
+Yields:
+
+```js
+{
+  type: 'svelteIfBlock',
+  name: 'if',
+  branches: {
+    pending: {
+      type: 'svelteBranch',
+      name: 'pending',
+      expression: {
+        type: 'svelteExpression',
+        value: 'promise'
+      },
+      children: []
+    },
+    fulfilled: {
+      type: 'svelteBranch',
+      name: 'fulfilled',
+      expression: {
+        type: 'svelteExpression',
+        value: 'value'
+      },
+      children: [{
+        type: 'svelteExpression',
+        value: 'value'
+      }]
+    },
+    error: {
+      type: 'svelteBranch',
+      name: 'error',
+      expression: {
+        type: 'svelteExpression',
+        value: 'error'
+      },
+      children: [{
+        type: 'svelteElement',
+        tagName: 'p',
+        properties: [],
+        selfClosing: false,
+        children: [{
+          type: 'text',
+          value: 'It errored'
+        }]
+    }
+  }
 }
 ```
 
@@ -533,3 +699,5 @@ The `pending` field represents the first branch of the block representing the pe
 The `fulfilled` field respresents the resolved branch of the block. The value is a single branch.
 
 The `error` field respresents the optional error clause of an `#await` block. It contains a single `Branch`.
+
+The end.
