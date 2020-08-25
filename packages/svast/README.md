@@ -473,8 +473,8 @@ Yields:
 
 ```js
 {
-  type: 'svelteEachBlock'
-  name: 'each'
+  type: 'svelteEachBlock',
+  name: 'each',
   itemName: {
     type: 'svelteExpression',
     value: '{ some, thing }'
@@ -573,6 +573,7 @@ Yields:
           type: 'text',
           value: 'bootoo'
         }]
+      }
     }
   }
 }
@@ -645,6 +646,7 @@ Yields:
           type: 'text',
           value: 'It errored'
         }]
+      }
     }
   }
 }
