@@ -83,7 +83,6 @@ export interface BranchingBlock extends SvelteParent {
 
 export interface EachBlock extends SvelteParent {
 	type: 'svelteEachBlock';
-	name: 'each';
 	itemName: SvelteExpression;
 	itemIndex?: SvelteExpression;
 	itemKey?: SvelteExpression;
@@ -91,12 +90,11 @@ export interface EachBlock extends SvelteParent {
 
 export interface IfBlock extends Node {
 	type: 'svelteIfBlock';
-	name: 'if';
 	branches: IfBranches;
 }
 
 export interface AwaitBlock extends Node {
-	type: 'svelteIfBlock';
+	type: 'svelteAwaitBlock';
 	branches: AwaitBranches;
 }
 
