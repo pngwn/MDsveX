@@ -19,5 +19,8 @@
 		"@rollup/plugin-sucrase": "^3.1.0",
 		"rollup": "^2.26.5",
 		"rollup-plugin-dts": "^1.4.12"
+	},
+	"dependencies": {
+		"svast": "workspace:^0.0.1"
 	}
 }
