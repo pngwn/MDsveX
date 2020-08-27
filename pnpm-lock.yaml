@@ -11,7 +11,7 @@ importers:
       prettier: 2.0.5
       prettier-eslint: 9.0.2
       ts-node: 8.10.2
-      uvu: 0.0.14
+      uvu: 0.3.3
     specifiers:
       '@types/node': ^14.0.27
       '@typescript-eslint/eslint-plugin': ^3.9.0
@@ -23,7 +23,7 @@ importers:
       prettier: ^2.0.5
       prettier-eslint: ^9.0.0
       ts-node: ^8.10.2
-      uvu: ^0.0.14
+      uvu: ^0.3.3
   packages/mdsvex:
     dependencies:
       '@types/unist': 2.0.3
@@ -5070,7 +5070,7 @@ packages:
     dev: true
     resolution:
       integrity: sha1-RQ1Nyfpw3nMnYvvS1KKJgUGaDM8=
-  /uvu/0.0.14:
+  /uvu/0.3.3:
     dependencies:
       dequal: 1.0.1
       diff: 4.0.2
@@ -5082,7 +5082,7 @@ packages:
       node: '>=8'
     hasBin: true
     resolution:
-      integrity: sha512-TX4T9O6skpv3SZUhL85KKDeY2OMBHAQFhf/n2YGvN9gCGmRr86hhsSuSQyKf16bxXBo4uKS12TxDZHZzs0MoBA==
+      integrity: sha512-5oeS+bkoRM5FGjXMXCZvjLLeUB9P5HXn2LFiTQaItopJFBtXuJ2XxWkWJNe2NgWthxFUOZR+eyhodgiaFqv7wQ==
   /v8-compile-cache/2.1.1:
     dev: true
     resolution:
