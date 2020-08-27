@@ -287,7 +287,7 @@ Yields:
 ```idl
 interface Property <: UnistNode {
   name: string
-  shorthand: 'none' | 'boolean' | 'shorthand'
+  shorthand: 'none' | 'boolean' | 'expression'
   value: [Text | Expression]
   modifiers: [Literal]
 }
@@ -305,7 +305,7 @@ The `Property` node represents an element's properties and reflect HTML, SVG, AR
 
 The `name` field contains the exact name of the attribute or property as it is in the source. kebal-case names or not modified.
 
-The `shorthand` field signifies whether or not shorthand property syntax was used (a bare `{value}`).
+The `shorthand` field signifies whether or not shorthand property syntax was used. There are two type of shorthand, short hand _expressions_ (`{prop}`) and shorthand _booleans_ (`prop`).
 
 The `value` field is always a list of nodes that implement either the `Text` or `Expression` interfaces. In the case of shorthand property expressions, the `value` field will be a list with one node (an `Expression`) whose value is the same as the attribute name.
 
@@ -336,7 +336,7 @@ Yields:
       type: 'text',
       value: '!'
     }],
-    shorthand: false,
+    shorthand: 'none',
     modifiers: [],
   }],
   selfClosing: true,
@@ -381,7 +381,7 @@ Yields:
       type: 'svelteExpression',
       value: 'x ? y : z'
     }],
-    shorthand: false,
+    shorthand: 'none',
     modifiers: [],
   }, {
     type: 'svelteDirective',
@@ -391,7 +391,7 @@ Yields:
       type: 'svelteExpression',
       value: '(e) => fn(e)'
     }],
-    shorthand: false,
+    shorthand: 'none',
     modifiers: [{
       type: 'svelteModifier',
       value: 'preventDefault'
