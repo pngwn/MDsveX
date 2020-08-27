@@ -60,6 +60,7 @@ function is_void_element(tag_name: string): boolean {
 
 export function parseNode(opts: ParserOptions): Result {
 	let index = 0;
+	let quote_type = '';
 
 	const {
 		value,
@@ -219,7 +220,7 @@ export function parseNode(opts: ParserOptions): Result {
 			// DANGER ZONE - something went wrong
 		}
 
-		// we are parsing an property name
+		// we are parsing a property name
 		if (get_state() === 'IN_ATTR_NAME') {
 			let s;
 			// " ", "\n", "/" or ">" => shorthand boolean attr
@@ -256,14 +257,24 @@ export function parseNode(opts: ParserOptions): Result {
 			continue;
 		}
 
+		// att values can be quoted or unquoted
 		if (get_state() === 'IN_ATTR_VALUE') {
-			//
+			// quoted attr
 			if (
 				value.charCodeAt(position.index) === QUOTE ||
 				value.charCodeAt(position.index) === APOSTROPHE
 			) {
-				// quote attr
+				state.pop();
+				state.push('IN_QUOTED_ATTR_VALUE');
+				quote_type = value[position.index];
+				(node as BaseSvelteTag).properties[
+					(node as BaseSvelteTag).properties.length - 1
+				].value.push({ type: 'text', value: '' });
+				chomp();
+				continue;
 			}
+
+			// unquoted
 			state.pop();
 			state.push('IN_UNQUOTED_ATTR_VALUE');
 			(node as BaseSvelteTag).properties[
@@ -275,7 +286,7 @@ export function parseNode(opts: ParserOptions): Result {
 
 		if (get_state() === 'IN_UNQUOTED_ATTR_VALUE') {
 			let s;
-			// " ", "\n", "/" or ">" => shorthand boolean attr
+			// " ", "\n", "/" or ">" => ends the whole thing
 			if (
 				(s = value.charCodeAt(position.index)) === SPACE ||
 				s === LINEFEED ||
@@ -288,6 +299,43 @@ export function parseNode(opts: ParserOptions): Result {
 			const prop = (node as BaseSvelteTag).properties.length - 1;
 			const val = (node as BaseSvelteTag).properties[prop].value.length - 1;
 
+			(node as BaseSvelteTag).properties[prop].value[val].value +=
+				value[position.index];
+			chomp();
+			continue;
+		}
+
+		if (get_state() === 'IN_QUOTED_ATTR_VALUE') {
+			// if we meet our matching quote the attribute has ended
+			if (value[position.index] === quote_type) {
+				//end
+				state.pop();
+				chomp();
+				continue;
+			}
+			const prop = (node as BaseSvelteTag).properties.length - 1;
+			const val = (node as BaseSvelteTag).properties[prop].value.length - 1;
+
+			let s;
+			// " ", "\n" => still in the attribute value but make a new node
+			if ((s = value.charCodeAt(position.index)) === SPACE || s === LINEFEED) {
+				(node as BaseSvelteTag).properties[
+					(node as BaseSvelteTag).properties.length - 1
+				].value.push({ type: 'text', value: '' });
+				chomp();
+				continue;
+			}
+
+			// let s;
+			// " ", "\n", "/" or ">" => shorthand boolean attr
+			if (
+				(s = value.charCodeAt(position.index)) === SLASH ||
+				s === CLOSE_ANGLE_BRACKET
+			) {
+				// this is a parsing error, we can't recover from this.
+			}
+
+			// capture the token otherwise
 			(node as BaseSvelteTag).properties[prop].value[val].value +=
 				value[position.index];
 			chomp();
