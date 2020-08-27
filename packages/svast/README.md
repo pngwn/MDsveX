@@ -287,7 +287,7 @@ Yields:
 ```idl
 interface Property <: UnistNode {
   name: string
-  shorthand: boolean
+  shorthand: 'none' | 'boolean' | 'shorthand'
   value: [Text | Expression]
   modifiers: [Literal]
 }

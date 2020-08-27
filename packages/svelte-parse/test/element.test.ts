@@ -46,7 +46,7 @@ void_els.forEach((el) => {
 	});
 });
 
-element.skip('parses a self closing tag with shorthand attribute', () => {
+element('parses a self closing tag with shorthand attribute', () => {
 	const { parsed } = parseNode({ value: `<input hello />` });
 
 	assert.equal(parsed, <SvelteElement>{
@@ -54,7 +54,15 @@ element.skip('parses a self closing tag with shorthand attribute', () => {
 		tagName: 'input',
 		selfClosing: true,
 		children: [],
-		properties: [{}],
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'hello',
+				value: [],
+				shorthand: 'boolean',
+				modifiers: [],
+			},
+		],
 	});
 });
 

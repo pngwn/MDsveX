@@ -13,6 +13,7 @@ import {
 	State,
 	SLASH,
 	CLOSE_ANGLE_BRACKET,
+	COLON,
 } from './types_and_things';
 import {
 	LINEFEED,
@@ -158,7 +159,7 @@ export function parseNode(opts: ParserOptions): Result {
 					name: '',
 					value: [],
 					modifiers: [],
-					shorthandExpression: false,
+					shorthand: 'none',
 				});
 
 				continue;
@@ -190,6 +191,35 @@ export function parseNode(opts: ParserOptions): Result {
 				done = true;
 				break;
 			}
+		}
+
+		if (get_state() === 'IN_ATTR_NAME') {
+			if (
+				value.charCodeAt(position.index) === SPACE ||
+				value.charCodeAt(position.index) === LINEFEED
+			) {
+				(node as BaseSvelteTag).properties[
+					(node as BaseSvelteTag).properties.length - 1
+				].shorthand = 'boolean';
+				state.pop();
+				chomp();
+				continue;
+				//back to tag body
+			}
+
+			if (value.charCodeAt(position.index) === CLOSE_ANGLE_BRACKET) {
+				// we are done
+			}
+
+			if (value.charCodeAt(position.index) === COLON) {
+				// this is a directive - change state
+			}
+
+			(node as BaseSvelteTag).properties[
+				(node as BaseSvelteTag).properties.length - 1
+			].name += value[position.index];
+			chomp();
+			continue;
 		}
 	}
 

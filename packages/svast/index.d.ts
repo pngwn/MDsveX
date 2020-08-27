@@ -43,7 +43,7 @@ export interface SvelteComponent extends BaseSvelteTag {
 
 export interface BaseProperty extends Node {
 	name: string;
-	shorthandExpression: boolean;
+	shorthand: 'none' | 'boolean' | 'expression';
 	value: (Text | SvelteExpression)[];
 	modifiers: Literal[];
 }
