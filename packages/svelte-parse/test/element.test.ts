@@ -66,4 +66,27 @@ element('parses a self closing tag with shorthand attribute', () => {
 	});
 });
 
+element(
+	'parses a self closing tag with shorthand attribute: no trailing space',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello/>` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [],
+					shorthand: 'boolean',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
 element.run();

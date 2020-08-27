@@ -167,11 +167,17 @@ export function parseNode(opts: ParserOptions): Result {
 
 			if (
 				value.charCodeAt(position.index) === SLASH ||
-				is_void_element((node as SvelteElement).tagName)
+				(value.charCodeAt(position.index) === CLOSE_ANGLE_BRACKET &&
+					is_void_element((node as SvelteElement).tagName))
 			) {
 				state.pop();
 				state.push('IN_CLOSING_SLASH');
 				(node as BaseSvelteTag).selfClosing = true;
+				chomp();
+				continue;
+			}
+
+			if (value.charCodeAt(position.index) === SPACE) {
 				chomp();
 				continue;
 			}
@@ -196,19 +202,24 @@ export function parseNode(opts: ParserOptions): Result {
 		if (get_state() === 'IN_ATTR_NAME') {
 			if (
 				value.charCodeAt(position.index) === SPACE ||
-				value.charCodeAt(position.index) === LINEFEED
+				value.charCodeAt(position.index) === LINEFEED ||
+				value.charCodeAt(position.index) === SLASH
 			) {
 				(node as BaseSvelteTag).properties[
 					(node as BaseSvelteTag).properties.length - 1
 				].shorthand = 'boolean';
 				state.pop();
-				chomp();
+				// chomp();
 				continue;
 				//back to tag body
 			}
 
 			if (value.charCodeAt(position.index) === CLOSE_ANGLE_BRACKET) {
-				// we are done
+				// (node as BaseSvelteTag).properties[
+				// 	(node as BaseSvelteTag).properties.length - 1
+				// ].shorthand = 'boolean';
+				// state.pop();
+				// continue;
 			}
 
 			if (value.charCodeAt(position.index) === COLON) {
