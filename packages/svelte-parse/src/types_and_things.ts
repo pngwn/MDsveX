@@ -14,6 +14,10 @@ export const EQUALS = 61; // "="
 export const CLOSE_ANGLE_BRACKET = 62; // ">"
 export const OPEN_BRACE = 123; // "{"
 export const CLOSE_BRACE = 125; // "}"
+export const UPPERCASE_A = 65; // "A"
+export const UPPERCASE_Z = 90; // "Z"
+export const LOWERCASE_A = 97; // "A"
+export const LOWERCASE_Z = 122; // "Z"
 
 export interface Result {
 	/**
@@ -58,3 +62,14 @@ export interface ParserOptions {
 	 */
 	silent?: boolean;
 }
+
+export type State =
+	| 'IN_START_TAG'
+	| 'IN_TAG_NAME'
+	| 'IN_TAG_BODY'
+	| 'IN_ATTR_NAME'
+	| 'IN_DIRECTIVE_SPECIFIER'
+	| 'IN_ATTR_MODIFIER'
+	| 'IN_ATTR_VALUE'
+	| 'IN_CLOSE_TAG'
+	| 'IN_EXPRESSION';

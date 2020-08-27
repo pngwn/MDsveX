@@ -5,7 +5,8 @@
 	"main": "dist/index.js",
 	"scripts": {
 		"build": "rollup -c",
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"test": "uvu -r ts-node/register test test.ts$",
+		"test:watch": "watchlist src test -- pnpm test"
 	},
 	"keywords": [
 		"svelte",
@@ -18,7 +19,8 @@
 	"devDependencies": {
 		"@rollup/plugin-sucrase": "^3.1.0",
 		"rollup": "^2.26.5",
-		"rollup-plugin-dts": "^1.4.12"
+		"rollup-plugin-dts": "^1.4.12",
+		"watchlist": "^0.2.3"
 	},
 	"dependencies": {
 		"svast": "workspace:^0.0.1"
