@@ -14,6 +14,9 @@ import {
 	SLASH,
 	CLOSE_ANGLE_BRACKET,
 	COLON,
+	EQUALS,
+	QUOTE,
+	APOSTROPHE,
 } from './types_and_things';
 import {
 	LINEFEED,
@@ -238,10 +241,55 @@ export function parseNode(opts: ParserOptions): Result {
 				// this is a directive - change state
 			}
 
+			if (value.charCodeAt(position.index) === EQUALS) {
+				state.pop();
+				state.push('IN_ATTR_VALUE');
+				chomp();
+				continue;
+			}
+
 			// process the token and chomp, everything is good
 			(node as BaseSvelteTag).properties[
 				(node as BaseSvelteTag).properties.length - 1
 			].name += value[position.index];
+			chomp();
+			continue;
+		}
+
+		if (get_state() === 'IN_ATTR_VALUE') {
+			//
+			if (
+				value.charCodeAt(position.index) === QUOTE ||
+				value.charCodeAt(position.index) === APOSTROPHE
+			) {
+				// quote attr
+			}
+			state.pop();
+			state.push('IN_UNQUOTED_ATTR_VALUE');
+			(node as BaseSvelteTag).properties[
+				(node as BaseSvelteTag).properties.length - 1
+			].value.push({ type: 'text', value: '' });
+
+			continue;
+		}
+
+		if (get_state() === 'IN_UNQUOTED_ATTR_VALUE') {
+			let s;
+			// " ", "\n", "/" or ">" => shorthand boolean attr
+			if (
+				(s = value.charCodeAt(position.index)) === SPACE ||
+				s === LINEFEED ||
+				s === SLASH ||
+				s === CLOSE_ANGLE_BRACKET
+			) {
+				state.pop();
+				continue;
+			}
+			const prop = (node as BaseSvelteTag).properties.length - 1;
+			const val = (node as BaseSvelteTag).properties[prop].value.length - 1;
+
+			(node as BaseSvelteTag).properties[prop].value[val].value +=
+				value[position.index];
 			chomp();
 			continue;
 		}
