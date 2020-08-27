@@ -257,6 +257,15 @@ export function parseNode(opts: ParserOptions): Result {
 				continue;
 			}
 
+			if (value.charCodeAt(position.index) === PIPE) {
+				current_modifier = { value: '', type: 'modifier' };
+				(current_prop as Directive).modifiers.push(current_modifier as Literal);
+				state.pop();
+				state.push('IN_ATTR_MODIFIER');
+				chomp();
+				continue;
+			}
+
 			if (value.charCodeAt(position.index) === EQUALS) {
 				state.pop();
 				state.push('IN_ATTR_VALUE');
