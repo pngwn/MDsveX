@@ -369,4 +369,456 @@ element(
 	}
 );
 
+element(
+	'parses a self-closing tag with a double-quoted attribute: no trailing space',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello="value"/>` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a void tag with a double-quoted attribute: trailing space',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello="value" >` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a void tag with a double-quoted attribute: no trailing space',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello="value">` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a self-closing tag with double-quoted attributes: many values, trailing whitespace',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello="value valuetwo" />` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+						{
+							type: 'text',
+							value: 'valuetwo',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a self-closing tag with double-quoted attributes: many values, no trailing whitespace',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello="value valuetwo"/>` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+						{
+							type: 'text',
+							value: 'valuetwo',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a void tag with double-quoted attributes: many values, trailing whitespace',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello="value valuetwo" >` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+						{
+							type: 'text',
+							value: 'valuetwo',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a void tag with double-quoted attributes: many values, no trailing whitespace',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello="value valuetwo">` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+						{
+							type: 'text',
+							value: 'valuetwo',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a self-closing tag with a single-quoted attribute: trailing space',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello='value' />` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a self-closing tag with a single-quoted attribute: no trailing space',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello='value'/>` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a void tag with a single-quoted attribute: trailing space',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello='value' >` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a void tag with a single-quoted attribute: no trailing space',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello='value'>` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a self-closing tag with single-quoted attributes: many values, trailing whitespace',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello='value valuetwo' />` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+						{
+							type: 'text',
+							value: 'valuetwo',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a self-closing tag with single-quoted attributes: many values, no trailing whitespace',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello='value valuetwo'/>` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+						{
+							type: 'text',
+							value: 'valuetwo',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a void tag with single-quoted attributes: many values, trailing whitespace',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello='value valuetwo' >` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+						{
+							type: 'text',
+							value: 'valuetwo',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a void tag with single-quoted attributes: many values, no trailing whitespace',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello='value valuetwo'>` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: 'value',
+						},
+						{
+							type: 'text',
+							value: 'valuetwo',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
 element.run();
