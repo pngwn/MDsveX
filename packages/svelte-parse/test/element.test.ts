@@ -112,4 +112,124 @@ element(
 	}
 );
 
+element(
+	'parses a self-closing tag with multiple shorthand boolean attributes: trailing space',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello goodbye />` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [],
+					shorthand: 'boolean',
+					modifiers: [],
+				},
+				{
+					type: 'svelteProperty',
+					name: 'goodbye',
+					value: [],
+					shorthand: 'boolean',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a self-closing tag with multiple shorthand boolean attributes: no trailing space',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello goodbye/>` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [],
+					shorthand: 'boolean',
+					modifiers: [],
+				},
+				{
+					type: 'svelteProperty',
+					name: 'goodbye',
+					value: [],
+					shorthand: 'boolean',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a void tag with multiple shorthand boolean attributes: no trailing space',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello goodbye>` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [],
+					shorthand: 'boolean',
+					modifiers: [],
+				},
+				{
+					type: 'svelteProperty',
+					name: 'goodbye',
+					value: [],
+					shorthand: 'boolean',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a void tag with multiple shorthand boolean attributes: trailing space',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello goodbye >` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [],
+					shorthand: 'boolean',
+					modifiers: [],
+				},
+				{
+					type: 'svelteProperty',
+					name: 'goodbye',
+					value: [],
+					shorthand: 'boolean',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
 element.run();
