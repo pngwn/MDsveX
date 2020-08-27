@@ -362,10 +362,11 @@ export function parseNode(opts: ParserOptions): Result {
 			}
 
 			if (value.charCodeAt(position.index) === PIPE) {
-				current_modifier = { value: '' };
+				current_modifier = { value: '', type: 'modifier' };
 				(current_prop as Directive).modifiers.push(current_modifier as Literal);
 				state.pop();
 				state.push('IN_ATTR_MODIFIER');
+				chomp();
 				continue;
 			}
 
@@ -387,6 +388,34 @@ export function parseNode(opts: ParserOptions): Result {
 		}
 
 		if (get_state() === 'IN_ATTR_MODIFIER') {
+			if (value.charCodeAt(position.index) === PIPE) {
+				current_modifier = { value: '', type: 'modifier' };
+				(current_prop as Directive).modifiers.push(current_modifier as Literal);
+
+				chomp();
+				continue;
+			}
+
+			if (value.charCodeAt(position.index) === EQUALS) {
+				state.pop();
+				state.push('IN_ATTR_VALUE');
+				chomp();
+				continue;
+			}
+
+			let s;
+			if (
+				(s = value.charCodeAt(position.index)) === SPACE ||
+				s === LINEFEED ||
+				s === SLASH ||
+				s === CLOSE_ANGLE_BRACKET
+			) {
+				state.pop();
+				continue;
+			}
+			(current_modifier as Literal).value += value[position.index];
+			chomp();
+			continue;
 		}
 	}
 
