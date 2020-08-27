@@ -73,12 +73,15 @@ export function parseNode(opts: ParserOptions): Result {
 			position.line++;
 			position.column = 1;
 		} else {
+			// otherwise shift along the column pointer
 			position.column++;
 		}
 
+		// refers to the current parse
 		index++;
 
 		position.offset++;
+		// stay in sync
 		position.index = index;
 	}
 
@@ -97,7 +100,9 @@ export function parseNode(opts: ParserOptions): Result {
 		// console.log(value[position.index], state);
 		if (!value[position.index]) break;
 
+		// right at the start
 		if (!get_state()) {
+			// "<" => tag
 			if (value.charCodeAt(position.index) === OPEN_ANGLE_BRACKET) {
 				state.push('IN_START_TAG');
 				node = <BaseSvelteTag>{
@@ -111,6 +116,7 @@ export function parseNode(opts: ParserOptions): Result {
 				continue;
 			}
 
+			// "{" => expression or block
 			if (value.charCodeAt(position.index) === OPEN_BRACE) {
 				chomp();
 				// expression or svelte block
@@ -119,12 +125,14 @@ export function parseNode(opts: ParserOptions): Result {
 		}
 
 		if (get_state() === 'IN_START_TAG') {
+			// lowercase characters for element names
 			if (is_lower_alpha(value.charCodeAt(position.index))) {
 				(node as BaseSvelteTag).type = 'svelteElement';
 				state.push('IN_TAG_NAME');
 				continue;
 			}
 
+			// uppercase characters for Component names
 			if (is_upper_alpha(value.charCodeAt(position.index))) {
 				(node as BaseSvelteTag).type = 'svelteComponent';
 				state.push('IN_TAG_NAME');
@@ -132,7 +140,9 @@ export function parseNode(opts: ParserOptions): Result {
 			}
 		}
 
+		// we are inside a tags name
 		if (get_state() === 'IN_TAG_NAME') {
+			// space or linefeed put us into the tag body
 			if (
 				value.charCodeAt(position.index) === SPACE ||
 				value.charCodeAt(position.index) === LINEFEED
@@ -148,7 +158,9 @@ export function parseNode(opts: ParserOptions): Result {
 			continue;
 		}
 
+		// we are inside a start tag after the name
 		if (get_state() === 'IN_TAG_BODY') {
+			// letters mean we've hit an attribute
 			if (
 				is_lower_alpha(value.charCodeAt(position.index)) ||
 				is_upper_alpha(value.charCodeAt(position.index))
@@ -165,6 +177,7 @@ export function parseNode(opts: ParserOptions): Result {
 				continue;
 			}
 
+			// "/" or  ">" (for void tags) put us in a terminal state
 			if (
 				value.charCodeAt(position.index) === SLASH ||
 				(value.charCodeAt(position.index) === CLOSE_ANGLE_BRACKET &&
@@ -183,7 +196,9 @@ export function parseNode(opts: ParserOptions): Result {
 			}
 		}
 
+		// we are expecting the tag to close completely here
 		if (get_state() === 'IN_CLOSING_SLASH') {
+			// ignore ws
 			if (
 				value.charCodeAt(position.index) === SPACE ||
 				value.charCodeAt(position.index) === LINEFEED
@@ -191,41 +206,39 @@ export function parseNode(opts: ParserOptions): Result {
 				chomp();
 				continue;
 			}
-
+			// we closed successfully, end the parse
 			if (value.charCodeAt(position.index) === CLOSE_ANGLE_BRACKET) {
 				chomp();
 				done = true;
 				break;
 			}
+
+			// DANGER ZONE - something went wrong
 		}
 
+		// we are parsing an property name
 		if (get_state() === 'IN_ATTR_NAME') {
+			let s;
+			// " ", "\n", "/" or ">" => shorthand boolean attr
 			if (
-				value.charCodeAt(position.index) === SPACE ||
-				value.charCodeAt(position.index) === LINEFEED ||
-				value.charCodeAt(position.index) === SLASH
+				(s = value.charCodeAt(position.index)) === SPACE ||
+				s === LINEFEED ||
+				s === SLASH ||
+				s === CLOSE_ANGLE_BRACKET
 			) {
 				(node as BaseSvelteTag).properties[
 					(node as BaseSvelteTag).properties.length - 1
 				].shorthand = 'boolean';
 				state.pop();
-				// chomp();
 				continue;
-				//back to tag body
 			}
 
-			if (value.charCodeAt(position.index) === CLOSE_ANGLE_BRACKET) {
-				// (node as BaseSvelteTag).properties[
-				// 	(node as BaseSvelteTag).properties.length - 1
-				// ].shorthand = 'boolean';
-				// state.pop();
-				// continue;
-			}
-
+			// ":" => directive
 			if (value.charCodeAt(position.index) === COLON) {
 				// this is a directive - change state
 			}
 
+			// process the token and chomp, everything is good
 			(node as BaseSvelteTag).properties[
 				(node as BaseSvelteTag).properties.length - 1
 			].name += value[position.index];

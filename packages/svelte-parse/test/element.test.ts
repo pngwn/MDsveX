@@ -46,7 +46,7 @@ void_els.forEach((el) => {
 	});
 });
 
-element('parses a self closing tag with shorthand attribute', () => {
+element('parses a self closing tag with shorthand boolean attribute', () => {
 	const { parsed } = parseNode({ value: `<input hello />` });
 
 	assert.equal(parsed, <SvelteElement>{
@@ -67,9 +67,32 @@ element('parses a self closing tag with shorthand attribute', () => {
 });
 
 element(
-	'parses a self closing tag with shorthand attribute: no trailing space',
+	'parses a self closing tag with shorthand boolean attribute: no trailing space',
 	() => {
 		const { parsed } = parseNode({ value: `<input hello/>` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [],
+					shorthand: 'boolean',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a void tag with shorthand boolean attribute: no trailing space',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello>` });
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
