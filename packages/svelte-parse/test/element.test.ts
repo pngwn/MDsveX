@@ -997,4 +997,80 @@ element('parses a tag with a directive an a directive value: unquoted', () => {
 	});
 });
 
+element('parses a tag with an attribute with modifiers', () => {
+	const { parsed } = parseNode({ value: `<input hello:world|modifierval />` });
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		selfClosing: true,
+		children: [],
+		properties: [
+			{
+				type: 'svelteDirective',
+				name: 'hello',
+				specifier: 'world',
+				value: [],
+				shorthand: 'none',
+				modifiers: [{ type: 'modifier', value: 'modifierval' }],
+			},
+		],
+	});
+});
+
+element('parses a tag with an attribute with multiple modifiers', () => {
+	const { parsed } = parseNode({
+		value: `<input hello:world|modifierval|modifierval2 />`,
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		selfClosing: true,
+		children: [],
+		properties: [
+			{
+				type: 'svelteDirective',
+				name: 'hello',
+				specifier: 'world',
+				value: [],
+				shorthand: 'none',
+				modifiers: [
+					{ type: 'modifier', value: 'modifierval' },
+					{ type: 'modifier', value: 'modifierval2' },
+				],
+			},
+		],
+	});
+});
+
+element(
+	'parses a tag with an attribute with multiple modifiers and a value',
+	() => {
+		const { parsed } = parseNode({
+			value: `<input hello:world|modifierval|modifierval2=someval />`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteDirective',
+					name: 'hello',
+					specifier: 'world',
+					value: [{ type: 'text', value: 'someval' }],
+					shorthand: 'none',
+					modifiers: [
+						{ type: 'modifier', value: 'modifierval' },
+						{ type: 'modifier', value: 'modifierval2' },
+					],
+				},
+			],
+		});
+	}
+);
+
 element.run();
