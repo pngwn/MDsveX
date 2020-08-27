@@ -1,6 +1,12 @@
-import { Point, Node, BaseSvelteTag, SvelteTag } from 'svast';
+import { Point, Node, BaseSvelteTag, SvelteTag, Property } from 'svast';
 
-import type { ParserOptions, Result, State } from './types_and_things';
+import {
+	ParserOptions,
+	Result,
+	State,
+	SLASH,
+	CLOSE_ANGLE_BRACKET,
+} from './types_and_things';
 import {
 	LINEFEED,
 	OPEN_ANGLE_BRACKET,
@@ -33,7 +39,7 @@ function is_upper_alpha(code: number) {
 }
 
 function is_lower_alpha(code: number) {
-	return is_in_range(code, LOWERCASE_Z, LOWERCASE_Z);
+	return is_in_range(code, LOWERCASE_A, LOWERCASE_Z);
 }
 
 export function parseNode(opts: ParserOptions): Result {
@@ -65,7 +71,9 @@ export function parseNode(opts: ParserOptions): Result {
 
 	let done;
 	let error;
-	let node = {};
+	let node: Node = {
+		type: '',
+	};
 	const state: State[] = [];
 
 	function get_state() {
@@ -73,11 +81,11 @@ export function parseNode(opts: ParserOptions): Result {
 	}
 
 	while (!done && !error) {
+		console.log(value[position.index], state);
 		if (!value[position.index]) break;
 
 		if (!get_state()) {
 			if (value.charCodeAt(position.index) === OPEN_ANGLE_BRACKET) {
-				chomp();
 				state.push('IN_START_TAG');
 				node = <BaseSvelteTag>{
 					type: '',
@@ -86,6 +94,7 @@ export function parseNode(opts: ParserOptions): Result {
 					selfClosing: false,
 					children: [],
 				};
+				chomp();
 				continue;
 			}
 
@@ -123,6 +132,7 @@ export function parseNode(opts: ParserOptions): Result {
 
 			(node as SvelteTag).tagName += value[position.index];
 			chomp();
+			continue;
 		}
 
 		if (get_state() === 'IN_TAG_BODY') {
@@ -130,9 +140,43 @@ export function parseNode(opts: ParserOptions): Result {
 				is_lower_alpha(value.charCodeAt(position.index)) ||
 				is_upper_alpha(value.charCodeAt(position.index))
 			) {
-				(node as BaseSvelteTag).type = 'svelteElement';
-				state.push('IN_TAG_NAME');
+				state.push('IN_ATTR_NAME');
+				(node as BaseSvelteTag).properties.push(<Property>{
+					type: 'svelteProperty',
+					name: '',
+					value: [],
+					modifiers: [],
+					shorthandExpression: false,
+				});
+
 				continue;
+			}
+
+			if (
+				value.charCodeAt(position.index) === SLASH ||
+				is_void_element(node.tagName)
+			) {
+				state.pop();
+				state.push('IN_CLOSING_SLASH');
+				(node as BaseSvelteTag).selfClosing = true;
+				chomp();
+				continue;
+			}
+		}
+
+		if (get_state() === 'IN_CLOSING_SLASH') {
+			if (
+				value.charCodeAt(position.index) === SPACE ||
+				value.charCodeAt(position.index) === LINEFEED
+			) {
+				chomp();
+				continue;
+			}
+
+			if (value.charCodeAt(position.index) === CLOSE_ANGLE_BRACKET) {
+				chomp();
+				done = true;
+				break;
 			}
 		}
 	}
@@ -140,7 +184,7 @@ export function parseNode(opts: ParserOptions): Result {
 	return {
 		chomped: 'asd',
 		unchomped: 'asd',
-		parsed: { type: 'hi', children: [] },
+		parsed: node,
 		position: currentPosition,
 	};
 }

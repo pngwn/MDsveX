@@ -10,11 +10,10 @@ element('parses a simple tag', () => {
 
 	assert.equal(parsed, {
 		type: 'svelteElement',
-		name: 'h1',
-		selfClosing: false,
+		tagName: 'input',
+		selfClosing: true,
 		children: [],
 		properties: [],
-		position: {},
 	});
 });
 
