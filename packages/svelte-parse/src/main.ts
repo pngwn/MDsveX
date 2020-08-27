@@ -1,4 +1,11 @@
-import { Point, Node, BaseSvelteTag, SvelteTag, Property } from 'svast';
+import {
+	Point,
+	Node,
+	BaseSvelteTag,
+	SvelteTag,
+	Property,
+	SvelteElement,
+} from 'svast';
 
 import {
 	ParserOptions,
@@ -17,6 +24,7 @@ import {
 	LOWERCASE_Z,
 	SPACE,
 } from './types_and_things';
+import { void_els } from './void_els';
 
 function default_eat(value: string) {
 	return function apply(node: Node): Node {
@@ -42,6 +50,10 @@ function is_lower_alpha(code: number) {
 	return is_in_range(code, LOWERCASE_A, LOWERCASE_Z);
 }
 
+function is_void_element(tag_name: string): boolean {
+	return void_els.includes(tag_name);
+}
+
 export function parseNode(opts: ParserOptions): Result {
 	let index = 0;
 
@@ -55,7 +67,7 @@ export function parseNode(opts: ParserOptions): Result {
 	const position = Object.assign(currentPosition, { index, offset: 0 });
 
 	function chomp() {
-		// newline means newline
+		// newline means new line
 		if (value.charCodeAt(index) === LINEFEED) {
 			position.line++;
 			position.column = 1;
@@ -81,7 +93,7 @@ export function parseNode(opts: ParserOptions): Result {
 	}
 
 	while (!done && !error) {
-		console.log(value[position.index], state);
+		// console.log(value[position.index], state);
 		if (!value[position.index]) break;
 
 		if (!get_state()) {
@@ -154,7 +166,7 @@ export function parseNode(opts: ParserOptions): Result {
 
 			if (
 				value.charCodeAt(position.index) === SLASH ||
-				is_void_element(node.tagName)
+				is_void_element((node as SvelteElement).tagName)
 			) {
 				state.pop();
 				state.push('IN_CLOSING_SLASH');
