@@ -5,6 +5,9 @@ import {
 	SvelteTag,
 	Property,
 	SvelteElement,
+	Directive,
+	Text,
+	Literal,
 } from 'svast';
 
 import {
@@ -18,6 +21,7 @@ import {
 	QUOTE,
 	APOSTROPHE,
 } from './types_and_things';
+
 import {
 	LINEFEED,
 	OPEN_ANGLE_BRACKET,
@@ -27,7 +31,9 @@ import {
 	LOWERCASE_A,
 	LOWERCASE_Z,
 	SPACE,
+	PIPE,
 } from './types_and_things';
+
 import { void_els } from './void_els';
 
 function default_eat(value: string) {
@@ -61,6 +67,9 @@ function is_void_element(tag_name: string): boolean {
 export function parseNode(opts: ParserOptions): Result {
 	let index = 0;
 	let quote_type = '';
+	let current_prop: unknown;
+	let current_prop_value;
+	let current_modifier;
 
 	const {
 		value,
@@ -170,13 +179,15 @@ export function parseNode(opts: ParserOptions): Result {
 				is_upper_alpha(value.charCodeAt(position.index))
 			) {
 				state.push('IN_ATTR_NAME');
-				(node as BaseSvelteTag).properties.push(<Property>{
+				current_prop = <Property>{
 					type: 'svelteProperty',
 					name: '',
 					value: [],
 					modifiers: [],
 					shorthand: 'none',
-				});
+				};
+
+				(node as BaseSvelteTag).properties.push(current_prop as Property);
 
 				continue;
 			}
@@ -230,16 +241,20 @@ export function parseNode(opts: ParserOptions): Result {
 				s === SLASH ||
 				s === CLOSE_ANGLE_BRACKET
 			) {
-				(node as BaseSvelteTag).properties[
-					(node as BaseSvelteTag).properties.length - 1
-				].shorthand = 'boolean';
+				(current_prop as Property).shorthand = 'boolean';
 				state.pop();
 				continue;
 			}
 
 			// ":" => directive
 			if (value.charCodeAt(position.index) === COLON) {
-				// this is a directive - change state
+				//@ts-ignore
+				(current_prop as Directive).type = 'svelteDirective';
+				(current_prop as Directive).specifier = '';
+				state.pop();
+				state.push('IN_DIRECTIVE_SPECIFIER');
+				chomp();
+				continue;
 			}
 
 			if (value.charCodeAt(position.index) === EQUALS) {
@@ -267,9 +282,10 @@ export function parseNode(opts: ParserOptions): Result {
 				state.pop();
 				state.push('IN_QUOTED_ATTR_VALUE');
 				quote_type = value[position.index];
-				(node as BaseSvelteTag).properties[
-					(node as BaseSvelteTag).properties.length - 1
-				].value.push({ type: 'text', value: '' });
+
+				current_prop_value = { type: 'text', value: '' };
+				(current_prop as Property).value.push(current_prop_value as Text);
+
 				chomp();
 				continue;
 			}
@@ -277,9 +293,9 @@ export function parseNode(opts: ParserOptions): Result {
 			// unquoted
 			state.pop();
 			state.push('IN_UNQUOTED_ATTR_VALUE');
-			(node as BaseSvelteTag).properties[
-				(node as BaseSvelteTag).properties.length - 1
-			].value.push({ type: 'text', value: '' });
+
+			current_prop_value = { type: 'text', value: '' };
+			(current_prop as Property).value.push(current_prop_value as Text);
 
 			continue;
 		}
@@ -296,11 +312,8 @@ export function parseNode(opts: ParserOptions): Result {
 				state.pop();
 				continue;
 			}
-			const prop = (node as BaseSvelteTag).properties.length - 1;
-			const val = (node as BaseSvelteTag).properties[prop].value.length - 1;
 
-			(node as BaseSvelteTag).properties[prop].value[val].value +=
-				value[position.index];
+			(current_prop_value as Text).value += value[position.index];
 			chomp();
 			continue;
 		}
@@ -313,15 +326,13 @@ export function parseNode(opts: ParserOptions): Result {
 				chomp();
 				continue;
 			}
-			const prop = (node as BaseSvelteTag).properties.length - 1;
-			const val = (node as BaseSvelteTag).properties[prop].value.length - 1;
 
 			let s;
 			// " ", "\n" => still in the attribute value but make a new node
 			if ((s = value.charCodeAt(position.index)) === SPACE || s === LINEFEED) {
-				(node as BaseSvelteTag).properties[
-					(node as BaseSvelteTag).properties.length - 1
-				].value.push({ type: 'text', value: '' });
+				current_prop_value = { type: 'text', value: '' };
+				(current_prop as Property).value.push(current_prop_value as Text);
+
 				chomp();
 				continue;
 			}
@@ -336,10 +347,46 @@ export function parseNode(opts: ParserOptions): Result {
 			}
 
 			// capture the token otherwise
-			(node as BaseSvelteTag).properties[prop].value[val].value +=
-				value[position.index];
+			(current_prop_value as Text).value += value[position.index];
+
 			chomp();
 			continue;
+		}
+
+		if (get_state() === 'IN_DIRECTIVE_SPECIFIER') {
+			if (value.charCodeAt(position.index) === EQUALS) {
+				state.pop();
+				state.push('IN_ATTR_VALUE');
+				chomp();
+				continue;
+			}
+
+			if (value.charCodeAt(position.index) === PIPE) {
+				current_modifier = { value: '' };
+				(current_prop as Directive).modifiers.push(current_modifier as Literal);
+				state.pop();
+				state.push('IN_ATTR_MODIFIER');
+				continue;
+			}
+
+			let s;
+			// " ", "\n", "/" or ">" => ends the whole thing
+			if (
+				(s = value.charCodeAt(position.index)) === SPACE ||
+				s === LINEFEED ||
+				s === SLASH ||
+				s === CLOSE_ANGLE_BRACKET
+			) {
+				state.pop();
+				continue;
+			}
+
+			(current_prop as Directive).specifier += value[position.index];
+			chomp();
+			continue;
+		}
+
+		if (get_state() === 'IN_ATTR_MODIFIER') {
 		}
 	}
 

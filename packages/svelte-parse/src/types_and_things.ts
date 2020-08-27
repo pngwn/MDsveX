@@ -18,6 +18,7 @@ export const UPPERCASE_A = 65; // "A"
 export const UPPERCASE_Z = 90; // "Z"
 export const LOWERCASE_A = 97; // "A"
 export const LOWERCASE_Z = 122; // "Z"
+export const PIPE = 124; // "|"
 
 export interface Result {
 	/**
