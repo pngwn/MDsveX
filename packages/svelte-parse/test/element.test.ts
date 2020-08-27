@@ -821,4 +821,180 @@ element(
 	}
 );
 
+element('parses a void tag with a directive', () => {
+	const { parsed } = parseNode({ value: `<input hello:world >` });
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		selfClosing: true,
+		children: [],
+		properties: [
+			{
+				type: 'svelteDirective',
+				name: 'hello',
+				specifier: 'world',
+				value: [],
+				shorthand: 'none',
+				modifiers: [],
+			},
+		],
+	});
+});
+
+element('parses a self-closing tag with a directive', () => {
+	const { parsed } = parseNode({ value: `<input hello:world />` });
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		selfClosing: true,
+		children: [],
+		properties: [
+			{
+				type: 'svelteDirective',
+				name: 'hello',
+				specifier: 'world',
+				value: [],
+				shorthand: 'none',
+				modifiers: [],
+			},
+		],
+	});
+});
+
+element('parses a self-closing tag with two directives', () => {
+	const { parsed } = parseNode({
+		value: `<input hello:world goodbye:friends />`,
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		selfClosing: true,
+		children: [],
+		properties: [
+			{
+				type: 'svelteDirective',
+				name: 'hello',
+				specifier: 'world',
+				value: [],
+				shorthand: 'none',
+				modifiers: [],
+			},
+			{
+				type: 'svelteDirective',
+				name: 'goodbye',
+				specifier: 'friends',
+				value: [],
+				shorthand: 'none',
+				modifiers: [],
+			},
+		],
+	});
+});
+
+element(
+	'parses a tag with a directive an a directive value: double-quoted',
+	() => {
+		const { parsed } = parseNode({ value: `<input hello:world="cheese" />` });
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteDirective',
+					name: 'hello',
+					specifier: 'world',
+					value: [{ type: 'text', value: 'cheese' }],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a tag with a directive an a directive value: souble-quoted, two values',
+	() => {
+		const { parsed } = parseNode({
+			value: `<input hello:world="cheese strings" />`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteDirective',
+					name: 'hello',
+					specifier: 'world',
+					value: [
+						{ type: 'text', value: 'cheese' },
+						{ type: 'text', value: 'strings' },
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a tag with a directive an a directive value: single-quoted, two values',
+	() => {
+		const { parsed } = parseNode({
+			value: `<input hello:world='cheese strings' />`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteDirective',
+					name: 'hello',
+					specifier: 'world',
+					value: [
+						{ type: 'text', value: 'cheese' },
+						{ type: 'text', value: 'strings' },
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element('parses a tag with a directive an a directive value: unquoted', () => {
+	const { parsed } = parseNode({ value: `<input hello:world="cheese" />` });
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		selfClosing: true,
+		children: [],
+		properties: [
+			{
+				type: 'svelteDirective',
+				name: 'hello',
+				specifier: 'world',
+				value: [{ type: 'text', value: 'cheese' }],
+				shorthand: 'none',
+				modifiers: [],
+			},
+		],
+	});
+});
+
 element.run();
