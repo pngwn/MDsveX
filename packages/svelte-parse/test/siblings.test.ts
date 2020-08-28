@@ -1,9 +1,9 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
-import { SvelteElement, SvelteComponent } from 'svast';
+import { SvelteElement, SvelteComponent, Root } from 'svast';
 
-import { parseNode } from '../src/main';
+import { parseNode, parse } from '../src/main';
 import { Result } from '../src/types_and_things';
 
 const siblings = suite<{ parseNode_1: Result }>('parse-element');
@@ -87,6 +87,56 @@ siblings('parseNode should continue from the position initially passed', () => {
 		column: 114,
 		offset: 113,
 		index: 59,
+	});
+});
+
+siblings('parse should parse sibling nodes', () => {
+	const contents = parse(
+		'<input hello:world|modifierval|modifierval2=someval /><input2 hello2:world2|modifierval2|modifierval3=someval2 />'
+	);
+
+	assert.equal(contents, <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'input',
+				selfClosing: true,
+				children: [],
+				properties: [
+					{
+						type: 'svelteDirective',
+						name: 'hello',
+						specifier: 'world',
+						value: [{ type: 'text', value: 'someval' }],
+						shorthand: 'none',
+						modifiers: [
+							{ type: 'modifier', value: 'modifierval' },
+							{ type: 'modifier', value: 'modifierval2' },
+						],
+					},
+				],
+			},
+			{
+				type: 'svelteElement',
+				tagName: 'input2',
+				selfClosing: true,
+				children: [],
+				properties: [
+					{
+						type: 'svelteDirective',
+						name: 'hello2',
+						specifier: 'world2',
+						value: [{ type: 'text', value: 'someval2' }],
+						shorthand: 'none',
+						modifiers: [
+							{ type: 'modifier', value: 'modifierval2' },
+							{ type: 'modifier', value: 'modifierval3' },
+						],
+					},
+				],
+			},
+		],
 	});
 });
 

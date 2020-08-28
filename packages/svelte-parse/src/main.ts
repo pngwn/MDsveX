@@ -8,6 +8,7 @@ import {
 	Directive,
 	Text,
 	Literal,
+	Root,
 } from 'svast';
 
 import {
@@ -432,11 +433,39 @@ export function parseNode(opts: ParserOptions): Result {
 			continue;
 		}
 	}
-
+	console.log(`
+VALUE: ${value}
+`);
 	return {
 		chomped: value.slice(0, index),
 		unchomped: value.slice(index),
 		parsed: node,
 		position: currentPosition,
 	};
+}
+
+export function parse(source: string): Root {
+	const root = <Root>{
+		type: 'root',
+		children: [],
+	};
+
+	// let done = false;
+
+	let unchomped = source;
+	let position = { column: 1, line: 1 };
+	let parsed;
+
+	for (;;) {
+		({ position, unchomped, parsed } = parseNode({
+			value: unchomped,
+			currentPosition: position,
+		}));
+
+		if (!parsed) break;
+		root.children.push(parsed);
+		if (unchomped.trim().length === 0) break;
+	}
+
+	return root;
 }
