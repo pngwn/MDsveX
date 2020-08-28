@@ -10,6 +10,7 @@ const siblings = suite<{ parseNode_1: Result }>('parse-element');
 
 siblings.before((ctx) => {
 	ctx.parseNode_1 = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
 		value:
 			'<input hello:world|modifierval|modifierval2=someval /><input2 hello2:world2|modifierval2|modifierval3=someval2 />',
 	});
@@ -74,6 +75,7 @@ siblings(
 
 siblings('parseNode should continue from the position initially passed', () => {
 	const { position } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
 		value: '<input2 hello2:world2|modifierval2|modifierval3=someval2 />',
 		currentPosition: {
 			line: 1,
@@ -91,9 +93,11 @@ siblings('parseNode should continue from the position initially passed', () => {
 });
 
 siblings('parse should parse sibling nodes', () => {
-	const contents = parse(
-		'<input hello:world|modifierval|modifierval2=someval /><input2 hello2:world2|modifierval2|modifierval3=someval2 />'
-	);
+	const contents = parse({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value:
+			'<input hello:world|modifierval|modifierval2=someval /><input2 hello2:world2|modifierval2|modifierval3=someval2 />',
+	});
 
 	assert.equal(contents, <Root>{
 		type: 'root',
@@ -138,6 +142,15 @@ siblings('parse should parse sibling nodes', () => {
 			},
 		],
 	});
+});
+
+siblings('parse should parse sibling nodes', () => {
+	const contents = parse({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: '<div><input /></div>',
+	});
+
+	assert.equal(contents, {});
 });
 
 siblings.run();
