@@ -73,12 +73,16 @@ export function parseNode(opts: ParserOptions): Result {
 
 	const {
 		value,
-		currentPosition = pos,
+		currentPosition = {
+			line: 1,
+			column: 1,
+			offset: 0,
+		},
 		block = true,
 		childParser = parseNode,
 	} = opts;
 
-	const position = Object.assign(currentPosition, { index, offset: 0 });
+	const position = Object.assign(currentPosition, { index });
 
 	function chomp() {
 		// newline means new line
@@ -93,6 +97,7 @@ export function parseNode(opts: ParserOptions): Result {
 		// refers to the current parse
 		index++;
 
+		//@ts-ignore
 		position.offset++;
 		// stay in sync
 		position.index = index;
@@ -110,13 +115,13 @@ export function parseNode(opts: ParserOptions): Result {
 	}
 
 	while (!done && !error) {
-		// console.log(value[position.index], state);
-		if (!value[position.index]) break;
+		// console.log(value[index], state);
+		if (!value[index]) break;
 
 		// right at the start
 		if (!get_state()) {
 			// "<" => tag
-			if (value.charCodeAt(position.index) === OPEN_ANGLE_BRACKET) {
+			if (value.charCodeAt(index) === OPEN_ANGLE_BRACKET) {
 				state.push('IN_START_TAG');
 				node = <BaseSvelteTag>{
 					type: '',
@@ -130,7 +135,7 @@ export function parseNode(opts: ParserOptions): Result {
 			}
 
 			// "{" => expression or block
-			if (value.charCodeAt(position.index) === OPEN_BRACE) {
+			if (value.charCodeAt(index) === OPEN_BRACE) {
 				chomp();
 				// expression or svelte block
 				// state.push('IN_EXPRESSION');
@@ -139,14 +144,14 @@ export function parseNode(opts: ParserOptions): Result {
 
 		if (get_state() === 'IN_START_TAG') {
 			// lowercase characters for element names
-			if (is_lower_alpha(value.charCodeAt(position.index))) {
+			if (is_lower_alpha(value.charCodeAt(index))) {
 				(node as BaseSvelteTag).type = 'svelteElement';
 				state.push('IN_TAG_NAME');
 				continue;
 			}
 
 			// uppercase characters for Component names
-			if (is_upper_alpha(value.charCodeAt(position.index))) {
+			if (is_upper_alpha(value.charCodeAt(index))) {
 				(node as BaseSvelteTag).type = 'svelteComponent';
 				state.push('IN_TAG_NAME');
 				continue;
@@ -157,8 +162,8 @@ export function parseNode(opts: ParserOptions): Result {
 		if (get_state() === 'IN_TAG_NAME') {
 			// space or linefeed put us into the tag body
 			if (
-				value.charCodeAt(position.index) === SPACE ||
-				value.charCodeAt(position.index) === LINEFEED
+				value.charCodeAt(index) === SPACE ||
+				value.charCodeAt(index) === LINEFEED
 			) {
 				state.pop();
 				state.push('IN_TAG_BODY');
@@ -166,7 +171,7 @@ export function parseNode(opts: ParserOptions): Result {
 				continue;
 			}
 
-			(node as SvelteTag).tagName += value[position.index];
+			(node as SvelteTag).tagName += value[index];
 			chomp();
 			continue;
 		}
@@ -175,8 +180,8 @@ export function parseNode(opts: ParserOptions): Result {
 		if (get_state() === 'IN_TAG_BODY') {
 			// letters mean we've hit an attribute
 			if (
-				is_lower_alpha(value.charCodeAt(position.index)) ||
-				is_upper_alpha(value.charCodeAt(position.index))
+				is_lower_alpha(value.charCodeAt(index)) ||
+				is_upper_alpha(value.charCodeAt(index))
 			) {
 				state.push('IN_ATTR_NAME');
 				current_prop = <Property>{
@@ -194,8 +199,8 @@ export function parseNode(opts: ParserOptions): Result {
 
 			// "/" or  ">" (for void tags) put us in a terminal state
 			if (
-				value.charCodeAt(position.index) === SLASH ||
-				(value.charCodeAt(position.index) === CLOSE_ANGLE_BRACKET &&
+				value.charCodeAt(index) === SLASH ||
+				(value.charCodeAt(index) === CLOSE_ANGLE_BRACKET &&
 					is_void_element((node as SvelteElement).tagName))
 			) {
 				state.pop();
@@ -205,7 +210,7 @@ export function parseNode(opts: ParserOptions): Result {
 				continue;
 			}
 
-			if (value.charCodeAt(position.index) === SPACE) {
+			if (value.charCodeAt(index) === SPACE) {
 				chomp();
 				continue;
 			}
@@ -215,14 +220,14 @@ export function parseNode(opts: ParserOptions): Result {
 		if (get_state() === 'IN_CLOSING_SLASH') {
 			// ignore ws
 			if (
-				value.charCodeAt(position.index) === SPACE ||
-				value.charCodeAt(position.index) === LINEFEED
+				value.charCodeAt(index) === SPACE ||
+				value.charCodeAt(index) === LINEFEED
 			) {
 				chomp();
 				continue;
 			}
 			// we closed successfully, end the parse
-			if (value.charCodeAt(position.index) === CLOSE_ANGLE_BRACKET) {
+			if (value.charCodeAt(index) === CLOSE_ANGLE_BRACKET) {
 				chomp();
 				done = true;
 				break;
@@ -236,7 +241,7 @@ export function parseNode(opts: ParserOptions): Result {
 			let s;
 			// " ", "\n", "/" or ">" => shorthand boolean attr
 			if (
-				(s = value.charCodeAt(position.index)) === SPACE ||
+				(s = value.charCodeAt(index)) === SPACE ||
 				s === LINEFEED ||
 				s === SLASH ||
 				s === CLOSE_ANGLE_BRACKET
@@ -247,7 +252,7 @@ export function parseNode(opts: ParserOptions): Result {
 			}
 
 			// ":" => directive
-			if (value.charCodeAt(position.index) === COLON) {
+			if (value.charCodeAt(index) === COLON) {
 				//@ts-ignore
 				(current_prop as Directive).type = 'svelteDirective';
 				(current_prop as Directive).specifier = '';
@@ -257,7 +262,7 @@ export function parseNode(opts: ParserOptions): Result {
 				continue;
 			}
 
-			if (value.charCodeAt(position.index) === PIPE) {
+			if (value.charCodeAt(index) === PIPE) {
 				current_modifier = { value: '', type: 'modifier' };
 				(current_prop as Directive).modifiers.push(current_modifier as Literal);
 				state.pop();
@@ -266,7 +271,7 @@ export function parseNode(opts: ParserOptions): Result {
 				continue;
 			}
 
-			if (value.charCodeAt(position.index) === EQUALS) {
+			if (value.charCodeAt(index) === EQUALS) {
 				state.pop();
 				state.push('IN_ATTR_VALUE');
 				chomp();
@@ -276,7 +281,7 @@ export function parseNode(opts: ParserOptions): Result {
 			// process the token and chomp, everything is good
 			(node as BaseSvelteTag).properties[
 				(node as BaseSvelteTag).properties.length - 1
-			].name += value[position.index];
+			].name += value[index];
 			chomp();
 			continue;
 		}
@@ -285,12 +290,12 @@ export function parseNode(opts: ParserOptions): Result {
 		if (get_state() === 'IN_ATTR_VALUE') {
 			// quoted attr
 			if (
-				value.charCodeAt(position.index) === QUOTE ||
-				value.charCodeAt(position.index) === APOSTROPHE
+				value.charCodeAt(index) === QUOTE ||
+				value.charCodeAt(index) === APOSTROPHE
 			) {
 				state.pop();
 				state.push('IN_QUOTED_ATTR_VALUE');
-				quote_type = value[position.index];
+				quote_type = value[index];
 
 				current_prop_value = { type: 'text', value: '' };
 				(current_prop as Property).value.push(current_prop_value as Text);
@@ -313,7 +318,7 @@ export function parseNode(opts: ParserOptions): Result {
 			let s;
 			// " ", "\n", "/" or ">" => ends the whole thing
 			if (
-				(s = value.charCodeAt(position.index)) === SPACE ||
+				(s = value.charCodeAt(index)) === SPACE ||
 				s === LINEFEED ||
 				s === SLASH ||
 				s === CLOSE_ANGLE_BRACKET
@@ -322,14 +327,14 @@ export function parseNode(opts: ParserOptions): Result {
 				continue;
 			}
 
-			(current_prop_value as Text).value += value[position.index];
+			(current_prop_value as Text).value += value[index];
 			chomp();
 			continue;
 		}
 
 		if (get_state() === 'IN_QUOTED_ATTR_VALUE') {
 			// if we meet our matching quote the attribute has ended
-			if (value[position.index] === quote_type) {
+			if (value[index] === quote_type) {
 				//end
 				state.pop();
 				chomp();
@@ -338,7 +343,7 @@ export function parseNode(opts: ParserOptions): Result {
 
 			let s;
 			// " ", "\n" => still in the attribute value but make a new node
-			if ((s = value.charCodeAt(position.index)) === SPACE || s === LINEFEED) {
+			if ((s = value.charCodeAt(index)) === SPACE || s === LINEFEED) {
 				current_prop_value = { type: 'text', value: '' };
 				(current_prop as Property).value.push(current_prop_value as Text);
 
@@ -349,28 +354,28 @@ export function parseNode(opts: ParserOptions): Result {
 			// let s;
 			// " ", "\n", "/" or ">" => shorthand boolean attr
 			if (
-				(s = value.charCodeAt(position.index)) === SLASH ||
+				(s = value.charCodeAt(index)) === SLASH ||
 				s === CLOSE_ANGLE_BRACKET
 			) {
 				// this is a parsing error, we can't recover from this.
 			}
 
 			// capture the token otherwise
-			(current_prop_value as Text).value += value[position.index];
+			(current_prop_value as Text).value += value[index];
 
 			chomp();
 			continue;
 		}
 
 		if (get_state() === 'IN_DIRECTIVE_SPECIFIER') {
-			if (value.charCodeAt(position.index) === EQUALS) {
+			if (value.charCodeAt(index) === EQUALS) {
 				state.pop();
 				state.push('IN_ATTR_VALUE');
 				chomp();
 				continue;
 			}
 
-			if (value.charCodeAt(position.index) === PIPE) {
+			if (value.charCodeAt(index) === PIPE) {
 				current_modifier = { value: '', type: 'modifier' };
 				(current_prop as Directive).modifiers.push(current_modifier as Literal);
 				state.pop();
@@ -382,7 +387,7 @@ export function parseNode(opts: ParserOptions): Result {
 			let s;
 			// " ", "\n", "/" or ">" => ends the whole thing
 			if (
-				(s = value.charCodeAt(position.index)) === SPACE ||
+				(s = value.charCodeAt(index)) === SPACE ||
 				s === LINEFEED ||
 				s === SLASH ||
 				s === CLOSE_ANGLE_BRACKET
@@ -391,13 +396,13 @@ export function parseNode(opts: ParserOptions): Result {
 				continue;
 			}
 
-			(current_prop as Directive).specifier += value[position.index];
+			(current_prop as Directive).specifier += value[index];
 			chomp();
 			continue;
 		}
 
 		if (get_state() === 'IN_ATTR_MODIFIER') {
-			if (value.charCodeAt(position.index) === PIPE) {
+			if (value.charCodeAt(index) === PIPE) {
 				current_modifier = { value: '', type: 'modifier' };
 				(current_prop as Directive).modifiers.push(current_modifier as Literal);
 
@@ -405,7 +410,7 @@ export function parseNode(opts: ParserOptions): Result {
 				continue;
 			}
 
-			if (value.charCodeAt(position.index) === EQUALS) {
+			if (value.charCodeAt(index) === EQUALS) {
 				state.pop();
 				state.push('IN_ATTR_VALUE');
 				chomp();
@@ -414,7 +419,7 @@ export function parseNode(opts: ParserOptions): Result {
 
 			let s;
 			if (
-				(s = value.charCodeAt(position.index)) === SPACE ||
+				(s = value.charCodeAt(index)) === SPACE ||
 				s === LINEFEED ||
 				s === SLASH ||
 				s === CLOSE_ANGLE_BRACKET
@@ -422,15 +427,15 @@ export function parseNode(opts: ParserOptions): Result {
 				state.pop();
 				continue;
 			}
-			(current_modifier as Literal).value += value[position.index];
+			(current_modifier as Literal).value += value[index];
 			chomp();
 			continue;
 		}
 	}
 
 	return {
-		chomped: 'asd',
-		unchomped: 'asd',
+		chomped: value.slice(0, index),
+		unchomped: value.slice(index),
 		parsed: node,
 		position: currentPosition,
 	};
