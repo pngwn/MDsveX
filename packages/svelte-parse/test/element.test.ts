@@ -9,7 +9,10 @@ import { void_els } from '../src/void_els';
 const element = suite('parse-element');
 
 element('parses a self closing tag without attributes', () => {
-	const { parsed } = parseNode({ value: `<input />` });
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<input />`,
+	});
 
 	assert.equal(parsed, <SvelteElement>{
 		type: 'svelteElement',
@@ -21,7 +24,10 @@ element('parses a self closing tag without attributes', () => {
 });
 
 element('parses a self closing component without attributes', () => {
-	const { parsed } = parseNode({ value: `<HelloFriend />` });
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<HelloFriend />`,
+	});
 
 	assert.equal(parsed, <SvelteComponent>{
 		type: 'svelteComponent',
@@ -34,7 +40,10 @@ element('parses a self closing component without attributes', () => {
 
 void_els.forEach((el) => {
 	element(`parses all void tags without attributes: < ${el} >`, () => {
-		const { parsed } = parseNode({ value: `<${el} >` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<${el} >`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -47,7 +56,10 @@ void_els.forEach((el) => {
 });
 
 element('parses a self closing tag with shorthand boolean attribute', () => {
-	const { parsed } = parseNode({ value: `<input hello />` });
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<input hello />`,
+	});
 
 	assert.equal(parsed, <SvelteElement>{
 		type: 'svelteElement',
@@ -69,7 +81,10 @@ element('parses a self closing tag with shorthand boolean attribute', () => {
 element(
 	'parses a self closing tag with shorthand boolean attribute: no trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello/>` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello/>`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -92,7 +107,10 @@ element(
 element(
 	'parses a void tag with shorthand boolean attribute: no trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello>` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello>`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -115,7 +133,10 @@ element(
 element(
 	'parses a self-closing tag with multiple shorthand boolean attributes: trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello goodbye />` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello goodbye />`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -145,7 +166,10 @@ element(
 element(
 	'parses a self-closing tag with multiple shorthand boolean attributes: no trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello goodbye/>` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello goodbye/>`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -175,7 +199,10 @@ element(
 element(
 	'parses a void tag with multiple shorthand boolean attributes: no trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello goodbye>` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello goodbye>`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -205,7 +232,10 @@ element(
 element(
 	'parses a void tag with multiple shorthand boolean attributes: trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello goodbye >` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello goodbye >`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -235,7 +265,10 @@ element(
 element(
 	'parses a self-closing tag with an unquoted attribute: trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello=value />` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello=value />`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -263,7 +296,10 @@ element(
 element(
 	'parses a self-closing tag with an unquoted attribute: no trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello=value/>` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello=value/>`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -289,7 +325,10 @@ element(
 );
 
 element('parses a void tag with an unquoted attribute: trailing space', () => {
-	const { parsed } = parseNode({ value: `<input hello=value >` });
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<input hello=value >`,
+	});
 
 	assert.equal(parsed, <SvelteElement>{
 		type: 'svelteElement',
@@ -316,7 +355,10 @@ element('parses a void tag with an unquoted attribute: trailing space', () => {
 element(
 	'parses a self-closing tag with an unquoted attribute: no trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello=value>` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello=value>`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -344,7 +386,10 @@ element(
 element(
 	'parses a self-closing tag with a double-quoted attribute: trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello="value" />` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello="value" />`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -372,7 +417,10 @@ element(
 element(
 	'parses a self-closing tag with a double-quoted attribute: no trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello="value"/>` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello="value"/>`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -400,7 +448,10 @@ element(
 element(
 	'parses a void tag with a double-quoted attribute: trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello="value" >` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello="value" >`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -428,7 +479,10 @@ element(
 element(
 	'parses a void tag with a double-quoted attribute: no trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello="value">` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello="value">`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -456,7 +510,10 @@ element(
 element(
 	'parses a self-closing tag with double-quoted attributes: many values, trailing whitespace',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello="value valuetwo" />` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello="value valuetwo" />`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -488,7 +545,10 @@ element(
 element(
 	'parses a self-closing tag with double-quoted attributes: many values, no trailing whitespace',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello="value valuetwo"/>` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello="value valuetwo"/>`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -520,7 +580,10 @@ element(
 element(
 	'parses a void tag with double-quoted attributes: many values, trailing whitespace',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello="value valuetwo" >` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello="value valuetwo" >`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -552,7 +615,10 @@ element(
 element(
 	'parses a void tag with double-quoted attributes: many values, no trailing whitespace',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello="value valuetwo">` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello="value valuetwo">`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -584,7 +650,10 @@ element(
 element(
 	'parses a self-closing tag with a single-quoted attribute: trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello='value' />` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello='value' />`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -612,7 +681,10 @@ element(
 element(
 	'parses a self-closing tag with a single-quoted attribute: no trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello='value'/>` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello='value'/>`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -640,7 +712,10 @@ element(
 element(
 	'parses a void tag with a single-quoted attribute: trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello='value' >` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello='value' >`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -668,7 +743,10 @@ element(
 element(
 	'parses a void tag with a single-quoted attribute: no trailing space',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello='value'>` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello='value'>`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -696,7 +774,10 @@ element(
 element(
 	'parses a self-closing tag with single-quoted attributes: many values, trailing whitespace',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello='value valuetwo' />` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello='value valuetwo' />`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -728,7 +809,10 @@ element(
 element(
 	'parses a self-closing tag with single-quoted attributes: many values, no trailing whitespace',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello='value valuetwo'/>` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello='value valuetwo'/>`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -760,7 +844,10 @@ element(
 element(
 	'parses a void tag with single-quoted attributes: many values, trailing whitespace',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello='value valuetwo' >` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello='value valuetwo' >`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -792,7 +879,10 @@ element(
 element(
 	'parses a void tag with single-quoted attributes: many values, no trailing whitespace',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello='value valuetwo'>` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello='value valuetwo'>`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -822,7 +912,10 @@ element(
 );
 
 element('parses a void tag with a directive', () => {
-	const { parsed } = parseNode({ value: `<input hello:world >` });
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<input hello:world >`,
+	});
 
 	assert.equal(parsed, <SvelteElement>{
 		type: 'svelteElement',
@@ -843,7 +936,10 @@ element('parses a void tag with a directive', () => {
 });
 
 element('parses a self-closing tag with a directive', () => {
-	const { parsed } = parseNode({ value: `<input hello:world />` });
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<input hello:world />`,
+	});
 
 	assert.equal(parsed, <SvelteElement>{
 		type: 'svelteElement',
@@ -865,6 +961,7 @@ element('parses a self-closing tag with a directive', () => {
 
 element('parses a self-closing tag with two directives', () => {
 	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello:world goodbye:friends />`,
 	});
 
@@ -897,7 +994,10 @@ element('parses a self-closing tag with two directives', () => {
 element(
 	'parses a tag with a directive an a directive value: double-quoted',
 	() => {
-		const { parsed } = parseNode({ value: `<input hello:world="cheese" />` });
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello:world="cheese" />`,
+		});
 
 		assert.equal(parsed, <SvelteElement>{
 			type: 'svelteElement',
@@ -922,6 +1022,7 @@ element(
 	'parses a tag with a directive an a directive value: souble-quoted, two values',
 	() => {
 		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello:world="cheese strings" />`,
 		});
 
@@ -951,6 +1052,7 @@ element(
 	'parses a tag with a directive an a directive value: single-quoted, two values',
 	() => {
 		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello:world='cheese strings' />`,
 		});
 
@@ -977,7 +1079,10 @@ element(
 );
 
 element('parses a tag with a directive an a directive value: unquoted', () => {
-	const { parsed } = parseNode({ value: `<input hello:world="cheese" />` });
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<input hello:world="cheese" />`,
+	});
 
 	assert.equal(parsed, <SvelteElement>{
 		type: 'svelteElement',
@@ -998,7 +1103,10 @@ element('parses a tag with a directive an a directive value: unquoted', () => {
 });
 
 element('parses a tag with a directive with modifiers', () => {
-	const { parsed } = parseNode({ value: `<input hello:world|modifierval />` });
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<input hello:world|modifierval />`,
+	});
 
 	assert.equal(parsed, <SvelteElement>{
 		type: 'svelteElement',
@@ -1020,6 +1128,7 @@ element('parses a tag with a directive with modifiers', () => {
 
 element('parses a tag with a directive with multiple modifiers', () => {
 	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello:world|modifierval|modifierval2 />`,
 	});
 
@@ -1045,7 +1154,10 @@ element('parses a tag with a directive with multiple modifiers', () => {
 });
 
 element('parses a tag with a directive with modifiers', () => {
-	const { parsed } = parseNode({ value: `<input hello|modifierval />` });
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<input hello|modifierval />`,
+	});
 
 	assert.equal(parsed, <SvelteElement>{
 		type: 'svelteElement',
@@ -1066,6 +1178,7 @@ element('parses a tag with a directive with modifiers', () => {
 
 element('parses a tag with a directive with multiple modifiers', () => {
 	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello|modifierval|modifierval2 />`,
 	});
 
@@ -1093,6 +1206,7 @@ element(
 	'parses a tag with an attribute with multiple modifiers and a value',
 	() => {
 		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello:world|modifierval|modifierval2=someval />`,
 		});
 

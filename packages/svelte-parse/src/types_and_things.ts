@@ -53,7 +53,7 @@ export interface ParserOptions {
 	/**
 	 * The parser to use when parsing children, this defaults to `parseNode`
 	 */
-	childParser?: (options: ParserOptions) => Result;
+	childParser: (options: ParserOptions) => [Node[], number];
 	/**
 	 * Are we currently in a block or are we currently inline?
 	 */
@@ -77,4 +77,6 @@ export type State =
 	| 'IN_QUOTED_ATTR_VALUE'
 	| 'IN_CLOSING_SLASH'
 	| 'IN_CLOSE_TAG'
-	| 'IN_EXPRESSION';
+	| 'IN_EXPRESSION'
+	| 'PARSE_CHILDREN'
+	| 'EXPECT_END';

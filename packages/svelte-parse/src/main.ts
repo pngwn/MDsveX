@@ -71,6 +71,7 @@ export function parseNode(opts: ParserOptions): Result {
 	let current_prop: unknown;
 	let current_prop_value;
 	let current_modifier;
+	let closing_tag_name = '';
 
 	const {
 		value,
@@ -80,7 +81,7 @@ export function parseNode(opts: ParserOptions): Result {
 			offset: 0,
 		},
 		block = true,
-		childParser = parseNode,
+		childParser,
 	} = opts;
 
 	const position = Object.assign(currentPosition, { index });
@@ -116,7 +117,7 @@ export function parseNode(opts: ParserOptions): Result {
 	}
 
 	while (!done && !error) {
-		// console.log(value[index], state);
+		console.log(value[index], state);
 		if (!value[index]) break;
 
 		// right at the start
@@ -144,6 +145,7 @@ export function parseNode(opts: ParserOptions): Result {
 		}
 
 		if (get_state() === 'IN_START_TAG') {
+			if (value.charCodeAt(index) === SLASH) return undefined;
 			// lowercase characters for element names
 			if (is_lower_alpha(value.charCodeAt(index))) {
 				(node as BaseSvelteTag).type = 'svelteElement';
@@ -169,6 +171,12 @@ export function parseNode(opts: ParserOptions): Result {
 				state.pop();
 				state.push('IN_TAG_BODY');
 				chomp();
+				continue;
+			}
+
+			if (value.charCodeAt(index) === CLOSE_ANGLE_BRACKET) {
+				state.pop();
+				state.push('IN_TAG_BODY');
 				continue;
 			}
 
@@ -207,6 +215,13 @@ export function parseNode(opts: ParserOptions): Result {
 				state.pop();
 				state.push('IN_CLOSING_SLASH');
 				(node as BaseSvelteTag).selfClosing = true;
+				chomp();
+				continue;
+			}
+
+			if (value.charCodeAt(index) === CLOSE_ANGLE_BRACKET) {
+				state.pop();
+				state.push('PARSE_CHILDREN');
 				chomp();
 				continue;
 			}
@@ -432,6 +447,64 @@ export function parseNode(opts: ParserOptions): Result {
 			chomp();
 			continue;
 		}
+
+		if (get_state() === 'PARSE_CHILDREN') {
+			console.log(value.slice(index));
+			const [children, lastIndex] = childParser({
+				value: value.slice(index),
+				currentPosition,
+				childParser,
+			});
+			console.log(lastIndex);
+			node.children = children;
+			// position = position = Object.assign(
+			// 	{},
+			// 	//@ts-ignore
+			// 	node.children[node.children.length - 1].position.end
+			// );
+			position.index += lastIndex;
+			index = position.index;
+			state.pop();
+			state.push('EXPECT_END');
+			console.log(`THE INDEX: ${index}`);
+		}
+
+		if (get_state() === 'EXPECT_END') {
+			console.log('boo');
+			let s;
+			// " ", "\n", "/" or ">" => ends the whole thing
+
+			// s === LINEFEED ||
+			// s === SLASH ||
+			// s === CLOSE_ANGLE_BRACKET
+
+			if (value.charCodeAt(index) === OPEN_ANGLE_BRACKET) {
+				chomp();
+				continue;
+			}
+
+			if (value.charCodeAt(index) === SLASH) {
+				chomp();
+				continue;
+			}
+
+			if (value.charCodeAt(index) === SPACE) {
+				chomp();
+				continue;
+			}
+
+			if (value.charCodeAt(index) === CLOSE_ANGLE_BRACKET) {
+				if (closing_tag_name !== node.tagName) {
+					console.log('something bad happened');
+				}
+				chomp();
+				break;
+			}
+
+			closing_tag_name += value[index];
+			chomp();
+			continue;
+		}
 	}
 	console.log(`
 VALUE: ${value}
@@ -440,32 +513,58 @@ VALUE: ${value}
 		chomped: value.slice(0, index),
 		unchomped: value.slice(index),
 		parsed: node,
-		position: currentPosition,
+		position,
 	};
 }
 
-export function parse(source: string): Root {
-	const root = <Root>{
-		type: 'root',
-		children: [],
-	};
+function parse_siblings(opts: ParserOptions): [Node[], number] {
+	const {
+		value,
+		currentPosition = {
+			line: 1,
+			column: 1,
+			offset: 0,
+		},
+		// block = true,
+		childParser = parse_siblings,
+	} = opts;
 
-	// let done = false;
+	const children = [];
 
-	let unchomped = source;
-	let position = { column: 1, line: 1 };
+	let unchomped = value;
+	let position = Object.assign({}, currentPosition);
 	let parsed;
-
+	let index = 0;
+	let result;
 	for (;;) {
-		({ position, unchomped, parsed } = parseNode({
+		result = parseNode({
 			value: unchomped,
 			currentPosition: position,
-		}));
+			childParser,
+		});
+		if (!result) break;
+		({ position, unchomped, parsed } = result);
+		//@ts-ignore
 
-		if (!parsed) break;
-		root.children.push(parsed);
+		index += position.index;
+
+		children.push(parsed);
 		if (unchomped.trim().length === 0) break;
 	}
+
+	console.log(position.index);
+
+	return [children, index];
+}
+
+export function parse(opts: ParserOptions): Root {
+	const root = <Root>{
+		type: 'root',
+		children: parse_siblings({
+			value: opts.value,
+			childParser: parse_siblings,
+		})[0],
+	};
 
 	return root;
 }
