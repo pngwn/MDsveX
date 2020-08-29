@@ -79,4 +79,5 @@ export type State =
 	| 'IN_CLOSE_TAG'
 	| 'IN_EXPRESSION'
 	| 'PARSE_CHILDREN'
-	| 'EXPECT_END';
+	| 'EXPECT_END'
+	| 'IN_TEXT';

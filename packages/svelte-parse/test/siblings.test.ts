@@ -251,4 +251,156 @@ siblings('parse should parse deeply nested void elements', () => {
 		],
 	});
 });
+
+siblings('parse should parse sibling nodes', () => {
+	const contents = parse({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: '<input hello:world|modifierval|modifierval2=someval />Hail',
+	});
+
+	assert.equal(contents, <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'input',
+				selfClosing: true,
+				children: [],
+				properties: [
+					{
+						type: 'svelteDirective',
+						name: 'hello',
+						specifier: 'world',
+						value: [{ type: 'text', value: 'someval' }],
+						shorthand: 'none',
+						modifiers: [
+							{ type: 'modifier', value: 'modifierval' },
+							{ type: 'modifier', value: 'modifierval2' },
+						],
+					},
+				],
+			},
+			{
+				type: 'text',
+				value: 'Hail',
+			},
+		],
+	});
+});
+
+siblings('parse should parse deeply nested void elements', () => {
+	const contents = parse({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: '<  div><div><div><div>Hail</div></div></div></div>',
+	});
+
+	assert.equal(contents, <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'div',
+				properties: [],
+				selfClosing: false,
+				children: [
+					{
+						type: 'svelteElement',
+						tagName: 'div',
+						properties: [],
+						selfClosing: false,
+						children: [
+							{
+								type: 'svelteElement',
+								tagName: 'div',
+								properties: [],
+								selfClosing: false,
+								children: [
+									{
+										type: 'svelteElement',
+										tagName: 'div',
+										properties: [],
+										selfClosing: false,
+										children: [
+											{
+												type: 'text',
+												value: 'Hail',
+											},
+										],
+									},
+								],
+							},
+						],
+					},
+				],
+			},
+		],
+	});
+});
+
+siblings('parse should parse deeply nested void elements', () => {
+	const contents = parse({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value:
+			'<  div><div><div>hail<div>Hail</div></div></div><span>hail</span></div>',
+	});
+
+	assert.equal(contents, <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'div',
+				properties: [],
+				selfClosing: false,
+				children: [
+					{
+						type: 'svelteElement',
+						tagName: 'div',
+						properties: [],
+						selfClosing: false,
+						children: [
+							{
+								type: 'svelteElement',
+								tagName: 'div',
+								properties: [],
+								selfClosing: false,
+								children: [
+									{
+										type: 'text',
+										value: 'hail',
+									},
+									{
+										type: 'svelteElement',
+										tagName: 'div',
+										properties: [],
+										selfClosing: false,
+										children: [
+											{
+												type: 'text',
+												value: 'Hail',
+											},
+										],
+									},
+								],
+							},
+						],
+					},
+					{
+						type: 'svelteElement',
+						tagName: 'span',
+						properties: [],
+						selfClosing: false,
+						children: [
+							{
+								type: 'text',
+								value: 'hail',
+							},
+						],
+					},
+				],
+			},
+		],
+	});
+});
+
 siblings.run();
