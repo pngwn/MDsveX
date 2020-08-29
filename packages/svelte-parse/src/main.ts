@@ -10,6 +10,7 @@ import {
 	Literal,
 	Root,
 	SvelteExpression,
+	VoidBlock,
 } from 'svast';
 
 import {
@@ -26,6 +27,7 @@ import {
 	CLOSE_BRACE,
 	BACKTICK,
 	BACKSLASH,
+	AT,
 } from './types_and_things';
 
 import {
@@ -136,11 +138,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		if (!get_state()) {
 			// "<" => tag
 			if (value.charCodeAt(index) === OPEN_BRACE) {
-				state.push('IN_EXPRESSION');
-				node_stack.push(<SvelteExpression>{
-					type: 'svelteExpression',
-					value: '',
-				});
+				state.push('MAYBE_IN_EXPRESSION');
 				chomp();
 				continue;
 			}
@@ -164,6 +162,43 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				// expression or svelte block
 				// state.push('IN_EXPRESSION');
 			}
+		}
+
+		if (get_state() === 'MAYBE_IN_EXPRESSION') {
+			if (value.charCodeAt(index) === AT) {
+				node_stack.push(<VoidBlock>{
+					type: 'svelteVoidBlock',
+					name: '',
+					expression: {
+						type: 'svelteExpression',
+						value: '',
+					},
+				});
+
+				state.push('IN_VOID_BLOCK');
+				chomp();
+				continue;
+			}
+
+			state.push('IN_EXPRESSION');
+			node_stack.push(<SvelteExpression>{
+				type: 'svelteExpression',
+				value: '',
+			});
+			continue;
+		}
+
+		if (get_state() === 'IN_VOID_BLOCK') {
+			if (value.charCodeAt(index) === SPACE) {
+				node_stack.push((current_node() as VoidBlock).expression);
+				state.push('IN_EXPRESSION');
+				chomp();
+				continue;
+			}
+
+			current_node().name += value[index];
+			chomp();
+			continue;
 		}
 
 		if (get_state() === 'IN_START_TAG') {
@@ -429,6 +464,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			// if we meet our matching quote the attribute has ended
 			if (value[index] === quote_type) {
 				//end
+				quote_type = '';
 				state.pop();
 				node_stack.pop();
 				node_stack.pop();
@@ -473,8 +509,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				continue;
 			}
 
-			// let s;
-			// " ", "\n", "/" or ">" => shorthand boolean attr
 			if (
 				(s = value.charCodeAt(index)) === SLASH ||
 				s === CLOSE_ANGLE_BRACKET
@@ -638,7 +672,14 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		if (get_state() === 'IN_EXPRESSION') {
 			if (quote_type === '' && value.charCodeAt(index) === CLOSE_BRACE) {
 				if (brace_count === 0) {
-					if (node_stack.length === 1) break;
+					console.log('hi', node_stack);
+					if (
+						node_stack.length === 1 ||
+						node_stack[0].type === 'svelteVoidBlock'
+					) {
+						chomp();
+						break;
+					}
 					state.pop();
 					chomp();
 					continue;

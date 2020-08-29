@@ -4,6 +4,7 @@ export const TAB = 9; // "\t"
 export const LINEFEED = 10; // "\n"
 export const SPACE = 32; // " "
 export const QUOTE = 34; // "'"
+export const OCTOTHERP = 25; // "#"
 export const APOSTROPHE = 39; // "'"
 export const DASH = 45; // "-"
 export const DOT = 46; // "."
@@ -12,6 +13,7 @@ export const COLON = 58; // ":"
 export const OPEN_ANGLE_BRACKET = 60; // "<"
 export const EQUALS = 61; // "="
 export const CLOSE_ANGLE_BRACKET = 62; // ">"
+export const AT = 64; // "@"
 export const OPEN_BRACE = 123; // "{"
 export const CLOSE_BRACE = 125; // "}"
 export const UPPERCASE_A = 65; // "A"
@@ -84,4 +86,6 @@ export type State =
 	| 'PARSE_CHILDREN'
 	| 'EXPECT_END'
 	| 'IN_TEXT'
-	| 'IN_EXPRESSION_QUOTE';
+	| 'IN_EXPRESSION_QUOTE'
+	| 'MAYBE_IN_EXPRESSION'
+	| 'IN_VOID_BLOCK';

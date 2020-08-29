@@ -12,10 +12,10 @@ export default [
 		input: 'src/main.ts',
 		output: [{ file: 'dist/main.js', format: 'cjs', sourcemap: false }],
 	},
-	{
-		plugins: [dts()],
-		input: 'src/main.ts',
+	// {
+	// 	plugins: [dts()],
+	// 	input: 'src/main.ts',
 
-		output: [{ file: 'dist/main.d.ts', format: 'cjs' }],
-	},
+	// 	output: [{ file: 'dist/main.d.ts', format: 'cjs' }],
+	// },
 ];
