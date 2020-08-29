@@ -403,4 +403,4 @@ siblings('parse should parse deeply nested void elements', () => {
 	});
 });
 
-// siblings.run();
+siblings.run();

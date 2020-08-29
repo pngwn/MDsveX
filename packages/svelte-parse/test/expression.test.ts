@@ -195,4 +195,206 @@ expression('parses expressions as attribute values', () => {
 	});
 });
 
+expression('parses expressions as attribute values: more fancy', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: '<input hello={{{{`"}`}}}} />',
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		selfClosing: true,
+		children: [],
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'hello',
+				value: [
+					{
+						type: 'svelteExpression',
+						value: '{{{`"}`}}}',
+					},
+				],
+				shorthand: 'none',
+				modifiers: [],
+			},
+		],
+	});
+});
+
+expression('parses expressions as attribute values: functions', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: '<input hello={() => console.log("hello world")} />',
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		selfClosing: true,
+		children: [],
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'hello',
+				value: [
+					{
+						type: 'svelteExpression',
+						value: '() => console.log("hello world")',
+					},
+				],
+				shorthand: 'none',
+				modifiers: [],
+			},
+		],
+	});
+});
+
+expression('parses expressions as attribute values: more functions', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value:
+			'<input hello={(e) => val = val.filter(v => v.map(x => x*2)).reduce(absolutelywhat is this i have no idea) * 2735262 + 123.something("hey")} />',
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		selfClosing: true,
+		children: [],
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'hello',
+				value: [
+					{
+						type: 'svelteExpression',
+						value:
+							'(e) => val = val.filter(v => v.map(x => x*2)).reduce(absolutelywhat is this i have no idea) * 2735262 + 123.something("hey")',
+					},
+				],
+				shorthand: 'none',
+				modifiers: [],
+			},
+		],
+	});
+});
+
+expression('parses expressions as attribute values in quotes', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<input hello="{value}" />`,
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		selfClosing: true,
+		children: [],
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'hello',
+				value: [
+					{
+						type: 'svelteExpression',
+						value: 'value',
+					},
+				],
+				shorthand: 'none',
+				modifiers: [],
+			},
+		],
+	});
+});
+
+expression(
+	'parses expressions as attribute values in quotes: many expressions',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello="{value}{value}" />`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'svelteExpression',
+							value: 'value',
+						},
+						{
+							type: 'svelteExpression',
+							value: 'value',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+expression(
+	'parses expressions as attribute values in quotes: many expressions with weird spaces',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input hello="   {value}   {value}    " />`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [
+						{
+							type: 'text',
+							value: '',
+						},
+						{
+							type: 'svelteExpression',
+							value: 'value',
+						},
+						{
+							type: 'text',
+							value: '',
+						},
+						{
+							type: 'svelteExpression',
+							value: 'value',
+						},
+						{
+							type: 'text',
+							value: '',
+						},
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
 expression.run();
