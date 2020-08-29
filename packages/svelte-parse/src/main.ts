@@ -123,7 +123,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	}
 
 	while (!done && !error) {
-		console.log(value[index], state, value.charCodeAt(index));
+		// console.log(value[index], state, value.charCodeAt(index));
 		if (!value[index]) break;
 
 		// right at the start
@@ -254,7 +254,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 		// we are expecting the tag to close completely here
 		if (get_state() === 'IN_CLOSING_SLASH') {
-			console.log('boo', value[index]);
 			// ignore ws
 			if (
 				value.charCodeAt(index) === SPACE ||
@@ -266,7 +265,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			}
 			// we closed successfully, end the parse
 			if (value.charCodeAt(index) === CLOSE_ANGLE_BRACKET) {
-				console.log('boo2');
 				chomp();
 				break;
 			}
@@ -540,6 +538,25 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			chomp();
 			continue;
 		}
+
+		if (get_state() === 'IN_TEXT') {
+			if (
+				value.charCodeAt(index) === OPEN_ANGLE_BRACKET ||
+				value.charCodeAt(index) === OPEN_BRACE
+			) {
+				break;
+			}
+
+			node.value += value[index];
+			chomp();
+			continue;
+		}
+
+		state.push('IN_TEXT');
+		node = {
+			type: 'text',
+			value: '',
+		};
 	}
 
 	return {

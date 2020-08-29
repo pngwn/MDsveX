@@ -1,7 +1,7 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
-import { SvelteElement, SvelteComponent } from 'svast';
+import { SvelteElement, SvelteComponent, Text } from 'svast';
 
 import { parseNode } from '../src/main';
 import { void_els } from '../src/void_els';
@@ -1489,6 +1489,22 @@ element(
 					],
 				},
 			],
+		});
+	}
+);
+
+element(
+	'parses a tag with an attribute with multiple modifiers and a value: weird spacing and newlines',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `hail`,
+		});
+
+		assert.equal(parsed, <Text>{
+			type: 'text',
+			value: 'hail',
 		});
 	}
 );
