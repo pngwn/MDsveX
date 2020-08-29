@@ -33,4 +33,85 @@ expression('parses nested braces', () => {
 	});
 });
 
+expression('parses nested braces: while ignoring quoted braces: single', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `{{{{'}'}}}}`,
+	});
+
+	assert.equal(parsed, <SvelteExpression>{
+		type: 'svelteExpression',
+		value: "{{{'}'}}}",
+	});
+});
+
+expression('parses nested braces: while ignoring quoted braces: double', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `{{{{"}"}}}}`,
+	});
+
+	assert.equal(parsed, <SvelteExpression>{
+		type: 'svelteExpression',
+		value: `{{{"}"}}}`,
+	});
+});
+
+expression(
+	'parses nested braces: while ignoring quoted braces: backtick',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: '{{{{`}`}}}}',
+		});
+
+		assert.equal(parsed, <SvelteExpression>{
+			type: 'svelteExpression',
+			value: '{{{`}`}}}',
+		});
+	}
+);
+
+expression('parses nested braces: while ignoring regex', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: '{/}/gi}',
+	});
+
+	assert.equal(parsed, <SvelteExpression>{
+		type: 'svelteExpression',
+		value: '/}/gi',
+	});
+});
+
+expression('handles quoted slashes', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: '{"/}/gi"}',
+	});
+
+	assert.equal(parsed, <SvelteExpression>{
+		type: 'svelteExpression',
+		value: '"/}/gi"',
+	});
+});
+
+expression('ignores nested quotes', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: '{{{{`"}`}}}}',
+	});
+
+	assert.equal(parsed, <SvelteExpression>{
+		type: 'svelteExpression',
+		value: '{{{`"}`}}}',
+	});
+});
+
 expression.run();
