@@ -363,9 +363,15 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				state.push('IN_QUOTED_ATTR_VALUE');
 				quote_type = value[index];
 
-				const _n = { type: 'text', value: '' };
-				(current_node() as Property).value.push(_n as Text);
-				node_stack.push(_n);
+				// const _n = {
+				// 	type:
+				// 		value.charCodeAt(index + 1) === OPEN_BRACE
+				// 			? 'svelteExpression'
+				// 			: 'text',
+				// 	value: '',
+				// };
+				// (current_node() as Property).value.push(_n as Text);
+				node_stack.push({ type: 'blank' });
 				chomp();
 				continue;
 			}
@@ -391,10 +397,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 			// unquoted
 		}
-
-		// if (get_state() ==='IN_ATTR_EXPRESSION') {
-
-		// }
 
 		if (get_state() === 'IN_UNQUOTED_ATTR_VALUE') {
 			let s;
@@ -434,6 +436,23 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				continue;
 			}
 
+			if (value.charCodeAt(index) === OPEN_BRACE) {
+				node_stack.pop();
+				const _n = {
+					type: 'svelteExpression',
+					value: '',
+				};
+				(current_node() as Property).value.push(_n as SvelteExpression);
+				node_stack.push(_n);
+				chomp();
+				continue;
+			}
+
+			if (value.charCodeAt(index) === CLOSE_BRACE) {
+				chomp();
+				continue;
+			}
+
 			let s;
 			// " ", "\n" => still in the attribute value but make a new node
 			if (
@@ -441,6 +460,11 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				s === TAB ||
 				s === LINEFEED
 			) {
+				const _c = current_node();
+				if (_c.type === 'text' && _c.value === '') {
+					chomp();
+					continue;
+				}
 				node_stack.pop();
 				const _n = { type: 'text', value: '' };
 				(current_node() as Property).value.push(_n as Text);
@@ -456,6 +480,14 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				s === CLOSE_ANGLE_BRACKET
 			) {
 				// this is a parsing error, we can't recover from this.
+				// i'm not sure this is actually true
+			}
+
+			if (current_node().type === 'blank') {
+				node_stack.pop();
+				const _n = { type: 'text', value: '' };
+				(current_node() as Property).value.push(_n as Text);
+				node_stack.push(_n);
 			}
 
 			// capture the token otherwise
