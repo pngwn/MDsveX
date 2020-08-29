@@ -9,6 +9,7 @@ import {
 	Text,
 	Literal,
 	Root,
+	SvelteExpression,
 } from 'svast';
 
 import {
@@ -22,6 +23,7 @@ import {
 	QUOTE,
 	APOSTROPHE,
 	TAB,
+	CLOSE_BRACE,
 } from './types_and_things';
 
 import {
@@ -73,6 +75,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	let current_prop_value;
 	let current_modifier;
 	let closing_tag_name = '';
+	let brace_count = 0;
 
 	let {
 		value,
@@ -129,6 +132,16 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		// right at the start
 		if (!get_state()) {
 			// "<" => tag
+			if (value.charCodeAt(index) === OPEN_BRACE) {
+				state.push('IN_EXPRESSION');
+				node = <SvelteExpression>{
+					type: 'svelteExpression',
+					value: '',
+				};
+				chomp();
+				continue;
+			}
+
 			if (value.charCodeAt(index) === OPEN_ANGLE_BRACKET) {
 				state.push('IN_START_TAG');
 				node = <BaseSvelteTag>{
@@ -545,6 +558,21 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				value.charCodeAt(index) === OPEN_BRACE
 			) {
 				break;
+			}
+
+			node.value += value[index];
+			chomp();
+			continue;
+		}
+
+		if (get_state() === 'IN_EXPRESSION') {
+			if (value.charCodeAt(index) === CLOSE_BRACE) {
+				if (brace_count === 0) break;
+				brace_count--;
+			}
+
+			if (value.charCodeAt(index) === OPEN_BRACE) {
+				brace_count++;
 			}
 
 			node.value += value[index];
