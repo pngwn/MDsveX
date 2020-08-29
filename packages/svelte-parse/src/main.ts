@@ -25,6 +25,7 @@ import {
 	TAB,
 	CLOSE_BRACE,
 	BACKTICK,
+	BACKSLASH,
 } from './types_and_things';
 
 import {
@@ -596,7 +597,10 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		}
 
 		if (get_state() === 'IN_EXPRESSION_QUOTE') {
-			if (value[index] === quote_type) {
+			if (
+				value[index] === quote_type &&
+				value.charCodeAt(index - 1) !== BACKSLASH
+			) {
 				quote_type = '';
 				node.value += value[index];
 				chomp();

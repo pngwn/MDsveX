@@ -16,6 +16,7 @@ export const OPEN_BRACE = 123; // "{"
 export const CLOSE_BRACE = 125; // "}"
 export const UPPERCASE_A = 65; // "A"
 export const UPPERCASE_Z = 90; // "Z"
+export const BACKSLASH = 92; // "\"
 export const BACKTICK = 96;
 export const LOWERCASE_A = 97; // "A"
 export const LOWERCASE_Z = 122; // "Z"
