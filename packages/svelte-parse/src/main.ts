@@ -83,10 +83,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	const node_stack: Node[] = [];
 	const state: State[] = [];
 
-	let current_prop: unknown;
-	let current_prop_value;
-	let current_modifier;
-
 	let {
 		value,
 		currentPosition = {
@@ -374,16 +370,31 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				continue;
 			}
 
-			// unquoted
-			state.pop();
-			state.push('IN_UNQUOTED_ATTR_VALUE');
-			console.log(current_node());
-			const _n = { type: 'text', value: '' };
-			(current_node() as Property).value.push(_n as Text);
-			node_stack.push(_n);
+			if (value.charCodeAt(index) === OPEN_BRACE) {
+				state.pop();
+				state.push('IN_UNQUOTED_ATTR_VALUE');
 
-			continue;
+				const _n = { type: 'svelteExpression', value: '' };
+				(current_node() as Property).value.push(_n as SvelteExpression);
+				node_stack.push(_n);
+				continue;
+			} else {
+				state.pop();
+				state.push('IN_UNQUOTED_ATTR_VALUE');
+				// console.log(current_node());
+				const _n = { type: 'text', value: '' };
+				(current_node() as Property).value.push(_n as Text);
+				node_stack.push(_n);
+
+				continue;
+			}
+
+			// unquoted
 		}
+
+		// if (get_state() ==='IN_ATTR_EXPRESSION') {
+
+		// }
 
 		if (get_state() === 'IN_UNQUOTED_ATTR_VALUE') {
 			let s;
@@ -398,6 +409,12 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				state.pop();
 				node_stack.pop();
 				node_stack.pop();
+				continue;
+			}
+
+			if (value.charCodeAt(index) === OPEN_BRACE) {
+				state.push('IN_EXPRESSION');
+				chomp();
 				continue;
 			}
 
@@ -588,7 +605,12 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 		if (get_state() === 'IN_EXPRESSION') {
 			if (quote_type === '' && value.charCodeAt(index) === CLOSE_BRACE) {
-				if (brace_count === 0) break;
+				if (brace_count === 0) {
+					if (node_stack.length === 1) break;
+					state.pop();
+					chomp();
+					continue;
+				}
 				brace_count--;
 			}
 

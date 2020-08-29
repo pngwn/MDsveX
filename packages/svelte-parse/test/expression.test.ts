@@ -166,4 +166,33 @@ expression('ignores nested quotes', () => {
 	});
 });
 
+expression('parses expressions as attribute values', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<input hello={value} />`,
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		selfClosing: true,
+		children: [],
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'hello',
+				value: [
+					{
+						type: 'svelteExpression',
+						value: 'value',
+					},
+				],
+				shorthand: 'none',
+				modifiers: [],
+			},
+		],
+	});
+});
+
 expression.run();
