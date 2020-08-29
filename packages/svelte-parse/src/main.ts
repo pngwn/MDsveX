@@ -73,11 +73,19 @@ function is_void_element(tag_name: string): boolean {
 export function parseNode(opts: ParserOptions): Result | undefined {
 	let index = 0;
 	let quote_type = '';
+	let closing_tag_name = '';
+	let brace_count = 0;
+	let done;
+	let error;
+	// let node: Node = {
+	// 	type: '',
+	// };
+	const node_stack: Node[] = [];
+	const state: State[] = [];
+
 	let current_prop: unknown;
 	let current_prop_value;
 	let current_modifier;
-	let closing_tag_name = '';
-	let brace_count = 0;
 
 	let {
 		value,
@@ -116,19 +124,16 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		position.index = index;
 	}
 
-	let done;
-	let error;
-	let node: Node = {
-		type: '',
-	};
-	const state: State[] = [];
-
 	function get_state() {
 		return state[state.length - 1];
 	}
 
+	function current_node() {
+		return node_stack[node_stack.length - 1];
+	}
+
 	while (!done && !error) {
-		// console.log(value[index], state, value.charCodeAt(index));
+		console.log(value[index], state, node_stack);
 		if (!value[index]) break;
 
 		// right at the start
@@ -136,23 +141,23 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			// "<" => tag
 			if (value.charCodeAt(index) === OPEN_BRACE) {
 				state.push('IN_EXPRESSION');
-				node = <SvelteExpression>{
+				node_stack.push(<SvelteExpression>{
 					type: 'svelteExpression',
 					value: '',
-				};
+				});
 				chomp();
 				continue;
 			}
 
 			if (value.charCodeAt(index) === OPEN_ANGLE_BRACKET) {
 				state.push('IN_START_TAG');
-				node = <BaseSvelteTag>{
+				node_stack.push(<BaseSvelteTag>{
 					type: '',
 					tagName: '',
 					properties: [],
 					selfClosing: false,
 					children: [],
-				};
+				});
 				chomp();
 				continue;
 			}
@@ -169,14 +174,14 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			if (value.charCodeAt(index) === SLASH) return undefined;
 			// lowercase characters for element names
 			if (is_lower_alpha(value.charCodeAt(index))) {
-				(node as BaseSvelteTag).type = 'svelteElement';
+				(current_node() as BaseSvelteTag).type = 'svelteElement';
 				state.push('IN_TAG_NAME');
 				continue;
 			}
 
 			// uppercase characters for Component names
 			if (is_upper_alpha(value.charCodeAt(index))) {
-				(node as BaseSvelteTag).type = 'svelteComponent';
+				(current_node() as BaseSvelteTag).type = 'svelteComponent';
 				state.push('IN_TAG_NAME');
 				continue;
 			}
@@ -211,7 +216,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				continue;
 			}
 
-			(node as SvelteTag).tagName += value[index];
+			(current_node() as SvelteTag).tagName += value[index];
 			chomp();
 			continue;
 		}
@@ -224,7 +229,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				is_upper_alpha(value.charCodeAt(index))
 			) {
 				state.push('IN_ATTR_NAME');
-				current_prop = <Property>{
+				const _node = <Property>{
 					type: 'svelteProperty',
 					name: '',
 					value: [],
@@ -232,8 +237,8 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 					shorthand: 'none',
 				};
 
-				(node as BaseSvelteTag).properties.push(current_prop as Property);
-
+				(current_node() as BaseSvelteTag).properties.push(_node as Property);
+				node_stack.push(_node);
 				continue;
 			}
 
@@ -241,11 +246,11 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			if (
 				value.charCodeAt(index) === SLASH ||
 				(value.charCodeAt(index) === CLOSE_ANGLE_BRACKET &&
-					is_void_element((node as SvelteElement).tagName))
+					is_void_element((current_node() as SvelteElement).tagName))
 			) {
 				state.pop();
 				state.push('IN_CLOSING_SLASH');
-				(node as BaseSvelteTag).selfClosing = true;
+				(current_node() as BaseSvelteTag).selfClosing = true;
 				if (value.charCodeAt(index) === SLASH) chomp();
 				continue;
 			}
@@ -299,16 +304,17 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				s === SLASH ||
 				s === CLOSE_ANGLE_BRACKET
 			) {
-				(current_prop as Property).shorthand = 'boolean';
+				(current_node() as Property).shorthand = 'boolean';
 				state.pop();
+				node_stack.pop();
 				continue;
 			}
 
 			// ":" => directive
 			if (value.charCodeAt(index) === COLON) {
 				//@ts-ignore
-				(current_prop as Directive).type = 'svelteDirective';
-				(current_prop as Directive).specifier = '';
+				(current_node() as Directive).type = 'svelteDirective';
+				(current_node() as Directive).specifier = '';
 				state.pop();
 				state.push('IN_DIRECTIVE_SPECIFIER');
 				chomp();
@@ -316,8 +322,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			}
 
 			if (value.charCodeAt(index) === PIPE) {
-				current_modifier = { value: '', type: 'modifier' };
-				(current_prop as Directive).modifiers.push(current_modifier as Literal);
+				const _n = { value: '', type: 'modifier' };
+				(current_node() as Directive).modifiers.push(_n as Literal);
+				node_stack.push(_n);
 				state.pop();
 				state.push('IN_ATTR_MODIFIER');
 				chomp();
@@ -332,18 +339,15 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			}
 
 			// process the token and chomp, everything is good
-			(node as BaseSvelteTag).properties[
-				(node as BaseSvelteTag).properties.length - 1
-			].name += value[index];
+			current_node().name += value[index];
 			chomp();
 			continue;
 		}
 
 		// att values can be quoted or unquoted
 		if (get_state() === 'IN_ATTR_VALUE') {
-			// quoted attr
+			// ignore whitespace it is valid after `=`
 			let s;
-			// " ", "\n", "/" or ">" => ends the whole thing
 			if (
 				(s = value.charCodeAt(index)) === SPACE ||
 				s === TAB ||
@@ -352,6 +356,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				chomp();
 				continue;
 			}
+
+			// quoted attr
+
 			if (
 				value.charCodeAt(index) === QUOTE ||
 				value.charCodeAt(index) === APOSTROPHE
@@ -360,9 +367,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				state.push('IN_QUOTED_ATTR_VALUE');
 				quote_type = value[index];
 
-				current_prop_value = { type: 'text', value: '' };
-				(current_prop as Property).value.push(current_prop_value as Text);
-
+				const _n = { type: 'text', value: '' };
+				(current_node() as Property).value.push(_n as Text);
+				node_stack.push(_n);
 				chomp();
 				continue;
 			}
@@ -370,9 +377,10 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			// unquoted
 			state.pop();
 			state.push('IN_UNQUOTED_ATTR_VALUE');
-
-			current_prop_value = { type: 'text', value: '' };
-			(current_prop as Property).value.push(current_prop_value as Text);
+			console.log(current_node());
+			const _n = { type: 'text', value: '' };
+			(current_node() as Property).value.push(_n as Text);
+			node_stack.push(_n);
 
 			continue;
 		}
@@ -388,10 +396,12 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				s === CLOSE_ANGLE_BRACKET
 			) {
 				state.pop();
+				node_stack.pop();
+				node_stack.pop();
 				continue;
 			}
 
-			(current_prop_value as Text).value += value[index];
+			(current_node() as Text).value += value[index];
 			chomp();
 			continue;
 		}
@@ -401,6 +411,8 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			if (value[index] === quote_type) {
 				//end
 				state.pop();
+				node_stack.pop();
+				node_stack.pop();
 				chomp();
 				continue;
 			}
@@ -412,9 +424,10 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				s === TAB ||
 				s === LINEFEED
 			) {
-				current_prop_value = { type: 'text', value: '' };
-				(current_prop as Property).value.push(current_prop_value as Text);
-
+				node_stack.pop();
+				const _n = { type: 'text', value: '' };
+				(current_node() as Property).value.push(_n as Text);
+				node_stack.push(_n);
 				chomp();
 				continue;
 			}
@@ -429,7 +442,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			}
 
 			// capture the token otherwise
-			(current_prop_value as Text).value += value[index];
+			(current_node() as Text).value += value[index];
 
 			chomp();
 			continue;
@@ -439,13 +452,15 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			if (value.charCodeAt(index) === EQUALS) {
 				state.pop();
 				state.push('IN_ATTR_VALUE');
+				//node_stack.pop();
 				chomp();
 				continue;
 			}
 
 			if (value.charCodeAt(index) === PIPE) {
-				current_modifier = { value: '', type: 'modifier' };
-				(current_prop as Directive).modifiers.push(current_modifier as Literal);
+				const _n = { value: '', type: 'modifier' };
+				(current_node() as Directive).modifiers.push(_n as Literal);
+				node_stack.push(_n);
 				state.pop();
 				state.push('IN_ATTR_MODIFIER');
 				chomp();
@@ -462,19 +477,21 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				s === CLOSE_ANGLE_BRACKET
 			) {
 				state.pop();
+				node_stack.pop();
 				continue;
 			}
 
-			(current_prop as Directive).specifier += value[index];
+			(current_node() as Directive).specifier += value[index];
 			chomp();
 			continue;
 		}
 
 		if (get_state() === 'IN_ATTR_MODIFIER') {
 			if (value.charCodeAt(index) === PIPE) {
-				current_modifier = { value: '', type: 'modifier' };
-				(current_prop as Directive).modifiers.push(current_modifier as Literal);
-
+				node_stack.pop();
+				const _n = { value: '', type: 'modifier' };
+				(current_node() as Directive).modifiers.push(_n as Literal);
+				node_stack.push(_n);
 				chomp();
 				continue;
 			}
@@ -482,6 +499,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			if (value.charCodeAt(index) === EQUALS) {
 				state.pop();
 				state.push('IN_ATTR_VALUE');
+				node_stack.pop();
 				chomp();
 				continue;
 			}
@@ -496,11 +514,16 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				continue;
 			}
 
-			if (s === SLASH || s === CLOSE_ANGLE_BRACKET) {
+			if (
+				(s = value.charCodeAt(index)) === SLASH ||
+				s === CLOSE_ANGLE_BRACKET
+			) {
+				node_stack.pop();
+				node_stack.pop();
 				state.pop();
 				continue;
 			}
-			(current_modifier as Literal).value += value[index];
+			(current_node() as Literal).value += value[index];
 			chomp();
 			continue;
 		}
@@ -511,12 +534,8 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				currentPosition,
 				childParser,
 			});
-			node.children = children;
-			// position = position = Object.assign(
-			// 	{},
-			// 	//@ts-ignore
-			// 	node.children[node.children.length - 1].position.end
-			// );
+			current_node().children = children;
+
 			position.index += lastIndex;
 			index = position.index;
 			state.pop();
@@ -542,7 +561,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			}
 
 			if (value.charCodeAt(index) === CLOSE_ANGLE_BRACKET) {
-				if (closing_tag_name !== node.tagName) {
+				if (closing_tag_name !== current_node().tagName) {
 					console.log('something bad happened');
 				}
 				chomp();
@@ -562,7 +581,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				break;
 			}
 
-			node.value += value[index];
+			current_node().value += value[index];
 			chomp();
 			continue;
 		}
@@ -586,12 +605,12 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			) {
 				state.push('IN_EXPRESSION_QUOTE');
 				quote_type = value[index];
-				node.value += value[index];
+				current_node().value += value[index];
 				chomp();
 				continue;
 			}
 
-			node.value += value[index];
+			current_node().value += value[index];
 			chomp();
 			continue;
 		}
@@ -602,28 +621,29 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				value.charCodeAt(index - 1) !== BACKSLASH
 			) {
 				quote_type = '';
-				node.value += value[index];
+				current_node().value += value[index];
 				chomp();
 				state.pop();
 				continue;
 			}
 
-			node.value += value[index];
+			current_node().value += value[index];
 			chomp();
 			continue;
 		}
 
 		state.push('IN_TEXT');
-		node = {
+		const _n = {
 			type: 'text',
 			value: '',
 		};
+		node_stack.push(_n);
 	}
 
 	return {
 		chomped: value.slice(0, index),
 		unchomped: value.slice(index),
-		parsed: node,
+		parsed: node_stack[0],
 		position,
 	};
 }
