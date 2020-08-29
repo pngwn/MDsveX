@@ -24,6 +24,7 @@ import {
 	APOSTROPHE,
 	TAB,
 	CLOSE_BRACE,
+	BACKTICK,
 } from './types_and_things';
 
 import {
@@ -566,13 +567,41 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		}
 
 		if (get_state() === 'IN_EXPRESSION') {
-			if (value.charCodeAt(index) === CLOSE_BRACE) {
+			if (quote_type === '' && value.charCodeAt(index) === CLOSE_BRACE) {
 				if (brace_count === 0) break;
 				brace_count--;
 			}
 
-			if (value.charCodeAt(index) === OPEN_BRACE) {
+			if (quote_type === '' && value.charCodeAt(index) === OPEN_BRACE) {
 				brace_count++;
+			}
+
+			if (
+				quote_type === '' &&
+				(value.charCodeAt(index) === APOSTROPHE ||
+					value.charCodeAt(index) === QUOTE ||
+					value.charCodeAt(index) === BACKTICK ||
+					value.charCodeAt(index) === SLASH)
+			) {
+				state.push('IN_EXPRESSION_QUOTE');
+				quote_type = value[index];
+				node.value += value[index];
+				chomp();
+				continue;
+			}
+
+			node.value += value[index];
+			chomp();
+			continue;
+		}
+
+		if (get_state() === 'IN_EXPRESSION_QUOTE') {
+			if (value[index] === quote_type) {
+				quote_type = '';
+				node.value += value[index];
+				chomp();
+				state.pop();
+				continue;
 			}
 
 			node.value += value[index];

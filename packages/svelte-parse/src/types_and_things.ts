@@ -16,6 +16,7 @@ export const OPEN_BRACE = 123; // "{"
 export const CLOSE_BRACE = 125; // "}"
 export const UPPERCASE_A = 65; // "A"
 export const UPPERCASE_Z = 90; // "Z"
+export const BACKTICK = 96;
 export const LOWERCASE_A = 97; // "A"
 export const LOWERCASE_Z = 122; // "Z"
 export const PIPE = 124; // "|"
@@ -80,4 +81,5 @@ export type State =
 	| 'IN_EXPRESSION'
 	| 'PARSE_CHILDREN'
 	| 'EXPECT_END'
-	| 'IN_TEXT';
+	| 'IN_TEXT'
+	| 'IN_EXPRESSION_QUOTE';
