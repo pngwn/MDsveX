@@ -5,10 +5,12 @@ import { SvelteElement, SvelteComponent } from 'svast';
 
 import { parseNode } from '../src/main';
 import { void_els } from '../src/void_els';
+import { Result } from '../src/types_and_things';
 
 const element = suite('parse-element');
 
 element('parses a self closing tag without attributes', () => {
+	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input />`,
@@ -23,7 +25,65 @@ element('parses a self closing tag without attributes', () => {
 	});
 });
 
+element(
+	'parses a self closing tag without attributes: space before name',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<       input />`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [],
+		});
+	}
+);
+
+element(
+	'parses a self closing tag without attributes: space after name',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<       input       />`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [],
+		});
+	}
+);
+
+element(
+	'parses a self closing tag without attributes: space after closeing slash',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<       input       /                >`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [],
+		});
+	}
+);
+
 element('parses a self closing component without attributes', () => {
+	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<HelloFriend />`,
@@ -40,6 +100,7 @@ element('parses a self closing component without attributes', () => {
 
 void_els.forEach((el) => {
 	element(`parses all void tags without attributes: < ${el} >`, () => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<${el} >`,
@@ -56,6 +117,7 @@ void_els.forEach((el) => {
 });
 
 element('parses a self closing tag with shorthand boolean attribute', () => {
+	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello />`,
@@ -79,8 +141,36 @@ element('parses a self closing tag with shorthand boolean attribute', () => {
 });
 
 element(
+	'parses a self closing tag with shorthand boolean attribute: weird spacing',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input         hello         /        >`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [],
+					shorthand: 'boolean',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
 	'parses a self closing tag with shorthand boolean attribute: no trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello/>`,
@@ -107,6 +197,7 @@ element(
 element(
 	'parses a void tag with shorthand boolean attribute: no trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello>`,
@@ -133,6 +224,7 @@ element(
 element(
 	'parses a self-closing tag with multiple shorthand boolean attributes: trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello goodbye />`,
@@ -164,8 +256,43 @@ element(
 );
 
 element(
+	'parses a self-closing tag with multiple shorthand boolean attributes: weird spacing',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<         input         hello           goodbye       /           >`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'hello',
+					value: [],
+					shorthand: 'boolean',
+					modifiers: [],
+				},
+				{
+					type: 'svelteProperty',
+					name: 'goodbye',
+					value: [],
+					shorthand: 'boolean',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
 	'parses a self-closing tag with multiple shorthand boolean attributes: no trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello goodbye/>`,
@@ -199,6 +326,7 @@ element(
 element(
 	'parses a void tag with multiple shorthand boolean attributes: no trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello goodbye>`,
@@ -232,6 +360,7 @@ element(
 element(
 	'parses a void tag with multiple shorthand boolean attributes: trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello goodbye >`,
@@ -265,6 +394,7 @@ element(
 element(
 	'parses a self-closing tag with an unquoted attribute: trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello=value />`,
@@ -296,6 +426,7 @@ element(
 element(
 	'parses a self-closing tag with an unquoted attribute: no trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello=value/>`,
@@ -325,6 +456,7 @@ element(
 );
 
 element('parses a void tag with an unquoted attribute: trailing space', () => {
+	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello=value >`,
@@ -355,6 +487,7 @@ element('parses a void tag with an unquoted attribute: trailing space', () => {
 element(
 	'parses a self-closing tag with an unquoted attribute: no trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello=value>`,
@@ -386,6 +519,7 @@ element(
 element(
 	'parses a self-closing tag with a double-quoted attribute: trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello="value" />`,
@@ -417,6 +551,7 @@ element(
 element(
 	'parses a self-closing tag with a double-quoted attribute: no trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello="value"/>`,
@@ -448,6 +583,7 @@ element(
 element(
 	'parses a void tag with a double-quoted attribute: trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello="value" >`,
@@ -479,6 +615,7 @@ element(
 element(
 	'parses a void tag with a double-quoted attribute: no trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello="value">`,
@@ -510,6 +647,7 @@ element(
 element(
 	'parses a self-closing tag with double-quoted attributes: many values, trailing whitespace',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello="value valuetwo" />`,
@@ -545,6 +683,7 @@ element(
 element(
 	'parses a self-closing tag with double-quoted attributes: many values, no trailing whitespace',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello="value valuetwo"/>`,
@@ -580,6 +719,7 @@ element(
 element(
 	'parses a void tag with double-quoted attributes: many values, trailing whitespace',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello="value valuetwo" >`,
@@ -615,6 +755,7 @@ element(
 element(
 	'parses a void tag with double-quoted attributes: many values, no trailing whitespace',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello="value valuetwo">`,
@@ -650,6 +791,7 @@ element(
 element(
 	'parses a self-closing tag with a single-quoted attribute: trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello='value' />`,
@@ -681,6 +823,7 @@ element(
 element(
 	'parses a self-closing tag with a single-quoted attribute: no trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello='value'/>`,
@@ -712,6 +855,7 @@ element(
 element(
 	'parses a void tag with a single-quoted attribute: trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello='value' >`,
@@ -743,6 +887,7 @@ element(
 element(
 	'parses a void tag with a single-quoted attribute: no trailing space',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello='value'>`,
@@ -774,6 +919,7 @@ element(
 element(
 	'parses a self-closing tag with single-quoted attributes: many values, trailing whitespace',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello='value valuetwo' />`,
@@ -809,6 +955,7 @@ element(
 element(
 	'parses a self-closing tag with single-quoted attributes: many values, no trailing whitespace',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello='value valuetwo'/>`,
@@ -844,6 +991,7 @@ element(
 element(
 	'parses a void tag with single-quoted attributes: many values, trailing whitespace',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello='value valuetwo' >`,
@@ -879,6 +1027,7 @@ element(
 element(
 	'parses a void tag with single-quoted attributes: many values, no trailing whitespace',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello='value valuetwo'>`,
@@ -912,6 +1061,7 @@ element(
 );
 
 element('parses a void tag with a directive', () => {
+	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello:world >`,
@@ -936,6 +1086,7 @@ element('parses a void tag with a directive', () => {
 });
 
 element('parses a self-closing tag with a directive', () => {
+	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello:world />`,
@@ -960,6 +1111,7 @@ element('parses a self-closing tag with a directive', () => {
 });
 
 element('parses a self-closing tag with two directives', () => {
+	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello:world goodbye:friends />`,
@@ -994,6 +1146,7 @@ element('parses a self-closing tag with two directives', () => {
 element(
 	'parses a tag with a directive an a directive value: double-quoted',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello:world="cheese" />`,
@@ -1021,6 +1174,7 @@ element(
 element(
 	'parses a tag with a directive an a directive value: souble-quoted, two values',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello:world="cheese strings" />`,
@@ -1051,6 +1205,7 @@ element(
 element(
 	'parses a tag with a directive an a directive value: single-quoted, two values',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello:world='cheese strings' />`,
@@ -1079,6 +1234,7 @@ element(
 );
 
 element('parses a tag with a directive an a directive value: unquoted', () => {
+	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello:world="cheese" />`,
@@ -1103,6 +1259,7 @@ element('parses a tag with a directive an a directive value: unquoted', () => {
 });
 
 element('parses a tag with a directive with modifiers', () => {
+	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello:world|modifierval />`,
@@ -1127,6 +1284,7 @@ element('parses a tag with a directive with modifiers', () => {
 });
 
 element('parses a tag with a directive with multiple modifiers', () => {
+	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello:world|modifierval|modifierval2 />`,
@@ -1154,6 +1312,7 @@ element('parses a tag with a directive with multiple modifiers', () => {
 });
 
 element('parses a tag with a directive with modifiers', () => {
+	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello|modifierval />`,
@@ -1177,6 +1336,7 @@ element('parses a tag with a directive with modifiers', () => {
 });
 
 element('parses a tag with a directive with multiple modifiers', () => {
+	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello|modifierval|modifierval2 />`,
@@ -1205,9 +1365,110 @@ element('parses a tag with a directive with multiple modifiers', () => {
 element(
 	'parses a tag with an attribute with multiple modifiers and a value',
 	() => {
+		//@ts-ignore
 		const { parsed } = parseNode({
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello:world|modifierval|modifierval2=someval />`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteDirective',
+					name: 'hello',
+					specifier: 'world',
+					value: [{ type: 'text', value: 'someval' }],
+					shorthand: 'none',
+					modifiers: [
+						{ type: 'modifier', value: 'modifierval' },
+						{ type: 'modifier', value: 'modifierval2' },
+					],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a tag with an attribute with multiple modifiers and a value: weird spacing',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<      input      hello:world|modifierval|modifierval2   =   someval    /    >`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteDirective',
+					name: 'hello',
+					specifier: 'world',
+					value: [{ type: 'text', value: 'someval' }],
+					shorthand: 'none',
+					modifiers: [
+						{ type: 'modifier', value: 'modifierval' },
+						{ type: 'modifier', value: 'modifierval2' },
+					],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a tag with an attribute with multiple modifiers and a value: weird spacing, double-quotes',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<      input      hello:world|modifierval|modifierval2   =   "someval"    /    >`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteDirective',
+					name: 'hello',
+					specifier: 'world',
+					value: [{ type: 'text', value: 'someval' }],
+					shorthand: 'none',
+					modifiers: [
+						{ type: 'modifier', value: 'modifierval' },
+						{ type: 'modifier', value: 'modifierval2' },
+					],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a tag with an attribute with multiple modifiers and a value: weird spacing and newlines',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<      
+			input      
+			
+			hello:world|modifierval|modifierval2   
+			=   
+			"someval"    
+			/    
+			>`,
 		});
 
 		assert.equal(parsed, <SvelteElement>{

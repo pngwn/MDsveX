@@ -21,6 +21,7 @@ import {
 	EQUALS,
 	QUOTE,
 	APOSTROPHE,
+	TAB,
 } from './types_and_things';
 
 import {
@@ -65,7 +66,7 @@ function is_void_element(tag_name: string): boolean {
 	return void_els.includes(tag_name);
 }
 
-export function parseNode(opts: ParserOptions): Result {
+export function parseNode(opts: ParserOptions): Result | undefined {
 	let index = 0;
 	let quote_type = '';
 	let current_prop: unknown;
@@ -73,7 +74,7 @@ export function parseNode(opts: ParserOptions): Result {
 	let current_modifier;
 	let closing_tag_name = '';
 
-	const {
+	let {
 		value,
 		currentPosition = {
 			line: 1,
@@ -83,6 +84,11 @@ export function parseNode(opts: ParserOptions): Result {
 		block = true,
 		childParser,
 	} = opts;
+
+	// TODO: remove this
+	const lineFeed = '\n';
+	const lineBreaksExpression = /\r\n|\r/g;
+	value = value.replace(lineBreaksExpression, lineFeed);
 
 	const position = Object.assign(currentPosition, { index });
 
@@ -117,7 +123,7 @@ export function parseNode(opts: ParserOptions): Result {
 	}
 
 	while (!done && !error) {
-		console.log(value[index], state);
+		console.log(value[index], state, value.charCodeAt(index));
 		if (!value[index]) break;
 
 		// right at the start
@@ -159,6 +165,15 @@ export function parseNode(opts: ParserOptions): Result {
 				state.push('IN_TAG_NAME');
 				continue;
 			}
+
+			if (
+				value.charCodeAt(index) === SPACE ||
+				value.charCodeAt(index) === TAB ||
+				value.charCodeAt(index) === LINEFEED
+			) {
+				chomp();
+				continue;
+			}
 		}
 
 		// we are inside a tags name
@@ -166,6 +181,7 @@ export function parseNode(opts: ParserOptions): Result {
 			// space or linefeed put us into the tag body
 			if (
 				value.charCodeAt(index) === SPACE ||
+				value.charCodeAt(index) === TAB ||
 				value.charCodeAt(index) === LINEFEED
 			) {
 				state.pop();
@@ -215,7 +231,7 @@ export function parseNode(opts: ParserOptions): Result {
 				state.pop();
 				state.push('IN_CLOSING_SLASH');
 				(node as BaseSvelteTag).selfClosing = true;
-				chomp();
+				if (value.charCodeAt(index) === SLASH) chomp();
 				continue;
 			}
 
@@ -226,7 +242,11 @@ export function parseNode(opts: ParserOptions): Result {
 				continue;
 			}
 
-			if (value.charCodeAt(index) === SPACE) {
+			if (
+				value.charCodeAt(index) === SPACE ||
+				value.charCodeAt(index) === TAB ||
+				value.charCodeAt(index) === LINEFEED
+			) {
 				chomp();
 				continue;
 			}
@@ -234,9 +254,11 @@ export function parseNode(opts: ParserOptions): Result {
 
 		// we are expecting the tag to close completely here
 		if (get_state() === 'IN_CLOSING_SLASH') {
+			console.log('boo', value[index]);
 			// ignore ws
 			if (
 				value.charCodeAt(index) === SPACE ||
+				value.charCodeAt(index) === TAB ||
 				value.charCodeAt(index) === LINEFEED
 			) {
 				chomp();
@@ -244,8 +266,8 @@ export function parseNode(opts: ParserOptions): Result {
 			}
 			// we closed successfully, end the parse
 			if (value.charCodeAt(index) === CLOSE_ANGLE_BRACKET) {
+				console.log('boo2');
 				chomp();
-				done = true;
 				break;
 			}
 
@@ -256,8 +278,10 @@ export function parseNode(opts: ParserOptions): Result {
 		if (get_state() === 'IN_ATTR_NAME') {
 			let s;
 			// " ", "\n", "/" or ">" => shorthand boolean attr
+
 			if (
 				(s = value.charCodeAt(index)) === SPACE ||
+				s === TAB ||
 				s === LINEFEED ||
 				s === SLASH ||
 				s === CLOSE_ANGLE_BRACKET
@@ -305,6 +329,16 @@ export function parseNode(opts: ParserOptions): Result {
 		// att values can be quoted or unquoted
 		if (get_state() === 'IN_ATTR_VALUE') {
 			// quoted attr
+			let s;
+			// " ", "\n", "/" or ">" => ends the whole thing
+			if (
+				(s = value.charCodeAt(index)) === SPACE ||
+				s === TAB ||
+				s === LINEFEED
+			) {
+				chomp();
+				continue;
+			}
 			if (
 				value.charCodeAt(index) === QUOTE ||
 				value.charCodeAt(index) === APOSTROPHE
@@ -335,6 +369,7 @@ export function parseNode(opts: ParserOptions): Result {
 			// " ", "\n", "/" or ">" => ends the whole thing
 			if (
 				(s = value.charCodeAt(index)) === SPACE ||
+				s === TAB ||
 				s === LINEFEED ||
 				s === SLASH ||
 				s === CLOSE_ANGLE_BRACKET
@@ -359,7 +394,11 @@ export function parseNode(opts: ParserOptions): Result {
 
 			let s;
 			// " ", "\n" => still in the attribute value but make a new node
-			if ((s = value.charCodeAt(index)) === SPACE || s === LINEFEED) {
+			if (
+				(s = value.charCodeAt(index)) === SPACE ||
+				s === TAB ||
+				s === LINEFEED
+			) {
 				current_prop_value = { type: 'text', value: '' };
 				(current_prop as Property).value.push(current_prop_value as Text);
 
@@ -404,6 +443,7 @@ export function parseNode(opts: ParserOptions): Result {
 			// " ", "\n", "/" or ">" => ends the whole thing
 			if (
 				(s = value.charCodeAt(index)) === SPACE ||
+				s === TAB ||
 				s === LINEFEED ||
 				s === SLASH ||
 				s === CLOSE_ANGLE_BRACKET
@@ -436,10 +476,14 @@ export function parseNode(opts: ParserOptions): Result {
 			let s;
 			if (
 				(s = value.charCodeAt(index)) === SPACE ||
-				s === LINEFEED ||
-				s === SLASH ||
-				s === CLOSE_ANGLE_BRACKET
+				s === TAB ||
+				s === LINEFEED
 			) {
+				chomp();
+				continue;
+			}
+
+			if (s === SLASH || s === CLOSE_ANGLE_BRACKET) {
 				state.pop();
 				continue;
 			}
@@ -449,13 +493,11 @@ export function parseNode(opts: ParserOptions): Result {
 		}
 
 		if (get_state() === 'PARSE_CHILDREN') {
-			console.log(value.slice(index));
 			const [children, lastIndex] = childParser({
 				value: value.slice(index),
 				currentPosition,
 				childParser,
 			});
-			console.log(lastIndex);
 			node.children = children;
 			// position = position = Object.assign(
 			// 	{},
@@ -466,17 +508,10 @@ export function parseNode(opts: ParserOptions): Result {
 			index = position.index;
 			state.pop();
 			state.push('EXPECT_END');
-			console.log(`THE INDEX: ${index}`);
 		}
 
 		if (get_state() === 'EXPECT_END') {
-			console.log('boo');
 			let s;
-			// " ", "\n", "/" or ">" => ends the whole thing
-
-			// s === LINEFEED ||
-			// s === SLASH ||
-			// s === CLOSE_ANGLE_BRACKET
 
 			if (value.charCodeAt(index) === OPEN_ANGLE_BRACKET) {
 				chomp();
@@ -506,9 +541,7 @@ export function parseNode(opts: ParserOptions): Result {
 			continue;
 		}
 	}
-	console.log(`
-VALUE: ${value}
-`);
+
 	return {
 		chomped: value.slice(0, index),
 		unchomped: value.slice(index),
@@ -552,16 +585,17 @@ function parse_siblings(opts: ParserOptions): [Node[], number] {
 		if (unchomped.trim().length === 0) break;
 	}
 
-	console.log(position.index);
-
 	return [children, index];
 }
 
 export function parse(opts: ParserOptions): Root {
+	const lineFeed = '\n';
+	const lineBreaksExpression = /\r\n|\r/g;
+
 	const root = <Root>{
 		type: 'root',
 		children: parse_siblings({
-			value: opts.value,
+			value: opts.value.replace(lineBreaksExpression, lineFeed),
 			childParser: parse_siblings,
 		})[0],
 	};

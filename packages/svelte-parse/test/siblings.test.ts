@@ -13,7 +13,7 @@ siblings.before((ctx) => {
 		childParser: () => [[{ type: 'fake' }], 0],
 		value:
 			'<input hello:world|modifierval|modifierval2=someval /><input2 hello2:world2|modifierval2|modifierval3=someval2 />',
-	});
+	}) as Result;
 });
 
 siblings(
@@ -82,7 +82,7 @@ siblings('parseNode should continue from the position initially passed', () => {
 			column: 55,
 			offset: 54,
 		},
-	});
+	}) as Result;
 
 	assert.equal(position, {
 		line: 1,
@@ -144,13 +144,111 @@ siblings('parse should parse sibling nodes', () => {
 	});
 });
 
-siblings('parse should parse sibling nodes', () => {
+siblings('parse should parse nested self-closing elements', () => {
 	const contents = parse({
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: '<div><input /></div>',
 	});
 
-	assert.equal(contents, {});
+	assert.equal(contents, <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'div',
+				properties: [],
+				selfClosing: false,
+				children: [
+					{
+						type: 'svelteElement',
+						tagName: 'input',
+						properties: [],
+						selfClosing: true,
+						children: [],
+					},
+				],
+			},
+		],
+	});
 });
 
+siblings('parse should parse nested void elements', () => {
+	const contents = parse({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: '<div><input ></div>',
+	});
+
+	assert.equal(contents, <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'div',
+				properties: [],
+				selfClosing: false,
+				children: [
+					{
+						type: 'svelteElement',
+						tagName: 'input',
+						properties: [],
+						selfClosing: true,
+						children: [],
+					},
+				],
+			},
+		],
+	});
+});
+
+siblings('parse should parse deeply nested void elements', () => {
+	const contents = parse({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: '<  div><div><div><div><input></div></div></div></div>',
+	});
+
+	assert.equal(contents, <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'div',
+				properties: [],
+				selfClosing: false,
+				children: [
+					{
+						type: 'svelteElement',
+						tagName: 'div',
+						properties: [],
+						selfClosing: false,
+						children: [
+							{
+								type: 'svelteElement',
+								tagName: 'div',
+								properties: [],
+								selfClosing: false,
+								children: [
+									{
+										type: 'svelteElement',
+										tagName: 'div',
+										properties: [],
+										selfClosing: false,
+										children: [
+											{
+												type: 'svelteElement',
+												tagName: 'input',
+												properties: [],
+												selfClosing: true,
+												children: [],
+											},
+										],
+									},
+								],
+							},
+						],
+					},
+				],
+			},
+		],
+	});
+});
 siblings.run();
