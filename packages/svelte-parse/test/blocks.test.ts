@@ -30,4 +30,22 @@ block('parses a simple expression', () => {
 	});
 });
 
+block('parses a simple expression', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `{@html (e) => val = val.filter(v => v.map(x => x*2)).reduce(absolutelywhat is this i have no idea) * 2735262 + 123.something("hey")}`,
+	});
+
+	assert.equal(parsed, <VoidBlock>{
+		type: 'svelteVoidBlock',
+		name: 'html',
+		expression: {
+			type: 'svelteExpression',
+			value:
+				'(e) => val = val.filter(v => v.map(x => x*2)).reduce(absolutelywhat is this i have no idea) * 2735262 + 123.something("hey")',
+		},
+	});
+});
+
 block.run();
