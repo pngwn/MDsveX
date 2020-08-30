@@ -397,7 +397,7 @@ expression(
 	}
 );
 
-expression.only('parses shorthand attribute expressions', () => {
+expression('parses shorthand attribute expressions', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
@@ -417,6 +417,96 @@ expression.only('parses shorthand attribute expressions', () => {
 					{
 						type: 'svelteExpression',
 						value: 'value',
+					},
+				],
+				shorthand: 'expression',
+				modifiers: [],
+			},
+		],
+	});
+});
+
+expression('parses many shorthand attribute expressions', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<input {value} {value_2} val=123 {value_3} on:click={poo} {value_4} />`,
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		selfClosing: true,
+		children: [],
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'value',
+				value: [
+					{
+						type: 'svelteExpression',
+						value: 'value',
+					},
+				],
+				shorthand: 'expression',
+				modifiers: [],
+			},
+			{
+				type: 'svelteProperty',
+				name: 'value_2',
+				value: [
+					{
+						type: 'svelteExpression',
+						value: 'value_2',
+					},
+				],
+				shorthand: 'expression',
+				modifiers: [],
+			},
+			{
+				type: 'svelteProperty',
+				name: 'val',
+				value: [
+					{
+						type: 'text',
+						value: '123',
+					},
+				],
+				shorthand: 'none',
+				modifiers: [],
+			},
+			{
+				type: 'svelteProperty',
+				name: 'value_3',
+				value: [
+					{
+						type: 'svelteExpression',
+						value: 'value_3',
+					},
+				],
+				shorthand: 'expression',
+				modifiers: [],
+			},
+			{
+				type: 'svelteDirective',
+				name: 'on',
+				specifier: 'click',
+				value: [
+					{
+						type: 'svelteExpression',
+						value: 'poo',
+					},
+				],
+				shorthand: 'none',
+				modifiers: [],
+			},
+			{
+				type: 'svelteProperty',
+				name: 'value_4',
+				value: [
+					{
+						type: 'svelteExpression',
+						value: 'value_4',
 					},
 				],
 				shorthand: 'expression',
