@@ -98,6 +98,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		},
 		block = true,
 		childParser,
+		generatePositions = true,
 	} = opts;
 
 	// TODO: remove this
@@ -134,6 +135,10 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		return node_stack[node_stack.length - 1];
 	}
 
+	function place() {
+		return Object.assign({}, position);
+	}
+
 	while (!done && !error) {
 		// console.log(value[index], state, node_stack);
 		if (!value[index]) break;
@@ -158,6 +163,10 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 					selfClosing: false,
 					children: [],
 				});
+				if (generatePositions)
+					//@ts-ignore
+					current_node().position = { start: place(), end: {} };
+
 				chomp();
 				continue;
 			}
@@ -838,6 +847,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				continue;
 			} else {
 				const [children, lastIndex] = childParser({
+					generatePositions,
 					value: value.slice(index),
 					currentPosition,
 					childParser,
@@ -996,6 +1006,7 @@ function parse_siblings(opts: ParserOptions): [Node[], number] {
 	let result;
 	for (;;) {
 		result = parseNode({
+			generatePositions: opts.generatePositions,
 			value: unchomped,
 			currentPosition: position,
 			childParser,
@@ -1020,6 +1031,7 @@ export function parse(opts: ParserOptions): Root {
 	const root = <Root>{
 		type: 'root',
 		children: parse_siblings({
+			generatePositions: opts.generatePositions,
 			value: opts.value.replace(lineBreaksExpression, lineFeed),
 			childParser: parse_siblings,
 		})[0],

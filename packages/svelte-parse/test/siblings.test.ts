@@ -10,6 +10,7 @@ const siblings = suite<{ parseNode_1: Result }>('parse-element');
 
 siblings.before((ctx) => {
 	ctx.parseNode_1 = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value:
 			'<input hello:world|modifierval|modifierval2=someval /><input2 hello2:world2|modifierval2|modifierval3=someval2 />',
@@ -75,6 +76,7 @@ siblings(
 
 siblings('parseNode should continue from the position initially passed', () => {
 	const { position } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: '<input2 hello2:world2|modifierval2|modifierval3=someval2 />',
 		currentPosition: {
@@ -94,6 +96,7 @@ siblings('parseNode should continue from the position initially passed', () => {
 
 siblings('parse should parse sibling nodes', () => {
 	const contents = parse({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value:
 			'<input hello:world|modifierval|modifierval2=someval /><input2 hello2:world2|modifierval2|modifierval3=someval2 />',
@@ -146,6 +149,7 @@ siblings('parse should parse sibling nodes', () => {
 
 siblings('parse should parse nested self-closing elements', () => {
 	const contents = parse({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: '<div><input /></div>',
 	});
@@ -174,6 +178,7 @@ siblings('parse should parse nested self-closing elements', () => {
 
 siblings('parse should parse nested void elements', () => {
 	const contents = parse({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: '<div><input ></div>',
 	});
@@ -202,6 +207,7 @@ siblings('parse should parse nested void elements', () => {
 
 siblings('parse should parse deeply nested void elements', () => {
 	const contents = parse({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: '<  div><div><div><div><input></div></div></div></div>',
 	});
@@ -254,6 +260,7 @@ siblings('parse should parse deeply nested void elements', () => {
 
 siblings('parse should parse sibling nodes', () => {
 	const contents = parse({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: '<input hello:world|modifierval|modifierval2=someval />Hail',
 	});
@@ -290,6 +297,7 @@ siblings('parse should parse sibling nodes', () => {
 
 siblings('parse should parse deeply nested void elements', () => {
 	const contents = parse({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: '<  div><div><div><div>Hail</div></div></div></div>',
 	});
@@ -339,6 +347,7 @@ siblings('parse should parse deeply nested void elements', () => {
 
 siblings('parse should parse deeply nested void elements', () => {
 	const contents = parse({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value:
 			'<  div><div><div>hail<div>Hail</div></div></div><span>hail</span></div>',
@@ -405,6 +414,7 @@ siblings('parse should parse deeply nested void elements', () => {
 
 siblings('parses script tags ignoring the contents', () => {
 	const contents = parse({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<script>Hello friends</script>`,
 	});
@@ -425,6 +435,7 @@ siblings('parses script tags ignoring the contents', () => {
 
 siblings('parses script tags with attributes ignoring the contents', () => {
 	const contents = parse({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<script hello:world='cheese strings'>
 
@@ -460,6 +471,7 @@ Hello friends</script>`,
 
 siblings('parses style tags ignoring the contents', () => {
 	const contents = parse({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<style hello:world='cheese strings'>
 
@@ -495,6 +507,7 @@ Hello friends</style>`,
 
 siblings('parses style tags ignoring the contents', () => {
 	const contents = parse({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<svelte:head hello:world='cheese strings'>
 <meta description="boo" />

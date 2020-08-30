@@ -67,6 +67,10 @@ export interface ParserOptions {
 	 * I'm not really sure what this is for
 	 */
 	silent?: boolean;
+	/**
+	 * Generate positional data
+	 */
+	generatePositions: boolean;
 }
 
 export type State =
