@@ -29,6 +29,7 @@ module.exports = {
 		'@typescript-eslint/no-unused-vars': 'off',
 	},
 	ignorePatterns: [
+		'dist',
 		'node_modules',
 		'!/packages/*/src/**',
 		'/packages/site/**',

@@ -2,7 +2,6 @@ import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
 import { VoidBlock, Root } from 'svast';
-
 import { parseNode, parse } from '../src/main';
 
 const block = suite('parse-element');
