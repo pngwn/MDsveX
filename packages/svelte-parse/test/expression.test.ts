@@ -1,7 +1,7 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
-import { SvelteElement, SvelteComponent, Text, SvelteExpression } from 'svast';
+import { SvelteElement, SvelteExpression } from 'svast';
 
 import { parseNode } from '../src/main';
 
@@ -118,12 +118,12 @@ expression('parses nested braces: while ignoring regex', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
-		value: '{/}/gi}',
+		value: '{(/}/gi)}',
 	});
 
 	assert.equal(parsed, <SvelteExpression>{
 		type: 'svelteExpression',
-		value: '/}/gi',
+		value: '(/}/gi)',
 	});
 });
 
@@ -131,12 +131,12 @@ expression('parses nested braces: while ignoring regex', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
-		value: `{/\\/}/gi}`,
+		value: `{(/\\/}/gi)}`,
 	});
 
 	assert.equal(parsed, <SvelteExpression>{
 		type: 'svelteExpression',
-		value: `/\\/}/gi`,
+		value: `(/\\/}/gi)`,
 	});
 });
 

@@ -11,6 +11,8 @@ import {
 	Root,
 	SvelteExpression,
 	VoidBlock,
+	BranchingBlock,
+	Branch,
 } from 'svast';
 
 import {
@@ -28,6 +30,8 @@ import {
 	BACKTICK,
 	BACKSLASH,
 	AT,
+	OCTOTHERP,
+	RE_BLOCK_BRANCH,
 } from './types_and_things';
 
 import {
@@ -136,6 +140,8 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 		// right at the start
 		if (!get_state()) {
+			if (RE_BLOCK_BRANCH.test(value.substring(index))) return;
+
 			// "<" => tag
 			if (value.charCodeAt(index) === OPEN_BRACE) {
 				state.push('MAYBE_IN_EXPRESSION');
@@ -165,6 +171,18 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		}
 
 		if (get_state() === 'MAYBE_IN_EXPRESSION') {
+			// if (value.charCodeAt(index) === COLON) return;
+			// if (value.charCodeAt(index) === SLASH) return;
+
+			if (
+				value.charCodeAt(index) === SPACE ||
+				value.charCodeAt(index) === LINEFEED ||
+				value.charCodeAt(index) === TAB
+			) {
+				chomp();
+				continue;
+			}
+
 			if (value.charCodeAt(index) === AT) {
 				node_stack.push(<VoidBlock>{
 					type: 'svelteVoidBlock',
@@ -174,12 +192,25 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 						value: '',
 					},
 				});
-
+				state.pop();
 				state.push('IN_VOID_BLOCK');
 				chomp();
 				continue;
 			}
 
+			if (value.charCodeAt(index) === OCTOTHERP) {
+				node_stack.push(<Text>{
+					type: 'text',
+					value: '',
+				});
+				state.pop();
+				state.push('IN_BRANCHING_BLOCK');
+				state.push('IN_BRANCHING_BLOCK_NAME');
+				chomp();
+				continue;
+			}
+
+			state.pop();
 			state.push('IN_EXPRESSION');
 			node_stack.push(<SvelteExpression>{
 				type: 'svelteExpression',
@@ -187,6 +218,126 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			});
 			continue;
 		}
+
+		if (get_state() === 'IN_BRANCHING_BLOCK_NAME') {
+			if (value.charCodeAt(index) === CLOSE_BRACE) {
+				// each
+				state.pop();
+
+				continue;
+			}
+
+			if (value.charCodeAt(index) === SPACE) {
+				const _n = <BranchingBlock>{
+					type: 'svelteBranchingBlock',
+					name: current_node().value,
+					branches: [],
+				};
+				const _n2 = <Branch>{
+					type: 'svelteBranch',
+					name: current_node().value,
+					expression: {
+						type: 'svelteExpression',
+						value: '',
+					},
+					children: [],
+				};
+				node_stack.pop();
+				node_stack.push(_n);
+				node_stack.push(_n2);
+				node_stack.push(_n2.expression);
+				_n.branches.push(_n2);
+				state.pop();
+				// state.push('IN_BRANCHING_BLOCK');
+
+				continue;
+			}
+
+			current_node().value += value[index];
+			chomp();
+			continue;
+		}
+
+		if (get_state() === 'IN_BRANCHING_BLOCK_END') {
+			if (
+				value.charCodeAt(index) === SPACE ||
+				value.charCodeAt(index) === LINEFEED ||
+				value.charCodeAt(index) === TAB
+			) {
+				// ERROR - NAME AFTER CLOSING BLOCK SLASH
+			}
+
+			if (value.charCodeAt(index) === CLOSE_BRACE) {
+				if (closing_tag_name !== current_node().name) {
+					// ERROR SHOULD BE A MATCHING NAME (current_node().name)
+				}
+				console.log('END:', closing_tag_name, node_stack[0]);
+				chomp();
+				break;
+			}
+
+			closing_tag_name += value[index];
+			chomp();
+			continue;
+		}
+
+		if (get_state() === 'IN_BRANCHING_BLOCK') {
+			if (value.charCodeAt(index) === SPACE) {
+				state.push('IN_EXPRESSION');
+				chomp();
+				continue;
+			}
+
+			if (value.charCodeAt(index) === COLON) {
+				// state.push('IN_EXPRESSION');
+				// chomp();
+				// continue;
+			}
+
+			if (value.charCodeAt(index) === SLASH) {
+				closing_tag_name = '';
+				state.push('IN_BRANCHING_BLOCK_END');
+				chomp();
+				continue;
+			}
+
+			if (
+				value.charCodeAt(index) === SPACE ||
+				value.charCodeAt(index) === LINEFEED ||
+				value.charCodeAt(index) === TAB
+			) {
+				chomp();
+				continue;
+			}
+			node_stack.pop();
+			state.push('PARSE_CHILDREN');
+		}
+
+		// if (get_state() === 'IN_BRANCHING_BLOCK_BRANCH') {
+		// 	if (
+		// 		value.charCodeAt(index) === SPACE ||
+		// 		value.charCodeAt(index) === LINEFEED ||
+		// 		value.charCodeAt(index) === TAB
+		// 	) {
+		// 		chomp();
+		// 		continue;
+		// 	}
+
+		// 	if (value.charCodeAt(index) === SLASH) {
+		// 		node_stack.pop();
+		// 		const _n = {
+		// 			type: 'svelteBranch',
+		// 			name: '',
+		// 			expression: '',
+		// 			children: [],
+		// 		};
+		// 		if (current_node().type === 'svelteIfBlock') {
+		// 		}
+		// 	}
+		// }
+
+		// if (get_state() === 'IN_BRANCHING_BLOCK_END') {
+		// }
 
 		if (get_state() === 'IN_VOID_BLOCK') {
 			if (value.charCodeAt(index) === SPACE) {
@@ -622,11 +773,17 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			position.index += lastIndex;
 			index = position.index;
 			state.pop();
-			state.push('EXPECT_END');
+			state.push('EXPECT_END_OR_BRANCH');
 		}
 
-		if (get_state() === 'EXPECT_END') {
+		if (get_state() === 'EXPECT_END_OR_BRANCH') {
 			let s;
+
+			if (RE_BLOCK_BRANCH.test(value.substring(index))) {
+				state.pop();
+				chomp();
+				continue;
+			}
 
 			if (value.charCodeAt(index) === OPEN_ANGLE_BRACKET) {
 				chomp();
