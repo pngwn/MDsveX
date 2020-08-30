@@ -493,4 +493,56 @@ Hello friends</style>`,
 	});
 });
 
+siblings('parses style tags ignoring the contents', () => {
+	const contents = parse({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<svelte:head hello:world='cheese strings'>
+<meta description="boo" />
+</svelte:head>`,
+	});
+
+	assert.equal(contents, <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteTag',
+				tagName: 'head',
+				properties: [
+					{
+						type: 'svelteDirective',
+						name: 'hello',
+						specifier: 'world',
+						value: [
+							{ type: 'text', value: 'cheese' },
+							{ type: 'text', value: 'strings' },
+						],
+						shorthand: 'none',
+						modifiers: [],
+					},
+				],
+				selfClosing: false,
+				children: [
+					{ type: 'text', value: '\n' },
+					{
+						type: 'svelteElement',
+						tagName: 'meta',
+						selfClosing: true,
+						children: [],
+						properties: [
+							{
+								type: 'svelteProperty',
+								name: 'description',
+								value: [{ type: 'text', value: 'boo' }],
+								shorthand: 'none',
+								modifiers: [],
+							},
+						],
+					},
+					{ type: 'text', value: '\n' },
+				],
+			},
+		],
+	});
+});
+
 siblings.run();
