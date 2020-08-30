@@ -397,4 +397,33 @@ expression(
 	}
 );
 
+expression.only('parses shorthand attribute expressions', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<input {value} />`,
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		selfClosing: true,
+		children: [],
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'value',
+				value: [
+					{
+						type: 'svelteExpression',
+						value: 'value',
+					},
+				],
+				shorthand: 'expression',
+				modifiers: [],
+			},
+		],
+	});
+});
+
 expression.run();
