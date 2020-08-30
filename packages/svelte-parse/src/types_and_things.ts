@@ -72,6 +72,7 @@ export type State =
 	| 'IN_START_TAG'
 	| 'IN_TAG_NAME'
 	| 'IN_TAG_BODY'
+	| 'IN_SHORTHAND_ATTR'
 	| 'IN_ATTR_NAME'
 	| 'IN_DIRECTIVE_SPECIFIER'
 	| 'IN_ATTR_MODIFIER'

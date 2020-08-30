@@ -281,39 +281,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			continue;
 		}
 
-		// if (get_state() === 'IN_BRANCHING_BLOCK_BRANCH') {
-		// 	if (
-		// 		value.charCodeAt(index) === SPACE ||
-		// 		value.charCodeAt(index) === LINEFEED ||
-		// 		value.charCodeAt(index) === TAB
-		// 	) {
-		// 		// ERROR - NAME AFTER CLOSING BLOCK SLASH
-		// 	}
-
-		// 	if (value.charCodeAt(index) === CLOSE_BRACE) {
-		// 		// if (closing_tag_name !== current_node().name) {
-		// 		// 	// ERROR SHOULD BE A MATCHING NAME (current_node().name)
-		// 		// }
-		// 		// console.log('END:', closing_tag_name, node_stack[0]);
-		// 		state.pop();
-		// 		state.push('PARSE_CHILDREN');
-		// 		chomp();
-		// 		continue;
-		// 	}
-
-		// 	state.push('IN_BRANCHING_BLOCK_BRANCH_NAME');
-		// 	chomp();
-		// 	continue;
-		// }
-
 		if (get_state() === 'IN_BRANCHING_BLOCK_BRANCH_NAME') {
-			// if (value.charCodeAt(index) === CLOSE_BRACE) {
-			// 	// each
-			// 	state.pop();
-
-			// 	continue;
-			// }
-
 			if (
 				(value.charCodeAt(index) === SPACE &&
 					value.substring(index - 4, index + 3) !== 'else if') ||
@@ -335,8 +303,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				node_stack.push(_n2.expression);
 
 				state.pop();
-				// state.push('IN_BRANCHING_BLOCK');
-
 				continue;
 			}
 
@@ -451,6 +417,26 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 		// we are inside a start tag after the name
 		if (get_state() === 'IN_TAG_BODY') {
+			if (value.charCodeAt(index) === OPEN_BRACE) {
+				state.push('IN_SHORTHAND_ATTR');
+				const _node = <Property>{
+					type: 'svelteProperty',
+					name: '',
+					value: [
+						{
+							type: 'svelteExpression',
+							value: '',
+						},
+					],
+					modifiers: [],
+					shorthand: 'expression',
+				};
+
+				(current_node() as BaseSvelteTag).properties.push(_node as Property);
+				node_stack.push(_node);
+				chomp();
+				continue;
+			}
 			// letters mean we've hit an attribute
 			if (
 				is_lower_alpha(value.charCodeAt(index)) ||
@@ -498,6 +484,20 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				chomp();
 				continue;
 			}
+		}
+
+		if (get_state() === 'IN_SHORTHAND_ATTR') {
+			if (value.charCodeAt(index) === CLOSE_BRACE) {
+				(current_node() as Property).value[0].value = current_node().name;
+				state.pop();
+				node_stack.pop();
+				chomp();
+				continue;
+			}
+
+			current_node().name += value[index];
+			chomp();
+			continue;
 		}
 
 		// we are expecting the tag to close completely here
