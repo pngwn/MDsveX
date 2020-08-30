@@ -26,11 +26,7 @@ This AST seeks to be language agnostic and has no opinion on the contents of any
   - [`VoidBlock`](#voidblock)
   - [`BranchingBlock`](#branchingblock)
   - [`EachBlock`](#eachblock)
-  - [`IfBlock`](#ifblock)
-  - [`AwaitBlock`](#awaitblock)
   - [`Branch`](#branch)
-  - [`IfBranches`](#ifbranches)
-  - [`AwaitBranches`](#awaitbranches)
 
 ## Base Unist Nodes
 
@@ -499,15 +495,18 @@ Yields:
 ```
 interface BranchingBlock <: Parent {
   type: 'svelteBranchingBlock'
-  expression: Expression
+  name: string
+  branches: [Branch]
 }
 ```
 
-The `BrancingBlock` node represents a Svelte Block that allows a single branch, a `path`.
+The `BranchingBlock` node represents a Svelte Block that allows an arbitrary number of named branches, the first branch is alway defined by the opening block statement `{#name expresion}`.
 
-Standard blocks other than `each` do not extend this interface, as the standard blocks all have more complex branching structures.
+The `name` field represents the name of the block.
 
-The `expression` field contains the rest of the contents of the unknown branching block. The expression node itself can be empty.
+The `branches` field contains any branches that block has. A block must have at least one branch, even if it is empty.
+
+This node is used for all non-void blocks other than `each` blocks.
 
 The following input:
 
@@ -523,13 +522,20 @@ Yields:
 {
   type: 'svelteBranchingBlock',
   name: 'custom',
-  children: [
-    { type: 'text', value: 'Hello' }
-  ]
+  branches: [{
+    type: 'svelteBranch',
+    name: 'custom',
+    expression: {
+      type: 'svelteExpression',
+      value: 'someExpression'
+    },
+    children: [{
+      type: 'text',
+      value: 'Hello'
+    }]
+  }]
 }
 ```
-
-_Parser relevant: Branches are distinguished by nested `{:branchname}` qualifiers that meet a certain contract defined by the grammar. Unknown (non-standard) blocks are tolerated, unknown branches are not._
 
 ### `EachBlock`
 
@@ -591,158 +597,6 @@ Yields:
 }
 ```
 
-### `IfBlock`
-
-```idl
-interface IfBlock <: Node {
-  type: 'svelteIfBlock'
-  name: 'if'
-  branches: IfBranches
-}
-```
-
-The `IfBlock` node represents a Svelte `#if` block.
-
-The `branches` field implements the `IfBranches` interface and specifies the various branches of the `if` block.
-
-The follwing input:
-
-```svelte
-{#if condition}
-  hi
-{:else if condition2}
-  {boo}
-{else}
-  <p>bootoo</p>
-{/if}
-```
-
-Yields:
-
-```js
-{
-  type: 'svelteIfBlock',
-  name: 'if',
-  branches: {
-    if: {
-      type: 'svelteBranch',
-      name: 'if',
-      expression: {
-        type: 'svelteExpression',
-        value: 'condition'
-      },
-      children: [{
-        type: 'text',
-        value: 'condition'
-      }]
-    },
-    elseif: {
-      type: 'svelteBranch',
-      name: 'elseif',
-      expression: {
-        type: 'svelteExpression',
-        value: 'condition2'
-      },
-      children: [{
-        type: 'svelteExpression',
-        value: 'boo'
-      }]
-    },
-    else: {
-      type: 'svelteBranch',
-      name: 'if',
-      expression: {
-        type: 'svelteExpression',
-        value: ''
-      },
-      children: [{
-        type: 'svelteElement',
-        tagName: 'p',
-        properties: [],
-        selfClosing: false,
-        children: [{
-          type: 'text',
-          value: 'bootoo'
-        }]
-      }
-    }
-  }
-}
-```
-
-### `AwaitBlock`
-
-```idl
-interface AwaitBlock <: Node {
-  type: 'svelteAwaitBlock'
-  branches: AwaitBranches
-}
-```
-
-the `AwaitBlock` node represents a Svelte `#await` block.
-
-The `branches` field implements the `AwaitBranch` interface and specifies the various branches of the `await` block.
-
-The following input:
-
-```svelte
-{#await promise then value}
-  {value}
-{:catch error}
-  <p>it errored</p>
-{/await}
-```
-
-Yields:
-
-```js
-{
-  type: 'svelteIfBlock',
-  name: 'if',
-  branches: {
-    pending: {
-      type: 'svelteBranch',
-      name: 'pending',
-      expression: {
-        type: 'svelteExpression',
-        value: 'promise'
-      },
-      children: []
-    },
-    fulfilled: {
-      type: 'svelteBranch',
-      name: 'fulfilled',
-      expression: {
-        type: 'svelteExpression',
-        value: 'value'
-      },
-      children: [{
-        type: 'svelteExpression',
-        value: 'value'
-      }]
-    },
-    error: {
-      type: 'svelteBranch',
-      name: 'error',
-      expression: {
-        type: 'svelteExpression',
-        value: 'error'
-      },
-      children: [{
-        type: 'svelteElement',
-        tagName: 'p',
-        properties: [],
-        selfClosing: false,
-        children: [{
-          type: 'text',
-          value: 'It errored'
-        }]
-      }
-    }
-  }
-}
-```
-
 ### `Branch`
 
 ```idl
@@ -757,40 +611,6 @@ The `Branch` node describes a branch of a Svelte block.
 
 The `expression` fields contains the expression associated with that branch.
 
-### `IfBranches`
-
-```idl
-interface IfBranches {
-  if: Branch
-  elseif: [Branch]?
-  else: Branch?
-}
-```
-
-The `IfBranch` node represents the possible branches of an `IfBlock`.
-
-The `if` field contains the first `if` branch of the block. The value is a single `Branch`.
-
-The `elseif` field contains a list of branches representing an arbitrary number of `:if else` clauses.
-
-The `else` field contains the final `:else` clause of an `#if` block. It contains a single `Branch`.
-
-### `AwaitBranches`
-
-```idl
-interface AwaitBranches {
-  pending: Branch
-  fulfilled: Branch
-  error: Branch?
-}
-```
-
-The `IfBranch` node represents the possible branches of an `IfBlock`.
-
-The `pending` field represents the first branch of the block representing the pending state. The value is a single `Branch`.
-
-The `fulfilled` field respresents the resolved branch of the block. The value is a single branch.
-
-The `error` field respresents the optional error clause of an `#await` block. It contains a single `Branch`.
+---
 
 The end.
