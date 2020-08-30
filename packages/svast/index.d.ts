@@ -12,9 +12,7 @@ export interface SvelteParent extends Parent {
 		| SvelteExpression
 		| VoidBlock
 		| BranchingBlock
-		| IfBlock
 		| EachBlock
-		| AwaitBlock
 		| SvelteTag
 	)[];
 }
@@ -76,9 +74,10 @@ export interface VoidBlock extends Node {
 	expression: SvelteExpression;
 }
 
-export interface BranchingBlock extends SvelteParent {
-	type: 'UnknownBranchingBlock';
-	expression?: SvelteExpression;
+export interface BranchingBlock extends Node {
+	type: 'svelteBranchingBlock';
+	name: 'string';
+	branches: Branch[];
 }
 
 export interface EachBlock extends SvelteParent {
@@ -88,30 +87,8 @@ export interface EachBlock extends SvelteParent {
 	itemKey?: SvelteExpression;
 }
 
-export interface IfBlock extends Node {
-	type: 'svelteIfBlock';
-	branches: IfBranches;
-}
-
-export interface AwaitBlock extends Node {
-	type: 'svelteAwaitBlock';
-	branches: AwaitBranches;
-}
-
 export interface Branch extends Parent {
 	type: 'svelteBranch';
 	name: string;
 	expression: SvelteExpression;
-}
-
-export interface IfBranches {
-	if: Branch;
-	elseif?: Branch[];
-	else?: Branch;
-}
-
-export interface AwaitBranches {
-	pending: Branch;
-	fulfilled: Branch;
-	error?: Branch;
 }

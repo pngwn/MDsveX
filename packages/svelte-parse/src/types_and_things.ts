@@ -4,7 +4,7 @@ export const TAB = 9; // "\t"
 export const LINEFEED = 10; // "\n"
 export const SPACE = 32; // " "
 export const QUOTE = 34; // "'"
-export const OCTOTHERP = 25; // "#"
+export const OCTOTHERP = 35; // "#"
 export const APOSTROPHE = 39; // "'"
 export const DASH = 45; // "-"
 export const DOT = 46; // "."
@@ -23,7 +23,7 @@ export const BACKTICK = 96;
 export const LOWERCASE_A = 97; // "A"
 export const LOWERCASE_Z = 122; // "Z"
 export const PIPE = 124; // "|"
-
+export const RE_BLOCK_BRANCH = /^{\s*(?::|\/)/;
 export interface Result {
 	/**
 	 * The chomped string, what has been parsed. This is a substring of the input value.
@@ -84,8 +84,12 @@ export type State =
 	| 'IN_CLOSE_TAG'
 	| 'IN_EXPRESSION'
 	| 'PARSE_CHILDREN'
-	| 'EXPECT_END'
+	| 'EXPECT_END_OR_BRANCH'
 	| 'IN_TEXT'
 	| 'IN_EXPRESSION_QUOTE'
 	| 'MAYBE_IN_EXPRESSION'
-	| 'IN_VOID_BLOCK';
+	| 'IN_VOID_BLOCK'
+	| 'IN_BRANCHING_BLOCK'
+	| 'IN_BRANCHING_BLOCK_BRANCH'
+	| 'IN_BRANCHING_BLOCK_END'
+	| 'IN_BRANCHING_BLOCK_NAME';

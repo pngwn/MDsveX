@@ -1,19 +1,13 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
-import {
-	SvelteElement,
-	SvelteComponent,
-	Text,
-	SvelteExpression,
-	VoidBlock,
-} from 'svast';
+import { VoidBlock, Root } from 'svast';
 
-import { parseNode } from '../src/main';
+import { parseNode, parse } from '../src/main';
 
 const block = suite('parse-element');
 
-block('parses a simple expression', () => {
+block('parses a simple void block', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
@@ -30,7 +24,7 @@ block('parses a simple expression', () => {
 	});
 });
 
-block('parses a simple expression', () => {
+block('parses a more complex expression within a voi block', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
@@ -45,6 +39,35 @@ block('parses a simple expression', () => {
 			value:
 				'(e) => val = val.filter(v => v.map(x => x*2)).reduce(absolutelywhat is this i have no idea) * 2735262 + 123.something("hey")',
 		},
+	});
+});
+
+block('parses a simple if block', () => {
+	//@ts-ignore
+	const parsed = parse({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `{#if condition}hello{/if}`,
+	});
+
+	assert.equal(parsed, <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteBranchingBlock',
+				name: 'if',
+				branches: [
+					{
+						type: 'svelteBranch',
+						name: 'if',
+						expression: {
+							type: 'svelteExpression',
+							value: 'condition',
+						},
+						children: [{ type: 'text', value: 'hello' }],
+					},
+				],
+			},
+		],
 	});
 });
 

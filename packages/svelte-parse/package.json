@@ -5,6 +5,7 @@
 	"main": "dist/index.js",
 	"scripts": {
 		"build": "rollup -c",
+		"test:filter": "uvu -r ts-node/register test",
 		"test": "uvu -r ts-node/register test test.ts$",
 		"test:watch": "watchlist src test -- pnpm test"
 	},
