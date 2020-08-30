@@ -83,9 +83,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	let brace_count = 0;
 	let done;
 	let error;
-	// let node: Node = {
-	// 	type: '',
-	// };
+
 	const node_stack: Node[] = [];
 	const state: State[] = [];
 
@@ -101,9 +99,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	} = opts;
 
 	// TODO: remove this
-	const lineFeed = '\n';
-	const lineBreaksExpression = /\r\n|\r/g;
-	value = value.replace(lineBreaksExpression, lineFeed);
+	// const lineFeed = '\n';
+	// const lineBreaksExpression = /\r\n|\r/g;
+	// value = value.replace(lineBreaksExpression, lineFeed);
 
 	const position = Object.assign(currentPosition, { index });
 
@@ -135,7 +133,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	}
 
 	while (!done && !error) {
-		console.log(value[index], state, node_stack);
+		// console.log(value[index], state, node_stack);
 		if (!value[index]) break;
 
 		// right at the start
@@ -248,7 +246,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				node_stack.push(_n2.expression);
 				_n.branches.push(_n2);
 				state.pop();
-				// state.push('IN_BRANCHING_BLOCK');
 
 				continue;
 			}
@@ -271,7 +268,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				if (closing_tag_name !== current_node().name) {
 					// ERROR SHOULD BE A MATCHING NAME (current_node().name)
 				}
-				console.log('END:', closing_tag_name, node_stack[0]);
 				chomp();
 				break;
 			}
@@ -611,7 +607,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			} else {
 				state.pop();
 				state.push('IN_UNQUOTED_ATTR_VALUE');
-				// console.log(current_node());
 				const _n = { type: 'text', value: '' };
 				(current_node() as Property).value.push(_n as Text);
 				node_stack.push(_n);
@@ -724,7 +719,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			if (value.charCodeAt(index) === EQUALS) {
 				state.pop();
 				state.push('IN_ATTR_VALUE');
-				//node_stack.pop();
 				chomp();
 				continue;
 			}
@@ -867,7 +861,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		if (get_state() === 'IN_EXPRESSION') {
 			if (quote_type === '' && value.charCodeAt(index) === CLOSE_BRACE) {
 				if (brace_count === 0) {
-					console.log('hi', node_stack);
 					if (
 						node_stack.length === 1 ||
 						node_stack[0].type === 'svelteVoidBlock'
