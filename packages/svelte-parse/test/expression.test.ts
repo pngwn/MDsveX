@@ -10,6 +10,7 @@ const expression = suite('parse-element');
 expression('parses a simple expression', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `{hello}`,
 	});
@@ -23,6 +24,7 @@ expression('parses a simple expression', () => {
 expression('parses nested braces', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `{{{{hello}}}}`,
 	});
@@ -36,6 +38,7 @@ expression('parses nested braces', () => {
 expression('parses nested braces: while ignoring quoted braces: single', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `{{{{'}'}}}}`,
 	});
@@ -49,6 +52,7 @@ expression('parses nested braces: while ignoring quoted braces: single', () => {
 expression('handles escaped single-quotes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: "{{{{'}\\''}}}}",
 	});
@@ -62,6 +66,7 @@ expression('handles escaped single-quotes', () => {
 expression('parses nested braces: while ignoring quoted braces: double', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `{{{{"}"}}}}`,
 	});
@@ -75,6 +80,7 @@ expression('parses nested braces: while ignoring quoted braces: double', () => {
 expression('handles escaped double-quotes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: '{{{{"}\\""}}}}',
 	});
@@ -90,6 +96,7 @@ expression(
 	() => {
 		//@ts-ignore
 		const { parsed } = parseNode({
+			generatePositions: false,
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: '{{{{`}`}}}}',
 		});
@@ -104,6 +111,7 @@ expression(
 expression('handles escaped backticks', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: '{{{{`}\\``}}}}',
 	});
@@ -117,6 +125,7 @@ expression('handles escaped backticks', () => {
 expression('parses nested braces: while ignoring regex', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: '{(/}/gi)}',
 	});
@@ -130,6 +139,7 @@ expression('parses nested braces: while ignoring regex', () => {
 expression('parses nested braces: while ignoring regex', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `{(/\\/}/gi)}`,
 	});
@@ -143,6 +153,7 @@ expression('parses nested braces: while ignoring regex', () => {
 expression('handles quoted slashes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: '{"/}/gi"}',
 	});
@@ -156,6 +167,7 @@ expression('handles quoted slashes', () => {
 expression('ignores nested quotes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: '{{{{`"}`}}}}',
 	});
@@ -169,6 +181,7 @@ expression('ignores nested quotes', () => {
 expression('parses expressions as attribute values', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello={value} />`,
 	});
@@ -198,6 +211,7 @@ expression('parses expressions as attribute values', () => {
 expression('parses expressions as attribute values: more fancy', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: '<input hello={{{{`"}`}}}} />',
 	});
@@ -227,6 +241,7 @@ expression('parses expressions as attribute values: more fancy', () => {
 expression('parses expressions as attribute values: functions', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: '<input hello={() => console.log("hello world")} />',
 	});
@@ -256,6 +271,7 @@ expression('parses expressions as attribute values: functions', () => {
 expression('parses expressions as attribute values: more functions', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value:
 			'<input hello={(e) => val = val.filter(v => v.map(x => x*2)).reduce(absolutelywhat is this i have no idea) * 2735262 + 123.something("hey")} />',
@@ -287,6 +303,7 @@ expression('parses expressions as attribute values: more functions', () => {
 expression('parses expressions as attribute values in quotes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input hello="{value}" />`,
 	});
@@ -318,6 +335,7 @@ expression(
 	() => {
 		//@ts-ignore
 		const { parsed } = parseNode({
+			generatePositions: false,
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello="{value}{value}" />`,
 		});
@@ -354,6 +372,7 @@ expression(
 	() => {
 		//@ts-ignore
 		const { parsed } = parseNode({
+			generatePositions: false,
 			childParser: () => [[{ type: 'fake' }], 0],
 			value: `<input hello="   {value}   {value}    " />`,
 		});
@@ -400,6 +419,7 @@ expression(
 expression('parses shorthand attribute expressions', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input {value} />`,
 	});
@@ -429,6 +449,7 @@ expression('parses shorthand attribute expressions', () => {
 expression('parses many shorthand attribute expressions', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
+		generatePositions: false,
 		childParser: () => [[{ type: 'fake' }], 0],
 		value: `<input {value} {value_2} val=123 {value_3} on:click={poo} {value_4} />`,
 	});
