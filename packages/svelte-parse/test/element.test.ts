@@ -1493,20 +1493,46 @@ element(
 	}
 );
 
-element(
-	'parses a tag with an attribute with multiple modifiers and a value: weird spacing and newlines',
-	() => {
-		//@ts-ignore
-		const { parsed } = parseNode({
-			childParser: () => [[{ type: 'fake' }], 0],
-			value: `hail`,
-		});
+element('parses text', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `hail`,
+	});
 
-		assert.equal(parsed, <Text>{
-			type: 'text',
-			value: 'hail',
-		});
-	}
-);
+	assert.equal(parsed, <Text>{
+		type: 'text',
+		value: 'hail',
+	});
+});
+
+element('parsing quoted attribute expressions with space', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<button disabled="{!first || !last}" />`,
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'button',
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'disabled',
+				value: [
+					{
+						type: 'svelteExpression',
+						value: '!first || !last',
+					},
+				],
+				shorthand: 'none',
+				modifiers: [],
+			},
+		],
+		selfClosing: true,
+		children: [],
+	});
+});
 
 element.run();
