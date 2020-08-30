@@ -403,4 +403,94 @@ siblings('parse should parse deeply nested void elements', () => {
 	});
 });
 
+siblings('parses script tags ignoring the contents', () => {
+	const contents = parse({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<script>Hello friends</script>`,
+	});
+
+	assert.equal(contents, <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteTag',
+				tagName: 'script',
+				properties: [],
+				selfClosing: false,
+				children: [{ type: 'text', value: 'Hello friends' }],
+			},
+		],
+	});
+});
+
+siblings('parses script tags with attributes ignoring the contents', () => {
+	const contents = parse({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<script hello:world='cheese strings'>
+
+
+Hello friends</script>`,
+	});
+
+	assert.equal(contents, <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteTag',
+				tagName: 'script',
+				properties: [
+					{
+						type: 'svelteDirective',
+						name: 'hello',
+						specifier: 'world',
+						value: [
+							{ type: 'text', value: 'cheese' },
+							{ type: 'text', value: 'strings' },
+						],
+						shorthand: 'none',
+						modifiers: [],
+					},
+				],
+				selfClosing: false,
+				children: [{ type: 'text', value: '\n\n\nHello friends' }],
+			},
+		],
+	});
+});
+
+siblings('parses style tags ignoring the contents', () => {
+	const contents = parse({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<style hello:world='cheese strings'>
+
+
+Hello friends</style>`,
+	});
+
+	assert.equal(contents, <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteTag',
+				tagName: 'style',
+				properties: [
+					{
+						type: 'svelteDirective',
+						name: 'hello',
+						specifier: 'world',
+						value: [
+							{ type: 'text', value: 'cheese' },
+							{ type: 'text', value: 'strings' },
+						],
+						shorthand: 'none',
+						modifiers: [],
+					},
+				],
+				selfClosing: false,
+				children: [{ type: 'text', value: '\n\n\nHello friends' }],
+			},
+		],
+	});
+});
+
 siblings.run();

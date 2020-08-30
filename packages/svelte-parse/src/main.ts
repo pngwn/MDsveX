@@ -32,6 +32,7 @@ import {
 	AT,
 	OCTOTHERP,
 	RE_BLOCK_BRANCH,
+	RE_SCRIPT_STYLE,
 } from './types_and_things';
 
 import {
@@ -79,6 +80,7 @@ function is_void_element(tag_name: string): boolean {
 export function parseNode(opts: ParserOptions): Result | undefined {
 	let index = 0;
 	let quote_type = '';
+	let expr_quote_type = '';
 	let closing_tag_name = '';
 	let brace_count = 0;
 	let done;
@@ -664,6 +666,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				};
 				(current_node() as Property).value.push(_n as SvelteExpression);
 				node_stack.push(_n);
+				state.push('IN_EXPRESSION');
 				chomp();
 				continue;
 			}
@@ -794,16 +797,50 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			continue;
 		}
 
-		if (get_state() === 'PARSE_CHILDREN') {
-			const [children, lastIndex] = childParser({
-				value: value.slice(index),
-				currentPosition,
-				childParser,
-			});
-			current_node().children = children;
+		if (get_state() == 'IN_SCRIPT_STYLE') {
+			if (value.charCodeAt(index) === OPEN_ANGLE_BRACKET) {
+				if (RE_SCRIPT_STYLE.test(value.substring(index))) {
+					node_stack.pop();
+					state.pop();
+					state.push('EXPECT_END_OR_BRANCH');
+					continue;
+				}
+			}
 
-			position.index += lastIndex;
-			index = position.index;
+			current_node().value += value[index];
+			chomp();
+			continue;
+		}
+
+		if (get_state() === 'PARSE_CHILDREN') {
+			if (
+				current_node().tagName === 'script' ||
+				current_node().tagName === 'style'
+			) {
+				current_node().type = 'svelteTag';
+				const _n = {
+					type: 'text',
+					value: '',
+				};
+
+				(current_node() as SvelteTag).children.push(_n as Text);
+				node_stack.push(_n);
+
+				state.pop();
+				state.push('IN_SCRIPT_STYLE');
+				continue;
+			} else {
+				const [children, lastIndex] = childParser({
+					value: value.slice(index),
+					currentPosition,
+					childParser,
+				});
+				current_node().children = children;
+
+				position.index += lastIndex;
+				index = position.index;
+			}
+
 			state.pop();
 			state.push('EXPECT_END_OR_BRANCH');
 		}
@@ -859,7 +896,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		}
 
 		if (get_state() === 'IN_EXPRESSION') {
-			if (quote_type === '' && value.charCodeAt(index) === CLOSE_BRACE) {
+			if (expr_quote_type === '' && value.charCodeAt(index) === CLOSE_BRACE) {
 				if (brace_count === 0) {
 					if (
 						node_stack.length === 1 ||
@@ -875,19 +912,19 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				brace_count--;
 			}
 
-			if (quote_type === '' && value.charCodeAt(index) === OPEN_BRACE) {
+			if (expr_quote_type === '' && value.charCodeAt(index) === OPEN_BRACE) {
 				brace_count++;
 			}
 
 			if (
-				quote_type === '' &&
+				expr_quote_type === '' &&
 				(value.charCodeAt(index) === APOSTROPHE ||
 					value.charCodeAt(index) === QUOTE ||
 					value.charCodeAt(index) === BACKTICK ||
 					value.charCodeAt(index) === SLASH)
 			) {
 				state.push('IN_EXPRESSION_QUOTE');
-				quote_type = value[index];
+				expr_quote_type = value[index];
 				current_node().value += value[index];
 				chomp();
 				continue;
@@ -900,10 +937,10 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 		if (get_state() === 'IN_EXPRESSION_QUOTE') {
 			if (
-				value[index] === quote_type &&
+				value[index] === expr_quote_type &&
 				value.charCodeAt(index - 1) !== BACKSLASH
 			) {
-				quote_type = '';
+				expr_quote_type = '';
 				current_node().value += value[index];
 				chomp();
 				state.pop();
