@@ -402,6 +402,13 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				continue;
 			}
 
+			if (value.charCodeAt(index) === COLON) {
+				current_node().type = 'svelteTag';
+				current_node().tagName = '';
+				chomp();
+				continue;
+			}
+
 			if (value.charCodeAt(index) === CLOSE_ANGLE_BRACKET) {
 				state.pop();
 				state.push('IN_TAG_BODY');

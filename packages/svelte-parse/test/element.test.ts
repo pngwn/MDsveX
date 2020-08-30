@@ -1,7 +1,7 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
-import { SvelteElement, SvelteComponent, Text } from 'svast';
+import { SvelteElement, SvelteComponent, Text, SvelteTag } from 'svast';
 
 import { parseNode } from '../src/main';
 import { void_els } from '../src/void_els';
@@ -1506,7 +1506,7 @@ element('parses text', () => {
 	});
 });
 
-element('parsing quoted attribute expressions with space', () => {
+element('parses quoted attribute expressions with space', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		childParser: () => [[{ type: 'fake' }], 0],
@@ -1524,6 +1524,35 @@ element('parsing quoted attribute expressions with space', () => {
 					{
 						type: 'svelteExpression',
 						value: '!first || !last',
+					},
+				],
+				shorthand: 'none',
+				modifiers: [],
+			},
+		],
+		selfClosing: true,
+		children: [],
+	});
+});
+
+element('parses svelte special elements', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<svelte:options tag={null} />`,
+	});
+
+	assert.equal(parsed, <SvelteTag>{
+		type: 'svelteTag',
+		tagName: 'options',
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'tag',
+				value: [
+					{
+						type: 'svelteExpression',
+						value: 'null',
 					},
 				],
 				shorthand: 'none',
