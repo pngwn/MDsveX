@@ -99,9 +99,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	} = opts;
 
 	// TODO: remove this
-	// const lineFeed = '\n';
-	// const lineBreaksExpression = /\r\n|\r/g;
-	// value = value.replace(lineBreaksExpression, lineFeed);
+	const lineFeed = '\n';
+	const lineBreaksExpression = /\r\n|\r/g;
+	value = value.replace(lineBreaksExpression, lineFeed);
 
 	const position = Object.assign(currentPosition, { index });
 
