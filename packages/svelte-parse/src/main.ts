@@ -136,12 +136,19 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	}
 
 	function place() {
-		return Object.assign({}, position);
+		const _p = Object.assign({}, position);
+		delete _p.index;
+		return _p;
 	}
 
 	while (!done && !error) {
 		// console.log(value[index], state, node_stack);
-		if (!value[index]) break;
+		if (!value[index]) {
+			if (generatePositions)
+				//@ts-ignore
+				current_node().position.end = place();
+			break;
+		}
 
 		// right at the start
 		if (!get_state()) {
@@ -254,6 +261,11 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				node_stack.pop();
 				node_stack.push(_n);
 				node_stack.push(_n2);
+				if (generatePositions) {
+					//@ts-ignore
+					_n2.position = { start: place(), end: {} };
+				}
+
 				node_stack.push(_n2.expression);
 				_n.branches.push(_n2);
 				state.pop();
@@ -448,6 +460,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 				(current_node() as BaseSvelteTag).properties.push(_node as Property);
 				node_stack.push(_node);
+				if (generatePositions)
+					//@ts-ignore
+					current_node().position = { start: place(), end: {} };
 				chomp();
 				continue;
 			}
@@ -467,6 +482,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 				(current_node() as BaseSvelteTag).properties.push(_node as Property);
 				node_stack.push(_node);
+				if (generatePositions)
+					//@ts-ignore
+					current_node().position = { start: place(), end: {} };
 				continue;
 			}
 
@@ -487,6 +505,8 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				state.pop();
 				state.push('PARSE_CHILDREN');
 				chomp();
+				//@ts-ignore
+				if (generatePositions) current_node().position.end = place();
 				continue;
 			}
 
@@ -528,6 +548,8 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			// we closed successfully, end the parse
 			if (value.charCodeAt(index) === CLOSE_ANGLE_BRACKET) {
 				chomp();
+				// @ts-ignore
+				if (generatePositions) current_node().position.end = place();
 				break;
 			}
 
@@ -564,12 +586,15 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			}
 
 			if (value.charCodeAt(index) === PIPE) {
+				chomp();
 				const _n = { value: '', type: 'modifier' };
+				if (generatePositions)
+					//@ts-ignore
+					_n.positions = { start: place(), end: [] };
 				(current_node() as Directive).modifiers.push(_n as Literal);
 				node_stack.push(_n);
 				state.pop();
 				state.push('IN_ATTR_MODIFIER');
-				chomp();
 				continue;
 			}
 
@@ -618,9 +643,12 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				state.pop();
 				state.push('IN_UNQUOTED_ATTR_VALUE');
 
-				const _n = { type: 'svelteExpression', value: '' };
+				const _n = <SvelteExpression>{ type: 'svelteExpression', value: '' };
 				(current_node() as Property).value.push(_n as SvelteExpression);
 				node_stack.push(_n);
+				if (generatePositions)
+					//@ts-ignore
+					_n.position = { start: place(), end: {} };
 				continue;
 			} else {
 				state.pop();
@@ -628,6 +656,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				const _n = { type: 'text', value: '' };
 				(current_node() as Property).value.push(_n as Text);
 				node_stack.push(_n);
+				if (generatePositions)
+					//@ts-ignore
+					_n.position = { start: place(), end: {} };
 
 				continue;
 			}
@@ -646,13 +677,20 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				s === CLOSE_ANGLE_BRACKET
 			) {
 				state.pop();
+				if (generatePositions)
+					//@ts-ignore
+					current_node().position.end = place();
 				node_stack.pop();
+				if (generatePositions)
+					//@ts-ignore
+					current_node().position.end = place();
 				node_stack.pop();
 				continue;
 			}
 
 			if (value.charCodeAt(index) === OPEN_BRACE) {
 				state.push('IN_EXPRESSION');
+
 				chomp();
 				continue;
 			}
@@ -667,10 +705,13 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			if (value[index] === quote_type) {
 				//end
 				quote_type = '';
+				chomp();
+				if (generatePositions)
+					//@ts-ignore
+					current_node().position = { start: place(), end: {} };
 				state.pop();
 				node_stack.pop();
 				node_stack.pop();
-				chomp();
 				continue;
 			}
 
@@ -681,6 +722,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 					value: '',
 				};
 				(current_node() as Property).value.push(_n as SvelteExpression);
+				if (generatePositions)
+					//@ts-ignore
+					_n.position = { start: place(), end: {} };
 				node_stack.push(_n);
 				state.push('IN_EXPRESSION');
 				chomp();
@@ -706,6 +750,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				}
 				node_stack.pop();
 				const _n = { type: 'text', value: '' };
+				if (generatePositions)
+					//@ts-ignore
+					_n.position = { start: place(), end: {} };
 				(current_node() as Property).value.push(_n as Text);
 				node_stack.push(_n);
 				chomp();
@@ -723,6 +770,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			if (current_node().type === 'blank') {
 				node_stack.pop();
 				const _n = { type: 'text', value: '' };
+				if (generatePositions)
+					//@ts-ignore
+					_n.position = { start: place(), end: {} };
 				(current_node() as Property).value.push(_n as Text);
 				node_stack.push(_n);
 			}
@@ -744,6 +794,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 			if (value.charCodeAt(index) === PIPE) {
 				const _n = { value: '', type: 'modifier' };
+				if (generatePositions)
+					//@ts-ignore
+					_n.position = { start: place(), end: {} };
 				(current_node() as Directive).modifiers.push(_n as Literal);
 				node_stack.push(_n);
 				state.pop();
@@ -775,6 +828,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			if (value.charCodeAt(index) === PIPE) {
 				node_stack.pop();
 				const _n = { value: '', type: 'modifier' };
+				if (generatePositions)
+					//@ts-ignore
+					_n.position = { start: place(), end: {} };
 				(current_node() as Directive).modifiers.push(_n as Literal);
 				node_stack.push(_n);
 				chomp();
@@ -838,7 +894,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 					type: 'text',
 					value: '',
 				};
-
+				if (generatePositions)
+					//@ts-ignore
+					_n.position = { start: place(), end: {} };
 				(current_node() as SvelteTag).children.push(_n as Text);
 				node_stack.push(_n);
 
@@ -904,6 +962,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				value.charCodeAt(index) === OPEN_ANGLE_BRACKET ||
 				value.charCodeAt(index) === OPEN_BRACE
 			) {
+				if (generatePositions)
+					//@ts-ignore
+					current_node().position.end = place();
 				break;
 			}
 
@@ -974,7 +1035,11 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			type: 'text',
 			value: '',
 		};
+
 		node_stack.push(_n);
+		if (generatePositions)
+			//@ts-ignore
+			_n.position = { start: place(), end: {} };
 	}
 
 	return {
