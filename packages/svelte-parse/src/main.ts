@@ -1005,6 +1005,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				};
 
 				if (generatePositions) {
+					//@ts-ignore
 					_n.position = { start: place(), end: {} };
 				}
 
