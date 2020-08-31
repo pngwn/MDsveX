@@ -3,12 +3,12 @@ import * as assert from 'uvu/assert';
 
 import {
 	SvelteElement,
-	SvelteComponent,
 	Text,
 	SvelteTag,
 	SvelteExpression,
 	VoidBlock,
 	BranchingBlock,
+	Comment,
 } from 'svast';
 
 import { parseNode } from '../src/main';
@@ -343,6 +343,24 @@ position('tracks the location of branching blocks', () => {
 		position: {
 			start: { line: 1, column: 1, offset: 0 },
 			end: { line: 1, column: 29, offset: 28 },
+		},
+	});
+});
+
+position('tracks the location of branching blocks', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: true,
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<!-- hello world -->`,
+	});
+
+	assert.equal(parsed, <Comment>{
+		type: 'comment',
+		value: ' hello world ',
+		position: {
+			start: { line: 1, column: 1, offset: 0 },
+			end: { line: 1, column: 21, offset: 20 },
 		},
 	});
 });
