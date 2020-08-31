@@ -537,4 +537,129 @@ expression('parses many shorthand attribute expressions', () => {
 	});
 });
 
+expression('tracks the location of expression nodes', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: true,
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `{hail}`,
+	});
+
+	assert.equal(parsed, <SvelteExpression>{
+		type: 'svelteExpression',
+		value: 'hail',
+		position: {
+			start: { line: 1, column: 1, offset: 0 },
+			end: { line: 1, column: 7, offset: 6 },
+		},
+	});
+});
+
+expression('tracks the location of expression nodes in attributes', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: true,
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<input thing={hail} />`,
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'thing',
+				value: [
+					{
+						type: 'svelteExpression',
+						value: 'hail',
+						position: {
+							start: { line: 1, column: 14, offset: 13 },
+							end: { line: 1, column: 20, offset: 19 },
+						},
+					},
+				],
+				modifiers: [],
+				shorthand: 'none',
+				position: {
+					start: { line: 1, column: 8, offset: 7 },
+					end: { line: 1, column: 20, offset: 19 },
+				},
+			},
+		],
+		selfClosing: true,
+		children: [],
+		position: {
+			start: { line: 1, column: 1, offset: 0 },
+			end: { line: 1, column: 23, offset: 22 },
+		},
+	});
+});
+
+expression.only(
+	'tracks the location of multiple expression nodes in attributes',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			generatePositions: true,
+			childParser: () => [[{ type: 'fake' }], 0],
+			value: `<input thing="{hail} {haip}" />`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'thing',
+					value: [
+						{
+							type: 'svelteExpression',
+							value: 'hail',
+							position: {
+								start: { line: 1, column: 15, offset: 14 },
+								end: { line: 1, column: 21, offset: 20 },
+							},
+						},
+						{
+							type: 'text',
+							value: '',
+							position: {
+								start: {
+									line: 1,
+									column: 21,
+									offset: 20,
+								},
+								end: { line: 1, column: 22, offset: 21 },
+							},
+						},
+						{
+							type: 'svelteExpression',
+							value: 'haip',
+							position: {
+								start: { line: 1, column: 22, offset: 21 },
+								end: { line: 1, column: 28, offset: 27 },
+							},
+						},
+					],
+					modifiers: [],
+					shorthand: 'none',
+					position: {
+						start: { line: 1, column: 8, offset: 7 },
+						end: { line: 1, column: 29, offset: 28 },
+					},
+				},
+			],
+			selfClosing: true,
+			children: [],
+			position: {
+				start: { line: 1, column: 1, offset: 0 },
+				end: { line: 1, column: 32, offset: 31 },
+			},
+		});
+	}
+);
+
 expression.run();

@@ -1709,7 +1709,7 @@ element('tracks the location of attributes', () => {
 	});
 });
 
-element.only('tracks the location of text nodes', () => {
+element('tracks the location of text nodes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
@@ -1726,4 +1726,5 @@ element.only('tracks the location of text nodes', () => {
 		},
 	});
 });
+
 element.run();
