@@ -5,7 +5,6 @@ import { SvelteElement, SvelteComponent, Text, SvelteTag } from 'svast';
 
 import { parseNode } from '../src/main';
 import { void_els } from '../src/void_els';
-import { Result } from '../src/types_and_things';
 
 const element = suite('parse-element');
 
@@ -1647,4 +1646,84 @@ element('parses svelte special elements', () => {
 	});
 });
 
+element('tracks the location of self-closing elements', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: true,
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<svelte:options />`,
+	});
+
+	assert.equal(parsed, <SvelteTag>{
+		type: 'svelteTag',
+		tagName: 'options',
+		properties: [],
+		selfClosing: true,
+		children: [],
+		position: {
+			start: { line: 1, column: 1, offset: 0 },
+			end: { line: 1, column: 19, offset: 18 },
+		},
+	});
+});
+
+element('tracks the location of attributes', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: true,
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<svelte:options tag={null} />`,
+	});
+
+	assert.equal(parsed, <SvelteTag>{
+		type: 'svelteTag',
+		tagName: 'options',
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'tag',
+				value: [
+					{
+						type: 'svelteExpression',
+						value: 'null',
+						position: {
+							start: { line: 1, column: 21, offset: 20 },
+							end: { line: 1, column: 27, offset: 26 },
+						},
+					},
+				],
+				shorthand: 'none',
+				modifiers: [],
+				position: {
+					start: { line: 1, column: 17, offset: 16 },
+					end: { line: 1, column: 27, offset: 26 },
+				},
+			},
+		],
+		selfClosing: true,
+		children: [],
+		position: {
+			start: { line: 1, column: 1, offset: 0 },
+			end: { line: 1, column: 30, offset: 29 },
+		},
+	});
+});
+
+element.only('tracks the location of text nodes', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: true,
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `hail`,
+	});
+
+	assert.equal(parsed, <Text>{
+		type: 'text',
+		value: 'hail',
+		position: {
+			start: { line: 1, column: 1, offset: 0 },
+			end: { line: 1, column: 5, offset: 4 },
+		},
+	});
+});
 element.run();
