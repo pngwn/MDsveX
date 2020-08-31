@@ -142,7 +142,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	}
 
 	while (!done && !error) {
-		// console.log(value[index], state, node_stack);
+		console.log(value[index], state, node_stack);
 		if (!value[index]) {
 			if (generatePositions)
 				//@ts-ignore
@@ -154,8 +154,16 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		if (!get_state()) {
 			if (RE_BLOCK_BRANCH.test(value.substring(index))) return;
 
-			// "<" => tag
+			// "{" => tag
 			if (value.charCodeAt(index) === OPEN_BRACE) {
+				node_stack.push(<SvelteExpression>{
+					type: 'svelteExpression',
+					value: '',
+				});
+				if (generatePositions) {
+					//@ts-ignore
+					current_node().position = { start: place(), end: {} };
+				}
 				state.push('MAYBE_IN_EXPRESSION');
 				chomp();
 				continue;
@@ -178,12 +186,13 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				continue;
 			}
 
-			// "{" => expression or block
-			if (value.charCodeAt(index) === OPEN_BRACE) {
-				chomp();
-				// expression or svelte block
-				// state.push('IN_EXPRESSION');
-			}
+			// // "{" => expression or block
+			// if (value.charCodeAt(index) === OPEN_BRACE) {
+
+			// 	chomp();
+			// 	// expression or svelte block
+			// 	// state.push('IN_EXPRESSION');
+			// }
 		}
 
 		if (get_state() === 'MAYBE_IN_EXPRESSION') {
@@ -200,14 +209,23 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			}
 
 			if (value.charCodeAt(index) === AT) {
-				node_stack.push(<VoidBlock>{
+				const _n = <VoidBlock>{
 					type: 'svelteVoidBlock',
 					name: '',
 					expression: {
 						type: 'svelteExpression',
 						value: '',
 					},
-				});
+				};
+
+				if (generatePositions) {
+					//@ts-ignore
+					_n.position = current_node().position;
+				}
+
+				node_stack.pop();
+				node_stack.push(_n);
+
 				state.pop();
 				state.push('IN_VOID_BLOCK');
 				chomp();
@@ -215,10 +233,10 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			}
 
 			if (value.charCodeAt(index) === OCTOTHERP) {
-				node_stack.push(<Text>{
-					type: 'text',
-					value: '',
-				});
+				// node_stack.push(<Text>{
+				// 	type: 'text',
+				// 	value: '',
+				// });
 				state.pop();
 				state.push('IN_BRANCHING_BLOCK');
 				state.push('IN_BRANCHING_BLOCK_NAME');
@@ -228,10 +246,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 			state.pop();
 			state.push('IN_EXPRESSION');
-			node_stack.push(<SvelteExpression>{
-				type: 'svelteExpression',
-				value: '',
-			});
+
 			continue;
 		}
 
@@ -703,19 +718,24 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		if (get_state() === 'IN_QUOTED_ATTR_VALUE') {
 			// if we meet our matching quote the attribute has ended
 			if (value[index] === quote_type) {
+				//@ts-ignore
+				if (generatePositions) current_node().position.end = place();
 				//end
+				node_stack.pop();
 				quote_type = '';
 				chomp();
-				if (generatePositions)
-					//@ts-ignore
-					current_node().position = { start: place(), end: {} };
 				state.pop();
+				//@ts-ignore
+				if (generatePositions) current_node().position.end = place();
 				node_stack.pop();
-				node_stack.pop();
+
 				continue;
 			}
 
 			if (value.charCodeAt(index) === OPEN_BRACE) {
+				if (generatePositions && current_node().type !== 'blank')
+					//@ts-ignore
+					current_node().position.end = place();
 				node_stack.pop();
 				const _n = {
 					type: 'svelteExpression',
@@ -981,10 +1001,19 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 						node_stack[0].type === 'svelteVoidBlock'
 					) {
 						chomp();
+
+						if (generatePositions) {
+							//@ts-ignore
+							current_node().position.end = place();
+						}
 						break;
 					}
 					state.pop();
 					chomp();
+					if (generatePositions) {
+						//@ts-ignore
+						current_node().position.end = place();
+					}
 					continue;
 				}
 				brace_count--;
