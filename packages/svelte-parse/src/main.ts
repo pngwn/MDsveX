@@ -145,7 +145,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	}
 
 	while (!done && !error) {
-		console.log(value[index], state, JSON.stringify(node_stack, null, 2));
 		if (!value[index]) {
 			if (generatePositions)
 				//@ts-ignore
