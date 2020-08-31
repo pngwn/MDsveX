@@ -142,7 +142,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	}
 
 	while (!done && !error) {
-		// console.log(value[index], state, node_stack);
+		console.log(value[index], state, JSON.stringify(node_stack, null, 2));
 		if (!value[index]) {
 			if (generatePositions)
 				//@ts-ignore
@@ -358,19 +358,59 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				continue;
 			}
 
+			// if (value.charCodeAt(index) === COLON) {
+			// 	state.push('IN_BRANCHING_BLOCK_BRANCH_NAME');
+
+			// 	const _n = <Text>{
+			// 		type: 'text',
+			// 		value: '',
+			// 	};
+
+			// 	if (generatePositions) {
+			// 		_n.position = { start: place(), end: {} };
+			// 	}
+
+			// 	node_stack.push(_n);
+
+			// 	chomp();
+			// 	continue;
+			// }
+
+			// if (value.charCodeAt(index) === SLASH) {
+			// 	closing_tag_name = '';
+			// 	state.push('IN_BRANCHING_BLOCK_END');
+			// 	chomp();
+			// 	continue;
+			// }
+
+			// if (
+			// 	value.charCodeAt(index) === SPACE ||
+			// 	value.charCodeAt(index) === LINEFEED ||
+			// 	value.charCodeAt(index) === TAB
+			// ) {
+			// 	chomp();
+			// 	continue;
+			// }
+			node_stack.pop();
+
+			state.push('PARSE_CHILDREN');
+		}
+
+		if (get_state() === 'IN_BRANCHING_BLOCK_BRANCH') {
 			if (value.charCodeAt(index) === COLON) {
+				state.pop();
 				state.push('IN_BRANCHING_BLOCK_BRANCH_NAME');
 
-				const _n = <Text>{
-					type: 'text',
-					value: '',
-				};
+				// const _n = <Text>{
+				// 	type: 'text',
+				// 	value: '',
+				// };
 
-				if (generatePositions) {
-					_n.position = Object.assign({}, current_node().position);
-				}
+				// if (generatePositions) {
+				// 	_n.position = { start: place(), end: {} };
+				// }
 
-				node_stack.push(_n);
+				// node_stack.push(_n);
 
 				chomp();
 				continue;
@@ -378,6 +418,8 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 			if (value.charCodeAt(index) === SLASH) {
 				closing_tag_name = '';
+				node_stack.pop();
+				state.pop();
 				state.push('IN_BRANCHING_BLOCK_END');
 				chomp();
 				continue;
@@ -391,9 +433,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				chomp();
 				continue;
 			}
-			node_stack.pop();
-
-			state.push('PARSE_CHILDREN');
 		}
 
 		if (get_state() === 'IN_VOID_BLOCK') {
@@ -959,9 +998,19 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 			if (RE_BLOCK_BRANCH.test(value.substring(index))) {
 				state.pop();
+				state.push('IN_BRANCHING_BLOCK_BRANCH');
+				const _n = <Text>{
+					type: 'text',
+					value: '',
+				};
+
+				if (generatePositions) {
+					_n.position = { start: place(), end: {} };
+				}
 
 				//@ts-ignore
 				if (generatePositions) current_node().position.end = place();
+				node_stack.push(_n);
 				chomp();
 				continue;
 			}
