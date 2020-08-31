@@ -289,4 +289,62 @@ position('tracks the location of branching blocks', () => {
 	});
 });
 
+position('tracks the location of branching blocks', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: true,
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `{#if expression}{:else}{/if}`,
+	});
+
+	assert.equal(parsed, <BranchingBlock>{
+		type: 'svelteBranchingBlock',
+		name: 'if',
+		branches: [
+			{
+				type: 'svelteBranch',
+				name: 'if',
+				children: [
+					{
+						type: 'fake',
+					},
+				],
+				expression: {
+					type: 'svelteExpression',
+					value: 'expression',
+					position: {
+						start: { line: 1, column: 6, offset: 5 },
+						end: { line: 1, column: 16, offset: 15 },
+					},
+				},
+				position: {
+					start: { line: 1, column: 1, offset: 0 },
+					end: { line: 1, column: 17, offset: 16 },
+				},
+			},
+			{
+				type: 'svelteBranch',
+				name: 'else',
+				children: [
+					{
+						type: 'fake',
+					},
+				],
+				expression: {
+					type: 'svelteExpression',
+					value: '',
+				},
+				position: {
+					start: { line: 1, column: 17, offset: 16 },
+					end: { line: 1, column: 24, offset: 23 },
+				},
+			},
+		],
+		position: {
+			start: { line: 1, column: 1, offset: 0 },
+			end: { line: 1, column: 29, offset: 28 },
+		},
+	});
+});
+
 position.run();
