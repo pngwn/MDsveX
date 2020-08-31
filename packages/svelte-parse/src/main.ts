@@ -142,7 +142,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	}
 
 	while (!done && !error) {
-		console.log(value[index], state, node_stack);
+		// console.log(value[index], state, node_stack);
 		if (!value[index]) {
 			if (generatePositions)
 				//@ts-ignore
@@ -185,14 +185,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				chomp();
 				continue;
 			}
-
-			// // "{" => expression or block
-			// if (value.charCodeAt(index) === OPEN_BRACE) {
-
-			// 	chomp();
-			// 	// expression or svelte block
-			// 	// state.push('IN_EXPRESSION');
-			// }
 		}
 
 		if (get_state() === 'MAYBE_IN_EXPRESSION') {
@@ -220,7 +212,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 				if (generatePositions) {
 					//@ts-ignore
-					_n.position = current_node().position;
+					_n.position = Object.assign({}, current_node().position);
 				}
 
 				node_stack.pop();
@@ -233,10 +225,6 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			}
 
 			if (value.charCodeAt(index) === OCTOTHERP) {
-				// node_stack.push(<Text>{
-				// 	type: 'text',
-				// 	value: '',
-				// });
 				state.pop();
 				state.push('IN_BRANCHING_BLOCK');
 				state.push('IN_BRANCHING_BLOCK_NAME');
@@ -273,13 +261,14 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 					},
 					children: [],
 				};
+				if (generatePositions) {
+					_n.position = Object.assign({}, current_node().position);
+					_n2.position = Object.assign({}, current_node().position);
+				}
+
 				node_stack.pop();
 				node_stack.push(_n);
 				node_stack.push(_n2);
-				if (generatePositions) {
-					//@ts-ignore
-					_n2.position = { start: place(), end: {} };
-				}
 
 				node_stack.push(_n2.expression);
 				_n.branches.push(_n2);
@@ -303,10 +292,15 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			}
 
 			if (value.charCodeAt(index) === CLOSE_BRACE) {
+				node_stack.pop();
+				chomp();
+				if (generatePositions)
+					//@ts-ignore
+					current_node().position.end = place();
 				if (closing_tag_name !== current_node().name) {
 					// ERROR SHOULD BE A MATCHING NAME (current_node().name)
 				}
-				chomp();
+
 				break;
 			}
 
@@ -330,6 +324,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 					},
 					children: [],
 				};
+				if (generatePositions) {
+					_n2.position = Object.assign({}, current_node().position);
+				}
 				node_stack.pop();
 				node_stack.pop();
 				(current_node() as BranchingBlock).branches.push(_n2);
@@ -353,15 +350,28 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			if (value.charCodeAt(index) === SPACE) {
 				state.push('IN_EXPRESSION');
 				chomp();
+
+				if (generatePositions)
+					//@ts-ignore
+					current_node().position = { start: place(), end: {} };
+
 				continue;
 			}
 
 			if (value.charCodeAt(index) === COLON) {
 				state.push('IN_BRANCHING_BLOCK_BRANCH_NAME');
-				node_stack.push(<Text>{
+
+				const _n = <Text>{
 					type: 'text',
 					value: '',
-				});
+				};
+
+				if (generatePositions) {
+					_n.position = Object.assign({}, current_node().position);
+				}
+
+				node_stack.push(_n);
+
 				chomp();
 				continue;
 			}
@@ -382,6 +392,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				continue;
 			}
 			node_stack.pop();
+
 			state.push('PARSE_CHILDREN');
 		}
 
@@ -948,6 +959,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 			if (RE_BLOCK_BRANCH.test(value.substring(index))) {
 				state.pop();
+
+				//@ts-ignore
+				if (generatePositions) current_node().position.end = place();
 				chomp();
 				continue;
 			}
@@ -1016,14 +1030,26 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 							current_node().position.end = place();
 						}
 						break;
+					} else if (
+						node_stack[node_stack.length - 2].type === 'svelteBranch'
+					) {
+						state.pop();
+
+						if (generatePositions) {
+							//@ts-ignore
+							current_node().position.end = place();
+						}
+						chomp();
+						continue;
+					} else {
+						state.pop();
+						chomp();
+						if (generatePositions) {
+							//@ts-ignore
+							current_node().position.end = place();
+						}
+						continue;
 					}
-					state.pop();
-					chomp();
-					if (generatePositions) {
-						//@ts-ignore
-						current_node().position.end = place();
-					}
-					continue;
 				}
 				brace_count--;
 			}
