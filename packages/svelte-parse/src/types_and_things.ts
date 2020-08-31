@@ -25,6 +25,8 @@ export const LOWERCASE_Z = 122; // "Z"
 export const PIPE = 124; // "|"
 export const RE_BLOCK_BRANCH = /^{\s*(?::|\/)/;
 export const RE_SCRIPT_STYLE = /^<\/(?:script|style)\s*>/;
+export const RE_COMMENT_START = /^<!--/;
+export const RE_COMMENT_END = /^-->/;
 export interface Result {
 	/**
 	 * The chomped string, what has been parsed. This is a substring of the input value.
@@ -100,4 +102,5 @@ export type State =
 	| 'IN_BRANCHING_BLOCK_END'
 	| 'IN_BRANCHING_BLOCK_NAME'
 	| 'IN_BRANCHING_BLOCK_BRANCH_NAME'
-	| 'IN_SCRIPT_STYLE';
+	| 'IN_SCRIPT_STYLE'
+	| 'IN_COMMENT';
