@@ -13,6 +13,7 @@ import {
 	VoidBlock,
 	BranchingBlock,
 	Branch,
+	Comment,
 } from 'svast';
 
 import {
@@ -33,6 +34,8 @@ import {
 	OCTOTHERP,
 	RE_BLOCK_BRANCH,
 	RE_SCRIPT_STYLE,
+	RE_COMMENT_START,
+	RE_COMMENT_END,
 } from './types_and_things';
 
 import {
@@ -154,6 +157,23 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		if (!get_state()) {
 			if (RE_BLOCK_BRANCH.test(value.substring(index))) return;
 
+			if (RE_COMMENT_START.test(value.substring(index))) {
+				const _n = <Comment>{
+					type: 'comment',
+					value: '',
+				};
+
+				//@ts-ignore
+				if (generatePositions) _n.position = { start: place(), end: {} };
+
+				node_stack.push(_n);
+				state.push('IN_COMMENT');
+				chomp();
+				chomp();
+				chomp();
+				chomp();
+				continue;
+			}
 			// "{" => tag
 			if (value.charCodeAt(index) === OPEN_BRACE) {
 				node_stack.push(<SvelteExpression>{
@@ -185,6 +205,22 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				chomp();
 				continue;
 			}
+		}
+
+		if (get_state() === 'IN_COMMENT') {
+			if (RE_COMMENT_END.test(value.substring(index))) {
+				chomp();
+				chomp();
+				chomp();
+
+				//@ts-ignore
+				if (generatePositions) current_node().position.end = place();
+				break;
+			}
+
+			current_node().value += value[index];
+			chomp();
+			continue;
 		}
 
 		if (get_state() === 'MAYBE_IN_EXPRESSION') {

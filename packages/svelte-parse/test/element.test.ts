@@ -1,7 +1,13 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
-import { SvelteElement, SvelteComponent, Text, SvelteTag } from 'svast';
+import {
+	SvelteElement,
+	SvelteComponent,
+	Text,
+	SvelteTag,
+	Comment,
+} from 'svast';
 
 import { parseNode } from '../src/main';
 import { void_els } from '../src/void_els';
@@ -1643,6 +1649,40 @@ element('parses svelte special elements', () => {
 		],
 		selfClosing: true,
 		children: [],
+	});
+});
+
+element('parses html comments: no spaces', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: false,
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<!--comment text-->`,
+	});
+
+	assert.equal(parsed, <Comment>{
+		type: 'comment',
+		value: 'comment text',
+	});
+});
+
+element('parses html comments: spaces and newlines', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: false,
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `<!--
+
+
+		comment text  
+		
+		
+-->`,
+	});
+
+	assert.equal(parsed, <Comment>{
+		type: 'comment',
+		value: '\n\n\n\t\tcomment text  \n\t\t\n\t\t\n',
 	});
 });
 
