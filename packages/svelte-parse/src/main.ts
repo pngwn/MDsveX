@@ -390,6 +390,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				node_stack.push((current_node() as VoidBlock).expression);
 				state.push('IN_EXPRESSION');
 				chomp();
+				if (generatePositions)
+					//@ts-ignore
+					current_node().position = { start: place(), end: {} };
 				continue;
 			}
 
@@ -1000,6 +1003,12 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 						node_stack.length === 1 ||
 						node_stack[0].type === 'svelteVoidBlock'
 					) {
+						if (generatePositions && node_stack[0].type === 'svelteVoidBlock') {
+							//@ts-ignore
+							current_node().position.end = place();
+							node_stack.pop();
+						}
+
 						chomp();
 
 						if (generatePositions) {

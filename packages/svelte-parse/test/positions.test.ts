@@ -7,6 +7,7 @@ import {
 	Text,
 	SvelteTag,
 	SvelteExpression,
+	VoidBlock,
 } from 'svast';
 
 import { parseNode } from '../src/main';
@@ -216,6 +217,32 @@ position('tracks the location of text nodes', () => {
 		position: {
 			start: { line: 1, column: 1, offset: 0 },
 			end: { line: 1, column: 5, offset: 4 },
+		},
+	});
+});
+
+position('tracks the location of void blocks', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: true,
+		childParser: () => [[{ type: 'fake' }], 0],
+		value: `{@html somehtml}`,
+	});
+
+	assert.equal(parsed, <VoidBlock>{
+		type: 'svelteVoidBlock',
+		name: 'html',
+		expression: {
+			type: 'svelteExpression',
+			value: 'somehtml',
+			position: {
+				start: { line: 1, column: 8, offset: 7 },
+				end: { line: 1, column: 16, offset: 15 },
+			},
+		},
+		position: {
+			start: { line: 1, column: 1, offset: 0 },
+			end: { line: 1, column: 17, offset: 16 },
 		},
 	});
 });
