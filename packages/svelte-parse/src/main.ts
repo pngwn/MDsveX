@@ -1083,15 +1083,28 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 			}
 
 			if (value.charCodeAt(index) === CLOSE_ANGLE_BRACKET) {
-				if (closing_tag_name !== current_node().tagName) {
-					console.log('something bad happened');
-				}
-
 				chomp();
+
 				if (generatePositions) {
 					//@ts-ignore
 					current_node().position.end = place();
 				}
+
+				let current_node_name = closing_tag_name;
+
+				if (current_node().type === 'svelteTag') {
+					current_node_name = current_node_name.replace('svelte:', '');
+				}
+
+				if (current_node_name !== current_node().tagName) {
+					console.log(
+						`Was expecting a closing tag for ${
+							current_node().tagName
+						} but got ${closing_tag_name}`,
+						JSON.stringify(current_node().position)
+					);
+				}
+
 				break;
 			}
 
