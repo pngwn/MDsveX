@@ -17,7 +17,8 @@ import {
 } from 'svast';
 
 import {
-	ParserOptions,
+	ParseNodeOptions,
+	ParseOptions,
 	Result,
 	State,
 	SLASH,
@@ -53,18 +54,6 @@ import {
 
 import { void_els } from './void_els';
 
-function default_eat(value: string) {
-	return function apply(node: Node): Node {
-		return node;
-	};
-}
-
-const pos: Point & { index?: number } = {
-	line: 1,
-	column: 1,
-	offset: 0,
-};
-
 function is_in_range(number: number, from: number, to: number): boolean {
 	return number >= from && number <= to;
 }
@@ -81,7 +70,7 @@ function is_void_element(tag_name: string): boolean {
 	return void_els.includes(tag_name);
 }
 
-export function parseNode(opts: ParserOptions): Result | undefined {
+export function parseNode(opts: ParseNodeOptions): Result | undefined {
 	let index = 0;
 	let quote_type = '';
 	let expr_quote_type = '';
@@ -1035,7 +1024,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				current_node().children = children;
 				const _index = position.index + lastIndex;
 
-				position = Object.assign({}, lastPosition);
+				position = Object.assign({}, lastPosition) as Point & { index: number };
 				position.index = _index;
 				index = position.index;
 			}
@@ -1233,7 +1222,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	};
 }
 
-function parse_siblings(opts: ParserOptions): [Node[], Point, number] {
+function parse_siblings(opts: ParseNodeOptions): [Node[], Point, number] {
 	const {
 		value,
 		currentPosition = {
@@ -1248,7 +1237,7 @@ function parse_siblings(opts: ParserOptions): [Node[], Point, number] {
 	const children = [];
 
 	let unchomped = value;
-	let position = Object.assign({}, currentPosition);
+	let position: Point & { index?: number } = Object.assign({}, currentPosition);
 	let parsed;
 	let index = 0;
 	let result;
@@ -1272,7 +1261,7 @@ function parse_siblings(opts: ParserOptions): [Node[], Point, number] {
 	return [children, position, index];
 }
 
-export function parse(opts: ParserOptions): Root {
+export function parse(opts: ParseOptions): Root {
 	const lineFeed = '\n';
 	const lineBreaksExpression = /\r\n|\r/g;
 

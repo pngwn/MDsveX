@@ -10,10 +10,18 @@ import {
 	BranchingBlock,
 	Comment,
 	Root,
+	Node,
+	Point,
 } from 'svast';
 
 import { parseNode, parse } from '../src/main';
 import { void_els } from '../src/void_els';
+
+const childParser: () => [Node[], Point & { index?: number }, number] = () => [
+	[<Node>{ type: 'fake' }],
+	{ line: 1, column: 1, offset: 0, index: 0 },
+	0,
+];
 
 const position = suite('parse-element');
 
@@ -21,7 +29,7 @@ position('tracks the location of expression nodes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `{hail}`,
 	});
 
@@ -39,7 +47,7 @@ position('tracks the location of expression nodes in attributes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input thing={hail} />`,
 	});
 
@@ -83,7 +91,7 @@ position(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: true,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input thing="{hail} {haip}" />`,
 		});
 
@@ -146,7 +154,7 @@ position('tracks the location of self-closing elements', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<svelte:options />`,
 	});
 
@@ -167,7 +175,7 @@ position('tracks the location of attributes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<svelte:options tag={null} />`,
 	});
 
@@ -209,7 +217,7 @@ position('tracks the location of text nodes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `hail`,
 	});
 
@@ -227,7 +235,7 @@ position('tracks the location of void blocks', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `{@html somehtml}`,
 	});
 
@@ -383,7 +391,7 @@ position('tracks the location of comments', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<!-- hello world -->`,
 	});
 

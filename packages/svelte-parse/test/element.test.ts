@@ -7,10 +7,18 @@ import {
 	Text,
 	SvelteTag,
 	Comment,
+	Node,
+	Point,
 } from 'svast';
 
 import { parseNode } from '../src/main';
 import { void_els } from '../src/void_els';
+
+const childParser: () => [Node[], Point & { index?: number }, number] = () => [
+	[<Node>{ type: 'fake' }],
+	{ line: 1, column: 1, offset: 0, index: 0 },
+	0,
+];
 
 const element = suite('parse-element');
 
@@ -18,7 +26,7 @@ element('parses a self closing tag without attributes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input />`,
 	});
 
@@ -37,7 +45,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<       input />`,
 		});
 
@@ -57,7 +65,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<       input       />`,
 		});
 
@@ -77,7 +85,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<       input       /                >`,
 		});
 
@@ -95,7 +103,7 @@ element('parses a self closing component without attributes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<HelloFriend />`,
 	});
 
@@ -113,7 +121,7 @@ void_els.forEach((el) => {
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<${el} >`,
 		});
 
@@ -131,7 +139,7 @@ element('parses a self closing tag with shorthand boolean attribute', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input hello />`,
 	});
 
@@ -158,7 +166,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input         hello         /        >`,
 		});
 
@@ -186,7 +194,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello/>`,
 		});
 
@@ -214,7 +222,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello>`,
 		});
 
@@ -242,7 +250,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello goodbye />`,
 		});
 
@@ -277,7 +285,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<         input         hello           goodbye       /           >`,
 		});
 
@@ -312,7 +320,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello goodbye/>`,
 		});
 
@@ -347,7 +355,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello goodbye>`,
 		});
 
@@ -382,7 +390,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello goodbye >`,
 		});
 
@@ -417,7 +425,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello=value />`,
 		});
 
@@ -450,7 +458,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello=value/>`,
 		});
 
@@ -481,7 +489,7 @@ element('parses a void tag with an unquoted attribute: trailing space', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input hello=value >`,
 	});
 
@@ -513,7 +521,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello=value>`,
 		});
 
@@ -546,7 +554,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello="value" />`,
 		});
 
@@ -579,7 +587,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello="value"/>`,
 		});
 
@@ -612,7 +620,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello="value" >`,
 		});
 
@@ -645,7 +653,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello="value">`,
 		});
 
@@ -678,7 +686,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello="value valuetwo" />`,
 		});
 
@@ -715,7 +723,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello="value valuetwo"/>`,
 		});
 
@@ -752,7 +760,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello="value valuetwo" >`,
 		});
 
@@ -789,7 +797,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello="value valuetwo">`,
 		});
 
@@ -826,7 +834,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello='value' />`,
 		});
 
@@ -859,7 +867,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello='value'/>`,
 		});
 
@@ -892,7 +900,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello='value' >`,
 		});
 
@@ -925,7 +933,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello='value'>`,
 		});
 
@@ -958,7 +966,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello='value valuetwo' />`,
 		});
 
@@ -995,7 +1003,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello='value valuetwo'/>`,
 		});
 
@@ -1032,7 +1040,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello='value valuetwo' >`,
 		});
 
@@ -1069,7 +1077,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello='value valuetwo'>`,
 		});
 
@@ -1104,7 +1112,7 @@ element('parses a void tag with a directive', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input hello:world >`,
 	});
 
@@ -1130,7 +1138,7 @@ element('parses a self-closing tag with a directive', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input hello:world />`,
 	});
 
@@ -1156,7 +1164,7 @@ element('parses a self-closing tag with two directives', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input hello:world goodbye:friends />`,
 	});
 
@@ -1192,7 +1200,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello:world="cheese" />`,
 		});
 
@@ -1221,7 +1229,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello:world="cheese strings" />`,
 		});
 
@@ -1253,7 +1261,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello:world='cheese strings' />`,
 		});
 
@@ -1283,7 +1291,7 @@ element('parses a tag with a directive an a directive value: unquoted', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input hello:world="cheese" />`,
 	});
 
@@ -1309,7 +1317,7 @@ element('parses a tag with a directive with modifiers', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input hello:world|modifierval />`,
 	});
 
@@ -1335,7 +1343,7 @@ element('parses a tag with a directive with multiple modifiers', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input hello:world|modifierval|modifierval2 />`,
 	});
 
@@ -1364,7 +1372,7 @@ element('parses a tag with a directive with modifiers', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input hello|modifierval />`,
 	});
 
@@ -1389,7 +1397,7 @@ element('parses a tag with a directive with multiple modifiers', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input hello|modifierval|modifierval2 />`,
 	});
 
@@ -1419,7 +1427,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello:world|modifierval|modifierval2=someval />`,
 		});
 
@@ -1451,7 +1459,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<      input      hello:world|modifierval|modifierval2   =   someval    /    >`,
 		});
 
@@ -1483,7 +1491,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<      input      hello:world|modifierval|modifierval2   =   "someval"    /    >`,
 		});
 
@@ -1515,7 +1523,7 @@ element(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<      
 			input      
 			
@@ -1552,7 +1560,7 @@ element('parses text', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `hail`,
 	});
 
@@ -1566,7 +1574,7 @@ element('parses quoted attribute expressions with space', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<button disabled="{!first || !last}" />`,
 	});
 
@@ -1596,7 +1604,7 @@ element('parses svelte special elements', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<svelte:options tag={null} />`,
 	});
 
@@ -1626,7 +1634,7 @@ element('parses svelte special elements', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<svelte:options tag={null} />`,
 	});
 
@@ -1656,7 +1664,7 @@ element('parses html comments: no spaces', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<!--comment text-->`,
 	});
 
@@ -1670,7 +1678,7 @@ element('parses html comments: spaces and newlines', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<!--
 
 

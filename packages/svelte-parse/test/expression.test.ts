@@ -1,9 +1,15 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
-import { SvelteElement, SvelteExpression } from 'svast';
+import { SvelteElement, SvelteExpression, Node, Point } from 'svast';
 
 import { parseNode } from '../src/main';
+
+const childParser: () => [Node[], Point & { index?: number }, number] = () => [
+	[<Node>{ type: 'fake' }],
+	{ line: 1, column: 1, offset: 0, index: 0 },
+	0,
+];
 
 const expression = suite('parse-element');
 
@@ -11,7 +17,7 @@ expression('parses a simple expression', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `{hello}`,
 	});
 
@@ -25,7 +31,7 @@ expression('parses nested braces', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `{{{{hello}}}}`,
 	});
 
@@ -39,7 +45,7 @@ expression('parses nested braces: while ignoring quoted braces: single', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `{{{{'}'}}}}`,
 	});
 
@@ -53,7 +59,7 @@ expression('handles escaped single-quotes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: "{{{{'}\\''}}}}",
 	});
 
@@ -67,7 +73,7 @@ expression('parses nested braces: while ignoring quoted braces: double', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `{{{{"}"}}}}`,
 	});
 
@@ -81,7 +87,7 @@ expression('handles escaped double-quotes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: '{{{{"}\\""}}}}',
 	});
 
@@ -97,7 +103,7 @@ expression(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: '{{{{`}`}}}}',
 		});
 
@@ -112,7 +118,7 @@ expression('handles escaped backticks', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: '{{{{`}\\``}}}}',
 	});
 
@@ -126,7 +132,7 @@ expression('parses nested braces: while ignoring regex', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: '{(/}/gi)}',
 	});
 
@@ -140,7 +146,7 @@ expression('parses nested braces: while ignoring regex', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `{(/\\/}/gi)}`,
 	});
 
@@ -154,7 +160,7 @@ expression('handles quoted slashes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: '{"/}/gi"}',
 	});
 
@@ -168,7 +174,7 @@ expression('ignores nested quotes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: '{{{{`"}`}}}}',
 	});
 
@@ -182,7 +188,7 @@ expression('parses expressions as attribute values', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input hello={value} />`,
 	});
 
@@ -212,7 +218,7 @@ expression('parses expressions as attribute values: more fancy', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: '<input hello={{{{`"}`}}}} />',
 	});
 
@@ -242,7 +248,7 @@ expression('parses expressions as attribute values: functions', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: '<input hello={() => console.log("hello world")} />',
 	});
 
@@ -272,7 +278,7 @@ expression('parses expressions as attribute values: more functions', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value:
 			'<input hello={(e) => val = val.filter(v => v.map(x => x*2)).reduce(absolutelywhat is this i have no idea) * 2735262 + 123.something("hey")} />',
 	});
@@ -304,7 +310,7 @@ expression('parses expressions as attribute values in quotes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input hello="{value}" />`,
 	});
 
@@ -336,7 +342,7 @@ expression(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello="{value}{value}" />`,
 		});
 
@@ -373,7 +379,7 @@ expression(
 		//@ts-ignore
 		const { parsed } = parseNode({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
+			childParser,
 			value: `<input hello="   {value}   {value}    " />`,
 		});
 
@@ -420,7 +426,7 @@ expression('parses shorthand attribute expressions', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input {value} />`,
 	});
 
@@ -450,7 +456,7 @@ expression('parses many shorthand attribute expressions', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `<input {value} {value_2} val=123 {value_3} on:click={poo} {value_4} />`,
 	});
 
