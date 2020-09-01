@@ -46,10 +46,10 @@ export interface Result {
 	/**
 	 * The location in the document where the parse finished. This can be passed back into the parseNode function to maintain positional information on subsequent passes.
 	 */
-	position: Point;
+	position: Point & { index?: number };
 }
 
-export interface ParserOptions {
+export interface ParseNodeOptions {
 	/**
 	 * The input value to be parsed
 	 */
@@ -57,13 +57,13 @@ export interface ParserOptions {
 	/**
 	 * The current position in the document
 	 */
-	currentPosition?: Point;
+	currentPosition?: Point & { index?: number };
 	/**
 	 * The parser to use when parsing children, this defaults to `parseNode`
 	 */
 	childParser: (
-		options: ParserOptions
-	) => [Node[], Point & { index: number }, number];
+		options: ParseNodeOptions
+	) => [Node[], Point & { index?: number }, number];
 	/**
 	 * Are we currently in a block or are we currently inline?
 	 */
@@ -72,6 +72,17 @@ export interface ParserOptions {
 	 * I'm not really sure what this is for
 	 */
 	silent?: boolean;
+	/**
+	 * Generate positional data
+	 */
+	generatePositions: boolean;
+}
+
+export interface ParseOptions {
+	/**
+	 * The input value to be parsed
+	 */
+	value: string;
 	/**
 	 * Generate positional data
 	 */

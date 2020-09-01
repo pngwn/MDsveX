@@ -1,16 +1,22 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
-import { VoidBlock, Root } from 'svast';
+import { VoidBlock, Root, Node, Point } from 'svast';
 import { parseNode, parse } from '../src/main';
 
 const block = suite('parse-element');
+
+const childParser: () => [Node[], Point & { index?: number }, number] = () => [
+	[<Node>{ type: 'fake' }],
+	{ line: 1, column: 1, offset: 0, index: 0 },
+	0,
+];
 
 block('parses a simple void block', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `{@html boo}`,
 	});
 
@@ -28,7 +34,7 @@ block('parses a more complex expression within a voi block', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
+		childParser,
 		value: `{@html (e) => val = val.filter(v => v.map(x => x*2)).reduce(absolutelywhat is this i have no idea) * 2735262 + 123.something("hey")}`,
 	});
 
@@ -47,7 +53,6 @@ block('parses a simple if block', () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
 		value: `{#if condition}hello{/if}`,
 	});
 
@@ -77,7 +82,6 @@ block('parses an if block with an else', () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
 		value: `{#if condition}hello{:else}hello2{/if}`,
 	});
 
@@ -116,7 +120,6 @@ block('parses an if block with an if else and else', () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
 		value: `{#if condition}hello{:else if condition2}hello2{:else}hello3{/if}`,
 	});
 
@@ -164,7 +167,6 @@ block('parses an if block with many if else branches', () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
 		value: `{#if condition}hello{:else if condition2}hello2{:else if condition2}hello2{:else if condition2}hello2{:else if condition2}hello2{/if}`,
 	});
 
@@ -230,7 +232,6 @@ block('parses an await block with all branches', () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
 		value: `{#await somePromise}loading{:then value}{value}{:catch e}{e.value}{/await}`,
 	});
 
@@ -278,7 +279,6 @@ block('parses an await block with a shorthand `await then` and a catch', () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
 		value: `{#await somePromise then value}{value}{:catch e}{e.value}{/await}`,
 	});
 
@@ -319,7 +319,6 @@ block(
 		//@ts-ignore
 		const parsed = parse({
 			generatePositions: false,
-			childParser: () => [[{ type: 'fake' }], 0],
 			value: `{#await somePromise then value}{value}{/await}`,
 		});
 
@@ -350,7 +349,6 @@ block('parses an each block correctly', () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
-		childParser: () => [[{ type: 'fake' }], 0],
 		value: `{#each array.filter(1, 2, 3, 4) as {hello: {world}}, index (key(23))}{value}{/each}`,
 	});
 
