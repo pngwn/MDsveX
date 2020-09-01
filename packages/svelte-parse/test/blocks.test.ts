@@ -49,6 +49,24 @@ block('parses a more complex expression within a voi block', () => {
 	});
 });
 
+block('parses a void Element without an expression', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: false,
+		childParser,
+		value: `{@htmlfoo}`,
+	});
+
+	assert.equal(parsed, <VoidBlock>{
+		type: 'svelteVoidBlock',
+		name: 'htmlfoo',
+		expression: {
+			type: 'svelteExpression',
+			value: '',
+		},
+	});
+});
+
 block('parses a simple if block', () => {
 	//@ts-ignore
 	const parsed = parse({
