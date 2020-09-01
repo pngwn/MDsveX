@@ -36,6 +36,7 @@ import {
 	RE_SCRIPT_STYLE,
 	RE_COMMENT_START,
 	RE_COMMENT_END,
+	RE_END_TAG_START,
 } from './types_and_things';
 
 import {
@@ -109,7 +110,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	const lineBreaksExpression = /\r\n|\r/g;
 	value = value.replace(lineBreaksExpression, lineFeed);
 
-	const position = Object.assign(currentPosition, { index });
+	let position = Object.assign(currentPosition, { index });
 
 	function chomp() {
 		// newline means new line
@@ -145,6 +146,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	}
 
 	while (!done && !error) {
+		// console.log(value[index], node_stack, state);
 		if (!value[index]) {
 			if (generatePositions)
 				//@ts-ignore
@@ -154,7 +156,16 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 
 		// right at the start
 		if (!get_state()) {
-			if (RE_BLOCK_BRANCH.test(value.substring(index))) return;
+			if (RE_BLOCK_BRANCH.test(value.substring(index))) {
+				if (generatePositions && node_stack.length)
+					//@ts-ignore
+					current_node().position.end = place();
+				return;
+			}
+
+			if (RE_END_TAG_START.test(value.substring(index))) {
+				return;
+			}
 
 			if (RE_COMMENT_START.test(value.substring(index))) {
 				const _n = <Comment>{
@@ -693,7 +704,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				const _n = { value: '', type: 'modifier' };
 				if (generatePositions)
 					//@ts-ignore
-					_n.positions = { start: place(), end: [] };
+					_n.position = { start: place(), end: [] };
 				(current_node() as Directive).modifiers.push(_n as Literal);
 				node_stack.push(_n);
 				state.pop();
@@ -980,6 +991,9 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 		if (get_state() == 'IN_SCRIPT_STYLE') {
 			if (value.charCodeAt(index) === OPEN_ANGLE_BRACKET) {
 				if (RE_SCRIPT_STYLE.test(value.substring(index))) {
+					if (generatePositions)
+						//@ts-ignore
+						current_node().position.end = place();
 					node_stack.pop();
 					state.pop();
 					state.push('EXPECT_END_OR_BRANCH');
@@ -1012,15 +1026,17 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				state.push('IN_SCRIPT_STYLE');
 				continue;
 			} else {
-				const [children, lastIndex] = childParser({
+				const [children, lastPosition, lastIndex] = childParser({
 					generatePositions,
 					value: value.slice(index),
-					currentPosition,
+					currentPosition: position,
 					childParser,
 				});
 				current_node().children = children;
+				const _index = position.index + lastIndex;
 
-				position.index += lastIndex;
+				position = Object.assign({}, lastPosition);
+				position.index = _index;
 				index = position.index;
 			}
 
@@ -1070,7 +1086,12 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 				if (closing_tag_name !== current_node().tagName) {
 					console.log('something bad happened');
 				}
+
 				chomp();
+				if (generatePositions) {
+					//@ts-ignore
+					current_node().position.end = place();
+				}
 				break;
 			}
 
@@ -1199,7 +1220,7 @@ export function parseNode(opts: ParserOptions): Result | undefined {
 	};
 }
 
-function parse_siblings(opts: ParserOptions): [Node[], number] {
+function parse_siblings(opts: ParserOptions): [Node[], Point, number] {
 	const {
 		value,
 		currentPosition = {
@@ -1235,7 +1256,7 @@ function parse_siblings(opts: ParserOptions): [Node[], number] {
 		if (unchomped.trim().length === 0) break;
 	}
 
-	return [children, index];
+	return [children, position, index];
 }
 
 export function parse(opts: ParserOptions): Root {
@@ -1250,6 +1271,14 @@ export function parse(opts: ParserOptions): Root {
 			childParser: parse_siblings,
 		})[0],
 	};
+
+	if (opts.generatePositions) {
+		root.position = {
+			start: { column: 1, line: 1, offset: 0 },
+			//@ts-ignore
+			end: root.children[root.children.length - 1].position.end,
+		};
+	}
 
 	return root;
 }
