@@ -13,6 +13,8 @@ import yaml from 'js-yaml';
 import { parse } from 'svelte/compiler';
 import escape from 'escape-html';
 
+import * as path from 'path';
+
 import type {
 	FrontMatterNode,
 	parser_frontmatter_options,
@@ -219,7 +221,9 @@ function map_layout_to_path(
 	layout_map: Layout
 ): LayoutMeta | undefined {
 	const match = Object.keys(layout_map).find((l) =>
-		new RegExp(`\\/${l}\\/`).test(filename.replace(process.cwd(), ''))
+		new RegExp(`\\` + `${path.sep}${l}` + `\\` + `${path.sep}`).test(
+			path.normalize(filename).replace(process.cwd(), '')
+		)
 	);
 
 	if (match) {
