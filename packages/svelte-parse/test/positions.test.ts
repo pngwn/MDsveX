@@ -9,9 +9,10 @@ import {
 	VoidBlock,
 	BranchingBlock,
 	Comment,
+	Root,
 } from 'svast';
 
-import { parseNode } from '../src/main';
+import { parseNode, parse } from '../src/main';
 import { void_els } from '../src/void_els';
 
 const position = suite('parse-element');
@@ -250,35 +251,48 @@ position('tracks the location of void blocks', () => {
 
 position('tracks the location of branching blocks', () => {
 	//@ts-ignore
-	const { parsed } = parseNode({
+	const parsed = parse({
 		generatePositions: true,
-		childParser: () => [[{ type: 'fake' }], 0],
 		value: `{#if expression}hi{/if}`,
 	});
 
-	assert.equal(parsed, <BranchingBlock>{
-		type: 'svelteBranchingBlock',
-		name: 'if',
-		branches: [
+	assert.equal(parsed, <Root>{
+		type: 'root',
+		children: [
 			{
-				type: 'svelteBranch',
+				type: 'svelteBranchingBlock',
 				name: 'if',
-				children: [
+				branches: [
 					{
-						type: 'fake',
+						type: 'svelteBranch',
+						name: 'if',
+						children: [
+							{
+								type: 'text',
+								value: 'hi',
+								position: {
+									start: { line: 1, column: 17, offset: 16 },
+									end: { line: 1, column: 19, offset: 18 },
+								},
+							},
+						],
+						expression: {
+							type: 'svelteExpression',
+							value: 'expression',
+							position: {
+								start: { line: 1, column: 6, offset: 5 },
+								end: { line: 1, column: 16, offset: 15 },
+							},
+						},
+						position: {
+							start: { line: 1, column: 1, offset: 0 },
+							end: { line: 1, column: 19, offset: 18 },
+						},
 					},
 				],
-				expression: {
-					type: 'svelteExpression',
-					value: 'expression',
-					position: {
-						start: { line: 1, column: 6, offset: 5 },
-						end: { line: 1, column: 16, offset: 15 },
-					},
-				},
 				position: {
 					start: { line: 1, column: 1, offset: 0 },
-					end: { line: 1, column: 19, offset: 18 },
+					end: { line: 1, column: 24, offset: 23 },
 				},
 			},
 		],
@@ -291,63 +305,81 @@ position('tracks the location of branching blocks', () => {
 
 position('tracks the location of branching blocks', () => {
 	//@ts-ignore
-	const { parsed } = parseNode({
+	const parsed = parse({
 		generatePositions: true,
-		childParser: () => [[{ type: 'fake' }], 0],
-		value: `{#if expression}{:else}{/if}`,
+		value: `{#if expression}hi{:else}hi{/if}`,
 	});
 
-	assert.equal(parsed, <BranchingBlock>{
-		type: 'svelteBranchingBlock',
-		name: 'if',
-		branches: [
+	assert.equal(parsed, <Root>{
+		type: 'root',
+		children: [
 			{
-				type: 'svelteBranch',
+				type: 'svelteBranchingBlock',
 				name: 'if',
-				children: [
+				branches: [
 					{
-						type: 'fake',
+						type: 'svelteBranch',
+						name: 'if',
+						children: [
+							{
+								type: 'text',
+								value: 'hi',
+								position: {
+									start: { line: 1, column: 17, offset: 16 },
+									end: { line: 1, column: 19, offset: 18 },
+								},
+							},
+						],
+						expression: {
+							type: 'svelteExpression',
+							value: 'expression',
+							position: {
+								start: { line: 1, column: 6, offset: 5 },
+								end: { line: 1, column: 16, offset: 15 },
+							},
+						},
+						position: {
+							start: { line: 1, column: 1, offset: 0 },
+							end: { line: 1, column: 19, offset: 18 },
+						},
+					},
+					{
+						type: 'svelteBranch',
+						name: 'else',
+						children: [
+							{
+								type: 'text',
+								value: 'hi',
+								position: {
+									start: { line: 1, column: 26, offset: 25 },
+									end: { line: 1, column: 28, offset: 27 },
+								},
+							},
+						],
+						expression: {
+							type: 'svelteExpression',
+							value: '',
+						},
+						position: {
+							start: { line: 1, column: 19, offset: 18 },
+							end: { line: 1, column: 28, offset: 27 },
+						},
 					},
 				],
-				expression: {
-					type: 'svelteExpression',
-					value: 'expression',
-					position: {
-						start: { line: 1, column: 6, offset: 5 },
-						end: { line: 1, column: 16, offset: 15 },
-					},
-				},
 				position: {
 					start: { line: 1, column: 1, offset: 0 },
-					end: { line: 1, column: 17, offset: 16 },
-				},
-			},
-			{
-				type: 'svelteBranch',
-				name: 'else',
-				children: [
-					{
-						type: 'fake',
-					},
-				],
-				expression: {
-					type: 'svelteExpression',
-					value: '',
-				},
-				position: {
-					start: { line: 1, column: 17, offset: 16 },
-					end: { line: 1, column: 24, offset: 23 },
+					end: { line: 1, column: 33, offset: 32 },
 				},
 			},
 		],
 		position: {
 			start: { line: 1, column: 1, offset: 0 },
-			end: { line: 1, column: 29, offset: 28 },
+			end: { line: 1, column: 33, offset: 32 },
 		},
 	});
 });
 
-position('tracks the location of branching blocks', () => {
+position('tracks the location of comments', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
@@ -361,6 +393,76 @@ position('tracks the location of branching blocks', () => {
 		position: {
 			start: { line: 1, column: 1, offset: 0 },
 			end: { line: 1, column: 21, offset: 20 },
+		},
+	});
+});
+
+position('tracks the location of a complex node', () => {
+	//@ts-ignore
+	const parsed = parse({
+		generatePositions: true,
+		value: `<script>123</script>
+		
+<div>
+  hello
+</div>`,
+	});
+
+	assert.equal(parsed, <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteTag',
+				tagName: 'script',
+				properties: [],
+				selfClosing: false,
+				children: [
+					{
+						type: 'text',
+						value: '123',
+						position: {
+							start: { line: 1, column: 9, offset: 8 },
+							end: { line: 1, column: 12, offset: 11 },
+						},
+					},
+				],
+				position: {
+					start: { line: 1, column: 1, offset: 0 },
+					end: { line: 1, column: 21, offset: 20 },
+				},
+			},
+			{
+				type: 'text',
+				value: '\n\t\t\n',
+				position: {
+					start: { line: 1, column: 21, offset: 20 },
+					end: { line: 3, column: 1, offset: 24 },
+				},
+			},
+			{
+				type: 'svelteElement',
+				tagName: 'div',
+				properties: [],
+				selfClosing: false,
+				children: [
+					{
+						type: 'text',
+						value: '\n  hello\n',
+						position: {
+							start: { line: 3, column: 6, offset: 29 },
+							end: { line: 5, column: 1, offset: 38 },
+						},
+					},
+				],
+				position: {
+					start: { line: 3, column: 1, offset: 24 },
+					end: { line: 5, column: 7, offset: 44 },
+				},
+			},
+		],
+		position: {
+			start: { line: 1, column: 1, offset: 0 },
+			end: { line: 5, column: 7, offset: 44 },
 		},
 	});
 });
