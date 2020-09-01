@@ -40,6 +40,26 @@ element('parses a self closing tag without attributes', () => {
 });
 
 element(
+	'parses self closing elements with no whistespace after tagName',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			generatePositions: false,
+			childParser,
+			value: `<div/>`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'div',
+			selfClosing: true,
+			children: [],
+			properties: [],
+		});
+	}
+);
+
+element(
 	'parses a self closing tag without attributes: space before name',
 	() => {
 		//@ts-ignore
@@ -132,6 +152,36 @@ void_els.forEach((el) => {
 			children: [],
 			properties: [],
 		});
+	});
+});
+
+element('parses attribute values containing colons', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: false,
+		childParser,
+		value: `<a href=https://www.google.com>Google</a>>`,
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'a',
+		selfClosing: false,
+		children: [],
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'href',
+				value: [
+					{
+						type: 'text',
+						value: 'https://www.google.com',
+					},
+				],
+				modifiers: [],
+				shorthand: 'none',
+			},
+		],
 	});
 });
 

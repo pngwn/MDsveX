@@ -1,9 +1,9 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
-import { SvelteElement, SvelteExpression, Node, Point } from 'svast';
+import { SvelteElement, SvelteExpression, Node, Point, Root } from 'svast';
 
-import { parseNode } from '../src/main';
+import { parseNode, parse } from '../src/main';
 
 const childParser: () => [Node[], Point & { index?: number }, number] = () => [
 	[<Node>{ type: 'fake' }],
@@ -416,6 +416,60 @@ expression(
 					],
 					shorthand: 'none',
 					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+expression(
+	'parses complex attribute values: mix of text and expression',
+	() => {
+		//@ts-ignore
+		const parsed = parse({
+			generatePositions: false,
+			value: `<div style='color: {color};'>{color}</div>`,
+		});
+
+		assert.equal(parsed, <Root>{
+			type: 'root',
+			children: [
+				{
+					type: 'svelteElement',
+					tagName: 'div',
+					properties: [
+						{
+							type: 'svelteProperty',
+							name: 'style',
+							value: [
+								{
+									type: 'text',
+									value: 'color:',
+								},
+								{
+									type: 'text',
+									value: '',
+								},
+								{
+									type: 'svelteExpression',
+									value: 'color',
+								},
+								{
+									type: 'text',
+									value: ';',
+								},
+							],
+							modifiers: [],
+							shorthand: 'none',
+						},
+					],
+					selfClosing: false,
+					children: [
+						{
+							type: 'svelteExpression',
+							value: 'color',
+						},
+					],
 				},
 			],
 		});
