@@ -514,6 +514,17 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 		// we are inside a tags name
 		if (get_state() === 'IN_TAG_NAME') {
+			if (
+				value.charCodeAt(index) === SLASH ||
+				(value.charCodeAt(index) === CLOSE_ANGLE_BRACKET &&
+					is_void_element((current_node() as SvelteElement).tagName))
+			) {
+				state.pop();
+				state.push('IN_CLOSING_SLASH');
+				(current_node() as BaseSvelteTag).selfClosing = true;
+				if (value.charCodeAt(index) === SLASH) chomp();
+				continue;
+			}
 			// space or linefeed put us into the tag body
 			if (
 				value.charCodeAt(index) === SPACE ||
