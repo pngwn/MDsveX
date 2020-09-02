@@ -1,0 +1,143 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { count } from './stores.js';\n\n\tfunction decrement() {\n\t\tcount.update(n => n - 1);\n\t}\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 7,
+							"column": 1,
+							"offset": 103
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 7,
+					"column": 10,
+					"offset": 112
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 7,
+					"column": 10,
+					"offset": 112
+				},
+				"end": {
+					"line": 9,
+					"column": 1,
+					"offset": 114
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "button",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "decrement",
+							"position": {
+								"start": {
+									"line": 9,
+									"column": 18,
+									"offset": 131
+								},
+								"end": {
+									"line": 9,
+									"column": 29,
+									"offset": 142
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 9,
+							"offset": 122
+						},
+						"end": {
+							"line": 9,
+							"column": 29,
+							"offset": 142
+						}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t-\n",
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 30,
+							"offset": 143
+						},
+						"end": {
+							"line": 11,
+							"column": 1,
+							"offset": 147
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 9,
+					"column": 1,
+					"offset": 114
+				},
+				"end": {
+					"line": 11,
+					"column": 10,
+					"offset": 156
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 11,
+			"column": 10,
+			"offset": 156
+		}
+	}
+}

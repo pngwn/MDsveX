@@ -1,0 +1,176 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport Folder from './Folder.svelte';\n\n\tlet root = [\n\t\t{\n\t\t\ttype: 'folder',\n\t\t\tname: 'Important work stuff',\n\t\t\tfiles: [\n\t\t\t\t{ type: 'file', name: 'quarterly-results.xlsx' }\n\t\t\t]\n\t\t},\n\t\t{\n\t\t\ttype: 'folder',\n\t\t\tname: 'Animal GIFs',\n\t\t\tfiles: [\n\t\t\t\t{\n\t\t\t\t\ttype: 'folder',\n\t\t\t\t\tname: 'Dogs',\n\t\t\t\t\tfiles: [\n\t\t\t\t\t\t{ type: 'file', name: 'treadmill.gif' },\n\t\t\t\t\t\t{ type: 'file', name: 'rope-jumping.gif' }\n\t\t\t\t\t]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\ttype: 'folder',\n\t\t\t\t\tname: 'Goats',\n\t\t\t\t\tfiles: [\n\t\t\t\t\t\t{ type: 'file', name: 'parkour.gif' },\n\t\t\t\t\t\t{ type: 'file', name: 'rampage.gif' }\n\t\t\t\t\t]\n\t\t\t\t},\n\t\t\t\t{ type: 'file', name: 'cat-roomba.gif' },\n\t\t\t\t{ type: 'file', name: 'duck-shuffle.gif' },\n\t\t\t\t{ type: 'file', name: 'monkey-on-a-pig.gif' }\n\t\t\t]\n\t\t},\n\t\t{ type: 'file', name: 'TODO.md' }\n\t];\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 39,
+							"column": 1,
+							"offset": 781
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 39,
+					"column": 10,
+					"offset": 790
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 39,
+					"column": 10,
+					"offset": 790
+				},
+				"end": {
+					"line": 41,
+					"column": 1,
+					"offset": 792
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Folder",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "name",
+					"value": [
+						{
+							"type": "text",
+							"value": "Home",
+							"position": {
+								"start": {
+									"line": 41,
+									"column": 15,
+									"offset": 806
+								},
+								"end": {
+									"line": 41,
+									"column": 19,
+									"offset": 810
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 41,
+							"column": 9,
+							"offset": 800
+						},
+						"end": {
+							"line": 41,
+							"column": 20,
+							"offset": 811
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "files",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "root",
+							"position": {
+								"start": {
+									"line": 41,
+									"column": 27,
+									"offset": 818
+								},
+								"end": {
+									"line": 41,
+									"column": 33,
+									"offset": 824
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 41,
+							"column": 21,
+							"offset": 812
+						},
+						"end": {
+							"line": 41,
+							"column": 33,
+							"offset": 824
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "expanded",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "boolean",
+					"position": {
+						"start": {
+							"line": 41,
+							"column": 34,
+							"offset": 825
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 41,
+					"column": 1,
+					"offset": 792
+				},
+				"end": {
+					"line": 41,
+					"column": 44,
+					"offset": 835
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 41,
+			"column": 44,
+			"offset": 835
+		}
+	}
+}

@@ -1,0 +1,193 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import wNumb from 'wnumb';\n  import RangeSlider from '@sveltekit/ui/RangeSlider';\n  \n  let values = [0,100];\n  let tooltip = wNumb({ decimals: 1 });\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 7,
+							"column": 1,
+							"offset": 160
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 7,
+					"column": 10,
+					"offset": 169
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 7,
+					"column": 10,
+					"offset": 169
+				},
+				"end": {
+					"line": 9,
+					"column": 1,
+					"offset": 171
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "RangeSlider",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 14,
+							"offset": 184
+						},
+						"end": {}
+					},
+					"specifier": "values"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "tooltip",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "tooltip"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 26,
+							"offset": 196
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 9,
+					"column": 1,
+					"offset": 171
+				},
+				"end": {
+					"line": 9,
+					"column": 50,
+					"offset": 220
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 9,
+					"column": 50,
+					"offset": 220
+				},
+				"end": {
+					"line": 11,
+					"column": 1,
+					"offset": 222
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "p",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "selected: ",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 4,
+							"offset": 225
+						},
+						"end": {
+							"line": 11,
+							"column": 14,
+							"offset": 235
+						}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "JSON.stringify(values)",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 14,
+							"offset": 235
+						},
+						"end": {
+							"line": 11,
+							"column": 38,
+							"offset": 259
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 11,
+					"column": 1,
+					"offset": 222
+				},
+				"end": {
+					"line": 11,
+					"column": 42,
+					"offset": 263
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 11,
+			"column": 42,
+			"offset": 263
+		}
+	}
+}

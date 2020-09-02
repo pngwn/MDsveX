@@ -1,0 +1,502 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import { beforeUpdate, setContext, getContext, tick, onMount } from 'svelte'\n  import Icon from '../Icon.svelte'\n\n  /** Label for tab\n   * @svelte-prop {String} label\n   * */\n  export let label\n\n  /** Show this icon on left-side of the tab\n   * @svelte-prop {String} [icon]\n   * */\n  export let icon = ''\n\n  /** Fontawesome icon pack to use. By default the <code>Icon</code> component uses <code>fas</code>\n   * @svelte-prop {String} [iconPack]\n   * @values <code>fas</code>, <code>fab</code>, etc...\n   * */\n  export let iconPack = ''\n\n  let active = false\n\n  let el\n  let index\n  let starting = false\n  let direction = ''\n  let isIn = false\n\n  const tabConfig = getContext('tabs')\n\n  export async function changeTab({ from, to }) {\n    if (from === to) return\n\n    // console.log({ index, from, to }, to === index)\n    if (from === index) {\n      // Transition out\n      direction = index < to ? 'left' : 'right'\n    } else if (to === index) {\n      // Transition in; start at direction when rendered, then remove it\n      // console.log('TRANSITION', { index, to, active })\n      active = true\n      direction = index > from ? 'right' : 'left'\n      // await tick()\n      // direction = ''\n    } else direction = ''\n  }\n\n  function updateIndex() {\n    if (!el) return\n    index = Array.prototype.indexOf.call(el.parentNode.children, el)\n  }\n\n  async function transitionend(event) {\n    // console.log({ index, active, activeTab: tabConfig.activeTab })\n    // console.log(event.target)\n    active = index === tabConfig.activeTab\n    await tick()\n    direction = ''\n  }\n\n  tabConfig.tabs.subscribe(tabs => {\n    updateIndex()\n  })\n\n  onMount(() => {\n    updateIndex()\n\n    tabConfig.tabs.update(tabs => [\n      ...tabs,\n      {\n        index,\n        label,\n        icon,\n        iconPack,\n        activate: () => (active = true),\n        deactivate: () => (active = false),\n        changeTab,\n      },\n    ])\n  })\n\n  beforeUpdate(async () => {\n    if (index === tabConfig.activeTab && direction) {\n      await tick()\n      setTimeout(() => {\n        direction = ''\n      })\n    }\n  })\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 90,
+							"column": 1,
+							"offset": 2098
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 90,
+					"column": 10,
+					"offset": 2107
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 90,
+					"column": 10,
+					"offset": 2107
+				},
+				"end": {
+					"line": 92,
+					"column": 1,
+					"offset": 2109
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "lang",
+					"value": [
+						{
+							"type": "text",
+							"value": "scss",
+							"position": {
+								"start": {
+									"line": 92,
+									"column": 14,
+									"offset": 2122
+								},
+								"end": {
+									"line": 92,
+									"column": 18,
+									"offset": 2126
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 92,
+							"column": 8,
+							"offset": 2116
+						},
+						"end": {
+							"line": 92,
+							"column": 19,
+							"offset": 2127
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  // NOTE: add transitions/animations back once they're working\n  .tab {\n    display: none;\n    flex: 1 0 100%;\n    // will-change: transform;\n    // transition: transform 400ms ease-in;\n\n    &.is-active {\n      display: inline-block;\n      // transform: translateX(0);\n    }\n\n    // &.starting {\n    //   transition: none;\n    // }\n\n    // &.left {\n    //   transform: translateX(-100%);\n    // }\n\n    // &.right {\n    //   transform: translateX(100%);\n    // }\n\n    // &.starting {\n    //   transition: none;\n    // }\n  }\n",
+					"position": {
+						"start": {
+							"line": 92,
+							"column": 20,
+							"offset": 2128
+						},
+						"end": {
+							"line": 121,
+							"column": 1,
+							"offset": 2653
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 92,
+					"column": 1,
+					"offset": 2109
+				},
+				"end": {
+					"line": 121,
+					"column": 9,
+					"offset": 2661
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 121,
+					"column": 9,
+					"offset": 2661
+				},
+				"end": {
+					"line": 123,
+					"column": 1,
+					"offset": 2663
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "tab",
+							"position": {
+								"start": {
+									"line": 124,
+									"column": 10,
+									"offset": 2677
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "",
+							"position": {
+								"start": {
+									"line": 124,
+									"column": 13,
+									"offset": 2680
+								},
+								"end": {
+									"line": 124,
+									"column": 14,
+									"offset": 2681
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "direction",
+							"position": {
+								"start": {
+									"line": 124,
+									"column": 14,
+									"offset": 2681
+								},
+								"end": {
+									"line": 124,
+									"column": 25,
+									"offset": 2692
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 124,
+							"column": 3,
+							"offset": 2670
+						},
+						"end": {
+							"line": 124,
+							"column": 26,
+							"offset": 2693
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "active",
+							"position": {
+								"start": {
+									"line": 125,
+									"column": 19,
+									"offset": 2712
+								},
+								"end": {
+									"line": 125,
+									"column": 27,
+									"offset": 2720
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 125,
+							"column": 3,
+							"offset": 2696
+						},
+						"end": {
+							"line": 125,
+							"column": 27,
+							"offset": 2720
+						}
+					},
+					"specifier": "is-active"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "el",
+							"position": {
+								"start": {
+									"line": 126,
+									"column": 13,
+									"offset": 2733
+								},
+								"end": {
+									"line": 126,
+									"column": 17,
+									"offset": 2737
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 126,
+							"column": 3,
+							"offset": 2723
+						},
+						"end": {
+							"line": 126,
+							"column": 17,
+							"offset": 2737
+						}
+					},
+					"specifier": "this"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "aria-hidden",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "!active",
+							"position": {
+								"start": {
+									"line": 127,
+									"column": 15,
+									"offset": 2752
+								},
+								"end": {
+									"line": 127,
+									"column": 24,
+									"offset": 2761
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 127,
+							"column": 3,
+							"offset": 2740
+						},
+						"end": {
+							"line": 127,
+							"column": 24,
+							"offset": 2761
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "transitionend",
+							"position": {
+								"start": {
+									"line": 128,
+									"column": 20,
+									"offset": 2781
+								},
+								"end": {
+									"line": 128,
+									"column": 35,
+									"offset": 2796
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 128,
+							"column": 3,
+							"offset": 2764
+						},
+						"end": {
+							"line": 128,
+							"column": 35,
+							"offset": 2796
+						}
+					},
+					"specifier": "transitionend"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 128,
+							"column": 36,
+							"offset": 2797
+						},
+						"end": {
+							"line": 129,
+							"column": 3,
+							"offset": 2800
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "slot",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "label",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "label"
+								}
+							],
+							"modifiers": [],
+							"shorthand": "expression",
+							"position": {
+								"start": {
+									"line": 129,
+									"column": 9,
+									"offset": 2806
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": "iconPack",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "iconPack"
+								}
+							],
+							"modifiers": [],
+							"shorthand": "expression",
+							"position": {
+								"start": {
+									"line": 129,
+									"column": 17,
+									"offset": 2814
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": "icon",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "icon"
+								}
+							],
+							"modifiers": [],
+							"shorthand": "expression",
+							"position": {
+								"start": {
+									"line": 129,
+									"column": 28,
+									"offset": 2825
+								},
+								"end": {}
+							}
+						}
+					],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 129,
+							"column": 3,
+							"offset": 2800
+						},
+						"end": {
+							"line": 129,
+							"column": 37,
+							"offset": 2834
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 129,
+							"column": 37,
+							"offset": 2834
+						},
+						"end": {
+							"line": 130,
+							"column": 1,
+							"offset": 2835
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 123,
+					"column": 1,
+					"offset": 2663
+				},
+				"end": {
+					"line": 130,
+					"column": 7,
+					"offset": 2841
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 130,
+			"column": 7,
+			"offset": 2841
+		}
+	}
+}

@@ -1,0 +1,254 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import Search from '@sveltekit/ui/Search';\n\n  let searchText = '';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 5,
+							"column": 1,
+							"offset": 78
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 5,
+					"column": 10,
+					"offset": 87
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 10,
+					"offset": 87
+				},
+				"end": {
+					"line": 7,
+					"column": 1,
+					"offset": 89
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Search",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "searchText",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 20,
+									"offset": 108
+								},
+								"end": {
+									"line": 7,
+									"column": 32,
+									"offset": 120
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 9,
+							"offset": 97
+						},
+						"end": {
+							"line": 7,
+							"column": 32,
+							"offset": 120
+						}
+					},
+					"specifier": "value"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "placeholder",
+					"value": [
+						{
+							"type": "text",
+							"value": "Enter",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 46,
+									"offset": 134
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "search",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 51,
+									"offset": 139
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "here...",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 58,
+									"offset": 146
+								},
+								"end": {
+									"line": 7,
+									"column": 66,
+									"offset": 154
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 33,
+							"offset": 121
+						},
+						"end": {
+							"line": 7,
+							"column": 67,
+							"offset": 155
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 7,
+					"column": 1,
+					"offset": 89
+				},
+				"end": {
+					"line": 7,
+					"column": 77,
+					"offset": 165
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 7,
+					"column": 77,
+					"offset": 165
+				},
+				"end": {
+					"line": 8,
+					"column": 1,
+					"offset": 166
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "p",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "Search text: ",
+					"position": {
+						"start": {
+							"line": 8,
+							"column": 4,
+							"offset": 169
+						},
+						"end": {
+							"line": 8,
+							"column": 17,
+							"offset": 182
+						}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "searchText",
+					"position": {
+						"start": {
+							"line": 8,
+							"column": 17,
+							"offset": 182
+						},
+						"end": {
+							"line": 8,
+							"column": 29,
+							"offset": 194
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 8,
+					"column": 1,
+					"offset": 166
+				},
+				"end": {
+					"line": 8,
+					"column": 33,
+					"offset": 198
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 8,
+			"column": 33,
+			"offset": 198
+		}
+	}
+}

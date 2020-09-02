@@ -1,0 +1,346 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import Button from '@sveltekit/ui/Button';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 54
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 3,
+					"column": 10,
+					"offset": 63
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 3,
+					"column": 10,
+					"offset": 63
+				},
+				"end": {
+					"line": 5,
+					"column": 1,
+					"offset": 65
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "row",
+							"position": {
+								"start": {
+									"line": 5,
+									"column": 13,
+									"offset": 77
+								},
+								"end": {
+									"line": 5,
+									"column": 16,
+									"offset": 80
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 6,
+							"offset": 70
+						},
+						"end": {
+							"line": 5,
+							"column": 17,
+							"offset": 81
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 18,
+							"offset": 82
+						},
+						"end": {
+							"line": 6,
+							"column": 3,
+							"offset": 85
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "Button",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "isRounded",
+							"value": [],
+							"modifiers": [],
+							"shorthand": "boolean",
+							"position": {
+								"start": {
+									"line": 6,
+									"column": 11,
+									"offset": 93
+								},
+								"end": {}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "Rounded",
+							"position": {
+								"start": {
+									"line": 6,
+									"column": 21,
+									"offset": 103
+								},
+								"end": {
+									"line": 6,
+									"column": 28,
+									"offset": 110
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 6,
+							"column": 3,
+							"offset": 85
+						},
+						"end": {
+							"line": 6,
+							"column": 37,
+							"offset": 119
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 6,
+							"column": 37,
+							"offset": 119
+						},
+						"end": {
+							"line": 7,
+							"column": 3,
+							"offset": 122
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "Button",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "isWide",
+							"value": [],
+							"modifiers": [],
+							"shorthand": "boolean",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 11,
+									"offset": 130
+								},
+								"end": {}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "Wide",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 18,
+									"offset": 137
+								},
+								"end": {
+									"line": 7,
+									"column": 22,
+									"offset": 141
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 3,
+							"offset": 122
+						},
+						"end": {
+							"line": 7,
+							"column": 31,
+							"offset": 150
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 31,
+							"offset": 150
+						},
+						"end": {
+							"line": 8,
+							"column": 3,
+							"offset": 153
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "Button",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "isBlock",
+							"value": [],
+							"modifiers": [],
+							"shorthand": "boolean",
+							"position": {
+								"start": {
+									"line": 8,
+									"column": 11,
+									"offset": 161
+								},
+								"end": {}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "Block",
+							"position": {
+								"start": {
+									"line": 8,
+									"column": 19,
+									"offset": 169
+								},
+								"end": {
+									"line": 8,
+									"column": 24,
+									"offset": 174
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 8,
+							"column": 3,
+							"offset": 153
+						},
+						"end": {
+							"line": 8,
+							"column": 33,
+							"offset": 183
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 8,
+							"column": 33,
+							"offset": 183
+						},
+						"end": {
+							"line": 9,
+							"column": 1,
+							"offset": 184
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 1,
+					"offset": 65
+				},
+				"end": {
+					"line": 9,
+					"column": 7,
+					"offset": 190
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 9,
+			"column": 7,
+			"offset": 190
+		}
+	}
+}

@@ -1,0 +1,534 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport Scatterplot from './Scatterplot.svelte';\n\timport data from './data.js';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 4,
+							"column": 1,
+							"offset": 89
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 4,
+					"column": 10,
+					"offset": 98
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 4,
+					"column": 10,
+					"offset": 98
+				},
+				"end": {
+					"line": 6,
+					"column": 1,
+					"offset": 100
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t.chart {\n\t\twidth: 100%;\n\t\tmax-width: 640px;\n\t\theight: calc(100% - 4em);\n\t\tmin-height: 280px;\n\t\tmax-height: 480px;\n\t\tmargin: 0 auto;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 6,
+							"column": 8,
+							"offset": 107
+						},
+						"end": {
+							"line": 15,
+							"column": 1,
+							"offset": 244
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 6,
+					"column": 1,
+					"offset": 100
+				},
+				"end": {
+					"line": 15,
+					"column": 9,
+					"offset": 252
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 15,
+					"column": 9,
+					"offset": 252
+				},
+				"end": {
+					"line": 17,
+					"column": 1,
+					"offset": 254
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "chart",
+							"position": {
+								"start": {
+									"line": 17,
+									"column": 13,
+									"offset": 266
+								},
+								"end": {
+									"line": 17,
+									"column": 18,
+									"offset": 271
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 17,
+							"column": 6,
+							"offset": 259
+						},
+						"end": {
+							"line": 17,
+							"column": 19,
+							"offset": 272
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 17,
+							"column": 20,
+							"offset": 273
+						},
+						"end": {
+							"line": 18,
+							"column": 2,
+							"offset": 275
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "h2",
+					"properties": [],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "Anscombe's quartet",
+							"position": {
+								"start": {
+									"line": 18,
+									"column": 6,
+									"offset": 279
+								},
+								"end": {
+									"line": 18,
+									"column": 24,
+									"offset": 297
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 18,
+							"column": 2,
+							"offset": 275
+						},
+						"end": {
+							"line": 18,
+							"column": 29,
+							"offset": 302
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n\n\t",
+					"position": {
+						"start": {
+							"line": 18,
+							"column": 29,
+							"offset": 302
+						},
+						"end": {
+							"line": 20,
+							"column": 2,
+							"offset": 305
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "Scatterplot",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "points",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "data.a",
+									"position": {
+										"start": {
+											"line": 20,
+											"column": 22,
+											"offset": 325
+										},
+										"end": {
+											"line": 20,
+											"column": 30,
+											"offset": 333
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 20,
+									"column": 15,
+									"offset": 318
+								},
+								"end": {
+									"line": 20,
+									"column": 30,
+									"offset": 333
+								}
+							}
+						}
+					],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 20,
+							"column": 2,
+							"offset": 305
+						},
+						"end": {
+							"line": 20,
+							"column": 32,
+							"offset": 335
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 20,
+							"column": 32,
+							"offset": 335
+						},
+						"end": {
+							"line": 21,
+							"column": 2,
+							"offset": 337
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "Scatterplot",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "points",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "data.b",
+									"position": {
+										"start": {
+											"line": 21,
+											"column": 22,
+											"offset": 357
+										},
+										"end": {
+											"line": 21,
+											"column": 30,
+											"offset": 365
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 21,
+									"column": 15,
+									"offset": 350
+								},
+								"end": {
+									"line": 21,
+									"column": 30,
+									"offset": 365
+								}
+							}
+						}
+					],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 21,
+							"column": 2,
+							"offset": 337
+						},
+						"end": {
+							"line": 21,
+							"column": 32,
+							"offset": 367
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 21,
+							"column": 32,
+							"offset": 367
+						},
+						"end": {
+							"line": 22,
+							"column": 2,
+							"offset": 369
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "Scatterplot",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "points",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "data.c",
+									"position": {
+										"start": {
+											"line": 22,
+											"column": 22,
+											"offset": 389
+										},
+										"end": {
+											"line": 22,
+											"column": 30,
+											"offset": 397
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 22,
+									"column": 15,
+									"offset": 382
+								},
+								"end": {
+									"line": 22,
+									"column": 30,
+									"offset": 397
+								}
+							}
+						}
+					],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 22,
+							"column": 2,
+							"offset": 369
+						},
+						"end": {
+							"line": 22,
+							"column": 32,
+							"offset": 399
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 22,
+							"column": 32,
+							"offset": 399
+						},
+						"end": {
+							"line": 23,
+							"column": 2,
+							"offset": 401
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "Scatterplot",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "points",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "data.d",
+									"position": {
+										"start": {
+											"line": 23,
+											"column": 22,
+											"offset": 421
+										},
+										"end": {
+											"line": 23,
+											"column": 30,
+											"offset": 429
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 23,
+									"column": 15,
+									"offset": 414
+								},
+								"end": {
+									"line": 23,
+									"column": 30,
+									"offset": 429
+								}
+							}
+						}
+					],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 23,
+							"column": 2,
+							"offset": 401
+						},
+						"end": {
+							"line": 23,
+							"column": 32,
+							"offset": 431
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 23,
+							"column": 32,
+							"offset": 431
+						},
+						"end": {
+							"line": 24,
+							"column": 1,
+							"offset": 432
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 17,
+					"column": 1,
+					"offset": 254
+				},
+				"end": {
+					"line": 24,
+					"column": 7,
+					"offset": 438
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 24,
+			"column": 7,
+			"offset": 438
+		}
+	}
+}

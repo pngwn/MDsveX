@@ -1,0 +1,786 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t// These values are bound to properties of the video\n\tlet time = 0;\n\tlet duration;\n\tlet paused = true;\n\n\tlet showControls = true;\n\tlet showControlsTimeout;\n\n\tfunction handleMousemove(e) {\n\t\t// Make the controls visible, but fade out after\n\t\t// 2.5 seconds of inactivity\n\t\tclearTimeout(showControlsTimeout);\n\t\tshowControlsTimeout = setTimeout(() => showControls = false, 2500);\n\t\tshowControls = true;\n\n\t\tif (!(e.buttons & 1)) return; // mouse not down\n\t\tif (!duration) return; // video not loaded yet\n\n\t\tconst { left, right } = this.getBoundingClientRect();\n\t\ttime = duration * (e.clientX - left) / (right - left);\n\t}\n\n\tfunction handleMousedown(e) {\n\t\t// we can't rely on the built-in click event, because it fires\n\t\t// after a drag — we have to listen for clicks ourselves\n\n\t\tfunction handleMouseup() {\n\t\t\tif (paused) e.target.play();\n\t\t\telse e.target.pause();\n\t\t\tcancel();\n\t\t}\n\n\t\tfunction cancel() {\n\t\t\te.target.removeEventListener('mouseup', handleMouseup);\n\t\t}\n\n\t\te.target.addEventListener('mouseup', handleMouseup);\n\n\t\tsetTimeout(cancel, 200);\n\t}\n\n\tfunction format(seconds) {\n\t\tif (isNaN(seconds)) return '...';\n\n\t\tconst minutes = Math.floor(seconds / 60);\n\t\tseconds = Math.floor(seconds % 60);\n\t\tif (seconds < 10) seconds = '0' + seconds;\n\n\t\treturn `${minutes}:${seconds}`;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 52,
+							"column": 1,
+							"offset": 1292
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 52,
+					"column": 10,
+					"offset": 1301
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 52,
+					"column": 10,
+					"offset": 1301
+				},
+				"end": {
+					"line": 54,
+					"column": 1,
+					"offset": 1303
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tdiv {\n\t\tposition: relative;\n\t}\n\n\t.controls {\n\t\tposition: absolute;\n\t\ttop: 0;\n\t\twidth: 100%;\n\t\ttransition: opacity 1s;\n\t}\n\n\t.info {\n\t\tdisplay: flex;\n\t\twidth: 100%;\n\t\tjustify-content: space-between;\n\t}\n\n\tspan {\n\t\tpadding: 0.2em 0.5em;\n\t\tcolor: white;\n\t\ttext-shadow: 0 0 8px black;\n\t\tfont-size: 1.4em;\n\t\topacity: 0.7;\n\t}\n\n\t.time {\n\t\twidth: 3em;\n\t}\n\n\t.time:last-child { text-align: right }\n\n\tprogress {\n\t\tdisplay: block;\n\t\twidth: 100%;\n\t\theight: 10px;\n\t\t-webkit-appearance: none;\n\t\tappearance: none;\n\t}\n\n\tprogress::-webkit-progress-bar {\n\t\tbackground-color: rgba(0,0,0,0.2);\n\t}\n\n\tprogress::-webkit-progress-value {\n\t\tbackground-color: rgba(255,255,255,0.6);\n\t}\n\n\tvideo {\n\t\twidth: 100%;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 54,
+							"column": 8,
+							"offset": 1310
+						},
+						"end": {
+							"line": 105,
+							"column": 1,
+							"offset": 1997
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 54,
+					"column": 1,
+					"offset": 1303
+				},
+				"end": {
+					"line": 105,
+					"column": 9,
+					"offset": 2005
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 105,
+					"column": 9,
+					"offset": 2005
+				},
+				"end": {
+					"line": 107,
+					"column": 1,
+					"offset": 2007
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "h1",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "Caminandes: Llamigos",
+					"position": {
+						"start": {
+							"line": 107,
+							"column": 5,
+							"offset": 2011
+						},
+						"end": {
+							"line": 107,
+							"column": 25,
+							"offset": 2031
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 107,
+					"column": 1,
+					"offset": 2007
+				},
+				"end": {
+					"line": 107,
+					"column": 30,
+					"offset": 2036
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 107,
+					"column": 30,
+					"offset": 2036
+				},
+				"end": {
+					"line": 108,
+					"column": 1,
+					"offset": 2037
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "p",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "From ",
+					"position": {
+						"start": {
+							"line": 108,
+							"column": 4,
+							"offset": 2040
+						},
+						"end": {
+							"line": 108,
+							"column": 9,
+							"offset": 2045
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "a",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "href",
+							"value": [
+								{
+									"type": "text",
+									"value": "https://cloud.blender.org/open-projects",
+									"position": {
+										"start": {
+											"line": 108,
+											"column": 18,
+											"offset": 2054
+										},
+										"end": {
+											"line": 108,
+											"column": 57,
+											"offset": 2093
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 108,
+									"column": 12,
+									"offset": 2048
+								},
+								"end": {
+									"line": 108,
+									"column": 58,
+									"offset": 2094
+								}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "Blender Open Projects",
+							"position": {
+								"start": {
+									"line": 108,
+									"column": 59,
+									"offset": 2095
+								},
+								"end": {
+									"line": 108,
+									"column": 80,
+									"offset": 2116
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 108,
+							"column": 9,
+							"offset": 2045
+						},
+						"end": {
+							"line": 108,
+							"column": 84,
+							"offset": 2120
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": ". CC-BY",
+					"position": {
+						"start": {
+							"line": 108,
+							"column": 84,
+							"offset": 2120
+						},
+						"end": {
+							"line": 108,
+							"column": 91,
+							"offset": 2127
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 108,
+					"column": 1,
+					"offset": 2037
+				},
+				"end": {
+					"line": 108,
+					"column": 95,
+					"offset": 2131
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 108,
+					"column": 95,
+					"offset": 2131
+				},
+				"end": {
+					"line": 110,
+					"column": 1,
+					"offset": 2133
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 110,
+							"column": 6,
+							"offset": 2138
+						},
+						"end": {
+							"line": 111,
+							"column": 2,
+							"offset": 2140
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "video",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "poster",
+							"value": [
+								{
+									"type": "text",
+									"value": "https://sveltejs.github.io/assets/caminandes-llamigos.jpg",
+									"position": {
+										"start": {
+											"line": 112,
+											"column": 11,
+											"offset": 2157
+										},
+										"end": {
+											"line": 112,
+											"column": 68,
+											"offset": 2214
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 112,
+									"column": 3,
+									"offset": 2149
+								},
+								"end": {
+									"line": 112,
+									"column": 69,
+									"offset": 2215
+								}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": "src",
+							"value": [
+								{
+									"type": "text",
+									"value": "https://sveltejs.github.io/assets/caminandes-llamigos.mp4",
+									"position": {
+										"start": {
+											"line": 113,
+											"column": 8,
+											"offset": 2223
+										},
+										"end": {
+											"line": 113,
+											"column": 65,
+											"offset": 2280
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 113,
+									"column": 3,
+									"offset": 2218
+								},
+								"end": {
+									"line": 113,
+									"column": 66,
+									"offset": 2281
+								}
+							}
+						},
+						{
+							"type": "svelteDirective",
+							"name": "on",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "handleMousemove",
+									"position": {
+										"start": {
+											"line": 114,
+											"column": 16,
+											"offset": 2297
+										},
+										"end": {
+											"line": 114,
+											"column": 33,
+											"offset": 2314
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 114,
+									"column": 3,
+									"offset": 2284
+								},
+								"end": {
+									"line": 114,
+									"column": 33,
+									"offset": 2314
+								}
+							},
+							"specifier": "mousemove"
+						},
+						{
+							"type": "svelteDirective",
+							"name": "on",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "handleMousedown",
+									"position": {
+										"start": {
+											"line": 115,
+											"column": 16,
+											"offset": 2330
+										},
+										"end": {
+											"line": 115,
+											"column": 33,
+											"offset": 2347
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 115,
+									"column": 3,
+									"offset": 2317
+								},
+								"end": {
+									"line": 115,
+									"column": 33,
+									"offset": 2347
+								}
+							},
+							"specifier": "mousedown"
+						},
+						{
+							"type": "svelteDirective",
+							"name": "bind",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "time",
+									"position": {
+										"start": {
+											"line": 116,
+											"column": 20,
+											"offset": 2367
+										},
+										"end": {
+											"line": 116,
+											"column": 26,
+											"offset": 2373
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 116,
+									"column": 3,
+									"offset": 2350
+								},
+								"end": {
+									"line": 116,
+									"column": 26,
+									"offset": 2373
+								}
+							},
+							"specifier": "currentTime"
+						},
+						{
+							"type": "svelteDirective",
+							"name": "bind",
+							"value": [],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 117,
+									"column": 3,
+									"offset": 2376
+								},
+								"end": {}
+							},
+							"specifier": "duration"
+						},
+						{
+							"type": "svelteDirective",
+							"name": "bind",
+							"value": [],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 118,
+									"column": 3,
+									"offset": 2392
+								},
+								"end": {}
+							},
+							"specifier": "paused"
+						}
+					],
+					"selfClosing": false,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 111,
+							"column": 2,
+							"offset": 2140
+						},
+						"end": {
+							"line": 119,
+							"column": 11,
+							"offset": 2414
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n\n\t",
+					"position": {
+						"start": {
+							"line": 119,
+							"column": 11,
+							"offset": 2414
+						},
+						"end": {
+							"line": 121,
+							"column": 2,
+							"offset": 2417
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "div",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "class",
+							"value": [
+								{
+									"type": "text",
+									"value": "controls",
+									"position": {
+										"start": {
+											"line": 121,
+											"column": 14,
+											"offset": 2429
+										},
+										"end": {
+											"line": 121,
+											"column": 22,
+											"offset": 2437
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 121,
+									"column": 7,
+									"offset": 2422
+								},
+								"end": {
+									"line": 121,
+									"column": 23,
+									"offset": 2438
+								}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": "style",
+							"value": [
+								{
+									"type": "text",
+									"value": "opacity:",
+									"position": {
+										"start": {
+											"line": 121,
+											"column": 31,
+											"offset": 2446
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "",
+									"position": {
+										"start": {
+											"line": 121,
+											"column": 39,
+											"offset": 2454
+										},
+										"end": {
+											"line": 121,
+											"column": 40,
+											"offset": 2455
+										}
+									}
+								},
+								{
+									"type": "svelteExpression",
+									"value": "duration && showControls ? 1 : 0",
+									"position": {
+										"start": {
+											"line": 121,
+											"column": 40,
+											"offset": 2455
+										},
+										"end": {
+											"line": 121,
+											"column": 74,
+											"offset": 2489
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 121,
+									"column": 24,
+									"offset": 2439
+								},
+								"end": {
+									"line": 121,
+									"column": 75,
+									"offset": 2490
+								}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t\t",
+							"position": {
+								"start": {
+									"line": 121,
+									"column": 76,
+									"offset": 2491
+								},
+								"end": {
+									"line": 122,
+									"column": 3,
+									"offset": 2494
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "progress",
+							"properties": [
+								{
+									"type": "svelteProperty",
+									"name": "value",
+									"value": [
+										{
+											"type": "svelteExpression",
+											"value": "(time / duration) || 0}\"/>\n\n\t\t<div class=\"info\">\n\t\t\t<span class=\"time\">{format(time)}</span>\n\t\t\t<span>click anywhere to {paused ? 'play' : 'pause'} / drag to seek</span>\n\t\t\t<span class=\"time\">{format(duration)}</span>\n\t\t</div>\n\t</div>\n</div>\n",
+											"position": {
+												"start": {
+													"line": 122,
+													"column": 20,
+													"offset": 2511
+												},
+												"end": {
+													"line": 131,
+													"column": 1,
+													"offset": 2754
+												}
+											}
+										}
+									],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 122,
+											"column": 13,
+											"offset": 2504
+										},
+										"end": {}
+									}
+								}
+							],
+							"selfClosing": false,
+							"children": [],
+							"position": {
+								"start": {
+									"line": 122,
+									"column": 3,
+									"offset": 2494
+								},
+								"end": {}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 121,
+							"column": 2,
+							"offset": 2417
+						},
+						"end": {
+							"line": 131,
+							"column": 2,
+							"offset": 2755
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 110,
+					"column": 1,
+					"offset": 2133
+				},
+				"end": {
+					"line": 131,
+					"column": 3,
+					"offset": 2756
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 131,
+			"column": 3,
+			"offset": 2756
+		}
+	}
+}

@@ -1,0 +1,477 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import { beforeUpdate, createEventDispatcher, onDestroy, onMount, tick } from 'svelte';\n  import getPosition from '../../helpers/getPosition';\n  import DropdownMenu from './_DropdownMenu.svelte';\n\n  import generateUniqueId from '../../helpers/generateUniqueId';\n\n  const dispatch = createEventDispatcher();\n\n  export let items = [];\n  export let itemKey = 'label';\n  export let isBlock = false;\n  export let MenuComponent = DropdownMenu;\n  export let width = '150px';\n  export let getMenuContainer = () => {\n    return document.body;\n  };\n  export let isActive = false;\n  export let isHoverable = false;\n  export let placement = 'bottomLeft';\n  export let selectedItem = null;\n  export let isSearchable = false;\n  export let isMulti = false;\n  export let maxHeight = null;\n\n  let id = `dropdown-${generateUniqueId()}`;\n  let searchClear = false;\n  let dropdownMenu = undefined;\n  let elem = undefined;\n  let menuOffset = undefined;\n  let toggle = null;\n\n  $: {\n    if (dropdownMenu) dropdownMenu.$set({ isActive, width, items, selectedItem, itemKey });\n  }\n\n  function showMenu() {\n    isActive = true;\n    elem.style.display = '';\n    positionMenu();\n  }\n\n  function hideMenu() {\n    isActive = false;\n    elem.style.display = 'none';\n    dropdownMenu.$set({ searchText: '' });\n  }\n\n  function clickEd() {\n    if (elem.style.display === 'none') {\n      showMenu();\n    } else {\n      hideMenu();\n    }\n  }\n\n  function onMouseEnter() {\n    if (elem.style.display === 'none') {\n      showMenu();\n    }\n  }\n\n  function onMouseLeave(event) {\n    if (toggle.contains(event.relatedTarget)) return;\n    if (elem.contains(event.relatedTarget)) return;\n\n    if (isHoverable) {\n      hideMenu();\n    }\n  }\n\n  function onWindowClick(event) {\n    if (toggle.contains(event.target)) return;\n\n    if (isMulti) {\n      if (dropdownMenu.dropdownMenu.contains(event.target)) return;\n    }\n    if (isSearchable) {\n      if (searchClear) {\n        searchClear = false;\n        return;\n      }\n      if (dropdownMenu.search.contains(event.target)) return;\n    }\n\n    if(isActive) {\n      hideMenu();\n    }\n  }\n\n  function onResize() {\n    if (elem.style.display !== 'none') {\n      positionMenu();\n    }\n\n    if (!isVisible(toggle.firstElementChild)) {\n      hideMenu();\n    }\n  }\n\n  function onScroll() {\n    if (elem.style.display !== 'none') {\n      positionMenu();\n    }\n  }\n\n  function onMenuSelect(event) {\n    const item = event.detail;\n\n    const selected = isMulti ? item.selected : item;\n    dispatch('select', selected);\n\n    if (isMulti) {\n      const newSelectedItems = (selectedItem || []).concat([selected]);\n      selectedItem = newSelectedItems;\n    } else {\n      selectedItem = selected;\n    }\n  }\n\n  function onMenuClearSelect(event) {\n    const item = event.detail;\n\n    const { selected, itemKey } = item;\n    if (isMulti) {\n      const newSelectedItems = selectedItem.filter(item => {\n        return item[itemKey] !== selected[itemKey];\n      });\n      selectedItem = newSelectedItems;\n      dispatch('clearSelect', selected);\n    }\n  };\n\n  function positionMenu() {\n    if (!getMenuContainer) return;\n\n    const togglePos = getPosition(toggle, getMenuContainer());\n\n    elem.style.padding = /^top/.test(placement) ? `0 0 ${menuOffset}px 0` : `${menuOffset}px 0 0 0`;\n\n    const pos = getPlacement(togglePos);\n    elem.style.top = `${pos.top}px`;\n    elem.style.left = `${pos.left}px`;\n  }\n\n  function isVisible(elem) {\n    if (!elem) return;\n    return !!(elem.offsetWidth || elem.offsetHeight || elem.getClientRects().length);\n  }\n\n  export function getPlacement(srcPos) {\n\n    const pos = {\n      top: 0,\n      left: 0\n    };\n\n    if (!toggle) {\n      return pos;\n    }\n\n    if (/^top/.test(placement)) {\n      pos.top = srcPos.top - elem.offsetHeight;\n    } else {\n      pos.top = srcPos.top + toggle.offsetHeight;\n    }\n\n    if (/Centre$/.test(placement)) {\n      pos.left = (srcPos.left + (toggle.offsetWidth / 2)) - (elem.offsetWidth / 2);\n    } else if (/Right$/.test(placement)) {\n      pos.left = srcPos.left + toggle.offsetWidth - elem.offsetWidth;\n    } else {\n      pos.left = srcPos.left;\n    }\n\n    return pos;\n  }\n\n  onMount(async () => {\n    await tick();\n    if (!getMenuContainer || !MenuComponent) return;\n\n    document.addEventListener('scroll', onScroll, true);\n\n    if (isHoverable) {\n      toggle.addEventListener('mouseenter', onMouseEnter);\n      toggle.addEventListener('mouseleave', onMouseLeave);\n    }\n\n    elem = document.createElement('div');\n\n    elem.id = id;\n    elem.style.display = 'none';\n    elem.style.position = 'absolute';\n    elem.style.zIndex = '2';\n\n    menuOffset = 8;\n\n    dropdownMenu = new MenuComponent({\n      target: elem,\n      props: { width, items, selectedItem, itemKey, isMulti, isSearchable, maxHeight }\n    });\n\n    dropdownMenu.$on('select', onMenuSelect);\n    dropdownMenu.$on('clearSelect', onMenuClearSelect);\n    dropdownMenu.$on('searchClear', () => { searchClear = true });\n    elem.addEventListener('mouseleave', onMouseLeave);\n\n    getMenuContainer().appendChild(elem);\n  });\n\n  onDestroy(() => {\n    if (elem) {\n      elem.removeEventListener('scroll', onScroll, true);\n      elem.removeEventListener('mouseleave', onMouseLeave);\n\n      const menuContainer = getMenuContainer();\n\n      if (menuContainer && menuContainer.contains(elem)) {\n        menuContainer.removeChild(elem);\n      }\n    }\n\n    if (dropdownMenu) dropdownMenu.$destroy();\n  });\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 226,
+							"column": 1,
+							"offset": 5432
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 226,
+					"column": 10,
+					"offset": 5441
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 226,
+					"column": 10,
+					"offset": 5441
+				},
+				"end": {
+					"line": 228,
+					"column": 1,
+					"offset": 5443
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  .toggle {\n    display: inline-block;\n    cursor: pointer;\n    -webkit-touch-callout: none;\n    user-select: none;\n  }\n\n  .toggle-isBlock {\n    display: block;\n  }\n",
+					"position": {
+						"start": {
+							"line": 228,
+							"column": 8,
+							"offset": 5450
+						},
+						"end": {
+							"line": 239,
+							"column": 1,
+							"offset": 5616
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 228,
+					"column": 1,
+					"offset": 5443
+				},
+				"end": {
+					"line": 239,
+					"column": 9,
+					"offset": 5624
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 239,
+					"column": 9,
+					"offset": 5624
+				},
+				"end": {
+					"line": 241,
+					"column": 1,
+					"offset": 5626
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "window",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "onResize",
+							"position": {
+								"start": {
+									"line": 241,
+									"column": 27,
+									"offset": 5652
+								},
+								"end": {
+									"line": 241,
+									"column": 37,
+									"offset": 5662
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 241,
+							"column": 16,
+							"offset": 5641
+						},
+						"end": {
+							"line": 241,
+							"column": 38,
+							"offset": 5663
+						}
+					},
+					"specifier": "resize"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "onWindowClick",
+							"position": {
+								"start": {
+									"line": 241,
+									"column": 49,
+									"offset": 5674
+								},
+								"end": {
+									"line": 241,
+									"column": 64,
+									"offset": 5689
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 241,
+							"column": 39,
+							"offset": 5664
+						},
+						"end": {
+							"line": 241,
+							"column": 65,
+							"offset": 5690
+						}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 241,
+					"column": 1,
+					"offset": 5626
+				},
+				"end": {
+					"line": 241,
+					"column": 68,
+					"offset": 5693
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 241,
+					"column": 68,
+					"offset": 5693
+				},
+				"end": {
+					"line": 243,
+					"column": 1,
+					"offset": 5695
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "toggle",
+							"position": {
+								"start": {
+									"line": 244,
+									"column": 13,
+									"offset": 5712
+								},
+								"end": {
+									"line": 244,
+									"column": 21,
+									"offset": 5720
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 244,
+							"column": 3,
+							"offset": 5702
+						},
+						"end": {
+							"line": 244,
+							"column": 21,
+							"offset": 5720
+						}
+					},
+					"specifier": "this"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "toggle",
+							"position": {
+								"start": {
+									"line": 245,
+									"column": 10,
+									"offset": 5730
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "",
+							"position": {
+								"start": {
+									"line": 245,
+									"column": 16,
+									"offset": 5736
+								},
+								"end": {
+									"line": 245,
+									"column": 17,
+									"offset": 5737
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": " isBlock ? 'toggle-isBlock' : '' ",
+							"position": {
+								"start": {
+									"line": 245,
+									"column": 17,
+									"offset": 5737
+								},
+								"end": {
+									"line": 245,
+									"column": 52,
+									"offset": 5772
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 245,
+							"column": 3,
+							"offset": 5723
+						},
+						"end": {
+							"line": 245,
+							"column": 53,
+							"offset": 5773
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": " clickEd ",
+							"position": {
+								"start": {
+									"line": 246,
+									"column": 13,
+									"offset": 5786
+								},
+								"end": {
+									"line": 246,
+									"column": 24,
+									"offset": 5797
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 246,
+							"column": 3,
+							"offset": 5776
+						},
+						"end": {
+							"line": 246,
+							"column": 25,
+							"offset": 5798
+						}
+					},
+					"specifier": "click"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "aria-controls",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "id",
+							"position": {
+								"start": {
+									"line": 247,
+									"column": 18,
+									"offset": 5816
+								},
+								"end": {
+									"line": 247,
+									"column": 22,
+									"offset": 5820
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 247,
+							"column": 3,
+							"offset": 5801
+						},
+						"end": {
+							"line": 247,
+							"column": 23,
+							"offset": 5821
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 248,
+							"column": 2,
+							"offset": 5823
+						},
+						"end": {
+							"line": 249,
+							"column": 3,
+							"offset": 5826
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "slot",
+					"properties": [],
+					"selfClosing": false,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 249,
+							"column": 3,
+							"offset": 5826
+						},
+						"end": {
+							"line": 249,
+							"column": 16,
+							"offset": 5839
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 249,
+							"column": 16,
+							"offset": 5839
+						},
+						"end": {
+							"line": 250,
+							"column": 1,
+							"offset": 5840
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 243,
+					"column": 1,
+					"offset": 5695
+				},
+				"end": {
+					"line": 250,
+					"column": 7,
+					"offset": 5846
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 250,
+			"column": 7,
+			"offset": 5846
+		}
+	}
+}

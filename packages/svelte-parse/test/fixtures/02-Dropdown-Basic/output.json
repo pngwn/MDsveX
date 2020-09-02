@@ -1,0 +1,194 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import Button from '@sveltekit/ui/Button';\n  import Dropdown from '@sveltekit/ui/Dropdown';\n\n  export let items = [{\n    label: 'Menu Item 1',\n    id: 1\n  },\n  {\n    label: 'Menu Item 2',\n    id: 2\n  },\n  {\n    label: 'Menu Item 3',\n    id: 3\n  }];\n\n  export let isActive = undefined;\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 19,
+							"column": 1,
+							"offset": 296
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 19,
+					"column": 10,
+					"offset": 305
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 19,
+					"column": 10,
+					"offset": 305
+				},
+				"end": {
+					"line": 21,
+					"column": 1,
+					"offset": 307
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Dropdown",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": " items ",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": " items "
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 21,
+							"column": 11,
+							"offset": 317
+						},
+						"end": {}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 21,
+							"column": 21,
+							"offset": 327
+						},
+						"end": {}
+					},
+					"specifier": "isActive"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 21,
+							"column": 35,
+							"offset": 341
+						},
+						"end": {
+							"line": 22,
+							"column": 3,
+							"offset": 344
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "Button",
+					"properties": [],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "Click me",
+							"position": {
+								"start": {
+									"line": 22,
+									"column": 11,
+									"offset": 352
+								},
+								"end": {
+									"line": 22,
+									"column": 19,
+									"offset": 360
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 22,
+							"column": 3,
+							"offset": 344
+						},
+						"end": {
+							"line": 22,
+							"column": 28,
+							"offset": 369
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 22,
+							"column": 28,
+							"offset": 369
+						},
+						"end": {
+							"line": 23,
+							"column": 1,
+							"offset": 370
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 21,
+					"column": 1,
+					"offset": 307
+				},
+				"end": {
+					"line": 23,
+					"column": 12,
+					"offset": 381
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 23,
+			"column": 12,
+			"offset": 381
+		}
+	}
+}

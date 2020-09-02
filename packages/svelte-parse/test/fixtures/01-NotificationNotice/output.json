@@ -1,0 +1,335 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import { createEventDispatcher, onDestroy, onMount } from 'svelte'\n  import { fly, fade } from 'svelte/transition'\n  import Notice, { filterProps } from '../Notice.svelte'\n  import Notification from './Notification.svelte'\n\n  export let message\n  export let duration = 2000\n  export let position = 'is-top-right'\n\n  $: props = { ...filterProps($$props), duration, position }\n  $: notificationProps = { ...removeNonNoficationProps($$props) }\n\n  function removeNonNoficationProps(props) {\n    const newProps = {}\n\n    const blacklist = ['duration', 'message', 'position']\n\n    Object.keys(props).forEach(key => {\n      if (!blacklist.includes(key)) newProps[key] = props[key]\n    })\n\n    return newProps\n  }\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 25,
+							"column": 1,
+							"offset": 717
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 25,
+					"column": 10,
+					"offset": 726
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 25,
+					"column": 10,
+					"offset": 726
+				},
+				"end": {
+					"line": 27,
+					"column": 1,
+					"offset": 728
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n:global(.notification) {\n  margin: 0.5em 0;\n}\n",
+					"position": {
+						"start": {
+							"line": 27,
+							"column": 8,
+							"offset": 735
+						},
+						"end": {
+							"line": 31,
+							"column": 1,
+							"offset": 782
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 27,
+					"column": 1,
+					"offset": 728
+				},
+				"end": {
+					"line": 31,
+					"column": 9,
+					"offset": 790
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 31,
+					"column": 9,
+					"offset": 790
+				},
+				"end": {
+					"line": 33,
+					"column": 1,
+					"offset": 792
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Notice",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "...props",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "...props"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 33,
+							"column": 9,
+							"offset": 800
+						},
+						"end": {}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "transitionOut",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "true",
+							"position": {
+								"start": {
+									"line": 33,
+									"column": 34,
+									"offset": 825
+								},
+								"end": {
+									"line": 33,
+									"column": 40,
+									"offset": 831
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 33,
+							"column": 20,
+							"offset": 811
+						},
+						"end": {
+							"line": 33,
+							"column": 40,
+							"offset": 831
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 33,
+							"column": 41,
+							"offset": 832
+						},
+						"end": {
+							"line": 34,
+							"column": 3,
+							"offset": 835
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "Notification",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "...notificationProps",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "...notificationProps"
+								}
+							],
+							"modifiers": [],
+							"shorthand": "expression",
+							"position": {
+								"start": {
+									"line": 34,
+									"column": 17,
+									"offset": 849
+								},
+								"end": {}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "\n    ",
+							"position": {
+								"start": {
+									"line": 34,
+									"column": 40,
+									"offset": 872
+								},
+								"end": {
+									"line": 35,
+									"column": 5,
+									"offset": 877
+								}
+							}
+						},
+						{
+							"type": "svelteVoidBlock",
+							"name": "html",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "message",
+								"position": {
+									"start": {
+										"line": 35,
+										"column": 12,
+										"offset": 884
+									},
+									"end": {
+										"line": 35,
+										"column": 19,
+										"offset": 891
+									}
+								}
+							},
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 5,
+									"offset": 877
+								},
+								"end": {
+									"line": 35,
+									"column": 20,
+									"offset": 892
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n  ",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 20,
+									"offset": 892
+								},
+								"end": {
+									"line": 36,
+									"column": 3,
+									"offset": 895
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 34,
+							"column": 3,
+							"offset": 835
+						},
+						"end": {
+							"line": 36,
+							"column": 18,
+							"offset": 910
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 36,
+							"column": 18,
+							"offset": 910
+						},
+						"end": {
+							"line": 37,
+							"column": 1,
+							"offset": 911
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 33,
+					"column": 1,
+					"offset": 792
+				},
+				"end": {
+					"line": 37,
+					"column": 10,
+					"offset": 920
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 37,
+			"column": 10,
+			"offset": 920
+		}
+	}
+}

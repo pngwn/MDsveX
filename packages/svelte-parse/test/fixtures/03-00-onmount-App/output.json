@@ -1,0 +1,664 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { onMount } from 'svelte';\n\n\tlet photos = [];\n\n\tonMount(async () => {\n\t\tconst res = await fetch(`https://jsonplaceholder.typicode.com/photos?_limit=20`);\n\t\tphotos = await res.json();\n\t});\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 10,
+							"column": 1,
+							"offset": 205
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 10,
+					"column": 10,
+					"offset": 214
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 10,
+					"column": 10,
+					"offset": 214
+				},
+				"end": {
+					"line": 12,
+					"column": 1,
+					"offset": 216
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t.photos {\n\t\twidth: 100%;\n\t\tdisplay: grid;\n\t\tgrid-template-columns: repeat(5, 1fr);\n\t\tgrid-gap: 8px;\n\t}\n\n\tfigure, img {\n\t\twidth: 100%;\n\t\tmargin: 0;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 12,
+							"column": 8,
+							"offset": 223
+						},
+						"end": {
+							"line": 24,
+							"column": 1,
+							"offset": 375
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 12,
+					"column": 1,
+					"offset": 216
+				},
+				"end": {
+					"line": 24,
+					"column": 9,
+					"offset": 383
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 24,
+					"column": 9,
+					"offset": 383
+				},
+				"end": {
+					"line": 26,
+					"column": 1,
+					"offset": 385
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "h1",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "Photo album",
+					"position": {
+						"start": {
+							"line": 26,
+							"column": 5,
+							"offset": 389
+						},
+						"end": {
+							"line": 26,
+							"column": 16,
+							"offset": 400
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 26,
+					"column": 1,
+					"offset": 385
+				},
+				"end": {
+					"line": 26,
+					"column": 21,
+					"offset": 405
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 26,
+					"column": 21,
+					"offset": 405
+				},
+				"end": {
+					"line": 28,
+					"column": 1,
+					"offset": 407
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "photos",
+							"position": {
+								"start": {
+									"line": 28,
+									"column": 13,
+									"offset": 419
+								},
+								"end": {
+									"line": 28,
+									"column": 19,
+									"offset": 425
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 28,
+							"column": 6,
+							"offset": 412
+						},
+						"end": {
+							"line": 28,
+							"column": 20,
+							"offset": 426
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 28,
+							"column": 21,
+							"offset": 427
+						},
+						"end": {
+							"line": 29,
+							"column": 2,
+							"offset": 429
+						}
+					}
+				},
+				{
+					"type": "svelteBranchingBlock",
+					"name": "each",
+					"branches": [
+						{
+							"type": "svelteBranch",
+							"name": "each",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "photos as photo",
+								"position": {
+									"start": {
+										"line": 29,
+										"column": 9,
+										"offset": 436
+									},
+									"end": {
+										"line": 29,
+										"column": 24,
+										"offset": 451
+									}
+								}
+							},
+							"children": [
+								{
+									"type": "text",
+									"value": "\n\t\t",
+									"position": {
+										"start": {
+											"line": 29,
+											"column": 25,
+											"offset": 452
+										},
+										"end": {
+											"line": 30,
+											"column": 3,
+											"offset": 455
+										}
+									}
+								},
+								{
+									"type": "svelteElement",
+									"tagName": "figure",
+									"properties": [],
+									"selfClosing": false,
+									"children": [
+										{
+											"type": "text",
+											"value": "\n\t\t\t",
+											"position": {
+												"start": {
+													"line": 30,
+													"column": 11,
+													"offset": 463
+												},
+												"end": {
+													"line": 31,
+													"column": 4,
+													"offset": 467
+												}
+											}
+										},
+										{
+											"type": "svelteElement",
+											"tagName": "img",
+											"properties": [
+												{
+													"type": "svelteProperty",
+													"name": "src",
+													"value": [
+														{
+															"type": "svelteExpression",
+															"value": "photo.thumbnailUrl",
+															"position": {
+																"start": {
+																	"line": 31,
+																	"column": 13,
+																	"offset": 476
+																},
+																"end": {
+																	"line": 31,
+																	"column": 33,
+																	"offset": 496
+																}
+															}
+														}
+													],
+													"modifiers": [],
+													"shorthand": "none",
+													"position": {
+														"start": {
+															"line": 31,
+															"column": 9,
+															"offset": 472
+														},
+														"end": {
+															"line": 31,
+															"column": 33,
+															"offset": 496
+														}
+													}
+												},
+												{
+													"type": "svelteProperty",
+													"name": "alt",
+													"value": [
+														{
+															"type": "svelteExpression",
+															"value": "photo.title",
+															"position": {
+																"start": {
+																	"line": 31,
+																	"column": 38,
+																	"offset": 501
+																},
+																"end": {
+																	"line": 31,
+																	"column": 51,
+																	"offset": 514
+																}
+															}
+														}
+													],
+													"modifiers": [],
+													"shorthand": "none",
+													"position": {
+														"start": {
+															"line": 31,
+															"column": 34,
+															"offset": 497
+														},
+														"end": {
+															"line": 31,
+															"column": 51,
+															"offset": 514
+														}
+													}
+												}
+											],
+											"selfClosing": true,
+											"children": [],
+											"position": {
+												"start": {
+													"line": 31,
+													"column": 4,
+													"offset": 467
+												},
+												"end": {
+													"line": 31,
+													"column": 52,
+													"offset": 515
+												}
+											}
+										},
+										{
+											"type": "text",
+											"value": "\n\t\t\t",
+											"position": {
+												"start": {
+													"line": 31,
+													"column": 52,
+													"offset": 515
+												},
+												"end": {
+													"line": 32,
+													"column": 4,
+													"offset": 519
+												}
+											}
+										},
+										{
+											"type": "svelteElement",
+											"tagName": "figcaption",
+											"properties": [],
+											"selfClosing": false,
+											"children": [
+												{
+													"type": "svelteExpression",
+													"value": "photo.title",
+													"position": {
+														"start": {
+															"line": 32,
+															"column": 16,
+															"offset": 531
+														},
+														"end": {
+															"line": 32,
+															"column": 29,
+															"offset": 544
+														}
+													}
+												}
+											],
+											"position": {
+												"start": {
+													"line": 32,
+													"column": 4,
+													"offset": 519
+												},
+												"end": {
+													"line": 32,
+													"column": 42,
+													"offset": 557
+												}
+											}
+										},
+										{
+											"type": "text",
+											"value": "\n\t\t",
+											"position": {
+												"start": {
+													"line": 32,
+													"column": 42,
+													"offset": 557
+												},
+												"end": {
+													"line": 33,
+													"column": 3,
+													"offset": 560
+												}
+											}
+										}
+									],
+									"position": {
+										"start": {
+											"line": 30,
+											"column": 3,
+											"offset": 455
+										},
+										"end": {
+											"line": 33,
+											"column": 12,
+											"offset": 569
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n\t",
+									"position": {
+										"start": {
+											"line": 33,
+											"column": 12,
+											"offset": 569
+										},
+										"end": {
+											"line": 34,
+											"column": 2,
+											"offset": 571
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 29,
+									"column": 2,
+									"offset": 429
+								},
+								"end": {
+									"line": 34,
+									"column": 2,
+									"offset": 571
+								}
+							}
+						},
+						{
+							"type": "svelteBranch",
+							"name": "else",
+							"expression": {
+								"type": "svelteExpression",
+								"value": ""
+							},
+							"children": [
+								{
+									"type": "text",
+									"value": "\n\t\t",
+									"position": {
+										"start": {
+											"line": 34,
+											"column": 9,
+											"offset": 578
+										},
+										"end": {
+											"line": 35,
+											"column": 3,
+											"offset": 581
+										}
+									}
+								},
+								{
+									"type": "comment",
+									"value": " this block renders when photos.length === 0 ",
+									"position": {
+										"start": {
+											"line": 35,
+											"column": 3,
+											"offset": 581
+										},
+										"end": {
+											"line": 35,
+											"column": 55,
+											"offset": 633
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n\t\t",
+									"position": {
+										"start": {
+											"line": 35,
+											"column": 55,
+											"offset": 633
+										},
+										"end": {
+											"line": 36,
+											"column": 3,
+											"offset": 636
+										}
+									}
+								},
+								{
+									"type": "svelteElement",
+									"tagName": "p",
+									"properties": [],
+									"selfClosing": false,
+									"children": [
+										{
+											"type": "text",
+											"value": "loading...",
+											"position": {
+												"start": {
+													"line": 36,
+													"column": 6,
+													"offset": 639
+												},
+												"end": {
+													"line": 36,
+													"column": 16,
+													"offset": 649
+												}
+											}
+										}
+									],
+									"position": {
+										"start": {
+											"line": 36,
+											"column": 3,
+											"offset": 636
+										},
+										"end": {
+											"line": 36,
+											"column": 20,
+											"offset": 653
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n\t",
+									"position": {
+										"start": {
+											"line": 36,
+											"column": 20,
+											"offset": 653
+										},
+										"end": {
+											"line": 37,
+											"column": 2,
+											"offset": 655
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 34,
+									"column": 2,
+									"offset": 571
+								},
+								"end": {
+									"line": 37,
+									"column": 2,
+									"offset": 655
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 29,
+							"column": 2,
+							"offset": 429
+						},
+						"end": {
+							"line": 37,
+							"column": 9,
+							"offset": 662
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 37,
+							"column": 9,
+							"offset": 662
+						},
+						"end": {
+							"line": 38,
+							"column": 1,
+							"offset": 663
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 28,
+					"column": 1,
+					"offset": 407
+				},
+				"end": {
+					"line": 38,
+					"column": 7,
+					"offset": 669
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 38,
+			"column": 7,
+			"offset": 669
+		}
+	}
+}

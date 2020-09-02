@@ -1,0 +1,250 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { onMount } from 'svelte';\n\n\tlet canvas;\n\n\tonMount(() => {\n\t\tconst ctx = canvas.getContext('2d');\n\t\tlet frame;\n\n\t\t(function loop() {\n\t\t\tframe = requestAnimationFrame(loop);\n\n\t\t\tconst imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);\n\n\t\t\tfor (let p = 0; p < imageData.data.length; p += 4) {\n\t\t\t\tconst i = p / 4;\n\t\t\t\tconst x = i % canvas.width;\n\t\t\t\tconst y = i / canvas.height >>> 0;\n\n\t\t\t\tconst t = window.performance.now();\n\n\t\t\t\tconst r = 64 + (128 * x / canvas.width) + (64 * Math.sin(t / 1000));\n\t\t\t\tconst g = 64 + (128 * y / canvas.height) + (64 * Math.cos(t / 1400));\n\t\t\t\tconst b = 128;\n\n\t\t\t\timageData.data[p + 0] = r;\n\t\t\t\timageData.data[p + 1] = g;\n\t\t\t\timageData.data[p + 2] = b;\n\t\t\t\timageData.data[p + 3] = 255;\n\t\t\t}\n\n\t\t\tctx.putImageData(imageData, 0, 0);\n\t\t}());\n\n\t\treturn () => {\n\t\t\tcancelAnimationFrame(frame);\n\t\t};\n\t});\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 39,
+							"column": 1,
+							"offset": 861
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 39,
+					"column": 10,
+					"offset": 870
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 39,
+					"column": 10,
+					"offset": 870
+				},
+				"end": {
+					"line": 41,
+					"column": 1,
+					"offset": 872
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tcanvas {\n\t\twidth: 100%;\n\t\theight: 100%;\n\t\tbackground-color: #666;\n\t\t-webkit-mask: url(svelte-logo-mask.svg) 50% 50% no-repeat;\n\t\tmask: url(svelte-logo-mask.svg) 50% 50% no-repeat;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 41,
+							"column": 8,
+							"offset": 879
+						},
+						"end": {
+							"line": 49,
+							"column": 1,
+							"offset": 1064
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 41,
+					"column": 1,
+					"offset": 872
+				},
+				"end": {
+					"line": 49,
+					"column": 9,
+					"offset": 1072
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 49,
+					"column": 9,
+					"offset": 1072
+				},
+				"end": {
+					"line": 51,
+					"column": 1,
+					"offset": 1074
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "canvas",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "canvas",
+							"position": {
+								"start": {
+									"line": 52,
+									"column": 12,
+									"offset": 1093
+								},
+								"end": {
+									"line": 52,
+									"column": 20,
+									"offset": 1101
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 52,
+							"column": 2,
+							"offset": 1083
+						},
+						"end": {
+							"line": 52,
+							"column": 20,
+							"offset": 1101
+						}
+					},
+					"specifier": "this"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "width",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "32",
+							"position": {
+								"start": {
+									"line": 53,
+									"column": 8,
+									"offset": 1109
+								},
+								"end": {
+									"line": 53,
+									"column": 12,
+									"offset": 1113
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 53,
+							"column": 2,
+							"offset": 1103
+						},
+						"end": {
+							"line": 53,
+							"column": 12,
+							"offset": 1113
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "height",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "32",
+							"position": {
+								"start": {
+									"line": 54,
+									"column": 9,
+									"offset": 1122
+								},
+								"end": {
+									"line": 54,
+									"column": 13,
+									"offset": 1126
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 54,
+							"column": 2,
+							"offset": 1115
+						},
+						"end": {
+							"line": 54,
+							"column": 13,
+							"offset": 1126
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 51,
+					"column": 1,
+					"offset": 1074
+				},
+				"end": {
+					"line": 55,
+					"column": 11,
+					"offset": 1137
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 55,
+			"column": 11,
+			"offset": 1137
+		}
+	}
+}

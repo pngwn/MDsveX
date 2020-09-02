@@ -1,0 +1,1804 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { crossfade, scale } from 'svelte/transition';\n\timport images from './images.js';\n\n\tconst [send, receive] = crossfade({\n\t\tduration: 200,\n\t\tfallback: scale\n\t});\n\n\tlet selected = null;\n\tlet loading = null;\n\n\tconst ASSETS = `https://sveltejs.github.io/assets/crossfade`;\n\n\tconst load = image => {\n\t\tconst timeout = setTimeout(() => loading = image, 100);\n\n\t\tconst img = new Image();\n\n\t\timg.onload = () => {\n\t\t\tselected = image;\n\t\t\tclearTimeout(timeout);\n\t\t\tloading = null;\n\t\t};\n\n\t\timg.src = `${ASSETS}/${image.id}.jpg`;\n\t};\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 28,
+							"column": 1,
+							"offset": 538
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 28,
+					"column": 10,
+					"offset": 547
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 28,
+					"column": 10,
+					"offset": 547
+				},
+				"end": {
+					"line": 30,
+					"column": 1,
+					"offset": 549
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "container",
+							"position": {
+								"start": {
+									"line": 30,
+									"column": 13,
+									"offset": 561
+								},
+								"end": {
+									"line": 30,
+									"column": 22,
+									"offset": 570
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 30,
+							"column": 6,
+							"offset": 554
+						},
+						"end": {
+							"line": 30,
+							"column": 23,
+							"offset": 571
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 30,
+							"column": 24,
+							"offset": 572
+						},
+						"end": {
+							"line": 31,
+							"column": 2,
+							"offset": 574
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "div",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "class",
+							"value": [
+								{
+									"type": "text",
+									"value": "phone",
+									"position": {
+										"start": {
+											"line": 31,
+											"column": 14,
+											"offset": 586
+										},
+										"end": {
+											"line": 31,
+											"column": 19,
+											"offset": 591
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 31,
+									"column": 7,
+									"offset": 579
+								},
+								"end": {
+									"line": 31,
+									"column": 20,
+									"offset": 592
+								}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t\t",
+							"position": {
+								"start": {
+									"line": 31,
+									"column": 21,
+									"offset": 593
+								},
+								"end": {
+									"line": 32,
+									"column": 3,
+									"offset": 596
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "h1",
+							"properties": [],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "Photo gallery",
+									"position": {
+										"start": {
+											"line": 32,
+											"column": 7,
+											"offset": 600
+										},
+										"end": {
+											"line": 32,
+											"column": 20,
+											"offset": 613
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 32,
+									"column": 3,
+									"offset": 596
+								},
+								"end": {
+									"line": 32,
+									"column": 25,
+									"offset": 618
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n\n\t\t",
+							"position": {
+								"start": {
+									"line": 32,
+									"column": 25,
+									"offset": 618
+								},
+								"end": {
+									"line": 34,
+									"column": 3,
+									"offset": 622
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "div",
+							"properties": [
+								{
+									"type": "svelteProperty",
+									"name": "class",
+									"value": [
+										{
+											"type": "text",
+											"value": "grid",
+											"position": {
+												"start": {
+													"line": 34,
+													"column": 15,
+													"offset": 634
+												},
+												"end": {
+													"line": 34,
+													"column": 19,
+													"offset": 638
+												}
+											}
+										}
+									],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 34,
+											"column": 8,
+											"offset": 627
+										},
+										"end": {
+											"line": 34,
+											"column": 20,
+											"offset": 639
+										}
+									}
+								}
+							],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "\n\t\t\t",
+									"position": {
+										"start": {
+											"line": 34,
+											"column": 21,
+											"offset": 640
+										},
+										"end": {
+											"line": 35,
+											"column": 4,
+											"offset": 644
+										}
+									}
+								},
+								{
+									"type": "svelteBranchingBlock",
+									"name": "each",
+									"branches": [
+										{
+											"type": "svelteBranch",
+											"name": "each",
+											"expression": {
+												"type": "svelteExpression",
+												"value": "images as image",
+												"position": {
+													"start": {
+														"line": 35,
+														"column": 11,
+														"offset": 651
+													},
+													"end": {
+														"line": 35,
+														"column": 26,
+														"offset": 666
+													}
+												}
+											},
+											"children": [
+												{
+													"type": "text",
+													"value": "\n\t\t\t\t",
+													"position": {
+														"start": {
+															"line": 35,
+															"column": 27,
+															"offset": 667
+														},
+														"end": {
+															"line": 36,
+															"column": 5,
+															"offset": 672
+														}
+													}
+												},
+												{
+													"type": "svelteElement",
+													"tagName": "div",
+													"properties": [
+														{
+															"type": "svelteProperty",
+															"name": "class",
+															"value": [
+																{
+																	"type": "text",
+																	"value": "square",
+																	"position": {
+																		"start": {
+																			"line": 36,
+																			"column": 17,
+																			"offset": 684
+																		},
+																		"end": {
+																			"line": 36,
+																			"column": 23,
+																			"offset": 690
+																		}
+																	}
+																}
+															],
+															"modifiers": [],
+															"shorthand": "none",
+															"position": {
+																"start": {
+																	"line": 36,
+																	"column": 10,
+																	"offset": 677
+																},
+																"end": {
+																	"line": 36,
+																	"column": 24,
+																	"offset": 691
+																}
+															}
+														}
+													],
+													"selfClosing": false,
+													"children": [
+														{
+															"type": "text",
+															"value": "\n\t\t\t\t\t",
+															"position": {
+																"start": {
+																	"line": 36,
+																	"column": 25,
+																	"offset": 692
+																},
+																"end": {
+																	"line": 37,
+																	"column": 6,
+																	"offset": 698
+																}
+															}
+														},
+														{
+															"type": "svelteBranchingBlock",
+															"name": "if",
+															"branches": [
+																{
+																	"type": "svelteBranch",
+																	"name": "if",
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": "selected !== image",
+																		"position": {
+																			"start": {
+																				"line": 37,
+																				"column": 11,
+																				"offset": 703
+																			},
+																			"end": {
+																				"line": 37,
+																				"column": 29,
+																				"offset": 721
+																			}
+																		}
+																	},
+																	"children": [
+																		{
+																			"type": "text",
+																			"value": "\n\t\t\t\t\t\t",
+																			"position": {
+																				"start": {
+																					"line": 37,
+																					"column": 30,
+																					"offset": 722
+																				},
+																				"end": {
+																					"line": 38,
+																					"column": 7,
+																					"offset": 729
+																				}
+																			}
+																		},
+																		{
+																			"type": "svelteElement",
+																			"tagName": "button",
+																			"properties": [
+																				{
+																					"type": "svelteProperty",
+																					"name": "style",
+																					"value": [
+																						{
+																							"type": "text",
+																							"value": "background-color:",
+																							"position": {
+																								"start": {
+																									"line": 39,
+																									"column": 15,
+																									"offset": 751
+																								},
+																								"end": {}
+																							}
+																						},
+																						{
+																							"type": "text",
+																							"value": "",
+																							"position": {
+																								"start": {
+																									"line": 39,
+																									"column": 32,
+																									"offset": 768
+																								},
+																								"end": {
+																									"line": 39,
+																									"column": 33,
+																									"offset": 769
+																								}
+																							}
+																						},
+																						{
+																							"type": "svelteExpression",
+																							"value": "image.color",
+																							"position": {
+																								"start": {
+																									"line": 39,
+																									"column": 33,
+																									"offset": 769
+																								},
+																								"end": {
+																									"line": 39,
+																									"column": 46,
+																									"offset": 782
+																								}
+																							}
+																						},
+																						{
+																							"type": "text",
+																							"value": ";",
+																							"position": {
+																								"start": {
+																									"line": 39,
+																									"column": 46,
+																									"offset": 782
+																								},
+																								"end": {
+																									"line": 39,
+																									"column": 47,
+																									"offset": 783
+																								}
+																							}
+																						}
+																					],
+																					"modifiers": [],
+																					"shorthand": "none",
+																					"position": {
+																						"start": {
+																							"line": 39,
+																							"column": 8,
+																							"offset": 744
+																						},
+																						"end": {
+																							"line": 39,
+																							"column": 48,
+																							"offset": 784
+																						}
+																					}
+																				},
+																				{
+																					"type": "svelteDirective",
+																					"name": "on",
+																					"value": [
+																						{
+																							"type": "svelteExpression",
+																							"value": "() => load(image)",
+																							"position": {
+																								"start": {
+																									"line": 40,
+																									"column": 18,
+																									"offset": 802
+																								},
+																								"end": {
+																									"line": 40,
+																									"column": 37,
+																									"offset": 821
+																								}
+																							}
+																						}
+																					],
+																					"modifiers": [],
+																					"shorthand": "none",
+																					"position": {
+																						"start": {
+																							"line": 40,
+																							"column": 8,
+																							"offset": 792
+																						},
+																						"end": {
+																							"line": 40,
+																							"column": 38,
+																							"offset": 822
+																						}
+																					},
+																					"specifier": "click"
+																				},
+																				{
+																					"type": "svelteDirective",
+																					"name": "in",
+																					"value": [
+																						{
+																							"type": "svelteExpression",
+																							"value": "{key:image.id}",
+																							"position": {
+																								"start": {
+																									"line": 41,
+																									"column": 19,
+																									"offset": 841
+																								},
+																								"end": {
+																									"line": 41,
+																									"column": 35,
+																									"offset": 857
+																								}
+																							}
+																						}
+																					],
+																					"modifiers": [],
+																					"shorthand": "none",
+																					"position": {
+																						"start": {
+																							"line": 41,
+																							"column": 8,
+																							"offset": 830
+																						},
+																						"end": {
+																							"line": 41,
+																							"column": 35,
+																							"offset": 857
+																						}
+																					},
+																					"specifier": "receive"
+																				},
+																				{
+																					"type": "svelteDirective",
+																					"name": "out",
+																					"value": [
+																						{
+																							"type": "svelteExpression",
+																							"value": "{key:image.id}",
+																							"position": {
+																								"start": {
+																									"line": 42,
+																									"column": 17,
+																									"offset": 874
+																								},
+																								"end": {
+																									"line": 42,
+																									"column": 33,
+																									"offset": 890
+																								}
+																							}
+																						}
+																					],
+																					"modifiers": [],
+																					"shorthand": "none",
+																					"position": {
+																						"start": {
+																							"line": 42,
+																							"column": 8,
+																							"offset": 865
+																						},
+																						"end": {
+																							"line": 42,
+																							"column": 33,
+																							"offset": 890
+																						}
+																					},
+																					"specifier": "send"
+																				}
+																			],
+																			"selfClosing": false,
+																			"children": [
+																				{
+																					"type": "svelteExpression",
+																					"value": "loading === image ? '...' : image.id",
+																					"position": {
+																						"start": {
+																							"line": 43,
+																							"column": 8,
+																							"offset": 898
+																						},
+																						"end": {
+																							"line": 43,
+																							"column": 46,
+																							"offset": 936
+																						}
+																					}
+																				}
+																			],
+																			"position": {
+																				"start": {
+																					"line": 38,
+																					"column": 7,
+																					"offset": 729
+																				},
+																				"end": {
+																					"line": 43,
+																					"column": 55,
+																					"offset": 945
+																				}
+																			}
+																		},
+																		{
+																			"type": "text",
+																			"value": "\n\t\t\t\t\t",
+																			"position": {
+																				"start": {
+																					"line": 43,
+																					"column": 55,
+																					"offset": 945
+																				},
+																				"end": {
+																					"line": 44,
+																					"column": 6,
+																					"offset": 951
+																				}
+																			}
+																		}
+																	],
+																	"position": {
+																		"start": {
+																			"line": 37,
+																			"column": 6,
+																			"offset": 698
+																		},
+																		"end": {
+																			"line": 44,
+																			"column": 6,
+																			"offset": 951
+																		}
+																	}
+																}
+															],
+															"position": {
+																"start": {
+																	"line": 37,
+																	"column": 6,
+																	"offset": 698
+																},
+																"end": {
+																	"line": 44,
+																	"column": 11,
+																	"offset": 956
+																}
+															}
+														},
+														{
+															"type": "text",
+															"value": "\n\t\t\t\t",
+															"position": {
+																"start": {
+																	"line": 44,
+																	"column": 11,
+																	"offset": 956
+																},
+																"end": {
+																	"line": 45,
+																	"column": 5,
+																	"offset": 961
+																}
+															}
+														}
+													],
+													"position": {
+														"start": {
+															"line": 36,
+															"column": 5,
+															"offset": 672
+														},
+														"end": {
+															"line": 45,
+															"column": 11,
+															"offset": 967
+														}
+													}
+												},
+												{
+													"type": "text",
+													"value": "\n\t\t\t",
+													"position": {
+														"start": {
+															"line": 45,
+															"column": 11,
+															"offset": 967
+														},
+														"end": {
+															"line": 46,
+															"column": 4,
+															"offset": 971
+														}
+													}
+												}
+											],
+											"position": {
+												"start": {
+													"line": 35,
+													"column": 4,
+													"offset": 644
+												},
+												"end": {
+													"line": 46,
+													"column": 4,
+													"offset": 971
+												}
+											}
+										}
+									],
+									"position": {
+										"start": {
+											"line": 35,
+											"column": 4,
+											"offset": 644
+										},
+										"end": {
+											"line": 46,
+											"column": 11,
+											"offset": 978
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n\t\t",
+									"position": {
+										"start": {
+											"line": 46,
+											"column": 11,
+											"offset": 978
+										},
+										"end": {
+											"line": 47,
+											"column": 3,
+											"offset": 981
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 34,
+									"column": 3,
+									"offset": 622
+								},
+								"end": {
+									"line": 47,
+									"column": 9,
+									"offset": 987
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n\n\t\t",
+							"position": {
+								"start": {
+									"line": 47,
+									"column": 9,
+									"offset": 987
+								},
+								"end": {
+									"line": 49,
+									"column": 3,
+									"offset": 991
+								}
+							}
+						},
+						{
+							"type": "svelteBranchingBlock",
+							"name": "if",
+							"branches": [
+								{
+									"type": "svelteBranch",
+									"name": "if",
+									"expression": {
+										"type": "svelteExpression",
+										"value": "selected",
+										"position": {
+											"start": {
+												"line": 49,
+												"column": 8,
+												"offset": 996
+											},
+											"end": {
+												"line": 49,
+												"column": 16,
+												"offset": 1004
+											}
+										}
+									},
+									"children": [
+										{
+											"type": "text",
+											"value": "\n\t\t\t",
+											"position": {
+												"start": {
+													"line": 49,
+													"column": 17,
+													"offset": 1005
+												},
+												"end": {
+													"line": 50,
+													"column": 4,
+													"offset": 1009
+												}
+											}
+										},
+										{
+											"type": "svelteBranchingBlock",
+											"name": "await",
+											"branches": [
+												{
+													"type": "svelteBranch",
+													"name": "await",
+													"expression": {
+														"type": "svelteExpression",
+														"value": "selected then d",
+														"position": {
+															"start": {
+																"line": 50,
+																"column": 12,
+																"offset": 1017
+															},
+															"end": {
+																"line": 50,
+																"column": 27,
+																"offset": 1032
+															}
+														}
+													},
+													"children": [
+														{
+															"type": "text",
+															"value": "\n\t\t\t\t",
+															"position": {
+																"start": {
+																	"line": 50,
+																	"column": 28,
+																	"offset": 1033
+																},
+																"end": {
+																	"line": 51,
+																	"column": 5,
+																	"offset": 1038
+																}
+															}
+														},
+														{
+															"type": "svelteElement",
+															"tagName": "div",
+															"properties": [
+																{
+																	"type": "svelteProperty",
+																	"name": "class",
+																	"value": [
+																		{
+																			"type": "text",
+																			"value": "photo",
+																			"position": {
+																				"start": {
+																					"line": 51,
+																					"column": 17,
+																					"offset": 1050
+																				},
+																				"end": {
+																					"line": 51,
+																					"column": 22,
+																					"offset": 1055
+																				}
+																			}
+																		}
+																	],
+																	"modifiers": [],
+																	"shorthand": "none",
+																	"position": {
+																		"start": {
+																			"line": 51,
+																			"column": 10,
+																			"offset": 1043
+																		},
+																		"end": {
+																			"line": 51,
+																			"column": 23,
+																			"offset": 1056
+																		}
+																	}
+																},
+																{
+																	"type": "svelteDirective",
+																	"name": "in",
+																	"value": [
+																		{
+																			"type": "svelteExpression",
+																			"value": "{key:d.id}",
+																			"position": {
+																				"start": {
+																					"line": 51,
+																					"column": 35,
+																					"offset": 1068
+																				},
+																				"end": {
+																					"line": 51,
+																					"column": 47,
+																					"offset": 1080
+																				}
+																			}
+																		}
+																	],
+																	"modifiers": [],
+																	"shorthand": "none",
+																	"position": {
+																		"start": {
+																			"line": 51,
+																			"column": 24,
+																			"offset": 1057
+																		},
+																		"end": {
+																			"line": 51,
+																			"column": 47,
+																			"offset": 1080
+																		}
+																	},
+																	"specifier": "receive"
+																},
+																{
+																	"type": "svelteDirective",
+																	"name": "out",
+																	"value": [
+																		{
+																			"type": "svelteExpression",
+																			"value": "{key:d.id}",
+																			"position": {
+																				"start": {
+																					"line": 51,
+																					"column": 57,
+																					"offset": 1090
+																				},
+																				"end": {
+																					"line": 51,
+																					"column": 69,
+																					"offset": 1102
+																				}
+																			}
+																		}
+																	],
+																	"modifiers": [],
+																	"shorthand": "none",
+																	"position": {
+																		"start": {
+																			"line": 51,
+																			"column": 48,
+																			"offset": 1081
+																		},
+																		"end": {
+																			"line": 51,
+																			"column": 69,
+																			"offset": 1102
+																		}
+																	},
+																	"specifier": "send"
+																}
+															],
+															"selfClosing": false,
+															"children": [
+																{
+																	"type": "text",
+																	"value": "\n\t\t\t\t\t",
+																	"position": {
+																		"start": {
+																			"line": 51,
+																			"column": 70,
+																			"offset": 1103
+																		},
+																		"end": {
+																			"line": 52,
+																			"column": 6,
+																			"offset": 1109
+																		}
+																	}
+																},
+																{
+																	"type": "svelteElement",
+																	"tagName": "img",
+																	"properties": [
+																		{
+																			"type": "svelteProperty",
+																			"name": "alt",
+																			"value": [
+																				{
+																					"type": "svelteExpression",
+																					"value": "d.alt",
+																					"position": {
+																						"start": {
+																							"line": 53,
+																							"column": 11,
+																							"offset": 1124
+																						},
+																						"end": {
+																							"line": 53,
+																							"column": 18,
+																							"offset": 1131
+																						}
+																					}
+																				}
+																			],
+																			"modifiers": [],
+																			"shorthand": "none",
+																			"position": {
+																				"start": {
+																					"line": 53,
+																					"column": 7,
+																					"offset": 1120
+																				},
+																				"end": {
+																					"line": 53,
+																					"column": 18,
+																					"offset": 1131
+																				}
+																			}
+																		},
+																		{
+																			"type": "svelteProperty",
+																			"name": "src",
+																			"value": [
+																				{
+																					"type": "svelteExpression",
+																					"value": "ASSETS",
+																					"position": {
+																						"start": {
+																							"line": 54,
+																							"column": 12,
+																							"offset": 1143
+																						},
+																						"end": {
+																							"line": 54,
+																							"column": 20,
+																							"offset": 1151
+																						}
+																					}
+																				},
+																				{
+																					"type": "text",
+																					"value": "/",
+																					"position": {
+																						"start": {
+																							"line": 54,
+																							"column": 20,
+																							"offset": 1151
+																						},
+																						"end": {
+																							"line": 54,
+																							"column": 21,
+																							"offset": 1152
+																						}
+																					}
+																				},
+																				{
+																					"type": "svelteExpression",
+																					"value": "d.id",
+																					"position": {
+																						"start": {
+																							"line": 54,
+																							"column": 21,
+																							"offset": 1152
+																						},
+																						"end": {
+																							"line": 54,
+																							"column": 27,
+																							"offset": 1158
+																						}
+																					}
+																				},
+																				{
+																					"type": "text",
+																					"value": ".jpg",
+																					"position": {
+																						"start": {
+																							"line": 54,
+																							"column": 27,
+																							"offset": 1158
+																						},
+																						"end": {
+																							"line": 54,
+																							"column": 31,
+																							"offset": 1162
+																						}
+																					}
+																				}
+																			],
+																			"modifiers": [],
+																			"shorthand": "none",
+																			"position": {
+																				"start": {
+																					"line": 54,
+																					"column": 7,
+																					"offset": 1138
+																				},
+																				"end": {
+																					"line": 54,
+																					"column": 32,
+																					"offset": 1163
+																				}
+																			}
+																		},
+																		{
+																			"type": "svelteDirective",
+																			"name": "on",
+																			"value": [
+																				{
+																					"type": "svelteExpression",
+																					"value": "() => selected = null",
+																					"position": {
+																						"start": {
+																							"line": 55,
+																							"column": 17,
+																							"offset": 1180
+																						},
+																						"end": {
+																							"line": 55,
+																							"column": 40,
+																							"offset": 1203
+																						}
+																					}
+																				}
+																			],
+																			"modifiers": [],
+																			"shorthand": "none",
+																			"position": {
+																				"start": {
+																					"line": 55,
+																					"column": 7,
+																					"offset": 1170
+																				},
+																				"end": {
+																					"line": 55,
+																					"column": 41,
+																					"offset": 1204
+																				}
+																			},
+																			"specifier": "click"
+																		}
+																	],
+																	"selfClosing": true,
+																	"children": [],
+																	"position": {
+																		"start": {
+																			"line": 52,
+																			"column": 6,
+																			"offset": 1109
+																		},
+																		"end": {
+																			"line": 56,
+																			"column": 7,
+																			"offset": 1211
+																		}
+																	}
+																},
+																{
+																	"type": "text",
+																	"value": "\n\n\t\t\t\t\t",
+																	"position": {
+																		"start": {
+																			"line": 56,
+																			"column": 7,
+																			"offset": 1211
+																		},
+																		"end": {
+																			"line": 58,
+																			"column": 6,
+																			"offset": 1218
+																		}
+																	}
+																},
+																{
+																	"type": "svelteElement",
+																	"tagName": "p",
+																	"properties": [
+																		{
+																			"type": "svelteProperty",
+																			"name": "class",
+																			"value": [
+																				{
+																					"type": "text",
+																					"value": "credit",
+																					"position": {
+																						"start": {
+																							"line": 58,
+																							"column": 16,
+																							"offset": 1228
+																						},
+																						"end": {
+																							"line": 58,
+																							"column": 22,
+																							"offset": 1234
+																						}
+																					}
+																				}
+																			],
+																			"modifiers": [],
+																			"shorthand": "none",
+																			"position": {
+																				"start": {
+																					"line": 58,
+																					"column": 9,
+																					"offset": 1221
+																				},
+																				"end": {
+																					"line": 58,
+																					"column": 23,
+																					"offset": 1235
+																				}
+																			}
+																		}
+																	],
+																	"selfClosing": false,
+																	"children": [
+																		{
+																			"type": "text",
+																			"value": "\n\t\t\t\t\t\t",
+																			"position": {
+																				"start": {
+																					"line": 58,
+																					"column": 24,
+																					"offset": 1236
+																				},
+																				"end": {
+																					"line": 59,
+																					"column": 7,
+																					"offset": 1243
+																				}
+																			}
+																		},
+																		{
+																			"type": "svelteElement",
+																			"tagName": "a",
+																			"properties": [
+																				{
+																					"type": "svelteProperty",
+																					"name": "target",
+																					"value": [
+																						{
+																							"type": "text",
+																							"value": "_blank",
+																							"position": {
+																								"start": {
+																									"line": 59,
+																									"column": 18,
+																									"offset": 1254
+																								},
+																								"end": {
+																									"line": 59,
+																									"column": 24,
+																									"offset": 1260
+																								}
+																							}
+																						}
+																					],
+																					"modifiers": [],
+																					"shorthand": "none",
+																					"position": {
+																						"start": {
+																							"line": 59,
+																							"column": 10,
+																							"offset": 1246
+																						},
+																						"end": {
+																							"line": 59,
+																							"column": 25,
+																							"offset": 1261
+																						}
+																					}
+																				},
+																				{
+																					"type": "svelteProperty",
+																					"name": "href",
+																					"value": [
+																						{
+																							"type": "text",
+																							"value": "https://www.flickr.com/photos/",
+																							"position": {
+																								"start": {
+																									"line": 59,
+																									"column": 32,
+																									"offset": 1268
+																								},
+																								"end": {
+																									"line": 59,
+																									"column": 62,
+																									"offset": 1298
+																								}
+																							}
+																						},
+																						{
+																							"type": "svelteExpression",
+																							"value": "d.path",
+																							"position": {
+																								"start": {
+																									"line": 59,
+																									"column": 62,
+																									"offset": 1298
+																								},
+																								"end": {
+																									"line": 59,
+																									"column": 70,
+																									"offset": 1306
+																								}
+																							}
+																						}
+																					],
+																					"modifiers": [],
+																					"shorthand": "none",
+																					"position": {
+																						"start": {
+																							"line": 59,
+																							"column": 26,
+																							"offset": 1262
+																						},
+																						"end": {
+																							"line": 59,
+																							"column": 71,
+																							"offset": 1307
+																						}
+																					}
+																				}
+																			],
+																			"selfClosing": false,
+																			"children": [
+																				{
+																					"type": "text",
+																					"value": "via Flickr",
+																					"position": {
+																						"start": {
+																							"line": 59,
+																							"column": 72,
+																							"offset": 1308
+																						},
+																						"end": {
+																							"line": 59,
+																							"column": 82,
+																							"offset": 1318
+																						}
+																					}
+																				}
+																			],
+																			"position": {
+																				"start": {
+																					"line": 59,
+																					"column": 7,
+																					"offset": 1243
+																				},
+																				"end": {
+																					"line": 59,
+																					"column": 86,
+																					"offset": 1322
+																				}
+																			}
+																		},
+																		{
+																			"type": "text",
+																			"value": " &ndash;\n\t\t\t\t\t\t",
+																			"position": {
+																				"start": {
+																					"line": 59,
+																					"column": 86,
+																					"offset": 1322
+																				},
+																				"end": {
+																					"line": 60,
+																					"column": 7,
+																					"offset": 1337
+																				}
+																			}
+																		},
+																		{
+																			"type": "svelteElement",
+																			"tagName": "a",
+																			"properties": [
+																				{
+																					"type": "svelteProperty",
+																					"name": "target",
+																					"value": [
+																						{
+																							"type": "text",
+																							"value": "_blank",
+																							"position": {
+																								"start": {
+																									"line": 60,
+																									"column": 18,
+																									"offset": 1348
+																								},
+																								"end": {
+																									"line": 60,
+																									"column": 24,
+																									"offset": 1354
+																								}
+																							}
+																						}
+																					],
+																					"modifiers": [],
+																					"shorthand": "none",
+																					"position": {
+																						"start": {
+																							"line": 60,
+																							"column": 10,
+																							"offset": 1340
+																						},
+																						"end": {
+																							"line": 60,
+																							"column": 25,
+																							"offset": 1355
+																						}
+																					}
+																				},
+																				{
+																					"type": "svelteProperty",
+																					"name": "href",
+																					"value": [
+																						{
+																							"type": "svelteExpression",
+																							"value": "d.license.url",
+																							"position": {
+																								"start": {
+																									"line": 60,
+																									"column": 31,
+																									"offset": 1361
+																								},
+																								"end": {
+																									"line": 60,
+																									"column": 46,
+																									"offset": 1376
+																								}
+																							}
+																						}
+																					],
+																					"modifiers": [],
+																					"shorthand": "none",
+																					"position": {
+																						"start": {
+																							"line": 60,
+																							"column": 26,
+																							"offset": 1356
+																						},
+																						"end": {
+																							"line": 60,
+																							"column": 46,
+																							"offset": 1376
+																						}
+																					}
+																				}
+																			],
+																			"selfClosing": false,
+																			"children": [
+																				{
+																					"type": "svelteExpression",
+																					"value": "d.license.name",
+																					"position": {
+																						"start": {
+																							"line": 60,
+																							"column": 47,
+																							"offset": 1377
+																						},
+																						"end": {
+																							"line": 60,
+																							"column": 63,
+																							"offset": 1393
+																						}
+																					}
+																				}
+																			],
+																			"position": {
+																				"start": {
+																					"line": 60,
+																					"column": 7,
+																					"offset": 1337
+																				},
+																				"end": {
+																					"line": 60,
+																					"column": 67,
+																					"offset": 1397
+																				}
+																			}
+																		},
+																		{
+																			"type": "text",
+																			"value": "\n\t\t\t\t\t",
+																			"position": {
+																				"start": {
+																					"line": 60,
+																					"column": 67,
+																					"offset": 1397
+																				},
+																				"end": {
+																					"line": 61,
+																					"column": 6,
+																					"offset": 1403
+																				}
+																			}
+																		}
+																	],
+																	"position": {
+																		"start": {
+																			"line": 58,
+																			"column": 6,
+																			"offset": 1218
+																		},
+																		"end": {
+																			"line": 61,
+																			"column": 10,
+																			"offset": 1407
+																		}
+																	}
+																},
+																{
+																	"type": "text",
+																	"value": "\n\t\t\t\t",
+																	"position": {
+																		"start": {
+																			"line": 61,
+																			"column": 10,
+																			"offset": 1407
+																		},
+																		"end": {
+																			"line": 62,
+																			"column": 5,
+																			"offset": 1412
+																		}
+																	}
+																}
+															],
+															"position": {
+																"start": {
+																	"line": 51,
+																	"column": 5,
+																	"offset": 1038
+																},
+																"end": {
+																	"line": 62,
+																	"column": 11,
+																	"offset": 1418
+																}
+															}
+														},
+														{
+															"type": "text",
+															"value": "\n\t\t\t",
+															"position": {
+																"start": {
+																	"line": 62,
+																	"column": 11,
+																	"offset": 1418
+																},
+																"end": {
+																	"line": 63,
+																	"column": 4,
+																	"offset": 1422
+																}
+															}
+														}
+													],
+													"position": {
+														"start": {
+															"line": 50,
+															"column": 4,
+															"offset": 1009
+														},
+														"end": {
+															"line": 63,
+															"column": 4,
+															"offset": 1422
+														}
+													}
+												}
+											],
+											"position": {
+												"start": {
+													"line": 50,
+													"column": 4,
+													"offset": 1009
+												},
+												"end": {
+													"line": 63,
+													"column": 12,
+													"offset": 1430
+												}
+											}
+										},
+										{
+											"type": "text",
+											"value": "\n\t\t",
+											"position": {
+												"start": {
+													"line": 63,
+													"column": 12,
+													"offset": 1430
+												},
+												"end": {
+													"line": 64,
+													"column": 3,
+													"offset": 1433
+												}
+											}
+										}
+									],
+									"position": {
+										"start": {
+											"line": 49,
+											"column": 3,
+											"offset": 991
+										},
+										"end": {
+											"line": 64,
+											"column": 3,
+											"offset": 1433
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 49,
+									"column": 3,
+									"offset": 991
+								},
+								"end": {
+									"line": 64,
+									"column": 8,
+									"offset": 1438
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 64,
+									"column": 8,
+									"offset": 1438
+								},
+								"end": {
+									"line": 65,
+									"column": 2,
+									"offset": 1440
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 31,
+							"column": 2,
+							"offset": 574
+						},
+						"end": {
+							"line": 65,
+							"column": 8,
+							"offset": 1446
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 65,
+							"column": 8,
+							"offset": 1446
+						},
+						"end": {
+							"line": 66,
+							"column": 1,
+							"offset": 1447
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 30,
+					"column": 1,
+					"offset": 549
+				},
+				"end": {
+					"line": 66,
+					"column": 7,
+					"offset": 1453
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 66,
+					"column": 7,
+					"offset": 1453
+				},
+				"end": {
+					"line": 68,
+					"column": 1,
+					"offset": 1455
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t.container {\n\t\tposition: absolute;\n\t\tdisplay: flex;\n\t\talign-items: center;\n\t\tjustify-content: center;\n\t\twidth: 100%;\n\t\theight: 100%;\n\t\ttop: 0;\n\t\tleft: 0;\n\t}\n\n\t.phone {\n\t\tposition: relative;\n\t\tdisplay: flex;\n\t\tflex-direction: column;\n\t\twidth: 52vmin;\n\t\theight: 76vmin;\n\t\tborder: 2vmin solid #ccc;\n\t\tborder-bottom-width: 10vmin;\n\t\tpadding: 3vmin;\n\t\tborder-radius: 2vmin;\n\t}\n\n\th1 {\n\t\tfont-weight: 300;\n\t\ttext-transform: uppercase;\n\t\tfont-size: 5vmin;\n\t\tmargin: 0.2em 0 0.5em 0;\n\t}\n\n\t.grid {\n\t\tdisplay: grid;\n\t\tflex: 1;\n\t\tgrid-template-columns: repeat(3, 1fr);\n\t\tgrid-template-rows: repeat(4, 1fr);\n\t\tgrid-gap: 2vmin;\n\t}\n\n\tbutton {\n\t\twidth: 100%;\n\t\theight: 100%;\n\t\tcolor: white;\n\t\tfont-size: 5vmin;\n\t\tborder: none;\n\t\tmargin: 0;\n\t\twill-change: transform;\n\t}\n\n\t.photo, img {\n\t\tposition: absolute;\n\t\ttop: 0;\n\t\tleft: 0;\n\t\twidth: 100%;\n\t\theight: 100%;\n\t\toverflow: hidden;\n\t}\n\n\t.photo {\n\t\tdisplay: flex;\n\t\talign-items: stretch;\n\t\tjustify-content: flex-end;\n\t\tflex-direction: column;\n\t\twill-change: transform;\n\t}\n\n\timg {\n\t\tobject-fit: cover;\n\t\tcursor: pointer;\n\t}\n\n\t.credit {\n\t\ttext-align: right;\n\t\tfont-size: 2.5vmin;\n\t\tpadding: 1em;\n\t\tmargin: 0;\n\t\tcolor: white;\n\t\tfont-weight: bold;\n\t\topacity: 0.6;\n\t\tbackground: rgba(0,0,0,0.4);\n\t}\n\n\t.credit a, .credit a:visited {\n\t\tcolor: white;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 68,
+							"column": 8,
+							"offset": 1462
+						},
+						"end": {
+							"line": 153,
+							"column": 1,
+							"offset": 2740
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 68,
+					"column": 1,
+					"offset": 1455
+				},
+				"end": {
+					"line": 153,
+					"column": 9,
+					"offset": 2748
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 153,
+			"column": 9,
+			"offset": 2748
+		}
+	}
+}

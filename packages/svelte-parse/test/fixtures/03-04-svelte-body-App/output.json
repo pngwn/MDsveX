@@ -1,0 +1,464 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tlet hereKitty = false;\n\n\tconst handleMouseenter = () => hereKitty = true;\n\tconst handleMouseleave = () => hereKitty = false;\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 6,
+							"column": 1,
+							"offset": 135
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 6,
+					"column": 10,
+					"offset": 144
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 6,
+					"column": 10,
+					"offset": 144
+				},
+				"end": {
+					"line": 8,
+					"column": 1,
+					"offset": 146
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timg {\n\t\tposition: absolute;\n\t\tleft: 0;\n\t\tbottom: -60px;\n\t\ttransform: translate(-80%, 0) rotate(-30deg);\n\t\ttransform-origin: 100% 100%;\n\t\ttransition: transform 0.4s;\n\t}\n\n\t.curious {\n\t\ttransform: translate(-15%, 0) rotate(0deg);\n\t}\n\n\t:global(body) {\n\t\toverflow: hidden;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 8,
+							"column": 8,
+							"offset": 153
+						},
+						"end": {
+							"line": 25,
+							"column": 1,
+							"offset": 426
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 8,
+					"column": 1,
+					"offset": 146
+				},
+				"end": {
+					"line": 25,
+					"column": 9,
+					"offset": 434
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 25,
+					"column": 9,
+					"offset": 434
+				},
+				"end": {
+					"line": 27,
+					"column": 1,
+					"offset": 436
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "body",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "handleMouseenter",
+							"position": {
+								"start": {
+									"line": 28,
+									"column": 16,
+									"offset": 464
+								},
+								"end": {
+									"line": 28,
+									"column": 34,
+									"offset": 482
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 28,
+							"column": 2,
+							"offset": 450
+						},
+						"end": {
+							"line": 28,
+							"column": 34,
+							"offset": 482
+						}
+					},
+					"specifier": "mouseenter"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "handleMouseleave",
+							"position": {
+								"start": {
+									"line": 29,
+									"column": 16,
+									"offset": 498
+								},
+								"end": {
+									"line": 29,
+									"column": 34,
+									"offset": 516
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 29,
+							"column": 2,
+							"offset": 484
+						},
+						"end": {
+							"line": 29,
+							"column": 34,
+							"offset": 516
+						}
+					},
+					"specifier": "mouseleave"
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 27,
+					"column": 1,
+					"offset": 436
+				},
+				"end": {
+					"line": 30,
+					"column": 3,
+					"offset": 519
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 30,
+					"column": 3,
+					"offset": 519
+				},
+				"end": {
+					"line": 32,
+					"column": 1,
+					"offset": 521
+				}
+			}
+		},
+		{
+			"type": "comment",
+			"value": " creative commons BY-NC http://www.pngall.com/kitten-png/download/7247 ",
+			"position": {
+				"start": {
+					"line": 32,
+					"column": 1,
+					"offset": 521
+				},
+				"end": {
+					"line": 32,
+					"column": 79,
+					"offset": 599
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 32,
+					"column": 79,
+					"offset": 599
+				},
+				"end": {
+					"line": 33,
+					"column": 1,
+					"offset": 600
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "img",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "hereKitty",
+							"position": {
+								"start": {
+									"line": 34,
+									"column": 16,
+									"offset": 620
+								},
+								"end": {
+									"line": 34,
+									"column": 27,
+									"offset": 631
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 34,
+							"column": 2,
+							"offset": 606
+						},
+						"end": {
+							"line": 34,
+							"column": 27,
+							"offset": 631
+						}
+					},
+					"specifier": "curious"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "alt",
+					"value": [
+						{
+							"type": "text",
+							"value": "Kitten",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 7,
+									"offset": 638
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "wants",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 13,
+									"offset": 644
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "to",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 19,
+									"offset": 650
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "know",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 22,
+									"offset": 653
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "what's",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 27,
+									"offset": 658
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "going",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 34,
+									"offset": 665
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "on",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 40,
+									"offset": 671
+								},
+								"end": {
+									"line": 35,
+									"column": 43,
+									"offset": 674
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 35,
+							"column": 2,
+							"offset": 633
+						},
+						"end": {
+							"line": 35,
+							"column": 44,
+							"offset": 675
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "src",
+					"value": [
+						{
+							"type": "text",
+							"value": "tutorial/kitten.png",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 7,
+									"offset": 682
+								},
+								"end": {
+									"line": 36,
+									"column": 26,
+									"offset": 701
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 36,
+							"column": 2,
+							"offset": 677
+						},
+						"end": {
+							"line": 36,
+							"column": 27,
+							"offset": 702
+						}
+					}
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 33,
+					"column": 1,
+					"offset": 600
+				},
+				"end": {
+					"line": 37,
+					"column": 2,
+					"offset": 704
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 37,
+			"column": 2,
+			"offset": 704
+		}
+	}
+}

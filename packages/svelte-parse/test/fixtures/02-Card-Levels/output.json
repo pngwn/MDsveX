@@ -1,0 +1,628 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import Card, { options } from '@sveltekit/ui/Card';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 63
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 3,
+					"column": 10,
+					"offset": 72
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 3,
+					"column": 10,
+					"offset": 72
+				},
+				"end": {
+					"line": 5,
+					"column": 1,
+					"offset": 74
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  .content {\n    padding: 20px;\n  }\n",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 8,
+							"offset": 81
+						},
+						"end": {
+							"line": 9,
+							"column": 1,
+							"offset": 118
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 1,
+					"offset": 74
+				},
+				"end": {
+					"line": 9,
+					"column": 9,
+					"offset": 126
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 9,
+					"column": 9,
+					"offset": 126
+				},
+				"end": {
+					"line": 11,
+					"column": 1,
+					"offset": 128
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "col",
+							"position": {
+								"start": {
+									"line": 11,
+									"column": 13,
+									"offset": 140
+								},
+								"end": {
+									"line": 11,
+									"column": 16,
+									"offset": 143
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 6,
+							"offset": 133
+						},
+						"end": {
+							"line": 11,
+							"column": 17,
+							"offset": 144
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 18,
+							"offset": 145
+						},
+						"end": {
+							"line": 12,
+							"column": 3,
+							"offset": 148
+						}
+					}
+				},
+				{
+					"type": "svelteBranchingBlock",
+					"name": "each",
+					"branches": [
+						{
+							"type": "svelteBranch",
+							"name": "each",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "Object.entries(options.level) as [levelKey, levelValue]",
+								"position": {
+									"start": {
+										"line": 12,
+										"column": 10,
+										"offset": 155
+									},
+									"end": {
+										"line": 12,
+										"column": 65,
+										"offset": 210
+									}
+								}
+							},
+							"children": [
+								{
+									"type": "text",
+									"value": "\n  ",
+									"position": {
+										"start": {
+											"line": 12,
+											"column": 66,
+											"offset": 211
+										},
+										"end": {
+											"line": 13,
+											"column": 3,
+											"offset": 214
+										}
+									}
+								},
+								{
+									"type": "svelteElement",
+									"tagName": "span",
+									"properties": [],
+									"selfClosing": false,
+									"children": [
+										{
+											"type": "text",
+											"value": "\n    ",
+											"position": {
+												"start": {
+													"line": 13,
+													"column": 9,
+													"offset": 220
+												},
+												"end": {
+													"line": 14,
+													"column": 5,
+													"offset": 225
+												}
+											}
+										},
+										{
+											"type": "svelteComponent",
+											"tagName": "Card",
+											"properties": [
+												{
+													"type": "svelteProperty",
+													"name": "level",
+													"value": [
+														{
+															"type": "svelteExpression",
+															"value": "levelValue",
+															"position": {
+																"start": {
+																	"line": 14,
+																	"column": 18,
+																	"offset": 238
+																},
+																"end": {
+																	"line": 14,
+																	"column": 30,
+																	"offset": 250
+																}
+															}
+														}
+													],
+													"modifiers": [],
+													"shorthand": "none",
+													"position": {
+														"start": {
+															"line": 14,
+															"column": 11,
+															"offset": 231
+														},
+														"end": {
+															"line": 14,
+															"column": 31,
+															"offset": 251
+														}
+													}
+												}
+											],
+											"selfClosing": false,
+											"children": [
+												{
+													"type": "text",
+													"value": "\n      ",
+													"position": {
+														"start": {
+															"line": 14,
+															"column": 32,
+															"offset": 252
+														},
+														"end": {
+															"line": 15,
+															"column": 7,
+															"offset": 259
+														}
+													}
+												},
+												{
+													"type": "svelteElement",
+													"tagName": "div",
+													"properties": [
+														{
+															"type": "svelteProperty",
+															"name": "class",
+															"value": [
+																{
+																	"type": "text",
+																	"value": "content",
+																	"position": {
+																		"start": {
+																			"line": 15,
+																			"column": 19,
+																			"offset": 271
+																		},
+																		"end": {
+																			"line": 15,
+																			"column": 26,
+																			"offset": 278
+																		}
+																	}
+																}
+															],
+															"modifiers": [],
+															"shorthand": "none",
+															"position": {
+																"start": {
+																	"line": 15,
+																	"column": 12,
+																	"offset": 264
+																},
+																"end": {
+																	"line": 15,
+																	"column": 27,
+																	"offset": 279
+																}
+															}
+														}
+													],
+													"selfClosing": false,
+													"children": [
+														{
+															"type": "text",
+															"value": "\n        ",
+															"position": {
+																"start": {
+																	"line": 15,
+																	"column": 28,
+																	"offset": 280
+																},
+																"end": {
+																	"line": 16,
+																	"column": 9,
+																	"offset": 289
+																}
+															}
+														},
+														{
+															"type": "svelteElement",
+															"tagName": "h3",
+															"properties": [],
+															"selfClosing": false,
+															"children": [
+																{
+																	"type": "text",
+																	"value": "Card",
+																	"position": {
+																		"start": {
+																			"line": 16,
+																			"column": 13,
+																			"offset": 293
+																		},
+																		"end": {
+																			"line": 16,
+																			"column": 17,
+																			"offset": 297
+																		}
+																	}
+																}
+															],
+															"position": {
+																"start": {
+																	"line": 16,
+																	"column": 9,
+																	"offset": 289
+																},
+																"end": {
+																	"line": 16,
+																	"column": 22,
+																	"offset": 302
+																}
+															}
+														},
+														{
+															"type": "text",
+															"value": "\n        ",
+															"position": {
+																"start": {
+																	"line": 16,
+																	"column": 22,
+																	"offset": 302
+																},
+																"end": {
+																	"line": 17,
+																	"column": 9,
+																	"offset": 311
+																}
+															}
+														},
+														{
+															"type": "svelteElement",
+															"tagName": "p",
+															"properties": [],
+															"selfClosing": false,
+															"children": [
+																{
+																	"type": "text",
+																	"value": "card.options.level.",
+																	"position": {
+																		"start": {
+																			"line": 17,
+																			"column": 12,
+																			"offset": 314
+																		},
+																		"end": {
+																			"line": 17,
+																			"column": 31,
+																			"offset": 333
+																		}
+																	}
+																},
+																{
+																	"type": "svelteExpression",
+																	"value": "levelKey ",
+																	"position": {
+																		"start": {
+																			"line": 17,
+																			"column": 31,
+																			"offset": 333
+																		},
+																		"end": {
+																			"line": 17,
+																			"column": 43,
+																			"offset": 345
+																		}
+																	}
+																}
+															],
+															"position": {
+																"start": {
+																	"line": 17,
+																	"column": 9,
+																	"offset": 311
+																},
+																"end": {
+																	"line": 17,
+																	"column": 47,
+																	"offset": 349
+																}
+															}
+														},
+														{
+															"type": "text",
+															"value": "\n      ",
+															"position": {
+																"start": {
+																	"line": 17,
+																	"column": 47,
+																	"offset": 349
+																},
+																"end": {
+																	"line": 18,
+																	"column": 7,
+																	"offset": 356
+																}
+															}
+														}
+													],
+													"position": {
+														"start": {
+															"line": 15,
+															"column": 7,
+															"offset": 259
+														},
+														"end": {
+															"line": 18,
+															"column": 13,
+															"offset": 362
+														}
+													}
+												},
+												{
+													"type": "text",
+													"value": "\n    ",
+													"position": {
+														"start": {
+															"line": 18,
+															"column": 13,
+															"offset": 362
+														},
+														"end": {
+															"line": 19,
+															"column": 5,
+															"offset": 367
+														}
+													}
+												}
+											],
+											"position": {
+												"start": {
+													"line": 14,
+													"column": 5,
+													"offset": 225
+												},
+												"end": {
+													"line": 19,
+													"column": 12,
+													"offset": 374
+												}
+											}
+										},
+										{
+											"type": "text",
+											"value": "\n  ",
+											"position": {
+												"start": {
+													"line": 19,
+													"column": 12,
+													"offset": 374
+												},
+												"end": {
+													"line": 20,
+													"column": 3,
+													"offset": 377
+												}
+											}
+										}
+									],
+									"position": {
+										"start": {
+											"line": 13,
+											"column": 3,
+											"offset": 214
+										},
+										"end": {
+											"line": 20,
+											"column": 10,
+											"offset": 384
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n  ",
+									"position": {
+										"start": {
+											"line": 20,
+											"column": 10,
+											"offset": 384
+										},
+										"end": {
+											"line": 21,
+											"column": 3,
+											"offset": 387
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 12,
+									"column": 3,
+									"offset": 148
+								},
+								"end": {
+									"line": 21,
+									"column": 3,
+									"offset": 387
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 12,
+							"column": 3,
+							"offset": 148
+						},
+						"end": {
+							"line": 21,
+							"column": 10,
+							"offset": 394
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 21,
+							"column": 10,
+							"offset": 394
+						},
+						"end": {
+							"line": 22,
+							"column": 1,
+							"offset": 395
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 11,
+					"column": 1,
+					"offset": 128
+				},
+				"end": {
+					"line": 22,
+					"column": 7,
+					"offset": 401
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 22,
+			"column": 7,
+			"offset": 401
+		}
+	}
+}

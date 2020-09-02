@@ -1,0 +1,314 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { onMount, setContext } from 'svelte';\n\timport { mapbox, key } from './mapbox.js';\n\n\tsetContext(key, {\n\t\tgetMap: () => map\n\t});\n\n\texport let lat;\n\texport let lon;\n\texport let zoom;\n\n\tlet container;\n\tlet map;\n\n\tonMount(() => {\n\t\tconst link = document.createElement('link');\n\t\tlink.rel = 'stylesheet';\n\t\tlink.href = 'https://unpkg.com/mapbox-gl/dist/mapbox-gl.css';\n\n\t\tlink.onload = () => {\n\t\t\tmap = new mapbox.Map({\n\t\t\t\tcontainer,\n\t\t\t\tstyle: 'mapbox://styles/mapbox/streets-v9',\n\t\t\t\tcenter: [lon, lat],\n\t\t\t\tzoom\n\t\t\t});\n\t\t};\n\n\t\tdocument.head.appendChild(link);\n\n\t\treturn () => {\n\t\t\tmap.remove();\n\t\t\tlink.parentNode.removeChild(link);\n\t\t};\n\t});\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 37,
+							"column": 1,
+							"offset": 659
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 37,
+					"column": 10,
+					"offset": 668
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 37,
+					"column": 10,
+					"offset": 668
+				},
+				"end": {
+					"line": 39,
+					"column": 1,
+					"offset": 670
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tdiv {\n\t\twidth: 100%;\n\t\theight: 100%;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 39,
+							"column": 8,
+							"offset": 677
+						},
+						"end": {
+							"line": 44,
+							"column": 1,
+							"offset": 719
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 39,
+					"column": 1,
+					"offset": 670
+				},
+				"end": {
+					"line": 44,
+					"column": 9,
+					"offset": 727
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 44,
+					"column": 9,
+					"offset": 727
+				},
+				"end": {
+					"line": 46,
+					"column": 1,
+					"offset": 729
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "container",
+							"position": {
+								"start": {
+									"line": 46,
+									"column": 16,
+									"offset": 744
+								},
+								"end": {
+									"line": 46,
+									"column": 27,
+									"offset": 755
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 46,
+							"column": 6,
+							"offset": 734
+						},
+						"end": {
+							"line": 46,
+							"column": 27,
+							"offset": 755
+						}
+					},
+					"specifier": "this"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 46,
+							"column": 28,
+							"offset": 756
+						},
+						"end": {
+							"line": 47,
+							"column": 2,
+							"offset": 758
+						}
+					}
+				},
+				{
+					"type": "svelteBranchingBlock",
+					"name": "if",
+					"branches": [
+						{
+							"type": "svelteBranch",
+							"name": "if",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "map",
+								"position": {
+									"start": {
+										"line": 47,
+										"column": 7,
+										"offset": 763
+									},
+									"end": {
+										"line": 47,
+										"column": 10,
+										"offset": 766
+									}
+								}
+							},
+							"children": [
+								{
+									"type": "text",
+									"value": "\n\t\t",
+									"position": {
+										"start": {
+											"line": 47,
+											"column": 11,
+											"offset": 767
+										},
+										"end": {
+											"line": 48,
+											"column": 3,
+											"offset": 770
+										}
+									}
+								},
+								{
+									"type": "svelteElement",
+									"tagName": "slot",
+									"properties": [],
+									"selfClosing": false,
+									"children": [],
+									"position": {
+										"start": {
+											"line": 48,
+											"column": 3,
+											"offset": 770
+										},
+										"end": {
+											"line": 48,
+											"column": 16,
+											"offset": 783
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n\t",
+									"position": {
+										"start": {
+											"line": 48,
+											"column": 16,
+											"offset": 783
+										},
+										"end": {
+											"line": 49,
+											"column": 2,
+											"offset": 785
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 47,
+									"column": 2,
+									"offset": 758
+								},
+								"end": {
+									"line": 49,
+									"column": 2,
+									"offset": 785
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 47,
+							"column": 2,
+							"offset": 758
+						},
+						"end": {
+							"line": 49,
+							"column": 7,
+							"offset": 790
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 49,
+							"column": 7,
+							"offset": 790
+						},
+						"end": {
+							"line": 50,
+							"column": 1,
+							"offset": 791
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 46,
+					"column": 1,
+					"offset": 729
+				},
+				"end": {
+					"line": 50,
+					"column": 7,
+					"offset": 797
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 50,
+			"column": 7,
+			"offset": 797
+		}
+	}
+}

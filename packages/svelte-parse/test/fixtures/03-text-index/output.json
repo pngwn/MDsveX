@@ -1,0 +1,307 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "span",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "use",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "use",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 17,
+									"offset": 22
+								},
+								"end": {
+									"line": 2,
+									"column": 22,
+									"offset": 27
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 2,
+							"column": 5,
+							"offset": 10
+						},
+						"end": {
+							"line": 2,
+							"column": 22,
+							"offset": 27
+						}
+					},
+					"specifier": "actions"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "use",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 3,
+							"column": 5,
+							"offset": 32
+						},
+						"end": {}
+					},
+					"specifier": "events"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "clsxd(\n        'ui',\n        color,\n        size,\n        inverted && 'inverted',\n        disabled && 'disabled',\n        className,\n        'text'\n    )",
+							"position": {
+								"start": {
+									"line": 4,
+									"column": 11,
+									"offset": 53
+								},
+								"end": {
+									"line": 12,
+									"column": 7,
+									"offset": 208
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 4,
+							"column": 5,
+							"offset": 47
+						},
+						"end": {
+							"line": 12,
+							"column": 7,
+							"offset": 208
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "...exclude($$props, ['use', 'class', 'inverted', 'disabled', 'size', 'color'])",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "...exclude($$props, ['use', 'class', 'inverted', 'disabled', 'size', 'color'])"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 13,
+							"column": 5,
+							"offset": 213
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "svelteElement",
+					"tagName": "slot",
+					"properties": [],
+					"selfClosing": false,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 14,
+							"column": 2,
+							"offset": 295
+						},
+						"end": {
+							"line": 14,
+							"column": 15,
+							"offset": 308
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 14,
+					"column": 22,
+					"offset": 315
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 14,
+					"column": 22,
+					"offset": 315
+				},
+				"end": {
+					"line": 16,
+					"column": 1,
+					"offset": 317
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "context",
+					"value": [
+						{
+							"type": "text",
+							"value": "module",
+							"position": {
+								"start": {
+									"line": 16,
+									"column": 18,
+									"offset": 334
+								},
+								"end": {
+									"line": 16,
+									"column": 24,
+									"offset": 340
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 16,
+							"column": 9,
+							"offset": 325
+						},
+						"end": {
+							"line": 16,
+							"column": 25,
+							"offset": 341
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n    import { exclude, eventsBuilder, actions, clsxd } from '../../lib'\n    import { current_component } from 'svelte/internal'\n",
+					"position": {
+						"start": {
+							"line": 16,
+							"column": 26,
+							"offset": 342
+						},
+						"end": {
+							"line": 19,
+							"column": 1,
+							"offset": 470
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 16,
+					"column": 1,
+					"offset": 317
+				},
+				"end": {
+					"line": 19,
+					"column": 10,
+					"offset": 479
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 19,
+					"column": 10,
+					"offset": 479
+				},
+				"end": {
+					"line": 21,
+					"column": 1,
+					"offset": 481
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n    const events = eventsBuilder(current_component)\n\n    export let use = [];\n    let className = '';\n    export { className as class };\n\n    export let inverted = false;\n    export let disabled = false;\n    export let size = '';\n    export let color = '';\n",
+					"position": {
+						"start": {
+							"line": 21,
+							"column": 9,
+							"offset": 489
+						},
+						"end": {
+							"line": 32,
+							"column": 1,
+							"offset": 747
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 21,
+					"column": 1,
+					"offset": 481
+				},
+				"end": {
+					"line": 32,
+					"column": 10,
+					"offset": 756
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 32,
+			"column": 10,
+			"offset": 756
+		}
+	}
+}

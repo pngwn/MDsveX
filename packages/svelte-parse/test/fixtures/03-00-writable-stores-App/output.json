@@ -1,0 +1,226 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { count } from './stores.js';\n\timport Incrementer from './Incrementer.svelte';\n\timport Decrementer from './Decrementer.svelte';\n\timport Resetter from './Resetter.svelte';\n\n\tlet count_value;\n\n\tconst unsubscribe = count.subscribe(value => {\n\t\tcount_value = value;\n\t});\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 12,
+							"column": 1,
+							"offset": 284
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 12,
+					"column": 10,
+					"offset": 293
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 12,
+					"column": 10,
+					"offset": 293
+				},
+				"end": {
+					"line": 14,
+					"column": 1,
+					"offset": 295
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "h1",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "The count is ",
+					"position": {
+						"start": {
+							"line": 14,
+							"column": 5,
+							"offset": 299
+						},
+						"end": {
+							"line": 14,
+							"column": 18,
+							"offset": 312
+						}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "count_value",
+					"position": {
+						"start": {
+							"line": 14,
+							"column": 18,
+							"offset": 312
+						},
+						"end": {
+							"line": 14,
+							"column": 31,
+							"offset": 325
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 14,
+					"column": 1,
+					"offset": 295
+				},
+				"end": {
+					"line": 14,
+					"column": 36,
+					"offset": 330
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 14,
+					"column": 36,
+					"offset": 330
+				},
+				"end": {
+					"line": 16,
+					"column": 1,
+					"offset": 332
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Incrementer",
+			"properties": [],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 16,
+					"column": 1,
+					"offset": 332
+				},
+				"end": {
+					"line": 16,
+					"column": 15,
+					"offset": 346
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 16,
+					"column": 15,
+					"offset": 346
+				},
+				"end": {
+					"line": 17,
+					"column": 1,
+					"offset": 347
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Decrementer",
+			"properties": [],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 17,
+					"column": 1,
+					"offset": 347
+				},
+				"end": {
+					"line": 17,
+					"column": 15,
+					"offset": 361
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 17,
+					"column": 15,
+					"offset": 361
+				},
+				"end": {
+					"line": 18,
+					"column": 1,
+					"offset": 362
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Resetter",
+			"properties": [],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 18,
+					"column": 1,
+					"offset": 362
+				},
+				"end": {
+					"line": 18,
+					"column": 12,
+					"offset": 373
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 18,
+			"column": 12,
+			"offset": 373
+		}
+	}
+}

@@ -1,0 +1,898 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tlet files;\n\n\t$: if (files) {\n\t\t// Note that `files` is of type `FileList`, not an Array:\n\t\t// https://developer.mozilla.org/en-US/docs/Web/API/FileList\n\t\tconsole.log(files);\n\n\t\tfor (const file of files) {\n\t\t\tconsole.log(`${file.name}: ${file.size} bytes`);\n\t\t}\n\t}\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 13,
+							"column": 1,
+							"offset": 274
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 13,
+					"column": 10,
+					"offset": 283
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 13,
+					"column": 10,
+					"offset": 283
+				},
+				"end": {
+					"line": 15,
+					"column": 1,
+					"offset": 285
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "label",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "for",
+					"value": [
+						{
+							"type": "text",
+							"value": "avatar",
+							"position": {
+								"start": {
+									"line": 15,
+									"column": 13,
+									"offset": 297
+								},
+								"end": {
+									"line": 15,
+									"column": 19,
+									"offset": 303
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 15,
+							"column": 8,
+							"offset": 292
+						},
+						"end": {
+							"line": 15,
+							"column": 20,
+							"offset": 304
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "Upload a picture:",
+					"position": {
+						"start": {
+							"line": 15,
+							"column": 21,
+							"offset": 305
+						},
+						"end": {
+							"line": 15,
+							"column": 38,
+							"offset": 322
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 15,
+					"column": 1,
+					"offset": 285
+				},
+				"end": {
+					"line": 15,
+					"column": 46,
+					"offset": 330
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 15,
+					"column": 46,
+					"offset": 330
+				},
+				"end": {
+					"line": 16,
+					"column": 1,
+					"offset": 331
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "input",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "accept",
+					"value": [
+						{
+							"type": "text",
+							"value": "image/png,",
+							"position": {
+								"start": {
+									"line": 17,
+									"column": 10,
+									"offset": 347
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "image/jpeg",
+							"position": {
+								"start": {
+									"line": 17,
+									"column": 20,
+									"offset": 357
+								},
+								"end": {
+									"line": 17,
+									"column": 31,
+									"offset": 368
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 17,
+							"column": 2,
+							"offset": 339
+						},
+						"end": {
+							"line": 17,
+							"column": 32,
+							"offset": 369
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 18,
+							"column": 2,
+							"offset": 371
+						},
+						"end": {}
+					},
+					"specifier": "files"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "id",
+					"value": [
+						{
+							"type": "text",
+							"value": "avatar",
+							"position": {
+								"start": {
+									"line": 19,
+									"column": 6,
+									"offset": 387
+								},
+								"end": {
+									"line": 19,
+									"column": 12,
+									"offset": 393
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 19,
+							"column": 2,
+							"offset": 383
+						},
+						"end": {
+							"line": 19,
+							"column": 13,
+							"offset": 394
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "name",
+					"value": [
+						{
+							"type": "text",
+							"value": "avatar",
+							"position": {
+								"start": {
+									"line": 20,
+									"column": 8,
+									"offset": 402
+								},
+								"end": {
+									"line": 20,
+									"column": 14,
+									"offset": 408
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 20,
+							"column": 2,
+							"offset": 396
+						},
+						"end": {
+							"line": 20,
+							"column": 15,
+							"offset": 409
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "type",
+					"value": [
+						{
+							"type": "text",
+							"value": "file",
+							"position": {
+								"start": {
+									"line": 21,
+									"column": 8,
+									"offset": 417
+								},
+								"end": {
+									"line": 21,
+									"column": 12,
+									"offset": 421
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 21,
+							"column": 2,
+							"offset": 411
+						},
+						"end": {
+							"line": 21,
+							"column": 13,
+							"offset": 422
+						}
+					}
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 16,
+					"column": 1,
+					"offset": 331
+				},
+				"end": {
+					"line": 22,
+					"column": 3,
+					"offset": 425
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 22,
+					"column": 3,
+					"offset": 425
+				},
+				"end": {
+					"line": 24,
+					"column": 1,
+					"offset": 427
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "label",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "for",
+					"value": [
+						{
+							"type": "text",
+							"value": "many",
+							"position": {
+								"start": {
+									"line": 24,
+									"column": 13,
+									"offset": 439
+								},
+								"end": {
+									"line": 24,
+									"column": 17,
+									"offset": 443
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 24,
+							"column": 8,
+							"offset": 434
+						},
+						"end": {
+							"line": 24,
+							"column": 18,
+							"offset": 444
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "Upload multiple files of any type:",
+					"position": {
+						"start": {
+							"line": 24,
+							"column": 19,
+							"offset": 445
+						},
+						"end": {
+							"line": 24,
+							"column": 53,
+							"offset": 479
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 24,
+					"column": 1,
+					"offset": 427
+				},
+				"end": {
+					"line": 24,
+					"column": 61,
+					"offset": 487
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 24,
+					"column": 61,
+					"offset": 487
+				},
+				"end": {
+					"line": 25,
+					"column": 1,
+					"offset": 488
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "input",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 26,
+							"column": 2,
+							"offset": 496
+						},
+						"end": {}
+					},
+					"specifier": "files"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "id",
+					"value": [
+						{
+							"type": "text",
+							"value": "many",
+							"position": {
+								"start": {
+									"line": 27,
+									"column": 6,
+									"offset": 512
+								},
+								"end": {
+									"line": 27,
+									"column": 10,
+									"offset": 516
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 27,
+							"column": 2,
+							"offset": 508
+						},
+						"end": {
+							"line": 27,
+							"column": 11,
+							"offset": 517
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "multiple",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "boolean",
+					"position": {
+						"start": {
+							"line": 28,
+							"column": 2,
+							"offset": 519
+						},
+						"end": {}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "type",
+					"value": [
+						{
+							"type": "text",
+							"value": "file",
+							"position": {
+								"start": {
+									"line": 29,
+									"column": 8,
+									"offset": 535
+								},
+								"end": {
+									"line": 29,
+									"column": 12,
+									"offset": 539
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 29,
+							"column": 2,
+							"offset": 529
+						},
+						"end": {
+							"line": 29,
+							"column": 13,
+							"offset": 540
+						}
+					}
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 25,
+					"column": 1,
+					"offset": 488
+				},
+				"end": {
+					"line": 30,
+					"column": 3,
+					"offset": 543
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 30,
+					"column": 3,
+					"offset": 543
+				},
+				"end": {
+					"line": 32,
+					"column": 1,
+					"offset": 545
+				}
+			}
+		},
+		{
+			"type": "svelteBranchingBlock",
+			"name": "if",
+			"branches": [
+				{
+					"type": "svelteBranch",
+					"name": "if",
+					"expression": {
+						"type": "svelteExpression",
+						"value": "files",
+						"position": {
+							"start": {
+								"line": 32,
+								"column": 6,
+								"offset": 550
+							},
+							"end": {
+								"line": 32,
+								"column": 11,
+								"offset": 555
+							}
+						}
+					},
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 32,
+									"column": 12,
+									"offset": 556
+								},
+								"end": {
+									"line": 33,
+									"column": 2,
+									"offset": 558
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "h2",
+							"properties": [],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "Selected files:",
+									"position": {
+										"start": {
+											"line": 33,
+											"column": 6,
+											"offset": 562
+										},
+										"end": {
+											"line": 33,
+											"column": 21,
+											"offset": 577
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 33,
+									"column": 2,
+									"offset": 558
+								},
+								"end": {
+									"line": 33,
+									"column": 26,
+									"offset": 582
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 33,
+									"column": 26,
+									"offset": 582
+								},
+								"end": {
+									"line": 34,
+									"column": 2,
+									"offset": 584
+								}
+							}
+						},
+						{
+							"type": "svelteBranchingBlock",
+							"name": "each",
+							"branches": [
+								{
+									"type": "svelteBranch",
+									"name": "each",
+									"expression": {
+										"type": "svelteExpression",
+										"value": "Array.from(files) as file",
+										"position": {
+											"start": {
+												"line": 34,
+												"column": 9,
+												"offset": 591
+											},
+											"end": {
+												"line": 34,
+												"column": 34,
+												"offset": 616
+											}
+										}
+									},
+									"children": [
+										{
+											"type": "text",
+											"value": "\n\t\t",
+											"position": {
+												"start": {
+													"line": 34,
+													"column": 35,
+													"offset": 617
+												},
+												"end": {
+													"line": 35,
+													"column": 3,
+													"offset": 620
+												}
+											}
+										},
+										{
+											"type": "svelteElement",
+											"tagName": "p",
+											"properties": [],
+											"selfClosing": false,
+											"children": [
+												{
+													"type": "svelteExpression",
+													"value": "file.name",
+													"position": {
+														"start": {
+															"line": 35,
+															"column": 6,
+															"offset": 623
+														},
+														"end": {
+															"line": 35,
+															"column": 17,
+															"offset": 634
+														}
+													}
+												},
+												{
+													"type": "text",
+													"value": " (",
+													"position": {
+														"start": {
+															"line": 35,
+															"column": 17,
+															"offset": 634
+														},
+														"end": {
+															"line": 35,
+															"column": 19,
+															"offset": 636
+														}
+													}
+												},
+												{
+													"type": "svelteExpression",
+													"value": "file.size",
+													"position": {
+														"start": {
+															"line": 35,
+															"column": 19,
+															"offset": 636
+														},
+														"end": {
+															"line": 35,
+															"column": 30,
+															"offset": 647
+														}
+													}
+												},
+												{
+													"type": "text",
+													"value": " bytes) ",
+													"position": {
+														"start": {
+															"line": 35,
+															"column": 30,
+															"offset": 647
+														},
+														"end": {
+															"line": 35,
+															"column": 38,
+															"offset": 655
+														}
+													}
+												}
+											],
+											"position": {
+												"start": {
+													"line": 35,
+													"column": 3,
+													"offset": 620
+												},
+												"end": {
+													"line": 35,
+													"column": 42,
+													"offset": 659
+												}
+											}
+										},
+										{
+											"type": "text",
+											"value": "\n\t",
+											"position": {
+												"start": {
+													"line": 35,
+													"column": 42,
+													"offset": 659
+												},
+												"end": {
+													"line": 36,
+													"column": 2,
+													"offset": 661
+												}
+											}
+										}
+									],
+									"position": {
+										"start": {
+											"line": 34,
+											"column": 2,
+											"offset": 584
+										},
+										"end": {
+											"line": 36,
+											"column": 2,
+											"offset": 661
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 34,
+									"column": 2,
+									"offset": 584
+								},
+								"end": {
+									"line": 36,
+									"column": 9,
+									"offset": 668
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 9,
+									"offset": 668
+								},
+								"end": {
+									"line": 37,
+									"column": 1,
+									"offset": 669
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 32,
+							"column": 1,
+							"offset": 545
+						},
+						"end": {
+							"line": 37,
+							"column": 1,
+							"offset": 669
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 32,
+					"column": 1,
+					"offset": 545
+				},
+				"end": {
+					"line": 37,
+					"column": 6,
+					"offset": 674
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 37,
+			"column": 6,
+			"offset": 674
+		}
+	}
+}

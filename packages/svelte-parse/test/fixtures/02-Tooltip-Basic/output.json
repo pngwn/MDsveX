@@ -1,0 +1,206 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import Button from '@sveltekit/ui/Button';\n  import Tooltip from '@sveltekit/ui/Tooltip';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 4,
+							"column": 1,
+							"offset": 101
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 4,
+					"column": 10,
+					"offset": 110
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 4,
+					"column": 10,
+					"offset": 110
+				},
+				"end": {
+					"line": 6,
+					"column": 1,
+					"offset": 112
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Tooltip",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "title",
+					"value": [
+						{
+							"type": "text",
+							"value": "Hello",
+							"position": {
+								"start": {
+									"line": 6,
+									"column": 17,
+									"offset": 128
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "world",
+							"position": {
+								"start": {
+									"line": 6,
+									"column": 22,
+									"offset": 133
+								},
+								"end": {
+									"line": 6,
+									"column": 28,
+									"offset": 139
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 6,
+							"column": 10,
+							"offset": 121
+						},
+						"end": {
+							"line": 6,
+							"column": 29,
+							"offset": 140
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 6,
+							"column": 30,
+							"offset": 141
+						},
+						"end": {
+							"line": 7,
+							"column": 3,
+							"offset": 144
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "Button",
+					"properties": [],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "Default tooltip",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 11,
+									"offset": 152
+								},
+								"end": {
+									"line": 7,
+									"column": 26,
+									"offset": 167
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 3,
+							"offset": 144
+						},
+						"end": {
+							"line": 7,
+							"column": 35,
+							"offset": 176
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 35,
+							"offset": 176
+						},
+						"end": {
+							"line": 8,
+							"column": 1,
+							"offset": 177
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 6,
+					"column": 1,
+					"offset": 112
+				},
+				"end": {
+					"line": 8,
+					"column": 11,
+					"offset": 187
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 8,
+			"column": 11,
+			"offset": 187
+		}
+	}
+}

@@ -1,0 +1,318 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import { onDestroy, onMount } from 'svelte';\n  require('./tippy.ui.css');\n  import tippy from 'tippy.js';\n  import options from './options';\n\n  let tooltip = undefined;\n  export let title = '';\n  export let elementDisplay = 'inline-block';\n  export let placement = options.placement.TOP;\n  export let followCursor = false;\n\n  onMount(() => {\n    const { firstElementChild } = tooltip;\n\n    if (firstElementChild) {\n      elementDisplay = getComputedStyle(firstElementChild, null).display;\n    }\n\n    tooltip = tippy(tooltip, {\n      animation: 'shift-away',\n      animateFill: false,\n      delay: 200,\n      distance: 8,\n      dynamicTitle: true,\n      followCursor,\n      performance: true,\n      placement,\n      inertia: true,\n      theme: 'ui'\n    });\n  });\n\n  onDestroy(() => {\n    if (!tooltip || !tooltip._tippy) return;\n    tooltip._tippy.destroy();\n  });\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 38,
+							"column": 1,
+							"offset": 875
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 38,
+					"column": 10,
+					"offset": 884
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 38,
+					"column": 10,
+					"offset": 884
+				},
+				"end": {
+					"line": 40,
+					"column": 1,
+					"offset": 886
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "tooltip",
+							"position": {
+								"start": {
+									"line": 40,
+									"column": 13,
+									"offset": 898
+								},
+								"end": {
+									"line": 40,
+									"column": 20,
+									"offset": 905
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 40,
+							"column": 6,
+							"offset": 891
+						},
+						"end": {
+							"line": 40,
+							"column": 21,
+							"offset": 906
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "tooltip",
+							"position": {
+								"start": {
+									"line": 40,
+									"column": 32,
+									"offset": 917
+								},
+								"end": {
+									"line": 40,
+									"column": 41,
+									"offset": 926
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 40,
+							"column": 22,
+							"offset": 907
+						},
+						"end": {
+							"line": 40,
+							"column": 41,
+							"offset": 926
+						}
+					},
+					"specifier": "this"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "title",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": " title ",
+							"position": {
+								"start": {
+									"line": 40,
+									"column": 49,
+									"offset": 934
+								},
+								"end": {
+									"line": 40,
+									"column": 58,
+									"offset": 943
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 40,
+							"column": 42,
+							"offset": 927
+						},
+						"end": {
+							"line": 40,
+							"column": 59,
+							"offset": 944
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "style",
+					"value": [
+						{
+							"type": "text",
+							"value": "display:",
+							"position": {
+								"start": {
+									"line": 40,
+									"column": 67,
+									"offset": 952
+								},
+								"end": {
+									"line": 40,
+									"column": 75,
+									"offset": 960
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "elementDisplay",
+							"position": {
+								"start": {
+									"line": 40,
+									"column": 75,
+									"offset": 960
+								},
+								"end": {
+									"line": 40,
+									"column": 91,
+									"offset": 976
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": ";",
+							"position": {
+								"start": {
+									"line": 40,
+									"column": 91,
+									"offset": 976
+								},
+								"end": {
+									"line": 40,
+									"column": 92,
+									"offset": 977
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 40,
+							"column": 60,
+							"offset": 945
+						},
+						"end": {
+							"line": 40,
+							"column": 93,
+							"offset": 978
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 40,
+							"column": 94,
+							"offset": 979
+						},
+						"end": {
+							"line": 41,
+							"column": 3,
+							"offset": 982
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "slot",
+					"properties": [],
+					"selfClosing": false,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 41,
+							"column": 3,
+							"offset": 982
+						},
+						"end": {
+							"line": 41,
+							"column": 16,
+							"offset": 995
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 41,
+							"column": 16,
+							"offset": 995
+						},
+						"end": {
+							"line": 42,
+							"column": 1,
+							"offset": 996
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 40,
+					"column": 1,
+					"offset": 886
+				},
+				"end": {
+					"line": 42,
+					"column": 7,
+					"offset": 1002
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 42,
+			"column": 7,
+			"offset": 1002
+		}
+	}
+}

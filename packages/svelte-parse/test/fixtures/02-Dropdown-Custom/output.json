@@ -1,0 +1,231 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import Button from '@sveltekit/ui/Button';\n  import Dropdown from '@sveltekit/ui/Dropdown';\n  import CustomList from './_CustomList.svelte';\n\n  function handleSelect(event) {\n    // handle event\n  }\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 9,
+							"column": 1,
+							"offset": 210
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 9,
+					"column": 10,
+					"offset": 219
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 9,
+					"column": 10,
+					"offset": 219
+				},
+				"end": {
+					"line": 11,
+					"column": 1,
+					"offset": 221
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Dropdown",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "MenuComponent",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "CustomList",
+							"position": {
+								"start": {
+									"line": 11,
+									"column": 26,
+									"offset": 246
+								},
+								"end": {
+									"line": 11,
+									"column": 38,
+									"offset": 258
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 11,
+							"offset": 231
+						},
+						"end": {
+							"line": 11,
+							"column": 39,
+							"offset": 259
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "handleSelect",
+							"position": {
+								"start": {
+									"line": 11,
+									"column": 51,
+									"offset": 271
+								},
+								"end": {
+									"line": 11,
+									"column": 65,
+									"offset": 285
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 40,
+							"offset": 260
+						},
+						"end": {
+							"line": 11,
+							"column": 66,
+							"offset": 286
+						}
+					},
+					"specifier": "select"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 67,
+							"offset": 287
+						},
+						"end": {
+							"line": 12,
+							"column": 3,
+							"offset": 290
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "Button",
+					"properties": [],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "\n    Custom menu with components\n  ",
+							"position": {
+								"start": {
+									"line": 12,
+									"column": 11,
+									"offset": 298
+								},
+								"end": {
+									"line": 14,
+									"column": 3,
+									"offset": 333
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 12,
+							"column": 3,
+							"offset": 290
+						},
+						"end": {
+							"line": 14,
+							"column": 12,
+							"offset": 342
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 14,
+							"column": 12,
+							"offset": 342
+						},
+						"end": {
+							"line": 15,
+							"column": 1,
+							"offset": 343
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 11,
+					"column": 1,
+					"offset": 221
+				},
+				"end": {
+					"line": 15,
+					"column": 12,
+					"offset": 354
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 15,
+			"column": 12,
+			"offset": 354
+		}
+	}
+}

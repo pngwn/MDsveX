@@ -1,0 +1,162 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import Tag from '@sveltekit/ui/Tag';\n  import { options } from '@sveltekit/ui/Tag';\n  import { Alert as AlertIcon } from '@sveltekit/ui/Icons';\n\n  export let iconPosition = options.iconPosition.LEFT;\n  export let tabLabel = 'Example label';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 8,
+							"column": 1,
+							"offset": 252
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 8,
+					"column": 10,
+					"offset": 261
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 8,
+					"column": 10,
+					"offset": 261
+				},
+				"end": {
+					"line": 10,
+					"column": 1,
+					"offset": 263
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Tag",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "Icon",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": " AlertIcon ",
+							"position": {
+								"start": {
+									"line": 10,
+									"column": 12,
+									"offset": 274
+								},
+								"end": {
+									"line": 10,
+									"column": 25,
+									"offset": 287
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 10,
+							"column": 6,
+							"offset": 268
+						},
+						"end": {
+							"line": 10,
+							"column": 26,
+							"offset": 288
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": " iconPosition ",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": " iconPosition "
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 10,
+							"column": 27,
+							"offset": 289
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "svelteExpression",
+					"value": "tabLabel ",
+					"position": {
+						"start": {
+							"line": 10,
+							"column": 44,
+							"offset": 306
+						},
+						"end": {
+							"line": 10,
+							"column": 56,
+							"offset": 318
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 10,
+					"column": 1,
+					"offset": 263
+				},
+				"end": {
+					"line": 10,
+					"column": 62,
+					"offset": 324
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 10,
+			"column": 62,
+			"offset": 324
+		}
+	}
+}

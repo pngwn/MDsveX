@@ -1,0 +1,282 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "content",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 12,
+									"offset": 17
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 19,
+									"offset": 24
+								},
+								"end": {
+									"line": 2,
+									"column": 20,
+									"offset": 25
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "className",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 20,
+									"offset": 25
+								},
+								"end": {
+									"line": 2,
+									"column": 31,
+									"offset": 36
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 2,
+							"column": 5,
+							"offset": 10
+						},
+						"end": {
+							"line": 2,
+							"column": 32,
+							"offset": 37
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "...exclude($$props, ['class'])",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "...exclude($$props, ['class'])"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 3,
+							"column": 5,
+							"offset": 42
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "svelteElement",
+					"tagName": "slot",
+					"properties": [],
+					"selfClosing": false,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 4,
+							"column": 2,
+							"offset": 76
+						},
+						"end": {
+							"line": 4,
+							"column": 15,
+							"offset": 89
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 4,
+					"column": 21,
+					"offset": 95
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 4,
+					"column": 21,
+					"offset": 95
+				},
+				"end": {
+					"line": 6,
+					"column": 1,
+					"offset": 97
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "context",
+					"value": [
+						{
+							"type": "text",
+							"value": "module",
+							"position": {
+								"start": {
+									"line": 6,
+									"column": 18,
+									"offset": 114
+								},
+								"end": {
+									"line": 6,
+									"column": 24,
+									"offset": 120
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 6,
+							"column": 9,
+							"offset": 105
+						},
+						"end": {
+							"line": 6,
+							"column": 25,
+							"offset": 121
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n    import { exclude } from '../../lib'\n",
+					"position": {
+						"start": {
+							"line": 6,
+							"column": 26,
+							"offset": 122
+						},
+						"end": {
+							"line": 8,
+							"column": 1,
+							"offset": 163
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 6,
+					"column": 1,
+					"offset": 97
+				},
+				"end": {
+					"line": 8,
+					"column": 10,
+					"offset": 172
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 8,
+					"column": 10,
+					"offset": 172
+				},
+				"end": {
+					"line": 10,
+					"column": 1,
+					"offset": 174
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n    let className = ''\n    export { className as class }\n",
+					"position": {
+						"start": {
+							"line": 10,
+							"column": 9,
+							"offset": 182
+						},
+						"end": {
+							"line": 13,
+							"column": 1,
+							"offset": 240
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 10,
+					"column": 1,
+					"offset": 174
+				},
+				"end": {
+					"line": 13,
+					"column": 10,
+					"offset": 249
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 13,
+			"column": 10,
+			"offset": 249
+		}
+	}
+}

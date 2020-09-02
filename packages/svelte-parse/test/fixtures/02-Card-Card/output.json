@@ -1,0 +1,294 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import { createEventDispatcher, onMount } from 'svelte';\n\n  const dispatch = createEventDispatcher();\n\n  import { classnames } from '../../helpers/classnames';\n\n  export let isClickable = false;\n  export let isClickDisabled = false;\n  export let level = 0;\n\n  let ClassNames;\n  $: {\n    ClassNames = classnames({\n      isClickable: !isClickDisabled && isClickable,\n      [`level-${level}`]: level\n    });\n  }\n\n  function onClick() {\n    if (isClickable && !isClickDisabled) {\n      dispatch('click');\n    }\n  }\n\n  onMount(() => {\n    isClickable = !!arguments[0].$$.callbacks.click;\n  });\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 29,
+							"column": 1,
+							"offset": 600
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 29,
+					"column": 10,
+					"offset": 609
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 29,
+					"column": 10,
+					"offset": 609
+				},
+				"end": {
+					"line": 31,
+					"column": 1,
+					"offset": 611
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  .card {\n    border-radius:  var(--Card-border-radius, 4px);\n    background-color: var(--white);\n    box-shadow: var(--Card-box-shadow, 0 1px 2px 0 rgba(44, 62, 80, 0.12));\n  }\n\n  .isClickable {\n    cursor: pointer;\n    position: relative;\n    transition: all 0.15s;\n  }\n\n  .isClickable:hover {\n    box-shadow: var(--Card-hover-box-shadow, 2px 2px 4px 1px rgba(44, 62, 80, 0.08));\n    transform: var(--Card-hover-transform, translateY(-2px) translateZ(0));\n  }\n\n  .isClickable:active {\n    box-shadow: var(--Card-active-box-shadow, none);\n    transform: var(--Card-active-transform, translateY(0) translateZ(0));\n  }\n\n  .level-2 {\n    box-shadow: var(--Card-lvl2-box-shadow, 0 2px 3px 0 rgba(44, 62, 80, 0.24));\n  }\n\n  .level-3 {\n    box-shadow: var(--Card-lvl3-box-shadow, 1px 5px 6px 0 rgba(44, 62, 80, 0.24));\n  }\n",
+					"position": {
+						"start": {
+							"line": 31,
+							"column": 8,
+							"offset": 618
+						},
+						"end": {
+							"line": 61,
+							"column": 1,
+							"offset": 1437
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 31,
+					"column": 1,
+					"offset": 611
+				},
+				"end": {
+					"line": 61,
+					"column": 9,
+					"offset": 1445
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 61,
+					"column": 9,
+					"offset": 1445
+				},
+				"end": {
+					"line": 63,
+					"column": 1,
+					"offset": 1447
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "card",
+							"position": {
+								"start": {
+									"line": 63,
+									"column": 13,
+									"offset": 1459
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "",
+							"position": {
+								"start": {
+									"line": 63,
+									"column": 17,
+									"offset": 1463
+								},
+								"end": {
+									"line": 63,
+									"column": 18,
+									"offset": 1464
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "ClassNames",
+							"position": {
+								"start": {
+									"line": 63,
+									"column": 18,
+									"offset": 1464
+								},
+								"end": {
+									"line": 63,
+									"column": 30,
+									"offset": 1476
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 63,
+							"column": 6,
+							"offset": 1452
+						},
+						"end": {
+							"line": 63,
+							"column": 31,
+							"offset": 1477
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "onClick",
+							"position": {
+								"start": {
+									"line": 63,
+									"column": 41,
+									"offset": 1487
+								},
+								"end": {
+									"line": 63,
+									"column": 50,
+									"offset": 1496
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 63,
+							"column": 32,
+							"offset": 1478
+						},
+						"end": {
+							"line": 63,
+							"column": 50,
+							"offset": 1496
+						}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 63,
+							"column": 51,
+							"offset": 1497
+						},
+						"end": {
+							"line": 64,
+							"column": 3,
+							"offset": 1500
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "slot",
+					"properties": [],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 64,
+							"column": 3,
+							"offset": 1500
+						},
+						"end": {
+							"line": 64,
+							"column": 11,
+							"offset": 1508
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 64,
+							"column": 11,
+							"offset": 1508
+						},
+						"end": {
+							"line": 65,
+							"column": 1,
+							"offset": 1509
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 63,
+					"column": 1,
+					"offset": 1447
+				},
+				"end": {
+					"line": 65,
+					"column": 7,
+					"offset": 1515
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 65,
+			"column": 7,
+			"offset": 1515
+		}
+	}
+}

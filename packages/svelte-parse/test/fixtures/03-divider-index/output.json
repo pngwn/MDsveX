@@ -1,0 +1,307 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "use",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "use",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 17,
+									"offset": 21
+								},
+								"end": {
+									"line": 2,
+									"column": 22,
+									"offset": 26
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 2,
+							"column": 5,
+							"offset": 9
+						},
+						"end": {
+							"line": 2,
+							"column": 22,
+							"offset": 26
+						}
+					},
+					"specifier": "actions"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "use",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 3,
+							"column": 5,
+							"offset": 31
+						},
+						"end": {}
+					},
+					"specifier": "events"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "clsxd(\n        'ui',\n        direction,\n        inverted && 'inverted',\n        fitted && 'fitted',\n        hidden && 'hidden',\n        section && 'section',\n        clearing && 'clearing',\n        className,\n        'divider'\n    )",
+							"position": {
+								"start": {
+									"line": 4,
+									"column": 12,
+									"offset": 53
+								},
+								"end": {
+									"line": 14,
+									"column": 7,
+									"offset": 287
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 4,
+							"column": 5,
+							"offset": 46
+						},
+						"end": {
+							"line": 14,
+							"column": 8,
+							"offset": 288
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "...exclude($$props, ['use', 'class', 'direction', 'inverted', 'fitted', 'hidden', 'section', 'clearing'])",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "...exclude($$props, ['use', 'class', 'direction', 'inverted', 'fitted', 'hidden', 'section', 'clearing'])"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 15,
+							"column": 5,
+							"offset": 293
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "svelteElement",
+					"tagName": "slot",
+					"properties": [],
+					"selfClosing": false,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 16,
+							"column": 2,
+							"offset": 402
+						},
+						"end": {
+							"line": 16,
+							"column": 15,
+							"offset": 415
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 16,
+					"column": 21,
+					"offset": 421
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 16,
+					"column": 21,
+					"offset": 421
+				},
+				"end": {
+					"line": 18,
+					"column": 1,
+					"offset": 423
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "context",
+					"value": [
+						{
+							"type": "text",
+							"value": "module",
+							"position": {
+								"start": {
+									"line": 18,
+									"column": 18,
+									"offset": 440
+								},
+								"end": {
+									"line": 18,
+									"column": 24,
+									"offset": 446
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 18,
+							"column": 9,
+							"offset": 431
+						},
+						"end": {
+							"line": 18,
+							"column": 25,
+							"offset": 447
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n    import { exclude, eventsBuilder, actions, clsxd } from '../../lib'\n    import { current_component } from 'svelte/internal'\n",
+					"position": {
+						"start": {
+							"line": 18,
+							"column": 26,
+							"offset": 448
+						},
+						"end": {
+							"line": 21,
+							"column": 1,
+							"offset": 576
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 18,
+					"column": 1,
+					"offset": 423
+				},
+				"end": {
+					"line": 21,
+					"column": 10,
+					"offset": 585
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 21,
+					"column": 10,
+					"offset": 585
+				},
+				"end": {
+					"line": 23,
+					"column": 1,
+					"offset": 587
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n    const events = eventsBuilder(current_component)\n\n    export let use = [];\n    let className = '';\n    export { className as class };\n\n    export let direction = '';\n    export let inverted = false;\n    export let fitted = false;\n    export let hidden = false;\n    export let section = false;\n    export let clearing = false;\n",
+					"position": {
+						"start": {
+							"line": 23,
+							"column": 9,
+							"offset": 595
+						},
+						"end": {
+							"line": 36,
+							"column": 1,
+							"offset": 925
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 23,
+					"column": 1,
+					"offset": 587
+				},
+				"end": {
+					"line": 36,
+					"column": 10,
+					"offset": 934
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 36,
+			"column": 10,
+			"offset": 934
+		}
+	}
+}

@@ -1,0 +1,109 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import Avatar, { options } from '@sveltekit/ui/Avatar';\n\n  export let src = '/avatar_example.gif';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 5,
+							"column": 1,
+							"offset": 110
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 5,
+					"column": 10,
+					"offset": 119
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 10,
+					"offset": 119
+				},
+				"end": {
+					"line": 7,
+					"column": 1,
+					"offset": 121
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Avatar",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "src",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "src"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 9,
+							"offset": 129
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 7,
+					"column": 1,
+					"offset": 121
+				},
+				"end": {
+					"line": 7,
+					"column": 24,
+					"offset": 144
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 7,
+			"column": 24,
+			"offset": 144
+		}
+	}
+}

@@ -1,0 +1,193 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tlet src = 'tutorial/image.gif';\n\tlet name = 'Rick Astley';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 4,
+							"column": 1,
+							"offset": 69
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 4,
+					"column": 10,
+					"offset": 78
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 4,
+					"column": 10,
+					"offset": 78
+				},
+				"end": {
+					"line": 6,
+					"column": 1,
+					"offset": 80
+				}
+			}
+		},
+		{
+			"type": "comment",
+			"value": " {src} is short for src={src} ",
+			"position": {
+				"start": {
+					"line": 6,
+					"column": 1,
+					"offset": 80
+				},
+				"end": {
+					"line": 6,
+					"column": 38,
+					"offset": 117
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 6,
+					"column": 38,
+					"offset": 117
+				},
+				"end": {
+					"line": 7,
+					"column": 1,
+					"offset": 118
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "img",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "src",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "src"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 6,
+							"offset": 123
+						},
+						"end": {}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "alt",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "name",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 17,
+									"offset": 134
+								},
+								"end": {
+									"line": 7,
+									"column": 23,
+									"offset": 140
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "dancing",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 23,
+									"offset": 140
+								},
+								"end": {
+									"line": 7,
+									"column": 31,
+									"offset": 148
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 12,
+							"offset": 129
+						},
+						"end": {
+							"line": 7,
+							"column": 32,
+							"offset": 149
+						}
+					}
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 7,
+					"column": 1,
+					"offset": 118
+				},
+				"end": {
+					"line": 7,
+					"column": 33,
+					"offset": 150
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 7,
+			"column": 33,
+			"offset": 150
+		}
+	}
+}
