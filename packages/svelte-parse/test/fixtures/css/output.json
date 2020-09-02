@@ -1,97 +1,105 @@
 {
-	"html": {
-		"start": 0,
-		"end": 14,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 14,
-				"type": "Element",
-				"name": "div",
-				"attributes": [],
-				"children": [
-					{
-						"start": 5,
-						"end": 8,
-						"type": "Text",
-						"raw": "foo",
-						"data": "foo"
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "foo",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 6,
+							"offset": 5
+						},
+						"end": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						}
 					}
-				]
-			},
-			{
-				"start": 14,
-				"end": 16,
-				"type": "Text",
-				"raw": "\n\n",
-				"data": "\n\n"
-			}
-		]
-	},
-	"css": {
-		"type": "Style",
-		"start": 16,
-		"end": 56,
-		"attributes": [],
-		"children": [
-			{
-				"type": "Rule",
-				"selector": {
-					"type": "SelectorList",
-					"children": [
-						{
-							"type": "Selector",
-							"children": [
-								{
-									"type": "TypeSelector",
-									"name": "div",
-									"start": 25,
-									"end": 28
-								}
-							],
-							"start": 25,
-							"end": 28
-						}
-					],
-					"start": 25,
-					"end": 28
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
 				},
-				"block": {
-					"type": "Block",
-					"children": [
-						{
-							"type": "Declaration",
-							"important": false,
-							"property": "color",
-							"value": {
-								"type": "Value",
-								"children": [
-									{
-										"type": "Identifier",
-										"name": "red",
-										"start": 40,
-										"end": 43
-									}
-								],
-								"start": 39,
-								"end": 43
-							},
-							"start": 33,
-							"end": 43
-						}
-					],
-					"start": 29,
-					"end": 47
-				},
-				"start": 25,
-				"end": 47
+				"end": {
+					"line": 1,
+					"column": 15,
+					"offset": 14
+				}
 			}
-		],
-		"content": {
-			"start": 23,
-			"end": 48,
-			"styles": "\n\tdiv {\n\t\tcolor: red;\n\t}\n"
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 15,
+					"offset": 14
+				},
+				"end": {
+					"line": 3,
+					"column": 1,
+					"offset": 16
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tdiv {\n\t\tcolor: red;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 3,
+							"column": 8,
+							"offset": 23
+						},
+						"end": {
+							"line": 7,
+							"column": 1,
+							"offset": 48
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 3,
+					"column": 1,
+					"offset": 16
+				},
+				"end": {
+					"line": 7,
+					"column": 9,
+					"offset": 56
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 7,
+			"column": 9,
+			"offset": 56
 		}
 	}
 }

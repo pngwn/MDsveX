@@ -1,112 +1,105 @@
 {
-	"html": {
-		"start": 30,
-		"end": 48,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 28,
-				"end": 30,
-				"type": "Text",
-				"raw": "\n\n",
-				"data": "\n\n"
-			},
-			{
-				"start": 30,
-				"end": 48,
-				"type": "InlineComponent",
-				"name": "Widget",
-				"attributes": [
-					{
-						"start": 38,
-						"end": 46,
-						"type": "Binding",
-						"name": "foo",
-						"modifiers": [],
-						"expression": {
-							"start": 43,
-							"end": 46,
-							"type": "Identifier",
-							"name": "foo"
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tlet foo;\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 19
 						}
 					}
-				],
-				"children": []
-			}
-		]
-	},
-	"instance": {
-		"type": "Script",
-		"start": 0,
-		"end": 28,
-		"context": "default",
-		"content": {
-			"type": "Program",
-			"start": 8,
-			"end": 19,
-			"loc": {
+				}
+			],
+			"position": {
 				"start": {
 					"line": 1,
-					"column": 0
+					"column": 1,
+					"offset": 0
 				},
 				"end": {
 					"line": 3,
-					"column": 0
+					"column": 10,
+					"offset": 28
 				}
-			},
-			"body": [
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 3,
+					"column": 10,
+					"offset": 28
+				},
+				"end": {
+					"line": 5,
+					"column": 1,
+					"offset": 30
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Widget",
+			"properties": [
 				{
-					"type": "VariableDeclaration",
-					"start": 10,
-					"end": 18,
-					"loc": {
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
 						"start": {
-							"line": 2,
-							"column": 1
+							"line": 5,
+							"column": 9,
+							"offset": 38
 						},
-						"end": {
-							"line": 2,
-							"column": 9
-						}
+						"end": {}
 					},
-					"declarations": [
-						{
-							"type": "VariableDeclarator",
-							"start": 14,
-							"end": 17,
-							"loc": {
-								"start": {
-									"line": 2,
-									"column": 5
-								},
-								"end": {
-									"line": 2,
-									"column": 8
-								}
-							},
-							"id": {
-								"type": "Identifier",
-								"start": 14,
-								"end": 17,
-								"loc": {
-									"start": {
-										"line": 2,
-										"column": 5
-									},
-									"end": {
-										"line": 2,
-										"column": 8
-									}
-								},
-								"name": "foo"
-							},
-							"init": null
-						}
-					],
-					"kind": "let"
+					"specifier": "foo"
 				}
 			],
-			"sourceType": "module"
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 1,
+					"offset": 30
+				},
+				"end": {
+					"line": 5,
+					"column": 19,
+					"offset": 48
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 5,
+			"column": 19,
+			"offset": 48
 		}
 	}
 }

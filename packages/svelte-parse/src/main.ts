@@ -787,9 +787,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			continue;
 		}
 
-		if (get_state() === 'START_QUOTED_ATTR_VALUE') {
-		}
-
 		if (get_state() === 'IN_QUOTED_ATTR_VALUE') {
 			// if we meet our matching quote the attribute has ended
 			if (value[index] === quote_type) {

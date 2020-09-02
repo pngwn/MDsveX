@@ -3,30 +3,51 @@
 	"children": [
 		{
 			"type": "svelteElement",
-			"name": "input",
-			"selfClosing": true,
+			"tagName": "input",
 			"properties": [
 				{
 					"type": "svelteDirective",
 					"name": "use",
-					"specifier": "autofocus",
-					"value": "autofocus",
-					"shorthand": true,
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
 					"position": {
-						"start": { "row": 1, "col": 8, "offset": 7 },
-						"end": { "row": 1, "col": 21, "offset": 20 }
-					}
+						"start": {
+							"line": 1,
+							"column": 8,
+							"offset": 7
+						},
+						"end": {}
+					},
+					"specifier": "autofocus"
 				}
 			],
+			"selfClosing": true,
+			"children": [],
 			"position": {
-				"start": { "row": 1, "col": 1, "offset": 0 },
-				"end": { "row": 1, "col": 22, "offset": 21 }
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 1,
+					"column": 22,
+					"offset": 21
+				}
 			}
 		}
 	],
-
 	"position": {
-		"start": { "row": 1, "col": 1, "offset": 0 },
-		"end": { "row": 1, "col": 22, "offset": 21 }
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 1,
+			"column": 22,
+			"offset": 21
+		}
 	}
 }

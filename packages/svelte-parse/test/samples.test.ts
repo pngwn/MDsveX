@@ -5,23 +5,33 @@ import { parse } from '../src/main';
 
 const fixtures = path.join(__dirname, 'fixtures');
 
-const inputs_paths = fs
+const inputs = fs
 	.readdirSync(fixtures, { encoding: 'utf-8' })
-	.map((f) =>
-		f.startsWith('error')
-			? false
-			: fs.readFileSync(path.join(fixtures, f, 'input.svelte')).toString()
-	)
+	.filter((f) => !f.startsWith('error') && f !== 'generate.ts')
+	.map((f) => [
+		f,
+		fs.readFileSync(path.join(fixtures, f, 'input.svelte')).toString(),
+		JSON.parse(
+			fs.readFileSync(path.join(fixtures, f, 'output.json')).toString()
+		),
+	])
 	.filter(Boolean);
 
-inputs_paths.forEach((f) => {
-	console.log('=====================');
-	console.log(f);
-	console.log(
-		JSON.stringify(
-			parse({ value: f as string, generatePositions: true }),
-			null,
-			2
-		)
-	);
+const input_outputs = inputs.map(([f, input, output]) => [
+	f,
+	parse({ value: input, generatePositions: true }),
+	output,
+]);
+
+import { suite } from 'uvu';
+import * as assert from 'uvu/assert';
+
+const samples = suite('parsing-samples');
+
+input_outputs.forEach(([testname, input, output], i) => {
+	samples(`inputs should equal outputs: ${testname}`, () => {
+		assert.equal(input, output);
+	});
 });
+
+samples.run();

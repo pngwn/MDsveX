@@ -1,25 +1,53 @@
 {
-	"html": {
-		"start": 0,
-		"end": 19,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 19,
-				"type": "Element",
-				"name": "span",
-				"attributes": [],
-				"children": [
-					{
-						"start": 6,
-						"end": 12,
-						"type": "Text",
-						"raw": "&nbsp;",
-						"data": " "
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "span",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "&nbsp;",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 7,
+							"offset": 6
+						},
+						"end": {
+							"line": 1,
+							"column": 13,
+							"offset": 12
+						}
 					}
-				]
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 1,
+					"column": 20,
+					"offset": 19
+				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 1,
+			"column": 20,
+			"offset": 19
+		}
 	}
 }

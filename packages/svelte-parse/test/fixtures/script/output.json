@@ -1,150 +1,137 @@
 {
-	"html": {
-		"start": 41,
-		"end": 63,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 39,
-				"end": 41,
-				"type": "Text",
-				"raw": "\n\n",
-				"data": "\n\n"
-			},
-			{
-				"start": 41,
-				"end": 63,
-				"type": "Element",
-				"name": "h1",
-				"attributes": [],
-				"children": [
-					{
-						"start": 45,
-						"end": 51,
-						"type": "Text",
-						"raw": "Hello ",
-						"data": "Hello "
-					},
-					{
-						"start": 51,
-						"end": 57,
-						"type": "MustacheTag",
-						"expression": {
-							"type": "Identifier",
-							"start": 52,
-							"end": 56,
-							"loc": {
-								"start": {
-									"line": 5,
-									"column": 11
-								},
-								"end": {
-									"line": 5,
-									"column": 15
-								}
-							},
-							"name": "name"
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tlet name = 'world';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 30
 						}
-					},
-					{
-						"start": 57,
-						"end": 58,
-						"type": "Text",
-						"raw": "!",
-						"data": "!"
 					}
-				]
-			}
-		]
-	},
-	"instance": {
-		"type": "Script",
-		"start": 0,
-		"end": 39,
-		"context": "default",
-		"content": {
-			"type": "Program",
-			"start": 8,
-			"end": 30,
-			"loc": {
+				}
+			],
+			"position": {
 				"start": {
 					"line": 1,
-					"column": 0
+					"column": 1,
+					"offset": 0
 				},
 				"end": {
 					"line": 3,
-					"column": 0
+					"column": 10,
+					"offset": 39
 				}
-			},
-			"body": [
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 3,
+					"column": 10,
+					"offset": 39
+				},
+				"end": {
+					"line": 5,
+					"column": 1,
+					"offset": 41
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "h1",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
 				{
-					"type": "VariableDeclaration",
-					"start": 10,
-					"end": 29,
-					"loc": {
+					"type": "text",
+					"value": "Hello ",
+					"position": {
 						"start": {
-							"line": 2,
-							"column": 1
+							"line": 5,
+							"column": 5,
+							"offset": 45
 						},
 						"end": {
-							"line": 2,
-							"column": 20
+							"line": 5,
+							"column": 11,
+							"offset": 51
 						}
-					},
-					"declarations": [
-						{
-							"type": "VariableDeclarator",
-							"start": 14,
-							"end": 28,
-							"loc": {
-								"start": {
-									"line": 2,
-									"column": 5
-								},
-								"end": {
-									"line": 2,
-									"column": 19
-								}
-							},
-							"id": {
-								"type": "Identifier",
-								"start": 14,
-								"end": 18,
-								"loc": {
-									"start": {
-										"line": 2,
-										"column": 5
-									},
-									"end": {
-										"line": 2,
-										"column": 9
-									}
-								},
-								"name": "name"
-							},
-							"init": {
-								"type": "Literal",
-								"start": 21,
-								"end": 28,
-								"loc": {
-									"start": {
-										"line": 2,
-										"column": 12
-									},
-									"end": {
-										"line": 2,
-										"column": 19
-									}
-								},
-								"value": "world",
-								"raw": "'world'"
-							}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "name",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 11,
+							"offset": 51
+						},
+						"end": {
+							"line": 5,
+							"column": 17,
+							"offset": 57
 						}
-					],
-					"kind": "let"
+					}
+				},
+				{
+					"type": "text",
+					"value": "!",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 17,
+							"offset": 57
+						},
+						"end": {
+							"line": 5,
+							"column": 18,
+							"offset": 58
+						}
+					}
 				}
 			],
-			"sourceType": "module"
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 1,
+					"offset": 41
+				},
+				"end": {
+					"line": 5,
+					"column": 23,
+					"offset": 63
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 5,
+			"column": 23,
+			"offset": 63
 		}
 	}
 }

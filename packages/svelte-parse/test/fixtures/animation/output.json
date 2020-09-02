@@ -1,79 +1,154 @@
 {
-	"html": {
-		"start": 0,
-		"end": 70,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 70,
-				"type": "EachBlock",
-				"expression": {
-					"type": "Identifier",
-					"start": 7,
-					"end": 13,
-					"loc": {
-						"start": {
-							"line": 1,
-							"column": 7
-						},
-						"end": {
-							"line": 1,
-							"column": 13
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteBranchingBlock",
+			"name": "each",
+			"branches": [
+				{
+					"type": "svelteBranch",
+					"name": "each",
+					"expression": {
+						"type": "svelteExpression",
+						"value": "things as thing (thing)",
+						"position": {
+							"start": {
+								"line": 1,
+								"column": 8,
+								"offset": 7
+							},
+							"end": {
+								"line": 1,
+								"column": 31,
+								"offset": 30
+							}
 						}
 					},
-					"name": "things"
-				},
-				"children": [
-					{
-						"start": 33,
-						"end": 62,
-						"type": "Element",
-						"name": "div",
-						"attributes": [
-							{
-								"start": 38,
-								"end": 50,
-								"type": "Animation",
-								"name": "flip",
-								"modifiers": [],
-								"expression": null
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 32,
+									"offset": 31
+								},
+								"end": {
+									"line": 2,
+									"column": 2,
+									"offset": 33
+								}
 							}
-						],
-						"children": [
-							{
-								"start": 51,
-								"end": 56,
-								"type": "Text",
-								"raw": "flips",
-								"data": "flips"
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "div",
+							"properties": [
+								{
+									"type": "svelteDirective",
+									"name": "animate",
+									"value": [],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 2,
+											"column": 7,
+											"offset": 38
+										},
+										"end": {}
+									},
+									"specifier": "flip"
+								}
+							],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "flips",
+									"position": {
+										"start": {
+											"line": 2,
+											"column": 20,
+											"offset": 51
+										},
+										"end": {
+											"line": 2,
+											"column": 25,
+											"offset": 56
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 2,
+									"offset": 33
+								},
+								"end": {
+									"line": 2,
+									"column": 31,
+									"offset": 62
+								}
 							}
-						]
+						},
+						{
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 31,
+									"offset": 62
+								},
+								"end": {
+									"line": 3,
+									"column": 1,
+									"offset": 63
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 1,
+							"offset": 0
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 63
+						}
 					}
-				],
-				"context": {
-					"type": "Identifier",
-					"name": "thing",
-					"start": 17,
-					"end": 22
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
 				},
-				"key": {
-					"type": "Identifier",
-					"start": 24,
-					"end": 29,
-					"loc": {
-						"start": {
-							"line": 1,
-							"column": 24
-						},
-						"end": {
-							"line": 1,
-							"column": 29
-						}
-					},
-					"name": "thing"
+				"end": {
+					"line": 3,
+					"column": 8,
+					"offset": 70
 				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 3,
+			"column": 8,
+			"offset": 70
+		}
 	}
 }

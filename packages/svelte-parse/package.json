@@ -7,7 +7,8 @@
 		"build": "rollup -c",
 		"test:filter": "uvu -r ts-node/register test",
 		"test": "uvu -r ts-node/register test test.ts$",
-		"test:watch": "watchlist src test -- pnpm test"
+		"test:watch": "watchlist src test -- pnpm test",
+		"test:generate": "node -r ts-node/register ./test/fixtures/generate.ts"
 	},
 	"keywords": [
 		"svelte",

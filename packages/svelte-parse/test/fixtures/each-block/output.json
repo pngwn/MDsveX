@@ -1,68 +1,137 @@
 {
-	"html": {
-		"start": 0,
-		"end": 50,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 50,
-				"type": "EachBlock",
-				"expression": {
-					"type": "Identifier",
-					"start": 7,
-					"end": 14,
-					"loc": {
-						"start": {
-							"line": 1,
-							"column": 7
-						},
-						"end": {
-							"line": 1,
-							"column": 14
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteBranchingBlock",
+			"name": "each",
+			"branches": [
+				{
+					"type": "svelteBranch",
+					"name": "each",
+					"expression": {
+						"type": "svelteExpression",
+						"value": "animals as animal",
+						"position": {
+							"start": {
+								"line": 1,
+								"column": 8,
+								"offset": 7
+							},
+							"end": {
+								"line": 1,
+								"column": 25,
+								"offset": 24
+							}
 						}
 					},
-					"name": "animals"
-				},
-				"children": [
-					{
-						"start": 27,
-						"end": 42,
-						"type": "Element",
-						"name": "p",
-						"attributes": [],
-						"children": [
-							{
-								"start": 30,
-								"end": 38,
-								"type": "MustacheTag",
-								"expression": {
-									"type": "Identifier",
-									"start": 31,
-									"end": 37,
-									"loc": {
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 26,
+									"offset": 25
+								},
+								"end": {
+									"line": 2,
+									"column": 2,
+									"offset": 27
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "p",
+							"properties": [],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "svelteExpression",
+									"value": "animal",
+									"position": {
 										"start": {
 											"line": 2,
-											"column": 5
+											"column": 5,
+											"offset": 30
 										},
 										"end": {
 											"line": 2,
-											"column": 11
+											"column": 13,
+											"offset": 38
 										}
-									},
-									"name": "animal"
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 2,
+									"offset": 27
+								},
+								"end": {
+									"line": 2,
+									"column": 17,
+									"offset": 42
 								}
 							}
-						]
+						},
+						{
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 17,
+									"offset": 42
+								},
+								"end": {
+									"line": 3,
+									"column": 1,
+									"offset": 43
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 1,
+							"offset": 0
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 43
+						}
 					}
-				],
-				"context": {
-					"type": "Identifier",
-					"name": "animal",
-					"start": 18,
-					"end": 24
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 3,
+					"column": 8,
+					"offset": 50
 				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 3,
+			"column": 8,
+			"offset": 50
+		}
 	}
 }

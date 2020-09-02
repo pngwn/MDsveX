@@ -1,59 +1,121 @@
 {
-	"html": {
-		"start": 0,
-		"end": 61,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 61,
-				"type": "Element",
-				"name": "textarea",
-				"attributes": [
-					{
-						"type": "Attribute",
-						"name": "value",
-						"value": [
-							{
-								"start": 10,
-								"end": 41,
-								"type": "Text",
-								"raw": "\n\t<p>not actually an element. ",
-								"data": "\n\t<p>not actually an element. "
-							},
-							{
-								"start": 40,
-								"end": 45,
-								"type": "MustacheTag",
-								"expression": {
-									"type": "Identifier",
-									"start": 41,
-									"end": 44,
-									"loc": {
-										"start": {
-											"line": 2,
-											"column": 30
-										},
-										"end": {
-											"line": 2,
-											"column": 33
-										}
-									},
-									"name": "foo"
-								}
-							},
-							{
-								"start": 45,
-								"end": 50,
-								"type": "Text",
-								"raw": "</p>\n",
-								"data": "</p>\n"
-							}
-						]
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "textarea",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 11,
+							"offset": 10
+						},
+						"end": {
+							"line": 2,
+							"column": 2,
+							"offset": 12
+						}
 					}
-				],
-				"children": []
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "p",
+					"properties": [],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "not actually an element. ",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 5,
+									"offset": 15
+								},
+								"end": {
+									"line": 2,
+									"column": 30,
+									"offset": 40
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "foo",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 30,
+									"offset": 40
+								},
+								"end": {
+									"line": 2,
+									"column": 35,
+									"offset": 45
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 2,
+							"column": 2,
+							"offset": 12
+						},
+						"end": {
+							"line": 2,
+							"column": 39,
+							"offset": 49
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 2,
+							"column": 39,
+							"offset": 49
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 50
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 3,
+					"column": 12,
+					"offset": 61
+				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 3,
+			"column": 12,
+			"offset": 61
+		}
 	}
 }

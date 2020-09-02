@@ -1,33 +1,73 @@
 {
-	"html": {
-		"start": 0,
-		"end": 21,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 21,
-				"type": "Element",
-				"name": "div",
-				"attributes": [
-					{
-						"start": 5,
-						"end": 14,
-						"type": "Attribute",
-						"name": "class",
-						"value": [
-							{
-								"start": 11,
-								"end": 14,
-								"type": "Text",
-								"raw": "foo",
-								"data": "foo"
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "foo",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 12,
+									"offset": 11
+								},
+								"end": {
+									"line": 1,
+									"column": 15,
+									"offset": 14
+								}
 							}
-						]
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 6,
+							"offset": 5
+						},
+						"end": {
+							"line": 1,
+							"column": 15,
+							"offset": 14
+						}
 					}
-				],
-				"children": []
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 1,
+					"column": 22,
+					"offset": 21
+				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 1,
+			"column": 22,
+			"offset": 21
+		}
 	}
 }

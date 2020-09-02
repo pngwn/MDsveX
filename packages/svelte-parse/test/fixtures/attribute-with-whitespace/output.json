@@ -1,49 +1,91 @@
 {
-	"html": {
-		"start": 0,
-		"end": 38,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 38,
-				"type": "Element",
-				"name": "button",
-				"attributes": [
-					{
-						"start": 8,
-						"end": 23,
-						"type": "EventHandler",
-						"name": "click",
-						"modifiers": [],
-						"expression": {
-							"type": "Identifier",
-							"start": 19,
-							"end": 22,
-							"loc": {
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "button",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "foo",
+							"position": {
 								"start": {
 									"line": 1,
-									"column": 19
+									"column": 19,
+									"offset": 18
 								},
 								"end": {
 									"line": 1,
-									"column": 22
+									"column": 24,
+									"offset": 23
 								}
-							},
-							"name": "foo"
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 1,
+							"column": 24,
+							"offset": 23
+						}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "Click",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 25,
+							"offset": 24
+						},
+						"end": {
+							"line": 1,
+							"column": 30,
+							"offset": 29
 						}
 					}
-				],
-				"children": [
-					{
-						"start": 24,
-						"end": 29,
-						"type": "Text",
-						"raw": "Click",
-						"data": "Click"
-					}
-				]
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 1,
+					"column": 39,
+					"offset": 38
+				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 1,
+			"column": 39,
+			"offset": 38
+		}
 	}
 }

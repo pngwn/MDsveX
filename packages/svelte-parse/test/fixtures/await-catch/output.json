@@ -1,174 +1,255 @@
 {
-	"html": {
-		"start": 0,
-		"end": 99,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 99,
-				"type": "AwaitBlock",
-				"expression": {
-					"type": "Identifier",
-					"start": 8,
-					"end": 18,
-					"loc": {
-						"start": {
-							"line": 1,
-							"column": 8
-						},
-						"end": {
-							"line": 1,
-							"column": 18
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteBranchingBlock",
+			"name": "await",
+			"branches": [
+				{
+					"type": "svelteBranch",
+					"name": "await",
+					"expression": {
+						"type": "svelteExpression",
+						"value": "thePromise",
+						"position": {
+							"start": {
+								"line": 1,
+								"column": 9,
+								"offset": 8
+							},
+							"end": {
+								"line": 1,
+								"column": 19,
+								"offset": 18
+							}
 						}
 					},
-					"name": "thePromise"
-				},
-				"value": null,
-				"error": {
-					"type": "Identifier",
-					"name": "theError",
-					"start": 47,
-					"end": 55
-				},
-				"pending": {
-					"start": 19,
-					"end": 39,
-					"type": "PendingBlock",
 					"children": [
 						{
-							"start": 19,
-							"end": 21,
-							"type": "Text",
-							"raw": "\n\t",
-							"data": "\n\t"
-						},
-						{
-							"start": 21,
-							"end": 38,
-							"type": "Element",
-							"name": "p",
-							"attributes": [],
-							"children": [
-								{
-									"start": 24,
-									"end": 34,
-									"type": "Text",
-									"raw": "loading...",
-									"data": "loading..."
-								}
-							]
-						},
-						{
-							"start": 38,
-							"end": 39,
-							"type": "Text",
-							"raw": "\n",
-							"data": "\n"
-						}
-					],
-					"skip": false
-				},
-				"then": {
-					"start": null,
-					"end": null,
-					"type": "ThenBlock",
-					"children": [],
-					"skip": true
-				},
-				"catch": {
-					"start": 39,
-					"end": 91,
-					"type": "CatchBlock",
-					"children": [
-						{
-							"start": 56,
-							"end": 58,
-							"type": "Text",
-							"raw": "\n\t",
-							"data": "\n\t"
-						},
-						{
-							"start": 58,
-							"end": 90,
-							"type": "Element",
-							"name": "p",
-							"attributes": [],
-							"children": [
-								{
-									"start": 61,
-									"end": 68,
-									"type": "Text",
-									"raw": "oh no! ",
-									"data": "oh no! "
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 20,
+									"offset": 19
 								},
+								"end": {
+									"line": 2,
+									"column": 2,
+									"offset": 21
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "p",
+							"properties": [],
+							"selfClosing": false,
+							"children": [
 								{
-									"start": 68,
-									"end": 86,
-									"type": "MustacheTag",
-									"expression": {
-										"type": "MemberExpression",
-										"start": 69,
-										"end": 85,
-										"loc": {
-											"start": {
-												"line": 4,
-												"column": 12
-											},
-											"end": {
-												"line": 4,
-												"column": 28
-											}
+									"type": "text",
+									"value": "loading...",
+									"position": {
+										"start": {
+											"line": 2,
+											"column": 5,
+											"offset": 24
 										},
-										"object": {
-											"type": "Identifier",
-											"start": 69,
-											"end": 77,
-											"loc": {
-												"start": {
-													"line": 4,
-													"column": 12
-												},
-												"end": {
-													"line": 4,
-													"column": 20
-												}
-											},
-											"name": "theError"
-										},
-										"property": {
-											"type": "Identifier",
-											"start": 78,
-											"end": 85,
-											"loc": {
-												"start": {
-													"line": 4,
-													"column": 21
-												},
-												"end": {
-													"line": 4,
-													"column": 28
-												}
-											},
-											"name": "message"
-										},
-										"computed": false,
-										"optional": false
+										"end": {
+											"line": 2,
+											"column": 15,
+											"offset": 34
+										}
 									}
 								}
-							]
+							],
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 2,
+									"offset": 21
+								},
+								"end": {
+									"line": 2,
+									"column": 19,
+									"offset": 38
+								}
+							}
 						},
 						{
-							"start": 90,
-							"end": 91,
-							"type": "Text",
-							"raw": "\n",
-							"data": "\n"
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 19,
+									"offset": 38
+								},
+								"end": {
+									"line": 3,
+									"column": 1,
+									"offset": 39
+								}
+							}
 						}
 					],
-					"skip": false
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 1,
+							"offset": 0
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 39
+						}
+					}
+				},
+				{
+					"type": "svelteBranch",
+					"name": "catch",
+					"expression": {
+						"type": "svelteExpression",
+						"value": "theError",
+						"position": {
+							"start": {
+								"line": 3,
+								"column": 9,
+								"offset": 47
+							},
+							"end": {
+								"line": 3,
+								"column": 17,
+								"offset": 55
+							}
+						}
+					},
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 3,
+									"column": 18,
+									"offset": 56
+								},
+								"end": {
+									"line": 4,
+									"column": 2,
+									"offset": 58
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "p",
+							"properties": [],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "oh no! ",
+									"position": {
+										"start": {
+											"line": 4,
+											"column": 5,
+											"offset": 61
+										},
+										"end": {
+											"line": 4,
+											"column": 12,
+											"offset": 68
+										}
+									}
+								},
+								{
+									"type": "svelteExpression",
+									"value": "theError.message",
+									"position": {
+										"start": {
+											"line": 4,
+											"column": 12,
+											"offset": 68
+										},
+										"end": {
+											"line": 4,
+											"column": 30,
+											"offset": 86
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 4,
+									"column": 2,
+									"offset": 58
+								},
+								"end": {
+									"line": 4,
+									"column": 34,
+									"offset": 90
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 4,
+									"column": 34,
+									"offset": 90
+								},
+								"end": {
+									"line": 5,
+									"column": 1,
+									"offset": 91
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 3,
+							"column": 1,
+							"offset": 39
+						},
+						"end": {
+							"line": 5,
+							"column": 1,
+							"offset": 91
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 5,
+					"column": 9,
+					"offset": 99
 				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 5,
+			"column": 9,
+			"offset": 99
+		}
 	}
 }

@@ -2,26 +2,26 @@
 	"type": "root",
 	"children": [
 		{
-			"type": "svelteElement",
-			"tagName": "input",
+			"type": "svelteComponent",
+			"tagName": "Widget",
 			"properties": [
 				{
-					"type": "svelteDirective",
-					"name": "use",
+					"type": "svelteProperty",
+					"name": "foo",
 					"value": [
 						{
 							"type": "svelteExpression",
-							"value": "'tooltip msg'",
+							"value": "42",
 							"position": {
 								"start": {
 									"line": 1,
-									"column": 21,
-									"offset": 20
+									"column": 13,
+									"offset": 12
 								},
 								"end": {
 									"line": 1,
-									"column": 36,
-									"offset": 35
+									"column": 17,
+									"offset": 16
 								}
 							}
 						}
@@ -31,16 +31,31 @@
 					"position": {
 						"start": {
 							"line": 1,
-							"column": 8,
-							"offset": 7
+							"column": 9,
+							"offset": 8
 						},
 						"end": {
 							"line": 1,
-							"column": 37,
-							"offset": 36
+							"column": 17,
+							"offset": 16
 						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 18,
+							"offset": 17
+						},
+						"end": {}
 					},
-					"specifier": "tooltip"
+					"specifier": "foo"
 				}
 			],
 			"selfClosing": true,
@@ -53,8 +68,8 @@
 				},
 				"end": {
 					"line": 1,
-					"column": 38,
-					"offset": 37
+					"column": 28,
+					"offset": 27
 				}
 			}
 		}
@@ -67,8 +82,8 @@
 		},
 		"end": {
 			"line": 1,
-			"column": 38,
-			"offset": 37
+			"column": 28,
+			"offset": 27
 		}
 	}
 }

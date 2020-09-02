@@ -1,91 +1,227 @@
 {
-	"html": {
-		"start": 0,
-		"end": 77,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 77,
-				"type": "EachBlock",
-				"expression": {
-					"type": "Identifier",
-					"start": 7,
-					"end": 14,
-					"loc": {
-						"start": {
-							"line": 1,
-							"column": 7
-						},
-						"end": {
-							"line": 1,
-							"column": 14
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteBranchingBlock",
+			"name": "each",
+			"branches": [
+				{
+					"type": "svelteBranch",
+					"name": "each",
+					"expression": {
+						"type": "svelteExpression",
+						"value": "animals as animal",
+						"position": {
+							"start": {
+								"line": 1,
+								"column": 8,
+								"offset": 7
+							},
+							"end": {
+								"line": 1,
+								"column": 25,
+								"offset": 24
+							}
 						}
 					},
-					"name": "animals"
-				},
-				"children": [
-					{
-						"start": 27,
-						"end": 42,
-						"type": "Element",
-						"name": "p",
-						"attributes": [],
-						"children": [
-							{
-								"start": 30,
-								"end": 38,
-								"type": "MustacheTag",
-								"expression": {
-									"type": "Identifier",
-									"start": 31,
-									"end": 37,
-									"loc": {
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 26,
+									"offset": 25
+								},
+								"end": {
+									"line": 2,
+									"column": 2,
+									"offset": 27
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "p",
+							"properties": [],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "svelteExpression",
+									"value": "animal",
+									"position": {
 										"start": {
 											"line": 2,
-											"column": 5
+											"column": 5,
+											"offset": 30
 										},
 										"end": {
 											"line": 2,
-											"column": 11
+											"column": 13,
+											"offset": 38
 										}
-									},
-									"name": "animal"
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 2,
+									"offset": 27
+								},
+								"end": {
+									"line": 2,
+									"column": 17,
+									"offset": 42
 								}
 							}
-						]
+						},
+						{
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 17,
+									"offset": 42
+								},
+								"end": {
+									"line": 3,
+									"column": 1,
+									"offset": 43
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 1,
+							"offset": 0
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 43
+						}
 					}
-				],
-				"context": {
-					"type": "Identifier",
-					"name": "animal",
-					"start": 18,
-					"end": 24
 				},
-				"else": {
-					"start": 50,
-					"end": 70,
-					"type": "ElseBlock",
+				{
+					"type": "svelteBranch",
+					"name": "else",
+					"expression": {
+						"type": "svelteExpression",
+						"value": ""
+					},
 					"children": [
 						{
-							"start": 52,
-							"end": 69,
-							"type": "Element",
-							"name": "p",
-							"attributes": [],
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 3,
+									"column": 8,
+									"offset": 50
+								},
+								"end": {
+									"line": 4,
+									"column": 2,
+									"offset": 52
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "p",
+							"properties": [],
+							"selfClosing": false,
 							"children": [
 								{
-									"start": 55,
-									"end": 65,
-									"type": "Text",
-									"raw": "no animals",
-									"data": "no animals"
+									"type": "text",
+									"value": "no animals",
+									"position": {
+										"start": {
+											"line": 4,
+											"column": 5,
+											"offset": 55
+										},
+										"end": {
+											"line": 4,
+											"column": 15,
+											"offset": 65
+										}
+									}
 								}
-							]
+							],
+							"position": {
+								"start": {
+									"line": 4,
+									"column": 2,
+									"offset": 52
+								},
+								"end": {
+									"line": 4,
+									"column": 19,
+									"offset": 69
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 4,
+									"column": 19,
+									"offset": 69
+								},
+								"end": {
+									"line": 5,
+									"column": 1,
+									"offset": 70
+								}
+							}
 						}
-					]
+					],
+					"position": {
+						"start": {
+							"line": 3,
+							"column": 1,
+							"offset": 43
+						},
+						"end": {
+							"line": 5,
+							"column": 1,
+							"offset": 70
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 5,
+					"column": 8,
+					"offset": 77
 				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 5,
+			"column": 8,
+			"offset": 77
+		}
 	}
 }

@@ -1,33 +1,109 @@
 {
-	"html": {
-		"start": 0,
-		"end": 83,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 83,
-				"type": "Element",
-				"name": "div",
-				"attributes": [
-					{
-						"start": 5,
-						"end": 76,
-						"type": "Attribute",
-						"name": "data-foo",
-						"value": [
-							{
-								"start": 15,
-								"end": 75,
-								"type": "Text",
-								"raw": "semi:&quot;space:&quot letter:&quote number:&quot1 end:&quot",
-								"data": "semi:\"space:\" letter:&quote number:&quot1 end:\""
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "data-foo",
+					"value": [
+						{
+							"type": "text",
+							"value": "semi:&quot;space:&quot",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 16,
+									"offset": 15
+								},
+								"end": {}
 							}
-						]
+						},
+						{
+							"type": "text",
+							"value": "letter:&quote",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 38,
+									"offset": 37
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "number:&quot1",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 52,
+									"offset": 51
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "end:&quot",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 66,
+									"offset": 65
+								},
+								"end": {
+									"line": 1,
+									"column": 76,
+									"offset": 75
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 6,
+							"offset": 5
+						},
+						"end": {
+							"line": 1,
+							"column": 77,
+							"offset": 76
+						}
 					}
-				],
-				"children": []
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 1,
+					"column": 84,
+					"offset": 83
+				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 1,
+			"column": 84,
+			"offset": 83
+		}
 	}
 }
