@@ -10,9 +10,7 @@ const inputs_paths = fs
 	.map((f) =>
 		f.startsWith('error')
 			? false
-			: fs.readFileSync(path.join(fixtures, f, 'input.svelte'), {
-					encoding: 'utf-8',
-			  })
+			: fs.readFileSync(path.join(fixtures, f, 'input.svelte')).toString()
 	)
 	.filter(Boolean);
 
