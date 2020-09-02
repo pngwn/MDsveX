@@ -787,6 +787,9 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			continue;
 		}
 
+		if (get_state() === 'START_QUOTED_ATTR_VALUE') {
+		}
+
 		if (get_state() === 'IN_QUOTED_ATTR_VALUE') {
 			// if we meet our matching quote the attribute has ended
 			if (value[index] === quote_type) {
@@ -851,13 +854,17 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			// if (
-			// 	(s = value.charCodeAt(index)) === SLASH ||
-			// 	s === CLOSE_ANGLE_BRACKET
-			// ) {
-			// 	// this is a parsing error, we can't recover from this.
-			// 	// i'm not sure this is actually true
-			// }
+			if (value.charCodeAt(index - 1) === CLOSE_BRACE) {
+				node_stack.pop();
+				const _n = { type: 'text', value: value[index] };
+				if (generatePositions)
+					//@ts-ignore
+					_n.position = { start: place(), end: {} };
+				(current_node() as Property).value.push(_n as Text);
+				node_stack.push(_n);
+				chomp();
+				continue;
+			}
 
 			if (current_node().type === 'blank') {
 				node_stack.pop();
