@@ -4,7 +4,7 @@ import * as assert from 'uvu/assert';
 import { VoidBlock, Root, Node, Point } from 'svast';
 import { parseNode, parse } from '../src/main';
 
-const block = suite('parse-element');
+const block = suite('parse-block');
 
 const childParser: () => [Node[], Point & { index?: number }, number] = () => [
 	[<Node>{ type: 'fake' }],

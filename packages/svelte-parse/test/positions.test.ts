@@ -7,7 +7,6 @@ import {
 	SvelteTag,
 	SvelteExpression,
 	VoidBlock,
-	BranchingBlock,
 	Comment,
 	Root,
 	Node,
@@ -15,7 +14,6 @@ import {
 } from 'svast';
 
 import { parseNode, parse } from '../src/main';
-import { void_els } from '../src/void_els';
 
 const childParser: () => [Node[], Point & { index?: number }, number] = () => [
 	[<Node>{ type: 'fake' }],
@@ -23,7 +21,7 @@ const childParser: () => [Node[], Point & { index?: number }, number] = () => [
 	0,
 ];
 
-const position = suite('parse-element');
+const position = suite('parse-positions');
 
 position('tracks the location of expression nodes', () => {
 	//@ts-ignore
