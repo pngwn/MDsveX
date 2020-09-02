@@ -155,23 +155,19 @@ void_els.forEach((el) => {
 	});
 });
 
-element('parses attribute values containing colons', () => {
+element.only('parses attribute values containing colons', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
 		childParser,
-		value: `<a href=https://www.google.com>Google</a>>`,
+		value: `<a href=https://www.google.com />`,
 	});
 
 	assert.equal(parsed, {
 		type: 'svelteElement',
 		tagName: 'a',
-		selfClosing: false,
-		children: [
-			{
-				type: 'fake',
-			},
-		],
+		selfClosing: true,
+		children: [],
 		properties: [
 			{
 				type: 'svelteProperty',

@@ -19,7 +19,7 @@ inputs_paths.forEach((f) => {
 	console.log(f);
 	console.log(
 		JSON.stringify(
-			parse({ value: f as string, generatePositions: false }),
+			parse({ value: f as string, generatePositions: true }),
 			null,
 			2
 		)
