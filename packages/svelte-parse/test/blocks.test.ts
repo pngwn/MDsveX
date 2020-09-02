@@ -49,7 +49,7 @@ block('parses a more complex expression within a voi block', () => {
 	});
 });
 
-block('parses a void Element without an expression', () => {
+block.only('parses a void Element without an expression', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,

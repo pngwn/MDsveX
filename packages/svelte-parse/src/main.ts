@@ -436,6 +436,24 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
+			if (value.charCodeAt(index) === CLOSE_BRACE) {
+				//node_stack.push((current_node() as VoidBlock).expression);
+
+				if (generatePositions)
+					//@ts-ignore
+					(current_node() as VoidBlock).expression.position = {
+						start: place(),
+						end: place(),
+					};
+
+				chomp();
+				if (generatePositions)
+					//@ts-ignore
+					current_node().position.end = place();
+
+				break;
+			}
+
 			current_node().name += value[index];
 			chomp();
 			continue;
