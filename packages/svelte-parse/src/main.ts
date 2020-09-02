@@ -392,40 +392,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 				continue;
 			}
-
-			// if (value.charCodeAt(index) === COLON) {
-			// 	state.push('IN_BRANCHING_BLOCK_BRANCH_NAME');
-
-			// 	const _n = <Text>{
-			// 		type: 'text',
-			// 		value: '',
-			// 	};
-
-			// 	if (generatePositions) {
-			// 		_n.position = { start: place(), end: {} };
-			// 	}
-
-			// 	node_stack.push(_n);
-
-			// 	chomp();
-			// 	continue;
-			// }
-
-			// if (value.charCodeAt(index) === SLASH) {
-			// 	closing_tag_name = '';
-			// 	state.push('IN_BRANCHING_BLOCK_END');
-			// 	chomp();
-			// 	continue;
-			// }
-
-			// if (
-			// 	value.charCodeAt(index) === SPACE ||
-			// 	value.charCodeAt(index) === LINEFEED ||
-			// 	value.charCodeAt(index) === TAB
-			// ) {
-			// 	chomp();
-			// 	continue;
-			// }
 			node_stack.pop();
 
 			state.push('PARSE_CHILDREN');
@@ -435,17 +401,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			if (value.charCodeAt(index) === COLON) {
 				state.pop();
 				state.push('IN_BRANCHING_BLOCK_BRANCH_NAME');
-
-				// const _n = <Text>{
-				// 	type: 'text',
-				// 	value: '',
-				// };
-
-				// if (generatePositions) {
-				// 	_n.position = { start: place(), end: {} };
-				// }
-
-				// node_stack.push(_n);
 
 				chomp();
 				continue;
@@ -787,8 +742,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				(s = value.charCodeAt(index)) === SPACE ||
 				s === TAB ||
 				s === LINEFEED ||
-				s === SLASH ||
-				s === CLOSE_ANGLE_BRACKET
+				s === CLOSE_ANGLE_BRACKET ||
+				/^\/\s*>/.test(value.slice(index))
 			) {
 				state.pop();
 				if (generatePositions)
@@ -878,13 +833,13 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (
-				(s = value.charCodeAt(index)) === SLASH ||
-				s === CLOSE_ANGLE_BRACKET
-			) {
-				// this is a parsing error, we can't recover from this.
-				// i'm not sure this is actually true
-			}
+			// if (
+			// 	(s = value.charCodeAt(index)) === SLASH ||
+			// 	s === CLOSE_ANGLE_BRACKET
+			// ) {
+			// 	// this is a parsing error, we can't recover from this.
+			// 	// i'm not sure this is actually true
+			// }
 
 			if (current_node().type === 'blank') {
 				node_stack.pop();
