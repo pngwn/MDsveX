@@ -11,7 +11,7 @@ const childParser: () => [Node[], Point & { index?: number }, number] = () => [
 	0,
 ];
 
-const expression = suite('parse-element');
+const expression = suite('parse-expression');
 
 expression('parses a simple expression', () => {
 	//@ts-ignore

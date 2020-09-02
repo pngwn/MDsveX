@@ -13,7 +13,7 @@ const childParser: () => [Node[], Point & { index?: number }, number] = () => [
 	0,
 ];
 
-const siblings = suite<{ parseNode_1: Result }>('parse-element');
+const siblings = suite<{ parseNode_1: Result }>('parse-siblings');
 
 siblings.before((ctx) => {
 	ctx.parseNode_1 = parseNode({
