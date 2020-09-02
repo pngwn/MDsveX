@@ -155,7 +155,7 @@ void_els.forEach((el) => {
 	});
 });
 
-element.only('parses attribute values containing colons', () => {
+element('parses attribute values containing colons', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
