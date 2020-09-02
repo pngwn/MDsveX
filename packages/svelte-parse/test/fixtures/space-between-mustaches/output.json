@@ -1,109 +1,149 @@
 {
-	"html": {
-		"start": 0,
-		"end": 24,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 24,
-				"type": "Element",
-				"name": "p",
-				"attributes": [],
-				"children": [
-					{
-						"start": 3,
-						"end": 4,
-						"type": "Text",
-						"raw": " ",
-						"data": " "
-					},
-					{
-						"start": 4,
-						"end": 7,
-						"type": "MustacheTag",
-						"expression": {
-							"type": "Identifier",
-							"start": 5,
-							"end": 6,
-							"loc": {
-								"start": {
-									"line": 1,
-									"column": 5
-								},
-								"end": {
-									"line": 1,
-									"column": 6
-								}
-							},
-							"name": "a"
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "p",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": " ",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 4,
+							"offset": 3
+						},
+						"end": {
+							"line": 1,
+							"column": 5,
+							"offset": 4
 						}
-					},
-					{
-						"start": 7,
-						"end": 8,
-						"type": "Text",
-						"raw": " ",
-						"data": " "
-					},
-					{
-						"start": 8,
-						"end": 11,
-						"type": "MustacheTag",
-						"expression": {
-							"type": "Identifier",
-							"start": 9,
-							"end": 10,
-							"loc": {
-								"start": {
-									"line": 1,
-									"column": 9
-								},
-								"end": {
-									"line": 1,
-									"column": 10
-								}
-							},
-							"name": "b"
-						}
-					},
-					{
-						"start": 11,
-						"end": 14,
-						"type": "Text",
-						"raw": " : ",
-						"data": " : "
-					},
-					{
-						"start": 14,
-						"end": 17,
-						"type": "MustacheTag",
-						"expression": {
-							"type": "Identifier",
-							"start": 15,
-							"end": 16,
-							"loc": {
-								"start": {
-									"line": 1,
-									"column": 15
-								},
-								"end": {
-									"line": 1,
-									"column": 16
-								}
-							},
-							"name": "c"
-						}
-					},
-					{
-						"start": 17,
-						"end": 20,
-						"type": "Text",
-						"raw": " : ",
-						"data": " : "
 					}
-				]
+				},
+				{
+					"type": "svelteExpression",
+					"value": "a",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 5,
+							"offset": 4
+						},
+						"end": {
+							"line": 1,
+							"column": 8,
+							"offset": 7
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": " ",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 8,
+							"offset": 7
+						},
+						"end": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "b",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 1,
+							"column": 12,
+							"offset": 11
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": " : ",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 12,
+							"offset": 11
+						},
+						"end": {
+							"line": 1,
+							"column": 15,
+							"offset": 14
+						}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "c",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 15,
+							"offset": 14
+						},
+						"end": {
+							"line": 1,
+							"column": 18,
+							"offset": 17
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": " : ",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 18,
+							"offset": 17
+						},
+						"end": {
+							"line": 1,
+							"column": 21,
+							"offset": 20
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 1,
+					"column": 25,
+					"offset": 24
+				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 1,
+			"column": 25,
+			"offset": 24
+		}
 	}
 }

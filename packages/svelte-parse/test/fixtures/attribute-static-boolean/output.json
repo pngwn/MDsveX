@@ -1,25 +1,52 @@
 {
-	"html": {
-		"start": 0,
-		"end": 30,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 30,
-				"type": "Element",
-				"name": "textarea",
-				"attributes": [
-					{
-						"start": 10,
-						"end": 18,
-						"type": "Attribute",
-						"name": "readonly",
-						"value": true
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "textarea",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "readonly",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "boolean",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 11,
+							"offset": 10
+						},
+						"end": {}
 					}
-				],
-				"children": []
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 1,
+					"column": 31,
+					"offset": 30
+				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 1,
+			"column": 31,
+			"offset": 30
+		}
 	}
 }

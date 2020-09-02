@@ -1,25 +1,28 @@
 {
-	"html": {
-		"start": 0,
-		"end": 15,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 15,
-				"type": "Element",
-				"name": "!doctype",
-				"attributes": [
-					{
-						"start": 10,
-						"end": 14,
-						"type": "Attribute",
-						"name": "html",
-						"value": true
-					}
-				],
-				"children": []
+	"type": "root",
+	"children": [
+		{
+			"type": "",
+			"tagName": "",
+			"properties": [],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {}
 	}
 }

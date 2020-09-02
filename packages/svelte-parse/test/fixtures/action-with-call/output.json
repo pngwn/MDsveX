@@ -1,76 +1,74 @@
 {
-	"html": {
-		"start": 0,
-		"end": 40,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 40,
-				"type": "Element",
-				"name": "input",
-				"attributes": [
-					{
-						"start": 7,
-						"end": 39,
-						"type": "Action",
-						"name": "tooltip",
-						"modifiers": [],
-						"expression": {
-							"type": "CallExpression",
-							"start": 21,
-							"end": 37,
-							"loc": {
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "input",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "use",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "t('tooltip msg')",
+							"position": {
 								"start": {
 									"line": 1,
-									"column": 21
+									"column": 21,
+									"offset": 20
 								},
 								"end": {
 									"line": 1,
-									"column": 37
+									"column": 39,
+									"offset": 38
 								}
-							},
-							"callee": {
-								"type": "Identifier",
-								"start": 21,
-								"end": 22,
-								"loc": {
-									"start": {
-										"line": 1,
-										"column": 21
-									},
-									"end": {
-										"line": 1,
-										"column": 22
-									}
-								},
-								"name": "t"
-							},
-							"arguments": [
-								{
-									"type": "Literal",
-									"start": 23,
-									"end": 36,
-									"loc": {
-										"start": {
-											"line": 1,
-											"column": 23
-										},
-										"end": {
-											"line": 1,
-											"column": 36
-										}
-									},
-									"value": "tooltip msg",
-									"raw": "'tooltip msg'"
-								}
-							],
-							"optional": false
+							}
 						}
-					}
-				],
-				"children": []
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 8,
+							"offset": 7
+						},
+						"end": {
+							"line": 1,
+							"column": 40,
+							"offset": 39
+						}
+					},
+					"specifier": "tooltip"
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 1,
+					"column": 41,
+					"offset": 40
+				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 1,
+			"column": 41,
+			"offset": 40
+		}
 	}
 }

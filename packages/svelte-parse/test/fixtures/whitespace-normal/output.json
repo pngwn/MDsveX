@@ -1,78 +1,141 @@
 {
-	"html": {
-		"start": 0,
-		"end": 65,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 65,
-				"type": "Element",
-				"name": "h1",
-				"attributes": [],
-				"children": [
-					{
-						"start": 4,
-						"end": 10,
-						"type": "Text",
-						"raw": "Hello ",
-						"data": "Hello "
-					},
-					{
-						"start": 10,
-						"end": 35,
-						"type": "Element",
-						"name": "strong",
-						"attributes": [],
-						"children": [
-							{
-								"start": 18,
-								"end": 24,
-								"type": "MustacheTag",
-								"expression": {
-									"type": "Identifier",
-									"start": 19,
-									"end": 23,
-									"loc": {
-										"start": {
-											"line": 1,
-											"column": 19
-										},
-										"end": {
-											"line": 1,
-											"column": 23
-										}
-									},
-									"name": "name"
-								}
-							},
-							{
-								"start": 24,
-								"end": 26,
-								"type": "Text",
-								"raw": "! ",
-								"data": "! "
-							}
-						]
-					},
-					{
-						"start": 35,
-						"end": 60,
-						"type": "Element",
-						"name": "span",
-						"attributes": [],
-						"children": [
-							{
-								"start": 41,
-								"end": 53,
-								"type": "Text",
-								"raw": "How are you?",
-								"data": "How are you?"
-							}
-						]
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "h1",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "Hello ",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 5,
+							"offset": 4
+						},
+						"end": {
+							"line": 1,
+							"column": 11,
+							"offset": 10
+						}
 					}
-				]
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "strong",
+					"properties": [],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "svelteExpression",
+							"value": "name",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 19,
+									"offset": 18
+								},
+								"end": {
+									"line": 1,
+									"column": 25,
+									"offset": 24
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "! ",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 25,
+									"offset": 24
+								},
+								"end": {
+									"line": 1,
+									"column": 27,
+									"offset": 26
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 11,
+							"offset": 10
+						},
+						"end": {
+							"line": 1,
+							"column": 36,
+							"offset": 35
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "span",
+					"properties": [],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "How are you?",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 42,
+									"offset": 41
+								},
+								"end": {
+									"line": 1,
+									"column": 54,
+									"offset": 53
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 36,
+							"offset": 35
+						},
+						"end": {
+							"line": 1,
+							"column": 61,
+							"offset": 60
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 1,
+					"column": 66,
+					"offset": 65
+				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 1,
+			"column": 66,
+			"offset": 65
+		}
 	}
 }

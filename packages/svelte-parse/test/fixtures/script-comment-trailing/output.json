@@ -1,158 +1,137 @@
 {
-	"html": {
-		"start": 68,
-		"end": 90,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 66,
-				"end": 68,
-				"type": "Text",
-				"raw": "\n\n",
-				"data": "\n\n"
-			},
-			{
-				"start": 68,
-				"end": 90,
-				"type": "Element",
-				"name": "h1",
-				"attributes": [],
-				"children": [
-					{
-						"start": 72,
-						"end": 78,
-						"type": "Text",
-						"raw": "Hello ",
-						"data": "Hello "
-					},
-					{
-						"start": 78,
-						"end": 84,
-						"type": "MustacheTag",
-						"expression": {
-							"type": "Identifier",
-							"start": 79,
-							"end": 83,
-							"loc": {
-								"start": {
-									"line": 7,
-									"column": 11
-								},
-								"end": {
-									"line": 7,
-									"column": 15
-								}
-							},
-							"name": "name"
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tlet name = 'world';\n\n\t// trailing line comment\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 5,
+							"column": 1,
+							"offset": 57
 						}
-					},
-					{
-						"start": 84,
-						"end": 85,
-						"type": "Text",
-						"raw": "!",
-						"data": "!"
 					}
-				]
-			}
-		]
-	},
-	"instance": {
-		"type": "Script",
-		"start": 0,
-		"end": 66,
-		"context": "default",
-		"content": {
-			"type": "Program",
-			"start": 8,
-			"end": 57,
-			"loc": {
+				}
+			],
+			"position": {
 				"start": {
 					"line": 1,
-					"column": 0
+					"column": 1,
+					"offset": 0
 				},
 				"end": {
 					"line": 5,
-					"column": 0
+					"column": 10,
+					"offset": 66
 				}
-			},
-			"body": [
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 10,
+					"offset": 66
+				},
+				"end": {
+					"line": 7,
+					"column": 1,
+					"offset": 68
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "h1",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
 				{
-					"type": "VariableDeclaration",
-					"start": 10,
-					"end": 29,
-					"loc": {
+					"type": "text",
+					"value": "Hello ",
+					"position": {
 						"start": {
-							"line": 2,
-							"column": 1
+							"line": 7,
+							"column": 5,
+							"offset": 72
 						},
 						"end": {
-							"line": 2,
-							"column": 20
+							"line": 7,
+							"column": 11,
+							"offset": 78
 						}
-					},
-					"declarations": [
-						{
-							"type": "VariableDeclarator",
-							"start": 14,
-							"end": 28,
-							"loc": {
-								"start": {
-									"line": 2,
-									"column": 5
-								},
-								"end": {
-									"line": 2,
-									"column": 19
-								}
-							},
-							"id": {
-								"type": "Identifier",
-								"start": 14,
-								"end": 18,
-								"loc": {
-									"start": {
-										"line": 2,
-										"column": 5
-									},
-									"end": {
-										"line": 2,
-										"column": 9
-									}
-								},
-								"name": "name"
-							},
-							"init": {
-								"type": "Literal",
-								"start": 21,
-								"end": 28,
-								"loc": {
-									"start": {
-										"line": 2,
-										"column": 12
-									},
-									"end": {
-										"line": 2,
-										"column": 19
-									}
-								},
-								"value": "world",
-								"raw": "'world'"
-							}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "name",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 11,
+							"offset": 78
+						},
+						"end": {
+							"line": 7,
+							"column": 17,
+							"offset": 84
 						}
-					],
-					"kind": "let"
+					}
+				},
+				{
+					"type": "text",
+					"value": "!",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 17,
+							"offset": 84
+						},
+						"end": {
+							"line": 7,
+							"column": 18,
+							"offset": 85
+						}
+					}
 				}
 			],
-			"sourceType": "module",
-			"trailingComments": [
-				{
-					"type": "Line",
-					"value": " trailing line comment",
-					"start": 32,
-					"end": 56
+			"position": {
+				"start": {
+					"line": 7,
+					"column": 1,
+					"offset": 68
+				},
+				"end": {
+					"line": 7,
+					"column": 23,
+					"offset": 90
 				}
-			]
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 7,
+			"column": 23,
+			"offset": 90
 		}
 	}
 }

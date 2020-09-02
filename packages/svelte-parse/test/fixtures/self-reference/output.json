@@ -1,136 +1,157 @@
 {
-	"html": {
-		"start": 0,
-		"end": 57,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 57,
-				"type": "IfBlock",
-				"expression": {
-					"type": "BinaryExpression",
-					"start": 5,
-					"end": 14,
-					"loc": {
-						"start": {
-							"line": 1,
-							"column": 5
-						},
-						"end": {
-							"line": 1,
-							"column": 14
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteBranchingBlock",
+			"name": "if",
+			"branches": [
+				{
+					"type": "svelteBranch",
+					"name": "if",
+					"expression": {
+						"type": "svelteExpression",
+						"value": "depth > 1",
+						"position": {
+							"start": {
+								"line": 1,
+								"column": 6,
+								"offset": 5
+							},
+							"end": {
+								"line": 1,
+								"column": 15,
+								"offset": 14
+							}
 						}
 					},
-					"left": {
-						"type": "Identifier",
-						"start": 5,
-						"end": 10,
-						"loc": {
-							"start": {
-								"line": 1,
-								"column": 5
-							},
-							"end": {
-								"line": 1,
-								"column": 10
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 16,
+									"offset": 15
+								},
+								"end": {
+									"line": 2,
+									"column": 2,
+									"offset": 17
+								}
 							}
 						},
-						"name": "depth"
-					},
-					"operator": ">",
-					"right": {
-						"type": "Literal",
-						"start": 13,
-						"end": 14,
-						"loc": {
-							"start": {
-								"line": 1,
-								"column": 13
-							},
-							"end": {
-								"line": 1,
-								"column": 14
-							}
-						},
-						"value": 1,
-						"raw": "1"
-					}
-				},
-				"children": [
-					{
-						"start": 17,
-						"end": 51,
-						"type": "InlineComponent",
-						"name": "svelte:self",
-						"attributes": [
-							{
-								"start": 30,
-								"end": 49,
-								"type": "Attribute",
-								"name": "depth",
-								"value": [
-									{
-										"start": 37,
-										"end": 48,
-										"type": "MustacheTag",
-										"expression": {
-											"type": "BinaryExpression",
-											"start": 38,
-											"end": 47,
-											"loc": {
+						{
+							"type": "svelteTag",
+							"tagName": "self",
+							"properties": [
+								{
+									"type": "svelteProperty",
+									"name": "depth",
+									"value": [
+										{
+											"type": "svelteExpression",
+											"value": "depth - 1",
+											"position": {
 												"start": {
 													"line": 2,
-													"column": 22
+													"column": 22,
+													"offset": 37
 												},
 												"end": {
 													"line": 2,
-													"column": 31
+													"column": 33,
+													"offset": 48
 												}
-											},
-											"left": {
-												"type": "Identifier",
-												"start": 38,
-												"end": 43,
-												"loc": {
-													"start": {
-														"line": 2,
-														"column": 22
-													},
-													"end": {
-														"line": 2,
-														"column": 27
-													}
-												},
-												"name": "depth"
-											},
-											"operator": "-",
-											"right": {
-												"type": "Literal",
-												"start": 46,
-												"end": 47,
-												"loc": {
-													"start": {
-														"line": 2,
-														"column": 30
-													},
-													"end": {
-														"line": 2,
-														"column": 31
-													}
-												},
-												"value": 1,
-												"raw": "1"
 											}
 										}
+									],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 2,
+											"column": 15,
+											"offset": 30
+										},
+										"end": {
+											"line": 2,
+											"column": 34,
+											"offset": 49
+										}
 									}
-								]
+								}
+							],
+							"selfClosing": true,
+							"children": [],
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 2,
+									"offset": 17
+								},
+								"end": {
+									"line": 2,
+									"column": 36,
+									"offset": 51
+								}
 							}
-						],
-						"children": []
+						},
+						{
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 36,
+									"offset": 51
+								},
+								"end": {
+									"line": 3,
+									"column": 1,
+									"offset": 52
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 1,
+							"offset": 0
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 52
+						}
 					}
-				]
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 3,
+					"column": 6,
+					"offset": 57
+				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 3,
+			"column": 6,
+			"offset": 57
+		}
 	}
 }

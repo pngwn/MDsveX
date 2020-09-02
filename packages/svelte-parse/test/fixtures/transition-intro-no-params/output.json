@@ -1,36 +1,70 @@
 {
-	"html": {
-		"start": 0,
-		"end": 27,
-		"type": "Fragment",
-		"children": [
-			{
-				"start": 0,
-				"end": 27,
-				"type": "Element",
-				"name": "div",
-				"attributes": [
-					{
-						"start": 5,
-						"end": 12,
-						"type": "Transition",
-						"name": "fade",
-						"modifiers": [],
-						"expression": null,
-						"intro": true,
-						"outro": false
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "in",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 6,
+							"offset": 5
+						},
+						"end": {}
+					},
+					"specifier": "fade"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "fades in",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 14,
+							"offset": 13
+						},
+						"end": {
+							"line": 1,
+							"column": 22,
+							"offset": 21
+						}
 					}
-				],
-				"children": [
-					{
-						"start": 13,
-						"end": 21,
-						"type": "Text",
-						"raw": "fades in",
-						"data": "fades in"
-					}
-				]
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 1,
+					"column": 28,
+					"offset": 27
+				}
 			}
-		]
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 1,
+			"column": 28,
+			"offset": 27
+		}
 	}
 }
