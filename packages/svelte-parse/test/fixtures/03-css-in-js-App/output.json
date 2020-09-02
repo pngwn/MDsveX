@@ -1,0 +1,338 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { comicSans, link } from './styles.js';\n\timport Hero from './Hero.svelte';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 4,
+							"column": 1,
+							"offset": 92
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 4,
+					"column": 10,
+					"offset": 101
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 4,
+					"column": 10,
+					"offset": 101
+				},
+				"end": {
+					"line": 6,
+					"column": 1,
+					"offset": 103
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Hero",
+			"properties": [],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 6,
+					"column": 1,
+					"offset": 103
+				},
+				"end": {
+					"line": 6,
+					"column": 8,
+					"offset": 110
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 6,
+					"column": 8,
+					"offset": 110
+				},
+				"end": {
+					"line": 8,
+					"column": 1,
+					"offset": 112
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "comicSans",
+							"position": {
+								"start": {
+									"line": 8,
+									"column": 12,
+									"offset": 123
+								},
+								"end": {
+									"line": 8,
+									"column": 23,
+									"offset": 134
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 8,
+							"column": 6,
+							"offset": 117
+						},
+						"end": {
+							"line": 8,
+							"column": 23,
+							"offset": 134
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 8,
+							"column": 24,
+							"offset": 135
+						},
+						"end": {
+							"line": 9,
+							"column": 2,
+							"offset": 137
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "p",
+					"properties": [],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "Did you enjoy your lunch, mom? You drank it fast enough. I know, I just call her Annabelle cause she's shaped like a…she's the belle of the ball! YOU'RE the Chiclet! Not me. Caw ca caw, caw ca caw, caw ca caw! A Colombian cartel that WON'T kidnap and kill you. You go buy a tape recorder and record yourself for a whole day. ",
+							"position": {
+								"start": {
+									"line": 9,
+									"column": 5,
+									"offset": 140
+								},
+								"end": {
+									"line": 9,
+									"column": 330,
+									"offset": 465
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "a",
+							"properties": [
+								{
+									"type": "svelteProperty",
+									"name": "class",
+									"value": [
+										{
+											"type": "svelteExpression",
+											"value": "link",
+											"position": {
+												"start": {
+													"line": 9,
+													"column": 339,
+													"offset": 474
+												},
+												"end": {
+													"line": 9,
+													"column": 345,
+													"offset": 480
+												}
+											}
+										}
+									],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 9,
+											"column": 333,
+											"offset": 468
+										},
+										"end": {
+											"line": 9,
+											"column": 345,
+											"offset": 480
+										}
+									}
+								},
+								{
+									"type": "svelteProperty",
+									"name": "href",
+									"value": [
+										{
+											"type": "text",
+											"value": "https://bluthipsum.com/",
+											"position": {
+												"start": {
+													"line": 9,
+													"column": 352,
+													"offset": 487
+												},
+												"end": {
+													"line": 9,
+													"column": 375,
+													"offset": 510
+												}
+											}
+										}
+									],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 9,
+											"column": 346,
+											"offset": 481
+										},
+										"end": {
+											"line": 9,
+											"column": 376,
+											"offset": 511
+										}
+									}
+								}
+							],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "I think you'll be surprised at some of your phrasing.",
+									"position": {
+										"start": {
+											"line": 9,
+											"column": 377,
+											"offset": 512
+										},
+										"end": {
+											"line": 9,
+											"column": 430,
+											"offset": 565
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 9,
+									"column": 330,
+									"offset": 465
+								},
+								"end": {
+									"line": 9,
+									"column": 434,
+									"offset": 569
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 2,
+							"offset": 137
+						},
+						"end": {
+							"line": 9,
+							"column": 438,
+							"offset": 573
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 438,
+							"offset": 573
+						},
+						"end": {
+							"line": 10,
+							"column": 1,
+							"offset": 574
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 8,
+					"column": 1,
+					"offset": 112
+				},
+				"end": {
+					"line": 10,
+					"column": 7,
+					"offset": 580
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 10,
+			"column": 7,
+			"offset": 580
+		}
+	}
+}

@@ -1,0 +1,358 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "options",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "immutable",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "boolean",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 17,
+							"offset": 16
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 1,
+					"column": 28,
+					"offset": 27
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 28,
+					"offset": 27
+				},
+				"end": {
+					"line": 3,
+					"column": 1,
+					"offset": 29
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { afterUpdate } from 'svelte';\n\timport flash from './flash.js';\n\n\texport let todo;\n\texport let toggle;\n\n\tlet div;\n\n\tafterUpdate(() => {\n\t\tflash(div);\n\t});\n",
+					"position": {
+						"start": {
+							"line": 3,
+							"column": 9,
+							"offset": 37
+						},
+						"end": {
+							"line": 15,
+							"column": 1,
+							"offset": 201
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 3,
+					"column": 1,
+					"offset": 29
+				},
+				"end": {
+					"line": 15,
+					"column": 10,
+					"offset": 210
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 15,
+					"column": 10,
+					"offset": 210
+				},
+				"end": {
+					"line": 17,
+					"column": 1,
+					"offset": 212
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tdiv {\n\t\tcursor: pointer;\n\t\tline-height: 1.5;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 17,
+							"column": 8,
+							"offset": 219
+						},
+						"end": {
+							"line": 22,
+							"column": 1,
+							"offset": 269
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 17,
+					"column": 1,
+					"offset": 212
+				},
+				"end": {
+					"line": 22,
+					"column": 9,
+					"offset": 277
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 22,
+					"column": 9,
+					"offset": 277
+				},
+				"end": {
+					"line": 24,
+					"column": 1,
+					"offset": 279
+				}
+			}
+		},
+		{
+			"type": "comment",
+			"value": " the text will flash red whenever\n\t\tthe `todo` object changes ",
+			"position": {
+				"start": {
+					"line": 24,
+					"column": 1,
+					"offset": 279
+				},
+				"end": {
+					"line": 25,
+					"column": 32,
+					"offset": 348
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 25,
+					"column": 32,
+					"offset": 348
+				},
+				"end": {
+					"line": 26,
+					"column": 1,
+					"offset": 349
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "div",
+							"position": {
+								"start": {
+									"line": 26,
+									"column": 16,
+									"offset": 364
+								},
+								"end": {
+									"line": 26,
+									"column": 21,
+									"offset": 369
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 26,
+							"column": 6,
+							"offset": 354
+						},
+						"end": {
+							"line": 26,
+							"column": 21,
+							"offset": 369
+						}
+					},
+					"specifier": "this"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 26,
+							"column": 22,
+							"offset": 370
+						},
+						"end": {}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 26,
+							"column": 31,
+							"offset": 379
+						},
+						"end": {
+							"line": 27,
+							"column": 2,
+							"offset": 381
+						}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "todo.done ? '👍': ''",
+					"position": {
+						"start": {
+							"line": 27,
+							"column": 2,
+							"offset": 381
+						},
+						"end": {
+							"line": 27,
+							"column": 24,
+							"offset": 403
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": " ",
+					"position": {
+						"start": {
+							"line": 27,
+							"column": 24,
+							"offset": 403
+						},
+						"end": {
+							"line": 27,
+							"column": 25,
+							"offset": 404
+						}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "todo.text",
+					"position": {
+						"start": {
+							"line": 27,
+							"column": 25,
+							"offset": 404
+						},
+						"end": {
+							"line": 27,
+							"column": 36,
+							"offset": 415
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 27,
+							"column": 36,
+							"offset": 415
+						},
+						"end": {
+							"line": 28,
+							"column": 1,
+							"offset": 416
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 26,
+					"column": 1,
+					"offset": 349
+				},
+				"end": {
+					"line": 28,
+					"column": 7,
+					"offset": 422
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 28,
+			"column": 7,
+			"offset": 422
+		}
+	}
+}

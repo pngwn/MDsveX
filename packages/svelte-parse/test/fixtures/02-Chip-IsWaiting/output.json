@@ -1,0 +1,354 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import Chip from '@sveltekit/ui/Chip';\n\n  let isWaiting = false;\n  let isDisabled = false;\n\n  function handleRemove(event) {\n    isWaiting = true;\n    isDisabled = true;\n\n    setTimeout(() => {\n      isWaiting = false;\n      isDisabled = false;\n    }, 3000)\n  }\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 16,
+							"column": 1,
+							"offset": 273
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 16,
+					"column": 10,
+					"offset": 282
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 16,
+					"column": 10,
+					"offset": 282
+				},
+				"end": {
+					"line": 18,
+					"column": 1,
+					"offset": 284
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "row",
+							"position": {
+								"start": {
+									"line": 18,
+									"column": 13,
+									"offset": 296
+								},
+								"end": {
+									"line": 18,
+									"column": 16,
+									"offset": 299
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 18,
+							"column": 6,
+							"offset": 289
+						},
+						"end": {
+							"line": 18,
+							"column": 17,
+							"offset": 300
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 18,
+							"column": 18,
+							"offset": 301
+						},
+						"end": {
+							"line": 19,
+							"column": 3,
+							"offset": 304
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "span",
+					"properties": [],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "\n    ",
+							"position": {
+								"start": {
+									"line": 19,
+									"column": 9,
+									"offset": 310
+								},
+								"end": {
+									"line": 20,
+									"column": 5,
+									"offset": 315
+								}
+							}
+						},
+						{
+							"type": "svelteComponent",
+							"tagName": "Chip",
+							"properties": [
+								{
+									"type": "svelteProperty",
+									"name": "isRemovable",
+									"value": [],
+									"modifiers": [],
+									"shorthand": "boolean",
+									"position": {
+										"start": {
+											"line": 20,
+											"column": 11,
+											"offset": 321
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "svelteProperty",
+									"name": "isActive",
+									"value": [],
+									"modifiers": [],
+									"shorthand": "boolean",
+									"position": {
+										"start": {
+											"line": 20,
+											"column": 23,
+											"offset": 333
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "svelteDirective",
+									"name": "on",
+									"value": [
+										{
+											"type": "svelteExpression",
+											"value": "handleRemove",
+											"position": {
+												"start": {
+													"line": 20,
+													"column": 43,
+													"offset": 353
+												},
+												"end": {
+													"line": 20,
+													"column": 57,
+													"offset": 367
+												}
+											}
+										}
+									],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 20,
+											"column": 32,
+											"offset": 342
+										},
+										"end": {
+											"line": 20,
+											"column": 58,
+											"offset": 368
+										}
+									},
+									"specifier": "remove"
+								},
+								{
+									"type": "svelteProperty",
+									"name": "isWaiting",
+									"value": [
+										{
+											"type": "svelteExpression",
+											"value": "isWaiting"
+										}
+									],
+									"modifiers": [],
+									"shorthand": "expression",
+									"position": {
+										"start": {
+											"line": 20,
+											"column": 59,
+											"offset": 369
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "svelteProperty",
+									"name": "isDisabled",
+									"value": [
+										{
+											"type": "svelteExpression",
+											"value": "isDisabled"
+										}
+									],
+									"modifiers": [],
+									"shorthand": "expression",
+									"position": {
+										"start": {
+											"line": 20,
+											"column": 71,
+											"offset": 381
+										},
+										"end": {}
+									}
+								}
+							],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "Removable Chip",
+									"position": {
+										"start": {
+											"line": 20,
+											"column": 84,
+											"offset": 394
+										},
+										"end": {
+											"line": 20,
+											"column": 98,
+											"offset": 408
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 20,
+									"column": 5,
+									"offset": 315
+								},
+								"end": {
+									"line": 20,
+									"column": 105,
+									"offset": 415
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n  ",
+							"position": {
+								"start": {
+									"line": 20,
+									"column": 105,
+									"offset": 415
+								},
+								"end": {
+									"line": 21,
+									"column": 3,
+									"offset": 418
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 19,
+							"column": 3,
+							"offset": 304
+						},
+						"end": {
+							"line": 21,
+							"column": 10,
+							"offset": 425
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 21,
+							"column": 10,
+							"offset": 425
+						},
+						"end": {
+							"line": 22,
+							"column": 1,
+							"offset": 426
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 18,
+					"column": 1,
+					"offset": 284
+				},
+				"end": {
+					"line": 22,
+					"column": 7,
+					"offset": 432
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 22,
+			"column": 7,
+			"offset": 432
+		}
+	}
+}

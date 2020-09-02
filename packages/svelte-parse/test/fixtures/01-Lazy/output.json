@@ -1,0 +1,145 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { onMount } from 'svelte';\n\n\tlet constructor;\n\n\tonMount(async () => {\n\t\tconstructor = await $$props.this();\n\t});\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 9,
+							"column": 1,
+							"offset": 130
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 9,
+					"column": 10,
+					"offset": 139
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 9,
+					"column": 10,
+					"offset": 139
+				},
+				"end": {
+					"line": 11,
+					"column": 1,
+					"offset": 141
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "component",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "this",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "constructor",
+							"position": {
+								"start": {
+									"line": 11,
+									"column": 24,
+									"offset": 164
+								},
+								"end": {
+									"line": 11,
+									"column": 37,
+									"offset": 177
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 19,
+							"offset": 159
+						},
+						"end": {
+							"line": 11,
+							"column": 37,
+							"offset": 177
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "...$$props",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "...$$props"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 38,
+							"offset": 178
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 11,
+					"column": 1,
+					"offset": 141
+				},
+				"end": {
+					"line": 11,
+					"column": 52,
+					"offset": 192
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 11,
+			"column": 52,
+			"offset": 192
+		}
+	}
+}

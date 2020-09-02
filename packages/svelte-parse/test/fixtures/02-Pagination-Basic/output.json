@@ -1,0 +1,189 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import Pagination from '@sveltekit/ui/Pagination';\n\n  let current = 1;\n  let pageSize = 10;\n  let total = 100;\n  let canNavigate = true;\n  let showSummary = true;\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 9,
+							"column": 1,
+							"offset": 174
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 9,
+					"column": 10,
+					"offset": 183
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 9,
+					"column": 10,
+					"offset": 183
+				},
+				"end": {
+					"line": 11,
+					"column": 1,
+					"offset": 185
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Pagination",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "current",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "current"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 13,
+							"offset": 197
+						},
+						"end": {}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "pageSize",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "pageSize"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 23,
+							"offset": 207
+						},
+						"end": {}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "total",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "total"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 34,
+							"offset": 218
+						},
+						"end": {}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "canNavigate",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "canNavigate"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 42,
+							"offset": 226
+						},
+						"end": {}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "showSummary",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "showSummary"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 56,
+							"offset": 240
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 11,
+					"column": 1,
+					"offset": 185
+				},
+				"end": {
+					"line": 11,
+					"column": 83,
+					"offset": 267
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 11,
+			"column": 83,
+			"offset": 267
+		}
+	}
+}

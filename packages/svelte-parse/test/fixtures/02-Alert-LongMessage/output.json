@@ -1,0 +1,372 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import Alert, { options } from '@sveltekit/ui/Alert';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 65
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 3,
+					"column": 10,
+					"offset": 74
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 3,
+					"column": 10,
+					"offset": 74
+				},
+				"end": {
+					"line": 5,
+					"column": 1,
+					"offset": 76
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "row",
+							"position": {
+								"start": {
+									"line": 5,
+									"column": 13,
+									"offset": 88
+								},
+								"end": {
+									"line": 5,
+									"column": 16,
+									"offset": 91
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 6,
+							"offset": 81
+						},
+						"end": {
+							"line": 5,
+							"column": 17,
+							"offset": 92
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 18,
+							"offset": 93
+						},
+						"end": {
+							"line": 6,
+							"column": 3,
+							"offset": 96
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "Alert",
+					"properties": [],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "\n    Warning! VERY LONG MESSAGE VERY LONG MESSAGE VERY LONG MESSAGE VERY LONG\n    MESSAGE VERY LONG MESSAGE VERY LONG MESSAGE VERY LONG MESSAGE VERY LONG\n    MESSAGE.\n  ",
+							"position": {
+								"start": {
+									"line": 6,
+									"column": 10,
+									"offset": 103
+								},
+								"end": {
+									"line": 10,
+									"column": 3,
+									"offset": 272
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 6,
+							"column": 3,
+							"offset": 96
+						},
+						"end": {
+							"line": 10,
+							"column": 11,
+							"offset": 280
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 10,
+							"column": 11,
+							"offset": 280
+						},
+						"end": {
+							"line": 11,
+							"column": 1,
+							"offset": 281
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 1,
+					"offset": 76
+				},
+				"end": {
+					"line": 11,
+					"column": 7,
+					"offset": 287
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 11,
+					"column": 7,
+					"offset": 287
+				},
+				"end": {
+					"line": 13,
+					"column": 1,
+					"offset": 289
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "row",
+							"position": {
+								"start": {
+									"line": 13,
+									"column": 13,
+									"offset": 301
+								},
+								"end": {
+									"line": 13,
+									"column": 16,
+									"offset": 304
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 13,
+							"column": 6,
+							"offset": 294
+						},
+						"end": {
+							"line": 13,
+							"column": 17,
+							"offset": 305
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 13,
+							"column": 18,
+							"offset": 306
+						},
+						"end": {
+							"line": 14,
+							"column": 3,
+							"offset": 309
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "Alert",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "type",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "options.type.INFORMATION",
+									"position": {
+										"start": {
+											"line": 14,
+											"column": 15,
+											"offset": 321
+										},
+										"end": {
+											"line": 14,
+											"column": 41,
+											"offset": 347
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 14,
+									"column": 10,
+									"offset": 316
+								},
+								"end": {
+									"line": 14,
+									"column": 41,
+									"offset": 347
+								}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "\n    Information! VERY LONG MESSAGE VERY LONG MESSAGE VERY LONG MESSAGE VERY LONG\n    MESSAGE VERY LONG MESSAGE VERY LONG MESSAGE VERY LONG MESSAGE VERY LONG\n    MESSAGE.\n  ",
+							"position": {
+								"start": {
+									"line": 14,
+									"column": 42,
+									"offset": 348
+								},
+								"end": {
+									"line": 18,
+									"column": 3,
+									"offset": 521
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 14,
+							"column": 3,
+							"offset": 309
+						},
+						"end": {
+							"line": 18,
+							"column": 11,
+							"offset": 529
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 18,
+							"column": 11,
+							"offset": 529
+						},
+						"end": {
+							"line": 19,
+							"column": 1,
+							"offset": 530
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 13,
+					"column": 1,
+					"offset": 289
+				},
+				"end": {
+					"line": 19,
+					"column": 7,
+					"offset": 536
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 19,
+			"column": 7,
+			"offset": 536
+		}
+	}
+}

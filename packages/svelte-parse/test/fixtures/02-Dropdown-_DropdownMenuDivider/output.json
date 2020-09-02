@@ -1,0 +1,193 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  export let noMargin = false;\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 40
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 3,
+					"column": 10,
+					"offset": 49
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 3,
+					"column": 10,
+					"offset": 49
+				},
+				"end": {
+					"line": 5,
+					"column": 1,
+					"offset": 51
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  .dropdownMenuDivider {\n    background: #d8dbdf;\n    height: 1px;\n    margin: 5px 0;\n  }\n\n  .dropdownMenuDivider.noMargin {\n    margin: 0;\n  }\n",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 8,
+							"offset": 58
+						},
+						"end": {
+							"line": 15,
+							"column": 1,
+							"offset": 203
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 1,
+					"offset": 51
+				},
+				"end": {
+					"line": 15,
+					"column": 9,
+					"offset": 211
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 15,
+					"column": 9,
+					"offset": 211
+				},
+				"end": {
+					"line": 17,
+					"column": 1,
+					"offset": 213
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "dropdownMenuDivider",
+							"position": {
+								"start": {
+									"line": 17,
+									"column": 13,
+									"offset": 225
+								},
+								"end": {
+									"line": 17,
+									"column": 32,
+									"offset": 244
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 17,
+							"column": 6,
+							"offset": 218
+						},
+						"end": {
+							"line": 17,
+							"column": 33,
+							"offset": 245
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "class",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 17,
+							"column": 34,
+							"offset": 246
+						},
+						"end": {}
+					},
+					"specifier": "noMargin"
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 17,
+					"column": 1,
+					"offset": 213
+				},
+				"end": {
+					"line": 17,
+					"column": 55,
+					"offset": 267
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 17,
+			"column": 55,
+			"offset": 267
+		}
+	}
+}

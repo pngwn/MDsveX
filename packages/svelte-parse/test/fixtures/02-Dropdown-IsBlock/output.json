@@ -1,0 +1,287 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import Button from '@sveltekit/ui/Button';\n  import Dropdown from '@sveltekit/ui/Dropdown';\n\n  export let items = [{\n    label: 'Menu Item 1',\n    id: 1\n  },\n  {\n    label: 'Menu Item 2',\n    id: 2\n  },\n  {\n    label: 'Menu Item 3',\n    id: 3\n  }];\n\n  export let isBlock = true;\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 19,
+							"column": 1,
+							"offset": 290
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 19,
+					"column": 10,
+					"offset": 299
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 19,
+					"column": 10,
+					"offset": 299
+				},
+				"end": {
+					"line": 21,
+					"column": 1,
+					"offset": 301
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  .blockToggle {\n    background: blue;\n    color: #fff;\n    padding: 15px;\n  }\n\n  @media (max-width: 640px) {\n    .blockToggle {\n      display: none;\n    }\n  }\n",
+					"position": {
+						"start": {
+							"line": 21,
+							"column": 8,
+							"offset": 308
+						},
+						"end": {
+							"line": 33,
+							"column": 1,
+							"offset": 469
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 21,
+					"column": 1,
+					"offset": 301
+				},
+				"end": {
+					"line": 33,
+					"column": 9,
+					"offset": 477
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 33,
+					"column": 9,
+					"offset": 477
+				},
+				"end": {
+					"line": 35,
+					"column": 1,
+					"offset": 479
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Dropdown",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": " items ",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": " items "
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 35,
+							"column": 11,
+							"offset": 489
+						},
+						"end": {}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": " isBlock ",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": " isBlock "
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 35,
+							"column": 21,
+							"offset": 499
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 35,
+							"column": 33,
+							"offset": 511
+						},
+						"end": {
+							"line": 36,
+							"column": 3,
+							"offset": 514
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "div",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "class",
+							"value": [
+								{
+									"type": "text",
+									"value": "blockToggle",
+									"position": {
+										"start": {
+											"line": 36,
+											"column": 15,
+											"offset": 526
+										},
+										"end": {
+											"line": 36,
+											"column": 26,
+											"offset": 537
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 8,
+									"offset": 519
+								},
+								"end": {
+									"line": 36,
+									"column": 27,
+									"offset": 538
+								}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "BLOCK TOGGLE (I get removed at 640px)",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 28,
+									"offset": 539
+								},
+								"end": {
+									"line": 36,
+									"column": 65,
+									"offset": 576
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 36,
+							"column": 3,
+							"offset": 514
+						},
+						"end": {
+							"line": 36,
+							"column": 71,
+							"offset": 582
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 36,
+							"column": 71,
+							"offset": 582
+						},
+						"end": {
+							"line": 37,
+							"column": 1,
+							"offset": 583
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 35,
+					"column": 1,
+					"offset": 479
+				},
+				"end": {
+					"line": 37,
+					"column": 12,
+					"offset": 594
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 37,
+			"column": 12,
+			"offset": 594
+		}
+	}
+}

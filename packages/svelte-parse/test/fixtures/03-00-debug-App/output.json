@@ -1,0 +1,331 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tlet user = {\n\t\tfirstname: 'Ada',\n\t\tlastname: 'Lovelace'\n\t};\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 6,
+							"column": 1,
+							"offset": 70
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 6,
+					"column": 10,
+					"offset": 79
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 6,
+					"column": 10,
+					"offset": 79
+				},
+				"end": {
+					"line": 8,
+					"column": 1,
+					"offset": 81
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "input",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "user.firstname",
+							"position": {
+								"start": {
+									"line": 8,
+									"column": 19,
+									"offset": 99
+								},
+								"end": {
+									"line": 8,
+									"column": 35,
+									"offset": 115
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 8,
+							"column": 8,
+							"offset": 88
+						},
+						"end": {
+							"line": 8,
+							"column": 35,
+							"offset": 115
+						}
+					},
+					"specifier": "value"
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 8,
+					"column": 1,
+					"offset": 81
+				},
+				"end": {
+					"line": 8,
+					"column": 36,
+					"offset": 116
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 8,
+					"column": 36,
+					"offset": 116
+				},
+				"end": {
+					"line": 9,
+					"column": 1,
+					"offset": 117
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "input",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "user.lastname",
+							"position": {
+								"start": {
+									"line": 9,
+									"column": 19,
+									"offset": 135
+								},
+								"end": {
+									"line": 9,
+									"column": 34,
+									"offset": 150
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 8,
+							"offset": 124
+						},
+						"end": {
+							"line": 9,
+							"column": 34,
+							"offset": 150
+						}
+					},
+					"specifier": "value"
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 9,
+					"column": 1,
+					"offset": 117
+				},
+				"end": {
+					"line": 9,
+					"column": 35,
+					"offset": 151
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 9,
+					"column": 35,
+					"offset": 151
+				},
+				"end": {
+					"line": 11,
+					"column": 1,
+					"offset": 153
+				}
+			}
+		},
+		{
+			"type": "svelteVoidBlock",
+			"name": "debug",
+			"expression": {
+				"type": "svelteExpression",
+				"value": "user",
+				"position": {
+					"start": {
+						"line": 11,
+						"column": 9,
+						"offset": 161
+					},
+					"end": {
+						"line": 11,
+						"column": 13,
+						"offset": 165
+					}
+				}
+			},
+			"position": {
+				"start": {
+					"line": 11,
+					"column": 1,
+					"offset": 153
+				},
+				"end": {
+					"line": 11,
+					"column": 14,
+					"offset": 166
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 11,
+					"column": 14,
+					"offset": 166
+				},
+				"end": {
+					"line": 13,
+					"column": 1,
+					"offset": 168
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "h1",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "Hello ",
+					"position": {
+						"start": {
+							"line": 13,
+							"column": 5,
+							"offset": 172
+						},
+						"end": {
+							"line": 13,
+							"column": 11,
+							"offset": 178
+						}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "user.firstname",
+					"position": {
+						"start": {
+							"line": 13,
+							"column": 11,
+							"offset": 178
+						},
+						"end": {
+							"line": 13,
+							"column": 27,
+							"offset": 194
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "!",
+					"position": {
+						"start": {
+							"line": 13,
+							"column": 27,
+							"offset": 194
+						},
+						"end": {
+							"line": 13,
+							"column": 28,
+							"offset": 195
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 13,
+					"column": 1,
+					"offset": 168
+				},
+				"end": {
+					"line": 13,
+					"column": 33,
+					"offset": 200
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 13,
+			"column": 33,
+			"offset": 200
+		}
+	}
+}

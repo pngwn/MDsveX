@@ -1,0 +1,282 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import { createEventDispatcher, onDestroy, onMount } from 'svelte';\n  import _validate from 'validate.js';\n\n  const dispatch = createEventDispatcher();\n\n  export let constraints = null;\n  export let errors = null;\n  export let isInvalid = true;\n\n  let form = undefined;\n  let inputs = [];\n\n  function onSubmit(event) {\n    event.preventDefault();\n    validate();\n    dispatch('submit', event);\n  }\n\n  function validate() {\n    errors = _validate(form, constraints);\n    isInvalid = !!errors\n  }\n\n  function getInputs() {\n    if (!constraints || !form) return;\n\n    const formInputs = form.querySelectorAll('input, select, textarea');\n    let i = 0;\n\n    for (i; i < formInputs.length; i += 1) {\n      const input = formInputs[i];\n      if (constraints[input.name]) {\n        inputs.push(input);\n        input.addEventListener('input', validate);\n      }\n    }\n  }\n\n  onMount(() => {\n    getInputs();\n    validate();\n  });\n\n  onDestroy(() => {\n    inputs.forEach((input) => {\n      input.removeEventListener('input', validate);\n    });\n  });\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 50,
+							"column": 1,
+							"offset": 1052
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 50,
+					"column": 10,
+					"offset": 1061
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 50,
+					"column": 10,
+					"offset": 1061
+				},
+				"end": {
+					"line": 52,
+					"column": 1,
+					"offset": 1063
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  form {\n    margin: 0;\n    padding: 0;\n  }\n",
+					"position": {
+						"start": {
+							"line": 52,
+							"column": 8,
+							"offset": 1070
+						},
+						"end": {
+							"line": 57,
+							"column": 1,
+							"offset": 1115
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 52,
+					"column": 1,
+					"offset": 1063
+				},
+				"end": {
+					"line": 57,
+					"column": 9,
+					"offset": 1123
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 57,
+					"column": 9,
+					"offset": 1123
+				},
+				"end": {
+					"line": 59,
+					"column": 1,
+					"offset": 1125
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "form",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "onSubmit",
+							"position": {
+								"start": {
+									"line": 59,
+									"column": 18,
+									"offset": 1142
+								},
+								"end": {
+									"line": 59,
+									"column": 28,
+									"offset": 1152
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 59,
+							"column": 7,
+							"offset": 1131
+						},
+						"end": {
+							"line": 59,
+							"column": 29,
+							"offset": 1153
+						}
+					},
+					"specifier": "submit"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "novalidate",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "boolean",
+					"position": {
+						"start": {
+							"line": 59,
+							"column": 30,
+							"offset": 1154
+						},
+						"end": {}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "form",
+							"position": {
+								"start": {
+									"line": 59,
+									"column": 51,
+									"offset": 1175
+								},
+								"end": {
+									"line": 59,
+									"column": 57,
+									"offset": 1181
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 59,
+							"column": 41,
+							"offset": 1165
+						},
+						"end": {
+							"line": 59,
+							"column": 57,
+							"offset": 1181
+						}
+					},
+					"specifier": "this"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 59,
+							"column": 58,
+							"offset": 1182
+						},
+						"end": {
+							"line": 60,
+							"column": 3,
+							"offset": 1185
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "slot",
+					"properties": [],
+					"selfClosing": false,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 60,
+							"column": 3,
+							"offset": 1185
+						},
+						"end": {
+							"line": 60,
+							"column": 16,
+							"offset": 1198
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 60,
+							"column": 16,
+							"offset": 1198
+						},
+						"end": {
+							"line": 61,
+							"column": 1,
+							"offset": 1199
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 59,
+					"column": 1,
+					"offset": 1125
+				},
+				"end": {
+					"line": 61,
+					"column": 8,
+					"offset": 1206
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 61,
+			"column": 8,
+			"offset": 1206
+		}
+	}
+}

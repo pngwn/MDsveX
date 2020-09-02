@@ -1,0 +1,661 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import { createEventDispatcher } from 'svelte';\n  import dayjs from 'dayjs';\n  import Select from 'svelte-select/Select';\n\n  import ClockIcon from '../Icons/Clock.svelte';\n\n  const dispatch = createEventDispatcher();\n\n  export let selected = undefined;\n  export let format = 'h:mma';\n  export let increment = 30;\n  export let containerStyles = 'padding-left:43px;';\n  export let inputStyles = 'padding-left:43px;';\n  export let isClearable = true;\n  export let isDisabled = false;\n  export let placeholder = 'Select a time';\n  export let getOptionLabel = (option) => {\n    return option.value;\n  };\n  export let getSelectionLabel = (option) => {\n    return option.value;\n  };\n\n  let selectedValue = undefined;\n\n  $: {\n    selectedValue = selected ? { value: selected } : undefined;\n  }\n\n  export let items;\n\n  $: {\n    const options = [];\n    let day = dayjs().set('minute', 0).set('hour', 0);\n    const dayEnd = day.add(1, 'day');\n\n    while (day.isBefore(dayEnd, 'day')) {\n      options.push({\n        value: day.format(format),\n        label: day.format(format)\n      });\n\n      day = day.add(increment, 'minute');\n    }\n\n    items = options;\n  }\n\n  function onClear() {\n    selected = undefined;\n\n    dispatch('clear');\n  }\n\n  function onSelect(event) {\n    selected = event.detail.value;\n    dispatch('select', selected);\n  }\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 60,
+							"column": 1,
+							"offset": 1342
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 60,
+					"column": 10,
+					"offset": 1351
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 60,
+					"column": 10,
+					"offset": 1351
+				},
+				"end": {
+					"line": 62,
+					"column": 1,
+					"offset": 1353
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  .timeSelect {\n    color: #2c3e50;\n    position: relative;\n  }\n\n  .icon {\n    height: 20px;\n    width: 20px;\n    position: absolute;\n    top: 12px;\n    left: 12px;\n    z-index: 1;\n  }\n",
+					"position": {
+						"start": {
+							"line": 62,
+							"column": 8,
+							"offset": 1360
+						},
+						"end": {
+							"line": 76,
+							"column": 1,
+							"offset": 1546
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 62,
+					"column": 1,
+					"offset": 1353
+				},
+				"end": {
+					"line": 76,
+					"column": 9,
+					"offset": 1554
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n\n",
+			"position": {
+				"start": {
+					"line": 76,
+					"column": 9,
+					"offset": 1554
+				},
+				"end": {
+					"line": 79,
+					"column": 1,
+					"offset": 1557
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "timeSelect",
+							"position": {
+								"start": {
+									"line": 79,
+									"column": 13,
+									"offset": 1569
+								},
+								"end": {
+									"line": 79,
+									"column": 23,
+									"offset": 1579
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 79,
+							"column": 6,
+							"offset": 1562
+						},
+						"end": {
+							"line": 79,
+							"column": 24,
+							"offset": 1580
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 79,
+							"column": 25,
+							"offset": 1581
+						},
+						"end": {
+							"line": 80,
+							"column": 3,
+							"offset": 1584
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "div",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "class",
+							"value": [
+								{
+									"type": "text",
+									"value": "icon",
+									"position": {
+										"start": {
+											"line": 80,
+											"column": 15,
+											"offset": 1596
+										},
+										"end": {
+											"line": 80,
+											"column": 19,
+											"offset": 1600
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 80,
+									"column": 8,
+									"offset": 1589
+								},
+								"end": {
+									"line": 80,
+									"column": 20,
+									"offset": 1601
+								}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "\n    ",
+							"position": {
+								"start": {
+									"line": 80,
+									"column": 21,
+									"offset": 1602
+								},
+								"end": {
+									"line": 81,
+									"column": 5,
+									"offset": 1607
+								}
+							}
+						},
+						{
+							"type": "svelteComponent",
+							"tagName": "ClockIcon",
+							"properties": [],
+							"selfClosing": true,
+							"children": [],
+							"position": {
+								"start": {
+									"line": 81,
+									"column": 5,
+									"offset": 1607
+								},
+								"end": {
+									"line": 81,
+									"column": 18,
+									"offset": 1620
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n  ",
+							"position": {
+								"start": {
+									"line": 81,
+									"column": 18,
+									"offset": 1620
+								},
+								"end": {
+									"line": 82,
+									"column": 3,
+									"offset": 1623
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 80,
+							"column": 3,
+							"offset": 1584
+						},
+						"end": {
+							"line": 82,
+							"column": 9,
+							"offset": 1629
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n\n  ",
+					"position": {
+						"start": {
+							"line": 82,
+							"column": 9,
+							"offset": 1629
+						},
+						"end": {
+							"line": 84,
+							"column": 3,
+							"offset": 1633
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "Select",
+					"properties": [
+						{
+							"type": "svelteDirective",
+							"name": "on",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "onSelect",
+									"position": {
+										"start": {
+											"line": 85,
+											"column": 16,
+											"offset": 1657
+										},
+										"end": {
+											"line": 85,
+											"column": 26,
+											"offset": 1667
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 85,
+									"column": 5,
+									"offset": 1646
+								},
+								"end": {
+									"line": 85,
+									"column": 27,
+									"offset": 1668
+								}
+							},
+							"specifier": "select"
+						},
+						{
+							"type": "svelteDirective",
+							"name": "on",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "onClear",
+									"position": {
+										"start": {
+											"line": 86,
+											"column": 15,
+											"offset": 1684
+										},
+										"end": {
+											"line": 86,
+											"column": 24,
+											"offset": 1693
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 86,
+									"column": 5,
+									"offset": 1674
+								},
+								"end": {
+									"line": 86,
+									"column": 25,
+									"offset": 1694
+								}
+							},
+							"specifier": "clear"
+						},
+						{
+							"type": "svelteProperty",
+							"name": "isSearchable",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " false ",
+									"position": {
+										"start": {
+											"line": 87,
+											"column": 19,
+											"offset": 1714
+										},
+										"end": {
+											"line": 87,
+											"column": 28,
+											"offset": 1723
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 87,
+									"column": 5,
+									"offset": 1700
+								},
+								"end": {
+									"line": 87,
+									"column": 29,
+									"offset": 1724
+								}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": " selectedValue ",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " selectedValue "
+								}
+							],
+							"modifiers": [],
+							"shorthand": "expression",
+							"position": {
+								"start": {
+									"line": 88,
+									"column": 5,
+									"offset": 1729
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": " containerStyles ",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " containerStyles "
+								}
+							],
+							"modifiers": [],
+							"shorthand": "expression",
+							"position": {
+								"start": {
+									"line": 89,
+									"column": 5,
+									"offset": 1752
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": " inputStyles ",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " inputStyles "
+								}
+							],
+							"modifiers": [],
+							"shorthand": "expression",
+							"position": {
+								"start": {
+									"line": 90,
+									"column": 5,
+									"offset": 1777
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": " isClearable ",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " isClearable "
+								}
+							],
+							"modifiers": [],
+							"shorthand": "expression",
+							"position": {
+								"start": {
+									"line": 91,
+									"column": 5,
+									"offset": 1798
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": " isDisabled ",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " isDisabled "
+								}
+							],
+							"modifiers": [],
+							"shorthand": "expression",
+							"position": {
+								"start": {
+									"line": 92,
+									"column": 5,
+									"offset": 1819
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": " placeholder ",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " placeholder "
+								}
+							],
+							"modifiers": [],
+							"shorthand": "expression",
+							"position": {
+								"start": {
+									"line": 93,
+									"column": 5,
+									"offset": 1839
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": " items ",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " items "
+								}
+							],
+							"modifiers": [],
+							"shorthand": "expression",
+							"position": {
+								"start": {
+									"line": 94,
+									"column": 5,
+									"offset": 1860
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": " getOptionLabel ",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " getOptionLabel "
+								}
+							],
+							"modifiers": [],
+							"shorthand": "expression",
+							"position": {
+								"start": {
+									"line": 95,
+									"column": 5,
+									"offset": 1875
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": " getSelectionLabel ",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " getSelectionLabel "
+								}
+							],
+							"modifiers": [],
+							"shorthand": "expression",
+							"position": {
+								"start": {
+									"line": 96,
+									"column": 5,
+									"offset": 1899
+								},
+								"end": {}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "\n  ",
+							"position": {
+								"start": {
+									"line": 97,
+									"column": 4,
+									"offset": 1924
+								},
+								"end": {
+									"line": 98,
+									"column": 3,
+									"offset": 1927
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 84,
+							"column": 3,
+							"offset": 1633
+						},
+						"end": {
+							"line": 98,
+							"column": 12,
+							"offset": 1936
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 98,
+							"column": 12,
+							"offset": 1936
+						},
+						"end": {
+							"line": 99,
+							"column": 1,
+							"offset": 1937
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 79,
+					"column": 1,
+					"offset": 1557
+				},
+				"end": {
+					"line": 99,
+					"column": 7,
+					"offset": 1943
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 99,
+			"column": 7,
+			"offset": 1943
+		}
+	}
+}

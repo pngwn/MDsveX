@@ -1,0 +1,307 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { afterUpdate } from 'svelte';\n\timport flash from './flash.js';\n\n\texport let todo;\n\texport let toggle;\n\n\tlet div;\n\n\tafterUpdate(() => {\n\t\tflash(div);\n\t});\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 13,
+							"column": 1,
+							"offset": 172
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 13,
+					"column": 10,
+					"offset": 181
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 13,
+					"column": 10,
+					"offset": 181
+				},
+				"end": {
+					"line": 15,
+					"column": 1,
+					"offset": 183
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tdiv {\n\t\tcursor: pointer;\n\t\tline-height: 1.5;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 15,
+							"column": 8,
+							"offset": 190
+						},
+						"end": {
+							"line": 20,
+							"column": 1,
+							"offset": 240
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 15,
+					"column": 1,
+					"offset": 183
+				},
+				"end": {
+					"line": 20,
+					"column": 9,
+					"offset": 248
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 20,
+					"column": 9,
+					"offset": 248
+				},
+				"end": {
+					"line": 22,
+					"column": 1,
+					"offset": 250
+				}
+			}
+		},
+		{
+			"type": "comment",
+			"value": " the text will flash red whenever\n\t\tthe `todo` object changes ",
+			"position": {
+				"start": {
+					"line": 22,
+					"column": 1,
+					"offset": 250
+				},
+				"end": {
+					"line": 23,
+					"column": 32,
+					"offset": 319
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 23,
+					"column": 32,
+					"offset": 319
+				},
+				"end": {
+					"line": 24,
+					"column": 1,
+					"offset": 320
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "div",
+							"position": {
+								"start": {
+									"line": 24,
+									"column": 16,
+									"offset": 335
+								},
+								"end": {
+									"line": 24,
+									"column": 21,
+									"offset": 340
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 24,
+							"column": 6,
+							"offset": 325
+						},
+						"end": {
+							"line": 24,
+							"column": 21,
+							"offset": 340
+						}
+					},
+					"specifier": "this"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 24,
+							"column": 22,
+							"offset": 341
+						},
+						"end": {}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 24,
+							"column": 31,
+							"offset": 350
+						},
+						"end": {
+							"line": 25,
+							"column": 2,
+							"offset": 352
+						}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "todo.done ? '👍': ''",
+					"position": {
+						"start": {
+							"line": 25,
+							"column": 2,
+							"offset": 352
+						},
+						"end": {
+							"line": 25,
+							"column": 24,
+							"offset": 374
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": " ",
+					"position": {
+						"start": {
+							"line": 25,
+							"column": 24,
+							"offset": 374
+						},
+						"end": {
+							"line": 25,
+							"column": 25,
+							"offset": 375
+						}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "todo.text",
+					"position": {
+						"start": {
+							"line": 25,
+							"column": 25,
+							"offset": 375
+						},
+						"end": {
+							"line": 25,
+							"column": 36,
+							"offset": 386
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 25,
+							"column": 36,
+							"offset": 386
+						},
+						"end": {
+							"line": 26,
+							"column": 1,
+							"offset": 387
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 24,
+					"column": 1,
+					"offset": 320
+				},
+				"end": {
+					"line": 26,
+					"column": 7,
+					"offset": 393
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 26,
+			"column": 7,
+			"offset": 393
+		}
+	}
+}

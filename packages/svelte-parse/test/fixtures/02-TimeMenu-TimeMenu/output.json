@@ -1,0 +1,583 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import { createEventDispatcher } from 'svelte';\n  import { Clock as ClockIcon } from '@sveltekit/ui/Icons';\n  import Dropdown, { options as dropdownOptions } from '@sveltekit/ui/Dropdown';\n  import Tabs from '@sveltekit/ui/Tabs';\n  import Menu from './_Menu.svelte';\n\n  export let selectedItem;\n  export let placeholder = 'Please select...';\n  export let placement = dropdownOptions.placement.BOTTOM_LEFT;\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 11,
+							"column": 1,
+							"offset": 417
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 11,
+					"column": 10,
+					"offset": 426
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 11,
+					"column": 10,
+					"offset": 426
+				},
+				"end": {
+					"line": 13,
+					"column": 1,
+					"offset": 428
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  .toggle {\n    border: 1px solid var(--neutral_1);\n    border-radius: 4px;\n    color: var(--neutral_7);\n    font-size: 14px;\n    line-height: 16px;\n    display: flex;\n    align-items: center;\n    padding: 11px 16px;\n    outline: none;\n    width: 100%;\n  }\n\n  .toggle:hover {\n    border-color: var(--neutral_3);\n  }\n\n  .toggle:isdisabled {\n    background-color: rgba(0, 0, 0, 0.05);\n    border-color: rgba(0, 0, 0, 0.07);\n    color: #b2b8bf;\n  }\n\n  .toggle:focus {\n    border-color: var(--blue_5);\n  }\n\n  .icon {\n    width: 20px;\n    height: 20px;\n    margin-right: 5px;\n  }\n",
+					"position": {
+						"start": {
+							"line": 13,
+							"column": 8,
+							"offset": 435
+						},
+						"end": {
+							"line": 46,
+							"column": 1,
+							"offset": 1011
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 13,
+					"column": 1,
+					"offset": 428
+				},
+				"end": {
+					"line": 46,
+					"column": 9,
+					"offset": 1019
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 46,
+					"column": 9,
+					"offset": 1019
+				},
+				"end": {
+					"line": 48,
+					"column": 1,
+					"offset": 1021
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Dropdown",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "MenuComponent",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "Menu",
+							"position": {
+								"start": {
+									"line": 48,
+									"column": 25,
+									"offset": 1045
+								},
+								"end": {
+									"line": 48,
+									"column": 31,
+									"offset": 1051
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 48,
+							"column": 11,
+							"offset": 1031
+						},
+						"end": {
+							"line": 48,
+							"column": 31,
+							"offset": 1051
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "placement",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "placement"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 48,
+							"column": 32,
+							"offset": 1052
+						},
+						"end": {}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "isBlock",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "boolean",
+					"position": {
+						"start": {
+							"line": 48,
+							"column": 44,
+							"offset": 1064
+						},
+						"end": {}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 48,
+							"column": 52,
+							"offset": 1072
+						},
+						"end": {}
+					},
+					"specifier": "selectedItem"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 48,
+							"column": 70,
+							"offset": 1090
+						},
+						"end": {
+							"line": 49,
+							"column": 3,
+							"offset": 1093
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "div",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "class",
+							"value": [
+								{
+									"type": "text",
+									"value": "toggle",
+									"position": {
+										"start": {
+											"line": 49,
+											"column": 15,
+											"offset": 1105
+										},
+										"end": {
+											"line": 49,
+											"column": 21,
+											"offset": 1111
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 49,
+									"column": 8,
+									"offset": 1098
+								},
+								"end": {
+									"line": 49,
+									"column": 22,
+									"offset": 1112
+								}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": "tabindex",
+							"value": [
+								{
+									"type": "text",
+									"value": "0",
+									"position": {
+										"start": {
+											"line": 49,
+											"column": 33,
+											"offset": 1123
+										},
+										"end": {
+											"line": 49,
+											"column": 34,
+											"offset": 1124
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 49,
+									"column": 23,
+									"offset": 1113
+								},
+								"end": {
+									"line": 49,
+									"column": 35,
+									"offset": 1125
+								}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "\n    ",
+							"position": {
+								"start": {
+									"line": 49,
+									"column": 36,
+									"offset": 1126
+								},
+								"end": {
+									"line": 50,
+									"column": 5,
+									"offset": 1131
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "span",
+							"properties": [
+								{
+									"type": "svelteProperty",
+									"name": "class",
+									"value": [
+										{
+											"type": "text",
+											"value": "icon",
+											"position": {
+												"start": {
+													"line": 50,
+													"column": 18,
+													"offset": 1144
+												},
+												"end": {
+													"line": 50,
+													"column": 22,
+													"offset": 1148
+												}
+											}
+										}
+									],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 50,
+											"column": 11,
+											"offset": 1137
+										},
+										"end": {
+											"line": 50,
+											"column": 23,
+											"offset": 1149
+										}
+									}
+								}
+							],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "\n      ",
+									"position": {
+										"start": {
+											"line": 50,
+											"column": 24,
+											"offset": 1150
+										},
+										"end": {
+											"line": 51,
+											"column": 7,
+											"offset": 1157
+										}
+									}
+								},
+								{
+									"type": "svelteComponent",
+									"tagName": "ClockIcon",
+									"properties": [],
+									"selfClosing": true,
+									"children": [],
+									"position": {
+										"start": {
+											"line": 51,
+											"column": 7,
+											"offset": 1157
+										},
+										"end": {
+											"line": 51,
+											"column": 20,
+											"offset": 1170
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n    ",
+									"position": {
+										"start": {
+											"line": 51,
+											"column": 20,
+											"offset": 1170
+										},
+										"end": {
+											"line": 52,
+											"column": 5,
+											"offset": 1175
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 50,
+									"column": 5,
+									"offset": 1131
+								},
+								"end": {
+									"line": 52,
+									"column": 12,
+									"offset": 1182
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n    ",
+							"position": {
+								"start": {
+									"line": 52,
+									"column": 12,
+									"offset": 1182
+								},
+								"end": {
+									"line": 53,
+									"column": 5,
+									"offset": 1187
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "span",
+							"properties": [
+								{
+									"type": "svelteProperty",
+									"name": "class",
+									"value": [
+										{
+											"type": "text",
+											"value": "value",
+											"position": {
+												"start": {
+													"line": 53,
+													"column": 18,
+													"offset": 1200
+												},
+												"end": {
+													"line": 53,
+													"column": 23,
+													"offset": 1205
+												}
+											}
+										}
+									],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 53,
+											"column": 11,
+											"offset": 1193
+										},
+										"end": {
+											"line": 53,
+											"column": 24,
+											"offset": 1206
+										}
+									}
+								}
+							],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "svelteExpression",
+									"value": "selectedItem || placeholder",
+									"position": {
+										"start": {
+											"line": 53,
+											"column": 25,
+											"offset": 1207
+										},
+										"end": {
+											"line": 53,
+											"column": 54,
+											"offset": 1236
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 53,
+									"column": 5,
+									"offset": 1187
+								},
+								"end": {
+									"line": 53,
+									"column": 61,
+									"offset": 1243
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n  ",
+							"position": {
+								"start": {
+									"line": 53,
+									"column": 61,
+									"offset": 1243
+								},
+								"end": {
+									"line": 54,
+									"column": 3,
+									"offset": 1246
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 49,
+							"column": 3,
+							"offset": 1093
+						},
+						"end": {
+							"line": 54,
+							"column": 9,
+							"offset": 1252
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 54,
+							"column": 9,
+							"offset": 1252
+						},
+						"end": {
+							"line": 55,
+							"column": 1,
+							"offset": 1253
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 48,
+					"column": 1,
+					"offset": 1021
+				},
+				"end": {
+					"line": 55,
+					"column": 12,
+					"offset": 1264
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 55,
+			"column": 12,
+			"offset": 1264
+		}
+	}
+}

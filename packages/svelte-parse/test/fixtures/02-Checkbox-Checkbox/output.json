@@ -1,0 +1,533 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import { createEventDispatcher } from 'svelte';\n\n  const dispatch = createEventDispatcher();\n\n  export let name = '';\n  export let isDisabled = false;\n  export let isChecked = false;\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 9,
+							"column": 1,
+							"offset": 194
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 9,
+					"column": 10,
+					"offset": 203
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 9,
+					"column": 10,
+					"offset": 203
+				},
+				"end": {
+					"line": 11,
+					"column": 1,
+					"offset": 205
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  .checkbox-container {\n    display: inline-block;\n    position: relative;\n  }\n\n  input {\n    position: absolute;\n    top: 0;\n    right: 0;\n    bottom: 0;\n    left: 0;\n    z-index: 1;\n    opacity: 0;\n    cursor: pointer;\n  }\n\n  input[disabled] {\n    cursor: not-allowed;\n  }\n\n  .check {\n    position: relative;\n    top: 0;\n    left: 0;\n    display: block;\n    width: 16px;\n    height: 16px;\n    background: var(--white);\n    border: 1px solid var(--neutral_1);\n    border-radius: 2px;\n    cursor: pointer;\n  }\n\n  .check.checked {\n    background: var(--primary_1);\n    border-color: transparent;\n  }\n\n  .check::after {\n    content: \"\";\n    top: 50%;\n    left: 21%;\n    display: table;\n    width: 5.71428571px;\n    height: 9.14285714px;\n    border: 2px solid #fff;\n    border-top: 0;\n    border-left: 0;\n    transform: rotate(45deg) scale(0) translate(-50%, -50%);\n    opacity: 0;\n    transition: all 0.1s cubic-bezier(0.71, -0.46, 0.88, 0.6), opacity 0.1s;\n  }\n\n  .check.checked::after {\n    border: 2px solid #fff;\n    border-top: 0;\n    border-left: 0;\n    transform: rotate(45deg) scale(1) translate(-50%, -50%);\n    opacity: 1;\n    position: absolute;\n  }\n",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 8,
+							"offset": 212
+						},
+						"end": {
+							"line": 73,
+							"column": 1,
+							"offset": 1372
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 11,
+					"column": 1,
+					"offset": 205
+				},
+				"end": {
+					"line": 73,
+					"column": 9,
+					"offset": 1380
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 73,
+					"column": 9,
+					"offset": 1380
+				},
+				"end": {
+					"line": 75,
+					"column": 1,
+					"offset": 1382
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "span",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "checkbox-container",
+							"position": {
+								"start": {
+									"line": 75,
+									"column": 14,
+									"offset": 1395
+								},
+								"end": {
+									"line": 75,
+									"column": 32,
+									"offset": 1413
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 75,
+							"column": 7,
+							"offset": 1388
+						},
+						"end": {
+							"line": 75,
+							"column": 33,
+							"offset": 1414
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 75,
+							"column": 34,
+							"offset": 1415
+						},
+						"end": {
+							"line": 76,
+							"column": 3,
+							"offset": 1418
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "input",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "name",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "name"
+								}
+							],
+							"modifiers": [],
+							"shorthand": "expression",
+							"position": {
+								"start": {
+									"line": 77,
+									"column": 5,
+									"offset": 1429
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": "type",
+							"value": [
+								{
+									"type": "text",
+									"value": "checkbox",
+									"position": {
+										"start": {
+											"line": 78,
+											"column": 11,
+											"offset": 1446
+										},
+										"end": {
+											"line": 78,
+											"column": 19,
+											"offset": 1454
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 78,
+									"column": 5,
+									"offset": 1440
+								},
+								"end": {
+									"line": 78,
+									"column": 20,
+									"offset": 1455
+								}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": "disabled",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "isDisabled",
+									"position": {
+										"start": {
+											"line": 79,
+											"column": 14,
+											"offset": 1469
+										},
+										"end": {
+											"line": 79,
+											"column": 26,
+											"offset": 1481
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 79,
+									"column": 5,
+									"offset": 1460
+								},
+								"end": {
+									"line": 79,
+									"column": 26,
+									"offset": 1481
+								}
+							}
+						},
+						{
+							"type": "svelteDirective",
+							"name": "bind",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "isChecked",
+									"position": {
+										"start": {
+											"line": 80,
+											"column": 18,
+											"offset": 1499
+										},
+										"end": {
+											"line": 80,
+											"column": 29,
+											"offset": 1510
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 80,
+									"column": 5,
+									"offset": 1486
+								},
+								"end": {
+									"line": 80,
+									"column": 29,
+									"offset": 1510
+								}
+							},
+							"specifier": "checked"
+						},
+						{
+							"type": "svelteDirective",
+							"name": "on",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "event => dispatch('input', event)",
+									"position": {
+										"start": {
+											"line": 81,
+											"column": 14,
+											"offset": 1524
+										},
+										"end": {
+											"line": 81,
+											"column": 49,
+											"offset": 1559
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 81,
+									"column": 5,
+									"offset": 1515
+								},
+								"end": {
+									"line": 81,
+									"column": 49,
+									"offset": 1559
+								}
+							},
+							"specifier": "input"
+						},
+						{
+							"type": "svelteDirective",
+							"name": "on",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "event => dispatch('change', event)",
+									"position": {
+										"start": {
+											"line": 82,
+											"column": 15,
+											"offset": 1574
+										},
+										"end": {
+											"line": 82,
+											"column": 51,
+											"offset": 1610
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 82,
+									"column": 5,
+									"offset": 1564
+								},
+								"end": {
+									"line": 82,
+									"column": 51,
+									"offset": 1610
+								}
+							},
+							"specifier": "change"
+						}
+					],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 76,
+							"column": 3,
+							"offset": 1418
+						},
+						"end": {
+							"line": 82,
+							"column": 54,
+							"offset": 1613
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 82,
+							"column": 54,
+							"offset": 1613
+						},
+						"end": {
+							"line": 83,
+							"column": 3,
+							"offset": 1616
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "span",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "class",
+							"value": [
+								{
+									"type": "text",
+									"value": "check",
+									"position": {
+										"start": {
+											"line": 83,
+											"column": 16,
+											"offset": 1629
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "",
+									"position": {
+										"start": {
+											"line": 83,
+											"column": 21,
+											"offset": 1634
+										},
+										"end": {
+											"line": 83,
+											"column": 22,
+											"offset": 1635
+										}
+									}
+								},
+								{
+									"type": "svelteExpression",
+									"value": "isChecked ? 'checked' : ''",
+									"position": {
+										"start": {
+											"line": 83,
+											"column": 22,
+											"offset": 1635
+										},
+										"end": {
+											"line": 83,
+											"column": 50,
+											"offset": 1663
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 83,
+									"column": 9,
+									"offset": 1622
+								},
+								"end": {
+									"line": 83,
+									"column": 51,
+									"offset": 1664
+								}
+							}
+						}
+					],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 83,
+							"column": 3,
+							"offset": 1616
+						},
+						"end": {
+							"line": 83,
+							"column": 54,
+							"offset": 1667
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 83,
+							"column": 54,
+							"offset": 1667
+						},
+						"end": {
+							"line": 84,
+							"column": 1,
+							"offset": 1668
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 75,
+					"column": 1,
+					"offset": 1382
+				},
+				"end": {
+					"line": 84,
+					"column": 8,
+					"offset": 1675
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 84,
+			"column": 8,
+			"offset": 1675
+		}
+	}
+}

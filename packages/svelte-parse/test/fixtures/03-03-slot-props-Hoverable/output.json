@@ -1,0 +1,252 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tlet hovering;\n\n\tfunction enter() {\n\t\thovering = true;\n\t}\n\n\tfunction leave() {\n\t\thovering = false;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 11,
+							"column": 1,
+							"offset": 111
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 11,
+					"column": 10,
+					"offset": 120
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 11,
+					"column": 10,
+					"offset": 120
+				},
+				"end": {
+					"line": 13,
+					"column": 1,
+					"offset": 122
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "enter",
+							"position": {
+								"start": {
+									"line": 13,
+									"column": 20,
+									"offset": 141
+								},
+								"end": {
+									"line": 13,
+									"column": 27,
+									"offset": 148
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 13,
+							"column": 6,
+							"offset": 127
+						},
+						"end": {
+							"line": 13,
+							"column": 27,
+							"offset": 148
+						}
+					},
+					"specifier": "mouseenter"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "leave",
+							"position": {
+								"start": {
+									"line": 13,
+									"column": 42,
+									"offset": 163
+								},
+								"end": {
+									"line": 13,
+									"column": 49,
+									"offset": 170
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 13,
+							"column": 28,
+							"offset": 149
+						},
+						"end": {
+							"line": 13,
+							"column": 49,
+							"offset": 170
+						}
+					},
+					"specifier": "mouseleave"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 13,
+							"column": 50,
+							"offset": 171
+						},
+						"end": {
+							"line": 14,
+							"column": 2,
+							"offset": 173
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "slot",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "hovering",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "hovering",
+									"position": {
+										"start": {
+											"line": 14,
+											"column": 17,
+											"offset": 188
+										},
+										"end": {
+											"line": 14,
+											"column": 27,
+											"offset": 198
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 14,
+									"column": 8,
+									"offset": 179
+								},
+								"end": {
+									"line": 14,
+									"column": 27,
+									"offset": 198
+								}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 14,
+							"column": 2,
+							"offset": 173
+						},
+						"end": {
+							"line": 14,
+							"column": 35,
+							"offset": 206
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 14,
+							"column": 35,
+							"offset": 206
+						},
+						"end": {
+							"line": 15,
+							"column": 1,
+							"offset": 207
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 13,
+					"column": 1,
+					"offset": 122
+				},
+				"end": {
+					"line": 15,
+					"column": 7,
+					"offset": 213
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 15,
+			"column": 7,
+			"offset": 213
+		}
+	}
+}

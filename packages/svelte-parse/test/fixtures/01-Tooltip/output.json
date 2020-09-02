@@ -1,0 +1,588 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  /** Type (color) of the tooltip \n   * @svelte-prop {String} [type=is-primary]\n   * @values <code>is-white</code>, <code>is-black</code>, <code>is-light</code>, <code>is-dark</code>, <code>is-primary</code>, <code>is-info</code>, <code>is-success</code>, <code>is-warning</code>, <code>is-danger</code>, and any other colors you've set in the <code>$colors</code> list on Sass\n   * */\n  export let type = 'is-primary'\n\n  /** Whether tooltip is active or not  \n   * @svelte-prop {Boolean} [active=true]\n   * */\n  export let active = true\n  \n  /** Tooltip text  \n   * @svelte-prop {String} label\n   * */\n  export let label = ''\n  \n  /** Tooltip position in relation to the element \n   * @svelte-prop {String} [position=is-top]\n   * @values <code>is-top</code>, <code>is-bottom</code>, <code>is-top-left</code>, <code>is-top-right</code>, <code>is-bottom-left</code>, <code>is-bottom-right</code>\n   * */\n  export let position = 'is-top'\n\n  /** Tooltip will be always active \n   * @svelte-prop {Boolean} [always=false]\n   * */\n  export let always = false\n\n  /** Tooltip will have a little fade animation \n   * @svelte-prop {Boolean} [animated=false]\n   * */\n  export let animated = false\n\n  /** Tooltip will be square (not rounded corners)  \n   * @svelte-prop {Boolean} [square=false]\n   * */\n  export let square = false\n\n  /** Tooltip slot will have a dashed underline \n   * @svelte-prop {Boolean} [dashed=false]\n   * */\n  export let dashed = false\n\n  /** Tooltip will be multilined  \n   * @svelte-prop {Boolean} [multilined=false]\n   * */\n  export let multilined = false\n\n  /** Tooltip multiline size (only works for multilined tooltips) \n   * @svelte-prop {Boolean} [size=is-medium]\n   * @values <code>is-small</code>, <code>is-medium</code>, <code>is-large</code>\n   * */\n  export let size = 'is-medium'\n\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 55,
+							"column": 1,
+							"offset": 1816
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 55,
+					"column": 10,
+					"offset": 1825
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 55,
+					"column": 10,
+					"offset": 1825
+				},
+				"end": {
+					"line": 57,
+					"column": 1,
+					"offset": 1827
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "lang",
+					"value": [
+						{
+							"type": "text",
+							"value": "scss",
+							"position": {
+								"start": {
+									"line": 57,
+									"column": 14,
+									"offset": 1840
+								},
+								"end": {
+									"line": 57,
+									"column": 18,
+									"offset": 1844
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 57,
+							"column": 8,
+							"offset": 1834
+						},
+						"end": {
+							"line": 57,
+							"column": 19,
+							"offset": 1845
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  @import 'node_modules/bulma/sass/utilities/all';\n\n  $tooltip-arrow-size: 5px;\n  $tooltip-arrow-margin: 2px;\n\n  $tooltip-multiline-sizes: (\n      small: 180px,\n      medium: 240px,\n      large: 300px\n  );\n\n  @mixin tooltip-arrow($direction, $color) {\n      @if ($direction == \"is-top\") {\n          border-top: $tooltip-arrow-size solid $color;\n          border-right: $tooltip-arrow-size solid transparent;\n          border-left: $tooltip-arrow-size solid transparent;\n          bottom: calc(100% + #{$tooltip-arrow-margin});\n      } @else if ($direction == \"is-bottom\") {\n          border-right: $tooltip-arrow-size solid transparent;\n          border-bottom: $tooltip-arrow-size solid $color;\n          border-left: $tooltip-arrow-size solid transparent;\n          top: calc(100% + #{$tooltip-arrow-margin});\n      } @else if ($direction == \"is-right\") {\n          border-top: $tooltip-arrow-size solid transparent;\n          border-right: $tooltip-arrow-size solid $color;\n          border-bottom: $tooltip-arrow-size solid transparent;\n          left: calc(100% + #{$tooltip-arrow-margin});\n      } @else if ($direction == \"is-left\") {\n          border-top: $tooltip-arrow-size solid transparent;\n          border-bottom: $tooltip-arrow-size solid transparent;\n          border-left: $tooltip-arrow-size solid $color;\n          right: calc(100% + #{$tooltip-arrow-margin});\n      }\n  }\n\n  @mixin tooltip($direction) {\n      &.#{$direction} {\n          &:before,\n          &:after {\n              @if ($direction == \"is-top\") {\n                  top: auto;\n                  right: auto;\n                  bottom: calc(100% + #{$tooltip-arrow-size} + #{$tooltip-arrow-margin});\n                  left: 50%;\n                  transform: translateX(-50%);\n              } @else if ($direction == \"is-bottom\") {\n                  top: calc(100% + #{$tooltip-arrow-size} + #{$tooltip-arrow-margin});\n                  right: auto;\n                  bottom: auto;\n                  left: 50%;\n                  transform: translateX(-50%);\n              } @else if ($direction == \"is-right\") {\n                  top: 50%;\n                  right: auto;\n                  bottom: auto;\n                  left: calc(100% + #{$tooltip-arrow-size} + #{$tooltip-arrow-margin});\n                  transform: translateY(-50%);\n              } @else if ($direction == \"is-left\") {\n                  top: 50%;\n                  right: calc(100% + #{$tooltip-arrow-size} + #{$tooltip-arrow-margin});\n                  bottom: auto;\n                  left: auto;\n                  transform: translateY(-50%);\n              }\n          }\n          @each $name, $pair in $colors {\n              $color: nth($pair, 1);\n              &.is-#{$name}:before {\n                  @include tooltip-arrow($direction, $color)\n              }\n          }\n          &.is-multiline {\n              @each $name, $size in $tooltip-multiline-sizes {\n                  &.is-#{$name}:after {\n                      width: $size;\n                  }\n              }\n          }\n      }\n  }\n\n  // Base\n  .tooltip {\n      @include tooltip(\"is-top\");\n      @include tooltip(\"is-right\");\n      @include tooltip(\"is-bottom\");\n      @include tooltip(\"is-left\");\n      position: relative;\n      display: inline-flex;\n      &:before,\n      &:after {\n          position: absolute;\n          content: \"\";\n          opacity: 0;\n          visibility: hidden;\n          pointer-events: none;\n      }\n      &:before {\n          z-index: 889;\n      }\n      &:after {\n          content: attr(data-label);\n          width: auto;\n          padding: 0.35rem 0.75rem;\n          border-radius: $radius-large;\n          font-size: 0.85rem;\n          font-weight: $weight-normal;\n          box-shadow: 0px 1px 2px 1px rgba(0, 1, 0, 0.2);\n          z-index: 888;\n          white-space: nowrap;\n      }\n      &:not([data-label=\"\"]):hover:before,\n      &:not([data-label=\"\"]):hover:after {\n          opacity: 1;\n          visibility: visible;\n      }\n      // Modifiers\n      @each $name, $pair in $colors {\n          $color: nth($pair, 1);\n          $color-invert: nth($pair, 2);\n          &.is-#{$name}:after {\n              background: $color;\n              color: $color-invert;\n          }\n      }\n      &:not([data-label=\"\"]).is-always {\n          &:before,\n          &:after {\n              opacity: 1;\n              visibility: visible;\n          }\n      }\n      &.is-multiline {\n          &:after {\n              display: flex-block;\n              text-align: center;\n              white-space: normal;\n          }\n      }\n      &.is-dashed {\n          border-bottom: 1px dashed $grey-light;\n          cursor: default;\n      }\n      &.is-square {\n          &:after {\n              border-radius: 0;\n          }\n      }\n      &.is-animated {\n          &:before,\n          &:after {\n              transition: opacity $speed $easing, visibility $speed $easing;\n          }\n      }\n  }\n",
+					"position": {
+						"start": {
+							"line": 57,
+							"column": 20,
+							"offset": 1846
+						},
+						"end": {
+							"line": 213,
+							"column": 1,
+							"offset": 6779
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 57,
+					"column": 1,
+					"offset": 1827
+				},
+				"end": {
+					"line": 213,
+					"column": 9,
+					"offset": 6787
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 213,
+					"column": 9,
+					"offset": 6787
+				},
+				"end": {
+					"line": 215,
+					"column": 1,
+					"offset": 6789
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "span",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "data-label",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "label",
+							"position": {
+								"start": {
+									"line": 215,
+									"column": 18,
+									"offset": 6806
+								},
+								"end": {
+									"line": 215,
+									"column": 25,
+									"offset": 6813
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 215,
+							"column": 7,
+							"offset": 6795
+						},
+						"end": {
+							"line": 215,
+							"column": 25,
+							"offset": 6813
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "type",
+							"position": {
+								"start": {
+									"line": 216,
+									"column": 14,
+									"offset": 6827
+								},
+								"end": {
+									"line": 216,
+									"column": 20,
+									"offset": 6833
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "",
+							"position": {
+								"start": {
+									"line": 216,
+									"column": 20,
+									"offset": 6833
+								},
+								"end": {
+									"line": 216,
+									"column": 21,
+									"offset": 6834
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "position",
+							"position": {
+								"start": {
+									"line": 216,
+									"column": 21,
+									"offset": 6834
+								},
+								"end": {
+									"line": 216,
+									"column": 31,
+									"offset": 6844
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "",
+							"position": {
+								"start": {
+									"line": 216,
+									"column": 31,
+									"offset": 6844
+								},
+								"end": {
+									"line": 216,
+									"column": 32,
+									"offset": 6845
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "size",
+							"position": {
+								"start": {
+									"line": 216,
+									"column": 32,
+									"offset": 6845
+								},
+								"end": {
+									"line": 216,
+									"column": 38,
+									"offset": 6851
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 216,
+							"column": 7,
+							"offset": 6820
+						},
+						"end": {
+							"line": 216,
+							"column": 39,
+							"offset": 6852
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "active",
+							"position": {
+								"start": {
+									"line": 217,
+									"column": 21,
+									"offset": 6873
+								},
+								"end": {
+									"line": 217,
+									"column": 29,
+									"offset": 6881
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 217,
+							"column": 7,
+							"offset": 6859
+						},
+						"end": {
+							"line": 217,
+							"column": 29,
+							"offset": 6881
+						}
+					},
+					"specifier": "tooltip"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "square",
+							"position": {
+								"start": {
+									"line": 218,
+									"column": 23,
+									"offset": 6905
+								},
+								"end": {
+									"line": 218,
+									"column": 31,
+									"offset": 6913
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 218,
+							"column": 7,
+							"offset": 6889
+						},
+						"end": {
+							"line": 218,
+							"column": 31,
+							"offset": 6913
+						}
+					},
+					"specifier": "is-square"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "animated",
+							"position": {
+								"start": {
+									"line": 219,
+									"column": 25,
+									"offset": 6938
+								},
+								"end": {
+									"line": 219,
+									"column": 35,
+									"offset": 6948
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 219,
+							"column": 7,
+							"offset": 6920
+						},
+						"end": {
+							"line": 219,
+							"column": 35,
+							"offset": 6948
+						}
+					},
+					"specifier": "is-animated"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "always",
+							"position": {
+								"start": {
+									"line": 220,
+									"column": 23,
+									"offset": 6972
+								},
+								"end": {
+									"line": 220,
+									"column": 31,
+									"offset": 6980
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 220,
+							"column": 7,
+							"offset": 6956
+						},
+						"end": {
+							"line": 220,
+							"column": 31,
+							"offset": 6980
+						}
+					},
+					"specifier": "is-always"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "multilined",
+							"position": {
+								"start": {
+									"line": 221,
+									"column": 26,
+									"offset": 7007
+								},
+								"end": {
+									"line": 221,
+									"column": 38,
+									"offset": 7019
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 221,
+							"column": 7,
+							"offset": 6988
+						},
+						"end": {
+							"line": 221,
+							"column": 38,
+							"offset": 7019
+						}
+					},
+					"specifier": "is-multiline"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "dashed",
+							"position": {
+								"start": {
+									"line": 222,
+									"column": 23,
+									"offset": 7043
+								},
+								"end": {
+									"line": 222,
+									"column": 31,
+									"offset": 7051
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 222,
+							"column": 7,
+							"offset": 7027
+						},
+						"end": {
+							"line": 222,
+							"column": 31,
+							"offset": 7051
+						}
+					},
+					"specifier": "is-dashed"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 223,
+							"column": 8,
+							"offset": 7059
+						},
+						"end": {
+							"line": 224,
+							"column": 3,
+							"offset": 7062
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "slot",
+					"properties": [],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 224,
+							"column": 3,
+							"offset": 7062
+						},
+						"end": {
+							"line": 224,
+							"column": 10,
+							"offset": 7069
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 224,
+							"column": 10,
+							"offset": 7069
+						},
+						"end": {
+							"line": 225,
+							"column": 1,
+							"offset": 7070
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 215,
+					"column": 1,
+					"offset": 6789
+				},
+				"end": {
+					"line": 225,
+					"column": 8,
+					"offset": 7077
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 225,
+			"column": 8,
+			"offset": 7077
+		}
+	}
+}

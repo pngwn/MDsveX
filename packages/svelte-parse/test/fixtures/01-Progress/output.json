@@ -1,0 +1,243 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\nimport { get } from 'svelte/store'\nimport { tweened } from 'svelte/motion'\nimport { cubicOut } from 'svelte/easing'\n\n/** Value of progress bar\n * @svelte-prop {Number} value\n * */\nexport let value = null\n\n/** Type (color) of progress bar\n * @svelte-prop {String} [type]\n * @values $$colors$$\n * */\nexport let type = ''\n\n/** Maximum value of progress bar\n * @svelte-prop {Number} [max=100]\n * */\nexport let max = 100\n\n/** Duration of progress change animation (in ms)\n * @svelte-prop {Number} [duration=400]\n * */\nexport let duration = 400\n\n/** Easing function to use for animation\n * @svelte-prop {Function} [cubicOut]\n * @values Any function from <code>svelte/easing</code>, or a custom one\n * */\nexport let easing = cubicOut\n\nlet el\nlet newValue = tweened(value, { duration, easing })\n\n$: newValue.set(value)\n\nnewValue.subscribe(val => {\n  if (el && typeof(value !== undefined)) {\n    el.setAttribute('value', get(newValue))\n  }\n})\n\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 44,
+							"column": 1,
+							"offset": 944
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 44,
+					"column": 10,
+					"offset": 953
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 44,
+					"column": 10,
+					"offset": 953
+				},
+				"end": {
+					"line": 46,
+					"column": 1,
+					"offset": 955
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "progress",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "progress",
+							"position": {
+								"start": {
+									"line": 46,
+									"column": 18,
+									"offset": 972
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "",
+							"position": {
+								"start": {
+									"line": 46,
+									"column": 26,
+									"offset": 980
+								},
+								"end": {
+									"line": 46,
+									"column": 27,
+									"offset": 981
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "type",
+							"position": {
+								"start": {
+									"line": 46,
+									"column": 27,
+									"offset": 981
+								},
+								"end": {
+									"line": 46,
+									"column": 33,
+									"offset": 987
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 46,
+							"column": 11,
+							"offset": 965
+						},
+						"end": {
+							"line": 46,
+							"column": 34,
+							"offset": 988
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "el",
+							"position": {
+								"start": {
+									"line": 46,
+									"column": 45,
+									"offset": 999
+								},
+								"end": {
+									"line": 46,
+									"column": 49,
+									"offset": 1003
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 46,
+							"column": 35,
+							"offset": 989
+						},
+						"end": {
+							"line": 46,
+							"column": 49,
+							"offset": 1003
+						}
+					},
+					"specifier": "this"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "max",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "max"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 46,
+							"column": 50,
+							"offset": 1004
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "svelteExpression",
+					"value": "value",
+					"position": {
+						"start": {
+							"line": 46,
+							"column": 56,
+							"offset": 1010
+						},
+						"end": {
+							"line": 46,
+							"column": 63,
+							"offset": 1017
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "%",
+					"position": {
+						"start": {
+							"line": 46,
+							"column": 63,
+							"offset": 1017
+						},
+						"end": {
+							"line": 46,
+							"column": 64,
+							"offset": 1018
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 46,
+					"column": 1,
+					"offset": 955
+				},
+				"end": {
+					"line": 46,
+					"column": 75,
+					"offset": 1029
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 46,
+			"column": 75,
+			"offset": 1029
+		}
+	}
+}

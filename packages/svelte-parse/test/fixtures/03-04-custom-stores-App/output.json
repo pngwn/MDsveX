@@ -1,0 +1,391 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { count } from './stores.js';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 47
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 3,
+					"column": 10,
+					"offset": 56
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 3,
+					"column": 10,
+					"offset": 56
+				},
+				"end": {
+					"line": 5,
+					"column": 1,
+					"offset": 58
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "h1",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "The count is ",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 5,
+							"offset": 62
+						},
+						"end": {
+							"line": 5,
+							"column": 18,
+							"offset": 75
+						}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "$count",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 18,
+							"offset": 75
+						},
+						"end": {
+							"line": 5,
+							"column": 26,
+							"offset": 83
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 1,
+					"offset": 58
+				},
+				"end": {
+					"line": 5,
+					"column": 31,
+					"offset": 88
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 31,
+					"offset": 88
+				},
+				"end": {
+					"line": 7,
+					"column": 1,
+					"offset": 90
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "button",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "count.increment",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 18,
+									"offset": 107
+								},
+								"end": {
+									"line": 7,
+									"column": 35,
+									"offset": 124
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 9,
+							"offset": 98
+						},
+						"end": {
+							"line": 7,
+							"column": 35,
+							"offset": 124
+						}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "+",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 36,
+							"offset": 125
+						},
+						"end": {
+							"line": 7,
+							"column": 37,
+							"offset": 126
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 7,
+					"column": 1,
+					"offset": 90
+				},
+				"end": {
+					"line": 7,
+					"column": 46,
+					"offset": 135
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 7,
+					"column": 46,
+					"offset": 135
+				},
+				"end": {
+					"line": 8,
+					"column": 1,
+					"offset": 136
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "button",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "count.decrement",
+							"position": {
+								"start": {
+									"line": 8,
+									"column": 18,
+									"offset": 153
+								},
+								"end": {
+									"line": 8,
+									"column": 35,
+									"offset": 170
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 8,
+							"column": 9,
+							"offset": 144
+						},
+						"end": {
+							"line": 8,
+							"column": 35,
+							"offset": 170
+						}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "-",
+					"position": {
+						"start": {
+							"line": 8,
+							"column": 36,
+							"offset": 171
+						},
+						"end": {
+							"line": 8,
+							"column": 37,
+							"offset": 172
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 8,
+					"column": 1,
+					"offset": 136
+				},
+				"end": {
+					"line": 8,
+					"column": 46,
+					"offset": 181
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 8,
+					"column": 46,
+					"offset": 181
+				},
+				"end": {
+					"line": 9,
+					"column": 1,
+					"offset": 182
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "button",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "count.reset",
+							"position": {
+								"start": {
+									"line": 9,
+									"column": 18,
+									"offset": 199
+								},
+								"end": {
+									"line": 9,
+									"column": 31,
+									"offset": 212
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 9,
+							"offset": 190
+						},
+						"end": {
+							"line": 9,
+							"column": 31,
+							"offset": 212
+						}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "reset",
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 32,
+							"offset": 213
+						},
+						"end": {
+							"line": 9,
+							"column": 37,
+							"offset": 218
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 9,
+					"column": 1,
+					"offset": 182
+				},
+				"end": {
+					"line": 9,
+					"column": 46,
+					"offset": 227
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 9,
+			"column": 46,
+			"offset": 227
+		}
+	}
+}

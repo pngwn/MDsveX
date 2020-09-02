@@ -1,0 +1,1482 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tlet scoops = 1;\n\tlet flavours = ['Mint choc chip'];\n\n\tlet menu = [\n\t\t'Cookies and cream',\n\t\t'Mint choc chip',\n\t\t'Raspberry ripple'\n\t];\n\n\tfunction join(flavours) {\n\t\tif (flavours.length === 1) return flavours[0];\n\t\treturn `${flavours.slice(0, -1).join(', ')} and ${flavours[flavours.length - 1]}`;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 15,
+							"column": 1,
+							"offset": 310
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 15,
+					"column": 10,
+					"offset": 319
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 15,
+					"column": 10,
+					"offset": 319
+				},
+				"end": {
+					"line": 17,
+					"column": 1,
+					"offset": 321
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "h2",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "Size",
+					"position": {
+						"start": {
+							"line": 17,
+							"column": 5,
+							"offset": 325
+						},
+						"end": {
+							"line": 17,
+							"column": 9,
+							"offset": 329
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 17,
+					"column": 1,
+					"offset": 321
+				},
+				"end": {
+					"line": 17,
+					"column": 14,
+					"offset": 334
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 17,
+					"column": 14,
+					"offset": 334
+				},
+				"end": {
+					"line": 19,
+					"column": 1,
+					"offset": 336
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "label",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 19,
+							"column": 8,
+							"offset": 343
+						},
+						"end": {
+							"line": 20,
+							"column": 2,
+							"offset": 345
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "input",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "type",
+							"value": [
+								{
+									"type": "text",
+									"value": "radio",
+									"position": {
+										"start": {
+											"line": 20,
+											"column": 14,
+											"offset": 357
+										},
+										"end": {
+											"line": 20,
+											"column": 19,
+											"offset": 362
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 20,
+									"column": 9,
+									"offset": 352
+								},
+								"end": {
+									"line": 20,
+									"column": 19,
+									"offset": 362
+								}
+							}
+						},
+						{
+							"type": "svelteDirective",
+							"name": "bind",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "scoops",
+									"position": {
+										"start": {
+											"line": 20,
+											"column": 31,
+											"offset": 374
+										},
+										"end": {
+											"line": 20,
+											"column": 39,
+											"offset": 382
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 20,
+									"column": 20,
+									"offset": 363
+								},
+								"end": {
+									"line": 20,
+									"column": 39,
+									"offset": 382
+								}
+							},
+							"specifier": "group"
+						},
+						{
+							"type": "svelteProperty",
+							"name": "value",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "1",
+									"position": {
+										"start": {
+											"line": 20,
+											"column": 46,
+											"offset": 389
+										},
+										"end": {
+											"line": 20,
+											"column": 49,
+											"offset": 392
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 20,
+									"column": 40,
+									"offset": 383
+								},
+								"end": {
+									"line": 20,
+									"column": 49,
+									"offset": 392
+								}
+							}
+						}
+					],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 20,
+							"column": 2,
+							"offset": 345
+						},
+						"end": {
+							"line": 20,
+							"column": 50,
+							"offset": 393
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n\tOne scoop\n",
+					"position": {
+						"start": {
+							"line": 20,
+							"column": 50,
+							"offset": 393
+						},
+						"end": {
+							"line": 22,
+							"column": 1,
+							"offset": 405
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 19,
+					"column": 1,
+					"offset": 336
+				},
+				"end": {
+					"line": 22,
+					"column": 9,
+					"offset": 413
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 22,
+					"column": 9,
+					"offset": 413
+				},
+				"end": {
+					"line": 24,
+					"column": 1,
+					"offset": 415
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "label",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 24,
+							"column": 8,
+							"offset": 422
+						},
+						"end": {
+							"line": 25,
+							"column": 2,
+							"offset": 424
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "input",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "type",
+							"value": [
+								{
+									"type": "text",
+									"value": "radio",
+									"position": {
+										"start": {
+											"line": 25,
+											"column": 14,
+											"offset": 436
+										},
+										"end": {
+											"line": 25,
+											"column": 19,
+											"offset": 441
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 25,
+									"column": 9,
+									"offset": 431
+								},
+								"end": {
+									"line": 25,
+									"column": 19,
+									"offset": 441
+								}
+							}
+						},
+						{
+							"type": "svelteDirective",
+							"name": "bind",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "scoops",
+									"position": {
+										"start": {
+											"line": 25,
+											"column": 31,
+											"offset": 453
+										},
+										"end": {
+											"line": 25,
+											"column": 39,
+											"offset": 461
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 25,
+									"column": 20,
+									"offset": 442
+								},
+								"end": {
+									"line": 25,
+									"column": 39,
+									"offset": 461
+								}
+							},
+							"specifier": "group"
+						},
+						{
+							"type": "svelteProperty",
+							"name": "value",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "2",
+									"position": {
+										"start": {
+											"line": 25,
+											"column": 46,
+											"offset": 468
+										},
+										"end": {
+											"line": 25,
+											"column": 49,
+											"offset": 471
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 25,
+									"column": 40,
+									"offset": 462
+								},
+								"end": {
+									"line": 25,
+									"column": 49,
+									"offset": 471
+								}
+							}
+						}
+					],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 25,
+							"column": 2,
+							"offset": 424
+						},
+						"end": {
+							"line": 25,
+							"column": 50,
+							"offset": 472
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n\tTwo scoops\n",
+					"position": {
+						"start": {
+							"line": 25,
+							"column": 50,
+							"offset": 472
+						},
+						"end": {
+							"line": 27,
+							"column": 1,
+							"offset": 485
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 24,
+					"column": 1,
+					"offset": 415
+				},
+				"end": {
+					"line": 27,
+					"column": 9,
+					"offset": 493
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 27,
+					"column": 9,
+					"offset": 493
+				},
+				"end": {
+					"line": 29,
+					"column": 1,
+					"offset": 495
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "label",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 29,
+							"column": 8,
+							"offset": 502
+						},
+						"end": {
+							"line": 30,
+							"column": 2,
+							"offset": 504
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "input",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "type",
+							"value": [
+								{
+									"type": "text",
+									"value": "radio",
+									"position": {
+										"start": {
+											"line": 30,
+											"column": 14,
+											"offset": 516
+										},
+										"end": {
+											"line": 30,
+											"column": 19,
+											"offset": 521
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 30,
+									"column": 9,
+									"offset": 511
+								},
+								"end": {
+									"line": 30,
+									"column": 19,
+									"offset": 521
+								}
+							}
+						},
+						{
+							"type": "svelteDirective",
+							"name": "bind",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "scoops",
+									"position": {
+										"start": {
+											"line": 30,
+											"column": 31,
+											"offset": 533
+										},
+										"end": {
+											"line": 30,
+											"column": 39,
+											"offset": 541
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 30,
+									"column": 20,
+									"offset": 522
+								},
+								"end": {
+									"line": 30,
+									"column": 39,
+									"offset": 541
+								}
+							},
+							"specifier": "group"
+						},
+						{
+							"type": "svelteProperty",
+							"name": "value",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "3",
+									"position": {
+										"start": {
+											"line": 30,
+											"column": 46,
+											"offset": 548
+										},
+										"end": {
+											"line": 30,
+											"column": 49,
+											"offset": 551
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 30,
+									"column": 40,
+									"offset": 542
+								},
+								"end": {
+									"line": 30,
+									"column": 49,
+									"offset": 551
+								}
+							}
+						}
+					],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 30,
+							"column": 2,
+							"offset": 504
+						},
+						"end": {
+							"line": 30,
+							"column": 50,
+							"offset": 552
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n\tThree scoops\n",
+					"position": {
+						"start": {
+							"line": 30,
+							"column": 50,
+							"offset": 552
+						},
+						"end": {
+							"line": 32,
+							"column": 1,
+							"offset": 567
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 29,
+					"column": 1,
+					"offset": 495
+				},
+				"end": {
+					"line": 32,
+					"column": 9,
+					"offset": 575
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 32,
+					"column": 9,
+					"offset": 575
+				},
+				"end": {
+					"line": 34,
+					"column": 1,
+					"offset": 577
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "h2",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "Flavours",
+					"position": {
+						"start": {
+							"line": 34,
+							"column": 5,
+							"offset": 581
+						},
+						"end": {
+							"line": 34,
+							"column": 13,
+							"offset": 589
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 34,
+					"column": 1,
+					"offset": 577
+				},
+				"end": {
+					"line": 34,
+					"column": 18,
+					"offset": 594
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 34,
+					"column": 18,
+					"offset": 594
+				},
+				"end": {
+					"line": 36,
+					"column": 1,
+					"offset": 596
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "select",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "multiple",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "boolean",
+					"position": {
+						"start": {
+							"line": 36,
+							"column": 9,
+							"offset": 604
+						},
+						"end": {}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "flavours",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 29,
+									"offset": 624
+								},
+								"end": {
+									"line": 36,
+									"column": 39,
+									"offset": 634
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 36,
+							"column": 18,
+							"offset": 613
+						},
+						"end": {
+							"line": 36,
+							"column": 39,
+							"offset": 634
+						}
+					},
+					"specifier": "value"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 36,
+							"column": 40,
+							"offset": 635
+						},
+						"end": {
+							"line": 37,
+							"column": 2,
+							"offset": 637
+						}
+					}
+				},
+				{
+					"type": "svelteBranchingBlock",
+					"name": "each",
+					"branches": [
+						{
+							"type": "svelteBranch",
+							"name": "each",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "menu as flavour",
+								"position": {
+									"start": {
+										"line": 37,
+										"column": 9,
+										"offset": 644
+									},
+									"end": {
+										"line": 37,
+										"column": 24,
+										"offset": 659
+									}
+								}
+							},
+							"children": [
+								{
+									"type": "text",
+									"value": "\n\t\t",
+									"position": {
+										"start": {
+											"line": 37,
+											"column": 25,
+											"offset": 660
+										},
+										"end": {
+											"line": 38,
+											"column": 3,
+											"offset": 663
+										}
+									}
+								},
+								{
+									"type": "svelteElement",
+									"tagName": "option",
+									"properties": [
+										{
+											"type": "svelteProperty",
+											"name": "value",
+											"value": [
+												{
+													"type": "svelteExpression",
+													"value": "flavour",
+													"position": {
+														"start": {
+															"line": 38,
+															"column": 17,
+															"offset": 677
+														},
+														"end": {
+															"line": 38,
+															"column": 26,
+															"offset": 686
+														}
+													}
+												}
+											],
+											"modifiers": [],
+											"shorthand": "none",
+											"position": {
+												"start": {
+													"line": 38,
+													"column": 11,
+													"offset": 671
+												},
+												"end": {
+													"line": 38,
+													"column": 26,
+													"offset": 686
+												}
+											}
+										}
+									],
+									"selfClosing": false,
+									"children": [
+										{
+											"type": "text",
+											"value": "\n\t\t\t",
+											"position": {
+												"start": {
+													"line": 38,
+													"column": 27,
+													"offset": 687
+												},
+												"end": {
+													"line": 39,
+													"column": 4,
+													"offset": 691
+												}
+											}
+										},
+										{
+											"type": "svelteExpression",
+											"value": "flavour",
+											"position": {
+												"start": {
+													"line": 39,
+													"column": 4,
+													"offset": 691
+												},
+												"end": {
+													"line": 39,
+													"column": 13,
+													"offset": 700
+												}
+											}
+										},
+										{
+											"type": "text",
+											"value": "\n\t\t",
+											"position": {
+												"start": {
+													"line": 39,
+													"column": 13,
+													"offset": 700
+												},
+												"end": {
+													"line": 40,
+													"column": 3,
+													"offset": 703
+												}
+											}
+										}
+									],
+									"position": {
+										"start": {
+											"line": 38,
+											"column": 3,
+											"offset": 663
+										},
+										"end": {
+											"line": 40,
+											"column": 12,
+											"offset": 712
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n\t",
+									"position": {
+										"start": {
+											"line": 40,
+											"column": 12,
+											"offset": 712
+										},
+										"end": {
+											"line": 41,
+											"column": 2,
+											"offset": 714
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 37,
+									"column": 2,
+									"offset": 637
+								},
+								"end": {
+									"line": 41,
+									"column": 2,
+									"offset": 714
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 37,
+							"column": 2,
+							"offset": 637
+						},
+						"end": {
+							"line": 41,
+							"column": 9,
+							"offset": 721
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 41,
+							"column": 9,
+							"offset": 721
+						},
+						"end": {
+							"line": 42,
+							"column": 1,
+							"offset": 722
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 36,
+					"column": 1,
+					"offset": 596
+				},
+				"end": {
+					"line": 42,
+					"column": 10,
+					"offset": 731
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 42,
+					"column": 10,
+					"offset": 731
+				},
+				"end": {
+					"line": 44,
+					"column": 1,
+					"offset": 733
+				}
+			}
+		},
+		{
+			"type": "svelteBranchingBlock",
+			"name": "if",
+			"branches": [
+				{
+					"type": "svelteBranch",
+					"name": "if",
+					"expression": {
+						"type": "svelteExpression",
+						"value": "flavours.length === 0",
+						"position": {
+							"start": {
+								"line": 44,
+								"column": 6,
+								"offset": 738
+							},
+							"end": {
+								"line": 44,
+								"column": 27,
+								"offset": 759
+							}
+						}
+					},
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 44,
+									"column": 28,
+									"offset": 760
+								},
+								"end": {
+									"line": 45,
+									"column": 2,
+									"offset": 762
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "p",
+							"properties": [],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "Please select at least one flavour",
+									"position": {
+										"start": {
+											"line": 45,
+											"column": 5,
+											"offset": 765
+										},
+										"end": {
+											"line": 45,
+											"column": 39,
+											"offset": 799
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 45,
+									"column": 2,
+									"offset": 762
+								},
+								"end": {
+									"line": 45,
+									"column": 43,
+									"offset": 803
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 45,
+									"column": 43,
+									"offset": 803
+								},
+								"end": {
+									"line": 46,
+									"column": 1,
+									"offset": 804
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 44,
+							"column": 1,
+							"offset": 733
+						},
+						"end": {
+							"line": 46,
+							"column": 1,
+							"offset": 804
+						}
+					}
+				},
+				{
+					"type": "svelteBranch",
+					"name": "else if",
+					"expression": {
+						"type": "svelteExpression",
+						"value": "flavours.length > scoops",
+						"position": {
+							"start": {
+								"line": 46,
+								"column": 11,
+								"offset": 814
+							},
+							"end": {
+								"line": 46,
+								"column": 35,
+								"offset": 838
+							}
+						}
+					},
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 46,
+									"column": 36,
+									"offset": 839
+								},
+								"end": {
+									"line": 47,
+									"column": 2,
+									"offset": 841
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "p",
+							"properties": [],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "Can't order more flavours than scoops!",
+									"position": {
+										"start": {
+											"line": 47,
+											"column": 5,
+											"offset": 844
+										},
+										"end": {
+											"line": 47,
+											"column": 43,
+											"offset": 882
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 47,
+									"column": 2,
+									"offset": 841
+								},
+								"end": {
+									"line": 47,
+									"column": 47,
+									"offset": 886
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 47,
+									"column": 47,
+									"offset": 886
+								},
+								"end": {
+									"line": 48,
+									"column": 1,
+									"offset": 887
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 46,
+							"column": 1,
+							"offset": 804
+						},
+						"end": {
+							"line": 48,
+							"column": 1,
+							"offset": 887
+						}
+					}
+				},
+				{
+					"type": "svelteBranch",
+					"name": "else",
+					"expression": {
+						"type": "svelteExpression",
+						"value": ""
+					},
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 48,
+									"column": 8,
+									"offset": 894
+								},
+								"end": {
+									"line": 49,
+									"column": 2,
+									"offset": 896
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "p",
+							"properties": [],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "\n\t\tYou ordered ",
+									"position": {
+										"start": {
+											"line": 49,
+											"column": 5,
+											"offset": 899
+										},
+										"end": {
+											"line": 50,
+											"column": 15,
+											"offset": 914
+										}
+									}
+								},
+								{
+									"type": "svelteExpression",
+									"value": "scoops",
+									"position": {
+										"start": {
+											"line": 50,
+											"column": 15,
+											"offset": 914
+										},
+										"end": {
+											"line": 50,
+											"column": 23,
+											"offset": 922
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": " ",
+									"position": {
+										"start": {
+											"line": 50,
+											"column": 23,
+											"offset": 922
+										},
+										"end": {
+											"line": 50,
+											"column": 24,
+											"offset": 923
+										}
+									}
+								},
+								{
+									"type": "svelteExpression",
+									"value": "scoops === 1 ? 'scoop' : 'scoops'",
+									"position": {
+										"start": {
+											"line": 50,
+											"column": 24,
+											"offset": 923
+										},
+										"end": {
+											"line": 50,
+											"column": 59,
+											"offset": 958
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n\t\tof ",
+									"position": {
+										"start": {
+											"line": 50,
+											"column": 59,
+											"offset": 958
+										},
+										"end": {
+											"line": 51,
+											"column": 6,
+											"offset": 964
+										}
+									}
+								},
+								{
+									"type": "svelteExpression",
+									"value": "join(flavours)",
+									"position": {
+										"start": {
+											"line": 51,
+											"column": 6,
+											"offset": 964
+										},
+										"end": {
+											"line": 51,
+											"column": 22,
+											"offset": 980
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n\t",
+									"position": {
+										"start": {
+											"line": 51,
+											"column": 22,
+											"offset": 980
+										},
+										"end": {
+											"line": 52,
+											"column": 2,
+											"offset": 982
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 49,
+									"column": 2,
+									"offset": 896
+								},
+								"end": {
+									"line": 52,
+									"column": 6,
+									"offset": 986
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 52,
+									"column": 6,
+									"offset": 986
+								},
+								"end": {
+									"line": 53,
+									"column": 1,
+									"offset": 987
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 48,
+							"column": 1,
+							"offset": 887
+						},
+						"end": {
+							"line": 53,
+							"column": 1,
+							"offset": 987
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 44,
+					"column": 1,
+					"offset": 733
+				},
+				"end": {
+					"line": 53,
+					"column": 6,
+					"offset": 992
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 53,
+			"column": 6,
+			"offset": 992
+		}
+	}
+}

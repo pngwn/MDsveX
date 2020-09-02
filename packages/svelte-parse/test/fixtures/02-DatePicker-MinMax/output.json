@@ -1,0 +1,623 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import DatePicker from '@sveltekit/ui/DatePicker';\n\n  let date = '2/1/2021';\n  let minDate = '2/1/2021'\n  let maxDate = '20/1/2021'\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 7,
+							"column": 1,
+							"offset": 143
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 7,
+					"column": 10,
+					"offset": 152
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 7,
+					"column": 10,
+					"offset": 152
+				},
+				"end": {
+					"line": 9,
+					"column": 1,
+					"offset": 154
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "gridRow",
+							"position": {
+								"start": {
+									"line": 9,
+									"column": 13,
+									"offset": 166
+								},
+								"end": {
+									"line": 9,
+									"column": 20,
+									"offset": 173
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 6,
+							"offset": 159
+						},
+						"end": {
+							"line": 9,
+							"column": 21,
+							"offset": 174
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 22,
+							"offset": 175
+						},
+						"end": {
+							"line": 10,
+							"column": 3,
+							"offset": 178
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "div",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "class",
+							"value": [
+								{
+									"type": "text",
+									"value": "gridCol-4",
+									"position": {
+										"start": {
+											"line": 10,
+											"column": 15,
+											"offset": 190
+										},
+										"end": {
+											"line": 10,
+											"column": 24,
+											"offset": 199
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 10,
+									"column": 8,
+									"offset": 183
+								},
+								"end": {
+									"line": 10,
+									"column": 25,
+									"offset": 200
+								}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "\n    ",
+							"position": {
+								"start": {
+									"line": 10,
+									"column": 26,
+									"offset": 201
+								},
+								"end": {
+									"line": 11,
+									"column": 5,
+									"offset": 206
+								}
+							}
+						},
+						{
+							"type": "svelteComponent",
+							"tagName": "DatePicker",
+							"properties": [
+								{
+									"type": "svelteProperty",
+									"name": "placeholder",
+									"value": [
+										{
+											"type": "text",
+											"value": "Please",
+											"position": {
+												"start": {
+													"line": 11,
+													"column": 30,
+													"offset": 231
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "click",
+											"position": {
+												"start": {
+													"line": 11,
+													"column": 36,
+													"offset": 237
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "to",
+											"position": {
+												"start": {
+													"line": 11,
+													"column": 42,
+													"offset": 243
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "select",
+											"position": {
+												"start": {
+													"line": 11,
+													"column": 45,
+													"offset": 246
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "a",
+											"position": {
+												"start": {
+													"line": 11,
+													"column": 52,
+													"offset": 253
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "date",
+											"position": {
+												"start": {
+													"line": 11,
+													"column": 54,
+													"offset": 255
+												},
+												"end": {
+													"line": 11,
+													"column": 59,
+													"offset": 260
+												}
+											}
+										}
+									],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 11,
+											"column": 17,
+											"offset": 218
+										},
+										"end": {
+											"line": 11,
+											"column": 60,
+											"offset": 261
+										}
+									}
+								},
+								{
+									"type": "svelteDirective",
+									"name": "bind",
+									"value": [],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 11,
+											"column": 61,
+											"offset": 262
+										},
+										"end": {}
+									},
+									"specifier": "date"
+								},
+								{
+									"type": "svelteProperty",
+									"name": "minDate",
+									"value": [
+										{
+											"type": "svelteExpression",
+											"value": "minDate"
+										}
+									],
+									"modifiers": [],
+									"shorthand": "expression",
+									"position": {
+										"start": {
+											"line": 11,
+											"column": 71,
+											"offset": 272
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "svelteProperty",
+									"name": "maxDate",
+									"value": [
+										{
+											"type": "svelteExpression",
+											"value": "maxDate"
+										}
+									],
+									"modifiers": [],
+									"shorthand": "expression",
+									"position": {
+										"start": {
+											"line": 11,
+											"column": 81,
+											"offset": 282
+										},
+										"end": {}
+									}
+								}
+							],
+							"selfClosing": true,
+							"children": [],
+							"position": {
+								"start": {
+									"line": 11,
+									"column": 5,
+									"offset": 206
+								},
+								"end": {
+									"line": 11,
+									"column": 93,
+									"offset": 294
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n    ",
+							"position": {
+								"start": {
+									"line": 11,
+									"column": 93,
+									"offset": 294
+								},
+								"end": {
+									"line": 12,
+									"column": 5,
+									"offset": 299
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "p",
+							"properties": [],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "Date: ",
+									"position": {
+										"start": {
+											"line": 12,
+											"column": 8,
+											"offset": 302
+										},
+										"end": {
+											"line": 12,
+											"column": 14,
+											"offset": 308
+										}
+									}
+								},
+								{
+									"type": "svelteExpression",
+									"value": "date",
+									"position": {
+										"start": {
+											"line": 12,
+											"column": 14,
+											"offset": 308
+										},
+										"end": {
+											"line": 12,
+											"column": 20,
+											"offset": 314
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 12,
+									"column": 5,
+									"offset": 299
+								},
+								"end": {
+									"line": 12,
+									"column": 24,
+									"offset": 318
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n    ",
+							"position": {
+								"start": {
+									"line": 12,
+									"column": 24,
+									"offset": 318
+								},
+								"end": {
+									"line": 13,
+									"column": 5,
+									"offset": 323
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "p",
+							"properties": [],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "minDate: ",
+									"position": {
+										"start": {
+											"line": 13,
+											"column": 8,
+											"offset": 326
+										},
+										"end": {
+											"line": 13,
+											"column": 17,
+											"offset": 335
+										}
+									}
+								},
+								{
+									"type": "svelteExpression",
+									"value": "minDate",
+									"position": {
+										"start": {
+											"line": 13,
+											"column": 17,
+											"offset": 335
+										},
+										"end": {
+											"line": 13,
+											"column": 26,
+											"offset": 344
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 13,
+									"column": 5,
+									"offset": 323
+								},
+								"end": {
+									"line": 13,
+									"column": 30,
+									"offset": 348
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n    ",
+							"position": {
+								"start": {
+									"line": 13,
+									"column": 30,
+									"offset": 348
+								},
+								"end": {
+									"line": 14,
+									"column": 5,
+									"offset": 353
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "p",
+							"properties": [],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "maxDate: ",
+									"position": {
+										"start": {
+											"line": 14,
+											"column": 8,
+											"offset": 356
+										},
+										"end": {
+											"line": 14,
+											"column": 17,
+											"offset": 365
+										}
+									}
+								},
+								{
+									"type": "svelteExpression",
+									"value": "maxDate",
+									"position": {
+										"start": {
+											"line": 14,
+											"column": 17,
+											"offset": 365
+										},
+										"end": {
+											"line": 14,
+											"column": 26,
+											"offset": 374
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 14,
+									"column": 5,
+									"offset": 353
+								},
+								"end": {
+									"line": 14,
+									"column": 30,
+									"offset": 378
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n  ",
+							"position": {
+								"start": {
+									"line": 14,
+									"column": 30,
+									"offset": 378
+								},
+								"end": {
+									"line": 15,
+									"column": 3,
+									"offset": 381
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 10,
+							"column": 3,
+							"offset": 178
+						},
+						"end": {
+							"line": 15,
+							"column": 9,
+							"offset": 387
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 15,
+							"column": 9,
+							"offset": 387
+						},
+						"end": {
+							"line": 16,
+							"column": 1,
+							"offset": 388
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 9,
+					"column": 1,
+					"offset": 154
+				},
+				"end": {
+					"line": 16,
+					"column": 7,
+					"offset": 394
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 16,
+			"column": 7,
+			"offset": 394
+		}
+	}
+}

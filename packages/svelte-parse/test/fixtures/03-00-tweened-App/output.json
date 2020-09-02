@@ -1,0 +1,627 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { tweened } from 'svelte/motion';\n\timport { cubicOut } from 'svelte/easing';\n\n\tconst progress = tweened(0, {\n\t\tduration: 400,\n\t\teasing: cubicOut\n\t});\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 9,
+							"column": 1,
+							"offset": 167
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 9,
+					"column": 10,
+					"offset": 176
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 9,
+					"column": 10,
+					"offset": 176
+				},
+				"end": {
+					"line": 11,
+					"column": 1,
+					"offset": 178
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tprogress {\n\t\tdisplay: block;\n\t\twidth: 100%;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 11,
+							"column": 8,
+							"offset": 185
+						},
+						"end": {
+							"line": 16,
+							"column": 1,
+							"offset": 234
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 11,
+					"column": 1,
+					"offset": 178
+				},
+				"end": {
+					"line": 16,
+					"column": 9,
+					"offset": 242
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 16,
+					"column": 9,
+					"offset": 242
+				},
+				"end": {
+					"line": 18,
+					"column": 1,
+					"offset": 244
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "progress",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "value",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "$progress",
+							"position": {
+								"start": {
+									"line": 18,
+									"column": 17,
+									"offset": 260
+								},
+								"end": {
+									"line": 18,
+									"column": 28,
+									"offset": 271
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 18,
+							"column": 11,
+							"offset": 254
+						},
+						"end": {
+							"line": 18,
+							"column": 28,
+							"offset": 271
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 18,
+					"column": 1,
+					"offset": 244
+				},
+				"end": {
+					"line": 18,
+					"column": 40,
+					"offset": 283
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 18,
+					"column": 40,
+					"offset": 283
+				},
+				"end": {
+					"line": 20,
+					"column": 1,
+					"offset": 285
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "button",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "() => progress.set(0)",
+							"position": {
+								"start": {
+									"line": 20,
+									"column": 19,
+									"offset": 303
+								},
+								"end": {
+									"line": 20,
+									"column": 42,
+									"offset": 326
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 20,
+							"column": 9,
+							"offset": 293
+						},
+						"end": {
+							"line": 20,
+							"column": 43,
+							"offset": 327
+						}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t0%\n",
+					"position": {
+						"start": {
+							"line": 20,
+							"column": 44,
+							"offset": 328
+						},
+						"end": {
+							"line": 22,
+							"column": 1,
+							"offset": 333
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 20,
+					"column": 1,
+					"offset": 285
+				},
+				"end": {
+					"line": 22,
+					"column": 10,
+					"offset": 342
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 22,
+					"column": 10,
+					"offset": 342
+				},
+				"end": {
+					"line": 24,
+					"column": 1,
+					"offset": 344
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "button",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "() => progress.set(0.25)",
+							"position": {
+								"start": {
+									"line": 24,
+									"column": 19,
+									"offset": 362
+								},
+								"end": {
+									"line": 24,
+									"column": 45,
+									"offset": 388
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 24,
+							"column": 9,
+							"offset": 352
+						},
+						"end": {
+							"line": 24,
+							"column": 46,
+							"offset": 389
+						}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t25%\n",
+					"position": {
+						"start": {
+							"line": 24,
+							"column": 47,
+							"offset": 390
+						},
+						"end": {
+							"line": 26,
+							"column": 1,
+							"offset": 396
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 24,
+					"column": 1,
+					"offset": 344
+				},
+				"end": {
+					"line": 26,
+					"column": 10,
+					"offset": 405
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 26,
+					"column": 10,
+					"offset": 405
+				},
+				"end": {
+					"line": 28,
+					"column": 1,
+					"offset": 407
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "button",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "() => progress.set(0.5)",
+							"position": {
+								"start": {
+									"line": 28,
+									"column": 19,
+									"offset": 425
+								},
+								"end": {
+									"line": 28,
+									"column": 44,
+									"offset": 450
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 28,
+							"column": 9,
+							"offset": 415
+						},
+						"end": {
+							"line": 28,
+							"column": 45,
+							"offset": 451
+						}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t50%\n",
+					"position": {
+						"start": {
+							"line": 28,
+							"column": 46,
+							"offset": 452
+						},
+						"end": {
+							"line": 30,
+							"column": 1,
+							"offset": 458
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 28,
+					"column": 1,
+					"offset": 407
+				},
+				"end": {
+					"line": 30,
+					"column": 10,
+					"offset": 467
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 30,
+					"column": 10,
+					"offset": 467
+				},
+				"end": {
+					"line": 32,
+					"column": 1,
+					"offset": 469
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "button",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "() => progress.set(0.75)",
+							"position": {
+								"start": {
+									"line": 32,
+									"column": 19,
+									"offset": 487
+								},
+								"end": {
+									"line": 32,
+									"column": 45,
+									"offset": 513
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 32,
+							"column": 9,
+							"offset": 477
+						},
+						"end": {
+							"line": 32,
+							"column": 46,
+							"offset": 514
+						}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t75%\n",
+					"position": {
+						"start": {
+							"line": 32,
+							"column": 47,
+							"offset": 515
+						},
+						"end": {
+							"line": 34,
+							"column": 1,
+							"offset": 521
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 32,
+					"column": 1,
+					"offset": 469
+				},
+				"end": {
+					"line": 34,
+					"column": 10,
+					"offset": 530
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 34,
+					"column": 10,
+					"offset": 530
+				},
+				"end": {
+					"line": 36,
+					"column": 1,
+					"offset": 532
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "button",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "() => progress.set(1)",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 19,
+									"offset": 550
+								},
+								"end": {
+									"line": 36,
+									"column": 42,
+									"offset": 573
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 36,
+							"column": 9,
+							"offset": 540
+						},
+						"end": {
+							"line": 36,
+							"column": 43,
+							"offset": 574
+						}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t100%\n",
+					"position": {
+						"start": {
+							"line": 36,
+							"column": 44,
+							"offset": 575
+						},
+						"end": {
+							"line": 38,
+							"column": 1,
+							"offset": 582
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 36,
+					"column": 1,
+					"offset": 532
+				},
+				"end": {
+					"line": 38,
+					"column": 10,
+					"offset": 591
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 38,
+			"column": 10,
+			"offset": 591
+		}
+	}
+}

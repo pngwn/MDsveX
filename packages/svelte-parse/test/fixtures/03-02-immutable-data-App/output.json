@@ -1,0 +1,562 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "options",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "immutable",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "boolean",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 17,
+							"offset": 16
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 1,
+					"column": 28,
+					"offset": 27
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 28,
+					"offset": 27
+				},
+				"end": {
+					"line": 3,
+					"column": 1,
+					"offset": 29
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport ImmutableTodo from './ImmutableTodo.svelte';\n\timport MutableTodo from './MutableTodo.svelte';\n\n\tlet todos = [\n\t\t{ id: 1, done: true, text: 'wash the car' },\n\t\t{ id: 2, done: false, text: 'take the dog for a walk' },\n\t\t{ id: 3, done: false, text: 'mow the lawn' }\n\t];\n\n\tfunction toggle(id) {\n\t\ttodos = todos.map(todo => {\n\t\t\tif (todo.id === id) {\n\t\t\t\t// return a new object\n\t\t\t\treturn {\n\t\t\t\t\tid,\n\t\t\t\t\tdone: !todo.done,\n\t\t\t\t\ttext: todo.text\n\t\t\t\t};\n\t\t\t}\n\n\t\t\t// return the same object\n\t\t\treturn todo;\n\t\t});\n\t}\n",
+					"position": {
+						"start": {
+							"line": 3,
+							"column": 9,
+							"offset": 37
+						},
+						"end": {
+							"line": 28,
+							"column": 1,
+							"offset": 552
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 3,
+					"column": 1,
+					"offset": 29
+				},
+				"end": {
+					"line": 28,
+					"column": 10,
+					"offset": 561
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 28,
+					"column": 10,
+					"offset": 561
+				},
+				"end": {
+					"line": 30,
+					"column": 1,
+					"offset": 563
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "h2",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "Immutable",
+					"position": {
+						"start": {
+							"line": 30,
+							"column": 5,
+							"offset": 567
+						},
+						"end": {
+							"line": 30,
+							"column": 14,
+							"offset": 576
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 30,
+					"column": 1,
+					"offset": 563
+				},
+				"end": {
+					"line": 30,
+					"column": 19,
+					"offset": 581
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 30,
+					"column": 19,
+					"offset": 581
+				},
+				"end": {
+					"line": 31,
+					"column": 1,
+					"offset": 582
+				}
+			}
+		},
+		{
+			"type": "svelteBranchingBlock",
+			"name": "each",
+			"branches": [
+				{
+					"type": "svelteBranch",
+					"name": "each",
+					"expression": {
+						"type": "svelteExpression",
+						"value": "todos as todo",
+						"position": {
+							"start": {
+								"line": 31,
+								"column": 8,
+								"offset": 589
+							},
+							"end": {
+								"line": 31,
+								"column": 21,
+								"offset": 602
+							}
+						}
+					},
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 31,
+									"column": 22,
+									"offset": 603
+								},
+								"end": {
+									"line": 32,
+									"column": 2,
+									"offset": 605
+								}
+							}
+						},
+						{
+							"type": "svelteComponent",
+							"tagName": "ImmutableTodo",
+							"properties": [
+								{
+									"type": "svelteProperty",
+									"name": "todo",
+									"value": [
+										{
+											"type": "svelteExpression",
+											"value": "todo"
+										}
+									],
+									"modifiers": [],
+									"shorthand": "expression",
+									"position": {
+										"start": {
+											"line": 32,
+											"column": 17,
+											"offset": 620
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "svelteDirective",
+									"name": "on",
+									"value": [
+										{
+											"type": "svelteExpression",
+											"value": "() => toggle(todo.id)",
+											"position": {
+												"start": {
+													"line": 32,
+													"column": 34,
+													"offset": 637
+												},
+												"end": {
+													"line": 32,
+													"column": 57,
+													"offset": 660
+												}
+											}
+										}
+									],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 32,
+											"column": 24,
+											"offset": 627
+										},
+										"end": {
+											"line": 32,
+											"column": 58,
+											"offset": 661
+										}
+									},
+									"specifier": "click"
+								}
+							],
+							"selfClosing": true,
+							"children": [],
+							"position": {
+								"start": {
+									"line": 32,
+									"column": 2,
+									"offset": 605
+								},
+								"end": {
+									"line": 32,
+									"column": 60,
+									"offset": 663
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 32,
+									"column": 60,
+									"offset": 663
+								},
+								"end": {
+									"line": 33,
+									"column": 1,
+									"offset": 664
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 31,
+							"column": 1,
+							"offset": 582
+						},
+						"end": {
+							"line": 33,
+							"column": 1,
+							"offset": 664
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 31,
+					"column": 1,
+					"offset": 582
+				},
+				"end": {
+					"line": 33,
+					"column": 8,
+					"offset": 671
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 33,
+					"column": 8,
+					"offset": 671
+				},
+				"end": {
+					"line": 35,
+					"column": 1,
+					"offset": 673
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "h2",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "Mutable",
+					"position": {
+						"start": {
+							"line": 35,
+							"column": 5,
+							"offset": 677
+						},
+						"end": {
+							"line": 35,
+							"column": 12,
+							"offset": 684
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 35,
+					"column": 1,
+					"offset": 673
+				},
+				"end": {
+					"line": 35,
+					"column": 17,
+					"offset": 689
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 35,
+					"column": 17,
+					"offset": 689
+				},
+				"end": {
+					"line": 36,
+					"column": 1,
+					"offset": 690
+				}
+			}
+		},
+		{
+			"type": "svelteBranchingBlock",
+			"name": "each",
+			"branches": [
+				{
+					"type": "svelteBranch",
+					"name": "each",
+					"expression": {
+						"type": "svelteExpression",
+						"value": "todos as todo",
+						"position": {
+							"start": {
+								"line": 36,
+								"column": 8,
+								"offset": 697
+							},
+							"end": {
+								"line": 36,
+								"column": 21,
+								"offset": 710
+							}
+						}
+					},
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 22,
+									"offset": 711
+								},
+								"end": {
+									"line": 37,
+									"column": 2,
+									"offset": 713
+								}
+							}
+						},
+						{
+							"type": "svelteComponent",
+							"tagName": "MutableTodo",
+							"properties": [
+								{
+									"type": "svelteProperty",
+									"name": "todo",
+									"value": [
+										{
+											"type": "svelteExpression",
+											"value": "todo"
+										}
+									],
+									"modifiers": [],
+									"shorthand": "expression",
+									"position": {
+										"start": {
+											"line": 37,
+											"column": 15,
+											"offset": 726
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "svelteDirective",
+									"name": "on",
+									"value": [
+										{
+											"type": "svelteExpression",
+											"value": "() => toggle(todo.id)",
+											"position": {
+												"start": {
+													"line": 37,
+													"column": 32,
+													"offset": 743
+												},
+												"end": {
+													"line": 37,
+													"column": 55,
+													"offset": 766
+												}
+											}
+										}
+									],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 37,
+											"column": 22,
+											"offset": 733
+										},
+										"end": {
+											"line": 37,
+											"column": 56,
+											"offset": 767
+										}
+									},
+									"specifier": "click"
+								}
+							],
+							"selfClosing": true,
+							"children": [],
+							"position": {
+								"start": {
+									"line": 37,
+									"column": 2,
+									"offset": 713
+								},
+								"end": {
+									"line": 37,
+									"column": 58,
+									"offset": 769
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 37,
+									"column": 58,
+									"offset": 769
+								},
+								"end": {
+									"line": 38,
+									"column": 1,
+									"offset": 770
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 36,
+							"column": 1,
+							"offset": 690
+						},
+						"end": {
+							"line": 38,
+							"column": 1,
+							"offset": 770
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 36,
+					"column": 1,
+					"offset": 690
+				},
+				"end": {
+					"line": 38,
+					"column": 8,
+					"offset": 777
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 38,
+			"column": 8,
+			"offset": 777
+		}
+	}
+}

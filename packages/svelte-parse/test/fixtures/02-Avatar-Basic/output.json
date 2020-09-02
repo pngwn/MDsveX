@@ -1,0 +1,145 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import Avatar, { options } from '@sveltekit/ui/Avatar';\n\n  export let initials = 'RB';\n  export let size = options.size.MEDIUM;\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 6,
+							"column": 1,
+							"offset": 139
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 6,
+					"column": 10,
+					"offset": 148
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 6,
+					"column": 10,
+					"offset": 148
+				},
+				"end": {
+					"line": 8,
+					"column": 1,
+					"offset": 150
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Avatar",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "alt",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "initials",
+							"position": {
+								"start": {
+									"line": 8,
+									"column": 14,
+									"offset": 163
+								},
+								"end": {
+									"line": 8,
+									"column": 24,
+									"offset": 173
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 8,
+							"column": 9,
+							"offset": 158
+						},
+						"end": {
+							"line": 8,
+							"column": 25,
+							"offset": 174
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "size",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "size"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 8,
+							"column": 26,
+							"offset": 175
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 8,
+					"column": 1,
+					"offset": 150
+				},
+				"end": {
+					"line": 8,
+					"column": 42,
+					"offset": 191
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 8,
+			"column": 42,
+			"offset": 191
+		}
+	}
+}

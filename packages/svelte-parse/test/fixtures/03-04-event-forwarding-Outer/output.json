@@ -1,0 +1,105 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport Inner from './Inner.svelte';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 46
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 3,
+					"column": 10,
+					"offset": 55
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 3,
+					"column": 10,
+					"offset": 55
+				},
+				"end": {
+					"line": 5,
+					"column": 1,
+					"offset": 57
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Inner",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 8,
+							"offset": 64
+						},
+						"end": {}
+					},
+					"specifier": "message"
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 1,
+					"offset": 57
+				},
+				"end": {
+					"line": 5,
+					"column": 20,
+					"offset": 76
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 5,
+			"column": 20,
+			"offset": 76
+		}
+	}
+}

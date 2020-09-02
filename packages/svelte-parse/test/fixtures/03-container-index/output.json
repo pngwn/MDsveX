@@ -1,0 +1,324 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "use",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "use",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 17,
+									"offset": 21
+								},
+								"end": {
+									"line": 2,
+									"column": 22,
+									"offset": 26
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 2,
+							"column": 5,
+							"offset": 9
+						},
+						"end": {
+							"line": 2,
+							"column": 22,
+							"offset": 26
+						}
+					},
+					"specifier": "actions"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "use",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 3,
+							"column": 5,
+							"offset": 31
+						},
+						"end": {}
+					},
+					"specifier": "events"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "clsxd(\n        'ui',\n        [alignment, { 'aligned': alignment && alignment !== 'justified' }],\n        fluid && 'fluid',\n        text && 'text',\n        className,\n        'container'\n    )",
+							"position": {
+								"start": {
+									"line": 4,
+									"column": 12,
+									"offset": 53
+								},
+								"end": {
+									"line": 11,
+									"column": 7,
+									"offset": 246
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 4,
+							"column": 5,
+							"offset": 46
+						},
+						"end": {
+							"line": 11,
+							"column": 8,
+							"offset": 247
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "...exclude($$props, ['use', 'class', 'alignment', 'fluid', 'text'])",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "...exclude($$props, ['use', 'class', 'alignment', 'fluid', 'text'])"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 12,
+							"column": 5,
+							"offset": 252
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "svelteElement",
+					"tagName": "slot",
+					"properties": [],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "No content is provided",
+							"position": {
+								"start": {
+									"line": 13,
+									"column": 8,
+									"offset": 329
+								},
+								"end": {
+									"line": 13,
+									"column": 30,
+									"offset": 351
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 13,
+							"column": 2,
+							"offset": 323
+						},
+						"end": {
+							"line": 13,
+							"column": 37,
+							"offset": 358
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 13,
+					"column": 43,
+					"offset": 364
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 13,
+					"column": 43,
+					"offset": 364
+				},
+				"end": {
+					"line": 15,
+					"column": 1,
+					"offset": 366
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "context",
+					"value": [
+						{
+							"type": "text",
+							"value": "module",
+							"position": {
+								"start": {
+									"line": 15,
+									"column": 18,
+									"offset": 383
+								},
+								"end": {
+									"line": 15,
+									"column": 24,
+									"offset": 389
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 15,
+							"column": 9,
+							"offset": 374
+						},
+						"end": {
+							"line": 15,
+							"column": 25,
+							"offset": 390
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n    import { exclude, eventsBuilder, actions, clsxd } from '../../lib'\n    import { current_component } from 'svelte/internal'\n",
+					"position": {
+						"start": {
+							"line": 15,
+							"column": 26,
+							"offset": 391
+						},
+						"end": {
+							"line": 18,
+							"column": 1,
+							"offset": 519
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 15,
+					"column": 1,
+					"offset": 366
+				},
+				"end": {
+					"line": 18,
+					"column": 10,
+					"offset": 528
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 18,
+					"column": 10,
+					"offset": 528
+				},
+				"end": {
+					"line": 20,
+					"column": 1,
+					"offset": 530
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n    const events = eventsBuilder(current_component)\n\n    export let use = [];\n    let className = '';\n    export { className as class };\n\n    export let fluid = false;\n    export let text = false;\n    export let alignment = '';\n",
+					"position": {
+						"start": {
+							"line": 20,
+							"column": 9,
+							"offset": 538
+						},
+						"end": {
+							"line": 30,
+							"column": 1,
+							"offset": 767
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 20,
+					"column": 1,
+					"offset": 530
+				},
+				"end": {
+					"line": 30,
+					"column": 10,
+					"offset": 776
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 30,
+			"column": 10,
+			"offset": 776
+		}
+	}
+}

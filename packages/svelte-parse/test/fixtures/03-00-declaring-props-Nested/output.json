@@ -1,0 +1,121 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\texport let answer;\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 29
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 3,
+					"column": 10,
+					"offset": 38
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 3,
+					"column": 10,
+					"offset": 38
+				},
+				"end": {
+					"line": 5,
+					"column": 1,
+					"offset": 40
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "p",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "The answer is ",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 4,
+							"offset": 43
+						},
+						"end": {
+							"line": 5,
+							"column": 18,
+							"offset": 57
+						}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "answer",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 18,
+							"offset": 57
+						},
+						"end": {
+							"line": 5,
+							"column": 26,
+							"offset": 65
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 1,
+					"offset": 40
+				},
+				"end": {
+					"line": 5,
+					"column": 30,
+					"offset": 69
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 5,
+			"column": 30,
+			"offset": 69
+		}
+	}
+}

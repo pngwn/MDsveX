@@ -1,0 +1,214 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import { onDestroy, onMount } from 'svelte';\n  import noUiSlider from 'nouislider';\n  require('./nouislider.css');\n\n  let slider = undefined;\n  export let tooltip = false;\n  export let min = 0;\n  export let max = 100;\n  export let margin = 0;\n  export let values = [0];\n  export let step = null;\n  export let updateWhenSliding = false;\n\n  onMount(() => {    \n    slider = noUiSlider.create(slider, {\n      start: values,\n      step,\n      margin,\n      behaviour: 'drag-tap',\n      connect: values.length === 1 ? [true, false] : [false, true, false],\n      range: {\n        min,\n        max\n      },\n      tooltips: values.length === 1 ? [tooltip] : [tooltip, tooltip]\n    });\n\n    slider.on('set', (values) => {\n      onSliderValueSet(values);\n    });\n\n    slider.on('slide', (values) => {\n      if (updateWhenSliding) onSliderValueSet(values);\n    });\n  });\n\n  function onSliderValueSet(_values) {\n    values = _values;\n  }\n\n  onDestroy(() => {\n    if (!slider) return;\n    slider.off();\n  });\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 46,
+							"column": 1,
+							"offset": 1007
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 46,
+					"column": 10,
+					"offset": 1016
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 46,
+					"column": 10,
+					"offset": 1016
+				},
+				"end": {
+					"line": 48,
+					"column": 1,
+					"offset": 1018
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "",
+					"position": {
+						"start": {
+							"line": 48,
+							"column": 8,
+							"offset": 1025
+						},
+						"end": {
+							"line": 48,
+							"column": 8,
+							"offset": 1025
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 48,
+					"column": 1,
+					"offset": 1018
+				},
+				"end": {
+					"line": 48,
+					"column": 16,
+					"offset": 1033
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 48,
+					"column": 16,
+					"offset": 1033
+				},
+				"end": {
+					"line": 50,
+					"column": 1,
+					"offset": 1035
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "rangeSlider",
+							"position": {
+								"start": {
+									"line": 50,
+									"column": 13,
+									"offset": 1047
+								},
+								"end": {
+									"line": 50,
+									"column": 24,
+									"offset": 1058
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 50,
+							"column": 6,
+							"offset": 1040
+						},
+						"end": {
+							"line": 50,
+							"column": 25,
+							"offset": 1059
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "slider",
+							"position": {
+								"start": {
+									"line": 50,
+									"column": 36,
+									"offset": 1070
+								},
+								"end": {
+									"line": 50,
+									"column": 44,
+									"offset": 1078
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 50,
+							"column": 26,
+							"offset": 1060
+						},
+						"end": {
+							"line": 50,
+							"column": 44,
+							"offset": 1078
+						}
+					},
+					"specifier": "this"
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 50,
+					"column": 1,
+					"offset": 1035
+				},
+				"end": {
+					"line": 50,
+					"column": 51,
+					"offset": 1085
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 50,
+			"column": 51,
+			"offset": 1085
+		}
+	}
+}

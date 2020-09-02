@@ -1,0 +1,156 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tfunction handleClick() {\n\t\talert('no more alerts')\n\t}\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 5,
+							"column": 1,
+							"offset": 64
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 5,
+					"column": 10,
+					"offset": 73
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 10,
+					"offset": 73
+				},
+				"end": {
+					"line": 7,
+					"column": 1,
+					"offset": 75
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "button",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "handleClick",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 23,
+									"offset": 97
+								},
+								"end": {
+									"line": 7,
+									"column": 36,
+									"offset": 110
+								}
+							}
+						}
+					],
+					"modifiers": [
+						{
+							"value": "once",
+							"type": "modifier",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 17,
+									"offset": 91
+								},
+								"end": {}
+							}
+						}
+					],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 9,
+							"offset": 83
+						},
+						"end": {
+							"line": 7,
+							"column": 36,
+							"offset": 110
+						}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tClick me\n",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 37,
+							"offset": 111
+						},
+						"end": {
+							"line": 9,
+							"column": 1,
+							"offset": 122
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 7,
+					"column": 1,
+					"offset": 75
+				},
+				"end": {
+					"line": 9,
+					"column": 10,
+					"offset": 131
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 9,
+			"column": 10,
+			"offset": 131
+		}
+	}
+}

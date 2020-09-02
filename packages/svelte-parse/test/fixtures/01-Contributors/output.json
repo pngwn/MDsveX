@@ -1,0 +1,293 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport contributors from '../_contributors.js';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 58
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 3,
+					"column": 10,
+					"offset": 67
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 3,
+					"column": 10,
+					"offset": 67
+				},
+				"end": {
+					"line": 5,
+					"column": 1,
+					"offset": 69
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t.contributor {\n\t\twidth: 2.4em;\n\t\theight: 2.4em;\n\t\tborder-radius: 50%;\n\t\ttext-indent: -9999px;\n\t\tdisplay: inline-block;\n\t\tbackground: no-repeat url(/contributors.jpg);\n\t\tbackground-size: auto 102%;\n\t\tmargin: 0 0.5em 0.5em 0;\n\t\tborder: 2px solid var(--second);\n\t}\n",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 8,
+							"offset": 76
+						},
+						"end": {
+							"line": 17,
+							"column": 1,
+							"offset": 340
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 1,
+					"offset": 69
+				},
+				"end": {
+					"line": 17,
+					"column": 9,
+					"offset": 348
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 17,
+					"column": 9,
+					"offset": 348
+				},
+				"end": {
+					"line": 19,
+					"column": 1,
+					"offset": 350
+				}
+			}
+		},
+		{
+			"type": "svelteBranchingBlock",
+			"name": "each",
+			"branches": [
+				{
+					"type": "svelteBranch",
+					"name": "each",
+					"expression": {
+						"type": "svelteExpression",
+						"value": "contributors as contributor, i",
+						"position": {
+							"start": {
+								"line": 19,
+								"column": 8,
+								"offset": 357
+							},
+							"end": {
+								"line": 19,
+								"column": 38,
+								"offset": 387
+							}
+						}
+					},
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 19,
+									"column": 39,
+									"offset": 388
+								},
+								"end": {
+									"line": 20,
+									"column": 2,
+									"offset": 390
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "a",
+							"properties": [
+								{
+									"type": "svelteProperty",
+									"name": "class",
+									"value": [
+										{
+											"type": "text",
+											"value": "contributor",
+											"position": {
+												"start": {
+													"line": 21,
+													"column": 10,
+													"offset": 402
+												},
+												"end": {
+													"line": 21,
+													"column": 21,
+													"offset": 413
+												}
+											}
+										}
+									],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 21,
+											"column": 3,
+											"offset": 395
+										},
+										"end": {
+											"line": 21,
+											"column": 22,
+											"offset": 414
+										}
+									}
+								},
+								{
+									"type": "svelteProperty",
+									"name": "style",
+									"value": [
+										{
+											"type": "text",
+											"value": "background-position:",
+											"position": {
+												"start": {
+													"line": 22,
+													"column": 10,
+													"offset": 424
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "",
+											"position": {
+												"start": {
+													"line": 22,
+													"column": 30,
+													"offset": 444
+												},
+												"end": {
+													"line": 22,
+													"column": 31,
+													"offset": 445
+												}
+											}
+										},
+										{
+											"type": "svelteExpression",
+											"value": "(100 * i) / (contributors.length - 1)}% 0\"\n\t\thref=\"https://github.com/{contributor}\">\n\t\t{contributor}\n\t</a>\n{/each}\n",
+											"position": {
+												"start": {
+													"line": 22,
+													"column": 31,
+													"offset": 445
+												},
+												"end": {
+													"line": 27,
+													"column": 1,
+													"offset": 562
+												}
+											}
+										}
+									],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 22,
+											"column": 3,
+											"offset": 417
+										},
+										"end": {}
+									}
+								}
+							],
+							"selfClosing": false,
+							"children": [],
+							"position": {
+								"start": {
+									"line": 20,
+									"column": 2,
+									"offset": 390
+								},
+								"end": {}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 19,
+							"column": 1,
+							"offset": 350
+						},
+						"end": {
+							"line": 27,
+							"column": 2,
+							"offset": 563
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 19,
+					"column": 1,
+					"offset": 350
+				},
+				"end": {}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {}
+	}
+}

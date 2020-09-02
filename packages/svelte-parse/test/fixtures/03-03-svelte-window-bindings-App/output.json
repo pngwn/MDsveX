@@ -1,0 +1,391 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tconst layers = [0, 1, 2, 3, 4, 5, 6, 7, 8];\n\n\tlet y;\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 5,
+							"column": 1,
+							"offset": 63
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 5,
+					"column": 10,
+					"offset": 72
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 10,
+					"offset": 72
+				},
+				"end": {
+					"line": 7,
+					"column": 1,
+					"offset": 74
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "window",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "bind",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "y",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 29,
+									"offset": 102
+								},
+								"end": {
+									"line": 7,
+									"column": 32,
+									"offset": 105
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 16,
+							"offset": 89
+						},
+						"end": {
+							"line": 7,
+							"column": 32,
+							"offset": 105
+						}
+					},
+					"specifier": "scrollY"
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 7,
+					"column": 1,
+					"offset": 74
+				},
+				"end": {
+					"line": 7,
+					"column": 34,
+					"offset": 107
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 7,
+					"column": 34,
+					"offset": 107
+				},
+				"end": {
+					"line": 9,
+					"column": 1,
+					"offset": 109
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "a",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "parallax-container",
+							"position": {
+								"start": {
+									"line": 9,
+									"column": 11,
+									"offset": 119
+								},
+								"end": {
+									"line": 9,
+									"column": 29,
+									"offset": 137
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 4,
+							"offset": 112
+						},
+						"end": {
+							"line": 9,
+							"column": 30,
+							"offset": 138
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "href",
+					"value": [
+						{
+							"type": "text",
+							"value": "https://www.firewatchgame.com",
+							"position": {
+								"start": {
+									"line": 9,
+									"column": 37,
+									"offset": 145
+								},
+								"end": {
+									"line": 9,
+									"column": 66,
+									"offset": 174
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 31,
+							"offset": 139
+						},
+						"end": {
+							"line": 9,
+							"column": 67,
+							"offset": 175
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 68,
+							"offset": 176
+						},
+						"end": {
+							"line": 10,
+							"column": 2,
+							"offset": 178
+						}
+					}
+				},
+				{
+					"type": "svelteBranchingBlock",
+					"name": "each",
+					"branches": [
+						{
+							"type": "svelteBranch",
+							"name": "each",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "[0, 1, 2, 3, 4, 5, 6, 7, 8] as layer",
+								"position": {
+									"start": {
+										"line": 10,
+										"column": 9,
+										"offset": 185
+									},
+									"end": {
+										"line": 10,
+										"column": 45,
+										"offset": 221
+									}
+								}
+							},
+							"children": [
+								{
+									"type": "text",
+									"value": "\n\t\t",
+									"position": {
+										"start": {
+											"line": 10,
+											"column": 46,
+											"offset": 222
+										},
+										"end": {
+											"line": 11,
+											"column": 3,
+											"offset": 225
+										}
+									}
+								},
+								{
+									"type": "svelteElement",
+									"tagName": "img",
+									"properties": [
+										{
+											"type": "svelteProperty",
+											"name": "style",
+											"value": [
+												{
+													"type": "text",
+													"value": "transform:",
+													"position": {
+														"start": {
+															"line": 12,
+															"column": 11,
+															"offset": 240
+														},
+														"end": {}
+													}
+												},
+												{
+													"type": "text",
+													"value": "translate(0,",
+													"position": {
+														"start": {
+															"line": 12,
+															"column": 21,
+															"offset": 250
+														},
+														"end": {
+															"line": 12,
+															"column": 34,
+															"offset": 263
+														}
+													}
+												},
+												{
+													"type": "svelteExpression",
+													"value": "-y * layer / (layers.length - 1)}px)\"\n\t\t\tsrc=\"https://www.firewatchgame.com/images/parallax/parallax{layer}.png\"\n\t\t\talt=\"parallax layer {layer}\"\n\t\t>\n\t{/each}\n</a>\n\n<div class=\"text\">\n\t<span style=\"opacity: {1 - Math.max(0, y / 40)}\">\n\t\tscroll down\n\t</span>\n\n\t<div class=\"foreground\">\n\t\tYou have scrolled {y} pixels\n\t</div>\n</div>\n\n<style>\n\t.parallax-container {\n\t\tposition: fixed;\n\t\twidth: 2400px;\n\t\theight: 712px;\n\t\tleft: 50%;\n\t\ttransform: translate(-50%,0);\n\t}\n\n\t.parallax-container img {\n\t\tposition: absolute;\n\t\ttop: 0;\n\t\tleft: 0;\n\t\twidth: 100%;\n\t\twill-change: transform;\n\t}\n\n\t.parallax-container img:last-child::after {\n\t\tcontent: '';\n\t\tposition: absolute;\n\t\twidth: 100%;\n\t\theight: 100%;\n\t\tbackground: rgb(45,10,13);\n\t}\n\n\t.text {\n\t\tposition: relative;\n\t\twidth: 100%;\n\t\theight: 300vh;\n\t\tcolor: rgb(220,113,43);\n\t\ttext-align: center;\n\t\tpadding: 4em 0.5em 0.5em 0.5em;\n\t\tbox-sizing: border-box;\n\t\tpointer-events: none;\n\t}\n\n\tspan {\n\t\tdisplay: block;\n\t\tfont-size: 1em;\n\t\ttext-transform: uppercase;\n\t\twill-change: transform, opacity;\n\t}\n\n\t.foreground {\n\t\tposition: absolute;\n\t\ttop: 711px;\n\t\tleft: 0;\n\t\twidth: 100%;\n\t\theight: calc(100% - 712px);\n\t\tbackground-color: rgb(32,0,1);\n\t\tcolor: white;\n\t\tpadding: 50vh 0 0 0;\n\t}\n\n\t:global(body) {\n\t\tmargin: 0;\n\t\tpadding: 0;\n\t\tbackground-color: rgb(253, 174, 51);\n\t}\n</style>\n",
+													"position": {
+														"start": {
+															"line": 12,
+															"column": 34,
+															"offset": 263
+														},
+														"end": {
+															"line": 89,
+															"column": 1,
+															"offset": 1578
+														}
+													}
+												}
+											],
+											"modifiers": [],
+											"shorthand": "none",
+											"position": {
+												"start": {
+													"line": 12,
+													"column": 4,
+													"offset": 233
+												},
+												"end": {}
+											}
+										}
+									],
+									"selfClosing": false,
+									"children": [],
+									"position": {
+										"start": {
+											"line": 11,
+											"column": 3,
+											"offset": 225
+										},
+										"end": {}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 10,
+									"column": 2,
+									"offset": 178
+								},
+								"end": {
+									"line": 89,
+									"column": 2,
+									"offset": 1579
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 10,
+							"column": 2,
+							"offset": 178
+						},
+						"end": {}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 9,
+					"column": 1,
+					"offset": 109
+				},
+				"end": {
+					"line": 89,
+					"column": 3,
+					"offset": 1580
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 89,
+			"column": 3,
+			"offset": 1580
+		}
+	}
+}

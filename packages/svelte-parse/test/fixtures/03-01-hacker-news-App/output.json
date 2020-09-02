@@ -1,0 +1,528 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { onMount } from 'svelte';\n\timport List from './List.svelte';\n\timport Item from './Item.svelte';\n\n\tlet item;\n\tlet page;\n\n\tasync function hashchange() {\n\t\t// the poor man's router!\n\t\tconst path = window.location.hash.slice(1);\n\n\t\tif (path.startsWith('/item')) {\n\t\t\tconst id = path.slice(6);\n\t\t\titem = await fetch(`https://node-hnapi.herokuapp.com/item/${id}`).then(r => r.json());\n\n\t\t\twindow.scrollTo(0,0);\n\t\t} else if (path.startsWith('/top')) {\n\t\t\tpage = +path.slice(5);\n\t\t\titem = null;\n\t\t} else {\n\t\t\twindow.location.hash = '/top/1';\n\t\t}\n\t}\n\n\tonMount(hashchange);\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 27,
+							"column": 1,
+							"offset": 582
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 27,
+					"column": 10,
+					"offset": 591
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 27,
+					"column": 10,
+					"offset": 591
+				},
+				"end": {
+					"line": 29,
+					"column": 1,
+					"offset": 593
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tmain {\n\t\tposition: relative;\n\t\tmax-width: 800px;\n\t\tmargin: 0 auto;\n\t\tmin-height: 101vh;\n\t\tpadding: 1em;\n\t}\n\n\tmain :global(.meta) {\n\t\tcolor: #999;\n\t\tfont-size: 12px;\n\t\tmargin: 0 0 1em 0;\n\t}\n\n\tmain :global(a) {\n\t\tcolor: rgb(0,0,150);\n\t}\n",
+					"position": {
+						"start": {
+							"line": 29,
+							"column": 8,
+							"offset": 600
+						},
+						"end": {
+							"line": 47,
+							"column": 1,
+							"offset": 837
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 29,
+					"column": 1,
+					"offset": 593
+				},
+				"end": {
+					"line": 47,
+					"column": 9,
+					"offset": 845
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 47,
+					"column": 9,
+					"offset": 845
+				},
+				"end": {
+					"line": 49,
+					"column": 1,
+					"offset": 847
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "window",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "hashchange",
+							"position": {
+								"start": {
+									"line": 49,
+									"column": 30,
+									"offset": 876
+								},
+								"end": {
+									"line": 49,
+									"column": 42,
+									"offset": 888
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 49,
+							"column": 16,
+							"offset": 862
+						},
+						"end": {
+							"line": 49,
+							"column": 42,
+							"offset": 888
+						}
+					},
+					"specifier": "hashchange"
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 49,
+					"column": 1,
+					"offset": 847
+				},
+				"end": {
+					"line": 49,
+					"column": 44,
+					"offset": 890
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 49,
+					"column": 44,
+					"offset": 890
+				},
+				"end": {
+					"line": 51,
+					"column": 1,
+					"offset": 892
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "main",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 51,
+							"column": 7,
+							"offset": 898
+						},
+						"end": {
+							"line": 52,
+							"column": 2,
+							"offset": 900
+						}
+					}
+				},
+				{
+					"type": "svelteBranchingBlock",
+					"name": "if",
+					"branches": [
+						{
+							"type": "svelteBranch",
+							"name": "if",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "item",
+								"position": {
+									"start": {
+										"line": 52,
+										"column": 7,
+										"offset": 905
+									},
+									"end": {
+										"line": 52,
+										"column": 11,
+										"offset": 909
+									}
+								}
+							},
+							"children": [
+								{
+									"type": "text",
+									"value": "\n\t\t",
+									"position": {
+										"start": {
+											"line": 52,
+											"column": 12,
+											"offset": 910
+										},
+										"end": {
+											"line": 53,
+											"column": 3,
+											"offset": 913
+										}
+									}
+								},
+								{
+									"type": "svelteComponent",
+									"tagName": "Item",
+									"properties": [
+										{
+											"type": "svelteProperty",
+											"name": "item",
+											"value": [
+												{
+													"type": "svelteExpression",
+													"value": "item"
+												}
+											],
+											"modifiers": [],
+											"shorthand": "expression",
+											"position": {
+												"start": {
+													"line": 53,
+													"column": 9,
+													"offset": 919
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "svelteProperty",
+											"name": "returnTo",
+											"value": [
+												{
+													"type": "text",
+													"value": "#/top/",
+													"position": {
+														"start": {
+															"line": 53,
+															"column": 26,
+															"offset": 936
+														},
+														"end": {
+															"line": 53,
+															"column": 32,
+															"offset": 942
+														}
+													}
+												},
+												{
+													"type": "svelteExpression",
+													"value": "page",
+													"position": {
+														"start": {
+															"line": 53,
+															"column": 32,
+															"offset": 942
+														},
+														"end": {
+															"line": 53,
+															"column": 38,
+															"offset": 948
+														}
+													}
+												}
+											],
+											"modifiers": [],
+											"shorthand": "none",
+											"position": {
+												"start": {
+													"line": 53,
+													"column": 16,
+													"offset": 926
+												},
+												"end": {
+													"line": 53,
+													"column": 39,
+													"offset": 949
+												}
+											}
+										}
+									],
+									"selfClosing": true,
+									"children": [],
+									"position": {
+										"start": {
+											"line": 53,
+											"column": 3,
+											"offset": 913
+										},
+										"end": {
+											"line": 53,
+											"column": 41,
+											"offset": 951
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n\t",
+									"position": {
+										"start": {
+											"line": 53,
+											"column": 41,
+											"offset": 951
+										},
+										"end": {
+											"line": 54,
+											"column": 2,
+											"offset": 953
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 52,
+									"column": 2,
+									"offset": 900
+								},
+								"end": {
+									"line": 54,
+									"column": 2,
+									"offset": 953
+								}
+							}
+						},
+						{
+							"type": "svelteBranch",
+							"name": "else if",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "page",
+								"position": {
+									"start": {
+										"line": 54,
+										"column": 12,
+										"offset": 963
+									},
+									"end": {
+										"line": 54,
+										"column": 16,
+										"offset": 967
+									}
+								}
+							},
+							"children": [
+								{
+									"type": "text",
+									"value": "\n\t\t",
+									"position": {
+										"start": {
+											"line": 54,
+											"column": 17,
+											"offset": 968
+										},
+										"end": {
+											"line": 55,
+											"column": 3,
+											"offset": 971
+										}
+									}
+								},
+								{
+									"type": "svelteComponent",
+									"tagName": "List",
+									"properties": [
+										{
+											"type": "svelteProperty",
+											"name": "page",
+											"value": [
+												{
+													"type": "svelteExpression",
+													"value": "page"
+												}
+											],
+											"modifiers": [],
+											"shorthand": "expression",
+											"position": {
+												"start": {
+													"line": 55,
+													"column": 9,
+													"offset": 977
+												},
+												"end": {}
+											}
+										}
+									],
+									"selfClosing": true,
+									"children": [],
+									"position": {
+										"start": {
+											"line": 55,
+											"column": 3,
+											"offset": 971
+										},
+										"end": {
+											"line": 55,
+											"column": 17,
+											"offset": 985
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n\t",
+									"position": {
+										"start": {
+											"line": 55,
+											"column": 17,
+											"offset": 985
+										},
+										"end": {
+											"line": 56,
+											"column": 2,
+											"offset": 987
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 54,
+									"column": 2,
+									"offset": 953
+								},
+								"end": {
+									"line": 56,
+									"column": 2,
+									"offset": 987
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 52,
+							"column": 2,
+							"offset": 900
+						},
+						"end": {
+							"line": 56,
+							"column": 7,
+							"offset": 992
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 56,
+							"column": 7,
+							"offset": 992
+						},
+						"end": {
+							"line": 57,
+							"column": 1,
+							"offset": 993
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 51,
+					"column": 1,
+					"offset": 892
+				},
+				"end": {
+					"line": 57,
+					"column": 8,
+					"offset": 1000
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 57,
+			"column": 8,
+			"offset": 1000
+		}
+	}
+}

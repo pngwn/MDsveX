@@ -1,0 +1,160 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport Nested from './Nested.svelte';\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 48
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 3,
+					"column": 10,
+					"offset": 57
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 3,
+					"column": 10,
+					"offset": 57
+				},
+				"end": {
+					"line": 5,
+					"column": 1,
+					"offset": 59
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Nested",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "answer",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "42",
+							"position": {
+								"start": {
+									"line": 5,
+									"column": 16,
+									"offset": 74
+								},
+								"end": {
+									"line": 5,
+									"column": 20,
+									"offset": 78
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 5,
+							"column": 9,
+							"offset": 67
+						},
+						"end": {
+							"line": 5,
+							"column": 20,
+							"offset": 78
+						}
+					}
+				}
+			],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 1,
+					"offset": 59
+				},
+				"end": {
+					"line": 5,
+					"column": 22,
+					"offset": 80
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n",
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 22,
+					"offset": 80
+				},
+				"end": {
+					"line": 6,
+					"column": 1,
+					"offset": 81
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Nested",
+			"properties": [],
+			"selfClosing": true,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 6,
+					"column": 1,
+					"offset": 81
+				},
+				"end": {
+					"line": 6,
+					"column": 10,
+					"offset": 90
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 6,
+			"column": 10,
+			"offset": 90
+		}
+	}
+}

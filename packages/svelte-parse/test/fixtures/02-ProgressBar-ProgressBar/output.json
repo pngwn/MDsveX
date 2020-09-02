@@ -1,0 +1,582 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import { classnames } from '../../helpers/classnames';\n  import inlinestyles from '../../helpers/inlineStyles';\n  import options from './options';\n\n  export let isAnimated = false;\n  export let size = options.size.SMALL;\n  export let value = 0;\n  export let maxValue = 100;\n  export let target = 0;\n  export let positiveColour = '#51ce6c';\n  export let negativeColour = '#ff5373';\n  export let indicators = [];\n\n  export let BarClassNames;\n  $: {\n    BarClassNames = classnames({\n      isAnimated\n    });\n  }\n\n  export let ClassNames;\n  $: {\n    ClassNames = classnames(`size-${size}`);\n  }\n\n  export let PercentComplete;\n  $: {\n    PercentComplete = (value / maxValue) * 100;\n  }\n\n  export let Styles;\n  $: {\n    Styles = inlinestyles(\n      {\n        'width': `${PercentComplete}%`,\n        'background': value >= target ? positiveColour : negativeColour\n      }\n    );\n  }\n\n  const indicatorPercent = (value, maxValue) => {\n    return (value / maxValue) * 100;\n  };\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 45,
+							"column": 1,
+							"offset": 980
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 45,
+					"column": 10,
+					"offset": 989
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n\n",
+			"position": {
+				"start": {
+					"line": 45,
+					"column": 10,
+					"offset": 989
+				},
+				"end": {
+					"line": 48,
+					"column": 1,
+					"offset": 992
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  .progressBar {\n    background-color: var(--neutral_0);\n    border-radius: 5px;\n    width: 100%;\n    position: relative;\n    overflow: hidden;\n  }\n\n  .size-xsmall {\n    height: 2px;\n  }\n\n  .size-small {\n    height: 4px;\n  }\n\n  .size-medium {\n    height: 6px;\n  }\n\n  .size-large {\n    height: 10px;\n  }\n\n  .bar {\n    border-radius: 5px;\n    opacity: 0.95;\n    position: absolute;\n    top: 0;\n    left: 0;\n    bottom: 0;\n    z-index: 0;\n  }\n\n  .isAnimated {\n    transition: all 1s ease;\n  }\n\n  .indicator {\n    background: var(--white);\n    border-radius: 5px;\n    position: absolute;\n    top: 0;\n    bottom: 0;\n    width: 2px;\n    z-index: 1;\n  }\n",
+					"position": {
+						"start": {
+							"line": 48,
+							"column": 8,
+							"offset": 999
+						},
+						"end": {
+							"line": 96,
+							"column": 1,
+							"offset": 1647
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 48,
+					"column": 1,
+					"offset": 992
+				},
+				"end": {
+					"line": 96,
+					"column": 9,
+					"offset": 1655
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 96,
+					"column": 9,
+					"offset": 1655
+				},
+				"end": {
+					"line": 98,
+					"column": 1,
+					"offset": 1657
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "progressBar",
+							"position": {
+								"start": {
+									"line": 98,
+									"column": 13,
+									"offset": 1669
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "",
+							"position": {
+								"start": {
+									"line": 98,
+									"column": 24,
+									"offset": 1680
+								},
+								"end": {
+									"line": 98,
+									"column": 25,
+									"offset": 1681
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": " ClassNames ",
+							"position": {
+								"start": {
+									"line": 98,
+									"column": 25,
+									"offset": 1681
+								},
+								"end": {
+									"line": 98,
+									"column": 39,
+									"offset": 1695
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 98,
+							"column": 6,
+							"offset": 1662
+						},
+						"end": {
+							"line": 98,
+							"column": 40,
+							"offset": 1696
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 98,
+							"column": 41,
+							"offset": 1697
+						},
+						"end": {
+							"line": 99,
+							"column": 3,
+							"offset": 1700
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "div",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "class",
+							"value": [
+								{
+									"type": "text",
+									"value": "bar",
+									"position": {
+										"start": {
+											"line": 99,
+											"column": 15,
+											"offset": 1712
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "",
+									"position": {
+										"start": {
+											"line": 99,
+											"column": 18,
+											"offset": 1715
+										},
+										"end": {
+											"line": 99,
+											"column": 19,
+											"offset": 1716
+										}
+									}
+								},
+								{
+									"type": "svelteExpression",
+									"value": " BarClassNames ",
+									"position": {
+										"start": {
+											"line": 99,
+											"column": 19,
+											"offset": 1716
+										},
+										"end": {
+											"line": 99,
+											"column": 36,
+											"offset": 1733
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 99,
+									"column": 8,
+									"offset": 1705
+								},
+								"end": {
+									"line": 99,
+									"column": 37,
+									"offset": 1734
+								}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": "style",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " Styles ",
+									"position": {
+										"start": {
+											"line": 99,
+											"column": 45,
+											"offset": 1742
+										},
+										"end": {
+											"line": 99,
+											"column": 55,
+											"offset": 1752
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 99,
+									"column": 38,
+									"offset": 1735
+								},
+								"end": {
+									"line": 99,
+									"column": 56,
+									"offset": 1753
+								}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 99,
+							"column": 3,
+							"offset": 1700
+						},
+						"end": {
+							"line": 99,
+							"column": 63,
+							"offset": 1760
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n\n  ",
+					"position": {
+						"start": {
+							"line": 99,
+							"column": 63,
+							"offset": 1760
+						},
+						"end": {
+							"line": 101,
+							"column": 3,
+							"offset": 1764
+						}
+					}
+				},
+				{
+					"type": "svelteBranchingBlock",
+					"name": "each",
+					"branches": [
+						{
+							"type": "svelteBranch",
+							"name": "each",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "indicators as indicator",
+								"position": {
+									"start": {
+										"line": 101,
+										"column": 10,
+										"offset": 1771
+									},
+									"end": {
+										"line": 101,
+										"column": 33,
+										"offset": 1794
+									}
+								}
+							},
+							"children": [
+								{
+									"type": "text",
+									"value": "\n    ",
+									"position": {
+										"start": {
+											"line": 101,
+											"column": 34,
+											"offset": 1795
+										},
+										"end": {
+											"line": 102,
+											"column": 5,
+											"offset": 1800
+										}
+									}
+								},
+								{
+									"type": "svelteElement",
+									"tagName": "span",
+									"properties": [
+										{
+											"type": "svelteProperty",
+											"name": "class",
+											"value": [
+												{
+													"type": "text",
+													"value": "indicator",
+													"position": {
+														"start": {
+															"line": 102,
+															"column": 18,
+															"offset": 1813
+														},
+														"end": {
+															"line": 102,
+															"column": 27,
+															"offset": 1822
+														}
+													}
+												}
+											],
+											"modifiers": [],
+											"shorthand": "none",
+											"position": {
+												"start": {
+													"line": 102,
+													"column": 11,
+													"offset": 1806
+												},
+												"end": {
+													"line": 102,
+													"column": 28,
+													"offset": 1823
+												}
+											}
+										},
+										{
+											"type": "svelteProperty",
+											"name": "style",
+											"value": [
+												{
+													"type": "text",
+													"value": "left:",
+													"position": {
+														"start": {
+															"line": 102,
+															"column": 36,
+															"offset": 1831
+														},
+														"end": {
+															"line": 102,
+															"column": 41,
+															"offset": 1836
+														}
+													}
+												},
+												{
+													"type": "svelteExpression",
+													"value": " indicatorPercent(indicator,maxValue) ",
+													"position": {
+														"start": {
+															"line": 102,
+															"column": 41,
+															"offset": 1836
+														},
+														"end": {
+															"line": 102,
+															"column": 81,
+															"offset": 1876
+														}
+													}
+												},
+												{
+													"type": "text",
+													"value": "%",
+													"position": {
+														"start": {
+															"line": 102,
+															"column": 81,
+															"offset": 1876
+														},
+														"end": {
+															"line": 102,
+															"column": 82,
+															"offset": 1877
+														}
+													}
+												}
+											],
+											"modifiers": [],
+											"shorthand": "none",
+											"position": {
+												"start": {
+													"line": 102,
+													"column": 29,
+													"offset": 1824
+												},
+												"end": {
+													"line": 102,
+													"column": 83,
+													"offset": 1878
+												}
+											}
+										}
+									],
+									"selfClosing": false,
+									"children": [],
+									"position": {
+										"start": {
+											"line": 102,
+											"column": 5,
+											"offset": 1800
+										},
+										"end": {
+											"line": 102,
+											"column": 91,
+											"offset": 1886
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n  ",
+									"position": {
+										"start": {
+											"line": 102,
+											"column": 91,
+											"offset": 1886
+										},
+										"end": {
+											"line": 103,
+											"column": 3,
+											"offset": 1889
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 101,
+									"column": 3,
+									"offset": 1764
+								},
+								"end": {
+									"line": 103,
+									"column": 3,
+									"offset": 1889
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 101,
+							"column": 3,
+							"offset": 1764
+						},
+						"end": {
+							"line": 103,
+							"column": 10,
+							"offset": 1896
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 103,
+							"column": 10,
+							"offset": 1896
+						},
+						"end": {
+							"line": 104,
+							"column": 1,
+							"offset": 1897
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 98,
+					"column": 1,
+					"offset": 1657
+				},
+				"end": {
+					"line": 104,
+					"column": 7,
+					"offset": 1903
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 104,
+			"column": 7,
+			"offset": 1903
+		}
+	}
+}

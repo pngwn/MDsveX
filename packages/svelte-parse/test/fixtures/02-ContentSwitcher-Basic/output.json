@@ -1,0 +1,109 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import ContentSwitcher from '@sveltekit/ui/ContentSwitcher';\n  import { Alert, Add, ArrowUp } from '@sveltekit/ui/Icons';\n\n  const items = [\n    {\n      label: 'Tab 1',\n      Icon: Alert\n    },\n    {\n      label: 'Tab 2',\n      Icon: Add\n    },\n    {\n      label: 'Tab 3',\n      Icon: ArrowUp\n    }\n  ]\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 19,
+							"column": 1,
+							"offset": 314
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 19,
+					"column": 10,
+					"offset": 323
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 19,
+					"column": 10,
+					"offset": 323
+				},
+				"end": {
+					"line": 21,
+					"column": 1,
+					"offset": 325
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "ContentSwitcher",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "items",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "items"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 21,
+							"column": 18,
+							"offset": 342
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 21,
+					"column": 1,
+					"offset": 325
+				},
+				"end": {
+					"line": 21,
+					"column": 44,
+					"offset": 368
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 21,
+			"column": 44,
+			"offset": 368
+		}
+	}
+}

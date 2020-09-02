@@ -1,0 +1,254 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "clsxd(\n        'ui',\n        size,\n        divided,\n        [attached, {'attached': attached}],\n        ordered && 'ordered',\n        vertical && 'vertical',\n        stackable && 'stackable',\n        fluid && 'fluid',\n        unstackable && 'unstackable',\n        inverted && 'inverted',\n        className,\n        'steps'\n    )",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 11,
+									"offset": 15
+								},
+								"end": {
+									"line": 15,
+									"column": 7,
+									"offset": 345
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 2,
+							"column": 5,
+							"offset": 9
+						},
+						"end": {
+							"line": 15,
+							"column": 7,
+							"offset": 345
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "...exclude($$props, ['class', 'ordered', 'vertical', 'stackable', 'fluid', 'unstackable', 'attached', 'size', 'inverted'])",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "...exclude($$props, ['class', 'ordered', 'vertical', 'stackable', 'fluid', 'unstackable', 'attached', 'size', 'inverted'])"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 16,
+							"column": 5,
+							"offset": 350
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "svelteElement",
+					"tagName": "slot",
+					"properties": [],
+					"selfClosing": false,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 17,
+							"column": 2,
+							"offset": 476
+						},
+						"end": {
+							"line": 17,
+							"column": 15,
+							"offset": 489
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 17,
+					"column": 21,
+					"offset": 495
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 17,
+					"column": 21,
+					"offset": 495
+				},
+				"end": {
+					"line": 19,
+					"column": 1,
+					"offset": 497
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "context",
+					"value": [
+						{
+							"type": "text",
+							"value": "module",
+							"position": {
+								"start": {
+									"line": 19,
+									"column": 18,
+									"offset": 514
+								},
+								"end": {
+									"line": 19,
+									"column": 24,
+									"offset": 520
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 19,
+							"column": 9,
+							"offset": 505
+						},
+						"end": {
+							"line": 19,
+							"column": 25,
+							"offset": 521
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n    import { exclude, clsxd } from '../../lib'\n",
+					"position": {
+						"start": {
+							"line": 19,
+							"column": 26,
+							"offset": 522
+						},
+						"end": {
+							"line": 21,
+							"column": 1,
+							"offset": 570
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 19,
+					"column": 1,
+					"offset": 497
+				},
+				"end": {
+					"line": 21,
+					"column": 10,
+					"offset": 579
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 21,
+					"column": 10,
+					"offset": 579
+				},
+				"end": {
+					"line": 23,
+					"column": 1,
+					"offset": 581
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n    let className = '';\n    export { className as class };\n\n    export let attached = ''\n    export let size = ''\n    export let divided = ''\n    export let ordered = false\n    export let vertical = false\n    export let stackable = false\n    export let unstackable = false\n    export let fluid = false\n    export let inverted = false\n",
+					"position": {
+						"start": {
+							"line": 23,
+							"column": 9,
+							"offset": 589
+						},
+						"end": {
+							"line": 36,
+							"column": 1,
+							"offset": 924
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 23,
+					"column": 1,
+					"offset": 581
+				},
+				"end": {
+					"line": 36,
+					"column": 10,
+					"offset": 933
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 36,
+			"column": 10,
+			"offset": 933
+		}
+	}
+}

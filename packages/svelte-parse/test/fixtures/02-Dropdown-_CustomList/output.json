@@ -1,0 +1,765 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import { createEventDispatcher } from 'svelte';\n\n  const dispatch = createEventDispatcher();\n\n  import DropdownMenu from '../_DropdownMenu.svelte';\n  import DropdownMenuItem from '../_DropdownMenuItem.svelte';\n  import DropdownMenuDivider from '../_DropdownMenuDivider.svelte';\n\n  function onClick(selected) {\n    this.fire('select', selected);\n  }\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 13,
+							"column": 1,
+							"offset": 360
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 13,
+					"column": 10,
+					"offset": 369
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 13,
+					"column": 10,
+					"offset": 369
+				},
+				"end": {
+					"line": 15,
+					"column": 1,
+					"offset": 371
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  .free {\n    background: #007AFF;\n    color: #fff;\n    padding: 20px;\n  }\n",
+					"position": {
+						"start": {
+							"line": 15,
+							"column": 8,
+							"offset": 378
+						},
+						"end": {
+							"line": 21,
+							"column": 1,
+							"offset": 454
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 15,
+					"column": 1,
+					"offset": 371
+				},
+				"end": {
+					"line": 21,
+					"column": 9,
+					"offset": 462
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 21,
+					"column": 9,
+					"offset": 462
+				},
+				"end": {
+					"line": 23,
+					"column": 1,
+					"offset": 464
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "DropdownMenu",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 23,
+							"column": 15,
+							"offset": 478
+						},
+						"end": {
+							"line": 24,
+							"column": 3,
+							"offset": 481
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "DropdownMenuItem",
+					"properties": [
+						{
+							"type": "svelteDirective",
+							"name": "on",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " () => onClick(1) ",
+									"position": {
+										"start": {
+											"line": 24,
+											"column": 31,
+											"offset": 509
+										},
+										"end": {
+											"line": 24,
+											"column": 51,
+											"offset": 529
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 24,
+									"column": 21,
+									"offset": 499
+								},
+								"end": {
+									"line": 24,
+									"column": 52,
+									"offset": 530
+								}
+							},
+							"specifier": "click"
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "Here we go",
+							"position": {
+								"start": {
+									"line": 24,
+									"column": 53,
+									"offset": 531
+								},
+								"end": {
+									"line": 24,
+									"column": 63,
+									"offset": 541
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 24,
+							"column": 3,
+							"offset": 481
+						},
+						"end": {
+							"line": 24,
+							"column": 82,
+							"offset": 560
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 24,
+							"column": 82,
+							"offset": 560
+						},
+						"end": {
+							"line": 25,
+							"column": 3,
+							"offset": 563
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "DropdownMenuItem",
+					"properties": [
+						{
+							"type": "svelteDirective",
+							"name": "on",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " () => onClick(2) ",
+									"position": {
+										"start": {
+											"line": 25,
+											"column": 31,
+											"offset": 591
+										},
+										"end": {
+											"line": 25,
+											"column": 51,
+											"offset": 611
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 25,
+									"column": 21,
+									"offset": 581
+								},
+								"end": {
+									"line": 25,
+									"column": 52,
+									"offset": 612
+								}
+							},
+							"specifier": "click"
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "Here we go",
+							"position": {
+								"start": {
+									"line": 25,
+									"column": 53,
+									"offset": 613
+								},
+								"end": {
+									"line": 25,
+									"column": 63,
+									"offset": 623
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 25,
+							"column": 3,
+							"offset": 563
+						},
+						"end": {
+							"line": 25,
+							"column": 82,
+							"offset": 642
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 25,
+							"column": 82,
+							"offset": 642
+						},
+						"end": {
+							"line": 26,
+							"column": 3,
+							"offset": 645
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "DropdownMenuDivider",
+					"properties": [],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 26,
+							"column": 3,
+							"offset": 645
+						},
+						"end": {
+							"line": 26,
+							"column": 26,
+							"offset": 668
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 26,
+							"column": 26,
+							"offset": 668
+						},
+						"end": {
+							"line": 27,
+							"column": 3,
+							"offset": 671
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "DropdownMenuItem",
+					"properties": [],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "Im not clickable",
+							"position": {
+								"start": {
+									"line": 27,
+									"column": 21,
+									"offset": 689
+								},
+								"end": {
+									"line": 27,
+									"column": 37,
+									"offset": 705
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 27,
+							"column": 3,
+							"offset": 671
+						},
+						"end": {
+							"line": 27,
+							"column": 56,
+							"offset": 724
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 27,
+							"column": 56,
+							"offset": 724
+						},
+						"end": {
+							"line": 28,
+							"column": 3,
+							"offset": 727
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "DropdownMenuDivider",
+					"properties": [],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 28,
+							"column": 3,
+							"offset": 727
+						},
+						"end": {
+							"line": 28,
+							"column": 26,
+							"offset": 750
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 28,
+							"column": 26,
+							"offset": 750
+						},
+						"end": {
+							"line": 29,
+							"column": 3,
+							"offset": 753
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "DropdownMenuItem",
+					"properties": [
+						{
+							"type": "svelteDirective",
+							"name": "on",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " () => onClick(4) ",
+									"position": {
+										"start": {
+											"line": 29,
+											"column": 31,
+											"offset": 781
+										},
+										"end": {
+											"line": 29,
+											"column": 51,
+											"offset": 801
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 29,
+									"column": 21,
+									"offset": 771
+								},
+								"end": {
+									"line": 29,
+									"column": 52,
+									"offset": 802
+								}
+							},
+							"specifier": "click"
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "Here we go",
+							"position": {
+								"start": {
+									"line": 29,
+									"column": 53,
+									"offset": 803
+								},
+								"end": {
+									"line": 29,
+									"column": 63,
+									"offset": 813
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 29,
+							"column": 3,
+							"offset": 753
+						},
+						"end": {
+							"line": 29,
+							"column": 82,
+							"offset": 832
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 29,
+							"column": 82,
+							"offset": 832
+						},
+						"end": {
+							"line": 30,
+							"column": 3,
+							"offset": 835
+						}
+					}
+				},
+				{
+					"type": "svelteComponent",
+					"tagName": "DropdownMenuItem",
+					"properties": [
+						{
+							"type": "svelteDirective",
+							"name": "on",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " () => onClick(5) ",
+									"position": {
+										"start": {
+											"line": 30,
+											"column": 31,
+											"offset": 863
+										},
+										"end": {
+											"line": 30,
+											"column": 51,
+											"offset": 883
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 30,
+									"column": 21,
+									"offset": 853
+								},
+								"end": {
+									"line": 30,
+									"column": 52,
+									"offset": 884
+								}
+							},
+							"specifier": "click"
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "Here we go",
+							"position": {
+								"start": {
+									"line": 30,
+									"column": 53,
+									"offset": 885
+								},
+								"end": {
+									"line": 30,
+									"column": 63,
+									"offset": 895
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 30,
+							"column": 3,
+							"offset": 835
+						},
+						"end": {
+							"line": 30,
+							"column": 82,
+							"offset": 914
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 30,
+							"column": 82,
+							"offset": 914
+						},
+						"end": {
+							"line": 31,
+							"column": 3,
+							"offset": 917
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "div",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "class",
+							"value": [
+								{
+									"type": "text",
+									"value": "free",
+									"position": {
+										"start": {
+											"line": 31,
+											"column": 15,
+											"offset": 929
+										},
+										"end": {
+											"line": 31,
+											"column": 19,
+											"offset": 933
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 31,
+									"column": 8,
+									"offset": 922
+								},
+								"end": {
+									"line": 31,
+									"column": 20,
+									"offset": 934
+								}
+							}
+						},
+						{
+							"type": "svelteDirective",
+							"name": "on",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": " () => onClick('freeballing') ",
+									"position": {
+										"start": {
+											"line": 31,
+											"column": 31,
+											"offset": 945
+										},
+										"end": {
+											"line": 31,
+											"column": 63,
+											"offset": 977
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 31,
+									"column": 21,
+									"offset": 935
+								},
+								"end": {
+									"line": 31,
+									"column": 64,
+									"offset": 978
+								}
+							},
+							"specifier": "click"
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "\n    Im totally freeballing\n  ",
+							"position": {
+								"start": {
+									"line": 31,
+									"column": 65,
+									"offset": 979
+								},
+								"end": {
+									"line": 33,
+									"column": 3,
+									"offset": 1009
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 31,
+							"column": 3,
+							"offset": 917
+						},
+						"end": {
+							"line": 33,
+							"column": 9,
+							"offset": 1015
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 33,
+							"column": 9,
+							"offset": 1015
+						},
+						"end": {
+							"line": 34,
+							"column": 1,
+							"offset": 1016
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 23,
+					"column": 1,
+					"offset": 464
+				},
+				"end": {
+					"line": 34,
+					"column": 16,
+					"offset": 1031
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 34,
+			"column": 16,
+			"offset": 1031
+		}
+	}
+}

@@ -1,0 +1,858 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tlet questions = [\n\t\t{ id: 1, text: `Where did you go to school?` },\n\t\t{ id: 2, text: `What is your mother's name?` },\n\t\t{ id: 3, text: `What is another personal fact that an attacker could easily find with Google?` }\n\t];\n\n\tlet selected;\n\n\tlet answer = '';\n\n\tfunction handleSubmit() {\n\t\talert(`answered question ${selected.id} (${selected.text}) with \"${answer}\"`);\n\t}\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 15,
+							"column": 1,
+							"offset": 378
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 15,
+					"column": 10,
+					"offset": 387
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 15,
+					"column": 10,
+					"offset": 387
+				},
+				"end": {
+					"line": 17,
+					"column": 1,
+					"offset": 389
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tinput { display: block; width: 500px; max-width: 100%; }\n",
+					"position": {
+						"start": {
+							"line": 17,
+							"column": 8,
+							"offset": 396
+						},
+						"end": {
+							"line": 19,
+							"column": 1,
+							"offset": 455
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 17,
+					"column": 1,
+					"offset": 389
+				},
+				"end": {
+					"line": 19,
+					"column": 9,
+					"offset": 463
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 19,
+					"column": 9,
+					"offset": 463
+				},
+				"end": {
+					"line": 21,
+					"column": 1,
+					"offset": 465
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "h2",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "Insecurity questions",
+					"position": {
+						"start": {
+							"line": 21,
+							"column": 5,
+							"offset": 469
+						},
+						"end": {
+							"line": 21,
+							"column": 25,
+							"offset": 489
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 21,
+					"column": 1,
+					"offset": 465
+				},
+				"end": {
+					"line": 21,
+					"column": 30,
+					"offset": 494
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 21,
+					"column": 30,
+					"offset": 494
+				},
+				"end": {
+					"line": 23,
+					"column": 1,
+					"offset": 496
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "form",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "handleSubmit",
+							"position": {
+								"start": {
+									"line": 23,
+									"column": 32,
+									"offset": 527
+								},
+								"end": {
+									"line": 23,
+									"column": 46,
+									"offset": 541
+								}
+							}
+						}
+					],
+					"modifiers": [
+						{
+							"value": "preventDefault",
+							"type": "modifier",
+							"position": {
+								"start": {
+									"line": 23,
+									"column": 16,
+									"offset": 511
+								},
+								"end": {}
+							}
+						}
+					],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 23,
+							"column": 7,
+							"offset": 502
+						},
+						"end": {
+							"line": 23,
+							"column": 46,
+							"offset": 541
+						}
+					},
+					"specifier": "submit"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 23,
+							"column": 47,
+							"offset": 542
+						},
+						"end": {
+							"line": 24,
+							"column": 2,
+							"offset": 544
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "select",
+					"properties": [
+						{
+							"type": "svelteDirective",
+							"name": "bind",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "selected",
+									"position": {
+										"start": {
+											"line": 24,
+											"column": 21,
+											"offset": 563
+										},
+										"end": {
+											"line": 24,
+											"column": 31,
+											"offset": 573
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 24,
+									"column": 10,
+									"offset": 552
+								},
+								"end": {
+									"line": 24,
+									"column": 31,
+									"offset": 573
+								}
+							},
+							"specifier": "value"
+						},
+						{
+							"type": "svelteDirective",
+							"name": "on",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "() => answer = ''",
+									"position": {
+										"start": {
+											"line": 24,
+											"column": 43,
+											"offset": 585
+										},
+										"end": {
+											"line": 24,
+											"column": 62,
+											"offset": 604
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 24,
+									"column": 32,
+									"offset": 574
+								},
+								"end": {
+									"line": 24,
+									"column": 63,
+									"offset": 605
+								}
+							},
+							"specifier": "change"
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t\t",
+							"position": {
+								"start": {
+									"line": 24,
+									"column": 64,
+									"offset": 606
+								},
+								"end": {
+									"line": 25,
+									"column": 3,
+									"offset": 609
+								}
+							}
+						},
+						{
+							"type": "svelteBranchingBlock",
+							"name": "each",
+							"branches": [
+								{
+									"type": "svelteBranch",
+									"name": "each",
+									"expression": {
+										"type": "svelteExpression",
+										"value": "questions as question",
+										"position": {
+											"start": {
+												"line": 25,
+												"column": 10,
+												"offset": 616
+											},
+											"end": {
+												"line": 25,
+												"column": 31,
+												"offset": 637
+											}
+										}
+									},
+									"children": [
+										{
+											"type": "text",
+											"value": "\n\t\t\t",
+											"position": {
+												"start": {
+													"line": 25,
+													"column": 32,
+													"offset": 638
+												},
+												"end": {
+													"line": 26,
+													"column": 4,
+													"offset": 642
+												}
+											}
+										},
+										{
+											"type": "svelteElement",
+											"tagName": "option",
+											"properties": [
+												{
+													"type": "svelteProperty",
+													"name": "value",
+													"value": [
+														{
+															"type": "svelteExpression",
+															"value": "question",
+															"position": {
+																"start": {
+																	"line": 26,
+																	"column": 18,
+																	"offset": 656
+																},
+																"end": {
+																	"line": 26,
+																	"column": 28,
+																	"offset": 666
+																}
+															}
+														}
+													],
+													"modifiers": [],
+													"shorthand": "none",
+													"position": {
+														"start": {
+															"line": 26,
+															"column": 12,
+															"offset": 650
+														},
+														"end": {
+															"line": 26,
+															"column": 28,
+															"offset": 666
+														}
+													}
+												}
+											],
+											"selfClosing": false,
+											"children": [
+												{
+													"type": "text",
+													"value": "\n\t\t\t\t",
+													"position": {
+														"start": {
+															"line": 26,
+															"column": 29,
+															"offset": 667
+														},
+														"end": {
+															"line": 27,
+															"column": 5,
+															"offset": 672
+														}
+													}
+												},
+												{
+													"type": "svelteExpression",
+													"value": "question.text",
+													"position": {
+														"start": {
+															"line": 27,
+															"column": 5,
+															"offset": 672
+														},
+														"end": {
+															"line": 27,
+															"column": 20,
+															"offset": 687
+														}
+													}
+												},
+												{
+													"type": "text",
+													"value": "\n\t\t\t",
+													"position": {
+														"start": {
+															"line": 27,
+															"column": 20,
+															"offset": 687
+														},
+														"end": {
+															"line": 28,
+															"column": 4,
+															"offset": 691
+														}
+													}
+												}
+											],
+											"position": {
+												"start": {
+													"line": 26,
+													"column": 4,
+													"offset": 642
+												},
+												"end": {
+													"line": 28,
+													"column": 13,
+													"offset": 700
+												}
+											}
+										},
+										{
+											"type": "text",
+											"value": "\n\t\t",
+											"position": {
+												"start": {
+													"line": 28,
+													"column": 13,
+													"offset": 700
+												},
+												"end": {
+													"line": 29,
+													"column": 3,
+													"offset": 703
+												}
+											}
+										}
+									],
+									"position": {
+										"start": {
+											"line": 25,
+											"column": 3,
+											"offset": 609
+										},
+										"end": {
+											"line": 29,
+											"column": 3,
+											"offset": 703
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 25,
+									"column": 3,
+									"offset": 609
+								},
+								"end": {
+									"line": 29,
+									"column": 10,
+									"offset": 710
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 29,
+									"column": 10,
+									"offset": 710
+								},
+								"end": {
+									"line": 30,
+									"column": 2,
+									"offset": 712
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 24,
+							"column": 2,
+							"offset": 544
+						},
+						"end": {
+							"line": 30,
+							"column": 11,
+							"offset": 721
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n\n\t",
+					"position": {
+						"start": {
+							"line": 30,
+							"column": 11,
+							"offset": 721
+						},
+						"end": {
+							"line": 32,
+							"column": 2,
+							"offset": 724
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "input",
+					"properties": [
+						{
+							"type": "svelteDirective",
+							"name": "bind",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "answer",
+									"position": {
+										"start": {
+											"line": 32,
+											"column": 20,
+											"offset": 742
+										},
+										"end": {
+											"line": 32,
+											"column": 28,
+											"offset": 750
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 32,
+									"column": 9,
+									"offset": 731
+								},
+								"end": {
+									"line": 32,
+									"column": 28,
+									"offset": 750
+								}
+							},
+							"specifier": "value"
+						}
+					],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 32,
+							"column": 2,
+							"offset": 724
+						},
+						"end": {
+							"line": 32,
+							"column": 29,
+							"offset": 751
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n\n\t",
+					"position": {
+						"start": {
+							"line": 32,
+							"column": 29,
+							"offset": 751
+						},
+						"end": {
+							"line": 34,
+							"column": 2,
+							"offset": 754
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "button",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "disabled",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "!answer",
+									"position": {
+										"start": {
+											"line": 34,
+											"column": 19,
+											"offset": 771
+										},
+										"end": {
+											"line": 34,
+											"column": 28,
+											"offset": 780
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 34,
+									"column": 10,
+									"offset": 762
+								},
+								"end": {
+									"line": 34,
+									"column": 28,
+									"offset": 780
+								}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": "type",
+							"value": [
+								{
+									"type": "text",
+									"value": "submit",
+									"position": {
+										"start": {
+											"line": 34,
+											"column": 34,
+											"offset": 786
+										},
+										"end": {
+											"line": 34,
+											"column": 40,
+											"offset": 792
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 34,
+									"column": 29,
+									"offset": 781
+								},
+								"end": {
+									"line": 34,
+									"column": 40,
+									"offset": 792
+								}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t\tSubmit\n\t",
+							"position": {
+								"start": {
+									"line": 34,
+									"column": 41,
+									"offset": 793
+								},
+								"end": {
+									"line": 36,
+									"column": 2,
+									"offset": 804
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 34,
+							"column": 2,
+							"offset": 754
+						},
+						"end": {
+							"line": 36,
+							"column": 11,
+							"offset": 813
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 36,
+							"column": 11,
+							"offset": 813
+						},
+						"end": {
+							"line": 37,
+							"column": 1,
+							"offset": 814
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 23,
+					"column": 1,
+					"offset": 496
+				},
+				"end": {
+					"line": 37,
+					"column": 8,
+					"offset": 821
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 37,
+					"column": 8,
+					"offset": 821
+				},
+				"end": {
+					"line": 39,
+					"column": 1,
+					"offset": 823
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "p",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "selected question ",
+					"position": {
+						"start": {
+							"line": 39,
+							"column": 4,
+							"offset": 826
+						},
+						"end": {
+							"line": 39,
+							"column": 22,
+							"offset": 844
+						}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "selected ? selected.id : '[waiting...]'",
+					"position": {
+						"start": {
+							"line": 39,
+							"column": 22,
+							"offset": 844
+						},
+						"end": {
+							"line": 39,
+							"column": 63,
+							"offset": 885
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 39,
+					"column": 1,
+					"offset": 823
+				},
+				"end": {
+					"line": 39,
+					"column": 67,
+					"offset": 889
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 39,
+			"column": 67,
+			"offset": 889
+		}
+	}
+}

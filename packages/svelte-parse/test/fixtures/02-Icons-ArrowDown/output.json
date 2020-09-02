@@ -1,0 +1,474 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "svg",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "icon",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 13,
+									"offset": 12
+								},
+								"end": {
+									"line": 1,
+									"column": 17,
+									"offset": 16
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 6,
+							"offset": 5
+						},
+						"end": {
+							"line": 1,
+							"column": 18,
+							"offset": 17
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "width",
+					"value": [
+						{
+							"type": "text",
+							"value": "100%",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 26,
+									"offset": 25
+								},
+								"end": {
+									"line": 1,
+									"column": 30,
+									"offset": 29
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 19,
+							"offset": 18
+						},
+						"end": {
+							"line": 1,
+							"column": 31,
+							"offset": 30
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "height",
+					"value": [
+						{
+							"type": "text",
+							"value": "100%",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 40,
+									"offset": 39
+								},
+								"end": {
+									"line": 1,
+									"column": 44,
+									"offset": 43
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 32,
+							"offset": 31
+						},
+						"end": {
+							"line": 1,
+							"column": 45,
+							"offset": 44
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "viewBox",
+					"value": [
+						{
+							"type": "text",
+							"value": "-15",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 55,
+									"offset": 54
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "-24",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 58,
+									"offset": 57
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "50",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 62,
+									"offset": 61
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "50",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 65,
+									"offset": 64
+								},
+								"end": {
+									"line": 1,
+									"column": 68,
+									"offset": 67
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 46,
+							"offset": 45
+						},
+						"end": {
+							"line": 1,
+							"column": 69,
+							"offset": 68
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "focusable",
+					"value": [
+						{
+							"type": "text",
+							"value": "false",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 81,
+									"offset": 80
+								},
+								"end": {
+									"line": 1,
+									"column": 86,
+									"offset": 85
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 70,
+							"offset": 69
+						},
+						"end": {
+							"line": 1,
+							"column": 87,
+							"offset": 86
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "role",
+					"value": [
+						{
+							"type": "text",
+							"value": "presentation",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 94,
+									"offset": 93
+								},
+								"end": {
+									"line": 1,
+									"column": 106,
+									"offset": 105
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 88,
+							"offset": 87
+						},
+						"end": {
+							"line": 1,
+							"column": 107,
+							"offset": 106
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 108,
+							"offset": 107
+						},
+						"end": {
+							"line": 2,
+							"column": 3,
+							"offset": 110
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "polygon",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "fill",
+							"value": [
+								{
+									"type": "text",
+									"value": "currentColor",
+									"position": {
+										"start": {
+											"line": 2,
+											"column": 18,
+											"offset": 125
+										},
+										"end": {
+											"line": 2,
+											"column": 30,
+											"offset": 137
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 12,
+									"offset": 119
+								},
+								"end": {
+									"line": 2,
+									"column": 31,
+									"offset": 138
+								}
+							}
+						},
+						{
+							"type": "svelteProperty",
+							"name": "points",
+							"value": [
+								{
+									"type": "text",
+									"value": "0",
+									"position": {
+										"start": {
+											"line": 2,
+											"column": 40,
+											"offset": 147
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "0",
+									"position": {
+										"start": {
+											"line": 2,
+											"column": 41,
+											"offset": 148
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "10",
+									"position": {
+										"start": {
+											"line": 2,
+											"column": 43,
+											"offset": 150
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "10",
+									"position": {
+										"start": {
+											"line": 2,
+											"column": 46,
+											"offset": 153
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "20",
+									"position": {
+										"start": {
+											"line": 2,
+											"column": 49,
+											"offset": 156
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "0",
+									"position": {
+										"start": {
+											"line": 2,
+											"column": 52,
+											"offset": 159
+										},
+										"end": {
+											"line": 2,
+											"column": 54,
+											"offset": 161
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 32,
+									"offset": 139
+								},
+								"end": {
+									"line": 2,
+									"column": 55,
+									"offset": 162
+								}
+							}
+						}
+					],
+					"selfClosing": false,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 2,
+							"column": 3,
+							"offset": 110
+						},
+						"end": {
+							"line": 2,
+							"column": 66,
+							"offset": 173
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 2,
+							"column": 66,
+							"offset": 173
+						},
+						"end": {
+							"line": 3,
+							"column": 1,
+							"offset": 174
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 3,
+					"column": 7,
+					"offset": 180
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 3,
+			"column": 7,
+			"offset": 180
+		}
+	}
+}

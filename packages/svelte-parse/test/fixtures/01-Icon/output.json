@@ -1,0 +1,487 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  export let type = ''\n  export let pack = 'fas'\n  export let icon\n  export let size = ''\n  export let customClass = ''\n  export let customSize = ''\n  export let isClickable = false\n  export let isLeft = false\n  export let isRight = false\n\n  let newCustomSize = ''\n  let newType = ''\n\n  $: newPack = pack || 'fas'\n\n  $: {\n    if (customSize) newCustomSize = customSize\n    else {\n      switch (size) {\n        case 'is-small':\n          break\n        case 'is-medium':\n          newCustomSize = 'fa-lg'\n          break\n        case 'is-large':\n          newCustomSize = 'fa-3x'\n          break\n        default:\n          newCustomSize = ''\n      }\n    }\n  }\n\n  $: {\n    if (!type) newType = ''\n    let splitType = []\n    if (typeof type === 'string') {\n      splitType = type.split('-')\n    } else {\n      for (let key in type) {\n        if (type[key]) {\n          splitType = key.split('-')\n          break\n        }\n      }\n    }\n    if (splitType.length <= 1) newType = ''\n    else newType = `has-text-${splitType[1]}`\n  }\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 51,
+							"column": 1,
+							"offset": 1035
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 51,
+					"column": 10,
+					"offset": 1044
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 51,
+					"column": 10,
+					"offset": 1044
+				},
+				"end": {
+					"line": 53,
+					"column": 1,
+					"offset": 1046
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "span",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "icon",
+							"position": {
+								"start": {
+									"line": 53,
+									"column": 14,
+									"offset": 1059
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "",
+							"position": {
+								"start": {
+									"line": 53,
+									"column": 18,
+									"offset": 1063
+								},
+								"end": {
+									"line": 53,
+									"column": 19,
+									"offset": 1064
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "size",
+							"position": {
+								"start": {
+									"line": 53,
+									"column": 19,
+									"offset": 1064
+								},
+								"end": {
+									"line": 53,
+									"column": 25,
+									"offset": 1070
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "",
+							"position": {
+								"start": {
+									"line": 53,
+									"column": 25,
+									"offset": 1070
+								},
+								"end": {
+									"line": 53,
+									"column": 26,
+									"offset": 1071
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "newType",
+							"position": {
+								"start": {
+									"line": 53,
+									"column": 26,
+									"offset": 1071
+								},
+								"end": {
+									"line": 53,
+									"column": 35,
+									"offset": 1080
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "",
+							"position": {
+								"start": {
+									"line": 53,
+									"column": 35,
+									"offset": 1080
+								},
+								"end": {
+									"line": 53,
+									"column": 36,
+									"offset": 1081
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "(isLeft && 'is-left') || ''",
+							"position": {
+								"start": {
+									"line": 53,
+									"column": 36,
+									"offset": 1081
+								},
+								"end": {
+									"line": 53,
+									"column": 65,
+									"offset": 1110
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "",
+							"position": {
+								"start": {
+									"line": 53,
+									"column": 65,
+									"offset": 1110
+								},
+								"end": {
+									"line": 53,
+									"column": 66,
+									"offset": 1111
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "(isRight && 'is-right') || ''",
+							"position": {
+								"start": {
+									"line": 53,
+									"column": 66,
+									"offset": 1111
+								},
+								"end": {
+									"line": 53,
+									"column": 97,
+									"offset": 1142
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 53,
+							"column": 7,
+							"offset": 1052
+						},
+						"end": {
+							"line": 53,
+							"column": 98,
+							"offset": 1143
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "isClickable",
+							"position": {
+								"start": {
+									"line": 53,
+									"column": 118,
+									"offset": 1163
+								},
+								"end": {
+									"line": 53,
+									"column": 131,
+									"offset": 1176
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 53,
+							"column": 99,
+							"offset": 1144
+						},
+						"end": {
+							"line": 53,
+							"column": 131,
+							"offset": 1176
+						}
+					},
+					"specifier": "is-clickable"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 53,
+							"column": 132,
+							"offset": 1177
+						},
+						"end": {}
+					},
+					"specifier": "click"
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 53,
+							"column": 141,
+							"offset": 1186
+						},
+						"end": {
+							"line": 54,
+							"column": 3,
+							"offset": 1189
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "i",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "class",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "newPack",
+									"position": {
+										"start": {
+											"line": 54,
+											"column": 13,
+											"offset": 1199
+										},
+										"end": {
+											"line": 54,
+											"column": 22,
+											"offset": 1208
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "fa-",
+									"position": {
+										"start": {
+											"line": 54,
+											"column": 22,
+											"offset": 1208
+										},
+										"end": {
+											"line": 54,
+											"column": 26,
+											"offset": 1212
+										}
+									}
+								},
+								{
+									"type": "svelteExpression",
+									"value": "icon",
+									"position": {
+										"start": {
+											"line": 54,
+											"column": 26,
+											"offset": 1212
+										},
+										"end": {
+											"line": 54,
+											"column": 32,
+											"offset": 1218
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "",
+									"position": {
+										"start": {
+											"line": 54,
+											"column": 32,
+											"offset": 1218
+										},
+										"end": {
+											"line": 54,
+											"column": 33,
+											"offset": 1219
+										}
+									}
+								},
+								{
+									"type": "svelteExpression",
+									"value": "customClass",
+									"position": {
+										"start": {
+											"line": 54,
+											"column": 33,
+											"offset": 1219
+										},
+										"end": {
+											"line": 54,
+											"column": 46,
+											"offset": 1232
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "",
+									"position": {
+										"start": {
+											"line": 54,
+											"column": 46,
+											"offset": 1232
+										},
+										"end": {
+											"line": 54,
+											"column": 47,
+											"offset": 1233
+										}
+									}
+								},
+								{
+									"type": "svelteExpression",
+									"value": "newCustomSize",
+									"position": {
+										"start": {
+											"line": 54,
+											"column": 47,
+											"offset": 1233
+										},
+										"end": {
+											"line": 54,
+											"column": 62,
+											"offset": 1248
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 54,
+									"column": 6,
+									"offset": 1192
+								},
+								"end": {
+									"line": 54,
+									"column": 63,
+									"offset": 1249
+								}
+							}
+						}
+					],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 54,
+							"column": 3,
+							"offset": 1189
+						},
+						"end": {
+							"line": 54,
+							"column": 66,
+							"offset": 1252
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 54,
+							"column": 66,
+							"offset": 1252
+						},
+						"end": {
+							"line": 55,
+							"column": 1,
+							"offset": 1253
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 53,
+					"column": 1,
+					"offset": 1046
+				},
+				"end": {
+					"line": 55,
+					"column": 8,
+					"offset": 1260
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 55,
+			"column": 8,
+			"offset": 1260
+		}
+	}
+}

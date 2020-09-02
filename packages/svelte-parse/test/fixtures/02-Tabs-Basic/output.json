@@ -1,0 +1,109 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  import Tabs from '@sveltekit/ui/Tabs';\n  import Tab1 from './_tab1.svelte';\n  import Tab2 from './_tab2.svelte';\n\n  const tabs = [\n    {\n      label: 'Tab 1',\n      component: Tab1\n    },\n    {\n      label: 'Tab 2',\n      component: Tab2,\n      attributes: {\n        image: \"https://i.ibb.co/C80fqb9/m2-2580x2580.jpg\"\n      }\n    },\n  ];\n\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 20,
+							"column": 1,
+							"offset": 350
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 20,
+					"column": 10,
+					"offset": 359
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n\n",
+			"position": {
+				"start": {
+					"line": 20,
+					"column": 10,
+					"offset": 359
+				},
+				"end": {
+					"line": 23,
+					"column": 1,
+					"offset": 362
+				}
+			}
+		},
+		{
+			"type": "svelteComponent",
+			"tagName": "Tabs",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "tabs",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "tabs"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 23,
+							"column": 7,
+							"offset": 368
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 23,
+					"column": 1,
+					"offset": 362
+				},
+				"end": {
+					"line": 23,
+					"column": 21,
+					"offset": 382
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 23,
+			"column": 21,
+			"offset": 382
+		}
+	}
+}

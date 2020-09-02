@@ -1,0 +1,246 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  .one {\n    padding: 20px 0;\n  }\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 8,
+							"offset": 7
+						},
+						"end": {
+							"line": 5,
+							"column": 1,
+							"offset": 42
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 5,
+					"column": 9,
+					"offset": 50
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 5,
+					"column": 9,
+					"offset": 50
+				},
+				"end": {
+					"line": 7,
+					"column": 1,
+					"offset": 52
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "one",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 13,
+									"offset": 64
+								},
+								"end": {
+									"line": 7,
+									"column": 16,
+									"offset": 67
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 6,
+							"offset": 57
+						},
+						"end": {
+							"line": 7,
+							"column": 17,
+							"offset": 68
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 7,
+							"column": 18,
+							"offset": 69
+						},
+						"end": {
+							"line": 8,
+							"column": 3,
+							"offset": 72
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "h1",
+					"properties": [],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "TAB ONE!",
+							"position": {
+								"start": {
+									"line": 8,
+									"column": 7,
+									"offset": 76
+								},
+								"end": {
+									"line": 8,
+									"column": 15,
+									"offset": 84
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 8,
+							"column": 3,
+							"offset": 72
+						},
+						"end": {
+							"line": 8,
+							"column": 20,
+							"offset": 89
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n  ",
+					"position": {
+						"start": {
+							"line": 8,
+							"column": 20,
+							"offset": 89
+						},
+						"end": {
+							"line": 9,
+							"column": 3,
+							"offset": 92
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "p",
+					"properties": [],
+					"selfClosing": false,
+					"children": [
+						{
+							"type": "text",
+							"value": "Content here...",
+							"position": {
+								"start": {
+									"line": 9,
+									"column": 6,
+									"offset": 95
+								},
+								"end": {
+									"line": 9,
+									"column": 21,
+									"offset": 110
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 3,
+							"offset": 92
+						},
+						"end": {
+							"line": 9,
+							"column": 25,
+							"offset": 114
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 9,
+							"column": 25,
+							"offset": 114
+						},
+						"end": {
+							"line": 10,
+							"column": 1,
+							"offset": 115
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 7,
+					"column": 1,
+					"offset": 52
+				},
+				"end": {
+					"line": 10,
+					"column": 7,
+					"offset": 121
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 10,
+			"column": 7,
+			"offset": 121
+		}
+	}
+}

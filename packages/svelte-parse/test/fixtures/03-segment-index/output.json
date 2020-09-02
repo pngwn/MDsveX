@@ -1,0 +1,307 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteDirective",
+					"name": "use",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "use",
+							"position": {
+								"start": {
+									"line": 2,
+									"column": 17,
+									"offset": 22
+								},
+								"end": {
+									"line": 2,
+									"column": 22,
+									"offset": 27
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 2,
+							"column": 5,
+							"offset": 10
+						},
+						"end": {
+							"line": 2,
+							"column": 22,
+							"offset": 27
+						}
+					},
+					"specifier": "actions"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "use",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 3,
+							"column": 5,
+							"offset": 32
+						},
+						"end": {}
+					},
+					"specifier": "events"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "clsxd(\n        'ui',\n        [alignment, { 'aligned': alignment && alignment !== 'justified' }],\n        [attached, { 'attached': attached }],\n        basic && 'basic',\n        circular && 'circular',\n        clearing && 'clearing',\n        color,\n        compact && 'compact',\n        disabled && 'disabled',\n        emphasis,\n        [fitted, { 'fitted': fitted }],\n        [float, { 'floated': float }],\n        inverted && 'inverted',\n        [loading, { 'loading': loading }],\n        [padded, { 'padded': padded }],\n        piled && 'piled',\n        placeholder && 'placeholder',\n        raised && 'raised',\n        stacked && 'stacked',\n        vertical && 'vertical',\n        className,\n        'segment'\n    )",
+							"position": {
+								"start": {
+									"line": 4,
+									"column": 12,
+									"offset": 54
+								},
+								"end": {
+									"line": 27,
+									"column": 7,
+									"offset": 774
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 4,
+							"column": 5,
+							"offset": 47
+						},
+						"end": {
+							"line": 27,
+							"column": 8,
+							"offset": 775
+						}
+					}
+				},
+				{
+					"type": "svelteProperty",
+					"name": "...exclude($$props, ['use', 'class', 'inverted', 'disabled', 'size', 'color'])",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "...exclude($$props, ['use', 'class', 'inverted', 'disabled', 'size', 'color'])"
+						}
+					],
+					"modifiers": [],
+					"shorthand": "expression",
+					"position": {
+						"start": {
+							"line": 28,
+							"column": 5,
+							"offset": 780
+						},
+						"end": {}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "svelteElement",
+					"tagName": "slot",
+					"properties": [],
+					"selfClosing": false,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 29,
+							"column": 2,
+							"offset": 862
+						},
+						"end": {
+							"line": 29,
+							"column": 15,
+							"offset": 875
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 29,
+					"column": 21,
+					"offset": 881
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 29,
+					"column": 21,
+					"offset": 881
+				},
+				"end": {
+					"line": 31,
+					"column": 1,
+					"offset": 883
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "context",
+					"value": [
+						{
+							"type": "text",
+							"value": "module",
+							"position": {
+								"start": {
+									"line": 31,
+									"column": 18,
+									"offset": 900
+								},
+								"end": {
+									"line": 31,
+									"column": 24,
+									"offset": 906
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 31,
+							"column": 9,
+							"offset": 891
+						},
+						"end": {
+							"line": 31,
+							"column": 25,
+							"offset": 907
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n    import { exclude, eventsBuilder, actions, clsxd } from '../../lib'\n    import { current_component } from 'svelte/internal'\n    import SegmentGroup from './SegmentGroup.svelte'\n\n    export { SegmentGroup }\n",
+					"position": {
+						"start": {
+							"line": 31,
+							"column": 26,
+							"offset": 908
+						},
+						"end": {
+							"line": 37,
+							"column": 1,
+							"offset": 1118
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 31,
+					"column": 1,
+					"offset": 883
+				},
+				"end": {
+					"line": 37,
+					"column": 10,
+					"offset": 1127
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 37,
+					"column": 10,
+					"offset": 1127
+				},
+				"end": {
+					"line": 39,
+					"column": 1,
+					"offset": 1129
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n    const events = eventsBuilder(current_component)\n\n    export let use = [];\n    let className = '';\n    export { className as class };\n\n    export let color = '';\n    export let loading = '';\n    export let attached = '';\n    export let padded = '';\n    export let fitted = '';\n    export let emphasis = '';\n    export let float = '';\n    export let alignment = '';\n    export let placeholder = false;\n    export let raised = false;\n    export let stacked = false;\n    export let piled = false;\n    export let basic = false;\n    export let vertical = false;\n    export let disabled = false;\n    export let inverted = false;\n    export let compact = false;\n    export let circular = false;\n    export let clearing = false;\n",
+					"position": {
+						"start": {
+							"line": 39,
+							"column": 9,
+							"offset": 1137
+						},
+						"end": {
+							"line": 65,
+							"column": 1,
+							"offset": 1862
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 39,
+					"column": 1,
+					"offset": 1129
+				},
+				"end": {
+					"line": 65,
+					"column": 10,
+					"offset": 1871
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 65,
+			"column": 10,
+			"offset": 1871
+		}
+	}
+}

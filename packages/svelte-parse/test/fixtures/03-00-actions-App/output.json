@@ -1,0 +1,460 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { spring } from 'svelte/motion';\n\timport { pannable } from './pannable.js';\n\n\tconst coords = spring({ x: 0, y: 0 }, {\n\t\tstiffness: 0.2,\n\t\tdamping: 0.4\n\t});\n\n\tfunction handlePanStart() {\n\t\tcoords.stiffness = coords.damping = 1;\n\t}\n\n\tfunction handlePanMove(event) {\n\t\tcoords.update($coords => ({\n\t\t\tx: $coords.x + event.detail.dx,\n\t\t\ty: $coords.y + event.detail.dy\n\t\t}));\n\t}\n\n\tfunction handlePanEnd(event) {\n\t\tcoords.stiffness = 0.2;\n\t\tcoords.damping = 0.4;\n\t\tcoords.set({ x: 0, y: 0 });\n\t}\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 26,
+							"column": 1,
+							"offset": 506
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 26,
+					"column": 10,
+					"offset": 515
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 26,
+					"column": 10,
+					"offset": 515
+				},
+				"end": {
+					"line": 28,
+					"column": 1,
+					"offset": 517
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t.box {\n\t\t--width: 100px;\n\t\t--height: 100px;\n\t\tposition: absolute;\n\t\twidth: var(--width);\n\t\theight: var(--height);\n\t\tleft: calc(50% - var(--width) / 2);\n\t\ttop: calc(50% - var(--height) / 2);\n\t\tborder-radius: 4px;\n\t\tbackground-color: #ff3e00;\n\t\tcursor: move;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 28,
+							"column": 8,
+							"offset": 524
+						},
+						"end": {
+							"line": 41,
+							"column": 1,
+							"offset": 786
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 28,
+					"column": 1,
+					"offset": 517
+				},
+				"end": {
+					"line": 41,
+					"column": 9,
+					"offset": 794
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 41,
+					"column": 9,
+					"offset": 794
+				},
+				"end": {
+					"line": 43,
+					"column": 1,
+					"offset": 796
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "div",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "class",
+					"value": [
+						{
+							"type": "text",
+							"value": "box",
+							"position": {
+								"start": {
+									"line": 43,
+									"column": 13,
+									"offset": 808
+								},
+								"end": {
+									"line": 43,
+									"column": 16,
+									"offset": 811
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 43,
+							"column": 6,
+							"offset": 801
+						},
+						"end": {
+							"line": 43,
+							"column": 17,
+							"offset": 812
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "use",
+					"value": [],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 44,
+							"column": 2,
+							"offset": 814
+						},
+						"end": {}
+					},
+					"specifier": "pannable"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "handlePanStart",
+							"position": {
+								"start": {
+									"line": 45,
+									"column": 14,
+									"offset": 840
+								},
+								"end": {
+									"line": 45,
+									"column": 30,
+									"offset": 856
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 45,
+							"column": 2,
+							"offset": 828
+						},
+						"end": {
+							"line": 45,
+							"column": 30,
+							"offset": 856
+						}
+					},
+					"specifier": "panstart"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "handlePanMove",
+							"position": {
+								"start": {
+									"line": 46,
+									"column": 13,
+									"offset": 869
+								},
+								"end": {
+									"line": 46,
+									"column": 28,
+									"offset": 884
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 46,
+							"column": 2,
+							"offset": 858
+						},
+						"end": {
+							"line": 46,
+							"column": 28,
+							"offset": 884
+						}
+					},
+					"specifier": "panmove"
+				},
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "handlePanEnd",
+							"position": {
+								"start": {
+									"line": 47,
+									"column": 12,
+									"offset": 896
+								},
+								"end": {
+									"line": 47,
+									"column": 26,
+									"offset": 910
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 47,
+							"column": 2,
+							"offset": 886
+						},
+						"end": {
+							"line": 47,
+							"column": 26,
+							"offset": 910
+						}
+					},
+					"specifier": "panend"
+				},
+				{
+					"type": "svelteProperty",
+					"name": "style",
+					"value": [
+						{
+							"type": "text",
+							"value": "transform:",
+							"position": {
+								"start": {
+									"line": 48,
+									"column": 9,
+									"offset": 919
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "translate(",
+							"position": {
+								"start": {
+									"line": 48,
+									"column": 19,
+									"offset": 929
+								},
+								"end": {
+									"line": 49,
+									"column": 13,
+									"offset": 942
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "$coords.x",
+							"position": {
+								"start": {
+									"line": 49,
+									"column": 13,
+									"offset": 942
+								},
+								"end": {
+									"line": 49,
+									"column": 24,
+									"offset": 953
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "px,",
+							"position": {
+								"start": {
+									"line": 49,
+									"column": 24,
+									"offset": 953
+								},
+								"end": {
+									"line": 49,
+									"column": 27,
+									"offset": 956
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "$coords.y",
+							"position": {
+								"start": {
+									"line": 49,
+									"column": 27,
+									"offset": 956
+								},
+								"end": {
+									"line": 49,
+									"column": 38,
+									"offset": 967
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "px)",
+							"position": {
+								"start": {
+									"line": 49,
+									"column": 38,
+									"offset": 967
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "rotate(",
+							"position": {
+								"start": {
+									"line": 49,
+									"column": 41,
+									"offset": 970
+								},
+								"end": {
+									"line": 50,
+									"column": 10,
+									"offset": 980
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "$coords.x * 0.2",
+							"position": {
+								"start": {
+									"line": 50,
+									"column": 10,
+									"offset": 980
+								},
+								"end": {
+									"line": 50,
+									"column": 27,
+									"offset": 997
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "deg)",
+							"position": {
+								"start": {
+									"line": 50,
+									"column": 27,
+									"offset": 997
+								},
+								"end": {
+									"line": 50,
+									"column": 31,
+									"offset": 1001
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 48,
+							"column": 2,
+							"offset": 912
+						},
+						"end": {
+							"line": 50,
+							"column": 32,
+							"offset": 1002
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 43,
+					"column": 1,
+					"offset": 796
+				},
+				"end": {
+					"line": 51,
+					"column": 8,
+					"offset": 1010
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 51,
+			"column": 8,
+			"offset": 1010
+		}
+	}
+}

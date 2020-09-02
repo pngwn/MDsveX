@@ -1,0 +1,238 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\texport let name;\n\t$: type = name.slice(name.lastIndexOf('.') + 1);\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 4,
+							"column": 1,
+							"offset": 77
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 4,
+					"column": 10,
+					"offset": 86
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 4,
+					"column": 10,
+					"offset": 86
+				},
+				"end": {
+					"line": 6,
+					"column": 1,
+					"offset": 88
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tspan {\n\t\tpadding: 0 0 0 1.5em;\n\t\tbackground: 0 0.1em no-repeat;\n\t\tbackground-size: 1em 1em;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 6,
+							"column": 8,
+							"offset": 95
+						},
+						"end": {
+							"line": 12,
+							"column": 1,
+							"offset": 192
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 6,
+					"column": 1,
+					"offset": 88
+				},
+				"end": {
+					"line": 12,
+					"column": 9,
+					"offset": 200
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 12,
+					"column": 9,
+					"offset": 200
+				},
+				"end": {
+					"line": 14,
+					"column": 1,
+					"offset": 202
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "span",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "style",
+					"value": [
+						{
+							"type": "text",
+							"value": "background-image:",
+							"position": {
+								"start": {
+									"line": 14,
+									"column": 14,
+									"offset": 215
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "url(tutorial/icons/",
+							"position": {
+								"start": {
+									"line": 14,
+									"column": 31,
+									"offset": 232
+								},
+								"end": {
+									"line": 14,
+									"column": 51,
+									"offset": 252
+								}
+							}
+						},
+						{
+							"type": "svelteExpression",
+							"value": "type",
+							"position": {
+								"start": {
+									"line": 14,
+									"column": 51,
+									"offset": 252
+								},
+								"end": {
+									"line": 14,
+									"column": 57,
+									"offset": 258
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": ".svg)",
+							"position": {
+								"start": {
+									"line": 14,
+									"column": 57,
+									"offset": 258
+								},
+								"end": {
+									"line": 14,
+									"column": 62,
+									"offset": 263
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 14,
+							"column": 7,
+							"offset": 208
+						},
+						"end": {
+							"line": 14,
+							"column": 63,
+							"offset": 264
+						}
+					}
+				}
+			],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "svelteExpression",
+					"value": "name",
+					"position": {
+						"start": {
+							"line": 14,
+							"column": 64,
+							"offset": 265
+						},
+						"end": {
+							"line": 14,
+							"column": 70,
+							"offset": 271
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 14,
+					"column": 1,
+					"offset": 202
+				},
+				"end": {
+					"line": 14,
+					"column": 77,
+					"offset": 278
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 14,
+			"column": 77,
+			"offset": 278
+		}
+	}
+}

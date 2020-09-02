@@ -1,0 +1,214 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { tick } from 'svelte';\n\n\tlet text = `Select some text and hit the tab key to toggle uppercase`;\n\n\tasync function handleKeydown(event) {\n\t\tif (event.key !== 'Tab') return;\n\n\t\tevent.preventDefault();\n\n\t\tconst { selectionStart, selectionEnd, value } = this;\n\t\tconst selection = value.slice(selectionStart, selectionEnd);\n\n\t\tconst replacement = /[a-z]/.test(selection)\n\t\t\t? selection.toUpperCase()\n\t\t\t: selection.toLowerCase();\n\n\t\ttext = (\n\t\t\tvalue.slice(0, selectionStart) +\n\t\t\treplacement +\n\t\t\tvalue.slice(selectionEnd)\n\t\t);\n\n\t\tawait tick();\n\t\tthis.selectionStart = selectionStart;\n\t\tthis.selectionEnd = selectionEnd;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 28,
+							"column": 1,
+							"offset": 637
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 28,
+					"column": 10,
+					"offset": 646
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 28,
+					"column": 10,
+					"offset": 646
+				},
+				"end": {
+					"line": 30,
+					"column": 1,
+					"offset": 648
+				}
+			}
+		},
+		{
+			"type": "svelteTag",
+			"tagName": "style",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\ttextarea {\n\t\twidth: 100%;\n\t\theight: 200px;\n\t}\n",
+					"position": {
+						"start": {
+							"line": 30,
+							"column": 8,
+							"offset": 655
+						},
+						"end": {
+							"line": 35,
+							"column": 1,
+							"offset": 703
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 30,
+					"column": 1,
+					"offset": 648
+				},
+				"end": {
+					"line": 35,
+					"column": 9,
+					"offset": 711
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 35,
+					"column": 9,
+					"offset": 711
+				},
+				"end": {
+					"line": 37,
+					"column": 1,
+					"offset": 713
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "textarea",
+			"properties": [
+				{
+					"type": "svelteProperty",
+					"name": "value",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "text",
+							"position": {
+								"start": {
+									"line": 37,
+									"column": 17,
+									"offset": 729
+								},
+								"end": {
+									"line": 37,
+									"column": 23,
+									"offset": 735
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 37,
+							"column": 11,
+							"offset": 723
+						},
+						"end": {
+							"line": 37,
+							"column": 23,
+							"offset": 735
+						}
+					}
+				},
+				{
+					"type": "svelteDirective",
+					"name": "on",
+					"value": [
+						{
+							"type": "svelteExpression",
+							"value": "handleKeydown",
+							"position": {
+								"start": {
+									"line": 37,
+									"column": 35,
+									"offset": 747
+								},
+								"end": {
+									"line": 37,
+									"column": 50,
+									"offset": 762
+								}
+							}
+						}
+					],
+					"modifiers": [],
+					"shorthand": "none",
+					"position": {
+						"start": {
+							"line": 37,
+							"column": 24,
+							"offset": 736
+						},
+						"end": {
+							"line": 37,
+							"column": 50,
+							"offset": 762
+						}
+					},
+					"specifier": "keydown"
+				}
+			],
+			"selfClosing": false,
+			"children": [],
+			"position": {
+				"start": {
+					"line": 37,
+					"column": 1,
+					"offset": 713
+				},
+				"end": {
+					"line": 37,
+					"column": 62,
+					"offset": 774
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 37,
+			"column": 62,
+			"offset": 774
+		}
+	}
+}

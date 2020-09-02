@@ -1,0 +1,121 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\timport { time } from './stores.js';\n\n\tconst formatter = new Intl.DateTimeFormat('en', {\n\t\thour12: true,\n\t\thour: 'numeric',\n\t\tminute: '2-digit',\n\t\tsecond: '2-digit'\n\t});\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 10,
+							"column": 1,
+							"offset": 179
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 10,
+					"column": 10,
+					"offset": 188
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 10,
+					"column": 10,
+					"offset": 188
+				},
+				"end": {
+					"line": 12,
+					"column": 1,
+					"offset": 190
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "h1",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "The time is ",
+					"position": {
+						"start": {
+							"line": 12,
+							"column": 5,
+							"offset": 194
+						},
+						"end": {
+							"line": 12,
+							"column": 17,
+							"offset": 206
+						}
+					}
+				},
+				{
+					"type": "svelteExpression",
+					"value": "formatter.format($time)",
+					"position": {
+						"start": {
+							"line": 12,
+							"column": 17,
+							"offset": 206
+						},
+						"end": {
+							"line": 12,
+							"column": 42,
+							"offset": 231
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 12,
+					"column": 1,
+					"offset": 190
+				},
+				"end": {
+					"line": 12,
+					"column": 47,
+					"offset": 236
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 12,
+			"column": 47,
+			"offset": 236
+		}
+	}
+}

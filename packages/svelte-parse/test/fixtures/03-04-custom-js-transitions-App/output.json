@@ -1,0 +1,367 @@
+{
+	"type": "root",
+	"children": [
+		{
+			"type": "svelteTag",
+			"tagName": "script",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\tlet visible = false;\n\n\tfunction typewriter(node, { speed = 50 }) {\n\t\tconst valid = (\n\t\t\tnode.childNodes.length === 1 &&\n\t\t\tnode.childNodes[0].nodeType === Node.TEXT_NODE\n\t\t);\n\n\t\tif (!valid) {\n\t\t\tthrow new Error(`This transition only works on elements with a single text node child`);\n\t\t}\n\n\t\tconst text = node.textContent;\n\t\tconst duration = text.length * speed;\n\n\t\treturn {\n\t\t\tduration,\n\t\t\ttick: t => {\n\t\t\t\tconst i = ~~(text.length * t);\n\t\t\t\tnode.textContent = text.slice(0, i);\n\t\t\t}\n\t\t};\n\t}\n",
+					"position": {
+						"start": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						},
+						"end": {
+							"line": 25,
+							"column": 1,
+							"offset": 502
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 1,
+					"column": 1,
+					"offset": 0
+				},
+				"end": {
+					"line": 25,
+					"column": 10,
+					"offset": 511
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 25,
+					"column": 10,
+					"offset": 511
+				},
+				"end": {
+					"line": 27,
+					"column": 1,
+					"offset": 513
+				}
+			}
+		},
+		{
+			"type": "svelteElement",
+			"tagName": "label",
+			"properties": [],
+			"selfClosing": false,
+			"children": [
+				{
+					"type": "text",
+					"value": "\n\t",
+					"position": {
+						"start": {
+							"line": 27,
+							"column": 8,
+							"offset": 520
+						},
+						"end": {
+							"line": 28,
+							"column": 2,
+							"offset": 522
+						}
+					}
+				},
+				{
+					"type": "svelteElement",
+					"tagName": "input",
+					"properties": [
+						{
+							"type": "svelteProperty",
+							"name": "type",
+							"value": [
+								{
+									"type": "text",
+									"value": "checkbox",
+									"position": {
+										"start": {
+											"line": 28,
+											"column": 15,
+											"offset": 535
+										},
+										"end": {
+											"line": 28,
+											"column": 23,
+											"offset": 543
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 28,
+									"column": 9,
+									"offset": 529
+								},
+								"end": {
+									"line": 28,
+									"column": 24,
+									"offset": 544
+								}
+							}
+						},
+						{
+							"type": "svelteDirective",
+							"name": "bind",
+							"value": [
+								{
+									"type": "svelteExpression",
+									"value": "visible",
+									"position": {
+										"start": {
+											"line": 28,
+											"column": 38,
+											"offset": 558
+										},
+										"end": {
+											"line": 28,
+											"column": 47,
+											"offset": 567
+										}
+									}
+								}
+							],
+							"modifiers": [],
+							"shorthand": "none",
+							"position": {
+								"start": {
+									"line": 28,
+									"column": 25,
+									"offset": 545
+								},
+								"end": {
+									"line": 28,
+									"column": 47,
+									"offset": 567
+								}
+							},
+							"specifier": "checked"
+						}
+					],
+					"selfClosing": true,
+					"children": [],
+					"position": {
+						"start": {
+							"line": 28,
+							"column": 2,
+							"offset": 522
+						},
+						"end": {
+							"line": 28,
+							"column": 48,
+							"offset": 568
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n\tvisible\n",
+					"position": {
+						"start": {
+							"line": 28,
+							"column": 48,
+							"offset": 568
+						},
+						"end": {
+							"line": 30,
+							"column": 1,
+							"offset": 578
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 27,
+					"column": 1,
+					"offset": 513
+				},
+				"end": {
+					"line": 30,
+					"column": 9,
+					"offset": 586
+				}
+			}
+		},
+		{
+			"type": "text",
+			"value": "\n\n",
+			"position": {
+				"start": {
+					"line": 30,
+					"column": 9,
+					"offset": 586
+				},
+				"end": {
+					"line": 32,
+					"column": 1,
+					"offset": 588
+				}
+			}
+		},
+		{
+			"type": "svelteBranchingBlock",
+			"name": "if",
+			"branches": [
+				{
+					"type": "svelteBranch",
+					"name": "if",
+					"expression": {
+						"type": "svelteExpression",
+						"value": "visible",
+						"position": {
+							"start": {
+								"line": 32,
+								"column": 6,
+								"offset": 593
+							},
+							"end": {
+								"line": 32,
+								"column": 13,
+								"offset": 600
+							}
+						}
+					},
+					"children": [
+						{
+							"type": "text",
+							"value": "\n\t",
+							"position": {
+								"start": {
+									"line": 32,
+									"column": 14,
+									"offset": 601
+								},
+								"end": {
+									"line": 33,
+									"column": 2,
+									"offset": 603
+								}
+							}
+						},
+						{
+							"type": "svelteElement",
+							"tagName": "p",
+							"properties": [
+								{
+									"type": "svelteDirective",
+									"name": "in",
+									"value": [],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 33,
+											"column": 5,
+											"offset": 606
+										},
+										"end": {}
+									},
+									"specifier": "typewriter"
+								}
+							],
+							"selfClosing": false,
+							"children": [
+								{
+									"type": "text",
+									"value": "\n\t\tThe quick brown fox jumps over the lazy dog\n\t",
+									"position": {
+										"start": {
+											"line": 33,
+											"column": 19,
+											"offset": 620
+										},
+										"end": {
+											"line": 35,
+											"column": 2,
+											"offset": 668
+										}
+									}
+								}
+							],
+							"position": {
+								"start": {
+									"line": 33,
+									"column": 2,
+									"offset": 603
+								},
+								"end": {
+									"line": 35,
+									"column": 6,
+									"offset": 672
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 6,
+									"offset": 672
+								},
+								"end": {
+									"line": 36,
+									"column": 1,
+									"offset": 673
+								}
+							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 32,
+							"column": 1,
+							"offset": 588
+						},
+						"end": {
+							"line": 36,
+							"column": 1,
+							"offset": 673
+						}
+					}
+				}
+			],
+			"position": {
+				"start": {
+					"line": 32,
+					"column": 1,
+					"offset": 588
+				},
+				"end": {
+					"line": 36,
+					"column": 6,
+					"offset": 678
+				}
+			}
+		}
+	],
+	"position": {
+		"start": {
+			"column": 1,
+			"line": 1,
+			"offset": 0
+		},
+		"end": {
+			"line": 36,
+			"column": 6,
+			"offset": 678
+		}
+	}
+}
