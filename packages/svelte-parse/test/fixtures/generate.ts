@@ -17,24 +17,22 @@ const inputs_paths = fs
 
 console.time('parse');
 let count = 0;
-for (let index = 0; index < 100; index++) {
-	inputs_paths.forEach(([s, f]) => {
-		count++;
-		// console.log(f);
-		// const output = JSON.stringify(
-		parse({ value: s as string, generatePositions: true });
-		// 	null,
-		// 	'\t'
-		// );
+inputs_paths.forEach(([s, f]) => {
+	count++;
+	console.log(f);
+	const output = JSON.stringify(
+		parse({ value: s as string, generatePositions: true }),
+		null,
+		'\t'
+	);
 
-		// fs.writeFileSync(path.join(f, 'output.json'), output + '\n');
-		// try {
-		// 	fs.unlinkSync(path.join(f, 'output.js'));
-		// } catch {
-		// 	console.log('oops');
-		// }
-	});
-}
+	fs.writeFileSync(path.join(f, 'output.json'), output + '\n');
+	try {
+		fs.unlinkSync(path.join(f, 'output.js'));
+	} catch {
+		console.log('oops');
+	}
+});
 
 console.timeEnd('parse');
 console.log(`Parsed ${count} documents`);

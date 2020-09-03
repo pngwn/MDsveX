@@ -219,7 +219,7 @@
 										},
 										{
 											"type": "svelteExpression",
-											"value": "(100 * i) / (contributors.length - 1)}% 0\"\n\t\thref=\"https://github.com/{contributor}\">\n\t\t{contributor}\n\t</a>\n{/each}\n",
+											"value": "(100 * i) / (contributors.length - 1)",
 											"position": {
 												"start": {
 													"line": 22,
@@ -227,9 +227,37 @@
 													"offset": 445
 												},
 												"end": {
-													"line": 27,
-													"column": 1,
-													"offset": 562
+													"line": 22,
+													"column": 70,
+													"offset": 484
+												}
+											}
+										},
+										{
+											"type": "text",
+											"value": "%",
+											"position": {
+												"start": {
+													"line": 22,
+													"column": 70,
+													"offset": 484
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "0",
+											"position": {
+												"start": {
+													"line": 22,
+													"column": 71,
+													"offset": 485
+												},
+												"end": {
+													"line": 22,
+													"column": 73,
+													"offset": 487
 												}
 											}
 										}
@@ -242,19 +270,144 @@
 											"column": 3,
 											"offset": 417
 										},
-										"end": {}
+										"end": {
+											"line": 22,
+											"column": 74,
+											"offset": 488
+										}
+									}
+								},
+								{
+									"type": "svelteProperty",
+									"name": "href",
+									"value": [
+										{
+											"type": "text",
+											"value": "https://github.com/",
+											"position": {
+												"start": {
+													"line": 23,
+													"column": 9,
+													"offset": 497
+												},
+												"end": {
+													"line": 23,
+													"column": 28,
+													"offset": 516
+												}
+											}
+										},
+										{
+											"type": "svelteExpression",
+											"value": "contributor",
+											"position": {
+												"start": {
+													"line": 23,
+													"column": 28,
+													"offset": 516
+												},
+												"end": {
+													"line": 23,
+													"column": 41,
+													"offset": 529
+												}
+											}
+										}
+									],
+									"modifiers": [],
+									"shorthand": "none",
+									"position": {
+										"start": {
+											"line": 23,
+											"column": 3,
+											"offset": 491
+										},
+										"end": {
+											"line": 23,
+											"column": 42,
+											"offset": 530
+										}
 									}
 								}
 							],
 							"selfClosing": false,
-							"children": [],
+							"children": [
+								{
+									"type": "text",
+									"value": "\n\t\t",
+									"position": {
+										"start": {
+											"line": 23,
+											"column": 43,
+											"offset": 531
+										},
+										"end": {
+											"line": 24,
+											"column": 3,
+											"offset": 534
+										}
+									}
+								},
+								{
+									"type": "svelteExpression",
+									"value": "contributor",
+									"position": {
+										"start": {
+											"line": 24,
+											"column": 3,
+											"offset": 534
+										},
+										"end": {
+											"line": 24,
+											"column": 16,
+											"offset": 547
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n\t",
+									"position": {
+										"start": {
+											"line": 24,
+											"column": 16,
+											"offset": 547
+										},
+										"end": {
+											"line": 25,
+											"column": 2,
+											"offset": 549
+										}
+									}
+								}
+							],
 							"position": {
 								"start": {
 									"line": 20,
 									"column": 2,
 									"offset": 390
 								},
-								"end": {}
+								"end": {
+									"line": 25,
+									"column": 6,
+									"offset": 553
+								}
+							}
+						},
+						{
+							"type": "text",
+							"value": "\n",
+							"position": {
+								"start": {
+									"line": 25,
+									"column": 6,
+									"offset": 553
+								},
+								"end": {
+									"line": 26,
+									"column": 1,
+									"offset": 554
+								}
 							}
 						}
 					],
@@ -265,9 +418,9 @@
 							"offset": 350
 						},
 						"end": {
-							"line": 27,
-							"column": 2,
-							"offset": 563
+							"line": 26,
+							"column": 1,
+							"offset": 554
 						}
 					}
 				}
@@ -278,7 +431,11 @@
 					"column": 1,
 					"offset": 350
 				},
-				"end": {}
+				"end": {
+					"line": 26,
+					"column": 8,
+					"offset": 561
+				}
 			}
 		}
 	],
@@ -288,6 +445,10 @@
 			"line": 1,
 			"offset": 0
 		},
-		"end": {}
+		"end": {
+			"line": 26,
+			"column": 8,
+			"offset": 561
+		}
 	}
 }
