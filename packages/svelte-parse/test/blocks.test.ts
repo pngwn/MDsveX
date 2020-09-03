@@ -393,4 +393,38 @@ block('parses an each block correctly', () => {
 	});
 });
 
+block('parses an if block with a trailing space character', () => {
+	const parsed = parse({
+		value: `{ #if Data.length <= 0 && !isLoading } 
+{ /if }`,
+		generatePositions: false,
+	});
+
+	assert.equal(parsed, {
+		type: 'root',
+		children: [
+			{
+				type: 'svelteBranchingBlock',
+				name: 'if',
+				branches: [
+					{
+						type: 'svelteBranch',
+						name: 'if',
+						expression: {
+							type: 'svelteExpression',
+							value: 'Data.length <= 0 && !isLoading ',
+						},
+						children: [
+							{
+								type: 'text',
+								value: ' \n',
+							},
+						],
+					},
+				],
+			},
+		],
+	});
+});
+
 block.run();

@@ -7,7 +7,9 @@ const fixtures = path.join(__dirname, 'fixtures');
 
 const inputs = fs
 	.readdirSync(fixtures, { encoding: 'utf-8' })
-	.filter((f) => !f.startsWith('error') && f !== 'generate.ts')
+	.filter(
+		(f) => !f.startsWith('error') && f !== 'generate.ts' && f !== '.DS_Store'
+	)
 	.map((f) => [
 		f,
 		fs.readFileSync(path.join(fixtures, f, 'input.svelte')).toString(),
@@ -17,11 +19,14 @@ const inputs = fs
 	])
 	.filter(Boolean);
 
-const input_outputs = inputs.map(([f, input, output]) => [
-	f,
-	parse({ value: input, generatePositions: true }),
-	output,
-]);
+const input_outputs = inputs.map(([f, input, output]) => {
+	// if (f === '02-Table-Table') {
+	// 	console.log(
+	// 		JSON.stringify(parse({ value: input, generatePositions: false }), null, 2)
+	// 	);
+	// }
+	return [f, parse({ value: input, generatePositions: true }), output];
+});
 
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';

@@ -1709,98 +1709,176 @@
 													"name": "if",
 													"expression": {
 														"type": "svelteExpression",
-														"value": "Data.length <= 0 && !isLoading \n          <tr class=\"noResultsMessage\">\n            <td colspan=\"{ columns.length }\">\n              <slot name=\"noResults\">{ noResultsMessage }</slot>\n            </td>\n          </tr>\n          { /if ",
+														"value": "Data.length <= 0 && !isLoading ",
 														"position": {
 															"start": {
 																"line": 321,
-																"column": 48,
-																"offset": 7463
+																"column": 15,
+																"offset": 7430
 															},
 															"end": {
-																"line": 327,
-																"column": 17,
-																"offset": 7665
+																"line": 321,
+																"column": 46,
+																"offset": 7461
 															}
 														}
 													},
 													"children": [
 														{
 															"type": "text",
-															"value": "\n\n          ",
+															"value": " \n          ",
 															"position": {
 																"start": {
-																	"line": 327,
-																	"column": 18,
-																	"offset": 7666
+																	"line": 321,
+																	"column": 47,
+																	"offset": 7462
 																},
 																"end": {
-																	"line": 329,
+																	"line": 322,
 																	"column": 11,
-																	"offset": 7678
+																	"offset": 7474
 																}
 															}
 														},
 														{
-															"type": "svelteBranchingBlock",
-															"name": "each",
-															"branches": [
+															"type": "svelteElement",
+															"tagName": "tr",
+															"properties": [
 																{
-																	"type": "svelteBranch",
-																	"name": "each",
-																	"expression": {
-																		"type": "svelteExpression",
-																		"value": "Data as row ",
-																		"position": {
-																			"start": {
-																				"line": 329,
-																				"column": 19,
-																				"offset": 7686
-																			},
-																			"end": {
-																				"line": 329,
-																				"column": 31,
-																				"offset": 7698
+																	"type": "svelteProperty",
+																	"name": "class",
+																	"value": [
+																		{
+																			"type": "text",
+																			"value": "noResultsMessage",
+																			"position": {
+																				"start": {
+																					"line": 322,
+																					"column": 22,
+																					"offset": 7485
+																				},
+																				"end": {
+																					"line": 322,
+																					"column": 38,
+																					"offset": 7501
+																				}
 																			}
 																		}
-																	},
+																	],
+																	"modifiers": [],
+																	"shorthand": "none",
+																	"position": {
+																		"start": {
+																			"line": 322,
+																			"column": 15,
+																			"offset": 7478
+																		},
+																		"end": {
+																			"line": 322,
+																			"column": 39,
+																			"offset": 7502
+																		}
+																	}
+																}
+															],
+															"selfClosing": false,
+															"children": [
+																{
+																	"type": "text",
+																	"value": "\n            ",
+																	"position": {
+																		"start": {
+																			"line": 322,
+																			"column": 40,
+																			"offset": 7503
+																		},
+																		"end": {
+																			"line": 323,
+																			"column": 13,
+																			"offset": 7516
+																		}
+																	}
+																},
+																{
+																	"type": "svelteElement",
+																	"tagName": "td",
+																	"properties": [
+																		{
+																			"type": "svelteProperty",
+																			"name": "colspan",
+																			"value": [
+																				{
+																					"type": "svelteExpression",
+																					"value": " columns.length ",
+																					"position": {
+																						"start": {
+																							"line": 323,
+																							"column": 26,
+																							"offset": 7529
+																						},
+																						"end": {
+																							"line": 323,
+																							"column": 44,
+																							"offset": 7547
+																						}
+																					}
+																				}
+																			],
+																			"modifiers": [],
+																			"shorthand": "none",
+																			"position": {
+																				"start": {
+																					"line": 323,
+																					"column": 17,
+																					"offset": 7520
+																				},
+																				"end": {
+																					"line": 323,
+																					"column": 45,
+																					"offset": 7548
+																				}
+																			}
+																		}
+																	],
+																	"selfClosing": false,
 																	"children": [
 																		{
 																			"type": "text",
-																			"value": "\n          ",
+																			"value": "\n              ",
 																			"position": {
 																				"start": {
-																					"line": 329,
-																					"column": 32,
-																					"offset": 7699
+																					"line": 323,
+																					"column": 46,
+																					"offset": 7549
 																				},
 																				"end": {
-																					"line": 330,
-																					"column": 11,
-																					"offset": 7710
+																					"line": 324,
+																					"column": 15,
+																					"offset": 7564
 																				}
 																			}
 																		},
 																		{
 																			"type": "svelteElement",
-																			"tagName": "tr",
+																			"tagName": "slot",
 																			"properties": [
 																				{
 																					"type": "svelteProperty",
-																					"name": "class",
+																					"name": "name",
 																					"value": [
 																						{
-																							"type": "svelteExpression",
-																							"value": " rowCssClass ? rowCssClass(row) : '' ",
+																							"type": "text",
+																							"value": "noResults",
 																							"position": {
 																								"start": {
-																									"line": 330,
-																									"column": 22,
-																									"offset": 7721
+																									"line": 324,
+																									"column": 27,
+																									"offset": 7576
 																								},
 																								"end": {
-																									"line": 330,
-																									"column": 61,
-																									"offset": 7760
+																									"line": 324,
+																									"column": 36,
+																									"offset": 7585
 																								}
 																							}
 																						}
@@ -1809,725 +1887,123 @@
 																					"shorthand": "none",
 																					"position": {
 																						"start": {
-																							"line": 330,
-																							"column": 15,
-																							"offset": 7714
+																							"line": 324,
+																							"column": 21,
+																							"offset": 7570
 																						},
 																						"end": {
-																							"line": 330,
-																							"column": 62,
-																							"offset": 7761
+																							"line": 324,
+																							"column": 37,
+																							"offset": 7586
 																						}
 																					}
-																				},
-																				{
-																					"type": "svelteDirective",
-																					"name": "on",
-																					"value": [
-																						{
-																							"type": "svelteExpression",
-																							"value": "() => onRowClick(row)",
-																							"position": {
-																								"start": {
-																									"line": 330,
-																									"column": 73,
-																									"offset": 7772
-																								},
-																								"end": {
-																									"line": 330,
-																									"column": 96,
-																									"offset": 7795
-																								}
-																							}
-																						}
-																					],
-																					"modifiers": [],
-																					"shorthand": "none",
-																					"position": {
-																						"start": {
-																							"line": 330,
-																							"column": 63,
-																							"offset": 7762
-																						},
-																						"end": {
-																							"line": 330,
-																							"column": 97,
-																							"offset": 7796
-																						}
-																					},
-																					"specifier": "click"
 																				}
 																			],
 																			"selfClosing": false,
 																			"children": [
 																				{
-																					"type": "text",
-																					"value": "\n            ",
+																					"type": "svelteExpression",
+																					"value": "noResultsMessage ",
 																					"position": {
 																						"start": {
-																							"line": 330,
-																							"column": 98,
-																							"offset": 7797
+																							"line": 324,
+																							"column": 38,
+																							"offset": 7587
 																						},
 																						"end": {
-																							"line": 331,
-																							"column": 13,
-																							"offset": 7810
-																						}
-																					}
-																				},
-																				{
-																					"type": "svelteBranchingBlock",
-																					"name": "each",
-																					"branches": [
-																						{
-																							"type": "svelteBranch",
-																							"name": "each",
-																							"expression": {
-																								"type": "svelteExpression",
-																								"value": "columns as item ",
-																								"position": {
-																									"start": {
-																										"line": 331,
-																										"column": 21,
-																										"offset": 7818
-																									},
-																									"end": {
-																										"line": 331,
-																										"column": 37,
-																										"offset": 7834
-																									}
-																								}
-																							},
-																							"children": [
-																								{
-																									"type": "text",
-																									"value": "\n            ",
-																									"position": {
-																										"start": {
-																											"line": 331,
-																											"column": 38,
-																											"offset": 7835
-																										},
-																										"end": {
-																											"line": 332,
-																											"column": 13,
-																											"offset": 7848
-																										}
-																									}
-																								},
-																								{
-																									"type": "svelteElement",
-																									"tagName": "td",
-																									"properties": [
-																										{
-																											"type": "svelteProperty",
-																											"name": "style",
-																											"value": [
-																												{
-																													"type": "svelteExpression",
-																													"value": " cellAlign(item) ",
-																													"position": {
-																														"start": {
-																															"line": 332,
-																															"column": 24,
-																															"offset": 7859
-																														},
-																														"end": {
-																															"line": 332,
-																															"column": 43,
-																															"offset": 7878
-																														}
-																													}
-																												}
-																											],
-																											"modifiers": [],
-																											"shorthand": "none",
-																											"position": {
-																												"start": {
-																													"line": 332,
-																													"column": 17,
-																													"offset": 7852
-																												},
-																												"end": {
-																													"line": 332,
-																													"column": 44,
-																													"offset": 7879
-																												}
-																											}
-																										}
-																									],
-																									"selfClosing": false,
-																									"children": [
-																										{
-																											"type": "text",
-																											"value": "\n              ",
-																											"position": {
-																												"start": {
-																													"line": 332,
-																													"column": 45,
-																													"offset": 7880
-																												},
-																												"end": {
-																													"line": 333,
-																													"column": 15,
-																													"offset": 7895
-																												}
-																											}
-																										},
-																										{
-																											"type": "svelteBranchingBlock",
-																											"name": "if",
-																											"branches": [
-																												{
-																													"type": "svelteBranch",
-																													"name": "if",
-																													"expression": {
-																														"type": "svelteExpression",
-																														"value": "typeof item.cell === 'function' ",
-																														"position": {
-																															"start": {
-																																"line": 333,
-																																"column": 21,
-																																"offset": 7901
-																															},
-																															"end": {
-																																"line": 333,
-																																"column": 53,
-																																"offset": 7933
-																															}
-																														}
-																													},
-																													"children": [
-																														{
-																															"type": "text",
-																															"value": "\n              ",
-																															"position": {
-																																"start": {
-																																	"line": 333,
-																																	"column": 54,
-																																	"offset": 7934
-																																},
-																																"end": {
-																																	"line": 334,
-																																	"column": 15,
-																																	"offset": 7949
-																																}
-																															}
-																														},
-																														{
-																															"type": "svelteVoidBlock",
-																															"name": "html",
-																															"expression": {
-																																"type": "svelteExpression",
-																																"value": "item.cell(row) ",
-																																"position": {
-																																	"start": {
-																																		"line": 334,
-																																		"column": 23,
-																																		"offset": 7957
-																																	},
-																																	"end": {
-																																		"line": 334,
-																																		"column": 38,
-																																		"offset": 7972
-																																	}
-																																}
-																															},
-																															"position": {
-																																"start": {
-																																	"line": 334,
-																																	"column": 15,
-																																	"offset": 7949
-																																},
-																																"end": {
-																																	"line": 334,
-																																	"column": 39,
-																																	"offset": 7973
-																																}
-																															}
-																														},
-																														{
-																															"type": "text",
-																															"value": "\n              ",
-																															"position": {
-																																"start": {
-																																	"line": 334,
-																																	"column": 39,
-																																	"offset": 7973
-																																},
-																																"end": {
-																																	"line": 335,
-																																	"column": 15,
-																																	"offset": 7988
-																																}
-																															}
-																														}
-																													],
-																													"position": {
-																														"start": {
-																															"line": 333,
-																															"column": 15,
-																															"offset": 7895
-																														},
-																														"end": {
-																															"line": 335,
-																															"column": 15,
-																															"offset": 7988
-																														}
-																													}
-																												},
-																												{
-																													"type": "svelteBranch",
-																													"name": "else if",
-																													"expression": {
-																														"type": "svelteExpression",
-																														"value": "item.cell.component ",
-																														"position": {
-																															"start": {
-																																"line": 335,
-																																"column": 26,
-																																"offset": 7999
-																															},
-																															"end": {
-																																"line": 335,
-																																"column": 46,
-																																"offset": 8019
-																															}
-																														}
-																													},
-																													"children": [
-																														{
-																															"type": "text",
-																															"value": "\n              ",
-																															"position": {
-																																"start": {
-																																	"line": 335,
-																																	"column": 47,
-																																	"offset": 8020
-																																},
-																																"end": {
-																																	"line": 336,
-																																	"column": 15,
-																																	"offset": 8035
-																																}
-																															}
-																														},
-																														{
-																															"type": "svelteTag",
-																															"tagName": "component",
-																															"properties": [
-																																{
-																																	"type": "svelteProperty",
-																																	"name": "this",
-																																	"value": [
-																																		{
-																																			"type": "svelteExpression",
-																																			"value": "item.cell.component",
-																																			"position": {
-																																				"start": {
-																																					"line": 336,
-																																					"column": 38,
-																																					"offset": 8058
-																																				},
-																																				"end": {
-																																					"line": 336,
-																																					"column": 59,
-																																					"offset": 8079
-																																				}
-																																			}
-																																		}
-																																	],
-																																	"modifiers": [],
-																																	"shorthand": "none",
-																																	"position": {
-																																		"start": {
-																																			"line": 336,
-																																			"column": 33,
-																																			"offset": 8053
-																																		},
-																																		"end": {
-																																			"line": 336,
-																																			"column": 59,
-																																			"offset": 8079
-																																		}
-																																	}
-																																},
-																																{
-																																	"type": "svelteProperty",
-																																	"name": "...item.cell.props",
-																																	"value": [
-																																		{
-																																			"type": "svelteExpression",
-																																			"value": "...item.cell.props"
-																																		}
-																																	],
-																																	"modifiers": [],
-																																	"shorthand": "expression",
-																																	"position": {
-																																		"start": {
-																																			"line": 336,
-																																			"column": 60,
-																																			"offset": 8080
-																																		},
-																																		"end": {}
-																																	}
-																																},
-																																{
-																																	"type": "svelteProperty",
-																																	"name": "item",
-																																	"value": [
-																																		{
-																																			"type": "svelteExpression",
-																																			"value": "row",
-																																			"position": {
-																																				"start": {
-																																					"line": 336,
-																																					"column": 87,
-																																					"offset": 8107
-																																				},
-																																				"end": {
-																																					"line": 336,
-																																					"column": 92,
-																																					"offset": 8112
-																																				}
-																																			}
-																																		}
-																																	],
-																																	"modifiers": [],
-																																	"shorthand": "none",
-																																	"position": {
-																																		"start": {
-																																			"line": 336,
-																																			"column": 81,
-																																			"offset": 8101
-																																		},
-																																		"end": {
-																																			"line": 336,
-																																			"column": 93,
-																																			"offset": 8113
-																																		}
-																																	}
-																																}
-																															],
-																															"selfClosing": true,
-																															"children": [],
-																															"position": {
-																																"start": {
-																																	"line": 336,
-																																	"column": 15,
-																																	"offset": 8035
-																																},
-																																"end": {
-																																	"line": 336,
-																																	"column": 96,
-																																	"offset": 8116
-																																}
-																															}
-																														},
-																														{
-																															"type": "text",
-																															"value": "\n              ",
-																															"position": {
-																																"start": {
-																																	"line": 336,
-																																	"column": 96,
-																																	"offset": 8116
-																																},
-																																"end": {
-																																	"line": 337,
-																																	"column": 15,
-																																	"offset": 8131
-																																}
-																															}
-																														}
-																													],
-																													"position": {
-																														"start": {
-																															"line": 335,
-																															"column": 15,
-																															"offset": 7988
-																														},
-																														"end": {
-																															"line": 337,
-																															"column": 15,
-																															"offset": 8131
-																														}
-																													}
-																												},
-																												{
-																													"type": "svelteBranch",
-																													"name": "else",
-																													"expression": {
-																														"type": "svelteExpression",
-																														"value": "",
-																														"position": {
-																															"start": {
-																																"line": 337,
-																																"column": 23,
-																																"offset": 8139
-																															},
-																															"end": {
-																																"line": 337,
-																																"column": 23,
-																																"offset": 8139
-																															}
-																														}
-																													},
-																													"children": [
-																														{
-																															"type": "text",
-																															"value": "\n              ",
-																															"position": {
-																																"start": {
-																																	"line": 337,
-																																	"column": 24,
-																																	"offset": 8140
-																																},
-																																"end": {
-																																	"line": 338,
-																																	"column": 15,
-																																	"offset": 8155
-																																}
-																															}
-																														},
-																														{
-																															"type": "svelteVoidBlock",
-																															"name": "html",
-																															"expression": {
-																																"type": "svelteExpression",
-																																"value": "row[item.cell] ",
-																																"position": {
-																																	"start": {
-																																		"line": 338,
-																																		"column": 23,
-																																		"offset": 8163
-																																	},
-																																	"end": {
-																																		"line": 338,
-																																		"column": 38,
-																																		"offset": 8178
-																																	}
-																																}
-																															},
-																															"position": {
-																																"start": {
-																																	"line": 338,
-																																	"column": 15,
-																																	"offset": 8155
-																																},
-																																"end": {
-																																	"line": 338,
-																																	"column": 39,
-																																	"offset": 8179
-																																}
-																															}
-																														},
-																														{
-																															"type": "text",
-																															"value": "\n              ",
-																															"position": {
-																																"start": {
-																																	"line": 338,
-																																	"column": 39,
-																																	"offset": 8179
-																																},
-																																"end": {
-																																	"line": 339,
-																																	"column": 15,
-																																	"offset": 8194
-																																}
-																															}
-																														}
-																													],
-																													"position": {
-																														"start": {
-																															"line": 337,
-																															"column": 15,
-																															"offset": 8131
-																														},
-																														"end": {
-																															"line": 339,
-																															"column": 15,
-																															"offset": 8194
-																														}
-																													}
-																												}
-																											],
-																											"position": {
-																												"start": {
-																													"line": 333,
-																													"column": 15,
-																													"offset": 7895
-																												},
-																												"end": {
-																													"line": 339,
-																													"column": 22,
-																													"offset": 8201
-																												}
-																											}
-																										},
-																										{
-																											"type": "text",
-																											"value": "\n            ",
-																											"position": {
-																												"start": {
-																													"line": 339,
-																													"column": 22,
-																													"offset": 8201
-																												},
-																												"end": {
-																													"line": 340,
-																													"column": 13,
-																													"offset": 8214
-																												}
-																											}
-																										}
-																									],
-																									"position": {
-																										"start": {
-																											"line": 332,
-																											"column": 13,
-																											"offset": 7848
-																										},
-																										"end": {
-																											"line": 340,
-																											"column": 18,
-																											"offset": 8219
-																										}
-																									}
-																								},
-																								{
-																									"type": "text",
-																									"value": "\n            ",
-																									"position": {
-																										"start": {
-																											"line": 340,
-																											"column": 18,
-																											"offset": 8219
-																										},
-																										"end": {
-																											"line": 341,
-																											"column": 13,
-																											"offset": 8232
-																										}
-																									}
-																								}
-																							],
-																							"position": {
-																								"start": {
-																									"line": 331,
-																									"column": 13,
-																									"offset": 7810
-																								},
-																								"end": {
-																									"line": 341,
-																									"column": 13,
-																									"offset": 8232
-																								}
-																							}
-																						}
-																					],
-																					"position": {
-																						"start": {
-																							"line": 331,
-																							"column": 13,
-																							"offset": 7810
-																						},
-																						"end": {
-																							"line": 341,
-																							"column": 22,
-																							"offset": 8241
-																						}
-																					}
-																				},
-																				{
-																					"type": "text",
-																					"value": "\n          ",
-																					"position": {
-																						"start": {
-																							"line": 341,
-																							"column": 22,
-																							"offset": 8241
-																						},
-																						"end": {
-																							"line": 342,
-																							"column": 11,
-																							"offset": 8252
+																							"line": 324,
+																							"column": 58,
+																							"offset": 7607
 																						}
 																					}
 																				}
 																			],
 																			"position": {
 																				"start": {
-																					"line": 330,
-																					"column": 11,
-																					"offset": 7710
+																					"line": 324,
+																					"column": 15,
+																					"offset": 7564
 																				},
 																				"end": {
-																					"line": 342,
-																					"column": 16,
-																					"offset": 8257
+																					"line": 324,
+																					"column": 65,
+																					"offset": 7614
 																				}
 																			}
 																		},
 																		{
 																			"type": "text",
-																			"value": "\n          ",
+																			"value": "\n            ",
 																			"position": {
 																				"start": {
-																					"line": 342,
-																					"column": 16,
-																					"offset": 8257
+																					"line": 324,
+																					"column": 65,
+																					"offset": 7614
 																				},
 																				"end": {
-																					"line": 343,
-																					"column": 11,
-																					"offset": 8268
+																					"line": 325,
+																					"column": 13,
+																					"offset": 7627
 																				}
 																			}
 																		}
 																	],
 																	"position": {
 																		"start": {
-																			"line": 329,
-																			"column": 11,
-																			"offset": 7678
+																			"line": 323,
+																			"column": 13,
+																			"offset": 7516
 																		},
 																		"end": {
-																			"line": 343,
+																			"line": 325,
+																			"column": 18,
+																			"offset": 7632
+																		}
+																	}
+																},
+																{
+																	"type": "text",
+																	"value": "\n          ",
+																	"position": {
+																		"start": {
+																			"line": 325,
+																			"column": 18,
+																			"offset": 7632
+																		},
+																		"end": {
+																			"line": 326,
 																			"column": 11,
-																			"offset": 8268
+																			"offset": 7643
 																		}
 																	}
 																}
 															],
 															"position": {
 																"start": {
-																	"line": 329,
+																	"line": 322,
 																	"column": 11,
-																	"offset": 7678
+																	"offset": 7474
 																},
 																"end": {
-																	"line": 343,
-																	"column": 20,
-																	"offset": 8277
+																	"line": 326,
+																	"column": 16,
+																	"offset": 7648
 																}
 															}
 														},
 														{
 															"type": "text",
-															"value": "\n      ",
+															"value": "\n          ",
 															"position": {
 																"start": {
-																	"line": 343,
-																	"column": 20,
-																	"offset": 8277
+																	"line": 326,
+																	"column": 16,
+																	"offset": 7648
 																},
 																"end": {
-																	"line": 344,
-																	"column": 7,
-																	"offset": 8284
+																	"line": 327,
+																	"column": 11,
+																	"offset": 7659
 																}
 															}
 														}
@@ -2539,9 +2015,9 @@
 															"offset": 7424
 														},
 														"end": {
-															"line": 344,
-															"column": 15,
-															"offset": 8292
+															"line": 327,
+															"column": 11,
+															"offset": 7659
 														}
 													}
 												}
@@ -2552,22 +2028,817 @@
 													"column": 9,
 													"offset": 7424
 												},
-												"end": {}
+												"end": {
+													"line": 327,
+													"column": 18,
+													"offset": 7666
+												}
 											}
 										},
 										{
 											"type": "text",
-											"value": "\n    ",
+											"value": "\n\n          ",
 											"position": {
 												"start": {
-													"line": 344,
-													"column": 15,
-													"offset": 8292
+													"line": 327,
+													"column": 18,
+													"offset": 7666
 												},
 												"end": {
-													"line": 345,
-													"column": 5,
-													"offset": 8297
+													"line": 329,
+													"column": 11,
+													"offset": 7678
+												}
+											}
+										},
+										{
+											"type": "svelteBranchingBlock",
+											"name": "each",
+											"branches": [
+												{
+													"type": "svelteBranch",
+													"name": "each",
+													"expression": {
+														"type": "svelteExpression",
+														"value": "Data as row ",
+														"position": {
+															"start": {
+																"line": 329,
+																"column": 19,
+																"offset": 7686
+															},
+															"end": {
+																"line": 329,
+																"column": 31,
+																"offset": 7698
+															}
+														}
+													},
+													"children": [
+														{
+															"type": "text",
+															"value": "\n          ",
+															"position": {
+																"start": {
+																	"line": 329,
+																	"column": 32,
+																	"offset": 7699
+																},
+																"end": {
+																	"line": 330,
+																	"column": 11,
+																	"offset": 7710
+																}
+															}
+														},
+														{
+															"type": "svelteElement",
+															"tagName": "tr",
+															"properties": [
+																{
+																	"type": "svelteProperty",
+																	"name": "class",
+																	"value": [
+																		{
+																			"type": "svelteExpression",
+																			"value": " rowCssClass ? rowCssClass(row) : '' ",
+																			"position": {
+																				"start": {
+																					"line": 330,
+																					"column": 22,
+																					"offset": 7721
+																				},
+																				"end": {
+																					"line": 330,
+																					"column": 61,
+																					"offset": 7760
+																				}
+																			}
+																		}
+																	],
+																	"modifiers": [],
+																	"shorthand": "none",
+																	"position": {
+																		"start": {
+																			"line": 330,
+																			"column": 15,
+																			"offset": 7714
+																		},
+																		"end": {
+																			"line": 330,
+																			"column": 62,
+																			"offset": 7761
+																		}
+																	}
+																},
+																{
+																	"type": "svelteDirective",
+																	"name": "on",
+																	"value": [
+																		{
+																			"type": "svelteExpression",
+																			"value": "() => onRowClick(row)",
+																			"position": {
+																				"start": {
+																					"line": 330,
+																					"column": 73,
+																					"offset": 7772
+																				},
+																				"end": {
+																					"line": 330,
+																					"column": 96,
+																					"offset": 7795
+																				}
+																			}
+																		}
+																	],
+																	"modifiers": [],
+																	"shorthand": "none",
+																	"position": {
+																		"start": {
+																			"line": 330,
+																			"column": 63,
+																			"offset": 7762
+																		},
+																		"end": {
+																			"line": 330,
+																			"column": 97,
+																			"offset": 7796
+																		}
+																	},
+																	"specifier": "click"
+																}
+															],
+															"selfClosing": false,
+															"children": [
+																{
+																	"type": "text",
+																	"value": "\n            ",
+																	"position": {
+																		"start": {
+																			"line": 330,
+																			"column": 98,
+																			"offset": 7797
+																		},
+																		"end": {
+																			"line": 331,
+																			"column": 13,
+																			"offset": 7810
+																		}
+																	}
+																},
+																{
+																	"type": "svelteBranchingBlock",
+																	"name": "each",
+																	"branches": [
+																		{
+																			"type": "svelteBranch",
+																			"name": "each",
+																			"expression": {
+																				"type": "svelteExpression",
+																				"value": "columns as item ",
+																				"position": {
+																					"start": {
+																						"line": 331,
+																						"column": 21,
+																						"offset": 7818
+																					},
+																					"end": {
+																						"line": 331,
+																						"column": 37,
+																						"offset": 7834
+																					}
+																				}
+																			},
+																			"children": [
+																				{
+																					"type": "text",
+																					"value": "\n            ",
+																					"position": {
+																						"start": {
+																							"line": 331,
+																							"column": 38,
+																							"offset": 7835
+																						},
+																						"end": {
+																							"line": 332,
+																							"column": 13,
+																							"offset": 7848
+																						}
+																					}
+																				},
+																				{
+																					"type": "svelteElement",
+																					"tagName": "td",
+																					"properties": [
+																						{
+																							"type": "svelteProperty",
+																							"name": "style",
+																							"value": [
+																								{
+																									"type": "svelteExpression",
+																									"value": " cellAlign(item) ",
+																									"position": {
+																										"start": {
+																											"line": 332,
+																											"column": 24,
+																											"offset": 7859
+																										},
+																										"end": {
+																											"line": 332,
+																											"column": 43,
+																											"offset": 7878
+																										}
+																									}
+																								}
+																							],
+																							"modifiers": [],
+																							"shorthand": "none",
+																							"position": {
+																								"start": {
+																									"line": 332,
+																									"column": 17,
+																									"offset": 7852
+																								},
+																								"end": {
+																									"line": 332,
+																									"column": 44,
+																									"offset": 7879
+																								}
+																							}
+																						}
+																					],
+																					"selfClosing": false,
+																					"children": [
+																						{
+																							"type": "text",
+																							"value": "\n              ",
+																							"position": {
+																								"start": {
+																									"line": 332,
+																									"column": 45,
+																									"offset": 7880
+																								},
+																								"end": {
+																									"line": 333,
+																									"column": 15,
+																									"offset": 7895
+																								}
+																							}
+																						},
+																						{
+																							"type": "svelteBranchingBlock",
+																							"name": "if",
+																							"branches": [
+																								{
+																									"type": "svelteBranch",
+																									"name": "if",
+																									"expression": {
+																										"type": "svelteExpression",
+																										"value": "typeof item.cell === 'function' ",
+																										"position": {
+																											"start": {
+																												"line": 333,
+																												"column": 21,
+																												"offset": 7901
+																											},
+																											"end": {
+																												"line": 333,
+																												"column": 53,
+																												"offset": 7933
+																											}
+																										}
+																									},
+																									"children": [
+																										{
+																											"type": "text",
+																											"value": "\n              ",
+																											"position": {
+																												"start": {
+																													"line": 333,
+																													"column": 54,
+																													"offset": 7934
+																												},
+																												"end": {
+																													"line": 334,
+																													"column": 15,
+																													"offset": 7949
+																												}
+																											}
+																										},
+																										{
+																											"type": "svelteVoidBlock",
+																											"name": "html",
+																											"expression": {
+																												"type": "svelteExpression",
+																												"value": "item.cell(row) ",
+																												"position": {
+																													"start": {
+																														"line": 334,
+																														"column": 23,
+																														"offset": 7957
+																													},
+																													"end": {
+																														"line": 334,
+																														"column": 38,
+																														"offset": 7972
+																													}
+																												}
+																											},
+																											"position": {
+																												"start": {
+																													"line": 334,
+																													"column": 15,
+																													"offset": 7949
+																												},
+																												"end": {
+																													"line": 334,
+																													"column": 39,
+																													"offset": 7973
+																												}
+																											}
+																										},
+																										{
+																											"type": "text",
+																											"value": "\n              ",
+																											"position": {
+																												"start": {
+																													"line": 334,
+																													"column": 39,
+																													"offset": 7973
+																												},
+																												"end": {
+																													"line": 335,
+																													"column": 15,
+																													"offset": 7988
+																												}
+																											}
+																										}
+																									],
+																									"position": {
+																										"start": {
+																											"line": 333,
+																											"column": 15,
+																											"offset": 7895
+																										},
+																										"end": {
+																											"line": 335,
+																											"column": 15,
+																											"offset": 7988
+																										}
+																									}
+																								},
+																								{
+																									"type": "svelteBranch",
+																									"name": "else if",
+																									"expression": {
+																										"type": "svelteExpression",
+																										"value": "item.cell.component ",
+																										"position": {
+																											"start": {
+																												"line": 335,
+																												"column": 26,
+																												"offset": 7999
+																											},
+																											"end": {
+																												"line": 335,
+																												"column": 46,
+																												"offset": 8019
+																											}
+																										}
+																									},
+																									"children": [
+																										{
+																											"type": "text",
+																											"value": "\n              ",
+																											"position": {
+																												"start": {
+																													"line": 335,
+																													"column": 47,
+																													"offset": 8020
+																												},
+																												"end": {
+																													"line": 336,
+																													"column": 15,
+																													"offset": 8035
+																												}
+																											}
+																										},
+																										{
+																											"type": "svelteTag",
+																											"tagName": "component",
+																											"properties": [
+																												{
+																													"type": "svelteProperty",
+																													"name": "this",
+																													"value": [
+																														{
+																															"type": "svelteExpression",
+																															"value": "item.cell.component",
+																															"position": {
+																																"start": {
+																																	"line": 336,
+																																	"column": 38,
+																																	"offset": 8058
+																																},
+																																"end": {
+																																	"line": 336,
+																																	"column": 59,
+																																	"offset": 8079
+																																}
+																															}
+																														}
+																													],
+																													"modifiers": [],
+																													"shorthand": "none",
+																													"position": {
+																														"start": {
+																															"line": 336,
+																															"column": 33,
+																															"offset": 8053
+																														},
+																														"end": {
+																															"line": 336,
+																															"column": 59,
+																															"offset": 8079
+																														}
+																													}
+																												},
+																												{
+																													"type": "svelteProperty",
+																													"name": "...item.cell.props",
+																													"value": [
+																														{
+																															"type": "svelteExpression",
+																															"value": "...item.cell.props"
+																														}
+																													],
+																													"modifiers": [],
+																													"shorthand": "expression",
+																													"position": {
+																														"start": {
+																															"line": 336,
+																															"column": 60,
+																															"offset": 8080
+																														},
+																														"end": {}
+																													}
+																												},
+																												{
+																													"type": "svelteProperty",
+																													"name": "item",
+																													"value": [
+																														{
+																															"type": "svelteExpression",
+																															"value": "row",
+																															"position": {
+																																"start": {
+																																	"line": 336,
+																																	"column": 87,
+																																	"offset": 8107
+																																},
+																																"end": {
+																																	"line": 336,
+																																	"column": 92,
+																																	"offset": 8112
+																																}
+																															}
+																														}
+																													],
+																													"modifiers": [],
+																													"shorthand": "none",
+																													"position": {
+																														"start": {
+																															"line": 336,
+																															"column": 81,
+																															"offset": 8101
+																														},
+																														"end": {
+																															"line": 336,
+																															"column": 93,
+																															"offset": 8113
+																														}
+																													}
+																												}
+																											],
+																											"selfClosing": true,
+																											"children": [],
+																											"position": {
+																												"start": {
+																													"line": 336,
+																													"column": 15,
+																													"offset": 8035
+																												},
+																												"end": {
+																													"line": 336,
+																													"column": 96,
+																													"offset": 8116
+																												}
+																											}
+																										},
+																										{
+																											"type": "text",
+																											"value": "\n              ",
+																											"position": {
+																												"start": {
+																													"line": 336,
+																													"column": 96,
+																													"offset": 8116
+																												},
+																												"end": {
+																													"line": 337,
+																													"column": 15,
+																													"offset": 8131
+																												}
+																											}
+																										}
+																									],
+																									"position": {
+																										"start": {
+																											"line": 335,
+																											"column": 15,
+																											"offset": 7988
+																										},
+																										"end": {
+																											"line": 337,
+																											"column": 15,
+																											"offset": 8131
+																										}
+																									}
+																								},
+																								{
+																									"type": "svelteBranch",
+																									"name": "else",
+																									"expression": {
+																										"type": "svelteExpression",
+																										"value": "",
+																										"position": {
+																											"start": {
+																												"line": 337,
+																												"column": 23,
+																												"offset": 8139
+																											},
+																											"end": {
+																												"line": 337,
+																												"column": 23,
+																												"offset": 8139
+																											}
+																										}
+																									},
+																									"children": [
+																										{
+																											"type": "text",
+																											"value": "\n              ",
+																											"position": {
+																												"start": {
+																													"line": 337,
+																													"column": 24,
+																													"offset": 8140
+																												},
+																												"end": {
+																													"line": 338,
+																													"column": 15,
+																													"offset": 8155
+																												}
+																											}
+																										},
+																										{
+																											"type": "svelteVoidBlock",
+																											"name": "html",
+																											"expression": {
+																												"type": "svelteExpression",
+																												"value": "row[item.cell] ",
+																												"position": {
+																													"start": {
+																														"line": 338,
+																														"column": 23,
+																														"offset": 8163
+																													},
+																													"end": {
+																														"line": 338,
+																														"column": 38,
+																														"offset": 8178
+																													}
+																												}
+																											},
+																											"position": {
+																												"start": {
+																													"line": 338,
+																													"column": 15,
+																													"offset": 8155
+																												},
+																												"end": {
+																													"line": 338,
+																													"column": 39,
+																													"offset": 8179
+																												}
+																											}
+																										},
+																										{
+																											"type": "text",
+																											"value": "\n              ",
+																											"position": {
+																												"start": {
+																													"line": 338,
+																													"column": 39,
+																													"offset": 8179
+																												},
+																												"end": {
+																													"line": 339,
+																													"column": 15,
+																													"offset": 8194
+																												}
+																											}
+																										}
+																									],
+																									"position": {
+																										"start": {
+																											"line": 337,
+																											"column": 15,
+																											"offset": 8131
+																										},
+																										"end": {
+																											"line": 339,
+																											"column": 15,
+																											"offset": 8194
+																										}
+																									}
+																								}
+																							],
+																							"position": {
+																								"start": {
+																									"line": 333,
+																									"column": 15,
+																									"offset": 7895
+																								},
+																								"end": {
+																									"line": 339,
+																									"column": 22,
+																									"offset": 8201
+																								}
+																							}
+																						},
+																						{
+																							"type": "text",
+																							"value": "\n            ",
+																							"position": {
+																								"start": {
+																									"line": 339,
+																									"column": 22,
+																									"offset": 8201
+																								},
+																								"end": {
+																									"line": 340,
+																									"column": 13,
+																									"offset": 8214
+																								}
+																							}
+																						}
+																					],
+																					"position": {
+																						"start": {
+																							"line": 332,
+																							"column": 13,
+																							"offset": 7848
+																						},
+																						"end": {
+																							"line": 340,
+																							"column": 18,
+																							"offset": 8219
+																						}
+																					}
+																				},
+																				{
+																					"type": "text",
+																					"value": "\n            ",
+																					"position": {
+																						"start": {
+																							"line": 340,
+																							"column": 18,
+																							"offset": 8219
+																						},
+																						"end": {
+																							"line": 341,
+																							"column": 13,
+																							"offset": 8232
+																						}
+																					}
+																				}
+																			],
+																			"position": {
+																				"start": {
+																					"line": 331,
+																					"column": 13,
+																					"offset": 7810
+																				},
+																				"end": {
+																					"line": 341,
+																					"column": 13,
+																					"offset": 8232
+																				}
+																			}
+																		}
+																	],
+																	"position": {
+																		"start": {
+																			"line": 331,
+																			"column": 13,
+																			"offset": 7810
+																		},
+																		"end": {
+																			"line": 341,
+																			"column": 22,
+																			"offset": 8241
+																		}
+																	}
+																},
+																{
+																	"type": "text",
+																	"value": "\n          ",
+																	"position": {
+																		"start": {
+																			"line": 341,
+																			"column": 22,
+																			"offset": 8241
+																		},
+																		"end": {
+																			"line": 342,
+																			"column": 11,
+																			"offset": 8252
+																		}
+																	}
+																}
+															],
+															"position": {
+																"start": {
+																	"line": 330,
+																	"column": 11,
+																	"offset": 7710
+																},
+																"end": {
+																	"line": 342,
+																	"column": 16,
+																	"offset": 8257
+																}
+															}
+														},
+														{
+															"type": "text",
+															"value": "\n          ",
+															"position": {
+																"start": {
+																	"line": 342,
+																	"column": 16,
+																	"offset": 8257
+																},
+																"end": {
+																	"line": 343,
+																	"column": 11,
+																	"offset": 8268
+																}
+															}
+														}
+													],
+													"position": {
+														"start": {
+															"line": 329,
+															"column": 11,
+															"offset": 7678
+														},
+														"end": {
+															"line": 343,
+															"column": 11,
+															"offset": 8268
+														}
+													}
+												}
+											],
+											"position": {
+												"start": {
+													"line": 329,
+													"column": 11,
+													"offset": 7678
+												},
+												"end": {
+													"line": 343,
+													"column": 20,
+													"offset": 8277
+												}
+											}
+										},
+										{
+											"type": "text",
+											"value": "\n      ",
+											"position": {
+												"start": {
+													"line": 343,
+													"column": 20,
+													"offset": 8277
+												},
+												"end": {
+													"line": 344,
+													"column": 7,
+													"offset": 8284
 												}
 											}
 										}
@@ -2579,25 +2850,25 @@
 											"offset": 7408
 										},
 										"end": {
-											"line": 345,
-											"column": 13,
-											"offset": 8305
+											"line": 344,
+											"column": 15,
+											"offset": 8292
 										}
 									}
 								},
 								{
 									"type": "text",
-									"value": "\n  ",
+									"value": "\n    ",
 									"position": {
 										"start": {
-											"line": 345,
-											"column": 13,
-											"offset": 8305
+											"line": 344,
+											"column": 15,
+											"offset": 8292
 										},
 										"end": {
-											"line": 346,
-											"column": 3,
-											"offset": 8308
+											"line": 345,
+											"column": 5,
+											"offset": 8297
 										}
 									}
 								}
@@ -2609,129 +2880,218 @@
 									"offset": 6321
 								},
 								"end": {
-									"line": 346,
-									"column": 9,
-									"offset": 8314
+									"line": 345,
+									"column": 13,
+									"offset": 8305
 								}
 							}
 						},
 						{
 							"type": "text",
-							"value": "\n\n  ",
+							"value": "\n  ",
 							"position": {
 								"start": {
-									"line": 346,
-									"column": 9,
-									"offset": 8314
+									"line": 345,
+									"column": 13,
+									"offset": 8305
 								},
 								"end": {
-									"line": 348,
+									"line": 346,
 									"column": 3,
-									"offset": 8318
+									"offset": 8308
 								}
 							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 285,
+							"column": 3,
+							"offset": 6282
 						},
+						"end": {
+							"line": 346,
+							"column": 9,
+							"offset": 8314
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n\n  ",
+					"position": {
+						"start": {
+							"line": 346,
+							"column": 9,
+							"offset": 8314
+						},
+						"end": {
+							"line": 348,
+							"column": 3,
+							"offset": 8318
+						}
+					}
+				},
+				{
+					"type": "svelteBranchingBlock",
+					"name": "if",
+					"branches": [
 						{
-							"type": "svelteBranchingBlock",
+							"type": "svelteBranch",
 							"name": "if",
-							"branches": [
-								{
-									"type": "svelteBranch",
-									"name": "if",
-									"expression": {
-										"type": "svelteExpression",
-										"value": "hasPagination ",
-										"position": {
-											"start": {
-												"line": 348,
-												"column": 9,
-												"offset": 8324
-											},
-											"end": {
-												"line": 348,
-												"column": 23,
-												"offset": 8338
-											}
-										}
+							"expression": {
+								"type": "svelteExpression",
+								"value": "hasPagination ",
+								"position": {
+									"start": {
+										"line": 348,
+										"column": 9,
+										"offset": 8324
 									},
-									"children": [
-										{
-											"type": "text",
-											"value": "\n  ",
-											"position": {
-												"start": {
-													"line": 348,
-													"column": 24,
-													"offset": 8339
-												},
-												"end": {
-													"line": 349,
-													"column": 3,
-													"offset": 8342
-												}
-											}
+									"end": {
+										"line": 348,
+										"column": 23,
+										"offset": 8338
+									}
+								}
+							},
+							"children": [
+								{
+									"type": "text",
+									"value": "\n  ",
+									"position": {
+										"start": {
+											"line": 348,
+											"column": 24,
+											"offset": 8339
 										},
+										"end": {
+											"line": 349,
+											"column": 3,
+											"offset": 8342
+										}
+									}
+								},
+								{
+									"type": "svelteBranchingBlock",
+									"name": "if",
+									"branches": [
 										{
-											"type": "svelteBranchingBlock",
+											"type": "svelteBranch",
 											"name": "if",
-											"branches": [
-												{
-													"type": "svelteBranch",
-													"name": "if",
-													"expression": {
-														"type": "svelteExpression",
-														"value": "itemTotal > 0 && currentPage > 0 ",
-														"position": {
-															"start": {
-																"line": 349,
-																"column": 9,
-																"offset": 8348
-															},
-															"end": {
-																"line": 349,
-																"column": 42,
-																"offset": 8381
-															}
-														}
+											"expression": {
+												"type": "svelteExpression",
+												"value": "itemTotal > 0 && currentPage > 0 ",
+												"position": {
+													"start": {
+														"line": 349,
+														"column": 9,
+														"offset": 8348
 													},
-													"children": [
+													"end": {
+														"line": 349,
+														"column": 42,
+														"offset": 8381
+													}
+												}
+											},
+											"children": [
+												{
+													"type": "text",
+													"value": "\n  ",
+													"position": {
+														"start": {
+															"line": 349,
+															"column": 43,
+															"offset": 8382
+														},
+														"end": {
+															"line": 350,
+															"column": 3,
+															"offset": 8385
+														}
+													}
+												},
+												{
+													"type": "svelteElement",
+													"tagName": "div",
+													"properties": [
 														{
-															"type": "text",
-															"value": "\n  ",
+															"type": "svelteProperty",
+															"name": "class",
+															"value": [
+																{
+																	"type": "text",
+																	"value": "pagination",
+																	"position": {
+																		"start": {
+																			"line": 350,
+																			"column": 15,
+																			"offset": 8397
+																		},
+																		"end": {
+																			"line": 350,
+																			"column": 25,
+																			"offset": 8407
+																		}
+																	}
+																}
+															],
+															"modifiers": [],
+															"shorthand": "none",
 															"position": {
 																"start": {
-																	"line": 349,
-																	"column": 43,
-																	"offset": 8382
+																	"line": 350,
+																	"column": 8,
+																	"offset": 8390
 																},
 																"end": {
 																	"line": 350,
-																	"column": 3,
-																	"offset": 8385
+																	"column": 26,
+																	"offset": 8408
+																}
+															}
+														}
+													],
+													"selfClosing": false,
+													"children": [
+														{
+															"type": "text",
+															"value": "\n    ",
+															"position": {
+																"start": {
+																	"line": 350,
+																	"column": 27,
+																	"offset": 8409
+																},
+																"end": {
+																	"line": 351,
+																	"column": 5,
+																	"offset": 8414
 																}
 															}
 														},
 														{
-															"type": "svelteElement",
-															"tagName": "div",
+															"type": "svelteComponent",
+															"tagName": "Pagination",
 															"properties": [
 																{
-																	"type": "svelteProperty",
-																	"name": "class",
+																	"type": "svelteDirective",
+																	"name": "on",
 																	"value": [
 																		{
-																			"type": "text",
-																			"value": "pagination",
+																			"type": "svelteExpression",
+																			"value": "onChange",
 																			"position": {
 																				"start": {
-																					"line": 350,
-																					"column": 15,
-																					"offset": 8397
+																					"line": 351,
+																					"column": 28,
+																					"offset": 8437
 																				},
 																				"end": {
-																					"line": 350,
-																					"column": 25,
-																					"offset": 8407
+																					"line": 351,
+																					"column": 38,
+																					"offset": 8447
 																				}
 																			}
 																		}
@@ -2740,14 +3100,125 @@
 																	"shorthand": "none",
 																	"position": {
 																		"start": {
-																			"line": 350,
-																			"column": 8,
-																			"offset": 8390
+																			"line": 351,
+																			"column": 17,
+																			"offset": 8426
 																		},
 																		"end": {
-																			"line": 350,
-																			"column": 26,
-																			"offset": 8408
+																			"line": 351,
+																			"column": 39,
+																			"offset": 8448
+																		}
+																	},
+																	"specifier": "change"
+																},
+																{
+																	"type": "svelteDirective",
+																	"name": "bind",
+																	"value": [
+																		{
+																			"type": "svelteExpression",
+																			"value": "pageSize",
+																			"position": {
+																				"start": {
+																					"line": 351,
+																					"column": 55,
+																					"offset": 8464
+																				},
+																				"end": {
+																					"line": 351,
+																					"column": 65,
+																					"offset": 8474
+																				}
+																			}
+																		}
+																	],
+																	"modifiers": [],
+																	"shorthand": "none",
+																	"position": {
+																		"start": {
+																			"line": 351,
+																			"column": 40,
+																			"offset": 8449
+																		},
+																		"end": {
+																			"line": 351,
+																			"column": 66,
+																			"offset": 8475
+																		}
+																	},
+																	"specifier": "pageSize"
+																},
+																{
+																	"type": "svelteDirective",
+																	"name": "bind",
+																	"value": [
+																		{
+																			"type": "svelteExpression",
+																			"value": "currentPage",
+																			"position": {
+																				"start": {
+																					"line": 351,
+																					"column": 81,
+																					"offset": 8490
+																				},
+																				"end": {
+																					"line": 351,
+																					"column": 94,
+																					"offset": 8503
+																				}
+																			}
+																		}
+																	],
+																	"modifiers": [],
+																	"shorthand": "none",
+																	"position": {
+																		"start": {
+																			"line": 351,
+																			"column": 67,
+																			"offset": 8476
+																		},
+																		"end": {
+																			"line": 351,
+																			"column": 95,
+																			"offset": 8504
+																		}
+																	},
+																	"specifier": "current"
+																},
+																{
+																	"type": "svelteProperty",
+																	"name": "total",
+																	"value": [
+																		{
+																			"type": "svelteExpression",
+																			"value": " itemTotal ",
+																			"position": {
+																				"start": {
+																					"line": 351,
+																					"column": 103,
+																					"offset": 8512
+																				},
+																				"end": {
+																					"line": 351,
+																					"column": 116,
+																					"offset": 8525
+																				}
+																			}
+																		}
+																	],
+																	"modifiers": [],
+																	"shorthand": "none",
+																	"position": {
+																		"start": {
+																			"line": 351,
+																			"column": 96,
+																			"offset": 8505
+																		},
+																		"end": {
+																			"line": 351,
+																			"column": 117,
+																			"offset": 8526
 																		}
 																	}
 																}
@@ -2759,228 +3230,28 @@
 																	"value": "\n    ",
 																	"position": {
 																		"start": {
-																			"line": 350,
-																			"column": 27,
-																			"offset": 8409
-																		},
-																		"end": {
 																			"line": 351,
-																			"column": 5,
-																			"offset": 8414
-																		}
-																	}
-																},
-																{
-																	"type": "svelteComponent",
-																	"tagName": "Pagination",
-																	"properties": [
-																		{
-																			"type": "svelteDirective",
-																			"name": "on",
-																			"value": [
-																				{
-																					"type": "svelteExpression",
-																					"value": "onChange",
-																					"position": {
-																						"start": {
-																							"line": 351,
-																							"column": 28,
-																							"offset": 8437
-																						},
-																						"end": {
-																							"line": 351,
-																							"column": 38,
-																							"offset": 8447
-																						}
-																					}
-																				}
-																			],
-																			"modifiers": [],
-																			"shorthand": "none",
-																			"position": {
-																				"start": {
-																					"line": 351,
-																					"column": 17,
-																					"offset": 8426
-																				},
-																				"end": {
-																					"line": 351,
-																					"column": 39,
-																					"offset": 8448
-																				}
-																			},
-																			"specifier": "change"
-																		},
-																		{
-																			"type": "svelteDirective",
-																			"name": "bind",
-																			"value": [
-																				{
-																					"type": "svelteExpression",
-																					"value": "pageSize",
-																					"position": {
-																						"start": {
-																							"line": 351,
-																							"column": 55,
-																							"offset": 8464
-																						},
-																						"end": {
-																							"line": 351,
-																							"column": 65,
-																							"offset": 8474
-																						}
-																					}
-																				}
-																			],
-																			"modifiers": [],
-																			"shorthand": "none",
-																			"position": {
-																				"start": {
-																					"line": 351,
-																					"column": 40,
-																					"offset": 8449
-																				},
-																				"end": {
-																					"line": 351,
-																					"column": 66,
-																					"offset": 8475
-																				}
-																			},
-																			"specifier": "pageSize"
-																		},
-																		{
-																			"type": "svelteDirective",
-																			"name": "bind",
-																			"value": [
-																				{
-																					"type": "svelteExpression",
-																					"value": "currentPage",
-																					"position": {
-																						"start": {
-																							"line": 351,
-																							"column": 81,
-																							"offset": 8490
-																						},
-																						"end": {
-																							"line": 351,
-																							"column": 94,
-																							"offset": 8503
-																						}
-																					}
-																				}
-																			],
-																			"modifiers": [],
-																			"shorthand": "none",
-																			"position": {
-																				"start": {
-																					"line": 351,
-																					"column": 67,
-																					"offset": 8476
-																				},
-																				"end": {
-																					"line": 351,
-																					"column": 95,
-																					"offset": 8504
-																				}
-																			},
-																			"specifier": "current"
-																		},
-																		{
-																			"type": "svelteProperty",
-																			"name": "total",
-																			"value": [
-																				{
-																					"type": "svelteExpression",
-																					"value": " itemTotal ",
-																					"position": {
-																						"start": {
-																							"line": 351,
-																							"column": 103,
-																							"offset": 8512
-																						},
-																						"end": {
-																							"line": 351,
-																							"column": 116,
-																							"offset": 8525
-																						}
-																					}
-																				}
-																			],
-																			"modifiers": [],
-																			"shorthand": "none",
-																			"position": {
-																				"start": {
-																					"line": 351,
-																					"column": 96,
-																					"offset": 8505
-																				},
-																				"end": {
-																					"line": 351,
-																					"column": 117,
-																					"offset": 8526
-																				}
-																			}
-																		}
-																	],
-																	"selfClosing": false,
-																	"children": [
-																		{
-																			"type": "text",
-																			"value": "\n    ",
-																			"position": {
-																				"start": {
-																					"line": 351,
-																					"column": 118,
-																					"offset": 8527
-																				},
-																				"end": {
-																					"line": 352,
-																					"column": 5,
-																					"offset": 8532
-																				}
-																			}
-																		}
-																	],
-																	"position": {
-																		"start": {
-																			"line": 351,
-																			"column": 5,
-																			"offset": 8414
+																			"column": 118,
+																			"offset": 8527
 																		},
 																		"end": {
 																			"line": 352,
-																			"column": 18,
-																			"offset": 8545
-																		}
-																	}
-																},
-																{
-																	"type": "text",
-																	"value": "\n  ",
-																	"position": {
-																		"start": {
-																			"line": 352,
-																			"column": 18,
-																			"offset": 8545
-																		},
-																		"end": {
-																			"line": 353,
-																			"column": 3,
-																			"offset": 8548
+																			"column": 5,
+																			"offset": 8532
 																		}
 																	}
 																}
 															],
 															"position": {
 																"start": {
-																	"line": 350,
-																	"column": 3,
-																	"offset": 8385
+																	"line": 351,
+																	"column": 5,
+																	"offset": 8414
 																},
 																"end": {
-																	"line": 353,
-																	"column": 9,
-																	"offset": 8554
+																	"line": 352,
+																	"column": 18,
+																	"offset": 8545
 																}
 															}
 														},
@@ -2989,23 +3260,39 @@
 															"value": "\n  ",
 															"position": {
 																"start": {
-																	"line": 353,
-																	"column": 9,
-																	"offset": 8554
+																	"line": 352,
+																	"column": 18,
+																	"offset": 8545
 																},
 																"end": {
-																	"line": 354,
+																	"line": 353,
 																	"column": 3,
-																	"offset": 8557
+																	"offset": 8548
 																}
 															}
 														}
 													],
 													"position": {
 														"start": {
-															"line": 349,
+															"line": 350,
 															"column": 3,
-															"offset": 8342
+															"offset": 8385
+														},
+														"end": {
+															"line": 353,
+															"column": 9,
+															"offset": 8554
+														}
+													}
+												},
+												{
+													"type": "text",
+													"value": "\n  ",
+													"position": {
+														"start": {
+															"line": 353,
+															"column": 9,
+															"offset": 8554
 														},
 														"end": {
 															"line": 354,
@@ -3023,33 +3310,33 @@
 												},
 												"end": {
 													"line": 354,
-													"column": 10,
-													"offset": 8564
-												}
-											}
-										},
-										{
-											"type": "text",
-											"value": "\n  ",
-											"position": {
-												"start": {
-													"line": 354,
-													"column": 10,
-													"offset": 8564
-												},
-												"end": {
-													"line": 355,
 													"column": 3,
-													"offset": 8567
+													"offset": 8557
 												}
 											}
 										}
 									],
 									"position": {
 										"start": {
-											"line": 348,
+											"line": 349,
 											"column": 3,
-											"offset": 8318
+											"offset": 8342
+										},
+										"end": {
+											"line": 354,
+											"column": 10,
+											"offset": 8564
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n  ",
+									"position": {
+										"start": {
+											"line": 354,
+											"column": 10,
+											"offset": 8564
 										},
 										"end": {
 											"line": 355,
@@ -3067,64 +3354,137 @@
 								},
 								"end": {
 									"line": 355,
-									"column": 10,
-									"offset": 8574
-								}
-							}
-						},
-						{
-							"type": "text",
-							"value": "\n \n  ",
-							"position": {
-								"start": {
-									"line": 355,
-									"column": 10,
-									"offset": 8574
-								},
-								"end": {
-									"line": 357,
 									"column": 3,
-									"offset": 8579
+									"offset": 8567
 								}
 							}
+						}
+					],
+					"position": {
+						"start": {
+							"line": 348,
+							"column": 3,
+							"offset": 8318
 						},
+						"end": {
+							"line": 355,
+							"column": 10,
+							"offset": 8574
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n \n  ",
+					"position": {
+						"start": {
+							"line": 355,
+							"column": 10,
+							"offset": 8574
+						},
+						"end": {
+							"line": 357,
+							"column": 3,
+							"offset": 8579
+						}
+					}
+				},
+				{
+					"type": "svelteBranchingBlock",
+					"name": "if",
+					"branches": [
 						{
-							"type": "svelteBranchingBlock",
+							"type": "svelteBranch",
 							"name": "if",
-							"branches": [
-								{
-									"type": "svelteBranch",
-									"name": "if",
-									"expression": {
-										"type": "svelteExpression",
-										"value": "isLoading ",
-										"position": {
-											"start": {
-												"line": 357,
-												"column": 9,
-												"offset": 8585
-											},
-											"end": {
-												"line": 357,
-												"column": 19,
-												"offset": 8595
-											}
-										}
+							"expression": {
+								"type": "svelteExpression",
+								"value": "isLoading ",
+								"position": {
+									"start": {
+										"line": 357,
+										"column": 9,
+										"offset": 8585
 									},
-									"children": [
+									"end": {
+										"line": 357,
+										"column": 19,
+										"offset": 8595
+									}
+								}
+							},
+							"children": [
+								{
+									"type": "text",
+									"value": "\n  ",
+									"position": {
+										"start": {
+											"line": 357,
+											"column": 20,
+											"offset": 8596
+										},
+										"end": {
+											"line": 358,
+											"column": 3,
+											"offset": 8599
+										}
+									}
+								},
+								{
+									"type": "svelteElement",
+									"tagName": "div",
+									"properties": [
 										{
-											"type": "text",
-											"value": "\n  ",
+											"type": "svelteProperty",
+											"name": "class",
+											"value": [
+												{
+													"type": "text",
+													"value": "loader",
+													"position": {
+														"start": {
+															"line": 358,
+															"column": 15,
+															"offset": 8611
+														},
+														"end": {
+															"line": 358,
+															"column": 21,
+															"offset": 8617
+														}
+													}
+												}
+											],
+											"modifiers": [],
+											"shorthand": "none",
 											"position": {
 												"start": {
-													"line": 357,
-													"column": 20,
-													"offset": 8596
+													"line": 358,
+													"column": 8,
+													"offset": 8604
 												},
 												"end": {
 													"line": 358,
-													"column": 3,
-													"offset": 8599
+													"column": 22,
+													"offset": 8618
+												}
+											}
+										}
+									],
+									"selfClosing": false,
+									"children": [
+										{
+											"type": "text",
+											"value": "\n    ",
+											"position": {
+												"start": {
+													"line": 358,
+													"column": 23,
+													"offset": 8619
+												},
+												"end": {
+													"line": 359,
+													"column": 5,
+													"offset": 8624
 												}
 											}
 										},
@@ -3138,17 +3498,17 @@
 													"value": [
 														{
 															"type": "text",
-															"value": "loader",
+															"value": "loader_spinner",
 															"position": {
 																"start": {
-																	"line": 358,
-																	"column": 15,
-																	"offset": 8611
+																	"line": 359,
+																	"column": 17,
+																	"offset": 8636
 																},
 																"end": {
-																	"line": 358,
-																	"column": 21,
-																	"offset": 8617
+																	"line": 359,
+																	"column": 31,
+																	"offset": 8650
 																}
 															}
 														}
@@ -3157,14 +3517,14 @@
 													"shorthand": "none",
 													"position": {
 														"start": {
-															"line": 358,
-															"column": 8,
-															"offset": 8604
+															"line": 359,
+															"column": 10,
+															"offset": 8629
 														},
 														"end": {
-															"line": 358,
-															"column": 22,
-															"offset": 8618
+															"line": 359,
+															"column": 32,
+															"offset": 8651
 														}
 													}
 												}
@@ -3173,155 +3533,66 @@
 											"children": [
 												{
 													"type": "text",
-													"value": "\n    ",
+													"value": "\n      ",
 													"position": {
 														"start": {
-															"line": 358,
-															"column": 23,
-															"offset": 8619
+															"line": 359,
+															"column": 33,
+															"offset": 8652
 														},
 														"end": {
-															"line": 359,
-															"column": 5,
-															"offset": 8624
+															"line": 360,
+															"column": 7,
+															"offset": 8659
 														}
 													}
 												},
 												{
-													"type": "svelteElement",
-													"tagName": "div",
-													"properties": [
-														{
-															"type": "svelteProperty",
-															"name": "class",
-															"value": [
-																{
-																	"type": "text",
-																	"value": "loader_spinner",
-																	"position": {
-																		"start": {
-																			"line": 359,
-																			"column": 17,
-																			"offset": 8636
-																		},
-																		"end": {
-																			"line": 359,
-																			"column": 31,
-																			"offset": 8650
-																		}
-																	}
-																}
-															],
-															"modifiers": [],
-															"shorthand": "none",
-															"position": {
-																"start": {
-																	"line": 359,
-																	"column": 10,
-																	"offset": 8629
-																},
-																"end": {
-																	"line": 359,
-																	"column": 32,
-																	"offset": 8651
-																}
-															}
-														}
-													],
+													"type": "svelteComponent",
+													"tagName": "Spinner",
+													"properties": [],
 													"selfClosing": false,
-													"children": [
-														{
-															"type": "text",
-															"value": "\n      ",
-															"position": {
-																"start": {
-																	"line": 359,
-																	"column": 33,
-																	"offset": 8652
-																},
-																"end": {
-																	"line": 360,
-																	"column": 7,
-																	"offset": 8659
-																}
-															}
-														},
-														{
-															"type": "svelteComponent",
-															"tagName": "Spinner",
-															"properties": [],
-															"selfClosing": false,
-															"children": [],
-															"position": {
-																"start": {
-																	"line": 360,
-																	"column": 7,
-																	"offset": 8659
-																},
-																"end": {
-																	"line": 360,
-																	"column": 26,
-																	"offset": 8678
-																}
-															}
-														},
-														{
-															"type": "text",
-															"value": "\n    ",
-															"position": {
-																"start": {
-																	"line": 360,
-																	"column": 26,
-																	"offset": 8678
-																},
-																"end": {
-																	"line": 361,
-																	"column": 5,
-																	"offset": 8683
-																}
-															}
-														}
-													],
+													"children": [],
 													"position": {
 														"start": {
-															"line": 359,
-															"column": 5,
-															"offset": 8624
+															"line": 360,
+															"column": 7,
+															"offset": 8659
 														},
 														"end": {
-															"line": 361,
-															"column": 11,
-															"offset": 8689
+															"line": 360,
+															"column": 26,
+															"offset": 8678
 														}
 													}
 												},
 												{
 													"type": "text",
-													"value": "\n  ",
+													"value": "\n    ",
 													"position": {
 														"start": {
-															"line": 361,
-															"column": 11,
-															"offset": 8689
+															"line": 360,
+															"column": 26,
+															"offset": 8678
 														},
 														"end": {
-															"line": 362,
-															"column": 3,
-															"offset": 8692
+															"line": 361,
+															"column": 5,
+															"offset": 8683
 														}
 													}
 												}
 											],
 											"position": {
 												"start": {
-													"line": 358,
-													"column": 3,
-													"offset": 8599
+													"line": 359,
+													"column": 5,
+													"offset": 8624
 												},
 												"end": {
-													"line": 362,
-													"column": 9,
-													"offset": 8698
+													"line": 361,
+													"column": 11,
+													"offset": 8689
 												}
 											}
 										},
@@ -3330,23 +3601,39 @@
 											"value": "\n  ",
 											"position": {
 												"start": {
-													"line": 362,
-													"column": 9,
-													"offset": 8698
+													"line": 361,
+													"column": 11,
+													"offset": 8689
 												},
 												"end": {
-													"line": 363,
+													"line": 362,
 													"column": 3,
-													"offset": 8701
+													"offset": 8692
 												}
 											}
 										}
 									],
 									"position": {
 										"start": {
-											"line": 357,
+											"line": 358,
 											"column": 3,
-											"offset": 8579
+											"offset": 8599
+										},
+										"end": {
+											"line": 362,
+											"column": 9,
+											"offset": 8698
+										}
+									}
+								},
+								{
+									"type": "text",
+									"value": "\n  ",
+									"position": {
+										"start": {
+											"line": 362,
+											"column": 9,
+											"offset": 8698
 										},
 										"end": {
 											"line": 363,
@@ -3364,38 +3651,38 @@
 								},
 								"end": {
 									"line": 363,
-									"column": 10,
-									"offset": 8708
-								}
-							}
-						},
-						{
-							"type": "text",
-							"value": "\n",
-							"position": {
-								"start": {
-									"line": 363,
-									"column": 10,
-									"offset": 8708
-								},
-								"end": {
-									"line": 364,
-									"column": 1,
-									"offset": 8709
+									"column": 3,
+									"offset": 8701
 								}
 							}
 						}
 					],
 					"position": {
 						"start": {
-							"line": 285,
+							"line": 357,
 							"column": 3,
-							"offset": 6282
+							"offset": 8579
+						},
+						"end": {
+							"line": 363,
+							"column": 10,
+							"offset": 8708
+						}
+					}
+				},
+				{
+					"type": "text",
+					"value": "\n",
+					"position": {
+						"start": {
+							"line": 363,
+							"column": 10,
+							"offset": 8708
 						},
 						"end": {
 							"line": 364,
-							"column": 7,
-							"offset": 8715
+							"column": 1,
+							"offset": 8709
 						}
 					}
 				}
@@ -3407,9 +3694,9 @@
 					"offset": 6258
 				},
 				"end": {
-					"line": 365,
-					"column": 1,
-					"offset": 8716
+					"line": 364,
+					"column": 7,
+					"offset": 8715
 				}
 			}
 		}
@@ -3421,9 +3708,9 @@
 			"offset": 0
 		},
 		"end": {
-			"line": 365,
-			"column": 1,
-			"offset": 8716
+			"line": 364,
+			"column": 7,
+			"offset": 8715
 		}
 	}
 }

@@ -380,6 +380,9 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		if (get_state() === 'IN_BRANCHING_BLOCK') {
 			if (value.charCodeAt(index) === CLOSE_BRACE) {
 				chomp();
+				node_stack.pop();
+				state.push('PARSE_CHILDREN');
+				continue;
 			}
 
 			if (value.charCodeAt(index) === SPACE) {
@@ -392,9 +395,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 				continue;
 			}
-			node_stack.pop();
-
-			state.push('PARSE_CHILDREN');
 		}
 
 		if (get_state() === 'IN_BRANCHING_BLOCK_BRANCH') {
@@ -1135,7 +1135,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 							//@ts-ignore
 							current_node().position.end = place();
 						}
-						chomp();
+						// chomp();
 						continue;
 					} else {
 						state.pop();
@@ -1158,8 +1158,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				expr_quote_type === '' &&
 				(value.charCodeAt(index) === APOSTROPHE ||
 					value.charCodeAt(index) === QUOTE ||
-					value.charCodeAt(index) === BACKTICK ||
-					value.charCodeAt(index) === SLASH)
+					value.charCodeAt(index) === BACKTICK)
 			) {
 				state.push('IN_EXPRESSION_QUOTE');
 				expr_quote_type = value[index];

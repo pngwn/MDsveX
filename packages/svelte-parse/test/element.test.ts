@@ -11,7 +11,7 @@ import {
 	Point,
 } from 'svast';
 
-import { parseNode } from '../src/main';
+import { parseNode, parse } from '../src/main';
 import { void_els } from '../src/void_els';
 
 const childParser: () => [Node[], Point & { index?: number }, number] = () => [
