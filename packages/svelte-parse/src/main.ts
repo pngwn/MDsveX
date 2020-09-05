@@ -156,7 +156,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		// right at the start
-		if (!current_state) {
+		if (current_state === void 0) {
 			if (RE_BLOCK_BRANCH.test(value.substring(index))) {
 				if (generatePositions && node_stack.length)
 					//@ts-ignore
