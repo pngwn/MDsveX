@@ -124,14 +124,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		char = value.charCodeAt(index);
 	}
 
-	// function current_state {
-	// 	return state[state.length - 1];
-	// }
-
-	// function current_node {
-	// 	return node_stack[node_stack.length - 1];
-	// }
-
 	function place() {
 		const _p = Object.assign({}, position);
 		delete _p.index;
@@ -250,9 +242,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.MAYBE_IN_EXPRESSION) {
-			// if (char === COLON) return;
-			// if (char === SLASH) return;
-
 			if (char === SPACE || char === LINEFEED || char === TAB) {
 				chomp();
 				continue;
@@ -456,8 +445,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (char === CLOSE_BRACE) {
-				//push_node((current_node as VoidBlock).expression);
-
 				if (generatePositions)
 					//@ts-ignore
 					(current_node as VoidBlock).expression.position = {
@@ -1104,7 +1091,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 							//@ts-ignore
 							current_node.position.end = place();
 						}
-						// chomp();
 						continue;
 					} else {
 						pop_state();
