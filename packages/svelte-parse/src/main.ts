@@ -78,13 +78,11 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 	let expr_quote_type = '';
 	let closing_tag_name = '';
 	let brace_count = 0;
-	let done;
-	let error;
 
 	const node_stack: Node[] = [];
 	const state: State[] = [];
 
-	let {
+	const {
 		value,
 		currentPosition = {
 			line: 1,
@@ -95,11 +93,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		childParser,
 		generatePositions = true,
 	} = opts;
-
-	// TODO: remove this
-	const lineFeed = '\n';
-	const lineBreaksExpression = /\r\n|\r/g;
-	value = value.replace(lineBreaksExpression, lineFeed);
 
 	let position = Object.assign(currentPosition, { index });
 	let char = value.charCodeAt(index);
@@ -153,7 +146,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		current_node = node_stack[node_stack.length - 1];
 	}
 
-	while (!done && !error) {
+	for (;;) {
 		// console.log(value[index], node_stack, state);
 		if (!value[index]) {
 			if (generatePositions)
@@ -1201,10 +1194,10 @@ function parse_siblings(opts: ParseNodeOptions): [Node[], Point, number] {
 	return [children, position, index];
 }
 
-export function parse(opts: ParseOptions): Root {
-	const lineFeed = '\n';
-	const lineBreaksExpression = /\r\n|\r/g;
+const lineFeed = '\n';
+const lineBreaksExpression = /\r\n|\r/g;
 
+export function parse(opts: ParseOptions): Root {
 	const root = <Root>{
 		type: 'root',
 		children: parse_siblings({
