@@ -68,10 +68,6 @@ function is_lower_alpha(code: number) {
 	return is_in_range(code, LOWERCASE_A, LOWERCASE_Z);
 }
 
-function is_void_element(tag_name: string): boolean {
-	return void_els.includes(tag_name);
-}
-
 export function parseNode(opts: ParseNodeOptions): Result | undefined {
 	let index = 0;
 	let quote_type = '';
@@ -482,7 +478,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			if (
 				char === SLASH ||
 				(char === CLOSE_ANGLE_BRACKET &&
-					is_void_element((current_node as SvelteElement).tagName))
+					//@ts-ignore
+					void_els[current_node.tagName] !== void 0)
 			) {
 				set_state(State.IN_CLOSING_SLASH, true);
 				(current_node as SvelteElement).selfClosing = true;
@@ -561,7 +558,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			if (
 				char === SLASH ||
 				(char === CLOSE_ANGLE_BRACKET &&
-					is_void_element((current_node as SvelteElement).tagName))
+					//@ts-ignore
+					void_els[current_node.tagName] !== void 0)
 			) {
 				set_state(State.IN_CLOSING_SLASH, true);
 				(current_node as BaseSvelteTag<''>).selfClosing = true;
