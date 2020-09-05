@@ -89,7 +89,7 @@ export interface ParseOptions {
 	generatePositions: boolean;
 }
 
-export enum State {
+export const enum State {
 	IN_START_TAG,
 	IN_TAG_NAME,
 	IN_TAG_BODY,
