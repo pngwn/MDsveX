@@ -54,7 +54,7 @@
 			}
 		},
 		{
-			"type": "svelteTag",
+			"type": "svelteMeta",
 			"tagName": "style",
 			"properties": [],
 			"selfClosing": false,
