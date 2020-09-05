@@ -128,6 +128,9 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		current_node = node_stack[node_stack.length - 1];
 	}
 
+	let _n;
+	let _n2;
+
 	for (;;) {
 		// console.log(value[index], node_stack, state);
 		if (value[index] === void 0) {
@@ -151,7 +154,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (RE_COMMENT_START.test(value.substring(index))) {
-				const _n = <Comment>{
+				_n = <Comment>{
 					type: 'comment',
 					value: '',
 				};
@@ -223,7 +226,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (char === AT) {
-				const _n = <VoidBlock>{
+				_n = <VoidBlock>{
 					type: 'svelteVoidBlock',
 					name: '',
 					expression: {
@@ -266,12 +269,12 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (char === SPACE) {
-				const _n = <BranchingBlock>{
+				_n = <BranchingBlock>{
 					type: 'svelteBranchingBlock',
 					name: (current_node as SvelteExpression).value,
 					branches: [],
 				};
-				const _n2 = <Branch>{
+				_n2 = <Branch>{
 					type: 'svelteBranch',
 					name: (current_node as SvelteExpression).value,
 					expression: {
@@ -336,7 +339,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 					value.substring(index - 4, index + 3) !== 'else if') ||
 				char === CLOSE_BRACE
 			) {
-				const _n2 = <Branch>{
+				_n2 = <Branch>{
 					type: 'svelteBranch',
 					name: (current_node as SvelteExpression).value,
 					expression: {
@@ -635,7 +638,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			if (char === PIPE) {
 				chomp();
-				const _n = { value: '', type: 'modifier' };
+				_n = { value: '', type: 'modifier' };
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: [] };
@@ -680,7 +683,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			if (char === OPEN_BRACE) {
 				set_state(State.IN_UNQUOTED_ATTR_VALUE, true);
 
-				const _n = <SvelteExpression>{ type: 'svelteExpression', value: '' };
+				_n = <SvelteExpression>{ type: 'svelteExpression', value: '' };
 				(current_node as Property).value.push(_n as SvelteExpression);
 				push_node(_n);
 				if (generatePositions)
@@ -689,7 +692,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			} else {
 				set_state(State.IN_UNQUOTED_ATTR_VALUE, true);
-				const _n = { type: 'text', value: '' };
+				_n = { type: 'text', value: '' };
 				(current_node as Property).value.push(_n as Text);
 				push_node(_n);
 				if (generatePositions)
@@ -758,7 +761,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 					//@ts-ignore
 					current_node.position.end = place();
 				pop_node();
-				const _n = {
+				_n = {
 					type: 'svelteExpression',
 					value: '',
 				};
@@ -785,7 +788,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 					continue;
 				}
 				pop_node();
-				const _n = { type: 'text', value: '' };
+				_n = { type: 'text', value: '' };
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
@@ -797,7 +800,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			if (value.charCodeAt(index - 1) === CLOSE_BRACE) {
 				pop_node();
-				const _n = { type: 'text', value: value[index] };
+				_n = { type: 'text', value: value[index] };
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
@@ -810,7 +813,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			//@ts-ignore
 			if (current_node.type === 'blank') {
 				pop_node();
-				const _n = { type: 'text', value: '' };
+				_n = { type: 'text', value: '' };
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
@@ -833,7 +836,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (char === PIPE) {
-				const _n = { value: '', type: 'modifier' };
+				_n = { value: '', type: 'modifier' };
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
@@ -865,7 +868,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		if (current_state === State.IN_ATTR_MODIFIER) {
 			if (char === PIPE) {
 				pop_node();
-				const _n = { value: '', type: 'modifier' };
+				_n = { value: '', type: 'modifier' };
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
@@ -921,7 +924,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				(current_node as SvelteElement | SvelteTag).tagName === 'style'
 			) {
 				(current_node as SvelteElement | SvelteTag).type = 'svelteTag';
-				const _n = {
+				_n = {
 					type: 'text',
 					value: '',
 				};
@@ -957,7 +960,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		if (current_state === State.EXPECT_END_OR_BRANCH) {
 			if (RE_BLOCK_BRANCH.test(value.substring(index))) {
 				set_state(State.IN_BRANCHING_BLOCK_BRANCH, true);
-				const _n = <Text>{
+				_n = <Text>{
 					type: 'text',
 					value: '',
 				};
@@ -1119,7 +1122,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		set_state(State.IN_TEXT);
-		const _n = {
+		_n = {
 			type: 'text',
 			value: '',
 		};
