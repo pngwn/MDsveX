@@ -724,7 +724,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				s === TAB ||
 				s === LINEFEED ||
 				s === CLOSE_ANGLE_BRACKET ||
-				/^\/\s*>/.test(value.slice(index))
+				/^\/\s*>/.test(value.substring(index))
 			) {
 				pop_state();
 				if (generatePositions)
@@ -954,7 +954,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			} else {
 				const [children, lastPosition, lastIndex] = childParser({
 					generatePositions,
-					value: value.slice(index),
+					value: value.substring(index),
 					currentPosition: position,
 					childParser,
 				});
@@ -1149,8 +1149,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 	}
 
 	return {
-		chomped: value.slice(0, index),
-		unchomped: value.slice(index),
+		chomped: value.substring(0, index),
+		unchomped: value.substring(index),
 		parsed: node_stack[0],
 		position,
 	};
