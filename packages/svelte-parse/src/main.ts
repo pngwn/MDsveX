@@ -56,18 +56,6 @@ import {
 
 import { void_els } from './void_els';
 
-function is_in_range(number: number, from: number, to: number): boolean {
-	return number >= from && number <= to;
-}
-
-function is_upper_alpha(code: number) {
-	return is_in_range(code, UPPERCASE_A, UPPERCASE_Z);
-}
-
-function is_lower_alpha(code: number) {
-	return is_in_range(code, LOWERCASE_A, LOWERCASE_Z);
-}
-
 export function parseNode(opts: ParseNodeOptions): Result | undefined {
 	let index = 0;
 	let quote_type = '';
@@ -453,14 +441,14 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		if (current_state === State.IN_START_TAG) {
 			if (char === SLASH) return;
 			// lowercase characters for element names
-			if (is_lower_alpha(char)) {
+			if (char >= LOWERCASE_A && char <= LOWERCASE_Z) {
 				(current_node as BaseSvelteTag<'svelteElement'>).type = 'svelteElement';
 				set_state(State.IN_TAG_NAME);
 				continue;
 			}
 
-			// uppercase characters for Component names
-			if (is_upper_alpha(char)) {
+			// uppercase characters for Component names UPPERCASE_A, UPPERCASE_Z
+			if (char >= UPPERCASE_A && char <= UPPERCASE_Z) {
 				(current_node as BaseSvelteTag<'svelteComponent'>).type =
 					'svelteComponent';
 				set_state(State.IN_TAG_NAME);
@@ -536,7 +524,10 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 			// letters mean we've hit an attribute
-			if (is_lower_alpha(char) || is_upper_alpha(char)) {
+			if (
+				(char >= LOWERCASE_A && char <= LOWERCASE_Z) ||
+				(char >= UPPERCASE_A && char <= UPPERCASE_Z)
+			) {
 				set_state(State.IN_ATTR_NAME);
 				const _node = <Property>{
 					type: 'svelteProperty',
