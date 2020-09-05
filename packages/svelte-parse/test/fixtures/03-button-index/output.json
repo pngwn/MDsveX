@@ -2521,7 +2521,7 @@
 			}
 		},
 		{
-			"type": "svelteTag",
+			"type": "svelteMeta",
 			"tagName": "script",
 			"properties": [],
 			"selfClosing": false,

@@ -2,7 +2,7 @@
 	"type": "root",
 	"children": [
 		{
-			"type": "svelteTag",
+			"type": "svelteMeta",
 			"tagName": "options",
 			"properties": [
 				{
@@ -53,7 +53,7 @@
 			}
 		},
 		{
-			"type": "svelteTag",
+			"type": "svelteMeta",
 			"tagName": "script",
 			"properties": [],
 			"selfClosing": false,

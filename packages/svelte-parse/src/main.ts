@@ -2,7 +2,7 @@ import {
 	Point,
 	Node,
 	BaseSvelteTag,
-	SvelteTag,
+	SvelteMeta,
 	Property,
 	SvelteElement,
 	Directive,
@@ -487,8 +487,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (char === COLON) {
-				(current_node as SvelteTag).type = 'svelteTag';
-				(current_node as SvelteTag).tagName = '';
+				(current_node as SvelteMeta).type = 'svelteMeta';
+				(current_node as SvelteMeta).tagName = '';
 				chomp();
 				continue;
 			}
@@ -498,7 +498,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			(current_node as SvelteTag).tagName += value[index];
+			(current_node as SvelteMeta).tagName += value[index];
 			chomp();
 			continue;
 		}
@@ -913,17 +913,17 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				}
 			}
 
-			(current_node as SvelteTag).value += value[index];
+			(current_node as SvelteMeta).value += value[index];
 			chomp();
 			continue;
 		}
 
 		if (current_state === State.PARSE_CHILDREN) {
 			if (
-				(current_node as SvelteElement | SvelteTag).tagName === 'script' ||
-				(current_node as SvelteElement | SvelteTag).tagName === 'style'
+				(current_node as SvelteElement | SvelteMeta).tagName === 'script' ||
+				(current_node as SvelteElement | SvelteMeta).tagName === 'style'
 			) {
-				(current_node as SvelteElement | SvelteTag).type = 'svelteTag';
+				(current_node as SvelteElement | SvelteMeta).type = 'svelteMeta';
 				_n = {
 					type: 'text',
 					value: '',
@@ -931,7 +931,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
-				(current_node as SvelteTag).children.push(_n as Text);
+				(current_node as SvelteMeta).children.push(_n as Text);
 				push_node(_n);
 
 				set_state(State.IN_SCRIPT_STYLE, true);
@@ -1002,17 +1002,17 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 				let current_node_name = closing_tag_name;
 
-				if ((current_node as Node).type === 'svelteTag') {
+				if ((current_node as Node).type === 'svelteMeta') {
 					current_node_name = current_node_name.replace('svelte:', '');
 				}
 
 				if (
 					current_node_name !==
-					(current_node as SvelteTag | SvelteComponent | SvelteElement).tagName
+					(current_node as SvelteMeta | SvelteComponent | SvelteElement).tagName
 				) {
 					console.log(
 						`Was expecting a closing tag for ${
-							(current_node as SvelteTag | SvelteComponent | SvelteElement)
+							(current_node as SvelteMeta | SvelteComponent | SvelteElement)
 								.tagName
 						} but got ${closing_tag_name}`,
 						//@ts-ignore
