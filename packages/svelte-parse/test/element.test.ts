@@ -136,7 +136,7 @@ element('parses a self closing component without attributes', () => {
 	});
 });
 
-void_els.forEach((el) => {
+Object.keys(void_els).forEach((el) => {
 	element(`parses all void tags without attributes: < ${el} >`, () => {
 		//@ts-ignore
 		const { parsed } = parseNode({
