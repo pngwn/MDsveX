@@ -82,19 +82,15 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 	const node_stack: Node[] = [];
 	const state: State[] = [];
 
-	const {
-		value,
-		currentPosition = {
-			line: 1,
-			column: 1,
-			offset: 0,
-		},
-		block = true,
-		childParser,
-		generatePositions = true,
-	} = opts;
+	const { value, block = true, childParser, generatePositions = true } = opts;
 
-	let position = Object.assign(currentPosition, { index });
+	let position = opts.currentPosition || {
+		line: 1,
+		column: 1,
+		offset: 0,
+		index,
+	};
+
 	let char = value.charCodeAt(index);
 
 	function chomp() {
@@ -621,15 +617,14 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 		// we are parsing a property name
 		if (current_state === State.IN_ATTR_NAME) {
-			let s;
 			// " ", "\n", "/" or ">" => shorthand boolean attr
 
 			if (
-				(s = char) === SPACE ||
-				s === TAB ||
-				s === LINEFEED ||
-				s === SLASH ||
-				s === CLOSE_ANGLE_BRACKET
+				char === SPACE ||
+				char === TAB ||
+				char === LINEFEED ||
+				char === SLASH ||
+				char === CLOSE_ANGLE_BRACKET
 			) {
 				(current_node as Property).shorthand = 'boolean';
 				pop_state();
@@ -674,8 +669,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		// att values can be quoted or unquoted
 		if (current_state === State.IN_ATTR_VALUE) {
 			// ignore whitespace it is valid after `=`
-			let s;
-			if ((s = char) === SPACE || s === TAB || s === LINEFEED) {
+
+			if (char === SPACE || char === TAB || char === LINEFEED) {
 				chomp();
 				continue;
 			}
@@ -717,13 +712,12 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.IN_UNQUOTED_ATTR_VALUE) {
-			let s;
 			// " ", "\n", "/" or ">" => ends the whole thing
 			if (
-				(s = char) === SPACE ||
-				s === TAB ||
-				s === LINEFEED ||
-				s === CLOSE_ANGLE_BRACKET ||
+				char === SPACE ||
+				char === TAB ||
+				char === LINEFEED ||
+				char === CLOSE_ANGLE_BRACKET ||
 				/^\/\s*>/.test(value.substring(index))
 			) {
 				pop_state();
@@ -792,9 +786,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			let s;
 			// " ", "\n" => still in the attribute value but make a new node
-			if ((s = char) === SPACE || s === TAB || s === LINEFEED) {
+			if (char === SPACE || char === TAB || char === LINEFEED) {
 				const _c = current_node as Text | SvelteExpression;
 				if (_c.type === 'text' && _c.value === '') {
 					chomp();
@@ -860,14 +853,13 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			let s;
 			// " ", "\n", "/" or ">" => ends the whole thing
 			if (
-				(s = char) === SPACE ||
-				s === TAB ||
-				s === LINEFEED ||
-				s === SLASH ||
-				s === CLOSE_ANGLE_BRACKET
+				char === SPACE ||
+				char === TAB ||
+				char === LINEFEED ||
+				char === SLASH ||
+				char === CLOSE_ANGLE_BRACKET
 			) {
 				pop_state();
 				pop_node();
@@ -899,13 +891,12 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			let s;
-			if ((s = char) === SPACE || s === TAB || s === LINEFEED) {
+			if (char === SPACE || char === TAB || char === LINEFEED) {
 				chomp();
 				continue;
 			}
 
-			if ((s = char) === SLASH || s === CLOSE_ANGLE_BRACKET) {
+			if (char === SLASH || char === CLOSE_ANGLE_BRACKET) {
 				pop_node();
 				pop_node();
 				pop_state();
@@ -960,6 +951,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				});
 
 				(current_node as Parent).children = result[0];
+				//@ts-ignore
 				const _index = position.index + result[2];
 
 				position = Object.assign({}, result[1]) as Point & { index: number };
@@ -972,8 +964,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.EXPECT_END_OR_BRANCH) {
-			let s;
-
 			if (RE_BLOCK_BRANCH.test(value.substring(index))) {
 				set_state(State.IN_BRANCHING_BLOCK_BRANCH, true);
 				const _n = <Text>{
@@ -1184,7 +1174,9 @@ function parse_siblings(opts: ParseNodeOptions): [Node[], Point, number] {
 			childParser,
 		});
 		if (!result) break;
-		({ position, unchomped, parsed } = result);
+		position = result.position;
+		unchomped = result.unchomped;
+		parsed = result.parsed;
 		//@ts-ignore
 
 		index += position.index;
