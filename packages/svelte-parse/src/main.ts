@@ -459,7 +459,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.IN_START_TAG) {
-			if (char === SLASH) return undefined;
+			if (char === SLASH) return;
 			// lowercase characters for element names
 			if (is_lower_alpha(char)) {
 				(current_node as BaseSvelteTag).type = 'svelteElement';
