@@ -148,7 +148,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 	for (;;) {
 		// console.log(value[index], node_stack, state);
-		if (!value[index] === void 0) {
+		if (value[index] === void 0) {
 			if (generatePositions)
 				//@ts-ignore
 				current_node.position.end = place();
@@ -202,7 +202,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			if (char === OPEN_ANGLE_BRACKET) {
 				set_state(State.IN_START_TAG);
-				push_node(<BaseSvelteTag>{
+				push_node(<BaseSvelteTag<''>>{
 					type: '',
 					tagName: '',
 					properties: [],
@@ -462,14 +462,15 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			if (char === SLASH) return;
 			// lowercase characters for element names
 			if (is_lower_alpha(char)) {
-				(current_node as BaseSvelteTag).type = 'svelteElement';
+				(current_node as BaseSvelteTag<'svelteElement'>).type = 'svelteElement';
 				set_state(State.IN_TAG_NAME);
 				continue;
 			}
 
 			// uppercase characters for Component names
 			if (is_upper_alpha(char)) {
-				(current_node as BaseSvelteTag).type = 'svelteComponent';
+				(current_node as BaseSvelteTag<'svelteComponent'>).type =
+					'svelteComponent';
 				set_state(State.IN_TAG_NAME);
 				continue;
 			}
@@ -488,7 +489,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 					is_void_element((current_node as SvelteElement).tagName))
 			) {
 				set_state(State.IN_CLOSING_SLASH, true);
-				(current_node as BaseSvelteTag).selfClosing = true;
+				(current_node as SvelteElement).selfClosing = true;
 				if (char === SLASH) chomp();
 				continue;
 			}
@@ -533,7 +534,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 					shorthand: 'expression',
 				};
 
-				(current_node as BaseSvelteTag).properties.push(_node as Property);
+				(current_node as BaseSvelteTag<''>).properties.push(_node as Property);
 				push_node(_node);
 				if (generatePositions)
 					//@ts-ignore
@@ -552,7 +553,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 					shorthand: 'none',
 				};
 
-				(current_node as BaseSvelteTag).properties.push(_node as Property);
+				(current_node as BaseSvelteTag<''>).properties.push(_node as Property);
 				push_node(_node);
 				if (generatePositions)
 					//@ts-ignore
@@ -567,7 +568,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 					is_void_element((current_node as SvelteElement).tagName))
 			) {
 				set_state(State.IN_CLOSING_SLASH, true);
-				(current_node as BaseSvelteTag).selfClosing = true;
+				(current_node as BaseSvelteTag<''>).selfClosing = true;
 				if (char === SLASH) chomp();
 				continue;
 			}
