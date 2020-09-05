@@ -189,11 +189,15 @@ importers:
       svast: 'link:../svast'
     devDependencies:
       '@rollup/plugin-sucrase': 3.1.0_rollup@2.26.5
+      '@rollup/plugin-typescript': 5.0.2_rollup@2.26.5
+      install: 0.13.0
       rollup: 2.26.5
       rollup-plugin-dts: 1.4.12_rollup@2.26.5
       watchlist: 0.2.3
     specifiers:
       '@rollup/plugin-sucrase': ^3.1.0
+      '@rollup/plugin-typescript': ^5.0.2
+      install: ^0.13.0
       rollup: ^2.26.5
       rollup-plugin-dts: ^1.4.12
       svast: 'workspace:^0.0.1'
@@ -1194,6 +1198,20 @@ packages:
       rollup: ^1.20.0 || ^2.0.0
     resolution:
       integrity: sha512-PZ70LDNgIj8rL+3pKwKwTBOQ2c9JofXeLbWz+2V4/nCt4LqwYTNqxJJf1riTJsVARVzJdA0woIzUzjKZvL8TfA==
+  /@rollup/plugin-typescript/5.0.2_rollup@2.26.5:
+    dependencies:
+      '@rollup/pluginutils': 3.1.0_rollup@2.26.5
+      resolve: 1.17.0
+      rollup: 2.26.5
+    dev: true
+    engines:
+      node: '>=8.0.0'
+    peerDependencies:
+      rollup: ^2.14.0
+      tslib: '*'
+      typescript: '>=3.4.0'
+    resolution:
+      integrity: sha512-CkS028Itwjqm1uLbFVfpJgtVtnNvZ+og/m6UlNRR5wOOnNTWPcVQzOu5xGdEX+WWJxdvWIqUq2uR/RBt2ZipWg==
   /@rollup/pluginutils/3.1.0_rollup@2.26.4:
     dependencies:
       '@types/estree': 0.0.39
@@ -2888,6 +2906,12 @@ packages:
       node: '>=8.0.0'
     resolution:
       integrity: sha512-JG3eIAj5V9CwcGvuOmoo6LB9kbAYT8HXffUl6memuszlwDC/qvFAJw49XJ5NROSFNPxp3iQg1GqkFhaY/CR0IA==
+  /install/0.13.0:
+    dev: true
+    engines:
+      node: '>= 0.10'
+    resolution:
+      integrity: sha512-zDml/jzr2PKU9I8J/xyZBQn8rPCAY//UOYNmR01XwNwyfhEWObo2SWfSl1+0tm1u6PhxLwDnfsT/6jB7OUxqFA==
   /invariant/2.2.4:
     dependencies:
       loose-envify: 1.4.0
