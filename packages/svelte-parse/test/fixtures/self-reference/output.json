@@ -42,7 +42,7 @@
 							}
 						},
 						{
-							"type": "svelteTag",
+							"type": "svelteMeta",
 							"tagName": "self",
 							"properties": [
 								{

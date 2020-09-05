@@ -4,7 +4,7 @@ import * as assert from 'uvu/assert';
 import {
 	SvelteElement,
 	Text,
-	SvelteTag,
+	SvelteMeta,
 	SvelteExpression,
 	VoidBlock,
 	Comment,
@@ -156,8 +156,8 @@ position('tracks the location of self-closing elements', () => {
 		value: `<svelte:options />`,
 	});
 
-	assert.equal(parsed, <SvelteTag>{
-		type: 'svelteTag',
+	assert.equal(parsed, <SvelteMeta>{
+		type: 'svelteMeta',
 		tagName: 'options',
 		properties: [],
 		selfClosing: true,
@@ -177,8 +177,8 @@ position('tracks the location of attributes', () => {
 		value: `<svelte:options tag={null} />`,
 	});
 
-	assert.equal(parsed, <SvelteTag>{
-		type: 'svelteTag',
+	assert.equal(parsed, <SvelteMeta>{
+		type: 'svelteMeta',
 		tagName: 'options',
 		properties: [
 			{
@@ -418,7 +418,7 @@ position('tracks the location of a complex node', () => {
 		type: 'root',
 		children: [
 			{
-				type: 'svelteTag',
+				type: 'svelteMeta',
 				tagName: 'script',
 				properties: [],
 				selfClosing: false,

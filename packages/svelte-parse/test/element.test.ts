@@ -5,7 +5,7 @@ import {
 	SvelteElement,
 	SvelteComponent,
 	Text,
-	SvelteTag,
+	SvelteMeta,
 	Comment,
 	Node,
 	Point,
@@ -1658,8 +1658,8 @@ element('parses svelte special elements', () => {
 		value: `<svelte:options tag={null} />`,
 	});
 
-	assert.equal(parsed, <SvelteTag>{
-		type: 'svelteTag',
+	assert.equal(parsed, <SvelteMeta>{
+		type: 'svelteMeta',
 		tagName: 'options',
 		properties: [
 			{
@@ -1688,8 +1688,8 @@ element('parses svelte special elements', () => {
 		value: `<svelte:options tag={null} />`,
 	});
 
-	assert.equal(parsed, <SvelteTag>{
-		type: 'svelteTag',
+	assert.equal(parsed, <SvelteMeta>{
+		type: 'svelteMeta',
 		tagName: 'options',
 		properties: [
 			{

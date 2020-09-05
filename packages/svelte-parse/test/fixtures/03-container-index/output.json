@@ -184,7 +184,7 @@
 			}
 		},
 		{
-			"type": "svelteTag",
+			"type": "svelteMeta",
 			"tagName": "script",
 			"properties": [
 				{
@@ -273,7 +273,7 @@
 			}
 		},
 		{
-			"type": "svelteTag",
+			"type": "svelteMeta",
 			"tagName": "script",
 			"properties": [],
 			"selfClosing": false,
