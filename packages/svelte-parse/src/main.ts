@@ -98,9 +98,11 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 	}
 
 	function place() {
-		const _p = Object.assign({}, position);
-		delete _p.index;
-		return _p;
+		return {
+			line: position.line,
+			column: position.column,
+			offset: position.offset,
+		};
 	}
 
 	let current_state: State | undefined;
