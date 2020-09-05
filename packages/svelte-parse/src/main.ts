@@ -952,16 +952,17 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				set_state(State.IN_SCRIPT_STYLE, true);
 				continue;
 			} else {
-				const [children, lastPosition, lastIndex] = childParser({
+				const result = childParser({
 					generatePositions,
 					value: value.substring(index),
 					currentPosition: position,
 					childParser,
 				});
-				(current_node as Parent).children = children;
-				const _index = position.index + lastIndex;
 
-				position = Object.assign({}, lastPosition) as Point & { index: number };
+				(current_node as Parent).children = result[0];
+				const _index = position.index + result[2];
+
+				position = Object.assign({}, result[1]) as Point & { index: number };
 				position.index = _index;
 				index = position.index;
 				char = value.charCodeAt(index);
