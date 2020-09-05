@@ -20,6 +20,8 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@rollup/plugin-sucrase": "^3.1.0",
+		"@rollup/plugin-typescript": "^5.0.2",
+		"install": "^0.13.0",
 		"rollup": "^2.26.5",
 		"rollup-plugin-dts": "^1.4.12",
 		"watchlist": "^0.2.3"
