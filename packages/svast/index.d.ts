@@ -2,56 +2,49 @@ import { Node, Position, Point, Parent, Data, Literal } from 'unist';
 export { Node, Position, Point, Parent, Data, Literal };
 
 // TODO: script and style tags don't have nodes yet
+export type SvelteChild =
+	| SvelteElement
+	| SvelteComponent
+	| Comment
+	| Text
+	| SvelteExpression
+	| VoidBlock
+	| BranchingBlock
+	| EachBlock
+	| SvelteTag;
 
 export interface SvelteParent extends Parent {
-	children: (
-		| SvelteElement
-		| SvelteComponent
-		| Comment
-		| Text
-		| SvelteExpression
-		| VoidBlock
-		| BranchingBlock
-		| EachBlock
-		| SvelteTag
-	)[];
+	children: SvelteChild[];
 }
 
 export interface Root extends Parent {
 	type: 'root';
 }
 
-export interface BaseSvelteTag extends SvelteParent {
+export interface BaseSvelteTag<T extends string> extends SvelteParent {
+	type: T;
 	tagName: string;
 	properties: (Property | Directive)[];
 	selfClosing: boolean;
 }
 
-export interface SvelteTag extends BaseSvelteTag {
-	type: 'svelteTag';
-}
+export type SvelteTag = BaseSvelteTag<'svelteTag'>;
 
-export interface SvelteElement extends BaseSvelteTag {
-	type: 'svelteElement';
-}
+export type SvelteElement = BaseSvelteTag<'svelteElement'>;
 
-export interface SvelteComponent extends BaseSvelteTag {
-	type: 'svelteComponent';
-}
+export type SvelteComponent = BaseSvelteTag<'svelteComponent'>;
 
-export interface BaseProperty extends Node {
+export interface BaseProperty<T extends string> extends Node {
+	type: T;
 	name: string;
 	shorthand: 'none' | 'boolean' | 'expression';
 	value: (Text | SvelteExpression)[];
 	modifiers: Literal[];
 }
 
-export interface Property extends BaseProperty {
-	type: 'svelteProperty';
-}
+export type Property = BaseProperty<'svelteProperty'>;
 
-export interface Directive extends BaseProperty {
-	type: 'svelteDirective';
+export interface Directive extends BaseProperty<'svelteDirective'> {
 	specifier: string;
 }
 
