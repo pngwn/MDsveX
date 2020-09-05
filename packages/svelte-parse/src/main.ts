@@ -102,10 +102,11 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 	value = value.replace(lineBreaksExpression, lineFeed);
 
 	let position = Object.assign(currentPosition, { index });
+	let char = value.charCodeAt(index);
 
 	function chomp() {
 		// newline means new line
-		if (value.charCodeAt(index) === LINEFEED) {
+		if (char === LINEFEED) {
 			position.line++;
 			position.column = 1;
 		} else {
@@ -120,6 +121,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		position.offset++;
 		// stay in sync
 		position.index = index;
+		char = value.charCodeAt(index);
 	}
 
 	// function current_state {
@@ -199,7 +201,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 			// "{" => tag
-			if (value.charCodeAt(index) === OPEN_BRACE) {
+			if (char === OPEN_BRACE) {
 				push_node(<SvelteExpression>{
 					type: 'svelteExpression',
 					value: '',
@@ -213,7 +215,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (value.charCodeAt(index) === OPEN_ANGLE_BRACKET) {
+			if (char === OPEN_ANGLE_BRACKET) {
 				set_state(State.IN_START_TAG);
 				push_node(<BaseSvelteTag>{
 					type: '',
@@ -248,19 +250,15 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.MAYBE_IN_EXPRESSION) {
-			// if (value.charCodeAt(index) === COLON) return;
-			// if (value.charCodeAt(index) === SLASH) return;
+			// if (char === COLON) return;
+			// if (char === SLASH) return;
 
-			if (
-				value.charCodeAt(index) === SPACE ||
-				value.charCodeAt(index) === LINEFEED ||
-				value.charCodeAt(index) === TAB
-			) {
+			if (char === SPACE || char === LINEFEED || char === TAB) {
 				chomp();
 				continue;
 			}
 
-			if (value.charCodeAt(index) === AT) {
+			if (char === AT) {
 				const _n = <VoidBlock>{
 					type: 'svelteVoidBlock',
 					name: '',
@@ -283,7 +281,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (value.charCodeAt(index) === OCTOTHERP) {
+			if (char === OCTOTHERP) {
 				set_state(State.IN_BRANCHING_BLOCK, true);
 				set_state(State.IN_BRANCHING_BLOCK_NAME);
 				chomp();
@@ -296,14 +294,14 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.IN_BRANCHING_BLOCK_NAME) {
-			if (value.charCodeAt(index) === CLOSE_BRACE) {
+			if (char === CLOSE_BRACE) {
 				// each
 				pop_state();
 
 				continue;
 			}
 
-			if (value.charCodeAt(index) === SPACE) {
+			if (char === SPACE) {
 				const _n = <BranchingBlock>{
 					type: 'svelteBranchingBlock',
 					name: (current_node as SvelteExpression).value,
@@ -346,15 +344,11 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.IN_BRANCHING_BLOCK_END) {
-			if (
-				value.charCodeAt(index) === SPACE ||
-				value.charCodeAt(index) === LINEFEED ||
-				value.charCodeAt(index) === TAB
-			) {
+			if (char === SPACE || char === LINEFEED || char === TAB) {
 				// ERROR - NAME AFTER CLOSING BLOCK SLASH
 			}
 
-			if (value.charCodeAt(index) === CLOSE_BRACE) {
+			if (char === CLOSE_BRACE) {
 				pop_node();
 				chomp();
 				if (generatePositions)
@@ -374,9 +368,9 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 		if (current_state === State.IN_BRANCHING_BLOCK_BRANCH_NAME) {
 			if (
-				(value.charCodeAt(index) === SPACE &&
+				(char === SPACE &&
 					value.substring(index - 4, index + 3) !== 'else if') ||
-				value.charCodeAt(index) === CLOSE_BRACE
+				char === CLOSE_BRACE
 			) {
 				const _n2 = <Branch>{
 					type: 'svelteBranch',
@@ -409,14 +403,14 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.IN_BRANCHING_BLOCK) {
-			if (value.charCodeAt(index) === CLOSE_BRACE) {
+			if (char === CLOSE_BRACE) {
 				chomp();
 				pop_node();
 				set_state(State.PARSE_CHILDREN);
 				continue;
 			}
 
-			if (value.charCodeAt(index) === SPACE) {
+			if (char === SPACE) {
 				set_state(State.IN_EXPRESSION);
 				chomp();
 
@@ -429,14 +423,14 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.IN_BRANCHING_BLOCK_BRANCH) {
-			if (value.charCodeAt(index) === COLON) {
+			if (char === COLON) {
 				set_state(State.IN_BRANCHING_BLOCK_BRANCH_NAME, true);
 
 				chomp();
 				continue;
 			}
 
-			if (value.charCodeAt(index) === SLASH) {
+			if (char === SLASH) {
 				closing_tag_name = '';
 				pop_node();
 				set_state(State.IN_BRANCHING_BLOCK_END, true);
@@ -444,18 +438,14 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (
-				value.charCodeAt(index) === SPACE ||
-				value.charCodeAt(index) === LINEFEED ||
-				value.charCodeAt(index) === TAB
-			) {
+			if (char === SPACE || char === LINEFEED || char === TAB) {
 				chomp();
 				continue;
 			}
 		}
 
 		if (current_state === State.IN_VOID_BLOCK) {
-			if (value.charCodeAt(index) === SPACE) {
+			if (char === SPACE) {
 				push_node((current_node as VoidBlock).expression);
 				set_state(State.IN_EXPRESSION);
 				chomp();
@@ -465,7 +455,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (value.charCodeAt(index) === CLOSE_BRACE) {
+			if (char === CLOSE_BRACE) {
 				//push_node((current_node as VoidBlock).expression);
 
 				if (generatePositions)
@@ -489,26 +479,22 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.IN_START_TAG) {
-			if (value.charCodeAt(index) === SLASH) return undefined;
+			if (char === SLASH) return undefined;
 			// lowercase characters for element names
-			if (is_lower_alpha(value.charCodeAt(index))) {
+			if (is_lower_alpha(char)) {
 				(current_node as BaseSvelteTag).type = 'svelteElement';
 				set_state(State.IN_TAG_NAME);
 				continue;
 			}
 
 			// uppercase characters for Component names
-			if (is_upper_alpha(value.charCodeAt(index))) {
+			if (is_upper_alpha(char)) {
 				(current_node as BaseSvelteTag).type = 'svelteComponent';
 				set_state(State.IN_TAG_NAME);
 				continue;
 			}
 
-			if (
-				value.charCodeAt(index) === SPACE ||
-				value.charCodeAt(index) === TAB ||
-				value.charCodeAt(index) === LINEFEED
-			) {
+			if (char === SPACE || char === TAB || char === LINEFEED) {
 				chomp();
 				continue;
 			}
@@ -517,34 +503,30 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		// we are inside a tags name
 		if (current_state === State.IN_TAG_NAME) {
 			if (
-				value.charCodeAt(index) === SLASH ||
-				(value.charCodeAt(index) === CLOSE_ANGLE_BRACKET &&
+				char === SLASH ||
+				(char === CLOSE_ANGLE_BRACKET &&
 					is_void_element((current_node as SvelteElement).tagName))
 			) {
 				set_state(State.IN_CLOSING_SLASH, true);
 				(current_node as BaseSvelteTag).selfClosing = true;
-				if (value.charCodeAt(index) === SLASH) chomp();
+				if (char === SLASH) chomp();
 				continue;
 			}
 			// space or linefeed put us into the tag body
-			if (
-				value.charCodeAt(index) === SPACE ||
-				value.charCodeAt(index) === TAB ||
-				value.charCodeAt(index) === LINEFEED
-			) {
+			if (char === SPACE || char === TAB || char === LINEFEED) {
 				set_state(State.IN_TAG_BODY, true);
 				chomp();
 				continue;
 			}
 
-			if (value.charCodeAt(index) === COLON) {
+			if (char === COLON) {
 				(current_node as SvelteTag).type = 'svelteTag';
 				(current_node as SvelteTag).tagName = '';
 				chomp();
 				continue;
 			}
 
-			if (value.charCodeAt(index) === CLOSE_ANGLE_BRACKET) {
+			if (char === CLOSE_ANGLE_BRACKET) {
 				set_state(State.IN_TAG_BODY, true);
 				continue;
 			}
@@ -556,7 +538,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 		// we are inside a start tag after the name
 		if (current_state === State.IN_TAG_BODY) {
-			if (value.charCodeAt(index) === OPEN_BRACE) {
+			if (char === OPEN_BRACE) {
 				set_state(State.IN_SHORTHAND_ATTR);
 				const _node = <Property>{
 					type: 'svelteProperty',
@@ -580,10 +562,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 			// letters mean we've hit an attribute
-			if (
-				is_lower_alpha(value.charCodeAt(index)) ||
-				is_upper_alpha(value.charCodeAt(index))
-			) {
+			if (is_lower_alpha(char) || is_upper_alpha(char)) {
 				set_state(State.IN_ATTR_NAME);
 				const _node = <Property>{
 					type: 'svelteProperty',
@@ -603,17 +582,17 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			// "/" or  ">" (for void tags) put us in a terminal state
 			if (
-				value.charCodeAt(index) === SLASH ||
-				(value.charCodeAt(index) === CLOSE_ANGLE_BRACKET &&
+				char === SLASH ||
+				(char === CLOSE_ANGLE_BRACKET &&
 					is_void_element((current_node as SvelteElement).tagName))
 			) {
 				set_state(State.IN_CLOSING_SLASH, true);
 				(current_node as BaseSvelteTag).selfClosing = true;
-				if (value.charCodeAt(index) === SLASH) chomp();
+				if (char === SLASH) chomp();
 				continue;
 			}
 
-			if (value.charCodeAt(index) === CLOSE_ANGLE_BRACKET) {
+			if (char === CLOSE_ANGLE_BRACKET) {
 				set_state(State.PARSE_CHILDREN, true);
 				chomp();
 				//@ts-ignore
@@ -621,18 +600,14 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (
-				value.charCodeAt(index) === SPACE ||
-				value.charCodeAt(index) === TAB ||
-				value.charCodeAt(index) === LINEFEED
-			) {
+			if (char === SPACE || char === TAB || char === LINEFEED) {
 				chomp();
 				continue;
 			}
 		}
 
 		if (current_state === State.IN_SHORTHAND_ATTR) {
-			if (value.charCodeAt(index) === CLOSE_BRACE) {
+			if (char === CLOSE_BRACE) {
 				(current_node as Property).value[0].value = (current_node as Property).name;
 				pop_state();
 				pop_node();
@@ -648,16 +623,12 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		// we are expecting the tag to close completely here
 		if (current_state === State.IN_CLOSING_SLASH) {
 			// ignore ws
-			if (
-				value.charCodeAt(index) === SPACE ||
-				value.charCodeAt(index) === TAB ||
-				value.charCodeAt(index) === LINEFEED
-			) {
+			if (char === SPACE || char === TAB || char === LINEFEED) {
 				chomp();
 				continue;
 			}
 			// we closed successfully, end the parse
-			if (value.charCodeAt(index) === CLOSE_ANGLE_BRACKET) {
+			if (char === CLOSE_ANGLE_BRACKET) {
 				chomp();
 				// @ts-ignore
 				if (generatePositions) current_node.position.end = place();
@@ -673,7 +644,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			// " ", "\n", "/" or ">" => shorthand boolean attr
 
 			if (
-				(s = value.charCodeAt(index)) === SPACE ||
+				(s = char) === SPACE ||
 				s === TAB ||
 				s === LINEFEED ||
 				s === SLASH ||
@@ -686,7 +657,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			// ":" => directive
-			if (value.charCodeAt(index) === COLON) {
+			if (char === COLON) {
 				//@ts-ignore
 				(current_node as Directive).type = 'svelteDirective';
 				(current_node as Directive).specifier = '';
@@ -695,7 +666,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (value.charCodeAt(index) === PIPE) {
+			if (char === PIPE) {
 				chomp();
 				const _n = { value: '', type: 'modifier' };
 				if (generatePositions)
@@ -707,7 +678,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (value.charCodeAt(index) === EQUALS) {
+			if (char === EQUALS) {
 				set_state(State.IN_ATTR_VALUE, true);
 				chomp();
 				continue;
@@ -723,21 +694,14 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		if (current_state === State.IN_ATTR_VALUE) {
 			// ignore whitespace it is valid after `=`
 			let s;
-			if (
-				(s = value.charCodeAt(index)) === SPACE ||
-				s === TAB ||
-				s === LINEFEED
-			) {
+			if ((s = char) === SPACE || s === TAB || s === LINEFEED) {
 				chomp();
 				continue;
 			}
 
 			// quoted attr
 
-			if (
-				value.charCodeAt(index) === QUOTE ||
-				value.charCodeAt(index) === APOSTROPHE
-			) {
+			if (char === QUOTE || char === APOSTROPHE) {
 				set_state(State.IN_QUOTED_ATTR_VALUE, true);
 				quote_type = value[index];
 
@@ -746,7 +710,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (value.charCodeAt(index) === OPEN_BRACE) {
+			if (char === OPEN_BRACE) {
 				set_state(State.IN_UNQUOTED_ATTR_VALUE, true);
 
 				const _n = <SvelteExpression>{ type: 'svelteExpression', value: '' };
@@ -775,7 +739,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			let s;
 			// " ", "\n", "/" or ">" => ends the whole thing
 			if (
-				(s = value.charCodeAt(index)) === SPACE ||
+				(s = char) === SPACE ||
 				s === TAB ||
 				s === LINEFEED ||
 				s === CLOSE_ANGLE_BRACKET ||
@@ -793,7 +757,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (value.charCodeAt(index) === OPEN_BRACE) {
+			if (char === OPEN_BRACE) {
 				set_state(State.IN_EXPRESSION);
 
 				chomp();
@@ -822,7 +786,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (value.charCodeAt(index) === OPEN_BRACE) {
+			if (char === OPEN_BRACE) {
 				//@ts-ignore
 				if (generatePositions && current_node.type !== 'blank')
 					//@ts-ignore
@@ -842,18 +806,14 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (value.charCodeAt(index) === CLOSE_BRACE) {
+			if (char === CLOSE_BRACE) {
 				chomp();
 				continue;
 			}
 
 			let s;
 			// " ", "\n" => still in the attribute value but make a new node
-			if (
-				(s = value.charCodeAt(index)) === SPACE ||
-				s === TAB ||
-				s === LINEFEED
-			) {
+			if ((s = char) === SPACE || s === TAB || s === LINEFEED) {
 				const _c = current_node as Text | SvelteExpression;
 				if (_c.type === 'text' && _c.value === '') {
 					chomp();
@@ -901,13 +861,13 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.IN_DIRECTIVE_SPECIFIER) {
-			if (value.charCodeAt(index) === EQUALS) {
+			if (char === EQUALS) {
 				set_state(State.IN_ATTR_VALUE, true);
 				chomp();
 				continue;
 			}
 
-			if (value.charCodeAt(index) === PIPE) {
+			if (char === PIPE) {
 				const _n = { value: '', type: 'modifier' };
 				if (generatePositions)
 					//@ts-ignore
@@ -922,7 +882,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			let s;
 			// " ", "\n", "/" or ">" => ends the whole thing
 			if (
-				(s = value.charCodeAt(index)) === SPACE ||
+				(s = char) === SPACE ||
 				s === TAB ||
 				s === LINEFEED ||
 				s === SLASH ||
@@ -939,7 +899,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.IN_ATTR_MODIFIER) {
-			if (value.charCodeAt(index) === PIPE) {
+			if (char === PIPE) {
 				pop_node();
 				const _n = { value: '', type: 'modifier' };
 				if (generatePositions)
@@ -951,7 +911,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (value.charCodeAt(index) === EQUALS) {
+			if (char === EQUALS) {
 				set_state(State.IN_ATTR_VALUE, true);
 				pop_node();
 				chomp();
@@ -959,19 +919,12 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			let s;
-			if (
-				(s = value.charCodeAt(index)) === SPACE ||
-				s === TAB ||
-				s === LINEFEED
-			) {
+			if ((s = char) === SPACE || s === TAB || s === LINEFEED) {
 				chomp();
 				continue;
 			}
 
-			if (
-				(s = value.charCodeAt(index)) === SLASH ||
-				s === CLOSE_ANGLE_BRACKET
-			) {
+			if ((s = char) === SLASH || s === CLOSE_ANGLE_BRACKET) {
 				pop_node();
 				pop_node();
 				pop_state();
@@ -983,7 +936,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.IN_SCRIPT_STYLE) {
-			if (value.charCodeAt(index) === OPEN_ANGLE_BRACKET) {
+			if (char === OPEN_ANGLE_BRACKET) {
 				if (RE_SCRIPT_STYLE.test(value.substring(index))) {
 					if (generatePositions)
 						//@ts-ignore
@@ -1030,6 +983,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				position = Object.assign({}, lastPosition) as Point & { index: number };
 				position.index = _index;
 				index = position.index;
+				char = value.charCodeAt(index);
 			}
 
 			set_state(State.EXPECT_END_OR_BRANCH, true);
@@ -1057,22 +1011,22 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (value.charCodeAt(index) === OPEN_ANGLE_BRACKET) {
+			if (char === OPEN_ANGLE_BRACKET) {
 				chomp();
 				continue;
 			}
 
-			if (value.charCodeAt(index) === SLASH) {
+			if (char === SLASH) {
 				chomp();
 				continue;
 			}
 
-			if (value.charCodeAt(index) === SPACE) {
+			if (char === SPACE) {
 				chomp();
 				continue;
 			}
 
-			if (value.charCodeAt(index) === CLOSE_ANGLE_BRACKET) {
+			if (char === CLOSE_ANGLE_BRACKET) {
 				chomp();
 
 				if (generatePositions) {
@@ -1109,10 +1063,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.IN_TEXT) {
-			if (
-				value.charCodeAt(index) === OPEN_ANGLE_BRACKET ||
-				value.charCodeAt(index) === OPEN_BRACE
-			) {
+			if (char === OPEN_ANGLE_BRACKET || char === OPEN_BRACE) {
 				if (generatePositions)
 					//@ts-ignore
 					current_node.position.end = place();
@@ -1125,7 +1076,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.IN_EXPRESSION) {
-			if (expr_quote_type === '' && value.charCodeAt(index) === CLOSE_BRACE) {
+			if (expr_quote_type === '' && char === CLOSE_BRACE) {
 				if (brace_count === 0) {
 					if (
 						node_stack.length === 1 ||
@@ -1168,15 +1119,13 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				brace_count--;
 			}
 
-			if (expr_quote_type === '' && value.charCodeAt(index) === OPEN_BRACE) {
+			if (expr_quote_type === '' && char === OPEN_BRACE) {
 				brace_count++;
 			}
 
 			if (
 				expr_quote_type === '' &&
-				(value.charCodeAt(index) === APOSTROPHE ||
-					value.charCodeAt(index) === QUOTE ||
-					value.charCodeAt(index) === BACKTICK)
+				(char === APOSTROPHE || char === QUOTE || char === BACKTICK)
 			) {
 				set_state(State.IN_EXPRESSION_QUOTE);
 				expr_quote_type = value[index];
