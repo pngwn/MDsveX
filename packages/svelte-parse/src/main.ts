@@ -148,7 +148,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 	for (;;) {
 		// console.log(value[index], node_stack, state);
-		if (!value[index]) {
+		if (!value[index] === void 0) {
 			if (generatePositions)
 				//@ts-ignore
 				current_node.position.end = place();
