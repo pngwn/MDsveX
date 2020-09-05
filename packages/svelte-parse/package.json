@@ -1,8 +1,11 @@
 {
-	"name": "@mdsvex/svelte-parse",
+	"name": "svelte-parse",
 	"version": "0.0.1",
 	"description": "An increidbly relaxed svelte-parser",
-	"main": "dist/index.js",
+	"main": "dist/main.js",
+	"files": [
+		"dist/main.js"
+	],
 	"scripts": {
 		"build": "rollup -c",
 		"test:filter": "uvu -r ts-node/register test",
