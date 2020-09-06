@@ -11,11 +11,13 @@ This AST seeks to be language agnostic and has no opinion on the contents of any
   - [`UnistPosition`](#unistposition)
   - [`UnistPoint`](#unistpoint)
   - [`UnistData`](#unistdata)
-  - [`Unistparent`](#unistparent)
+  - [`UnistParent`](#unistparent)
 - [SVAST Nodes](#svast-nodes)
   - [`Parent`](#parent)
   - [`Literal`](#literal)
   - [`Root`](#root)
+  - [`BaseTag`](#basetag)
+  - [`Meta](#meta)
   - [`Element`](#element)
   - [`Component`](#component)
   - [`BaseProperty`](#baseproperty)
@@ -110,16 +112,16 @@ The `children` field is a list representing the children of a node.
 interface Parent <: UnistParent {
   children: [
     | SvelteElement
-		| SvelteComponent
-		| Comment
-		| Text
-		| SvelteExpression
-		| VoidBlock
-		| BranchingBlock
-		| IfBlock
-		| EachBlock
-		| AwaitBlock
-		| SvelteTag
+    | SvelteComponent
+    | Comment
+    | Text
+    | SvelteExpression
+    | VoidBlock
+    | BranchingBlock
+    | IfBlock
+    | EachBlock
+    | AwaitBlock
+    | SvelteTag
   ]
 }
 ```
@@ -164,15 +166,15 @@ The `properties` field is a list of the element's attributes and directives. Thi
 
 The `selfClosing` field describes whether or not the source element was self closing or not. This isn't strictly abstract but is helpful in certain cases.
 
-### `SvelteTag`
+### `Meta`
 
 ```idl
 interface SvelteTag <: BaseTag {
-  type: "svelteTag"
+  type: "svelteMeta"
 }
 ```
 
-The `SvelteTag` represent special `svelte` namespace tag names such as `<svelte:self />`.
+The `SvelteTag` represent special `svelte` namespaced tag names such as `<svelte:self />`.
 
 The following input:
 
