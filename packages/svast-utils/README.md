@@ -70,7 +70,7 @@ walk(tree, (node, parent) => {
 
 ### `cleanPositions`
 
-This removes all positional data from every node in a tree. It just walks a tree and deleted them all. This can maybe be useful if you no longer need the positional data and want a smaller tree.
+This removes all positional data from every node in a tree. It just walks a tree and deletes them all. This may be useful if you no longer need the positional data and want a smaller tree.
 
 You simply pass the function a tree to clean and it will return the cleaned tree. This is the exact tree you passed in, mutated. It is not a copy.
 
