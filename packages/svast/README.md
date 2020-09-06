@@ -17,7 +17,7 @@ This AST seeks to be language agnostic and has no opinion on the contents of any
   - [`Literal`](#literal)
   - [`Root`](#root)
   - [`BaseTag`](#basetag)
-  - [`Meta](#meta)
+  - [`Meta`](#meta)
   - [`Element`](#element)
   - [`Component`](#component)
   - [`BaseProperty`](#baseproperty)
