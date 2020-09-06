@@ -4,6 +4,7 @@ export type WalkCallback = (node: Node, parent: Node | undefined) => void;
 
 export function walk(node: Node, cb: WalkCallback, parent?: Node): Node {
 	cb(node, parent);
+
 	if (node.expression)
 		walk(
 			(node as { type: string; expression: SvelteExpression }).expression,
