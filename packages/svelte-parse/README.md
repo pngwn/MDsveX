@@ -3,7 +3,11 @@
 It is a parser.
 
 - [Details and Limitations](#details-and-limitations)
-- [Install]
+- [Install](#install-it)
+- [Use](#use-it)
+  - [`parse`](#parse)
+  - [`parseNode`](#parsenode)
+  - [`Point`](#point)
 
 ## Details and limitations
 
@@ -24,7 +28,7 @@ _Note: Error handling is currently a wip/todo, the above represents the intentio
 
 - Javascript expressions are difficult to parse without a JavaScript parser. `svelte-parse` handles them by matching curly braces (as they mark the end of an expression in various contexts) and by ignoring quoted values inside expressions. The biggest shortcoming here is that using curly braces inside regular expressions in an expression will cause the parse to fail in some way unless those braces are balanced. Being as language agnostic as possible is a goal, even if it is unrealistic. The current parser will handle C-like languages with the above caveats.
 - `svelte-parse` does not currently implement the full HTML parsing algorithm and has relatively rudimentary HTML handling. Void tags are handled so `<input/>` and `<input>` are treated the same but unclosed paragraph tags, for example, are not autoclosed. All non-void tags are expected to have a closing tags. I am uncertain how far down this path I'm willing to go.
-- `{#each exp}` blocks do not currently use the [`EachBlock`](https://github.com/pngwn/MDsveX/tree/master/packages/svast) node as defined in [`svast`](https://github.com/pngwn/MDsveX/tree/master/packages/svast) because it is difficult/ impossible to parse in a language agnostic manner. It is currently a [`BranchingBlock`](https://github.com/pngwn/MDsveX/tree/master/packages/svast). The `expression`, `name`, `index`, and `key` are stored as a big blob in the expression field instead of being stored separately as they should be.
+- `{#each exp}` blocks do not currently use the [`EachBlock`](https://github.com/pngwn/MDsveX/tree/master/packages/svast#eachblock) node as defined in [`svast`](https://github.com/pngwn/MDsveX/tree/master/packages/svast) because it is difficult/ impossible to parse in a language agnostic manner. It is currently a [`BranchingBlock`](https://github.com/pngwn/MDsveX/tree/master/packages/svast#branchingblock). The `expression`, `name`, `index`, and `key` are stored as a big blob in the expression field instead of being stored separately as they should be.
 
 ## Install it
 
@@ -60,7 +64,7 @@ interface ParseReturn {
 }
 ```
 
-The `ast` constains the AST that was generated as a result of the parse. This will be a [`Root`](https://github.com/pngwn/MDsveX/tree/master/packages/svast) svast node and is the entry point into the AST.
+The `ast` constains the AST that was generated as a result of the parse. This will be a [`Root`](https://github.com/pngwn/MDsveX/tree/master/packages/svast#root) svast node and is the entry point into the AST.
 
 The `errors` property will be an array of any parsing errors or warnings. I have no idea what this will contain. (error code, error message, position ?)
 
@@ -140,7 +144,7 @@ The `parsed` field is a `Node` object and contains the AST for the `chomped` sou
 
 The `position` field, when present, is a `Point` object and describes the final position of the parsers pointer. If parsing in a loop this should be passed back into the parseNode function.
 
-For an example oif how the `parseNode` function can be used to parse a document you can look at [the implementation of `parse`]().
+For an example oif how the `parseNode` function can be used to parse a document you can look at [the implementation of [`parse`](https://github.com/pngwn/MDsveX/blob/9dcb6cb3d4dcb1aa17d2687925209a955b7cbe0a/packages/svelte-parse/src/main.ts#L1188-L1207) and the [`parse_siblings`](https://github.com/pngwn/MDsveX/blob/9dcb6cb3d4dcb1aa17d2687925209a955b7cbe0a/packages/svelte-parse/src/main.ts#L1144-L1183) function it uses internally..
 
 ### `Point`
 
