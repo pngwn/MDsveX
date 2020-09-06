@@ -184,6 +184,11 @@ importers:
       '@types/unist': 2.0.3
     specifiers:
       '@types/unist': ^2.0.3
+  packages/svast-utils:
+    dependencies:
+      svast: 'link:../svast'
+    specifiers:
+      svast: 'workspace:^0.0.1'
   packages/svelte-parse:
     dependencies:
       svast: 'link:../svast'
