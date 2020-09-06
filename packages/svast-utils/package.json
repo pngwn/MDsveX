@@ -1,0 +1,21 @@
+{
+	"name": "svast-utils",
+	"version": "0.0.1",
+	"description": "Utilisties for working with svast nodes.",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/svast-util"
+	},
+	"keywords": [
+		"svelte",
+		"ast",
+		"svast",
+		"utils"
+	],
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT"
+}
