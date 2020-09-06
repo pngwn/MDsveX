@@ -295,4 +295,30 @@ svast_walk('a more complex node', () => {
 	assert.equal(_t, ['hi', 'haschild3', 'haschild2', 'haschild1', 'leaf']);
 });
 
+svast_walk('returning false prevents child nodes from being walked', () => {
+	const leaf = { type: 'leaf' };
+	const leaf2 = { type: 'leaf' };
+	const has_child = { type: 'haschild1', children: [leaf] };
+	const has_child2 = { type: 'haschild2', children: [leaf2] };
+	const tree = {
+		type: 'hi',
+		children: [has_child, has_child2],
+	};
+
+	const _p: (Node | undefined)[] = [];
+	const _t: string[] = [];
+	walk(tree, (node, parent) => {
+		_p.push(parent);
+		_t.push(node.type);
+		if (parent === tree) return false;
+	});
+
+	assert.is(_p[0], undefined);
+	assert.is(_p[1], tree);
+	assert.is(_p[2], tree);
+	assert.is(_p.length, 3);
+	assert.is(_p[3], undefined);
+	assert.equal(_t, ['hi', 'haschild1', 'haschild2']);
+});
+
 svast_walk.run();

@@ -1,9 +1,14 @@
 import { Node, SvelteExpression } from 'svast';
 
-export type WalkCallback = (node: Node, parent: Node | undefined) => void;
+export type WalkCallback = (
+	node: Node,
+	parent: Node | undefined
+) => boolean | void;
 
 export function walk(node: Node, cb: WalkCallback, parent?: Node): Node {
-	cb(node, parent);
+	const x = cb(node, parent);
+
+	if (x === false) return node;
 
 	if (node.expression)
 		walk(
