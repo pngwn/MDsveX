@@ -8,7 +8,7 @@ import { table_without_positions } from './fixtures/table_without_positions';
 
 const clean = suite('clean-positions');
 
-clean('removes the poisition property from a simple node', () => {
+clean('removes the position property from a simple node', () => {
 	const node = {
 		type: 'hi',
 		position: {
@@ -21,7 +21,7 @@ clean('removes the poisition property from a simple node', () => {
 });
 
 clean(
-	'removes the poisition property from a node and all children nodes',
+	'removes the position property from a node and all children nodes',
 	() => {
 		const node = {
 			type: 'hi',
