@@ -13,6 +13,10 @@
 		"test:watch": "watchlist src test -- pnpm test",
 		"test:generate": "node -r ts-node/register ./test/fixtures/generate.ts"
 	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/svelte-parse"
+	},
 	"keywords": [
 		"svelte",
 		"parse",
