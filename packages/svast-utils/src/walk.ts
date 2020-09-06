@@ -19,6 +19,8 @@ export function walk(node: Node, cb: WalkCallback, parent?: Node): Node {
 		for (let index = 0; index < (node.value as []).length; index++) {
 			walk((node.value as [])[index], cb, node);
 		}
+	} else if (node.value) {
+		walk(node.value as Node, cb, node);
 	}
 	if (node.properties) {
 		for (let index = 0; index < (node.properties as []).length; index++) {
