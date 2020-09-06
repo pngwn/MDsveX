@@ -11,12 +11,19 @@ export default [
 	{
 		plugins: [ts()],
 		input: 'src/main.ts',
-		output: [{ file: 'dist/main.js', format: 'cjs', sourcemap: false }],
+		output: [
+			{ file: pkg.module, format: 'es', sourcemap: false },
+			{ file: pkg.main, format: 'cjs', sourcemap: false },
+			,
+		],
 	},
-	// {
-	// 	plugins: [dts()],
-	// 	input: 'src/main.ts',
+	{
+		plugins: [dts()],
+		input: 'src/main.ts',
 
-	// 	output: [{ file: 'dist/main.d.ts', format: 'cjs' }],
-	// },
+		output: [
+			{ file: 'dist/main.es.d.ts', format: 'es' },
+			{ file: 'dist/main.cjs.d.ts', format: 'cjs' },
+		],
+	},
 ];
