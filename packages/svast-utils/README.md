@@ -4,6 +4,8 @@ svast trees are non standard and have arrays of child nodes in strange places. T
 
 I have not thought any of this through and threw them together very quickly. I may add some actually useful utilities in the future but this is enough to be going along with.
 
+None of these utilities are immutable operations because that shit is expensive.
+
 ---
 
 - [Install it](#install-it)
@@ -40,8 +42,6 @@ You can return `false` from the callback function. This will prevent walk from w
 There is no copying and no returning of new nodes. It just walks the tree with some optional bailouts. Feel free to mutate the tree as you go but if you do stuff like changing the length a children array while it is being walked something bad might happen.
 
 `walk` calls itself recursively, if your tree is very large then your computer will explode.
-
-None of these utilities are immutable operations because that shit is expensive.
 
 #### example
 
@@ -102,14 +102,14 @@ const tree = {
 const clean_tree = cleanPositions(tree);
 
 // clean_tree === tree === {
-// 	type: 'root',
-// 	children: [
-// 		{ type: 'hello' },
-// 		{ type: 'hello' },
-// 		{
-// 			type: 'somethingelse' ,
-// 			children: [ ... ],
-// 		},
-// 	],
+//   type: 'root',
+//   children: [
+//     { type: 'hello' },
+//     { type: 'hello' },
+//     {
+//       type: 'somethingelse' ,
+//       children: [ ... ],
+//     },
+//   ],
 // }
 ```
