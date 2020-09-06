@@ -11,7 +11,7 @@ export type SvelteChild =
 	| VoidBlock
 	| BranchingBlock
 	| EachBlock
-	| SvelteTag;
+	| SvelteMeta;
 
 export interface SvelteParent extends Parent {
 	children: SvelteChild[];
@@ -28,7 +28,7 @@ export interface BaseSvelteTag<T extends string> extends SvelteParent {
 	selfClosing: boolean;
 }
 
-export type SvelteTag = BaseSvelteTag<'svelteTag'>;
+export type SvelteMeta = BaseSvelteTag<'svelteMeta'>;
 
 export type SvelteElement = BaseSvelteTag<'svelteElement'>;
 
