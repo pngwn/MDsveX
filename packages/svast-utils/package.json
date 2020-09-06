@@ -4,7 +4,9 @@
 	"description": "Utilisties for working with svast nodes.",
 	"main": "index.js",
 	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"build": "rollup -c",
+		"test:filter": "uvu -r ts-node/register test",
+		"test": "uvu -r ts-node/register test test.ts$"
 	},
 	"repository": {
 		"type": "git",
@@ -17,5 +19,8 @@
 		"utils"
 	],
 	"author": "pngwn <hello@pngwn.io>",
-	"license": "MIT"
+	"license": "MIT",
+	"dependencies": {
+		"svast": "workspace:^0.0.1"
+	}
 }
