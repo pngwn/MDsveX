@@ -345,4 +345,53 @@ hello="value{value}{value}{value}"
 	}
 );
 
+// modify svelte-parse to output a text for all space characters that has a value of a single space
+
+svast_stringify('handle a realword set of attrs', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'div',
+				properties: [
+					{
+						type: 'svelteProperty',
+						name: 'style',
+						value: [
+							{
+								type: 'text',
+								value: 'color:',
+							},
+							{
+								type: 'text',
+								value: '',
+							},
+							{
+								type: 'svelteExpression',
+								value: 'color',
+							},
+							{
+								type: 'text',
+								value: ';',
+							},
+						],
+						modifiers: [],
+						shorthand: 'none',
+					},
+				],
+				selfClosing: true,
+				children: [],
+			},
+		],
+	};
+
+	assert.is(
+		compile(tree),
+		`<div 
+style='color: {color};'
+/>`
+	);
+});
+
 svast_stringify.run();
