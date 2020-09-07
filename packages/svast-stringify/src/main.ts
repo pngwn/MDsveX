@@ -16,11 +16,21 @@ function render_props(props: (Property | Directive)[]): string {
 
 			if (props[index].value.length > 0) {
 				attrs += '="';
-				for (let index2 = 0; index2 < props[index].value.length; index2++) {
+				values: for (
+					let index2 = 0;
+					index2 < props[index].value.length;
+					index2++
+				) {
 					if (props[index].value[index2].type === 'text') {
-						attrs += props[index].value[index2].value;
-						if (index2 < props[index].value.length - 1) {
+						if (index2 > 0) {
 							attrs += ' ';
+						}
+						attrs += props[index].value[index2].value;
+					}
+
+					if (props[index].value[index2].type === 'svelteExpression') {
+						attrs += '{' + props[index].value[index2].value + '}';
+						if (index2 < props[index].value.length - 1) {
 						}
 					}
 				}

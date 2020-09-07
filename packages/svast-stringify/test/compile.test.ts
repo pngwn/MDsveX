@@ -120,7 +120,7 @@ goodbye
 );
 
 svast_stringify(
-	'compiles a self-closing html element with short hand boolean attributes',
+	'compiles a self-closing html element with props and a value',
 	() => {
 		const tree = <Root>{
 			type: 'root',
@@ -152,6 +152,144 @@ svast_stringify(
 			compile(tree),
 			`<input 
 hello="value"
+/>`
+		);
+	}
+);
+
+svast_stringify(
+	'compiles a self-closing html element with props and values',
+	() => {
+		const tree = <Root>{
+			type: 'root',
+			children: [
+				{
+					type: 'svelteElement',
+					tagName: 'input',
+					selfClosing: true,
+					children: [],
+					properties: [
+						{
+							type: 'svelteProperty',
+							name: 'hello',
+							value: [
+								{
+									type: 'text',
+									value: 'value',
+								},
+								{
+									type: 'text',
+									value: 'value',
+								},
+							],
+							shorthand: 'none',
+							modifiers: [],
+						},
+					],
+				},
+			],
+		};
+
+		assert.is(
+			compile(tree),
+			`<input 
+hello="value value"
+/>`
+		);
+	}
+);
+
+svast_stringify(
+	'compiles a self-closing html element with props and expression values',
+	() => {
+		const tree = <Root>{
+			type: 'root',
+			children: [
+				{
+					type: 'svelteElement',
+					tagName: 'input',
+					selfClosing: true,
+					children: [],
+					properties: [
+						{
+							type: 'svelteProperty',
+							name: 'hello',
+							value: [
+								{
+									type: 'text',
+									value: 'value',
+								},
+								{
+									type: 'text',
+									value: 'value',
+								},
+								{
+									type: 'svelteExpression',
+									value: 'value',
+								},
+							],
+							shorthand: 'none',
+							modifiers: [],
+						},
+					],
+				},
+			],
+		};
+
+		assert.is(
+			compile(tree),
+			`<input 
+hello="value value{value}"
+/>`
+		);
+	}
+);
+
+svast_stringify(
+	'compiles a self-closing html element with props and expression values, with empty attr text nodes',
+	() => {
+		const tree = <Root>{
+			type: 'root',
+			children: [
+				{
+					type: 'svelteElement',
+					tagName: 'input',
+					selfClosing: true,
+					children: [],
+					properties: [
+						{
+							type: 'svelteProperty',
+							name: 'hello',
+							value: [
+								{
+									type: 'text',
+									value: 'value',
+								},
+								{
+									type: 'text',
+									value: 'value',
+								},
+								{
+									type: 'text',
+									value: '',
+								},
+								{
+									type: 'svelteExpression',
+									value: 'value',
+								},
+							],
+							shorthand: 'none',
+							modifiers: [],
+						},
+					],
+				},
+			],
+		};
+
+		assert.is(
+			compile(tree),
+			`<input 
+hello="value value {value}"
 />`
 		);
 	}
