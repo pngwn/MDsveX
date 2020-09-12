@@ -7,9 +7,10 @@ import {
 	SvelteElement,
 	Directive,
 	SvelteExpression,
+	Literal,
 } from 'svast';
 
-function render_attr_values(values: (Text | SvelteExpression)[]) {
+function render_attr_values(values: (Text | SvelteExpression)[]): string {
 	let value = '';
 
 	for (let index = 0; index < values.length; index++) {
@@ -25,6 +26,15 @@ function render_attr_values(values: (Text | SvelteExpression)[]) {
 	return value;
 }
 
+function render_modifiers(modifiers: Literal[]): string {
+	let mod_string = '';
+	for (let index = 0; index < modifiers.length; index++) {
+		mod_string += '|' + modifiers[index].value;
+	}
+
+	return mod_string;
+}
+
 function render_props(props: (Property | Directive)[]): string {
 	let attrs = '\n';
 
@@ -38,6 +48,10 @@ function render_props(props: (Property | Directive)[]): string {
 		}
 
 		if (props[index].type === 'svelteDirective') {
+			if (props[index].modifiers.length > 0) {
+				attrs += render_modifiers(props[index].modifiers);
+			}
+
 			attrs += props[index].name + ':' + props[index].specifier;
 			if (props[index].value.length > 0) {
 				attrs += '="' + render_attr_values(props[index].value) + '"';
