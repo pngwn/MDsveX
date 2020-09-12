@@ -593,4 +593,38 @@ hello:world="color: {color};"
 	);
 });
 
+svast_stringify('compiles directive with a value', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'input',
+				selfClosing: true,
+				children: [],
+				properties: [
+					{
+						type: 'svelteDirective',
+						name: 'hello',
+						specifier: 'world',
+						value: [],
+						shorthand: 'none',
+						modifiers: [
+							{ type: 'modifier', value: 'modifierval' },
+							{ type: 'modifier', value: 'modifierval2' },
+						],
+					},
+				],
+			},
+		],
+	};
+
+	assert.is(
+		compile(tree),
+		`<input 
+hello:world|modifierval|modifierval2
+/>`
+	);
+});
+
 svast_stringify.run();
