@@ -545,4 +545,52 @@ hello:world="cheese strings"
 	);
 });
 
+svast_stringify('compiles directive with a value', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'input',
+				selfClosing: true,
+				children: [],
+				properties: [
+					{
+						type: 'svelteDirective',
+						name: 'hello',
+						specifier: 'world',
+						value: [
+							{
+								type: 'text',
+								value: 'color:',
+							},
+							{
+								type: 'text',
+								value: ' ',
+							},
+							{
+								type: 'svelteExpression',
+								value: 'color',
+							},
+							{
+								type: 'text',
+								value: ';',
+							},
+						],
+						shorthand: 'none',
+						modifiers: [],
+					},
+				],
+			},
+		],
+	};
+
+	assert.is(
+		compile(tree),
+		`<input 
+hello:world="color: {color};"
+/>`
+	);
+});
+
 svast_stringify.run();
