@@ -61,18 +61,19 @@ function render_props(props: (Property | Directive)[]): string {
 	return attrs;
 }
 
-type CompileChildren = (nodes: Node[]) => string;
+type Handler = (node: Node, compile_children: CompileChildren) => string;
 
-function compile_node(
-	node: Node,
-	compile_children: CompileChildren
-): string | undefined {
-	if (node.type === 'text') return (node as Text).value;
-	if (node.type === 'svelteExpression') return '{' + node.value + '}';
-	if (node.type === 'svelteVoidBlock')
+const handlers: Record<string, Handler> = {
+	text(node, compile_children) {
+		return (node as Text).value;
+	},
+	svelteExpression(node, compile_children) {
+		return '{' + node.value + '}';
+	},
+	svelteVoidBlock(node, compile_children) {
 		return '{@' + node.name + ' ' + (node as VoidBlock).expression.value + '}';
-
-	if (node.type === 'svelteElement') {
+	},
+	svelteElement(node, compile_children) {
 		if (node.selfClosing === true)
 			return (
 				'<' +
@@ -83,9 +84,10 @@ function compile_node(
 					: '') +
 				'/>'
 			);
-	}
 
-	if (node.type === 'svelteMeta') {
+		return '';
+	},
+	svelteMeta(node, compile_children) {
 		if (node.selfClosing === true)
 			return (
 				'<svelte:' +
@@ -96,7 +98,18 @@ function compile_node(
 					: '') +
 				'/>'
 			);
-	}
+
+		return '';
+	},
+};
+
+type CompileChildren = (nodes: Node[]) => string;
+
+function compile_node(
+	node: Node,
+	compile_children: CompileChildren
+): string | undefined {
+	return handlers[node.type](node, compile_children);
 }
 
 function compile_children(children: Node[]) {
@@ -112,7 +125,7 @@ function compile(tree: Root): string {
 		return compile_children(tree.children);
 	} else {
 		throw new Error(
-			`A svast tree must have a single 'root' node but instead got ${tree.type}`
+			`A svast tree must have a single 'root' node but instead got "${tree.type}"`
 		);
 	}
 }
