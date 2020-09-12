@@ -6,37 +6,42 @@ import {
 	Property,
 	SvelteElement,
 	Directive,
+	SvelteExpression,
 } from 'svast';
+
+function render_attr_values(values: (Text | SvelteExpression)[]) {
+	let value = '';
+
+	for (let index = 0; index < values.length; index++) {
+		if (values[index].type === 'text') {
+			value += values[index].value;
+		}
+
+		if (values[index].type === 'svelteExpression') {
+			value += '{' + values[index].value + '}';
+		}
+	}
+
+	return value;
+}
 
 function render_props(props: (Property | Directive)[]): string {
 	let attrs = '\n';
-	attributes: for (let index = 0; index < props.length; index++) {
+
+	for (let index = 0; index < props.length; index++) {
 		if (props[index].type === 'svelteProperty') {
 			attrs += props[index].name;
 
 			if (props[index].value.length > 0) {
-				attrs += '="';
-				values: for (
-					let index2 = 0;
-					index2 < props[index].value.length;
-					index2++
-				) {
-					if (props[index].value[index2].type === 'text') {
-						attrs += props[index].value[index2].value;
-					}
-
-					if (props[index].value[index2].type === 'svelteExpression') {
-						attrs += '{' + props[index].value[index2].value + '}';
-						if (index2 < props[index].value.length - 1) {
-						}
-					}
-				}
-				attrs += '"';
+				attrs += '="' + render_attr_values(props[index].value) + '"';
 			}
 		}
 
 		if (props[index].type === 'svelteDirective') {
 			attrs += props[index].name + ':' + props[index].specifier;
+			if (props[index].value.length > 0) {
+				attrs += '="' + render_attr_values(props[index].value) + '"';
+			}
 		}
 		attrs += '\n';
 	}
