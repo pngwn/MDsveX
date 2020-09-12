@@ -722,7 +722,7 @@ tag="{null}"
 	);
 });
 
-svast_stringify('compiles child nodes', () => {
+svast_stringify('compiles child nodes: svelteMeta', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -788,12 +788,11 @@ tag="{null}"
 
 <svelte:options 
 tag="{null}"
-/>
-</svelte:self>`
+/></svelte:self>`
 	);
 });
 
-svast_stringify('compiles child nodes', () => {
+svast_stringify('compiles child nodes: svelteElement', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -859,9 +858,90 @@ tag="{null}"
 
 <input 
 tag="{null}"
-/>
-</div>`
+/></div>`
 	);
 });
 
+svast_stringify('compiles branching blocks', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteBranchingBlock',
+				name: 'if',
+				branches: [
+					{
+						type: 'svelteBranch',
+						name: 'if',
+						expression: {
+							type: 'svelteExpression',
+							value: 'x > 10',
+						},
+						children: [
+							{
+								type: 'text',
+								value: '\n\t',
+							},
+							{
+								type: 'svelteElement',
+								tagName: 'p',
+								properties: [],
+								selfClosing: false,
+								children: [
+									{
+										type: 'text',
+										value: 'x is greater than 10',
+									},
+								],
+							},
+							{
+								type: 'text',
+								value: '\n',
+							},
+						],
+					},
+					{
+						type: 'svelteBranch',
+						name: 'else if',
+						expression: {
+							type: 'svelteExpression',
+							value: 'x < 5',
+						},
+						children: [
+							{
+								type: 'text',
+								value: '\n\t',
+							},
+							{
+								type: 'svelteElement',
+								tagName: 'p',
+								properties: [],
+								selfClosing: false,
+								children: [
+									{
+										type: 'text',
+										value: 'x is less than 5',
+									},
+								],
+							},
+							{
+								type: 'text',
+								value: '\n',
+							},
+						],
+					},
+				],
+			},
+		],
+	};
+
+	assert.is(
+		compile(tree),
+		`{#if x > 10}
+	<p >x is greater than 10</p>
+{:else if x < 5}
+	<p >x is less than 5</p>
+{/if}`
+	);
+});
 svast_stringify.run();

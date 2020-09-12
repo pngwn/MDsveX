@@ -9,6 +9,7 @@ import {
 	SvelteExpression,
 	Literal,
 	SvelteParent,
+	BranchingBlock,
 } from 'svast';
 
 function render_attr_values(values: (Text | SvelteExpression)[]): string {
@@ -97,7 +98,6 @@ const handlers: Record<string, Handler> = {
 				((node as SvelteParent).children.length > 0
 					? compile_children((node as SvelteParent).children)
 					: '') +
-				'\n' +
 				'</' +
 				node.tagName +
 				'>'
@@ -127,12 +127,33 @@ const handlers: Record<string, Handler> = {
 				((node as SvelteParent).children.length > 0
 					? compile_children((node as SvelteParent).children)
 					: '') +
-				'\n' +
 				'</svelte:' +
 				node.tagName +
 				'>'
 			);
 		}
+	},
+	svelteBranchingBlock(node, compile_children) {
+		let branches = '';
+		for (
+			let index = 0;
+			index < (node as BranchingBlock).branches.length;
+			index++
+		) {
+			if (index === 0) {
+				branches += '{#';
+			} else {
+				branches += '{:';
+			}
+
+			branches +=
+				(node as BranchingBlock).branches[index].name +
+				' ' +
+				(node as BranchingBlock).branches[index].expression.value +
+				'}' +
+				compile_children((node as BranchingBlock).branches[index].children);
+		}
+		return branches + '{/' + node.name + '}';
 	},
 };
 
