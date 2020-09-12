@@ -75,7 +75,7 @@
 						},
 						{
 							"type": "text",
-							"value": "",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 53,
@@ -107,7 +107,7 @@
 						},
 						{
 							"type": "text",
-							"value": "",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 53,
@@ -139,7 +139,7 @@
 						},
 						{
 							"type": "text",
-							"value": "",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 53,
@@ -171,7 +171,7 @@
 						},
 						{
 							"type": "text",
-							"value": "",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 53,
@@ -315,12 +315,24 @@
 								},
 								{
 									"type": "text",
-									"value": "fa-",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 54,
 											"column": 22,
 											"offset": 1208
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "fa-",
+									"position": {
+										"start": {
+											"line": 54,
+											"column": 23,
+											"offset": 1209
 										},
 										"end": {
 											"line": 54,
@@ -347,7 +359,7 @@
 								},
 								{
 									"type": "text",
-									"value": "",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 54,
@@ -379,7 +391,7 @@
 								},
 								{
 									"type": "text",
-									"value": "",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 54,

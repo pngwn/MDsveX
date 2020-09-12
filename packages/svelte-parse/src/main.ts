@@ -40,6 +40,7 @@ import {
 	RE_COMMENT_START,
 	RE_COMMENT_END,
 	RE_END_TAG_START,
+	RE_ONLY_WHITESPACE,
 } from './types_and_things';
 
 import {
@@ -783,12 +784,13 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			// " ", "\n" => still in the attribute value but make a new node
 			if (char === SPACE || char === TAB || char === LINEFEED) {
 				const _c = current_node as Text | SvelteExpression;
-				if (_c.type === 'text' && _c.value === '') {
+				if (_c.type === 'text' && RE_ONLY_WHITESPACE.test(_c.value)) {
+					_c.value += value[index];
 					chomp();
 					continue;
 				}
 				pop_node();
-				_n = { type: 'text', value: '' };
+				_n = { type: 'text', value: value[index] };
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
@@ -810,8 +812,22 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			//@ts-ignore
-			if (current_node.type === 'blank') {
+			if (
+				(current_node as Text).type === 'text' &&
+				RE_ONLY_WHITESPACE.test((current_node as Text).value)
+			) {
+				// (current_node as Text).value += value[index];
+
+				pop_node();
+				_n = { type: 'text', value: '' };
+				if (generatePositions)
+					//@ts-ignore
+					_n.position = { start: place(), end: {} };
+				(current_node as Property).value.push(_n as Text);
+				push_node(_n);
+
+				//@ts-ignore
+			} else if (current_node.type === 'blank') {
 				pop_node();
 				_n = { type: 'text', value: '' };
 				if (generatePositions)

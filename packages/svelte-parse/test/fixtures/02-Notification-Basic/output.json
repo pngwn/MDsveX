@@ -1131,7 +1131,7 @@
 								},
 								{
 									"type": "text",
-									"value": "a",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 109,
@@ -1143,12 +1143,36 @@
 								},
 								{
 									"type": "text",
-									"value": "title",
+									"value": "a",
+									"position": {
+										"start": {
+											"line": 109,
+											"column": 32,
+											"offset": 1973
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 109,
 											"column": 33,
 											"offset": 1974
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "title",
+									"position": {
+										"start": {
+											"line": 109,
+											"column": 34,
+											"offset": 1975
 										},
 										"end": {
 											"line": 109,
@@ -1264,12 +1288,24 @@
 								},
 								{
 									"type": "text",
-									"value": "text",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 110,
 											"column": 31,
 											"offset": 2034
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "text",
+									"position": {
+										"start": {
+											"line": 110,
+											"column": 32,
+											"offset": 2035
 										},
 										"end": {
 											"line": 110,
@@ -1599,12 +1635,24 @@
 								},
 								{
 									"type": "text",
-									"value": "text",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 115,
 											"column": 43,
 											"offset": 2173
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "text",
+									"position": {
+										"start": {
+											"line": 115,
+											"column": 44,
+											"offset": 2174
 										},
 										"end": {
 											"line": 115,

@@ -454,6 +454,7 @@ Hello friends</script>`,
 						specifier: 'world',
 						value: [
 							{ type: 'text', value: 'cheese' },
+							{ type: 'text', value: ' ' },
 							{ type: 'text', value: 'strings' },
 						],
 						shorthand: 'none',
@@ -489,6 +490,7 @@ Hello friends</style>`,
 						specifier: 'world',
 						value: [
 							{ type: 'text', value: 'cheese' },
+							{ type: 'text', value: ' ' },
 							{ type: 'text', value: 'strings' },
 						],
 						shorthand: 'none',
@@ -523,6 +525,7 @@ siblings('parses style tags ignoring the contents', () => {
 						specifier: 'world',
 						value: [
 							{ type: 'text', value: 'cheese' },
+							{ type: 'text', value: ' ' },
 							{ type: 'text', value: 'strings' },
 						],
 						shorthand: 'none',

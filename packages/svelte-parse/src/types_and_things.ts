@@ -28,6 +28,7 @@ export const RE_SCRIPT_STYLE = /^<\/(?:script|style)\s*>/;
 export const RE_COMMENT_START = /^<!--/;
 export const RE_COMMENT_END = /^-->/;
 export const RE_END_TAG_START = /^<\s*\//;
+export const RE_ONLY_WHITESPACE = /^\s*$/;
 export interface Result {
 	/**
 	 * The chomped string, what has been parsed. This is a substring of the input value.

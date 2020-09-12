@@ -425,12 +425,24 @@
 										},
 										{
 											"type": "text",
-											"value": "red",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 29,
 													"column": 18,
 													"offset": 496
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "red",
+											"position": {
+												"start": {
+													"line": 29,
+													"column": 19,
+													"offset": 497
 												},
 												"end": {
 													"line": 29,

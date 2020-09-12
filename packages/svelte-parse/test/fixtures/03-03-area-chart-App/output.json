@@ -314,12 +314,24 @@
 										},
 										{
 											"type": "text",
-											"value": "y-axis",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 35,
 													"column": 17,
 													"offset": 954
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "y-axis",
+											"position": {
+												"start": {
+													"line": 35,
+													"column": 18,
+													"offset": 955
 												},
 												"end": {
 													"line": 35,
@@ -362,7 +374,7 @@
 										},
 										{
 											"type": "text",
-											"value": "",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 35,
@@ -505,12 +517,24 @@
 																},
 																{
 																	"type": "text",
-																	"value": "tick-",
+																	"value": " ",
 																	"position": {
 																		"start": {
 																			"line": 37,
 																			"column": 19,
 																			"offset": 1048
+																		},
+																		"end": {}
+																	}
+																},
+																{
+																	"type": "text",
+																	"value": "tick-",
+																	"position": {
+																		"start": {
+																			"line": 37,
+																			"column": 20,
+																			"offset": 1049
 																		},
 																		"end": {
 																			"line": 37,
@@ -569,7 +593,7 @@
 																},
 																{
 																	"type": "text",
-																	"value": "",
+																	"value": " ",
 																	"position": {
 																		"start": {
 																			"line": 37,
@@ -1001,12 +1025,24 @@
 										},
 										{
 											"type": "text",
-											"value": "x-axis",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 45,
 													"column": 17,
 													"offset": 1281
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "x-axis",
+											"position": {
+												"start": {
+													"line": 45,
+													"column": 18,
+													"offset": 1282
 												},
 												"end": {
 													"line": 45,
@@ -1112,12 +1148,24 @@
 																},
 																{
 																	"type": "text",
-																	"value": "tick-",
+																	"value": " ",
 																	"position": {
 																		"start": {
 																			"line": 47,
 																			"column": 19,
 																			"offset": 1335
+																		},
+																		"end": {}
+																	}
+																},
+																{
+																	"type": "text",
+																	"value": "tick-",
+																	"position": {
+																		"start": {
+																			"line": 47,
+																			"column": 20,
+																			"offset": 1336
 																		},
 																		"end": {
 																			"line": 47,

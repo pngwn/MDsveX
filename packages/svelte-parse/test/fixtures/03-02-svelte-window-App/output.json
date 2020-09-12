@@ -200,12 +200,24 @@
 						},
 						{
 							"type": "text",
-							"value": "center",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 35,
 									"column": 24,
 									"offset": 630
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "center",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 25,
+									"offset": 631
 								},
 								"end": {
 									"line": 35,

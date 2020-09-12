@@ -328,7 +328,7 @@
 										},
 										{
 											"type": "text",
-											"value": "dialog",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 220,
@@ -340,7 +340,19 @@
 										},
 										{
 											"type": "text",
-											"value": "",
+											"value": "dialog",
+											"position": {
+												"start": {
+													"line": 220,
+													"column": 21,
+													"offset": 4881
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 220,
@@ -372,12 +384,24 @@
 										},
 										{
 											"type": "text",
-											"value": "is-active",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 220,
 													"column": 34,
 													"offset": 4894
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "is-active",
+											"position": {
+												"start": {
+													"line": 220,
+													"column": 35,
+													"offset": 4895
 												},
 												"end": {
 													"line": 220,
@@ -2012,12 +2036,24 @@
 																												},
 																												{
 																													"type": "text",
-																													"value": "is-danger",
+																													"value": " ",
 																													"position": {
 																														"start": {
 																															"line": 251,
 																															"column": 33,
 																															"offset": 6109
+																														},
+																														"end": {}
+																													}
+																												},
+																												{
+																													"type": "text",
+																													"value": "is-danger",
+																													"position": {
+																														"start": {
+																															"line": 251,
+																															"column": 34,
+																															"offset": 6110
 																														},
 																														"end": {
 																															"line": 251,
@@ -2645,7 +2681,7 @@
 																},
 																{
 																	"type": "text",
-																	"value": "",
+																	"value": " ",
 																	"position": {
 																		"start": {
 																			"line": 269,

@@ -23,7 +23,7 @@
 						},
 						{
 							"type": "text",
-							"value": "letter:&quote",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 1,
@@ -35,7 +35,19 @@
 						},
 						{
 							"type": "text",
-							"value": "number:&quot1",
+							"value": "letter:&quote",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 39,
+									"offset": 38
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 1,
@@ -47,12 +59,36 @@
 						},
 						{
 							"type": "text",
-							"value": "end:&quot",
+							"value": "number:&quot1",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 53,
+									"offset": 52
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 1,
 									"column": 66,
 									"offset": 65
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "end:&quot",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 67,
+									"offset": 66
 								},
 								"end": {
 									"line": 1,

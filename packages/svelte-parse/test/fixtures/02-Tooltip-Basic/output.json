@@ -75,12 +75,24 @@
 						},
 						{
 							"type": "text",
-							"value": "world",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 6,
 									"column": 22,
 									"offset": 133
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "world",
+							"position": {
+								"start": {
+									"line": 6,
+									"column": 23,
+									"offset": 134
 								},
 								"end": {
 									"line": 6,

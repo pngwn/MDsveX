@@ -756,6 +756,10 @@ element(
 						},
 						{
 							type: 'text',
+							value: ' ',
+						},
+						{
+							type: 'text',
 							value: 'valuetwo',
 						},
 					],
@@ -791,6 +795,7 @@ element(
 							type: 'text',
 							value: 'value',
 						},
+						{ type: 'text', value: ' ' },
 						{
 							type: 'text',
 							value: 'valuetwo',
@@ -828,6 +833,7 @@ element(
 							type: 'text',
 							value: 'value',
 						},
+						{ type: 'text', value: ' ' },
 						{
 							type: 'text',
 							value: 'valuetwo',
@@ -865,6 +871,7 @@ element(
 							type: 'text',
 							value: 'value',
 						},
+						{ type: 'text', value: ' ' },
 						{
 							type: 'text',
 							value: 'valuetwo',
@@ -1034,6 +1041,7 @@ element(
 							type: 'text',
 							value: 'value',
 						},
+						{ type: 'text', value: ' ' },
 						{
 							type: 'text',
 							value: 'valuetwo',
@@ -1071,6 +1079,7 @@ element(
 							type: 'text',
 							value: 'value',
 						},
+						{ type: 'text', value: ' ' },
 						{
 							type: 'text',
 							value: 'valuetwo',
@@ -1108,6 +1117,7 @@ element(
 							type: 'text',
 							value: 'value',
 						},
+						{ type: 'text', value: ' ' },
 						{
 							type: 'text',
 							value: 'valuetwo',
@@ -1145,6 +1155,7 @@ element(
 							type: 'text',
 							value: 'value',
 						},
+						{ type: 'text', value: ' ' },
 						{
 							type: 'text',
 							value: 'valuetwo',
@@ -1295,6 +1306,7 @@ element(
 					specifier: 'world',
 					value: [
 						{ type: 'text', value: 'cheese' },
+						{ type: 'text', value: ' ' },
 						{ type: 'text', value: 'strings' },
 					],
 					shorthand: 'none',
@@ -1327,6 +1339,40 @@ element(
 					specifier: 'world',
 					value: [
 						{ type: 'text', value: 'cheese' },
+						{ type: 'text', value: ' ' },
+						{ type: 'text', value: 'strings' },
+					],
+					shorthand: 'none',
+					modifiers: [],
+				},
+			],
+		});
+	}
+);
+
+element(
+	'parses a tag with a directive an a directive value: single-quoted, two values, many spaces',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			generatePositions: false,
+			childParser,
+			value: `<input hello:world='cheese      strings' />`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			selfClosing: true,
+			children: [],
+			properties: [
+				{
+					type: 'svelteDirective',
+					name: 'hello',
+					specifier: 'world',
+					value: [
+						{ type: 'text', value: 'cheese' },
+						{ type: 'text', value: '      ' },
 						{ type: 'text', value: 'strings' },
 					],
 					shorthand: 'none',

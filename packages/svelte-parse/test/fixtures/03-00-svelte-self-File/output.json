@@ -127,12 +127,24 @@
 						},
 						{
 							"type": "text",
-							"value": "url(tutorial/icons/",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 14,
 									"column": 31,
 									"offset": 232
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "url(tutorial/icons/",
+							"position": {
+								"start": {
+									"line": 14,
+									"column": 32,
+									"offset": 233
 								},
 								"end": {
 									"line": 14,

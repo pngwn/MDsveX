@@ -115,12 +115,24 @@
 										},
 										{
 											"type": "text",
-											"value": "has-addons",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 57,
 													"column": 21,
 													"offset": 1639
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "has-addons",
+											"position": {
+												"start": {
+													"line": 57,
+													"column": 22,
+													"offset": 1640
 												},
 												"end": {
 													"line": 57,
@@ -186,7 +198,7 @@
 												},
 												{
 													"type": "text",
-													"value": "",
+													"value": " ",
 													"position": {
 														"start": {
 															"line": 59,
@@ -218,7 +230,7 @@
 												},
 												{
 													"type": "text",
-													"value": "",
+													"value": " ",
 													"position": {
 														"start": {
 															"line": 59,
@@ -533,7 +545,7 @@
 												},
 												{
 													"type": "text",
-													"value": "is-delete",
+													"value": " ",
 													"position": {
 														"start": {
 															"line": 66,
@@ -545,7 +557,19 @@
 												},
 												{
 													"type": "text",
-													"value": "",
+													"value": "is-delete",
+													"position": {
+														"start": {
+															"line": 66,
+															"column": 24,
+															"offset": 1903
+														},
+														"end": {}
+													}
+												},
+												{
+													"type": "text",
+													"value": " ",
 													"position": {
 														"start": {
 															"line": 66,
@@ -893,7 +917,7 @@
 										},
 										{
 											"type": "text",
-											"value": "",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 76,
@@ -925,7 +949,7 @@
 										},
 										{
 											"type": "text",
-											"value": "",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 76,
@@ -1250,12 +1274,24 @@
 																},
 																{
 																	"type": "text",
-																	"value": "is-small",
+																	"value": " ",
 																	"position": {
 																		"start": {
 																			"line": 83,
 																			"column": 30,
 																			"offset": 2396
+																		},
+																		"end": {}
+																	}
+																},
+																{
+																	"type": "text",
+																	"value": "is-small",
+																	"position": {
+																		"start": {
+																			"line": 83,
+																			"column": 31,
+																			"offset": 2397
 																		},
 																		"end": {
 																			"line": 83,

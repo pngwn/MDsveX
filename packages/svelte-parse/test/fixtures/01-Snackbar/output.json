@@ -280,7 +280,7 @@
 								},
 								{
 									"type": "text",
-									"value": "",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 96,
@@ -745,7 +745,7 @@
 																},
 																{
 																	"type": "text",
-																	"value": "",
+																	"value": " ",
 																	"position": {
 																		"start": {
 																			"line": 103,

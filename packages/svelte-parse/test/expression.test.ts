@@ -395,7 +395,7 @@ expression(
 					value: [
 						{
 							type: 'text',
-							value: '',
+							value: '   ',
 						},
 						{
 							type: 'svelteExpression',
@@ -403,7 +403,7 @@ expression(
 						},
 						{
 							type: 'text',
-							value: '',
+							value: '   ',
 						},
 						{
 							type: 'svelteExpression',
@@ -411,7 +411,7 @@ expression(
 						},
 						{
 							type: 'text',
-							value: '',
+							value: '    ',
 						},
 					],
 					shorthand: 'none',
@@ -448,7 +448,7 @@ expression(
 								},
 								{
 									type: 'text',
-									value: '',
+									value: ' ',
 								},
 								{
 									type: 'svelteExpression',

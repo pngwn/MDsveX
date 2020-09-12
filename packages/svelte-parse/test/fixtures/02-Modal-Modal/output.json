@@ -200,7 +200,7 @@
 						},
 						{
 							"type": "text",
-							"value": "",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 206,
@@ -324,7 +324,7 @@
 								},
 								{
 									"type": "text",
-									"value": "",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 207,
@@ -488,12 +488,24 @@
 										},
 										{
 											"type": "text",
-											"value": "content",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 208,
 													"column": 39,
 													"offset": 3894
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "content",
+											"position": {
+												"start": {
+													"line": 208,
+													"column": 40,
+													"offset": 3895
 												},
 												"end": {
 													"line": 208,

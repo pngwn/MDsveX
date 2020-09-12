@@ -112,7 +112,7 @@
 						},
 						{
 							"type": "text",
-							"value": "search",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 7,
@@ -124,12 +124,36 @@
 						},
 						{
 							"type": "text",
-							"value": "here...",
+							"value": "search",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 52,
+									"offset": 140
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 7,
 									"column": 58,
 									"offset": 146
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "here...",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 59,
+									"offset": 147
 								},
 								"end": {
 									"line": 7,

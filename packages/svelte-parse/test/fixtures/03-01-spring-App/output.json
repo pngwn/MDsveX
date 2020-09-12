@@ -127,7 +127,7 @@
 						},
 						{
 							"type": "text",
-							"value": "absolute;",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 17,
@@ -139,7 +139,19 @@
 						},
 						{
 							"type": "text",
-							"value": "right:",
+							"value": "absolute;",
+							"position": {
+								"start": {
+									"line": 17,
+									"column": 23,
+									"offset": 282
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 17,
@@ -151,12 +163,36 @@
 						},
 						{
 							"type": "text",
-							"value": "1em;",
+							"value": "right:",
+							"position": {
+								"start": {
+									"line": 17,
+									"column": 33,
+									"offset": 292
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 17,
 									"column": 39,
 									"offset": 298
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "1em;",
+							"position": {
+								"start": {
+									"line": 17,
+									"column": 40,
+									"offset": 299
 								},
 								"end": {
 									"line": 17,

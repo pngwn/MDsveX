@@ -131,12 +131,24 @@
 						},
 						{
 							"type": "text",
-							"value": "dancing",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 7,
 									"column": 23,
 									"offset": 140
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "dancing",
+							"position": {
+								"start": {
+									"line": 7,
+									"column": 24,
+									"offset": 141
 								},
 								"end": {
 									"line": 7,
