@@ -149,7 +149,7 @@
 								},
 								{
 									"type": "text",
-									"value": "Hacker",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 82,
@@ -161,7 +161,19 @@
 								},
 								{
 									"type": "text",
-									"value": "News",
+									"value": "Hacker",
+									"position": {
+										"start": {
+											"line": 82,
+											"column": 19,
+											"offset": 1065
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 82,
@@ -173,12 +185,36 @@
 								},
 								{
 									"type": "text",
-									"value": "logo",
+									"value": "News",
+									"position": {
+										"start": {
+											"line": 82,
+											"column": 26,
+											"offset": 1072
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 82,
 											"column": 30,
 											"offset": 1076
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "logo",
+									"position": {
+										"start": {
+											"line": 82,
+											"column": 31,
+											"offset": 1077
 										},
 										"end": {
 											"line": 82,

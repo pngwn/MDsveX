@@ -203,7 +203,7 @@
 										},
 										{
 											"type": "text",
-											"value": "",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 22,
@@ -247,12 +247,24 @@
 										},
 										{
 											"type": "text",
-											"value": "0",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 22,
 													"column": 71,
 													"offset": 485
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "0",
+											"position": {
+												"start": {
+													"line": 22,
+													"column": 72,
+													"offset": 486
 												},
 												"end": {
 													"line": 22,

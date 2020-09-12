@@ -111,7 +111,7 @@ position(
 						},
 						{
 							type: 'text',
-							value: '',
+							value: ' ',
 							position: {
 								start: {
 									line: 1,
@@ -143,6 +143,71 @@ position(
 			position: {
 				start: { line: 1, column: 1, offset: 0 },
 				end: { line: 1, column: 32, offset: 31 },
+			},
+		});
+	}
+);
+
+position(
+	'tracks the location of multiple expression nodes in attributes: extra spaces',
+	() => {
+		//@ts-ignore
+		const { parsed } = parseNode({
+			generatePositions: true,
+			childParser,
+			value: `<input thing="{hail}   {haip}" />`,
+		});
+
+		assert.equal(parsed, <SvelteElement>{
+			type: 'svelteElement',
+			tagName: 'input',
+			properties: [
+				{
+					type: 'svelteProperty',
+					name: 'thing',
+					value: [
+						{
+							type: 'svelteExpression',
+							value: 'hail',
+							position: {
+								start: { line: 1, column: 15, offset: 14 },
+								end: { line: 1, column: 21, offset: 20 },
+							},
+						},
+						{
+							type: 'text',
+							value: '   ',
+							position: {
+								start: {
+									line: 1,
+									column: 21,
+									offset: 20,
+								},
+								end: { line: 1, column: 24, offset: 23 },
+							},
+						},
+						{
+							type: 'svelteExpression',
+							value: 'haip',
+							position: {
+								start: { line: 1, column: 24, offset: 23 },
+								end: { line: 1, column: 30, offset: 29 },
+							},
+						},
+					],
+					modifiers: [],
+					shorthand: 'none',
+					position: {
+						start: { line: 1, column: 8, offset: 7 },
+						end: { line: 1, column: 31, offset: 30 },
+					},
+				},
+			],
+			selfClosing: true,
+			children: [],
+			position: {
+				start: { line: 1, column: 1, offset: 0 },
+				end: { line: 1, column: 34, offset: 33 },
 			},
 		});
 	}

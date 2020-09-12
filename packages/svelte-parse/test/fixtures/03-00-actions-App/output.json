@@ -290,12 +290,24 @@
 						},
 						{
 							"type": "text",
-							"value": "translate(",
+							"value": "\n\t\t",
 							"position": {
 								"start": {
 									"line": 48,
 									"column": 19,
 									"offset": 929
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "translate(",
+							"position": {
+								"start": {
+									"line": 49,
+									"column": 3,
+									"offset": 932
 								},
 								"end": {
 									"line": 49,
@@ -366,12 +378,24 @@
 						},
 						{
 							"type": "text",
-							"value": "rotate(",
+							"value": "\n\t\t",
 							"position": {
 								"start": {
 									"line": 49,
 									"column": 41,
 									"offset": 970
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "rotate(",
+							"position": {
+								"start": {
+									"line": 50,
+									"column": 3,
+									"offset": 973
 								},
 								"end": {
 									"line": 50,

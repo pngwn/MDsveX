@@ -127,7 +127,7 @@
 						},
 						{
 							"type": "text",
-							"value": "",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 89,
@@ -913,7 +913,7 @@
 												},
 												{
 													"type": "text",
-													"value": "",
+													"value": " ",
 													"position": {
 														"start": {
 															"line": 104,
@@ -1165,12 +1165,24 @@
 												},
 												{
 													"type": "text",
-													"value": "spinner",
+													"value": " ",
 													"position": {
 														"start": {
 															"line": 110,
 															"column": 25,
 															"offset": 2152
+														},
+														"end": {}
+													}
+												},
+												{
+													"type": "text",
+													"value": "spinner",
+													"position": {
+														"start": {
+															"line": 110,
+															"column": 26,
+															"offset": 2153
 														},
 														"end": {
 															"line": 110,

@@ -240,12 +240,24 @@
 								},
 								{
 									"type": "text",
-									"value": "y-axis",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 40,
 											"column": 16,
 											"offset": 755
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "y-axis",
+									"position": {
+										"start": {
+											"line": 40,
+											"column": 17,
+											"offset": 756
 										},
 										"end": {
 											"line": 40,
@@ -351,12 +363,24 @@
 														},
 														{
 															"type": "text",
-															"value": "tick-",
+															"value": " ",
 															"position": {
 																"start": {
 																	"line": 42,
 																	"column": 18,
 																	"offset": 807
+																},
+																"end": {}
+															}
+														},
+														{
+															"type": "text",
+															"value": "tick-",
+															"position": {
+																"start": {
+																	"line": 42,
+																	"column": 19,
+																	"offset": 808
 																},
 																"end": {
 																	"line": 42,
@@ -415,7 +439,7 @@
 														},
 														{
 															"type": "text",
-															"value": "",
+															"value": " ",
 															"position": {
 																"start": {
 																	"line": 42,
@@ -887,12 +911,24 @@
 								},
 								{
 									"type": "text",
-									"value": "x-axis",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 50,
 											"column": 16,
 											"offset": 1024
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "x-axis",
+									"position": {
+										"start": {
+											"line": 50,
+											"column": 17,
+											"offset": 1025
 										},
 										"end": {
 											"line": 50,

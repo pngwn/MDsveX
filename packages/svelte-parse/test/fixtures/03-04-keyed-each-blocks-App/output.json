@@ -165,7 +165,7 @@
 						},
 						{
 							"type": "text",
-							"value": "grid;",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 21,
@@ -177,7 +177,19 @@
 						},
 						{
 							"type": "text",
-							"value": "grid-template-columns:",
+							"value": "grid;",
+							"position": {
+								"start": {
+									"line": 21,
+									"column": 22,
+									"offset": 374
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 21,
@@ -189,7 +201,19 @@
 						},
 						{
 							"type": "text",
-							"value": "1fr",
+							"value": "grid-template-columns:",
+							"position": {
+								"start": {
+									"line": 21,
+									"column": 28,
+									"offset": 380
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 21,
@@ -201,7 +225,19 @@
 						},
 						{
 							"type": "text",
-							"value": "1fr;",
+							"value": "1fr",
+							"position": {
+								"start": {
+									"line": 21,
+									"column": 51,
+									"offset": 403
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 21,
@@ -213,7 +249,19 @@
 						},
 						{
 							"type": "text",
-							"value": "grid-gap:",
+							"value": "1fr;",
+							"position": {
+								"start": {
+									"line": 21,
+									"column": 55,
+									"offset": 407
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 21,
@@ -225,12 +273,36 @@
 						},
 						{
 							"type": "text",
-							"value": "1em",
+							"value": "grid-gap:",
+							"position": {
+								"start": {
+									"line": 21,
+									"column": 60,
+									"offset": 412
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 21,
 									"column": 69,
 									"offset": 421
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "1em",
+							"position": {
+								"start": {
+									"line": 21,
+									"column": 70,
+									"offset": 422
 								},
 								"end": {
 									"line": 21,

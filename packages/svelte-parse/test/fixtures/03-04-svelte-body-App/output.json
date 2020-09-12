@@ -306,7 +306,7 @@
 						},
 						{
 							"type": "text",
-							"value": "wants",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 35,
@@ -318,7 +318,19 @@
 						},
 						{
 							"type": "text",
-							"value": "to",
+							"value": "wants",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 14,
+									"offset": 645
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 35,
@@ -330,7 +342,19 @@
 						},
 						{
 							"type": "text",
-							"value": "know",
+							"value": "to",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 20,
+									"offset": 651
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 35,
@@ -342,7 +366,19 @@
 						},
 						{
 							"type": "text",
-							"value": "what's",
+							"value": "know",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 23,
+									"offset": 654
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 35,
@@ -354,7 +390,19 @@
 						},
 						{
 							"type": "text",
-							"value": "going",
+							"value": "what's",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 28,
+									"offset": 659
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 35,
@@ -366,12 +414,36 @@
 						},
 						{
 							"type": "text",
-							"value": "on",
+							"value": "going",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 35,
+									"offset": 666
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 35,
 									"column": 40,
 									"offset": 671
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "on",
+							"position": {
+								"start": {
+									"line": 35,
+									"column": 41,
+									"offset": 672
 								},
 								"end": {
 									"line": 35,

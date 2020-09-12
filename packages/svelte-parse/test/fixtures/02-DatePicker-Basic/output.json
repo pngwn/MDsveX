@@ -193,7 +193,7 @@
 										},
 										{
 											"type": "text",
-											"value": "click",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 9,
@@ -205,7 +205,19 @@
 										},
 										{
 											"type": "text",
-											"value": "to",
+											"value": "click",
+											"position": {
+												"start": {
+													"line": 9,
+													"column": 37,
+													"offset": 170
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 9,
@@ -217,7 +229,19 @@
 										},
 										{
 											"type": "text",
-											"value": "select",
+											"value": "to",
+											"position": {
+												"start": {
+													"line": 9,
+													"column": 43,
+													"offset": 176
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 9,
@@ -229,7 +253,19 @@
 										},
 										{
 											"type": "text",
-											"value": "a",
+											"value": "select",
+											"position": {
+												"start": {
+													"line": 9,
+													"column": 46,
+													"offset": 179
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 9,
@@ -241,12 +277,36 @@
 										},
 										{
 											"type": "text",
-											"value": "date",
+											"value": "a",
+											"position": {
+												"start": {
+													"line": 9,
+													"column": 53,
+													"offset": 186
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 9,
 													"column": 54,
 													"offset": 187
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "date",
+											"position": {
+												"start": {
+													"line": 9,
+													"column": 55,
+													"offset": 188
 												},
 												"end": {
 													"line": 9,

@@ -97,7 +97,7 @@
 								},
 								{
 									"type": "text",
-									"value": "",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 10,
@@ -214,7 +214,7 @@
 								},
 								{
 									"type": "text",
-									"value": "",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 11,

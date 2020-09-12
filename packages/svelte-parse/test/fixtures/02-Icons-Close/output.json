@@ -131,7 +131,7 @@
 						},
 						{
 							"type": "text",
-							"value": "-2",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 1,
@@ -143,7 +143,19 @@
 						},
 						{
 							"type": "text",
-							"value": "50",
+							"value": "-2",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 58,
+									"offset": 57
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 1,
@@ -159,8 +171,32 @@
 							"position": {
 								"start": {
 									"line": 1,
+									"column": 61,
+									"offset": 60
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
+							"position": {
+								"start": {
+									"line": 1,
 									"column": 63,
 									"offset": 62
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "50",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 64,
+									"offset": 63
 								},
 								"end": {
 									"line": 1,
@@ -334,12 +370,24 @@
 								},
 								{
 									"type": "text",
-									"value": "l3.641,3.641L27.641,22.688L38.564,33.61L34.923,37.251z",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 2,
 											"column": 144,
 											"offset": 249
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "l3.641,3.641L27.641,22.688L38.564,33.61L34.923,37.251z",
+									"position": {
+										"start": {
+											"line": 2,
+											"column": 145,
+											"offset": 250
 										},
 										"end": {
 											"line": 2,

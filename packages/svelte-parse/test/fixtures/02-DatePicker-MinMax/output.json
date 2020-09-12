@@ -193,7 +193,7 @@
 										},
 										{
 											"type": "text",
-											"value": "click",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 11,
@@ -205,7 +205,19 @@
 										},
 										{
 											"type": "text",
-											"value": "to",
+											"value": "click",
+											"position": {
+												"start": {
+													"line": 11,
+													"column": 37,
+													"offset": 238
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 11,
@@ -217,7 +229,19 @@
 										},
 										{
 											"type": "text",
-											"value": "select",
+											"value": "to",
+											"position": {
+												"start": {
+													"line": 11,
+													"column": 43,
+													"offset": 244
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 11,
@@ -229,7 +253,19 @@
 										},
 										{
 											"type": "text",
-											"value": "a",
+											"value": "select",
+											"position": {
+												"start": {
+													"line": 11,
+													"column": 46,
+													"offset": 247
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 11,
@@ -241,12 +277,36 @@
 										},
 										{
 											"type": "text",
-											"value": "date",
+											"value": "a",
+											"position": {
+												"start": {
+													"line": 11,
+													"column": 53,
+													"offset": 254
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 11,
 													"column": 54,
 													"offset": 255
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "date",
+											"position": {
+												"start": {
+													"line": 11,
+													"column": 55,
+													"offset": 256
 												},
 												"end": {
 													"line": 11,

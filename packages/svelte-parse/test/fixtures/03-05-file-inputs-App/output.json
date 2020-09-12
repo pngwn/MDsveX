@@ -164,12 +164,24 @@
 						},
 						{
 							"type": "text",
-							"value": "image/jpeg",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 17,
 									"column": 20,
 									"offset": 357
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "image/jpeg",
+							"position": {
+								"start": {
+									"line": 17,
+									"column": 21,
+									"offset": 358
 								},
 								"end": {
 									"line": 17,

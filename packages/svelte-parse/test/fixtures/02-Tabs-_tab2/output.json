@@ -314,12 +314,24 @@
 												},
 												{
 													"type": "text",
-													"value": "image",
+													"value": " ",
 													"position": {
 														"start": {
 															"line": 15,
 															"column": 34,
 															"offset": 208
+														},
+														"end": {}
+													}
+												},
+												{
+													"type": "text",
+													"value": "image",
+													"position": {
+														"start": {
+															"line": 15,
+															"column": 35,
+															"offset": 209
 														},
 														"end": {
 															"line": 15,

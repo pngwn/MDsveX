@@ -188,7 +188,7 @@
 										},
 										{
 											"type": "text",
-											"value": "",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 41,
@@ -220,12 +220,24 @@
 										},
 										{
 											"type": "text",
-											"value": "is-active",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 41,
 													"column": 27,
 													"offset": 781
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "is-active",
+											"position": {
+												"start": {
+													"line": 41,
+													"column": 28,
+													"offset": 782
 												},
 												"end": {
 													"line": 41,
@@ -755,12 +767,24 @@
 																},
 																{
 																	"type": "text",
-																	"value": "is-large",
+																	"value": " ",
 																	"position": {
 																		"start": {
 																			"line": 48,
 																			"column": 33,
 																			"offset": 1097
+																		},
+																		"end": {}
+																	}
+																},
+																{
+																	"type": "text",
+																	"value": "is-large",
+																	"position": {
+																		"start": {
+																			"line": 48,
+																			"column": 34,
+																			"offset": 1098
 																		},
 																		"end": {
 																			"line": 48,

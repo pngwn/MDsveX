@@ -112,7 +112,7 @@
 						},
 						{
 							"type": "text",
-							"value": "your",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 5,
@@ -124,12 +124,36 @@
 						},
 						{
 							"type": "text",
-							"value": "name",
+							"value": "your",
+							"position": {
+								"start": {
+									"line": 5,
+									"column": 45,
+									"offset": 80
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 5,
 									"column": 49,
 									"offset": 84
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "name",
+							"position": {
+								"start": {
+									"line": 5,
+									"column": 50,
+									"offset": 85
 								},
 								"end": {
 									"line": 5,

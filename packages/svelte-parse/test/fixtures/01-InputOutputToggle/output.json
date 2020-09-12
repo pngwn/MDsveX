@@ -223,12 +223,24 @@
 								},
 								{
 									"type": "text",
-									"value": "right",
+									"value": " ",
 									"position": {
 										"start": {
 											"line": 24,
 											"column": 50,
 											"offset": 445
+										},
+										"end": {}
+									}
+								},
+								{
+									"type": "text",
+									"value": "right",
+									"position": {
+										"start": {
+											"line": 24,
+											"column": 51,
+											"offset": 446
 										},
 										"end": {
 											"line": 24,

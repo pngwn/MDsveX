@@ -233,7 +233,7 @@
 						},
 						{
 							"type": "text",
-							"value": "Blue",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 12,
@@ -245,7 +245,19 @@
 						},
 						{
 							"type": "text",
-							"value": "Danube",
+							"value": "Blue",
+							"position": {
+								"start": {
+									"line": 12,
+									"column": 13,
+									"offset": 285
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 12,
@@ -257,12 +269,36 @@
 						},
 						{
 							"type": "text",
-							"value": "Waltz",
+							"value": "Danube",
+							"position": {
+								"start": {
+									"line": 12,
+									"column": 18,
+									"offset": 290
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 12,
 									"column": 24,
 									"offset": 296
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "Waltz",
+							"position": {
+								"start": {
+									"line": 12,
+									"column": 25,
+									"offset": 297
 								},
 								"end": {
 									"line": 12,
@@ -305,12 +341,24 @@
 						},
 						{
 							"type": "text",
-							"value": "Strauss",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 13,
 									"column": 18,
 									"offset": 321
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "Strauss",
+							"position": {
+								"start": {
+									"line": 13,
+									"column": 19,
+									"offset": 322
 								},
 								"end": {
 									"line": 13,
@@ -353,12 +401,24 @@
 						},
 						{
 							"type": "text",
-							"value": "Archive",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 14,
 									"column": 21,
 									"offset": 351
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "Archive",
+							"position": {
+								"start": {
+									"line": 14,
+									"column": 22,
+									"offset": 352
 								},
 								"end": {
 									"line": 14,
@@ -505,7 +565,7 @@
 						},
 						{
 							"type": "text",
-							"value": "the",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 20,
@@ -517,7 +577,19 @@
 						},
 						{
 							"type": "text",
-							"value": "Bringer",
+							"value": "the",
+							"position": {
+								"start": {
+									"line": 20,
+									"column": 15,
+									"offset": 509
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 20,
@@ -529,7 +601,19 @@
 						},
 						{
 							"type": "text",
-							"value": "of",
+							"value": "Bringer",
+							"position": {
+								"start": {
+									"line": 20,
+									"column": 19,
+									"offset": 513
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 20,
@@ -541,12 +625,36 @@
 						},
 						{
 							"type": "text",
-							"value": "War",
+							"value": "of",
+							"position": {
+								"start": {
+									"line": 20,
+									"column": 27,
+									"offset": 521
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 20,
 									"column": 29,
 									"offset": 523
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "War",
+							"position": {
+								"start": {
+									"line": 20,
+									"column": 30,
+									"offset": 524
 								},
 								"end": {
 									"line": 20,
@@ -589,12 +697,24 @@
 						},
 						{
 							"type": "text",
-							"value": "Holst",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 21,
 									"column": 18,
 									"offset": 546
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "Holst",
+							"position": {
+								"start": {
+									"line": 21,
+									"column": 19,
+									"offset": 547
 								},
 								"end": {
 									"line": 21,
@@ -637,7 +757,7 @@
 						},
 						{
 							"type": "text",
-							"value": "Heritage",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 22,
@@ -649,7 +769,19 @@
 						},
 						{
 							"type": "text",
-							"value": "of",
+							"value": "Heritage",
+							"position": {
+								"start": {
+									"line": 22,
+									"column": 18,
+									"offset": 571
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 22,
@@ -661,7 +793,19 @@
 						},
 						{
 							"type": "text",
-							"value": "America",
+							"value": "of",
+							"position": {
+								"start": {
+									"line": 22,
+									"column": 27,
+									"offset": 580
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 22,
@@ -673,12 +817,36 @@
 						},
 						{
 							"type": "text",
-							"value": "Band",
+							"value": "America",
+							"position": {
+								"start": {
+									"line": 22,
+									"column": 30,
+									"offset": 583
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 22,
 									"column": 37,
 									"offset": 590
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "Band",
+							"position": {
+								"start": {
+									"line": 22,
+									"column": 38,
+									"offset": 591
 								},
 								"end": {
 									"line": 22,
@@ -825,7 +993,7 @@
 						},
 						{
 							"type": "text",
-							"value": "no.",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 28,
@@ -837,12 +1005,36 @@
 						},
 						{
 							"type": "text",
-							"value": "1",
+							"value": "no.",
+							"position": {
+								"start": {
+									"line": 28,
+									"column": 20,
+									"offset": 745
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 28,
 									"column": 23,
 									"offset": 748
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "1",
+							"position": {
+								"start": {
+									"line": 28,
+									"column": 24,
+									"offset": 749
 								},
 								"end": {
 									"line": 28,
@@ -885,12 +1077,24 @@
 						},
 						{
 							"type": "text",
-							"value": "Satie",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 29,
 									"column": 16,
 									"offset": 767
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "Satie",
+							"position": {
+								"start": {
+									"line": 29,
+									"column": 17,
+									"offset": 768
 								},
 								"end": {
 									"line": 29,
@@ -933,12 +1137,24 @@
 						},
 						{
 							"type": "text",
-							"value": "Procrastinator",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 30,
 									"column": 21,
 									"offset": 795
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "Procrastinator",
+							"position": {
+								"start": {
+									"line": 30,
+									"column": 22,
+									"offset": 796
 								},
 								"end": {
 									"line": 30,
@@ -1085,7 +1301,7 @@
 						},
 						{
 							"type": "text",
-							"value": "no.",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 36,
@@ -1097,7 +1313,19 @@
 						},
 						{
 							"type": "text",
-							"value": "5",
+							"value": "no.",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 18,
+									"offset": 979
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 36,
@@ -1109,7 +1337,19 @@
 						},
 						{
 							"type": "text",
-							"value": "in",
+							"value": "5",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 22,
+									"offset": 983
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 36,
@@ -1121,7 +1361,19 @@
 						},
 						{
 							"type": "text",
-							"value": "Cm,",
+							"value": "in",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 24,
+									"offset": 985
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 36,
@@ -1133,7 +1385,19 @@
 						},
 						{
 							"type": "text",
-							"value": "Op.",
+							"value": "Cm,",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 27,
+									"offset": 988
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 36,
@@ -1145,7 +1409,19 @@
 						},
 						{
 							"type": "text",
-							"value": "67",
+							"value": "Op.",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 31,
+									"offset": 992
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 36,
@@ -1157,7 +1433,19 @@
 						},
 						{
 							"type": "text",
-							"value": "-",
+							"value": "67",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 35,
+									"offset": 996
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 36,
@@ -1169,7 +1457,19 @@
 						},
 						{
 							"type": "text",
-							"value": "I.",
+							"value": "-",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 38,
+									"offset": 999
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 36,
@@ -1181,7 +1481,19 @@
 						},
 						{
 							"type": "text",
-							"value": "Allegro",
+							"value": "I.",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 40,
+									"offset": 1001
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 36,
@@ -1193,7 +1505,19 @@
 						},
 						{
 							"type": "text",
-							"value": "con",
+							"value": "Allegro",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 43,
+									"offset": 1004
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 36,
@@ -1205,12 +1529,36 @@
 						},
 						{
 							"type": "text",
-							"value": "brio",
+							"value": "con",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 51,
+									"offset": 1012
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 36,
 									"column": 54,
 									"offset": 1015
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "brio",
+							"position": {
+								"start": {
+									"line": 36,
+									"column": 55,
+									"offset": 1016
 								},
 								"end": {
 									"line": 36,
@@ -1253,7 +1601,7 @@
 						},
 						{
 							"type": "text",
-							"value": "van",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 37,
@@ -1265,12 +1613,36 @@
 						},
 						{
 							"type": "text",
-							"value": "Beethoven",
+							"value": "van",
+							"position": {
+								"start": {
+									"line": 37,
+									"column": 19,
+									"offset": 1040
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 37,
 									"column": 22,
 									"offset": 1043
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "Beethoven",
+							"position": {
+								"start": {
+									"line": 37,
+									"column": 23,
+									"offset": 1044
 								},
 								"end": {
 									"line": 37,
@@ -1313,12 +1685,24 @@
 						},
 						{
 							"type": "text",
-							"value": "Archive",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 38,
 									"column": 21,
 									"offset": 1075
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "Archive",
+							"position": {
+								"start": {
+									"line": 38,
+									"column": 22,
+									"offset": 1076
 								},
 								"end": {
 									"line": 38,
@@ -1465,7 +1849,7 @@
 						},
 						{
 							"type": "text",
-							"value": "in",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 44,
@@ -1477,7 +1861,19 @@
 						},
 						{
 							"type": "text",
-							"value": "D",
+							"value": "in",
+							"position": {
+								"start": {
+									"line": 44,
+									"column": 17,
+									"offset": 1243
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 44,
@@ -1489,7 +1885,19 @@
 						},
 						{
 							"type": "text",
-							"value": "minor,",
+							"value": "D",
+							"position": {
+								"start": {
+									"line": 44,
+									"column": 20,
+									"offset": 1246
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 44,
@@ -1501,7 +1909,19 @@
 						},
 						{
 							"type": "text",
-							"value": "K.",
+							"value": "minor,",
+							"position": {
+								"start": {
+									"line": 44,
+									"column": 22,
+									"offset": 1248
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 44,
@@ -1513,7 +1933,19 @@
 						},
 						{
 							"type": "text",
-							"value": "626",
+							"value": "K.",
+							"position": {
+								"start": {
+									"line": 44,
+									"column": 29,
+									"offset": 1255
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 44,
@@ -1525,7 +1957,19 @@
 						},
 						{
 							"type": "text",
-							"value": "-",
+							"value": "626",
+							"position": {
+								"start": {
+									"line": 44,
+									"column": 32,
+									"offset": 1258
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 44,
@@ -1537,7 +1981,19 @@
 						},
 						{
 							"type": "text",
-							"value": "III.",
+							"value": "-",
+							"position": {
+								"start": {
+									"line": 44,
+									"column": 36,
+									"offset": 1262
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 44,
@@ -1549,7 +2005,19 @@
 						},
 						{
 							"type": "text",
-							"value": "Sequence",
+							"value": "III.",
+							"position": {
+								"start": {
+									"line": 44,
+									"column": 38,
+									"offset": 1264
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 44,
@@ -1561,7 +2029,19 @@
 						},
 						{
 							"type": "text",
-							"value": "-",
+							"value": "Sequence",
+							"position": {
+								"start": {
+									"line": 44,
+									"column": 43,
+									"offset": 1269
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 44,
@@ -1573,12 +2053,36 @@
 						},
 						{
 							"type": "text",
-							"value": "Lacrymosa",
+							"value": "-",
+							"position": {
+								"start": {
+									"line": 44,
+									"column": 52,
+									"offset": 1278
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 44,
 									"column": 53,
 									"offset": 1279
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "Lacrymosa",
+							"position": {
+								"start": {
+									"line": 44,
+									"column": 54,
+									"offset": 1280
 								},
 								"end": {
 									"line": 44,
@@ -1621,7 +2125,7 @@
 						},
 						{
 							"type": "text",
-							"value": "Amadeus",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 45,
@@ -1633,12 +2137,36 @@
 						},
 						{
 							"type": "text",
-							"value": "Mozart",
+							"value": "Amadeus",
+							"position": {
+								"start": {
+									"line": 45,
+									"column": 21,
+									"offset": 1311
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 45,
 									"column": 28,
 									"offset": 1318
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "Mozart",
+							"position": {
+								"start": {
+									"line": 45,
+									"column": 29,
+									"offset": 1319
 								},
 								"end": {
 									"line": 45,
@@ -1681,12 +2209,24 @@
 						},
 						{
 							"type": "text",
-							"value": "Staab",
+							"value": " ",
 							"position": {
 								"start": {
 									"line": 46,
 									"column": 19,
 									"offset": 1345
+								},
+								"end": {}
+							}
+						},
+						{
+							"type": "text",
+							"value": "Staab",
+							"position": {
+								"start": {
+									"line": 46,
+									"column": 20,
+									"offset": 1346
 								},
 								"end": {
 									"line": 46,

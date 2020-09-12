@@ -366,12 +366,24 @@
 										},
 										{
 											"type": "text",
-											"value": "y-axis",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 89,
 													"column": 17,
 													"offset": 1562
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "y-axis",
+											"position": {
+												"start": {
+													"line": 89,
+													"column": 18,
+													"offset": 1563
 												},
 												"end": {
 													"line": 89,
@@ -545,12 +557,24 @@
 																},
 																{
 																	"type": "text",
-																	"value": "tick-",
+																	"value": " ",
 																	"position": {
 																		"start": {
 																			"line": 91,
 																			"column": 19,
 																			"offset": 1655
+																		},
+																		"end": {}
+																	}
+																},
+																{
+																	"type": "text",
+																	"value": "tick-",
+																	"position": {
+																		"start": {
+																			"line": 91,
+																			"column": 20,
+																			"offset": 1656
 																		},
 																		"end": {
 																			"line": 91,
@@ -609,7 +633,7 @@
 																},
 																{
 																	"type": "text",
-																	"value": "",
+																	"value": " ",
 																	"position": {
 																		"start": {
 																			"line": 91,
@@ -1041,12 +1065,24 @@
 										},
 										{
 											"type": "text",
-											"value": "x-axis",
+											"value": " ",
 											"position": {
 												"start": {
 													"line": 99,
 													"column": 17,
 													"offset": 1896
+												},
+												"end": {}
+											}
+										},
+										{
+											"type": "text",
+											"value": "x-axis",
+											"position": {
+												"start": {
+													"line": 99,
+													"column": 18,
+													"offset": 1897
 												},
 												"end": {
 													"line": 99,
