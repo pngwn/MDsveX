@@ -61,7 +61,12 @@ function render_props(props: (Property | Directive)[]): string {
 	return attrs;
 }
 
-function compile_node(node: Node): string | undefined {
+type CompileChildren = (nodes: Node[]) => string;
+
+function compile_node(
+	node: Node,
+	compile_children: CompileChildren
+): string | undefined {
 	if (node.type === 'text') return (node as Text).value;
 	if (node.type === 'svelteExpression') return '{' + node.value + '}';
 	if (node.type === 'svelteVoidBlock')
@@ -94,13 +99,17 @@ function compile_node(node: Node): string | undefined {
 	}
 }
 
+function compile_children(children: Node[]) {
+	let str = '';
+	for (let index = 0; index < children.length; index++) {
+		str += compile_node(children[index], compile_children);
+	}
+	return str;
+}
+
 function compile(tree: Root): string {
 	if (tree.type === 'root') {
-		let str = '';
-		for (let index = 0; index < tree.children.length; index++) {
-			str += compile_node(tree.children[index]);
-		}
-		return str;
+		return compile_children(tree.children);
 	} else {
 		throw new Error(
 			`A svast tree must have a single 'root' node but instead got ${tree.type}`
