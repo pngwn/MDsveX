@@ -448,4 +448,35 @@ style="color:      			{color};"
 	);
 });
 
+svast_stringify('compiles directives', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'input',
+				selfClosing: true,
+				children: [],
+				properties: [
+					{
+						type: 'svelteDirective',
+						name: 'hello',
+						specifier: 'world',
+						value: [],
+						shorthand: 'none',
+						modifiers: [],
+					},
+				],
+			},
+		],
+	};
+
+	assert.is(
+		compile(tree),
+		`<input 
+hello:world
+/>`
+	);
+});
+
 svast_stringify.run();

@@ -35,6 +35,9 @@ function render_props(props: (Property | Directive)[]): string {
 			}
 		}
 
+		if (props[index].type === 'svelteDirective') {
+			attrs += props[index].name + ':' + props[index].specifier;
+		}
 		attrs += '\n';
 	}
 	return attrs;
