@@ -54,6 +54,7 @@ export interface Comment extends Literal {
 
 export interface Text extends Literal {
 	type: 'text';
+	value: string;
 }
 
 export interface SvelteExpression extends Literal {
