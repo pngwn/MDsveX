@@ -75,7 +75,7 @@ const handlers: Record<string, Handler> = {
 		return '{@' + node.name + ' ' + (node as VoidBlock).expression.value + '}';
 	},
 	svelteElement(node, compile_children) {
-		if (node.selfClosing === true)
+		if (node.selfClosing === true) {
 			return (
 				'<' +
 				node.tagName +
@@ -85,8 +85,24 @@ const handlers: Record<string, Handler> = {
 					: '') +
 				'/>'
 			);
-
-		return '';
+		} else {
+			return (
+				'<' +
+				node.tagName +
+				' ' +
+				((node as SvelteElement).properties.length > 0
+					? render_props((node as SvelteElement).properties)
+					: '') +
+				'>' +
+				((node as SvelteParent).children.length > 0
+					? compile_children((node as SvelteParent).children)
+					: '') +
+				'\n' +
+				'</' +
+				node.tagName +
+				'>'
+			);
+		}
 	},
 	svelteMeta(node, compile_children) {
 		if (node.selfClosing === true) {
