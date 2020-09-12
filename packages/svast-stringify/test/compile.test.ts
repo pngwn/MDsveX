@@ -29,7 +29,7 @@ svast_stringify('compiles a text node', () => {
 	assert.is(compile(tree), 'hi');
 });
 
-svast_stringify('compiles a text node', () => {
+svast_stringify('compiles a expression node', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -177,6 +177,7 @@ svast_stringify(
 									type: 'text',
 									value: 'value',
 								},
+								{ type: 'text', value: ' ' },
 								{
 									type: 'text',
 									value: 'value',
@@ -218,6 +219,10 @@ svast_stringify(
 								{
 									type: 'text',
 									value: 'value',
+								},
+								{
+									type: 'text',
+									value: ' ',
 								},
 								{
 									type: 'text',
@@ -267,11 +272,15 @@ svast_stringify(
 								},
 								{
 									type: 'text',
+									value: ' ',
+								},
+								{
+									type: 'text',
 									value: 'value',
 								},
 								{
 									type: 'text',
-									value: '',
+									value: ' ',
 								},
 								{
 									type: 'svelteExpression',
@@ -345,8 +354,6 @@ hello="value{value}{value}{value}"
 	}
 );
 
-// modify svelte-parse to output a text for all space characters that has a value of a single space
-
 svast_stringify('handle a realword set of attrs', () => {
 	const tree = <Root>{
 		type: 'root',
@@ -365,7 +372,7 @@ svast_stringify('handle a realword set of attrs', () => {
 							},
 							{
 								type: 'text',
-								value: '',
+								value: ' ',
 							},
 							{
 								type: 'svelteExpression',
@@ -389,7 +396,54 @@ svast_stringify('handle a realword set of attrs', () => {
 	assert.is(
 		compile(tree),
 		`<div 
-style='color: {color};'
+style="color: {color};"
+/>`
+	);
+});
+
+svast_stringify('handle a realword set of attrs: more whitespace', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'div',
+				properties: [
+					{
+						type: 'svelteProperty',
+						name: 'style',
+						value: [
+							{
+								type: 'text',
+								value: 'color:',
+							},
+							{
+								type: 'text',
+								value: '      			',
+							},
+							{
+								type: 'svelteExpression',
+								value: 'color',
+							},
+							{
+								type: 'text',
+								value: ';',
+							},
+						],
+						modifiers: [],
+						shorthand: 'none',
+					},
+				],
+				selfClosing: true,
+				children: [],
+			},
+		],
+	};
+
+	assert.is(
+		compile(tree),
+		`<div 
+style="color:      			{color};"
 />`
 	);
 });

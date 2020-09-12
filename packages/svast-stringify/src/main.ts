@@ -22,9 +22,6 @@ function render_props(props: (Property | Directive)[]): string {
 					index2++
 				) {
 					if (props[index].value[index2].type === 'text') {
-						if (index2 > 0) {
-							attrs += ' ';
-						}
 						attrs += props[index].value[index2].value;
 					}
 
