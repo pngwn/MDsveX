@@ -28,6 +28,7 @@ function render_attr_values(values: (Text | SvelteExpression)[]): string {
 
 function render_modifiers(modifiers: Literal[]): string {
 	let mod_string = '';
+
 	for (let index = 0; index < modifiers.length; index++) {
 		mod_string += '|' + modifiers[index].value;
 	}
@@ -70,6 +71,19 @@ function compile_node(node: Node): string | undefined {
 		if (node.selfClosing === true)
 			return (
 				'<' +
+				node.tagName +
+				' ' +
+				((node as SvelteElement).properties.length > 0
+					? render_props((node as SvelteElement).properties)
+					: '') +
+				'/>'
+			);
+	}
+
+	if (node.type === 'svelteMeta') {
+		if (node.selfClosing === true)
+			return (
+				'<svelte:' +
 				node.tagName +
 				' ' +
 				((node as SvelteElement).properties.length > 0
