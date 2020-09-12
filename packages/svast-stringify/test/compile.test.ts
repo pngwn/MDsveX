@@ -722,4 +722,75 @@ tag="{null}"
 	);
 });
 
+svast_stringify('compiles child nodes', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteMeta',
+				tagName: 'self',
+				properties: [],
+				selfClosing: false,
+				children: [
+					{ type: 'text', value: '\n\t' },
+					{
+						type: 'svelteMeta',
+						tagName: 'options',
+						properties: [
+							{
+								type: 'svelteProperty',
+								name: 'tag',
+								value: [
+									{
+										type: 'svelteExpression',
+										value: 'null',
+									},
+								],
+								shorthand: 'none',
+								modifiers: [],
+							},
+						],
+						selfClosing: true,
+						children: [],
+					},
+					{ type: 'text', value: '\n\n' },
+					{
+						type: 'svelteMeta',
+						tagName: 'options',
+						properties: [
+							{
+								type: 'svelteProperty',
+								name: 'tag',
+								value: [
+									{
+										type: 'svelteExpression',
+										value: 'null',
+									},
+								],
+								shorthand: 'none',
+								modifiers: [],
+							},
+						],
+						selfClosing: true,
+						children: [],
+					},
+				],
+			},
+		],
+	};
+
+	assert.is(
+		compile(tree),
+		`<svelte:self >
+	<svelte:options 
+tag="{null}"
+/>
+
+<svelte:options 
+tag="{null}"
+/>
+</svelte:self>`
+	);
+});
+
 svast_stringify.run();

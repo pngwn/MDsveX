@@ -8,6 +8,7 @@ import {
 	Directive,
 	SvelteExpression,
 	Literal,
+	SvelteParent,
 } from 'svast';
 
 function render_attr_values(values: (Text | SvelteExpression)[]): string {
@@ -88,7 +89,7 @@ const handlers: Record<string, Handler> = {
 		return '';
 	},
 	svelteMeta(node, compile_children) {
-		if (node.selfClosing === true)
+		if (node.selfClosing === true) {
 			return (
 				'<svelte:' +
 				node.tagName +
@@ -98,8 +99,24 @@ const handlers: Record<string, Handler> = {
 					: '') +
 				'/>'
 			);
-
-		return '';
+		} else {
+			return (
+				'<svelte:' +
+				node.tagName +
+				' ' +
+				((node as SvelteElement).properties.length > 0
+					? render_props((node as SvelteElement).properties)
+					: '') +
+				'>' +
+				((node as SvelteParent).children.length > 0
+					? compile_children((node as SvelteParent).children)
+					: '') +
+				'\n' +
+				'</svelte:' +
+				node.tagName +
+				'>'
+			);
+		}
 	},
 };
 
