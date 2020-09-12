@@ -41,22 +41,20 @@ function render_props(props: (Property | Directive)[]): string {
 	for (let index = 0; index < props.length; index++) {
 		if (props[index].type === 'svelteProperty') {
 			attrs += props[index].name;
-
-			if (props[index].value.length > 0) {
-				attrs += '="' + render_attr_values(props[index].value) + '"';
-			}
 		}
 
 		if (props[index].type === 'svelteDirective') {
-			if (props[index].modifiers.length > 0) {
-				attrs += render_modifiers(props[index].modifiers);
-			}
-
 			attrs += props[index].name + ':' + props[index].specifier;
-			if (props[index].value.length > 0) {
-				attrs += '="' + render_attr_values(props[index].value) + '"';
-			}
 		}
+
+		if (props[index].modifiers.length > 0) {
+			attrs += render_modifiers(props[index].modifiers);
+		}
+
+		if (props[index].value.length > 0) {
+			attrs += '="' + render_attr_values(props[index].value) + '"';
+		}
+
 		attrs += '\n';
 	}
 	return attrs;
