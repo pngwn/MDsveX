@@ -816,8 +816,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				(current_node as Text).type === 'text' &&
 				RE_ONLY_WHITESPACE.test((current_node as Text).value)
 			) {
-				// (current_node as Text).value += value[index];
-
 				pop_node();
 				_n = { type: 'text', value: '' };
 				if (generatePositions)

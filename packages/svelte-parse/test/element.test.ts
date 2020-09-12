@@ -1285,7 +1285,7 @@ element(
 );
 
 element(
-	'parses a tag with a directive an a directive value: souble-quoted, two values',
+	'parses a tag with a directive an a directive value: double-quoted, two values',
 	() => {
 		//@ts-ignore
 		const { parsed } = parseNode({

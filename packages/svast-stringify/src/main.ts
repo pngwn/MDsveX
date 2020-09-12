@@ -65,13 +65,13 @@ function render_props(props: (Property | Directive)[]): string {
 type Handler = (node: Node, compile_children: CompileChildren) => string;
 
 const handlers: Record<string, Handler> = {
-	text(node, compile_children) {
+	text(node) {
 		return (node as Text).value;
 	},
-	svelteExpression(node, compile_children) {
+	svelteExpression(node) {
 		return '{' + node.value + '}';
 	},
-	svelteVoidBlock(node, compile_children) {
+	svelteVoidBlock(node) {
 		return '{@' + node.name + ' ' + (node as VoidBlock).expression.value + '}';
 	},
 	svelteElement(node, compile_children) {
