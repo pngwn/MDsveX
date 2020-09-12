@@ -793,4 +793,75 @@ tag="{null}"
 	);
 });
 
+svast_stringify('compiles child nodes', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'div',
+				properties: [],
+				selfClosing: false,
+				children: [
+					{ type: 'text', value: '\n\t' },
+					{
+						type: 'svelteElement',
+						tagName: 'input',
+						properties: [
+							{
+								type: 'svelteProperty',
+								name: 'tag',
+								value: [
+									{
+										type: 'svelteExpression',
+										value: 'null',
+									},
+								],
+								shorthand: 'none',
+								modifiers: [],
+							},
+						],
+						selfClosing: true,
+						children: [],
+					},
+					{ type: 'text', value: '\n\n' },
+					{
+						type: 'svelteElement',
+						tagName: 'input',
+						properties: [
+							{
+								type: 'svelteProperty',
+								name: 'tag',
+								value: [
+									{
+										type: 'svelteExpression',
+										value: 'null',
+									},
+								],
+								shorthand: 'none',
+								modifiers: [],
+							},
+						],
+						selfClosing: true,
+						children: [],
+					},
+				],
+			},
+		],
+	};
+
+	assert.is(
+		compile(tree),
+		`<div >
+	<input 
+tag="{null}"
+/>
+
+<input 
+tag="{null}"
+/>
+</div>`
+	);
+});
+
 svast_stringify.run();
