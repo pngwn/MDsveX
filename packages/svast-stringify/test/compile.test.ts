@@ -627,4 +627,39 @@ hello:world|modifierval|modifierval2
 	);
 });
 
+svast_stringify('compiles svelte meta tags', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteMeta',
+				tagName: 'options',
+				properties: [
+					{
+						type: 'svelteProperty',
+						name: 'tag',
+						value: [
+							{
+								type: 'svelteExpression',
+								value: 'null',
+							},
+						],
+						shorthand: 'none',
+						modifiers: [],
+					},
+				],
+				selfClosing: true,
+				children: [],
+			},
+		],
+	};
+
+	assert.is(
+		compile(tree),
+		`<svelte:options 
+tag="{null}"
+/>`
+	);
+});
+
 svast_stringify.run();
