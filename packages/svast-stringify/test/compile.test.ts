@@ -2,6 +2,7 @@ import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
 import { table_without_positions } from './fixtures/table_without_positions';
+import { table_output } from './fixtures/table_output';
 import { Node, Root } from 'svast';
 import { compile } from '../src/main';
 
@@ -948,7 +949,6 @@ svast_stringify('compiles branching blocks', () => {
 
 svast_stringify('compiles a big thingy', () => {
 	const component = compile(table_without_positions as Root);
-
-	console.log(component);
+	assert.is(component, table_output);
 });
 svast_stringify.run();
