@@ -43,6 +43,13 @@ function render_props(props: (Property | Directive)[]): string {
 
 	for (let index = 0; index < props.length; index++) {
 		if (props[index].type === 'svelteProperty') {
+			if (props[index].shorthand === 'boolean') {
+				attrs += props[index].name + '\n';
+				continue;
+			} else if (props[index].shorthand === 'expression') {
+				attrs += '{' + props[index].name + '}\n';
+				continue;
+			}
 			attrs += props[index].name;
 		}
 
@@ -155,6 +162,9 @@ const handlers: Record<string, Handler> = {
 		}
 		return branches + '{/' + node.name + '}';
 	},
+	svelteComponent(node, compile_children) {
+		return this.svelteElement(node, compile_children);
+	},
 };
 
 type CompileChildren = (nodes: Node[]) => string;
@@ -163,6 +173,7 @@ function compile_node(
 	node: Node,
 	compile_children: CompileChildren
 ): string | undefined {
+	console.log(node.type);
 	return handlers[node.type](node, compile_children);
 }
 
