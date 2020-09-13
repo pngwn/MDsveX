@@ -1,6 +1,7 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
+import { table_without_positions } from './fixtures/table_without_positions';
 import { Node, Root } from 'svast';
 import { compile } from '../src/main';
 
@@ -943,5 +944,11 @@ svast_stringify('compiles branching blocks', () => {
 	<p >x is less than 5</p>
 {/if}`
 	);
+});
+
+svast_stringify('compiles a big thingy', () => {
+	const component = compile(table_without_positions as Root);
+
+	console.log(component);
 });
 svast_stringify.run();
