@@ -2,7 +2,7 @@
 	"type": "root",
 	"children": [
 		{
-			"type": "svelteMeta",
+			"type": "svelteStyle",
 			"tagName": "style",
 			"properties": [],
 			"selfClosing": false,

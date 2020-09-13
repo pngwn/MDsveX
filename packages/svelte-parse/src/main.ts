@@ -16,6 +16,8 @@ import {
 	Comment,
 	Parent,
 	SvelteComponent,
+	SvelteScript,
+	SvelteStyle,
 } from 'svast';
 
 import {
@@ -937,7 +939,10 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				(current_node as SvelteElement | SvelteMeta).tagName === 'script' ||
 				(current_node as SvelteElement | SvelteMeta).tagName === 'style'
 			) {
-				(current_node as SvelteElement | SvelteMeta).type = 'svelteMeta';
+				//@ts-ignore
+				current_node.type =
+					'svelteS' +
+					(current_node as SvelteElement | SvelteMeta).tagName.substring(1);
 				_n = {
 					type: 'text',
 					value: '',

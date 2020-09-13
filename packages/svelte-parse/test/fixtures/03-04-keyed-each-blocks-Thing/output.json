@@ -2,7 +2,7 @@
 	"type": "root",
 	"children": [
 		{
-			"type": "svelteMeta",
+			"type": "svelteScript",
 			"tagName": "script",
 			"properties": [],
 			"selfClosing": false,
@@ -340,7 +340,7 @@
 			}
 		},
 		{
-			"type": "svelteMeta",
+			"type": "svelteStyle",
 			"tagName": "style",
 			"properties": [],
 			"selfClosing": false,
