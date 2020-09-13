@@ -34,6 +34,10 @@ export type SvelteElement = BaseSvelteTag<'svelteElement'>;
 
 export type SvelteComponent = BaseSvelteTag<'svelteComponent'>;
 
+export type SvelteScript = BaseSvelteTag<'svelteScript'>;
+
+export type SvelteStyle = BaseSvelteTag<'svelteStyle'>;
+
 export interface BaseProperty<T extends string> extends Node {
 	type: T;
 	name: string;

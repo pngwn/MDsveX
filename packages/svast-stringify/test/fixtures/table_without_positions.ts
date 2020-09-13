@@ -2,7 +2,7 @@ export const table_without_positions = {
 	type: 'root',
 	children: [
 		{
-			type: 'svelteMeta',
+			type: 'svelteScript',
 			tagName: 'script',
 			properties: [],
 			selfClosing: false,
@@ -19,7 +19,7 @@ export const table_without_positions = {
 			value: '\n\n',
 		},
 		{
-			type: 'svelteMeta',
+			type: 'svelteStyle',
 			tagName: 'style',
 			properties: [],
 			selfClosing: false,
