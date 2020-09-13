@@ -165,6 +165,12 @@ const handlers: Record<string, Handler> = {
 	svelteComponent(node, compile_children) {
 		return this.svelteElement(node, compile_children);
 	},
+	svelteScript(node, compile_children) {
+		return this.svelteElement(node, compile_children);
+	},
+	svelteStyle(node, compile_children) {
+		return this.svelteElement(node, compile_children);
+	},
 };
 
 type CompileChildren = (nodes: Node[]) => string;
@@ -173,7 +179,6 @@ function compile_node(
 	node: Node,
 	compile_children: CompileChildren
 ): string | undefined {
-	console.log(node.type);
 	return handlers[node.type](node, compile_children);
 }
 
