@@ -483,7 +483,7 @@ position('tracks the location of a complex node', () => {
 		type: 'root',
 		children: [
 			{
-				type: 'svelteMeta',
+				type: 'svelteScript',
 				tagName: 'script',
 				properties: [],
 				selfClosing: false,

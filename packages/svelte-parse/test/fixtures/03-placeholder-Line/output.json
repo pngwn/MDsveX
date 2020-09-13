@@ -102,7 +102,7 @@
 			}
 		},
 		{
-			"type": "svelteMeta",
+			"type": "svelteScript",
 			"tagName": "script",
 			"properties": [],
 			"selfClosing": false,

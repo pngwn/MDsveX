@@ -147,7 +147,7 @@
 			}
 		},
 		{
-			"type": "svelteMeta",
+			"type": "svelteScript",
 			"tagName": "script",
 			"properties": [
 				{
@@ -236,7 +236,7 @@
 			}
 		},
 		{
-			"type": "svelteMeta",
+			"type": "svelteScript",
 			"tagName": "script",
 			"properties": [],
 			"selfClosing": false,

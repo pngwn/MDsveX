@@ -422,7 +422,7 @@ siblings('parses script tags ignoring the contents', () => {
 		type: 'root',
 		children: [
 			{
-				type: 'svelteMeta',
+				type: 'svelteScript',
 				tagName: 'script',
 				properties: [],
 				selfClosing: false,
@@ -445,7 +445,7 @@ Hello friends</script>`,
 		type: 'root',
 		children: [
 			{
-				type: 'svelteMeta',
+				type: 'svelteScript',
 				tagName: 'script',
 				properties: [
 					{
@@ -481,7 +481,7 @@ Hello friends</style>`,
 		type: 'root',
 		children: [
 			{
-				type: 'svelteMeta',
+				type: 'svelteStyle',
 				tagName: 'style',
 				properties: [
 					{
