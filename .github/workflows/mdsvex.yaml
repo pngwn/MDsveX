@@ -62,7 +62,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-
       - run: pnpm i --frozen-lockfile
-      - run: npm test
+      - run: pnpm test
       - run: pnpm build --filter mdsvex
         env:
           CI: true
