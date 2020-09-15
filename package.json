@@ -6,7 +6,8 @@
 	"scripts": {
 		"lint": "eslint . --ext .js,.ts",
 		"test": "uvu -r ts-node/register packages test.ts$",
-		"release": "pnpm -r build && changeset publish"
+		"release": "pnpm -r build && changeset publish",
+		"changeset:add": "changeset add"
 	},
 	"keywords": [
 		"test",
