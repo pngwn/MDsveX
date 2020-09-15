@@ -20,6 +20,8 @@ This AST seeks to be language agnostic and has no opinion on the contents of any
   - [`Meta`](#meta)
   - [`Element`](#element)
   - [`Component`](#component)
+  - [`Script`](#script)
+  - [`Style`](#style)
   - [`BaseProperty`](#baseproperty)
   - [`Property`](#property)
   - [`Directive`](#directive)
@@ -277,6 +279,78 @@ Yields:
   }],
   selfClosing: true,
   children: []
+}
+```
+
+### `Script`
+
+```idl
+interface Component <: BaseTag {
+  type: "svelteScript"
+}
+```
+
+The `Script` interface represents Svelte script tags. The always have a single child text node containing the script contents.
+
+This input:
+
+```svelte
+<script>
+  console.log('boo');
+</script>
+```
+
+Yields:
+
+```js
+{
+  type: 'svelteScript',
+  tagName: 'script',
+  properties: [],
+  selfClosing: false,
+  children: [
+    {
+      type: 'text',
+      value: '\n  console.log('boo');\n'
+    }
+  ]
+}
+```
+
+### `Style`
+
+```idl
+interface Component <: BaseTag {
+  type: "svelteScript"
+}
+```
+
+The `Style` interface represents Svelte style tags. The always have a single child text node containing the style contents.
+
+This input:
+
+```svelte
+<style>
+  h1 {
+    color: pink;
+  }
+</style>
+```
+
+Yields:
+
+```js
+{
+  type: 'svelteStyle',
+  tagName: 'style',
+  properties: [],
+  selfClosing: false,
+  children: [
+    {
+      type: 'text',
+      value: '\n  h1 {\n    color: pink;\n  }\n'
+    }
+  ]
 }
 ```
 
