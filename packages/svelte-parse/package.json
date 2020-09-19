@@ -1,6 +1,6 @@
 {
 	"name": "svelte-parse",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "An increidbly relaxed svelte-parser",
 	"main": "dist/main.js",
 	"files": [
@@ -34,6 +34,6 @@
 		"watchlist": "^0.2.3"
 	},
 	"dependencies": {
-		"svast": "workspace:^0.0.1"
+		"svast": "workspace:^0.0.2"
 	}
 }
