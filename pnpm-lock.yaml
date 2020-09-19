@@ -190,12 +190,12 @@ importers:
     dependencies:
       svast: 'link:../svast'
     specifiers:
-      svast: 'workspace:^0.0.1'
+      svast: 'workspace:^0.0.2'
   packages/svast-utils:
     dependencies:
       svast: 'link:../svast'
     specifiers:
-      svast: 'workspace:^0.0.1'
+      svast: 'workspace:^0.0.2'
   packages/svelte-parse:
     dependencies:
       svast: 'link:../svast'
@@ -212,7 +212,7 @@ importers:
       install: ^0.13.0
       rollup: ^2.26.5
       rollup-plugin-dts: ^1.4.12
-      svast: 'workspace:^0.0.1'
+      svast: 'workspace:^0.0.2'
       watchlist: ^0.2.3
 lockfileVersion: 5.1
 packages:
@@ -5755,6 +5755,7 @@ packages:
     resolution:
       integrity: sha512-vwjjP7A/OQT7Scf5TQRPedR/3njWg1DIgaGqME+rJ938BjpIOy0yd498OMn5VwYvgb8QsHsXH3798defzLgqVA==
   /svelte/3.24.1:
+    dev: true
     engines:
       node: '>= 8'
     resolution:
