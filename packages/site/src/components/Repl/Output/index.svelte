@@ -13,7 +13,6 @@
   export let svelteUrl;
   export let workersUrl;
   export let status;
-  export let sourceErrorLoc = null;
   export let runtimeError = null;
   export let relaxed = false;
   export let injectedJS;
