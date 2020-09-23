@@ -22,7 +22,6 @@
   export let relaxed = false;
   export let injectedJS = "";
   export let injectedCSS = "";
-  export let funky = false;
 
   let iframe;
   let pending_imports = 0;
