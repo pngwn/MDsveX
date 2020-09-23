@@ -11,7 +11,6 @@
   export let workersUrl;
   export let packagesUrl = "https://unpkg.com";
   export let svelteUrl = `${packagesUrl}/svelte`;
-  export let embedded = true;
   export let orientation = "columns";
   export let relaxed = false;
   export let fixed = false;
@@ -248,7 +247,6 @@
         {svelteUrl}
         {workersUrl}
         {status}
-        {embedded}
         {relaxed}
         {injectedJS}
         {injectedCSS} />

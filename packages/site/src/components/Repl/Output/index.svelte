@@ -15,7 +15,6 @@
   export let status;
   export let sourceErrorLoc = null;
   export let runtimeError = null;
-  export let embedded = false;
   export let relaxed = false;
   export let injectedJS;
   export let injectedCSS;
