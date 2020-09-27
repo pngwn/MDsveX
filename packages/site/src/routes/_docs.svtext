@@ -98,7 +98,7 @@ If you want to use mdsvex without a bundler because you are your own person, the
 
 ```js
 const svelte = require('svelte/compiler');
-const { mdsvex } = require(mdsvex);
+const { mdsvex } = require('mdsvex');
 
 // This will give you a valid svelte component
 const preprocessed = await svelte.preprocess(
