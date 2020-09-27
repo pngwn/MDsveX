@@ -124,7 +124,7 @@ It supports all of the same options as the preprocessor although the function si
 ```js
 import { compile } from 'mdsvex';
 
-const transformed_code = compile(`
+const transformed_code = await compile(`
 <script>
   import Chart from './Chart.svelte';
 </script>
