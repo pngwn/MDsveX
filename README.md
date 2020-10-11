@@ -13,7 +13,7 @@ This repo is a monorepo containing `mdsvex` and any supporting packages. Each re
 - [site](https://github.com/pngwn/MDsveX/tree/master/packages/site) - The documentation website.
 - [mdsvex](https://github.com/pngwn/MDsveX/tree/master/packages/mdsvex) - `mdsvex` itself.
 - [svelte-parse](https://github.com/pngwn/MDsveX/tree/master/packages/svelte-parse) - Generate a svast AST from a Svelte components.
-- [svast](https://github.com/pngwn/MDsveX/tree/master/packages/svast) - An AST specification with accompanying TypeScriupt definitions.
+- [svast](https://github.com/pngwn/MDsveX/tree/master/packages/svast) - An AST specification with accompanying TypeScript definitions.
 - [svast-stringify](https://github.com/pngwn/MDsveX/tree/master/packages/svast-stringify) - Turn a svast AST into a Svelte component.
 - [svast-utils](https://github.com/pngwn/MDsveX/tree/master/packages/svast-utils) - Utilities for working with a svast tree.
 
