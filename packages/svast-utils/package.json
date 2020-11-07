@@ -1,6 +1,6 @@
 {
 	"name": "svast-utils",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "Utilisties for working with svast nodes.",
 	"main": "dist/main.cjs.js",
 	"module": "dist/main.es.js",
@@ -22,6 +22,6 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"dependencies": {
-		"svast": "workspace:^0.0.2"
+		"svast": "workspace:^0.0.3"
 	}
 }
