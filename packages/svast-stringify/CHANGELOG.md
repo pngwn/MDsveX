@@ -1,6 +1,14 @@
 # svast-stringify
 
+## 0.0.3
+
+### Patch Changes
+
+- Updated dependencies [8008391]
+  - svast@0.0.3
+
 ## 0.0.2
+
 ### Patch Changes
 
 - 5949714: Update licences
