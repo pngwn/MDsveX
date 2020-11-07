@@ -1,7 +1,6 @@
 import { Node, Position, Point, Parent, Data, Literal } from 'unist';
 export { Node, Position, Point, Parent, Data, Literal };
 
-// TODO: script and style tags don't have nodes yet
 export type SvelteChild =
 	| SvelteElement
 	| SvelteComponent
@@ -74,7 +73,7 @@ export interface VoidBlock extends Node {
 
 export interface BranchingBlock extends Node {
 	type: 'svelteBranchingBlock';
-	name: 'string';
+	name: string;
 	branches: Branch[];
 }
 
