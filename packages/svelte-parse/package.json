@@ -2,10 +2,8 @@
 	"name": "svelte-parse",
 	"version": "0.0.3",
 	"description": "An increidbly relaxed svelte-parser",
-	"main": "dist/main.js",
-	"files": [
-		"dist/main.js"
-	],
+	"main": "dist/main.cjs.js",
+	"module": "dist/main.es.js",
 	"scripts": {
 		"build": "rollup -c",
 		"test:filter": "uvu -r ts-node/register test",
@@ -25,14 +23,6 @@
 	],
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
-	"devDependencies": {
-		"@rollup/plugin-sucrase": "^3.1.0",
-		"@rollup/plugin-typescript": "^5.0.2",
-		"install": "^0.13.0",
-		"rollup": "^2.26.5",
-		"rollup-plugin-dts": "^1.4.12",
-		"watchlist": "^0.2.3"
-	},
 	"dependencies": {
 		"svast": "workspace:^0.0.3"
 	}
