@@ -1,22 +1,22 @@
-import resolve from 'rollup-plugin-node-resolve';
-import commonjs from 'rollup-plugin-commonjs';
-import json from 'rollup-plugin-json';
-// import sucrase from '@rollup/plugin-sucrase';
 import ts from '@rollup/plugin-typescript';
 import dts from 'rollup-plugin-dts';
-
-import pkg from './package.json';
 
 export default [
 	{
 		plugins: [ts()],
 		input: 'src/main.ts',
-		output: [{ file: 'dist/main.js', format: 'cjs', sourcemap: false }],
+		output: [
+			{ file: 'dist/main.cjs.js', format: 'cjs', sourcemap: false },
+			{ file: 'dist/main.es.js', format: 'es', sourcemap: false },
+		],
 	},
-	// {
-	// 	plugins: [dts()],
-	// 	input: 'src/main.ts',
+	{
+		plugins: [dts()],
+		input: 'src/main.ts',
 
-	// 	output: [{ file: 'dist/main.d.ts', format: 'cjs' }],
-	// },
+		output: [
+			{ file: 'dist/main.cjs.d.ts', format: 'cjs' },
+			{ file: 'dist/main.es.d.ts', format: 'es' },
+		],
+	},
 ];
