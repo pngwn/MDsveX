@@ -33,7 +33,7 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
-      - uses: pnpm/action-setup@v1.2.0
+      - uses: pnpm/action-setup@v1.2.1
         with:
           version: 5
       - run: pnpm i --frozen-lockfile
