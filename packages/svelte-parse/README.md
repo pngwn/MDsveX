@@ -55,12 +55,24 @@ The `value` property should be the source code you wish to parse.
 
 The `generatePositions` field is optional and should be a boolean. This will tell the parser whether or not it should generate positional data when parsing the source file.
 
-Parse will return an object, the interface looks like this:
+Parse will return the `Root` svast node, the interface looks like this:
 
 ```ts
-interface ParseReturn {
-	ast: Root; // This is the root svast node for a svast AST
-	errors: Error[];
+interface Root {
+	type: 'root';
+	children: (
+		| SvelteElement
+		| SvelteComponent
+		| Comment
+		| Text
+		| SvelteExpression
+		| VoidBlock
+		| BranchingBlock
+		| IfBlock
+		| EachBlock
+		| AwaitBlock
+		| SvelteTag
+	)[];
 }
 ```
 
