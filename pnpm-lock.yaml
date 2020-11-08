@@ -207,7 +207,7 @@ importers:
       svast: 'link:../svast'
     specifiers:
       svast: 'workspace:^0.0.3'
-lockfileVersion: 5.1
+lockfileVersion: 5.2
 packages:
   /@arr/every/1.0.1:
     dev: false
