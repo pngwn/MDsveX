@@ -1,5 +1,11 @@
 # svelte-parse
 
+## 0.0.4
+
+### Patch Changes
+
+- 1f460e1: Publish ES and CJS builds and TypeScript definitions for svelte-parse.
+
 ## 0.0.3
 
 ### Patch Changes
