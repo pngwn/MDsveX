@@ -525,9 +525,12 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 				(current_node as BaseSvelteTag<''>).properties.push(_node as Property);
 				push_node(_node);
-				if (generatePositions)
+				if (generatePositions) {
 					//@ts-ignore
 					current_node.position = { start: place(), end: {} };
+					//@ts-ignore
+					(current_node as Property).value[0].position = { start: place(), end: {} };
+				}
 				chomp();
 				continue;
 			}
@@ -583,6 +586,10 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		if (current_state === State.IN_SHORTHAND_ATTR) {
 			if (char === CLOSE_BRACE) {
 				(current_node as Property).value[0].value = (current_node as Property).name;
+				if (generatePositions) {
+					current_node.position.end = place();
+					(current_node as Property).value[0].position.end = place();
+				}
 				pop_state();
 				pop_node();
 				chomp();

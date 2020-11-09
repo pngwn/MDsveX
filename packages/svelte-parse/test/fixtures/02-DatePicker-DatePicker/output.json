@@ -615,7 +615,19 @@
 									"value": [
 										{
 											"type": "svelteExpression",
-											"value": "placeholder"
+											"value": "placeholder",
+											"position": {
+												"start": {
+													"line": 396,
+													"column": 60,
+													"offset": 8826
+												},
+												"end": {
+													"line": 396,
+													"column": 72,
+													"offset": 8838
+												}
+											}
 										}
 									],
 									"modifiers": [],
@@ -626,7 +638,11 @@
 											"column": 60,
 											"offset": 8826
 										},
-										"end": {}
+										"end": {
+											"line": 396,
+											"column": 72,
+											"offset": 8838
+										}
 									}
 								}
 							],

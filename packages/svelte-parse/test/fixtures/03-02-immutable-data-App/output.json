@@ -206,7 +206,19 @@
 									"value": [
 										{
 											"type": "svelteExpression",
-											"value": "todo"
+											"value": "todo",
+											"position": {
+												"start": {
+													"line": 32,
+													"column": 17,
+													"offset": 620
+												},
+												"end": {
+													"line": 32,
+													"column": 22,
+													"offset": 625
+												}
+											}
 										}
 									],
 									"modifiers": [],
@@ -217,7 +229,11 @@
 											"column": 17,
 											"offset": 620
 										},
-										"end": {}
+										"end": {
+											"line": 32,
+											"column": 22,
+											"offset": 625
+										}
 									}
 								},
 								{
@@ -435,7 +451,19 @@
 									"value": [
 										{
 											"type": "svelteExpression",
-											"value": "todo"
+											"value": "todo",
+											"position": {
+												"start": {
+													"line": 37,
+													"column": 15,
+													"offset": 726
+												},
+												"end": {
+													"line": 37,
+													"column": 20,
+													"offset": 731
+												}
+											}
 										}
 									],
 									"modifiers": [],
@@ -446,7 +474,11 @@
 											"column": 15,
 											"offset": 726
 										},
-										"end": {}
+										"end": {
+											"line": 37,
+											"column": 20,
+											"offset": 731
+										}
 									}
 								},
 								{

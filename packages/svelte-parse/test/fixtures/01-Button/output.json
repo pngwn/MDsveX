@@ -103,7 +103,19 @@
 									"value": [
 										{
 											"type": "svelteExpression",
-											"value": "...props"
+											"value": "...props",
+											"position": {
+												"start": {
+													"line": 68,
+													"column": 5,
+													"offset": 1611
+												},
+												"end": {
+													"line": 68,
+													"column": 14,
+													"offset": 1620
+												}
+											}
 										}
 									],
 									"modifiers": [],
@@ -114,7 +126,11 @@
 											"column": 5,
 											"offset": 1611
 										},
-										"end": {}
+										"end": {
+											"line": 68,
+											"column": 14,
+											"offset": 1620
+										}
 									}
 								},
 								{
@@ -969,7 +985,19 @@
 									"value": [
 										{
 											"type": "svelteExpression",
-											"value": "href"
+											"value": "href",
+											"position": {
+												"start": {
+													"line": 87,
+													"column": 5,
+													"offset": 2054
+												},
+												"end": {
+													"line": 87,
+													"column": 10,
+													"offset": 2059
+												}
+											}
 										}
 									],
 									"modifiers": [],
@@ -980,7 +1008,11 @@
 											"column": 5,
 											"offset": 2054
 										},
-										"end": {}
+										"end": {
+											"line": 87,
+											"column": 10,
+											"offset": 2059
+										}
 									}
 								},
 								{
@@ -989,7 +1021,19 @@
 									"value": [
 										{
 											"type": "svelteExpression",
-											"value": "...props"
+											"value": "...props",
+											"position": {
+												"start": {
+													"line": 88,
+													"column": 5,
+													"offset": 2065
+												},
+												"end": {
+													"line": 88,
+													"column": 14,
+													"offset": 2074
+												}
+											}
 										}
 									],
 									"modifiers": [],
@@ -1000,7 +1044,11 @@
 											"column": 5,
 											"offset": 2065
 										},
-										"end": {}
+										"end": {
+											"line": 88,
+											"column": 14,
+											"offset": 2074
+										}
 									}
 								},
 								{

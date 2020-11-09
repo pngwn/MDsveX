@@ -100,7 +100,19 @@
 					"value": [
 						{
 							"type": "svelteExpression",
-							"value": "...exclude($$props, ['use', 'class', 'inverted', 'disabled', 'size', 'color'])"
+							"value": "...exclude($$props, ['use', 'class', 'inverted', 'disabled', 'size', 'color'])",
+							"position": {
+								"start": {
+									"line": 28,
+									"column": 5,
+									"offset": 780
+								},
+								"end": {
+									"line": 28,
+									"column": 84,
+									"offset": 859
+								}
+							}
 						}
 					],
 					"modifiers": [],
@@ -111,7 +123,11 @@
 							"column": 5,
 							"offset": 780
 						},
-						"end": {}
+						"end": {
+							"line": 28,
+							"column": 84,
+							"offset": 859
+						}
 					}
 				}
 			],

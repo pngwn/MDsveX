@@ -1470,7 +1470,19 @@
 							"value": [
 								{
 									"type": "svelteExpression",
-									"value": "eases"
+									"value": "eases",
+									"position": {
+										"start": {
+											"line": 97,
+											"column": 3,
+											"offset": 2001
+										},
+										"end": {
+											"line": 97,
+											"column": 9,
+											"offset": 2007
+										}
+									}
 								}
 							],
 							"modifiers": [],
@@ -1481,7 +1493,11 @@
 									"column": 3,
 									"offset": 2001
 								},
-								"end": {}
+								"end": {
+									"line": 97,
+									"column": 9,
+									"offset": 2007
+								}
 							}
 						},
 						{
@@ -1490,7 +1506,19 @@
 							"value": [
 								{
 									"type": "svelteExpression",
-									"value": "types"
+									"value": "types",
+									"position": {
+										"start": {
+											"line": 98,
+											"column": 3,
+											"offset": 2011
+										},
+										"end": {
+											"line": 98,
+											"column": 9,
+											"offset": 2017
+										}
+									}
 								}
 							],
 							"modifiers": [],
@@ -1501,7 +1529,11 @@
 									"column": 3,
 									"offset": 2011
 								},
-								"end": {}
+								"end": {
+									"line": 98,
+									"column": 9,
+									"offset": 2017
+								}
 							}
 						},
 						{
@@ -1510,7 +1542,19 @@
 							"value": [
 								{
 									"type": "svelteExpression",
-									"value": "playing"
+									"value": "playing",
+									"position": {
+										"start": {
+											"line": 99,
+											"column": 3,
+											"offset": 2021
+										},
+										"end": {
+											"line": 99,
+											"column": 11,
+											"offset": 2029
+										}
+									}
 								}
 							],
 							"modifiers": [],
@@ -1521,7 +1565,11 @@
 									"column": 3,
 									"offset": 2021
 								},
-								"end": {}
+								"end": {
+									"line": 99,
+									"column": 11,
+									"offset": 2029
+								}
 							}
 						},
 						{
@@ -1530,7 +1578,19 @@
 							"value": [
 								{
 									"type": "svelteExpression",
-									"value": "width"
+									"value": "width",
+									"position": {
+										"start": {
+											"line": 100,
+											"column": 3,
+											"offset": 2033
+										},
+										"end": {
+											"line": 100,
+											"column": 9,
+											"offset": 2039
+										}
+									}
 								}
 							],
 							"modifiers": [],
@@ -1541,7 +1601,11 @@
 									"column": 3,
 									"offset": 2033
 								},
-								"end": {}
+								"end": {
+									"line": 100,
+									"column": 9,
+									"offset": 2039
+								}
 							}
 						},
 						{

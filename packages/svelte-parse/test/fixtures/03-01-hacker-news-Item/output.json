@@ -737,7 +737,19 @@
 											"value": [
 												{
 													"type": "svelteExpression",
-													"value": "comment"
+													"value": "comment",
+													"position": {
+														"start": {
+															"line": 39,
+															"column": 12,
+															"offset": 616
+														},
+														"end": {
+															"line": 39,
+															"column": 20,
+															"offset": 624
+														}
+													}
 												}
 											],
 											"modifiers": [],
@@ -748,7 +760,11 @@
 													"column": 12,
 													"offset": 616
 												},
-												"end": {}
+												"end": {
+													"line": 39,
+													"column": 20,
+													"offset": 624
+												}
 											}
 										}
 									],

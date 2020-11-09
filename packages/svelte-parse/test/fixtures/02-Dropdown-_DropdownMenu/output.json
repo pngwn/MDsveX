@@ -914,7 +914,19 @@
 																	"value": [
 																		{
 																			"type": "svelteExpression",
-																			"value": "isMulti"
+																			"value": "isMulti",
+																			"position": {
+																				"start": {
+																					"line": 93,
+																					"column": 15,
+																					"offset": 2427
+																				},
+																				"end": {
+																					"line": 93,
+																					"column": 23,
+																					"offset": 2435
+																				}
+																			}
 																		}
 																	],
 																	"modifiers": [],
@@ -925,7 +937,11 @@
 																			"column": 15,
 																			"offset": 2427
 																		},
-																		"end": {}
+																		"end": {
+																			"line": 93,
+																			"column": 23,
+																			"offset": 2435
+																		}
 																	}
 																},
 																{

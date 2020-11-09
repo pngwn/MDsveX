@@ -100,7 +100,19 @@
 					"value": [
 						{
 							"type": "svelteExpression",
-							"value": "...exclude($$props, ['use', 'class', 'direction', 'inverted', 'fitted', 'hidden', 'section', 'clearing'])"
+							"value": "...exclude($$props, ['use', 'class', 'direction', 'inverted', 'fitted', 'hidden', 'section', 'clearing'])",
+							"position": {
+								"start": {
+									"line": 15,
+									"column": 5,
+									"offset": 293
+								},
+								"end": {
+									"line": 15,
+									"column": 111,
+									"offset": 399
+								}
+							}
 						}
 					],
 					"modifiers": [],
@@ -111,7 +123,11 @@
 							"column": 5,
 							"offset": 293
 						},
-						"end": {}
+						"end": {
+							"line": 15,
+							"column": 111,
+							"offset": 399
+						}
 					}
 				}
 			],

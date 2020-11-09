@@ -195,7 +195,19 @@
 													"value": [
 														{
 															"type": "svelteExpression",
-															"value": "item"
+															"value": "item",
+															"position": {
+																"start": {
+																	"line": 40,
+																	"column": 12,
+																	"offset": 611
+																},
+																"end": {
+																	"line": 40,
+																	"column": 17,
+																	"offset": 616
+																}
+															}
 														}
 													],
 													"modifiers": [],
@@ -206,7 +218,11 @@
 															"column": 12,
 															"offset": 611
 														},
-														"end": {}
+														"end": {
+															"line": 40,
+															"column": 17,
+															"offset": 616
+														}
 													}
 												},
 												{
@@ -215,7 +231,19 @@
 													"value": [
 														{
 															"type": "svelteExpression",
-															"value": "i"
+															"value": "i",
+															"position": {
+																"start": {
+																	"line": 40,
+																	"column": 19,
+																	"offset": 618
+																},
+																"end": {
+																	"line": 40,
+																	"column": 21,
+																	"offset": 620
+																}
+															}
 														}
 													],
 													"modifiers": [],
@@ -226,7 +254,11 @@
 															"column": 19,
 															"offset": 618
 														},
-														"end": {}
+														"end": {
+															"line": 40,
+															"column": 21,
+															"offset": 620
+														}
 													}
 												},
 												{
@@ -235,7 +267,19 @@
 													"value": [
 														{
 															"type": "svelteExpression",
-															"value": "offset"
+															"value": "offset",
+															"position": {
+																"start": {
+																	"line": 40,
+																	"column": 23,
+																	"offset": 622
+																},
+																"end": {
+																	"line": 40,
+																	"column": 30,
+																	"offset": 629
+																}
+															}
 														}
 													],
 													"modifiers": [],
@@ -246,7 +290,11 @@
 															"column": 23,
 															"offset": 622
 														},
-														"end": {}
+														"end": {
+															"line": 40,
+															"column": 30,
+															"offset": 629
+														}
 													}
 												}
 											],

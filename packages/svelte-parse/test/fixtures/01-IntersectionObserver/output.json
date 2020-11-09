@@ -175,7 +175,19 @@
 							"value": [
 								{
 									"type": "svelteExpression",
-									"value": "intersecting"
+									"value": "intersecting",
+									"position": {
+										"start": {
+											"line": 58,
+											"column": 8,
+											"offset": 1198
+										},
+										"end": {
+											"line": 58,
+											"column": 21,
+											"offset": 1211
+										}
+									}
 								}
 							],
 							"modifiers": [],
@@ -186,7 +198,11 @@
 									"column": 8,
 									"offset": 1198
 								},
-								"end": {}
+								"end": {
+									"line": 58,
+									"column": 21,
+									"offset": 1211
+								}
 							}
 						}
 					],

@@ -100,7 +100,19 @@
 					"value": [
 						{
 							"type": "svelteExpression",
-							"value": "...exclude($$props, [\n        'use', 'class', 'color', 'name', 'size', 'corner', 'flipped', 'rotated', 'bordered', \n        'circular', 'disabled', 'inverted', 'loading', 'fitted', 'link', 'flipped', 'roated'\n    ])"
+							"value": "...exclude($$props, [\n        'use', 'class', 'color', 'name', 'size', 'corner', 'flipped', 'rotated', 'bordered', \n        'circular', 'disabled', 'inverted', 'loading', 'fitted', 'link', 'flipped', 'roated'\n    ])",
+							"position": {
+								"start": {
+									"line": 21,
+									"column": 5,
+									"offset": 485
+								},
+								"end": {
+									"line": 24,
+									"column": 7,
+									"offset": 701
+								}
+							}
 						}
 					],
 					"modifiers": [],
@@ -111,7 +123,11 @@
 							"column": 5,
 							"offset": 485
 						},
-						"end": {}
+						"end": {
+							"line": 24,
+							"column": 7,
+							"offset": 701
+						}
 					}
 				}
 			],

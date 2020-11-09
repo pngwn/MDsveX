@@ -658,7 +658,19 @@
 											"value": [
 												{
 													"type": "svelteExpression",
-													"value": "disabled"
+													"value": "disabled",
+													"position": {
+														"start": {
+															"line": 68,
+															"column": 13,
+															"offset": 1972
+														},
+														"end": {
+															"line": 68,
+															"column": 22,
+															"offset": 1981
+														}
+													}
 												}
 											],
 											"modifiers": [],
@@ -669,7 +681,11 @@
 													"column": 13,
 													"offset": 1972
 												},
-												"end": {}
+												"end": {
+													"line": 68,
+													"column": 22,
+													"offset": 1981
+												}
 											}
 										},
 										{
@@ -1322,7 +1338,19 @@
 															"value": [
 																{
 																	"type": "svelteExpression",
-																	"value": "disabled"
+																	"value": "disabled",
+																	"position": {
+																		"start": {
+																			"line": 84,
+																			"column": 17,
+																			"offset": 2423
+																		},
+																		"end": {
+																			"line": 84,
+																			"column": 26,
+																			"offset": 2432
+																		}
+																	}
 																}
 															],
 															"modifiers": [],
@@ -1333,7 +1361,11 @@
 																	"column": 17,
 																	"offset": 2423
 																},
-																"end": {}
+																"end": {
+																	"line": 84,
+																	"column": 26,
+																	"offset": 2432
+																}
 															}
 														},
 														{

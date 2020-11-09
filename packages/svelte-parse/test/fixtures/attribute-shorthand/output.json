@@ -11,7 +11,19 @@
 					"value": [
 						{
 							"type": "svelteExpression",
-							"value": "id"
+							"value": "id",
+							"position": {
+								"start": {
+									"line": 1,
+									"column": 6,
+									"offset": 5
+								},
+								"end": {
+									"line": 1,
+									"column": 9,
+									"offset": 8
+								}
+							}
 						}
 					],
 					"modifiers": [],
@@ -22,7 +34,11 @@
 							"column": 6,
 							"offset": 5
 						},
-						"end": {}
+						"end": {
+							"line": 1,
+							"column": 9,
+							"offset": 8
+						}
 					}
 				}
 			],

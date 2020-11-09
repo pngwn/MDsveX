@@ -122,7 +122,19 @@
 							"value": [
 								{
 									"type": "svelteExpression",
-									"value": "isWaiting"
+									"value": "isWaiting",
+									"position": {
+										"start": {
+											"line": 8,
+											"column": 11,
+											"offset": 132
+										},
+										"end": {
+											"line": 8,
+											"column": 21,
+											"offset": 142
+										}
+									}
 								}
 							],
 							"modifiers": [],
@@ -133,7 +145,11 @@
 									"column": 11,
 									"offset": 132
 								},
-								"end": {}
+								"end": {
+									"line": 8,
+									"column": 21,
+									"offset": 142
+								}
 							}
 						}
 					],

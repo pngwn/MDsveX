@@ -75,7 +75,19 @@
 					"value": [
 						{
 							"type": "svelteExpression",
-							"value": "...exclude($$props, ['class'])"
+							"value": "...exclude($$props, ['class'])",
+							"position": {
+								"start": {
+									"line": 3,
+									"column": 5,
+									"offset": 46
+								},
+								"end": {
+									"line": 3,
+									"column": 36,
+									"offset": 77
+								}
+							}
 						}
 					],
 					"modifiers": [],
@@ -86,7 +98,11 @@
 							"column": 5,
 							"offset": 46
 						},
-						"end": {}
+						"end": {
+							"line": 3,
+							"column": 36,
+							"offset": 77
+						}
 					}
 				}
 			],
