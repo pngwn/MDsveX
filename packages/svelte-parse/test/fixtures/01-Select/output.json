@@ -1929,7 +1929,19 @@
 											"value": [
 												{
 													"type": "svelteExpression",
-													"value": "icon"
+													"value": "icon",
+													"position": {
+														"start": {
+															"line": 145,
+															"column": 16,
+															"offset": 3424
+														},
+														"end": {
+															"line": 145,
+															"column": 21,
+															"offset": 3429
+														}
+													}
 												}
 											],
 											"modifiers": [],
@@ -1940,7 +1952,11 @@
 													"column": 16,
 													"offset": 3424
 												},
-												"end": {}
+												"end": {
+													"line": 145,
+													"column": 21,
+													"offset": 3429
+												}
 											}
 										},
 										{
@@ -1985,7 +2001,19 @@
 											"value": [
 												{
 													"type": "svelteExpression",
-													"value": "size"
+													"value": "size",
+													"position": {
+														"start": {
+															"line": 145,
+															"column": 39,
+															"offset": 3447
+														},
+														"end": {
+															"line": 145,
+															"column": 44,
+															"offset": 3452
+														}
+													}
 												}
 											],
 											"modifiers": [],
@@ -1996,7 +2024,11 @@
 													"column": 39,
 													"offset": 3447
 												},
-												"end": {}
+												"end": {
+													"line": 145,
+													"column": 44,
+													"offset": 3452
+												}
 											}
 										}
 									],

@@ -63,7 +63,19 @@
 					"value": [
 						{
 							"type": "svelteExpression",
-							"value": "items"
+							"value": "items",
+							"position": {
+								"start": {
+									"line": 24,
+									"column": 11,
+									"offset": 366
+								},
+								"end": {
+									"line": 24,
+									"column": 17,
+									"offset": 372
+								}
+							}
 						}
 					],
 					"modifiers": [],
@@ -74,7 +86,11 @@
 							"column": 11,
 							"offset": 366
 						},
-						"end": {}
+						"end": {
+							"line": 24,
+							"column": 17,
+							"offset": 372
+						}
 					}
 				},
 				{
@@ -83,7 +99,19 @@
 					"value": [
 						{
 							"type": "svelteExpression",
-							"value": "isMulti"
+							"value": "isMulti",
+							"position": {
+								"start": {
+									"line": 24,
+									"column": 19,
+									"offset": 374
+								},
+								"end": {
+									"line": 24,
+									"column": 27,
+									"offset": 382
+								}
+							}
 						}
 					],
 					"modifiers": [],
@@ -94,7 +122,11 @@
 							"column": 19,
 							"offset": 374
 						},
-						"end": {}
+						"end": {
+							"line": 24,
+							"column": 27,
+							"offset": 382
+						}
 					}
 				},
 				{

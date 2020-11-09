@@ -211,7 +211,19 @@
 							"value": [
 								{
 									"type": "svelteExpression",
-									"value": "isClickDisabled"
+									"value": "isClickDisabled",
+									"position": {
+										"start": {
+											"line": 16,
+											"column": 40,
+											"offset": 281
+										},
+										"end": {
+											"line": 16,
+											"column": 56,
+											"offset": 297
+										}
+									}
 								}
 							],
 							"modifiers": [],
@@ -222,7 +234,11 @@
 									"column": 40,
 									"offset": 281
 								},
-								"end": {}
+								"end": {
+									"line": 16,
+									"column": 56,
+									"offset": 297
+								}
 							}
 						},
 						{
@@ -231,7 +247,19 @@
 							"value": [
 								{
 									"type": "svelteExpression",
-									"value": "isClickable"
+									"value": "isClickable",
+									"position": {
+										"start": {
+											"line": 16,
+											"column": 58,
+											"offset": 299
+										},
+										"end": {
+											"line": 16,
+											"column": 70,
+											"offset": 311
+										}
+									}
 								}
 							],
 							"modifiers": [],
@@ -242,7 +270,11 @@
 									"column": 58,
 									"offset": 299
 								},
-								"end": {}
+								"end": {
+									"line": 16,
+									"column": 70,
+									"offset": 311
+								}
 							}
 						}
 					],

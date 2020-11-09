@@ -1350,7 +1350,19 @@
 																							"value": [
 																								{
 																									"type": "svelteExpression",
-																									"value": "icon"
+																									"value": "icon",
+																									"position": {
+																										"start": {
+																											"line": 236,
+																											"column": 37,
+																											"offset": 5581
+																										},
+																										"end": {
+																											"line": 236,
+																											"column": 42,
+																											"offset": 5586
+																										}
+																									}
 																								}
 																							],
 																							"modifiers": [],
@@ -1361,7 +1373,11 @@
 																									"column": 37,
 																									"offset": 5581
 																								},
-																								"end": {}
+																								"end": {
+																									"line": 236,
+																									"column": 42,
+																									"offset": 5586
+																								}
 																							}
 																						},
 																						{
@@ -1370,7 +1386,19 @@
 																							"value": [
 																								{
 																									"type": "svelteExpression",
-																									"value": "type"
+																									"value": "type",
+																									"position": {
+																										"start": {
+																											"line": 236,
+																											"column": 44,
+																											"offset": 5588
+																										},
+																										"end": {
+																											"line": 236,
+																											"column": 49,
+																											"offset": 5593
+																										}
+																									}
 																								}
 																							],
 																							"modifiers": [],
@@ -1381,7 +1409,11 @@
 																									"column": 44,
 																									"offset": 5588
 																								},
-																								"end": {}
+																								"end": {
+																									"line": 236,
+																									"column": 49,
+																									"offset": 5593
+																								}
 																							}
 																						},
 																						{
@@ -1931,7 +1963,19 @@
 																											"value": [
 																												{
 																													"type": "svelteExpression",
-																													"value": "...newInputProps"
+																													"value": "...newInputProps",
+																													"position": {
+																														"start": {
+																															"line": 249,
+																															"column": 23,
+																															"offset": 5992
+																														},
+																														"end": {
+																															"line": 249,
+																															"column": 40,
+																															"offset": 6009
+																														}
+																													}
 																												}
 																											],
 																											"modifiers": [],
@@ -1942,7 +1986,11 @@
 																													"column": 23,
 																													"offset": 5992
 																												},
-																												"end": {}
+																												"end": {
+																													"line": 249,
+																													"column": 40,
+																													"offset": 6009
+																												}
 																											}
 																										},
 																										{

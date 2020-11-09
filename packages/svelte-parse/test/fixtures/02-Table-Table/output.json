@@ -914,7 +914,19 @@
 																																			"value": [
 																																				{
 																																					"type": "svelteExpression",
-																																					"value": "...headerItem.title.props"
+																																					"value": "...headerItem.title.props",
+																																					"position": {
+																																						"start": {
+																																							"line": 303,
+																																							"column": 67,
+																																							"offset": 6921
+																																						},
+																																						"end": {
+																																							"line": 303,
+																																							"column": 93,
+																																							"offset": 6947
+																																						}
+																																					}
 																																				}
 																																			],
 																																			"modifiers": [],
@@ -925,7 +937,11 @@
 																																					"column": 67,
 																																					"offset": 6921
 																																				},
-																																				"end": {}
+																																				"end": {
+																																					"line": 303,
+																																					"column": 93,
+																																					"offset": 6947
+																																				}
 																																			}
 																																		}
 																																	],
@@ -1268,7 +1284,19 @@
 																																	"value": [
 																																		{
 																																			"type": "svelteExpression",
-																																			"value": "...headerItem.title.data"
+																																			"value": "...headerItem.title.data",
+																																			"position": {
+																																				"start": {
+																																					"line": 310,
+																																					"column": 65,
+																																					"offset": 7192
+																																				},
+																																				"end": {
+																																					"line": 310,
+																																					"column": 90,
+																																					"offset": 7217
+																																				}
+																																			}
 																																		}
 																																	],
 																																	"modifiers": [],
@@ -1279,7 +1307,11 @@
 																																			"column": 65,
 																																			"offset": 7192
 																																		},
-																																		"end": {}
+																																		"end": {
+																																			"line": 310,
+																																			"column": 90,
+																																			"offset": 7217
+																																		}
 																																	}
 																																}
 																															],
@@ -2470,7 +2502,19 @@
 																													"value": [
 																														{
 																															"type": "svelteExpression",
-																															"value": "...item.cell.props"
+																															"value": "...item.cell.props",
+																															"position": {
+																																"start": {
+																																	"line": 336,
+																																	"column": 60,
+																																	"offset": 8080
+																																},
+																																"end": {
+																																	"line": 336,
+																																	"column": 79,
+																																	"offset": 8099
+																																}
+																															}
 																														}
 																													],
 																													"modifiers": [],
@@ -2481,7 +2525,11 @@
 																															"column": 60,
 																															"offset": 8080
 																														},
-																														"end": {}
+																														"end": {
+																															"line": 336,
+																															"column": 79,
+																															"offset": 8099
+																														}
 																													}
 																												},
 																												{

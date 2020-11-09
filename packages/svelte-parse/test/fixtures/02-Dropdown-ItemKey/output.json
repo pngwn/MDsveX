@@ -63,7 +63,19 @@
 					"value": [
 						{
 							"type": "svelteExpression",
-							"value": "items"
+							"value": "items",
+							"position": {
+								"start": {
+									"line": 19,
+									"column": 11,
+									"offset": 291
+								},
+								"end": {
+									"line": 19,
+									"column": 17,
+									"offset": 297
+								}
+							}
 						}
 					],
 					"modifiers": [],
@@ -74,7 +86,11 @@
 							"column": 11,
 							"offset": 291
 						},
-						"end": {}
+						"end": {
+							"line": 19,
+							"column": 17,
+							"offset": 297
+						}
 					}
 				},
 				{
@@ -83,7 +99,19 @@
 					"value": [
 						{
 							"type": "svelteExpression",
-							"value": "itemKey"
+							"value": "itemKey",
+							"position": {
+								"start": {
+									"line": 19,
+									"column": 19,
+									"offset": 299
+								},
+								"end": {
+									"line": 19,
+									"column": 27,
+									"offset": 307
+								}
+							}
 						}
 					],
 					"modifiers": [],
@@ -94,7 +122,11 @@
 							"column": 19,
 							"offset": 299
 						},
-						"end": {}
+						"end": {
+							"line": 19,
+							"column": 27,
+							"offset": 307
+						}
 					}
 				}
 			],

@@ -293,7 +293,19 @@
 											"value": [
 												{
 													"type": "svelteExpression",
-													"value": " tabs "
+													"value": " tabs ",
+													"position": {
+														"start": {
+															"line": 88,
+															"column": 13,
+															"offset": 1810
+														},
+														"end": {
+															"line": 88,
+															"column": 20,
+															"offset": 1817
+														}
+													}
 												}
 											],
 											"modifiers": [],
@@ -304,7 +316,11 @@
 													"column": 13,
 													"offset": 1810
 												},
-												"end": {}
+												"end": {
+													"line": 88,
+													"column": 20,
+													"offset": 1817
+												}
 											}
 										},
 										{
@@ -553,7 +569,19 @@
 																			"value": [
 																				{
 																					"type": "svelteExpression",
-																					"value": " selectedItem "
+																					"value": " selectedItem ",
+																					"position": {
+																						"start": {
+																							"line": 92,
+																							"column": 66,
+																							"offset": 2010
+																						},
+																						"end": {
+																							"line": 92,
+																							"column": 81,
+																							"offset": 2025
+																						}
+																					}
 																				}
 																			],
 																			"modifiers": [],
@@ -564,7 +592,11 @@
 																					"column": 66,
 																					"offset": 2010
 																				},
-																				"end": {}
+																				"end": {
+																					"line": 92,
+																					"column": 81,
+																					"offset": 2025
+																				}
 																			}
 																		},
 																		{

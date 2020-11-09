@@ -99,7 +99,19 @@
 					"value": [
 						{
 							"type": "svelteExpression",
-							"value": " iconPosition "
+							"value": " iconPosition ",
+							"position": {
+								"start": {
+									"line": 10,
+									"column": 27,
+									"offset": 289
+								},
+								"end": {
+									"line": 10,
+									"column": 42,
+									"offset": 304
+								}
+							}
 						}
 					],
 					"modifiers": [],
@@ -110,7 +122,11 @@
 							"column": 27,
 							"offset": 289
 						},
-						"end": {}
+						"end": {
+							"line": 10,
+							"column": 42,
+							"offset": 304
+						}
 					}
 				}
 			],

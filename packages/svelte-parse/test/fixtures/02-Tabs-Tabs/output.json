@@ -1080,7 +1080,19 @@
 																	"value": [
 																		{
 																			"type": "svelteExpression",
-																			"value": " ...tab.attributes "
+																			"value": " ...tab.attributes ",
+																			"position": {
+																				"start": {
+																					"line": 112,
+																					"column": 52,
+																					"offset": 2205
+																				},
+																				"end": {
+																					"line": 112,
+																					"column": 72,
+																					"offset": 2225
+																				}
+																			}
 																		}
 																	],
 																	"modifiers": [],
@@ -1091,7 +1103,11 @@
 																			"column": 52,
 																			"offset": 2205
 																		},
-																		"end": {}
+																		"end": {
+																			"line": 112,
+																			"column": 72,
+																			"offset": 2225
+																		}
 																	}
 																}
 															],

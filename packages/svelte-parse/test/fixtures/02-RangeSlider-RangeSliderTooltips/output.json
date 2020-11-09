@@ -79,7 +79,19 @@
 					"value": [
 						{
 							"type": "svelteExpression",
-							"value": "tooltip"
+							"value": "tooltip",
+							"position": {
+								"start": {
+									"line": 9,
+									"column": 26,
+									"offset": 196
+								},
+								"end": {
+									"line": 9,
+									"column": 34,
+									"offset": 204
+								}
+							}
 						}
 					],
 					"modifiers": [],
@@ -90,7 +102,11 @@
 							"column": 26,
 							"offset": 196
 						},
-						"end": {}
+						"end": {
+							"line": 9,
+							"column": 34,
+							"offset": 204
+						}
 					}
 				}
 			],

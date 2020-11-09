@@ -353,7 +353,19 @@
 									"value": [
 										{
 											"type": "svelteExpression",
-											"value": "altFormat"
+											"value": "altFormat",
+											"position": {
+												"start": {
+													"line": 10,
+													"column": 71,
+													"offset": 242
+												},
+												"end": {
+													"line": 10,
+													"column": 81,
+													"offset": 252
+												}
+											}
 										}
 									],
 									"modifiers": [],
@@ -364,7 +376,11 @@
 											"column": 71,
 											"offset": 242
 										},
-										"end": {}
+										"end": {
+											"line": 10,
+											"column": 81,
+											"offset": 252
+										}
 									}
 								}
 							],

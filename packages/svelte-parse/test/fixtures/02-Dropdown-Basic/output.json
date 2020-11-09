@@ -63,7 +63,19 @@
 					"value": [
 						{
 							"type": "svelteExpression",
-							"value": " items "
+							"value": " items ",
+							"position": {
+								"start": {
+									"line": 21,
+									"column": 11,
+									"offset": 317
+								},
+								"end": {
+									"line": 21,
+									"column": 19,
+									"offset": 325
+								}
+							}
 						}
 					],
 					"modifiers": [],
@@ -74,7 +86,11 @@
 							"column": 11,
 							"offset": 317
 						},
-						"end": {}
+						"end": {
+							"line": 21,
+							"column": 19,
+							"offset": 325
+						}
 					}
 				},
 				{

@@ -99,7 +99,19 @@
 					"value": [
 						{
 							"type": "svelteExpression",
-							"value": "...$$props"
+							"value": "...$$props",
+							"position": {
+								"start": {
+									"line": 11,
+									"column": 38,
+									"offset": 178
+								},
+								"end": {
+									"line": 11,
+									"column": 49,
+									"offset": 189
+								}
+							}
 						}
 					],
 					"modifiers": [],
@@ -110,7 +122,11 @@
 							"column": 38,
 							"offset": 178
 						},
-						"end": {}
+						"end": {
+							"line": 11,
+							"column": 49,
+							"offset": 189
+						}
 					}
 				}
 			],
