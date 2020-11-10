@@ -587,8 +587,9 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			if (char === CLOSE_BRACE) {
 				(current_node as Property).value[0].value = (current_node as Property).name;
 				if (generatePositions) {
-					current_node.position.end = place();
-					(current_node as Property).value[0].position.end = place();
+					if (current_node?.position) current_node.position.end = place();
+					const node_expr = (current_node as Property)?.value[0];
+					if (node_expr?.position) node_expr.position.end = place();
 				}
 				pop_state();
 				pop_node();
