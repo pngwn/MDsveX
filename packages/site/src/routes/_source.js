@@ -55,12 +55,20 @@ Obviously you have access to values defined in YAML (namespaced under \`_metadat
 
 Normal markdown stuff works too:
 
-- Like
-- This
-- List
-- Here
+| like  | this |
+|-------|------|
+| table | here |
 
-And *this* and **THIS**. And other stuff. You can't use \`each\` blocks. Don't try, it wont work.
+And *this* and **THIS**. And other stuff. You can also use all your favorite Svelte features, like \`each\` blocks:
+
+<ul>
+{#each list as item}
+  <li>{item}</li>
+{/each}
+</ul>
+
+and all the other good Svelte stuff.
+
 `;
 
 export const code_2 = `
