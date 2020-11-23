@@ -51,7 +51,7 @@ Yeah, thats right you can put wigdets in markdown (\`.svx\` files or otherwise).
 </Seriously>
 
 Sometimes you need your widgets **inlined** (like this:<Count count="{number}"/>) because why shouldn't you.
-Obviously you have access to values defined in YAML (namespaced under \`_metadata\`) and anything defined in an fenced \`js exec\` block can be referenced directly.
+Obviously you have access to values defined in YAML (namespaced under \`metadata\`) and anything defined in an fenced \`js exec\` block can be referenced directly.
 
 Normal markdown stuff works too:
 
