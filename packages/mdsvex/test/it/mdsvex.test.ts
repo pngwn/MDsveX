@@ -1066,6 +1066,17 @@ I am some paragraph text
 	);
 });
 
+mdsvex_it('compile, no options', async () => {
+	const output = await compile('# Hello world');
+	assert.equal(
+		{
+			code: '\n<h1>Hello world</h1>\n',
+			map: '',
+		},
+		output
+	);
+});
+
 mdsvex_it('layout: allow custom components', async () => {
 	const output = await compile(
 		`
