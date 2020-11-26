@@ -313,7 +313,10 @@ const _compile = (
 		content: source,
 		filename:
 			(opts && opts.filename) ||
-			`file${(opts && (opts.extensions && opts.extensions[0]) || opts.extension) || '.svx'}`,
+			`file${
+				(opts && ((opts.extensions && opts.extensions[0]) || opts.extension)) ||
+				'.svx'
+			}`,
 	});
 
 export { _compile as compile };
