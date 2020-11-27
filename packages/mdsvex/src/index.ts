@@ -229,6 +229,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 
 	const unknown_opts = [];
 	const known_opts = [
+		'filename',
 		'remarkPlugins',
 		'rehypePlugins',
 		'smartypants',
@@ -294,7 +295,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
  * - **source** - the source code to convert.
  * - **options** - An options object with the following properties, all are optional.
  *
- *
+ * - `filename` - The filename of the generated file
  * - `extension` - The extension to use for mdsvex files
  * - `extensions` - The extensions to use for mdsvex files
  * - `layout` - Layouts to apply to mdsvex documents
@@ -307,7 +308,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 
 const _compile = (
 	source: string,
-	opts: MdsvexCompileOptions
+	opts?: MdsvexCompileOptions
 ): PreprocessorReturn =>
 	mdsvex(opts).markup({
 		content: source,
