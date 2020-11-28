@@ -658,7 +658,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: [] };
-				(current_node as Directive).modifiers.push(_n as Literal);
+				(current_node as Directive).modifiers.push(_n as Literal<'modifier'>);
 				push_node(_n);
 				set_state(State.IN_ATTR_MODIFIER, true);
 				continue;
@@ -869,7 +869,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
-				(current_node as Directive).modifiers.push(_n as Literal);
+				(current_node as Directive).modifiers.push(_n as Literal<'modifier'>);
 				push_node(_n);
 				set_state(State.IN_ATTR_MODIFIER, true);
 				chomp();
@@ -901,7 +901,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
-				(current_node as Directive).modifiers.push(_n as Literal);
+				(current_node as Directive).modifiers.push(_n as Literal<'modifier'>);
 				push_node(_n);
 				chomp();
 				continue;
@@ -925,7 +925,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				pop_state();
 				continue;
 			}
-			(current_node as Literal).value += value[index];
+			(current_node as Literal<'modifier'>).value += value[index];
 			chomp();
 			continue;
 		}

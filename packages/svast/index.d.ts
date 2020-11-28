@@ -1,5 +1,5 @@
-import { Node, Position, Point, Parent, Data, Literal } from 'unist';
-export { Node, Position, Point, Parent, Data, Literal };
+import { Node, Position, Point, Parent, Data } from 'unist';
+export { Node, Position, Point, Parent, Data };
 
 export type SvelteChild =
 	| SvelteElement
@@ -37,12 +37,16 @@ export type SvelteScript = BaseSvelteTag<'svelteScript'>;
 
 export type SvelteStyle = BaseSvelteTag<'svelteStyle'>;
 
+export interface Literal<T extends string> extends Node {
+	type: T;
+	value: string;
+}
 export interface BaseProperty<T extends string> extends Node {
 	type: T;
 	name: string;
 	shorthand: 'none' | 'boolean' | 'expression';
 	value: (Text | SvelteExpression)[];
-	modifiers: Literal[];
+	modifiers: Literal<'modifier'>[];
 }
 
 export type Property = BaseProperty<'svelteProperty'>;
@@ -51,19 +55,9 @@ export interface Directive extends BaseProperty<'svelteDirective'> {
 	specifier: string;
 }
 
-export interface Comment extends Literal {
-	type: 'comment';
-}
-
-export interface Text extends Literal {
-	type: 'text';
-	value: string;
-}
-
-export interface SvelteExpression extends Literal {
-	type: 'svelteExpression';
-	value: string;
-}
+export type Comment = Literal<'comment'>;
+export type Text = Literal<'text'>;
+export type SvelteExpression = Literal<'svelteExpression'>;
 
 export interface VoidBlock extends Node {
 	type: 'svelteVoidBlock';

@@ -133,12 +133,13 @@ A `Parent` is a node with children which is a list of nodes.
 ### `Literal`
 
 ```idl
-interface Literal <: UnistLiteral {
+interface Literal<T> <: UnistLiteral {
+  type: T
   value: string
 }
 ```
 
-A node containing a value. It is that simple.
+A node containing a value. It is that simple. This is generic is used by other nodes, such a `comment`.
 
 ### `Root`
 
