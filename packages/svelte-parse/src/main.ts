@@ -593,9 +593,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				if (generatePositions) {
 					//@ts-ignore
 					current_node.position.end = place();
-					const node_expr = (current_node as Property)?.value[0];
 					//@ts-ignore
-					node_expr.position.end = place();
+					(current_node as Property).value[0].position.end = place();
 				}
 				pop_state();
 				pop_node();
