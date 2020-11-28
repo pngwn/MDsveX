@@ -1435,6 +1435,39 @@ element('parses a tag with a directive with modifiers', () => {
 	});
 });
 
+element('parses a tag with a directive with modifier but no value', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: false,
+		childParser,
+		value: `<a on:click|preventDefault booleanAttribute/>`,
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'a',
+		selfClosing: true,
+		children: [],
+		properties: [
+			{
+				type: 'svelteDirective',
+				name: 'on',
+				specifier: 'click',
+				value: [],
+				shorthand: 'none',
+				modifiers: [{ type: 'modifier', value: 'preventDefault' }],
+			},
+			{
+				type: 'svelteProperty',
+				name: 'booleanAttribute',
+				value: [],
+				shorthand: 'boolean',
+				modifiers: [],
+			},
+		],
+	});
+});
+
 element('parses a tag with a directive with multiple modifiers', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
