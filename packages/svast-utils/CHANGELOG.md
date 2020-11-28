@@ -1,5 +1,12 @@
 # svast-utils
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies [[`61d3be2`](https://github.com/pngwn/MDsveX/commit/61d3be2606c01efb2a786d53eef381a005beced1)]:
+  - svast@0.1.0
+
 ## 0.0.3
 
 ### Patch Changes

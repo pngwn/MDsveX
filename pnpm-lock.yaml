@@ -198,17 +198,17 @@ importers:
     dependencies:
       svast: 'link:../svast'
     specifiers:
-      svast: 'workspace:^0.0.3'
+      svast: 'workspace:^0.1.0'
   packages/svast-utils:
     dependencies:
       svast: 'link:../svast'
     specifiers:
-      svast: 'workspace:^0.0.3'
+      svast: 'workspace:^0.1.0'
   packages/svelte-parse:
     dependencies:
       svast: 'link:../svast'
     specifiers:
-      svast: 'workspace:^0.0.3'
+      svast: 'workspace:^0.1.0'
 lockfileVersion: 5.2
 packages:
   /@arr/every/1.0.1:

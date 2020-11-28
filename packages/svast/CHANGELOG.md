@@ -1,5 +1,11 @@
 # svast
 
+## 0.1.0
+
+### Minor Changes
+
+- [`61d3be2`](https://github.com/pngwn/MDsveX/commit/61d3be2606c01efb2a786d53eef381a005beced1) [#193](https://github.com/pngwn/MDsveX/pull/193) Thanks [@pngwn](https://github.com/pngwn)! - Give comment nodes value field a string value. Convert literal into a generic to be utilised by other node types. Implements #173.
+
 ## 0.0.3
 
 ### Patch Changes
