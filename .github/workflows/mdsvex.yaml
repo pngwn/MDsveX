@@ -63,7 +63,7 @@ jobs:
             ${{ runner.os }}-pnpm-
       - run: pnpm i --frozen-lockfile
       - run: pnpm test
-      - run: pnpm build --filter mdsvex
+      - run: pnpm -r build
         env:
           CI: true
           name: mdsvex
