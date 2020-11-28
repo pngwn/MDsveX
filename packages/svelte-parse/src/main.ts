@@ -914,17 +914,26 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (char === SPACE || char === TAB || char === LINEFEED) {
-				chomp();
-				continue;
-			}
-
-			if (char === SLASH || char === CLOSE_ANGLE_BRACKET) {
+			if (
+				char === SLASH ||
+				char === CLOSE_ANGLE_BRACKET ||
+				((value.charCodeAt(index - 1) === SPACE ||
+					value.charCodeAt(index - 1) === TAB ||
+					value.charCodeAt(index - 1) === LINEFEED) &&
+					((char >= LOWERCASE_A && char <= LOWERCASE_Z) ||
+						(char >= UPPERCASE_A && char <= UPPERCASE_Z)))
+			) {
 				pop_node();
 				pop_node();
 				pop_state();
 				continue;
 			}
+
+			if (char === SPACE || char === TAB || char === LINEFEED) {
+				chomp();
+				continue;
+			}
+
 			(current_node as Literal<'modifier'>).value += value[index];
 			chomp();
 			continue;
