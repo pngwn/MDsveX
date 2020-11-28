@@ -646,7 +646,11 @@
 															"column": 5,
 															"offset": 2296
 														},
-														"end": {}
+														"end": {
+															"line": 124,
+															"column": 17,
+															"offset": 2308
+														}
 													},
 													"specifier": "flip"
 												}
@@ -1245,7 +1249,11 @@
 															"column": 5,
 															"offset": 2645
 														},
-														"end": {}
+														"end": {
+															"line": 139,
+															"column": 17,
+															"offset": 2657
+														}
 													},
 													"specifier": "flip"
 												}

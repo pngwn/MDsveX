@@ -269,7 +269,11 @@
 											"column": 60,
 											"offset": 576
 										},
-										"end": {}
+										"end": {
+											"line": 22,
+											"column": 74,
+											"offset": 590
+										}
 									},
 									"specifier": "dividing"
 								},
@@ -285,7 +289,11 @@
 											"column": 75,
 											"offset": 591
 										},
-										"end": {}
+										"end": {
+											"line": 22,
+											"column": 85,
+											"offset": 601
+										}
 									},
 									"specifier": "icon"
 								},
@@ -301,7 +309,11 @@
 											"column": 86,
 											"offset": 602
 										},
-										"end": {}
+										"end": {
+											"line": 22,
+											"column": 99,
+											"offset": 615
+										}
 									},
 									"specifier": "aligned"
 								},
@@ -317,7 +329,11 @@
 											"column": 5,
 											"offset": 621
 										},
-										"end": {}
+										"end": {
+											"line": 23,
+											"column": 16,
+											"offset": 632
+										}
 									},
 									"specifier": "block"
 								},
@@ -333,7 +349,11 @@
 											"column": 17,
 											"offset": 633
 										},
-										"end": {}
+										"end": {
+											"line": 23,
+											"column": 31,
+											"offset": 647
+										}
 									},
 									"specifier": "attached"
 								},
@@ -349,7 +369,11 @@
 											"column": 32,
 											"offset": 648
 										},
-										"end": {}
+										"end": {
+											"line": 23,
+											"column": 46,
+											"offset": 662
+										}
 									},
 									"specifier": "disabled"
 								},
@@ -365,7 +389,11 @@
 											"column": 47,
 											"offset": 663
 										},
-										"end": {}
+										"end": {
+											"line": 23,
+											"column": 56,
+											"offset": 672
+										}
 									},
 									"specifier": "sub"
 								},
@@ -716,7 +744,11 @@
 											"column": 60,
 											"offset": 806
 										},
-										"end": {}
+										"end": {
+											"line": 27,
+											"column": 74,
+											"offset": 820
+										}
 									},
 									"specifier": "dividing"
 								},
@@ -732,7 +764,11 @@
 											"column": 75,
 											"offset": 821
 										},
-										"end": {}
+										"end": {
+											"line": 27,
+											"column": 85,
+											"offset": 831
+										}
 									},
 									"specifier": "icon"
 								},
@@ -748,7 +784,11 @@
 											"column": 86,
 											"offset": 832
 										},
-										"end": {}
+										"end": {
+											"line": 27,
+											"column": 99,
+											"offset": 845
+										}
 									},
 									"specifier": "aligned"
 								},
@@ -764,7 +804,11 @@
 											"column": 5,
 											"offset": 851
 										},
-										"end": {}
+										"end": {
+											"line": 28,
+											"column": 16,
+											"offset": 862
+										}
 									},
 									"specifier": "block"
 								},
@@ -780,7 +824,11 @@
 											"column": 17,
 											"offset": 863
 										},
-										"end": {}
+										"end": {
+											"line": 28,
+											"column": 31,
+											"offset": 877
+										}
 									},
 									"specifier": "attached"
 								},
@@ -796,7 +844,11 @@
 											"column": 32,
 											"offset": 878
 										},
-										"end": {}
+										"end": {
+											"line": 28,
+											"column": 46,
+											"offset": 892
+										}
 									},
 									"specifier": "disabled"
 								},
@@ -812,7 +864,11 @@
 											"column": 47,
 											"offset": 893
 										},
-										"end": {}
+										"end": {
+											"line": 28,
+											"column": 56,
+											"offset": 902
+										}
 									},
 									"specifier": "sub"
 								},
@@ -1163,7 +1219,11 @@
 											"column": 60,
 											"offset": 1036
 										},
-										"end": {}
+										"end": {
+											"line": 32,
+											"column": 74,
+											"offset": 1050
+										}
 									},
 									"specifier": "dividing"
 								},
@@ -1179,7 +1239,11 @@
 											"column": 75,
 											"offset": 1051
 										},
-										"end": {}
+										"end": {
+											"line": 32,
+											"column": 85,
+											"offset": 1061
+										}
 									},
 									"specifier": "icon"
 								},
@@ -1195,7 +1259,11 @@
 											"column": 86,
 											"offset": 1062
 										},
-										"end": {}
+										"end": {
+											"line": 32,
+											"column": 99,
+											"offset": 1075
+										}
 									},
 									"specifier": "aligned"
 								},
@@ -1211,7 +1279,11 @@
 											"column": 5,
 											"offset": 1081
 										},
-										"end": {}
+										"end": {
+											"line": 33,
+											"column": 16,
+											"offset": 1092
+										}
 									},
 									"specifier": "block"
 								},
@@ -1227,7 +1299,11 @@
 											"column": 17,
 											"offset": 1093
 										},
-										"end": {}
+										"end": {
+											"line": 33,
+											"column": 31,
+											"offset": 1107
+										}
 									},
 									"specifier": "attached"
 								},
@@ -1243,7 +1319,11 @@
 											"column": 32,
 											"offset": 1108
 										},
-										"end": {}
+										"end": {
+											"line": 33,
+											"column": 46,
+											"offset": 1122
+										}
 									},
 									"specifier": "disabled"
 								},
@@ -1259,7 +1339,11 @@
 											"column": 47,
 											"offset": 1123
 										},
-										"end": {}
+										"end": {
+											"line": 33,
+											"column": 56,
+											"offset": 1132
+										}
 									},
 									"specifier": "sub"
 								},
@@ -1610,7 +1694,11 @@
 											"column": 60,
 											"offset": 1266
 										},
-										"end": {}
+										"end": {
+											"line": 37,
+											"column": 74,
+											"offset": 1280
+										}
 									},
 									"specifier": "dividing"
 								},
@@ -1626,7 +1714,11 @@
 											"column": 75,
 											"offset": 1281
 										},
-										"end": {}
+										"end": {
+											"line": 37,
+											"column": 85,
+											"offset": 1291
+										}
 									},
 									"specifier": "icon"
 								},
@@ -1642,7 +1734,11 @@
 											"column": 86,
 											"offset": 1292
 										},
-										"end": {}
+										"end": {
+											"line": 37,
+											"column": 99,
+											"offset": 1305
+										}
 									},
 									"specifier": "aligned"
 								},
@@ -1658,7 +1754,11 @@
 											"column": 5,
 											"offset": 1311
 										},
-										"end": {}
+										"end": {
+											"line": 38,
+											"column": 16,
+											"offset": 1322
+										}
 									},
 									"specifier": "block"
 								},
@@ -1674,7 +1774,11 @@
 											"column": 17,
 											"offset": 1323
 										},
-										"end": {}
+										"end": {
+											"line": 38,
+											"column": 31,
+											"offset": 1337
+										}
 									},
 									"specifier": "attached"
 								},
@@ -1690,7 +1794,11 @@
 											"column": 32,
 											"offset": 1338
 										},
-										"end": {}
+										"end": {
+											"line": 38,
+											"column": 46,
+											"offset": 1352
+										}
 									},
 									"specifier": "disabled"
 								},
@@ -1706,7 +1814,11 @@
 											"column": 47,
 											"offset": 1353
 										},
-										"end": {}
+										"end": {
+											"line": 38,
+											"column": 56,
+											"offset": 1362
+										}
 									},
 									"specifier": "sub"
 								},
@@ -2057,7 +2169,11 @@
 											"column": 60,
 											"offset": 1496
 										},
-										"end": {}
+										"end": {
+											"line": 42,
+											"column": 74,
+											"offset": 1510
+										}
 									},
 									"specifier": "dividing"
 								},
@@ -2073,7 +2189,11 @@
 											"column": 75,
 											"offset": 1511
 										},
-										"end": {}
+										"end": {
+											"line": 42,
+											"column": 85,
+											"offset": 1521
+										}
 									},
 									"specifier": "icon"
 								},
@@ -2089,7 +2209,11 @@
 											"column": 86,
 											"offset": 1522
 										},
-										"end": {}
+										"end": {
+											"line": 42,
+											"column": 99,
+											"offset": 1535
+										}
 									},
 									"specifier": "aligned"
 								},
@@ -2105,7 +2229,11 @@
 											"column": 5,
 											"offset": 1541
 										},
-										"end": {}
+										"end": {
+											"line": 43,
+											"column": 16,
+											"offset": 1552
+										}
 									},
 									"specifier": "block"
 								},
@@ -2121,7 +2249,11 @@
 											"column": 17,
 											"offset": 1553
 										},
-										"end": {}
+										"end": {
+											"line": 43,
+											"column": 31,
+											"offset": 1567
+										}
 									},
 									"specifier": "attached"
 								},
@@ -2137,7 +2269,11 @@
 											"column": 32,
 											"offset": 1568
 										},
-										"end": {}
+										"end": {
+											"line": 43,
+											"column": 46,
+											"offset": 1582
+										}
 									},
 									"specifier": "disabled"
 								},
@@ -2153,7 +2289,11 @@
 											"column": 47,
 											"offset": 1583
 										},
-										"end": {}
+										"end": {
+											"line": 43,
+											"column": 56,
+											"offset": 1592
+										}
 									},
 									"specifier": "sub"
 								},
@@ -2492,7 +2632,11 @@
 											"column": 61,
 											"offset": 1710
 										},
-										"end": {}
+										"end": {
+											"line": 47,
+											"column": 75,
+											"offset": 1724
+										}
 									},
 									"specifier": "dividing"
 								},
@@ -2508,7 +2652,11 @@
 											"column": 76,
 											"offset": 1725
 										},
-										"end": {}
+										"end": {
+											"line": 47,
+											"column": 86,
+											"offset": 1735
+										}
 									},
 									"specifier": "icon"
 								},
@@ -2524,7 +2672,11 @@
 											"column": 87,
 											"offset": 1736
 										},
-										"end": {}
+										"end": {
+											"line": 47,
+											"column": 100,
+											"offset": 1749
+										}
 									},
 									"specifier": "aligned"
 								},
@@ -2540,7 +2692,11 @@
 											"column": 5,
 											"offset": 1755
 										},
-										"end": {}
+										"end": {
+											"line": 48,
+											"column": 16,
+											"offset": 1766
+										}
 									},
 									"specifier": "block"
 								},
@@ -2556,7 +2712,11 @@
 											"column": 17,
 											"offset": 1767
 										},
-										"end": {}
+										"end": {
+											"line": 48,
+											"column": 31,
+											"offset": 1781
+										}
 									},
 									"specifier": "attached"
 								},
@@ -2572,7 +2732,11 @@
 											"column": 32,
 											"offset": 1782
 										},
-										"end": {}
+										"end": {
+											"line": 48,
+											"column": 46,
+											"offset": 1796
+										}
 									},
 									"specifier": "disabled"
 								},
@@ -2588,7 +2752,11 @@
 											"column": 47,
 											"offset": 1797
 										},
-										"end": {}
+										"end": {
+											"line": 48,
+											"column": 56,
+											"offset": 1806
+										}
 									},
 									"specifier": "sub"
 								},

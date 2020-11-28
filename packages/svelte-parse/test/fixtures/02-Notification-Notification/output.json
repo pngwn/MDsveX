@@ -121,7 +121,11 @@
 							"column": 17,
 							"offset": 5051
 						},
-						"end": {}
+						"end": {
+							"line": 266,
+							"column": 26,
+							"offset": 5060
+						}
 					}
 				}
 			],

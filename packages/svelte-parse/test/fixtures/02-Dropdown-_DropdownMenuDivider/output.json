@@ -157,7 +157,11 @@
 							"column": 34,
 							"offset": 246
 						},
-						"end": {}
+						"end": {
+							"line": 17,
+							"column": 48,
+							"offset": 260
+						}
 					},
 					"specifier": "noMargin"
 				}

@@ -105,7 +105,11 @@
 							"column": 19,
 							"offset": 358
 						},
-						"end": {}
+						"end": {
+							"line": 23,
+							"column": 36,
+							"offset": 375
+						}
 					},
 					"specifier": "selectedItem"
 				}

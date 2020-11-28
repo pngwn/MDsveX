@@ -54,7 +54,11 @@
 							"column": 5,
 							"offset": 32
 						},
-						"end": {}
+						"end": {
+							"line": 3,
+							"column": 15,
+							"offset": 42
+						}
 					},
 					"specifier": "events"
 				},

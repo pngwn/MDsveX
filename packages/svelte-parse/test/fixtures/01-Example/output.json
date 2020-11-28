@@ -296,7 +296,11 @@
 													"column": 26,
 													"offset": 750
 												},
-												"end": {}
+												"end": {
+													"line": 44,
+													"column": 30,
+													"offset": 754
+												}
 											}
 										},
 										{
@@ -311,7 +315,11 @@
 													"column": 31,
 													"offset": 755
 												},
-												"end": {}
+												"end": {
+													"line": 44,
+													"column": 47,
+													"offset": 771
+												}
 											},
 											"specifier": "intersecting"
 										},

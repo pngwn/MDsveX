@@ -366,7 +366,11 @@
 									"column": 25,
 									"offset": 490
 								},
-								"end": {}
+								"end": {
+									"line": 25,
+									"column": 37,
+									"offset": 502
+								}
 							},
 							"specifier": "checked"
 						}

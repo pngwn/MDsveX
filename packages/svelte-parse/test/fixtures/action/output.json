@@ -17,7 +17,11 @@
 							"column": 8,
 							"offset": 7
 						},
-						"end": {}
+						"end": {
+							"line": 1,
+							"column": 21,
+							"offset": 20
+						}
 					},
 					"specifier": "autofocus"
 				}

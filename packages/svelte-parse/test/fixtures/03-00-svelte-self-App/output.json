@@ -141,7 +141,11 @@
 							"column": 34,
 							"offset": 825
 						},
-						"end": {}
+						"end": {
+							"line": 41,
+							"column": 42,
+							"offset": 833
+						}
 					}
 				}
 			],

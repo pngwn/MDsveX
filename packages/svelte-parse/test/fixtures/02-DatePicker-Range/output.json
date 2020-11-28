@@ -343,7 +343,11 @@
 											"column": 61,
 											"offset": 208
 										},
-										"end": {}
+										"end": {
+											"line": 10,
+											"column": 70,
+											"offset": 217
+										}
 									},
 									"specifier": "date"
 								},
@@ -359,7 +363,11 @@
 											"column": 71,
 											"offset": 218
 										},
-										"end": {}
+										"end": {
+											"line": 10,
+											"column": 82,
+											"offset": 229
+										}
 									},
 									"specifier": "toDate"
 								},
@@ -375,7 +383,11 @@
 											"column": 83,
 											"offset": 230
 										},
-										"end": {}
+										"end": {
+											"line": 10,
+											"column": 90,
+											"offset": 237
+										}
 									}
 								}
 							],

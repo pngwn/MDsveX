@@ -194,7 +194,11 @@
 							"column": 50,
 							"offset": 2501
 						},
-						"end": {}
+						"end": {
+							"line": 117,
+							"column": 62,
+							"offset": 2513
+						}
 					},
 					"specifier": "mobile"
 				}
@@ -550,7 +554,11 @@
 															"column": 5,
 															"offset": 2696
 														},
-														"end": {}
+														"end": {
+															"line": 126,
+															"column": 13,
+															"offset": 2704
+														}
 													}
 												},
 												{
@@ -565,7 +573,11 @@
 															"column": 5,
 															"offset": 2709
 														},
-														"end": {}
+														"end": {
+															"line": 127,
+															"column": 12,
+															"offset": 2716
+														}
 													}
 												}
 											],
@@ -730,7 +742,11 @@
 													"column": 22,
 													"offset": 2775
 												},
-												"end": {}
+												"end": {
+													"line": 133,
+													"column": 34,
+													"offset": 2787
+												}
 											},
 											"specifier": "checked"
 										}

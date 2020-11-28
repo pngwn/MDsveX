@@ -343,7 +343,11 @@
 											"column": 61,
 											"offset": 236
 										},
-										"end": {}
+										"end": {
+											"line": 10,
+											"column": 70,
+											"offset": 245
+										}
 									},
 									"specifier": "date"
 								},

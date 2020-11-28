@@ -257,7 +257,11 @@
 							"column": 55,
 							"offset": 404
 						},
-						"end": {}
+						"end": {
+							"line": 15,
+							"column": 73,
+							"offset": 422
+						}
 					},
 					"specifier": "intermediate"
 				},
@@ -273,7 +277,11 @@
 							"column": 74,
 							"offset": 423
 						},
-						"end": {}
+						"end": {
+							"line": 15,
+							"column": 86,
+							"offset": 435
+						}
 					},
 					"specifier": "inline"
 				},
@@ -289,7 +297,11 @@
 							"column": 87,
 							"offset": 436
 						},
-						"end": {}
+						"end": {
+							"line": 15,
+							"column": 101,
+							"offset": 450
+						}
 					},
 					"specifier": "centered"
 				},
@@ -305,7 +317,11 @@
 							"column": 1,
 							"offset": 451
 						},
-						"end": {}
+						"end": {
+							"line": 16,
+							"column": 13,
+							"offset": 463
+						}
 					},
 					"specifier": "active"
 				},
@@ -321,7 +337,11 @@
 							"column": 14,
 							"offset": 464
 						},
-						"end": {}
+						"end": {
+							"line": 16,
+							"column": 28,
+							"offset": 478
+						}
 					},
 					"specifier": "disabled"
 				},
@@ -337,7 +357,11 @@
 							"column": 29,
 							"offset": 479
 						},
-						"end": {}
+						"end": {
+							"line": 16,
+							"column": 43,
+							"offset": 493
+						}
 					},
 					"specifier": "inverted"
 				}

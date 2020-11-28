@@ -181,7 +181,11 @@
 									"column": 7,
 									"offset": 256
 								},
-								"end": {}
+								"end": {
+									"line": 19,
+									"column": 19,
+									"offset": 268
+								}
 							},
 							"specifier": "active"
 						}
@@ -566,7 +570,11 @@
 									"column": 7,
 									"offset": 425
 								},
-								"end": {}
+								"end": {
+									"line": 29,
+									"column": 19,
+									"offset": 437
+								}
 							},
 							"specifier": "active"
 						}
@@ -951,7 +959,11 @@
 									"column": 7,
 									"offset": 594
 								},
-								"end": {}
+								"end": {
+									"line": 39,
+									"column": 19,
+									"offset": 606
+								}
 							},
 							"specifier": "active"
 						}

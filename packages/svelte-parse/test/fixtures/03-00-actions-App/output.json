@@ -157,7 +157,11 @@
 							"column": 2,
 							"offset": 814
 						},
-						"end": {}
+						"end": {
+							"line": 44,
+							"column": 14,
+							"offset": 826
+						}
 					},
 					"specifier": "pannable"
 				},

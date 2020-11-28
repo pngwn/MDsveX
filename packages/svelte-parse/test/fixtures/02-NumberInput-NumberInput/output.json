@@ -281,7 +281,11 @@
 									"column": 40,
 									"offset": 5197
 								},
-								"end": {}
+								"end": {
+									"line": 272,
+									"column": 50,
+									"offset": 5207
+								}
 							},
 							"specifier": "value"
 						},

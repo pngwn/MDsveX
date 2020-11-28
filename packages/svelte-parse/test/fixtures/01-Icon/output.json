@@ -266,7 +266,11 @@
 							"column": 132,
 							"offset": 1177
 						},
-						"end": {}
+						"end": {
+							"line": 53,
+							"column": 140,
+							"offset": 1185
+						}
 					},
 					"specifier": "click"
 				}

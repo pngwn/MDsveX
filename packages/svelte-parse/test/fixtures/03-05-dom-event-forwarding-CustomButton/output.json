@@ -69,7 +69,11 @@
 							"column": 9,
 							"offset": 393
 						},
-						"end": {}
+						"end": {
+							"line": 20,
+							"column": 17,
+							"offset": 401
+						}
 					},
 					"specifier": "click"
 				}

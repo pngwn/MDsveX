@@ -105,7 +105,11 @@
 							"column": 21,
 							"offset": 327
 						},
-						"end": {}
+						"end": {
+							"line": 21,
+							"column": 34,
+							"offset": 340
+						}
 					},
 					"specifier": "isActive"
 				}

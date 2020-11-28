@@ -189,7 +189,11 @@
 							"column": 2,
 							"offset": 610
 						},
-						"end": {}
+						"end": {
+							"line": 31,
+							"column": 12,
+							"offset": 620
+						}
 					},
 					"specifier": "nice"
 				},

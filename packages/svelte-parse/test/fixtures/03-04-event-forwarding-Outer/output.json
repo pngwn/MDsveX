@@ -69,7 +69,11 @@
 							"column": 8,
 							"offset": 64
 						},
-						"end": {}
+						"end": {
+							"line": 5,
+							"column": 18,
+							"offset": 74
+						}
 					},
 					"specifier": "message"
 				}

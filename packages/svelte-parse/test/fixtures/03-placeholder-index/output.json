@@ -54,7 +54,11 @@
 							"column": 5,
 							"offset": 32
 						},
-						"end": {}
+						"end": {
+							"line": 3,
+							"column": 15,
+							"offset": 42
+						}
 					},
 					"specifier": "events"
 				},
@@ -205,7 +209,11 @@
 													"column": 29,
 													"offset": 230
 												},
-												"end": {}
+												"end": {
+													"line": 13,
+													"column": 40,
+													"offset": 241
+												}
 											},
 											"specifier": "image"
 										}

@@ -519,7 +519,11 @@
 									"column": 3,
 									"offset": 2376
 								},
-								"end": {}
+								"end": {
+									"line": 117,
+									"column": 16,
+									"offset": 2389
+								}
 							},
 							"specifier": "duration"
 						},
@@ -535,7 +539,11 @@
 									"column": 3,
 									"offset": 2392
 								},
-								"end": {}
+								"end": {
+									"line": 118,
+									"column": 14,
+									"offset": 2403
+								}
 							},
 							"specifier": "paused"
 						}

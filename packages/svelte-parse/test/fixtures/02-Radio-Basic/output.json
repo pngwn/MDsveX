@@ -275,7 +275,11 @@
 											"column": 30,
 											"offset": 279
 										},
-										"end": {}
+										"end": {
+											"line": 20,
+											"column": 43,
+											"offset": 292
+										}
 									},
 									"specifier": "selected"
 								},
@@ -540,7 +544,11 @@
 											"column": 30,
 											"offset": 400
 										},
-										"end": {}
+										"end": {
+											"line": 25,
+											"column": 43,
+											"offset": 413
+										}
 									},
 									"specifier": "selected"
 								},

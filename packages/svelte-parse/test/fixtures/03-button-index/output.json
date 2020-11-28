@@ -337,7 +337,11 @@
 											"column": 5,
 											"offset": 119
 										},
-										"end": {}
+										"end": {
+											"line": 3,
+											"column": 17,
+											"offset": 131
+										}
 									},
 									"specifier": "active"
 								},
@@ -353,7 +357,11 @@
 											"column": 18,
 											"offset": 132
 										},
-										"end": {}
+										"end": {
+											"line": 3,
+											"column": 32,
+											"offset": 146
+										}
 									},
 									"specifier": "tertiary"
 								},
@@ -369,7 +377,11 @@
 											"column": 33,
 											"offset": 147
 										},
-										"end": {}
+										"end": {
+											"line": 3,
+											"column": 44,
+											"offset": 158
+										}
 									},
 									"specifier": "basic"
 								},
@@ -385,7 +397,11 @@
 											"column": 45,
 											"offset": 159
 										},
-										"end": {}
+										"end": {
+											"line": 3,
+											"column": 59,
+											"offset": 173
+										}
 									},
 									"specifier": "inverted"
 								},
@@ -401,7 +417,11 @@
 											"column": 60,
 											"offset": 174
 										},
-										"end": {}
+										"end": {
+											"line": 3,
+											"column": 73,
+											"offset": 187
+										}
 									},
 									"specifier": "compact"
 								},
@@ -417,7 +437,11 @@
 											"column": 74,
 											"offset": 188
 										},
-										"end": {}
+										"end": {
+											"line": 3,
+											"column": 86,
+											"offset": 200
+										}
 									},
 									"specifier": "toggle"
 								},
@@ -433,7 +457,11 @@
 											"column": 87,
 											"offset": 201
 										},
-										"end": {}
+										"end": {
+											"line": 3,
+											"column": 98,
+											"offset": 212
+										}
 									},
 									"specifier": "fluid"
 								},
@@ -449,7 +477,11 @@
 											"column": 5,
 											"offset": 217
 										},
-										"end": {}
+										"end": {
+											"line": 4,
+											"column": 19,
+											"offset": 231
+										}
 									},
 									"specifier": "positive"
 								},
@@ -465,7 +497,11 @@
 											"column": 20,
 											"offset": 232
 										},
-										"end": {}
+										"end": {
+											"line": 4,
+											"column": 34,
+											"offset": 246
+										}
 									},
 									"specifier": "negative"
 								},
@@ -481,7 +517,11 @@
 											"column": 35,
 											"offset": 247
 										},
-										"end": {}
+										"end": {
+											"line": 4,
+											"column": 49,
+											"offset": 261
+										}
 									},
 									"specifier": "circular"
 								},
@@ -497,7 +537,11 @@
 											"column": 50,
 											"offset": 262
 										},
-										"end": {}
+										"end": {
+											"line": 4,
+											"column": 60,
+											"offset": 272
+										}
 									},
 									"specifier": "icon"
 								},
@@ -513,7 +557,11 @@
 											"column": 61,
 											"offset": 273
 										},
-										"end": {}
+										"end": {
+											"line": 4,
+											"column": 75,
+											"offset": 287
+										}
 									},
 									"specifier": "attached"
 								},
@@ -1329,7 +1377,11 @@
 											"column": 5,
 											"offset": 672
 										},
-										"end": {}
+										"end": {
+											"line": 14,
+											"column": 17,
+											"offset": 684
+										}
 									},
 									"specifier": "active"
 								},
@@ -1345,7 +1397,11 @@
 											"column": 18,
 											"offset": 685
 										},
-										"end": {}
+										"end": {
+											"line": 14,
+											"column": 32,
+											"offset": 699
+										}
 									},
 									"specifier": "tertiary"
 								},
@@ -1361,7 +1417,11 @@
 											"column": 33,
 											"offset": 700
 										},
-										"end": {}
+										"end": {
+											"line": 14,
+											"column": 44,
+											"offset": 711
+										}
 									},
 									"specifier": "basic"
 								},
@@ -1377,7 +1437,11 @@
 											"column": 45,
 											"offset": 712
 										},
-										"end": {}
+										"end": {
+											"line": 14,
+											"column": 59,
+											"offset": 726
+										}
 									},
 									"specifier": "inverted"
 								},
@@ -1393,7 +1457,11 @@
 											"column": 60,
 											"offset": 727
 										},
-										"end": {}
+										"end": {
+											"line": 14,
+											"column": 73,
+											"offset": 740
+										}
 									},
 									"specifier": "compact"
 								},
@@ -1409,7 +1477,11 @@
 											"column": 74,
 											"offset": 741
 										},
-										"end": {}
+										"end": {
+											"line": 14,
+											"column": 86,
+											"offset": 753
+										}
 									},
 									"specifier": "toggle"
 								},
@@ -1425,7 +1497,11 @@
 											"column": 87,
 											"offset": 754
 										},
-										"end": {}
+										"end": {
+											"line": 14,
+											"column": 98,
+											"offset": 765
+										}
 									},
 									"specifier": "fluid"
 								},
@@ -1441,7 +1517,11 @@
 											"column": 5,
 											"offset": 770
 										},
-										"end": {}
+										"end": {
+											"line": 15,
+											"column": 19,
+											"offset": 784
+										}
 									},
 									"specifier": "positive"
 								},
@@ -1457,7 +1537,11 @@
 											"column": 20,
 											"offset": 785
 										},
-										"end": {}
+										"end": {
+											"line": 15,
+											"column": 34,
+											"offset": 799
+										}
 									},
 									"specifier": "negative"
 								},
@@ -1473,7 +1557,11 @@
 											"column": 35,
 											"offset": 800
 										},
-										"end": {}
+										"end": {
+											"line": 15,
+											"column": 49,
+											"offset": 814
+										}
 									},
 									"specifier": "circular"
 								},
@@ -1489,7 +1577,11 @@
 											"column": 50,
 											"offset": 815
 										},
-										"end": {}
+										"end": {
+											"line": 15,
+											"column": 60,
+											"offset": 825
+										}
 									},
 									"specifier": "icon"
 								},
@@ -1505,7 +1597,11 @@
 											"column": 61,
 											"offset": 826
 										},
-										"end": {}
+										"end": {
+											"line": 15,
+											"column": 75,
+											"offset": 840
+										}
 									},
 									"specifier": "attached"
 								},
@@ -1936,7 +2032,11 @@
 											"column": 5,
 											"offset": 997
 										},
-										"end": {}
+										"end": {
+											"line": 20,
+											"column": 17,
+											"offset": 1009
+										}
 									},
 									"specifier": "active"
 								},
@@ -1952,7 +2052,11 @@
 											"column": 18,
 											"offset": 1010
 										},
-										"end": {}
+										"end": {
+											"line": 20,
+											"column": 32,
+											"offset": 1024
+										}
 									},
 									"specifier": "tertiary"
 								},
@@ -1968,7 +2072,11 @@
 											"column": 33,
 											"offset": 1025
 										},
-										"end": {}
+										"end": {
+											"line": 20,
+											"column": 44,
+											"offset": 1036
+										}
 									},
 									"specifier": "basic"
 								},
@@ -1984,7 +2092,11 @@
 											"column": 45,
 											"offset": 1037
 										},
-										"end": {}
+										"end": {
+											"line": 20,
+											"column": 59,
+											"offset": 1051
+										}
 									},
 									"specifier": "inverted"
 								},
@@ -2000,7 +2112,11 @@
 											"column": 60,
 											"offset": 1052
 										},
-										"end": {}
+										"end": {
+											"line": 20,
+											"column": 73,
+											"offset": 1065
+										}
 									},
 									"specifier": "loading"
 								},
@@ -2016,7 +2132,11 @@
 											"column": 74,
 											"offset": 1066
 										},
-										"end": {}
+										"end": {
+											"line": 20,
+											"column": 87,
+											"offset": 1079
+										}
 									},
 									"specifier": "compact"
 								},
@@ -2032,7 +2152,11 @@
 											"column": 88,
 											"offset": 1080
 										},
-										"end": {}
+										"end": {
+											"line": 20,
+											"column": 100,
+											"offset": 1092
+										}
 									},
 									"specifier": "toggle"
 								},
@@ -2048,7 +2172,11 @@
 											"column": 101,
 											"offset": 1093
 										},
-										"end": {}
+										"end": {
+											"line": 20,
+											"column": 112,
+											"offset": 1104
+										}
 									},
 									"specifier": "fluid"
 								},
@@ -2064,7 +2192,11 @@
 											"column": 5,
 											"offset": 1109
 										},
-										"end": {}
+										"end": {
+											"line": 21,
+											"column": 19,
+											"offset": 1123
+										}
 									},
 									"specifier": "positive"
 								},
@@ -2080,7 +2212,11 @@
 											"column": 20,
 											"offset": 1124
 										},
-										"end": {}
+										"end": {
+											"line": 21,
+											"column": 34,
+											"offset": 1138
+										}
 									},
 									"specifier": "negative"
 								},
@@ -2096,7 +2232,11 @@
 											"column": 35,
 											"offset": 1139
 										},
-										"end": {}
+										"end": {
+											"line": 21,
+											"column": 49,
+											"offset": 1153
+										}
 									},
 									"specifier": "circular"
 								},
@@ -2112,7 +2252,11 @@
 											"column": 50,
 											"offset": 1154
 										},
-										"end": {}
+										"end": {
+											"line": 21,
+											"column": 60,
+											"offset": 1164
+										}
 									},
 									"specifier": "icon"
 								},
@@ -2128,7 +2272,11 @@
 											"column": 61,
 											"offset": 1165
 										},
-										"end": {}
+										"end": {
+											"line": 21,
+											"column": 75,
+											"offset": 1179
+										}
 									},
 									"specifier": "attached"
 								},

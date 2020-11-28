@@ -218,7 +218,11 @@
 							"column": 2,
 							"offset": 371
 						},
-						"end": {}
+						"end": {
+							"line": 18,
+							"column": 12,
+							"offset": 381
+						}
 					},
 					"specifier": "files"
 				},
@@ -467,7 +471,11 @@
 							"column": 2,
 							"offset": 496
 						},
-						"end": {}
+						"end": {
+							"line": 26,
+							"column": 12,
+							"offset": 506
+						}
 					},
 					"specifier": "files"
 				},
@@ -519,7 +527,11 @@
 							"column": 2,
 							"offset": 519
 						},
-						"end": {}
+						"end": {
+							"line": 28,
+							"column": 10,
+							"offset": 527
+						}
 					}
 				},
 				{

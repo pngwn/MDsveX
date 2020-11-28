@@ -335,7 +335,11 @@
 													"column": 22,
 													"offset": 1819
 												},
-												"end": {}
+												"end": {
+													"line": 88,
+													"column": 36,
+													"offset": 1833
+												}
 											},
 											"specifier": "activeTab"
 										},
@@ -611,7 +615,11 @@
 																					"column": 83,
 																					"offset": 2027
 																				},
-																				"end": {}
+																				"end": {
+																					"line": 92,
+																					"column": 92,
+																					"offset": 2036
+																				}
 																			},
 																			"specifier": "select"
 																		}

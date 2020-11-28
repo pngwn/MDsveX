@@ -69,7 +69,11 @@
 							"column": 14,
 							"offset": 109
 						},
-						"end": {}
+						"end": {
+							"line": 7,
+							"column": 25,
+							"offset": 120
+						}
 					},
 					"specifier": "values"
 				}

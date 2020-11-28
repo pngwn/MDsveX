@@ -57,7 +57,11 @@
 											"column": 7,
 											"offset": 38
 										},
-										"end": {}
+										"end": {
+											"line": 2,
+											"column": 19,
+											"offset": 50
+										}
 									},
 									"specifier": "flip"
 								}
