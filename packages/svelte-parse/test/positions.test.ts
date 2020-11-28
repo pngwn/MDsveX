@@ -276,6 +276,39 @@ position('tracks the location of attributes', () => {
 	});
 });
 
+position('tracks the location of boolean attributes', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: true,
+		childParser,
+		value: `<div test/>`,
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'div',
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'test',
+				value: [],
+				shorthand: 'boolean',
+				modifiers: [],
+				position: {
+					start: { line: 1, column: 6, offset: 5 },
+					end: { line: 1, column: 10, offset: 9 },
+				},
+			},
+		],
+		selfClosing: true,
+		children: [],
+		position: {
+			start: { line: 1, column: 1, offset: 0 },
+			end: { line: 1, column: 12, offset: 11 },
+		},
+	});
+});
+
 position('tracks the location of text nodes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({

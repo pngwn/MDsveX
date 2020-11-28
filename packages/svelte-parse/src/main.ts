@@ -637,6 +637,9 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				char === CLOSE_ANGLE_BRACKET
 			) {
 				(current_node as Property).shorthand = 'boolean';
+				if (generatePositions)
+					//@ts-ignore
+					current_node.position.end = place();
 				pop_state();
 				pop_node();
 				continue;
