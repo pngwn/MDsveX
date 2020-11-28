@@ -1,6 +1,6 @@
 {
 	"name": "svast-stringify",
-	"version": "0.0.4",
+	"version": "0.0.5",
 	"description": "Turn svast nodes back into svelte code",
 	"main": "dist/main.cjs.js",
 	"module": "dist/main.es.js",

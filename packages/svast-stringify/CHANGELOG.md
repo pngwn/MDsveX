@@ -1,5 +1,11 @@
 # svast-stringify
 
+## 0.0.5
+
+### Patch Changes
+
+- [`2482b69`](https://github.com/pngwn/MDsveX/commit/2482b692b335810aaa42e2ea8957b4b675360866) [#196](https://github.com/pngwn/MDsveX/pull/196) Thanks [@pngwn](https://github.com/pngwn)! - Fix type errors.
+
 ## 0.0.4
 
 ### Patch Changes
