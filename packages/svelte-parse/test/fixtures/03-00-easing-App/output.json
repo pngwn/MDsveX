@@ -1620,7 +1620,11 @@
 									"column": 3,
 									"offset": 2043
 								},
-								"end": {}
+								"end": {
+									"line": 101,
+									"column": 16,
+									"offset": 2056
+								}
 							},
 							"specifier": "duration"
 						},
@@ -1636,7 +1640,11 @@
 									"column": 3,
 									"offset": 2059
 								},
-								"end": {}
+								"end": {
+									"line": 102,
+									"column": 20,
+									"offset": 2076
+								}
 							},
 							"specifier": "current_ease"
 						},
@@ -1652,7 +1660,11 @@
 									"column": 3,
 									"offset": 2079
 								},
-								"end": {}
+								"end": {
+									"line": 103,
+									"column": 20,
+									"offset": 2096
+								}
 							},
 							"specifier": "current_type"
 						},

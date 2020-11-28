@@ -1013,7 +1013,11 @@
 																					"column": 24,
 																					"offset": 2948
 																				},
-																				"end": {}
+																				"end": {
+																					"line": 122,
+																					"column": 32,
+																					"offset": 2956
+																				}
 																			}
 																		},
 																		{
@@ -1028,7 +1032,11 @@
 																					"column": 33,
 																					"offset": 2957
 																				},
-																				"end": {}
+																				"end": {
+																					"line": 122,
+																					"column": 39,
+																					"offset": 2963
+																				}
 																			}
 																		}
 																	],
@@ -1280,7 +1288,11 @@
 															"column": 5,
 															"offset": 3074
 														},
-														"end": {}
+														"end": {
+															"line": 129,
+															"column": 13,
+															"offset": 3082
+														}
 													}
 												},
 												{
@@ -1614,7 +1626,11 @@
 																					"column": 24,
 																					"offset": 3304
 																				},
-																				"end": {}
+																				"end": {
+																					"line": 137,
+																					"column": 32,
+																					"offset": 3312
+																				}
 																			}
 																		},
 																		{
@@ -1629,7 +1645,11 @@
 																					"column": 33,
 																					"offset": 3313
 																				},
-																				"end": {}
+																				"end": {
+																					"line": 137,
+																					"column": 39,
+																					"offset": 3319
+																				}
 																			}
 																		}
 																	],
@@ -1920,7 +1940,11 @@
 													"column": 9,
 													"offset": 3417
 												},
-												"end": {}
+												"end": {
+													"line": 145,
+													"column": 15,
+													"offset": 3423
+												}
 											}
 										},
 										{

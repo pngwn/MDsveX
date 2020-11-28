@@ -121,7 +121,11 @@
 							"column": 7,
 							"offset": 579
 						},
-						"end": {}
+						"end": {
+							"line": 38,
+							"column": 21,
+							"offset": 593
+						}
 					},
 					"specifier": "expanded"
 				},

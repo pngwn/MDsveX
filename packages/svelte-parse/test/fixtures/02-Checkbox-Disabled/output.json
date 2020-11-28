@@ -180,7 +180,11 @@
 									"column": 13,
 									"offset": 543
 								},
-								"end": {}
+								"end": {
+									"line": 32,
+									"column": 27,
+									"offset": 557
+								}
 							},
 							"specifier": "isChecked"
 						},

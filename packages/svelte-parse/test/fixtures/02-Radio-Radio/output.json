@@ -338,7 +338,11 @@
 							"column": 3,
 							"offset": 310
 						},
-						"end": {}
+						"end": {
+							"line": 22,
+							"column": 11,
+							"offset": 318
+						}
 					},
 					"specifier": "click"
 				},
@@ -354,7 +358,11 @@
 							"column": 3,
 							"offset": 321
 						},
-						"end": {}
+						"end": {
+							"line": 23,
+							"column": 11,
+							"offset": 329
+						}
 					},
 					"specifier": "input"
 				},
@@ -370,7 +378,11 @@
 							"column": 3,
 							"offset": 332
 						},
-						"end": {}
+						"end": {
+							"line": 24,
+							"column": 12,
+							"offset": 341
+						}
 					},
 					"specifier": "change"
 				}

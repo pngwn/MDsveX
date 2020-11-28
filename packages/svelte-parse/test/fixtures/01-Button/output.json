@@ -329,7 +329,11 @@
 											"column": 5,
 											"offset": 1776
 										},
-										"end": {}
+										"end": {
+											"line": 74,
+											"column": 13,
+											"offset": 1784
+										}
 									},
 									"specifier": "click"
 								}
@@ -1211,7 +1215,11 @@
 											"column": 5,
 											"offset": 2208
 										},
-										"end": {}
+										"end": {
+											"line": 93,
+											"column": 13,
+											"offset": 2216
+										}
 									},
 									"specifier": "click"
 								}

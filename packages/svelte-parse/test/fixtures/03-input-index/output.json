@@ -321,7 +321,11 @@
 							"column": 78,
 							"offset": 607
 						},
-						"end": {}
+						"end": {
+							"line": 21,
+							"column": 91,
+							"offset": 620
+						}
 					},
 					"specifier": "loading"
 				},
@@ -337,7 +341,11 @@
 							"column": 92,
 							"offset": 621
 						},
-						"end": {}
+						"end": {
+							"line": 21,
+							"column": 106,
+							"offset": 635
+						}
 					},
 					"specifier": "disabled"
 				},
@@ -353,7 +361,11 @@
 							"column": 107,
 							"offset": 636
 						},
-						"end": {}
+						"end": {
+							"line": 21,
+							"column": 118,
+							"offset": 647
+						}
 					},
 					"specifier": "error"
 				},
@@ -369,7 +381,11 @@
 							"column": 1,
 							"offset": 649
 						},
-						"end": {}
+						"end": {
+							"line": 22,
+							"column": 15,
+							"offset": 663
+						}
 					},
 					"specifier": "inverted"
 				},
@@ -385,7 +401,11 @@
 							"column": 16,
 							"offset": 664
 						},
-						"end": {}
+						"end": {
+							"line": 22,
+							"column": 27,
+							"offset": 675
+						}
 					},
 					"specifier": "fluid"
 				},
@@ -401,7 +421,11 @@
 							"column": 28,
 							"offset": 676
 						},
-						"end": {}
+						"end": {
+							"line": 22,
+							"column": 45,
+							"offset": 693
+						}
 					},
 					"specifier": "transparent"
 				}

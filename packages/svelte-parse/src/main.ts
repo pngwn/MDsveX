@@ -887,6 +887,9 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				char === SLASH ||
 				char === CLOSE_ANGLE_BRACKET
 			) {
+				if (generatePositions)
+					//@ts-ignore
+					current_node.position.end = place();
 				pop_state();
 				pop_node();
 				continue;

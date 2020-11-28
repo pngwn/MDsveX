@@ -150,7 +150,11 @@
 											"column": 11,
 											"offset": 321
 										},
-										"end": {}
+										"end": {
+											"line": 20,
+											"column": 22,
+											"offset": 332
+										}
 									}
 								},
 								{
@@ -165,7 +169,11 @@
 											"column": 23,
 											"offset": 333
 										},
-										"end": {}
+										"end": {
+											"line": 20,
+											"column": 31,
+											"offset": 341
+										}
 									}
 								},
 								{

@@ -94,7 +94,11 @@
 											"column": 9,
 											"offset": 58
 										},
-										"end": {}
+										"end": {
+											"line": 4,
+											"column": 19,
+											"offset": 68
+										}
 									},
 									"specifier": "events"
 								},
@@ -313,7 +317,11 @@
 											"column": 9,
 											"offset": 190
 										},
-										"end": {}
+										"end": {
+											"line": 11,
+											"column": 19,
+											"offset": 200
+										}
 									},
 									"specifier": "events"
 								},

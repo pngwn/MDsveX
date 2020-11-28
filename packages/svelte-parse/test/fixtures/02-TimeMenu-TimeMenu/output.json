@@ -193,7 +193,11 @@
 							"column": 44,
 							"offset": 1064
 						},
-						"end": {}
+						"end": {
+							"line": 48,
+							"column": 51,
+							"offset": 1071
+						}
 					}
 				},
 				{
@@ -208,7 +212,11 @@
 							"column": 52,
 							"offset": 1072
 						},
-						"end": {}
+						"end": {
+							"line": 48,
+							"column": 69,
+							"offset": 1089
+						}
 					},
 					"specifier": "selectedItem"
 				}

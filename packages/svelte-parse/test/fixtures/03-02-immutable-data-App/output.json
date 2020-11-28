@@ -17,7 +17,11 @@
 							"column": 17,
 							"offset": 16
 						},
-						"end": {}
+						"end": {
+							"line": 1,
+							"column": 26,
+							"offset": 25
+						}
 					}
 				}
 			],

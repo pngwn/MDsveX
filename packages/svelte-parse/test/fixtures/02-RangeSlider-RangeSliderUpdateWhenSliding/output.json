@@ -69,7 +69,11 @@
 							"column": 14,
 							"offset": 111
 						},
-						"end": {}
+						"end": {
+							"line": 7,
+							"column": 25,
+							"offset": 122
+						}
 					},
 					"specifier": "values"
 				},
@@ -85,7 +89,11 @@
 							"column": 26,
 							"offset": 123
 						},
-						"end": {}
+						"end": {
+							"line": 7,
+							"column": 43,
+							"offset": 140
+						}
 					}
 				}
 			],

@@ -309,6 +309,40 @@ position('tracks the location of boolean attributes', () => {
 	});
 });
 
+position('tracks the location of shorthand directives', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: true,
+		childParser,
+		value: `<div test:boo />`,
+	});
+
+	assert.equal(parsed, <SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'div',
+		properties: [
+			{
+				type: 'svelteDirective',
+				name: 'test',
+				value: [],
+				shorthand: 'none',
+				specifier: 'boo',
+				modifiers: [],
+				position: {
+					start: { line: 1, column: 6, offset: 5 },
+					end: { line: 1, column: 14, offset: 13 },
+				},
+			},
+		],
+		selfClosing: true,
+		children: [],
+		position: {
+			start: { line: 1, column: 1, offset: 0 },
+			end: { line: 1, column: 17, offset: 16 },
+		},
+	});
+});
+
 position('tracks the location of text nodes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({

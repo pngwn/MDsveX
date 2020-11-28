@@ -69,7 +69,11 @@
 							"column": 9,
 							"offset": 38
 						},
-						"end": {}
+						"end": {
+							"line": 5,
+							"column": 17,
+							"offset": 46
+						}
 					},
 					"specifier": "foo"
 				}

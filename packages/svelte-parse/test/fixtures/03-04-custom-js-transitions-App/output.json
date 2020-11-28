@@ -270,7 +270,11 @@
 											"column": 5,
 											"offset": 606
 										},
-										"end": {}
+										"end": {
+											"line": 33,
+											"column": 18,
+											"offset": 619
+										}
 									},
 									"specifier": "typewriter"
 								}

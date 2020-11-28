@@ -370,7 +370,11 @@
 									"column": 26,
 									"offset": 2400
 								},
-								"end": {}
+								"end": {
+									"line": 120,
+									"column": 38,
+									"offset": 2412
+								}
 							},
 							"specifier": "checked"
 						},
@@ -423,7 +427,11 @@
 									"column": 57,
 									"offset": 2431
 								},
-								"end": {}
+								"end": {
+									"line": 120,
+									"column": 65,
+									"offset": 2439
+								}
 							},
 							"specifier": "input"
 						},
@@ -439,7 +447,11 @@
 									"column": 66,
 									"offset": 2440
 								},
-								"end": {}
+								"end": {
+									"line": 120,
+									"column": 74,
+									"offset": 2448
+								}
 							},
 							"specifier": "click"
 						}

@@ -190,7 +190,11 @@
 							"column": 22,
 							"offset": 341
 						},
-						"end": {}
+						"end": {
+							"line": 24,
+							"column": 30,
+							"offset": 349
+						}
 					},
 					"specifier": "click"
 				}

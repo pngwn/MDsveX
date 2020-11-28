@@ -307,7 +307,11 @@
 											"column": 43,
 											"offset": 220
 										},
-										"end": {}
+										"end": {
+											"line": 12,
+											"column": 51,
+											"offset": 228
+										}
 									},
 									"specifier": "fade"
 								}

@@ -282,7 +282,11 @@
 							"column": 6,
 							"offset": 155
 						},
-						"end": {}
+						"end": {
+							"line": 16,
+							"column": 15,
+							"offset": 164
+						}
 					},
 					"specifier": "big"
 				}
