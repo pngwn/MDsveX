@@ -28,7 +28,7 @@ function render_attr_values(values: (Text | SvelteExpression)[]): string {
 	return value;
 }
 
-function render_modifiers(modifiers: Literal[]): string {
+function render_modifiers(modifiers: Literal<'modifier'>[]): string {
 	let mod_string = '';
 
 	for (let index = 0; index < modifiers.length; index++) {
