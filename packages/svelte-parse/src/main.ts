@@ -529,7 +529,11 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 					//@ts-ignore
 					current_node.position = { start: place(), end: {} };
 					//@ts-ignore
-					(current_node as Property).value[0].position = { start: place(), end: {} };
+					(current_node as Property).value[0].position = {
+						start: place(),
+						//@ts-ignore
+						end: {},
+					};
 				}
 				chomp();
 				continue;
@@ -587,9 +591,11 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			if (char === CLOSE_BRACE) {
 				(current_node as Property).value[0].value = (current_node as Property).name;
 				if (generatePositions) {
-					if (current_node?.position) current_node.position.end = place();
+					//@ts-ignore
+					current_node.position.end = place();
 					const node_expr = (current_node as Property)?.value[0];
-					if (node_expr?.position) node_expr.position.end = place();
+					//@ts-ignore
+					node_expr.position.end = place();
 				}
 				pop_state();
 				pop_node();
