@@ -1,6 +1,7 @@
 importers:
   .:
     devDependencies:
+      '@changesets/changelog-github': 0.2.7
       '@changesets/cli': 2.10.2
       '@rollup/plugin-typescript': 6.1.0_rollup@2.33.1+typescript@4.0.5
       '@types/node': 14.6.0
@@ -19,6 +20,7 @@ importers:
       uvu: 0.3.3
       watchlist: 0.2.3
     specifiers:
+      '@changesets/changelog-github': ^0.2.7
       '@changesets/cli': ^2.10.2
       '@rollup/plugin-typescript': ^6.1.0
       '@types/node': ^14.0.27
@@ -1181,6 +1183,14 @@ packages:
     dev: true
     resolution:
       integrity: sha512-PChmYuibH8RPiebMIzuYZ/DFS8ehf7yq+X5X0rJklg2njP3zYWJX7nlctpnBhZ0zpgvP2IgrtUigoVGNkv5m/Q==
+  /@changesets/changelog-github/0.2.7:
+    dependencies:
+      '@changesets/get-github-info': 0.4.4
+      '@changesets/types': 3.2.0
+      dotenv: 8.2.0
+    dev: true
+    resolution:
+      integrity: sha512-bWK8IADPYsiSiyORNpVLbmdo7J7A4LktmzUowtIivslP03UW5f/YBDzGub7N0+BVdVmZrqvyWzAIKmpGVkEICg==
   /@changesets/cli/2.10.2:
     dependencies:
       '@babel/runtime': 7.11.2
@@ -1244,6 +1254,13 @@ packages:
     dev: true
     resolution:
       integrity: sha512-cTbySXwSv9yWp4Pp5R/b5Qv23wJgFaFCqUbsI3IJ2pyPl0vMaODAZS8NI1nNK2XSxGIg1tw+dWNSR4PlrKBSVQ==
+  /@changesets/get-github-info/0.4.4:
+    dependencies:
+      dataloader: 1.4.0
+      node-fetch: 2.6.1
+    dev: true
+    resolution:
+      integrity: sha512-WoVdRBQXLvJVg3jsMc0+aB8WAFzSGOG45HSo2ep46ixq5lBjM2D51MbgtSYHRGFGvYuAUu6kAfnVmoZYCZFsKQ==
   /@changesets/get-release-plan/2.0.0:
     dependencies:
       '@babel/runtime': 7.11.2
@@ -1311,6 +1328,10 @@ packages:
     dev: true
     resolution:
       integrity: sha512-XWGEGWXhM92zvBWiQt2sOwhjTt8eCQbrsRbqkv4WYwW3Zsl4qPpvhHsNt845S42dJXrxgjWvId+jxFQocCayNQ==
+  /@changesets/types/3.2.0:
+    dev: true
+    resolution:
+      integrity: sha512-rAmPtOyXpisEEE25CchKNUAf2ApyAeuZ/h78YDoqKZaCk5tUD0lgYZGPIRV9WTPoqNjJULIym37ogc6pkax5jg==
   /@changesets/write/0.1.3:
     dependencies:
       '@babel/runtime': 7.11.2
@@ -2474,6 +2495,10 @@ packages:
       node: '>=0.10.0'
     resolution:
       integrity: sha1-mI3zP+qxke95mmE2nddsF635V+o=
+  /dataloader/1.4.0:
+    dev: true
+    resolution:
+      integrity: sha512-68s5jYdlvasItOJnCuI2Q9s4q98g0pCyL3HrcKJu8KNugUl8ahgmZYg38ysLTgQjjXX3H8CJLkAvWrclWfcalw==
   /debug/2.6.9:
     dependencies:
       ms: 2.0.0
@@ -2589,6 +2614,12 @@ packages:
       node: '>=6.0.0'
     resolution:
       integrity: sha512-yS+Q5i3hBf7GBkd4KG8a7eBNNWNGLTaEwwYWUijIYM7zrlYDM0BFXHjjPWlWZ1Rg7UaddZeIDmi9jF3HmqiQ2w==
+  /dotenv/8.2.0:
+    dev: true
+    engines:
+      node: '>=8'
+    resolution:
+      integrity: sha512-8sJ78ElpbDJBHNeBzUbUVLsqKdccaa/BXF1uPTw3GrvQTBgrQrtObr2mUrE38vzYd8cEv+m/JBfDLioYcfXoaw==
   /electron-to-chromium/1.3.539:
     dev: true
     resolution:
@@ -4215,6 +4246,12 @@ packages:
       node: 4.x || >=6.0.0
     resolution:
       integrity: sha512-8dG4H5ujfvFiqDmVu9fQ5bOHUC15JMjMY/Zumv26oOvvVJjM67KF8koCWIabKQ1GJIa9r2mMZscBq/TbdOcmNA==
+  /node-fetch/2.6.1:
+    dev: true
+    engines:
+      node: 4.x || >=6.0.0
+    resolution:
+      integrity: sha512-V4aYg89jEoVRxRb2fJdAg8FHvI7cEyYdVAh94HH0UIK8oJxUfkjlDQN9RbMx+bEjP7+ggMiFRprSti032Oipxw==
   /node-modules-regexp/1.0.0:
     dev: true
     engines:
