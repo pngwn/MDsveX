@@ -6,7 +6,7 @@ export type SvelteChild =
 	| SvelteComponent
 	| Comment
 	| Text
-	| SvelteExpression
+	| SvelteDynamicContent
 	| VoidBlock
 	| BranchingBlock
 	| EachBlock
@@ -45,7 +45,7 @@ export interface BaseProperty<T extends string> extends Node {
 	type: T;
 	name: string;
 	shorthand: 'none' | 'boolean' | 'expression';
-	value: (Text | SvelteExpression)[];
+	value: (Text | SvelteDynamicContent)[];
 	modifiers: Literal<'modifier'>[];
 }
 
@@ -59,6 +59,9 @@ export type Comment = Literal<'comment'>;
 export type Text = Literal<'text'>;
 export type SvelteExpression = Literal<'svelteExpression'>;
 
+export interface SvelteDynamicContent extends Node {
+	expression: SvelteExpression;
+}
 export interface VoidBlock extends Node {
 	type: 'svelteVoidBlock';
 	name: string;
