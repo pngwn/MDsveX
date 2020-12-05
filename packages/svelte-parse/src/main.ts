@@ -269,11 +269,12 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				if (generatePositions) {
 					//@ts-ignore
 					current_node.position.end = place();
-					pop_node();
-					pop_state();
-					chomp();
-					continue;
 				}
+
+				pop_node();
+				pop_state();
+				chomp();
+				continue;
 			}
 
 			const n = <SvelteExpression>{
@@ -538,6 +539,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		// we are inside a start tag after the name
 		if (current_state === State.IN_TAG_BODY) {
 			if (char === OPEN_BRACE) {
+				console.log('BOOOOOOOOOOO');
 				set_state(State.IN_SHORTHAND_ATTR);
 				const _node = <Property>{
 					type: 'svelteProperty',
@@ -630,8 +632,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 		if (current_state === State.IN_SHORTHAND_ATTR) {
 			if (char === CLOSE_BRACE) {
-				((current_node as Property)
-					.value[0] as SvelteDynamicContent).expression.value = (current_node as Property).name;
+				(current_node as Property).name = ((current_node as Property)
+					.value[0] as SvelteDynamicContent).expression.value;
 				if (generatePositions) {
 					//@ts-ignore
 					current_node.position.end = place();
@@ -643,7 +645,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				chomp();
 				continue;
 			}
-
+			console.log(state);
 			push_node(
 				((current_node as Property).value[0] as SvelteDynamicContent).expression
 			);
@@ -744,27 +746,25 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			if (char === OPEN_BRACE) {
-				set_state(State.IN_UNQUOTED_ATTR_VALUE, true);
+			set_state(State.IN_UNQUOTED_ATTR_VALUE, true);
 
-				_n = <SvelteExpression>{ type: 'svelteExpression', value: '' };
-				(current_node as Property).value.push(_n as SvelteExpression);
-				push_node(_n);
-				if (generatePositions)
-					//@ts-ignore
-					_n.position = { start: place(), end: {} };
-				continue;
-			} else {
-				set_state(State.IN_UNQUOTED_ATTR_VALUE, true);
-				_n = { type: 'text', value: '' };
-				(current_node as Property).value.push(_n as Text);
-				push_node(_n);
-				if (generatePositions)
-					//@ts-ignore
-					_n.position = { start: place(), end: {} };
+			// 	_n = <SvelteExpression>{ type: 'svelteExpression', value: '' };
+			// 	(current_node as Property).value.push(_n as SvelteExpression);
+			// 	push_node(_n);
+			// 	if (generatePositions)
+			// 		//@ts-ignore
+			// 		_n.position = { start: place(), end: {} };
+			// 	continue;
+			// } else {
+			// 	set_state(State.IN_UNQUOTED_ATTR_VALUE, true);
+			// 	_n = { type: 'text', value: '' };
+			// 	(current_node as Property).value.push(_n as Text);
+			// 	push_node(_n);
+			// 	if (generatePositions)
+			// 		//@ts-ignore
+			// 		_n.position = { start: place(), end: {} };
 
-				continue;
-			}
+			continue;
 
 			// unquoted
 		}
@@ -778,11 +778,19 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				char === CLOSE_ANGLE_BRACKET ||
 				/^\/\s*>/.test(value.substring(index))
 			) {
+				//@ts-ignore
+				if (current_node.type === 'text') {
+					if (generatePositions)
+						//@ts-ignore
+						current_node.position.end = place();
+					pop_node();
+				}
+
 				pop_state();
-				if (generatePositions)
-					//@ts-ignore
-					current_node.position.end = place();
-				pop_node();
+				// if (generatePositions)
+				// 	//@ts-ignore
+				// 	current_node.position.end = place();
+				// pop_node();
 				if (generatePositions)
 					//@ts-ignore
 					current_node.position.end = place();
@@ -791,10 +799,38 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (char === OPEN_BRACE) {
-				set_state(State.IN_EXPRESSION);
+				set_state(State.IN_DYNAMIC_CONTENT);
+				const _n = <SvelteDynamicContent>{
+					type: 'svelteDynamicContent',
+				};
 
+				(current_node as Property).value.push(_n);
+
+				push_node(_n);
+				// current_node.
+				if (generatePositions) {
+					//@ts-ignore
+					current_node.position = { start: place(), end: {} };
+				}
 				chomp();
 				continue;
+			}
+
+			//@ts-ignore
+			if (current_node.type !== 'text') {
+				const _n = <Text>{
+					type: 'text',
+					value: '',
+				};
+
+				if (generatePositions) {
+					//@ts-ignore
+					current_node.position = { start: place(), end: {} };
+				}
+				//@ts-ignore
+				console.log(current_node);
+				(current_node as Property).value.push(_n);
+				push_node(_n);
 			}
 
 			(current_node as Text).value += value[index];
