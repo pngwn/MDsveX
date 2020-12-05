@@ -542,8 +542,11 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 					name: '',
 					value: [
 						{
-							type: 'svelteExpression',
-							value: '',
+							type: 'svelteDynamicContent',
+							expression: {
+								type: 'svelteExpression',
+								value: '',
+							},
 						},
 					],
 					modifiers: [],
@@ -563,6 +566,15 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 					};
 				}
 				chomp();
+
+				if (generatePositions) {
+					//@ts-ignore
+					(current_node as Property).value[0].expression.position = {
+						start: place(),
+						//@ts-ignore
+						end: {},
+					};
+				}
 				continue;
 			}
 			// letters mean we've hit an attribute
@@ -616,7 +628,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 		if (current_state === State.IN_SHORTHAND_ATTR) {
 			if (char === CLOSE_BRACE) {
-				(current_node as Property).value[0].value = (current_node as Property).name;
+				((current_node as Property)
+					.value[0] as SvelteDynamicContent).expression.value = (current_node as Property).name;
 				if (generatePositions) {
 					//@ts-ignore
 					current_node.position.end = place();
@@ -628,6 +641,11 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				chomp();
 				continue;
 			}
+
+			push_node(
+				((current_node as Property).value[0] as SvelteDynamicContent).expression
+			);
+			set_state(State.IN_EXPRESSION);
 
 			(current_node as Property).name += value[index];
 			chomp();
