@@ -258,8 +258,35 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			set_state(State.IN_EXPRESSION, true);
+			set_state(State.IN_DYNAMIC_CONTENT, true);
 
+			continue;
+		}
+
+		if (current_state === State.IN_DYNAMIC_CONTENT) {
+			if (char === CLOSE_BRACE) {
+				if (generatePositions) {
+					//@ts-ignore
+					current_node.position.end = place();
+					pop_node();
+					pop_state();
+					chomp();
+					continue;
+				}
+			}
+
+			const n = <SvelteExpression>{
+				type: 'svelteExpression',
+				value: '',
+			};
+			push_node(n);
+
+			if (generatePositions) {
+				//@ts-ignore
+				current_node.position = { start: place(), end: {} };
+			}
+
+			set_state(State.IN_EXPRESSION);
 			continue;
 		}
 
