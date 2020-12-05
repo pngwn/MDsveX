@@ -224,8 +224,11 @@ expression('parses expressions as attribute values', () => {
 				name: 'hello',
 				value: [
 					{
-						type: 'svelteExpression',
-						value: 'value',
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: 'value',
+						},
 					},
 				],
 				shorthand: 'none',
@@ -254,8 +257,11 @@ expression('parses expressions as attribute values: more fancy', () => {
 				name: 'hello',
 				value: [
 					{
-						type: 'svelteExpression',
-						value: '{{{`"}`}}}',
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: '{{{`"}`}}}',
+						},
 					},
 				],
 				shorthand: 'none',
@@ -284,8 +290,11 @@ expression('parses expressions as attribute values: functions', () => {
 				name: 'hello',
 				value: [
 					{
-						type: 'svelteExpression',
-						value: '() => console.log("hello world")',
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: '() => console.log("hello world")',
+						},
 					},
 				],
 				shorthand: 'none',
@@ -315,9 +324,12 @@ expression('parses expressions as attribute values: more functions', () => {
 				name: 'hello',
 				value: [
 					{
-						type: 'svelteExpression',
-						value:
-							'(e) => val = val.filter(v => v.map(x => x*2)).reduce(absolutelywhat is this i have no idea) * 2735262 + 123.something("hey")',
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value:
+								'(e) => val = val.filter(v => v.map(x => x*2)).reduce(absolutelywhat is this i have no idea) * 2735262 + 123.something("hey")',
+						},
 					},
 				],
 				shorthand: 'none',
@@ -346,8 +358,11 @@ expression('parses expressions as attribute values in quotes', () => {
 				name: 'hello',
 				value: [
 					{
-						type: 'svelteExpression',
-						value: 'value',
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: 'value',
+						},
 					},
 				],
 				shorthand: 'none',
@@ -378,12 +393,18 @@ expression(
 					name: 'hello',
 					value: [
 						{
-							type: 'svelteExpression',
-							value: 'value',
+							type: 'svelteDynamicContent',
+							expression: {
+								type: 'svelteExpression',
+								value: 'value',
+							},
 						},
 						{
-							type: 'svelteExpression',
-							value: 'value',
+							type: 'svelteDynamicContent',
+							expression: {
+								type: 'svelteExpression',
+								value: 'value',
+							},
 						},
 					],
 					shorthand: 'none',
@@ -516,8 +537,11 @@ expression('parses shorthand attribute expressions', () => {
 				name: 'value',
 				value: [
 					{
-						type: 'svelteExpression',
-						value: 'value',
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: 'value',
+						},
 					},
 				],
 				shorthand: 'expression',
