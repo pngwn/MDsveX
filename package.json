@@ -6,6 +6,7 @@
 	"scripts": {
 		"lint": "eslint . --ext .js,.ts",
 		"test": "uvu -r ts-node/register packages test.ts$",
+		"test:filter": "uvu -r ts-node/register",
 		"release": "pnpm -r build && changeset publish",
 		"changeset:add": "changeset add",
 		"changeset:version": "changeset version && pnpm i --lockfile-only"
