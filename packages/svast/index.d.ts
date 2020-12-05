@@ -60,6 +60,7 @@ export type Text = Literal<'text'>;
 export type SvelteExpression = Literal<'svelteExpression'>;
 
 export interface SvelteDynamicContent extends Node {
+	type: 'svelteDynamicContent';
 	expression: SvelteExpression;
 }
 export interface VoidBlock extends Node {
