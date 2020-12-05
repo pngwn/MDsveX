@@ -136,7 +136,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 	let _n2;
 
 	for (;;) {
-		// console.log(value[index], node_stack, state);
+		console.log(value[index], node_stack, state, brace_count);
+		console.log('===');
 		if (value[index] === void 0) {
 			if (generatePositions)
 				//@ts-ignore
@@ -279,6 +280,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				type: 'svelteExpression',
 				value: '',
 			};
+			(current_node as SvelteDynamicContent).expression = n;
 			push_node(n);
 
 			if (generatePositions) {
@@ -453,12 +455,12 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (char === CLOSE_BRACE) {
-				if (generatePositions)
-					//@ts-ignore
-					(current_node as VoidBlock).expression.position = {
-						start: place(),
-						end: place(),
-					};
+				// if (generatePositions)
+				// 	//@ts-ignore
+				// 	(current_node as VoidBlock).expression.position = {
+				// 		start: place(),
+				// 		end: place(),
+				// 	};
 
 				chomp();
 				if (generatePositions)
@@ -647,8 +649,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			);
 			set_state(State.IN_EXPRESSION);
 
-			(current_node as Property).name += value[index];
-			chomp();
 			continue;
 		}
 
@@ -1136,42 +1136,52 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		if (current_state === State.IN_EXPRESSION) {
 			if (expr_quote_type === '' && char === CLOSE_BRACE) {
 				if (brace_count === 0) {
-					if (
-						node_stack.length === 1 ||
-						node_stack[0].type === 'svelteVoidBlock'
-					) {
-						if (generatePositions && node_stack[0].type === 'svelteVoidBlock') {
-							//@ts-ignore
-							current_node.position.end = place();
-							pop_node();
-						}
-
-						chomp();
-
-						if (generatePositions) {
-							//@ts-ignore
-							current_node.position.end = place();
-						}
-						break;
-					} else if (
-						node_stack[node_stack.length - 2].type === 'svelteBranch'
-					) {
-						pop_state();
-
-						if (generatePositions) {
-							//@ts-ignore
-							current_node.position.end = place();
-						}
-						continue;
-					} else {
-						pop_state();
-						chomp();
-						if (generatePositions) {
-							//@ts-ignore
-							current_node.position.end = place();
-						}
-						continue;
+					if (generatePositions) {
+						//@ts-ignore
+						current_node.position.end = place();
 					}
+
+					pop_node();
+					pop_state();
+
+					continue;
+
+					// if (
+					// 	node_stack.length === 1 ||
+					// 	node_stack[0].type === 'svelteVoidBlock'
+					// ) {
+					// 	if (generatePositions && node_stack[0].type === 'svelteVoidBlock') {
+					// 		//@ts-ignore
+					// 		`current_node.position.end = place();
+					// 		pop_node();`
+					// 	}
+
+					// 	chomp();
+
+					// 	if (generatePositions) {
+					// 		//@ts-ignore
+					// 		current_node.position.end = place();
+					// 	}
+					// 	break;
+					// } else if (
+					// 	node_stack[node_stack.length - 2].type === 'svelteBranch'
+					// ) {
+					// 	pop_state();
+
+					// 	if (generatePositions) {
+					// 		//@ts-ignore
+					// 		current_node.position.end = place();
+					// 	}
+					// 	continue;
+					// } else {
+					// 	pop_state();
+					// 	chomp();
+					// 	if (generatePositions) {
+					// 		//@ts-ignore
+					// 		current_node.position.end = place();
+					// 	}
+					// 	continue;
+					// }
 				}
 				brace_count--;
 			}
