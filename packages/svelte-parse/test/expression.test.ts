@@ -1,7 +1,7 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
-import { SvelteElement, SvelteExpression, Node, Point, Root } from 'svast';
+import { SvelteElement, Node, Point, Root, SvelteDynamicContent } from 'svast';
 
 import { parseNode, parse } from '../src/main';
 
@@ -21,9 +21,8 @@ expression('parses a simple expression', () => {
 		value: `{hello}`,
 	});
 
-	assert.equal(parsed, <SvelteExpression>{
-		type: 'svelteExpression',
-		value: 'hello',
+	assert.equal(parsed, <SvelteDynamicContent>{
+		expression: { type: 'svelteExpression', value: 'hello' },
 	});
 });
 
@@ -35,9 +34,11 @@ expression('parses nested braces', () => {
 		value: `{{{{hello}}}}`,
 	});
 
-	assert.equal(parsed, <SvelteExpression>{
-		type: 'svelteExpression',
-		value: '{{{hello}}}',
+	assert.equal(parsed, <SvelteDynamicContent>{
+		expression: {
+			type: 'svelteExpression',
+			value: '{{{hello}}}',
+		},
 	});
 });
 
@@ -49,9 +50,11 @@ expression('parses nested braces: while ignoring quoted braces: single', () => {
 		value: `{{{{'}'}}}}`,
 	});
 
-	assert.equal(parsed, <SvelteExpression>{
-		type: 'svelteExpression',
-		value: "{{{'}'}}}",
+	assert.equal(parsed, <SvelteDynamicContent>{
+		expression: {
+			type: 'svelteExpression',
+			value: "{{{'}'}}}",
+		},
 	});
 });
 
@@ -63,9 +66,11 @@ expression('handles escaped single-quotes', () => {
 		value: "{{{{'}\\''}}}}",
 	});
 
-	assert.equal(parsed, <SvelteExpression>{
-		type: 'svelteExpression',
-		value: "{{{'}\\''}}}",
+	assert.equal(parsed, <SvelteDynamicContent>{
+		expression: {
+			type: 'svelteExpression',
+			value: "{{{'}\\''}}}",
+		},
 	});
 });
 
@@ -77,9 +82,11 @@ expression('parses nested braces: while ignoring quoted braces: double', () => {
 		value: `{{{{"}"}}}}`,
 	});
 
-	assert.equal(parsed, <SvelteExpression>{
-		type: 'svelteExpression',
-		value: `{{{"}"}}}`,
+	assert.equal(parsed, <SvelteDynamicContent>{
+		expression: {
+			type: 'svelteExpression',
+			value: `{{{"}"}}}`,
+		},
 	});
 });
 
@@ -91,9 +98,11 @@ expression('handles escaped double-quotes', () => {
 		value: '{{{{"}\\""}}}}',
 	});
 
-	assert.equal(parsed, <SvelteExpression>{
-		type: 'svelteExpression',
-		value: '{{{"}\\""}}}',
+	assert.equal(parsed, <SvelteDynamicContent>{
+		expression: {
+			type: 'svelteExpression',
+			value: '{{{"}\\""}}}',
+		},
 	});
 });
 
@@ -107,9 +116,11 @@ expression(
 			value: '{{{{`}`}}}}',
 		});
 
-		assert.equal(parsed, <SvelteExpression>{
-			type: 'svelteExpression',
-			value: '{{{`}`}}}',
+		assert.equal(parsed, <SvelteDynamicContent>{
+			expression: {
+				type: 'svelteExpression',
+				value: '{{{`}`}}}',
+			},
 		});
 	}
 );
@@ -122,9 +133,11 @@ expression('handles escaped backticks', () => {
 		value: '{{{{`}\\``}}}}',
 	});
 
-	assert.equal(parsed, <SvelteExpression>{
-		type: 'svelteExpression',
-		value: '{{{`}\\``}}}',
+	assert.equal(parsed, <SvelteDynamicContent>{
+		expression: {
+			type: 'svelteExpression',
+			value: '{{{`}\\``}}}',
+		},
 	});
 });
 
@@ -136,9 +149,11 @@ expression.skip('parses nested braces: while ignoring regex', () => {
 		value: '{(/}/gi)}',
 	});
 
-	assert.equal(parsed, <SvelteExpression>{
-		type: 'svelteExpression',
-		value: '(/}/gi)',
+	assert.equal(parsed, <SvelteDynamicContent>{
+		expression: {
+			type: 'svelteExpression',
+			value: '(/}/gi)',
+		},
 	});
 });
 
@@ -150,9 +165,11 @@ expression.skip('parses nested braces: while ignoring regex', () => {
 		value: `{(/\\/}/gi)}`,
 	});
 
-	assert.equal(parsed, <SvelteExpression>{
-		type: 'svelteExpression',
-		value: `(/\\/}/gi)`,
+	assert.equal(parsed, <SvelteDynamicContent>{
+		expression: {
+			type: 'svelteExpression',
+			value: `(/\\/}/gi)`,
+		},
 	});
 });
 
@@ -164,9 +181,11 @@ expression('handles quoted slashes', () => {
 		value: '{"/}/gi"}',
 	});
 
-	assert.equal(parsed, <SvelteExpression>{
-		type: 'svelteExpression',
-		value: '"/}/gi"',
+	assert.equal(parsed, <SvelteDynamicContent>{
+		expression: {
+			type: 'svelteExpression',
+			value: '"/}/gi"',
+		},
 	});
 });
 
@@ -178,9 +197,11 @@ expression('ignores nested quotes', () => {
 		value: '{{{{`"}`}}}}',
 	});
 
-	assert.equal(parsed, <SvelteExpression>{
-		type: 'svelteExpression',
-		value: '{{{`"}`}}}',
+	assert.equal(parsed, <SvelteDynamicContent>{
+		expression: {
+			type: 'svelteExpression',
+			value: '{{{`"}`}}}',
+		},
 	});
 });
 
