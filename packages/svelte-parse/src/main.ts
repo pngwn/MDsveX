@@ -18,6 +18,7 @@ import {
 	SvelteComponent,
 	SvelteScript,
 	SvelteStyle,
+	SvelteDynamicContent,
 } from 'svast';
 
 import {
@@ -175,15 +176,14 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 			// "{" => tag
 			if (char === OPEN_BRACE) {
-				push_node(<SvelteExpression>{
-					type: 'svelteExpression',
-					value: '',
+				push_node(<SvelteDynamicContent>{
+					type: 'svelteDynamicContent',
 				});
 				if (generatePositions) {
 					//@ts-ignore
 					current_node.position = { start: place(), end: {} };
 				}
-				set_state(State.MAYBE_IN_EXPRESSION);
+				set_state(State.MAYBE_IN_DYNAMIC_CONTENT);
 				chomp();
 				continue;
 			}
@@ -222,7 +222,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			continue;
 		}
 
-		if (current_state === State.MAYBE_IN_EXPRESSION) {
+		if (current_state === State.MAYBE_IN_DYNAMIC_CONTENT) {
 			if (char === SPACE || char === LINEFEED || char === TAB) {
 				chomp();
 				continue;
