@@ -551,7 +551,7 @@ expression('parses shorthand attribute expressions', () => {
 	});
 });
 
-expression('parses many shorthand attribute expressions', () => {
+expression.only('parses many shorthand attribute expressions', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
