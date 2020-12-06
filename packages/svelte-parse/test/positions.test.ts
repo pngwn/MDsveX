@@ -11,6 +11,7 @@ import {
 	Root,
 	Node,
 	Point,
+	SvelteDynamicContent,
 } from 'svast';
 
 import { parseNode, parse } from '../src/main';
@@ -31,9 +32,16 @@ position('tracks the location of expression nodes', () => {
 		value: `{hail}`,
 	});
 
-	assert.equal(parsed, <SvelteExpression>{
-		type: 'svelteExpression',
-		value: 'hail',
+	assert.equal(parsed, <SvelteDynamicContent>{
+		type: 'svelteDynamicContent',
+		expression: {
+			type: 'svelteExpression',
+			value: 'hail',
+			position: {
+				start: { line: 1, column: 2, offset: 1 },
+				end: { line: 1, column: 6, offset: 5 },
+			},
+		},
 		position: {
 			start: { line: 1, column: 1, offset: 0 },
 			end: { line: 1, column: 7, offset: 6 },
@@ -58,8 +66,15 @@ position('tracks the location of expression nodes in attributes', () => {
 				name: 'thing',
 				value: [
 					{
-						type: 'svelteExpression',
-						value: 'hail',
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: 'hail',
+							position: {
+								start: { line: 1, column: 15, offset: 14 },
+								end: { line: 1, column: 19, offset: 18 },
+							},
+						},
 						position: {
 							start: { line: 1, column: 14, offset: 13 },
 							end: { line: 1, column: 20, offset: 19 },
@@ -102,8 +117,15 @@ position(
 					name: 'thing',
 					value: [
 						{
-							type: 'svelteExpression',
-							value: 'hail',
+							type: 'svelteDynamicContent',
+							expression: {
+								type: 'svelteExpression',
+								value: 'hail',
+								position: {
+									start: { line: 1, column: 16, offset: 15 },
+									end: { line: 1, column: 20, offset: 19 },
+								},
+							},
 							position: {
 								start: { line: 1, column: 15, offset: 14 },
 								end: { line: 1, column: 21, offset: 20 },
@@ -122,8 +144,15 @@ position(
 							},
 						},
 						{
-							type: 'svelteExpression',
-							value: 'haip',
+							type: 'svelteDynamicContent',
+							expression: {
+								type: 'svelteExpression',
+								value: 'haip',
+								position: {
+									start: { line: 1, column: 23, offset: 22 },
+									end: { line: 1, column: 27, offset: 26 },
+								},
+							},
 							position: {
 								start: { line: 1, column: 22, offset: 21 },
 								end: { line: 1, column: 28, offset: 27 },
@@ -167,8 +196,15 @@ position(
 					name: 'thing',
 					value: [
 						{
-							type: 'svelteExpression',
-							value: 'hail',
+							type: 'svelteDynamicContent',
+							expression: {
+								type: 'svelteExpression',
+								value: 'hail',
+								position: {
+									start: { line: 1, column: 16, offset: 15 },
+									end: { line: 1, column: 20, offset: 19 },
+								},
+							},
 							position: {
 								start: { line: 1, column: 15, offset: 14 },
 								end: { line: 1, column: 21, offset: 20 },
@@ -187,8 +223,15 @@ position(
 							},
 						},
 						{
-							type: 'svelteExpression',
-							value: 'haip',
+							type: 'svelteDynamicContent',
+							expression: {
+								type: 'svelteExpression',
+								value: 'haip',
+								position: {
+									start: { line: 1, column: 25, offset: 24 },
+									end: { line: 1, column: 29, offset: 28 },
+								},
+							},
 							position: {
 								start: { line: 1, column: 24, offset: 23 },
 								end: { line: 1, column: 30, offset: 29 },
@@ -251,8 +294,15 @@ position('tracks the location of attributes', () => {
 				name: 'tag',
 				value: [
 					{
-						type: 'svelteExpression',
-						value: 'null',
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: 'null',
+							position: {
+								start: { line: 1, column: 22, offset: 21 },
+								end: { line: 1, column: 26, offset: 25 },
+							},
+						},
 						position: {
 							start: { line: 1, column: 21, offset: 20 },
 							end: { line: 1, column: 27, offset: 26 },

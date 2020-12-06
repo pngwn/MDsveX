@@ -1832,4 +1832,54 @@ element('parses html comments: spaces and newlines', () => {
 	});
 });
 
+//
+
+element('parses shorthand expressions: failing test case', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: false,
+		childParser,
+		value: `<Avatar alt="{initials}" {size}></Avatar>`,
+	});
+
+	assert.equal(parsed, {
+		type: 'svelteComponent',
+		tagName: 'Avatar',
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'alt',
+				modifiers: [],
+				shorthand: 'none',
+				value: [
+					{
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: 'initials',
+						},
+					},
+				],
+			},
+			{
+				type: 'svelteProperty',
+				name: 'size',
+				modifiers: [],
+				shorthand: 'expression',
+				value: [
+					{
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: 'size',
+						},
+					},
+				],
+			},
+		],
+		children: [{ type: 'fake' }],
+		selfClosing: false,
+	});
+});
+
 element.run();

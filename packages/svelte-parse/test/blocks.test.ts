@@ -30,7 +30,7 @@ block('parses a simple void block', () => {
 	});
 });
 
-block('parses a more complex expression within a voi block', () => {
+block('parses a more complex expression within a void block', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -276,7 +276,12 @@ block('parses an await block with all branches', () => {
 							type: 'svelteExpression',
 							value: 'value',
 						},
-						children: [{ type: 'svelteExpression', value: 'value' }],
+						children: [
+							{
+								type: 'svelteDynamicContent',
+								expression: { type: 'svelteExpression', value: 'value' },
+							},
+						],
 					},
 					{
 						type: 'svelteBranch',
@@ -285,7 +290,12 @@ block('parses an await block with all branches', () => {
 							type: 'svelteExpression',
 							value: 'e',
 						},
-						children: [{ type: 'svelteExpression', value: 'e.value' }],
+						children: [
+							{
+								type: 'svelteDynamicContent',
+								expression: { type: 'svelteExpression', value: 'e.value' },
+							},
+						],
 					},
 				],
 			},
@@ -314,7 +324,12 @@ block('parses an await block with a shorthand `await then` and a catch', () => {
 							type: 'svelteExpression',
 							value: 'somePromise then value',
 						},
-						children: [{ type: 'svelteExpression', value: 'value' }],
+						children: [
+							{
+								type: 'svelteDynamicContent',
+								expression: { type: 'svelteExpression', value: 'value' },
+							},
+						],
 					},
 					{
 						type: 'svelteBranch',
@@ -323,7 +338,12 @@ block('parses an await block with a shorthand `await then` and a catch', () => {
 							type: 'svelteExpression',
 							value: 'e',
 						},
-						children: [{ type: 'svelteExpression', value: 'e.value' }],
+						children: [
+							{
+								type: 'svelteDynamicContent',
+								expression: { type: 'svelteExpression', value: 'e.value' },
+							},
+						],
 					},
 				],
 			},
@@ -354,7 +374,12 @@ block(
 								type: 'svelteExpression',
 								value: 'somePromise then value',
 							},
-							children: [{ type: 'svelteExpression', value: 'value' }],
+							children: [
+								{
+									type: 'svelteDynamicContent',
+									expression: { type: 'svelteExpression', value: 'value' },
+								},
+							],
 						},
 					],
 				},
@@ -385,7 +410,12 @@ block('parses an each block correctly', () => {
 							value:
 								'array.filter(1, 2, 3, 4) as {hello: {world}}, index (key(23))',
 						},
-						children: [{ type: 'svelteExpression', value: 'value' }],
+						children: [
+							{
+								type: 'svelteDynamicContent',
+								expression: { type: 'svelteExpression', value: 'value' },
+							},
+						],
 					},
 				],
 			},
