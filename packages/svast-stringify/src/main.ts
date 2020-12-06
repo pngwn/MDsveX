@@ -10,9 +10,10 @@ import {
 	Literal,
 	SvelteParent,
 	BranchingBlock,
+	SvelteDynamicContent,
 } from 'svast';
 
-function render_attr_values(values: (Text | SvelteExpression)[]): string {
+function render_attr_values(values: (Text | SvelteDynamicContent)[]): string {
 	let value = '';
 
 	for (let index = 0; index < values.length; index++) {
@@ -20,8 +21,9 @@ function render_attr_values(values: (Text | SvelteExpression)[]): string {
 			value += values[index].value;
 		}
 
-		if (values[index].type === 'svelteExpression') {
-			value += '{' + values[index].value + '}';
+		if (values[index].type === 'svelteDynamicContent') {
+			value +=
+				'{' + (values[index] as SvelteDynamicContent).expression.value + '}';
 		}
 	}
 

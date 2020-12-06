@@ -36,8 +36,11 @@ svast_stringify('compiles a expression node', () => {
 		type: 'root',
 		children: [
 			{
-				type: 'svelteExpression',
-				value: 'console.log("boo")',
+				type: 'svelteDynamicContent',
+				expression: {
+					type: 'svelteExpression',
+					value: 'console.log("boo")',
+				},
 			},
 		],
 	};
@@ -231,8 +234,11 @@ svast_stringify(
 									value: 'value',
 								},
 								{
-									type: 'svelteExpression',
-									value: 'value',
+									type: 'svelteDynamicContent',
+									expression: {
+										type: 'svelteExpression',
+										value: 'value',
+									},
 								},
 							],
 							shorthand: 'none',
@@ -285,8 +291,11 @@ svast_stringify(
 									value: ' ',
 								},
 								{
-									type: 'svelteExpression',
-									value: 'value',
+									type: 'svelteDynamicContent',
+									expression: {
+										type: 'svelteExpression',
+										value: 'value',
+									},
 								},
 							],
 							shorthand: 'none',
@@ -327,16 +336,25 @@ svast_stringify(
 									value: 'value',
 								},
 								{
-									type: 'svelteExpression',
-									value: 'value',
+									type: 'svelteDynamicContent',
+									expression: {
+										type: 'svelteExpression',
+										value: 'value',
+									},
 								},
 								{
-									type: 'svelteExpression',
-									value: 'value',
+									type: 'svelteDynamicContent',
+									expression: {
+										type: 'svelteExpression',
+										value: 'value',
+									},
 								},
 								{
-									type: 'svelteExpression',
-									value: 'value',
+									type: 'svelteDynamicContent',
+									expression: {
+										type: 'svelteExpression',
+										value: 'value',
+									},
 								},
 							],
 							shorthand: 'none',
@@ -377,8 +395,11 @@ svast_stringify('handle a realword set of attrs', () => {
 								value: ' ',
 							},
 							{
-								type: 'svelteExpression',
-								value: 'color',
+								type: 'svelteDynamicContent',
+								expression: {
+									type: 'svelteExpression',
+									value: 'color',
+								},
 							},
 							{
 								type: 'text',
@@ -424,8 +445,11 @@ svast_stringify('handle a realword set of attrs: more whitespace', () => {
 								value: '      			',
 							},
 							{
-								type: 'svelteExpression',
-								value: 'color',
+								type: 'svelteDynamicContent',
+								expression: {
+									type: 'svelteExpression',
+									value: 'color',
+								},
 							},
 							{
 								type: 'text',
@@ -571,8 +595,11 @@ svast_stringify('compiles directive with a value', () => {
 								value: ' ',
 							},
 							{
-								type: 'svelteExpression',
-								value: 'color',
+								type: 'svelteDynamicContent',
+								expression: {
+									type: 'svelteExpression',
+									value: 'color',
+								},
 							},
 							{
 								type: 'text',
@@ -642,8 +669,11 @@ svast_stringify('compiles svelte meta tags', () => {
 						name: 'tag',
 						value: [
 							{
-								type: 'svelteExpression',
-								value: 'null',
+								type: 'svelteDynamicContent',
+								expression: {
+									type: 'svelteExpression',
+									value: 'null',
+								},
 							},
 						],
 						shorthand: 'none',
@@ -677,8 +707,11 @@ svast_stringify('compiles sibling nodes', () => {
 						name: 'tag',
 						value: [
 							{
-								type: 'svelteExpression',
-								value: 'null',
+								type: 'svelteDynamicContent',
+								expression: {
+									type: 'svelteExpression',
+									value: 'null',
+								},
 							},
 						],
 						shorthand: 'none',
@@ -698,8 +731,11 @@ svast_stringify('compiles sibling nodes', () => {
 						name: 'tag',
 						value: [
 							{
-								type: 'svelteExpression',
-								value: 'null',
+								type: 'svelteDynamicContent',
+								expression: {
+									type: 'svelteExpression',
+									value: 'null',
+								},
 							},
 						],
 						shorthand: 'none',
@@ -744,8 +780,11 @@ svast_stringify('compiles child nodes: svelteMeta', () => {
 								name: 'tag',
 								value: [
 									{
-										type: 'svelteExpression',
-										value: 'null',
+										type: 'svelteDynamicContent',
+										expression: {
+											type: 'svelteExpression',
+											value: 'null',
+										},
 									},
 								],
 								shorthand: 'none',
@@ -765,8 +804,11 @@ svast_stringify('compiles child nodes: svelteMeta', () => {
 								name: 'tag',
 								value: [
 									{
-										type: 'svelteExpression',
-										value: 'null',
+										type: 'svelteDynamicContent',
+										expression: {
+											type: 'svelteExpression',
+											value: 'null',
+										},
 									},
 								],
 								shorthand: 'none',
@@ -814,8 +856,11 @@ svast_stringify('compiles child nodes: svelteElement', () => {
 								name: 'tag',
 								value: [
 									{
-										type: 'svelteExpression',
-										value: 'null',
+										type: 'svelteDynamicContent',
+										expression: {
+											type: 'svelteExpression',
+											value: 'null',
+										},
 									},
 								],
 								shorthand: 'none',
@@ -835,8 +880,11 @@ svast_stringify('compiles child nodes: svelteElement', () => {
 								name: 'tag',
 								value: [
 									{
-										type: 'svelteExpression',
-										value: 'null',
+										type: 'svelteDynamicContent',
+										expression: {
+											type: 'svelteExpression',
+											value: 'null',
+										},
 									},
 								],
 								shorthand: 'none',
