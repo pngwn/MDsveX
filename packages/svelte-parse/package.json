@@ -1,6 +1,6 @@
 {
 	"name": "svelte-parse",
-	"version": "0.0.5",
+	"version": "0.1.0",
 	"description": "An increidbly relaxed svelte-parser",
 	"main": "dist/main.cjs.js",
 	"module": "dist/main.es.js",
@@ -24,6 +24,6 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"dependencies": {
-		"svast": "workspace:^0.1.0"
+		"svast": "workspace:^0.2.0"
 	}
 }
