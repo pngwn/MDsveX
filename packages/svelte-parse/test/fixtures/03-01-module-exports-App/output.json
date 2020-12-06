@@ -62,8 +62,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "stopAll",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 5,
@@ -74,6 +73,22 @@
 									"line": 5,
 									"column": 27,
 									"offset": 108
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "stopAll",
+								"position": {
+									"start": {
+										"line": 5,
+										"column": 19,
+										"offset": 100
+									},
+									"end": {
+										"line": 5,
+										"column": 26,
+										"offset": 107
+									}
 								}
 							}
 						}
@@ -194,8 +209,8 @@
 								},
 								"end": {
 									"line": 11,
-									"column": 58,
-									"offset": 271
+									"column": 59,
+									"offset": 272
 								}
 							}
 						}
@@ -302,8 +317,8 @@
 								},
 								"end": {
 									"line": 12,
-									"column": 30,
-									"offset": 302
+									"column": 31,
+									"offset": 303
 								}
 							}
 						}
@@ -362,8 +377,8 @@
 								},
 								"end": {
 									"line": 13,
-									"column": 26,
-									"offset": 329
+									"column": 27,
+									"offset": 330
 								}
 							}
 						}
@@ -422,8 +437,8 @@
 								},
 								"end": {
 									"line": 14,
-									"column": 29,
-									"offset": 359
+									"column": 30,
+									"offset": 360
 								}
 							}
 						}
@@ -526,8 +541,8 @@
 								},
 								"end": {
 									"line": 19,
-									"column": 56,
-									"offset": 493
+									"column": 57,
+									"offset": 494
 								}
 							}
 						}
@@ -658,8 +673,8 @@
 								},
 								"end": {
 									"line": 20,
-									"column": 33,
-									"offset": 527
+									"column": 34,
+									"offset": 528
 								}
 							}
 						}
@@ -718,8 +733,8 @@
 								},
 								"end": {
 									"line": 21,
-									"column": 24,
-									"offset": 552
+									"column": 25,
+									"offset": 553
 								}
 							}
 						}
@@ -850,8 +865,8 @@
 								},
 								"end": {
 									"line": 22,
-									"column": 42,
-									"offset": 595
+									"column": 43,
+									"offset": 596
 								}
 							}
 						}
@@ -954,8 +969,8 @@
 								},
 								"end": {
 									"line": 27,
-									"column": 56,
-									"offset": 724
+									"column": 57,
+									"offset": 725
 								}
 							}
 						}
@@ -1038,8 +1053,8 @@
 								},
 								"end": {
 									"line": 28,
-									"column": 25,
-									"offset": 750
+									"column": 26,
+									"offset": 751
 								}
 							}
 						}
@@ -1098,8 +1113,8 @@
 								},
 								"end": {
 									"line": 29,
-									"column": 22,
-									"offset": 773
+									"column": 23,
+									"offset": 774
 								}
 							}
 						}
@@ -1158,8 +1173,8 @@
 								},
 								"end": {
 									"line": 30,
-									"column": 36,
-									"offset": 810
+									"column": 37,
+									"offset": 811
 								}
 							}
 						}
@@ -1262,8 +1277,8 @@
 								},
 								"end": {
 									"line": 35,
-									"column": 60,
-									"offset": 960
+									"column": 61,
+									"offset": 961
 								}
 							}
 						}
@@ -1562,8 +1577,8 @@
 								},
 								"end": {
 									"line": 36,
-									"column": 59,
-									"offset": 1020
+									"column": 60,
+									"offset": 1021
 								}
 							}
 						}
@@ -1646,8 +1661,8 @@
 								},
 								"end": {
 									"line": 37,
-									"column": 32,
-									"offset": 1053
+									"column": 33,
+									"offset": 1054
 								}
 							}
 						}
@@ -1706,8 +1721,8 @@
 								},
 								"end": {
 									"line": 38,
-									"column": 29,
-									"offset": 1083
+									"column": 30,
+									"offset": 1084
 								}
 							}
 						}
@@ -1810,8 +1825,8 @@
 								},
 								"end": {
 									"line": 43,
-									"column": 57,
-									"offset": 1225
+									"column": 58,
+									"offset": 1226
 								}
 							}
 						}
@@ -2086,8 +2101,8 @@
 								},
 								"end": {
 									"line": 44,
-									"column": 63,
-									"offset": 1289
+									"column": 64,
+									"offset": 1290
 								}
 							}
 						}
@@ -2170,8 +2185,8 @@
 								},
 								"end": {
 									"line": 45,
-									"column": 35,
-									"offset": 1325
+									"column": 36,
+									"offset": 1326
 								}
 							}
 						}
@@ -2230,8 +2245,8 @@
 								},
 								"end": {
 									"line": 46,
-									"column": 25,
-									"offset": 1351
+									"column": 26,
+									"offset": 1352
 								}
 							}
 						}

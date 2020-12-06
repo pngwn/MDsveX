@@ -172,8 +172,7 @@
 							"name": "bind",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "big",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 12,
@@ -184,6 +183,22 @@
 											"line": 12,
 											"column": 41,
 											"offset": 133
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "big",
+										"position": {
+											"start": {
+												"line": 12,
+												"column": 37,
+												"offset": 129
+											},
+											"end": {
+												"line": 12,
+												"column": 40,
+												"offset": 132
+											}
 										}
 									}
 								}
@@ -310,8 +325,7 @@
 					}
 				},
 				{
-					"type": "svelteExpression",
-					"value": "big ? 'big' : 'small'",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 17,
@@ -322,6 +336,22 @@
 							"line": 17,
 							"column": 30,
 							"offset": 195
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "big ? 'big' : 'small'",
+						"position": {
+							"start": {
+								"line": 17,
+								"column": 8,
+								"offset": 173
+							},
+							"end": {
+								"line": 17,
+								"column": 29,
+								"offset": 194
+							}
 						}
 					}
 				},

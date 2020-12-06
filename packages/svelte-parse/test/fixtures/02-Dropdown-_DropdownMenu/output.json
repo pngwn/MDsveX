@@ -114,8 +114,7 @@
 					"name": "bind",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "dropdownMenu",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 78,
@@ -126,6 +125,22 @@
 									"line": 78,
 									"column": 30,
 									"offset": 1944
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "dropdownMenu",
+								"position": {
+									"start": {
+										"line": 78,
+										"column": 17,
+										"offset": 1931
+									},
+									"end": {
+										"line": 78,
+										"column": 29,
+										"offset": 1943
+									}
 								}
 							}
 						}
@@ -161,8 +176,8 @@
 								},
 								"end": {
 									"line": 78,
-									"column": 50,
-									"offset": 1964
+									"column": 51,
+									"offset": 1965
 								}
 							}
 						}
@@ -203,8 +218,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": "width",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 78,
@@ -215,6 +229,22 @@
 									"line": 78,
 									"column": 72,
 									"offset": 1986
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "width",
+								"position": {
+									"start": {
+										"line": 78,
+										"column": 66,
+										"offset": 1980
+									},
+									"end": {
+										"line": 78,
+										"column": 71,
+										"offset": 1985
+									}
 								}
 							}
 						},
@@ -229,8 +259,8 @@
 								},
 								"end": {
 									"line": 78,
-									"column": 73,
-									"offset": 1987
+									"column": 74,
+									"offset": 1988
 								}
 							}
 						}
@@ -278,8 +308,7 @@
 							"name": "level",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "cardOptions.level.TWO",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 79,
@@ -290,6 +319,22 @@
 											"line": 79,
 											"column": 39,
 											"offset": 2028
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "cardOptions.level.TWO",
+										"position": {
+											"start": {
+												"line": 79,
+												"column": 17,
+												"offset": 2006
+											},
+											"end": {
+												"line": 79,
+												"column": 38,
+												"offset": 2027
+											}
 										}
 									}
 								}
@@ -377,8 +422,7 @@
 													"name": "bind",
 													"value": [
 														{
-															"type": "svelteExpression",
-															"value": "search",
+															"type": "svelteDynamicContent",
 															"position": {
 																"start": {
 																	"line": 81,
@@ -389,6 +433,22 @@
 																	"line": 81,
 																	"column": 30,
 																	"offset": 2083
+																}
+															},
+															"expression": {
+																"type": "svelteExpression",
+																"value": "search",
+																"position": {
+																	"start": {
+																		"line": 81,
+																		"column": 23,
+																		"offset": 2076
+																	},
+																	"end": {
+																		"line": 81,
+																		"column": 29,
+																		"offset": 2082
+																	}
 																}
 															}
 														}
@@ -424,8 +484,8 @@
 																},
 																"end": {
 																	"line": 81,
-																	"column": 44,
-																	"offset": 2097
+																	"column": 45,
+																	"offset": 2098
 																}
 															}
 														}
@@ -473,8 +533,7 @@
 															"name": "bind",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": "searchText",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 82,
@@ -485,6 +544,22 @@
 																			"line": 82,
 																			"column": 41,
 																			"offset": 2140
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": "searchText",
+																		"position": {
+																			"start": {
+																				"line": 82,
+																				"column": 30,
+																				"offset": 2129
+																			},
+																			"end": {
+																				"line": 82,
+																				"column": 40,
+																				"offset": 2139
+																			}
 																		}
 																	}
 																}
@@ -510,8 +585,7 @@
 															"name": "on",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": " () => dispatch('searchClear') ",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 82,
@@ -522,6 +596,22 @@
 																			"line": 82,
 																			"column": 86,
 																			"offset": 2185
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": " () => dispatch('searchClear') ",
+																		"position": {
+																			"start": {
+																				"line": 82,
+																				"column": 54,
+																				"offset": 2153
+																			},
+																			"end": {
+																				"line": 82,
+																				"column": 85,
+																				"offset": 2184
+																			}
 																		}
 																	}
 																}
@@ -679,8 +769,7 @@
 											"name": "style",
 											"value": [
 												{
-													"type": "svelteExpression",
-													"value": "Styles",
+													"type": "svelteDynamicContent",
 													"position": {
 														"start": {
 															"line": 87,
@@ -691,6 +780,22 @@
 															"line": 87,
 															"column": 29,
 															"offset": 2252
+														}
+													},
+													"expression": {
+														"type": "svelteExpression",
+														"value": "Styles",
+														"position": {
+															"start": {
+																"line": 87,
+																"column": 22,
+																"offset": 2245
+															},
+															"end": {
+																"line": 87,
+																"column": 28,
+																"offset": 2251
+															}
 														}
 													}
 												}
@@ -917,8 +1022,23 @@
 																	"name": "isMulti",
 																	"value": [
 																		{
-																			"type": "svelteExpression",
-																			"value": "isMulti",
+																			"type": "svelteDynamicContent",
+																			"expression": {
+																				"type": "svelteExpression",
+																				"value": "isMulti",
+																				"position": {
+																					"start": {
+																						"line": 93,
+																						"column": 16,
+																						"offset": 2428
+																					},
+																					"end": {
+																						"line": 93,
+																						"column": 23,
+																						"offset": 2435
+																					}
+																				}
+																			},
 																			"position": {
 																				"start": {
 																					"line": 93,
@@ -953,8 +1073,7 @@
 																	"name": "isSelected",
 																	"value": [
 																		{
-																			"type": "svelteExpression",
-																			"value": " isMulti ? arrayHasItem(selectedItem, item) : item === selectedItem ",
+																			"type": "svelteDynamicContent",
 																			"position": {
 																				"start": {
 																					"line": 94,
@@ -965,6 +1084,22 @@
 																					"line": 94,
 																					"column": 97,
 																					"offset": 2533
+																				}
+																			},
+																			"expression": {
+																				"type": "svelteExpression",
+																				"value": " isMulti ? arrayHasItem(selectedItem, item) : item === selectedItem ",
+																				"position": {
+																					"start": {
+																						"line": 94,
+																						"column": 28,
+																						"offset": 2464
+																					},
+																					"end": {
+																						"line": 94,
+																						"column": 96,
+																						"offset": 2532
+																					}
 																				}
 																			}
 																		}
@@ -989,8 +1124,7 @@
 																	"name": "on",
 																	"value": [
 																		{
-																			"type": "svelteExpression",
-																			"value": " () => onClick(item) ",
+																			"type": "svelteDynamicContent",
 																			"position": {
 																				"start": {
 																					"line": 95,
@@ -1001,6 +1135,22 @@
 																					"line": 95,
 																					"column": 48,
 																					"offset": 2582
+																				}
+																			},
+																			"expression": {
+																				"type": "svelteExpression",
+																				"value": " () => onClick(item) ",
+																				"position": {
+																					"start": {
+																						"line": 95,
+																						"column": 26,
+																						"offset": 2560
+																					},
+																					"end": {
+																						"line": 95,
+																						"column": 47,
+																						"offset": 2581
+																					}
 																				}
 																			}
 																		}
@@ -1099,8 +1249,8 @@
 																										},
 																										"end": {
 																											"line": 98,
-																											"column": 35,
-																											"offset": 2660
+																											"column": 36,
+																											"offset": 2661
 																										}
 																									}
 																								}
@@ -1148,8 +1298,7 @@
 																									"name": "isChecked",
 																									"value": [
 																										{
-																											"type": "svelteExpression",
-																											"value": "arrayHasItem(selectedItem, item)",
+																											"type": "svelteDynamicContent",
 																											"position": {
 																												"start": {
 																													"line": 99,
@@ -1160,6 +1309,22 @@
 																													"line": 99,
 																													"column": 72,
 																													"offset": 2734
+																												}
+																											},
+																											"expression": {
+																												"type": "svelteExpression",
+																												"value": "arrayHasItem(selectedItem, item)",
+																												"position": {
+																													"start": {
+																														"line": 99,
+																														"column": 39,
+																														"offset": 2701
+																													},
+																													"end": {
+																														"line": 99,
+																														"column": 71,
+																														"offset": 2733
+																													}
 																												}
 																											}
 																										}
@@ -1348,8 +1513,7 @@
 																					}
 																				},
 																				{
-																					"type": "svelteExpression",
-																					"value": "item[itemKey]",
+																					"type": "svelteDynamicContent",
 																					"position": {
 																						"start": {
 																							"line": 103,
@@ -1360,6 +1524,22 @@
 																							"line": 103,
 																							"column": 30,
 																							"offset": 2891
+																						}
+																					},
+																					"expression": {
+																						"type": "svelteExpression",
+																						"value": "item[itemKey]",
+																						"position": {
+																							"start": {
+																								"line": 103,
+																								"column": 16,
+																								"offset": 2877
+																							},
+																							"end": {
+																								"line": 103,
+																								"column": 29,
+																								"offset": 2890
+																							}
 																						}
 																					}
 																				},

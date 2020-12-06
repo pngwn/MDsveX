@@ -10,8 +10,23 @@
 					"name": "...props",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "...props",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "...props",
+								"position": {
+									"start": {
+										"line": 1,
+										"column": 7,
+										"offset": 6
+									},
+									"end": {
+										"line": 1,
+										"column": 15,
+										"offset": 14
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 1,

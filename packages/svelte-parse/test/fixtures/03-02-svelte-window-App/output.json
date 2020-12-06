@@ -114,8 +114,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "handleKeydown",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 33,
@@ -126,6 +125,22 @@
 									"line": 33,
 									"column": 42,
 									"offset": 603
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "handleKeydown",
+								"position": {
+									"start": {
+										"line": 33,
+										"column": 28,
+										"offset": 589
+									},
+									"end": {
+										"line": 33,
+										"column": 41,
+										"offset": 602
+									}
 								}
 							}
 						}
@@ -221,8 +236,8 @@
 								},
 								"end": {
 									"line": 35,
-									"column": 31,
-									"offset": 637
+									"column": 32,
+									"offset": 638
 								}
 							}
 						}
@@ -308,8 +323,7 @@
 									"selfClosing": false,
 									"children": [
 										{
-											"type": "svelteExpression",
-											"value": "key === ' ' ? 'Space' : key",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 37,
@@ -320,6 +334,22 @@
 													"line": 37,
 													"column": 37,
 													"offset": 687
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "key === ' ' ? 'Space' : key",
+												"position": {
+													"start": {
+														"line": 37,
+														"column": 9,
+														"offset": 659
+													},
+													"end": {
+														"line": 37,
+														"column": 36,
+														"offset": 686
+													}
 												}
 											}
 										}
@@ -360,8 +390,7 @@
 									"selfClosing": false,
 									"children": [
 										{
-											"type": "svelteExpression",
-											"value": "keyCode",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 38,
@@ -372,6 +401,22 @@
 													"line": 38,
 													"column": 15,
 													"offset": 708
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "keyCode",
+												"position": {
+													"start": {
+														"line": 38,
+														"column": 7,
+														"offset": 700
+													},
+													"end": {
+														"line": 38,
+														"column": 14,
+														"offset": 707
+													}
 												}
 											}
 										}

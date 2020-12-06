@@ -124,8 +124,8 @@
 								},
 								"end": {
 									"line": 43,
-									"column": 16,
-									"offset": 811
+									"column": 17,
+									"offset": 812
 								}
 							}
 						}
@@ -170,8 +170,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "handlePanStart",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 45,
@@ -182,6 +181,22 @@
 									"line": 45,
 									"column": 30,
 									"offset": 856
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "handlePanStart",
+								"position": {
+									"start": {
+										"line": 45,
+										"column": 15,
+										"offset": 841
+									},
+									"end": {
+										"line": 45,
+										"column": 29,
+										"offset": 855
+									}
 								}
 							}
 						}
@@ -207,8 +222,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "handlePanMove",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 46,
@@ -219,6 +233,22 @@
 									"line": 46,
 									"column": 28,
 									"offset": 884
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "handlePanMove",
+								"position": {
+									"start": {
+										"line": 46,
+										"column": 14,
+										"offset": 870
+									},
+									"end": {
+										"line": 46,
+										"column": 27,
+										"offset": 883
+									}
 								}
 							}
 						}
@@ -244,8 +274,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "handlePanEnd",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 47,
@@ -256,6 +285,22 @@
 									"line": 47,
 									"column": 26,
 									"offset": 910
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "handlePanEnd",
+								"position": {
+									"start": {
+										"line": 47,
+										"column": 13,
+										"offset": 897
+									},
+									"end": {
+										"line": 47,
+										"column": 25,
+										"offset": 909
+									}
 								}
 							}
 						}
@@ -321,8 +366,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": "$coords.x",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 49,
@@ -333,6 +377,22 @@
 									"line": 49,
 									"column": 24,
 									"offset": 953
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "$coords.x",
+								"position": {
+									"start": {
+										"line": 49,
+										"column": 14,
+										"offset": 943
+									},
+									"end": {
+										"line": 49,
+										"column": 23,
+										"offset": 952
+									}
 								}
 							}
 						},
@@ -353,8 +413,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": "$coords.y",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 49,
@@ -365,6 +424,22 @@
 									"line": 49,
 									"column": 38,
 									"offset": 967
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "$coords.y",
+								"position": {
+									"start": {
+										"line": 49,
+										"column": 28,
+										"offset": 957
+									},
+									"end": {
+										"line": 49,
+										"column": 37,
+										"offset": 966
+									}
 								}
 							}
 						},
@@ -409,8 +484,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": "$coords.x * 0.2",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 50,
@@ -421,6 +495,22 @@
 									"line": 50,
 									"column": 27,
 									"offset": 997
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "$coords.x * 0.2",
+								"position": {
+									"start": {
+										"line": 50,
+										"column": 11,
+										"offset": 981
+									},
+									"end": {
+										"line": 50,
+										"column": 26,
+										"offset": 996
+									}
 								}
 							}
 						},
@@ -435,8 +525,8 @@
 								},
 								"end": {
 									"line": 50,
-									"column": 31,
-									"offset": 1001
+									"column": 32,
+									"offset": 1002
 								}
 							}
 						}

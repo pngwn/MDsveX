@@ -50,8 +50,7 @@
 									"name": "use",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "use",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 3,
@@ -62,6 +61,22 @@
 													"line": 3,
 													"column": 26,
 													"offset": 49
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "use",
+												"position": {
+													"start": {
+														"line": 3,
+														"column": 22,
+														"offset": 45
+													},
+													"end": {
+														"line": 3,
+														"column": 25,
+														"offset": 48
+													}
 												}
 											}
 										}
@@ -107,8 +122,7 @@
 									"name": "class",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "classes",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 5,
@@ -119,6 +133,22 @@
 													"line": 5,
 													"column": 25,
 													"offset": 93
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "classes",
+												"position": {
+													"start": {
+														"line": 5,
+														"column": 17,
+														"offset": 85
+													},
+													"end": {
+														"line": 5,
+														"column": 24,
+														"offset": 92
+													}
 												}
 											}
 										}
@@ -143,8 +173,23 @@
 									"name": "...props",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "...props",
+											"type": "svelteDynamicContent",
+											"expression": {
+												"type": "svelteExpression",
+												"value": "...props",
+												"position": {
+													"start": {
+														"line": 6,
+														"column": 10,
+														"offset": 104
+													},
+													"end": {
+														"line": 6,
+														"column": 18,
+														"offset": 112
+													}
+												}
+											},
 											"position": {
 												"start": {
 													"line": 6,
@@ -273,8 +318,7 @@
 									"name": "use",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "use",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 10,
@@ -285,6 +329,22 @@
 													"line": 10,
 													"column": 26,
 													"offset": 181
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "use",
+												"position": {
+													"start": {
+														"line": 10,
+														"column": 22,
+														"offset": 177
+													},
+													"end": {
+														"line": 10,
+														"column": 25,
+														"offset": 180
+													}
 												}
 											}
 										}
@@ -330,8 +390,7 @@
 									"name": "class",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "classes",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 12,
@@ -342,6 +401,22 @@
 													"line": 12,
 													"column": 25,
 													"offset": 225
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "classes",
+												"position": {
+													"start": {
+														"line": 12,
+														"column": 17,
+														"offset": 217
+													},
+													"end": {
+														"line": 12,
+														"column": 24,
+														"offset": 224
+													}
 												}
 											}
 										}
@@ -366,8 +441,23 @@
 									"name": "...props",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "...props",
+											"type": "svelteDynamicContent",
+											"expression": {
+												"type": "svelteExpression",
+												"value": "...props",
+												"position": {
+													"start": {
+														"line": 13,
+														"column": 10,
+														"offset": 236
+													},
+													"end": {
+														"line": 13,
+														"column": 18,
+														"offset": 244
+													}
+												}
+											},
 											"position": {
 												"start": {
 													"line": 13,
@@ -443,8 +533,8 @@
 														},
 														"end": {
 															"line": 15,
-															"column": 31,
-															"offset": 287
+															"column": 32,
+															"offset": 288
 														}
 													}
 												}
@@ -486,8 +576,8 @@
 																},
 																"end": {
 																	"line": 16,
-																	"column": 25,
-																	"offset": 313
+																	"column": 26,
+																	"offset": 314
 																}
 															}
 														}
@@ -596,8 +686,8 @@
 														},
 														"end": {
 															"line": 18,
-															"column": 30,
-															"offset": 368
+															"column": 31,
+															"offset": 369
 														}
 													}
 												}
@@ -639,8 +729,8 @@
 																},
 																"end": {
 																	"line": 19,
-																	"column": 24,
-																	"offset": 393
+																	"column": 25,
+																	"offset": 394
 																}
 															}
 														}
@@ -783,8 +873,8 @@
 								},
 								"end": {
 									"line": 22,
-									"column": 24,
-									"offset": 445
+									"column": 25,
+									"offset": 446
 								}
 							}
 						}

@@ -62,8 +62,7 @@
 					"name": "MenuComponent",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "CustomDropdown",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 11,
@@ -74,6 +73,22 @@
 									"line": 11,
 									"column": 42,
 									"offset": 270
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "CustomDropdown",
+								"position": {
+									"start": {
+										"line": 11,
+										"column": 27,
+										"offset": 255
+									},
+									"end": {
+										"line": 11,
+										"column": 41,
+										"offset": 269
+									}
 								}
 							}
 						}
@@ -98,8 +113,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "handleSelect",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 11,
@@ -110,6 +124,22 @@
 									"line": 11,
 									"column": 69,
 									"offset": 297
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "handleSelect",
+								"position": {
+									"start": {
+										"line": 11,
+										"column": 56,
+										"offset": 284
+									},
+									"end": {
+										"line": 11,
+										"column": 68,
+										"offset": 296
+									}
 								}
 							}
 						}

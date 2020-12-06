@@ -62,8 +62,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "handleClick",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 17,
@@ -74,6 +73,22 @@
 									"line": 17,
 									"column": 31,
 									"offset": 320
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "handleClick",
+								"position": {
+									"start": {
+										"line": 17,
+										"column": 19,
+										"offset": 308
+									},
+									"end": {
+										"line": 17,
+										"column": 30,
+										"offset": 319
+									}
 								}
 							}
 						}
@@ -306,8 +321,8 @@
 								},
 								"end": {
 									"line": 21,
-									"column": 73,
-									"offset": 425
+									"column": 74,
+									"offset": 426
 								}
 							}
 						}
@@ -469,8 +484,7 @@
 													"name": "current",
 													"value": [
 														{
-															"type": "svelteExpression",
-															"value": "thing.color",
+															"type": "svelteDynamicContent",
 															"position": {
 																"start": {
 																	"line": 25,
@@ -481,6 +495,22 @@
 																	"line": 25,
 																	"column": 32,
 																	"offset": 520
+																}
+															},
+															"expression": {
+																"type": "svelteExpression",
+																"value": "thing.color",
+																"position": {
+																	"start": {
+																		"line": 25,
+																		"column": 20,
+																		"offset": 508
+																	},
+																	"end": {
+																		"line": 25,
+																		"column": 31,
+																		"offset": 519
+																	}
 																}
 															}
 														}
@@ -729,8 +759,7 @@
 													"name": "current",
 													"value": [
 														{
-															"type": "svelteExpression",
-															"value": "thing.color",
+															"type": "svelteDynamicContent",
 															"position": {
 																"start": {
 																	"line": 32,
@@ -741,6 +770,22 @@
 																	"line": 32,
 																	"column": 32,
 																	"offset": 625
+																}
+															},
+															"expression": {
+																"type": "svelteExpression",
+																"value": "thing.color",
+																"position": {
+																	"start": {
+																		"line": 32,
+																		"column": 20,
+																		"offset": 613
+																	},
+																	"end": {
+																		"line": 32,
+																		"column": 31,
+																		"offset": 624
+																	}
 																}
 															}
 														}

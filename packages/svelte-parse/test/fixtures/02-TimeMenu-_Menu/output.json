@@ -114,8 +114,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": " onClick ",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 85,
@@ -126,6 +125,22 @@
 									"line": 85,
 									"column": 27,
 									"offset": 1729
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": " onClick ",
+								"position": {
+									"start": {
+										"line": 85,
+										"column": 17,
+										"offset": 1719
+									},
+									"end": {
+										"line": 85,
+										"column": 26,
+										"offset": 1728
+									}
 								}
 							}
 						}
@@ -174,8 +189,7 @@
 							"name": "level",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": " cardOptions.level.TWO ",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 86,
@@ -186,6 +200,22 @@
 											"line": 86,
 											"column": 41,
 											"offset": 1772
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": " cardOptions.level.TWO ",
+										"position": {
+											"start": {
+												"line": 86,
+												"column": 17,
+												"offset": 1748
+											},
+											"end": {
+												"line": 86,
+												"column": 40,
+												"offset": 1771
+											}
 										}
 									}
 								}
@@ -243,8 +273,8 @@
 												},
 												"end": {
 													"line": 87,
-													"column": 21,
-													"offset": 1795
+													"column": 22,
+													"offset": 1796
 												}
 											}
 										}
@@ -292,8 +322,23 @@
 											"name": " tabs ",
 											"value": [
 												{
-													"type": "svelteExpression",
-													"value": " tabs ",
+													"type": "svelteDynamicContent",
+													"expression": {
+														"type": "svelteExpression",
+														"value": " tabs ",
+														"position": {
+															"start": {
+																"line": 88,
+																"column": 14,
+																"offset": 1811
+															},
+															"end": {
+																"line": 88,
+																"column": 20,
+																"offset": 1817
+															}
+														}
+													},
 													"position": {
 														"start": {
 															"line": 88,
@@ -348,8 +393,7 @@
 											"name": "animate",
 											"value": [
 												{
-													"type": "svelteExpression",
-													"value": " false ",
+													"type": "svelteDynamicContent",
 													"position": {
 														"start": {
 															"line": 88,
@@ -360,6 +404,22 @@
 															"line": 88,
 															"column": 55,
 															"offset": 1852
+														}
+													},
+													"expression": {
+														"type": "svelteExpression",
+														"value": " false ",
+														"position": {
+															"start": {
+																"line": 88,
+																"column": 47,
+																"offset": 1844
+															},
+															"end": {
+																"line": 88,
+																"column": 54,
+																"offset": 1851
+															}
 														}
 													}
 												}
@@ -394,8 +454,8 @@
 														},
 														"end": {
 															"line": 88,
-															"column": 80,
-															"offset": 1877
+															"column": 81,
+															"offset": 1878
 														}
 													}
 												}
@@ -536,8 +596,7 @@
 																			"name": "options",
 																			"value": [
 																				{
-																					"type": "svelteExpression",
-																					"value": " timeOptions(tab.min, tab.max) ",
+																					"type": "svelteDynamicContent",
 																					"position": {
 																						"start": {
 																							"line": 92,
@@ -548,6 +607,22 @@
 																							"line": 92,
 																							"column": 64,
 																							"offset": 2008
+																						}
+																					},
+																					"expression": {
+																						"type": "svelteExpression",
+																						"value": " timeOptions(tab.min, tab.max) ",
+																						"position": {
+																							"start": {
+																								"line": 92,
+																								"column": 32,
+																								"offset": 1976
+																							},
+																							"end": {
+																								"line": 92,
+																								"column": 63,
+																								"offset": 2007
+																							}
 																						}
 																					}
 																				}
@@ -572,8 +647,23 @@
 																			"name": " selectedItem ",
 																			"value": [
 																				{
-																					"type": "svelteExpression",
-																					"value": " selectedItem ",
+																					"type": "svelteDynamicContent",
+																					"expression": {
+																						"type": "svelteExpression",
+																						"value": " selectedItem ",
+																						"position": {
+																							"start": {
+																								"line": 92,
+																								"column": 67,
+																								"offset": 2011
+																							},
+																							"end": {
+																								"line": 92,
+																								"column": 81,
+																								"offset": 2025
+																							}
+																						}
+																					},
 																					"position": {
 																						"start": {
 																							"line": 92,

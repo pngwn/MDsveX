@@ -82,8 +82,7 @@
 					"name": "step",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "10",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 7,
@@ -94,6 +93,22 @@
 									"line": 7,
 									"column": 36,
 									"offset": 136
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "10",
+								"position": {
+									"start": {
+										"line": 7,
+										"column": 33,
+										"offset": 133
+									},
+									"end": {
+										"line": 7,
+										"column": 35,
+										"offset": 135
+									}
 								}
 							}
 						}
@@ -168,8 +183,7 @@
 					}
 				},
 				{
-					"type": "svelteExpression",
-					"value": "values[0]",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 9,
@@ -180,6 +194,22 @@
 							"line": 9,
 							"column": 25,
 							"offset": 178
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "values[0]",
+						"position": {
+							"start": {
+								"line": 9,
+								"column": 15,
+								"offset": 168
+							},
+							"end": {
+								"line": 9,
+								"column": 24,
+								"offset": 177
+							}
 						}
 					}
 				}

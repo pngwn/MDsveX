@@ -114,8 +114,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "handleMouseenter",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 28,
@@ -126,6 +125,22 @@
 									"line": 28,
 									"column": 34,
 									"offset": 482
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "handleMouseenter",
+								"position": {
+									"start": {
+										"line": 28,
+										"column": 17,
+										"offset": 465
+									},
+									"end": {
+										"line": 28,
+										"column": 33,
+										"offset": 481
+									}
 								}
 							}
 						}
@@ -151,8 +166,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "handleMouseleave",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 29,
@@ -163,6 +177,22 @@
 									"line": 29,
 									"column": 34,
 									"offset": 516
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "handleMouseleave",
+								"position": {
+									"start": {
+										"line": 29,
+										"column": 17,
+										"offset": 499
+									},
+									"end": {
+										"line": 29,
+										"column": 33,
+										"offset": 515
+									}
 								}
 							}
 						}
@@ -256,8 +286,7 @@
 					"name": "class",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "hereKitty",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 34,
@@ -268,6 +297,22 @@
 									"line": 34,
 									"column": 27,
 									"offset": 631
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "hereKitty",
+								"position": {
+									"start": {
+										"line": 34,
+										"column": 17,
+										"offset": 621
+									},
+									"end": {
+										"line": 34,
+										"column": 26,
+										"offset": 630
+									}
 								}
 							}
 						}
@@ -447,8 +492,8 @@
 								},
 								"end": {
 									"line": 35,
-									"column": 43,
-									"offset": 674
+									"column": 44,
+									"offset": 675
 								}
 							}
 						}
@@ -483,8 +528,8 @@
 								},
 								"end": {
 									"line": 36,
-									"column": 26,
-									"offset": 701
+									"column": 27,
+									"offset": 702
 								}
 							}
 						}

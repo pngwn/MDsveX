@@ -124,8 +124,8 @@
 								},
 								"end": {
 									"line": 42,
-									"column": 22,
-									"offset": 602
+									"column": 23,
+									"offset": 603
 								}
 							}
 						}
@@ -223,8 +223,8 @@
 														},
 														"end": {
 															"line": 44,
-															"column": 23,
-															"offset": 667
+															"column": 24,
+															"offset": 668
 														}
 													}
 												}
@@ -304,8 +304,8 @@
 																		},
 																		"end": {
 																			"line": 46,
-																			"column": 25,
-																			"offset": 707
+																			"column": 26,
+																			"offset": 708
 																		}
 																	}
 																}
@@ -393,8 +393,7 @@
 																					"name": "this",
 																					"value": [
 																						{
-																							"type": "svelteExpression",
-																							"value": " Icons[iconKey] ",
+																							"type": "svelteDynamicContent",
 																							"position": {
 																								"start": {
 																									"line": 48,
@@ -405,6 +404,22 @@
 																									"line": 48,
 																									"column": 53,
 																									"offset": 802
+																								}
+																							},
+																							"expression": {
+																								"type": "svelteExpression",
+																								"value": " Icons[iconKey] ",
+																								"position": {
+																									"start": {
+																										"line": 48,
+																										"column": 36,
+																										"offset": 785
+																									},
+																									"end": {
+																										"line": 48,
+																										"column": 52,
+																										"offset": 801
+																									}
 																								}
 																							}
 																						}
@@ -463,8 +478,7 @@
 																			"selfClosing": false,
 																			"children": [
 																				{
-																					"type": "svelteExpression",
-																					"value": "iconKey",
+																					"type": "svelteDynamicContent",
 																					"position": {
 																						"start": {
 																							"line": 49,
@@ -475,6 +489,22 @@
 																							"line": 49,
 																							"column": 23,
 																							"offset": 829
+																						}
+																					},
+																					"expression": {
+																						"type": "svelteExpression",
+																						"value": "iconKey",
+																						"position": {
+																							"start": {
+																								"line": 49,
+																								"column": 15,
+																								"offset": 821
+																							},
+																							"end": {
+																								"line": 49,
+																								"column": 22,
+																								"offset": 828
+																							}
 																						}
 																					}
 																				}

@@ -114,8 +114,7 @@
 					"name": "let",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "active",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 18,
@@ -126,6 +125,22 @@
 									"line": 18,
 									"column": 33,
 									"offset": 248
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "active",
+								"position": {
+									"start": {
+										"line": 18,
+										"column": 26,
+										"offset": 241
+									},
+									"end": {
+										"line": 18,
+										"column": 32,
+										"offset": 247
+									}
 								}
 							}
 						}
@@ -503,8 +518,7 @@
 					"name": "let",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "active",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 28,
@@ -515,6 +529,22 @@
 									"line": 28,
 									"column": 33,
 									"offset": 417
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "active",
+								"position": {
+									"start": {
+										"line": 28,
+										"column": 26,
+										"offset": 410
+									},
+									"end": {
+										"line": 28,
+										"column": 32,
+										"offset": 416
+									}
 								}
 							}
 						}
@@ -892,8 +922,7 @@
 					"name": "let",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "active",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 38,
@@ -904,6 +933,22 @@
 									"line": 38,
 									"column": 33,
 									"offset": 586
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "active",
+								"position": {
+									"start": {
+										"line": 38,
+										"column": 26,
+										"offset": 579
+									},
+									"end": {
+										"line": 38,
+										"column": 32,
+										"offset": 585
+									}
 								}
 							}
 						}

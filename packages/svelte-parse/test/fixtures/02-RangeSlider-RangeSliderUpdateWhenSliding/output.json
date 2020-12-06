@@ -151,8 +151,7 @@
 					}
 				},
 				{
-					"type": "svelteExpression",
-					"value": "values[0]",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 9,
@@ -163,6 +162,22 @@
 							"line": 9,
 							"column": 25,
 							"offset": 181
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "values[0]",
+						"position": {
+							"start": {
+								"line": 9,
+								"column": 15,
+								"offset": 171
+							},
+							"end": {
+								"line": 9,
+								"column": 24,
+								"offset": 180
+							}
 						}
 					}
 				}

@@ -62,8 +62,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "() => showModal = true",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 7,
@@ -74,6 +73,22 @@
 									"line": 7,
 									"column": 43,
 									"offset": 124
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "() => showModal = true",
+								"position": {
+									"start": {
+										"line": 7,
+										"column": 20,
+										"offset": 101
+									},
+									"end": {
+										"line": 7,
+										"column": 42,
+										"offset": 123
+									}
 								}
 							}
 						}
@@ -192,8 +207,7 @@
 									"name": "on",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "() => showModal = false",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 12,
@@ -204,6 +218,22 @@
 													"line": 12,
 													"column": 44,
 													"offset": 209
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "() => showModal = false",
+												"position": {
+													"start": {
+														"line": 12,
+														"column": 20,
+														"offset": 185
+													},
+													"end": {
+														"line": 12,
+														"column": 43,
+														"offset": 208
+													}
 												}
 											}
 										}
@@ -262,8 +292,8 @@
 														},
 														"end": {
 															"line": 13,
-															"column": 19,
-															"offset": 230
+															"column": 20,
+															"offset": 231
 														}
 													}
 												}
@@ -439,8 +469,8 @@
 														},
 														"end": {
 															"line": 18,
-															"column": 29,
-															"offset": 334
+															"column": 30,
+															"offset": 335
 														}
 													}
 												}
@@ -840,8 +870,8 @@
 														},
 														"end": {
 															"line": 27,
-															"column": 60,
-															"offset": 852
+															"column": 61,
+															"offset": 853
 														}
 													}
 												}

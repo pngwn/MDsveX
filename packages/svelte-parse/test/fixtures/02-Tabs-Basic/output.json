@@ -62,8 +62,23 @@
 					"name": "tabs",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "tabs",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "tabs",
+								"position": {
+									"start": {
+										"line": 23,
+										"column": 8,
+										"offset": 369
+									},
+									"end": {
+										"line": 23,
+										"column": 12,
+										"offset": 373
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 23,

@@ -72,8 +72,8 @@
 								},
 								"end": {
 									"line": 18,
-									"column": 16,
-									"offset": 299
+									"column": 17,
+									"offset": 300
 								}
 							}
 						}
@@ -181,8 +181,7 @@
 									"name": "on",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "handleRemove",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 20,
@@ -193,6 +192,22 @@
 													"line": 20,
 													"column": 57,
 													"offset": 367
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "handleRemove",
+												"position": {
+													"start": {
+														"line": 20,
+														"column": 44,
+														"offset": 354
+													},
+													"end": {
+														"line": 20,
+														"column": 56,
+														"offset": 366
+													}
 												}
 											}
 										}
@@ -218,8 +233,23 @@
 									"name": "isWaiting",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "isWaiting",
+											"type": "svelteDynamicContent",
+											"expression": {
+												"type": "svelteExpression",
+												"value": "isWaiting",
+												"position": {
+													"start": {
+														"line": 20,
+														"column": 60,
+														"offset": 370
+													},
+													"end": {
+														"line": 20,
+														"column": 69,
+														"offset": 379
+													}
+												}
+											},
 											"position": {
 												"start": {
 													"line": 20,
@@ -254,8 +284,23 @@
 									"name": "isDisabled",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "isDisabled",
+											"type": "svelteDynamicContent",
+											"expression": {
+												"type": "svelteExpression",
+												"value": "isDisabled",
+												"position": {
+													"start": {
+														"line": 20,
+														"column": 72,
+														"offset": 382
+													},
+													"end": {
+														"line": 20,
+														"column": 82,
+														"offset": 392
+													}
+												}
+											},
 											"position": {
 												"start": {
 													"line": 20,

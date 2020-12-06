@@ -10,8 +10,7 @@
 					"name": "foo",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "42",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 1,
@@ -22,6 +21,22 @@
 									"line": 1,
 									"column": 17,
 									"offset": 16
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "42",
+								"position": {
+									"start": {
+										"line": 1,
+										"column": 14,
+										"offset": 13
+									},
+									"end": {
+										"line": 1,
+										"column": 16,
+										"offset": 15
+									}
 								}
 							}
 						}

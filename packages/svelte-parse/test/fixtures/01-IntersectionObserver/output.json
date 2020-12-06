@@ -114,8 +114,7 @@
 					"name": "bind",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "container",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 57,
@@ -126,6 +125,22 @@
 									"line": 57,
 									"column": 27,
 									"offset": 1189
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "container",
+								"position": {
+									"start": {
+										"line": 57,
+										"column": 17,
+										"offset": 1179
+									},
+									"end": {
+										"line": 57,
+										"column": 26,
+										"offset": 1188
+									}
 								}
 							}
 						}
@@ -174,8 +189,23 @@
 							"name": "intersecting",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "intersecting",
+									"type": "svelteDynamicContent",
+									"expression": {
+										"type": "svelteExpression",
+										"value": "intersecting",
+										"position": {
+											"start": {
+												"line": 58,
+												"column": 9,
+												"offset": 1199
+											},
+											"end": {
+												"line": 58,
+												"column": 21,
+												"offset": 1211
+											}
+										}
+									},
 									"position": {
 										"start": {
 											"line": 58,

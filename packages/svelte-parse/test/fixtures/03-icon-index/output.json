@@ -10,8 +10,7 @@
 					"name": "use",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "use",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 2,
@@ -22,6 +21,22 @@
 									"line": 2,
 									"column": 22,
 									"offset": 25
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "use",
+								"position": {
+									"start": {
+										"line": 2,
+										"column": 18,
+										"offset": 21
+									},
+									"end": {
+										"line": 2,
+										"column": 21,
+										"offset": 24
+									}
 								}
 							}
 						}
@@ -67,8 +82,7 @@
 					"name": "class",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "clsxd(\n        name,\n        size,\n        color,\n        [flipped, { 'flipped': flipped }],\n        [rotated, { 'rotated': rotated }],\n        [corner, { 'corner': corner }],\n        bordered && 'bordered',\n        circular && 'circular',\n        disabled && 'disabled',\n        inverted && 'inverted',\n        loading && 'loading',\n        fitted && 'fitted',\n        link && 'link',\n        className,\n        'icon'\n    )",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 4,
@@ -79,6 +93,22 @@
 									"line": 20,
 									"column": 7,
 									"offset": 479
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "clsxd(\n        name,\n        size,\n        color,\n        [flipped, { 'flipped': flipped }],\n        [rotated, { 'rotated': rotated }],\n        [corner, { 'corner': corner }],\n        bordered && 'bordered',\n        circular && 'circular',\n        disabled && 'disabled',\n        inverted && 'inverted',\n        loading && 'loading',\n        fitted && 'fitted',\n        link && 'link',\n        className,\n        'icon'\n    )",
+								"position": {
+									"start": {
+										"line": 4,
+										"column": 13,
+										"offset": 53
+									},
+									"end": {
+										"line": 20,
+										"column": 6,
+										"offset": 478
+									}
 								}
 							}
 						}
@@ -103,8 +133,23 @@
 					"name": "...exclude($$props, [\n        'use', 'class', 'color', 'name', 'size', 'corner', 'flipped', 'rotated', 'bordered', \n        'circular', 'disabled', 'inverted', 'loading', 'fitted', 'link', 'flipped', 'roated'\n    ])",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "...exclude($$props, [\n        'use', 'class', 'color', 'name', 'size', 'corner', 'flipped', 'rotated', 'bordered', \n        'circular', 'disabled', 'inverted', 'loading', 'fitted', 'link', 'flipped', 'roated'\n    ])",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "...exclude($$props, [\n        'use', 'class', 'color', 'name', 'size', 'corner', 'flipped', 'rotated', 'bordered', \n        'circular', 'disabled', 'inverted', 'loading', 'fitted', 'link', 'flipped', 'roated'\n    ])",
+								"position": {
+									"start": {
+										"line": 21,
+										"column": 6,
+										"offset": 486
+									},
+									"end": {
+										"line": 24,
+										"column": 7,
+										"offset": 701
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 21,
@@ -185,8 +230,8 @@
 								},
 								"end": {
 									"line": 27,
-									"column": 24,
-									"offset": 733
+									"column": 25,
+									"offset": 734
 								}
 							}
 						}

@@ -10,8 +10,7 @@
 					"name": "use",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "use",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 2,
@@ -22,6 +21,22 @@
 									"line": 2,
 									"column": 22,
 									"offset": 27
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "use",
+								"position": {
+									"start": {
+										"line": 2,
+										"column": 18,
+										"offset": 23
+									},
+									"end": {
+										"line": 2,
+										"column": 21,
+										"offset": 26
+									}
 								}
 							}
 						}
@@ -67,8 +82,7 @@
 					"name": "class",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "clsxd(\n        'ui',\n        color,\n        size,\n        inverted && 'inverted',\n        disabled && 'disabled',\n        className,\n        'text'\n    )",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 4,
@@ -79,6 +93,22 @@
 									"line": 12,
 									"column": 7,
 									"offset": 208
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "clsxd(\n        'ui',\n        color,\n        size,\n        inverted && 'inverted',\n        disabled && 'disabled',\n        className,\n        'text'\n    )",
+								"position": {
+									"start": {
+										"line": 4,
+										"column": 12,
+										"offset": 54
+									},
+									"end": {
+										"line": 12,
+										"column": 6,
+										"offset": 207
+									}
 								}
 							}
 						}
@@ -103,8 +133,23 @@
 					"name": "...exclude($$props, ['use', 'class', 'inverted', 'disabled', 'size', 'color'])",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "...exclude($$props, ['use', 'class', 'inverted', 'disabled', 'size', 'color'])",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "...exclude($$props, ['use', 'class', 'inverted', 'disabled', 'size', 'color'])",
+								"position": {
+									"start": {
+										"line": 13,
+										"column": 6,
+										"offset": 214
+									},
+									"end": {
+										"line": 13,
+										"column": 84,
+										"offset": 292
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 13,
@@ -205,8 +250,8 @@
 								},
 								"end": {
 									"line": 16,
-									"column": 24,
-									"offset": 340
+									"column": 25,
+									"offset": 341
 								}
 							}
 						}

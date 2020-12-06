@@ -62,8 +62,23 @@
 					"name": "items",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "items",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "items",
+								"position": {
+									"start": {
+										"line": 24,
+										"column": 12,
+										"offset": 362
+									},
+									"end": {
+										"line": 24,
+										"column": 17,
+										"offset": 367
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 24,
@@ -98,8 +113,23 @@
 					"name": "isMulti",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "isMulti",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "isMulti",
+								"position": {
+									"start": {
+										"line": 24,
+										"column": 20,
+										"offset": 370
+									},
+									"end": {
+										"line": 24,
+										"column": 27,
+										"offset": 377
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 24,
@@ -134,8 +164,23 @@
 					"name": "isSearchable",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "isSearchable",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "isSearchable",
+								"position": {
+									"start": {
+										"line": 24,
+										"column": 30,
+										"offset": 380
+									},
+									"end": {
+										"line": 24,
+										"column": 42,
+										"offset": 392
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 24,

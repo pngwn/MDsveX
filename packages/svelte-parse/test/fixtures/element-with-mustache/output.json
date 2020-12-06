@@ -24,8 +24,7 @@
 					}
 				},
 				{
-					"type": "svelteExpression",
-					"value": "name",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 1,
@@ -36,6 +35,22 @@
 							"line": 1,
 							"column": 17,
 							"offset": 16
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "name",
+						"position": {
+							"start": {
+								"line": 1,
+								"column": 12,
+								"offset": 11
+							},
+							"end": {
+								"line": 1,
+								"column": 16,
+								"offset": 15
+							}
 						}
 					}
 				},

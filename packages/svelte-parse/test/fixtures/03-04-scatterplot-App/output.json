@@ -124,8 +124,8 @@
 								},
 								"end": {
 									"line": 17,
-									"column": 18,
-									"offset": 271
+									"column": 19,
+									"offset": 272
 								}
 							}
 						}
@@ -225,8 +225,7 @@
 							"name": "points",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "data.a",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 20,
@@ -237,6 +236,22 @@
 											"line": 20,
 											"column": 30,
 											"offset": 333
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "data.a",
+										"position": {
+											"start": {
+												"line": 20,
+												"column": 23,
+												"offset": 326
+											},
+											"end": {
+												"line": 20,
+												"column": 29,
+												"offset": 332
+											}
 										}
 									}
 								}
@@ -297,8 +312,7 @@
 							"name": "points",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "data.b",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 21,
@@ -309,6 +323,22 @@
 											"line": 21,
 											"column": 30,
 											"offset": 365
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "data.b",
+										"position": {
+											"start": {
+												"line": 21,
+												"column": 23,
+												"offset": 358
+											},
+											"end": {
+												"line": 21,
+												"column": 29,
+												"offset": 364
+											}
 										}
 									}
 								}
@@ -369,8 +399,7 @@
 							"name": "points",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "data.c",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 22,
@@ -381,6 +410,22 @@
 											"line": 22,
 											"column": 30,
 											"offset": 397
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "data.c",
+										"position": {
+											"start": {
+												"line": 22,
+												"column": 23,
+												"offset": 390
+											},
+											"end": {
+												"line": 22,
+												"column": 29,
+												"offset": 396
+											}
 										}
 									}
 								}
@@ -441,8 +486,7 @@
 							"name": "points",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "data.d",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 23,
@@ -453,6 +497,22 @@
 											"line": 23,
 											"column": 30,
 											"offset": 429
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "data.d",
+										"position": {
+											"start": {
+												"line": 23,
+												"column": 23,
+												"offset": 422
+											},
+											"end": {
+												"line": 23,
+												"column": 29,
+												"offset": 428
+											}
 										}
 									}
 								}

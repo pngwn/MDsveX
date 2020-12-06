@@ -10,8 +10,7 @@
 					"name": "class",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "clsxd(\n        'ui',\n        size,\n        divided,\n        [attached, {'attached': attached}],\n        ordered && 'ordered',\n        vertical && 'vertical',\n        stackable && 'stackable',\n        fluid && 'fluid',\n        unstackable && 'unstackable',\n        inverted && 'inverted',\n        className,\n        'steps'\n    )",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 2,
@@ -22,6 +21,22 @@
 									"line": 15,
 									"column": 7,
 									"offset": 345
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "clsxd(\n        'ui',\n        size,\n        divided,\n        [attached, {'attached': attached}],\n        ordered && 'ordered',\n        vertical && 'vertical',\n        stackable && 'stackable',\n        fluid && 'fluid',\n        unstackable && 'unstackable',\n        inverted && 'inverted',\n        className,\n        'steps'\n    )",
+								"position": {
+									"start": {
+										"line": 2,
+										"column": 12,
+										"offset": 16
+									},
+									"end": {
+										"line": 15,
+										"column": 6,
+										"offset": 344
+									}
 								}
 							}
 						}
@@ -46,8 +61,23 @@
 					"name": "...exclude($$props, ['class', 'ordered', 'vertical', 'stackable', 'fluid', 'unstackable', 'attached', 'size', 'inverted'])",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "...exclude($$props, ['class', 'ordered', 'vertical', 'stackable', 'fluid', 'unstackable', 'attached', 'size', 'inverted'])",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "...exclude($$props, ['class', 'ordered', 'vertical', 'stackable', 'fluid', 'unstackable', 'attached', 'size', 'inverted'])",
+								"position": {
+									"start": {
+										"line": 16,
+										"column": 6,
+										"offset": 351
+									},
+									"end": {
+										"line": 16,
+										"column": 128,
+										"offset": 473
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 16,
@@ -148,8 +178,8 @@
 								},
 								"end": {
 									"line": 19,
-									"column": 24,
-									"offset": 520
+									"column": 25,
+									"offset": 521
 								}
 							}
 						}

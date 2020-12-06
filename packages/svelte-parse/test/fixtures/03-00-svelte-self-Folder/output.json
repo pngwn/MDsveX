@@ -134,8 +134,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "toggle",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 38,
@@ -146,6 +145,22 @@
 									"line": 38,
 									"column": 39,
 									"offset": 611
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "toggle",
+								"position": {
+									"start": {
+										"line": 38,
+										"column": 32,
+										"offset": 604
+									},
+									"end": {
+										"line": 38,
+										"column": 38,
+										"offset": 610
+									}
 								}
 							}
 						}
@@ -170,8 +185,7 @@
 			"selfClosing": false,
 			"children": [
 				{
-					"type": "svelteExpression",
-					"value": "name",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 38,
@@ -182,6 +196,22 @@
 							"line": 38,
 							"column": 46,
 							"offset": 618
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "name",
+						"position": {
+							"start": {
+								"line": 38,
+								"column": 41,
+								"offset": 613
+							},
+							"end": {
+								"line": 38,
+								"column": 45,
+								"offset": 617
+							}
 						}
 					}
 				}
@@ -388,8 +418,23 @@
 																					"name": "...file",
 																					"value": [
 																						{
-																							"type": "svelteExpression",
-																							"value": "...file",
+																							"type": "svelteDynamicContent",
+																							"expression": {
+																								"type": "svelteExpression",
+																								"value": "...file",
+																								"position": {
+																									"start": {
+																										"line": 45,
+																										"column": 20,
+																										"offset": 732
+																									},
+																									"end": {
+																										"line": 45,
+																										"column": 27,
+																										"offset": 739
+																									}
+																								}
+																							},
 																							"position": {
 																								"start": {
 																									"line": 45,
@@ -498,8 +543,23 @@
 																					"name": "...file",
 																					"value": [
 																						{
-																							"type": "svelteExpression",
-																							"value": "...file",
+																							"type": "svelteDynamicContent",
+																							"expression": {
+																								"type": "svelteExpression",
+																								"value": "...file",
+																								"position": {
+																									"start": {
+																										"line": 47,
+																										"column": 13,
+																										"offset": 767
+																									},
+																									"end": {
+																										"line": 47,
+																										"column": 20,
+																										"offset": 774
+																									}
+																								}
+																							},
 																							"position": {
 																								"start": {
 																									"line": 47,

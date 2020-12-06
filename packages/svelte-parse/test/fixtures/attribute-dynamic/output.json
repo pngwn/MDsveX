@@ -38,8 +38,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": "color",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 1,
@@ -50,6 +49,22 @@
 									"line": 1,
 									"column": 27,
 									"offset": 26
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "color",
+								"position": {
+									"start": {
+										"line": 1,
+										"column": 21,
+										"offset": 20
+									},
+									"end": {
+										"line": 1,
+										"column": 26,
+										"offset": 25
+									}
 								}
 							}
 						},
@@ -64,8 +79,8 @@
 								},
 								"end": {
 									"line": 1,
-									"column": 28,
-									"offset": 27
+									"column": 29,
+									"offset": 28
 								}
 							}
 						}
@@ -89,8 +104,7 @@
 			"selfClosing": false,
 			"children": [
 				{
-					"type": "svelteExpression",
-					"value": "color",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 1,
@@ -101,6 +115,22 @@
 							"line": 1,
 							"column": 37,
 							"offset": 36
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "color",
+						"position": {
+							"start": {
+								"line": 1,
+								"column": 31,
+								"offset": 30
+							},
+							"end": {
+								"line": 1,
+								"column": 36,
+								"offset": 35
+							}
 						}
 					}
 				}

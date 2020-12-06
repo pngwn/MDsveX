@@ -62,8 +62,7 @@
 					"name": "this",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "constructor",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 11,
@@ -74,6 +73,22 @@
 									"line": 11,
 									"column": 37,
 									"offset": 177
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "constructor",
+								"position": {
+									"start": {
+										"line": 11,
+										"column": 25,
+										"offset": 165
+									},
+									"end": {
+										"line": 11,
+										"column": 36,
+										"offset": 176
+									}
 								}
 							}
 						}
@@ -98,8 +113,23 @@
 					"name": "...$$props",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "...$$props",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "...$$props",
+								"position": {
+									"start": {
+										"line": 11,
+										"column": 39,
+										"offset": 179
+									},
+									"end": {
+										"line": 11,
+										"column": 49,
+										"offset": 189
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 11,

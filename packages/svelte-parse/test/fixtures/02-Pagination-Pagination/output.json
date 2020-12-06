@@ -142,8 +142,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": " ClassNames ",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 140,
@@ -154,6 +153,22 @@
 									"line": 140,
 									"column": 38,
 									"offset": 2649
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": " ClassNames ",
+								"position": {
+									"start": {
+										"line": 140,
+										"column": 25,
+										"offset": 2636
+									},
+									"end": {
+										"line": 140,
+										"column": 37,
+										"offset": 2648
+									}
 								}
 							}
 						}
@@ -251,8 +266,8 @@
 														},
 														"end": {
 															"line": 142,
-															"column": 22,
-															"offset": 2695
+															"column": 23,
+															"offset": 2696
 														}
 													}
 												}
@@ -292,8 +307,7 @@
 											}
 										},
 										{
-											"type": "svelteExpression",
-											"value": "From ",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 143,
@@ -304,6 +318,22 @@
 													"line": 143,
 													"column": 13,
 													"offset": 2710
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "From ",
+												"position": {
+													"start": {
+														"line": 143,
+														"column": 7,
+														"offset": 2704
+													},
+													"end": {
+														"line": 143,
+														"column": 12,
+														"offset": 2709
+													}
 												}
 											}
 										},
@@ -324,8 +354,7 @@
 											}
 										},
 										{
-											"type": "svelteExpression",
-											"value": "To ",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 143,
@@ -336,6 +365,22 @@
 													"line": 143,
 													"column": 22,
 													"offset": 2719
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "To ",
+												"position": {
+													"start": {
+														"line": 143,
+														"column": 18,
+														"offset": 2715
+													},
+													"end": {
+														"line": 143,
+														"column": 21,
+														"offset": 2718
+													}
 												}
 											}
 										},
@@ -356,8 +401,7 @@
 											}
 										},
 										{
-											"type": "svelteExpression",
-											"value": "total ",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 143,
@@ -368,6 +412,22 @@
 													"line": 143,
 													"column": 35,
 													"offset": 2732
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "total ",
+												"position": {
+													"start": {
+														"line": 143,
+														"column": 28,
+														"offset": 2725
+													},
+													"end": {
+														"line": 143,
+														"column": 34,
+														"offset": 2731
+													}
 												}
 											}
 										},
@@ -520,8 +580,8 @@
 														},
 														"end": {
 															"line": 148,
-															"column": 20,
-															"offset": 2792
+															"column": 21,
+															"offset": 2793
 														}
 													}
 												}
@@ -619,8 +679,8 @@
 																				},
 																				"end": {
 																					"line": 150,
-																					"column": 25,
-																					"offset": 2874
+																					"column": 26,
+																					"offset": 2875
 																				}
 																			}
 																		}
@@ -687,8 +747,7 @@
 																			"name": "isSelected",
 																			"value": [
 																				{
-																					"type": "svelteExpression",
-																					"value": "current === page",
+																					"type": "svelteDynamicContent",
 																					"position": {
 																						"start": {
 																							"line": 153,
@@ -699,6 +758,22 @@
 																							"line": 153,
 																							"column": 43,
 																							"offset": 2957
+																						}
+																					},
+																					"expression": {
+																						"type": "svelteExpression",
+																						"value": "current === page",
+																						"position": {
+																							"start": {
+																								"line": 153,
+																								"column": 26,
+																								"offset": 2940
+																							},
+																							"end": {
+																								"line": 153,
+																								"column": 42,
+																								"offset": 2956
+																							}
 																						}
 																					}
 																				}
@@ -723,8 +798,7 @@
 																			"name": "on",
 																			"value": [
 																				{
-																					"type": "svelteExpression",
-																					"value": "() => onPageClick(page)",
+																					"type": "svelteDynamicContent",
 																					"position": {
 																						"start": {
 																							"line": 154,
@@ -735,6 +809,22 @@
 																							"line": 154,
 																							"column": 48,
 																							"offset": 3006
+																						}
+																					},
+																					"expression": {
+																						"type": "svelteExpression",
+																						"value": "() => onPageClick(page)",
+																						"position": {
+																							"start": {
+																								"line": 154,
+																								"column": 24,
+																								"offset": 2982
+																							},
+																							"end": {
+																								"line": 154,
+																								"column": 47,
+																								"offset": 3005
+																							}
 																						}
 																					}
 																				}
@@ -775,8 +865,7 @@
 																			}
 																		},
 																		{
-																			"type": "svelteExpression",
-																			"value": "page ",
+																			"type": "svelteDynamicContent",
 																			"position": {
 																				"start": {
 																					"line": 155,
@@ -787,6 +876,22 @@
 																					"line": 155,
 																					"column": 21,
 																					"offset": 3029
+																				}
+																			},
+																			"expression": {
+																				"type": "svelteExpression",
+																				"value": "page ",
+																				"position": {
+																					"start": {
+																						"line": 155,
+																						"column": 15,
+																						"offset": 3023
+																					},
+																					"end": {
+																						"line": 155,
+																						"column": 20,
+																						"offset": 3028
+																					}
 																				}
 																			}
 																		},
@@ -1043,8 +1148,8 @@
 														},
 														"end": {
 															"line": 163,
-															"column": 37,
-															"offset": 3159
+															"column": 38,
+															"offset": 3160
 														}
 													}
 												}
@@ -1102,8 +1207,8 @@
 																},
 																"end": {
 																	"line": 164,
-																	"column": 24,
-																	"offset": 3185
+																	"column": 25,
+																	"offset": 3186
 																}
 															}
 														}
@@ -1151,8 +1256,7 @@
 															"name": "Icon",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": " ChevronLeftIcon ",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 165,
@@ -1163,6 +1267,22 @@
 																			"line": 165,
 																			"column": 42,
 																			"offset": 3229
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": " ChevronLeftIcon ",
+																		"position": {
+																			"start": {
+																				"line": 165,
+																				"column": 24,
+																				"offset": 3211
+																			},
+																			"end": {
+																				"line": 165,
+																				"column": 41,
+																				"offset": 3228
+																			}
 																		}
 																	}
 																}
@@ -1187,8 +1307,7 @@
 															"name": "isDisabled",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": " IsFirstPage ",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 166,
@@ -1199,6 +1318,22 @@
 																			"line": 166,
 																			"column": 38,
 																			"offset": 3268
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": " IsFirstPage ",
+																		"position": {
+																			"start": {
+																				"line": 166,
+																				"column": 24,
+																				"offset": 3254
+																			},
+																			"end": {
+																				"line": 166,
+																				"column": 37,
+																				"offset": 3267
+																			}
 																		}
 																	}
 																}
@@ -1223,8 +1358,7 @@
 															"name": "on",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": "onPrevClick",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 166,
@@ -1235,6 +1369,22 @@
 																			"line": 166,
 																			"column": 63,
 																			"offset": 3293
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": "onPrevClick",
+																		"position": {
+																			"start": {
+																				"line": 166,
+																				"column": 51,
+																				"offset": 3281
+																			},
+																			"end": {
+																				"line": 166,
+																				"column": 62,
+																				"offset": 3292
+																			}
 																		}
 																	}
 																}
@@ -1353,8 +1503,8 @@
 																},
 																"end": {
 																	"line": 169,
-																	"column": 24,
-																	"offset": 3350
+																	"column": 25,
+																	"offset": 3351
 																}
 															}
 														}
@@ -1402,8 +1552,7 @@
 															"name": "Icon",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": " ChevronRightIcon ",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 170,
@@ -1414,6 +1563,22 @@
 																			"line": 170,
 																			"column": 43,
 																			"offset": 3395
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": " ChevronRightIcon ",
+																		"position": {
+																			"start": {
+																				"line": 170,
+																				"column": 24,
+																				"offset": 3376
+																			},
+																			"end": {
+																				"line": 170,
+																				"column": 42,
+																				"offset": 3394
+																			}
 																		}
 																	}
 																}
@@ -1438,8 +1603,7 @@
 															"name": "isDisabled",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": " IsLastPage ",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 171,
@@ -1450,6 +1614,22 @@
 																			"line": 171,
 																			"column": 37,
 																			"offset": 3433
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": " IsLastPage ",
+																		"position": {
+																			"start": {
+																				"line": 171,
+																				"column": 24,
+																				"offset": 3420
+																			},
+																			"end": {
+																				"line": 171,
+																				"column": 36,
+																				"offset": 3432
+																			}
 																		}
 																	}
 																}
@@ -1474,8 +1654,7 @@
 															"name": "on",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": "onNextClick",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 171,
@@ -1486,6 +1665,22 @@
 																			"line": 171,
 																			"column": 62,
 																			"offset": 3458
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": "onNextClick",
+																		"position": {
+																			"start": {
+																				"line": 171,
+																				"column": 50,
+																				"offset": 3446
+																			},
+																			"end": {
+																				"line": 171,
+																				"column": 61,
+																				"offset": 3457
+																			}
 																		}
 																	}
 																}

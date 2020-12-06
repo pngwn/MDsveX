@@ -10,8 +10,7 @@
 					"name": "use",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "use",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 2,
@@ -22,6 +21,22 @@
 									"line": 2,
 									"column": 22,
 									"offset": 24
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "use",
+								"position": {
+									"start": {
+										"line": 2,
+										"column": 18,
+										"offset": 20
+									},
+									"end": {
+										"line": 2,
+										"column": 21,
+										"offset": 23
+									}
 								}
 							}
 						}
@@ -67,8 +82,7 @@
 					"name": "class",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "clsxd(\n        code,\n        name,\n        alias,\n        className,\n        'flag'\n    )",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 4,
@@ -79,6 +93,22 @@
 									"line": 10,
 									"column": 7,
 									"offset": 142
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "clsxd(\n        code,\n        name,\n        alias,\n        className,\n        'flag'\n    )",
+								"position": {
+									"start": {
+										"line": 4,
+										"column": 13,
+										"offset": 52
+									},
+									"end": {
+										"line": 10,
+										"column": 6,
+										"offset": 141
+									}
 								}
 							}
 						}
@@ -103,8 +133,23 @@
 					"name": "...exclude($$props, ['use', 'class', 'code', 'name', 'alias'])",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "...exclude($$props, ['use', 'class', 'code', 'name', 'alias'])",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "...exclude($$props, ['use', 'class', 'code', 'name', 'alias'])",
+								"position": {
+									"start": {
+										"line": 11,
+										"column": 6,
+										"offset": 149
+									},
+									"end": {
+										"line": 11,
+										"column": 68,
+										"offset": 211
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 11,
@@ -185,8 +230,8 @@
 								},
 								"end": {
 									"line": 14,
-									"column": 24,
-									"offset": 243
+									"column": 25,
+									"offset": 244
 								}
 							}
 						}

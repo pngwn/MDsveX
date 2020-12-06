@@ -72,8 +72,8 @@
 								},
 								"end": {
 									"line": 95,
-									"column": 18,
-									"offset": 2247
+									"column": 19,
+									"offset": 2248
 								}
 							}
 						}
@@ -151,8 +151,23 @@
 					"name": "...props",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "...props",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "...props",
+								"position": {
+									"start": {
+										"line": 114,
+										"column": 7,
+										"offset": 2511
+									},
+									"end": {
+										"line": 114,
+										"column": 15,
+										"offset": 2519
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 114,
@@ -215,8 +230,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": "type",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 114,
@@ -228,6 +242,22 @@
 									"column": 36,
 									"offset": 2540
 								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "type",
+								"position": {
+									"start": {
+										"line": 114,
+										"column": 31,
+										"offset": 2535
+									},
+									"end": {
+										"line": 114,
+										"column": 35,
+										"offset": 2539
+									}
+								}
 							}
 						},
 						{
@@ -247,8 +277,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": "fieldType",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 114,
@@ -260,6 +289,22 @@
 									"column": 48,
 									"offset": 2552
 								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "fieldType",
+								"position": {
+									"start": {
+										"line": 114,
+										"column": 38,
+										"offset": 2542
+									},
+									"end": {
+										"line": 114,
+										"column": 47,
+										"offset": 2551
+									}
+								}
 							}
 						},
 						{
@@ -279,8 +324,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": "newPosition",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 114,
@@ -291,6 +335,22 @@
 									"line": 114,
 									"column": 62,
 									"offset": 2566
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "newPosition",
+								"position": {
+									"start": {
+										"line": 114,
+										"column": 50,
+										"offset": 2554
+									},
+									"end": {
+										"line": 114,
+										"column": 61,
+										"offset": 2565
+									}
 								}
 							}
 						},
@@ -311,8 +371,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": "$$props.class || ''",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 114,
@@ -323,6 +382,22 @@
 									"line": 114,
 									"column": 84,
 									"offset": 2588
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "$$props.class || ''",
+								"position": {
+									"start": {
+										"line": 114,
+										"column": 64,
+										"offset": 2568
+									},
+									"end": {
+										"line": 114,
+										"column": 83,
+										"offset": 2587
+									}
 								}
 							}
 						}
@@ -347,8 +422,7 @@
 					"name": "class",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "expanded",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 114,
@@ -359,6 +433,22 @@
 									"line": 114,
 									"column": 114,
 									"offset": 2618
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "expanded",
+								"position": {
+									"start": {
+										"line": 114,
+										"column": 105,
+										"offset": 2609
+									},
+									"end": {
+										"line": 114,
+										"column": 113,
+										"offset": 2617
+									}
 								}
 							}
 						}
@@ -384,8 +474,7 @@
 					"name": "class",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "groupMultiline",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 114,
@@ -396,6 +485,22 @@
 									"line": 114,
 									"column": 158,
 									"offset": 2662
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "groupMultiline",
+								"position": {
+									"start": {
+										"line": 114,
+										"column": 143,
+										"offset": 2647
+									},
+									"end": {
+										"line": 114,
+										"column": 157,
+										"offset": 2661
+									}
 								}
 							}
 						}
@@ -421,8 +526,7 @@
 					"name": "bind",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "el",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 114,
@@ -433,6 +537,22 @@
 									"line": 114,
 									"column": 173,
 									"offset": 2677
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "el",
+								"position": {
+									"start": {
+										"line": 114,
+										"column": 170,
+										"offset": 2674
+									},
+									"end": {
+										"line": 114,
+										"column": 172,
+										"offset": 2676
+									}
 								}
 							}
 						}
@@ -521,8 +641,7 @@
 											"name": "for",
 											"value": [
 												{
-													"type": "svelteExpression",
-													"value": "labelFor",
+													"type": "svelteDynamicContent",
 													"position": {
 														"start": {
 															"line": 116,
@@ -533,6 +652,22 @@
 															"line": 116,
 															"column": 26,
 															"offset": 2718
+														}
+													},
+													"expression": {
+														"type": "svelteExpression",
+														"value": "labelFor",
+														"position": {
+															"start": {
+																"line": 116,
+																"column": 17,
+																"offset": 2709
+															},
+															"end": {
+																"line": 116,
+																"column": 25,
+																"offset": 2717
+															}
 														}
 													}
 												}
@@ -567,8 +702,8 @@
 														},
 														"end": {
 															"line": 116,
-															"column": 39,
-															"offset": 2731
+															"column": 40,
+															"offset": 2732
 														}
 													}
 												}
@@ -593,8 +728,7 @@
 											"name": "bind",
 											"value": [
 												{
-													"type": "svelteExpression",
-													"value": "labelEl",
+													"type": "svelteDynamicContent",
 													"position": {
 														"start": {
 															"line": 116,
@@ -605,6 +739,22 @@
 															"line": 116,
 															"column": 60,
 															"offset": 2752
+														}
+													},
+													"expression": {
+														"type": "svelteExpression",
+														"value": "labelEl",
+														"position": {
+															"start": {
+																"line": 116,
+																"column": 52,
+																"offset": 2744
+															},
+															"end": {
+																"line": 116,
+																"column": 59,
+																"offset": 2751
+															}
 														}
 													}
 												}
@@ -629,8 +779,7 @@
 									"selfClosing": false,
 									"children": [
 										{
-											"type": "svelteExpression",
-											"value": "label",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 116,
@@ -641,6 +790,22 @@
 													"line": 116,
 													"column": 68,
 													"offset": 2760
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "label",
+												"position": {
+													"start": {
+														"line": 116,
+														"column": 62,
+														"offset": 2754
+													},
+													"end": {
+														"line": 116,
+														"column": 67,
+														"offset": 2759
+													}
 												}
 											}
 										}
@@ -727,8 +892,7 @@
 							"name": "statusType",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "type",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 118,
@@ -739,6 +903,22 @@
 											"line": 118,
 											"column": 26,
 											"offset": 2802
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "type",
+										"position": {
+											"start": {
+												"line": 118,
+												"column": 21,
+												"offset": 2797
+											},
+											"end": {
+												"line": 118,
+												"column": 25,
+												"offset": 2801
+											}
 										}
 									}
 								}
@@ -867,8 +1047,7 @@
 													}
 												},
 												{
-													"type": "svelteExpression",
-													"value": "type",
+													"type": "svelteDynamicContent",
 													"position": {
 														"start": {
 															"line": 120,
@@ -879,6 +1058,22 @@
 															"line": 120,
 															"column": 26,
 															"offset": 2847
+														}
+													},
+													"expression": {
+														"type": "svelteExpression",
+														"value": "type",
+														"position": {
+															"start": {
+																"line": 120,
+																"column": 21,
+																"offset": 2842
+															},
+															"end": {
+																"line": 120,
+																"column": 25,
+																"offset": 2846
+															}
 														}
 													}
 												}
@@ -903,8 +1098,7 @@
 											"name": "bind",
 											"value": [
 												{
-													"type": "svelteExpression",
-													"value": "messageEl",
+													"type": "svelteDynamicContent",
 													"position": {
 														"start": {
 															"line": 120,
@@ -915,6 +1109,22 @@
 															"line": 120,
 															"column": 49,
 															"offset": 2870
+														}
+													},
+													"expression": {
+														"type": "svelteExpression",
+														"value": "messageEl",
+														"position": {
+															"start": {
+																"line": 120,
+																"column": 39,
+																"offset": 2860
+															},
+															"end": {
+																"line": 120,
+																"column": 48,
+																"offset": 2869
+															}
 														}
 													}
 												}
@@ -939,8 +1149,7 @@
 									"selfClosing": false,
 									"children": [
 										{
-											"type": "svelteExpression",
-											"value": "message",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 120,
@@ -951,6 +1160,22 @@
 													"line": 120,
 													"column": 59,
 													"offset": 2880
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "message",
+												"position": {
+													"start": {
+														"line": 120,
+														"column": 51,
+														"offset": 2872
+													},
+													"end": {
+														"line": 120,
+														"column": 58,
+														"offset": 2879
+													}
 												}
 											}
 										}

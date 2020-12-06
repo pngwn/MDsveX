@@ -114,8 +114,23 @@
 					"name": "...props",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "...props",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "...props",
+								"position": {
+									"start": {
+										"line": 33,
+										"column": 10,
+										"offset": 801
+									},
+									"end": {
+										"line": 33,
+										"column": 18,
+										"offset": 809
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 33,
@@ -150,8 +165,7 @@
 					"name": "transitionOut",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "true",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 33,
@@ -162,6 +176,22 @@
 									"line": 33,
 									"column": 40,
 									"offset": 831
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "true",
+								"position": {
+									"start": {
+										"line": 33,
+										"column": 35,
+										"offset": 826
+									},
+									"end": {
+										"line": 33,
+										"column": 39,
+										"offset": 830
+									}
 								}
 							}
 						}
@@ -209,8 +239,23 @@
 							"name": "...notificationProps",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "...notificationProps",
+									"type": "svelteDynamicContent",
+									"expression": {
+										"type": "svelteExpression",
+										"value": "...notificationProps",
+										"position": {
+											"start": {
+												"line": 34,
+												"column": 18,
+												"offset": 850
+											},
+											"end": {
+												"line": 34,
+												"column": 38,
+												"offset": 870
+											}
+										}
+									},
 									"position": {
 										"start": {
 											"line": 34,

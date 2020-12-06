@@ -10,8 +10,7 @@
 					"name": "use",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "t('tooltip msg')",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 1,
@@ -22,6 +21,22 @@
 									"line": 1,
 									"column": 39,
 									"offset": 38
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "t('tooltip msg')",
+								"position": {
+									"start": {
+										"line": 1,
+										"column": 22,
+										"offset": 21
+									},
+									"end": {
+										"line": 1,
+										"column": 38,
+										"offset": 37
+									}
 								}
 							}
 						}

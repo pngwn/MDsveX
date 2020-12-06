@@ -62,8 +62,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "showModal",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 26,
@@ -74,6 +73,22 @@
 									"line": 26,
 									"column": 30,
 									"offset": 484
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "showModal",
+								"position": {
+									"start": {
+										"line": 26,
+										"column": 20,
+										"offset": 474
+									},
+									"end": {
+										"line": 26,
+										"column": 29,
+										"offset": 483
+									}
 								}
 							}
 						}

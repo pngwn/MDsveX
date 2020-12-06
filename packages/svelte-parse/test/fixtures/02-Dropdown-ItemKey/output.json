@@ -62,8 +62,23 @@
 					"name": "items",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "items",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "items",
+								"position": {
+									"start": {
+										"line": 19,
+										"column": 12,
+										"offset": 292
+									},
+									"end": {
+										"line": 19,
+										"column": 17,
+										"offset": 297
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 19,
@@ -98,8 +113,23 @@
 					"name": "itemKey",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "itemKey",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "itemKey",
+								"position": {
+									"start": {
+										"line": 19,
+										"column": 20,
+										"offset": 300
+									},
+									"end": {
+										"line": 19,
+										"column": 27,
+										"offset": 307
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 19,

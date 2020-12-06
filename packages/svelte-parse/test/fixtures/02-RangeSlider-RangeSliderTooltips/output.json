@@ -82,8 +82,23 @@
 					"name": "tooltip",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "tooltip",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "tooltip",
+								"position": {
+									"start": {
+										"line": 9,
+										"column": 27,
+										"offset": 197
+									},
+									"end": {
+										"line": 9,
+										"column": 34,
+										"offset": 204
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 9,
@@ -168,8 +183,7 @@
 					}
 				},
 				{
-					"type": "svelteExpression",
-					"value": "JSON.stringify(values)",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 11,
@@ -180,6 +194,22 @@
 							"line": 11,
 							"column": 38,
 							"offset": 259
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "JSON.stringify(values)",
+						"position": {
+							"start": {
+								"line": 11,
+								"column": 15,
+								"offset": 236
+							},
+							"end": {
+								"line": 11,
+								"column": 37,
+								"offset": 258
+							}
 						}
 					}
 				}

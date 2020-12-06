@@ -76,8 +76,7 @@
 					}
 				},
 				{
-					"type": "svelteExpression",
-					"value": "name",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 9,
@@ -88,6 +87,22 @@
 							"line": 9,
 							"column": 17,
 							"offset": 95
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "name",
+						"position": {
+							"start": {
+								"line": 9,
+								"column": 12,
+								"offset": 90
+							},
+							"end": {
+								"line": 9,
+								"column": 16,
+								"offset": 94
+							}
 						}
 					}
 				},

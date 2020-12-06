@@ -124,8 +124,8 @@
 								},
 								"end": {
 									"line": 23,
-									"column": 34,
-									"offset": 393
+									"column": 35,
+									"offset": 394
 								}
 							}
 						}
@@ -173,8 +173,7 @@
 							"name": "class",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "!checked",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 24,
@@ -185,6 +184,22 @@
 											"line": 24,
 											"column": 31,
 											"offset": 426
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "!checked",
+										"position": {
+											"start": {
+												"line": 24,
+												"column": 22,
+												"offset": 417
+											},
+											"end": {
+												"line": 24,
+												"column": 30,
+												"offset": 425
+											}
 										}
 									}
 								}
@@ -244,8 +259,8 @@
 										},
 										"end": {
 											"line": 24,
-											"column": 56,
-											"offset": 451
+											"column": 57,
+											"offset": 452
 										}
 									}
 								}
@@ -333,8 +348,8 @@
 										},
 										"end": {
 											"line": 25,
-											"column": 23,
-											"offset": 488
+											"column": 24,
+											"offset": 489
 										}
 									}
 								}
@@ -415,8 +430,7 @@
 							"name": "class",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "checked",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 26,
@@ -427,6 +441,22 @@
 											"line": 26,
 											"column": 30,
 											"offset": 533
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "checked",
+										"position": {
+											"start": {
+												"line": 26,
+												"column": 22,
+												"offset": 525
+											},
+											"end": {
+												"line": 26,
+												"column": 29,
+												"offset": 532
+											}
 										}
 									}
 								}
