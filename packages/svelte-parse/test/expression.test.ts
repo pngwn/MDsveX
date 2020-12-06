@@ -22,6 +22,7 @@ expression('parses a simple expression', () => {
 	});
 
 	assert.equal(parsed, <SvelteDynamicContent>{
+		type: 'svelteDynamicContent',
 		expression: { type: 'svelteExpression', value: 'hello' },
 	});
 });
@@ -35,6 +36,7 @@ expression('parses nested braces', () => {
 	});
 
 	assert.equal(parsed, <SvelteDynamicContent>{
+		type: 'svelteDynamicContent',
 		expression: {
 			type: 'svelteExpression',
 			value: '{{{hello}}}',
@@ -51,6 +53,7 @@ expression('parses nested braces: while ignoring quoted braces: single', () => {
 	});
 
 	assert.equal(parsed, <SvelteDynamicContent>{
+		type: 'svelteDynamicContent',
 		expression: {
 			type: 'svelteExpression',
 			value: "{{{'}'}}}",
@@ -67,6 +70,7 @@ expression('handles escaped single-quotes', () => {
 	});
 
 	assert.equal(parsed, <SvelteDynamicContent>{
+		type: 'svelteDynamicContent',
 		expression: {
 			type: 'svelteExpression',
 			value: "{{{'}\\''}}}",
@@ -83,6 +87,7 @@ expression('parses nested braces: while ignoring quoted braces: double', () => {
 	});
 
 	assert.equal(parsed, <SvelteDynamicContent>{
+		type: 'svelteDynamicContent',
 		expression: {
 			type: 'svelteExpression',
 			value: `{{{"}"}}}`,
@@ -99,6 +104,7 @@ expression('handles escaped double-quotes', () => {
 	});
 
 	assert.equal(parsed, <SvelteDynamicContent>{
+		type: 'svelteDynamicContent',
 		expression: {
 			type: 'svelteExpression',
 			value: '{{{"}\\""}}}',
@@ -117,6 +123,7 @@ expression(
 		});
 
 		assert.equal(parsed, <SvelteDynamicContent>{
+			type: 'svelteDynamicContent',
 			expression: {
 				type: 'svelteExpression',
 				value: '{{{`}`}}}',
@@ -134,6 +141,7 @@ expression('handles escaped backticks', () => {
 	});
 
 	assert.equal(parsed, <SvelteDynamicContent>{
+		type: 'svelteDynamicContent',
 		expression: {
 			type: 'svelteExpression',
 			value: '{{{`}\\``}}}',
@@ -150,6 +158,7 @@ expression.skip('parses nested braces: while ignoring regex', () => {
 	});
 
 	assert.equal(parsed, <SvelteDynamicContent>{
+		type: 'svelteDynamicContent',
 		expression: {
 			type: 'svelteExpression',
 			value: '(/}/gi)',
@@ -166,6 +175,7 @@ expression.skip('parses nested braces: while ignoring regex', () => {
 	});
 
 	assert.equal(parsed, <SvelteDynamicContent>{
+		type: 'svelteDynamicContent',
 		expression: {
 			type: 'svelteExpression',
 			value: `(/\\/}/gi)`,
@@ -182,6 +192,7 @@ expression('handles quoted slashes', () => {
 	});
 
 	assert.equal(parsed, <SvelteDynamicContent>{
+		type: 'svelteDynamicContent',
 		expression: {
 			type: 'svelteExpression',
 			value: '"/}/gi"',
@@ -198,6 +209,7 @@ expression('ignores nested quotes', () => {
 	});
 
 	assert.equal(parsed, <SvelteDynamicContent>{
+		type: 'svelteDynamicContent',
 		expression: {
 			type: 'svelteExpression',
 			value: '{{{`"}`}}}',
@@ -440,16 +452,22 @@ expression(
 							value: '   ',
 						},
 						{
-							type: 'svelteExpression',
-							value: 'value',
+							type: 'svelteDynamicContent',
+							expression: {
+								type: 'svelteExpression',
+								value: 'value',
+							},
 						},
 						{
 							type: 'text',
 							value: '   ',
 						},
 						{
-							type: 'svelteExpression',
-							value: 'value',
+							type: 'svelteDynamicContent',
+							expression: {
+								type: 'svelteExpression',
+								value: 'value',
+							},
 						},
 						{
 							type: 'text',
@@ -493,8 +511,11 @@ expression(
 									value: ' ',
 								},
 								{
-									type: 'svelteExpression',
-									value: 'color',
+									type: 'svelteDynamicContent',
+									expression: {
+										type: 'svelteExpression',
+										value: 'color',
+									},
 								},
 								{
 									type: 'text',
@@ -508,8 +529,11 @@ expression(
 					selfClosing: false,
 					children: [
 						{
-							type: 'svelteExpression',
-							value: 'color',
+							type: 'svelteDynamicContent',
+							expression: {
+								type: 'svelteExpression',
+								value: 'color',
+							},
 						},
 					],
 				},
@@ -666,7 +690,7 @@ expression('parses expressions containing slashes', () => {
 
 	assert.equal(parsed, {
 		type: 'root',
-		children: [
+		children: <Array<SvelteElement>>[
 			{
 				type: 'svelteElement',
 				tagName: 'text',
@@ -676,8 +700,11 @@ expression('parses expressions containing slashes', () => {
 						name: 'x',
 						value: [
 							{
-								type: 'svelteExpression',
-								value: 'barWidth/2',
+								type: 'svelteDynamicContent',
+								expression: {
+									type: 'svelteExpression',
+									value: 'barWidth/2',
+								},
 							},
 						],
 						modifiers: [],
