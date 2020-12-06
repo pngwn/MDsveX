@@ -270,10 +270,12 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 					//@ts-ignore
 					current_node.position.end = place();
 				}
+				chomp();
+				if (node_stack.length === 1) break;
 
 				pop_node();
 				pop_state();
-				chomp();
+
 				continue;
 			}
 
@@ -539,7 +541,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		// we are inside a start tag after the name
 		if (current_state === State.IN_TAG_BODY) {
 			if (char === OPEN_BRACE) {
-				console.log('BOOOOOOOOOOO');
 				set_state(State.IN_SHORTHAND_ATTR);
 				const _node = <Property>{
 					type: 'svelteProperty',
@@ -748,25 +749,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			set_state(State.IN_UNQUOTED_ATTR_VALUE, true);
 
-			// 	_n = <SvelteExpression>{ type: 'svelteExpression', value: '' };
-			// 	(current_node as Property).value.push(_n as SvelteExpression);
-			// 	push_node(_n);
-			// 	if (generatePositions)
-			// 		//@ts-ignore
-			// 		_n.position = { start: place(), end: {} };
-			// 	continue;
-			// } else {
-			// 	set_state(State.IN_UNQUOTED_ATTR_VALUE, true);
-			// 	_n = { type: 'text', value: '' };
-			// 	(current_node as Property).value.push(_n as Text);
-			// 	push_node(_n);
-			// 	if (generatePositions)
-			// 		//@ts-ignore
-			// 		_n.position = { start: place(), end: {} };
-
 			continue;
-
-			// unquoted
 		}
 
 		if (current_state === State.IN_UNQUOTED_ATTR_VALUE) {
@@ -787,10 +770,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				}
 
 				pop_state();
-				// if (generatePositions)
-				// 	//@ts-ignore
-				// 	current_node.position.end = place();
-				// pop_node();
+
 				if (generatePositions)
 					//@ts-ignore
 					current_node.position.end = place();
@@ -843,34 +823,38 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			if (value[index] === quote_type) {
 				//@ts-ignore
 				if (generatePositions) current_node.position.end = place();
-				//end
 				pop_node();
 				quote_type = '';
 				chomp();
 				pop_state();
 				//@ts-ignore
-				if (generatePositions) current_node.position.end = place();
-				pop_node();
+				if (current_node.type !== 'svelteElement') {
+					//@ts-ignore
+					if (generatePositions) current_node.position.end = place();
+					pop_node();
+				}
 
 				continue;
 			}
 
 			if (char === OPEN_BRACE) {
+				console.log(state, node_stack);
 				//@ts-ignore
 				if (generatePositions && current_node.type !== 'blank')
 					//@ts-ignore
 					current_node.position.end = place();
-				pop_node();
-				_n = {
-					type: 'svelteExpression',
-					value: '',
+				//@ts-ignore
+				current_node.type !== 'svelteProperty' && pop_node();
+
+				_n = <SvelteDynamicContent>{
+					type: 'svelteDynamicContent',
 				};
-				(current_node as Property).value.push(_n as SvelteExpression);
+				(current_node as Property).value.push(_n as SvelteDynamicContent);
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
 				push_node(_n);
-				set_state(State.IN_EXPRESSION);
+				set_state(State.IN_DYNAMIC_CONTENT);
 				chomp();
 				continue;
 			}
@@ -882,14 +866,18 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			// " ", "\n" => still in the attribute value but make a new node
 			if (char === SPACE || char === TAB || char === LINEFEED) {
+				console.log(state, node_stack);
 				const _c = current_node as Text | SvelteExpression;
 				if (_c.type === 'text' && RE_ONLY_WHITESPACE.test(_c.value)) {
 					_c.value += value[index];
 					chomp();
 					continue;
 				}
-				pop_node();
+
+				//@ts-ignore
+				current_node.type !== 'svelteProperty' && pop_node();
 				_n = { type: 'text', value: value[index] };
+
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
@@ -900,7 +888,9 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (value.charCodeAt(index - 1) === CLOSE_BRACE) {
-				pop_node();
+				console.log(state, node_stack);
+				//@ts-ignore
+				current_node.type !== 'svelteProperty' && pop_node();
 				_n = { type: 'text', value: value[index] };
 				if (generatePositions)
 					//@ts-ignore
