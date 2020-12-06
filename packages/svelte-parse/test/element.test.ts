@@ -1716,8 +1716,11 @@ element('parses quoted attribute expressions with space', () => {
 				name: 'disabled',
 				value: [
 					{
-						type: 'svelteExpression',
-						value: '!first || !last',
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: '!first || !last',
+						},
 					},
 				],
 				shorthand: 'none',
@@ -1746,8 +1749,11 @@ element('parses svelte special elements', () => {
 				name: 'tag',
 				value: [
 					{
-						type: 'svelteExpression',
-						value: 'null',
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: 'null',
+						},
 					},
 				],
 				shorthand: 'none',
@@ -1776,8 +1782,11 @@ element('parses svelte special elements', () => {
 				name: 'tag',
 				value: [
 					{
-						type: 'svelteExpression',
-						value: 'null',
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: 'null',
+						},
 					},
 				],
 				shorthand: 'none',
