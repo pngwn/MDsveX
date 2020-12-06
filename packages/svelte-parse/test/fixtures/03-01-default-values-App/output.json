@@ -62,8 +62,7 @@
 					"name": "answer",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "42",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 5,
@@ -74,6 +73,22 @@
 									"line": 5,
 									"column": 20,
 									"offset": 78
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "42",
+								"position": {
+									"start": {
+										"line": 5,
+										"column": 17,
+										"offset": 75
+									},
+									"end": {
+										"line": 5,
+										"column": 19,
+										"offset": 77
+									}
 								}
 							}
 						}

@@ -62,8 +62,7 @@
 					"name": "Icon",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": " AlertIcon ",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 10,
@@ -74,6 +73,22 @@
 									"line": 10,
 									"column": 25,
 									"offset": 287
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": " AlertIcon ",
+								"position": {
+									"start": {
+										"line": 10,
+										"column": 13,
+										"offset": 275
+									},
+									"end": {
+										"line": 10,
+										"column": 24,
+										"offset": 286
+									}
 								}
 							}
 						}
@@ -98,8 +113,23 @@
 					"name": " iconPosition ",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": " iconPosition ",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": " iconPosition ",
+								"position": {
+									"start": {
+										"line": 10,
+										"column": 28,
+										"offset": 290
+									},
+									"end": {
+										"line": 10,
+										"column": 42,
+										"offset": 304
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 10,
@@ -133,8 +163,7 @@
 			"selfClosing": false,
 			"children": [
 				{
-					"type": "svelteExpression",
-					"value": "tabLabel ",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 10,
@@ -145,6 +174,22 @@
 							"line": 10,
 							"column": 56,
 							"offset": 318
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "tabLabel ",
+						"position": {
+							"start": {
+								"line": 10,
+								"column": 46,
+								"offset": 308
+							},
+							"end": {
+								"line": 10,
+								"column": 55,
+								"offset": 317
+							}
 						}
 					}
 				}

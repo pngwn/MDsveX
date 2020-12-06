@@ -62,8 +62,23 @@
 					"name": " items ",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": " items ",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": " items ",
+								"position": {
+									"start": {
+										"line": 21,
+										"column": 12,
+										"offset": 309
+									},
+									"end": {
+										"line": 21,
+										"column": 19,
+										"offset": 316
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 21,
@@ -98,8 +113,23 @@
 					"name": " isHoverable ",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": " isHoverable ",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": " isHoverable ",
+								"position": {
+									"start": {
+										"line": 21,
+										"column": 22,
+										"offset": 319
+									},
+									"end": {
+										"line": 21,
+										"column": 35,
+										"offset": 332
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 21,

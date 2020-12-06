@@ -62,8 +62,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "reset",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 9,
@@ -74,6 +73,22 @@
 									"line": 9,
 									"column": 25,
 									"offset": 122
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "reset",
+								"position": {
+									"start": {
+										"line": 9,
+										"column": 19,
+										"offset": 116
+									},
+									"end": {
+										"line": 9,
+										"column": 24,
+										"offset": 121
+									}
 								}
 							}
 						}

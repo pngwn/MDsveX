@@ -209,8 +209,23 @@
 									"name": "todo",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "todo",
+											"type": "svelteDynamicContent",
+											"expression": {
+												"type": "svelteExpression",
+												"value": "todo",
+												"position": {
+													"start": {
+														"line": 32,
+														"column": 18,
+														"offset": 621
+													},
+													"end": {
+														"line": 32,
+														"column": 22,
+														"offset": 625
+													}
+												}
+											},
 											"position": {
 												"start": {
 													"line": 32,
@@ -245,8 +260,7 @@
 									"name": "on",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "() => toggle(todo.id)",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 32,
@@ -257,6 +271,22 @@
 													"line": 32,
 													"column": 57,
 													"offset": 660
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "() => toggle(todo.id)",
+												"position": {
+													"start": {
+														"line": 32,
+														"column": 35,
+														"offset": 638
+													},
+													"end": {
+														"line": 32,
+														"column": 56,
+														"offset": 659
+													}
 												}
 											}
 										}
@@ -454,8 +484,23 @@
 									"name": "todo",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "todo",
+											"type": "svelteDynamicContent",
+											"expression": {
+												"type": "svelteExpression",
+												"value": "todo",
+												"position": {
+													"start": {
+														"line": 37,
+														"column": 16,
+														"offset": 727
+													},
+													"end": {
+														"line": 37,
+														"column": 20,
+														"offset": 731
+													}
+												}
+											},
 											"position": {
 												"start": {
 													"line": 37,
@@ -490,8 +535,7 @@
 									"name": "on",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "() => toggle(todo.id)",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 37,
@@ -502,6 +546,22 @@
 													"line": 37,
 													"column": 55,
 													"offset": 766
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "() => toggle(todo.id)",
+												"position": {
+													"start": {
+														"line": 37,
+														"column": 33,
+														"offset": 744
+													},
+													"end": {
+														"line": 37,
+														"column": 54,
+														"offset": 765
+													}
 												}
 											}
 										}

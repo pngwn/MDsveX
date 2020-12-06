@@ -114,8 +114,7 @@
 					"name": "class",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "isDisabled ? 'disabled' : ''",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 31,
@@ -126,6 +125,22 @@
 									"line": 31,
 									"column": 45,
 									"offset": 528
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "isDisabled ? 'disabled' : ''",
+								"position": {
+									"start": {
+										"line": 31,
+										"column": 16,
+										"offset": 499
+									},
+									"end": {
+										"line": 31,
+										"column": 44,
+										"offset": 527
+									}
 								}
 							}
 						}
@@ -193,8 +208,23 @@
 							"name": "isDisabled",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "isDisabled",
+									"type": "svelteDynamicContent",
+									"expression": {
+										"type": "svelteExpression",
+										"value": "isDisabled",
+										"position": {
+											"start": {
+												"line": 32,
+												"column": 29,
+												"offset": 559
+											},
+											"end": {
+												"line": 32,
+												"column": 39,
+												"offset": 569
+											}
+										}
+									},
 									"position": {
 										"start": {
 											"line": 32,
@@ -263,8 +293,7 @@
 					"selfClosing": false,
 					"children": [
 						{
-							"type": "svelteExpression",
-							"value": "Label",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 33,
@@ -275,6 +304,22 @@
 									"line": 33,
 									"column": 16,
 									"offset": 589
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "Label",
+								"position": {
+									"start": {
+										"line": 33,
+										"column": 10,
+										"offset": 583
+									},
+									"end": {
+										"line": 33,
+										"column": 15,
+										"offset": 588
+									}
 								}
 							}
 						}
@@ -369,8 +414,7 @@
 							"name": "on",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "() => isChecked = !isChecked ",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 37,
@@ -381,6 +425,22 @@
 											"line": 37,
 											"column": 52,
 											"offset": 662
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "() => isChecked = !isChecked ",
+										"position": {
+											"start": {
+												"line": 37,
+												"column": 22,
+												"offset": 632
+											},
+											"end": {
+												"line": 37,
+												"column": 51,
+												"offset": 661
+											}
 										}
 									}
 								}
@@ -421,8 +481,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": "isChecked ? 'Uncheck' : 'Check'",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 38,
@@ -433,6 +492,22 @@
 									"line": 38,
 									"column": 38,
 									"offset": 702
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "isChecked ? 'Uncheck' : 'Check'",
+								"position": {
+									"start": {
+										"line": 38,
+										"column": 6,
+										"offset": 670
+									},
+									"end": {
+										"line": 38,
+										"column": 37,
+										"offset": 701
+									}
 								}
 							}
 						},
@@ -491,8 +566,7 @@
 							"name": "on",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "() => isDisabled = !isDisabled ",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 41,
@@ -503,6 +577,22 @@
 											"line": 41,
 											"column": 54,
 											"offset": 769
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "() => isDisabled = !isDisabled ",
+										"position": {
+											"start": {
+												"line": 41,
+												"column": 22,
+												"offset": 737
+											},
+											"end": {
+												"line": 41,
+												"column": 53,
+												"offset": 768
+											}
 										}
 									}
 								}
@@ -543,8 +633,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": "isDisabled ? 'Enable' : 'Disable'",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 42,
@@ -555,6 +644,22 @@
 									"line": 42,
 									"column": 40,
 									"offset": 811
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "isDisabled ? 'Enable' : 'Disable'",
+								"position": {
+									"start": {
+										"line": 42,
+										"column": 6,
+										"offset": 777
+									},
+									"end": {
+										"line": 42,
+										"column": 39,
+										"offset": 810
+									}
 								}
 							}
 						},

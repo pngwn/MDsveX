@@ -114,8 +114,7 @@
 					"name": "bind",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "container",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 46,
@@ -126,6 +125,22 @@
 									"line": 46,
 									"column": 27,
 									"offset": 755
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "container",
+								"position": {
+									"start": {
+										"line": 46,
+										"column": 17,
+										"offset": 745
+									},
+									"end": {
+										"line": 46,
+										"column": 26,
+										"offset": 754
+									}
 								}
 							}
 						}

@@ -10,8 +10,23 @@
 					"name": "id",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "id",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "id",
+								"position": {
+									"start": {
+										"line": 1,
+										"column": 7,
+										"offset": 6
+									},
+									"end": {
+										"line": 1,
+										"column": 9,
+										"offset": 8
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 1,

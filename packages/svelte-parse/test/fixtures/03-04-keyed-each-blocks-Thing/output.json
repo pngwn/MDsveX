@@ -112,8 +112,7 @@
 									}
 								},
 								{
-									"type": "svelteExpression",
-									"value": "initial",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 10,
@@ -124,6 +123,22 @@
 											"line": 10,
 											"column": 42,
 											"offset": 223
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "initial",
+										"position": {
+											"start": {
+												"line": 10,
+												"column": 34,
+												"offset": 215
+											},
+											"end": {
+												"line": 10,
+												"column": 41,
+												"offset": 222
+											}
 										}
 									}
 								}
@@ -229,8 +244,7 @@
 									}
 								},
 								{
-									"type": "svelteExpression",
-									"value": "current",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 11,
@@ -241,6 +255,22 @@
 											"line": 11,
 											"column": 42,
 											"offset": 281
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "current",
+										"position": {
+											"start": {
+												"line": 11,
+												"column": 34,
+												"offset": 273
+											},
+											"end": {
+												"line": 11,
+												"column": 41,
+												"offset": 280
+											}
 										}
 									}
 								}

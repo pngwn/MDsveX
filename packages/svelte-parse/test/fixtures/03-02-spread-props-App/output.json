@@ -62,8 +62,23 @@
 					"name": "...pkg",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "...pkg",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "...pkg",
+								"position": {
+									"start": {
+										"line": 12,
+										"column": 8,
+										"offset": 166
+									},
+									"end": {
+										"line": 12,
+										"column": 14,
+										"offset": 172
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 12,

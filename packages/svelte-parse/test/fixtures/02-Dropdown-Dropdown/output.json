@@ -114,8 +114,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "onResize",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 241,
@@ -126,6 +125,22 @@
 									"line": 241,
 									"column": 37,
 									"offset": 5662
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "onResize",
+								"position": {
+									"start": {
+										"line": 241,
+										"column": 28,
+										"offset": 5653
+									},
+									"end": {
+										"line": 241,
+										"column": 36,
+										"offset": 5661
+									}
 								}
 							}
 						}
@@ -151,8 +166,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "onWindowClick",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 241,
@@ -163,6 +177,22 @@
 									"line": 241,
 									"column": 64,
 									"offset": 5689
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "onWindowClick",
+								"position": {
+									"start": {
+										"line": 241,
+										"column": 50,
+										"offset": 5675
+									},
+									"end": {
+										"line": 241,
+										"column": 63,
+										"offset": 5688
+									}
 								}
 							}
 						}
@@ -224,8 +254,7 @@
 					"name": "bind",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "toggle",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 244,
@@ -236,6 +265,22 @@
 									"line": 244,
 									"column": 21,
 									"offset": 5720
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "toggle",
+								"position": {
+									"start": {
+										"line": 244,
+										"column": 14,
+										"offset": 5713
+									},
+									"end": {
+										"line": 244,
+										"column": 20,
+										"offset": 5719
+									}
 								}
 							}
 						}
@@ -289,8 +334,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": " isBlock ? 'toggle-isBlock' : '' ",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 245,
@@ -301,6 +345,22 @@
 									"line": 245,
 									"column": 52,
 									"offset": 5772
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": " isBlock ? 'toggle-isBlock' : '' ",
+								"position": {
+									"start": {
+										"line": 245,
+										"column": 18,
+										"offset": 5738
+									},
+									"end": {
+										"line": 245,
+										"column": 51,
+										"offset": 5771
+									}
 								}
 							}
 						}
@@ -325,8 +385,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": " clickEd ",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 246,
@@ -337,6 +396,22 @@
 									"line": 246,
 									"column": 24,
 									"offset": 5797
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": " clickEd ",
+								"position": {
+									"start": {
+										"line": 246,
+										"column": 14,
+										"offset": 5787
+									},
+									"end": {
+										"line": 246,
+										"column": 23,
+										"offset": 5796
+									}
 								}
 							}
 						}
@@ -362,8 +437,7 @@
 					"name": "aria-controls",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "id",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 247,
@@ -374,6 +448,22 @@
 									"line": 247,
 									"column": 22,
 									"offset": 5820
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "id",
+								"position": {
+									"start": {
+										"line": 247,
+										"column": 19,
+										"offset": 5817
+									},
+									"end": {
+										"line": 247,
+										"column": 21,
+										"offset": 5819
+									}
 								}
 							}
 						}

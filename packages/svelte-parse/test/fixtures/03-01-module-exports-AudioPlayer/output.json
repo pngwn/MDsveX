@@ -20,8 +20,8 @@
 								},
 								"end": {
 									"line": 1,
-									"column": 24,
-									"offset": 23
+									"column": 25,
+									"offset": 24
 								}
 							}
 						}
@@ -203,8 +203,7 @@
 					"name": "class",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "!paused",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 41,
@@ -215,6 +214,22 @@
 									"line": 41,
 									"column": 33,
 									"offset": 730
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "!paused",
+								"position": {
+									"start": {
+										"line": 41,
+										"column": 25,
+										"offset": 722
+									},
+									"end": {
+										"line": 41,
+										"column": 32,
+										"offset": 729
+									}
 								}
 							}
 						}
@@ -261,8 +276,7 @@
 					"selfClosing": false,
 					"children": [
 						{
-							"type": "svelteExpression",
-							"value": "title",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 42,
@@ -273,6 +287,22 @@
 									"line": 42,
 									"column": 13,
 									"offset": 744
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "title",
+								"position": {
+									"start": {
+										"line": 42,
+										"column": 7,
+										"offset": 738
+									},
+									"end": {
+										"line": 42,
+										"column": 12,
+										"offset": 743
+									}
 								}
 							}
 						}
@@ -319,8 +349,7 @@
 							"selfClosing": false,
 							"children": [
 								{
-									"type": "svelteExpression",
-									"value": "composer",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 43,
@@ -331,6 +360,22 @@
 											"line": 43,
 											"column": 23,
 											"offset": 772
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "composer",
+										"position": {
+											"start": {
+												"line": 43,
+												"column": 14,
+												"offset": 763
+											},
+											"end": {
+												"line": 43,
+												"column": 22,
+												"offset": 771
+											}
 										}
 									}
 								}
@@ -365,8 +410,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": "performer",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 43,
@@ -377,6 +421,22 @@
 									"line": 43,
 									"column": 59,
 									"offset": 808
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "performer",
+								"position": {
+									"start": {
+										"line": 43,
+										"column": 49,
+										"offset": 798
+									},
+									"end": {
+										"line": 43,
+										"column": 58,
+										"offset": 807
+									}
 								}
 							}
 						}
@@ -419,8 +479,7 @@
 							"name": "bind",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "audio",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 46,
@@ -431,6 +490,22 @@
 											"line": 46,
 											"column": 20,
 											"offset": 841
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "audio",
+										"position": {
+											"start": {
+												"line": 46,
+												"column": 14,
+												"offset": 835
+											},
+											"end": {
+												"line": 46,
+												"column": 19,
+												"offset": 840
+											}
 										}
 									}
 								}
@@ -476,8 +551,7 @@
 							"name": "on",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "stopOthers",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 48,
@@ -488,6 +562,22 @@
 											"line": 48,
 											"column": 23,
 											"offset": 878
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "stopOthers",
+										"position": {
+											"start": {
+												"line": 48,
+												"column": 12,
+												"offset": 867
+											},
+											"end": {
+												"line": 48,
+												"column": 22,
+												"offset": 877
+											}
 										}
 									}
 								}
@@ -532,8 +622,23 @@
 							"name": "src",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "src",
+									"type": "svelteDynamicContent",
+									"expression": {
+										"type": "svelteExpression",
+										"value": "src",
+										"position": {
+											"start": {
+												"line": 50,
+												"column": 4,
+												"offset": 893
+											},
+											"end": {
+												"line": 50,
+												"column": 7,
+												"offset": 896
+											}
+										}
+									},
 									"position": {
 										"start": {
 											"line": 50,

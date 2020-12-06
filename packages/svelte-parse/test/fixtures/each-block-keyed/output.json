@@ -48,8 +48,7 @@
 							"selfClosing": false,
 							"children": [
 								{
-									"type": "svelteExpression",
-									"value": "todo",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 2,
@@ -60,6 +59,22 @@
 											"line": 2,
 											"column": 11,
 											"offset": 42
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "todo",
+										"position": {
+											"start": {
+												"line": 2,
+												"column": 6,
+												"offset": 37
+											},
+											"end": {
+												"line": 2,
+												"column": 10,
+												"offset": 41
+											}
 										}
 									}
 								}

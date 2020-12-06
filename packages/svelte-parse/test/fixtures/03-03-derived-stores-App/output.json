@@ -76,8 +76,7 @@
 					}
 				},
 				{
-					"type": "svelteExpression",
-					"value": "formatter.format($time)",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 12,
@@ -88,6 +87,22 @@
 							"line": 12,
 							"column": 42,
 							"offset": 240
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "formatter.format($time)",
+						"position": {
+							"start": {
+								"line": 12,
+								"column": 18,
+								"offset": 216
+							},
+							"end": {
+								"line": 12,
+								"column": 41,
+								"offset": 239
+							}
 						}
 					}
 				}
@@ -144,8 +159,7 @@
 					}
 				},
 				{
-					"type": "svelteExpression",
-					"value": "$elapsed",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 16,
@@ -156,6 +170,22 @@
 							"line": 16,
 							"column": 12,
 							"offset": 291
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "$elapsed",
+						"position": {
+							"start": {
+								"line": 16,
+								"column": 3,
+								"offset": 282
+							},
+							"end": {
+								"line": 16,
+								"column": 11,
+								"offset": 290
+							}
 						}
 					}
 				},
@@ -176,8 +206,7 @@
 					}
 				},
 				{
-					"type": "svelteExpression",
-					"value": "$elapsed === 1 ? 'second' : 'seconds'",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 16,
@@ -188,6 +217,22 @@
 							"line": 16,
 							"column": 52,
 							"offset": 331
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "$elapsed === 1 ? 'second' : 'seconds'",
+						"position": {
+							"start": {
+								"line": 16,
+								"column": 14,
+								"offset": 293
+							},
+							"end": {
+								"line": 16,
+								"column": 51,
+								"offset": 330
+							}
 						}
 					}
 				},

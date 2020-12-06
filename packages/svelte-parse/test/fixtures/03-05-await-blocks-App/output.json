@@ -62,8 +62,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "handleClick",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 20,
@@ -74,6 +73,22 @@
 									"line": 20,
 									"column": 31,
 									"offset": 345
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "handleClick",
+								"position": {
+									"start": {
+										"line": 20,
+										"column": 19,
+										"offset": 333
+									},
+									"end": {
+										"line": 20,
+										"column": 30,
+										"offset": 344
+									}
 								}
 							}
 						}
@@ -308,8 +323,7 @@
 									}
 								},
 								{
-									"type": "svelteExpression",
-									"value": "number",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 27,
@@ -320,6 +334,22 @@
 											"line": 27,
 											"column": 27,
 											"offset": 459
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "number",
+										"position": {
+											"start": {
+												"line": 27,
+												"column": 20,
+												"offset": 452
+											},
+											"end": {
+												"line": 27,
+												"column": 26,
+												"offset": 458
+											}
 										}
 									}
 								}
@@ -446,8 +476,8 @@
 												},
 												"end": {
 													"line": 29,
-													"column": 22,
-													"offset": 500
+													"column": 23,
+													"offset": 501
 												}
 											}
 										}
@@ -471,8 +501,7 @@
 							"selfClosing": false,
 							"children": [
 								{
-									"type": "svelteExpression",
-									"value": "error.message",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 29,
@@ -483,6 +512,22 @@
 											"line": 29,
 											"column": 39,
 											"offset": 517
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "error.message",
+										"position": {
+											"start": {
+												"line": 29,
+												"column": 25,
+												"offset": 503
+											},
+											"end": {
+												"line": 29,
+												"column": 38,
+												"offset": 516
+											}
 										}
 									}
 								}

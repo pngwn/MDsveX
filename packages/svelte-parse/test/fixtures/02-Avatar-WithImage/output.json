@@ -62,8 +62,23 @@
 					"name": "src",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "src",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "src",
+								"position": {
+									"start": {
+										"line": 7,
+										"column": 10,
+										"offset": 130
+									},
+									"end": {
+										"line": 7,
+										"column": 13,
+										"offset": 133
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 7,

@@ -166,8 +166,7 @@
 									}
 								},
 								{
-									"type": "svelteExpression",
-									"value": "theError.message",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 4,
@@ -178,6 +177,22 @@
 											"line": 4,
 											"column": 30,
 											"offset": 86
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "theError.message",
+										"position": {
+											"start": {
+												"line": 4,
+												"column": 13,
+												"offset": 69
+											},
+											"end": {
+												"line": 4,
+												"column": 29,
+												"offset": 85
+											}
 										}
 									}
 								}

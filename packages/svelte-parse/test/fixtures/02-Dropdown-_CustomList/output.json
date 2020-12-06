@@ -136,8 +136,7 @@
 							"name": "on",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": " () => onClick(1) ",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 24,
@@ -148,6 +147,22 @@
 											"line": 24,
 											"column": 51,
 											"offset": 529
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": " () => onClick(1) ",
+										"position": {
+											"start": {
+												"line": 24,
+												"column": 32,
+												"offset": 510
+											},
+											"end": {
+												"line": 24,
+												"column": 50,
+												"offset": 528
+											}
 										}
 									}
 								}
@@ -226,8 +241,7 @@
 							"name": "on",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": " () => onClick(2) ",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 25,
@@ -238,6 +252,22 @@
 											"line": 25,
 											"column": 51,
 											"offset": 611
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": " () => onClick(2) ",
+										"position": {
+											"start": {
+												"line": 25,
+												"column": 32,
+												"offset": 592
+											},
+											"end": {
+												"line": 25,
+												"column": 50,
+												"offset": 610
+											}
 										}
 									}
 								}
@@ -438,8 +468,7 @@
 							"name": "on",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": " () => onClick(4) ",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 29,
@@ -450,6 +479,22 @@
 											"line": 29,
 											"column": 51,
 											"offset": 801
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": " () => onClick(4) ",
+										"position": {
+											"start": {
+												"line": 29,
+												"column": 32,
+												"offset": 782
+											},
+											"end": {
+												"line": 29,
+												"column": 50,
+												"offset": 800
+											}
 										}
 									}
 								}
@@ -528,8 +573,7 @@
 							"name": "on",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": " () => onClick(5) ",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 30,
@@ -540,6 +584,22 @@
 											"line": 30,
 											"column": 51,
 											"offset": 883
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": " () => onClick(5) ",
+										"position": {
+											"start": {
+												"line": 30,
+												"column": 32,
+												"offset": 864
+											},
+											"end": {
+												"line": 30,
+												"column": 50,
+												"offset": 882
+											}
 										}
 									}
 								}
@@ -628,8 +688,8 @@
 										},
 										"end": {
 											"line": 31,
-											"column": 19,
-											"offset": 933
+											"column": 20,
+											"offset": 934
 										}
 									}
 								}
@@ -654,8 +714,7 @@
 							"name": "on",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": " () => onClick('freeballing') ",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 31,
@@ -666,6 +725,22 @@
 											"line": 31,
 											"column": 63,
 											"offset": 977
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": " () => onClick('freeballing') ",
+										"position": {
+											"start": {
+												"line": 31,
+												"column": 32,
+												"offset": 946
+											},
+											"end": {
+												"line": 31,
+												"column": 62,
+												"offset": 976
+											}
 										}
 									}
 								}

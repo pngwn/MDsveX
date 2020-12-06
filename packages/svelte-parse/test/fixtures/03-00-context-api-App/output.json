@@ -62,8 +62,7 @@
 					"name": "lat",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "35",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 6,
@@ -74,6 +73,22 @@
 									"line": 6,
 									"column": 14,
 									"offset": 111
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "35",
+								"position": {
+									"start": {
+										"line": 6,
+										"column": 11,
+										"offset": 108
+									},
+									"end": {
+										"line": 6,
+										"column": 13,
+										"offset": 110
+									}
 								}
 							}
 						}
@@ -98,8 +113,7 @@
 					"name": "lon",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "-84",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 6,
@@ -110,6 +124,22 @@
 									"line": 6,
 									"column": 24,
 									"offset": 121
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "-84",
+								"position": {
+									"start": {
+										"line": 6,
+										"column": 20,
+										"offset": 117
+									},
+									"end": {
+										"line": 6,
+										"column": 23,
+										"offset": 120
+									}
 								}
 							}
 						}
@@ -134,8 +164,7 @@
 					"name": "zoom",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "3.5",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 6,
@@ -146,6 +175,22 @@
 									"line": 6,
 									"column": 35,
 									"offset": 132
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "3.5",
+								"position": {
+									"start": {
+										"line": 6,
+										"column": 31,
+										"offset": 128
+									},
+									"end": {
+										"line": 6,
+										"column": 34,
+										"offset": 131
+									}
 								}
 							}
 						}
@@ -193,8 +238,7 @@
 							"name": "lat",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "37.8225",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 7,
@@ -205,6 +249,22 @@
 											"line": 7,
 											"column": 26,
 											"offset": 159
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "37.8225",
+										"position": {
+											"start": {
+												"line": 7,
+												"column": 18,
+												"offset": 151
+											},
+											"end": {
+												"line": 7,
+												"column": 25,
+												"offset": 158
+											}
 										}
 									}
 								}
@@ -229,8 +289,7 @@
 							"name": "lon",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "-122.0024",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 7,
@@ -241,6 +300,22 @@
 											"line": 7,
 											"column": 42,
 											"offset": 175
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "-122.0024",
+										"position": {
+											"start": {
+												"line": 7,
+												"column": 32,
+												"offset": 165
+											},
+											"end": {
+												"line": 7,
+												"column": 41,
+												"offset": 174
+											}
 										}
 									}
 								}
@@ -323,8 +398,8 @@
 										},
 										"end": {
 											"line": 7,
-											"column": 69,
-											"offset": 202
+											"column": 70,
+											"offset": 203
 										}
 									}
 								}
@@ -385,8 +460,7 @@
 							"name": "lat",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "33.8981",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 8,
@@ -397,6 +471,22 @@
 											"line": 8,
 											"column": 26,
 											"offset": 231
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "33.8981",
+										"position": {
+											"start": {
+												"line": 8,
+												"column": 18,
+												"offset": 223
+											},
+											"end": {
+												"line": 8,
+												"column": 25,
+												"offset": 230
+											}
 										}
 									}
 								}
@@ -421,8 +511,7 @@
 							"name": "lon",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "-118.4169",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 8,
@@ -433,6 +522,22 @@
 											"line": 8,
 											"column": 42,
 											"offset": 247
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "-118.4169",
+										"position": {
+											"start": {
+												"line": 8,
+												"column": 32,
+												"offset": 237
+											},
+											"end": {
+												"line": 8,
+												"column": 41,
+												"offset": 246
+											}
 										}
 									}
 								}
@@ -539,8 +644,8 @@
 										},
 										"end": {
 											"line": 8,
-											"column": 80,
-											"offset": 285
+											"column": 81,
+											"offset": 286
 										}
 									}
 								}
@@ -601,8 +706,7 @@
 							"name": "lat",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "29.7230",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 9,
@@ -613,6 +717,22 @@
 											"line": 9,
 											"column": 26,
 											"offset": 314
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "29.7230",
+										"position": {
+											"start": {
+												"line": 9,
+												"column": 18,
+												"offset": 306
+											},
+											"end": {
+												"line": 9,
+												"column": 25,
+												"offset": 313
+											}
 										}
 									}
 								}
@@ -637,8 +757,7 @@
 							"name": "lon",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "-95.4189",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 9,
@@ -649,6 +768,22 @@
 											"line": 9,
 											"column": 41,
 											"offset": 329
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "-95.4189",
+										"position": {
+											"start": {
+												"line": 9,
+												"column": 32,
+												"offset": 320
+											},
+											"end": {
+												"line": 9,
+												"column": 40,
+												"offset": 328
+											}
 										}
 									}
 								}
@@ -731,8 +866,8 @@
 										},
 										"end": {
 											"line": 9,
-											"column": 69,
-											"offset": 357
+											"column": 70,
+											"offset": 358
 										}
 									}
 								}
@@ -793,8 +928,7 @@
 							"name": "lat",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "28.3378",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 10,
@@ -805,6 +939,22 @@
 											"line": 10,
 											"column": 26,
 											"offset": 386
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "28.3378",
+										"position": {
+											"start": {
+												"line": 10,
+												"column": 18,
+												"offset": 378
+											},
+											"end": {
+												"line": 10,
+												"column": 25,
+												"offset": 385
+											}
 										}
 									}
 								}
@@ -829,8 +979,7 @@
 							"name": "lon",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "-81.3966",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 10,
@@ -841,6 +990,22 @@
 											"line": 10,
 											"column": 41,
 											"offset": 401
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "-81.3966",
+										"position": {
+											"start": {
+												"line": 10,
+												"column": 32,
+												"offset": 392
+											},
+											"end": {
+												"line": 10,
+												"column": 40,
+												"offset": 400
+											}
 										}
 									}
 								}
@@ -947,8 +1112,8 @@
 										},
 										"end": {
 											"line": 10,
-											"column": 82,
-											"offset": 442
+											"column": 83,
+											"offset": 443
 										}
 									}
 								}
@@ -1009,8 +1174,7 @@
 							"name": "lat",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "40.6483",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 11,
@@ -1021,6 +1185,22 @@
 											"line": 11,
 											"column": 26,
 											"offset": 471
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "40.6483",
+										"position": {
+											"start": {
+												"line": 11,
+												"column": 18,
+												"offset": 463
+											},
+											"end": {
+												"line": 11,
+												"column": 25,
+												"offset": 470
+											}
 										}
 									}
 								}
@@ -1045,8 +1225,7 @@
 							"name": "lon",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "-74.0237",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 11,
@@ -1057,6 +1236,22 @@
 											"line": 11,
 											"column": 41,
 											"offset": 486
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "-74.0237",
+										"position": {
+											"start": {
+												"line": 11,
+												"column": 32,
+												"offset": 477
+											},
+											"end": {
+												"line": 11,
+												"column": 40,
+												"offset": 485
+											}
 										}
 									}
 								}
@@ -1139,8 +1334,8 @@
 										},
 										"end": {
 											"line": 11,
-											"column": 66,
-											"offset": 511
+											"column": 67,
+											"offset": 512
 										}
 									}
 								}
@@ -1201,8 +1396,7 @@
 							"name": "lat",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "40.6986",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 12,
@@ -1213,6 +1407,22 @@
 											"line": 12,
 											"column": 26,
 											"offset": 540
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "40.6986",
+										"position": {
+											"start": {
+												"line": 12,
+												"column": 18,
+												"offset": 532
+											},
+											"end": {
+												"line": 12,
+												"column": 25,
+												"offset": 539
+											}
 										}
 									}
 								}
@@ -1237,8 +1447,7 @@
 							"name": "lon",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "-74.4100",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 12,
@@ -1249,6 +1458,22 @@
 											"line": 12,
 											"column": 41,
 											"offset": 555
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "-74.4100",
+										"position": {
+											"start": {
+												"line": 12,
+												"column": 32,
+												"offset": 546
+											},
+											"end": {
+												"line": 12,
+												"column": 40,
+												"offset": 554
+											}
 										}
 									}
 								}
@@ -1331,8 +1556,8 @@
 										},
 										"end": {
 											"line": 12,
-											"column": 71,
-											"offset": 585
+											"column": 72,
+											"offset": 586
 										}
 									}
 								}

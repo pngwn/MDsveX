@@ -10,8 +10,7 @@
 					"name": "this",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "foo ? Foo : Bar",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 1,
@@ -22,6 +21,22 @@
 									"line": 1,
 									"column": 42,
 									"offset": 41
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "foo ? Foo : Bar",
+								"position": {
+									"start": {
+										"line": 1,
+										"column": 26,
+										"offset": 25
+									},
+									"end": {
+										"line": 1,
+										"column": 41,
+										"offset": 40
+									}
 								}
 							}
 						}

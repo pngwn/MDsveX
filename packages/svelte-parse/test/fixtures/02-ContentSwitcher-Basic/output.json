@@ -62,8 +62,23 @@
 					"name": "items",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "items",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "items",
+								"position": {
+									"start": {
+										"line": 21,
+										"column": 19,
+										"offset": 343
+									},
+									"end": {
+										"line": 21,
+										"column": 24,
+										"offset": 348
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 21,

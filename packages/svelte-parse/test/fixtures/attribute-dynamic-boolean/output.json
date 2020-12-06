@@ -10,8 +10,7 @@
 					"name": "readonly",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "readonly",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 1,
@@ -22,6 +21,22 @@
 									"line": 1,
 									"column": 30,
 									"offset": 29
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "readonly",
+								"position": {
+									"start": {
+										"line": 1,
+										"column": 21,
+										"offset": 20
+									},
+									"end": {
+										"line": 1,
+										"column": 29,
+										"offset": 28
+									}
 								}
 							}
 						}

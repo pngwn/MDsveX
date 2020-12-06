@@ -72,8 +72,8 @@
 								},
 								"end": {
 									"line": 40,
-									"column": 20,
-									"offset": 905
+									"column": 21,
+									"offset": 906
 								}
 							}
 						}
@@ -98,8 +98,7 @@
 					"name": "bind",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "tooltip",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 40,
@@ -110,6 +109,22 @@
 									"line": 40,
 									"column": 41,
 									"offset": 926
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "tooltip",
+								"position": {
+									"start": {
+										"line": 40,
+										"column": 33,
+										"offset": 918
+									},
+									"end": {
+										"line": 40,
+										"column": 40,
+										"offset": 925
+									}
 								}
 							}
 						}
@@ -135,8 +150,7 @@
 					"name": "title",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": " title ",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 40,
@@ -147,6 +161,22 @@
 									"line": 40,
 									"column": 58,
 									"offset": 943
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": " title ",
+								"position": {
+									"start": {
+										"line": 40,
+										"column": 50,
+										"offset": 935
+									},
+									"end": {
+										"line": 40,
+										"column": 57,
+										"offset": 942
+									}
 								}
 							}
 						}
@@ -187,8 +217,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": "elementDisplay",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 40,
@@ -199,6 +228,22 @@
 									"line": 40,
 									"column": 91,
 									"offset": 976
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "elementDisplay",
+								"position": {
+									"start": {
+										"line": 40,
+										"column": 76,
+										"offset": 961
+									},
+									"end": {
+										"line": 40,
+										"column": 90,
+										"offset": 975
+									}
 								}
 							}
 						},
@@ -213,8 +258,8 @@
 								},
 								"end": {
 									"line": 40,
-									"column": 92,
-									"offset": 977
+									"column": 93,
+									"offset": 978
 								}
 							}
 						}

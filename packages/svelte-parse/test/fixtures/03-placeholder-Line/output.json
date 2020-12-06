@@ -10,8 +10,7 @@
 					"name": "class",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "size",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 2,
@@ -22,6 +21,22 @@
 									"line": 2,
 									"column": 18,
 									"offset": 22
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "size",
+								"position": {
+									"start": {
+										"line": 2,
+										"column": 13,
+										"offset": 17
+									},
+									"end": {
+										"line": 2,
+										"column": 17,
+										"offset": 21
+									}
 								}
 							}
 						},
@@ -48,8 +63,8 @@
 								},
 								"end": {
 									"line": 2,
-									"column": 23,
-									"offset": 27
+									"column": 24,
+									"offset": 28
 								}
 							}
 						}

@@ -114,8 +114,7 @@
 					"name": "value",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "$progress",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 18,
@@ -126,6 +125,22 @@
 									"line": 18,
 									"column": 28,
 									"offset": 271
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "$progress",
+								"position": {
+									"start": {
+										"line": 18,
+										"column": 18,
+										"offset": 261
+									},
+									"end": {
+										"line": 18,
+										"column": 27,
+										"offset": 270
+									}
 								}
 							}
 						}
@@ -186,8 +201,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "() => progress.set(0)",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 20,
@@ -198,6 +212,22 @@
 									"line": 20,
 									"column": 42,
 									"offset": 326
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "() => progress.set(0)",
+								"position": {
+									"start": {
+										"line": 20,
+										"column": 20,
+										"offset": 304
+									},
+									"end": {
+										"line": 20,
+										"column": 41,
+										"offset": 325
+									}
 								}
 							}
 						}
@@ -276,8 +306,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "() => progress.set(0.25)",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 24,
@@ -288,6 +317,22 @@
 									"line": 24,
 									"column": 45,
 									"offset": 388
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "() => progress.set(0.25)",
+								"position": {
+									"start": {
+										"line": 24,
+										"column": 20,
+										"offset": 363
+									},
+									"end": {
+										"line": 24,
+										"column": 44,
+										"offset": 387
+									}
 								}
 							}
 						}
@@ -366,8 +411,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "() => progress.set(0.5)",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 28,
@@ -378,6 +422,22 @@
 									"line": 28,
 									"column": 44,
 									"offset": 450
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "() => progress.set(0.5)",
+								"position": {
+									"start": {
+										"line": 28,
+										"column": 20,
+										"offset": 426
+									},
+									"end": {
+										"line": 28,
+										"column": 43,
+										"offset": 449
+									}
 								}
 							}
 						}
@@ -456,8 +516,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "() => progress.set(0.75)",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 32,
@@ -468,6 +527,22 @@
 									"line": 32,
 									"column": 45,
 									"offset": 513
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "() => progress.set(0.75)",
+								"position": {
+									"start": {
+										"line": 32,
+										"column": 20,
+										"offset": 488
+									},
+									"end": {
+										"line": 32,
+										"column": 44,
+										"offset": 512
+									}
 								}
 							}
 						}
@@ -546,8 +621,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "() => progress.set(1)",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 36,
@@ -558,6 +632,22 @@
 									"line": 36,
 									"column": 42,
 									"offset": 573
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "() => progress.set(1)",
+								"position": {
+									"start": {
+										"line": 36,
+										"column": 20,
+										"offset": 551
+									},
+									"end": {
+										"line": 36,
+										"column": 41,
+										"offset": 572
+									}
 								}
 							}
 						}

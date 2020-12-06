@@ -62,8 +62,7 @@
 					"name": "bind",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "selected",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 15,
@@ -74,6 +73,22 @@
 									"line": 15,
 									"column": 30,
 									"offset": 372
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "selected",
+								"position": {
+									"start": {
+										"line": 15,
+										"column": 21,
+										"offset": 363
+									},
+									"end": {
+										"line": 15,
+										"column": 29,
+										"offset": 371
+									}
 								}
 							}
 						}
@@ -162,8 +177,7 @@
 											"name": "value",
 											"value": [
 												{
-													"type": "svelteExpression",
-													"value": "option",
+													"type": "svelteDynamicContent",
 													"position": {
 														"start": {
 															"line": 17,
@@ -174,6 +188,22 @@
 															"line": 17,
 															"column": 25,
 															"offset": 425
+														}
+													},
+													"expression": {
+														"type": "svelteExpression",
+														"value": "option",
+														"position": {
+															"start": {
+																"line": 17,
+																"column": 18,
+																"offset": 418
+															},
+															"end": {
+																"line": 17,
+																"column": 24,
+																"offset": 424
+															}
 														}
 													}
 												}
@@ -197,8 +227,7 @@
 									"selfClosing": false,
 									"children": [
 										{
-											"type": "svelteExpression",
-											"value": "option.color",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 17,
@@ -209,6 +238,22 @@
 													"line": 17,
 													"column": 40,
 													"offset": 440
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "option.color",
+												"position": {
+													"start": {
+														"line": 17,
+														"column": 27,
+														"offset": 427
+													},
+													"end": {
+														"line": 17,
+														"column": 39,
+														"offset": 439
+													}
 												}
 											}
 										}
@@ -325,8 +370,7 @@
 					"name": "this",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "selected.component",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 21,
@@ -337,6 +381,22 @@
 									"line": 21,
 									"column": 44,
 									"offset": 513
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "selected.component",
+								"position": {
+									"start": {
+										"line": 21,
+										"column": 25,
+										"offset": 494
+									},
+									"end": {
+										"line": 21,
+										"column": 43,
+										"offset": 512
+									}
 								}
 							}
 						}

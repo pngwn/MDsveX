@@ -124,8 +124,8 @@
 								},
 								"end": {
 									"line": 60,
-									"column": 22,
-									"offset": 1142
+									"column": 23,
+									"offset": 1143
 								}
 							}
 						}
@@ -173,8 +173,23 @@
 							"name": "placeholder",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "placeholder",
+									"type": "svelteDynamicContent",
+									"expression": {
+										"type": "svelteExpression",
+										"value": "placeholder",
+										"position": {
+											"start": {
+												"line": 61,
+												"column": 15,
+												"offset": 1159
+											},
+											"end": {
+												"line": 61,
+												"column": 26,
+												"offset": 1170
+											}
+										}
+									},
 									"position": {
 										"start": {
 											"line": 61,
@@ -209,8 +224,23 @@
 							"name": "value",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "value",
+									"type": "svelteDynamicContent",
+									"expression": {
+										"type": "svelteExpression",
+										"value": "value",
+										"position": {
+											"start": {
+												"line": 61,
+												"column": 29,
+												"offset": 1173
+											},
+											"end": {
+												"line": 61,
+												"column": 34,
+												"offset": 1178
+											}
+										}
+									},
 									"position": {
 										"start": {
 											"line": 61,
@@ -245,8 +275,7 @@
 							"name": "on",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "onInput",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 61,
@@ -257,6 +286,22 @@
 											"line": 61,
 											"column": 54,
 											"offset": 1198
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "onInput",
+										"position": {
+											"start": {
+												"line": 61,
+												"column": 46,
+												"offset": 1190
+											},
+											"end": {
+												"line": 61,
+												"column": 53,
+												"offset": 1197
+											}
 										}
 									}
 								}
@@ -315,8 +360,8 @@
 												},
 												"end": {
 													"line": 62,
-													"column": 24,
-													"offset": 1223
+													"column": 25,
+													"offset": 1224
 												}
 											}
 										}
@@ -351,8 +396,8 @@
 												},
 												"end": {
 													"line": 62,
-													"column": 39,
-													"offset": 1238
+													"column": 40,
+													"offset": 1239
 												}
 											}
 										}
@@ -545,8 +590,8 @@
 														},
 														"end": {
 															"line": 68,
-															"column": 24,
-															"offset": 1327
+															"column": 25,
+															"offset": 1328
 														}
 													}
 												}
@@ -571,8 +616,7 @@
 											"name": "on",
 											"value": [
 												{
-													"type": "svelteExpression",
-													"value": "onClearIconClick",
+													"type": "svelteDynamicContent",
 													"position": {
 														"start": {
 															"line": 68,
@@ -583,6 +627,22 @@
 															"line": 68,
 															"column": 54,
 															"offset": 1357
+														}
+													},
+													"expression": {
+														"type": "svelteExpression",
+														"value": "onClearIconClick",
+														"position": {
+															"start": {
+																"line": 68,
+																"column": 37,
+																"offset": 1340
+															},
+															"end": {
+																"line": 68,
+																"column": 53,
+																"offset": 1356
+															}
 														}
 													}
 												}

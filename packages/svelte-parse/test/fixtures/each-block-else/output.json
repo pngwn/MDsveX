@@ -48,8 +48,7 @@
 							"selfClosing": false,
 							"children": [
 								{
-									"type": "svelteExpression",
-									"value": "animal",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 2,
@@ -60,6 +59,22 @@
 											"line": 2,
 											"column": 13,
 											"offset": 38
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "animal",
+										"position": {
+											"start": {
+												"line": 2,
+												"column": 6,
+												"offset": 31
+											},
+											"end": {
+												"line": 2,
+												"column": 12,
+												"offset": 37
+											}
 										}
 									}
 								}

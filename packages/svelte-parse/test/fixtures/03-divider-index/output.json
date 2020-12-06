@@ -10,8 +10,7 @@
 					"name": "use",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "use",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 2,
@@ -22,6 +21,22 @@
 									"line": 2,
 									"column": 22,
 									"offset": 26
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "use",
+								"position": {
+									"start": {
+										"line": 2,
+										"column": 18,
+										"offset": 22
+									},
+									"end": {
+										"line": 2,
+										"column": 21,
+										"offset": 25
+									}
 								}
 							}
 						}
@@ -67,8 +82,7 @@
 					"name": "class",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "clsxd(\n        'ui',\n        direction,\n        inverted && 'inverted',\n        fitted && 'fitted',\n        hidden && 'hidden',\n        section && 'section',\n        clearing && 'clearing',\n        className,\n        'divider'\n    )",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 4,
@@ -79,6 +93,22 @@
 									"line": 14,
 									"column": 7,
 									"offset": 287
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "clsxd(\n        'ui',\n        direction,\n        inverted && 'inverted',\n        fitted && 'fitted',\n        hidden && 'hidden',\n        section && 'section',\n        clearing && 'clearing',\n        className,\n        'divider'\n    )",
+								"position": {
+									"start": {
+										"line": 4,
+										"column": 13,
+										"offset": 54
+									},
+									"end": {
+										"line": 14,
+										"column": 6,
+										"offset": 286
+									}
 								}
 							}
 						}
@@ -103,8 +133,23 @@
 					"name": "...exclude($$props, ['use', 'class', 'direction', 'inverted', 'fitted', 'hidden', 'section', 'clearing'])",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "...exclude($$props, ['use', 'class', 'direction', 'inverted', 'fitted', 'hidden', 'section', 'clearing'])",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "...exclude($$props, ['use', 'class', 'direction', 'inverted', 'fitted', 'hidden', 'section', 'clearing'])",
+								"position": {
+									"start": {
+										"line": 15,
+										"column": 6,
+										"offset": 294
+									},
+									"end": {
+										"line": 15,
+										"column": 111,
+										"offset": 399
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 15,
@@ -205,8 +250,8 @@
 								},
 								"end": {
 									"line": 18,
-									"column": 24,
-									"offset": 446
+									"column": 25,
+									"offset": 447
 								}
 							}
 						}

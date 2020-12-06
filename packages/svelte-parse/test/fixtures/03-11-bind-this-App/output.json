@@ -114,8 +114,7 @@
 					"name": "bind",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "canvas",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 52,
@@ -126,6 +125,22 @@
 									"line": 52,
 									"column": 20,
 									"offset": 1101
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "canvas",
+								"position": {
+									"start": {
+										"line": 52,
+										"column": 13,
+										"offset": 1094
+									},
+									"end": {
+										"line": 52,
+										"column": 19,
+										"offset": 1100
+									}
 								}
 							}
 						}
@@ -151,8 +166,7 @@
 					"name": "width",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "32",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 53,
@@ -163,6 +177,22 @@
 									"line": 53,
 									"column": 12,
 									"offset": 1113
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "32",
+								"position": {
+									"start": {
+										"line": 53,
+										"column": 9,
+										"offset": 1110
+									},
+									"end": {
+										"line": 53,
+										"column": 11,
+										"offset": 1112
+									}
 								}
 							}
 						}
@@ -187,8 +217,7 @@
 					"name": "height",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "32",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 54,
@@ -199,6 +228,22 @@
 									"line": 54,
 									"column": 13,
 									"offset": 1126
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "32",
+								"position": {
+									"start": {
+										"line": 54,
+										"column": 10,
+										"offset": 1123
+									},
+									"end": {
+										"line": 54,
+										"column": 12,
+										"offset": 1125
+									}
 								}
 							}
 						}

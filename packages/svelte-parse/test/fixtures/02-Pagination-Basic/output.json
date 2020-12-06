@@ -62,8 +62,23 @@
 					"name": "current",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "current",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "current",
+								"position": {
+									"start": {
+										"line": 11,
+										"column": 14,
+										"offset": 198
+									},
+									"end": {
+										"line": 11,
+										"column": 21,
+										"offset": 205
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 11,
@@ -98,8 +113,23 @@
 					"name": "pageSize",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "pageSize",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "pageSize",
+								"position": {
+									"start": {
+										"line": 11,
+										"column": 24,
+										"offset": 208
+									},
+									"end": {
+										"line": 11,
+										"column": 32,
+										"offset": 216
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 11,
@@ -134,8 +164,23 @@
 					"name": "total",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "total",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "total",
+								"position": {
+									"start": {
+										"line": 11,
+										"column": 35,
+										"offset": 219
+									},
+									"end": {
+										"line": 11,
+										"column": 40,
+										"offset": 224
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 11,
@@ -170,8 +215,23 @@
 					"name": "canNavigate",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "canNavigate",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "canNavigate",
+								"position": {
+									"start": {
+										"line": 11,
+										"column": 43,
+										"offset": 227
+									},
+									"end": {
+										"line": 11,
+										"column": 54,
+										"offset": 238
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 11,
@@ -206,8 +266,23 @@
 					"name": "showSummary",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "showSummary",
+							"type": "svelteDynamicContent",
+							"expression": {
+								"type": "svelteExpression",
+								"value": "showSummary",
+								"position": {
+									"start": {
+										"line": 11,
+										"column": 57,
+										"offset": 241
+									},
+									"end": {
+										"line": 11,
+										"column": 68,
+										"offset": 252
+									}
+								}
+							},
 							"position": {
 								"start": {
 									"line": 11,

@@ -124,8 +124,8 @@
 								},
 								"end": {
 									"line": 37,
-									"column": 19,
-									"offset": 601
+									"column": 20,
+									"offset": 602
 								}
 							}
 						}
@@ -213,8 +213,7 @@
 											"name": "class",
 											"value": [
 												{
-													"type": "svelteExpression",
-													"value": "offset === index",
+													"type": "svelteDynamicContent",
 													"position": {
 														"start": {
 															"line": 40,
@@ -225,6 +224,22 @@
 															"line": 40,
 															"column": 37,
 															"offset": 682
+														}
+													},
+													"expression": {
+														"type": "svelteExpression",
+														"value": "offset === index",
+														"position": {
+															"start": {
+																"line": 40,
+																"column": 20,
+																"offset": 665
+															},
+															"end": {
+																"line": 40,
+																"column": 36,
+																"offset": 681
+															}
 														}
 													}
 												}
@@ -250,8 +265,7 @@
 											"name": "on",
 											"value": [
 												{
-													"type": "svelteExpression",
-													"value": "() => offset = index",
+													"type": "svelteDynamicContent",
 													"position": {
 														"start": {
 															"line": 41,
@@ -262,6 +276,22 @@
 															"line": 41,
 															"column": 35,
 															"offset": 717
+														}
+													},
+													"expression": {
+														"type": "svelteExpression",
+														"value": "() => offset = index",
+														"position": {
+															"start": {
+																"line": 41,
+																"column": 14,
+																"offset": 696
+															},
+															"end": {
+																"line": 41,
+																"column": 34,
+																"offset": 716
+															}
 														}
 													}
 												}
@@ -302,8 +332,7 @@
 											}
 										},
 										{
-											"type": "svelteExpression",
-											"value": "label",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 43,
@@ -314,6 +343,22 @@
 													"line": 43,
 													"column": 11,
 													"offset": 732
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "label",
+												"position": {
+													"start": {
+														"line": 43,
+														"column": 5,
+														"offset": 726
+													},
+													"end": {
+														"line": 43,
+														"column": 10,
+														"offset": 731
+													}
 												}
 											}
 										},

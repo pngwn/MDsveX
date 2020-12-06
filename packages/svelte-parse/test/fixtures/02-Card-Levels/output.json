@@ -124,8 +124,8 @@
 								},
 								"end": {
 									"line": 11,
-									"column": 16,
-									"offset": 143
+									"column": 17,
+									"offset": 144
 								}
 							}
 						}
@@ -235,8 +235,7 @@
 													"name": "level",
 													"value": [
 														{
-															"type": "svelteExpression",
-															"value": "levelValue",
+															"type": "svelteDynamicContent",
 															"position": {
 																"start": {
 																	"line": 14,
@@ -247,6 +246,22 @@
 																	"line": 14,
 																	"column": 30,
 																	"offset": 250
+																}
+															},
+															"expression": {
+																"type": "svelteExpression",
+																"value": "levelValue",
+																"position": {
+																	"start": {
+																		"line": 14,
+																		"column": 19,
+																		"offset": 239
+																	},
+																	"end": {
+																		"line": 14,
+																		"column": 29,
+																		"offset": 249
+																	}
 																}
 															}
 														}
@@ -304,8 +319,8 @@
 																		},
 																		"end": {
 																			"line": 15,
-																			"column": 26,
-																			"offset": 278
+																			"column": 27,
+																			"offset": 279
 																		}
 																	}
 																}
@@ -419,8 +434,7 @@
 																	}
 																},
 																{
-																	"type": "svelteExpression",
-																	"value": "levelKey ",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 17,
@@ -431,6 +445,22 @@
 																			"line": 17,
 																			"column": 43,
 																			"offset": 345
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": "levelKey ",
+																		"position": {
+																			"start": {
+																				"line": 17,
+																				"column": 33,
+																				"offset": 335
+																			},
+																			"end": {
+																				"line": 17,
+																				"column": 42,
+																				"offset": 344
+																			}
 																		}
 																	}
 																}

@@ -62,8 +62,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "resize",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 36,
@@ -74,6 +73,22 @@
 									"line": 36,
 									"column": 35,
 									"offset": 696
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "resize",
+								"position": {
+									"start": {
+										"line": 36,
+										"column": 28,
+										"offset": 689
+									},
+									"end": {
+										"line": 36,
+										"column": 34,
+										"offset": 695
+									}
 								}
 							}
 						}
@@ -135,8 +150,7 @@
 					"name": "bind",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "svg",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 38,
@@ -147,6 +161,22 @@
 									"line": 38,
 									"column": 21,
 									"offset": 721
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "svg",
+								"position": {
+									"start": {
+										"line": 38,
+										"column": 17,
+										"offset": 717
+									},
+									"end": {
+										"line": 38,
+										"column": 20,
+										"offset": 720
+									}
 								}
 							}
 						}
@@ -261,8 +291,8 @@
 										},
 										"end": {
 											"line": 40,
-											"column": 23,
-											"offset": 762
+											"column": 24,
+											"offset": 763
 										}
 									}
 								}
@@ -390,8 +420,7 @@
 															}
 														},
 														{
-															"type": "svelteExpression",
-															"value": "tick",
+															"type": "svelteDynamicContent",
 															"position": {
 																"start": {
 																	"line": 42,
@@ -402,6 +431,22 @@
 																	"line": 42,
 																	"column": 30,
 																	"offset": 819
+																}
+															},
+															"expression": {
+																"type": "svelteExpression",
+																"value": "tick",
+																"position": {
+																	"start": {
+																		"line": 42,
+																		"column": 25,
+																		"offset": 814
+																	},
+																	"end": {
+																		"line": 42,
+																		"column": 29,
+																		"offset": 818
+																	}
 																}
 															}
 														}
@@ -454,8 +499,7 @@
 															}
 														},
 														{
-															"type": "svelteExpression",
-															"value": "yScale(tick)",
+															"type": "svelteDynamicContent",
 															"position": {
 																"start": {
 																	"line": 42,
@@ -466,6 +510,22 @@
 																	"line": 42,
 																	"column": 70,
 																	"offset": 859
+																}
+															},
+															"expression": {
+																"type": "svelteExpression",
+																"value": "yScale(tick)",
+																"position": {
+																	"start": {
+																		"line": 42,
+																		"column": 57,
+																		"offset": 846
+																	},
+																	"end": {
+																		"line": 42,
+																		"column": 69,
+																		"offset": 858
+																	}
 																}
 															}
 														},
@@ -480,8 +540,8 @@
 																},
 																"end": {
 																	"line": 42,
-																	"column": 71,
-																	"offset": 860
+																	"column": 72,
+																	"offset": 861
 																}
 															}
 														}
@@ -529,8 +589,7 @@
 															"name": "x1",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": "padding.left",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 43,
@@ -541,6 +600,22 @@
 																			"line": 43,
 																			"column": 29,
 																			"offset": 891
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": "padding.left",
+																		"position": {
+																			"start": {
+																				"line": 43,
+																				"column": 16,
+																				"offset": 878
+																			},
+																			"end": {
+																				"line": 43,
+																				"column": 28,
+																				"offset": 890
+																			}
 																		}
 																	}
 																}
@@ -565,8 +640,7 @@
 															"name": "x2",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": "xScale(22)",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 43,
@@ -577,6 +651,22 @@
 																			"line": 43,
 																			"column": 47,
 																			"offset": 909
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": "xScale(22)",
+																		"position": {
+																			"start": {
+																				"line": 43,
+																				"column": 36,
+																				"offset": 898
+																			},
+																			"end": {
+																				"line": 43,
+																				"column": 46,
+																				"offset": 908
+																			}
 																		}
 																	}
 																}
@@ -637,8 +727,7 @@
 															"name": "x",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": "padding.left - 8",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 44,
@@ -649,6 +738,22 @@
 																			"line": 44,
 																			"column": 32,
 																			"offset": 944
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": "padding.left - 8",
+																		"position": {
+																			"start": {
+																				"line": 44,
+																				"column": 15,
+																				"offset": 927
+																			},
+																			"end": {
+																				"line": 44,
+																				"column": 31,
+																				"offset": 943
+																			}
 																		}
 																	}
 																}
@@ -683,8 +788,8 @@
 																		},
 																		"end": {
 																			"line": 44,
-																			"column": 39,
-																			"offset": 951
+																			"column": 40,
+																			"offset": 952
 																		}
 																	}
 																}
@@ -708,8 +813,7 @@
 													"selfClosing": false,
 													"children": [
 														{
-															"type": "svelteExpression",
-															"value": "tick",
+															"type": "svelteDynamicContent",
 															"position": {
 																"start": {
 																	"line": 44,
@@ -720,6 +824,22 @@
 																	"line": 44,
 																	"column": 47,
 																	"offset": 959
+																}
+															},
+															"expression": {
+																"type": "svelteExpression",
+																"value": "tick",
+																"position": {
+																	"start": {
+																		"line": 44,
+																		"column": 42,
+																		"offset": 954
+																	},
+																	"end": {
+																		"line": 44,
+																		"column": 46,
+																		"offset": 958
+																	}
 																}
 															}
 														}
@@ -932,8 +1052,8 @@
 										},
 										"end": {
 											"line": 50,
-											"column": 23,
-											"offset": 1031
+											"column": 24,
+											"offset": 1032
 										}
 									}
 								}
@@ -1031,8 +1151,8 @@
 																},
 																"end": {
 																	"line": 52,
-																	"column": 18,
-																	"offset": 1076
+																	"column": 19,
+																	"offset": 1077
 																}
 															}
 														}
@@ -1073,8 +1193,7 @@
 															}
 														},
 														{
-															"type": "svelteExpression",
-															"value": "xScale(tick)",
+															"type": "svelteDynamicContent",
 															"position": {
 																"start": {
 																	"line": 52,
@@ -1085,6 +1204,22 @@
 																	"line": 52,
 																	"column": 55,
 																	"offset": 1113
+																}
+															},
+															"expression": {
+																"type": "svelteExpression",
+																"value": "xScale(tick)",
+																"position": {
+																	"start": {
+																		"line": 52,
+																		"column": 42,
+																		"offset": 1100
+																	},
+																	"end": {
+																		"line": 52,
+																		"column": 54,
+																		"offset": 1112
+																	}
 																}
 															}
 														},
@@ -1099,8 +1234,8 @@
 																},
 																"end": {
 																	"line": 52,
-																	"column": 58,
-																	"offset": 1116
+																	"column": 59,
+																	"offset": 1117
 																}
 															}
 														}
@@ -1148,8 +1283,7 @@
 															"name": "y1",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": "yScale(0)",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 53,
@@ -1160,6 +1294,22 @@
 																			"line": 53,
 																			"column": 26,
 																			"offset": 1144
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": "yScale(0)",
+																		"position": {
+																			"start": {
+																				"line": 53,
+																				"column": 16,
+																				"offset": 1134
+																			},
+																			"end": {
+																				"line": 53,
+																				"column": 25,
+																				"offset": 1143
+																			}
 																		}
 																	}
 																}
@@ -1184,8 +1334,7 @@
 															"name": "y2",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": "yScale(13)",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 53,
@@ -1196,6 +1345,22 @@
 																			"line": 53,
 																			"column": 44,
 																			"offset": 1162
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": "yScale(13)",
+																		"position": {
+																			"start": {
+																				"line": 53,
+																				"column": 33,
+																				"offset": 1151
+																			},
+																			"end": {
+																				"line": 53,
+																				"column": 43,
+																				"offset": 1161
+																			}
 																		}
 																	}
 																}
@@ -1256,8 +1421,7 @@
 															"name": "y",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": "height - padding.bottom + 16",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 54,
@@ -1268,6 +1432,22 @@
 																			"line": 54,
 																			"column": 44,
 																			"offset": 1209
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": "height - padding.bottom + 16",
+																		"position": {
+																			"start": {
+																				"line": 54,
+																				"column": 15,
+																				"offset": 1180
+																			},
+																			"end": {
+																				"line": 54,
+																				"column": 43,
+																				"offset": 1208
+																			}
 																		}
 																	}
 																}
@@ -1291,8 +1471,7 @@
 													"selfClosing": false,
 													"children": [
 														{
-															"type": "svelteExpression",
-															"value": "tick",
+															"type": "svelteDynamicContent",
 															"position": {
 																"start": {
 																	"line": 54,
@@ -1303,6 +1482,22 @@
 																	"line": 54,
 																	"column": 52,
 																	"offset": 1217
+																}
+															},
+															"expression": {
+																"type": "svelteExpression",
+																"value": "tick",
+																"position": {
+																	"start": {
+																		"line": 54,
+																		"column": 47,
+																		"offset": 1212
+																	},
+																	"end": {
+																		"line": 54,
+																		"column": 51,
+																		"offset": 1216
+																	}
 																}
 															}
 														}
@@ -1521,8 +1716,7 @@
 											"name": "cx",
 											"value": [
 												{
-													"type": "svelteExpression",
-													"value": "xScale(point.x)",
+													"type": "svelteDynamicContent",
 													"position": {
 														"start": {
 															"line": 61,
@@ -1533,6 +1727,22 @@
 															"line": 61,
 															"column": 32,
 															"offset": 1321
+														}
+													},
+													"expression": {
+														"type": "svelteExpression",
+														"value": "xScale(point.x)",
+														"position": {
+															"start": {
+																"line": 61,
+																"column": 16,
+																"offset": 1305
+															},
+															"end": {
+																"line": 61,
+																"column": 31,
+																"offset": 1320
+															}
 														}
 													}
 												}
@@ -1557,8 +1767,7 @@
 											"name": "cy",
 											"value": [
 												{
-													"type": "svelteExpression",
-													"value": "yScale(point.y)",
+													"type": "svelteDynamicContent",
 													"position": {
 														"start": {
 															"line": 61,
@@ -1569,6 +1778,22 @@
 															"line": 61,
 															"column": 55,
 															"offset": 1344
+														}
+													},
+													"expression": {
+														"type": "svelteExpression",
+														"value": "yScale(point.y)",
+														"position": {
+															"start": {
+																"line": 61,
+																"column": 39,
+																"offset": 1328
+															},
+															"end": {
+																"line": 61,
+																"column": 54,
+																"offset": 1343
+															}
 														}
 													}
 												}
@@ -1603,8 +1828,8 @@
 														},
 														"end": {
 															"line": 61,
-															"column": 61,
-															"offset": 1350
+															"column": 62,
+															"offset": 1351
 														}
 													}
 												}

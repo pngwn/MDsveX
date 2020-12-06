@@ -76,8 +76,7 @@
 					}
 				},
 				{
-					"type": "svelteExpression",
-					"value": "seconds",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 10,
@@ -88,6 +87,22 @@
 							"line": 10,
 							"column": 11,
 							"offset": 162
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "seconds",
+						"position": {
+							"start": {
+								"line": 10,
+								"column": 3,
+								"offset": 154
+							},
+							"end": {
+								"line": 10,
+								"column": 10,
+								"offset": 161
+							}
 						}
 					}
 				},
@@ -108,8 +123,7 @@
 					}
 				},
 				{
-					"type": "svelteExpression",
-					"value": "seconds === 1 ? 'second' : 'seconds'",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 10,
@@ -120,6 +134,22 @@
 							"line": 10,
 							"column": 50,
 							"offset": 201
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "seconds === 1 ? 'second' : 'seconds'",
+						"position": {
+							"start": {
+								"line": 10,
+								"column": 13,
+								"offset": 164
+							},
+							"end": {
+								"line": 10,
+								"column": 49,
+								"offset": 200
+							}
 						}
 					}
 				},

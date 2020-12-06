@@ -124,8 +124,8 @@
 								},
 								"end": {
 									"line": 29,
-									"column": 24,
-									"offset": 483
+									"column": 25,
+									"offset": 484
 								}
 							}
 						}
@@ -223,8 +223,8 @@
 														},
 														"end": {
 															"line": 31,
-															"column": 21,
-															"offset": 536
+															"column": 22,
+															"offset": 537
 														}
 													}
 												}
@@ -282,8 +282,8 @@
 																},
 																"end": {
 																	"line": 33,
-																	"column": 17,
-																	"offset": 568
+																	"column": 18,
+																	"offset": 569
 																}
 															}
 														}
@@ -318,8 +318,8 @@
 																},
 																"end": {
 																	"line": 34,
-																	"column": 20,
-																	"offset": 590
+																	"column": 21,
+																	"offset": 591
 																}
 															}
 														}
@@ -363,8 +363,7 @@
 													"name": "isActive",
 													"value": [
 														{
-															"type": "svelteExpression",
-															"value": " option === selectedItem ",
+															"type": "svelteDynamicContent",
 															"position": {
 																"start": {
 																	"line": 36,
@@ -375,6 +374,22 @@
 																	"line": 36,
 																	"column": 44,
 																	"offset": 651
+																}
+															},
+															"expression": {
+																"type": "svelteExpression",
+																"value": " option === selectedItem ",
+																"position": {
+																	"start": {
+																		"line": 36,
+																		"column": 18,
+																		"offset": 625
+																	},
+																	"end": {
+																		"line": 36,
+																		"column": 43,
+																		"offset": 650
+																	}
 																}
 															}
 														}
@@ -399,8 +414,7 @@
 													"name": "isSelected",
 													"value": [
 														{
-															"type": "svelteExpression",
-															"value": " option === selectedItem ",
+															"type": "svelteDynamicContent",
 															"position": {
 																"start": {
 																	"line": 37,
@@ -411,6 +425,22 @@
 																	"line": 37,
 																	"column": 46,
 																	"offset": 698
+																}
+															},
+															"expression": {
+																"type": "svelteExpression",
+																"value": " option === selectedItem ",
+																"position": {
+																	"start": {
+																		"line": 37,
+																		"column": 20,
+																		"offset": 672
+																	},
+																	"end": {
+																		"line": 37,
+																		"column": 45,
+																		"offset": 697
+																	}
 																}
 															}
 														}
@@ -435,8 +465,7 @@
 													"name": "on",
 													"value": [
 														{
-															"type": "svelteExpression",
-															"value": " () => onOptionClick(option) ",
+															"type": "svelteDynamicContent",
 															"position": {
 																"start": {
 																	"line": 38,
@@ -447,6 +476,22 @@
 																	"line": 38,
 																	"column": 48,
 																	"offset": 747
+																}
+															},
+															"expression": {
+																"type": "svelteExpression",
+																"value": " () => onOptionClick(option) ",
+																"position": {
+																	"start": {
+																		"line": 38,
+																		"column": 18,
+																		"offset": 717
+																	},
+																	"end": {
+																		"line": 38,
+																		"column": 47,
+																		"offset": 746
+																	}
 																}
 															}
 														}
@@ -487,8 +532,7 @@
 													}
 												},
 												{
-													"type": "svelteExpression",
-													"value": "option ",
+													"type": "svelteDynamicContent",
 													"position": {
 														"start": {
 															"line": 40,
@@ -499,6 +543,22 @@
 															"line": 40,
 															"column": 17,
 															"offset": 771
+														}
+													},
+													"expression": {
+														"type": "svelteExpression",
+														"value": "option ",
+														"position": {
+															"start": {
+																"line": 40,
+																"column": 9,
+																"offset": 763
+															},
+															"end": {
+																"line": 40,
+																"column": 16,
+																"offset": 770
+															}
 														}
 													}
 												},

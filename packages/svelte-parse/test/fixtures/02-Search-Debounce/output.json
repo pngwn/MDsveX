@@ -62,8 +62,7 @@
 					"name": "bind",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "searchText",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 7,
@@ -74,6 +73,22 @@
 									"line": 7,
 									"column": 32,
 									"offset": 120
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "searchText",
+								"position": {
+									"start": {
+										"line": 7,
+										"column": 21,
+										"offset": 109
+									},
+									"end": {
+										"line": 7,
+										"column": 31,
+										"offset": 119
+									}
 								}
 							}
 						}
@@ -99,8 +114,7 @@
 					"name": "debounce",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "true",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 7,
@@ -111,6 +125,22 @@
 									"line": 7,
 									"column": 49,
 									"offset": 137
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "true",
+								"position": {
+									"start": {
+										"line": 7,
+										"column": 44,
+										"offset": 132
+									},
+									"end": {
+										"line": 7,
+										"column": 48,
+										"offset": 136
+									}
 								}
 							}
 						}
@@ -185,8 +215,7 @@
 					}
 				},
 				{
-					"type": "svelteExpression",
-					"value": "searchText",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 8,
@@ -197,6 +226,22 @@
 							"line": 8,
 							"column": 29,
 							"offset": 177
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "searchText",
+						"position": {
+							"start": {
+								"line": 8,
+								"column": 18,
+								"offset": 166
+							},
+							"end": {
+								"line": 8,
+								"column": 28,
+								"offset": 176
+							}
 						}
 					}
 				}

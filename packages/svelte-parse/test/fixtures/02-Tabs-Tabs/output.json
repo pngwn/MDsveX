@@ -124,8 +124,8 @@
 								},
 								"end": {
 									"line": 97,
-									"column": 27,
-									"offset": 1643
+									"column": 28,
+									"offset": 1644
 								}
 							}
 						}
@@ -201,8 +201,7 @@
 									}
 								},
 								{
-									"type": "svelteExpression",
-									"value": " ClassNames ",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 98,
@@ -213,6 +212,22 @@
 											"line": 98,
 											"column": 33,
 											"offset": 1678
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": " ClassNames ",
+										"position": {
+											"start": {
+												"line": 98,
+												"column": 20,
+												"offset": 1665
+											},
+											"end": {
+												"line": 98,
+												"column": 32,
+												"offset": 1677
+											}
 										}
 									}
 								}
@@ -300,8 +315,7 @@
 													"name": "class",
 													"value": [
 														{
-															"type": "svelteExpression",
-															"value": " (activeTab && activeTab.label === tab.label) ? 'active': ''",
+															"type": "svelteDynamicContent",
 															"position": {
 																"start": {
 																	"line": 100,
@@ -312,6 +326,22 @@
 																	"line": 100,
 																	"column": 80,
 																	"offset": 1787
+																}
+															},
+															"expression": {
+																"type": "svelteExpression",
+																"value": " (activeTab && activeTab.label === tab.label) ? 'active': ''",
+																"position": {
+																	"start": {
+																		"line": 100,
+																		"column": 19,
+																		"offset": 1726
+																	},
+																	"end": {
+																		"line": 100,
+																		"column": 79,
+																		"offset": 1786
+																	}
 																}
 															}
 														}
@@ -352,8 +382,7 @@
 															}
 														},
 														{
-															"type": "svelteExpression",
-															"value": " itemWidth ",
+															"type": "svelteDynamicContent",
 															"position": {
 																"start": {
 																	"line": 100,
@@ -364,6 +393,22 @@
 																	"line": 100,
 																	"column": 108,
 																	"offset": 1815
+																}
+															},
+															"expression": {
+																"type": "svelteExpression",
+																"value": " itemWidth ",
+																"position": {
+																	"start": {
+																		"line": 100,
+																		"column": 96,
+																		"offset": 1803
+																	},
+																	"end": {
+																		"line": 100,
+																		"column": 107,
+																		"offset": 1814
+																	}
 																}
 															}
 														},
@@ -378,8 +423,8 @@
 																},
 																"end": {
 																	"line": 100,
-																	"column": 109,
-																	"offset": 1816
+																	"column": 110,
+																	"offset": 1817
 																}
 															}
 														}
@@ -467,8 +512,7 @@
 																			"name": "href",
 																			"value": [
 																				{
-																					"type": "svelteExpression",
-																					"value": "tab.href",
+																					"type": "svelteDynamicContent",
 																					"position": {
 																						"start": {
 																							"line": 102,
@@ -479,6 +523,22 @@
 																							"line": 102,
 																							"column": 30,
 																							"offset": 1871
+																						}
+																					},
+																					"expression": {
+																						"type": "svelteExpression",
+																						"value": "tab.href",
+																						"position": {
+																							"start": {
+																								"line": 102,
+																								"column": 21,
+																								"offset": 1862
+																							},
+																							"end": {
+																								"line": 102,
+																								"column": 29,
+																								"offset": 1870
+																							}
 																						}
 																					}
 																				}
@@ -513,8 +573,8 @@
 																						},
 																						"end": {
 																							"line": 102,
-																							"column": 42,
-																							"offset": 1883
+																							"column": 43,
+																							"offset": 1884
 																						}
 																					}
 																				}
@@ -538,8 +598,7 @@
 																	"selfClosing": false,
 																	"children": [
 																		{
-																			"type": "svelteExpression",
-																			"value": "tab.label",
+																			"type": "svelteDynamicContent",
 																			"position": {
 																				"start": {
 																					"line": 102,
@@ -550,6 +609,22 @@
 																					"line": 102,
 																					"column": 55,
 																					"offset": 1896
+																				}
+																			},
+																			"expression": {
+																				"type": "svelteExpression",
+																				"value": "tab.label",
+																				"position": {
+																					"start": {
+																						"line": 102,
+																						"column": 45,
+																						"offset": 1886
+																					},
+																					"end": {
+																						"line": 102,
+																						"column": 54,
+																						"offset": 1895
+																					}
 																				}
 																			}
 																		}
@@ -630,8 +705,7 @@
 																			"name": "on",
 																			"value": [
 																				{
-																					"type": "svelteExpression",
-																					"value": "() => onTabClick(tab)",
+																					"type": "svelteDynamicContent",
 																					"position": {
 																						"start": {
 																							"line": 104,
@@ -642,6 +716,22 @@
 																							"line": 104,
 																							"column": 50,
 																							"offset": 1966
+																						}
+																					},
+																					"expression": {
+																						"type": "svelteExpression",
+																						"value": "() => onTabClick(tab)",
+																						"position": {
+																							"start": {
+																								"line": 104,
+																								"column": 28,
+																								"offset": 1944
+																							},
+																							"end": {
+																								"line": 104,
+																								"column": 49,
+																								"offset": 1965
+																							}
 																						}
 																					}
 																				}
@@ -677,8 +767,8 @@
 																						},
 																						"end": {
 																							"line": 104,
-																							"column": 62,
-																							"offset": 1978
+																							"column": 63,
+																							"offset": 1979
 																						}
 																					}
 																				}
@@ -702,8 +792,7 @@
 																	"selfClosing": false,
 																	"children": [
 																		{
-																			"type": "svelteExpression",
-																			"value": "tab.label",
+																			"type": "svelteDynamicContent",
 																			"position": {
 																				"start": {
 																					"line": 104,
@@ -714,6 +803,22 @@
 																					"line": 104,
 																					"column": 75,
 																					"offset": 1991
+																				}
+																			},
+																			"expression": {
+																				"type": "svelteExpression",
+																				"value": "tab.label",
+																				"position": {
+																					"start": {
+																						"line": 104,
+																						"column": 65,
+																						"offset": 1981
+																					},
+																					"end": {
+																						"line": 104,
+																						"column": 74,
+																						"offset": 1990
+																					}
 																				}
 																			}
 																		}
@@ -984,8 +1089,7 @@
 															"name": "class",
 															"value": [
 																{
-																	"type": "svelteExpression",
-																	"value": " ActiveTabClassNames ",
+																	"type": "svelteDynamicContent",
 																	"position": {
 																		"start": {
 																			"line": 111,
@@ -996,6 +1100,22 @@
 																			"line": 111,
 																			"column": 41,
 																			"offset": 2152
+																		}
+																	},
+																	"expression": {
+																		"type": "svelteExpression",
+																		"value": " ActiveTabClassNames ",
+																		"position": {
+																			"start": {
+																				"line": 111,
+																				"column": 19,
+																				"offset": 2130
+																			},
+																			"end": {
+																				"line": 111,
+																				"column": 40,
+																				"offset": 2151
+																			}
 																		}
 																	}
 																}
@@ -1043,8 +1163,7 @@
 																	"name": "this",
 																	"value": [
 																		{
-																			"type": "svelteExpression",
-																			"value": " tab.component ",
+																			"type": "svelteDynamicContent",
 																			"position": {
 																				"start": {
 																					"line": 112,
@@ -1055,6 +1174,22 @@
 																					"line": 112,
 																					"column": 50,
 																					"offset": 2203
+																				}
+																			},
+																			"expression": {
+																				"type": "svelteExpression",
+																				"value": " tab.component ",
+																				"position": {
+																					"start": {
+																						"line": 112,
+																						"column": 34,
+																						"offset": 2187
+																					},
+																					"end": {
+																						"line": 112,
+																						"column": 49,
+																						"offset": 2202
+																					}
 																				}
 																			}
 																		}
@@ -1079,8 +1214,23 @@
 																	"name": " ...tab.attributes ",
 																	"value": [
 																		{
-																			"type": "svelteExpression",
-																			"value": " ...tab.attributes ",
+																			"type": "svelteDynamicContent",
+																			"expression": {
+																				"type": "svelteExpression",
+																				"value": " ...tab.attributes ",
+																				"position": {
+																					"start": {
+																						"line": 112,
+																						"column": 53,
+																						"offset": 2206
+																					},
+																					"end": {
+																						"line": 112,
+																						"column": 72,
+																						"offset": 2225
+																					}
+																				}
+																			},
 																			"position": {
 																				"start": {
 																					"line": 112,

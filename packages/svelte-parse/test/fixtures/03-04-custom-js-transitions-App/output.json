@@ -94,8 +94,8 @@
 										},
 										"end": {
 											"line": 28,
-											"column": 23,
-											"offset": 543
+											"column": 24,
+											"offset": 544
 										}
 									}
 								}
@@ -120,8 +120,7 @@
 							"name": "bind",
 							"value": [
 								{
-									"type": "svelteExpression",
-									"value": "visible",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 28,
@@ -132,6 +131,22 @@
 											"line": 28,
 											"column": 47,
 											"offset": 567
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "visible",
+										"position": {
+											"start": {
+												"line": 28,
+												"column": 39,
+												"offset": 559
+											},
+											"end": {
+												"line": 28,
+												"column": 46,
+												"offset": 566
+											}
 										}
 									}
 								}

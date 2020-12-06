@@ -72,8 +72,8 @@
 								},
 								"end": {
 									"line": 8,
-									"column": 20,
-									"offset": 119
+									"column": 21,
+									"offset": 120
 								}
 							}
 						}
@@ -131,8 +131,8 @@
 										},
 										"end": {
 											"line": 9,
-											"column": 24,
-											"offset": 145
+											"column": 25,
+											"offset": 146
 										}
 									}
 								}
@@ -310,8 +310,8 @@
 												},
 												"end": {
 													"line": 10,
-													"column": 59,
-													"offset": 206
+													"column": 60,
+													"offset": 207
 												}
 											}
 										}
@@ -445,8 +445,7 @@
 									}
 								},
 								{
-									"type": "svelteExpression",
-									"value": "date",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 11,
@@ -457,6 +456,22 @@
 											"line": 11,
 											"column": 20,
 											"offset": 260
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "date",
+										"position": {
+											"start": {
+												"line": 11,
+												"column": 15,
+												"offset": 255
+											},
+											"end": {
+												"line": 11,
+												"column": 19,
+												"offset": 259
+											}
 										}
 									}
 								}
@@ -513,8 +528,7 @@
 									}
 								},
 								{
-									"type": "svelteExpression",
-									"value": "toDate",
+									"type": "svelteDynamicContent",
 									"position": {
 										"start": {
 											"line": 12,
@@ -525,6 +539,22 @@
 											"line": 12,
 											"column": 24,
 											"offset": 288
+										}
+									},
+									"expression": {
+										"type": "svelteExpression",
+										"value": "toDate",
+										"position": {
+											"start": {
+												"line": 12,
+												"column": 17,
+												"offset": 281
+											},
+											"end": {
+												"line": 12,
+												"column": 23,
+												"offset": 287
+											}
 										}
 									}
 								}

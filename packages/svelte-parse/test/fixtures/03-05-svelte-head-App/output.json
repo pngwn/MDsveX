@@ -42,8 +42,8 @@
 										},
 										"end": {
 											"line": 2,
-											"column": 23,
-											"offset": 36
+											"column": 24,
+											"offset": 37
 										}
 									}
 								}
@@ -78,8 +78,8 @@
 										},
 										"end": {
 											"line": 2,
-											"column": 54,
-											"offset": 67
+											"column": 55,
+											"offset": 68
 										}
 									}
 								}

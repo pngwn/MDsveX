@@ -90,8 +90,7 @@
 							}
 						},
 						{
-							"type": "svelteExpression",
-							"value": "pin ? '#333' : '#ccc'",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 12,
@@ -102,6 +101,22 @@
 									"line": 12,
 									"column": 42,
 									"offset": 237
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "pin ? '#333' : '#ccc'",
+								"position": {
+									"start": {
+										"line": 12,
+										"column": 20,
+										"offset": 215
+									},
+									"end": {
+										"line": 12,
+										"column": 41,
+										"offset": 236
+									}
 								}
 							}
 						}
@@ -125,8 +140,7 @@
 			"selfClosing": false,
 			"children": [
 				{
-					"type": "svelteExpression",
-					"value": "view",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 12,
@@ -137,6 +151,22 @@
 							"line": 12,
 							"column": 50,
 							"offset": 245
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "view",
+						"position": {
+							"start": {
+								"line": 12,
+								"column": 45,
+								"offset": 240
+							},
+							"end": {
+								"line": 12,
+								"column": 49,
+								"offset": 244
+							}
 						}
 					}
 				}
@@ -179,8 +209,7 @@
 					"name": "bind",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "pin",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 14,
@@ -191,6 +220,22 @@
 									"line": 14,
 									"column": 25,
 									"offset": 276
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "pin",
+								"position": {
+									"start": {
+										"line": 14,
+										"column": 21,
+										"offset": 272
+									},
+									"end": {
+										"line": 14,
+										"column": 24,
+										"offset": 275
+									}
 								}
 							}
 						}
@@ -216,8 +261,7 @@
 					"name": "on",
 					"value": [
 						{
-							"type": "svelteExpression",
-							"value": "handleSubmit",
+							"type": "svelteDynamicContent",
 							"position": {
 								"start": {
 									"line": 14,
@@ -228,6 +272,22 @@
 									"line": 14,
 									"column": 50,
 									"offset": 301
+								}
+							},
+							"expression": {
+								"type": "svelteExpression",
+								"value": "handleSubmit",
+								"position": {
+									"start": {
+										"line": 14,
+										"column": 37,
+										"offset": 288
+									},
+									"end": {
+										"line": 14,
+										"column": 49,
+										"offset": 300
+									}
 								}
 							}
 						}

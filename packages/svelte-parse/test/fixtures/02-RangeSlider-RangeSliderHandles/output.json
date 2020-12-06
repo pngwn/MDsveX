@@ -132,8 +132,7 @@
 					}
 				},
 				{
-					"type": "svelteExpression",
-					"value": "JSON.stringify(values)",
+					"type": "svelteDynamicContent",
 					"position": {
 						"start": {
 							"line": 9,
@@ -144,6 +143,22 @@
 							"line": 9,
 							"column": 38,
 							"offset": 180
+						}
+					},
+					"expression": {
+						"type": "svelteExpression",
+						"value": "JSON.stringify(values)",
+						"position": {
+							"start": {
+								"line": 9,
+								"column": 15,
+								"offset": 157
+							},
+							"end": {
+								"line": 9,
+								"column": 37,
+								"offset": 179
+							}
 						}
 					}
 				}

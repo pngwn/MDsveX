@@ -50,8 +50,7 @@
 									"name": "depth",
 									"value": [
 										{
-											"type": "svelteExpression",
-											"value": "depth - 1",
+											"type": "svelteDynamicContent",
 											"position": {
 												"start": {
 													"line": 2,
@@ -62,6 +61,22 @@
 													"line": 2,
 													"column": 33,
 													"offset": 48
+												}
+											},
+											"expression": {
+												"type": "svelteExpression",
+												"value": "depth - 1",
+												"position": {
+													"start": {
+														"line": 2,
+														"column": 23,
+														"offset": 38
+													},
+													"end": {
+														"line": 2,
+														"column": 32,
+														"offset": 47
+													}
 												}
 											}
 										}
