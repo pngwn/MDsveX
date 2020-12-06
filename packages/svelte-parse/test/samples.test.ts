@@ -25,7 +25,16 @@ const input_outputs = inputs.map(([f, input, output]) => {
 	// 		JSON.stringify(parse({ value: input, generatePositions: false }), null, 2)
 	// 	);
 	// }
-	return [f, parse({ value: input, generatePositions: true }), output];
+
+	let i;
+
+	try {
+		i = parse({ value: input, generatePositions: true });
+	} catch (e) {
+		console.warn(f);
+		throw e;
+	}
+	return [f, i, output];
 });
 
 import { suite } from 'uvu';

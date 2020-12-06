@@ -136,8 +136,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 	let _n2;
 
 	for (;;) {
-		console.log(value[index], node_stack, state, brace_count);
-		console.log('===');
+		// console.log(value[index], node_stack, state);
+
 		if (value[index] === void 0) {
 			if (generatePositions)
 				//@ts-ignore
@@ -266,11 +266,11 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 		if (current_state === State.IN_DYNAMIC_CONTENT) {
 			if (char === CLOSE_BRACE) {
+				chomp();
 				if (generatePositions) {
 					//@ts-ignore
 					current_node.position.end = place();
 				}
-				chomp();
 				if (node_stack.length === 1) break;
 
 				pop_node();
@@ -340,6 +340,10 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
+			if (!(current_node as SvelteExpression).value) {
+				(current_node as SvelteExpression).value = '';
+			}
+
 			(current_node as SvelteExpression).value += value[index];
 			chomp();
 			continue;
@@ -401,13 +405,15 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			(current_node as SvelteExpression).value += value[index];
 			chomp();
+
 			continue;
 		}
 
 		if (current_state === State.IN_BRANCHING_BLOCK) {
 			if (char === CLOSE_BRACE) {
+				if ((current_node as SvelteExpression).type === 'svelteExpression')
+					pop_node();
 				chomp();
-				pop_node();
 				set_state(State.PARSE_CHILDREN);
 				continue;
 			}
@@ -646,7 +652,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				chomp();
 				continue;
 			}
-			console.log(state);
+
 			push_node(
 				((current_node as Property).value[0] as SvelteDynamicContent).expression
 			);
@@ -803,17 +809,16 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 					value: '',
 				};
 
+				(current_node as Property).value.push(_n);
+				push_node(_n);
 				if (generatePositions) {
 					//@ts-ignore
 					current_node.position = { start: place(), end: {} };
 				}
-				//@ts-ignore
-				console.log(current_node);
-				(current_node as Property).value.push(_n);
-				push_node(_n);
 			}
 
 			(current_node as Text).value += value[index];
+
 			chomp();
 			continue;
 		}
@@ -821,14 +826,22 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		if (current_state === State.IN_QUOTED_ATTR_VALUE) {
 			// if we meet our matching quote the attribute has ended
 			if (value[index] === quote_type) {
+				chomp();
 				//@ts-ignore
 				if (generatePositions) current_node.position.end = place();
 				pop_node();
 				quote_type = '';
-				chomp();
+
 				pop_state();
-				//@ts-ignore
-				if (current_node.type !== 'svelteElement') {
+
+				if (
+					//@ts-ignore
+					current_node.type !== 'svelteElement' &&
+					//@ts-ignore
+					current_node.type !== 'svelteComponent' &&
+					//@ts-ignore
+					current_node.type !== 'svelteMeta'
+				) {
 					//@ts-ignore
 					if (generatePositions) current_node.position.end = place();
 					pop_node();
@@ -838,7 +851,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (char === OPEN_BRACE) {
-				console.log(state, node_stack);
 				//@ts-ignore
 				if (generatePositions && current_node.type !== 'blank')
 					//@ts-ignore
@@ -866,7 +878,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			// " ", "\n" => still in the attribute value but make a new node
 			if (char === SPACE || char === TAB || char === LINEFEED) {
-				console.log(state, node_stack);
 				const _c = current_node as Text | SvelteExpression;
 				if (_c.type === 'text' && RE_ONLY_WHITESPACE.test(_c.value)) {
 					_c.value += value[index];
@@ -888,7 +899,6 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (value.charCodeAt(index - 1) === CLOSE_BRACE) {
-				console.log(state, node_stack);
 				//@ts-ignore
 				current_node.type !== 'svelteProperty' && pop_node();
 				_n = { type: 'text', value: value[index] };
@@ -1323,11 +1333,15 @@ export function parse(opts: ParseOptions): Root {
 		})[0],
 	};
 
+	// console.log(JSON.stringify(root.children[root.children.length - 1], null, 2));
 	if (opts.generatePositions) {
 		root.position = {
 			start: { column: 1, line: 1, offset: 0 },
-			//@ts-ignore
-			end: root.children[root.children.length - 1].position.end,
+			end: Object.assign(
+				{},
+				//@ts-ignore
+				root.children[root.children.length - 1].position.end
+			),
 		};
 	}
 
