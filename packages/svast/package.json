@@ -1,6 +1,6 @@
 {
 	"name": "svast",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Types for svast, a Svelte AST specification",
 	"main": "index.js",
 	"scripts": {

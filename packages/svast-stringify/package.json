@@ -1,6 +1,6 @@
 {
 	"name": "svast-stringify",
-	"version": "0.0.5",
+	"version": "0.1.0",
 	"description": "Turn svast nodes back into svelte code",
 	"main": "dist/main.cjs.js",
 	"module": "dist/main.es.js",
@@ -22,6 +22,6 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"dependencies": {
-		"svast": "workspace:^0.1.0"
+		"svast": "workspace:^0.2.0"
 	}
 }

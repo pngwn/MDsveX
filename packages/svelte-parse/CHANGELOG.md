@@ -1,5 +1,18 @@
 # svelte-parse
 
+## 0.1.0
+
+### Minor Changes
+
+- [`b5b526e`](https://github.com/pngwn/MDsveX/commit/b5b526e1a1e112969e9ea1463eae82aab3c0fec2) [#198](https://github.com/pngwn/MDsveX/pull/198) Thanks [@pngwn](https://github.com/pngwn)! - Add a new SVAST node `SvelteDynamicContent` in order to disambiguate positions of expressions due to them not always having opening and closing braces(#174).
+
+  Ensure that unquoted attribute values are correctly parsed as separate values where appropriate(#178).
+
+### Patch Changes
+
+- Updated dependencies [[`b5b526e`](https://github.com/pngwn/MDsveX/commit/b5b526e1a1e112969e9ea1463eae82aab3c0fec2)]:
+  - svast@0.2.0
+
 ## 0.0.5
 
 ### Patch Changes
