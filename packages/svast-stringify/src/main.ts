@@ -6,7 +6,6 @@ import {
 	Property,
 	SvelteElement,
 	Directive,
-	SvelteExpression,
 	Literal,
 	SvelteParent,
 	BranchingBlock,
@@ -78,8 +77,8 @@ const handlers: Record<string, Handler> = {
 	text(node) {
 		return (node as Text).value;
 	},
-	svelteExpression(node) {
-		return '{' + node.value + '}';
+	svelteDynamicContent(node) {
+		return '{' + (node as SvelteDynamicContent).expression.value + '}';
 	},
 	svelteVoidBlock(node) {
 		return '{@' + node.name + ' ' + (node as VoidBlock).expression.value + '}';
