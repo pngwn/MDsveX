@@ -8,7 +8,7 @@ A Markdown preprocessor for Svelte. Markdown in Svelte.
 
 ## Packages
 
-This repo is a monorepo containing `mdsvex` and any supporting packages. Each repo has it's own readme with more details.
+This is a monorepo containing `mdsvex` and any supporting packages. Each repo has it's own readme with more details.
 
 - [site](https://github.com/pngwn/MDsveX/tree/master/packages/site) - The documentation website.
 - [mdsvex](https://github.com/pngwn/MDsveX/tree/master/packages/mdsvex) - `mdsvex` itself.
