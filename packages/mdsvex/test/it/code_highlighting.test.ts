@@ -1,6 +1,7 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 import { lines } from '../utils';
+import shiki from 'shiki';
 
 import { mdsvex } from '../../src';
 
@@ -164,6 +165,38 @@ highlight(
 	async () => {
 		function _highlight(code: string, lang: string | undefined): string {
 			return `<code class="${lang}">${code}</code>`;
+		}
+
+		const output = await mdsvex({
+			highlight: { highlighter: _highlight },
+		}).markup({
+			content: `
+\`\`\`somecode
+i am some code
+\`\`\`
+    `,
+			filename: 'thing.svx',
+		});
+
+		assert.equal(
+			lines(`<code class="somecode">i am some code</code>`),
+			output && lines(output.code)
+		);
+	}
+);
+
+highlight(
+	'Should be possible to pass an async custom highlight function ',
+	async () => {
+		async function _highlight(
+			code: string,
+			lang: string | undefined
+		): Promise<string> {
+			// const shiki = require('shiki');
+			const highlighter = await shiki.getHighlighter({
+				theme: 'material-theme-palenight',
+			});
+			return highlighter.codeToHtml(code, lang);
 		}
 
 		const output = await mdsvex({
