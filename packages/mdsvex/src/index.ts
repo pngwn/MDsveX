@@ -77,8 +77,7 @@ export function transform(
 		.use(external, { target: false, rel: ['nofollow'] })
 		.use(escape_code, { blocks: !!highlight })
 		.use(extract_frontmatter, [{ type: fm_opts.type, marker: fm_opts.marker }])
-		.use(parse_frontmatter, { parse: fm_opts.parse, type: fm_opts.type })
-		.use(highlight_blocks, highlight || {});
+		.use(parse_frontmatter, { parse: fm_opts.parse, type: fm_opts.type });
 
 	if (smartypants) {
 		toMDAST.use(
@@ -87,7 +86,7 @@ export function transform(
 		);
 	}
 
-	apply_plugins(remarkPlugins, toMDAST);
+	apply_plugins(remarkPlugins, toMDAST).use(highlight_blocks, highlight || {});
 
 	const toHAST = toMDAST
 		.use(remark2rehype, {
@@ -280,7 +279,9 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 
 	return {
 		markup: async ({ content, filename }) => {
-			const extensionsParts = (extensions || [extension]).map(ext => ext.split('.').pop());
+			const extensionsParts = (extensions || [extension]).map((ext) =>
+				ext.split('.').pop()
+			);
 			if (!extensionsParts.includes(filename.split('.').pop())) return;
 
 			const parsed = await parser.process({ contents: content, filename });
