@@ -1,5 +1,5 @@
 import type { Transformer } from 'unified';
-import type { Text, Code } from 'mdast';
+import type { Text, Code, HTML } from 'mdast';
 import type { Element, Root } from 'hast';
 import type { VFileMessage } from 'vfile-message';
 
@@ -526,13 +526,19 @@ export function highlight_blocks({
 		}
 	}
 
-	return function (tree) {
+	return async function (tree) {
 		if (highlight_fn && !(process as RollupProcess).browser) {
+			const nodes: (Code | HTML)[] = [];
 			visit<Code>(tree, 'code', (node) => {
-				//@ts-ignore
-				node.type = 'html';
-				node.value = highlight_fn(node.value, node.lang);
+				nodes.push(node);
 			});
+
+			await Promise.all(
+				nodes.map(async (node) => {
+					(node as HTML).type = 'html';
+					node.value = await highlight_fn(node.value, (node as Code).lang);
+				})
+			);
 		}
 	};
 }

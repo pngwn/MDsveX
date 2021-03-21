@@ -1,7 +1,7 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 import { lines } from '../utils';
-import shiki from 'shiki';
+import * as shiki from 'shiki';
 
 import { mdsvex } from '../../src';
 
@@ -203,15 +203,17 @@ highlight(
 			highlight: { highlighter: _highlight },
 		}).markup({
 			content: `
-\`\`\`somecode
-i am some code
+\`\`\`python
+import os
+key = os.environ["SECRET_KEY"]
 \`\`\`
     `,
 			filename: 'thing.svx',
 		});
 
 		assert.equal(
-			lines(`<code class="somecode">i am some code</code>`),
+			lines(`<pre class=\"shiki\" style=\"background-color: #292D3E\"><code><span class=\"line\"><span style=\"color: #89DDFF\">import</span><span style=\"color: #A6ACCD\"> os</span></span>
+<span class=\"line\"><span style=\"color: #A6ACCD\">key </span><span style=\"color: #89DDFF\">=</span><span style=\"color: #A6ACCD\"> os</span><span style=\"color: #89DDFF\">.</span><span style=\"color: #F07178\">environ</span><span style=\"color: #89DDFF\">[</span><span style=\"color: #89DDFF\">&quot;</span><span style=\"color: #C3E88D\">SECRET_KEY</span><span style=\"color: #89DDFF\">&quot;</span><span style=\"color: #89DDFF\">]</span></span></code></pre>`),
 			output && lines(output.code)
 		);
 	}
