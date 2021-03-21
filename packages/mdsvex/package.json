@@ -54,6 +54,7 @@
 		"rollup-plugin-node-globals": "^1.4.0",
 		"rollup-plugin-node-resolve": "^5.2.0",
 		"rollup-plugin-svelte": "^5.1.1",
+		"shiki": "^0.9.3",
 		"svelte": "^3.14.1",
 		"toml": "^3.0.0",
 		"unified": "^9.1.0",
