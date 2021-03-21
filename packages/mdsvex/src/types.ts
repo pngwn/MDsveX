@@ -150,7 +150,10 @@ interface SmartypantsOptions {
 export type LayoutMeta = { components: string[]; path: string };
 export type Layout = Record<string, LayoutMeta>;
 
-export type Highlighter = (code: string, lang: string | undefined) => string;
+export type Highlighter = (
+	code: string,
+	lang: string | undefined
+) => string | Promise<string>;
 interface HighlightOptions {
 	/**
 	 * **highlighter** - A custom highlight function for syntax highlighting. Two arguments are passed, both strings: the code to highlight and the language (if one is provided). It must return a string that will be injected into the document.
