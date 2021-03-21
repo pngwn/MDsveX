@@ -1,5 +1,6 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
+import { Node, Parent } from 'unist';
 
 import { join } from 'path';
 import { lines } from '../utils';
@@ -13,6 +14,7 @@ import toc from 'rehype-toc';
 import rehype_slug from 'rehype-slug';
 import toml from 'toml';
 import VMessage, { VFileMessage } from 'vfile-message';
+import { Transformer } from 'unified';
 
 const mdsvex_it = suite('mdsvex');
 const fix_dir = join(__dirname, '..', '_fixtures');
@@ -170,6 +172,38 @@ mdsvex_it('it should accept rehype plugins with options - plural', async () => {
 		output && lines(output.code)
 	);
 });
+
+mdsvex_it(
+	'it should accept remark plugins that modify code blocks',
+	async () => {
+		function code_plugin(): Transformer {
+			return function (tree: Node): void {
+				(tree as Parent).children.forEach((node) => {
+					if (node.type === 'code') {
+						node.type = 'html';
+						node.value = `<p>The Code is: <pre>${node.value}</pre></p>`;
+					}
+				});
+			};
+		}
+
+		const output = await mdsvex({
+			remarkPlugins: [code_plugin],
+		}).markup({
+			content: `
+\`\`\`booboo
+hello friends
+\`\`\`
+`,
+			filename: 'file.svx',
+		});
+
+		assert.equal(
+			lines(`<p>The Code is: <pre>hello friends</pre></p>`),
+			output && lines(output.code)
+		);
+	}
+);
 
 mdsvex_it('it should respect the smartypants option', async () => {
 	const output = await mdsvex({
