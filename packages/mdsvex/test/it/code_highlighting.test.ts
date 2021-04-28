@@ -264,27 +264,57 @@ highlight('Svelte syntax is highlighted by default', async () => {
 	);
 });
 
-highlight('Svelte syntax is highlighted by default', async () => {
-	const output = await mdsvex().markup({
-		content: `
+highlight(
+	'Svelte syntax is highlighted by default: using custom alias',
+	async () => {
+		const output = await mdsvex({
+			highlight: { alias: { beeboo: 'svelte' } },
+		}).markup({
+			content: `
+\`\`\`beeboo
+{#if condition}
+  <Hello />
+{/if}
+\`\`\`
+    `,
+			filename: 'thing.svx',
+		});
+
+		assert.equal(
+			lines(
+				`<pre class="language-beeboo">{@html \`<code class="language-beeboo"><span class="token language-javascript"><span class=\"token punctuation">&#123;</span>#<span class="token keyword">if</span> condition<span class="token punctuation">&#125;</span></span>
+<span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>Hello</span> <span class="token punctuation">/></span></span>
+<span class="token language-javascript"><span class="token punctuation">&#123;</span><span class="token operator">/</span><span class="token keyword">if</span><span class="token punctuation">&#125;</span></span></code>\`}</pre>`
+			),
+			output && lines(output.code)
+		);
+	}
+);
+
+highlight(
+	'Svelte syntax is highlighted by default: using sv alias',
+	async () => {
+		const output = await mdsvex().markup({
+			content: `
 \`\`\`sv
 {#if condition}
   <Hello />
 {/if}
 \`\`\`
     `,
-		filename: 'thing.svx',
-	});
+			filename: 'thing.svx',
+		});
 
-	assert.equal(
-		lines(
-			`<pre class="language-sv">{@html \`<code class="language-sv"><span class="token language-javascript"><span class=\"token punctuation">&#123;</span>#<span class="token keyword">if</span> condition<span class="token punctuation">&#125;</span></span>
+		assert.equal(
+			lines(
+				`<pre class="language-sv">{@html \`<code class="language-sv"><span class="token language-javascript"><span class=\"token punctuation">&#123;</span>#<span class="token keyword">if</span> condition<span class="token punctuation">&#125;</span></span>
 <span class="token tag"><span class="token tag"><span class="token punctuation">&lt;</span>Hello</span> <span class="token punctuation">/></span></span>
 <span class="token language-javascript"><span class="token punctuation">&#123;</span><span class="token operator">/</span><span class="token keyword">if</span><span class="token punctuation">&#125;</span></span></code>\`}</pre>`
-		),
-		output && lines(output.code)
-	);
-});
+			),
+			output && lines(output.code)
+		);
+	}
+);
 
 highlight(
 	'Should be possible to add additional highlighting grammars',
