@@ -442,7 +442,7 @@ function get_lang_info(
 
 	const aliases = new Set<string>();
 
-	// todo: DRY this up, it is literally identical
+	// TODO: DRY this up, it is literally identical
 
 	if (lang_meta.require) {
 		if (Array.isArray(lang_meta.require)) {
@@ -492,10 +492,18 @@ function load_language_metadata() {
 			);
 
 			langs[lang] = lang_info;
+			// console.log(langs);
 			aliases.forEach((_n) => {
 				langs[_n] = langs[lang];
 			});
 		}
+
+		langs.svelte = {
+			name: 'svelte',
+			aliases: new Set(['sv']),
+			path: 'prism-svelte',
+			deps: new Set(['javscript', 'css']),
+		};
 	}
 }
 
