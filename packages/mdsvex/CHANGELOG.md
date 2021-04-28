@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.9.2
+
+### Patch Changes
+
+- [`0567e15`](https://github.com/pngwn/MDsveX/commit/0567e151ea29ea531b8f71496c46871add43dcbb) [#237](https://github.com/pngwn/MDsveX/pull/237) Thanks [@pngwn](https://github.com/pngwn)! - Fix "Cannot find module 'prism-svelte'" error.
+
 ## 0.9.1
 
 ### Patch Changes
