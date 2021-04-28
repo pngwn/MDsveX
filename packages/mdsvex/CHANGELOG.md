@@ -1,5 +1,15 @@
 # mdsvex
 
+## 0.9.1
+
+### Patch Changes
+
+- [`f458229`](https://github.com/pngwn/MDsveX/commit/f458229033aaee7a86bbba6004053f65441ac25c) [#234](https://github.com/pngwn/MDsveX/pull/234) Thanks [@pngwn](https://github.com/pngwn)! - mdsvex now exposes an `escapeSvelte` utility to help with escaping Svelte syntax in custom highlight functions.
+
+* [`fe9b437`](https://github.com/pngwn/MDsveX/commit/fe9b43782d3cf5ea74b13d69aa82fbf0b0db4837) [#233](https://github.com/pngwn/MDsveX/pull/233) Thanks [@pngwn](https://github.com/pngwn)! - Language definitions for fenced code-blocks are now case insensitive.
+
+- [`8c905ce`](https://github.com/pngwn/MDsveX/commit/8c905ce380e0a8fb0b755f9b3ed23224b0ed4866) [#231](https://github.com/pngwn/MDsveX/pull/231) Thanks [@pngwn](https://github.com/pngwn)! - Svelte syntax is now highlighted by default when using the default code highlighter.
+
 ## 0.9.0
 
 ### Minor Changes
