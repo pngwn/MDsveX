@@ -554,7 +554,7 @@ export function highlight_blocks({
 	};
 }
 // escape curlies, backtick, \t, \r, \n to avoid breaking output of {@html `here`} in .svelte
-const escape_svelty = (str: string) =>
+export const escape_svelty = (str: string): string =>
 	str
 		.replace(
 			/[{}`]/g,
