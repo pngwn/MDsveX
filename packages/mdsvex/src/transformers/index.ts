@@ -498,12 +498,15 @@ function load_language_metadata() {
 			});
 		}
 
-		langs.svelte = {
+		const svelte_meta = {
 			name: 'svelte',
 			aliases: new Set(['sv']),
 			path: 'prism-svelte',
 			deps: new Set(['javscript', 'css']),
 		};
+
+		langs.svelte = svelte_meta;
+		langs.sv = svelte_meta;
 	}
 }
 
