@@ -1105,6 +1105,32 @@ mdsvex_it('compile, no options', async () => {
 	assert.equal(
 		{
 			code: '\n<h1>Hello world</h1>\n',
+			data: {},
+			map: '',
+		},
+		output
+	);
+});
+
+mdsvex_it('compile, gets headmatter attributes', async () => {
+	const output = await compile(
+		`
+---
+title: Yo
+---
+
+# Hello world
+`
+	);
+
+	assert.equal(
+		{
+			code: '<script context=\"module\">\n\texport const metadata = {\"title\":\"Yo\"};\n\tconst { title } = metadata;\n</script>\n\n<h1>Hello world</h1>\n',
+			data: {
+				fm: {
+					title: 'Yo'
+				},
+			},
 			map: '',
 		},
 		output
