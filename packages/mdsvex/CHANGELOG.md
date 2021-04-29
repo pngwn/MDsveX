@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.9.3
+
+### Patch Changes
+
+- [`2af50ee`](https://github.com/pngwn/MDsveX/commit/2af50ee80aeda5ca007b1046a8bb04523963ddc9) [#239](https://github.com/pngwn/MDsveX/pull/239) Thanks [@brev](https://github.com/brev)! - Standalone compile() function not returning headmatter attributes. Also export all types.
+
 ## 0.9.2
 
 ### Patch Changes
