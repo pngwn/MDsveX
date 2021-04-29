@@ -12,6 +12,7 @@ import type {
 	UnifiedPlugins,
 	LayoutMode,
 } from './types';
+export * from './types';
 
 import { join } from 'path';
 import fs from 'fs';
@@ -285,7 +286,11 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 			if (!extensionsParts.includes(filename.split('.').pop())) return;
 
 			const parsed = await parser.process({ contents: content, filename });
-			return { code: parsed.contents as string, map: '' };
+			return {
+				code: parsed.contents as string,
+				data: parsed.data as Record<string, unknown>,
+				map: '',
+			};
 		},
 	};
 };
