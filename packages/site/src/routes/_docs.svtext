@@ -356,7 +356,7 @@ highlight: {
 };
 ```
 
-Without any configuration, mdsvex will automatically highlight the syntax of over 100 languages using [PrismJS][prism], you simply need to add the language name to the fenced code block. Languages are loaded on-demand and cached for later use, this feature does not unnecessarily load all languages for highlighting purposes.
+Without any configuration, mdsvex will automatically highlight the syntax of over 100 languages using [PrismJS][prism], you simply need to add the language name to the fenced code block and import the CSS file for a Prism theme of your choosing. See [here for available options](https://github.com/PrismJS/prism-themes). Languages are loaded on-demand and cached for later use, this feature does not unnecessarily load all languages for highlighting purposes.
 
 Custom aliases for language names can be defined via the `alias` property of the highlight option. This property takes an object of key-value pairs: the key should be the alias you wish to define, the value should be the language you wish to asign it to.
 
