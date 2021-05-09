@@ -392,23 +392,37 @@ export function transform_hast({
 			// if using a layout we only wrap the html and nothing else
 			//@ts-ignore
 			node.children = [
+				//@ts-ignore
 				..._module,
+				//@ts-ignore
 				{ type: 'raw', value: _module[0] ? newline : '' },
+				//@ts-ignore
 				...instance,
+				//@ts-ignore
 				{ type: 'raw', value: instance[0] ? newline : '' },
+				//@ts-ignore
 				...css,
+				//@ts-ignore
 				{ type: 'raw', value: css[0] ? newline : '' },
+				//@ts-ignore
 				...special,
+				//@ts-ignore
 				{ type: 'raw', value: special[0] ? newline : '' },
+
 				{
+					//@ts-ignore
 					type: 'raw',
 					value: import_script
 						? `<Layout_MDSVEX_DEFAULT${fm ? ' {...metadata}' : ''}>`
 						: '',
 				},
+				//@ts-ignore
 				{ type: 'raw', value: newline },
+				//@ts-ignore
 				...html,
+				//@ts-ignore
 				{ type: 'raw', value: newline },
+				//@ts-ignore
 				{ type: 'raw', value: import_script ? '</Layout_MDSVEX_DEFAULT>' : '' },
 			];
 		});
