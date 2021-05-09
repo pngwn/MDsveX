@@ -189,7 +189,7 @@ export default {
 }
 ```
 
-Then you can do
+Then you can do:
 
 ```svx
 <script>
