@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.9.4
+
+### Patch Changes
+
+- [#251](https://github.com/pngwn/MDsveX/pull/251) [`3d8b400`](https://github.com/pngwn/MDsveX/commit/3d8b40039f3b096b609cdd358f3d56f9961c63e4) Thanks [@pngwn](https://github.com/pngwn)! - UMD build now works in the browser.
+
 ## 0.9.3
 
 ### Patch Changes
