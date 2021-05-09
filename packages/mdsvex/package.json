@@ -4,7 +4,7 @@
 	"description": "Markdown preprocessor for Svelte",
 	"main": "dist/main.cjs.js",
 	"module": "dist/main.es.js",
-	"browser": "dist/main.browser.js",
+	"browser": "dist/mdsvex.js",
 	"repository": "https://github.com/pngwn/MDsveX",
 	"scripts": {
 		"build": "rollup -c",
