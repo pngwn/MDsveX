@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.9.5
+
+### Patch Changes
+
+- [#253](https://github.com/pngwn/MDsveX/pull/253) [`8dc7900`](https://github.com/pngwn/MDsveX/commit/8dc790039a6b8f5f31f3e71bfc09c8d7a968cc95) Thanks [@pngwn](https://github.com/pngwn)! - There is now an ESM browser build in addition to UMD.
+
 ## 0.9.4
 
 ### Patch Changes
