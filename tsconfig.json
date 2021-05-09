@@ -10,7 +10,7 @@
 	},
 	"compilerOptions": {
 		"outDir": "dist/types",
-		"target": "esnext",
+		"target": "ES2019",
 		"module": "esnext",
 		"moduleResolution": "node",
 		"forceConsistentCasingInFileNames": true,
