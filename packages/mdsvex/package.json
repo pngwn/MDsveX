@@ -23,7 +23,7 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"devDependencies": {
-		"@rollup/plugin-replace": "^2.2.1",
+		"@rollup/plugin-replace": "^2.4.2",
 		"@rollup/plugin-sucrase": "^3.1.0",
 		"@starptech/prettyhtml-hast-to-html": "^0.10.0",
 		"@types/acorn": "^4.0.5",

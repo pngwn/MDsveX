@@ -44,7 +44,7 @@ importers:
 
   packages/mdsvex:
     specifiers:
-      '@rollup/plugin-replace': ^2.2.1
+      '@rollup/plugin-replace': ^2.4.2
       '@rollup/plugin-sucrase': ^3.1.0
       '@starptech/prettyhtml-hast-to-html': ^0.10.0
       '@types/acorn': ^4.0.5
@@ -90,7 +90,7 @@ importers:
       prismjs: 1.21.0
       vfile-message: 2.0.4
     devDependencies:
-      '@rollup/plugin-replace': 2.3.3
+      '@rollup/plugin-replace': 2.4.2
       '@rollup/plugin-sucrase': 3.1.0
       '@starptech/prettyhtml-hast-to-html': 0.10.0
       '@types/acorn': 4.0.5
@@ -1430,8 +1430,8 @@ packages:
     resolution: {integrity: sha512-oZLYFEAzUKyi3SKnXvj32ZCEGH6RDnao7COuCVhDydMS9NrCSVXhM79VaKyP5+Zc33m0QXEd2DN3UkU7OsHcfw==}
     dev: false
 
-  /@rollup/plugin-replace/2.3.3:
-    resolution: {integrity: sha512-XPmVXZ7IlaoWaJLkSCDaa0Y6uVo5XQYHhiMFzOd5qSv5rE+t/UJToPIOE56flKIxBFQI27ONsxb7dqHnwSsjKQ==}
+  /@rollup/plugin-replace/2.4.2:
+    resolution: {integrity: sha512-IGcu+cydlUMZ5En85jxHH4qj2hta/11BHq95iHEyb2sbgiN0eCdzvUcHw5gt9pBL5lTi4JDYJ1acCoMGpTvEZg==}
     peerDependencies:
       rollup: ^1.20.0 || ^2.0.0
     dependencies:
