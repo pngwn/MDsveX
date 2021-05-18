@@ -89,7 +89,7 @@ export function escape_code({ blocks }: { blocks: boolean }): Transformer {
 	};
 }
 
-// special case - process nodes with retext and smarypants
+// special case - process nodes with retext and smartypants
 // retext plugins can't work generally due to the difficulties in converting between the two trees
 
 export function smartypants_transformer(options = {}): Transformer {
