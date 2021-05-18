@@ -274,7 +274,7 @@ mdsvex_it('custom layouts should work - special tags', async () => {
   <meta property="og:type" content="article" />
   <meta property="og:url" content="{host}{path}" />
 </svelte:head>
-<Layout_MDSVEX_DEFAULT>
+<Layout_MDSVEX_DEFAULT {...$$props}>
 
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`),
@@ -296,7 +296,7 @@ mdsvex_it('custom layouts should work', async () => {
 	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
 </script>
 
-<Layout_MDSVEX_DEFAULT>
+<Layout_MDSVEX_DEFAULT {...$$props}>
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`),
 		output && lines(output.code)
@@ -335,7 +335,7 @@ mdsvex_it(
     color: pink;
   }
 </style>
-<Layout_MDSVEX_DEFAULT>
+<Layout_MDSVEX_DEFAULT {...$$props}>
 
 <h1>hello</h1>
 
@@ -377,7 +377,7 @@ mdsvex_it(
     color: pink;
   }
 </style>
-<Layout_MDSVEX_DEFAULT>
+<Layout_MDSVEX_DEFAULT {...$$props}>
 
 <h1>hello</h1>
 
@@ -426,7 +426,7 @@ boo boo boo
   }
 </style>
 <svelte:window />
-<Layout_MDSVEX_DEFAULT>
+<Layout_MDSVEX_DEFAULT {...$$props}>
 <h1>hello</h1>
 <p>hello friends</p>
 <p>boo boo boo</p>
@@ -603,7 +603,7 @@ number: 999
 	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
 </script>
 
-<Layout_MDSVEX_DEFAULT {...metadata}>
+<Layout_MDSVEX_DEFAULT {...$$props} {...metadata}>
 
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`),
@@ -667,7 +667,7 @@ dob = 1879-05-27T07:32:00-08:00 # First class dates
 	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
 </script>
 
-<Layout_MDSVEX_DEFAULT {...metadata}>
+<Layout_MDSVEX_DEFAULT {...$$props} {...metadata}>
 
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`),
@@ -714,7 +714,7 @@ number: 999
 	)}';
 </script>
 
-<Layout_MDSVEX_DEFAULT {...metadata}>
+<Layout_MDSVEX_DEFAULT {...$$props} {...metadata}>
 
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`),
@@ -843,7 +843,7 @@ number: 999
 	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
 </script>
 
-<Layout_MDSVEX_DEFAULT {...metadata}>
+<Layout_MDSVEX_DEFAULT {...$$props} {...metadata}>
 
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`),
@@ -923,7 +923,7 @@ number: 999
 	)}';
 </script>
 
-<Layout_MDSVEX_DEFAULT {...metadata}>
+<Layout_MDSVEX_DEFAULT {...$$props} {...metadata}>
 
 <h1>hello</h1>
 </Layout_MDSVEX_DEFAULT>`),
@@ -957,7 +957,7 @@ mdsvex_it('layout: allow custom components', async () => {
 	)}';
 </script>
 
-<Layout_MDSVEX_DEFAULT>
+<Layout_MDSVEX_DEFAULT {...$$props}>
 
 <Components.h1>hello</Components.h1>
 </Layout_MDSVEX_DEFAULT>`),
@@ -1004,7 +1004,7 @@ hello *hello* **hello**
 	)}';
 </script>
 
-<Layout_MDSVEX_DEFAULT>
+<Layout_MDSVEX_DEFAULT {...$$props}>
 
 <Components.h1>hello</Components.h1>
 <Components.h2>hello</Components.h2>
@@ -1049,7 +1049,7 @@ I am some paragraph text
 	)}';
 </script>
 
-<Layout_MDSVEX_DEFAULT>
+<Layout_MDSVEX_DEFAULT {...$$props}>
 
 <Components.h1>hello</Components.h1>
 <Components.p>I am some paragraph text</Components.p>
@@ -1091,7 +1091,7 @@ I am some paragraph text
 	)}';
 </script>
 
-<Layout_MDSVEX_DEFAULT>
+<Layout_MDSVEX_DEFAULT {...$$props}>
 
 <Components.h1>hello</Components.h1>
 <Components.p>I am some paragraph text</Components.p>
@@ -1125,10 +1125,11 @@ title: Yo
 
 	assert.equal(
 		{
-			code: '<script context=\"module\">\n\texport const metadata = {\"title\":\"Yo\"};\n\tconst { title } = metadata;\n</script>\n\n<h1>Hello world</h1>\n',
+			code:
+				'<script context="module">\n\texport const metadata = {"title":"Yo"};\n\tconst { title } = metadata;\n</script>\n\n<h1>Hello world</h1>\n',
 			data: {
 				fm: {
-					title: 'Yo'
+					title: 'Yo',
 				},
 			},
 			map: '',
@@ -1169,7 +1170,7 @@ I am some paragraph text
 	)}';
 </script>
 
-<Layout_MDSVEX_DEFAULT>
+<Layout_MDSVEX_DEFAULT {...$$props}>
 
 <Components.h1>hello</Components.h1>
 <Components.p>I am some paragraph text</Components.p>
@@ -1211,7 +1212,7 @@ I am some paragraph text
 	)}';
 </script>
 
-<Layout_MDSVEX_DEFAULT>
+<Layout_MDSVEX_DEFAULT {...$$props}>
 
 <Components.h1>hello</Components.h1>
 <Components.p>I am some paragraph text</Components.p>
