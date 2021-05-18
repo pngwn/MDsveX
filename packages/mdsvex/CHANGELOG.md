@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.9.6
+
+### Patch Changes
+
+- [#256](https://github.com/pngwn/MDsveX/pull/256) [`492b7a4`](https://github.com/pngwn/MDsveX/commit/492b7a4ad0eaf4274bdc83e629816644e56de643) Thanks [@pngwn](https://github.com/pngwn)! - Props passed to mdsvex documents will now be forwarded to layout files.
+
 ## 0.9.5
 
 ### Patch Changes
