@@ -413,8 +413,8 @@ export function transform_hast({
 					//@ts-ignore
 					type: 'raw',
 					value: import_script
-						? `<Layout_MDSVEX_DEFAULT${
-							fm ? ' {...$$props} {...metadata}' : ' {...$$props}'
+						? `<Layout_MDSVEX_DEFAULT {...$$props}${
+							fm ? ' {...metadata}' : ''
 						}>`
 						: '',
 				},
