@@ -554,7 +554,7 @@ export function highlight_blocks({
 	}
 
 	return async function (tree) {
-		if (highlight_fn && !(process as RollupProcess).browser) {
+		if (highlight_fn) {
 			const nodes: (Code | HTML)[] = [];
 			visit<Code>(tree, 'code', (node) => {
 				nodes.push(node);
