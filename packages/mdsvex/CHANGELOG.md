@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.9.7
+
+### Patch Changes
+
+- [#265](https://github.com/pngwn/MDsveX/pull/265) [`d1c1b4f`](https://github.com/pngwn/MDsveX/commit/d1c1b4f0a2b70fb09d3efb5f391ca12f717a0474) Thanks [@wlach](https://github.com/wlach)! - Escape code chunks in browser builds
+
 ## 0.9.6
 
 ### Patch Changes
