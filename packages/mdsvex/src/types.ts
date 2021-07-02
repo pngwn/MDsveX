@@ -152,7 +152,8 @@ export type Layout = Record<string, LayoutMeta>;
 
 export type Highlighter = (
 	code: string,
-	lang: string | undefined
+	lang: string | undefined,
+	metastring: string | undefined
 ) => string | Promise<string>;
 interface HighlightOptions {
 	/**
@@ -298,11 +299,14 @@ export interface MdsvexCompileOptions extends MdsvexOptions {
 	filename?: string;
 }
 
-export type PreprocessorReturn = Promise<{
-	code: string;
-	data?: Record<string, unknown>;
-	map?: string
-} | undefined>;
+export type PreprocessorReturn = Promise<
+	| {
+			code: string;
+			data?: Record<string, unknown>;
+			map?: string;
+	  }
+	| undefined
+>;
 
 export interface Preprocessor {
 	markup: (args: { content: string; filename: string }) => PreprocessorReturn;

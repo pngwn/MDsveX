@@ -173,11 +173,9 @@ function extract_parts(nodes: Array<Element | Text>): Parts {
 		// svelte special tags that have to be top level
 		if (!result.html || !result.html.children) return parts;
 
-		const _parts: Array<[
-			'html' | 'css' | 'special' | 'instance' | 'module',
-			number,
-			number
-		]> = result.html.children.map((v) => {
+		const _parts: Array<
+			['html' | 'css' | 'special' | 'instance' | 'module', number, number]
+		> = result.html.children.map((v) => {
 			if (
 				v.type === 'Options' ||
 				v.type === 'Head' ||
@@ -414,8 +412,8 @@ export function transform_hast({
 					type: 'raw',
 					value: import_script
 						? `<Layout_MDSVEX_DEFAULT {...$$props}${
-							fm ? ' {...metadata}' : ''
-						}>`
+								fm ? ' {...metadata}' : ''
+						  }>`
 						: '',
 				},
 				//@ts-ignore
@@ -563,7 +561,11 @@ export function highlight_blocks({
 			await Promise.all(
 				nodes.map(async (node) => {
 					(node as HTML).type = 'html';
-					node.value = await highlight_fn(node.value, (node as Code).lang);
+					node.value = await highlight_fn(
+						node.value,
+						(node as Code).lang,
+						(node as Code).meta
+					);
 				})
 			);
 		}

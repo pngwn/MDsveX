@@ -185,6 +185,34 @@ i am some code
 	}
 );
 
+highlight('Custom highlight functions receive the metastring', async () => {
+	function _highlight(
+		code: string,
+		lang: string | undefined,
+		meta: string | undefined
+	): string {
+		return `<code class="${lang}-${meta}">${code}</code>`;
+	}
+
+	const output = await mdsvex({
+		highlight: { highlighter: _highlight },
+	}).markup({
+		content: `
+\`\`\`somecode hello-friends what are you
+i am some code
+\`\`\`
+    `,
+		filename: 'thing.svx',
+	});
+
+	assert.equal(
+		lines(
+			`<code class="somecode-hello-friends what are you">i am some code</code>`
+		),
+		output && lines(output.code)
+	);
+});
+
 highlight(
 	'Should be possible to pass an async custom highlight function ',
 	async () => {
