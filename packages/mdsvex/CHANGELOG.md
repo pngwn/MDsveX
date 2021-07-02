@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.9.8
+
+### Patch Changes
+
+- [#274](https://github.com/pngwn/MDsveX/pull/274) [`b253bb0`](https://github.com/pngwn/MDsveX/commit/b253bb0e402d109a62f8ad33f96943672d65cc1e) Thanks [@pngwn](https://github.com/pngwn)! - Custom highlight functions now receive the metastring as an additional argument.
+
 ## 0.9.7
 
 ### Patch Changes
