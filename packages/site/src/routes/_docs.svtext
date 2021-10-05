@@ -210,7 +210,7 @@ smartypants: boolean | {
 } = true;
 ```
 
-The `smartypants` options transforms ASCII punctuation into fancy typographic punctuation HTML entities.
+The `smartypants` option transforms ASCII punctuation into fancy typographic punctuation HTML entities.
 
 It turns stuff like:
 
@@ -380,7 +380,7 @@ highlight: {
 
 Without any configuration, mdsvex will automatically highlight the syntax of over 100 languages using [PrismJS][prism], you simply need to add the language name to the fenced code block and import the CSS file for a Prism theme of your choosing. See [here for available options](https://github.com/PrismJS/prism-themes). Languages are loaded on-demand and cached for later use, this feature does not unnecessarily load all languages for highlighting purposes.
 
-Custom aliases for language names can be defined via the `alias` property of the highlight option. This property takes an object of key-value pairs: the key should be the alias you wish to define, the value should be the language you wish to asign it to.
+Custom aliases for language names can be defined via the `alias` property of the highlight option. This property takes an object of key-value pairs: the key should be the alias you wish to define, the value should be the language you wish to assign it to.
 
 ```js
 mdsvex({
@@ -390,7 +390,7 @@ mdsvex({
 })
 ```
 
-If you wish to handle syntax-highlighting yourself, you can provide a custom highlight function via the `highlighter` property.  The function will recieve two arguments, the `code` to be highlighted and the `lang` defined in the fenced code-block, both are strings. You can use this information to highlight as you wish. The function should return a string of highlighted code.
+If you wish to handle syntax-highlighting yourself, you can provide a custom highlight function via the `highlighter` property.  The function will receive two arguments, the `code` to be highlighted and the `lang` defined in the fenced code-block, both are strings. You can use this information to highlight as you wish. The function should return a string of highlighted code.
 
 You can disable syntax highlighting by passing a function that does nothing:
 
@@ -414,7 +414,7 @@ frontmatter: { parse: Function, marker: string };
 
 By default mdsvex supports yaml frontmatter, this is defined by enclosing the YAML in three hyphens (`---`). If you want to use a custom language or marker for frontmatter then you can use the `frontmatter` option.
 
-`frontmatter` should be an object that can be a passed a `marker` and a `parse` property.
+`frontmatter` should be an object that can receive a `marker` and a `parse` property.
 
 ```sig
 marker: string = '-';
@@ -440,7 +440,7 @@ The `parse` property accepts a function which allows you to provide a custom par
 
 The parse function gets the raw frontmatter as the first argument and a `messages` array as the second.
 
-If parsing is successful, the function should return the parsed frontmatter (as an object of key-value pairs), if there is a problem the function should return `undefined` or `false` . Any parsing errors or warnings should be pushed into the `messages` array which will be printed to the console when mdsvex has finished parsing. If you would prefer to throw an error, you are free to do so but it will interupt the parsing process.
+If parsing is successful, the function should return the parsed frontmatter (as an object of key-value pairs), if there is a problem the function should return `undefined` or `false` . Any parsing errors or warnings should be pushed into the `messages` array which will be printed to the console when mdsvex has finished parsing. If you would prefer to throw an error, you are free to do so but it will interrupt the parsing process.
 
 In the following example, we will modify the frontmatter handling so we can write our frontmatter in TOML with a triple-`+` fence.
 
@@ -543,7 +543,7 @@ If you are using named layouts and do not have a layout field in the frontmatter
     └── my-article.svx
 ```
 
-If there is a layout named `blog` and `article` then documents in the `blog` folder will use the `blog` layout, articles in the `articles` folder will use the `article` layout. mdsvex will try to check both singular and pluralised names, as you may have named a folder `events` but the matching layout could be named `event`, however, having the same folder and layout name will make this process more reliable. The current working directory is removed from the path when checking for matches but nested folder can still cause problems if there are conflicts. Shallow folder structures and unique folder and layout names will prevent these kinds of collisions.
+If there is a layout named `blog` and `article` then documents in the `blog` folder will use the `blog` layout, articles in the `articles` folder will use the `article` layout. mdsvex will try to check both singular and pluralised names, as you may have named a folder `events` but the matching layout could be named `event`, however, having the same folder and layout name will make this process more reliable. The current working directory is removed from the path when checking for matches but nested folders can still cause problems if there are conflicts. Shallow folder structures and unique folder and layout names will prevent these kinds of collisions.
 
 If there is no matching layout then the fallback layout (`_`) will be applied, if there is no fallback then no layout will be applied.
 
@@ -559,7 +559,7 @@ layout: false
 
 ### Custom Components
 
-Layouts also allow you provide custom components to any mdsvex file they are applied to. Custom components replace the elements that markdown would normally generate.
+Layouts also allow you to provide custom components to any mdsvex file they are applied to. Custom components replace the elements that markdown would normally generate.
 
 ```mdsvex
 # Title
