@@ -414,7 +414,7 @@ frontmatter: { parse: Function, marker: string };
 
 By default mdsvex supports yaml frontmatter, this is defined by enclosing the YAML in three hyphens (`---`). If you want to use a custom language or marker for frontmatter then you can use the `frontmatter` option.
 
-`frontmatter` should be an object that can receive a `marker` and a `parse` property.
+`frontmatter` should be an object that can contain a `marker` and a `parse` property.
 
 ```sig
 marker: string = '-';
