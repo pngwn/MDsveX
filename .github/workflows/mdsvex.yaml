@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: npm i -g pnpm@6
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
           node-version: 12
           cache: 'pnpm'
@@ -42,7 +42,7 @@ jobs:
       #   run: echo "cache_path=~/.pnpm-store/v3" >> $GITHUB_ENV
       - uses: actions/checkout@v2
       - run: npm i -g pnpm@6
-      - uses: actions/setup-node@v1
+      - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
