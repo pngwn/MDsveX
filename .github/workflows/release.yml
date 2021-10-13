@@ -35,7 +35,7 @@ jobs:
             ${{ runner.os }}-pnpm-
       - uses: pnpm/action-setup@v1.2.1
         with:
-          version: 5
+          version: 6
       - run: pnpm i --frozen-lockfile
 
       - name: Create Release Pull Request or Publish to npm

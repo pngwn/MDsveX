@@ -53,7 +53,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - uses: pnpm/action-setup@v1.2.1
         with:
-          version: 5
+          version: 6
       - uses: actions/cache@v2
         id: pnpm-store
         with:
