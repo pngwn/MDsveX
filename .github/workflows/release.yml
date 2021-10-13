@@ -33,9 +33,7 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
-      - uses: pnpm/action-setup@v1.2.1
-        with:
-          version: 6
+      - run: npm i -g pnpm@6
       - run: pnpm i --frozen-lockfile
 
       - name: Create Release Pull Request or Publish to npm
