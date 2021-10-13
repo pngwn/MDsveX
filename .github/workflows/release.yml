@@ -14,11 +14,13 @@ jobs:
         uses: actions/checkout@master
         with:
           fetch-depth: 0
-
+      - run: npm i -g pnpm@6
       - name: Setup Node.js 12.x
         uses: actions/setup-node@master
         with:
           node-version: 12.x
+          cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
       - name: Creating .npmrc
         run: |
           cat << EOF > "$HOME/.npmrc"
@@ -26,14 +28,14 @@ jobs:
           EOF
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - uses: actions/cache@v2
-        id: pnpm-store
-        with:
-          path: ~/.pnpm-store/v3
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
-      - run: npm i -g pnpm@6
+      # - uses: actions/cache@v2
+      #   id: pnpm-store
+      #   with:
+      #     path: ~/.pnpm-store/v3
+      #     key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-pnpm-
+      # - run: npm i -g pnpm@6
       - run: pnpm i --frozen-lockfile
 
       - name: Create Release Pull Request or Publish to npm
