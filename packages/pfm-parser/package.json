@@ -1,0 +1,23 @@
+{
+	"name": "svelte-parse",
+	"version": "0.1.0",
+	"description": "An increidbly relaxed svelte-parser",
+	"main": "dist/main.cjs.js",
+	"module": "dist/main.es.js",
+	"scripts": {},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/pfm-parser"
+	},
+	"keywords": [
+		"markdown",
+		"parse",
+		"mdsvex",
+		"ast"
+	],
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT",
+	"dependencies": {
+		"svast": "workspace:^0.2.0"
+	}
+}
