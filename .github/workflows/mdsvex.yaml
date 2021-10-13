@@ -38,7 +38,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        node-version: [10, 12]
+        node-version: [12, 14]
         os: [ubuntu-latest, macOS-latest, windows-latest]
     steps:
       - name: Get windows pnpm cache path
