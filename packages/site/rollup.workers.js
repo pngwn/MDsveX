@@ -1,5 +1,5 @@
-import resolve from "rollup-plugin-node-resolve";
-import json from "rollup-plugin-json";
+import resolve from "@rollup/plugin-node-resolve";
+import json from "@rollup/plugin-json";
 import { terser } from "rollup-plugin-terser";
 
 const dev = true;
