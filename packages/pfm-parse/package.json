@@ -4,7 +4,9 @@
 	"description": "",
 	"main": "dist/main.cjs.js",
 	"module": "dist/main.es.js",
-	"scripts": {},
+	"scripts": {
+		"build": "esbuild src/main.ts --bundle --target=es2020 --format=esm --outfile=dist/index.js --minify"
+	},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/pfm-parser"
@@ -16,5 +18,8 @@
 		"ast"
 	],
 	"author": "pngwn <hello@pngwn.io>",
-	"license": "MIT"
+	"license": "MIT",
+	"devDependencies": {
+		"esbuild": "^0.13.8"
+	}
 }
