@@ -1,5 +1,5 @@
 {
-	"name": "svelte-parse",
+	"name": "pfm-parse",
 	"version": "0.1.0",
 	"description": "",
 	"main": "dist/main.cjs.js",
