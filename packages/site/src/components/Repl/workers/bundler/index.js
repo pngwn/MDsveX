@@ -1,4 +1,4 @@
-import * as rollup from "rollup/dist/rollup.browser.es.js";
+import * as rollup from "rollup/dist/es/rollup.browser.js";
 import commonjs from "./plugins/commonjs.js";
 import glsl from "./plugins/glsl.js";
 import json from "./plugins/json.js";
