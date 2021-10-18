@@ -2,6 +2,7 @@
 	"name": "mdsvex-playground",
 	"description": "Documentation side for mdsvex",
 	"version": "0.0.1",
+	"type": "module",
 	"scripts": {
 		"dev": "sapper dev --ext '.svelte .svx'",
 		"build:site": "sapper build --legacy --ext '.svelte .svx'",
