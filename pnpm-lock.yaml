@@ -158,7 +158,7 @@ importers:
       rollup: ^2.58.0
       rollup-plugin-svelte: ^7.1.0
       rollup-plugin-terser: ^7.0.2
-      sapper: ^0.27.8
+      sapper: ^0.29.3
       sirv: ^0.4.0
       svelte: ^3.7.1
       svelte-json-tree: ^0.0.7
@@ -193,7 +193,7 @@ importers:
       rollup: 2.58.0
       rollup-plugin-svelte: 7.1.0_rollup@2.58.0+svelte@3.24.1
       rollup-plugin-terser: 7.0.2_rollup@2.58.0
-      sapper: 0.27.16_svelte@3.24.1
+      sapper: 0.29.3_svelte@3.24.1
       svelte: 3.24.1
       svelte-json-tree: 0.0.7
       typeface-catamaran: 0.0.72
@@ -5482,15 +5482,16 @@ packages:
     resolution: {integrity: sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==}
     dev: true
 
-  /sapper/0.27.16_svelte@3.24.1:
-    resolution: {integrity: sha512-q8dohkbhga6xO+0a8h84odFyoilQ0D0vJtF8NHra/DQmSeN2R2MXUfwhw3EyvLms3T1x8H3v+qw642Qf5JXA9g==}
+  /sapper/0.29.3_svelte@3.24.1:
+    resolution: {integrity: sha512-L9BHq8xUoaSQByy8MGnj38PEhNzAnu6Sj9dzzWrFyjxgtDmzKug38AhoJvUGoBOQaFlhMxipkbMACR38zbB5zg==}
     hasBin: true
     peerDependencies:
-      svelte: ^3.5.0
+      svelte: ^3.17.3
     dependencies:
       html-minifier: 4.0.0
       http-link-header: 1.0.2
-      shimport: 1.0.1
+      shimport: 2.0.5
+      source-map: 0.6.1
       sourcemap-codec: 1.4.8
       string-hash: 1.1.3
       svelte: 3.24.1
@@ -5581,8 +5582,8 @@ packages:
       vscode-textmate: 5.2.0
     dev: true
 
-  /shimport/1.0.1:
-    resolution: {integrity: sha512-Imf4gH+8WQmT1GvxS/x79qpmfnE6m50hyN1ucatX+7oMCgmaF8obZWCPIzSUe6+P+YmXM46lkP2pxiV2/lt9Og==}
+  /shimport/2.0.5:
+    resolution: {integrity: sha512-H2FeQyImK4CFhGG1wVhHEB1hASWz+WQK6t2gMP5lk+b0PW30XSrsryDONDBwF1n6hBKsmbr0REfTinaNdEkcPQ==}
     dev: true
 
   /signal-exit/3.0.3:
