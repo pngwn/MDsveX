@@ -41,7 +41,7 @@
 		"rollup": "^2.58.0",
 		"rollup-plugin-svelte": "^7.1.0",
 		"rollup-plugin-terser": "^7.0.2",
-		"sapper": "^0.27.8",
+		"sapper": "^0.29.3",
 		"svelte": "^3.7.1",
 		"svelte-json-tree": "^0.0.7",
 		"typeface-catamaran": "^0.0.72",
