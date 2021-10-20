@@ -4,8 +4,9 @@
 	"description": "",
 	"main": "dist/main.cjs.js",
 	"module": "dist/main.es.js",
+	"type": "module",
 	"scripts": {
-		"build": "esbuild src/main.ts --bundle --target=es2020 --format=esm --outfile=dist/index.js --minify"
+		"build": "MARKDOWN_PARSE=true esbuild src/main.ts --bundle --target=es2020 --format=esm --outfile=dist/index.js --minify"
 	},
 	"repository": {
 		"type": "git",
@@ -21,5 +22,8 @@
 	"license": "MIT",
 	"devDependencies": {
 		"esbuild": "^0.13.8"
+	},
+	"dependencies": {
+		"parse": "workspace:^0.1.0"
 	}
 }
