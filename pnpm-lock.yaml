@@ -127,6 +127,12 @@ importers:
       unified: 9.1.0
       vfile: 4.2.0
 
+  packages/parse:
+    specifiers:
+      esbuild: ^0.13.8
+    devDependencies:
+      esbuild: 0.13.8
+
   packages/pfm-parse:
     specifiers:
       esbuild: ^0.13.8
