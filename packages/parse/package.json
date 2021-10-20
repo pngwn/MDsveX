@@ -1,13 +1,12 @@
 {
-	"name": "pfm-parse",
+	"name": "parse",
 	"version": "0.1.0",
 	"description": "",
-	"main": "dist/main.cjs.js",
-	"module": "dist/main.es.js",
+	"main": "src/main.ts",
+	"module": "src/main.ts",
+	"private": "true",
 	"type": "module",
-	"scripts": {
-		"build": "node ./build.js"
-	},
+	"scripts": {},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/pfm-parser"
@@ -22,8 +21,5 @@
 	"license": "MIT",
 	"devDependencies": {
 		"esbuild": "^0.13.8"
-	},
-	"dependencies": {
-		"parse": "workspace:^0.1.0"
 	}
 }
