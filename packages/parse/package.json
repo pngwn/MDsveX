@@ -18,8 +18,5 @@
 		"ast"
 	],
 	"author": "pngwn <hello@pngwn.io>",
-	"license": "MIT",
-	"devDependencies": {
-		"esbuild": "^0.13.8"
-	}
+	"license": "MIT"
 }
