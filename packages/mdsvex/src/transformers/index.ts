@@ -412,7 +412,7 @@ export function transform_hast({
 					type: 'raw',
 					value: import_script
 						? `<Layout_MDSVEX_DEFAULT {...$$props}${
-							fm ? ' {...metadata}' : ''
+								fm ? ' {...metadata}' : ''
 						  }>`
 						: '',
 				},
@@ -506,7 +506,6 @@ function load_language_metadata() {
 			);
 
 			langs[lang] = lang_info;
-			// console.log(langs);
 			aliases.forEach((_n) => {
 				langs[_n] = langs[lang];
 			});
