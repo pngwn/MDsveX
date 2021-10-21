@@ -1,2 +1,6 @@
-/node_modules
-/test/_fixtures
+node_modules/*
+**/test/_fixtures/**/*
+**/test/fixtures/**/*
+**/site/**/*
+pnpm-lock.yaml
+.changeset/**/*

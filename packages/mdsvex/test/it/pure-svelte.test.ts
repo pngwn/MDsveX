@@ -23,10 +23,8 @@ const get_dir_path = (d: string): string_arr => {
 	});
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const flatten = (arr: any) =>
 	arr.reduce(
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		(acc: any, next: any) =>
 			acc.concat(Array.isArray(next) ? flatten(next) : next),
 		[]
