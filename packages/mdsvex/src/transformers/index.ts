@@ -34,7 +34,6 @@ import type {
 const newline = '\n';
 // extract the yaml from 'yaml' nodes and put them in the vfil for later use
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function default_frontmatter(
 	value: string,
 	messages: VFileMessage[]
@@ -153,14 +152,13 @@ function extract_parts(nodes: Array<Element | Text>): Parts {
 		let result: {
 			html?:
 				| {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						children?: any[] | undefined; // eslint-disable-next-line @typescript-eslint/no-explicit-any
-						start: any; // eslint-disable-next-line @typescript-eslint/no-explicit-any
-						end: any; // eslint-disable-next-line @typescript-eslint/no-explicit-any
+						children?: any[] | undefined;
+						start: any;
+						end: any;
 						[x: string]: any;
 				  }
-				| undefined; // eslint-disable-next-line @typescript-eslint/no-explicit-any
-			instance?: any; // eslint-disable-next-line @typescript-eslint/no-explicit-any
+				| undefined;
+			instance?: any;
 			module?: any;
 		};
 		try {
@@ -412,7 +410,7 @@ export function transform_hast({
 					type: 'raw',
 					value: import_script
 						? `<Layout_MDSVEX_DEFAULT {...$$props}${
-							fm ? ' {...metadata}' : ''
+								fm ? ' {...metadata}' : ''
 						  }>`
 						: '',
 				},
@@ -433,7 +431,6 @@ export function transform_hast({
 
 // { [lang]: { path, deps: pointer to key } }
 const langs: { [x: string]: MdsvexLanguage } = {};
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let Prism: any;
 
 const make_path = (base_path: string, id: string) =>
@@ -495,7 +492,7 @@ function load_language_metadata() {
 		const {
 			meta,
 			...languages
-		}: Record<string, PrismLanguage> & // eslint-disable-next-line
+		}: Record<string, PrismLanguage> &
 			Meta = require('prismjs/components.json').languages;
 
 		for (const lang in languages) {

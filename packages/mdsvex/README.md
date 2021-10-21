@@ -10,7 +10,7 @@ This preprocessor allows you use Svelte components in your markdown, or markdown
 
 You can do this:
 
-````jsx
+```jsx
 <script>
   import { Chart } from '../components/Chart.svelte';
 </script>
@@ -20,6 +20,6 @@ You can do this:
 The chart is rendered inside our MDsveX document.
 
 <Chart />
-````
+```
 
 https://mdsvex.com/

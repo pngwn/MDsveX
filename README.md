@@ -4,8 +4,6 @@ A Markdown preprocessor for Svelte. Markdown in Svelte.
 
 [mdsvex.com](https://mdsvex.com)
 
-
-
 ## Packages
 
 This is a monorepo containing `mdsvex` and any supporting packages. Each repo has it's own readme with more details.
@@ -16,8 +14,6 @@ This is a monorepo containing `mdsvex` and any supporting packages. Each repo ha
 - [svast](https://github.com/pngwn/MDsveX/tree/master/packages/svast) - An AST specification with accompanying TypeScript definitions.
 - [svast-stringify](https://github.com/pngwn/MDsveX/tree/master/packages/svast-stringify) - Turn a svast AST into a Svelte component.
 - [svast-utils](https://github.com/pngwn/MDsveX/tree/master/packages/svast-utils) - Utilities for working with a svast tree.
-
-
 
 ## Contributing
 

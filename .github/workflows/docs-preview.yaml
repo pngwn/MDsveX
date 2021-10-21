@@ -19,14 +19,6 @@ jobs:
           node-version: 12.x
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
-
-      # - uses: actions/cache@v2
-      #   id: pnpm-store
-      #   with:
-      #     path: ~/.pnpm-store/v3
-      #     key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-pnpm-
       - run: pnpm i --frozen-lockfile
       - run: pnpm run export
         working-directory: 'packages/site'
