@@ -13,13 +13,16 @@ importers:
       rollup: ^2.47.0
       rollup-plugin-dts: ^3.0.1
       ts-node: ^9.1.1
+      tslib: ^2.3.1
       typescript: ^4.2.4
       uvu: ^0.5.1
       watchlist: ^0.2.3
+    dependencies:
+      tslib: 2.3.1
     devDependencies:
       '@changesets/changelog-github': 0.4.0
       '@changesets/cli': 2.16.0
-      '@rollup/plugin-typescript': 8.2.1_rollup@2.47.0+typescript@4.2.4
+      '@rollup/plugin-typescript': 8.2.1_c86c1fb903bbfc7eb26be0118b53d71a
       '@types/node': 14.14.44
       esm: 3.2.25
       prettier: 2.2.1
@@ -1554,7 +1557,7 @@ packages:
       sucrase: 3.15.0
     dev: true
 
-  /@rollup/plugin-typescript/8.2.1_rollup@2.47.0+typescript@4.2.4:
+  /@rollup/plugin-typescript/8.2.1_c86c1fb903bbfc7eb26be0118b53d71a:
     resolution: {integrity: sha512-Qd2E1pleDR4bwyFxqbjt4eJf+wB0UKVMLc7/BAFDGVdAXQMCsD4DUv5/7/ww47BZCYxWtJqe1Lo0KVNswBJlRw==}
     engines: {node: '>=8.0.0'}
     peerDependencies:
@@ -1565,6 +1568,7 @@ packages:
       '@rollup/pluginutils': 3.1.0_rollup@2.47.0
       resolve: 1.20.0
       rollup: 2.47.0
+      tslib: 2.3.1
       typescript: 4.2.4
     dev: true
 
@@ -4942,6 +4946,10 @@ packages:
       typescript: 4.2.4
       yn: 3.1.1
     dev: true
+
+  /tslib/2.3.1:
+    resolution: {integrity: sha512-77EbyPPpMz+FRFRuAFlWMtmgUWGe9UOG2Z25NqCwiIjRhOf5iKGuzSe5P2w1laq+FkRy4p+PCuVkJSGkzTEKVw==}
+    dev: false
 
   /tty-table/2.8.13:
     resolution: {integrity: sha512-eVV/+kB6fIIdx+iUImhXrO22gl7f6VmmYh0Zbu6C196fe1elcHXd7U6LcLXu0YoVPc2kNesWiukYcdK8ZmJ6aQ==}

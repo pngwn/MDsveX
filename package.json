@@ -33,5 +33,8 @@
 		"typescript": "^4.2.4",
 		"uvu": "^0.5.1",
 		"watchlist": "^0.2.3"
+	},
+	"dependencies": {
+		"tslib": "^2.3.1"
 	}
 }
