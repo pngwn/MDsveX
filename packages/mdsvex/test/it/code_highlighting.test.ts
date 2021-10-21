@@ -380,8 +380,6 @@ RUN bash -lc "rvm install ruby-2.5.1 && \
 		filename: 'thing.svx',
 	});
 
-	console.log(output && output.code);
-
 	assert.equal(
 		lines(
 			`<pre class="language-docker">{@html \`<code class="language-docker"><span class="token keyword">RUN</span> bash <span class="token punctuation">-</span>lc <span class="token string">"rvm install ruby-2.5.1 &amp;&amp;               rvm use ruby-ruby-2.5.1 --default"</span></code>\`}</pre>`
