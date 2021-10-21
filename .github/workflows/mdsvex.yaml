@@ -21,7 +21,8 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       - run: pnpm i --frozen-lockfile
-      - run: pnpm lint
+      - run: pnpm format
+        # type-check here as well when it is working
         env:
           CI: true
           name: mdsvex
