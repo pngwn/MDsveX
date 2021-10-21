@@ -42,7 +42,7 @@ export function default_frontmatter(
 	try {
 		return yaml.safeLoad(value) as Record<string, unknown>;
 	} catch (e) {
-		messages.push(new Message('YAML failed to parse', e));
+		messages.push(new Message('YAML failed to parse'));
 	}
 }
 
@@ -412,7 +412,7 @@ export function transform_hast({
 					type: 'raw',
 					value: import_script
 						? `<Layout_MDSVEX_DEFAULT {...$$props}${
-								fm ? ' {...metadata}' : ''
+							fm ? ' {...metadata}' : ''
 						  }>`
 						: '',
 				},
