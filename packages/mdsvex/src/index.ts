@@ -151,7 +151,12 @@ function process_layouts(layouts: Layout) {
 
 	for (const key in _layouts) {
 		const layout = fs.readFileSync(_layouts[key].path, { encoding: 'utf8' });
-		const ast = parse(layout);
+		let ast;
+		try {
+			ast = parse(layout);
+		} catch(e) {
+			throw new Error(e.toString() + `\n	at ${_layouts[key].path}`);
+		}
 
 		if (ast.module) {
 			const component_exports = ast.module.content.body.filter(
