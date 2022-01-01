@@ -16,7 +16,7 @@
     ],
   ];
 
-  const _heading = "test";
+  const _heading = "mdsvex";
   const _paragraph = "svelte in markdown";
   const _penguin = false;
 
