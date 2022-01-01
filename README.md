@@ -1,4 +1,4 @@
-# mdsvex
+# the cooler mdsvex
 
 A Markdown preprocessor for Svelte. Markdown in Svelte.
 
