@@ -120,7 +120,7 @@ importers:
   packages/pfm-parse:
     specifiers:
       esbuild: ^0.13.8
-      parse: workspace:^0.1.0
+      parse: workspace:^0.1.1
     dependencies:
       parse: link:../parse
     devDependencies:
