@@ -1,6 +1,6 @@
 {
 	"name": "pfm-parse",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "",
 	"main": "dist/main.cjs.js",
 	"module": "dist/main.es.js",
@@ -24,6 +24,6 @@
 		"esbuild": "^0.13.8"
 	},
 	"dependencies": {
-		"parse": "workspace:^0.1.0"
+		"parse": "workspace:^0.1.1"
 	}
 }
