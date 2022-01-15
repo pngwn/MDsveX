@@ -57,7 +57,7 @@ export default {
 	...boring_config_stuff,
 	plugins: [
 		svelte({
-			// tell svelte to handle mdsvex files
+			// these are the defaults. If you want to add more extensions, see https://mdsvex.pngwn.io/docs#extensions
 			extensions: [".svelte", ".svx"],
 			preprocess: mdsvex()
 		})
