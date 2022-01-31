@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.10.4
+
+### Patch Changes
+
+- [#407](https://github.com/pngwn/MDsveX/pull/407) [`7dee856`](https://github.com/pngwn/MDsveX/commit/7dee856ea2e577dae3c32b1039e26d32c1a08847) Thanks [@pngwn](https://github.com/pngwn)! - make it work
+
 ## 0.10.3
 
 ### Patch Changes
