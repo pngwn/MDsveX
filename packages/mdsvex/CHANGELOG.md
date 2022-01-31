@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.10.1
+
+### Patch Changes
+
+- [#399](https://github.com/pngwn/MDsveX/pull/399) [`814e8f6`](https://github.com/pngwn/MDsveX/commit/814e8f6f712fe6499c3fb71d895fe5f4430522ab) Thanks [@PuruVJ](https://github.com/PuruVJ)! - Fix globals.d.ts location
+
 ## 0.10.0
 
 ### Minor Changes
