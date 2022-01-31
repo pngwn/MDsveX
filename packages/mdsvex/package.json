@@ -7,11 +7,12 @@
 	"browser": "dist/mdsvex.js",
 	"repository": "https://github.com/pngwn/MDsveX",
 	"scripts": {
-		"build": "rollup -c && cd scripts && node copy-globals.js",
+		"build": "rollup -c",
 		"types": "dts-generator --project . --out dist/main.es.d.ts"
 	},
 	"files": [
-		"dist/*"
+		"dist/*",
+		"globals.d.ts"
 	],
 	"keywords": [
 		"test",
