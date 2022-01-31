@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.10.2
+
+### Patch Changes
+
+- [#401](https://github.com/pngwn/MDsveX/pull/401) [`e3d6228`](https://github.com/pngwn/MDsveX/commit/e3d6228851d1e75f073687a4f7fa4ad72fcd246b) Thanks [@PuruVJ](https://github.com/PuruVJ)! - expose types, and defineMDSveXConfig
+
 ## 0.10.1
 
 ### Patch Changes
