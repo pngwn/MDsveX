@@ -1,5 +1,13 @@
 # mdsvex
 
+## 0.10.3
+
+### Patch Changes
+
+- [#405](https://github.com/pngwn/MDsveX/pull/405) [`9d98465`](https://github.com/pngwn/MDsveX/commit/9d98465dce438efd520b069ae90b75fafe0f65db) Thanks [@pngwn](https://github.com/pngwn)! - Delete globals.d.ts
+
+* [#403](https://github.com/pngwn/MDsveX/pull/403) [`5349992`](https://github.com/pngwn/MDsveX/commit/5349992078dbc9f3116089570465aec383934432) Thanks [@pngwn](https://github.com/pngwn)! - Revert 401 feat/defineconfig
+
 ## 0.10.2
 
 ### Patch Changes
