@@ -4,3 +4,5 @@ node_modules/*
 **/site/**/*
 pnpm-lock.yaml
 .changeset/**/*
+**/dist/**/*
+**/CHANGELOG.md
