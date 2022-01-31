@@ -7,7 +7,7 @@
 	"browser": "dist/mdsvex.js",
 	"repository": "https://github.com/pngwn/MDsveX",
 	"scripts": {
-		"build": "rollup -c && cpy ./src/globals.d.ts dist",
+		"build": "rollup -c && cd scripts && node copy-globals.js",
 		"types": "dts-generator --project . --out dist/main.es.d.ts"
 	},
 	"files": [
@@ -34,7 +34,6 @@
 		"@types/estree": "^0.0.45",
 		"@types/hast": "^2.3.1",
 		"@types/js-yaml": "^3.12.5",
-		"cpy-cli": "^3.1.1",
 		"escape-html": "^1.0.3",
 		"front-matter": "^4.0.0",
 		"js-yaml": "^3.13.1",
