@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.10.0
+
+### Minor Changes
+
+- [#396](https://github.com/pngwn/MDsveX/pull/396) [`c0cdf71`](https://github.com/pngwn/MDsveX/commit/c0cdf71915314c3c709cb616b7822c20f2954666) Thanks [@PuruVJ](https://github.com/PuruVJ)! - Add ambient Typings
+
 ## 0.9.8
 
 ### Patch Changes
