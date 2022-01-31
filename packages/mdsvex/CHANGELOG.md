@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.10.5
+
+### Patch Changes
+
+- [#409](https://github.com/pngwn/MDsveX/pull/409) [`573cabb`](https://github.com/pngwn/MDsveX/commit/573cabbb24b61390bdae2ec517807ea9b54b6aad) Thanks [@PuruVJ](https://github.com/PuruVJ)! - Add defineConfig and ambient d.ts
+
 ## 0.10.4
 
 ### Patch Changes
