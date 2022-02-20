@@ -612,6 +612,16 @@ The above custom components would generate:
 
 Notice that the `ul` is left intact: elements are replaced _after_ the markdown is parsed to HTML. This allows greater flexibility, for example, when using custom components to customise lists, tables or other markdown that compiles to a combination of different HTML elements.
 
+You may also receive attributes of the normal HTML component. For example, to render a custom `<img>` tag you could do:
+
+```svelte
+<script>
+  export let src;
+</script>
+
+<img src={src} />
+```
+
 ## Frontmatter
 
 YAML frontmatter is a common convention in blog posts and mdsvex supports it out of the box. If you want to use a custom language or marker for frontmatter than you can use the [`frontmatter`](docs#frontmatter) option to modify the default behaviour.
