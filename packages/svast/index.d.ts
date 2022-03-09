@@ -16,7 +16,7 @@ export interface SvelteParent extends Parent {
 	children: SvelteChild[];
 }
 
-export interface Root extends Parent {
+export interface Root extends SvelteParent {
 	type: 'root';
 }
 
