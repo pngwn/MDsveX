@@ -152,8 +152,8 @@ export type Layout = Record<string, LayoutMeta>;
 
 export type Highlighter = (
 	code: string,
-	lang: string | undefined,
-	metastring: string | undefined
+	lang: string | null | undefined,
+	metastring: string | null | undefined
 ) => string | Promise<string>;
 interface HighlightOptions {
 	/**
