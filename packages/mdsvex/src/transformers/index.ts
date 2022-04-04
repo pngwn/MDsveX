@@ -234,9 +234,11 @@ function generate_layout_import(
 ): string | false {
 	if (!layout) return false;
 
-	return `import Layout_MDSVEX_DEFAULT${
-		layout.components.length ? `, * as Components` : ''
-	} from '${layout.path}';`;
+	let result = `import Layout_MDSVEX_DEFAULT from '${layout.path}';`;
+	if (layout.components.length) {
+		result += `\nimport * as Components from '${layout.path}';`;
+	}
+	return result;
 }
 
 function generate_layout({

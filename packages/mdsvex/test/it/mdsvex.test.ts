@@ -952,7 +952,10 @@ mdsvex_it('layout: allow custom components', async () => {
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(fix_dir, 'LayoutWithComponents.svelte')
+	)}';
+	import * as Components from '${to_posix(
 		join(fix_dir, 'LayoutWithComponents.svelte')
 	)}';
 </script>
@@ -999,9 +1002,13 @@ hello *hello* **hello**
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
 		join(fix_dir, 'LayoutThreeWithComponents.svelte')
 	)}';
+	import * as Components from '${to_posix(
+		join(fix_dir, 'LayoutThreeWithComponents.svelte')
+	)}';
+
 </script>
 
 <Layout_MDSVEX_DEFAULT {...$$props}>
@@ -1044,7 +1051,10 @@ I am some paragraph text
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(fix_dir, 'LayoutTwoWithComponents.svelte')
+	)}';
+	import * as Components from '${to_posix(
 		join(fix_dir, 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
@@ -1086,7 +1096,10 @@ I am some paragraph text
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(fix_dir, 'LayoutTwoWithComponents.svelte')
+	)}';
+	import * as Components from '${to_posix(
 		join(fix_dir, 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
@@ -1165,7 +1178,10 @@ I am some paragraph text
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(fix_dir, 'LayoutTwoWithComponents.svelte')
+	)}';
+	import * as Components from '${to_posix(
 		join(fix_dir, 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
@@ -1207,7 +1223,10 @@ I am some paragraph text
 </script>
 
 <script>
-	import Layout_MDSVEX_DEFAULT, * as Components from '${to_posix(
+	import Layout_MDSVEX_DEFAULT from '${to_posix(
+		join(fix_dir, 'LayoutTwoWithComponents.svelte')
+	)}';
+	import * as Components from '${to_posix(
 		join(fix_dir, 'LayoutTwoWithComponents.svelte')
 	)}';
 </script>
