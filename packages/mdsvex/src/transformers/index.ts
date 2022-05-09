@@ -321,24 +321,24 @@ export function transform_hast({
 				node.children as (Element | Text)[]
 			);
 
-			const fm =
-				(vFile.data as { fm: Record<string, unknown> }).fm &&
-				`export const metadata = ${JSON.stringify(
-					(vFile.data as { fm: Record<string, unknown> }).fm
-				)};${newline}` +
-					`\tconst { ${Object.keys(
-						(vFile.data as { fm: Record<string, unknown> }).fm
-					).join(', ')} } = metadata;`;
+			const { fm: metadata } = vFile.data as { fm: Record<string, unknown> };
 
-			const _fm_layout =
-				(vFile.data as { fm: Record<string, unknown> }).fm &&
-				((vFile.data as { fm: Record<string, unknown> }).fm.layout as
-					| string
-					| undefined
-					| false);
+			// Workaround for script and style tags in strings
+			// https://github.com/sveltejs/svelte/issues/5292
+			const stringified =
+				metadata &&
+				JSON.stringify(metadata).replace(/<(\/?script|\/?style)/g, '<"+"$1');
+
+			const fm =
+				metadata &&
+				`export const metadata = ${stringified};${newline}` +
+					`\tconst { ${Object.keys(metadata).join(', ')} } = metadata;`;
+
+			const frontmatter_layout =
+				metadata && (metadata.layout as string | undefined | false);
 
 			const [import_script, components, error] = generate_layout({
-				frontmatter_layout: _fm_layout,
+				frontmatter_layout,
 				layout_options: layout,
 				layout_mode,
 				//@ts-ignore
