@@ -233,7 +233,7 @@ quotes: boolean = true;
 Converts straight double and single quotes to smart double or single quotes.
 
 - `"words"` **becomes**: "words"
-- `'words` **becomes** 'words'
+- `'words'` **becomes** 'words'
 
 ```sig
 ellipses: boolean = true;
