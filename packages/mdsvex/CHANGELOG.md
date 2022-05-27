@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.10.6
+
+### Patch Changes
+
+- [#450](https://github.com/pngwn/MDsveX/pull/450) [`eb10fbd`](https://github.com/pngwn/MDsveX/commit/eb10fbda2d682593083369960afc018ae8fafc45) Thanks [@GauBen](https://github.com/GauBen)! - Escape script and style tags in frontmatter
+
 ## 0.10.5
 
 ### Patch Changes
