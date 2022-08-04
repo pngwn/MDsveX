@@ -1,6 +1,4 @@
 .DS_Store
-node_modules
-yarn-error.log
+/node_modules
 /cypress/screenshots/
-/__sapper__/
-dist
+/.svelte-kit

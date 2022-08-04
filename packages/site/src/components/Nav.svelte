@@ -1,8 +1,6 @@
 <script>
-  import { stores } from "@sapper/app";
+  import { page } from "$app/stores";
   import GithubIcon from "./GithubIcon.svelte";
-
-  const { page } = stores();
 
   let w;
   const links = [
