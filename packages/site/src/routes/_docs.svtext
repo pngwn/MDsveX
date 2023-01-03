@@ -373,7 +373,7 @@ Remark plugins work on the Markdown AST (MDAST) produced by remark, rehype plugi
 
 ```ts
 highlight: {
-	highlighter: (code: string, lang: string) => string
+	highlighter: (code: string, lang: string) => string | Promise<string>
 	alias: { [lang : string]: string }
 };
 ```
