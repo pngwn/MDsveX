@@ -157,7 +157,7 @@ export type Highlighter = (
 ) => string | Promise<string>;
 interface HighlightOptions {
 	/**
-	 * **highlighter** - A custom highlight function for syntax highlighting. Two arguments are passed, both strings: the code to highlight and the language (if one is provided). It must return a string that will be injected into the document.
+	 * **highlighter** - A custom highlight function for syntax highlighting. Two arguments are passed, both strings: the code to highlight and the language (if one is provided). It must return a string that will be injected into the document (or a promise that resolves to a string).
 	 *
 	 *  *example:*
 	 * ```js
@@ -165,6 +165,8 @@ interface HighlightOptions {
 	 *  return `<pre class="${lang}"><code>${code}</code></pre>`;
 	 * }
 	 * ```
+	 *
+	 * Can be an async function.
 	 */
 	highlighter?: Highlighter;
 	/**
