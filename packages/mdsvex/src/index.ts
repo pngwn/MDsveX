@@ -154,7 +154,7 @@ function process_layouts(layouts: Layout) {
 		let ast;
 		try {
 			ast = parse(layout);
-		} catch (e: any) {
+		} catch (e) {
 			throw new Error(e.toString() + `\n	at ${_layouts[key].path}`);
 		}
 
