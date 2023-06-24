@@ -1,5 +1,13 @@
 # mdsvex
 
+## 0.11.0
+
+### Minor Changes
+
+- [#522](https://github.com/pngwn/MDsveX/pull/522) [`0d690dc`](https://github.com/pngwn/MDsveX/commit/0d690dcc98358aa33a2d9a12bb5f908bbbe8e8a4) Thanks [@pngwn](https://github.com/pngwn)! - The default code highlighter is now exported, for your convenience.
+
+* [#520](https://github.com/pngwn/MDsveX/pull/520) [`d5191b6`](https://github.com/pngwn/MDsveX/commit/d5191b64f20a93adb1845435fa0244d2d29c63b4) Thanks [@flakolefluk](https://github.com/flakolefluk)! - Support Svelte v4.
+
 ## 0.10.6
 
 ### Patch Changes
