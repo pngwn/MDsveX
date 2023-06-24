@@ -332,4 +332,4 @@ const _compile = (
 			}`,
 	});
 
-export { _compile as compile };
+export { _compile as compile, code_highlight as code_highlighter };
