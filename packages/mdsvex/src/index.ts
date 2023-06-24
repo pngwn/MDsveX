@@ -154,7 +154,7 @@ function process_layouts(layouts: Layout) {
 		let ast;
 		try {
 			ast = parse(layout);
-		} catch (e) {
+		} catch (e: any) {
 			throw new Error(e.toString() + `\n	at ${_layouts[key].path}`);
 		}
 
@@ -284,7 +284,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 	});
 
 	return {
-		name: "mdsvex",
+		name: 'mdsvex',
 		markup: async ({ content, filename }) => {
 			const extensionsParts = (extensions || [extension]).map((ext) =>
 				ext.split('.').pop()
