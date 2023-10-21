@@ -14,7 +14,7 @@
 	},
 	"private": "true",
 	"dependencies": {
-		"mdsvex": "^0.7.1-beta.3",
+		"mdsvex": "^0.11.0",
 		"refractor": "^2.10.0",
 		"yootils": "^0.0.15"
 	},
@@ -29,8 +29,8 @@
 		"@rollup/plugin-json": "^4.1.0",
 		"@rollup/plugin-node-resolve": "^13.0.5",
 		"@rollup/plugin-replace": "^3.0.0",
-		"@sveltejs/kit": "next",
-		"@sveltejs/adapter-auto": "next",
+		"@sveltejs/kit": "^1.26.0",
+		"@sveltejs/adapter-auto": "^2.1.0",
 		"codemirror": "^5.49.2",
 		"npm-run-all": "^4.1.5",
 		"prism-svelte": "^0.5.0",
@@ -40,11 +40,11 @@
 		"rollup": "^2.58.0",
 		"rollup-plugin-svelte": "^7.1.0",
 		"rollup-plugin-terser": "^7.0.2",
-		"svelte": "^3.49.0",
+		"svelte": "^4.2.2",
 		"svelte-json-tree": "^0.0.7",
 		"typeface-catamaran": "^0.0.72",
 		"typeface-roboto": "^0.0.75",
 		"unist-util-visit": "^2.0.1",
-		"vite": "^3.0.4"
+		"vite": "^4.5.0"
 	}
 }

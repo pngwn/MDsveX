@@ -10,7 +10,7 @@
 
   export let workersUrl;
   export let packagesUrl = "https://unpkg.com";
-  export let svelteUrl = `${packagesUrl}/svelte`;
+  export let svelteUrl = `${packagesUrl}/svelte@3`;
   export let orientation = "columns";
   export let relaxed = false;
   export let fixed = false;
