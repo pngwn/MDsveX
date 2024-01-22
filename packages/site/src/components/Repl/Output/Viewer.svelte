@@ -10,6 +10,7 @@
 
   const { bundle } = getContext("REPL");
 
+
   export let error; // TODO should this be exposed as a prop?
   let logs = [];
 
@@ -160,6 +161,12 @@
   function clear_logs() {
     logs = [];
   }
+
+  onMount(() => {
+    if (iframe) {
+      ready = true;
+    }
+  });
 </script>
 
 <style>

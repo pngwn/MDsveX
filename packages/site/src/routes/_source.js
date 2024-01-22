@@ -98,6 +98,8 @@ export const code_2 = `
 
 	<div class="boingers">
 		{#each boingers.filter(v => !v.boinged) as {val} (val)}
+
+			<!-- svelte-ignore a11y-click-events-have-key-events -->
 			<div animate:flip
 					 in:receive="{{key: val}}"
 					 out:send="{{key: val}}"
@@ -108,6 +110,7 @@ export const code_2 = `
 
 	<div class="boingers">
 		{#each boingers.filter(v => v.boinged) as {val} (val)}
+			<!-- svelte-ignore a11y-click-events-have-key-events -->
 			<div animate:flip
 					 in:receive="{{key: val}}"
 					 out:send="{{key: val}}"

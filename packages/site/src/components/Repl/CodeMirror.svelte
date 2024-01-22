@@ -1,4 +1,4 @@
-[<script>
+<script>
   import './codemirror.css';
   import { onMount, createEventDispatcher } from "svelte";
   import Message from "./Message.svelte";
