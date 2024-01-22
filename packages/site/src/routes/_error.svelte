@@ -1,8 +1,8 @@
 <script>
-	import { dev } from '$app/env';
-
 	export let status;
 	export let error;
+
+	const dev = process.env.NODE_ENV === 'development';
 </script>
 
 <style>
@@ -33,11 +33,7 @@
 
 <h1>{status}</h1>
 
-{#if error.message}
-	<p class="error">{status}: {error.message}</p>
-{:else}
-	<p class="error">Encountered a {status} error</p>
-{/if}
+<p>{error.message}</p>
 
 {#if dev && error.stack}
 	<pre>{error.stack}</pre>

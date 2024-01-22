@@ -4,6 +4,8 @@
 		<meta content="width=device-width, initial-scale=1.0" name="viewport" />
 		<meta charset="utf-8" />
 
+		%sapper.base%
+
 		<link rel="stylesheet" href="global.css" />
 		<link rel="manifest" href="manifest.json" />
 		<link rel="preload" as="image" href="/penguin.gif" />
@@ -46,12 +48,14 @@
 		/>
 		<meta property="twitter:image" content="https://mdsvex.com/og.png" />
 
-		%sveltekit.head%
+		%sapper.styles% %sapper.head%
 	</head>
 
 	<body>
-		<div>%sveltekit.body%</div>
+		<div id="sapper">%sapper.html%</div>
 
+		%sapper.scripts%
+    
     <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "590d70c530b74f41b117351532dd6809"}'></script><!-- End Cloudflare Web Analytics -->
 	</body>
 </html>

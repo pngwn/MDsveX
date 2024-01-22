@@ -1,5 +1,5 @@
 <script>
-	import { page } from '$app/stores';
+	import { stores } from '@sapper/app';
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import docs from './_docs.svtext';
@@ -10,6 +10,8 @@
 	let width = 1100;
 	let current;
 	let position = '';
+
+	const { page } = stores();
 
 	const nav = [
 		['Install', 'docs#install-it'],

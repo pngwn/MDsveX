@@ -4,7 +4,7 @@
   export let handle_select;
   export let funky;
 
-  let { components, selected, request_focus, rebundle } = getContext("REPL");
+  const { components, selected, request_focus, rebundle } = getContext("REPL");
 
   let editing = null;
 
