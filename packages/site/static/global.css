@@ -57,12 +57,12 @@ html {
 
 html,
 body,
-#main {
+#sapper {
 	width: 100%;
 	height: 100%;
 }
 
-#main {
+#sapper {
 	max-width: 110rem;
 	margin: auto;
 }

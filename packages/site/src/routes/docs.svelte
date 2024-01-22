@@ -2,8 +2,8 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import docs from '../_docs.svtext';
-	import Cheatsheet from '../../components/Cheatsheet.svx';
+	import docs from './_docs.svtext';
+	import Cheatsheet from '../components/Cheatsheet.svx';
 
 	let root;
 	let scrollY = 0;
