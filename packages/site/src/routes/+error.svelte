@@ -1,5 +1,8 @@
 <script>
-	import { page } from '$app/stores';
+	import { dev } from '$app/environment';
+
+	export let status;
+	export let error;
 </script>
 
 <style>
@@ -25,13 +28,17 @@
 </style>
 
 <svelte:head>
-	<title>{$page.status}</title>
+	<title>{status}</title>
 </svelte:head>
 
 <h1>{status}</h1>
 
-{#if $page.error.message}
-	<p class="error">{status}: {$page.error.message}</p>
+{#if error.message}
+	<p class="error">{status}: {error.message}</p>
 {:else}
-	<p class="error">Encountered a {$page.status} error</p>
+	<p class="error">Encountered a {status} error</p>
+{/if}
+
+{#if dev && error.stack}
+	<pre>{error.stack}</pre>
 {/if}
