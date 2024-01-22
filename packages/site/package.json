@@ -5,8 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"dev": "sapper dev --ext '.svelte .svx'",
-		"build:site": "sapper build --legacy --ext '.svelte .svx'",
-		"export": "sapper export --legacy --ext '.svelte .svx'",
+		"build:site": "sapper build --ext '.svelte .svx'",
+		"export": "sapper export --ext '.svelte .svx'",
 		"start": "node __sapper__/build",
 		"cy:run": "cypress run",
 		"cy:open": "cypress open",
