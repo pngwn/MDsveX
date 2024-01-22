@@ -29,8 +29,9 @@
 		"@rollup/plugin-json": "^4.1.0",
 		"@rollup/plugin-node-resolve": "^13.0.5",
 		"@rollup/plugin-replace": "^3.0.0",
-		"@sveltejs/kit": "^1.30.3",
-		"@sveltejs/adapter-auto": "^2.1.1",
+		"@sveltejs/kit": "^2.4.1",
+		"@sveltejs/adapter-auto": "^3.1.1",
+		"@sveltejs/vite-plugin-svelte": "^3.0.1",
 		"codemirror": "^5.49.2",
 		"npm-run-all": "^4.1.5",
 		"prism-svelte": "^0.5.0",
@@ -41,10 +42,10 @@
 		"rollup-plugin-svelte": "^7.1.6",
 		"rollup-plugin-terser": "^7.0.2",
 		"svelte": "^4.2.2",
-		"svelte-json-tree": "^0.0.7",
+		"svelte-json-tree": "^2.2.0",
 		"typeface-catamaran": "^0.0.72",
 		"typeface-roboto": "^0.0.75",
 		"unist-util-visit": "^2.0.1",
-		"vite": "^4.5.2"
+		"vite": "^5.0.12"
 	}
 }
