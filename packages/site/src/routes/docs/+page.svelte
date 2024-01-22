@@ -1,17 +1,15 @@
 <script>
-	import { stores } from '@sapper/app';
+	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import docs from './_docs.svtext';
-	import Cheatsheet from '../components/Cheatsheet.svx';
+	import docs from '../_docs.svtext';
+	import Cheatsheet from '../../components/Cheatsheet.svx';
 
 	let root;
 	let scrollY = 0;
 	let width = 1100;
 	let current;
 	let position = '';
-
-	const { page } = stores();
 
 	const nav = [
 		['Install', 'docs#install-it'],
