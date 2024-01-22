@@ -1,0 +1,51 @@
+{
+  "bundler": "rollup",
+  "shimport": "2.0.5",
+  "assets": {
+    "main": "client.d31776c8.js"
+  },
+  "css": {
+    "main": [
+      "client-54e829cf.css"
+    ]
+  },
+  "dependencies": {
+    "index.svelte": [
+      "index.6c1cb67d.js",
+      "client.096d96b5.js",
+      "utils.389ebbc6.js",
+      "inject_styles.803b7e80.js",
+      "index-b4c8b6c1.css"
+    ],
+    "_source.js": [
+      "playground.d9c004a1.js",
+      "client.096d96b5.js",
+      "index.f522902b.js",
+      "utils.389ebbc6.js",
+      "inject_styles.803b7e80.js",
+      "playground-3166851e.css"
+    ],
+    "playground.svelte": [
+      "playground.d9c004a1.js",
+      "client.096d96b5.js",
+      "index.f522902b.js",
+      "utils.389ebbc6.js",
+      "inject_styles.803b7e80.js",
+      "playground-3166851e.css"
+    ],
+    "_docs.svtext": [
+      "docs.d14b5d6a.js",
+      "client.096d96b5.js",
+      "index.f522902b.js",
+      "inject_styles.803b7e80.js",
+      "docs-c9a69be6.css"
+    ],
+    "docs.svelte": [
+      "docs.d14b5d6a.js",
+      "client.096d96b5.js",
+      "index.f522902b.js",
+      "inject_styles.803b7e80.js",
+      "docs-c9a69be6.css"
+    ]
+  }
+}
