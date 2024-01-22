@@ -1,7 +1,7 @@
 <script>
   import { onMount } from "svelte";
-  import Repl from "../../components/Repl/Repl.svelte";
-  import { code_1, code_2, code_3, code_4, code_5 } from "../_source.js";
+  import Repl from "../components/Repl/Repl.svelte";
+  import { code_1, code_2, code_3, code_4, code_5 } from "./_source.js";
 
   let repl;
   let checked = "input";
