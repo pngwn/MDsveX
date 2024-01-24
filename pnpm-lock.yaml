@@ -6185,7 +6185,7 @@ packages:
     dependencies:
       ansi-styles: 4.3.0
       string-width: 4.2.2
-      strip-ansi: 6.0.0
+      strip-ansi: 6.0.1
     dev: true
 
   /wrap-ansi@7.0.0:
