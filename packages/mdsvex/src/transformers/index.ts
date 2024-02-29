@@ -547,7 +547,7 @@ export function highlight_blocks({
 		}
 	}
 
-	return async function (tree) {
+	return async function (tree, vFile) {
 		if (highlight_fn) {
 			const nodes: (Code | HTML)[] = [];
 			visit<Code>(tree, 'code', (node) => {
@@ -560,7 +560,9 @@ export function highlight_blocks({
 					node.value = await highlight_fn(
 						node.value,
 						(node as Code).lang,
-						(node as Code).meta
+						(node as Code).meta,
+						//@ts-ignore
+						vFile.filename
 					);
 				})
 			);
