@@ -286,10 +286,8 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 	return {
 		name: 'mdsvex',
 		markup: async ({ content, filename }) => {
-			const extensionsParts = (extensions || [extension]).map((ext) =>
-				ext.split('.').pop()
-			);
-			if (!extensionsParts.includes(filename.split('.').pop())) return;
+			const extensionsParts = (extensions || [extension]).map(ext => ext.startsWith('.') ? ext : '.' + ext);
+			if (!extensionsParts.some(ext => filename.endsWith(ext))) return;
 
 			const parsed = await parser.process({ contents: content, filename });
 			return {
