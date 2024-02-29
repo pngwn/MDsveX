@@ -153,7 +153,8 @@ export type Layout = Record<string, LayoutMeta>;
 export type Highlighter = (
 	code: string,
 	lang: string | null | undefined,
-	metastring: string | null | undefined
+	metastring: string | null | undefined,
+	filename?: string
 ) => string | Promise<string>;
 interface HighlightOptions {
 	/**
