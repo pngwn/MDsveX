@@ -182,7 +182,8 @@ interface HighlightOptions {
 	alias?: Record<string, string>;
 }
 
-export type UnifiedPlugins = Array<[Plugin, Settings] | Plugin>;
+export type PluginWithSettings<S extends any[] = [Settings?], P extends Plugin<S> = Plugin<S>> = [P, ...S]
+export type UnifiedPlugins = Array<PluginWithSettings | Plugin>;
 
 export interface TransformOptions {
 	remarkPlugins?: UnifiedPlugins;
@@ -303,10 +304,10 @@ export interface MdsvexCompileOptions extends MdsvexOptions {
 
 export type PreprocessorReturn = Promise<
 	| {
-			code: string;
-			data?: Record<string, unknown>;
-			map?: string;
-	  }
+		code: string;
+		data?: Record<string, unknown>;
+		map?: string;
+	}
 	| undefined
 >;
 
