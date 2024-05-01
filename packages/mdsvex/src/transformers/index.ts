@@ -380,7 +380,7 @@ export function transform_hast({
 				// @ts-ignore
 				_module[0].value = _module[0].value.replace(
 					RE_MODULE_SCRIPT,
-					`$1${newline}\t${fm}`
+					(match: string) => `${match}${newline}\t${fm}`
 				);
 			}
 
