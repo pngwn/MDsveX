@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.11.2
+
+### Patch Changes
+
+- [#604](https://github.com/pngwn/MDsveX/pull/604) [`82553e0`](https://github.com/pngwn/MDsveX/commit/82553e02ab06b40a1650632865e076d0ad4d6ea4) Thanks [@pngwn](https://github.com/pngwn)! - Update peerDeps for Svelte 5
+
 ## 0.11.1
 
 ### Patch Changes
