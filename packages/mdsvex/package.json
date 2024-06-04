@@ -59,7 +59,7 @@
 		"vfile": "^4.2.0"
 	},
 	"peerDependencies": {
-		"svelte": ">=3 <6"
+		"svelte": "^3.56.0 || ^4.0.0 || ^5.0.0-next.120"
 	},
 	"dependencies": {
 		"@types/unist": "^2.0.3",
