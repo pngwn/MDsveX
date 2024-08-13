@@ -47,7 +47,7 @@
 		[
 			'Integrations',
 			'docs#integrations',
-			[['sapper', 'docs#with-sapper', false]],
+			[['shiki', 'docs#with-shiki', false]],
 		],
 		['Limitations', 'docs#limitations'],
 	];
