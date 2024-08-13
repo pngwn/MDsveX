@@ -673,21 +673,30 @@ Frontmatter also interacts with layouts, you can find more details in the [Layou
 
 ## Integrations
 
-### With Sapper
+### With shiki
 
-To use mdsvex with sapper you need to add the mdsvex configuration to both the client and server sections of the rollup or webpack configuration. You will also need to add the CLI argument `--ext '.svelte .svx'` to all of the sapper scripts (`dev`, `build`, and `export`) in order to tell sapper that it should also allow `.svx` files to be page routes.
+You can use shiki for highlighting rather than prism by leveraging the `highlighter` option:
 
-Or you can use the templates:
-- [Rollup](https://github.com/pngwn/sapper-mdsvex-template)
+  ```js
+import { mdsvex, escapeSvelte } from 'mdsvex';
+import { createHighlighter } from 'shiki';
 
-  ```bash
-  npx degit "pngwn/sapper-mdsvex-template" my-app
-  ```
-- [Webpack](https://github.com/shiryel/sapper-mdsvex-template-webpack)
+const theme = 'github-dark';
+const highlighter = await createHighlighter({
+	themes: [theme],
+	langs: ['javascript', 'typescript']
+});
 
-  ```bash
-  npx degit "shiryel/sapper-mdsvex-template-webpack" my-app
-  ```
+/** @type {import('mdsvex').MdsvexOptions} */
+const mdsvexOptions = {
+	highlight: {
+		highlighter: async (code, lang = 'text') => {
+			const html = escapeSvelte(highlighter.codeToHtml(code, { lang, theme }));
+			return `{@html \`${html}\` }`;
+		}
+	},
+}
+```
 
 ## Limitations
 
