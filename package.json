@@ -4,7 +4,8 @@
 	"description": "Markdown preprocessor for Svelte",
 	"repository": "https://github.com/pngwn/MDsveX",
 	"scripts": {
-		"format": "prettier --check .",
+		"lint": "prettier --check .",
+		"format": "prettier --write .",
 		"test": "uvu -r ts-node/register packages test.ts$",
 		"test:filter": "uvu -r ts-node/register",
 		"release": "pnpm -r build && changeset publish",
