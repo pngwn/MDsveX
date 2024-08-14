@@ -33,28 +33,4 @@ export default [
 			{ file: 'dist/main.cjs.d.ts', format: 'cjs' },
 		],
 	},
-	{
-		plugins: [
-			replace({
-				'(process ).browser': true,
-				'(process as RollupProcess).browser': true,
-				delimiters: ['', ''],
-			}),
-			resolve({ browser: true }),
-			commonjs({ namedExports: { 'svelte/compiler': ['parse'] } }),
-			json(),
-			sucrase({ transforms: ['typescript'] }),
-			globals(),
-			builtins(),
-		],
-		input: 'src/main.ts',
-		output: [
-			{
-				file: 'dist/browser-umd.js',
-				name: 'mdsvex',
-				format: 'umd',
-				sourcemap: false,
-			},
-		],
-	},
 ];
