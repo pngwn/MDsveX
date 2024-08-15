@@ -5,16 +5,16 @@
 
 version: 2
 updates:
-  - package-ecosystem: "pnpm" 
-    directories: 
-      - "packages/*" 
+  - package-ecosystem: 'npm'
+    directories:
+      - 'packages/*'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     commit-message:
-      prefix: "[npm] "
-  - package-ecosystem: "github-actions" 
-    directory: "/" # dependsabot magically works this out for actions
+      prefix: '[npm] '
+  - package-ecosystem: 'github-actions'
+    directory: '/' # dependabot magically works this out for actions
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     commit-message:
-      prefix: "[gha] "
+      prefix: '[gha] '
