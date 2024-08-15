@@ -61,7 +61,7 @@
 		"svelte": "^4.0.0",
 		"toml": "^3.0.0",
 		"unified": "^9.1.0",
-		"vfile": "^4.2.0"
+		"vfile": "^6.0.2"
 	},
 	"peerDependencies": {
 		"svelte": "^3.56.0 || ^4.0.0 || ^5.0.0-next.120"
