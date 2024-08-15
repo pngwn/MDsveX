@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.12.1
+
+### Patch Changes
+
+- [#628](https://github.com/pngwn/MDsveX/pull/628) [`b1fc10b`](https://github.com/pngwn/MDsveX/commit/b1fc10bbcc870ff57668a0627872701926070cd4) Thanks [@pngwn](https://github.com/pngwn)! - fix exports
+
 ## 0.12.0
 
 ### Minor Changes
