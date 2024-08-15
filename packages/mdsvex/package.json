@@ -12,7 +12,8 @@
 	"module": "dist/main.mjs",
 	"repository": "https://github.com/pngwn/MDsveX",
 	"scripts": {
-		"build": "rollup -c"
+		"build": "rollup -c",
+		"test": "uvu -r ts-node/register test test.ts$"
 	},
 	"files": [
 		"dist/*",
