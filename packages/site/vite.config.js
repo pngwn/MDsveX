@@ -15,8 +15,8 @@ function mdsvex_transform() {
 						alias: {
 							ts: 'typescript',
 							mdx: 'markdown',
-							svelte: 'html',
-							svx: 'markdown',
+							svelte: 'svelte',
+							svx: 'mdx',
 							mdsvex: 'svx',
 							sig: 'ts',
 						},
