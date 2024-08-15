@@ -1,5 +1,15 @@
 # mdsvex
 
+## 0.12.0
+
+### Minor Changes
+
+- [#617](https://github.com/pngwn/MDsveX/pull/617) [`623b182`](https://github.com/pngwn/MDsveX/commit/623b18277b867a7b088951609710af871c9b9e56) Thanks [@benmccann](https://github.com/benmccann)! - add exports map to package.json and cleanup build output.
+
+### Patch Changes
+
+- [#612](https://github.com/pngwn/MDsveX/pull/612) [`91ef99f`](https://github.com/pngwn/MDsveX/commit/91ef99f9e95f6014243deadbbdcc13aac24079f8) Thanks [@moiri-gamboni](https://github.com/moiri-gamboni)! - Fix typescript module declaration to resolve errors when importing markdown files as components
+
 ## 0.11.2
 
 ### Patch Changes
