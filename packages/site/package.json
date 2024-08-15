@@ -1,5 +1,5 @@
 {
-	"name": "mdsvex-playground",
+	"name": "@mdsvex/site",
 	"description": "Documentation side for mdsvex",
 	"version": "0.0.1",
 	"type": "module",

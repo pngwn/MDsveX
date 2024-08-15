@@ -10,7 +10,9 @@
 		"test:filter": "uvu -r ts-node/register",
 		"release": "pnpm -r build && changeset publish",
 		"changeset:add": "changeset add",
-		"changeset:version": "changeset version && pnpm i --lockfile-only"
+		"changeset:version": "changeset version && pnpm i --lockfile-only",
+		"site:dev": "pnpm --filter @mdsvex/site dev",
+		"site:build": "pnpm --filter @mdsvex/site build"
 	},
 	"keywords": [
 		"test",
