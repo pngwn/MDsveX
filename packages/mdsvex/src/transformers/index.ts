@@ -488,46 +488,42 @@ interface Meta {
 }
 
 function load_language_metadata() {
-	if (!(process as RollupProcess).browser) {
-		const {
-			meta,
-			...languages
-		}: Record<string, PrismLanguage> &
-			Meta = require('prismjs/components.json').languages;
+	const {
+		meta,
+		...languages
+	}: Record<string, PrismLanguage> &
+		Meta = require('prismjs/components.json').languages;
 
-		for (const lang in languages) {
-			const [lang_info, aliases] = get_lang_info(
-				lang,
-				languages[lang],
-				meta.path
-			);
+	for (const lang in languages) {
+		const [lang_info, aliases] = get_lang_info(
+			lang,
+			languages[lang],
+			meta.path
+		);
 
-			langs[lang] = lang_info;
-			aliases.forEach((_n) => {
-				langs[_n] = langs[lang];
-			});
-		}
-
-		const svelte_meta = {
-			name: 'svelte',
-			aliases: new Set(['sv']),
-			path: 'prism-svelte',
-			deps: new Set(['javscript', 'css']),
-		};
-
-		langs.svelte = svelte_meta;
-		langs.sv = svelte_meta;
+		langs[lang] = lang_info;
+		aliases.forEach((_n) => {
+			langs[_n] = langs[lang];
+		});
 	}
+
+	const svelte_meta = {
+		name: 'svelte',
+		aliases: new Set(['sv']),
+		path: 'prism-svelte',
+		deps: new Set(['javscript', 'css']),
+	};
+
+	langs.svelte = svelte_meta;
+	langs.sv = svelte_meta;
 }
 
 function load_language(lang: string) {
-	if (!(process as RollupProcess).browser) {
-		if (!langs[lang]) return;
+	if (!langs[lang]) return;
 
-		langs[lang].deps.forEach((name) => load_language(name));
+	langs[lang].deps.forEach((name) => load_language(name));
 
-		require(langs[lang].path);
-	}
+	require(langs[lang].path);
 }
 
 export function highlight_blocks({
@@ -537,7 +533,7 @@ export function highlight_blocks({
 	highlighter?: Highlighter;
 	alias?: { [x: string]: string };
 } = {}): Transformer {
-	if (highlight_fn && !(process as RollupProcess).browser) {
+	if (highlight_fn) {
 		load_language_metadata();
 
 		if (alias) {
@@ -581,27 +577,23 @@ export const escape_svelty = (str: string): string =>
 
 export const code_highlight: Highlighter = (code, lang) => {
 	const normalised_lang = lang?.toLowerCase();
-	if (!(process as RollupProcess).browser) {
-		let _lang = !!normalised_lang && langs[normalised_lang];
 
-		if (!Prism) Prism = require('prismjs');
+	let _lang = !!normalised_lang && langs[normalised_lang];
 
-		if (_lang && !Prism.languages[_lang.name]) {
-			load_language(_lang.name);
-		}
+	if (!Prism) Prism = require('prismjs');
 
-		if (!_lang && normalised_lang && Prism.languages[normalised_lang]) {
-			langs[normalised_lang] = { name: lang } as MdsvexLanguage;
-			_lang = langs[normalised_lang];
-		}
-		const highlighted = escape_svelty(
-			_lang
-				? Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
-				: escape(code)
-		);
-		return `<pre class="language-${normalised_lang}">{@html \`<code class="language-${normalised_lang}">${highlighted}</code>\`}</pre>`;
-	} else {
-		const highlighted = escape_svelty(escape(code));
-		return `<pre class="language-${normalised_lang}">{@html \`<code class="language-${normalised_lang}">${highlighted}</code>\`}</pre>`;
+	if (_lang && !Prism.languages[_lang.name]) {
+		load_language(_lang.name);
 	}
+
+	if (!_lang && normalised_lang && Prism.languages[normalised_lang]) {
+		langs[normalised_lang] = { name: lang } as MdsvexLanguage;
+		_lang = langs[normalised_lang];
+	}
+	const highlighted = escape_svelty(
+		_lang
+			? Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
+			: escape(code)
+	);
+	return `<pre class="language-${normalised_lang}">{@html \`<code class="language-${normalised_lang}">${highlighted}</code>\`}</pre>`;
 };
