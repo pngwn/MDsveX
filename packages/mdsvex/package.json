@@ -60,7 +60,7 @@
 		"shiki": "^0.9.3",
 		"svelte": "^4.0.0",
 		"toml": "^3.0.0",
-		"unified": "^9.1.0",
+		"unified": "^11.0.5",
 		"vfile": "^4.2.0"
 	},
 	"peerDependencies": {
