@@ -1,4 +1,4 @@
-name: mdsvex
+name: npm-previews
 
 on:
   push:
@@ -27,24 +27,23 @@ jobs:
           CI: true
           name: mdsvex
 
-  build-test:
-    name: test-build - node ${{ matrix.node-version }} (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        node-version: [18, 20, 22]
-        os: [ubuntu-latest, macOS-latest, windows-latest]
+  preview:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: npm i -g pnpm@9.1
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 22
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       - run: pnpm i --frozen-lockfile
-      - run: pnpm test
       - run: pnpm -r build
         env:
           CI: true
           name: mdsvex
+      - run: pnpm -r preview
+        env:
+          CI: true
+          name: mdsvex
+      - run: pnpx pkg-pr-new publish './packages/*' --compact
