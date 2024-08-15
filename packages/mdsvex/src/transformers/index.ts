@@ -2,6 +2,7 @@ import type { Transformer } from 'unified';
 import type { Text, Code, HTML } from 'mdast';
 import type { Element, Root } from 'hast';
 import type { VFileMessage } from 'vfile-message';
+import { createRequire } from 'module';
 
 import Message from 'vfile-message';
 //@ts-ignore
@@ -28,6 +29,8 @@ import type {
 	Layout,
 	LayoutMeta,
 } from '../types';
+
+const _require = import.meta.url ? createRequire(import.meta.url) : require;
 
 // this needs a big old cleanup
 
@@ -488,11 +491,9 @@ interface Meta {
 }
 
 function load_language_metadata() {
-	const {
-		meta,
-		...languages
-	}: Record<string, PrismLanguage> &
-		Meta = require('prismjs/components.json').languages;
+	const { meta, ...languages }: Record<string, PrismLanguage> & Meta = _require(
+		'prismjs/components.json'
+	).languages;
 
 	for (const lang in languages) {
 		const [lang_info, aliases] = get_lang_info(
@@ -523,7 +524,7 @@ function load_language(lang: string) {
 
 	langs[lang].deps.forEach((name) => load_language(name));
 
-	require(langs[lang].path);
+	_require(langs[lang].path);
 }
 
 export function highlight_blocks({
@@ -580,7 +581,7 @@ export const code_highlight: Highlighter = (code, lang) => {
 
 	let _lang = !!normalised_lang && langs[normalised_lang];
 
-	if (!Prism) Prism = require('prismjs');
+	if (!Prism) Prism = _require('prismjs');
 
 	if (_lang && !Prism.languages[_lang.name]) {
 		load_language(_lang.name);
