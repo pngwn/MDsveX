@@ -4,8 +4,8 @@
 	"description": "Markdown preprocessor for Svelte",
 	"exports": {
 		".": {
-			"require": "dist/main.cjs",
-			"default": "dist/main.mjs"
+			"require": "./dist/main.cjs",
+			"default": "./dist/main.mjs"
 		}
 	},
 	"main": "dist/main.cjs",
