@@ -7,32 +7,32 @@ import link from 'rehype-autolink-headings';
 function mdsvex_transform() {
 	return {
 		async transform(code, id) {
-			if (extname(id) !== ".svtext") return;
+			if (extname(id) !== '.svtext') return;
 
 			const c = (
 				await mdsvex({
 					highlight: {
 						alias: {
-							ts: "typescript",
-							mdx: "markdown",
-							svelte: "svelte",
-							svx: "svx",
-							mdsvex: "svx",
-							sig: "ts",
-						}
+							ts: 'typescript',
+							mdx: 'markdown',
+							svelte: 'html',
+							svx: 'markdown',
+							mdsvex: 'svx',
+							sig: 'ts',
+						},
 					},
 					extension: '.svtext',
-					rehypePlugins: [slug, link]
+					rehypePlugins: [slug, link],
 				}).markup({ content: code, filename: id })
 			).code;
-			return `export default \`${c.replace(/`/g, "\\`").trim()}\`;`;
-		}
+			return `export default \`${c.replace(/`/g, '\\`').trim()}\`;`;
+		},
 	};
 }
 
 /** @type {import('vite').UserConfig} */
 const config = {
-	plugins: [ mdsvex_transform(), sveltekit() ]
+	plugins: [mdsvex_transform(), sveltekit()],
 };
 
 export default config;
