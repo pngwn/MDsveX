@@ -3,7 +3,7 @@ import * as assert from 'uvu/assert';
 import { lines } from '../utils';
 import * as shiki from 'shiki';
 
-import { mdsvex } from '../../src';
+import { mdsvex } from '../../src/index';
 
 const highlight = suite('code-highlighting');
 
@@ -220,7 +220,7 @@ highlight(
 			code: string,
 			lang: string | undefined
 		): Promise<string> {
-			// const shiki = require('shiki');
+			// const shiki = await import('shiki');
 			const highlighter = await shiki.getHighlighter({
 				theme: 'material-theme-palenight',
 			});
@@ -347,8 +347,8 @@ highlight(
 highlight(
 	'Should be possible to add additional highlighting grammars',
 	async () => {
-		require('prismjs');
-		require('prism-svelte');
+		await import('prismjs');
+		await import('prism-svelte');
 		const output = await mdsvex({
 			highlight: { alias: { beeboo: 'html' } },
 		}).markup({

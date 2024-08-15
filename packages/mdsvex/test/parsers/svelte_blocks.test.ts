@@ -1,7 +1,7 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
-import { parse_svelte_block } from '../../src/parsers';
+import { parse_svelte_block } from '../../src/parsers/index';
 
 const blocks = suite('svelte-blocks');
 

@@ -2,11 +2,13 @@ import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
 import { readdirSync, readFileSync, existsSync, lstatSync } from 'fs';
-import { join, extname } from 'path';
+import { dirname, extname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { lines } from '../utils';
 
-import { transform } from '../../src';
+import { transform } from '../../src/index';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const PATH = join(__dirname, '../_fixtures/svelte');
 
 const is_dir = (path: string): boolean =>

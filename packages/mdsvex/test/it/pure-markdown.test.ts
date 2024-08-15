@@ -2,9 +2,12 @@ import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
 import { readdirSync, readFileSync } from 'fs';
-import { join, basename } from 'path';
+import { basename, dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { lines } from '../utils';
-import { transform } from '../../src';
+import { transform } from '../../src/index';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const PATH = join(__dirname, '../_fixtures/markdown');
 const INPUT_PATH = join(PATH, 'input');

@@ -2,11 +2,12 @@ import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 import { Node, Parent } from 'unist';
 
-import { join } from 'path';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { lines } from '../utils';
 import { to_posix } from '../../src/utils';
 
-import { mdsvex, compile } from '../../src';
+import { mdsvex, compile } from '../../src/index';
 import containers from 'remark-containers';
 import headings from 'remark-autolink-headings';
 import slug from 'remark-slug';
@@ -17,6 +18,8 @@ import VMessage, { VFileMessage } from 'vfile-message';
 import { Transformer } from 'unified';
 
 const mdsvex_it = suite('mdsvex');
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const fix_dir = join(__dirname, '..', '_fixtures');
 
 mdsvex_it('it should work', async () => {

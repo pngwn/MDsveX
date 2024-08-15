@@ -2,11 +2,13 @@ import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
 import { readdirSync, readFileSync } from 'fs';
-import { join, basename } from 'path';
+import { basename, dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { lines } from '../utils';
 
-import { mdsvex } from '../../src';
+import { mdsvex } from '../../src/index';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const PATH = join(__dirname, '../_fixtures/hybrid');
 const INPUT_PATH = join(PATH, 'input');
 const OUTPUT_PATH = join(PATH, 'output');

@@ -1,8 +1,5 @@
 {
-	"name": "mdsvex",
-	"version": "0.8.5",
-	"description": "Markdown preprocessor for Svelte",
-	"repository": "https://github.com/pngwn/MDsveX",
+	"name": "mdsvex-monorepo",
 	"scripts": {
 		"lint": "prettier --check .",
 		"format": "prettier --write .",
@@ -14,13 +11,6 @@
 		"site:dev": "pnpm --filter @mdsvex/site dev",
 		"site:build": "pnpm --filter @mdsvex/site build"
 	},
-	"keywords": [
-		"test",
-		"preprocessor",
-		"mdx",
-		"markdown",
-		"svelte"
-	],
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"devDependencies": {
@@ -33,8 +23,9 @@
 		"rollup": "^2.77.4-1",
 		"rollup-plugin-dts": "^3.0.1",
 		"ts-node": "^9.1.1",
+		"tsm": "^2.3.0",
 		"typescript": "^4.2.4",
-		"uvu": "^0.5.1",
+		"uvu": "^0.5.6",
 		"watchlist": "^0.2.3"
 	},
 	"dependencies": {

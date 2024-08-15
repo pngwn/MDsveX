@@ -16,6 +16,7 @@ export * from './types';
 
 import { join } from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { parse } from 'svelte/compiler';
 import unified from 'unified';
 import markdown from 'remark-parse';
@@ -26,7 +27,7 @@ import remark2rehype from 'remark-rehype';
 //@ts-ignore
 import hast_to_html from '@starptech/prettyhtml-hast-to-html';
 
-import { mdsvex_parser } from './parsers';
+import { mdsvex_parser } from './parsers/index';
 import {
 	default_frontmatter,
 	parse_frontmatter,
@@ -35,7 +36,7 @@ import {
 	smartypants_transformer,
 	highlight_blocks,
 	code_highlight,
-} from './transformers';
+} from './transformers/index';
 
 function stringify(this: Processor, options = {}) {
 	this.Compiler = compiler;
@@ -128,11 +129,11 @@ function to_posix(_path: string): string {
 
 function resolve_layout(layout_path: string): string {
 	try {
-		return to_posix(require.resolve(layout_path));
+		return to_posix(fileURLToPath(import.meta.resolve(layout_path)));
 	} catch (e) {
 		try {
 			const _path = join(process.cwd(), layout_path);
-			return to_posix(require.resolve(_path));
+			return to_posix(fileURLToPath(import.meta.resolve(_path)));
 		} catch (e) {
 			throw new Error(
 				`The layout path you provided couldn't be found at either ${layout_path} or ${join(

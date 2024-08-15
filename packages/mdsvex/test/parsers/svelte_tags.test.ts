@@ -1,7 +1,7 @@
 import { suite } from 'uvu';
 import * as assert from 'uvu/assert';
 
-import { parse_svelte_tag } from '../../src/parsers';
+import { parse_svelte_tag } from '../../src/parsers/index';
 
 const tags = suite('svelte-tags');
 
