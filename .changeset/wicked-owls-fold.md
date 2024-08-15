@@ -1,0 +1,5 @@
+---
+"mdsvex": patch
+---
+
+fix exports
