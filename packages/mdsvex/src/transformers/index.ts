@@ -334,7 +334,7 @@ export function transform_hast({
 				`export const metadata = ${stringified};${newline}` +
 					`\tconst { ${Object.keys(metadata)
 						.join(', ')
-						.replace('-', '_')} } = metadata;`;
+						.replace(/-/g, '_')} } = metadata;`;
 
 			const frontmatter_layout =
 				metadata && (metadata.layout as string | undefined | false);
