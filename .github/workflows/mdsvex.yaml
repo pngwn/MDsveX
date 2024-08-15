@@ -13,15 +13,15 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - run: npm i -g pnpm@8
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - run: npm i -g pnpm@9
+      - uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 18
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       - run: pnpm i --frozen-lockfile
-      - run: pnpm format
+      - run: pnpm lint
         # type-check here as well when it is working
         env:
           CI: true
@@ -32,12 +32,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        node-version: [16, 18]
+        node-version: [18, 20, 22]
         os: [ubuntu-latest, macOS-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v3
-      - run: npm i -g pnpm@8
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - run: npm i -g pnpm@9.1
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'pnpm'

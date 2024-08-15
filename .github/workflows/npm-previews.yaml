@@ -1,0 +1,24 @@
+name: npm-previews
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'site/**'
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm i -g pnpm@9.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
+      - run: pnpm i --frozen-lockfile
+      - run: pnpm -r build
+        env:
+          CI: true
+          name: mdsvex
+      - run: pnpx pkg-pr-new publish './packages/*'

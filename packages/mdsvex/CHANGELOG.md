@@ -1,5 +1,33 @@
 # mdsvex
 
+## 0.12.0
+
+### Minor Changes
+
+- [#617](https://github.com/pngwn/MDsveX/pull/617) [`623b182`](https://github.com/pngwn/MDsveX/commit/623b18277b867a7b088951609710af871c9b9e56) Thanks [@benmccann](https://github.com/benmccann)! - add exports map to package.json and cleanup build output.
+
+### Patch Changes
+
+- [#612](https://github.com/pngwn/MDsveX/pull/612) [`91ef99f`](https://github.com/pngwn/MDsveX/commit/91ef99f9e95f6014243deadbbdcc13aac24079f8) Thanks [@moiri-gamboni](https://github.com/moiri-gamboni)! - Fix typescript module declaration to resolve errors when importing markdown files as components
+
+## 0.11.2
+
+### Patch Changes
+
+- [#604](https://github.com/pngwn/MDsveX/pull/604) [`82553e0`](https://github.com/pngwn/MDsveX/commit/82553e02ab06b40a1650632865e076d0ad4d6ea4) Thanks [@pngwn](https://github.com/pngwn)! - Update peerDeps for Svelte 5
+
+## 0.11.1
+
+### Patch Changes
+
+- [#596](https://github.com/pngwn/MDsveX/pull/596) [`d238325`](https://github.com/pngwn/MDsveX/commit/d2383257d959c68ea5279fd3a8d22ec6d5a4504e) Thanks [@TheOnlyTails](https://github.com/TheOnlyTails)! - Infer the settings type when using unified plugins with settings
+
+* [#591](https://github.com/pngwn/MDsveX/pull/591) [`1ff938c`](https://github.com/pngwn/MDsveX/commit/1ff938c9e9aa588486fb57f762a5356630549288) Thanks [@vnphanquang](https://github.com/vnphanquang)! - Allow more extensive extension filtering. For example, now `.md.svelte` is possible
+
+- [#592](https://github.com/pngwn/MDsveX/pull/592) [`68c6df2`](https://github.com/pngwn/MDsveX/commit/68c6df2e97103119a2bb048588f43d4f0fad1493) Thanks [@vnphanquang](https://github.com/vnphanquang)! - Pass filename to highlighter
+
+* [#603](https://github.com/pngwn/MDsveX/pull/603) [`ae41002`](https://github.com/pngwn/MDsveX/commit/ae410026fb51bcdb5577c324a4e4d87323a0e57b) Thanks [@pngwn](https://github.com/pngwn)! - Update peerDependencies to allow Svelte 5
+
 ## 0.11.0
 
 ### Minor Changes

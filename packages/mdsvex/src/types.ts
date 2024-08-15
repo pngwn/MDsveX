@@ -152,8 +152,9 @@ export type Layout = Record<string, LayoutMeta>;
 
 export type Highlighter = (
 	code: string,
-	lang: string | undefined,
-	metastring: string | undefined
+	lang: string | null | undefined,
+	metastring: string | null | undefined,
+	filename?: string
 ) => string | Promise<string>;
 interface HighlightOptions {
 	/**
@@ -182,7 +183,11 @@ interface HighlightOptions {
 	alias?: Record<string, string>;
 }
 
-export type UnifiedPlugins = Array<[Plugin, Settings] | Plugin>;
+export type PluginWithSettings<
+	S extends any[] = [Settings?],
+	P extends Plugin<S> = Plugin<S>
+> = [P, ...S];
+export type UnifiedPlugins = Array<PluginWithSettings | Plugin>;
 
 export interface TransformOptions {
 	remarkPlugins?: UnifiedPlugins;

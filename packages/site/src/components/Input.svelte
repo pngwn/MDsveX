@@ -70,7 +70,7 @@
       <div class="line" style="font-weight:{i === 0 ? 'bold' : 100};">
         {#each line as { text, color, l } (text)}
           <span
-            in:typewriter={{ delay: l * 100, speed: 100 }}
+            in:typewriter|global={{ delay: l * 100, speed: 100 }}
             style="color: {colors[color]};">
             {text}
           </span>
