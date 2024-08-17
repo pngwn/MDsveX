@@ -1,23 +1,20 @@
-import { suite } from 'uvu';
-import * as assert from 'uvu/assert';
+import { test, expect } from 'vitest';
 
 import { table_without_positions } from './fixtures/table_without_positions';
 import { table_output } from './fixtures/table_output';
 import { Node, Root } from 'svast';
 import { compile } from '../src/main';
 
-const svast_stringify = suite('compile-tree');
-
-svast_stringify('throws without a root node root', () => {
+test('throws without a root node root', () => {
 	const node = {
 		type: 'hi',
 	};
 
 	//@ts-ignore
-	assert.throws(() => compile(node));
+	expect(() => compile(node)).toThrow();
 });
 
-svast_stringify('compiles a text node', () => {
+test('compiles a text node', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -28,10 +25,10 @@ svast_stringify('compiles a text node', () => {
 		],
 	};
 
-	assert.is(compile(tree), 'hi');
+	expect(compile(tree)).toEqual('hi');
 });
 
-svast_stringify('compiles a expression node', () => {
+test('compiles a expression node', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -45,10 +42,10 @@ svast_stringify('compiles a expression node', () => {
 		],
 	};
 
-	assert.is(compile(tree), '{console.log("boo")}');
+	expect(compile(tree)).toEqual('{console.log("boo")}');
 });
 
-svast_stringify('compiles a void block', () => {
+test('compiles a void block', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -63,10 +60,10 @@ svast_stringify('compiles a void block', () => {
 		],
 	};
 
-	assert.is(compile(tree), '{@html `hello i am an expression`}');
+	expect(compile(tree)).toEqual('{@html `hello i am an expression`}');
 });
 
-svast_stringify('compiles a self-closing html element', () => {
+test('compiles a self-closing html element', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -80,301 +77,277 @@ svast_stringify('compiles a self-closing html element', () => {
 		],
 	};
 
-	assert.is(compile(tree), '<input />');
+	expect(compile(tree)).toEqual('<input />');
 });
 
-svast_stringify(
-	'compiles a self-closing html element with short hand boolean attributes',
-	() => {
-		const tree = <Root>{
-			type: 'root',
-			children: [
-				{
-					type: 'svelteElement',
-					tagName: 'input',
-					selfClosing: true,
-					children: [],
-					properties: [
-						{
-							type: 'svelteProperty',
-							name: 'hello',
-							value: [],
-							shorthand: 'boolean',
-							modifiers: [],
-						},
-						{
-							type: 'svelteProperty',
-							name: 'goodbye',
-							value: [],
-							shorthand: 'boolean',
-							modifiers: [],
-						},
-					],
-				},
-			],
-		};
+test('compiles a self-closing html element with short hand boolean attributes', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'input',
+				selfClosing: true,
+				children: [],
+				properties: [
+					{
+						type: 'svelteProperty',
+						name: 'hello',
+						value: [],
+						shorthand: 'boolean',
+						modifiers: [],
+					},
+					{
+						type: 'svelteProperty',
+						name: 'goodbye',
+						value: [],
+						shorthand: 'boolean',
+						modifiers: [],
+					},
+				],
+			},
+		],
+	};
 
-		assert.is(
-			compile(tree),
-			`<input 
+	expect(compile(tree)).toEqual(
+		`<input 
 hello
 goodbye
 />`
-		);
-	}
-);
+	);
+});
 
-svast_stringify(
-	'compiles a self-closing html element with props and a value',
-	() => {
-		const tree = <Root>{
-			type: 'root',
-			children: [
-				{
-					type: 'svelteElement',
-					tagName: 'input',
-					selfClosing: true,
-					children: [],
-					properties: [
-						{
-							type: 'svelteProperty',
-							name: 'hello',
-							value: [
-								{
-									type: 'text',
-									value: 'value',
-								},
-							],
-							shorthand: 'none',
-							modifiers: [],
-						},
-					],
-				},
-			],
-		};
+test('compiles a self-closing html element with props and a value', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'input',
+				selfClosing: true,
+				children: [],
+				properties: [
+					{
+						type: 'svelteProperty',
+						name: 'hello',
+						value: [
+							{
+								type: 'text',
+								value: 'value',
+							},
+						],
+						shorthand: 'none',
+						modifiers: [],
+					},
+				],
+			},
+		],
+	};
 
-		assert.is(
-			compile(tree),
-			`<input 
+	expect(compile(tree)).toEqual(
+		`<input 
 hello="value"
 />`
-		);
-	}
-);
+	);
+});
 
-svast_stringify(
-	'compiles a self-closing html element with props and values',
-	() => {
-		const tree = <Root>{
-			type: 'root',
-			children: [
-				{
-					type: 'svelteElement',
-					tagName: 'input',
-					selfClosing: true,
-					children: [],
-					properties: [
-						{
-							type: 'svelteProperty',
-							name: 'hello',
-							value: [
-								{
-									type: 'text',
-									value: 'value',
-								},
-								{ type: 'text', value: ' ' },
-								{
-									type: 'text',
-									value: 'value',
-								},
-							],
-							shorthand: 'none',
-							modifiers: [],
-						},
-					],
-				},
-			],
-		};
+test('compiles a self-closing html element with props and values', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'input',
+				selfClosing: true,
+				children: [],
+				properties: [
+					{
+						type: 'svelteProperty',
+						name: 'hello',
+						value: [
+							{
+								type: 'text',
+								value: 'value',
+							},
+							{ type: 'text', value: ' ' },
+							{
+								type: 'text',
+								value: 'value',
+							},
+						],
+						shorthand: 'none',
+						modifiers: [],
+					},
+				],
+			},
+		],
+	};
 
-		assert.is(
-			compile(tree),
-			`<input 
+	expect(compile(tree)).toEqual(
+		`<input 
 hello="value value"
 />`
-		);
-	}
-);
+	);
+});
 
-svast_stringify(
-	'compiles a self-closing html element with props and expression values',
-	() => {
-		const tree = <Root>{
-			type: 'root',
-			children: [
-				{
-					type: 'svelteElement',
-					tagName: 'input',
-					selfClosing: true,
-					children: [],
-					properties: [
-						{
-							type: 'svelteProperty',
-							name: 'hello',
-							value: [
-								{
-									type: 'text',
+test('compiles a self-closing html element with props and expression values', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'input',
+				selfClosing: true,
+				children: [],
+				properties: [
+					{
+						type: 'svelteProperty',
+						name: 'hello',
+						value: [
+							{
+								type: 'text',
+								value: 'value',
+							},
+							{
+								type: 'text',
+								value: ' ',
+							},
+							{
+								type: 'text',
+								value: 'value',
+							},
+							{
+								type: 'svelteDynamicContent',
+								expression: {
+									type: 'svelteExpression',
 									value: 'value',
 								},
-								{
-									type: 'text',
-									value: ' ',
-								},
-								{
-									type: 'text',
-									value: 'value',
-								},
-								{
-									type: 'svelteDynamicContent',
-									expression: {
-										type: 'svelteExpression',
-										value: 'value',
-									},
-								},
-							],
-							shorthand: 'none',
-							modifiers: [],
-						},
-					],
-				},
-			],
-		};
+							},
+						],
+						shorthand: 'none',
+						modifiers: [],
+					},
+				],
+			},
+		],
+	};
 
-		assert.is(
-			compile(tree),
-			`<input 
+	expect(compile(tree)).toEqual(
+		`<input 
 hello="value value{value}"
 />`
-		);
-	}
-);
+	);
+});
 
-svast_stringify(
-	'compiles a self-closing html element with props and expression values, with empty attr text nodes',
-	() => {
-		const tree = <Root>{
-			type: 'root',
-			children: [
-				{
-					type: 'svelteElement',
-					tagName: 'input',
-					selfClosing: true,
-					children: [],
-					properties: [
-						{
-							type: 'svelteProperty',
-							name: 'hello',
-							value: [
-								{
-									type: 'text',
+test('compiles a self-closing html element with props and expression values, with empty attr text nodes', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'input',
+				selfClosing: true,
+				children: [],
+				properties: [
+					{
+						type: 'svelteProperty',
+						name: 'hello',
+						value: [
+							{
+								type: 'text',
+								value: 'value',
+							},
+							{
+								type: 'text',
+								value: ' ',
+							},
+							{
+								type: 'text',
+								value: 'value',
+							},
+							{
+								type: 'text',
+								value: ' ',
+							},
+							{
+								type: 'svelteDynamicContent',
+								expression: {
+									type: 'svelteExpression',
 									value: 'value',
 								},
-								{
-									type: 'text',
-									value: ' ',
-								},
-								{
-									type: 'text',
-									value: 'value',
-								},
-								{
-									type: 'text',
-									value: ' ',
-								},
-								{
-									type: 'svelteDynamicContent',
-									expression: {
-										type: 'svelteExpression',
-										value: 'value',
-									},
-								},
-							],
-							shorthand: 'none',
-							modifiers: [],
-						},
-					],
-				},
-			],
-		};
+							},
+						],
+						shorthand: 'none',
+						modifiers: [],
+					},
+				],
+			},
+		],
+	};
 
-		assert.is(
-			compile(tree),
-			`<input 
+	expect(compile(tree)).toEqual(
+		`<input 
 hello="value value {value}"
 />`
-		);
-	}
-);
+	);
+});
 
-svast_stringify(
-	'compiles a self-closing html element with props and expression values, with empty attr text nodes',
-	() => {
-		const tree = <Root>{
-			type: 'root',
-			children: [
-				{
-					type: 'svelteElement',
-					tagName: 'input',
-					selfClosing: true,
-					children: [],
-					properties: [
-						{
-							type: 'svelteProperty',
-							name: 'hello',
-							value: [
-								{
-									type: 'text',
+test('compiles a self-closing html element with props and expression values, with empty attr text nodes', () => {
+	const tree = <Root>{
+		type: 'root',
+		children: [
+			{
+				type: 'svelteElement',
+				tagName: 'input',
+				selfClosing: true,
+				children: [],
+				properties: [
+					{
+						type: 'svelteProperty',
+						name: 'hello',
+						value: [
+							{
+								type: 'text',
+								value: 'value',
+							},
+							{
+								type: 'svelteDynamicContent',
+								expression: {
+									type: 'svelteExpression',
 									value: 'value',
 								},
-								{
-									type: 'svelteDynamicContent',
-									expression: {
-										type: 'svelteExpression',
-										value: 'value',
-									},
+							},
+							{
+								type: 'svelteDynamicContent',
+								expression: {
+									type: 'svelteExpression',
+									value: 'value',
 								},
-								{
-									type: 'svelteDynamicContent',
-									expression: {
-										type: 'svelteExpression',
-										value: 'value',
-									},
+							},
+							{
+								type: 'svelteDynamicContent',
+								expression: {
+									type: 'svelteExpression',
+									value: 'value',
 								},
-								{
-									type: 'svelteDynamicContent',
-									expression: {
-										type: 'svelteExpression',
-										value: 'value',
-									},
-								},
-							],
-							shorthand: 'none',
-							modifiers: [],
-						},
-					],
-				},
-			],
-		};
+							},
+						],
+						shorthand: 'none',
+						modifiers: [],
+					},
+				],
+			},
+		],
+	};
 
-		assert.is(
-			compile(tree),
-			`<input 
+	expect(compile(tree)).toEqual(
+		`<input 
 hello="value{value}{value}{value}"
 />`
-		);
-	}
-);
+	);
+});
 
-svast_stringify('handle a realword set of attrs', () => {
+test('handle a realword set of attrs', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -416,15 +389,14 @@ svast_stringify('handle a realword set of attrs', () => {
 		],
 	};
 
-	assert.is(
-		compile(tree),
+	expect(compile(tree)).toEqual(
 		`<div 
 style="color: {color};"
 />`
 	);
 });
 
-svast_stringify('handle a realword set of attrs: more whitespace', () => {
+test('handle a realword set of attrs: more whitespace', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -466,15 +438,14 @@ svast_stringify('handle a realword set of attrs: more whitespace', () => {
 		],
 	};
 
-	assert.is(
-		compile(tree),
+	expect(compile(tree)).toEqual(
 		`<div 
 style="color:      			{color};"
 />`
 	);
 });
 
-svast_stringify('compiles directives', () => {
+test('compiles directives', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -497,15 +468,14 @@ svast_stringify('compiles directives', () => {
 		],
 	};
 
-	assert.is(
-		compile(tree),
+	expect(compile(tree)).toEqual(
 		`<input 
 hello:world
 />`
 	);
 });
 
-svast_stringify('compiles directive with a value', () => {
+test('compiles directive with a value', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -528,15 +498,14 @@ svast_stringify('compiles directive with a value', () => {
 		],
 	};
 
-	assert.is(
-		compile(tree),
+	expect(compile(tree)).toEqual(
 		`<input 
 hello:world="cheese"
 />`
 	);
 });
 
-svast_stringify('compiles directive with a value', () => {
+test('compiles directive with a value', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -563,15 +532,14 @@ svast_stringify('compiles directive with a value', () => {
 		],
 	};
 
-	assert.is(
-		compile(tree),
+	expect(compile(tree)).toEqual(
 		`<input 
 hello:world="cheese strings"
 />`
 	);
 });
 
-svast_stringify('compiles directive with a value', () => {
+test('compiles directive with a value', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -614,15 +582,14 @@ svast_stringify('compiles directive with a value', () => {
 		],
 	};
 
-	assert.is(
-		compile(tree),
+	expect(compile(tree)).toEqual(
 		`<input 
 hello:world="color: {color};"
 />`
 	);
 });
 
-svast_stringify('compiles directive with a value', () => {
+test('compiles directive with a value', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -648,15 +615,14 @@ svast_stringify('compiles directive with a value', () => {
 		],
 	};
 
-	assert.is(
-		compile(tree),
+	expect(compile(tree)).toEqual(
 		`<input 
 hello:world|modifierval|modifierval2
 />`
 	);
 });
 
-svast_stringify('compiles svelte meta tags', () => {
+test('compiles svelte meta tags', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -686,15 +652,14 @@ svast_stringify('compiles svelte meta tags', () => {
 		],
 	};
 
-	assert.is(
-		compile(tree),
+	expect(compile(tree)).toEqual(
 		`<svelte:options 
 tag="{null}"
 />`
 	);
 });
 
-svast_stringify('compiles sibling nodes', () => {
+test('compiles sibling nodes', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -748,8 +713,7 @@ svast_stringify('compiles sibling nodes', () => {
 		],
 	};
 
-	assert.is(
-		compile(tree),
+	expect(compile(tree)).toEqual(
 		`<svelte:options 
 tag="{null}"
 />
@@ -760,7 +724,7 @@ tag="{null}"
 	);
 });
 
-svast_stringify('compiles child nodes: svelteMeta', () => {
+test('compiles child nodes: svelteMeta', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -823,8 +787,7 @@ svast_stringify('compiles child nodes: svelteMeta', () => {
 		],
 	};
 
-	assert.is(
-		compile(tree),
+	expect(compile(tree)).toEqual(
 		`<svelte:self >
 	<svelte:options 
 tag="{null}"
@@ -836,7 +799,7 @@ tag="{null}"
 	);
 });
 
-svast_stringify('compiles child nodes: svelteElement', () => {
+test('compiles child nodes: svelteElement', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -899,8 +862,7 @@ svast_stringify('compiles child nodes: svelteElement', () => {
 		],
 	};
 
-	assert.is(
-		compile(tree),
+	expect(compile(tree)).toEqual(
 		`<div >
 	<input 
 tag="{null}"
@@ -912,7 +874,7 @@ tag="{null}"
 	);
 });
 
-svast_stringify('compiles branching blocks', () => {
+test('compiles branching blocks', () => {
 	const tree = <Root>{
 		type: 'root',
 		children: [
@@ -985,8 +947,7 @@ svast_stringify('compiles branching blocks', () => {
 		],
 	};
 
-	assert.is(
-		compile(tree),
+	expect(compile(tree)).toEqual(
 		`{#if x > 10}
 	<p >x is greater than 10</p>
 {:else if x < 5}
@@ -995,8 +956,7 @@ svast_stringify('compiles branching blocks', () => {
 	);
 });
 
-svast_stringify('compiles a big thingy', () => {
+test('compiles a big thingy', () => {
 	const component = compile(table_without_positions as Root);
-	assert.is(component, table_output);
+	expect(component).toEqual(table_output);
 });
-svast_stringify.run();

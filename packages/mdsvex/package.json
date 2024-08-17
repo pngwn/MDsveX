@@ -2,6 +2,7 @@
 	"name": "mdsvex",
 	"version": "0.12.2",
 	"description": "Markdown preprocessor for Svelte",
+	"type": "module",
 	"exports": {
 		".": {
 			"require": "./dist/main.cjs",
@@ -13,7 +14,7 @@
 	"repository": "https://github.com/pngwn/MDsveX",
 	"scripts": {
 		"build": "rollup -c",
-		"test": "uvu -r ts-node/register test test.ts$"
+		"test": "vitest . **/*.spec.ts"
 	},
 	"files": [
 		"dist/*",

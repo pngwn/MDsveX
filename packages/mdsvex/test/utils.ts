@@ -1,4 +1,5 @@
-export function lines(str: string): string[] {
+export function lines(str?: string): string[] {
+	if (!str) return [];
 	return str
 		.split('\n')
 		.filter((s) => !!s.trim())

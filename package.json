@@ -3,11 +3,12 @@
 	"version": "0.8.5",
 	"description": "Markdown preprocessor for Svelte",
 	"repository": "https://github.com/pngwn/MDsveX",
+	"type": "module",
 	"scripts": {
 		"lint": "prettier --check .",
 		"format": "prettier --write .",
 		"test": "pnpm -r --filter=!site test",
-		"test:filter": "uvu -r ts-node/register",
+		"test:run": "vitest run . **/*.spec.ts ",
 		"release": "pnpm -r build && changeset publish",
 		"changeset:add": "changeset add",
 		"changeset:version": "changeset version && pnpm i --lockfile-only",
@@ -38,7 +39,8 @@
 		"watchlist": "^0.2.3"
 	},
 	"dependencies": {
-		"tslib": "^2.3.1"
+		"tslib": "^2.3.1",
+		"vitest": "^2.0.5"
 	},
 	"engines": {
 		"pnpm": "^9.1.0"
