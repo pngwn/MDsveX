@@ -2,9 +2,13 @@ name: mdsvex
 
 on:
   push:
+    branches:
+      - main
     paths-ignore:
       - 'site/**'
   pull_request:
+    branches:
+      - main
     paths-ignore:
       - 'site/**'
 
