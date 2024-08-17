@@ -1,5 +1,14 @@
 # svast-utils
 
+## 0.0.6
+
+### Patch Changes
+
+- [#637](https://github.com/pngwn/MDsveX/pull/637) [`9e8165f`](https://github.com/pngwn/MDsveX/commit/9e8165f981f52ef0b05cbb93335a7ac664d9e50c) Thanks [@pngwn](https://github.com/pngwn)! - fix layout path resolution
+
+- Updated dependencies [[`9e8165f`](https://github.com/pngwn/MDsveX/commit/9e8165f981f52ef0b05cbb93335a7ac664d9e50c)]:
+  - svast@0.2.1
+
 ## 0.0.5
 
 ### Patch Changes
