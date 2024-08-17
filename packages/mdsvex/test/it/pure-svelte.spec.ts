@@ -1,5 +1,4 @@
-import { suite } from 'uvu';
-import * as assert from 'uvu/assert';
+import { test, expect } from 'vitest';
 
 import { readdirSync, readFileSync, existsSync, lstatSync } from 'fs';
 import { join, extname } from 'path';
@@ -30,8 +29,6 @@ const flatten = (arr: any) =>
 		[]
 	);
 
-const svelte = suite('pure-svelte');
-
 let svelte_files;
 try {
 	svelte_files = (flatten(get_dir_path(PATH)) as string[])
@@ -42,23 +39,19 @@ try {
 }
 
 svelte_files.forEach(([path, file], i) => {
-	svelte(
-		`it should correctly parse any svelte component: ${path.replace(
-			join(__dirname, '../_fixtures/svelte/'),
-			''
-		)}`,
-		async () => {
-			let output;
+	test(`it should correctly parse any svelte component: ${path.replace(
+		join(__dirname, '../_fixtures/svelte/'),
+		''
+	)}`, async () => {
+		let output;
 
-			try {
-				output = await transform().process(file);
-			} catch (e) {
-				console.log(i, e);
-			}
-
-			assert.equal(lines(file), output && lines(output.contents as string));
+		try {
+			output = await transform().process(file);
+		} catch (e) {
+			console.log(i, e);
 		}
-	);
-});
 
-svelte.run();
+		expect(lines(file)).toEqual(output && lines(output.contents as string));
+		// assert.equal(lines(file), output && lines(output.contents as string));
+	});
+});

@@ -1,5 +1,4 @@
-import { suite } from 'uvu';
-import * as assert from 'uvu/assert';
+import { test, expect } from 'vitest';
 
 import {
 	SvelteElement,
@@ -22,9 +21,7 @@ const childParser: () => [Node[], Point & { index?: number }, number] = () => [
 	0,
 ];
 
-const position = suite('parse-positions');
-
-position('tracks the location of expression nodes', () => {
+test('tracks the location of expression nodes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
@@ -32,7 +29,7 @@ position('tracks the location of expression nodes', () => {
 		value: `{hail}`,
 	});
 
-	assert.equal(parsed, <SvelteDynamicContent>{
+	expect(parsed).toEqual(<SvelteDynamicContent>{
 		type: 'svelteDynamicContent',
 		expression: {
 			type: 'svelteExpression',
@@ -49,7 +46,7 @@ position('tracks the location of expression nodes', () => {
 	});
 });
 
-position('tracks the location of expression nodes in attributes', () => {
+test('tracks the location of expression nodes in attributes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
@@ -57,7 +54,7 @@ position('tracks the location of expression nodes in attributes', () => {
 		value: `<input thing={hail} />`,
 	});
 
-	assert.equal(parsed, <SvelteElement>{
+	expect(parsed).toEqual(<SvelteElement>{
 		type: 'svelteElement',
 		tagName: 'input',
 		properties: [
@@ -98,165 +95,159 @@ position('tracks the location of expression nodes in attributes', () => {
 	});
 });
 
-position(
-	'tracks the location of multiple expression nodes in attributes',
-	() => {
-		//@ts-ignore
-		const { parsed } = parseNode({
-			generatePositions: true,
-			childParser,
-			value: `<input thing="{hail} {haip}" />`,
-		});
+test('tracks the location of multiple expression nodes in attributes', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: true,
+		childParser,
+		value: `<input thing="{hail} {haip}" />`,
+	});
 
-		assert.equal(parsed, <SvelteElement>{
-			type: 'svelteElement',
-			tagName: 'input',
-			properties: [
-				{
-					type: 'svelteProperty',
-					name: 'thing',
-					value: [
-						{
-							type: 'svelteDynamicContent',
-							expression: {
-								type: 'svelteExpression',
-								value: 'hail',
-								position: {
-									start: { line: 1, column: 16, offset: 15 },
-									end: { line: 1, column: 20, offset: 19 },
-								},
-							},
+	expect(parsed).toEqual(<SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'thing',
+				value: [
+					{
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: 'hail',
 							position: {
-								start: { line: 1, column: 15, offset: 14 },
-								end: { line: 1, column: 21, offset: 20 },
+								start: { line: 1, column: 16, offset: 15 },
+								end: { line: 1, column: 20, offset: 19 },
 							},
 						},
-						{
-							type: 'text',
-							value: ' ',
-							position: {
-								start: {
-									line: 1,
-									column: 21,
-									offset: 20,
-								},
-								end: { line: 1, column: 22, offset: 21 },
-							},
+						position: {
+							start: { line: 1, column: 15, offset: 14 },
+							end: { line: 1, column: 21, offset: 20 },
 						},
-						{
-							type: 'svelteDynamicContent',
-							expression: {
-								type: 'svelteExpression',
-								value: 'haip',
-								position: {
-									start: { line: 1, column: 23, offset: 22 },
-									end: { line: 1, column: 27, offset: 26 },
-								},
-							},
-							position: {
-								start: { line: 1, column: 22, offset: 21 },
-								end: { line: 1, column: 28, offset: 27 },
-							},
-						},
-					],
-					modifiers: [],
-					shorthand: 'none',
-					position: {
-						start: { line: 1, column: 8, offset: 7 },
-						end: { line: 1, column: 29, offset: 28 },
 					},
-				},
-			],
-			selfClosing: true,
-			children: [],
-			position: {
-				start: { line: 1, column: 1, offset: 0 },
-				end: { line: 1, column: 32, offset: 31 },
-			},
-		});
-	}
-);
-
-position(
-	'tracks the location of multiple expression nodes in attributes: extra spaces',
-	() => {
-		//@ts-ignore
-		const { parsed } = parseNode({
-			generatePositions: true,
-			childParser,
-			value: `<input thing="{hail}   {haip}" />`,
-		});
-
-		assert.equal(parsed, <SvelteElement>{
-			type: 'svelteElement',
-			tagName: 'input',
-			properties: [
-				{
-					type: 'svelteProperty',
-					name: 'thing',
-					value: [
-						{
-							type: 'svelteDynamicContent',
-							expression: {
-								type: 'svelteExpression',
-								value: 'hail',
-								position: {
-									start: { line: 1, column: 16, offset: 15 },
-									end: { line: 1, column: 20, offset: 19 },
-								},
+					{
+						type: 'text',
+						value: ' ',
+						position: {
+							start: {
+								line: 1,
+								column: 21,
+								offset: 20,
 							},
-							position: {
-								start: { line: 1, column: 15, offset: 14 },
-								end: { line: 1, column: 21, offset: 20 },
-							},
+							end: { line: 1, column: 22, offset: 21 },
 						},
-						{
-							type: 'text',
-							value: '   ',
-							position: {
-								start: {
-									line: 1,
-									column: 21,
-									offset: 20,
-								},
-								end: { line: 1, column: 24, offset: 23 },
-							},
-						},
-						{
-							type: 'svelteDynamicContent',
-							expression: {
-								type: 'svelteExpression',
-								value: 'haip',
-								position: {
-									start: { line: 1, column: 25, offset: 24 },
-									end: { line: 1, column: 29, offset: 28 },
-								},
-							},
-							position: {
-								start: { line: 1, column: 24, offset: 23 },
-								end: { line: 1, column: 30, offset: 29 },
-							},
-						},
-					],
-					modifiers: [],
-					shorthand: 'none',
-					position: {
-						start: { line: 1, column: 8, offset: 7 },
-						end: { line: 1, column: 31, offset: 30 },
 					},
+					{
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: 'haip',
+							position: {
+								start: { line: 1, column: 23, offset: 22 },
+								end: { line: 1, column: 27, offset: 26 },
+							},
+						},
+						position: {
+							start: { line: 1, column: 22, offset: 21 },
+							end: { line: 1, column: 28, offset: 27 },
+						},
+					},
+				],
+				modifiers: [],
+				shorthand: 'none',
+				position: {
+					start: { line: 1, column: 8, offset: 7 },
+					end: { line: 1, column: 29, offset: 28 },
 				},
-			],
-			selfClosing: true,
-			children: [],
-			position: {
-				start: { line: 1, column: 1, offset: 0 },
-				end: { line: 1, column: 34, offset: 33 },
 			},
-		});
-	}
-);
+		],
+		selfClosing: true,
+		children: [],
+		position: {
+			start: { line: 1, column: 1, offset: 0 },
+			end: { line: 1, column: 32, offset: 31 },
+		},
+	});
+});
 
-position('tracks the location of self-closing elements', () => {
+test('tracks the location of multiple expression nodes in attributes: extra spaces', () => {
+	//@ts-ignore
+	const { parsed } = parseNode({
+		generatePositions: true,
+		childParser,
+		value: `<input thing="{hail}   {haip}" />`,
+	});
+
+	expect(parsed).toEqual(<SvelteElement>{
+		type: 'svelteElement',
+		tagName: 'input',
+		properties: [
+			{
+				type: 'svelteProperty',
+				name: 'thing',
+				value: [
+					{
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: 'hail',
+							position: {
+								start: { line: 1, column: 16, offset: 15 },
+								end: { line: 1, column: 20, offset: 19 },
+							},
+						},
+						position: {
+							start: { line: 1, column: 15, offset: 14 },
+							end: { line: 1, column: 21, offset: 20 },
+						},
+					},
+					{
+						type: 'text',
+						value: '   ',
+						position: {
+							start: {
+								line: 1,
+								column: 21,
+								offset: 20,
+							},
+							end: { line: 1, column: 24, offset: 23 },
+						},
+					},
+					{
+						type: 'svelteDynamicContent',
+						expression: {
+							type: 'svelteExpression',
+							value: 'haip',
+							position: {
+								start: { line: 1, column: 25, offset: 24 },
+								end: { line: 1, column: 29, offset: 28 },
+							},
+						},
+						position: {
+							start: { line: 1, column: 24, offset: 23 },
+							end: { line: 1, column: 30, offset: 29 },
+						},
+					},
+				],
+				modifiers: [],
+				shorthand: 'none',
+				position: {
+					start: { line: 1, column: 8, offset: 7 },
+					end: { line: 1, column: 31, offset: 30 },
+				},
+			},
+		],
+		selfClosing: true,
+		children: [],
+		position: {
+			start: { line: 1, column: 1, offset: 0 },
+			end: { line: 1, column: 34, offset: 33 },
+		},
+	});
+});
+
+test('tracks the location of self-closing elements', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
@@ -264,7 +255,7 @@ position('tracks the location of self-closing elements', () => {
 		value: `<svelte:options />`,
 	});
 
-	assert.equal(parsed, <SvelteMeta>{
+	expect(parsed).toEqual(<SvelteMeta>{
 		type: 'svelteMeta',
 		tagName: 'options',
 		properties: [],
@@ -277,7 +268,7 @@ position('tracks the location of self-closing elements', () => {
 	});
 });
 
-position('tracks the location of attributes', () => {
+test('tracks the location of attributes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
@@ -285,7 +276,7 @@ position('tracks the location of attributes', () => {
 		value: `<svelte:options tag={null} />`,
 	});
 
-	assert.equal(parsed, <SvelteMeta>{
+	expect(parsed).toEqual(<SvelteMeta>{
 		type: 'svelteMeta',
 		tagName: 'options',
 		properties: [
@@ -326,7 +317,7 @@ position('tracks the location of attributes', () => {
 	});
 });
 
-position('tracks the location of boolean attributes', () => {
+test('tracks the location of boolean attributes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
@@ -334,7 +325,7 @@ position('tracks the location of boolean attributes', () => {
 		value: `<div test/>`,
 	});
 
-	assert.equal(parsed, <SvelteElement>{
+	expect(parsed).toEqual(<SvelteElement>{
 		type: 'svelteElement',
 		tagName: 'div',
 		properties: [
@@ -359,7 +350,7 @@ position('tracks the location of boolean attributes', () => {
 	});
 });
 
-position('tracks the location of shorthand directives', () => {
+test('tracks the location of shorthand directives', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
@@ -367,7 +358,7 @@ position('tracks the location of shorthand directives', () => {
 		value: `<div test:boo />`,
 	});
 
-	assert.equal(parsed, <SvelteElement>{
+	expect(parsed).toEqual(<SvelteElement>{
 		type: 'svelteElement',
 		tagName: 'div',
 		properties: [
@@ -393,7 +384,7 @@ position('tracks the location of shorthand directives', () => {
 	});
 });
 
-position('tracks the location of text nodes', () => {
+test('tracks the location of text nodes', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
@@ -401,7 +392,7 @@ position('tracks the location of text nodes', () => {
 		value: `hail`,
 	});
 
-	assert.equal(parsed, <Text>{
+	expect(parsed).toEqual(<Text>{
 		type: 'text',
 		value: 'hail',
 		position: {
@@ -411,7 +402,7 @@ position('tracks the location of text nodes', () => {
 	});
 });
 
-position('tracks the location of void blocks', () => {
+test('tracks the location of void blocks', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
@@ -419,7 +410,7 @@ position('tracks the location of void blocks', () => {
 		value: `{@html somehtml}`,
 	});
 
-	assert.equal(parsed, <VoidBlock>{
+	expect(parsed).toEqual(<VoidBlock>{
 		type: 'svelteVoidBlock',
 		name: 'html',
 		expression: {
@@ -437,14 +428,14 @@ position('tracks the location of void blocks', () => {
 	});
 });
 
-position('tracks the location of branching blocks', () => {
+test('tracks the location of branching blocks', () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: true,
 		value: `{#if expression}hi{/if}`,
 	});
 
-	assert.equal(parsed, <Root>{
+	expect(parsed).toEqual(<Root>{
 		type: 'root',
 		children: [
 			{
@@ -491,14 +482,14 @@ position('tracks the location of branching blocks', () => {
 	});
 });
 
-position('tracks the location of branching blocks', () => {
+test('tracks the location of branching blocks', () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: true,
 		value: `{#if expression}hi{:else}hi{/if}`,
 	});
 
-	assert.equal(parsed, <Root>{
+	expect(parsed).toEqual(<Root>{
 		type: 'root',
 		children: [
 			{
@@ -567,7 +558,7 @@ position('tracks the location of branching blocks', () => {
 	});
 });
 
-position('tracks the location of comments', () => {
+test('tracks the location of comments', () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: true,
@@ -575,7 +566,7 @@ position('tracks the location of comments', () => {
 		value: `<!-- hello world -->`,
 	});
 
-	assert.equal(parsed, <Comment>{
+	expect(parsed).toEqual(<Comment>{
 		type: 'comment',
 		value: ' hello world ',
 		position: {
@@ -585,7 +576,7 @@ position('tracks the location of comments', () => {
 	});
 });
 
-position('tracks the location of a complex node', () => {
+test('tracks the location of a complex node', () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: true,
@@ -596,7 +587,7 @@ position('tracks the location of a complex node', () => {
 </div>`,
 	});
 
-	assert.equal(parsed, <Root>{
+	expect(parsed).toEqual(<Root>{
 		type: 'root',
 		children: [
 			{
@@ -654,5 +645,3 @@ position('tracks the location of a complex node', () => {
 		},
 	});
 });
-
-position.run();

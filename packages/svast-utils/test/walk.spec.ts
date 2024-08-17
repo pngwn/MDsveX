@@ -1,11 +1,9 @@
-import { suite } from 'uvu';
-import * as assert from 'uvu/assert';
+import { test, expect } from 'vitest';
 
 import { Node } from 'svast';
 import { walk } from '../src/walk';
-const svast_walk = suite('walk-tree');
 
-svast_walk('walks a single node', () => {
+test('walks a single node', () => {
 	const node = {
 		type: 'hi',
 	};
@@ -17,11 +15,11 @@ svast_walk('walks a single node', () => {
 		_n = node;
 	});
 
-	assert.is(_t, 'hi');
-	assert.is(_n, node);
+	expect(_t).toBe('hi');
+	expect(_n).toBe(node);
 });
 
-svast_walk('Root node should have an undefined parent', () => {
+test('Root node should have an undefined parent', () => {
 	const node = {
 		type: 'hi',
 	};
@@ -31,10 +29,10 @@ svast_walk('Root node should have an undefined parent', () => {
 		_p = parent;
 	});
 
-	assert.is(_p, undefined);
+	expect(_p).toBe(undefined);
 });
 
-svast_walk('walks child nodes', () => {
+test('walks child nodes', () => {
 	const tree = {
 		type: 'hi',
 		children: [
@@ -61,10 +59,10 @@ svast_walk('walks child nodes', () => {
 		_t.push(node.type);
 	});
 
-	assert.equal(_t, ['hi', '1', '2', '3', '4', '5']);
+	expect(_t).toEqual(['hi', '1', '2', '3', '4', '5']);
 });
 
-svast_walk('parent is correctly passed', () => {
+test('parent is correctly passed', () => {
 	const tree = {
 		type: 'hi',
 		children: [
@@ -91,10 +89,10 @@ svast_walk('parent is correctly passed', () => {
 		if (node.type === '1') _p = parent;
 	});
 
-	assert.is(_p, tree);
+	expect(_p).toBe(tree);
 });
 
-svast_walk('parent is  correctly passed and modifier nodes are visited', () => {
+test('parent is  correctly passed and modifier nodes are visited', () => {
 	const tree = {
 		type: 'hi',
 		modifiers: [
@@ -123,11 +121,11 @@ svast_walk('parent is  correctly passed and modifier nodes are visited', () => {
 		_t.push(node.type);
 	});
 
-	assert.is(_p, tree);
-	assert.equal(_t, ['hi', '1', '2', '3', '4', '5']);
+	expect(_p).toBe(tree);
+	expect(_t).toEqual(['hi', '1', '2', '3', '4', '5']);
 });
 
-svast_walk('parent is  correctly passed and value nodes are visited', () => {
+test('parent is  correctly passed and value nodes are visited', () => {
 	const tree = {
 		type: 'hi',
 		value: [
@@ -156,11 +154,11 @@ svast_walk('parent is  correctly passed and value nodes are visited', () => {
 		_t.push(node.type);
 	});
 
-	assert.is(_p, tree);
-	assert.equal(_t, ['hi', '1', '2', '3', '4', '5']);
+	expect(_p).toBe(tree);
+	expect(_t).toEqual(['hi', '1', '2', '3', '4', '5']);
 });
 
-svast_walk('parent is  correctly passed and property nodes are visited', () => {
+test('parent is  correctly passed and property nodes are visited', () => {
 	const tree = {
 		type: 'hi',
 		properties: [
@@ -189,11 +187,11 @@ svast_walk('parent is  correctly passed and property nodes are visited', () => {
 		_t.push(node.type);
 	});
 
-	assert.is(_p, tree);
-	assert.equal(_t, ['hi', '1', '2', '3', '4', '5']);
+	expect(_p).toBe(tree);
+	expect(_t).toEqual(['hi', '1', '2', '3', '4', '5']);
 });
 
-svast_walk('parent is  correctly passed and branch nodes are visited', () => {
+test('parent is  correctly passed and branch nodes are visited', () => {
 	const tree = {
 		type: 'hi',
 		branches: [
@@ -222,55 +220,49 @@ svast_walk('parent is  correctly passed and branch nodes are visited', () => {
 		_t.push(node.type);
 	});
 
-	assert.is(_p, tree);
-	assert.equal(_t, ['hi', '1', '2', '3', '4', '5']);
+	expect(_p).toBe(tree);
+	expect(_t).toEqual(['hi', '1', '2', '3', '4', '5']);
 });
 
-svast_walk(
-	'parent is  correctly passed and expression nodes are visited',
-	() => {
-		const tree = {
-			type: 'hi',
-			expression: {
-				type: '1',
-			},
-		};
+test('parent is  correctly passed and expression nodes are visited', () => {
+	const tree = {
+		type: 'hi',
+		expression: {
+			type: '1',
+		},
+	};
 
-		let _p;
-		const _t: string[] = [];
-		walk(tree, (node, parent) => {
-			if (node.type === '1') _p = parent;
-			_t.push(node.type);
-		});
+	let _p;
+	const _t: string[] = [];
+	walk(tree, (node, parent) => {
+		if (node.type === '1') _p = parent;
+		_t.push(node.type);
+	});
 
-		assert.is(_p, tree);
-		assert.equal(_t, ['hi', '1']);
-	}
-);
+	expect(_p).toBe(tree);
+	expect(_t).toEqual(['hi', '1']);
+});
 
-svast_walk(
-	'parent is  correctly passed and non-array value nodes are visited',
-	() => {
-		const tree = {
-			type: 'hi',
-			value: {
-				type: '1',
-			},
-		};
+test('parent is  correctly passed and non-array value nodes are visited', () => {
+	const tree = {
+		type: 'hi',
+		value: {
+			type: '1',
+		},
+	};
 
-		let _p;
-		const _t: string[] = [];
-		walk(tree, (node, parent) => {
-			if (node.type === '1') _p = parent;
-			_t.push(node.type);
-		});
+	let _p;
+	const _t: string[] = [];
+	walk(tree, (node, parent) => {
+		if (node.type === '1') _p = parent;
+		_t.push(node.type);
+	});
 
-		assert.is(_p, tree);
-		assert.equal(_t, ['hi', '1']);
-	}
-);
+	expect(_p).toBe(tree);
+	expect(_t).toEqual(['hi', '1']);
+});
 
-svast_walk('a more complex node', () => {
+test('a more complex node', () => {
 	const leaf = { type: 'leaf' };
 	const has_child = { type: 'haschild1', children: [leaf] };
 	const has_child2 = { type: 'haschild2', children: [has_child] };
@@ -287,15 +279,11 @@ svast_walk('a more complex node', () => {
 		_t.push(node.type);
 	});
 
-	assert.is(_p[0], undefined);
-	assert.is(_p[1], tree);
-	assert.is(_p[2], has_child3);
-	assert.is(_p[3], has_child2);
-	assert.is(_p[4], has_child);
-	assert.equal(_t, ['hi', 'haschild3', 'haschild2', 'haschild1', 'leaf']);
+	expect(_p).toEqual([undefined, tree, has_child3, has_child2, has_child]);
+	expect(_t).toEqual(['hi', 'haschild3', 'haschild2', 'haschild1', 'leaf']);
 });
 
-svast_walk('returning false prevents child nodes from being walked', () => {
+test('returning false prevents child nodes from being walked', () => {
 	const leaf = { type: 'leaf' };
 	const leaf2 = { type: 'leaf' };
 	const has_child = { type: 'haschild1', children: [leaf] };
@@ -313,12 +301,7 @@ svast_walk('returning false prevents child nodes from being walked', () => {
 		if (parent === tree) return false;
 	});
 
-	assert.is(_p[0], undefined);
-	assert.is(_p[1], tree);
-	assert.is(_p[2], tree);
-	assert.is(_p.length, 3);
-	assert.is(_p[3], undefined);
-	assert.equal(_t, ['hi', 'haschild1', 'haschild2']);
-});
+	expect(_p).toEqual([undefined, tree, tree]);
 
-svast_walk.run();
+	expect(_t).toEqual(['hi', 'haschild1', 'haschild2']);
+});

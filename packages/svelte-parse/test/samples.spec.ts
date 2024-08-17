@@ -20,12 +20,6 @@ const inputs = fs
 	.filter(Boolean);
 
 const input_outputs = inputs.map(([f, input, output]) => {
-	// if (f === '02-Table-Table') {
-	// 	console.log(
-	// 		JSON.stringify(parse({ value: input, generatePositions: false }), null, 2)
-	// 	);
-	// }
-
 	let i;
 
 	try {
@@ -37,15 +31,10 @@ const input_outputs = inputs.map(([f, input, output]) => {
 	return [f, i, output];
 });
 
-import { suite } from 'uvu';
-import * as assert from 'uvu/assert';
-
-const samples = suite('parsing-samples');
+import { test, expect } from 'vitest';
 
 input_outputs.forEach(([testname, input, output], i) => {
-	samples(`inputs should equal outputs: ${testname}`, () => {
-		assert.equal(input, output);
+	test(`inputs should equal outputs: ${testname}`, () => {
+		expect(input).toEqual(output);
 	});
 });
-
-samples.run();

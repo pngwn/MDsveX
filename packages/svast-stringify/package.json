@@ -4,10 +4,10 @@
 	"description": "Turn svast nodes back into svelte code",
 	"main": "dist/main.cjs.js",
 	"module": "dist/main.es.js",
+	"type": "module",
 	"scripts": {
 		"build": "rollup -c",
-		"test:filter": "uvu -r ts-node/register test",
-		"test": "uvu -r ts-node/register test test.ts$"
+		"test": "vitest . **/*.spec.ts"
 	},
 	"repository": {
 		"type": "git",
