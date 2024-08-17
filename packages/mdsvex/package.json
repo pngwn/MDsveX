@@ -7,7 +7,8 @@
 		".": {
 			"require": "./dist/main.cjs",
 			"default": "./dist/main.mjs"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"main": "dist/main.cjs",
 	"module": "dist/main.mjs",
@@ -30,10 +31,6 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"devDependencies": {
-		"@rollup/plugin-commonjs": "^25.0.7",
-		"@rollup/plugin-node-resolve": "^15.2.3",
-		"@rollup/plugin-replace": "^2.4.2",
-		"@rollup/plugin-sucrase": "^5.0.2",
 		"@starptech/prettyhtml-hast-to-html": "^0.10.0",
 		"@types/acorn": "^4.0.5",
 		"@types/escape-html": "^1.0.0",
@@ -55,9 +52,6 @@
 		"remark-slug": "^6.0.0",
 		"retext": "^7.0.1",
 		"retext-smartypants": "^4.0.0",
-		"rollup-plugin-json": "^4.0.0",
-		"rollup-plugin-node-builtins": "^2.1.2",
-		"rollup-plugin-node-globals": "^1.4.0",
 		"rollup-plugin-svelte": "^5.1.1",
 		"shiki": "^0.9.3",
 		"svelte": "^4.0.0",

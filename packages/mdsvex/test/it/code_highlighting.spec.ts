@@ -1,6 +1,3 @@
-// import { suite } from 'uvu';
-// import * as assert from 'uvu/assert';
-
 import { test, expect } from 'vitest';
 import { lines } from '../utils';
 import * as shiki from 'shiki';
