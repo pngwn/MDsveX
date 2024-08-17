@@ -1,13 +1,13 @@
 {
 	"name": "svast-stringify",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Turn svast nodes back into svelte code",
 	"main": "dist/main.cjs.js",
 	"module": "dist/main.es.js",
+	"type": "module",
 	"scripts": {
 		"build": "rollup -c",
-		"test:filter": "uvu -r ts-node/register test",
-		"test": "uvu -r ts-node/register test test.ts$"
+		"test": "vitest . **/*.spec.ts"
 	},
 	"repository": {
 		"type": "git",
@@ -22,6 +22,6 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"dependencies": {
-		"svast": "workspace:^0.2.0"
+		"svast": "workspace:^0.2.1"
 	}
 }

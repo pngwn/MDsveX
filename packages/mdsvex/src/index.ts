@@ -25,6 +25,7 @@ import extract_frontmatter from 'remark-frontmatter';
 import remark2rehype from 'remark-rehype';
 //@ts-ignore
 import hast_to_html from '@starptech/prettyhtml-hast-to-html';
+import { createRequire } from 'module';
 
 import { mdsvex_parser } from './parsers';
 import {
@@ -126,13 +127,15 @@ function to_posix(_path: string): string {
 	return _path.replace(/\\/g, '/');
 }
 
+const _require = import.meta.url ? createRequire(import.meta.url) : require;
+
 function resolve_layout(layout_path: string): string {
 	try {
-		return to_posix(require.resolve(layout_path));
+		return to_posix(_require.resolve(layout_path));
 	} catch (e) {
 		try {
 			const _path = join(process.cwd(), layout_path);
-			return to_posix(require.resolve(_path));
+			return to_posix(_require.resolve(_path));
 		} catch (e) {
 			throw new Error(
 				`The layout path you provided couldn't be found at either ${layout_path} or ${join(

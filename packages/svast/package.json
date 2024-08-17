@@ -1,8 +1,9 @@
 {
 	"name": "svast",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "Types for svast, a Svelte AST specification",
 	"main": "index.js",
+	"type": "module",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/svast"

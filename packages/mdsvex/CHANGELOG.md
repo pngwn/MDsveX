@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.12.3
+
+### Patch Changes
+
+- [#637](https://github.com/pngwn/MDsveX/pull/637) [`9e8165f`](https://github.com/pngwn/MDsveX/commit/9e8165f981f52ef0b05cbb93335a7ac664d9e50c) Thanks [@pngwn](https://github.com/pngwn)! - fix layout path resolution
+
 ## 0.12.2
 
 ### Patch Changes

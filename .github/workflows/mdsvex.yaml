@@ -2,9 +2,13 @@ name: mdsvex
 
 on:
   push:
+    branches:
+      - main
     paths-ignore:
       - 'site/**'
   pull_request:
+    branches:
+      - main
     paths-ignore:
       - 'site/**'
 
@@ -43,7 +47,7 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       - run: pnpm i --frozen-lockfile
-      - run: pnpm test
+      - run: pnpm test:run
       - run: pnpm -r build
         env:
           CI: true

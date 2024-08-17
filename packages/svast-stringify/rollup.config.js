@@ -1,8 +1,9 @@
 import ts from '@rollup/plugin-typescript';
 import dts from 'rollup-plugin-dts';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 
-import pkg from './package.json';
-
+const pkg = JSON.parse(readFileSync(resolve('package.json'), 'utf-8'));
 export default [
 	{
 		plugins: [ts()],
