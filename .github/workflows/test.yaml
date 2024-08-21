@@ -11,7 +11,7 @@ jobs:
   preview:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "{hello: 1, world: 2}" >> json.json
+      - run: echo "${{github.event}}" >> json.json
       - uses: actions/github-script@v7
         with:
           script: |
