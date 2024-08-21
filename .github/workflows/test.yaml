@@ -1,0 +1,19 @@
+name: test
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'site/**'
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "{hello: 1, world: 2}" >> json.json
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const json = await import('./json.json');
+            console.log(JSON.stringify(json, null, 2));
