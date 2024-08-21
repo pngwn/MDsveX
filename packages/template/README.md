@@ -1,4 +1,3 @@
-
 # Default Template
 
 This is a template that leverages the experimental templates feature in the `pkg.pr.new` tool.
@@ -8,7 +7,6 @@ This is a template that leverages the experimental templates feature in the `pkg
 Templates are particularly useful for creating live, interactive examples of your packages, which can be very beneficial for both development and documentation purposes.
 
 As a user, you can check the package.json file and see the new generated packages! You can just copy those and put them in your package.json or install them with your favorite package manager.
-
 
 ```sh
 npm i https://pkg.pr.new/pngwn/MDsveX/mdsvex@e9631f1
@@ -33,7 +31,6 @@ npm i https://pkg.pr.new/pngwn/MDsveX/svast-utils@e9631f1
 ```sh
 npm i https://pkg.pr.new/pngwn/MDsveX/svelte-parse@e9631f1
 ```
-
 
 ## Usage
 
