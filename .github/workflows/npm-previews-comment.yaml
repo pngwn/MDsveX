@@ -1,0 +1,50 @@
+name: npm-previews-comment
+
+on:
+  workflow_run:
+    workflows: ['npm-previews']
+    types:
+      - completed
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: preview
+          run-id: ${{ github.event.workflow_run.id }}
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { templates, packages } = require('./preview_json.json')
+
+            const message = `
+            ### Test the changes in this PR
+            ${Object.entries(templates).map(([name, url]) => `- [StackBlitz - ${name}](${url})`).join('\n')}
+
+            <details>
+            <summary><b>Install individual packages</b></summary>
+            <br />
+
+            ${Object.entries(packages).map(([name, url]) => `<details><summary><code>${name}</code></summary><p>
+
+            ```
+            pnpm add ${name}
+            ```
+            </p></details>
+            `).join('\n\n')}
+            `
+
+            console.log(message)
+            console.log(JSON.stringify(context, null, 2))
+
+            # github.rest.issues.createComment({
+            #   issue_number: context.issue.number,
+            #   owner: context.repo.owner,
+            #   repo: context.repo.repo,
+            #   body: '👋 Thanks for reporting!'
+            # })
