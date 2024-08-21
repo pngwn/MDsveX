@@ -23,4 +23,8 @@ jobs:
         env:
           CI: true
           name: mdsvex
-      - run: pnpx pkg-pr-new publish './packages/*'
+      - run: API_URL=https://pkg.pr.new pnpx pkg-pr-new@https://d61368b4.stackblitz-cr.pages.dev/stackblitz-labs/pkg.pr.new/pkg-pr-new@183  publish './packages/*' --comment=off --json=preview_json.json
+      - uses: actions/upload-artifact@v4
+        with:
+          path: preview_json.json
+          name: preview
