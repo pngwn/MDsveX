@@ -11,10 +11,10 @@ jobs:
   preview:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "${{ toJson(github.event) }}" >> json.json
-      - run: cat json.json
+      - run: echo "module.exports = ${{ toJson(github.event) }}" >> json.js
+      - run: cat json.js
       - uses: actions/github-script@v7
         with:
           script: |
-            const json = require('./json.json');
+            const json = require('./json.js');
             console.log(JSON.stringify(json, null, 2));
