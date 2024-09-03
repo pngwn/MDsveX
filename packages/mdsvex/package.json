@@ -6,12 +6,14 @@
 	"exports": {
 		".": {
 			"require": "./dist/main.cjs",
-			"default": "./dist/main.mjs"
+			"default": "./dist/main.mjs",
+			"types": "./dist/main.es.d.ts"
 		},
 		"./package.json": "./package.json"
 	},
 	"main": "dist/main.cjs",
 	"module": "dist/main.mjs",
+	"types": "./dist/main.es.d.ts",
 	"repository": "https://github.com/pngwn/MDsveX",
 	"scripts": {
 		"build": "rollup -c",
