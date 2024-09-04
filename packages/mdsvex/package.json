@@ -68,6 +68,6 @@
 		"@types/unist": "^2.0.3",
 		"prism-svelte": "^0.4.7",
 		"prismjs": "^1.17.1",
-		"vfile-message": "^2.0.4"
+		"vfile-message": "^4.0.2"
 	}
 }
