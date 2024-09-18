@@ -14,7 +14,10 @@
 	"main": "dist/main.cjs",
 	"module": "dist/main.mjs",
 	"types": "./dist/main.es.d.ts",
-	"repository": "https://github.com/pngwn/MDsveX",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git"
+	},
 	"scripts": {
 		"build": "rollup -c",
 		"test": "vitest . **/*.spec.ts"
