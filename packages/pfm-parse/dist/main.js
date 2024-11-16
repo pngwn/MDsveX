@@ -1,0 +1,2 @@
+var s=10;var E=`
+`,p=/\r\n|\r/g;function A(r,x){let e=r.replace(p,E),t=0,c={type:"root",children:[]},o={line:1,column:1,offset:0,index:t},n=e.charCodeAt(t);function l(){n===s?(o.line++,o.column=1):o.column++,t++,o.offset++,o.index=t,n=e.charCodeAt(t)}function O(){return{line:o.line,column:o.column,offset:o.offset}}for(;;){console.log("I AM MARKDOWN"),process.env.SOME_CONST&&console.log("I AM MARKDOWN WITH CONDITION");break}return c}export{A as parse};
