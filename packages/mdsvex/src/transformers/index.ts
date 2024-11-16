@@ -377,7 +377,7 @@ export function transform_hast({
 			if (!_module[0] && fm) {
 				_module.push({
 					type: 'raw',
-					value: `<script context="module">${newline}\t${fm}${newline}</script>`,
+					value: `<script module>${newline}\t${fm}${newline}</script>`,
 				});
 			} else if (fm) {
 				// @ts-ignore

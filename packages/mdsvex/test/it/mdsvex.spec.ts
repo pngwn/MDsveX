@@ -430,7 +430,7 @@ number: 999
 	});
 
 	expect(lines(output?.code)).toEqual(
-		lines(`<script context="module">
+		lines(`<script module>
 	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
 	const { string, string2, array, number } = metadata;
 </script>
@@ -1051,7 +1051,7 @@ title: Yo
 
 	expect(output).toEqual({
 		code:
-			'<script context="module">\n\texport const metadata = {"title":"Yo"};\n\tconst { title } = metadata;\n</script>\n\n<h1>Hello world</h1>\n',
+			'<script module>\n\texport const metadata = {"title":"Yo"};\n\tconst { title } = metadata;\n</script>\n\n<h1>Hello world</h1>\n',
 		data: {
 			fm: {
 				title: 'Yo',
