@@ -9,7 +9,10 @@
 			"require": "./dist/main.cjs",
 			"default": "./dist/main.mjs"
 		},
-		"./package.json": "./package.json"
+		"./package.json": "./package.json",
+		"./globals": {
+			"types": "./globals.d.ts"
+		}
 	},
 	"main": "dist/main.cjs",
 	"module": "dist/main.mjs",
