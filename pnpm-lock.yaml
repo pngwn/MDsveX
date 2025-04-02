@@ -173,8 +173,8 @@ importers:
   packages/site:
     dependencies:
       mdsvex:
-        specifier: ^0.7.1-beta.3
-        version: 0.7.1-beta.3(svelte@4.2.9)
+        specifier: workspace:*
+        version: link:../mdsvex
       refractor:
         specifier: ^2.10.0
         version: 2.10.1
@@ -2375,11 +2375,6 @@ packages:
 
   mdn-data@2.0.30:
     resolution: {integrity: sha512-GaqWWShW4kv/G9IEucWScBx9G1/vsFZZJUO+tD26M8J8z3Kw5RDQjaoZe03YAClgeS/SWPOcb4nkFBTEi5DUEA==}
-
-  mdsvex@0.7.1-beta.3:
-    resolution: {integrity: sha512-fBTxxefEj+wb5Ic77KWT2+JTmsjv5k62wFhfDfELc++eVSgLndKKyJxU28nghvNwiizrw/0CC04LXMDycjEPuQ==}
-    peerDependencies:
-      svelte: 3.x
 
   mdurl@1.0.1:
     resolution: {integrity: sha512-/sKlQJCBYVY9Ers9hqzKou4H6V5UWc/M59TH2dvkt+84itfnq7uFOMLpOiOS4ujvHP4etln18fmIxA5R5fll0g==}
@@ -5722,11 +5717,6 @@ snapshots:
   mdast-util-to-string@1.1.0: {}
 
   mdn-data@2.0.30: {}
-
-  mdsvex@0.7.1-beta.3(svelte@4.2.9):
-    dependencies:
-      prismjs: 1.21.0
-      svelte: 4.2.9
 
   mdurl@1.0.1: {}
 
