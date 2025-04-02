@@ -24,6 +24,6 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"dependencies": {
-		"svast": "workspace:^0.2.1"
+		"svast": "workspace:^"
 	}
 }

@@ -21,9 +21,9 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"devDependencies": {
-		"esbuild": "^0.13.8"
+		"esbuild": "^0.25.2"
 	},
 	"dependencies": {
-		"parse": "workspace:^0.1.1"
+		"parse": "workspace:^"
 	}
 }
