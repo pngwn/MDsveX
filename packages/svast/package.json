@@ -16,6 +16,6 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"dependencies": {
-		"@types/unist": "^2.0.3"
+		"@types/unist": "^3.0.3"
 	}
 }
