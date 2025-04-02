@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.12.4-next.0
+
+### Patch Changes
+
+- [#656](https://github.com/pngwn/MDsveX/pull/656) [`bdb68ee`](https://github.com/pngwn/MDsveX/commit/bdb68eee6f4ed5e4fdd649cb24662329fe1032b9) Thanks [@ghostdevv](https://github.com/ghostdevv)! - fix: types in the exports map (https://github.com/pngwn/MDsveX/pull/651 https://github.com/pngwn/MDsveX/pull/656)
+
 ## 0.12.3
 
 ### Patch Changes

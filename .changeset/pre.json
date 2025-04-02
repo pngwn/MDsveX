@@ -13,5 +13,7 @@
     "svelte-parse": "0.1.1",
     "mdsvex-test": "1.0.0"
   },
-  "changesets": []
+  "changesets": [
+    "wicked-lobsters-tie"
+  ]
 }
