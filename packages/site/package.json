@@ -14,7 +14,7 @@
 	},
 	"private": "true",
 	"dependencies": {
-		"mdsvex": "^0.7.1-beta.3",
+		"mdsvex": "workspace:*",
 		"refractor": "^2.10.0",
 		"yootils": "^0.0.15"
 	},

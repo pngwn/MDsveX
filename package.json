@@ -11,6 +11,8 @@
 		"test:run": "vitest run . **/*.spec.ts ",
 		"release": "pnpm -r build && changeset publish",
 		"changeset:add": "changeset add",
+		"changeset:pre-enter": "changeset pre enter",
+		"changeset:pre-exit": "changeset pre exit",
 		"changeset:version": "changeset version && pnpm i --lockfile-only",
 		"site:dev": "pnpm --filter @mdsvex/site dev",
 		"site:build": "pnpm --filter @mdsvex/site build"
