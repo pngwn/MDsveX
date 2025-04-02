@@ -1,0 +1,17 @@
+{
+  "mode": "pre",
+  "tag": "next",
+  "initialVersions": {
+    "mdsvex": "0.12.3",
+    "parse": "0.1.1",
+    "pfm-parse": "0.1.1",
+    "@mdsvex/site": "0.0.1",
+    "worker": "1.0.0",
+    "svast": "0.2.1",
+    "svast-stringify": "0.1.1",
+    "svast-utils": "0.0.6",
+    "svelte-parse": "0.1.1",
+    "mdsvex-test": "1.0.0"
+  },
+  "changesets": []
+}
