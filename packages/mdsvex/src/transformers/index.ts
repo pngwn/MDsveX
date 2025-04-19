@@ -536,8 +536,16 @@ async function load_language(lang: string) {
 	await Promise.all(
 		Array.from(langs[lang].deps).map(async (name) => await load_language(name))
 	);
-
-	await import(/* @vite-ignore */ langs[lang].path + '.js');
+	try {
+		await import(/* @vite-ignore */ langs[lang].path);
+	} catch (e) {
+		try {
+			await import(/* @vite-ignore */ langs[lang].path + '.js');
+		} catch (e) {
+			console.log('failed to load language', lang);
+			console.error(e);
+		}
+	}
 }
 
 export function highlight_blocks({
