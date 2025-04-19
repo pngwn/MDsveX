@@ -11,9 +11,9 @@
 		},
 		"./package.json": "./package.json"
 	},
-	"main": "dist/main.cjs",
-	"module": "dist/main.mjs",
-	"types": "./dist/main.es.d.ts",
+	"main": "dist/main.js",
+	"module": "dist/main.js",
+	"types": "./dist/main.d.ts",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/pngwn/MDsveX.git"
@@ -58,6 +58,7 @@
 		"retext": "^7.0.1",
 		"retext-smartypants": "^4.0.0",
 		"rollup-plugin-svelte": "^5.1.1",
+		"rollup-plugin-polyfill-node": "^0.13.0",
 		"shiki": "^0.9.3",
 		"svelte": "^4.0.0",
 		"toml": "^3.0.0",
@@ -71,7 +72,6 @@
 		"@types/unist": "^2.0.3",
 		"prism-svelte": "^0.4.7",
 		"prismjs": "^1.17.1",
-		"rollup-plugin-polyfill-node": "^0.13.0",
 		"vfile-message": "^2.0.4"
 	}
 }
