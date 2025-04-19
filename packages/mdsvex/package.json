@@ -5,9 +5,8 @@
 	"type": "module",
 	"exports": {
 		".": {
-			"types": "./dist/main.es.d.ts",
-			"require": "./dist/main.cjs",
-			"default": "./dist/main.mjs"
+			"types": "./dist/main.d.ts",
+			"default": "./dist/main.js"
 		},
 		"./package.json": "./package.json"
 	},
