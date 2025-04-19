@@ -2,7 +2,6 @@ import type { Transformer } from 'unified';
 import type { Text, Code, HTML } from 'mdast';
 import type { Element, Root } from 'hast';
 import type { VFileMessage } from 'vfile-message';
-import { createRequire } from 'module';
 
 import Message from 'vfile-message';
 //@ts-ignore
@@ -14,7 +13,7 @@ import yaml from 'js-yaml';
 import { parse } from 'svelte/compiler';
 import escape from 'escape-html';
 
-import * as path from 'path';
+// import * as path from 'path';
 
 import type {
 	FrontMatterNode,
@@ -30,7 +29,8 @@ import type {
 	LayoutMeta,
 } from '../types';
 
-const _require = import.meta.url ? createRequire(import.meta.url) : require;
+let path: typeof import('path');
+// const _require = import.meta.url ? createRequire(import.meta.url) : require;
 
 // this needs a big old cleanup
 
@@ -279,6 +279,10 @@ function generate_layout({
 	];
 }
 
+export const handle_path = async (): Promise<void> => {
+	path = await import('path');
+};
+
 export function transform_hast({
 	layout,
 	layout_mode,
@@ -490,14 +494,21 @@ interface Meta {
 	meta: PrismMeta;
 }
 
-function load_language_metadata() {
-	const { meta, ...languages }: Record<string, PrismLanguage> & Meta = _require(
-		'prismjs/components.json'
-	).languages;
+async function load_language_metadata() {
+	const mod: Record<string, PrismLanguage> & Meta = await import(
+		//@ts-ignore
+		'prismjs/components'
+	);
+
+	// @ts-ignore
+	const languages = mod.languages || mod.default.languages;
+	// @ts-ignore
+	const meta = languages.meta;
 
 	for (const lang in languages) {
 		const [lang_info, aliases] = get_lang_info(
 			lang,
+			// @ts-ignore
 			languages[lang],
 			meta.path
 		);
@@ -519,12 +530,14 @@ function load_language_metadata() {
 	langs.sv = svelte_meta;
 }
 
-function load_language(lang: string) {
+async function load_language(lang: string) {
 	if (!langs[lang]) return;
 
-	langs[lang].deps.forEach((name) => load_language(name));
+	await Promise.all(
+		Array.from(langs[lang].deps).map(async (name) => await load_language(name))
+	);
 
-	_require(langs[lang].path);
+	await import(/* @vite-ignore */ langs[lang].path);
 }
 
 export function highlight_blocks({
@@ -534,18 +547,23 @@ export function highlight_blocks({
 	highlighter?: Highlighter;
 	alias?: { [x: string]: string };
 } = {}): Transformer {
+	let pending_langs: Promise<void>;
+	let processed_langs = false;
 	if (highlight_fn) {
-		load_language_metadata();
-
-		if (alias) {
-			for (const lang in alias) {
-				langs[lang] = langs[alias[lang]];
-			}
-		}
+		pending_langs = load_language_metadata();
 	}
 
 	return async function (tree, vFile) {
 		if (highlight_fn) {
+			if (!processed_langs) {
+				await pending_langs;
+				if (alias) {
+					for (const lang in alias) {
+						langs[lang] = langs[alias[lang]];
+					}
+				}
+				processed_langs = true;
+			}
 			const nodes: (Code | HTML)[] = [];
 			visit<Code>(tree, 'code', (node) => {
 				nodes.push(node);
@@ -576,15 +594,15 @@ export const escape_svelty = (str: string): string =>
 		)
 		.replace(/\\([trn])/g, '&#92;$1');
 
-export const code_highlight: Highlighter = (code, lang) => {
+export const code_highlight: Highlighter = async (code, lang) => {
 	const normalised_lang = lang?.toLowerCase();
 
 	let _lang = !!normalised_lang && langs[normalised_lang];
-
-	if (!Prism) Prism = _require('prismjs');
+	//@ts-ignore
+	if (!Prism) Prism = await import('prismjs');
 
 	if (_lang && !Prism.languages[_lang.name]) {
-		load_language(_lang.name);
+		await load_language(_lang.name);
 	}
 
 	if (!_lang && normalised_lang && Prism.languages[normalised_lang]) {

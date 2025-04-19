@@ -43,9 +43,14 @@
 		"@rollup/plugin-sucrase": "^5.0.2",
 		"rollup-plugin-node-globals": "^1.4.0",
 		"tslib": "^2.3.1",
-		"vitest": "^2.0.5"
+		"vitest": "^3.1.1"
 	},
 	"engines": {
 		"pnpm": "^9.1.0"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"esbuild"
+		]
 	}
 }

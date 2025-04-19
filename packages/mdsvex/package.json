@@ -71,6 +71,7 @@
 		"@types/unist": "^2.0.3",
 		"prism-svelte": "^0.4.7",
 		"prismjs": "^1.17.1",
+		"rollup-plugin-polyfill-node": "^0.13.0",
 		"vfile-message": "^2.0.4"
 	}
 }
