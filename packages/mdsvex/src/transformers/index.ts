@@ -609,11 +609,23 @@ export const code_highlight: Highlighter = async (code, lang) => {
 	//@ts-ignore
 	if (!Prism) Prism = await import('prismjs');
 
+	let status = 'loading';
 	if (_lang && !Prism.languages[_lang.name]) {
-		await load_language(_lang.name);
+		try {
+			await load_language(_lang.name);
+			status = 'loaded';
+		} catch (e) {
+			status = 'failed';
+			console.error(e);
+		}
 	}
 
-	if (!_lang && normalised_lang && Prism.languages[normalised_lang]) {
+	if (
+		!_lang &&
+		normalised_lang &&
+		Prism.languages[normalised_lang] &&
+		status === 'loaded'
+	) {
 		langs[normalised_lang] = { name: lang } as MdsvexLanguage;
 		_lang = langs[normalised_lang];
 	}
