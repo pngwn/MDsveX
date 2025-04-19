@@ -537,7 +537,7 @@ async function load_language(lang: string) {
 		Array.from(langs[lang].deps).map(async (name) => await load_language(name))
 	);
 
-	await import(/* @vite-ignore */ langs[lang].path);
+	await import(/* @vite-ignore */ langs[lang].path + '.js');
 }
 
 export function highlight_blocks({
