@@ -5,8 +5,8 @@
 	"repository": "https://github.com/pngwn/MDsveX",
 	"type": "module",
 	"scripts": {
-		"lint": "prettier --check .",
-		"format": "prettier --write .",
+		"lint": "prettier --check . --ignore-path .prettierignore",
+		"format": "prettier --write . --ignore-path .prettierignore",
 		"test": "pnpm -r --filter=!site test",
 		"test:run": "vitest run . **/*.spec.ts ",
 		"release": "pnpm --filter=!test-app build && changeset publish",
