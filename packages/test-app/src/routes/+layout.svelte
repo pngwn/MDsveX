@@ -2,6 +2,8 @@
 	import './mono.css';
 	import './prism.css';
 	import './style.css';
+
+	import '@fontsource/source-code-pro';
 </script>
 
 <nav class="menu">
