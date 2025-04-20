@@ -1,0 +1,37 @@
+pre[class*='language-'] {
+	position: relative;
+	border: 1px solid #000;
+}
+
+pre[class*='language-']::before {
+	content: 'js';
+	background: #000;
+	padding: 0rem 0.3rem;
+
+	position: absolute;
+	font-size: 0.7rem;
+	top: 0;
+	right: 0;
+	color: #eee;
+}
+
+pre[class*='language-sql']::before {
+	content: 'sql';
+}
+
+pre[class*='language-ocaml']::before {
+	content: 'ocaml';
+}
+
+pre[class*='language-html']::before {
+	content: 'html';
+}
+
+pre[class*='language-'] {
+	padding: 0;
+	/* padding-top: 2rem; */
+}
+
+pre[class*='language-'] code[class*='language-'] {
+	padding: 0.5rem;
+}
