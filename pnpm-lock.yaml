@@ -311,6 +311,9 @@ importers:
       '@fontsource/source-code-pro':
         specifier: ^5.2.5
         version: 5.2.5
+      mdsvex:
+        specifier: workspace:*
+        version: link:../mdsvex
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^4.0.0
