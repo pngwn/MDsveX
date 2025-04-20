@@ -48,7 +48,7 @@ jobs:
           cache-dependency-path: '**/pnpm-lock.yaml'
       - run: pnpm i --frozen-lockfile
       - run: pnpm test:run
-      - run: pnpm --filter=!test-app build
+      - run: pnpm --filter=!mdsvex-demo build
         env:
           CI: true
           name: mdsvex

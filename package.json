@@ -9,7 +9,7 @@
 		"format": "prettier --write . --ignore-path .prettierignore",
 		"test": "pnpm -r --filter=!site test",
 		"test:run": "vitest run . **/*.spec.ts ",
-		"release": "pnpm --filter=!test-app build && changeset publish",
+		"release": "pnpm --filter=!mdsvex-demo build && changeset publish",
 		"changeset:add": "changeset add",
 		"changeset:version": "changeset version && pnpm i --lockfile-only",
 		"site:dev": "pnpm --filter @mdsvex/site dev",
