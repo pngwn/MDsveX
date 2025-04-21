@@ -101,23 +101,18 @@ export function escape_brackets(): Transformer {
 		[/^>$/g, '&gt;'],
 		// remark-parse transforms &lt; to '<'
 		[/^<$/g, '&lt;'],
-
-		// svelte templating {}'s -- similar story.
-		[/^{$/g, '&#123;'],
-		[/^}$/g, '&#125;']
 	];
 
 	return function (tree) {
 		visit(tree, 'text', escape);
 
-		function escape(node) {
+		function escape(node: Text) {
 			for (let i = 0; i < entites.length; i += 1) {
 				node.value = node.value.replace(entites[i][0], entites[i][1]);
 			}
 		}
 	};
 }
-
 
 // special case - process nodes with retext and smartypants
 // retext plugins can't work generally due to the difficulties in converting between the two trees
