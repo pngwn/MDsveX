@@ -154,7 +154,8 @@ export type Highlighter = (
 	code: string,
 	lang: string | null | undefined,
 	metastring: string | null | undefined,
-	filename?: string
+	filename?: string,
+	optimise?: boolean
 ) => string | Promise<string>;
 interface HighlightOptions {
 	/**
@@ -181,6 +182,15 @@ interface HighlightOptions {
 	 * ```
 	 */
 	alias?: Record<string, string>;
+	/**
+	 * **optimise** - Whether to optimise the code blocks by placing them in Svelte's `@html` block. Default: `true`.
+	 *
+	 *  *example:*
+	 * ```js
+	 * optimise: false
+	 * ```
+	 */
+	optimise?: boolean;
 }
 
 export type PluginWithSettings<
