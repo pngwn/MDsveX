@@ -193,6 +193,9 @@ importers:
       refractor:
         specifier: ^2.10.0
         version: 2.10.1
+      sourcemap-codec:
+        specifier: ^1.4.8
+        version: 1.4.8
       yootils:
         specifier: ^0.0.15
         version: 0.0.15
