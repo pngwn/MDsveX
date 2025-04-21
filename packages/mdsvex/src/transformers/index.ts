@@ -1,5 +1,5 @@
 import type { Transformer } from 'unified';
-import type { Text, Code, HTML } from 'mdast';
+import type { Text, Code, Html } from 'mdast';
 import type { Element, Root } from 'hast';
 import type { VFileMessage } from 'vfile-message';
 
@@ -571,14 +571,14 @@ export function highlight_blocks({
 				}
 				processed_langs = true;
 			}
-			const nodes: (Code | HTML)[] = [];
+			const nodes: (Code | Html)[] = [];
 			visit<Code>(tree, 'code', (node) => {
 				nodes.push(node);
 			});
 
 			await Promise.all(
 				nodes.map(async (node) => {
-					(node as HTML).type = 'html';
+					(node as Html).type = 'html';
 					node.value = await highlight_fn(
 						node.value,
 						(node as Code).lang,

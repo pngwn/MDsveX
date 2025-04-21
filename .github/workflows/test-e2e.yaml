@@ -1,0 +1,29 @@
+name: mdsvex
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'site/**'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'site/**'
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm i -g pnpm@9.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
+      - run: pnpm i --frozen-lockfile
+      - run: pnpm --filter=!mdsvex-demo build
+      - run: pnpm --filter=mdsvex-demo test:e2e

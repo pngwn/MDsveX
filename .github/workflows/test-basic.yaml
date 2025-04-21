@@ -1,4 +1,4 @@
-name: mdsvex
+name: test-basic
 
 on:
   push:
@@ -27,9 +27,6 @@ jobs:
       - run: pnpm i --frozen-lockfile
       - run: pnpm lint
         # type-check here as well when it is working
-        env:
-          CI: true
-          name: mdsvex
 
   build-test:
     name: test-build - node ${{ matrix.node-version }} (${{ matrix.os }})
@@ -49,6 +46,3 @@ jobs:
       - run: pnpm i --frozen-lockfile
       - run: pnpm test:run
       - run: pnpm --filter=!mdsvex-demo build
-        env:
-          CI: true
-          name: mdsvex
