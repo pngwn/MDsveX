@@ -14,8 +14,8 @@ import type {
 } from './types';
 export * from './types';
 
-import { join } from 'path';
-import fs from 'fs';
+// import { join } from 'path';
+// import fs from 'fs';
 import { parse } from 'svelte/compiler';
 import unified from 'unified';
 import markdown from 'remark-parse';
@@ -25,7 +25,8 @@ import extract_frontmatter from 'remark-frontmatter';
 import remark2rehype from 'remark-rehype';
 //@ts-ignore
 import hast_to_html from '@starptech/prettyhtml-hast-to-html';
-import { createRequire } from 'module';
+
+const is_browser = typeof window !== 'undefined';
 
 import { mdsvex_parser } from './parsers';
 import {
@@ -37,6 +38,7 @@ import {
 	highlight_blocks,
 	code_highlight,
 	escape_brackets,
+	handle_path,
 } from './transformers';
 
 function stringify(this: Processor, options = {}) {
@@ -66,11 +68,11 @@ export function transform(
 		rehypePlugins = [],
 		frontmatter,
 		smartypants,
-		layout,
-		layout_mode,
 		highlight,
-	}: TransformOptions = { layout_mode: 'single' }
-): Processor {
+	} = {} as Omit<TransformOptions, 'layout_mode' | 'layout'>
+): Processor & {
+	add_layouts: (layout: Layout, layout_mode: LayoutMode) => void;
+} {
 	const fm_opts = frontmatter
 		? frontmatter
 		: { parse: default_frontmatter, type: 'yaml', marker: '-' };
@@ -92,20 +94,24 @@ export function transform(
 
 	apply_plugins(remarkPlugins, toMDAST).use(highlight_blocks, highlight || {});
 
-	const toHAST = toMDAST
-		.use(remark2rehype, {
-			// @ts-ignore
-			allowDangerousHtml: true,
-			allowDangerousCharacters: true,
-		})
-		.use(transform_hast, { layout, layout_mode });
+	const toHAST = toMDAST.use(remark2rehype, {
+		// @ts-ignore
+		allowDangerousHtml: true,
+		allowDangerousCharacters: true,
+	});
 
 	apply_plugins(rehypePlugins, toHAST);
 
 	const processor = toHAST.use(stringify, {
 		allowDangerousHtml: true,
 		allowDangerousCharacters: true,
-	});
+	}) as Processor & {
+		add_layouts: (layout: Layout, layout_mode: LayoutMode) => void;
+	};
+
+	processor.add_layouts = (layout: Layout, layout_mode: LayoutMode) => {
+		processor.use(transform_hast, { layout: layout, layout_mode });
+	};
 
 	return processor;
 }
@@ -129,18 +135,26 @@ function to_posix(_path: string): string {
 	return _path.replace(/\\/g, '/');
 }
 
-const _require = import.meta.url ? createRequire(import.meta.url) : require;
+// let _require: any;
 
-function resolve_layout(layout_path: string): string {
+async function resolve_layout(layout_path: string): Promise<string> {
+	if (is_browser) {
+		// In browser environments, we can't resolve file paths
+		// Return the path as-is or handle differently based on your needs
+		return to_posix(layout_path);
+	}
+
 	try {
-		return to_posix(_require.resolve(layout_path));
+		return to_posix(layout_path);
 	} catch (e) {
+		const path = await import('path');
+
 		try {
-			const _path = join(process.cwd(), layout_path);
-			return to_posix(_require.resolve(_path));
+			const _path = path.join(process.cwd(), layout_path);
+			return to_posix(_path);
 		} catch (e) {
 			throw new Error(
-				`The layout path you provided couldn't be found at either ${layout_path} or ${join(
+				`The layout path you provided couldn't be found at either ${layout_path} or ${path.join(
 					process.cwd(),
 					layout_path
 				)}. Please double-check it and try again.`
@@ -151,21 +165,28 @@ function resolve_layout(layout_path: string): string {
 
 // handle custom components
 
-function process_layouts(layouts: Layout) {
+async function process_layouts(layouts: Layout) {
+	if (is_browser) {
+		// In browser environments, we can't read the file system
+		// Return layouts as-is without processing
+		return layouts;
+	}
+
 	const _layouts = layouts;
 
 	for (const key in _layouts) {
+		const fs = await import('fs');
 		const layout = fs.readFileSync(_layouts[key].path, { encoding: 'utf8' });
 		let ast;
 		try {
 			ast = parse(layout);
-		} catch (e) {
-			throw new Error(e.toString() + `\n	at ${_layouts[key].path}`);
+		} catch (e: unknown) {
+			throw new Error((e as Error).toString() + `\n	at ${_layouts[key].path}`);
 		}
 
 		if (ast.module) {
 			const component_exports = ast.module.content.body.filter(
-				(node) => node.type === 'ExportNamedDeclaration'
+				(node: any) => node.type === 'ExportNamedDeclaration'
 			) as ExportNamedDeclaration[];
 
 			if (component_exports.length) {
@@ -262,28 +283,12 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 		);
 	}
 
-	let _layout: Layout = {};
-	let layout_mode: LayoutMode = 'single';
+	let layouts_processed = false;
 
-	if (typeof layout === 'string') {
-		_layout.__mdsvex_default = { path: resolve_layout(layout), components: [] };
-	} else if (typeof layout === 'object') {
-		layout_mode = 'named';
-		for (const name in layout) {
-			_layout[name] = { path: resolve_layout(layout[name]), components: [] };
-		}
-	}
-	if (highlight && highlight.highlighter === undefined) {
-		highlight.highlighter = code_highlight;
-	}
-
-	_layout = process_layouts(_layout);
 	const parser = transform({
 		remarkPlugins,
 		rehypePlugins,
 		smartypants,
-		layout: _layout,
-		layout_mode,
 		highlight,
 		frontmatter,
 	});
@@ -291,6 +296,34 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 	return {
 		name: 'mdsvex',
 		markup: async ({ content, filename }) => {
+			let _layout: Layout = {};
+			let layout_mode: LayoutMode = 'single';
+
+			if (!layouts_processed && !is_browser) {
+				await handle_path();
+				if (typeof layout === 'string') {
+					_layout.__mdsvex_default = {
+						path: await resolve_layout(layout),
+						components: [],
+					};
+				} else if (typeof layout === 'object') {
+					layout_mode = 'named';
+					for (const name in layout) {
+						_layout[name] = {
+							path: await resolve_layout(layout[name]),
+							components: [],
+						};
+					}
+				}
+				_layout = await process_layouts(_layout);
+				parser.add_layouts(_layout, layout_mode);
+				layouts_processed = true;
+			}
+
+			if (highlight && highlight.highlighter === undefined) {
+				highlight.highlighter = code_highlight;
+			}
+
 			const extensionsParts = (extensions || [extension]).map((ext) =>
 				ext.startsWith('.') ? ext : '.' + ext
 			);
@@ -323,11 +356,17 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
  * - `rehypePlugins` - rehype plugins to apply to the rendered html
  */
 
-const _compile = (
+const _compile = async (
 	source: string,
 	opts?: MdsvexCompileOptions
-): PreprocessorReturn =>
-	mdsvex(opts).markup({
+): Promise<PreprocessorReturn> => {
+	if (is_browser) {
+		const process = await import('process');
+		globalThis.process = process;
+	}
+
+	const preprocessor = mdsvex(opts);
+	return preprocessor.markup({
 		content: source,
 		filename:
 			(opts && opts.filename) ||
@@ -336,5 +375,6 @@ const _compile = (
 				'.svx'
 			}`,
 	});
+};
 
 export { _compile as compile, code_highlight as code_highlighter };
