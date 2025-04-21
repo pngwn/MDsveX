@@ -1,11 +1,6 @@
 // place files you want to import through the `$lib` alias in this folder.
 
-export const sample = `
----
-title: Hello, world!
----
-
-# {metadata.title}
+export const sample = `# title
 
 > Some quote
 
@@ -15,6 +10,11 @@ const thing = 'hello';
 
 \`\`\`html
 <div>Hello</div>
+\`\`\`
+
+
+\`\`\`ocaml
+let x = 1
 \`\`\`
 
 ## Hello
