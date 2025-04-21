@@ -577,9 +577,11 @@ async function load_language(lang: string) {
 export function highlight_blocks({
 	highlighter: highlight_fn,
 	alias,
+	optimise = true,
 }: {
 	highlighter?: Highlighter;
 	alias?: { [x: string]: string };
+	optimise?: boolean;
 } = {}): Transformer {
 	let pending_langs: Promise<void>;
 	let processed_langs = false;
@@ -611,7 +613,8 @@ export function highlight_blocks({
 						(node as Code).lang,
 						(node as Code).meta,
 						//@ts-ignore
-						vFile.filename
+						vFile.filename,
+						optimise
 					);
 				})
 			);
@@ -628,9 +631,14 @@ export const escape_svelty = (str: string): string =>
 		)
 		.replace(/\\([trn])/g, '&#92;$1');
 
-export const code_highlight: Highlighter = async (code, lang) => {
+export const code_highlight: Highlighter = async (
+	code,
+	lang,
+	_meta,
+	_filename,
+	optimise
+) => {
 	const normalised_lang = lang?.toLowerCase();
-
 	let _lang = !!normalised_lang && langs[normalised_lang];
 	//@ts-ignore
 	if (!Prism) Prism = await import('prismjs');
@@ -659,5 +667,7 @@ export const code_highlight: Highlighter = async (code, lang) => {
 			? Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
 			: escape(code)
 	);
-	return `<pre class="language-${normalised_lang}">{@html \`<code class="language-${normalised_lang}">${highlighted}</code>\`}</pre>`;
+	return optimise
+		? `<pre class="language-${normalised_lang}">{@html \`<code class="language-${normalised_lang}">${highlighted}</code>\`}</pre>`
+		: `<pre class="language-${normalised_lang}"><code class="language-${normalised_lang}">${highlighted}</code></pre>`;
 };

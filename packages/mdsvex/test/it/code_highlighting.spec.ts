@@ -341,3 +341,25 @@ RUN bash -lc "rvm install ruby-2.5.1 && \
 		)
 	);
 });
+
+test('can turn off  optimisation for code blocks', async () => {
+	const output = await mdsvex({
+		highlight: {
+			optimise: false,
+		},
+	}).markup({
+		content: `
+\`\`\`Docker
+RUN bash -lc "rvm install ruby-2.5.1 && \
+              rvm use ruby-ruby-2.5.1 --default"
+\`\`\`
+    `,
+		filename: 'thing.svx',
+	});
+
+	expect(lines(output?.code.trim())).toEqual(
+		lines(
+			`<pre class="language-docker"><code class="language-docker"><span class="token keyword">RUN</span> bash <span class="token punctuation">-</span>lc <span class="token string">"rvm install ruby-2.5.1 &amp;&amp;               rvm use ruby-ruby-2.5.1 --default"</span></code></pre>`
+		)
+	);
+});

@@ -121,7 +121,7 @@ const defaults = {
 	rehypePlugins: [],
 	smartypants: true,
 	extension: '.svx',
-	highlight: { highlighter: code_highlight },
+	highlight: { highlighter: code_highlight, optimise: true },
 };
 
 function to_posix(_path: string): string {
@@ -240,16 +240,26 @@ async function process_layouts(layouts: Layout) {
  */
 
 export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
-	const {
+	let {
 		remarkPlugins = [],
 		rehypePlugins = [],
 		smartypants = true,
 		extension = '.svx',
 		extensions,
 		layout = false,
-		highlight = { highlighter: code_highlight },
+		highlight = { highlighter: code_highlight, optimise: true },
 		frontmatter,
 	} = options;
+
+	if (highlight === undefined) {
+		highlight = { highlighter: code_highlight, optimise: true };
+	} else if (highlight) {
+		highlight = {
+			highlighter: code_highlight,
+			optimise: true,
+			...highlight,
+		};
+	}
 
 	//@ts-ignore
 	if (options.layouts) {

@@ -150,7 +150,7 @@ interface MdsvexOptions {
 	layout: string | { [name: string]: string };
 	remarkPlugins: Array<plugin> | Array<[plugin, plugin_options]>;
 	rehypePlugins: Array<plugin> | Array<[plugin, plugin_options]>;
-	highlight: { highlighter: Function, alias: { [alias]: lang } };
+	highlight: { highlighter: Function, alias: { [alias]: lang }, optimise: boolean };
 	frontmatter: { parse: Function; marker: string };
 }
 ```
@@ -386,6 +386,7 @@ Remark plugins work on the Markdown AST (MDAST) produced by remark, rehype plugi
 highlight: {
 	highlighter: (code: string, lang: string) => string | Promise<string>
 	alias: { [lang : string]: string }
+	optimise: boolean
 };
 ```
 
@@ -413,6 +414,16 @@ function highlighter(code, lang) {
 mdsvex({
 	highlight: {
 		highlighter
+	}
+})
+```
+
+By default `mdsvex` will optimise your code blocks by placing them in a Svelte `@html` block. To disable this behaviour either because you love chaos or you are using `mdsvex` without Svelte (perhaps via the `compile` function), set `optimise: false`
+
+```js
+mdsvex({
+	highlight: {
+		optimise: false
 	}
 })
 ```
