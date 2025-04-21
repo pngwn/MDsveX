@@ -8,7 +8,8 @@
 		"lint": "prettier --check . --ignore-path .prettierignore",
 		"format": "prettier --write . --ignore-path .prettierignore",
 		"test": "pnpm -r --filter=!site test",
-		"test:run": "vitest run . **/*.spec.ts ",
+		"test:run": "vitest run . ",
+		"test:e2e": "pnpm --filter=mdsvex-demo test:e2e",
 		"release": "pnpm --filter=!mdsvex-demo build && changeset publish",
 		"changeset:add": "changeset add",
 		"changeset:version": "changeset version && pnpm i --lockfile-only",
@@ -33,6 +34,8 @@
 		"rollup": "^4.20.0",
 		"rollup-plugin-dts": "^6.1.1",
 		"typescript": "^5.8.3",
+		"vite": "^6.3.2",
+		"vitest": "^3.1.2",
 		"watchlist": "^0.2.3"
 	},
 	"dependencies": {
@@ -42,8 +45,7 @@
 		"@rollup/plugin-replace": "^5.0.7",
 		"@rollup/plugin-sucrase": "^5.0.2",
 		"rollup-plugin-node-globals": "^1.4.0",
-		"tslib": "^2.3.1",
-		"vitest": "^3.1.1"
+		"tslib": "^2.3.1"
 	},
 	"engines": {
 		"pnpm": "^9.1.0"
