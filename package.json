@@ -10,7 +10,7 @@
 		"test": "pnpm -r --filter=!site test",
 		"test:run": "vitest run . ",
 		"test:e2e": "pnpm --filter=mdsvex-demo test:e2e",
-		"release": "pnpm --filter=!mdsvex-demo build && changeset publish",
+		"release": "pnpm --filter=!mdsvex-demo --filter=!@mdsvex/site build && changeset publish",
 		"changeset:add": "changeset add",
 		"changeset:version": "changeset version && pnpm i --lockfile-only",
 		"site:dev": "pnpm --filter @mdsvex/site dev",
@@ -44,6 +44,7 @@
 		"@rollup/plugin-node-resolve": "^15.2.3",
 		"@rollup/plugin-replace": "^5.0.7",
 		"@rollup/plugin-sucrase": "^5.0.2",
+		"playwright": "^1.52.0",
 		"rollup-plugin-node-globals": "^1.4.0",
 		"tslib": "^2.3.1"
 	},

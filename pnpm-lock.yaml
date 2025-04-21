@@ -23,6 +23,9 @@ importers:
       '@rollup/plugin-sucrase':
         specifier: ^5.0.2
         version: 5.0.2(rollup@4.20.0)
+      playwright:
+        specifier: ^1.52.0
+        version: 1.52.0
       rollup-plugin-node-globals:
         specifier: ^1.4.0
         version: 1.4.0
