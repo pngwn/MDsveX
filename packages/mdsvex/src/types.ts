@@ -196,7 +196,7 @@ export interface TransformOptions {
 	smartypants?: boolean | SmartypantsOptions;
 	layout?: Layout;
 	highlight?: HighlightOptions | false;
-	layout_mode: LayoutMode;
+	layout_mode?: LayoutMode;
 }
 
 /**

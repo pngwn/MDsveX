@@ -1,4 +1,4 @@
-name: mdsvex
+name: test-basic
 
 on:
   push:
@@ -27,9 +27,6 @@ jobs:
       - run: pnpm i --frozen-lockfile
       - run: pnpm lint
         # type-check here as well when it is working
-        env:
-          CI: true
-          name: mdsvex
 
   build-test:
     name: test-build - node ${{ matrix.node-version }} (${{ matrix.os }})
@@ -48,7 +45,4 @@ jobs:
           cache-dependency-path: '**/pnpm-lock.yaml'
       - run: pnpm i --frozen-lockfile
       - run: pnpm test:run
-      - run: pnpm -r build
-        env:
-          CI: true
-          name: mdsvex
+      - run: pnpm --filter=!mdsvex-demo --filter=!@mdsvex/site build

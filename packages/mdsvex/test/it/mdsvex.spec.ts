@@ -116,8 +116,7 @@ test('it should accept a rehype plugin', async () => {
   class="toc-level toc-level-2"
 ><li class="toc-item toc-item-h2"><a class="toc-link toc-link-h2" href="#">Two</a><ol
   class="toc-level toc-level-3"
-><li class="toc-item toc-item-h3"><a class="toc-link toc-link-h3" href="#">Three</a></li></ol></li></ol></li></ol></nav>
-<h1>One</h1>
+><li class="toc-item toc-item-h3"><a class="toc-link toc-link-h3" href="#">Three</a></li></ol></li></ol></li></ol></nav><h1>One</h1>
 <h2>Two</h2>
 <h3>Three</h3>`)
 	);
@@ -140,8 +139,9 @@ test('it should accept rehype plugins - plural', async () => {
   class="toc-level toc-level-2"
 ><li class="toc-item toc-item-h2"><a class="toc-link toc-link-h2" href="#two">Two</a><ol
   class="toc-level toc-level-3"
-><li class="toc-item toc-item-h3"><a class="toc-link toc-link-h3" href="#three">Three</a></li></ol></li></ol></li></ol></nav>
-<h1 id="one">One</h1>
+><li class="toc-item toc-item-h3"><a class="toc-link toc-link-h3" href="#three">Three</a></li></ol></li></ol></li></ol></nav><h1 
+id="one"
+>One</h1>
 <h2 id="two">Two</h2>
 <h3 id="three">Three</h3>`)
 	);
@@ -164,8 +164,9 @@ test('it should accept rehype plugins with options - plural', async () => {
   class="toc-level toc-level-2"
 ><li class="toc-item toc-item-h2"><a class="toc-link toc-link-h2" href="#two">Two</a><ol
   class="toc-level toc-level-3"
-><li class="toc-item toc-item-h3"><a class="toc-link toc-link-h3" href="#three">Three</a></li></ol></li></ol></li></ol>
-<h1 id="one">One</h1>
+><li class="toc-item toc-item-h3"><a class="toc-link toc-link-h3" href="#three">Three</a></li></ol></li></ol></li></ol><h1 
+id="one"
+>One</h1>
 <h2 id="two">Two</h2>
 <h3 id="three">Three</h3>`)
 	);
@@ -675,7 +676,7 @@ number: 999
 });
 
 test('Ensure no-one tries to pass a "layouts" option', async () => {
-	expect(
+	await expect(
 		async () =>
 			await mdsvex({
 				//@ts-ignore
