@@ -362,7 +362,11 @@ export function transform_hast({
 			const fm =
 				metadata &&
 				`export const metadata = ${stringified};${newline}` +
-					`\tconst { ${Object.keys(metadata).join(', ')} } = metadata;`;
+					`\tconst { ${Object.keys(metadata)
+						.map((key) =>
+							key.includes('-') ? `'${key}': ${key.replace(/-/g, '_')}` : key
+						)
+						.join(', ')} } = metadata;`;
 
 			const frontmatter_layout =
 				metadata && (metadata.layout as string | undefined | false);
