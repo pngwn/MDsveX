@@ -363,8 +363,10 @@ export function transform_hast({
 				metadata &&
 				`export const metadata = ${stringified};${newline}` +
 					`\tconst { ${Object.keys(metadata)
-						.join(', ')
-						.replace(/-/g, '_')} } = metadata;`;
+						.map((key) =>
+							key.includes('-') ? `'${key}': ${key.replace(/-/g, '_')}` : key
+						)
+						.join(', ')} } = metadata;`;
 
 			const frontmatter_layout =
 				metadata && (metadata.layout as string | undefined | false);

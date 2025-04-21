@@ -441,6 +441,31 @@ number: 999
 	);
 });
 
+test('YAML front-matter should be injected into the component module script - even with kebab case field names', async () => {
+	const output = await mdsvex().markup({
+		content: `---
+string-case: value
+string2: 'value2'
+array: [1, 2, 3]
+number: 999
+---
+
+# hello
+`,
+		filename: 'file.svx',
+	});
+
+	expect(lines(output?.code)).toEqual(
+		lines(`<script context="module">
+	export const metadata = {"string-case":"value","string2":"value2","array":[1,2,3],"number":999};
+	const { 'string-case': string_case, string2, array, number } = metadata;
+</script>
+
+<h1>hello</h1>
+`)
+	);
+});
+
 test('YAML front-matter should be injected into the component module script - even if there is already a module script', async () => {
 	const output = await mdsvex().markup({
 		content: `---
