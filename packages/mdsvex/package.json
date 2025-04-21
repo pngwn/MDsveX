@@ -8,7 +8,10 @@
 			"types": "./dist/main.d.ts",
 			"default": "./dist/main.js"
 		},
-		"./package.json": "./package.json"
+		"./package.json": "./package.json",
+		"./globals": {
+			"types": "./globals.d.ts"
+		}
 	},
 	"main": "dist/main.js",
 	"module": "dist/main.js",
