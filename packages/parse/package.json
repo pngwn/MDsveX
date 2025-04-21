@@ -4,7 +4,7 @@
 	"description": "",
 	"main": "src/main.ts",
 	"module": "src/main.ts",
-	"private": "true",
+	"private": true,
 	"type": "module",
 	"scripts": {},
 	"repository": {

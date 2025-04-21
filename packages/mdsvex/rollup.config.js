@@ -1,36 +1,41 @@
-import resolve from '@rollup/plugin-node-resolve';
+import node from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
-import json from 'rollup-plugin-json';
-import builtins from 'rollup-plugin-node-builtins';
-import globals from 'rollup-plugin-node-globals';
+import json from '@rollup/plugin-json';
 import sucrase from '@rollup/plugin-sucrase';
 import dts from 'rollup-plugin-dts';
-import replace from '@rollup/plugin-replace';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+import polyfillNode from 'rollup-plugin-polyfill-node';
 
-import pkg from './package.json';
+const pkg = JSON.parse(readFileSync(resolve('package.json'), 'utf-8'));
 
 export default [
 	{
 		plugins: [
-			resolve({ preferBuiltins: true }),
-			commonjs({ namedExports: { 'svelte/compiler': ['parse'] } }),
+			polyfillNode({
+				include: ['process'],
+			}),
+			node({ preferBuiltins: true }),
+			commonjs(),
 			json(),
 			sucrase({ transforms: ['typescript'] }),
 		],
 		input: 'src/main.ts',
 		external: ['svelte/compiler'],
-		output: [
-			{ file: pkg.module, format: 'es', sourcemap: false },
-			{ file: pkg.main, format: 'cjs', sourcemap: false },
-		],
+		output: {
+			dir: './dist',
+			format: 'es',
+			sourcemap: true,
+		},
 	},
 	{
 		plugins: [dts()],
 		input: 'src/main.ts',
 
-		output: [
-			{ file: 'dist/main.es.d.ts', format: 'es' },
-			{ file: 'dist/main.cjs.d.ts', format: 'cjs' },
-		],
+		output: {
+			dir: './dist',
+			format: 'es',
+			sourcemap: true,
+		},
 	},
 ];

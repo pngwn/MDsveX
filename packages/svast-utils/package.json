@@ -1,13 +1,13 @@
 {
 	"name": "svast-utils",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"description": "Utilisties for working with svast nodes.",
 	"main": "dist/main.cjs.js",
 	"module": "dist/main.es.js",
+	"type": "module",
 	"scripts": {
 		"build": "rollup -c",
-		"test:filter": "uvu -r ts-node/register test",
-		"test": "uvu -r ts-node/register test test.ts$"
+		"test": "vitest . **/*.spec.ts"
 	},
 	"repository": {
 		"type": "git",
@@ -22,6 +22,6 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"dependencies": {
-		"svast": "workspace:^0.2.0"
+		"svast": "workspace:^0.2.1"
 	}
 }

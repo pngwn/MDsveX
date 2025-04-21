@@ -1,5 +1,5 @@
 import type { Transformer } from 'unified';
-import type { Text, Code, HTML } from 'mdast';
+import type { Text, Code, Html } from 'mdast';
 import type { Element, Root } from 'hast';
 import type { VFileMessage } from 'vfile-message';
 
@@ -13,7 +13,7 @@ import yaml from 'js-yaml';
 import { parse } from 'svelte/compiler';
 import escape from 'escape-html';
 
-import * as path from 'path';
+// import * as path from 'path';
 
 import type {
 	FrontMatterNode,
@@ -28,6 +28,9 @@ import type {
 	Layout,
 	LayoutMeta,
 } from '../types';
+
+let path: typeof import('path');
+// const _require = import.meta.url ? createRequire(import.meta.url) : require;
 
 // this needs a big old cleanup
 
@@ -62,17 +65,17 @@ export function parse_frontmatter({
 	return transformer;
 }
 
-// in code nodes replace the character witrh the html entities
-// maybe I'll need more of these
-
-const entites: Array<[RegExp, string]> = [
-	[/</g, '&lt;'],
-	[/>/g, '&gt;'],
-	[/{/g, '&#123;'],
-	[/}/g, '&#125;'],
-];
-
 export function escape_code({ blocks }: { blocks: boolean }): Transformer {
+	// in code nodes replace the character witrh the html entities
+	// maybe I'll need more of these
+
+	const entites: Array<[RegExp, string]> = [
+		[/</g, '&lt;'],
+		[/>/g, '&gt;'],
+		[/{/g, '&#123;'],
+		[/}/g, '&#125;'],
+	];
+
 	return function (tree) {
 		if (!blocks) {
 			visit(tree, 'code', escape);
@@ -81,6 +84,29 @@ export function escape_code({ blocks }: { blocks: boolean }): Transformer {
 		visit(tree, 'inlineCode', escape);
 
 		function escape(node: FrontMatterNode) {
+			for (let i = 0; i < entites.length; i += 1) {
+				node.value = node.value.replace(entites[i][0], entites[i][1]);
+			}
+		}
+	};
+}
+
+// remark-parse already partially escapes <>'s, but then re-emits them raw in the AST,
+// which we stringify raw (Should we be?)
+export function escape_brackets(): Transformer {
+	const entites: Array<[RegExp, string]> = [
+		// remark-parse does not transform \<
+		[/\\</g, '&lt;'],
+		// remark-parse transforms \> to '>', and &gt; to '>'
+		[/^>$/g, '&gt;'],
+		// remark-parse transforms &lt; to '<'
+		[/^<$/g, '&lt;'],
+	];
+
+	return function (tree) {
+		visit(tree, 'text', escape);
+
+		function escape(node: Text) {
 			for (let i = 0; i < entites.length; i += 1) {
 				node.value = node.value.replace(entites[i][0], entites[i][1]);
 			}
@@ -275,6 +301,10 @@ function generate_layout({
 		error.reason ? error : false,
 	];
 }
+
+export const handle_path = async (): Promise<void> => {
+	path = await import('path');
+};
 
 export function transform_hast({
 	layout,
@@ -489,46 +519,56 @@ interface Meta {
 	meta: PrismMeta;
 }
 
-function load_language_metadata() {
-	if (!(process as RollupProcess).browser) {
-		const {
-			meta,
-			...languages
-		}: Record<string, PrismLanguage> &
-			Meta = require('prismjs/components.json').languages;
+async function load_language_metadata() {
+	const mod: Record<string, PrismLanguage> & Meta = await import(
+		//@ts-ignore
+		'prismjs/components'
+	);
 
-		for (const lang in languages) {
-			const [lang_info, aliases] = get_lang_info(
-				lang,
-				languages[lang],
-				meta.path
-			);
+	// @ts-ignore
+	const languages = mod.languages || mod.default.languages;
+	// @ts-ignore
+	const meta = languages.meta;
 
-			langs[lang] = lang_info;
-			aliases.forEach((_n) => {
-				langs[_n] = langs[lang];
-			});
-		}
+	for (const lang in languages) {
+		const [lang_info, aliases] = get_lang_info(
+			lang,
+			// @ts-ignore
+			languages[lang],
+			meta.path
+		);
 
-		const svelte_meta = {
-			name: 'svelte',
-			aliases: new Set(['sv']),
-			path: 'prism-svelte',
-			deps: new Set(['javscript', 'css']),
-		};
-
-		langs.svelte = svelte_meta;
-		langs.sv = svelte_meta;
+		langs[lang] = lang_info;
+		aliases.forEach((_n) => {
+			langs[_n] = langs[lang];
+		});
 	}
+
+	const svelte_meta = {
+		name: 'svelte',
+		aliases: new Set(['sv']),
+		path: 'prism-svelte',
+		deps: new Set(['javscript', 'css']),
+	};
+
+	langs.svelte = svelte_meta;
+	langs.sv = svelte_meta;
 }
 
-function load_language(lang: string) {
-	if (!(process as RollupProcess).browser) {
-		if (!langs[lang]) return;
+async function load_language(lang: string) {
+	if (!langs[lang]) return;
 
-		langs[lang].deps.forEach((name) => load_language(name));
-
-		require(langs[lang].path);
+	await Promise.all(
+		Array.from(langs[lang].deps).map(async (name) => await load_language(name))
+	);
+	try {
+		await import(/* @vite-ignore */ langs[lang].path);
+	} catch (e) {
+		try {
+			await import(/* @vite-ignore */ langs[lang].path + '.js');
+		} catch (e) {
+			console.log('failed to load language', lang);
+		}
 	}
 }
 
@@ -539,26 +579,31 @@ export function highlight_blocks({
 	highlighter?: Highlighter;
 	alias?: { [x: string]: string };
 } = {}): Transformer {
-	if (highlight_fn && !(process as RollupProcess).browser) {
-		load_language_metadata();
-
-		if (alias) {
-			for (const lang in alias) {
-				langs[lang] = langs[alias[lang]];
-			}
-		}
+	let pending_langs: Promise<void>;
+	let processed_langs = false;
+	if (highlight_fn) {
+		pending_langs = load_language_metadata();
 	}
 
 	return async function (tree, vFile) {
 		if (highlight_fn) {
-			const nodes: (Code | HTML)[] = [];
+			if (!processed_langs) {
+				await pending_langs;
+				if (alias) {
+					for (const lang in alias) {
+						langs[lang] = langs[alias[lang]];
+					}
+				}
+				processed_langs = true;
+			}
+			const nodes: (Code | Html)[] = [];
 			visit<Code>(tree, 'code', (node) => {
 				nodes.push(node);
 			});
 
 			await Promise.all(
 				nodes.map(async (node) => {
-					(node as HTML).type = 'html';
+					(node as Html).type = 'html';
 					node.value = await highlight_fn(
 						node.value,
 						(node as Code).lang,
@@ -581,29 +626,36 @@ export const escape_svelty = (str: string): string =>
 		)
 		.replace(/\\([trn])/g, '&#92;$1');
 
-export const code_highlight: Highlighter = (code, lang) => {
+export const code_highlight: Highlighter = async (code, lang) => {
 	const normalised_lang = lang?.toLowerCase();
-	if (!(process as RollupProcess).browser) {
-		let _lang = !!normalised_lang && langs[normalised_lang];
 
-		if (!Prism) Prism = require('prismjs');
+	let _lang = !!normalised_lang && langs[normalised_lang];
+	//@ts-ignore
+	if (!Prism) Prism = await import('prismjs');
 
-		if (_lang && !Prism.languages[_lang.name]) {
-			load_language(_lang.name);
+	let status = 'loading';
+	if (_lang && !Prism.languages[_lang.name]) {
+		try {
+			await load_language(_lang.name);
+			status = 'loaded';
+		} catch (e) {
+			status = 'failed';
 		}
-
-		if (!_lang && normalised_lang && Prism.languages[normalised_lang]) {
-			langs[normalised_lang] = { name: lang } as MdsvexLanguage;
-			_lang = langs[normalised_lang];
-		}
-		const highlighted = escape_svelty(
-			_lang
-				? Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
-				: escape(code)
-		);
-		return `<pre class="language-${normalised_lang}">{@html \`<code class="language-${normalised_lang}">${highlighted}</code>\`}</pre>`;
-	} else {
-		const highlighted = escape_svelty(escape(code));
-		return `<pre class="language-${normalised_lang}">{@html \`<code class="language-${normalised_lang}">${highlighted}</code>\`}</pre>`;
 	}
+
+	if (
+		!_lang &&
+		normalised_lang &&
+		Prism.languages[normalised_lang] &&
+		status === 'loaded'
+	) {
+		langs[normalised_lang] = { name: lang } as MdsvexLanguage;
+		_lang = langs[normalised_lang];
+	}
+	const highlighted = escape_svelty(
+		_lang && Prism.languages[_lang.name]
+			? Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
+			: escape(code)
+	);
+	return `<pre class="language-${normalised_lang}">{@html \`<code class="language-${normalised_lang}">${highlighted}</code>\`}</pre>`;
 };

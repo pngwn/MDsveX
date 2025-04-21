@@ -1,0 +1,48 @@
+name: test-basic
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'site/**'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'site/**'
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm i -g pnpm@9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
+      - run: pnpm i --frozen-lockfile
+      - run: pnpm lint
+        # type-check here as well when it is working
+
+  build-test:
+    name: test-build - node ${{ matrix.node-version }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm i -g pnpm@9.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
+      - run: pnpm i --frozen-lockfile
+      - run: pnpm test:run
+      - run: pnpm --filter=!mdsvex-demo --filter=!@mdsvex/site build

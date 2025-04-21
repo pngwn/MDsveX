@@ -1,5 +1,23 @@
 # mdsvex
 
+## 0.12.3
+
+### Patch Changes
+
+- [#637](https://github.com/pngwn/MDsveX/pull/637) [`9e8165f`](https://github.com/pngwn/MDsveX/commit/9e8165f981f52ef0b05cbb93335a7ac664d9e50c) Thanks [@pngwn](https://github.com/pngwn)! - fix layout path resolution
+
+## 0.12.2
+
+### Patch Changes
+
+- [#630](https://github.com/pngwn/MDsveX/pull/630) [`157d9a3`](https://github.com/pngwn/MDsveX/commit/157d9a3e05ad08dfec2837828e11c19f6941f66c) Thanks [@pngwn](https://github.com/pngwn)! - Fix the builds
+
+## 0.12.1
+
+### Patch Changes
+
+- [#628](https://github.com/pngwn/MDsveX/pull/628) [`b1fc10b`](https://github.com/pngwn/MDsveX/commit/b1fc10bbcc870ff57668a0627872701926070cd4) Thanks [@pngwn](https://github.com/pngwn)! - fix exports
+
 ## 0.12.0
 
 ### Minor Changes

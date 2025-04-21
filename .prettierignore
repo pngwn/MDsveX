@@ -6,3 +6,4 @@ pnpm-lock.yaml
 .changeset/**/*
 **/dist/**/*
 **/CHANGELOG.md
+**/mdsvex-demo/**/*
