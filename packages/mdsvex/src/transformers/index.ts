@@ -543,7 +543,6 @@ async function load_language(lang: string) {
 			await import(/* @vite-ignore */ langs[lang].path + '.js');
 		} catch (e) {
 			console.log('failed to load language', lang);
-			console.error(e);
 		}
 	}
 }
@@ -616,7 +615,6 @@ export const code_highlight: Highlighter = async (code, lang) => {
 			status = 'loaded';
 		} catch (e) {
 			status = 'failed';
-			console.error(e);
 		}
 	}
 
@@ -630,7 +628,7 @@ export const code_highlight: Highlighter = async (code, lang) => {
 		_lang = langs[normalised_lang];
 	}
 	const highlighted = escape_svelty(
-		_lang
+		_lang && Prism.languages[_lang.name]
 			? Prism.highlight(code, Prism.languages[_lang.name], _lang.name)
 			: escape(code)
 	);
