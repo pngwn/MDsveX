@@ -37,6 +37,7 @@ import {
 	smartypants_transformer,
 	highlight_blocks,
 	code_highlight,
+	escape_brackets,
 	handle_path,
 } from './transformers';
 
@@ -79,6 +80,7 @@ export function transform(
 		.use(markdown)
 		.use(mdsvex_parser)
 		.use(external, { target: false, rel: ['nofollow'] })
+		.use(escape_brackets)
 		.use(escape_code, { blocks: !!highlight })
 		.use(extract_frontmatter, [{ type: fm_opts.type, marker: fm_opts.marker }])
 		.use(parse_frontmatter, { parse: fm_opts.parse, type: fm_opts.type });

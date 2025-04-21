@@ -65,17 +65,17 @@ export function parse_frontmatter({
 	return transformer;
 }
 
-// in code nodes replace the character witrh the html entities
-// maybe I'll need more of these
-
-const entites: Array<[RegExp, string]> = [
-	[/</g, '&lt;'],
-	[/>/g, '&gt;'],
-	[/{/g, '&#123;'],
-	[/}/g, '&#125;'],
-];
-
 export function escape_code({ blocks }: { blocks: boolean }): Transformer {
+	// in code nodes replace the character witrh the html entities
+	// maybe I'll need more of these
+
+	const entites: Array<[RegExp, string]> = [
+		[/</g, '&lt;'],
+		[/>/g, '&gt;'],
+		[/{/g, '&#123;'],
+		[/}/g, '&#125;'],
+	];
+
 	return function (tree) {
 		if (!blocks) {
 			visit(tree, 'code', escape);
@@ -84,6 +84,29 @@ export function escape_code({ blocks }: { blocks: boolean }): Transformer {
 		visit(tree, 'inlineCode', escape);
 
 		function escape(node: FrontMatterNode) {
+			for (let i = 0; i < entites.length; i += 1) {
+				node.value = node.value.replace(entites[i][0], entites[i][1]);
+			}
+		}
+	};
+}
+
+// remark-parse already partially escapes <>'s, but then re-emits them raw in the AST,
+// which we stringify raw (Should we be?)
+export function escape_brackets(): Transformer {
+	const entites: Array<[RegExp, string]> = [
+		// remark-parse does not transform \<
+		[/\\</g, '&lt;'],
+		// remark-parse transforms \> to '>', and &gt; to '>'
+		[/^>$/g, '&gt;'],
+		// remark-parse transforms &lt; to '<'
+		[/^<$/g, '&lt;'],
+	];
+
+	return function (tree) {
+		visit(tree, 'text', escape);
+
+		function escape(node: Text) {
 			for (let i = 0; i < entites.length; i += 1) {
 				node.value = node.value.replace(entites[i][0], entites[i][1]);
 			}
