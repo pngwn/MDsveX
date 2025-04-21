@@ -16,6 +16,7 @@
 	"dependencies": {
 		"mdsvex": "^0.7.1-beta.3",
 		"refractor": "^2.10.0",
+		"sourcemap-codec": "^1.4.8",
 		"yootils": "^0.0.15"
 	},
 	"devDependencies": {
@@ -29,8 +30,8 @@
 		"@rollup/plugin-json": "^4.1.0",
 		"@rollup/plugin-node-resolve": "^13.0.5",
 		"@rollup/plugin-replace": "^3.0.0",
-		"@sveltejs/kit": "^2.4.1",
 		"@sveltejs/adapter-auto": "^3.1.1",
+		"@sveltejs/kit": "^2.4.1",
 		"@sveltejs/vite-plugin-svelte": "^3.0.1",
 		"codemirror": "^5.49.2",
 		"npm-run-all": "^4.1.5",
