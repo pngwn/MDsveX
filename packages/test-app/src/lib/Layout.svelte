@@ -1,6 +1,5 @@
 <script lang="ts">
 	const { children, ...rest } = $props();
-	$inspect(rest);
 </script>
 
 <p>am layout</p>

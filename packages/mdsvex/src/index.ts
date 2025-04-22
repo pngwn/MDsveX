@@ -179,7 +179,7 @@ async function process_layouts(layouts: Layout) {
 		const layout = fs.readFileSync(_layouts[key].path, { encoding: 'utf8' });
 		let ast;
 		try {
-			ast = parse(layout);
+			ast = parse(layout, { runes: true });
 		} catch (e: unknown) {
 			throw new Error((e as Error).toString() + `\n	at ${_layouts[key].path}`);
 		}

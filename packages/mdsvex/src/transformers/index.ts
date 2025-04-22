@@ -188,7 +188,8 @@ function extract_parts(nodes: Array<Element | Text>): Parts {
 			module?: any;
 		};
 		try {
-			result = parse(nodes[i].value as string);
+			// @ts-ignore
+			result = parse(nodes[i].value as string, { runes: true });
 		} catch (e) {
 			parts.html.push(nodes[i]);
 			continue children;
