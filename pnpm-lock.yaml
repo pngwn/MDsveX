@@ -151,9 +151,6 @@ importers:
       retext-smartypants:
         specifier: ^4.0.0
         version: 4.0.0
-      rollup-plugin-polyfill-node:
-        specifier: ^0.13.0
-        version: 0.13.0(rollup@4.40.0)
       rollup-plugin-svelte:
         specifier: ^5.1.1
         version: 5.2.3(rollup@4.40.0)(svelte@4.0.0)
@@ -1280,15 +1277,6 @@ packages:
     engines: {node: '>=16.0.0 || 14 >= 14.17'}
     peerDependencies:
       rollup: ^2.68.0||^3.0.0||^4.0.0
-    peerDependenciesMeta:
-      rollup:
-        optional: true
-
-  '@rollup/plugin-inject@5.0.5':
-    resolution: {integrity: sha512-2+DEJbNBoPROPkgTDNe8/1YXWcqxbN5DTjASVIOx8HS+pITXushyNiBV56RB08zuptzz8gT3YfkqriTBVycepg==}
-    engines: {node: '>=14.0.0'}
-    peerDependencies:
-      rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
     peerDependenciesMeta:
       rollup:
         optional: true
@@ -3373,11 +3361,6 @@ packages:
   rollup-plugin-node-globals@1.4.0:
     resolution: {integrity: sha512-xRkB+W/m1KLIzPUmG0ofvR+CPNcvuCuNdjVBVS7ALKSxr3EDhnzNceGkGi1m8MToSli13AzKFYH4ie9w3I5L3g==}
 
-  rollup-plugin-polyfill-node@0.13.0:
-    resolution: {integrity: sha512-FYEvpCaD5jGtyBuBFcQImEGmTxDTPbiHjJdrYIp+mFIwgXiXabxvKUK7ZT9P31ozu2Tqm9llYQMRWsfvTMTAOw==}
-    peerDependencies:
-      rollup: ^1.20.0 || ^2.0.0 || ^3.0.0 || ^4.0.0
-
   rollup-plugin-svelte@5.2.3:
     resolution: {integrity: sha512-513vOht9A93OV7fvmpIq8mD1JFgTZ5LidmpULKM2Od9P1l8oI5KwvO32fwCnASuVJS1EkRfvCnS7vKQ8DF4srg==}
     peerDependencies:
@@ -5276,14 +5259,6 @@ snapshots:
     optionalDependencies:
       rollup: 4.20.0
 
-  '@rollup/plugin-inject@5.0.5(rollup@4.40.0)':
-    dependencies:
-      '@rollup/pluginutils': 5.1.0(rollup@4.40.0)
-      estree-walker: 2.0.2
-      magic-string: 0.30.17
-    optionalDependencies:
-      rollup: 4.40.0
-
   '@rollup/plugin-json@4.1.0(rollup@2.79.1)':
     dependencies:
       '@rollup/pluginutils': 3.1.0(rollup@2.79.1)
@@ -5364,14 +5339,6 @@ snapshots:
       picomatch: 2.3.1
     optionalDependencies:
       rollup: 4.20.0
-
-  '@rollup/pluginutils@5.1.0(rollup@4.40.0)':
-    dependencies:
-      '@types/estree': 1.0.1
-      estree-walker: 2.0.2
-      picomatch: 2.3.1
-    optionalDependencies:
-      rollup: 4.40.0
 
   '@rollup/rollup-android-arm-eabi@4.20.0':
     optional: true
@@ -7317,11 +7284,6 @@ snapshots:
       magic-string: 0.22.5
       process-es6: 0.11.6
       rollup-pluginutils: 2.8.2
-
-  rollup-plugin-polyfill-node@0.13.0(rollup@4.40.0):
-    dependencies:
-      '@rollup/plugin-inject': 5.0.5(rollup@4.40.0)
-      rollup: 4.40.0
 
   rollup-plugin-svelte@5.2.3(rollup@4.40.0)(svelte@4.0.0):
     dependencies:
