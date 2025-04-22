@@ -189,7 +189,7 @@ function extract_parts(nodes: Array<Element | Text>): Parts {
 		};
 		try {
 			// @ts-ignore
-			result = parse(nodes[i].value as string, { runes: true });
+			result = parse(nodes[i].value as string);
 		} catch (e) {
 			parts.html.push(nodes[i]);
 			continue children;
