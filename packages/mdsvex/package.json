@@ -59,10 +59,9 @@
 		"remark-slug": "^6.0.0",
 		"retext": "^7.0.1",
 		"retext-smartypants": "^4.0.0",
-		"rollup-plugin-polyfill-node": "^0.13.0",
 		"rollup-plugin-svelte": "^5.1.1",
 		"shiki": "^0.9.3",
-		"svelte": "^4.0.0",
+		"svelte": "^5.0.0",
 		"toml": "^3.0.0",
 		"unified": "^9.1.0",
 		"vfile": "^4.2.0"

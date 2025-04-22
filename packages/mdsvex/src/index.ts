@@ -14,8 +14,8 @@ import type {
 } from './types';
 export * from './types';
 
-// import { join } from 'path';
-// import fs from 'fs';
+import { make_process } from './utils';
+
 import { parse } from 'svelte/compiler';
 import unified from 'unified';
 import markdown from 'remark-parse';
@@ -371,8 +371,8 @@ const _compile = async (
 	opts?: MdsvexCompileOptions
 ): Promise<PreprocessorReturn> => {
 	if (is_browser) {
-		const process = await import('process');
-		globalThis.process = process;
+		// @ts-ignore
+		globalThis.process = make_process();
 	}
 
 	const preprocessor = mdsvex(opts);
