@@ -1,5 +1,13 @@
 # mdsvex
 
+## 0.12.5
+
+### Patch Changes
+
+- [#714](https://github.com/pngwn/MDsveX/pull/714) [`14ad73f`](https://github.com/pngwn/MDsveX/commit/14ad73fd5c563a5ac263a9169a50ebf022d34566) Thanks [@pngwn](https://github.com/pngwn)! - Ensure that mdsvex files and layouts can contain Svelte 5 syntax.
+
+* [#714](https://github.com/pngwn/MDsveX/pull/714) [`14ad73f`](https://github.com/pngwn/MDsveX/commit/14ad73fd5c563a5ac263a9169a50ebf022d34566) Thanks [@pngwn](https://github.com/pngwn)! - Replace process polyfill with something that isn't ridiculous
+
 ## 0.12.4
 
 ### Patch Changes
