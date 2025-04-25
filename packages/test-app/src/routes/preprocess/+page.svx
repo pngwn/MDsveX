@@ -1,0 +1,39 @@
+---
+title: Hello, world!
+---
+
+# {metadata.title}
+
+> Some quote
+
+```js
+async function do_thing(arg, arg2) {
+	console.log(arg, arg2);
+}
+```
+
+```ocaml
+let add x y = x + y
+let add x = fun y -> x + y
+let add = fun x -> (fun y -> x + y)
+
+let f x1 x2 ... xn = e
+
+```
+
+```sql
+SELECT * FROM Customers
+WHERE Country='Mexico';
+```
+
+## Hello
+
+Hello
+
+### Hello
+
+Hello _italic_
+
+**bold**
+
+[Link](https://example.com)

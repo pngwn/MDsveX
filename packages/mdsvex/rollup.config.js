@@ -6,30 +6,30 @@ import dts from 'rollup-plugin-dts';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
-const pkg = JSON.parse(readFileSync(resolve('package.json'), 'utf-8'));
-
 export default [
 	{
 		plugins: [
 			node({ preferBuiltins: true }),
-			commonjs({ namedExports: { 'svelte/compiler': ['parse'] } }),
+			commonjs(),
 			json(),
 			sucrase({ transforms: ['typescript'] }),
 		],
 		input: 'src/main.ts',
 		external: ['svelte/compiler'],
-		output: [
-			{ file: pkg.module, format: 'es', sourcemap: false },
-			{ file: pkg.main, format: 'cjs', sourcemap: false },
-		],
+		output: {
+			dir: './dist',
+			format: 'es',
+			sourcemap: true,
+		},
 	},
 	{
 		plugins: [dts()],
 		input: 'src/main.ts',
 
-		output: [
-			{ file: 'dist/main.es.d.ts', format: 'es' },
-			{ file: 'dist/main.cjs.d.ts', format: 'cjs' },
-		],
+		output: {
+			dir: './dist',
+			format: 'es',
+			sourcemap: true,
+		},
 	},
 ];

@@ -1,5 +1,29 @@
 # mdsvex
 
+## 0.12.5
+
+### Patch Changes
+
+- [#714](https://github.com/pngwn/MDsveX/pull/714) [`14ad73f`](https://github.com/pngwn/MDsveX/commit/14ad73fd5c563a5ac263a9169a50ebf022d34566) Thanks [@pngwn](https://github.com/pngwn)! - Ensure that mdsvex files and layouts can contain Svelte 5 syntax.
+
+* [#714](https://github.com/pngwn/MDsveX/pull/714) [`14ad73f`](https://github.com/pngwn/MDsveX/commit/14ad73fd5c563a5ac263a9169a50ebf022d34566) Thanks [@pngwn](https://github.com/pngwn)! - Replace process polyfill with something that isn't ridiculous
+
+## 0.12.4
+
+### Patch Changes
+
+- [#692](https://github.com/pngwn/MDsveX/pull/692) [`27b40a8`](https://github.com/pngwn/MDsveX/commit/27b40a81417a743a07075eb02eb8b2f937f91140) Thanks [@ckiee](https://github.com/ckiee)! - fix(mdsvex): Ensure escaped <angle>bracket is handled correctly
+
+* [#712](https://github.com/pngwn/MDsveX/pull/712) [`92268f4`](https://github.com/pngwn/MDsveX/commit/92268f49cf7e40cf463d283d7ecc791d222bcbcb) Thanks [@pngwn](https://github.com/pngwn)! - Allows user to disable automatic code optimisation (`@html` insertion)
+
+- [#545](https://github.com/pngwn/MDsveX/pull/545) [`fa44d04`](https://github.com/pngwn/MDsveX/commit/fa44d0432cde153a5fe23a987b0b5cce9e961660) Thanks [@henrikvilhelmberglund](https://github.com/henrikvilhelmberglund)! - Replace hyphen in YAML frontmatter with underscore to prevent issues when building
+
+* [#690](https://github.com/pngwn/MDsveX/pull/690) [`59e793e`](https://github.com/pngwn/MDsveX/commit/59e793e78c504bb95ab8ee40db411d2680d1ff77) Thanks [@Antosik](https://github.com/Antosik)! - Fix: Export global type definitions for .svx files
+
+- [#709](https://github.com/pngwn/MDsveX/pull/709) [`7dd3f90`](https://github.com/pngwn/MDsveX/commit/7dd3f904afb39cf91f15db5a04442a4a1c1414c9) Thanks [@pngwn](https://github.com/pngwn)! - Ensure mdsvex works in a browser environment.
+
+* [#656](https://github.com/pngwn/MDsveX/pull/656) [`bdb68ee`](https://github.com/pngwn/MDsveX/commit/bdb68eee6f4ed5e4fdd649cb24662329fe1032b9) Thanks [@ghostdevv](https://github.com/ghostdevv)! - fix: types in the exports map (https://github.com/pngwn/MDsveX/pull/651 https://github.com/pngwn/MDsveX/pull/656)
+
 ## 0.12.3
 
 ### Patch Changes

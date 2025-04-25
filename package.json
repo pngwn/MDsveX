@@ -5,11 +5,12 @@
 	"repository": "https://github.com/pngwn/MDsveX",
 	"type": "module",
 	"scripts": {
-		"lint": "prettier --check .",
-		"format": "prettier --write .",
+		"lint": "prettier --check . --ignore-path .prettierignore",
+		"format": "prettier --write . --ignore-path .prettierignore",
 		"test": "pnpm -r --filter=!site test",
-		"test:run": "vitest run . **/*.spec.ts ",
-		"release": "pnpm -r build && changeset publish",
+		"test:run": "vitest run . ",
+		"test:e2e": "pnpm --filter=mdsvex-demo test:e2e",
+		"release": "pnpm --filter=!mdsvex-demo --filter=!@mdsvex/site build && changeset publish",
 		"changeset:add": "changeset add",
 		"changeset:pre-enter": "changeset pre enter",
 		"changeset:pre-exit": "changeset pre exit",
@@ -43,11 +44,18 @@
 		"@rollup/plugin-node-resolve": "^16.0.1",
 		"@rollup/plugin-replace": "^6.0.2",
 		"@rollup/plugin-sucrase": "^5.0.2",
+		"playwright": "^1.52.0",
 		"rollup-plugin-node-globals": "^1.4.0",
 		"tslib": "^2.8.1",
 		"vitest": "^3.1.1"
 	},
 	"engines": {
-		"pnpm": "^9.1.0"
-	}
+		"pnpm": "^9.1.4"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"esbuild"
+		]
+	},
+	"packageManager": "pnpm@9.1.4"
 }
