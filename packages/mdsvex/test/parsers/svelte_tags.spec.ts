@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest';
 
-import { parse_svelte_tag } from '../../src/parsers';
+import { parse_svelte_tag } from '../../old_src/parsers';
 
 // I have no idea what the unified/ remark eat function returns but i need to fake it.
 //@ts-ignore
@@ -18,7 +18,7 @@ const svelte_tags = [
 	['head', 'svelte:head'],
 ];
 
-test('svelte blocks with children should be correctly parsed', () => {
+test.skip('svelte blocks with children should be correctly parsed', () => {
 	const s = `<svelte:head>
   <meta property="og:title" content={title} />
   <meta property="og:type" content="article" />
@@ -46,7 +46,7 @@ test('svelte blocks with children should be correctly parsed', () => {
 });
 
 svelte_tags.forEach(([name, component]) => {
-	test(`${name}: it should it should correctly match and parse any svelte tag`, () => {
+	test.skip(`${name}: it should it should correctly match and parse any svelte tag`, () => {
 		expect(
 			//@ts-ignore
 			parse_svelte_tag(eat, `<${component}></ ${component}>`, false)

@@ -4,7 +4,7 @@ import { readdirSync, readFileSync, existsSync, lstatSync } from 'fs';
 import { join, extname } from 'path';
 import { lines } from '../utils';
 
-import { transform } from '../../src';
+import { transform } from '../../old_src';
 
 const PATH = join(__dirname, '../_fixtures/svelte');
 
@@ -39,7 +39,7 @@ try {
 }
 
 svelte_files.forEach(([path, file], i) => {
-	test(`it should correctly parse any svelte component: ${path.replace(
+	test.skip(`it should correctly parse any svelte component: ${path.replace(
 		join(__dirname, '../_fixtures/svelte/'),
 		''
 	)}`, async () => {

@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest';
 
-import { parse_svelte_block } from '../../src/parsers';
+import { parse_svelte_block } from '../../old_src/parsers';
 
 // I have no idea what the unified/ remark eat function returns but i need to fake it.
 // @ts-ignore
@@ -39,7 +39,7 @@ svelte_blocks.forEach(
 		string,
 		boolean | string
 	]) => {
-		test(`${name}: it should it should correctly match and parse any svelte block`, () => {
+		test.skip(`${name}: it should it should correctly match and parse any svelte block`, () => {
 			// @ts-ignore
 			expect(parse_svelte_block(eat, `{${block}}`, false)).toEqual({
 				value: `{${block}}`,

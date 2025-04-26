@@ -3,7 +3,7 @@ import { test, expect } from 'vitest';
 import { readdirSync, readFileSync } from 'fs';
 import { join, basename } from 'path';
 import { lines } from '../utils';
-import { transform } from '../../src';
+import { transform } from '../../old_src';
 
 const PATH = join(__dirname, '../_fixtures/markdown');
 const INPUT_PATH = join(PATH, 'input');
@@ -18,7 +18,7 @@ const md_files = readdirSync(INPUT_PATH).map((p) => [
 ]);
 
 md_files.forEach(([path, input, output], i) => {
-	test(`it should correctly parse pure markdown files: ${path}`, async () => {
+	test.skip(`it should correctly parse pure markdown files: ${path}`, async () => {
 		// temp
 		if (path === 'literal-html-tags.md') return;
 

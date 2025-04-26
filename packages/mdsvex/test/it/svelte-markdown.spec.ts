@@ -4,7 +4,7 @@ import { readdirSync, readFileSync } from 'fs';
 import { join, basename } from 'path';
 import { lines } from '../utils';
 
-import { mdsvex } from '../../src';
+import { mdsvex } from '../../old_src';
 
 const PATH = join(__dirname, '../_fixtures/hybrid');
 const INPUT_PATH = join(PATH, 'input');

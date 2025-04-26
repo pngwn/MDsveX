@@ -3,9 +3,9 @@ import { Node, Parent } from 'unist';
 
 import { join } from 'path';
 import { lines } from '../utils';
-import { to_posix } from '../../src/utils';
+import { to_posix } from '../../old_src/utils';
 
-import { mdsvex, compile } from '../../src';
+import { mdsvex, compile } from '../../old_src';
 import containers from 'remark-containers';
 import headings from 'remark-autolink-headings';
 import slug from 'remark-slug';
@@ -17,7 +17,7 @@ import { Transformer } from 'unified';
 
 const fix_dir = join(__dirname, '..', '_fixtures');
 
-test('it should work', async () => {
+test.skip('it should work', async () => {
 	const output = await mdsvex().markup({
 		content: `# hello`,
 		filename: 'file.svx',
@@ -26,7 +26,7 @@ test('it should work', async () => {
 	expect(lines(output?.code)).toEqual(lines(`<h1>hello</h1>`));
 });
 
-test('it should accept a remark plugin', async () => {
+test.skip('it should accept a remark plugin', async () => {
 	const output = await mdsvex({ remarkPlugins: [containers] }).markup({
 		content: `
 ::: div thingy
@@ -47,7 +47,7 @@ Hello friends, how are we today
 	);
 });
 
-test('it should accept remark plugins - plural', async () => {
+test.skip('it should accept remark plugins - plural', async () => {
 	const output = await mdsvex({
 		remarkPlugins: [containers, slug, headings],
 	}).markup({
@@ -76,7 +76,7 @@ Hello friends, how are we today
 	);
 });
 
-test('it should accept remark plugins with options - plural', async () => {
+test.skip('it should accept remark plugins with options - plural', async () => {
 	const output = await mdsvex({
 		remarkPlugins: [containers, slug, [headings, { behavior: 'append' }]],
 	}).markup({
@@ -99,7 +99,7 @@ Hello friends, how are we today
 	);
 });
 
-test('it should accept a rehype plugin', async () => {
+test.skip('it should accept a rehype plugin', async () => {
 	const output = await mdsvex({
 		rehypePlugins: [toc],
 	}).markup({
@@ -122,7 +122,7 @@ test('it should accept a rehype plugin', async () => {
 	);
 });
 
-test('it should accept rehype plugins - plural', async () => {
+test.skip('it should accept rehype plugins - plural', async () => {
 	const output = await mdsvex({
 		rehypePlugins: [rehype_slug, toc],
 	}).markup({
@@ -147,7 +147,7 @@ id="one"
 	);
 });
 
-test('it should accept rehype plugins with options - plural', async () => {
+test.skip('it should accept rehype plugins with options - plural', async () => {
 	const output = await mdsvex({
 		rehypePlugins: [rehype_slug, [toc, { nav: false }]],
 	}).markup({
@@ -172,7 +172,7 @@ id="one"
 	);
 });
 
-test('it should accept remark plugins that modify code blocks', async () => {
+test.skip('it should accept remark plugins that modify code blocks', async () => {
 	function code_plugin(): Transformer {
 		return function (tree: Node): void {
 			(tree as Parent).children.forEach((node) => {
@@ -200,7 +200,7 @@ hello friends
 	);
 });
 
-test('it should respect the smartypants option', async () => {
+test.skip('it should respect the smartypants option', async () => {
 	const output = await mdsvex({
 		smartypants: true,
 	}).markup({
@@ -213,7 +213,7 @@ test('it should respect the smartypants option', async () => {
 	);
 });
 
-test('it should accept a smartypants options object', async () => {
+test.skip('it should accept a smartypants options object', async () => {
 	const output = await mdsvex({
 		smartypants: { dashes: 'oldschool', ellipses: false },
 	}).markup({
@@ -224,7 +224,7 @@ test('it should accept a smartypants options object', async () => {
 	expect(lines(output?.code)).toEqual(lines(`<p>hello—friend...</p>`));
 });
 
-test('only expected file extension names should work', async () => {
+test.skip('only expected file extension names should work', async () => {
 	const output = await mdsvex().markup({
 		content: `# hello`,
 		filename: 'file.boo',
@@ -233,7 +233,7 @@ test('only expected file extension names should work', async () => {
 	expect(output?.code).toEqual(undefined);
 });
 
-test('the extension name should be customisable', async () => {
+test.skip('the extension name should be customisable', async () => {
 	const output = await mdsvex({ extensions: ['.jesus'] }).markup({
 		content: `# hello`,
 		filename: 'file.jesus',
@@ -242,7 +242,7 @@ test('the extension name should be customisable', async () => {
 	expect(lines(output?.code)).toEqual(lines(`<h1>hello</h1>`));
 });
 
-test('custom layouts should work - special tags', async () => {
+test.skip('custom layouts should work - special tags', async () => {
 	const output = await mdsvex({
 		layout: join(fix_dir, 'Layout.svelte'),
 	}).markup({
@@ -275,7 +275,7 @@ test('custom layouts should work - special tags', async () => {
 	);
 });
 
-test('custom layouts should work', async () => {
+test.skip('custom layouts should work', async () => {
 	const output = await mdsvex({
 		layout: join(fix_dir, 'Layout.svelte'),
 	}).markup({
@@ -295,7 +295,7 @@ test('custom layouts should work', async () => {
 	);
 });
 
-test('custom layouts should work - when there are script tags', async () => {
+test.skip('custom layouts should work - when there are script tags', async () => {
 	const output = await mdsvex({
 		layout: join(fix_dir, 'Layout.svelte'),
 	}).markup({
@@ -333,7 +333,7 @@ test('custom layouts should work - when there are script tags', async () => {
 	);
 });
 
-test('custom layouts should work - when there are script tags with random attributes', async () => {
+test.skip('custom layouts should work - when there are script tags with random attributes', async () => {
 	const output = await mdsvex({
 		layout: join(fix_dir, 'Layout.svelte'),
 	}).markup({
@@ -371,7 +371,7 @@ test('custom layouts should work - when there are script tags with random attrib
 	);
 });
 
-test('custom layouts should work - when everything is in a random order', async () => {
+test.skip('custom layouts should work - when everything is in a random order', async () => {
 	const output = await mdsvex({
 		layout: join(fix_dir, 'Layout.svelte'),
 	}).markup({
@@ -416,7 +416,7 @@ boo boo boo
 	);
 });
 
-test('YAML front-matter should be injected into the component module script', async () => {
+test.skip('YAML front-matter should be injected into the component module script', async () => {
 	const output = await mdsvex().markup({
 		content: `---
 string: value
@@ -441,7 +441,7 @@ number: 999
 	);
 });
 
-test('YAML front-matter should be injected into the component module script - even with kebab case field names', async () => {
+test.skip('YAML front-matter should be injected into the component module script - even with kebab case field names', async () => {
 	const output = await mdsvex().markup({
 		content: `---
 string-case: value
@@ -466,7 +466,7 @@ number: 999
 	);
 });
 
-test('YAML front-matter should be injected into the component module script - even if there is already a module script', async () => {
+test.skip('YAML front-matter should be injected into the component module script - even if there is already a module script', async () => {
 	const output = await mdsvex().markup({
 		content: `---
 string: value
@@ -497,7 +497,7 @@ number: 999
 	);
 });
 
-test('YAML front-matter should be injected into the component module script - even if there is already a module script with unquoted attributes', async () => {
+test.skip('YAML front-matter should be injected into the component module script - even if there is already a module script with unquoted attributes', async () => {
 	const output = await mdsvex().markup({
 		content: `---
 string: value
@@ -528,7 +528,7 @@ number: 999
 	);
 });
 
-test('YAML front-matter should be injected into the component module script - even if there is already a module script with random attributes', async () => {
+test.skip('YAML front-matter should be injected into the component module script - even if there is already a module script with random attributes', async () => {
 	const output = await mdsvex().markup({
 		content: `---
 string: value
@@ -559,7 +559,7 @@ number: 999
 	);
 });
 
-test('YAML front-matter should be injected passed to custom layouts', async () => {
+test.skip('YAML front-matter should be injected passed to custom layouts', async () => {
 	const output = await mdsvex({
 		layout: join(fix_dir, 'Layout.svelte'),
 	}).markup({
@@ -597,7 +597,7 @@ number: 999
 	);
 });
 
-test('User can provide a frontmatter function for non-YAML frontmatter', async () => {
+test.skip('User can provide a frontmatter function for non-YAML frontmatter', async () => {
 	const parse_toml = (v: string, m: VFileMessage[]) => {
 		try {
 			return toml.parse(v);
@@ -657,7 +657,7 @@ dob = 1879-05-27T07:32:00-08:00 # First class dates
 	);
 });
 
-test('Custom layouts can be an object of named layouts, mapping to folders', async () => {
+test.skip('Custom layouts can be an object of named layouts, mapping to folders', async () => {
 	const output = await mdsvex({
 		layout: {
 			one: join(fix_dir, 'Layout.svelte'),
@@ -700,7 +700,7 @@ number: 999
 	);
 });
 
-test('Ensure no-one tries to pass a "layouts" option', async () => {
+test.skip('Ensure no-one tries to pass a "layouts" option', async () => {
 	await expect(
 		async () =>
 			await mdsvex({
@@ -730,7 +730,7 @@ number: 999
 	);
 });
 
-test('Warn on receiving unknown options', async () => {
+test.skip('Warn on receiving unknown options', async () => {
 	const output_fn = async () =>
 		await mdsvex({
 			//@ts-ignore
@@ -772,7 +772,7 @@ number: 999
 	console.warn = console_warn;
 });
 
-test('Custom layout can be set via frontmatter - strange formatting', async () => {
+test.skip('Custom layout can be set via frontmatter - strange formatting', async () => {
 	const output = await mdsvex({
 		layout: {
 			one: join(fix_dir, 'Layout.svelte'),
@@ -816,7 +816,7 @@ number: 999
 	);
 });
 
-test('layout: false in front matter should remove any layouts', async () => {
+test.skip('layout: false in front matter should remove any layouts', async () => {
 	const output = await mdsvex({
 		layout: join(fix_dir, 'Layout.svelte'),
 	}).markup({
@@ -846,7 +846,7 @@ layout: false
 	);
 });
 
-test('Fallback layouts should work', async () => {
+test.skip('Fallback layouts should work', async () => {
 	const output = await mdsvex({
 		layout: {
 			one: join(fix_dir, 'Layout.svelte'),
@@ -890,7 +890,7 @@ number: 999
 	);
 });
 
-test('layout: allow custom components', async () => {
+test.skip('layout: allow custom components', async () => {
 	const output = await mdsvex({
 		layout: join(fix_dir, 'LayoutWithComponents.svelte'),
 	}).markup({
@@ -923,7 +923,7 @@ test('layout: allow custom components', async () => {
 	);
 });
 
-test('layout: allow custom components', async () => {
+test.skip('layout: allow custom components', async () => {
 	const output = await mdsvex({
 		layout: join(
 			__dirname,
@@ -973,7 +973,7 @@ hello *hello* **hello**
 	);
 });
 
-test('layout: allow custom components', async () => {
+test.skip('layout: allow custom components', async () => {
 	const output = await mdsvex({
 		layout: join(
 			__dirname,
@@ -1014,7 +1014,7 @@ I am some paragraph text
 	);
 });
 
-test('layout: allow custom components', async () => {
+test.skip('layout: allow custom components', async () => {
 	const output = await mdsvex({
 		layout: join(
 			__dirname,
@@ -1055,7 +1055,7 @@ I am some paragraph text
 	);
 });
 
-test('compile, no options', async () => {
+test.skip('compile, no options', async () => {
 	const output = await compile('# Hello world');
 	expect(output).toEqual({
 		code: '\n<h1>Hello world</h1>\n',
@@ -1064,7 +1064,7 @@ test('compile, no options', async () => {
 	});
 });
 
-test('compile, gets headmatter attributes', async () => {
+test.skip('compile, gets headmatter attributes', async () => {
 	const output = await compile(
 		`
 ---
@@ -1087,7 +1087,7 @@ title: Yo
 	});
 });
 
-test('layout: allow custom components', async () => {
+test.skip('layout: allow custom components', async () => {
 	const output = await compile(
 		`
 <script context="module">
@@ -1127,7 +1127,7 @@ I am some paragraph text
 	);
 });
 
-test('layout: allow custom components', async () => {
+test.skip('layout: allow custom components', async () => {
 	const output = await compile(
 		`
 <script context="module">

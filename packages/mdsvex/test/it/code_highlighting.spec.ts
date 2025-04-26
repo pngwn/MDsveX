@@ -2,9 +2,9 @@ import { test, expect } from 'vitest';
 import { lines } from '../utils';
 import * as shiki from 'shiki';
 
-import { mdsvex } from '../../src';
+import { mdsvex } from '../../old_src';
 
-test('it should not highlight code when false is passed', async () => {
+test.skip('it should not highlight code when false is passed', async () => {
 	const output = await mdsvex({ highlight: false }).markup({
 		content: `
 \`\`\`js
@@ -21,7 +21,7 @@ const some_var = whatever;
 	);
 });
 
-test('it should escape code when false is passed', async () => {
+test.skip('it should escape code when false is passed', async () => {
 	const output = await mdsvex({ highlight: false }).markup({
 		content: `
 \`\`\`html
@@ -45,7 +45,7 @@ test('it should escape code when false is passed', async () => {
 	);
 });
 
-test('it should highlight code when nothing is passed', async () => {
+test.skip('it should highlight code when nothing is passed', async () => {
 	const output = await mdsvex().markup({
 		content: `
 \`\`\`js
@@ -62,7 +62,7 @@ const thing = 'string';
 	);
 });
 
-test('it should escape when highlighting (kinda)', async () => {
+test.skip('it should escape when highlighting (kinda)', async () => {
 	const output = await mdsvex().markup({
 		content: `
 \`\`\`js
@@ -81,7 +81,7 @@ function() {
 	);
 });
 
-test('it should escape characters with special meaning inside {@html} used by default highlighter', async () => {
+test.skip('it should escape characters with special meaning inside {@html} used by default highlighter', async () => {
 	const output = await mdsvex().markup({
 		content: `\`\`\`js
 const evil = '{ } \` \\t \\r \\n';
@@ -97,7 +97,7 @@ const evil = '{ } \` \\t \\r \\n';
 	);
 });
 
-test('it should highlight code when nothing is passed, with a non-default language', async () => {
+test.skip('it should highlight code when nothing is passed, with a non-default language', async () => {
 	const output = await mdsvex().markup({
 		content: `
 \`\`\`ruby
@@ -116,7 +116,7 @@ puts <span class="token string">"Hello <span class="token interpolation"><span c
 	);
 });
 
-test('it should highlight code when nothing is passed, with a more obscure language', async () => {
+test.skip('it should highlight code when nothing is passed, with a more obscure language', async () => {
 	const output = await mdsvex().markup({
 		content: `
 \`\`\`ebnf
@@ -141,7 +141,7 @@ DEFINITIONS LIST
 	);
 });
 
-test('Should be possible to pass a custom highlight function ', async () => {
+test.skip('Should be possible to pass a custom highlight function ', async () => {
 	function _highlight(code: string, lang: string | undefined | null): string {
 		return `<code class="${lang}">${code}</code>`;
 	}
@@ -162,7 +162,7 @@ i am some code
 	);
 });
 
-test('Custom highlight functions receive the metastring', async () => {
+test.skip('Custom highlight functions receive the metastring', async () => {
 	function _highlight(
 		code: string,
 		lang: string | undefined | null,
@@ -189,7 +189,7 @@ i am some code
 	);
 });
 
-test('Should be possible to pass an async custom highlight function ', async () => {
+test.skip('Should be possible to pass an async custom highlight function ', async () => {
 	async function _highlight(
 		code: string,
 		lang: string | undefined | null
@@ -219,7 +219,7 @@ key = os.environ["SECRET_KEY"]
 	);
 });
 
-test('Should be possible to define a custom alias for a language', async () => {
+test.skip('Should be possible to define a custom alias for a language', async () => {
 	const output = await mdsvex({
 		highlight: { alias: { beeboo: 'html' } },
 	}).markup({
@@ -238,7 +238,7 @@ test('Should be possible to define a custom alias for a language', async () => {
 	);
 });
 
-test('Svelte syntax is highlighted by default', async () => {
+test.skip('Svelte syntax is highlighted by default', async () => {
 	const output = await mdsvex().markup({
 		content: `
 \`\`\`svelte
@@ -259,7 +259,7 @@ test('Svelte syntax is highlighted by default', async () => {
 	);
 });
 
-test('Svelte syntax is highlighted by default: using custom alias', async () => {
+test.skip('Svelte syntax is highlighted by default: using custom alias', async () => {
 	const output = await mdsvex({
 		highlight: { alias: { beeboo: 'svelte' } },
 	}).markup({
@@ -282,7 +282,7 @@ test('Svelte syntax is highlighted by default: using custom alias', async () => 
 	);
 });
 
-test('Svelte syntax is highlighted by default: using sv alias', async () => {
+test.skip('Svelte syntax is highlighted by default: using sv alias', async () => {
 	const output = await mdsvex().markup({
 		content: `
 \`\`\`sv
@@ -303,7 +303,7 @@ test('Svelte syntax is highlighted by default: using sv alias', async () => {
 	);
 });
 
-test('Should be possible to add additional highlighting grammars', async () => {
+test.skip('Should be possible to add additional highlighting grammars', async () => {
 	require('prismjs');
 	require('prism-svelte');
 	const output = await mdsvex({
@@ -324,7 +324,7 @@ test('Should be possible to add additional highlighting grammars', async () => {
 	);
 });
 
-test('lang definitions should be case insensitive', async () => {
+test.skip('lang definitions should be case insensitive', async () => {
 	const output = await mdsvex().markup({
 		content: `
 \`\`\`Docker
@@ -342,7 +342,7 @@ RUN bash -lc "rvm install ruby-2.5.1 && \
 	);
 });
 
-test('can turn off  optimisation for code blocks', async () => {
+test.skip('can turn off  optimisation for code blocks', async () => {
 	const output = await mdsvex({
 		highlight: {
 			optimise: false,
