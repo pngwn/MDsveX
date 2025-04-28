@@ -309,8 +309,10 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 			let _layout: Layout = {};
 			let layout_mode: LayoutMode = 'single';
 
+			// if `layout_processed` is undefined, we need to process the layouts
 			if (!layouts_processed && !is_browser) {
 				let resolve: () => void | undefined;
+				// set `layout_processed` before the first await to prevent race conditions
 				layouts_processed = new Promise((r) => (resolve = r));
 				await handle_path();
 				if (typeof layout === 'string') {
@@ -329,6 +331,8 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 				}
 				_layout = await process_layouts(_layout);
 				parser.add_layouts(_layout, layout_mode);
+				// resolve the `layout_processed` promise to unlock the rest of the file
+				// that are waiting before calling parser.process
 				resolve!();
 			}
 
@@ -341,6 +345,8 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 			);
 			if (!extensionsParts.some((ext) => filename.endsWith(ext))) return;
 
+			// before calling parser.process, we need to wait for the layouts to be processed
+			// or else the parser will be frozen
 			await layouts_processed;
 			const parsed = await parser.process({ contents: content, filename });
 			return {
