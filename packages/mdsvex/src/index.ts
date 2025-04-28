@@ -293,7 +293,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 		);
 	}
 
-	let layouts_processed = false;
+	let layouts_processed: Promise<void> | undefined = undefined;
 
 	const parser = transform({
 		remarkPlugins,
@@ -310,6 +310,8 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 			let layout_mode: LayoutMode = 'single';
 
 			if (!layouts_processed && !is_browser) {
+				let resolve: () => void | undefined;
+				layouts_processed = new Promise((r) => (resolve = r));
 				await handle_path();
 				if (typeof layout === 'string') {
 					_layout.__mdsvex_default = {
@@ -327,7 +329,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 				}
 				_layout = await process_layouts(_layout);
 				parser.add_layouts(_layout, layout_mode);
-				layouts_processed = true;
+				resolve!();
 			}
 
 			if (highlight && highlight.highlighter === undefined) {
@@ -339,6 +341,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 			);
 			if (!extensionsParts.some((ext) => filename.endsWith(ext))) return;
 
+			await layouts_processed;
 			const parsed = await parser.process({ contents: content, filename });
 			return {
 				code: parsed.contents as string,
