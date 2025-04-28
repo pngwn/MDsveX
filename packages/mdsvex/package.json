@@ -71,7 +71,7 @@
 	},
 	"dependencies": {
 		"@types/mdast": "^4.0.4",
-		"@types/unist": "^2.0.3",
+		"@types/unist": "^3.0.3",
 		"prism-svelte": "^0.4.7",
 		"prismjs": "^1.17.1",
 		"unist-util-visit": "^2.0.1",
