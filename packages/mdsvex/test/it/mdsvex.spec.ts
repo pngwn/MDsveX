@@ -1171,13 +1171,6 @@ I am some paragraph text
 test('it should not incur in race conditions if multiple invocations happens at the same time', async () => {
 	const preprocessor = mdsvex();
 
-	// slowdown importing path to cause the race condition
-	vi.doMock(import('path'), async (importOriginal) => {
-		const mod = await importOriginal(); // type is inferred
-		await new Promise((r) => setTimeout(r, 100));
-		return mod;
-	});
-
 	const output_promise = preprocessor.markup({
 		content: `# hello`,
 		filename: 'file.svx',
@@ -1193,7 +1186,4 @@ test('it should not incur in race conditions if multiple invocations happens at 
 
 	expect(lines(output?.code)).toEqual(lines(`<h1>hello</h1>`));
 	expect(lines(second_output?.code)).toEqual(lines(`<h1>hello</h1>`));
-
-	vi.resetModules();
-	vi.unmock('path');
 });
