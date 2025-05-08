@@ -1,5 +1,12 @@
 # mdsvex-test
 
+## 1.0.3
+
+### Patch Changes
+
+- Updated dependencies [[`671cc65`](https://github.com/pngwn/MDsveX/commit/671cc6594c20600fc9f95421e6d09ee28fc0c243)]:
+  - mdsvex@0.12.6
+
 ## 1.0.2
 
 ### Patch Changes
