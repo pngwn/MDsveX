@@ -31,10 +31,10 @@
 		"@rollup/plugin-typescript": "^11.1.6",
 		"@types/node": "^14.14.44",
 		"prettier": "^2.2.1",
-		"rollup": "^4.20.0",
+		"rollup": "^2.79.2",
 		"rollup-plugin-dts": "^6.1.1",
 		"typescript": "^5.8.3",
-		"vite": "^6.3.2",
+		"vite": "^5.4.19",
 		"vitest": "^3.1.2",
 		"watchlist": "^0.2.3"
 	},
