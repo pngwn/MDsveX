@@ -1,4 +1,4 @@
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import { Node, Parent } from 'unist';
 
 import { join } from 'path';
@@ -1166,4 +1166,24 @@ I am some paragraph text
 <Components.p>I am some paragraph text</Components.p>
 </Layout_MDSVEX_DEFAULT>`)
 	);
+});
+
+test('it should not incur in race conditions if multiple invocations happens at the same time', async () => {
+	const preprocessor = mdsvex();
+
+	const output_promise = preprocessor.markup({
+		content: `# hello`,
+		filename: 'file.svx',
+	});
+
+	const second_output_promise = preprocessor.markup({
+		content: `# hello`,
+		filename: 'second-file.svx',
+	});
+
+	const output = await output_promise;
+	const second_output = await second_output_promise;
+
+	expect(lines(output?.code)).toEqual(lines(`<h1>hello</h1>`));
+	expect(lines(second_output?.code)).toEqual(lines(`<h1>hello</h1>`));
 });
