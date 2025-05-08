@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.12.6
+
+### Patch Changes
+
+- [#728](https://github.com/pngwn/MDsveX/pull/728) [`671cc65`](https://github.com/pngwn/MDsveX/commit/671cc6594c20600fc9f95421e6d09ee28fc0c243) Thanks [@paoloricciuti](https://github.com/paoloricciuti)! - fix: prevent race condition with `add_layouts`
+
 ## 0.12.5
 
 ### Patch Changes
