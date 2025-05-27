@@ -144,22 +144,17 @@ async function resolve_layout(layout_path: string): Promise<string> {
 		return to_posix(layout_path);
 	}
 
+	const path = await import('path');
 	try {
-		return to_posix(layout_path);
+		const _path = path.resolve(layout_path);
+		return to_posix(_path);
 	} catch (e) {
-		const path = await import('path');
-
-		try {
-			const _path = path.join(process.cwd(), layout_path);
-			return to_posix(_path);
-		} catch (e) {
-			throw new Error(
-				`The layout path you provided couldn't be found at either ${layout_path} or ${path.join(
-					process.cwd(),
-					layout_path
-				)}. Please double-check it and try again.`
-			);
-		}
+		throw new Error(
+			`The layout path you provided couldn't be found at either ${layout_path} or ${path.join(
+				process.cwd(),
+				layout_path
+			)}. Please double-check it and try again.`
+		);
 	}
 }
 
