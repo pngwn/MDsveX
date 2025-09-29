@@ -689,20 +689,19 @@ Frontmatter also interacts with layouts, you can find more details in the [Layou
 You can use shiki for highlighting rather than prism by leveraging the `highlighter` option:
 
 ```js
-import { mdsvex } from 'mdsvex';
-import { createHighlighter } from 'shiki';
+import { escapeSvelte } from 'mdsvex';
+import { codeToHtml } from 'shiki';
 
 const theme = 'github-dark';
-const highlighter = await createHighlighter({
-	themes: [theme],
-	langs: ['javascript', 'typescript']
-});
 
 /** @type {import('mdsvex').MdsvexOptions} */
 const mdsvexOptions = {
 	highlight: {
-		highlighter: (code, lang = 'text') => highlighter.codeToHtml(code, { lang, theme })
-	},
+		async highlighter(code, lang = 'text') {
+			const html = await codeToHtml(code, { lang, theme });
+			return `{@html \`${escapeSvelte(html)}\` }`;
+		}
+	}
 }
 ```
 
