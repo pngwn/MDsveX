@@ -163,7 +163,6 @@ describe('AST storage layouts', () => {
 			const string = i % 100 === 0 ? `identifier_${i % 10}` : null;
 			ast.addNode(type, i * 10, i * 10 + 5, string, i * 1.5);
 		}
-		ast.traverse(() => {});
 	});
 
 	bench('Object-per-node AST', () => {
@@ -173,7 +172,19 @@ describe('AST storage layouts', () => {
 			const string = i % 100 === 0 ? `identifier_${i % 10}` : null;
 			ast.addNode(type, i * 10, i * 10 + 5, string, i * 1.5);
 		}
-		ast.traverse(() => {});
+	});
+});
+
+describe('AST traversal', () => {
+	const packedAst = new PackedAST(nodeCount);
+	bench('Packed struct-of-arrays AST', () => {
+		packedAst.traverse((n) => n);
+	});
+
+	const ast = new TraditionalAST();
+
+	bench('Object-per-node AST', () => {
+		ast.traverse((n) => n);
 	});
 });
 

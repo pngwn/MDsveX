@@ -27,8 +27,28 @@ class PolymorphicParser {
 	}
 }
 
+class DynamicDispatcher {
+	constructor() {
+		this.handlers = {
+			string(input) {
+				return input.length;
+			},
+			number(input) {
+				return parseFloat(input);
+			},
+			boolean(input) {
+				return input === 'true';
+			},
+		};
+	}
+	parse(input, type) {
+		return this.handlers[type](input);
+	}
+}
+
 const monomorphic = new MonomorphicParser();
 const polymorphic = new PolymorphicParser();
+const dynamicDispatcher = new DynamicDispatcher();
 const workload = Array.from({ length: 1000 }, (_, i) => [
 	`test${i}`,
 	i.toString(),
@@ -49,6 +69,14 @@ describe('Monomorphic vs Polymorphic Call Sites', () => {
 			polymorphic.parse(str, 'string');
 			polymorphic.parse(num, 'number');
 			polymorphic.parse(bool, 'boolean');
+		}
+	});
+
+	bench('Dynamic dispatch', () => {
+		for (const [str, num, bool] of workload) {
+			dynamicDispatcher.parse(str, 'string');
+			dynamicDispatcher.parse(num, 'number');
+			dynamicDispatcher.parse(bool, 'boolean');
 		}
 	});
 });
