@@ -1,9 +1,9 @@
 <script>
-  import Card, { options } from '@sveltekit/ui/Card';
+import Card, { options } from "@sveltekit/ui/Card";
 
-  export let count = 0;
-  export let isClickable = true;
-  export let isClickDisabled = false;
+export let count = 0;
+export let isClickable = true;
+export let isClickDisabled = false;
 </script>
 
 <style>

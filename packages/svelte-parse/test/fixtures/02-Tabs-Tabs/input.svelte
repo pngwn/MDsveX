@@ -1,35 +1,34 @@
 <script>
-  import { createEventDispatcher, tick } from 'svelte';
-  import { classnames } from '../../helpers/classnames';
+import { createEventDispatcher, tick } from "svelte";
+import { classnames } from "../../helpers/classnames";
 
-  const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-  export let animate = true;
-  export let isCentered = false;
-  export let tabs = [];
-  export let activeTab = {};
-  export let itemWidth = 'auto';
+export let animate = true;
+export let isCentered = false;
+export let tabs = [];
+export let activeTab = {};
+export let itemWidth = "auto";
 
-  export let ActiveTabClassNames;
-  $: {
-    ActiveTabClassNames = classnames('activeTab', {
-      animateActiveTab: animate
-    });
-  }
+export let ActiveTabClassNames;
+$: {
+	ActiveTabClassNames = classnames("activeTab", {
+		animateActiveTab: animate,
+	});
+}
 
-  export let ClassNames;
-  $: {
-    ClassNames = classnames({
-      isCentered
-    });
-  }
+export let ClassNames;
+$: {
+	ClassNames = classnames({
+		isCentered,
+	});
+}
 
-  async function onTabClick(tab) {
-    activeTab = tab;
-    await tick();
-    dispatch('change', tab);
-  }
-
+async function onTabClick(tab) {
+	activeTab = tab;
+	await tick();
+	dispatch("change", tab);
+}
 </script>
 
 

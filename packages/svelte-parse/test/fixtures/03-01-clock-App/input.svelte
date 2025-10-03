@@ -1,23 +1,23 @@
 <script>
-	import { onMount } from 'svelte';
+import { onMount } from "svelte";
 
-	let time = new Date();
+let time = new Date();
 
-	// these automatically update when `time`
-	// changes, because of the `$:` prefix
-	$: hours = time.getHours();
-	$: minutes = time.getMinutes();
-	$: seconds = time.getSeconds();
+// these automatically update when `time`
+// changes, because of the `$:` prefix
+$: hours = time.getHours();
+$: minutes = time.getMinutes();
+$: seconds = time.getSeconds();
 
-	onMount(() => {
-		const interval = setInterval(() => {
-			time = new Date();
-		}, 1000);
+onMount(() => {
+	const interval = setInterval(() => {
+		time = new Date();
+	}, 1000);
 
-		return () => {
-			clearInterval(interval);
-		};
-	});
+	return () => {
+		clearInterval(interval);
+	};
+});
 </script>
 
 <style>

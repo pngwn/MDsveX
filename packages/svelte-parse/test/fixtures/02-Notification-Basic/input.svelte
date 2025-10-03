@@ -1,76 +1,76 @@
 <script>
-	import Button from '@sveltekit/ui/Button';
-	import Checkbox from '@sveltekit/ui/Checkbox';
-	import TextInput from '@sveltekit/ui/TextInput';
-	import { notification, options } from '@sveltekit/ui/Notification';
+import Button from "@sveltekit/ui/Button";
+import Checkbox from "@sveltekit/ui/Checkbox";
+import TextInput from "@sveltekit/ui/TextInput";
+import { notification, options } from "@sveltekit/ui/Notification";
 
-	let title = 'Example Title';
-	let text = 'Some text!';
-	let isClosable = false;
-	let isDark = false;
-	let isLoading = false;
-	let isTimedAction = false;
-	let placement = undefined;
-	let currentKey = undefined;
+let title = "Example Title";
+let text = "Some text!";
+let isClosable = false;
+let isDark = false;
+let isLoading = false;
+let isTimedAction = false;
+let placement = undefined;
+let currentKey = undefined;
 
-	function action() {
-		const key = notification.generateKey();
-		currentKey = key;
+function action() {
+	const key = notification.generateKey();
+	currentKey = key;
 
-		notification
-			.open({
-				title,
-				text,
-				key,
-				isClosable,
-				placement,
-				isDark,
-				isTimedAction,
-				isLoading,
-				actions: {
-					Really: () => {
-						notification.complete(key);
-					},
-					'Try again': () => {
-						notification.complete(key, 'yes I wanna try again');
-					},
-					Cancel: () => {
-						notification.cancel(key, 'cancel please');
-					},
+	notification
+		.open({
+			title,
+			text,
+			key,
+			isClosable,
+			placement,
+			isDark,
+			isTimedAction,
+			isLoading,
+			actions: {
+				Really: () => {
+					notification.complete(key);
 				},
-			})
-			.then(() => {})
-			.catch(() => {})
-			.finally(() => {
-				currentKey = null;
-			});
-	}
+				"Try again": () => {
+					notification.complete(key, "yes I wanna try again");
+				},
+				Cancel: () => {
+					notification.cancel(key, "cancel please");
+				},
+			},
+		})
+		.then(() => {})
+		.catch(() => {})
+		.finally(() => {
+			currentKey = null;
+		});
+}
 
-	function notify() {
-		const key = `notification${Date.now()}`;
-		currentKey = key;
+function notify() {
+	const key = `notification${Date.now()}`;
+	currentKey = key;
 
-		notification
-			.open({
-				title,
-				text,
-				key,
-				isClosable,
-				placement,
-				isDark,
-				isLoading,
-				isTimedAction,
-			})
-			.then(() => {})
-			.catch(() => {})
-			.finally(() => {
-				currentKey = null;
-			});
-	}
+	notification
+		.open({
+			title,
+			text,
+			key,
+			isClosable,
+			placement,
+			isDark,
+			isLoading,
+			isTimedAction,
+		})
+		.then(() => {})
+		.catch(() => {})
+		.finally(() => {
+			currentKey = null;
+		});
+}
 
-	function close() {
-		notification.cancel(currentKey);
-	}
+function close() {
+	notification.cancel(currentKey);
+}
 </script>
 
 <style>

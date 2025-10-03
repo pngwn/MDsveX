@@ -11,12 +11,7 @@
 		"type": "git",
 		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/pfm-parser"
 	},
-	"keywords": [
-		"markdown",
-		"parse",
-		"mdsvex",
-		"ast"
-	],
+	"keywords": ["markdown", "parse", "mdsvex", "ast"],
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT"
 }

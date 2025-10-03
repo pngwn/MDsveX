@@ -1,5 +1,5 @@
 <script>
-  import Card, { options } from '@sveltekit/ui/Card';
+import Card, { options } from "@sveltekit/ui/Card";
 </script>
 
 <style>

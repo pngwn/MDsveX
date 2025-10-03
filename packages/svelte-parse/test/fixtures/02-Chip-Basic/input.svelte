@@ -1,5 +1,5 @@
 <script>
-  import Chip from '@sveltekit/ui/Chip';
+import Chip from "@sveltekit/ui/Chip";
 </script>
 
 <div class="row">

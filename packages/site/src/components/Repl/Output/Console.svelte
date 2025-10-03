@@ -1,7 +1,7 @@
 <script>
-	import JSONNode from 'svelte-json-tree';
+import JSONNode from "svelte-json-tree";
 
-	export let logs;
+export let logs;
 </script>
 
 <div class="container">

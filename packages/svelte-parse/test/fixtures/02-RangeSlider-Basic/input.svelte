@@ -1,7 +1,7 @@
 <script>
-  import RangeSlider from '@sveltekit/ui/RangeSlider';
+import RangeSlider from "@sveltekit/ui/RangeSlider";
 
-  let values = [0];
+let values = [0];
 </script>
 
 <RangeSlider bind:values></RangeSlider>

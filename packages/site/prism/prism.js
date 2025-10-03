@@ -21,7 +21,7 @@ const langs = {
 	yaml: "yaml",
 	scss: "scss",
 	sig: "ts",
-	toml: "toml"
+	toml: "toml",
 };
 
 export function highlight(code, lang) {
@@ -37,8 +37,8 @@ export function highlight(code, lang) {
 var visit = require("unist-util-visit");
 
 export function highlighter(options) {
-	return function(ast) {
-		visit(ast, "code", function(node) {
+	return function (ast) {
+		visit(ast, "code", function (node) {
 			const html = node.value;
 			node.type = "html";
 			node.value = `<pre class="language-${
@@ -47,7 +47,7 @@ export function highlighter(options) {
 				node.lang
 					? options
 							.highlight(html, node.lang)
-							.replace(/[{}]/g, c => ({ "{": "&#123;", "}": "&#125;" }[c]))
+							.replace(/[{}]/g, (c) => ({ "{": "&#123;", "}": "&#125;" })[c])
 					: node.value
 			}</code></pre>`;
 		});

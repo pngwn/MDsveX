@@ -8,11 +8,7 @@
 		"type": "git",
 		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/svast"
 	},
-	"keywords": [
-		"svelte",
-		"ast",
-		"svast"
-	],
+	"keywords": ["svelte", "ast", "svast"],
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"dependencies": {

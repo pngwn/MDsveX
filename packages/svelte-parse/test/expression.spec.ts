@@ -1,16 +1,16 @@
-import { test, expect } from 'vitest';
+import { test, expect } from "vitest";
 
-import { SvelteElement, Node, Point, Root, SvelteDynamicContent } from 'svast';
+import { SvelteElement, Node, Point, Root, SvelteDynamicContent } from "svast";
 
-import { parseNode, parse } from '../src/main';
+import { parseNode, parse } from "../src/main";
 
 const childParser: () => [Node[], Point & { index?: number }, number] = () => [
-	[<Node>{ type: 'fake' }],
+	[<Node>{ type: "fake" }],
 	{ line: 1, column: 1, offset: 0, index: 0 },
 	0,
 ];
 
-test('parses a simple expression', () => {
+test("parses a simple expression", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -19,12 +19,12 @@ test('parses a simple expression', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteDynamicContent>{
-		type: 'svelteDynamicContent',
-		expression: { type: 'svelteExpression', value: 'hello' },
+		type: "svelteDynamicContent",
+		expression: { type: "svelteExpression", value: "hello" },
 	});
 });
 
-test('parses nested braces', () => {
+test("parses nested braces", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -33,15 +33,15 @@ test('parses nested braces', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteDynamicContent>{
-		type: 'svelteDynamicContent',
+		type: "svelteDynamicContent",
 		expression: {
-			type: 'svelteExpression',
-			value: '{{{hello}}}',
+			type: "svelteExpression",
+			value: "{{{hello}}}",
 		},
 	});
 });
 
-test('parses nested braces: while ignoring quoted braces: single', () => {
+test("parses nested braces: while ignoring quoted braces: single", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -50,15 +50,15 @@ test('parses nested braces: while ignoring quoted braces: single', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteDynamicContent>{
-		type: 'svelteDynamicContent',
+		type: "svelteDynamicContent",
 		expression: {
-			type: 'svelteExpression',
+			type: "svelteExpression",
 			value: "{{{'}'}}}",
 		},
 	});
 });
 
-test('handles escaped single-quotes', () => {
+test("handles escaped single-quotes", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -67,15 +67,15 @@ test('handles escaped single-quotes', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteDynamicContent>{
-		type: 'svelteDynamicContent',
+		type: "svelteDynamicContent",
 		expression: {
-			type: 'svelteExpression',
+			type: "svelteExpression",
 			value: "{{{'}\\''}}}",
 		},
 	});
 });
 
-test('parses nested braces: while ignoring quoted braces: double', () => {
+test("parses nested braces: while ignoring quoted braces: double", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -84,15 +84,15 @@ test('parses nested braces: while ignoring quoted braces: double', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteDynamicContent>{
-		type: 'svelteDynamicContent',
+		type: "svelteDynamicContent",
 		expression: {
-			type: 'svelteExpression',
+			type: "svelteExpression",
 			value: `{{{"}"}}}`,
 		},
 	});
 });
 
-test('handles escaped double-quotes', () => {
+test("handles escaped double-quotes", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -101,66 +101,66 @@ test('handles escaped double-quotes', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteDynamicContent>{
-		type: 'svelteDynamicContent',
+		type: "svelteDynamicContent",
 		expression: {
-			type: 'svelteExpression',
+			type: "svelteExpression",
 			value: '{{{"}\\""}}}',
 		},
 	});
 });
 
-test('parses nested braces: while ignoring quoted braces: backtick', () => {
+test("parses nested braces: while ignoring quoted braces: backtick", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
 		childParser,
-		value: '{{{{`}`}}}}',
+		value: "{{{{`}`}}}}",
 	});
 
 	expect(parsed).toEqual(<SvelteDynamicContent>{
-		type: 'svelteDynamicContent',
+		type: "svelteDynamicContent",
 		expression: {
-			type: 'svelteExpression',
-			value: '{{{`}`}}}',
+			type: "svelteExpression",
+			value: "{{{`}`}}}",
 		},
 	});
 });
 
-test('handles escaped backticks', () => {
+test("handles escaped backticks", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
 		childParser,
-		value: '{{{{`}\\``}}}}',
+		value: "{{{{`}\\``}}}}",
 	});
 
 	expect(parsed).toEqual(<SvelteDynamicContent>{
-		type: 'svelteDynamicContent',
+		type: "svelteDynamicContent",
 		expression: {
-			type: 'svelteExpression',
-			value: '{{{`}\\``}}}',
+			type: "svelteExpression",
+			value: "{{{`}\\``}}}",
 		},
 	});
 });
 
-test.skip('parses nested braces: while ignoring regex', () => {
+test.skip("parses nested braces: while ignoring regex", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
 		childParser,
-		value: '{(/}/gi)}',
+		value: "{(/}/gi)}",
 	});
 
 	expect(parsed).toEqual(<SvelteDynamicContent>{
-		type: 'svelteDynamicContent',
+		type: "svelteDynamicContent",
 		expression: {
-			type: 'svelteExpression',
-			value: '(/}/gi)',
+			type: "svelteExpression",
+			value: "(/}/gi)",
 		},
 	});
 });
 
-test.skip('parses nested braces: while ignoring regex', () => {
+test.skip("parses nested braces: while ignoring regex", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -169,15 +169,15 @@ test.skip('parses nested braces: while ignoring regex', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteDynamicContent>{
-		type: 'svelteDynamicContent',
+		type: "svelteDynamicContent",
 		expression: {
-			type: 'svelteExpression',
+			type: "svelteExpression",
 			value: `(/\\/}/gi)`,
 		},
 	});
 });
 
-test('handles quoted slashes', () => {
+test("handles quoted slashes", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -186,15 +186,15 @@ test('handles quoted slashes', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteDynamicContent>{
-		type: 'svelteDynamicContent',
+		type: "svelteDynamicContent",
 		expression: {
-			type: 'svelteExpression',
+			type: "svelteExpression",
 			value: '"/}/gi"',
 		},
 	});
 });
 
-test('ignores nested quotes', () => {
+test("ignores nested quotes", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -203,15 +203,15 @@ test('ignores nested quotes', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteDynamicContent>{
-		type: 'svelteDynamicContent',
+		type: "svelteDynamicContent",
 		expression: {
-			type: 'svelteExpression',
+			type: "svelteExpression",
 			value: '{{{`"}`}}}',
 		},
 	});
 });
 
-test('parses expressions as attribute values', () => {
+test("parses expressions as attribute values", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -220,31 +220,31 @@ test('parses expressions as attribute values', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'value',
+							type: "svelteExpression",
+							value: "value",
 						},
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses expressions as attribute values: more fancy', () => {
+test("parses expressions as attribute values: more fancy", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -253,31 +253,31 @@ test('parses expressions as attribute values: more fancy', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
+							type: "svelteExpression",
 							value: '{{{`"}`}}}',
 						},
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses expressions as attribute values: functions', () => {
+test("parses expressions as attribute values: functions", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -286,31 +286,31 @@ test('parses expressions as attribute values: functions', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
+							type: "svelteExpression",
 							value: '() => console.log("hello world")',
 						},
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses expressions as attribute values: more functions', () => {
+test("parses expressions as attribute values: more functions", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -320,32 +320,32 @@ test('parses expressions as attribute values: more functions', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
+							type: "svelteExpression",
 							value:
 								'(e) => val = val.filter(v => v.map(x => x*2)).reduce(absolutelywhat is this i have no idea) * 2735262 + 123.something("hey")',
 						},
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses expressions as attribute values in quotes', () => {
+test("parses expressions as attribute values in quotes", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -354,31 +354,31 @@ test('parses expressions as attribute values in quotes', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'value',
+							type: "svelteExpression",
+							value: "value",
 						},
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses expressions as attribute values in quotes: many expressions', () => {
+test("parses expressions as attribute values in quotes: many expressions", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -387,38 +387,38 @@ test('parses expressions as attribute values in quotes: many expressions', () =>
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'value',
+							type: "svelteExpression",
+							value: "value",
 						},
 					},
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'value',
+							type: "svelteExpression",
+							value: "value",
 						},
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses expressions as attribute values in quotes: many expressions with weird spaces', () => {
+test("parses expressions as attribute values in quotes: many expressions with weird spaces", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -427,50 +427,50 @@ test('parses expressions as attribute values in quotes: many expressions with we
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: '   ',
+						type: "text",
+						value: "   ",
 					},
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'value',
+							type: "svelteExpression",
+							value: "value",
 						},
 					},
 					{
-						type: 'text',
-						value: '   ',
+						type: "text",
+						value: "   ",
 					},
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'value',
+							type: "svelteExpression",
+							value: "value",
 						},
 					},
 					{
-						type: 'text',
-						value: '    ',
+						type: "text",
+						value: "    ",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses complex attribute values: mix of text and expression', () => {
+test("parses complex attribute values: mix of text and expression", () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
@@ -478,47 +478,47 @@ test('parses complex attribute values: mix of text and expression', () => {
 	});
 
 	expect(parsed).toEqual(<Root>{
-		type: 'root',
+		type: "root",
 		children: [
 			{
-				type: 'svelteElement',
-				tagName: 'div',
+				type: "svelteElement",
+				tagName: "div",
 				properties: [
 					{
-						type: 'svelteProperty',
-						name: 'style',
+						type: "svelteProperty",
+						name: "style",
 						value: [
 							{
-								type: 'text',
-								value: 'color:',
+								type: "text",
+								value: "color:",
 							},
 							{
-								type: 'text',
-								value: ' ',
+								type: "text",
+								value: " ",
 							},
 							{
-								type: 'svelteDynamicContent',
+								type: "svelteDynamicContent",
 								expression: {
-									type: 'svelteExpression',
-									value: 'color',
+									type: "svelteExpression",
+									value: "color",
 								},
 							},
 							{
-								type: 'text',
-								value: ';',
+								type: "text",
+								value: ";",
 							},
 						],
 						modifiers: [],
-						shorthand: 'none',
+						shorthand: "none",
 					},
 				],
 				selfClosing: false,
 				children: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'color',
+							type: "svelteExpression",
+							value: "color",
 						},
 					},
 				],
@@ -527,7 +527,7 @@ test('parses complex attribute values: mix of text and expression', () => {
 	});
 });
 
-test('parses shorthand attribute expressions', () => {
+test("parses shorthand attribute expressions", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -536,31 +536,31 @@ test('parses shorthand attribute expressions', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'value',
+				type: "svelteProperty",
+				name: "value",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'value',
+							type: "svelteExpression",
+							value: "value",
 						},
 					},
 				],
-				shorthand: 'expression',
+				shorthand: "expression",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses many shorthand attribute expressions', () => {
+test("parses many shorthand attribute expressions", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -569,104 +569,104 @@ test('parses many shorthand attribute expressions', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'value',
+				type: "svelteProperty",
+				name: "value",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'value',
+							type: "svelteExpression",
+							value: "value",
 						},
 					},
 				],
-				shorthand: 'expression',
+				shorthand: "expression",
 				modifiers: [],
 			},
 			{
-				type: 'svelteProperty',
-				name: 'value_2',
+				type: "svelteProperty",
+				name: "value_2",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'value_2',
+							type: "svelteExpression",
+							value: "value_2",
 						},
 					},
 				],
-				shorthand: 'expression',
+				shorthand: "expression",
 				modifiers: [],
 			},
 			{
-				type: 'svelteProperty',
-				name: 'val',
+				type: "svelteProperty",
+				name: "val",
 				value: [
 					{
-						type: 'text',
-						value: '123',
+						type: "text",
+						value: "123",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 			{
-				type: 'svelteProperty',
-				name: 'value_3',
+				type: "svelteProperty",
+				name: "value_3",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'value_3',
+							type: "svelteExpression",
+							value: "value_3",
 						},
 					},
 				],
-				shorthand: 'expression',
+				shorthand: "expression",
 				modifiers: [],
 			},
 			{
-				type: 'svelteDirective',
-				name: 'on',
-				specifier: 'click',
+				type: "svelteDirective",
+				name: "on",
+				specifier: "click",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'poo',
+							type: "svelteExpression",
+							value: "poo",
 						},
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 			{
-				type: 'svelteProperty',
-				name: 'value_4',
+				type: "svelteProperty",
+				name: "value_4",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'value_4',
+							type: "svelteExpression",
+							value: "value_4",
 						},
 					},
 				],
-				shorthand: 'expression',
+				shorthand: "expression",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses expressions containing slashes', () => {
+test("parses expressions containing slashes", () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
@@ -674,38 +674,38 @@ test('parses expressions containing slashes', () => {
 	});
 
 	expect(parsed).toEqual({
-		type: 'root',
+		type: "root",
 		children: <Array<SvelteElement>>[
 			{
-				type: 'svelteElement',
-				tagName: 'text',
+				type: "svelteElement",
+				tagName: "text",
 				properties: [
 					{
-						type: 'svelteProperty',
-						name: 'x',
+						type: "svelteProperty",
+						name: "x",
 						value: [
 							{
-								type: 'svelteDynamicContent',
+								type: "svelteDynamicContent",
 								expression: {
-									type: 'svelteExpression',
-									value: 'barWidth/2',
+									type: "svelteExpression",
+									value: "barWidth/2",
 								},
 							},
 						],
 						modifiers: [],
-						shorthand: 'none',
+						shorthand: "none",
 					},
 					{
-						type: 'svelteProperty',
-						name: 'y',
+						type: "svelteProperty",
+						name: "y",
 						value: [
 							{
-								type: 'text',
-								value: '-4',
+								type: "text",
+								value: "-4",
 							},
 						],
 						modifiers: [],
-						shorthand: 'none',
+						shorthand: "none",
 					},
 				],
 				selfClosing: true,

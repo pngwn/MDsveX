@@ -1,11 +1,11 @@
-import { test, expect } from 'vitest';
+import { test, expect } from "vitest";
 
-import { Node } from 'svast';
-import { walk } from '../src/walk';
+import { Node } from "svast";
+import { walk } from "../src/walk";
 
-test('walks a single node', () => {
+test("walks a single node", () => {
 	const node = {
-		type: 'hi',
+		type: "hi",
 	};
 
 	let _t;
@@ -15,13 +15,13 @@ test('walks a single node', () => {
 		_n = node;
 	});
 
-	expect(_t).toBe('hi');
+	expect(_t).toBe("hi");
 	expect(_n).toBe(node);
 });
 
-test('Root node should have an undefined parent', () => {
+test("Root node should have an undefined parent", () => {
 	const node = {
-		type: 'hi',
+		type: "hi",
 	};
 
 	let _p;
@@ -32,24 +32,24 @@ test('Root node should have an undefined parent', () => {
 	expect(_p).toBe(undefined);
 });
 
-test('walks child nodes', () => {
+test("walks child nodes", () => {
 	const tree = {
-		type: 'hi',
+		type: "hi",
 		children: [
 			{
-				type: '1',
+				type: "1",
 			},
 			{
-				type: '2',
+				type: "2",
 			},
 			{
-				type: '3',
+				type: "3",
 			},
 			{
-				type: '4',
+				type: "4",
 			},
 			{
-				type: '5',
+				type: "5",
 			},
 		],
 	};
@@ -59,57 +59,57 @@ test('walks child nodes', () => {
 		_t.push(node.type);
 	});
 
-	expect(_t).toEqual(['hi', '1', '2', '3', '4', '5']);
+	expect(_t).toEqual(["hi", "1", "2", "3", "4", "5"]);
 });
 
-test('parent is correctly passed', () => {
+test("parent is correctly passed", () => {
 	const tree = {
-		type: 'hi',
+		type: "hi",
 		children: [
 			{
-				type: '1',
+				type: "1",
 			},
 			{
-				type: '2',
+				type: "2",
 			},
 			{
-				type: '3',
+				type: "3",
 			},
 			{
-				type: '4',
+				type: "4",
 			},
 			{
-				type: '5',
+				type: "5",
 			},
 		],
 	};
 
 	let _p;
 	walk(tree, (node, parent) => {
-		if (node.type === '1') _p = parent;
+		if (node.type === "1") _p = parent;
 	});
 
 	expect(_p).toBe(tree);
 });
 
-test('parent is  correctly passed and modifier nodes are visited', () => {
+test("parent is  correctly passed and modifier nodes are visited", () => {
 	const tree = {
-		type: 'hi',
+		type: "hi",
 		modifiers: [
 			{
-				type: '1',
+				type: "1",
 			},
 			{
-				type: '2',
+				type: "2",
 			},
 			{
-				type: '3',
+				type: "3",
 			},
 			{
-				type: '4',
+				type: "4",
 			},
 			{
-				type: '5',
+				type: "5",
 			},
 		],
 	};
@@ -117,32 +117,32 @@ test('parent is  correctly passed and modifier nodes are visited', () => {
 	let _p;
 	const _t: string[] = [];
 	walk(tree, (node, parent) => {
-		if (node.type === '1') _p = parent;
+		if (node.type === "1") _p = parent;
 		_t.push(node.type);
 	});
 
 	expect(_p).toBe(tree);
-	expect(_t).toEqual(['hi', '1', '2', '3', '4', '5']);
+	expect(_t).toEqual(["hi", "1", "2", "3", "4", "5"]);
 });
 
-test('parent is  correctly passed and value nodes are visited', () => {
+test("parent is  correctly passed and value nodes are visited", () => {
 	const tree = {
-		type: 'hi',
+		type: "hi",
 		value: [
 			{
-				type: '1',
+				type: "1",
 			},
 			{
-				type: '2',
+				type: "2",
 			},
 			{
-				type: '3',
+				type: "3",
 			},
 			{
-				type: '4',
+				type: "4",
 			},
 			{
-				type: '5',
+				type: "5",
 			},
 		],
 	};
@@ -150,32 +150,32 @@ test('parent is  correctly passed and value nodes are visited', () => {
 	let _p;
 	const _t: string[] = [];
 	walk(tree, (node, parent) => {
-		if (node.type === '1') _p = parent;
+		if (node.type === "1") _p = parent;
 		_t.push(node.type);
 	});
 
 	expect(_p).toBe(tree);
-	expect(_t).toEqual(['hi', '1', '2', '3', '4', '5']);
+	expect(_t).toEqual(["hi", "1", "2", "3", "4", "5"]);
 });
 
-test('parent is  correctly passed and property nodes are visited', () => {
+test("parent is  correctly passed and property nodes are visited", () => {
 	const tree = {
-		type: 'hi',
+		type: "hi",
 		properties: [
 			{
-				type: '1',
+				type: "1",
 			},
 			{
-				type: '2',
+				type: "2",
 			},
 			{
-				type: '3',
+				type: "3",
 			},
 			{
-				type: '4',
+				type: "4",
 			},
 			{
-				type: '5',
+				type: "5",
 			},
 		],
 	};
@@ -183,32 +183,32 @@ test('parent is  correctly passed and property nodes are visited', () => {
 	let _p;
 	const _t: string[] = [];
 	walk(tree, (node, parent) => {
-		if (node.type === '1') _p = parent;
+		if (node.type === "1") _p = parent;
 		_t.push(node.type);
 	});
 
 	expect(_p).toBe(tree);
-	expect(_t).toEqual(['hi', '1', '2', '3', '4', '5']);
+	expect(_t).toEqual(["hi", "1", "2", "3", "4", "5"]);
 });
 
-test('parent is  correctly passed and branch nodes are visited', () => {
+test("parent is  correctly passed and branch nodes are visited", () => {
 	const tree = {
-		type: 'hi',
+		type: "hi",
 		branches: [
 			{
-				type: '1',
+				type: "1",
 			},
 			{
-				type: '2',
+				type: "2",
 			},
 			{
-				type: '3',
+				type: "3",
 			},
 			{
-				type: '4',
+				type: "4",
 			},
 			{
-				type: '5',
+				type: "5",
 			},
 		],
 	};
@@ -216,59 +216,59 @@ test('parent is  correctly passed and branch nodes are visited', () => {
 	let _p;
 	const _t: string[] = [];
 	walk(tree, (node, parent) => {
-		if (node.type === '1') _p = parent;
+		if (node.type === "1") _p = parent;
 		_t.push(node.type);
 	});
 
 	expect(_p).toBe(tree);
-	expect(_t).toEqual(['hi', '1', '2', '3', '4', '5']);
+	expect(_t).toEqual(["hi", "1", "2", "3", "4", "5"]);
 });
 
-test('parent is  correctly passed and expression nodes are visited', () => {
+test("parent is  correctly passed and expression nodes are visited", () => {
 	const tree = {
-		type: 'hi',
+		type: "hi",
 		expression: {
-			type: '1',
+			type: "1",
 		},
 	};
 
 	let _p;
 	const _t: string[] = [];
 	walk(tree, (node, parent) => {
-		if (node.type === '1') _p = parent;
+		if (node.type === "1") _p = parent;
 		_t.push(node.type);
 	});
 
 	expect(_p).toBe(tree);
-	expect(_t).toEqual(['hi', '1']);
+	expect(_t).toEqual(["hi", "1"]);
 });
 
-test('parent is  correctly passed and non-array value nodes are visited', () => {
+test("parent is  correctly passed and non-array value nodes are visited", () => {
 	const tree = {
-		type: 'hi',
+		type: "hi",
 		value: {
-			type: '1',
+			type: "1",
 		},
 	};
 
 	let _p;
 	const _t: string[] = [];
 	walk(tree, (node, parent) => {
-		if (node.type === '1') _p = parent;
+		if (node.type === "1") _p = parent;
 		_t.push(node.type);
 	});
 
 	expect(_p).toBe(tree);
-	expect(_t).toEqual(['hi', '1']);
+	expect(_t).toEqual(["hi", "1"]);
 });
 
-test('a more complex node', () => {
-	const leaf = { type: 'leaf' };
-	const has_child = { type: 'haschild1', children: [leaf] };
-	const has_child2 = { type: 'haschild2', children: [has_child] };
-	const has_child3 = { type: 'haschild3', children: [has_child2] };
+test("a more complex node", () => {
+	const leaf = { type: "leaf" };
+	const has_child = { type: "haschild1", children: [leaf] };
+	const has_child2 = { type: "haschild2", children: [has_child] };
+	const has_child3 = { type: "haschild3", children: [has_child2] };
 	const tree = {
-		type: 'hi',
+		type: "hi",
 		children: [has_child3],
 	};
 
@@ -280,16 +280,16 @@ test('a more complex node', () => {
 	});
 
 	expect(_p).toEqual([undefined, tree, has_child3, has_child2, has_child]);
-	expect(_t).toEqual(['hi', 'haschild3', 'haschild2', 'haschild1', 'leaf']);
+	expect(_t).toEqual(["hi", "haschild3", "haschild2", "haschild1", "leaf"]);
 });
 
-test('returning false prevents child nodes from being walked', () => {
-	const leaf = { type: 'leaf' };
-	const leaf2 = { type: 'leaf' };
-	const has_child = { type: 'haschild1', children: [leaf] };
-	const has_child2 = { type: 'haschild2', children: [leaf2] };
+test("returning false prevents child nodes from being walked", () => {
+	const leaf = { type: "leaf" };
+	const leaf2 = { type: "leaf" };
+	const has_child = { type: "haschild1", children: [leaf] };
+	const has_child2 = { type: "haschild2", children: [leaf2] };
 	const tree = {
-		type: 'hi',
+		type: "hi",
 		children: [has_child, has_child2],
 	};
 
@@ -303,5 +303,5 @@ test('returning false prevents child nodes from being walked', () => {
 
 	expect(_p).toEqual([undefined, tree, tree]);
 
-	expect(_t).toEqual(['hi', 'haschild1', 'haschild2']);
+	expect(_t).toEqual(["hi", "haschild1", "haschild2"]);
 });

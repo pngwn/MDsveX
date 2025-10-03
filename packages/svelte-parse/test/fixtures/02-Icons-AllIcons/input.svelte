@@ -1,6 +1,6 @@
 <script>
-  import Card from '@sveltekit/ui/Card';
-  import * as Icons from '@sveltekit/ui/Icons';
+import Card from "@sveltekit/ui/Card";
+import * as Icons from "@sveltekit/ui/Icons";
 </script>
 
 <style>

@@ -1,27 +1,27 @@
 <script>
-  import { classnames } from '../../helpers/classnames';
-  import inlinestyles from '../../helpers/inlineStyles';
-  import options from './options';
+import { classnames } from "../../helpers/classnames";
+import inlinestyles from "../../helpers/inlineStyles";
+import options from "./options";
 
-  export let Icon = null;
-  export let iconPosition = options.iconPosition.ONLY;
-  export let backgroundColour = '#ff9500';
-  export let color = '#ffffff';
+export let Icon = null;
+export let iconPosition = options.iconPosition.ONLY;
+export let backgroundColour = "#ff9500";
+export let color = "#ffffff";
 
-  export let ClassNames;
-  $: {
-    ClassNames = classnames({
-      [`iconPosition-${iconPosition}`]: Icon
-    });
-  }
+export let ClassNames;
+$: {
+	ClassNames = classnames({
+		[`iconPosition-${iconPosition}`]: Icon,
+	});
+}
 
-  export let Styles;
-  $: {
-    Styles = inlinestyles({
-      'background-color': backgroundColour,
-      color
-    });
-  }
+export let Styles;
+$: {
+	Styles = inlinestyles({
+		"background-color": backgroundColour,
+		color,
+	});
+}
 </script>
 
 <style>

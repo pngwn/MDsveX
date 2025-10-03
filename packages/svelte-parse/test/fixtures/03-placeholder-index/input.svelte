@@ -46,12 +46,12 @@
 </div>
 
 <script context="module">
-    import { exclude, eventsBuilder, actions, clsxd } from '../../lib'
-    import { current_component } from 'svelte/internal'
-    import Paragraph from './Paragraph.svelte'
-    import Line from './Line.svelte'
+import { exclude, eventsBuilder, actions, clsxd } from "../../lib";
+import { current_component } from "svelte/internal";
+import Paragraph from "./Paragraph.svelte";
+import Line from "./Line.svelte";
 
-    export { Line, Paragraph }
+export { Line, Paragraph };
 </script>
 
 <script>

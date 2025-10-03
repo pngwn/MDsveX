@@ -1,49 +1,50 @@
 <script>
-  import { onMount } from "svelte";
-  import Repl from "../../components/Repl/Repl.svelte";
-  import { code_1, code_2, code_3, code_4, code_5 } from "../_source.js";
+import { onMount } from "svelte";
+import Repl from "../../components/Repl/Repl.svelte";
+import { code_1, code_2, code_3, code_4, code_5 } from "../_source.js";
 
-  let repl;
-  let checked = "input";
-  let width;
+let repl;
 
-  $: is_mobile = width < 750;
+let checked = "input";
+let width;
 
-  onMount(() => {
-    repl.set({
-      components: [
-        {
-          type: "svx",
-          name: "App",
-          source: code_1,
-        },
-        {
-          type: "svelte",
-          name: "Boinger",
-          source: code_2,
-        },
-        {
-          type: "svx",
-          name: "Section",
-          source: code_3,
-        },
-        {
-          type: "svelte",
-          name: "Count",
-          source: code_4,
-        },
-        {
-          type: "svelte",
-          name: "Seriously",
-          source: code_5,
-        },
-      ],
-    });
-  });
+$: is_mobile = width < 750;
 
-  function handle_select() {
-    checked = checked === "input" ? "output" : "input";
-  }
+onMount(() => {
+	repl.set({
+		components: [
+			{
+				type: "svx",
+				name: "App",
+				source: code_1,
+			},
+			{
+				type: "svelte",
+				name: "Boinger",
+				source: code_2,
+			},
+			{
+				type: "svx",
+				name: "Section",
+				source: code_3,
+			},
+			{
+				type: "svelte",
+				name: "Count",
+				source: code_4,
+			},
+			{
+				type: "svelte",
+				name: "Seriously",
+				source: code_5,
+			},
+		],
+	});
+});
+
+function handle_select() {
+	checked = checked === "input" ? "output" : "input";
+}
 </script>
 
 <style>

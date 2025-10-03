@@ -1,5 +1,5 @@
 <script lang="ts">
-	const { children, ...rest } = $props();
+const { children, ...rest } = $props();
 </script>
 
 <p>am layout</p>

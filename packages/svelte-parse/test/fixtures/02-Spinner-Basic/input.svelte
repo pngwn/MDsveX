@@ -1,5 +1,5 @@
 <script>
-  import Spinner from '@sveltekit/ui/Spinner';
+import Spinner from "@sveltekit/ui/Spinner";
 </script>
 
 <style>

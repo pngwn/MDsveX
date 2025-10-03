@@ -1,8 +1,8 @@
 <script>
-	import { longpress } from './longpress.js';
+import { longpress } from "./longpress.js";
 
-	let pressed = false;
-	let duration = 2000;
+let pressed = false;
+let duration = 2000;
 </script>
 
 <label>

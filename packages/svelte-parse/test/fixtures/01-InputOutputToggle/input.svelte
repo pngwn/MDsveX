@@ -1,5 +1,5 @@
 <script>
-	export let checked;
+export let checked;
 </script>
 
 <style>

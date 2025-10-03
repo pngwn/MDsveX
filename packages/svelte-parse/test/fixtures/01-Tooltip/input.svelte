@@ -1,57 +1,56 @@
 <script>
-  /** Type (color) of the tooltip 
-   * @svelte-prop {String} [type=is-primary]
-   * @values <code>is-white</code>, <code>is-black</code>, <code>is-light</code>, <code>is-dark</code>, <code>is-primary</code>, <code>is-info</code>, <code>is-success</code>, <code>is-warning</code>, <code>is-danger</code>, and any other colors you've set in the <code>$colors</code> list on Sass
-   * */
-  export let type = 'is-primary'
+/** Type (color) of the tooltip
+ * @svelte-prop {String} [type=is-primary]
+ * @values <code>is-white</code>, <code>is-black</code>, <code>is-light</code>, <code>is-dark</code>, <code>is-primary</code>, <code>is-info</code>, <code>is-success</code>, <code>is-warning</code>, <code>is-danger</code>, and any other colors you've set in the <code>$colors</code> list on Sass
+ * */
+export let type = "is-primary";
 
-  /** Whether tooltip is active or not  
-   * @svelte-prop {Boolean} [active=true]
-   * */
-  export let active = true
-  
-  /** Tooltip text  
-   * @svelte-prop {String} label
-   * */
-  export let label = ''
-  
-  /** Tooltip position in relation to the element 
-   * @svelte-prop {String} [position=is-top]
-   * @values <code>is-top</code>, <code>is-bottom</code>, <code>is-top-left</code>, <code>is-top-right</code>, <code>is-bottom-left</code>, <code>is-bottom-right</code>
-   * */
-  export let position = 'is-top'
+/** Whether tooltip is active or not
+ * @svelte-prop {Boolean} [active=true]
+ * */
+export let active = true;
 
-  /** Tooltip will be always active 
-   * @svelte-prop {Boolean} [always=false]
-   * */
-  export let always = false
+/** Tooltip text
+ * @svelte-prop {String} label
+ * */
+export let label = "";
 
-  /** Tooltip will have a little fade animation 
-   * @svelte-prop {Boolean} [animated=false]
-   * */
-  export let animated = false
+/** Tooltip position in relation to the element
+ * @svelte-prop {String} [position=is-top]
+ * @values <code>is-top</code>, <code>is-bottom</code>, <code>is-top-left</code>, <code>is-top-right</code>, <code>is-bottom-left</code>, <code>is-bottom-right</code>
+ * */
+export let position = "is-top";
 
-  /** Tooltip will be square (not rounded corners)  
-   * @svelte-prop {Boolean} [square=false]
-   * */
-  export let square = false
+/** Tooltip will be always active
+ * @svelte-prop {Boolean} [always=false]
+ * */
+export let always = false;
 
-  /** Tooltip slot will have a dashed underline 
-   * @svelte-prop {Boolean} [dashed=false]
-   * */
-  export let dashed = false
+/** Tooltip will have a little fade animation
+ * @svelte-prop {Boolean} [animated=false]
+ * */
+export let animated = false;
 
-  /** Tooltip will be multilined  
-   * @svelte-prop {Boolean} [multilined=false]
-   * */
-  export let multilined = false
+/** Tooltip will be square (not rounded corners)
+ * @svelte-prop {Boolean} [square=false]
+ * */
+export let square = false;
 
-  /** Tooltip multiline size (only works for multilined tooltips) 
-   * @svelte-prop {Boolean} [size=is-medium]
-   * @values <code>is-small</code>, <code>is-medium</code>, <code>is-large</code>
-   * */
-  export let size = 'is-medium'
+/** Tooltip slot will have a dashed underline
+ * @svelte-prop {Boolean} [dashed=false]
+ * */
+export let dashed = false;
 
+/** Tooltip will be multilined
+ * @svelte-prop {Boolean} [multilined=false]
+ * */
+export let multilined = false;
+
+/** Tooltip multiline size (only works for multilined tooltips)
+ * @svelte-prop {Boolean} [size=is-medium]
+ * @values <code>is-small</code>, <code>is-medium</code>, <code>is-large</code>
+ * */
+export let size = "is-medium";
 </script>
 
 <style lang="scss">

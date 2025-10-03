@@ -1,4 +1,4 @@
-import { Node, Position, Point, Parent, Data } from 'unist';
+import { Data, Node, Parent, Point, Position } from "unist";
 export { Node, Position, Point, Parent, Data };
 
 export type SvelteChild =
@@ -17,7 +17,7 @@ export interface SvelteParent extends Parent {
 }
 
 export interface Root extends Parent {
-	type: 'root';
+	type: "root";
 }
 
 export interface BaseSvelteTag<T extends string> extends SvelteParent {
@@ -27,15 +27,15 @@ export interface BaseSvelteTag<T extends string> extends SvelteParent {
 	selfClosing: boolean;
 }
 
-export type SvelteMeta = BaseSvelteTag<'svelteMeta'>;
+export type SvelteMeta = BaseSvelteTag<"svelteMeta">;
 
-export type SvelteElement = BaseSvelteTag<'svelteElement'>;
+export type SvelteElement = BaseSvelteTag<"svelteElement">;
 
-export type SvelteComponent = BaseSvelteTag<'svelteComponent'>;
+export type SvelteComponent = BaseSvelteTag<"svelteComponent">;
 
-export type SvelteScript = BaseSvelteTag<'svelteScript'>;
+export type SvelteScript = BaseSvelteTag<"svelteScript">;
 
-export type SvelteStyle = BaseSvelteTag<'svelteStyle'>;
+export type SvelteStyle = BaseSvelteTag<"svelteStyle">;
 
 export interface Literal<T extends string> extends Node {
 	type: T;
@@ -44,39 +44,39 @@ export interface Literal<T extends string> extends Node {
 export interface BaseProperty<T extends string> extends Node {
 	type: T;
 	name: string;
-	shorthand: 'none' | 'boolean' | 'expression';
+	shorthand: "none" | "boolean" | "expression";
 	value: (Text | SvelteDynamicContent)[];
-	modifiers: Literal<'modifier'>[];
+	modifiers: Literal<"modifier">[];
 }
 
-export type Property = BaseProperty<'svelteProperty'>;
+export type Property = BaseProperty<"svelteProperty">;
 
-export interface Directive extends BaseProperty<'svelteDirective'> {
+export interface Directive extends BaseProperty<"svelteDirective"> {
 	specifier: string;
 }
 
-export type Comment = Literal<'comment'>;
-export type Text = Literal<'text'>;
-export type SvelteExpression = Literal<'svelteExpression'>;
+export type Comment = Literal<"comment">;
+export type Text = Literal<"text">;
+export type SvelteExpression = Literal<"svelteExpression">;
 
 export interface SvelteDynamicContent extends Node {
-	type: 'svelteDynamicContent';
+	type: "svelteDynamicContent";
 	expression: SvelteExpression;
 }
 export interface VoidBlock extends Node {
-	type: 'svelteVoidBlock';
+	type: "svelteVoidBlock";
 	name: string;
 	expression: SvelteExpression;
 }
 
 export interface BranchingBlock extends Node {
-	type: 'svelteBranchingBlock';
+	type: "svelteBranchingBlock";
 	name: string;
 	branches: Branch[];
 }
 
 export interface EachBlock extends SvelteParent {
-	type: 'svelteEachBlock';
+	type: "svelteEachBlock";
 	expression: SvelteExpression;
 	itemName: SvelteExpression;
 	itemIndex?: SvelteExpression;
@@ -84,7 +84,7 @@ export interface EachBlock extends SvelteParent {
 }
 
 export interface Branch extends Parent {
-	type: 'svelteBranch';
+	type: "svelteBranch";
 	name: string;
 	expression: SvelteExpression;
 }

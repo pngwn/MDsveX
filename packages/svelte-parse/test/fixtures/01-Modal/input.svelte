@@ -1,38 +1,36 @@
 <script>
-  import { onDestroy, onMount } from 'svelte'
-  import { chooseAnimation, isEscKey } from '../../utils'
+import { onDestroy, onMount } from "svelte";
+import { chooseAnimation, isEscKey } from "../../utils";
 
-  export let active = true
-  export let animation = 'scale'
-  export let animProps = { start: 1.2 }
-  export let size = ''
-  export let showClose = true
-  export let subComponent = null
-  export let onBody = true
+export let active = true;
+export let animation = "scale";
+export let animProps = { start: 1.2 };
+export let size = "";
+export let showClose = true;
+export let subComponent = null;
+export let onBody = true;
 
-  let modal
+let modal;
 
-  $: _animation = chooseAnimation(animation)
-  $: {
-    if (modal && active && onBody) {
-      modal.parentNode.removeChild(modal)
-      document.body.appendChild(modal)
-    }
-  }
+$: _animation = chooseAnimation(animation);
+$: {
+	if (modal && active && onBody) {
+		modal.parentNode.removeChild(modal);
+		document.body.appendChild(modal);
+	}
+}
 
-  onMount(() => {
-    
-  })
+onMount(() => {});
 
-  function close() {
-    active = false
-  }
+function close() {
+	active = false;
+}
 
-  function keydown(e) {
-    if (active && isEscKey(e)) {
-      close()
-    }
-  }
+function keydown(e) {
+	if (active && isEscKey(e)) {
+		close();
+	}
+}
 </script>
 
 <svelte:window on:keydown={keydown}></svelte:window>

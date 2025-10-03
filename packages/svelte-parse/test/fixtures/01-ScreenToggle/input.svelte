@@ -1,6 +1,6 @@
 <script>
-	export let labels;
-	export let offset = 0;
+export let labels;
+export let offset = 0;
 </script>
 
 <style>

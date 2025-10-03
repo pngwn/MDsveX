@@ -1,15 +1,15 @@
 <script>
-  import Button from '@sveltekit/ui/Button';
-  import Checkbox from '@sveltekit/ui/Checkbox';
+import Button from "@sveltekit/ui/Button";
+import Checkbox from "@sveltekit/ui/Checkbox";
 
-  let isChecked = true;
-  let isDisabled = true;
-      
-  let Label;
-  $: {
-    Label = isChecked ? 'Checked' : 'Unchecked';
-    Label += `-${isDisabled ? 'Disabled' : 'Enabled'}`;
-  }
+let isChecked = true;
+let isDisabled = true;
+
+let Label;
+$: {
+	Label = isChecked ? "Checked" : "Unchecked";
+	Label += `-${isDisabled ? "Disabled" : "Enabled"}`;
+}
 </script>
 
 <style>

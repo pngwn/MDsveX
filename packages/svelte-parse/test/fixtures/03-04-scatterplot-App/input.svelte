@@ -1,6 +1,6 @@
 <script>
-	import Scatterplot from './Scatterplot.svelte';
-	import data from './data.js';
+import Scatterplot from "./Scatterplot.svelte";
+import data from "./data.js";
 </script>
 
 <style>

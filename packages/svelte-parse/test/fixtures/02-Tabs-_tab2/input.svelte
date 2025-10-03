@@ -1,5 +1,5 @@
 <script>
-  export let image = undefined;
+export let image = undefined;
 </script>
 
 <style>

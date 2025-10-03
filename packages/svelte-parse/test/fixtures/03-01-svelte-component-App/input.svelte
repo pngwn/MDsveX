@@ -1,15 +1,15 @@
 <script>
-	import RedThing from './RedThing.svelte';
-	import GreenThing from './GreenThing.svelte';
-	import BlueThing from './BlueThing.svelte';
+import RedThing from "./RedThing.svelte";
+import GreenThing from "./GreenThing.svelte";
+import BlueThing from "./BlueThing.svelte";
 
-	const options = [
-		{ color: 'red',   component: RedThing   },
-		{ color: 'green', component: GreenThing },
-		{ color: 'blue',  component: BlueThing  },
-	];
+const options = [
+	{ color: "red", component: RedThing },
+	{ color: "green", component: GreenThing },
+	{ color: "blue", component: BlueThing },
+];
 
-	let selected = options[0];
+let selected = options[0];
 </script>
 
 <select bind:value={selected}>

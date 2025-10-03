@@ -1,5 +1,5 @@
 <script>
-	let big = false;
+let big = false;
 </script>
 
 <style>

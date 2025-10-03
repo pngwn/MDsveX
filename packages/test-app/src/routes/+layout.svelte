@@ -1,10 +1,14 @@
 <script>
-	import './mono.css';
-	import './prism.css';
-	import './style.css';
+import "./mono.css";
+import "./prism.css";
+import "./style.css";
 
-	import '@fontsource/source-code-pro';
+import "@fontsource/source-code-pro";
 </script>
+
+
+
+
 
 <nav class="menu">
 	<div class="inner">

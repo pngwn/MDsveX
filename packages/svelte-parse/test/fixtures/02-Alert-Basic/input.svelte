@@ -1,8 +1,8 @@
 <script>
-  import Alert, { options } from '@sveltekit/ui/Alert';
-  import InformationIcon from '../../Icons/Information.svelte';
+import Alert, { options } from "@sveltekit/ui/Alert";
+import InformationIcon from "../../Icons/Information.svelte";
 
-  export let warning = 'Warning! Hot food! 🔥🔥🔥🔥';
+export let warning = "Warning! Hot food! 🔥🔥🔥🔥";
 </script>
 
 <div class="row">

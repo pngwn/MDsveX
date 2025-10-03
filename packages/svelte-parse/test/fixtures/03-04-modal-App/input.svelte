@@ -1,7 +1,7 @@
 <script>
-	import Modal from './Modal.svelte';
+import Modal from "./Modal.svelte";
 
-	let showModal = false;
+let showModal = false;
 </script>
 
 <button on:click="{() => showModal = true}">

@@ -13,7 +13,7 @@
 ><slot></slot></div>
 
 <script context="module">
-    import { exclude, clsxd } from '../../lib'
+import { exclude, clsxd } from "../../lib";
 </script>
 
 <script>

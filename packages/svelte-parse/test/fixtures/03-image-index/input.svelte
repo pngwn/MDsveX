@@ -1,22 +1,22 @@
 <script>
-    import { smfloated } from '../../lib/elements/util';
+import { smfloated } from "../../lib/elements/util";
 
-    export let size = '';
-    export let src = '';
-    export let alt = '';
-    export let svg = false;
-    export let parent = true;
-    export let href = '';
-    export let hidden = false;
-    export let disabled = false;
-    export let vertical = '';
-    export let centered = false;
-    export let spaced = '';
-    export let variation = '';
-    export let float = '';
-    export let content = ''; // Only supported alongside of Reveal component
+export let size = "";
+export let src = "";
+export let alt = "";
+export let svg = false;
+export let parent = true;
+export let href = "";
+export let hidden = false;
+export let disabled = false;
+export let vertical = "";
+export let centered = false;
+export let spaced = "";
+export let variation = "";
+export let float = "";
+export let content = ""; // Only supported alongside of Reveal component
 
-    $: floated = smfloated(float)
+$: floated = smfloated(float);
 </script>
 
 {#if (parent || svg) && !content }

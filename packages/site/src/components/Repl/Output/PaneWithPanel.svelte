@@ -1,28 +1,28 @@
 <script>
-  import { spring } from "svelte/motion";
-  import SplitPane from "../SplitPane.svelte";
+import { spring } from "svelte/motion";
+import SplitPane from "../SplitPane.svelte";
 
-  export let panel;
-  export let pos = 50;
-  let previous_pos = Math.min(pos, 70);
+export let panel;
+export let pos = 50;
+let previous_pos = Math.min(pos, 70);
 
-  let max;
+let max;
 
-  // we can't bind to the spring itself, but we
-  // can still use the spring to drive `pos`
-  const driver = spring(pos);
-  $: pos = $driver;
+// we can't bind to the spring itself, but we
+// can still use the spring to drive `pos`
+const driver = spring(pos);
+$: pos = $driver;
 
-  const toggle = () => {
-    driver.set(pos, { hard: true });
+const toggle = () => {
+	driver.set(pos, { hard: true });
 
-    if (pos > 80) {
-      driver.set(previous_pos);
-    } else {
-      previous_pos = pos;
-      driver.set(max);
-    }
-  };
+	if (pos > 80) {
+		driver.set(previous_pos);
+	} else {
+		previous_pos = pos;
+		driver.set(max);
+	}
+};
 </script>
 
 <style>

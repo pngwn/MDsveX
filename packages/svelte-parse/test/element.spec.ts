@@ -1,4 +1,4 @@
-import { test, expect } from 'vitest';
+import { test, expect } from "vitest";
 
 import {
 	SvelteElement,
@@ -8,18 +8,18 @@ import {
 	Comment,
 	Node,
 	Point,
-} from 'svast';
+} from "svast";
 
-import { parseNode, parse } from '../src/main';
-import { void_els } from '../src/void_els';
+import { parseNode, parse } from "../src/main";
+import { void_els } from "../src/void_els";
 
 const childParser: () => [Node[], Point & { index?: number }, number] = () => [
-	[<Node>{ type: 'fake' }],
+	[<Node>{ type: "fake" }],
 	{ line: 1, column: 1, offset: 0, index: 0 },
 	0,
 ];
 
-test('parses a self closing tag without attributes', () => {
+test("parses a self closing tag without attributes", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -28,15 +28,15 @@ test('parses a self closing tag without attributes', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [],
 	});
 });
 
-test('parses self closing elements with no whistespace after tagName', () => {
+test("parses self closing elements with no whistespace after tagName", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -45,15 +45,15 @@ test('parses self closing elements with no whistespace after tagName', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'div',
+		type: "svelteElement",
+		tagName: "div",
 		selfClosing: true,
 		children: [],
 		properties: [],
 	});
 });
 
-test('parses a self closing tag without attributes: space before name', () => {
+test("parses a self closing tag without attributes: space before name", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -62,15 +62,15 @@ test('parses a self closing tag without attributes: space before name', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [],
 	});
 });
 
-test('parses a self closing tag without attributes: space after name', () => {
+test("parses a self closing tag without attributes: space after name", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -79,15 +79,15 @@ test('parses a self closing tag without attributes: space after name', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [],
 	});
 });
 
-test('parses a self closing tag without attributes: space after closeing slash', () => {
+test("parses a self closing tag without attributes: space after closeing slash", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -96,15 +96,15 @@ test('parses a self closing tag without attributes: space after closeing slash',
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [],
 	});
 });
 
-test('parses a self closing component without attributes', () => {
+test("parses a self closing component without attributes", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -113,8 +113,8 @@ test('parses a self closing component without attributes', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteComponent>{
-		type: 'svelteComponent',
-		tagName: 'HelloFriend',
+		type: "svelteComponent",
+		tagName: "HelloFriend",
 		selfClosing: true,
 		children: [],
 		properties: [],
@@ -131,7 +131,7 @@ Object.keys(void_els).forEach((el) => {
 		});
 
 		expect(parsed).toEqual(<SvelteElement>{
-			type: 'svelteElement',
+			type: "svelteElement",
 			tagName: el,
 			selfClosing: true,
 			children: [],
@@ -140,7 +140,7 @@ Object.keys(void_els).forEach((el) => {
 	});
 });
 
-test('parses attribute values containing colons', () => {
+test("parses attribute values containing colons", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -149,28 +149,28 @@ test('parses attribute values containing colons', () => {
 	});
 
 	expect(parsed).toEqual({
-		type: 'svelteElement',
-		tagName: 'a',
+		type: "svelteElement",
+		tagName: "a",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'href',
+				type: "svelteProperty",
+				name: "href",
 				value: [
 					{
-						type: 'text',
-						value: 'https://www.google.com',
+						type: "text",
+						value: "https://www.google.com",
 					},
 				],
 				modifiers: [],
-				shorthand: 'none',
+				shorthand: "none",
 			},
 		],
 	});
 });
 
-test('parses a self closing tag with shorthand boolean attribute', () => {
+test("parses a self closing tag with shorthand boolean attribute", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -179,23 +179,23 @@ test('parses a self closing tag with shorthand boolean attribute', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self closing tag with shorthand boolean attribute: weird spacing', () => {
+test("parses a self closing tag with shorthand boolean attribute: weird spacing", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -204,23 +204,23 @@ test('parses a self closing tag with shorthand boolean attribute: weird spacing'
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self closing tag with shorthand boolean attribute: no trailing space', () => {
+test("parses a self closing tag with shorthand boolean attribute: no trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -229,23 +229,23 @@ test('parses a self closing tag with shorthand boolean attribute: no trailing sp
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a void tag with shorthand boolean attribute: no trailing space', () => {
+test("parses a void tag with shorthand boolean attribute: no trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -254,23 +254,23 @@ test('parses a void tag with shorthand boolean attribute: no trailing space', ()
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with multiple shorthand boolean attributes: trailing space', () => {
+test("parses a self-closing tag with multiple shorthand boolean attributes: trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -279,30 +279,30 @@ test('parses a self-closing tag with multiple shorthand boolean attributes: trai
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 			{
-				type: 'svelteProperty',
-				name: 'goodbye',
+				type: "svelteProperty",
+				name: "goodbye",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with multiple shorthand boolean attributes: weird spacing', () => {
+test("parses a self-closing tag with multiple shorthand boolean attributes: weird spacing", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -311,30 +311,30 @@ test('parses a self-closing tag with multiple shorthand boolean attributes: weir
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 			{
-				type: 'svelteProperty',
-				name: 'goodbye',
+				type: "svelteProperty",
+				name: "goodbye",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with multiple shorthand boolean attributes: no trailing space', () => {
+test("parses a self-closing tag with multiple shorthand boolean attributes: no trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -343,30 +343,30 @@ test('parses a self-closing tag with multiple shorthand boolean attributes: no t
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 			{
-				type: 'svelteProperty',
-				name: 'goodbye',
+				type: "svelteProperty",
+				name: "goodbye",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a void tag with multiple shorthand boolean attributes: no trailing space', () => {
+test("parses a void tag with multiple shorthand boolean attributes: no trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -375,30 +375,30 @@ test('parses a void tag with multiple shorthand boolean attributes: no trailing 
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 			{
-				type: 'svelteProperty',
-				name: 'goodbye',
+				type: "svelteProperty",
+				name: "goodbye",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a void tag with multiple shorthand boolean attributes: trailing space', () => {
+test("parses a void tag with multiple shorthand boolean attributes: trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -407,30 +407,30 @@ test('parses a void tag with multiple shorthand boolean attributes: trailing spa
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 			{
-				type: 'svelteProperty',
-				name: 'goodbye',
+				type: "svelteProperty",
+				name: "goodbye",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with an unquoted attribute: trailing space', () => {
+test("parses a self-closing tag with an unquoted attribute: trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -439,28 +439,28 @@ test('parses a self-closing tag with an unquoted attribute: trailing space', () 
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with an unquoted attribute: no trailing space', () => {
+test("parses a self-closing tag with an unquoted attribute: no trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -469,28 +469,28 @@ test('parses a self-closing tag with an unquoted attribute: no trailing space', 
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a void tag with an unquoted attribute: trailing space', () => {
+test("parses a void tag with an unquoted attribute: trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -499,28 +499,28 @@ test('parses a void tag with an unquoted attribute: trailing space', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with an unquoted attribute: no trailing space', () => {
+test("parses a self-closing tag with an unquoted attribute: no trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -529,28 +529,28 @@ test('parses a self-closing tag with an unquoted attribute: no trailing space', 
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with a double-quoted attribute: trailing space', () => {
+test("parses a self-closing tag with a double-quoted attribute: trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -559,28 +559,28 @@ test('parses a self-closing tag with a double-quoted attribute: trailing space',
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with a double-quoted attribute: no trailing space', () => {
+test("parses a self-closing tag with a double-quoted attribute: no trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -589,28 +589,28 @@ test('parses a self-closing tag with a double-quoted attribute: no trailing spac
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a void tag with a double-quoted attribute: trailing space', () => {
+test("parses a void tag with a double-quoted attribute: trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -619,28 +619,28 @@ test('parses a void tag with a double-quoted attribute: trailing space', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a void tag with a double-quoted attribute: no trailing space', () => {
+test("parses a void tag with a double-quoted attribute: no trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -649,28 +649,28 @@ test('parses a void tag with a double-quoted attribute: no trailing space', () =
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with double-quoted attributes: many values, trailing whitespace', () => {
+test("parses a self-closing tag with double-quoted attributes: many values, trailing whitespace", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -679,36 +679,36 @@ test('parses a self-closing tag with double-quoted attributes: many values, trai
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
 					{
-						type: 'text',
-						value: ' ',
+						type: "text",
+						value: " ",
 					},
 					{
-						type: 'text',
-						value: 'valuetwo',
+						type: "text",
+						value: "valuetwo",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with double-quoted attributes: many values, no trailing whitespace', () => {
+test("parses a self-closing tag with double-quoted attributes: many values, no trailing whitespace", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -717,33 +717,33 @@ test('parses a self-closing tag with double-quoted attributes: many values, no t
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
-					{ type: 'text', value: ' ' },
+					{ type: "text", value: " " },
 					{
-						type: 'text',
-						value: 'valuetwo',
+						type: "text",
+						value: "valuetwo",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a void tag with double-quoted attributes: many values, trailing whitespace', () => {
+test("parses a void tag with double-quoted attributes: many values, trailing whitespace", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -752,33 +752,33 @@ test('parses a void tag with double-quoted attributes: many values, trailing whi
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
-					{ type: 'text', value: ' ' },
+					{ type: "text", value: " " },
 					{
-						type: 'text',
-						value: 'valuetwo',
+						type: "text",
+						value: "valuetwo",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a void tag with double-quoted attributes: many values, no trailing whitespace', () => {
+test("parses a void tag with double-quoted attributes: many values, no trailing whitespace", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -787,33 +787,33 @@ test('parses a void tag with double-quoted attributes: many values, no trailing 
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
-					{ type: 'text', value: ' ' },
+					{ type: "text", value: " " },
 					{
-						type: 'text',
-						value: 'valuetwo',
+						type: "text",
+						value: "valuetwo",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with a single-quoted attribute: trailing space', () => {
+test("parses a self-closing tag with a single-quoted attribute: trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -822,28 +822,28 @@ test('parses a self-closing tag with a single-quoted attribute: trailing space',
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with a single-quoted attribute: no trailing space', () => {
+test("parses a self-closing tag with a single-quoted attribute: no trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -852,28 +852,28 @@ test('parses a self-closing tag with a single-quoted attribute: no trailing spac
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a void tag with a single-quoted attribute: trailing space', () => {
+test("parses a void tag with a single-quoted attribute: trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -882,28 +882,28 @@ test('parses a void tag with a single-quoted attribute: trailing space', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a void tag with a single-quoted attribute: no trailing space', () => {
+test("parses a void tag with a single-quoted attribute: no trailing space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -912,28 +912,28 @@ test('parses a void tag with a single-quoted attribute: no trailing space', () =
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with single-quoted attributes: many values, trailing whitespace', () => {
+test("parses a self-closing tag with single-quoted attributes: many values, trailing whitespace", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -942,33 +942,33 @@ test('parses a self-closing tag with single-quoted attributes: many values, trai
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
-					{ type: 'text', value: ' ' },
+					{ type: "text", value: " " },
 					{
-						type: 'text',
-						value: 'valuetwo',
+						type: "text",
+						value: "valuetwo",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with single-quoted attributes: many values, no trailing whitespace', () => {
+test("parses a self-closing tag with single-quoted attributes: many values, no trailing whitespace", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -977,33 +977,33 @@ test('parses a self-closing tag with single-quoted attributes: many values, no t
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
-					{ type: 'text', value: ' ' },
+					{ type: "text", value: " " },
 					{
-						type: 'text',
-						value: 'valuetwo',
+						type: "text",
+						value: "valuetwo",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a void tag with single-quoted attributes: many values, trailing whitespace', () => {
+test("parses a void tag with single-quoted attributes: many values, trailing whitespace", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1012,33 +1012,33 @@ test('parses a void tag with single-quoted attributes: many values, trailing whi
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
-					{ type: 'text', value: ' ' },
+					{ type: "text", value: " " },
 					{
-						type: 'text',
-						value: 'valuetwo',
+						type: "text",
+						value: "valuetwo",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a void tag with single-quoted attributes: many values, no trailing whitespace', () => {
+test("parses a void tag with single-quoted attributes: many values, no trailing whitespace", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1047,33 +1047,33 @@ test('parses a void tag with single-quoted attributes: many values, no trailing 
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [
 					{
-						type: 'text',
-						value: 'value',
+						type: "text",
+						value: "value",
 					},
-					{ type: 'text', value: ' ' },
+					{ type: "text", value: " " },
 					{
-						type: 'text',
-						value: 'valuetwo',
+						type: "text",
+						value: "valuetwo",
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a void tag with a directive', () => {
+test("parses a void tag with a directive", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1082,24 +1082,24 @@ test('parses a void tag with a directive', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'hello',
-				specifier: 'world',
+				type: "svelteDirective",
+				name: "hello",
+				specifier: "world",
 				value: [],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with a directive', () => {
+test("parses a self-closing tag with a directive", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1108,24 +1108,24 @@ test('parses a self-closing tag with a directive', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'hello',
-				specifier: 'world',
+				type: "svelteDirective",
+				name: "hello",
+				specifier: "world",
 				value: [],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a self-closing tag with two directives', () => {
+test("parses a self-closing tag with two directives", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1134,32 +1134,32 @@ test('parses a self-closing tag with two directives', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'hello',
-				specifier: 'world',
+				type: "svelteDirective",
+				name: "hello",
+				specifier: "world",
 				value: [],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 			{
-				type: 'svelteDirective',
-				name: 'goodbye',
-				specifier: 'friends',
+				type: "svelteDirective",
+				name: "goodbye",
+				specifier: "friends",
 				value: [],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a tag with a directive an a directive value: double-quoted', () => {
+test("parses a tag with a directive an a directive value: double-quoted", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1168,24 +1168,24 @@ test('parses a tag with a directive an a directive value: double-quoted', () => 
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'hello',
-				specifier: 'world',
-				value: [{ type: 'text', value: 'cheese' }],
-				shorthand: 'none',
+				type: "svelteDirective",
+				name: "hello",
+				specifier: "world",
+				value: [{ type: "text", value: "cheese" }],
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a tag with a directive an a directive value: double-quoted, two values', () => {
+test("parses a tag with a directive an a directive value: double-quoted, two values", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1194,28 +1194,28 @@ test('parses a tag with a directive an a directive value: double-quoted, two val
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'hello',
-				specifier: 'world',
+				type: "svelteDirective",
+				name: "hello",
+				specifier: "world",
 				value: [
-					{ type: 'text', value: 'cheese' },
-					{ type: 'text', value: ' ' },
-					{ type: 'text', value: 'strings' },
+					{ type: "text", value: "cheese" },
+					{ type: "text", value: " " },
+					{ type: "text", value: "strings" },
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a tag with a directive an a directive value: single-quoted, two values', () => {
+test("parses a tag with a directive an a directive value: single-quoted, two values", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1224,28 +1224,28 @@ test('parses a tag with a directive an a directive value: single-quoted, two val
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'hello',
-				specifier: 'world',
+				type: "svelteDirective",
+				name: "hello",
+				specifier: "world",
 				value: [
-					{ type: 'text', value: 'cheese' },
-					{ type: 'text', value: ' ' },
-					{ type: 'text', value: 'strings' },
+					{ type: "text", value: "cheese" },
+					{ type: "text", value: " " },
+					{ type: "text", value: "strings" },
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a tag with a directive an a directive value: single-quoted, two values, many spaces', () => {
+test("parses a tag with a directive an a directive value: single-quoted, two values, many spaces", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1254,28 +1254,28 @@ test('parses a tag with a directive an a directive value: single-quoted, two val
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'hello',
-				specifier: 'world',
+				type: "svelteDirective",
+				name: "hello",
+				specifier: "world",
 				value: [
-					{ type: 'text', value: 'cheese' },
-					{ type: 'text', value: '      ' },
-					{ type: 'text', value: 'strings' },
+					{ type: "text", value: "cheese" },
+					{ type: "text", value: "      " },
+					{ type: "text", value: "strings" },
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a tag with a directive an a directive value: unquoted', () => {
+test("parses a tag with a directive an a directive value: unquoted", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1284,24 +1284,24 @@ test('parses a tag with a directive an a directive value: unquoted', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'hello',
-				specifier: 'world',
-				value: [{ type: 'text', value: 'cheese' }],
-				shorthand: 'none',
+				type: "svelteDirective",
+				name: "hello",
+				specifier: "world",
+				value: [{ type: "text", value: "cheese" }],
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a tag with a directive with modifiers', () => {
+test("parses a tag with a directive with modifiers", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1310,24 +1310,24 @@ test('parses a tag with a directive with modifiers', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'hello',
-				specifier: 'world',
+				type: "svelteDirective",
+				name: "hello",
+				specifier: "world",
 				value: [],
-				shorthand: 'none',
-				modifiers: [{ type: 'modifier', value: 'modifierval' }],
+				shorthand: "none",
+				modifiers: [{ type: "modifier", value: "modifierval" }],
 			},
 		],
 	});
 });
 
-test('parses a tag with a directive with modifier but no value', () => {
+test("parses a tag with a directive with modifier but no value", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1336,31 +1336,31 @@ test('parses a tag with a directive with modifier but no value', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'a',
+		type: "svelteElement",
+		tagName: "a",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'on',
-				specifier: 'click',
+				type: "svelteDirective",
+				name: "on",
+				specifier: "click",
 				value: [],
-				shorthand: 'none',
-				modifiers: [{ type: 'modifier', value: 'preventDefault' }],
+				shorthand: "none",
+				modifiers: [{ type: "modifier", value: "preventDefault" }],
 			},
 			{
-				type: 'svelteProperty',
-				name: 'booleanAttribute',
+				type: "svelteProperty",
+				name: "booleanAttribute",
 				value: [],
-				shorthand: 'boolean',
+				shorthand: "boolean",
 				modifiers: [],
 			},
 		],
 	});
 });
 
-test('parses a tag with a directive with multiple modifiers', () => {
+test("parses a tag with a directive with multiple modifiers", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1369,27 +1369,27 @@ test('parses a tag with a directive with multiple modifiers', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'hello',
-				specifier: 'world',
+				type: "svelteDirective",
+				name: "hello",
+				specifier: "world",
 				value: [],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [
-					{ type: 'modifier', value: 'modifierval' },
-					{ type: 'modifier', value: 'modifierval2' },
+					{ type: "modifier", value: "modifierval" },
+					{ type: "modifier", value: "modifierval2" },
 				],
 			},
 		],
 	});
 });
 
-test('parses a tag with a directive with modifiers', () => {
+test("parses a tag with a directive with modifiers", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1398,23 +1398,23 @@ test('parses a tag with a directive with modifiers', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [],
-				shorthand: 'none',
-				modifiers: [{ type: 'modifier', value: 'modifierval' }],
+				shorthand: "none",
+				modifiers: [{ type: "modifier", value: "modifierval" }],
 			},
 		],
 	});
 });
 
-test('parses a tag with a directive with multiple modifiers', () => {
+test("parses a tag with a directive with multiple modifiers", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1423,26 +1423,26 @@ test('parses a tag with a directive with multiple modifiers', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'hello',
+				type: "svelteProperty",
+				name: "hello",
 				value: [],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [
-					{ type: 'modifier', value: 'modifierval' },
-					{ type: 'modifier', value: 'modifierval2' },
+					{ type: "modifier", value: "modifierval" },
+					{ type: "modifier", value: "modifierval2" },
 				],
 			},
 		],
 	});
 });
 
-test('parses a tag with an attribute with multiple modifiers and a value', () => {
+test("parses a tag with an attribute with multiple modifiers and a value", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1451,27 +1451,27 @@ test('parses a tag with an attribute with multiple modifiers and a value', () =>
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'hello',
-				specifier: 'world',
-				value: [{ type: 'text', value: 'someval' }],
-				shorthand: 'none',
+				type: "svelteDirective",
+				name: "hello",
+				specifier: "world",
+				value: [{ type: "text", value: "someval" }],
+				shorthand: "none",
 				modifiers: [
-					{ type: 'modifier', value: 'modifierval' },
-					{ type: 'modifier', value: 'modifierval2' },
+					{ type: "modifier", value: "modifierval" },
+					{ type: "modifier", value: "modifierval2" },
 				],
 			},
 		],
 	});
 });
 
-test('parses a tag with an attribute with multiple modifiers and a value: weird spacing', () => {
+test("parses a tag with an attribute with multiple modifiers and a value: weird spacing", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1480,27 +1480,27 @@ test('parses a tag with an attribute with multiple modifiers and a value: weird 
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'hello',
-				specifier: 'world',
-				value: [{ type: 'text', value: 'someval' }],
-				shorthand: 'none',
+				type: "svelteDirective",
+				name: "hello",
+				specifier: "world",
+				value: [{ type: "text", value: "someval" }],
+				shorthand: "none",
 				modifiers: [
-					{ type: 'modifier', value: 'modifierval' },
-					{ type: 'modifier', value: 'modifierval2' },
+					{ type: "modifier", value: "modifierval" },
+					{ type: "modifier", value: "modifierval2" },
 				],
 			},
 		],
 	});
 });
 
-test('parses a tag with an attribute with multiple modifiers and a value: weird spacing, double-quotes', () => {
+test("parses a tag with an attribute with multiple modifiers and a value: weird spacing, double-quotes", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1509,27 +1509,27 @@ test('parses a tag with an attribute with multiple modifiers and a value: weird 
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'hello',
-				specifier: 'world',
-				value: [{ type: 'text', value: 'someval' }],
-				shorthand: 'none',
+				type: "svelteDirective",
+				name: "hello",
+				specifier: "world",
+				value: [{ type: "text", value: "someval" }],
+				shorthand: "none",
 				modifiers: [
-					{ type: 'modifier', value: 'modifierval' },
-					{ type: 'modifier', value: 'modifierval2' },
+					{ type: "modifier", value: "modifierval" },
+					{ type: "modifier", value: "modifierval2" },
 				],
 			},
 		],
 	});
 });
 
-test('parses a tag with an attribute with multiple modifiers and a value: weird spacing and newlines', () => {
+test("parses a tag with an attribute with multiple modifiers and a value: weird spacing and newlines", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1545,27 +1545,27 @@ test('parses a tag with an attribute with multiple modifiers and a value: weird 
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'input',
+		type: "svelteElement",
+		tagName: "input",
 		selfClosing: true,
 		children: [],
 		properties: [
 			{
-				type: 'svelteDirective',
-				name: 'hello',
-				specifier: 'world',
-				value: [{ type: 'text', value: 'someval' }],
-				shorthand: 'none',
+				type: "svelteDirective",
+				name: "hello",
+				specifier: "world",
+				value: [{ type: "text", value: "someval" }],
+				shorthand: "none",
 				modifiers: [
-					{ type: 'modifier', value: 'modifierval' },
-					{ type: 'modifier', value: 'modifierval2' },
+					{ type: "modifier", value: "modifierval" },
+					{ type: "modifier", value: "modifierval2" },
 				],
 			},
 		],
 	});
 });
 
-test('parses text', () => {
+test("parses text", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1574,12 +1574,12 @@ test('parses text', () => {
 	});
 
 	expect(parsed).toEqual(<Text>{
-		type: 'text',
-		value: 'hail',
+		type: "text",
+		value: "hail",
 	});
 });
 
-test('parses quoted attribute expressions with space', () => {
+test("parses quoted attribute expressions with space", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1588,22 +1588,22 @@ test('parses quoted attribute expressions with space', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteElement>{
-		type: 'svelteElement',
-		tagName: 'button',
+		type: "svelteElement",
+		tagName: "button",
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'disabled',
+				type: "svelteProperty",
+				name: "disabled",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: '!first || !last',
+							type: "svelteExpression",
+							value: "!first || !last",
 						},
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
@@ -1612,7 +1612,7 @@ test('parses quoted attribute expressions with space', () => {
 	});
 });
 
-test('parses svelte special elements', () => {
+test("parses svelte special elements", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1621,22 +1621,22 @@ test('parses svelte special elements', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteMeta>{
-		type: 'svelteMeta',
-		tagName: 'options',
+		type: "svelteMeta",
+		tagName: "options",
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'tag',
+				type: "svelteProperty",
+				name: "tag",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'null',
+							type: "svelteExpression",
+							value: "null",
 						},
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
@@ -1645,7 +1645,7 @@ test('parses svelte special elements', () => {
 	});
 });
 
-test('parses svelte special elements', () => {
+test("parses svelte special elements", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1654,22 +1654,22 @@ test('parses svelte special elements', () => {
 	});
 
 	expect(parsed).toEqual(<SvelteMeta>{
-		type: 'svelteMeta',
-		tagName: 'options',
+		type: "svelteMeta",
+		tagName: "options",
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'tag',
+				type: "svelteProperty",
+				name: "tag",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'null',
+							type: "svelteExpression",
+							value: "null",
 						},
 					},
 				],
-				shorthand: 'none',
+				shorthand: "none",
 				modifiers: [],
 			},
 		],
@@ -1678,7 +1678,7 @@ test('parses svelte special elements', () => {
 	});
 });
 
-test('parses html comments: no spaces', () => {
+test("parses html comments: no spaces", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1687,12 +1687,12 @@ test('parses html comments: no spaces', () => {
 	});
 
 	expect(parsed).toEqual(<Comment>{
-		type: 'comment',
-		value: 'comment text',
+		type: "comment",
+		value: "comment text",
 	});
 });
 
-test('parses html comments: spaces and newlines', () => {
+test("parses html comments: spaces and newlines", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1707,14 +1707,14 @@ test('parses html comments: spaces and newlines', () => {
 	});
 
 	expect(parsed).toEqual(<Comment>{
-		type: 'comment',
-		value: '\n\n\n\t\tcomment text  \n\t\t\n\t\t\n',
+		type: "comment",
+		value: "\n\n\n\t\tcomment text  \n\t\t\n\t\t\n",
 	});
 });
 
 //
 
-test('parses shorthand expressions: failing test case', () => {
+test("parses shorthand expressions: failing test case", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -1723,41 +1723,41 @@ test('parses shorthand expressions: failing test case', () => {
 	});
 
 	expect(parsed).toEqual({
-		type: 'svelteComponent',
-		tagName: 'Avatar',
+		type: "svelteComponent",
+		tagName: "Avatar",
 		properties: [
 			{
-				type: 'svelteProperty',
-				name: 'alt',
+				type: "svelteProperty",
+				name: "alt",
 				modifiers: [],
-				shorthand: 'none',
+				shorthand: "none",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'initials',
+							type: "svelteExpression",
+							value: "initials",
 						},
 					},
 				],
 			},
 			{
-				type: 'svelteProperty',
-				name: 'size',
+				type: "svelteProperty",
+				name: "size",
 				modifiers: [],
-				shorthand: 'expression',
+				shorthand: "expression",
 				value: [
 					{
-						type: 'svelteDynamicContent',
+						type: "svelteDynamicContent",
 						expression: {
-							type: 'svelteExpression',
-							value: 'size',
+							type: "svelteExpression",
+							value: "size",
 						},
 					},
 				],
 			},
 		],
-		children: [{ type: 'fake' }],
+		children: [{ type: "fake" }],
 		selfClosing: false,
 	});
 });

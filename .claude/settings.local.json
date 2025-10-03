@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(npm install)",
+      "Bash(npm run bench:*)",
+      "Bash(node:*)",
+      "Bash(mkdir:*)"
+    ],
+    "deny": []
+  }
+}

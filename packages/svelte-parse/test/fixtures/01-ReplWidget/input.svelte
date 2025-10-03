@@ -1,41 +1,41 @@
 <script>
-	import Repl from '@sveltejs/svelte-repl';
-	import { onMount } from 'svelte';
+import Repl from "@sveltejs/svelte-repl";
+import { onMount } from "svelte";
 
-	import { process_example } from '../../utils/examples';
-	import InputOutputToggle from './InputOutputToggle.svelte';
+import { process_example } from "../../utils/examples";
+import InputOutputToggle from "./InputOutputToggle.svelte";
 
-	export let version = '3';
-	export let gist = null;
-	export let example = null;
-	export let embedded = false;
+export let version = "3";
+export let gist = null;
+export let example = null;
+export let embedded = false;
 
-	let repl;
-	let name = 'loading...';
-	let width = process.browser
-		? window.innerWidth - 32
-		: 1000;
+let repl;
+let name = "loading...";
+let width = process.browser ? window.innerWidth - 32 : 1000;
 
-	let checked = false;
+let checked = false;
 
-	onMount(() => {
-		if (version !== 'local') {
-			fetch(`https://unpkg.com/svelte@${version}/package.json`)
-				.then(r => r.json())
-				.then(pkg => {
-					version = pkg.version;
-				});
-		}
+onMount(() => {
+	if (version !== "local") {
+		fetch(`https://unpkg.com/svelte@${version}/package.json`)
+			.then((r) => r.json())
+			.then((pkg) => {
+				version = pkg.version;
+			});
+	}
 
-		if (gist) {
-			fetch(`repl/${gist}.json`).then(r => r.json()).then(data => {
+	if (gist) {
+		fetch(`repl/${gist}.json`)
+			.then((r) => r.json())
+			.then((data) => {
 				const { description, files } = data;
 
 				name = description;
 
 				const components = Object.keys(files)
-					.map(file => {
-						const dot = file.lastIndexOf('.');
+					.map((file) => {
+						const dot = file.lastIndexOf(".");
 						if (!~dot) return;
 
 						const source = files[file].content;
@@ -43,43 +43,44 @@
 						return {
 							name: file.slice(0, dot),
 							type: file.slice(dot + 1),
-							source
+							source,
 						};
 					})
-					.filter(x => x.type === 'svelte' || x.type === 'js')
+					.filter((x) => x.type === "svelte" || x.type === "js")
 					.sort((a, b) => {
-						if (a.name === 'App' && a.type === 'svelte') return -1;
-						if (b.name === 'App' && b.type === 'svelte') return 1;
+						if (a.name === "App" && a.type === "svelte") return -1;
+						if (b.name === "App" && b.type === "svelte") return 1;
 
-						if (a.type !== b.type) return a.type === 'svelte' ? -1 : 1;
+						if (a.type !== b.type) return a.type === "svelte" ? -1 : 1;
 
 						return a.name < b.name ? -1 : 1;
 					});
 
 				repl.set({ components });
 			});
-		} else if (example) {
-			fetch(`examples/${example}.json`).then(async response => {
-				if (response.ok) {
-					const data = await response.json();
+	} else if (example) {
+		fetch(`examples/${example}.json`).then(async (response) => {
+			if (response.ok) {
+				const data = await response.json();
 
-					repl.set({
-						components: process_example(data.files)
-					});
-				}
-			});
-		}
-	});
+				repl.set({
+					components: process_example(data.files),
+				});
+			}
+		});
+	}
+});
 
-	$: if (embedded) document.title = `${name} • Svelte REPL`;
+$: if (embedded) document.title = `${name} • Svelte REPL`;
 
-	$: svelteUrl = process.browser && version === 'local' ?
-		`${location.origin}/repl/local` :
-		`https://unpkg.com/svelte@${version}`;
+$: svelteUrl =
+	process.browser && version === "local"
+		? `${location.origin}/repl/local`
+		: `https://unpkg.com/svelte@${version}`;
 
-	const rollupUrl = `https://unpkg.com/rollup@1/dist/rollup.browser.js`;
+const rollupUrl = `https://unpkg.com/rollup@1/dist/rollup.browser.js`;
 
-	$: mobile = width < 560;
+$: mobile = width < 560;
 </script>
 
 <style>

@@ -1,5 +1,5 @@
 <script>
-	import { title, comicSans, box } from './styles.js';
+import { title, comicSans, box } from "./styles.js";
 </script>
 
 <div class="{title} {comicSans}">

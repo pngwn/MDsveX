@@ -1,15 +1,16 @@
 <script>
-  import * as transitions from 'svelte/transition'
+import * as transitions from "svelte/transition";
 
-  export let open = true
-  export let animation = 'slide'
+export let open = true;
+export let animation = "slide";
 
-  let _animation = transitions[animation]
-  $: _animation = typeof animation === 'function' ? animation : transitions[animation]
+let _animation = transitions[animation];
+$: _animation =
+	typeof animation === "function" ? animation : transitions[animation];
 
-  function toggle() {
-    open = !open
-  }
+function toggle() {
+	open = !open;
+}
 </script>
 
 <div class="collapse">

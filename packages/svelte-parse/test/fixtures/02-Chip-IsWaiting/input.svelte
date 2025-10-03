@@ -1,18 +1,18 @@
 <script>
-  import Chip from '@sveltekit/ui/Chip';
+import Chip from "@sveltekit/ui/Chip";
 
-  let isWaiting = false;
-  let isDisabled = false;
+let isWaiting = false;
+let isDisabled = false;
 
-  function handleRemove(event) {
-    isWaiting = true;
-    isDisabled = true;
+function handleRemove(event) {
+	isWaiting = true;
+	isDisabled = true;
 
-    setTimeout(() => {
-      isWaiting = false;
-      isDisabled = false;
-    }, 3000)
-  }
+	setTimeout(() => {
+		isWaiting = false;
+		isDisabled = false;
+	}, 3000);
+}
 </script>
 
 <div class="row">

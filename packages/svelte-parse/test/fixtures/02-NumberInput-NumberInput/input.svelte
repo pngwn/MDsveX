@@ -1,156 +1,155 @@
 <script>
-  import { beforeUpdate, onDestroy, onMount } from 'svelte';
-  import { classnames } from '../../helpers/classnames';
-  import isFinite from 'lodash/isFinite';
+import { beforeUpdate, onDestroy, onMount } from "svelte";
+import { classnames } from "../../helpers/classnames";
+import isFinite from "lodash/isFinite";
 
-  import ArrowUpIcon from '../Icons/ArrowUp.svelte';
-  import ArrowDownIcon from '../Icons/ArrowDown.svelte';
+import ArrowUpIcon from "../Icons/ArrowUp.svelte";
+import ArrowDownIcon from "../Icons/ArrowDown.svelte";
 
-  const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER || Math.pow(2, 53) - 1;
-  const MIN_SAFE_INTEGER = Number.MIN_SAFE_INTEGER || -MAX_SAFE_INTEGER;
-  const KEYDOWN_DELAY_MS = 500;
-  
-  let input = undefined;
-  let lastValidValue = undefined;
-  let keydownInterval = undefined;
-  
-  export let isDisabled = false;
-  export let value = 0;
-  export let placeholder = '';
-  export let step = 1;
-  export let min = MIN_SAFE_INTEGER;
-  export let max = MAX_SAFE_INTEGER;
-  export let precision = 0;
+const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER || Math.pow(2, 53) - 1;
+const MIN_SAFE_INTEGER = Number.MIN_SAFE_INTEGER || -MAX_SAFE_INTEGER;
+const KEYDOWN_DELAY_MS = 500;
 
-  function isValidValue(value) {
-    return isFinite(value) || /^-?[0-9.]+$/.test(value);
-  }
+let input = undefined;
+let lastValidValue = undefined;
+let keydownInterval = undefined;
 
-  function isInRange(value, min, max) {
-    return value >= min && value <= max;
-  }
+export let isDisabled = false;
+export let value = 0;
+export let placeholder = "";
+export let step = 1;
+export let min = MIN_SAFE_INTEGER;
+export let max = MAX_SAFE_INTEGER;
+export let precision = 0;
 
-  function makeNumber(value) {
-    return isValidValue(value) ? parseFloat(value) : value;
-  }
+function isValidValue(value) {
+	return isFinite(value) || /^-?[0-9.]+$/.test(value);
+}
 
-  export let ClassNames;
-  $: {
-    ClassNames = classnames(
-      {
-        isDisabled
-      }
-    );
-  }
+function isInRange(value, min, max) {
+	return value >= min && value <= max;
+}
 
-  
-  function formatValue() {
-    value = parseFloat(value).toFixed(precision);
-  }
+function makeNumber(value) {
+	return isValidValue(value) ? parseFloat(value) : value;
+}
 
-  function onKeydown(event) {
-    clearInterval(keydownInterval);
+export let ClassNames;
+$: {
+	ClassNames = classnames({
+		isDisabled,
+	});
+}
 
-    const UP = 38;
-    const DOWN = 40;
+function formatValue() {
+	value = parseFloat(value).toFixed(precision);
+}
 
-    if (event.keyCode === UP) {
-      event.preventDefault();
-      keydownInterval = setInterval(updateValue(step), KEYDOWN_DELAY_MS);
-    }
+function onKeydown(event) {
+	clearInterval(keydownInterval);
 
-    if (event.keyCode === DOWN) {
-      event.preventDefault();
-      keydownInterval = setInterval(updateValue(-step), KEYDOWN_DELAY_MS);
-    }
-  }
+	const UP = 38;
+	const DOWN = 40;
 
-  function updateValue(updateBy) {
-    const newValue = makeNumber(value) + updateBy;
+	if (event.keyCode === UP) {
+		event.preventDefault();
+		keydownInterval = setInterval(updateValue(step), KEYDOWN_DELAY_MS);
+	}
 
-    value = isInRange(newValue, min, max) ? newValue : value;
+	if (event.keyCode === DOWN) {
+		event.preventDefault();
+		keydownInterval = setInterval(updateValue(-step), KEYDOWN_DELAY_MS);
+	}
+}
 
-    const inputLength = input.value.length;
-    input.setSelectionRange(inputLength, inputLength);
-  }
+function updateValue(updateBy) {
+	const newValue = makeNumber(value) + updateBy;
 
-  function onDownClick() {
-    updateValue(-step);
-  }
+	value = isInRange(newValue, min, max) ? newValue : value;
 
-  function onUpClick() {
-    updateValue(step);
-  }
+	const inputLength = input.value.length;
+	input.setSelectionRange(inputLength, inputLength);
+}
 
-  function setToLastValid() {
-    value = parseFloat(lastValidValue);
-  }
+function onDownClick() {
+	updateValue(-step);
+}
 
-  onMount(() => {
-    lastValidValue = parseFloat(value);
-    keydownInterval = 0;
-    value = lastValidValue;
-  });
+function onUpClick() {
+	updateValue(step);
+}
 
-  let value_prev = undefined;
-  let precision_prev = undefined;
-  let step_prev = undefined;
-  let min_prev = undefined;
-  let max_prev = undefined;
+function setToLastValid() {
+	value = parseFloat(lastValidValue);
+}
 
-  beforeUpdate(() => {
+onMount(() => {
+	lastValidValue = parseFloat(value);
+	keydownInterval = 0;
+	value = lastValidValue;
+});
 
-    if (value !== value_prev) {
-      lastValidValue = isValidValue(value) && isInRange(value, min, max) ? value : lastValidValue;
-      formatValue();
-    }
+let value_prev = undefined;
+let precision_prev = undefined;
+let step_prev = undefined;
+let min_prev = undefined;
+let max_prev = undefined;
 
-    if ((precision !== precision_prev) || (step !== step_prev)) {
-      formatValue();
-    }
+beforeUpdate(() => {
+	if (value !== value_prev) {
+		lastValidValue =
+			isValidValue(value) && isInRange(value, min, max)
+				? value
+				: lastValidValue;
+		formatValue();
+	}
 
-    if (min !== min_prev) {
-      const currentValue = parseFloat(value);
+	if (precision !== precision_prev || step !== step_prev) {
+		formatValue();
+	}
 
-      if (currentValue < min) {
-        lastValidValue = min;
+	if (min !== min_prev) {
+		const currentValue = parseFloat(value);
 
-        value = lastValidValue;
+		if (currentValue < min) {
+			lastValidValue = min;
 
-        formatValue();
-      }
+			value = lastValidValue;
 
-      if (max < min) {
-        max = min;
-      }
-    }
+			formatValue();
+		}
 
-    if (max !== max_prev) {
-      const currentValue = parseFloat(value);
+		if (max < min) {
+			max = min;
+		}
+	}
 
-      if (currentValue > max) {
-        lastValidValue = max;
+	if (max !== max_prev) {
+		const currentValue = parseFloat(value);
 
-        value = lastValidValue;
+		if (currentValue > max) {
+			lastValidValue = max;
 
-        formatValue();
-      }
+			value = lastValidValue;
 
-      if (max < min) {
-        min = max;
-      }
-    }
+			formatValue();
+		}
 
-    value_prev = value;
-    precision_prev = precision;
-    step_prev = step;
-    min_prev = min;
-    max_prev = max;
-  });
+		if (max < min) {
+			min = max;
+		}
+	}
 
-  onDestroy(() => {
-    clearInterval(keydownInterval);
-  });
+	value_prev = value;
+	precision_prev = precision;
+	step_prev = step;
+	min_prev = min;
+	max_prev = max;
+});
+
+onDestroy(() => {
+	clearInterval(keydownInterval);
+});
 </script>
 
 

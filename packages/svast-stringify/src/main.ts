@@ -1,61 +1,61 @@
-import {
-	Node,
-	Text,
-	Root,
-	VoidBlock,
-	Property,
-	SvelteElement,
+import type {
+	BranchingBlock,
 	Directive,
 	Literal,
-	SvelteParent,
-	BranchingBlock,
+	Node,
+	Property,
+	Root,
 	SvelteDynamicContent,
-} from 'svast';
+	SvelteElement,
+	SvelteParent,
+	Text,
+	VoidBlock,
+} from "svast";
 
 function render_attr_values(values: (Text | SvelteDynamicContent)[]): string {
-	let value = '';
+	let value = "";
 
 	for (let index = 0; index < values.length; index++) {
-		if (values[index].type === 'text') {
+		if (values[index].type === "text") {
 			value += values[index].value;
 		}
 
-		if (values[index].type === 'svelteDynamicContent') {
-			value +=
-				'{' + (values[index] as SvelteDynamicContent).expression.value + '}';
+		if (values[index].type === "svelteDynamicContent") {
+			value += `{${(values[index] as SvelteDynamicContent).expression.value}}`;
 		}
 	}
 
 	return value;
 }
 
-function render_modifiers(modifiers: Literal<'modifier'>[]): string {
-	let mod_string = '';
+function render_modifiers(modifiers: Literal<"modifier">[]): string {
+	let mod_string = "";
 
 	for (let index = 0; index < modifiers.length; index++) {
-		mod_string += '|' + modifiers[index].value;
+		mod_string += `|${modifiers[index].value}`;
 	}
 
 	return mod_string;
 }
 
 function render_props(props: (Property | Directive)[]): string {
-	let attrs = '\n';
+	let attrs = "\n";
 
 	for (let index = 0; index < props.length; index++) {
-		if (props[index].type === 'svelteProperty') {
-			if (props[index].shorthand === 'boolean') {
-				attrs += props[index].name + '\n';
+		if (props[index].type === "svelteProperty") {
+			if (props[index].shorthand === "boolean") {
+				attrs += `${props[index].name}\n`;
 				continue;
-			} else if (props[index].shorthand === 'expression') {
-				attrs += '{' + props[index].name + '}\n';
+			}
+			if (props[index].shorthand === "expression") {
+				attrs += `{${props[index].name}}\n`;
 				continue;
 			}
 			attrs += props[index].name;
 		}
 
-		if (props[index].type === 'svelteDirective') {
-			attrs += props[index].name + ':' + props[index].specifier;
+		if (props[index].type === "svelteDirective") {
+			attrs += props[index].name + ":" + props[index].specifier;
 		}
 
 		if (props[index].modifiers.length > 0) {
@@ -66,7 +66,7 @@ function render_props(props: (Property | Directive)[]): string {
 			attrs += '="' + render_attr_values(props[index].value) + '"';
 		}
 
-		attrs += '\n';
+		attrs += "\n";
 	}
 	return attrs;
 }
@@ -78,90 +78,90 @@ const handlers: Record<string, Handler> = {
 		return (node as Text).value;
 	},
 	svelteDynamicContent(node) {
-		return '{' + (node as SvelteDynamicContent).expression.value + '}';
+		return "{" + (node as SvelteDynamicContent).expression.value + "}";
 	},
 	svelteVoidBlock(node) {
-		return '{@' + node.name + ' ' + (node as VoidBlock).expression.value + '}';
+		return "{@" + node.name + " " + (node as VoidBlock).expression.value + "}";
 	},
 	svelteElement(node, compile_children) {
 		if (node.selfClosing === true) {
 			return (
-				'<' +
+				"<" +
 				node.tagName +
-				' ' +
+				" " +
 				((node as SvelteElement).properties.length > 0
 					? render_props((node as SvelteElement).properties)
-					: '') +
-				'/>'
+					: "") +
+				"/>"
 			);
 		} else {
 			return (
-				'<' +
+				"<" +
 				node.tagName +
-				' ' +
+				" " +
 				((node as SvelteElement).properties.length > 0
 					? render_props((node as SvelteElement).properties)
-					: '') +
-				'>' +
+					: "") +
+				">" +
 				((node as SvelteParent).children.length > 0
 					? compile_children((node as SvelteParent).children)
-					: '') +
-				'</' +
+					: "") +
+				"</" +
 				node.tagName +
-				'>'
+				">"
 			);
 		}
 	},
 	svelteMeta(node, compile_children) {
 		if (node.selfClosing === true) {
 			return (
-				'<svelte:' +
+				"<svelte:" +
 				node.tagName +
-				' ' +
+				" " +
 				((node as SvelteElement).properties.length > 0
 					? render_props((node as SvelteElement).properties)
-					: '') +
-				'/>'
+					: "") +
+				"/>"
 			);
 		} else {
 			return (
-				'<svelte:' +
+				"<svelte:" +
 				node.tagName +
-				' ' +
+				" " +
 				((node as SvelteElement).properties.length > 0
 					? render_props((node as SvelteElement).properties)
-					: '') +
-				'>' +
+					: "") +
+				">" +
 				((node as SvelteParent).children.length > 0
 					? compile_children((node as SvelteParent).children)
-					: '') +
-				'</svelte:' +
+					: "") +
+				"</svelte:" +
 				node.tagName +
-				'>'
+				">"
 			);
 		}
 	},
 	svelteBranchingBlock(node, compile_children) {
-		let branches = '';
+		let branches = "";
 		for (
 			let index = 0;
 			index < (node as BranchingBlock).branches.length;
 			index++
 		) {
 			if (index === 0) {
-				branches += '{#';
+				branches += "{#";
 			} else {
-				branches += '{:';
+				branches += "{:";
 			}
 
 			branches +=
 				(node as BranchingBlock).branches[index].name +
-				' ' +
+				" " +
 				(node as BranchingBlock).branches[index].expression.value +
-				'}' +
+				"}" +
 				compile_children((node as BranchingBlock).branches[index].children);
 		}
-		return branches + '{/' + node.name + '}';
+		return branches + "{/" + node.name + "}";
 	},
 	svelteComponent(node, compile_children) {
 		return this.svelteElement(node, compile_children);
@@ -178,13 +178,13 @@ type CompileChildren = (nodes: Node[]) => string;
 
 function compile_node(
 	node: Node,
-	compile_children: CompileChildren
+	compile_children: CompileChildren,
 ): string | undefined {
 	return handlers[node.type](node, compile_children);
 }
 
 function compile_children(children: Node[]) {
-	let str = '';
+	let str = "";
 	for (let index = 0; index < children.length; index++) {
 		str += compile_node(children[index], compile_children);
 	}
@@ -192,11 +192,11 @@ function compile_children(children: Node[]) {
 }
 
 function compile(tree: Root): string {
-	if (tree.type === 'root') {
+	if (tree.type === "root") {
 		return compile_children(tree.children);
 	} else {
 		throw new Error(
-			`A svast tree must have a single 'root' node but instead got "${tree.type}"`
+			`A svast tree must have a single 'root' node but instead got "${tree.type}"`,
 		);
 	}
 }

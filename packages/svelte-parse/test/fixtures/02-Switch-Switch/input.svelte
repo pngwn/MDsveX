@@ -1,27 +1,25 @@
 <script>
-  import { classnames } from '../../helpers/classnames';
-  import Spinner from '../Spinner/Spinner.svelte';
+import { classnames } from "../../helpers/classnames";
+import Spinner from "../Spinner/Spinner.svelte";
 
-  export let isActive = false;
-  export let isDisabled = false;
-  export let isWaiting = false;
+export let isActive = false;
+export let isDisabled = false;
+export let isWaiting = false;
 
-  export let ClassNames;
-  $: {
-    ClassNames = classnames(
-      {
-        isActive,
-        isDisabled,
-        isWaiting
-      }
-    );
-  }
+export let ClassNames;
+$: {
+	ClassNames = classnames({
+		isActive,
+		isDisabled,
+		isWaiting,
+	});
+}
 
-  function onClick() {
-    if (!isDisabled && !isWaiting) {
-      isActive = !isActive;
-    }
-  }
+function onClick() {
+	if (!isDisabled && !isWaiting) {
+		isActive = !isActive;
+	}
+}
 </script>
 
 <style>

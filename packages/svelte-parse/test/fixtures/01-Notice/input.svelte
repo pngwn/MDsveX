@@ -1,15 +1,15 @@
 <script context="module">
-  const allowedProps = ['active', 'position', 'duration'];
+const allowedProps = ["active", "position", "duration"];
 
-  export function filterProps(props) {
-    const newProps = {}
+export function filterProps(props) {
+	const newProps = {};
 
-    Object.keys(props).forEach(key => {
-      if (allowedProps.includes(key)) newProps[key] = props[key]
-    })
+	Object.keys(props).forEach((key) => {
+		if (allowedProps.includes(key)) newProps[key] = props[key];
+	});
 
-    return newProps
-  }
+	return newProps;
+}
 </script>
 
 <script>

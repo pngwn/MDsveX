@@ -1,5 +1,5 @@
 <script>
-  import NumberInput from '@sveltekit/ui/NumberInput';
+import NumberInput from "@sveltekit/ui/NumberInput";
 </script>
 
 <NumberInput></NumberInput>

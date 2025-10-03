@@ -1,53 +1,53 @@
 <script>
-  import { createEventDispatcher } from 'svelte'
-  import { fade } from 'svelte/transition'
-  import Icon from './Icon.svelte'
+import { createEventDispatcher } from "svelte";
+import { fade } from "svelte/transition";
+import Icon from "./Icon.svelte";
 
-  export let type = ''
-  export let active = true
-  export let title = ''
-  export let showClose = true
-  export let autoClose = false
-  export let duration = 5000
-  export let size = ''
-  export let iconSize = ''
-  export let ariaCloseLabel = 'delete'
+export let type = "";
+export let active = true;
+export let title = "";
+export let showClose = true;
+export let autoClose = false;
+export let duration = 5000;
+export let size = "";
+export let iconSize = "";
+export let ariaCloseLabel = "delete";
 
-  let icon
+let icon;
 
-  const dispatch = createEventDispatcher()
+const dispatch = createEventDispatcher();
 
-  if (autoClose) {
-    setTimeout(() => {
-      close = true
-    }, duration)
-  }
+if (autoClose) {
+	setTimeout(() => {
+		close = true;
+	}, duration);
+}
 
-  $: newIconSize = iconSize || size || 'is-large'
+$: newIconSize = iconSize || size || "is-large";
 
-  $: {
-    switch (type) {
-      case 'is-info':
-        icon = 'info-circle'
-        break
-      case 'is-success':
-        icon = 'check-circle'
-        break
-      case 'is-warning':
-        icon = 'exclamation-triangle'
-        break
-      case 'is-danger':
-        icon = 'exclamation-circle'
-        break
-      default:
-        icon = null
-    }
-  }
+$: {
+	switch (type) {
+		case "is-info":
+			icon = "info-circle";
+			break;
+		case "is-success":
+			icon = "check-circle";
+			break;
+		case "is-warning":
+			icon = "exclamation-triangle";
+			break;
+		case "is-danger":
+			icon = "exclamation-circle";
+			break;
+		default:
+			icon = null;
+	}
+}
 
-  function close() {
-    active = false
-    dispatch('close', active)
-  }
+function close() {
+	active = false;
+	dispatch("close", active);
+}
 </script>
 
 <style>

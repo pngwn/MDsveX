@@ -1,9 +1,9 @@
 <script>
-  import DatePicker from '@sveltekit/ui/DatePicker';
+import DatePicker from "@sveltekit/ui/DatePicker";
 
-  let date = '2/1/2021';
-  let minDate = '2/1/2021'
-  let maxDate = '20/1/2021'
+let date = "2/1/2021";
+let minDate = "2/1/2021";
+let maxDate = "20/1/2021";
 </script>
 
 <div class="gridRow">

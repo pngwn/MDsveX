@@ -1,5 +1,5 @@
 <script>
-	import AudioPlayer, { stopAll } from './AudioPlayer.svelte';
+import AudioPlayer, { stopAll } from "./AudioPlayer.svelte";
 </script>
 
 <button on:click={stopAll}>

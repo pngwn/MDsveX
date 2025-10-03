@@ -1,54 +1,54 @@
 <script>
-	// These values are bound to properties of the video
-	let time = 0;
-	let duration;
-	let paused = true;
+// These values are bound to properties of the video
+let time = 0;
+let duration;
+let paused = true;
 
-	let showControls = true;
-	let showControlsTimeout;
+let showControls = true;
+let showControlsTimeout;
 
-	function handleMousemove(e) {
-		// Make the controls visible, but fade out after
-		// 2.5 seconds of inactivity
-		clearTimeout(showControlsTimeout);
-		showControlsTimeout = setTimeout(() => showControls = false, 2500);
-		showControls = true;
+function handleMousemove(e) {
+	// Make the controls visible, but fade out after
+	// 2.5 seconds of inactivity
+	clearTimeout(showControlsTimeout);
+	showControlsTimeout = setTimeout(() => (showControls = false), 2500);
+	showControls = true;
 
-		if (!(e.buttons & 1)) return; // mouse not down
-		if (!duration) return; // video not loaded yet
+	if (!(e.buttons & 1)) return; // mouse not down
+	if (!duration) return; // video not loaded yet
 
-		const { left, right } = this.getBoundingClientRect();
-		time = duration * (e.clientX - left) / (right - left);
+	const { left, right } = this.getBoundingClientRect();
+	time = (duration * (e.clientX - left)) / (right - left);
+}
+
+function handleMousedown(e) {
+	// we can't rely on the built-in click event, because it fires
+	// after a drag — we have to listen for clicks ourselves
+
+	function handleMouseup() {
+		if (paused) e.target.play();
+		else e.target.pause();
+		cancel();
 	}
 
-	function handleMousedown(e) {
-		// we can't rely on the built-in click event, because it fires
-		// after a drag — we have to listen for clicks ourselves
-
-		function handleMouseup() {
-			if (paused) e.target.play();
-			else e.target.pause();
-			cancel();
-		}
-
-		function cancel() {
-			e.target.removeEventListener('mouseup', handleMouseup);
-		}
-
-		e.target.addEventListener('mouseup', handleMouseup);
-
-		setTimeout(cancel, 200);
+	function cancel() {
+		e.target.removeEventListener("mouseup", handleMouseup);
 	}
 
-	function format(seconds) {
-		if (isNaN(seconds)) return '...';
+	e.target.addEventListener("mouseup", handleMouseup);
 
-		const minutes = Math.floor(seconds / 60);
-		seconds = Math.floor(seconds % 60);
-		if (seconds < 10) seconds = '0' + seconds;
+	setTimeout(cancel, 200);
+}
 
-		return `${minutes}:${seconds}`;
-	}
+function format(seconds) {
+	if (isNaN(seconds)) return "...";
+
+	const minutes = Math.floor(seconds / 60);
+	seconds = Math.floor(seconds % 60);
+	if (seconds < 10) seconds = "0" + seconds;
+
+	return `${minutes}:${seconds}`;
+}
 </script>
 
 <style>

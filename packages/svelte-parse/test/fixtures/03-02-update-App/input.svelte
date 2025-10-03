@@ -1,54 +1,60 @@
 <script>
-	import Eliza from 'elizabot';
-	import { beforeUpdate, afterUpdate } from 'svelte';
+import Eliza from "elizabot";
+import { beforeUpdate, afterUpdate } from "svelte";
 
-	let div;
-	let autoscroll;
+let div;
+let autoscroll;
 
-	beforeUpdate(() => {
-		autoscroll = div && (div.offsetHeight + div.scrollTop) > (div.scrollHeight - 20);
-	});
+beforeUpdate(() => {
+	autoscroll = div && div.offsetHeight + div.scrollTop > div.scrollHeight - 20;
+});
 
-	afterUpdate(() => {
-		if (autoscroll) div.scrollTo(0, div.scrollHeight);
-	});
+afterUpdate(() => {
+	if (autoscroll) div.scrollTo(0, div.scrollHeight);
+});
 
-	const eliza = new Eliza();
+const eliza = new Eliza();
 
-	let comments = [
-		{ author: 'eliza', text: eliza.getInitial() }
-	];
+let comments = [{ author: "eliza", text: eliza.getInitial() }];
 
-	function handleKeydown(event) {
-		if (event.key === 'Enter') {
-			const text = event.target.value;
-			if (!text) return;
+function handleKeydown(event) {
+	if (event.key === "Enter") {
+		const text = event.target.value;
+		if (!text) return;
 
-			comments = comments.concat({
-				author: 'user',
-				text
-			});
+		comments = comments.concat({
+			author: "user",
+			text,
+		});
 
-			event.target.value = '';
+		event.target.value = "";
 
-			const reply = eliza.transform(text);
+		const reply = eliza.transform(text);
 
-			setTimeout(() => {
+		setTimeout(
+			() => {
 				comments = comments.concat({
-					author: 'eliza',
-					text: '...',
-					placeholder: true
+					author: "eliza",
+					text: "...",
+					placeholder: true,
 				});
 
-				setTimeout(() => {
-					comments = comments.filter(comment => !comment.placeholder).concat({
-						author: 'eliza',
-						text: reply
-					});
-				}, 500 + Math.random() * 500);
-			}, 200 + Math.random() * 200);
-		}
+				setTimeout(
+					() => {
+						comments = comments
+							.filter((comment) => !comment.placeholder)
+							.concat({
+								author: "eliza",
+								text: reply,
+							});
+					},
+					500 + Math.random() * 500,
+				);
+			},
+			200 + Math.random() * 200,
+		);
 	}
+}
 </script>
 
 <style>

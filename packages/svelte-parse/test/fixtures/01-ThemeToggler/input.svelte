@@ -1,28 +1,28 @@
 <script>
-	// preserve the focus ring for keyboard users because a11y,
-	// but hide for mouse users because fugly
-	let nice = false;
+// preserve the focus ring for keyboard users because a11y,
+// but hide for mouse users because fugly
+let nice = false;
 
-	let theme = 'light';
+let theme = "light";
+
+try {
+	theme = localStorage.theme;
+} catch (e) {
+	// ignore — could be SSR, or e.g. Firefox with restrictive permissions
+}
+
+const toggle = () => {
+	const { classList } = document.querySelector("html");
+	classList.remove(theme);
+	theme = theme === "light" ? "dark" : "light";
+	classList.add(theme);
 
 	try {
-		theme = localStorage.theme;
+		localStorage.theme = theme;
 	} catch (e) {
-		// ignore — could be SSR, or e.g. Firefox with restrictive permissions
+		// ignore
 	}
-
-	const toggle = () => {
-		const { classList } = document.querySelector('html');
-		classList.remove(theme);
-		theme = theme === 'light' ? 'dark' : 'light';
-		classList.add(theme);
-
-		try {
-			localStorage.theme = theme;
-		} catch (e) {
-			// ignore
-		}
-	};
+};
 </script>
 
 <button

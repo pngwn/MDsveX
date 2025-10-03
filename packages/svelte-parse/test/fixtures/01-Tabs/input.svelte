@@ -1,72 +1,78 @@
 <script>
-  import { setContext, getContext, onMount, onDestroy, createEventDispatcher } from 'svelte'
-  import { get, writable } from 'svelte/store'
-  import Icon from '../Icon.svelte'
+import {
+	setContext,
+	getContext,
+	onMount,
+	onDestroy,
+	createEventDispatcher,
+} from "svelte";
+import { get, writable } from "svelte/store";
+import Icon from "../Icon.svelte";
 
-  const dispatch = createEventDispatcher()
+const dispatch = createEventDispatcher();
 
-  /** Index of the active tab (zero-based)
-   * @svelte-prop {Number} [value=0]
-   * */
-  export let value = 0
+/** Index of the active tab (zero-based)
+ * @svelte-prop {Number} [value=0]
+ * */
+export let value = 0;
 
-  /** Size of tabs
-   * @svelte-prop {String} [size]
-   * @values $$sizes$$
-   * */
-  export let size = ''
+/** Size of tabs
+ * @svelte-prop {String} [size]
+ * @values $$sizes$$
+ * */
+export let size = "";
 
-  /** Position of tabs list, horizontally. By default they're positioned to the left
-   * @svelte-prop {String} [position]
-   * @values is-centered, is-right
-   * */
-  export let position = ''
+/** Position of tabs list, horizontally. By default they're positioned to the left
+ * @svelte-prop {String} [position]
+ * @values is-centered, is-right
+ * */
+export let position = "";
 
-  /** Style of tabs
-   * @svelte-prop {String} [style]
-   * @values is-boxed, is-toggle, is-toggle-rounded, is-fullwidth
-   * */
-  export let style = ''
+/** Style of tabs
+ * @svelte-prop {String} [style]
+ * @values is-boxed, is-toggle, is-toggle-rounded, is-fullwidth
+ * */
+export let style = "";
 
-  export let expanded = false
+export let expanded = false;
 
-  let activeTab = 0
-  $: changeTab(value)
+let activeTab = 0;
+$: changeTab(value);
 
-  const tabs = writable([])
+const tabs = writable([]);
 
-  const tabConfig = {
-    activeTab,
-    tabs,
-  }
+const tabConfig = {
+	activeTab,
+	tabs,
+};
 
-  setContext('tabs', tabConfig)
+setContext("tabs", tabConfig);
 
-  // This only runs as tabs are added/removed
-  const unsubscribe = tabs.subscribe(ts => {
-    if (ts.length > 0 && ts.length > value - 1) {
-      ts.forEach(t => t.deactivate())
-      if (ts[value]) ts[value].activate()
-    }
-  })
+// This only runs as tabs are added/removed
+const unsubscribe = tabs.subscribe((ts) => {
+	if (ts.length > 0 && ts.length > value - 1) {
+		ts.forEach((t) => t.deactivate());
+		if (ts[value]) ts[value].activate();
+	}
+});
 
-  function changeTab(tabNumber) {
-    const ts = get(tabs)
-    // NOTE: change this back to using changeTab instead of activate/deactivate once transitions/animations are working
-    if (ts[activeTab]) ts[activeTab].deactivate()
-    if (ts[tabNumber]) ts[tabNumber].activate()
-    // ts.forEach(t => t.changeTab({ from: activeTab, to: tabNumber }))
-    activeTab = tabConfig.activeTab = tabNumber
-    dispatch('activeTabChanged', tabNumber)
-  }
+function changeTab(tabNumber) {
+	const ts = get(tabs);
+	// NOTE: change this back to using changeTab instead of activate/deactivate once transitions/animations are working
+	if (ts[activeTab]) ts[activeTab].deactivate();
+	if (ts[tabNumber]) ts[tabNumber].activate();
+	// ts.forEach(t => t.changeTab({ from: activeTab, to: tabNumber }))
+	activeTab = tabConfig.activeTab = tabNumber;
+	dispatch("activeTabChanged", tabNumber);
+}
 
-  onMount(() => {
-    changeTab(activeTab)
-  })
+onMount(() => {
+	changeTab(activeTab);
+});
 
-  onDestroy(() => {
-    unsubscribe()
-  })
+onDestroy(() => {
+	unsubscribe();
+});
 </script>
 
 <style lang="scss">

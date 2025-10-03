@@ -1,9 +1,9 @@
 <script>
-  import Chip from '@sveltekit/ui/Chip';
+import Chip from "@sveltekit/ui/Chip";
 
-  function handleRemove(event) {
-    console.log('event :', event);
-  }
+function handleRemove(event) {
+	console.log("event :", event);
+}
 </script>
 
 <div class="row">

@@ -1,10 +1,10 @@
 <script>
-	import Comment from './Comment.svelte';
+import Comment from "./Comment.svelte";
 
-	export let item;
-	export let returnTo;
+export let item;
+export let returnTo;
 
-	$: url = !item.domain ? `https://news.ycombinator.com/${item.url}` : item.url;
+$: url = !item.domain ? `https://news.ycombinator.com/${item.url}` : item.url;
 </script>
 
 <style>

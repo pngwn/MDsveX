@@ -1,21 +1,21 @@
 <script>
-	import { beforeUpdate } from "svelte";
-	import Summary from "./Summary.svelte";
+import { beforeUpdate } from "svelte";
+import Summary from "./Summary.svelte";
 
-	const PAGE_SIZE = 20;
+const PAGE_SIZE = 20;
 
-	export let page;
+export let page;
 
-	let items;
-	let offset;
+let items;
+let offset;
 
-	$: fetch(`https://node-hnapi.herokuapp.com/news?page=${page}`)
-		.then(r => r.json())
-		.then(data => {
-			items = data;
-			offset = PAGE_SIZE * (page - 1);
-			window.scrollTo(0, 0);
-		});
+$: fetch(`https://node-hnapi.herokuapp.com/news?page=${page}`)
+	.then((r) => r.json())
+	.then((data) => {
+		items = data;
+		offset = PAGE_SIZE * (page - 1);
+		window.scrollTo(0, 0);
+	});
 </script>
 
 <style>

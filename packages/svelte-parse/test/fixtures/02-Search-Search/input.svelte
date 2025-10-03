@@ -1,34 +1,33 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+import { createEventDispatcher } from "svelte";
 
-  const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-  import _debounce from 'lodash/debounce';
-  import CloseIcon from '../Icons/Close.svelte';
-  import SearchIcon from '../Icons/Search.svelte';
+import _debounce from "lodash/debounce";
+import CloseIcon from "../Icons/Close.svelte";
+import SearchIcon from "../Icons/Search.svelte";
 
-  import TextInput from '../TextInput/TextInput.svelte';
+import TextInput from "../TextInput/TextInput.svelte";
 
-  export let placeholder = '';
-  export let value = undefined;
-  export let debounce = false;
+export let placeholder = "";
+export let value = undefined;
+export let debounce = false;
 
-  const debounced = _debounce((targetValue) => {
-    value = targetValue;
-  }, 300);
+const debounced = _debounce((targetValue) => {
+	value = targetValue;
+}, 300);
 
-  function onInput(event) {
-    const targetValue = event.detail.target.value;
-    if (debounce) debounced(targetValue);
-    else value = targetValue;
-  }
+function onInput(event) {
+	const targetValue = event.detail.target.value;
+	if (debounce) debounced(targetValue);
+	else value = targetValue;
+}
 
-  function onClearIconClick() {
-    if (debounce) debounced.cancel();
-    value = '';
-    dispatch('clear');
-  }
-
+function onClearIconClick() {
+	if (debounce) debounced.cancel();
+	value = "";
+	dispatch("clear");
+}
 </script>
 
 <style>

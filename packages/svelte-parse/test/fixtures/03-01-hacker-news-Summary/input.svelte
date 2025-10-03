@@ -1,14 +1,15 @@
 <script>
-	export let item;
-	export let i;
-	export let offset;
+export let item;
+export let i;
+export let offset;
 
-	function comment_text() {
-		const c = item.comments_count;
-		return `${c} ${c === 1 ? 'comment' : 'comments'}`;
-	}
+function comment_text() {
+	const c = item.comments_count;
+	return `${c} ${c === 1 ? "comment" : "comments"}`;
+}
 
-	$: url = item.type === "ask" ? `https://news.ycombinator.com/${item.url}` : item.url;
+$: url =
+	item.type === "ask" ? `https://news.ycombinator.com/${item.url}` : item.url;
 </script>
 
 <style>

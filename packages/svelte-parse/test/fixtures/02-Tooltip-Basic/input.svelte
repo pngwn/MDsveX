@@ -1,6 +1,6 @@
 <script>
-  import Button from '@sveltekit/ui/Button';
-  import Tooltip from '@sveltekit/ui/Tooltip';
+import Button from "@sveltekit/ui/Button";
+import Tooltip from "@sveltekit/ui/Tooltip";
 </script>
 
 <Tooltip title="Hello world">

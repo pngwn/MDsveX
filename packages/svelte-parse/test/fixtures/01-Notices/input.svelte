@@ -1,5 +1,5 @@
 <script context="module">
-  export const notices = {}
+export const notices = {};
 </script>
 
 <script>

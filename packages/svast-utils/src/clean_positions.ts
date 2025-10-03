@@ -1,5 +1,5 @@
-import { Node, SvelteExpression } from 'svast';
-import { walk } from './walk';
+import type { Node } from "svast";
+import { walk } from "./walk";
 
 export function clean_positions(node: Node): Node {
 	return walk(node, (node) => {

@@ -1,5 +1,5 @@
 <script>
-	export let animals;
+export let animals;
 </script>
 
 {#each animals as [key, value, ...rest]}

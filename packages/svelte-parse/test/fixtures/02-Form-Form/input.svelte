@@ -1,52 +1,52 @@
 <script>
-  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
-  import _validate from 'validate.js';
+import { createEventDispatcher, onDestroy, onMount } from "svelte";
+import _validate from "validate.js";
 
-  const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-  export let constraints = null;
-  export let errors = null;
-  export let isInvalid = true;
+export let constraints = null;
+export let errors = null;
+export let isInvalid = true;
 
-  let form = undefined;
-  let inputs = [];
+let form = undefined;
+let inputs = [];
 
-  function onSubmit(event) {
-    event.preventDefault();
-    validate();
-    dispatch('submit', event);
-  }
+function onSubmit(event) {
+	event.preventDefault();
+	validate();
+	dispatch("submit", event);
+}
 
-  function validate() {
-    errors = _validate(form, constraints);
-    isInvalid = !!errors
-  }
+function validate() {
+	errors = _validate(form, constraints);
+	isInvalid = !!errors;
+}
 
-  function getInputs() {
-    if (!constraints || !form) return;
+function getInputs() {
+	if (!constraints || !form) return;
 
-    const formInputs = form.querySelectorAll('input, select, textarea');
-    let i = 0;
+	const formInputs = form.querySelectorAll("input, select, textarea");
+	let i = 0;
 
-    for (i; i < formInputs.length; i += 1) {
-      const input = formInputs[i];
-      if (constraints[input.name]) {
-        inputs.push(input);
-        input.addEventListener('input', validate);
-      }
-    }
-  }
+	for (i; i < formInputs.length; i += 1) {
+		const input = formInputs[i];
+		if (constraints[input.name]) {
+			inputs.push(input);
+			input.addEventListener("input", validate);
+		}
+	}
+}
 
-  onMount(() => {
-    getInputs();
-    validate();
-  });
+onMount(() => {
+	getInputs();
+	validate();
+});
 
-  onDestroy(() => {
-    inputs.forEach((input) => {
-      input.removeEventListener('input', validate);
-    });
-  });
+onDestroy(() => {
+	inputs.forEach((input) => {
+		input.removeEventListener("input", validate);
+	});
+});
 </script>
 
 <style>

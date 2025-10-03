@@ -1,11 +1,11 @@
 <script>
-  import Button from '@sveltekit/ui/Button';
-  import Form from '@sveltekit/ui/Form';
-  import TextInput from '@sveltekit/ui/TextInput';
+import Button from "@sveltekit/ui/Button";
+import Form from "@sveltekit/ui/Form";
+import TextInput from "@sveltekit/ui/TextInput";
 
-  function onSubmit(event) {
-    console.log('event :', event);
-  }
+function onSubmit(event) {
+	console.log("event :", event);
+}
 </script>
 
 <style>

@@ -1,7 +1,7 @@
 <script>
-	let name = 'world';
+let name = "world";
 
-	// trailing line comment
+// trailing line comment
 </script>
 
 <h1>Hello {name}!</h1>

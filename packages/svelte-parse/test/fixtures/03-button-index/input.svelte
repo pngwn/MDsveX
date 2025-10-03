@@ -32,52 +32,58 @@
 {/if}
 
 <script>
-    import { listen } from 'svelte/internal';
-    import { smfloated, smlabeled } from '../../lib/elements/util';
+import { listen } from "svelte/internal";
+import { smfloated, smlabeled } from "../../lib/elements/util";
 
-    import Icon from '../icon/index.svelte';
+import Icon from "../icon/index.svelte";
 
-    export let active = false;
-    export let emphasis = '';
-    export let color = '';
-    export let animation = '';
-    export let loading = '';
-    export let size = '';
-    export let inverted = false;
-    export let basic = false;
-    export let tertiary = false;
-    export let compact = false;
-    export let toggle = '';
-    export let fluid = false;
-    export let float = '';
-    export let attached = '';
-    export let label = '';
-    export let positive = false;
-    export let negative = false;
-    export let circular = false;
-    export let icon = '';
+export let active = false;
+export let emphasis = "";
+export let color = "";
+export let animation = "";
+export let loading = "";
+export let size = "";
+export let inverted = false;
+export let basic = false;
+export let tertiary = false;
+export let compact = false;
+export let toggle = "";
+export let fluid = false;
+export let float = "";
+export let attached = "";
+export let label = "";
+export let positive = false;
+export let negative = false;
+export let circular = false;
+export let icon = "";
 
-    $: floated = smfloated(float)
-    $: labeled = smlabeled(label)
+$: floated = smfloated(float);
+$: labeled = smlabeled(label);
 
-    function toggleState(e) {
-        if(toggle) {
-            active = !active;
-        }
-    }
+function toggleState(e) {
+	if (toggle) {
+		active = !active;
+	}
+}
 
-    function activate(node, ev) {
-        let _unlistener = typeof ev === 'string' && ev.startsWith('on:') ? listen(node, ev.substring(3), toggleState) : null;
-        
-        return {
-            update(ev) {
-                _unlistener = _unlistener ? _unlistener() : null
-                _unlistener = typeof ev === 'string' && ev.startsWith('on:') ? listen(node, ev.substring(3), toggleState) : null;
-            },
+function activate(node, ev) {
+	let _unlistener =
+		typeof ev === "string" && ev.startsWith("on:")
+			? listen(node, ev.substring(3), toggleState)
+			: null;
 
-            destroy() {
-                if(_unlistener) _unlistener();
-            }
-        }
-    }
+	return {
+		update(ev) {
+			_unlistener = _unlistener ? _unlistener() : null;
+			_unlistener =
+				typeof ev === "string" && ev.startsWith("on:")
+					? listen(node, ev.substring(3), toggleState)
+					: null;
+		},
+
+		destroy() {
+			if (_unlistener) _unlistener();
+		},
+	};
+}
 </script>

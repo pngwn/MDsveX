@@ -1,107 +1,96 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
-  import { classnames } from '../../helpers/classnames';
-  import inlinestyles from '../../helpers/inlineStyles';
+import { createEventDispatcher } from "svelte";
+import { classnames } from "../../helpers/classnames";
+import inlinestyles from "../../helpers/inlineStyles";
 
-  import Button from '../Button/Button.svelte';
-  import buttonOptions from '../Button/options';
-  import CloseIcon from '../Icons/Close.svelte';
+import Button from "../Button/Button.svelte";
+import buttonOptions from "../Button/options";
+import CloseIcon from "../Icons/Close.svelte";
 
+const dispatch = createEventDispatcher();
 
-  const dispatch = createEventDispatcher();
+let modalContainer = undefined;
 
-  let modalContainer = undefined;
-  
-  export let isWaiting = false;
-  export let hasOverlay = true;
-  export let hasCustomTemplate = false;
-  export let width = '630px';
-  export let isClosable = true;
-  export let title = '';
-  export let hasFooter = true;
-  export let okType = 'default';
-  export let isOkDisabled = false;
-  export let okText = 'OK';
-  export let hasCancelButton = true;
-  export let cancelText = 'Cancel';
-  export let isKeyboardClosable = true;
-  export let isOverlayClosable = true;
-  export let target = undefined;
-  export let targetElem = undefined;
-  export let height = undefined;
-  export let maxWidth = undefined;
-  
-  export let cancel = () => {};
-  export let complete = () => {};
+export let isWaiting = false;
+export let hasOverlay = true;
+export let hasCustomTemplate = false;
+export let width = "630px";
+export let isClosable = true;
+export let title = "";
+export let hasFooter = true;
+export let okType = "default";
+export let isOkDisabled = false;
+export let okText = "OK";
+export let hasCancelButton = true;
+export let cancelText = "Cancel";
+export let isKeyboardClosable = true;
+export let isOverlayClosable = true;
+export let target = undefined;
+export let targetElem = undefined;
+export let height = undefined;
+export let maxWidth = undefined;
 
+export let cancel = () => {};
+export let complete = () => {};
 
-  export let ClassNames;
-  $: {
-    ClassNames = classnames(
-      {
-        isWaiting
-      }
-    );
-  }
+export let ClassNames;
+$: {
+	ClassNames = classnames({
+		isWaiting,
+	});
+}
 
-  export let OverlayClassNames;
-  $: {
-    OverlayClassNames = classnames(
-      {
-        hasOverlay
-      }
-    );
-  }
+export let OverlayClassNames;
+$: {
+	OverlayClassNames = classnames({
+		hasOverlay,
+	});
+}
 
-  export let CustomContentClass;
-  $: {
-    CustomContentClass = classnames(
-      {
-        hasCustomTemplate
-      }
-    )
-  }
+export let CustomContentClass;
+$: {
+	CustomContentClass = classnames({
+		hasCustomTemplate,
+	});
+}
 
-  export let ModalStyles;
-  $: {
-    ModalStyles = inlinestyles(
-      {
-        width,
-        height,
-        'max-width': maxWidth || width
-      }
-    );
-  }
+export let ModalStyles;
+$: {
+	ModalStyles = inlinestyles({
+		width,
+		height,
+		"max-width": maxWidth || width,
+	});
+}
 
+function onOverlayClick(event) {
+	if (modalContainer.contains(event.target)) return;
+	if (isOverlayClosable) {
+		onCancelClick();
+	}
+}
 
-  function onOverlayClick(event) {
-    if (modalContainer.contains(event.target)) return;
-    if (isOverlayClosable) {
-      onCancelClick();
-    }
-  }
+function onCancelClick() {
+	if (cancel) {
+		cancel();
+	}
 
-  function onCancelClick() {
-    if (cancel) {
-      cancel();
-    }
+	dispatch("cancel");
+}
 
-    dispatch('cancel');
-  }
+function onOkClick() {
+	if (complete) {
+		complete();
+	}
 
-  function onOkClick() {
-    if (complete) {
-      complete();
-    }
+	dispatch("ok");
+}
 
-    dispatch('ok');
-  }
-
-  function onKeydown(event) {
-    if (event.keyCode === 27 && isKeyboardClosable) {
-      onCancelClick();
-    }
-  }
+function onKeydown(event) {
+	if (event.keyCode === 27 && isKeyboardClosable) {
+		onCancelClick();
+	}
+}
 </script>
 
 

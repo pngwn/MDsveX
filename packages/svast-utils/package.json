@@ -13,12 +13,7 @@
 		"type": "git",
 		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/svast-util"
 	},
-	"keywords": [
-		"svelte",
-		"ast",
-		"svast",
-		"utils"
-	],
+	"keywords": ["svelte", "ast", "svast", "utils"],
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"dependencies": {

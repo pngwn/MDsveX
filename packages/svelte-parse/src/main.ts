@@ -1,70 +1,70 @@
-import {
-	Point,
-	Node,
+import type {
 	BaseSvelteTag,
-	SvelteMeta,
-	Property,
-	SvelteElement,
-	Directive,
-	Text,
-	Literal,
-	Root,
-	SvelteExpression,
-	VoidBlock,
-	BranchingBlock,
 	Branch,
+	BranchingBlock,
 	Comment,
+	Directive,
+	Literal,
+	Node,
 	Parent,
+	Point,
+	Property,
+	Root,
 	SvelteComponent,
+	SvelteDynamicContent,
+	SvelteElement,
+	SvelteExpression,
+	SvelteMeta,
 	SvelteScript,
 	SvelteStyle,
-	SvelteDynamicContent,
-} from 'svast';
+	Text,
+	VoidBlock,
+} from "svast";
 
 import {
-	ParseNodeOptions,
-	ParseOptions,
-	Result,
-	State,
-	SLASH,
+	APOSTROPHE,
+	AT,
+	BACKSLASH,
+	BACKTICK,
 	CLOSE_ANGLE_BRACKET,
+	CLOSE_BRACE,
 	COLON,
 	EQUALS,
-	QUOTE,
-	APOSTROPHE,
-	TAB,
-	CLOSE_BRACE,
-	BACKTICK,
-	BACKSLASH,
-	AT,
 	OCTOTHERP,
+	type ParseNodeOptions,
+	type ParseOptions,
+	QUOTE,
 	RE_BLOCK_BRANCH,
-	RE_SCRIPT_STYLE,
-	RE_COMMENT_START,
 	RE_COMMENT_END,
+	RE_COMMENT_START,
 	RE_END_TAG_START,
 	RE_ONLY_WHITESPACE,
-} from './types_and_things';
+	RE_SCRIPT_STYLE,
+	type Result,
+	SLASH,
+	State,
+	TAB,
+} from "./types_and_things";
 
 import {
 	LINEFEED,
-	OPEN_ANGLE_BRACKET,
-	OPEN_BRACE,
-	UPPERCASE_A,
-	UPPERCASE_Z,
 	LOWERCASE_A,
 	LOWERCASE_Z,
-	SPACE,
+	OPEN_ANGLE_BRACKET,
+	OPEN_BRACE,
 	PIPE,
-} from './types_and_things';
+	SPACE,
+	UPPERCASE_A,
+	UPPERCASE_Z,
+} from "./types_and_things";
 
-import { void_els } from './void_els';
+import { void_els } from "./void_els";
 
 export function parseNode(opts: ParseNodeOptions): Result | undefined {
 	let index = 0;
-	let quote_type = '';
-	let expr_quote_type = '';
-	let closing_tag_name = '';
+	let quote_type = "";
+	let expr_quote_type = "";
+	let closing_tag_name = "";
 	let brace_count = 0;
 
 	const node_stack: Node[] = [];
@@ -160,8 +160,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			if (RE_COMMENT_START.test(value.substring(index))) {
 				_n = <Comment>{
-					type: 'comment',
-					value: '',
+					type: "comment",
+					value: "",
 				};
 
 				//@ts-ignore
@@ -178,7 +178,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			// "{" => tag
 			if (char === OPEN_BRACE) {
 				push_node(<SvelteDynamicContent>{
-					type: 'svelteDynamicContent',
+					type: "svelteDynamicContent",
 				});
 				if (generatePositions) {
 					//@ts-ignore
@@ -191,9 +191,9 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			if (char === OPEN_ANGLE_BRACKET) {
 				set_state(State.IN_START_TAG);
-				push_node(<BaseSvelteTag<''>>{
-					type: '',
-					tagName: '',
+				push_node(<BaseSvelteTag<"">>{
+					type: "",
+					tagName: "",
 					properties: [],
 					selfClosing: false,
 					children: [],
@@ -231,11 +231,11 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			if (char === AT) {
 				_n = <VoidBlock>{
-					type: 'svelteVoidBlock',
-					name: '',
+					type: "svelteVoidBlock",
+					name: "",
 					expression: {
-						type: 'svelteExpression',
-						value: '',
+						type: "svelteExpression",
+						value: "",
 					},
 				};
 
@@ -280,8 +280,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			const n = <SvelteExpression>{
-				type: 'svelteExpression',
-				value: '',
+				type: "svelteExpression",
+				value: "",
 			};
 			(current_node as SvelteDynamicContent).expression = n;
 			push_node(n);
@@ -305,27 +305,27 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			if (char === SPACE) {
 				_n = <BranchingBlock>{
-					type: 'svelteBranchingBlock',
+					type: "svelteBranchingBlock",
 					name: (current_node as SvelteExpression).value,
 					branches: [],
 				};
 				_n2 = <Branch>{
-					type: 'svelteBranch',
+					type: "svelteBranch",
 					name: (current_node as SvelteExpression).value,
 					expression: {
-						type: 'svelteExpression',
-						value: '',
+						type: "svelteExpression",
+						value: "",
 					},
 					children: [],
 				};
 				if (generatePositions) {
 					_n.position = Object.assign(
 						{},
-						(current_node as SvelteExpression).position
+						(current_node as SvelteExpression).position,
 					);
 					_n2.position = Object.assign(
 						{},
-						(current_node as SvelteExpression).position
+						(current_node as SvelteExpression).position,
 					);
 				}
 
@@ -341,7 +341,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (!(current_node as SvelteExpression).value) {
-				(current_node as SvelteExpression).value = '';
+				(current_node as SvelteExpression).value = "";
 			}
 
 			(current_node as SvelteExpression).value += value[index];
@@ -375,22 +375,22 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		if (current_state === State.IN_BRANCHING_BLOCK_BRANCH_NAME) {
 			if (
 				(char === SPACE &&
-					value.substring(index - 4, index + 3) !== 'else if') ||
+					value.substring(index - 4, index + 3) !== "else if") ||
 				char === CLOSE_BRACE
 			) {
 				_n2 = <Branch>{
-					type: 'svelteBranch',
+					type: "svelteBranch",
 					name: (current_node as SvelteExpression).value,
 					expression: {
-						type: 'svelteExpression',
-						value: '',
+						type: "svelteExpression",
+						value: "",
 					},
 					children: [],
 				};
 				if (generatePositions) {
 					_n2.position = Object.assign(
 						{},
-						(current_node as SvelteExpression).position
+						(current_node as SvelteExpression).position,
 					);
 				}
 				pop_node();
@@ -411,7 +411,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 		if (current_state === State.IN_BRANCHING_BLOCK) {
 			if (char === CLOSE_BRACE) {
-				if ((current_node as SvelteExpression).type === 'svelteExpression')
+				if ((current_node as SvelteExpression).type === "svelteExpression")
 					pop_node();
 				chomp();
 				set_state(State.PARSE_CHILDREN);
@@ -439,7 +439,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (char === SLASH) {
-				closing_tag_name = '';
+				closing_tag_name = "";
 				pop_node();
 				set_state(State.IN_BRANCHING_BLOCK_END, true);
 				chomp();
@@ -488,15 +488,15 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			if (char === SLASH) return;
 			// lowercase characters for element names
 			if (char >= LOWERCASE_A && char <= LOWERCASE_Z) {
-				(current_node as BaseSvelteTag<'svelteElement'>).type = 'svelteElement';
+				(current_node as BaseSvelteTag<"svelteElement">).type = "svelteElement";
 				set_state(State.IN_TAG_NAME);
 				continue;
 			}
 
 			// uppercase characters for Component names UPPERCASE_A, UPPERCASE_Z
 			if (char >= UPPERCASE_A && char <= UPPERCASE_Z) {
-				(current_node as BaseSvelteTag<'svelteComponent'>).type =
-					'svelteComponent';
+				(current_node as BaseSvelteTag<"svelteComponent">).type =
+					"svelteComponent";
 				set_state(State.IN_TAG_NAME);
 				continue;
 			}
@@ -528,8 +528,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (char === COLON) {
-				(current_node as SvelteMeta).type = 'svelteMeta';
-				(current_node as SvelteMeta).tagName = '';
+				(current_node as SvelteMeta).type = "svelteMeta";
+				(current_node as SvelteMeta).tagName = "";
 				chomp();
 				continue;
 			}
@@ -549,22 +549,22 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			if (char === OPEN_BRACE) {
 				set_state(State.IN_SHORTHAND_ATTR);
 				const _node = <Property>{
-					type: 'svelteProperty',
-					name: '',
+					type: "svelteProperty",
+					name: "",
 					value: [
 						{
-							type: 'svelteDynamicContent',
+							type: "svelteDynamicContent",
 							expression: {
-								type: 'svelteExpression',
-								value: '',
+								type: "svelteExpression",
+								value: "",
 							},
 						},
 					],
 					modifiers: [],
-					shorthand: 'expression',
+					shorthand: "expression",
 				};
 
-				(current_node as BaseSvelteTag<''>).properties.push(_node as Property);
+				(current_node as BaseSvelteTag<"">).properties.push(_node as Property);
 				push_node(_node);
 				if (generatePositions) {
 					//@ts-ignore
@@ -595,14 +595,14 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			) {
 				set_state(State.IN_ATTR_NAME);
 				const _node = <Property>{
-					type: 'svelteProperty',
-					name: '',
+					type: "svelteProperty",
+					name: "",
 					value: [],
 					modifiers: [],
-					shorthand: 'none',
+					shorthand: "none",
 				};
 
-				(current_node as BaseSvelteTag<''>).properties.push(_node as Property);
+				(current_node as BaseSvelteTag<"">).properties.push(_node as Property);
 				push_node(_node);
 				if (generatePositions)
 					//@ts-ignore
@@ -618,7 +618,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 					void_els[current_node.tagName] !== void 0)
 			) {
 				set_state(State.IN_CLOSING_SLASH, true);
-				(current_node as BaseSvelteTag<''>).selfClosing = true;
+				(current_node as BaseSvelteTag<"">).selfClosing = true;
 				if (char === SLASH) chomp();
 				continue;
 			}
@@ -639,8 +639,9 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 		if (current_state === State.IN_SHORTHAND_ATTR) {
 			if (char === CLOSE_BRACE) {
-				(current_node as Property).name = ((current_node as Property)
-					.value[0] as SvelteDynamicContent).expression.value;
+				(current_node as Property).name = (
+					(current_node as Property).value[0] as SvelteDynamicContent
+				).expression.value;
 				if (generatePositions) {
 					//@ts-ignore
 					current_node.position.end = place();
@@ -654,7 +655,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			push_node(
-				((current_node as Property).value[0] as SvelteDynamicContent).expression
+				((current_node as Property).value[0] as SvelteDynamicContent)
+					.expression,
 			);
 			set_state(State.IN_EXPRESSION);
 
@@ -690,7 +692,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				char === SLASH ||
 				char === CLOSE_ANGLE_BRACKET
 			) {
-				(current_node as Property).shorthand = 'boolean';
+				(current_node as Property).shorthand = "boolean";
 				if (generatePositions)
 					//@ts-ignore
 					current_node.position.end = place();
@@ -702,8 +704,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			// ":" => directive
 			if (char === COLON) {
 				//@ts-ignore
-				(current_node as Directive).type = 'svelteDirective';
-				(current_node as Directive).specifier = '';
+				(current_node as Directive).type = "svelteDirective";
+				(current_node as Directive).specifier = "";
 				set_state(State.IN_DIRECTIVE_SPECIFIER, true);
 				chomp();
 				continue;
@@ -711,11 +713,11 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			if (char === PIPE) {
 				chomp();
-				_n = { value: '', type: 'modifier' };
+				_n = { value: "", type: "modifier" };
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: [] };
-				(current_node as Directive).modifiers.push(_n as Literal<'modifier'>);
+				(current_node as Directive).modifiers.push(_n as Literal<"modifier">);
 				push_node(_n);
 				set_state(State.IN_ATTR_MODIFIER, true);
 				continue;
@@ -748,7 +750,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				set_state(State.IN_QUOTED_ATTR_VALUE, true);
 				quote_type = value[index];
 
-				push_node({ type: 'blank' });
+				push_node({ type: "blank" });
 				chomp();
 				continue;
 			}
@@ -768,7 +770,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				/^\/\s*>/.test(value.substring(index))
 			) {
 				//@ts-ignore
-				if (current_node.type === 'text') {
+				if (current_node.type === "text") {
 					if (generatePositions)
 						//@ts-ignore
 						current_node.position.end = place();
@@ -787,7 +789,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			if (char === OPEN_BRACE) {
 				set_state(State.IN_DYNAMIC_CONTENT);
 				const _n = <SvelteDynamicContent>{
-					type: 'svelteDynamicContent',
+					type: "svelteDynamicContent",
 				};
 
 				(current_node as Property).value.push(_n);
@@ -803,10 +805,10 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			//@ts-ignore
-			if (current_node.type !== 'text') {
+			if (current_node.type !== "text") {
 				const _n = <Text>{
-					type: 'text',
-					value: '',
+					type: "text",
+					value: "",
 				};
 
 				(current_node as Property).value.push(_n);
@@ -830,17 +832,17 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				//@ts-ignore
 				if (generatePositions) current_node.position.end = place();
 				pop_node();
-				quote_type = '';
+				quote_type = "";
 
 				pop_state();
 
 				if (
 					//@ts-ignore
-					current_node.type !== 'svelteElement' &&
+					current_node.type !== "svelteElement" &&
 					//@ts-ignore
-					current_node.type !== 'svelteComponent' &&
+					current_node.type !== "svelteComponent" &&
 					//@ts-ignore
-					current_node.type !== 'svelteMeta'
+					current_node.type !== "svelteMeta"
 				) {
 					//@ts-ignore
 					if (generatePositions) current_node.position.end = place();
@@ -852,14 +854,14 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			if (char === OPEN_BRACE) {
 				//@ts-ignore
-				if (generatePositions && current_node.type !== 'blank')
+				if (generatePositions && current_node.type !== "blank")
 					//@ts-ignore
 					current_node.position.end = place();
 				//@ts-ignore
-				current_node.type !== 'svelteProperty' && pop_node();
+				current_node.type !== "svelteProperty" && pop_node();
 
 				_n = <SvelteDynamicContent>{
-					type: 'svelteDynamicContent',
+					type: "svelteDynamicContent",
 				};
 				(current_node as Property).value.push(_n as SvelteDynamicContent);
 				if (generatePositions)
@@ -879,15 +881,15 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			// " ", "\n" => still in the attribute value but make a new node
 			if (char === SPACE || char === TAB || char === LINEFEED) {
 				const _c = current_node as Text | SvelteExpression;
-				if (_c.type === 'text' && RE_ONLY_WHITESPACE.test(_c.value)) {
+				if (_c.type === "text" && RE_ONLY_WHITESPACE.test(_c.value)) {
 					_c.value += value[index];
 					chomp();
 					continue;
 				}
 
 				//@ts-ignore
-				current_node.type !== 'svelteProperty' && pop_node();
-				_n = { type: 'text', value: value[index] };
+				current_node.type !== "svelteProperty" && pop_node();
+				_n = { type: "text", value: value[index] };
 
 				if (generatePositions)
 					//@ts-ignore
@@ -900,8 +902,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 			if (value.charCodeAt(index - 1) === CLOSE_BRACE) {
 				//@ts-ignore
-				current_node.type !== 'svelteProperty' && pop_node();
-				_n = { type: 'text', value: value[index] };
+				current_node.type !== "svelteProperty" && pop_node();
+				_n = { type: "text", value: value[index] };
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
@@ -912,11 +914,11 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (
-				(current_node as Text).type === 'text' &&
+				(current_node as Text).type === "text" &&
 				RE_ONLY_WHITESPACE.test((current_node as Text).value)
 			) {
 				pop_node();
-				_n = { type: 'text', value: '' };
+				_n = { type: "text", value: "" };
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
@@ -924,9 +926,9 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				push_node(_n);
 
 				//@ts-ignore
-			} else if (current_node.type === 'blank') {
+			} else if (current_node.type === "blank") {
 				pop_node();
-				_n = { type: 'text', value: '' };
+				_n = { type: "text", value: "" };
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
@@ -949,11 +951,11 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			}
 
 			if (char === PIPE) {
-				_n = { value: '', type: 'modifier' };
+				_n = { value: "", type: "modifier" };
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
-				(current_node as Directive).modifiers.push(_n as Literal<'modifier'>);
+				(current_node as Directive).modifiers.push(_n as Literal<"modifier">);
 				push_node(_n);
 				set_state(State.IN_ATTR_MODIFIER, true);
 				chomp();
@@ -984,11 +986,11 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		if (current_state === State.IN_ATTR_MODIFIER) {
 			if (char === PIPE) {
 				pop_node();
-				_n = { value: '', type: 'modifier' };
+				_n = { value: "", type: "modifier" };
 				if (generatePositions)
 					//@ts-ignore
 					_n.position = { start: place(), end: {} };
-				(current_node as Directive).modifiers.push(_n as Literal<'modifier'>);
+				(current_node as Directive).modifiers.push(_n as Literal<"modifier">);
 				push_node(_n);
 				chomp();
 				continue;
@@ -1021,7 +1023,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				continue;
 			}
 
-			(current_node as Literal<'modifier'>).value += value[index];
+			(current_node as Literal<"modifier">).value += value[index];
 			chomp();
 			continue;
 		}
@@ -1045,16 +1047,16 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 		if (current_state === State.PARSE_CHILDREN) {
 			if (
-				(current_node as SvelteElement | SvelteMeta).tagName === 'script' ||
-				(current_node as SvelteElement | SvelteMeta).tagName === 'style'
+				(current_node as SvelteElement | SvelteMeta).tagName === "script" ||
+				(current_node as SvelteElement | SvelteMeta).tagName === "style"
 			) {
 				//@ts-ignore
 				current_node.type =
-					'svelteS' +
+					"svelteS" +
 					(current_node as SvelteElement | SvelteMeta).tagName.substring(1);
 				_n = {
-					type: 'text',
-					value: '',
+					type: "text",
+					value: "",
 				};
 				if (generatePositions)
 					//@ts-ignore
@@ -1089,8 +1091,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 			if (RE_BLOCK_BRANCH.test(value.substring(index))) {
 				set_state(State.IN_BRANCHING_BLOCK_BRANCH, true);
 				_n = <Text>{
-					type: 'text',
-					value: '',
+					type: "text",
+					value: "",
 				};
 
 				if (generatePositions) {
@@ -1130,8 +1132,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 				let current_node_name = closing_tag_name;
 
-				if ((current_node as Node).type === 'svelteMeta') {
-					current_node_name = current_node_name.replace('svelte:', '');
+				if ((current_node as Node).type === "svelteMeta") {
+					current_node_name = current_node_name.replace("svelte:", "");
 				}
 
 				if (
@@ -1144,7 +1146,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 								.tagName
 						} but got ${closing_tag_name}`,
 						//@ts-ignore
-						JSON.stringify(current_node.position)
+						JSON.stringify(current_node.position),
 					);
 				}
 
@@ -1170,7 +1172,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 		}
 
 		if (current_state === State.IN_EXPRESSION) {
-			if (expr_quote_type === '' && char === CLOSE_BRACE) {
+			if (expr_quote_type === "" && char === CLOSE_BRACE) {
 				if (brace_count === 0) {
 					if (generatePositions) {
 						//@ts-ignore
@@ -1222,12 +1224,12 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				brace_count--;
 			}
 
-			if (expr_quote_type === '' && char === OPEN_BRACE) {
+			if (expr_quote_type === "" && char === OPEN_BRACE) {
 				brace_count++;
 			}
 
 			if (
-				expr_quote_type === '' &&
+				expr_quote_type === "" &&
 				(char === APOSTROPHE || char === QUOTE || char === BACKTICK)
 			) {
 				set_state(State.IN_EXPRESSION_QUOTE);
@@ -1247,7 +1249,7 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 				value[index] === expr_quote_type &&
 				value.charCodeAt(index - 1) !== BACKSLASH
 			) {
-				expr_quote_type = '';
+				expr_quote_type = "";
 				(current_node as SvelteExpression).value += value[index];
 				chomp();
 				pop_state();
@@ -1261,8 +1263,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 		set_state(State.IN_TEXT);
 		_n = {
-			type: 'text',
-			value: '',
+			type: "text",
+			value: "",
 		};
 
 		push_node(_n);
@@ -1320,12 +1322,12 @@ function parse_siblings(opts: ParseNodeOptions): [Node[], Point, number] {
 	return [children, position, index];
 }
 
-const lineFeed = '\n';
+const lineFeed = "\n";
 const lineBreaksExpression = /\r\n|\r/g;
 
 export function parse(opts: ParseOptions): Root {
 	const root = <Root>{
-		type: 'root',
+		type: "root",
 		children: parse_siblings({
 			generatePositions: opts.generatePositions,
 			value: opts.value.replace(lineBreaksExpression, lineFeed),
@@ -1340,7 +1342,7 @@ export function parse(opts: ParseOptions): Root {
 			end: Object.assign(
 				{},
 				//@ts-ignore
-				root.children[root.children.length - 1].position.end
+				root.children[root.children.length - 1].position.end,
 			),
 		};
 	}

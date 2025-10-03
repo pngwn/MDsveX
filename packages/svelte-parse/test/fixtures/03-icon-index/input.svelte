@@ -25,8 +25,8 @@
 ></i>
 
 <script context="module">
-    import { exclude, eventsBuilder, actions, clsxd } from '../../lib'
-    import { current_component } from 'svelte/internal'
+import { exclude, eventsBuilder, actions, clsxd } from "../../lib";
+import { current_component } from "svelte/internal";
 </script>
 
 <script>

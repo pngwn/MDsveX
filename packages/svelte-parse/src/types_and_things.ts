@@ -1,4 +1,4 @@
-import { Point, Node } from 'svast';
+import type { Node, Point } from "svast";
 
 export const TAB = 9; // "\t"
 export const LINEFEED = 10; // "\n"
@@ -63,7 +63,7 @@ export interface ParseNodeOptions {
 	 * The parser to use when parsing children, this defaults to `parseNode`
 	 */
 	childParser: (
-		options: ParseNodeOptions
+		options: ParseNodeOptions,
 	) => [Node[], Point & { index?: number }, number];
 	/**
 	 * Are we currently in a block or are we currently inline?

@@ -1,19 +1,19 @@
 <script>
-  import { typewriter } from "./typewriter.js";
+import { typewriter } from "./typewriter.js";
 
-  export let input = [];
+export let input = [];
 
-  const colors = {
-    yellow: "#fdfd96",
-    teal: "teal",
-    blue: "cyan",
-    green: "#98fb98",
-    grey: "#fafafa",
-    red: "#fa8072",
-    orange: "darkorange"
-  };
+const colors = {
+	yellow: "#fdfd96",
+	teal: "teal",
+	blue: "cyan",
+	green: "#98fb98",
+	grey: "#fafafa",
+	red: "#fa8072",
+	orange: "darkorange",
+};
 
-  const dots = ["#fe5f56", "#ffbd2f", "#28c93f"];
+const dots = ["#fe5f56", "#ffbd2f", "#28c93f"];
 </script>
 
 <style>

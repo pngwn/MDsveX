@@ -1,5 +1,5 @@
 <script>
-  export let noMargin = false;
+export let noMargin = false;
 </script>
 
 <style>

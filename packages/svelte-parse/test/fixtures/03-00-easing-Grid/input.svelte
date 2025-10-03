@@ -1,5 +1,5 @@
 <script>
-	export let x, y;
+export let x, y;
 </script>
 
 <style>

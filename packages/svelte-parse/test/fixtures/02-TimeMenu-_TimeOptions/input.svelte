@@ -1,15 +1,15 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
-  import Button from '@sveltekit/ui/Button';
+import { createEventDispatcher } from "svelte";
+import Button from "@sveltekit/ui/Button";
 
-  export let selectedItem;
-  export let options = []; 
+export let selectedItem;
+export let options = [];
 
-  const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-  function onOptionClick(option) {
-    dispatch('select', option);
-  }
+function onOptionClick(option) {
+	dispatch("select", option);
+}
 </script>
 
 <style>

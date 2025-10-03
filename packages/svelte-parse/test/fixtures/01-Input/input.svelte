@@ -1,134 +1,144 @@
 <script>
-  import { createEventDispatcher, onMount, getContext, tick } from 'svelte'
-  import { omit, getEventsAction } from '../utils'
-  import { current_component } from 'svelte/internal'
-	
-  import Icon from './Icon.svelte'
+import { createEventDispatcher, onMount, getContext, tick } from "svelte";
+import { omit, getEventsAction } from "../utils";
+import { current_component } from "svelte/internal";
 
-  /** Binding value
-   * @svelte-prop {String|Number} [value]
-   * */
-  export let value = ''
+import Icon from "./Icon.svelte";
 
-  /** Input type, or <code>textarea</code>
-   * @svelte-prop {String} [type=text]
-   * @values Any native type, <code>textarea</code>
-   * */
-  export let type = 'text'
+/** Binding value
+ * @svelte-prop {String|Number} [value]
+ * */
+export let value = "";
 
-  /** Size of input
-   * @svelte-prop {String} [size]
-   * @values $$sizes$$
-   * */
-  export let size = ''
+/** Input type, or <code>textarea</code>
+ * @svelte-prop {String} [type=text]
+ * @values Any native type, <code>textarea</code>
+ * */
+export let type = "text";
 
-  /** Makes input full-width when inside a grouped or addon field
-   * @svelte-prop {boolean} expanded=false
-   * */
-  export let expanded = false
+/** Size of input
+ * @svelte-prop {String} [size]
+ * @values $$sizes$$
+ * */
+export let size = "";
 
-  /** Show the password reveal toggle button
-   * @svelte-prop {boolean} passwordReveal=false
-   * */
-  export let passwordReveal = false
+/** Makes input full-width when inside a grouped or addon field
+ * @svelte-prop {boolean} expanded=false
+ * */
+export let expanded = false;
 
-  /** Set input maxlength and show a counter
-   * @svelte-prop {Number} [maxlength]
-   * */
-  export let maxlength = null
+/** Show the password reveal toggle button
+ * @svelte-prop {boolean} passwordReveal=false
+ * */
+export let passwordReveal = false;
 
-  /** Show the character counter when <code>maxlength<code> is set
-   * @svelte-prop {boolean} [hasCounter=true]
-   * */
-  export let hasCounter = true
+/** Set input maxlength and show a counter
+ * @svelte-prop {Number} [maxlength]
+ * */
+export let maxlength = null;
 
-  /** Show loading indicator
-   * @svelte-prop {boolean} [loading=false]
-   * */
-  export let loading = false
+/** Show the character counter when <code>maxlength<code> is set
+ * @svelte-prop {boolean} [hasCounter=true]
+ * */
+export let hasCounter = true;
 
-  /** Show this icon on left side of input
-   * @svelte-prop {String} [icon]
-   * */
-  export let icon = ''
+/** Show loading indicator
+ * @svelte-prop {boolean} [loading=false]
+ * */
+export let loading = false;
 
-  /** Fontawesome icon pack to use. By default the <code>Icon</code> component uses <code>fas</code>
-   * @svelte-prop {String} [iconPack]
-   * @values <code>fas</code>, <code>fab</code>, etc...
-   * */
-  export let iconPack = ''
+/** Show this icon on left side of input
+ * @svelte-prop {String} [icon]
+ * */
+export let icon = "";
 
-  /** Input is disabled
-   * @svelte-prop {boolean} [disabled=false]
-   * */
-  export let disabled = false
+/** Fontawesome icon pack to use. By default the <code>Icon</code> component uses <code>fas</code>
+ * @svelte-prop {String} [iconPack]
+ * @values <code>fas</code>, <code>fab</code>, etc...
+ * */
+export let iconPack = "";
 
-  let input
-  let isFocused
-  let isPasswordVisible = false
-  let newType = 'text'
-  let statusType = ''
-  let statusTypeIcon = ''
-  let valueLength = null
+/** Input is disabled
+ * @svelte-prop {boolean} [disabled=false]
+ * */
+export let disabled = false;
 
-  const dispatch = createEventDispatcher();
+let input;
+let isFocused;
+let isPasswordVisible = false;
+let newType = "text";
+let statusType = "";
+let statusTypeIcon = "";
+let valueLength = null;
 
-  const getType = getContext('type')
-  if (getType) statusType = getType() || ''
+const dispatch = createEventDispatcher();
 
-  $: props = {
-    ...omit($$props, 'class', 'value', 'type', 'size', 'passwordReveal', 'hasCounter', 'loading', 'disabled'),
-  }
-  $: hasIconLeft = !!icon
-  $: hasIconRight = passwordReveal || loading || statusType
-  $: passwordVisibleIcon = isPasswordVisible ? 'eye-slash' : 'eye'
-  $: {
-    switch (statusType) {
-      case 'is-success':
-        statusTypeIcon = 'check'
-        break
-      case 'is-danger':
-        statusTypeIcon = 'exclamation-circle'
-        break
-      case 'is-info':
-        statusTypeIcon = 'info-circle'
-        break
-      case 'is-warning':
-        statusTypeIcon = 'exclamation-triangle'
-        break
-    }
-  }
-  $: {
-    if (typeof value === 'string') {
-      valueLength = value.length
-    } else if (typeof value === 'number') {
-      valueLength = value.toString().length
-    } else {
-      valueLength = 0
-    }
-  }
+const getType = getContext("type");
+if (getType) statusType = getType() || "";
 
-  onMount(() => {
-    newType = type
-  })
+$: props = {
+	...omit(
+		$$props,
+		"class",
+		"value",
+		"type",
+		"size",
+		"passwordReveal",
+		"hasCounter",
+		"loading",
+		"disabled",
+	),
+};
+$: hasIconLeft = !!icon;
+$: hasIconRight = passwordReveal || loading || statusType;
+$: passwordVisibleIcon = isPasswordVisible ? "eye-slash" : "eye";
+$: {
+	switch (statusType) {
+		case "is-success":
+			statusTypeIcon = "check";
+			break;
+		case "is-danger":
+			statusTypeIcon = "exclamation-circle";
+			break;
+		case "is-info":
+			statusTypeIcon = "info-circle";
+			break;
+		case "is-warning":
+			statusTypeIcon = "exclamation-triangle";
+			break;
+	}
+}
+$: {
+	if (typeof value === "string") {
+		valueLength = value.length;
+	} else if (typeof value === "number") {
+		valueLength = value.toString().length;
+	} else {
+		valueLength = 0;
+	}
+}
 
-  async function togglePasswordVisibility() {
-    isPasswordVisible = !isPasswordVisible
-    newType = isPasswordVisible ? 'text' : 'password'
-    await tick()
-    input.focus()
-  }
+onMount(() => {
+	newType = type;
+});
 
-  const onInput = e => {
-    value = e.target.value
-    $$props.value = value
+async function togglePasswordVisibility() {
+	isPasswordVisible = !isPasswordVisible;
+	newType = isPasswordVisible ? "text" : "password";
+	await tick();
+	input.focus();
+}
 
-    dispatch('input', e)
-  }
-  const onFocus = () => (isFocused = true)
-  const onBlur = () => (isFocused = false)
+const onInput = (e) => {
+	value = e.target.value;
+	$$props.value = value;
 
-  const events = getEventsAction(current_component);
+	dispatch("input", e);
+};
+const onFocus = () => (isFocused = true);
+const onBlur = () => (isFocused = false);
+
+const events = getEventsAction(current_component);
 </script>
 
 <style>

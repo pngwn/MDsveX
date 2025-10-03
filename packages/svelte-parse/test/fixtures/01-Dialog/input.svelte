@@ -1,157 +1,156 @@
 <script>
-  import { createEventDispatcher, onDestroy, onMount, tick } from 'svelte'
-  import Icon from '../Icon.svelte'
-  import { chooseAnimation, isEnterKey, isEscKey } from '../../utils'
-  
-  /** Show a header on the dialog with this text
-   * @svelte-prop {String} [message]
-   * */
-  export let title = ''
+import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
+import Icon from "../Icon.svelte";
+import { chooseAnimation, isEnterKey, isEscKey } from "../../utils";
 
-  /** Text or html message for this dialog
-   * @svelte-prop {String} message
-   * */
-  export let message
+/** Show a header on the dialog with this text
+ * @svelte-prop {String} [message]
+ * */
+export let title = "";
 
-  /** Text to show on the confirmation button
-   * @svelte-prop {String} [confirmText=OK]
-   * */
-  export let confirmText = 'OK'
+/** Text or html message for this dialog
+ * @svelte-prop {String} message
+ * */
+export let message;
 
-  /** Text to show on the cancel  button
-   * @svelte-prop {String} [cancelText=Cancel]
-   * */
-  export let cancelText = 'Cancel'
+/** Text to show on the confirmation button
+ * @svelte-prop {String} [confirmText=OK]
+ * */
+export let confirmText = "OK";
 
-  /** Focus on confirm or cancel button when dialog opens
-   * @svelte-prop {String} [focusOn=confirm]
-   * @values <code>confirm</code>, <code>cancel</code>
-   * */
-  export let focusOn = 'confirm'
+/** Text to show on the cancel  button
+ * @svelte-prop {String} [cancelText=Cancel]
+ * */
+export let cancelText = "Cancel";
 
-  /** Show this icon on left-side of dialog. It will use the color from <code>type</code>
-   * @svelte-prop {String} [icon]
-   * */
-  export let icon = ''
+/** Focus on confirm or cancel button when dialog opens
+ * @svelte-prop {String} [focusOn=confirm]
+ * @values <code>confirm</code>, <code>cancel</code>
+ * */
+export let focusOn = "confirm";
 
-  /** Fontawesome icon pack to use. By default the <code>Icon</code> component uses <code>fas</code>
-   * @svelte-prop {String} [iconPack]
-   * @values <code>fas</code>, <code>fab</code>, etc...
-   * */
-  export let iconPack = ''
+/** Show this icon on left-side of dialog. It will use the color from <code>type</code>
+ * @svelte-prop {String} [icon]
+ * */
+export let icon = "";
 
-  /** Show an input field
-   * @svelte-prop {Boolean} [hasInput=false]
-   * */
-  export let hasInput = false
-  
-  export let prompt = null
+/** Fontawesome icon pack to use. By default the <code>Icon</code> component uses <code>fas</code>
+ * @svelte-prop {String} [iconPack]
+ * @values <code>fas</code>, <code>fab</code>, etc...
+ * */
+export let iconPack = "";
 
-  /** Show the cancel button. True for <code>confirm()</code>
-   * @svelte-prop {Boolean} [showCancel=false]
-   * */
-  export let showCancel = false
+/** Show an input field
+ * @svelte-prop {Boolean} [hasInput=false]
+ * */
+export let hasInput = false;
 
-  /** Dialog's size
-   * @svelte-prop {String} [size]
-   * @values $$sizes$$
-   * */
-  export let size = ''
+export let prompt = null;
 
-  /** Type (color) to use on confirm button and icon
-   * @svelte-prop {String} [type=is-primary]
-   * @values $$colors$$
-   * */
-  export let type = 'is-primary'
+/** Show the cancel button. True for <code>confirm()</code>
+ * @svelte-prop {Boolean} [showCancel=false]
+ * */
+export let showCancel = false;
 
-  export let active = true
+/** Dialog's size
+ * @svelte-prop {String} [size]
+ * @values $$sizes$$
+ * */
+export let size = "";
 
-  /** Animation to use when showing dialog
-   * @svelte-prop {String|Function} [animation=scale]
-   * @values Any transition name that ships with Svelte, or a custom function
-   * */
-  export let animation = 'scale'
+/** Type (color) to use on confirm button and icon
+ * @svelte-prop {String} [type=is-primary]
+ * @values $$colors$$
+ * */
+export let type = "is-primary";
 
-  /** Props to pass to animation function
-   * @svelte-prop {Object} [animProps={ start: 1.2 }]
-   * */
-  export let animProps = { start: 1.2 }
+export let active = true;
 
-  /** Props (attributes) to use to on prompt input element
-   * @svelte-prop {Object} [inputProps]
-   * */
-  export let inputProps = {}
+/** Animation to use when showing dialog
+ * @svelte-prop {String|Function} [animation=scale]
+ * @values Any transition name that ships with Svelte, or a custom function
+ * */
+export let animation = "scale";
 
-  // export let showClose = true
-  let resolve
-  export let promise = new Promise((fulfil) => (resolve = fulfil))
-  
-  // TODO: programmatic subcomponents
-  export let subComponent = null
-  export let appendToBody = true
+/** Props to pass to animation function
+ * @svelte-prop {Object} [animProps={ start: 1.2 }]
+ * */
+export let animProps = { start: 1.2 };
 
-  let modal
-  let cancelButton
-  let confirmButton
-  let input
-  let validationMessage = ''
+/** Props (attributes) to use to on prompt input element
+ * @svelte-prop {Object} [inputProps]
+ * */
+export let inputProps = {};
 
-  const dispatch = createEventDispatcher()
+// export let showClose = true
+let resolve;
+export let promise = new Promise((fulfil) => (resolve = fulfil));
 
-  $: _animation = chooseAnimation(animation)
-  $: {
-    if (modal && active && appendToBody) {
-      modal.parentNode.removeChild(modal)
-      document.body.appendChild(modal)
-    }
-  }
-  $: newInputProps = { required: true, ...inputProps }
+// TODO: programmatic subcomponents
+export let subComponent = null;
+export let appendToBody = true;
 
-  onMount(async () => {
-    await tick()
+let modal;
+let cancelButton;
+let confirmButton;
+let input;
+let validationMessage = "";
 
-    if (hasInput) {
-      input.focus()
-    } else if (focusOn === 'cancel' && showCancel) {
-      cancelButton.focus()
-    } else {
-      confirmButton.focus()
-    }
-  })
+const dispatch = createEventDispatcher();
 
+$: _animation = chooseAnimation(animation);
+$: {
+	if (modal && active && appendToBody) {
+		modal.parentNode.removeChild(modal);
+		document.body.appendChild(modal);
+	}
+}
+$: newInputProps = { required: true, ...inputProps };
 
-  function cancel() {
-    resolve(hasInput ? null : false)
-    close()
-  }
+onMount(async () => {
+	await tick();
 
-  function close() {
-    resolve(hasInput ? null : false)
-    active = false
-    dispatch('destroyed')
-  }
+	if (hasInput) {
+		input.focus();
+	} else if (focusOn === "cancel" && showCancel) {
+		cancelButton.focus();
+	} else {
+		confirmButton.focus();
+	}
+});
 
-  async function confirm() {
-    if (input && !input.checkValidity()) {
-      validationMessage = input.validationMessage
+function cancel() {
+	resolve(hasInput ? null : false);
+	close();
+}
 
-      await tick()
-      input.select()
+function close() {
+	resolve(hasInput ? null : false);
+	active = false;
+	dispatch("destroyed");
+}
 
-      return
-    }
+async function confirm() {
+	if (input && !input.checkValidity()) {
+		validationMessage = input.validationMessage;
 
-    validationMessage = ''
+		await tick();
+		input.select();
 
-    resolve(hasInput ? prompt: true)
-    close()
-  }
+		return;
+	}
 
-  function keydown(e) {
-    if (active && isEscKey(e)) {
-      close()
-    }
-  }
+	validationMessage = "";
+
+	resolve(hasInput ? prompt : true);
+	close();
+}
+
+function keydown(e) {
+	if (active && isEscKey(e)) {
+		close();
+	}
+}
 </script>
 
 <style lang="scss">

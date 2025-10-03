@@ -16,14 +16,14 @@
 {/if}
 
 <script context="module">
-    import { exclude, eventsBuilder, actions, clsxd } from '../../lib'
-    import { current_component } from 'svelte/internal'
-    import StepGroup from './StepGroup.svelte'
-    import StepContent from './StepContent.svelte'
-    import StepTitle from './StepTitle.svelte'
-    import StepDescription from './StepDescription.svelte'
+import { exclude, eventsBuilder, actions, clsxd } from "../../lib";
+import { current_component } from "svelte/internal";
+import StepGroup from "./StepGroup.svelte";
+import StepContent from "./StepContent.svelte";
+import StepTitle from "./StepTitle.svelte";
+import StepDescription from "./StepDescription.svelte";
 
-    export { StepGroup, StepContent, StepTitle, StepDescription }
+export { StepGroup, StepContent, StepTitle, StepDescription };
 </script>
 
 <script>

@@ -8,7 +8,7 @@ export default class Bundler {
 
 		if (!workers.has(hash)) {
 			const worker = new Worker(`${workersUrl}/bundler.js`);
-			worker.postMessage({ type: 'init', packagesUrl, svelteUrl });
+			worker.postMessage({ type: "init", packagesUrl, svelteUrl });
 			workers.set(hash, worker);
 		}
 
@@ -16,11 +16,12 @@ export default class Bundler {
 
 		this.handlers = new Map();
 
-		this.worker.addEventListener('message', event => {
+		this.worker.addEventListener("message", (event) => {
 			const handler = this.handlers.get(event.data.uid);
 
-			if (handler) { // if no handler, was meant for a different REPL
-				if (event.data.type === 'status') {
+			if (handler) {
+				// if no handler, was meant for a different REPL
+				if (event.data.type === "status") {
 					onstatus(event.data.message);
 					return;
 				}
@@ -33,13 +34,13 @@ export default class Bundler {
 	}
 
 	bundle(components) {
-		return new Promise(fulfil => {
+		return new Promise((fulfil) => {
 			this.handlers.set(uid, fulfil);
 
 			this.worker.postMessage({
 				uid,
-				type: 'bundle',
-				components
+				type: "bundle",
+				components,
 			});
 
 			uid += 1;

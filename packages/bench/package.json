@@ -1,0 +1,32 @@
+{
+  "name": "@mdsvex/bench",
+  "version": "0.0.6",
+  "description": "Benchmarking tools for mdsvex and its parsers.",
+  "type": "module",
+  "scripts": {
+    "bench": "node --expose-gc ./node_modules/vitest/vitest.mjs bench"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pngwn/MDsveX/tree/master/packages/svast-util"
+  },
+  "keywords": [
+    "svelte",
+    "ast",
+    "svast",
+    "utils",
+    "benchmark",
+    "performance"
+  ],
+  "exports": {
+    ".": "./index.ts"
+  },
+  "author": "pngwn <hello@pngwn.io>",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "vitest": "^1.5.0"
+  },
+  "private": true
+}

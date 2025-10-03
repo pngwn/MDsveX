@@ -4,7 +4,7 @@
 ><slot></slot></div>
 
 <script context="module">
-    import { exclude } from '../../lib'
+import { exclude } from "../../lib";
 </script>
 
 <script>

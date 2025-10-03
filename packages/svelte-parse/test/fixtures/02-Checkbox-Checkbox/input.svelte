@@ -1,11 +1,11 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+import { createEventDispatcher } from "svelte";
 
-  const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-  export let name = '';
-  export let isDisabled = false;
-  export let isChecked = false;
+export let name = "";
+export let isDisabled = false;
+export let isChecked = false;
 </script>
 
 <style>

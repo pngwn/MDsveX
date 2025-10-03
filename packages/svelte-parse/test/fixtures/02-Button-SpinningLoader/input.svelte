@@ -1,7 +1,7 @@
 <script>
-  import Button, { options } from '@sveltekit/ui/Button';
+import Button, { options } from "@sveltekit/ui/Button";
 
-  let isWaiting = false;
+let isWaiting = false;
 </script>
 
 <div class="row">

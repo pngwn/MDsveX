@@ -1,11 +1,11 @@
 <script>
-	let key;
-	let keyCode;
+let key;
+let keyCode;
 
-	function handleKeydown(event) {
-		key = event.key;
-		keyCode = event.keyCode;
-	}
+function handleKeydown(event) {
+	key = event.key;
+	keyCode = event.keyCode;
+}
 </script>
 
 <style>

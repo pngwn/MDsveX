@@ -1,8 +1,8 @@
 <script>
-	let hereKitty = false;
+let hereKitty = false;
 
-	const handleMouseenter = () => (hereKitty = true);
-	const handleMouseleave = () => (hereKitty = false);
+const handleMouseenter = () => (hereKitty = true);
+const handleMouseleave = () => (hereKitty = false);
 </script>
 
 <style>

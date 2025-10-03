@@ -3,5 +3,5 @@
 ></div>
 
 <script>
-    export let size = ''
+export let size = "";
 </script>

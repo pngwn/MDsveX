@@ -1,1 +1,1 @@
-export { parse } from 'parse';
+export { parse } from "parse";

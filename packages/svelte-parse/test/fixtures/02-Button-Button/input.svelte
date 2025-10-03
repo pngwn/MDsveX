@@ -1,46 +1,46 @@
 <script>
-  import { classnames } from '../../helpers/classnames';
-  import { createEventDispatcher } from 'svelte';
+import { classnames } from "../../helpers/classnames";
+import { createEventDispatcher } from "svelte";
 
-  import Spinner from '../Spinner/Spinner.svelte';
-  import options from './options';
+import Spinner from "../Spinner/Spinner.svelte";
+import options from "./options";
 
-  const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-  export let iconPosition = options.iconPosition.ONLY;
-  export let isActive = false;
-  export let isBlock = false;
-  export let isOutlined = false;
-  export let isRounded = false;
-  export let isSelected = false;
-  export let isWaiting = false;
-  export let isWide = false;
-  export let isDisabled = false;
-  export let htmlType = options.htmlType.BUTTON;
-  export let Icon = null;
+export let iconPosition = options.iconPosition.ONLY;
+export let isActive = false;
+export let isBlock = false;
+export let isOutlined = false;
+export let isRounded = false;
+export let isSelected = false;
+export let isWaiting = false;
+export let isWide = false;
+export let isDisabled = false;
+export let htmlType = options.htmlType.BUTTON;
+export let Icon = null;
 
-  let ClassNames;
-  $: {
-    ClassNames = classnames({
-      [`iconPosition-${iconPosition}`]: Icon,
-      isActive,
-      isBlock,
-      isSelected,
-      isOutlined,
-      isRounded,
-      isWaiting,
-      isWide
-    });
-  }
+let ClassNames;
+$: {
+	ClassNames = classnames({
+		[`iconPosition-${iconPosition}`]: Icon,
+		isActive,
+		isBlock,
+		isSelected,
+		isOutlined,
+		isRounded,
+		isWaiting,
+		isWide,
+	});
+}
 
-  let HtmlDisabled;
-  $: {
-    HtmlDisabled = isDisabled || isWaiting;
-  }
+let HtmlDisabled;
+$: {
+	HtmlDisabled = isDisabled || isWaiting;
+}
 
-  function onClick(event) {
-    dispatch('click', event);
-  }
+function onClick(event) {
+	dispatch("click", event);
+}
 </script>
 
 <style>

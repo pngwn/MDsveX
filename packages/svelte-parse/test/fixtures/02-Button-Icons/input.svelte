@@ -1,8 +1,8 @@
 <script>
-  import Button, { options } from '@sveltekit/ui/Button';
-  import SvgIcon from 'svelte-loader!@fortawesome/fontawesome-free/svgs/solid/plus.svg';
-  import SvelteIconsIcon from 'svelte-icons/md/MdAdd.svelte';
-  import { Add as SvelteKitIcon } from '@sveltekit/ui/Icons';
+import Button, { options } from "@sveltekit/ui/Button";
+import SvgIcon from "svelte-loader!@fortawesome/fontawesome-free/svgs/solid/plus.svg";
+import SvelteIconsIcon from "svelte-icons/md/MdAdd.svelte";
+import { Add as SvelteKitIcon } from "@sveltekit/ui/Icons";
 </script>
 
 

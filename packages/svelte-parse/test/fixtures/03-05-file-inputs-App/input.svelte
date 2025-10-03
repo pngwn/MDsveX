@@ -1,15 +1,15 @@
 <script>
-	let files;
+let files;
 
-	$: if (files) {
-		// Note that `files` is of type `FileList`, not an Array:
-		// https://developer.mozilla.org/en-US/docs/Web/API/FileList
-		console.log(files);
+$: if (files) {
+	// Note that `files` is of type `FileList`, not an Array:
+	// https://developer.mozilla.org/en-US/docs/Web/API/FileList
+	console.log(files);
 
-		for (const file of files) {
-			console.log(`${file.name}: ${file.size} bytes`);
-		}
+	for (const file of files) {
+		console.log(`${file.name}: ${file.size} bytes`);
 	}
+}
 </script>
 
 <label for="avatar">Upload a picture:</label>

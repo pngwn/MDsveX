@@ -1,13 +1,13 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
-  import { Clock as ClockIcon } from '@sveltekit/ui/Icons';
-  import Dropdown, { options as dropdownOptions } from '@sveltekit/ui/Dropdown';
-  import Tabs from '@sveltekit/ui/Tabs';
-  import Menu from './_Menu.svelte';
+import { createEventDispatcher } from "svelte";
+import { Clock as ClockIcon } from "@sveltekit/ui/Icons";
+import Dropdown, { options as dropdownOptions } from "@sveltekit/ui/Dropdown";
+import Tabs from "@sveltekit/ui/Tabs";
+import Menu from "./_Menu.svelte";
 
-  export let selectedItem;
-  export let placeholder = 'Please select...';
-  export let placement = dropdownOptions.placement.BOTTOM_LEFT;
+export let selectedItem;
+export let placeholder = "Please select...";
+export let placement = dropdownOptions.placement.BOTTOM_LEFT;
 </script>
 
 <style>

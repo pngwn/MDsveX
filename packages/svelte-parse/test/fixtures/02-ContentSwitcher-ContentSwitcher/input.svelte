@@ -1,32 +1,29 @@
 <script>
-  import { onMount } from 'svelte';
-  import { classnames } from '../../helpers/classnames';
+import { onMount } from "svelte";
+import { classnames } from "../../helpers/classnames";
 
-  export let items = [];
-  export let activeItem = null;
-  export let isActive = null;
-  export let size = 'default';
+export let items = [];
+export let activeItem = null;
+export let isActive = null;
+export let size = "default";
 
-  function onItemClick(clickedItem) {
-    if (isActive !== clickedItem) {
-      activeItem = clickedItem;
-    }
-  }
+function onItemClick(clickedItem) {
+	if (isActive !== clickedItem) {
+		activeItem = clickedItem;
+	}
+}
 
-  function itemClassNames(item, activeItem, size) {
-    return classnames(
-      `size-${size}`, 
-      {
-        active: JSON.stringify(item) === JSON.stringify(activeItem)
-      }
-    );
-  }
+function itemClassNames(item, activeItem, size) {
+	return classnames(`size-${size}`, {
+		active: JSON.stringify(item) === JSON.stringify(activeItem),
+	});
+}
 
-  onMount(() => {
-    if (!activeItem) {
-      activeItem = items[0];
-    }
-  });
+onMount(() => {
+	if (!activeItem) {
+		activeItem = items[0];
+	}
+});
 </script>
 
 

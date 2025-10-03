@@ -1,5 +1,5 @@
 <script>
-  import Button from '@sveltekit/ui/Button';
+import Button from "@sveltekit/ui/Button";
 </script>
 
 <div class="row">

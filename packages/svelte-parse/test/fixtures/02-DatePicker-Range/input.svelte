@@ -1,8 +1,8 @@
 <script>
-  import DatePicker from '@sveltekit/ui/DatePicker';
+import DatePicker from "@sveltekit/ui/DatePicker";
 
-  let date;
-  let toDate;
+let date;
+let toDate;
 </script>
 
 <div class="gridRow">

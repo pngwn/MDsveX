@@ -1,17 +1,20 @@
 <script>
-	let questions = [
-		{ id: 1, text: `Where did you go to school?` },
-		{ id: 2, text: `What is your mother's name?` },
-		{ id: 3, text: `What is another personal fact that an attacker could easily find with Google?` }
-	];
+let questions = [
+	{ id: 1, text: `Where did you go to school?` },
+	{ id: 2, text: `What is your mother's name?` },
+	{
+		id: 3,
+		text: `What is another personal fact that an attacker could easily find with Google?`,
+	},
+];
 
-	let selected;
+let selected;
 
-	let answer = '';
+let answer = "";
 
-	function handleSubmit() {
-		alert(`answered question ${selected.id} (${selected.text}) with "${answer}"`);
-	}
+function handleSubmit() {
+	alert(`answered question ${selected.id} (${selected.text}) with "${answer}"`);
+}
 </script>
 
 <style>

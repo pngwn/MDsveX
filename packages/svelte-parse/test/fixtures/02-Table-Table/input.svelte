@@ -1,139 +1,144 @@
 <script>
-  import { beforeUpdate, createEventDispatcher, onMount } from 'svelte';
-  import { classnames } from '../../helpers/classnames';
-  import orderBy from 'lodash/orderBy';
-  import Pagination from '../Pagination/Pagination.svelte';
-  import Spinner from '../Spinner/Spinner.svelte';
+import { beforeUpdate, createEventDispatcher, onMount } from "svelte";
+import { classnames } from "../../helpers/classnames";
+import orderBy from "lodash/orderBy";
+import Pagination from "../Pagination/Pagination.svelte";
+import Spinner from "../Spinner/Spinner.svelte";
 
-  const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-  let tableData = undefined;
+let tableData = undefined;
 
-  export let isLoading = false;
-  export let hasBorder = false;
-  export let isRowClickable = false;
-  export let activeSort = undefined;
-  export let activeSortDirection = undefined;
-  export let currentPage = 1;
-  export let pageSize = 10;
-  export let isDynamic = false;
-  export let columns = [];
-  export let showHeader = true;
-  export let noResultsMessage = 'No results available';
-  export let hasPagination = false;
-  export let itemTotal = 0;
-  export let data = [];
-  export let rowCssClass = () => {};
+export let isLoading = false;
+export let hasBorder = false;
+export let isRowClickable = false;
+export let activeSort = undefined;
+export let activeSortDirection = undefined;
+export let currentPage = 1;
+export let pageSize = 10;
+export let isDynamic = false;
+export let columns = [];
+export let showHeader = true;
+export let noResultsMessage = "No results available";
+export let hasPagination = false;
+export let itemTotal = 0;
+export let data = [];
+export let rowCssClass = () => {};
 
-  let ClassNames;
+let ClassNames;
 
-  $: {
-    ClassNames = classnames({
-      hasBorder,
-      isLoading,
-      isRowClickable,
-      noHeader: !showHeader
-    });
-  }
+$: {
+	ClassNames = classnames({
+		hasBorder,
+		isLoading,
+		isRowClickable,
+		noHeader: !showHeader,
+	});
+}
 
-  $: {
-    if(data) {
-      tableData = data;
-    }
-  }
+$: {
+	if (data) {
+		tableData = data;
+	}
+}
 
-  $: {
-    itemTotal = isDynamic ? itemTotal : data.length;
-  }
+$: {
+	itemTotal = isDynamic ? itemTotal : data.length;
+}
 
-  let Data;
+let Data;
 
-  $: {
-    if (!tableData) {
-      Data = [];
-    } else if (isDynamic) {
-      Data = tableData;
-    } else {
-      let processedData = tableData;
+$: {
+	if (!tableData) {
+		Data = [];
+	} else if (isDynamic) {
+		Data = tableData;
+	} else {
+		let processedData = tableData;
 
-      if (activeSort) {
-        processedData = orderBy(tableData, activeSort, activeSortDirection);
-      }
+		if (activeSort) {
+			processedData = orderBy(tableData, activeSort, activeSortDirection);
+		}
 
-      const currentPageSize = pageSize || processedData.length;
+		const currentPageSize = pageSize || processedData.length;
 
-      Data = processedData.slice((currentPage * currentPageSize) - currentPageSize, currentPage * currentPageSize);
-    }
-  }
+		Data = processedData.slice(
+			currentPage * currentPageSize - currentPageSize,
+			currentPage * currentPageSize,
+		);
+	}
+}
 
-  export function sort(selectedHeaderItem) {
-    const currentActiveSort = activeSort;
-    const currentDirection = activeSortDirection;
-    const dataLookup = typeof selectedHeaderItem.cell === 'string' ? selectedHeaderItem.cell : '';
-    const selectedSort = typeof selectedHeaderItem.sort === 'boolean' ? dataLookup : selectedHeaderItem.sort;
+export function sort(selectedHeaderItem) {
+	const currentActiveSort = activeSort;
+	const currentDirection = activeSortDirection;
+	const dataLookup =
+		typeof selectedHeaderItem.cell === "string" ? selectedHeaderItem.cell : "";
+	const selectedSort =
+		typeof selectedHeaderItem.sort === "boolean"
+			? dataLookup
+			: selectedHeaderItem.sort;
 
-    let newActiveSort = null;
-    let newSortDirection = null;
+	let newActiveSort = null;
+	let newSortDirection = null;
 
-    if (currentActiveSort !== selectedSort) {
-      newActiveSort = selectedSort;
-      newSortDirection = 'asc';
-    } else {
+	if (currentActiveSort !== selectedSort) {
+		newActiveSort = selectedSort;
+		newSortDirection = "asc";
+	} else {
+		if (!currentDirection) {
+			newSortDirection = "asc";
+		} else if (currentDirection === "asc") {
+			newSortDirection = "desc";
+		} else {
+			newSortDirection = null;
+		}
 
-      if (!currentDirection) {
-        newSortDirection = 'asc';
-      } else if (currentDirection === 'asc') {
-        newSortDirection = 'desc';
-      } else {
-        newSortDirection = null;
-      }
+		newActiveSort = newSortDirection ? currentActiveSort : null;
+	}
 
-      newActiveSort = newSortDirection ? currentActiveSort : null;
-    }
+	(activeSort = newActiveSort), (activeSortDirection = newSortDirection);
 
-    activeSort = newActiveSort, activeSortDirection = newSortDirection;
+	onChange();
+}
 
-    onChange();
-  }
+function onChange() {
+	dispatch("change", {
+		currentPage,
+		pageSize,
+		activeSort,
+		activeSortDirection,
+	});
+}
 
-  function onChange() {
-    dispatch('change', {
-      currentPage,
-      pageSize,
-      activeSort,
-      activeSortDirection
-    });
-  }
+function onRowClick(rowItem) {
+	dispatch("rowClick", rowItem);
+}
 
-  function onRowClick(rowItem) {
-    dispatch('rowClick', rowItem);
-  }
+function colWidth(col) {
+	return col.width ? `width:${col.width};min-width:${col.width};` : "";
+}
 
-  function colWidth(col) {
-    return col.width ? `width:${col.width};min-width:${col.width};` : '';
-  }
+function cellAlign(cell) {
+	return cell.align ? `text-align:${cell.align};` : "";
+}
 
-  function cellAlign(cell) {
-    return cell.align ? `text-align:${cell.align};` : '';
-  }
+function sortClassNames(sort, lookup, activeSort, activeSortDirection) {
+	const dataLookup = typeof lookup === "string" ? lookup : "";
+	const actualSort = typeof sort === "boolean" ? dataLookup : sort;
 
-  function sortClassNames(sort, lookup, activeSort, activeSortDirection) {
-    const dataLookup = typeof lookup === 'string' ? lookup : '';
-    const actualSort = typeof sort === 'boolean' ? dataLookup : sort;
+	return classnames({
+		"sort-asc": actualSort === activeSort && activeSortDirection === "asc",
+		"sort-desc": actualSort === activeSort && activeSortDirection === "desc",
+	});
+}
 
-    return classnames({
-      'sort-asc': actualSort === activeSort && activeSortDirection === 'asc',
-      'sort-desc': actualSort === activeSort && activeSortDirection === 'desc'
-    });
-  }
+let previous = false;
+let data_prev = undefined;
 
-
-  let previous = false;
-  let data_prev = undefined;
-
-  onMount(() => {
-    isRowClickable = !!arguments[0].$$.callbacks.rowClick;
-  });
+onMount(() => {
+	isRowClickable = !!arguments[0].$$.callbacks.rowClick;
+});
 </script>
 
 <style>

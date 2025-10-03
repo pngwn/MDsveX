@@ -1,7 +1,7 @@
 <script>
-	let name = 'world';
+let name = "world";
 
-	/*
+/*
 		trailing multiline comment
 	*/
 </script>

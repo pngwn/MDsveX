@@ -1,23 +1,24 @@
 <script>
-  import * as transitions from 'svelte/transition'
+import * as transitions from "svelte/transition";
 
-  /** Whether the Collapse is open or not
-   * @svelte-prop {boolean} open=true
-   * */
-  export let open = true
+/** Whether the Collapse is open or not
+ * @svelte-prop {boolean} open=true
+ * */
+export let open = true;
 
-  /** Animation to use when opening/closing
-   * @svelte-prop {String} animation=slide
-   * @values Any animation that ships with Svelte
-   * */
-  export let animation = 'slide'
+/** Animation to use when opening/closing
+ * @svelte-prop {String} animation=slide
+ * @values Any animation that ships with Svelte
+ * */
+export let animation = "slide";
 
-  let _animation = transitions[animation]
-  $: _animation = typeof animation === 'function' ? animation : transitions[animation]
+let _animation = transitions[animation];
+$: _animation =
+	typeof animation === "function" ? animation : transitions[animation];
 
-  function toggle() {
-    open = !open
-  }
+function toggle() {
+	open = !open;
+}
 </script>
 
 <div class="collapse">

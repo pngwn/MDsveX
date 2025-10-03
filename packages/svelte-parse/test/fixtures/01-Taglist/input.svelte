@@ -1,8 +1,8 @@
 <script>
-	/** Tags inside are attached together	
-    * @svelte-prop {Boolean} [attached=false]
-    * */
-	export let attached = false; 
+/** Tags inside are attached together
+ * @svelte-prop {Boolean} [attached=false]
+ * */
+export let attached = false;
 </script>
 
 

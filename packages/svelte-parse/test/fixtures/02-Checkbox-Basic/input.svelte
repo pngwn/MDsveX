@@ -1,5 +1,5 @@
 <script>
-  import Checkbox from '@sveltekit/ui/Checkbox';
+import Checkbox from "@sveltekit/ui/Checkbox";
 </script>
 
 <style>

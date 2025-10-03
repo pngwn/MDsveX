@@ -1,17 +1,17 @@
 <svelte:options immutable/>
 
 <script>
-	import { afterUpdate } from 'svelte';
-	import flash from './flash.js';
+import { afterUpdate } from "svelte";
+import flash from "./flash.js";
 
-	export let todo;
-	export let toggle;
+export let todo;
+export let toggle;
 
-	let div;
+let div;
 
-	afterUpdate(() => {
-		flash(div);
-	});
+afterUpdate(() => {
+	flash(div);
+});
 </script>
 
 <style>

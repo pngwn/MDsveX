@@ -1,14 +1,13 @@
 <script>
-  import Avatar, { options } from '@sveltekit/ui/Avatar';
-  import NumberInput from '@sveltekit/ui/NumberInput';
-  import { Alert as AlertIcon } from '@sveltekit/ui/Icons';
+import Avatar, { options } from "@sveltekit/ui/Avatar";
+import NumberInput from "@sveltekit/ui/NumberInput";
+import { Alert as AlertIcon } from "@sveltekit/ui/Icons";
 
+let image = "/avatar_example.gif";
+let customSize = 150;
+let initials = "HI";
 
-  let image = '/avatar_example.gif';
-  let customSize = 150;
-  let initials = 'HI';
-
-  let Component = AlertIcon;
+let Component = AlertIcon;
 </script>
 
 <style>

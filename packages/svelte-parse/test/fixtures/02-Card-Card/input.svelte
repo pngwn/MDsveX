@@ -1,31 +1,31 @@
 <script>
-  import { createEventDispatcher, onMount } from 'svelte';
+import { createEventDispatcher, onMount } from "svelte";
 
-  const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-  import { classnames } from '../../helpers/classnames';
+import { classnames } from "../../helpers/classnames";
 
-  export let isClickable = false;
-  export let isClickDisabled = false;
-  export let level = 0;
+export let isClickable = false;
+export let isClickDisabled = false;
+export let level = 0;
 
-  let ClassNames;
-  $: {
-    ClassNames = classnames({
-      isClickable: !isClickDisabled && isClickable,
-      [`level-${level}`]: level
-    });
-  }
+let ClassNames;
+$: {
+	ClassNames = classnames({
+		isClickable: !isClickDisabled && isClickable,
+		[`level-${level}`]: level,
+	});
+}
 
-  function onClick() {
-    if (isClickable && !isClickDisabled) {
-      dispatch('click');
-    }
-  }
+function onClick() {
+	if (isClickable && !isClickDisabled) {
+		dispatch("click");
+	}
+}
 
-  onMount(() => {
-    isClickable = !!arguments[0].$$.callbacks.click;
-  });
+onMount(() => {
+	isClickable = !!arguments[0].$$.callbacks.click;
+});
 </script>
 
 <style>

@@ -1,41 +1,41 @@
 <script>
-  import { onDestroy } from 'svelte';
+import { onDestroy } from "svelte";
 
-  import Checkbox from '@sveltekit/ui/Checkbox';
-  import Button from '@sveltekit/ui/Button';
-  import Modal from '@sveltekit/ui/Modal';
-  import modalService from '../modal';
+import Checkbox from "@sveltekit/ui/Checkbox";
+import Button from "@sveltekit/ui/Button";
+import Modal from "@sveltekit/ui/Modal";
+import modalService from "../modal";
 
-  let modal = undefined;
+let modal = undefined;
 
-  export let modalProps = {
-    hasCancelButton: true,
-    hasFooter: true,
-    hasOverlay: true,
-    isClosable: true,
-    isWaiting: false,
-    isOverlayClosable: true,
-    isKeyboardClosable: true,
-    isOkDisabled: false,
-    maxWidth: '100%'
-  };
+export let modalProps = {
+	hasCancelButton: true,
+	hasFooter: true,
+	hasOverlay: true,
+	isClosable: true,
+	isWaiting: false,
+	isOverlayClosable: true,
+	isKeyboardClosable: true,
+	isOkDisabled: false,
+	maxWidth: "100%",
+};
 
-  function showModal() {
-    modal = modalService.open(
-      Modal,
-      {
-        title: 'Modal title',
-        ...modalProps
-      },
-      '<h3>Model content</h3>'
-    );
-  }
+function showModal() {
+	modal = modalService.open(
+		Modal,
+		{
+			title: "Modal title",
+			...modalProps,
+		},
+		"<h3>Model content</h3>",
+	);
+}
 
-  onDestroy(() => {
-    if (modal) {
-      modalService.remove();
-    }
-  });
+onDestroy(() => {
+	if (modal) {
+		modalService.remove();
+	}
+});
 </script>
 
 <style>

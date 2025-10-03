@@ -1,126 +1,125 @@
 <script>
-  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-  import { classnames } from '../../helpers/classnames';
-  import whichAnimationEvent from '../../helpers/whichAnimationEvent';
+import { createEventDispatcher, onMount, onDestroy } from "svelte";
+import { classnames } from "../../helpers/classnames";
+import whichAnimationEvent from "../../helpers/whichAnimationEvent";
 
-  import Button from '../Button/Button.svelte';
-  import Spinner from '../Spinner/Spinner.svelte';
+import Button from "../Button/Button.svelte";
+import Spinner from "../Spinner/Spinner.svelte";
 
-  import buttonOptions from '../Button/options';
-  import AlertIcon from '../Icons/Alert.svelte';
-  import CheckIcon from '../Icons/Check.svelte';
-  import CloseIcon from '../Icons/Close.svelte';
+import buttonOptions from "../Button/options";
+import AlertIcon from "../Icons/Alert.svelte";
+import CheckIcon from "../Icons/Check.svelte";
+import CloseIcon from "../Icons/Close.svelte";
 
+const dispatch = createEventDispatcher();
 
-  const dispatch = createEventDispatcher();
+export let title = "";
+export let text = "";
+export let removeDelay = 3000;
+export let Icon = undefined;
+export let isClosable = false;
+export let isLoading = false;
+export let isDark = false;
+export let placement = "bottomLeft";
+export let maxWidth = undefined;
+export let actions = undefined;
+export let isTimedAction = false;
+export let targetElem = undefined;
+export let key = undefined;
+export let promise = undefined;
 
-  export let title = '';
-  export let text = '';
-  export let removeDelay = 3000;
-  export let Icon = undefined;
-  export let isClosable = false;
-  export let isLoading = false;
-  export let isDark = false;
-  export let placement = 'bottomLeft';
-  export let maxWidth = undefined;
-  export let actions = undefined;
-  export let isTimedAction = false;
-  export let targetElem = undefined;
-  export let key = undefined;
-  export let promise = undefined;
+const animationEvent = whichAnimationEvent();
 
-  const animationEvent = whichAnimationEvent();
+let notification = undefined;
+let isExiting = false;
+let removeTimeout = undefined;
+let hover = undefined;
+let timerEnded = undefined;
+let resolve = undefined;
+let reject = undefined;
 
-  let notification = undefined;
-  let isExiting = false;
-  let removeTimeout = undefined;
-  let hover = undefined;
-  let timerEnded = undefined;
-  let resolve = undefined;
-  let reject = undefined;
+export let ClassNames;
 
-  export let ClassNames;
+$: {
+	ClassNames = classnames({
+		[`placement-${placement}`]: placement,
+		isDark,
+		isExiting,
+		isLoading,
+	});
+}
 
-  $: {
-    ClassNames = classnames({
-      [`placement-${placement}`]: placement,
-      isDark,
-      isExiting,
-      isLoading
-    });
-  }
+function onExitComplete() {
+	dispatch("exit");
+}
 
-  function onExitComplete() {
-    dispatch('exit');
-  }
+export function complete(value) {
+	resolve(value);
+	remove({ force: true });
+}
 
-  export function complete(value) {
-    resolve(value);
-    remove({ force: true });
-  }
+export function cancel(value) {
+	promise.catch((err) => {});
 
-  export function cancel(value) {
-    promise.catch(err => {});
+	reject(value);
+	remove({ force: true });
+}
 
-    reject(value);
-    remove({ force: true });
-  }
+export function remove(args = {}) {
+	if (!args.force) {
+		if (hover) {
+			return (timerEnded = true);
+		}
+	}
 
-  export function remove(args = {}) {
-    if (!args.force) {
-      if (hover) {
-        return (timerEnded = true);
-      }
-    }
+	clearTimeout(removeTimeout);
+	dispatch("remove");
+	isExiting = true;
+}
 
-    clearTimeout(removeTimeout);
-    dispatch('remove');
-    isExiting = true;
-  }
+function onActionClick(method) {
+	method();
+}
 
-  function onActionClick(method) {
-    method();
-  }
+function onCancelClick() {
+	cancel("cancelled");
+}
 
-  function onCancelClick() {
-    cancel('cancelled');
-  }
+function handleMouseleave() {
+	hover = false;
+	if (timerEnded) remove();
+}
 
-  function handleMouseleave() {
-    hover = false;
-    if (timerEnded) remove();
-  }
+function onAnimationEnd(event) {
+	if (event.animationName.endsWith("notificationExit")) {
+		onExitComplete();
+	}
+}
 
-  function onAnimationEnd(event) {
-    if (event.animationName.endsWith('notificationExit')) {
-      onExitComplete();
-    }
-  }
+onMount(() => {
+	promise = new Promise((promiseResolve, promiseReject) => {
+		resolve = promiseResolve;
+		reject = promiseReject;
+	});
 
-  onMount(() => {
-    promise = new Promise((promiseResolve, promiseReject) => {
-      resolve = promiseResolve;
-      reject = promiseReject;
-    });
+	if (animationEvent) {
+		notification.addEventListener(animationEvent, onAnimationEnd);
+	}
 
-    if (animationEvent) {
-      notification.addEventListener(animationEvent, onAnimationEnd);
-    }
+	if (!isLoading && (!actions || isTimedAction)) {
+		removeTimeout = setTimeout(remove, removeDelay);
+	}
+});
 
-    if (!isLoading && (!actions || isTimedAction)) {
-      removeTimeout = setTimeout(remove, removeDelay);
-    }
-  });
+onDestroy(() => {
+	if (resolve !== undefined) {
+		resolve(null);
+	}
 
-  onDestroy(() => {
-    if (resolve !== undefined) {
-      resolve(null);
-    }
-
-    if (notification && animationEvent) {
-      notification.removeEventListener(animationEvent, onAnimationEnd);
-    }
-  });
+	if (notification && animationEvent) {
+		notification.removeEventListener(animationEvent, onAnimationEnd);
+	}
+});
 </script>
 
 <style>

@@ -1,7 +1,7 @@
 <script>
-  import Search from '@sveltekit/ui/Search';
+import Search from "@sveltekit/ui/Search";
 
-  let searchText = '';
+let searchText = "";
 </script>
 
 <Search bind:value={searchText} />

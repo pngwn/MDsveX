@@ -1,79 +1,84 @@
 <script>
-  import dayjs from 'dayjs';
-  import customParseFormat from 'dayjs/plugin/customParseFormat';
-  import Card, { options as cardOptions } from '@sveltekit/ui/Card';
-  import Tabs from '@sveltekit/ui/Tabs';
-  import TimeOptions from './_TimeOptions.svelte';
+import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+import Card, { options as cardOptions } from "@sveltekit/ui/Card";
+import Tabs from "@sveltekit/ui/Tabs";
+import TimeOptions from "./_TimeOptions.svelte";
 
-  dayjs.extend(customParseFormat);
+dayjs.extend(customParseFormat);
 
-  export let selectedItem;
-  export let isActive = false;
+export let selectedItem;
+export let isActive = false;
 
-  function timeOptions(startTime, endTime) {
-    const options = [];
-    let current = parseTime(startTime);
-    let last = parseTime(endTime);
+function timeOptions(startTime, endTime) {
+	const options = [];
+	let current = parseTime(startTime);
+	let last = parseTime(endTime);
 
-    while(!current.isAfter(last)) {
-      options.push(current.format('h:mma'));
-      current = current.add(30, 'minutes');
-    }
+	while (!current.isAfter(last)) {
+		options.push(current.format("h:mma"));
+		current = current.add(30, "minutes");
+	}
 
-    return options;
-  }
+	return options;
+}
 
-  function onClick(event) {
-    if(event.target.nodeName !== 'BUTTON') {
-      event.stopPropagation();
-    }
-  }
+function onClick(event) {
+	if (event.target.nodeName !== "BUTTON") {
+		event.stopPropagation();
+	}
+}
 
-  const tabs = [
-    {
-      label: 'Morning',
-      min: '12:00am',
-      max: '11:30am'
-    },
-    {
-      label: 'Day',
-      min: '12:00pm',
-      max: '6:30pm'
-    },
-    {
-      label: 'Night',
-      min: '7:00pm',
-      max: '11:30pm'
-    }
-  ];
+const tabs = [
+	{
+		label: "Morning",
+		min: "12:00am",
+		max: "11:30am",
+	},
+	{
+		label: "Day",
+		min: "12:00pm",
+		max: "6:30pm",
+	},
+	{
+		label: "Night",
+		min: "7:00pm",
+		max: "11:30pm",
+	},
+];
 
-  let activeTab = getActiveTab();
+let activeTab = getActiveTab();
 
-  $: {
-    if(!isActive) {
-      activeTab = getActiveTab();
-    }
-  }
+$: {
+	if (!isActive) {
+		activeTab = getActiveTab();
+	}
+}
 
-  function getActiveTab() {
-    const selectedTime = parseTime(selectedItem);
-    let activeTab = tabs[0];
+function getActiveTab() {
+	const selectedTime = parseTime(selectedItem);
+	let activeTab = tabs[0];
 
-    tabs.forEach((tab) => {
-      const thisMin = parseTime(tab.min);
-      const thisMax = parseTime(tabs.max); 
+	tabs.forEach((tab) => {
+		const thisMin = parseTime(tab.min);
+		const thisMax = parseTime(tabs.max);
 
-      if(selectedTime.isSame(thisMin) || selectedTime.isSame(thisMax) || (selectedTime.isAfter(thisMin) || selectedTime.isBefore(thisMax))) {
-        activeTab = tab;
-      }
-    });
+		if (
+			selectedTime.isSame(thisMin) ||
+			selectedTime.isSame(thisMax) ||
+			selectedTime.isAfter(thisMin) ||
+			selectedTime.isBefore(thisMax)
+		) {
+			activeTab = tab;
+		}
+	});
 
-    return activeTab;
-  }
+	return activeTab;
+}
 
-  function parseTime(time) {
-    return dayjs(time, 'h:mma');
-  }
+function parseTime(time) {
+	return dayjs(time, "h:mma");
+}
 </script>
 
 <style>

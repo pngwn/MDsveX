@@ -1,5 +1,5 @@
 <script>
-  import Alert, { options } from '@sveltekit/ui/Alert';
+import Alert, { options } from "@sveltekit/ui/Alert";
 </script>
 
 <div class="row">

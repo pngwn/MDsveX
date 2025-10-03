@@ -1,5 +1,5 @@
 <script>
-	import contributors from '../_contributors.js';
+import contributors from "../_contributors.js";
 </script>
 
 <style>

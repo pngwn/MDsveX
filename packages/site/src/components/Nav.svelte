@@ -1,22 +1,22 @@
 <script>
-  import { page } from "$app/stores";
-  import GithubIcon from "./GithubIcon.svelte";
+import { page } from "$app/stores";
+import GithubIcon from "./GithubIcon.svelte";
 
-  let w;
-  const links = [
-    ["/", "mdsvex"],
-    ["/docs", "docs"],
-    ["/playground", "try"],
-    ["https://www.github.com/pngwn/mdsvex", "github"]
-  ];
+let w;
+const links = [
+	["/", "mdsvex"],
+	["/docs", "docs"],
+	["/playground", "try"],
+	["https://www.github.com/pngwn/mdsvex", "github"],
+];
 
-  // $: filtered_links = is_small
-  //   ? links.filter(([href]) => href === $page.path)
-  //   : links;
+// $: filtered_links = is_small
+//   ? links.filter(([href]) => href === $page.path)
+//   : links;
 
-  // $: is_small = process.browser && w && w < 930;
+// $: is_small = process.browser && w && w < 930;
 
-  // $: console.log(is_small, w);
+// $: console.log(is_small, w);
 </script>
 
 <style>

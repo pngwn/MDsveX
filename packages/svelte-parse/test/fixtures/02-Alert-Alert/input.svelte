@@ -1,11 +1,11 @@
 <script>
-  import { classnames } from '../../helpers/classnames';
-  import options from './options';
-  import AlertIcon from '../Icons/Alert.svelte';
+import { classnames } from "../../helpers/classnames";
+import options from "./options";
+import AlertIcon from "../Icons/Alert.svelte";
 
-  export let type = options.type.WARNING;
+export let type = options.type.WARNING;
 
-  $: ClassNames = classnames(`type-${type}`);
+$: ClassNames = classnames(`type-${type}`);
 </script>
 
 <style>

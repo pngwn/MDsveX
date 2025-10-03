@@ -1,8 +1,8 @@
 <script>
-  export let name = '';
-  export let value = '';
-  export let selected = '';
-  export let isDisabled = false;
+export let name = "";
+export let value = "";
+export let selected = "";
+export let isDisabled = false;
 </script>
 
 <style>

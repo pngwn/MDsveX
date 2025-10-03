@@ -1,66 +1,75 @@
 <script>
-  import { onMount } from 'svelte'
-  import Icon from './Icon.svelte'
-  import { omit } from '../utils'
+import { onMount } from "svelte";
+import Icon from "./Icon.svelte";
+import { omit } from "../utils";
 
-  /** HTML tag to use for button (either 'a' or 'button')
-   * @svelte-prop {String} tag=button
-   * @values <code>button</code>, <code>a</code>
-   * */
-  export let tag = 'button'
+/** HTML tag to use for button (either 'a' or 'button')
+ * @svelte-prop {String} tag=button
+ * @values <code>button</code>, <code>a</code>
+ * */
+export let tag = "button";
 
-  /** Type (color of control)
-   * @svelte-prop {String} [type] - Type (color of control)
-   * @values $$colors$$
-   * */
-  export let type = ''
+/** Type (color of control)
+ * @svelte-prop {String} [type] - Type (color of control)
+ * @values $$colors$$
+ * */
+export let type = "";
 
-  /** Size of button
-   * @svelte-prop {String} [size]
-   * @values $$sizes$$
-   * */
-  export let size = ''
+/** Size of button
+ * @svelte-prop {String} [size]
+ * @values $$sizes$$
+ * */
+export let size = "";
 
-  /** Href to use when <code>tag</code> is 'a'
-   * @svelte-prop {String} [href]
-   * */
-  export let href = ''
+/** Href to use when <code>tag</code> is 'a'
+ * @svelte-prop {String} [href]
+ * */
+export let href = "";
 
-  /** Native button type
-   * @svelte-prop {String} [nativeType]=button
-   * @values Any native button type (button, submit, reset)
-   * */
-  export let nativeType = 'button'
+/** Native button type
+ * @svelte-prop {String} [nativeType]=button
+ * @values Any native button type (button, submit, reset)
+ * */
+export let nativeType = "button";
 
-  export let loading = false
-  export let inverted = false
-  export let outlined = false
-  export let rounded = false
+export let loading = false;
+export let inverted = false;
+export let outlined = false;
+export let rounded = false;
 
-  export let iconLeft = null
-  export let iconRight = null
-  export let iconPack = null
+export let iconLeft = null;
+export let iconRight = null;
+export let iconPack = null;
 
-  let iconSize = ''
+let iconSize = "";
 
-  onMount(() => {
-    if (!['button', 'a'].includes(tag)) throw new Error(`'${tag}' cannot be used as a tag for a Bulma button`)
-  })
+onMount(() => {
+	if (!["button", "a"].includes(tag))
+		throw new Error(`'${tag}' cannot be used as a tag for a Bulma button`);
+});
 
-  $: props = {
-    ...omit($$props, 'loading', 'inverted', 'nativeType', 'outlined', 'rounded', 'type'),
-    class: `button ${type} ${size} ${$$props.class || ''}`,
-  }
+$: props = {
+	...omit(
+		$$props,
+		"loading",
+		"inverted",
+		"nativeType",
+		"outlined",
+		"rounded",
+		"type",
+	),
+	class: `button ${type} ${size} ${$$props.class || ""}`,
+};
 
-  $: {
-    if (!size || size === 'is-medium') {
-      iconSize = 'is-small'
-    } else if (size === 'is-large') {
-      iconSize = 'is-medium'
-    } else {
-      iconSize = size
-    }
-  }
+$: {
+	if (!size || size === "is-medium") {
+		iconSize = "is-small";
+	} else if (size === "is-large") {
+		iconSize = "is-medium";
+	} else {
+		iconSize = size;
+	}
+}
 </script>
 
 {#if tag === 'button'}

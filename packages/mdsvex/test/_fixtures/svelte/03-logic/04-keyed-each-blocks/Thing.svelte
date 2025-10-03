@@ -1,9 +1,9 @@
 <script>
-	// `current` is updated whenever the prop value changes...
-	export let current;
+// `current` is updated whenever the prop value changes...
+export let current;
 
-	// ...but `initial` is fixed upon initialisation
-	const initial = current;
+// ...but `initial` is fixed upon initialisation
+const initial = current;
 </script>
 
 <p>

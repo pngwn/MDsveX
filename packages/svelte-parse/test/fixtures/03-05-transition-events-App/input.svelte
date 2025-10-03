@@ -1,8 +1,8 @@
 <script>
-	import { fly } from 'svelte/transition';
+import { fly } from "svelte/transition";
 
-	let visible = true;
-	let status = 'waiting...';
+let visible = true;
+let status = "waiting...";
 </script>
 
 <p>status: {status}</p>

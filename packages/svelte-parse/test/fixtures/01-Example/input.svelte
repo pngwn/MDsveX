@@ -1,9 +1,9 @@
 <script>
-	import { Section } from '@sveltejs/site-kit';
-	import IntersectionObserver from '../../components/IntersectionObserver.svelte';
-	import ReplWidget from '../../components/Repl/ReplWidget.svelte';
+import { Section } from "@sveltejs/site-kit";
+import IntersectionObserver from "../../components/IntersectionObserver.svelte";
+import ReplWidget from "../../components/Repl/ReplWidget.svelte";
 
-	export let id;
+export let id;
 </script>
 
 <style>

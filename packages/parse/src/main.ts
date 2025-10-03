@@ -1,20 +1,20 @@
-import { LINEFEED } from './constants';
+import { LINEFEED } from "./constants";
 
 declare const MARKDOWN: boolean;
 declare const SVELTE: boolean;
 
-const lineFeed = '\n';
+const lineFeed = "\n";
 const lineBreaksExpression = /\r\n|\r/g;
 
 export function parse(
 	input: string,
-	options: Record<string, unknown>
+	options: Record<string, unknown>,
 ): { type: string; children: Array<unknown> } {
 	const value = input.replace(lineBreaksExpression, lineFeed);
 	let index = 0;
 
 	const node = {
-		type: 'root',
+		type: "root",
 		children: [],
 	};
 
@@ -56,18 +56,18 @@ export function parse(
 
 	for (;;) {
 		if (MARKDOWN) {
-			console.log('I AM MARKDOWN');
+			console.log("I AM MARKDOWN");
 		}
 		if (MARKDOWN && process.env.SOME_CONST) {
-			console.log('I AM MARKDOWN WITH CONDITION');
+			console.log("I AM MARKDOWN WITH CONDITION");
 		}
 
 		if (SVELTE && process.env.SOME_OTHER_CONST) {
-			console.log('I AM SVELTE');
+			console.log("I AM SVELTE");
 		}
 
 		if (SVELTE) {
-			console.log('I AM SVELTE');
+			console.log("I AM SVELTE");
 		}
 		break;
 	}

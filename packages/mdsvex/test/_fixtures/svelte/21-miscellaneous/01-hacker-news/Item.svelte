@@ -1,8 +1,8 @@
 <script>
-	import Comment from "./Comment.svelte";
+import Comment from "./Comment.svelte";
 
-	export let item;
-	export let returnTo;
+export let item;
+export let returnTo;
 </script>
 
 <style>

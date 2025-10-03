@@ -1,25 +1,21 @@
 <script>
-  import { getContext, onMount } from "svelte";
-  import CodeMirror from "../CodeMirror.svelte";
-  import Message from "../Message.svelte";
+import { getContext, onMount } from "svelte";
+import CodeMirror from "../CodeMirror.svelte";
+import Message from "../Message.svelte";
 
-  const {
-    bundle,
-    selected,
-    handle_change,
-    register_module_editor
-  } = getContext("REPL");
+const { bundle, selected, handle_change, register_module_editor } =
+	getContext("REPL");
 
-  export let errorLoc;
+export let errorLoc;
 
-  let editor;
-  onMount(() => {
-    register_module_editor(editor);
-  });
+let editor;
+onMount(() => {
+	register_module_editor(editor);
+});
 
-  export function focus() {
-    editor.focus();
-  }
+export function focus() {
+	editor.focus();
+}
 </script>
 
 <style>

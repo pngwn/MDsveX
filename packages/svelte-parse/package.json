@@ -15,12 +15,7 @@
 		"type": "git",
 		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/svelte-parse"
 	},
-	"keywords": [
-		"svelte",
-		"parse",
-		"mdsvex",
-		"ast"
-	],
+	"keywords": ["svelte", "parse", "mdsvex", "ast"],
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"dependencies": {

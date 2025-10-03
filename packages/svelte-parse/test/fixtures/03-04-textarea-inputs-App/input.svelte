@@ -1,6 +1,6 @@
 <script>
-	import marked from 'marked';
-	let text = `Some words are *italic*, some are **bold**`;
+import marked from "marked";
+let text = `Some words are *italic*, some are **bold**`;
 </script>
 
 <style>

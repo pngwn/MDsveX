@@ -1,15 +1,14 @@
 <script>
-  import Chip from '@sveltekit/ui/Chip';
+import Chip from "@sveltekit/ui/Chip";
 
-  let avatarWithImage = {
-    alt: '',
-    src: '/avatar_example.gif'
-  };
+let avatarWithImage = {
+	alt: "",
+	src: "/avatar_example.gif",
+};
 
-  let avatarNoImage = {
-    alt: 'XX'
-  };
-
+let avatarNoImage = {
+	alt: "XX",
+};
 </script>
 
 <div class="row">

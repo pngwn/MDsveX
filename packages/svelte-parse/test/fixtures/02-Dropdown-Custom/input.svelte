@@ -1,11 +1,11 @@
 <script>
-  import Button from '@sveltekit/ui/Button';
-  import Dropdown from '@sveltekit/ui/Dropdown';
-  import CustomList from './_CustomList.svelte';
+import Button from "@sveltekit/ui/Button";
+import Dropdown from "@sveltekit/ui/Dropdown";
+import CustomList from "./_CustomList.svelte";
 
-  function handleSelect(event) {
-    // handle event
-  }
+function handleSelect(event) {
+	// handle event
+}
 </script>
 
 <Dropdown MenuComponent="{CustomList}" on:select="{handleSelect}">

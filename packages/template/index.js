@@ -1,3 +1,3 @@
-import { compile } from 'mdsvex';
+import { compile } from "mdsvex";
 
-compile('# hello').then(console.log);
+compile("# hello").then(console.log);

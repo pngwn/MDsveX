@@ -1,15 +1,15 @@
-import { build } from 'esbuild';
+import { build } from "esbuild";
 
 build({
-	entryPoints: ['src/main.ts'],
+	entryPoints: ["src/main.ts"],
 	bundle: true,
 	minify: true,
-	target: 'es2020',
-	format: 'esm',
-	outdir: 'dist',
+	target: "es2020",
+	format: "esm",
+	outdir: "dist",
 	treeShaking: true,
 	define: {
-		MARKDOWN: 'true',
-		SVELTE: 'false',
+		MARKDOWN: "true",
+		SVELTE: "false",
 	},
 });

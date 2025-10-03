@@ -1,15 +1,15 @@
-import { test, expect } from 'vitest';
+import { test, expect } from "vitest";
 
-import { VoidBlock, Root, Node, Point } from 'svast';
-import { parseNode, parse } from '../src/main';
+import { VoidBlock, Root, Node, Point } from "svast";
+import { parseNode, parse } from "../src/main";
 
 const childParser: () => [Node[], Point & { index?: number }, number] = () => [
-	[<Node>{ type: 'fake' }],
+	[<Node>{ type: "fake" }],
 	{ line: 1, column: 1, offset: 0, index: 0 },
 	0,
 ];
 
-test('parses a simple void block', () => {
+test("parses a simple void block", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -18,16 +18,16 @@ test('parses a simple void block', () => {
 	});
 
 	expect(parsed).toEqual(<VoidBlock>{
-		type: 'svelteVoidBlock',
-		name: 'html',
+		type: "svelteVoidBlock",
+		name: "html",
 		expression: {
-			type: 'svelteExpression',
-			value: 'boo',
+			type: "svelteExpression",
+			value: "boo",
 		},
 	});
 });
 
-test('parses a more complex expression within a void block', () => {
+test("parses a more complex expression within a void block", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -36,17 +36,17 @@ test('parses a more complex expression within a void block', () => {
 	});
 
 	expect(parsed).toEqual(<VoidBlock>{
-		type: 'svelteVoidBlock',
-		name: 'html',
+		type: "svelteVoidBlock",
+		name: "html",
 		expression: {
-			type: 'svelteExpression',
+			type: "svelteExpression",
 			value:
 				'(e) => val = val.filter(v => v.map(x => x*2)).reduce(absolutelywhat is this i have no idea) * 2735262 + 123.something("hey")',
 		},
 	});
 });
 
-test('parses a void Element without an expression', () => {
+test("parses a void Element without an expression", () => {
 	//@ts-ignore
 	const { parsed } = parseNode({
 		generatePositions: false,
@@ -55,16 +55,16 @@ test('parses a void Element without an expression', () => {
 	});
 
 	expect(parsed).toEqual(<VoidBlock>{
-		type: 'svelteVoidBlock',
-		name: 'htmlfoo',
+		type: "svelteVoidBlock",
+		name: "htmlfoo",
 		expression: {
-			type: 'svelteExpression',
-			value: '',
+			type: "svelteExpression",
+			value: "",
 		},
 	});
 });
 
-test('parses a simple if block', () => {
+test("parses a simple if block", () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
@@ -72,20 +72,20 @@ test('parses a simple if block', () => {
 	});
 
 	expect(parsed).toEqual(<Root>{
-		type: 'root',
+		type: "root",
 		children: [
 			{
-				type: 'svelteBranchingBlock',
-				name: 'if',
+				type: "svelteBranchingBlock",
+				name: "if",
 				branches: [
 					{
-						type: 'svelteBranch',
-						name: 'if',
+						type: "svelteBranch",
+						name: "if",
 						expression: {
-							type: 'svelteExpression',
-							value: 'condition',
+							type: "svelteExpression",
+							value: "condition",
 						},
-						children: [{ type: 'text', value: 'hello' }],
+						children: [{ type: "text", value: "hello" }],
 					},
 				],
 			},
@@ -93,7 +93,7 @@ test('parses a simple if block', () => {
 	});
 });
 
-test('parses an if block with an else', () => {
+test("parses an if block with an else", () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
@@ -101,29 +101,29 @@ test('parses an if block with an else', () => {
 	});
 
 	expect(parsed).toEqual(<Root>{
-		type: 'root',
+		type: "root",
 		children: [
 			{
-				type: 'svelteBranchingBlock',
-				name: 'if',
+				type: "svelteBranchingBlock",
+				name: "if",
 				branches: [
 					{
-						type: 'svelteBranch',
-						name: 'if',
+						type: "svelteBranch",
+						name: "if",
 						expression: {
-							type: 'svelteExpression',
-							value: 'condition',
+							type: "svelteExpression",
+							value: "condition",
 						},
-						children: [{ type: 'text', value: 'hello' }],
+						children: [{ type: "text", value: "hello" }],
 					},
 					{
-						type: 'svelteBranch',
-						name: 'else',
+						type: "svelteBranch",
+						name: "else",
 						expression: {
-							type: 'svelteExpression',
-							value: '',
+							type: "svelteExpression",
+							value: "",
 						},
-						children: [{ type: 'text', value: 'hello2' }],
+						children: [{ type: "text", value: "hello2" }],
 					},
 				],
 			},
@@ -131,7 +131,7 @@ test('parses an if block with an else', () => {
 	});
 });
 
-test('parses an if block with an if else and else', () => {
+test("parses an if block with an if else and else", () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
@@ -139,38 +139,38 @@ test('parses an if block with an if else and else', () => {
 	});
 
 	expect(parsed).toEqual(<Root>{
-		type: 'root',
+		type: "root",
 		children: [
 			{
-				type: 'svelteBranchingBlock',
-				name: 'if',
+				type: "svelteBranchingBlock",
+				name: "if",
 				branches: [
 					{
-						type: 'svelteBranch',
-						name: 'if',
+						type: "svelteBranch",
+						name: "if",
 						expression: {
-							type: 'svelteExpression',
-							value: 'condition',
+							type: "svelteExpression",
+							value: "condition",
 						},
-						children: [{ type: 'text', value: 'hello' }],
+						children: [{ type: "text", value: "hello" }],
 					},
 					{
-						type: 'svelteBranch',
-						name: 'else if',
+						type: "svelteBranch",
+						name: "else if",
 						expression: {
-							type: 'svelteExpression',
-							value: 'condition2',
+							type: "svelteExpression",
+							value: "condition2",
 						},
-						children: [{ type: 'text', value: 'hello2' }],
+						children: [{ type: "text", value: "hello2" }],
 					},
 					{
-						type: 'svelteBranch',
-						name: 'else',
+						type: "svelteBranch",
+						name: "else",
 						expression: {
-							type: 'svelteExpression',
-							value: '',
+							type: "svelteExpression",
+							value: "",
 						},
-						children: [{ type: 'text', value: 'hello3' }],
+						children: [{ type: "text", value: "hello3" }],
 					},
 				],
 			},
@@ -178,7 +178,7 @@ test('parses an if block with an if else and else', () => {
 	});
 });
 
-test('parses an if block with many if else branches', () => {
+test("parses an if block with many if else branches", () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
@@ -186,56 +186,56 @@ test('parses an if block with many if else branches', () => {
 	});
 
 	expect(parsed).toEqual(<Root>{
-		type: 'root',
+		type: "root",
 		children: [
 			{
-				type: 'svelteBranchingBlock',
-				name: 'if',
+				type: "svelteBranchingBlock",
+				name: "if",
 				branches: [
 					{
-						type: 'svelteBranch',
-						name: 'if',
+						type: "svelteBranch",
+						name: "if",
 						expression: {
-							type: 'svelteExpression',
-							value: 'condition',
+							type: "svelteExpression",
+							value: "condition",
 						},
-						children: [{ type: 'text', value: 'hello' }],
+						children: [{ type: "text", value: "hello" }],
 					},
 					{
-						type: 'svelteBranch',
-						name: 'else if',
+						type: "svelteBranch",
+						name: "else if",
 						expression: {
-							type: 'svelteExpression',
-							value: 'condition2',
+							type: "svelteExpression",
+							value: "condition2",
 						},
-						children: [{ type: 'text', value: 'hello2' }],
+						children: [{ type: "text", value: "hello2" }],
 					},
 					{
-						type: 'svelteBranch',
-						name: 'else if',
+						type: "svelteBranch",
+						name: "else if",
 						expression: {
-							type: 'svelteExpression',
-							value: 'condition2',
+							type: "svelteExpression",
+							value: "condition2",
 						},
-						children: [{ type: 'text', value: 'hello2' }],
+						children: [{ type: "text", value: "hello2" }],
 					},
 					{
-						type: 'svelteBranch',
-						name: 'else if',
+						type: "svelteBranch",
+						name: "else if",
 						expression: {
-							type: 'svelteExpression',
-							value: 'condition2',
+							type: "svelteExpression",
+							value: "condition2",
 						},
-						children: [{ type: 'text', value: 'hello2' }],
+						children: [{ type: "text", value: "hello2" }],
 					},
 					{
-						type: 'svelteBranch',
-						name: 'else if',
+						type: "svelteBranch",
+						name: "else if",
 						expression: {
-							type: 'svelteExpression',
-							value: 'condition2',
+							type: "svelteExpression",
+							value: "condition2",
 						},
-						children: [{ type: 'text', value: 'hello2' }],
+						children: [{ type: "text", value: "hello2" }],
 					},
 				],
 			},
@@ -243,7 +243,7 @@ test('parses an if block with many if else branches', () => {
 	});
 });
 
-test('parses an await block with all branches', () => {
+test("parses an await block with all branches", () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
@@ -251,46 +251,46 @@ test('parses an await block with all branches', () => {
 	});
 
 	expect(parsed).toEqual(<Root>{
-		type: 'root',
+		type: "root",
 		children: [
 			{
-				type: 'svelteBranchingBlock',
-				name: 'await',
+				type: "svelteBranchingBlock",
+				name: "await",
 				branches: [
 					{
-						type: 'svelteBranch',
-						name: 'await',
+						type: "svelteBranch",
+						name: "await",
 						expression: {
-							type: 'svelteExpression',
-							value: 'somePromise',
+							type: "svelteExpression",
+							value: "somePromise",
 						},
-						children: [{ type: 'text', value: 'loading' }],
+						children: [{ type: "text", value: "loading" }],
 					},
 					{
-						type: 'svelteBranch',
-						name: 'then',
+						type: "svelteBranch",
+						name: "then",
 						expression: {
-							type: 'svelteExpression',
-							value: 'value',
+							type: "svelteExpression",
+							value: "value",
 						},
 						children: [
 							{
-								type: 'svelteDynamicContent',
-								expression: { type: 'svelteExpression', value: 'value' },
+								type: "svelteDynamicContent",
+								expression: { type: "svelteExpression", value: "value" },
 							},
 						],
 					},
 					{
-						type: 'svelteBranch',
-						name: 'catch',
+						type: "svelteBranch",
+						name: "catch",
 						expression: {
-							type: 'svelteExpression',
-							value: 'e',
+							type: "svelteExpression",
+							value: "e",
 						},
 						children: [
 							{
-								type: 'svelteDynamicContent',
-								expression: { type: 'svelteExpression', value: 'e.value' },
+								type: "svelteDynamicContent",
+								expression: { type: "svelteExpression", value: "e.value" },
 							},
 						],
 					},
@@ -300,7 +300,7 @@ test('parses an await block with all branches', () => {
 	});
 });
 
-test('parses an await block with a shorthand `await then` and a catch', () => {
+test("parses an await block with a shorthand `await then` and a catch", () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
@@ -308,37 +308,37 @@ test('parses an await block with a shorthand `await then` and a catch', () => {
 	});
 
 	expect(parsed).toEqual(<Root>{
-		type: 'root',
+		type: "root",
 		children: [
 			{
-				type: 'svelteBranchingBlock',
-				name: 'await',
+				type: "svelteBranchingBlock",
+				name: "await",
 				branches: [
 					{
-						type: 'svelteBranch',
-						name: 'await',
+						type: "svelteBranch",
+						name: "await",
 						expression: {
-							type: 'svelteExpression',
-							value: 'somePromise then value',
+							type: "svelteExpression",
+							value: "somePromise then value",
 						},
 						children: [
 							{
-								type: 'svelteDynamicContent',
-								expression: { type: 'svelteExpression', value: 'value' },
+								type: "svelteDynamicContent",
+								expression: { type: "svelteExpression", value: "value" },
 							},
 						],
 					},
 					{
-						type: 'svelteBranch',
-						name: 'catch',
+						type: "svelteBranch",
+						name: "catch",
 						expression: {
-							type: 'svelteExpression',
-							value: 'e',
+							type: "svelteExpression",
+							value: "e",
 						},
 						children: [
 							{
-								type: 'svelteDynamicContent',
-								expression: { type: 'svelteExpression', value: 'e.value' },
+								type: "svelteDynamicContent",
+								expression: { type: "svelteExpression", value: "e.value" },
 							},
 						],
 					},
@@ -348,7 +348,7 @@ test('parses an await block with a shorthand `await then` and a catch', () => {
 	});
 });
 
-test('parses an await block with a shorthand `await then` and no catch', () => {
+test("parses an await block with a shorthand `await then` and no catch", () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
@@ -356,23 +356,23 @@ test('parses an await block with a shorthand `await then` and no catch', () => {
 	});
 
 	expect(parsed).toEqual(<Root>{
-		type: 'root',
+		type: "root",
 		children: [
 			{
-				type: 'svelteBranchingBlock',
-				name: 'await',
+				type: "svelteBranchingBlock",
+				name: "await",
 				branches: [
 					{
-						type: 'svelteBranch',
-						name: 'await',
+						type: "svelteBranch",
+						name: "await",
 						expression: {
-							type: 'svelteExpression',
-							value: 'somePromise then value',
+							type: "svelteExpression",
+							value: "somePromise then value",
 						},
 						children: [
 							{
-								type: 'svelteDynamicContent',
-								expression: { type: 'svelteExpression', value: 'value' },
+								type: "svelteDynamicContent",
+								expression: { type: "svelteExpression", value: "value" },
 							},
 						],
 					},
@@ -382,7 +382,7 @@ test('parses an await block with a shorthand `await then` and no catch', () => {
 	});
 });
 
-test('parses an each block correctly', () => {
+test("parses an each block correctly", () => {
 	//@ts-ignore
 	const parsed = parse({
 		generatePositions: false,
@@ -390,24 +390,24 @@ test('parses an each block correctly', () => {
 	});
 
 	expect(parsed).toEqual(<Root>{
-		type: 'root',
+		type: "root",
 		children: [
 			{
-				type: 'svelteBranchingBlock',
-				name: 'each',
+				type: "svelteBranchingBlock",
+				name: "each",
 				branches: [
 					{
-						type: 'svelteBranch',
-						name: 'each',
+						type: "svelteBranch",
+						name: "each",
 						expression: {
-							type: 'svelteExpression',
+							type: "svelteExpression",
 							value:
-								'array.filter(1, 2, 3, 4) as {hello: {world}}, index (key(23))',
+								"array.filter(1, 2, 3, 4) as {hello: {world}}, index (key(23))",
 						},
 						children: [
 							{
-								type: 'svelteDynamicContent',
-								expression: { type: 'svelteExpression', value: 'value' },
+								type: "svelteDynamicContent",
+								expression: { type: "svelteExpression", value: "value" },
 							},
 						],
 					},
@@ -417,7 +417,7 @@ test('parses an each block correctly', () => {
 	});
 });
 
-test('parses an if block with a trailing space character', () => {
+test("parses an if block with a trailing space character", () => {
 	const parsed = parse({
 		value: `{ #if Data.length <= 0 && !isLoading } 
 { /if }`,
@@ -425,23 +425,23 @@ test('parses an if block with a trailing space character', () => {
 	});
 
 	expect(parsed).toEqual({
-		type: 'root',
+		type: "root",
 		children: [
 			{
-				type: 'svelteBranchingBlock',
-				name: 'if',
+				type: "svelteBranchingBlock",
+				name: "if",
 				branches: [
 					{
-						type: 'svelteBranch',
-						name: 'if',
+						type: "svelteBranch",
+						name: "if",
 						expression: {
-							type: 'svelteExpression',
-							value: 'Data.length <= 0 && !isLoading ',
+							type: "svelteExpression",
+							value: "Data.length <= 0 && !isLoading ",
 						},
 						children: [
 							{
-								type: 'text',
-								value: ' \n',
+								type: "text",
+								value: " \n",
 							},
 						],
 					},

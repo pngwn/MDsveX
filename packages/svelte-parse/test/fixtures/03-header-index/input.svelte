@@ -1,21 +1,21 @@
 <script>
-    import { smaligned } from '../../lib/elements/util';
+import { smaligned } from "../../lib/elements/util";
 
-    export let page = '';
-    export let attached = '';
-    export let block = '';
-    export let color = '';
-    export let disabled = '';
-    export let dividing = '';
-    export let floated = '';
-    export let icon = false;
-    export let inverted = false;
-    export let size = '';
-    export let sub = false;
-    export let subheader = false;
-    export let alignment = '';
+export let page = "";
+export let attached = "";
+export let block = "";
+export let color = "";
+export let disabled = "";
+export let dividing = "";
+export let floated = "";
+export let icon = false;
+export let inverted = false;
+export let size = "";
+export let sub = false;
+export let subheader = false;
+export let alignment = "";
 
-    $: aligned = smaligned(alignment)
+$: aligned = smaligned(alignment);
 </script>
 
 {#if page === 'h1'}

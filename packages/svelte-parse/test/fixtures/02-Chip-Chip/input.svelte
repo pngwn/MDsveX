@@ -1,43 +1,43 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+import { createEventDispatcher } from "svelte";
 
-  const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-  import { classnames } from '../../helpers/classnames';
-  import Avatar from '../Avatar/Avatar.svelte';
-  import Button from '../Button/Button.svelte';
-  import Spinner from '../Spinner/Spinner.svelte';
-  import buttonOptions from '../Button/options';
-  import RemoveIcon from '../Icons/Remove.svelte';
+import { classnames } from "../../helpers/classnames";
+import Avatar from "../Avatar/Avatar.svelte";
+import Button from "../Button/Button.svelte";
+import Spinner from "../Spinner/Spinner.svelte";
+import buttonOptions from "../Button/options";
+import RemoveIcon from "../Icons/Remove.svelte";
 
-  export let avatar = null;
-  export let isRemovable = false;
-  export let isDisabled = false;
-  export let isWaiting = false;
-  export let isActive = false;
+export let avatar = null;
+export let isRemovable = false;
+export let isDisabled = false;
+export let isWaiting = false;
+export let isActive = false;
 
-  let ClassNames;
-  $: {
-    ClassNames = classnames({
-      hasAvatar: avatar,
-      isRemovable
-    });
-  }
+let ClassNames;
+$: {
+	ClassNames = classnames({
+		hasAvatar: avatar,
+		isRemovable,
+	});
+}
 
-  let HtmlDisabled;
-  $: {
-    HtmlDisabled = isDisabled || isWaiting;
-  }
+let HtmlDisabled;
+$: {
+	HtmlDisabled = isDisabled || isWaiting;
+}
 
-  function onButtonClick(event) {
-    dispatch('click', event);
-  }
+function onButtonClick(event) {
+	dispatch("click", event);
+}
 
-  function onRemoveClick(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    dispatch('remove', event);
-  }
+function onRemoveClick(event) {
+	event.preventDefault();
+	event.stopPropagation();
+	dispatch("remove", event);
+}
 </script>
 
 <style>

@@ -1,94 +1,97 @@
 <script>
-  import { beforeUpdate, createEventDispatcher } from 'svelte';
+import { beforeUpdate, createEventDispatcher } from "svelte";
 
-  const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-  import { classnames } from '../../helpers/classnames';
-  import getPages from '../../helpers/getPages';
+import { classnames } from "../../helpers/classnames";
+import getPages from "../../helpers/getPages";
 
-  import Button from '../Button/Button.svelte';
-  import buttonOptions from '../Button/options';
-  import ChevronLeftIcon from '../Icons/ChevronLeft.svelte';
-  import ChevronRightIcon from '../Icons/ChevronRight.svelte';
+import Button from "../Button/Button.svelte";
+import buttonOptions from "../Button/options";
+import ChevronLeftIcon from "../Icons/ChevronLeft.svelte";
+import ChevronRightIcon from "../Icons/ChevronRight.svelte";
 
-  export let canNavigate = true;
-  export let current = 1;
-  export let pageSize = 10;
-  export let total = 0;
-  export let showSummary = true;
-  export let showPages = true;
+export let canNavigate = true;
+export let current = 1;
+export let pageSize = 10;
+export let total = 0;
+export let showSummary = true;
+export let showPages = true;
 
-  let prev_total = undefined;
-  let prev_pageSize = undefined;
+let prev_total = undefined;
+let prev_pageSize = undefined;
 
-  beforeUpdate(() => {
-    if ((prev_total !== undefined && total !== prev_total) || (prev_pageSize !== undefined && pageSize !== prev_pageSize)) {
-      const newLastPage = Math.ceil(total / pageSize);
-      if (current > newLastPage) {
-        current = newLastPage;
-      }
-    }
+beforeUpdate(() => {
+	if (
+		(prev_total !== undefined && total !== prev_total) ||
+		(prev_pageSize !== undefined && pageSize !== prev_pageSize)
+	) {
+		const newLastPage = Math.ceil(total / pageSize);
+		if (current > newLastPage) {
+			current = newLastPage;
+		}
+	}
 
-    prev_total = total;
-    prev_pageSize = pageSize;
-  });
+	prev_total = total;
+	prev_pageSize = pageSize;
+});
 
-  let ClassNames;
-  $: {
-    ClassNames = classnames({
-      canNavigate
-    });
-  }
+let ClassNames;
+$: {
+	ClassNames = classnames({
+		canNavigate,
+	});
+}
 
-  let From;
-  $: {
-    From = (current * pageSize) - pageSize + 1;
-  }
+let From;
+$: {
+	From = current * pageSize - pageSize + 1;
+}
 
-  let To;
-  $: {
-    const to = current * pageSize;
-    To = to <= total ? to : total;
-  }
+let To;
+$: {
+	const to = current * pageSize;
+	To = to <= total ? to : total;
+}
 
-  let IsFirstPage;
-  $: {
-    IsFirstPage = current === 1;
-  }
+let IsFirstPage;
+$: {
+	IsFirstPage = current === 1;
+}
 
-  let IsLastPage;
-  $: {
-    IsLastPage = current === Math.ceil(total / pageSize);
-  }
+let IsLastPage;
+$: {
+	IsLastPage = current === Math.ceil(total / pageSize);
+}
 
-  function onPrevClick() {
-    current -= 1;
+function onPrevClick() {
+	current -= 1;
 
-    dispatch('change', {
-      current,
-      pageSize
-    });
-  }
+	dispatch("change", {
+		current,
+		pageSize,
+	});
+}
 
-  function onNextClick() {
-    current += 1;
+function onNextClick() {
+	current += 1;
 
-    dispatch('change', {
-      current,
-      pageSize
-    });
-  }
+	dispatch("change", {
+		current,
+		pageSize,
+	});
+}
 
-  function onPageClick(pageNumber) {
-    if(pageNumber !== current) {
-      current = pageNumber;
+function onPageClick(pageNumber) {
+	if (pageNumber !== current) {
+		current = pageNumber;
 
-      dispatch('change', {
-        current,
-        pageSize
-      });
-    }
-  }
+		dispatch("change", {
+			current,
+			pageSize,
+		});
+	}
+}
 </script>
 
 

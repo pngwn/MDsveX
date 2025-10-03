@@ -29,11 +29,11 @@
 ><slot></slot></div>
 
 <script context="module">
-    import { exclude, eventsBuilder, actions, clsxd } from '../../lib'
-    import { current_component } from 'svelte/internal'
-    import SegmentGroup from './SegmentGroup.svelte'
+import { exclude, eventsBuilder, actions, clsxd } from "../../lib";
+import { current_component } from "svelte/internal";
+import SegmentGroup from "./SegmentGroup.svelte";
 
-    export { SegmentGroup }
+export { SegmentGroup };
 </script>
 
 <script>

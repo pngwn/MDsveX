@@ -1,15 +1,15 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+import { createEventDispatcher } from "svelte";
 
-  const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-  import DropdownMenu from '../_DropdownMenu.svelte';
-  import DropdownMenuItem from '../_DropdownMenuItem.svelte';
-  import DropdownMenuDivider from '../_DropdownMenuDivider.svelte';
+import DropdownMenu from "../_DropdownMenu.svelte";
+import DropdownMenuItem from "../_DropdownMenuItem.svelte";
+import DropdownMenuDivider from "../_DropdownMenuDivider.svelte";
 
-  function onClick(selected) {
-    this.fire('select', selected);
-  }
+function onClick(selected) {
+	this.fire("select", selected);
+}
 </script>
 
 <style>

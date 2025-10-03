@@ -1,6 +1,6 @@
 <script>
-	import Map from './Map.svelte';
-	import MapMarker from './MapMarker.svelte';
+import Map from "./Map.svelte";
+import MapMarker from "./MapMarker.svelte";
 </script>
 
 <Map lat={35} lon={-84} zoom={3.5}>
