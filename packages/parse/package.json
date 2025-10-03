@@ -6,12 +6,20 @@
 	"module": "src/main.ts",
 	"private": true,
 	"type": "module",
-	"scripts": {},
+	"scripts": {
+		"test": "vitest test",
+		"test:run": "vitest run test"
+	},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/pfm-parser"
 	},
-	"keywords": ["markdown", "parse", "mdsvex", "ast"],
+	"keywords": [
+		"markdown",
+		"parse",
+		"mdsvex",
+		"ast"
+	],
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT"
 }

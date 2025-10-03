@@ -1,6 +1,7 @@
 import {
 	BACKTICK,
 	CLOSE_BRACE,
+	TILDE,
 	LINEFEED,
 	OCTOTHERP,
 	OPEN_ANGLE_BRACKET,
@@ -155,6 +156,8 @@ export class token_buffer {
 	private starts: Uint32Array;
 	private ends: Uint32Array;
 	private extras: Uint16Array;
+	private value_starts: Uint32Array;
+	private value_ends: Uint32Array;
 	private _size: number;
 
 	constructor(initial_capacity = DEFAULT_TOKEN_CAPACITY) {
@@ -164,6 +167,8 @@ export class token_buffer {
 		this.starts = new Uint32Array(capacity);
 		this.ends = new Uint32Array(capacity);
 		this.extras = new Uint16Array(capacity);
+		this.value_starts = new Uint32Array(capacity);
+		this.value_ends = new Uint32Array(capacity);
 		this._size = 0;
 	}
 
@@ -175,7 +180,14 @@ export class token_buffer {
 		return this._size;
 	}
 
-	push(kind: token_kind, start: number, end: number, extra = 0): void {
+	push(
+		kind: token_kind,
+		start: number,
+		end: number,
+		extra = 0,
+		value_start = start,
+		value_end = end
+	): void {
 		const index = this._size;
 		if (index >= this.capacity) {
 			this.grow();
@@ -185,6 +197,8 @@ export class token_buffer {
 		this.starts[index] = start >>> 0;
 		this.ends[index] = end >>> 0;
 		this.extras[index] = extra & 0xffff;
+		this.value_starts[index] = value_start >>> 0;
+		this.value_ends[index] = value_end >>> 0;
 		this._size = index + 1;
 	}
 
@@ -220,23 +234,37 @@ export class token_buffer {
 		return this.extras.subarray(0, this._size);
 	}
 
+	value_start_at(index: number): number {
+		return this.value_starts[index];
+	}
+
+	value_end_at(index: number): number {
+		return this.value_ends[index];
+	}
+
 	private grow(): void {
 		const next = this.capacity << 1;
 		const next_kinds = new Uint8Array(next);
 		const next_starts = new Uint32Array(next);
 		const next_ends = new Uint32Array(next);
 		const next_extras = new Uint16Array(next);
+		const next_value_starts = new Uint32Array(next);
+		const next_value_ends = new Uint32Array(next);
 
 		next_kinds.set(this.kinds);
 		next_starts.set(this.starts);
 		next_ends.set(this.ends);
 		next_extras.set(this.extras);
+		next_value_starts.set(this.value_starts);
+		next_value_ends.set(this.value_ends);
 
 		this.capacity = next;
 		this.kinds = next_kinds;
 		this.starts = next_starts;
 		this.ends = next_ends;
 		this.extras = next_extras;
+		this.value_starts = next_value_starts;
+		this.value_ends = next_value_ends;
 	}
 }
 
@@ -322,6 +350,7 @@ export function parse_markdown_svelte(
 function tokenize(context: parse_context): void {
 	const { source, length, errors } = context;
 	let position = 0;
+	let line_start = 0;
 
 	while (position < length) {
 		const code = source.charCodeAt(position);
@@ -335,10 +364,12 @@ function tokenize(context: parse_context): void {
 			case LINEFEED: {
 				emit_token(context, token_kind.line_break, position, position + 1);
 				position += 1;
+				line_start = position;
 				continue;
 			}
 			case OCTOTHERP: {
-				position = consume_heading(context, position);
+				position = consume_heading(context, position, line_start);
+				line_start = position;
 				continue;
 			}
 			case OPEN_ANGLE_BRACKET: {
@@ -362,7 +393,8 @@ function tokenize(context: parse_context): void {
 				}
 				break;
 			}
-			case BACKTICK: {
+			case BACKTICK:
+		case TILDE: {
 				position = consume_code_fence(context, position);
 				continue;
 			}
@@ -381,9 +413,11 @@ function emit_token(
 	kind: token_kind,
 	start: number,
 	end: number,
-	payload = 0
+	payload = 0,
+	value_start = start,
+	value_end = end
 ): void {
-	context.tokens.push(kind, start, end, payload);
+	context.tokens.push(kind, start, end, payload, value_start, value_end);
 	const node_kind_value = map_token_kind(kind);
 	context.arena.allocate(node_kind_value, start, end, context.root, payload);
 }
@@ -426,26 +460,110 @@ function chomp_text(context: parse_context, position: number): number {
 	return position;
 }
 
-function consume_heading(context: parse_context, position: number): number {
+function consume_heading(
+	context: parse_context,
+	position: number,
+	line_start: number
+): number {
 	const { source, length } = context;
 	const start = position;
+
+	if (!line_prefix_allows_heading(source, line_start, start)) {
+		return emit_plain_text_line(context, start);
+	}
+
+	let index = position;
 	let hashes = 0;
-	while (position < length && source.charCodeAt(position) === OCTOTHERP) {
+	while (index < length && source.charCodeAt(index) === OCTOTHERP) {
 		hashes += 1;
-		position += 1;
+		index += 1;
 	}
 
-	while (position < length) {
-		const code = source.charCodeAt(position);
-		if (code === LINEFEED) {
-			break;
+	if (hashes === 0) {
+		return emit_plain_text_line(context, start);
+	}
+
+	if (hashes > 6) {
+		return emit_plain_text_line(context, start);
+	}
+
+	if (index < length) {
+		const next = source.charCodeAt(index);
+		if (!(next === SPACE || next === TAB || next === LINEFEED)) {
+			return emit_plain_text_line(context, start);
 		}
-		position += 1;
 	}
 
-	emit_token(context, token_kind.heading, start, position, hashes);
-	return position;
+	let content_start = index;
+	while (content_start < length) {
+		const char_code = source.charCodeAt(content_start);
+		if (char_code === SPACE || char_code === TAB) {
+			content_start += 1;
+			continue;
+		}
+		break;
+	}
+
+	let line_end = content_start;
+	while (line_end < length && source.charCodeAt(line_end) !== LINEFEED) {
+		line_end += 1;
+	}
+
+	let value_end = line_end;
+	while (value_end > content_start) {
+		const trailing = source.charCodeAt(value_end - 1);
+		if (trailing === SPACE || trailing === TAB) {
+			value_end -= 1;
+			continue;
+		}
+		break;
+	}
+
+	if (line_end < length && source.charCodeAt(line_end) === LINEFEED) {
+		line_end += 1;
+	}
+
+	const token_end = line_end;
+	emit_token(
+		context,
+		token_kind.heading,
+		start,
+		token_end,
+		hashes,
+		content_start,
+		value_end
+	);
+	return token_end;
 }
+
+function line_prefix_allows_heading(
+	source: string,
+	line_start: number,
+	position: number
+): boolean {
+	for (let index = line_start; index < position; index += 1) {
+		const code = source.charCodeAt(index);
+		if (code === SPACE) {
+			continue;
+		}
+		if (code === TAB) {
+			return false;
+		}
+		return false;
+	}
+	return true;
+}
+
+function emit_plain_text_line(context: parse_context, start: number): number {
+	const { source, length } = context;
+	let end = start;
+	while (end < length && source.charCodeAt(end) !== LINEFEED) {
+		end += 1;
+	}
+	emit_token(context, token_kind.text, start, end);
+	return end;
+}
+
 
 function consume_html(context: parse_context, position: number): number {
 	const { source, length } = context;
@@ -471,10 +589,33 @@ function consume_code_fence(context: parse_context, position: number): number {
 		position += 1;
 	}
 
-	while (position < length) {
-		const code = source.charCodeAt(position);
+	if (run < 3) {
+		emit_token(context, token_kind.text, start, position);
+		return position;
+	}
+
+	const info_start = position;
+	let info_end = position;
+	let info_contains_illegal_backtick = false;
+	while (info_end < length && source.charCodeAt(info_end) !== LINEFEED) {
+		if (fence_char === BACKTICK && source.charCodeAt(info_end) === BACKTICK) {
+			info_contains_illegal_backtick = true;
+		}
+		info_end += 1;
+	}
+
+	if (info_contains_illegal_backtick) {
+		emit_token(context, token_kind.text, start, info_end);
+		return info_end;
+	}
+
+	const content_start = info_end < length ? info_end + 1 : info_end;
+	let position_after_open = content_start;
+
+	while (position_after_open < length) {
+		const code = source.charCodeAt(position_after_open);
 		if (code === fence_char) {
-			let closing = position;
+			let closing = position_after_open;
 			let matching = 0;
 			while (
 				closing < length &&
@@ -485,17 +626,25 @@ function consume_code_fence(context: parse_context, position: number): number {
 				closing += 1;
 			}
 			if (matching === run) {
-				emit_token(context, token_kind.code_fence, start, closing);
+				emit_token(
+					context,
+					token_kind.code_fence,
+					start,
+					closing,
+					0,
+					content_start,
+					position_after_open
+				);
 				return closing;
 			}
-			position = closing;
+			position_after_open = closing;
 			continue;
 		}
-		position += 1;
+		position_after_open += 1;
 	}
 
 	errors.push(start);
-	emit_token(context, token_kind.code_fence, start, length);
+	emit_token(context, token_kind.code_fence, start, length, 0, content_start, length);
 	return length;
 }
 
