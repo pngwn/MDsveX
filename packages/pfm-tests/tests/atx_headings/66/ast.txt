@@ -1,0 +1,4 @@
+paragraph 
+  -> text(foo)
+  -> emphasis -> text(bar)
+  -> text(*baz*)

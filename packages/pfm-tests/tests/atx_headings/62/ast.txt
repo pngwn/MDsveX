@@ -1,0 +1,13 @@
+root
+	heading(1)
+		text(foo)
+	heading(2)
+		text(foo)
+	heading(3)
+		text(foo)
+	heading(4)
+		text(foo)
+	heading(5)
+		text(foo)
+	heading(6)
+		text(foo)

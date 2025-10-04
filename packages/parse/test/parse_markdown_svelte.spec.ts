@@ -4,6 +4,19 @@ import { node_kind, parse_markdown_svelte, token_kind } from '../src/main';
 
 const to_array = (view: Uint8Array | Uint16Array | Uint32Array): number[] => Array.from(view);
 
+const collect_children = (
+  arena: ReturnType<typeof parse_markdown_svelte>['arena'],
+  parent: number
+): number[] => {
+  const children: number[] = [];
+  for (let index = 0; index < arena.size; index += 1) {
+    if (arena.get_parent(index) === parent) {
+      children.push(index);
+    }
+  }
+  return children;
+};
+
 describe('parse_markdown_svelte', () => {
   test('emits text and line break tokens in order', () => {
     const input = 'Hello\nWorld';
@@ -19,22 +32,29 @@ describe('parse_markdown_svelte', () => {
     expect(to_array(tokens.starts_slice())).toEqual([0, 5, 6]);
     expect(to_array(tokens.ends_slice())).toEqual([5, 6, 11]);
 
-    expect(arena.size).toBe(tokens.size + 1);
+    expect(arena.size).toBe(6);
     expect(arena.get_kind(root)).toBe(node_kind.root);
     expect(arena.get_start(root)).toBe(0);
     expect(arena.get_end(root)).toBe(input.length);
 
-    const child_kinds: node_kind[] = [];
-    for (let index = root + 1; index < arena.size; index += 1) {
-      child_kinds.push(arena.get_kind(index));
-      expect(arena.get_parent(index)).toBe(root);
-    }
-
-    expect(child_kinds).toEqual([
-      node_kind.text,
+    const root_children = collect_children(arena, root);
+    expect(root_children.map((index) => arena.get_kind(index))).toEqual([
+      node_kind.paragraph,
       node_kind.line_break,
-      node_kind.text
+      node_kind.paragraph
     ]);
+
+    for (const paragraph_index of root_children.filter(
+      (index) => arena.get_kind(index) === node_kind.paragraph
+    )) {
+      const paragraph_children = collect_children(arena, paragraph_index);
+      expect(paragraph_children).toHaveLength(1);
+
+      const text_index = paragraph_children[0];
+      expect(arena.get_kind(text_index)).toBe(node_kind.text);
+      expect(arena.get_start(text_index)).toBe(arena.get_start(paragraph_index));
+      expect(arena.get_end(text_index)).toBe(arena.get_end(paragraph_index));
+    }
   });
 
   test('tracks heading depth as payload metadata', () => {
@@ -45,10 +65,18 @@ describe('parse_markdown_svelte', () => {
     expect(tokens.kind_at(0)).toBe(token_kind.heading);
     expect(tokens.extra_at(0)).toBe(3);
 
-    expect(arena.size).toBe(2);
+    expect(arena.size).toBe(3);
     const heading_index = root + 1;
     expect(arena.get_kind(heading_index)).toBe(node_kind.heading);
     expect(arena.get_payload(heading_index)).toBe(3);
+
+    const heading_children = collect_children(arena, heading_index);
+    expect(heading_children).toHaveLength(1);
+
+    const text_index = heading_children[0];
+    expect(arena.get_kind(text_index)).toBe(node_kind.text);
+    expect(arena.get_start(text_index)).toBe(tokens.value_start_at(0));
+    expect(arena.get_end(text_index)).toBe(tokens.value_end_at(0));
   });
 
   test('collects errors for unterminated mustache blocks', () => {
@@ -115,11 +143,21 @@ describe('parse_markdown_svelte', () => {
 
   test('skips leading whitespace without emitting tokens', () => {
     const input = '  foo';
-    const { tokens } = parse_markdown_svelte(input);
+    const { tokens, arena, root } = parse_markdown_svelte(input);
 
     expect(tokens.size).toBe(1);
     expect(tokens.kind_at(0)).toBe(token_kind.text);
     expect(tokens.start_at(0)).toBe(2);
     expect(tokens.end_at(0)).toBe(input.length);
+
+    const [paragraph_index] = collect_children(arena, root);
+    expect(arena.get_kind(paragraph_index)).toBe(node_kind.paragraph);
+    expect(arena.get_start(paragraph_index)).toBe(tokens.start_at(0));
+    expect(arena.get_end(paragraph_index)).toBe(tokens.end_at(0));
+
+    const [text_index] = collect_children(arena, paragraph_index);
+    expect(arena.get_kind(text_index)).toBe(node_kind.text);
+    expect(arena.get_start(text_index)).toBe(tokens.value_start_at(0));
+    expect(arena.get_end(text_index)).toBe(tokens.value_end_at(0));
   });
 });

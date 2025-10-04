@@ -41,6 +41,7 @@ export const enum node_kind {
 	mustache = 4,
 	code_fence = 5,
 	line_break = 6,
+	paragraph = 7,
 }
 
 /** Options for controlling the markdown parser. */
@@ -66,6 +67,44 @@ interface parse_context {
 	tokens: token_buffer;
 	errors: error_collector;
 	root: number;
+}
+
+const enum parser_state {
+	block = 0,
+	inline_heading = 1,
+	inline_paragraph = 2,
+}
+
+interface block_frame {
+	state: parser_state.block;
+	node: number;
+}
+
+interface inline_frame {
+	state: parser_state.inline_heading | parser_state.inline_paragraph;
+	node: number;
+	end: number;
+	resume: number;
+	line_start_after: number;
+	cursor: number;
+}
+
+type stack_frame = block_frame | inline_frame;
+
+interface inline_transition {
+	state: parser_state.inline_heading | parser_state.inline_paragraph;
+	node: number;
+	inline_start: number;
+	inline_end: number;
+	resume: number;
+	line_start_after: number;
+}
+
+interface heading_transition {
+	node: number;
+	content_start: number;
+	content_end: number;
+	resume: number;
 }
 
 /** Simple arena that stores AST node metadata in typed arrays. */
@@ -468,157 +507,208 @@ export function parse_markdown_svelte(
  */
 function tokenize(context: parse_context): void {
 	const { source, length, errors } = context;
+	const stack: stack_frame[] = [{ state: parser_state.block, node: context.root }];
 	let position = 0;
 	let line_start = 0;
 
 	while (position < length) {
+		const active = stack[stack.length - 1];
+		if (active.state !== parser_state.block) {
+			const inline = active as inline_frame;
+			if (position >= inline.end) {
+				flush_inline_text(context, inline, inline.end);
+				stack.pop();
+				position = inline.resume;
+				line_start = inline.line_start_after;
+				continue;
+			}
+		}
+
+		const state = stack[stack.length - 1].state;
 		const code = source.charCodeAt(position);
 
-		switch (code) {
-			case SPACE:
-			case TAB: {
-				position = chomp_whitespace(source, length, position + 1);
-				continue;
-			}
-			case LINEFEED: {
-				emit_token(context, token_kind.line_break, position, position + 1);
-				position += 1;
-				line_start = position;
-				continue;
-			}
-			case OCTOTHERP: {
-				position = consume_heading(context, position, line_start);
-				line_start = position;
-				continue;
-			}
-			case OPEN_ANGLE_BRACKET: {
-				position = consume_html(context, position);
-				continue;
-			}
-			case OPEN_BRACE: {
-				if (
-					position + 1 < length &&
-					source.charCodeAt(position + 1) === OPEN_BRACE
-				) {
-					const span_end = find_closing_mustache(source, length, position + 2);
-					if (span_end === -1) {
-						errors.push(position);
-						emit_token(context, token_kind.mustache, position, length);
-						return;
-					}
-					emit_token(context, token_kind.mustache, position, span_end + 2);
-					position = span_end + 2;
+		if (state === parser_state.block) {
+			switch (code) {
+				case SPACE:
+				case TAB: {
+					position = chomp_whitespace(source, length, position + 1);
 					continue;
 				}
-				break;
+				case LINEFEED: {
+					emit_token(context, stack, token_kind.line_break, position, position + 1);
+					position += 1;
+					line_start = position;
+					continue;
+				}
+				case OCTOTHERP: {
+					const heading = start_heading(context, stack, position, line_start);
+					if (heading) {
+						push_inline_frame(stack, {
+							state: parser_state.inline_heading,
+							node: heading.node,
+							inline_start: heading.content_start,
+							inline_end: heading.content_end,
+							resume: heading.resume,
+							line_start_after: heading.resume,
+						});
+						position = heading.content_start;
+						continue;
+					}
+					const fallback = start_plain_text_line(context, stack, position, line_start);
+					push_inline_frame(stack, fallback);
+					position = fallback.inline_start;
+					continue;
+				}
+				case OPEN_ANGLE_BRACKET: {
+					const html_position = consume_html(context, stack, position);
+					if (html_position !== position) {
+						position = html_position;
+						continue;
+					}
+					const paragraph = start_paragraph_span(context, stack, position, line_start);
+					push_inline_frame(stack, paragraph);
+					position = paragraph.inline_start;
+					continue;
+				}
+				case OPEN_BRACE: {
+					if (
+						position + 1 < length &&
+						source.charCodeAt(position + 1) === OPEN_BRACE
+					) {
+						const span_end = find_closing_mustache(source, length, position + 2);
+						if (span_end === -1) {
+							errors.push(position);
+							emit_token(context, stack, token_kind.mustache, position, length);
+							return;
+						}
+						emit_token(context, stack, token_kind.mustache, position, span_end + 2);
+						position = span_end + 2;
+						continue;
+					}
+					const paragraph = start_paragraph_span(context, stack, position, line_start);
+					push_inline_frame(stack, paragraph);
+					position = paragraph.inline_start;
+					continue;
+				}
+				case BACKTICK:
+				case TILDE: {
+					const fence_position = consume_code_fence(context, stack, position, line_start);
+					if (fence_position !== position) {
+						position = fence_position;
+						continue;
+					}
+					const paragraph = start_paragraph_span(context, stack, position, line_start);
+					push_inline_frame(stack, paragraph);
+					position = paragraph.inline_start;
+					continue;
+				}
+				default: {
+					const paragraph = start_paragraph_span(context, stack, position, line_start);
+					push_inline_frame(stack, paragraph);
+					position = paragraph.inline_start;
+					continue;
+				}
 			}
-			case BACKTICK:
-		case TILDE: {
-				position = consume_code_fence(context, position);
-				continue;
-			}
-			default: {
-				position = chomp_text(context, position);
-				continue;
-			}
+		} else {
+			position = process_inline(context, stack, active as inline_frame, position);
+			continue;
 		}
 
 		position += 1;
 	}
+
+	while (stack.length > 1) {
+		const frame = stack.pop() as inline_frame;
+		flush_inline_text(context, frame, Math.min(frame.end, length));
+		position = frame.resume;
+		line_start = frame.line_start_after;
+	}
 }
 
-/**
- * Emit a token and allocate a matching node in the arena.
- * @param context Shared parsing state.
- * @param kind Token category to record.
- * @param start Inclusive start offset in the source string.
- * @param end Exclusive end offset in the source string.
- * @param payload Additional token metadata.
- * @param value_start Start offset excluding delimiters.
- * @param value_end End offset excluding delimiters.
- */
-function emit_token(
+function push_inline_frame(stack: stack_frame[], transition: inline_transition): void {
+	stack.push({
+		state: transition.state,
+		node: transition.node,
+		end: transition.inline_end,
+		resume: transition.resume,
+		line_start_after: transition.line_start_after,
+		cursor: transition.inline_start,
+	});
+}
+
+function flush_inline_text(context: parse_context, frame: inline_frame, upto: number): void {
+	if (upto <= frame.cursor) {
+		return;
+	}
+	context.arena.allocate(node_kind.text, frame.cursor, upto, frame.node, 0);
+	frame.cursor = upto;
+}
+
+function process_inline(
 	context: parse_context,
-	kind: token_kind,
-	start: number,
-	end: number,
-	payload = 0,
-	value_start = start,
-	value_end = end
-): void {
-	context.tokens.push(kind, start, end, payload, value_start, value_end);
-	const node_kind_value = map_token_kind(kind);
-	context.arena.allocate(node_kind_value, start, end, context.root, payload);
-}
-
-/**
- * Consume a run of tab or space characters.
- * @param source Source string being parsed.
- * @param length Total length of the source.
- * @param position Offset where whitespace consumption should begin.
- * @returns Offset immediately after the whitespace run.
- */
-function chomp_whitespace(
-	source: string,
-	length: number,
+	stack: stack_frame[],
+	frame: inline_frame,
 	position: number
 ): number {
-	while (position < length) {
-		const code = source.charCodeAt(position);
-		if (!(code === SPACE || code === TAB)) {
-			break;
-		}
-		position += 1;
+	const { source, length, errors } = context;
+	const limit = Math.min(frame.end, length);
+	if (position >= limit) {
+		return position;
 	}
-	return position;
+
+	const code = source.charCodeAt(position);
+
+	if (
+		code === OPEN_BRACE &&
+		position + 1 < length &&
+		source.charCodeAt(position + 1) === OPEN_BRACE
+	) {
+		flush_inline_text(context, frame, position);
+		const span_end = find_closing_mustache(source, length, position + 2);
+		if (span_end === -1) {
+			errors.push(position);
+			emit_token(context, stack, token_kind.mustache, position, length, 0, position, length, frame.node);
+			return length;
+		}
+		const token_end = span_end + 2;
+		emit_token(context, stack, token_kind.mustache, position, token_end, 0, position, token_end, frame.node);
+		frame.cursor = token_end;
+		return token_end;
+	}
+
+	if (code === OPEN_ANGLE_BRACKET) {
+		html_tag_pattern.lastIndex = position;
+		const match = html_tag_pattern.exec(source);
+		if (match) {
+			const end = html_tag_pattern.lastIndex;
+			if (end <= frame.end) {
+				flush_inline_text(context, frame, position);
+				emit_token(context, stack, token_kind.html, position, end, 0, position, end, frame.node);
+				frame.cursor = end;
+				return end;
+			}
+		}
+		return position + 1;
+	}
+
+	if (code === LINEFEED) {
+		flush_inline_text(context, frame, position);
+		frame.end = position;
+		return position;
+	}
+
+	return position + 1;
 }
 
-/**
- * Consume plain text until a control character or delimiter is hit.
- * @param context Shared parsing state.
- * @param position Offset where text consumption begins.
- * @returns Offset after the consumed text.
- */
-function chomp_text(context: parse_context, position: number): number {
-	const { source, length } = context;
-	const start = position;
-	while (position < length) {
-		const code = source.charCodeAt(position);
-		if (
-			code === LINEFEED ||
-			code === OPEN_ANGLE_BRACKET ||
-			code === OPEN_BRACE ||
-			code === BACKTICK ||
-			code === OCTOTHERP
-		) {
-			break;
-		}
-		position += 1;
-	}
-
-	if (position > start) {
-		emit_token(context, token_kind.text, start, position);
-	}
-	return position;
-}
-
-/**
- * Parse a markdown heading, falling back to text if the syntax is invalid.
- * @param context Shared parsing state.
- * @param position Offset where the potential heading starts.
- * @param line_start Offset where the current line begins.
- * @returns Offset immediately after the processed line.
- */
-function consume_heading(
+function start_heading(
 	context: parse_context,
+	stack: stack_frame[],
 	position: number,
 	line_start: number
-): number {
+): heading_transition | null {
 	const { source, length } = context;
-	const start = position;
-
-	if (!line_prefix_allows_heading(source, line_start, start)) {
-		return emit_plain_text_line(context, start);
+	if (!line_prefix_allows_heading(source, line_start, position)) {
+		return null;
 	}
 
 	let index = position;
@@ -628,18 +718,14 @@ function consume_heading(
 		index += 1;
 	}
 
-	if (hashes === 0) {
-		return emit_plain_text_line(context, start);
-	}
-
-	if (hashes > 6) {
-		return emit_plain_text_line(context, start);
+	if (hashes === 0 || hashes > 6) {
+		return null;
 	}
 
 	if (index < length) {
 		const next = source.charCodeAt(index);
 		if (!(next === SPACE || next === TAB || next === LINEFEED)) {
-			return emit_plain_text_line(context, start);
+			return null;
 		}
 	}
 
@@ -672,17 +758,143 @@ function consume_heading(
 		line_end += 1;
 	}
 
-	const token_end = line_end;
-	emit_token(
+	const node = emit_token(
 		context,
+		stack,
 		token_kind.heading,
-		start,
-		token_end,
+		position,
+		line_end,
 		hashes,
 		content_start,
 		value_end
 	);
-	return token_end;
+
+	return {
+		node,
+		content_start,
+		content_end: value_end,
+		resume: line_end,
+	};
+}
+
+function start_plain_text_line(
+	context: parse_context,
+	stack: stack_frame[],
+	position: number,
+	line_start: number
+): inline_transition {
+	const { source, length } = context;
+	let line_end = position;
+	while (line_end < length && source.charCodeAt(line_end) !== LINEFEED) {
+		line_end += 1;
+	}
+
+	const node = emit_token(context, stack, token_kind.text, position, line_end);
+	return {
+		state: parser_state.inline_paragraph,
+		node,
+		inline_start: position,
+		inline_end: line_end,
+		resume: line_end,
+		line_start_after: line_start,
+	};
+}
+
+function start_paragraph_span(
+	context: parse_context,
+	stack: stack_frame[],
+	position: number,
+	line_start: number
+): inline_transition {
+	const { source, length } = context;
+	const start = position;
+	while (position < length) {
+		const code = source.charCodeAt(position);
+		if (
+			code === LINEFEED ||
+			code === OPEN_ANGLE_BRACKET ||
+			code === OPEN_BRACE ||
+			code === BACKTICK ||
+			code === OCTOTHERP
+		) {
+			break;
+		}
+		position += 1;
+	}
+
+	if (position === start) {
+		position = Math.min(length, start + 1);
+	}
+
+	const node = emit_token(context, stack, token_kind.text, start, position);
+	return {
+		state: parser_state.inline_paragraph,
+		node,
+		inline_start: start,
+		inline_end: position,
+		resume: position,
+		line_start_after: line_start,
+	};
+}
+
+/**
+ * Emit a token and allocate a matching node in the arena.
+ * @param context Shared parsing state.
+ * @param stack Active frame stack used to determine the current parent node.
+ * @param kind Token category to record.
+ * @param start Inclusive start offset in the source string.
+ * @param end Exclusive end offset in the source string.
+ * @param payload Additional token metadata.
+ * @param value_start Start offset excluding delimiters.
+ * @param value_end End offset excluding delimiters.
+ */
+function emit_token(
+	context: parse_context,
+	stack: stack_frame[],
+	kind: token_kind,
+	start: number,
+	end: number,
+	payload = 0,
+	value_start = start,
+	value_end = end,
+	parent_override?: number
+): number {
+	context.tokens.push(kind, start, end, payload, value_start, value_end);
+	const parent = parent_override ?? current_block_parent(stack);
+	const node_kind_value = map_token_kind(kind);
+	return context.arena.allocate(node_kind_value, start, end, parent, payload);
+}
+
+function current_block_parent(stack: stack_frame[]): number {
+	for (let index = stack.length - 1; index >= 0; index -= 1) {
+		const frame = stack[index];
+		if (frame.state === parser_state.block) {
+			return frame.node;
+		}
+	}
+	return (stack[0] as block_frame).node;
+}
+
+/**
+ * Consume a run of tab or space characters.
+ * @param source Source string being parsed.
+ * @param length Total length of the source.
+ * @param position Offset where whitespace consumption should begin.
+ * @returns Offset immediately after the whitespace run.
+ */
+function chomp_whitespace(
+	source: string,
+	length: number,
+	position: number
+): number {
+	while (position < length) {
+		const code = source.charCodeAt(position);
+		if (!(code === SPACE || code === TAB)) {
+			break;
+		}
+		position += 1;
+	}
+	return position;
 }
 
 /**
@@ -711,49 +923,48 @@ function line_prefix_allows_heading(
 }
 
 /**
- * Emit an entire line as a text token.
+ * Attempt to consume an HTML tag token; otherwise signal the caller to treat it as text.
  * @param context Shared parsing state.
- * @param start Offset where the line begins.
- * @returns Offset immediately after the line.
- */
-function emit_plain_text_line(context: parse_context, start: number): number {
-	const { source, length } = context;
-	let end = start;
-	while (end < length && source.charCodeAt(end) !== LINEFEED) {
-		end += 1;
-	}
-	emit_token(context, token_kind.text, start, end);
-	return end;
-}
-
-
-/**
- * Attempt to consume an HTML tag token; otherwise fall back to text.
- * @param context Shared parsing state.
+ * @param stack Active frame stack used for token emission.
  * @param position Offset where the HTML sequence begins.
- * @returns Offset immediately after the emitted token.
+ * @param parent_override Optional parent node for inline contexts.
+ * @returns Offset where scanning should resume, or `position` when no tag was matched.
  */
-function consume_html(context: parse_context, position: number): number {
-	const { source, length } = context;
+function consume_html(
+	context: parse_context,
+	stack: stack_frame[],
+	position: number,
+	parent_override?: number,
+	max_end?: number
+): number {
+	const { source } = context;
 	html_tag_pattern.lastIndex = position;
 	const match = html_tag_pattern.exec(source);
-	if (match) {
-		const end = html_tag_pattern.lastIndex;
-		emit_token(context, token_kind.html, position, end);
-		return end;
+	if (!match) {
+		return position;
 	}
-	const end = position + 1 <= length ? position + 1 : length;
-	emit_token(context, token_kind.text, position, end);
+	const end = html_tag_pattern.lastIndex;
+	if (max_end !== undefined && end > max_end) {
+		return position;
+	}
+	emit_token(context, stack, token_kind.html, position, end, 0, position, end, parent_override);
 	return end;
 }
 
 /**
- * Parse a fenced code block and emit either a fence token or fallback text.
+ * Parse a fenced code block and emit either a fence token or fallback to text.
  * @param context Shared parsing state.
+ * @param stack Active frame stack used for token emission.
  * @param position Offset where the fence begins.
- * @returns Offset immediately after the closing fence or end of input.
+ * @param line_start Offset where the current line begins.
+ * @returns Offset where scanning should resume.
  */
-function consume_code_fence(context: parse_context, position: number): number {
+function consume_code_fence(
+	context: parse_context,
+	stack: stack_frame[],
+	position: number,
+	line_start: number
+): number {
 	const { source, length, errors } = context;
 	const start = position;
 	const fence_char = source.charCodeAt(position);
@@ -764,8 +975,9 @@ function consume_code_fence(context: parse_context, position: number): number {
 	}
 
 	if (run < 3) {
-		emit_token(context, token_kind.text, start, position);
-		return position;
+		const fallback = start_plain_text_line(context, stack, start, line_start);
+		push_inline_frame(stack, fallback);
+		return fallback.inline_start;
 	}
 
 	const info_start = position;
@@ -779,8 +991,9 @@ function consume_code_fence(context: parse_context, position: number): number {
 	}
 
 	if (info_contains_illegal_backtick) {
-		emit_token(context, token_kind.text, start, info_end);
-		return info_end;
+		const fallback = start_plain_text_line(context, stack, start, line_start);
+		push_inline_frame(stack, fallback);
+		return fallback.inline_start;
 	}
 
 	const content_start = info_end < length ? info_end + 1 : info_end;
@@ -791,17 +1004,14 @@ function consume_code_fence(context: parse_context, position: number): number {
 		if (code === fence_char) {
 			let closing = position_after_open;
 			let matching = 0;
-			while (
-				closing < length &&
-				source.charCodeAt(closing) === fence_char &&
-				matching < run
-			) {
+			while (closing < length && source.charCodeAt(closing) === fence_char && matching < run) {
 				matching += 1;
 				closing += 1;
 			}
 			if (matching === run) {
 				emit_token(
 					context,
+					stack,
 					token_kind.code_fence,
 					start,
 					closing,
@@ -818,10 +1028,11 @@ function consume_code_fence(context: parse_context, position: number): number {
 	}
 
 	errors.push(start);
-	emit_token(context, token_kind.code_fence, start, length, 0, content_start, length);
+	emit_token(context, stack, token_kind.code_fence, start, length, 0, content_start, length);
 	return length;
 }
 
+	
 /**
  * Locate the position of the closing `}}`, accounting for nesting levels.
  * @param source Source string being parsed.
@@ -871,7 +1082,7 @@ function find_closing_mustache(
 function map_token_kind(kind: token_kind): node_kind {
 	switch (kind) {
 		case token_kind.text:
-			return node_kind.text;
+			return node_kind.paragraph;
 		case token_kind.html:
 			return node_kind.html;
 		case token_kind.heading:

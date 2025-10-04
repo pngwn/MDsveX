@@ -1,0 +1,5 @@
+root
+	heading(2)
+		text(foo ##)
+	heading(3)
+		text(bar    ###)

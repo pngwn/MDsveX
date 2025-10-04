@@ -1,0 +1,5 @@
+root
+	hr
+	heading(2)
+		text(foo)
+	hr

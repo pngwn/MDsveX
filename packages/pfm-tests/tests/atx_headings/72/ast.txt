@@ -1,0 +1,5 @@
+root
+	heading(1)
+		text(foo ##################################)
+	heading(5)
+		text(foo ##)

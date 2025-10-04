@@ -1,0 +1,2 @@
+paragraph -> text(foo)
+heading(1) -> text(bar)
