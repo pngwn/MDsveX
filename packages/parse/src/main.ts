@@ -10,12 +10,19 @@ import {
 	TAB,
 } from './constants';
 
+/** Default number of token entries to preallocate. */
 const DEFAULT_TOKEN_CAPACITY = 128;
+
+/** Default number of error entries to preallocate. */
 const DEFAULT_ERROR_CAPACITY = 32;
+
+/** Default node capacity for the arena allocator. */
 const DEFAULT_NODE_CAPACITY = 128;
 
+/** Sticky regular expression that detects HTML-like tags. */
 const html_tag_pattern = /<\/?[A-Za-z][^>]*>/y;
 
+/** Token categories emitted by the markdown tokenizer. */
 export const enum token_kind {
 	text = 0,
 	html = 1,
@@ -25,6 +32,7 @@ export const enum token_kind {
 	line_break = 5,
 }
 
+/** AST node categories that mirror token kinds. */
 export const enum node_kind {
 	root = 0,
 	text = 1,
@@ -35,12 +43,14 @@ export const enum node_kind {
 	line_break = 6,
 }
 
+/** Options for controlling the markdown parser. */
 export interface parse_options {
 	arena?: arena;
 	token_capacity?: number;
 	error_capacity?: number;
 }
 
+/** Structured output produced by the markdown parser. */
 export interface parse_result {
 	arena: arena;
 	root: number;
@@ -48,6 +58,7 @@ export interface parse_result {
 	errors: error_collector;
 }
 
+/** Aggregate state that flows through the tokenizer. */
 interface parse_context {
 	source: string;
 	length: number;
@@ -57,6 +68,7 @@ interface parse_context {
 	root: number;
 }
 
+/** Simple arena that stores AST node metadata in typed arrays. */
 export class arena {
 	private capacity: number;
 	private type_ids: Uint8Array;
@@ -66,6 +78,10 @@ export class arena {
 	private payloads: Uint32Array;
 	private _size: number;
 
+	/**
+	 * Create a new arena with typed-array storage sized to the next power of two.
+	 * @param initial_capacity Requested starting capacity for nodes.
+	 */
 	constructor(initial_capacity = DEFAULT_NODE_CAPACITY) {
 		const capacity = next_power_of_two(initial_capacity);
 		this.capacity = capacity;
@@ -77,14 +93,24 @@ export class arena {
 		this._size = 0;
 	}
 
+	/** Reset the arena so it can be reused without reallocating buffers. */
 	reset(): void {
 		this._size = 0;
 	}
 
+	/** Number of nodes that have been allocated. */
 	get size(): number {
 		return this._size;
 	}
 
+	/**
+	 * Allocate a new node and store it in the arena.
+	 * @param kind Kind of node to record.
+	 * @param start Inclusive start offset in the source.
+	 * @param end Exclusive end offset in the source.
+	 * @param parent Index of the parent node, or -1 for root.
+	 * @param payload Optional payload associated with the node.
+	 */
 	allocate(
 		kind: node_kind,
 		start: number,
@@ -107,26 +133,47 @@ export class arena {
 		return index;
 	}
 
+	/**
+	 * Retrieve the kind for the node at the given index.
+	 * @param index Node index.
+	 */
 	get_kind(index: number): node_kind {
 		return this.type_ids[index] as node_kind;
 	}
 
+	/**
+	 * Retrieve the recorded start offset for the node.
+	 * @param index Node index.
+	 */
 	get_start(index: number): number {
 		return this.starts[index];
 	}
 
+	/**
+	 * Retrieve the recorded end offset for the node.
+	 * @param index Node index.
+	 */
 	get_end(index: number): number {
 		return this.ends[index];
 	}
 
+	/**
+	 * Retrieve the parent index for the node.
+	 * @param index Node index.
+	 */
 	get_parent(index: number): number {
 		return this.parents[index];
 	}
 
+	/**
+	 * Retrieve the payload value stored for the node.
+	 * @param index Node index.
+	 */
 	get_payload(index: number): number {
 		return this.payloads[index];
 	}
 
+	/** Double the backing storage when capacity is exhausted. */
 	private grow(): void {
 		const next = this.capacity << 1;
 		const next_type_ids = new Uint8Array(next);
@@ -150,6 +197,7 @@ export class arena {
 	}
 }
 
+/** Growable buffer that records token spans and metadata. */
 export class token_buffer {
 	private capacity: number;
 	private kinds: Uint8Array;
@@ -160,6 +208,10 @@ export class token_buffer {
 	private value_ends: Uint32Array;
 	private _size: number;
 
+	/**
+	 * Create a buffer that stores token metadata with typed arrays.
+	 * @param initial_capacity Requested starting capacity for tokens.
+	 */
 	constructor(initial_capacity = DEFAULT_TOKEN_CAPACITY) {
 		const capacity = next_power_of_two(initial_capacity);
 		this.capacity = capacity;
@@ -172,14 +224,25 @@ export class token_buffer {
 		this._size = 0;
 	}
 
+	/** Clear previously pushed tokens without reallocating storage. */
 	reset(): void {
 		this._size = 0;
 	}
 
+	/** Number of tokens currently stored. */
 	get size(): number {
 		return this._size;
 	}
 
+	/**
+	 * Push a token descriptor into the buffer.
+	 * @param kind Token category.
+	 * @param start Inclusive start offset in the source.
+	 * @param end Exclusive end offset in the source.
+	 * @param extra Extra metadata stored alongside the token.
+	 * @param value_start Start offset that excludes delimiters.
+	 * @param value_end End offset that excludes delimiters.
+	 */
 	push(
 		kind: token_kind,
 		start: number,
@@ -202,46 +265,75 @@ export class token_buffer {
 		this._size = index + 1;
 	}
 
+	/**
+	 * Get the token kind recorded at the supplied index.
+	 * @param index Token index.
+	 */
 	kind_at(index: number): token_kind {
 		return this.kinds[index] as token_kind;
 	}
 
+	/**
+	 * Get the start offset recorded for the token.
+	 * @param index Token index.
+	 */
 	start_at(index: number): number {
 		return this.starts[index];
 	}
 
+	/**
+	 * Get the end offset recorded for the token.
+	 * @param index Token index.
+	 */
 	end_at(index: number): number {
 		return this.ends[index];
 	}
 
+	/**
+	 * Access the extra metadata value for the token.
+	 * @param index Token index.
+	 */
 	extra_at(index: number): number {
 		return this.extras[index];
 	}
 
+	/** Slice view of the stored token kinds. */
 	kinds_slice(): Uint8Array {
 		return this.kinds.subarray(0, this._size);
 	}
 
+	/** Slice view of the stored token start offsets. */
 	starts_slice(): Uint32Array {
 		return this.starts.subarray(0, this._size);
 	}
 
+	/** Slice view of the stored token end offsets. */
 	ends_slice(): Uint32Array {
 		return this.ends.subarray(0, this._size);
 	}
 
+	/** Slice view of the stored extra values. */
 	extras_slice(): Uint16Array {
 		return this.extras.subarray(0, this._size);
 	}
 
+	/**
+	 * Get the value start offset for a token, excluding delimiters.
+	 * @param index Token index.
+	 */
 	value_start_at(index: number): number {
 		return this.value_starts[index];
 	}
 
+	/**
+	 * Get the value end offset for a token, excluding delimiters.
+	 * @param index Token index.
+	 */
 	value_end_at(index: number): number {
 		return this.value_ends[index];
 	}
 
+	/** Double the backing storage when capacity is exhausted. */
 	private grow(): void {
 		const next = this.capacity << 1;
 		const next_kinds = new Uint8Array(next);
@@ -268,11 +360,16 @@ export class token_buffer {
 	}
 }
 
+/** Collects indices for parse errors encountered during tokenization. */
 export class error_collector {
 	private capacity: number;
 	private indices: Uint32Array;
 	private _size: number;
 
+	/**
+	 * Create a collector that records error indices encountered while parsing.
+	 * @param initial_capacity Requested starting capacity for error indices.
+	 */
 	constructor(initial_capacity = DEFAULT_ERROR_CAPACITY) {
 		const capacity = next_power_of_two(initial_capacity);
 		this.capacity = capacity;
@@ -280,14 +377,20 @@ export class error_collector {
 		this._size = 0;
 	}
 
+	/** Clear previously stored errors. */
 	reset(): void {
 		this._size = 0;
 	}
 
+	/** Number of errors recorded so far. */
 	get size(): number {
 		return this._size;
 	}
 
+	/**
+	 * Append an error position to the collector, growing storage as needed.
+	 * @param index Offset in the source string where the error occurred.
+	 */
 	push(index: number): void {
 		const next_index = this._size;
 		if (next_index >= this.capacity) {
@@ -298,14 +401,20 @@ export class error_collector {
 		this._size = next_index + 1;
 	}
 
+	/**
+	 * Get the stored error index at the given position.
+	 * @param position Position within the collector.
+	 */
 	at(position: number): number {
 		return this.indices[position];
 	}
 
+	/** Create a view over the recorded errors. */
 	slice(): Uint32Array {
 		return this.indices.subarray(0, this._size);
 	}
 
+	/** Double the backing storage when capacity is exhausted. */
 	private grow(): void {
 		const next = this.capacity << 1;
 		const next_indices = new Uint32Array(next);
@@ -315,6 +424,12 @@ export class error_collector {
 	}
 }
 
+/**
+ * Parse markdown that may include Svelte syntax into tokens and nodes.
+ * @param input Source markdown string.
+ * @param options Parser configuration and reusable storage.
+ * @returns Arena-backed parse result and collected tokens.
+ */
 export function parse_markdown_svelte(
 	input: string,
 	options: parse_options = {}
@@ -347,6 +462,10 @@ export function parse_markdown_svelte(
 	return { arena: arena_instance, root, tokens, errors };
 }
 
+/**
+ * Tokenize the source string and populate token, arena, and error buffers.
+ * @param context Shared parsing state.
+ */
 function tokenize(context: parse_context): void {
 	const { source, length, errors } = context;
 	let position = 0;
@@ -408,6 +527,16 @@ function tokenize(context: parse_context): void {
 	}
 }
 
+/**
+ * Emit a token and allocate a matching node in the arena.
+ * @param context Shared parsing state.
+ * @param kind Token category to record.
+ * @param start Inclusive start offset in the source string.
+ * @param end Exclusive end offset in the source string.
+ * @param payload Additional token metadata.
+ * @param value_start Start offset excluding delimiters.
+ * @param value_end End offset excluding delimiters.
+ */
 function emit_token(
 	context: parse_context,
 	kind: token_kind,
@@ -422,6 +551,13 @@ function emit_token(
 	context.arena.allocate(node_kind_value, start, end, context.root, payload);
 }
 
+/**
+ * Consume a run of tab or space characters.
+ * @param source Source string being parsed.
+ * @param length Total length of the source.
+ * @param position Offset where whitespace consumption should begin.
+ * @returns Offset immediately after the whitespace run.
+ */
 function chomp_whitespace(
 	source: string,
 	length: number,
@@ -437,6 +573,12 @@ function chomp_whitespace(
 	return position;
 }
 
+/**
+ * Consume plain text until a control character or delimiter is hit.
+ * @param context Shared parsing state.
+ * @param position Offset where text consumption begins.
+ * @returns Offset after the consumed text.
+ */
 function chomp_text(context: parse_context, position: number): number {
 	const { source, length } = context;
 	const start = position;
@@ -460,6 +602,13 @@ function chomp_text(context: parse_context, position: number): number {
 	return position;
 }
 
+/**
+ * Parse a markdown heading, falling back to text if the syntax is invalid.
+ * @param context Shared parsing state.
+ * @param position Offset where the potential heading starts.
+ * @param line_start Offset where the current line begins.
+ * @returns Offset immediately after the processed line.
+ */
 function consume_heading(
 	context: parse_context,
 	position: number,
@@ -536,6 +685,13 @@ function consume_heading(
 	return token_end;
 }
 
+/**
+ * Determine whether the characters preceding a hash run allow a heading.
+ * @param source Source string being parsed.
+ * @param line_start Offset where the current line starts.
+ * @param position Offset of the first octothorpe.
+ * @returns `true` when the prefix permits a heading, otherwise `false`.
+ */
 function line_prefix_allows_heading(
 	source: string,
 	line_start: number,
@@ -554,6 +710,12 @@ function line_prefix_allows_heading(
 	return true;
 }
 
+/**
+ * Emit an entire line as a text token.
+ * @param context Shared parsing state.
+ * @param start Offset where the line begins.
+ * @returns Offset immediately after the line.
+ */
 function emit_plain_text_line(context: parse_context, start: number): number {
 	const { source, length } = context;
 	let end = start;
@@ -565,6 +727,12 @@ function emit_plain_text_line(context: parse_context, start: number): number {
 }
 
 
+/**
+ * Attempt to consume an HTML tag token; otherwise fall back to text.
+ * @param context Shared parsing state.
+ * @param position Offset where the HTML sequence begins.
+ * @returns Offset immediately after the emitted token.
+ */
 function consume_html(context: parse_context, position: number): number {
 	const { source, length } = context;
 	html_tag_pattern.lastIndex = position;
@@ -579,6 +747,12 @@ function consume_html(context: parse_context, position: number): number {
 	return end;
 }
 
+/**
+ * Parse a fenced code block and emit either a fence token or fallback text.
+ * @param context Shared parsing state.
+ * @param position Offset where the fence begins.
+ * @returns Offset immediately after the closing fence or end of input.
+ */
 function consume_code_fence(context: parse_context, position: number): number {
 	const { source, length, errors } = context;
 	const start = position;
@@ -648,6 +822,13 @@ function consume_code_fence(context: parse_context, position: number): number {
 	return length;
 }
 
+/**
+ * Locate the position of the closing `}}`, accounting for nesting levels.
+ * @param source Source string being parsed.
+ * @param length Total length of the source string.
+ * @param position Offset immediately after the opening braces.
+ * @returns Offset of the closing braces or -1 when unterminated.
+ */
 function find_closing_mustache(
 	source: string,
 	length: number,
@@ -682,6 +863,11 @@ function find_closing_mustache(
 	return -1;
 }
 
+/**
+ * Convert a token kind into the matching node kind.
+ * @param kind Token kind to convert.
+ * @returns Corresponding node kind.
+ */
 function map_token_kind(kind: token_kind): node_kind {
 	switch (kind) {
 		case token_kind.text:
@@ -699,6 +885,11 @@ function map_token_kind(kind: token_kind): node_kind {
 	}
 }
 
+/**
+ * Calculate the next power-of-two capacity for typed array storage.
+ * @param value Minimum desired capacity.
+ * @returns Smallest power of two greater than or equal to `value`.
+ */
 function next_power_of_two(value: number): number {
 	let result = 1;
 	while (result < value) {
