@@ -1,0 +1,11 @@
+root
+	paragraph
+		text(Foo)
+	line_break
+	paragraph
+		text([bar]: /baz)
+	line_break
+	line_break
+	paragraph
+		text([bar])
+	line_break

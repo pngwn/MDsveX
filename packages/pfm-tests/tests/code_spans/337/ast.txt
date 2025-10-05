@@ -1,0 +1,13 @@
+root
+	paragraph
+		text(`foo   bar )
+	paragraph
+		text(`)
+	line_break
+	paragraph
+		text(baz)
+	paragraph
+		text(`)
+	paragraph
+		text(`)
+	line_break

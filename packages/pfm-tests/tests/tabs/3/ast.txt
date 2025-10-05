@@ -1,0 +1,7 @@
+root
+	paragraph
+		text(a→a)
+	line_break
+	paragraph
+		text(ὐ→a)
+	line_break

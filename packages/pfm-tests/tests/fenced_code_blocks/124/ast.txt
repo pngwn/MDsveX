@@ -1,0 +1,7 @@
+root
+	code_fence(aaa\n```\n)
+	paragraph
+		text(``)
+	paragraph
+		text(`)
+	line_break

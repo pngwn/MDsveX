@@ -1,0 +1,4 @@
+root
+	paragraph
+		text(__foo_ bar_)
+	line_break

@@ -1,0 +1,10 @@
+root
+	html(<div>)
+	line_break
+	line_break
+	paragraph
+		text(*Emphasized* text.)
+	line_break
+	line_break
+	html(</div>)
+	line_break

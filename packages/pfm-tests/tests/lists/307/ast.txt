@@ -1,0 +1,15 @@
+root
+	paragraph
+		text(- foo)
+	line_break
+	paragraph
+		text(- bar)
+	line_break
+	paragraph
+		text(- baz)
+	line_break
+	line_break
+	line_break
+	paragraph
+		text(bim)
+	line_break

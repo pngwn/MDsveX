@@ -1,0 +1,4 @@
+root
+	paragraph
+		text(0. ok)
+	line_break

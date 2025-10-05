@@ -1,0 +1,11 @@
+root
+	paragraph
+		text([Foo)
+	line_break
+	paragraph
+		text(bar]: /url)
+	line_break
+	line_break
+	paragraph
+		text([Baz][Foo bar])
+	line_break

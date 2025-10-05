@@ -1,0 +1,9 @@
+root
+	paragraph
+		text(``` aa ```)
+	paragraph
+		text(`)
+	line_break
+	paragraph
+		text(foo)
+	line_break

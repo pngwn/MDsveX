@@ -1,0 +1,10 @@
+root
+	paragraph
+		text(&nbsp; &amp; &copy; &AElig; &Dcaron;)
+	line_break
+	paragraph
+		text(&frac34; &HilbertSpace; &DifferentialD;)
+	line_break
+	paragraph
+		text(&ClockwiseContourIntegral; &ngE;)
+	line_break

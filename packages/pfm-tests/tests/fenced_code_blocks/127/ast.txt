@@ -1,0 +1,2 @@
+root
+	code_fence(\n```\naaa\n)

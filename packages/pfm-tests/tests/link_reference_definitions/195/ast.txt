@@ -1,0 +1,13 @@
+root
+	paragraph
+		text([Foo bar]:)
+	line_break
+	html(<my url>)
+	line_break
+	paragraph
+		text('title')
+	line_break
+	line_break
+	paragraph
+		text([Foo bar])
+	line_break

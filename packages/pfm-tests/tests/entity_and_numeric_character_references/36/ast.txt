@@ -1,0 +1,4 @@
+root
+	paragraph
+		text(f&ouml;f&ouml;)
+	line_break

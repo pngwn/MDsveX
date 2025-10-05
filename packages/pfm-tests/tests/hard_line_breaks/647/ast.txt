@@ -1,0 +1,3 @@
+root
+	heading(3)
+		text(foo)

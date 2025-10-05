@@ -1,0 +1,4 @@
+root
+	paragraph
+		text([](./target.md))
+	line_break

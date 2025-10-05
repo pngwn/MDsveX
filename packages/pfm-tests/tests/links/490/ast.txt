@@ -1,0 +1,7 @@
+root
+	paragraph
+		text([link](foo)
+	line_break
+	paragraph
+		text(bar))
+	line_break

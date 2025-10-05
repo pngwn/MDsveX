@@ -1,0 +1,6 @@
+root
+	paragraph
+		text(foo&)
+	paragraph
+		text(#10;&#10;bar)
+	line_break

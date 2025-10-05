@@ -1,0 +1,11 @@
+root
+	paragraph
+		text(foo )
+	paragraph
+		text(<)
+	paragraph
+		text(!-- this is a --)
+	line_break
+	paragraph
+		text(comment - with hyphens -->)
+	line_break

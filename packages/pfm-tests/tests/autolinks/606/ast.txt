@@ -1,0 +1,3 @@
+root
+	html(<foo\\+@bar.example.com>)
+	line_break

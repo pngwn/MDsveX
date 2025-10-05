@@ -1,0 +1,4 @@
+root
+	paragraph
+		text([link [foo [bar]]](/uri))
+	line_break

@@ -1,0 +1,11 @@
+root
+	paragraph
+		text([foo])
+	line_break
+	line_break
+	paragraph
+		text([foo]: first)
+	line_break
+	paragraph
+		text([foo]: second)
+	line_break

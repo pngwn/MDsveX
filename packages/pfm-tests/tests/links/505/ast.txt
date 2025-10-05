@@ -1,0 +1,10 @@
+root
+	paragraph
+		text([link](/url "title"))
+	line_break
+	paragraph
+		text([link](/url 'title'))
+	line_break
+	paragraph
+		text([link](/url (title)))
+	line_break

@@ -1,0 +1,4 @@
+root
+	paragraph
+		link(https://example.com/%5C%5B%5C)
+			text(https://example.com/\[\)

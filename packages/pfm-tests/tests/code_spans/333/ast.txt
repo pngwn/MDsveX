@@ -1,0 +1,6 @@
+root
+	paragraph
+		text(` b `)
+	paragraph
+		text(`)
+	line_break

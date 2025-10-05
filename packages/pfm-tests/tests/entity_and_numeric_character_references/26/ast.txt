@@ -1,0 +1,6 @@
+root
+	paragraph
+		text(&)
+	paragraph
+		text(#35; &#1234; &#992; &#0;)
+	line_break

@@ -1,0 +1,7 @@
+root
+	html(<style\n  type="text/css">)
+	line_break
+	line_break
+	paragraph
+		text(foo)
+	line_break

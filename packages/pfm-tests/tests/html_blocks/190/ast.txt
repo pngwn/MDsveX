@@ -1,0 +1,20 @@
+root
+	html(<table>)
+	line_break
+	line_break
+	html(<tr>)
+	line_break
+	line_break
+	html(<td>)
+	line_break
+	paragraph
+		text(Hi)
+	line_break
+	html(</td>)
+	line_break
+	line_break
+	html(</tr>)
+	line_break
+	line_break
+	html(</table>)
+	line_break

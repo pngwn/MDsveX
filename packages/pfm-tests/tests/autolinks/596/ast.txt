@@ -1,0 +1,4 @@
+root
+	paragraph
+		link(irc://foo.bar:2233/baz)
+			text(irc://foo.bar:2233/baz)

@@ -1,0 +1,14 @@
+root
+	paragraph
+		text(<)
+	paragraph
+		text(a>)
+	paragraph
+		text(<)
+	line_break
+	paragraph
+		text(foo>)
+	html(<bar/ >)
+	line_break
+	html(<foo bar=baz\nbim!bop />)
+	line_break

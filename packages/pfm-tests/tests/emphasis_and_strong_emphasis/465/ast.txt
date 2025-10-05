@@ -1,0 +1,4 @@
+root
+	paragraph
+		text(____foo____)
+	line_break

@@ -1,0 +1,13 @@
+root
+	html(<style>)
+	paragraph
+		text(p)
+	paragraph
+		text({)
+	paragraph
+		text(color:red;})
+	html(</style>)
+	line_break
+	paragraph
+		text(*foo*)
+	line_break

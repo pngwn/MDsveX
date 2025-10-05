@@ -1,0 +1,3 @@
+root
+	paragraph
+		text(&lt;https://foo.bar/baz bim&gt;)

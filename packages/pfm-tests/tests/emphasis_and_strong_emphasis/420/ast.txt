@@ -1,0 +1,4 @@
+root
+	paragraph
+		text(** is not an empty emphasis)
+	line_break

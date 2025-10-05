@@ -1,0 +1,4 @@
+root
+	paragraph
+		text(123456789. ok)
+	line_break

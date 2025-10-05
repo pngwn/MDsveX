@@ -1,0 +1,4 @@
+root
+	html(<a/>)
+	html(<b2/>)
+	line_break

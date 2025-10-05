@@ -1,0 +1,11 @@
+root
+	paragraph
+		text(` `)
+	paragraph
+		text(`)
+	line_break
+	paragraph
+		text(`  `)
+	paragraph
+		text(`)
+	line_break

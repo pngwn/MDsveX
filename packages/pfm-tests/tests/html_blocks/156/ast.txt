@@ -1,0 +1,9 @@
+root
+	paragraph
+		text(<)
+	paragraph
+		text(div id="foo")
+	line_break
+	paragraph
+		text(*hi*)
+	line_break

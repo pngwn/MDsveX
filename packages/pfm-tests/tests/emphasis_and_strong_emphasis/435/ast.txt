@@ -1,0 +1,4 @@
+root
+	paragraph
+		text(____ is not an empty strong emphasis)
+	line_break

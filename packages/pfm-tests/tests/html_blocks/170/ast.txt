@@ -1,0 +1,15 @@
+root
+	html(<script type="text/javascript">)
+	line_break
+	paragraph
+		text(// JavaScript example)
+	line_break
+	line_break
+	paragraph
+		text(document.getElementById("demo").innerHTML = "Hello JavaScript!";)
+	line_break
+	html(</script>)
+	line_break
+	paragraph
+		text(okay)
+	line_break

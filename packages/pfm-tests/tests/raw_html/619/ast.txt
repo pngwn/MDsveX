@@ -1,0 +1,3 @@
+root
+	html(<a h*#ref="hi">)
+	line_break

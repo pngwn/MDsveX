@@ -1,0 +1,8 @@
+root
+	paragraph
+		text(- )
+	html(<div>)
+	line_break
+	paragraph
+		text(- foo)
+	line_break

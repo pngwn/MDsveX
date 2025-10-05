@@ -1,0 +1,4 @@
+root
+	paragraph
+		text(*foo [*bar*](/url)*)
+	line_break

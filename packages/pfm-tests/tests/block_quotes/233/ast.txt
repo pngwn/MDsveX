@@ -1,0 +1,10 @@
+root
+	paragraph
+		text(> bar)
+	line_break
+	paragraph
+		text(baz)
+	line_break
+	paragraph
+		text(> foo)
+	line_break

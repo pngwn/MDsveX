@@ -1,0 +1,15 @@
+root
+	paragraph
+		text(1.  foo)
+	line_break
+	line_break
+	code_fence(    bar\n    )
+	line_break
+	line_break
+	paragraph
+		text(baz)
+	line_break
+	line_break
+	paragraph
+		text(> bam)
+	line_break

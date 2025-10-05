@@ -1,0 +1,14 @@
+root
+	paragraph
+		text(Foo)
+	line_break
+	paragraph
+		text(-------------------------)
+	line_break
+	line_break
+	paragraph
+		text(Foo)
+	line_break
+	paragraph
+		text(=)
+	line_break

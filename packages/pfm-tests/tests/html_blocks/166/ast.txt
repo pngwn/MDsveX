@@ -1,0 +1,8 @@
+root
+	html(<del>)
+	line_break
+	paragraph
+		text(*foo*)
+	line_break
+	html(</del>)
+	line_break

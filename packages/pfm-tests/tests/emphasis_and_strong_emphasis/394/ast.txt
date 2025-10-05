@@ -1,0 +1,7 @@
+root
+	paragraph
+		text(**Gomphocarpus (*Gomphocarpus physocarpus*, syn.)
+	line_break
+	paragraph
+		text(*Asclepias physocarpa*)**)
+	line_break

@@ -1,0 +1,12 @@
+root
+	paragraph
+		text([link *foo **bar** )
+	paragraph
+		text(`#`*][ref])
+	paragraph
+		text(`)
+	line_break
+	line_break
+	paragraph
+		text([ref]: /uri)
+	line_break

@@ -1,0 +1,20 @@
+root
+	html(<pre language="haskell">)
+	html(<code>)
+	line_break
+	paragraph
+		text(import Text.HTML.TagSoup)
+	line_break
+	line_break
+	paragraph
+		text(main :: IO ())
+	line_break
+	paragraph
+		text(main = print $ parseTags tags)
+	line_break
+	html(</code>)
+	html(</pre>)
+	line_break
+	paragraph
+		text(okay)
+	line_break

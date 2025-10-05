@@ -1,0 +1,8 @@
+root
+	paragraph
+		text([link \\[bar][ref])
+	line_break
+	line_break
+	paragraph
+		text([ref]: /uri)
+	line_break

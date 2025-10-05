@@ -1,0 +1,3 @@
+root
+	code_fence(def foo(x)\n  return 3\nend\n)
+	line_break

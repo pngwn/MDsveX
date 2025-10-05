@@ -1,0 +1,11 @@
+root
+	html(<div>)
+	line_break
+	paragraph
+		text(bar)
+	line_break
+	html(</div>)
+	line_break
+	paragraph
+		text(*foo*)
+	line_break

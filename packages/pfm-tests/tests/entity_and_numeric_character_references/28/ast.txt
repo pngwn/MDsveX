@@ -1,0 +1,19 @@
+root
+	paragraph
+		text(&nbsp &x; &)
+	paragraph
+		text(#; &#x;)
+	line_break
+	paragraph
+		text(&)
+	paragraph
+		text(#87654321;)
+	line_break
+	paragraph
+		text(&)
+	paragraph
+		text(#abcdef0;)
+	line_break
+	paragraph
+		text(&ThisIsNotDefined; &hi?;)
+	line_break

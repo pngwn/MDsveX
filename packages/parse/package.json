@@ -7,8 +7,9 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"test": "vitest test",
-		"test:run": "vitest run test"
+		"test": "vitest",
+		"test:run": "vitest run",
+		"tsc": "tsc --noEmit"
 	},
 	"repository": {
 		"type": "git",

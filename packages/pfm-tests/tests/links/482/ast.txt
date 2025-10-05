@@ -1,0 +1,4 @@
+root
+	paragraph
+		text([link](/uri "title"))
+	line_break

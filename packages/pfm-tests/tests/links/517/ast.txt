@@ -1,0 +1,4 @@
+root
+	paragraph
+		text([![moon](moon.jpg)](/uri))
+	line_break

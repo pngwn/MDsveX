@@ -1,0 +1,4 @@
+root
+	paragraph
+		text(_foo [bar_](/url))
+	line_break

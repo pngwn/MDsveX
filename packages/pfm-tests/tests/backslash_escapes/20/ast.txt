@@ -1,0 +1,3 @@
+root
+	html(<https://example.com?find=\\*>)
+	line_break

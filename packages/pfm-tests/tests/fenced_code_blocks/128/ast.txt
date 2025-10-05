@@ -1,0 +1,4 @@
+root
+	paragraph
+		text(> )
+	code_fence(> aaa\n\nbbb\n)

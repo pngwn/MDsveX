@@ -1,0 +1,4 @@
+root
+	paragraph
+		text(My ![foo bar](/path/to/train.jpg  "title"   ))
+	line_break

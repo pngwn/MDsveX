@@ -1,0 +1,3 @@
+root
+	code_fence(foo\n)
+	line_break

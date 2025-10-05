@@ -1,0 +1,11 @@
+root
+	paragraph
+		text([a]()
+	html(<b)c\n[a](<b)c>)
+	line_break
+	paragraph
+		text([a]()
+	html(<b>)
+	paragraph
+		text(c))
+	line_break

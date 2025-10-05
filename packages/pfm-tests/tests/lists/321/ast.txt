@@ -1,0 +1,12 @@
+root
+	paragraph
+		text(- a)
+	line_break
+	paragraph
+		text(> b)
+	line_break
+	code_fence(  c\n  )
+	line_break
+	paragraph
+		text(- d)
+	line_break

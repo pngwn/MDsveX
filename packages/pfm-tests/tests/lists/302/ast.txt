@@ -1,0 +1,10 @@
+root
+	paragraph
+		text(1. foo)
+	line_break
+	paragraph
+		text(2. bar)
+	line_break
+	paragraph
+		text(3) baz)
+	line_break

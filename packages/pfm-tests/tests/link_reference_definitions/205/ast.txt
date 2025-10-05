@@ -1,0 +1,8 @@
+root
+	paragraph
+		text([FOO]: /url)
+	line_break
+	line_break
+	paragraph
+		text([Foo])
+	line_break

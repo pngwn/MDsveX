@@ -1,0 +1,9 @@
+root
+	heading(1)
+		text([Foo])
+	paragraph
+		text([foo]: /url)
+	line_break
+	paragraph
+		text(> bar)
+	line_break

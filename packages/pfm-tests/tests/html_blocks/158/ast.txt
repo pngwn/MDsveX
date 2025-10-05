@@ -1,0 +1,13 @@
+root
+	paragraph
+		text(<)
+	paragraph
+		text(div *???-&&&-)
+	paragraph
+		text(<)
+	paragraph
+		text(---)
+	line_break
+	paragraph
+		text(*foo*)
+	line_break

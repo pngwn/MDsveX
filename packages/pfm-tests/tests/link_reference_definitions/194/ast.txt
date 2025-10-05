@@ -1,0 +1,8 @@
+root
+	paragraph
+		text([Foo*bar\\]]:my_(url) 'title (with parens)')
+	line_break
+	line_break
+	paragraph
+		text([Foo*bar\\]])
+	line_break

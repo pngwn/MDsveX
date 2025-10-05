@@ -1,0 +1,23 @@
+root
+	paragraph
+		text([foo]: /foo-url "foo")
+	line_break
+	paragraph
+		text([bar]: /bar-url)
+	line_break
+	paragraph
+		text("bar")
+	line_break
+	paragraph
+		text([baz]: /baz-url)
+	line_break
+	line_break
+	paragraph
+		text([foo],)
+	line_break
+	paragraph
+		text([bar],)
+	line_break
+	paragraph
+		text([baz])
+	line_break

@@ -1,0 +1,4 @@
+root
+	paragraph
+		text(пристаням_стремятся_)
+	line_break

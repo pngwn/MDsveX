@@ -1,0 +1,3 @@
+root
+	html(<a href="/bar\\/)">)
+	line_break

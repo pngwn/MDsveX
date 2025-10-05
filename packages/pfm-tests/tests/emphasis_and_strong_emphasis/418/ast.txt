@@ -1,0 +1,4 @@
+root
+	paragraph
+		text(*foo **bar *baz* bim** bop*)
+	line_break

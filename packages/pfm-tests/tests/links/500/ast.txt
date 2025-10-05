@@ -1,0 +1,4 @@
+root
+	paragraph
+		text([link](foo\\)\\:))
+	line_break

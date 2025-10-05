@@ -1,0 +1,4 @@
+root
+	paragraph
+		text([link]())
+	line_break

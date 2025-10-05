@@ -1,0 +1,18 @@
+root
+	paragraph
+		text([link]()
+	paragraph
+		text(#fragment))
+	line_break
+	line_break
+	paragraph
+		text([link](https://example.com)
+	paragraph
+		text(#fragment))
+	line_break
+	line_break
+	paragraph
+		text([link](https://example.com?foo=3)
+	paragraph
+		text(#frag))
+	line_break
