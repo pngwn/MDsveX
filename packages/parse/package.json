@@ -7,8 +7,8 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"test": "vitest",
-		"test:run": "vitest run",
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run --disableConsoleIntercept",
 		"tsc": "tsc --noEmit"
 	},
 	"repository": {

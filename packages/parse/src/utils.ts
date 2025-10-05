@@ -330,6 +330,7 @@ export class node_buffer {
 		prev: number | null;
 		children: number[];
 		value: [number, number];
+		index: number;
 	} {
 		const extra_string = extra_to_string(this.kinds[index]);
 		const extras_object = extra_string
@@ -369,6 +370,7 @@ export class node_buffer {
 					: this.prev_siblings[index],
 			value: [this.value_starts[index], this.value_ends[index]],
 			children: children,
+			index: index,
 		};
 	}
 }

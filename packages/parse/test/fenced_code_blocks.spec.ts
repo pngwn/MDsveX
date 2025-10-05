@@ -22,6 +22,7 @@ describe('fenced code blocks', () => {
 		const { nodes } = parse_markdown_svelte(input);
 
 		const node = nodes.get_node(1);
+		console.log(node);
 
 		expect(nodes.size).toBe(2);
 

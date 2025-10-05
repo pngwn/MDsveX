@@ -32,6 +32,7 @@ export const enum state_kind {
 	code_fence_info = 4,
 	code_fence_content = 5,
 	code_fence_text_end = 6,
+	paragraph = 7,
 }
 
 const fences = Array.from({ length: 20 }, (_, i) =>
@@ -67,8 +68,8 @@ function tokenize(source: string): {
 	errors: error_collector;
 } {
 	const nodes = new node_buffer(source.length);
-	let current_node = 0;
-	let current_parent = 0;
+
+	let node_stack: number[] = [0];
 	const errors = new error_collector(source.length);
 	const length = source.length;
 
@@ -84,16 +85,26 @@ function tokenize(source: string): {
 	while (cursor <= length) {
 		const active = states[states.length - 1];
 		const code = source.charCodeAt(cursor);
+		const current_parent = node_stack[node_stack.length - 1] || 0;
+		const current_node = node_stack[node_stack.length - 1] || 0;
 		console.log(
 			'active_state: ',
 			active,
 			'cursor: ',
 			cursor,
 			'char: ',
-			source[cursor]
+			source[cursor],
+			'current_parent: ',
+			current_parent,
+			'current_node: ',
+			current_node
 		);
 		switch (active) {
 			case state_kind.root: {
+				if (isNaN(code)) {
+					cursor += 1;
+					continue;
+				}
 				switch (code) {
 					case SPACE:
 					case TAB:
@@ -114,9 +125,48 @@ function tokenize(source: string): {
 						continue;
 					}
 					default: {
-						states.push(state_kind.text);
+						states.push(state_kind.paragraph);
+						node_stack.push(
+							nodes.push(node_kind.paragraph, cursor, current_parent)
+						);
+
 						continue;
 					}
+				}
+			}
+
+			case state_kind.paragraph: {
+				if (
+					(code === LINEFEED && source.charCodeAt(cursor + 1) === LINEFEED) ||
+					!code ||
+					(code === LINEFEED && !source[cursor + 1])
+				) {
+					nodes.set_end(current_node, cursor);
+					states.pop();
+					node_stack.pop();
+					cursor += 2;
+					continue;
+				} else if (
+					code === LINEFEED &&
+					source.charCodeAt(cursor + 1) === BACKTICK &&
+					source.charCodeAt(cursor + 2) === BACKTICK &&
+					source.charCodeAt(cursor + 3) === BACKTICK
+				) {
+					nodes.set_end(current_node, cursor);
+					states.pop();
+					states.push(state_kind.code_fence_start);
+					node_stack.pop();
+					cursor += 1;
+					continue;
+				} else if (code === LINEFEED) {
+					cursor += 1;
+					continue;
+				} else {
+					node_stack.push(nodes.push(node_kind.text, cursor, current_parent));
+					nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
+
+					states.push(state_kind.text);
+					continue;
 				}
 			}
 
@@ -128,10 +178,8 @@ function tokenize(source: string): {
 				} else if (extra >= 3) {
 					states.pop();
 					states.push(state_kind.code_fence_info);
-					current_node = nodes.push(
-						node_kind.code_fence,
-						cursor - extra,
-						current_parent
+					node_stack.push(
+						nodes.push(node_kind.code_fence, cursor - extra, current_parent)
 					);
 
 					metadata.info_start = cursor;
@@ -220,6 +268,7 @@ function tokenize(source: string): {
 					cursor = length;
 					nodes.set_end(current_node, length);
 					nodes.set_value_end(current_node, length);
+
 					continue;
 				}
 			}
@@ -229,8 +278,8 @@ function tokenize(source: string): {
 					nodes.set_end(current_node, cursor);
 					states.pop();
 				} else if (cursor >= length) {
+					console.log('setting end to length', current_node, length);
 					nodes.set_end(current_node, length);
-					// nodes.set_value_end(current_node, cursor);
 					states.pop();
 				}
 				cursor += 1;
@@ -291,6 +340,35 @@ function tokenize(source: string): {
 				// continue;
 			}
 
+			case state_kind.text: {
+				if (!code || (code === LINEFEED && !source[cursor + 1])) {
+					states.pop();
+
+					nodes.set_end(current_node, cursor);
+					nodes.set_value_end(current_node, cursor);
+					node_stack.pop();
+					continue;
+				} else if (
+					code === LINEFEED &&
+					source.charCodeAt(cursor + 1) === LINEFEED
+				) {
+					states.pop();
+
+					nodes.set_end(current_node, cursor);
+					nodes.set_value_end(current_node, cursor);
+					node_stack.pop();
+					continue;
+				}
+				cursor += 1;
+				continue;
+			}
+			default: {
+				// TODO: why do we pop here?
+				// states.pop();
+				cursor += 1;
+				continue;
+			}
+
 			// TODO: This shouldn't exist
 			// text is just text
 
@@ -348,19 +426,6 @@ function tokenize(source: string): {
 			// 	}
 			// 	continue;
 			// }
-			case state_kind.text: {
-				cursor += 1;
-				// TODO: handle text nodes
-				// const next = chomp_text(context, cursor, current_parent());
-				// cursor = next;
-				continue;
-			}
-			default: {
-				// TODO: why do we pop here?
-				// states.pop();
-				cursor += 1;
-				continue;
-			}
 		}
 	}
 
