@@ -37,7 +37,6 @@ export const enum state_kind {
 const fences = Array.from({ length: 20 }, (_, i) =>
 	Array(i).fill('`').join('')
 );
-console.log(fences);
 
 /**
  * Parse markdown that may include Svelte syntax into tokens and nodes.
@@ -105,16 +104,11 @@ function tokenize(source: string): {
 
 					case OCTOTHERP: {
 						states.push(state_kind.text);
-
-						// TODO: create heading node
-
 						states.push(state_kind.heading_marker);
 						continue;
 					}
 
 					case BACKTICK: {
-						// TODO: handle code fence
-						console.log('pushing code fence start');
 						states.push(state_kind.code_fence_start);
 						extra = 0;
 						continue;
@@ -127,13 +121,11 @@ function tokenize(source: string): {
 			}
 
 			case state_kind.code_fence_start: {
-				console.log('code fence start', code);
 				if (code === BACKTICK) {
 					extra += 1;
 					cursor += 1;
 					continue;
 				} else if (extra >= 3) {
-					console.log('setting code fence info');
 					states.pop();
 					states.push(state_kind.code_fence_info);
 					current_node = nodes.push(
@@ -146,7 +138,6 @@ function tokenize(source: string): {
 
 					continue;
 				} else {
-					console.log('setting code fence content');
 					states.pop();
 					states.push(state_kind.code_fence_content);
 
@@ -155,9 +146,7 @@ function tokenize(source: string): {
 			}
 
 			case state_kind.code_fence_info: {
-				console.log('code fence info', code, length);
 				if (!code) {
-					console.log('setting code fence content, no code');
 					states.pop();
 
 					nodes.set_end(current_node, length);
@@ -195,17 +184,10 @@ function tokenize(source: string): {
 			}
 
 			case state_kind.code_fence_content: {
-				// nodes.set_value_start(current_node, cursor - 2);
-
-				console.log('code fence content', fences[extra]);
 				const index = source.indexOf(fences[extra], cursor - 1);
 				const nl_index = source.lastIndexOf('\n', index);
-				console.log('index', index, source[cursor]);
-				console.log('nl_index', nl_index);
-				console.log('extra', extra);
 
 				if (index !== -1 && source.charCodeAt(index - 1) === BACKSLASH) {
-					console.log('backslashing');
 					cursor = index + extra + 1;
 					continue;
 				}
@@ -213,7 +195,6 @@ function tokenize(source: string): {
 				let ws = true;
 
 				whitespace: for (let i = nl_index; i < index; i++) {
-					console.log('i', i, source[i]);
 					if (
 						source.charCodeAt(i) !== SPACE &&
 						source.charCodeAt(i) !== TAB &&
@@ -224,13 +205,8 @@ function tokenize(source: string): {
 					}
 				}
 
-				console.log('ws', ws);
-
 				if (index !== -1 && nl_index !== -1 && ws) {
-					console.log('index not -1 and nl_index not -1 and ws');
 					if (index + extra <= length) {
-						console.log('index not longer than length');
-						console.log('setting value end', nl_index);
 						states.pop();
 						states.push(state_kind.code_fence_text_end);
 						nodes.set_value_end(current_node, nl_index);
@@ -249,11 +225,7 @@ function tokenize(source: string): {
 			}
 
 			case state_kind.code_fence_text_end: {
-				console.log('code fence text end', code);
-				console.log('cursor', cursor);
-				console.log('length', length);
 				if (code === LINEFEED) {
-					console.log('setting end', cursor);
 					nodes.set_end(current_node, cursor);
 					states.pop();
 				} else if (cursor >= length) {
