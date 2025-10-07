@@ -42,10 +42,11 @@ describe('node_buffer', () => {
 		const buffer = new node_buffer(); // 0
 		const id1 = buffer.push(node_kind.text, 0, 0);
 		const id2 = buffer.push(node_kind.text, 1, 0);
+		const id2_2 = buffer.push(node_kind.text, 1, id2);
 		const id3 = buffer.push(node_kind.text, 2, 0);
 		const id4 = buffer.push(node_kind.text, 3, 0);
 
-		expect(buffer.get_node().children).toEqual([1, 2, 3, 4]);
+		expect(buffer.get_node().children).toEqual([id1, id2, id3, id4]);
 
 		expect(buffer.get_node(id1).next).toEqual(id2);
 		expect(buffer.get_node(id1).prev).toEqual(null);
@@ -54,6 +55,10 @@ describe('node_buffer', () => {
 		expect(buffer.get_node(id2).next).toEqual(id3);
 		expect(buffer.get_node(id2).prev).toEqual(id1);
 		expect(buffer.get_node(id2).parent).toEqual(0);
+
+		expect(buffer.get_node(id2_2).next).toEqual(null);
+		expect(buffer.get_node(id2_2).prev).toEqual(null);
+		expect(buffer.get_node(id2_2).parent).toEqual(id2);
 
 		expect(buffer.get_node(id3).next).toEqual(id4);
 		expect(buffer.get_node(id3).prev).toEqual(id2);
@@ -120,5 +125,89 @@ describe('node_buffer', () => {
 		const id1 = buffer.push(node_kind.text, 0, 0, 0, { foo: 'bar' });
 		buffer.set_value(id1, 1, 2);
 		expect(buffer.get_node(id1).value).toEqual([1, 2]);
+	});
+
+	test('nodes can be pending', () => {
+		const buffer = new node_buffer();
+		const id1 = buffer.push_pending(node_kind.emphasis, 0, 0, 0, {
+			foo: 'bar',
+		});
+
+		expect(buffer.get_pending()).toEqual([id1]);
+
+		expect(buffer.get_node(id1).value).toEqual([0, 0]);
+	});
+
+	test('nodes can be committed', () => {
+		const buffer = new node_buffer();
+		const id1 = buffer.push_pending(node_kind.emphasis, 0, 0, 0, {
+			foo: 'bar',
+		});
+
+		buffer.commit_node(id1);
+		expect(buffer.get_pending()).toEqual([]);
+	});
+
+	test('pending nodes are the same as any other node', () => {
+		const buffer = new node_buffer();
+		const id1 = buffer.push_pending(node_kind.emphasis, 0, 0);
+		const id2 = buffer.push(node_kind.text, 0, id1);
+
+		expect(buffer.get_node(id1).kind).toEqual('emphasis');
+		expect(buffer.get_node(id2).kind).toEqual('text');
+
+		expect(buffer.get_node(id2).parent).toEqual(id1);
+	});
+
+	test('pending nodes can be repaired', () => {
+		const buffer = new node_buffer();
+		const id1 = buffer.push_pending(node_kind.emphasis, 0, 0);
+		const id2 = buffer.push(node_kind.text, 0, id1);
+		expect(buffer.get_node(id2).parent).toEqual(id1);
+
+		buffer.repair();
+
+		expect(buffer.get_node(id1).kind).toEqual('text');
+		expect(buffer.get_node(id2).parent).toEqual(0);
+		expect(buffer.get_node(id1).next).toEqual(id2);
+		expect(buffer.get_node(id2).prev).toEqual(id1);
+		expect(buffer.get_node(id1).children).toEqual([]);
+	});
+
+	test('pending nodes can be repaired -- deeply nested', () => {
+		const buffer = new node_buffer();
+		const id1 = buffer.push_pending(node_kind.emphasis, 0, 0);
+		const id2 = buffer.push_pending(node_kind.emphasis, 0, id1);
+		const id3 = buffer.push_pending(node_kind.emphasis, 0, id2);
+		const id4 = buffer.push_pending(node_kind.emphasis, 0, id3);
+		const id5 = buffer.push_pending(node_kind.emphasis, 0, id4);
+		const id6 = buffer.push_pending(node_kind.emphasis, 0, id5);
+		const id7 = buffer.push_pending(node_kind.emphasis, 0, id6);
+		const id8 = buffer.push_pending(node_kind.emphasis, 0, id7);
+		expect(buffer.get_node(id2).parent).toEqual(id1);
+
+		buffer.repair();
+
+		expect(buffer.get_node().children).toEqual([
+			id1,
+			id2,
+			id3,
+			id4,
+			id5,
+			id6,
+			id7,
+			id8,
+		]);
+
+		[id1, id2, id3, id4, id5, id6, id7, id8].forEach((id, i, arr) => {
+			let next = arr[i + 1] || null;
+			let prev = arr[i - 1] || null;
+
+			expect(buffer.get_node(id).kind).toEqual('text');
+			expect(buffer.get_node(id).parent).toEqual(0);
+			expect(buffer.get_node(id).next).toEqual(next);
+			expect(buffer.get_node(id).prev).toEqual(prev);
+			expect(buffer.get_node(id).children).toEqual([]);
+		});
 	});
 });

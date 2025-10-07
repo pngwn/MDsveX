@@ -12,6 +12,7 @@ import {
 	BACKSLASH,
 	EXCLAMATION_MARK,
 	AT,
+	ASTERISK,
 } from './constants';
 
 import type { parse_options, parse_result, parse_context } from './types';
@@ -383,6 +384,14 @@ function tokenize(source: string): {
 							continue;
 						} else {
 							cursor += 1;
+							continue;
+						}
+					}
+					case ASTERISK: {
+						if (source.charCodeAt(cursor - 1) === SPACE) {
+							console.log('strong_emphasis_start');
+							states.push(state_kind.strong_emphasis_start);
+							extra = 0;
 							continue;
 						}
 					}

@@ -72,3 +72,9 @@ export const PIPE = 124;
 
 /** ASCII code for the exclamation mark character (`!`). */
 export const EXCLAMATION_MARK = 33;
+
+/** ASCII code for the asterisk character (`*`). */
+export const ASTERISK = 42;
+
+/** ASCII code for the underscore character (`_`). */
+export const UNDERSCORE = 95;

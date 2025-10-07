@@ -483,7 +483,7 @@ describe('fenced code blocks', () => {
 		expect(code_fence.kind).toBe('code_fence');
 	});
 
-	test('pfm example 348', () => {
+	test.only('pfm example 348', () => {
 		const input = load_fixture('348');
 		const { nodes } = parse_markdown_svelte(input);
 
