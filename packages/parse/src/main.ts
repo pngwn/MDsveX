@@ -10,6 +10,8 @@ import {
 	TAB,
 	CLOSE_ANGLE_BRACKET,
 	BACKSLASH,
+	EXCLAMATION_MARK,
+	AT,
 } from './constants';
 
 import type { parse_options, parse_result, parse_context } from './types';
@@ -33,6 +35,12 @@ export const enum state_kind {
 	code_fence_content = 5,
 	code_fence_text_end = 6,
 	paragraph = 7,
+	inline = 8,
+	code_span_start = 9,
+	code_span_info = 10,
+	code_span_content_leading_space = 11,
+	code_span_leading_space_end = 12,
+	code_span_end = 13,
 }
 
 const fences = Array.from({ length: 20 }, (_, i) =>
@@ -79,7 +87,7 @@ function tokenize(source: string): {
 
 	let extra = 0;
 	let metadata: Record<string, any> = {};
-
+	let checkpoint_cursor = 0;
 	console.log('states', states);
 
 	while (cursor <= length) {
@@ -87,7 +95,10 @@ function tokenize(source: string): {
 		const code = source.charCodeAt(cursor);
 		const current_parent = node_stack[node_stack.length - 1] || 0;
 		const current_node = node_stack[node_stack.length - 1] || 0;
+
 		console.log(
+			'states',
+			states,
 			'active_state: ',
 			active,
 			'cursor: ',
@@ -114,8 +125,8 @@ function tokenize(source: string): {
 					}
 
 					case OCTOTHERP: {
-						states.push(state_kind.text);
-						states.push(state_kind.heading_marker);
+						// states.push(state_kind.text);
+						// states.push(state_kind.heading_marker);
 						continue;
 					}
 
@@ -153,19 +164,21 @@ function tokenize(source: string): {
 					source.charCodeAt(cursor + 3) === BACKTICK
 				) {
 					nodes.set_end(current_node, cursor);
+					node_stack.pop();
 					states.pop();
 					states.push(state_kind.code_fence_start);
-					node_stack.pop();
+
 					cursor += 1;
 					continue;
 				} else if (code === LINEFEED) {
 					cursor += 1;
 					continue;
+				} else if (false) {
 				} else {
-					node_stack.push(nodes.push(node_kind.text, cursor, current_parent));
-					nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
+					// node_stack.push(nodes.push(node_kind.text, cursor, current_parent));
+					// nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
 
-					states.push(state_kind.text);
+					states.push(state_kind.inline);
 					continue;
 				}
 			}
@@ -187,8 +200,11 @@ function tokenize(source: string): {
 					continue;
 				} else {
 					states.pop();
-					states.push(state_kind.code_fence_content);
-
+					node_stack.push(
+						nodes.push(node_kind.paragraph, cursor - extra, current_parent)
+					);
+					states.push(state_kind.paragraph);
+					cursor = cursor - extra;
 					continue;
 				}
 			}
@@ -234,23 +250,32 @@ function tokenize(source: string): {
 			case state_kind.code_fence_content: {
 				const index = source.indexOf(fences[extra], cursor - 1);
 				const nl_index = source.lastIndexOf('\n', index);
-
-				if (index !== -1 && source.charCodeAt(index - 1) === BACKSLASH) {
-					cursor = index + extra + 1;
+				if (cursor >= length || index === -1) {
+					states.pop();
+					states.push(state_kind.code_fence_text_end);
+					cursor = length;
 					continue;
 				}
 
 				let ws = true;
+				let preceding_newline = false;
 
-				whitespace: for (let i = nl_index; i < index; i++) {
+				for (let i = nl_index; i < index; i++) {
+					if (source.charCodeAt(i) === LINEFEED) {
+						preceding_newline = true;
+					}
 					if (
 						source.charCodeAt(i) !== SPACE &&
 						source.charCodeAt(i) !== TAB &&
 						source.charCodeAt(i) !== LINEFEED
 					) {
 						ws = false;
-						break whitespace;
 					}
+				}
+
+				if (!ws || !preceding_newline) {
+					cursor = index + extra;
+					continue;
 				}
 
 				if (index !== -1 && nl_index !== -1 && ws) {
@@ -258,29 +283,28 @@ function tokenize(source: string): {
 						states.pop();
 						states.push(state_kind.code_fence_text_end);
 						nodes.set_value_end(current_node, nl_index);
-						cursor = index + extra;
 
-						continue;
+						cursor = index + extra;
 					}
+					continue;
 				} else {
 					states.pop();
-
 					cursor = length;
 					nodes.set_end(current_node, length);
 					nodes.set_value_end(current_node, length);
-
 					continue;
 				}
 			}
 
 			case state_kind.code_fence_text_end: {
-				if (code === LINEFEED) {
-					nodes.set_end(current_node, cursor);
-					states.pop();
-				} else if (cursor >= length) {
-					console.log('setting end to length', current_node, length);
+				if (cursor >= length) {
 					nodes.set_end(current_node, length);
+					nodes.gently_set_value_end(current_node, length);
+					node_stack.pop();
 					states.pop();
+				} else if (code !== BACKTICK) {
+					nodes.set_end(current_node, cursor);
+					node_stack.pop();
 				}
 				cursor += 1;
 				continue;
@@ -340,6 +364,44 @@ function tokenize(source: string): {
 				// continue;
 			}
 
+			case state_kind.inline: {
+				console.log('inline', { code });
+				switch (code) {
+					case BACKTICK: {
+						console.log('code_span_start');
+						states.push(state_kind.code_span_start);
+						extra = 0;
+						continue;
+					}
+					case LINEFEED: {
+						if (
+							source.charCodeAt(cursor + 1) === LINEFEED ||
+							!source[cursor + 1]
+						) {
+							states.pop();
+
+							continue;
+						} else {
+							cursor += 1;
+							continue;
+						}
+					}
+
+					default: {
+						if (!code) {
+							states.pop();
+
+							continue;
+						}
+						node_stack.push(nodes.push(node_kind.text, cursor, current_parent));
+						nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
+
+						states.push(state_kind.text);
+						continue;
+					}
+				}
+			}
+
 			case state_kind.text: {
 				if (!code || (code === LINEFEED && !source[cursor + 1])) {
 					states.pop();
@@ -362,6 +424,218 @@ function tokenize(source: string): {
 				cursor += 1;
 				continue;
 			}
+
+			case state_kind.code_span_start: {
+				if (extra > 2) {
+					console.log('code_span_start with more than 2 backticks');
+					states.pop();
+					states.push(state_kind.text);
+					node_stack.push(
+						nodes.push(node_kind.text, cursor - extra, current_parent)
+					);
+					nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
+					continue;
+				}
+
+				switch (code) {
+					case BACKTICK: {
+						checkpoint_cursor = cursor;
+						extra += 1;
+						cursor += 1;
+						continue;
+					}
+					case OCTOTHERP: {
+						if (source.charCodeAt(cursor + 1) === EXCLAMATION_MARK) {
+							cursor += 2;
+							console.log('code_span_info');
+							states.pop();
+							states.push(state_kind.code_span_info);
+							metadata.info_start = cursor;
+						}
+						continue;
+					}
+					case SPACE: {
+						console.log('code_span_start with space');
+						checkpoint_cursor = cursor;
+						states.pop();
+						states.push(state_kind.code_span_content_leading_space);
+						node_stack.push(
+							nodes.push(node_kind.code_span, cursor - extra, current_parent)
+						);
+						nodes.set_value_start(
+							node_stack[node_stack.length - 1],
+							cursor + 1
+						);
+
+						// leading_space = 1;
+						cursor += 2;
+
+						continue;
+					}
+					default: {
+						console.log('Checkpoint cursor', cursor);
+
+						states.pop();
+						states.push(state_kind.code_span_end);
+						node_stack.push(
+							nodes.push(node_kind.code_span, cursor - extra, current_parent)
+						);
+						nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
+
+						continue;
+					}
+				}
+			}
+
+			case state_kind.code_span_info: {
+				console.log('code_span_info', {
+					code,
+					cursor,
+					extra,
+					info_start: metadata.info_start,
+				});
+				switch (code) {
+					case SPACE: {
+						metadata.info_end = cursor;
+						checkpoint_cursor = cursor + 1;
+						states.pop();
+						if (source.charCodeAt(cursor + 1) === SPACE) {
+							states.push(state_kind.code_span_content_leading_space);
+							cursor += 2;
+						} else {
+							states.push(state_kind.code_span_end);
+							cursor += 1;
+						}
+
+						const n = nodes.push(
+							node_kind.code_span,
+							metadata.info_start - 2 - extra,
+							current_parent
+						);
+						node_stack.push(n);
+
+						nodes.set_metadata(n, {
+							info_start: metadata.info_start,
+							info_end: metadata.info_end,
+						});
+
+						nodes.set_value_start(n, cursor);
+
+						continue;
+					}
+					default: {
+						cursor += 1;
+						continue;
+					}
+				}
+			}
+
+			case state_kind.code_span_content_leading_space: {
+				console.log('code_span_content_leading_space', cursor, code);
+				if (code === SPACE && source.charCodeAt(cursor + 1) === BACKTICK) {
+					cursor += 1;
+					states.pop();
+					states.push(state_kind.code_span_leading_space_end);
+					continue;
+				} else if (code === LINEFEED) {
+					nodes.set_value_start(current_node, checkpoint_cursor);
+					console.log(
+						'code_span_content_leading_space with linefeed',
+						cursor,
+						checkpoint_cursor
+					);
+					cursor = checkpoint_cursor;
+					states.pop();
+					states.push(state_kind.code_span_end);
+					continue;
+				} else {
+					cursor += 1;
+					continue;
+				}
+			}
+
+			case state_kind.code_span_leading_space_end: {
+				console.log('code_span_leading_space_end', { cursor, code, extra });
+				if (
+					extra === 1 &&
+					code === BACKTICK &&
+					source.charCodeAt(cursor + 1) !== BACKTICK
+				) {
+					console.log('code_span_leading_space_end with 1 backtick');
+					states.pop();
+					// states.push(state_kind.code_span_end);
+					nodes.set_end(current_node, cursor + extra);
+					nodes.set_value_end(current_node, cursor - 1);
+					node_stack.pop();
+				} else if (
+					extra === 2 &&
+					code === BACKTICK &&
+					source.charCodeAt(cursor + 1) === BACKTICK &&
+					source.charCodeAt(cursor + 2) !== BACKTICK
+				) {
+					console.log('code_span_leading_space_end with  2 backticks');
+					states.pop();
+					// states.push(state_kind.code_span_end);
+					nodes.set_end(current_node, cursor + extra);
+					nodes.set_value_end(current_node, cursor - 1);
+					node_stack.pop();
+				} else {
+					states.pop();
+					states.push(state_kind.code_span_content_leading_space);
+					//
+				}
+				cursor += extra;
+				continue;
+			}
+
+			case state_kind.code_span_end: {
+				console.log('code_span_end', { cursor, code, extra });
+
+				if (code === BACKTICK) {
+					if (
+						(extra === 1 && source.charCodeAt(cursor + 1) !== BACKTICK) ||
+						(extra === 2 &&
+							source.charCodeAt(cursor + 1) === BACKTICK &&
+							source.charCodeAt(cursor + 2) !== BACKTICK)
+					) {
+						console.log('setting value end to', cursor);
+						console.log('setting end to', cursor + extra - 1);
+						nodes.set_value_end(current_node, cursor);
+						states.pop();
+						nodes.set_end(current_node, cursor + extra);
+						node_stack.pop();
+						cursor += extra;
+						continue;
+					}
+				}
+
+				if (
+					(code === LINEFEED && source.charCodeAt(cursor + 1) === LINEFEED) ||
+					isNaN(code)
+				) {
+					cursor = checkpoint_cursor;
+					nodes.pop();
+					node_stack.pop();
+					states.pop();
+					states.push(state_kind.text);
+					node_stack.push(
+						nodes.push(
+							node_kind.text,
+							checkpoint_cursor,
+							node_stack[node_stack.length - 1]
+						)
+					);
+					nodes.set_value_start(
+						node_stack[node_stack.length - 1],
+						checkpoint_cursor
+					);
+
+					continue;
+				}
+				cursor += 1;
+				continue;
+			}
+
 			default: {
 				// TODO: why do we pop here?
 				// states.pop();
@@ -427,6 +701,11 @@ function tokenize(source: string): {
 			// 	continue;
 			// }
 		}
+	}
+
+	for (let i = 0; i < node_stack.length; i++) {
+		nodes.gently_set_end(node_stack[i], length - 1);
+		nodes.gently_set_value_end(node_stack[i], length - 1);
 	}
 
 	return { nodes, errors };

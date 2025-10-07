@@ -16,6 +16,7 @@ export const enum node_kind {
 	code_fence = 5,
 	line_break = 6,
 	paragraph = 7,
+	code_span = 8,
 }
 
 /**
@@ -54,6 +55,8 @@ const kind_to_string = (kind: node_kind): string => {
 			return 'line_break';
 		case node_kind.paragraph:
 			return 'paragraph';
+		case node_kind.code_span:
+			return 'code_span';
 	}
 };
 
@@ -125,6 +128,7 @@ export class node_buffer {
 			node_kind.code_fence,
 			node_kind.paragraph,
 			node_kind.root,
+			node_kind.code_span,
 		];
 
 		this._size = 0;
@@ -208,6 +212,10 @@ export class node_buffer {
 		return index;
 	}
 
+	pop(): void {
+		this._size -= 1;
+	}
+
 	/**
 	 * Set the parent kind of the node at the given index
 	 * @param index index of the node whose parent kind to update
@@ -263,6 +271,18 @@ export class node_buffer {
 		this.ends[index] = end >>> 0;
 	}
 
+	gently_set_end(index: number, end: number): void {
+		console.log('gently_set_end', index, end);
+		if (this.ends[index]) return;
+		this.ends[index] = end >>> 0;
+	}
+
+	gently_set_value_end(index: number, end: number): void {
+		console.log('gently_set_value_end', index, end);
+		if (this.value_ends[index]) return;
+		this.value_ends[index] = end >>> 0;
+	}
+
 	/** Double the backing storage when capacity is exhausted. */
 	private grow(): void {
 		const next = this.capacity << 1;
@@ -308,6 +328,7 @@ export class node_buffer {
 	}
 
 	set_value_start(index: number, value_start: number): void {
+		console.log('set_value_start', index, value_start);
 		this.value_starts[index] = value_start;
 	}
 

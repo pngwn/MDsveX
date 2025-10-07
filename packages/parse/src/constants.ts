@@ -69,3 +69,6 @@ export const LOWERCASE_Z = 122;
 
 /** ASCII code for the pipe character (`|`). */
 export const PIPE = 124;
+
+/** ASCII code for the exclamation mark character (`!`). */
+export const EXCLAMATION_MARK = 33;

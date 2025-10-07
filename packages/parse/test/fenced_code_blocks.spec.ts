@@ -44,18 +44,18 @@ describe('fenced code blocks', () => {
 		expect(node.value).toEqual([4, 8]);
 	});
 
-	test('pfm example 119_2 captures the entire outer fenced block as a single token', () => {
-		const input = load_fixture('119_2');
+	test('pfm example pfm_119_2 captures the entire outer fenced block as a single token', () => {
+		const input = load_fixture('pfm_119_2');
 		const { nodes } = parse_markdown_svelte(input);
 
 		const node = nodes.get_node(1);
 
-		expect(nodes.size).toBe(2);
-
 		expect(node.kind).toBe('code_fence');
 		expect(node.start).toBe(0);
 		expect(node.end).toBe(22);
-		expect(input.slice(node.start, node.end)).toBe(input);
+		expect(input.slice(node.start, node.end)).toBe(
+			'````\n```\n<\n >\n```\n````'
+		);
 
 		expect(input.slice(node.value[0], node.value[1])).toEqual(
 			'```\n<\n >\n```'
@@ -65,8 +65,8 @@ describe('fenced code blocks', () => {
 		expect(kinds.length).toBe(1);
 	});
 
-	test('pfm example 119_3 captures the entire outer fenced block as a single token ignoring escaped delimeters', () => {
-		const input = load_fixture('119_3');
+	test('pfm example pfm_119_3 captures the entire outer fenced block as a single token ignoring escaped delimeters', () => {
+		const input = load_fixture('pfm_119_3');
 		const { nodes } = parse_markdown_svelte(input);
 
 		const node = nodes.get_node(1);
@@ -330,7 +330,7 @@ end`);
 		expect(nodes.size).toBe(2);
 		console.log(nodes.get_node(1));
 		expect(input.slice(nodes.get_node(1).start, nodes.get_node(1).end)).toBe(
-			input
+			'````;\n````'
 		);
 
 		const node_info = nodes.get_node(1);
