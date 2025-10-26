@@ -8,12 +8,12 @@ A Markdown preprocessor for Svelte. Markdown in Svelte.
 
 This is a monorepo containing `mdsvex` and any supporting packages. Each repo has its own readme with more details.
 
-- [site](https://github.com/pngwn/MDsveX/tree/master/packages/site) - The documentation website.
-- [mdsvex](https://github.com/pngwn/MDsveX/tree/master/packages/mdsvex) - `mdsvex` itself.
-- [svelte-parse](https://github.com/pngwn/MDsveX/tree/master/packages/svelte-parse) - Generate a svast AST from a Svelte components.
-- [svast](https://github.com/pngwn/MDsveX/tree/master/packages/svast) - An AST specification with accompanying TypeScript definitions.
-- [svast-stringify](https://github.com/pngwn/MDsveX/tree/master/packages/svast-stringify) - Turn a svast AST into a Svelte component.
-- [svast-utils](https://github.com/pngwn/MDsveX/tree/master/packages/svast-utils) - Utilities for working with a svast tree.
+- [site](https://github.com/pngwn/MDsveX/tree/main/packages/site) - The documentation website.
+- [mdsvex](https://github.com/pngwn/MDsveX/tree/main/packages/mdsvex) - `mdsvex` itself.
+- [svelte-parse](https://github.com/pngwn/MDsveX/tree/main/packages/svelte-parse) - Generate a svast AST from a Svelte components.
+- [svast](https://github.com/pngwn/MDsveX/tree/main/packages/svast) - An AST specification with accompanying TypeScript definitions.
+- [svast-stringify](https://github.com/pngwn/MDsveX/tree/main/packages/svast-stringify) - Turn a svast AST into a Svelte component.
+- [svast-utils](https://github.com/pngwn/MDsveX/tree/main/packages/svast-utils) - Utilities for working with a svast tree.
 
 ## Contributing
 
