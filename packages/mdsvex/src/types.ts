@@ -296,6 +296,17 @@ export interface MdsvexOptions {
 	 * ```
 	 */
 	layout?: string | Record<string, string>;
+	/**
+	 * **svelte5** - Use Svelte 5 syntax for module scripts (`<script module>` instead of `<script context="module">`). Default: `false`.
+	 *
+	 * Set this to `true` if you are using Svelte 5.
+	 *
+	 *  *example:*
+	 * ```js
+	 * svelte5: true
+	 * ```
+	 */
+	svelte5?: boolean;
 }
 
 /**

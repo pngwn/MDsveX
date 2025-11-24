@@ -71,7 +71,11 @@ export function transform(
 		highlight,
 	} = {} as Omit<TransformOptions, 'layout_mode' | 'layout'>
 ): Processor & {
-	add_layouts: (layout: Layout, layout_mode: LayoutMode) => void;
+	add_layouts: (
+		layout: Layout,
+		layout_mode: LayoutMode,
+		svelte5?: boolean
+	) => void;
 } {
 	const fm_opts = frontmatter
 		? frontmatter
@@ -106,11 +110,19 @@ export function transform(
 		allowDangerousHtml: true,
 		allowDangerousCharacters: true,
 	}) as Processor & {
-		add_layouts: (layout: Layout, layout_mode: LayoutMode) => void;
+		add_layouts: (
+			layout: Layout,
+			layout_mode: LayoutMode,
+			svelte5?: boolean
+		) => void;
 	};
 
-	processor.add_layouts = (layout: Layout, layout_mode: LayoutMode) => {
-		processor.use(transform_hast, { layout: layout, layout_mode });
+	processor.add_layouts = (
+		layout: Layout,
+		layout_mode: LayoutMode,
+		svelte5: boolean = false
+	) => {
+		processor.use(transform_hast, { layout: layout, layout_mode, svelte5 });
 	};
 
 	return processor;
@@ -249,6 +261,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 		layout = false,
 		highlight = { highlighter: code_highlight, optimise: true },
 		frontmatter,
+		svelte5 = false,
 	} = options;
 
 	if (highlight === undefined) {
@@ -279,6 +292,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 		'layout',
 		'highlight',
 		'frontmatter',
+		'svelte5',
 	];
 
 	for (const opt in options) {
@@ -330,7 +344,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 					}
 				}
 				_layout = await process_layouts(_layout);
-				parser.add_layouts(_layout, layout_mode);
+				parser.add_layouts(_layout, layout_mode, svelte5);
 				// resolve the `layout_processed` promise to unlock the rest of the file
 				// that are waiting before calling parser.process
 				resolve!();
