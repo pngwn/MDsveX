@@ -663,7 +663,7 @@ author: Dr. Fabuloso the Fabulous
 Some amazing content.
 ```
 
-Additionally, all of these variables are exported as a single object named `metadata` from the `context="module"` (or `<script module>` in  Svelte 5+) script, so they can easily be imported in javascript:
+Additionally, all of these variables are exported as a single object named `metadata` from the `context="module"` (or `<script module>` in Svelte 5+) script, so they can easily be imported in javascript:
 
 ```svelte
 <script context="module">
