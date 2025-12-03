@@ -18,14 +18,48 @@ import {
 import type { parse_options, parse_result, parse_context } from './types';
 import { node_kind } from './utils';
 import { node_buffer, error_collector } from './utils';
-/** Default number of token entries to preallocate. */
-const DEFAULT_TOKEN_CAPACITY = 128;
+export type { parse_options, parse_result } from './types';
+export { node_kind, node_buffer } from './utils';
 
-/** Default number of error entries to preallocate. */
-const DEFAULT_ERROR_CAPACITY = 32;
+const enum char_mask {
+	whitespace = 1 << 0,
+	punctuation = 1 << 1,
+	word = 1 << 2,
+}
 
-/** Default node capacity for the arena allocator. */
-const DEFAULT_NODE_CAPACITY = 128;
+const char_class_table = new Uint8Array(128);
+
+for (let i = 0; i < char_class_table.length; i += 1) {
+	let mask = 0;
+
+	if (i <= 0x20) {
+		mask |= char_mask.whitespace;
+	}
+
+	if ((i >= 33 && i <= 47) || (i >= 58 && i <= 64)) {
+		mask |= char_mask.punctuation;
+	}
+
+	if (mask === 0) {
+		mask = char_mask.word;
+	}
+
+	char_class_table[i] = mask;
+}
+
+const classify = (code: number): char_mask => {
+	if (Number.isNaN(code)) {
+		return char_mask.whitespace;
+	}
+
+	if (code < char_class_table.length) {
+		return char_class_table[code];
+	}
+
+	// console.log('classify', code, 'is not in table', String.fromCharCode(code));
+
+	return char_mask.word;
+};
 
 export const enum state_kind {
 	root = 0,
@@ -42,6 +76,8 @@ export const enum state_kind {
 	code_span_content_leading_space = 11,
 	code_span_leading_space_end = 12,
 	code_span_end = 13,
+	strong_emphasis = 14,
+	emphasis = 15,
 }
 
 const fences = Array.from({ length: 20 }, (_, i) =>
@@ -62,7 +98,7 @@ export function parse_markdown_svelte(
 	// 	options.token_capacity ??
 	// 	Math.max(DEFAULT_TOKEN_CAPACITY, input.length >>> 2);
 	// const error_capacity = options.error_capacity ?? DEFAULT_ERROR_CAPACITY;
-	console.log('input', input);
+	// console.log('input', input);
 	const { nodes, errors } = tokenize(input);
 
 	return { nodes, errors };
@@ -84,44 +120,82 @@ function tokenize(source: string): {
 
 	const states: state_kind[] = [state_kind.root];
 
+	let prev_cursor = 0;
 	let cursor = 0;
 
 	let extra = 0;
 	let metadata: Record<string, any> = {};
 	let checkpoint_cursor = 0;
-	console.log('states', states);
+	// console.log('states', states);
+
+	let prev = char_mask.whitespace;
+	let current = classify(source.charCodeAt(cursor));
+	let next = classify(source.charCodeAt(cursor + 1));
+
+	function chomp(count: number = 1, replace: boolean = false) {
+		if (replace) {
+			cursor = count;
+		} else {
+			cursor += count;
+		}
+
+		if (count > 1 || replace) {
+			prev = classify(source.charCodeAt(cursor - 1));
+			current = classify(source.charCodeAt(cursor));
+			next = classify(source.charCodeAt(cursor + 1));
+		} else {
+			prev = current;
+			current = next;
+			next = classify(source.charCodeAt(cursor + 1));
+		}
+	}
+
+	let loop_without_progress = 0;
 
 	while (cursor <= length) {
 		const active = states[states.length - 1];
 		const code = source.charCodeAt(cursor);
-		const current_parent = node_stack[node_stack.length - 1] || 0;
+
+		// const current_parent = node_stack[node_stack.length - 2] || 0;
 		const current_node = node_stack[node_stack.length - 1] || 0;
 
-		console.log(
-			'states',
-			states,
-			'active_state: ',
-			active,
-			'cursor: ',
-			cursor,
-			'char: ',
-			source[cursor],
-			'current_parent: ',
-			current_parent,
-			'current_node: ',
-			current_node
-		);
+		// console.log(
+		// 	'cursor: ',
+		// 	cursor,
+		// 	'char: ',
+		// 	source[cursor],
+		// 	'node_stack: ',
+		// 	node_stack
+
+		// );
+
+		if (cursor === prev_cursor) {
+			loop_without_progress += 1;
+			if (loop_without_progress > 100) {
+				console.error('Infinite loop detected');
+				break;
+			}
+		} else {
+			loop_without_progress = 0;
+		}
+
+		prev_cursor = cursor;
+
+		// if (prev_cursor === cursor) {
+
 		switch (active) {
 			case state_kind.root: {
 				if (isNaN(code)) {
-					cursor += 1;
+					// cursor += 1;
+					chomp();
 					continue;
 				}
 				switch (code) {
 					case SPACE:
 					case TAB:
 					case LINEFEED: {
-						cursor += 1;
+						// cursor += 1;
+						chomp();
 						continue;
 					}
 
@@ -139,7 +213,7 @@ function tokenize(source: string): {
 					default: {
 						states.push(state_kind.paragraph);
 						node_stack.push(
-							nodes.push(node_kind.paragraph, cursor, current_parent)
+							nodes.push(node_kind.paragraph, cursor, current_node)
 						);
 
 						continue;
@@ -156,7 +230,8 @@ function tokenize(source: string): {
 					nodes.set_end(current_node, cursor);
 					states.pop();
 					node_stack.pop();
-					cursor += 2;
+					// cursor += 2;
+					chomp(2);
 					continue;
 				} else if (
 					code === LINEFEED &&
@@ -169,13 +244,16 @@ function tokenize(source: string): {
 					states.pop();
 					states.push(state_kind.code_fence_start);
 
-					cursor += 1;
+					// cursor += 1;
+					chomp();
 					continue;
 				} else if (code === LINEFEED) {
-					cursor += 1;
+					// cursor += 1;
+					chomp();
 					continue;
 				} else if (false) {
 				} else {
+					// console.log('moving to inline');
 					// node_stack.push(nodes.push(node_kind.text, cursor, current_parent));
 					// nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
 
@@ -187,13 +265,14 @@ function tokenize(source: string): {
 			case state_kind.code_fence_start: {
 				if (code === BACKTICK) {
 					extra += 1;
-					cursor += 1;
+					// cursor += 1;
+					chomp();
 					continue;
 				} else if (extra >= 3) {
 					states.pop();
 					states.push(state_kind.code_fence_info);
 					node_stack.push(
-						nodes.push(node_kind.code_fence, cursor - extra, current_parent)
+						nodes.push(node_kind.code_fence, cursor - extra, current_node)
 					);
 
 					metadata.info_start = cursor;
@@ -202,10 +281,11 @@ function tokenize(source: string): {
 				} else {
 					states.pop();
 					node_stack.push(
-						nodes.push(node_kind.paragraph, cursor - extra, current_parent)
+						nodes.push(node_kind.paragraph, cursor - extra, current_node)
 					);
 					states.push(state_kind.paragraph);
-					cursor = cursor - extra;
+					// cursor = cursor - extra;
+					chomp(cursor - extra, true);
 					continue;
 				}
 			}
@@ -225,7 +305,8 @@ function tokenize(source: string): {
 					continue;
 				}
 				if (code !== LINEFEED) {
-					cursor += 1;
+					// cursor += 1;
+					chomp();
 					continue;
 				} else if (cursor >= length) {
 					nodes.set_end(current_node, length);
@@ -240,7 +321,8 @@ function tokenize(source: string): {
 						info_start: metadata.info_start,
 						info_end: cursor,
 					});
-					cursor += 1;
+					// cursor += 1;
+					chomp();
 
 					nodes.set_value_start(current_node, cursor);
 
@@ -254,7 +336,8 @@ function tokenize(source: string): {
 				if (cursor >= length || index === -1) {
 					states.pop();
 					states.push(state_kind.code_fence_text_end);
-					cursor = length;
+					// cursor = length;
+					chomp(length, true);
 					continue;
 				}
 
@@ -275,7 +358,8 @@ function tokenize(source: string): {
 				}
 
 				if (!ws || !preceding_newline) {
-					cursor = index + extra;
+					// cursor = index + extra;
+					chomp(index + extra, true);
 					continue;
 				}
 
@@ -285,12 +369,14 @@ function tokenize(source: string): {
 						states.push(state_kind.code_fence_text_end);
 						nodes.set_value_end(current_node, nl_index);
 
-						cursor = index + extra;
+						// cursor = index + extra;
+						chomp(index + extra, true);
 					}
 					continue;
 				} else {
 					states.pop();
-					cursor = length;
+					// cursor = length;
+					chomp(length, true);
 					nodes.set_end(current_node, length);
 					nodes.set_value_end(current_node, length);
 					continue;
@@ -307,7 +393,8 @@ function tokenize(source: string): {
 					nodes.set_end(current_node, cursor);
 					node_stack.pop();
 				}
-				cursor += 1;
+				// cursor += 1;
+				chomp();
 				continue;
 			}
 			case state_kind.heading_marker: {
@@ -365,11 +452,53 @@ function tokenize(source: string): {
 				// continue;
 			}
 
+			case state_kind.strong_emphasis: {
+				if (
+					code === ASTERISK &&
+					prev & (char_mask.word | char_mask.punctuation) &&
+					next & (char_mask.whitespace | char_mask.punctuation)
+				) {
+					// console.log('strong_emphasis -- strong_emphasis_end');
+					// nodes.set_end(current_node, cursor);
+					// nodes.set_value_end(current_node, cursor);
+					// node_stack.pop();
+
+					const n = node_stack[node_stack.length - 1];
+					// console.log(n);
+					nodes.set_value_end(n, cursor);
+					nodes.set_end(n, cursor + 1);
+					nodes.commit_node(n);
+					states.pop();
+					node_stack.pop();
+					// cursor += 1;
+					chomp();
+				} else if (
+					code === LINEFEED &&
+					(source.charCodeAt(cursor + 1) === LINEFEED || !source[cursor + 1])
+				) {
+					states.pop();
+					nodes.set_end(current_node, cursor);
+					nodes.set_value_end(current_node, cursor);
+					node_stack.pop();
+					// cursor += 1;
+					chomp();
+					continue;
+				} else {
+					// console.log('strong_emphasis -- moving to text');
+					// let n = nodes.push(node_kind.text, cursor, current_node);
+					// nodes.set_value_start(n, cursor);
+					// node_stack.push(n);
+					states.push(state_kind.inline);
+				}
+
+				continue;
+			}
+
 			case state_kind.inline: {
-				console.log('inline', { code });
+				// console.log('inline', { code, cursor, current_node });
 				switch (code) {
 					case BACKTICK: {
-						console.log('code_span_start');
+						// console.log('code_span_start');
 						states.push(state_kind.code_span_start);
 						extra = 0;
 						continue;
@@ -383,17 +512,41 @@ function tokenize(source: string): {
 
 							continue;
 						} else {
-							cursor += 1;
+							// cursor += 1;
+							chomp();
 							continue;
 						}
 					}
 					case ASTERISK: {
-						if (source.charCodeAt(cursor - 1) === SPACE) {
-							console.log('strong_emphasis_start');
-							states.push(state_kind.strong_emphasis_start);
-							extra = 0;
-							continue;
+						// 33 => 47
+						// 58 => 64
+						// const left = classify(source.charCodeAt(cursor - 1));
+						// const right = classify(source.charCodeAt(cursor + 1));
+						if (
+							prev & (char_mask.whitespace | char_mask.punctuation) &&
+							next & (char_mask.word | char_mask.punctuation)
+						) {
+							// console.log('inline -- moving to strong_emphasis_start');
+							let n = nodes.push_pending(
+								node_kind.strong_emphasis,
+								cursor,
+								current_node
+							);
+
+							nodes.set_value_start(n, cursor + 1);
+							node_stack.push(n);
+							states.push(state_kind.strong_emphasis);
+						} else {
+							// console.log('inline -- moving to text');
+							let n = nodes.push(node_kind.text, cursor, current_node);
+							nodes.set_value_start(n, cursor);
+							node_stack.push(n);
+							states.push(state_kind.text);
 						}
+
+						// cursor += 1;
+						chomp();
+						continue;
 					}
 
 					default: {
@@ -402,10 +555,14 @@ function tokenize(source: string): {
 
 							continue;
 						}
-						node_stack.push(nodes.push(node_kind.text, cursor, current_parent));
+						// console.log('pushing text node', cursor, current_node);
+						// // if ()
+						node_stack.push(nodes.push(node_kind.text, cursor, current_node));
 						nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
 
 						states.push(state_kind.text);
+						// cursor += 1;
+						chomp();
 						continue;
 					}
 				}
@@ -418,6 +575,7 @@ function tokenize(source: string): {
 					nodes.set_end(current_node, cursor);
 					nodes.set_value_end(current_node, cursor);
 					node_stack.pop();
+
 					continue;
 				} else if (
 					code === LINEFEED &&
@@ -428,19 +586,32 @@ function tokenize(source: string): {
 					nodes.set_end(current_node, cursor);
 					nodes.set_value_end(current_node, cursor);
 					node_stack.pop();
+
+					continue;
+				} else if (code === ASTERISK) {
+					// console.log('text with asterisk', current_node);
+					states.pop();
+
+					nodes.set_end(current_node, cursor);
+					nodes.set_value_end(current_node, cursor);
+					node_stack.pop();
+					states.pop();
+					// console.log('after popping', node_stack, states);
+
 					continue;
 				}
-				cursor += 1;
+				// cursor += 1;
+				chomp();
 				continue;
 			}
 
 			case state_kind.code_span_start: {
 				if (extra > 2) {
-					console.log('code_span_start with more than 2 backticks');
+					// console.log('code_span_start with more than 2 backticks');
 					states.pop();
 					states.push(state_kind.text);
 					node_stack.push(
-						nodes.push(node_kind.text, cursor - extra, current_parent)
+						nodes.push(node_kind.text, cursor - extra, current_node)
 					);
 					nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
 					continue;
@@ -450,13 +621,15 @@ function tokenize(source: string): {
 					case BACKTICK: {
 						checkpoint_cursor = cursor;
 						extra += 1;
-						cursor += 1;
+						// cursor += 1;
+						chomp();
 						continue;
 					}
 					case OCTOTHERP: {
 						if (source.charCodeAt(cursor + 1) === EXCLAMATION_MARK) {
-							cursor += 2;
-							console.log('code_span_info');
+							// cursor += 2;
+							chomp(2);
+							// console.log('code_span_info');
 							states.pop();
 							states.push(state_kind.code_span_info);
 							metadata.info_start = cursor;
@@ -464,12 +637,12 @@ function tokenize(source: string): {
 						continue;
 					}
 					case SPACE: {
-						console.log('code_span_start with space');
+						// console.log('code_span_start with space');
 						checkpoint_cursor = cursor;
 						states.pop();
 						states.push(state_kind.code_span_content_leading_space);
 						node_stack.push(
-							nodes.push(node_kind.code_span, cursor - extra, current_parent)
+							nodes.push(node_kind.code_span, cursor - extra, current_node)
 						);
 						nodes.set_value_start(
 							node_stack[node_stack.length - 1],
@@ -477,17 +650,18 @@ function tokenize(source: string): {
 						);
 
 						// leading_space = 1;
-						cursor += 2;
+						// cursor += 2;
+						chomp(2);
 
 						continue;
 					}
 					default: {
-						console.log('Checkpoint cursor', cursor);
+						// console.log('Checkpoint cursor', cursor);
 
 						states.pop();
 						states.push(state_kind.code_span_end);
 						node_stack.push(
-							nodes.push(node_kind.code_span, cursor - extra, current_parent)
+							nodes.push(node_kind.code_span, cursor - extra, current_node)
 						);
 						nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
 
@@ -497,12 +671,12 @@ function tokenize(source: string): {
 			}
 
 			case state_kind.code_span_info: {
-				console.log('code_span_info', {
-					code,
-					cursor,
-					extra,
-					info_start: metadata.info_start,
-				});
+				// console.log('code_span_info', {
+				// 	code,
+				// 	cursor,
+				// 	extra,
+				// 	info_start: metadata.info_start,
+				// });
 				switch (code) {
 					case SPACE: {
 						metadata.info_end = cursor;
@@ -510,16 +684,18 @@ function tokenize(source: string): {
 						states.pop();
 						if (source.charCodeAt(cursor + 1) === SPACE) {
 							states.push(state_kind.code_span_content_leading_space);
-							cursor += 2;
+							// cursor += 2;
+							chomp(2);
 						} else {
 							states.push(state_kind.code_span_end);
-							cursor += 1;
+							// cursor += 1;
+							chomp();
 						}
 
 						const n = nodes.push(
 							node_kind.code_span,
 							metadata.info_start - 2 - extra,
-							current_parent
+							current_node
 						);
 						node_stack.push(n);
 
@@ -533,44 +709,48 @@ function tokenize(source: string): {
 						continue;
 					}
 					default: {
-						cursor += 1;
+						// cursor += 1;
+						chomp();
 						continue;
 					}
 				}
 			}
 
 			case state_kind.code_span_content_leading_space: {
-				console.log('code_span_content_leading_space', cursor, code);
+				// console.log('code_span_content_leading_space', cursor, code);
 				if (code === SPACE && source.charCodeAt(cursor + 1) === BACKTICK) {
-					cursor += 1;
+					// cursor += 1;
+					chomp();
 					states.pop();
 					states.push(state_kind.code_span_leading_space_end);
 					continue;
 				} else if (code === LINEFEED) {
 					nodes.set_value_start(current_node, checkpoint_cursor);
-					console.log(
-						'code_span_content_leading_space with linefeed',
-						cursor,
-						checkpoint_cursor
-					);
-					cursor = checkpoint_cursor;
+					// console.log(
+					// 	'code_span_content_leading_space with linefeed',
+					// 	cursor,
+					// 	checkpoint_cursor
+					// );
+					// cursor = checkpoint_cursor;
+					chomp(cursor, true);
 					states.pop();
 					states.push(state_kind.code_span_end);
 					continue;
 				} else {
-					cursor += 1;
+					// cursor += 1;
+					chomp();
 					continue;
 				}
 			}
 
 			case state_kind.code_span_leading_space_end: {
-				console.log('code_span_leading_space_end', { cursor, code, extra });
+				// console.log('code_span_leading_space_end', { cursor, code, extra });
 				if (
 					extra === 1 &&
 					code === BACKTICK &&
 					source.charCodeAt(cursor + 1) !== BACKTICK
 				) {
-					console.log('code_span_leading_space_end with 1 backtick');
+					// console.log('code_span_leading_space_end with 1 backtick');
 					states.pop();
 					// states.push(state_kind.code_span_end);
 					nodes.set_end(current_node, cursor + extra);
@@ -582,7 +762,7 @@ function tokenize(source: string): {
 					source.charCodeAt(cursor + 1) === BACKTICK &&
 					source.charCodeAt(cursor + 2) !== BACKTICK
 				) {
-					console.log('code_span_leading_space_end with  2 backticks');
+					// console.log('code_span_leading_space_end with  2 backticks');
 					states.pop();
 					// states.push(state_kind.code_span_end);
 					nodes.set_end(current_node, cursor + extra);
@@ -593,12 +773,13 @@ function tokenize(source: string): {
 					states.push(state_kind.code_span_content_leading_space);
 					//
 				}
-				cursor += extra;
+				// cursor += extra;
+				chomp(extra);
 				continue;
 			}
 
 			case state_kind.code_span_end: {
-				console.log('code_span_end', { cursor, code, extra });
+				// console.log('code_span_end', { cursor, code, extra });
 
 				if (code === BACKTICK) {
 					if (
@@ -607,13 +788,14 @@ function tokenize(source: string): {
 							source.charCodeAt(cursor + 1) === BACKTICK &&
 							source.charCodeAt(cursor + 2) !== BACKTICK)
 					) {
-						console.log('setting value end to', cursor);
-						console.log('setting end to', cursor + extra - 1);
+						// console.log('setting value end to', cursor);
+						// console.log('setting end to', cursor + extra - 1);
 						nodes.set_value_end(current_node, cursor);
 						states.pop();
 						nodes.set_end(current_node, cursor + extra);
 						node_stack.pop();
-						cursor += extra;
+						// cursor += extra;
+						chomp(extra);
 						continue;
 					}
 				}
@@ -622,7 +804,8 @@ function tokenize(source: string): {
 					(code === LINEFEED && source.charCodeAt(cursor + 1) === LINEFEED) ||
 					isNaN(code)
 				) {
-					cursor = checkpoint_cursor;
+					// cursor = checkpoint_cursor;
+					chomp(checkpoint_cursor, true);
 					nodes.pop();
 					node_stack.pop();
 					states.pop();
@@ -641,14 +824,16 @@ function tokenize(source: string): {
 
 					continue;
 				}
-				cursor += 1;
+				// cursor += 1;
+				chomp();
 				continue;
 			}
 
 			default: {
 				// TODO: why do we pop here?
 				// states.pop();
-				cursor += 1;
+				// cursor += 1;
+				chomp();
 				continue;
 			}
 
@@ -716,6 +901,8 @@ function tokenize(source: string): {
 		nodes.gently_set_end(node_stack[i], length - 1);
 		nodes.gently_set_value_end(node_stack[i], length - 1);
 	}
+
+	nodes.repair();
 
 	return { nodes, errors };
 }

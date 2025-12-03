@@ -13,7 +13,7 @@ const fixtures_root = resolve(this_dir, '../../pfm-tests/tests/code_spans');
 const load_fixture = (id: string): string =>
 	readFileSync(resolve(fixtures_root, id, 'input.md'), 'utf8');
 
-describe('fenced code blocks', () => {
+describe('code spans', () => {
 	test('pfm example 328', () => {
 		const input = load_fixture('328');
 		const { nodes } = parse_markdown_svelte(input);
@@ -483,7 +483,7 @@ describe('fenced code blocks', () => {
 		expect(code_fence.kind).toBe('code_fence');
 	});
 
-	test.only('pfm example 348', () => {
+	test('pfm example 348', () => {
 		const input = load_fixture('348');
 		const { nodes } = parse_markdown_svelte(input);
 

@@ -39,7 +39,7 @@ function next_power_of_two(value: number): number {
  * @param kind node kind
  * @returns string
  */
-const kind_to_string = (kind: node_kind): string => {
+export const kind_to_string = (kind: node_kind): string => {
 	switch (kind) {
 		case node_kind.root:
 			return 'root';
@@ -167,9 +167,6 @@ export class node_buffer {
 		extra = 0,
 		metadata?: any
 	): number {
-		console.log('+++++++++++++++++++++++++++++++++++++++++++++');
-		console.log('pushing node', { kind, cursor, parent, extra, metadata });
-		console.log('+++++++++++++++++++++++++++++++++++++++++++++');
 		const index = this._size;
 		if (index >= this.capacity) {
 			this.grow();
@@ -177,7 +174,7 @@ export class node_buffer {
 
 		this.kinds[index] = kind;
 		this.starts[index] = cursor >>> 0;
-		this.ends[index] = cursor >>> 0;
+		this.ends[index] = 0xffffffff;
 		this.extras[index] = extra & 0xffff;
 		this._size = index + 1;
 		this.parents[index] = parent;
@@ -291,6 +288,10 @@ export class node_buffer {
 
 		// Clear pending node's children references
 		this.children_starts[index] = 0xffffffff;
+
+		this.value_starts[index] = this.starts[index];
+		this.value_ends[index] = this.value_starts[first_child];
+		this.ends[index] = this.value_ends[index];
 	}
 
 	repair(): void {
@@ -361,14 +362,12 @@ export class node_buffer {
 	}
 
 	gently_set_end(index: number, end: number): void {
-		console.log('gently_set_end', index, end);
-		if (this.ends[index]) return;
+		if (this.ends[index] !== 0xffffffff) return;
 		this.ends[index] = end >>> 0;
 	}
 
 	gently_set_value_end(index: number, end: number): void {
-		console.log('gently_set_value_end', index, end);
-		if (this.value_ends[index]) return;
+		if (this.value_ends[index] !== 0xffffffff) return;
 		this.value_ends[index] = end >>> 0;
 	}
 
@@ -417,7 +416,6 @@ export class node_buffer {
 	}
 
 	set_value_start(index: number, value_start: number): void {
-		console.log('set_value_start', index, value_start);
 		this.value_starts[index] = value_start;
 	}
 

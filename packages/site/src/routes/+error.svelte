@@ -1,9 +1,22 @@
 <script>
-import { page } from "$app/stores";
+	import { page } from '$app/stores';
 </script>
 
+<svelte:head>
+	<title>{$page.status}</title>
+</svelte:head>
+
+<h1>{$page.status}</h1>
+
+{#if $page?.error?.message}
+	<p class="error">{$page.status}: {$page.error.message}</p>
+{:else}
+	<p class="error">Encountered a {$page.status} error</p>
+{/if}
+
 <style>
-	h1, p {
+	h1,
+	p {
 		margin: 0 auto;
 	}
 
@@ -23,15 +36,3 @@ import { page } from "$app/stores";
 		}
 	}
 </style>
-
-<svelte:head>
-	<title>{$page.status}</title>
-</svelte:head>
-
-<h1>{status}</h1>
-
-{#if $page.error.message}
-	<p class="error">{status}: {$page.error.message}</p>
-{:else}
-	<p class="error">Encountered a {$page.status} error</p>
-{/if}

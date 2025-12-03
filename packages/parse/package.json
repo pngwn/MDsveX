@@ -1,5 +1,5 @@
 {
-	"name": "parse",
+	"name": "@mdsvex/parse",
 	"version": "0.1.1",
 	"description": "",
 	"main": "src/main.ts",
@@ -21,6 +21,13 @@
 		"mdsvex",
 		"ast"
 	],
+	"exports": {
+		".": {
+			"import": "./src/main.ts",
+			"types": "./src/main.ts"
+		},
+		"./package.json": "./package.json"
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT"
 }

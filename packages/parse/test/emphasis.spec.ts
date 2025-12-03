@@ -4,6 +4,13 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'vitest';
 
+import {
+	get_all_child_kinds,
+	get_child_range,
+	get_content,
+	print_all_nodes,
+} from './utils';
+
 import { parse_markdown_svelte } from '../src/main';
 import { node_kind } from '../src/utils';
 
@@ -18,62 +25,265 @@ const load_fixture = (id: string): string =>
 
 describe('emphasis and strong emphasis', () => {
 	// strong emphasis
-	test.only('pfm example 350', () => {
+	test('pfm example 350', () => {
 		const input = load_fixture('350');
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		const strong_emphasis = nodes.get_node(paragraph.children[0]);
-		const text = nodes.get_node(paragraph.children[1]);
+		const text = nodes.get_node(strong_emphasis.children[0]);
 
-		console.log(root);
-		console.log(paragraph);
-		console.log(strong_emphasis);
-		console.log(text);
-
-		expect(nodes.size).toBe(3);
+		expect(nodes.size).toBe(4);
 		expect(paragraph.kind).toBe('paragraph');
 		expect(strong_emphasis.kind).toBe('strong_emphasis');
 		expect(text.kind).toBe('text');
 
-		console.log(root);
+		const paragraph_content = get_content(nodes, paragraph.index, input);
+		expect(paragraph_content.content).toBe(input.trim());
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'strong_emphasis',
+		]);
+
+		const strong_emphasis_content = get_content(
+			nodes,
+			strong_emphasis.index,
+			input
+		);
+		expect(strong_emphasis_content.content).toBe(input.trim());
+		expect(get_all_child_kinds(nodes, strong_emphasis.index)).toEqual(['text']);
+
+		expect(strong_emphasis.start).toBe(paragraph.start);
+		expect(strong_emphasis.end).toBe(paragraph.end);
+
+		const text_content = get_content(nodes, text.index, input);
+		expect(text_content.content).toBe('foo bar');
+		expect(text_content.value).toEqual('foo bar');
 	});
 
 	//text
-	test.todo('pfm example 351', () => {
+	test('pfm example 351', () => {
 		const input = load_fixture('351');
 		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+
+		const paragraph_content = get_content(nodes, paragraph.index, input);
+		const paragraph_child_content = get_child_range(
+			nodes,
+			paragraph.index,
+			input
+		);
+
+		expect(nodes.size).toBe(5);
+		expect(paragraph.kind).toBe('paragraph');
+
+		expect(paragraph_content.content).toBe(input.trim());
+		expect(paragraph_child_content.content).toBe(input.trim());
+
+		expect(paragraph.start).toBe(0);
+		expect(paragraph.start).toBe(paragraph_child_content.start);
+		expect(paragraph.end).toBe(paragraph_child_content.end);
+
+		expect(paragraph_child_content.content).toBe('a * foo bar*');
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'text',
+			'text',
+			'text',
+		]);
 	});
 
 	//text
-	test.todo('pfm example 352', () => {
+	test('pfm example 352', () => {
 		const input = load_fixture('352');
 		const { nodes } = parse_markdown_svelte(input);
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		const paragraph_content = get_content(nodes, paragraph.index, input);
+		const paragraph_child_content = get_child_range(
+			nodes,
+			paragraph.index,
+			input
+		);
+
+		expect(nodes.size).toBe(5);
+		expect(paragraph.kind).toBe('paragraph');
+
+		expect(paragraph_content.content).toBe(input.trim());
+		expect(paragraph_child_content.content).toBe(input.trim());
+
+		expect(paragraph.start).toBe(0);
+		expect(paragraph.start).toBe(paragraph_child_content.start);
+		expect(paragraph.end).toBe(paragraph_child_content.end);
+
+		expect(paragraph_child_content.content).toBe('a*"foo"*');
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'text',
+			'text',
+			'text',
+		]);
+
+		const emphasis = nodes.get_node(paragraph.children[0]);
+		const emphasis_content = get_content(nodes, emphasis.index, input);
+		const emphasis_child_content = get_child_range(
+			nodes,
+			emphasis.index,
+			input
+		);
 	});
 
 	//text
-	test.todo('pfm example 353', () => {
+	test('pfm example 353', () => {
 		const input = load_fixture('353');
 		const { nodes } = parse_markdown_svelte(input);
+		const root = nodes.get_node();
+
+		const paragraph = nodes.get_node(root.children[0]);
+		const paragraph_content = get_content(nodes, paragraph.index, input);
+		const paragraph_child_content = get_child_range(
+			nodes,
+			paragraph.index,
+			input
+		);
+
+		expect(nodes.size).toBe(4);
+		expect(paragraph.kind).toBe('paragraph');
+
+		expect(paragraph_content.content).toBe(input.trim());
+		expect(paragraph_child_content.content).toBe(input.trim());
+
+		expect(paragraph.start).toBe(0);
+		expect(paragraph.start).toBe(paragraph_child_content.start);
+		expect(paragraph.end).toBe(paragraph_child_content.end);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'strong_emphasis',
+		]);
+
+		expect(paragraph_child_content.content).toBe('* a *');
+
+		const strong_emphasis = nodes.get_node(paragraph.children[0]);
+		const strong_emphasis_content = get_content(
+			nodes,
+			strong_emphasis.index,
+			input
+		);
+		const strong_emphasis_child_content = get_child_range(
+			nodes,
+			strong_emphasis.index,
+			input
+		);
+
+		expect(strong_emphasis.kind).toBe('strong_emphasis');
+		expect(strong_emphasis_content.content).toBe(input.trim());
+		expect(get_all_child_kinds(nodes, strong_emphasis.index)).toEqual(['text']);
+
+		expect(strong_emphasis_child_content.content).toBe(' a ');
 	});
 
 	//text
-	test.todo('pfm example 354', () => {
+	test('pfm example 354', () => {
 		const input = load_fixture('354');
 		const { nodes } = parse_markdown_svelte(input);
+		const {
+			children: [p1, p2, p3],
+		} = nodes.get_node();
+		const paragraph_one = nodes.get_node(p1);
+		const paragraph_one_content = get_content(nodes, p1, input);
+		const paragraph_child_content = get_child_range(nodes, p1, input);
+
+		// expect(nodes.size).toBe(13);
+		expect(paragraph_one.kind).toBe('paragraph');
+
+		expect(paragraph_one_content.content).toBe('*$*alpha.');
+		expect(paragraph_child_content.content).toBe('*$*alpha.');
+		expect(paragraph_child_content.content).toBe('*$*alpha.');
+		expect(get_all_child_kinds(nodes, p1)).toEqual(['text', 'text', 'text']);
+
+		const paragraph_two = nodes.get_node(p2);
+		const paragraph_two_content = get_content(nodes, p2, input);
+		const paragraph_two_child_content = get_child_range(nodes, p2, input);
+
+		expect(paragraph_two.kind).toBe('paragraph');
+		expect(paragraph_two_content.content).toBe('*£*bravo.');
+		expect(paragraph_two_child_content.content).toBe('*£*bravo.');
+		expect(get_all_child_kinds(nodes, p2)).toEqual(['text', 'text', 'text']);
+
+		const paragraph_three = nodes.get_node(p3);
+		const paragraph_three_content = get_content(nodes, p3, input);
+		const paragraph_three_child_content = get_child_range(nodes, p3, input);
+
+		expect(paragraph_three.kind).toBe('paragraph');
+		expect(paragraph_three_content.content).toBe('*€*charlie.');
+		expect(paragraph_three_child_content.content).toBe('*€*charlie.');
+		expect(get_all_child_kinds(nodes, p3)).toEqual(['text', 'text', 'text']);
 	});
 
 	//text
-	test.todo('pfm example 355', () => {
+	test('pfm example 355', () => {
 		const input = load_fixture('355');
 		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		const paragraph_content = get_content(nodes, paragraph.index, input);
+		const paragraph_child_content = get_child_range(
+			nodes,
+			paragraph.index,
+			input
+		);
+
+		expect(paragraph.kind).toBe('paragraph');
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'text',
+			'text',
+			'text',
+		]);
+
+		expect(paragraph_content.content).toBe(input.trim());
+		expect(paragraph_child_content.content).toBe(input.trim());
+
+		expect(paragraph.start).toBe(0);
+		expect(paragraph.start).toBe(paragraph_child_content.start);
+		expect(paragraph.end).toBe(paragraph_child_content.end);
+
+		expect(paragraph_child_content.content).toBe('foo*bar*');
 	});
 
 	//text
-	test.todo('pfm example 356', () => {
+	test('pfm example 356', () => {
 		const input = load_fixture('356');
 		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		const paragraph_content = get_content(nodes, paragraph.index, input);
+		const paragraph_child_content = get_child_range(
+			nodes,
+			paragraph.index,
+			input
+		);
+
+		expect(paragraph.kind).toBe('paragraph');
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'text',
+			'text',
+			'text',
+		]);
+
+		expect(paragraph_content.content).toBe(input.trim());
+		expect(paragraph_child_content.content).toBe(input.trim());
+
+		expect(paragraph.start).toBe(0);
+		expect(paragraph.start).toBe(paragraph_child_content.start);
+		expect(paragraph.end).toBe(paragraph_child_content.end);
+
+		expect(paragraph_child_content.content).toBe('5*6*78');
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'text',
+			'text',
+			'text',
+		]);
 	});
 
 	//emphasis
@@ -131,27 +341,138 @@ describe('emphasis and strong emphasis', () => {
 	});
 
 	//text
-	test.todo('pfm example 366', () => {
+	test('pfm example 366', () => {
 		const input = load_fixture('366');
 		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		const paragraph_content = get_content(nodes, paragraph.index, input);
+		const paragraph_child_content = get_child_range(
+			nodes,
+			paragraph.index,
+			input
+		);
+
+		expect(paragraph.kind).toBe('paragraph');
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'text',
+			'text',
+			'text',
+		]);
+
+		expect(paragraph_content.content).toBe(input.trim());
+		expect(paragraph_child_content.content).toBe(input.trim());
+
+		expect(paragraph.start).toBe(0);
+		expect(paragraph.start).toBe(paragraph_child_content.start);
+		expect(paragraph.end).toBe(paragraph_child_content.end);
+
+		expect(paragraph_child_content.content).toBe('*foo bar *');
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'text',
+			'text',
+			'text',
+		]);
 	});
 
 	//strong emphasis
-	test.todo('pfm example 367', () => {
+	test('pfm example 367', () => {
 		const input = load_fixture('367');
 		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		const paragraph_content = get_content(nodes, paragraph.index, input);
+		const paragraph_child_content = get_child_range(
+			nodes,
+			paragraph.index,
+			input
+		);
+
+		expect(paragraph.kind).toBe('paragraph');
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'text',
+			'text',
+			'text',
+		]);
+
+		expect(paragraph_content.content).toBe(input.trim());
+		expect(paragraph_child_content.content).toBe(input.trim());
+
+		expect(paragraph.start).toBe(0);
+		expect(paragraph.start).toBe(paragraph_child_content.start);
+		expect(paragraph.end).toBe(paragraph_child_content.end);
+
+		expect(paragraph_child_content.content).toBe('*foo bar\n*');
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'text',
+			'text',
+			'text',
+		]);
 	});
 
 	//text
-	test.todo('pfm example 368', () => {
+	test('pfm example 368', () => {
 		const input = load_fixture('368');
 		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		const paragraph_content = get_content(nodes, paragraph.index, input);
+		const paragraph_child_content = get_child_range(
+			nodes,
+			paragraph.index,
+			input
+		);
+
+		expect(paragraph.kind).toBe('paragraph');
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'text',
+			'text',
+			'text',
+		]);
+
+		expect(paragraph_content.content).toBe(input.trim());
+		expect(paragraph_child_content.content).toBe(input.trim());
+
+		expect(paragraph.start).toBe(0);
+		expect(paragraph.start).toBe(paragraph_child_content.start);
+		expect(paragraph.end).toBe(paragraph_child_content.end);
+
+		expect(paragraph_child_content.content).toBe('*(*foo)');
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'text',
+			'text',
+			'text',
+		]);
 	});
 
-	//emphasis
-	test.todo('pfm example 369', () => {
+	// strong_emphasis
+	test('pfm example 369', () => {
 		const input = load_fixture('369');
 		const { nodes } = parse_markdown_svelte(input);
+		print_all_nodes(nodes, input);
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		const paragraph_content = get_content(nodes, paragraph.index, input);
+		const paragraph_child_content = get_child_range(
+			nodes,
+			paragraph.index,
+			input
+		);
+
+		expect(paragraph.kind).toBe('paragraph');
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'strong_emphasis',
+		]);
+
+		expect(paragraph_content.content).toBe(input.trim());
+		expect(paragraph_child_content.content).toBe(input.trim());
+
+		expect(paragraph.start).toBe(0);
+		expect(paragraph.start).toBe(paragraph_child_content.start);
+		expect(paragraph.end).toBe(paragraph_child_content.end);
 	});
 
 	//text
