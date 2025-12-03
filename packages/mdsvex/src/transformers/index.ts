@@ -130,7 +130,7 @@ export function smartypants_transformer(options = {}): Transformer {
 // regex for scripts and attributes
 
 const attrs = `(?:\\s{0,1}[a-zA-z]+=(?:"){0,1}[a-zA-Z0-9]+(?:"){0,1})*`;
-const context = `(?:\\s{0,1}context)=(?:"){0,1}module(?:"){0,1}`;
+const context = `(?:\\s{0,1}(?:context=(?:"){0,1}module(?:"){0,1}|module))`;
 
 const RE_BLANK = /^\n+$|^\s+$/;
 
@@ -310,9 +310,11 @@ export const handle_path = async (): Promise<void> => {
 export function transform_hast({
 	layout,
 	layout_mode,
+	svelte5 = false,
 }: {
 	layout: Layout | undefined;
 	layout_mode: LayoutMode;
+	svelte5?: boolean;
 }): Transformer {
 	return function transformer(tree, vFile) {
 		// we need to keep { and } intact for svelte, so reverse the escaping in links and images
@@ -406,10 +408,13 @@ export function transform_hast({
 			}
 
 			// inject the frontmatter into the module script if there is any, reusing the existing module script if one exists
+			const module_script_tag = svelte5
+				? '<script module>'
+				: '<script context="module">';
 			if (!_module[0] && fm) {
 				_module.push({
 					type: 'raw',
-					value: `<script context="module">${newline}\t${fm}${newline}</script>`,
+					value: `${module_script_tag}${newline}\t${fm}${newline}</script>`,
 				});
 			} else if (fm) {
 				// @ts-ignore

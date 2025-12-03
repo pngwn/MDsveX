@@ -605,7 +605,7 @@ Would normally compile to:
 </ul>
 ```
 
-Custom components allow you to replace these elements with components. You can define components by exporting named exports from the `context="module"` script of your Layout file:
+Custom components allow you to replace these elements with components. You can define components by exporting named exports from the `context="module"` script (or `<script module>` in Svelte 5+) of your Layout file:
 
 ```svelte
 <script context="module">
@@ -663,7 +663,7 @@ author: Dr. Fabuloso the Fabulous
 Some amazing content.
 ```
 
-Additionally, all of these variables are exported as a single object named `metadata` from the `context="module"` script, so they can easily be imported in javascript:
+Additionally, all of these variables are exported as a single object named `metadata` from the `context="module"` (or `<script module>` in Svelte 5+) script, so they can easily be imported in javascript:
 
 ```svelte
 <script context="module">

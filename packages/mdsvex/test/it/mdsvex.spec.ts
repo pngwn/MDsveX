@@ -466,6 +466,71 @@ number: 999
 	);
 });
 
+test('YAML front-matter should use Svelte 5 syntax when svelte5 option is true', async () => {
+	const output = await mdsvex({ svelte5: true }).markup({
+		content: `---
+string: value
+string2: 'value2'
+array: [1, 2, 3]
+number: 999
+---
+
+# hello
+`,
+		filename: 'file.svx',
+	});
+
+	expect(lines(output?.code)).toEqual(
+		lines(`<script module>
+	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+	const { string, string2, array, number } = metadata;
+</script>
+
+<h1>hello</h1>
+`)
+	);
+});
+
+test('YAML front-matter should use Svelte 5 syntax with layouts when svelte5 option is true', async () => {
+	const output = await mdsvex({
+		svelte5: true,
+		layout: join(fix_dir, 'Layout.svelte'),
+	}).markup({
+		content: `---
+string: value
+string2: 'value2'
+array: [1, 2, 3]
+number: 999
+---
+
+<script>
+	let thing = 27;
+</script>
+
+# hello
+`,
+		filename: 'file.svx',
+	});
+
+	expect(lines(output?.code)).toEqual(
+		lines(`<script module>
+	export const metadata = {"string":"value","string2":"value2","array":[1,2,3],"number":999};
+	const { string, string2, array, number } = metadata;
+</script>
+
+<script>
+	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
+	let thing = 27;
+</script>
+
+<Layout_MDSVEX_DEFAULT {...$$props} {...metadata}>
+
+<h1>hello</h1>
+
+</Layout_MDSVEX_DEFAULT>`)
+	);
+});
+
 test('YAML front-matter should be injected into the component module script - even if there is already a module script', async () => {
 	const output = await mdsvex().markup({
 		content: `---
@@ -766,7 +831,7 @@ number: 999
 	await output_fn();
 
 	expect(warning).toEqual(
-		'mdsvex: Received unknown options: bip, bop, boom. Valid options are: filename, remarkPlugins, rehypePlugins, smartypants, extension, extensions, layout, highlight, frontmatter.'
+		'mdsvex: Received unknown options: bip, bop, boom. Valid options are: filename, remarkPlugins, rehypePlugins, smartypants, extension, extensions, layout, highlight, frontmatter, svelte5.'
 	);
 
 	console.warn = console_warn;
