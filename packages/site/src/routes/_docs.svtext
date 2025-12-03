@@ -699,7 +699,7 @@ const mdsvexOptions = {
 	highlight: {
 		async highlighter(code, lang = 'text') {
 			const html = await codeToHtml(code, { lang, theme });
-			return `{@html \`${escapeSvelte(html)}\` }`;
+			return `{@html \\`${escapeSvelte(html)}\\` }`;
 		}
 	}
 }

@@ -3,12 +3,21 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { mdsvex } from 'mdsvex';
 import slug from 'rehype-slug';
 import link from 'rehype-autolink-headings';
+import inspect from 'vite-plugin-inspect';
 
 function mdsvex_transform() {
 	return {
+		name: 'mdsvex-transform',
+		enforce: 'pre',
 		async transform(code, id) {
 			if (extname(id) !== '.svtext') return;
-
+			console.log(
+				'+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
+			);
+			console.log('+++++++++++++ mdsvex_transform processing:', id);
+			console.log(
+				'+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++'
+			);
 			const c = (
 				await mdsvex({
 					highlight: {

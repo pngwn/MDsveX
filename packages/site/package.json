@@ -17,6 +17,7 @@
 		"mdsvex": "^0.7.1-beta.3",
 		"refractor": "^2.10.0",
 		"sourcemap-codec": "^1.4.8",
+		"vite-plugin-inspect": "^11.3.3",
 		"yootils": "^0.0.15"
 	},
 	"devDependencies": {
