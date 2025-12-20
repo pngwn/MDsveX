@@ -343,7 +343,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 			const extensionsParts = (extensions || [extension]).map((ext) =>
 				ext.startsWith('.') ? ext : '.' + ext
 			);
-			if (!extensionsParts.some((ext) => filename.endsWith(ext))) return;
+			if (!extensionsParts.some((ext) => filename && filename.endsWith(ext))) return;
 
 			// before calling parser.process, we need to wait for the layouts to be processed
 			// or else the parser will be frozen
