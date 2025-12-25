@@ -17,7 +17,7 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: npm i -g pnpm@9
       - uses: actions/setup-node@v4
         with:
@@ -36,7 +36,7 @@ jobs:
         node-version: [18, 20, 22]
         os: [ubuntu-latest, macOS-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: npm i -g pnpm@9.1
       - uses: actions/setup-node@v4
         with:
