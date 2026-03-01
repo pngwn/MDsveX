@@ -26,6 +26,28 @@ test('it should work', async () => {
 	expect(lines(output?.code)).toEqual(lines(`<h1>hello</h1>`));
 });
 
+test('it should allow line comments', async () => {
+	const output = await mdsvex().markup({
+		content: `
+# hello world
+
+<script>
+  // this is a line comment
+</script>
+      `,
+		filename: 'file.svx',
+	});
+
+	expect(lines(output?.code)).toEqual(
+		lines(
+			`<script>
+  // this is a line comment
+</script>
+<h1>hello world</h1>`
+		)
+	);
+});
+
 test('it should accept a remark plugin', async () => {
 	const output = await mdsvex({ remarkPlugins: [containers] }).markup({
 		content: `

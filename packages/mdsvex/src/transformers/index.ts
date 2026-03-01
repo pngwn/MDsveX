@@ -186,6 +186,7 @@ function extract_parts(nodes: Array<Element | Text>): Parts {
 				| undefined;
 			instance?: any;
 			module?: any;
+			css?: any;
 		};
 		try {
 			// @ts-ignore
@@ -213,13 +214,15 @@ function extract_parts(nodes: Array<Element | Text>): Parts {
 			}
 		});
 
-		results: for (const key in result) {
-			if (key === 'html' || !result[key as 'html' | 'instance' | 'module'])
-				continue results;
-			_parts.push([
-				key as 'html' | 'instance' | 'module',
-				result[key as 'html' | 'instance' | 'module'].start,
-				result[key as 'html' | 'instance' | 'module'].end,
+		// The parser in Svelte >= 5.53.0 includes a _comments key, so
+		// only loop through the keys we know about to avoid breaking on
+		// comments and other future additions
+		for (const key of ['instance', 'module', 'css'] as const) {
+    		if (!result[key]) continue;
+    		_parts.push([
+				key, 
+				result[key].start, 
+				result[key].end
 			]);
 		}
 
