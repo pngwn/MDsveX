@@ -327,5 +327,5 @@ export type PreprocessorReturn = Promise<
 
 export interface Preprocessor {
 	name: string;
-	markup: (args: { content: string; filename: string }) => PreprocessorReturn;
+	markup: (args: { content: string; filename?: string }) => PreprocessorReturn;
 }
