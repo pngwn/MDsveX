@@ -218,12 +218,8 @@ function extract_parts(nodes: Array<Element | Text>): Parts {
 		// only loop through the keys we know about to avoid breaking on
 		// comments and other future additions
 		for (const key of ['instance', 'module', 'css'] as const) {
-    		if (!result[key]) continue;
-    		_parts.push([
-				key, 
-				result[key].start, 
-				result[key].end
-			]);
+			if (!result[key]) continue;
+			_parts.push([key, result[key].start, result[key].end]);
 		}
 
 		// sort them to ensure the array is in the order they appear in the source, no gaps
