@@ -14,7 +14,7 @@ describe('node_buffer', () => {
 		expect(buffer.get_node(id1)).toEqual({
 			kind: 'text',
 			start: 0,
-			end: 0,
+			end: 0xffffffff, // sentinel: end not yet set
 			index: id1,
 			metadata: {},
 			parent: 0,
@@ -27,7 +27,7 @@ describe('node_buffer', () => {
 		expect(buffer.get_node()).toEqual({
 			kind: 'root',
 			start: 0,
-			end: 0,
+			end: 0xffffffff, // sentinel: end not yet set
 			index: 0,
 			metadata: {},
 			parent: null,
@@ -172,6 +172,118 @@ describe('node_buffer', () => {
 		expect(buffer.get_node(id1).next).toEqual(id2);
 		expect(buffer.get_node(id2).prev).toEqual(id1);
 		expect(buffer.get_node(id1).children).toEqual([]);
+	});
+
+	test('grow should preserve all node data when capacity is exceeded', () => {
+		// Start with a tiny capacity so we force multiple grows
+		const buffer = new node_buffer(2);
+
+		// Push enough nodes to trigger at least one grow
+		// capacity starts at 2 (next power of two), root takes slot 0
+		const ids: number[] = [];
+		for (let i = 0; i < 10; i++) {
+			ids.push(buffer.push(node_kind.text, i * 10, 0));
+		}
+
+		expect(buffer.size).toBe(11); // 10 + root
+
+		// All nodes should still be accessible with correct data
+		for (let i = 0; i < ids.length; i++) {
+			const node = buffer.get_node(ids[i]);
+			expect(node.kind).toBe('text');
+			expect(node.start).toBe(i * 10);
+			expect(node.parent).toBe(0);
+		}
+
+		// Root should have all 10 as children
+		expect(buffer.get_node().children).toEqual(ids);
+
+		// Sibling chain should be intact
+		for (let i = 0; i < ids.length; i++) {
+			const node = buffer.get_node(ids[i]);
+			expect(node.prev).toBe(i === 0 ? null : ids[i - 1]);
+			expect(node.next).toBe(i === ids.length - 1 ? null : ids[i + 1]);
+		}
+	});
+
+	test('grow should preserve parent-child relationships', () => {
+		const buffer = new node_buffer(2);
+
+		// Create a parent with children, forcing grow in the middle
+		const parent = buffer.push(node_kind.paragraph, 0, 0);
+		const children: number[] = [];
+		for (let i = 0; i < 8; i++) {
+			children.push(buffer.push(node_kind.text, i, parent));
+		}
+
+		// Parent should know all its children
+		expect(buffer.get_node(parent).children).toEqual(children);
+
+		// Each child should know its parent
+		for (const child of children) {
+			expect(buffer.get_node(child).parent).toBe(parent);
+		}
+	});
+
+	test('grow should preserve metadata', () => {
+		const buffer = new node_buffer(2);
+
+		const id1 = buffer.push(node_kind.code_fence, 0, 0, 0, {
+			info_start: 3,
+			info_end: 5,
+		});
+
+		// Push enough to trigger grow
+		for (let i = 0; i < 8; i++) {
+			buffer.push(node_kind.text, i, 0);
+		}
+
+		// Metadata should survive the grow
+		const node = buffer.get_node(id1);
+		expect(node.metadata).toEqual({ info_start: 3, info_end: 5 });
+	});
+
+	test('grow should preserve pending node state', () => {
+		const buffer = new node_buffer(2);
+
+		const pending = buffer.push_pending(node_kind.emphasis, 0, 0);
+		const committed = buffer.push_pending(node_kind.strong_emphasis, 5, 0);
+		buffer.commit_node(committed);
+
+		// Push enough to trigger grow
+		for (let i = 0; i < 8; i++) {
+			buffer.push(node_kind.text, i, 0);
+		}
+
+		// Pending state should survive
+		expect(buffer.get_pending()).toEqual([pending]);
+	});
+
+	test('grow should preserve value ranges', () => {
+		const buffer = new node_buffer(2);
+
+		const id1 = buffer.push(node_kind.code_span, 0, 0);
+		buffer.set_value(id1, 1, 4);
+
+		// Push enough to trigger grow
+		for (let i = 0; i < 8; i++) {
+			buffer.push(node_kind.text, i, 0);
+		}
+
+		expect(buffer.get_node(id1).value).toEqual([1, 4]);
+	});
+
+	test('grow should preserve extras', () => {
+		const buffer = new node_buffer(2);
+
+		const id1 = buffer.push(node_kind.heading, 0, 0, 3);
+
+		// Push enough to trigger grow
+		for (let i = 0; i < 8; i++) {
+			buffer.push(node_kind.text, i, 0);
+		}
+
+		expect(buffer.get_node(id1).metadata).toEqual({ depth: 3 });
 	});
 
 	test('pending nodes can be repaired -- deeply nested', () => {

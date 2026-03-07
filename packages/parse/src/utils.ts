@@ -114,7 +114,7 @@ export class node_buffer {
 		this.extras = new Uint16Array(capacity);
 		this.value_starts = new Uint32Array(capacity);
 		this.value_ends = new Uint32Array(capacity);
-		this.has_metadata = new Uint8Array(capacity >> 3);
+		this.has_metadata = new Uint8Array(Math.max(1, capacity >> 3));
 		this.metadata = new Map();
 		this.parents = new Uint32Array(capacity);
 		this.next_siblings = new Uint32Array(capacity);
@@ -380,6 +380,12 @@ export class node_buffer {
 		const next_extras = new Uint16Array(next);
 		const next_value_starts = new Uint32Array(next);
 		const next_value_ends = new Uint32Array(next);
+		const next_parents = new Uint32Array(next);
+		const next_next_siblings = new Uint32Array(next);
+		const next_prev_siblings = new Uint32Array(next);
+		const next_children_starts = new Uint32Array(next);
+		const next_pending_nodes = new Uint32Array(next);
+		const next_has_metadata = new Uint8Array(Math.max(1, next >> 3));
 
 		next_kinds.set(this.kinds);
 		next_starts.set(this.starts);
@@ -387,6 +393,12 @@ export class node_buffer {
 		next_extras.set(this.extras);
 		next_value_starts.set(this.value_starts);
 		next_value_ends.set(this.value_ends);
+		next_parents.set(this.parents);
+		next_next_siblings.set(this.next_siblings);
+		next_prev_siblings.set(this.prev_siblings);
+		next_children_starts.set(this.children_starts);
+		next_pending_nodes.set(this.pending_nodes);
+		next_has_metadata.set(this.has_metadata);
 
 		this.capacity = next;
 		this.kinds = next_kinds;
@@ -395,6 +407,12 @@ export class node_buffer {
 		this.extras = next_extras;
 		this.value_starts = next_value_starts;
 		this.value_ends = next_value_ends;
+		this.parents = next_parents;
+		this.next_siblings = next_next_siblings;
+		this.prev_siblings = next_prev_siblings;
+		this.children_starts = next_children_starts;
+		this.pending_nodes = next_pending_nodes;
+		this.has_metadata = next_has_metadata;
 	}
 
 	set_metadata(index: number, metadata: any): void {

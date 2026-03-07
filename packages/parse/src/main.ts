@@ -158,6 +158,8 @@ function tokenize(source: string): {
 
 		// const current_parent = node_stack[node_stack.length - 2] || 0;
 		const current_node = node_stack[node_stack.length - 1] || 0;
+		
+		// Main loop iteration
 
 		// console.log(
 		// 	'cursor: ',
@@ -222,6 +224,8 @@ function tokenize(source: string): {
 			}
 
 			case state_kind.paragraph: {
+				// Check for paragraph boundaries
+				
 				if (
 					(code === LINEFEED && source.charCodeAt(cursor + 1) === LINEFEED) ||
 					!code ||
@@ -229,9 +233,22 @@ function tokenize(source: string): {
 				) {
 					nodes.set_end(current_node, cursor);
 					states.pop();
-					node_stack.pop();
-					// cursor += 2;
-					chomp(2);
+					
+					// Clean up node_stack - pop all nodes until we're back to root level
+					// We should have root (0) + paragraph, so after popping we should be at [0]
+					while (node_stack.length > 1) {
+						node_stack.pop();
+					}
+					
+					// Skip whitespace after paragraph end to return to root
+					if (code === LINEFEED && source.charCodeAt(cursor + 1) === LINEFEED) {
+						chomp(2);
+					} else if (code === LINEFEED && !source[cursor + 1]) {
+						chomp();
+					} else {
+						// EOF case
+						break;
+					}
 					continue;
 				} else if (
 					code === LINEFEED &&
@@ -248,15 +265,12 @@ function tokenize(source: string): {
 					chomp();
 					continue;
 				} else if (code === LINEFEED) {
+					// Single newline - continue in paragraph
 					// cursor += 1;
 					chomp();
 					continue;
-				} else if (false) {
 				} else {
-					// console.log('moving to inline');
-					// node_stack.push(nodes.push(node_kind.text, cursor, current_parent));
-					// nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
-
+					// Non-newline content - enter inline state
 					states.push(state_kind.inline);
 					continue;
 				}
@@ -331,9 +345,12 @@ function tokenize(source: string): {
 			}
 
 			case state_kind.code_fence_content: {
-				const index = source.indexOf(fences[extra], cursor - 1);
+				// Find closing fence starting from cursor, not cursor-1
+				const index = source.indexOf(fences[extra], cursor);
 				const nl_index = source.lastIndexOf('\n', index);
 				if (cursor >= length || index === -1) {
+					// Set value_end before transitioning
+					nodes.set_value_end(current_node, length);
 					states.pop();
 					states.push(state_kind.code_fence_text_end);
 					// cursor = length;
@@ -476,12 +493,12 @@ function tokenize(source: string): {
 					code === LINEFEED &&
 					(source.charCodeAt(cursor + 1) === LINEFEED || !source[cursor + 1])
 				) {
+					// Paragraph boundary detected! Just pop this state
+					// without chomping, let the previous state handle the newlines
 					states.pop();
 					nodes.set_end(current_node, cursor);
 					nodes.set_value_end(current_node, cursor);
 					node_stack.pop();
-					// cursor += 1;
-					chomp();
 					continue;
 				} else {
 					// console.log('strong_emphasis -- moving to text');
@@ -495,7 +512,7 @@ function tokenize(source: string): {
 			}
 
 			case state_kind.inline: {
-				// console.log('inline', { code, cursor, current_node });
+				// Process inline content
 				switch (code) {
 					case BACKTICK: {
 						// console.log('code_span_start');
@@ -508,8 +525,9 @@ function tokenize(source: string): {
 							source.charCodeAt(cursor + 1) === LINEFEED ||
 							!source[cursor + 1]
 						) {
+							// Paragraph boundary detected! Just pop this state
+							// without chomping, let the previous state handle the newlines
 							states.pop();
-
 							continue;
 						} else {
 							// cursor += 1;
@@ -551,8 +569,8 @@ function tokenize(source: string): {
 
 					default: {
 						if (!code) {
+							// EOF: Just pop this state, let previous state handle EOF
 							states.pop();
-
 							continue;
 						}
 						// console.log('pushing text node', cursor, current_node);
@@ -723,6 +741,25 @@ function tokenize(source: string): {
 					chomp();
 					states.pop();
 					states.push(state_kind.code_span_leading_space_end);
+					continue;
+				} else if (code === BACKTICK && source.charCodeAt(cursor - 1) !== BACKTICK) {
+					// potential closing backtick without trailing space
+					if (
+						(extra === 1 && source.charCodeAt(cursor + 1) !== BACKTICK) ||
+						(extra === 2 &&
+							source.charCodeAt(cursor + 1) === BACKTICK &&
+							source.charCodeAt(cursor + 2) !== BACKTICK)
+					) {
+						// valid closer — include leading space in value (no trailing space to strip)
+						nodes.set_value_start(current_node, checkpoint_cursor);
+						nodes.set_value_end(current_node, cursor);
+						nodes.set_end(current_node, cursor + extra);
+						node_stack.pop();
+						states.pop();
+						chomp(extra);
+						continue;
+					}
+					chomp();
 					continue;
 				} else if (code === LINEFEED) {
 					nodes.set_value_start(current_node, checkpoint_cursor);
