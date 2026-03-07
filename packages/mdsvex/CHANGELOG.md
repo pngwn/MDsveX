@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.12.7
+
+### Patch Changes
+
+- [#775](https://github.com/pngwn/MDsveX/pull/775) [`1a91b94`](https://github.com/pngwn/MDsveX/commit/1a91b94fe9bf967468f024df95ce02ca73fc5368) Thanks [@kevinji](https://github.com/kevinji)! - fix: allow filename to be undefined in Preprocessor
+
 ## 0.12.6
 
 ### Patch Changes

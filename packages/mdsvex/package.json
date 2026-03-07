@@ -1,6 +1,6 @@
 {
 	"name": "mdsvex",
-	"version": "0.12.6",
+	"version": "0.12.7",
 	"description": "Markdown preprocessor for Svelte",
 	"type": "module",
 	"exports": {
