@@ -21,7 +21,11 @@
       "Bash(/tmp/thematic_analysis.txt:*)",
       "Read(//tmp/**)",
       "Bash(for i in 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61)",
-      "Bash(do echo:*)"
+      "Bash(do echo:*)",
+      "Bash(for n in 350 351 353 357 358 360 364 369 373 376)",
+      "Read(//Users/peterallen/Projects/mdsvex/packages/pfm-tests/tests/emphasis_and_strong_emphasis/$n/**)",
+      "Bash(python3:*)",
+      "Bash(npx tsx:*)"
     ],
     "deny": []
   }

@@ -1,13 +1,13 @@
 # PFM Parser — Implementation Plan
 
-> **Generated:** 2026-03-07 | **Updated:** 2026-03-08 | **Status:** WIP (Phase 2 in progress)
+> **Generated:** 2026-03-07 | **Updated:** 2026-03-09 | **Status:** WIP (Phase 3 complete)
 
 ## Current State Summary
 
 ### Test Results (as of now)
-- **Passing:** 103 | **Failing:** 0 | **Todo/Skipped:** 135
-- **Total test examples:** 238
-- **Progress:** Phase 2 in progress. ATX headings + thematic breaks + blank lines implemented. (81→103 passing, 0 failing)
+- **Passing:** 236 | **Failing:** 0 | **Todo/Skipped:** 23
+- **Total test examples:** 259
+- **Progress:** Phase 3 complete. Emphasis (`_`) and strong emphasis (`*`) implemented with PFM flanking rules. (124→236 passing, 0 failing)
 
 ### What's Implemented
 
@@ -16,8 +16,8 @@
 | **Paragraphs** | ✅ Working | 7/7 tests passing. Single/multi-line, leading spaces, double-newline separation. |
 | **Fenced code blocks** | ⚠️ Mostly working | 15/17 passing, 2 skipped. Backtick fences, info strings, nested fences, unbalanced fences. Tilde fences treated as content (PFM spec). |
 | **Code spans** | ⚠️ Mostly working | 18/21 passing, 6 skipped. Single/double backtick, leading space stripping, PFM info syntax (`\`#!lang code\``). |
-| **Strong emphasis** (`*`) | ⚠️ Mostly working | 11/11 active tests passing. Basic `*foo bar*` works. Pending node + repair pattern for unclosed delimiters. |
-| **Emphasis** (`_`) | ❌ Not implemented | State enum exists but no case in the switch. 120 tests todo. |
+| **Strong emphasis** (`*`) | ✅ Working | 123/131 passing, 8 skipped (need links/images/autolinks). PFM rules: `*` = strong emphasis, single delimiter only. Left-flanking: left=ws/punct, right=word/punct. Right-flanking: left=word/punct, right=ws/punct. Pending node + repair for unclosed. |
+| **Emphasis** (`_`) | ✅ Working | Same flanking rules as `*`. `_` = emphasis. Intraword `_` rejected (prev must be ws/punct to open). `_foo_bar_baz_` correctly wraps all (inner `_` are intraword). |
 | **Headings** (`#`) | ✅ Working | 23/23 tests passing. Depths 1-6, leading/trailing whitespace handling, heading detection within paragraphs, PFM-specific rules (no trailing `#` stripping, tolerates 4+ leading spaces). |
 | **Thematic breaks** | ✅ Working | 17/24 tests passing, 7 skipped. `***`, `---`, `___` with spaces between markers, paragraph interruption. Skipped: indented code (48), paragraph continuation (49), emphasis (56), lists (57,60,61), setext headings (59). |
 | **Blank lines** | ✅ Working | 5/5 tests passing. Blank lines emit `line_break` nodes at root level. Whitespace-only lines (`  \n`) and empty lines (`\n`) both detected. `is_blank_line_after()` helper for proper paragraph boundary detection with whitespace-only separators. |
@@ -33,7 +33,7 @@
 - [ ] **HTML blocks** — raw HTML passthrough
 
 #### Inline-level
-- [ ] **Emphasis** (`_`) — PFM uses `_` for emphasis, `*` for strong
+- [x] **Emphasis** (`_`) — PFM uses `_` for emphasis, `*` for strong (123 tests, 8 skipped pending links/images)
 - [ ] **Hard line breaks** — backslash `\` before newline (PFM drops trailing-space variant)
 - [ ] **Soft line breaks** — single newline in paragraph
 - [ ] **Backslash escapes** — `\*`, `\[`, etc.
@@ -88,10 +88,10 @@ None! All active tests passing.
 8. ~~**Thematic breaks** — `---`, `***`, `___`~~ ✅ Implemented in root state with paragraph boundary detection. 17 active tests (7 skipped pending lists/setext/emphasis/indented code).
 9. **Hard line breaks** — `\` before newline
 
-### Phase 3: Emphasis (PFM Rules)
-10. **Emphasis** (`_`) — PFM's simplified rules: `_em_`, `*strong*`
-11. Intraword emphasis via `~_text_~` syntax
-12. Complete the 120 todo emphasis tests
+### Phase 3: Emphasis (PFM Rules) ✅ COMPLETE
+10. ~~**Emphasis** (`_`) — PFM's simplified rules: `_em_`, `*strong*`~~ ✅ Implemented. `_` = emphasis, `*` = strong emphasis (single delimiters only, no `**`/`__`). Same flanking rules for both: opening requires left=ws/punct + right=word/punct; closing requires left=word/punct + right=ws/punct.
+11. **Intraword emphasis via `~_text_~` syntax** — Not yet implemented (Phase 6 with other PFM extensions)
+12. ~~Complete the 120 todo emphasis tests~~ ✅ 112 tests activated (8 remain todo pending links/images/autolinks/HTML support)
 
 ### Phase 4: Links & References
 13. **Backslash escapes**

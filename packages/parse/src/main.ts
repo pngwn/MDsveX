@@ -718,7 +718,54 @@ function tokenize(source: string, introspector?: Introspector): {
 				continue;
 			}
 
-			case state_kind.inline: {
+			case state_kind.emphasis: {
+				if (
+					code === UNDERSCORE &&
+					prev & (char_mask.word | char_mask.punctuation) &&
+					next & (char_mask.whitespace | char_mask.punctuation)
+				) {
+					const n = node_stack[node_stack.length - 1];
+					nodes.set_value_end(n, cursor);
+					nodes.set_end(n, cursor + 1);
+					nodes.commit_node(n);
+					states.pop();
+					node_stack.pop();
+					chomp();
+				} else if (
+					code === LINEFEED &&
+					is_blank_line_after(cursor)
+				) {
+					states.pop();
+					nodes.set_end(current_node, cursor);
+					nodes.set_value_end(current_node, cursor);
+					node_stack.pop();
+					continue;
+				} else if (
+					code === LINEFEED &&
+					is_heading_start(cursor + 1)
+				) {
+					states.pop();
+					nodes.set_end(current_node, cursor);
+					nodes.set_value_end(current_node, cursor);
+					node_stack.pop();
+					continue;
+				} else if (
+					code === LINEFEED &&
+					is_thematic_break_start(cursor + 1)
+				) {
+					states.pop();
+					nodes.set_end(current_node, cursor);
+					nodes.set_value_end(current_node, cursor);
+					node_stack.pop();
+					continue;
+				} else {
+					states.push(state_kind.inline);
+				}
+
+				continue;
+			}
+
+						case state_kind.inline: {
 				// Process inline content
 				switch (code) {
 					case BACKTICK: {
@@ -746,15 +793,10 @@ function tokenize(source: string, introspector?: Introspector): {
 						}
 					}
 					case ASTERISK: {
-						// 33 => 47
-						// 58 => 64
-						// const left = classify(source.charCodeAt(cursor - 1));
-						// const right = classify(source.charCodeAt(cursor + 1));
 						if (
 							prev & (char_mask.whitespace | char_mask.punctuation) &&
 							next & (char_mask.word | char_mask.punctuation)
 						) {
-							// console.log('inline -- moving to strong_emphasis_start');
 							let n = nodes.push_pending(
 								node_kind.strong_emphasis,
 								cursor,
@@ -765,14 +807,37 @@ function tokenize(source: string, introspector?: Introspector): {
 							node_stack.push(n);
 							states.push(state_kind.strong_emphasis);
 						} else {
-							// console.log('inline -- moving to text');
 							let n = nodes.push(node_kind.text, cursor, current_node);
 							nodes.set_value_start(n, cursor);
 							node_stack.push(n);
 							states.push(state_kind.text);
 						}
 
-						// cursor += 1;
+						chomp();
+						continue;
+					}
+
+					case UNDERSCORE: {
+						if (
+							prev & (char_mask.whitespace | char_mask.punctuation) &&
+							next & (char_mask.word | char_mask.punctuation)
+						) {
+							let n = nodes.push_pending(
+								node_kind.emphasis,
+								cursor,
+								current_node
+							);
+
+							nodes.set_value_start(n, cursor + 1);
+							node_stack.push(n);
+							states.push(state_kind.emphasis);
+						} else {
+							let n = nodes.push(node_kind.text, cursor, current_node);
+							nodes.set_value_start(n, cursor);
+							node_stack.push(n);
+							states.push(state_kind.text);
+						}
+
 						chomp();
 						continue;
 					}
@@ -827,15 +892,13 @@ function tokenize(source: string, introspector?: Introspector): {
 					node_stack.pop();
 
 					continue;
-				} else if (code === ASTERISK) {
-					// console.log('text with asterisk', current_node);
+				} else if (code === ASTERISK || code === UNDERSCORE) {
 					states.pop();
 
 					nodes.set_end(current_node, cursor);
 					nodes.set_value_end(current_node, cursor);
 					node_stack.pop();
 					states.pop();
-					// console.log('after popping', node_stack, states);
 
 					continue;
 				}
