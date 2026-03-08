@@ -34,7 +34,8 @@ describe('emphasis and strong emphasis', () => {
 		const strong_emphasis = nodes.get_node(paragraph.children[0]);
 		const text = nodes.get_node(strong_emphasis.children[0]);
 
-		expect(nodes.size).toBe(4);
+		// root(1) + paragraph(1) + strong_emphasis(1) + text(1) + line_break(1) = 5
+		expect(nodes.size).toBe(5);
 		expect(paragraph.kind).toBe('paragraph');
 		expect(strong_emphasis.kind).toBe('strong_emphasis');
 		expect(text.kind).toBe('text');
@@ -76,7 +77,8 @@ describe('emphasis and strong emphasis', () => {
 			input
 		);
 
-		expect(nodes.size).toBe(5);
+		// +1 for trailing line_break
+		expect(nodes.size).toBe(6);
 		expect(paragraph.kind).toBe('paragraph');
 
 		expect(paragraph_content.content).toBe(input.trim());
@@ -107,7 +109,8 @@ describe('emphasis and strong emphasis', () => {
 			input
 		);
 
-		expect(nodes.size).toBe(5);
+		// +1 for trailing line_break
+		expect(nodes.size).toBe(6);
 		expect(paragraph.kind).toBe('paragraph');
 
 		expect(paragraph_content.content).toBe(input.trim());
@@ -147,7 +150,8 @@ describe('emphasis and strong emphasis', () => {
 			input
 		);
 
-		expect(nodes.size).toBe(4);
+		// +1 for trailing line_break
+		expect(nodes.size).toBe(5);
 		expect(paragraph.kind).toBe('paragraph');
 
 		expect(paragraph_content.content).toBe(input.trim());
@@ -185,9 +189,8 @@ describe('emphasis and strong emphasis', () => {
 	test('pfm example 354', () => {
 		const input = load_fixture('354');
 		const { nodes } = parse_markdown_svelte(input);
-		const {
-			children: [p1, p2, p3],
-		} = nodes.get_node();
+		const p_kinds = nodes.get_kinds(node_kind.paragraph);
+		const [p1, p2, p3] = p_kinds;
 		const paragraph_one = nodes.get_node(p1);
 		const paragraph_one_content = get_content(nodes, p1, input);
 		const paragraph_child_content = get_child_range(nodes, p1, input);

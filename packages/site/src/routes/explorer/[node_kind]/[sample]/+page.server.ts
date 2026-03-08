@@ -1,11 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import url from 'node:url'
 import type { RouteId, RouteParams, PageServerLoad } from './$types';
 
+
+
+const __filename = url.fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 function get_samples(kind: string) {
+	console.log(`dirname: ${__dirname || "NONE"}. kind: ${kind}`)
 	const test = fs.readdirSync(
 		path.join(
-			import.meta.dirname,
+			__dirname,
 			'..',
 			'..',
 			'..',
@@ -24,7 +31,7 @@ function get_samples(kind: string) {
 			file.replace('.css', ''),
 			fs.readFileSync(
 				path.join(
-					import.meta.dirname,
+					__dirname,
 					'..',
 					'..',
 					'..',
@@ -47,7 +54,7 @@ function get_samples(kind: string) {
 function get_all_kinds() {
 	const test_cases = fs.readdirSync(
 		path.join(
-			import.meta.dirname,
+			__dirname,
 			'..',
 			'..',
 			'..',

@@ -152,6 +152,17 @@ function tokenize(source: string, introspector?: Introspector): {
 		return pos >= length || ch === SPACE || ch === TAB || ch === LINEFEED;
 	}
 
+	function is_blank_line_after(pos: number): boolean {
+		// Check if the line after LINEFEED at pos is blank (whitespace-only or EOF)
+		let p = pos + 1;
+		while (p < length && source.charCodeAt(p) !== LINEFEED) {
+			const ch = source.charCodeAt(p);
+			if (ch !== SPACE && ch !== TAB) return false;
+			p++;
+		}
+		return true;
+	}
+
 	function is_thematic_break_start(pos: number): boolean {
 		// Skip leading spaces (0-3 allowed, 4+ is indented code)
 		let spaces = 0;
@@ -243,10 +254,28 @@ function tokenize(source: string, introspector?: Introspector): {
 					continue;
 				}
 				switch (code) {
-					case SPACE:
-					case TAB:
 					case LINEFEED: {
-						// cursor += 1;
+						const n = nodes.push(node_kind.line_break, cursor, current_node);
+						nodes.set_end(n, cursor + 1);
+						chomp();
+						continue;
+					}
+
+					case SPACE:
+					case TAB: {
+						// Check if this is a blank line (whitespace until newline)
+						let pos = cursor;
+						while (pos < length && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) {
+							pos++;
+						}
+						if (pos < length && source.charCodeAt(pos) === LINEFEED) {
+							// Blank line with leading whitespace
+							const n = nodes.push(node_kind.line_break, cursor, current_node);
+							nodes.set_end(n, pos + 1);
+							chomp(pos + 1, true);
+							continue;
+						}
+						// Not a blank line — just skip the whitespace
 						chomp();
 						continue;
 					}
@@ -382,28 +411,18 @@ function tokenize(source: string, introspector?: Introspector): {
 				// Check for paragraph boundaries
 				
 				if (
-					(code === LINEFEED && source.charCodeAt(cursor + 1) === LINEFEED) ||
-					!code ||
-					(code === LINEFEED && !source[cursor + 1])
+					(code === LINEFEED && is_blank_line_after(cursor)) ||
+					!code
 				) {
 					nodes.set_end(current_node, cursor);
 					states.pop();
-					
+
 					// Clean up node_stack - pop all nodes until we're back to root level
-					// We should have root (0) + paragraph, so after popping we should be at [0]
 					while (node_stack.length > 1) {
 						node_stack.pop();
 					}
-					
-					// Skip whitespace after paragraph end to return to root
-					if (code === LINEFEED && source.charCodeAt(cursor + 1) === LINEFEED) {
-						chomp(2);
-					} else if (code === LINEFEED && !source[cursor + 1]) {
-						chomp();
-					} else {
-						// EOF case
-						break;
-					}
+
+					// Don't consume newlines — root will emit line_break nodes
 					continue;
 				} else if (
 					code === LINEFEED &&
@@ -412,12 +431,11 @@ function tokenize(source: string, introspector?: Introspector): {
 					source.charCodeAt(cursor + 3) === BACKTICK
 				) {
 					nodes.set_end(current_node, cursor);
-					node_stack.pop();
 					states.pop();
-					states.push(state_kind.code_fence_start);
-
-					// cursor += 1;
-					chomp();
+					while (node_stack.length > 1) {
+						node_stack.pop();
+					}
+					// Don't consume — root will emit line_break then handle code fence
 					continue;
 				} else if (code === LINEFEED && is_heading_start(cursor + 1)) {
 					nodes.set_end(current_node, cursor);
@@ -425,7 +443,7 @@ function tokenize(source: string, introspector?: Introspector): {
 					while (node_stack.length > 1) {
 						node_stack.pop();
 					}
-					chomp();
+					// Don't consume — root will emit line_break
 					continue;
 				} else if (code === LINEFEED && is_thematic_break_start(cursor + 1)) {
 					nodes.set_end(current_node, cursor);
@@ -433,7 +451,7 @@ function tokenize(source: string, introspector?: Introspector): {
 					while (node_stack.length > 1) {
 						node_stack.pop();
 					}
-					chomp();
+					// Don't consume — root will emit line_break
 					continue;
 				} else if (code === LINEFEED) {
 					// Single newline - continue in paragraph
@@ -662,7 +680,7 @@ function tokenize(source: string, introspector?: Introspector): {
 					chomp();
 				} else if (
 					code === LINEFEED &&
-					(source.charCodeAt(cursor + 1) === LINEFEED || !source[cursor + 1])
+					is_blank_line_after(cursor)
 				) {
 					// Paragraph boundary detected! Just pop this state
 					// without chomping, let the previous state handle the newlines
@@ -710,10 +728,7 @@ function tokenize(source: string, introspector?: Introspector): {
 						continue;
 					}
 					case LINEFEED: {
-						if (
-							source.charCodeAt(cursor + 1) === LINEFEED ||
-							!source[cursor + 1]
-						) {
+						if (is_blank_line_after(cursor)) {
 							// Paragraph boundary detected! Just pop this state
 							// without chomping, let the previous state handle the newlines
 							states.pop();
@@ -782,18 +797,7 @@ function tokenize(source: string, introspector?: Introspector): {
 			}
 
 			case state_kind.text: {
-				if (!code || (code === LINEFEED && !source[cursor + 1])) {
-					states.pop();
-
-					nodes.set_end(current_node, cursor);
-					nodes.set_value_end(current_node, cursor);
-					node_stack.pop();
-
-					continue;
-				} else if (
-					code === LINEFEED &&
-					source.charCodeAt(cursor + 1) === LINEFEED
-				) {
+				if (!code || (code === LINEFEED && is_blank_line_after(cursor))) {
 					states.pop();
 
 					nodes.set_end(current_node, cursor);
@@ -1055,7 +1059,7 @@ function tokenize(source: string, introspector?: Introspector): {
 				}
 
 				if (
-					(code === LINEFEED && source.charCodeAt(cursor + 1) === LINEFEED) ||
+					(code === LINEFEED && is_blank_line_after(cursor)) ||
 					isNaN(code)
 				) {
 					// cursor = checkpoint_cursor;

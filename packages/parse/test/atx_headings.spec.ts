@@ -239,8 +239,11 @@ describe('ATX headings', () => {
 		expect(headings).toEqual([{ depth: 1, text: 'title' }]);
 
 		const root = nodes.get_node();
-		const para = nodes.get_node(root.children[1]);
-		expect(para.kind).toBe('paragraph');
+		// children: [heading, line_break, paragraph, line_break]
+		const para = root.children
+			.map((i) => nodes.get_node(i))
+			.find((n) => n.kind === 'paragraph');
+		expect(para!.kind).toBe('paragraph');
 	});
 
 	test('paragraph followed by heading', () => {

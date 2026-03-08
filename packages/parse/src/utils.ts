@@ -135,6 +135,7 @@ export class node_buffer {
 			node_kind.emphasis,
 			node_kind.strong_emphasis,
 			node_kind.thematic_break,
+			node_kind.line_break,
 		];
 
 		this._size = 0;

@@ -11,7 +11,7 @@ const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(this_dir, '../../pfm-tests/tests/code_spans');
 
 const load_fixture = (id: string): string =>
-	readFileSync(resolve(fixtures_root, id, 'input.md'), 'utf8');
+	readFileSync(resolve(fixtures_root, id, 'input.md'), 'utf8').trimEnd();
 
 describe('code spans', () => {
 	test('pfm example 328', () => {
@@ -472,14 +472,19 @@ describe('code spans', () => {
 	});
 
 	test('pfm example 347', () => {
-		const input = load_fixture('347');
+		// Load raw (no trimEnd) — this is a code fence test that needs the trailing newline
+		const input = readFileSync(
+			resolve(fixtures_root, '347', 'input.md'),
+			'utf8'
+		);
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
 
 		const code_fence = nodes.get_node(root.children[0]);
 
-		expect(nodes.size).toBe(2);
+		// root(1) + code_fence(1) + line_break(1) = 3
+		expect(nodes.size).toBe(3);
 		expect(code_fence.kind).toBe('code_fence');
 	});
 

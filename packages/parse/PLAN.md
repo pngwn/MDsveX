@@ -5,9 +5,9 @@
 ## Current State Summary
 
 ### Test Results (as of now)
-- **Passing:** 98 | **Failing:** 0 | **Todo/Skipped:** 135
-- **Total test examples:** 233
-- **Progress:** Phase 2 in progress. ATX headings + thematic breaks implemented. (81→98 passing, 0 failing)
+- **Passing:** 103 | **Failing:** 0 | **Todo/Skipped:** 135
+- **Total test examples:** 238
+- **Progress:** Phase 2 in progress. ATX headings + thematic breaks + blank lines implemented. (81→103 passing, 0 failing)
 
 ### What's Implemented
 
@@ -20,12 +20,13 @@
 | **Emphasis** (`_`) | ❌ Not implemented | State enum exists but no case in the switch. 120 tests todo. |
 | **Headings** (`#`) | ✅ Working | 23/23 tests passing. Depths 1-6, leading/trailing whitespace handling, heading detection within paragraphs, PFM-specific rules (no trailing `#` stripping, tolerates 4+ leading spaces). |
 | **Thematic breaks** | ✅ Working | 17/24 tests passing, 7 skipped. `***`, `---`, `___` with spaces between markers, paragraph interruption. Skipped: indented code (48), paragraph continuation (49), emphasis (56), lists (57,60,61), setext headings (59). |
+| **Blank lines** | ✅ Working | 5/5 tests passing. Blank lines emit `line_break` nodes at root level. Whitespace-only lines (`  \n`) and empty lines (`\n`) both detected. `is_blank_line_after()` helper for proper paragraph boundary detection with whitespace-only separators. |
 
 ### What's NOT Implemented (from PFM spec + CommonMark baseline)
 
 #### Block-level
 - [x] **ATX headings** — `# heading` (fully implemented, 23 tests)
-- [ ] **Blank lines** — semantic blank line handling
+- [x] **Blank lines** — semantic blank line handling (5 tests)
 - [ ] **Block quotes** — `>` prefix
 - [ ] **Lists** — ordered and unordered, loose/tight
 - [x] **Thematic breaks** — `---`, `***`, `___` (17 tests, 7 skipped pending other features)
@@ -83,7 +84,7 @@ None! All active tests passing.
 
 ### Phase 2: Core Block Structure
 6. ~~**ATX headings** — Reactivate from stub, reference backup_main.ts~~ ✅ Implemented inline in root state (no separate heading_marker state needed). 23 tests covering all 18 PFM fixtures + 5 additional edge cases.
-7. **Blank lines** — Proper semantic handling
+7. ~~**Blank lines** — Proper semantic handling~~ ✅ Implemented. Blank/whitespace-only lines emit `line_break` nodes. Added `is_blank_line_after()` for paragraph boundary detection with whitespace-only separators.
 8. ~~**Thematic breaks** — `---`, `***`, `___`~~ ✅ Implemented in root state with paragraph boundary detection. 17 active tests (7 skipped pending lists/setext/emphasis/indented code).
 9. **Hard line breaks** — `\` before newline
 
@@ -142,6 +143,7 @@ packages/parse/
 │   ├── emphasis.spec.ts
 │   ├── atx_headings.spec.ts
 │   ├── thematic_breaks.spec.ts
+│   ├── blank_lines.spec.ts
 │   ├── paragraphs.spec.skip.ts
 │   ├── parse_markdown_svelte.spec.skip.ts
 │   └── utils.ts          # Test helpers

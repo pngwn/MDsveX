@@ -22,7 +22,9 @@ function collect_breaks(nodes: node_buffer) {
 
 function collect_children(nodes: node_buffer) {
 	const root = nodes.get_node();
-	return root.children.map((i) => nodes.get_node(i));
+	return root.children
+		.map((i) => nodes.get_node(i))
+		.filter((n) => n.kind !== 'line_break');
 }
 
 describe('Thematic breaks', () => {

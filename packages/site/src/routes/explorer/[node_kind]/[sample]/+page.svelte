@@ -7,7 +7,7 @@
 	import {
 		parse_markdown_svelte,
 		Introspector,
-		type node_buffer,
+		type node_buffer
 	} from '@mdsvex/parse';
 
 	let { data } = $props();

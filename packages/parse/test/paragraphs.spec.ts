@@ -20,12 +20,14 @@ describe('paragraphs', () => {
 
 		const root = nodes.get_node();
 
-		const p_node_1 = nodes.get_node(root.children[0]);
+		const p_kinds = nodes.get_kinds(node_kind.paragraph);
+		const p_node_1 = nodes.get_node(p_kinds[0]);
 		const t_node_1 = nodes.get_node(p_node_1.children[0]);
-		const p_node_2 = nodes.get_node(root.children[1]);
+		const p_node_2 = nodes.get_node(p_kinds[1]);
 		const t_node_2 = nodes.get_node(p_node_2.children[0]);
 
-		expect(nodes.size).toBe(5);
+		// root(1) + paragraph(2) + text(2) + line_break(2) = 7
+		expect(nodes.size).toBe(7);
 
 		expect(p_node_1.kind).toBe('paragraph');
 		expect(p_node_2.kind).toBe('paragraph');
@@ -39,7 +41,6 @@ describe('paragraphs', () => {
 		expect(p_node_2.start).toBe(5);
 		expect(t_node_2.end).toBe(8);
 
-		const p_kinds = nodes.get_kinds(node_kind.paragraph);
 		const t_kinds = nodes.get_kinds(node_kind.text);
 		expect(p_kinds.length).toBe(2);
 		expect(t_kinds.length).toBe(2);
@@ -58,12 +59,14 @@ describe('paragraphs', () => {
 
 		const root = nodes.get_node();
 
-		const p_node_1 = nodes.get_node(root.children[0]);
+		const p_kinds = nodes.get_kinds(node_kind.paragraph);
+		const p_node_1 = nodes.get_node(p_kinds[0]);
 		const t_node_1 = nodes.get_node(p_node_1.children[0]);
-		const p_node_2 = nodes.get_node(root.children[1]);
+		const p_node_2 = nodes.get_node(p_kinds[1]);
 		const t_node_2 = nodes.get_node(p_node_2.children[0]);
 
-		expect(nodes.size).toBe(5);
+		// root(1) + paragraph(2) + text(2) + line_break(2) = 7
+		expect(nodes.size).toBe(7);
 
 		expect(p_node_1.kind).toBe('paragraph');
 		expect(p_node_2.kind).toBe('paragraph');
@@ -77,7 +80,6 @@ describe('paragraphs', () => {
 		expect(p_node_2.start).toBe(9);
 		expect(t_node_2.end).toBe(16);
 
-		const p_kinds = nodes.get_kinds(node_kind.paragraph);
 		const t_kinds = nodes.get_kinds(node_kind.text);
 		expect(p_kinds.length).toBe(2);
 		expect(t_kinds.length).toBe(2);
@@ -100,12 +102,14 @@ describe('paragraphs', () => {
 
 		const root = nodes.get_node();
 
-		const p_node_1 = nodes.get_node(root.children[0]);
+		const p_kinds = nodes.get_kinds(node_kind.paragraph);
+		const p_node_1 = nodes.get_node(p_kinds[0]);
 		const t_node_1 = nodes.get_node(p_node_1.children[0]);
-		const p_node_2 = nodes.get_node(root.children[1]);
+		const p_node_2 = nodes.get_node(p_kinds[1]);
 		const t_node_2 = nodes.get_node(p_node_2.children[0]);
 
-		expect(nodes.size).toBe(5);
+		// root(1) + paragraph(2) + text(2) + line_break(3) = 8
+		expect(nodes.size).toBe(8);
 
 		expect(p_node_1.kind).toBe('paragraph');
 		expect(p_node_2.kind).toBe('paragraph');
@@ -119,7 +123,6 @@ describe('paragraphs', () => {
 		expect(p_node_2.start).toBe(6);
 		expect(t_node_2.end).toBe(9);
 
-		const p_kinds = nodes.get_kinds(node_kind.paragraph);
 		const t_kinds = nodes.get_kinds(node_kind.text);
 		expect(p_kinds.length).toBe(2);
 		expect(t_kinds.length).toBe(2);
