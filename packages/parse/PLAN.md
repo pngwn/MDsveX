@@ -1,13 +1,13 @@
 # PFM Parser — Implementation Plan
 
-> **Generated:** 2026-03-07 | **Updated:** 2026-03-08 | **Status:** WIP
+> **Generated:** 2026-03-07 | **Updated:** 2026-03-08 | **Status:** WIP (Phase 2 in progress)
 
 ## Current State Summary
 
 ### Test Results (as of now)
-- **Passing:** 79 | **Failing:** 0 | **Todo/Skipped:** 128
-- **Total test examples:** 207
-- **Progress:** Phase 1 complete! All existing bugs fixed. (69→76→79 passing, 0 failing)
+- **Passing:** 81 | **Failing:** 0 | **Todo/Skipped:** 128
+- **Total test examples:** 209
+- **Progress:** Phase 2 in progress. ATX headings implemented. (79→81 passing, 0 failing)
 
 ### What's Implemented
 
@@ -18,12 +18,12 @@
 | **Code spans** | ⚠️ Mostly working | 18/21 passing, 6 skipped. Single/double backtick, leading space stripping, PFM info syntax (`\`#!lang code\``). |
 | **Strong emphasis** (`*`) | ⚠️ Mostly working | 11/11 active tests passing. Basic `*foo bar*` works. Pending node + repair pattern for unclosed delimiters. |
 | **Emphasis** (`_`) | ❌ Not implemented | State enum exists but no case in the switch. 120 tests todo. |
-| **Headings** (`#`) | ❌ Stubbed | `OCTOTHERP` case in root hits `continue` (no-op). `heading_marker` state is mostly commented out. Skipped test file exists. |
+| **Headings** (`#`) | ✅ Working | 23/23 tests passing. Depths 1-6, leading/trailing whitespace handling, heading detection within paragraphs, PFM-specific rules (no trailing `#` stripping, tolerates 4+ leading spaces). |
 
 ### What's NOT Implemented (from PFM spec + CommonMark baseline)
 
 #### Block-level
-- [ ] **ATX headings** — `# heading` (stubbed, not functional)
+- [x] **ATX headings** — `# heading` (fully implemented, 23 tests)
 - [ ] **Blank lines** — semantic blank line handling
 - [ ] **Block quotes** — `>` prefix
 - [ ] **Lists** — ordered and unordered, loose/tight
@@ -81,7 +81,7 @@ None! All active tests passing.
 5. ~~Fix or update the `get_node` unit test~~ ✅ Updated to reflect merge behavior, added multi-child test
 
 ### Phase 2: Core Block Structure
-6. **ATX headings** — Reactivate from stub, reference backup_main.ts
+6. ~~**ATX headings** — Reactivate from stub, reference backup_main.ts~~ ✅ Implemented inline in root state (no separate heading_marker state needed). 23 tests covering all 18 PFM fixtures + 5 additional edge cases.
 7. **Blank lines** — Proper semantic handling
 8. **Thematic breaks** — `---`, `***`, `___`
 9. **Hard line breaks** — `\` before newline
@@ -139,7 +139,7 @@ packages/parse/
 │   ├── fenced_code_blocks.spec.ts
 │   ├── code_spans.spec.ts
 │   ├── emphasis.spec.ts
-│   ├── atx_headings.spec.skip.ts
+│   ├── atx_headings.spec.ts
 │   ├── paragraphs.spec.skip.ts
 │   ├── parse_markdown_svelte.spec.skip.ts
 │   └── utils.ts          # Test helpers

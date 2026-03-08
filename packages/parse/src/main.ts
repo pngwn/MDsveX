@@ -135,6 +135,21 @@ function tokenize(source: string, introspector?: Introspector): {
 	let current = classify(source.charCodeAt(cursor));
 	let next = classify(source.charCodeAt(cursor + 1));
 
+	function is_heading_start(pos: number): boolean {
+		while (pos < length && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) {
+			pos++;
+		}
+		if (pos >= length || source.charCodeAt(pos) !== OCTOTHERP) return false;
+		let count = 0;
+		while (pos < length && source.charCodeAt(pos) === OCTOTHERP) {
+			count++;
+			pos++;
+		}
+		if (count > 6) return false;
+		const ch = source.charCodeAt(pos);
+		return pos >= length || ch === SPACE || ch === TAB || ch === LINEFEED;
+	}
+
 	function chomp(count: number = 1, replace: boolean = false) {
 		if (replace) {
 			cursor = count;
@@ -207,8 +222,87 @@ function tokenize(source: string, introspector?: Introspector): {
 					}
 
 					case OCTOTHERP: {
-						// states.push(state_kind.text);
-						// states.push(state_kind.heading_marker);
+						// Count consecutive # characters
+						let hash_count = 1;
+						let pos = cursor + 1;
+						while (pos < length && source.charCodeAt(pos) === OCTOTHERP) {
+							hash_count++;
+							pos++;
+						}
+
+						// Must be 1-6 hashes
+						if (hash_count > 6) {
+							states.push(state_kind.paragraph);
+							node_stack.push(
+								nodes.push(node_kind.paragraph, cursor, current_node)
+							);
+							continue;
+						}
+
+						// Next char must be space, tab, newline, or EOF
+						const after_hash = source.charCodeAt(pos);
+						if (
+							pos < length &&
+							after_hash !== SPACE &&
+							after_hash !== TAB &&
+							after_hash !== LINEFEED
+						) {
+							states.push(state_kind.paragraph);
+							node_stack.push(
+								nodes.push(node_kind.paragraph, cursor, current_node)
+							);
+							continue;
+						}
+
+						// Valid heading — skip whitespace after hashes
+						let content_start = pos;
+						if (
+							pos < length &&
+							(after_hash === SPACE || after_hash === TAB)
+						) {
+							content_start++;
+							while (
+								content_start < length &&
+								(source.charCodeAt(content_start) === SPACE ||
+									source.charCodeAt(content_start) === TAB)
+							) {
+								content_start++;
+							}
+						}
+
+						// Scan to end of line
+						let line_end = content_start;
+						while (
+							line_end < length &&
+							source.charCodeAt(line_end) !== LINEFEED
+						) {
+							line_end++;
+						}
+
+						// Trim trailing whitespace from value
+						let value_end = line_end;
+						while (
+							value_end > content_start &&
+							(source.charCodeAt(value_end - 1) === SPACE ||
+								source.charCodeAt(value_end - 1) === TAB)
+						) {
+							value_end--;
+						}
+
+						const heading_end =
+							line_end < length ? line_end + 1 : line_end;
+
+						const n = nodes.push(
+							node_kind.heading,
+							cursor,
+							current_node,
+							hash_count
+						);
+						nodes.set_value_start(n, content_start);
+						nodes.set_value_end(n, value_end);
+						nodes.set_end(n, heading_end);
+
+						chomp(heading_end, true);
 						continue;
 					}
 
@@ -267,6 +361,14 @@ function tokenize(source: string, introspector?: Introspector): {
 					states.push(state_kind.code_fence_start);
 
 					// cursor += 1;
+					chomp();
+					continue;
+				} else if (code === LINEFEED && is_heading_start(cursor + 1)) {
+					nodes.set_end(current_node, cursor);
+					states.pop();
+					while (node_stack.length > 1) {
+						node_stack.pop();
+					}
 					chomp();
 					continue;
 				} else if (code === LINEFEED) {
@@ -505,6 +607,15 @@ function tokenize(source: string, introspector?: Introspector): {
 					nodes.set_value_end(current_node, cursor);
 					node_stack.pop();
 					continue;
+				} else if (
+					code === LINEFEED &&
+					is_heading_start(cursor + 1)
+				) {
+					states.pop();
+					nodes.set_end(current_node, cursor);
+					nodes.set_value_end(current_node, cursor);
+					node_stack.pop();
+					continue;
 				} else {
 					// console.log('strong_emphasis -- moving to text');
 					// let n = nodes.push(node_kind.text, cursor, current_node);
@@ -532,6 +643,9 @@ function tokenize(source: string, introspector?: Introspector): {
 						) {
 							// Paragraph boundary detected! Just pop this state
 							// without chomping, let the previous state handle the newlines
+							states.pop();
+							continue;
+						} else if (is_heading_start(cursor + 1)) {
 							states.pop();
 							continue;
 						} else {
@@ -603,6 +717,17 @@ function tokenize(source: string, introspector?: Introspector): {
 				} else if (
 					code === LINEFEED &&
 					source.charCodeAt(cursor + 1) === LINEFEED
+				) {
+					states.pop();
+
+					nodes.set_end(current_node, cursor);
+					nodes.set_value_end(current_node, cursor);
+					node_stack.pop();
+
+					continue;
+				} else if (
+					code === LINEFEED &&
+					is_heading_start(cursor + 1)
 				) {
 					states.pop();
 
