@@ -5,9 +5,9 @@
 ## Current State Summary
 
 ### Test Results (as of now)
-- **Passing:** 81 | **Failing:** 0 | **Todo/Skipped:** 128
-- **Total test examples:** 209
-- **Progress:** Phase 2 in progress. ATX headings implemented. (79→81 passing, 0 failing)
+- **Passing:** 98 | **Failing:** 0 | **Todo/Skipped:** 135
+- **Total test examples:** 233
+- **Progress:** Phase 2 in progress. ATX headings + thematic breaks implemented. (81→98 passing, 0 failing)
 
 ### What's Implemented
 
@@ -19,6 +19,7 @@
 | **Strong emphasis** (`*`) | ⚠️ Mostly working | 11/11 active tests passing. Basic `*foo bar*` works. Pending node + repair pattern for unclosed delimiters. |
 | **Emphasis** (`_`) | ❌ Not implemented | State enum exists but no case in the switch. 120 tests todo. |
 | **Headings** (`#`) | ✅ Working | 23/23 tests passing. Depths 1-6, leading/trailing whitespace handling, heading detection within paragraphs, PFM-specific rules (no trailing `#` stripping, tolerates 4+ leading spaces). |
+| **Thematic breaks** | ✅ Working | 17/24 tests passing, 7 skipped. `***`, `---`, `___` with spaces between markers, paragraph interruption. Skipped: indented code (48), paragraph continuation (49), emphasis (56), lists (57,60,61), setext headings (59). |
 
 ### What's NOT Implemented (from PFM spec + CommonMark baseline)
 
@@ -27,7 +28,7 @@
 - [ ] **Blank lines** — semantic blank line handling
 - [ ] **Block quotes** — `>` prefix
 - [ ] **Lists** — ordered and unordered, loose/tight
-- [ ] **Thematic breaks** — `---`, `***`, `___`
+- [x] **Thematic breaks** — `---`, `***`, `___` (17 tests, 7 skipped pending other features)
 - [ ] **HTML blocks** — raw HTML passthrough
 
 #### Inline-level
@@ -83,7 +84,7 @@ None! All active tests passing.
 ### Phase 2: Core Block Structure
 6. ~~**ATX headings** — Reactivate from stub, reference backup_main.ts~~ ✅ Implemented inline in root state (no separate heading_marker state needed). 23 tests covering all 18 PFM fixtures + 5 additional edge cases.
 7. **Blank lines** — Proper semantic handling
-8. **Thematic breaks** — `---`, `***`, `___`
+8. ~~**Thematic breaks** — `---`, `***`, `___`~~ ✅ Implemented in root state with paragraph boundary detection. 17 active tests (7 skipped pending lists/setext/emphasis/indented code).
 9. **Hard line breaks** — `\` before newline
 
 ### Phase 3: Emphasis (PFM Rules)
@@ -140,6 +141,7 @@ packages/parse/
 │   ├── code_spans.spec.ts
 │   ├── emphasis.spec.ts
 │   ├── atx_headings.spec.ts
+│   ├── thematic_breaks.spec.ts
 │   ├── paragraphs.spec.skip.ts
 │   ├── parse_markdown_svelte.spec.skip.ts
 │   └── utils.ts          # Test helpers

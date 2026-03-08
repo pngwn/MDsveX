@@ -12,7 +12,16 @@
       "Bash(ls:*)",
       "Bash(npx svelte-check:*)",
       "Bash(npx vite:*)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(for i in 43 44 45 46 47 48 49 50 51 52)",
+      "Bash(do echo \"=== Test $i ===\")",
+      "Read(//Users/peterallen/Projects/mdsvex/packages/pfm-tests/tests/thematic_breaks/$i/**)",
+      "Bash(done)",
+      "Bash(do:*)",
+      "Bash(/tmp/thematic_analysis.txt:*)",
+      "Read(//tmp/**)",
+      "Bash(for i in 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61)",
+      "Bash(do echo:*)"
     ],
     "deny": []
   }

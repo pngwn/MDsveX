@@ -13,6 +13,8 @@ import {
 	EXCLAMATION_MARK,
 	AT,
 	ASTERISK,
+	DASH,
+	UNDERSCORE,
 } from './constants';
 
 import type { parse_options, parse_result, parse_context } from './types';
@@ -148,6 +150,34 @@ function tokenize(source: string, introspector?: Introspector): {
 		if (count > 6) return false;
 		const ch = source.charCodeAt(pos);
 		return pos >= length || ch === SPACE || ch === TAB || ch === LINEFEED;
+	}
+
+	function is_thematic_break_start(pos: number): boolean {
+		// Skip leading spaces (0-3 allowed, 4+ is indented code)
+		let spaces = 0;
+		while (pos < length && source.charCodeAt(pos) === SPACE) {
+			spaces++;
+			pos++;
+		}
+		if (spaces > 3) return false;
+
+		if (pos >= length) return false;
+
+		const marker = source.charCodeAt(pos);
+		if (marker !== ASTERISK && marker !== DASH && marker !== UNDERSCORE) return false;
+
+		let count = 0;
+		while (pos < length && source.charCodeAt(pos) !== LINEFEED) {
+			const ch = source.charCodeAt(pos);
+			if (ch === marker) {
+				count++;
+			} else if (ch !== SPACE && ch !== TAB) {
+				return false;
+			}
+			pos++;
+		}
+
+		return count >= 3;
 	}
 
 	function chomp(count: number = 1, replace: boolean = false) {
@@ -311,6 +341,32 @@ function tokenize(source: string, introspector?: Introspector): {
 						extra = 0;
 						continue;
 					}
+
+					case ASTERISK:
+					case DASH:
+					case UNDERSCORE: {
+						if (is_thematic_break_start(cursor)) {
+							// Scan to end of line
+							let line_end = cursor;
+							while (line_end < length && source.charCodeAt(line_end) !== LINEFEED) {
+								line_end++;
+							}
+							const break_end = line_end < length ? line_end + 1 : line_end;
+
+							const n = nodes.push(node_kind.thematic_break, cursor, current_node);
+							nodes.set_end(n, break_end);
+
+							chomp(break_end, true);
+							continue;
+						}
+						// Not a thematic break, fall through to paragraph
+						states.push(state_kind.paragraph);
+						node_stack.push(
+							nodes.push(node_kind.paragraph, cursor, current_node)
+						);
+						continue;
+					}
+
 					default: {
 						states.push(state_kind.paragraph);
 						node_stack.push(
@@ -364,6 +420,14 @@ function tokenize(source: string, introspector?: Introspector): {
 					chomp();
 					continue;
 				} else if (code === LINEFEED && is_heading_start(cursor + 1)) {
+					nodes.set_end(current_node, cursor);
+					states.pop();
+					while (node_stack.length > 1) {
+						node_stack.pop();
+					}
+					chomp();
+					continue;
+				} else if (code === LINEFEED && is_thematic_break_start(cursor + 1)) {
 					nodes.set_end(current_node, cursor);
 					states.pop();
 					while (node_stack.length > 1) {
@@ -616,6 +680,15 @@ function tokenize(source: string, introspector?: Introspector): {
 					nodes.set_value_end(current_node, cursor);
 					node_stack.pop();
 					continue;
+				} else if (
+					code === LINEFEED &&
+					is_thematic_break_start(cursor + 1)
+				) {
+					states.pop();
+					nodes.set_end(current_node, cursor);
+					nodes.set_value_end(current_node, cursor);
+					node_stack.pop();
+					continue;
 				} else {
 					// console.log('strong_emphasis -- moving to text');
 					// let n = nodes.push(node_kind.text, cursor, current_node);
@@ -646,6 +719,9 @@ function tokenize(source: string, introspector?: Introspector): {
 							states.pop();
 							continue;
 						} else if (is_heading_start(cursor + 1)) {
+							states.pop();
+							continue;
+						} else if (is_thematic_break_start(cursor + 1)) {
 							states.pop();
 							continue;
 						} else {
@@ -728,6 +804,17 @@ function tokenize(source: string, introspector?: Introspector): {
 				} else if (
 					code === LINEFEED &&
 					is_heading_start(cursor + 1)
+				) {
+					states.pop();
+
+					nodes.set_end(current_node, cursor);
+					nodes.set_value_end(current_node, cursor);
+					node_stack.pop();
+
+					continue;
+				} else if (
+					code === LINEFEED &&
+					is_thematic_break_start(cursor + 1)
 				) {
 					states.pop();
 
