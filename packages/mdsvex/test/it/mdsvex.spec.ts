@@ -1098,8 +1098,7 @@ title: Yo
 	);
 
 	expect(output).toEqual({
-		code:
-			'<script context="module">\n\texport const metadata = {"title":"Yo"};\n\tconst { title } = metadata;\n</script>\n\n<h1>Hello world</h1>\n',
+		code: '<script context="module">\n\texport const metadata = {"title":"Yo"};\n\tconst { title } = metadata;\n</script>\n\n<h1>Hello world</h1>\n',
 		data: {
 			fm: {
 				title: 'Yo',
