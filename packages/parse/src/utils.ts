@@ -267,6 +267,22 @@ export class node_buffer {
 			child = this.next_siblings[child];
 		}
 
+		// If exactly one child and it's text, merge the delimiter into it
+		if (last_child === first_child && this.kinds[first_child] === node_kind.text) {
+			this.value_starts[index] = this.starts[index];
+			this.value_ends[index] = this.ends[first_child];
+			this.ends[index] = this.ends[first_child];
+
+			// Skip the child in the sibling chain
+			this.next_siblings[index] = this.next_siblings[first_child];
+			if (this.next_siblings[first_child] !== 0xffffffff) {
+				this.prev_siblings[this.next_siblings[first_child]] = index;
+			}
+
+			this.children_starts[index] = 0xffffffff;
+			return;
+		}
+
 		// Now insert pending node as sibling before first_child
 		// Save what was first_child's prev (should be null if first child)
 		const first_child_prev = this.prev_siblings[first_child];

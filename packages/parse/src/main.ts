@@ -16,10 +16,13 @@ import {
 } from './constants';
 
 import type { parse_options, parse_result, parse_context } from './types';
+import type { Introspector } from './introspector';
 import { node_kind } from './utils';
 import { node_buffer, error_collector } from './utils';
 export type { parse_options, parse_result } from './types';
 export { node_kind, node_buffer } from './utils';
+export { Introspector } from './introspector';
+export type { introspection_entry } from './introspector';
 
 const enum char_mask {
 	whitespace = 1 << 0,
@@ -99,7 +102,7 @@ export function parse_markdown_svelte(
 	// 	Math.max(DEFAULT_TOKEN_CAPACITY, input.length >>> 2);
 	// const error_capacity = options.error_capacity ?? DEFAULT_ERROR_CAPACITY;
 	// console.log('input', input);
-	const { nodes, errors } = tokenize(input);
+	const { nodes, errors } = tokenize(input, options.introspector);
 
 	return { nodes, errors };
 }
@@ -108,7 +111,7 @@ export function parse_markdown_svelte(
  * Tokenize the source string and populate token, arena, and error buffers.
  * @param context Shared parsing state.
  */
-function tokenize(source: string): {
+function tokenize(source: string, introspector?: Introspector): {
 	nodes: node_buffer;
 	errors: error_collector;
 } {
@@ -153,6 +156,8 @@ function tokenize(source: string): {
 	let loop_without_progress = 0;
 
 	while (cursor <= length) {
+		introspector?.step(cursor, states);
+
 		const active = states[states.length - 1];
 		const code = source.charCodeAt(cursor);
 

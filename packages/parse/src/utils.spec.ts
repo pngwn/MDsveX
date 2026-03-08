@@ -167,10 +167,26 @@ describe('node_buffer', () => {
 
 		buffer.repair();
 
+		// Single text child merges with the converted delimiter
 		expect(buffer.get_node(id1).kind).toEqual('text');
-		expect(buffer.get_node(id2).parent).toEqual(0);
+		expect(buffer.get_node(id1).next).toEqual(null);
+		expect(buffer.get_node(id1).children).toEqual([]);
+		expect(buffer.get_node(id1).parent).toEqual(0);
+	});
+
+	test('pending nodes with multiple children stay separate after repair', () => {
+		const buffer = new node_buffer();
+		const id1 = buffer.push_pending(node_kind.emphasis, 0, 0);
+		const id2 = buffer.push(node_kind.text, 1, id1);
+		const id3 = buffer.push(node_kind.text, 3, id1);
+
+		buffer.repair();
+
+		// Multiple children: delimiter becomes its own text node, children reparented
+		expect(buffer.get_node(id1).kind).toEqual('text');
 		expect(buffer.get_node(id1).next).toEqual(id2);
-		expect(buffer.get_node(id2).prev).toEqual(id1);
+		expect(buffer.get_node(id2).parent).toEqual(0);
+		expect(buffer.get_node(id3).parent).toEqual(0);
 		expect(buffer.get_node(id1).children).toEqual([]);
 	});
 

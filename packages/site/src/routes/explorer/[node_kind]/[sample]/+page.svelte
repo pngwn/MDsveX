@@ -4,7 +4,11 @@
 	import TokensPanel from '$lib/components/TokensPanel.svelte';
 	import RoutePanel from '$lib/components/RoutePanel.svelte';
 	import InspectorPanel from '$lib/components/InspectorPanel.svelte';
-	import { parse_markdown_svelte, type node_buffer } from '@mdsvex/parse';
+	import {
+		parse_markdown_svelte,
+		Introspector,
+		type node_buffer,
+	} from '@mdsvex/parse';
 
 	let { data } = $props();
 
@@ -34,114 +38,104 @@
 		return full_node;
 	}
 
-	let nodes_as_text = $derived.by(() => {
-		const { nodes } = parse_markdown_svelte(source || '');
-		if (!nodes) return [];
-		return [build_tree(nodes, 0)];
+	let parse_result = $derived.by(() => {
+		const input = source || '';
+		const introspector = new Introspector(input);
+		const { nodes } = parse_markdown_svelte(input, { introspector });
+		return { nodes, introspector };
 	});
 
-	// Create the mapper with your original and compiled grammars
-	// let mapper = $derived(
-	// 	data.raw_grammar && data.grammar && new GrammarMapper(data.raw_grammar, data.grammar)
-	// );
+	let nodes_as_text = $derived.by(() => {
+		if (!parse_result.nodes) return [];
+		return [build_tree(parse_result.nodes, 0)];
+	});
 
-	// Create an introspector with the grammar mapper for readable names
-	// const introspector = $derived(
-	// 	mapper &&
-	// 		new TokenizerIntrospector({
-	// 			log: console.log,
-	// 			enhancedLogging: true, // This will log with readable names automatically
-	// 			grammarMapper: mapper as any // Pass the mapper so introspector can use readable names
-	// 		})
-	// );
+	let introspector = $derived(parse_result.introspector);
 
-	// let tokens = $derived(
-	// 	source && data.grammar && tokenize(source, data.grammar, introspector as any)
-	// );
+	interface route_step {
+		type: 'push' | 'pop' | 'swap';
+		state: string;
+		cursor: number;
+		char: string;
+		depth: number;
+	}
+
+	let route_steps = $derived.by(() => {
+		const trace = introspector.get_trace();
+		const steps: route_step[] = [];
+
+		for (let i = 0; i < trace.length; i++) {
+			const entry = trace[i];
+			const prev = i > 0 ? trace[i - 1] : null;
+
+			if (!prev) {
+				steps.push({
+					type: 'push',
+					state: entry.active,
+					cursor: entry.cursor,
+					char: entry.char,
+					depth: entry.states.length - 1,
+				});
+				continue;
+			}
+
+			const prev_len = prev.states.length;
+			const curr_len = entry.states.length;
+
+			if (curr_len > prev_len) {
+				for (let j = prev_len; j < curr_len; j++) {
+					steps.push({
+						type: 'push',
+						state: entry.states[j],
+						cursor: entry.cursor,
+						char: entry.char,
+						depth: j,
+					});
+				}
+			} else if (curr_len < prev_len) {
+				for (let j = prev_len - 1; j >= curr_len; j--) {
+					steps.push({
+						type: 'pop',
+						state: prev.states[j],
+						cursor: entry.cursor,
+						char: entry.char,
+						depth: j,
+					});
+				}
+			} else if (entry.active !== prev.active) {
+				steps.push({
+					type: 'swap',
+					state: entry.active,
+					cursor: entry.cursor,
+					char: entry.char,
+					depth: curr_len - 1,
+				});
+			}
+		}
+
+		return steps;
+	});
 
 	let position = $state(0);
+	let analysis = $derived(introspector.get_state_at(position));
+
 	let selectedToken = $state(0);
 	let rightPanelView = $state<'tokens' | 'route'>('tokens');
 
-	// Component references
 	let codePanelRef = $state<CodePanel>();
 	let tokensPanelRef = $state<TokensPanel>();
 
-	// function getAnalysisAtPosition(position: number) {
-	// 	return mapper?.analyzePosition(introspector as any, position);
-	// }
-
-	// function getFullRoute(position: number) {
-	// 	return mapper?.getFullRoute(introspector as any, position);
-	// }
-
-	// function getEnhancedRoute(position: number) {
-	// 	// Use getCompleteRoute to show all states including probes
-	// 	return mapper?.getCompleteRoute(introspector as any, position);
-	// }
-
-	// let analysis = $derived(getAnalysisAtPosition(position));
-
-	// Get only the current active route (from last time we returned to main)
-	// let activeRoute = $derived.by(() => {
-	// 	const route = getEnhancedRoute(position);
-	// 	if (!route) return [];
-
-	// 	// Find the last occurrence where we're back at main (depth 0)
-	// 	let lastMainIndex = 0;
-	// 	for (let i = route.length - 1; i >= 0; i--) {
-	// 		const step = route[i];
-
-	// 		// Find the most recent return to main
-	// 		if (
-	// 			(step.type === 'POP' && step.depth === 0 && step.toName === 'main') ||
-	// 			(step.type === 'START' && step.stateName === 'main')
-	// 		) {
-	// 			// Start from the next step after returning to main
-	// 			lastMainIndex = i;
-	// 			// If we popped back to main, start from there
-	// 			if (step.type === 'POP') {
-	// 				lastMainIndex = i + 1;
-	// 				// If there's no next step, we're at main
-	// 				if (lastMainIndex >= route.length) {
-	// 					return [
-	// 						{
-	// 							type: 'START',
-	// 							state: 0,
-	// 							stateName: 'main',
-	// 							position: step.position,
-	// 							depth: 0
-	// 						} as RouteStep
-	// 					];
-	// 				}
-	// 			}
-	// 			break;
-	// 		}
-	// 	}
-
-	// 	// Return the route from the last main position to current
-	// 	return route.slice(lastMainIndex);
-	// });
-
 	function handle_meta_click(meta: [number, number]) {
-		console.log('handle_meta_click', meta);
 		codePanelRef?.create_aribtrary_range(...meta);
 	}
 
 	function handleTokenClick(tokenIndex: number) {
-		console.log('handleTokenClick', tokenIndex);
 		selectedToken = tokenIndex;
 		codePanelRef?.highlightToken(tokenIndex);
 	}
 
-	// function handleTokenSelect(index: number) {
-	// 	selectedToken = index;
-	// 	codePanelRef?.highlightToken(index);
-	// }
-
 	function handlePositionChange(newPosition: number) {
-		position = newPosition;
-		// Update position highlight if needed
+		position = Math.max(0, Math.min(newPosition, (source?.length ?? 1) - 1));
 		const htmlContainer = document.querySelector('.code-inner') as HTMLElement;
 		if (htmlContainer) {
 			const textNode = htmlContainer.firstChild;
@@ -158,7 +152,6 @@
 		}
 	}
 
-	// Keyboard shortcuts for switching views
 	function handleGlobalKeydown(event: KeyboardEvent) {
 		if (event.key === '1' && (event.ctrlKey || event.metaKey)) {
 			event.preventDefault();
@@ -169,10 +162,15 @@
 		}
 	}
 
-	// $effect(() => {
-	// 	window.addEventListener('keydown', handleGlobalKeydown);
-	// 	return () => window.removeEventListener('keydown', handleGlobalKeydown);
-	// });
+	$effect(() => {
+		window.addEventListener('keydown', handleGlobalKeydown);
+		return () => window.removeEventListener('keydown', handleGlobalKeydown);
+	});
+
+	$effect(() => {
+		source;
+		position = 0;
+	});
 </script>
 
 <div class="page-wrapper">
@@ -220,17 +218,17 @@
 					on_meta_click={handle_meta_click}
 				/>
 			{:else}
-				<!-- <RoutePanel  /> -->
+				<RoutePanel steps={route_steps} {position} />
 			{/if}
 		</div>
 	</div>
-	<!-- 
+
 	<InspectorPanel
 		{source}
 		{position}
 		{analysis}
 		onPositionChange={handlePositionChange}
-	/> -->
+	/>
 </div>
 
 <style>

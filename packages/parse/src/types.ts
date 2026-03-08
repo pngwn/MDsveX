@@ -1,9 +1,11 @@
 import type { node_buffer, error_collector } from './utils';
+import type { Introspector } from './introspector';
 
 /** Options for controlling the markdown parser. */
 export interface parse_options {
 	token_capacity?: number;
 	error_capacity?: number;
+	introspector?: Introspector;
 }
 
 /** Structured output produced by the markdown parser. */

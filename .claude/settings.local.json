@@ -6,7 +6,13 @@
       "Bash(npm run bench:*)",
       "Bash(node:*)",
       "Bash(mkdir:*)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest:*)",
+      "Bash(ls:*)",
+      "Bash(npx svelte-check:*)",
+      "Bash(npx vite:*)",
+      "Bash(xxd:*)"
     ],
     "deny": []
   }

@@ -1,8 +1,10 @@
 <script lang="ts">
+	import type { introspection_entry } from '@mdsvex/parse';
+
 	interface Props {
 		source: string | undefined;
 		position: number;
-		analysis: any;
+		analysis: introspection_entry | null;
 		onPositionChange: (position: number) => void;
 	}
 
@@ -32,34 +34,38 @@
 			<input
 				type="range"
 				min="0"
-				max={source?.length ?? 1 - 1}
+				max={(source?.length ?? 1) - 1}
 				value={position}
 				oninput={handleScrub}
 				class="position-slider"
 			/>
 			<button onclick={() => onPositionChange(position + 1)}>+</button>
-			<span class="position-value">{position}/{source?.length ?? 1 - 1}</span>
+			<span class="position-value">{position}/{(source?.length ?? 1) - 1}</span>
 		</div>
 
 		<div class="inspector-stats">
 			<div class="stat-item">
-				<span class="stat-label">Character:</span>
-				<span class="stat-value">'{source?.[position] || 'EOF'}'</span>
+				<span class="stat-label">Char:</span>
+				<span class="stat-value">'{analysis?.char ?? 'EOF'}'</span>
+			</div>
+			<div class="stat-item">
+				<span class="stat-label">Code:</span>
+				<span class="stat-value">{analysis?.code ?? '-'}</span>
 			</div>
 			<div class="stat-item">
 				<span class="stat-label">State:</span>
-				<span class="stat-value">{analysis?.currentState}</span>
+				<span class="stat-value">{analysis?.active ?? '-'}</span>
 			</div>
 			<div class="stat-item">
 				<span class="stat-label">Depth:</span>
-				<span class="stat-value">{analysis?.depth}</span>
+				<span class="stat-value">{analysis ? analysis.states.length - 1 : '-'}</span>
 			</div>
 		</div>
 	</div>
 
 	<div class="state-path-display">
 		<span class="path-label">State Path:</span>
-		<span class="path-value">{analysis?.statePath}</span>
+		<span class="path-value">{analysis?.states.join(' > ') ?? '-'}</span>
 	</div>
 </div>
 
@@ -130,8 +136,8 @@
 		font-family: var(--font-mono);
 		font-size: 0.875rem;
 		font-weight: 500;
-		min-width: 100px;
-		max-width: 100px;
+		min-width: 80px;
+		max-width: 160px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
