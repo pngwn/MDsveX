@@ -639,9 +639,8 @@ export function parseNode(opts: ParseNodeOptions): Result | undefined {
 
 		if (current_state === State.IN_SHORTHAND_ATTR) {
 			if (char === CLOSE_BRACE) {
-				(current_node as Property).name = (
-					(current_node as Property).value[0] as SvelteDynamicContent
-				).expression.value;
+				(current_node as Property).name = ((current_node as Property)
+					.value[0] as SvelteDynamicContent).expression.value;
 				if (generatePositions) {
 					//@ts-ignore
 					current_node.position.end = place();

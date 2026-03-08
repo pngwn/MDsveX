@@ -347,13 +347,9 @@ export function transform_hast({
 		if (!layout && !vFile.data.fm) return tree;
 
 		visit<Root>(tree, 'root', (node) => {
-			const {
-				special,
-				html,
-				instance,
-				module: _module,
-				css,
-			} = extract_parts(node.children as (Element | Text)[]);
+			const { special, html, instance, module: _module, css } = extract_parts(
+				node.children as (Element | Text)[]
+			);
 
 			const { fm: metadata } = vFile.data as { fm: Record<string, unknown> };
 
