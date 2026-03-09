@@ -39,7 +39,7 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@starptech/prettyhtml-hast-to-html": "^0.10.0",
-		"@types/acorn": "^4.0.5",
+		"@types/acorn": "^6.0.4",
 		"@types/escape-html": "^1.0.0",
 		"@types/estree": "^0.0.45",
 		"@types/hast": "^2.3.1",
