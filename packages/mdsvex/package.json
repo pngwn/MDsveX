@@ -59,7 +59,7 @@
 		"remark-slug": "^6.0.0",
 		"retext": "^7.0.1",
 		"retext-smartypants": "^4.0.0",
-		"rollup-plugin-svelte": "^5.1.1",
+		"rollup-plugin-svelte": "^7.2.3",
 		"shiki": "^0.9.3",
 		"svelte": "^5.0.0",
 		"toml": "^3.0.0",
