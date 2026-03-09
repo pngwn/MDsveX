@@ -25,7 +25,13 @@
       "Bash(for n in 350 351 353 357 358 360 364 369 373 376)",
       "Read(//Users/peterallen/Projects/mdsvex/packages/pfm-tests/tests/emphasis_and_strong_emphasis/$n/**)",
       "Bash(python3:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(for id in 12 13 14)",
+      "Read(//Users/peterallen/Projects/mdsvex/packages/pfm-tests/tests/backslash_escapes/$id/**)",
+      "Bash(for id in 594 595 596 597 598)",
+      "Read(//Users/peterallen/Projects/mdsvex/packages/pfm-tests/tests/autolinks/$id/**)",
+      "Bash(for id in 482 483 484 485 486 487 488 489 490 491 492 493)",
+      "Read(//Users/peterallen/Projects/mdsvex/packages/pfm-tests/tests/links/$id/**)"
     ],
     "deny": []
   }

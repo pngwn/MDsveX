@@ -20,6 +20,8 @@ export const enum node_kind {
 	emphasis = 9,
 	strong_emphasis = 10,
 	thematic_break = 11,
+	link = 12,
+	image = 13,
 }
 
 /**
@@ -66,6 +68,10 @@ export const kind_to_string = (kind: node_kind): string => {
 			return 'strong_emphasis';
 		case node_kind.thematic_break:
 			return 'thematic_break';
+		case node_kind.link:
+			return 'link';
+		case node_kind.image:
+			return 'image';
 	}
 };
 
@@ -136,6 +142,8 @@ export class node_buffer {
 			node_kind.strong_emphasis,
 			node_kind.thematic_break,
 			node_kind.line_break,
+			node_kind.link,
+			node_kind.image,
 		];
 
 		this._size = 0;

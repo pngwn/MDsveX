@@ -1755,58 +1755,51 @@ describe('emphasis and strong emphasis', () => {
 		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
 	});
 
-	// text + url
-	// TODO: implement when we have link support
-	test.todo('pfm example 473', () => {
+	// *[bar*](/url) — emphasis delimiters around link syntax are text
+	test('pfm example 473', () => {
 		const input = load_fixture('473');
 		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		expect(paragraph.kind).toBe('paragraph');
+
+		// No emphasis should be formed — all children should be text
+		const kinds = get_all_child_kinds(nodes, paragraph.index);
+		expect(kinds).not.toContain('strong_emphasis');
+		expect(kinds).not.toContain('emphasis');
 	});
 
-	// text + url
-	// TODO: implement when we have link support
-	test.todo('pfm example 474', () => {
+	// _foo [bar_](/url) — emphasis delimiters around link syntax are text
+	test('pfm example 474', () => {
 		const input = load_fixture('474');
 		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		expect(paragraph.kind).toBe('paragraph');
+
+		// No emphasis should be formed
+		const kinds = get_all_child_kinds(nodes, paragraph.index);
+		expect(kinds).not.toContain('strong_emphasis');
+		expect(kinds).not.toContain('emphasis');
 	});
 
-	// text + image
-	// TODO: implement when we have image support
-	test.todo('pfm example 475', () => {
-		const input = load_fixture('475');
-		const { nodes } = parse_markdown_svelte(input);
-	});
+	// *<img src="foo" title="*"/> — needs HTML support (Phase 5)
+	test.todo('pfm example 475');
 
-	// text + autolink
-	// TODO: implement when we have autolink support
-	test.todo('pfm example 476', () => {
-		const input = load_fixture('476');
-		const { nodes } = parse_markdown_svelte(input);
-	});
+	// **<a href="**"> — needs HTML support (Phase 5)
+	test.todo('pfm example 476');
 
-	// text + autolink
-	// TODO: implement when we have autolink support
-	test.todo('pfm example 477', () => {
-		const input = load_fixture('477');
-		const { nodes } = parse_markdown_svelte(input);
-	});
+	// __<a href="__"> — needs HTML support (Phase 5)
+	test.todo('pfm example 477');
 
-	// strong emphasis + code span
-	test.todo('pfm example 478', () => {
-		const input = load_fixture('478');
-		const { nodes } = parse_markdown_svelte(input);
-	});
+	// *a `*`* — needs code-span-in-emphasis support
+	test.todo('pfm example 478');
 
-	// text + autolink
-	// TODO: implement when we have autolink support
-	test.todo('pfm example 479', () => {
-		const input = load_fixture('479');
-		const { nodes } = parse_markdown_svelte(input);
-	});
+	// _a `_`_ — needs code-span-in-emphasis support
+	test.todo('pfm example 479');
 
-	// text + autolink
-	// TODO: implement when we have autolink support
-	test.todo('pfm example 480', () => {
-		const input = load_fixture('480');
-		const { nodes } = parse_markdown_svelte(input);
-	});
+	// **a<https://foo.bar/?q=**> — needs HTML support (Phase 5)
+	test.todo('pfm example 480');
 });

@@ -76,5 +76,17 @@ export const EXCLAMATION_MARK = 33;
 /** ASCII code for the asterisk character (`*`). */
 export const ASTERISK = 42;
 
+/** ASCII code for the open parenthesis character (`(`). */
+export const OPEN_PAREN = 40;
+
+/** ASCII code for the close parenthesis character (`)`). */
+export const CLOSE_PAREN = 41;
+
+/** ASCII code for the open square bracket character (`[`). */
+export const OPEN_SQUARE_BRACKET = 91;
+
+/** ASCII code for the close square bracket character (`]`). */
+export const CLOSE_SQUARE_BRACKET = 93;
+
 /** ASCII code for the underscore character (`_`). */
 export const UNDERSCORE = 95;

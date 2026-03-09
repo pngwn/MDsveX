@@ -15,6 +15,11 @@ import {
 	ASTERISK,
 	DASH,
 	UNDERSCORE,
+	OPEN_SQUARE_BRACKET,
+	CLOSE_SQUARE_BRACKET,
+	OPEN_PAREN,
+	CLOSE_PAREN,
+	COLON,
 } from './constants';
 
 import type { parse_options, parse_result, parse_context } from './types';
@@ -83,6 +88,7 @@ export const enum state_kind {
 	code_span_end = 13,
 	strong_emphasis = 14,
 	emphasis = 15,
+	autolink = 16,
 }
 
 const fences = Array.from({ length: 20 }, (_, i) =>
@@ -189,6 +195,227 @@ function tokenize(source: string, introspector?: Introspector): {
 		}
 
 		return count >= 3;
+	}
+
+	function is_ascii_punctuation(code: number): boolean {
+		return (code >= 33 && code <= 47) || (code >= 58 && code <= 64) ||
+			(code >= 91 && code <= 96) || (code >= 123 && code <= 126);
+	}
+
+	/**
+	 * Try to parse a URI autolink starting after the `<`.
+	 * Returns the end position (after `>`) if successful, or -1.
+	 * URI autolink: scheme (2-32 chars, starts with letter) + `:` + non-space/non-</>
+	 */
+	function try_parse_uri_autolink(pos: number): number {
+		let p = pos;
+		let ch = source.charCodeAt(p);
+
+		// Scheme must start with a letter
+		if (!((ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122))) return -1;
+		p++;
+
+		let scheme_len = 1;
+		while (p < length && scheme_len <= 32) {
+			ch = source.charCodeAt(p);
+			if ((ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122) ||
+				(ch >= 48 && ch <= 57) || ch === 43 || ch === 45 || ch === 46) {
+				p++;
+				scheme_len++;
+			} else {
+				break;
+			}
+		}
+
+		// Scheme must be at least 2 chars and followed by `:`
+		if (scheme_len < 2 || source.charCodeAt(p) !== COLON) return -1;
+		p++; // skip `:`
+
+		// URI body: no spaces, no `<`, no `>`
+		while (p < length) {
+			ch = source.charCodeAt(p);
+			if (ch === CLOSE_ANGLE_BRACKET) {
+				return p + 1; // success: end is position after `>`
+			}
+			if (ch <= 0x20 || ch === OPEN_ANGLE_BRACKET) {
+				return -1; // invalid character in URI
+			}
+			p++;
+		}
+
+		return -1; // no closing `>`
+	}
+
+	/**
+	 * Try to parse an email autolink starting after the `<`.
+	 * Returns the end position (after `>`) if successful, or -1.
+	 * Email: [a-zA-Z0-9._-]+ @ [a-zA-Z0-9.-]+ (domain must have a dot)
+	 */
+	function try_parse_email_autolink(pos: number): number {
+		let p = pos;
+		let ch: number;
+		const local_start = p;
+
+		// Local part: [a-zA-Z0-9._-]+
+		while (p < length) {
+			ch = source.charCodeAt(p);
+			if ((ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122) ||
+				(ch >= 48 && ch <= 57) || ch === 46 || ch === 45 || ch === 95) {
+				p++;
+			} else {
+				break;
+			}
+		}
+
+		if (p === local_start || source.charCodeAt(p) !== AT) return -1;
+		p++; // skip @
+
+		const domain_start = p;
+		let has_dot = false;
+
+		while (p < length) {
+			ch = source.charCodeAt(p);
+			if ((ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122) ||
+				(ch >= 48 && ch <= 57) || ch === 45) {
+				p++;
+			} else if (ch === 46) {
+				has_dot = true;
+				p++;
+			} else {
+				break;
+			}
+		}
+
+		if (p === domain_start || !has_dot || source.charCodeAt(p) !== CLOSE_ANGLE_BRACKET) return -1;
+		return p + 1;
+	}
+
+	/**
+	 * Try to parse an inline link starting at `[`.
+	 * Returns link info if `[text](url "title")` pattern found, or null.
+	 */
+	function try_parse_inline_link(pos: number): {
+		text_start: number;
+		text_end: number;
+		url_start: number;
+		url_end: number;
+		title_start: number;
+		title_end: number;
+		end: number;
+	} | null {
+		if (source.charCodeAt(pos) !== OPEN_SQUARE_BRACKET) return null;
+
+		let p = pos + 1;
+		let bracket_depth = 1;
+
+		// Find matching ']' with bracket balancing
+		while (p < length && bracket_depth > 0) {
+			const ch = source.charCodeAt(p);
+			if (ch === BACKSLASH && p + 1 < length) {
+				p += 2; // skip escaped char
+				continue;
+			}
+			if (ch === LINEFEED) {
+				// Newline inside link text — continue (multi-line link text is ok)
+			}
+			if (ch === OPEN_SQUARE_BRACKET) bracket_depth++;
+			else if (ch === CLOSE_SQUARE_BRACKET) bracket_depth--;
+			if (bracket_depth > 0) p++;
+		}
+
+		if (bracket_depth !== 0) return null;
+
+		const text_start = pos + 1;
+		const text_end = p;
+		p++; // skip ']'
+
+		// Must be immediately followed by '('
+		if (p >= length || source.charCodeAt(p) !== OPEN_PAREN) return null;
+		p++; // skip '('
+
+		// Skip whitespace (not newlines for now)
+		while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+
+		let url_start: number, url_end: number;
+
+		if (p < length && source.charCodeAt(p) === OPEN_ANGLE_BRACKET) {
+			// Angle-bracketed destination
+			p++; // skip '<'
+			url_start = p;
+			while (p < length) {
+				const ch = source.charCodeAt(p);
+				if (ch === CLOSE_ANGLE_BRACKET) break;
+				if (ch === LINEFEED || ch === OPEN_ANGLE_BRACKET) return null;
+				if (ch === BACKSLASH && p + 1 < length && source.charCodeAt(p + 1) !== LINEFEED) {
+					p += 2;
+					continue;
+				}
+				p++;
+			}
+			if (p >= length || source.charCodeAt(p) !== CLOSE_ANGLE_BRACKET) return null;
+			url_end = p;
+			p++; // skip '>'
+		} else if (p < length && source.charCodeAt(p) === CLOSE_PAREN) {
+			// Empty URL: [text]()
+			url_start = p;
+			url_end = p;
+		} else {
+			// Regular destination — balanced parens, no spaces/control chars
+			url_start = p;
+			let paren_depth = 0;
+			while (p < length) {
+				const ch = source.charCodeAt(p);
+				if (ch <= 0x20) break; // space or control char
+				if (ch === CLOSE_PAREN) {
+					if (paren_depth === 0) break;
+					paren_depth--;
+				}
+				if (ch === OPEN_PAREN) paren_depth++;
+				if (ch === BACKSLASH && p + 1 < length) {
+					p += 2;
+					continue;
+				}
+				p++;
+			}
+			if (paren_depth !== 0) return null;
+			url_end = p;
+		}
+
+		// Skip whitespace between URL and optional title
+		while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+
+		// Check for title
+		let title_start = -1, title_end = -1;
+		if (p < length) {
+			const tc = source.charCodeAt(p);
+			if (tc === 34 || tc === 39 || tc === OPEN_PAREN) { // ", ', (
+				const close_char = tc === OPEN_PAREN ? CLOSE_PAREN : tc;
+				p++; // skip opening
+				title_start = p;
+				while (p < length) {
+					const ch = source.charCodeAt(p);
+					if (ch === close_char) break;
+					if (ch === LINEFEED) return null; // newline in title not allowed
+					if (ch === BACKSLASH && p + 1 < length) {
+						p += 2;
+						continue;
+					}
+					p++;
+				}
+				if (p >= length || source.charCodeAt(p) !== close_char) return null;
+				title_end = p;
+				p++; // skip closing
+			}
+		}
+
+		// Skip trailing whitespace
+		while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+
+		// Must end with ')'
+		if (p >= length || source.charCodeAt(p) !== CLOSE_PAREN) return null;
+		p++; // skip ')'
+
+		return { text_start, text_end, url_start, url_end, title_start, title_end, end: p };
 	}
 
 	function chomp(count: number = 1, replace: boolean = false) {
@@ -842,19 +1069,153 @@ function tokenize(source: string, introspector?: Introspector): {
 						continue;
 					}
 
+					case BACKSLASH: {
+						// Backslash escape: if next char is ASCII punctuation,
+						// consume both as text (prevents special char interpretation)
+						let n = nodes.push(node_kind.text, cursor, current_node);
+						nodes.set_value_start(n, cursor);
+						node_stack.push(n);
+						states.push(state_kind.text);
+
+						const next_code = source.charCodeAt(cursor + 1);
+						if (is_ascii_punctuation(next_code)) {
+							chomp(2); // skip both \ and the escaped char
+						} else {
+							chomp();
+						}
+						continue;
+					}
+
+					case OPEN_SQUARE_BRACKET: {
+						// Try to parse as inline link: [text](url)
+						const link_result = try_parse_inline_link(cursor);
+						if (link_result) {
+							const url = source.slice(link_result.url_start, link_result.url_end);
+							const title = link_result.title_start >= 0
+								? source.slice(link_result.title_start, link_result.title_end)
+								: undefined;
+
+							const link_node_il = nodes.push(node_kind.link, cursor, current_node);
+							nodes.set_value_start(link_node_il, link_result.text_start);
+							nodes.set_value_end(link_node_il, link_result.text_end);
+							nodes.set_end(link_node_il, link_result.end);
+							nodes.set_metadata(link_node_il, { href: url, title });
+
+							if (link_result.text_end > link_result.text_start) {
+								const text_node_il = nodes.push(node_kind.text, link_result.text_start, link_node_il);
+								nodes.set_value_start(text_node_il, link_result.text_start);
+								nodes.set_value_end(text_node_il, link_result.text_end);
+								nodes.set_end(text_node_il, link_result.text_end);
+							}
+
+							chomp(link_result.end, true);
+							states.pop(); // pop inline so parent state handles next char
+							continue;
+						}
+
+						// Not a link, treat [ as text
+						node_stack.push(nodes.push(node_kind.text, cursor, current_node));
+						nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
+						states.push(state_kind.text);
+						chomp();
+						continue;
+					}
+
+					case EXCLAMATION_MARK: {
+						// Check for image: ![alt](url)
+						if (source.charCodeAt(cursor + 1) === OPEN_SQUARE_BRACKET) {
+							const img_result = try_parse_inline_link(cursor + 1);
+							if (img_result) {
+								const img_url = source.slice(img_result.url_start, img_result.url_end);
+								const img_title = img_result.title_start >= 0
+									? source.slice(img_result.title_start, img_result.title_end)
+									: undefined;
+
+								const img_node = nodes.push(node_kind.image, cursor, current_node);
+								nodes.set_value_start(img_node, img_result.text_start);
+								nodes.set_value_end(img_node, img_result.text_end);
+								nodes.set_end(img_node, img_result.end);
+								nodes.set_metadata(img_node, { src: img_url, title: img_title });
+
+								if (img_result.text_end > img_result.text_start) {
+									const text_node_img = nodes.push(node_kind.text, img_result.text_start, img_node);
+									nodes.set_value_start(text_node_img, img_result.text_start);
+									nodes.set_value_end(text_node_img, img_result.text_end);
+									nodes.set_end(text_node_img, img_result.text_end);
+								}
+
+								chomp(img_result.end, true);
+								states.pop(); // pop inline so parent state handles next char
+								continue;
+							}
+						}
+
+						// Not an image, treat ! as text
+						node_stack.push(nodes.push(node_kind.text, cursor, current_node));
+						nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
+						states.push(state_kind.text);
+						chomp();
+						continue;
+					}
+
+					case OPEN_ANGLE_BRACKET: {
+						// Try to parse as autolink
+						const uri_end = try_parse_uri_autolink(cursor + 1);
+						if (uri_end !== -1) {
+							// URI autolink: create link node with text child
+							const link_node = nodes.push(node_kind.link, cursor, current_node);
+							nodes.set_value_start(link_node, cursor + 1);
+							nodes.set_value_end(link_node, uri_end - 1);
+							nodes.set_end(link_node, uri_end);
+
+							const text_node = nodes.push(node_kind.text, cursor + 1, link_node);
+							nodes.set_value_start(text_node, cursor + 1);
+							nodes.set_value_end(text_node, uri_end - 1);
+							nodes.set_end(text_node, uri_end - 1);
+
+							chomp(uri_end, true);
+							states.pop(); // pop inline so parent state handles next char
+							continue;
+						}
+
+						const email_end = try_parse_email_autolink(cursor + 1);
+						if (email_end !== -1) {
+							// Email autolink: create link node with text child
+							const email_text = source.slice(cursor + 1, email_end - 1);
+							const link_node = nodes.push(node_kind.link, cursor, current_node);
+							nodes.set_value_start(link_node, cursor + 1);
+							nodes.set_value_end(link_node, email_end - 1);
+							nodes.set_end(link_node, email_end);
+							nodes.set_metadata(link_node, { href: 'mailto:' + email_text });
+
+							const text_node = nodes.push(node_kind.text, cursor + 1, link_node);
+							nodes.set_value_start(text_node, cursor + 1);
+							nodes.set_value_end(text_node, email_end - 1);
+							nodes.set_end(text_node, email_end - 1);
+
+							chomp(email_end, true);
+							states.pop(); // pop inline so parent state handles next char
+							continue;
+						}
+
+						// Not an autolink, treat < as text
+						node_stack.push(nodes.push(node_kind.text, cursor, current_node));
+						nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
+						states.push(state_kind.text);
+						chomp();
+						continue;
+					}
+
 					default: {
 						if (!code) {
 							// EOF: Just pop this state, let previous state handle EOF
 							states.pop();
 							continue;
 						}
-						// console.log('pushing text node', cursor, current_node);
-						// // if ()
 						node_stack.push(nodes.push(node_kind.text, cursor, current_node));
 						nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
 
 						states.push(state_kind.text);
-						// cursor += 1;
 						chomp();
 						continue;
 					}
@@ -862,6 +1223,15 @@ function tokenize(source: string, introspector?: Introspector): {
 			}
 
 			case state_kind.text: {
+				// Handle backslash escapes within text
+				if (code === BACKSLASH) {
+					const next_code = source.charCodeAt(cursor + 1);
+					if (is_ascii_punctuation(next_code)) {
+						chomp(2); // skip both \ and the escaped char
+						continue;
+					}
+				}
+
 				if (!code || (code === LINEFEED && is_blank_line_after(cursor))) {
 					states.pop();
 
@@ -892,7 +1262,7 @@ function tokenize(source: string, introspector?: Introspector): {
 					node_stack.pop();
 
 					continue;
-				} else if (code === ASTERISK || code === UNDERSCORE) {
+				} else if (code === ASTERISK || code === UNDERSCORE || code === OPEN_ANGLE_BRACKET || code === OPEN_SQUARE_BRACKET || (code === EXCLAMATION_MARK && source.charCodeAt(cursor + 1) === OPEN_SQUARE_BRACKET)) {
 					states.pop();
 
 					nodes.set_end(current_node, cursor);
@@ -902,7 +1272,6 @@ function tokenize(source: string, introspector?: Introspector): {
 
 					continue;
 				}
-				// cursor += 1;
 				chomp();
 				continue;
 			}
