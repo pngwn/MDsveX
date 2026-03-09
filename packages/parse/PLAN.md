@@ -5,9 +5,9 @@
 ## Current State Summary
 
 ### Test Results (as of now)
-- **Passing:** 291 | **Failing:** 0 | **Todo/Skipped:** 31
-- **Total test examples:** 322
-- **Progress:** Phase 5 started. Block quotes implemented with full nesting, lazy continuation, and paragraph interruption. (271→291 passing, 0 failing)
+- **Passing:** 300 | **Failing:** 0 | **Todo/Skipped:** 48
+- **Total test examples:** 348
+- **Progress:** Phase 5 continued. Lists partially implemented — basic tight/loose lists, multiple items, different markers, paragraph interruption. (291→300 passing, 0 failing)
 
 ### What's Implemented
 
@@ -23,6 +23,7 @@
 | **Links** (`[text](url)`) | ✅ Working | 15/15 passing. Inline links produce `link` nodes with `href`/`title` metadata. URL parsing handles balanced parens, titles in quotes, empty URL/text. |
 | **Images** (`![alt](url)`) | ✅ Working | 6/6 passing. Inline images produce `image` nodes with `src`/`title` metadata. Same URL parsing as links. |
 | **Block quotes** (`>`) | ✅ Working | 20/22 passing, 2 skipped. Nesting (`> > >`), lazy continuation, `>` blank lines, paragraph interruption. Skipped: lists inside quotes, indented code inside quotes. |
+| **Lists** (ordered/unordered) | ⚠️ Partial | 9/26 passing, 17 skipped. Tight/loose, multiple items, different markers, paragraph interruption. Skipped: nesting, continuation content, block-level content in items. |
 | **Link reference defs** | ⚠️ Partial | 4/4 passing. Reference definitions currently treated as text. Full `[text][ref]` and `[text][]` reference link resolution pending. |
 | **Headings** (`#`) | ✅ Working | 23/23 tests passing. Depths 1-6, leading/trailing whitespace handling, heading detection within paragraphs, PFM-specific rules (no trailing `#` stripping, tolerates 4+ leading spaces). |
 | **Thematic breaks** | ✅ Working | 17/24 tests passing, 7 skipped. `***`, `---`, `___` with spaces between markers, paragraph interruption. Skipped: indented code (48), paragraph continuation (49), emphasis (56), lists (57,60,61), setext headings (59). |
@@ -34,7 +35,7 @@
 - [x] **ATX headings** — `# heading` (fully implemented, 23 tests)
 - [x] **Blank lines** — semantic blank line handling (5 tests)
 - [x] **Block quotes** — `>` prefix (20 tests, 2 skipped pending lists/indented code)
-- [ ] **Lists** — ordered and unordered, loose/tight
+- [x] **Lists** — ordered and unordered, loose/tight (9 tests, 17 skipped pending nesting/continuation/block-content)
 - [x] **Thematic breaks** — `---`, `***`, `___` (17 tests, 7 skipped pending other features)
 - [ ] **HTML blocks** — raw HTML passthrough
 
@@ -108,7 +109,7 @@ None! All active tests passing.
 
 ### Phase 5: Extended Blocks
 18. ~~**Block quotes** — `>`~~ ✅ Implemented. `block_quote` state acts as container, dispatches inner content like root. Handles `>` stripping, lazy continuation, nesting, paragraph interruption. 20 tests (2 skipped pending lists/indented code).
-19. **Lists** — ordered/unordered, loose/tight
+19. ~~**Lists** — ordered/unordered, loose/tight~~ ⚠️ Basic lists implemented (9/26 tests). Nesting, continuation content, and block-level items pending.
 20. **HTML blocks** — raw HTML passthrough
 21. **Raw HTML** — inline
 
@@ -151,6 +152,7 @@ packages/parse/
 │   ├── thematic_breaks.spec.ts
 │   ├── blank_lines.spec.ts
 │   ├── block_quotes.spec.ts
+│   ├── lists.spec.ts
 │   ├── paragraphs.spec.skip.ts
 │   ├── parse_markdown_svelte.spec.skip.ts
 │   └── utils.ts          # Test helpers

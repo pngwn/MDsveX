@@ -20,6 +20,8 @@ import {
 	OPEN_PAREN,
 	CLOSE_PAREN,
 	COLON,
+	PLUS,
+	DOT,
 } from './constants';
 
 import type { parse_options, parse_result, parse_context } from './types';
@@ -90,6 +92,7 @@ export const enum state_kind {
 	emphasis = 15,
 	autolink = 16,
 	block_quote = 17,
+	list_item = 18,
 }
 
 const fences = Array.from({ length: 20 }, (_, i) =>
@@ -145,6 +148,14 @@ function tokenize(source: string, introspector?: Introspector): {
 	let next = classify(source.charCodeAt(cursor + 1));
 
 	let block_quote_depth = 0;
+
+	let list_depth = 0;
+	let list_marker: number = 0;
+	let list_ordered = false;
+	let list_start_num = 0;
+	let list_node_idx = 0;
+	let list_is_loose = false;
+	let list_content_offset = 0;
 
 	function is_heading_start(pos: number): boolean {
 		while (pos < length && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) {
@@ -246,6 +257,164 @@ function tokenize(source: string, introspector?: Introspector): {
 			pos++;
 		}
 		return true;
+	}
+
+	/**
+	 * Try to parse a list item marker at position.
+	 * Returns marker info or null if no valid marker found.
+	 * Handles: -, *, + (unordered) and digits followed by . or ) (ordered)
+	 */
+	function try_parse_list_marker(pos: number): {
+		indent: number;
+		marker_char: number;
+		ordered: boolean;
+		start_num: number;
+		content_start: number;
+		content_offset: number;
+	} | null {
+		if (pos >= length) return null;
+		const start = pos;
+		let indent = 0;
+
+		// Skip 0-3 spaces of indentation
+		while (pos < length && source.charCodeAt(pos) === SPACE) {
+			indent++;
+			pos++;
+		}
+		if (indent > 3) return null;
+
+		if (pos >= length) return null;
+		const ch = source.charCodeAt(pos);
+
+		// Unordered: -, *, +
+		if (ch === DASH || ch === ASTERISK || ch === PLUS) {
+			const after = source.charCodeAt(pos + 1);
+			if (pos + 1 >= length || after === SPACE || after === TAB || after === LINEFEED) {
+				let content_start = pos + 1;
+				if (content_start < length && (after === SPACE || after === TAB)) {
+					content_start++;
+				}
+				return {
+					indent,
+					marker_char: ch,
+					ordered: false,
+					start_num: 0,
+					content_start,
+					content_offset: content_start - start,
+				};
+			}
+			return null;
+		}
+
+		// Ordered: digits followed by . or )
+		if (ch >= 48 && ch <= 57) {
+			const num_start = pos;
+			while (pos < length && source.charCodeAt(pos) >= 48 && source.charCodeAt(pos) <= 57) {
+				pos++;
+			}
+			if (pos - num_start > 9) return null;
+
+			if (pos >= length) return null;
+			const delimiter = source.charCodeAt(pos);
+			if (delimiter !== DOT && delimiter !== CLOSE_PAREN) return null;
+
+			const after = source.charCodeAt(pos + 1);
+			if (pos + 1 >= length || after === SPACE || after === TAB || after === LINEFEED) {
+				let content_start = pos + 1;
+				if (content_start < length && (after === SPACE || after === TAB)) {
+					content_start++;
+				}
+				const num = parseInt(source.slice(num_start, pos), 10);
+				return {
+					indent,
+					marker_char: delimiter,
+					ordered: true,
+					start_num: num,
+					content_start,
+					content_offset: content_start - start,
+				};
+			}
+			return null;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Check if a list item marker at pos can interrupt the current context.
+	 * At root level: only unordered or ordered-starting-with-1 can interrupt paragraphs.
+	 * Inside a list: any list marker interrupts.
+	 */
+	function is_list_item_start_interrupt(pos: number): boolean {
+		const marker = try_parse_list_marker(pos);
+		if (!marker) return false;
+		if (list_depth > 0) return true;
+		// At root (paragraph interruption): ordered must start with 1
+		if (marker.ordered && marker.start_num !== 1) return false;
+		// Must have non-whitespace content after marker to interrupt a paragraph
+		// A bare marker like `*\n` or `- \n` cannot interrupt
+		let p = marker.content_start;
+		while (p < length && source.charCodeAt(p) !== LINEFEED) {
+			if (source.charCodeAt(p) !== SPACE && source.charCodeAt(p) !== TAB) return true;
+			p++;
+		}
+		return false;
+	}
+
+	/**
+	 * Start a new list at the current position. Shared by root and list_item states.
+	 */
+	function start_list(marker: NonNullable<ReturnType<typeof try_parse_list_marker>>, parent: number): void {
+		list_depth++;
+		list_ordered = marker.ordered;
+		list_marker = marker.marker_char;
+		list_start_num = marker.start_num;
+		list_is_loose = false;
+		list_content_offset = marker.content_offset;
+
+		const list_idx = nodes.push(node_kind.list, cursor, parent);
+		node_stack.push(list_idx);
+		list_node_idx = list_idx;
+
+		const item_idx = nodes.push(node_kind.list_item, cursor, list_idx);
+		node_stack.push(item_idx);
+
+		states.push(state_kind.list_item);
+		chomp(marker.content_start, true);
+	}
+
+	/**
+	 * End the current list. Sets metadata and pops states/nodes.
+	 */
+	function end_list(): void {
+		// End list_item
+		nodes.set_end(node_stack[node_stack.length - 1], cursor);
+		node_stack.pop();
+
+		// End list with metadata
+		const list_idx = node_stack[node_stack.length - 1];
+		nodes.set_end(list_idx, cursor);
+		nodes.set_metadata(list_idx, {
+			ordered: list_ordered,
+			start: list_start_num,
+			tight: !list_is_loose,
+		});
+
+		// For tight lists, unwrap single-paragraph children from list items
+		if (!list_is_loose) {
+			const list_node = nodes.get_node(list_idx);
+			for (const item_idx of list_node.children) {
+				const item = nodes.get_node(item_idx);
+				if (item.children.length === 1 && nodes.kind_at(item.children[0]) === node_kind.paragraph) {
+					nodes.unwrap_node(item.children[0]);
+				}
+			}
+		}
+
+		node_stack.pop();
+
+		states.pop();
+		list_depth--;
 	}
 
 	/**
@@ -661,7 +830,15 @@ function tokenize(source: string, introspector?: Introspector): {
 							chomp(break_end, true);
 							continue;
 						}
-						// Not a thematic break, fall through to paragraph
+						// Check for list marker (-, * but not _)
+						if (code !== UNDERSCORE) {
+							const marker = try_parse_list_marker(cursor);
+							if (marker) {
+								start_list(marker, current_node);
+								continue;
+							}
+						}
+						// Not a thematic break or list, fall through to paragraph
 						states.push(state_kind.paragraph);
 						node_stack.push(
 							nodes.push(node_kind.paragraph, cursor, current_node)
@@ -684,6 +861,14 @@ function tokenize(source: string, introspector?: Introspector): {
 					}
 
 					default: {
+						// Check for list markers: + or digits (ordered lists)
+						if (code === PLUS || (code >= 48 && code <= 57)) {
+							const marker = try_parse_list_marker(cursor);
+							if (marker) {
+								start_list(marker, current_node);
+								continue;
+							}
+						}
 						states.push(state_kind.paragraph);
 						node_stack.push(
 							nodes.push(node_kind.paragraph, cursor, current_node)
@@ -696,7 +881,7 @@ function tokenize(source: string, introspector?: Introspector): {
 
 			case state_kind.paragraph: {
 				// Check for paragraph boundaries
-				const node_stack_base = 1 + block_quote_depth;
+				const node_stack_base = 1 + block_quote_depth + list_depth * 2;
 
 				if (!code) {
 					nodes.set_end(current_node, cursor);
@@ -823,6 +1008,14 @@ function tokenize(source: string, introspector?: Introspector): {
 					continue;
 				} else if (code === LINEFEED && is_block_quote_start(cursor + 1)) {
 					// Block quote interrupts paragraph
+					nodes.set_end(current_node, cursor);
+					states.pop();
+					while (node_stack.length > node_stack_base) {
+						node_stack.pop();
+					}
+					continue;
+				} else if (code === LINEFEED && is_list_item_start_interrupt(cursor + 1)) {
+					// List interrupts paragraph
 					nodes.set_end(current_node, cursor);
 					states.pop();
 					while (node_stack.length > node_stack_base) {
@@ -1350,6 +1543,192 @@ function tokenize(source: string, introspector?: Introspector): {
 				}
 			}
 
+			case state_kind.list_item: {
+				// Container state for a list item — dispatches inner content like root.
+				if (!code) {
+					// EOF — end list item and list
+					end_list();
+					continue;
+				}
+
+				switch (code) {
+					case LINEFEED: {
+						const next_pos = cursor + 1;
+
+						// Check for blank line
+						if (next_pos >= length || is_blank_at_pos(next_pos)) {
+							// Skip all consecutive blank lines
+							let p = next_pos;
+							while (p < length) {
+								if (!is_blank_at_pos(p)) break;
+								while (p < length && source.charCodeAt(p) !== LINEFEED) p++;
+								if (p < length) p++;
+							}
+
+							// p now points to first non-blank line (or EOF)
+							if (p < length) {
+								const marker_after = try_parse_list_marker(p);
+								if (marker_after && marker_after.ordered === list_ordered && marker_after.marker_char === list_marker) {
+									// Same list continues after blank — mark as loose
+									list_is_loose = true;
+									nodes.set_end(current_node, cursor);
+									node_stack.pop();
+									const new_item = nodes.push(node_kind.list_item, p, list_node_idx);
+									node_stack.push(new_item);
+									chomp(marker_after.content_start, true);
+									continue;
+								}
+
+								// Check for indented continuation content
+								let indent_count = 0;
+								let ip = p;
+								while (ip < length && source.charCodeAt(ip) === SPACE) {
+									indent_count++;
+									ip++;
+								}
+								if (indent_count >= list_content_offset && ip < length && source.charCodeAt(ip) !== LINEFEED) {
+									// Continuation content after blank — mark as loose, stay in same item
+									list_is_loose = true;
+									chomp(p + list_content_offset, true);
+									continue;
+								}
+							}
+
+							// Not a same-type marker or continuation (or EOF) → end list
+							end_list();
+							continue;
+						}
+
+						// Check for new list item (same marker type)
+						const marker = try_parse_list_marker(next_pos);
+						if (marker && marker.ordered === list_ordered && marker.marker_char === list_marker) {
+							// New item in same list
+							nodes.set_end(current_node, cursor);
+							node_stack.pop();
+							const new_item = nodes.push(node_kind.list_item, next_pos, list_node_idx);
+							node_stack.push(new_item);
+							chomp(marker.content_start, true);
+							continue;
+						}
+
+						// Different marker type → end this list
+						if (marker && (marker.ordered !== list_ordered || marker.marker_char !== list_marker)) {
+							end_list();
+							continue;
+						}
+
+						// Check for block-level interrupts
+						if (is_heading_start(next_pos) || is_thematic_break_start(next_pos) || is_block_quote_start(next_pos)) {
+							end_list();
+							continue;
+						}
+
+						// Check for indented continuation content (no blank line)
+						{
+							let indent_count = 0;
+							let ip = next_pos;
+							while (ip < length && source.charCodeAt(ip) === SPACE) {
+								indent_count++;
+								ip++;
+							}
+							if (indent_count >= list_content_offset && ip < length && source.charCodeAt(ip) !== LINEFEED) {
+								// Continuation content — stay in same item
+								chomp(next_pos + list_content_offset, true);
+								continue;
+							}
+						}
+
+						// Non-continuation content → end list
+						end_list();
+						continue;
+					}
+
+					case SPACE:
+					case TAB: {
+						chomp();
+						continue;
+					}
+
+					case OCTOTHERP: {
+						let hash_count = 1;
+						let pos = cursor + 1;
+						while (pos < length && source.charCodeAt(pos) === OCTOTHERP) {
+							hash_count++;
+							pos++;
+						}
+						if (hash_count > 6) {
+							states.push(state_kind.paragraph);
+							node_stack.push(nodes.push(node_kind.paragraph, cursor, current_node));
+							continue;
+						}
+						const after_hash = source.charCodeAt(pos);
+						if (pos < length && after_hash !== SPACE && after_hash !== TAB && after_hash !== LINEFEED) {
+							states.push(state_kind.paragraph);
+							node_stack.push(nodes.push(node_kind.paragraph, cursor, current_node));
+							continue;
+						}
+						let content_start_h = pos;
+						if (pos < length && (after_hash === SPACE || after_hash === TAB)) {
+							content_start_h++;
+							while (content_start_h < length && (source.charCodeAt(content_start_h) === SPACE || source.charCodeAt(content_start_h) === TAB)) {
+								content_start_h++;
+							}
+						}
+						let line_end = content_start_h;
+						while (line_end < length && source.charCodeAt(line_end) !== LINEFEED) line_end++;
+						let value_end = line_end;
+						while (value_end > content_start_h && (source.charCodeAt(value_end - 1) === SPACE || source.charCodeAt(value_end - 1) === TAB)) value_end--;
+						const heading_end = line_end < length ? line_end : line_end;
+						const n = nodes.push(node_kind.heading, cursor, current_node, hash_count);
+						nodes.set_value_start(n, content_start_h);
+						nodes.set_value_end(n, value_end);
+						nodes.set_end(n, heading_end);
+						chomp(heading_end, true);
+						continue;
+					}
+
+					case BACKTICK: {
+						states.push(state_kind.code_fence_start);
+						extra = 0;
+						continue;
+					}
+
+					case ASTERISK:
+					case DASH:
+					case UNDERSCORE: {
+						if (is_thematic_break_start(cursor)) {
+							let line_end = cursor;
+							while (line_end < length && source.charCodeAt(line_end) !== LINEFEED) line_end++;
+							const break_end = line_end < length ? line_end : line_end;
+							const n = nodes.push(node_kind.thematic_break, cursor, current_node);
+							nodes.set_end(n, break_end);
+							chomp(break_end, true);
+							continue;
+						}
+						states.push(state_kind.paragraph);
+						node_stack.push(nodes.push(node_kind.paragraph, cursor, current_node));
+						continue;
+					}
+
+					case CLOSE_ANGLE_BRACKET: {
+						let p = cursor + 1;
+						if (p < length && source.charCodeAt(p) === SPACE) p++;
+						block_quote_depth++;
+						const bq_node = nodes.push(node_kind.block_quote, cursor, current_node);
+						node_stack.push(bq_node);
+						states.push(state_kind.block_quote);
+						chomp(p, true);
+						continue;
+					}
+
+					default: {
+						states.push(state_kind.paragraph);
+						node_stack.push(nodes.push(node_kind.paragraph, cursor, current_node));
+						continue;
+					}
+				}
+			}
+
 						case state_kind.inline: {
 				// Process inline content
 				switch (code) {
@@ -1377,6 +1756,9 @@ function tokenize(source: string, introspector?: Introspector): {
 							states.pop();
 							continue;
 						} else if (is_block_quote_start(cursor + 1)) {
+							states.pop();
+							continue;
+						} else if (is_list_item_start_interrupt(cursor + 1)) {
 							states.pop();
 							continue;
 						} else {
@@ -1641,6 +2023,17 @@ function tokenize(source: string, introspector?: Introspector): {
 				} else if (
 					code === LINEFEED &&
 					is_block_quote_start(cursor + 1)
+				) {
+					states.pop();
+
+					nodes.set_end(current_node, cursor);
+					nodes.set_value_end(current_node, cursor);
+					node_stack.pop();
+
+					continue;
+				} else if (
+					code === LINEFEED &&
+					is_list_item_start_interrupt(cursor + 1)
 				) {
 					states.pop();
 

@@ -90,3 +90,6 @@ export const CLOSE_SQUARE_BRACKET = 93;
 
 /** ASCII code for the underscore character (`_`). */
 export const UNDERSCORE = 95;
+
+/** ASCII code for the plus character (`+`). */
+export const PLUS = 43;

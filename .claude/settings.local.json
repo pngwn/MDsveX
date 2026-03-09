@@ -32,7 +32,9 @@
       "Read(//Users/peterallen/Projects/mdsvex/packages/pfm-tests/tests/autolinks/$id/**)",
       "Bash(for id in 482 483 484 485 486 487 488 489 490 491 492 493)",
       "Read(//Users/peterallen/Projects/mdsvex/packages/pfm-tests/tests/links/$id/**)",
-      "Bash(pnpm vitest:*)"
+      "Bash(pnpm vitest:*)",
+      "Bash(for f in 301 303 305 315)",
+      "Read(//Users/peterallen/Projects/mdsvex/packages/pfm-tests/tests/lists/$f/**)"
     ],
     "deny": []
   }

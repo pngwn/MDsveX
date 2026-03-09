@@ -23,6 +23,8 @@ export const enum node_kind {
 	link = 12,
 	image = 13,
 	block_quote = 14,
+	list = 15,
+	list_item = 16,
 }
 
 /**
@@ -75,6 +77,10 @@ export const kind_to_string = (kind: node_kind): string => {
 			return 'image';
 		case node_kind.block_quote:
 			return 'block_quote';
+		case node_kind.list:
+			return 'list';
+		case node_kind.list_item:
+			return 'list_item';
 	}
 };
 
@@ -148,6 +154,8 @@ export class node_buffer {
 			node_kind.link,
 			node_kind.image,
 			node_kind.block_quote,
+			node_kind.list,
+			node_kind.list_item,
 		];
 
 		this._size = 0;
@@ -337,6 +345,69 @@ export class node_buffer {
 
 	pop(): void {
 		this._size -= 1;
+	}
+
+	/**
+	 * Remove a node from the tree and reparent its children to its parent.
+	 * The node is effectively "unwrapped" — its children take its place
+	 * in the parent's child list.
+	 */
+	unwrap_node(index: number): void {
+		const parent = this.parents[index];
+		const first_child = this.children_starts[index];
+
+		if (first_child === 0xffffffff) {
+			// No children — remove from sibling chain
+			const prev_sib = this.prev_siblings[index];
+			const next_sib = this.next_siblings[index];
+			if (prev_sib !== 0xffffffff) {
+				this.next_siblings[prev_sib] = next_sib;
+			} else if (parent !== 0xffffffff) {
+				this.children_starts[parent] = next_sib;
+			}
+			if (next_sib !== 0xffffffff) {
+				this.prev_siblings[next_sib] = prev_sib;
+			}
+			return;
+		}
+
+		// Reparent all children and find last child
+		let child = first_child;
+		let last_child = first_child;
+		while (child !== 0xffffffff && this.parents[child] === index) {
+			this.parents[child] = parent;
+			last_child = child;
+			child = this.next_siblings[child];
+		}
+
+		// Splice children into parent's child list where this node was
+		const prev_sib = this.prev_siblings[index];
+		const next_sib = this.next_siblings[last_child] !== 0xffffffff &&
+			this.parents[this.next_siblings[last_child]] === index
+			? 0xffffffff
+			: this.next_siblings[last_child];
+
+		// The actual next sibling of the unwrapped node (not of last_child)
+		const node_next = this.next_siblings[index];
+
+		if (prev_sib !== 0xffffffff) {
+			this.next_siblings[prev_sib] = first_child;
+			this.prev_siblings[first_child] = prev_sib;
+		} else if (parent !== 0xffffffff) {
+			this.children_starts[parent] = first_child;
+			this.prev_siblings[first_child] = 0xffffffff;
+		}
+
+		// Link last child to the unwrapped node's next sibling
+		if (node_next !== 0xffffffff && node_next !== first_child) {
+			this.next_siblings[last_child] = node_next;
+			this.prev_siblings[node_next] = last_child;
+		} else {
+			this.next_siblings[last_child] = 0xffffffff;
+		}
+
+		// Clear the unwrapped node's links
+		this.children_starts[index] = 0xffffffff;
 	}
 
 	/**
