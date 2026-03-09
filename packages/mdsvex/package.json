@@ -52,7 +52,7 @@
 		"rehype-toc": "^3.0.1",
 		"remark-autolink-headings": "^6.0.0",
 		"remark-containers": "^1.1.1",
-		"remark-external-links": "^6.0.0",
+		"remark-external-links": "^10.0.0",
 		"remark-frontmatter": "^2.0.0",
 		"remark-parse": "^8.0.2",
 		"remark-rehype": "^7.0.0",
