@@ -89,6 +89,7 @@ export const enum state_kind {
 	strong_emphasis = 14,
 	emphasis = 15,
 	autolink = 16,
+	block_quote = 17,
 }
 
 const fences = Array.from({ length: 20 }, (_, i) =>
@@ -142,6 +143,8 @@ function tokenize(source: string, introspector?: Introspector): {
 	let prev = char_mask.whitespace;
 	let current = classify(source.charCodeAt(cursor));
 	let next = classify(source.charCodeAt(cursor + 1));
+
+	let block_quote_depth = 0;
 
 	function is_heading_start(pos: number): boolean {
 		while (pos < length && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) {
@@ -200,6 +203,49 @@ function tokenize(source: string, introspector?: Introspector): {
 	function is_ascii_punctuation(code: number): boolean {
 		return (code >= 33 && code <= 47) || (code >= 58 && code <= 64) ||
 			(code >= 91 && code <= 96) || (code >= 123 && code <= 126);
+	}
+
+	/**
+	 * Try to skip `depth` levels of block quote markers (`>`) starting at `pos`.
+	 * Each level: skip whitespace, then `>`, then optional space.
+	 * Returns position after stripping, or -1 if markers not found.
+	 */
+	function skip_bq_markers(pos: number, depth: number): number {
+		for (let i = 0; i < depth; i++) {
+			// Skip leading whitespace (indentation is insignificant in PFM)
+			while (pos < length && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) {
+				pos++;
+			}
+
+			if (pos >= length || source.charCodeAt(pos) !== CLOSE_ANGLE_BRACKET) return -1;
+			pos++; // skip `>`
+
+			// Optional single space after `>`
+			if (pos < length && source.charCodeAt(pos) === SPACE) pos++;
+		}
+		return pos;
+	}
+
+	/**
+	 * Check if a block quote starts at position (after optional leading whitespace).
+	 */
+	function is_block_quote_start(pos: number): boolean {
+		while (pos < length && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) {
+			pos++;
+		}
+		return pos < length && source.charCodeAt(pos) === CLOSE_ANGLE_BRACKET;
+	}
+
+	/**
+	 * Check if position is at a blank line (whitespace only until next \n or EOF).
+	 */
+	function is_blank_at_pos(pos: number): boolean {
+		while (pos < length && source.charCodeAt(pos) !== LINEFEED) {
+			const ch = source.charCodeAt(pos);
+			if (ch !== SPACE && ch !== TAB) return false;
+			pos++;
+		}
+		return true;
 	}
 
 	/**
@@ -623,6 +669,20 @@ function tokenize(source: string, introspector?: Introspector): {
 						continue;
 					}
 
+					case CLOSE_ANGLE_BRACKET: {
+						// Block quote: `>` at line start
+						let p = cursor + 1;
+						// Optional space after `>`
+						if (p < length && source.charCodeAt(p) === SPACE) p++;
+
+						block_quote_depth++;
+						const bq_node = nodes.push(node_kind.block_quote, cursor, current_node);
+						node_stack.push(bq_node);
+						states.push(state_kind.block_quote);
+						chomp(p, true);
+						continue;
+					}
+
 					default: {
 						states.push(state_kind.paragraph);
 						node_stack.push(
@@ -636,20 +696,104 @@ function tokenize(source: string, introspector?: Introspector): {
 
 			case state_kind.paragraph: {
 				// Check for paragraph boundaries
-				
-				if (
-					(code === LINEFEED && is_blank_line_after(cursor)) ||
-					!code
-				) {
+				const node_stack_base = 1 + block_quote_depth;
+
+				if (!code) {
 					nodes.set_end(current_node, cursor);
 					states.pop();
-
-					// Clean up node_stack - pop all nodes until we're back to root level
-					while (node_stack.length > 1) {
+					while (node_stack.length > node_stack_base) {
 						node_stack.pop();
 					}
+					continue;
+				}
 
-					// Don't consume newlines — root will emit line_break nodes
+				if (code === LINEFEED && block_quote_depth > 0) {
+					// Inside a block quote — handle `>` stripping and continuation
+					const next_pos = cursor + 1;
+					const stripped = skip_bq_markers(next_pos, block_quote_depth);
+
+					if (stripped !== -1) {
+						// Next line has `>` marker(s)
+						if (is_blank_at_pos(stripped)) {
+							// `>` followed by blank → paragraph boundary inside quote
+							nodes.set_end(current_node, cursor);
+							states.pop();
+							while (node_stack.length > node_stack_base) {
+								node_stack.pop();
+							}
+							continue;
+						}
+						// Check for block-level interrupts after stripping
+						if (is_heading_start(stripped) || is_thematic_break_start(stripped)) {
+							nodes.set_end(current_node, cursor);
+							states.pop();
+							while (node_stack.length > node_stack_base) {
+								node_stack.pop();
+							}
+							continue;
+						}
+						if (
+							source.charCodeAt(stripped) === BACKTICK &&
+							source.charCodeAt(stripped + 1) === BACKTICK &&
+							source.charCodeAt(stripped + 2) === BACKTICK
+						) {
+							nodes.set_end(current_node, cursor);
+							states.pop();
+							while (node_stack.length > node_stack_base) {
+								node_stack.pop();
+							}
+							continue;
+						}
+						// Paragraph continuation — strip `>` markers and continue
+						chomp(stripped, true);
+						states.push(state_kind.inline);
+						continue;
+					}
+
+					// No `>` markers on next line
+					if (is_blank_line_after(cursor)) {
+						// Blank line → end paragraph (block_quote state handles ending)
+						nodes.set_end(current_node, cursor);
+						states.pop();
+						while (node_stack.length > node_stack_base) {
+							node_stack.pop();
+						}
+						continue;
+					}
+					// Check for block-level interrupts that also end the block quote
+					if (is_heading_start(next_pos) || is_thematic_break_start(next_pos)) {
+						nodes.set_end(current_node, cursor);
+						states.pop();
+						while (node_stack.length > node_stack_base) {
+							node_stack.pop();
+						}
+						continue;
+					}
+					if (
+						source.charCodeAt(next_pos) === BACKTICK &&
+						source.charCodeAt(next_pos + 1) === BACKTICK &&
+						source.charCodeAt(next_pos + 2) === BACKTICK
+					) {
+						nodes.set_end(current_node, cursor);
+						states.pop();
+						while (node_stack.length > node_stack_base) {
+							node_stack.pop();
+						}
+						continue;
+					}
+					// Lazy continuation — continue paragraph without `>`
+					chomp();
+					states.push(state_kind.inline);
+					continue;
+				}
+
+				// Standard (non-block-quote) paragraph boundary checks
+				if (code === LINEFEED && is_blank_line_after(cursor)) {
+					nodes.set_end(current_node, cursor);
+					states.pop();
+					while (node_stack.length > node_stack_base) {
+						node_stack.pop();
+					}
 					continue;
 				} else if (
 					code === LINEFEED &&
@@ -659,30 +803,33 @@ function tokenize(source: string, introspector?: Introspector): {
 				) {
 					nodes.set_end(current_node, cursor);
 					states.pop();
-					while (node_stack.length > 1) {
+					while (node_stack.length > node_stack_base) {
 						node_stack.pop();
 					}
-					// Don't consume — root will emit line_break then handle code fence
 					continue;
 				} else if (code === LINEFEED && is_heading_start(cursor + 1)) {
 					nodes.set_end(current_node, cursor);
 					states.pop();
-					while (node_stack.length > 1) {
+					while (node_stack.length > node_stack_base) {
 						node_stack.pop();
 					}
-					// Don't consume — root will emit line_break
 					continue;
 				} else if (code === LINEFEED && is_thematic_break_start(cursor + 1)) {
 					nodes.set_end(current_node, cursor);
 					states.pop();
-					while (node_stack.length > 1) {
+					while (node_stack.length > node_stack_base) {
 						node_stack.pop();
 					}
-					// Don't consume — root will emit line_break
+					continue;
+				} else if (code === LINEFEED && is_block_quote_start(cursor + 1)) {
+					// Block quote interrupts paragraph
+					nodes.set_end(current_node, cursor);
+					states.pop();
+					while (node_stack.length > node_stack_base) {
+						node_stack.pop();
+					}
 					continue;
 				} else if (code === LINEFEED) {
-					// Single newline - continue in paragraph
-					// cursor += 1;
 					chomp();
 					continue;
 				} else {
@@ -891,26 +1038,35 @@ function tokenize(source: string, introspector?: Introspector): {
 					prev & (char_mask.word | char_mask.punctuation) &&
 					next & (char_mask.whitespace | char_mask.punctuation)
 				) {
-					// console.log('strong_emphasis -- strong_emphasis_end');
-					// nodes.set_end(current_node, cursor);
-					// nodes.set_value_end(current_node, cursor);
-					// node_stack.pop();
-
 					const n = node_stack[node_stack.length - 1];
-					// console.log(n);
 					nodes.set_value_end(n, cursor);
 					nodes.set_end(n, cursor + 1);
 					nodes.commit_node(n);
 					states.pop();
 					node_stack.pop();
-					// cursor += 1;
 					chomp();
+				} else if (code === LINEFEED && block_quote_depth > 0) {
+					// Inside block quote — handle `>` stripping for cross-line emphasis
+					const next_pos = cursor + 1;
+					const stripped = skip_bq_markers(next_pos, block_quote_depth);
+
+					if (stripped !== -1 && !is_blank_at_pos(stripped) &&
+						!is_heading_start(stripped) && !is_thematic_break_start(stripped)) {
+						// Continue strong emphasis across `>` line boundary
+						chomp(stripped, true);
+						states.push(state_kind.inline);
+					} else {
+						// Boundary — pop strong emphasis (will be repaired)
+						states.pop();
+						nodes.set_end(current_node, cursor);
+						nodes.set_value_end(current_node, cursor);
+						node_stack.pop();
+					}
+					continue;
 				} else if (
 					code === LINEFEED &&
 					is_blank_line_after(cursor)
 				) {
-					// Paragraph boundary detected! Just pop this state
-					// without chomping, let the previous state handle the newlines
 					states.pop();
 					nodes.set_end(current_node, cursor);
 					nodes.set_value_end(current_node, cursor);
@@ -935,10 +1091,6 @@ function tokenize(source: string, introspector?: Introspector): {
 					node_stack.pop();
 					continue;
 				} else {
-					// console.log('strong_emphasis -- moving to text');
-					// let n = nodes.push(node_kind.text, cursor, current_node);
-					// nodes.set_value_start(n, cursor);
-					// node_stack.push(n);
 					states.push(state_kind.inline);
 				}
 
@@ -958,6 +1110,24 @@ function tokenize(source: string, introspector?: Introspector): {
 					states.pop();
 					node_stack.pop();
 					chomp();
+				} else if (code === LINEFEED && block_quote_depth > 0) {
+					// Inside block quote — handle `>` stripping for cross-line emphasis
+					const next_pos = cursor + 1;
+					const stripped = skip_bq_markers(next_pos, block_quote_depth);
+
+					if (stripped !== -1 && !is_blank_at_pos(stripped) &&
+						!is_heading_start(stripped) && !is_thematic_break_start(stripped)) {
+						// Continue emphasis across `>` line boundary
+						chomp(stripped, true);
+						states.push(state_kind.inline);
+					} else {
+						// Boundary — pop emphasis (will be repaired)
+						states.pop();
+						nodes.set_end(current_node, cursor);
+						nodes.set_value_end(current_node, cursor);
+						node_stack.pop();
+					}
+					continue;
 				} else if (
 					code === LINEFEED &&
 					is_blank_line_after(cursor)
@@ -992,6 +1162,194 @@ function tokenize(source: string, introspector?: Introspector): {
 				continue;
 			}
 
+			case state_kind.block_quote: {
+				// Block quote container state — dispatches inner content like root.
+				// Active at the beginning of each logical line inside the block quote.
+				if (!code) {
+					// EOF — end block quote
+					nodes.set_end(current_node, cursor);
+					states.pop();
+					node_stack.pop();
+					block_quote_depth--;
+					continue;
+				}
+
+				switch (code) {
+					case LINEFEED: {
+						// End of a line inside the block quote.
+						// Check if next line continues the quote.
+						const next_pos = cursor + 1;
+						const stripped = skip_bq_markers(next_pos, 1);
+
+						if (stripped !== -1) {
+							// Next line has `>` marker
+							if (is_blank_at_pos(stripped)) {
+								// `>` followed by blank content → blank line inside quote
+								const n = nodes.push(node_kind.line_break, cursor, current_node);
+								nodes.set_end(n, stripped);
+								chomp(stripped, true);
+								continue;
+							}
+							// Non-blank content after `>` → strip and continue dispatching
+							chomp(stripped, true);
+							continue;
+						}
+
+						// No `>` on next line → end block quote
+						nodes.set_end(current_node, cursor);
+						states.pop();
+						node_stack.pop();
+						block_quote_depth--;
+						continue;
+					}
+
+					case SPACE:
+					case TAB: {
+						// Skip leading whitespace inside block quote content
+						chomp();
+						continue;
+					}
+
+					case OCTOTHERP: {
+						// Heading inside block quote (same logic as root)
+						let hash_count = 1;
+						let pos = cursor + 1;
+						while (pos < length && source.charCodeAt(pos) === OCTOTHERP) {
+							hash_count++;
+							pos++;
+						}
+
+						if (hash_count > 6) {
+							states.push(state_kind.paragraph);
+							node_stack.push(
+								nodes.push(node_kind.paragraph, cursor, current_node)
+							);
+							continue;
+						}
+
+						const after_hash = source.charCodeAt(pos);
+						if (
+							pos < length &&
+							after_hash !== SPACE &&
+							after_hash !== TAB &&
+							after_hash !== LINEFEED
+						) {
+							states.push(state_kind.paragraph);
+							node_stack.push(
+								nodes.push(node_kind.paragraph, cursor, current_node)
+							);
+							continue;
+						}
+
+						// Valid heading
+						let content_start = pos;
+						if (
+							pos < length &&
+							(after_hash === SPACE || after_hash === TAB)
+						) {
+							content_start++;
+							while (
+								content_start < length &&
+								(source.charCodeAt(content_start) === SPACE ||
+									source.charCodeAt(content_start) === TAB)
+							) {
+								content_start++;
+							}
+						}
+
+						// Scan to end of line
+						let line_end = content_start;
+						while (
+							line_end < length &&
+							source.charCodeAt(line_end) !== LINEFEED
+						) {
+							line_end++;
+						}
+
+						// Trim trailing whitespace from value
+						let value_end = line_end;
+						while (
+							value_end > content_start &&
+							(source.charCodeAt(value_end - 1) === SPACE ||
+								source.charCodeAt(value_end - 1) === TAB)
+						) {
+							value_end--;
+						}
+
+						const heading_end =
+							line_end < length ? line_end : line_end;
+
+						const n = nodes.push(
+							node_kind.heading,
+							cursor,
+							current_node,
+							hash_count
+						);
+						nodes.set_value_start(n, content_start);
+						nodes.set_value_end(n, value_end);
+						nodes.set_end(n, heading_end);
+
+						// Don't consume the newline — let block_quote handle it
+						chomp(heading_end, true);
+						continue;
+					}
+
+					case BACKTICK: {
+						// Code fence inside block quote
+						states.push(state_kind.code_fence_start);
+						extra = 0;
+						continue;
+					}
+
+					case ASTERISK:
+					case DASH:
+					case UNDERSCORE: {
+						if (is_thematic_break_start(cursor)) {
+							let line_end = cursor;
+							while (line_end < length && source.charCodeAt(line_end) !== LINEFEED) {
+								line_end++;
+							}
+							const break_end = line_end < length ? line_end : line_end;
+
+							const n = nodes.push(node_kind.thematic_break, cursor, current_node);
+							nodes.set_end(n, break_end);
+
+							chomp(break_end, true);
+							continue;
+						}
+						// Not a thematic break, start paragraph
+						states.push(state_kind.paragraph);
+						node_stack.push(
+							nodes.push(node_kind.paragraph, cursor, current_node)
+						);
+						continue;
+					}
+
+					case CLOSE_ANGLE_BRACKET: {
+						// Nested block quote: `> > text`
+						let p = cursor + 1;
+						if (p < length && source.charCodeAt(p) === SPACE) p++;
+
+						block_quote_depth++;
+						const bq_node = nodes.push(node_kind.block_quote, cursor, current_node);
+						node_stack.push(bq_node);
+						// Stay in block_quote state (reuse for nested)
+						states.push(state_kind.block_quote);
+						chomp(p, true);
+						continue;
+					}
+
+					default: {
+						// Start paragraph inside block quote
+						states.push(state_kind.paragraph);
+						node_stack.push(
+							nodes.push(node_kind.paragraph, cursor, current_node)
+						);
+						continue;
+					}
+				}
+			}
+
 						case state_kind.inline: {
 				// Process inline content
 				switch (code) {
@@ -1002,6 +1360,11 @@ function tokenize(source: string, introspector?: Introspector): {
 						continue;
 					}
 					case LINEFEED: {
+						if (block_quote_depth > 0) {
+							// Inside block quote — pop inline, let parent handle `>` stripping
+							states.pop();
+							continue;
+						}
 						if (is_blank_line_after(cursor)) {
 							// Paragraph boundary detected! Just pop this state
 							// without chomping, let the previous state handle the newlines
@@ -1011,6 +1374,9 @@ function tokenize(source: string, introspector?: Introspector): {
 							states.pop();
 							continue;
 						} else if (is_thematic_break_start(cursor + 1)) {
+							states.pop();
+							continue;
+						} else if (is_block_quote_start(cursor + 1)) {
 							states.pop();
 							continue;
 						} else {
@@ -1232,6 +1598,16 @@ function tokenize(source: string, introspector?: Introspector): {
 					}
 				}
 
+				if (code === LINEFEED && block_quote_depth > 0) {
+					// Inside block quote: end text node at newline
+					// Let parent (emphasis/paragraph) handle `>` stripping
+					states.pop();
+					nodes.set_end(current_node, cursor);
+					nodes.set_value_end(current_node, cursor);
+					node_stack.pop();
+					continue;
+				}
+
 				if (!code || (code === LINEFEED && is_blank_line_after(cursor))) {
 					states.pop();
 
@@ -1254,6 +1630,17 @@ function tokenize(source: string, introspector?: Introspector): {
 				} else if (
 					code === LINEFEED &&
 					is_thematic_break_start(cursor + 1)
+				) {
+					states.pop();
+
+					nodes.set_end(current_node, cursor);
+					nodes.set_value_end(current_node, cursor);
+					node_stack.pop();
+
+					continue;
+				} else if (
+					code === LINEFEED &&
+					is_block_quote_start(cursor + 1)
 				) {
 					states.pop();
 

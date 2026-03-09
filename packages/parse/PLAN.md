@@ -1,13 +1,13 @@
 # PFM Parser — Implementation Plan
 
-> **Generated:** 2026-03-07 | **Updated:** 2026-03-09 | **Status:** WIP (Phase 4 complete)
+> **Generated:** 2026-03-07 | **Updated:** 2026-03-09 | **Status:** WIP (Phase 5 in progress)
 
 ## Current State Summary
 
 ### Test Results (as of now)
-- **Passing:** 271 | **Failing:** 0 | **Todo/Skipped:** 29
-- **Total test examples:** 300
-- **Progress:** Phase 4 complete. Backslash escapes, autolinks, inline links/images produce proper nodes. (264→271 passing, 0 failing)
+- **Passing:** 291 | **Failing:** 0 | **Todo/Skipped:** 31
+- **Total test examples:** 322
+- **Progress:** Phase 5 started. Block quotes implemented with full nesting, lazy continuation, and paragraph interruption. (271→291 passing, 0 failing)
 
 ### What's Implemented
 
@@ -22,6 +22,7 @@
 | **Autolinks** | ✅ Working | 15/19 passing, 4 skipped (need HTML nodes). URI `<scheme:path>` and email `<user@domain>` produce `link` nodes with `text` children. Scheme must be 2-32 chars. |
 | **Links** (`[text](url)`) | ✅ Working | 15/15 passing. Inline links produce `link` nodes with `href`/`title` metadata. URL parsing handles balanced parens, titles in quotes, empty URL/text. |
 | **Images** (`![alt](url)`) | ✅ Working | 6/6 passing. Inline images produce `image` nodes with `src`/`title` metadata. Same URL parsing as links. |
+| **Block quotes** (`>`) | ✅ Working | 20/22 passing, 2 skipped. Nesting (`> > >`), lazy continuation, `>` blank lines, paragraph interruption. Skipped: lists inside quotes, indented code inside quotes. |
 | **Link reference defs** | ⚠️ Partial | 4/4 passing. Reference definitions currently treated as text. Full `[text][ref]` and `[text][]` reference link resolution pending. |
 | **Headings** (`#`) | ✅ Working | 23/23 tests passing. Depths 1-6, leading/trailing whitespace handling, heading detection within paragraphs, PFM-specific rules (no trailing `#` stripping, tolerates 4+ leading spaces). |
 | **Thematic breaks** | ✅ Working | 17/24 tests passing, 7 skipped. `***`, `---`, `___` with spaces between markers, paragraph interruption. Skipped: indented code (48), paragraph continuation (49), emphasis (56), lists (57,60,61), setext headings (59). |
@@ -32,7 +33,7 @@
 #### Block-level
 - [x] **ATX headings** — `# heading` (fully implemented, 23 tests)
 - [x] **Blank lines** — semantic blank line handling (5 tests)
-- [ ] **Block quotes** — `>` prefix
+- [x] **Block quotes** — `>` prefix (20 tests, 2 skipped pending lists/indented code)
 - [ ] **Lists** — ordered and unordered, loose/tight
 - [x] **Thematic breaks** — `---`, `***`, `___` (17 tests, 7 skipped pending other features)
 - [ ] **HTML blocks** — raw HTML passthrough
@@ -106,7 +107,7 @@ None! All active tests passing.
 17. **Images** — `![alt](url)`
 
 ### Phase 5: Extended Blocks
-18. **Block quotes** — `>`
+18. ~~**Block quotes** — `>`~~ ✅ Implemented. `block_quote` state acts as container, dispatches inner content like root. Handles `>` stripping, lazy continuation, nesting, paragraph interruption. 20 tests (2 skipped pending lists/indented code).
 19. **Lists** — ordered/unordered, loose/tight
 20. **HTML blocks** — raw HTML passthrough
 21. **Raw HTML** — inline
@@ -149,6 +150,7 @@ packages/parse/
 │   ├── atx_headings.spec.ts
 │   ├── thematic_breaks.spec.ts
 │   ├── blank_lines.spec.ts
+│   ├── block_quotes.spec.ts
 │   ├── paragraphs.spec.skip.ts
 │   ├── parse_markdown_svelte.spec.skip.ts
 │   └── utils.ts          # Test helpers

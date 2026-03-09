@@ -22,6 +22,7 @@ export const enum node_kind {
 	thematic_break = 11,
 	link = 12,
 	image = 13,
+	block_quote = 14,
 }
 
 /**
@@ -72,6 +73,8 @@ export const kind_to_string = (kind: node_kind): string => {
 			return 'link';
 		case node_kind.image:
 			return 'image';
+		case node_kind.block_quote:
+			return 'block_quote';
 	}
 };
 
@@ -144,6 +147,7 @@ export class node_buffer {
 			node_kind.line_break,
 			node_kind.link,
 			node_kind.image,
+			node_kind.block_quote,
 		];
 
 		this._size = 0;
