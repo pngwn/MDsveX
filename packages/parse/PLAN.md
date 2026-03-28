@@ -5,9 +5,9 @@
 ## Current State Summary
 
 ### Test Results (as of now)
-- **Passing:** 300 | **Failing:** 0 | **Todo/Skipped:** 48
-- **Total test examples:** 348
-- **Progress:** Phase 5 continued. Lists partially implemented — basic tight/loose lists, multiple items, different markers, paragraph interruption. (291→300 passing, 0 failing)
+- **Passing:** 329 | **Failing:** 0 | **Todo/Skipped:** 40
+- **Total test examples:** 369
+- **Progress:** Phase 5 continued. Lists: nesting, continuation content, tight/loose, code fences in items all working. Activated tests 316, 319. (305→329 passing, 0 failing)
 
 ### What's Implemented
 
@@ -23,7 +23,7 @@
 | **Links** (`[text](url)`) | ✅ Working | 15/15 passing. Inline links produce `link` nodes with `href`/`title` metadata. URL parsing handles balanced parens, titles in quotes, empty URL/text. |
 | **Images** (`![alt](url)`) | ✅ Working | 6/6 passing. Inline images produce `image` nodes with `src`/`title` metadata. Same URL parsing as links. |
 | **Block quotes** (`>`) | ✅ Working | 20/22 passing, 2 skipped. Nesting (`> > >`), lazy continuation, `>` blank lines, paragraph interruption. Skipped: lists inside quotes, indented code inside quotes. |
-| **Lists** (ordered/unordered) | ⚠️ Partial | 9/26 passing, 17 skipped. Tight/loose, multiple items, different markers, paragraph interruption. Skipped: nesting, continuation content, block-level content in items. |
+| **Lists** (ordered/unordered) | ⚠️ Partial | 17/26 passing, 9 skipped. Tight/loose, multiple items, different markers, paragraph interruption, nesting (3 levels), continuation content, code fences in items, indented continuation, nested+paragraph continuation. Skipped: inconsistent indent (310/311), indent limit (312/313), block-level content in items (308/318/320/321), ref links in items (317). |
 | **Link reference defs** | ⚠️ Partial | 4/4 passing. Reference definitions currently treated as text. Full `[text][ref]` and `[text][]` reference link resolution pending. |
 | **Headings** (`#`) | ✅ Working | 23/23 tests passing. Depths 1-6, leading/trailing whitespace handling, heading detection within paragraphs, PFM-specific rules (no trailing `#` stripping, tolerates 4+ leading spaces). |
 | **Thematic breaks** | ✅ Working | 17/24 tests passing, 7 skipped. `***`, `---`, `___` with spaces between markers, paragraph interruption. Skipped: indented code (48), paragraph continuation (49), emphasis (56), lists (57,60,61), setext headings (59). |

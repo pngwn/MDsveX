@@ -156,6 +156,16 @@ function tokenize(source: string, introspector?: Introspector): {
 	let list_node_idx = 0;
 	let list_is_loose = false;
 	let list_content_offset = 0;
+	let list_marker_indent = 0;
+	let list_state_stack: {
+		marker: number;
+		ordered: boolean;
+		start_num: number;
+		node_idx: number;
+		is_loose: boolean;
+		content_offset: number;
+		marker_indent: number;
+	}[] = [];
 
 	function is_heading_start(pos: number): boolean {
 		while (pos < length && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) {
@@ -365,12 +375,26 @@ function tokenize(source: string, introspector?: Introspector): {
 	 * Start a new list at the current position. Shared by root and list_item states.
 	 */
 	function start_list(marker: NonNullable<ReturnType<typeof try_parse_list_marker>>, parent: number): void {
+		// Save current list state for nesting
+		if (list_depth > 0) {
+			list_state_stack.push({
+				marker: list_marker,
+				ordered: list_ordered,
+				start_num: list_start_num,
+				node_idx: list_node_idx,
+				is_loose: list_is_loose,
+				content_offset: list_content_offset,
+				marker_indent: list_marker_indent,
+			});
+		}
+
 		list_depth++;
 		list_ordered = marker.ordered;
 		list_marker = marker.marker_char;
 		list_start_num = marker.start_num;
 		list_is_loose = false;
 		list_content_offset = marker.content_offset;
+		list_marker_indent = marker.indent;
 
 		const list_idx = nodes.push(node_kind.list, cursor, parent);
 		node_stack.push(list_idx);
@@ -400,13 +424,15 @@ function tokenize(source: string, introspector?: Introspector): {
 			tight: !list_is_loose,
 		});
 
-		// For tight lists, unwrap single-paragraph children from list items
+		// For tight lists, unwrap paragraph children from list items
 		if (!list_is_loose) {
 			const list_node = nodes.get_node(list_idx);
 			for (const item_idx of list_node.children) {
 				const item = nodes.get_node(item_idx);
-				if (item.children.length === 1 && nodes.kind_at(item.children[0]) === node_kind.paragraph) {
-					nodes.unwrap_node(item.children[0]);
+				for (const child_idx of item.children) {
+					if (nodes.kind_at(child_idx) === node_kind.paragraph) {
+						nodes.unwrap_node(child_idx);
+					}
 				}
 			}
 		}
@@ -415,6 +441,18 @@ function tokenize(source: string, introspector?: Introspector): {
 
 		states.pop();
 		list_depth--;
+
+		// Restore outer list state if nested
+		if (list_depth > 0 && list_state_stack.length > 0) {
+			const prev = list_state_stack.pop()!;
+			list_marker = prev.marker;
+			list_ordered = prev.ordered;
+			list_start_num = prev.start_num;
+			list_node_idx = prev.node_idx;
+			list_is_loose = prev.is_loose;
+			list_content_offset = prev.content_offset;
+			list_marker_indent = prev.marker_indent;
+		}
 	}
 
 	/**
@@ -1023,6 +1061,22 @@ function tokenize(source: string, introspector?: Introspector): {
 					}
 					continue;
 				} else if (code === LINEFEED) {
+					// Inside a list item: check if next line (after stripping continuation indent) is a block element
+					if (list_depth > 0) {
+						const np = cursor + 1;
+						let ind = 0;
+						let tp = np;
+						while (tp < length && source.charCodeAt(tp) === SPACE) { ind++; tp++; }
+						if (ind >= list_content_offset) {
+							const stripped = np + list_content_offset;
+							if (stripped < length && try_parse_list_marker(stripped) !== null) {
+								nodes.set_end(current_node, cursor);
+								states.pop();
+								while (node_stack.length > node_stack_base) { node_stack.pop(); }
+								continue;
+							}
+						}
+					}
 					chomp();
 					continue;
 				} else {
@@ -1157,17 +1211,26 @@ function tokenize(source: string, introspector?: Introspector): {
 			}
 
 			case state_kind.code_fence_text_end: {
-				if (cursor >= length) {
-					nodes.set_end(current_node, length);
-					nodes.gently_set_value_end(current_node, length);
-					node_stack.pop();
-					states.pop();
-				} else if (code !== BACKTICK) {
+				if (cursor >= length || code === LINEFEED) {
+					// End of closing fence line (or EOF)
 					nodes.set_end(current_node, cursor);
 					node_stack.pop();
+					states.pop();
+					chomp();
+					continue;
 				}
-				// cursor += 1;
-				chomp();
+				if (code === BACKTICK) {
+					// Extra backtick on closing fence line — skip
+					chomp();
+					continue;
+				}
+				// Non-backtick trailing content — set end here, skip to end of line
+				nodes.set_end(current_node, cursor);
+				let ep = cursor;
+				while (ep < length && source.charCodeAt(ep) !== LINEFEED) ep++;
+				node_stack.pop();
+				states.pop();
+				chomp(ep, true);
 				continue;
 			}
 			case state_kind.heading_marker: {
@@ -1555,8 +1618,11 @@ function tokenize(source: string, introspector?: Introspector): {
 					case LINEFEED: {
 						const next_pos = cursor + 1;
 
-						// Check for blank line
-						if (next_pos >= length || is_blank_at_pos(next_pos)) {
+						// Check for blank line: next line is blank, OR current \n is itself
+						// a blank line (preceded by \n or start of input — happens after
+						// block elements like code fences return to list_item)
+						const cur_is_blank = cursor === 0 || source.charCodeAt(cursor - 1) === LINEFEED;
+						if (next_pos >= length || cur_is_blank || is_blank_at_pos(next_pos)) {
 							// Skip all consecutive blank lines
 							let p = next_pos;
 							while (p < length) {
@@ -1568,14 +1634,26 @@ function tokenize(source: string, introspector?: Introspector): {
 							// p now points to first non-blank line (or EOF)
 							if (p < length) {
 								const marker_after = try_parse_list_marker(p);
-								if (marker_after && marker_after.ordered === list_ordered && marker_after.marker_char === list_marker) {
-									// Same list continues after blank — mark as loose
-									list_is_loose = true;
-									nodes.set_end(current_node, cursor);
-									node_stack.pop();
-									const new_item = nodes.push(node_kind.list_item, p, list_node_idx);
-									node_stack.push(new_item);
-									chomp(marker_after.content_start, true);
+								if (marker_after) {
+									if (marker_after.indent >= list_content_offset) {
+										// Nested sub-list after blank — mark loose, start nested
+										list_is_loose = true;
+										chomp(p, true);
+										start_list(marker_after, current_node);
+										continue;
+									}
+									if (marker_after.indent >= list_marker_indent && marker_after.ordered === list_ordered && marker_after.marker_char === list_marker) {
+										// Same list continues after blank — mark as loose
+										list_is_loose = true;
+										nodes.set_end(current_node, cursor);
+										node_stack.pop();
+										const new_item = nodes.push(node_kind.list_item, p, list_node_idx);
+										node_stack.push(new_item);
+										chomp(marker_after.content_start, true);
+										continue;
+									}
+									// Marker belongs to outer list or different type → end this list
+									end_list();
 									continue;
 								}
 
@@ -1599,20 +1677,25 @@ function tokenize(source: string, introspector?: Introspector): {
 							continue;
 						}
 
-						// Check for new list item (same marker type)
+						// Check for list marker on next line
 						const marker = try_parse_list_marker(next_pos);
-						if (marker && marker.ordered === list_ordered && marker.marker_char === list_marker) {
-							// New item in same list
-							nodes.set_end(current_node, cursor);
-							node_stack.pop();
-							const new_item = nodes.push(node_kind.list_item, next_pos, list_node_idx);
-							node_stack.push(new_item);
-							chomp(marker.content_start, true);
-							continue;
-						}
-
-						// Different marker type → end this list
-						if (marker && (marker.ordered !== list_ordered || marker.marker_char !== list_marker)) {
+						if (marker) {
+							if (marker.indent >= list_content_offset) {
+								// Nested sub-list — start within current item
+								chomp(next_pos, true);
+								start_list(marker, current_node);
+								continue;
+							}
+							if (marker.indent >= list_marker_indent && marker.ordered === list_ordered && marker.marker_char === list_marker) {
+								// Same list, new item
+								nodes.set_end(current_node, cursor);
+								node_stack.pop();
+								const new_item = nodes.push(node_kind.list_item, next_pos, list_node_idx);
+								node_stack.push(new_item);
+								chomp(marker.content_start, true);
+								continue;
+							}
+							// Marker belongs to outer list or different type → end this list
 							end_list();
 							continue;
 						}
@@ -1705,6 +1788,13 @@ function tokenize(source: string, introspector?: Introspector): {
 							chomp(break_end, true);
 							continue;
 						}
+						if (code !== UNDERSCORE) {
+							const nested = try_parse_list_marker(cursor);
+							if (nested) {
+								start_list(nested, current_node);
+								continue;
+							}
+						}
 						states.push(state_kind.paragraph);
 						node_stack.push(nodes.push(node_kind.paragraph, cursor, current_node));
 						continue;
@@ -1722,6 +1812,11 @@ function tokenize(source: string, introspector?: Introspector): {
 					}
 
 					default: {
+						const nested = try_parse_list_marker(cursor);
+						if (nested) {
+							start_list(nested, current_node);
+							continue;
+						}
 						states.push(state_kind.paragraph);
 						node_stack.push(nodes.push(node_kind.paragraph, cursor, current_node));
 						continue;
@@ -1760,6 +1855,21 @@ function tokenize(source: string, introspector?: Introspector): {
 							continue;
 						} else if (is_list_item_start_interrupt(cursor + 1)) {
 							states.pop();
+							continue;
+						} else if (list_depth > 0) {
+							// Inside list: check if next line after stripping continuation indent is a block element
+							const np = cursor + 1;
+							let ind = 0;
+							let tp = np;
+							while (tp < length && source.charCodeAt(tp) === SPACE) { ind++; tp++; }
+							if (ind >= list_content_offset) {
+								const stripped = np + list_content_offset;
+								if (stripped < length && try_parse_list_marker(stripped) !== null) {
+									states.pop();
+									continue;
+								}
+							}
+							chomp();
 							continue;
 						} else {
 							// cursor += 1;
@@ -2041,6 +2151,24 @@ function tokenize(source: string, introspector?: Introspector): {
 					nodes.set_value_end(current_node, cursor);
 					node_stack.pop();
 
+					continue;
+				} else if (code === LINEFEED && list_depth > 0) {
+					// Inside list: check if next line after stripping continuation indent is a block element
+					const np = cursor + 1;
+					let ind = 0;
+					let tp = np;
+					while (tp < length && source.charCodeAt(tp) === SPACE) { ind++; tp++; }
+					if (ind >= list_content_offset) {
+						const stripped = np + list_content_offset;
+						if (stripped < length && try_parse_list_marker(stripped) !== null) {
+							states.pop();
+							nodes.set_end(current_node, cursor);
+							nodes.set_value_end(current_node, cursor);
+							node_stack.pop();
+							continue;
+						}
+					}
+					chomp();
 					continue;
 				} else if (code === ASTERISK || code === UNDERSCORE || code === OPEN_ANGLE_BRACKET || code === OPEN_SQUARE_BRACKET || (code === EXCLAMATION_MARK && source.charCodeAt(cursor + 1) === OPEN_SQUARE_BRACKET)) {
 					states.pop();

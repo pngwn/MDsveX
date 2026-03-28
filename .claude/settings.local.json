@@ -34,7 +34,9 @@
       "Read(//Users/peterallen/Projects/mdsvex/packages/pfm-tests/tests/links/$id/**)",
       "Bash(pnpm vitest:*)",
       "Bash(for f in 301 303 305 315)",
-      "Read(//Users/peterallen/Projects/mdsvex/packages/pfm-tests/tests/lists/$f/**)"
+      "Read(//Users/peterallen/Projects/mdsvex/packages/pfm-tests/tests/lists/$f/**)",
+      "Bash(for f in 310 311 312 319 316 317 308 318 320 321 313)",
+      "Bash(echo -n \"=== $f: \")"
     ],
     "deny": []
   }
