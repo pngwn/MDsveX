@@ -4,7 +4,8 @@
   "description": "Benchmarking tools for mdsvex and its parsers.",
   "type": "module",
   "scripts": {
-    "bench": "node --expose-gc ./node_modules/vitest/vitest.mjs bench"
+    "bench": "node --expose-gc ./node_modules/vitest/vitest.mjs bench",
+    "bench:parsers": "node --expose-gc ./node_modules/vitest/vitest.mjs bench --run benchmarks/parser-comparison.bench.ts"
   },
   "repository": {
     "type": "git",
@@ -23,9 +24,15 @@
   },
   "author": "pngwn <hello@pngwn.io>",
   "license": "MIT",
-  "dependencies": {},
   "devDependencies": {
+    "@mdsvex/parse": "workspace:^",
     "@types/node": "^20.12.7",
+    "comark": "^0.1.1",
+    "markdown-exit": "1.0.0-beta.9",
+    "marked": "^17.0.5",
+    "remark": "^15.0.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
     "vitest": "^1.5.0"
   },
   "private": true

@@ -1,5 +1,6 @@
 import {
 	BACKTICK,
+	CARET,
 	CLOSE_BRACE,
 	TILDE,
 	LINEFEED,
@@ -22,16 +23,23 @@ import {
 	COLON,
 	PLUS,
 	DOT,
+	PIPE,
 } from './constants';
 
 import type { parse_options, parse_result, parse_context } from './types';
 import type { Introspector } from './introspector';
+import type { Emitter } from './opcodes';
 import { node_kind } from './utils';
 import { node_buffer, error_collector } from './utils';
+import { TreeBuilder } from './tree_builder';
 export type { parse_options, parse_result } from './types';
 export { node_kind, node_buffer } from './utils';
 export { Introspector } from './introspector';
 export type { introspection_entry } from './introspector';
+export { WireEmitter, WireOp } from './wire_emitter';
+export { PFMDocument, applyBatch, textContent } from './pfm_document';
+export type { PFMNode, PFMHandlers } from './pfm_document';
+export type { Emitter } from './opcodes';
 
 const enum char_mask {
 	whitespace = 1 << 0,
@@ -52,6 +60,12 @@ for (let i = 0; i < char_class_table.length; i += 1) {
 		mask |= char_mask.punctuation;
 	}
 
+	// Classify ~ and ^ as punctuation for strikethrough/superscript flanking
+	if (i === 126 || i === 94) {
+		mask |= char_mask.punctuation;
+		mask &= ~char_mask.word;
+	}
+
 	if (mask === 0) {
 		mask = char_mask.word;
 	}
@@ -61,14 +75,15 @@ for (let i = 0; i < char_class_table.length; i += 1) {
 
 const classify = (code: number): char_mask => {
 	if (Number.isNaN(code)) {
-		return char_mask.whitespace;
+		// NaN means charCodeAt read past the buffer. Return a mask that
+		// satisfies ALL flanking checks so both openers and closers
+		// commit speculatively. Revocation corrects if wrong.
+		return char_mask.whitespace | char_mask.punctuation | char_mask.word;
 	}
 
 	if (code < char_class_table.length) {
 		return char_class_table[code];
 	}
-
-	// console.log('classify', code, 'is not in table', String.fromCharCode(code));
 
 	return char_mask.word;
 };
@@ -93,71 +108,75 @@ export const enum state_kind {
 	autolink = 16,
 	block_quote = 17,
 	list_item = 18,
+	strikethrough = 19,
+	superscript = 20,
+	link_text = 21,
+	table_body = 22,
+	table_row_content = 23,
 }
 
 const fences = Array.from({ length: 20 }, (_, i) =>
 	Array(i).fill('`').join('')
 );
 
-/**
- * Parse markdown that may include Svelte syntax into tokens and nodes.
- * @param input Source markdown string.
- * @param options Parser configuration and reusable storage.
- * @returns Arena-backed parse result and collected tokens.
- */
-export function parse_markdown_svelte(
-	input: string,
-	options: parse_options = {}
-): { nodes: node_buffer; errors: error_collector } {
-	// const token_capacity =
-	// 	options.token_capacity ??
-	// 	Math.max(DEFAULT_TOKEN_CAPACITY, input.length >>> 2);
-	// const error_capacity = options.error_capacity ?? DEFAULT_ERROR_CAPACITY;
-	// console.log('input', input);
-	const { nodes, errors } = tokenize(input, options.introspector);
+interface MarkerResult {
+	indent: number;
+	marker_char: number;
+	ordered: boolean;
+	start_num: number;
+	content_start: number;
+	content_offset: number;
+}
 
-	return { nodes, errors };
+interface LinkResult {
+	text_start: number;
+	text_end: number;
+	url_start: number;
+	url_end: number;
+	title_start: number;
+	title_end: number;
+	end: number;
 }
 
 /**
- * Tokenize the source string and populate token, arena, and error buffers.
- * @param context Shared parsing state.
+ * PFM Parser — state machine that emits opcodes via an Emitter interface.
+ *
+ * Replaces the old closure-based `tokenize()` function. All state-machine
+ * logic is identical; only the output mechanism changes from direct
+ * node_buffer manipulation to Emitter calls.
  */
-function tokenize(source: string, introspector?: Introspector): {
-	nodes: node_buffer;
-	errors: error_collector;
-} {
-	const nodes = new node_buffer(source.length);
+export class PFMParser {
+	// Source
+	private source: string = '';
+	private cursor: number = 0;
+	private finished: boolean = false;
 
-	let node_stack: number[] = [0];
-	const errors = new error_collector(source.length);
-	const length = source.length;
+	// State machine
+	private states: state_kind[] = [state_kind.root];
+	private node_stack: number[] = [0]; // stack of opcode IDs
 
-	const states: state_kind[] = [state_kind.root];
+	// ID generation
+	private next_id: number = 1; // 0 is reserved for root
+	private pending_ids: Set<number> = new Set();
+	private closed_ids: Set<number> = new Set();
+	private node_kinds: Map<number, node_kind> = new Map();
 
-	let prev_cursor = 0;
-	let cursor = 0;
+	// Char classification
+	private prev: number = char_mask.whitespace;
+	private current: number = 0;
+	private next_class: number = 0;
 
-	let extra = 0;
-	let metadata: Record<string, any> = {};
-	let checkpoint_cursor = 0;
-	// console.log('states', states);
-
-	let prev = char_mask.whitespace;
-	let current = classify(source.charCodeAt(cursor));
-	let next = classify(source.charCodeAt(cursor + 1));
-
-	let block_quote_depth = 0;
-
-	let list_depth = 0;
-	let list_marker: number = 0;
-	let list_ordered = false;
-	let list_start_num = 0;
-	let list_node_idx = 0;
-	let list_is_loose = false;
-	let list_content_offset = 0;
-	let list_marker_indent = 0;
-	let list_state_stack: {
+	// Block state
+	private block_quote_depth: number = 0;
+	private list_depth: number = 0;
+	private list_marker: number = 0;
+	private list_ordered: boolean = false;
+	private list_start_num: number = 0;
+	private list_node_id: number = 0;
+	private list_is_loose: boolean = false;
+	private list_content_offset: number = 0;
+	private list_marker_indent: number = 0;
+	private list_state_stack: {
 		marker: number;
 		ordered: boolean;
 		start_num: number;
@@ -167,7 +186,206 @@ function tokenize(source: string, introspector?: Introspector): {
 		marker_indent: number;
 	}[] = [];
 
-	function is_heading_start(pos: number): boolean {
+	// Table state
+	private table_col_count: number = 0;
+	private table_alignments: string[] = [];
+	private table_node_id: number = 0;
+	private table_row_id: number = 0;
+	private table_cell_id: number = 0;
+	private table_cell_col: number = 0;
+	private table_cell_start: number = 0;
+	private table_text_id: number = 0; // 0 = no open text node in current cell
+	private in_table: boolean = false;
+	private inline_range_parse: boolean = false;
+	private table_cell_has_content: boolean = false;
+
+	// Misc
+	private extra: number = 0;
+	private metadata: Record<string, any> = {};
+	private checkpoint_cursor: number = 0;
+	private prev_cursor: number = 0;
+	private loop_without_progress: number = 0;
+
+	// Output
+	private out: Emitter;
+	private errors: error_collector;
+
+	// Introspector (optional)
+	private introspector?: Introspector;
+
+	constructor(emitter: Emitter) {
+		this.out = emitter;
+		this.errors = new error_collector(32);
+	}
+
+	/**
+	 * Parse a complete source string.
+	 * @param source The markdown source to parse.
+	 * @param introspector Optional introspector for debugging.
+	 * @returns Object with error collector.
+	 */
+	/**
+	 * Parse a complete source string (batch mode). Equivalent to
+	 * init() + feed(source) + finish().
+	 */
+	parse(source: string, introspector?: Introspector): { errors: error_collector } {
+		this._init(introspector);
+		this.source = source;
+		this.current = classify(source.charCodeAt(0));
+		this.next_class = classify(source.charCodeAt(1));
+		this.errors = new error_collector(source.length);
+		this.finished = true;
+
+		this._run();
+		this._finalize();
+
+		return { errors: this.errors };
+	}
+
+	/**
+	 * Initialize the parser for incremental feeding. Must be called
+	 * before the first feed() call.
+	 */
+	init(introspector?: Introspector): void {
+		this._init(introspector);
+		this.finished = false;
+	}
+
+	/**
+	 * Feed a chunk of source text. The parser advances as far as it
+	 * can, stalling at line boundaries when lookahead is insufficient.
+	 * Call init() before the first feed().
+	 */
+	feed(chunk: string): void {
+		this.source += chunk;
+		this.current = classify(this.source.charCodeAt(this.cursor));
+		this.next_class = classify(this.source.charCodeAt(this.cursor + 1));
+		this._run();
+	}
+
+	/**
+	 * Signal end-of-input. Finalizes all open nodes and revokes
+	 * pending speculation.
+	 */
+	finish(): { errors: error_collector } {
+		this.finished = true;
+		this._run();
+		this._finalize();
+		return { errors: this.errors };
+	}
+
+	private _init(introspector?: Introspector): void {
+		this.source = '';
+		this.cursor = 0;
+		this.finished = false;
+		this.states = [state_kind.root];
+		this.node_stack = [0];
+		this.next_id = 1;
+		this.pending_ids = new Set();
+		this.closed_ids = new Set();
+		this.node_kinds = new Map();
+		this.prev = char_mask.whitespace;
+		this.current = char_mask.whitespace;
+		this.next_class = char_mask.whitespace;
+		this.block_quote_depth = 0;
+		this.list_depth = 0;
+		this.list_marker = 0;
+		this.list_ordered = false;
+		this.list_start_num = 0;
+		this.list_node_id = 0;
+		this.list_is_loose = false;
+		this.list_content_offset = 0;
+		this.list_marker_indent = 0;
+		this.list_state_stack = [];
+		this.table_col_count = 0;
+		this.table_alignments = [];
+		this.table_node_id = 0;
+		this.table_row_id = 0;
+		this.table_cell_id = 0;
+		this.table_cell_col = 0;
+		this.table_cell_start = 0;
+		this.table_text_id = 0;
+		this.in_table = false;
+		this.inline_range_parse = false;
+		this.table_cell_has_content = false;
+		this.extra = 0;
+		this.metadata = {};
+		this.checkpoint_cursor = 0;
+		this.prev_cursor = 0;
+		this.loop_without_progress = 0;
+		this.errors = new error_collector(64);
+		this.introspector = introspector;
+
+		// Emit the root node open
+		this.out.open(0, node_kind.root, 0, -1, 0, false);
+	}
+
+	// -----------------------------------------------------------
+	// Helpers to emit opcodes
+	// -----------------------------------------------------------
+
+	private emit_open(kind: node_kind, start: number, parent: number, extra = 0, pending = false): number {
+		const id = this.next_id++;
+		this.out.open(id, kind, start, parent, extra, pending);
+		if (pending) this.pending_ids.add(id);
+		this.node_kinds.set(id, kind);
+		return id;
+	}
+
+	private emit_close(id: number, end: number): void {
+		this.out.close(id, end);
+		this.closed_ids.add(id);
+	}
+
+	// -----------------------------------------------------------
+	// chomp — advance cursor and update char classification
+	// -----------------------------------------------------------
+
+	private chomp(count: number = 1, replace: boolean = false): void {
+		if (replace) {
+			this.cursor = count;
+		} else {
+			this.cursor += count;
+		}
+
+		if (count > 1 || replace) {
+			this.prev = classify(this.source.charCodeAt(this.cursor - 1));
+			this.current = classify(this.source.charCodeAt(this.cursor));
+			this.next_class = classify(this.source.charCodeAt(this.cursor + 1));
+		} else {
+			this.prev = this.current;
+			this.current = this.next_class;
+			this.next_class = classify(this.source.charCodeAt(this.cursor + 1));
+		}
+	}
+
+	/**
+	 * Check if there's enough input after a LINEFEED at `pos` to make
+	 * a block-level decision. We need to see the first non-whitespace
+	 * character on the next line (or a \n for blank line detection).
+	 * Returns false if we ran out of buffer before finding it.
+	 */
+	private can_decide_after_lf(pos: number): boolean {
+		const source = this.source;
+		const length = source.length;
+		for (let p = pos + 1; p < length; p++) {
+			const ch = source.charCodeAt(p);
+			if (ch !== SPACE && ch !== TAB) {
+				// Found non-ws. Need one more byte past it so handlers
+				// have enough context (e.g., > needs space after it)
+				return p + 1 < length;
+			}
+		}
+		return false; // only whitespace until end of buffer — need more
+	}
+
+	// -----------------------------------------------------------
+	// Helper predicates (ported from closures)
+	// -----------------------------------------------------------
+
+	private is_heading_start(pos: number): boolean {
+		const source = this.source;
+		const length = source.length;
 		while (pos < length && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) {
 			pos++;
 		}
@@ -182,19 +400,23 @@ function tokenize(source: string, introspector?: Introspector): {
 		return pos >= length || ch === SPACE || ch === TAB || ch === LINEFEED;
 	}
 
-	function is_blank_line_after(pos: number): boolean {
-		// Check if the line after LINEFEED at pos is blank (whitespace-only or EOF)
+	private is_blank_line_after(pos: number): boolean {
+		const source = this.source;
+		const length = source.length;
 		let p = pos + 1;
 		while (p < length && source.charCodeAt(p) !== LINEFEED) {
 			const ch = source.charCodeAt(p);
 			if (ch !== SPACE && ch !== TAB) return false;
 			p++;
 		}
+		// Hit end-of-buffer without \n — not a confirmed blank line in feed mode
+		if (p >= length && !this.finished) return false;
 		return true;
 	}
 
-	function is_thematic_break_start(pos: number): boolean {
-		// Skip leading spaces (0-3 allowed, 4+ is indented code)
+	private is_thematic_break_start(pos: number): boolean {
+		const source = this.source;
+		const length = source.length;
 		let spaces = 0;
 		while (pos < length && source.charCodeAt(pos) === SPACE) {
 			spaces++;
@@ -221,83 +443,68 @@ function tokenize(source: string, introspector?: Introspector): {
 		return count >= 3;
 	}
 
-	function is_ascii_punctuation(code: number): boolean {
+	private is_ascii_punctuation(code: number): boolean {
 		return (code >= 33 && code <= 47) || (code >= 58 && code <= 64) ||
 			(code >= 91 && code <= 96) || (code >= 123 && code <= 126);
 	}
 
-	/**
-	 * Try to skip `depth` levels of block quote markers (`>`) starting at `pos`.
-	 * Each level: skip whitespace, then `>`, then optional space.
-	 * Returns position after stripping, or -1 if markers not found.
-	 */
-	function skip_bq_markers(pos: number, depth: number): number {
+	private skip_bq_markers(pos: number, depth: number): number {
+		const source = this.source;
+		const length = source.length;
 		for (let i = 0; i < depth; i++) {
-			// Skip leading whitespace (indentation is insignificant in PFM)
 			while (pos < length && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) {
 				pos++;
 			}
-
 			if (pos >= length || source.charCodeAt(pos) !== CLOSE_ANGLE_BRACKET) return -1;
-			pos++; // skip `>`
-
-			// Optional single space after `>`
+			pos++;
 			if (pos < length && source.charCodeAt(pos) === SPACE) pos++;
 		}
 		return pos;
 	}
 
-	/**
-	 * Check if a block quote starts at position (after optional leading whitespace).
-	 */
-	function is_block_quote_start(pos: number): boolean {
+	private is_block_quote_start(pos: number): boolean {
+		const source = this.source;
+		const length = source.length;
 		while (pos < length && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) {
 			pos++;
 		}
 		return pos < length && source.charCodeAt(pos) === CLOSE_ANGLE_BRACKET;
 	}
 
-	/**
-	 * Check if position is at a blank line (whitespace only until next \n or EOF).
-	 */
-	function is_blank_at_pos(pos: number): boolean {
+	private is_blank_at_pos(pos: number): boolean {
+		const source = this.source;
+		const length = source.length;
 		while (pos < length && source.charCodeAt(pos) !== LINEFEED) {
 			const ch = source.charCodeAt(pos);
 			if (ch !== SPACE && ch !== TAB) return false;
 			pos++;
 		}
+		if (pos >= length && !this.finished) return false;
 		return true;
 	}
 
-	/**
-	 * Try to parse a list item marker at position.
-	 * Returns marker info or null if no valid marker found.
-	 * Handles: -, *, + (unordered) and digits followed by . or ) (ordered)
-	 */
-	function try_parse_list_marker(pos: number): {
-		indent: number;
-		marker_char: number;
-		ordered: boolean;
-		start_num: number;
-		content_start: number;
-		content_offset: number;
-	} | null {
+	private try_parse_list_marker(pos: number): MarkerResult | null {
+		const source = this.source;
+		const length = source.length;
 		if (pos >= length) return null;
 		const start = pos;
 		let indent = 0;
 
-		// Skip 0-3 spaces of indentation
 		while (pos < length && source.charCodeAt(pos) === SPACE) {
 			indent++;
 			pos++;
 		}
-		if (indent > 3) return null;
+		// PFM: no indent limit (CommonMark limits to 0-3 because 4+ is indented code,
+		// but PFM removes indented code blocks — indentation is insignificant)
 
 		if (pos >= length) return null;
 		const ch = source.charCodeAt(pos);
 
 		// Unordered: -, *, +
 		if (ch === DASH || ch === ASTERISK || ch === PLUS) {
+			// In incremental mode, don't accept a marker at end of buffer —
+			// more characters may follow (e.g. `---` thematic break)
+			if (pos + 1 >= length && !this.finished) return null;
 			const after = source.charCodeAt(pos + 1);
 			if (pos + 1 >= length || after === SPACE || after === TAB || after === LINEFEED) {
 				let content_start = pos + 1;
@@ -328,6 +535,8 @@ function tokenize(source: string, introspector?: Introspector): {
 			const delimiter = source.charCodeAt(pos);
 			if (delimiter !== DOT && delimiter !== CLOSE_PAREN) return null;
 
+			// In incremental mode, don't accept a marker at end of buffer
+			if (pos + 1 >= length && !this.finished) return null;
 			const after = source.charCodeAt(pos + 1);
 			if (pos + 1 >= length || after === SPACE || after === TAB || after === LINEFEED) {
 				let content_start = pos + 1;
@@ -350,19 +559,13 @@ function tokenize(source: string, introspector?: Introspector): {
 		return null;
 	}
 
-	/**
-	 * Check if a list item marker at pos can interrupt the current context.
-	 * At root level: only unordered or ordered-starting-with-1 can interrupt paragraphs.
-	 * Inside a list: any list marker interrupts.
-	 */
-	function is_list_item_start_interrupt(pos: number): boolean {
-		const marker = try_parse_list_marker(pos);
+	private is_list_item_start_interrupt(pos: number): boolean {
+		const source = this.source;
+		const length = source.length;
+		const marker = this.try_parse_list_marker(pos);
 		if (!marker) return false;
-		if (list_depth > 0) return true;
-		// At root (paragraph interruption): ordered must start with 1
+		if (this.list_depth > 0) return true;
 		if (marker.ordered && marker.start_num !== 1) return false;
-		// Must have non-whitespace content after marker to interrupt a paragraph
-		// A bare marker like `*\n` or `- \n` cannot interrupt
 		let p = marker.content_start;
 		while (p < length && source.charCodeAt(p) !== LINEFEED) {
 			if (source.charCodeAt(p) !== SPACE && source.charCodeAt(p) !== TAB) return true;
@@ -371,100 +574,75 @@ function tokenize(source: string, introspector?: Introspector): {
 		return false;
 	}
 
-	/**
-	 * Start a new list at the current position. Shared by root and list_item states.
-	 */
-	function start_list(marker: NonNullable<ReturnType<typeof try_parse_list_marker>>, parent: number): void {
+	private start_list(marker: MarkerResult, parent: number): void {
 		// Save current list state for nesting
-		if (list_depth > 0) {
-			list_state_stack.push({
-				marker: list_marker,
-				ordered: list_ordered,
-				start_num: list_start_num,
-				node_idx: list_node_idx,
-				is_loose: list_is_loose,
-				content_offset: list_content_offset,
-				marker_indent: list_marker_indent,
+		if (this.list_depth > 0) {
+			this.list_state_stack.push({
+				marker: this.list_marker,
+				ordered: this.list_ordered,
+				start_num: this.list_start_num,
+				node_idx: this.list_node_id,
+				is_loose: this.list_is_loose,
+				content_offset: this.list_content_offset,
+				marker_indent: this.list_marker_indent,
 			});
 		}
 
-		list_depth++;
-		list_ordered = marker.ordered;
-		list_marker = marker.marker_char;
-		list_start_num = marker.start_num;
-		list_is_loose = false;
-		list_content_offset = marker.content_offset;
-		list_marker_indent = marker.indent;
+		this.list_depth++;
+		this.list_ordered = marker.ordered;
+		this.list_marker = marker.marker_char;
+		this.list_start_num = marker.start_num;
+		this.list_is_loose = false;
+		this.list_content_offset = marker.content_offset;
+		this.list_marker_indent = marker.indent;
 
-		const list_idx = nodes.push(node_kind.list, cursor, parent);
-		node_stack.push(list_idx);
-		list_node_idx = list_idx;
+		const list_id = this.emit_open(node_kind.list, this.cursor, parent);
+		this.node_stack.push(list_id);
+		this.list_node_id = list_id;
 
-		const item_idx = nodes.push(node_kind.list_item, cursor, list_idx);
-		node_stack.push(item_idx);
+		const item_id = this.emit_open(node_kind.list_item, this.cursor, list_id);
+		this.node_stack.push(item_id);
 
-		states.push(state_kind.list_item);
-		chomp(marker.content_start, true);
+		this.states.push(state_kind.list_item);
+		this.chomp(marker.content_start, true);
 	}
 
-	/**
-	 * End the current list. Sets metadata and pops states/nodes.
-	 */
-	function end_list(): void {
-		// End list_item
-		nodes.set_end(node_stack[node_stack.length - 1], cursor);
-		node_stack.pop();
+	private end_list(): void {
+		// Close list_item
+		const item_id = this.node_stack[this.node_stack.length - 1];
+		this.emit_close(item_id, this.cursor);
+		this.node_stack.pop();
 
-		// End list with metadata
-		const list_idx = node_stack[node_stack.length - 1];
-		nodes.set_end(list_idx, cursor);
-		nodes.set_metadata(list_idx, {
-			ordered: list_ordered,
-			start: list_start_num,
-			tight: !list_is_loose,
-		});
+		// Set list metadata and close
+		const list_id = this.node_stack[this.node_stack.length - 1];
+		this.out.attr(list_id, 'ordered', this.list_ordered);
+		this.out.attr(list_id, 'start', this.list_start_num);
+		this.out.attr(list_id, 'tight', !this.list_is_loose);
+		this.emit_close(list_id, this.cursor);
+		this.node_stack.pop();
 
-		// For tight lists, unwrap paragraph children from list items
-		if (!list_is_loose) {
-			const list_node = nodes.get_node(list_idx);
-			for (const item_idx of list_node.children) {
-				const item = nodes.get_node(item_idx);
-				for (const child_idx of item.children) {
-					if (nodes.kind_at(child_idx) === node_kind.paragraph) {
-						nodes.unwrap_node(child_idx);
-					}
-				}
-			}
-		}
-
-		node_stack.pop();
-
-		states.pop();
-		list_depth--;
+		this.states.pop();
+		this.list_depth--;
 
 		// Restore outer list state if nested
-		if (list_depth > 0 && list_state_stack.length > 0) {
-			const prev = list_state_stack.pop()!;
-			list_marker = prev.marker;
-			list_ordered = prev.ordered;
-			list_start_num = prev.start_num;
-			list_node_idx = prev.node_idx;
-			list_is_loose = prev.is_loose;
-			list_content_offset = prev.content_offset;
-			list_marker_indent = prev.marker_indent;
+		if (this.list_depth > 0 && this.list_state_stack.length > 0) {
+			const prev = this.list_state_stack.pop()!;
+			this.list_marker = prev.marker;
+			this.list_ordered = prev.ordered;
+			this.list_start_num = prev.start_num;
+			this.list_node_id = prev.node_idx;
+			this.list_is_loose = prev.is_loose;
+			this.list_content_offset = prev.content_offset;
+			this.list_marker_indent = prev.marker_indent;
 		}
 	}
 
-	/**
-	 * Try to parse a URI autolink starting after the `<`.
-	 * Returns the end position (after `>`) if successful, or -1.
-	 * URI autolink: scheme (2-32 chars, starts with letter) + `:` + non-space/non-</>
-	 */
-	function try_parse_uri_autolink(pos: number): number {
+	private try_parse_uri_autolink(pos: number): number {
+		const source = this.source;
+		const length = source.length;
 		let p = pos;
 		let ch = source.charCodeAt(p);
 
-		// Scheme must start with a letter
 		if (!((ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122))) return -1;
 		p++;
 
@@ -480,36 +658,30 @@ function tokenize(source: string, introspector?: Introspector): {
 			}
 		}
 
-		// Scheme must be at least 2 chars and followed by `:`
 		if (scheme_len < 2 || source.charCodeAt(p) !== COLON) return -1;
-		p++; // skip `:`
+		p++;
 
-		// URI body: no spaces, no `<`, no `>`
 		while (p < length) {
 			ch = source.charCodeAt(p);
 			if (ch === CLOSE_ANGLE_BRACKET) {
-				return p + 1; // success: end is position after `>`
+				return p + 1;
 			}
 			if (ch <= 0x20 || ch === OPEN_ANGLE_BRACKET) {
-				return -1; // invalid character in URI
+				return -1;
 			}
 			p++;
 		}
 
-		return -1; // no closing `>`
+		return -1;
 	}
 
-	/**
-	 * Try to parse an email autolink starting after the `<`.
-	 * Returns the end position (after `>`) if successful, or -1.
-	 * Email: [a-zA-Z0-9._-]+ @ [a-zA-Z0-9.-]+ (domain must have a dot)
-	 */
-	function try_parse_email_autolink(pos: number): number {
+	private try_parse_email_autolink(pos: number): number {
+		const source = this.source;
+		const length = source.length;
 		let p = pos;
 		let ch: number;
 		const local_start = p;
 
-		// Local part: [a-zA-Z0-9._-]+
 		while (p < length) {
 			ch = source.charCodeAt(p);
 			if ((ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122) ||
@@ -521,7 +693,7 @@ function tokenize(source: string, introspector?: Introspector): {
 		}
 
 		if (p === local_start || source.charCodeAt(p) !== AT) return -1;
-		p++; // skip @
+		p++;
 
 		const domain_start = p;
 		let has_dot = false;
@@ -543,33 +715,19 @@ function tokenize(source: string, introspector?: Introspector): {
 		return p + 1;
 	}
 
-	/**
-	 * Try to parse an inline link starting at `[`.
-	 * Returns link info if `[text](url "title")` pattern found, or null.
-	 */
-	function try_parse_inline_link(pos: number): {
-		text_start: number;
-		text_end: number;
-		url_start: number;
-		url_end: number;
-		title_start: number;
-		title_end: number;
-		end: number;
-	} | null {
+	private try_parse_inline_link(pos: number): LinkResult | null {
+		const source = this.source;
+		const length = source.length;
 		if (source.charCodeAt(pos) !== OPEN_SQUARE_BRACKET) return null;
 
 		let p = pos + 1;
 		let bracket_depth = 1;
 
-		// Find matching ']' with bracket balancing
 		while (p < length && bracket_depth > 0) {
 			const ch = source.charCodeAt(p);
 			if (ch === BACKSLASH && p + 1 < length) {
-				p += 2; // skip escaped char
+				p += 2;
 				continue;
-			}
-			if (ch === LINEFEED) {
-				// Newline inside link text — continue (multi-line link text is ok)
 			}
 			if (ch === OPEN_SQUARE_BRACKET) bracket_depth++;
 			else if (ch === CLOSE_SQUARE_BRACKET) bracket_depth--;
@@ -580,20 +738,17 @@ function tokenize(source: string, introspector?: Introspector): {
 
 		const text_start = pos + 1;
 		const text_end = p;
-		p++; // skip ']'
+		p++;
 
-		// Must be immediately followed by '('
 		if (p >= length || source.charCodeAt(p) !== OPEN_PAREN) return null;
-		p++; // skip '('
+		p++;
 
-		// Skip whitespace (not newlines for now)
 		while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
 
 		let url_start: number, url_end: number;
 
 		if (p < length && source.charCodeAt(p) === OPEN_ANGLE_BRACKET) {
-			// Angle-bracketed destination
-			p++; // skip '<'
+			p++;
 			url_start = p;
 			while (p < length) {
 				const ch = source.charCodeAt(p);
@@ -607,18 +762,16 @@ function tokenize(source: string, introspector?: Introspector): {
 			}
 			if (p >= length || source.charCodeAt(p) !== CLOSE_ANGLE_BRACKET) return null;
 			url_end = p;
-			p++; // skip '>'
+			p++;
 		} else if (p < length && source.charCodeAt(p) === CLOSE_PAREN) {
-			// Empty URL: [text]()
 			url_start = p;
 			url_end = p;
 		} else {
-			// Regular destination — balanced parens, no spaces/control chars
 			url_start = p;
 			let paren_depth = 0;
 			while (p < length) {
 				const ch = source.charCodeAt(p);
-				if (ch <= 0x20) break; // space or control char
+				if (ch <= 0x20) break;
 				if (ch === CLOSE_PAREN) {
 					if (paren_depth === 0) break;
 					paren_depth--;
@@ -634,21 +787,19 @@ function tokenize(source: string, introspector?: Introspector): {
 			url_end = p;
 		}
 
-		// Skip whitespace between URL and optional title
 		while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
 
-		// Check for title
 		let title_start = -1, title_end = -1;
 		if (p < length) {
 			const tc = source.charCodeAt(p);
-			if (tc === 34 || tc === 39 || tc === OPEN_PAREN) { // ", ', (
+			if (tc === 34 || tc === 39 || tc === OPEN_PAREN) {
 				const close_char = tc === OPEN_PAREN ? CLOSE_PAREN : tc;
-				p++; // skip opening
+				p++;
 				title_start = p;
 				while (p < length) {
 					const ch = source.charCodeAt(p);
 					if (ch === close_char) break;
-					if (ch === LINEFEED) return null; // newline in title not allowed
+					if (ch === LINEFEED) return null;
 					if (ch === BACKSLASH && p + 1 < length) {
 						p += 2;
 						continue;
@@ -657,1979 +808,2427 @@ function tokenize(source: string, introspector?: Introspector): {
 				}
 				if (p >= length || source.charCodeAt(p) !== close_char) return null;
 				title_end = p;
-				p++; // skip closing
+				p++;
 			}
 		}
 
-		// Skip trailing whitespace
 		while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
 
-		// Must end with ')'
 		if (p >= length || source.charCodeAt(p) !== CLOSE_PAREN) return null;
-		p++; // skip ')'
+		p++;
 
 		return { text_start, text_end, url_start, url_end, title_start, title_end, end: p };
 	}
 
-	function chomp(count: number = 1, replace: boolean = false) {
-		if (replace) {
-			cursor = count;
-		} else {
-			cursor += count;
+	/**
+	 * Start a heading from a block dispatch state. Validates # count,
+	 * emits open(heading), skips whitespace after #, and pushes
+	 * heading_marker state for streaming content.
+	 */
+	/**
+	 * Returns false if we need to hold back (not enough input).
+	 */
+	private start_heading(parent: number): boolean {
+		const source = this.source;
+		const length = source.length;
+
+		let hash_count = 1;
+		let pos = this.cursor + 1;
+		while (pos < length && source.charCodeAt(pos) === OCTOTHERP) {
+			hash_count++;
+			pos++;
 		}
 
-		if (count > 1 || replace) {
-			prev = classify(source.charCodeAt(cursor - 1));
-			current = classify(source.charCodeAt(cursor));
-			next = classify(source.charCodeAt(cursor + 1));
-		} else {
-			prev = current;
-			current = next;
-			next = classify(source.charCodeAt(cursor + 1));
+		if (hash_count > 6) {
+			this.states.push(state_kind.paragraph);
+			const para_id = this.emit_open(node_kind.paragraph, this.cursor, parent);
+			this.node_stack.push(para_id);
+			return true;
 		}
+
+		// Need to see the character after the hashes to decide
+		// heading (# ) vs paragraph (#text)
+		if (pos >= length && !this.finished) {
+			return false; // hold back
+		}
+
+		const after_hash = source.charCodeAt(pos);
+		if (
+			pos < length &&
+			after_hash !== SPACE &&
+			after_hash !== TAB &&
+			after_hash !== LINEFEED
+		) {
+			this.states.push(state_kind.paragraph);
+			const para_id = this.emit_open(node_kind.paragraph, this.cursor, parent);
+			this.node_stack.push(para_id);
+			return true;
+		}
+
+		// Skip whitespace after #
+		let content_start = pos;
+		if (pos < length && (after_hash === SPACE || after_hash === TAB)) {
+			content_start++;
+			while (
+				content_start < length &&
+				(source.charCodeAt(content_start) === SPACE ||
+					source.charCodeAt(content_start) === TAB)
+			) {
+				content_start++;
+			}
+		}
+
+		// Emit open and value_start — content will stream via heading_marker state
+		const h_id = this.emit_open(node_kind.heading, this.cursor, parent, hash_count);
+		this.out.attr(h_id, 'value_start', content_start);
+		this.node_stack.push(h_id);
+		this.states.push(state_kind.heading_marker);
+		this.chomp(content_start, true);
+		return true;
 	}
 
-	let loop_without_progress = 0;
+	// -----------------------------------------------------------
+	// Main loop
+	// -----------------------------------------------------------
 
-	while (cursor <= length) {
-		introspector?.step(cursor, states);
+	private _run(): void {
+		const source = this.source;
+		const length = source.length;
 
-		const active = states[states.length - 1];
-		const code = source.charCodeAt(cursor);
+		// Reset progress counter — new data may have been fed since last _run()
+		this.loop_without_progress = 0;
 
-		// const current_parent = node_stack[node_stack.length - 2] || 0;
-		const current_node = node_stack[node_stack.length - 1] || 0;
-		
-		// Main loop iteration
-
-		// console.log(
-		// 	'cursor: ',
-		// 	cursor,
-		// 	'char: ',
-		// 	source[cursor],
-		// 	'node_stack: ',
-		// 	node_stack
-
-		// );
-
-		if (cursor === prev_cursor) {
-			loop_without_progress += 1;
-			if (loop_without_progress > 100) {
-				console.error('Infinite loop detected');
+		main_loop: while (this.cursor <= length) {
+			// Stop when we've consumed all available input.
+			if (!this.finished && this.cursor >= length) {
 				break;
 			}
-		} else {
-			loop_without_progress = 0;
-		}
 
-		prev_cursor = cursor;
-
-		// if (prev_cursor === cursor) {
-
-		switch (active) {
-			case state_kind.root: {
-				if (isNaN(code)) {
-					// cursor += 1;
-					chomp();
-					continue;
-				}
-				switch (code) {
-					case LINEFEED: {
-						const n = nodes.push(node_kind.line_break, cursor, current_node);
-						nodes.set_end(n, cursor + 1);
-						chomp();
-						continue;
-					}
-
-					case SPACE:
-					case TAB: {
-						// Check if this is a blank line (whitespace until newline)
-						let pos = cursor;
-						while (pos < length && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) {
-							pos++;
-						}
-						if (pos < length && source.charCodeAt(pos) === LINEFEED) {
-							// Blank line with leading whitespace
-							const n = nodes.push(node_kind.line_break, cursor, current_node);
-							nodes.set_end(n, pos + 1);
-							chomp(pos + 1, true);
-							continue;
-						}
-						// Not a blank line — just skip the whitespace
-						chomp();
-						continue;
-					}
-
-					case OCTOTHERP: {
-						// Count consecutive # characters
-						let hash_count = 1;
-						let pos = cursor + 1;
-						while (pos < length && source.charCodeAt(pos) === OCTOTHERP) {
-							hash_count++;
-							pos++;
-						}
-
-						// Must be 1-6 hashes
-						if (hash_count > 6) {
-							states.push(state_kind.paragraph);
-							node_stack.push(
-								nodes.push(node_kind.paragraph, cursor, current_node)
-							);
-							continue;
-						}
-
-						// Next char must be space, tab, newline, or EOF
-						const after_hash = source.charCodeAt(pos);
-						if (
-							pos < length &&
-							after_hash !== SPACE &&
-							after_hash !== TAB &&
-							after_hash !== LINEFEED
-						) {
-							states.push(state_kind.paragraph);
-							node_stack.push(
-								nodes.push(node_kind.paragraph, cursor, current_node)
-							);
-							continue;
-						}
-
-						// Valid heading — skip whitespace after hashes
-						let content_start = pos;
-						if (
-							pos < length &&
-							(after_hash === SPACE || after_hash === TAB)
-						) {
-							content_start++;
-							while (
-								content_start < length &&
-								(source.charCodeAt(content_start) === SPACE ||
-									source.charCodeAt(content_start) === TAB)
-							) {
-								content_start++;
-							}
-						}
-
-						// Scan to end of line
-						let line_end = content_start;
-						while (
-							line_end < length &&
-							source.charCodeAt(line_end) !== LINEFEED
-						) {
-							line_end++;
-						}
-
-						// Trim trailing whitespace from value
-						let value_end = line_end;
-						while (
-							value_end > content_start &&
-							(source.charCodeAt(value_end - 1) === SPACE ||
-								source.charCodeAt(value_end - 1) === TAB)
-						) {
-							value_end--;
-						}
-
-						const heading_end =
-							line_end < length ? line_end + 1 : line_end;
-
-						const n = nodes.push(
-							node_kind.heading,
-							cursor,
-							current_node,
-							hash_count
-						);
-						nodes.set_value_start(n, content_start);
-						nodes.set_value_end(n, value_end);
-						nodes.set_end(n, heading_end);
-
-						chomp(heading_end, true);
-						continue;
-					}
-
-					case BACKTICK: {
-						states.push(state_kind.code_fence_start);
-						extra = 0;
-						continue;
-					}
-
-					case ASTERISK:
-					case DASH:
-					case UNDERSCORE: {
-						if (is_thematic_break_start(cursor)) {
-							// Scan to end of line
-							let line_end = cursor;
-							while (line_end < length && source.charCodeAt(line_end) !== LINEFEED) {
-								line_end++;
-							}
-							const break_end = line_end < length ? line_end + 1 : line_end;
-
-							const n = nodes.push(node_kind.thematic_break, cursor, current_node);
-							nodes.set_end(n, break_end);
-
-							chomp(break_end, true);
-							continue;
-						}
-						// Check for list marker (-, * but not _)
-						if (code !== UNDERSCORE) {
-							const marker = try_parse_list_marker(cursor);
-							if (marker) {
-								start_list(marker, current_node);
-								continue;
-							}
-						}
-						// Not a thematic break or list, fall through to paragraph
-						states.push(state_kind.paragraph);
-						node_stack.push(
-							nodes.push(node_kind.paragraph, cursor, current_node)
-						);
-						continue;
-					}
-
-					case CLOSE_ANGLE_BRACKET: {
-						// Block quote: `>` at line start
-						let p = cursor + 1;
-						// Optional space after `>`
-						if (p < length && source.charCodeAt(p) === SPACE) p++;
-
-						block_quote_depth++;
-						const bq_node = nodes.push(node_kind.block_quote, cursor, current_node);
-						node_stack.push(bq_node);
-						states.push(state_kind.block_quote);
-						chomp(p, true);
-						continue;
-					}
-
-					default: {
-						// Check for list markers: + or digits (ordered lists)
-						if (code === PLUS || (code >= 48 && code <= 57)) {
-							const marker = try_parse_list_marker(cursor);
-							if (marker) {
-								start_list(marker, current_node);
-								continue;
-							}
-						}
-						states.push(state_kind.paragraph);
-						node_stack.push(
-							nodes.push(node_kind.paragraph, cursor, current_node)
-						);
-
-						continue;
-					}
-				}
-			}
-
-			case state_kind.paragraph: {
-				// Check for paragraph boundaries
-				const node_stack_base = 1 + block_quote_depth + list_depth * 2;
-
-				if (!code) {
-					nodes.set_end(current_node, cursor);
-					states.pop();
-					while (node_stack.length > node_stack_base) {
-						node_stack.pop();
-					}
-					continue;
-				}
-
-				if (code === LINEFEED && block_quote_depth > 0) {
-					// Inside a block quote — handle `>` stripping and continuation
-					const next_pos = cursor + 1;
-					const stripped = skip_bq_markers(next_pos, block_quote_depth);
-
-					if (stripped !== -1) {
-						// Next line has `>` marker(s)
-						if (is_blank_at_pos(stripped)) {
-							// `>` followed by blank → paragraph boundary inside quote
-							nodes.set_end(current_node, cursor);
-							states.pop();
-							while (node_stack.length > node_stack_base) {
-								node_stack.pop();
-							}
-							continue;
-						}
-						// Check for block-level interrupts after stripping
-						if (is_heading_start(stripped) || is_thematic_break_start(stripped)) {
-							nodes.set_end(current_node, cursor);
-							states.pop();
-							while (node_stack.length > node_stack_base) {
-								node_stack.pop();
-							}
-							continue;
-						}
-						if (
-							source.charCodeAt(stripped) === BACKTICK &&
-							source.charCodeAt(stripped + 1) === BACKTICK &&
-							source.charCodeAt(stripped + 2) === BACKTICK
-						) {
-							nodes.set_end(current_node, cursor);
-							states.pop();
-							while (node_stack.length > node_stack_base) {
-								node_stack.pop();
-							}
-							continue;
-						}
-						// Paragraph continuation — strip `>` markers and continue
-						chomp(stripped, true);
-						states.push(state_kind.inline);
-						continue;
-					}
-
-					// No `>` markers on next line
-					if (is_blank_line_after(cursor)) {
-						// Blank line → end paragraph (block_quote state handles ending)
-						nodes.set_end(current_node, cursor);
-						states.pop();
-						while (node_stack.length > node_stack_base) {
-							node_stack.pop();
-						}
-						continue;
-					}
-					// Check for block-level interrupts that also end the block quote
-					if (is_heading_start(next_pos) || is_thematic_break_start(next_pos)) {
-						nodes.set_end(current_node, cursor);
-						states.pop();
-						while (node_stack.length > node_stack_base) {
-							node_stack.pop();
-						}
-						continue;
-					}
-					if (
-						source.charCodeAt(next_pos) === BACKTICK &&
-						source.charCodeAt(next_pos + 1) === BACKTICK &&
-						source.charCodeAt(next_pos + 2) === BACKTICK
-					) {
-						nodes.set_end(current_node, cursor);
-						states.pop();
-						while (node_stack.length > node_stack_base) {
-							node_stack.pop();
-						}
-						continue;
-					}
-					// Lazy continuation — continue paragraph without `>`
-					chomp();
-					states.push(state_kind.inline);
-					continue;
-				}
-
-				// Standard (non-block-quote) paragraph boundary checks
-				if (code === LINEFEED && is_blank_line_after(cursor)) {
-					nodes.set_end(current_node, cursor);
-					states.pop();
-					while (node_stack.length > node_stack_base) {
-						node_stack.pop();
-					}
-					continue;
-				} else if (
-					code === LINEFEED &&
-					source.charCodeAt(cursor + 1) === BACKTICK &&
-					source.charCodeAt(cursor + 2) === BACKTICK &&
-					source.charCodeAt(cursor + 3) === BACKTICK
+			// Revoke pending speculative nodes as soon as we're back at
+			// a block-level state — they'll never close.
+			if (this.pending_ids.size > 0) {
+				const st = this.states[this.states.length - 1];
+				if (
+					st === state_kind.root ||
+					st === state_kind.block_quote ||
+					st === state_kind.list_item
 				) {
-					nodes.set_end(current_node, cursor);
-					states.pop();
-					while (node_stack.length > node_stack_base) {
-						node_stack.pop();
+					for (const id of this.pending_ids) {
+						this.out.revoke(id);
 					}
-					continue;
-				} else if (code === LINEFEED && is_heading_start(cursor + 1)) {
-					nodes.set_end(current_node, cursor);
-					states.pop();
-					while (node_stack.length > node_stack_base) {
-						node_stack.pop();
-					}
-					continue;
-				} else if (code === LINEFEED && is_thematic_break_start(cursor + 1)) {
-					nodes.set_end(current_node, cursor);
-					states.pop();
-					while (node_stack.length > node_stack_base) {
-						node_stack.pop();
-					}
-					continue;
-				} else if (code === LINEFEED && is_block_quote_start(cursor + 1)) {
-					// Block quote interrupts paragraph
-					nodes.set_end(current_node, cursor);
-					states.pop();
-					while (node_stack.length > node_stack_base) {
-						node_stack.pop();
-					}
-					continue;
-				} else if (code === LINEFEED && is_list_item_start_interrupt(cursor + 1)) {
-					// List interrupts paragraph
-					nodes.set_end(current_node, cursor);
-					states.pop();
-					while (node_stack.length > node_stack_base) {
-						node_stack.pop();
-					}
-					continue;
-				} else if (code === LINEFEED) {
-					// Inside a list item: check if next line (after stripping continuation indent) is a block element
-					if (list_depth > 0) {
-						const np = cursor + 1;
-						let ind = 0;
-						let tp = np;
-						while (tp < length && source.charCodeAt(tp) === SPACE) { ind++; tp++; }
-						if (ind >= list_content_offset) {
-							const stripped = np + list_content_offset;
-							if (stripped < length && try_parse_list_marker(stripped) !== null) {
-								nodes.set_end(current_node, cursor);
-								states.pop();
-								while (node_stack.length > node_stack_base) { node_stack.pop(); }
-								continue;
-							}
-						}
-					}
-					chomp();
-					continue;
-				} else {
-					// Non-newline content - enter inline state
-					states.push(state_kind.inline);
-					continue;
+					this.pending_ids.clear();
 				}
 			}
 
-			case state_kind.code_fence_start: {
-				if (code === BACKTICK) {
-					extra += 1;
-					// cursor += 1;
-					chomp();
-					continue;
-				} else if (extra >= 3) {
-					states.pop();
-					states.push(state_kind.code_fence_info);
-					node_stack.push(
-						nodes.push(node_kind.code_fence, cursor - extra, current_node)
-					);
+			this.introspector?.step(this.cursor, this.states);
 
-					metadata.info_start = cursor;
+			const active = this.states[this.states.length - 1];
+			const code = source.charCodeAt(this.cursor);
 
-					continue;
-				} else {
-					states.pop();
-					node_stack.push(
-						nodes.push(node_kind.paragraph, cursor - extra, current_node)
-					);
-					states.push(state_kind.paragraph);
-					// cursor = cursor - extra;
-					chomp(cursor - extra, true);
-					continue;
-				}
-			}
+			const current_node = this.node_stack[this.node_stack.length - 1] || 0;
 
-			case state_kind.code_fence_info: {
-				if (!code) {
-					states.pop();
-
-					nodes.set_end(current_node, length);
-					nodes.set_value_start(current_node, length);
-					nodes.set_value_end(current_node, length);
+			if (this.cursor === this.prev_cursor) {
+				this.loop_without_progress += 1;
+				if (this.loop_without_progress > 100) {
+					console.error('Infinite loop detected');
 					break;
-				} else if (cursor + 1 >= length) {
-					nodes.set_end(current_node, length);
-					nodes.set_value_end(current_node, length);
-					states.pop();
-					continue;
 				}
-				if (code !== LINEFEED) {
-					// cursor += 1;
-					chomp();
-					continue;
-				} else if (cursor >= length) {
-					nodes.set_end(current_node, length);
-					nodes.set_value_end(current_node, length);
-					states.pop();
-					continue;
-				} else {
-					metadata.info_end = cursor;
-					states.pop();
-					states.push(state_kind.code_fence_content);
-					nodes.set_metadata(current_node, {
-						info_start: metadata.info_start,
-						info_end: cursor,
-					});
-					// cursor += 1;
-					chomp();
-
-					nodes.set_value_start(current_node, cursor);
-
-					continue;
-				}
+			} else {
+				this.loop_without_progress = 0;
 			}
 
-			case state_kind.code_fence_content: {
-				// Find closing fence starting from cursor, not cursor-1
-				const index = source.indexOf(fences[extra], cursor);
-				const nl_index = source.lastIndexOf('\n', index);
-				if (cursor >= length || index === -1) {
-					// Set value_end before transitioning
-					nodes.set_value_end(current_node, length);
-					states.pop();
-					states.push(state_kind.code_fence_text_end);
-					// cursor = length;
-					chomp(length, true);
-					continue;
-				}
+			this.prev_cursor = this.cursor;
 
-				let ws = true;
-				let preceding_newline = false;
-
-				for (let i = nl_index; i < index; i++) {
-					if (source.charCodeAt(i) === LINEFEED) {
-						preceding_newline = true;
+			switch (active) {
+				case state_kind.root: {
+					if (isNaN(code)) {
+						this.chomp();
+						continue;
 					}
-					if (
-						source.charCodeAt(i) !== SPACE &&
-						source.charCodeAt(i) !== TAB &&
-						source.charCodeAt(i) !== LINEFEED
-					) {
-						ws = false;
-					}
-				}
+					switch (code) {
+						case LINEFEED: {
+							const id = this.emit_open(node_kind.line_break, this.cursor, current_node);
+							this.emit_close(id, this.cursor + 1);
+							this.chomp();
+							continue;
+						}
 
-				if (!ws || !preceding_newline) {
-					// cursor = index + extra;
-					chomp(index + extra, true);
-					continue;
-				}
-
-				if (index !== -1 && nl_index !== -1 && ws) {
-					if (index + extra <= length) {
-						states.pop();
-						states.push(state_kind.code_fence_text_end);
-						nodes.set_value_end(current_node, nl_index);
-
-						// cursor = index + extra;
-						chomp(index + extra, true);
-					}
-					continue;
-				} else {
-					states.pop();
-					// cursor = length;
-					chomp(length, true);
-					nodes.set_end(current_node, length);
-					nodes.set_value_end(current_node, length);
-					continue;
-				}
-			}
-
-			case state_kind.code_fence_text_end: {
-				if (cursor >= length || code === LINEFEED) {
-					// End of closing fence line (or EOF)
-					nodes.set_end(current_node, cursor);
-					node_stack.pop();
-					states.pop();
-					chomp();
-					continue;
-				}
-				if (code === BACKTICK) {
-					// Extra backtick on closing fence line — skip
-					chomp();
-					continue;
-				}
-				// Non-backtick trailing content — set end here, skip to end of line
-				nodes.set_end(current_node, cursor);
-				let ep = cursor;
-				while (ep < length && source.charCodeAt(ep) !== LINEFEED) ep++;
-				node_stack.pop();
-				states.pop();
-				chomp(ep, true);
-				continue;
-			}
-			case state_kind.heading_marker: {
-				if (code === OCTOTHERP) {
-					// TODO:handle heading markers
-				}
-
-				if (code === SPACE || code === TAB) {
-					if (false) {
-						// TODO: make it a text node and pop
-					}
-
-					// TODO:other wise move to text node and continue
-
-					// const content_start = chomp_whitespace(source, length, cursor);
-					// heading.content_start = content_start;
-					// set_heading_value(heading.content_start, heading.content_start);
-					// extend_heading_span(content_start);
-					// cursor = content_start;
-					// parents.push(heading.node_index);
-					// states.pop();
-					// states.push(state_kind.heading_text);
-					// continue;
-				}
-
-				// TODO: this looks wrong
-				// if (code === LINEFEED || cursor >= length) {
-				// 	if (heading.level === 0) {
-				// 		revert_heading_to_text(cursor);
-				// 		states.pop();
-				// 		states.push(state_kind.text);
-				// 		continue;
-				// 	}
-
-				// 	const heading_end =
-				// 		code === LINEFEED ? Math.min(length, cursor + 1) : cursor;
-				// 	const raw_value_end = cursor;
-				// 	const value_end = trim_trailing_whitespace(
-				// 		heading.content_start,
-				// 		raw_value_end
-				// 	);
-				// 	finalize_heading(heading_end, value_end);
-				// 	states.pop();
-				// 	if (code === LINEFEED) {
-				// 		emit_with_parent(node_kind.line_break, cursor, cursor + 1);
-				// 		cursor += 1;
-				// 		line_start = cursor;
-				// 	}
-				// 	continue;
-				// }
-
-				// revert_heading_to_text(cursor);
-				// states.pop();
-				// states.push(state_kind.text);
-				// continue;
-			}
-
-			case state_kind.strong_emphasis: {
-				if (
-					code === ASTERISK &&
-					prev & (char_mask.word | char_mask.punctuation) &&
-					next & (char_mask.whitespace | char_mask.punctuation)
-				) {
-					const n = node_stack[node_stack.length - 1];
-					nodes.set_value_end(n, cursor);
-					nodes.set_end(n, cursor + 1);
-					nodes.commit_node(n);
-					states.pop();
-					node_stack.pop();
-					chomp();
-				} else if (code === LINEFEED && block_quote_depth > 0) {
-					// Inside block quote — handle `>` stripping for cross-line emphasis
-					const next_pos = cursor + 1;
-					const stripped = skip_bq_markers(next_pos, block_quote_depth);
-
-					if (stripped !== -1 && !is_blank_at_pos(stripped) &&
-						!is_heading_start(stripped) && !is_thematic_break_start(stripped)) {
-						// Continue strong emphasis across `>` line boundary
-						chomp(stripped, true);
-						states.push(state_kind.inline);
-					} else {
-						// Boundary — pop strong emphasis (will be repaired)
-						states.pop();
-						nodes.set_end(current_node, cursor);
-						nodes.set_value_end(current_node, cursor);
-						node_stack.pop();
-					}
-					continue;
-				} else if (
-					code === LINEFEED &&
-					is_blank_line_after(cursor)
-				) {
-					states.pop();
-					nodes.set_end(current_node, cursor);
-					nodes.set_value_end(current_node, cursor);
-					node_stack.pop();
-					continue;
-				} else if (
-					code === LINEFEED &&
-					is_heading_start(cursor + 1)
-				) {
-					states.pop();
-					nodes.set_end(current_node, cursor);
-					nodes.set_value_end(current_node, cursor);
-					node_stack.pop();
-					continue;
-				} else if (
-					code === LINEFEED &&
-					is_thematic_break_start(cursor + 1)
-				) {
-					states.pop();
-					nodes.set_end(current_node, cursor);
-					nodes.set_value_end(current_node, cursor);
-					node_stack.pop();
-					continue;
-				} else {
-					states.push(state_kind.inline);
-				}
-
-				continue;
-			}
-
-			case state_kind.emphasis: {
-				if (
-					code === UNDERSCORE &&
-					prev & (char_mask.word | char_mask.punctuation) &&
-					next & (char_mask.whitespace | char_mask.punctuation)
-				) {
-					const n = node_stack[node_stack.length - 1];
-					nodes.set_value_end(n, cursor);
-					nodes.set_end(n, cursor + 1);
-					nodes.commit_node(n);
-					states.pop();
-					node_stack.pop();
-					chomp();
-				} else if (code === LINEFEED && block_quote_depth > 0) {
-					// Inside block quote — handle `>` stripping for cross-line emphasis
-					const next_pos = cursor + 1;
-					const stripped = skip_bq_markers(next_pos, block_quote_depth);
-
-					if (stripped !== -1 && !is_blank_at_pos(stripped) &&
-						!is_heading_start(stripped) && !is_thematic_break_start(stripped)) {
-						// Continue emphasis across `>` line boundary
-						chomp(stripped, true);
-						states.push(state_kind.inline);
-					} else {
-						// Boundary — pop emphasis (will be repaired)
-						states.pop();
-						nodes.set_end(current_node, cursor);
-						nodes.set_value_end(current_node, cursor);
-						node_stack.pop();
-					}
-					continue;
-				} else if (
-					code === LINEFEED &&
-					is_blank_line_after(cursor)
-				) {
-					states.pop();
-					nodes.set_end(current_node, cursor);
-					nodes.set_value_end(current_node, cursor);
-					node_stack.pop();
-					continue;
-				} else if (
-					code === LINEFEED &&
-					is_heading_start(cursor + 1)
-				) {
-					states.pop();
-					nodes.set_end(current_node, cursor);
-					nodes.set_value_end(current_node, cursor);
-					node_stack.pop();
-					continue;
-				} else if (
-					code === LINEFEED &&
-					is_thematic_break_start(cursor + 1)
-				) {
-					states.pop();
-					nodes.set_end(current_node, cursor);
-					nodes.set_value_end(current_node, cursor);
-					node_stack.pop();
-					continue;
-				} else {
-					states.push(state_kind.inline);
-				}
-
-				continue;
-			}
-
-			case state_kind.block_quote: {
-				// Block quote container state — dispatches inner content like root.
-				// Active at the beginning of each logical line inside the block quote.
-				if (!code) {
-					// EOF — end block quote
-					nodes.set_end(current_node, cursor);
-					states.pop();
-					node_stack.pop();
-					block_quote_depth--;
-					continue;
-				}
-
-				switch (code) {
-					case LINEFEED: {
-						// End of a line inside the block quote.
-						// Check if next line continues the quote.
-						const next_pos = cursor + 1;
-						const stripped = skip_bq_markers(next_pos, 1);
-
-						if (stripped !== -1) {
-							// Next line has `>` marker
-							if (is_blank_at_pos(stripped)) {
-								// `>` followed by blank content → blank line inside quote
-								const n = nodes.push(node_kind.line_break, cursor, current_node);
-								nodes.set_end(n, stripped);
-								chomp(stripped, true);
+						case SPACE:
+						case TAB: {
+							let pos = this.cursor;
+							while (pos < length && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) {
+								pos++;
+							}
+							if (pos < length && source.charCodeAt(pos) === LINEFEED) {
+								const id = this.emit_open(node_kind.line_break, this.cursor, current_node);
+								this.emit_close(id, pos + 1);
+								this.chomp(pos + 1, true);
 								continue;
 							}
-							// Non-blank content after `>` → strip and continue dispatching
-							chomp(stripped, true);
+							this.chomp();
 							continue;
 						}
 
-						// No `>` on next line → end block quote
-						nodes.set_end(current_node, cursor);
-						states.pop();
-						node_stack.pop();
-						block_quote_depth--;
-						continue;
-					}
-
-					case SPACE:
-					case TAB: {
-						// Skip leading whitespace inside block quote content
-						chomp();
-						continue;
-					}
-
-					case OCTOTHERP: {
-						// Heading inside block quote (same logic as root)
-						let hash_count = 1;
-						let pos = cursor + 1;
-						while (pos < length && source.charCodeAt(pos) === OCTOTHERP) {
-							hash_count++;
-							pos++;
-						}
-
-						if (hash_count > 6) {
-							states.push(state_kind.paragraph);
-							node_stack.push(
-								nodes.push(node_kind.paragraph, cursor, current_node)
-							);
+						case OCTOTHERP: {
+							if (!this.start_heading(current_node)) break main_loop;
 							continue;
 						}
 
-						const after_hash = source.charCodeAt(pos);
-						if (
-							pos < length &&
-							after_hash !== SPACE &&
-							after_hash !== TAB &&
-							after_hash !== LINEFEED
-						) {
-							states.push(state_kind.paragraph);
-							node_stack.push(
-								nodes.push(node_kind.paragraph, cursor, current_node)
-							);
+						case BACKTICK: {
+							this.states.push(state_kind.code_fence_start);
+							this.extra = 0;
 							continue;
 						}
 
-						// Valid heading
-						let content_start = pos;
-						if (
-							pos < length &&
-							(after_hash === SPACE || after_hash === TAB)
-						) {
-							content_start++;
-							while (
-								content_start < length &&
-								(source.charCodeAt(content_start) === SPACE ||
-									source.charCodeAt(content_start) === TAB)
-							) {
-								content_start++;
+						case ASTERISK:
+						case DASH:
+						case UNDERSCORE: {
+							// Need 2 bytes of lookahead to distinguish
+							// thematic break (---) from list (- ) from paragraph
+							if (!this.finished && this.cursor + 2 >= length) {
+								break main_loop;
 							}
-						}
+							if (this.is_thematic_break_start(this.cursor)) {
+								let line_end = this.cursor;
+								while (line_end < length && source.charCodeAt(line_end) !== LINEFEED) {
+									line_end++;
+								}
+								const break_end = line_end < length ? line_end + 1 : line_end;
 
-						// Scan to end of line
-						let line_end = content_start;
-						while (
-							line_end < length &&
-							source.charCodeAt(line_end) !== LINEFEED
-						) {
-							line_end++;
-						}
+								const tb_id = this.emit_open(node_kind.thematic_break, this.cursor, current_node);
+								this.emit_close(tb_id, break_end);
 
-						// Trim trailing whitespace from value
-						let value_end = line_end;
-						while (
-							value_end > content_start &&
-							(source.charCodeAt(value_end - 1) === SPACE ||
-								source.charCodeAt(value_end - 1) === TAB)
-						) {
-							value_end--;
-						}
-
-						const heading_end =
-							line_end < length ? line_end : line_end;
-
-						const n = nodes.push(
-							node_kind.heading,
-							cursor,
-							current_node,
-							hash_count
-						);
-						nodes.set_value_start(n, content_start);
-						nodes.set_value_end(n, value_end);
-						nodes.set_end(n, heading_end);
-
-						// Don't consume the newline — let block_quote handle it
-						chomp(heading_end, true);
-						continue;
-					}
-
-					case BACKTICK: {
-						// Code fence inside block quote
-						states.push(state_kind.code_fence_start);
-						extra = 0;
-						continue;
-					}
-
-					case ASTERISK:
-					case DASH:
-					case UNDERSCORE: {
-						if (is_thematic_break_start(cursor)) {
-							let line_end = cursor;
-							while (line_end < length && source.charCodeAt(line_end) !== LINEFEED) {
-								line_end++;
+								this.chomp(break_end, true);
+								continue;
 							}
-							const break_end = line_end < length ? line_end : line_end;
-
-							const n = nodes.push(node_kind.thematic_break, cursor, current_node);
-							nodes.set_end(n, break_end);
-
-							chomp(break_end, true);
-							continue;
-						}
-						// Not a thematic break, start paragraph
-						states.push(state_kind.paragraph);
-						node_stack.push(
-							nodes.push(node_kind.paragraph, cursor, current_node)
-						);
-						continue;
-					}
-
-					case CLOSE_ANGLE_BRACKET: {
-						// Nested block quote: `> > text`
-						let p = cursor + 1;
-						if (p < length && source.charCodeAt(p) === SPACE) p++;
-
-						block_quote_depth++;
-						const bq_node = nodes.push(node_kind.block_quote, cursor, current_node);
-						node_stack.push(bq_node);
-						// Stay in block_quote state (reuse for nested)
-						states.push(state_kind.block_quote);
-						chomp(p, true);
-						continue;
-					}
-
-					default: {
-						// Start paragraph inside block quote
-						states.push(state_kind.paragraph);
-						node_stack.push(
-							nodes.push(node_kind.paragraph, cursor, current_node)
-						);
-						continue;
-					}
-				}
-			}
-
-			case state_kind.list_item: {
-				// Container state for a list item — dispatches inner content like root.
-				if (!code) {
-					// EOF — end list item and list
-					end_list();
-					continue;
-				}
-
-				switch (code) {
-					case LINEFEED: {
-						const next_pos = cursor + 1;
-
-						// Check for blank line: next line is blank, OR current \n is itself
-						// a blank line (preceded by \n or start of input — happens after
-						// block elements like code fences return to list_item)
-						const cur_is_blank = cursor === 0 || source.charCodeAt(cursor - 1) === LINEFEED;
-						if (next_pos >= length || cur_is_blank || is_blank_at_pos(next_pos)) {
-							// Skip all consecutive blank lines
-							let p = next_pos;
-							while (p < length) {
-								if (!is_blank_at_pos(p)) break;
-								while (p < length && source.charCodeAt(p) !== LINEFEED) p++;
-								if (p < length) p++;
-							}
-
-							// p now points to first non-blank line (or EOF)
-							if (p < length) {
-								const marker_after = try_parse_list_marker(p);
-								if (marker_after) {
-									if (marker_after.indent >= list_content_offset) {
-										// Nested sub-list after blank — mark loose, start nested
-										list_is_loose = true;
-										chomp(p, true);
-										start_list(marker_after, current_node);
-										continue;
-									}
-									if (marker_after.indent >= list_marker_indent && marker_after.ordered === list_ordered && marker_after.marker_char === list_marker) {
-										// Same list continues after blank — mark as loose
-										list_is_loose = true;
-										nodes.set_end(current_node, cursor);
-										node_stack.pop();
-										const new_item = nodes.push(node_kind.list_item, p, list_node_idx);
-										node_stack.push(new_item);
-										chomp(marker_after.content_start, true);
-										continue;
-									}
-									// Marker belongs to outer list or different type → end this list
-									end_list();
+							if (code !== UNDERSCORE) {
+								const marker = this.try_parse_list_marker(this.cursor);
+								if (marker) {
+									this.start_list(marker, current_node);
 									continue;
 								}
+							}
+							this.states.push(state_kind.paragraph);
+							const para_id = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+							this.node_stack.push(para_id);
+							continue;
+						}
 
-								// Check for indented continuation content
+						case CLOSE_ANGLE_BRACKET: {
+							let p = this.cursor + 1;
+							if (p < length && source.charCodeAt(p) === SPACE) p++;
+
+							this.block_quote_depth++;
+							const bq_id = this.emit_open(node_kind.block_quote, this.cursor, current_node);
+							this.node_stack.push(bq_id);
+							this.states.push(state_kind.block_quote);
+							this.chomp(p, true);
+							continue;
+						}
+
+						case PIPE: {
+							const result = this.try_start_table(current_node);
+							if (result === false) break main_loop; // hold back
+							if (result === true) continue; // table started
+							// Not a table — fall through to paragraph
+							this.states.push(state_kind.paragraph);
+							const para_id = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+							this.node_stack.push(para_id);
+							continue;
+						}
+
+						default: {
+							if (code === PLUS || (code >= 48 && code <= 57)) {
+								const marker = this.try_parse_list_marker(this.cursor);
+								if (marker) {
+									this.start_list(marker, current_node);
+									continue;
+								}
+							}
+							this.states.push(state_kind.paragraph);
+							const para_id = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+							this.node_stack.push(para_id);
+							continue;
+						}
+					}
+				}
+
+				case state_kind.paragraph: {
+					const node_stack_base = 1 + this.block_quote_depth + this.list_depth * 2;
+
+					if (!code) {
+						if (!this.finished) break main_loop;
+						this.emit_close(current_node, this.cursor);
+						this.states.pop();
+						while (this.node_stack.length > node_stack_base) {
+							this.node_stack.pop();
+						}
+						continue;
+					}
+
+					// At LINEFEED: need to see next line to decide boundary.
+					// Hold back if nothing follows and more input may come.
+					if (code === LINEFEED && !this.finished && !this.can_decide_after_lf(this.cursor)) {
+						break main_loop;
+					}
+
+					if (code === LINEFEED && this.block_quote_depth > 0) {
+						const next_pos = this.cursor + 1;
+						const stripped = this.skip_bq_markers(next_pos, this.block_quote_depth);
+
+						if (stripped !== -1) {
+							if (this.is_blank_at_pos(stripped)) {
+								this.emit_close(current_node, this.cursor);
+								this.states.pop();
+								while (this.node_stack.length > node_stack_base) {
+									this.node_stack.pop();
+								}
+								continue;
+							}
+							if (this.is_heading_start(stripped) || this.is_thematic_break_start(stripped)) {
+								this.emit_close(current_node, this.cursor);
+								this.states.pop();
+								while (this.node_stack.length > node_stack_base) {
+									this.node_stack.pop();
+								}
+								continue;
+							}
+							if (
+								source.charCodeAt(stripped) === BACKTICK &&
+								source.charCodeAt(stripped + 1) === BACKTICK &&
+								source.charCodeAt(stripped + 2) === BACKTICK
+							) {
+								this.emit_close(current_node, this.cursor);
+								this.states.pop();
+								while (this.node_stack.length > node_stack_base) {
+									this.node_stack.pop();
+								}
+								continue;
+							}
+							this.chomp(stripped, true);
+							this.states.push(state_kind.inline);
+							continue;
+						}
+
+						if (this.is_blank_line_after(this.cursor)) {
+							this.emit_close(current_node, this.cursor);
+							this.states.pop();
+							while (this.node_stack.length > node_stack_base) {
+								this.node_stack.pop();
+							}
+							continue;
+						}
+						if (this.is_heading_start(next_pos) || this.is_thematic_break_start(next_pos)) {
+							this.emit_close(current_node, this.cursor);
+							this.states.pop();
+							while (this.node_stack.length > node_stack_base) {
+								this.node_stack.pop();
+							}
+							continue;
+						}
+						if (
+							source.charCodeAt(next_pos) === BACKTICK &&
+							source.charCodeAt(next_pos + 1) === BACKTICK &&
+							source.charCodeAt(next_pos + 2) === BACKTICK
+						) {
+							this.emit_close(current_node, this.cursor);
+							this.states.pop();
+							while (this.node_stack.length > node_stack_base) {
+								this.node_stack.pop();
+							}
+							continue;
+						}
+						this.chomp();
+						this.states.push(state_kind.inline);
+						continue;
+					}
+
+					if (code === LINEFEED && this.is_blank_line_after(this.cursor)) {
+						this.emit_close(current_node, this.cursor);
+						this.states.pop();
+						while (this.node_stack.length > node_stack_base) {
+							this.node_stack.pop();
+						}
+						continue;
+					} else if (
+						code === LINEFEED &&
+						source.charCodeAt(this.cursor + 1) === BACKTICK &&
+						source.charCodeAt(this.cursor + 2) === BACKTICK &&
+						source.charCodeAt(this.cursor + 3) === BACKTICK
+					) {
+						this.emit_close(current_node, this.cursor);
+						this.states.pop();
+						while (this.node_stack.length > node_stack_base) {
+							this.node_stack.pop();
+						}
+						continue;
+					} else if (code === LINEFEED && this.is_heading_start(this.cursor + 1)) {
+						this.emit_close(current_node, this.cursor);
+						this.states.pop();
+						while (this.node_stack.length > node_stack_base) {
+							this.node_stack.pop();
+						}
+						continue;
+					} else if (code === LINEFEED && this.is_thematic_break_start(this.cursor + 1)) {
+						this.emit_close(current_node, this.cursor);
+						this.states.pop();
+						while (this.node_stack.length > node_stack_base) {
+							this.node_stack.pop();
+						}
+						continue;
+					} else if (code === LINEFEED && this.is_block_quote_start(this.cursor + 1)) {
+						this.emit_close(current_node, this.cursor);
+						this.states.pop();
+						while (this.node_stack.length > node_stack_base) {
+							this.node_stack.pop();
+						}
+						continue;
+					} else if (code === LINEFEED && this.is_list_item_start_interrupt(this.cursor + 1)) {
+						this.emit_close(current_node, this.cursor);
+						this.states.pop();
+						while (this.node_stack.length > node_stack_base) {
+							this.node_stack.pop();
+						}
+						continue;
+					} else if (code === LINEFEED) {
+						if (this.list_depth > 0) {
+							const np = this.cursor + 1;
+							let ind = 0;
+							let tp = np;
+							while (tp < length && source.charCodeAt(tp) === SPACE) { ind++; tp++; }
+							if (ind >= this.list_content_offset) {
+								const stripped = np + this.list_content_offset;
+								if (stripped < length && this.try_parse_list_marker(stripped) !== null) {
+									this.emit_close(current_node, this.cursor);
+									this.states.pop();
+									while (this.node_stack.length > node_stack_base) { this.node_stack.pop(); }
+									continue;
+								}
+							}
+						}
+						this.chomp();
+						continue;
+					} else {
+						this.states.push(state_kind.inline);
+						continue;
+					}
+				}
+
+				case state_kind.code_fence_start: {
+					if (code === BACKTICK) {
+						this.extra += 1;
+						this.chomp();
+						continue;
+					} else if (this.extra >= 3) {
+						this.states.pop();
+						this.states.push(state_kind.code_fence_info);
+						const cf_id = this.emit_open(node_kind.code_fence, this.cursor - this.extra, current_node);
+						this.node_stack.push(cf_id);
+
+						this.metadata.info_start = this.cursor;
+
+						continue;
+					} else {
+						this.states.pop();
+						const para_id = this.emit_open(node_kind.paragraph, this.cursor - this.extra, current_node);
+						this.node_stack.push(para_id);
+						this.states.push(state_kind.paragraph);
+						this.chomp(this.cursor - this.extra, true);
+						continue;
+					}
+				}
+
+				case state_kind.code_fence_info: {
+					if (!code && this.finished) {
+						this.states.pop();
+						this.emit_close(current_node, length);
+						this.out.attr(current_node, 'value_start', length);
+						this.out.attr(current_node, 'value_end', length);
+						break;
+					} else if (!code) {
+						break main_loop; // wait for more input
+					} else if (this.cursor + 1 >= length && this.finished) {
+						this.emit_close(current_node, length);
+						this.out.attr(current_node, 'value_end', length);
+						this.states.pop();
+						continue;
+					} else if (this.cursor + 1 >= length) {
+						break main_loop; // wait for more input
+					}
+					if (code !== LINEFEED) {
+						this.chomp();
+						continue;
+					} else if (this.cursor >= length && this.finished) {
+						this.emit_close(current_node, length);
+						this.out.attr(current_node, 'value_end', length);
+						this.states.pop();
+						continue;
+					} else if (this.cursor >= length) {
+						break main_loop;
+					} else {
+						this.metadata.info_end = this.cursor;
+						this.states.pop();
+						this.states.push(state_kind.code_fence_content);
+						this.out.attr(current_node, 'info_start', this.metadata.info_start);
+						this.out.attr(current_node, 'info_end', this.cursor);
+						this.chomp();
+
+						this.out.attr(current_node, 'value_start', this.cursor);
+
+						continue;
+					}
+				}
+
+				case state_kind.code_fence_content: {
+					const index = source.indexOf(fences[this.extra], this.cursor);
+					const nl_index = source.lastIndexOf('\n', index);
+					if (this.cursor >= length || index === -1) {
+						if (!this.finished) {
+							// Closing fence hasn't arrived yet — wait for more input
+							break main_loop;
+						}
+						this.out.attr(current_node, 'value_end', length);
+						this.states.pop();
+						this.states.push(state_kind.code_fence_text_end);
+						this.chomp(length, true);
+						continue;
+					}
+
+					let ws = true;
+					let preceding_newline = false;
+
+					for (let i = nl_index; i < index; i++) {
+						if (source.charCodeAt(i) === LINEFEED) {
+							preceding_newline = true;
+						}
+						if (
+							source.charCodeAt(i) !== SPACE &&
+							source.charCodeAt(i) !== TAB &&
+							source.charCodeAt(i) !== LINEFEED
+						) {
+							ws = false;
+						}
+					}
+
+					if (!ws || !preceding_newline) {
+						this.chomp(index + this.extra, true);
+						continue;
+					}
+
+					if (index !== -1 && nl_index !== -1 && ws) {
+						if (index + this.extra <= length) {
+							this.states.pop();
+							this.states.push(state_kind.code_fence_text_end);
+							this.out.attr(current_node, 'value_end', nl_index);
+
+							this.chomp(index + this.extra, true);
+						}
+						continue;
+					} else {
+						this.states.pop();
+						this.chomp(length, true);
+						this.emit_close(current_node, length);
+						this.out.attr(current_node, 'value_end', length);
+						continue;
+					}
+				}
+
+				case state_kind.code_fence_text_end: {
+					if (this.cursor >= length || code === LINEFEED) {
+						this.emit_close(current_node, this.cursor);
+						this.node_stack.pop();
+						this.states.pop();
+						this.chomp();
+						continue;
+					}
+					if (code === BACKTICK) {
+						this.chomp();
+						continue;
+					}
+					this.emit_close(current_node, this.cursor);
+					let ep = this.cursor;
+					while (ep < length && source.charCodeAt(ep) !== LINEFEED) ep++;
+					this.node_stack.pop();
+					this.states.pop();
+					this.chomp(ep, true);
+					continue;
+				}
+
+				case state_kind.heading_marker: {
+					// Streaming heading content. Accumulate until LINEFEED or EOF.
+					if (code === LINEFEED || isNaN(code)) {
+						// Trim trailing whitespace from value
+						let value_end = this.cursor;
+						while (
+							value_end > 0 &&
+							(source.charCodeAt(value_end - 1) === SPACE ||
+								source.charCodeAt(value_end - 1) === TAB)
+						) {
+							value_end--;
+						}
+						this.out.attr(current_node, 'value_end', value_end);
+						// Close heading without consuming \n — let parent handle it
+						this.emit_close(current_node, this.cursor);
+						this.node_stack.pop();
+						this.states.pop();
+						continue;
+					}
+					// Content character — just advance
+					this.chomp();
+					continue;
+				}
+
+				case state_kind.strong_emphasis: {
+					if (
+						code === ASTERISK &&
+						this.prev & (char_mask.word | char_mask.punctuation) &&
+						this.next_class & (char_mask.whitespace | char_mask.punctuation)
+					) {
+						const n_id = this.node_stack[this.node_stack.length - 1];
+						this.out.attr(n_id, 'value_end', this.cursor);
+						this.emit_close(n_id, this.cursor + 1);
+						this.pending_ids.delete(n_id);
+						this.states.pop();
+						this.node_stack.pop();
+						this.chomp();
+						// Pop trailing inline so parent state sees next char directly
+						if (this.states[this.states.length - 1] === state_kind.inline) {
+							this.states.pop();
+						}
+					} else if (code === LINEFEED && this.block_quote_depth > 0) {
+						const next_pos = this.cursor + 1;
+						const stripped = this.skip_bq_markers(next_pos, this.block_quote_depth);
+
+						if (stripped !== -1 && !this.is_blank_at_pos(stripped) &&
+							!this.is_heading_start(stripped) && !this.is_thematic_break_start(stripped)) {
+							this.chomp(stripped, true);
+							this.states.push(state_kind.inline);
+						} else {
+							this.states.pop();
+							this.emit_close(current_node, this.cursor);
+							this.out.attr(current_node, 'value_end', this.cursor);
+							this.node_stack.pop();
+						}
+						continue;
+					} else if (
+						code === LINEFEED &&
+						this.is_blank_line_after(this.cursor)
+					) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+						continue;
+					} else if (
+						code === LINEFEED &&
+						this.is_heading_start(this.cursor + 1)
+					) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+						continue;
+					} else if (
+						code === LINEFEED &&
+						this.is_thematic_break_start(this.cursor + 1)
+					) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+						continue;
+					} else {
+						this.states.push(state_kind.inline);
+					}
+
+					continue;
+				}
+
+				case state_kind.emphasis: {
+					if (
+						code === UNDERSCORE &&
+						this.prev & (char_mask.word | char_mask.punctuation) &&
+						this.next_class & (char_mask.whitespace | char_mask.punctuation)
+					) {
+						const n_id = this.node_stack[this.node_stack.length - 1];
+						this.out.attr(n_id, 'value_end', this.cursor);
+						this.emit_close(n_id, this.cursor + 1);
+						this.pending_ids.delete(n_id);
+						this.states.pop();
+						this.node_stack.pop();
+						this.chomp();
+						if (this.states[this.states.length - 1] === state_kind.inline) {
+							this.states.pop();
+						}
+					} else if (code === LINEFEED && this.block_quote_depth > 0) {
+						const next_pos = this.cursor + 1;
+						const stripped = this.skip_bq_markers(next_pos, this.block_quote_depth);
+
+						if (stripped !== -1 && !this.is_blank_at_pos(stripped) &&
+							!this.is_heading_start(stripped) && !this.is_thematic_break_start(stripped)) {
+							this.chomp(stripped, true);
+							this.states.push(state_kind.inline);
+						} else {
+							this.states.pop();
+							this.emit_close(current_node, this.cursor);
+							this.out.attr(current_node, 'value_end', this.cursor);
+							this.node_stack.pop();
+						}
+						continue;
+					} else if (
+						code === LINEFEED &&
+						this.is_blank_line_after(this.cursor)
+					) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+						continue;
+					} else if (
+						code === LINEFEED &&
+						this.is_heading_start(this.cursor + 1)
+					) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+						continue;
+					} else if (
+						code === LINEFEED &&
+						this.is_thematic_break_start(this.cursor + 1)
+					) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+						continue;
+					} else {
+						this.states.push(state_kind.inline);
+					}
+
+					continue;
+				}
+
+				case state_kind.strikethrough: {
+					// ~~ is a two-char token — hold back lone ~ at end of buffer
+					if (code === TILDE && !this.finished && this.cursor + 1 >= length) {
+						break main_loop;
+					}
+					// Close: ~~ with right-flanking
+					if (
+						code === TILDE &&
+						source.charCodeAt(this.cursor + 1) === TILDE &&
+						this.prev & (char_mask.word | char_mask.punctuation) &&
+						classify(source.charCodeAt(this.cursor + 2)) & (char_mask.whitespace | char_mask.punctuation)
+					) {
+						const n_id = this.node_stack[this.node_stack.length - 1];
+						this.out.attr(n_id, 'value_end', this.cursor);
+						this.emit_close(n_id, this.cursor + 2);
+						this.pending_ids.delete(n_id);
+						this.states.pop();
+						this.node_stack.pop();
+						this.chomp(2);
+						if (this.states[this.states.length - 1] === state_kind.inline) {
+							this.states.pop();
+						}
+					} else if (
+						code === LINEFEED &&
+						this.is_blank_line_after(this.cursor)
+					) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+						continue;
+					} else if (
+						code === LINEFEED &&
+						(this.is_heading_start(this.cursor + 1) || this.is_thematic_break_start(this.cursor + 1))
+					) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+						continue;
+					} else {
+						this.states.push(state_kind.inline);
+					}
+					continue;
+				}
+
+				case state_kind.superscript: {
+					// Close: ^ with right-flanking
+					if (
+						code === CARET &&
+						this.prev & (char_mask.word | char_mask.punctuation) &&
+						this.next_class & (char_mask.whitespace | char_mask.punctuation)
+					) {
+						const n_id = this.node_stack[this.node_stack.length - 1];
+						this.out.attr(n_id, 'value_end', this.cursor);
+						this.emit_close(n_id, this.cursor + 1);
+						this.pending_ids.delete(n_id);
+						this.states.pop();
+						this.node_stack.pop();
+						this.chomp();
+						if (this.states[this.states.length - 1] === state_kind.inline) {
+							this.states.pop();
+						}
+					} else if (
+						code === LINEFEED &&
+						this.is_blank_line_after(this.cursor)
+					) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+						continue;
+					} else if (
+						code === LINEFEED &&
+						(this.is_heading_start(this.cursor + 1) || this.is_thematic_break_start(this.cursor + 1))
+					) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+						continue;
+					} else {
+						this.states.push(state_kind.inline);
+					}
+					continue;
+				}
+
+				case state_kind.link_text: {
+					// Inside [link text] or ![image alt] — stream content,
+					// watch for closing ]
+					if (code === CLOSE_SQUARE_BRACKET) {
+						// Found ] — need to see what follows to decide
+						const after = this.cursor + 1;
+
+						// If ] is at end of buffer and more input may come,
+						// hold back — ( might arrive next
+						if (after >= length && !this.finished) {
+							break main_loop;
+						}
+
+						if (after < length && source.charCodeAt(after) === OPEN_PAREN) {
+							// Parse the (url "title") part
+							let p = after + 1;
+							// Skip whitespace
+							while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+
+							let url_start = p;
+							let url_end = p;
+
+							// Check for angle-bracket URL
+							if (p < length && source.charCodeAt(p) === OPEN_ANGLE_BRACKET) {
+								p++;
+								url_start = p;
+								while (p < length && source.charCodeAt(p) !== CLOSE_ANGLE_BRACKET && source.charCodeAt(p) !== LINEFEED) p++;
+								if (p < length && source.charCodeAt(p) === CLOSE_ANGLE_BRACKET) {
+									url_end = p;
+									p++;
+								}
+							} else if (p < length && source.charCodeAt(p) === CLOSE_PAREN) {
+								// Empty URL: [text]()
+								url_start = p;
+								url_end = p;
+							} else {
+								// Regular URL — balanced parens, no spaces
+								url_start = p;
+								let paren_depth = 0;
+								while (p < length) {
+									const ch = source.charCodeAt(p);
+									if (ch <= 0x20) break;
+									if (ch === CLOSE_PAREN) { if (paren_depth === 0) break; paren_depth--; }
+									if (ch === OPEN_PAREN) paren_depth++;
+									if (ch === BACKSLASH && p + 1 < length) { p += 2; continue; }
+									p++;
+								}
+								url_end = p;
+							}
+
+							// Skip whitespace
+							while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+
+							// Optional title
+							let title_start = -1;
+							let title_end = -1;
+							if (p < length) {
+								const tc = source.charCodeAt(p);
+								if (tc === 34 || tc === 39 || tc === OPEN_PAREN) {
+									const close_char = tc === OPEN_PAREN ? CLOSE_PAREN : tc;
+									p++;
+									title_start = p;
+									while (p < length && source.charCodeAt(p) !== close_char && source.charCodeAt(p) !== LINEFEED) {
+										if (source.charCodeAt(p) === BACKSLASH && p + 1 < length) { p += 2; continue; }
+										p++;
+									}
+									if (p < length && source.charCodeAt(p) === close_char) {
+										title_end = p;
+										p++;
+									}
+								}
+							}
+
+							// Skip trailing whitespace
+							while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+
+							if (p < length && source.charCodeAt(p) === CLOSE_PAREN) {
+								p++; // skip )
+								// Success — set attrs and close
+								const n_id = current_node;
+								const url = source.slice(url_start, url_end);
+								const is_image = this.node_kinds.get(n_id) === node_kind.image;
+								this.out.attr(n_id, is_image ? 'src' : 'href', url);
+								if (title_start >= 0 && title_end >= 0) {
+									this.out.attr(n_id, 'title', source.slice(title_start, title_end));
+								}
+								this.out.attr(n_id, 'value_end', this.cursor);
+								this.pending_ids.delete(n_id);
+								this.emit_close(n_id, p);
+								this.node_stack.pop();
+								this.states.pop();
+								if (this.states[this.states.length - 1] === state_kind.inline) {
+									this.states.pop();
+								}
+								this.chomp(p, true);
+								continue;
+							}
+
+							// URL parsing didn't find ) — if we hit end of buffer
+							// and more input may come, hold back
+							if (!this.finished && p >= length) {
+								break main_loop;
+							}
+							// ( found but URL is malformed — fall through to revoke
+						}
+
+						// Definitively not a link: ] followed by non-( character,
+						// or malformed URL with all input available. Revoke.
+						this.out.revoke(current_node);
+						this.node_stack.pop();
+						this.states.pop();
+						continue;
+					}
+
+					if (code === LINEFEED && this.is_blank_line_after(this.cursor)) {
+						// Paragraph boundary — revoke link
+						this.out.revoke(current_node);
+						this.node_stack.pop();
+						this.states.pop();
+						continue;
+					}
+
+					// Dispatch inline content inside the link text
+					this.states.push(state_kind.inline);
+					continue;
+				}
+
+				case state_kind.block_quote: {
+					if (!code) {
+						if (!this.finished) break main_loop;
+						this.emit_close(current_node, this.cursor);
+						this.states.pop();
+						this.node_stack.pop();
+						this.block_quote_depth--;
+						continue;
+					}
+
+					switch (code) {
+						case LINEFEED: {
+							if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
+								break main_loop;
+							}
+							const next_pos = this.cursor + 1;
+							const stripped = this.skip_bq_markers(next_pos, 1);
+
+							if (stripped !== -1) {
+								if (this.is_blank_at_pos(stripped)) {
+									const lb_id = this.emit_open(node_kind.line_break, this.cursor, current_node);
+									this.emit_close(lb_id, stripped);
+									this.chomp(stripped, true);
+									continue;
+								}
+								this.chomp(stripped, true);
+								continue;
+							}
+
+							this.emit_close(current_node, this.cursor);
+							this.states.pop();
+							this.node_stack.pop();
+							this.block_quote_depth--;
+							continue;
+						}
+
+						case SPACE:
+						case TAB: {
+							this.chomp();
+							continue;
+						}
+
+						case OCTOTHERP: {
+							if (!this.start_heading(current_node)) break main_loop;
+							continue;
+						}
+
+						case BACKTICK: {
+							this.states.push(state_kind.code_fence_start);
+							this.extra = 0;
+							continue;
+						}
+
+						case ASTERISK:
+						case DASH:
+						case UNDERSCORE: {
+							if (!this.finished && this.cursor + 2 >= length) {
+								break main_loop;
+							}
+							if (this.is_thematic_break_start(this.cursor)) {
+								let line_end = this.cursor;
+								while (line_end < length && source.charCodeAt(line_end) !== LINEFEED) {
+									line_end++;
+								}
+								const break_end = line_end < length ? line_end : line_end;
+
+								const tb_id = this.emit_open(node_kind.thematic_break, this.cursor, current_node);
+								this.emit_close(tb_id, break_end);
+
+								this.chomp(break_end, true);
+								continue;
+							}
+							this.states.push(state_kind.paragraph);
+							const para_id = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+							this.node_stack.push(para_id);
+							continue;
+						}
+
+						case CLOSE_ANGLE_BRACKET: {
+							let p = this.cursor + 1;
+							if (p < length && source.charCodeAt(p) === SPACE) p++;
+
+							this.block_quote_depth++;
+							const bq_id = this.emit_open(node_kind.block_quote, this.cursor, current_node);
+							this.node_stack.push(bq_id);
+							this.states.push(state_kind.block_quote);
+							this.chomp(p, true);
+							continue;
+						}
+
+						case PIPE: {
+							const result = this.try_start_table(current_node);
+							if (result === false) break main_loop;
+							if (result === true) continue;
+							this.states.push(state_kind.paragraph);
+							const para_id = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+							this.node_stack.push(para_id);
+							continue;
+						}
+
+						default: {
+							this.states.push(state_kind.paragraph);
+							const para_id = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+							this.node_stack.push(para_id);
+							continue;
+						}
+					}
+				}
+
+				case state_kind.list_item: {
+					if (!code) {
+						if (!this.finished) break main_loop;
+						this.end_list();
+						continue;
+					}
+
+					switch (code) {
+						case LINEFEED: {
+							const next_pos = this.cursor + 1;
+
+							// In feed mode, if nothing after \n, hold back —
+							// next line hasn't arrived yet
+							if (next_pos >= length && !this.finished) {
+								break main_loop;
+							}
+
+							const cur_is_blank = this.cursor === 0 || source.charCodeAt(this.cursor - 1) === LINEFEED;
+							if (next_pos >= length || cur_is_blank || this.is_blank_at_pos(next_pos)) {
+								let p = next_pos;
+								while (p < length) {
+									if (!this.is_blank_at_pos(p)) break;
+									while (p < length && source.charCodeAt(p) !== LINEFEED) p++;
+									if (p < length) p++;
+								}
+
+								if (p < length) {
+									const marker_after = this.try_parse_list_marker(p);
+									if (marker_after) {
+										if (marker_after.indent >= this.list_content_offset) {
+											this.list_is_loose = true;
+											this.chomp(p, true);
+											this.start_list(marker_after, current_node);
+											continue;
+										}
+										if (marker_after.indent >= this.list_marker_indent && marker_after.ordered === this.list_ordered && marker_after.marker_char === this.list_marker) {
+											this.list_is_loose = true;
+											this.emit_close(current_node, this.cursor);
+											this.node_stack.pop();
+											const new_item_id = this.emit_open(node_kind.list_item, p, this.list_node_id);
+											this.node_stack.push(new_item_id);
+											this.list_content_offset = marker_after.content_offset;
+											this.chomp(marker_after.content_start, true);
+											continue;
+										}
+										this.end_list();
+										continue;
+									}
+
+									let indent_count = 0;
+									let ip = p;
+									while (ip < length && source.charCodeAt(ip) === SPACE) {
+										indent_count++;
+										ip++;
+									}
+									if (indent_count >= this.list_content_offset && ip < length && source.charCodeAt(ip) !== LINEFEED) {
+										this.list_is_loose = true;
+										this.chomp(p + this.list_content_offset, true);
+										continue;
+									}
+								}
+
+								this.end_list();
+								continue;
+							}
+
+							// Check for list marker on next line
+							const marker = this.try_parse_list_marker(next_pos);
+							if (marker) {
+								if (marker.indent >= this.list_content_offset) {
+									this.chomp(next_pos, true);
+									this.start_list(marker, current_node);
+									continue;
+								}
+								if (marker.indent >= this.list_marker_indent && marker.ordered === this.list_ordered && marker.marker_char === this.list_marker) {
+									this.emit_close(current_node, this.cursor);
+									this.node_stack.pop();
+									const new_item_id = this.emit_open(node_kind.list_item, next_pos, this.list_node_id);
+									this.node_stack.push(new_item_id);
+									this.list_content_offset = marker.content_offset;
+									this.chomp(marker.content_start, true);
+									continue;
+								}
+								this.end_list();
+								continue;
+							}
+
+							// Check for block-level content: if indented enough, it's
+							// inside the list item; otherwise it interrupts the list.
+							{
 								let indent_count = 0;
-								let ip = p;
+								let ip = next_pos;
 								while (ip < length && source.charCodeAt(ip) === SPACE) {
 									indent_count++;
 									ip++;
 								}
-								if (indent_count >= list_content_offset && ip < length && source.charCodeAt(ip) !== LINEFEED) {
-									// Continuation content after blank — mark as loose, stay in same item
-									list_is_loose = true;
-									chomp(p + list_content_offset, true);
+								if (indent_count >= this.list_content_offset && ip < length && source.charCodeAt(ip) !== LINEFEED) {
+									// Content indented to list item's content column —
+									// strip indent and continue as list item content
+									this.chomp(next_pos + this.list_content_offset, true);
 									continue;
 								}
 							}
 
-							// Not a same-type marker or continuation (or EOF) → end list
-							end_list();
-							continue;
-						}
-
-						// Check for list marker on next line
-						const marker = try_parse_list_marker(next_pos);
-						if (marker) {
-							if (marker.indent >= list_content_offset) {
-								// Nested sub-list — start within current item
-								chomp(next_pos, true);
-								start_list(marker, current_node);
+							// Block-level interrupts at outer indent level end the list
+							if (this.is_heading_start(next_pos) || this.is_thematic_break_start(next_pos) || this.is_block_quote_start(next_pos)) {
+								this.end_list();
 								continue;
 							}
-							if (marker.indent >= list_marker_indent && marker.ordered === list_ordered && marker.marker_char === list_marker) {
-								// Same list, new item
-								nodes.set_end(current_node, cursor);
-								node_stack.pop();
-								const new_item = nodes.push(node_kind.list_item, next_pos, list_node_idx);
-								node_stack.push(new_item);
-								chomp(marker.content_start, true);
+
+							this.end_list();
+							continue;
+						}
+
+						case SPACE:
+						case TAB: {
+							this.chomp();
+							continue;
+						}
+
+						case OCTOTHERP: {
+							if (!this.start_heading(current_node)) break main_loop;
+							continue;
+						}
+
+						case BACKTICK: {
+							this.states.push(state_kind.code_fence_start);
+							this.extra = 0;
+							continue;
+						}
+
+						case ASTERISK:
+						case DASH:
+						case UNDERSCORE: {
+							if (!this.finished && this.cursor + 2 >= length) {
+								break main_loop;
+							}
+							if (this.is_thematic_break_start(this.cursor)) {
+								let line_end = this.cursor;
+								while (line_end < length && source.charCodeAt(line_end) !== LINEFEED) line_end++;
+								const break_end = line_end < length ? line_end : line_end;
+								const tb_id = this.emit_open(node_kind.thematic_break, this.cursor, current_node);
+								this.emit_close(tb_id, break_end);
+								this.chomp(break_end, true);
 								continue;
 							}
-							// Marker belongs to outer list or different type → end this list
-							end_list();
-							continue;
-						}
-
-						// Check for block-level interrupts
-						if (is_heading_start(next_pos) || is_thematic_break_start(next_pos) || is_block_quote_start(next_pos)) {
-							end_list();
-							continue;
-						}
-
-						// Check for indented continuation content (no blank line)
-						{
-							let indent_count = 0;
-							let ip = next_pos;
-							while (ip < length && source.charCodeAt(ip) === SPACE) {
-								indent_count++;
-								ip++;
+							if (code !== UNDERSCORE) {
+								const nested = this.try_parse_list_marker(this.cursor);
+								if (nested) {
+									if (nested.indent >= this.list_content_offset) {
+										// Nested sub-list inside this item
+										this.start_list(nested, current_node);
+									} else if (nested.indent >= this.list_marker_indent && nested.ordered === this.list_ordered && nested.marker_char === this.list_marker) {
+										// Same list, new sibling item (e.g. after code fence in item)
+										this.emit_close(current_node, this.cursor);
+										this.node_stack.pop();
+										const new_item_id = this.emit_open(node_kind.list_item, this.cursor, this.list_node_id);
+										this.node_stack.push(new_item_id);
+										this.list_content_offset = nested.content_offset;
+										this.chomp(nested.content_start, true);
+									} else {
+										// Marker at outer list level — end this list
+										this.end_list();
+									}
+									continue;
+								}
 							}
-							if (indent_count >= list_content_offset && ip < length && source.charCodeAt(ip) !== LINEFEED) {
-								// Continuation content — stay in same item
-								chomp(next_pos + list_content_offset, true);
-								continue;
-							}
-						}
-
-						// Non-continuation content → end list
-						end_list();
-						continue;
-					}
-
-					case SPACE:
-					case TAB: {
-						chomp();
-						continue;
-					}
-
-					case OCTOTHERP: {
-						let hash_count = 1;
-						let pos = cursor + 1;
-						while (pos < length && source.charCodeAt(pos) === OCTOTHERP) {
-							hash_count++;
-							pos++;
-						}
-						if (hash_count > 6) {
-							states.push(state_kind.paragraph);
-							node_stack.push(nodes.push(node_kind.paragraph, cursor, current_node));
+							this.states.push(state_kind.paragraph);
+							const para_id = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+							this.node_stack.push(para_id);
 							continue;
 						}
-						const after_hash = source.charCodeAt(pos);
-						if (pos < length && after_hash !== SPACE && after_hash !== TAB && after_hash !== LINEFEED) {
-							states.push(state_kind.paragraph);
-							node_stack.push(nodes.push(node_kind.paragraph, cursor, current_node));
+
+						case CLOSE_ANGLE_BRACKET: {
+							let p = this.cursor + 1;
+							if (p < length && source.charCodeAt(p) === SPACE) p++;
+							this.block_quote_depth++;
+							const bq_id = this.emit_open(node_kind.block_quote, this.cursor, current_node);
+							this.node_stack.push(bq_id);
+							this.states.push(state_kind.block_quote);
+							this.chomp(p, true);
 							continue;
 						}
-						let content_start_h = pos;
-						if (pos < length && (after_hash === SPACE || after_hash === TAB)) {
-							content_start_h++;
-							while (content_start_h < length && (source.charCodeAt(content_start_h) === SPACE || source.charCodeAt(content_start_h) === TAB)) {
-								content_start_h++;
-							}
-						}
-						let line_end = content_start_h;
-						while (line_end < length && source.charCodeAt(line_end) !== LINEFEED) line_end++;
-						let value_end = line_end;
-						while (value_end > content_start_h && (source.charCodeAt(value_end - 1) === SPACE || source.charCodeAt(value_end - 1) === TAB)) value_end--;
-						const heading_end = line_end < length ? line_end : line_end;
-						const n = nodes.push(node_kind.heading, cursor, current_node, hash_count);
-						nodes.set_value_start(n, content_start_h);
-						nodes.set_value_end(n, value_end);
-						nodes.set_end(n, heading_end);
-						chomp(heading_end, true);
-						continue;
-					}
 
-					case BACKTICK: {
-						states.push(state_kind.code_fence_start);
-						extra = 0;
-						continue;
-					}
-
-					case ASTERISK:
-					case DASH:
-					case UNDERSCORE: {
-						if (is_thematic_break_start(cursor)) {
-							let line_end = cursor;
-							while (line_end < length && source.charCodeAt(line_end) !== LINEFEED) line_end++;
-							const break_end = line_end < length ? line_end : line_end;
-							const n = nodes.push(node_kind.thematic_break, cursor, current_node);
-							nodes.set_end(n, break_end);
-							chomp(break_end, true);
+						case PIPE: {
+							const result = this.try_start_table(current_node);
+							if (result === false) break main_loop;
+							if (result === true) continue;
+							this.states.push(state_kind.paragraph);
+							const para_id = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+							this.node_stack.push(para_id);
 							continue;
 						}
-						if (code !== UNDERSCORE) {
-							const nested = try_parse_list_marker(cursor);
+
+						default: {
+							const nested = this.try_parse_list_marker(this.cursor);
 							if (nested) {
-								start_list(nested, current_node);
+								if (nested.indent >= this.list_content_offset) {
+									this.start_list(nested, current_node);
+								} else if (nested.indent >= this.list_marker_indent && nested.ordered === this.list_ordered && nested.marker_char === this.list_marker) {
+									this.emit_close(current_node, this.cursor);
+									this.node_stack.pop();
+									const new_item_id = this.emit_open(node_kind.list_item, this.cursor, this.list_node_id);
+									this.node_stack.push(new_item_id);
+									this.list_content_offset = nested.content_offset;
+									this.chomp(nested.content_start, true);
+								} else {
+									this.end_list();
+								}
+								continue;
+							}
+							this.states.push(state_kind.paragraph);
+							const para_id = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+							this.node_stack.push(para_id);
+							continue;
+						}
+					}
+				}
+
+				case state_kind.inline: {
+					// In table cells, | and \n break through all inline content
+					if (this.in_table && (code === PIPE || code === LINEFEED || !code)) {
+						this.states.pop(); // pop inline
+						continue; // let table_row_content handle it
+					}
+					switch (code) {
+						case BACKTICK: {
+							this.states.push(state_kind.code_span_start);
+							this.extra = 0;
+							continue;
+						}
+						case LINEFEED: {
+							// Need to see next line — hold back at end of buffer
+							if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
+								break main_loop;
+							}
+							if (this.block_quote_depth > 0) {
+								this.states.pop();
+								continue;
+							}
+							if (this.is_blank_line_after(this.cursor)) {
+								this.states.pop();
+								continue;
+							} else if (this.is_heading_start(this.cursor + 1)) {
+								this.states.pop();
+								continue;
+							} else if (this.is_thematic_break_start(this.cursor + 1)) {
+								this.states.pop();
+								continue;
+							} else if (this.is_block_quote_start(this.cursor + 1)) {
+								this.states.pop();
+								continue;
+							} else if (this.is_list_item_start_interrupt(this.cursor + 1)) {
+								this.states.pop();
+								continue;
+							} else if (this.list_depth > 0) {
+								const np = this.cursor + 1;
+								let ind = 0;
+								let tp = np;
+								while (tp < length && source.charCodeAt(tp) === SPACE) { ind++; tp++; }
+								if (ind >= this.list_content_offset) {
+									const stripped = np + this.list_content_offset;
+									if (stripped < length && this.try_parse_list_marker(stripped) !== null) {
+										this.states.pop();
+										continue;
+									}
+								}
+								// Soft line break — newline is preserved in the text content
+								this.chomp();
+								continue;
+							} else {
+								// Soft line break — newline is preserved in the text content
+								this.chomp();
 								continue;
 							}
 						}
-						states.push(state_kind.paragraph);
-						node_stack.push(nodes.push(node_kind.paragraph, cursor, current_node));
-						continue;
-					}
+						case ASTERISK: {
+							if (
+								this.prev & (char_mask.whitespace | char_mask.punctuation) &&
+								this.next_class & (char_mask.word | char_mask.punctuation)
+							) {
+								const n_id = this.emit_open(
+									node_kind.strong_emphasis,
+									this.cursor,
+									current_node,
+									0,
+									true
+								);
 
-					case CLOSE_ANGLE_BRACKET: {
-						let p = cursor + 1;
-						if (p < length && source.charCodeAt(p) === SPACE) p++;
-						block_quote_depth++;
-						const bq_node = nodes.push(node_kind.block_quote, cursor, current_node);
-						node_stack.push(bq_node);
-						states.push(state_kind.block_quote);
-						chomp(p, true);
-						continue;
-					}
+								this.out.attr(n_id, 'value_start', this.cursor + 1);
+								this.node_stack.push(n_id);
+								this.states.push(state_kind.strong_emphasis);
+							} else {
+								const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
+								this.out.attr(t_id, 'value_start', this.cursor);
+								this.node_stack.push(t_id);
+								this.states.push(state_kind.text);
+							}
 
-					default: {
-						const nested = try_parse_list_marker(cursor);
-						if (nested) {
-							start_list(nested, current_node);
+							this.chomp();
 							continue;
 						}
-						states.push(state_kind.paragraph);
-						node_stack.push(nodes.push(node_kind.paragraph, cursor, current_node));
-						continue;
+
+						case UNDERSCORE: {
+							if (
+								this.prev & (char_mask.whitespace | char_mask.punctuation) &&
+								this.next_class & (char_mask.word | char_mask.punctuation)
+							) {
+								const n_id = this.emit_open(
+									node_kind.emphasis,
+									this.cursor,
+									current_node,
+									0,
+									true
+								);
+
+								this.out.attr(n_id, 'value_start', this.cursor + 1);
+								this.node_stack.push(n_id);
+								this.states.push(state_kind.emphasis);
+							} else {
+								const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
+								this.out.attr(t_id, 'value_start', this.cursor);
+								this.node_stack.push(t_id);
+								this.states.push(state_kind.text);
+							}
+
+							this.chomp();
+							continue;
+						}
+
+						case TILDE: {
+							// ~~ is a two-char token. If only one ~ is available
+							// and more input is expected, hold back.
+							if (!this.finished && this.cursor + 1 >= length) {
+								break main_loop;
+							}
+							// Strikethrough: ~~ must be double tilde with flanking
+							if (
+								source.charCodeAt(this.cursor + 1) === TILDE &&
+								this.prev & (char_mask.whitespace | char_mask.punctuation) &&
+								classify(source.charCodeAt(this.cursor + 2)) & (char_mask.word | char_mask.punctuation)
+							) {
+								const n_id = this.emit_open(
+									node_kind.strikethrough,
+									this.cursor,
+									current_node,
+									0,
+									true,
+								);
+								this.out.attr(n_id, 'value_start', this.cursor + 2);
+								this.node_stack.push(n_id);
+								this.states.push(state_kind.strikethrough);
+								this.chomp(2);
+							} else {
+								const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
+								this.out.attr(t_id, 'value_start', this.cursor);
+								this.node_stack.push(t_id);
+								this.states.push(state_kind.text);
+								this.chomp();
+							}
+							continue;
+						}
+
+						case CARET: {
+							// Superscript: ^ opens if next char is word/punctuation
+							// (no left-flanking constraint — x^2^ is valid)
+							if (
+								this.next_class & (char_mask.word | char_mask.punctuation)
+							) {
+								const n_id = this.emit_open(
+									node_kind.superscript,
+									this.cursor,
+									current_node,
+									0,
+									true,
+								);
+								this.out.attr(n_id, 'value_start', this.cursor + 1);
+								this.node_stack.push(n_id);
+								this.states.push(state_kind.superscript);
+							} else {
+								const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
+								this.out.attr(t_id, 'value_start', this.cursor);
+								this.node_stack.push(t_id);
+								this.states.push(state_kind.text);
+							}
+							this.chomp();
+							continue;
+						}
+
+						case CLOSE_SQUARE_BRACKET: {
+							// If inside a link_text state, pop inline to let it handle ]
+							if (this.states.length >= 2 && this.states[this.states.length - 2] === state_kind.link_text) {
+								this.states.pop();
+								continue;
+							}
+							// Otherwise ] is just text
+							const t_id_br = this.emit_open(node_kind.text, this.cursor, current_node);
+							this.out.attr(t_id_br, 'value_start', this.cursor);
+							this.node_stack.push(t_id_br);
+							this.states.push(state_kind.text);
+							this.chomp();
+							continue;
+						}
+
+						case BACKSLASH: {
+							// \ is a two-char token (escape or hard break) — hold back
+							if (!this.finished && this.cursor + 1 >= length) {
+								break main_loop;
+							}
+							const next_code = source.charCodeAt(this.cursor + 1);
+							if (next_code === LINEFEED) {
+								// In block quotes, need to see past > and space
+								// before committing the hard break
+								if (!this.finished && this.block_quote_depth > 0 && !this.can_decide_after_lf(this.cursor + 1)) {
+									break main_loop;
+								}
+								const hb_id = this.emit_open(node_kind.hard_break, this.cursor, current_node);
+								this.emit_close(hb_id, this.cursor + 2);
+								this.chomp(2);
+								// Strip block quote markers
+								if (this.block_quote_depth > 0) {
+									const stripped = this.skip_bq_markers(this.cursor, this.block_quote_depth);
+									if (stripped !== -1) this.chomp(stripped, true);
+								}
+								// Skip leading spaces
+								while (this.cursor < length && source.charCodeAt(this.cursor) === SPACE) {
+									this.chomp();
+								}
+								continue;
+							}
+							const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
+							this.out.attr(t_id, 'value_start', this.cursor);
+							this.node_stack.push(t_id);
+							this.states.push(state_kind.text);
+
+							if (this.is_ascii_punctuation(next_code)) {
+								this.chomp(2);
+							} else {
+								this.chomp();
+							}
+							continue;
+						}
+
+						case OPEN_SQUARE_BRACKET: {
+							// Speculatively open a link — [ is a link until proven otherwise
+							const link_id = this.emit_open(node_kind.link, this.cursor, current_node, 0, true);
+							this.node_stack.push(link_id);
+							this.states.push(state_kind.link_text);
+							this.chomp(); // skip [
+							continue;
+						}
+
+						case EXCLAMATION_MARK: {
+							// ![ is a two-char token — hold back lone ! at end of buffer
+							if (!this.finished && this.cursor + 1 >= length) {
+								break main_loop;
+							}
+							// ![  → speculatively open an image
+							if (source.charCodeAt(this.cursor + 1) === OPEN_SQUARE_BRACKET) {
+								const img_id = this.emit_open(node_kind.image, this.cursor, current_node, 0, true);
+								this.node_stack.push(img_id);
+								this.states.push(state_kind.link_text);
+								this.chomp(2); // skip ![
+								continue;
+							}
+
+							// Just ! — text
+							const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
+							this.node_stack.push(t_id);
+							this.out.attr(t_id, 'value_start', this.cursor);
+							this.states.push(state_kind.text);
+							this.chomp();
+							continue;
+						}
+
+						case OPEN_ANGLE_BRACKET: {
+							const uri_end = this.try_parse_uri_autolink(this.cursor + 1);
+							if (uri_end !== -1) {
+								const link_id = this.emit_open(node_kind.link, this.cursor, current_node);
+								this.out.attr(link_id, 'value_start', this.cursor + 1);
+								this.out.attr(link_id, 'value_end', uri_end - 1);
+								this.emit_close(link_id, uri_end);
+
+								const text_id = this.emit_open(node_kind.text, this.cursor + 1, link_id);
+								this.out.attr(text_id, 'value_start', this.cursor + 1);
+								this.out.attr(text_id, 'value_end', uri_end - 1);
+								this.emit_close(text_id, uri_end - 1);
+
+								this.chomp(uri_end, true);
+								this.states.pop();
+								continue;
+							}
+
+							const email_end = this.try_parse_email_autolink(this.cursor + 1);
+							if (email_end !== -1) {
+								const email_text = source.slice(this.cursor + 1, email_end - 1);
+								const link_id = this.emit_open(node_kind.link, this.cursor, current_node);
+								this.out.attr(link_id, 'value_start', this.cursor + 1);
+								this.out.attr(link_id, 'value_end', email_end - 1);
+								this.emit_close(link_id, email_end);
+								this.out.attr(link_id, 'href', 'mailto:' + email_text);
+
+								const text_id = this.emit_open(node_kind.text, this.cursor + 1, link_id);
+								this.out.attr(text_id, 'value_start', this.cursor + 1);
+								this.out.attr(text_id, 'value_end', email_end - 1);
+								this.emit_close(text_id, email_end - 1);
+
+								this.chomp(email_end, true);
+								this.states.pop();
+								continue;
+							}
+
+							// Not an autolink, treat < as text
+							const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
+							this.node_stack.push(t_id);
+							this.out.attr(t_id, 'value_start', this.cursor);
+							this.states.push(state_kind.text);
+							this.chomp();
+							continue;
+						}
+
+						default: {
+							if (!code) {
+								this.states.pop();
+								continue;
+							}
+							const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
+							this.out.attr(t_id, 'value_start', this.cursor);
+							this.node_stack.push(t_id);
+
+							this.states.push(state_kind.text);
+							this.chomp();
+							continue;
+						}
 					}
 				}
-			}
 
-						case state_kind.inline: {
-				// Process inline content
-				switch (code) {
-					case BACKTICK: {
-						// console.log('code_span_start');
-						states.push(state_kind.code_span_start);
-						extra = 0;
-						continue;
+				case state_kind.text: {
+					// In table cells, | and \n unwind all inline states
+					if (this.in_table && (code === PIPE || code === LINEFEED || !code)) {
+						this.unwind_inline_for_table();
+						continue; // let table_row_content handle it
 					}
-					case LINEFEED: {
-						if (block_quote_depth > 0) {
-							// Inside block quote — pop inline, let parent handle `>` stripping
-							states.pop();
-							continue;
+
+					// Handle backslash escapes within text
+					if (code === BACKSLASH) {
+						if (!this.finished && this.cursor + 1 >= length) {
+							break main_loop;
 						}
-						if (is_blank_line_after(cursor)) {
-							// Paragraph boundary detected! Just pop this state
-							// without chomping, let the previous state handle the newlines
-							states.pop();
-							continue;
-						} else if (is_heading_start(cursor + 1)) {
-							states.pop();
-							continue;
-						} else if (is_thematic_break_start(cursor + 1)) {
-							states.pop();
-							continue;
-						} else if (is_block_quote_start(cursor + 1)) {
-							states.pop();
-							continue;
-						} else if (is_list_item_start_interrupt(cursor + 1)) {
-							states.pop();
-							continue;
-						} else if (list_depth > 0) {
-							// Inside list: check if next line after stripping continuation indent is a block element
-							const np = cursor + 1;
-							let ind = 0;
-							let tp = np;
-							while (tp < length && source.charCodeAt(tp) === SPACE) { ind++; tp++; }
-							if (ind >= list_content_offset) {
-								const stripped = np + list_content_offset;
-								if (stripped < length && try_parse_list_marker(stripped) !== null) {
-									states.pop();
-									continue;
-								}
+						const next_code = source.charCodeAt(this.cursor + 1);
+						if (next_code === LINEFEED) {
+							if (!this.finished && this.block_quote_depth > 0 && !this.can_decide_after_lf(this.cursor + 1)) {
+								break main_loop;
 							}
-							chomp();
-							continue;
-						} else {
-							// cursor += 1;
-							chomp();
-							continue;
-						}
-					}
-					case ASTERISK: {
-						if (
-							prev & (char_mask.whitespace | char_mask.punctuation) &&
-							next & (char_mask.word | char_mask.punctuation)
-						) {
-							let n = nodes.push_pending(
-								node_kind.strong_emphasis,
-								cursor,
-								current_node
-							);
-
-							nodes.set_value_start(n, cursor + 1);
-							node_stack.push(n);
-							states.push(state_kind.strong_emphasis);
-						} else {
-							let n = nodes.push(node_kind.text, cursor, current_node);
-							nodes.set_value_start(n, cursor);
-							node_stack.push(n);
-							states.push(state_kind.text);
-						}
-
-						chomp();
-						continue;
-					}
-
-					case UNDERSCORE: {
-						if (
-							prev & (char_mask.whitespace | char_mask.punctuation) &&
-							next & (char_mask.word | char_mask.punctuation)
-						) {
-							let n = nodes.push_pending(
-								node_kind.emphasis,
-								cursor,
-								current_node
-							);
-
-							nodes.set_value_start(n, cursor + 1);
-							node_stack.push(n);
-							states.push(state_kind.emphasis);
-						} else {
-							let n = nodes.push(node_kind.text, cursor, current_node);
-							nodes.set_value_start(n, cursor);
-							node_stack.push(n);
-							states.push(state_kind.text);
-						}
-
-						chomp();
-						continue;
-					}
-
-					case BACKSLASH: {
-						// Backslash escape: if next char is ASCII punctuation,
-						// consume both as text (prevents special char interpretation)
-						let n = nodes.push(node_kind.text, cursor, current_node);
-						nodes.set_value_start(n, cursor);
-						node_stack.push(n);
-						states.push(state_kind.text);
-
-						const next_code = source.charCodeAt(cursor + 1);
-						if (is_ascii_punctuation(next_code)) {
-							chomp(2); // skip both \ and the escaped char
-						} else {
-							chomp();
-						}
-						continue;
-					}
-
-					case OPEN_SQUARE_BRACKET: {
-						// Try to parse as inline link: [text](url)
-						const link_result = try_parse_inline_link(cursor);
-						if (link_result) {
-							const url = source.slice(link_result.url_start, link_result.url_end);
-							const title = link_result.title_start >= 0
-								? source.slice(link_result.title_start, link_result.title_end)
-								: undefined;
-
-							const link_node_il = nodes.push(node_kind.link, cursor, current_node);
-							nodes.set_value_start(link_node_il, link_result.text_start);
-							nodes.set_value_end(link_node_il, link_result.text_end);
-							nodes.set_end(link_node_il, link_result.end);
-							nodes.set_metadata(link_node_il, { href: url, title });
-
-							if (link_result.text_end > link_result.text_start) {
-								const text_node_il = nodes.push(node_kind.text, link_result.text_start, link_node_il);
-								nodes.set_value_start(text_node_il, link_result.text_start);
-								nodes.set_value_end(text_node_il, link_result.text_end);
-								nodes.set_end(text_node_il, link_result.text_end);
+							this.emit_close(current_node, this.cursor);
+							this.out.attr(current_node, 'value_end', this.cursor);
+							this.node_stack.pop();
+							this.states.pop(); // pop text
+							const parent_id = this.node_stack[this.node_stack.length - 1];
+							const hb_id = this.emit_open(node_kind.hard_break, this.cursor, parent_id);
+							this.emit_close(hb_id, this.cursor + 2);
+							this.chomp(2);
+							// Strip block quote markers
+							if (this.block_quote_depth > 0) {
+								const stripped = this.skip_bq_markers(this.cursor, this.block_quote_depth);
+								if (stripped !== -1) this.chomp(stripped, true);
 							}
-
-							chomp(link_result.end, true);
-							states.pop(); // pop inline so parent state handles next char
+							// Skip leading spaces
+							while (this.cursor < length && source.charCodeAt(this.cursor) === SPACE) {
+								this.chomp();
+							}
 							continue;
 						}
+						if (this.is_ascii_punctuation(next_code)) {
+							this.chomp(2);
+							continue;
+						}
+					}
 
-						// Not a link, treat [ as text
-						node_stack.push(nodes.push(node_kind.text, cursor, current_node));
-						nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
-						states.push(state_kind.text);
-						chomp();
+					// At LINEFEED: hold back if next line isn't available yet
+					if (code === LINEFEED && !this.finished && !this.can_decide_after_lf(this.cursor)) {
+						break main_loop;
+					}
+
+					if (!code && !this.finished) {
+						break main_loop;
+					}
+
+					if (code === LINEFEED && this.block_quote_depth > 0) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
 						continue;
 					}
 
-					case EXCLAMATION_MARK: {
-						// Check for image: ![alt](url)
-						if (source.charCodeAt(cursor + 1) === OPEN_SQUARE_BRACKET) {
-							const img_result = try_parse_inline_link(cursor + 1);
-							if (img_result) {
-								const img_url = source.slice(img_result.url_start, img_result.url_end);
-								const img_title = img_result.title_start >= 0
-									? source.slice(img_result.title_start, img_result.title_end)
-									: undefined;
+					if (!code || (code === LINEFEED && this.is_blank_line_after(this.cursor))) {
+						this.states.pop();
 
-								const img_node = nodes.push(node_kind.image, cursor, current_node);
-								nodes.set_value_start(img_node, img_result.text_start);
-								nodes.set_value_end(img_node, img_result.text_end);
-								nodes.set_end(img_node, img_result.end);
-								nodes.set_metadata(img_node, { src: img_url, title: img_title });
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
 
-								if (img_result.text_end > img_result.text_start) {
-									const text_node_img = nodes.push(node_kind.text, img_result.text_start, img_node);
-									nodes.set_value_start(text_node_img, img_result.text_start);
-									nodes.set_value_end(text_node_img, img_result.text_end);
-									nodes.set_end(text_node_img, img_result.text_end);
-								}
+						continue;
+					} else if (
+						code === LINEFEED &&
+						this.is_heading_start(this.cursor + 1)
+					) {
+						this.states.pop();
 
-								chomp(img_result.end, true);
-								states.pop(); // pop inline so parent state handles next char
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+
+						continue;
+					} else if (
+						code === LINEFEED &&
+						this.is_thematic_break_start(this.cursor + 1)
+					) {
+						this.states.pop();
+
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+
+						continue;
+					} else if (
+						code === LINEFEED &&
+						this.is_block_quote_start(this.cursor + 1)
+					) {
+						this.states.pop();
+
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+
+						continue;
+					} else if (
+						code === LINEFEED &&
+						this.is_list_item_start_interrupt(this.cursor + 1)
+					) {
+						this.states.pop();
+
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+
+						continue;
+					} else if (code === LINEFEED && this.list_depth > 0) {
+						const np = this.cursor + 1;
+						let ind = 0;
+						let tp = np;
+						while (tp < length && source.charCodeAt(tp) === SPACE) { ind++; tp++; }
+						if (ind >= this.list_content_offset) {
+							const stripped = np + this.list_content_offset;
+							if (stripped < length && this.try_parse_list_marker(stripped) !== null) {
+								this.states.pop();
+								this.emit_close(current_node, this.cursor);
+								this.out.attr(current_node, 'value_end', this.cursor);
+								this.node_stack.pop();
 								continue;
 							}
 						}
+						this.chomp();
+						continue;
+					} else if (code === ASTERISK || code === UNDERSCORE || code === TILDE || code === CARET || code === OPEN_ANGLE_BRACKET || code === OPEN_SQUARE_BRACKET || code === CLOSE_SQUARE_BRACKET || code === EXCLAMATION_MARK || code === BACKTICK) {
+						this.states.pop();
 
-						// Not an image, treat ! as text
-						node_stack.push(nodes.push(node_kind.text, cursor, current_node));
-						nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
-						states.push(state_kind.text);
-						chomp();
+						this.emit_close(current_node, this.cursor);
+						this.out.attr(current_node, 'value_end', this.cursor);
+						this.node_stack.pop();
+						this.states.pop();
+
 						continue;
 					}
-
-					case OPEN_ANGLE_BRACKET: {
-						// Try to parse as autolink
-						const uri_end = try_parse_uri_autolink(cursor + 1);
-						if (uri_end !== -1) {
-							// URI autolink: create link node with text child
-							const link_node = nodes.push(node_kind.link, cursor, current_node);
-							nodes.set_value_start(link_node, cursor + 1);
-							nodes.set_value_end(link_node, uri_end - 1);
-							nodes.set_end(link_node, uri_end);
-
-							const text_node = nodes.push(node_kind.text, cursor + 1, link_node);
-							nodes.set_value_start(text_node, cursor + 1);
-							nodes.set_value_end(text_node, uri_end - 1);
-							nodes.set_end(text_node, uri_end - 1);
-
-							chomp(uri_end, true);
-							states.pop(); // pop inline so parent state handles next char
-							continue;
-						}
-
-						const email_end = try_parse_email_autolink(cursor + 1);
-						if (email_end !== -1) {
-							// Email autolink: create link node with text child
-							const email_text = source.slice(cursor + 1, email_end - 1);
-							const link_node = nodes.push(node_kind.link, cursor, current_node);
-							nodes.set_value_start(link_node, cursor + 1);
-							nodes.set_value_end(link_node, email_end - 1);
-							nodes.set_end(link_node, email_end);
-							nodes.set_metadata(link_node, { href: 'mailto:' + email_text });
-
-							const text_node = nodes.push(node_kind.text, cursor + 1, link_node);
-							nodes.set_value_start(text_node, cursor + 1);
-							nodes.set_value_end(text_node, email_end - 1);
-							nodes.set_end(text_node, email_end - 1);
-
-							chomp(email_end, true);
-							states.pop(); // pop inline so parent state handles next char
-							continue;
-						}
-
-						// Not an autolink, treat < as text
-						node_stack.push(nodes.push(node_kind.text, cursor, current_node));
-						nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
-						states.push(state_kind.text);
-						chomp();
-						continue;
-					}
-
-					default: {
-						if (!code) {
-							// EOF: Just pop this state, let previous state handle EOF
-							states.pop();
-							continue;
-						}
-						node_stack.push(nodes.push(node_kind.text, cursor, current_node));
-						nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
-
-						states.push(state_kind.text);
-						chomp();
-						continue;
-					}
-				}
-			}
-
-			case state_kind.text: {
-				// Handle backslash escapes within text
-				if (code === BACKSLASH) {
-					const next_code = source.charCodeAt(cursor + 1);
-					if (is_ascii_punctuation(next_code)) {
-						chomp(2); // skip both \ and the escaped char
-						continue;
-					}
-				}
-
-				if (code === LINEFEED && block_quote_depth > 0) {
-					// Inside block quote: end text node at newline
-					// Let parent (emphasis/paragraph) handle `>` stripping
-					states.pop();
-					nodes.set_end(current_node, cursor);
-					nodes.set_value_end(current_node, cursor);
-					node_stack.pop();
+					this.chomp();
 					continue;
 				}
 
-				if (!code || (code === LINEFEED && is_blank_line_after(cursor))) {
-					states.pop();
+				case state_kind.code_span_start: {
+					if (this.extra > 2) {
+						this.states.pop();
+						this.states.push(state_kind.text);
+						const t_id = this.emit_open(node_kind.text, this.cursor - this.extra, current_node);
+						this.node_stack.push(t_id);
+						this.out.attr(t_id, 'value_start', this.cursor);
+						continue;
+					}
 
-					nodes.set_end(current_node, cursor);
-					nodes.set_value_end(current_node, cursor);
-					node_stack.pop();
+					switch (code) {
+						case BACKTICK: {
+							this.checkpoint_cursor = this.cursor;
+							this.extra += 1;
+							this.chomp();
+							continue;
+						}
+						case OCTOTHERP: {
+							if (source.charCodeAt(this.cursor + 1) === EXCLAMATION_MARK) {
+								this.chomp(2);
+								this.states.pop();
+								this.states.push(state_kind.code_span_info);
+								this.metadata.info_start = this.cursor;
+							}
+							continue;
+						}
+						case SPACE: {
+							this.checkpoint_cursor = this.cursor;
+							this.states.pop();
+							this.states.push(state_kind.code_span_content_leading_space);
+							const cs_id = this.emit_open(node_kind.code_span, this.cursor - this.extra, current_node);
+							this.node_stack.push(cs_id);
+							this.out.attr(cs_id, 'value_start', this.cursor + 1);
 
-					continue;
-				} else if (
-					code === LINEFEED &&
-					is_heading_start(cursor + 1)
-				) {
-					states.pop();
+							this.chomp(2);
 
-					nodes.set_end(current_node, cursor);
-					nodes.set_value_end(current_node, cursor);
-					node_stack.pop();
+							continue;
+						}
+						default: {
+							this.states.pop();
+							this.states.push(state_kind.code_span_end);
+							const cs_id = this.emit_open(node_kind.code_span, this.cursor - this.extra, current_node);
+							this.node_stack.push(cs_id);
+							this.out.attr(cs_id, 'value_start', this.cursor);
 
-					continue;
-				} else if (
-					code === LINEFEED &&
-					is_thematic_break_start(cursor + 1)
-				) {
-					states.pop();
-
-					nodes.set_end(current_node, cursor);
-					nodes.set_value_end(current_node, cursor);
-					node_stack.pop();
-
-					continue;
-				} else if (
-					code === LINEFEED &&
-					is_block_quote_start(cursor + 1)
-				) {
-					states.pop();
-
-					nodes.set_end(current_node, cursor);
-					nodes.set_value_end(current_node, cursor);
-					node_stack.pop();
-
-					continue;
-				} else if (
-					code === LINEFEED &&
-					is_list_item_start_interrupt(cursor + 1)
-				) {
-					states.pop();
-
-					nodes.set_end(current_node, cursor);
-					nodes.set_value_end(current_node, cursor);
-					node_stack.pop();
-
-					continue;
-				} else if (code === LINEFEED && list_depth > 0) {
-					// Inside list: check if next line after stripping continuation indent is a block element
-					const np = cursor + 1;
-					let ind = 0;
-					let tp = np;
-					while (tp < length && source.charCodeAt(tp) === SPACE) { ind++; tp++; }
-					if (ind >= list_content_offset) {
-						const stripped = np + list_content_offset;
-						if (stripped < length && try_parse_list_marker(stripped) !== null) {
-							states.pop();
-							nodes.set_end(current_node, cursor);
-							nodes.set_value_end(current_node, cursor);
-							node_stack.pop();
 							continue;
 						}
 					}
-					chomp();
-					continue;
-				} else if (code === ASTERISK || code === UNDERSCORE || code === OPEN_ANGLE_BRACKET || code === OPEN_SQUARE_BRACKET || (code === EXCLAMATION_MARK && source.charCodeAt(cursor + 1) === OPEN_SQUARE_BRACKET)) {
-					states.pop();
-
-					nodes.set_end(current_node, cursor);
-					nodes.set_value_end(current_node, cursor);
-					node_stack.pop();
-					states.pop();
-
-					continue;
-				}
-				chomp();
-				continue;
-			}
-
-			case state_kind.code_span_start: {
-				if (extra > 2) {
-					// console.log('code_span_start with more than 2 backticks');
-					states.pop();
-					states.push(state_kind.text);
-					node_stack.push(
-						nodes.push(node_kind.text, cursor - extra, current_node)
-					);
-					nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
-					continue;
 				}
 
-				switch (code) {
-					case BACKTICK: {
-						checkpoint_cursor = cursor;
-						extra += 1;
-						// cursor += 1;
-						chomp();
-						continue;
-					}
-					case OCTOTHERP: {
-						if (source.charCodeAt(cursor + 1) === EXCLAMATION_MARK) {
-							// cursor += 2;
-							chomp(2);
-							// console.log('code_span_info');
-							states.pop();
-							states.push(state_kind.code_span_info);
-							metadata.info_start = cursor;
+				case state_kind.code_span_info: {
+					switch (code) {
+						case SPACE: {
+							this.metadata.info_end = this.cursor;
+							this.checkpoint_cursor = this.cursor + 1;
+							this.states.pop();
+							if (source.charCodeAt(this.cursor + 1) === SPACE) {
+								this.states.push(state_kind.code_span_content_leading_space);
+								this.chomp(2);
+							} else {
+								this.states.push(state_kind.code_span_end);
+								this.chomp();
+							}
+
+							const cs_id = this.emit_open(
+								node_kind.code_span,
+								this.metadata.info_start - 2 - this.extra,
+								current_node
+							);
+							this.node_stack.push(cs_id);
+
+							this.out.attr(cs_id, 'info_start', this.metadata.info_start);
+							this.out.attr(cs_id, 'info_end', this.metadata.info_end);
+
+							this.out.attr(cs_id, 'value_start', this.cursor);
+
+							continue;
 						}
-						continue;
-					}
-					case SPACE: {
-						// console.log('code_span_start with space');
-						checkpoint_cursor = cursor;
-						states.pop();
-						states.push(state_kind.code_span_content_leading_space);
-						node_stack.push(
-							nodes.push(node_kind.code_span, cursor - extra, current_node)
-						);
-						nodes.set_value_start(
-							node_stack[node_stack.length - 1],
-							cursor + 1
-						);
-
-						// leading_space = 1;
-						// cursor += 2;
-						chomp(2);
-
-						continue;
-					}
-					default: {
-						// console.log('Checkpoint cursor', cursor);
-
-						states.pop();
-						states.push(state_kind.code_span_end);
-						node_stack.push(
-							nodes.push(node_kind.code_span, cursor - extra, current_node)
-						);
-						nodes.set_value_start(node_stack[node_stack.length - 1], cursor);
-
-						continue;
-					}
-				}
-			}
-
-			case state_kind.code_span_info: {
-				// console.log('code_span_info', {
-				// 	code,
-				// 	cursor,
-				// 	extra,
-				// 	info_start: metadata.info_start,
-				// });
-				switch (code) {
-					case SPACE: {
-						metadata.info_end = cursor;
-						checkpoint_cursor = cursor + 1;
-						states.pop();
-						if (source.charCodeAt(cursor + 1) === SPACE) {
-							states.push(state_kind.code_span_content_leading_space);
-							// cursor += 2;
-							chomp(2);
-						} else {
-							states.push(state_kind.code_span_end);
-							// cursor += 1;
-							chomp();
+						default: {
+							this.chomp();
+							continue;
 						}
-
-						const n = nodes.push(
-							node_kind.code_span,
-							metadata.info_start - 2 - extra,
-							current_node
-						);
-						node_stack.push(n);
-
-						nodes.set_metadata(n, {
-							info_start: metadata.info_start,
-							info_end: metadata.info_end,
-						});
-
-						nodes.set_value_start(n, cursor);
-
-						continue;
 					}
-					default: {
-						// cursor += 1;
-						chomp();
+				}
+
+				case state_kind.code_span_content_leading_space: {
+					if (code === SPACE && source.charCodeAt(this.cursor + 1) === BACKTICK) {
+						this.chomp();
+						this.states.pop();
+						this.states.push(state_kind.code_span_leading_space_end);
+						continue;
+					} else if (code === BACKTICK && source.charCodeAt(this.cursor - 1) !== BACKTICK) {
+						if (
+							(this.extra === 1 && source.charCodeAt(this.cursor + 1) !== BACKTICK) ||
+							(this.extra === 2 &&
+								source.charCodeAt(this.cursor + 1) === BACKTICK &&
+								source.charCodeAt(this.cursor + 2) !== BACKTICK)
+						) {
+							this.out.attr(current_node, 'value_start', this.checkpoint_cursor);
+							this.out.attr(current_node, 'value_end', this.cursor);
+							this.emit_close(current_node, this.cursor + this.extra);
+							this.node_stack.pop();
+							this.states.pop();
+							this.chomp(this.extra);
+							continue;
+						}
+						this.chomp();
+						continue;
+					} else if (code === LINEFEED) {
+						this.out.attr(current_node, 'value_start', this.checkpoint_cursor);
+						this.chomp(this.cursor, true);
+						this.states.pop();
+						this.states.push(state_kind.code_span_end);
+						continue;
+					} else {
+						this.chomp();
 						continue;
 					}
 				}
-			}
 
-			case state_kind.code_span_content_leading_space: {
-				// console.log('code_span_content_leading_space', cursor, code);
-				if (code === SPACE && source.charCodeAt(cursor + 1) === BACKTICK) {
-					// cursor += 1;
-					chomp();
-					states.pop();
-					states.push(state_kind.code_span_leading_space_end);
-					continue;
-				} else if (code === BACKTICK && source.charCodeAt(cursor - 1) !== BACKTICK) {
-					// potential closing backtick without trailing space
+				case state_kind.code_span_leading_space_end: {
 					if (
-						(extra === 1 && source.charCodeAt(cursor + 1) !== BACKTICK) ||
-						(extra === 2 &&
-							source.charCodeAt(cursor + 1) === BACKTICK &&
-							source.charCodeAt(cursor + 2) !== BACKTICK)
+						this.extra === 1 &&
+						code === BACKTICK &&
+						source.charCodeAt(this.cursor + 1) !== BACKTICK
 					) {
-						// valid closer — include leading space in value (no trailing space to strip)
-						nodes.set_value_start(current_node, checkpoint_cursor);
-						nodes.set_value_end(current_node, cursor);
-						nodes.set_end(current_node, cursor + extra);
-						node_stack.pop();
-						states.pop();
-						chomp(extra);
+						this.states.pop();
+						this.emit_close(current_node, this.cursor + this.extra);
+						this.out.attr(current_node, 'value_end', this.cursor - 1);
+						this.node_stack.pop();
+					} else if (
+						this.extra === 2 &&
+						code === BACKTICK &&
+						source.charCodeAt(this.cursor + 1) === BACKTICK &&
+						source.charCodeAt(this.cursor + 2) !== BACKTICK
+					) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor + this.extra);
+						this.out.attr(current_node, 'value_end', this.cursor - 1);
+						this.node_stack.pop();
+					} else {
+						this.states.pop();
+						this.states.push(state_kind.code_span_content_leading_space);
+					}
+					this.chomp(this.extra);
+					continue;
+				}
+
+				case state_kind.code_span_end: {
+					// In table cells, | breaks through code spans
+					if (this.in_table && (code === PIPE || code === LINEFEED)) {
+						this.unwind_inline_for_table();
 						continue;
 					}
-					chomp();
-					continue;
-				} else if (code === LINEFEED) {
-					nodes.set_value_start(current_node, checkpoint_cursor);
-					// console.log(
-					// 	'code_span_content_leading_space with linefeed',
-					// 	cursor,
-					// 	checkpoint_cursor
-					// );
-					// cursor = checkpoint_cursor;
-					chomp(cursor, true);
-					states.pop();
-					states.push(state_kind.code_span_end);
-					continue;
-				} else {
-					// cursor += 1;
-					chomp();
-					continue;
-				}
-			}
+					if (code === BACKTICK) {
+						if (
+							(this.extra === 1 && source.charCodeAt(this.cursor + 1) !== BACKTICK) ||
+							(this.extra === 2 &&
+								source.charCodeAt(this.cursor + 1) === BACKTICK &&
+								source.charCodeAt(this.cursor + 2) !== BACKTICK)
+						) {
+							this.out.attr(current_node, 'value_end', this.cursor);
+							this.states.pop();
+							this.emit_close(current_node, this.cursor + this.extra);
+							this.node_stack.pop();
+							this.chomp(this.extra);
+							continue;
+						}
+					}
 
-			case state_kind.code_span_leading_space_end: {
-				// console.log('code_span_leading_space_end', { cursor, code, extra });
-				if (
-					extra === 1 &&
-					code === BACKTICK &&
-					source.charCodeAt(cursor + 1) !== BACKTICK
-				) {
-					// console.log('code_span_leading_space_end with 1 backtick');
-					states.pop();
-					// states.push(state_kind.code_span_end);
-					nodes.set_end(current_node, cursor + extra);
-					nodes.set_value_end(current_node, cursor - 1);
-					node_stack.pop();
-				} else if (
-					extra === 2 &&
-					code === BACKTICK &&
-					source.charCodeAt(cursor + 1) === BACKTICK &&
-					source.charCodeAt(cursor + 2) !== BACKTICK
-				) {
-					// console.log('code_span_leading_space_end with  2 backticks');
-					states.pop();
-					// states.push(state_kind.code_span_end);
-					nodes.set_end(current_node, cursor + extra);
-					nodes.set_value_end(current_node, cursor - 1);
-					node_stack.pop();
-				} else {
-					states.pop();
-					states.push(state_kind.code_span_content_leading_space);
-					//
-				}
-				// cursor += extra;
-				chomp(extra);
-				continue;
-			}
-
-			case state_kind.code_span_end: {
-				// console.log('code_span_end', { cursor, code, extra });
-
-				if (code === BACKTICK) {
 					if (
-						(extra === 1 && source.charCodeAt(cursor + 1) !== BACKTICK) ||
-						(extra === 2 &&
-							source.charCodeAt(cursor + 1) === BACKTICK &&
-							source.charCodeAt(cursor + 2) !== BACKTICK)
+						(code === LINEFEED && this.is_blank_line_after(this.cursor)) ||
+						isNaN(code)
 					) {
-						// console.log('setting value end to', cursor);
-						// console.log('setting end to', cursor + extra - 1);
-						nodes.set_value_end(current_node, cursor);
-						states.pop();
-						nodes.set_end(current_node, cursor + extra);
-						node_stack.pop();
-						// cursor += extra;
-						chomp(extra);
-						continue;
-					}
-				}
-
-				if (
-					(code === LINEFEED && is_blank_line_after(cursor)) ||
-					isNaN(code)
-				) {
-					// cursor = checkpoint_cursor;
-					chomp(checkpoint_cursor, true);
-					nodes.pop();
-					node_stack.pop();
-					states.pop();
-					states.push(state_kind.text);
-					node_stack.push(
-						nodes.push(
+						// Code span failure — revoke the code_span node and fall back to text.
+						// Start text at the opening backtick(s) so they render as literal text.
+						// Cursor moves past the backtick(s) so we don't re-enter code_span_start.
+						const text_start = this.checkpoint_cursor;
+						this.chomp(this.checkpoint_cursor + this.extra, true);
+						this.out.revoke(this.node_stack[this.node_stack.length - 1]);
+						this.node_stack.pop();
+						this.states.pop();
+						this.states.push(state_kind.text);
+						const t_id = this.emit_open(
 							node_kind.text,
-							checkpoint_cursor,
-							node_stack[node_stack.length - 1]
-						)
-					);
-					nodes.set_value_start(
-						node_stack[node_stack.length - 1],
-						checkpoint_cursor
-					);
+							text_start,
+							this.node_stack[this.node_stack.length - 1]
+						);
+						this.node_stack.push(t_id);
+						this.out.attr(t_id, 'value_start', text_start);
 
+						continue;
+					}
+					this.chomp();
 					continue;
 				}
-				// cursor += 1;
-				chomp();
-				continue;
+
+				case state_kind.table_body: {
+					// At start of a potential data row line.
+					if (!code) {
+						if (!this.finished) break main_loop;
+						this.end_table();
+						continue;
+					}
+
+					if (code === LINEFEED) {
+						// Blank line → end table
+						this.end_table();
+						continue;
+					}
+
+					// Block-level interrupts end the table
+					if (code === OCTOTHERP && this.is_heading_start(this.cursor)) {
+						this.end_table();
+						continue;
+					}
+					if (code === BACKTICK && this.cursor + 2 < length &&
+						source.charCodeAt(this.cursor + 1) === BACKTICK &&
+						source.charCodeAt(this.cursor + 2) === BACKTICK) {
+						this.end_table();
+						continue;
+					}
+					if (code === CLOSE_ANGLE_BRACKET) {
+						this.end_table();
+						continue;
+					}
+					if ((code === ASTERISK || code === DASH || code === UNDERSCORE) &&
+						this.is_thematic_break_start(this.cursor)) {
+						this.end_table();
+						continue;
+					}
+
+					// Start a new data row eagerly
+					this.table_row_id = this.emit_open(node_kind.table_row, this.cursor, this.table_node_id);
+					this.table_cell_col = 0;
+
+					// Skip leading pipe
+					if (code === PIPE) {
+						this.chomp();
+					}
+
+					// Open first cell and push onto node_stack for inline content
+					this.table_cell_start = this.cursor;
+					this.table_cell_id = this.emit_open(node_kind.table_cell, this.cursor, this.table_row_id, this.table_cell_col);
+					this.table_cell_has_content = false;
+					this.node_stack.push(this.table_cell_id);
+					this.states.push(state_kind.table_row_content);
+					continue;
+				}
+
+				case state_kind.table_row_content: {
+					// We arrive here when inline states pop back due to | or \n
+
+					// Sentinel mode: used by parse_inline_range to stop the loop
+					if (this.inline_range_parse && !code) {
+						break main_loop;
+					}
+
+					if (!code) {
+						if (!this.finished) break main_loop;
+						// EOF — close current cell + row, pad remaining cols
+						if (this.table_cell_col < this.table_col_count) {
+							this.close_table_cell();
+							this.table_cell_col++;
+						}
+						this.pad_and_close_row();
+						this.states.pop();
+						continue;
+					}
+
+					if (code === PIPE) {
+						if (this.table_cell_col < this.table_col_count) {
+							this.close_table_cell();
+						}
+						this.table_cell_col++;
+						this.chomp(); // skip the pipe
+
+						// Open next cell eagerly — don't push inline yet,
+						// let the fallthrough handle whitespace skipping first
+						if (this.table_cell_col < this.table_col_count) {
+							this.table_cell_start = this.cursor;
+							this.table_cell_id = this.emit_open(node_kind.table_cell, this.cursor, this.table_row_id, this.table_cell_col);
+							this.table_cell_has_content = false;
+							this.node_stack.push(this.table_cell_id);
+						}
+						continue;
+					}
+
+					if (code === LINEFEED) {
+						if (this.table_cell_col < this.table_col_count) {
+							this.close_table_cell();
+							this.table_cell_col++;
+						}
+						this.pad_and_close_row();
+						this.states.pop();
+						this.chomp();
+						continue;
+					}
+
+					// Skip leading whitespace before cell content
+					if (!this.table_cell_has_content && (code === SPACE || code === TAB)) {
+						this.chomp();
+						continue;
+					}
+
+					// Push inline to handle cell content
+					this.table_cell_has_content = true;
+					this.states.push(state_kind.inline);
+					continue;
+				}
+
+				default: {
+					this.chomp();
+					continue;
+				}
 			}
 
-			default: {
-				// TODO: why do we pop here?
-				// states.pop();
-				// cursor += 1;
-				chomp();
+		}
+	}
+
+	// -----------------------------------------------------------
+	// Table helpers
+	// -----------------------------------------------------------
+
+	/**
+	 * Try to start a table at the current cursor position.
+	 * Requires seeing the full header row + full delimiter row.
+	 * @returns true = table started, false = hold back, null = not a table
+	 */
+	private try_start_table(parent: number): boolean | null {
+		const source = this.source;
+		const length = source.length;
+
+		// Find end of header row
+		let header_end = this.cursor;
+		while (header_end < length && source.charCodeAt(header_end) !== LINEFEED) header_end++;
+		if (header_end >= length && !this.finished) return false; // hold back — need \n
+
+		// Parse header cells
+		const header_cells = this.parse_table_row_cells(this.cursor, header_end);
+		if (header_cells.length === 0) return null;
+
+		// Find delimiter row
+		const delim_start = header_end + 1;
+		if (delim_start >= length && !this.finished) return false; // hold back
+
+		let delim_end = delim_start;
+		while (delim_end < length && source.charCodeAt(delim_end) !== LINEFEED) delim_end++;
+		if (delim_end >= length && !this.finished) return false; // hold back — need full delimiter row
+
+		// Parse delimiter row
+		const alignments = this.parse_delimiter_row(delim_start, delim_end);
+		if (!alignments || alignments.length !== header_cells.length) return null; // not a table
+
+		// Confirmed table — emit structure
+		const col_count = header_cells.length;
+		const table_id = this.emit_open(node_kind.table, this.cursor, parent);
+		this.out.attr(table_id, 'alignments', alignments);
+		this.out.attr(table_id, 'col_count', col_count);
+
+		// Store table state
+		this.table_col_count = col_count;
+		this.table_alignments = alignments;
+		this.table_node_id = table_id;
+		this.in_table = true;
+
+		// Emit header row using the inline state machinery:
+		// Open header node, then parse each cell through inline
+		const header_id = this.emit_open(node_kind.table_header, this.cursor, table_id);
+		for (let i = 0; i < header_cells.length; i++) {
+			const cell = header_cells[i];
+			const trimmed = this.trim_cell_range(cell.start, cell.end);
+			this.table_cell_id = this.emit_open(node_kind.table_cell, cell.start, header_id, i);
+			if (trimmed.start < trimmed.end) {
+				// Parse cell content through inline machinery
+				this.node_stack.push(this.table_cell_id);
+				this.parse_inline_range(trimmed.start, trimmed.end);
+				this.node_stack.pop();
+			}
+			this.emit_close(this.table_cell_id, cell.end);
+		}
+		this.emit_close(header_id, header_end);
+
+		// Push table node + state
+		this.node_stack.push(table_id);
+		this.states.push(state_kind.table_body);
+
+		// Advance cursor past delimiter row
+		const after_delim = delim_end < length ? delim_end + 1 : delim_end;
+		this.chomp(after_delim, true);
+		return true;
+	}
+
+	/**
+	 * Parse cells from a table row between start and end positions.
+	 * Handles leading/trailing pipes and escaped pipes.
+	 */
+	private parse_table_row_cells(start: number, end: number): { start: number; end: number }[] {
+		const source = this.source;
+		let pos = start;
+
+		// Skip leading whitespace
+		while (pos < end && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) pos++;
+
+		// Skip leading pipe
+		const has_leading_pipe = pos < end && source.charCodeAt(pos) === PIPE;
+		if (has_leading_pipe) pos++;
+
+		const cells: { start: number; end: number }[] = [];
+		let cell_start = pos;
+
+		while (pos < end) {
+			const ch = source.charCodeAt(pos);
+			if (ch === BACKSLASH && pos + 1 < end) {
+				pos += 2; // skip escaped char
 				continue;
 			}
-
-			// TODO: This shouldn't exist
-			// text is just text
-
-			// case state_kind.heading_text: {
-			// 	if (!heading) {
-			// 		states.pop();
-			// 		if (parents.length > 1) {
-			// 			parents.pop();
-			// 		}
-			// 		continue;
-			// 	}
-
-			// 	if (cursor >= length || code === LINEFEED) {
-			// 		const heading_end =
-			// 			code === LINEFEED ? Math.min(length, cursor + 1) : cursor;
-			// 		const raw_value_end = cursor;
-			// 		const value_end = trim_trailing_whitespace(
-			// 			heading.content_start,
-			// 			raw_value_end
-			// 		);
-			// 		finalize_heading(heading_end, value_end);
-			// 		states.pop();
-			// 		parents.pop();
-			// 		heading = null;
-			// 		if (code === LINEFEED) {
-			// 			emit_with_parent(node_kind.line_break, cursor, cursor + 1);
-			// 			cursor += 1;
-			// 			line_start = cursor;
-			// 		}
-			// 		continue;
-			// 	}
-
-			// 	const text_start = cursor;
-			// 	while (cursor < length) {
-			// 		const ch = source.charCodeAt(cursor);
-			// 		if (ch === LINEFEED) {
-			// 			break;
-			// 		}
-			// 		cursor += 1;
-			// 	}
-
-			// 	if (cursor > text_start) {
-			// 		emit_with_parent(
-			// 			node_kind.text,
-			// 			text_start,
-			// 			cursor,
-			// 			0,
-			// 			text_start,
-			// 			cursor,
-			// 			heading.node_index
-			// 		);
-			// 		heading.saw_content = true;
-			// 		set_heading_value(heading.content_start, cursor);
-			// 		extend_heading_span(cursor);
-			// 	}
-			// 	continue;
-			// }
+			if (ch === PIPE) {
+				cells.push({ start: cell_start, end: pos });
+				cell_start = pos + 1;
+			}
+			pos++;
 		}
-	}
 
-	for (let i = 0; i < node_stack.length; i++) {
-		nodes.gently_set_end(node_stack[i], length - 1);
-		nodes.gently_set_value_end(node_stack[i], length - 1);
-	}
-
-	nodes.repair();
-
-	return { nodes, errors };
-}
-
-/**
- * Consume plain text until a control character or delimiter is hit.
- * @param context Shared parsing state.
- * @param position Offset where text consumption begins.
- * @returns Offset after the consumed text.
- */
-function chomp_text(
-	context: parse_context,
-	position: number,
-	parent: number
-): number {
-	const { source, length } = context;
-	const start = position;
-	while (position < length) {
-		const code = source.charCodeAt(position);
-		if (
-			code === LINEFEED ||
-			code === OPEN_ANGLE_BRACKET ||
-			code === OPEN_BRACE ||
-			code === BACKTICK ||
-			code === OCTOTHERP
-		) {
-			break;
+		// Trailing content after last pipe (only if no leading pipe — GFM allows pipeless rows)
+		if (cell_start < end) {
+			// Check if the content is just whitespace
+			let all_ws = true;
+			for (let i = cell_start; i < end; i++) {
+				const c = source.charCodeAt(i);
+				if (c !== SPACE && c !== TAB) { all_ws = false; break; }
+			}
+			if (!all_ws) {
+				cells.push({ start: cell_start, end: end });
+			}
 		}
-		position += 1;
+
+		return cells;
 	}
 
-	if (position > start) {
-		// emit_token(
-		// 	context,
-		// 	node_kind.text,
-		// 	start,
-		// 	position,
-		// 	0,
-		// 	start,
-		// 	position,
-		// 	parent
-		// );
-	}
-	return position;
-}
+	/**
+	 * Parse a delimiter row. Returns alignment array or null if invalid.
+	 */
+	private parse_delimiter_row(start: number, end: number): string[] | null {
+		const source = this.source;
+		let pos = start;
 
-/**
- * Parse a fenced code block and emit either a fence token or fallback text.
- * @param context Shared parsing state.
- * @param position Offset where the fence begins.
- * @returns Offset immediately after the closing fence or end of input.
- */
-function consume_code_fence(
-	context: parse_context,
-	position: number,
-	parent: number
-): number {
-	const { source, length, errors } = context;
-	const start = position;
-	const fence_char = source.charCodeAt(position);
-	let run = 0;
-	while (position < length && source.charCodeAt(position) === fence_char) {
-		run += 1;
-		position += 1;
-	}
+		// Skip leading whitespace
+		while (pos < end && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) pos++;
 
-	if (run < 3) {
-		return start;
-	}
+		// Skip leading pipe
+		if (pos < end && source.charCodeAt(pos) === PIPE) pos++;
 
-	const info_start = position;
-	let info_end = position;
-	let info_contains_illegal_backtick = false;
-	while (info_end < length && source.charCodeAt(info_end) !== LINEFEED) {
-		if (fence_char === BACKTICK && source.charCodeAt(info_end) === BACKTICK) {
-			info_contains_illegal_backtick = true;
+		const alignments: string[] = [];
+
+		while (pos < end) {
+			// Skip whitespace
+			while (pos < end && source.charCodeAt(pos) === SPACE) pos++;
+			if (pos >= end) break;
+
+			// Check for trailing pipe at end
+			if (source.charCodeAt(pos) === PIPE && pos + 1 >= end) break;
+
+			let left_colon = false;
+			if (source.charCodeAt(pos) === COLON) { left_colon = true; pos++; }
+
+			let dash_count = 0;
+			while (pos < end && source.charCodeAt(pos) === DASH) { dash_count++; pos++; }
+			if (dash_count === 0) return null; // invalid delimiter cell
+
+			let right_colon = false;
+			if (pos < end && source.charCodeAt(pos) === COLON) { right_colon = true; pos++; }
+
+			// Skip whitespace
+			while (pos < end && source.charCodeAt(pos) === SPACE) pos++;
+
+			// Expect pipe or end
+			if (pos < end) {
+				if (source.charCodeAt(pos) === PIPE) {
+					pos++;
+				} else {
+					return null; // unexpected char
+				}
+			}
+
+			if (left_colon && right_colon) alignments.push('center');
+			else if (right_colon) alignments.push('right');
+			else if (left_colon) alignments.push('left');
+			else alignments.push('none');
 		}
-		info_end += 1;
+
+		return alignments.length > 0 ? alignments : null;
 	}
 
-	if (info_contains_illegal_backtick) {
-		return start;
+	/**
+	 * Trim whitespace from cell content range.
+	 */
+	private trim_cell_range(start: number, end: number): { start: number; end: number } {
+		const source = this.source;
+		let s = start, e = end;
+		while (s < e && (source.charCodeAt(s) === SPACE || source.charCodeAt(s) === TAB)) s++;
+		while (e > s && (source.charCodeAt(e - 1) === SPACE || source.charCodeAt(e - 1) === TAB)) e--;
+		return { start: s, end: e };
 	}
 
-	const content_start = info_end < length ? info_end + 1 : info_end;
-	let position_after_open = content_start;
+	/**
+	 * Emit a data row with cells, padding/truncating to table_col_count.
+	 */
+	private emit_table_row(row_start: number, row_end: number, parent: number): void {
+		const cells = this.parse_table_row_cells(row_start, row_end);
+		const row_id = this.emit_open(node_kind.table_row, row_start, parent);
 
-	while (position_after_open < length) {
-		const code = source.charCodeAt(position_after_open);
-		if (code === fence_char) {
-			let closing = position_after_open;
-			let matching = 0;
-			while (
-				closing < length &&
-				source.charCodeAt(closing) === fence_char &&
-				matching < run
+		for (let i = 0; i < this.table_col_count; i++) {
+			if (i < cells.length) {
+				const cell = cells[i];
+				const trimmed = this.trim_cell_range(cell.start, cell.end);
+				const cell_id = this.emit_open(node_kind.table_cell, cell.start, row_id, i);
+				if (trimmed.start < trimmed.end) {
+					this.out.text(cell_id, trimmed.start, trimmed.end);
+				}
+				this.emit_close(cell_id, cell.end);
+			} else {
+				// Pad with empty cells
+				const cell_id = this.emit_open(node_kind.table_cell, row_end, row_id, i);
+				this.emit_close(cell_id, row_end);
+			}
+		}
+
+		this.emit_close(row_id, row_end);
+	}
+
+	/**
+	 * Parse inline content for a specific byte range. Used for header cells
+	 * where the full content is available atomically.
+	 * Saves/restores parser state, uses a sentinel state to prevent leaking
+	 * into block-level parsing.
+	 */
+	private parse_inline_range(start: number, end: number): void {
+		const saved_cursor = this.cursor;
+		const saved_finished = this.finished;
+		const saved_prev = this.prev;
+
+		this.cursor = start;
+		this.finished = true;
+		this.prev = char_mask.whitespace;
+		this.current = classify(this.source.charCodeAt(start));
+		this.next_class = classify(this.source.charCodeAt(start + 1));
+
+		// Use a sentinel on the state stack so _run() stops here
+		const sentinel = this.states.length;
+		this.states.push(state_kind.table_row_content); // sentinel
+		this.states.push(state_kind.inline);
+
+		const save_source = this.source;
+		this.source = this.source.slice(0, end);
+		this.inline_range_parse = true;
+
+		this._run();
+
+		this.source = save_source;
+		this.inline_range_parse = false;
+
+		// Unwind anything left above the sentinel
+		while (this.states.length > sentinel) {
+			const top = this.states[this.states.length - 1];
+			if (top === state_kind.text || top === state_kind.emphasis ||
+				top === state_kind.strong_emphasis || top === state_kind.strikethrough ||
+				top === state_kind.superscript || top === state_kind.link_text) {
+				const node_id = this.node_stack[this.node_stack.length - 1];
+				this.out.attr(node_id, 'value_end', end);
+				this.emit_close(node_id, end);
+				this.node_stack.pop();
+			}
+			this.states.pop();
+		}
+
+		// Restore
+		this.cursor = saved_cursor;
+		this.finished = saved_finished;
+		this.prev = saved_prev;
+		this.current = classify(this.source.charCodeAt(this.cursor));
+		this.next_class = classify(this.source.charCodeAt(this.cursor + 1));
+	}
+
+	/**
+	 * Unwind all inline states back to table_row_content.
+	 * Called when `|` or `\n` is encountered inside inline content within a table cell.
+	 * Closes text nodes, pops inline states, closes pending inline constructs.
+	 */
+	private unwind_inline_for_table(): void {
+		while (this.states.length > 0) {
+			const top = this.states[this.states.length - 1];
+			if (top === state_kind.table_row_content) break;
+
+			if (top === state_kind.text) {
+				const text_id = this.node_stack[this.node_stack.length - 1];
+				// Trim trailing whitespace from the text value
+				let ve = this.cursor;
+				while (ve > 0 && (this.source.charCodeAt(ve - 1) === SPACE || this.source.charCodeAt(ve - 1) === TAB)) {
+					ve--;
+				}
+				this.out.attr(text_id, 'value_end', ve);
+				this.emit_close(text_id, this.cursor);
+				this.node_stack.pop();
+				this.states.pop();
+			} else if (top === state_kind.inline) {
+				this.states.pop();
+			} else if (
+				top === state_kind.code_span_end ||
+				top === state_kind.code_span_start ||
+				top === state_kind.code_span_content_leading_space ||
+				top === state_kind.code_span_leading_space_end ||
+				top === state_kind.code_span_info
 			) {
-				matching += 1;
-				closing += 1;
+				// Revoke the code span and emit a text node for the
+				// backtick(s) + content so nothing is lost
+				const cs_id = this.node_stack[this.node_stack.length - 1];
+				this.out.revoke(cs_id);
+				this.node_stack.pop();
+				this.states.pop();
+				// Create replacement text covering backticks + content
+				const parent_id = this.node_stack[this.node_stack.length - 1];
+				const t_id = this.emit_open(node_kind.text, this.checkpoint_cursor, parent_id);
+				this.out.attr(t_id, 'value_start', this.checkpoint_cursor);
+				this.out.attr(t_id, 'value_end', this.cursor);
+				this.emit_close(t_id, this.cursor);
+				// Don't push to node_stack — this text node is immediately closed
+			} else {
+				// emphasis, strong, strikethrough, superscript, link_text
+				const node_id = this.node_stack[this.node_stack.length - 1];
+				if (this.pending_ids.has(node_id)) {
+					// Speculative node never closed — revoke it now
+					// so the delimiter becomes literal text
+					this.out.revoke(node_id);
+					this.pending_ids.delete(node_id);
+				} else {
+					// Already committed (closed normally) — just close
+					this.out.attr(node_id, 'value_end', this.cursor);
+					this.emit_close(node_id, this.cursor);
+				}
+				this.node_stack.pop();
+				this.states.pop();
 			}
-			if (matching === run) {
-				// emit_token(
-				// 	context,
-				// 	node_kind.code_fence,
-				// 	start,
-				// 	closing,
-				// 	0,
-				// 	content_start,
-				// 	position_after_open,
-				// 	parent
-				// );
-				return closing;
-			}
-			position_after_open = closing;
-			continue;
 		}
-		position_after_open += 1;
 	}
 
-	errors.push(start);
-	// emit_token(
-	// 	context,
-	// 	node_kind.code_fence,
-	// 	start,
-	// 	length,
-	// 	0,
-	// 	content_start,
-	// 	length,
-	// 	parent
-	// );
-	return length;
+	/**
+	 * Close the current table cell. Pops cell from node_stack.
+	 */
+	private close_table_cell(): void {
+		this.emit_close(this.table_cell_id, this.cursor);
+		if (this.node_stack[this.node_stack.length - 1] === this.table_cell_id) {
+			this.node_stack.pop();
+		}
+	}
+
+	/**
+	 * Pad remaining columns with empty cells and close the current row.
+	 */
+	private pad_and_close_row(): void {
+		for (let i = this.table_cell_col; i < this.table_col_count; i++) {
+			const cell_id = this.emit_open(node_kind.table_cell, this.cursor, this.table_row_id, i);
+			this.emit_close(cell_id, this.cursor);
+		}
+		this.emit_close(this.table_row_id, this.cursor);
+	}
+
+	/**
+	 * Close the current table and pop state.
+	 */
+	private end_table(): void {
+		this.emit_close(this.table_node_id, this.cursor);
+		this.states.pop(); // pop table_body
+		this.node_stack.pop(); // pop table node
+		this.table_col_count = 0;
+		this.table_alignments = [];
+		this.table_node_id = 0;
+		this.table_row_id = 0;
+		this.table_cell_id = 0;
+		this.table_cell_col = 0;
+		this.table_cell_start = 0;
+		this.table_text_id = 0;
+		this.in_table = false;
+	}
+
+	private _finalize(): void {
+		const length = this.source.length;
+
+		// Close unclosed nodes gently (set end if not already set)
+		// Only affect nodes that haven't been closed yet — mirrors gently_set_end/gently_set_value_end
+		for (let i = 0; i < this.node_stack.length; i++) {
+			const id = this.node_stack[i];
+			if (!this.closed_ids.has(id)) {
+				this.out.attr(id, 'value_end', length - 1);
+				this.emit_close(id, length - 1);
+			}
+		}
+
+		// Revoke any remaining pending nodes
+		for (const id of this.pending_ids) {
+			this.out.revoke(id);
+		}
+		this.pending_ids.clear();
+	}
+}
+
+/**
+ * Parse markdown that may include Svelte syntax into tokens and nodes.
+ * @param input Source markdown string.
+ * @param options Parser configuration and reusable storage.
+ * @returns Arena-backed parse result and collected tokens.
+ */
+export function parse_markdown_svelte(
+	input: string,
+	options: parse_options = {}
+): { nodes: node_buffer; errors: error_collector } {
+	const tree = new TreeBuilder(input.length);
+	const parser = new PFMParser(tree);
+	const { errors } = parser.parse(input, options.introspector);
+	return { nodes: tree.get_buffer(), errors };
 }

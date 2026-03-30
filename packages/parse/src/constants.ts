@@ -61,6 +61,9 @@ export const BACKTICK = 96;
 /** ASCII code for the tilde character (`~`). */
 export const TILDE = 126;
 
+/** ASCII code for the caret character (`^`). */
+export const CARET = 94;
+
 /** ASCII code for the lowercase letter `a`. */
 export const LOWERCASE_A = 97;
 

@@ -9,7 +9,8 @@
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",
 		"test:run": "vitest run --silent",
-		"tsc": "tsc --noEmit"
+		"tsc": "tsc --noEmit",
+		"build": "vite build --config vite.config.build.ts"
 	},
 	"repository": {
 		"type": "git",
@@ -26,8 +27,23 @@
 			"import": "./src/main.ts",
 			"types": "./src/main.ts"
 		},
+		"./opcodes": {
+			"import": "./src/opcodes.ts",
+			"types": "./src/opcodes.ts"
+		},
+		"./tree-builder": {
+			"import": "./src/tree_builder.ts",
+			"types": "./src/tree_builder.ts"
+		},
+		"./utils": {
+			"import": "./src/utils.ts",
+			"types": "./src/utils.ts"
+		},
 		"./package.json": "./package.json"
 	},
 	"author": "pngwn <hello@pngwn.io>",
-	"license": "MIT"
+	"license": "MIT",
+	"dependencies": {
+		"@rollup/plugin-terser": "^1.0.0"
+	}
 }

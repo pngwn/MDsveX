@@ -1,0 +1,6 @@
+{
+	"recommendations": [
+		"svelte.svelte-vscode",
+		"esbenp.prettier-vscode"
+	]
+}

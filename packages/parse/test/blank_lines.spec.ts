@@ -33,6 +33,7 @@ describe('blank lines', () => {
 		//   line_break     ("\n")
 		//   heading(1)
 		//     text(aaa)
+		//   line_break     ("\n" after heading)
 		//   line_break     ("\n")
 		//   line_break     ("  \n")
 		expect(kinds).toEqual([
@@ -43,6 +44,7 @@ describe('blank lines', () => {
 			'line_break',
 			'line_break',
 			'heading',
+			'line_break',
 			'line_break',
 			'line_break',
 		]);
@@ -60,7 +62,7 @@ describe('blank lines', () => {
 
 		// Verify line_break count
 		const line_breaks = nodes.get_kinds(node_kind.line_break);
-		expect(line_breaks.length).toBe(7);
+		expect(line_breaks.length).toBe(8);
 	});
 
 	test('single blank line produces a line_break', () => {

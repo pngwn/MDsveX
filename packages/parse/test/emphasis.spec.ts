@@ -632,14 +632,21 @@ describe('emphasis and strong emphasis', () => {
 
 	// strong emphasis
 // PFM: **foo bar** → text(*) + strong(foo bar) + text(*)
+	// PFM: **foo bar** → * is always single-delimiter strong, so ** = nested strong
 	test('pfm example 378', () => {
 		const input = load_fixture('378');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
+		// In PFM, ** creates nested strong_emphasis (both * are openers)
 		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
-			'text', 'strong_emphasis', 'text',
+			'strong_emphasis',
+		]);
+		// Inner emphasis wraps content
+		const outer = nodes.get_node(paragraph.children[0]);
+		expect(get_all_child_kinds(nodes, outer.index)).toEqual([
+			'strong_emphasis',
 		]);
 	});
 
@@ -1613,16 +1620,21 @@ describe('emphasis and strong emphasis', () => {
 		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
 	});
 
-	// strong emphasis
-	// emphasis + text
+	// PFM: *_foo_* → strong wrapping emphasis (both close correctly)
 	test('pfm example 461', () => {
 		const input = load_fixture('461');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'emphasis' || k === 'text')).toBe(true);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'strong_emphasis',
+		]);
+		// strong wraps emphasis wraps text
+		const strong = nodes.get_node(paragraph.children[0]);
+		expect(get_all_child_kinds(nodes, strong.index)).toEqual(['emphasis']);
+		const emph = nodes.get_node(strong.children[0]);
+		expect(get_all_child_kinds(nodes, emph.index)).toEqual(['text']);
 	});
 
 	//  emphasis

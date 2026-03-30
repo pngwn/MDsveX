@@ -25,6 +25,14 @@ export const enum node_kind {
 	block_quote = 14,
 	list = 15,
 	list_item = 16,
+	hard_break = 17,
+	soft_break = 18,
+	strikethrough = 19,
+	superscript = 20,
+	table = 21,
+	table_header = 22,
+	table_row = 23,
+	table_cell = 24,
 }
 
 /**
@@ -81,6 +89,22 @@ export const kind_to_string = (kind: node_kind): string => {
 			return 'list';
 		case node_kind.list_item:
 			return 'list_item';
+		case node_kind.hard_break:
+			return 'hard_break';
+		case node_kind.soft_break:
+			return 'soft_break';
+		case node_kind.strikethrough:
+			return 'strikethrough';
+		case node_kind.superscript:
+			return 'superscript';
+		case node_kind.table:
+			return 'table';
+		case node_kind.table_header:
+			return 'table_header';
+		case node_kind.table_row:
+			return 'table_row';
+		case node_kind.table_cell:
+			return 'table_cell';
 	}
 };
 
@@ -156,6 +180,14 @@ export class node_buffer {
 			node_kind.block_quote,
 			node_kind.list,
 			node_kind.list_item,
+			node_kind.hard_break,
+			node_kind.soft_break,
+			node_kind.strikethrough,
+			node_kind.superscript,
+			node_kind.table,
+			node_kind.table_header,
+			node_kind.table_row,
+			node_kind.table_cell,
 		];
 
 		this._size = 0;

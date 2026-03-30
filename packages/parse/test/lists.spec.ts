@@ -303,9 +303,50 @@ describe('Lists', () => {
 		expect(nested2_items.length).toBe(2);
 	});
 
-	test.todo('pfm example 310: inconsistent indentation (flat list)');
-	test.todo('pfm example 311: ordered list with varying indentation');
-	test.todo('pfm example 312: indentation limit for list continuation');
+	test('pfm example 310: inconsistent indentation (flat list)', () => {
+		const input = load_fixture('310');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// All markers at indent 0-3 should be siblings in a single flat list
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(true);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(7);
+		expect(items.every((i) => i.kind === 'list_item')).toBe(true);
+
+		// Check values: a, b, c, d, e, f, g
+		const values = items.map((i) => {
+			const c = non_breaks(nodes, i.index);
+			return get_value(nodes, c[0].index, input);
+		});
+		expect(values).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g']);
+	});
+
+	test('pfm example 311: ordered list with varying indentation', () => {
+		const input = load_fixture('311');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Single ordered list with 3 loose items
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.ordered).toBe(true);
+		expect(children[0].metadata.tight).toBe(false);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(3);
+
+		// Loose: items have paragraph wrappers
+		for (const item of items) {
+			const ic = non_breaks(nodes, item.index);
+			expect(ic[0].kind).toBe('paragraph');
+		}
+	});
+
+	test.todo('pfm example 312: indentation limit for list continuation (PFM: no indented code)');
 	test('pfm example 319: nested list with paragraph continuation', () => {
 		const input = load_fixture('319');
 		const { nodes } = parse_markdown_svelte(input);
@@ -412,8 +453,52 @@ describe('Lists', () => {
 
 	// Tests that need block-level content in items
 	test.todo('pfm example 308: HTML comment interrupts list');
-	test.todo('pfm example 318: code fence in list item');
-	test.todo('pfm example 320: block quote in list item');
+	test('pfm example 318: code fence in list item', () => {
+		const input = load_fixture('318');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Expected: 3-item tight list (a, code_fence, c)
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(3);
+		expect(items[0].kind).toBe('list_item');
+		expect(items[1].kind).toBe('list_item');
+		expect(items[2].kind).toBe('list_item');
+
+		// Item 2 has a code fence
+		const item2_children = non_breaks(nodes, items[1].index);
+		expect(item2_children[0].kind).toBe('code_fence');
+	});
+	test('pfm example 320: block quote in list item', () => {
+		const input = load_fixture('320');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Single list with 2 items
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(2);
+
+		// Item 1: text("a") + block_quote containing paragraph("b")
+		const item1_children = non_breaks(nodes, items[0].index);
+		expect(item1_children.length).toBe(2);
+		expect(item1_children[0].kind).toBe('text');
+		expect(item1_children[1].kind).toBe('block_quote');
+
+		const bq_children = non_breaks(nodes, item1_children[1].index);
+		expect(bq_children[0].kind).toBe('paragraph');
+
+		// Item 2: text("c")
+		const item2_children = non_breaks(nodes, items[1].index);
+		expect(item2_children[0].kind).toBe('text');
+		expect(get_value(nodes, item2_children[0].index, input)).toBe('c');
+	});
+
 	test.todo('pfm example 321: block quote and code fence in list item');
 	test('pfm example 324: ordered list with code fence', () => {
 		const input = load_fixture('324');
