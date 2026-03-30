@@ -85,6 +85,25 @@ const classify = (code: number): char_mask =>
 			? (char_mask.whitespace | char_mask.punctuation | char_mask.word)
 			: char_mask.word;
 
+/**
+ * Lookup table for characters that break out of text scanning.
+ * Any character that requires the text state to yield control
+ * (delimiters, escapes, line breaks, table pipes).
+ */
+const text_break = new Uint8Array(128);
+text_break[LINEFEED] = 1;
+text_break[BACKSLASH] = 1;
+text_break[ASTERISK] = 1;
+text_break[UNDERSCORE] = 1;
+text_break[TILDE] = 1;
+text_break[CARET] = 1;
+text_break[OPEN_ANGLE_BRACKET] = 1;
+text_break[OPEN_SQUARE_BRACKET] = 1;
+text_break[CLOSE_SQUARE_BRACKET] = 1;
+text_break[EXCLAMATION_MARK] = 1;
+text_break[BACKTICK] = 1;
+text_break[PIPE] = 1;
+
 export const enum state_kind {
 	root = 0,
 	text = 1,
@@ -1383,8 +1402,15 @@ export class PFMParser {
 						this.states.pop();
 						continue;
 					}
-					// Content character — just advance
-					this.chomp1();
+					// Fast scan: heading content is everything until LINEFEED
+					{
+						const nl = source.indexOf('\n', this.cursor + 1);
+						const p = nl === -1 ? length : nl;
+						this.cursor = p;
+						this.prev = classify(source.charCodeAt(p - 1));
+						this.current = classify(source.charCodeAt(p));
+						this.next_class = classify(source.charCodeAt(p + 1));
+					}
 					continue;
 				}
 
@@ -2517,7 +2543,21 @@ export class PFMParser {
 
 						continue;
 					}
-					this.chomp1();
+					// Fast scan: skip plain text in a tight loop instead of
+					// re-entering the main loop per character. Stops at any
+					// delimiter, escape, line break, or end of buffer.
+					{
+						let p = this.cursor + 1;
+						while (p < length) {
+							const ch = source.charCodeAt(p);
+							if (ch < 128 && text_break[ch]) break;
+							p++;
+						}
+						this.cursor = p;
+						this.prev = classify(source.charCodeAt(p - 1));
+						this.current = classify(source.charCodeAt(p));
+						this.next_class = classify(source.charCodeAt(p + 1));
+					}
 					continue;
 				}
 
