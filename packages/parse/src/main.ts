@@ -511,6 +511,56 @@ export class PFMParser {
 		return true;
 	}
 
+	/**
+	 * Single-pass lookahead: does a block-level construct start at `pos`?
+	 * Skips whitespace once, checks the first meaningful character, then
+	 * dispatches to the specific predicate only when the char could start
+	 * a block construct. For continuation lines (most common case) this
+	 * returns false after one whitespace scan + one char check.
+	 */
+	private is_block_interrupt(pos: number): boolean {
+		const source = this.source;
+		const length = source.length;
+		let p = pos;
+
+		// Skip leading whitespace once
+		while (p < length) {
+			const ch = source.charCodeAt(p);
+			if (ch !== SPACE && ch !== TAB) break;
+			p++;
+		}
+
+		// End of buffer → blank line only if finished
+		if (p >= length) return this.finished;
+
+		const ch = source.charCodeAt(p);
+
+		// Blank line
+		if (ch === LINEFEED) return true;
+
+		// Fast exit: first non-ws char can't start any block construct
+		switch (ch) {
+			case OCTOTHERP:
+				return this.is_heading_start(pos);
+			case CLOSE_ANGLE_BRACKET:
+				return true;
+			case BACKTICK:
+				return p + 2 < length &&
+					source.charCodeAt(p + 1) === BACKTICK &&
+					source.charCodeAt(p + 2) === BACKTICK;
+			case ASTERISK:
+			case DASH:
+			case UNDERSCORE:
+				return this.is_thematic_break_start(pos) ||
+					(ch !== UNDERSCORE && this.is_list_item_start_interrupt(pos));
+			case PLUS:
+				return this.is_list_item_start_interrupt(pos);
+			default:
+				if (ch >= 48 && ch <= 57) return this.is_list_item_start_interrupt(pos);
+				return false;
+		}
+	}
+
 	private try_parse_list_marker(pos: number): MarkerResult | null {
 		const source = this.source;
 		const length = source.length;
@@ -1172,47 +1222,7 @@ export class PFMParser {
 						continue;
 					}
 
-					if (code === LINEFEED && this.is_blank_line_after(this.cursor)) {
-						this.emit_close(current_node, this.cursor);
-						this.states.pop();
-						while (this.node_stack.length > node_stack_base) {
-							this.node_stack.pop();
-						}
-						continue;
-					} else if (
-						code === LINEFEED &&
-						source.charCodeAt(this.cursor + 1) === BACKTICK &&
-						source.charCodeAt(this.cursor + 2) === BACKTICK &&
-						source.charCodeAt(this.cursor + 3) === BACKTICK
-					) {
-						this.emit_close(current_node, this.cursor);
-						this.states.pop();
-						while (this.node_stack.length > node_stack_base) {
-							this.node_stack.pop();
-						}
-						continue;
-					} else if (code === LINEFEED && this.is_heading_start(this.cursor + 1)) {
-						this.emit_close(current_node, this.cursor);
-						this.states.pop();
-						while (this.node_stack.length > node_stack_base) {
-							this.node_stack.pop();
-						}
-						continue;
-					} else if (code === LINEFEED && this.is_thematic_break_start(this.cursor + 1)) {
-						this.emit_close(current_node, this.cursor);
-						this.states.pop();
-						while (this.node_stack.length > node_stack_base) {
-							this.node_stack.pop();
-						}
-						continue;
-					} else if (code === LINEFEED && this.is_block_quote_start(this.cursor + 1)) {
-						this.emit_close(current_node, this.cursor);
-						this.states.pop();
-						while (this.node_stack.length > node_stack_base) {
-							this.node_stack.pop();
-						}
-						continue;
-					} else if (code === LINEFEED && this.is_list_item_start_interrupt(this.cursor + 1)) {
+					if (code === LINEFEED && this.is_block_interrupt(this.cursor + 1)) {
 						this.emit_close(current_node, this.cursor);
 						this.states.pop();
 						while (this.node_stack.length > node_stack_base) {
@@ -2108,19 +2118,7 @@ export class PFMParser {
 								this.states.pop();
 								continue;
 							}
-							if (this.is_blank_line_after(this.cursor)) {
-								this.states.pop();
-								continue;
-							} else if (this.is_heading_start(this.cursor + 1)) {
-								this.states.pop();
-								continue;
-							} else if (this.is_thematic_break_start(this.cursor + 1)) {
-								this.states.pop();
-								continue;
-							} else if (this.is_block_quote_start(this.cursor + 1)) {
-								this.states.pop();
-								continue;
-							} else if (this.is_list_item_start_interrupt(this.cursor + 1)) {
+							if (this.is_block_interrupt(this.cursor + 1)) {
 								this.states.pop();
 								continue;
 							} else if (this.list_depth > 0) {
@@ -2464,57 +2462,11 @@ export class PFMParser {
 						continue;
 					}
 
-					if (!code || (code === LINEFEED && this.is_blank_line_after(this.cursor))) {
+					if (!code || (code === LINEFEED && this.is_block_interrupt(this.cursor + 1))) {
 						this.states.pop();
-
 						this.emit_close(current_node, this.cursor);
 						this.out.attr(current_node, 'value_end', this.cursor);
 						this.node_stack.pop();
-
-						continue;
-					} else if (
-						code === LINEFEED &&
-						this.is_heading_start(this.cursor + 1)
-					) {
-						this.states.pop();
-
-						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
-						this.node_stack.pop();
-
-						continue;
-					} else if (
-						code === LINEFEED &&
-						this.is_thematic_break_start(this.cursor + 1)
-					) {
-						this.states.pop();
-
-						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
-						this.node_stack.pop();
-
-						continue;
-					} else if (
-						code === LINEFEED &&
-						this.is_block_quote_start(this.cursor + 1)
-					) {
-						this.states.pop();
-
-						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
-						this.node_stack.pop();
-
-						continue;
-					} else if (
-						code === LINEFEED &&
-						this.is_list_item_start_interrupt(this.cursor + 1)
-					) {
-						this.states.pop();
-
-						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
-						this.node_stack.pop();
-
 						continue;
 					} else if (code === LINEFEED && this.list_depth > 0) {
 						const np = this.cursor + 1;
