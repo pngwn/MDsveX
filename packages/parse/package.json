@@ -24,7 +24,7 @@
 	],
 	"exports": {
 		".": {
-			"import": "./src/main.ts",
+			"import": "./dist/main.js",
 			"types": "./src/main.ts"
 		},
 		"./opcodes": {

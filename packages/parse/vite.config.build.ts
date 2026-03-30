@@ -19,11 +19,11 @@ export default defineConfig({
 			output: {
 				entryFileNames: '[name].js',
 				plugins: [
-					terser({
-						compress: true,
-						mangle: true,
-						format: { comments: false },
-					}),
+					// terser({
+					// 	// compress: true,
+					// 	mangle: true,
+					// 	format: { comments: false },
+					// }),
 				],
 			},
 		},

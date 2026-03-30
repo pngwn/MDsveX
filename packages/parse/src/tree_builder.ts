@@ -8,14 +8,16 @@ import { node_buffer, node_kind } from './utils';
  */
 export class TreeBuilder implements Emitter {
 	private nodes: node_buffer;
-	private id_to_index: Map<number, number> = new Map();
-	private node_kinds: Map<number, node_kind> = new Map();
+	/** Maps opcode ID → node_buffer index. Plain array — IDs are sequential integers. */
+	private id_to_index: number[] = [];
+	/** Maps opcode ID → node_kind. Plain array for O(1) lookup. */
+	private id_to_kind: number[] = [];
 
 	constructor(capacity: number) {
 		this.nodes = new node_buffer(capacity);
 		// node_buffer constructor auto-creates root at index 0
-		this.id_to_index.set(0, 0);
-		this.node_kinds.set(0, node_kind.root);
+		this.id_to_index[0] = 0;
+		this.id_to_kind[0] = node_kind.root;
 	}
 
 	open(
@@ -30,16 +32,16 @@ export class TreeBuilder implements Emitter {
 		if (id === 0) return;
 
 		const parent_idx =
-			parent === -1 ? 0xffffffff : (this.id_to_index.get(parent) ?? 0xffffffff);
+			parent === -1 ? 0xffffffff : (this.id_to_index[parent] ?? 0xffffffff);
 		const idx = pending
 			? this.nodes.push_pending(kind, start, parent_idx, extra)
 			: this.nodes.push(kind, start, parent_idx, extra);
-		this.id_to_index.set(id, idx);
-		this.node_kinds.set(id, kind);
+		this.id_to_index[id] = idx;
+		this.id_to_kind[id] = kind;
 	}
 
 	close(id: number, end: number): void {
-		const idx = this.id_to_index.get(id);
+		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
 		this.nodes.set_end(idx, end);
 		// Closing a pending node commits it
@@ -47,7 +49,7 @@ export class TreeBuilder implements Emitter {
 
 		// Tight list unwrapping: if this is a list with tight=true,
 		// walk items and unwrap their paragraph children
-		if (this.node_kinds.get(id) === node_kind.list) {
+		if (this.id_to_kind[id] === node_kind.list) {
 			const meta = this.nodes.metadata_at(idx);
 			if (meta && meta.tight) {
 				const list_node = this.nodes.get_node(idx);
@@ -64,9 +66,9 @@ export class TreeBuilder implements Emitter {
 	}
 
 	text(parent: number, start: number, end: number): void {
-		const parent_idx = this.id_to_index.get(parent);
+		const parent_idx = this.id_to_index[parent];
 		if (parent_idx === undefined) return;
-		const parent_kind = this.node_kinds.get(parent)!;
+		const parent_kind = this.id_to_kind[parent];
 
 		// Nodes that store content as a value range (no child text node)
 		if (
@@ -84,7 +86,7 @@ export class TreeBuilder implements Emitter {
 	}
 
 	attr(id: number, key: string, value: any): void {
-		const idx = this.id_to_index.get(id);
+		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
 
 		switch (key) {
@@ -112,7 +114,7 @@ export class TreeBuilder implements Emitter {
 	}
 
 	revoke(id: number): void {
-		const idx = this.id_to_index.get(id);
+		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
 
 		const node = this.nodes.get_node(idx);
