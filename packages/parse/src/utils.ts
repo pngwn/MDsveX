@@ -137,6 +137,7 @@ export class node_buffer {
 	private next_siblings: Uint32Array;
 	private prev_siblings: Uint32Array;
 	private children_starts: Uint32Array;
+	private children_ends: Uint32Array;
 	private pending_nodes: Uint32Array;
 
 	private kind_map: Map<node_kind, number[]> = new Map();
@@ -162,6 +163,7 @@ export class node_buffer {
 		this.next_siblings = new Uint32Array(capacity);
 		this.prev_siblings = new Uint32Array(capacity);
 		this.children_starts = new Uint32Array(capacity);
+		this.children_ends = new Uint32Array(capacity);
 		this.pending_nodes = new Uint32Array(capacity);
 
 		let kinds = [
@@ -238,27 +240,21 @@ export class node_buffer {
 		this.next_siblings[index] = 0xffffffff;
 		this.prev_siblings[index] = 0xffffffff;
 		this.children_starts[index] = 0xffffffff;
+		this.children_ends[index] = 0xffffffff;
 
 		this.add_kind(index, kind);
 
 		if (parent !== 0xffffffff) {
-			// If this is the first child of the parent
-			if (this.children_starts[parent] === 0xffffffff) {
+			const last = this.children_ends[parent];
+			if (last === 0xffffffff) {
+				// First child
 				this.children_starts[parent] = index;
 			} else {
-				// Find the last child of this parent and link to it
-				let last_child = this.children_starts[parent];
-				while (
-					this.next_siblings[last_child] !== 0xffffffff &&
-					this.parents[this.next_siblings[last_child]] === parent
-				) {
-					last_child = this.next_siblings[last_child];
-				}
-				if (last_child !== index) {
-					this.next_siblings[last_child] = index;
-					this.prev_siblings[index] = last_child;
-				}
+				// Append after last child — O(1)
+				this.next_siblings[last] = index;
+				this.prev_siblings[index] = last;
 			}
+			this.children_ends[parent] = index;
 		}
 
 		if (metadata !== undefined) {
@@ -311,6 +307,7 @@ export class node_buffer {
 		if (first_child === 0xffffffff) {
 			// No children, nothing to reparent
 			this.children_starts[index] = 0xffffffff;
+			this.children_ends[index] = 0xffffffff;
 			return;
 		}
 
@@ -337,6 +334,7 @@ export class node_buffer {
 			}
 
 			this.children_starts[index] = 0xffffffff;
+			this.children_ends[index] = 0xffffffff;
 			return;
 		}
 
@@ -358,9 +356,14 @@ export class node_buffer {
 			// Pending node was first child, keep it as first
 			// (it's still first, just converted to text)
 		}
+		// Reparented children are now siblings after index — update last child
+		if (this.children_ends[parent] === index) {
+			this.children_ends[parent] = last_child;
+		}
 
 		// Clear pending node's children references
 		this.children_starts[index] = 0xffffffff;
+		this.children_ends[index] = 0xffffffff;
 
 		this.value_starts[index] = this.starts[index];
 		this.value_ends[index] = this.value_starts[first_child];
@@ -400,6 +403,10 @@ export class node_buffer {
 			if (next_sib !== 0xffffffff) {
 				this.prev_siblings[next_sib] = prev_sib;
 			}
+			// Update parent's last child if we removed the tail
+			if (parent !== 0xffffffff && this.children_ends[parent] === index) {
+				this.children_ends[parent] = prev_sib; // 0xffffffff if was only child
+			}
 			return;
 		}
 
@@ -438,8 +445,14 @@ export class node_buffer {
 			this.next_siblings[last_child] = 0xffffffff;
 		}
 
+		// Update parent's last child if we replaced the tail
+		if (parent !== 0xffffffff && this.children_ends[parent] === index) {
+			this.children_ends[parent] = last_child;
+		}
+
 		// Clear the unwrapped node's links
 		this.children_starts[index] = 0xffffffff;
+		this.children_ends[index] = 0xffffffff;
 	}
 
 	/**
@@ -520,6 +533,7 @@ export class node_buffer {
 		const next_next_siblings = new Uint32Array(next);
 		const next_prev_siblings = new Uint32Array(next);
 		const next_children_starts = new Uint32Array(next);
+		const next_children_ends = new Uint32Array(next);
 		const next_pending_nodes = new Uint32Array(next);
 		const next_has_metadata = new Uint8Array(Math.max(1, next >> 3));
 
@@ -533,6 +547,7 @@ export class node_buffer {
 		next_next_siblings.set(this.next_siblings);
 		next_prev_siblings.set(this.prev_siblings);
 		next_children_starts.set(this.children_starts);
+		next_children_ends.set(this.children_ends);
 		next_pending_nodes.set(this.pending_nodes);
 		next_has_metadata.set(this.has_metadata);
 
@@ -547,6 +562,7 @@ export class node_buffer {
 		this.next_siblings = next_next_siblings;
 		this.prev_siblings = next_prev_siblings;
 		this.children_starts = next_children_starts;
+		this.children_ends = next_children_ends;
 		this.pending_nodes = next_pending_nodes;
 		this.has_metadata = next_has_metadata;
 	}

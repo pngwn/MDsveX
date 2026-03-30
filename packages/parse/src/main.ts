@@ -73,20 +73,17 @@ for (let i = 0; i < char_class_table.length; i += 1) {
 	char_class_table[i] = mask;
 }
 
-const classify = (code: number): char_mask => {
-	if (Number.isNaN(code)) {
-		// NaN means charCodeAt read past the buffer. Return a mask that
-		// satisfies ALL flanking checks so both openers and closers
-		// commit speculatively. Revocation corrects if wrong.
-		return char_mask.whitespace | char_mask.punctuation | char_mask.word;
-	}
-
-	if (code < char_class_table.length) {
-		return char_class_table[code];
-	}
-
-	return char_mask.word;
-};
+const classify = (code: number): char_mask =>
+	// Common case first: ASCII (code < 128). NaN < 128 is false, so
+	// NaN falls through to the second branch where code !== code catches it.
+	code < 128
+		? char_class_table[code]
+		: code !== code
+			// NaN means charCodeAt read past the buffer. Return a mask that
+			// satisfies ALL flanking checks so both openers and closers
+			// commit speculatively. Revocation corrects if wrong.
+			? (char_mask.whitespace | char_mask.punctuation | char_mask.word)
+			: char_mask.word;
 
 export const enum state_kind {
 	root = 0,
@@ -158,8 +155,9 @@ export class PFMParser {
 	// ID generation
 	private next_id: number = 1; // 0 is reserved for root
 	private pending_ids: Set<number> = new Set();
-	private closed_ids: Set<number> = new Set();
-	private node_kinds: Map<number, node_kind> = new Map();
+	private pending_count: number = 0;
+	private closed_flags: boolean[] = [];
+	private node_kind_array: node_kind[] = [];
 
 	// Char classification
 	private prev: number = char_mask.whitespace;
@@ -201,7 +199,8 @@ export class PFMParser {
 
 	// Misc
 	private extra: number = 0;
-	private metadata: Record<string, any> = {};
+	private info_start_pos: number = 0;
+	private info_end_pos: number = 0;
 	private checkpoint_cursor: number = 0;
 	private prev_cursor: number = 0;
 	private loop_without_progress: number = 0;
@@ -233,7 +232,7 @@ export class PFMParser {
 		this.source = source;
 		this.current = classify(source.charCodeAt(0));
 		this.next_class = classify(source.charCodeAt(1));
-		this.errors = new error_collector(source.length);
+		this.errors = new error_collector(64);
 		this.finished = true;
 
 		this._run();
@@ -282,8 +281,9 @@ export class PFMParser {
 		this.node_stack = [0];
 		this.next_id = 1;
 		this.pending_ids = new Set();
-		this.closed_ids = new Set();
-		this.node_kinds = new Map();
+		this.pending_count = 0;
+		this.closed_flags = [];
+		this.node_kind_array = [];
 		this.prev = char_mask.whitespace;
 		this.current = char_mask.whitespace;
 		this.next_class = char_mask.whitespace;
@@ -309,7 +309,8 @@ export class PFMParser {
 		this.inline_range_parse = false;
 		this.table_cell_has_content = false;
 		this.extra = 0;
-		this.metadata = {};
+		this.info_start_pos = 0;
+		this.info_end_pos = 0;
 		this.checkpoint_cursor = 0;
 		this.prev_cursor = 0;
 		this.loop_without_progress = 0;
@@ -327,21 +328,21 @@ export class PFMParser {
 	private emit_open(kind: node_kind, start: number, parent: number, extra = 0, pending = false): number {
 		const id = this.next_id++;
 		this.out.open(id, kind, start, parent, extra, pending);
-		if (pending) this.pending_ids.add(id);
-		this.node_kinds.set(id, kind);
+		if (pending) { this.pending_ids.add(id); this.pending_count++; }
+		this.node_kind_array[id] = kind;
 		return id;
 	}
 
 	private emit_close(id: number, end: number): void {
 		this.out.close(id, end);
-		this.closed_ids.add(id);
+		this.closed_flags[id] = true;
 	}
 
 	// -----------------------------------------------------------
 	// chomp — advance cursor and update char classification
 	// -----------------------------------------------------------
 
-	private chomp(count: number = 1, replace: boolean = false): void {
+	private chomp(count: number, replace: boolean = false): void {
 		if (replace) {
 			this.cursor = count;
 		} else {
@@ -357,6 +358,14 @@ export class PFMParser {
 			this.current = this.next_class;
 			this.next_class = classify(this.source.charCodeAt(this.cursor + 1));
 		}
+	}
+
+	/** Fast path for the common case: advance cursor by 1. */
+	private chomp1(): void {
+		this.cursor++;
+		this.prev = this.current;
+		this.current = this.next_class;
+		this.next_class = classify(this.source.charCodeAt(this.cursor + 1));
 	}
 
 	/**
@@ -906,7 +915,7 @@ export class PFMParser {
 
 			// Revoke pending speculative nodes as soon as we're back at
 			// a block-level state — they'll never close.
-			if (this.pending_ids.size > 0) {
+			if (this.pending_count > 0) {
 				const st = this.states[this.states.length - 1];
 				if (
 					st === state_kind.root ||
@@ -917,6 +926,7 @@ export class PFMParser {
 						this.out.revoke(id);
 					}
 					this.pending_ids.clear();
+					this.pending_count = 0;
 				}
 			}
 
@@ -941,15 +951,15 @@ export class PFMParser {
 
 			switch (active) {
 				case state_kind.root: {
-					if (isNaN(code)) {
-						this.chomp();
+					if (code !== code) {
+						this.chomp1();
 						continue;
 					}
 					switch (code) {
 						case LINEFEED: {
 							const id = this.emit_open(node_kind.line_break, this.cursor, current_node);
 							this.emit_close(id, this.cursor + 1);
-							this.chomp();
+							this.chomp1();
 							continue;
 						}
 
@@ -965,7 +975,7 @@ export class PFMParser {
 								this.chomp(pos + 1, true);
 								continue;
 							}
-							this.chomp();
+							this.chomp1();
 							continue;
 						}
 
@@ -1138,7 +1148,7 @@ export class PFMParser {
 							}
 							continue;
 						}
-						this.chomp();
+						this.chomp1();
 						this.states.push(state_kind.inline);
 						continue;
 					}
@@ -1206,7 +1216,7 @@ export class PFMParser {
 								}
 							}
 						}
-						this.chomp();
+						this.chomp1();
 						continue;
 					} else {
 						this.states.push(state_kind.inline);
@@ -1217,7 +1227,7 @@ export class PFMParser {
 				case state_kind.code_fence_start: {
 					if (code === BACKTICK) {
 						this.extra += 1;
-						this.chomp();
+						this.chomp1();
 						continue;
 					} else if (this.extra >= 3) {
 						this.states.pop();
@@ -1225,7 +1235,7 @@ export class PFMParser {
 						const cf_id = this.emit_open(node_kind.code_fence, this.cursor - this.extra, current_node);
 						this.node_stack.push(cf_id);
 
-						this.metadata.info_start = this.cursor;
+						this.info_start_pos = this.cursor;
 
 						continue;
 					} else {
@@ -1256,7 +1266,7 @@ export class PFMParser {
 						break main_loop; // wait for more input
 					}
 					if (code !== LINEFEED) {
-						this.chomp();
+						this.chomp1();
 						continue;
 					} else if (this.cursor >= length && this.finished) {
 						this.emit_close(current_node, length);
@@ -1266,12 +1276,12 @@ export class PFMParser {
 					} else if (this.cursor >= length) {
 						break main_loop;
 					} else {
-						this.metadata.info_end = this.cursor;
+						this.info_end_pos = this.cursor;
 						this.states.pop();
 						this.states.push(state_kind.code_fence_content);
-						this.out.attr(current_node, 'info_start', this.metadata.info_start);
+						this.out.attr(current_node, 'info_start', this.info_start_pos);
 						this.out.attr(current_node, 'info_end', this.cursor);
-						this.chomp();
+						this.chomp1();
 
 						this.out.attr(current_node, 'value_start', this.cursor);
 
@@ -1338,11 +1348,11 @@ export class PFMParser {
 						this.emit_close(current_node, this.cursor);
 						this.node_stack.pop();
 						this.states.pop();
-						this.chomp();
+						this.chomp1();
 						continue;
 					}
 					if (code === BACKTICK) {
-						this.chomp();
+						this.chomp1();
 						continue;
 					}
 					this.emit_close(current_node, this.cursor);
@@ -1356,7 +1366,7 @@ export class PFMParser {
 
 				case state_kind.heading_marker: {
 					// Streaming heading content. Accumulate until LINEFEED or EOF.
-					if (code === LINEFEED || isNaN(code)) {
+					if (code === LINEFEED || code !== code) {
 						// Trim trailing whitespace from value
 						let value_end = this.cursor;
 						while (
@@ -1374,7 +1384,7 @@ export class PFMParser {
 						continue;
 					}
 					// Content character — just advance
-					this.chomp();
+					this.chomp1();
 					continue;
 				}
 
@@ -1387,10 +1397,10 @@ export class PFMParser {
 						const n_id = this.node_stack[this.node_stack.length - 1];
 						this.out.attr(n_id, 'value_end', this.cursor);
 						this.emit_close(n_id, this.cursor + 1);
-						this.pending_ids.delete(n_id);
+						this.pending_ids.delete(n_id); this.pending_count--;
 						this.states.pop();
 						this.node_stack.pop();
-						this.chomp();
+						this.chomp1();
 						// Pop trailing inline so parent state sees next char directly
 						if (this.states[this.states.length - 1] === state_kind.inline) {
 							this.states.pop();
@@ -1453,10 +1463,10 @@ export class PFMParser {
 						const n_id = this.node_stack[this.node_stack.length - 1];
 						this.out.attr(n_id, 'value_end', this.cursor);
 						this.emit_close(n_id, this.cursor + 1);
-						this.pending_ids.delete(n_id);
+						this.pending_ids.delete(n_id); this.pending_count--;
 						this.states.pop();
 						this.node_stack.pop();
-						this.chomp();
+						this.chomp1();
 						if (this.states[this.states.length - 1] === state_kind.inline) {
 							this.states.pop();
 						}
@@ -1524,7 +1534,7 @@ export class PFMParser {
 						const n_id = this.node_stack[this.node_stack.length - 1];
 						this.out.attr(n_id, 'value_end', this.cursor);
 						this.emit_close(n_id, this.cursor + 2);
-						this.pending_ids.delete(n_id);
+						this.pending_ids.delete(n_id); this.pending_count--;
 						this.states.pop();
 						this.node_stack.pop();
 						this.chomp(2);
@@ -1565,10 +1575,10 @@ export class PFMParser {
 						const n_id = this.node_stack[this.node_stack.length - 1];
 						this.out.attr(n_id, 'value_end', this.cursor);
 						this.emit_close(n_id, this.cursor + 1);
-						this.pending_ids.delete(n_id);
+						this.pending_ids.delete(n_id); this.pending_count--;
 						this.states.pop();
 						this.node_stack.pop();
-						this.chomp();
+						this.chomp1();
 						if (this.states[this.states.length - 1] === state_kind.inline) {
 							this.states.pop();
 						}
@@ -1677,13 +1687,13 @@ export class PFMParser {
 								// Success — set attrs and close
 								const n_id = current_node;
 								const url = source.slice(url_start, url_end);
-								const is_image = this.node_kinds.get(n_id) === node_kind.image;
+								const is_image = this.node_kind_array[n_id] === node_kind.image;
 								this.out.attr(n_id, is_image ? 'src' : 'href', url);
 								if (title_start >= 0 && title_end >= 0) {
 									this.out.attr(n_id, 'title', source.slice(title_start, title_end));
 								}
 								this.out.attr(n_id, 'value_end', this.cursor);
-								this.pending_ids.delete(n_id);
+								this.pending_ids.delete(n_id); this.pending_count--;
 								this.emit_close(n_id, p);
 								this.node_stack.pop();
 								this.states.pop();
@@ -1761,7 +1771,7 @@ export class PFMParser {
 
 						case SPACE:
 						case TAB: {
-							this.chomp();
+							this.chomp1();
 							continue;
 						}
 
@@ -1948,7 +1958,7 @@ export class PFMParser {
 
 						case SPACE:
 						case TAB: {
-							this.chomp();
+							this.chomp1();
 							continue;
 						}
 
@@ -2100,11 +2110,11 @@ export class PFMParser {
 									}
 								}
 								// Soft line break — newline is preserved in the text content
-								this.chomp();
+								this.chomp1();
 								continue;
 							} else {
 								// Soft line break — newline is preserved in the text content
-								this.chomp();
+								this.chomp1();
 								continue;
 							}
 						}
@@ -2131,7 +2141,7 @@ export class PFMParser {
 								this.states.push(state_kind.text);
 							}
 
-							this.chomp();
+							this.chomp1();
 							continue;
 						}
 
@@ -2158,7 +2168,7 @@ export class PFMParser {
 								this.states.push(state_kind.text);
 							}
 
-							this.chomp();
+							this.chomp1();
 							continue;
 						}
 
@@ -2190,7 +2200,7 @@ export class PFMParser {
 								this.out.attr(t_id, 'value_start', this.cursor);
 								this.node_stack.push(t_id);
 								this.states.push(state_kind.text);
-								this.chomp();
+								this.chomp1();
 							}
 							continue;
 						}
@@ -2217,7 +2227,7 @@ export class PFMParser {
 								this.node_stack.push(t_id);
 								this.states.push(state_kind.text);
 							}
-							this.chomp();
+							this.chomp1();
 							continue;
 						}
 
@@ -2232,7 +2242,7 @@ export class PFMParser {
 							this.out.attr(t_id_br, 'value_start', this.cursor);
 							this.node_stack.push(t_id_br);
 							this.states.push(state_kind.text);
-							this.chomp();
+							this.chomp1();
 							continue;
 						}
 
@@ -2258,7 +2268,7 @@ export class PFMParser {
 								}
 								// Skip leading spaces
 								while (this.cursor < length && source.charCodeAt(this.cursor) === SPACE) {
-									this.chomp();
+									this.chomp1();
 								}
 								continue;
 							}
@@ -2270,7 +2280,7 @@ export class PFMParser {
 							if (this.is_ascii_punctuation(next_code)) {
 								this.chomp(2);
 							} else {
-								this.chomp();
+								this.chomp1();
 							}
 							continue;
 						}
@@ -2280,7 +2290,7 @@ export class PFMParser {
 							const link_id = this.emit_open(node_kind.link, this.cursor, current_node, 0, true);
 							this.node_stack.push(link_id);
 							this.states.push(state_kind.link_text);
-							this.chomp(); // skip [
+							this.chomp1(); // skip [
 							continue;
 						}
 
@@ -2303,7 +2313,7 @@ export class PFMParser {
 							this.node_stack.push(t_id);
 							this.out.attr(t_id, 'value_start', this.cursor);
 							this.states.push(state_kind.text);
-							this.chomp();
+							this.chomp1();
 							continue;
 						}
 
@@ -2349,7 +2359,7 @@ export class PFMParser {
 							this.node_stack.push(t_id);
 							this.out.attr(t_id, 'value_start', this.cursor);
 							this.states.push(state_kind.text);
-							this.chomp();
+							this.chomp1();
 							continue;
 						}
 
@@ -2363,7 +2373,7 @@ export class PFMParser {
 							this.node_stack.push(t_id);
 
 							this.states.push(state_kind.text);
-							this.chomp();
+							this.chomp1();
 							continue;
 						}
 					}
@@ -2401,7 +2411,7 @@ export class PFMParser {
 							}
 							// Skip leading spaces
 							while (this.cursor < length && source.charCodeAt(this.cursor) === SPACE) {
-								this.chomp();
+								this.chomp1();
 							}
 							continue;
 						}
@@ -2495,7 +2505,7 @@ export class PFMParser {
 								continue;
 							}
 						}
-						this.chomp();
+						this.chomp1();
 						continue;
 					} else if (code === ASTERISK || code === UNDERSCORE || code === TILDE || code === CARET || code === OPEN_ANGLE_BRACKET || code === OPEN_SQUARE_BRACKET || code === CLOSE_SQUARE_BRACKET || code === EXCLAMATION_MARK || code === BACKTICK) {
 						this.states.pop();
@@ -2507,7 +2517,7 @@ export class PFMParser {
 
 						continue;
 					}
-					this.chomp();
+					this.chomp1();
 					continue;
 				}
 
@@ -2525,7 +2535,7 @@ export class PFMParser {
 						case BACKTICK: {
 							this.checkpoint_cursor = this.cursor;
 							this.extra += 1;
-							this.chomp();
+							this.chomp1();
 							continue;
 						}
 						case OCTOTHERP: {
@@ -2533,7 +2543,7 @@ export class PFMParser {
 								this.chomp(2);
 								this.states.pop();
 								this.states.push(state_kind.code_span_info);
-								this.metadata.info_start = this.cursor;
+								this.info_start_pos = this.cursor;
 							}
 							continue;
 						}
@@ -2564,7 +2574,7 @@ export class PFMParser {
 				case state_kind.code_span_info: {
 					switch (code) {
 						case SPACE: {
-							this.metadata.info_end = this.cursor;
+							this.info_end_pos = this.cursor;
 							this.checkpoint_cursor = this.cursor + 1;
 							this.states.pop();
 							if (source.charCodeAt(this.cursor + 1) === SPACE) {
@@ -2572,25 +2582,25 @@ export class PFMParser {
 								this.chomp(2);
 							} else {
 								this.states.push(state_kind.code_span_end);
-								this.chomp();
+								this.chomp1();
 							}
 
 							const cs_id = this.emit_open(
 								node_kind.code_span,
-								this.metadata.info_start - 2 - this.extra,
+								this.info_start_pos - 2 - this.extra,
 								current_node
 							);
 							this.node_stack.push(cs_id);
 
-							this.out.attr(cs_id, 'info_start', this.metadata.info_start);
-							this.out.attr(cs_id, 'info_end', this.metadata.info_end);
+							this.out.attr(cs_id, 'info_start', this.info_start_pos);
+							this.out.attr(cs_id, 'info_end', this.info_end_pos);
 
 							this.out.attr(cs_id, 'value_start', this.cursor);
 
 							continue;
 						}
 						default: {
-							this.chomp();
+							this.chomp1();
 							continue;
 						}
 					}
@@ -2598,7 +2608,7 @@ export class PFMParser {
 
 				case state_kind.code_span_content_leading_space: {
 					if (code === SPACE && source.charCodeAt(this.cursor + 1) === BACKTICK) {
-						this.chomp();
+						this.chomp1();
 						this.states.pop();
 						this.states.push(state_kind.code_span_leading_space_end);
 						continue;
@@ -2617,7 +2627,7 @@ export class PFMParser {
 							this.chomp(this.extra);
 							continue;
 						}
-						this.chomp();
+						this.chomp1();
 						continue;
 					} else if (code === LINEFEED) {
 						this.out.attr(current_node, 'value_start', this.checkpoint_cursor);
@@ -2626,7 +2636,7 @@ export class PFMParser {
 						this.states.push(state_kind.code_span_end);
 						continue;
 					} else {
-						this.chomp();
+						this.chomp1();
 						continue;
 					}
 				}
@@ -2683,7 +2693,7 @@ export class PFMParser {
 
 					if (
 						(code === LINEFEED && this.is_blank_line_after(this.cursor)) ||
-						isNaN(code)
+						code !== code
 					) {
 						// Code span failure — revoke the code_span node and fall back to text.
 						// Start text at the opening backtick(s) so they render as literal text.
@@ -2704,7 +2714,7 @@ export class PFMParser {
 
 						continue;
 					}
-					this.chomp();
+					this.chomp1();
 					continue;
 				}
 
@@ -2749,7 +2759,7 @@ export class PFMParser {
 
 					// Skip leading pipe
 					if (code === PIPE) {
-						this.chomp();
+						this.chomp1();
 					}
 
 					// Open first cell and push onto node_stack for inline content
@@ -2786,7 +2796,7 @@ export class PFMParser {
 							this.close_table_cell();
 						}
 						this.table_cell_col++;
-						this.chomp(); // skip the pipe
+						this.chomp1(); // skip the pipe
 
 						// Open next cell eagerly — don't push inline yet,
 						// let the fallthrough handle whitespace skipping first
@@ -2806,13 +2816,13 @@ export class PFMParser {
 						}
 						this.pad_and_close_row();
 						this.states.pop();
-						this.chomp();
+						this.chomp1();
 						continue;
 					}
 
 					// Skip leading whitespace before cell content
 					if (!this.table_cell_has_content && (code === SPACE || code === TAB)) {
-						this.chomp();
+						this.chomp1();
 						continue;
 					}
 
@@ -2823,7 +2833,7 @@ export class PFMParser {
 				}
 
 				default: {
-					this.chomp();
+					this.chomp1();
 					continue;
 				}
 			}
@@ -3145,7 +3155,7 @@ export class PFMParser {
 					// Speculative node never closed — revoke it now
 					// so the delimiter becomes literal text
 					this.out.revoke(node_id);
-					this.pending_ids.delete(node_id);
+					this.pending_ids.delete(node_id); this.pending_count--;
 				} else {
 					// Already committed (closed normally) — just close
 					this.out.attr(node_id, 'value_end', this.cursor);
@@ -3203,7 +3213,7 @@ export class PFMParser {
 		// Only affect nodes that haven't been closed yet — mirrors gently_set_end/gently_set_value_end
 		for (let i = 0; i < this.node_stack.length; i++) {
 			const id = this.node_stack[i];
-			if (!this.closed_ids.has(id)) {
+			if (!this.closed_flags[id]) {
 				this.out.attr(id, 'value_end', length - 1);
 				this.emit_close(id, length - 1);
 			}
@@ -3214,6 +3224,7 @@ export class PFMParser {
 			this.out.revoke(id);
 		}
 		this.pending_ids.clear();
+		this.pending_count = 0;
 	}
 }
 
