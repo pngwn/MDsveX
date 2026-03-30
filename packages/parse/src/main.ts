@@ -90,6 +90,9 @@ const classify = (code: number): char_mask =>
  * Any character that requires the text state to yield control
  * (delimiters, escapes, line breaks, table pipes).
  */
+/** Shared empty error collector — avoids allocation when no errors are recorded. */
+const EMPTY_ERRORS = new error_collector(1);
+
 const text_break = new Uint8Array(128);
 text_break[LINEFEED] = 1;
 text_break[BACKSLASH] = 1;
@@ -173,7 +176,7 @@ export class PFMParser {
 
 	// ID generation
 	private next_id: number = 1; // 0 is reserved for root
-	private pending_ids: Set<number> = new Set();
+	private pending_ids: number[] = [];
 	private pending_count: number = 0;
 	private closed_flags: boolean[] = [];
 	private node_kind_array: node_kind[] = [];
@@ -233,7 +236,7 @@ export class PFMParser {
 
 	constructor(emitter: Emitter) {
 		this.out = emitter;
-		this.errors = new error_collector(32);
+		this.errors = EMPTY_ERRORS;
 	}
 
 	/**
@@ -251,7 +254,7 @@ export class PFMParser {
 		this.source = source;
 		this.current = classify(source.charCodeAt(0));
 		this.next_class = classify(source.charCodeAt(1));
-		this.errors = new error_collector(64);
+		this.errors = EMPTY_ERRORS;
 		this.finished = true;
 
 		this._run();
@@ -299,7 +302,7 @@ export class PFMParser {
 		this.states = [state_kind.root];
 		this.node_stack = [0];
 		this.next_id = 1;
-		this.pending_ids = new Set();
+		this.pending_ids = [];
 		this.pending_count = 0;
 		this.closed_flags = [];
 		this.node_kind_array = [];
@@ -333,7 +336,7 @@ export class PFMParser {
 		this.checkpoint_cursor = 0;
 		this.prev_cursor = 0;
 		this.loop_without_progress = 0;
-		this.errors = new error_collector(64);
+		this.errors = EMPTY_ERRORS;
 		this.introspector = introspector;
 
 		// Emit the root node open
@@ -347,7 +350,7 @@ export class PFMParser {
 	private emit_open(kind: node_kind, start: number, parent: number, extra = 0, pending = false): number {
 		const id = this.next_id++;
 		this.out.open(id, kind, start, parent, extra, pending);
-		if (pending) { this.pending_ids.add(id); this.pending_count++; }
+		if (pending) { this.pending_ids[this.pending_count++] = id; }
 		this.node_kind_array[id] = kind;
 		return id;
 	}
@@ -355,6 +358,28 @@ export class PFMParser {
 	private emit_close(id: number, end: number): void {
 		this.out.close(id, end);
 		this.closed_flags[id] = true;
+	}
+
+	/** Swap-remove an id from the dense pending_ids array. */
+	private pending_remove(id: number): void {
+		const ids = this.pending_ids;
+		const len = this.pending_count;
+		for (let i = 0; i < len; i++) {
+			if (ids[i] === id) {
+				ids[i] = ids[len - 1];
+				this.pending_count = len - 1;
+				return;
+			}
+		}
+	}
+
+	/** Check if an id is in the pending_ids array. */
+	private pending_has(id: number): boolean {
+		const ids = this.pending_ids;
+		for (let i = 0; i < this.pending_count; i++) {
+			if (ids[i] === id) return true;
+		}
+		return false;
 	}
 
 	// -----------------------------------------------------------
@@ -972,9 +997,11 @@ export class PFMParser {
 	private _run(): void {
 		const source = this.source;
 		const length = source.length;
+		const introspector = this.introspector;
 
 		// Reset progress counter — new data may have been fed since last _run()
 		this.loop_without_progress = 0;
+		let iter_count = 0;
 
 		main_loop: while (this.cursor <= length) {
 			// Stop when we've consumed all available input.
@@ -991,32 +1018,32 @@ export class PFMParser {
 					st === state_kind.block_quote ||
 					st === state_kind.list_item
 				) {
-					for (const id of this.pending_ids) {
-						this.out.revoke(id);
+					for (let pi = 0; pi < this.pending_count; pi++) {
+						this.out.revoke(this.pending_ids[pi]);
 					}
-					this.pending_ids.clear();
 					this.pending_count = 0;
 				}
 			}
 
-			this.introspector?.step(this.cursor, this.states);
+			if (introspector) introspector.step(this.cursor, this.states);
 
 			const active = this.states[this.states.length - 1];
 			const code = source.charCodeAt(this.cursor);
 
-			const current_node = this.node_stack[this.node_stack.length - 1] || 0;
+			const current_node = this.node_stack[this.node_stack.length - 1];
 
-			if (this.cursor === this.prev_cursor) {
-				this.loop_without_progress += 1;
-				if (this.loop_without_progress > 100) {
-					console.error('Infinite loop detected');
-					break;
+			if ((++iter_count & 63) === 0) {
+				if (this.cursor === this.prev_cursor) {
+					this.loop_without_progress += 64;
+					if (this.loop_without_progress > 100) {
+						console.error('Infinite loop detected');
+						break;
+					}
+				} else {
+					this.loop_without_progress = 0;
 				}
-			} else {
-				this.loop_without_progress = 0;
+				this.prev_cursor = this.cursor;
 			}
-
-			this.prev_cursor = this.cursor;
 
 			switch (active) {
 				case state_kind.root: {
@@ -1139,9 +1166,7 @@ export class PFMParser {
 						if (!this.finished) break main_loop;
 						this.emit_close(current_node, this.cursor);
 						this.states.pop();
-						while (this.node_stack.length > node_stack_base) {
-							this.node_stack.pop();
-						}
+						this.node_stack.length = node_stack_base;
 						continue;
 					}
 
@@ -1159,17 +1184,13 @@ export class PFMParser {
 							if (this.is_blank_at_pos(stripped)) {
 								this.emit_close(current_node, this.cursor);
 								this.states.pop();
-								while (this.node_stack.length > node_stack_base) {
-									this.node_stack.pop();
-								}
+								this.node_stack.length = node_stack_base;
 								continue;
 							}
 							if (this.is_heading_start(stripped) || this.is_thematic_break_start(stripped)) {
 								this.emit_close(current_node, this.cursor);
 								this.states.pop();
-								while (this.node_stack.length > node_stack_base) {
-									this.node_stack.pop();
-								}
+								this.node_stack.length = node_stack_base;
 								continue;
 							}
 							if (
@@ -1179,9 +1200,7 @@ export class PFMParser {
 							) {
 								this.emit_close(current_node, this.cursor);
 								this.states.pop();
-								while (this.node_stack.length > node_stack_base) {
-									this.node_stack.pop();
-								}
+								this.node_stack.length = node_stack_base;
 								continue;
 							}
 							this.chomp(stripped, true);
@@ -1192,17 +1211,13 @@ export class PFMParser {
 						if (this.is_blank_line_after(this.cursor)) {
 							this.emit_close(current_node, this.cursor);
 							this.states.pop();
-							while (this.node_stack.length > node_stack_base) {
-								this.node_stack.pop();
-							}
+							this.node_stack.length = node_stack_base;
 							continue;
 						}
 						if (this.is_heading_start(next_pos) || this.is_thematic_break_start(next_pos)) {
 							this.emit_close(current_node, this.cursor);
 							this.states.pop();
-							while (this.node_stack.length > node_stack_base) {
-								this.node_stack.pop();
-							}
+							this.node_stack.length = node_stack_base;
 							continue;
 						}
 						if (
@@ -1212,9 +1227,7 @@ export class PFMParser {
 						) {
 							this.emit_close(current_node, this.cursor);
 							this.states.pop();
-							while (this.node_stack.length > node_stack_base) {
-								this.node_stack.pop();
-							}
+							this.node_stack.length = node_stack_base;
 							continue;
 						}
 						this.chomp1();
@@ -1225,9 +1238,7 @@ export class PFMParser {
 					if (code === LINEFEED && this.is_block_interrupt(this.cursor + 1)) {
 						this.emit_close(current_node, this.cursor);
 						this.states.pop();
-						while (this.node_stack.length > node_stack_base) {
-							this.node_stack.pop();
-						}
+						this.node_stack.length = node_stack_base;
 						continue;
 					} else if (code === LINEFEED) {
 						if (this.list_depth > 0) {
@@ -1240,7 +1251,7 @@ export class PFMParser {
 								if (stripped < length && this.try_parse_list_marker(stripped) !== null) {
 									this.emit_close(current_node, this.cursor);
 									this.states.pop();
-									while (this.node_stack.length > node_stack_base) { this.node_stack.pop(); }
+									this.node_stack.length = node_stack_base;
 									continue;
 								}
 							}
@@ -1433,7 +1444,7 @@ export class PFMParser {
 						const n_id = this.node_stack[this.node_stack.length - 1];
 						this.out.attr(n_id, 'value_end', this.cursor);
 						this.emit_close(n_id, this.cursor + 1);
-						this.pending_ids.delete(n_id); this.pending_count--;
+						this.pending_remove(n_id);
 						this.states.pop();
 						this.node_stack.pop();
 						this.chomp1();
@@ -1499,7 +1510,7 @@ export class PFMParser {
 						const n_id = this.node_stack[this.node_stack.length - 1];
 						this.out.attr(n_id, 'value_end', this.cursor);
 						this.emit_close(n_id, this.cursor + 1);
-						this.pending_ids.delete(n_id); this.pending_count--;
+						this.pending_remove(n_id);
 						this.states.pop();
 						this.node_stack.pop();
 						this.chomp1();
@@ -1570,7 +1581,7 @@ export class PFMParser {
 						const n_id = this.node_stack[this.node_stack.length - 1];
 						this.out.attr(n_id, 'value_end', this.cursor);
 						this.emit_close(n_id, this.cursor + 2);
-						this.pending_ids.delete(n_id); this.pending_count--;
+						this.pending_remove(n_id);
 						this.states.pop();
 						this.node_stack.pop();
 						this.chomp(2);
@@ -1611,7 +1622,7 @@ export class PFMParser {
 						const n_id = this.node_stack[this.node_stack.length - 1];
 						this.out.attr(n_id, 'value_end', this.cursor);
 						this.emit_close(n_id, this.cursor + 1);
-						this.pending_ids.delete(n_id); this.pending_count--;
+						this.pending_remove(n_id);
 						this.states.pop();
 						this.node_stack.pop();
 						this.chomp1();
@@ -1729,7 +1740,7 @@ export class PFMParser {
 									this.out.attr(n_id, 'title', source.slice(title_start, title_end));
 								}
 								this.out.attr(n_id, 'value_end', this.cursor);
-								this.pending_ids.delete(n_id); this.pending_count--;
+								this.pending_remove(n_id);
 								this.emit_close(n_id, p);
 								this.node_stack.pop();
 								this.states.pop();
@@ -3143,11 +3154,11 @@ export class PFMParser {
 			} else {
 				// emphasis, strong, strikethrough, superscript, link_text
 				const node_id = this.node_stack[this.node_stack.length - 1];
-				if (this.pending_ids.has(node_id)) {
+				if (this.pending_has(node_id)) {
 					// Speculative node never closed — revoke it now
 					// so the delimiter becomes literal text
 					this.out.revoke(node_id);
-					this.pending_ids.delete(node_id); this.pending_count--;
+					this.pending_remove(node_id);
 				} else {
 					// Already committed (closed normally) — just close
 					this.out.attr(node_id, 'value_end', this.cursor);
@@ -3212,10 +3223,9 @@ export class PFMParser {
 		}
 
 		// Revoke any remaining pending nodes
-		for (const id of this.pending_ids) {
-			this.out.revoke(id);
+		for (let pi = 0; pi < this.pending_count; pi++) {
+			this.out.revoke(this.pending_ids[pi]);
 		}
-		this.pending_ids.clear();
 		this.pending_count = 0;
 	}
 }
@@ -3230,7 +3240,7 @@ export function parse_markdown_svelte(
 	input: string,
 	options: parse_options = {}
 ): { nodes: node_buffer; errors: error_collector } {
-	const tree = new TreeBuilder(input.length);
+	const tree = new TreeBuilder((input.length >> 3) || 128);
 	const parser = new PFMParser(tree);
 	const { errors } = parser.parse(input, options.introspector);
 	return { nodes: tree.get_buffer(), errors };

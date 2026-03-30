@@ -140,8 +140,6 @@ export class node_buffer {
 	private children_ends: Uint32Array;
 	private pending_nodes: Uint32Array;
 
-	private kind_map: Map<node_kind, number[]> = new Map();
-
 	private _size: number;
 
 	/**
@@ -166,37 +164,7 @@ export class node_buffer {
 		this.children_ends = new Uint32Array(capacity);
 		this.pending_nodes = new Uint32Array(capacity);
 
-		let kinds = [
-			node_kind.text,
-			node_kind.heading,
-			node_kind.code_fence,
-			node_kind.paragraph,
-			node_kind.root,
-			node_kind.code_span,
-			node_kind.emphasis,
-			node_kind.strong_emphasis,
-			node_kind.thematic_break,
-			node_kind.line_break,
-			node_kind.link,
-			node_kind.image,
-			node_kind.block_quote,
-			node_kind.list,
-			node_kind.list_item,
-			node_kind.hard_break,
-			node_kind.soft_break,
-			node_kind.strikethrough,
-			node_kind.superscript,
-			node_kind.table,
-			node_kind.table_header,
-			node_kind.table_row,
-			node_kind.table_cell,
-		];
-
 		this._size = 0;
-
-		for (let i = 0; i < kinds.length; i++) {
-			this.kind_map.set(kinds[i], []);
-		}
 
 		this.push(node_kind.root, 0);
 	}
@@ -241,8 +209,6 @@ export class node_buffer {
 		this.prev_siblings[index] = 0xffffffff;
 		this.children_starts[index] = 0xffffffff;
 		this.children_ends[index] = 0xffffffff;
-
-		this.add_kind(index, kind);
 
 		if (parent !== 0xffffffff) {
 			const last = this.children_ends[parent];
@@ -455,15 +421,6 @@ export class node_buffer {
 		this.children_ends[index] = 0xffffffff;
 	}
 
-	/**
-	 * Set the parent kind of the node at the given index
-	 * @param index index of the node whose parent kind to update
-	 * @param kind new parent kind
-	 */
-	add_kind(index: number, kind: node_kind): void {
-		this.kind_map.get(kind)?.push(index);
-	}
-
 	set_parent_kind(index: number, kind: node_kind): void {
 		const parent_index = this.parents[index];
 		if (parent_index !== 0xffffffff) {
@@ -471,8 +428,13 @@ export class node_buffer {
 		}
 	}
 
-	get_kinds(index: number): number[] {
-		return this.kind_map.get(index) || [];
+	/** Return indices of all nodes matching the given kind (lazy scan). */
+	get_kinds(kind: node_kind): number[] {
+		const result: number[] = [];
+		for (let i = 0; i < this._size; i++) {
+			if (this.kinds[i] === kind) result.push(i);
+		}
+		return result;
 	}
 
 	/**
