@@ -15,6 +15,7 @@
 	},
 	"dependencies": {
 		"@mdsvex/parse": "workspace:*",
+		"@mdsvex/render": "workspace:*",
 		"lucide-svelte": "^1.0.1"
 	},
 	"devDependencies": {

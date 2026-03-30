@@ -27,9 +27,16 @@ class RecordingEmitter implements Emitter {
 	attr(id: number, key: string, value: any): void {
 		this.ops.push({ op: 'attr', id, key, value });
 	}
+	set_value_start(id: number, pos: number): void {
+		this.ops.push({ op: 'attr', id, key: 'value_start', value: pos });
+	}
+	set_value_end(id: number, pos: number): void {
+		this.ops.push({ op: 'attr', id, key: 'value_end', value: pos });
+	}
 	revoke(id: number): void {
 		this.ops.push({ op: 'revoke', id });
 	}
+	cursor(_pos: number): void {}
 }
 
 function parse_to_ops(input: string): Op[] {

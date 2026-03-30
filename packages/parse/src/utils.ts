@@ -239,12 +239,7 @@ export class node_buffer {
 		extra = 0,
 		metadata?: any
 	): number {
-		const index = this._size;
-		if (index >= this.capacity) {
-			this.grow();
-		}
-
-		this.push(kind, cursor, parent, extra, metadata);
+		const index = this.push(kind, cursor, parent, extra, metadata);
 		this.pending_nodes[index] = 1;
 		return index;
 	}

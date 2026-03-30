@@ -1,16 +1,57 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { PFMParser } from '@mdsvex/parse';
-	import { RecordingEmitter, build_render_tree, type Op, type RenderNode } from '$lib/recorder';
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
+	import { PFMParser, WireEmitter, PFMDocument } from '@mdsvex/parse';
+	import { HTMLRenderer } from '@mdsvex/render/html';
+	import { ComponentRenderer } from '@mdsvex/render/component';
+	import type { BlockEntry } from '@mdsvex/render/html';
+	import type { ComponentBlock } from '@mdsvex/render/component';
+	import Node from '@mdsvex/render/Node.svelte';
+	import { RecordingEmitter, type Op } from '$lib/recorder';
 	import { Play, Pause, SkipForward, SkipBackward, FastForward } from '$lib';
 
 	let { markdown }: { markdown: string } = $props();
 
-	let chunk_size = $state(1);
+	// ── Query param helpers ──────────────────────────────────
+	const VALID_CHUNKS = [1, 2, 5, 10, 9999];
+	const VALID_SPEEDS = [200, 80, 30, 10];
+	const VALID_RENDERERS = ['html', 'dom'] as const;
+
+	function read_params() {
+		const params = page.url?.searchParams;
+		if (!params) return { chunk: 1, speed: 80, renderer: 'dom' as const };
+		const c = Number(params.get('chunk'));
+		const s = Number(params.get('speed'));
+		const r = params.get('renderer');
+		return {
+			chunk: VALID_CHUNKS.includes(c) ? c : 1,
+			speed: VALID_SPEEDS.includes(s) ? s : 80,
+			renderer: VALID_RENDERERS.includes(r as any) ? (r as 'html' | 'dom') : 'dom',
+		};
+	}
+
+	function write_params() {
+		const url = new URL(page.url);
+		url.searchParams.set('chunk', String(chunk_size));
+		url.searchParams.set('speed', String(play_speed));
+		url.searchParams.set('renderer', render_mode);
+		goto(url.toString(), { replaceState: true, keepFocus: true, noScroll: true });
+	}
+
+	const initial = read_params();
+	let chunk_size = $state(initial.chunk);
 	let step_index = $state(0);
 	let playing = $state(false);
-	let play_speed = $state(80);
+	let play_speed = $state(initial.speed);
 	let play_timer: ReturnType<typeof setInterval> | null = null;
+	let render_mode: 'html' | 'dom' = $state(initial.renderer);
+
+	// Sync state → URL. Silently skip if router isn't ready yet (SSR/hydration).
+	$effect(() => {
+		chunk_size; play_speed; render_mode;
+		untrack(() => { try { write_params(); } catch {} });
+	});
 
 	// Reset when markdown changes
 	$effect(() => {
@@ -67,7 +108,6 @@
 		return markdown.slice(0, chunk_boundaries[step_index]);
 	});
 
-	let render_tree = $derived(build_render_tree(current_ops, markdown, fed_source.length));
 	let new_ops = $derived(step_index < step_ops.length ? step_ops[step_index] : []);
 
 	let new_ops_start = $derived.by(() => {
@@ -76,6 +116,61 @@
 			count += step_ops[i].length;
 		}
 		return count;
+	});
+
+	// ── Wire pipeline (for HTML renderer) ────────────────────
+	let wire_step_batches: unknown[][][] = $derived.by(() => {
+		const emitter = new WireEmitter();
+		const parser = new PFMParser(emitter);
+		parser.init();
+
+		const batches: unknown[][][] = [];
+		let accumulated = '';
+
+		for (let i = 0; i < chunk_boundaries.length; i++) {
+			const chunk_end = chunk_boundaries[i];
+			const chunk_start = i === 0 ? 0 : chunk_boundaries[i - 1];
+			const chunk = markdown.slice(chunk_start, chunk_end);
+			accumulated += chunk;
+			emitter.set_source(accumulated);
+			parser.feed(chunk);
+			batches.push(emitter.flush());
+		}
+
+		emitter.set_source(accumulated);
+		parser.finish();
+		batches.push(emitter.flush());
+
+		return batches;
+	});
+
+	let html_blocks: BlockEntry[] = $derived.by(() => {
+		const doc = new PFMDocument();
+		const renderer = new HTMLRenderer();
+
+		for (let i = 0; i <= step_index && i < wire_step_batches.length; i++) {
+			const batch = wire_step_batches[i];
+			if (batch.length > 0) {
+				doc.apply(batch);
+			}
+		}
+
+		renderer.update(doc);
+		return renderer.blocks.map(b => ({ id: b.id, html: b.html }));
+	});
+
+	let dom_blocks: ComponentBlock[] = $derived.by(() => {
+		const doc = new PFMDocument();
+		const renderer = new ComponentRenderer();
+
+		for (let i = 0; i <= step_index && i < wire_step_batches.length; i++) {
+			const batch = wire_step_batches[i];
+			if (batch.length > 0) {
+				doc.apply(batch);
+			}
+		}
+
+		return renderer.update(doc);
 	});
 
 	function reset() {
@@ -139,6 +234,13 @@
 	<div class="viewer-header">
 		<div class="controls">
 			<label class="chunk-control">
+				<span>render</span>
+				<select bind:value={render_mode}>
+					<option value="dom">Svelte DOM</option>
+					<option value="html">HTML String</option>
+				</select>
+			</label>
+			<label class="chunk-control">
 				<span>chunk</span>
 				<select bind:value={chunk_size} onchange={() => reset()}>
 					<option value={1}>1 byte</option>
@@ -175,139 +277,22 @@
 			</div>
 
 			<div class="panel render-panel">
-				<div class="panel-header">Rendered</div>
-				<div class="render-content">
-					{#snippet render_node(node: RenderNode, depth: number)}
-						{#if node.kind === 'root'}
-							{#each node.children as child, idx (idx)}
-								{@render render_node(child, depth)}
-							{/each}
-						{:else if node.kind === 'paragraph'}
-							<p>
-								{#each node.children as child, idx (idx)}
-									{@render render_node(child, depth + 1)}
-								{/each}
-							</p>
-						{:else if node.kind === 'heading'}
-							{@const level = node.attrs.extra || 1}
-							{#if level === 1}<h1>{node.text ?? ''}</h1>
-							{:else if level === 2}<h2>{node.text ?? ''}</h2>
-							{:else if level === 3}<h3>{node.text ?? ''}</h3>
-							{:else}<h4>{node.text ?? ''}</h4>
-							{/if}
-						{:else if node.kind === 'text'}
-							<span>{node.text ?? ''}</span>
-						{:else if node.kind === 'strong_emphasis'}
-							<strong>
-								{#each node.children as child, idx (idx)}
-									{@render render_node(child, depth + 1)}
-								{/each}
-							</strong>
-						{:else if node.kind === 'emphasis'}
-							<em>
-								{#each node.children as child, idx (idx)}
-									{@render render_node(child, depth + 1)}
-								{/each}
-							</em>
-						{:else if node.kind === 'strikethrough'}
-							<del>
-								{#each node.children as child, idx (idx)}
-									{@render render_node(child, depth + 1)}
-								{/each}
-							</del>
-						{:else if node.kind === 'superscript'}
-							<sup>
-								{#each node.children as child, idx (idx)}
-									{@render render_node(child, depth + 1)}
-								{/each}
-							</sup>
-						{:else if node.kind === 'code_fence'}
-							<pre class="rendered-code"><code>{node.text ?? ''}</code></pre>
-						{:else if node.kind === 'code_span'}
-							<code>{node.text ?? ''}</code>
-						{:else if node.kind === 'block_quote'}
-							<blockquote>
-								{#each node.children as child, idx (idx)}
-									{@render render_node(child, depth + 1)}
-								{/each}
-							</blockquote>
-						{:else if node.kind === 'list'}
-							{#if node.attrs.ordered}
-								<ol>
-									{#each node.children as child, idx (idx)}
-										{@render render_node(child, depth + 1)}
-									{/each}
-								</ol>
-							{:else}
-								<ul>
-									{#each node.children as child, idx (idx)}
-										{@render render_node(child, depth + 1)}
-									{/each}
-								</ul>
-							{/if}
-						{:else if node.kind === 'list_item'}
-							<li>
-								{#each node.children as child, idx (idx)}
-									{@render render_node(child, depth + 1)}
-								{/each}
-							</li>
-						{:else if node.kind === 'thematic_break'}
-							<hr />
-						{:else if node.kind === 'hard_break'}
-							<br />
-						{:else if node.kind === 'table'}
-							{@const aligns = node.attrs?.alignments ?? []}
-							<table>
-								{#each node.children as child, idx (idx)}
-									{@render render_table_row(child, aligns)}
-								{/each}
-							</table>
-						{:else if node.kind === 'table_header'}
-							<!-- handled by render_table_row -->
-						{:else if node.kind === 'table_row'}
-							<!-- handled by render_table_row -->
-						{:else if node.kind === 'link'}
-							<a href={node.attrs.href ?? '#'}>{#each node.children as child, idx (idx)}{@render render_node(child, depth + 1)}{/each}</a>
-						{:else if node.kind === 'image'}
-							<div class="img-wrap">
-								{#if node.attrs.src}
-									<img alt={node.text ?? ''} src={node.attrs.src ?? ''} />
-								{/if}
-							</div>
-						{:else if node.kind === 'line_break'}
-							<!-- skip block-level breaks -->
-						{:else}
-							<span class="unknown">[{node.kind}]</span>
-						{/if}
-					{/snippet}
-					{#snippet render_table_row(row: RenderNode, aligns: string[])}
-						{#if row.kind === 'table_header'}
-							<thead>
-								<tr>
-									{#each row.children as cell, col (col)}
-										{@const align = aligns[col] ?? 'none'}
-										<th style:text-align={align !== 'none' ? align : undefined}>
-											{#each cell.children as child, ci (ci)}
-												{@render render_node(child, 3)}
-											{/each}
-										</th>
-									{/each}
-								</tr>
-							</thead>
-						{:else if row.kind === 'table_row'}
-							<tr>
-								{#each row.children as cell, col (col)}
-									{@const align = aligns[col] ?? 'none'}
-									<td style:text-align={align !== 'none' ? align : undefined}>
-										{#each cell.children as child, ci (ci)}
-											{@render render_node(child, 3)}
-										{/each}
-									</td>
-								{/each}
-							</tr>
-						{/if}
-					{/snippet}
-					{@render render_node(render_tree, 0)}
+				<div class="panel-header">
+					Rendered
+					<span class="badge">{render_mode === 'html' ? `${html_blocks.length} blocks` : `${dom_blocks.length} blocks`}</span>
+				</div>
+				<div class="render-content prose">
+					{#if render_mode === 'dom'}
+						{#each dom_blocks as block (block.id)}
+							{#key block.v}
+								<Node node={block.node} />
+							{/key}
+						{/each}
+					{:else}
+						{#each html_blocks as block (block.id)}
+							{@html block.html}
+						{/each}
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -504,98 +489,6 @@
 		padding: 1rem;
 		overflow-y: auto;
 		flex: 1;
-		color: var(--text-primary);
-		font-size: 0.9rem;
-		line-height: 1.7;
-	}
-
-	.render-content h1 { font-size: 1.6rem; color: var(--accent); margin-bottom: 0.75rem; }
-	.render-content h2 { font-size: 1.3rem; color: var(--accent); margin-bottom: 0.5rem; }
-	.render-content h3 { font-size: 1.1rem; color: var(--accent); margin-bottom: 0.5rem; }
-	.render-content h4 { font-size: 1rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
-	.render-content p { margin-bottom: 0.75rem; }
-	.render-content strong { color: #f59e0b; font-weight: 600; }
-	.render-content em { color: #c084fc; }
-	.render-content del { color: var(--text-tertiary); text-decoration: line-through; }
-	.render-content sup { color: #60a5fa; font-size: 0.75em; }
-	.render-content a { color: var(--accent); text-decoration: underline; }
-	.render-content blockquote {
-		border-left: 3px solid var(--accent);
-		padding-left: 1rem;
-		color: var(--text-secondary);
-		margin-bottom: 0.75rem;
-	}
-	.render-content ul, .render-content ol {
-		margin-left: 1.5rem;
-		margin-bottom: 0.75rem;
-	}
-	.render-content li { margin-bottom: 0.25rem; }
-	.render-content hr {
-		border: none;
-		border-top: 1px solid var(--border-light);
-		margin: 1rem 0;
-	}
-
-	.render-content table {
-		width: 100%;
-		border-collapse: collapse;
-		margin-bottom: 0.75rem;
-		font-size: 0.85rem;
-	}
-	.render-content th, .render-content td {
-		border: 1px solid var(--border);
-		padding: 0.4rem 0.75rem;
-	}
-	.render-content th {
-		background: var(--bg-tertiary);
-		color: var(--accent);
-		font-weight: 600;
-	}
-	.render-content td {
-		background: var(--bg-code);
-	}
-	.render-content thead {
-		border-bottom: 2px solid var(--accent);
-	}
-
-	.render-content img {
-		width: 100%;
-		height: 100%;
-	}
-
-	.render-content img:not([src]) {
-		opacity: 0;
-	}
-
-	.img-wrap {
-		border: 0;
-		outline: none;
-		border-radius: 2px;
-		width: 150px;
-		height: 150px;
-		background: var(--bg-tertiary) url(/image.svg) no-repeat center center;
-		-webkit-appearance: none;
-		appearance: none;
-		overflow: hidden;
-	}
-
-	.rendered-code {
-		background: var(--bg-tertiary);
-		padding: 0.75rem;
-		border-radius: var(--radius-sm);
-		margin-bottom: 0.75rem;
-		overflow-x: auto;
-	}
-
-	.rendered-code code {
-		background: transparent;
-		padding: 0;
-		color: var(--text-primary);
-	}
-
-	.unknown {
-		color: var(--text-tertiary);
-		font-style: italic;
 	}
 
 	.opcodes-panel {

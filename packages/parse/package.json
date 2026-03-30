@@ -28,15 +28,15 @@
 			"types": "./src/main.ts"
 		},
 		"./opcodes": {
-			"import": "./src/opcodes.ts",
+			"import": "./dist/opcodes.js",
 			"types": "./src/opcodes.ts"
 		},
 		"./tree-builder": {
-			"import": "./src/tree_builder.ts",
+			"import": "./dist/tree-builder.js",
 			"types": "./src/tree_builder.ts"
 		},
 		"./utils": {
-			"import": "./src/utils.ts",
+			"import": "./dist/utils.js",
 			"types": "./src/utils.ts"
 		},
 		"./package.json": "./package.json"

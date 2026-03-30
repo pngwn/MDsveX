@@ -53,6 +53,12 @@ export interface Emitter {
 	 */
 	attr(id: number, key: string, value: any): void;
 
+	/** Set the value start position for a node. */
+	set_value_start(id: number, pos: number): void;
+
+	/** Set the value end position for a node. */
+	set_value_end(id: number, pos: number): void;
+
 	/**
 	 * Revoke a speculative node. The node is removed from the tree:
 	 * - If it has no children: simply removed.
@@ -61,4 +67,12 @@ export interface Emitter {
 	 * @param id ID of the node to revoke.
 	 */
 	revoke(id: number): void;
+
+	/**
+	 * Report the parser's current cursor position. Called at the end of
+	 * each feed() and finish(). Emitters can use this as the boundary
+	 * for eager text emission during streaming.
+	 * @param pos Current byte offset in the source.
+	 */
+	cursor(pos: number): void;
 }

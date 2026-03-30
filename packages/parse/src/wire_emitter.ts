@@ -83,6 +83,10 @@ interface TextState {
 	sent: number;
 	/** Wire target ID: parent ID for text nodes, self ID for leaves. */
 	target: number;
+	/** True once value_end has been received (node text is finalized). */
+	done: boolean;
+	/** True if this is a code_fence node (needs backtick holdback). */
+	is_fence: boolean;
 }
 
 /**
@@ -126,6 +130,8 @@ export class WireEmitter implements Emitter {
 	private text_state: Map<number, TextState> = new Map();
 	/** Buffers info_start offsets until info_end arrives. */
 	private info_starts: Map<number, number> = new Map();
+	/** Parser cursor position, updated via cursor(). */
+	private parser_cursor = 0;
 
 	/**
 	 * Set the current source string. In incremental mode, call this
@@ -197,18 +203,23 @@ export class WireEmitter implements Emitter {
 				start: value as number,
 				sent: value as number,
 				target,
+				done: false,
+				is_fence: kind === node_kind.code_fence,
 			});
 			return;
 		}
 
 		if (key === 'value_end') {
 			const state = this.text_state.get(id);
-			if (state && (value as number) > state.sent) {
-				const content = this.source.slice(state.sent, value as number);
-				if (content) {
-					this.batch.push([WireOp.Text, state.target, content]);
-					state.sent = value as number;
+			if (state) {
+				if ((value as number) > state.sent) {
+					const content = this.source.slice(state.sent, value as number);
+					if (content) {
+						this.batch.push([WireOp.Text, state.target, content]);
+						state.sent = value as number;
+					}
 				}
+				state.done = true;
 			}
 			return;
 		}
@@ -241,6 +252,18 @@ export class WireEmitter implements Emitter {
 		this.batch.push([WireOp.Attr, id, key, value]);
 	}
 
+	set_value_start(id: number, pos: number): void {
+		this.attr(id, 'value_start', pos);
+	}
+
+	set_value_end(id: number, pos: number): void {
+		this.attr(id, 'value_end', pos);
+	}
+
+	cursor(pos: number): void {
+		this.parser_cursor = pos;
+	}
+
 	revoke(id: number): void {
 		const kind = this.kinds.get(id);
 		const delimiter = get_delimiter(kind);
@@ -261,6 +284,54 @@ export class WireEmitter implements Emitter {
 	 * after parse() in batch mode.
 	 */
 	flush(): unknown[][] {
+		// Eagerly emit unsent text for nodes still being streamed
+		// (value_start set, value_end not yet received).
+		//
+		// For code fences: use source.length as boundary (the parser
+		// stalls internally but the content is safe to show). Hold
+		// back the trailing line only if it starts with backticks
+		// (potential closing fence).
+		//
+		// For everything else: use the parser cursor as boundary
+		// (the parser advances through confirmed content).
+		const fed_end = this.source.length;
+		for (const [, state] of this.text_state) {
+			if (state.done) continue;
+
+			let end: number;
+			if (state.is_fence) {
+				end = fed_end;
+				if (end > state.sent) {
+					const text = this.source.slice(state.sent, end);
+					const last_nl = text.lastIndexOf('\n');
+					if (last_nl !== -1) {
+						const tail = text.slice(last_nl + 1);
+						let ti = 0;
+						while (ti < tail.length && (tail.charCodeAt(ti) === 0x20 || tail.charCodeAt(ti) === 0x09)) ti++;
+						if (ti < tail.length && tail.charCodeAt(ti) === 0x60) {
+							end = state.sent + last_nl;
+						}
+					} else {
+						let ti = 0;
+						while (ti < text.length && (text.charCodeAt(ti) === 0x20 || text.charCodeAt(ti) === 0x09)) ti++;
+						if (ti < text.length && text.charCodeAt(ti) === 0x60) {
+							continue;
+						}
+					}
+				}
+			} else {
+				end = this.parser_cursor;
+			}
+
+			if (end > state.sent) {
+				const content = this.source.slice(state.sent, end);
+				if (content) {
+					this.batch.push([WireOp.Text, state.target, content]);
+					state.sent = end;
+				}
+			}
+		}
+
 		const result: unknown[][] = [];
 
 		if (!this.schema_emitted) {
@@ -295,6 +366,7 @@ export class WireEmitter implements Emitter {
 		this.text_parents.clear();
 		this.text_state.clear();
 		this.info_starts.clear();
+		this.parser_cursor = 0;
 	}
 }
 

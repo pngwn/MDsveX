@@ -4,6 +4,8 @@
 	import { SECTIONS } from '$lib/snippets';
 
 	let { children } = $props();
+
+	$inspect(page)
 </script>
 
 <svelte:head>
@@ -27,10 +29,11 @@
 					<div class="section">
 						<div class="section-label">{section.name}</div>
 						{#each section.snippets as snippet (snippet.slug)}
-							{@const href = `/${section.slug}/${snippet.slug}`}
+							{@const path = `/${section.slug}/${snippet.slug}`}
+							{@const href = `${path}${page.url.search}`}
 							<a
 								class="nav-link"
-								class:active={page.url.pathname === href}
+								class:active={page.url.pathname === path}
 								{href}
 							>
 								{snippet.name}

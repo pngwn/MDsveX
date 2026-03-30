@@ -42,6 +42,9 @@ importers:
       '@mdsvex/parse':
         specifier: workspace:*
         version: link:../parse
+      '@mdsvex/render':
+        specifier: workspace:*
+        version: link:../render
       lucide-svelte:
         specifier: ^1.0.1
         version: 1.0.1(svelte@5.55.0)
@@ -75,6 +78,10 @@ importers:
         version: 7.3.1(@types/node@24.7.1)(terser@5.44.0)
 
   packages/bench:
+    dependencies:
+      '@aibind/markdown':
+        specifier: ^0.8.0
+        version: 0.8.0
     devDependencies:
       '@mdsvex/parse':
         specifier: workspace:^
@@ -130,6 +137,15 @@ importers:
       commonmark-spec:
         specifier: ^0.31.2
         version: 0.31.2
+
+  packages/render:
+    dependencies:
+      '@mdsvex/parse':
+        specifier: workspace:*
+        version: link:../parse
+      svelte:
+        specifier: ^5.0.0
+        version: 5.55.0
 
   packages/site:
     dependencies:
@@ -305,6 +321,9 @@ importers:
         version: 6.3.2(@types/node@24.7.1)(terser@5.44.0)
 
 packages:
+
+  '@aibind/markdown@0.8.0':
+    resolution: {integrity: sha512-4zfgVIJ4cvE1WJl6qc3mErFcHvGabD2DlmupxvBrNsxbj8oqM+iLDfgksyJSKv0dNIvo9oMnlCXxmRP3CHCroQ==}
 
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
@@ -4389,6 +4408,8 @@ packages:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
+
+  '@aibind/markdown@0.8.0': {}
 
   '@ampproject/remapping@2.3.0':
     dependencies:

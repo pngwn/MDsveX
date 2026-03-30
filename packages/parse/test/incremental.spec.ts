@@ -23,7 +23,10 @@ class OpRecorder implements Emitter {
 	close(id: number, _end: number) { this.ops.push({ op: 'close', id }); }
 	text(_p: number, _s: number, _e: number) {}
 	attr(id: number, key: string, _v: any) { this.ops.push({ op: 'attr', id, key }); }
+	set_value_start(id: number, _pos: number) { this.ops.push({ op: 'attr', id, key: 'value_start' }); }
+	set_value_end(id: number, _pos: number) { this.ops.push({ op: 'attr', id, key: 'value_end' }); }
 	revoke(id: number) { this.ops.push({ op: 'revoke', id }); }
+	cursor(_pos: number) {}
 }
 
 function tree_diff(

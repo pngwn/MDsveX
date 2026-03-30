@@ -113,6 +113,16 @@ export class TreeBuilder implements Emitter {
 		}
 	}
 
+	set_value_start(id: number, pos: number): void {
+		const idx = this.id_to_index[id];
+		if (idx !== undefined) this.nodes.set_value_start(idx, pos);
+	}
+
+	set_value_end(id: number, pos: number): void {
+		const idx = this.id_to_index[id];
+		if (idx !== undefined) this.nodes.set_value_end(idx, pos);
+	}
+
 	revoke(id: number): void {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
@@ -130,6 +140,8 @@ export class TreeBuilder implements Emitter {
 			this.nodes.handle_repair(idx);
 		}
 	}
+
+	cursor(_pos: number): void {}
 
 	/** Extract the built node_buffer. */
 	get_buffer(): node_buffer {

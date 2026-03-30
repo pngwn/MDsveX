@@ -88,3 +88,86 @@ pre code {
 ::-webkit-scrollbar-track { background: var(--bg-secondary); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+/* ── Prose styles (rendered markdown) ────────────────────── */
+
+.prose {
+	color: var(--text-primary);
+	font-size: 0.9rem;
+	line-height: 1.7;
+}
+
+.prose h1 { font-size: 1.6rem; color: var(--accent); margin-bottom: 0.75rem; }
+.prose h2 { font-size: 1.3rem; color: var(--accent); margin-bottom: 0.5rem; }
+.prose h3 { font-size: 1.1rem; color: var(--accent); margin-bottom: 0.5rem; }
+.prose h4 { font-size: 1rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+.prose h5 { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+.prose h6 { font-size: 0.85rem; color: var(--text-tertiary); margin-bottom: 0.5rem; }
+.prose p { margin-bottom: 0.75rem; }
+.prose strong { color: #f59e0b; font-weight: 600; }
+.prose em { color: #c084fc; }
+.prose del { color: var(--text-tertiary); text-decoration: line-through; }
+.prose sup { color: #60a5fa; font-size: 0.75em; }
+.prose a { color: var(--accent); text-decoration: underline; }
+
+.prose blockquote {
+	border-left: 3px solid var(--accent);
+	padding-left: 1rem;
+	color: var(--text-secondary);
+	margin-bottom: 0.75rem;
+}
+
+.prose ul, .prose ol {
+	margin-left: 1.5rem;
+	margin-bottom: 0.75rem;
+}
+.prose li { margin-bottom: 0.25rem; }
+
+.prose hr {
+	border: none;
+	border-top: 1px solid var(--border-light);
+	margin: 1rem 0;
+}
+
+.prose table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-bottom: 0.75rem;
+	font-size: 0.85rem;
+}
+.prose th, .prose td {
+	border: 1px solid var(--border);
+	padding: 0.4rem 0.75rem;
+}
+.prose th {
+	background: var(--bg-tertiary);
+	color: var(--accent);
+	font-weight: 600;
+}
+.prose td {
+	background: var(--bg-code);
+}
+.prose thead {
+	border-bottom: 2px solid var(--accent);
+}
+
+.prose img {
+	max-width: 100%;
+	height: auto;
+}
+.prose img:not([src]) {
+	opacity: 0;
+}
+
+.prose pre {
+	background: var(--bg-tertiary);
+	padding: 0.75rem;
+	border-radius: var(--radius-sm);
+	margin-bottom: 0.75rem;
+	overflow-x: auto;
+}
+.prose pre code {
+	background: transparent;
+	padding: 0;
+	color: var(--text-primary);
+}

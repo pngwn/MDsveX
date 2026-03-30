@@ -58,7 +58,19 @@
       "Bash(pnpm test:run --filter parse)",
       "Bash(npm search:*)",
       "Bash(pnpm bench:*)",
-      "Bash(pnpm:*)"
+      "Bash(pnpm:*)",
+      "WebFetch(domain:www.aibind.dev)",
+      "Bash(curl -sL https://www.aibind.dev/concepts/markdown.html)",
+      "Bash(curl -sL https://www.aibind.dev/assets/concepts_markdown.md.kG7omLY3.lean.js)",
+      "Bash(curl -s http://localhost:5176)",
+      "Bash(curl -sL http://localhost:5176/)",
+      "Bash(curl -sL http://localhost:5176/inline/emphasis-nesting)",
+      "Bash(pkill -f \"vite dev\")",
+      "Bash(node --input-type=module -e \":*)",
+      "Bash(curl -s http://localhost:5177)",
+      "Bash(curl -sL http://localhost:5177/)",
+      "Bash(curl -sL \"http://localhost:5177/basics/paragraph?renderer=dom&chunk=9999\")",
+      "Bash(curl -sL \"http://localhost:5177/inline/emphasis-nesting?renderer=dom&chunk=9999\")"
     ],
     "deny": []
   }

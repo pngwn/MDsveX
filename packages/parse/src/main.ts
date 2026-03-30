@@ -178,7 +178,7 @@ export class PFMParser {
 	private next_id: number = 1; // 0 is reserved for root
 	private pending_ids: number[] = [];
 	private pending_count: number = 0;
-	private closed_flags: boolean[] = [];
+	private closed_flags: number[] = [];
 	private node_kind_array: node_kind[] = [];
 
 	// Char classification
@@ -282,6 +282,7 @@ export class PFMParser {
 		this.current = classify(this.source.charCodeAt(this.cursor));
 		this.next_class = classify(this.source.charCodeAt(this.cursor + 1));
 		this._run();
+		this.out.cursor(this.cursor);
 	}
 
 	/**
@@ -292,6 +293,7 @@ export class PFMParser {
 		this.finished = true;
 		this._run();
 		this._finalize();
+		this.out.cursor(this.cursor);
 		return { errors: this.errors };
 	}
 
@@ -357,7 +359,7 @@ export class PFMParser {
 
 	private emit_close(id: number, end: number): void {
 		this.out.close(id, end);
-		this.closed_flags[id] = true;
+		this.closed_flags[id] = 1;
 	}
 
 	/** Swap-remove an id from the dense pending_ids array. */
@@ -983,7 +985,7 @@ export class PFMParser {
 
 		// Emit open and value_start — content will stream via heading_marker state
 		const h_id = this.emit_open(node_kind.heading, this.cursor, parent, hash_count);
-		this.out.attr(h_id, 'value_start', content_start);
+		this.out.set_value_start(h_id, content_start);
 		this.node_stack.push(h_id);
 		this.states.push(state_kind.heading_marker);
 		this.chomp(content_start, true);
@@ -1176,78 +1178,68 @@ export class PFMParser {
 						break main_loop;
 					}
 
-					if (code === LINEFEED && this.block_quote_depth > 0) {
+					if (code === LINEFEED) {
 						const next_pos = this.cursor + 1;
-						const stripped = this.skip_bq_markers(next_pos, this.block_quote_depth);
 
-						if (stripped !== -1) {
-							if (this.is_blank_at_pos(stripped)) {
-								this.emit_close(current_node, this.cursor);
-								this.states.pop();
-								this.node_stack.length = node_stack_base;
+						// In block quotes, try stripping > markers first
+						if (this.block_quote_depth > 0) {
+							const stripped = this.skip_bq_markers(next_pos, this.block_quote_depth);
+
+							if (stripped !== -1) {
+								// Markers stripped — check for block interrupt at stripped pos
+								if (
+									this.is_blank_at_pos(stripped) ||
+									this.is_heading_start(stripped) ||
+									this.is_thematic_break_start(stripped) ||
+									(source.charCodeAt(stripped) === BACKTICK &&
+										source.charCodeAt(stripped + 1) === BACKTICK &&
+										source.charCodeAt(stripped + 2) === BACKTICK)
+								) {
+									this.emit_close(current_node, this.cursor);
+									this.states.pop();
+									this.node_stack.length = node_stack_base;
+									continue;
+								}
+								// Continuation line inside block quote
+								this.chomp(stripped, true);
+								this.states.push(state_kind.inline);
 								continue;
 							}
-							if (this.is_heading_start(stripped) || this.is_thematic_break_start(stripped)) {
-								this.emit_close(current_node, this.cursor);
-								this.states.pop();
-								this.node_stack.length = node_stack_base;
-								continue;
-							}
+
+							// No markers stripped — check for interrupts at raw next_pos
 							if (
-								source.charCodeAt(stripped) === BACKTICK &&
-								source.charCodeAt(stripped + 1) === BACKTICK &&
-								source.charCodeAt(stripped + 2) === BACKTICK
+								this.is_blank_line_after(this.cursor) ||
+								this.is_heading_start(next_pos) ||
+								this.is_thematic_break_start(next_pos) ||
+								(source.charCodeAt(next_pos) === BACKTICK &&
+									source.charCodeAt(next_pos + 1) === BACKTICK &&
+									source.charCodeAt(next_pos + 2) === BACKTICK)
 							) {
 								this.emit_close(current_node, this.cursor);
 								this.states.pop();
 								this.node_stack.length = node_stack_base;
 								continue;
 							}
-							this.chomp(stripped, true);
+							this.chomp1();
 							this.states.push(state_kind.inline);
 							continue;
 						}
 
-						if (this.is_blank_line_after(this.cursor)) {
+						// Not in block quote — use is_block_interrupt for the common case
+						if (this.is_block_interrupt(next_pos)) {
 							this.emit_close(current_node, this.cursor);
 							this.states.pop();
 							this.node_stack.length = node_stack_base;
 							continue;
 						}
-						if (this.is_heading_start(next_pos) || this.is_thematic_break_start(next_pos)) {
-							this.emit_close(current_node, this.cursor);
-							this.states.pop();
-							this.node_stack.length = node_stack_base;
-							continue;
-						}
-						if (
-							source.charCodeAt(next_pos) === BACKTICK &&
-							source.charCodeAt(next_pos + 1) === BACKTICK &&
-							source.charCodeAt(next_pos + 2) === BACKTICK
-						) {
-							this.emit_close(current_node, this.cursor);
-							this.states.pop();
-							this.node_stack.length = node_stack_base;
-							continue;
-						}
-						this.chomp1();
-						this.states.push(state_kind.inline);
-						continue;
-					}
 
-					if (code === LINEFEED && this.is_block_interrupt(this.cursor + 1)) {
-						this.emit_close(current_node, this.cursor);
-						this.states.pop();
-						this.node_stack.length = node_stack_base;
-						continue;
-					} else if (code === LINEFEED) {
+						// Check for list item start within a list
 						if (this.list_depth > 0) {
-							const np = this.cursor + 1;
 							let ind = 0;
-							let tp = np;
+							let tp = next_pos;
 							while (tp < length && source.charCodeAt(tp) === SPACE) { ind++; tp++; }
 							if (ind >= this.list_content_offset) {
-								const stripped = np + this.list_content_offset;
+								const stripped = next_pos + this.list_content_offset;
 								if (stripped < length && this.try_parse_list_marker(stripped) !== null) {
 									this.emit_close(current_node, this.cursor);
 									this.states.pop();
@@ -1292,14 +1284,14 @@ export class PFMParser {
 					if (!code && this.finished) {
 						this.states.pop();
 						this.emit_close(current_node, length);
-						this.out.attr(current_node, 'value_start', length);
-						this.out.attr(current_node, 'value_end', length);
+						this.out.set_value_start(current_node, length);
+						this.out.set_value_end(current_node, length);
 						break;
 					} else if (!code) {
 						break main_loop; // wait for more input
 					} else if (this.cursor + 1 >= length && this.finished) {
 						this.emit_close(current_node, length);
-						this.out.attr(current_node, 'value_end', length);
+						this.out.set_value_end(current_node, length);
 						this.states.pop();
 						continue;
 					} else if (this.cursor + 1 >= length) {
@@ -1310,7 +1302,7 @@ export class PFMParser {
 						continue;
 					} else if (this.cursor >= length && this.finished) {
 						this.emit_close(current_node, length);
-						this.out.attr(current_node, 'value_end', length);
+						this.out.set_value_end(current_node, length);
 						this.states.pop();
 						continue;
 					} else if (this.cursor >= length) {
@@ -1323,64 +1315,72 @@ export class PFMParser {
 						this.out.attr(current_node, 'info_end', this.cursor);
 						this.chomp1();
 
-						this.out.attr(current_node, 'value_start', this.cursor);
+						this.out.set_value_start(current_node, this.cursor);
 
 						continue;
 					}
 				}
 
 				case state_kind.code_fence_content: {
-					const index = source.indexOf(fences[this.extra], this.cursor);
-					const nl_index = source.lastIndexOf('\n', index);
-					if (this.cursor >= length || index === -1) {
+					// Scan line-by-line for closing fence: a line with only
+					// optional whitespace followed by >= extra backticks.
+					const fence_len = this.extra;
+					let scan = this.cursor;
+					let found_index = -1;
+					let found_nl = -1;
+
+					// Check if the current line (at cursor, which is a line start)
+					// is itself the closing fence (empty code block case).
+					{
+						let lp = scan;
+						while (lp < length && (source.charCodeAt(lp) === SPACE || source.charCodeAt(lp) === TAB)) lp++;
+						const bt_start = lp;
+						while (lp < length && source.charCodeAt(lp) === BACKTICK) lp++;
+						if (lp - bt_start >= fence_len) {
+							// Closing fence on the first content line — value is empty
+							found_index = bt_start;
+							found_nl = this.cursor > 0 ? this.cursor - 1 : this.cursor;
+						}
+					}
+
+					if (found_index === -1) {
+						while (scan < length) {
+							const nl = source.indexOf('\n', scan);
+							if (nl === -1) break;
+
+							let lp = nl + 1;
+							while (lp < length && (source.charCodeAt(lp) === SPACE || source.charCodeAt(lp) === TAB)) lp++;
+							const bt_start = lp;
+							while (lp < length && source.charCodeAt(lp) === BACKTICK) lp++;
+							if (lp - bt_start >= fence_len) {
+								found_index = bt_start;
+								found_nl = nl;
+								break;
+							}
+							scan = nl + 1;
+						}
+					}
+
+					if (found_index === -1) {
 						if (!this.finished) {
-							// Closing fence hasn't arrived yet — wait for more input
 							break main_loop;
 						}
-						this.out.attr(current_node, 'value_end', length);
+						this.out.set_value_end(current_node, length);
 						this.states.pop();
 						this.states.push(state_kind.code_fence_text_end);
 						this.chomp(length, true);
 						continue;
 					}
 
-					let ws = true;
-					let preceding_newline = false;
+					// Count actual backticks at found_index for chomp
+					let bt_end = found_index;
+					while (bt_end < length && source.charCodeAt(bt_end) === BACKTICK) bt_end++;
 
-					for (let i = nl_index; i < index; i++) {
-						if (source.charCodeAt(i) === LINEFEED) {
-							preceding_newline = true;
-						}
-						if (
-							source.charCodeAt(i) !== SPACE &&
-							source.charCodeAt(i) !== TAB &&
-							source.charCodeAt(i) !== LINEFEED
-						) {
-							ws = false;
-						}
-					}
-
-					if (!ws || !preceding_newline) {
-						this.chomp(index + this.extra, true);
-						continue;
-					}
-
-					if (index !== -1 && nl_index !== -1 && ws) {
-						if (index + this.extra <= length) {
-							this.states.pop();
-							this.states.push(state_kind.code_fence_text_end);
-							this.out.attr(current_node, 'value_end', nl_index);
-
-							this.chomp(index + this.extra, true);
-						}
-						continue;
-					} else {
-						this.states.pop();
-						this.chomp(length, true);
-						this.emit_close(current_node, length);
-						this.out.attr(current_node, 'value_end', length);
-						continue;
-					}
+					this.states.pop();
+					this.states.push(state_kind.code_fence_text_end);
+					this.out.set_value_end(current_node, found_nl);
+					this.chomp(bt_end, true);
+					continue;
 				}
 
 				case state_kind.code_fence_text_end: {
@@ -1416,7 +1416,7 @@ export class PFMParser {
 						) {
 							value_end--;
 						}
-						this.out.attr(current_node, 'value_end', value_end);
+						this.out.set_value_end(current_node, value_end);
 						// Close heading without consuming \n — let parent handle it
 						this.emit_close(current_node, this.cursor);
 						this.node_stack.pop();
@@ -1442,7 +1442,7 @@ export class PFMParser {
 						this.next_class & (char_mask.whitespace | char_mask.punctuation)
 					) {
 						const n_id = this.node_stack[this.node_stack.length - 1];
-						this.out.attr(n_id, 'value_end', this.cursor);
+						this.out.set_value_end(n_id, this.cursor);
 						this.emit_close(n_id, this.cursor + 1);
 						this.pending_remove(n_id);
 						this.states.pop();
@@ -1463,7 +1463,7 @@ export class PFMParser {
 						} else {
 							this.states.pop();
 							this.emit_close(current_node, this.cursor);
-							this.out.attr(current_node, 'value_end', this.cursor);
+							this.out.set_value_end(current_node, this.cursor);
 							this.node_stack.pop();
 						}
 						continue;
@@ -1473,7 +1473,7 @@ export class PFMParser {
 					) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					} else if (
@@ -1482,7 +1482,7 @@ export class PFMParser {
 					) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					} else if (
@@ -1491,7 +1491,7 @@ export class PFMParser {
 					) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					} else {
@@ -1508,7 +1508,7 @@ export class PFMParser {
 						this.next_class & (char_mask.whitespace | char_mask.punctuation)
 					) {
 						const n_id = this.node_stack[this.node_stack.length - 1];
-						this.out.attr(n_id, 'value_end', this.cursor);
+						this.out.set_value_end(n_id, this.cursor);
 						this.emit_close(n_id, this.cursor + 1);
 						this.pending_remove(n_id);
 						this.states.pop();
@@ -1528,7 +1528,7 @@ export class PFMParser {
 						} else {
 							this.states.pop();
 							this.emit_close(current_node, this.cursor);
-							this.out.attr(current_node, 'value_end', this.cursor);
+							this.out.set_value_end(current_node, this.cursor);
 							this.node_stack.pop();
 						}
 						continue;
@@ -1538,7 +1538,7 @@ export class PFMParser {
 					) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					} else if (
@@ -1547,7 +1547,7 @@ export class PFMParser {
 					) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					} else if (
@@ -1556,7 +1556,7 @@ export class PFMParser {
 					) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					} else {
@@ -1579,7 +1579,7 @@ export class PFMParser {
 						classify(source.charCodeAt(this.cursor + 2)) & (char_mask.whitespace | char_mask.punctuation)
 					) {
 						const n_id = this.node_stack[this.node_stack.length - 1];
-						this.out.attr(n_id, 'value_end', this.cursor);
+						this.out.set_value_end(n_id, this.cursor);
 						this.emit_close(n_id, this.cursor + 2);
 						this.pending_remove(n_id);
 						this.states.pop();
@@ -1594,7 +1594,7 @@ export class PFMParser {
 					) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					} else if (
@@ -1603,7 +1603,7 @@ export class PFMParser {
 					) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					} else {
@@ -1620,7 +1620,7 @@ export class PFMParser {
 						this.next_class & (char_mask.whitespace | char_mask.punctuation)
 					) {
 						const n_id = this.node_stack[this.node_stack.length - 1];
-						this.out.attr(n_id, 'value_end', this.cursor);
+						this.out.set_value_end(n_id, this.cursor);
 						this.emit_close(n_id, this.cursor + 1);
 						this.pending_remove(n_id);
 						this.states.pop();
@@ -1635,7 +1635,7 @@ export class PFMParser {
 					) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					} else if (
@@ -1644,7 +1644,7 @@ export class PFMParser {
 					) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					} else {
@@ -1739,7 +1739,7 @@ export class PFMParser {
 								if (title_start >= 0 && title_end >= 0) {
 									this.out.attr(n_id, 'title', source.slice(title_start, title_end));
 								}
-								this.out.attr(n_id, 'value_end', this.cursor);
+								this.out.set_value_end(n_id, this.cursor);
 								this.pending_remove(n_id);
 								this.emit_close(n_id, p);
 								this.node_stack.pop();
@@ -2166,12 +2166,12 @@ export class PFMParser {
 									true
 								);
 
-								this.out.attr(n_id, 'value_start', this.cursor + 1);
+								this.out.set_value_start(n_id, this.cursor + 1);
 								this.node_stack.push(n_id);
 								this.states.push(state_kind.strong_emphasis);
 							} else {
 								const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
-								this.out.attr(t_id, 'value_start', this.cursor);
+								this.out.set_value_start(t_id, this.cursor);
 								this.node_stack.push(t_id);
 								this.states.push(state_kind.text);
 							}
@@ -2193,12 +2193,12 @@ export class PFMParser {
 									true
 								);
 
-								this.out.attr(n_id, 'value_start', this.cursor + 1);
+								this.out.set_value_start(n_id, this.cursor + 1);
 								this.node_stack.push(n_id);
 								this.states.push(state_kind.emphasis);
 							} else {
 								const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
-								this.out.attr(t_id, 'value_start', this.cursor);
+								this.out.set_value_start(t_id, this.cursor);
 								this.node_stack.push(t_id);
 								this.states.push(state_kind.text);
 							}
@@ -2226,13 +2226,13 @@ export class PFMParser {
 									0,
 									true,
 								);
-								this.out.attr(n_id, 'value_start', this.cursor + 2);
+								this.out.set_value_start(n_id, this.cursor + 2);
 								this.node_stack.push(n_id);
 								this.states.push(state_kind.strikethrough);
 								this.chomp(2);
 							} else {
 								const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
-								this.out.attr(t_id, 'value_start', this.cursor);
+								this.out.set_value_start(t_id, this.cursor);
 								this.node_stack.push(t_id);
 								this.states.push(state_kind.text);
 								this.chomp1();
@@ -2253,12 +2253,12 @@ export class PFMParser {
 									0,
 									true,
 								);
-								this.out.attr(n_id, 'value_start', this.cursor + 1);
+								this.out.set_value_start(n_id, this.cursor + 1);
 								this.node_stack.push(n_id);
 								this.states.push(state_kind.superscript);
 							} else {
 								const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
-								this.out.attr(t_id, 'value_start', this.cursor);
+								this.out.set_value_start(t_id, this.cursor);
 								this.node_stack.push(t_id);
 								this.states.push(state_kind.text);
 							}
@@ -2274,7 +2274,7 @@ export class PFMParser {
 							}
 							// Otherwise ] is just text
 							const t_id_br = this.emit_open(node_kind.text, this.cursor, current_node);
-							this.out.attr(t_id_br, 'value_start', this.cursor);
+							this.out.set_value_start(t_id_br, this.cursor);
 							this.node_stack.push(t_id_br);
 							this.states.push(state_kind.text);
 							this.chomp1();
@@ -2308,7 +2308,7 @@ export class PFMParser {
 								continue;
 							}
 							const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
-							this.out.attr(t_id, 'value_start', this.cursor);
+							this.out.set_value_start(t_id, this.cursor);
 							this.node_stack.push(t_id);
 							this.states.push(state_kind.text);
 
@@ -2346,7 +2346,7 @@ export class PFMParser {
 							// Just ! — text
 							const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
 							this.node_stack.push(t_id);
-							this.out.attr(t_id, 'value_start', this.cursor);
+							this.out.set_value_start(t_id, this.cursor);
 							this.states.push(state_kind.text);
 							this.chomp1();
 							continue;
@@ -2356,13 +2356,13 @@ export class PFMParser {
 							const uri_end = this.try_parse_uri_autolink(this.cursor + 1);
 							if (uri_end !== -1) {
 								const link_id = this.emit_open(node_kind.link, this.cursor, current_node);
-								this.out.attr(link_id, 'value_start', this.cursor + 1);
-								this.out.attr(link_id, 'value_end', uri_end - 1);
+								this.out.set_value_start(link_id, this.cursor + 1);
+								this.out.set_value_end(link_id, uri_end - 1);
 								this.emit_close(link_id, uri_end);
 
 								const text_id = this.emit_open(node_kind.text, this.cursor + 1, link_id);
-								this.out.attr(text_id, 'value_start', this.cursor + 1);
-								this.out.attr(text_id, 'value_end', uri_end - 1);
+								this.out.set_value_start(text_id, this.cursor + 1);
+								this.out.set_value_end(text_id, uri_end - 1);
 								this.emit_close(text_id, uri_end - 1);
 
 								this.chomp(uri_end, true);
@@ -2374,14 +2374,14 @@ export class PFMParser {
 							if (email_end !== -1) {
 								const email_text = source.slice(this.cursor + 1, email_end - 1);
 								const link_id = this.emit_open(node_kind.link, this.cursor, current_node);
-								this.out.attr(link_id, 'value_start', this.cursor + 1);
-								this.out.attr(link_id, 'value_end', email_end - 1);
+								this.out.set_value_start(link_id, this.cursor + 1);
+								this.out.set_value_end(link_id, email_end - 1);
 								this.emit_close(link_id, email_end);
 								this.out.attr(link_id, 'href', 'mailto:' + email_text);
 
 								const text_id = this.emit_open(node_kind.text, this.cursor + 1, link_id);
-								this.out.attr(text_id, 'value_start', this.cursor + 1);
-								this.out.attr(text_id, 'value_end', email_end - 1);
+								this.out.set_value_start(text_id, this.cursor + 1);
+								this.out.set_value_end(text_id, email_end - 1);
 								this.emit_close(text_id, email_end - 1);
 
 								this.chomp(email_end, true);
@@ -2392,7 +2392,7 @@ export class PFMParser {
 							// Not an autolink, treat < as text
 							const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
 							this.node_stack.push(t_id);
-							this.out.attr(t_id, 'value_start', this.cursor);
+							this.out.set_value_start(t_id, this.cursor);
 							this.states.push(state_kind.text);
 							this.chomp1();
 							continue;
@@ -2404,7 +2404,7 @@ export class PFMParser {
 								continue;
 							}
 							const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
-							this.out.attr(t_id, 'value_start', this.cursor);
+							this.out.set_value_start(t_id, this.cursor);
 							this.node_stack.push(t_id);
 
 							this.states.push(state_kind.text);
@@ -2432,7 +2432,7 @@ export class PFMParser {
 								break main_loop;
 							}
 							this.emit_close(current_node, this.cursor);
-							this.out.attr(current_node, 'value_end', this.cursor);
+							this.out.set_value_end(current_node, this.cursor);
 							this.node_stack.pop();
 							this.states.pop(); // pop text
 							const parent_id = this.node_stack[this.node_stack.length - 1];
@@ -2468,7 +2468,7 @@ export class PFMParser {
 					if (code === LINEFEED && this.block_quote_depth > 0) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					}
@@ -2476,7 +2476,7 @@ export class PFMParser {
 					if (!code || (code === LINEFEED && this.is_block_interrupt(this.cursor + 1))) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					} else if (code === LINEFEED && this.list_depth > 0) {
@@ -2489,7 +2489,7 @@ export class PFMParser {
 							if (stripped < length && this.try_parse_list_marker(stripped) !== null) {
 								this.states.pop();
 								this.emit_close(current_node, this.cursor);
-								this.out.attr(current_node, 'value_end', this.cursor);
+								this.out.set_value_end(current_node, this.cursor);
 								this.node_stack.pop();
 								continue;
 							}
@@ -2500,7 +2500,7 @@ export class PFMParser {
 						this.states.pop();
 
 						this.emit_close(current_node, this.cursor);
-						this.out.attr(current_node, 'value_end', this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						this.states.pop();
 
@@ -2513,7 +2513,7 @@ export class PFMParser {
 						let p = this.cursor + 1;
 						while (p < length) {
 							const ch = source.charCodeAt(p);
-							if (ch < 128 && text_break[ch]) break;
+							if (text_break[ch]) break;
 							p++;
 						}
 						this.cursor = p;
@@ -2530,7 +2530,7 @@ export class PFMParser {
 						this.states.push(state_kind.text);
 						const t_id = this.emit_open(node_kind.text, this.cursor - this.extra, current_node);
 						this.node_stack.push(t_id);
-						this.out.attr(t_id, 'value_start', this.cursor);
+						this.out.set_value_start(t_id, this.cursor);
 						continue;
 					}
 
@@ -2556,7 +2556,7 @@ export class PFMParser {
 							this.states.push(state_kind.code_span_content_leading_space);
 							const cs_id = this.emit_open(node_kind.code_span, this.cursor - this.extra, current_node);
 							this.node_stack.push(cs_id);
-							this.out.attr(cs_id, 'value_start', this.cursor + 1);
+							this.out.set_value_start(cs_id, this.cursor + 1);
 
 							this.chomp(2);
 
@@ -2567,7 +2567,7 @@ export class PFMParser {
 							this.states.push(state_kind.code_span_end);
 							const cs_id = this.emit_open(node_kind.code_span, this.cursor - this.extra, current_node);
 							this.node_stack.push(cs_id);
-							this.out.attr(cs_id, 'value_start', this.cursor);
+							this.out.set_value_start(cs_id, this.cursor);
 
 							continue;
 						}
@@ -2598,7 +2598,7 @@ export class PFMParser {
 							this.out.attr(cs_id, 'info_start', this.info_start_pos);
 							this.out.attr(cs_id, 'info_end', this.info_end_pos);
 
-							this.out.attr(cs_id, 'value_start', this.cursor);
+							this.out.set_value_start(cs_id, this.cursor);
 
 							continue;
 						}
@@ -2622,8 +2622,8 @@ export class PFMParser {
 								source.charCodeAt(this.cursor + 1) === BACKTICK &&
 								source.charCodeAt(this.cursor + 2) !== BACKTICK)
 						) {
-							this.out.attr(current_node, 'value_start', this.checkpoint_cursor);
-							this.out.attr(current_node, 'value_end', this.cursor);
+							this.out.set_value_start(current_node, this.checkpoint_cursor);
+							this.out.set_value_end(current_node, this.cursor);
 							this.emit_close(current_node, this.cursor + this.extra);
 							this.node_stack.pop();
 							this.states.pop();
@@ -2633,7 +2633,7 @@ export class PFMParser {
 						this.chomp1();
 						continue;
 					} else if (code === LINEFEED) {
-						this.out.attr(current_node, 'value_start', this.checkpoint_cursor);
+						this.out.set_value_start(current_node, this.checkpoint_cursor);
 						this.chomp(this.cursor, true);
 						this.states.pop();
 						this.states.push(state_kind.code_span_end);
@@ -2652,7 +2652,7 @@ export class PFMParser {
 					) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor + this.extra);
-						this.out.attr(current_node, 'value_end', this.cursor - 1);
+						this.out.set_value_end(current_node, this.cursor - 1);
 						this.node_stack.pop();
 					} else if (
 						this.extra === 2 &&
@@ -2662,7 +2662,7 @@ export class PFMParser {
 					) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor + this.extra);
-						this.out.attr(current_node, 'value_end', this.cursor - 1);
+						this.out.set_value_end(current_node, this.cursor - 1);
 						this.node_stack.pop();
 					} else {
 						this.states.pop();
@@ -2685,7 +2685,7 @@ export class PFMParser {
 								source.charCodeAt(this.cursor + 1) === BACKTICK &&
 								source.charCodeAt(this.cursor + 2) !== BACKTICK)
 						) {
-							this.out.attr(current_node, 'value_end', this.cursor);
+							this.out.set_value_end(current_node, this.cursor);
 							this.states.pop();
 							this.emit_close(current_node, this.cursor + this.extra);
 							this.node_stack.pop();
@@ -2713,7 +2713,7 @@ export class PFMParser {
 							this.node_stack[this.node_stack.length - 1]
 						);
 						this.node_stack.push(t_id);
-						this.out.attr(t_id, 'value_start', text_start);
+						this.out.set_value_start(t_id, text_start);
 
 						continue;
 					}
@@ -3093,7 +3093,7 @@ export class PFMParser {
 				top === state_kind.strong_emphasis || top === state_kind.strikethrough ||
 				top === state_kind.superscript || top === state_kind.link_text) {
 				const node_id = this.node_stack[this.node_stack.length - 1];
-				this.out.attr(node_id, 'value_end', end);
+				this.out.set_value_end(node_id, end);
 				this.emit_close(node_id, end);
 				this.node_stack.pop();
 			}
@@ -3125,7 +3125,7 @@ export class PFMParser {
 				while (ve > 0 && (this.source.charCodeAt(ve - 1) === SPACE || this.source.charCodeAt(ve - 1) === TAB)) {
 					ve--;
 				}
-				this.out.attr(text_id, 'value_end', ve);
+				this.out.set_value_end(text_id, ve);
 				this.emit_close(text_id, this.cursor);
 				this.node_stack.pop();
 				this.states.pop();
@@ -3147,8 +3147,8 @@ export class PFMParser {
 				// Create replacement text covering backticks + content
 				const parent_id = this.node_stack[this.node_stack.length - 1];
 				const t_id = this.emit_open(node_kind.text, this.checkpoint_cursor, parent_id);
-				this.out.attr(t_id, 'value_start', this.checkpoint_cursor);
-				this.out.attr(t_id, 'value_end', this.cursor);
+				this.out.set_value_start(t_id, this.checkpoint_cursor);
+				this.out.set_value_end(t_id, this.cursor);
 				this.emit_close(t_id, this.cursor);
 				// Don't push to node_stack — this text node is immediately closed
 			} else {
@@ -3161,7 +3161,7 @@ export class PFMParser {
 					this.pending_remove(node_id);
 				} else {
 					// Already committed (closed normally) — just close
-					this.out.attr(node_id, 'value_end', this.cursor);
+					this.out.set_value_end(node_id, this.cursor);
 					this.emit_close(node_id, this.cursor);
 				}
 				this.node_stack.pop();
@@ -3217,7 +3217,7 @@ export class PFMParser {
 		for (let i = 0; i < this.node_stack.length; i++) {
 			const id = this.node_stack[i];
 			if (!this.closed_flags[id]) {
-				this.out.attr(id, 'value_end', length - 1);
+				this.out.set_value_end(id, length - 1);
 				this.emit_close(id, length - 1);
 			}
 		}

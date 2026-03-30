@@ -28,6 +28,16 @@ export class RecordingEmitter implements Emitter {
 		this.ops.push({ op: 'attr', id, key, value });
 	}
 
+	set_value_start(id: number, pos: number): void {
+		this.attr(id, 'value_start', pos);
+	}
+
+	set_value_end(id: number, pos: number): void {
+		this.attr(id, 'value_end', pos);
+	}
+
+	cursor(_pos: number): void {}
+
 	revoke(id: number): void {
 		this.ops.push({ op: 'revoke', id });
 	}

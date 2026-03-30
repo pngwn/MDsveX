@@ -35,5 +35,8 @@
     "unified": "^11.0.5",
     "vitest": "^1.5.0"
   },
-  "private": true
+  "private": true,
+  "dependencies": {
+    "@aibind/markdown": "^0.8.0"
+  }
 }
