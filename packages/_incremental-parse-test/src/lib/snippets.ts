@@ -36,6 +36,11 @@ export const SECTIONS: Section[] = [
 				markdown: 'Visit [example](https://example.com) or see ![alt](/puppy.jpg)\n',
 			},
 			{
+				name: 'Soft line break',
+				slug: 'soft-line-break',
+				markdown: 'first line\nsecond line',
+			},
+			{
 				name: 'Hard line break',
 				slug: 'hard-line-break',
 				markdown: 'first line\\\nsecond line\n',
@@ -64,7 +69,7 @@ export const SECTIONS: Section[] = [
 			{
 				name: 'Block quote',
 				slug: 'block-quote',
-				markdown: '> To be or not to be,\\\n> that is the question.\n',
+				markdown: '> To be or not to be,\\\n> that is\n> the question.\n',
 			},
 		],
 	},

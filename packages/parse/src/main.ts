@@ -60,8 +60,8 @@ for (let i = 0; i < char_class_table.length; i += 1) {
 		mask |= char_mask.punctuation;
 	}
 
-	// Classify ~ and ^ as punctuation for strikethrough/superscript flanking
-	if (i === 126 || i === 94) {
+	// Classify ~, ^, and | as punctuation for delimiter flanking
+	if (i === 126 || i === 94 || i === 124) {
 		mask |= char_mask.punctuation;
 		mask &= ~char_mask.word;
 	}
@@ -129,9 +129,10 @@ export const enum state_kind {
 	list_item = 18,
 	strikethrough = 19,
 	superscript = 20,
-	link_text = 21,
-	table_body = 22,
-	table_row_content = 23,
+	subscript = 21,
+	link_text = 22,
+	table_body = 23,
+	table_row_content = 24,
 }
 
 const fences = Array.from({ length: 20 }, (_, i) =>
@@ -1200,7 +1201,9 @@ export class PFMParser {
 									this.node_stack.length = node_stack_base;
 									continue;
 								}
-								// Continuation line inside block quote
+								// Continuation line inside block quote — emit soft break
+								const sb_p = this.emit_open(node_kind.soft_break, this.cursor, current_node);
+								this.emit_close(sb_p, this.cursor + 1);
 								this.chomp(stripped, true);
 								this.states.push(state_kind.inline);
 								continue;
@@ -1458,6 +1461,8 @@ export class PFMParser {
 
 						if (stripped !== -1 && !this.is_blank_at_pos(stripped) &&
 							!this.is_heading_start(stripped) && !this.is_thematic_break_start(stripped)) {
+							const sb_bq = this.emit_open(node_kind.soft_break, this.cursor, current_node);
+							this.emit_close(sb_bq, this.cursor + 1);
 							this.chomp(stripped, true);
 							this.states.push(state_kind.inline);
 						} else {
@@ -1523,6 +1528,8 @@ export class PFMParser {
 
 						if (stripped !== -1 && !this.is_blank_at_pos(stripped) &&
 							!this.is_heading_start(stripped) && !this.is_thematic_break_start(stripped)) {
+							const sb_bq = this.emit_open(node_kind.soft_break, this.cursor, current_node);
+							this.emit_close(sb_bq, this.cursor + 1);
 							this.chomp(stripped, true);
 							this.states.push(state_kind.inline);
 						} else {
@@ -1613,11 +1620,53 @@ export class PFMParser {
 				}
 
 				case state_kind.superscript: {
-					// Close: ^ with right-flanking
+					// Close: ^ after content (no right-flanking needed —
+					// ^ is unambiguous, and x^2^y must work)
 					if (
 						code === CARET &&
-						this.prev & (char_mask.word | char_mask.punctuation) &&
-						this.next_class & (char_mask.whitespace | char_mask.punctuation)
+						this.prev & (char_mask.word | char_mask.punctuation)
+					) {
+						const n_id = this.node_stack[this.node_stack.length - 1];
+						this.out.set_value_end(n_id, this.cursor);
+						this.emit_close(n_id, this.cursor + 1);
+						this.pending_remove(n_id);
+						this.states.pop();
+						this.node_stack.pop();
+						this.chomp1();
+						if (this.states[this.states.length - 1] === state_kind.inline) {
+							this.states.pop();
+						}
+					} else if (
+						code === LINEFEED &&
+						this.is_blank_line_after(this.cursor)
+					) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
+						this.node_stack.pop();
+						continue;
+					} else if (
+						code === LINEFEED &&
+						(this.is_heading_start(this.cursor + 1) || this.is_thematic_break_start(this.cursor + 1))
+					) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
+						this.node_stack.pop();
+						continue;
+					} else {
+						this.states.push(state_kind.inline);
+					}
+					continue;
+				}
+
+				case state_kind.subscript: {
+					// Close: single ~ after content (no right-flanking needed —
+					// ~ is unambiguous inside subscript, and H~2~O must work)
+					if (
+						code === TILDE &&
+						source.charCodeAt(this.cursor + 1) !== TILDE &&
+						this.prev & (char_mask.word | char_mask.punctuation)
 					) {
 						const n_id = this.node_stack[this.node_stack.length - 1];
 						this.out.set_value_end(n_id, this.cursor);
@@ -2230,6 +2279,22 @@ export class PFMParser {
 								this.node_stack.push(n_id);
 								this.states.push(state_kind.strikethrough);
 								this.chomp(2);
+							} else if (
+								// Subscript: single ~ with next char word/punctuation
+								source.charCodeAt(this.cursor + 1) !== TILDE &&
+								this.next_class & (char_mask.word | char_mask.punctuation)
+							) {
+								const n_id = this.emit_open(
+									node_kind.subscript,
+									this.cursor,
+									current_node,
+									0,
+									true,
+								);
+								this.out.set_value_start(n_id, this.cursor + 1);
+								this.node_stack.push(n_id);
+								this.states.push(state_kind.subscript);
+								this.chomp1();
 							} else {
 								const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
 								this.out.set_value_start(t_id, this.cursor);
@@ -2398,6 +2463,17 @@ export class PFMParser {
 							continue;
 						}
 
+						case PIPE: {
+							// Transparent intraword delimiter — provides flanking
+							// context for _ and * without producing output.
+							// fan|_tas_|tic → fan<em>tas</em>tic
+							if (!this.in_table) {
+								this.chomp1();
+								continue;
+							}
+							// In table context, | is a cell separator — fall through
+						}
+						// falls through
 						default: {
 							if (!code) {
 								this.states.pop();
@@ -2419,6 +2495,16 @@ export class PFMParser {
 					if (this.in_table && (code === PIPE || code === LINEFEED || !code)) {
 						this.unwind_inline_for_table();
 						continue; // let table_row_content handle it
+					}
+
+					// Pipe in non-table context: transparent intraword delimiter.
+					// Close the text node and let inline consume the pipe.
+					if (code === PIPE && !this.in_table) {
+						this.states.pop();
+						this.emit_close(current_node, this.cursor);
+						this.out.set_value_end(current_node, this.cursor);
+						this.node_stack.pop();
+						continue;
 					}
 
 					// Handle backslash escapes within text
@@ -2547,7 +2633,14 @@ export class PFMParser {
 								this.states.pop();
 								this.states.push(state_kind.code_span_info);
 								this.info_start_pos = this.cursor;
+								continue;
 							}
+							// # without ! — treat as normal code span content
+							this.states.pop();
+							this.states.push(state_kind.code_span_end);
+							const cs_id_h = this.emit_open(node_kind.code_span, this.cursor - this.extra, current_node);
+							this.node_stack.push(cs_id_h);
+							this.out.set_value_start(cs_id_h, this.cursor);
 							continue;
 						}
 						case SPACE: {
@@ -3091,7 +3184,7 @@ export class PFMParser {
 			const top = this.states[this.states.length - 1];
 			if (top === state_kind.text || top === state_kind.emphasis ||
 				top === state_kind.strong_emphasis || top === state_kind.strikethrough ||
-				top === state_kind.superscript || top === state_kind.link_text) {
+				top === state_kind.superscript || top === state_kind.subscript || top === state_kind.link_text) {
 				const node_id = this.node_stack[this.node_stack.length - 1];
 				this.out.set_value_end(node_id, end);
 				this.emit_close(node_id, end);

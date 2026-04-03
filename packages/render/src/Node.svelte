@@ -144,6 +144,8 @@
 	<del>{@render children(node)}</del>
 {:else if node.kindName === 'superscript'}
 	<sup>{@render children(node)}</sup>
+{:else if node.kindName === 'subscript'}
+	<sub>{@render children(node)}</sub>
 {:else if node.kindName === 'table'}
 	{@render table_body(node)}
 {:else if node.kindName === 'table_header' || node.kindName === 'table_row' || node.kindName === 'table_cell'}

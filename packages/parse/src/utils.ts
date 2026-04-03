@@ -29,10 +29,11 @@ export const enum node_kind {
 	soft_break = 18,
 	strikethrough = 19,
 	superscript = 20,
-	table = 21,
-	table_header = 22,
-	table_row = 23,
-	table_cell = 24,
+	subscript = 21,
+	table = 22,
+	table_header = 23,
+	table_row = 24,
+	table_cell = 25,
 }
 
 /**
@@ -97,6 +98,8 @@ export const kind_to_string = (kind: node_kind): string => {
 			return 'strikethrough';
 		case node_kind.superscript:
 			return 'superscript';
+		case node_kind.subscript:
+			return 'subscript';
 		case node_kind.table:
 			return 'table';
 		case node_kind.table_header:

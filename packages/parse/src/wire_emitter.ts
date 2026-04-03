@@ -69,6 +69,7 @@ const KIND_NAMES: string[] = [
 	'soft_break',
 	'strikethrough',
 	'superscript',
+	'subscript',
 	'table',
 	'table_header',
 	'table_row',
@@ -378,9 +379,11 @@ function get_delimiter(kind: node_kind | undefined): string {
 		case node_kind.strong_emphasis:
 			return '*';
 		case node_kind.strikethrough:
-			return '~';
+			return '~~';
 		case node_kind.superscript:
 			return '^';
+		case node_kind.subscript:
+			return '~';
 		case node_kind.link:
 			return '[';
 		case node_kind.image:

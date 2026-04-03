@@ -10,13 +10,14 @@
 	import Node from '@mdsvex/render/Node.svelte';
 	import { RecordingEmitter, type Op } from '$lib/recorder';
 	import { Play, Pause, SkipForward, SkipBackward, FastForward } from '$lib';
+	import PixiCanvas from '$lib/PixiCanvas.svelte';
 
 	let { markdown }: { markdown: string } = $props();
 
 	// ── Query param helpers ──────────────────────────────────
 	const VALID_CHUNKS = [1, 2, 5, 10, 9999];
 	const VALID_SPEEDS = [200, 80, 30, 10];
-	const VALID_RENDERERS = ['html', 'dom'] as const;
+	const VALID_RENDERERS = ['html', 'dom', 'canvas'] as const;
 
 	function read_params() {
 		const params = page.url?.searchParams;
@@ -27,7 +28,7 @@
 		return {
 			chunk: VALID_CHUNKS.includes(c) ? c : 1,
 			speed: VALID_SPEEDS.includes(s) ? s : 80,
-			renderer: VALID_RENDERERS.includes(r as any) ? (r as 'html' | 'dom') : 'dom',
+			renderer: VALID_RENDERERS.includes(r as any) ? (r as 'html' | 'dom' | 'canvas') : 'dom',
 		};
 	}
 
@@ -45,7 +46,7 @@
 	let playing = $state(false);
 	let play_speed = $state(initial.speed);
 	let play_timer: ReturnType<typeof setInterval> | null = null;
-	let render_mode: 'html' | 'dom' = $state(initial.renderer);
+	let render_mode: 'html' | 'dom' | 'canvas' = $state(initial.renderer);
 
 	// Sync state → URL. Silently skip if router isn't ready yet (SSR/hydration).
 	$effect(() => {
@@ -173,6 +174,16 @@
 		return renderer.update(doc);
 	});
 
+	let canvas_doc: PFMDocument | null = $derived.by(() => {
+		if (render_mode !== 'canvas') return null;
+		const doc = new PFMDocument();
+		for (let i = 0; i <= step_index && i < wire_step_batches.length; i++) {
+			const batch = wire_step_batches[i];
+			if (batch.length > 0) doc.apply(batch);
+		}
+		return doc;
+	});
+
 	function reset() {
 		stop();
 		step_index = 0;
@@ -238,6 +249,7 @@
 				<select bind:value={render_mode}>
 					<option value="dom">Svelte DOM</option>
 					<option value="html">HTML String</option>
+					<option value="canvas">PixiJS Canvas</option>
 				</select>
 			</label>
 			<label class="chunk-control">
@@ -279,21 +291,37 @@
 			<div class="panel render-panel">
 				<div class="panel-header">
 					Rendered
-					<span class="badge">{render_mode === 'html' ? `${html_blocks.length} blocks` : `${dom_blocks.length} blocks`}</span>
+					<span class="badge">
+						{#if render_mode === 'canvas'}
+							pixi
+						{:else if render_mode === 'html'}
+							{html_blocks.length} blocks
+						{:else}
+							{dom_blocks.length} blocks
+						{/if}
+					</span>
 				</div>
-				<div class="render-content prose">
-					{#if render_mode === 'dom'}
-						{#each dom_blocks as block (block.id)}
-							{#key block.v}
-								<Node node={block.node} />
-							{/key}
-						{/each}
-					{:else}
-						{#each html_blocks as block (block.id)}
-							{@html block.html}
-						{/each}
-					{/if}
-				</div>
+				{#if render_mode === 'canvas'}
+					<div class="render-canvas">
+						{#if canvas_doc}
+							<PixiCanvas doc={canvas_doc} />
+						{/if}
+					</div>
+				{:else}
+					<div class="render-content prose">
+						{#if render_mode === 'dom'}
+							{#each dom_blocks as block (block.id)}
+								{#key block.v}
+									<Node node={block.node} />
+								{/key}
+							{/each}
+						{:else}
+							{#each html_blocks as block (block.id)}
+								{@html block.html}
+							{/each}
+						{/if}
+					</div>
+				{/if}
 			</div>
 		</div>
 
@@ -489,6 +517,11 @@
 		padding: 1rem;
 		overflow-y: auto;
 		flex: 1;
+	}
+
+	.render-canvas {
+		flex: 1;
+		overflow: hidden;
 	}
 
 	.opcodes-panel {

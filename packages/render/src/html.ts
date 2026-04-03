@@ -145,6 +145,9 @@ export function renderNode(node: PFMNode): string {
 		case 'superscript':
 			return `<sup>${renderContent(node)}</sup>`;
 
+		case 'subscript':
+			return `<sub>${renderContent(node)}</sub>`;
+
 		case 'table':
 			return `<table>\n${renderTableContent(node)}\n</table>`;
 
