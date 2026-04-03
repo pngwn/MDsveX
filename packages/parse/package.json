@@ -39,6 +39,14 @@
 			"import": "./dist/utils.js",
 			"types": "./src/utils.ts"
 		},
+		"./document-builder": {
+			"import": "./dist/document-builder.js",
+			"types": "./src/document_builder.ts"
+		},
+		"./cursor": {
+			"import": "./dist/cursor.js",
+			"types": "./src/cursor.ts"
+		},
 		"./package.json": "./package.json"
 	},
 	"author": "pngwn <hello@pngwn.io>",

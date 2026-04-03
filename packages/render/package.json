@@ -6,19 +6,24 @@
 	"type": "module",
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",
-		"test:run": "vitest run --silent"
+		"test:run": "vitest run --silent",
+		"build": "vite build --config vite.config.build.ts"
 	},
 	"exports": {
 		".": {
-			"import": "./src/index.ts",
+			"import": "./dist/index.js",
 			"types": "./src/index.ts"
 		},
 		"./html": {
-			"import": "./src/html.ts",
+			"import": "./dist/html.js",
 			"types": "./src/html.ts"
 		},
+		"./html-cursor": {
+			"import": "./dist/html_cursor.js",
+			"types": "./src/html_cursor.ts"
+		},
 		"./component": {
-			"import": "./src/component.ts",
+			"import": "./dist/component.js",
 			"types": "./src/component.ts"
 		},
 		"./pixi": {
@@ -42,6 +47,9 @@
 		"pixi.js": {
 			"optional": true
 		}
+	},
+	"devDependencies": {
+		"@rollup/plugin-terser": "^1.0.0"
 	},
 	"dependencies": {
 		"@mdsvex/parse": "workspace:*"

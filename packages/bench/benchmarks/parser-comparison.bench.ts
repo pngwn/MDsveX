@@ -9,63 +9,70 @@ import { createMarkdownExit } from 'markdown-exit';
 import { parse as comark_parse, createParse as comark_createParse } from 'comark';
 import { StreamParser, Renderer, MarkdownRecovery } from '@aibind/markdown';
 
-const fixture = readFileSync(
-	new URL('./fixture.md', import.meta.url),
-	'utf-8',
-);
+// ── Fixtures ────────────────────────────────────────────────
+
+function load(name: string): string {
+	return readFileSync(new URL(`./${name}`, import.meta.url), 'utf-8');
+}
+
+const fixtures = {
+	prose: load('fixture.md'),
+	short: load('fixture-short.md'),
+	tables: load('fixture-tables.md'),
+	html: load('fixture-html.md'),
+	code: load('fixture-code.md'),
+};
 
 const remark_processor = remark();
 const mdexit = createMarkdownExit();
 
+// ── Parser comparison across fixtures ───────────────────────
 
+for (const [name, source] of Object.entries(fixtures)) {
+	describe(`parse: ${name} (${source.length} bytes, ${source.split('\n').length} lines)`, () => {
+		bench('pfm (parse_markdown_svelte)', () => {
+			parse_markdown_svelte(source);
+		});
 
-describe(`markdown parser comparison -- Fixture: ${fixture.length} bytes, ${fixture.split('\n').length} lines`, () => {
+		bench('remark', () => {
+			remark_processor.parse(source);
+		});
 
-	bench('pfm (parse_markdown_svelte)', () => {
-		parse_markdown_svelte(fixture);
+		bench('marked (lexer)', () => {
+			marked.lexer(source);
+		});
+
+		bench('markdown-exit (parse)', () => {
+			mdexit.parse(source);
+		});
+
+		bench('comark (parse)', async () => {
+			await comark_parse(source);
+		});
 	});
-
-	bench('remark', () => {
-		remark_processor.parse(fixture);
-	});
-
-	bench('marked (lexer)', () => {
-		marked.lexer(fixture);
-	});
-
-	bench('markdown-exit (parse)', () => {
-		mdexit.parse(fixture);
-	});
-
-	bench('comark (parse)', async () => {
-		await comark_parse(fixture);
-	});
-});
+}
 
 // ── Incremental parsing (5-char chunks) ──────────────────────
 
 const CHUNK_SIZE = 5;
-
-// Pre-split fixture into chunks
-const chunks: string[] = [];
-for (let i = 0; i < fixture.length; i += CHUNK_SIZE) {
-	chunks.push(fixture.slice(i, Math.min(i + CHUNK_SIZE, fixture.length)));
-}
-
 const LARGE_CHUNK_SIZE = 50;
 
-const large_chunks: string[] = [];
-for (let i = 0; i < fixture.length; i += LARGE_CHUNK_SIZE) {
-	large_chunks.push(fixture.slice(i, Math.min(i + LARGE_CHUNK_SIZE, fixture.length)));
+function make_chunks(source: string, size: number): string[] {
+	const chunks: string[] = [];
+	for (let i = 0; i < source.length; i += size) {
+		chunks.push(source.slice(i, Math.min(i + size, source.length)));
+	}
+	return chunks;
 }
 
-const chunk_kinds = [chunks, large_chunks];
+const prose = fixtures.prose;
+const small_chunks = make_chunks(prose, CHUNK_SIZE);
+const large_chunks = make_chunks(prose, LARGE_CHUNK_SIZE);
 
-for (let i = 0; i < chunk_kinds.length; i++) {
-	const chunks = chunk_kinds[i];
-	describe(`incremental parsing (${CHUNK_SIZE}-char chunks) -- Incremental: ${chunks.length} chunks of ${CHUNK_SIZE} chars`, () => {
+for (const [chunks, size] of [[small_chunks, CHUNK_SIZE], [large_chunks, LARGE_CHUNK_SIZE]] as const) {
+	describe(`incremental: prose (${size}-char chunks, ${chunks.length} chunks)`, () => {
 		bench('pfm (feed)', () => {
-			const tree = new TreeBuilder((fixture.length >> 3) || 128);
+			const tree = new TreeBuilder((prose.length >> 3) || 128);
 			const parser = new PFMParser(tree);
 			parser.init();
 			for (let i = 0; i < chunks.length; i++) {
@@ -73,16 +80,6 @@ for (let i = 0; i < chunk_kinds.length; i++) {
 			}
 			parser.finish();
 		});
-
-
-
-		// WARNING: This take a very long time to run
-
-		// bench('remark (reparse)', () => {
-		// 	for (let i = 0; i < chunks.length; i++) {
-		// 		remark_processor.parse(chunks.slice(0, i + 1).join(''));
-		// 	}
-		// });
 
 		bench('marked (reparse)', () => {
 			for (let i = 0; i < chunks.length; i++) {
@@ -106,28 +103,38 @@ for (let i = 0; i < chunk_kinds.length; i++) {
 	});
 }
 
+// ── PFM incremental vs batch ────────────────────────────────
 
-describe('PFM - incremental vs batch', () => {
-  bench('pfm (feed chunks)', () => {
-		const tree = new TreeBuilder((fixture.length >> 3) || 128);
+describe('pfm: incremental vs batch (prose)', () => {
+	bench('pfm (feed 5-char chunks)', () => {
+		const tree = new TreeBuilder((prose.length >> 3) || 128);
 		const parser = new PFMParser(tree);
 		parser.init();
-		for (let i = 0; i < chunks.length; i++) {
-			parser.feed(chunks[i]);
+		for (let i = 0; i < small_chunks.length; i++) {
+			parser.feed(small_chunks[i]);
 		}
 		parser.finish();
-  });
-
-  bench('pfm (feed whole shebang)', () => {
-		const tree = new TreeBuilder((fixture.length >> 3) || 128);
-		const parser = new PFMParser(tree);
-
-    parser.init();
-		parser.feed(fixture);
-		parser.finish();
-  });
-
-  bench('pfm (parse_markdown_svelte)', () => {
-		parse_markdown_svelte(fixture);
 	});
-})
+
+	bench('pfm (feed 50-char chunks)', () => {
+		const tree = new TreeBuilder((prose.length >> 3) || 128);
+		const parser = new PFMParser(tree);
+		parser.init();
+		for (let i = 0; i < large_chunks.length; i++) {
+			parser.feed(large_chunks[i]);
+		}
+		parser.finish();
+	});
+
+	bench('pfm (feed whole)', () => {
+		const tree = new TreeBuilder((prose.length >> 3) || 128);
+		const parser = new PFMParser(tree);
+		parser.init();
+		parser.feed(prose);
+		parser.finish();
+	});
+
+	bench('pfm (parse_markdown_svelte)', () => {
+		parse_markdown_svelte(prose);
+	});
+});

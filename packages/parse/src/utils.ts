@@ -131,18 +131,25 @@ const extra_to_string = (kind: node_kind): string | undefined => {
  */
 export class node_buffer {
 	private capacity: number;
-	private kinds: Uint8Array;
+	/** @internal Exposed for cursor access. Do not mutate externally. */
+	_kinds: Uint8Array;
 	private starts: Uint32Array;
 	private ends: Uint32Array;
-	private extras: Uint16Array;
-	private value_starts: Uint32Array;
-	private value_ends: Uint32Array;
+	/** @internal */
+	_extras: Uint16Array;
+	/** @internal */
+	_value_starts: Uint32Array;
+	/** @internal */
+	_value_ends: Uint32Array;
 	private has_metadata: Uint8Array;
 	private metadata: Map<number, any>;
-	private parents: Uint32Array;
-	private next_siblings: Uint32Array;
+	/** @internal */
+	_parents: Uint32Array;
+	/** @internal */
+	_next_siblings: Uint32Array;
 	private prev_siblings: Uint32Array;
-	private children_starts: Uint32Array;
+	/** @internal */
+	_children_starts: Uint32Array;
 	private children_ends: Uint32Array;
 	private pending_nodes: Uint32Array;
 
@@ -155,18 +162,18 @@ export class node_buffer {
 	constructor(initial_capacity = DEFAULT_TOKEN_CAPACITY) {
 		const capacity = next_power_of_two(initial_capacity);
 		this.capacity = capacity;
-		this.kinds = new Uint8Array(capacity);
+		this._kinds = new Uint8Array(capacity);
 		this.starts = new Uint32Array(capacity);
 		this.ends = new Uint32Array(capacity);
-		this.extras = new Uint16Array(capacity);
-		this.value_starts = new Uint32Array(capacity);
-		this.value_ends = new Uint32Array(capacity);
+		this._extras = new Uint16Array(capacity);
+		this._value_starts = new Uint32Array(capacity);
+		this._value_ends = new Uint32Array(capacity);
 		this.has_metadata = new Uint8Array(Math.max(1, capacity >> 3));
 		this.metadata = new Map();
-		this.parents = new Uint32Array(capacity);
-		this.next_siblings = new Uint32Array(capacity);
+		this._parents = new Uint32Array(capacity);
+		this._next_siblings = new Uint32Array(capacity);
 		this.prev_siblings = new Uint32Array(capacity);
-		this.children_starts = new Uint32Array(capacity);
+		this._children_starts = new Uint32Array(capacity);
 		this.children_ends = new Uint32Array(capacity);
 		this.pending_nodes = new Uint32Array(capacity);
 
@@ -205,25 +212,25 @@ export class node_buffer {
 			this.grow();
 		}
 
-		this.kinds[index] = kind;
+		this._kinds[index] = kind;
 		this.starts[index] = cursor >>> 0;
 		this.ends[index] = 0xffffffff;
-		this.extras[index] = extra & 0xffff;
+		this._extras[index] = extra & 0xffff;
 		this._size = index + 1;
-		this.parents[index] = parent;
-		this.next_siblings[index] = 0xffffffff;
+		this._parents[index] = parent;
+		this._next_siblings[index] = 0xffffffff;
 		this.prev_siblings[index] = 0xffffffff;
-		this.children_starts[index] = 0xffffffff;
+		this._children_starts[index] = 0xffffffff;
 		this.children_ends[index] = 0xffffffff;
 
 		if (parent !== 0xffffffff) {
 			const last = this.children_ends[parent];
 			if (last === 0xffffffff) {
 				// First child
-				this.children_starts[parent] = index;
+				this._children_starts[parent] = index;
 			} else {
 				// Append after last child — O(1)
-				this.next_siblings[last] = index;
+				this._next_siblings[last] = index;
 				this.prev_siblings[index] = last;
 			}
 			this.children_ends[parent] = index;
@@ -265,15 +272,15 @@ export class node_buffer {
 	}
 
 	handle_repair(index: number): void {
-		const parent = this.parents[index];
-		const first_child = this.children_starts[index];
+		const parent = this._parents[index];
+		const first_child = this._children_starts[index];
 
 		// Convert to text
 		this.set_kind(index, node_kind.text);
 
 		if (first_child === 0xffffffff) {
 			// No children, nothing to reparent
-			this.children_starts[index] = 0xffffffff;
+			this._children_starts[index] = 0xffffffff;
 			this.children_ends[index] = 0xffffffff;
 			return;
 		}
@@ -282,25 +289,25 @@ export class node_buffer {
 		let child = first_child;
 		let last_child = first_child;
 
-		while (child !== 0xffffffff && this.parents[child] === index) {
-			this.parents[child] = parent;
+		while (child !== 0xffffffff && this._parents[child] === index) {
+			this._parents[child] = parent;
 			last_child = child;
-			child = this.next_siblings[child];
+			child = this._next_siblings[child];
 		}
 
 		// If exactly one child and it's text, merge the delimiter into it
-		if (last_child === first_child && this.kinds[first_child] === node_kind.text) {
-			this.value_starts[index] = this.starts[index];
-			this.value_ends[index] = this.ends[first_child];
+		if (last_child === first_child && this._kinds[first_child] === node_kind.text) {
+			this._value_starts[index] = this.starts[index];
+			this._value_ends[index] = this.ends[first_child];
 			this.ends[index] = this.ends[first_child];
 
 			// Skip the child in the sibling chain
-			this.next_siblings[index] = this.next_siblings[first_child];
-			if (this.next_siblings[first_child] !== 0xffffffff) {
-				this.prev_siblings[this.next_siblings[first_child]] = index;
+			this._next_siblings[index] = this._next_siblings[first_child];
+			if (this._next_siblings[first_child] !== 0xffffffff) {
+				this.prev_siblings[this._next_siblings[first_child]] = index;
 			}
 
-			this.children_starts[index] = 0xffffffff;
+			this._children_starts[index] = 0xffffffff;
 			this.children_ends[index] = 0xffffffff;
 			return;
 		}
@@ -310,16 +317,16 @@ export class node_buffer {
 		const first_child_prev = this.prev_siblings[first_child];
 
 		// Link: prev <- pending_node <-> first_child
-		this.next_siblings[index] = first_child;
+		this._next_siblings[index] = first_child;
 		this.prev_siblings[first_child] = index;
 
 		if (first_child_prev !== 0xffffffff) {
-			this.next_siblings[first_child_prev] = index;
+			this._next_siblings[first_child_prev] = index;
 			this.prev_siblings[index] = first_child_prev;
 		}
 
 		// Update parent's children tracking
-		if (this.children_starts[parent] === index) {
+		if (this._children_starts[parent] === index) {
 			// Pending node was first child, keep it as first
 			// (it's still first, just converted to text)
 		}
@@ -329,12 +336,12 @@ export class node_buffer {
 		}
 
 		// Clear pending node's children references
-		this.children_starts[index] = 0xffffffff;
+		this._children_starts[index] = 0xffffffff;
 		this.children_ends[index] = 0xffffffff;
 
-		this.value_starts[index] = this.starts[index];
-		this.value_ends[index] = this.value_starts[first_child];
-		this.ends[index] = this.value_ends[index];
+		this._value_starts[index] = this.starts[index];
+		this._value_ends[index] = this._value_starts[first_child];
+		this.ends[index] = this._value_ends[index];
 	}
 
 	repair(): void {
@@ -355,17 +362,17 @@ export class node_buffer {
 	 * in the parent's child list.
 	 */
 	unwrap_node(index: number): void {
-		const parent = this.parents[index];
-		const first_child = this.children_starts[index];
+		const parent = this._parents[index];
+		const first_child = this._children_starts[index];
 
 		if (first_child === 0xffffffff) {
 			// No children — remove from sibling chain
 			const prev_sib = this.prev_siblings[index];
-			const next_sib = this.next_siblings[index];
+			const next_sib = this._next_siblings[index];
 			if (prev_sib !== 0xffffffff) {
-				this.next_siblings[prev_sib] = next_sib;
+				this._next_siblings[prev_sib] = next_sib;
 			} else if (parent !== 0xffffffff) {
-				this.children_starts[parent] = next_sib;
+				this._children_starts[parent] = next_sib;
 			}
 			if (next_sib !== 0xffffffff) {
 				this.prev_siblings[next_sib] = prev_sib;
@@ -380,36 +387,36 @@ export class node_buffer {
 		// Reparent all children and find last child
 		let child = first_child;
 		let last_child = first_child;
-		while (child !== 0xffffffff && this.parents[child] === index) {
-			this.parents[child] = parent;
+		while (child !== 0xffffffff && this._parents[child] === index) {
+			this._parents[child] = parent;
 			last_child = child;
-			child = this.next_siblings[child];
+			child = this._next_siblings[child];
 		}
 
 		// Splice children into parent's child list where this node was
 		const prev_sib = this.prev_siblings[index];
-		const next_sib = this.next_siblings[last_child] !== 0xffffffff &&
-			this.parents[this.next_siblings[last_child]] === index
+		const next_sib = this._next_siblings[last_child] !== 0xffffffff &&
+			this._parents[this._next_siblings[last_child]] === index
 			? 0xffffffff
-			: this.next_siblings[last_child];
+			: this._next_siblings[last_child];
 
 		// The actual next sibling of the unwrapped node (not of last_child)
-		const node_next = this.next_siblings[index];
+		const node_next = this._next_siblings[index];
 
 		if (prev_sib !== 0xffffffff) {
-			this.next_siblings[prev_sib] = first_child;
+			this._next_siblings[prev_sib] = first_child;
 			this.prev_siblings[first_child] = prev_sib;
 		} else if (parent !== 0xffffffff) {
-			this.children_starts[parent] = first_child;
+			this._children_starts[parent] = first_child;
 			this.prev_siblings[first_child] = 0xffffffff;
 		}
 
 		// Link last child to the unwrapped node's next sibling
 		if (node_next !== 0xffffffff && node_next !== first_child) {
-			this.next_siblings[last_child] = node_next;
+			this._next_siblings[last_child] = node_next;
 			this.prev_siblings[node_next] = last_child;
 		} else {
-			this.next_siblings[last_child] = 0xffffffff;
+			this._next_siblings[last_child] = 0xffffffff;
 		}
 
 		// Update parent's last child if we replaced the tail
@@ -418,14 +425,14 @@ export class node_buffer {
 		}
 
 		// Clear the unwrapped node's links
-		this.children_starts[index] = 0xffffffff;
+		this._children_starts[index] = 0xffffffff;
 		this.children_ends[index] = 0xffffffff;
 	}
 
 	set_parent_kind(index: number, kind: node_kind): void {
-		const parent_index = this.parents[index];
+		const parent_index = this._parents[index];
 		if (parent_index !== 0xffffffff) {
-			this.kinds[parent_index] = kind;
+			this._kinds[parent_index] = kind;
 		}
 	}
 
@@ -433,7 +440,7 @@ export class node_buffer {
 	get_kinds(kind: node_kind): number[] {
 		const result: number[] = [];
 		for (let i = 0; i < this._size; i++) {
-			if (this.kinds[i] === kind) result.push(i);
+			if (this._kinds[i] === kind) result.push(i);
 		}
 		return result;
 	}
@@ -443,7 +450,7 @@ export class node_buffer {
 	 * @param index Token index.
 	 */
 	kind_at(index: number): node_kind {
-		return this.kinds[index] as node_kind;
+		return this._kinds[index] as node_kind;
 	}
 
 	/**
@@ -452,7 +459,7 @@ export class node_buffer {
 	 * @param kind new kind
 	 */
 	set_kind(index: number, kind: node_kind): void {
-		this.kinds[index] = kind;
+		this._kinds[index] = kind;
 	}
 
 	/**
@@ -461,7 +468,7 @@ export class node_buffer {
 	 * @param extra new extra
 	 */
 	set_extra(index: number, extra: number): void {
-		this.extras[index] = extra & 0xffff;
+		this._extras[index] = extra & 0xffff;
 	}
 
 	/**
@@ -479,8 +486,8 @@ export class node_buffer {
 	}
 
 	gently_set_value_end(index: number, end: number): void {
-		if (this.value_ends[index] !== 0xffffffff) return;
-		this.value_ends[index] = end >>> 0;
+		if (this._value_ends[index] !== 0xffffffff) return;
+		this._value_ends[index] = end >>> 0;
 	}
 
 	/** Double the backing storage when capacity is exhausted. */
@@ -500,31 +507,31 @@ export class node_buffer {
 		const next_pending_nodes = new Uint32Array(next);
 		const next_has_metadata = new Uint8Array(Math.max(1, next >> 3));
 
-		next_kinds.set(this.kinds);
+		next_kinds.set(this._kinds);
 		next_starts.set(this.starts);
 		next_ends.set(this.ends);
-		next_extras.set(this.extras);
-		next_value_starts.set(this.value_starts);
-		next_value_ends.set(this.value_ends);
-		next_parents.set(this.parents);
-		next_next_siblings.set(this.next_siblings);
+		next_extras.set(this._extras);
+		next_value_starts.set(this._value_starts);
+		next_value_ends.set(this._value_ends);
+		next_parents.set(this._parents);
+		next_next_siblings.set(this._next_siblings);
 		next_prev_siblings.set(this.prev_siblings);
-		next_children_starts.set(this.children_starts);
+		next_children_starts.set(this._children_starts);
 		next_children_ends.set(this.children_ends);
 		next_pending_nodes.set(this.pending_nodes);
 		next_has_metadata.set(this.has_metadata);
 
 		this.capacity = next;
-		this.kinds = next_kinds;
+		this._kinds = next_kinds;
 		this.starts = next_starts;
 		this.ends = next_ends;
-		this.extras = next_extras;
-		this.value_starts = next_value_starts;
-		this.value_ends = next_value_ends;
-		this.parents = next_parents;
-		this.next_siblings = next_next_siblings;
+		this._extras = next_extras;
+		this._value_starts = next_value_starts;
+		this._value_ends = next_value_ends;
+		this._parents = next_parents;
+		this._next_siblings = next_next_siblings;
 		this.prev_siblings = next_prev_siblings;
-		this.children_starts = next_children_starts;
+		this._children_starts = next_children_starts;
 		this.children_ends = next_children_ends;
 		this.pending_nodes = next_pending_nodes;
 		this.has_metadata = next_has_metadata;
@@ -544,16 +551,16 @@ export class node_buffer {
 	}
 
 	set_value(index: number, value_start: number, value_end: number): void {
-		this.value_starts[index] = value_start;
-		this.value_ends[index] = value_end;
+		this._value_starts[index] = value_start;
+		this._value_ends[index] = value_end;
 	}
 
 	set_value_start(index: number, value_start: number): void {
-		this.value_starts[index] = value_start;
+		this._value_starts[index] = value_start;
 	}
 
 	set_value_end(index: number, value_end: number): void {
-		this.value_ends[index] = value_end;
+		this._value_ends[index] = value_end;
 	}
 
 	/**
@@ -573,38 +580,38 @@ export class node_buffer {
 		value: [number, number];
 		index: number;
 	} {
-		const extra_string = extra_to_string(this.kinds[index]);
+		const extra_string = extra_to_string(this._kinds[index]);
 		const extras_object = extra_string
-			? { [extra_string]: this.extras[index] }
+			? { [extra_string]: this._extras[index] }
 			: {};
 
 		const _children = [];
 
 		// Walk sibling chain to get all direct children
-		let child = this.children_starts[index];
-		while (child !== 0xffffffff && this.parents[child] === index) {
+		let child = this._children_starts[index];
+		while (child !== 0xffffffff && this._parents[child] === index) {
 			_children.push(child);
-			child = this.next_siblings[child];
+			child = this._next_siblings[child];
 		}
 
 		return {
-			kind: kind_to_string(this.kinds[index]),
+			kind: kind_to_string(this._kinds[index]),
 			start: this.starts[index],
 			end: this.ends[index],
 			metadata: {
 				...this.metadata_at(index),
 				...extras_object,
 			},
-			parent: this.parents[index] === 0xffffffff ? null : this.parents[index],
+			parent: this._parents[index] === 0xffffffff ? null : this._parents[index],
 			next:
-				this.next_siblings[index] === 0xffffffff
+				this._next_siblings[index] === 0xffffffff
 					? null
-					: this.next_siblings[index],
+					: this._next_siblings[index],
 			prev:
 				this.prev_siblings[index] === 0xffffffff
 					? null
 					: this.prev_siblings[index],
-			value: [this.value_starts[index], this.value_ends[index]],
+			value: [this._value_starts[index], this._value_ends[index]],
 			children: _children,
 			index: index,
 		};

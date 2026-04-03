@@ -9,6 +9,8 @@ export default defineConfig({
 				main: resolve(__dirname, 'src/main.ts'),
 				opcodes: resolve(__dirname, 'src/opcodes.ts'),
 				'tree-builder': resolve(__dirname, 'src/tree_builder.ts'),
+				'document-builder': resolve(__dirname, 'src/document_builder.ts'),
+				cursor: resolve(__dirname, 'src/cursor.ts'),
 				utils: resolve(__dirname, 'src/utils.ts'),
 			},
 			formats: ['es'],
