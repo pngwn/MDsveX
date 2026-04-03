@@ -148,4 +148,57 @@ describe('CursorHTMLRenderer', () => {
 	it('escapes HTML in code spans', () => {
 		expect(render('`<div>`\n')).toContain('<code>&lt;div&gt;</code>');
 	});
+
+	// ── Svelte syntax ──────────────────────────────────────────
+
+	it('mustache expression', () => {
+		expect(render('hello {name} world')).toBe('<p>hello {name} world</p>');
+	});
+
+	it('svelte void tag {@html}', () => {
+		expect(render('{@html "<b>bold</b>"}')).toBe('<p>{@html "<b>bold</b>"}</p>');
+	});
+
+	it('svelte void tag {@debug}', () => {
+		expect(render('{@debug myVar}')).toBe('<p>{@debug myVar}</p>');
+	});
+
+	it('svelte void tag {@const} no expression', () => {
+		expect(render('{@debug}')).toBe('<p>{@debug}</p>');
+	});
+
+	it('simple if block', () => {
+		const html = render('{#if show}\nhello\n{/if}');
+		expect(html).toBe('{#if show}\n<p>hello</p>{/if}');
+	});
+
+	it('if/else block', () => {
+		const html = render('{#if a}\nfirst\n{:else}\nsecond\n{/if}');
+		expect(html).toBe('{#if a}\n<p>first</p>{:else}\n<p>second</p>{/if}');
+	});
+
+	it('if/else if/else block', () => {
+		const html = render('{#if a}\none\n{:else if b}\ntwo\n{:else}\nthree\n{/if}');
+		expect(html).toBe('{#if a}\n<p>one</p>{:else if b}\n<p>two</p>{:else}\n<p>three</p>{/if}');
+	});
+
+	it('each block', () => {
+		const html = render('{#each items as item}\n{item}\n{/each}');
+		expect(html).toBe('{#each items as item}\n<p>{item}</p>{/each}');
+	});
+
+	it('await/then/catch block', () => {
+		const html = render('{#await promise}\nloading\n{:then value}\ndone\n{:catch error}\nfail\n{/await}');
+		expect(html).toBe('{#await promise}\n<p>loading</p>{:then value}\n<p>done</p>{:catch error}\n<p>fail</p>{/await}');
+	});
+
+	it('nested blocks', () => {
+		const html = render('{#if a}\n{#if b}\ninner\n{/if}\n{/if}');
+		expect(html).toBe('{#if a}\n{#if b}\n<p>inner</p>{/if}{/if}');
+	});
+
+	it('block with markdown content', () => {
+		const html = render('{#if show}\n# Title\n{/if}');
+		expect(html).toBe('{#if show}\n<h1>Title</h1>{/if}');
+	});
 });

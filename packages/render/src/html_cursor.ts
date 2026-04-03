@@ -60,6 +60,10 @@ const K_TABLE_HEADER = 23;
 const K_TABLE_ROW = 24;
 const K_TABLE_CELL = 25;
 const K_HTML_COMMENT = 26;
+const K_SVELTE_TAG = 27;
+const K_SVELTE_BLOCK = 28;
+const K_SVELTE_BRANCH = 29;
+const K_MUSTACHE = 4;
 
 // ── Precomputed tag strings ─────────────────────────────────
 
@@ -260,6 +264,52 @@ function _node(c: PFMCursor, out: string[]): void {
 		case K_HTML_COMMENT:
 			out.push('<!--', c.text(), '-->');
 			break;
+
+		case K_MUSTACHE:
+			out.push('{', c.text(), '}');
+			break;
+
+		case K_SVELTE_TAG: {
+			const meta = c.meta();
+			const tag = meta?.tag as string;
+			const text = c.text();
+			out.push('{@', tag);
+			if (text) out.push(' ', text);
+			out.push('}');
+			break;
+		}
+
+		case K_SVELTE_BLOCK: {
+			// Render branches; each branch handles its own opening tag
+			const blockMeta = c.meta();
+			const blockTag = blockMeta?.tag as string;
+			if (c.gotoFirstChild()) {
+				let isFirst = true;
+				do {
+					if (c.kind === K_SVELTE_BRANCH) {
+						const branchMeta = c.meta();
+						const branchTag = branchMeta?.tag as string;
+						const branchExpr = c.text();
+						if (isFirst) {
+							out.push('{#', blockTag);
+							if (branchExpr) out.push(' ', branchExpr);
+							out.push('}\n');
+							isFirst = false;
+						} else {
+							out.push('{:', branchTag);
+							if (branchExpr) out.push(' ', branchExpr);
+							out.push('}\n');
+						}
+						_children(c, out);
+					} else if (c.kind !== K_LINE_BREAK) {
+						_node(c, out);
+					}
+				} while (c.gotoNextSibling());
+				c.gotoParent();
+			}
+			out.push('{/', blockTag, '}');
+			break;
+		}
 
 		case K_TABLE:
 			out.push('<table>\n');

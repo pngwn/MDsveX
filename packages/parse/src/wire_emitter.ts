@@ -75,6 +75,9 @@ const KIND_NAMES: string[] = [
 	'table_row',
 	'table_cell',
 	'html_comment',
+	'svelte_tag',
+	'svelte_block',
+	'svelte_branch',
 ];
 
 /** Tracks progressive text emission for a node. */

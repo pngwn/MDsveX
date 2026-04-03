@@ -114,6 +114,7 @@ text_break[CLOSE_SQUARE_BRACKET] = 1;
 text_break[EXCLAMATION_MARK] = 1;
 text_break[BACKTICK] = 1;
 text_break[PIPE] = 1;
+text_break[OPEN_BRACE] = 1;
 
 export const enum state_kind {
 	root = 0,
@@ -143,6 +144,7 @@ export const enum state_kind {
 	table_row_content = 24,
 	html_element = 25,
 	html_block_element = 26,
+	svelte_branch = 27,
 }
 
 const fences = Array.from({ length: 20 }, (_, i) =>
@@ -233,6 +235,17 @@ export class PFMParser {
 	// HTML state
 	private html_tag_stack: { id: number; tag: string }[] = [];
 	private html_block_depth: number = 0;
+
+	// Svelte block state
+	private svelte_block_depth: number = 0;
+	private svelte_block_tag: string = '';
+	private svelte_branch_id: number = 0;
+	private svelte_block_id: number = 0;
+	private svelte_block_stack: {
+		block_id: number;
+		branch_id: number;
+		tag: string;
+	}[] = [];
 
 	// Misc
 	private extra: number = 0;
@@ -349,6 +362,11 @@ export class PFMParser {
 		this.table_cell_has_content = false;
 		this.html_tag_stack = [];
 		this.html_block_depth = 0;
+		this.svelte_block_depth = 0;
+		this.svelte_block_tag = '';
+		this.svelte_branch_id = 0;
+		this.svelte_block_id = 0;
+		this.svelte_block_stack = [];
 		this.extra = 0;
 		this.info_start_pos = 0;
 		this.info_end_pos = 0;
@@ -582,6 +600,9 @@ export class PFMParser {
 		// Blank line
 		if (ch === LINEFEED) return true;
 
+		// Svelte block boundary ({: or {/) interrupts paragraphs
+		if (ch === OPEN_BRACE && this.is_svelte_block_boundary(p)) return true;
+
 		// Fast exit: first non-ws char can't start any block construct
 		switch (ch) {
 			case OCTOTHERP:
@@ -759,6 +780,45 @@ export class PFMParser {
 		}
 	}
 
+	/**
+	 * Open a svelte_block + first svelte_branch from a {#tag expr} token.
+	 */
+	private start_svelte_block(
+		token: { kind: '#' | ':' | '/'; tag: string; expr_start: number; expr_end: number; end: number },
+		parent: number
+	): void {
+		// Save current svelte block state for nesting
+		if (this.svelte_block_depth > 0) {
+			this.svelte_block_stack.push({
+				block_id: this.svelte_block_id,
+				branch_id: this.svelte_branch_id,
+				tag: this.svelte_block_tag,
+			});
+		}
+
+		this.svelte_block_depth++;
+		this.svelte_block_tag = token.tag;
+
+		// Open svelte_block
+		const block_id = this.emit_open(node_kind.svelte_block, this.cursor, parent);
+		this.out.attr(block_id, 'tag', token.tag);
+		this.svelte_block_id = block_id;
+		this.node_stack.push(block_id);
+
+		// Open first svelte_branch
+		const branch_id = this.emit_open(node_kind.svelte_branch, this.cursor, block_id);
+		this.out.attr(branch_id, 'tag', token.tag);
+		if (token.expr_start !== 0 || token.expr_end !== 0) {
+			this.out.set_value_start(branch_id, token.expr_start);
+			this.out.set_value_end(branch_id, token.expr_end);
+		}
+		this.svelte_branch_id = branch_id;
+		this.node_stack.push(branch_id);
+
+		this.states.push(state_kind.svelte_branch);
+		this.chomp(token.end, true);
+	}
+
 	private try_parse_uri_autolink(pos: number): number {
 		const source = this.source;
 		const length = source.length;
@@ -925,6 +985,16 @@ export class PFMParser {
 				return { tag, attributes, self_closing: false, end: p + 1 };
 			}
 
+			// Svelte shorthand attribute: {name}
+			if (source.charCodeAt(p) === OPEN_BRACE) {
+				const expr_end = this.find_matching_brace(p + 1);
+				if (expr_end === -1) return null;
+				const expr = source.slice(p + 1, expr_end - 1);
+				attributes[expr] = expr;
+				p = expr_end;
+				continue;
+			}
+
 			// Parse attribute name
 			const attr_name_start = p;
 			const ch = source.charCodeAt(p);
@@ -961,7 +1031,13 @@ export class PFMParser {
 				if (p >= length) return null;
 
 				const quote = source.charCodeAt(p);
-				if (quote === QUOTE || quote === APOSTROPHE) {
+				if (quote === OPEN_BRACE) {
+					// Svelte expression attribute value: attr={expr}
+					const expr_end = this.find_matching_brace(p + 1);
+					if (expr_end === -1) return null;
+					attributes[attr_name] = source.slice(p + 1, expr_end - 1);
+					p = expr_end;
+				} else if (quote === QUOTE || quote === APOSTROPHE) {
 					// Quoted value
 					p++; // skip opening quote
 					const value_start = p;
@@ -1104,6 +1180,167 @@ export class PFMParser {
 			this.node_stack.pop();
 			this.states.pop();
 		}
+	}
+
+	/**
+	 * Try to parse a Svelte block token at `pos` (pointing at `{`).
+	 * Returns null if not a svelte block token.
+	 * Recognizes: {#tag expr}, {:tag expr}, {/tag}
+	 */
+	private try_parse_svelte_block_token(
+		pos: number
+	): { kind: '#' | ':' | '/'; tag: string; expr_start: number; expr_end: number; end: number } | null {
+		const source = this.source;
+		const length = source.length;
+		if (pos >= length || source.charCodeAt(pos) !== OPEN_BRACE) return null;
+		let p = pos + 1;
+		if (p >= length) return null;
+		const sigil = source.charCodeAt(p);
+		if (sigil !== OCTOTHERP && sigil !== COLON && sigil !== SLASH) return null;
+		const kind_ch = sigil === OCTOTHERP ? '#' : sigil === COLON ? ':' : '/';
+		p++;
+
+		// Tag name
+		const tag_start = p;
+		while (p < length && source.charCodeAt(p) !== SPACE && source.charCodeAt(p) !== TAB && source.charCodeAt(p) !== CLOSE_BRACE) p++;
+		if (p === tag_start) return null;
+		let tag = source.slice(tag_start, p);
+
+		// Handle {:else if expr} — "else if" is a compound tag name
+		if (kind_ch === ':' && tag === 'else') {
+			const save = p;
+			while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+			if (p + 1 < length && source.charCodeAt(p) === 105 /* i */ && source.charCodeAt(p + 1) === 102 /* f */ &&
+				(p + 2 >= length || source.charCodeAt(p + 2) === SPACE || source.charCodeAt(p + 2) === TAB || source.charCodeAt(p + 2) === CLOSE_BRACE)) {
+				tag = 'else if';
+				p += 2;
+			} else {
+				p = save;
+			}
+		}
+
+		if (kind_ch === '/') {
+			// {/tag} — no expression
+			while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+			if (p >= length || source.charCodeAt(p) !== CLOSE_BRACE) return null;
+			return { kind: kind_ch, tag, expr_start: 0, expr_end: 0, end: p + 1 };
+		}
+
+		// Skip whitespace after tag name
+		while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+
+		if (p < length && source.charCodeAt(p) === CLOSE_BRACE) {
+			// No expression: {#tag} or {:tag}
+			return { kind: kind_ch, tag, expr_start: 0, expr_end: 0, end: p + 1 };
+		}
+
+		// Expression content: find the matching }
+		const expr_start = p;
+		const brace_end = this.find_matching_brace(expr_start);
+		if (brace_end === -1) return null;
+		// brace_end points past the }, expr_end is just before it
+		return { kind: kind_ch, tag, expr_start, expr_end: brace_end - 1, end: brace_end };
+	}
+
+	/**
+	 * Check if position starts with a svelte block continuation ({:...}) or
+	 * closer ({/...}) that would interrupt the current block content.
+	 */
+	private is_svelte_block_boundary(pos: number): boolean {
+		if (this.svelte_block_depth === 0) return false;
+		const source = this.source;
+		if (pos >= source.length || source.charCodeAt(pos) !== OPEN_BRACE) return false;
+		const next = source.charCodeAt(pos + 1);
+		return next === COLON || next === SLASH;
+	}
+
+	/**
+	 * Find the matching closing brace for a Svelte expression.
+	 * pos should point to the char after the opening `{`.
+	 * Tracks nested braces and skips over string literals and template literals.
+	 * Returns the position just past the closing `}`, or -1 if not found.
+	 */
+	private find_matching_brace(pos: number): number {
+		const source = this.source;
+		const length = source.length;
+		let depth = 1;
+		let p = pos;
+
+		while (p < length) {
+			const ch = source.charCodeAt(p);
+
+			switch (ch) {
+				case OPEN_BRACE:
+					depth++;
+					p++;
+					break;
+				case CLOSE_BRACE:
+					depth--;
+					if (depth === 0) return p + 1;
+					p++;
+					break;
+				case QUOTE:
+				case APOSTROPHE: {
+					// Skip string literal
+					p++;
+					while (p < length && source.charCodeAt(p) !== ch) {
+						if (source.charCodeAt(p) === BACKSLASH) p++; // skip escaped char
+						p++;
+					}
+					if (p < length) p++; // skip closing quote
+					break;
+				}
+				case BACKTICK: {
+					// Skip template literal, respecting ${} interpolations
+					p++;
+					while (p < length && source.charCodeAt(p) !== BACKTICK) {
+						if (source.charCodeAt(p) === BACKSLASH) {
+							p++;
+						} else if (
+							source.charCodeAt(p) === 36 /* $ */ &&
+							p + 1 < length &&
+							source.charCodeAt(p + 1) === OPEN_BRACE
+						) {
+							p += 2; // skip ${
+							// Recursively find the matching } for the interpolation
+							const inner_end = this.find_matching_brace(p);
+							if (inner_end === -1) return -1;
+							p = inner_end;
+							continue;
+						}
+						p++;
+					}
+					if (p < length) p++; // skip closing backtick
+					break;
+				}
+				case SLASH: {
+					// Skip // line comments
+					if (p + 1 < length && source.charCodeAt(p + 1) === SLASH) {
+						p += 2;
+						while (p < length && source.charCodeAt(p) !== LINEFEED) p++;
+						break;
+					}
+					// Skip /* block comments */
+					if (p + 1 < length && source.charCodeAt(p + 1) === ASTERISK) {
+						p += 2;
+						while (p < length) {
+							if (source.charCodeAt(p) === ASTERISK && p + 1 < length && source.charCodeAt(p + 1) === SLASH) {
+								p += 2;
+								break;
+							}
+							p++;
+						}
+						break;
+					}
+					p++;
+					break;
+				}
+				default:
+					p++;
+			}
+		}
+
+		return -1;
 	}
 
 	private try_parse_inline_link(pos: number): LinkResult | null {
@@ -1494,6 +1731,24 @@ export class PFMParser {
 							continue;
 						}
 
+						case OPEN_BRACE: {
+							// Svelte block opener: {#tag expr}
+							if (!this.finished) {
+								const probe = this.find_matching_brace(this.cursor + 1);
+								if (probe === -1) break main_loop;
+							}
+							const token = this.try_parse_svelte_block_token(this.cursor);
+							if (token && token.kind === '#') {
+								this.start_svelte_block(token, current_node);
+								continue;
+							}
+							// Not a block — start paragraph (inline will handle {expr})
+							this.states.push(state_kind.paragraph);
+							const brace_para = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+							this.node_stack.push(brace_para);
+							continue;
+						}
+
 						default: {
 							if (code === PLUS || (code >= 48 && code <= 57)) {
 								const marker = this.try_parse_list_marker(this.cursor);
@@ -1511,7 +1766,7 @@ export class PFMParser {
 				}
 
 				case state_kind.paragraph: {
-					const node_stack_base = 1 + this.block_quote_depth + this.list_depth * 2 + this.html_block_depth;
+					const node_stack_base = 1 + this.block_quote_depth + this.list_depth * 2 + this.html_block_depth + this.svelte_block_depth * 2;
 
 					if (!code) {
 						if (!this.finished) break main_loop;
@@ -2356,6 +2611,177 @@ export class PFMParser {
 					continue;
 				}
 
+				case state_kind.svelte_branch: {
+					// Container state for svelte block branches.
+					// Dispatches block content like root, but also handles
+					// {:tag} (new branch) and {/tag} (close block).
+
+					if (!code) {
+						if (!this.finished) break main_loop;
+						// EOF: close branch + block
+						this.emit_close(this.svelte_branch_id, this.cursor);
+						this.node_stack.pop(); // branch
+						this.emit_close(this.svelte_block_id, this.cursor);
+						this.node_stack.pop(); // block
+						this.states.pop();
+						this.svelte_block_depth--;
+						if (this.svelte_block_depth > 0 && this.svelte_block_stack.length > 0) {
+							const prev = this.svelte_block_stack.pop()!;
+							this.svelte_block_id = prev.block_id;
+							this.svelte_branch_id = prev.branch_id;
+							this.svelte_block_tag = prev.tag;
+						}
+						continue;
+					}
+
+					if (code === OPEN_BRACE) {
+						// Stall if closing brace not visible
+						if (!this.finished) {
+							const probe = this.find_matching_brace(this.cursor + 1);
+							if (probe === -1) break main_loop;
+						}
+						const token = this.try_parse_svelte_block_token(this.cursor);
+						if (token) {
+							if (token.kind === ':') {
+								// Close current branch, open new one
+								this.emit_close(this.svelte_branch_id, this.cursor);
+								this.node_stack.pop(); // pop old branch
+
+								const branch_id = this.emit_open(node_kind.svelte_branch, this.cursor, this.svelte_block_id);
+								this.out.attr(branch_id, 'tag', token.tag);
+								if (token.expr_start !== 0 || token.expr_end !== 0) {
+									this.out.set_value_start(branch_id, token.expr_start);
+									this.out.set_value_end(branch_id, token.expr_end);
+								}
+								this.svelte_branch_id = branch_id;
+								this.node_stack.push(branch_id);
+								this.chomp(token.end, true);
+								continue;
+							}
+							if (token.kind === '/') {
+								// Close branch + block
+								this.emit_close(this.svelte_branch_id, this.cursor);
+								this.node_stack.pop(); // branch
+								this.emit_close(this.svelte_block_id, token.end);
+								this.node_stack.pop(); // block
+								this.states.pop();
+								this.svelte_block_depth--;
+								if (this.svelte_block_depth > 0 && this.svelte_block_stack.length > 0) {
+									const prev = this.svelte_block_stack.pop()!;
+									this.svelte_block_id = prev.block_id;
+									this.svelte_branch_id = prev.branch_id;
+									this.svelte_block_tag = prev.tag;
+								}
+								this.chomp(token.end, true);
+								continue;
+							}
+							if (token.kind === '#') {
+								// Nested svelte block — open it within this branch
+								this.start_svelte_block(token, current_node);
+								continue;
+							}
+						}
+					}
+
+					// Skip linefeeds
+					if (code === LINEFEED) {
+						const lb_id = this.emit_open(node_kind.line_break, this.cursor, current_node);
+						this.emit_close(lb_id, this.cursor + 1);
+						this.chomp1();
+						continue;
+					}
+
+					// Skip leading whitespace
+					if (code === SPACE || code === TAB) {
+						let pos = this.cursor;
+						while (pos < length && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) {
+							pos++;
+						}
+						if (pos < length && source.charCodeAt(pos) === LINEFEED) {
+							const lb_id = this.emit_open(node_kind.line_break, this.cursor, current_node);
+							this.emit_close(lb_id, pos + 1);
+							this.chomp(pos + 1, true);
+							continue;
+						}
+						this.chomp1();
+						continue;
+					}
+
+					// Dispatch block-level content
+					if (code === OCTOTHERP) {
+						if (!this.start_heading(current_node)) break main_loop;
+						continue;
+					}
+
+					if (code === BACKTICK) {
+						this.states.push(state_kind.code_fence_start);
+						this.extra = 0;
+						continue;
+					}
+
+					if (code === CLOSE_ANGLE_BRACKET) {
+						let p = this.cursor + 1;
+						if (p < length && source.charCodeAt(p) === SPACE) p++;
+						this.block_quote_depth++;
+						const bq_id = this.emit_open(node_kind.block_quote, this.cursor, current_node);
+						this.node_stack.push(bq_id);
+						this.states.push(state_kind.block_quote);
+						this.chomp(p, true);
+						continue;
+					}
+
+					if (code === OPEN_ANGLE_BRACKET) {
+						if (!this.finished && source.indexOf('>', this.cursor + 1) === -1) {
+							break main_loop;
+						}
+						const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
+						if (blk_tag) {
+							if (blk_tag.self_closing) {
+								const html_id = this.emit_open(node_kind.html, this.cursor, current_node);
+								this.out.attr(html_id, 'tag', blk_tag.tag);
+								if (Object.keys(blk_tag.attributes).length > 0) {
+									this.out.attr(html_id, 'attributes', blk_tag.attributes);
+								}
+								this.out.attr(html_id, 'self_closing', true);
+								this.emit_close(html_id, blk_tag.end);
+								this.chomp(blk_tag.end, true);
+							} else {
+								const html_id = this.emit_open(node_kind.html, this.cursor, current_node, 0, true);
+								this.out.attr(html_id, 'tag', blk_tag.tag);
+								if (Object.keys(blk_tag.attributes).length > 0) {
+									this.out.attr(html_id, 'attributes', blk_tag.attributes);
+								}
+								this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
+								this.node_stack.push(html_id);
+								this.states.push(state_kind.html_block_element);
+								this.html_block_depth++;
+								this.chomp(blk_tag.end, true);
+							}
+							continue;
+						}
+					}
+
+					if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
+						if (!this.finished && this.cursor + 2 >= length) {
+							break main_loop;
+						}
+						if (this.is_thematic_break_start(this.cursor)) {
+							let line_end = this.cursor;
+							while (line_end < length && source.charCodeAt(line_end) !== LINEFEED) line_end++;
+							const tb_id = this.emit_open(node_kind.thematic_break, this.cursor, current_node);
+							this.emit_close(tb_id, line_end);
+							this.chomp(line_end, true);
+							continue;
+						}
+					}
+
+					// Default: start a paragraph
+					this.states.push(state_kind.paragraph);
+					const svelte_para = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+					this.node_stack.push(svelte_para);
+					continue;
+				}
+
 				case state_kind.block_quote: {
 					if (!code) {
 						if (!this.finished) break main_loop;
@@ -3053,6 +3479,51 @@ export class PFMParser {
 							continue;
 						}
 
+						case OPEN_BRACE: {
+							// In incremental mode, stall if we can't see the closing brace
+							if (!this.finished) {
+								const probe = this.find_matching_brace(this.cursor + 1);
+								if (probe === -1) break main_loop;
+							}
+							const expr_end = this.find_matching_brace(this.cursor + 1);
+							if (expr_end !== -1) {
+								// Svelte void tag: {@tag ...}
+								if (source.charCodeAt(this.cursor + 1) === AT) {
+									// Find the tag name: scan word chars after @
+									let tp = this.cursor + 2;
+									while (tp < expr_end - 1 && source.charCodeAt(tp) !== SPACE && source.charCodeAt(tp) !== TAB && source.charCodeAt(tp) !== LINEFEED && source.charCodeAt(tp) !== CLOSE_BRACE) tp++;
+									const tag_name = source.slice(this.cursor + 2, tp);
+									if (tag_name.length > 0) {
+										const st_id = this.emit_open(node_kind.svelte_tag, this.cursor, current_node);
+										this.out.attr(st_id, 'tag', tag_name);
+										// Skip whitespace after tag name to find expression start
+										while (tp < expr_end - 1 && (source.charCodeAt(tp) === SPACE || source.charCodeAt(tp) === TAB)) tp++;
+										if (tp < expr_end - 1) {
+											this.out.set_value_start(st_id, tp);
+											this.out.set_value_end(st_id, expr_end - 1);
+										}
+										this.emit_close(st_id, expr_end);
+										this.chomp(expr_end, true);
+										continue;
+									}
+								}
+								// Plain Svelte expression: {expr}
+								const m_id = this.emit_open(node_kind.mustache, this.cursor, current_node);
+								this.out.set_value_start(m_id, this.cursor + 1);
+								this.out.set_value_end(m_id, expr_end - 1);
+								this.emit_close(m_id, expr_end);
+								this.chomp(expr_end, true);
+								continue;
+							}
+							// Unmatched { — treat as text
+							const t_id_brace = this.emit_open(node_kind.text, this.cursor, current_node);
+							this.out.set_value_start(t_id_brace, this.cursor);
+							this.node_stack.push(t_id_brace);
+							this.states.push(state_kind.text);
+							this.chomp1();
+							continue;
+						}
+
 						case PIPE: {
 							// Transparent intraword delimiter — provides flanking
 							// context for _ and * without producing output.
@@ -3172,7 +3643,7 @@ export class PFMParser {
 						}
 						this.chomp1();
 						continue;
-					} else if (code === ASTERISK || code === UNDERSCORE || code === TILDE || code === CARET || code === OPEN_ANGLE_BRACKET || code === OPEN_SQUARE_BRACKET || code === CLOSE_SQUARE_BRACKET || code === EXCLAMATION_MARK || code === BACKTICK) {
+					} else if (code === ASTERISK || code === UNDERSCORE || code === TILDE || code === CARET || code === OPEN_ANGLE_BRACKET || code === OPEN_SQUARE_BRACKET || code === CLOSE_SQUARE_BRACKET || code === EXCLAMATION_MARK || code === BACKTICK || code === OPEN_BRACE) {
 						this.states.pop();
 
 						this.emit_close(current_node, this.cursor);

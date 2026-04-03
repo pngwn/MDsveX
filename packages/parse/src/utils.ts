@@ -35,6 +35,9 @@ export const enum node_kind {
 	table_row = 24,
 	table_cell = 25,
 	html_comment = 26,
+	svelte_tag = 27,
+	svelte_block = 28,
+	svelte_branch = 29,
 }
 
 /**
@@ -111,6 +114,12 @@ export const kind_to_string = (kind: node_kind): string => {
 			return 'table_cell';
 		case node_kind.html_comment:
 			return 'html_comment';
+		case node_kind.svelte_tag:
+			return 'svelte_tag';
+		case node_kind.svelte_block:
+			return 'svelte_block';
+		case node_kind.svelte_branch:
+			return 'svelte_branch';
 	}
 };
 
