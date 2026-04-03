@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { PFMParser, WireEmitter, PFMDocument } from '@mdsvex/parse';
 import { renderNode, HTMLRenderer } from '../src/html';
+import type { HtmlComponentMap } from '../src/html';
 import type { PFMNode } from '@mdsvex/parse';
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -82,8 +83,18 @@ describe('html: paragraphs', () => {
 		expect(html).toContain('<p>second</p>');
 	});
 
+	it('renders inline HTML tags', () => {
+		// In PFM, <b> is a first-class HTML element
+		// At block level, inner text gets paragraph wrapping
+		const html = render('<b>not bold</b>\n');
+		expect(html).toContain('<b>');
+		expect(html).toContain('not bold');
+		expect(html).toContain('</b>');
+	});
+
 	it('escapes HTML entities in text', () => {
-		expect(render('<b>not bold</b>\n')).toContain('&lt;b&gt;not bold&lt;/b&gt;');
+		// Angle brackets that don't form valid tags are escaped
+		expect(render('1 < 2 and 3 > 1\n')).toContain('&lt;');
 	});
 });
 
@@ -265,6 +276,132 @@ describe('html: tables', () => {
 		expect(html).toContain('<td align="left">a</td>');
 		expect(html).toContain('<td align="center">b</td>');
 		expect(html).toContain('<td align="right">c</td>');
+	});
+});
+
+// ── HTML elements ───────────────────────────────────────────
+
+describe('html: html elements', () => {
+	it('self-closing tag', () => {
+		const html = render('text <br /> more\n');
+		expect(html).toContain('<br />');
+	});
+
+	it('self-closing tag with attributes', () => {
+		const html = render('text <img src="photo.jpg" alt="pic" /> end\n');
+		expect(html).toContain('<img src="photo.jpg" alt="pic" />');
+	});
+
+	it('non-void self-closing renders with closing tag', () => {
+		const html = render('text <Widget count="3" /> end\n');
+		// Non-void elements must have a closing tag for the browser
+		expect(html).toContain('<Widget count="3"></Widget>');
+		expect(html).not.toContain('<Widget count="3" />');
+	});
+
+	it('void self-closing renders as self-closing', () => {
+		const html = render('text <br /> end\n');
+		expect(html).toContain('<br />');
+	});
+
+	it('paired tag with content', () => {
+		const html = render('text <span>inside</span> end\n');
+		expect(html).toContain('<span>inside</span>');
+	});
+
+	it('nested HTML tags', () => {
+		const html = render('<div><span>nested</span></div>\n');
+		expect(html).toContain('<div>');
+		expect(html).toContain('<span>');
+		expect(html).toContain('nested');
+		expect(html).toContain('</span>');
+		expect(html).toContain('</div>');
+	});
+
+	it('HTML with attributes', () => {
+		const html = render('<div class="box" id="main">content</div>\n');
+		expect(html).toContain('class="box"');
+		expect(html).toContain('id="main"');
+	});
+
+	it('boolean attributes', () => {
+		const html = render('<input disabled />\n');
+		expect(html).toContain('disabled');
+	});
+
+	it('HTML comment', () => {
+		const html = render('text <!-- hidden --> more\n');
+		expect(html).toContain('<!-- hidden -->');
+	});
+
+	it('markdown inside HTML', () => {
+		const html = render('text <div>*strong* and _em_</div> end\n');
+		expect(html).toContain('<strong>strong</strong>');
+		expect(html).toContain('<em>em</em>');
+	});
+
+	it('block HTML with markdown content', () => {
+		const html = render('<section>\n\n# Heading\n\nParagraph.\n\n</section>\n');
+		expect(html).toContain('<section>');
+		expect(html).toContain('<h1>Heading</h1>');
+		expect(html).toContain('<p>Paragraph.</p>');
+		expect(html).toContain('</section>');
+	});
+});
+
+// ── Custom components (HTML renderer) ────────────────────────
+
+describe('html: custom components', () => {
+	function render_with(source: string, components: HtmlComponentMap): string {
+		const doc = parse_to_doc(source);
+		return renderNode(doc.root!, components);
+	}
+
+	it('custom component replaces tag', () => {
+		const components: HtmlComponentMap = {
+			AlertBox: (attrs, innerHTML) =>
+				`<div class="alert alert-${attrs.type || 'info'}">${innerHTML}</div>`,
+		};
+		const html = render_with('<AlertBox type="warning">\n\n*Watch out!*\n\n</AlertBox>\n', components);
+		expect(html).toContain('<div class="alert alert-warning">');
+		expect(html).toContain('<strong>Watch out!</strong>');
+		expect(html).toContain('</div>');
+		expect(html).not.toContain('<AlertBox');
+	});
+
+	it('self-closing custom component', () => {
+		const components: HtmlComponentMap = {
+			Widget: (attrs) => `<span class="widget" data-count="${attrs.count}"></span>`,
+		};
+		const html = render_with('text <Widget count="3" /> end\n', components);
+		expect(html).toContain('<span class="widget" data-count="3"></span>');
+		expect(html).not.toContain('<Widget');
+	});
+
+	it('unmatched tags fall through to default rendering', () => {
+		const components: HtmlComponentMap = {
+			Widget: () => '<span class="widget"></span>',
+		};
+		const html = render_with('<div>normal div</div>\n', components);
+		expect(html).toContain('<div>');
+		expect(html).not.toContain('<span class="widget">');
+	});
+
+	it('custom component receives boolean attrs', () => {
+		const components: HtmlComponentMap = {
+			Toggle: (attrs) => `<button ${attrs.disabled ? 'disabled' : ''}>toggle</button>`,
+		};
+		const html = render_with('<Toggle disabled />\n', components);
+		expect(html).toContain('disabled');
+	});
+
+	it('components thread through nested content', () => {
+		const components: HtmlComponentMap = {
+			Box: (_attrs, innerHTML) => `<div class="box">${innerHTML}</div>`,
+		};
+		const html = render_with('<div>\n\n<Box>\n\n*inner*\n\n</Box>\n\n</div>\n', components);
+		expect(html).toContain('<div class="box">');
+		expect(html).toContain('<strong>inner</strong>');
 	});
 });
 

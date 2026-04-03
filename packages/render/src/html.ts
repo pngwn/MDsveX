@@ -41,16 +41,23 @@ function escape(text: string): string {
 	return result;
 }
 
+/** HTML void elements that are allowed to self-close. Non-void elements
+ *  must use an explicit closing tag or browsers will swallow siblings. */
+const HTML_VOID_ELEMENTS = new Set([
+	'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+	'link', 'meta', 'param', 'source', 'track', 'wbr',
+]);
+
 // ── Render helpers ───────────────────────────────────────────
 
-function renderContent(node: PFMNode): string {
+function renderContent(node: PFMNode, components?: HtmlComponentMap): string {
 	let html = '';
 	for (let i = 0; i < node.content.length; i++) {
 		const item = node.content[i];
 		if (typeof item === 'string') {
 			html += escape(item);
 		} else {
-			html += renderNode(item);
+			html += renderNode(item, components);
 		}
 	}
 	return html;
@@ -69,25 +76,39 @@ function renderContentRaw(node: PFMNode): string {
 	return text;
 }
 
+// ── Types ───────────────────────────��───────────────────────
+
+/**
+ * Custom HTML component renderer. Receives the tag's attributes and
+ * pre-rendered inner HTML string. Returns an HTML string.
+ */
+export type HtmlComponentFn = (
+	attrs: Record<string, string | boolean>,
+	innerHTML: string,
+) => string;
+
+/** Map of tag names to custom render functions for the HTML renderer. */
+export type HtmlComponentMap = Record<string, HtmlComponentFn>;
+
 // ── Node renderer ────────────────────────────────────────────
 
 /** Render a PFMNode to an HTML string. */
-export function renderNode(node: PFMNode): string {
+export function renderNode(node: PFMNode, components?: HtmlComponentMap): string {
 	switch (node.kindName) {
 		case 'root':
-			return renderContent(node);
+			return renderContent(node, components);
 
 		case 'heading':
-			return `<h${node.extra}>${renderContent(node)}</h${node.extra}>`;
+			return `<h${node.extra}>${renderContent(node, components)}</h${node.extra}>`;
 
 		case 'paragraph':
-			return `<p>${renderContent(node)}</p>`;
+			return `<p>${renderContent(node, components)}</p>`;
 
 		case 'emphasis':
-			return `<em>${renderContent(node)}</em>`;
+			return `<em>${renderContent(node, components)}</em>`;
 
 		case 'strong_emphasis':
-			return `<strong>${renderContent(node)}</strong>`;
+			return `<strong>${renderContent(node, components)}</strong>`;
 
 		case 'code_span':
 			return `<code>${escape(renderContentRaw(node))}</code>`;
@@ -99,14 +120,14 @@ export function renderNode(node: PFMNode): string {
 		}
 
 		case 'block_quote':
-			return `<blockquote>\n${renderContent(node)}\n</blockquote>`;
+			return `<blockquote>\n${renderContent(node, components)}\n</blockquote>`;
 
 		case 'link': {
 			const href = node.attrs.href as string | undefined;
 			const title = node.attrs.title as string | undefined;
 			let attrs = href ? ` href="${escape(href)}"` : '';
 			if (title) attrs += ` title="${escape(title)}"`;
-			return `<a${attrs}>${renderContent(node)}</a>`;
+			return `<a${attrs}>${renderContent(node, components)}</a>`;
 		}
 
 		case 'image': {
@@ -124,11 +145,11 @@ export function renderNode(node: PFMNode): string {
 			const tag = ordered ? 'ol' : 'ul';
 			const start = node.attrs.start as number | undefined;
 			const startAttr = ordered && start != null && start !== 1 ? ` start="${start}"` : '';
-			return `<${tag}${startAttr}>\n${renderContent(node)}\n</${tag}>`;
+			return `<${tag}${startAttr}>\n${renderContent(node, components)}\n</${tag}>`;
 		}
 
 		case 'list_item':
-			return `<li>${renderContent(node)}</li>\n`;
+			return `<li>${renderContent(node, components)}</li>\n`;
 
 		case 'thematic_break':
 			return '<hr />';
@@ -140,29 +161,60 @@ export function renderNode(node: PFMNode): string {
 			return '\n';
 
 		case 'strikethrough':
-			return `<del>${renderContent(node)}</del>`;
+			return `<del>${renderContent(node, components)}</del>`;
 
 		case 'superscript':
-			return `<sup>${renderContent(node)}</sup>`;
+			return `<sup>${renderContent(node, components)}</sup>`;
 
 		case 'subscript':
-			return `<sub>${renderContent(node)}</sub>`;
+			return `<sub>${renderContent(node, components)}</sub>`;
+
+		case 'html': {
+			const tag = node.attrs.tag as string;
+			const htmlAttrs = node.attrs.attributes as Record<string, string | boolean> | undefined;
+			const customFn = components?.[tag];
+
+			if (customFn) {
+				const innerHTML = node.attrs.self_closing ? '' : renderContent(node, components);
+				return customFn(htmlAttrs ?? {}, innerHTML);
+			}
+
+			let attrStr = '';
+			if (htmlAttrs) {
+				for (const [k, v] of Object.entries(htmlAttrs)) {
+					if (v === true) {
+						attrStr += ` ${k}`;
+					} else {
+						attrStr += ` ${k}="${escape(String(v))}"`;
+					}
+				}
+			}
+			if (node.attrs.self_closing && HTML_VOID_ELEMENTS.has(tag.toLowerCase())) {
+				return `<${tag}${attrStr} />`;
+			}
+			return `<${tag}${attrStr}>${renderContent(node, components)}</${tag}>`;
+		}
+
+		case 'html_comment': {
+			const text = renderContentRaw(node);
+			return `<!--${text}-->`;
+		}
 
 		case 'table':
-			return `<table>\n${renderTableContent(node)}\n</table>`;
+			return `<table>\n${renderTableContent(node, components)}\n</table>`;
 
 		case 'table_header':
 		case 'table_row':
 		case 'table_cell':
 			// Handled by renderTableContent — shouldn't reach here standalone
-			return renderContent(node);
+			return renderContent(node, components);
 
 		default:
-			return renderContent(node);
+			return renderContent(node, components);
 	}
 }
 
-function renderTableContent(table: PFMNode): string {
+function renderTableContent(table: PFMNode, components?: HtmlComponentMap): string {
 	const alignments = (table.attrs.alignments as string[]) ?? [];
 	let html = '';
 	let inBody = false;
@@ -170,20 +222,20 @@ function renderTableContent(table: PFMNode): string {
 		const item = table.content[i];
 		if (typeof item === 'string') continue;
 		if (item.kindName === 'table_header') {
-			html += `<thead>\n<tr>\n${renderTableCells(item, 'th', alignments)}</tr>\n</thead>\n`;
+			html += `<thead>\n<tr>\n${renderTableCells(item, 'th', alignments, components)}</tr>\n</thead>\n`;
 		} else if (item.kindName === 'table_row') {
 			if (!inBody) {
 				html += '<tbody>\n';
 				inBody = true;
 			}
-			html += `<tr>\n${renderTableCells(item, 'td', alignments)}</tr>\n`;
+			html += `<tr>\n${renderTableCells(item, 'td', alignments, components)}</tr>\n`;
 		}
 	}
 	if (inBody) html += '</tbody>';
 	return html;
 }
 
-function renderTableCells(row: PFMNode, tag: string, alignments: string[]): string {
+function renderTableCells(row: PFMNode, tag: string, alignments: string[], components?: HtmlComponentMap): string {
 	let html = '';
 	let col = 0;
 	for (let i = 0; i < row.content.length; i++) {
@@ -192,7 +244,7 @@ function renderTableCells(row: PFMNode, tag: string, alignments: string[]): stri
 		if (item.kindName === 'table_cell') {
 			const align = alignments[col];
 			const attrs = align && align !== 'none' ? ` align="${align}"` : '';
-			html += `<${tag}${attrs}>${renderContent(item)}</${tag}>\n`;
+			html += `<${tag}${attrs}>${renderContent(item, components)}</${tag}>\n`;
 			col++;
 		}
 	}

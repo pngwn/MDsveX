@@ -237,4 +237,48 @@ describe('Incremental parsing', () => {
 			}
 		}
 	});
+
+	describe('HTML incremental equivalence', () => {
+		const html_cases: [string, string][] = [
+			['self-closing inline', 'text <br /> more\n'],
+			['self-closing with attr', 'text <img src="x.jpg" /> end\n'],
+			['paired inline', 'text <em>hello</em> end\n'],
+			['nested inline', 'text <div><span>deep</span></div> end\n'],
+			['block self-closing', '<hr />\n'],
+			['block paired', '<div>\n\nhello\n\n</div>\n'],
+			['block with heading', '<section>\n\n# Title\n\n</section>\n'],
+			['inline comment', 'text <!-- comment --> end\n'],
+			['block comment', '<!-- block -->\n\nparagraph\n'],
+			['html with attributes', '<div class="a" id="b">\n\ncontent\n\n</div>\n'],
+			['unclosed revoked', 'text <span>never closed\n'],
+			['multiple siblings', 'text <a>one</a> and <b>two</b> end\n'],
+			['html inside emphasis', '_<span>text</span>_\n'],
+			['markdown inside html', '<div>*strong* and _em_</div>\n'],
+			['deeply nested block', '<div>\n\n<section>\n\n<p>deep</p>\n\n</section>\n\n</div>\n'],
+			['mixed doc', '# Title\n\n<div class="note">\n\nSome *text* here.\n\n</div>\n\nAfter.\n'],
+		];
+
+		for (const [name, input] of html_cases) {
+			it(`${name} (full feed)`, () => {
+				const batch = parse_batch(input);
+				const tree = new TreeBuilder(input.length);
+				const parser = new PFMParser(tree);
+				parser.init();
+				parser.feed(input);
+				parser.finish();
+				const diffs = tree_diff(batch, tree.get_buffer(), input);
+				expect(diffs).toEqual([]);
+			});
+		}
+
+		// Byte-at-a-time feeding — the harshest incremental test
+		for (const [name, input] of html_cases) {
+			it(`${name} (1-byte chunks)`, () => {
+				const batch = parse_batch(input);
+				const incr = parse_incremental(input, 1);
+				const diffs = tree_diff(batch, incr, input);
+				expect(diffs).toEqual([]);
+			});
+		}
+	});
 });

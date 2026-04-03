@@ -51,6 +51,8 @@ const enum char_mask {
 	word = 1 << 2,
 }
 
+console.warn("NEW VERSION")
+
 const char_class_table = new Uint8Array(128);
 
 for (let i = 0; i < char_class_table.length; i += 1) {
@@ -1405,6 +1407,12 @@ export class PFMParser {
 						}
 
 						case OPEN_ANGLE_BRACKET: {
+							// In incremental mode, stall if the tag might be incomplete
+							// (no closing > visible in the available source).
+							if (!this.finished && source.indexOf('>', this.cursor + 1) === -1) {
+								break main_loop;
+							}
+
 							// Autolinks get handled as inline content (in a paragraph).
 							// Check if this is an autolink to avoid misparse as HTML.
 							const blk_uri = this.try_parse_uri_autolink(this.cursor + 1);
@@ -1421,8 +1429,7 @@ export class PFMParser {
 							const blk_comment = this.try_parse_html_comment(this.cursor + 1);
 							if (blk_comment) {
 								const c_id = this.emit_open(node_kind.html_comment, this.cursor, current_node);
-								this.out.set_value_start(c_id, blk_comment.content_start);
-								this.out.set_value_end(c_id, blk_comment.content_end);
+								this.out.text(c_id, blk_comment.content_start, blk_comment.content_end);
 								this.emit_close(c_id, blk_comment.end);
 								this.chomp(blk_comment.end, true);
 								continue;
@@ -2172,6 +2179,10 @@ export class PFMParser {
 					// Inline HTML container state.
 					// Check if current char starts a matching closing tag.
 					if (code === OPEN_ANGLE_BRACKET) {
+						// Stall if tag might be incomplete
+						if (!this.finished && source.indexOf('>', this.cursor + 1) === -1) {
+							break main_loop;
+						}
 						const close = this.try_parse_html_close_tag(this.cursor + 1);
 						if (close) {
 							const opener_idx = this.find_html_opener(close.tag);
@@ -2233,6 +2244,10 @@ export class PFMParser {
 
 					// Check for closing tag
 					if (code === OPEN_ANGLE_BRACKET) {
+						// Stall if tag might be incomplete
+						if (!this.finished && source.indexOf('>', this.cursor + 1) === -1) {
+							break main_loop;
+						}
 						const close = this.try_parse_html_close_tag(this.cursor + 1);
 						if (close) {
 							const opener_idx = this.find_html_opener(close.tag);
@@ -2299,8 +2314,7 @@ export class PFMParser {
 						const blk_comment = this.try_parse_html_comment(this.cursor + 1);
 						if (blk_comment) {
 							const c_id = this.emit_open(node_kind.html_comment, this.cursor, current_node);
-							this.out.set_value_start(c_id, blk_comment.content_start);
-							this.out.set_value_end(c_id, blk_comment.content_end);
+							this.out.text(c_id, blk_comment.content_start, blk_comment.content_end);
 							this.emit_close(c_id, blk_comment.end);
 							this.chomp(blk_comment.end, true);
 							continue;
@@ -2929,6 +2943,11 @@ export class PFMParser {
 						}
 
 						case OPEN_ANGLE_BRACKET: {
+							// In incremental mode, stall if the tag might be incomplete
+							if (!this.finished && source.indexOf('>', this.cursor + 1) === -1) {
+								break main_loop;
+							}
+
 							const uri_end = this.try_parse_uri_autolink(this.cursor + 1);
 							if (uri_end !== -1) {
 								const link_id = this.emit_open(node_kind.link, this.cursor, current_node);
@@ -2969,8 +2988,7 @@ export class PFMParser {
 							const comment = this.try_parse_html_comment(this.cursor + 1);
 							if (comment) {
 								const c_id = this.emit_open(node_kind.html_comment, this.cursor, current_node);
-								this.out.set_value_start(c_id, comment.content_start);
-								this.out.set_value_end(c_id, comment.content_end);
+								this.out.text(c_id, comment.content_start, comment.content_end);
 								this.emit_close(c_id, comment.end);
 								this.chomp(comment.end, true);
 								this.states.pop();

@@ -171,3 +171,91 @@ pre code {
 	padding: 0;
 	color: var(--text-primary);
 }
+
+/* ── HTML element styles (rendered raw HTML) ──────────────── */
+
+.prose div,
+.prose section {
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	padding: 0.75rem;
+	margin-bottom: 0.75rem;
+	background: var(--bg-secondary);
+}
+
+.prose div div,
+.prose div section,
+.prose section div,
+.prose section section {
+	border-color: var(--border-light);
+	background: var(--bg-tertiary);
+}
+
+.prose .wrapper {
+	border-color: var(--accent);
+	border-style: dashed;
+	position: relative;
+}
+.prose .wrapper::before {
+	content: '.wrapper';
+	position: absolute;
+	top: -0.65rem;
+	left: 0.5rem;
+	background: var(--bg-secondary);
+	padding: 0 0.35rem;
+	font-size: 0.65rem;
+	color: var(--accent);
+}
+
+.prose aside {
+	border-left: 3px solid #a78bfa;
+	background: #a78bfa0d;
+	border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+	padding: 0.75rem 1rem;
+	margin-bottom: 0.75rem;
+}
+.prose aside.note {
+	border-left-color: #60a5fa;
+	background: #60a5fa0d;
+}
+.prose aside.note::before {
+	content: 'Note';
+	display: block;
+	font-size: 0.7rem;
+	font-weight: 600;
+	color: #60a5fa;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	margin-bottom: 0.35rem;
+}
+
+.prose alertbox {
+	display: block;
+	border: 1px solid #f59e0b;
+	border-radius: var(--radius-sm);
+	padding: 0.75rem 1rem;
+	margin-bottom: 0.75rem;
+	background: #f59e0b0d;
+}
+.prose alertbox[type="warning"]::before {
+	content: '\26A0  Warning';
+	display: block;
+	font-size: 0.7rem;
+	font-weight: 600;
+	color: #f59e0b;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	margin-bottom: 0.35rem;
+}
+
+.prose widget {
+	display: inline-block;
+	border: 1px dashed var(--text-tertiary);
+	border-radius: var(--radius-sm);
+	padding: 0.15rem 0.5rem;
+	font-size: 0.75rem;
+	color: var(--text-secondary);
+}
+.prose widget::before {
+	content: '<Widget />';
+}

@@ -1,8 +1,11 @@
 <script lang="ts">
 	import type { PFMNode } from '@mdsvex/parse'
+	import type { Component, Snippet } from 'svelte'
 	import Node from './Node.svelte'
 
-	let { node }: { node: PFMNode } = $props()
+	type ComponentMap = Record<string, Component<any>>
+
+	let { node, components }: { node: PFMNode; components?: ComponentMap } = $props()
 
 	function text_content(n: PFMNode): string {
 		let text = ''
@@ -55,7 +58,7 @@
 		{#if typeof item === 'string'}
 			{item}
 		{:else}
-			<Node node={item} />
+			<Node node={item} {components} />
 		{/if}
 	{/each}
 {/snippet}
@@ -146,6 +149,26 @@
 	<sup>{@render children(node)}</sup>
 {:else if node.kindName === 'subscript'}
 	<sub>{@render children(node)}</sub>
+{:else if node.kindName === 'html'}
+	{@const tag = node.attrs.tag as string}
+	{@const attrs = node.attrs.attributes as Record<string, string | boolean> | undefined}
+	{@const spread = attrs ? Object.fromEntries(Object.entries(attrs).map(([k, v]) => [k, v === true ? true : v])) : {}}
+	{@const CustomComponent = components?.[tag]}
+	{#if CustomComponent}
+		<CustomComponent {...spread}>
+			{#if !node.attrs.self_closing}
+				{@render children(node)}
+			{/if}
+		</CustomComponent>
+	{:else}
+		<svelte:element this={tag} {...spread}>
+			{#if !node.attrs.self_closing}
+				{@render children(node)}
+			{/if}
+		</svelte:element>
+	{/if}
+{:else if node.kindName === 'html_comment'}
+	<!-- {text_content(node)} -->
 {:else if node.kindName === 'table'}
 	{@render table_body(node)}
 {:else if node.kindName === 'table_header' || node.kindName === 'table_row' || node.kindName === 'table_cell'}

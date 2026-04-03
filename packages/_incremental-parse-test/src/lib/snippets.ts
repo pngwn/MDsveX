@@ -122,6 +122,52 @@ export const SECTIONS: Section[] = [
 		],
 	},
 	{
+		name: 'HTML',
+		slug: 'html',
+		snippets: [
+			{
+				name: 'Inline HTML',
+				slug: 'inline-html',
+				markdown: 'A paragraph with <em>emphasis</em> and <strong>bold</strong> inline.\n',
+			},
+			{
+				name: 'Self-closing tags',
+				slug: 'self-closing',
+				markdown: 'Text with a <br /> break and <img src="photo.jpg" alt="A photo" />.\n',
+			},
+			{
+				name: 'Nested HTML',
+				slug: 'nested-html',
+				markdown: '<div><section><p>Deeply nested</p></section></div>\n',
+			},
+			{
+				name: 'HTML with attributes',
+				slug: 'html-attributes',
+				markdown: '<div class="wrapper" id="main" data-active>\n\nContent inside a div.\n\n</div>\n',
+			},
+			{
+				name: 'HTML with markdown',
+				slug: 'html-with-markdown',
+				markdown: '<div>\n\n# Heading inside HTML\n\nA paragraph with *strong* and _emphasis_.\n\n```js\nconsole.log("hello")\n```\n\n</div>\n',
+			},
+			{
+				name: 'HTML comments',
+				slug: 'html-comments',
+				markdown: 'Before <!-- a comment --> after.\n\n<!-- block comment -->\n\nMore text.\n',
+			},
+			{
+				name: 'Mixed HTML and markdown',
+				slug: 'mixed-html-md',
+				markdown: '# Title\n\n<aside class="note">\n\nThis is a *styled* aside with `code` and [links](https://example.com).\n\n</aside>\n\nRegular paragraph after.\n',
+			},
+			{
+				name: 'Custom components',
+				slug: 'custom-components',
+				markdown: 'Text before <Widget count="3" /> and after.\n\n<AlertBox type="warning">\n\n*Warning:* something important.\n\n</AlertBox>\n',
+			},
+		],
+	},
+	{
 		name: 'Speculation',
 		slug: 'speculation',
 		snippets: [

@@ -68,6 +68,7 @@ const BLOCK_START_CHARS = new Set([
 	0x60, // `  code fence
 	0x7c, // |  table
 	0x5f, // _  thematic break
+	0x3c, // <  html tag / comment
 ]);
 
 function looks_like_block_start(tail: string): boolean {
@@ -84,7 +85,7 @@ function looks_like_block_start(tail: string): boolean {
 
 function extract_text(node: RenderNode, source: string, fed_length: number): void {
 	const kind = node.kind;
-	if (kind === 'text' || kind === 'heading' || kind === 'code_fence' || kind === 'code_span') {
+	if (kind === 'text' || kind === 'heading' || kind === 'code_fence' || kind === 'code_span' || kind === 'html_comment') {
 		// For code_fence: only render once value_start is known (avoids showing ```info)
 		if (kind === 'code_fence' && node.attrs.value_start == null) {
 			node.text = '';

@@ -74,7 +74,8 @@ export class TreeBuilder implements Emitter {
 		if (
 			parent_kind === node_kind.heading ||
 			parent_kind === node_kind.code_fence ||
-			parent_kind === node_kind.code_span
+			parent_kind === node_kind.code_span ||
+			parent_kind === node_kind.html_comment
 		) {
 			this.nodes.set_value(parent_idx, start, end);
 		} else {

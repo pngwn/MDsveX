@@ -101,7 +101,8 @@ function is_content_leaf(kind: node_kind): boolean {
 	return (
 		kind === node_kind.heading ||
 		kind === node_kind.code_fence ||
-		kind === node_kind.code_span
+		kind === node_kind.code_span ||
+		kind === node_kind.html_comment
 	);
 }
 

@@ -11,6 +11,10 @@
 	import { RecordingEmitter, type Op } from '$lib/recorder';
 	import { Play, Pause, SkipForward, SkipBackward, FastForward } from '$lib';
 	import PixiCanvas from '$lib/PixiCanvas.svelte';
+	import Widget from '$lib/components/Widget.svelte';
+	import AlertBox from '$lib/components/AlertBox.svelte';
+
+	const customComponents = { Widget, AlertBox };
 
 	let { markdown }: { markdown: string } = $props();
 
@@ -84,7 +88,9 @@
 			const chunk_end = chunk_boundaries[i];
 			const chunk_start = i === 0 ? 0 : chunk_boundaries[i - 1];
 			const chunk = markdown.slice(chunk_start, chunk_end);
+
 			parser.feed(chunk);
+
 			all_step_ops.push(recorder.ops.slice(prev_count));
 			prev_count = recorder.ops.length;
 		}
@@ -152,6 +158,7 @@
 		for (let i = 0; i <= step_index && i < wire_step_batches.length; i++) {
 			const batch = wire_step_batches[i];
 			if (batch.length > 0) {
+				console.log(batch)
 				doc.apply(batch);
 			}
 		}
@@ -312,7 +319,7 @@
 						{#if render_mode === 'dom'}
 							{#each dom_blocks as block (block.id)}
 								{#key block.v}
-									<Node node={block.node} />
+									<Node node={block.node} components={customComponents} />
 								{/key}
 							{/each}
 						{:else}
