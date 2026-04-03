@@ -24,6 +24,10 @@ import {
 	PLUS,
 	DOT,
 	PIPE,
+	SLASH,
+	QUOTE,
+	APOSTROPHE,
+	EQUALS,
 } from './constants';
 
 import type { parse_options, parse_result, parse_context } from './types';
@@ -133,6 +137,8 @@ export const enum state_kind {
 	link_text = 22,
 	table_body = 23,
 	table_row_content = 24,
+	html_element = 25,
+	html_block_element = 26,
 }
 
 const fences = Array.from({ length: 20 }, (_, i) =>
@@ -219,6 +225,10 @@ export class PFMParser {
 	private in_table: boolean = false;
 	private inline_range_parse: boolean = false;
 	private table_cell_has_content: boolean = false;
+
+	// HTML state
+	private html_tag_stack: { id: number; tag: string }[] = [];
+	private html_block_depth: number = 0;
 
 	// Misc
 	private extra: number = 0;
@@ -333,6 +343,8 @@ export class PFMParser {
 		this.in_table = false;
 		this.inline_range_parse = false;
 		this.table_cell_has_content = false;
+		this.html_tag_stack = [];
+		this.html_block_depth = 0;
 		this.extra = 0;
 		this.info_start_pos = 0;
 		this.info_end_pos = 0;
@@ -821,6 +833,275 @@ export class PFMParser {
 		return p + 1;
 	}
 
+	// -----------------------------------------------------------
+	// HTML tag parsing helpers
+	// -----------------------------------------------------------
+
+	/**
+	 * Check if character code is a valid tag name start (letter or underscore).
+	 */
+	private is_tag_name_start(ch: number): boolean {
+		return (ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122) || ch === UNDERSCORE;
+	}
+
+	/**
+	 * Check if character code is a valid tag name continuation
+	 * (letter, digit, hyphen, dot, colon, underscore).
+	 */
+	private is_tag_name_char(ch: number): boolean {
+		return (
+			(ch >= 65 && ch <= 90) ||
+			(ch >= 97 && ch <= 122) ||
+			(ch >= 48 && ch <= 57) ||
+			ch === DASH ||
+			ch === DOT ||
+			ch === COLON ||
+			ch === UNDERSCORE
+		);
+	}
+
+	/**
+	 * Check if character is valid in an unquoted attribute value.
+	 * Invalid: whitespace, ", ', =, <, >, `
+	 */
+	private is_unquoted_attr_char(ch: number): boolean {
+		return (
+			ch > 0x20 &&
+			ch !== QUOTE &&
+			ch !== APOSTROPHE &&
+			ch !== EQUALS &&
+			ch !== OPEN_ANGLE_BRACKET &&
+			ch !== CLOSE_ANGLE_BRACKET &&
+			ch !== BACKTICK
+		);
+	}
+
+	/**
+	 * Try to parse an HTML opening tag starting at pos (the char after `<`).
+	 * Returns null if not a valid tag.
+	 */
+	private try_parse_html_open_tag(
+		pos: number
+	): {
+		tag: string;
+		attributes: Record<string, string | boolean>;
+		self_closing: boolean;
+		end: number;
+	} | null {
+		const source = this.source;
+		const length = source.length;
+		let p = pos;
+
+		// Tag name must start with a letter or underscore
+		if (p >= length || !this.is_tag_name_start(source.charCodeAt(p))) return null;
+
+		const tag_start = p;
+		p++;
+		while (p < length && this.is_tag_name_char(source.charCodeAt(p))) p++;
+		const tag = source.slice(tag_start, p);
+
+		// Parse attributes
+		const attributes: Record<string, string | boolean> = {};
+
+		while (p < length) {
+			// Skip whitespace
+			while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB || source.charCodeAt(p) === LINEFEED)) p++;
+
+			if (p >= length) return null;
+
+			// Check for end of tag
+			if (source.charCodeAt(p) === SLASH) {
+				if (p + 1 < length && source.charCodeAt(p + 1) === CLOSE_ANGLE_BRACKET) {
+					return { tag, attributes, self_closing: true, end: p + 2 };
+				}
+				return null; // stray /
+			}
+
+			if (source.charCodeAt(p) === CLOSE_ANGLE_BRACKET) {
+				return { tag, attributes, self_closing: false, end: p + 1 };
+			}
+
+			// Parse attribute name
+			const attr_name_start = p;
+			const ch = source.charCodeAt(p);
+			// Attribute name: anything that's not whitespace, =, >, /
+			if (
+				ch === EQUALS || ch === CLOSE_ANGLE_BRACKET || ch === SLASH
+			) {
+				return null; // invalid attribute start
+			}
+
+			while (
+				p < length &&
+				source.charCodeAt(p) !== SPACE &&
+				source.charCodeAt(p) !== TAB &&
+				source.charCodeAt(p) !== LINEFEED &&
+				source.charCodeAt(p) !== EQUALS &&
+				source.charCodeAt(p) !== CLOSE_ANGLE_BRACKET &&
+				source.charCodeAt(p) !== SLASH
+			) {
+				p++;
+			}
+
+			if (p === attr_name_start) return null;
+			const attr_name = source.slice(attr_name_start, p);
+
+			// Skip whitespace before potential =
+			while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB || source.charCodeAt(p) === LINEFEED)) p++;
+
+			if (p < length && source.charCodeAt(p) === EQUALS) {
+				p++; // skip =
+				// Skip whitespace after =
+				while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB || source.charCodeAt(p) === LINEFEED)) p++;
+
+				if (p >= length) return null;
+
+				const quote = source.charCodeAt(p);
+				if (quote === QUOTE || quote === APOSTROPHE) {
+					// Quoted value
+					p++; // skip opening quote
+					const value_start = p;
+					while (p < length && source.charCodeAt(p) !== quote) p++;
+					if (p >= length) return null; // unclosed quote
+					const value = source.slice(value_start, p);
+					p++; // skip closing quote
+					attributes[attr_name] = value;
+				} else {
+					// Unquoted value
+					const value_start = p;
+					while (p < length && this.is_unquoted_attr_char(source.charCodeAt(p))) p++;
+					if (p === value_start) return null; // empty unquoted value
+					attributes[attr_name] = source.slice(value_start, p);
+				}
+			} else {
+				// Boolean attribute
+				attributes[attr_name] = true;
+			}
+		}
+
+		return null; // ran off end of input
+	}
+
+	/**
+	 * Try to parse an HTML closing tag starting at pos (the char after `<`).
+	 * pos should point to the `/` in `</tag>`.
+	 * Returns the tag name and end position, or null.
+	 */
+	private try_parse_html_close_tag(
+		pos: number
+	): { tag: string; end: number } | null {
+		const source = this.source;
+		const length = source.length;
+		let p = pos;
+
+		// Must start with /
+		if (p >= length || source.charCodeAt(p) !== SLASH) return null;
+		p++;
+
+		// Optional whitespace after /
+		while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+
+		// Tag name
+		if (p >= length || !this.is_tag_name_start(source.charCodeAt(p))) return null;
+		const tag_start = p;
+		p++;
+		while (p < length && this.is_tag_name_char(source.charCodeAt(p))) p++;
+		const tag = source.slice(tag_start, p);
+
+		// Optional whitespace before >
+		while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+
+		// Must end with >
+		if (p >= length || source.charCodeAt(p) !== CLOSE_ANGLE_BRACKET) return null;
+		return { tag, end: p + 1 };
+	}
+
+	/**
+	 * Try to parse an HTML comment starting at pos (the char after `<`).
+	 * pos should point to the `!` in `<!--`.
+	 * Returns the content start, content end, and end position.
+	 */
+	private try_parse_html_comment(
+		pos: number
+	): { content_start: number; content_end: number; end: number } | null {
+		const source = this.source;
+		const length = source.length;
+		let p = pos;
+
+		// Must be <!--
+		if (
+			p + 2 >= length ||
+			source.charCodeAt(p) !== EXCLAMATION_MARK ||
+			source.charCodeAt(p + 1) !== DASH ||
+			source.charCodeAt(p + 2) !== DASH
+		) {
+			return null;
+		}
+		p += 3;
+		const content_start = p;
+
+		// Scan for -->
+		while (p + 2 < length) {
+			if (
+				source.charCodeAt(p) === DASH &&
+				source.charCodeAt(p + 1) === DASH &&
+				source.charCodeAt(p + 2) === CLOSE_ANGLE_BRACKET
+			) {
+				return { content_start, content_end: p, end: p + 3 };
+			}
+			p++;
+		}
+
+		return null; // no closing -->
+	}
+
+	/**
+	 * Find the matching HTML opener on the html_tag_stack for a closing tag.
+	 * Returns the stack index or -1 if not found.
+	 */
+	/**
+	 * Find the matching HTML opener on the html_tag_stack for a closing tag.
+	 * Returns the stack index or -1 if not found.
+	 */
+	private find_html_opener(tag: string): number {
+		for (let i = this.html_tag_stack.length - 1; i >= 0; i--) {
+			if (this.html_tag_stack[i].tag === tag) return i;
+		}
+		return -1;
+	}
+
+	/**
+	 * Close an inline HTML element by unwinding state/node stacks.
+	 */
+	private close_html_inline(html_id: number, end: number): void {
+		// Unwind the node stack and state stack to find and close this HTML element
+		while (this.node_stack.length > 1) {
+			const top_id = this.node_stack[this.node_stack.length - 1];
+			const top_state = this.states[this.states.length - 1];
+
+			if (top_id === html_id) {
+				// Found the HTML element — commit and close it
+				this.pending_remove(html_id);
+				this.emit_close(html_id, end);
+				this.node_stack.pop();
+				this.states.pop(); // pop html_element state
+				// Pop trailing inline state if present
+				if (this.states[this.states.length - 1] === state_kind.inline) {
+					this.states.pop();
+				}
+				return;
+			}
+
+			// Close intermediate nodes (text, emphasis, etc.)
+			if (!this.closed_flags[top_id]) {
+				this.out.set_value_end(top_id, this.cursor);
+				this.emit_close(top_id, this.cursor);
+			}
+			this.node_stack.pop();
+			this.states.pop();
+		}
+	}
+
 	private try_parse_inline_link(pos: number): LinkResult | null {
 		const source = this.source;
 		const length = source.length;
@@ -1123,6 +1404,64 @@ export class PFMParser {
 							continue;
 						}
 
+						case OPEN_ANGLE_BRACKET: {
+							// Autolinks get handled as inline content (in a paragraph).
+							// Check if this is an autolink to avoid misparse as HTML.
+							const blk_uri = this.try_parse_uri_autolink(this.cursor + 1);
+							const blk_email = blk_uri !== -1 ? -1 : this.try_parse_email_autolink(this.cursor + 1);
+							if (blk_uri !== -1 || blk_email !== -1) {
+								// Start a paragraph and let inline handle it
+								this.states.push(state_kind.paragraph);
+								const auto_para = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+								this.node_stack.push(auto_para);
+								continue;
+							}
+
+							// Try HTML comment at block level
+							const blk_comment = this.try_parse_html_comment(this.cursor + 1);
+							if (blk_comment) {
+								const c_id = this.emit_open(node_kind.html_comment, this.cursor, current_node);
+								this.out.set_value_start(c_id, blk_comment.content_start);
+								this.out.set_value_end(c_id, blk_comment.content_end);
+								this.emit_close(c_id, blk_comment.end);
+								this.chomp(blk_comment.end, true);
+								continue;
+							}
+
+							// Try HTML opening tag at block level
+							const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
+							if (blk_tag) {
+								if (blk_tag.self_closing) {
+									const html_id = this.emit_open(node_kind.html, this.cursor, current_node);
+									this.out.attr(html_id, 'tag', blk_tag.tag);
+									if (Object.keys(blk_tag.attributes).length > 0) {
+										this.out.attr(html_id, 'attributes', blk_tag.attributes);
+									}
+									this.out.attr(html_id, 'self_closing', true);
+									this.emit_close(html_id, blk_tag.end);
+									this.chomp(blk_tag.end, true);
+								} else {
+									const html_id = this.emit_open(node_kind.html, this.cursor, current_node, 0, true);
+									this.out.attr(html_id, 'tag', blk_tag.tag);
+									if (Object.keys(blk_tag.attributes).length > 0) {
+										this.out.attr(html_id, 'attributes', blk_tag.attributes);
+									}
+									this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
+									this.node_stack.push(html_id);
+									this.states.push(state_kind.html_block_element);
+									this.html_block_depth++;
+									this.chomp(blk_tag.end, true);
+								}
+								continue;
+							}
+
+							// Not HTML — start paragraph
+							this.states.push(state_kind.paragraph);
+							const blk_para_id = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+							this.node_stack.push(blk_para_id);
+							continue;
+						}
+
 						case CLOSE_ANGLE_BRACKET: {
 							let p = this.cursor + 1;
 							if (p < length && source.charCodeAt(p) === SPACE) p++;
@@ -1163,7 +1502,7 @@ export class PFMParser {
 				}
 
 				case state_kind.paragraph: {
-					const node_stack_base = 1 + this.block_quote_depth + this.list_depth * 2;
+					const node_stack_base = 1 + this.block_quote_depth + this.list_depth * 2 + this.html_block_depth;
 
 					if (!code) {
 						if (!this.finished) break main_loop;
@@ -1829,6 +2168,178 @@ export class PFMParser {
 					continue;
 				}
 
+				case state_kind.html_element: {
+					// Inline HTML container state.
+					// Check if current char starts a matching closing tag.
+					if (code === OPEN_ANGLE_BRACKET) {
+						const close = this.try_parse_html_close_tag(this.cursor + 1);
+						if (close) {
+							const opener_idx = this.find_html_opener(close.tag);
+							if (opener_idx !== -1 && this.html_tag_stack[opener_idx].id === current_node) {
+								// Close intermediate unclosed HTML elements
+								while (this.html_tag_stack.length > opener_idx + 1) {
+									const intermediate = this.html_tag_stack.pop()!;
+									this.close_html_inline(intermediate.id, this.cursor);
+								}
+								// Close this HTML element — commit the pending node
+								this.html_tag_stack.pop();
+								this.pending_remove(current_node);
+								this.emit_close(current_node, close.end);
+								this.node_stack.pop();
+								this.states.pop();
+								this.chomp(close.end, true);
+								// Pop trailing inline state if present
+								if (this.states[this.states.length - 1] === state_kind.inline) {
+									this.states.pop();
+								}
+								continue;
+							}
+						}
+					}
+
+					if (!code) {
+						if (!this.finished) break main_loop;
+						// EOF: unwind stacks — _finalize will revoke the pending node
+						if (this.html_tag_stack.length > 0 &&
+							this.html_tag_stack[this.html_tag_stack.length - 1].id === current_node) {
+							this.html_tag_stack.pop();
+						}
+						this.states.pop();
+						this.node_stack.pop();
+						continue;
+					}
+
+					// Dispatch to inline for content inside the element
+					this.states.push(state_kind.inline);
+					continue;
+				}
+
+				case state_kind.html_block_element: {
+					// Block-level HTML container state.
+					// Acts like root but also checks for closing tags.
+
+					if (!code) {
+						if (!this.finished) break main_loop;
+						// EOF: unwind stacks — _finalize will revoke the pending node
+						if (this.html_tag_stack.length > 0 &&
+							this.html_tag_stack[this.html_tag_stack.length - 1].id === current_node) {
+							this.html_tag_stack.pop();
+						}
+						this.html_block_depth--;
+						this.states.pop();
+						this.node_stack.pop();
+						continue;
+					}
+
+					// Check for closing tag
+					if (code === OPEN_ANGLE_BRACKET) {
+						const close = this.try_parse_html_close_tag(this.cursor + 1);
+						if (close) {
+							const opener_idx = this.find_html_opener(close.tag);
+							if (opener_idx !== -1 && this.html_tag_stack[opener_idx].id === current_node) {
+								// Close intermediate HTML elements
+								while (this.html_tag_stack.length > opener_idx + 1) {
+									const intermediate = this.html_tag_stack.pop()!;
+									if (!this.closed_flags[intermediate.id]) {
+										this.emit_close(intermediate.id, this.cursor);
+									}
+								}
+								// Close this HTML element — commit the pending node
+								this.html_tag_stack.pop();
+								this.pending_remove(current_node);
+								this.emit_close(current_node, close.end);
+								this.html_block_depth--;
+								this.node_stack.pop();
+								this.states.pop();
+								this.chomp(close.end, true);
+								continue;
+							}
+						}
+					}
+
+					// Skip linefeeds — they act as separators
+					if (code === LINEFEED) {
+						const lb_id = this.emit_open(node_kind.line_break, this.cursor, current_node);
+						this.emit_close(lb_id, this.cursor + 1);
+						this.chomp1();
+						continue;
+					}
+
+					// Skip leading whitespace
+					if (code === SPACE || code === TAB) {
+						let pos = this.cursor;
+						while (pos < length && (source.charCodeAt(pos) === SPACE || source.charCodeAt(pos) === TAB)) {
+							pos++;
+						}
+						if (pos < length && source.charCodeAt(pos) === LINEFEED) {
+							const lb_id = this.emit_open(node_kind.line_break, this.cursor, current_node);
+							this.emit_close(lb_id, pos + 1);
+							this.chomp(pos + 1, true);
+							continue;
+						}
+						this.chomp1();
+						continue;
+					}
+
+					// Dispatch block-level content inside the HTML element
+					// (headings, code fences, paragraphs, nested HTML, etc.)
+					if (code === OCTOTHERP) {
+						if (!this.start_heading(current_node)) break main_loop;
+						continue;
+					}
+
+					if (code === BACKTICK) {
+						this.states.push(state_kind.code_fence_start);
+						this.extra = 0;
+						continue;
+					}
+
+					if (code === OPEN_ANGLE_BRACKET) {
+						// Nested HTML at block level
+						const blk_comment = this.try_parse_html_comment(this.cursor + 1);
+						if (blk_comment) {
+							const c_id = this.emit_open(node_kind.html_comment, this.cursor, current_node);
+							this.out.set_value_start(c_id, blk_comment.content_start);
+							this.out.set_value_end(c_id, blk_comment.content_end);
+							this.emit_close(c_id, blk_comment.end);
+							this.chomp(blk_comment.end, true);
+							continue;
+						}
+
+						const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
+						if (blk_tag) {
+							if (blk_tag.self_closing) {
+								const html_id = this.emit_open(node_kind.html, this.cursor, current_node);
+								this.out.attr(html_id, 'tag', blk_tag.tag);
+								if (Object.keys(blk_tag.attributes).length > 0) {
+									this.out.attr(html_id, 'attributes', blk_tag.attributes);
+								}
+								this.out.attr(html_id, 'self_closing', true);
+								this.emit_close(html_id, blk_tag.end);
+								this.chomp(blk_tag.end, true);
+							} else {
+								const html_id = this.emit_open(node_kind.html, this.cursor, current_node, 0, true);
+								this.out.attr(html_id, 'tag', blk_tag.tag);
+								if (Object.keys(blk_tag.attributes).length > 0) {
+									this.out.attr(html_id, 'attributes', blk_tag.attributes);
+								}
+								this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
+								this.node_stack.push(html_id);
+								this.states.push(state_kind.html_block_element);
+								this.html_block_depth++;
+								this.chomp(blk_tag.end, true);
+							}
+							continue;
+						}
+					}
+
+					// Default: start a paragraph for text content
+					this.states.push(state_kind.paragraph);
+					const blk_html_para = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+					this.node_stack.push(blk_html_para);
+					continue;
+				}
+
 				case state_kind.block_quote: {
 					if (!code) {
 						if (!this.finished) break main_loop;
@@ -2454,7 +2965,66 @@ export class PFMParser {
 								continue;
 							}
 
-							// Not an autolink, treat < as text
+							// Try HTML comment: <!--
+							const comment = this.try_parse_html_comment(this.cursor + 1);
+							if (comment) {
+								const c_id = this.emit_open(node_kind.html_comment, this.cursor, current_node);
+								this.out.set_value_start(c_id, comment.content_start);
+								this.out.set_value_end(c_id, comment.content_end);
+								this.emit_close(c_id, comment.end);
+								this.chomp(comment.end, true);
+								this.states.pop();
+								continue;
+							}
+
+							// Try HTML closing tag: </tag>
+							const close = this.try_parse_html_close_tag(this.cursor + 1);
+							if (close) {
+								const opener_idx = this.find_html_opener(close.tag);
+								if (opener_idx !== -1) {
+									// Close all intermediate unclosed HTML elements
+									while (this.html_tag_stack.length > opener_idx + 1) {
+										const intermediate = this.html_tag_stack.pop()!;
+										// Unwind states and node stack for intermediate
+										this.close_html_inline(intermediate.id, this.cursor);
+									}
+									// Close the matching opener
+									const opener = this.html_tag_stack.pop()!;
+									this.close_html_inline(opener.id, close.end);
+									this.chomp(close.end, true);
+									continue;
+								}
+								// No matching opener — treat as text
+							}
+
+							// Try HTML opening tag: <tag ...> or <tag ... />
+							const open_tag = this.try_parse_html_open_tag(this.cursor + 1);
+							if (open_tag) {
+								if (open_tag.self_closing) {
+									const html_id = this.emit_open(node_kind.html, this.cursor, current_node);
+									this.out.attr(html_id, 'tag', open_tag.tag);
+									if (Object.keys(open_tag.attributes).length > 0) {
+										this.out.attr(html_id, 'attributes', open_tag.attributes);
+									}
+									this.out.attr(html_id, 'self_closing', true);
+									this.emit_close(html_id, open_tag.end);
+									this.chomp(open_tag.end, true);
+									this.states.pop();
+								} else {
+									const html_id = this.emit_open(node_kind.html, this.cursor, current_node, 0, true);
+									this.out.attr(html_id, 'tag', open_tag.tag);
+									if (Object.keys(open_tag.attributes).length > 0) {
+										this.out.attr(html_id, 'attributes', open_tag.attributes);
+									}
+									this.html_tag_stack.push({ id: html_id, tag: open_tag.tag });
+									this.node_stack.push(html_id);
+									this.states.push(state_kind.html_element);
+									this.chomp(open_tag.end, true);
+								}
+								continue;
+							}
+
+							// Not an autolink or HTML tag, treat < as text
 							const t_id = this.emit_open(node_kind.text, this.cursor, current_node);
 							this.node_stack.push(t_id);
 							this.out.set_value_start(t_id, this.cursor);
@@ -3306,16 +3876,16 @@ export class PFMParser {
 		const length = this.source.length;
 
 		// Close unclosed nodes gently (set end if not already set)
-		// Only affect nodes that haven't been closed yet — mirrors gently_set_end/gently_set_value_end
+		// Skip pending nodes — those will be revoked below.
 		for (let i = 0; i < this.node_stack.length; i++) {
 			const id = this.node_stack[i];
-			if (!this.closed_flags[id]) {
+			if (!this.closed_flags[id] && !this.pending_has(id)) {
 				this.out.set_value_end(id, length - 1);
 				this.emit_close(id, length - 1);
 			}
 		}
 
-		// Revoke any remaining pending nodes
+		// Revoke any remaining pending nodes (unclosed HTML, unclosed emphasis, etc.)
 		for (let pi = 0; pi < this.pending_count; pi++) {
 			this.out.revoke(this.pending_ids[pi]);
 		}

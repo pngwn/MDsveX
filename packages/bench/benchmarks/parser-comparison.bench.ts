@@ -52,48 +52,59 @@ for (let i = 0; i < fixture.length; i += CHUNK_SIZE) {
 	chunks.push(fixture.slice(i, Math.min(i + CHUNK_SIZE, fixture.length)));
 }
 
+const LARGE_CHUNK_SIZE = 50;
 
-describe(`incremental parsing (5-char chunks) -- Incremental: ${chunks.length} chunks of ${CHUNK_SIZE} chars`, () => {
-	bench('pfm (feed)', () => {
-		const tree = new TreeBuilder((fixture.length >> 3) || 128);
-		const parser = new PFMParser(tree);
-		parser.init();
-		for (let i = 0; i < chunks.length; i++) {
-			parser.feed(chunks[i]);
-		}
-		parser.finish();
+const large_chunks: string[] = [];
+for (let i = 0; i < fixture.length; i += LARGE_CHUNK_SIZE) {
+	large_chunks.push(fixture.slice(i, Math.min(i + LARGE_CHUNK_SIZE, fixture.length)));
+}
+
+const chunk_kinds = [chunks, large_chunks];
+
+for (let i = 0; i < chunk_kinds.length; i++) {
+	const chunks = chunk_kinds[i];
+	describe(`incremental parsing (${CHUNK_SIZE}-char chunks) -- Incremental: ${chunks.length} chunks of ${CHUNK_SIZE} chars`, () => {
+		bench('pfm (feed)', () => {
+			const tree = new TreeBuilder((fixture.length >> 3) || 128);
+			const parser = new PFMParser(tree);
+			parser.init();
+			for (let i = 0; i < chunks.length; i++) {
+				parser.feed(chunks[i]);
+			}
+			parser.finish();
+		});
+
+
+
+		// WARNING: This take a very long time to run
+
+		// bench('remark (reparse)', () => {
+		// 	for (let i = 0; i < chunks.length; i++) {
+		// 		remark_processor.parse(chunks.slice(0, i + 1).join(''));
+		// 	}
+		// });
+
+		bench('marked (reparse)', () => {
+			for (let i = 0; i < chunks.length; i++) {
+				marked.lexer(chunks.slice(0, i + 1).join(''));
+			}
+		});
+
+		bench('markdown-exit (reparse)', () => {
+			const md = createMarkdownExit();
+			for (let i = 0; i < chunks.length; i++) {
+				md.parse(chunks.slice(0, i + 1).join(''));
+			}
+		});
+
+		bench('comark (streaming reparse)', async () => {
+			const parse = comark_createParse();
+			for (let i = 0; i < chunks.length; i++) {
+				await parse(chunks.slice(0, i + 1).join(''), { streaming: true });
+			}
+		});
 	});
-
-
-
-	// WARNING: This take a very long time to run
-
-  // bench('remark (reparse)', () => {
-	// 	for (let i = 0; i < chunks.length; i++) {
-	// 		remark_processor.parse(chunks.slice(0, i + 1).join(''));
-	// 	}
-	// });
-
-	bench('marked (reparse)', () => {
-		for (let i = 0; i < chunks.length; i++) {
-			marked.lexer(chunks.slice(0, i + 1).join(''));
-		}
-	});
-
-	bench('markdown-exit (reparse)', () => {
-		const md = createMarkdownExit();
-		for (let i = 0; i < chunks.length; i++) {
-			md.parse(chunks.slice(0, i + 1).join(''));
-		}
-	});
-
-	bench('comark (streaming reparse)', async () => {
-		const parse = comark_createParse();
-		for (let i = 0; i < chunks.length; i++) {
-			await parse(chunks.slice(0, i + 1).join(''), { streaming: true });
-		}
-	});
-});
+}
 
 
 describe('PFM - incremental vs batch', () => {

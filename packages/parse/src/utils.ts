@@ -34,6 +34,7 @@ export const enum node_kind {
 	table_header = 23,
 	table_row = 24,
 	table_cell = 25,
+	html_comment = 26,
 }
 
 /**
@@ -108,6 +109,8 @@ export const kind_to_string = (kind: node_kind): string => {
 			return 'table_row';
 		case node_kind.table_cell:
 			return 'table_cell';
+		case node_kind.html_comment:
+			return 'html_comment';
 	}
 };
 

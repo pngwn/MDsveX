@@ -192,12 +192,35 @@ describe('autolinks', () => {
 	});
 
 	// HTML-like, not autolink: <foo+special@Bar.baz-bar0.com>
-	// Needs html node support (Phase 5)
-	test.todo('pfm example 605');
+	// In PFM, this is parsed as an HTML tag (tag name contains valid chars)
+	test('pfm example 605', () => {
+		const input = load_fixture('605');
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		// Should not be a link
+		const kinds = get_all_child_kinds(nodes, root.index);
+		expect(kinds).not.toContain('link');
+	});
 
 	// HTML-like: <foo\+@bar.example.com>
-	// Needs html node support (Phase 5)
-	test.todo('pfm example 606');
+	// In PFM, backslash before + makes it text, but foo is still a valid tag start
+	test('pfm example 606', () => {
+		const input = load_fixture('606');
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		// Should not be a link (not a valid email autolink)
+		const find_kind = (parent: number, kind: string): boolean => {
+			const node = nodes.get_node(parent);
+			if (node.kind === kind) return true;
+			for (const child of node.children) {
+				if (find_kind(child, kind)) return true;
+			}
+			return false;
+		};
+		expect(find_kind(0, 'link')).toBe(false);
+	});
 
 	// Empty angle brackets: <>
 	test('pfm example 607', () => {
@@ -223,13 +246,43 @@ describe('autolinks', () => {
 		expect(kinds).not.toContain('link');
 	});
 
-	// HTML-like: <m:abc> — scheme too short (1 char)
-	// Needs html node support (Phase 5)
-	test.todo('pfm example 609');
+	// HTML-like: <m:abc> — scheme too short for autolink; opens as HTML tag
+	// but never closed, so revoked to text
+	test('pfm example 609', () => {
+		const input = load_fixture('609');
+		const { nodes } = parse_markdown_svelte(input);
 
-	// HTML-like: <foo.bar.baz>
-	// Needs html node support (Phase 5)
-	test.todo('pfm example 610');
+		const root = nodes.get_node();
+		const find_kind = (parent: number, kind: string): boolean => {
+			const node = nodes.get_node(parent);
+			if (node.kind === kind) return true;
+			for (const child of node.children) {
+				if (find_kind(child, kind)) return true;
+			}
+			return false;
+		};
+		expect(find_kind(0, 'link')).toBe(false);
+		// Revoked — no html node either
+		expect(find_kind(0, 'html')).toBe(false);
+	});
+
+	// HTML-like: <foo.bar.baz> — opens as tag, never closed, revoked to text
+	test('pfm example 610', () => {
+		const input = load_fixture('610');
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const find_kind = (parent: number, kind: string): boolean => {
+			const node = nodes.get_node(parent);
+			if (node.kind === kind) return true;
+			for (const child of node.children) {
+				if (find_kind(child, kind)) return true;
+			}
+			return false;
+		};
+		expect(find_kind(0, 'link')).toBe(false);
+		expect(find_kind(0, 'html')).toBe(false);
+	});
 
 	// No angle brackets: https://example.com
 	test('pfm example 611', () => {

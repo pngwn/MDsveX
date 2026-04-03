@@ -74,6 +74,7 @@ const KIND_NAMES: string[] = [
 	'table_header',
 	'table_row',
 	'table_cell',
+	'html_comment',
 ];
 
 /** Tracks progressive text emission for a node. */
@@ -390,6 +391,8 @@ function get_delimiter(kind: node_kind | undefined): string {
 			return '![';
 		case node_kind.code_span:
 			return '`';
+		case node_kind.html:
+			return '<';
 		default:
 			return '';
 	}
