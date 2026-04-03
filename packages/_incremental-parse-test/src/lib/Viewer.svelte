@@ -2,10 +2,11 @@
 	import { untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { PFMParser, WireEmitter, PFMDocument } from '@mdsvex/parse';
-	import { HTMLRenderer } from '@mdsvex/render/html';
+	import { PFMParser, WireEmitter } from '@mdsvex/parse';
+	import { WireTreeBuilder } from '@mdsvex/parse/wire-tree-builder';
+	import { CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
+	import type { CursorBlockEntry } from '@mdsvex/render/html-cursor';
 	import { ComponentRenderer } from '@mdsvex/render/component';
-	import type { BlockEntry } from '@mdsvex/render/html';
 	import type { ComponentBlock } from '@mdsvex/render/component';
 	import Node from '@mdsvex/render/Node.svelte';
 	import { RecordingEmitter, type Op } from '$lib/recorder';
@@ -151,44 +152,34 @@
 		return batches;
 	});
 
-	let html_blocks: BlockEntry[] = $derived.by(() => {
-		const doc = new PFMDocument();
-		const renderer = new HTMLRenderer();
+	let html_blocks: CursorBlockEntry[] = $derived.by(() => {
+		const builder = new WireTreeBuilder();
+		const renderer = new CursorHTMLRenderer();
 
 		for (let i = 0; i <= step_index && i < wire_step_batches.length; i++) {
 			const batch = wire_step_batches[i];
 			if (batch.length > 0) {
-				console.log(batch)
-				doc.apply(batch);
+				builder.apply(batch);
 			}
 		}
 
-		renderer.update(doc);
-		return renderer.blocks.map(b => ({ id: b.id, html: b.html }));
+		renderer.update(builder.get_buffer(), '');
+		return renderer.blocks.map(b => ({ idx: b.idx, html: b.html }));
 	});
 
-	let dom_blocks: ComponentBlock[] = $derived.by(() => {
-		const doc = new PFMDocument();
+	let dom_renderer = $derived.by(() => {
+		const builder = new WireTreeBuilder();
 		const renderer = new ComponentRenderer();
 
 		for (let i = 0; i <= step_index && i < wire_step_batches.length; i++) {
 			const batch = wire_step_batches[i];
 			if (batch.length > 0) {
-				doc.apply(batch);
+				builder.apply(batch);
 			}
 		}
 
-		return renderer.update(doc);
-	});
-
-	let canvas_doc: PFMDocument | null = $derived.by(() => {
-		if (render_mode !== 'canvas') return null;
-		const doc = new PFMDocument();
-		for (let i = 0; i <= step_index && i < wire_step_batches.length; i++) {
-			const batch = wire_step_batches[i];
-			if (batch.length > 0) doc.apply(batch);
-		}
-		return doc;
+		renderer.update(builder.get_buffer(), '');
+		return renderer;
 	});
 
 	function reset() {
@@ -304,26 +295,24 @@
 						{:else if render_mode === 'html'}
 							{html_blocks.length} blocks
 						{:else}
-							{dom_blocks.length} blocks
+							{dom_renderer.blocks.length} blocks
 						{/if}
 					</span>
 				</div>
 				{#if render_mode === 'canvas'}
 					<div class="render-canvas">
-						{#if canvas_doc}
-							<PixiCanvas doc={canvas_doc} />
-						{/if}
+						<!-- canvas mode TODO: update to use node_buffer -->
 					</div>
 				{:else}
 					<div class="render-content prose">
-						{#if render_mode === 'dom'}
-							{#each dom_blocks as block (block.id)}
+						{#if render_mode === 'dom' && dom_renderer.buf}
+							{#each dom_renderer.blocks as block (block.idx)}
 								{#key block.v}
-									<Node node={block.node} components={customComponents} />
+									<Node buf={dom_renderer.buf} idx={block.idx} source={dom_renderer.source} components={customComponents} />
 								{/key}
 							{/each}
 						{:else}
-							{#each html_blocks as block (block.id)}
+							{#each html_blocks as block (block.idx)}
 								{@html block.html}
 							{/each}
 						{/if}

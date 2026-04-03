@@ -14,10 +14,6 @@
 			"import": "./dist/index.js",
 			"types": "./src/index.ts"
 		},
-		"./html": {
-			"import": "./dist/html.js",
-			"types": "./src/html.ts"
-		},
 		"./html-cursor": {
 			"import": "./dist/html_cursor.js",
 			"types": "./src/html_cursor.ts"

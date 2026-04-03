@@ -1,180 +1,178 @@
 <script lang="ts">
-	import type { PFMNode } from '@mdsvex/parse'
-	import type { Component, Snippet } from 'svelte'
+	import type { node_buffer } from '@mdsvex/parse/utils'
+	import { buf_children, buf_text, buf_text_content } from '@mdsvex/parse/buf-utils'
+	import type { Component } from 'svelte'
 	import Node from './Node.svelte'
 
 	type ComponentMap = Record<string, Component<any>>
 
-	let { node, components }: { node: PFMNode; components?: ComponentMap } = $props()
+	let {
+		buf,
+		idx,
+		source,
+		components,
+	}: {
+		buf: node_buffer
+		idx: number
+		source: string
+		components?: ComponentMap
+	} = $props()
 
-	function text_content(n: PFMNode): string {
-		let text = ''
-		for (let i = 0; i < n.content.length; i++) {
-			const item = n.content[i]
-			if (typeof item === 'string') {
-				text += item
-			} else {
-				text += text_content(item)
-			}
-		}
-		return text
-	}
+	const NONE = 0xffffffff
+
+	// ── Kind constants ──────────────────────────────────────
+	const K_ROOT = 0
+	const K_TEXT = 1
+	const K_HTML = 2
+	const K_HEADING = 3
+	const K_CODE_FENCE = 5
+	const K_LINE_BREAK = 6
+	const K_PARAGRAPH = 7
+	const K_CODE_SPAN = 8
+	const K_EMPHASIS = 9
+	const K_STRONG = 10
+	const K_THEMATIC_BREAK = 11
+	const K_LINK = 12
+	const K_IMAGE = 13
+	const K_BLOCK_QUOTE = 14
+	const K_LIST = 15
+	const K_LIST_ITEM = 16
+	const K_HARD_BREAK = 17
+	const K_SOFT_BREAK = 18
+	const K_STRIKETHROUGH = 19
+	const K_SUPERSCRIPT = 20
+	const K_SUBSCRIPT = 21
+	const K_TABLE = 22
+	const K_TABLE_HEADER = 23
+	const K_TABLE_ROW = 24
+	const K_TABLE_CELL = 25
+	const K_HTML_COMMENT = 26
 
 	const NEWLINE = '\n'
 
-	function get_cells(row: PFMNode): { cell: PFMNode; col: number }[] {
-		const cells: { cell: PFMNode; col: number }[] = []
-		let col = 0
-		for (let i = 0; i < row.content.length; i++) {
-			const item = row.content[i]
-			if (typeof item !== 'string' && item.kindName === 'table_cell') {
-				cells.push({ cell: item, col })
-				col++
-			}
-		}
-		return cells
-	}
-
-	function get_header(table: PFMNode): PFMNode | null {
-		for (let i = 0; i < table.content.length; i++) {
-			const item = table.content[i]
-			if (typeof item !== 'string' && item.kindName === 'table_header') return item
-		}
-		return null
-	}
-
-	function get_rows(table: PFMNode): PFMNode[] {
-		const rows: PFMNode[] = []
-		for (let i = 0; i < table.content.length; i++) {
-			const item = table.content[i]
-			if (typeof item !== 'string' && item.kindName === 'table_row') rows.push(item)
-		}
-		return rows
-	}
+	let kind = $derived(buf._kinds[idx])
+	let extra = $derived(buf._extras[idx])
+	let meta = $derived(buf.metadata_at(idx))
 </script>
 
-{#snippet children(n: PFMNode)}
-	{#each n.content as item, i (typeof item === 'string' ? 't' + i : item.id)}
-		{#if typeof item === 'string'}
-			{item}
+{#snippet child_nodes(parent_idx: number)}
+	{#each buf_children(buf, parent_idx) as child_idx (child_idx)}
+		{@const kind = buf._kinds[child_idx]}
+		{#if kind === K_TEXT}
+			{buf_text(buf, child_idx, source)}
+		{:else if kind === K_LINE_BREAK}
+			<!-- skip -->
 		{:else}
-			<Node node={item} {components} />
+			<Node {buf} idx={child_idx} {source} {components} />
 		{/if}
 	{/each}
 {/snippet}
 
-{#snippet table_body(table: PFMNode)}
-	{@const alignments = (table.attrs.alignments as string[]) ?? []}
-	{@const header = get_header(table)}
-	{@const rows = get_rows(table)}
+{#snippet table_body(table_idx: number)}
+	{@const meta = buf.metadata_at(table_idx)}
+	{@const alignments = (meta?.alignments as string[]) ?? []}
 	<table>
-		{#if header}
-			<thead>
-				<tr>
-					{#each get_cells(header) as { cell, col } (cell.id)}
-						{@const align = alignments[col]}
-						<th align={align && align !== 'none' ? align : undefined}>
-							{@render children(cell)}
-						</th>
-					{/each}
-				</tr>
-			</thead>
-		{/if}
-		{#if rows.length > 0}
-			<tbody>
-				{#each rows as row (row.id)}
+		{#each buf_children(buf, table_idx) as row_idx (row_idx)}
+			{@const row_kind = buf._kinds[row_idx]}
+			{#if row_kind === K_TABLE_HEADER}
+				<thead>
 					<tr>
-						{#each get_cells(row) as { cell, col } (cell.id)}
+						{#each buf_children(buf, row_idx).filter(c => buf._kinds[c] === K_TABLE_CELL) as cell_idx, col (cell_idx)}
 							{@const align = alignments[col]}
-							<td align={align && align !== 'none' ? align : undefined}>
-								{@render children(cell)}
-							</td>
+							<th align={align && align !== 'none' ? align : undefined}>
+								{@render child_nodes(cell_idx)}
+							</th>
 						{/each}
 					</tr>
-				{/each}
-			</tbody>
-		{/if}
+				</thead>
+			{:else if row_kind === K_TABLE_ROW}
+				<tr>
+					{#each buf_children(buf, row_idx).filter(c => buf._kinds[c] === K_TABLE_CELL) as cell_idx, col (cell_idx)}
+						{@const align = alignments[col]}
+						<td align={align && align !== 'none' ? align : undefined}>
+							{@render child_nodes(cell_idx)}
+						</td>
+					{/each}
+				</tr>
+			{/if}
+		{/each}
 	</table>
 {/snippet}
 
-{#if node.kindName === 'root'}
-	{@render children(node)}
-{:else if node.kindName === 'heading'}
-	<svelte:element this={'h' + node.extra}>
-		{@render children(node)}
+{#if kind === K_ROOT}
+	{@render child_nodes(idx)}
+{:else if kind === K_HEADING}
+	<svelte:element this={'h' + extra}>
+		{buf_text(buf, idx, source)}
 	</svelte:element>
-{:else if node.kindName === 'paragraph'}
-	<p>{@render children(node)}</p>
-{:else if node.kindName === 'emphasis'}
-	<em>{@render children(node)}</em>
-{:else if node.kindName === 'strong_emphasis'}
-	<strong>{@render children(node)}</strong>
-{:else if node.kindName === 'code_span'}
-	<code>{text_content(node)}</code>
-{:else if node.kindName === 'code_fence'}
-	{@const info = node.attrs.info as string | undefined}
-	<pre><code class={info ? 'language-' + info : undefined}>{text_content(node)}</code></pre>
-{:else if node.kindName === 'block_quote'}
-	<blockquote>{@render children(node)}</blockquote>
-{:else if node.kindName === 'link'}
-	<a href={node.attrs.href as string} title={node.attrs.title as string || undefined}>
-		{@render children(node)}
+{:else if kind === K_PARAGRAPH}
+	<p>{@render child_nodes(idx)}</p>
+{:else if kind === K_EMPHASIS}
+	<em>{@render child_nodes(idx)}</em>
+{:else if kind === K_STRONG}
+	<strong>{@render child_nodes(idx)}</strong>
+{:else if kind === K_CODE_SPAN}
+	<code>{buf_text(buf, idx, source)}</code>
+{:else if kind === K_CODE_FENCE}
+	{@const info = meta?.info as string | undefined ?? (meta?.info_start != null ? source.slice(meta.info_start as number, meta.info_end as number) : undefined)}
+	<pre><code class={info ? 'language-' + info : undefined}>{buf_text(buf, idx, source)}</code></pre>
+{:else if kind === K_BLOCK_QUOTE}
+	<blockquote>{@render child_nodes(idx)}</blockquote>
+{:else if kind === K_LINK}
+	<a href={meta?.href as string} title={meta?.title as string || undefined}>
+		{@render child_nodes(idx)}
 	</a>
-{:else if node.kindName === 'image'}
+{:else if kind === K_IMAGE}
 	<img
-		src={node.attrs.src as string}
-		alt={text_content(node)}
-		title={node.attrs.title as string || undefined}
+		src={meta?.src as string}
+		alt={buf_text_content(buf, idx, source)}
+		title={meta?.title as string || undefined}
 	/>
-{:else if node.kindName === 'list'}
-	{#if node.attrs.ordered}
-		{@const start = node.attrs.start as number | undefined}
+{:else if kind === K_LIST}
+	{#if meta?.ordered}
+		{@const start = meta?.start as number | undefined}
 		<ol start={start != null && start !== 1 ? start : undefined}>
-			{@render children(node)}
+			{@render child_nodes(idx)}
 		</ol>
 	{:else}
-		<ul>{@render children(node)}</ul>
+		<ul>{@render child_nodes(idx)}</ul>
 	{/if}
-{:else if node.kindName === 'list_item'}
-	<li>{@render children(node)}</li>
-{:else if node.kindName === 'thematic_break'}
+{:else if kind === K_LIST_ITEM}
+	<li>{@render child_nodes(idx)}</li>
+{:else if kind === K_THEMATIC_BREAK}
 	<hr />
-{:else if node.kindName === 'hard_break'}
+{:else if kind === K_HARD_BREAK}
 	<br />
-{:else if node.kindName === 'soft_break'}
+{:else if kind === K_SOFT_BREAK}
 	{NEWLINE}
-{:else if node.kindName === 'strikethrough'}
-	<del>{@render children(node)}</del>
-{:else if node.kindName === 'superscript'}
-	<sup>{@render children(node)}</sup>
-{:else if node.kindName === 'subscript'}
-	<sub>{@render children(node)}</sub>
-{:else if node.kindName === 'html'}
-	{@const tag = node.attrs.tag as string}
-	{@const attrs = node.attrs.attributes as Record<string, string | boolean> | undefined}
+{:else if kind === K_STRIKETHROUGH}
+	<del>{@render child_nodes(idx)}</del>
+{:else if kind === K_SUPERSCRIPT}
+	<sup>{@render child_nodes(idx)}</sup>
+{:else if kind === K_SUBSCRIPT}
+	<sub>{@render child_nodes(idx)}</sub>
+{:else if kind === K_HTML}
+	{@const tag = meta?.tag as string}
+	{@const attrs = meta?.attributes as Record<string, string | boolean> | undefined}
 	{@const spread = attrs ? Object.fromEntries(Object.entries(attrs).map(([k, v]) => [k, v === true ? true : v])) : {}}
 	{@const CustomComponent = components?.[tag]}
 	{#if CustomComponent}
 		<CustomComponent {...spread}>
-			{#if !node.attrs.self_closing}
-				{@render children(node)}
+			{#if !meta?.self_closing}
+				{@render child_nodes(idx)}
 			{/if}
 		</CustomComponent>
 	{:else}
 		<svelte:element this={tag} {...spread}>
-			{#if !node.attrs.self_closing}
-				{@render children(node)}
+			{#if !meta?.self_closing}
+				{@render child_nodes(idx)}
 			{/if}
 		</svelte:element>
 	{/if}
-{:else if node.kindName === 'html_comment'}
-	<!-- {text_content(node)} -->
-{:else if node.kindName === 'table'}
-	{@render table_body(node)}
-{:else if node.kindName === 'table_header' || node.kindName === 'table_row' || node.kindName === 'table_cell'}
-	{@render children(node)}
-{:else if node.kindName === 'line_break'}
-	<!-- skip -->
+{:else if kind === K_HTML_COMMENT}
+	<!-- {buf_text(buf, idx, source)} -->
+{:else if kind === K_TABLE}
+	{@render table_body(idx)}
 {:else}
-	{@render children(node)}
+	{@render child_nodes(idx)}
 {/if}

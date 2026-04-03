@@ -83,7 +83,8 @@
       "Bash(find /Users/peterallen/Projects/mdsvex/packages/render -type f \\\\\\(-name *.ts -o -name *.js -o -name *.svelte \\\\\\))",
       "Bash(node -e \":*)",
       "Bash(wc -c /Users/peterallen/Projects/mdsvex/packages/bench/node_modules/markdown-exit/dist/*.mjs)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(head:*)"
     ],
     "deny": []
   }

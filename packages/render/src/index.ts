@@ -1,4 +1,4 @@
-export { renderNode, HTMLRenderer } from './html';
-export type { BlockEntry, HtmlComponentFn, HtmlComponentMap } from './html';
+export { CursorHTMLRenderer } from './html_cursor';
+export type { CursorBlockEntry } from './html_cursor';
 export { ComponentRenderer } from './component';
 export type { ComponentBlock } from './component';

@@ -39,13 +39,13 @@
 			"import": "./dist/utils.js",
 			"types": "./src/utils.ts"
 		},
-		"./document-builder": {
-			"import": "./dist/document-builder.js",
-			"types": "./src/document_builder.ts"
-		},
 		"./cursor": {
 			"import": "./dist/cursor.js",
 			"types": "./src/cursor.ts"
+		},
+		"./buf-utils": {
+			"import": "./dist/buf-utils.js",
+			"types": "./src/buf_utils.ts"
 		},
 		"./wire-tree-builder": {
 			"import": "./dist/wire-tree-builder.js",

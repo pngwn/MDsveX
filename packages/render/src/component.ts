@@ -1,91 +1,88 @@
 /**
  * PFM Component Renderer
  *
- * Maintains a stable list of block-level entries for a PFMDocument,
- * each holding a direct PFMNode reference and a version counter.
+ * Maintains a stable list of block-level entries for a node_buffer,
+ * each holding a buffer index and a version counter.
  *
  * Designed for use with the <Node> Svelte component:
  *
- *   {#each renderer.blocks as block (block.id)}
+ *   {#each renderer.blocks as block (block.idx)}
  *     {#key block.v}
- *       <Node node={block.node} />
+ *       <Node buf={renderer.buf} idx={block.idx} source={renderer.source} />
  *     {/key}
  *   {/each}
  *
  * Closed blocks have a frozen version — {#key} keeps them stable.
  * Open (streaming) blocks get bumped — {#key} recreates the subtree
- * with fresh content. This is cheap since only the last block is
- * typically open.
+ * with fresh content.
  */
 
-import type { PFMNode, PFMDocument } from '@mdsvex/parse';
+import type { node_buffer } from '@mdsvex/parse/utils';
+
+const NONE = 0xffffffff;
+const K_LINE_BREAK = 6;
 
 // ── Block entry ──────────────────────────────────────────────
 
 export interface ComponentBlock {
-	/** Stable node ID — use as Svelte each key. */
-	id: number;
-	/** Direct reference to the PFMNode. */
-	node: PFMNode;
+	/** Buffer index — use as Svelte each key. */
+	idx: number;
 	/** Version counter — bumped on each update while the block is open. */
 	v: number;
 }
 
 // ── ComponentRenderer ────────────────────────────────────────
 
-/**
- * Maintains a stable list of block-level component entries for a PFMDocument.
- *
- * Call update() after each doc.apply(batch). Returns a new array reference
- * when blocks change, so assigning to a $state variable triggers Svelte
- * reactivity.
- */
 export class ComponentRenderer {
-	/** Current block entries. */
 	blocks: ComponentBlock[] = [];
-	/** Tracks which block IDs have been finalized (closed). */
+	/** The current buffer reference (for passing to Node.svelte). */
+	buf: node_buffer | null = null;
+	/** The current source/text string (for passing to Node.svelte). */
+	source = '';
 	private closed: Set<number> = new Set();
 
-	/**
-	 * Update blocks from the current document state.
-	 * Returns a new array reference when there are changes.
-	 */
-	update(doc: PFMDocument): ComponentBlock[] {
-		if (!doc.root) return this.blocks;
+	update(buf: node_buffer, source: string): ComponentBlock[] {
+		this.buf = buf;
+		this.source = source;
 
-		const content = doc.root.content;
 		let blockIdx = 0;
 		let changed = false;
 
-		for (let i = 0; i < content.length; i++) {
-			const item = content[i];
-			if (typeof item === 'string') continue;
-			if (item.kindName === 'line_break') continue;
+		// Walk root's children via sibling chain
+		let child = buf._children_starts[0]; // root is index 0
+		while (child !== NONE) {
+			const kind = buf._kinds[child];
+			const next = buf._next_siblings[child];
+			const is_sibling = next !== NONE && buf._parents[next] === 0;
 
-			if (blockIdx >= this.blocks.length) {
-				// New block
-				this.blocks.push({ id: item.id, node: item, v: 0 });
-				changed = true;
-			} else if (!this.closed.has(item.id)) {
-				// Existing block, still open — bump version
-				this.blocks[blockIdx].v++;
-				changed = true;
+			if (kind !== K_LINE_BREAK) {
+				const closed = buf._ends[child] !== NONE;
+
+				if (blockIdx >= this.blocks.length) {
+					this.blocks.push({ idx: child, v: 0 });
+					changed = true;
+				} else if (!this.closed.has(child)) {
+					this.blocks[blockIdx].v++;
+					changed = true;
+				}
+
+				if (closed && !this.closed.has(child)) {
+					this.closed.add(child);
+				}
+
+				blockIdx++;
 			}
 
-			if (item.closed && !this.closed.has(item.id)) {
-				this.closed.add(item.id);
-			}
-
-			blockIdx++;
+			child = is_sibling ? next : NONE;
 		}
 
-		// Return new reference so $state assignment triggers update
 		return changed ? (this.blocks = [...this.blocks]) : this.blocks;
 	}
 
-	/** Reset for a new document. */
 	reset(): void {
 		this.blocks = [];
+		this.buf = null;
+		this.source = '';
 		this.closed.clear();
 	}
 }

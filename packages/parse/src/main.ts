@@ -41,6 +41,8 @@ export { node_kind, node_buffer } from './utils';
 export { Introspector } from './introspector';
 export type { introspection_entry } from './introspector';
 export { WireEmitter, WireOp } from './wire_emitter';
+// PFMDocument retained for pixi renderer — not part of primary API.
+// Use TreeBuilder/WireTreeBuilder + PFMCursor + CursorHTMLRenderer instead.
 export { PFMDocument, applyBatch, textContent } from './pfm_document';
 export type { PFMNode, PFMHandlers } from './pfm_document';
 export type { Emitter } from './opcodes';

@@ -7,7 +7,6 @@ export default defineConfig({
 		lib: {
 			entry: {
 				index: resolve(__dirname, 'src/index.ts'),
-				html: resolve(__dirname, 'src/html.ts'),
 				html_cursor: resolve(__dirname, 'src/html_cursor.ts'),
 				component: resolve(__dirname, 'src/component.ts'),
 			},
@@ -16,7 +15,7 @@ export default defineConfig({
 		outDir: 'dist',
 		reportCompressedSize: true,
 		rollupOptions: {
-			external: ['@mdsvex/parse'],
+			external: [/^@mdsvex\/parse/],
 			output: {
 				entryFileNames: '[name].js',
 				plugins: [

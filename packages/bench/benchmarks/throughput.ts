@@ -6,9 +6,9 @@
 import { readFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 
-import { parse_markdown_svelte, PFMParser, WireEmitter, PFMDocument } from '@mdsvex/parse';
-import { DocumentBuilder } from '@mdsvex/parse/document-builder';
-import { renderNode } from '@mdsvex/render';
+import { parse_markdown_svelte, PFMParser } from '@mdsvex/parse';
+import { TreeBuilder } from '@mdsvex/parse/tree-builder';
+import { CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
 import { marked } from 'marked';
 import { createMarkdownExit } from 'markdown-exit';
 
@@ -33,11 +33,11 @@ function pfm_parse(source: string): void {
 }
 
 function pfm_e2e(source: string): void {
-	const builder = new DocumentBuilder();
-	builder.set_source(source);
-	const parser = new PFMParser(builder);
+	const tree = new TreeBuilder((source.length >> 3) || 128);
+	const parser = new PFMParser(tree);
 	parser.parse(source);
-	renderNode(builder.root!);
+	const renderer = new CursorHTMLRenderer({ cache: false });
+	renderer.update(tree.get_buffer(), source);
 }
 
 const mdexit = createMarkdownExit();

@@ -2,21 +2,21 @@ import { describe, it, expect } from 'vitest';
 import { PFMParser, WireEmitter } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import { WireTreeBuilder } from '@mdsvex/parse/wire-tree-builder';
-import { PFMCursor } from '@mdsvex/parse/cursor';
-import { renderCursor } from '../src/html_cursor';
+import { CursorHTMLRenderer } from '../src/html_cursor';
 
 // ── Helpers ──────────────────────────────────────────────────
 
-/** Server path: PFMParser → TreeBuilder → cursor → renderCursor */
+/** Server path: PFMParser → TreeBuilder → CursorHTMLRenderer */
 function via_tree(source: string): string {
 	const tree = new TreeBuilder((source.length >> 3) || 128);
 	const parser = new PFMParser(tree);
 	parser.parse(source);
-	const cursor = new PFMCursor(tree.get_buffer(), source);
-	return renderCursor(cursor);
+	const renderer = new CursorHTMLRenderer({ cache: false });
+	renderer.update(tree.get_buffer(), source);
+	return renderer.html;
 }
 
-/** Client path: PFMParser → WireEmitter → batch → WireTreeBuilder → cursor → renderCursor */
+/** Client path: PFMParser → WireEmitter → WireTreeBuilder → CursorHTMLRenderer */
 function via_wire(source: string): string {
 	const emitter = new WireEmitter();
 	emitter.set_source(source);
@@ -26,8 +26,9 @@ function via_wire(source: string): string {
 
 	const builder = new WireTreeBuilder();
 	builder.apply(batch);
-	const cursor = builder.cursor();
-	return renderCursor(cursor);
+	const renderer = new CursorHTMLRenderer({ cache: false });
+	renderer.update(builder.get_buffer(), '');
+	return renderer.html;
 }
 
 function assert_same(source: string): void {
@@ -38,7 +39,7 @@ function assert_same(source: string): void {
 
 // ── Tests ────────────────────────────────────────────────────
 
-describe('WireTreeBuilder produces same cursor-rendered HTML as TreeBuilder', () => {
+describe('WireTreeBuilder produces same HTML as TreeBuilder', () => {
 	it('simple paragraph', () => assert_same('hello world\n'));
 	it('multiple paragraphs', () => assert_same('first\n\nsecond\n'));
 

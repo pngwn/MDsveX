@@ -142,6 +142,19 @@ export class PFMCursor {
 		this.idx = 0;
 	}
 
+	/** Get child indices as an array (for Svelte {#each} iteration). */
+	children(): number[] {
+		const result: number[] = [];
+		let child = this._children_starts[this.idx];
+		while (child !== NONE) {
+			result.push(child);
+			const next = this._next_siblings[child];
+			if (next === NONE || this._parents[next] !== this._parents[child]) break;
+			child = next;
+		}
+		return result;
+	}
+
 	/** Reinitialize cursor with a (potentially grown) buffer and new source. */
 	reinit(buf: node_buffer, source: string): void {
 		this.buf = buf;

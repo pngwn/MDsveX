@@ -321,15 +321,7 @@ function _tableCells(c: PFMCursor, tag: string, alignments: string[], out: strin
 	c.gotoParent();
 }
 
-// ── Public API ──────────────────────────────────────────────
-
-/** Render a PFM document to HTML using a cursor. Zero per-node allocations. */
-export function renderCursor(cursor: PFMCursor): string {
-	cursor.reset();
-	const out: string[] = [];
-	_node(cursor, out);
-	return out.join('');
-}
+// ── Internal helpers ─────────────────────────────────────────
 
 /** Render the node at the current cursor position to HTML string. */
 function _renderBlock(cursor: PFMCursor): string {

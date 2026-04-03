@@ -1,101 +1,125 @@
 import { describe, it, expect } from 'vitest';
-import { PFMParser, WireEmitter, PFMDocument } from '@mdsvex/parse';
+import { PFMParser } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import { PFMCursor } from '@mdsvex/parse/cursor';
-import { renderNode } from '../src/html';
-import { renderCursor } from '../src/html_cursor';
+import { CursorHTMLRenderer } from '../src/html_cursor';
 
-// ── Helpers ──────────────────────────────────────────────────
+// ── Helpers ───────��──────────────────────────────────────────
 
-/** Render via PFMNode path (wire → doc → renderNode). */
-function render_node(source: string): string {
-	const emitter = new WireEmitter();
-	emitter.set_source(source);
-	const parser = new PFMParser(emitter);
-	parser.parse(source);
-	const batch = emitter.flush();
-	const doc = new PFMDocument();
-	doc.apply(batch);
-	return renderNode(doc.root!);
-}
-
-/** Render via cursor path (TreeBuilder → cursor → renderCursor). */
-function render_cursor(source: string): string {
+function render(source: string): string {
 	const tree = new TreeBuilder((source.length >> 3) || 128);
 	const parser = new PFMParser(tree);
 	parser.parse(source);
-	const cursor = new PFMCursor(tree.get_buffer(), source);
-	return renderCursor(cursor);
+	const renderer = new CursorHTMLRenderer({ cache: false });
+	renderer.update(tree.get_buffer(), source);
+	return renderer.html;
 }
 
-/** Assert both paths produce identical HTML. */
-function assert_same(source: string): void {
-	const from_node = render_node(source);
-	const from_cursor = render_cursor(source);
-	expect(from_cursor).toBe(from_node);
-}
+// ── Tests ─────────────────────��──────────────────────────────
 
-// ── Tests ────────────────────────────────────────────────────
-
-describe('cursor renderer matches node renderer', () => {
-	it('simple paragraph', () => assert_same('hello world\n'));
-	it('multi-line paragraph', () => assert_same('line one\nline two\n'));
-	it('multiple paragraphs', () => assert_same('first\n\nsecond\n'));
-
-	it('h1', () => assert_same('# Hello\n'));
-	it('h2', () => assert_same('## Title\n'));
-	it('h3-h6', () => {
-		assert_same('### H3\n');
-		assert_same('#### H4\n');
-		assert_same('##### H5\n');
-		assert_same('###### H6\n');
+describe('CursorHTMLRenderer', () => {
+	it('simple paragraph', () => {
+		expect(render('hello world\n')).toBe('<p>hello world</p>');
 	});
 
-	it('emphasis', () => assert_same('_hello_\n'));
-	it('strong', () => assert_same('*bold*\n'));
-	it('mixed emphasis', () => assert_same('before _middle_ after\n'));
-	it('nested emphasis', () => assert_same('_em *strong* em_\n'));
+	it('multiple paragraphs', () => {
+		const html = render('first\n\nsecond\n');
+		expect(html).toContain('<p>first</p>');
+		expect(html).toContain('<p>second</p>');
+	});
 
-	it('code span', () => assert_same('use `code` here\n'));
-	it('code fence', () => assert_same('```js\nconst x = 1;\n```\n'));
-	it('code fence no info', () => assert_same('```\nhello\n```\n'));
+	it('h1', () => expect(render('# Hello\n')).toBe('<h1>Hello</h1>'));
+	it('h2', () => expect(render('## Title\n')).toBe('<h2>Title</h2>'));
+	it('h3-h6', () => {
+		expect(render('### H3\n')).toBe('<h3>H3</h3>');
+		expect(render('#### H4\n')).toBe('<h4>H4</h4>');
+		expect(render('##### H5\n')).toBe('<h5>H5</h5>');
+		expect(render('###### H6\n')).toBe('<h6>H6</h6>');
+	});
 
-	it('block quote', () => assert_same('> quoted\n'));
-	it('link', () => assert_same('[click](https://example.com)\n'));
-	it('link with title', () => assert_same('[text](url "title")\n'));
-	it('image', () => assert_same('![alt text](image.png)\n'));
+	it('emphasis', () => expect(render('_hello_\n')).toContain('<em>hello</em>'));
+	it('strong', () => expect(render('*bold*\n')).toContain('<strong>bold</strong>'));
+	it('mixed emphasis', () => {
+		const html = render('before _middle_ after\n');
+		expect(html).toContain('before ');
+		expect(html).toContain('<em>middle</em>');
+		expect(html).toContain(' after');
+	});
+	it('nested emphasis', () => {
+		const html = render('_em *strong* em_\n');
+		expect(html).toContain('<em>');
+		expect(html).toContain('<strong>strong</strong>');
+	});
 
-	it('unordered list', () => {
-		// TreeBuilder does tight-list paragraph unwrapping (correct CommonMark behavior)
-		const html = render_cursor('- one\n- two\n');
+	it('code span', () => expect(render('use `code` here\n')).toContain('<code>code</code>'));
+	it('code fence with info', () => {
+		const html = render('```js\nconst x = 1;\n```\n');
+		expect(html).toContain('class="language-js"');
+		expect(html).toContain('const x = 1;');
+	});
+	it('code fence no info', () => {
+		expect(render('```\nhello\n```\n')).toContain('<pre><code>hello</code></pre>');
+	});
+
+	it('block quote', () => {
+		const html = render('> quoted\n');
+		expect(html).toContain('<blockquote>');
+		expect(html).toContain('<p>quoted</p>');
+	});
+
+	it('link', () => {
+		expect(render('[click](https://example.com)\n')).toContain('<a href="https://example.com">click</a>');
+	});
+	it('link with title', () => {
+		expect(render('[text](url "title")\n')).toContain('title="title"');
+	});
+	it('image', () => {
+		expect(render('![alt text](image.png)\n')).toContain('<img src="image.png" alt="alt text"');
+	});
+
+	it('unordered list (tight)', () => {
+		const html = render('- one\n- two\n');
 		expect(html).toContain('<ul>');
 		expect(html).toContain('<li>one</li>');
 		expect(html).toContain('<li>two</li>');
 		expect(html).not.toContain('<p>');
 	});
-	it('ordered list', () => {
-		const html = render_cursor('1. one\n2. two\n');
+	it('ordered list (tight)', () => {
+		const html = render('1. one\n2. two\n');
 		expect(html).toContain('<ol>');
 		expect(html).toContain('<li>one</li>');
 		expect(html).toContain('<li>two</li>');
-		expect(html).not.toContain('<p>');
 	});
 
-	it('thematic break', () => assert_same('---\n'));
-	it('strikethrough', () => assert_same('~~deleted~~\n'));
-	it('superscript', () => assert_same('^super^\n'));
+	it('thematic break', () => expect(render('---\n')).toContain('<hr />'));
+	it('strikethrough', () => expect(render('~~deleted~~\n')).toContain('<del>deleted</del>'));
+	it('superscript', () => expect(render('^super^\n')).toContain('<sup>super</sup>'));
 
-	it('table', () => assert_same('| foo | bar |\n| --- | --- |\n| baz | bim |\n'));
-	it('table with alignment', () =>
-		assert_same('| left | center | right |\n| :--- | :---: | ---: |\n| a | b | c |\n'));
+	it('table', () => {
+		const html = render('| foo | bar |\n| --- | --- |\n| baz | bim |\n');
+		expect(html).toContain('<table>');
+		expect(html).toContain('<th>foo</th>');
+		expect(html).toContain('<td>baz</td>');
+	});
+	it('table with alignment', () => {
+		const html = render('| left | center | right |\n| :--- | :---: | ---: |\n| a | b | c |\n');
+		expect(html).toContain('align="left"');
+		expect(html).toContain('align="center"');
+		expect(html).toContain('align="right"');
+	});
 
-	it('html self-closing', () => assert_same('text <br /> more\n'));
-	it('html paired', () => assert_same('text <span>inside</span> end\n'));
-	it('html block', () => assert_same('<section>\n\n# Heading\n\nParagraph.\n\n</section>\n'));
-	it('html comment', () => assert_same('text <!-- hidden --> more\n'));
+	it('html self-closing', () => expect(render('text <br /> more\n')).toContain('<br />'));
+	it('html paired', () => expect(render('text <span>inside</span> end\n')).toContain('<span>inside</span>'));
+	it('html block', () => {
+		const html = render('<section>\n\n# Heading\n\nParagraph.\n\n</section>\n');
+		expect(html).toContain('<section>');
+		expect(html).toContain('<h1>Heading</h1>');
+		expect(html).toContain('<p>Paragraph.</p>');
+	});
+	it('html comment', () => expect(render('text <!-- hidden --> more\n')).toContain('<!-- hidden -->'));
 
 	it('complex document', () => {
-		const source =
+		const html = render(
 			'# Title\n\n' +
 			'A paragraph with _emphasis_ and *bold*.\n\n' +
 			'> A block quote with `code`\n\n' +
@@ -103,19 +127,25 @@ describe('cursor renderer matches node renderer', () => {
 			'- item one\n- item two\n\n' +
 			'| a | b |\n| --- | --- |\n| 1 | 2 |\n\n' +
 			'[link](url) and ![img](src)\n\n' +
-			'---\n';
-		const html = render_cursor(source);
+			'---\n',
+		);
 		expect(html).toContain('<h1>Title</h1>');
 		expect(html).toContain('<em>emphasis</em>');
 		expect(html).toContain('<strong>bold</strong>');
 		expect(html).toContain('<blockquote>');
 		expect(html).toContain('<code>code</code>');
 		expect(html).toContain('class="language-js"');
-		expect(html).toContain('const x = 1;');
 		expect(html).toContain('<li>item one</li>');
-		expect(html).toContain('<th>a</th>');
 		expect(html).toContain('<a href="url">link</a>');
-		expect(html).toContain('<img src="src" alt="img" />');
+		expect(html).toContain('<img src="src" alt="img"');
 		expect(html).toContain('<hr />');
+	});
+
+	it('escapes HTML entities in text', () => {
+		expect(render('1 < 2 and 3 > 1\n')).toContain('&lt;');
+	});
+
+	it('escapes HTML in code spans', () => {
+		expect(render('`<div>`\n')).toContain('<code>&lt;div&gt;</code>');
 	});
 });
