@@ -39,6 +39,7 @@ export class PFMCursor {
 
 	private _kinds: Uint8Array;
 	private _extras: Uint16Array;
+	private _ends: Uint32Array;
 	private _value_starts: Uint32Array;
 	private _value_ends: Uint32Array;
 	private _parents: Uint32Array;
@@ -53,6 +54,7 @@ export class PFMCursor {
 		// Cache array references for hot-path access
 		this._kinds = buf._kinds;
 		this._extras = buf._extras;
+		this._ends = buf._ends;
 		this._value_starts = buf._value_starts;
 		this._value_ends = buf._value_ends;
 		this._parents = buf._parents;
@@ -77,10 +79,18 @@ export class PFMCursor {
 		return this.idx;
 	}
 
-	// ── Text (lazy — only slices when called) ───────────────────
+	/** Whether the current node is closed (end offset has been set). */
+	get closed(): boolean {
+		return this._ends[this.idx] !== NONE;
+	}
 
-	/** Get the text content for the current node (value range). */
+	// ── Text ────────────────────────────────────────────────────
+
+	/** Get the text content for the current node. Pre-materialized strings
+	 *  (from WireTreeBuilder) are returned directly; otherwise sliced lazily. */
 	text(): string {
+		const s = this.buf._strings[this.idx];
+		if (s !== undefined) return s;
 		const vs = this._value_starts[this.idx];
 		const ve = this._value_ends[this.idx];
 		if (vs === NONE || ve === NONE || ve <= vs) return '';
@@ -130,5 +140,20 @@ export class PFMCursor {
 	/** Reset cursor to root (index 0). */
 	reset(): void {
 		this.idx = 0;
+	}
+
+	/** Reinitialize cursor with a (potentially grown) buffer and new source. */
+	reinit(buf: node_buffer, source: string): void {
+		this.buf = buf;
+		this.src = source;
+		this.idx = 0;
+		this._kinds = buf._kinds;
+		this._extras = buf._extras;
+		this._ends = buf._ends;
+		this._value_starts = buf._value_starts;
+		this._value_ends = buf._value_ends;
+		this._parents = buf._parents;
+		this._next_siblings = buf._next_siblings;
+		this._children_starts = buf._children_starts;
 	}
 }

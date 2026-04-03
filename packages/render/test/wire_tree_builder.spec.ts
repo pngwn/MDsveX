@@ -1,0 +1,89 @@
+import { describe, it, expect } from 'vitest';
+import { PFMParser, WireEmitter } from '@mdsvex/parse';
+import { TreeBuilder } from '@mdsvex/parse/tree-builder';
+import { WireTreeBuilder } from '@mdsvex/parse/wire-tree-builder';
+import { PFMCursor } from '@mdsvex/parse/cursor';
+import { renderCursor } from '../src/html_cursor';
+
+// ── Helpers ──────────────────────────────────────────────────
+
+/** Server path: PFMParser → TreeBuilder → cursor → renderCursor */
+function via_tree(source: string): string {
+	const tree = new TreeBuilder((source.length >> 3) || 128);
+	const parser = new PFMParser(tree);
+	parser.parse(source);
+	const cursor = new PFMCursor(tree.get_buffer(), source);
+	return renderCursor(cursor);
+}
+
+/** Client path: PFMParser → WireEmitter → batch → WireTreeBuilder → cursor → renderCursor */
+function via_wire(source: string): string {
+	const emitter = new WireEmitter();
+	emitter.set_source(source);
+	const parser = new PFMParser(emitter);
+	parser.parse(source);
+	const batch = emitter.flush();
+
+	const builder = new WireTreeBuilder();
+	builder.apply(batch);
+	const cursor = builder.cursor();
+	return renderCursor(cursor);
+}
+
+function assert_same(source: string): void {
+	const from_tree = via_tree(source);
+	const from_wire = via_wire(source);
+	expect(from_wire).toBe(from_tree);
+}
+
+// ── Tests ────────────────────────────────────────────────────
+
+describe('WireTreeBuilder produces same cursor-rendered HTML as TreeBuilder', () => {
+	it('simple paragraph', () => assert_same('hello world\n'));
+	it('multiple paragraphs', () => assert_same('first\n\nsecond\n'));
+
+	it('heading', () => assert_same('# Hello\n'));
+	it('h2', () => assert_same('## Title\n'));
+
+	it('emphasis', () => assert_same('_hello_\n'));
+	it('strong', () => assert_same('*bold*\n'));
+	it('nested emphasis', () => assert_same('_em *strong* em_\n'));
+
+	it('code span', () => assert_same('use `code` here\n'));
+	it('code fence with info', () => assert_same('```js\nconst x = 1;\n```\n'));
+	it('code fence no info', () => assert_same('```\nhello\n```\n'));
+
+	it('block quote', () => assert_same('> quoted\n'));
+
+	it('link', () => assert_same('[click](https://example.com)\n'));
+	it('link with title', () => assert_same('[text](url "title")\n'));
+	it('image', () => assert_same('![alt text](image.png)\n'));
+
+	it('unordered list', () => assert_same('- one\n- two\n'));
+	it('ordered list', () => assert_same('1. one\n2. two\n'));
+
+	it('thematic break', () => assert_same('---\n'));
+	it('strikethrough', () => assert_same('~~deleted~~\n'));
+	it('superscript', () => assert_same('^super^\n'));
+
+	it('table', () => assert_same('| foo | bar |\n| --- | --- |\n| baz | bim |\n'));
+	it('table alignment', () => assert_same('| left | center | right |\n| :--- | :---: | ---: |\n| a | b | c |\n'));
+
+	it('html self-closing', () => assert_same('text <br /> more\n'));
+	it('html paired', () => assert_same('text <span>inside</span> end\n'));
+	it('html block', () => assert_same('<section>\n\n# Heading\n\nParagraph.\n\n</section>\n'));
+	it('html comment', () => assert_same('text <!-- hidden --> more\n'));
+
+	it('revoked emphasis', () => assert_same('_not closed\n'));
+
+	it('complex document', () => assert_same(
+		'# Title\n\n' +
+		'A paragraph with _emphasis_ and *bold*.\n\n' +
+		'> A block quote with `code`\n\n' +
+		'```js\nconst x = 1;\n```\n\n' +
+		'- item one\n- item two\n\n' +
+		'| a | b |\n| --- | --- |\n| 1 | 2 |\n\n' +
+		'[link](url) and ![img](src)\n\n' +
+		'---\n',
+	));
+});

@@ -11,6 +11,7 @@ export default defineConfig({
 				'tree-builder': resolve(__dirname, 'src/tree_builder.ts'),
 				'document-builder': resolve(__dirname, 'src/document_builder.ts'),
 				cursor: resolve(__dirname, 'src/cursor.ts'),
+				'wire-tree-builder': resolve(__dirname, 'src/wire_tree_builder.ts'),
 				utils: resolve(__dirname, 'src/utils.ts'),
 			},
 			formats: ['es'],

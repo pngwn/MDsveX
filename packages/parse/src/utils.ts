@@ -134,7 +134,8 @@ export class node_buffer {
 	/** @internal Exposed for cursor access. Do not mutate externally. */
 	_kinds: Uint8Array;
 	private starts: Uint32Array;
-	private ends: Uint32Array;
+	/** @internal */
+	_ends: Uint32Array;
 	/** @internal */
 	_extras: Uint16Array;
 	/** @internal */
@@ -143,6 +144,8 @@ export class node_buffer {
 	_value_ends: Uint32Array;
 	private has_metadata: Uint8Array;
 	private metadata: Map<number, any>;
+	/** @internal Pre-materialized text strings (used by WireTreeBuilder). Index → string. */
+	_strings: (string | undefined)[];
 	/** @internal */
 	_parents: Uint32Array;
 	/** @internal */
@@ -164,12 +167,13 @@ export class node_buffer {
 		this.capacity = capacity;
 		this._kinds = new Uint8Array(capacity);
 		this.starts = new Uint32Array(capacity);
-		this.ends = new Uint32Array(capacity);
+		this._ends = new Uint32Array(capacity);
 		this._extras = new Uint16Array(capacity);
 		this._value_starts = new Uint32Array(capacity);
 		this._value_ends = new Uint32Array(capacity);
 		this.has_metadata = new Uint8Array(Math.max(1, capacity >> 3));
 		this.metadata = new Map();
+		this._strings = [];
 		this._parents = new Uint32Array(capacity);
 		this._next_siblings = new Uint32Array(capacity);
 		this.prev_siblings = new Uint32Array(capacity);
@@ -214,7 +218,7 @@ export class node_buffer {
 
 		this._kinds[index] = kind;
 		this.starts[index] = cursor >>> 0;
-		this.ends[index] = 0xffffffff;
+		this._ends[index] = 0xffffffff;
 		this._extras[index] = extra & 0xffff;
 		this._size = index + 1;
 		this._parents[index] = parent;
@@ -298,8 +302,8 @@ export class node_buffer {
 		// If exactly one child and it's text, merge the delimiter into it
 		if (last_child === first_child && this._kinds[first_child] === node_kind.text) {
 			this._value_starts[index] = this.starts[index];
-			this._value_ends[index] = this.ends[first_child];
-			this.ends[index] = this.ends[first_child];
+			this._value_ends[index] = this._ends[first_child];
+			this._ends[index] = this._ends[first_child];
 
 			// Skip the child in the sibling chain
 			this._next_siblings[index] = this._next_siblings[first_child];
@@ -341,7 +345,7 @@ export class node_buffer {
 
 		this._value_starts[index] = this.starts[index];
 		this._value_ends[index] = this._value_starts[first_child];
-		this.ends[index] = this._value_ends[index];
+		this._ends[index] = this._value_ends[index];
 	}
 
 	repair(): void {
@@ -462,6 +466,16 @@ export class node_buffer {
 		this._kinds[index] = kind;
 	}
 
+	/** @internal Set prev_siblings for WireTreeBuilder revoke. */
+	prev_siblings_set(index: number, value: number): void {
+		this.prev_siblings[index] = value;
+	}
+
+	/** @internal Set children_ends for WireTreeBuilder revoke. */
+	children_ends_set(index: number, value: number): void {
+		this.children_ends[index] = value;
+	}
+
 	/**
 	 * Set the extra of the node at the given index
 	 * @param index index of the node whose extra to update
@@ -477,17 +491,22 @@ export class node_buffer {
 	 * @param end new end position
 	 */
 	set_end(index: number, end: number): void {
-		this.ends[index] = end >>> 0;
+		this._ends[index] = end >>> 0;
 	}
 
 	gently_set_end(index: number, end: number): void {
-		if (this.ends[index] !== 0xffffffff) return;
-		this.ends[index] = end >>> 0;
+		if (this._ends[index] !== 0xffffffff) return;
+		this._ends[index] = end >>> 0;
 	}
 
 	gently_set_value_end(index: number, end: number): void {
 		if (this._value_ends[index] !== 0xffffffff) return;
 		this._value_ends[index] = end >>> 0;
+	}
+
+	/** Pre-grow to avoid repeated resizes when the final size is estimable. */
+	ensure_capacity(needed: number): void {
+		while (this.capacity < needed) this.grow();
 	}
 
 	/** Double the backing storage when capacity is exhausted. */
@@ -509,7 +528,7 @@ export class node_buffer {
 
 		next_kinds.set(this._kinds);
 		next_starts.set(this.starts);
-		next_ends.set(this.ends);
+		next_ends.set(this._ends);
 		next_extras.set(this._extras);
 		next_value_starts.set(this._value_starts);
 		next_value_ends.set(this._value_ends);
@@ -524,7 +543,7 @@ export class node_buffer {
 		this.capacity = next;
 		this._kinds = next_kinds;
 		this.starts = next_starts;
-		this.ends = next_ends;
+		this._ends = next_ends;
 		this._extras = next_extras;
 		this._value_starts = next_value_starts;
 		this._value_ends = next_value_ends;
@@ -597,7 +616,7 @@ export class node_buffer {
 		return {
 			kind: kind_to_string(this._kinds[index]),
 			start: this.starts[index],
-			end: this.ends[index],
+			end: this._ends[index],
 			metadata: {
 				...this.metadata_at(index),
 				...extras_object,

@@ -47,6 +47,10 @@
 			"import": "./dist/cursor.js",
 			"types": "./src/cursor.ts"
 		},
+		"./wire-tree-builder": {
+			"import": "./dist/wire-tree-builder.js",
+			"types": "./src/wire_tree_builder.ts"
+		},
 		"./package.json": "./package.json"
 	},
 	"author": "pngwn <hello@pngwn.io>",

@@ -5,8 +5,9 @@ import { PFMParser, WireEmitter, PFMDocument } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import { DocumentBuilder } from '@mdsvex/parse/document-builder';
 import { PFMCursor } from '@mdsvex/parse/cursor';
+import { WireTreeBuilder } from '@mdsvex/parse/wire-tree-builder';
 import { renderNode, HTMLRenderer } from '@mdsvex/render';
-import { renderCursor } from '@mdsvex/render/html-cursor';
+import { renderCursor, CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
 import { marked } from 'marked';
 import { createMarkdownExit } from 'markdown-exit';
 import { remark } from 'remark';
@@ -64,6 +65,16 @@ function pfm_e2e_cursor(source: string): string {
 	return renderCursor(cursor);
 }
 
+/** Full e2e: parse + render via TreeBuilder + CursorHTMLRenderer (unified API). */
+function pfm_e2e_renderer(source: string): string {
+	const tree = new TreeBuilder((source.length >> 3) || 128);
+	const parser = new PFMParser(tree);
+	parser.parse(source);
+	const renderer = new CursorHTMLRenderer({ cache: false });
+	renderer.update(tree.get_buffer(), source);
+	return renderer.html;
+}
+
 const mdexit = createMarkdownExit();
 const remark_html = remark().use(remarkHtml);
 
@@ -83,6 +94,10 @@ for (const [name, source] of Object.entries(fixtures)) {
 			pfm_e2e_cursor(source);
 		});
 
+		bench('pfm (CursorHTMLRenderer)', () => {
+			pfm_e2e_renderer(source);
+		});
+
 		bench('marked', () => {
 			marked.parse(source);
 		});
@@ -91,9 +106,9 @@ for (const [name, source] of Object.entries(fixtures)) {
 			mdexit.render(source);
 		});
 
-		// bench('remark-html', () => {
-		// 	remark_html.processSync(source);
-		// });
+		bench('remark-html', () => {
+			remark_html.processSync(source);
+		});
 	});
 }
 
@@ -154,8 +169,8 @@ function make_chunks(source: string): string[] {
 
 const prose_chunks = make_chunks(fixtures.prose);
 
-describe(`incremental e2e: prose (${CHUNK_SIZE}-char chunks, ${prose_chunks.length} chunks)`, () => {
-	bench('pfm incremental (feed + HTMLRenderer)', () => {
+describe.skip(`incremental e2e: prose (${CHUNK_SIZE}-char chunks, ${prose_chunks.length} chunks)`, () => {
+	bench('pfm incremental (wire → PFMDocument → renderNode)', () => {
 		const emitter = new WireEmitter();
 		const parser = new PFMParser(emitter);
 		const doc = new PFMDocument();
@@ -184,9 +199,71 @@ describe(`incremental e2e: prose (${CHUNK_SIZE}-char chunks, ${prose_chunks.leng
 		}
 	});
 
-	bench('pfm batch (for comparison)', () => {
-		pfm_e2e(fixtures.prose);
+	bench('pfm incremental (TreeBuilder → CursorHTMLRenderer)', () => {
+		const tree = new TreeBuilder((fixtures.prose.length >> 3) || 128);
+		const parser = new PFMParser(tree);
+		const renderer = new CursorHTMLRenderer();
+
+		parser.init();
+		let acc = '';
+
+		for (let i = 0; i < prose_chunks.length; i++) {
+			acc += prose_chunks[i];
+			parser.feed(prose_chunks[i]);
+			renderer.update(tree.get_buffer(), acc);
+		}
+
+		parser.finish();
+		renderer.update(tree.get_buffer(), acc);
 	});
+
+	bench.skip('pfm incremental (TreeBuilder → renderCursor, no cache)', () => {
+		const tree = new TreeBuilder((fixtures.prose.length >> 3) || 128);
+		const parser = new PFMParser(tree);
+
+		parser.init();
+		let acc = '';
+
+		for (let i = 0; i < prose_chunks.length; i++) {
+			acc += prose_chunks[i];
+			parser.feed(prose_chunks[i]);
+			renderCursor(new PFMCursor(tree.get_buffer(), acc));
+		}
+
+		parser.finish();
+		renderCursor(new PFMCursor(tree.get_buffer(), acc));
+	});
+
+	bench('pfm incremental (wire → WireTreeBuilder → CursorHTMLRenderer)', () => {
+		const emitter = new WireEmitter();
+		const parser = new PFMParser(emitter);
+		const builder = new WireTreeBuilder();
+		const renderer = new CursorHTMLRenderer();
+
+		parser.init();
+		let acc = '';
+
+		for (let i = 0; i < prose_chunks.length; i++) {
+			acc += prose_chunks[i];
+			emitter.set_source(acc);
+			parser.feed(prose_chunks[i]);
+			const batch = emitter.flush();
+			if (batch.length > 0) {
+				builder.apply(batch);
+				renderer.update(builder.get_buffer(), '');
+			}
+		}
+
+		emitter.set_source(acc);
+		parser.finish();
+		const final = emitter.flush();
+		if (final.length > 0) {
+			builder.apply(final);
+			renderer.update(builder.get_buffer(), '');
+		}
+	});
+
+
 
 	bench('marked (reparse each chunk)', () => {
 		for (let i = 0; i < prose_chunks.length; i++) {

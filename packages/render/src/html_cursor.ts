@@ -11,7 +11,8 @@
  *   const html = renderCursor(cursor);
  */
 
-import type { PFMCursor } from '@mdsvex/parse/cursor';
+import { PFMCursor } from '@mdsvex/parse/cursor';
+import type { node_buffer } from '@mdsvex/parse/utils';
 
 // ── HTML escaping ────────────────────────────────────────────
 
@@ -138,11 +139,13 @@ function _node(c: PFMCursor, out: string[]): void {
 
 		case K_CODE_FENCE: {
 			const meta = c.meta();
-			// TreeBuilder stores info as raw byte offsets (info_start/info_end)
-			const info_start = meta?.info_start as number | undefined;
-			const info_end = meta?.info_end as number | undefined;
-			const info = info_start != null && info_end != null
-				? c.slice(info_start, info_end) : undefined;
+			// Wire path: resolved 'info' string. TreeBuilder path: info_start/info_end byte offsets.
+			let info = meta?.info as string | undefined;
+			if (!info) {
+				const info_start = meta?.info_start as number | undefined;
+				const info_end = meta?.info_end as number | undefined;
+				if (info_start != null && info_end != null) info = c.slice(info_start, info_end);
+			}
 			if (info) {
 				out.push('<pre><code class="language-', escape(info), '">', escape(c.text()), '</code></pre>');
 			} else {
@@ -326,4 +329,103 @@ export function renderCursor(cursor: PFMCursor): string {
 	const out: string[] = [];
 	_node(cursor, out);
 	return out.join('');
+}
+
+/** Render the node at the current cursor position to HTML string. */
+function _renderBlock(cursor: PFMCursor): string {
+	const out: string[] = [];
+	_node(cursor, out);
+	return out.join('');
+}
+
+// ── Block entry ──────────────────────────────────────────────
+
+export interface CursorBlockEntry {
+	/** Node buffer index — use as keyed each key. */
+	idx: number;
+	/** Rendered HTML string. */
+	html: string;
+}
+
+// ── CursorHTMLRenderer (incremental) ────────────────────────
+
+/**
+ * Incremental HTML renderer using the cursor over SOA buffers.
+ *
+ * Same caching strategy as HTMLRenderer: walks root's children,
+ * skips closed+cached blocks, re-renders only open blocks.
+ * But uses cursor traversal — zero per-node allocations per render.
+ *
+ * Usage:
+ *
+ *   const tree = new TreeBuilder(128);
+ *   const parser = new PFMParser(tree);
+ *   const renderer = new CursorHTMLRenderer();
+ *
+ *   parser.init();
+ *   parser.feed(chunk);
+ *   renderer.update(tree.get_buffer(), accumulated_source);
+ *   // renderer.blocks has stable {idx, html} entries
+ */
+export class CursorHTMLRenderer {
+	blocks: CursorBlockEntry[] = [];
+	/** Full document HTML (available after update, whether cached or not). */
+	html = '';
+	private closed: Set<number> | null = null;
+	private cursor: PFMCursor | null = null;
+	private cache: boolean;
+
+	constructor(opts?: { cache?: boolean }) {
+		this.cache = opts?.cache ?? true;
+		if (this.cache) this.closed = new Set();
+	}
+
+	update(buf: node_buffer, source: string): CursorBlockEntry[] {
+		// Reuse or create cursor
+		if (!this.cursor) {
+			this.cursor = new PFMCursor(buf, source);
+		} else {
+			this.cursor.reinit(buf, source);
+		}
+		const c = this.cursor;
+		c.reset();
+
+		// No caching — single-pass full render
+		if (!this.cache) {
+			const out: string[] = [];
+			_node(c, out);
+			this.html = out.join('');
+			return this.blocks;
+		}
+
+		// Cached block-level rendering
+		if (!c.gotoFirstChild()) return this.blocks;
+
+		let blockIdx = 0;
+		do {
+			if (c.kind === K_LINE_BREAK) continue;
+
+			const idx = c.index;
+
+			if (blockIdx >= this.blocks.length) {
+				this.blocks.push({ idx, html: _renderBlock(c) });
+				if (c.closed) this.closed!.add(idx);
+			} else if (!this.closed!.has(idx)) {
+				this.blocks[blockIdx].html = _renderBlock(c);
+				if (c.closed) this.closed!.add(idx);
+			}
+
+			blockIdx++;
+		} while (c.gotoNextSibling());
+
+		c.gotoParent();
+		this.html = this.blocks.map(b => b.html).join('');
+		return this.blocks;
+	}
+
+	reset(): void {
+		this.blocks.length = 0;
+		this.closed?.clear();
+		this.html = '';
+	}
 }
