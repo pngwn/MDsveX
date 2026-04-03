@@ -1,0 +1,18 @@
+root
+  paragraph
+    text "*"
+    text "$"
+    text "*alpha."
+  line_break
+  line_break
+  paragraph
+    text "*"
+    text "£"
+    text "*bravo."
+  line_break
+  line_break
+  paragraph
+    text "*"
+    text "€"
+    text "*charlie."
+  line_break

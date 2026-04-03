@@ -1,0 +1,8 @@
+root
+  paragraph
+    text "\\*not emphasized"
+    text "*\n\\<br/> not a tag\n\\[not a link"
+    text "](/foo)\n\\`not code"
+    text "`\n1\\. not a list\n\\* not a list\n\\# not a heading\n\\[foo"
+    text "]: /url \"not a reference\"\n\\&ouml; not a character entity"
+  line_break

@@ -1,0 +1,6 @@
+root
+  code_fence "[foo]: /url"
+  line_break
+  paragraph
+    text "]"
+  line_break

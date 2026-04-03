@@ -1,0 +1,40 @@
+root
+  paragraph
+    text "ellipsis in text..."
+  line_break
+  line_break
+  paragraph
+    text "..."
+  line_break
+  line_break
+  list ordered=true start=1 tight=true
+    list_item
+      text "foo..."
+    list_item
+      text "bar"
+  line_break
+  line_break
+  block_quote
+    paragraph
+      text "ellipsis in blockquote..."
+  line_break
+  line_break
+  code_fence "ellipsis in code..."
+  line_break
+  code_fence "ellipsis in code..."
+  line_break
+  heading depth=1 "ellipsis in header..."
+  line_break
+  line_break
+  paragraph
+    text "1..."
+  line_break
+  line_break
+  list ordered=true start=1 tight=true
+    list_item
+      text ".."
+  line_break
+  line_break
+  paragraph
+    text "1..."
+  line_break

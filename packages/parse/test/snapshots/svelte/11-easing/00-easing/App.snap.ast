@@ -1,0 +1,97 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import "
+      mustache " interpolateString as interpolate "
+      text " from \"d3-interpolate\";\nimport "
+      mustache " tweened "
+      text " from \"svelte/motion\";"
+    line_break
+    line_break
+    paragraph
+      text "import Grid from \"./Grid.svelte\";\nimport Controls from \"./Controls.svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "import "
+      mustache " eases, types "
+      text " from \"./eases.js\";"
+    line_break
+    line_break
+    paragraph
+      text "let current"
+      text "_type = \"In\";\nlet current"
+      text "_ease = \"sine\";\nlet duration = 2000;\nlet current = eases.get(current"
+      text "_ease)"
+      text "current"
+      text "_type"
+      text "];\nlet playing = false;\nlet width;"
+    line_break
+    line_break
+    paragraph
+      text "const ease"
+      text "_path = tweened(current.shape, "
+      mustache " interpolate "
+      text ");\nconst time = tweened(0);\nconst value = tweened(1000);"
+    line_break
+    line_break
+    paragraph
+      text "async function runAnimations() "
+      mustache "\n	playing = true;\n\n	value.set(1000, { duration: 0 });\n	time.set(0, { duration: 0 });\n\n	await ease_path.set(current.shape);\n	await Promise.all([\n		time.set(1000, { duration, easing: (x) => x }),\n		value.set(0, { duration, easing: current.fn }),\n	]);\n\n	playing = false;\n"
+    line_break
+    line_break
+    paragraph
+      text "$: current = eases.get(current"
+      text "_ease)"
+      text "current"
+      text "_type"
+      text "];\n$: current && runAnimations();\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text ".easing-vis "
+      mustache "\n		display: flex;\n		max-height: 95%;\n		max-width: 800px;\n		margin: auto;\n		padding: 10px;\n		border: 1px solid #333;\n		border-radius: 2px;\n		padding: 20px;\n	"
+      line_break
+      line_break
+      paragraph
+        text "svg "
+        mustache "\n		width: 100%;\n		margin: 0 20px 0 0;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".graph "
+        mustache "\n		transform: translate(200px,400px)\n	"
+      line_break
+      line_break
+      paragraph
+        text "@media (max-width:600px) "
+        mustache "\n		.easing-vis {\n			flex-direction: column;\n			max-height: calc(100% - 3rem);\n		}\n	"
+  line_break
+  line_break
+  html tag="div" bind:offsetWidth="width" class="easing-vis"
+    line_break
+    html tag="svg" viewBox="0 0 1400 1802"
+      line_break
+      html tag="g" class="canvas"
+        line_break
+        html tag="Grid" x="$time" y="$value" self_closing=true
+        line_break
+        html tag="g" class="graph"
+          line_break
+          html tag="path" d="$ease_path" stroke="#333" stroke-width="2" fill="none" self_closing=true
+          line_break
+          line_break
+          html tag="path" d="M0,23.647C0,22.41 27.014,0.407 28.496,0.025C29.978,-0.357 69.188,3.744 70.104,4.744C71.02,5.745 71.02,41.499 70.104,42.5C69.188,43.501 29.978,47.601 28.496,47.219C27.014,46.837 0,24.884 0,23.647Z" fill="#ff3e00" style="transform: translate(1060px, {($value - 24)}px)" self_closing=true
+          line_break
+          line_break
+          html tag="circle" cx="{$time}" cy="{$value}" r="15" fill="#ff3e00" self_closing=true
+          line_break
+        line_break
+      line_break
+    line_break
+    line_break
+    html tag="Controls" eases="eases" types="types" playing="playing" width="width" bind:duration=true bind:current_ease=true bind:current_type=true on:play="runAnimations" self_closing=true
+    line_break

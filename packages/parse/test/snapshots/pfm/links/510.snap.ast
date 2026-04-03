@@ -1,0 +1,4 @@
+root
+  paragraph
+    text "](   /uri\n  \"title\"  )"
+  line_break

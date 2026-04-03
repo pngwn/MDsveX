@@ -22,7 +22,6 @@ describe('fenced code blocks', () => {
 		const { nodes } = parse_markdown_svelte(input);
 
 		const node = nodes.get_node(1);
-		console.log(node);
 
 		expect(nodes.size).toBe(2);
 
@@ -288,7 +287,6 @@ describe('fenced code blocks', () => {
 		const { nodes } = parse_markdown_svelte(input);
 
 		expect(nodes.size).toBe(2);
-		console.log(nodes.get_node(1));
 		expect(input.slice(nodes.get_node(1).start, nodes.get_node(1).end)).toBe(
 			input
 		);
@@ -304,7 +302,6 @@ describe('fenced code blocks', () => {
 		const { nodes } = parse_markdown_svelte(input);
 
 		expect(nodes.size).toBe(2);
-		console.log(nodes.get_node(1));
 		expect(input.slice(nodes.get_node(1).start, nodes.get_node(1).end)).toBe(
 			input
 		);
@@ -328,7 +325,6 @@ end`);
 		const { nodes } = parse_markdown_svelte(input);
 
 		expect(nodes.size).toBe(2);
-		console.log(nodes.get_node(1));
 		expect(input.slice(nodes.get_node(1).start, nodes.get_node(1).end)).toBe(
 			'````;\n````'
 		);
@@ -350,7 +346,6 @@ end`);
 		const { nodes } = parse_markdown_svelte(input);
 
 		expect(nodes.size).toBe(2);
-		console.log(nodes.get_node(1));
 		expect(input.slice(nodes.get_node(1).start, nodes.get_node(1).end)).toBe(
 			input
 		);

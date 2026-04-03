@@ -1,0 +1,40 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let count = 1;"
+    line_break
+    line_break
+    paragraph
+      text "// the "
+      code_span "$:"
+      text " means 're-run whenever these values change'\n$: doubled = count "
+      text "* 2;\n$: quadrupled = doubled "
+      text "* 2;"
+    line_break
+    line_break
+    paragraph
+      text "function handleClick() "
+      mustache "\n	count += 1;\n"
+  line_break
+  line_break
+  html tag="button" on:click="handleClick"
+    line_break
+    paragraph
+      text "Count: "
+      mustache "count"
+  line_break
+  line_break
+  html tag="p"
+    paragraph
+      mustache "count"
+      text " "
+      text "* 2 = "
+      mustache "doubled"
+  line_break
+  html tag="p"
+    paragraph
+      mustache "doubled"
+      text " "
+      text "* 2 = "
+      mustache "quadrupled"

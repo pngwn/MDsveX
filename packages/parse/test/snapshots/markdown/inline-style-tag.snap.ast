@@ -1,0 +1,11 @@
+root
+  html tag="style"
+    line_break
+    paragraph
+      text "p "
+      mustache " line-height: 20px; "
+  line_break
+  line_break
+  paragraph
+    text "An exciting sentence."
+    line_break

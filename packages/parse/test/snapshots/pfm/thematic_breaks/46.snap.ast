@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "--\n"
+    strong_emphasis
+    emphasis
+  line_break

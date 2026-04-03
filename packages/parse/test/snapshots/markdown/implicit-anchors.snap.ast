@@ -1,0 +1,14 @@
+root
+  paragraph
+    text "Search the web at "
+    text "]"
+    text "]"
+  line_break
+  line_break
+  paragraph
+    text "Search the web at "
+    text "] or "
+    text "]."
+  line_break
+  line_break
+  line_break

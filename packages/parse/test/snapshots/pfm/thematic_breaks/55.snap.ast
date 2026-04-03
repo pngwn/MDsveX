@@ -1,0 +1,15 @@
+root
+  paragraph
+    text "_ "
+    text "_ "
+    text "_ "
+    text "_ a"
+  line_break
+  line_break
+  paragraph
+    text "a------"
+  line_break
+  line_break
+  paragraph
+    text "---a---"
+  line_break

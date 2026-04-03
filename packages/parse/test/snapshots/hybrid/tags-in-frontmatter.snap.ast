@@ -1,0 +1,12 @@
+root
+  thematic_break
+  paragraph
+    text "title: An article about "
+    html tag="script"
+      text ", "
+      html tag="style"
+        text ", "
+    text " and "
+    text "</style>"
+  line_break
+  thematic_break

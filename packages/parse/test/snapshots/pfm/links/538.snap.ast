@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "foo"
+    link
+      text "https://example.com/?search=][ref]"
+  line_break
+  line_break

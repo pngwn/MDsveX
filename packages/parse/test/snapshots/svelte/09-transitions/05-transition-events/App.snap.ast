@@ -1,0 +1,33 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import "
+      mustache " fly "
+      text " from \"svelte/transition\";"
+    line_break
+    line_break
+    paragraph
+      text "let visible = true;\nlet status = \"waiting...\";\n"
+  line_break
+  line_break
+  html tag="p"
+    paragraph
+      text "status: "
+      mustache "status"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="checkbox" bind:checked="visible"
+      line_break
+      paragraph
+        text "visible\n"
+  line_break
+  line_break
+  paragraph
+    mustache "#if visible"
+    text "	"
+    html tag="p" transition:fly="{{ y: 200, duration: 2000 }}" on:introstart="{() => status = 'intro started'}" on:outrostart="{() => status = 'outro started'}" on:introend="{() => status = 'intro ended'}" on:outroend="{() => status = 'outro ended'}"
+      text "		Flies in and out\n	"
+    mustache "/if"

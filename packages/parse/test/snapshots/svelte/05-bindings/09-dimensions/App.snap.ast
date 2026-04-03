@@ -1,0 +1,36 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let w;\nlet h;\nlet size = 42;\nlet text = \"edit me\";\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "input "
+      mustache " display: block; "
+      text "	div "
+      mustache " display: inline-block; "
+  line_break
+  line_break
+  text tag="input" type="range" bind:value="size"
+  line_break
+  text tag="input" bind:value="text"
+  line_break
+  line_break
+  html tag="p"
+    paragraph
+      text "size: "
+      mustache "w"
+      text "px x "
+      mustache "h"
+      text "px"
+  line_break
+  line_break
+  html tag="div" bind:clientWidth="w" bind:clientHeight="h"
+    line_break
+    html tag="span" style="font-size: {size}px"
+      paragraph
+        mustache "text"
+    line_break

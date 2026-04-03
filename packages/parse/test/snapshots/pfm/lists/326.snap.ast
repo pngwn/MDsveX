@@ -1,0 +1,19 @@
+root
+  list ordered=false start=0 tight=false
+    list_item
+      paragraph
+        text "a"
+      list ordered=false start=0 tight=true
+        list_item
+          text "b"
+        list_item
+          text "c"
+    list_item
+      paragraph
+        text "d"
+      list ordered=false start=0 tight=true
+        list_item
+          text "e"
+        list_item
+          text "f"
+  line_break

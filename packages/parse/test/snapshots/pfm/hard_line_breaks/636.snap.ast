@@ -1,0 +1,4 @@
+root
+  paragraph
+    text "foo  \n     bar"
+  line_break

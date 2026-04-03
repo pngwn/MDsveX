@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "\\[foo"
+    text "]"
+  line_break
+  line_break

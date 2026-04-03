@@ -1,0 +1,5 @@
+root
+  paragraph
+    link
+      text "made-up-scheme://foo,bar"
+  line_break

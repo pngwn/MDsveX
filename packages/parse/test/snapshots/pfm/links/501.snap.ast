@@ -1,0 +1,15 @@
+root
+  paragraph
+    link href="#fragment"
+      text "link"
+  line_break
+  line_break
+  paragraph
+    link href="https://example.com#fragment"
+      text "link"
+  line_break
+  line_break
+  paragraph
+    link href="https://example.com?foo=3#frag"
+      text "link"
+  line_break

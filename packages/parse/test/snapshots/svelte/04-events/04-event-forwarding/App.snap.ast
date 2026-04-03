@@ -1,0 +1,13 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import Outer from \"./Outer.svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "function handleMessage(event) "
+      mustache "\n	alert(event.detail.text);\n"
+  line_break
+  line_break
+  html tag="Outer" on:message="handleMessage" self_closing=true

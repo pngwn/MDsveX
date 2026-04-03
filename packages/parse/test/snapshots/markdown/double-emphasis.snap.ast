@@ -1,0 +1,32 @@
+root
+  paragraph
+    text "a "
+    emphasis
+      text "*strong and em"
+      text "*"
+    text " thingy"
+  line_break
+  line_break
+  paragraph
+    text "bar"
+    text "_"
+    text "*bazinga"
+    text "*"
+    text "_bar"
+  line_break
+  line_break
+  paragraph
+    text "a "
+    emphasis
+      text "*strong and em"
+      text "*"
+    text " thingy"
+  line_break
+  line_break
+  paragraph
+    text "bar"
+    text "_"
+    text "*bazinga"
+    text "*"
+    text "_bar"
+  line_break

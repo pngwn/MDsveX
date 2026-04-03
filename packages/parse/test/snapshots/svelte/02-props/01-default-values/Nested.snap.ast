@@ -1,0 +1,11 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "export let answer = \"a mystery\";\n"
+  line_break
+  line_break
+  html tag="p"
+    paragraph
+      text "The answer is "
+      mustache "answer"

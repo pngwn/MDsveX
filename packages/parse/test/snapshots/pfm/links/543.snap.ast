@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "]\n"
+    text "]"
+  line_break
+  line_break

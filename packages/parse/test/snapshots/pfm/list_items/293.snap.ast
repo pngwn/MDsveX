@@ -1,0 +1,7 @@
+root
+  block_quote
+    paragraph
+      text "1. > Blockquote"
+      soft_break
+      text "continued here."
+  line_break

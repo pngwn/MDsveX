@@ -1,0 +1,6 @@
+root
+  list ordered=false start=0 tight=false
+    list_item
+      paragraph
+        text "foo"
+  line_break

@@ -1,0 +1,51 @@
+root
+  html_comment " https://eugenkiss.github.io/7guis/tasks#timer "
+  line_break
+  line_break
+  html tag="script"
+    line_break
+    paragraph
+      text "import "
+      mustache " onDestroy "
+      text " from \"svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "let elapsed = 0;\nlet duration = 5000;"
+    line_break
+    line_break
+    paragraph
+      text "let last"
+      text "_time = window.performance.now();\nlet frame;"
+    line_break
+    line_break
+    paragraph
+      text "(function update() "
+      mustache "\n	frame = requestAnimationFrame(update);\n\n	const time = window.performance.now();\n	elapsed += Math.min(time - last_time, duration - elapsed);\n\n	last_time = time;\n"
+      text ")();"
+    line_break
+    line_break
+    paragraph
+      text "onDestroy(() => "
+      mustache "\n	cancelAnimationFrame(frame);\n"
+      text ");\n"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    paragraph
+      text "elapsed time:\n	"
+      html tag="progress" value="{elapsed / duration}"
+  line_break
+  line_break
+  html tag="div"
+    paragraph
+      mustache "(elapsed / 1000).toFixed(1)"
+      text "s"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    paragraph
+      text "duration:\n	"
+      html tag="input" type="range" bind:value="duration" min="1" max="20000"

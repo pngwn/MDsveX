@@ -1,0 +1,10 @@
+root
+  list ordered=true start=1 tight=false
+    list_item
+      paragraph
+        text "indented code"
+      paragraph
+        text "paragraph"
+      paragraph
+        text "more code"
+  line_break

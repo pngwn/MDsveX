@@ -1,0 +1,35 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "export let status;\n	export let error;\n	const dev = process.env.NODE"
+      text "_ENV === 'development';\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "h1, p "
+      mustache "\n		margin: 0 auto;\n	"
+      line_break
+      line_break
+      paragraph
+        text "h1 "
+        mustache "\n		font-size: 2.8em;\n		font-weight: 700;\n		margin: 0 0 0.5em 0;\n	"
+      line_break
+      line_break
+      paragraph
+        text "p "
+        mustache "\n		margin: 1em auto;\n	"
+      line_break
+      line_break
+      paragraph
+        text "@media (min-width: 480px) "
+        mustache "\n		h1 {\n			font-size: 4em;\n		}\n	"
+  line_break
+  line_break
+  heading depth=1 "{status}"
+  line_break
+  line_break
+  paragraph
+    mustache "error.message"

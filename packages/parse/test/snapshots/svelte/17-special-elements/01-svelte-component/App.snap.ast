@@ -1,0 +1,33 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import RedThing from \"./RedThing.svelte\";\nimport GreenThing from \"./GreenThing.svelte\";\nimport BlueThing from \"./BlueThing.svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "const options = "
+      text "	"
+      mustache " color: \"red\", component: RedThing "
+      text ",\n	"
+      mustache " color: \"green\", component: GreenThing "
+      text ",\n	"
+      mustache " color: \"blue\", component: BlueThing "
+      text ",\n"
+      text "];"
+    line_break
+    line_break
+    paragraph
+      text "let selected = options"
+      text "];\n"
+  line_break
+  line_break
+  html tag="select" bind:value="selected"
+    line_break
+    paragraph
+      mustache "#each options as option"
+      text "		"
+      html tag="option" value="option"
+        mustache "option.color"
+      text "	"
+      mustache "/each"

@@ -1,0 +1,35 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "export let comment;\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "article "
+      mustache "\n		border-top: 1px solid #eee;\n		margin: 1em 0 0 0;\n		padding: 1em 0 0 0;\n		font-size: 14px;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".meta "
+        mustache "\n		color: #999;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".replies "
+        mustache "\n		padding: 0 0 0 1em;\n	"
+  line_break
+  line_break
+  html tag="article"
+    line_break
+    html tag="p" class="meta"
+      paragraph
+        mustache "comment.user"
+        text " "
+        mustache "comment.time_ago"
+    line_break
+    line_break
+    paragraph
+      svelte_tag tag="html" "comment.content"

@@ -1,0 +1,12 @@
+root
+  paragraph
+    image src="./image/cat1.png"
+      text "image link"
+    text "(some text between brackets)"
+  line_break
+  line_break
+  paragraph
+    image src="./image/cat(1).png"
+      text "image link"
+    text "(some text between brackets)"
+  line_break

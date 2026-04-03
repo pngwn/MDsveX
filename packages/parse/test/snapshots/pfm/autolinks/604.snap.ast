@@ -1,0 +1,5 @@
+root
+  paragraph
+    link href="mailto:foo@bar.example.com"
+      text "foo@bar.example.com"
+  line_break

@@ -1,0 +1,12 @@
+root
+  paragraph
+    emphasis
+      text "_"
+      text "_"
+      text "_"
+      text "_foo"
+      text "_"
+      text "_"
+      text "_"
+      text "_"
+  line_break

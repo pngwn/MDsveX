@@ -1,0 +1,19 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let a = 1;\nlet b = 2;\n"
+  line_break
+  line_break
+  text tag="input" type="number" bind:value="a"
+  line_break
+  text tag="input" type="number" bind:value="b"
+  line_break
+  line_break
+  html tag="p"
+    paragraph
+      mustache "a"
+      text " + "
+      mustache "b"
+      text " = "
+      mustache "a + b"

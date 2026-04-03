@@ -1,0 +1,14 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let name = \"\";\n"
+  line_break
+  line_break
+  text tag="input" bind:value="name" placeholder="enter your name"
+  line_break
+  html tag="p"
+    paragraph
+      text "Hello "
+      mustache "name || 'stranger'"
+      text "!"

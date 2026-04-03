@@ -1,0 +1,80 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import "
+      mustache " onMount "
+      text " from \"svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "let time = new Date();"
+    line_break
+    line_break
+    paragraph
+      text "// these automatically update when "
+      code_span "time"
+      text "// changes, because of the "
+      code_span "$:"
+      text " prefix\n$: hours = time.getHours();\n$: minutes = time.getMinutes();\n$: seconds = time.getSeconds();"
+    line_break
+    line_break
+    paragraph
+      text "onMount(() => "
+      mustache "\n	const interval = setInterval(() => {\n		time = new Date();\n	}, 1000);\n\n	return () => {\n		clearInterval(interval);\n	};\n"
+      text ");\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "svg "
+      mustache "\n		width: 100%;\n		height: 100%;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".clock-face "
+        mustache "\n		stroke: #333;\n		fill: white;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".minor "
+        mustache "\n		stroke: #999;\n		stroke-width: 0.5;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".major "
+        mustache "\n		stroke: #333;\n		stroke-width: 1;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".hour "
+        mustache "\n		stroke: #333;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".minute "
+        mustache "\n		stroke: #666;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".second, .second-counterweight "
+        mustache "\n		stroke: rgb(180,0,0);\n	"
+      line_break
+      line_break
+      paragraph
+        text ".second-counterweight "
+        mustache "\n		stroke-width: 3;\n	"
+  line_break
+  line_break
+  html tag="svg" viewBox="-50 -50 100 100"
+    line_break
+    html tag="circle" class="clock-face" r="48" self_closing=true
+    line_break
+    line_break
+    html_comment " markers "
+    line_break
+    paragraph
+      mustache "#each [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55] as minute"
+      text "		"
+      html tag="line" class="major" y1="35" y2="45" transform="rotate({30 * minute})" self_closing=true

@@ -1,0 +1,13 @@
+root
+  heading depth=1 "foo"
+  line_break
+  heading depth=2 "foo"
+  line_break
+  heading depth=3 "foo"
+  line_break
+  heading depth=4 "foo"
+  line_break
+  heading depth=5 "foo"
+  line_break
+  heading depth=6 "foo"
+  line_break

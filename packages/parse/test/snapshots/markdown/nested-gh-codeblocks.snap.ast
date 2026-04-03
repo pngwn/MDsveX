@@ -1,0 +1,6 @@
+root
+  code_fence "1. some code idented 4 spaces\n"
+  paragraph
+    text "var foobar = 'foo';"
+  line_break
+  code_fence "\n2. another line"

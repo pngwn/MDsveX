@@ -1,0 +1,13 @@
+root
+  block_quote
+    heading depth=2 "This is a header."
+    line_break
+    paragraph
+      text "1.   This is the first list item."
+      soft_break
+      text "2.   This is the second list item."
+    line_break
+    paragraph
+      text "Here's some example code:"
+    line_break
+    code_fence "> return shell_exec(\"echo $input | $markdown_script\");\n> ```\n"

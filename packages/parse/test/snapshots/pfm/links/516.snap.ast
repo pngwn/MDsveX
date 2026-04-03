@@ -1,0 +1,13 @@
+root
+  paragraph
+    text "link "
+    text "*"
+    text "foo "
+    strong_emphasis
+      strong_emphasis
+        text "bar"
+    text " "
+    code_span "#"
+    text "*"
+    text "](/uri)"
+  line_break

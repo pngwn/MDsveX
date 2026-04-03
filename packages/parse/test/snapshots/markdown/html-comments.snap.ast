@@ -1,0 +1,19 @@
+root
+  html_comment " a comment "
+  line_break
+  html_comment " a comment with *bogus* __markdown__ inside "
+  line_break
+  html tag="p"
+    paragraph
+      text "words "
+      html_comment " a comment "
+      text " words"
+  line_break
+  html_comment " comment "
+  paragraph
+    text "words\n   "
+    html_comment " comment "
+    text "    "
+    html_comment " comment "
+    html_comment "--------------------------------------------------------------------------------------------------------------------------------------------------\n<!------------------------------------------------------------------"
+    line_break

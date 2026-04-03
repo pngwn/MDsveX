@@ -1,0 +1,12 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let name = \"world\";\n"
+  line_break
+  line_break
+  html tag="h1"
+    paragraph
+      text "Hello "
+      mustache "name"
+      text "!"

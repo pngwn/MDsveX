@@ -1,0 +1,17 @@
+root
+  html tag="style"
+    line_break
+    paragraph
+      text ".box "
+      mustache "\n		width: 300px;\n		border: 1px solid #aaa;\n		border-radius: 2px;\n		box-shadow: 2px 2px 8px rgba(0,0,0,0.1);\n		padding: 1em;\n		margin: 0 0 1em 0;\n	"
+  line_break
+  line_break
+  html tag="div" class="box"
+    line_break
+    html tag="slot"
+      line_break
+      html tag="em"
+        paragraph
+          text "no content was provided"
+      line_break
+    line_break

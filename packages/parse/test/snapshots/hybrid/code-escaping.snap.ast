@@ -1,0 +1,12 @@
+root
+  heading depth=1 "hello"
+  line_break
+  line_break
+  code_fence info="js" "function some_func(prop1, prop2) {\n  return { prop1, prop2 };\n}"
+  line_break
+  line_break
+  paragraph
+    text "Hello I am a parapgraph with some "
+    code_span "{ code }"
+    text "."
+  line_break

@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "5"
+    text "*6"
+    text "*78"
+  line_break

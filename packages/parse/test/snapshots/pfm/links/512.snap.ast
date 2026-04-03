@@ -1,0 +1,8 @@
+root
+  paragraph
+    text "link "
+    text "foo "
+    text "]"
+    text "]"
+    text "](/uri)"
+  line_break

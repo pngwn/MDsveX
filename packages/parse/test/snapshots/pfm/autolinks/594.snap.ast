@@ -1,0 +1,5 @@
+root
+  paragraph
+    link
+      text "http://foo.bar.baz"
+  line_break

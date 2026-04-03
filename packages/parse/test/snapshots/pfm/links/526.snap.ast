@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "foo"
+    link
+      text "https://example.com/?search=](uri)"
+  line_break

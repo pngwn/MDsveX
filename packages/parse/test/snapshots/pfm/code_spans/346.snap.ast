@@ -1,0 +1,6 @@
+root
+  paragraph
+    link
+      text "https://foo.bar.`baz"
+    text "`"
+  line_break

@@ -1,0 +1,5 @@
+root
+  paragraph
+    strong_emphasis
+      text " a "
+  line_break

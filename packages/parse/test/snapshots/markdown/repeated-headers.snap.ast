@@ -1,0 +1,10 @@
+root
+  heading depth=1 "Same Title"
+  line_break
+  line_break
+  paragraph
+    text "some text"
+  line_break
+  line_break
+  heading depth=1 "Same Title"
+  line_break

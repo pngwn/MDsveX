@@ -1,0 +1,63 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import Comment from \"./Comment.svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "export let item;\nexport let returnTo;\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "article "
+      mustache "\n		margin: 0 0 1em 0;\n	"
+      line_break
+      line_break
+      paragraph
+        text "a "
+        mustache "\n		display: block;\n		margin: 0 0 1em 0;\n	"
+      line_break
+      line_break
+      paragraph
+        text "h1 "
+        mustache "\n		font-size: 1.4em;\n		margin: 0;\n	"
+  line_break
+  line_break
+  html tag="a" href="returnTo"
+    paragraph
+      text "&laquo; back"
+  line_break
+  line_break
+  html tag="article"
+    line_break
+    html tag="a" href="{item.url}"
+      line_break
+      html tag="h1"
+        paragraph
+          mustache "item.title"
+      line_break
+      html tag="small"
+        paragraph
+          mustache "item.domain"
+      line_break
+    line_break
+    line_break
+    html tag="p" class="meta"
+      paragraph
+        text "submitted by "
+        mustache "item.user"
+        text " "
+        mustache "item.time_ago"
+  line_break
+  line_break
+  html tag="div" class="comments"
+    line_break
+    paragraph
+      mustache "#each item.comments as comment"
+      text "		"
+      html tag="Comment" comment="comment" self_closing=true
+      text "	"
+      mustache "/each"

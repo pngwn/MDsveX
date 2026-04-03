@@ -1,0 +1,5 @@
+root
+  paragraph
+    link
+      text "a+b+c:d"
+  line_break

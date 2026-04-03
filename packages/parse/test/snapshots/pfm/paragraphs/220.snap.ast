@@ -1,0 +1,8 @@
+root
+  paragraph
+    text "aaa\nbbb"
+  line_break
+  line_break
+  paragraph
+    text "ccc\nddd"
+  line_break

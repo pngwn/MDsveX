@@ -1,0 +1,4 @@
+root
+  paragraph
+    text "The number of windows in my house is\n14.  The number of doors is 6."
+  line_break

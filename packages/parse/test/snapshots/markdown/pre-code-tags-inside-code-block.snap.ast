@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "code inception"
+  line_break
+  line_break
+  code_fence "<pre><code>\n<div>some html code inside code html tags inside a fenced code block</div>\n</code></pre>"

@@ -1,0 +1,7 @@
+root
+  heading depth=1 "[Foo]"
+  line_break
+  block_quote
+    paragraph
+      text "bar"
+  line_break

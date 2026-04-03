@@ -1,0 +1,33 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let hereKitty = false;"
+    line_break
+    line_break
+    paragraph
+      text "const handleMouseenter = () => (hereKitty = true);\nconst handleMouseleave = () => (hereKitty = false);\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "img "
+      mustache "\n		position: absolute;\n		left: 0;\n		bottom: -60px;\n		transform: translate(-80%, 0) rotate(-30deg);\n		transform-origin: 100% 100%;\n		transition: transform 0.4s;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".curious "
+        mustache "\n		transform: translate(-15%, 0) rotate(0deg);\n	"
+      line_break
+      line_break
+      paragraph
+        text ":global(body) "
+        mustache "\n		overflow: hidden;\n	"
+  line_break
+  line_break
+  html tag="svelte:body" on:mouseenter="handleMouseenter" on:mouseleave="handleMouseleave" self_closing=true
+  line_break
+  line_break
+  html tag="img" class:curious="hereKitty" alt="Kitten wants to know what's going on" src="tutorial/kitten.png" self_closing=true
+  line_break

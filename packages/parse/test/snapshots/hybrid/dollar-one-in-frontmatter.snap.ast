@@ -1,0 +1,8 @@
+root
+  thematic_break
+  paragraph
+    text "price: '$10'"
+  line_break
+  thematic_break
+  html tag="script" context="module"
+    line_break

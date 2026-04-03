@@ -1,0 +1,10 @@
+root
+  block_quote
+    paragraph
+      text "aaa"
+  line_break
+  thematic_break
+  block_quote
+    paragraph
+      text "bbb"
+  line_break

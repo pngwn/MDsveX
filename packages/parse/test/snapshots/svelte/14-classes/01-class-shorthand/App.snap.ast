@@ -1,0 +1,28 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let big = false;\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text ".big "
+      mustache "\n		font-size: 4em;\n	"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="checkbox" bind:checked="big"
+      line_break
+      paragraph
+        text "big\n"
+  line_break
+  line_break
+  html tag="div" class:big=true
+    line_break
+    paragraph
+      text "some "
+      mustache "big ? 'big' : 'small'"
+      text " text\n"

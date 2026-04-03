@@ -1,0 +1,7 @@
+root
+  heading depth=2
+  line_break
+  heading depth=1
+  line_break
+  heading depth=3 "###"
+  line_break

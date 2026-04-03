@@ -1,0 +1,47 @@
+root
+  html tag="code"
+    paragraph
+      text "some "
+      strong_emphasis
+        strong_emphasis
+          text "code"
+      text " yeah"
+  line_break
+  line_break
+  paragraph
+    text "some "
+    html tag="code"
+      text "inline "
+      strong_emphasis
+        strong_emphasis
+          text "code"
+      text " block"
+    line_break
+    line_break
+    html tag="code"
+      paragraph
+        text "some inline "
+        strong_emphasis
+          strong_emphasis
+            text "code"
+    paragraph
+      text "block"
+      line_break
+      line_break
+      paragraph
+        text "yo dawg "
+        html tag="code" start="true"
+          text "some "
+          html tag="code" start="false"
+            text "code"
+          text " inception"
+      line_break
+      line_break
+      html tag="div"
+        paragraph
+          text "some "
+          strong_emphasis
+            strong_emphasis
+              text "div"
+          text " yeah"
+      line_break

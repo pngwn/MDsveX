@@ -1,0 +1,14 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let count = 0;\n"
+  line_break
+  line_break
+  html_comment " https://github.com/eugenkiss/7guis/wiki#counter "
+  line_break
+  text tag="input" type="number" bind:value="count"
+  line_break
+  html tag="button" on:click="{() => count += 1}"
+    paragraph
+      text "count"

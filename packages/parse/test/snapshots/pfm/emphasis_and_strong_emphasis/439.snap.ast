@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "foo "
+    strong_emphasis
+    strong_emphasis
+    text "*"
+  line_break

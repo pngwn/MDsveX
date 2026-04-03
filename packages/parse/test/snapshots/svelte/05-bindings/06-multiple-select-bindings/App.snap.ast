@@ -1,0 +1,86 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let scoops = 1;\nlet flavours = "
+      text "];"
+    line_break
+    line_break
+    paragraph
+      text "let menu = "
+      text "];"
+    line_break
+    line_break
+    paragraph
+      text "function join(flavours) "
+      mustache "\n	if (flavours.length === 1) return flavours[0];\n	return `${flavours.slice(0, -1).join(\", \")} and ${flavours[flavours.length - 1]}`;\n"
+  line_break
+  line_break
+  html tag="h2"
+    paragraph
+      text "Size"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="radio" bind:group="scoops" value="1"
+      line_break
+      paragraph
+        text "One scoop\n"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="radio" bind:group="scoops" value="2"
+      line_break
+      paragraph
+        text "Two scoops\n"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="radio" bind:group="scoops" value="3"
+      line_break
+      paragraph
+        text "Three scoops\n"
+  line_break
+  line_break
+  html tag="h2"
+    paragraph
+      text "Flavours"
+  line_break
+  line_break
+  html tag="select" multiple=true bind:value="flavours"
+    line_break
+    paragraph
+      mustache "#each menu as flavour"
+      text "		"
+      html tag="option" value="flavour"
+        text "			"
+        mustache "flavour"
+        text "		"
+      text "	"
+      mustache "/each"
+  line_break
+  line_break
+  paragraph
+    mustache "#if flavours.length === 0"
+    text "	"
+    html tag="p"
+      text "Please select at least one flavour"
+    mustache ":else if flavours.length > scoops"
+    text "	"
+    html tag="p"
+      text "Can't order more flavours than scoops"
+      text "!"
+    mustache ":else"
+    text "	"
+    html tag="p"
+      text "		You ordered "
+      mustache "scoops"
+      text " "
+      mustache "scoops === 1 ? 'scoop' : 'scoops'"
+      text "		of "
+      mustache "join(flavours)"
+      text "	"
+    mustache "/if"

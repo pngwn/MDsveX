@@ -1,0 +1,13 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import FancyButton from \"./FancyButton.svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "function handleClick() "
+      mustache "\n	alert(\"clicked\");\n"
+  line_break
+  line_break
+  html tag="FancyButton" on:click="handleClick" self_closing=true

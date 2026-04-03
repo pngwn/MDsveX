@@ -1,0 +1,21 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import ContactCard from \"./ContactCard.svelte\";\n"
+  line_break
+  line_break
+  html tag="ContactCard"
+    line_break
+    html tag="span" slot="name"
+      line_break
+      paragraph
+        text "P. Sherman\n	"
+    line_break
+    line_break
+    html tag="span" slot="address"
+      line_break
+      paragraph
+        text "42 Wallaby Way"
+        html tag="br"
+          text "		Sydney\n	"

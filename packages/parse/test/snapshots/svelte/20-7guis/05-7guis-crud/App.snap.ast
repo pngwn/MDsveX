@@ -1,0 +1,95 @@
+root
+  html_comment " https://eugenkiss.github.io/7guis/tasks#crud "
+  line_break
+  line_break
+  html tag="script"
+    line_break
+    paragraph
+      text "let people = "
+      text "	"
+      mustache "\n		first: \"Hans\",\n		last: \"Emil\",\n	"
+      text ",\n	"
+      mustache "\n		first: \"Max\",\n		last: \"Mustermann\",\n	"
+      text ",\n	"
+      mustache "\n		first: \"Roman\",\n		last: \"Tisch\",\n	"
+      text ",\n"
+      text "];"
+    line_break
+    line_break
+    paragraph
+      text "let prefix = \"\";\nlet first = \"\";\nlet last = \"\";\nlet i = 0;"
+    line_break
+    line_break
+    paragraph
+      text "$: filteredPeople = prefix\n	? people.filter((person) => "
+      mustache "\n			const name = `${person.last}, ${person.first}`;\n			return name.toLowerCase().startsWith(prefix.toLowerCase());\n		"
+      text ")\n	: people;"
+    line_break
+    line_break
+    paragraph
+      text "$: selected = filteredPeople"
+      text "];"
+    line_break
+    line_break
+    paragraph
+      text "$: reset"
+      text "_inputs(selected);"
+    line_break
+    line_break
+    paragraph
+      text "function create() "
+      mustache "\n	people = people.concat({ first, last });\n	i = people.length - 1;\n	first = last = \"\";\n"
+    line_break
+    line_break
+    paragraph
+      text "function update() "
+      mustache "\n	people[i] = { first, last };\n"
+    line_break
+    line_break
+    paragraph
+      text "function remove() "
+      mustache "\n	// Remove selected person from the source array (people), not the filtered array\n	const index = people.indexOf(selected);\n	people = [...people.slice(0, index), ...people.slice(index + 1)];\n\n	first = last = \"\";\n	i = Math.min(i, filteredPeople.length - 2);\n"
+    line_break
+    line_break
+    paragraph
+      text "function reset"
+      text "_inputs(person) "
+      mustache "\n	first = person ? person.first : \"\";\n	last = person ? person.last : \"\";\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "* "
+      mustache "\n		font-family: inherit;\n		font-size: inherit;\n	"
+      line_break
+      line_break
+      paragraph
+        text "input "
+        mustache "\n		display: block;\n		margin: 0 0 0.5em 0;\n	"
+      line_break
+      line_break
+      paragraph
+        text "select "
+        mustache "\n		float: left;\n		margin: 0 1em 1em 0;\n		width: 14em;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".buttons "
+        mustache "\n		clear: both;\n	"
+  line_break
+  line_break
+  text tag="input" placeholder="filter prefix" bind:value="prefix"
+  line_break
+  line_break
+  html tag="select" bind:value="i" size="5"
+    line_break
+    paragraph
+      mustache "#each filteredPeople as person, i"
+      text "		"
+      html tag="option" value="i"
+        mustache "person.last"
+        text ", "
+        mustache "person.first"
+      text "	"
+      mustache "/each"

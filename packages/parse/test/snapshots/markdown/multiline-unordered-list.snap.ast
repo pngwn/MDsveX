@@ -1,0 +1,7 @@
+root
+  list ordered=false start=0 tight=true
+    list_item
+      text "This line spans\n more than one line and is lazy"
+    list_item
+      text "Similar to this line"
+  line_break

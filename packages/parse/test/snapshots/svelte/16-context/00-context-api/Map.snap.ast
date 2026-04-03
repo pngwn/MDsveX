@@ -1,0 +1,46 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import "
+      mustache " onMount, setContext "
+      text " from \"svelte\";\nimport "
+      mustache " mapbox, key "
+      text " from \"./mapbox.js\";"
+    line_break
+    line_break
+    paragraph
+      text "setContext(key, "
+      mustache "\n	getMap: () => map,\n"
+      text ");"
+    line_break
+    line_break
+    paragraph
+      text "export let lat;\nexport let lon;\nexport let zoom;"
+    line_break
+    line_break
+    paragraph
+      text "let container;\nlet map;"
+    line_break
+    line_break
+    paragraph
+      text "onMount(() => "
+      mustache "\n	const link = document.createElement(\"link\");\n	link.rel = \"stylesheet\";\n	link.href = \"https://unpkg.com/mapbox-gl/dist/mapbox-gl.css\";\n\n	link.onload = () => {\n		map = new mapbox.Map({\n			container,\n			style: \"mapbox://styles/mapbox/streets-v9\",\n			center: [lon, lat],\n			zoom,\n		});\n	};\n\n	document.head.appendChild(link);\n\n	return () => {\n		map.remove();\n		link.parentNode.removeChild(link);\n	};\n"
+      text ");\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "div "
+      mustache "\n		width: 100%;\n		height: 100%;\n	"
+  line_break
+  line_break
+  html tag="div" bind:this="container"
+    line_break
+    paragraph
+      mustache "#if map"
+      text "		"
+      html tag="slot"
+      text "	"
+      mustache "/if"

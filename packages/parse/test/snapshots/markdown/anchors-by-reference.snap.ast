@@ -1,0 +1,14 @@
+root
+  line_break
+  paragraph
+    text "This is "
+    text "]"
+    text "] reference-style link.\nThis is "
+    text "] "
+    text "] reference-style link.\nThis is "
+    text "]"
+    text "] reference-style link.\nThis is "
+    text "]"
+    text "] reference-style link."
+  line_break
+  line_break

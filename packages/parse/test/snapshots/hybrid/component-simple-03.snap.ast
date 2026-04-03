@@ -1,0 +1,15 @@
+root
+  html tag="Counter" prop="prop" self_closing=true
+  line_break
+  text tag="Counter" prop="prop/"
+  line_break
+  html tag="Counter" prop="{prop}" self_closing=true
+  line_break
+  html tag="Counter" prop="prop" self_closing=true
+  line_break
+  html tag="Counter" prop="{[1, 2, 3, 4, 5, 6, 7]]}" self_closing=true
+  line_break
+  html tag="Counter" prop="{[{a: 1, b: { c: 2}}, {a: 1, b: { c: 2}}, {a: 1, b: { c: 2}}, {a: 1, b: { c: 2}}, {a: 1, b: { c: 2}}]}" self_closing=true
+  line_break
+  html tag="Counter" prop="() => val >= 27 ? runFunc() : runFunc2() " self_closing=true
+  line_break

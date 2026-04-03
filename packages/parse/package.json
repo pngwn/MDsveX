@@ -8,7 +8,7 @@
 	"type": "module",
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",
-		"test:run": "vitest run --silent",
+		"test:run": "vitest run",
 		"tsc": "tsc --noEmit",
 		"build": "vite build --config vite.config.build.ts"
 	},

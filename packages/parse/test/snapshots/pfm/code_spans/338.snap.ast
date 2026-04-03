@@ -1,0 +1,6 @@
+root
+  paragraph
+    code_span "foo\\"
+    text "bar"
+    text "`"
+  line_break

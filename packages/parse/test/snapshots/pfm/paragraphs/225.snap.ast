@@ -1,0 +1,4 @@
+root
+  paragraph
+    text "aaa\nbbb"
+  line_break

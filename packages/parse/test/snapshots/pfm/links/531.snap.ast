@@ -1,0 +1,8 @@
+root
+  paragraph
+    image src="moon.jpg"
+      text "moon"
+    text "]"
+    text "]"
+  line_break
+  line_break

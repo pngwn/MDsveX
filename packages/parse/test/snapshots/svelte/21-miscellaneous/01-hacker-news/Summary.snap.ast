@@ -1,0 +1,56 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "export let item;\nexport let i;\nexport let offset;"
+    line_break
+    line_break
+    paragraph
+      text "function comment"
+      text "_text() "
+      mustache "\n	const c = item.comments_count;\n	return `${c} ${c === 1 ? \"comment\" : \"comments\"}`;\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "article "
+      mustache "\n		position: relative;\n		padding: 0 0 0 2em;\n		border-bottom: 1px solid #eee;\n	"
+      line_break
+      line_break
+      paragraph
+        text "h2 "
+        mustache "\n		font-size: 1em;\n		margin: 0.5em 0;\n	"
+      line_break
+      line_break
+      paragraph
+        text "span "
+        mustache "\n		position: absolute;\n		left: 0;\n	"
+      line_break
+      line_break
+      paragraph
+        text "a "
+        mustache "\n		color: #333;\n	"
+  line_break
+  line_break
+  html tag="article"
+    line_break
+    html tag="span"
+      paragraph
+        mustache "i + offset + 1"
+    line_break
+    html tag="h2"
+      html tag="a" target="_blank" href="item.url"
+        paragraph
+          mustache "item.title"
+    line_break
+    html tag="p" class="meta"
+      html tag="a" href="#/item/{item.id}"
+        paragraph
+          mustache "comment_text()"
+      paragraph
+        text "by "
+        mustache "item.user"
+        text " "
+        mustache "item.time_ago"
+    line_break

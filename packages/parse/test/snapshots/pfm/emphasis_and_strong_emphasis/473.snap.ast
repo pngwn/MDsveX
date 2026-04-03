@@ -1,0 +1,7 @@
+root
+  paragraph
+    text
+    link href="/url"
+      text "bar"
+      text "*"
+  line_break

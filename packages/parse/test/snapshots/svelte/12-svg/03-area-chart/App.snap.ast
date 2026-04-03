@@ -1,0 +1,96 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import "
+      mustache " scaleLinear "
+      text " from \"d3-scale\";\nimport points from \"./data.js\";"
+    line_break
+    line_break
+    paragraph
+      text "const yTicks = "
+      text "];\nconst xTicks = "
+      text "];\nconst padding = "
+      mustache " top: 20, right: 15, bottom: 20, left: 25 "
+      text ";"
+    line_break
+    line_break
+    paragraph
+      text "let width = 500;\nlet height = 200;"
+    line_break
+    line_break
+    paragraph
+      text "$: xScale = scaleLinear()\n	.domain("
+      text "])\n	.range("
+      text "]);"
+    line_break
+    line_break
+    paragraph
+      text "$: yScale = scaleLinear()\n	.domain("
+      text "])\n	.range("
+      text "]);"
+    line_break
+    line_break
+    paragraph
+      text "$: minX = points"
+      text "].x;\n$: maxX = points"
+      text "].x;\n$: path = "
+      code_span "M${points.map((p) => "
+      text "$"
+      mustache "xScale(p.x)"
+      text ",$"
+      mustache "yScale(p.y)"
+      code_span ").join(\"L\")}"
+      text ";\n$: area = "
+      code_span "${path}L${xScale(maxX)},${yScale(0)}L${xScale(minX)},${yScale(0)}Z"
+      text ";"
+    line_break
+    line_break
+    paragraph
+      text "function formatMobile(tick) "
+      mustache "\n	return \"'\" + (tick % 100);\n"
+  line_break
+  line_break
+  html tag="h2"
+    paragraph
+      text "Arctic sea ice minimum"
+  line_break
+  line_break
+  html tag="div" class="chart" bind:clientWidth="width" bind:clientHeight="height"
+    line_break
+    html tag="svg"
+      line_break
+      html_comment " y axis "
+      line_break
+      html tag="g" class="axis y-axis" transform="translate(0, {padding.top})"
+        line_break
+        paragraph
+          mustache "#each yTicks as tick"
+          text "				"
+          html tag="g" class="tick tick-{tick}" transform="translate(0, {yScale(tick) - padding.bottom})"
+            text "					"
+            html tag="line" x2="100%"
+            text "					"
+            html tag="text" y="-4"
+              mustache "tick"
+              text " "
+              mustache "tick === 8 ? ' million sq km' : ''"
+            text "				"
+          text "			"
+          mustache "/each"
+          text "		"
+    line_break
+  line_break
+  line_break
+  html tag="p"
+    paragraph
+      text "Average September extent. Source: "
+      html tag="a" href="https://climate.nasa.gov/vital-signs/arctic-sea-ice/"
+        text "NSIDC/NASA"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text ".chart, h2, p "
+      mustache "\n		width: 100%;\n		max-width: 500px;\n		margin-left: auto;\n		margin-right: auto;\n	"

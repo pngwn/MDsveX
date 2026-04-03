@@ -1,0 +1,23 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import "
+      mustache " fly "
+      text " from \"svelte/transition\";\nlet visible = true;\n"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="checkbox" bind:checked="visible"
+      line_break
+      paragraph
+        text "visible\n"
+  line_break
+  line_break
+  paragraph
+    mustache "#if visible"
+    text "	"
+    html tag="p" transition:fly="{{ y: 200, duration: 2000 }}"
+      text "		Flies in and out\n	"
+    mustache "/if"

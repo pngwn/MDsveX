@@ -1,0 +1,4 @@
+root
+  paragraph
+    code_span "\nfoo\nbar  \nbaz\n"
+  line_break

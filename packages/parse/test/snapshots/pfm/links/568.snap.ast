@@ -1,0 +1,5 @@
+root
+  paragraph
+    text "](not a link)"
+  line_break
+  line_break

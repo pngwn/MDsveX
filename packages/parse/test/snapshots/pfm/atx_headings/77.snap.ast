@@ -1,0 +1,5 @@
+root
+  thematic_break
+  heading depth=2 "foo"
+  line_break
+  thematic_break

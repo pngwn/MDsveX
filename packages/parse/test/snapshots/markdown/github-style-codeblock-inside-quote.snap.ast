@@ -1,0 +1,6 @@
+root
+  block_quote
+    paragraph
+      text "Define a function in javascript:"
+    line_break
+    code_fence "> function MyFunc(a) {\n>     var s = '`';\n> }\n> ```\n>\n>> And some nested quote\n>>\n>> ```html\n>> <div>HTML!</div>\n>> ```\n"

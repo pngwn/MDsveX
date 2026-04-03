@@ -1,0 +1,16 @@
+root
+  paragraph
+    text "awa \\<hi\\>"
+  line_break
+  line_break
+  paragraph
+    text "awoo \\<heyoo"
+  line_break
+  line_break
+  paragraph
+    text "And what happens when I escape like &lt;this&gt;?"
+  line_break
+  line_break
+  paragraph
+    text "This one shouldn't be \\\\"
+  line_break tag="escaped"

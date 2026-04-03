@@ -1,0 +1,201 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import "
+      mustache " createEventDispatcher "
+      text " from \"svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "export let current"
+      text "_ease;\nexport let current"
+      text "_type;\nexport let eases;\nexport let types;\nexport let duration;\nexport let playing;\nexport let width;"
+    line_break
+    line_break
+    paragraph
+      text "const dispatch = createEventDispatcher();"
+    line_break
+    line_break
+    paragraph
+      text "$: mobile = width && width "
+      text "< 600;\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text ".easing-sidebar "
+      mustache "\n		width: 11em;\n	"
+      line_break
+      line_break
+      paragraph
+        text "ul "
+        mustache "\n		list-style: none;\n		padding: 0;\n		display: flex;\n		flex-direction: column;\n		align-items: flex-start;\n		font-size: 18px;\n	"
+      line_break
+      line_break
+      paragraph
+        text "li "
+        mustache "\n		padding: 5px 10px;\n		background: #eee;\n		border-radius: 2px;\n		margin: 3px 0;\n		cursor:pointer;\n	"
+      line_break
+      line_break
+      paragraph
+        text "li:hover "
+        mustache "\n		background: #676778;\n		color: white;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".selected "
+        mustache "\n		background: #ff3e00;\n		color: white;\n	"
+      line_break
+      line_break
+      paragraph
+        text "h3 "
+        mustache "\n		margin: 0 10px 0 0;\n	"
+      line_break
+      line_break
+      paragraph
+        text "h4 "
+        mustache "\n		margin-bottom: 0;\n	"
+      line_break
+      line_break
+      paragraph
+        text "select "
+        mustache "\n		display: inline;\n		padding: 0.2em;\n		margin: 0;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".duration "
+        mustache "\n		width: 100%;\n		display: flex;\n		align-items: center;\n		flex-wrap: wrap;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".duration span "
+        mustache "\n		display: flex;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".duration input "
+        mustache "\n		width: 80px;\n		margin: 10px 10px 10px 0 ;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".duration button "
+        mustache "\n		margin: 10px 5px;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".duration .number "
+        mustache "\n		width: 30px;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".duration .play "
+        mustache "\n		margin: 0 5px 0 auto;\n		width: 100%;\n	"
+      line_break
+      line_break
+      paragraph
+        text "@media (max-width:600px) "
+        mustache "\n		.easing-types {\n			display: flex;\n			align-items: center;\n			margin-top: 10px;\n		}\n\n		.easing-sidebar {\n			width: 100%;\n		}\n\n		.duration .play {\n			margin-left: auto;\n			width: unset;\n		}\n\n		h3 {\n			font-size: 0.9em;\n			display: inline;\n		}\n\n		h3:nth-of-type(2) {\n			margin-left: auto;\n		}\n\n		ul li {\n			margin-right: 10px;\n		}\n	"
+  line_break
+  line_break
+  html tag="div" class="easing-sidebar"
+    line_break
+    html tag="div" class="easing-types"
+      line_break
+      html tag="h3"
+        paragraph
+          text "Ease"
+      line_break
+      paragraph
+        mustache "#if mobile"
+        text "				"
+        html tag="select" bind:value="current_ease"
+          text "					"
+          mustache "#each [...eases] as [name]"
+          text "						"
+          html tag="option" value="name" class:selected="name === current_ease"
+            text "							"
+            mustache "name"
+            text "						"
+          text "					"
+          mustache "/each"
+          text "				"
+        text "			"
+        mustache ":else"
+        text "				"
+        html tag="ul"
+          text "					"
+          mustache "#each [...eases] as [name]"
+          text "						"
+          html tag="li" class:selected="name === current_ease" on:click="() => current_ease = name"
+            text "							"
+            mustache "name"
+            text "						"
+          text "					"
+          mustache "/each"
+          text "				"
+        text "			"
+        mustache "/if"
+        text "			"
+        html tag="h3"
+          text "Type"
+        text "			"
+        mustache "#if mobile "
+        text "				"
+        html tag="select" bind:value="current_type"
+          text "					"
+          mustache "#each types as [name, type]"
+          text "						"
+          html tag="option" value="type"
+            text "							"
+            mustache "name"
+            text "						"
+          text "					"
+          mustache "/each"
+          text "				"
+        text "			"
+        mustache ":else"
+        text "				"
+        html tag="ul"
+          text "					"
+          mustache "#each types as [name, type]"
+          text "						"
+          html tag="li" class:selected="type === current_type" on:click="() => current_type = type"
+            text "							"
+            mustache "name"
+            text "					"
+          text "					"
+          mustache "/each"
+          text "				"
+        text "			"
+        mustache "/if"
+        text "		"
+    line_break
+    html tag="h4"
+      line_break
+      paragraph
+        text "Duration\n		"
+    line_break
+    html tag="div" class="duration"
+      line_break
+      html tag="span"
+        line_break
+        html tag="input" type="number" bind:value="duration" min="0" step="100" self_closing=true
+        line_break
+        html tag="button" class="number" on:click="() => duration -= 100"
+          paragraph
+            text "-"
+        line_break
+        html tag="button" class="number" on:click="() => duration += 100"
+          paragraph
+            text "+"
+        line_break
+      line_break
+      html tag="button" class="play" on:click="() => dispatch('play')"
+        line_break
+        paragraph
+          mustache "playing ? 'Restart' : 'Play'"
+          text "			"
+      line_break
+    line_break

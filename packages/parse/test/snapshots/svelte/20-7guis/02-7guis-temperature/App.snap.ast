@@ -1,0 +1,31 @@
+root
+  html_comment " https://github.com/eugenkiss/7guis/wiki#temperature-converter "
+  line_break
+  text tag="input" value="c" on:input="{e => setBothFromC(e.target.value)}" type="number"
+  paragraph
+    text "°c =\n"
+    text tag="input" value="f" on:input="{e => setBothFromF(e.target.value)}" type="number" "<input value={f} on:input=\"{e => setBothFromF(e.target.value)}\" type=number> °f"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "input "
+      mustache "\n		width: 5em;\n	"
+  line_break
+  line_break
+  html tag="script"
+    line_break
+    paragraph
+      text "let c = 0;\nlet f = 32;"
+      line_break
+      line_break
+      paragraph
+        text "function setBothFromC(value) "
+        mustache "\n	c = +value;\n	f = +(32 + (9 / 5) * c).toFixed(1);\n"
+      line_break
+      line_break
+      paragraph
+        text "function setBothFromF(value) "
+        mustache "\n	f = +value;\n	c = +((5 / 9) * (f - 32)).toFixed(1);\n"
+  line_break

@@ -1,0 +1,13 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import Inner from \"./Inner.svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "function handleMessage(event) "
+      mustache "\n	alert(event.detail.text);\n"
+  line_break
+  line_break
+  html tag="Inner" on:message="handleMessage" self_closing=true

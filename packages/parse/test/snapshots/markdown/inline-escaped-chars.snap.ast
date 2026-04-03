@@ -1,0 +1,5 @@
+root
+  paragraph
+    text "Hello.this\\_is\\_a\\_variable\nand.this.is.another"
+    text "_one"
+  line_break

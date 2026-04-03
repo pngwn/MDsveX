@@ -1,0 +1,47 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let todos = "
+      text "	"
+      mustache " done: false, text: \"finish Svelte tutorial\" "
+      text ",\n	"
+      mustache " done: false, text: \"build an app\" "
+      text ",\n	"
+      mustache " done: false, text: \"world domination\" "
+      text ",\n"
+      text "];"
+    line_break
+    line_break
+    paragraph
+      text "function add() "
+      mustache "\n	todos = todos.concat({ done: false, text: \"\" });\n"
+    line_break
+    line_break
+    paragraph
+      text "function clear() "
+      mustache "\n	todos = todos.filter((t) => !t.done);\n"
+    line_break
+    line_break
+    paragraph
+      text "$: remaining = todos.filter((t) => "
+      text "!t.done).length;\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text ".done "
+      mustache "\n		opacity: 0.4;\n	"
+  line_break
+  line_break
+  html tag="h1"
+    paragraph
+      text "Todos"
+  line_break
+  line_break
+  paragraph
+    mustache "#each todos as todo"
+    text "	"
+    text tag="div" class:done="todo.done" "<div class:done={todo.done}>\n"
+    text "		"

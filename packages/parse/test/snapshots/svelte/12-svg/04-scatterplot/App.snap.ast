@@ -1,0 +1,29 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import Scatterplot from \"./Scatterplot.svelte\";\nimport data from \"./data.js\";\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text ".chart "
+      mustache "\n		width: 100%;\n		max-width: 640px;\n		height: calc(100% - 4em);\n		min-height: 280px;\n		max-height: 480px;\n		margin: 0 auto;\n	"
+  line_break
+  line_break
+  html tag="div" class="chart"
+    line_break
+    html tag="h2"
+      paragraph
+        text "Anscombe's quartet"
+    line_break
+    line_break
+    html tag="Scatterplot" points="data.a" self_closing=true
+    line_break
+    html tag="Scatterplot" points="data.b" self_closing=true
+    line_break
+    html tag="Scatterplot" points="data.c" self_closing=true
+    line_break
+    html tag="Scatterplot" points="data.d" self_closing=true
+    line_break

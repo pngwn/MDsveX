@@ -1,0 +1,14 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import Info from \"./Info.svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "const pkg = "
+      mustache "\n	name: \"svelte\",\n	version: 3,\n	speed: \"blazing\",\n	website: \"https://svelte.dev\",\n"
+      text ";\n"
+  line_break
+  line_break
+  html tag="Info" ...pkg="...pkg" self_closing=true

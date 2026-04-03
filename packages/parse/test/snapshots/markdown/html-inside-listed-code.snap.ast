@@ -1,0 +1,6 @@
+root
+  list ordered=false start=0 tight=false
+    list_item
+      paragraph
+        text "list item 1"
+      code_fence info="html" "    <a href=\"www.google.com\">google</a>\n    <div>\n      <div>some div</div>\n    </div>"

@@ -1,0 +1,28 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import "
+      mustache " tick "
+      text " from \"svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "let text = "
+      code_span "Select some text and hit the tab key to toggle uppercase"
+      text ";"
+    line_break
+    line_break
+    paragraph
+      text "async function handleKeydown(event) "
+      mustache "\n	if (event.which !== 9) return;\n\n	event.preventDefault();\n\n	const { selectionStart, selectionEnd, value } = this;\n	const selection = value.slice(selectionStart, selectionEnd);\n\n	const replacement = /[a-z]/.test(selection)\n		? selection.toUpperCase()\n		: selection.toLowerCase();\n\n	text =\n		value.slice(0, selectionStart) + replacement + value.slice(selectionEnd);\n\n	await tick();\n	this.selectionStart = selectionStart;\n	this.selectionEnd = selectionEnd;\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "textarea "
+      mustache "\n		width: 100%;\n		height: 200px;\n	"
+  line_break
+  line_break
+  html tag="textarea" value="text" on:keydown="handleKeydown"

@@ -1,0 +1,5 @@
+root
+  paragraph
+    link
+      text "https://example.com/\\[\\"
+  line_break

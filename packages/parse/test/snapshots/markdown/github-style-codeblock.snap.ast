@@ -1,0 +1,35 @@
+root
+  line_break
+  paragraph
+    text "Define a function in javascript:"
+  line_break
+  line_break
+  code_fence "function MyFunc(a) {\n    var s = '`';\n}"
+  line_break
+  paragraph
+    text "And some HTML"
+  line_break
+  line_break
+  code_fence info="html" "<div>HTML!</div>"
+  line_break
+  paragraph
+    text "And some CSS with spaces before the language declaration"
+  line_break
+  line_break
+  code_fence info="    css" "body {\n    font-size: 1.5em;\n}"
+  line_break
+  paragraph
+    text "Use more than 3 backticks"
+  line_break
+  line_break
+  code_fence "some code"
+  line_break
+  paragraph
+    text "Use tilde as delimiter"
+  line_break
+  line_break
+  paragraph
+    text "~~"
+    text "~\nanother piece of code\n"
+    text "~~~"
+  line_break

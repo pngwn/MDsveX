@@ -1,0 +1,28 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let m = "
+      mustache " x: 0, y: 0 "
+      text ";"
+    line_break
+    line_break
+    paragraph
+      text "function handleMousemove(event) "
+      mustache "\n	m.x = event.clientX;\n	m.y = event.clientY;\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "div "
+      mustache " width: 100%; height: 100%; "
+  line_break
+  line_break
+  html tag="div" on:mousemove="handleMousemove"
+    line_break
+    paragraph
+      text "The mouse position is "
+      mustache "m.x"
+      text " x "
+      mustache "m.y"

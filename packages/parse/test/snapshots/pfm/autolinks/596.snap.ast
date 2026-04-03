@@ -1,0 +1,5 @@
+root
+  paragraph
+    link
+      text "irc://foo.bar:2233/baz"
+  line_break

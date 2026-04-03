@@ -1,0 +1,66 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import File from \"./File.svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "export let expanded = false;\nexport let name;\nexport let files;"
+    line_break
+    line_break
+    paragraph
+      text "function toggle() "
+      mustache "\n	expanded = !expanded;\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "span "
+      mustache "\n		padding: 0 0 0 1.5em;\n		background: url(tutorial/icons/folder.svg) 0 0.1em no-repeat;\n		background-size: 1em 1em;\n		font-weight: bold;\n		cursor: pointer;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".expanded "
+        mustache "\n		background-image: url(tutorial/icons/folder-open.svg);\n	"
+      line_break
+      line_break
+      paragraph
+        text "ul "
+        mustache "\n		padding: 0.2em 0 0 0.5em;\n		margin: 0 0 0 0.5em;\n		list-style: none;\n		border-left: 1px solid #eee;\n	"
+      line_break
+      line_break
+      paragraph
+        text "li "
+        mustache "\n		padding: 0.2em 0;\n	"
+  line_break
+  line_break
+  html tag="span" class:expanded=true on:click="toggle"
+    paragraph
+      mustache "name"
+  line_break
+  line_break
+  paragraph
+    mustache "#if expanded"
+    text "	"
+    html tag="ul"
+      text "		"
+      mustache "#each files as file"
+      text "			"
+      html tag="li"
+        text "				"
+        mustache "#if file.type === 'folder'"
+        text "					"
+        html tag="svelte:self" ...file="...file" self_closing=true
+        text "				"
+        mustache ":else"
+        text "					"
+        html tag="File" ...file="...file" self_closing=true
+        text "				"
+        mustache "/if"
+        text "			"
+      text "		"
+      mustache "/each"
+      text "	"
+    mustache "/if"

@@ -1,0 +1,71 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let questions = "
+      text "	"
+      mustache " id: 1, text: `Where did you go to school?` "
+      text ",\n	"
+      mustache " id: 2, text: `What is your mother's name?` "
+      text ",\n	"
+      mustache "\n		id: 3,\n		text: `What is another personal fact that an attacker could easily find with Google?`,\n	"
+      text ",\n"
+      text "];"
+    line_break
+    line_break
+    paragraph
+      text "let selected;"
+    line_break
+    line_break
+    paragraph
+      text "let answer = \"\";"
+    line_break
+    line_break
+    paragraph
+      text "function handleSubmit() "
+      mustache "\n	alert(`answered question ${selected.id} (${selected.text}) with \"${answer}\"`);\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "input "
+      mustache " display: block; width: 500px; max-width: 100%; "
+  line_break
+  line_break
+  html tag="h2"
+    paragraph
+      text "Insecurity questions"
+  line_break
+  line_break
+  html tag="form" on:submit|preventDefault="handleSubmit"
+    line_break
+    html tag="select" bind:value="selected" on:change="{() => answer = ''}"
+      line_break
+      paragraph
+        mustache "#each questions as question"
+        text "			"
+        html tag="option" value="question"
+          text "				"
+          mustache "question.text"
+          text "			"
+        text "		"
+        mustache "/each"
+        text "	"
+    line_break
+    line_break
+    html tag="input" bind:value="answer"
+      line_break
+      line_break
+      html tag="button" disabled="!answer" type="submit"
+        line_break
+        paragraph
+          text "Submit\n	"
+      line_break
+      paragraph
+  line_break
+  line_break
+  html tag="p"
+    paragraph
+      text "selected question "
+      mustache "selected ? selected.id : '[waiting...]'"

@@ -1,0 +1,9 @@
+root
+  paragraph
+    text "Foo bar"
+  line_break
+  heading depth=1 "baz"
+  line_break
+  paragraph
+    text "Bar foo"
+  line_break

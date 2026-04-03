@@ -1,0 +1,12 @@
+root
+  paragraph
+    text "]: /url 'title"
+  line_break
+  line_break
+  paragraph
+    text "with blank line'"
+  line_break
+  line_break
+  paragraph
+    text "]"
+  line_break

@@ -1,0 +1,65 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import Thing from \"./Thing.svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "let things = "
+      text "	"
+      mustache " id: 1, color: \"#0d0887\" "
+      text ",\n	"
+      mustache " id: 2, color: \"#6a00a8\" "
+      text ",\n	"
+      mustache " id: 3, color: \"#b12a90\" "
+      text ",\n	"
+      mustache " id: 4, color: \"#e16462\" "
+      text ",\n	"
+      mustache " id: 5, color: \"#fca636\" "
+      text ",\n"
+      text "];"
+    line_break
+    line_break
+    paragraph
+      text "function handleClick() "
+      mustache "\n	things = things.slice(1);\n"
+  line_break
+  line_break
+  html tag="button" on:click="handleClick"
+    line_break
+    paragraph
+      text "Remove first thing\n"
+  line_break
+  line_break
+  html tag="div" style="display: grid; grid-template-columns: 1fr 1fr; grip-gap: 1em"
+    line_break
+    html tag="div"
+      line_break
+      html tag="h2"
+        paragraph
+          text "Keyed"
+      line_break
+      paragraph
+        mustache "#each things as thing (thing.id)"
+        text "			"
+        html tag="Thing" current="thing.color" self_closing=true
+        text "		"
+        mustache "/each"
+        text "	"
+    line_break
+    line_break
+    html tag="div"
+      line_break
+      html tag="h2"
+        paragraph
+          text "Unkeyed"
+      line_break
+      paragraph
+        mustache "#each things as thing"
+        text "			"
+        html tag="Thing" current="thing.color" self_closing=true
+        text "		"
+        mustache "/each"
+        text "	"
+    line_break

@@ -1,0 +1,9 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let src = \"tutorial/image.gif\";\nlet name = \"Rick Astley\";\n"
+  line_break
+  line_break
+  html_comment " {src} is short for src={src} "
+  line_break

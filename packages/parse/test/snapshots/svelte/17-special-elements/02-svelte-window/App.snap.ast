@@ -1,0 +1,44 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let key;\nlet keyCode;"
+    line_break
+    line_break
+    paragraph
+      text "function handleKeydown(event) "
+      mustache "\n	key = event.key;\n	keyCode = event.keyCode;\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "div "
+      mustache "\n		display: flex;\n		height: 100%;\n		align-items: center;\n		justify-content: center;\n		flex-direction: column;\n	"
+      line_break
+      line_break
+      paragraph
+        text "kbd "
+        mustache "\n		background-color: #eee;\n		border-radius: 4px;\n		font-size: 6em;\n		padding: 0.2em 0.5em;\n		border-top: 5px solid rgba(255,255,255,0.5);\n		border-left: 5px solid rgba(255,255,255,0.5);\n		border-right: 5px solid rgba(0,0,0,0.2);\n		border-bottom: 5px solid rgba(0,0,0,0.2);\n		color: #555;\n	"
+  line_break
+  line_break
+  html tag="svelte:window" on:keydown="handleKeydown" self_closing=true
+  line_break
+  line_break
+  html tag="div" style="text-align: center"
+    line_break
+    paragraph
+      mustache "#if key"
+      text "		"
+      html tag="kbd"
+        mustache "key === ' ' ? 'Space' : key"
+      text "		"
+      html tag="p"
+        mustache "keyCode"
+      text "	"
+      mustache ":else"
+      text "		"
+      html tag="p"
+        text "Focus this window and press any key"
+      text "	"
+      mustache "/if"

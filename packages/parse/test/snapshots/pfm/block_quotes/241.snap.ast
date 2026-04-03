@@ -1,0 +1,6 @@
+root
+  block_quote
+    paragraph
+      text "foo"
+    line_break
+  line_break

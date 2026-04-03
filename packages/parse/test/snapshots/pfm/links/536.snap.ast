@@ -1,0 +1,5 @@
+root
+  paragraph
+    text "foo "
+  line_break tag="bar" attr="][ref]"
+  line_break

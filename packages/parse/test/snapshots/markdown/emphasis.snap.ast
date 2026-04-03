@@ -1,0 +1,278 @@
+root
+  paragraph
+    strong_emphasis
+      text "single asterisks"
+  line_break
+  line_break
+  paragraph
+    emphasis
+      text "single underscores"
+  line_break
+  line_break
+  paragraph
+    strong_emphasis
+      text "double asterisks"
+  line_break
+  line_break
+  paragraph
+    emphasis
+      text "double underscores"
+  line_break
+  line_break
+  paragraph
+    text "text "
+    emphasis
+      text "with italic sentence"
+    text " in middle"
+  line_break
+  line_break
+  paragraph
+    text "text "
+    strong_emphasis
+      text "with bold sentence"
+    text " in middle"
+  line_break
+  line_break
+  paragraph
+    text "text with "
+    strong_emphasis
+      text "bold text that\nspans across multiple"
+    text " lines"
+  line_break
+  line_break
+  paragraph
+    text "underscored"
+    text "_word"
+  line_break
+  line_break
+  paragraph
+    text "doubleunderscore"
+    text "_"
+    text "_word"
+  line_break
+  line_break
+  paragraph
+    text "asterix"
+    text "*word"
+  line_break
+  line_break
+  paragraph
+    text "doubleasterix"
+    text "*"
+    text "*word"
+  line_break
+  line_break
+  paragraph
+    text "line with"
+    text "_underscored word"
+  line_break
+  line_break
+  paragraph
+    text "line with"
+    text "_"
+    text "_doubleunderscored word"
+  line_break
+  line_break
+  paragraph
+    text "line with"
+    text "*asterixed word"
+  line_break
+  line_break
+  paragraph
+    text "line with"
+    text "*"
+    text "*doubleasterixed word"
+  line_break
+  line_break
+  paragraph
+    text "some line"
+    text "_with"
+    text "_inner underscores"
+  line_break
+  line_break
+  paragraph
+    text "some line"
+    text "_"
+    text "_with"
+    text "_"
+    text "_inner double underscores"
+  line_break
+  line_break
+  paragraph
+    text "some line"
+    text "*with"
+    text "*inner asterixs"
+  line_break
+  line_break
+  paragraph
+    text "some line"
+    text "*"
+    strong_emphasis
+      text "with"
+    text "*inner double asterixs"
+  line_break
+  line_break
+  paragraph
+    text "another line with just "
+    text "_one underscore"
+  line_break
+  line_break
+  paragraph
+    text "another line with just "
+    text "__one double underscore"
+  line_break
+  line_break
+  paragraph
+    text "another line with just "
+    text "*one asterix"
+  line_break
+  line_break
+  paragraph
+    text "another line with just "
+    text "**"
+    text "*one double asterix"
+  line_break
+  line_break
+  paragraph
+    text "a sentence with"
+    text "_underscore and another"
+    text "_underscore"
+  line_break
+  line_break
+  paragraph
+    text "a sentence with"
+    text "_"
+    text "_doubleunderscore and another"
+    text "_"
+    text "_doubleunderscore"
+  line_break
+  line_break
+  paragraph
+    text "a sentence with"
+    text "*asterix and another"
+    text "*asterix"
+  line_break
+  line_break
+  paragraph
+    text "a sentence with"
+    text "*"
+    strong_emphasis
+      text "doubleasterix and another"
+    text "*doubleasterix"
+  line_break
+  line_break
+  paragraph
+    text "escaped word\\_with\\_underscores"
+  line_break
+  line_break
+  paragraph
+    text "escaped word\\_\\_with\\_\\_double underscores"
+  line_break
+  line_break
+  paragraph
+    text "escaped word"
+    text "_\\_with\\_"
+    text "_single italic underscore"
+  line_break
+  line_break
+  paragraph
+    text "escaped word\\*with"
+    text "*asterixs"
+  line_break
+  line_break
+  paragraph
+    text "escaped word\\*\\*with\\*\\*asterixs"
+  line_break
+  line_break
+  paragraph
+    text "escaped word"
+    text "*\\*with\\*"
+    text "*bold asterixs"
+  line_break
+  line_break
+  paragraph
+    text "foo"
+    text "*bar"
+    text "*baz"
+  line_break
+  line_break
+  paragraph
+    text "foo"
+    text "_"
+    text "_bar"
+    text "_"
+    text "_baz"
+  line_break
+  line_break
+  paragraph
+    text "this is "
+    strong_emphasis
+      html tag="a" href="//google.com"
+        text "imbued link with strong"
+  line_break
+  line_break
+  paragraph
+    text "this is "
+    emphasis
+      html tag="a" href="//google.com"
+        text "imbued link with strong"
+  line_break
+  line_break
+  paragraph
+    text "this link has underscore "
+    link href="http://www.google.com/some_link"
+      text "some"
+      text "_link"
+  line_break
+  line_break
+  paragraph
+    emphasis
+      text "*multiple"
+      text "*"
+    text " italics and bolds with underscores in a "
+    emphasis
+      text "*paragraph"
+      text "*"
+  line_break
+  line_break
+  paragraph
+    emphasis
+      text "*multiple"
+      text "*"
+    text " italics and bolds with asterisks in a "
+    emphasis
+      text "*paragraph"
+      text "*"
+  line_break
+  line_break
+  paragraph
+    strong_emphasis
+      text "multiple"
+    text " bolds with underscores in a "
+    strong_emphasis
+      text "paragraph"
+  line_break
+  line_break
+  paragraph
+    strong_emphasis
+      text "multiple"
+    text " bolds with asterisks in a "
+    strong_emphasis
+      text "paragraph"
+  line_break
+  line_break
+  paragraph
+    emphasis
+      text "multiple"
+    text " italics with underscores in a "
+    emphasis
+      text "paragraph"
+  line_break
+  line_break
+  paragraph
+    emphasis
+      text "multiple"
+    text " italics with asterisks in a "
+    emphasis
+      text "paragraph"
+  line_break

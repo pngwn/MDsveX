@@ -1,0 +1,9 @@
+root
+  paragraph
+    text "]: "
+    text tag="bar" "<bar>(baz)"
+  line_break
+  line_break
+  paragraph
+    text "]"
+  line_break

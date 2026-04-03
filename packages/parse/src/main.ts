@@ -53,7 +53,6 @@ const enum char_mask {
 	word = 1 << 2,
 }
 
-console.warn("NEW VERSION")
 
 const char_class_table = new Uint8Array(128);
 
@@ -247,6 +246,10 @@ export class PFMParser {
 		tag: string;
 	}[] = [];
 
+	// Link reference definitions
+	private ref_map: Map<string, { url: string; title: string }> = new Map();
+	private link_text_start: number = 0;
+
 	// Misc
 	private extra: number = 0;
 	private info_start_pos: number = 0;
@@ -373,6 +376,8 @@ export class PFMParser {
 		this.checkpoint_cursor = 0;
 		this.prev_cursor = 0;
 		this.loop_without_progress = 0;
+		this.ref_map.clear();
+		this.link_text_start = 0;
 		this.errors = EMPTY_ERRORS;
 		this.introspector = introspector;
 
@@ -417,6 +422,11 @@ export class PFMParser {
 			if (ids[i] === id) return true;
 		}
 		return false;
+	}
+
+	/** Normalize a link reference label: collapse whitespace, lowercase. */
+	private normalize_label(label: string): string {
+		return label.trim().replace(/\s+/g, ' ').toLowerCase();
 	}
 
 	// -----------------------------------------------------------
@@ -1449,6 +1459,203 @@ export class PFMParser {
 	}
 
 	/**
+	 * Try to parse a link reference definition at block level.
+	 * Syntax: [label]: destination "title"
+	 *
+	 * Returns position after the definition on success, -1 if not a
+	 * definition, or -2 if more input is needed (incremental stall).
+	 * On success, stores the definition in this.ref_map.
+	 */
+	private try_parse_link_ref_definition(pos: number): number {
+		const source = this.source;
+		const length = source.length;
+		let p = pos;
+
+		// Skip optional leading whitespace
+		while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+
+		// Must start with [
+		if (p >= length) return this.finished ? -1 : -2;
+		if (source.charCodeAt(p) !== OPEN_SQUARE_BRACKET) return -1;
+		p++;
+
+		// Parse label — no line breaks, no empty label
+		const label_start = p;
+		while (p < length) {
+			const ch = source.charCodeAt(p);
+			if (ch === CLOSE_SQUARE_BRACKET) break;
+			if (ch === LINEFEED || ch === OPEN_SQUARE_BRACKET) return -1;
+			if (ch === BACKSLASH && p + 1 < length) { p += 2; continue; }
+			p++;
+		}
+		if (p >= length) return this.finished ? -1 : -2;
+		if (p === label_start) return -1; // empty label
+
+		const label = source.slice(label_start, p);
+		p++; // skip ]
+
+		// Must have : immediately after ]
+		if (p >= length) return this.finished ? -1 : -2;
+		if (source.charCodeAt(p) !== COLON) return -1;
+		p++;
+
+		// Skip optional whitespace (including at most one line break)
+		let saw_newline = false;
+		while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+		if (p < length && source.charCodeAt(p) === LINEFEED) {
+			saw_newline = true;
+			p++;
+			while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+		}
+
+		// Parse destination
+		if (p >= length) return this.finished ? -1 : -2;
+
+		let url_start: number, url_end: number;
+		const dest_ch = source.charCodeAt(p);
+
+		if (dest_ch === OPEN_ANGLE_BRACKET) {
+			// Angle-bracket destination: <url>
+			p++;
+			url_start = p;
+			while (p < length) {
+				const ch = source.charCodeAt(p);
+				if (ch === CLOSE_ANGLE_BRACKET) break;
+				if (ch === LINEFEED || ch === OPEN_ANGLE_BRACKET) return -1;
+				if (ch === BACKSLASH && p + 1 < length) { p += 2; continue; }
+				p++;
+			}
+			if (p >= length) return this.finished ? -1 : -2;
+			url_end = p;
+			p++; // skip >
+		} else if (dest_ch === LINEFEED) {
+			// No destination — invalid
+			return -1;
+		} else {
+			// Bare destination — balanced parens, no spaces
+			url_start = p;
+			let paren_depth = 0;
+			while (p < length) {
+				const ch = source.charCodeAt(p);
+				if (ch <= 0x20) break; // whitespace or control
+				if (ch === CLOSE_PAREN) {
+					if (paren_depth === 0) break;
+					paren_depth--;
+				}
+				if (ch === OPEN_PAREN) paren_depth++;
+				if (ch === BACKSLASH && p + 1 < length) { p += 2; continue; }
+				p++;
+			}
+			if (paren_depth !== 0) return -1;
+			url_end = p;
+			if (url_start === url_end) return -1; // empty bare destination
+		}
+
+		const url = source.slice(url_start, url_end);
+
+		// Skip optional whitespace before title (no line break yet)
+		const pre_title_p = p;
+		while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+		const had_title_ws = p > pre_title_p;
+
+		// Check for optional title
+		let title = '';
+		if (p < length) {
+			const tc = source.charCodeAt(p);
+			if (tc === LINEFEED) {
+				// Newline after URL — check if next line has a title
+				const nl_p = p;
+				p++;
+				while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+				if (p < length) {
+					const ntc = source.charCodeAt(p);
+					if (ntc === 34 || ntc === 39 || ntc === OPEN_PAREN) {
+						// Try title on next line
+						const title_result = this.parse_ref_title(p);
+						if (title_result) {
+							title = title_result.title;
+							p = title_result.end;
+						} else {
+							// No title — position is after URL, at the newline
+							p = nl_p;
+						}
+					} else {
+						// Not a title char — no title, position at newline
+						p = nl_p;
+					}
+				} else if (!this.finished) {
+					return -2; // need more input
+				} else {
+					p = nl_p;
+				}
+			} else if ((tc === 34 || tc === 39 || tc === OPEN_PAREN) && had_title_ws) {
+				// Title on same line (whitespace required between destination and title)
+				const title_result = this.parse_ref_title(p);
+				if (title_result) {
+					title = title_result.title;
+					p = title_result.end;
+				} else {
+					// Invalid title — this makes the whole definition invalid
+					return -1;
+				}
+			}
+			// Otherwise: no title, URL ends where whitespace started
+		} else if (!this.finished) {
+			return -2; // need more input
+		}
+
+		// Must be at end of line (only whitespace allowed after)
+		while (p < length && (source.charCodeAt(p) === SPACE || source.charCodeAt(p) === TAB)) p++;
+		if (p < length && source.charCodeAt(p) !== LINEFEED) return -1;
+		if (p < length) p++; // skip newline
+
+		// Store definition — first one wins
+		const normalized = this.normalize_label(label);
+		if (normalized && !this.ref_map.has(normalized)) {
+			this.ref_map.set(normalized, { url, title });
+		}
+
+		return p;
+	}
+
+	/**
+	 * Parse a title string starting at pos. Handles "...", '...', (...)
+	 * including multi-line titles (but not across blank lines).
+	 * Returns { title, end } or null on failure.
+	 */
+	private parse_ref_title(pos: number): { title: string; end: number } | null {
+		const source = this.source;
+		const length = source.length;
+
+		const tc = source.charCodeAt(pos);
+		if (tc !== 34 && tc !== 39 && tc !== OPEN_PAREN) return null;
+		const close_char = tc === OPEN_PAREN ? CLOSE_PAREN : tc;
+
+		let p = pos + 1;
+		const title_start = p;
+
+		while (p < length) {
+			const ch = source.charCodeAt(p);
+			if (ch === close_char) {
+				const title = source.slice(title_start, p);
+				return { title, end: p + 1 };
+			}
+			if (ch === LINEFEED) {
+				// Check for blank line — that terminates the title (invalid)
+				let q = p + 1;
+				while (q < length && (source.charCodeAt(q) === SPACE || source.charCodeAt(q) === TAB)) q++;
+				if (q < length && source.charCodeAt(q) === LINEFEED) return null; // blank line
+				if (q >= length && !this.finished) return null; // can't confirm, bail
+			}
+			if (ch === BACKSLASH && p + 1 < length) { p += 2; continue; }
+			p++;
+		}
+
+		// Hit end of input without closing
+		return null;
+	}
+
+	/**
 	 * Start a heading from a block dispatch state. Validates # count,
 	 * emits open(heading), skips whitespace after #, and pushes
 	 * heading_marker state for streaming content.
@@ -1746,6 +1953,19 @@ export class PFMParser {
 							this.states.push(state_kind.paragraph);
 							const brace_para = this.emit_open(node_kind.paragraph, this.cursor, current_node);
 							this.node_stack.push(brace_para);
+							continue;
+						}
+
+						case OPEN_SQUARE_BRACKET: {
+							const def_end = this.try_parse_link_ref_definition(this.cursor);
+							if (def_end === -2) break main_loop;
+							if (def_end >= 0) {
+								this.chomp(def_end, true);
+								continue;
+							}
+							this.states.push(state_kind.paragraph);
+							const ref_para = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+							this.node_stack.push(ref_para);
 							continue;
 						}
 
@@ -2411,8 +2631,80 @@ export class PFMParser {
 							// ( found but URL is malformed — fall through to revoke
 						}
 
-						// Definitively not a link: ] followed by non-( character,
-						// or malformed URL with all input available. Revoke.
+						// Check for reference syntax: ][ref] or ][]
+						if (after < length && source.charCodeAt(after) === OPEN_SQUARE_BRACKET) {
+							let ref_p = after + 1;
+
+							// Need to see at least one char after [
+							if (ref_p >= length && !this.finished) {
+								break main_loop;
+							}
+
+							// ][] — collapsed reference: label = link text
+							if (ref_p < length && source.charCodeAt(ref_p) === CLOSE_SQUARE_BRACKET) {
+								const label = source.slice(this.link_text_start, this.cursor);
+								const normalized = this.normalize_label(label);
+								const def = this.ref_map.get(normalized);
+								if (def) {
+									const is_image = this.node_kind_array[current_node] === node_kind.image;
+									this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
+									if (def.title) this.out.attr(current_node, 'title', def.title);
+									this.out.set_value_end(current_node, this.cursor);
+									this.pending_remove(current_node);
+									this.emit_close(current_node, ref_p + 1);
+									this.node_stack.pop();
+									this.states.pop();
+									if (this.states[this.states.length - 1] === state_kind.inline) {
+										this.states.pop();
+									}
+									this.chomp(ref_p + 1, true);
+									continue;
+								}
+								// No definition found — revoke
+								this.out.revoke(current_node);
+								this.node_stack.pop();
+								this.states.pop();
+								continue;
+							}
+
+							// ][label] — full reference
+							const ref_start = ref_p;
+							while (ref_p < length) {
+								const ch = source.charCodeAt(ref_p);
+								if (ch === CLOSE_SQUARE_BRACKET) break;
+								if (ch === OPEN_SQUARE_BRACKET || ch === LINEFEED) break;
+								if (ch === BACKSLASH && ref_p + 1 < length) { ref_p += 2; continue; }
+								ref_p++;
+							}
+
+							// Stall if we ran out of input
+							if (ref_p >= length && !this.finished) {
+								break main_loop;
+							}
+
+							if (ref_p < length && source.charCodeAt(ref_p) === CLOSE_SQUARE_BRACKET && ref_p > ref_start) {
+								const label = source.slice(ref_start, ref_p);
+								const normalized = this.normalize_label(label);
+								const def = this.ref_map.get(normalized);
+								if (def) {
+									const is_image = this.node_kind_array[current_node] === node_kind.image;
+									this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
+									if (def.title) this.out.attr(current_node, 'title', def.title);
+									this.out.set_value_end(current_node, this.cursor);
+									this.pending_remove(current_node);
+									this.emit_close(current_node, ref_p + 1);
+									this.node_stack.pop();
+									this.states.pop();
+									if (this.states[this.states.length - 1] === state_kind.inline) {
+										this.states.pop();
+									}
+									this.chomp(ref_p + 1, true);
+									continue;
+								}
+							}
+						}
+
+						// Definitively not a link/reference. Revoke.
 						this.out.revoke(current_node);
 						this.node_stack.pop();
 						this.states.pop();
@@ -2463,6 +2755,17 @@ export class PFMParser {
 								continue;
 							}
 						}
+					}
+
+					if (code === LINEFEED && this.is_block_interrupt(this.cursor + 1)) {
+						// Block interrupt after newline — close unclosed inline HTML element
+						if (this.html_tag_stack.length > 0 &&
+							this.html_tag_stack[this.html_tag_stack.length - 1].id === current_node) {
+							this.html_tag_stack.pop();
+						}
+						this.states.pop();
+						this.node_stack.pop();
+						continue;
 					}
 
 					if (!code) {
@@ -2775,6 +3078,15 @@ export class PFMParser {
 						}
 					}
 
+					if (code === OPEN_SQUARE_BRACKET) {
+						const def_end = this.try_parse_link_ref_definition(this.cursor);
+						if (def_end === -2) break main_loop;
+						if (def_end >= 0) {
+							this.chomp(def_end, true);
+							continue;
+						}
+					}
+
 					// Default: start a paragraph
 					this.states.push(state_kind.paragraph);
 					const svelte_para = this.emit_open(node_kind.paragraph, this.cursor, current_node);
@@ -2879,6 +3191,19 @@ export class PFMParser {
 							this.states.push(state_kind.paragraph);
 							const para_id = this.emit_open(node_kind.paragraph, this.cursor, current_node);
 							this.node_stack.push(para_id);
+							continue;
+						}
+
+						case OPEN_SQUARE_BRACKET: {
+							const def_end = this.try_parse_link_ref_definition(this.cursor);
+							if (def_end === -2) break main_loop;
+							if (def_end >= 0) {
+								this.chomp(def_end, true);
+								continue;
+							}
+							this.states.push(state_kind.paragraph);
+							const bq_ref_para = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+							this.node_stack.push(bq_ref_para);
 							continue;
 						}
 
@@ -3082,6 +3407,19 @@ export class PFMParser {
 							this.states.push(state_kind.paragraph);
 							const para_id = this.emit_open(node_kind.paragraph, this.cursor, current_node);
 							this.node_stack.push(para_id);
+							continue;
+						}
+
+						case OPEN_SQUARE_BRACKET: {
+							const def_end = this.try_parse_link_ref_definition(this.cursor);
+							if (def_end === -2) break main_loop;
+							if (def_end >= 0) {
+								this.chomp(def_end, true);
+								continue;
+							}
+							this.states.push(state_kind.paragraph);
+							const li_ref_para = this.emit_open(node_kind.paragraph, this.cursor, current_node);
+							this.node_stack.push(li_ref_para);
 							continue;
 						}
 
@@ -3343,6 +3681,7 @@ export class PFMParser {
 							const link_id = this.emit_open(node_kind.link, this.cursor, current_node, 0, true);
 							this.node_stack.push(link_id);
 							this.states.push(state_kind.link_text);
+							this.link_text_start = this.cursor + 1;
 							this.chomp1(); // skip [
 							continue;
 						}
@@ -3357,6 +3696,7 @@ export class PFMParser {
 								const img_id = this.emit_open(node_kind.image, this.cursor, current_node, 0, true);
 								this.node_stack.push(img_id);
 								this.states.push(state_kind.link_text);
+								this.link_text_start = this.cursor + 2;
 								this.chomp(2); // skip ![
 								continue;
 							}

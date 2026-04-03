@@ -1,0 +1,97 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import Eliza from \"elizabot\";\nimport "
+      mustache " beforeUpdate, afterUpdate "
+      text " from \"svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "let div;\nlet autoscroll;"
+    line_break
+    line_break
+    paragraph
+      text "beforeUpdate(() => "
+      mustache "\n	autoscroll = div && div.offsetHeight + div.scrollTop > div.scrollHeight - 20;\n"
+      text ");"
+    line_break
+    line_break
+    paragraph
+      text "afterUpdate(() => "
+      mustache "\n	if (autoscroll) div.scrollTo(0, div.scrollHeight);\n"
+      text ");"
+    line_break
+    line_break
+    paragraph
+      text "const eliza = new Eliza();"
+    line_break
+    line_break
+    paragraph
+      text "let comments = "
+      mustache " author: \"eliza\", text: eliza.getInitial() "
+      text "];"
+    line_break
+    line_break
+    paragraph
+      text "function handleKeydown(event) "
+      mustache "\n	if (event.which === 13) {\n		const text = event.target.value;\n		if (!text) return;\n\n		comments = comments.concat({\n			author: \"user\",\n			text,\n		});\n\n		event.target.value = \"\";\n\n		const reply = eliza.transform(text);\n\n		setTimeout(\n			() => {\n				comments = comments.concat({\n					author: \"eliza\",\n					text: \"...\",\n					placeholder: true,\n				});\n\n				setTimeout(\n					() => {\n						comments = comments\n							.filter((comment) => !comment.placeholder)\n							.concat({\n								author: \"eliza\",\n								text: reply,\n							});\n					},\n					500 + Math.random() * 500,\n				);\n			},\n			200 + Math.random() * 200,\n		);\n	}\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text ".chat "
+      mustache "\n		display: flex;\n		flex-direction: column;\n		height: 100%;\n		max-width: 320px;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".scrollable "
+        mustache "\n		flex: 1 1 auto;\n		border-top: 1px solid #eee;\n		margin: 0 0 0.5em 0;\n		overflow-y: auto;\n	"
+      line_break
+      line_break
+      paragraph
+        text "article "
+        mustache "\n		margin: 0.5em 0;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".user "
+        mustache "\n		text-align: right;\n	"
+      line_break
+      line_break
+      paragraph
+        text "span "
+        mustache "\n		padding: 0.5em 1em;\n		display: inline-block;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".eliza span "
+        mustache "\n		background-color: #eee;\n		border-radius: 1em 1em 1em 0;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".user span "
+        mustache "\n		background-color: #0074D9;\n		color: white;\n		border-radius: 1em 1em 0 1em;\n	"
+  line_break
+  line_break
+  html tag="div" class="chat"
+    line_break
+    html tag="h1"
+      paragraph
+        text "Eliza"
+    line_break
+    line_break
+    html tag="div" class="scrollable" bind:this="div"
+      line_break
+      paragraph
+        mustache "#each comments as comment"
+        text "			"
+        html tag="article" class="comment.author"
+          text "				"
+          html tag="span"
+            mustache "comment.text"
+          text "			"
+        text "		"
+        mustache "/each"
+        text "	"

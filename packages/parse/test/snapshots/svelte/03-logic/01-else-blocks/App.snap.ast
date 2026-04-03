@@ -1,0 +1,24 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let user = "
+      mustache " loggedIn: false "
+      text ";"
+    line_break
+    line_break
+    paragraph
+      text "function toggle() "
+      mustache "\n	user.loggedIn = !user.loggedIn;\n"
+  line_break
+  line_break
+  paragraph
+    mustache "#if user.loggedIn"
+    text "	"
+    html tag="button" on:click="toggle"
+      text "		Log out\n	"
+    mustache ":else"
+    text "	"
+    html tag="button" on:click="toggle"
+      text "		Log in\n	"
+    mustache "/if"

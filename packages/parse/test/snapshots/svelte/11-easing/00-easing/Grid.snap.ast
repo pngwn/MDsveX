@@ -1,0 +1,36 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "export let x, y;\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text ".grid-line "
+      mustache "\n		stroke:#ccc;\n		opacity: 0.5;\n		stroke-width: 2;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".grid-line-xy "
+        mustache "\n		stroke: tomato;\n		stroke-width: 2;\n	"
+  line_break
+  line_break
+  html tag="svelte:options" namespace="svg" self_closing=true
+  line_break
+  line_break
+  html tag="rect" x="0" y="0" width="1400" height="1800" stroke="#ccc" style="opacity: 0.5" fill="none" stroke-width="2" self_closing=true
+  line_break
+  line_break
+  paragraph
+    mustache "#each { length: 8 } as _, i"
+    text "	"
+    mustache "#if i < 6"
+    text "		"
+    html tag="path" d="M{(i+1) * 200} 0 L{(i+1)*200} 1802" class="grid-line" self_closing=true
+    text "	"
+    mustache "/if"
+    text "	"
+    html tag="path" d="M0 {(i+1) * 200} L1400 {(i+1)*200} " class="grid-line" self_closing=true
+    mustache "/each"

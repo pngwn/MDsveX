@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "]("
+    text tag="b" )c=true [a](<b)c=true "<b)c\n[a](<b)c>\n"
+    text "]("
+    text tag="b" "<b>c)"
+  line_break

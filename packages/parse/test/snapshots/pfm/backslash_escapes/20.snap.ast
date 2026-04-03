@@ -1,0 +1,5 @@
+root
+  paragraph
+    link
+      text "https://example.com?find=\\*"
+  line_break

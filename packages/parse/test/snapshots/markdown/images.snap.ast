@@ -1,0 +1,28 @@
+root
+  paragraph
+    image src="/path/to/img.jpg"
+      text "Alt text"
+  line_break
+  line_break
+  paragraph
+    image src="/path/to/img.jpg" title="Optional title"
+      text "Alt text"
+  line_break
+  line_break
+  paragraph
+    text "]"
+    text "]"
+  line_break
+  line_break
+  paragraph
+    text "]"
+  line_break
+  line_break
+  paragraph
+    text "]"
+  line_break
+  line_break
+  paragraph
+    text "]"
+  line_break
+  line_break

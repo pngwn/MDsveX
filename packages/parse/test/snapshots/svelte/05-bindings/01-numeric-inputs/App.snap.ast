@@ -1,0 +1,32 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let a = 1;\nlet b = 2;\n"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="number" bind:value="a" min="0" max="10"
+      line_break
+      html tag="input" type="range" bind:value="a" min="0" max="10"
+        line_break
+        paragraph
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="number" bind:value="b" min="0" max="10"
+      line_break
+      html tag="input" type="range" bind:value="b" min="0" max="10"
+        line_break
+        paragraph
+  line_break
+  line_break
+  html tag="p"
+    paragraph
+      mustache "a"
+      text " + "
+      mustache "b"
+      text " = "
+      mustache "a + b"

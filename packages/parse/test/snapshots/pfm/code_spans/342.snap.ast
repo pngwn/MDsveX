@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "not a "
+    code_span "link](/foo"
+    text ")"
+  line_break

@@ -1,0 +1,5 @@
+root
+  paragraph
+    link href="foo(and(bar))"
+      text "link"
+  line_break

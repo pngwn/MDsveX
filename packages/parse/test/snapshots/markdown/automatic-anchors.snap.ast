@@ -1,0 +1,6 @@
+root
+  line_break
+  paragraph
+    link
+      text "http://example.com/"
+  line_break

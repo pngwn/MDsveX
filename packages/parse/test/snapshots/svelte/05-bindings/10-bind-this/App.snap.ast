@@ -1,0 +1,28 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import "
+      mustache " onMount "
+      text " from \"svelte\";"
+    line_break
+    line_break
+    paragraph
+      text "let canvas;"
+    line_break
+    line_break
+    paragraph
+      text "onMount(() => "
+      mustache "\n	const ctx = canvas.getContext(\"2d\");\n	let frame;\n\n	(function loop() {\n		frame = requestAnimationFrame(loop);\n\n		const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);\n\n		for (let p = 0; p < imageData.data.length; p += 4) {\n			const i = p / 4;\n			const x = i % canvas.width;\n			const y = (i / canvas.height) >>> 0;\n\n			const t = window.performance.now();\n\n			const r = 64 + (128 * x) / canvas.width + 64 * Math.sin(t / 1000);\n			const g = 64 + (128 * y) / canvas.height + 64 * Math.cos(t / 1000);\n			const b = 128;\n\n			imageData.data[p + 0] = r;\n			imageData.data[p + 1] = g;\n			imageData.data[p + 2] = b;\n			imageData.data[p + 3] = 255;\n		}\n\n		ctx.putImageData(imageData, 0, 0);\n	})();\n\n	return () => {\n		cancelAnimationFrame(frame);\n	};\n"
+      text ");\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "canvas "
+      mustache "\n		width: 100%;\n		height: 100%;\n		background-color: #666;\n		-webkit-mask: url(logo-mask.svg) 50% 50% no-repeat;\n		mask: url(logo-mask.svg) 50% 50% no-repeat;\n	"
+  line_break
+  line_break
+  html tag="canvas" bind:this="canvas" width="32" height="32"
+  line_break

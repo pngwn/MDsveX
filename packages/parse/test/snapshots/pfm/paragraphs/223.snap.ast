@@ -1,0 +1,4 @@
+root
+  paragraph
+    text "aaa\n             bbb\n                                       ccc"
+  line_break

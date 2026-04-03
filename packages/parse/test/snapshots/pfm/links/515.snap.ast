@@ -1,0 +1,5 @@
+root
+  paragraph
+    link href="/uri"
+      text "link \\[bar"
+  line_break

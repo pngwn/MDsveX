@@ -1,0 +1,8 @@
+root
+  block_quote
+    paragraph
+      text "bar"
+      text "baz"
+      soft_break
+      text "foo"
+  line_break

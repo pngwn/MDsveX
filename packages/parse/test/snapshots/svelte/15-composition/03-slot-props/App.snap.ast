@@ -1,0 +1,80 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import Hoverable from \"./Hoverable.svelte\";\n"
+  line_break
+  line_break
+  html tag="style"
+    line_break
+    paragraph
+      text "div "
+      mustache "\n		padding: 1em;\n		margin: 0 0 1em 0;\n		background-color: #eee;\n	"
+      line_break
+      line_break
+      paragraph
+        text ".active "
+        mustache "\n		background-color: #ff3e00;\n		color: white;\n	"
+  line_break
+  line_break
+  html tag="Hoverable" let:hovering="active"
+    line_break
+    html tag="div" class:active=true
+      line_break
+      paragraph
+        mustache "#if active"
+        text "			"
+        html tag="p"
+          text "I am being hovered upon."
+        text "		"
+        mustache ":else"
+        text "			"
+        html tag="p"
+          text "Hover over me"
+          text "!"
+        text "		"
+        mustache "/if"
+        text "	"
+    line_break
+  line_break
+  line_break
+  html tag="Hoverable" let:hovering="active"
+    line_break
+    html tag="div" class:active=true
+      line_break
+      paragraph
+        mustache "#if active"
+        text "			"
+        html tag="p"
+          text "I am being hovered upon."
+        text "		"
+        mustache ":else"
+        text "			"
+        html tag="p"
+          text "Hover over me"
+          text "!"
+        text "		"
+        mustache "/if"
+        text "	"
+    line_break
+  line_break
+  line_break
+  html tag="Hoverable" let:hovering="active"
+    line_break
+    html tag="div" class:active=true
+      line_break
+      paragraph
+        mustache "#if active"
+        text "			"
+        html tag="p"
+          text "I am being hovered upon."
+        text "		"
+        mustache ":else"
+        text "			"
+        html tag="p"
+          text "Hover over me"
+          text "!"
+        text "		"
+        mustache "/if"
+        text "	"
+    line_break

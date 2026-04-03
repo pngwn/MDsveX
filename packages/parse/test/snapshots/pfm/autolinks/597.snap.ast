@@ -1,0 +1,5 @@
+root
+  paragraph
+    link
+      text "MAILTO:FOO@BAR.BAZ"
+  line_break

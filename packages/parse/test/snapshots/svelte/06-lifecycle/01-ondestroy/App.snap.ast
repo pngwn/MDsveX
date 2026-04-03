@@ -1,0 +1,20 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "import "
+      mustache " onInterval "
+      text " from \"./utils.js\";"
+    line_break
+    line_break
+    paragraph
+      text "let seconds = 0;\nonInterval(() => (seconds += 1), 1000);\n"
+  line_break
+  line_break
+  html tag="p"
+    line_break
+    paragraph
+      text "The page has been open for\n	"
+      mustache "seconds"
+      text " "
+      mustache "seconds === 1 ? 'second' : 'seconds'"

@@ -1,0 +1,3 @@
+root
+  heading depth=6 "This is an H6"
+  line_break

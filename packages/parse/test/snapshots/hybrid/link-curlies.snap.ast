@@ -1,0 +1,59 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "export let link = \"some/link/to/page\";\n  export let title = \"This is a title.\";\n"
+  line_break
+  line_break
+  paragraph
+    text "Hello I am text and this is a "
+    link href="{link}"
+      text "link"
+    text "."
+    line_break
+    line_break
+    paragraph
+      text "Hello I am text and this is a "
+      link href="{link}" title="This is a title"
+        text "link"
+      text "."
+    line_break
+    line_break
+    paragraph
+      text "Hello I am text and this is a "
+      link href="{link}" title="{title}"
+        text "link"
+      text "."
+    line_break
+    line_break
+    paragraph
+      text "Hello I am text and this is a "
+      link href="{link}{link}" title="{title}"
+        text "link"
+      text "."
+    line_break
+    line_break
+    paragraph
+      link href="/base/{variable}"
+        text "Compound link"
+    line_break
+    line_break
+    paragraph
+      image src="{link}"
+        text "some image1"
+    line_break
+    line_break
+    paragraph
+      image src="{assets}/file.jpg" title="Some title text"
+        text "some image2"
+    line_break
+    line_break
+    paragraph
+      image src="{link}" title="Some title"
+        text "some image3"
+    line_break
+    line_break
+    paragraph
+      image src="{link}" title="{title}"
+        text "some image4"
+    line_break

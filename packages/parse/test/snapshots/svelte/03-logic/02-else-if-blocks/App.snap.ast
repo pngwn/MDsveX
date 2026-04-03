@@ -1,0 +1,24 @@
+root
+  html tag="script"
+    line_break
+    paragraph
+      text "let x = 7;\n"
+  line_break
+  line_break
+  paragraph
+    mustache "#if x > 10"
+    text "	"
+    html tag="p"
+      mustache "x"
+      text " is greater than 10"
+    mustache ":else if 5 > x"
+    text "	"
+    html tag="p"
+      mustache "x"
+      text " is less than 5"
+    mustache ":else"
+    text "	"
+    html tag="p"
+      mustache "x"
+      text " is between 5 and 10"
+    mustache "/if"

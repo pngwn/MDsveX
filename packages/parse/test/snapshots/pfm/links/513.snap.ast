@@ -1,0 +1,5 @@
+root
+  paragraph
+    text "] bar"
+    text "](/uri)"
+  line_break

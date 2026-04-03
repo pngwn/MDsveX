@@ -1,0 +1,11 @@
+root
+  html tag="style"
+    line_break
+    paragraph
+      text "strong "
+      mustache " color: green; "
+  line_break
+  line_break
+  html tag="strong"
+    paragraph
+      text "green thing"
