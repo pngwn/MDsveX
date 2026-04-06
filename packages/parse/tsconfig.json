@@ -1,5 +1,6 @@
 {
 	"include": ["src/**/*"],
+	"rootDir": "src",
 	"compilerOptions": {
 		"declaration": true,
 		"target": "es2020",
