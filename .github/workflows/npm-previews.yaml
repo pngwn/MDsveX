@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - next
     paths-ignore:
       - 'site/**'
 
@@ -12,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npm i -g pnpm@9.1
+      - run: npm i -g pnpm@10.33.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
