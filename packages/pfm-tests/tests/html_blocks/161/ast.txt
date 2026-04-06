@@ -1,6 +1,0 @@
-root
-	html(<div>)
-	html(</div>)
-	line_break
-	code_fence(int x = 33;\n)
-	line_break

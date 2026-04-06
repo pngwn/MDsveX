@@ -1,4 +1,0 @@
-root
-	paragraph
-		text([link](foo%20b&auml;))
-	line_break

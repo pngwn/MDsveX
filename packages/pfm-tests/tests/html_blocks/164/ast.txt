@@ -1,8 +1,0 @@
-root
-	html(<i class="foo">)
-	line_break
-	paragraph
-		text(*bar*)
-	line_break
-	html(</i>)
-	line_break

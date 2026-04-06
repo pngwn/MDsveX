@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(\\\\*emphasis*)
-	line_break

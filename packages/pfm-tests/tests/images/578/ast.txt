@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(![foo](train.jpg))
-	line_break

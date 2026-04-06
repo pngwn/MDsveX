@@ -1,6 +1,0 @@
-root
-	paragraph
-		text(<)
-	paragraph
-		text(!DOCTYPE html>)
-	line_break

@@ -11,7 +11,6 @@
 	import Node from '@mdsvex/render/Node.svelte';
 	import { RecordingEmitter, type Op } from '$lib/recorder';
 	import { Play, Pause, SkipForward, SkipBackward, FastForward } from '$lib';
-	import PixiCanvas from '$lib/PixiCanvas.svelte';
 	import Widget from '$lib/components/Widget.svelte';
 	import AlertBox from '$lib/components/AlertBox.svelte';
 
@@ -250,7 +249,7 @@
 				<select bind:value={render_mode}>
 					<option value="dom">Svelte DOM</option>
 					<option value="html">HTML String</option>
-					<option value="canvas">PixiJS Canvas</option>
+
 				</select>
 			</label>
 			<label class="chunk-control">
@@ -293,9 +292,7 @@
 				<div class="panel-header">
 					Rendered
 					<span class="badge">
-						{#if render_mode === 'canvas'}
-							pixi
-						{:else if render_mode === 'html'}
+						{#if render_mode === 'html'}
 							{html_blocks.length} blocks
 						{:else}
 							{dom_renderer.blocks.length} blocks

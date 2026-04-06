@@ -1,4 +1,0 @@
-root
-	html(</a>)
-	html(</foo >)
-	line_break

@@ -1,3 +1,0 @@
-root
-	paragraph
-		code(foo)

@@ -1,9 +1,0 @@
-root
-	paragraph
-		text(1. )
-	code_fence(   foo\n   )
-	line_break
-	line_break
-	paragraph
-		text(bar)
-	line_break

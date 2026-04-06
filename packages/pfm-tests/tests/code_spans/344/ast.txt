@@ -1,7 +1,0 @@
-root
-	html(<a href="`">)
-	paragraph
-		text(`)
-	paragraph
-		text(`)
-	line_break

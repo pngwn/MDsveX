@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(Foo χρῆν)
-	line_break

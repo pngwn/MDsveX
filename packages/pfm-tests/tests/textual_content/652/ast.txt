@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(Multiple     spaces)
-	line_break

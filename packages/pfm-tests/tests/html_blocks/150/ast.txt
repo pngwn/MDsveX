@@ -1,9 +1,0 @@
-root
-	html(<div>)
-	line_break
-	paragraph
-		text(*hello*)
-	line_break
-	html(<foo>)
-	html(<a>)
-	line_break

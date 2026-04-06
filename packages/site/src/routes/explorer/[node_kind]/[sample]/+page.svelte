@@ -6,7 +6,6 @@
 	import InspectorPanel from '$lib/components/InspectorPanel.svelte';
 	import {
 		parse_markdown_svelte,
-		Introspector,
 		type node_buffer
 	} from '@mdsvex/parse';
 

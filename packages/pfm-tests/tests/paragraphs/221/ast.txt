@@ -1,9 +1,0 @@
-root
-	paragraph
-		text(aaa)
-	line_break
-	line_break
-	line_break
-	paragraph
-		text(bbb)
-	line_break

@@ -1,8 +1,0 @@
-root
-	html(<a href="foo">)
-	line_break
-	paragraph
-		text(*bar*)
-	line_break
-	html(</a>)
-	line_break

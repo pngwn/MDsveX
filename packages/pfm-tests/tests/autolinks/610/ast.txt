@@ -1,3 +1,0 @@
-root
-	html(<foo.bar.baz>)
-	line_break

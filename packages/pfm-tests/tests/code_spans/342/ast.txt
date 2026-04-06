@@ -1,8 +1,0 @@
-root
-	paragraph
-		text([not a )
-	paragraph
-		text(`link](/foo`))
-	paragraph
-		text(`)
-	line_break

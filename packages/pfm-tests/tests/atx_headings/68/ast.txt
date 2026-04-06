@@ -1,3 +1,0 @@
-heading(3) -> text(foo)
-heading(2) -> text(foo)
-heading(1) -> text(foo)

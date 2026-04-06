@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(_пристаням_стремятся)
-	line_break

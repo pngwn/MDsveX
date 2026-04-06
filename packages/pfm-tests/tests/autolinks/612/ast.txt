@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(foo@bar.example.com)
-	line_break

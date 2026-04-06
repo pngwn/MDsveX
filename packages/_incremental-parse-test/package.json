@@ -16,8 +16,7 @@
 	"dependencies": {
 		"@mdsvex/parse": "workspace:*",
 		"@mdsvex/render": "workspace:*",
-		"lucide-svelte": "^1.0.1",
-		"pixi.js": "^8.17.1"
+		"lucide-svelte": "^1.0.1"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.0",

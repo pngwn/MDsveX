@@ -1,5 +1,0 @@
-root
-	paragraph
-		text(Foo )
-	html(<responsive-image src="foo.jpg" />)
-	line_break

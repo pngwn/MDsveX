@@ -1,5 +1,0 @@
-root
-	html(<a>)
-	html(<bab>)
-	html(<c2c>)
-	line_break

@@ -1,5 +1,0 @@
-root
-	paragraph
-		text([foo)
-	html(<https://example.com/?search=](uri)>)
-	line_break

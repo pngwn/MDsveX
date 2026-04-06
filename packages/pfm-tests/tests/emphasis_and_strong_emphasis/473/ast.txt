@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(*[bar*](/url))
-	line_break

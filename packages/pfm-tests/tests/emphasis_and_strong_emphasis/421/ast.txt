@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(**** is not an empty strong emphasis)
-	line_break

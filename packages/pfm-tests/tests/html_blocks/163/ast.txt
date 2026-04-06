@@ -1,8 +1,0 @@
-root
-	html(<Warning>)
-	line_break
-	paragraph
-		text(*bar*)
-	line_break
-	html(</Warning>)
-	line_break

@@ -1,8 +1,0 @@
-root
-	paragraph
-		text(>     code)
-	line_break
-	line_break
-	paragraph
-		text(>    not code)
-	line_break

@@ -1,9 +1,0 @@
-root
-	paragraph
-		text([foo)
-	html(<https://example.com/?search=][ref]>)
-	line_break
-	line_break
-	paragraph
-		text([ref]: /uri)
-	line_break

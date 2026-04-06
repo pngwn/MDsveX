@@ -1,11 +1,10 @@
 import type { node_buffer, error_collector } from './utils';
-import type { Introspector } from './introspector';
 
 /** options for controlling the markdown parser. */
 export interface parse_options {
 	token_capacity?: number;
 	error_capacity?: number;
-	introspector?: Introspector;
+
 	/** column width of a tab character (default: 2). */
 	tab_size?: number;
 }

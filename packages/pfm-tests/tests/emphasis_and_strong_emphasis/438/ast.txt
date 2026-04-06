@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(foo *_*)
-	line_break

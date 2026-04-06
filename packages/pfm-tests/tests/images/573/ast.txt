@@ -1,8 +1,0 @@
-root
-	paragraph
-		text(![foo *bar*])
-	line_break
-	line_break
-	paragraph
-		text([foo *bar*]: train.jpg "train & tracks")
-	line_break

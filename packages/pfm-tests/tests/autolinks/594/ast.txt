@@ -1,4 +1,0 @@
-root
-	paragraph
-		link(http://foo.bar.baz)
-			text(http://foo.bar.baz)

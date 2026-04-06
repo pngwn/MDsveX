@@ -1,5 +1,0 @@
-root
-	paragraph
-		text(#5 bolt)
-	paragraph
-		text(#hashtag)

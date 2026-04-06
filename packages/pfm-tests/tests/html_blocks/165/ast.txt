@@ -1,6 +1,0 @@
-root
-	html(</ins>)
-	line_break
-	paragraph
-		text(*bar*)
-	line_break

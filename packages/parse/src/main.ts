@@ -31,21 +31,15 @@ import {
 } from './constants';
 
 import type { parse_options } from './types';
-import type { Introspector } from './introspector';
+
 import type { Emitter } from './opcodes';
 import { node_kind } from './utils';
 import { node_buffer, error_collector } from './utils';
 import { TreeBuilder } from './tree_builder';
 export type { parse_options, parse_result } from './types';
 export { node_kind, node_buffer } from './utils';
-export { Introspector } from './introspector';
-export type { introspection_entry } from './introspector';
+
 export { WireEmitter, WireOp } from './wire_emitter';
-
-// todo: remove
-export { PFMDocument, applyBatch, textContent } from './pfm_document';
-
-export type { PFMNode, PFMHandlers } from './pfm_document';
 export type { Emitter } from './opcodes';
 
 const enum char_mask {
@@ -283,8 +277,6 @@ export class PFMParser {
 	private out: Emitter;
 	private errors: error_collector;
 
-	// introspector (optional)
-	private introspector?: Introspector;
 
 	private tab_size: number = 2;
 
@@ -297,7 +289,6 @@ export class PFMParser {
 	/**
 	 * parse a complete source string.
 	 * @param source the markdown source to parse.
-	 * @param introspector optional introspector for debugging.
 	 * @returns object with error collector.
 	 */
 	/**
@@ -306,9 +297,9 @@ export class PFMParser {
 	 */
 	parse(
 		source: string,
-		introspector?: Introspector
+
 	): { errors: error_collector } {
-		this._init(introspector);
+		this._init();
 		this.source = source;
 		this.current = classify(source.charCodeAt(0));
 		this.next_class = classify(source.charCodeAt(1));
@@ -325,8 +316,8 @@ export class PFMParser {
 	 * initialize the parser for incremental feeding. must be called
 	 * before the first feed() call.
 	 */
-	init(introspector?: Introspector): void {
-		this._init(introspector);
+	init(): void {
+		this._init();
 		this.finished = false;
 	}
 
@@ -355,7 +346,7 @@ export class PFMParser {
 		return { errors: this.errors };
 	}
 
-	private _init(introspector?: Introspector): void {
+	private _init(): void {
 		this.source = '';
 		this.cursor = 0;
 		this.finished = false;
@@ -407,7 +398,7 @@ export class PFMParser {
 		this.link_text_start = 0;
 		this.directive_colon_counts = [];
 		this.errors = EMPTY_ERRORS;
-		this.introspector = introspector;
+
 
 		// emit the root node open
 		this.out.open(0, node_kind.root, 0, -1, 0, false);
@@ -2310,7 +2301,7 @@ export class PFMParser {
 	private _run(): void {
 		const source = this.source;
 		const length = source.length;
-		const introspector = this.introspector;
+
 
 		// reset progress counter,  new data may have been fed since last _run()
 		this.loop_without_progress = 0;
@@ -2358,7 +2349,7 @@ export class PFMParser {
 				}
 			}
 
-			if (introspector) introspector.step(this.cursor, this.states);
+
 
 			const active = this.states[this.states.length - 1];
 			const code = source.charCodeAt(this.cursor);
@@ -7256,6 +7247,6 @@ export function parse_markdown_svelte(
 ): { nodes: node_buffer; errors: error_collector } {
 	const tree = new TreeBuilder(input.length >> 3 || 128);
 	const parser = new PFMParser(tree, options.tab_size);
-	const { errors } = parser.parse(input, options.introspector);
+	const { errors } = parser.parse(input);
 	return { nodes: tree.get_buffer(), errors };
 }

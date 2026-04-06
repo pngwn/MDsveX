@@ -1,4 +1,0 @@
-root
-	html(<a  />)
-	html(<b2\ndata="foo" >)
-	line_break

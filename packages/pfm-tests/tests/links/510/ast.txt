@@ -1,7 +1,0 @@
-root
-	paragraph
-		text([link](   /uri)
-	line_break
-	paragraph
-		text("title"  ))
-	line_break

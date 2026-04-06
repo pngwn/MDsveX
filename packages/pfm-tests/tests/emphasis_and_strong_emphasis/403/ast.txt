@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(__(bar)__.)
-	line_break

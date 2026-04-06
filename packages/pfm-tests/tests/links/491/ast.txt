@@ -1,7 +1,0 @@
-root
-	paragraph
-		text([link]()
-	html(<foo\nbar>)
-	paragraph
-		text())
-	line_break

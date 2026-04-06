@@ -1,6 +1,0 @@
-root
-	paragraph
-		text(<)
-	paragraph
-		text(https://foo.bar >)
-	line_break

@@ -22,10 +22,7 @@
 			"import": "./dist/component.js",
 			"types": "./src/component.ts"
 		},
-		"./pixi": {
-			"import": "./src/pixi.ts",
-			"types": "./src/pixi.ts"
-		},
+
 		"./Node.svelte": {
 			"types": "./src/Node.svelte",
 			"svelte": "./src/Node.svelte",
@@ -33,14 +30,10 @@
 		}
 	},
 	"peerDependencies": {
-		"svelte": "^5.0.0",
-		"pixi.js": "^8.0.0"
+		"svelte": "^5.0.0"
 	},
 	"peerDependenciesMeta": {
 		"svelte": {
-			"optional": true
-		},
-		"pixi.js": {
 			"optional": true
 		}
 	},

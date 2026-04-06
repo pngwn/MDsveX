@@ -1,6 +1,0 @@
-root
-	html(<del>)
-	paragraph
-		text(*foo*)
-	html(</del>)
-	line_break

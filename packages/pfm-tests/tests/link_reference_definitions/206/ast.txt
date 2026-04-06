@@ -1,8 +1,0 @@
-root
-	paragraph
-		text([ΑΓΩ]: /φου)
-	line_break
-	line_break
-	paragraph
-		text([αγω])
-	line_break

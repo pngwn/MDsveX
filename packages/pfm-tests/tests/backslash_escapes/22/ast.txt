@@ -1,4 +1,0 @@
-root
-	paragraph
-		text([foo](/bar\\* "ti\\*tle"))
-	line_break

@@ -1,9 +1,0 @@
-root
-	paragraph
-		text(<)
-	paragraph
-		text(div class)
-	line_break
-	paragraph
-		text(foo)
-	line_break

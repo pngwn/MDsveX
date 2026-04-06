@@ -1,5 +1,0 @@
-root
-	paragraph
-		text([foo )
-	html(<bar attr="](baz)">)
-	line_break

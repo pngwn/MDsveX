@@ -1,5 +1,0 @@
-root
-	paragraph
-		text(__a)
-	html(<https://foo.bar/?q=__>)
-	line_break

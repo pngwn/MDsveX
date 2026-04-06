@@ -1,9 +1,0 @@
-root
-	paragraph
-		text(<)
-	paragraph
-		text(!-- foo -->*bar*)
-	line_break
-	paragraph
-		text(*baz*)
-	line_break

@@ -1,8 +1,0 @@
-root
-	paragraph
-		text([foo][ref[bar]])
-	line_break
-	line_break
-	paragraph
-		text([ref[bar]]: /uri)
-	line_break

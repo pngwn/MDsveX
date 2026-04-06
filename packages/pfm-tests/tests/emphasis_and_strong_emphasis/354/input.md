@@ -1,5 +1,0 @@
-*$*alpha.
-
-*£*bravo.
-
-*€*charlie.

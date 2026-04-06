@@ -1,9 +1,0 @@
-root
-	paragraph
-		text([foo )
-	html(<bar attr="][ref]">)
-	line_break
-	line_break
-	paragraph
-		text([ref]: /uri)
-	line_break

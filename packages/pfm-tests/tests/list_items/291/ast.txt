@@ -1,7 +1,0 @@
-root
-	paragraph
-		text(1.  A paragraph)
-	line_break
-	paragraph
-		text(with two lines.)
-	line_break

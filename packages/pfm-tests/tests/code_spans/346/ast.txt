@@ -1,7 +1,0 @@
-root
-	html(<https://foo.bar.`baz>)
-	paragraph
-		text(`)
-	paragraph
-		text(`)
-	line_break

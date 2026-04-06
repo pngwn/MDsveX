@@ -1,4 +1,0 @@
-root
-	paragraph
-		link(localhost:5001/foo)
-			text(localhost:5001/foo)

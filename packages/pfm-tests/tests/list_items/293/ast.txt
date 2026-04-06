@@ -1,7 +1,0 @@
-root
-	paragraph
-		text(> 1. > Blockquote)
-	line_break
-	paragraph
-		text(> continued here.)
-	line_break

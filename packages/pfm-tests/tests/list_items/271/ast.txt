@@ -1,8 +1,0 @@
-root
-	paragraph
-		text(10.  foo)
-	line_break
-	line_break
-	paragraph
-		text(bar)
-	line_break

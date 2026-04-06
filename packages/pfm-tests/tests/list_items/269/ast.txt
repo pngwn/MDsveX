@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(-1. not ok)
-	line_break

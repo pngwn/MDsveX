@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(![foo](/url "title"))
-	line_break

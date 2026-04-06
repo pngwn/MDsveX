@@ -1,4 +1,0 @@
-root
-	paragraph
-		text([link](/my uri))
-	line_break

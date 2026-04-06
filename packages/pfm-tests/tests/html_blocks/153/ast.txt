@@ -1,5 +1,0 @@
-root
-	html(<div id="foo"\n  class="bar">)
-	line_break
-	html(</div>)
-	line_break

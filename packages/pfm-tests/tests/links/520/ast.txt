@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(![[[foo](uri1)](uri2)](uri3))
-	line_break

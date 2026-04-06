@@ -1,4 +1,0 @@
-root
-	paragraph
-		text([foo [bar](/uri)](/uri))
-	line_break

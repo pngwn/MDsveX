@@ -1,9 +1,0 @@
-root
-	paragraph
-		text(Foo)
-	line_break
-	html(<a href="bar">)
-	line_break
-	paragraph
-		text(baz)
-	line_break

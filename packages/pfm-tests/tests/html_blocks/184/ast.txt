@@ -1,6 +1,0 @@
-root
-	html(<div>)
-	line_break
-	line_break
-	html(<div>)
-	line_break

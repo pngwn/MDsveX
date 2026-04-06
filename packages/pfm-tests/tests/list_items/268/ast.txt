@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(003. ok)
-	line_break

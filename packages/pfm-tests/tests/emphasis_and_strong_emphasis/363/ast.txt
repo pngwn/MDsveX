@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(aa_"bb"_cc)
-	line_break

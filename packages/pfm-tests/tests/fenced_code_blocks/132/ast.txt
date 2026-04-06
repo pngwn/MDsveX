@@ -1,3 +1,0 @@
-root
-	code_fence(aaa\n  aaa\naaa\n  )
-	line_break

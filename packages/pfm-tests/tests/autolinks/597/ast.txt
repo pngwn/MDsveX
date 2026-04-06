@@ -1,4 +1,0 @@
-root
-	paragraph
-		link(MAILTO:FOO@BAR.BAZ)
-			text(MAILTO:FOO@BAR.BAZ)

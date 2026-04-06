@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(5*6*78)
-	line_break

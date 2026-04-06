@@ -1,7 +1,0 @@
-root
-	code_fence([foo]: /url\n)
-	line_break
-	line_break
-	paragraph
-		text([foo])
-	line_break

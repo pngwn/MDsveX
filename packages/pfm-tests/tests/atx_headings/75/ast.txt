@@ -1,3 +1,0 @@
-root
-	heading(1)
-		text(foo#)

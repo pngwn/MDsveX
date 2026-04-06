@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(->foo->baz->->bim)
-	line_break

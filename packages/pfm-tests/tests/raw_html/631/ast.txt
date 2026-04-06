@@ -1,5 +1,0 @@
-root
-	paragraph
-		text(foo )
-	html(<a href="\\*">)
-	line_break
