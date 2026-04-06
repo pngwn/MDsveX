@@ -7,7 +7,7 @@
 	"scripts": {
 
 		"test": "pnpm -r --filter=!site test",
-		"test:run": "vitest run . ",
+		"test:run": "pnpm -r build && vitest run . ",
 		"test:e2e": "pnpm --filter=mdsvex-demo test:e2e",
 		"release": "pnpm --filter=!mdsvex-demo --filter=!@mdsvex/site build && changeset publish",
 		"changeset:add": "changeset add",
