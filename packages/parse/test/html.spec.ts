@@ -134,7 +134,7 @@ describe('html - paired inline tags', () => {
 		expect(div.metadata.tag).toBe('div');
 
 		// Span is inside a paragraph (block-level content)
-		// or could be inline — find the span
+		// or could be inline, find the span
 		const find_kind = (parent: number, kind: string): number | undefined => {
 			const node = nodes.get_node(parent);
 			for (const child of node.children) {
@@ -416,9 +416,14 @@ describe('html - edge cases', () => {
 		expect(outer.metadata.tag).toBe('div');
 
 		// Inner div should be a descendant
-		const find_html = (parent: number, tag: string, skip_self = false): number | undefined => {
+		const find_html = (
+			parent: number,
+			tag: string,
+			skip_self = false
+		): number | undefined => {
 			const node = nodes.get_node(parent);
-			if (!skip_self && node.kind === 'html' && node.metadata.tag === tag) return parent;
+			if (!skip_self && node.kind === 'html' && node.metadata.tag === tag)
+				return parent;
 			for (const child of node.children) {
 				const found = find_html(child, tag);
 				if (found !== undefined) return found;
@@ -462,7 +467,7 @@ describe('html - edge cases', () => {
 		expect(link.kind).toBe('link');
 	});
 
-	// PFM: no email autolinks — scheme prefix required.
+	// PFM: no email autolinks, scheme prefix required.
 	// <foo@bar.example.com> is not an autolink.
 	test('email-like angle brackets are not autolinks in PFM', () => {
 		const input = '<foo@bar.example.com>';
@@ -500,7 +505,7 @@ describe('html - edge cases', () => {
 
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
-		// The unclosed <span> should be revoked — no html node
+		// The unclosed <span> should be revoked, no html node
 		const html_nodes = paragraph.children.filter(
 			(i) => nodes.get_node(i).kind === 'html'
 		);
@@ -550,9 +555,7 @@ describe('html - edge cases', () => {
 		)!;
 		const div = nodes.get_node(html_idx);
 		expect(div.metadata.tag).toBe('div');
-		const link = div.children.find(
-			(i) => nodes.get_node(i).kind === 'link'
-		);
+		const link = div.children.find((i) => nodes.get_node(i).kind === 'link');
 		expect(link).toBeDefined();
 	});
 
@@ -652,7 +655,7 @@ describe('html - edge cases', () => {
 		expect(div.kind).toBe('html');
 		expect(div.metadata.tag).toBe('div');
 
-		// Content on same line — find the text in children
+		// Content on same line, find the text in children
 		// May be in a paragraph or direct text
 		const has_content = div.children.length > 0;
 		expect(has_content).toBe(true);
@@ -679,7 +682,7 @@ describe('html - raw text elements (script, style)', () => {
 		const script = nodes.get_node(root.children[0]);
 		expect(script.kind).toBe('html');
 		expect(script.metadata.tag).toBe('script');
-		// No children — content is stored as value, not parsed
+		// No children, content is stored as value, not parsed
 		expect(script.children).toHaveLength(0);
 		const content = get_content(nodes, script.index, input);
 		expect(content.value).toBe('\nlet a = 1;\n');

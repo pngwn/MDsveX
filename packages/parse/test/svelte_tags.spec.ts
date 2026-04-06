@@ -1,9 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import {
-	get_all_child_kinds,
-	get_content,
-} from './utils';
+import { get_all_child_kinds, get_content } from './utils';
 
 import { parse_markdown_svelte } from '../src/main';
 
@@ -85,7 +82,7 @@ describe('svelte void tags - {@tag ...}', () => {
 		const tag = nodes.get_node(paragraph.children[0]);
 		expect(tag.kind).toBe('svelte_tag');
 		expect(tag.metadata.tag).toBe('debug');
-		// No value — tag has no expression content
+		// No value, tag has no expression content
 		const { value } = get_content(nodes, tag.index, input);
 		expect(value).toBe('');
 	});
@@ -120,7 +117,7 @@ describe('svelte void tags - {@tag ...}', () => {
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		const tag = nodes.get_node(paragraph.children[0]);
-		// @ alone with no name — still detected as tag with name "@" or falls through
+		// @ alone with no name, still detected as tag with name "@" or falls through
 		// Actually: the scan starts at cursor+2, and the next char is }, so tag_name is ""
 		// which means tag_name.length === 0, so it falls through to mustache
 		expect(tag.kind).toBe('mustache');

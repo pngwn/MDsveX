@@ -1,69 +1,69 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { tick } from 'svelte';
+import { goto } from "$app/navigation";
+import { page } from "$app/stores";
+import { tick } from "svelte";
 
-	interface Props {
-		all_kinds: string[];
-		all_samples: [string, string][];
-		sample_id: string;
-		kind_id: string;
-	}
+interface Props {
+	all_kinds: string[];
+	all_samples: [string, string][];
+	sample_id: string;
+	kind_id: string;
+}
 
-	let { sample_id, all_kinds, kind_id, all_samples }: Props = $props();
+let { sample_id, all_kinds, kind_id, all_samples }: Props = $props();
 
-	let showLangMenu = $state(false);
-	let showTestMenu = $state(false);
-	let kind_btn_el = $state<{ [key: string]: HTMLButtonElement | null }>({});
-	let sample_btn_el = $state<{ [key: string]: HTMLButtonElement | null }>({});
+let showLangMenu = $state(false);
+let showTestMenu = $state(false);
+let kind_btn_el = $state<{ [key: string]: HTMLButtonElement | null }>({});
+let sample_btn_el = $state<{ [key: string]: HTMLButtonElement | null }>({});
 
-	function handle_kind_select(kind: string) {
+function handle_kind_select(kind: string) {
+	showLangMenu = false;
+	// Navigate to the same test in the new language, or first test if it doesn't exist
+	goto(`/explorer/${kind}/`);
+}
+
+function handleTestSelect(new_sample: string) {
+	showTestMenu = false;
+	goto(`/explorer/${kind_id}/${new_sample}`);
+}
+
+// Close menus when clicking outside
+function handleClickOutside(event: MouseEvent) {
+	const target = event.target as HTMLElement;
+	if (!target.closest(".breadcrumb-dropdown")) {
 		showLangMenu = false;
-		// Navigate to the same test in the new language, or first test if it doesn't exist
-		goto(`/explorer/${kind}/`);
-	}
-
-	function handleTestSelect(new_sample: string) {
 		showTestMenu = false;
-		goto(`/explorer/${kind_id}/${new_sample}`);
 	}
+}
 
-	// Close menus when clicking outside
-	function handleClickOutside(event: MouseEvent) {
-		const target = event.target as HTMLElement;
-		if (!target.closest('.breadcrumb-dropdown')) {
-			showLangMenu = false;
-			showTestMenu = false;
-		}
+async function handle_test_click(event: MouseEvent) {
+	event.stopPropagation();
+	showTestMenu = !showTestMenu;
+	showLangMenu = false;
+
+	await tick();
+
+	if (showTestMenu && sample_btn_el[sample_id]) {
+		sample_btn_el[sample_id]?.scrollIntoView({ block: "center" });
 	}
+}
 
-	async function handle_test_click(event: MouseEvent) {
-		event.stopPropagation();
-		showTestMenu = !showTestMenu;
-		showLangMenu = false;
+async function handle_kind_click(event: MouseEvent) {
+	event.stopPropagation();
+	showLangMenu = !showLangMenu;
+	showTestMenu = false;
 
-		await tick();
-
-		if (showTestMenu && sample_btn_el[sample_id]) {
-			sample_btn_el[sample_id]?.scrollIntoView({ block: 'center' });
-		}
+	await tick();
+	if (showLangMenu && kind_btn_el[kind_id]) {
+		kind_btn_el[kind_id]?.scrollIntoView({ block: "center" });
 	}
+}
 
-	async function handle_kind_click(event: MouseEvent) {
-		event.stopPropagation();
-		showLangMenu = !showLangMenu;
-		showTestMenu = false;
-
-		await tick();
-		if (showLangMenu && kind_btn_el[kind_id]) {
-			kind_btn_el[kind_id]?.scrollIntoView({ block: 'center' });
-		}
-	}
-
-	$effect(() => {
-		document.addEventListener('click', handleClickOutside);
-		return () => document.removeEventListener('click', handleClickOutside);
-	});
+$effect(() => {
+	document.addEventListener("click", handleClickOutside);
+	return () => document.removeEventListener("click", handleClickOutside);
+});
 </script>
 
 <div class="test-header">

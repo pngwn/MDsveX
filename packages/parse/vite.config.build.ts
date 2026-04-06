@@ -1,33 +1,26 @@
-import { defineConfig } from 'vite';
-import { resolve } from 'path';
-import terser from '@rollup/plugin-terser';
+import { defineConfig } from "vite";
+import { resolve } from "path";
+import terser from "@rollup/plugin-terser";
 
 export default defineConfig({
 	build: {
 		lib: {
 			entry: {
-				main: resolve(__dirname, 'src/main.ts'),
-				opcodes: resolve(__dirname, 'src/opcodes.ts'),
-				'tree-builder': resolve(__dirname, 'src/tree_builder.ts'),
-				cursor: resolve(__dirname, 'src/cursor.ts'),
-				'buf-utils': resolve(__dirname, 'src/buf_utils.ts'),
-				'wire-tree-builder': resolve(__dirname, 'src/wire_tree_builder.ts'),
-				utils: resolve(__dirname, 'src/utils.ts'),
+				main: resolve(__dirname, "tsc/main.js"),
+				opcodes: resolve(__dirname, "tsc/opcodes.js"),
+				"tree-builder": resolve(__dirname, "tsc/tree_builder.js"),
+				cursor: resolve(__dirname, "tsc/cursor.js"),
+				"wire-tree-builder": resolve(__dirname, "tsc/wire_tree_builder.js"),
+				utils: resolve(__dirname, "tsc/utils.js"),
 			},
-			formats: ['es'],
+			formats: ["es"],
 		},
-		outDir: 'dist',
+		outDir: "dist",
 		reportCompressedSize: true,
 		rollupOptions: {
 			output: {
-				entryFileNames: '[name].js',
-				plugins: [
-					// terser({
-					// 	// compress: true,
-					// 	mangle: true,
-					// 	format: { comments: false },
-					// }),
-				],
+				entryFileNames: "[name].js",
+				plugins: [terser()],
 			},
 		},
 	},

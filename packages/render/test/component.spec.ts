@@ -4,16 +4,16 @@ import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import { WireTreeBuilder } from '@mdsvex/parse/wire-tree-builder';
 import { ComponentRenderer } from '../src/component';
 
-// ── Helpers ──────────────────────────────────────────────────
+//  Helpers
 
 function parse_to_buf(source: string) {
-	const tree = new TreeBuilder((source.length >> 3) || 128);
+	const tree = new TreeBuilder(source.length >> 3 || 128);
 	const parser = new PFMParser(tree);
 	parser.parse(source);
 	return { buf: tree.get_buffer(), source };
 }
 
-// ── ComponentRenderer ────────────────────────────────────────
+//  ComponentRenderer
 
 describe('ComponentRenderer', () => {
 	it('produces blocks with buffer indices', () => {
@@ -95,7 +95,7 @@ describe('ComponentRenderer', () => {
 		const first = renderer.update(buf, source);
 		const second = renderer.update(buf, source);
 
-		// Second update with same closed doc — no change, same reference
+		// Second update with same closed doc, no change, same reference
 		expect(second).toBe(first);
 	});
 

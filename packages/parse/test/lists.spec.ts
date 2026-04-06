@@ -365,7 +365,7 @@ describe('Lists', () => {
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
 
-		// Outer list (tight — only the nested list is loose)
+		// Outer list (tight, only the nested list is loose)
 		expect(children.length).toBe(1);
 		expect(children[0].kind).toBe('list');
 		expect(children[0].metadata.tight).toBe(true);
@@ -436,7 +436,7 @@ describe('Lists', () => {
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
 
-		// Loose list with 3 items (a, b, d) — ref def is consumed
+		// Loose list with 3 items (a, b, d), ref def is consumed
 		expect(children.length).toBe(1);
 		expect(children[0].kind).toBe('list');
 		expect(children[0].metadata.tight).toBe(false);
@@ -459,7 +459,7 @@ describe('Lists', () => {
 		expect(items[0].kind).toBe('list_item');
 		expect(items[1].kind).toBe('list_item');
 
-		// Item 1: two paragraphs (foo, notcode) — continuation content
+		// Item 1: two paragraphs (foo, notcode), continuation content
 		const item1_children = non_breaks(nodes, items[0].index);
 		expect(item1_children.length).toBe(2);
 		expect(item1_children[0].kind).toBe('paragraph');
@@ -543,7 +543,7 @@ describe('Lists', () => {
 		expect(get_value(nodes, item2_children[0].index, input)).toBe('c');
 	});
 
-	// TODO: block quote inside list item eats subsequent code fence — block quote/fence interaction bug
+	// TODO: block quote inside list item eats subsequent code fence, block quote/fence interaction bug
 	test.todo('pfm example 321: block quote and code fence in list item');
 	test('pfm example 324: ordered list with code fence', () => {
 		const input = load_fixture('324');

@@ -1,25 +1,25 @@
 <script lang="ts">
-	interface route_step {
-		type: 'push' | 'pop' | 'swap';
-		state: string;
-		cursor: number;
-		char: string;
-		depth: number;
-	}
+interface route_step {
+	type: "push" | "pop" | "swap";
+	state: string;
+	cursor: number;
+	char: string;
+	depth: number;
+}
 
-	interface Props {
-		steps: route_step[];
-		position: number;
-	}
+interface Props {
+	steps: route_step[];
+	position: number;
+}
 
-	let { steps, position }: Props = $props();
+let { steps, position }: Props = $props();
 
-	function format_char(char: string): string {
-		if (char === '\n') return '\\n';
-		if (char === '\t') return '\\t';
-		if (char === ' ') return '\\s';
-		return char;
-	}
+function format_char(char: string): string {
+	if (char === "\n") return "\\n";
+	if (char === "\t") return "\\t";
+	if (char === " ") return "\\s";
+	return char;
+}
 </script>
 
 <div class="route-panel">

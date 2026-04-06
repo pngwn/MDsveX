@@ -1,9 +1,9 @@
-import { PFMParser, WireEmitter } from '@mdsvex/parse';
-import { TreeBuilder } from '@mdsvex/parse/tree-builder';
-import { Cursor } from '@mdsvex/parse/cursor';
-import { WireTreeBuilder } from '@mdsvex/parse/wire-tree-builder';
-import { CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
-import type { PreprocessorGroup } from 'svelte/compiler';
+import { PFMParser, WireEmitter } from "@mdsvex/parse";
+import { TreeBuilder } from "@mdsvex/parse/tree-builder";
+import { Cursor } from "@mdsvex/parse/cursor";
+import { WireTreeBuilder } from "@mdsvex/parse/wire-tree-builder";
+import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
+import type { PreprocessorGroup } from "svelte/compiler";
 
 function render(source: string): string {
 	const tree = new TreeBuilder(source.length >> 3 || 128);
@@ -20,10 +20,10 @@ export function mdsvex_preprocessor({
 	extensions: string[];
 }): PreprocessorGroup {
 	return {
-		name: 'mdsvex',
+		name: "mdsvex",
 		markup: async ({ content, filename }) => {
 			const extensionsParts = extensions.map((ext) =>
-				ext.startsWith('.') ? ext : '.' + ext
+				ext.startsWith(".") ? ext : "." + ext,
 			);
 			if (!extensionsParts.some((ext) => filename && filename.endsWith(ext)))
 				return;
@@ -36,7 +36,7 @@ export function mdsvex_preprocessor({
 			return {
 				code: parsed,
 				data: {},
-				map: '',
+				map: "",
 			};
 		},
 	};

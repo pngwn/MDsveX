@@ -1,4 +1,4 @@
-import type { node_kind } from './utils';
+import type { node_kind } from "./utils";
 
 /**
  * emitter interface for pfm parser opcodes.
@@ -24,7 +24,7 @@ export interface Emitter {
 		start: number,
 		parent: number,
 		extra: number,
-		pending: boolean
+		pending: boolean,
 	): void;
 
 	/**

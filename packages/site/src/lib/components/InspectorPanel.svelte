@@ -1,28 +1,30 @@
 <script lang="ts">
-	import type { introspection_entry } from '@mdsvex/parse';
+import type { introspection_entry } from "@mdsvex/parse";
 
-	interface Props {
-		source: string | undefined;
-		position: number;
-		analysis: introspection_entry | null;
-		onPositionChange: (position: number) => void;
-	}
+interface Props {
+	source: string | undefined;
+	position: number;
+	analysis: introspection_entry | null;
+	onPositionChange: (position: number) => void;
+}
 
-	let { source, position, analysis, onPositionChange }: Props = $props();
+let { source, position, analysis, onPositionChange }: Props = $props();
 
-	let r: Range;
-	let hl: Highlight;
-	if (typeof window !== 'undefined') {
-		hl = new Highlight();
-		CSS.highlights.set('position', hl);
-		r = new Range();
-		hl.add(r);
-	}
+let r: Range;
+let hl: Highlight;
+if (typeof window !== "undefined") {
+	hl = new Highlight();
+	CSS.highlights.set("position", hl);
+	r = new Range();
+	hl.add(r);
+}
 
-	function handleScrub(event: Event & { currentTarget: EventTarget & HTMLInputElement }) {
-		const newPosition = +event.currentTarget.value;
-		onPositionChange(newPosition);
-	}
+function handleScrub(
+	event: Event & { currentTarget: EventTarget & HTMLInputElement },
+) {
+	const newPosition = +event.currentTarget.value;
+	onPositionChange(newPosition);
+}
 </script>
 
 <div class="bottom-panel">

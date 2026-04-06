@@ -1,50 +1,48 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import url from 'node:url'
-import type { RouteId, RouteParams, PageServerLoad } from './$types';
-
-
+import fs from "node:fs";
+import path from "node:path";
+import url from "node:url";
+import type { RouteId, RouteParams, PageServerLoad } from "./$types";
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 function get_samples(kind: string) {
-	console.log(`dirname: ${__dirname || "NONE"}. kind: ${kind}`)
+	console.log(`dirname: ${__dirname || "NONE"}. kind: ${kind}`);
 	const test = fs.readdirSync(
 		path.join(
 			__dirname,
-			'..',
-			'..',
-			'..',
-			'..',
-			'..',
-			'..',
-			'pfm-tests',
-			'tests',
-			kind
-		)
+			"..",
+			"..",
+			"..",
+			"..",
+			"..",
+			"..",
+			"pfm-tests",
+			"tests",
+			kind,
+		),
 	);
 
 	const samples = test
-		.filter((file) => !file.endsWith('.js'))
+		.filter((file) => !file.endsWith(".js"))
 		.map((file) => [
-			file.replace('.css', ''),
+			file.replace(".css", ""),
 			fs.readFileSync(
 				path.join(
 					__dirname,
-					'..',
-					'..',
-					'..',
-					'..',
-					'..',
-					'..',
-					'pfm-tests',
-					'tests',
+					"..",
+					"..",
+					"..",
+					"..",
+					"..",
+					"..",
+					"pfm-tests",
+					"tests",
 					kind,
 					file,
-					'input.md'
+					"input.md",
 				),
-				'utf-8'
+				"utf-8",
 			),
 		]);
 
@@ -55,15 +53,15 @@ function get_all_kinds() {
 	const test_cases = fs.readdirSync(
 		path.join(
 			__dirname,
-			'..',
-			'..',
-			'..',
-			'..',
-			'..',
-			'..',
-			'pfm-tests',
-			'tests'
-		)
+			"..",
+			"..",
+			"..",
+			"..",
+			"..",
+			"..",
+			"pfm-tests",
+			"tests",
+		),
 	);
 
 	return test_cases;

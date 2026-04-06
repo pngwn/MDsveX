@@ -2,18 +2,16 @@ root
   html tag="script"
   line_break
   line_break
-  html tag="button" on:click="{() => showModal = true}"
-    line_break
+  html tag="button" on:click="() => (showModal = true)"
     paragraph
-      text "show modal"
-      soft_break
+      text "show modal "
   line_break
   line_break
   paragraph
     mustache "#if showModal"
     soft_break
     text "	"
-    text tag="Modal" on:close="{() => showModal = false}" "<Modal on:close=\"{() => showModal = false}\">"
+    text tag="Modal" on:close="() => (showModal = false)" "<Modal on:close={() => (showModal = false)}>"
     soft_break
     text "		"
     html tag="h2" slot="header"
@@ -24,7 +22,7 @@ root
       html tag="small"
         html tag="em"
           text "adjective"
-        text "  mod·al \\ˈmō-dəl"
+        text " mod·al \\ˈmō-dəl"
         text "</small>"
         soft_break
         text "		"

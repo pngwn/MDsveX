@@ -1,10 +1,10 @@
 /**
- * cursor — zero-allocation tree traversal over node_buffer.
+ * cursor, zero-allocation tree traversal over node_buffer.
  *
  * single reusable object that provides tree-traversal semantics
  * (gotofirstchild / gotonextsibling / gotoparent) while reading
  * directly from the soa typed arrays underneath. no per-node
- * objects are created — text is lazily sliced from the source
+ * objects are created, text is lazily sliced from the source
  * string only when requested.
  *
  * inspired by tree-sitter's treecursor and libxml2's xmltextreader.
@@ -23,7 +23,7 @@
  *   }
  */
 
-import type { node_buffer } from './utils';
+import type { node_buffer } from "./utils";
 
 const NONE = 0xffffffff;
 
@@ -34,8 +34,6 @@ export class Cursor {
 	private src: string;
 	/** current node index into the buffer. */
 	private idx: number;
-
-	// ── Direct array references (grabbed once, avoids repeated property lookup) ──
 
 	private _kinds: Uint8Array;
 	private _extras: Uint16Array;
@@ -52,7 +50,7 @@ export class Cursor {
 		this.src = source;
 		this.idx = 0; // root
 
-		// Cache array references for hot-path access
+		// cache array references for hot-path access
 		this._kinds = buf._kinds;
 		this._extras = buf._extras;
 		this._ends = buf._ends;
@@ -102,7 +100,7 @@ export class Cursor {
 		if (s !== undefined) return s;
 		const vs = this._value_starts[this.idx];
 		const ve = this._value_ends[this.idx];
-		if (vs === NONE || ve === NONE || ve <= vs) return '';
+		if (vs === NONE || ve === NONE || ve <= vs) return "";
 		return this.src.slice(vs, ve);
 	}
 
@@ -126,7 +124,7 @@ export class Cursor {
 	gotoNextSibling(): boolean {
 		const next = this._next_siblings[this.idx];
 		if (next === NONE) return false;
-		// Verify it's actually a sibling (same parent)
+		// verify it's actually a sibling (same parent)
 		if (this._parents[next] !== this._parents[this.idx]) return false;
 		this.idx = next;
 		return true;

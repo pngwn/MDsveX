@@ -2,8 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { PFMParser, node_kind } from '../src/main';
 import { WireEmitter, WireOp } from '../src/wire_emitter';
 
-// ── Helpers ──────────────────────────────────────────────────
-
 /** Parse in batch mode, return flushed wire opcodes. */
 function parse_wire(source: string): unknown[][] {
 	const emitter = new WireEmitter();
@@ -16,7 +14,7 @@ function parse_wire(source: string): unknown[][] {
 /** Parse incrementally by chunk size, return all batches. */
 function parse_wire_incremental(
 	source: string,
-	chunk_size: number,
+	chunk_size: number
 ): unknown[][][] {
 	const emitter = new WireEmitter();
 	const parser = new PFMParser(emitter);
@@ -60,8 +58,6 @@ function text_for(ops: unknown[][], id: number): string {
 		.join('');
 }
 
-// ── Schema ───────────────────────────────────────────────────
-
 describe('wire format: schema', () => {
 	it('emits schema as the first opcode', () => {
 		const ops = parse_wire('hello\n');
@@ -87,8 +83,6 @@ describe('wire format: schema', () => {
 	});
 });
 
-// ── Text node suppression ────────────────────────────────────
-
 describe('wire format: text node suppression', () => {
 	it('does not emit O or C for text nodes', () => {
 		const ops = parse_wire('hello\n');
@@ -102,7 +96,7 @@ describe('wire format: text node suppression', () => {
 		const ops = parse_wire('hello\n');
 		// Find paragraph
 		const para_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.paragraph,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.paragraph
 		);
 		expect(para_open).toBeDefined();
 		const para_id = para_open![1] as number;
@@ -110,8 +104,6 @@ describe('wire format: text node suppression', () => {
 		expect(content).toBe('hello');
 	});
 });
-
-// ── Paragraphs ───────────────────────────────────────────────
 
 describe('wire format: paragraphs', () => {
 	it('simple paragraph', () => {
@@ -132,7 +124,7 @@ describe('wire format: paragraphs', () => {
 	it('multi-line paragraph', () => {
 		const ops = parse_wire('line one\nline two\n');
 		const para_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.paragraph,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.paragraph
 		);
 		const para_id = para_open![1] as number;
 		const content = text_for(ops, para_id);
@@ -141,13 +133,11 @@ describe('wire format: paragraphs', () => {
 	});
 });
 
-// ── Headings ─────────────────────────────────────────────────
-
 describe('wire format: headings', () => {
 	it('ATX heading with depth in extra field', () => {
 		const ops = parse_wire('## Title\n');
 		const h_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.heading,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.heading
 		);
 		expect(h_open).toBeDefined();
 		expect(h_open![5]).toBe(2); // extra = depth
@@ -158,20 +148,18 @@ describe('wire format: headings', () => {
 	it('heading depth 1', () => {
 		const ops = parse_wire('# H1\n');
 		const h_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.heading,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.heading
 		);
 		expect(h_open![5]).toBe(1);
 		expect(text_for(ops, h_open![1] as number)).toBe('H1');
 	});
 });
 
-// ── Emphasis ─────────────────────────────────────────────────
-
 describe('wire format: emphasis', () => {
 	it('emphasis is emitted with pending flag', () => {
 		const ops = parse_wire('_hello_\n');
 		const em_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.emphasis,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.emphasis
 		);
 		expect(em_open).toBeDefined();
 		expect(em_open![4]).toBe(1); // pending = 1
@@ -180,7 +168,7 @@ describe('wire format: emphasis', () => {
 	it('emphasis text is on the emphasis node', () => {
 		const ops = parse_wire('_hello_\n');
 		const em_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.emphasis,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.emphasis
 		);
 		const em_id = em_open![1] as number;
 		expect(text_for(ops, em_id)).toBe('hello');
@@ -189,11 +177,11 @@ describe('wire format: emphasis', () => {
 	it('mixed text and emphasis', () => {
 		const ops = parse_wire('before _middle_ after\n');
 		const para_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.paragraph,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.paragraph
 		);
 		const para_id = para_open![1] as number;
 		const em_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.emphasis,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.emphasis
 		);
 		const em_id = em_open![1] as number;
 
@@ -207,13 +195,11 @@ describe('wire format: emphasis', () => {
 	});
 });
 
-// ── Strong emphasis ──────────────────────────────────────────
-
 describe('wire format: strong emphasis', () => {
 	it('strong emphasis node', () => {
 		const ops = parse_wire('*bold*\n');
 		const strong_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.strong_emphasis,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.strong_emphasis
 		);
 		expect(strong_open).toBeDefined();
 		const strong_id = strong_open![1] as number;
@@ -221,21 +207,18 @@ describe('wire format: strong emphasis', () => {
 	});
 });
 
-// ── Code fences ──────────────────────────────────────────────
-
 describe('wire format: code fences', () => {
 	it('code fence with info string', () => {
 		const ops = parse_wire('```js\nconst x = 1;\n```\n');
 		const cf_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.code_fence,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.code_fence
 		);
 		expect(cf_open).toBeDefined();
 		const cf_id = cf_open![1] as number;
 
 		// Should have resolved info attr (not info_start/info_end)
 		const info_attr = ops.find(
-			(op) =>
-				op[0] === WireOp.Attr && op[1] === cf_id && op[2] === 'info',
+			(op) => op[0] === WireOp.Attr && op[1] === cf_id && op[2] === 'info'
 		);
 		expect(info_attr).toBeDefined();
 		expect(info_attr![3]).toBe('js');
@@ -247,14 +230,13 @@ describe('wire format: code fences', () => {
 	it('code fence without info string', () => {
 		const ops = parse_wire('```\nhello\n```\n');
 		const cf_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.code_fence,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.code_fence
 		);
 		const cf_id = cf_open![1] as number;
 
 		// No info attr
 		const info_attr = ops.find(
-			(op) =>
-				op[0] === WireOp.Attr && op[1] === cf_id && op[2] === 'info',
+			(op) => op[0] === WireOp.Attr && op[1] === cf_id && op[2] === 'info'
 		);
 		expect(info_attr).toBeUndefined();
 
@@ -262,13 +244,11 @@ describe('wire format: code fences', () => {
 	});
 });
 
-// ── Code spans ───────────────────────────────────────────────
-
 describe('wire format: code spans', () => {
 	it('inline code span', () => {
 		const ops = parse_wire('use `code` here\n');
 		const cs_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.code_span,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.code_span
 		);
 		expect(cs_open).toBeDefined();
 		const cs_id = cs_open![1] as number;
@@ -276,20 +256,17 @@ describe('wire format: code spans', () => {
 	});
 });
 
-// ── Links ────────────────────────────────────────────────────
-
 describe('wire format: links', () => {
 	it('inline link with href attr', () => {
 		const ops = parse_wire('[click](https://example.com)\n');
 		const link_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.link,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.link
 		);
 		expect(link_open).toBeDefined();
 		const link_id = link_open![1] as number;
 
 		const href_attr = ops.find(
-			(op) =>
-				op[0] === WireOp.Attr && op[1] === link_id && op[2] === 'href',
+			(op) => op[0] === WireOp.Attr && op[1] === link_id && op[2] === 'href'
 		);
 		expect(href_attr).toBeDefined();
 		expect(href_attr![3]).toBe('https://example.com');
@@ -300,26 +277,23 @@ describe('wire format: links', () => {
 	it('link with title', () => {
 		const ops = parse_wire('[text](url "title")\n');
 		const link_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.link,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.link
 		);
 		const link_id = link_open![1] as number;
 
 		const title_attr = ops.find(
-			(op) =>
-				op[0] === WireOp.Attr && op[1] === link_id && op[2] === 'title',
+			(op) => op[0] === WireOp.Attr && op[1] === link_id && op[2] === 'title'
 		);
 		expect(title_attr).toBeDefined();
 		expect(title_attr![3]).toBe('title');
 	});
 });
 
-// ── Block quotes ─────────────────────────────────────────────
-
 describe('wire format: block quotes', () => {
 	it('block quote wraps content', () => {
 		const ops = parse_wire('> quoted\n');
 		const bq_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.block_quote,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.block_quote
 		);
 		expect(bq_open).toBeDefined();
 		const bq_id = bq_open![1] as number;
@@ -329,35 +303,28 @@ describe('wire format: block quotes', () => {
 			(op) =>
 				op[0] === WireOp.Open &&
 				op[2] === node_kind.paragraph &&
-				op[3] === bq_id,
+				op[3] === bq_id
 		);
 		expect(para_open).toBeDefined();
 	});
 });
 
-// ── Lists ────────────────────────────────────────────────────
-
 describe('wire format: lists', () => {
 	it('unordered list with attrs', () => {
 		const ops = parse_wire('- one\n- two\n');
 		const list_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.list,
+			(op) => op[0] === WireOp.Open && op[2] === node_kind.list
 		);
 		expect(list_open).toBeDefined();
 		const list_id = list_open![1] as number;
 
 		const ordered_attr = ops.find(
-			(op) =>
-				op[0] === WireOp.Attr &&
-				op[1] === list_id &&
-				op[2] === 'ordered',
+			(op) => op[0] === WireOp.Attr && op[1] === list_id && op[2] === 'ordered'
 		);
 		expect(ordered_attr).toBeDefined();
 		expect(ordered_attr![3]).toBe(false);
 	});
 });
-
-// ── Attrs ────────────────────────────────────────────────────
 
 describe('wire format: attrs', () => {
 	it('does not emit value_start or value_end as attrs', () => {
@@ -365,7 +332,7 @@ describe('wire format: attrs', () => {
 		const value_attrs = ops.filter(
 			(op) =>
 				op[0] === WireOp.Attr &&
-				(op[2] === 'value_start' || op[2] === 'value_end'),
+				(op[2] === 'value_start' || op[2] === 'value_end')
 		);
 		expect(value_attrs.length).toBe(0);
 	});
@@ -375,17 +342,15 @@ describe('wire format: attrs', () => {
 		const info_attrs = ops.filter(
 			(op) =>
 				op[0] === WireOp.Attr &&
-				(op[2] === 'info_start' || op[2] === 'info_end'),
+				(op[2] === 'info_start' || op[2] === 'info_end')
 		);
 		expect(info_attrs.length).toBe(0);
 	});
 });
 
-// ── Revoke ───────────────────────────────────────────────────
-
 describe('wire format: revoke', () => {
 	it('revoke includes delimiter for emphasis', () => {
-		// Unclosed emphasis — should be revoked
+		// Unclosed emphasis, should be revoked
 		const ops = parse_wire('_unclosed\n');
 		const revokes = ops_of(ops, WireOp.Revoke);
 		if (revokes.length > 0) {
@@ -393,8 +358,6 @@ describe('wire format: revoke', () => {
 		}
 	});
 });
-
-// ── Incremental / batching ───────────────────────────────────
 
 describe('wire format: incremental batching', () => {
 	it('batches opcodes per feed() call', () => {
@@ -444,8 +407,6 @@ describe('wire format: incremental batching', () => {
 	});
 });
 
-// ── flush_json ───────────────────────────────────────────────
-
 describe('wire format: serialization', () => {
 	it('flush_json returns valid JSON', () => {
 		const emitter = new WireEmitter();
@@ -468,8 +429,6 @@ describe('wire format: serialization', () => {
 		expect(second.length).toBe(0);
 	});
 });
-
-// ── Reset ────────────────────────────────────────────────────
 
 describe('wire format: reset', () => {
 	it('reset allows reuse for a new parse', () => {

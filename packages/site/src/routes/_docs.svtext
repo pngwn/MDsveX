@@ -272,16 +272,16 @@ dashes: boolean | 'oldschool' | 'inverted' = true;
 
 When `true`, converts two dashes into an em-dash character.
 
-- `--` **becomes** —
+- `--` **becomes**,
 
 When `'oldschool'`, converts two dashes into an en-dash, and three dashes into an em-dash.
 
 - `--` **becomes** –
-- `---` **becomes** —
+- `---` **becomes**,
 
 When `'inverted'`, converts two dashes into an em-dash, and three dashes into an en-dash.
 
-- `--` **becomes** —
+- `--` **becomes**,
 - `---` **becomes** –
 
 ### `layout`

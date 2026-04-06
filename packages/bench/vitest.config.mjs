@@ -2,7 +2,14 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: [],
+		include: [],
+
+    server: {
+      deps: {
+        external: [/dist\/main\.js/],
+      },
+    },
+
   },
   benchmark: {
     include: ['benchmarks/**/*.bench.{js,mjs,ts}'],

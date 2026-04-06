@@ -1,55 +1,84 @@
 <script>
-// These values are bound to properties of the video
-let time = 0;
-let duration;
-let paused = true;
+	// These values are bound to properties of the video
+	let time = 0;
+	let duration;
+	let paused = true;
 
-let showControls = true;
-let showControlsTimeout;
+	let showControls = true;
+	let showControlsTimeout;
 
-function handleMousemove(e) {
-	// Make the controls visible, but fade out after
-	// 2.5 seconds of inactivity
-	clearTimeout(showControlsTimeout);
-	showControlsTimeout = setTimeout(() => (showControls = false), 2500);
-	showControls = true;
+	function handleMousemove(e) {
+		// Make the controls visible, but fade out after
+		// 2.5 seconds of inactivity
+		clearTimeout(showControlsTimeout);
+		showControlsTimeout = setTimeout(() => (showControls = false), 2500);
+		showControls = true;
 
-	if (e.which !== 1) return; // mouse not down
-	if (!duration) return; // video not loaded yet
+		if (e.which !== 1) return; // mouse not down
+		if (!duration) return; // video not loaded yet
 
-	const { left, right } = this.getBoundingClientRect();
-	time = (duration * (e.clientX - left)) / (right - left);
-}
-
-function handleMousedown(e) {
-	// we can't rely on the built-in click event, because it fires
-	// after a drag — we have to listen for clicks ourselves
-
-	function handleMouseup() {
-		if (paused) e.target.play();
-		else e.target.pause();
-		cancel();
+		const { left, right } = this.getBoundingClientRect();
+		time = (duration * (e.clientX - left)) / (right - left);
 	}
 
-	function cancel() {
-		e.target.removeEventListener("mouseup", handleMouseup);
+	function handleMousedown(e) {
+		// we can't rely on the built-in click event, because it fires
+		// after a drag, we have to listen for clicks ourselves
+
+		function handleMouseup() {
+			if (paused) e.target.play();
+			else e.target.pause();
+			cancel();
+		}
+
+		function cancel() {
+			e.target.removeEventListener('mouseup', handleMouseup);
+		}
+
+		e.target.addEventListener('mouseup', handleMouseup);
+
+		setTimeout(cancel, 200);
 	}
 
-	e.target.addEventListener("mouseup", handleMouseup);
+	function format(seconds) {
+		if (isNaN(seconds)) return '...';
 
-	setTimeout(cancel, 200);
-}
+		const minutes = Math.floor(seconds / 60);
+		seconds = Math.floor(seconds % 60);
+		if (seconds < 10) seconds = '0' + seconds;
 
-function format(seconds) {
-	if (isNaN(seconds)) return "...";
-
-	const minutes = Math.floor(seconds / 60);
-	seconds = Math.floor(seconds % 60);
-	if (seconds < 10) seconds = "0" + seconds;
-
-	return `${minutes}:${seconds}`;
-}
+		return `${minutes}:${seconds}`;
+	}
 </script>
+
+<h1>Caminandes: Llamigos</h1>
+<p>
+	From <a href="https://cloud.blender.org/open-projects"
+		>Blender Open Projects</a
+	>. CC-BY
+</p>
+
+<div>
+	<video
+		poster="http://sveltejs.github.io/assets/caminandes-llamigos.jpg"
+		src="http://sveltejs.github.io/assets/caminandes-llamigos.mp4"
+		on:mousemove={handleMousemove}
+		on:mousedown={handleMousedown}
+		bind:currentTime={time}
+		bind:duration
+		bind:paused
+	></video>
+
+	<div class="controls" style="opacity: {duration && showControls ? 1 : 0}">
+		<progress value={time / duration || 0} />
+
+		<div class="info">
+			<span class="time">{format(time)}</span>
+			<span>click anywhere to {paused ? 'play' : 'pause'} / drag to seek</span>
+			<span class="time">{format(duration)}</span>
+		</div>
+	</div>
+</div>
 
 <style>
 	div {
@@ -81,7 +110,9 @@ function format(seconds) {
 		width: 3em;
 	}
 
-	.time:last-child { text-align: right }
+	.time:last-child {
+		text-align: right;
+	}
 
 	progress {
 		display: block;
@@ -92,39 +123,14 @@ function format(seconds) {
 	}
 
 	progress::-webkit-progress-bar {
-		background-color: rgba(0,0,0,0.2);
+		background-color: rgba(0, 0, 0, 0.2);
 	}
 
 	progress::-webkit-progress-value {
-		background-color: rgba(255,255,255,0.6);
+		background-color: rgba(255, 255, 255, 0.6);
 	}
 
 	video {
 		width: 100%;
 	}
 </style>
-
-<h1>Caminandes: Llamigos</h1>
-<p>From <a href="https://cloud.blender.org/open-projects">Blender Open Projects</a>. CC-BY</p>
-
-<div>
-	<video
-		poster="http://sveltejs.github.io/assets/caminandes-llamigos.jpg"
-		src="http://sveltejs.github.io/assets/caminandes-llamigos.mp4"
-		on:mousemove={handleMousemove}
-		on:mousedown={handleMousedown}
-		bind:currentTime={time}
-		bind:duration
-		bind:paused
-	></video>
-
-	<div class="controls" style="opacity: {duration && showControls ? 1 : 0}">
-		<progress value="{(time / duration) || 0}"/>
-
-		<div class="info">
-			<span class="time">{format(time)}</span>
-			<span>click anywhere to {paused ? 'play' : 'pause'} / drag to seek</span>
-			<span class="time">{format(duration)}</span>
-		</div>
-	</div>
-</div>

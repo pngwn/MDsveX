@@ -1,5 +1,5 @@
 /**
- * WireTreeBuilder — populates a node_buffer from wire format batches.
+ * WireTreeBuilder, populates a node_buffer from wire format batches.
  *
  * client-side counterpart to TreeBuilder. consumes the same json
  * opcode batches that WireEmitter produces and builds the same soa
@@ -7,7 +7,7 @@
  * with identical semantics.
  *
  * text strings from the wire format are stored directly in the buffer's
- * _strings array — no slicing needed at render time.
+ * _strings array, no slicing needed at render time.
  *
  * Usage:
  *
@@ -17,8 +17,8 @@
  *   const html = renderCursor(cursor);
  */
 
-import { node_buffer, node_kind } from './utils';
-import { Cursor } from './cursor';
+import { node_buffer, node_kind } from "./utils";
+import { Cursor } from "./cursor";
 
 const NONE = 0xffffffff;
 
@@ -32,7 +32,7 @@ export class WireTreeBuilder {
 
 	constructor(capacity = 128) {
 		this.buf = new node_buffer(capacity);
-		this.id_to_index = [0]; // root ID 0 -> buffer index 0
+		this.id_to_index = [0]; // root id 0 -> buffer index 0
 		this.schema = null;
 	}
 
@@ -41,40 +41,40 @@ export class WireTreeBuilder {
 	 * call after each sse/websocket message.
 	 */
 	apply(batch: unknown[][]): void {
-		// Ensure capacity — ~1 node per 2 opcodes is a good heuristic
+		// ensure capacity, ~1 node per 2 opcodes is a good heuristic
 		this.buf.ensure_capacity(this.buf.size + (batch.length >> 1));
 
 		for (let i = 0; i < batch.length; i++) {
 			const op = batch[i];
 			switch (op[0]) {
-				case 'S':
+				case "S":
 					this.schema = op[1] as string[];
 					break;
-				case 'O':
+				case "O":
 					this._open(
 						op[1] as number,
 						op[2] as number,
 						op[3] as number,
 						(op[4] as number) === 1,
-						op[5] as number
+						op[5] as number,
 					);
 					break;
-				case 'C':
+				case "C":
 					this._close(op[1] as number);
 					break;
-				case 'T':
+				case "T":
 					this._text(op[1] as number, op[2] as string);
 					break;
-				case 'A':
+				case "A":
 					this._attr(op[1] as number, op[2] as string, op[3]);
 					break;
-				case 'R':
+				case "R":
 					this._revoke(op[1] as number, op[2] as string);
 					break;
-				case 'K':
+				case "K":
 					this._commit(op[1] as number);
 					break;
-				case 'X':
+				case "X":
 					this._clear(op[1] as number);
 					break;
 			}
@@ -83,7 +83,7 @@ export class WireTreeBuilder {
 
 	/** get a cursor over the current buffer state. */
 	cursor(): Cursor {
-		return new Cursor(this.buf, '');
+		return new Cursor(this.buf, "");
 	}
 
 	/** get the underlying node_buffer. */
@@ -98,16 +98,16 @@ export class WireTreeBuilder {
 		this.schema = null;
 	}
 
-	// ── Internal opcode handlers ───────────────────────────────
+	// internal opcode handlers
 
 	private _open(
 		id: number,
 		kind: number,
 		parent: number,
 		pending: boolean,
-		extra: number
+		extra: number,
 	): void {
-		// Root (id=0) is auto-created by node_buffer constructor
+		// root (id=0) is auto-created by node_buffer constructor
 		if (id === 0) return;
 
 		const parent_idx =
@@ -122,8 +122,8 @@ export class WireTreeBuilder {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
 		this.buf.set_end(idx, 1);
-		// Pending paragraphs inside list_items are tight-list speculation
-		// wrappers — they stay pending after close until the list closes
+		// pending paragraphs inside list_items are tight-list speculation
+		// wrappers, they stay pending after close until the list closes
 		// and the parser either revokes (tight) or commits (loose) them.
 		const kind = this.buf._kinds[idx];
 		const parent_kind = this.buf._kinds[this.buf._parents[idx]];
@@ -137,7 +137,7 @@ export class WireTreeBuilder {
 			this.buf.commit_node(idx);
 		}
 
-		// Tight list unwrapping — walk sibling chains directly. Safe no-op
+		// tight list unwrapping, walk sibling chains directly. safe no-op
 		// when the parser already revoked them via finalize_list_pending_paras.
 		if (kind === node_kind.list) {
 			const meta = this.buf.metadata_at(idx);
@@ -166,33 +166,33 @@ export class WireTreeBuilder {
 		const kind = this.buf._kinds[idx];
 		const strings = this.buf._strings;
 
-		// Content leaves: store string directly on the node
+		// content leaves: store string directly on the node
 		if (
 			kind === node_kind.code_fence ||
 			kind === node_kind.code_span ||
 			kind === node_kind.html_comment
 		) {
-			// Consecutive T opcodes: concatenate
+			// consecutive t opcodes: concatenate
 			const existing = strings[idx];
 			strings[idx] = existing !== undefined ? existing + content : content;
 			return;
 		}
 
-		// Raw-text html elements (script, style): content lives on the html
-		// node itself, not as a text child. Mirrors the TreeBuilder path where
+		// raw-text html elements (script, style): content lives on the html
+		// node itself, not as a text child. mirrors the treebuilder path where
 		// the parser writes value_start/value_end directly on the html node.
 		if (kind === node_kind.html) {
 			const meta = this.buf.metadata_at(idx);
-			if (meta && (meta.tag === 'script' || meta.tag === 'style')) {
+			if (meta && (meta.tag === "script" || meta.tag === "style")) {
 				const existing = strings[idx];
 				strings[idx] = existing !== undefined ? existing + content : content;
 				return;
 			}
 		}
 
-		// Container nodes: coalesce consecutive T opcodes into a single child
-		// text node. If the last child is already a text node, append to it;
-		// otherwise create a new child. This keeps Clear semantics simple
+		// container nodes: coalesce consecutive t opcodes into a single child
+		// text node. if the last child is already a text node, append to it;
+		// otherwise create a new child. this keeps clear semantics simple
 		// (remove the trailing in-progress text child) and matches the parser's
 		// model where each parser text node maps to one wire text child.
 		const last_text_idx = this._last_text_child(idx);
@@ -254,14 +254,14 @@ export class WireTreeBuilder {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
 
-		// Content leaves store text on the node itself — drop it.
+		// content leaves store text on the node itself, drop it.
 		delete this.buf._strings[idx];
 
-		// Container nodes store text as a trailing child text node created by
-		// _text. Clear means a value range was corrected mid-stream (e.g.
+		// container nodes store text as a trailing child text node created by
+		// _text. clear means a value range was corrected mid-stream (e.g.
 		// trailing whitespace trimmed), so the in-progress text child must be
-		// discarded. A committed non-text sibling after it would mean the text
-		// child is no longer the tail — in that case there is nothing to undo.
+		// discarded. a committed non-text sibling after it would mean the text
+		// child is no longer the tail, in that case there is nothing to undo.
 		const last_text_idx = this._last_text_child(idx);
 		if (last_text_idx === NONE) return;
 		delete this.buf._strings[last_text_idx];

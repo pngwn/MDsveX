@@ -1,11 +1,13 @@
 {
 	"include": ["src/**/*"],
 	"compilerOptions": {
+		"declaration": true,
 		"target": "es2020",
 		"module": "esnext",
 		"moduleResolution": "bundler",
 		"forceConsistentCasingInFileNames": true,
 		"esModuleInterop": true,
-		"strict": true
-	}
+		"strict": true,
+		"outDir": "tsc",
+	},
 }

@@ -1,22 +1,22 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte'
+import type { Snippet } from "svelte";
 
-	let {
-		type = 'info',
-		children,
-	}: {
-		type?: string
-		children?: Snippet
-	} = $props()
+let {
+	type = "info",
+	children,
+}: {
+	type?: string;
+	children?: Snippet;
+} = $props();
 
-	let dismissed = $state(false)
+let dismissed = $state(false);
 
-	const icons: Record<string, string> = {
-		warning: '⚠',
-		error: '✕',
-		success: '✓',
-		info: 'ℹ',
-	}
+const icons: Record<string, string> = {
+	warning: "⚠",
+	error: "✕",
+	success: "✓",
+	info: "ℹ",
+};
 </script>
 
 {#if !dismissed}

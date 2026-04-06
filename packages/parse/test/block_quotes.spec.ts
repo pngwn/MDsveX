@@ -355,7 +355,7 @@ describe('Block quotes', () => {
 		// >>baz
 		// PFM: each block_quote state frame only checks its own marker, so
 		// a shorter marker count on a continuation line does NOT close outer
-		// frames — it just opens a new paragraph inside the innermost. A
+		// frames, it just opens a new paragraph inside the innermost. A
 		// future revision may change this, but it is out of scope for the
 		// no-lazy-continuation change.
 		const input = load_fixture('251');

@@ -4,7 +4,7 @@ import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import { WireTreeBuilder } from '@mdsvex/parse/wire-tree-builder';
 import { CursorHTMLRenderer } from '../src/html_cursor';
 
-// ── Helpers ──────────────────────────────────────────────────
+//  Helpers
 
 /** Server path: PFMParser -> TreeBuilder -> CursorHTMLRenderer */
 function via_tree(source: string): string {
@@ -71,7 +71,7 @@ function assert_same_incremental(source: string): void {
 	expect(from_wire).toBe(from_tree);
 }
 
-// ── Tests ────────────────────────────────────────────────────
+//  Tests
 
 describe('WireTreeBuilder produces same HTML as TreeBuilder', () => {
 	it('simple paragraph', () => assert_same('hello world\n'));

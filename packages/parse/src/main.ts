@@ -28,19 +28,19 @@ import {
 	QUOTE,
 	APOSTROPHE,
 	EQUALS,
-} from './constants';
+} from "./constants";
 
-import type { parse_options } from './types';
+import type { parse_options } from "./types";
 
-import type { Emitter } from './opcodes';
-import { node_kind } from './utils';
-import { node_buffer, error_collector } from './utils';
-import { TreeBuilder } from './tree_builder';
-export type { parse_options, parse_result } from './types';
-export { node_kind, node_buffer } from './utils';
+import type { Emitter } from "./opcodes";
+import { node_kind } from "./utils";
+import { node_buffer, error_collector } from "./utils";
+import { TreeBuilder } from "./tree_builder";
+export type { parse_options, parse_result } from "./types";
+export { node_kind, node_buffer } from "./utils";
 
-export { WireEmitter, WireOp } from './wire_emitter';
-export type { Emitter } from './opcodes';
+export { WireEmitter, WireOp } from "./wire_emitter";
+export type { Emitter } from "./opcodes";
 
 const enum char_mask {
 	whitespace = 1 << 0,
@@ -181,7 +181,7 @@ interface LinkResult {
  */
 export class PFMParser {
 	// source
-	private source: string = '';
+	private source: string = "";
 	private cursor: number = 0;
 	private finished: boolean = false;
 
@@ -248,7 +248,7 @@ export class PFMParser {
 
 	// svelte block state
 	private svelte_block_depth: number = 0;
-	private svelte_block_tag: string = '';
+	private svelte_block_tag: string = "";
 	private svelte_branch_id: number = 0;
 	private svelte_block_id: number = 0;
 	private svelte_block_stack: {
@@ -277,7 +277,6 @@ export class PFMParser {
 	private out: Emitter;
 	private errors: error_collector;
 
-
 	private tab_size: number = 2;
 
 	constructor(emitter: Emitter, tab_size: number = 2) {
@@ -295,10 +294,7 @@ export class PFMParser {
 	 * parse a complete source string (batch mode). equivalent to
 	 * init() + feed(source) + finish().
 	 */
-	parse(
-		source: string,
-
-	): { errors: error_collector } {
+	parse(source: string): { errors: error_collector } {
 		this._init();
 		this.source = source;
 		this.current = classify(source.charCodeAt(0));
@@ -347,7 +343,7 @@ export class PFMParser {
 	}
 
 	private _init(): void {
-		this.source = '';
+		this.source = "";
 		this.cursor = 0;
 		this.finished = false;
 		this.states = [state_kind.root];
@@ -382,7 +378,7 @@ export class PFMParser {
 		this.html_tag_stack = [];
 		this.html_block_depth = 0;
 		this.svelte_block_depth = 0;
-		this.svelte_block_tag = '';
+		this.svelte_block_tag = "";
 		this.svelte_branch_id = 0;
 		this.svelte_block_id = 0;
 		this.svelte_block_stack = [];
@@ -399,7 +395,6 @@ export class PFMParser {
 		this.directive_colon_counts = [];
 		this.errors = EMPTY_ERRORS;
 
-
 		// emit the root node open
 		this.out.open(0, node_kind.root, 0, -1, 0, false);
 	}
@@ -411,7 +406,7 @@ export class PFMParser {
 		start: number,
 		parent: number,
 		extra = 0,
-		pending = false
+		pending = false,
 	): number {
 		const id = this.next_id++;
 		this.out.open(id, kind, start, parent, extra, pending);
@@ -452,7 +447,7 @@ export class PFMParser {
 
 	/** normalize link reference label: collapse whitespace, lowercase. */
 	private normalize_label(label: string): string {
-		return label.trim().replace(/\s+/g, ' ').toLowerCase();
+		return label.trim().replace(/\s+/g, " ").toLowerCase();
 	}
 
 	/**
@@ -529,7 +524,7 @@ export class PFMParser {
 	 */
 	private try_parse_block_directive(pos: number):
 		| {
-				kind: 'leaf' | 'container';
+				kind: "leaf" | "container";
 				colons: number;
 				name: string;
 				content_start: number;
@@ -572,7 +567,7 @@ export class PFMParser {
 		if (p >= length && !this.finished) return false;
 
 		const name = source.slice(name_start, p);
-		const kind = colon_count >= 3 ? ('container' as const) : ('leaf' as const);
+		const kind = colon_count >= 3 ? ("container" as const) : ("leaf" as const);
 
 		// check for [content]
 		let content_start = -1;
@@ -983,7 +978,7 @@ export class PFMParser {
 	private bq_fence_scan(
 		start_pos: number,
 		fence_len: number,
-		bq_depth: number
+		bq_depth: number,
 	): number {
 		const source = this.source;
 		const length = source.length;
@@ -1238,8 +1233,8 @@ export class PFMParser {
 		this.list_node_id = list_id;
 		// emit ordered/start immediately so renderers pick the right tag
 		// (<ol> vs <ul>) from the first frame instead of flipping at close.
-		this.out.attr(list_id, 'ordered', marker.ordered);
-		this.out.attr(list_id, 'start', marker.start_num);
+		this.out.attr(list_id, "ordered", marker.ordered);
+		this.out.attr(list_id, "start", marker.start_num);
 
 		const item_id = this.emit_open(node_kind.list_item, this.cursor, list_id);
 		this.node_stack.push(item_id);
@@ -1302,7 +1297,7 @@ export class PFMParser {
 		// set list metadata and close. ordered/start were emitted at
 		// start_list - only tightness is known here.
 		const list_id = this.node_stack[this.node_stack.length - 1];
-		this.out.attr(list_id, 'tight', !this.list_is_loose);
+		this.out.attr(list_id, "tight", !this.list_is_loose);
 		this.emit_close(list_id, this.cursor);
 		this.node_stack.pop();
 
@@ -1330,13 +1325,13 @@ export class PFMParser {
 	 */
 	private start_svelte_block(
 		token: {
-			kind: '#' | ':' | '/';
+			kind: "#" | ":" | "/";
 			tag: string;
 			expr_start: number;
 			expr_end: number;
 			end: number;
 		},
-		parent: number
+		parent: number,
 	): void {
 		// save current svelte block state for nesting
 		if (this.svelte_block_depth > 0) {
@@ -1354,9 +1349,9 @@ export class PFMParser {
 		const block_id = this.emit_open(
 			node_kind.svelte_block,
 			this.cursor,
-			parent
+			parent,
 		);
-		this.out.attr(block_id, 'tag', token.tag);
+		this.out.attr(block_id, "tag", token.tag);
 		this.svelte_block_id = block_id;
 		this.node_stack.push(block_id);
 
@@ -1364,9 +1359,9 @@ export class PFMParser {
 		const branch_id = this.emit_open(
 			node_kind.svelte_branch,
 			this.cursor,
-			block_id
+			block_id,
 		);
-		this.out.attr(branch_id, 'tag', token.tag);
+		this.out.attr(branch_id, "tag", token.tag);
 		if (token.expr_start !== 0 || token.expr_end !== 0) {
 			this.out.set_value_start(branch_id, token.expr_start);
 			this.out.set_value_end(branch_id, token.expr_end);
@@ -1470,7 +1465,7 @@ export class PFMParser {
 	 * parsed - just scanned for the matching close tag.
 	 */
 	private is_raw_text_tag(tag: string): boolean {
-		return tag === 'script' || tag === 'style';
+		return tag === "script" || tag === "style";
 	}
 
 	/**
@@ -1479,11 +1474,11 @@ export class PFMParser {
 	 */
 	private find_raw_close_tag(
 		pos: number,
-		tag: string
+		tag: string,
 	): { content_end: number; end: number } | null {
 		const source = this.source;
 		const length = source.length;
-		const needle = '</' + tag + '>';
+		const needle = "</" + tag + ">";
 		let scan = pos;
 		while (scan < length) {
 			const idx = source.indexOf(needle, scan);
@@ -1640,7 +1635,7 @@ export class PFMParser {
 	 * returns the tag name and end position, or null.
 	 */
 	private try_parse_html_close_tag(
-		pos: number
+		pos: number,
 	): { tag: string; end: number } | null {
 		const source = this.source;
 		const length = source.length;
@@ -1684,7 +1679,7 @@ export class PFMParser {
 	 * returns the content start, content end, and end position.
 	 */
 	private try_parse_html_comment(
-		pos: number
+		pos: number,
 	):
 		| { content_start: number; content_end: number; end: number }
 		| null
@@ -1771,7 +1766,7 @@ export class PFMParser {
 	 * recognizes: {#tag expr}, {:tag expr}, {/tag}
 	 */
 	private try_parse_svelte_block_token(pos: number): {
-		kind: '#' | ':' | '/';
+		kind: "#" | ":" | "/";
 		tag: string;
 		expr_start: number;
 		expr_end: number;
@@ -1784,7 +1779,7 @@ export class PFMParser {
 		if (p >= length) return null;
 		const sigil = source.charCodeAt(p);
 		if (sigil !== OCTOTHERP && sigil !== COLON && sigil !== SLASH) return null;
-		const kind_ch = sigil === OCTOTHERP ? '#' : sigil === COLON ? ':' : '/';
+		const kind_ch = sigil === OCTOTHERP ? "#" : sigil === COLON ? ":" : "/";
 		p++;
 
 		// tag name
@@ -1800,7 +1795,7 @@ export class PFMParser {
 		let tag = source.slice(tag_start, p);
 
 		// handle {:else if expr} - "else if" is a compound tag name
-		if (kind_ch === ':' && tag === 'else') {
+		if (kind_ch === ":" && tag === "else") {
 			const save = p;
 			while (
 				p < length &&
@@ -1816,14 +1811,14 @@ export class PFMParser {
 					source.charCodeAt(p + 2) === TAB ||
 					source.charCodeAt(p + 2) === CLOSE_BRACE)
 			) {
-				tag = 'else if';
+				tag = "else if";
 				p += 2;
 			} else {
 				p = save;
 			}
 		}
 
-		if (kind_ch === '/') {
+		if (kind_ch === "/") {
 			// {/tag} - no expression
 			while (
 				p < length &&
@@ -2095,7 +2090,7 @@ export class PFMParser {
 		const had_title_ws = p > pre_title_p;
 
 		// check for optional title
-		let title = '';
+		let title = "";
 		if (p < length) {
 			const tc = source.charCodeAt(p);
 			if (tc === LINEFEED) {
@@ -2176,7 +2171,7 @@ export class PFMParser {
 	 * returns { title, end } or null on failure.
 	 */
 	private parse_ref_title(
-		pos: number
+		pos: number,
 	): { title: string; end: number } | null | -2 {
 		const source = this.source;
 		const length = source.length;
@@ -2286,7 +2281,7 @@ export class PFMParser {
 			node_kind.heading,
 			this.cursor,
 			parent,
-			hash_count
+			hash_count,
 		);
 		this.out.set_value_start(h_id, content_start);
 		this.node_stack.push(h_id);
@@ -2301,7 +2296,6 @@ export class PFMParser {
 	private _run(): void {
 		const source = this.source;
 		const length = source.length;
-
 
 		// reset progress counter,  new data may have been fed since last _run()
 		this.loop_without_progress = 0;
@@ -2349,8 +2343,6 @@ export class PFMParser {
 				}
 			}
 
-
-
 			const active = this.states[this.states.length - 1];
 			const code = source.charCodeAt(this.cursor);
 
@@ -2360,7 +2352,7 @@ export class PFMParser {
 				if (this.cursor === this.prev_cursor) {
 					this.loop_without_progress += 64;
 					if (this.loop_without_progress > 100) {
-						console.error('Infinite loop detected');
+						console.error("Infinite loop detected");
 						break;
 					}
 				} else {
@@ -2407,7 +2399,7 @@ export class PFMParser {
 							const fm_id = this.emit_open(
 								node_kind.frontmatter,
 								0,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(fm_id);
 							// advance past `---\n`
@@ -2426,7 +2418,7 @@ export class PFMParser {
 							const imp_id = this.emit_open(
 								node_kind.import_statement,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.out.set_value_start(imp_id, imp.value_start);
 							this.out.set_value_end(imp_id, imp.value_end);
@@ -2451,7 +2443,7 @@ export class PFMParser {
 							const id = this.emit_open(
 								node_kind.line_break,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.emit_close(id, this.cursor + 1);
 							this.chomp1();
@@ -2473,7 +2465,7 @@ export class PFMParser {
 								const id = this.emit_open(
 									node_kind.line_break,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.emit_close(id, pos + 1);
 								this.chomp(pos + 1, true);
@@ -2530,7 +2522,7 @@ export class PFMParser {
 								const tb_id = this.emit_open(
 									node_kind.thematic_break,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.emit_close(tb_id, break_end);
 
@@ -2548,7 +2540,7 @@ export class PFMParser {
 							const para_id = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(para_id);
 							continue;
@@ -2559,7 +2551,7 @@ export class PFMParser {
 							// (no closing > visible in the available source).
 							if (
 								!this.finished &&
-								source.indexOf('>', this.cursor + 1) === -1
+								source.indexOf(">", this.cursor + 1) === -1
 							) {
 								break main_loop;
 							}
@@ -2572,7 +2564,7 @@ export class PFMParser {
 								const auto_para = this.emit_open(
 									node_kind.paragraph,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.node_stack.push(auto_para);
 								continue;
@@ -2585,12 +2577,12 @@ export class PFMParser {
 								const c_id = this.emit_open(
 									node_kind.html_comment,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.out.text(
 									c_id,
 									blk_comment.content_start,
-									blk_comment.content_end
+									blk_comment.content_end,
 								);
 								this.emit_close(c_id, blk_comment.end);
 								this.chomp(blk_comment.end, true);
@@ -2604,13 +2596,13 @@ export class PFMParser {
 									const html_id = this.emit_open(
 										node_kind.html,
 										this.cursor,
-										current_node
+										current_node,
 									);
-									this.out.attr(html_id, 'tag', blk_tag.tag);
+									this.out.attr(html_id, "tag", blk_tag.tag);
 									if (Object.keys(blk_tag.attributes).length > 0) {
-										this.out.attr(html_id, 'attributes', blk_tag.attributes);
+										this.out.attr(html_id, "attributes", blk_tag.attributes);
 									}
-									this.out.attr(html_id, 'self_closing', true);
+									this.out.attr(html_id, "self_closing", true);
 									this.emit_close(html_id, blk_tag.end);
 									this.chomp(blk_tag.end, true);
 								} else if (this.is_raw_text_tag(blk_tag.tag)) {
@@ -2622,11 +2614,11 @@ export class PFMParser {
 										const html_id = this.emit_open(
 											node_kind.html,
 											this.cursor,
-											current_node
+											current_node,
 										);
-										this.out.attr(html_id, 'tag', blk_tag.tag);
+										this.out.attr(html_id, "tag", blk_tag.tag);
 										if (Object.keys(blk_tag.attributes).length > 0) {
-											this.out.attr(html_id, 'attributes', blk_tag.attributes);
+											this.out.attr(html_id, "attributes", blk_tag.attributes);
 										}
 										this.out.set_value_start(html_id, blk_tag.end);
 										this.out.set_value_end(html_id, length);
@@ -2636,11 +2628,11 @@ export class PFMParser {
 										const html_id = this.emit_open(
 											node_kind.html,
 											this.cursor,
-											current_node
+											current_node,
 										);
-										this.out.attr(html_id, 'tag', blk_tag.tag);
+										this.out.attr(html_id, "tag", blk_tag.tag);
 										if (Object.keys(blk_tag.attributes).length > 0) {
-											this.out.attr(html_id, 'attributes', blk_tag.attributes);
+											this.out.attr(html_id, "attributes", blk_tag.attributes);
 										}
 										this.out.set_value_start(html_id, blk_tag.end);
 										this.out.set_value_end(html_id, raw.content_end);
@@ -2653,11 +2645,11 @@ export class PFMParser {
 										this.cursor,
 										current_node,
 										0,
-										true
+										true,
 									);
-									this.out.attr(html_id, 'tag', blk_tag.tag);
+									this.out.attr(html_id, "tag", blk_tag.tag);
 									if (Object.keys(blk_tag.attributes).length > 0) {
-										this.out.attr(html_id, 'attributes', blk_tag.attributes);
+										this.out.attr(html_id, "attributes", blk_tag.attributes);
 									}
 									this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
 									this.node_stack.push(html_id);
@@ -2673,7 +2665,7 @@ export class PFMParser {
 							const blk_para_id = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(blk_para_id);
 							continue;
@@ -2687,7 +2679,7 @@ export class PFMParser {
 							const bq_id = this.emit_open(
 								node_kind.block_quote,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(bq_id);
 							this.states.push(state_kind.block_quote);
@@ -2704,7 +2696,7 @@ export class PFMParser {
 							const para_id = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(para_id);
 							continue;
@@ -2717,7 +2709,7 @@ export class PFMParser {
 								if (probe === -1) break main_loop;
 							}
 							const token = this.try_parse_svelte_block_token(this.cursor);
-							if (token && token.kind === '#') {
+							if (token && token.kind === "#") {
 								this.start_svelte_block(token, current_node);
 								continue;
 							}
@@ -2726,7 +2718,7 @@ export class PFMParser {
 							const brace_para = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(brace_para);
 							continue;
@@ -2734,7 +2726,7 @@ export class PFMParser {
 
 						case OPEN_SQUARE_BRACKET: {
 							// need a complete line for link ref definition detection
-							if (!this.finished && source.indexOf('\n', this.cursor) === -1) {
+							if (!this.finished && source.indexOf("\n", this.cursor) === -1) {
 								break main_loop;
 							}
 							const def_end = this.try_parse_link_ref_definition(this.cursor);
@@ -2747,7 +2739,7 @@ export class PFMParser {
 							const ref_para = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(ref_para);
 							continue;
@@ -2755,19 +2747,19 @@ export class PFMParser {
 
 						case COLON: {
 							// need a complete line for directive detection
-							if (!this.finished && source.indexOf('\n', this.cursor) === -1) {
+							if (!this.finished && source.indexOf("\n", this.cursor) === -1) {
 								break main_loop;
 							}
 							const dir = this.try_parse_block_directive(this.cursor);
 							if (dir === false) break main_loop;
 							if (dir !== null) {
-								if (dir.kind === 'leaf') {
+								if (dir.kind === "leaf") {
 									const d_id = this.emit_open(
 										node_kind.directive_leaf,
 										this.cursor,
-										current_node
+										current_node,
 									);
-									this.out.attr(d_id, 'name', dir.name);
+									this.out.attr(d_id, "name", dir.name);
 									if (dir.content_start >= 0) {
 										this.out.set_value_start(d_id, dir.content_start);
 										this.out.set_value_end(d_id, dir.content_end);
@@ -2778,9 +2770,9 @@ export class PFMParser {
 									const d_id = this.emit_open(
 										node_kind.directive_container,
 										this.cursor,
-										current_node
+										current_node,
 									);
-									this.out.attr(d_id, 'name', dir.name);
+									this.out.attr(d_id, "name", dir.name);
 									if (dir.content_start >= 0) {
 										this.out.set_value_start(d_id, dir.content_start);
 										this.out.set_value_end(d_id, dir.content_end);
@@ -2796,7 +2788,7 @@ export class PFMParser {
 							const colon_para = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(colon_para);
 							continue;
@@ -2837,7 +2829,7 @@ export class PFMParser {
 							const para_id = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(para_id);
 							continue;
@@ -2881,7 +2873,7 @@ export class PFMParser {
 						if (this.block_quote_depth > 0) {
 							const stripped = this.skip_bq_markers(
 								next_pos,
-								this.block_quote_depth
+								this.block_quote_depth,
 							);
 
 							if (stripped === -1) {
@@ -2932,7 +2924,7 @@ export class PFMParser {
 							const sb_p = this.emit_open(
 								node_kind.soft_break,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.emit_close(sb_p, this.cursor + 1);
 							this.chomp(stripped, true);
@@ -2954,7 +2946,7 @@ export class PFMParser {
 							if (ind >= this.list_content_offset) {
 								const stripped = this.skip_columns(
 									next_pos,
-									this.list_content_offset
+									this.list_content_offset,
 								);
 								if (
 									stripped < length &&
@@ -2971,7 +2963,7 @@ export class PFMParser {
 						const sb_p_nq = this.emit_open(
 							node_kind.soft_break,
 							this.cursor,
-							current_node
+							current_node,
 						);
 						this.emit_close(sb_p_nq, this.cursor + 1);
 						this.chomp1();
@@ -3012,7 +3004,7 @@ export class PFMParser {
 							const scan = this.bq_fence_scan(
 								info_end + 1,
 								this.extra,
-								this.block_quote_depth
+								this.block_quote_depth,
 							);
 							if (scan === 0) break main_loop; // stall for more input
 							if (scan === -1) {
@@ -3025,13 +3017,13 @@ export class PFMParser {
 								const bq_fp_id = this.emit_open(
 									node_kind.paragraph,
 									this.cursor - this.extra,
-									current_node
+									current_node,
 								);
 								this.node_stack.push(bq_fp_id);
 								const bq_ft_id = this.emit_open(
 									node_kind.text,
 									this.cursor - this.extra,
-									bq_fp_id
+									bq_fp_id,
 								);
 								this.out.set_value_start(bq_ft_id, this.cursor - this.extra);
 								this.out.set_value_end(bq_ft_id, this.cursor);
@@ -3045,7 +3037,7 @@ export class PFMParser {
 						const cf_id = this.emit_open(
 							node_kind.code_fence,
 							this.cursor - this.extra,
-							current_node
+							current_node,
 						);
 						this.node_stack.push(cf_id);
 
@@ -3057,7 +3049,7 @@ export class PFMParser {
 						const para_id = this.emit_open(
 							node_kind.paragraph,
 							this.cursor - this.extra,
-							current_node
+							current_node,
 						);
 						this.node_stack.push(para_id);
 						this.states.push(state_kind.paragraph);
@@ -3097,8 +3089,8 @@ export class PFMParser {
 						this.info_end_pos = this.cursor;
 						this.states.pop();
 						this.states.push(state_kind.code_fence_content);
-						this.out.attr(current_node, 'info_start', this.info_start_pos);
-						this.out.attr(current_node, 'info_end', this.cursor);
+						this.out.attr(current_node, "info_start", this.info_start_pos);
+						this.out.attr(current_node, "info_end", this.cursor);
 						this.chomp1();
 
 						this.out.set_value_start(current_node, this.cursor);
@@ -3135,7 +3127,7 @@ export class PFMParser {
 
 					if (found_index === -1) {
 						while (scan < length) {
-							const nl = source.indexOf('\n', scan);
+							const nl = source.indexOf("\n", scan);
 							if (nl === -1) break;
 
 							let lp = nl + 1;
@@ -3275,7 +3267,7 @@ export class PFMParser {
 						const next_pos = this.cursor + 1;
 						const stripped = this.skip_bq_markers(
 							next_pos,
-							this.block_quote_depth
+							this.block_quote_depth,
 						);
 
 						if (
@@ -3287,7 +3279,7 @@ export class PFMParser {
 							const sb_bq = this.emit_open(
 								node_kind.soft_break,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.emit_close(sb_bq, this.cursor + 1);
 							this.chomp(stripped, true);
@@ -3376,7 +3368,7 @@ export class PFMParser {
 						const next_pos = this.cursor + 1;
 						const stripped = this.skip_bq_markers(
 							next_pos,
-							this.block_quote_depth
+							this.block_quote_depth,
 						);
 
 						if (
@@ -3388,7 +3380,7 @@ export class PFMParser {
 							const sb_bq = this.emit_open(
 								node_kind.soft_break,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.emit_close(sb_bq, this.cursor + 1);
 							this.chomp(stripped, true);
@@ -3699,12 +3691,12 @@ export class PFMParser {
 								const n_id = current_node;
 								const url = source.slice(url_start, url_end);
 								const is_image = this.node_kind_array[n_id] === node_kind.image;
-								this.out.attr(n_id, is_image ? 'src' : 'href', url);
+								this.out.attr(n_id, is_image ? "src" : "href", url);
 								if (title_start >= 0 && title_end >= 0) {
 									this.out.attr(
 										n_id,
-										'title',
-										source.slice(title_start, title_end)
+										"title",
+										source.slice(title_start, title_end),
 									);
 								}
 								this.out.set_value_end(n_id, this.cursor);
@@ -3752,11 +3744,11 @@ export class PFMParser {
 										this.node_kind_array[current_node] === node_kind.image;
 									this.out.attr(
 										current_node,
-										is_image ? 'src' : 'href',
-										def.url
+										is_image ? "src" : "href",
+										def.url,
 									);
 									if (def.title)
-										this.out.attr(current_node, 'title', def.title);
+										this.out.attr(current_node, "title", def.title);
 									this.out.set_value_end(current_node, this.cursor);
 									this.pending_remove(current_node);
 									this.emit_close(current_node, ref_p + 1);
@@ -3808,11 +3800,11 @@ export class PFMParser {
 										this.node_kind_array[current_node] === node_kind.image;
 									this.out.attr(
 										current_node,
-										is_image ? 'src' : 'href',
-										def.url
+										is_image ? "src" : "href",
+										def.url,
 									);
 									if (def.title)
-										this.out.attr(current_node, 'title', def.title);
+										this.out.attr(current_node, "title", def.title);
 									this.out.set_value_end(current_node, this.cursor);
 									this.pending_remove(current_node);
 									this.emit_close(current_node, ref_p + 1);
@@ -3854,7 +3846,7 @@ export class PFMParser {
 					// check if current char starts a matching closing tag.
 					if (code === OPEN_ANGLE_BRACKET) {
 						// stall if tag might be incomplete
-						if (!this.finished && source.indexOf('>', this.cursor + 1) === -1) {
+						if (!this.finished && source.indexOf(">", this.cursor + 1) === -1) {
 							break main_loop;
 						}
 						const close = this.try_parse_html_close_tag(this.cursor + 1);
@@ -3942,7 +3934,7 @@ export class PFMParser {
 					// check for closing tag
 					if (code === OPEN_ANGLE_BRACKET) {
 						// stall if tag might be incomplete
-						if (!this.finished && source.indexOf('>', this.cursor + 1) === -1) {
+						if (!this.finished && source.indexOf(">", this.cursor + 1) === -1) {
 							break main_loop;
 						}
 						const close = this.try_parse_html_close_tag(this.cursor + 1);
@@ -3977,7 +3969,7 @@ export class PFMParser {
 						const lb_id = this.emit_open(
 							node_kind.line_break,
 							this.cursor,
-							current_node
+							current_node,
 						);
 						this.emit_close(lb_id, this.cursor + 1);
 						this.chomp1();
@@ -3998,7 +3990,7 @@ export class PFMParser {
 							const lb_id = this.emit_open(
 								node_kind.line_break,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.emit_close(lb_id, pos + 1);
 							this.chomp(pos + 1, true);
@@ -4029,12 +4021,12 @@ export class PFMParser {
 							const c_id = this.emit_open(
 								node_kind.html_comment,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.out.text(
 								c_id,
 								blk_comment.content_start,
-								blk_comment.content_end
+								blk_comment.content_end,
 							);
 							this.emit_close(c_id, blk_comment.end);
 							this.chomp(blk_comment.end, true);
@@ -4047,13 +4039,13 @@ export class PFMParser {
 								const html_id = this.emit_open(
 									node_kind.html,
 									this.cursor,
-									current_node
+									current_node,
 								);
-								this.out.attr(html_id, 'tag', blk_tag.tag);
+								this.out.attr(html_id, "tag", blk_tag.tag);
 								if (Object.keys(blk_tag.attributes).length > 0) {
-									this.out.attr(html_id, 'attributes', blk_tag.attributes);
+									this.out.attr(html_id, "attributes", blk_tag.attributes);
 								}
-								this.out.attr(html_id, 'self_closing', true);
+								this.out.attr(html_id, "self_closing", true);
 								this.emit_close(html_id, blk_tag.end);
 								this.chomp(blk_tag.end, true);
 							} else if (this.is_raw_text_tag(blk_tag.tag)) {
@@ -4063,11 +4055,11 @@ export class PFMParser {
 									const html_id = this.emit_open(
 										node_kind.html,
 										this.cursor,
-										current_node
+										current_node,
 									);
-									this.out.attr(html_id, 'tag', blk_tag.tag);
+									this.out.attr(html_id, "tag", blk_tag.tag);
 									if (Object.keys(blk_tag.attributes).length > 0) {
-										this.out.attr(html_id, 'attributes', blk_tag.attributes);
+										this.out.attr(html_id, "attributes", blk_tag.attributes);
 									}
 									this.out.set_value_start(html_id, blk_tag.end);
 									this.out.set_value_end(html_id, length);
@@ -4077,11 +4069,11 @@ export class PFMParser {
 									const html_id = this.emit_open(
 										node_kind.html,
 										this.cursor,
-										current_node
+										current_node,
 									);
-									this.out.attr(html_id, 'tag', blk_tag.tag);
+									this.out.attr(html_id, "tag", blk_tag.tag);
 									if (Object.keys(blk_tag.attributes).length > 0) {
-										this.out.attr(html_id, 'attributes', blk_tag.attributes);
+										this.out.attr(html_id, "attributes", blk_tag.attributes);
 									}
 									this.out.set_value_start(html_id, blk_tag.end);
 									this.out.set_value_end(html_id, raw.content_end);
@@ -4094,11 +4086,11 @@ export class PFMParser {
 									this.cursor,
 									current_node,
 									0,
-									true
+									true,
 								);
-								this.out.attr(html_id, 'tag', blk_tag.tag);
+								this.out.attr(html_id, "tag", blk_tag.tag);
 								if (Object.keys(blk_tag.attributes).length > 0) {
-									this.out.attr(html_id, 'attributes', blk_tag.attributes);
+									this.out.attr(html_id, "attributes", blk_tag.attributes);
 								}
 								this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
 								this.node_stack.push(html_id);
@@ -4115,7 +4107,7 @@ export class PFMParser {
 					const blk_html_para = this.emit_open(
 						node_kind.paragraph,
 						this.cursor,
-						current_node
+						current_node,
 					);
 					this.node_stack.push(blk_html_para);
 					continue;
@@ -4155,7 +4147,7 @@ export class PFMParser {
 						}
 						const token = this.try_parse_svelte_block_token(this.cursor);
 						if (token) {
-							if (token.kind === ':') {
+							if (token.kind === ":") {
 								// close current branch, open new one
 								this.emit_close(this.svelte_branch_id, this.cursor);
 								this.node_stack.pop(); // pop old branch
@@ -4163,9 +4155,9 @@ export class PFMParser {
 								const branch_id = this.emit_open(
 									node_kind.svelte_branch,
 									this.cursor,
-									this.svelte_block_id
+									this.svelte_block_id,
 								);
-								this.out.attr(branch_id, 'tag', token.tag);
+								this.out.attr(branch_id, "tag", token.tag);
 								if (token.expr_start !== 0 || token.expr_end !== 0) {
 									this.out.set_value_start(branch_id, token.expr_start);
 									this.out.set_value_end(branch_id, token.expr_end);
@@ -4175,7 +4167,7 @@ export class PFMParser {
 								this.chomp(token.end, true);
 								continue;
 							}
-							if (token.kind === '/') {
+							if (token.kind === "/") {
 								// close branch + block
 								this.emit_close(this.svelte_branch_id, this.cursor);
 								this.node_stack.pop(); // branch
@@ -4195,7 +4187,7 @@ export class PFMParser {
 								this.chomp(token.end, true);
 								continue;
 							}
-							if (token.kind === '#') {
+							if (token.kind === "#") {
 								// nested svelte block - open it within this branch
 								this.start_svelte_block(token, current_node);
 								continue;
@@ -4208,7 +4200,7 @@ export class PFMParser {
 						const lb_id = this.emit_open(
 							node_kind.line_break,
 							this.cursor,
-							current_node
+							current_node,
 						);
 						this.emit_close(lb_id, this.cursor + 1);
 						this.chomp1();
@@ -4229,7 +4221,7 @@ export class PFMParser {
 							const lb_id = this.emit_open(
 								node_kind.line_break,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.emit_close(lb_id, pos + 1);
 							this.chomp(pos + 1, true);
@@ -4258,7 +4250,7 @@ export class PFMParser {
 						const bq_id = this.emit_open(
 							node_kind.block_quote,
 							this.cursor,
-							current_node
+							current_node,
 						);
 						this.node_stack.push(bq_id);
 						this.states.push(state_kind.block_quote);
@@ -4267,7 +4259,7 @@ export class PFMParser {
 					}
 
 					if (code === OPEN_ANGLE_BRACKET) {
-						if (!this.finished && source.indexOf('>', this.cursor + 1) === -1) {
+						if (!this.finished && source.indexOf(">", this.cursor + 1) === -1) {
 							break main_loop;
 						}
 						const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
@@ -4276,13 +4268,13 @@ export class PFMParser {
 								const html_id = this.emit_open(
 									node_kind.html,
 									this.cursor,
-									current_node
+									current_node,
 								);
-								this.out.attr(html_id, 'tag', blk_tag.tag);
+								this.out.attr(html_id, "tag", blk_tag.tag);
 								if (Object.keys(blk_tag.attributes).length > 0) {
-									this.out.attr(html_id, 'attributes', blk_tag.attributes);
+									this.out.attr(html_id, "attributes", blk_tag.attributes);
 								}
-								this.out.attr(html_id, 'self_closing', true);
+								this.out.attr(html_id, "self_closing", true);
 								this.emit_close(html_id, blk_tag.end);
 								this.chomp(blk_tag.end, true);
 							} else if (this.is_raw_text_tag(blk_tag.tag)) {
@@ -4292,11 +4284,11 @@ export class PFMParser {
 									const html_id = this.emit_open(
 										node_kind.html,
 										this.cursor,
-										current_node
+										current_node,
 									);
-									this.out.attr(html_id, 'tag', blk_tag.tag);
+									this.out.attr(html_id, "tag", blk_tag.tag);
 									if (Object.keys(blk_tag.attributes).length > 0) {
-										this.out.attr(html_id, 'attributes', blk_tag.attributes);
+										this.out.attr(html_id, "attributes", blk_tag.attributes);
 									}
 									this.out.set_value_start(html_id, blk_tag.end);
 									this.out.set_value_end(html_id, length);
@@ -4306,11 +4298,11 @@ export class PFMParser {
 									const html_id = this.emit_open(
 										node_kind.html,
 										this.cursor,
-										current_node
+										current_node,
 									);
-									this.out.attr(html_id, 'tag', blk_tag.tag);
+									this.out.attr(html_id, "tag", blk_tag.tag);
 									if (Object.keys(blk_tag.attributes).length > 0) {
-										this.out.attr(html_id, 'attributes', blk_tag.attributes);
+										this.out.attr(html_id, "attributes", blk_tag.attributes);
 									}
 									this.out.set_value_start(html_id, blk_tag.end);
 									this.out.set_value_end(html_id, raw.content_end);
@@ -4323,11 +4315,11 @@ export class PFMParser {
 									this.cursor,
 									current_node,
 									0,
-									true
+									true,
 								);
-								this.out.attr(html_id, 'tag', blk_tag.tag);
+								this.out.attr(html_id, "tag", blk_tag.tag);
 								if (Object.keys(blk_tag.attributes).length > 0) {
-									this.out.attr(html_id, 'attributes', blk_tag.attributes);
+									this.out.attr(html_id, "attributes", blk_tag.attributes);
 								}
 								this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
 								this.node_stack.push(html_id);
@@ -4353,7 +4345,7 @@ export class PFMParser {
 							const tb_id = this.emit_open(
 								node_kind.thematic_break,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.emit_close(tb_id, line_end);
 							this.chomp(line_end, true);
@@ -4374,13 +4366,13 @@ export class PFMParser {
 						const dir = this.try_parse_block_directive(this.cursor);
 						if (dir === false) break main_loop;
 						if (dir !== null) {
-							if (dir.kind === 'leaf') {
+							if (dir.kind === "leaf") {
 								const d_id = this.emit_open(
 									node_kind.directive_leaf,
 									this.cursor,
-									current_node
+									current_node,
 								);
-								this.out.attr(d_id, 'name', dir.name);
+								this.out.attr(d_id, "name", dir.name);
 								if (dir.content_start >= 0) {
 									this.out.set_value_start(d_id, dir.content_start);
 									this.out.set_value_end(d_id, dir.content_end);
@@ -4391,9 +4383,9 @@ export class PFMParser {
 								const d_id = this.emit_open(
 									node_kind.directive_container,
 									this.cursor,
-									current_node
+									current_node,
 								);
-								this.out.attr(d_id, 'name', dir.name);
+								this.out.attr(d_id, "name", dir.name);
 								if (dir.content_start >= 0) {
 									this.out.set_value_start(d_id, dir.content_start);
 									this.out.set_value_end(d_id, dir.content_end);
@@ -4412,7 +4404,7 @@ export class PFMParser {
 					const svelte_para = this.emit_open(
 						node_kind.paragraph,
 						this.cursor,
-						current_node
+						current_node,
 					);
 					this.node_stack.push(svelte_para);
 					continue;
@@ -4441,7 +4433,7 @@ export class PFMParser {
 									const lb_id = this.emit_open(
 										node_kind.line_break,
 										this.cursor,
-										current_node
+										current_node,
 									);
 									this.emit_close(lb_id, stripped);
 									this.chomp(stripped, true);
@@ -4480,7 +4472,7 @@ export class PFMParser {
 						case UNDERSCORE: {
 							// need a complete line to distinguish thematic break
 							// from list marker from paragraph.
-							if (!this.finished && source.indexOf('\n', this.cursor) === -1) {
+							if (!this.finished && source.indexOf("\n", this.cursor) === -1) {
 								break main_loop;
 							}
 							if (this.is_thematic_break_start(this.cursor)) {
@@ -4496,7 +4488,7 @@ export class PFMParser {
 								const tb_id = this.emit_open(
 									node_kind.thematic_break,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.emit_close(tb_id, break_end);
 
@@ -4514,7 +4506,7 @@ export class PFMParser {
 							const para_id = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(para_id);
 							continue;
@@ -4528,7 +4520,7 @@ export class PFMParser {
 							const bq_id = this.emit_open(
 								node_kind.block_quote,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(bq_id);
 							this.states.push(state_kind.block_quote);
@@ -4544,7 +4536,7 @@ export class PFMParser {
 							const para_id = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(para_id);
 							continue;
@@ -4561,7 +4553,7 @@ export class PFMParser {
 							const bq_ref_para = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(bq_ref_para);
 							continue;
@@ -4569,19 +4561,19 @@ export class PFMParser {
 
 						case COLON: {
 							// need a complete line for directive detection
-							if (!this.finished && source.indexOf('\n', this.cursor) === -1) {
+							if (!this.finished && source.indexOf("\n", this.cursor) === -1) {
 								break main_loop;
 							}
 							const dir = this.try_parse_block_directive(this.cursor);
 							if (dir === false) break main_loop;
 							if (dir !== null) {
-								if (dir.kind === 'leaf') {
+								if (dir.kind === "leaf") {
 									const d_id = this.emit_open(
 										node_kind.directive_leaf,
 										this.cursor,
-										current_node
+										current_node,
 									);
-									this.out.attr(d_id, 'name', dir.name);
+									this.out.attr(d_id, "name", dir.name);
 									if (dir.content_start >= 0) {
 										this.out.set_value_start(d_id, dir.content_start);
 										this.out.set_value_end(d_id, dir.content_end);
@@ -4592,9 +4584,9 @@ export class PFMParser {
 									const d_id = this.emit_open(
 										node_kind.directive_container,
 										this.cursor,
-										current_node
+										current_node,
 									);
-									this.out.attr(d_id, 'name', dir.name);
+									this.out.attr(d_id, "name", dir.name);
 									if (dir.content_start >= 0) {
 										this.out.set_value_start(d_id, dir.content_start);
 										this.out.set_value_end(d_id, dir.content_end);
@@ -4610,7 +4602,7 @@ export class PFMParser {
 							const bq_colon_para = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(bq_colon_para);
 							continue;
@@ -4645,7 +4637,7 @@ export class PFMParser {
 							const para_id = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(para_id);
 							continue;
@@ -4679,7 +4671,7 @@ export class PFMParser {
 							if (this.block_quote_depth > 0) {
 								const stripped_bq = this.skip_bq_markers(
 									raw_next_pos,
-									this.block_quote_depth
+									this.block_quote_depth,
 								);
 								if (stripped_bq === -1) {
 									this.end_list();
@@ -4801,7 +4793,7 @@ export class PFMParser {
 											const new_item_id = this.emit_open(
 												node_kind.list_item,
 												p,
-												this.list_node_id
+												this.list_node_id,
 											);
 											this.node_stack.push(new_item_id);
 											this.list_content_offset = marker_after.content_offset;
@@ -4822,7 +4814,7 @@ export class PFMParser {
 										this.list_is_loose = true;
 										this.chomp(
 											this.skip_columns(p, this.list_content_offset),
-											true
+											true,
 										);
 										continue;
 									}
@@ -4856,7 +4848,7 @@ export class PFMParser {
 									const new_item_id = this.emit_open(
 										node_kind.list_item,
 										next_pos,
-										this.list_node_id
+										this.list_node_id,
 									);
 									this.node_stack.push(new_item_id);
 									this.list_content_offset = marker.content_offset;
@@ -4881,7 +4873,7 @@ export class PFMParser {
 									// strip indent and continue as list item content
 									this.chomp(
 										this.skip_columns(next_pos, this.list_content_offset),
-										true
+										true,
 									);
 									continue;
 								}
@@ -4951,7 +4943,7 @@ export class PFMParser {
 								const tb_id = this.emit_open(
 									node_kind.thematic_break,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.emit_close(tb_id, break_end);
 								this.chomp(break_end, true);
@@ -4974,7 +4966,7 @@ export class PFMParser {
 										const new_item_id = this.emit_open(
 											node_kind.list_item,
 											this.cursor,
-											this.list_node_id
+											this.list_node_id,
 										);
 										this.node_stack.push(new_item_id);
 										this.list_content_offset = nested.content_offset;
@@ -4992,7 +4984,7 @@ export class PFMParser {
 								this.cursor,
 								current_node,
 								0,
-								true
+								true,
 							);
 							this.track_list_pending_para(para_id);
 							this.node_stack.push(para_id);
@@ -5006,7 +4998,7 @@ export class PFMParser {
 							const bq_id = this.emit_open(
 								node_kind.block_quote,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(bq_id);
 							this.states.push(state_kind.block_quote);
@@ -5024,7 +5016,7 @@ export class PFMParser {
 								this.cursor,
 								current_node,
 								0,
-								true
+								true,
 							);
 							this.track_list_pending_para(para_id);
 							this.node_stack.push(para_id);
@@ -5044,7 +5036,7 @@ export class PFMParser {
 								this.cursor,
 								current_node,
 								0,
-								true
+								true,
 							);
 							this.track_list_pending_para(li_ref_para);
 							this.node_stack.push(li_ref_para);
@@ -5055,13 +5047,13 @@ export class PFMParser {
 							const dir = this.try_parse_block_directive(this.cursor);
 							if (dir === false) break main_loop;
 							if (dir !== null) {
-								if (dir.kind === 'leaf') {
+								if (dir.kind === "leaf") {
 									const d_id = this.emit_open(
 										node_kind.directive_leaf,
 										this.cursor,
-										current_node
+										current_node,
 									);
-									this.out.attr(d_id, 'name', dir.name);
+									this.out.attr(d_id, "name", dir.name);
 									if (dir.content_start >= 0) {
 										this.out.set_value_start(d_id, dir.content_start);
 										this.out.set_value_end(d_id, dir.content_end);
@@ -5072,9 +5064,9 @@ export class PFMParser {
 									const d_id = this.emit_open(
 										node_kind.directive_container,
 										this.cursor,
-										current_node
+										current_node,
 									);
-									this.out.attr(d_id, 'name', dir.name);
+									this.out.attr(d_id, "name", dir.name);
 									if (dir.content_start >= 0) {
 										this.out.set_value_start(d_id, dir.content_start);
 										this.out.set_value_end(d_id, dir.content_end);
@@ -5092,7 +5084,7 @@ export class PFMParser {
 								this.cursor,
 								current_node,
 								0,
-								true
+								true,
 							);
 							this.track_list_pending_para(li_colon_para);
 							this.node_stack.push(li_colon_para);
@@ -5135,7 +5127,7 @@ export class PFMParser {
 									const new_item_id = this.emit_open(
 										node_kind.list_item,
 										this.cursor,
-										this.list_node_id
+										this.list_node_id,
 									);
 									this.node_stack.push(new_item_id);
 									this.list_content_offset = nested.content_offset;
@@ -5151,7 +5143,7 @@ export class PFMParser {
 								this.cursor,
 								current_node,
 								0,
-								true
+								true,
 							);
 							this.track_list_pending_para(para_id);
 							this.node_stack.push(para_id);
@@ -5184,7 +5176,7 @@ export class PFMParser {
 							const lb_id = this.emit_open(
 								node_kind.line_break,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.emit_close(lb_id, this.cursor + 1);
 							this.chomp1();
@@ -5206,7 +5198,7 @@ export class PFMParser {
 								const lb_id = this.emit_open(
 									node_kind.line_break,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.emit_close(lb_id, pos + 1);
 								this.chomp(pos + 1, true);
@@ -5218,13 +5210,13 @@ export class PFMParser {
 
 						case COLON: {
 							// need a complete line for directive/close detection
-							if (!this.finished && source.indexOf('\n', this.cursor) === -1) {
+							if (!this.finished && source.indexOf("\n", this.cursor) === -1) {
 								break main_loop;
 							}
 							// check for closing fence: n+ colons (>= opener) with no name
 							const close_end = this.try_parse_directive_close(
 								this.cursor,
-								dc_colons
+								dc_colons,
 							);
 							if (close_end === -2) break main_loop;
 							if (close_end >= 0) {
@@ -5240,13 +5232,13 @@ export class PFMParser {
 							const dir = this.try_parse_block_directive(this.cursor);
 							if (dir === false) break main_loop;
 							if (dir !== null) {
-								if (dir.kind === 'leaf') {
+								if (dir.kind === "leaf") {
 									const d_id = this.emit_open(
 										node_kind.directive_leaf,
 										this.cursor,
-										current_node
+										current_node,
 									);
-									this.out.attr(d_id, 'name', dir.name);
+									this.out.attr(d_id, "name", dir.name);
 									if (dir.content_start >= 0) {
 										this.out.set_value_start(d_id, dir.content_start);
 										this.out.set_value_end(d_id, dir.content_end);
@@ -5257,9 +5249,9 @@ export class PFMParser {
 									const d_id = this.emit_open(
 										node_kind.directive_container,
 										this.cursor,
-										current_node
+										current_node,
 									);
-									this.out.attr(d_id, 'name', dir.name);
+									this.out.attr(d_id, "name", dir.name);
 									if (dir.content_start >= 0) {
 										this.out.set_value_start(d_id, dir.content_start);
 										this.out.set_value_end(d_id, dir.content_end);
@@ -5276,7 +5268,7 @@ export class PFMParser {
 							const dc_colon_para = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(dc_colon_para);
 							continue;
@@ -5309,7 +5301,7 @@ export class PFMParser {
 								const tb_id = this.emit_open(
 									node_kind.thematic_break,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.emit_close(tb_id, line_end);
 								this.chomp(line_end, true);
@@ -5319,7 +5311,7 @@ export class PFMParser {
 							const para_id = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(para_id);
 							continue;
@@ -5332,7 +5324,7 @@ export class PFMParser {
 							const bq_id = this.emit_open(
 								node_kind.block_quote,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(bq_id);
 							this.states.push(state_kind.block_quote);
@@ -5348,7 +5340,7 @@ export class PFMParser {
 							const para_id = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(para_id);
 							continue;
@@ -5365,7 +5357,7 @@ export class PFMParser {
 							const dc_ref_para = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(dc_ref_para);
 							continue;
@@ -5376,7 +5368,7 @@ export class PFMParser {
 							const para_id = this.emit_open(
 								node_kind.paragraph,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(para_id);
 							continue;
@@ -5419,7 +5411,7 @@ export class PFMParser {
 								if (ind >= this.list_content_offset) {
 									const stripped = this.skip_columns(
 										np,
-										this.list_content_offset
+										this.list_content_offset,
 									);
 									if (
 										stripped < length &&
@@ -5433,7 +5425,7 @@ export class PFMParser {
 								const sb_il = this.emit_open(
 									node_kind.soft_break,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.emit_close(sb_il, this.cursor + 1);
 								this.chomp1();
@@ -5443,7 +5435,7 @@ export class PFMParser {
 								const sb_inl = this.emit_open(
 									node_kind.soft_break,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.emit_close(sb_inl, this.cursor + 1);
 								this.chomp1();
@@ -5469,7 +5461,7 @@ export class PFMParser {
 									this.cursor,
 									current_node,
 									0,
-									true
+									true,
 								);
 
 								this.out.set_value_start(n_id, this.cursor + 1);
@@ -5480,7 +5472,7 @@ export class PFMParser {
 								const t_id = this.emit_open(
 									node_kind.text,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.out.set_value_start(t_id, this.cursor);
 								this.node_stack.push(t_id);
@@ -5503,7 +5495,7 @@ export class PFMParser {
 									this.cursor,
 									current_node,
 									0,
-									true
+									true,
 								);
 
 								this.out.set_value_start(n_id, this.cursor + 1);
@@ -5514,7 +5506,7 @@ export class PFMParser {
 								const t_id = this.emit_open(
 									node_kind.text,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.out.set_value_start(t_id, this.cursor);
 								this.node_stack.push(t_id);
@@ -5543,7 +5535,7 @@ export class PFMParser {
 									this.cursor,
 									current_node,
 									0,
-									true
+									true,
 								);
 								this.out.set_value_start(n_id, this.cursor + 2);
 								this.node_stack.push(n_id);
@@ -5559,7 +5551,7 @@ export class PFMParser {
 									this.cursor,
 									current_node,
 									0,
-									true
+									true,
 								);
 								this.out.set_value_start(n_id, this.cursor + 1);
 								this.node_stack.push(n_id);
@@ -5569,7 +5561,7 @@ export class PFMParser {
 								const t_id = this.emit_open(
 									node_kind.text,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.out.set_value_start(t_id, this.cursor);
 								this.node_stack.push(t_id);
@@ -5588,7 +5580,7 @@ export class PFMParser {
 									this.cursor,
 									current_node,
 									0,
-									true
+									true,
 								);
 								this.out.set_value_start(n_id, this.cursor + 1);
 								this.node_stack.push(n_id);
@@ -5597,7 +5589,7 @@ export class PFMParser {
 								const t_id = this.emit_open(
 									node_kind.text,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.out.set_value_start(t_id, this.cursor);
 								this.node_stack.push(t_id);
@@ -5620,7 +5612,7 @@ export class PFMParser {
 							const t_id_br = this.emit_open(
 								node_kind.text,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.out.set_value_start(t_id_br, this.cursor);
 							this.node_stack.push(t_id_br);
@@ -5652,13 +5644,13 @@ export class PFMParser {
 								if (this.block_quote_depth > 0) {
 									const peek = this.skip_bq_markers(
 										this.cursor + 2,
-										this.block_quote_depth
+										this.block_quote_depth,
 									);
 									if (peek === -1) {
 										const hb_id = this.emit_open(
 											node_kind.hard_break,
 											this.cursor,
-											current_node
+											current_node,
 										);
 										this.emit_close(hb_id, this.cursor + 2);
 										this.chomp1(); // past `\` only; cursor now on lf
@@ -5669,7 +5661,7 @@ export class PFMParser {
 								const hb_id = this.emit_open(
 									node_kind.hard_break,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.emit_close(hb_id, this.cursor + 2);
 								this.chomp(2);
@@ -5677,7 +5669,7 @@ export class PFMParser {
 								if (this.block_quote_depth > 0) {
 									const stripped = this.skip_bq_markers(
 										this.cursor,
-										this.block_quote_depth
+										this.block_quote_depth,
 									);
 									if (stripped !== -1) this.chomp(stripped, true);
 								}
@@ -5695,7 +5687,7 @@ export class PFMParser {
 								const t_id = this.emit_open(
 									node_kind.text,
 									this.cursor + 1,
-									current_node
+									current_node,
 								);
 								this.out.set_value_start(t_id, this.cursor + 1);
 								this.node_stack.push(t_id);
@@ -5705,7 +5697,7 @@ export class PFMParser {
 								const t_id = this.emit_open(
 									node_kind.text,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.out.set_value_start(t_id, this.cursor);
 								this.node_stack.push(t_id);
@@ -5722,7 +5714,7 @@ export class PFMParser {
 								this.cursor,
 								current_node,
 								0,
-								true
+								true,
 							);
 							this.node_stack.push(link_id);
 							this.states.push(state_kind.link_text);
@@ -5743,7 +5735,7 @@ export class PFMParser {
 									this.cursor,
 									current_node,
 									0,
-									true
+									true,
 								);
 								this.node_stack.push(img_id);
 								this.states.push(state_kind.link_text);
@@ -5756,7 +5748,7 @@ export class PFMParser {
 							const t_id = this.emit_open(
 								node_kind.text,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(t_id);
 							this.out.set_value_start(t_id, this.cursor);
@@ -5769,7 +5761,7 @@ export class PFMParser {
 							// in incremental mode, stall if the tag might be incomplete
 							if (
 								!this.finished &&
-								source.indexOf('>', this.cursor + 1) === -1
+								source.indexOf(">", this.cursor + 1) === -1
 							) {
 								break main_loop;
 							}
@@ -5780,17 +5772,17 @@ export class PFMParser {
 								const link_id = this.emit_open(
 									node_kind.link,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.out.set_value_start(link_id, this.cursor + 1);
 								this.out.set_value_end(link_id, uri_end - 1);
 								this.emit_close(link_id, uri_end);
-								this.out.attr(link_id, 'href', uri_text);
+								this.out.attr(link_id, "href", uri_text);
 
 								const text_id = this.emit_open(
 									node_kind.text,
 									this.cursor + 1,
-									link_id
+									link_id,
 								);
 								this.out.set_value_start(text_id, this.cursor + 1);
 								this.out.set_value_end(text_id, uri_end - 1);
@@ -5808,7 +5800,7 @@ export class PFMParser {
 								const c_id = this.emit_open(
 									node_kind.html_comment,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.out.text(c_id, comment.content_start, comment.content_end);
 								this.emit_close(c_id, comment.end);
@@ -5844,31 +5836,31 @@ export class PFMParser {
 									const html_id = this.emit_open(
 										node_kind.html,
 										this.cursor,
-										current_node
+										current_node,
 									);
-									this.out.attr(html_id, 'tag', open_tag.tag);
+									this.out.attr(html_id, "tag", open_tag.tag);
 									if (Object.keys(open_tag.attributes).length > 0) {
-										this.out.attr(html_id, 'attributes', open_tag.attributes);
+										this.out.attr(html_id, "attributes", open_tag.attributes);
 									}
-									this.out.attr(html_id, 'self_closing', true);
+									this.out.attr(html_id, "self_closing", true);
 									this.emit_close(html_id, open_tag.end);
 									this.chomp(open_tag.end, true);
 									this.states.pop();
 								} else if (this.is_raw_text_tag(open_tag.tag)) {
 									const raw = this.find_raw_close_tag(
 										open_tag.end,
-										open_tag.tag
+										open_tag.tag,
 									);
 									if (!raw) {
 										if (!this.finished) break main_loop;
 										const html_id = this.emit_open(
 											node_kind.html,
 											this.cursor,
-											current_node
+											current_node,
 										);
-										this.out.attr(html_id, 'tag', open_tag.tag);
+										this.out.attr(html_id, "tag", open_tag.tag);
 										if (Object.keys(open_tag.attributes).length > 0) {
-											this.out.attr(html_id, 'attributes', open_tag.attributes);
+											this.out.attr(html_id, "attributes", open_tag.attributes);
 										}
 										this.out.set_value_start(html_id, open_tag.end);
 										this.out.set_value_end(html_id, length);
@@ -5878,11 +5870,11 @@ export class PFMParser {
 										const html_id = this.emit_open(
 											node_kind.html,
 											this.cursor,
-											current_node
+											current_node,
 										);
-										this.out.attr(html_id, 'tag', open_tag.tag);
+										this.out.attr(html_id, "tag", open_tag.tag);
 										if (Object.keys(open_tag.attributes).length > 0) {
-											this.out.attr(html_id, 'attributes', open_tag.attributes);
+											this.out.attr(html_id, "attributes", open_tag.attributes);
 										}
 										this.out.set_value_start(html_id, open_tag.end);
 										this.out.set_value_end(html_id, raw.content_end);
@@ -5896,11 +5888,11 @@ export class PFMParser {
 										this.cursor,
 										current_node,
 										0,
-										true
+										true,
 									);
-									this.out.attr(html_id, 'tag', open_tag.tag);
+									this.out.attr(html_id, "tag", open_tag.tag);
 									if (Object.keys(open_tag.attributes).length > 0) {
-										this.out.attr(html_id, 'attributes', open_tag.attributes);
+										this.out.attr(html_id, "attributes", open_tag.attributes);
 									}
 									this.html_tag_stack.push({ id: html_id, tag: open_tag.tag });
 									this.node_stack.push(html_id);
@@ -5914,7 +5906,7 @@ export class PFMParser {
 							const t_id = this.emit_open(
 								node_kind.text,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(t_id);
 							this.out.set_value_start(t_id, this.cursor);
@@ -5948,9 +5940,9 @@ export class PFMParser {
 										const st_id = this.emit_open(
 											node_kind.svelte_tag,
 											this.cursor,
-											current_node
+											current_node,
 										);
-										this.out.attr(st_id, 'tag', tag_name);
+										this.out.attr(st_id, "tag", tag_name);
 										// skip whitespace after tag name to find expression start
 										while (
 											tp < expr_end - 1 &&
@@ -5971,7 +5963,7 @@ export class PFMParser {
 								const m_id = this.emit_open(
 									node_kind.mustache,
 									this.cursor,
-									current_node
+									current_node,
 								);
 								this.out.set_value_start(m_id, this.cursor + 1);
 								this.out.set_value_end(m_id, expr_end - 1);
@@ -5983,7 +5975,7 @@ export class PFMParser {
 							const t_id_brace = this.emit_open(
 								node_kind.text,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.out.set_value_start(t_id_brace, this.cursor);
 							this.node_stack.push(t_id_brace);
@@ -6024,9 +6016,9 @@ export class PFMParser {
 										this.cursor,
 										current_node,
 										0,
-										true
+										true,
 									);
-									this.out.attr(d_id, 'name', dir_name);
+									this.out.attr(d_id, "name", dir_name);
 									this.node_stack.push(d_id);
 									this.states.push(state_kind.link_text);
 									this.link_text_start = np + 1;
@@ -6038,7 +6030,7 @@ export class PFMParser {
 							const t_id_colon = this.emit_open(
 								node_kind.text,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.out.set_value_start(t_id_colon, this.cursor);
 							this.node_stack.push(t_id_colon);
@@ -6066,7 +6058,7 @@ export class PFMParser {
 							const t_id = this.emit_open(
 								node_kind.text,
 								this.cursor,
-								current_node
+								current_node,
 							);
 							this.out.set_value_start(t_id, this.cursor);
 							this.node_stack.push(t_id);
@@ -6133,7 +6125,7 @@ export class PFMParser {
 							if (this.block_quote_depth > 0) {
 								const peek = this.skip_bq_markers(
 									this.cursor + 2,
-									this.block_quote_depth
+									this.block_quote_depth,
 								);
 								if (peek === -1) {
 									this.emit_close(current_node, this.cursor);
@@ -6145,7 +6137,7 @@ export class PFMParser {
 									const hb_bq_id = this.emit_open(
 										node_kind.hard_break,
 										this.cursor,
-										parent_id_bq
+										parent_id_bq,
 									);
 									this.emit_close(hb_bq_id, this.cursor + 2);
 									this.chomp1(); // past `\` only; cursor now on lf
@@ -6166,7 +6158,7 @@ export class PFMParser {
 							const hb_id = this.emit_open(
 								node_kind.hard_break,
 								this.cursor,
-								parent_id
+								parent_id,
 							);
 							this.emit_close(hb_id, this.cursor + 2);
 							this.chomp(2);
@@ -6174,7 +6166,7 @@ export class PFMParser {
 							if (this.block_quote_depth > 0) {
 								const stripped = this.skip_bq_markers(
 									this.cursor,
-									this.block_quote_depth
+									this.block_quote_depth,
 								);
 								if (stripped !== -1) this.chomp(stripped, true);
 							}
@@ -6197,7 +6189,7 @@ export class PFMParser {
 							const esc_id = this.emit_open(
 								node_kind.text,
 								this.cursor + 1,
-								parent_id
+								parent_id,
 							);
 							this.out.set_value_start(esc_id, this.cursor + 1);
 							this.node_stack.push(esc_id);
@@ -6326,7 +6318,7 @@ export class PFMParser {
 						const t_id = this.emit_open(
 							node_kind.text,
 							this.cursor - this.extra,
-							current_node
+							current_node,
 						);
 						this.node_stack.push(t_id);
 						this.out.set_value_start(t_id, this.cursor);
@@ -6356,7 +6348,7 @@ export class PFMParser {
 							const cs_id_h = this.emit_open(
 								node_kind.code_span,
 								this.cursor - this.extra,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(cs_id_h);
 							this.out.set_value_start(cs_id_h, this.cursor);
@@ -6371,7 +6363,7 @@ export class PFMParser {
 							const cs_id = this.emit_open(
 								node_kind.code_span,
 								this.cursor - this.extra,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(cs_id);
 							// don't set value_start yet - we don't know if stripping
@@ -6388,7 +6380,7 @@ export class PFMParser {
 							const cs_id = this.emit_open(
 								node_kind.code_span,
 								this.cursor - this.extra,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(cs_id);
 							this.out.set_value_start(cs_id, this.cursor);
@@ -6417,12 +6409,12 @@ export class PFMParser {
 							const cs_id = this.emit_open(
 								node_kind.code_span,
 								this.info_start_pos - 2 - this.extra,
-								current_node
+								current_node,
 							);
 							this.node_stack.push(cs_id);
 
-							this.out.attr(cs_id, 'info_start', this.info_start_pos);
-							this.out.attr(cs_id, 'info_end', this.info_end_pos);
+							this.out.attr(cs_id, "info_start", this.info_start_pos);
+							this.out.attr(cs_id, "info_end", this.info_end_pos);
 
 							// set value_start only for the non-leading-space path.
 							// the leading-space path defers until its close handler
@@ -6625,7 +6617,7 @@ export class PFMParser {
 					this.table_row_id = this.emit_open(
 						node_kind.table_row,
 						this.cursor,
-						this.table_node_id
+						this.table_node_id,
 					);
 					this.table_cell_col = 0;
 
@@ -6639,7 +6631,7 @@ export class PFMParser {
 						node_kind.table_cell,
 						this.cursor,
 						this.table_row_id,
-						this.table_cell_col
+						this.table_cell_col,
 					);
 					this.table_cell_has_content = false;
 					this.node_stack.push(this.table_cell_id);
@@ -6681,7 +6673,7 @@ export class PFMParser {
 								node_kind.table_cell,
 								this.cursor,
 								this.table_row_id,
-								this.table_cell_col
+								this.table_cell_col,
 							);
 							this.table_cell_has_content = false;
 							this.node_stack.push(this.table_cell_id);
@@ -6720,7 +6712,7 @@ export class PFMParser {
 					// search from cursor-1 so the newline ending the opening
 					// fence can serve as the `\n` prefix for an empty body.
 					const fm_search = this.cursor > 0 ? this.cursor - 1 : 0;
-					const fm_close = source.indexOf('\n---', fm_search);
+					const fm_close = source.indexOf("\n---", fm_search);
 					if (fm_close === -1) {
 						if (!this.finished) break main_loop;
 						// eof without closing `---`: not valid frontmatter.
@@ -6763,9 +6755,7 @@ export class PFMParser {
 		}
 	}
 
-	// -----------------------------------------------------------
 	// table helpers
-	// -----------------------------------------------------------
 
 	/**
 	 * try to start a table at the current cursor position.
@@ -6802,8 +6792,8 @@ export class PFMParser {
 		// confirmed table - emit structure
 		const col_count = header_cells.length;
 		const table_id = this.emit_open(node_kind.table, this.cursor, parent);
-		this.out.attr(table_id, 'alignments', alignments);
-		this.out.attr(table_id, 'col_count', col_count);
+		this.out.attr(table_id, "alignments", alignments);
+		this.out.attr(table_id, "col_count", col_count);
 
 		// store table state
 		this.table_col_count = col_count;
@@ -6815,7 +6805,7 @@ export class PFMParser {
 		const header_id = this.emit_open(
 			node_kind.table_header,
 			this.cursor,
-			table_id
+			table_id,
 		);
 		for (let i = 0; i < header_cells.length; i++) {
 			const cell = header_cells[i];
@@ -6824,7 +6814,7 @@ export class PFMParser {
 				node_kind.table_cell,
 				cell.start,
 				header_id,
-				i
+				i,
 			);
 			if (trimmed.start < trimmed.end) {
 				// parse cell content through inline machinery
@@ -6852,7 +6842,7 @@ export class PFMParser {
 	 */
 	private parse_table_row_cells(
 		start: number,
-		end: number
+		end: number,
 	): { start: number; end: number }[] {
 		const source = this.source;
 		let pos = start;
@@ -6961,10 +6951,10 @@ export class PFMParser {
 				}
 			}
 
-			if (left_colon && right_colon) alignments.push('center');
-			else if (right_colon) alignments.push('right');
-			else if (left_colon) alignments.push('left');
-			else alignments.push('none');
+			if (left_colon && right_colon) alignments.push("center");
+			else if (right_colon) alignments.push("right");
+			else if (left_colon) alignments.push("left");
+			else alignments.push("none");
 		}
 
 		return alignments.length > 0 ? alignments : null;
@@ -6975,7 +6965,7 @@ export class PFMParser {
 	 */
 	private trim_cell_range(
 		start: number,
-		end: number
+		end: number,
 	): { start: number; end: number } {
 		const source = this.source;
 		let s = start,
@@ -6999,7 +6989,7 @@ export class PFMParser {
 	private emit_table_row(
 		row_start: number,
 		row_end: number,
-		parent: number
+		parent: number,
 	): void {
 		const cells = this.parse_table_row_cells(row_start, row_end);
 		const row_id = this.emit_open(node_kind.table_row, row_start, parent);
@@ -7012,7 +7002,7 @@ export class PFMParser {
 					node_kind.table_cell,
 					cell.start,
 					row_id,
-					i
+					i,
 				);
 				if (trimmed.start < trimmed.end) {
 					this.out.text(cell_id, trimmed.start, trimmed.end);
@@ -7024,7 +7014,7 @@ export class PFMParser {
 					node_kind.table_cell,
 					row_end,
 					row_id,
-					i
+					i,
 				);
 				this.emit_close(cell_id, row_end);
 			}
@@ -7137,7 +7127,7 @@ export class PFMParser {
 				const t_id = this.emit_open(
 					node_kind.text,
 					this.checkpoint_cursor,
-					parent_id
+					parent_id,
 				);
 				this.out.set_value_start(t_id, this.checkpoint_cursor);
 				this.out.set_value_end(t_id, this.cursor);
@@ -7181,7 +7171,7 @@ export class PFMParser {
 				node_kind.table_cell,
 				this.cursor,
 				this.table_row_id,
-				i
+				i,
 			);
 			this.emit_close(cell_id, this.cursor);
 		}
@@ -7243,7 +7233,7 @@ export class PFMParser {
  */
 export function parse_markdown_svelte(
 	input: string,
-	options: parse_options = {}
+	options: parse_options = {},
 ): { nodes: node_buffer; errors: error_collector } {
 	const tree = new TreeBuilder(input.length >> 3 || 128);
 	const parser = new PFMParser(tree, options.tab_size);

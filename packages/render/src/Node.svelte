@@ -1,67 +1,72 @@
 <script lang="ts">
-	import type { node_buffer } from '@mdsvex/parse/utils'
-	import { buf_children, buf_text, buf_text_content } from '@mdsvex/parse/buf-utils'
-	import type { Component } from 'svelte'
-	import Node from './Node.svelte'
+import type { node_buffer } from "@mdsvex/parse/utils";
+import {
+	buf_children,
+	buf_text,
+	buf_text_content,
+} from "@mdsvex/parse/buf-utils";
+import type { Component } from "svelte";
+import Node from "./Node.svelte";
 
-	type ComponentMap = Record<string, Component<any>>
+type ComponentMap = Record<string, Component<any>>;
 
-	let {
-		buf,
-		idx,
-		source,
-		components,
-	}: {
-		buf: node_buffer
-		idx: number
-		source: string
-		components?: ComponentMap
-	} = $props()
+let {
+	buf,
+	idx,
+	source,
+	components,
+}: {
+	buf: node_buffer;
+	idx: number;
+	source: string;
+	components?: ComponentMap;
+} = $props();
 
-	const NONE = 0xffffffff
+const NONE = 0xffffffff;
 
-	// ── Kind constants ──────────────────────────────────────
-	const K_ROOT = 0
-	const K_TEXT = 1
-	const K_HTML = 2
-	const K_HEADING = 3
-	const K_CODE_FENCE = 5
-	const K_LINE_BREAK = 6
-	const K_PARAGRAPH = 7
-	const K_CODE_SPAN = 8
-	const K_EMPHASIS = 9
-	const K_STRONG = 10
-	const K_THEMATIC_BREAK = 11
-	const K_LINK = 12
-	const K_IMAGE = 13
-	const K_BLOCK_QUOTE = 14
-	const K_LIST = 15
-	const K_LIST_ITEM = 16
-	const K_HARD_BREAK = 17
-	const K_SOFT_BREAK = 18
-	const K_STRIKETHROUGH = 19
-	const K_SUPERSCRIPT = 20
-	const K_SUBSCRIPT = 21
-	const K_TABLE = 22
-	const K_TABLE_HEADER = 23
-	const K_TABLE_ROW = 24
-	const K_TABLE_CELL = 25
-	const K_HTML_COMMENT = 26
+// kind constants
+const K_ROOT = 0;
+const K_TEXT = 1;
+const K_HTML = 2;
+const K_HEADING = 3;
+const K_CODE_FENCE = 5;
+const K_LINE_BREAK = 6;
+const K_PARAGRAPH = 7;
+const K_CODE_SPAN = 8;
+const K_EMPHASIS = 9;
+const K_STRONG = 10;
+const K_THEMATIC_BREAK = 11;
+const K_LINK = 12;
+const K_IMAGE = 13;
+const K_BLOCK_QUOTE = 14;
+const K_LIST = 15;
+const K_LIST_ITEM = 16;
+const K_HARD_BREAK = 17;
+const K_SOFT_BREAK = 18;
+const K_STRIKETHROUGH = 19;
+const K_SUPERSCRIPT = 20;
+const K_SUBSCRIPT = 21;
+const K_TABLE = 22;
+const K_TABLE_HEADER = 23;
+const K_TABLE_ROW = 24;
+const K_TABLE_CELL = 25;
+const K_HTML_COMMENT = 26;
 
-	const NEWLINE = '\n'
+const NEWLINE = "\n";
 
-	let kind = $derived(buf._kinds[idx])
-	let extra = $derived(buf._extras[idx])
-	let meta = $derived(buf.metadata_at(idx))
-	// A pending paragraph inside a list_item is a speculative wrapper for
-	// a list that may still become loose. Render its children transparently
-	// so the tight-list default matches the common case and avoids a
-	// <p> flash before the list closes.
-	let skip_list_item_paragraph_wrapper = $derived(
-		kind === K_PARAGRAPH &&
+let kind = $derived(buf._kinds[idx]);
+let extra = $derived(buf._extras[idx]);
+let meta = $derived(buf.metadata_at(idx));
+
+// a pending paragraph inside a list_item is a speculative wrapper for
+// a list that may still become loose. render its children transparently
+// so the tight-list default matches the common case and avoids a
+// <p> flash before the list closes.
+let skip_list_item_paragraph_wrapper = $derived(
+	kind === K_PARAGRAPH &&
 		buf._pending_nodes[idx] === 1 &&
-		buf._kinds[buf._parents[idx]] === K_LIST_ITEM
-	)
+		buf._kinds[buf._parents[idx]] === K_LIST_ITEM,
+);
 </script>
 
 {#snippet child_nodes(parent_idx: number)}
@@ -86,7 +91,7 @@
 			{#if buf._kinds[row_idx] === K_TABLE_HEADER}
 				<thead>
 					<tr>
-						{#each buf_children(buf, row_idx).filter(c => buf._kinds[c] === K_TABLE_CELL) as cell_idx, col (cell_idx)}
+						{#each buf_children(buf, row_idx).filter((c) => buf._kinds[c] === K_TABLE_CELL) as cell_idx, col (cell_idx)}
 							{@const align = alignments[col]}
 							<th align={align && align !== 'none' ? align : undefined}>
 								{@render child_nodes(cell_idx)}
@@ -100,7 +105,7 @@
 			{#each rows as row_idx (row_idx)}
 				{#if buf._kinds[row_idx] === K_TABLE_ROW}
 					<tr>
-						{#each buf_children(buf, row_idx).filter(c => buf._kinds[c] === K_TABLE_CELL) as cell_idx, col (cell_idx)}
+						{#each buf_children(buf, row_idx).filter((c) => buf._kinds[c] === K_TABLE_CELL) as cell_idx, col (cell_idx)}
 							{@const align = alignments[col]}
 							<td align={align && align !== 'none' ? align : undefined}>
 								{@render child_nodes(cell_idx)}
@@ -132,19 +137,25 @@
 {:else if kind === K_CODE_SPAN}
 	<code>{buf_text(buf, idx, source).replace(/\n/g, ' ')}</code>
 {:else if kind === K_CODE_FENCE}
-	{@const info = meta?.info as string | undefined ?? (meta?.info_start != null ? source.slice(meta.info_start as number, meta.info_end as number) : undefined)}
-	<pre><code class={info ? 'language-' + info : undefined}>{buf_text(buf, idx, source)}</code></pre>
+	{@const info =
+		(meta?.info as string | undefined) ??
+		(meta?.info_start != null
+			? source.slice(meta.info_start as number, meta.info_end as number)
+			: undefined)}
+	<pre><code class={info ? 'language-' + info : undefined}
+			>{buf_text(buf, idx, source)}</code
+		></pre>
 {:else if kind === K_BLOCK_QUOTE}
 	<blockquote>{@render child_nodes(idx)}</blockquote>
 {:else if kind === K_LINK}
-	<a href={meta?.href as string} title={meta?.title as string || undefined}>
+	<a href={meta?.href as string} title={(meta?.title as string) || undefined}>
 		{@render child_nodes(idx)}
 	</a>
 {:else if kind === K_IMAGE}
 	<img
 		src={meta?.src as string}
 		alt={buf_text_content(buf, idx, source)}
-		title={meta?.title as string || undefined}
+		title={(meta?.title as string) || undefined}
 	/>
 {:else if kind === K_LIST}
 	{#if meta?.ordered}
@@ -171,8 +182,12 @@
 	<sub>{@render child_nodes(idx)}</sub>
 {:else if kind === K_HTML}
 	{@const tag = meta?.tag as string}
-	{@const attrs = meta?.attributes as Record<string, string | boolean> | undefined}
-	{@const spread = attrs ? Object.fromEntries(Object.entries(attrs).map(([k, v]) => [k, v === true ? true : v])) : {}}
+	{@const attrs = meta?.attributes as Record | undefined}
+	{@const spread = attrs
+		? Object.fromEntries(
+				Object.entries(attrs).map(([k, v]) => [k, v === true ? true : v])
+			)
+		: {}}
 	{@const CustomComponent = components?.[tag]}
 	{@const is_raw_text = tag === 'script' || tag === 'style'}
 	{#if CustomComponent}

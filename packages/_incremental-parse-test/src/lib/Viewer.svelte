@@ -1,244 +1,272 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
-	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
-	import { PFMParser, WireEmitter } from '@mdsvex/parse';
-	import { WireTreeBuilder } from '@mdsvex/parse/wire-tree-builder';
-	import { CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
-	import type { CursorBlockEntry } from '@mdsvex/render/html-cursor';
-	import { ComponentRenderer } from '@mdsvex/render/component';
-	import type { ComponentBlock } from '@mdsvex/render/component';
-	import Node from '@mdsvex/render/Node.svelte';
-	import { RecordingEmitter, type Op } from '$lib/recorder';
-	import { Play, Pause, SkipForward, SkipBackward, FastForward } from '$lib';
-	import Widget from '$lib/components/Widget.svelte';
-	import AlertBox from '$lib/components/AlertBox.svelte';
+import { untrack } from "svelte";
+import { page } from "$app/state";
+import { goto } from "$app/navigation";
+import { PFMParser, WireEmitter } from "@mdsvex/parse";
+import { WireTreeBuilder } from "@mdsvex/parse/wire-tree-builder";
+import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
+import type { CursorBlockEntry } from "@mdsvex/render/html-cursor";
+import { ComponentRenderer } from "@mdsvex/render/component";
+import type { ComponentBlock } from "@mdsvex/render/component";
+import Node from "@mdsvex/render/Node.svelte";
+import { RecordingEmitter, type Op } from "$lib/recorder";
+import { Play, Pause, SkipForward, SkipBackward, FastForward } from "$lib";
+import Widget from "$lib/components/Widget.svelte";
+import AlertBox from "$lib/components/AlertBox.svelte";
 
-	const customComponents = { Widget, AlertBox };
+const customComponents = { Widget, AlertBox };
 
-	let { markdown }: { markdown: string } = $props();
+let { markdown }: { markdown: string } = $props();
 
-	// ── Query param helpers ──────────────────────────────────
-	const VALID_CHUNKS = [1, 2, 5, 10, 9999];
-	const VALID_SPEEDS = [200, 80, 30, 10];
-	const VALID_RENDERERS = ['html', 'dom', 'canvas'] as const;
+// ── Query param helpers ──────────────────────────────────
+const VALID_CHUNKS = [1, 2, 5, 10, 9999];
+const VALID_SPEEDS = [200, 80, 30, 10];
+const VALID_RENDERERS = ["html", "dom", "canvas"] as const;
 
-	function read_params() {
-		const params = page.url?.searchParams;
-		if (!params) return { chunk: 1, speed: 80, renderer: 'dom' as const };
-		const c = Number(params.get('chunk'));
-		const s = Number(params.get('speed'));
-		const r = params.get('renderer');
-		return {
-			chunk: VALID_CHUNKS.includes(c) ? c : 1,
-			speed: VALID_SPEEDS.includes(s) ? s : 80,
-			renderer: VALID_RENDERERS.includes(r as any) ? (r as 'html' | 'dom' | 'canvas') : 'dom',
-		};
-	}
+function read_params() {
+	const params = page.url?.searchParams;
+	if (!params) return { chunk: 1, speed: 80, renderer: "dom" as const };
+	const c = Number(params.get("chunk"));
+	const s = Number(params.get("speed"));
+	const r = params.get("renderer");
+	return {
+		chunk: VALID_CHUNKS.includes(c) ? c : 1,
+		speed: VALID_SPEEDS.includes(s) ? s : 80,
+		renderer: VALID_RENDERERS.includes(r as any)
+			? (r as "html" | "dom" | "canvas")
+			: "dom",
+	};
+}
 
-	function write_params() {
-		const url = new URL(page.url);
-		url.searchParams.set('chunk', String(chunk_size));
-		url.searchParams.set('speed', String(play_speed));
-		url.searchParams.set('renderer', render_mode);
-		goto(url.toString(), { replaceState: true, keepFocus: true, noScroll: true });
-	}
+function write_params() {
+	const url = new URL(page.url);
+	url.searchParams.set("chunk", String(chunk_size));
+	url.searchParams.set("speed", String(play_speed));
+	url.searchParams.set("renderer", render_mode);
+	goto(url.toString(), { replaceState: true, keepFocus: true, noScroll: true });
+}
 
-	const initial = read_params();
-	let chunk_size = $state(initial.chunk);
-	let step_index = $state();
-	let playing = $state(false);
-	let play_speed = $state(initial.speed);
-	let play_timer: ReturnType<typeof setInterval> | null = null;
-	let render_mode: 'html' | 'dom' | 'canvas' = $state(initial.renderer);
+const initial = read_params();
+let chunk_size = $state(initial.chunk);
+let step_index = $state();
+let playing = $state(false);
+let play_speed = $state(initial.speed);
+let play_timer: ReturnType<typeof setInterval> | null = null;
+let render_mode: "html" | "dom" | "canvas" = $state(initial.renderer);
 
-	// Sync state -> URL. Silently skip if router isn't ready yet (SSR/hydration).
-	$effect(() => {
-		chunk_size; play_speed; render_mode;
-		untrack(() => { try { write_params(); } catch {} });
+// Sync state -> URL. Silently skip if router isn't ready yet (SSR/hydration).
+$effect(() => {
+	chunk_size;
+	play_speed;
+	render_mode;
+	untrack(() => {
+		try {
+			write_params();
+		} catch {}
 	});
+});
 
-	// Reset when markdown changes
-	$effect(() => {
-		markdown;
-		untrack(() => {
-			stop();
-			step_index = total_steps	-1;
-		});
-	});
-
-	let chunk_boundaries: number[] = $derived.by(() => {
-		const boundaries: number[] = [];
-		for (let i = 0; i < markdown.length; i += chunk_size) {
-			boundaries.push(Math.min(i + chunk_size, markdown.length));
-		}
-		return boundaries;
-	});
-
-	let total_steps = $derived(chunk_boundaries.length + 1);
-
-	let step_ops: Op[][] = $derived.by(() => {
-		const all_step_ops: Op[][] = [];
-		const recorder = new RecordingEmitter();
-		const parser = new PFMParser(recorder);
-		parser.init();
-
-		let prev_count = 0;
-		for (let i = 0; i < chunk_boundaries.length; i++) {
-			const chunk_end = chunk_boundaries[i];
-			const chunk_start = i === 0 ? 0 : chunk_boundaries[i - 1];
-			const chunk = markdown.slice(chunk_start, chunk_end);
-
-			parser.feed(chunk);
-
-			all_step_ops.push(recorder.ops.slice(prev_count));
-			prev_count = recorder.ops.length;
-		}
-
-		parser.finish();
-		all_step_ops.push(recorder.ops.slice(prev_count));
-
-		return all_step_ops;
-	});
-
-	let current_ops = $derived.by(() => {
-		const ops: Op[] = [];
-		for (let i = 0; i <= step_index && i < step_ops.length; i++) {
-			ops.push(...step_ops[i]);
-		}
-		return ops;
-	});
-
-	let fed_source = $derived.by(() => {
-		if (step_index >= chunk_boundaries.length) return markdown;
-		if (step_index < 0) return '';
-		return markdown.slice(0, chunk_boundaries[step_index]);
-	});
-
-	let new_ops = $derived(step_index < step_ops.length ? step_ops[step_index] : []);
-
-	let new_ops_start = $derived.by(() => {
-		let count = 0;
-		for (let i = 0; i < step_index && i < step_ops.length; i++) {
-			count += step_ops[i].length;
-		}
-		return count;
-	});
-
-	// ── Wire pipeline (for HTML renderer) ────────────────────
-	let wire_step_batches: unknown[][][] = $derived.by(() => {
-		const emitter = new WireEmitter();
-		const parser = new PFMParser(emitter);
-		parser.init();
-
-		const batches: unknown[][][] = [];
-		let accumulated = '';
-
-		for (let i = 0; i < chunk_boundaries.length; i++) {
-			const chunk_end = chunk_boundaries[i];
-			const chunk_start = i === 0 ? 0 : chunk_boundaries[i - 1];
-			const chunk = markdown.slice(chunk_start, chunk_end);
-			accumulated += chunk;
-			emitter.set_source(accumulated);
-			parser.feed(chunk);
-			batches.push(emitter.flush());
-		}
-
-		emitter.set_source(accumulated);
-		parser.finish();
-		batches.push(emitter.flush());
-
-		return batches;
-	});
-
-	let html_blocks: CursorBlockEntry[] = $derived.by(() => {
-		const builder = new WireTreeBuilder();
-		const renderer = new CursorHTMLRenderer();
-
-		for (let i = 0; i <= step_index && i < wire_step_batches.length; i++) {
-			const batch = wire_step_batches[i];
-			if (batch.length > 0) {
-				builder.apply(batch);
-			}
-		}
-
-		renderer.update(builder.get_buffer(), '');
-		console.log(renderer.blocks.map(b => ({ idx: b.idx, html: b.html })))
-		return renderer.blocks.map(b => ({ idx: b.idx, html: b.html }));
-	});
-
-	let dom_renderer = $derived.by(() => {
-		const builder = new WireTreeBuilder();
-		const renderer = new ComponentRenderer();
-
-		for (let i = 0; i <= step_index && i < wire_step_batches.length; i++) {
-			const batch = wire_step_batches[i];
-			if (batch.length > 0) {
-				builder.apply(batch);
-			}
-		}
-
-		renderer.update(builder.get_buffer(), '');
-		return renderer;
-	});
-
-	function reset() {
-		stop();
-		step_index = 0;
-	}
-
-	function step_forward() {
-		if (step_index < total_steps - 1) step_index++;
-		else stop();
-	}
-
-	function step_back() {
-		if (step_index > 0) step_index--;
-	}
-
-	function play_toggle() {
-		if (playing) { stop(); return; }
-		playing = true;
-		play_timer = setInterval(() => {
-			if (step_index < total_steps - 1) {
-				step_index++;
-			} else {
-				stop();
-			}
-		}, play_speed);
-	}
-
-	function stop() {
-		playing = false;
-		if (play_timer) { clearInterval(play_timer); play_timer = null; }
-	}
-
-	function jump_to_end() {
+// Reset when markdown changes
+$effect(() => {
+	markdown;
+	untrack(() => {
 		stop();
 		step_index = total_steps - 1;
+	});
+});
+
+let chunk_boundaries: number[] = $derived.by(() => {
+	const boundaries: number[] = [];
+	for (let i = 0; i < markdown.length; i += chunk_size) {
+		boundaries.push(Math.min(i + chunk_size, markdown.length));
+	}
+	return boundaries;
+});
+
+let total_steps = $derived(chunk_boundaries.length + 1);
+
+let step_ops: Op[][] = $derived.by(() => {
+	const all_step_ops: Op[][] = [];
+	const recorder = new RecordingEmitter();
+	const parser = new PFMParser(recorder);
+	parser.init();
+
+	let prev_count = 0;
+	for (let i = 0; i < chunk_boundaries.length; i++) {
+		const chunk_end = chunk_boundaries[i];
+		const chunk_start = i === 0 ? 0 : chunk_boundaries[i - 1];
+		const chunk = markdown.slice(chunk_start, chunk_end);
+
+		parser.feed(chunk);
+
+		all_step_ops.push(recorder.ops.slice(prev_count));
+		prev_count = recorder.ops.length;
 	}
 
-	function format_op(op: Op): string {
-		switch (op.op) {
-			case 'open': return `open(${op.id}, ${op.kindName}${op.pending ? ', pending' : ''})`;
-			case 'close': return `close(${op.id})`;
-			case 'text': return `text(${op.parent}, ${op.start}..${op.end})`;
-			case 'attr': return `attr(${op.id}, ${op.key}, ${JSON.stringify(op.value)})`;
-			case 'revoke': return `revoke(${op.id})`;
-			case 'commit': return `commit(${op.id})`;
+	parser.finish();
+	all_step_ops.push(recorder.ops.slice(prev_count));
+
+	return all_step_ops;
+});
+
+let current_ops = $derived.by(() => {
+	const ops: Op[] = [];
+	for (let i = 0; i <= step_index && i < step_ops.length; i++) {
+		ops.push(...step_ops[i]);
+	}
+	return ops;
+});
+
+let fed_source = $derived.by(() => {
+	if (step_index >= chunk_boundaries.length) return markdown;
+	if (step_index < 0) return "";
+	return markdown.slice(0, chunk_boundaries[step_index]);
+});
+
+let new_ops = $derived(
+	step_index < step_ops.length ? step_ops[step_index] : [],
+);
+
+let new_ops_start = $derived.by(() => {
+	let count = 0;
+	for (let i = 0; i < step_index && i < step_ops.length; i++) {
+		count += step_ops[i].length;
+	}
+	return count;
+});
+
+// ── Wire pipeline (for HTML renderer) ────────────────────
+let wire_step_batches: unknown[][][] = $derived.by(() => {
+	const emitter = new WireEmitter();
+	const parser = new PFMParser(emitter);
+	parser.init();
+
+	const batches: unknown[][][] = [];
+	let accumulated = "";
+
+	for (let i = 0; i < chunk_boundaries.length; i++) {
+		const chunk_end = chunk_boundaries[i];
+		const chunk_start = i === 0 ? 0 : chunk_boundaries[i - 1];
+		const chunk = markdown.slice(chunk_start, chunk_end);
+		accumulated += chunk;
+		emitter.set_source(accumulated);
+		parser.feed(chunk);
+		batches.push(emitter.flush());
+	}
+
+	emitter.set_source(accumulated);
+	parser.finish();
+	batches.push(emitter.flush());
+
+	return batches;
+});
+
+let html_blocks: CursorBlockEntry[] = $derived.by(() => {
+	const builder = new WireTreeBuilder();
+	const renderer = new CursorHTMLRenderer();
+
+	for (let i = 0; i <= step_index && i < wire_step_batches.length; i++) {
+		const batch = wire_step_batches[i];
+		if (batch.length > 0) {
+			builder.apply(batch);
 		}
 	}
 
-	function op_color(op: Op): string {
-		switch (op.op) {
-			case 'open': return op.pending ? '#f59e0b' : 'var(--accent)';
-			case 'close': return '#60a5fa';
-			case 'text': return 'var(--text-secondary)';
-			case 'attr': return '#a78bfa';
-			case 'revoke': return '#ef4444';
-			case 'commit': return '#10b981';
+	renderer.update(builder.get_buffer(), "");
+	console.log(renderer.blocks.map((b) => ({ idx: b.idx, html: b.html })));
+	return renderer.blocks.map((b) => ({ idx: b.idx, html: b.html }));
+});
+
+let dom_renderer = $derived.by(() => {
+	const builder = new WireTreeBuilder();
+	const renderer = new ComponentRenderer();
+
+	for (let i = 0; i <= step_index && i < wire_step_batches.length; i++) {
+		const batch = wire_step_batches[i];
+		if (batch.length > 0) {
+			builder.apply(batch);
 		}
 	}
+
+	renderer.update(builder.get_buffer(), "");
+	return renderer;
+});
+
+function reset() {
+	stop();
+	step_index = 0;
+}
+
+function step_forward() {
+	if (step_index < total_steps - 1) step_index++;
+	else stop();
+}
+
+function step_back() {
+	if (step_index > 0) step_index--;
+}
+
+function play_toggle() {
+	if (playing) {
+		stop();
+		return;
+	}
+	playing = true;
+	play_timer = setInterval(() => {
+		if (step_index < total_steps - 1) {
+			step_index++;
+		} else {
+			stop();
+		}
+	}, play_speed);
+}
+
+function stop() {
+	playing = false;
+	if (play_timer) {
+		clearInterval(play_timer);
+		play_timer = null;
+	}
+}
+
+function jump_to_end() {
+	stop();
+	step_index = total_steps - 1;
+}
+
+function format_op(op: Op): string {
+	switch (op.op) {
+		case "open":
+			return `open(${op.id}, ${op.kindName}${op.pending ? ", pending" : ""})`;
+		case "close":
+			return `close(${op.id})`;
+		case "text":
+			return `text(${op.parent}, ${op.start}..${op.end})`;
+		case "attr":
+			return `attr(${op.id}, ${op.key}, ${JSON.stringify(op.value)})`;
+		case "revoke":
+			return `revoke(${op.id})`;
+		case "commit":
+			return `commit(${op.id})`;
+	}
+}
+
+function op_color(op: Op): string {
+	switch (op.op) {
+		case "open":
+			return op.pending ? "#f59e0b" : "var(--accent)";
+		case "close":
+			return "#60a5fa";
+		case "text":
+			return "var(--text-secondary)";
+		case "attr":
+			return "#a78bfa";
+		case "revoke":
+			return "#ef4444";
+		case "commit":
+			return "#10b981";
+	}
+}
 </script>
 
 <div class="viewer">

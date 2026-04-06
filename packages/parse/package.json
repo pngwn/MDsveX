@@ -10,7 +10,8 @@
 		"test": "vitest --disableConsoleIntercept",
 		"test:run": "vitest run",
 		"tsc": "tsc --noEmit",
-		"build": "vite build --config vite.config.build.ts"
+		"build": "tsc && vite build --config vite.config.build.ts && find tsc/ -name '*.d.ts' -exec cp {} dist/ \\;"
+
 	},
 	"repository": {
 		"type": "git",
@@ -25,31 +26,31 @@
 	"exports": {
 		".": {
 			"import": "./dist/main.js",
-			"types": "./src/main.ts"
+			"types": "./dist/main.d.ts"
 		},
 		"./opcodes": {
 			"import": "./dist/opcodes.js",
-			"types": "./src/opcodes.ts"
+			"types": "./dist/opcodes.d.ts"
 		},
 		"./tree-builder": {
 			"import": "./dist/tree-builder.js",
-			"types": "./src/tree_builder.ts"
+			"types": "./dist/tree_builder.d.ts"
 		},
 		"./utils": {
 			"import": "./dist/utils.js",
-			"types": "./src/utils.ts"
+			"types": "./dist/utils.d.ts"
 		},
 		"./cursor": {
 			"import": "./dist/cursor.js",
-			"types": "./src/cursor.ts"
+			"types": "./dist/cursor.d.ts"
 		},
 		"./buf-utils": {
 			"import": "./dist/buf-utils.js",
-			"types": "./src/buf_utils.ts"
+			"types": "./dist/buf-utils.d.ts"
 		},
 		"./wire-tree-builder": {
 			"import": "./dist/wire-tree-builder.js",
-			"types": "./src/wire_tree_builder.ts"
+			"types": "./dist/wire_tree_builder.d.ts"
 		},
 		"./package.json": "./package.json"
 	},

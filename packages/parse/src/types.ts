@@ -1,4 +1,4 @@
-import type { node_buffer, error_collector } from './utils';
+import type { node_buffer, error_collector } from "./utils";
 
 /** options for controlling the markdown parser. */
 export interface parse_options {

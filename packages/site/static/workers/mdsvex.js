@@ -5191,7 +5191,7 @@
 				return this.finishNode(node, 'AssignmentPattern');
 			};
 
-			// Verify that a node is an lval — something that can be assigned
+			// Verify that a node is an lval, something that can be assigned
 			// to.
 			// bindingType can be either:
 			// 'var' indicating that the lval creates a 'var' binding
@@ -5286,8 +5286,8 @@
 			var pp$3 = Parser.prototype;
 
 			// Check if property name clashes with already added.
-			// Object/class getters and setters are not allowed to clash —
-			// either with each other or with an init property — and in
+			// Object/class getters and setters are not allowed to clash,
+			// either with each other or with an init property, and in
 			// strict mode, init properties are also not allowed to be repeated.
 
 			pp$3.checkPropClash = function (prop, propHash, refDestructuringErrors) {
@@ -5752,7 +5752,7 @@
 				return base;
 			};
 
-			// Parse an atomic expression — either a single token that is an
+			// Parse an atomic expression, either a single token that is an
 			// expression, an expression started by a keyword like `function` or
 			// `new`, or an expression wrapped in punctuation like `()`, `[]`,
 			// or `{}`.
@@ -6083,7 +6083,7 @@
 			};
 
 			// New's precedence is slightly tricky. It must allow its argument to
-			// be a `[]` or dot subscript expression, but not a call — at least,
+			// be a `[]` or dot subscript expression, but not a call, at least,
 			// not without wrapping it in parentheses. Thus, it uses the noCalls
 			// argument to parseSubscripts to prevent it from consuming the
 			// argument list.
@@ -10939,7 +10939,7 @@
 						chunks.push(...handle(node.callee, state));
 					}
 
-					// TODO this is copied from CallExpression — DRY it out
+					// TODO this is copied from CallExpression, DRY it out
 					const args = node.arguments.map((arg) =>
 						handle(arg, {
 							...state,
@@ -19419,7 +19419,7 @@
 						parser.error(
 							{
 								code: `invalid-ref-directive`,
-								message: `The ref directive is no longer supported — use \`bind:this={${directive_name}}\` instead`,
+								message: `The ref directive is no longer supported, use \`bind:this={${directive_name}}\` instead`,
 							},
 							start
 						);
@@ -20320,7 +20320,7 @@
 			}
 			function parse$3(template, options = {}) {
 				const parser = new Parser$1(template, options);
-				// TODO we may want to allow multiple <style> tags —
+				// TODO we may want to allow multiple <style> tags,
 				// one scoped, one global. for now, only allow one
 				if (parser.css.length > 1) {
 					parser.error(
@@ -20759,7 +20759,7 @@ ${dispose} = [
 					if (this.parent) this.parent.not_static_content();
 				}
 				get_or_create_anchor(block, parent_node, parent_nodes) {
-					// TODO use this in EachBlock and IfBlock — tricky because
+					// TODO use this in EachBlock and IfBlock, tricky because
 					// children need to be created first
 					const needs_anchor = this.next
 						? !this.next.is_dom_node()
@@ -21382,7 +21382,7 @@ ${debug_statements}
 							b`@validate_each_argument(${this.vars.each_block_value});`
 						);
 					}
-					// TODO which is better — Object.create(array) or array.slice()?
+					// TODO which is better, Object.create(array) or array.slice()?
 					renderer.blocks.push(b`
 function ${this.vars.get_each_context}(#ctx, list, i) {
 const child_ctx = #ctx.slice();
@@ -21793,7 +21793,7 @@ for (let #i = 0; #i < ${view_length}; #i += 1) {
 						parent.cannot_use_innerhtml();
 						parent.not_static_content();
 						block.add_dependencies(node.dependencies);
-						// special case — <option value={foo}> — see below
+						// special case, <option value={foo}>, see below
 						if (this.parent.node.name === 'option' && node.name === 'value') {
 							let select = this.parent;
 							while (
@@ -21974,7 +21974,7 @@ ${updater}
 						return x`""`;
 					}
 					if (this.node.chunks.length === 0) return x`""`;
-					// TODO some of this code is repeated in Tag.ts — would be good to
+					// TODO some of this code is repeated in Tag.ts, would be good to
 					// DRY it out if that's possible without introducing crazy indirection
 					if (this.node.chunks.length === 1) {
 						return this.node.chunks[0].type === 'Text'
@@ -21987,7 +21987,7 @@ ${updater}
 							: this.render_chunks(block).reduce(
 									(lhs, rhs) => x`${lhs} + ${rhs}`
 								);
-					// '{foo} {bar}' — treat as string concatenation
+					// '{foo} {bar}', treat as string concatenation
 					if (this.node.chunks[0].type !== 'Text') {
 						value = x`"" + ${value}`;
 					}
@@ -22496,7 +22496,7 @@ if (${condition}) {
 			function get_binding_group(renderer, value) {
 				const { parts } = flatten_reference(value); // TODO handle cases involving computed member expressions
 				const keypath = parts.join('.');
-				// TODO handle contextual bindings — `keypath` should include unique ID of
+				// TODO handle contextual bindings, `keypath` should include unique ID of
 				// each block that provides context
 				let index = renderer.binding_groups.indexOf(keypath);
 				if (index === -1) {
@@ -22716,7 +22716,7 @@ ${set_store}
 					binding.is_contextual &&
 					binding.raw_expression.type === 'Identifier'
 				) {
-					// bind:x={y} — we can't just do `y = x`, we need to
+					// bind:x={y}, we can't just do `y = x`, we need to
 					// to `array[index] = x;
 					const { name } = binding.raw_expression;
 					const { snippet } = block.bindings.get(name);
@@ -23732,7 +23732,7 @@ ${node} = ${this.get_claim_statement(parent_nodes)};
 							);
 							binding.render(block, lock);
 						});
-						// media bindings — awkward special case. The native timeupdate events
+						// media bindings, awkward special case. The native timeupdate events
 						// fire too infrequently, so we need to take matters into our
 						// own hands
 						let animation_frame;
@@ -23745,7 +23745,7 @@ ${node} = ${this.get_claim_statement(parent_nodes)};
 						const has_local_function =
 							contextual_dependencies.size > 0 || needs_lock || animation_frame;
 						let callee = renderer.reference(handler);
-						// TODO dry this out — similar code for event handlers and component bindings
+						// TODO dry this out, similar code for event handlers and component bindings
 						if (has_local_function) {
 							const args = Array.from(contextual_dependencies).map((name) =>
 								renderer.reference(name)
@@ -24688,7 +24688,7 @@ ${name}.m(${update_mount_node}, ${anchor});
 								b`if (${block.renderer.dirty(branch.dependencies)}) ${branch.condition} = ${branch.snippet}`
 							);
 						}
-						// no `p()` here — we don't want to update outroing nodes,
+						// no `p()` here, we don't want to update outroing nodes,
 						// as that will typically result in glitching
 						if (branch.block.has_outro_method) {
 							block.chunks.update.push(b`
@@ -25041,7 +25041,7 @@ ${name_changes}.${binding.name} = ${snippet};
 							binding.is_contextual &&
 							binding.expression.node.type === 'Identifier'
 						) {
-							// bind:x={y} — we can't just do `y = x`, we need to
+							// bind:x={y}, we can't just do `y = x`, we need to
 							// to `array[index] = x;
 							const { name } = binding.expression.node;
 							const { object, property, snippet } = block.bindings.get(name);
@@ -25596,16 +25596,16 @@ ${slot_update}
 					if (is_dynamic) {
 						let value;
 						const all_dependencies = new Set();
-						// TODO some of this code is repeated in Tag.ts — would be good to
+						// TODO some of this code is repeated in Tag.ts, would be good to
 						// DRY it out if that's possible without introducing crazy indirection
 						if (this.node.children.length === 1) {
-							// single {tag} — may be a non-string
+							// single {tag}, may be a non-string
 							// @ts-ignore todo: check this
 							const { expression } = this.node.children[0];
 							value = expression.manipulate(block);
 							add_to_set(all_dependencies, expression.dependencies);
 						} else {
-							// '{foo} {bar}' — treat as string concatenation
+							// '{foo} {bar}', treat as string concatenation
 							value = this.node.children
 								.map((chunk) => {
 									if (chunk.type === 'Text') return string_literal(chunk.data);
@@ -25854,7 +25854,7 @@ ${renderer.invalidate(name, x`${name} = @_navigator.onLine`)}
 						if (!(child.type in wrappers)) {
 							throw new Error(`TODO implement ${child.type}`);
 						}
-						// special case — this is an easy way to remove whitespace surrounding
+						// special case, this is an easy way to remove whitespace surrounding
 						// <svelte:window/>. lil hacky but it works
 						if (child.type === 'Window') {
 							window_wrapper = new WindowWrapper(
@@ -26194,7 +26194,7 @@ style.textContent = "${styles}";
 				const blocks = renderer.blocks.slice().reverse();
 				body.push(
 					...blocks.map((block) => {
-						// TODO this is a horrible mess — renderer.blocks
+						// TODO this is a horrible mess, renderer.blocks
 						// contains a mixture of Blocks and Nodes
 						if (block.render) return block.render();
 						return block;
@@ -26746,7 +26746,7 @@ ${node.expressions.map((e) => p`${e.node.name}`)}
 			}
 
 			function get_class_attribute_value(attribute) {
-				// handle special case — `class={possiblyUndefined}` with scoped CSS
+				// handle special case, `class={possiblyUndefined}` with scoped CSS
 				if (attribute.chunks.length === 2 && attribute.chunks[1].synthetic) {
 					const value = attribute.chunks[0].node;
 					return x`@escape(@null_to_empty(${value})) + "${attribute.chunks[1].data}"`;
@@ -29869,7 +29869,7 @@ ${exports}
 							/FunctionExpression/.test(info.expression.type) &&
 							info.expression.params.length === 0
 						) {
-							// TODO make this detection more accurate — if `event.preventDefault` isn't called, and
+							// TODO make this detection more accurate, if `event.preventDefault` isn't called, and
 							// `event` is passed to another function, we can make it passive
 							this.can_make_passive = true;
 						} else if (info.expression.type === 'Identifier') {
@@ -30435,7 +30435,7 @@ ${exports}
 						}
 					}
 					if (this.name === 'option') {
-						// Special case — treat these the same way:
+						// Special case, treat these the same way:
 						//   <option>{foo}</option>
 						//   <option value={foo}>{foo}</option>
 						const value_attribute = info.attributes.find(
@@ -30833,7 +30833,7 @@ ${exports}
 							if (type !== 'checkbox') {
 								let message = `'${name}' binding can only be used with <input type="checkbox">`;
 								if (type === 'radio')
-									message += ` — for <input type="radio">, use 'group' binding`;
+									message += `, for <input type="radio">, use 'group' binding`;
 								component.error(binding, { code: `invalid-binding`, message });
 							}
 						} else if (name === 'group') {
@@ -31250,7 +31250,7 @@ ${exports}
 							if (this.slot_name === 'default') {
 								component.error(attr, {
 									code: `invalid-slot-name`,
-									message: `default is a reserved word — it cannot be used as a slot name`,
+									message: `default is a reserved word, it cannot be used as a slot name`,
 								});
 							}
 						}
@@ -31272,7 +31272,7 @@ ${exports}
 							});
 						});
 					} else if (component.slots.has('default')) {
-						// otherwise, go the other way — inherit values from
+						// otherwise, go the other way, inherit values from
 						// a previously encountered default slot
 						const default_slot = component.slots.get('default');
 						default_slot.values.forEach((attribute, name) => {
@@ -31356,7 +31356,7 @@ ${exports}
 								} else {
 									component.error(node, {
 										code: `invalid-binding`,
-										message: `${message} — valid bindings are ${list$1(valid_bindings)}`,
+										message: `${message}, valid bindings are ${list$1(valid_bindings)}`,
 									});
 								}
 							}
@@ -48321,9 +48321,9 @@ ${exports}
 
 	function isHexCode(c) {
 		return (
-			(0x30 /* 0 */ <= c && c <= 0x39 /* 9 */) ||
-			(0x41 /* A */ <= c && c <= 0x46 /* F */) ||
-			(0x61 /* a */ <= c && c <= 0x66 /* f */)
+			(0x30 /* 0 */ <= c && c <= 0x39) /* 9 */ ||
+			(0x41 /* A */ <= c && c <= 0x46) /* F */ ||
+			(0x61 /* a */ <= c && c <= 0x66) /* f */
 		);
 	}
 

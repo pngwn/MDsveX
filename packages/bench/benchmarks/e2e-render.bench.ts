@@ -1,31 +1,31 @@
-import { readFileSync } from 'node:fs';
-import { bench, describe } from 'vitest';
+import { readFileSync } from "node:fs";
+import { bench, describe } from "vitest";
 
-import { PFMParser, WireEmitter } from '@mdsvex/parse';
-import { TreeBuilder } from '@mdsvex/parse/tree-builder';
-import { Cursor } from '@mdsvex/parse/cursor';
-import { WireTreeBuilder } from '@mdsvex/parse/wire-tree-builder';
-import { CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
-import { marked } from 'marked';
-import { createMarkdownExit } from 'markdown-exit';
-import { remark } from 'remark';
-import remarkHtml from 'remark-html';
+import { PFMParser, WireEmitter } from "@mdsvex/parse";
+import { TreeBuilder } from "@mdsvex/parse/tree-builder";
+import { WireTreeBuilder } from "@mdsvex/parse/wire-tree-builder";
+import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
+import { marked } from "marked";
+import { createMarkdownExit } from "markdown-exit";
+import { remark } from "remark";
 
-// ── Fixtures ────────────────────────────────────────────────
+import remarkHtml from "remark-html";
+
+//  Fixtures
 
 function load(name: string): string {
-	return readFileSync(new URL(`./${name}`, import.meta.url), 'utf-8');
+	return readFileSync(new URL(`./${name}`, import.meta.url), "utf-8");
 }
 
 const fixtures = {
-	prose: load('fixture.md'),
-	short: load('fixture-short.md'),
-	tables: load('fixture-tables.md'),
-	html: load('fixture-html.md'),
-	code: load('fixture-code.md'),
+	prose: load("fixture.md"),
+	short: load("fixture-short.md"),
+	tables: load("fixture-tables.md"),
+	html: load("fixture-html.md"),
+	code: load("fixture-code.md"),
 };
 
-// ── Helpers ──────────────────────────────────────────────────
+//  Helpers
 
 /** Batch: parse + render via TreeBuilder -> cursor (same-process, fastest). */
 function pfm_e2e(source: string): string {
@@ -40,40 +40,40 @@ function pfm_e2e(source: string): string {
 const mdexit = createMarkdownExit();
 const remark_html = remark().use(remarkHtml);
 
-// ── E2e comparison across fixtures ──────────────────────────
+//  E2e comparison across fixtures
 
 for (const [name, source] of Object.entries(fixtures)) {
 	describe(`e2e: ${name} (${source.length} bytes)`, () => {
-		bench('pfm', () => {
+		bench("pfm", () => {
 			pfm_e2e(source);
 		});
 
-		bench('marked', () => {
+		bench("marked", () => {
 			marked.parse(source);
 		});
 
-		bench('markdown-exit', () => {
+		bench("markdown-exit", () => {
 			mdexit.render(source);
 		});
 
-		bench('remark-html', () => {
+		bench("remark-html", () => {
 			remark_html.processSync(source);
 		});
 	});
 }
 
-// ── PFM breakdown (prose fixture) ───────────────────────────
+//  PFM breakdown (prose fixture)
 
-describe('pfm breakdown: parse vs render (prose)', () => {
+describe("pfm breakdown: parse vs render (prose)", () => {
 	const source = fixtures.prose;
 
-	bench('parse only (TreeBuilder)', () => {
+	bench("parse only (TreeBuilder)", () => {
 		const tree = new TreeBuilder(source.length >> 3 || 128);
 		const parser = new PFMParser(tree);
 		parser.parse(source);
 	});
 
-	bench('parse only (WireEmitter)', () => {
+	bench("parse only (WireEmitter)", () => {
 		const emitter = new WireEmitter();
 		emitter.set_source(source);
 		const parser = new PFMParser(emitter);
@@ -81,12 +81,12 @@ describe('pfm breakdown: parse vs render (prose)', () => {
 		emitter.flush();
 	});
 
-	bench('parse + render (TreeBuilder -> cursor)', () => {
+	bench("parse + render (TreeBuilder -> cursor)", () => {
 		pfm_e2e(source);
 	});
 });
 
-// ── Incremental e2e (prose fixture) ─────────────────────────
+//  Incremental e2e (prose fixture)
 
 const CHUNK_SIZE = 50;
 
@@ -101,13 +101,13 @@ function make_chunks(source: string): string[] {
 const prose_chunks = make_chunks(fixtures.prose);
 
 describe(`incremental e2e: prose (${CHUNK_SIZE}-char chunks, ${prose_chunks.length} chunks)`, () => {
-	bench('pfm incremental (TreeBuilder -> CursorHTMLRenderer)', () => {
+	bench("pfm incremental (TreeBuilder -> CursorHTMLRenderer)", () => {
 		const tree = new TreeBuilder(fixtures.prose.length >> 3 || 128);
 		const parser = new PFMParser(tree);
 		const renderer = new CursorHTMLRenderer();
 
 		parser.init();
-		let acc = '';
+		let acc = "";
 
 		for (let i = 0; i < prose_chunks.length; i++) {
 			acc += prose_chunks[i];
@@ -120,7 +120,7 @@ describe(`incremental e2e: prose (${CHUNK_SIZE}-char chunks, ${prose_chunks.leng
 	});
 
 	bench(
-		'pfm incremental (wire -> WireTreeBuilder -> CursorHTMLRenderer)',
+		"pfm incremental (wire -> WireTreeBuilder -> CursorHTMLRenderer)",
 		() => {
 			const emitter = new WireEmitter();
 			const parser = new PFMParser(emitter);
@@ -128,7 +128,7 @@ describe(`incremental e2e: prose (${CHUNK_SIZE}-char chunks, ${prose_chunks.leng
 			const renderer = new CursorHTMLRenderer();
 
 			parser.init();
-			let acc = '';
+			let acc = "";
 
 			for (let i = 0; i < prose_chunks.length; i++) {
 				acc += prose_chunks[i];
@@ -137,7 +137,7 @@ describe(`incremental e2e: prose (${CHUNK_SIZE}-char chunks, ${prose_chunks.leng
 				const batch = emitter.flush();
 				if (batch.length > 0) {
 					builder.apply(batch);
-					renderer.update(builder.get_buffer(), '');
+					renderer.update(builder.get_buffer(), "");
 				}
 			}
 
@@ -146,25 +146,25 @@ describe(`incremental e2e: prose (${CHUNK_SIZE}-char chunks, ${prose_chunks.leng
 			const final = emitter.flush();
 			if (final.length > 0) {
 				builder.apply(final);
-				renderer.update(builder.get_buffer(), '');
+				renderer.update(builder.get_buffer(), "");
 			}
-		}
+		},
 	);
 
-	bench('pfm batch (for comparison)', () => {
+	bench("pfm batch (for comparison)", () => {
 		pfm_e2e(fixtures.prose);
 	});
 
-	bench('marked (reparse each chunk)', () => {
+	bench("marked (reparse each chunk)", () => {
 		for (let i = 0; i < prose_chunks.length; i++) {
-			marked.parse(prose_chunks.slice(0, i + 1).join(''));
+			marked.parse(prose_chunks.slice(0, i + 1).join(""));
 		}
 	});
 
-	bench('markdown-exit (reparse each chunk)', () => {
+	bench("markdown-exit (reparse each chunk)", () => {
 		const md = createMarkdownExit();
 		for (let i = 0; i < prose_chunks.length; i++) {
-			md.render(prose_chunks.slice(0, i + 1).join(''));
+			md.render(prose_chunks.slice(0, i + 1).join(""));
 		}
 	});
 });

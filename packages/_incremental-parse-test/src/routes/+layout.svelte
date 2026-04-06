@@ -1,24 +1,24 @@
 <script lang="ts">
-	import '../app.css';
-	import { page } from '$app/state';
+import "../app.css";
+import { page } from "$app/state";
 
-	let { data, children } = $props();
+let { data, children } = $props();
 
-	const sections = $derived(data.sections);
-	const fixture_start = $derived(sections.findIndex((s: { slug: string }) => s.slug.startsWith('fixtures--')));
+const sections = $derived(data.sections);
+const fixture_start = $derived(
+	sections.findIndex((s: { slug: string }) => s.slug.startsWith("fixtures--")),
+);
 
-	let collapsed: Record<string, boolean> = $state({});
+let collapsed: Record<string, boolean> = $state({});
 
-	function is_collapsed(slug: string, is_fixture: boolean): boolean {
-		if (slug in collapsed) return collapsed[slug];
-		return is_fixture;
-	}
+function is_collapsed(slug: string, is_fixture: boolean): boolean {
+	if (slug in collapsed) return collapsed[slug];
+	return is_fixture;
+}
 
-	function toggle(slug: string, is_fixture: boolean) {
-		collapsed[slug] = !is_collapsed(slug, is_fixture);
-	}
-
-
+function toggle(slug: string, is_fixture: boolean) {
+	collapsed[slug] = !is_collapsed(slug, is_fixture);
+}
 </script>
 
 <svelte:head>

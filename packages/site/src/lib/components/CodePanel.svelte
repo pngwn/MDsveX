@@ -1,114 +1,114 @@
 <script lang="ts">
-	import { Spring } from 'svelte/motion';
+import { Spring } from "svelte/motion";
 
-	interface Props {
-		source: string | undefined;
-		onTokenClick: (tokenIndex: number) => void;
-		nodes?: { kind: string; start: number; end: number; depth: number }[];
-	}
+interface Props {
+	source: string | undefined;
+	onTokenClick: (tokenIndex: number) => void;
+	nodes?: { kind: string; start: number; end: number; depth: number }[];
+}
 
-	let { source, onTokenClick, nodes }: Props = $props();
+let { source, onTokenClick, nodes }: Props = $props();
 
-	let htmlContainer = $state<HTMLSpanElement>();
+let htmlContainer = $state<HTMLSpanElement>();
 
-	const springConfig = {
-		damping: 1,
-		mass: 1,
-		stiffness: 0.6,
-	};
+const springConfig = {
+	damping: 1,
+	mass: 1,
+	stiffness: 0.6,
+};
 
-	// $inspect(nodes);
+// $inspect(nodes);
 
-	let highlightTop = new Spring(0, springConfig);
-	let highlightLeft = new Spring(0, springConfig);
-	let highlightWidth = new Spring(0, springConfig);
-	let highlightHeight = new Spring(0, springConfig);
+let highlightTop = new Spring(0, springConfig);
+let highlightLeft = new Spring(0, springConfig);
+let highlightWidth = new Spring(0, springConfig);
+let highlightHeight = new Spring(0, springConfig);
 
-	function create_ranges(_nodes, arr: Range[] = []) {
-		if (!_nodes) return;
-		if (!source || !htmlContainer) return;
+function create_ranges(_nodes, arr: Range[] = []) {
+	if (!_nodes) return;
+	if (!source || !htmlContainer) return;
 
-		const textNode = htmlContainer.firstChild;
-		if (!textNode) return;
+	const textNode = htmlContainer.firstChild;
+	if (!textNode) return;
 
-		for (let i = 0; i < _nodes.length; i++) {
-			const node = _nodes[i];
-			const range = new Range();
-			range.setStart(textNode, node.start);
-			range.setEnd(textNode, node.end);
-			arr.push(range);
-
-			if (node.children && node.children.length > 0) {
-				create_ranges(node.children, arr);
-			}
-		}
-
-		return arr;
-	}
-
-	const tokenRanges = $derived<Range[]>(create_ranges(nodes) || []);
-
-	export function highlightToken(i: number) {
-		// console.log('highlightToken', i);
-		const parent = htmlContainer?.parentElement;
-		if (!parent) return;
-		const parentBox = parent.getBoundingClientRect();
-
-		const selectedRange = tokenRanges[i];
-		if (!selectedRange) return;
-
-		const box = selectedRange.getBoundingClientRect();
-
-		// Get the scroll position of the code container
-		const containerScrollTop = parent.scrollTop;
-		const containerScrollLeft = parent.scrollLeft;
-
-		// Calculate position relative to the scrollable container
-		highlightTop.set(box.top - parentBox.top + containerScrollTop - 1);
-		highlightLeft.set(box.left - parentBox.left + containerScrollLeft - 1);
-		highlightWidth.set(box.width + 1);
-		highlightHeight.set(box.height + 1);
-	}
-
-	export function create_aribtrary_range(start: number, end: number) {
-		const parent = htmlContainer?.parentElement;
-		if (!parent) return;
-		const parentBox = parent.getBoundingClientRect();
-		if (!source || !htmlContainer) return;
-
-		const textNode = htmlContainer.firstChild;
-		if (!textNode) return;
-
+	for (let i = 0; i < _nodes.length; i++) {
+		const node = _nodes[i];
 		const range = new Range();
-		range.setStart(textNode, start);
-		range.setEnd(textNode, end);
+		range.setStart(textNode, node.start);
+		range.setEnd(textNode, node.end);
+		arr.push(range);
 
-		const box = range.getBoundingClientRect();
-
-		const containerScrollTop = parent.scrollTop;
-		const containerScrollLeft = parent.scrollLeft;
-
-		// Calculate position relative to the scrollable container
-		highlightTop.set(box.top - parentBox.top + containerScrollTop - 1);
-		highlightLeft.set(box.left - parentBox.left + containerScrollLeft - 1);
-		highlightWidth.set(box.width + 1);
-		highlightHeight.set(box.height + 1);
-		return range;
-	}
-
-	function handleTokenClick(e: MouseEvent) {
-		const x = e.clientX;
-		const y = e.clientY;
-
-		const tokenIndex = tokenRanges.findLastIndex((range) => {
-			const box = range.getBoundingClientRect();
-			return x > box.left && x < box.right && y > box.top && y < box.bottom;
-		});
-
-		if (tokenIndex !== -1) {
-			onTokenClick(tokenIndex);
+		if (node.children && node.children.length > 0) {
+			create_ranges(node.children, arr);
 		}
 	}
+
+	return arr;
+}
+
+const tokenRanges = $derived<Range[]>(create_ranges(nodes) || []);
+
+export function highlightToken(i: number) {
+	// console.log('highlightToken', i);
+	const parent = htmlContainer?.parentElement;
+	if (!parent) return;
+	const parentBox = parent.getBoundingClientRect();
+
+	const selectedRange = tokenRanges[i];
+	if (!selectedRange) return;
+
+	const box = selectedRange.getBoundingClientRect();
+
+	// Get the scroll position of the code container
+	const containerScrollTop = parent.scrollTop;
+	const containerScrollLeft = parent.scrollLeft;
+
+	// Calculate position relative to the scrollable container
+	highlightTop.set(box.top - parentBox.top + containerScrollTop - 1);
+	highlightLeft.set(box.left - parentBox.left + containerScrollLeft - 1);
+	highlightWidth.set(box.width + 1);
+	highlightHeight.set(box.height + 1);
+}
+
+export function create_aribtrary_range(start: number, end: number) {
+	const parent = htmlContainer?.parentElement;
+	if (!parent) return;
+	const parentBox = parent.getBoundingClientRect();
+	if (!source || !htmlContainer) return;
+
+	const textNode = htmlContainer.firstChild;
+	if (!textNode) return;
+
+	const range = new Range();
+	range.setStart(textNode, start);
+	range.setEnd(textNode, end);
+
+	const box = range.getBoundingClientRect();
+
+	const containerScrollTop = parent.scrollTop;
+	const containerScrollLeft = parent.scrollLeft;
+
+	// Calculate position relative to the scrollable container
+	highlightTop.set(box.top - parentBox.top + containerScrollTop - 1);
+	highlightLeft.set(box.left - parentBox.left + containerScrollLeft - 1);
+	highlightWidth.set(box.width + 1);
+	highlightHeight.set(box.height + 1);
+	return range;
+}
+
+function handleTokenClick(e: MouseEvent) {
+	const x = e.clientX;
+	const y = e.clientY;
+
+	const tokenIndex = tokenRanges.findLastIndex((range) => {
+		const box = range.getBoundingClientRect();
+		return x > box.left && x < box.right && y > box.top && y < box.bottom;
+	});
+
+	if (tokenIndex !== -1) {
+		onTokenClick(tokenIndex);
+	}
+}
 </script>
 
 <div class="code-panel">

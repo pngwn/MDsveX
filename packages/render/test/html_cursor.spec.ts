@@ -4,7 +4,7 @@ import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import { Cursor } from '@mdsvex/parse/cursor';
 import { CursorHTMLRenderer } from '../src/html_cursor';
 
-// ── Helpers ───────��──────────────────────────────────────────
+//  Helpers ��
 
 function render(source: string): string {
 	const tree = new TreeBuilder(source.length >> 3 || 128);
@@ -15,7 +15,7 @@ function render(source: string): string {
 	return renderer.html;
 }
 
-// ── Tests ─────────────────────��──────────────────────────────
+//  Tests ��
 
 describe('CursorHTMLRenderer', () => {
 	it('simple paragraph', () => {
@@ -166,7 +166,7 @@ describe('CursorHTMLRenderer', () => {
 		expect(render('`<div>`\n')).toContain('<code>&lt;div&gt;</code>');
 	});
 
-	// ── Svelte syntax ──────────────────────────────────────────
+	//  Svelte syntax
 
 	it('mustache expression', () => {
 		expect(render('hello {name} world')).toBe('<p>hello {name} world</p>');

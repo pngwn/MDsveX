@@ -524,7 +524,7 @@ describe('emphasis and strong emphasis', () => {
 		expect(kinds.every((k) => k === 'text')).toBe(true);
 	});
 
-	// emphasis: _(_foo_)_ — outer emphasis wraps all
+	// emphasis: _(_foo_)_, outer emphasis wraps all
 	test('pfm example 373', () => {
 		const input = load_fixture('373');
 		const { nodes } = parse_markdown_svelte(input);
@@ -1776,7 +1776,7 @@ describe('emphasis and strong emphasis', () => {
 		);
 	});
 
-	// *[bar*](/url) — emphasis delimiters around link syntax are text
+	// *[bar*](/url), emphasis delimiters around link syntax are text
 	test('pfm example 473', () => {
 		const input = load_fixture('473');
 		const { nodes } = parse_markdown_svelte(input);
@@ -1785,13 +1785,13 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 
-		// No emphasis should be formed — all children should be text
+		// No emphasis should be formed, all children should be text
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
 		expect(kinds).not.toContain('strong_emphasis');
 		expect(kinds).not.toContain('emphasis');
 	});
 
-	// _foo [bar_](/url) — emphasis delimiters around link syntax are text
+	// _foo [bar_](/url), emphasis delimiters around link syntax are text
 	test('pfm example 474', () => {
 		const input = load_fixture('474');
 		const { nodes } = parse_markdown_svelte(input);
@@ -1806,7 +1806,7 @@ describe('emphasis and strong emphasis', () => {
 		expect(kinds).not.toContain('emphasis');
 	});
 
-	// *<img src="foo" title="*"/> — HTML takes precedence over emphasis
+	// *<img src="foo" title="*"/>, HTML takes precedence over emphasis
 	test('pfm example 475', () => {
 		const input = load_fixture('475');
 		const { nodes } = parse_markdown_svelte(input);
@@ -1818,7 +1818,7 @@ describe('emphasis and strong emphasis', () => {
 		expect(kinds).not.toContain('emphasis');
 	});
 
-	// *<a href="*"> — HTML takes precedence, no emphasis
+	// *<a href="*">, HTML takes precedence, no emphasis
 	test('pfm example 476', () => {
 		const input = load_fixture('476');
 		const { nodes } = parse_markdown_svelte(input);
@@ -1833,7 +1833,7 @@ describe('emphasis and strong emphasis', () => {
 		expect(kinds).not.toContain('emphasis');
 	});
 
-	// _<a href="_"> — HTML takes precedence, no emphasis
+	// _<a href="_">, HTML takes precedence, no emphasis
 	test('pfm example 477', () => {
 		const input = load_fixture('477');
 		const { nodes } = parse_markdown_svelte(input);
@@ -1848,7 +1848,7 @@ describe('emphasis and strong emphasis', () => {
 		expect(kinds).not.toContain('emphasis');
 	});
 
-	// *a `*`* — code span takes precedence, prevents emphasis closing
+	// *a `*`*, code span takes precedence, prevents emphasis closing
 	test('pfm example 478', () => {
 		const input = load_fixture('478');
 		const { nodes } = parse_markdown_svelte(input);
@@ -1860,7 +1860,7 @@ describe('emphasis and strong emphasis', () => {
 		expect(kinds).toContain('code_span');
 	});
 
-	// _a `_`_ — code span takes precedence, prevents emphasis closing
+	// _a `_`_, code span takes precedence, prevents emphasis closing
 	test('pfm example 479', () => {
 		const input = load_fixture('479');
 		const { nodes } = parse_markdown_svelte(input);
@@ -1872,7 +1872,7 @@ describe('emphasis and strong emphasis', () => {
 		expect(kinds).toContain('code_span');
 	});
 
-	// **a<https://foo.bar/?q=**> — autolink takes precedence over strong
+	// **a<https://foo.bar/?q=**>, autolink takes precedence over strong
 	test('pfm example 480', () => {
 		const input = load_fixture('480');
 		const { nodes } = parse_markdown_svelte(input);

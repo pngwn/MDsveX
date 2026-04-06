@@ -1,6 +1,6 @@
-import { SECTIONS, set_all_sections } from '$lib/snippets';
-import { load_fixture_sections } from '$lib/fixtures';
-import type { Section } from '$lib/snippets';
+import { SECTIONS, set_all_sections } from "$lib/snippets";
+import { load_fixture_sections } from "$lib/fixtures";
+import type { Section } from "$lib/snippets";
 
 const fixture_sections = load_fixture_sections();
 const all_sections: Section[] = [...SECTIONS, ...fixture_sections];

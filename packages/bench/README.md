@@ -24,14 +24,14 @@ Benchmarks require Node 18+ and execute via `node --expose-gc` so garbage-collec
 
 Each suite compares a performance-first technique against a more conventional alternative:
 
-1. **Monomorphic vs Polymorphic Call Sites** — Monomorphic dispatch runs ~10× faster.
-2. **Struct-of-Arrays vs Array-of-Objects** — TypedArray storage halves traversal time.
-3. **Arena Allocation vs Per-Node Allocation** — Arena reuse reduces allocation overhead by ~5×.
-4. **JIT-Friendly vs JIT-Hostile Patterns** — Stable shapes and predictable control flow preserve optimizer wins.
-5. **Switch Statements vs Dynamic Dispatch** — Inlined switches bias the optimizer and avoid indirect calls.
-6. **String Scanning Methods** — `charCodeAt` scanning stays the baseline; `for...of` is the slowest variant.
-7. **Error Handling: Hot vs Cold Paths** — Formatting on cold paths avoids catastrophic slowdowns at high error rates.
-8. **Memory Layout Patterns** — Packed Struct-of-Arrays with string interning offers both speed and RAM savings.
+1. **Monomorphic vs Polymorphic Call Sites**, Monomorphic dispatch runs ~10× faster.
+2. **Struct-of-Arrays vs Array-of-Objects**, TypedArray storage halves traversal time.
+3. **Arena Allocation vs Per-Node Allocation**, Arena reuse reduces allocation overhead by ~5×.
+4. **JIT-Friendly vs JIT-Hostile Patterns**, Stable shapes and predictable control flow preserve optimizer wins.
+5. **Switch Statements vs Dynamic Dispatch**, Inlined switches bias the optimizer and avoid indirect calls.
+6. **String Scanning Methods**, `charCodeAt` scanning stays the baseline; `for...of` is the slowest variant.
+7. **Error Handling: Hot vs Cold Paths**, Formatting on cold paths avoids catastrophic slowdowns at high error rates.
+8. **Memory Layout Patterns**, Packed Struct-of-Arrays with string interning offers both speed and RAM savings.
 
 ## 🔬 Benchmark Infrastructure
 
@@ -63,4 +63,4 @@ Vitest’s output already includes comparative statistics; no custom reporter pl
 
 ---
 
-*Vitest’s bench runner keeps these scenarios easy to maintain while preserving the insights that guided the original performance-first parser work.*
+_Vitest’s bench runner keeps these scenarios easy to maintain while preserving the insights that guided the original performance-first parser work._

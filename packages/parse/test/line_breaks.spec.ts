@@ -51,7 +51,7 @@ describe('Hard line breaks (PFM: backslash only)', () => {
 		expect(get_value(nodes, texts[1].index, input)).toBe('baz');
 	});
 
-	test('633: PFM — trailing spaces do NOT create hard break', () => {
+	test('633: PFM, trailing spaces do NOT create hard break', () => {
 		// foo  <LF>baz (2 trailing spaces)
 		const input = load_hard('633');
 		const { nodes } = parse_markdown_svelte(input);
@@ -67,7 +67,7 @@ describe('Hard line breaks (PFM: backslash only)', () => {
 		expect(kinds).not.toContain('hard_break');
 	});
 
-	test('635: PFM — many trailing spaces do NOT create hard break', () => {
+	test('635: PFM, many trailing spaces do NOT create hard break', () => {
 		// foo       <LF>baz
 		const input = load_hard('635');
 		const { nodes } = parse_markdown_svelte(input);
@@ -146,7 +146,7 @@ describe('Soft line breaks', () => {
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
 
-		// Single paragraph — newline preserved in text content
+		// Single paragraph, newline preserved in text content
 		expect(children.length).toBe(1);
 		expect(children[0].kind).toBe('paragraph');
 

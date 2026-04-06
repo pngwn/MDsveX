@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte'
-	import { fade } from 'svelte/transition'
+import type { Snippet } from "svelte";
+import { fade } from "svelte/transition";
 
-
-	let { count = '0', children }: { count?: string; children?: Snippet } = $props()
-	let value = $state(Number(count) || 0)
+let { count = "0", children }: { count?: string; children?: Snippet } =
+	$props();
+let value = $state(Number(count) || 0);
 </script>
 
 <span class="widget" in:fade|global={{ duration: 100 }}>

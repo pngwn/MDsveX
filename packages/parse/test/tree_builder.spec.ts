@@ -14,7 +14,7 @@ describe('TreeBuilder', () => {
 
 		it('creates a paragraph with text child', () => {
 			const tb = new TreeBuilder(64);
-			// open root (skipped — auto-created)
+			// open root (skipped, auto-created)
 			tb.open(0, node_kind.root, 0, -1, 0, false);
 			// open paragraph under root
 			tb.open(1, node_kind.paragraph, 0, 0, 0, false);
@@ -131,14 +131,14 @@ describe('TreeBuilder', () => {
 			expect(emph.end).toBe(12);
 		});
 
-		it('revokes pending node — converts to text', () => {
+		it('revokes pending node, converts to text', () => {
 			const tb = new TreeBuilder(64);
 			tb.open(0, node_kind.root, 0, -1, 0, false);
 			tb.open(1, node_kind.paragraph, 0, 0, 0, false);
 			// speculative emphasis that won't close
 			tb.open(2, node_kind.strong_emphasis, 5, 1, 0, true);
 			tb.text(2, 6, 11);
-			// revoke — emphasis becomes text
+			// revoke, emphasis becomes text
 			tb.revoke(2);
 			tb.close(1, 11);
 			tb.close(0, 11);
@@ -153,7 +153,7 @@ describe('TreeBuilder', () => {
 			expect(first.kind).toBe('text');
 		});
 
-		it('revokes empty pending node — removes it', () => {
+		it('revokes empty pending node, removes it', () => {
 			const tb = new TreeBuilder(64);
 			tb.open(0, node_kind.root, 0, -1, 0, false);
 			tb.open(1, node_kind.paragraph, 0, 0, 0, false);
@@ -246,7 +246,7 @@ describe('TreeBuilder', () => {
 			const list = nodes.get_node(root.children[0]);
 			const item1 = nodes.get_node(list.children[0]);
 
-			// Paragraphs should be unwrapped — item's children are text nodes directly
+			// Paragraphs should be unwrapped, item's children are text nodes directly
 			for (const child_idx of item1.children) {
 				const child = nodes.get_node(child_idx);
 				expect(child.kind).not.toBe('paragraph');
@@ -283,7 +283,7 @@ describe('TreeBuilder', () => {
 
 			// Paragraphs should be preserved in loose lists
 			const has_paragraph = item1.children.some(
-				(idx) => nodes.get_node(idx).kind === 'paragraph',
+				(idx) => nodes.get_node(idx).kind === 'paragraph'
 			);
 			expect(has_paragraph).toBe(true);
 		});
@@ -307,7 +307,7 @@ describe('TreeBuilder', () => {
 			expect(fence.value).toEqual([14, 30]);
 			expect(fence.metadata.info_start).toBe(3);
 			expect(fence.metadata.info_end).toBe(13);
-			// No child nodes — content is value range
+			// No child nodes, content is value range
 			expect(fence.children).toEqual([]);
 		});
 	});

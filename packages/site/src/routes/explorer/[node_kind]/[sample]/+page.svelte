@@ -1,175 +1,172 @@
 <script lang="ts">
-	import TestHeader from '$lib/components/TestHeader.svelte';
-	import CodePanel from '$lib/components/CodePanel.svelte';
-	import TokensPanel from '$lib/components/TokensPanel.svelte';
-	import RoutePanel from '$lib/components/RoutePanel.svelte';
-	import InspectorPanel from '$lib/components/InspectorPanel.svelte';
-	import {
-		parse_markdown_svelte,
-		type node_buffer
-	} from '@mdsvex/parse';
+import TestHeader from "$lib/components/TestHeader.svelte";
+import CodePanel from "$lib/components/CodePanel.svelte";
+import TokensPanel from "$lib/components/TokensPanel.svelte";
+import RoutePanel from "$lib/components/RoutePanel.svelte";
+import InspectorPanel from "$lib/components/InspectorPanel.svelte";
+import { parse_markdown_svelte, type node_buffer } from "@mdsvex/parse";
 
-	let { data } = $props();
+let { data } = $props();
 
-	let source = $derived(
-		data.samples_for_kind.find(([file]) => file === data.sample_id)?.[1]
+let source = $derived(
+	data.samples_for_kind.find(([file]) => file === data.sample_id)?.[1],
+);
+
+type get_node_without_children = Omit<
+	ReturnType<node_buffer["get_node"]>,
+	"children"
+>;
+
+type node_with_children = get_node_without_children & {
+	children: node_with_children[];
+};
+function build_tree(
+	node_buffer: node_buffer,
+	index: number,
+): node_with_children {
+	const node = node_buffer.get_node(index);
+	const children = node.children.map((childIndex) =>
+		build_tree(node_buffer, childIndex),
 	);
 
-	type get_node_without_children = Omit<
-		ReturnType<node_buffer['get_node']>,
-		'children'
-	>;
+	const full_node = { ...node, children };
 
-	type node_with_children = get_node_without_children & {
-		children: node_with_children[];
-	};
-	function build_tree(
-		node_buffer: node_buffer,
-		index: number
-	): node_with_children {
-		const node = node_buffer.get_node(index);
-		const children = node.children.map((childIndex) =>
-			build_tree(node_buffer, childIndex)
-		);
+	return full_node;
+}
 
-		const full_node = { ...node, children };
+let parse_result = $derived.by(() => {
+	const input = source || "";
+	const introspector = new Introspector(input);
+	const { nodes } = parse_markdown_svelte(input, { introspector });
+	return { nodes, introspector };
+});
 
-		return full_node;
-	}
+let nodes_as_text = $derived.by(() => {
+	if (!parse_result.nodes) return [];
+	return [build_tree(parse_result.nodes, 0)];
+});
 
-	let parse_result = $derived.by(() => {
-		const input = source || '';
-		const introspector = new Introspector(input);
-		const { nodes } = parse_markdown_svelte(input, { introspector });
-		return { nodes, introspector };
-	});
+let introspector = $derived(parse_result.introspector);
 
-	let nodes_as_text = $derived.by(() => {
-		if (!parse_result.nodes) return [];
-		return [build_tree(parse_result.nodes, 0)];
-	});
+interface route_step {
+	type: "push" | "pop" | "swap";
+	state: string;
+	cursor: number;
+	char: string;
+	depth: number;
+}
 
-	let introspector = $derived(parse_result.introspector);
+let route_steps = $derived.by(() => {
+	const trace = introspector.get_trace();
+	const steps: route_step[] = [];
 
-	interface route_step {
-		type: 'push' | 'pop' | 'swap';
-		state: string;
-		cursor: number;
-		char: string;
-		depth: number;
-	}
+	for (let i = 0; i < trace.length; i++) {
+		const entry = trace[i];
+		const prev = i > 0 ? trace[i - 1] : null;
 
-	let route_steps = $derived.by(() => {
-		const trace = introspector.get_trace();
-		const steps: route_step[] = [];
+		if (!prev) {
+			steps.push({
+				type: "push",
+				state: entry.active,
+				cursor: entry.cursor,
+				char: entry.char,
+				depth: entry.states.length - 1,
+			});
+			continue;
+		}
 
-		for (let i = 0; i < trace.length; i++) {
-			const entry = trace[i];
-			const prev = i > 0 ? trace[i - 1] : null;
+		const prev_len = prev.states.length;
+		const curr_len = entry.states.length;
 
-			if (!prev) {
+		if (curr_len > prev_len) {
+			for (let j = prev_len; j < curr_len; j++) {
 				steps.push({
-					type: 'push',
-					state: entry.active,
+					type: "push",
+					state: entry.states[j],
 					cursor: entry.cursor,
 					char: entry.char,
-					depth: entry.states.length - 1,
+					depth: j,
 				});
-				continue;
 			}
-
-			const prev_len = prev.states.length;
-			const curr_len = entry.states.length;
-
-			if (curr_len > prev_len) {
-				for (let j = prev_len; j < curr_len; j++) {
-					steps.push({
-						type: 'push',
-						state: entry.states[j],
-						cursor: entry.cursor,
-						char: entry.char,
-						depth: j,
-					});
-				}
-			} else if (curr_len < prev_len) {
-				for (let j = prev_len - 1; j >= curr_len; j--) {
-					steps.push({
-						type: 'pop',
-						state: prev.states[j],
-						cursor: entry.cursor,
-						char: entry.char,
-						depth: j,
-					});
-				}
-			} else if (entry.active !== prev.active) {
+		} else if (curr_len < prev_len) {
+			for (let j = prev_len - 1; j >= curr_len; j--) {
 				steps.push({
-					type: 'swap',
-					state: entry.active,
+					type: "pop",
+					state: prev.states[j],
 					cursor: entry.cursor,
 					char: entry.char,
-					depth: curr_len - 1,
+					depth: j,
 				});
 			}
+		} else if (entry.active !== prev.active) {
+			steps.push({
+				type: "swap",
+				state: entry.active,
+				cursor: entry.cursor,
+				char: entry.char,
+				depth: curr_len - 1,
+			});
 		}
-
-		return steps;
-	});
-
-	let position = $state(0);
-	let analysis = $derived(introspector.get_state_at(position));
-
-	let selectedToken = $state(0);
-	let rightPanelView = $state<'tokens' | 'route'>('tokens');
-
-	let codePanelRef = $state<CodePanel>();
-	let tokensPanelRef = $state<TokensPanel>();
-
-	function handle_meta_click(meta: [number, number]) {
-		codePanelRef?.create_aribtrary_range(...meta);
 	}
 
-	function handleTokenClick(tokenIndex: number) {
-		selectedToken = tokenIndex;
-		codePanelRef?.highlightToken(tokenIndex);
-	}
+	return steps;
+});
 
-	function handlePositionChange(newPosition: number) {
-		position = Math.max(0, Math.min(newPosition, (source?.length ?? 1) - 1));
-		const htmlContainer = document.querySelector('.code-inner') as HTMLElement;
-		if (htmlContainer) {
-			const textNode = htmlContainer.firstChild;
-			if (textNode) {
-				const r = new Range();
-				r.setStart(textNode, position);
-				r.setEnd(textNode, position + 1);
-				const hl = CSS.highlights.get('position');
-				if (hl) {
-					hl.clear();
-					hl.add(r);
-				}
+let position = $state(0);
+let analysis = $derived(introspector.get_state_at(position));
+
+let selectedToken = $state(0);
+let rightPanelView = $state<"tokens" | "route">("tokens");
+
+let codePanelRef = $state<CodePanel>();
+let tokensPanelRef = $state<TokensPanel>();
+
+function handle_meta_click(meta: [number, number]) {
+	codePanelRef?.create_aribtrary_range(...meta);
+}
+
+function handleTokenClick(tokenIndex: number) {
+	selectedToken = tokenIndex;
+	codePanelRef?.highlightToken(tokenIndex);
+}
+
+function handlePositionChange(newPosition: number) {
+	position = Math.max(0, Math.min(newPosition, (source?.length ?? 1) - 1));
+	const htmlContainer = document.querySelector(".code-inner") as HTMLElement;
+	if (htmlContainer) {
+		const textNode = htmlContainer.firstChild;
+		if (textNode) {
+			const r = new Range();
+			r.setStart(textNode, position);
+			r.setEnd(textNode, position + 1);
+			const hl = CSS.highlights.get("position");
+			if (hl) {
+				hl.clear();
+				hl.add(r);
 			}
 		}
 	}
+}
 
-	function handleGlobalKeydown(event: KeyboardEvent) {
-		if (event.key === '1' && (event.ctrlKey || event.metaKey)) {
-			event.preventDefault();
-			rightPanelView = 'tokens';
-		} else if (event.key === '2' && (event.ctrlKey || event.metaKey)) {
-			event.preventDefault();
-			rightPanelView = 'route';
-		}
+function handleGlobalKeydown(event: KeyboardEvent) {
+	if (event.key === "1" && (event.ctrlKey || event.metaKey)) {
+		event.preventDefault();
+		rightPanelView = "tokens";
+	} else if (event.key === "2" && (event.ctrlKey || event.metaKey)) {
+		event.preventDefault();
+		rightPanelView = "route";
 	}
+}
 
-	$effect(() => {
-		window.addEventListener('keydown', handleGlobalKeydown);
-		return () => window.removeEventListener('keydown', handleGlobalKeydown);
-	});
+$effect(() => {
+	window.addEventListener("keydown", handleGlobalKeydown);
+	return () => window.removeEventListener("keydown", handleGlobalKeydown);
+});
 
-	$effect(() => {
-		source;
-		position = 0;
-	});
+$effect(() => {
+	source;
+	position = 0;
+});
 </script>
 
 <div class="page-wrapper">

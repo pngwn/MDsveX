@@ -4,7 +4,7 @@ Render interactive UI from markdown using custom components.
 
 <AlertBox type="warning">
 
-This API is *experimental* and may change in future releases.
+This API is _experimental_ and may change in future releases.
 
 </AlertBox>
 
@@ -24,7 +24,7 @@ Cards are the primary UI surface. They support **nesting** and _rich content_.
 
 A simple card with a title and body text. Cards can contain any markdown:
 
-- Lists with *emphasis*
+- Lists with _emphasis_
 - Links to [documentation](https://example.com)
 - Inline `code` samples
 
@@ -53,19 +53,19 @@ card.classList.toggle('highlighted');
 
 <div class="field">
 
-**Name** — <input type="text" placeholder="Enter name" />
+**Name**, <input type="text" placeholder="Enter name" />
 
 </div>
 
 <div class="field">
 
-**Email** — <input type="email" placeholder="user@example.com" />
+**Email**, <input type="email" placeholder="user@example.com" />
 
 </div>
 
 <div class="field">
 
-**Role** — Choose a role for the new team member.
+**Role**, Choose a role for the new team member.
 
 </div>
 
@@ -114,12 +114,12 @@ This section mixes HTML elements with standard markdown features.
 This aside contains a ~~deprecated~~ updated list:
 
 1. First item with ^superscript^
-2. Second with _emphasis_ and *strong*
+2. Second with _emphasis_ and _strong_
 3. Third with `inline code`
 
 </aside>
 
-The main content continues here with a [link](https://example.com "Example Site") and an image reference.
+The main content continues here with a [link](https://example.com 'Example Site') and an image reference.
 
 ![Architecture diagram](arch.png)
 
@@ -127,7 +127,7 @@ The main content continues here with a [link](https://example.com "Example Site"
 
 <summary>
 
-**Click to expand** — _additional details_
+**Click to expand**, _additional details_
 
 </summary>
 
@@ -135,18 +135,18 @@ This is the expanded content with a code block:
 
 ```typescript
 interface Component {
-  name: string;
-  render(): string;
+	name: string;
+	render(): string;
 }
 ```
 
 And a table for good measure:
 
-| Prop | Type | Default | Description |
-| :--- | :--- | :---: | :--- |
-| count | number | 0 | Initial counter value |
-| type | string | info | Alert variant |
-| disabled | boolean | false | Disable interaction |
+| Prop     | Type    | Default | Description           |
+| :------- | :------ | :-----: | :-------------------- |
+| count    | number  |    0    | Initial counter value |
+| type     | string  |  info   | Alert variant         |
+| disabled | boolean |  false  | Disable interaction   |
 
 </details>
 
@@ -154,6 +154,6 @@ And a table for good measure:
 
 <footer>
 
-Built with *PFM* — Penguin-Flavoured Markdown. <br /> Version 1.0.0
+Built with _PFM_, Penguin-Flavoured Markdown. <br /> Version 1.0.0
 
 </footer>

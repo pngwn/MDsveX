@@ -4,11 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'vitest';
 
-import {
-	get_all_child_kinds,
-	get_child_range,
-	get_content,
-} from './utils';
+import { get_all_child_kinds, get_child_range, get_content } from './utils';
 
 import { parse_markdown_svelte } from '../src/main';
 
@@ -20,7 +16,7 @@ const load_fixture = (id: string): string =>
 
 describe('images', () => {
 	// ![foo](/url "title")
-	test('pfm example 572 — inline image with title', () => {
+	test('pfm example 572, inline image with title', () => {
 		const input = load_fixture('572');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -39,8 +35,8 @@ describe('images', () => {
 		expect(value).toBe('foo');
 	});
 
-	// ![foo](train.jpg) — simple image
-	test('pfm example 578 — simple image', () => {
+	// ![foo](train.jpg), simple image
+	test('pfm example 578, simple image', () => {
 		const input = load_fixture('578');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -53,8 +49,8 @@ describe('images', () => {
 		expect(image.metadata.src).toBe('train.jpg');
 	});
 
-	// ![](/url) — empty alt
-	test('pfm example 581 — image with empty alt', () => {
+	// ![](/url), empty alt
+	test('pfm example 581, image with empty alt', () => {
 		const input = load_fixture('581');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -69,7 +65,7 @@ describe('images', () => {
 	});
 
 	// My ![foo bar](/path/to/train.jpg  "title"   )
-	test('pfm example 579 — image with surrounding text', () => {
+	test('pfm example 579, image with surrounding text', () => {
 		const input = load_fixture('579');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -82,8 +78,8 @@ describe('images', () => {
 		expect(kinds).toContain('image');
 	});
 
-	// !\[foo] — escaped !, not an image
-	test('pfm example 592 — escaped exclamation is text', () => {
+	// !\[foo], escaped !, not an image
+	test('pfm example 592, escaped exclamation is text', () => {
 		const input = load_fixture('592');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -95,8 +91,8 @@ describe('images', () => {
 		expect(kinds).not.toContain('image');
 	});
 
-	// \![foo] — backslash before !
-	test('pfm example 593 — backslash before ! is text', () => {
+	// \![foo], backslash before !
+	test('pfm example 593, backslash before ! is text', () => {
 		const input = load_fixture('593');
 		const { nodes } = parse_markdown_svelte(input);
 

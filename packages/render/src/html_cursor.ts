@@ -1,28 +1,28 @@
 /**
- * Cursor-based PFM HTML Renderer
+ * cursor-based pfm html renderer
  *
- * Renders HTML from a Cursor over SOA node_buffer.
- * Zero per-node allocations — the cursor walks typed arrays directly,
+ * renders html from a cursor over soa node_buffer.
+ * zero per-node allocations, the cursor walks typed arrays directly,
  * text is lazily sliced from source only when needed.
  *
- * Usage:
+ * usage:
  *
- *   const cursor = new Cursor(tree.get_buffer(), source);
- *   const html = renderCursor(cursor);
+ *   const cursor = new cursor(tree.get_buffer(), source);
+ *   const html = rendercursor(cursor);
  */
 
-import { Cursor } from '@mdsvex/parse/cursor';
-import type { node_buffer } from '@mdsvex/parse/utils';
+import { Cursor } from "@mdsvex/parse/cursor";
+import type { node_buffer } from "@mdsvex/parse/utils";
 
-// ── HTML escaping ────────────────────────────────────────────
+//  html escaping
 
 const ESCAPE_TEST = /[&<>"]/;
 const ESCAPE_MATCH = /[&<>"]/g;
 const ESCAPE_TABLE: Record<string, string> = {
-	'&': '&amp;',
-	'<': '&lt;',
-	'>': '&gt;',
-	'"': '&quot;',
+	"&": "&amp;",
+	"<": "&lt;",
+	">": "&gt;",
+	'"': "&quot;",
 };
 function escape_replace(ch: string): string {
 	return ESCAPE_TABLE[ch];
@@ -32,7 +32,7 @@ function escape(text: string): string {
 	return text.replace(ESCAPE_MATCH, escape_replace);
 }
 
-// ── Kind constants ──────────────────────────────────────────
+//  kind constants
 
 const K_ROOT = 0;
 const K_TEXT = 1;
@@ -65,31 +65,31 @@ const K_SVELTE_BLOCK = 28;
 const K_SVELTE_BRANCH = 29;
 const K_MUSTACHE = 4;
 
-// ── Precomputed tag strings ─────────────────────────────────
+//  precomputed tag strings
 
-const H_OPEN = ['', '<h1>', '<h2>', '<h3>', '<h4>', '<h5>', '<h6>'];
-const H_CLOSE = ['', '</h1>', '</h2>', '</h3>', '</h4>', '</h5>', '</h6>'];
+const H_OPEN = ["", "<h1>", "<h2>", "<h3>", "<h4>", "<h5>", "<h6>"];
+const H_CLOSE = ["", "</h1>", "</h2>", "</h3>", "</h4>", "</h5>", "</h6>"];
 
 const HTML_VOID_ELEMENTS = new Set([
-	'area',
-	'base',
-	'br',
-	'col',
-	'embed',
-	'hr',
-	'img',
-	'input',
-	'link',
-	'meta',
-	'param',
-	'source',
-	'track',
-	'wbr',
+	"area",
+	"base",
+	"br",
+	"col",
+	"embed",
+	"hr",
+	"img",
+	"input",
+	"link",
+	"meta",
+	"param",
+	"source",
+	"track",
+	"wbr",
 ]);
 
-// ── Renderer ────────────────────────────────────────────────
+//  renderer
 
-/** Render children of the current cursor position, collecting escaped text and recursive node output. */
+/** render children of the current cursor position, collecting escaped text and recursive node output. */
 function _children(c: Cursor, out: string[]): void {
 	if (!c.gotoFirstChild()) return;
 	do {
@@ -102,10 +102,10 @@ function _children(c: Cursor, out: string[]): void {
 	c.gotoParent();
 }
 
-/** Collect raw text from child text nodes (for image alt, link text fallback, etc.). */
+/** collect raw text from child text nodes (for image alt, link text fallback, etc.). */
 function _childrenRaw(c: Cursor): string {
-	if (!c.gotoFirstChild()) return '';
-	let text = '';
+	if (!c.gotoFirstChild()) return "";
+	let text = "";
 	do {
 		if (c.kind === K_TEXT) {
 			text += c.text();
@@ -117,7 +117,7 @@ function _childrenRaw(c: Cursor): string {
 	return text;
 }
 
-/** Render a single node at the current cursor position. */
+/** render a single node at the current cursor position. */
 function _node(c: Cursor, out: string[]): void {
 	switch (c.kind) {
 		case K_ROOT:
@@ -131,37 +131,37 @@ function _node(c: Cursor, out: string[]): void {
 			break;
 
 		case K_PARAGRAPH:
-			// Pending paragraphs inside list_items are speculative tight-list
-			// wrappers — render their children transparently until the list
+			// pending paragraphs inside list_items are speculative tight-list
+			// wrappers, render their children transparently until the list
 			// closes (commit keeps the wrapper, revoke drops it).
 			if (c.pending && c.parent_kind === K_LIST_ITEM) {
 				_children(c, out);
 			} else {
-				out.push('<p>');
+				out.push("<p>");
 				_children(c, out);
-				out.push('</p>');
+				out.push("</p>");
 			}
 			break;
 
 		case K_EMPHASIS:
-			out.push('<em>');
+			out.push("<em>");
 			_children(c, out);
-			out.push('</em>');
+			out.push("</em>");
 			break;
 
 		case K_STRONG:
-			out.push('<strong>');
+			out.push("<strong>");
 			_children(c, out);
-			out.push('</strong>');
+			out.push("</strong>");
 			break;
 
 		case K_CODE_SPAN:
-			out.push('<code>', escape(c.text()).replace(/\n/g, ' '), '</code>');
+			out.push("<code>", escape(c.text()).replace(/\n/g, " "), "</code>");
 			break;
 
 		case K_CODE_FENCE: {
 			const meta = c.meta();
-			// Wire path: resolved 'info' string. TreeBuilder path: info_start/info_end byte offsets.
+			// wire path: resolved 'info' string. treebuilder path: info_start/info_end byte offsets.
 			let info = meta?.info as string | undefined;
 			if (!info) {
 				const info_start = meta?.info_start as number | undefined;
@@ -175,90 +175,90 @@ function _node(c: Cursor, out: string[]): void {
 					escape(info),
 					'">',
 					escape(c.text()),
-					'</code></pre>'
+					"</code></pre>",
 				);
 			} else {
-				out.push('<pre><code>', escape(c.text()), '</code></pre>');
+				out.push("<pre><code>", escape(c.text()), "</code></pre>");
 			}
 			break;
 		}
 
 		case K_BLOCK_QUOTE:
-			out.push('<blockquote>\n');
+			out.push("<blockquote>\n");
 			_children(c, out);
-			out.push('\n</blockquote>');
+			out.push("\n</blockquote>");
 			break;
 
 		case K_LINK: {
 			const meta = c.meta();
-			out.push('<a');
+			out.push("<a");
 			if (meta?.href) out.push(' href="', escape(meta.href as string), '"');
 			if (meta?.title) out.push(' title="', escape(meta.title as string), '"');
-			out.push('>');
+			out.push(">");
 			_children(c, out);
-			out.push('</a>');
+			out.push("</a>");
 			break;
 		}
 
 		case K_IMAGE: {
 			const meta = c.meta();
-			out.push('<img');
+			out.push("<img");
 			if (meta?.src) out.push(' src="', escape(meta.src as string), '"');
-			// Alt text is in child text nodes, not value range
+			// alt text is in child text nodes, not value range
 			out.push(' alt="', escape(_childrenRaw(c)), '"');
 			if (meta?.title) out.push(' title="', escape(meta.title as string), '"');
-			out.push(' />');
+			out.push(" />");
 			break;
 		}
 
 		case K_LIST: {
 			const meta = c.meta();
 			const ordered = !!meta?.ordered;
-			const tag = ordered ? 'ol' : 'ul';
+			const tag = ordered ? "ol" : "ul";
 			const start = meta?.start as number | undefined;
-			out.push('<', tag);
+			out.push("<", tag);
 			if (ordered && start != null && start !== 1)
 				out.push(' start="', String(start), '"');
-			out.push('>\n');
+			out.push(">\n");
 			_children(c, out);
-			out.push('\n</', tag, '>');
+			out.push("\n</", tag, ">");
 			break;
 		}
 
 		case K_LIST_ITEM:
-			out.push('<li>');
+			out.push("<li>");
 			_children(c, out);
-			out.push('</li>\n');
+			out.push("</li>\n");
 			break;
 
 		case K_THEMATIC_BREAK:
-			out.push('<hr />');
+			out.push("<hr />");
 			break;
 
 		case K_HARD_BREAK:
-			out.push('<br />\n');
+			out.push("<br />\n");
 			break;
 
 		case K_SOFT_BREAK:
-			out.push('\n');
+			out.push("\n");
 			break;
 
 		case K_STRIKETHROUGH:
-			out.push('<del>');
+			out.push("<del>");
 			_children(c, out);
-			out.push('</del>');
+			out.push("</del>");
 			break;
 
 		case K_SUPERSCRIPT:
-			out.push('<sup>');
+			out.push("<sup>");
 			_children(c, out);
-			out.push('</sup>');
+			out.push("</sup>");
 			break;
 
 		case K_SUBSCRIPT:
-			out.push('<sub>');
+			out.push("<sub>");
 			_children(c, out);
-			out.push('</sub>');
+			out.push("</sub>");
 			break;
 
 		case K_HTML: {
@@ -268,54 +268,54 @@ function _node(c: Cursor, out: string[]): void {
 				| Record<string, string | boolean>
 				| undefined;
 
-			out.push('<', tag);
+			out.push("<", tag);
 			if (htmlAttrs) {
 				for (const k in htmlAttrs) {
 					const v = htmlAttrs[k];
 					if (v === true) {
-						out.push(' ', k);
+						out.push(" ", k);
 					} else {
-						out.push(' ', k, '="', escape(v as string), '"');
+						out.push(" ", k, '="', escape(v as string), '"');
 					}
 				}
 			}
 			if (meta?.self_closing && HTML_VOID_ELEMENTS.has(tag.toLowerCase())) {
-				out.push(' />');
+				out.push(" />");
 			} else {
-				out.push('>');
-				// Raw-text elements: parser stores content as value range on
-				// the html node itself (no child nodes). Emit unescaped — the
-				// browser does not parse script/style bodies as HTML.
-				if (tag === 'script' || tag === 'style') {
+				out.push(">");
+				// raw-text elements: parser stores content as value range on
+				// the html node itself (no child nodes). emit unescaped, the
+				// browser does not parse script/style bodies as html.
+				if (tag === "script" || tag === "style") {
 					out.push(c.text());
 				} else {
 					_children(c, out);
 				}
-				out.push('</', tag, '>');
+				out.push("</", tag, ">");
 			}
 			break;
 		}
 
 		case K_HTML_COMMENT:
-			out.push('<!--', c.text(), '-->');
+			out.push("<!--", c.text(), "-->");
 			break;
 
 		case K_MUSTACHE:
-			out.push('{', c.text(), '}');
+			out.push("{", c.text(), "}");
 			break;
 
 		case K_SVELTE_TAG: {
 			const meta = c.meta();
 			const tag = meta?.tag as string;
 			const text = c.text();
-			out.push('{@', tag);
-			if (text) out.push(' ', text);
-			out.push('}');
+			out.push("{@", tag);
+			if (text) out.push(" ", text);
+			out.push("}");
 			break;
 		}
 
 		case K_SVELTE_BLOCK: {
-			// Render branches; each branch handles its own opening tag
+			// render branches; each branch handles its own opening tag
 			const blockMeta = c.meta();
 			const blockTag = blockMeta?.tag as string;
 			if (c.gotoFirstChild()) {
@@ -326,14 +326,14 @@ function _node(c: Cursor, out: string[]): void {
 						const branchTag = branchMeta?.tag as string;
 						const branchExpr = c.text();
 						if (isFirst) {
-							out.push('{#', blockTag);
-							if (branchExpr) out.push(' ', branchExpr);
-							out.push('}\n');
+							out.push("{#", blockTag);
+							if (branchExpr) out.push(" ", branchExpr);
+							out.push("}\n");
 							isFirst = false;
 						} else {
-							out.push('{:', branchTag);
-							if (branchExpr) out.push(' ', branchExpr);
-							out.push('}\n');
+							out.push("{:", branchTag);
+							if (branchExpr) out.push(" ", branchExpr);
+							out.push("}\n");
 						}
 						_children(c, out);
 					} else if (c.kind !== K_LINE_BREAK) {
@@ -342,14 +342,14 @@ function _node(c: Cursor, out: string[]): void {
 				} while (c.gotoNextSibling());
 				c.gotoParent();
 			}
-			out.push('{/', blockTag, '}');
+			out.push("{/", blockTag, "}");
 			break;
 		}
 
 		case K_TABLE:
-			out.push('<table>\n');
+			out.push("<table>\n");
 			_tableContent(c, out);
-			out.push('\n</table>');
+			out.push("\n</table>");
 			break;
 
 		case K_LINE_BREAK:
@@ -369,80 +369,80 @@ function _tableContent(c: Cursor, out: string[]): void {
 	if (!c.gotoFirstChild()) return;
 	do {
 		if (c.kind === K_TABLE_HEADER) {
-			out.push('<thead>\n<tr>\n');
-			_tableCells(c, 'th', alignments, out);
-			out.push('</tr>\n</thead>\n');
+			out.push("<thead>\n<tr>\n");
+			_tableCells(c, "th", alignments, out);
+			out.push("</tr>\n</thead>\n");
 		} else if (c.kind === K_TABLE_ROW) {
 			if (!inBody) {
-				out.push('<tbody>\n');
+				out.push("<tbody>\n");
 				inBody = true;
 			}
-			out.push('<tr>\n');
-			_tableCells(c, 'td', alignments, out);
-			out.push('</tr>\n');
+			out.push("<tr>\n");
+			_tableCells(c, "td", alignments, out);
+			out.push("</tr>\n");
 		}
 	} while (c.gotoNextSibling());
 	c.gotoParent();
 
-	if (inBody) out.push('</tbody>');
+	if (inBody) out.push("</tbody>");
 }
 
 function _tableCells(
 	c: Cursor,
 	tag: string,
 	alignments: string[],
-	out: string[]
+	out: string[],
 ): void {
 	let col = 0;
 	if (!c.gotoFirstChild()) return;
 	do {
 		if (c.kind === K_TABLE_CELL) {
 			const align = alignments[col];
-			if (align && align !== 'none') {
-				out.push('<', tag, ' align="', align, '">');
+			if (align && align !== "none") {
+				out.push("<", tag, ' align="', align, '">');
 			} else {
-				out.push('<', tag, '>');
+				out.push("<", tag, ">");
 			}
 			_children(c, out);
-			out.push('</', tag, '>\n');
+			out.push("</", tag, ">\n");
 			col++;
 		}
 	} while (c.gotoNextSibling());
 	c.gotoParent();
 }
 
-// ── Internal helpers ─────────────────────────────────────────
+//  internal helpers
 
-/** Render the node at the current cursor position to HTML string. */
+/** render the node at the current cursor position to html string. */
 function _renderBlock(cursor: Cursor): string {
 	const out: string[] = [];
 	_node(cursor, out);
-	return out.join('');
+	return out.join("");
 }
 
-// ── Block entry ──────────────────────────────────────────────
+//  block entry
 
 export interface CursorBlockEntry {
-	/** Node buffer index — use as keyed each key. */
+	/** node buffer index, use as keyed each key. */
 	idx: number;
-	/** Rendered HTML string. */
+	/** rendered html string. */
 	html: string;
 }
 
-// ── CursorHTMLRenderer (incremental) ────────────────────────
+//  cursorhtmlrenderer (incremental)
 
 /**
- * Incremental HTML renderer using the cursor over SOA buffers.
+ * incremental html renderer using the cursor over soa buffers.
  *
- * Same caching strategy as HTMLRenderer: walks root's children,
+ * same caching strategy as htmlrenderer: walks root's children,
  * skips closed+cached blocks, re-renders only open blocks.
- * But uses cursor traversal — zero per-node allocations per render.
+ * but uses cursor traversal, zero per-node allocations per render.
  *
- * Usage:
+ * usage:
  *
- *   const tree = new TreeBuilder(128);
- *   const parser = new PFMParser(tree);
- *   const renderer = new CursorHTMLRenderer();
+ *   const tree = new treebuilder(128);
+ *   const parser = new pfmparser(tree);
+ *   const renderer = new cursorhtmlrenderer();
  *
  *   parser.init();
  *   parser.feed(chunk);
@@ -451,8 +451,8 @@ export interface CursorBlockEntry {
  */
 export class CursorHTMLRenderer {
 	blocks: CursorBlockEntry[] = [];
-	/** Full document HTML (available after update, whether cached or not). */
-	html = '';
+	/** full document html (available after update, whether cached or not). */
+	html = "";
 	private closed: Set<number> | null = null;
 	private cursor: Cursor | null = null;
 	private cache: boolean;
@@ -463,7 +463,7 @@ export class CursorHTMLRenderer {
 	}
 
 	update(buf: node_buffer, source: string): CursorBlockEntry[] {
-		// Reuse or create cursor
+		// reuse or create cursor
 		if (!this.cursor) {
 			this.cursor = new Cursor(buf, source);
 		} else {
@@ -472,15 +472,15 @@ export class CursorHTMLRenderer {
 		const c = this.cursor;
 		c.reset();
 
-		// No caching — single-pass full render
+		// no caching, single-pass full render
 		if (!this.cache) {
 			const out: string[] = [];
 			_node(c, out);
-			this.html = out.join('');
+			this.html = out.join("");
 			return this.blocks;
 		}
 
-		// Cached block-level rendering
+		// cached block-level rendering
 		if (!c.gotoFirstChild()) return this.blocks;
 
 		let blockIdx = 0;
@@ -501,13 +501,13 @@ export class CursorHTMLRenderer {
 		} while (c.gotoNextSibling());
 
 		c.gotoParent();
-		this.html = this.blocks.map((b) => b.html).join('');
+		this.html = this.blocks.map((b) => b.html).join("");
 		return this.blocks;
 	}
 
 	reset(): void {
 		this.blocks.length = 0;
 		this.closed?.clear();
-		this.html = '';
+		this.html = "";
 	}
 }

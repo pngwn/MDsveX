@@ -21,7 +21,7 @@ const load_fixture = (id: string): string =>
 
 describe('backslash escapes', () => {
 	// All ASCII punctuation escaped: \!\"\#\$\%...
-	test('pfm example 12 — all escaped ASCII punctuation is text', () => {
+	test('pfm example 12, all escaped ASCII punctuation is text', () => {
 		const input = load_fixture('12');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -52,7 +52,7 @@ describe('backslash escapes', () => {
 	});
 
 	// Backslash before non-ASCII-punctuation: \->\A\a\ \3\φ\«
-	test('pfm example 13 — non-punctuation escapes are regular text', () => {
+	test('pfm example 13, non-punctuation escapes are regular text', () => {
 		const input = load_fixture('13');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -68,7 +68,7 @@ describe('backslash escapes', () => {
 	});
 
 	// Specific escaped characters preventing special behavior
-	test('pfm example 14 — \\* prevents emphasis', () => {
+	test('pfm example 14, \\* prevents emphasis', () => {
 		// \*not emphasized*
 		const input = '\\*not emphasized*\n';
 		const { nodes } = parse_markdown_svelte(input);
@@ -77,13 +77,13 @@ describe('backslash escapes', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 
-		// Should NOT have emphasis — all children should be text
+		// Should NOT have emphasis, all children should be text
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
 		expect(kinds).not.toContain('strong_emphasis');
 		expect(kinds).not.toContain('emphasis');
 	});
 
-	test('pfm example 14 — \\< prevents autolink', () => {
+	test('pfm example 14, \\< prevents autolink', () => {
 		// \<br/> not a tag
 		const input = '\\<br/> not a tag\n';
 		const { nodes } = parse_markdown_svelte(input);
@@ -104,7 +104,7 @@ describe('backslash escapes', () => {
 		expect(combined).toBe('<br/> not a tag');
 	});
 
-	test('pfm example 14 — \\[ prevents link syntax', () => {
+	test('pfm example 14, \\[ prevents link syntax', () => {
 		const input = '\\[not a link](/foo)\n';
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -116,7 +116,7 @@ describe('backslash escapes', () => {
 		expect(kinds).not.toContain('link');
 	});
 
-	test('pfm example 14 — \\` prevents code span', () => {
+	test('pfm example 14, \\` prevents code span', () => {
 		const input = '\\`not code`\n';
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -129,7 +129,7 @@ describe('backslash escapes', () => {
 		expect(kinds).not.toContain('code_span');
 	});
 
-	test('pfm example 14 — \\# prevents heading', () => {
+	test('pfm example 14, \\# prevents heading', () => {
 		const input = '\\# not a heading\n';
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -139,7 +139,7 @@ describe('backslash escapes', () => {
 		expect(paragraph.kind).toBe('paragraph');
 	});
 
-	test('pfm example 14 — \\* prevents thematic break', () => {
+	test('pfm example 14, \\* prevents thematic break', () => {
 		const input = '\\* not a list\n';
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -150,7 +150,7 @@ describe('backslash escapes', () => {
 	});
 
 	// Double backslash: \\*emphasis*
-	test('pfm example 15 — double backslash', () => {
+	test('pfm example 15, double backslash', () => {
 		const input = load_fixture('15');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -159,13 +159,13 @@ describe('backslash escapes', () => {
 		expect(paragraph.kind).toBe('paragraph');
 
 		// \\ escapes the backslash, producing literal "\".
-		// Then *emphasis* follows — \ is punctuation so * is left-flanking.
+		// Then *emphasis* follows, \ is punctuation so * is left-flanking.
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
 		expect(kinds).toContain('strong_emphasis');
 	});
 
 	// Backslash before newline: foo\<newline>bar
-	test('pfm example 16 — backslash before newline', () => {
+	test('pfm example 16, backslash before newline', () => {
 		const input = load_fixture('16');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -184,7 +184,7 @@ describe('backslash escapes', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 
-		// Inside code span, backslashes are literal — not escapes
+		// Inside code span, backslashes are literal, not escapes
 		const code = paragraph.children
 			.map((i) => nodes.get_node(i))
 			.find((n) => n.kind === 'code_span');
@@ -192,7 +192,7 @@ describe('backslash escapes', () => {
 	});
 
 	// Indented line with escapes: "    \[\]"
-	test('pfm example 18 — indented escaped brackets', () => {
+	test('pfm example 18, indented escaped brackets', () => {
 		const input = load_fixture('18');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -211,7 +211,7 @@ describe('backslash escapes', () => {
 		expect(paragraph.kind).toBe('paragraph');
 	});
 
-	// HTML tag with backslash: <a href="/bar\/)"> — block-level HTML
+	// HTML tag with backslash: <a href="/bar\/)">, block-level HTML
 	test('pfm example 21', () => {
 		const input = load_fixture('21');
 		const { nodes } = parse_markdown_svelte(input);
@@ -226,7 +226,7 @@ describe('backslash escapes', () => {
 
 	// Link syntax with backslash: [foo](/bar\* "ti\*tle")
 	// Backslashes in link URL/title are preserved
-	test('pfm example 22 — escaped chars in link syntax', () => {
+	test('pfm example 22, escaped chars in link syntax', () => {
 		const input = load_fixture('22');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -241,7 +241,7 @@ describe('backslash escapes', () => {
 	});
 
 	// Reference definition with backslash: [foo]\n\n[foo]: /bar\* "ti\*tle"
-	test('pfm example 23 — escaped chars in reference definition (text in PFM)', () => {
+	test('pfm example 23, escaped chars in reference definition (text in PFM)', () => {
 		const input = load_fixture('23');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -251,7 +251,7 @@ describe('backslash escapes', () => {
 	});
 
 	// Code fence with backslash in info string: ``` foo\+bar
-	test('pfm example 24 — backslash in code fence info string', () => {
+	test('pfm example 24, backslash in code fence info string', () => {
 		const input = load_fixture('24');
 		const { nodes } = parse_markdown_svelte(input);
 

@@ -81,7 +81,7 @@ describe('Thematic breaks', () => {
 		expect(breaks.length).toBe(1);
 	});
 
-	// PFM: *** after paragraph with indentation — paragraph continuation with inline markers
+	// PFM: *** after paragraph with indentation, paragraph continuation with inline markers
 	test('pfm example 49 indented markers inside paragraph as continuation', () => {
 		const input = load_fixture('49');
 		const { nodes } = parse_markdown_svelte(input);

@@ -1,5 +1,5 @@
-import { redirect } from '@sveltejs/kit';
-import { SECTIONS } from '$lib/snippets';
+import { redirect } from "@sveltejs/kit";
+import { SECTIONS } from "$lib/snippets";
 
 export function load() {
 	const first = SECTIONS[0];

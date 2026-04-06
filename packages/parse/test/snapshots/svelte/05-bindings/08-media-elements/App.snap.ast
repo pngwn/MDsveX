@@ -2,19 +2,21 @@ root
   html tag="script"
   line_break
   line_break
-  html tag="style"
-  line_break
-  line_break
   html tag="h1"
     paragraph
       text "Caminandes: Llamigos"
   line_break
   html tag="p"
+    line_break
     paragraph
       text "From "
-      html tag="a" href="https://cloud.blender.org/open-projects"
-        text "Blender Open Projects"
-      text ". CC-BY"
+      text tag="a" href="https://cloud.blender.org/open-projects" "<a "
+      text "Blender Open Projects"
+      text "</a"
+      line_break
+      paragraph
+        text ">. CC-BY"
+        soft_break
   line_break
   line_break
   html tag="div"
@@ -24,7 +26,7 @@ root
     line_break
     html tag="div" class="controls" style="opacity: {duration && showControls ? 1 : 0}"
       line_break
-      html tag="progress" value="{(time / duration) || 0}" self_closing=true
+      html tag="progress" value="time / duration || 0" self_closing=true
       line_break
       line_break
       html tag="div" class="info"
@@ -45,3 +47,7 @@ root
         line_break
       line_break
     line_break
+  line_break
+  line_break
+  html tag="style"
+  line_break

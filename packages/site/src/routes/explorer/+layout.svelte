@@ -1,8 +1,8 @@
 <script lang="ts">
-	import '../../app.css';
-	// import '../../highlight-styles.css';
+import "../../app.css";
+// import '../../highlight-styles.css';
 
-	let { children } = $props();
+let { children } = $props();
 </script>
 
 <div class="app">

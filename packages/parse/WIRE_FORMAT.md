@@ -1,6 +1,6 @@
 # PFM Wire Format
 
-The PFM parser emits a stream of **opcodes** that describe a markdown document as it is parsed. This wire format is designed for incremental/streaming rendering — a client can start building UI immediately and update it as more content arrives.
+The PFM parser emits a stream of **opcodes** that describe a markdown document as it is parsed. This wire format is designed for incremental/streaming rendering, a client can start building UI immediately and update it as more content arrives.
 
 This guide explains how to consume the wire format in any language (Swift, Kotlin, Rust, etc.) to build a document tree and render it.
 
@@ -25,13 +25,13 @@ In streaming mode, one batch is produced per `feed()` call. The client applies e
 
 ## Opcodes
 
-### S — Schema
+### S, Schema
 
 ```
 ["S", kinds: string[]]
 ```
 
-Sent once as the first opcode in the first batch. Maps numeric kind codes to human-readable names. Store this array — you'll use it to look up kind names from the numeric codes in `O` opcodes.
+Sent once as the first opcode in the first batch. Maps numeric kind codes to human-readable names. Store this array, you'll use it to look up kind names from the numeric codes in `O` opcodes.
 
 ```json
 [
@@ -66,7 +66,7 @@ Sent once as the first opcode in the first batch. Maps numeric kind codes to hum
 ]
 ```
 
-### O — Open
+### O, Open
 
 ```
 ["O", id: int, kind: int, parent: int, pending: int, extra: int]
@@ -82,15 +82,15 @@ Creates a new node and appends it to the parent's content.
 | `pending` | `1` if speculative (may be revoked), `0` if committed.                                                       |
 | `extra`   | Kind-specific value. For headings: the depth (1–6). For code fences: the backtick count. `0` for most kinds. |
 
-### C — Close
+### C, Close
 
 ```
 ["C", id: int]
 ```
 
-Finalizes a node. After close, the node's content will not change. If the node was pending, close implicitly commits it. Use this signal to cache rendered output — closed blocks never need re-rendering.
+Finalizes a node. After close, the node's content will not change. If the node was pending, close implicitly commits it. Use this signal to cache rendered output, closed blocks never need re-rendering.
 
-### T — Text
+### T, Text
 
 ```
 ["T", id: int, content: string]
@@ -98,9 +98,9 @@ Finalizes a node. After close, the node's content will not change. If the node w
 
 Appends text to a node's content. Multiple `T` opcodes for the same node should be concatenated. If the last item in the node's content is already a string, append to it. Otherwise, push a new string entry.
 
-Text is always resolved to strings on the wire — the client never sees byte offsets or needs the source markdown.
+Text is always resolved to strings on the wire, the client never sees byte offsets or needs the source markdown.
 
-### A — Attr
+### A, Attr
 
 ```
 ["A", id: int, key: string, value: any]
@@ -119,7 +119,7 @@ Sets an attribute on a node. Common attributes:
 | `list`       | `start`      | `number`   | Start number for ordered lists                                     |
 | `table`      | `alignments` | `string[]` | Per-column alignment: `"left"`, `"center"`, `"right"`, or `"none"` |
 
-### R — Revoke
+### R, Revoke
 
 ```
 ["R", id: int, delimiter: string]
@@ -136,7 +136,7 @@ When a node is revoked:
 
 **Example:** The parser sees `_` and opens a pending emphasis node. Later, it determines the `_` is not closed, so it revokes the emphasis. The `_` character becomes literal text in the parent, and any children of the emphasis are moved up.
 
-### X — Clear
+### X, Clear
 
 ```
 ["X", id: int]
@@ -204,15 +204,15 @@ These appear as direct children of root:
 
 | Kind             | Extra          | Attrs              | Content               | Notes                                                  |
 | ---------------- | -------------- | ------------------ | --------------------- | ------------------------------------------------------ |
-| `heading`        | depth (1–6)    | —                  | inline content        | Render as `<h1>`–`<h6>`                                |
-| `paragraph`      | —              | —                  | inline content        |                                                        |
+| `heading`        | depth (1–6)    | ,                  | inline content        | Render as `<h1>`–`<h6>`                                |
+| `paragraph`      | ,              | ,                  | inline content        |                                                        |
 | `code_fence`     | backtick count | `info`: language   | raw text              | Content is raw (no inline parsing)                     |
-| `block_quote`    | —              | —                  | block children        | Contains paragraphs, etc.                              |
-| `list`           | —              | `ordered`, `start` | list_item children    |                                                        |
-| `list_item`      | —              | —                  | block/inline content  |                                                        |
-| `thematic_break` | —              | —                  | empty                 | Render as `<hr>`                                       |
-| `table`          | —              | `alignments[]`     | header + row children |                                                        |
-| `line_break`     | —              | —                  | —                     | Structural separator between blocks; skip in rendering |
+| `block_quote`    | ,              | ,                  | block children        | Contains paragraphs, etc.                              |
+| `list`           | ,              | `ordered`, `start` | list_item children    |                                                        |
+| `list_item`      | ,              | ,                  | block/inline content  |                                                        |
+| `thematic_break` | ,              | ,                  | empty                 | Render as `<hr>`                                       |
+| `table`          | ,              | `alignments[]`     | header + row children |                                                        |
+| `line_break`     | ,              | ,                  | ,                     | Structural separator between blocks; skip in rendering |
 
 ### Inline nodes
 
@@ -220,16 +220,16 @@ These appear inside paragraphs, headings, list items, and other inline container
 
 | Kind              | Content        | Attrs           | Notes                                               |
 | ----------------- | -------------- | --------------- | --------------------------------------------------- |
-| `emphasis`        | inline content | —               | `_text_` -> `<em>`                                  |
-| `strong_emphasis` | inline content | —               | `*text*` -> `<strong>`                              |
-| `strikethrough`   | inline content | —               | `~~text~~` -> `<del>`                               |
-| `superscript`     | inline content | —               | `^text^` -> `<sup>`                                 |
-| `subscript`       | inline content | —               | `~text~` -> `<sub>`                                 |
-| `code_span`       | raw text       | —               | `` `code` `` -> `<code>` (no inline parsing inside) |
+| `emphasis`        | inline content | ,               | `_text_` -> `<em>`                                  |
+| `strong_emphasis` | inline content | ,               | `*text*` -> `<strong>`                              |
+| `strikethrough`   | inline content | ,               | `~~text~~` -> `<del>`                               |
+| `superscript`     | inline content | ,               | `^text^` -> `<sup>`                                 |
+| `subscript`       | inline content | ,               | `~text~` -> `<sub>`                                 |
+| `code_span`       | raw text       | ,               | `` `code` `` -> `<code>` (no inline parsing inside) |
 | `link`            | inline content | `href`, `title` | `[text](url "title")`                               |
-| `image`           | alt text       | `src`, `title`  | `![alt](src "title")` — content is the alt text     |
-| `hard_break`      | —              | —               | `\` at end of line -> `<br>`                        |
-| `soft_break`      | —              | —               | Line break within a paragraph -> space or `\n`      |
+| `image`           | alt text       | `src`, `title`  | `![alt](src "title")`, content is the alt text      |
+| `hard_break`      | ,              | ,               | `\` at end of line -> `<br>`                        |
+| `soft_break`      | ,              | ,               | Line break within a paragraph -> space or `\n`      |
 
 ### Table structure
 
@@ -266,10 +266,10 @@ Given this markdown streamed in two chunks:
 ]
 ```
 
-1. `S` — Store the schema.
-2. `O 0` — Create root node (kind=0 -> "root", parent=-1).
-3. `O 1` — Create heading node (kind=3 -> "heading", parent=0, extra=1 -> h1).
-4. `T 1` — Append "Hel" to node 1's content.
+1. `S`, Store the schema.
+2. `O 0`, Create root node (kind=0 -> "root", parent=-1).
+3. `O 1`, Create heading node (kind=3 -> "heading", parent=0, extra=1 -> h1).
+4. `T 1`, Append "Hel" to node 1's content.
 
 Tree after batch 1:
 
@@ -287,8 +287,8 @@ root
 ]
 ```
 
-1. `T 1` — Append "lo" to node 1 -> content is now "Hello".
-2. `C 1` — Close node 1. It's finalized.
+1. `T 1`, Append "lo" to node 1 -> content is now "Hello".
+2. `C 1`, Close node 1. It's finalized.
 
 Tree after batch 2:
 
@@ -522,7 +522,7 @@ function onEnd() {
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `set_source(source)` | Set the **full accumulated source** string. Must be called before each `feed()` and before `finish()`. The emitter uses this to resolve byte offsets to text content. |
 | `flush()`            | Return all accumulated opcodes as a batch (array of tuples) and clear the internal buffer. The first flush includes the `S` (schema) opcode.                          |
-| `flush_json()`       | Convenience — calls `flush()` and returns `JSON.stringify(result)`.                                                                                                   |
+| `flush_json()`       | Convenience, calls `flush()` and returns `JSON.stringify(result)`.                                                                                                    |
 | `reset()`            | Reset all state for reuse with a new parse.                                                                                                                           |
 
 ### How stalling works
@@ -539,7 +539,7 @@ The `WireEmitter` uses the parser's cursor position (reported via `cursor()`) to
 
 ### Eager text emission
 
-The `WireEmitter.flush()` method does more than just return buffered opcodes — it also eagerly emits text for nodes that are still being streamed:
+The `WireEmitter.flush()` method does more than just return buffered opcodes, it also eagerly emits text for nodes that are still being streamed:
 
 - **For most nodes:** Text is emitted up to the parser cursor position. This is the boundary of confirmed content.
 - **For code fences:** Text is emitted up to the end of the fed source, except the last line is held back if it starts with backticks (potential closing fence).
@@ -670,14 +670,14 @@ const source = new EventSource('/api/parse');
 source.onmessage = (event) => {
 	const batch = JSON.parse(event.data);
 	doc.apply(batch);
-	// doc.root is the live tree — render it
+	// doc.root is the live tree, render it
 	updateUI(doc);
 };
 ```
 
 ## Design Principles
 
-1. **Optimistic rendering.** Speculative nodes (pending=1) are sent immediately so the client can render them. Revocation is the rare path — most pending nodes get committed via close.
+1. **Optimistic rendering.** Speculative nodes (pending=1) are sent immediately so the client can render them. Revocation is the rare path, most pending nodes get committed via close.
 
 2. **Text nodes are invisible.** The parser uses internal text nodes (kind=1, "text"), but these are suppressed on the wire. Their content is flattened into `T` opcodes on the parent. The client never sees text nodes.
 

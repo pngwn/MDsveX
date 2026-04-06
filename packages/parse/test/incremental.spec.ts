@@ -7,7 +7,7 @@ import type { node_buffer } from '../src/utils';
 import fs from 'node:fs';
 import path from 'node:path';
 
-// ── Helpers ──────────────────────────────────────────────────
+//  Helpers
 
 type Op =
 	| { op: 'open'; id: number; kind: string; pending: boolean }
@@ -17,35 +17,69 @@ type Op =
 
 class OpRecorder implements Emitter {
 	ops: Op[] = [];
-	open(id: number, kind: number, _s: number, _p: number, _e: number, pending: boolean) {
+	open(
+		id: number,
+		kind: number,
+		_s: number,
+		_p: number,
+		_e: number,
+		pending: boolean
+	) {
 		this.ops.push({ op: 'open', id, kind: kind_to_string(kind), pending });
 	}
-	close(id: number, _end: number) { this.ops.push({ op: 'close', id }); }
+	close(id: number, _end: number) {
+		this.ops.push({ op: 'close', id });
+	}
 	text(_p: number, _s: number, _e: number) {}
-	attr(id: number, key: string, _v: any) { this.ops.push({ op: 'attr', id, key }); }
-	set_value_start(id: number, _pos: number) { this.ops.push({ op: 'attr', id, key: 'value_start' }); }
-	set_value_end(id: number, _pos: number) { this.ops.push({ op: 'attr', id, key: 'value_end' }); }
-	revoke(id: number) { this.ops.push({ op: 'revoke', id }); }
+	attr(id: number, key: string, _v: any) {
+		this.ops.push({ op: 'attr', id, key });
+	}
+	set_value_start(id: number, _pos: number) {
+		this.ops.push({ op: 'attr', id, key: 'value_start' });
+	}
+	set_value_end(id: number, _pos: number) {
+		this.ops.push({ op: 'attr', id, key: 'value_end' });
+	}
+	revoke(id: number) {
+		this.ops.push({ op: 'revoke', id });
+	}
 	cursor(_pos: number) {}
 }
 
 function tree_diff(
-	a: node_buffer, b: node_buffer, _source: string,
-	a_idx = 0, b_idx = 0, path_str = 'root',
+	a: node_buffer,
+	b: node_buffer,
+	_source: string,
+	a_idx = 0,
+	b_idx = 0,
+	path_str = 'root'
 ): string[] {
 	const an = a.get_node(a_idx);
 	const bn = b.get_node(b_idx);
 	const diffs: string[] = [];
-	if (an.kind !== bn.kind) diffs.push(`${path_str}: kind ${an.kind} vs ${bn.kind}`);
-	if (an.start !== bn.start) diffs.push(`${path_str}: start ${an.start} vs ${bn.start}`);
+	if (an.kind !== bn.kind)
+		diffs.push(`${path_str}: kind ${an.kind} vs ${bn.kind}`);
+	if (an.start !== bn.start)
+		diffs.push(`${path_str}: start ${an.start} vs ${bn.start}`);
 	if (an.end !== bn.end) diffs.push(`${path_str}: end ${an.end} vs ${bn.end}`);
 	if (an.value[0] !== bn.value[0] || an.value[1] !== bn.value[1])
 		diffs.push(`${path_str}: value [${an.value}] vs [${bn.value}]`);
 	if (an.children.length !== bn.children.length)
-		diffs.push(`${path_str}: children ${an.children.length} vs ${bn.children.length}`);
+		diffs.push(
+			`${path_str}: children ${an.children.length} vs ${bn.children.length}`
+		);
 	const min = Math.min(an.children.length, bn.children.length);
 	for (let i = 0; i < min; i++)
-		diffs.push(...tree_diff(a, b, _source, an.children[i], bn.children[i], `${path_str}[${i}]`));
+		diffs.push(
+			...tree_diff(
+				a,
+				b,
+				_source,
+				an.children[i],
+				bn.children[i],
+				`${path_str}[${i}]`
+			)
+		);
 	return diffs;
 }
 
@@ -64,7 +98,7 @@ function parse_incremental(source: string, chunk_size: number): node_buffer {
 	return tree.get_buffer();
 }
 
-// ── Tests ────────────────────────────────────────────────────
+//  Tests
 
 describe('Incremental parsing', () => {
 	describe('eager opcode emission', () => {
@@ -73,7 +107,9 @@ describe('Incremental parsing', () => {
 			const p = new PFMParser(rec);
 			p.init();
 			p.feed('Hello world');
-			const kinds = rec.ops.filter(o => o.op === 'open').map(o => (o as any).kind);
+			const kinds = rec.ops
+				.filter((o) => o.op === 'open')
+				.map((o) => (o as any).kind);
 			expect(kinds).toContain('root');
 			expect(kinds).toContain('paragraph');
 			expect(kinds).toContain('text');
@@ -84,10 +120,10 @@ describe('Incremental parsing', () => {
 			const p = new PFMParser(rec);
 			p.init();
 			p.feed('hello *wor');
-			const opens = rec.ops.filter(o => o.op === 'open');
-			const kinds = opens.map(o => (o as any).kind);
+			const opens = rec.ops.filter((o) => o.op === 'open');
+			const kinds = opens.map((o) => (o as any).kind);
 			expect(kinds).toContain('strong_emphasis');
-			const emph = opens.find(o => (o as any).kind === 'strong_emphasis');
+			const emph = opens.find((o) => (o as any).kind === 'strong_emphasis');
 			expect((emph as any).pending).toBe(true);
 		});
 
@@ -96,7 +132,9 @@ describe('Incremental parsing', () => {
 			const p = new PFMParser(rec);
 			p.init();
 			p.feed('hello ~~wor');
-			const kinds = rec.ops.filter(o => o.op === 'open').map(o => (o as any).kind);
+			const kinds = rec.ops
+				.filter((o) => o.op === 'open')
+				.map((o) => (o as any).kind);
 			expect(kinds).toContain('strikethrough');
 		});
 
@@ -105,7 +143,9 @@ describe('Incremental parsing', () => {
 			const p = new PFMParser(rec);
 			p.init();
 			p.feed('x^2');
-			const kinds = rec.ops.filter(o => o.op === 'open').map(o => (o as any).kind);
+			const kinds = rec.ops
+				.filter((o) => o.op === 'open')
+				.map((o) => (o as any).kind);
 			expect(kinds).toContain('superscript');
 		});
 
@@ -114,16 +154,18 @@ describe('Incremental parsing', () => {
 			const p = new PFMParser(rec);
 			p.init();
 			p.feed('```js\ncode here\n');
-			const opens = rec.ops.filter(o => o.op === 'open');
-			const fence_open = opens.find(o => (o as any).kind === 'code_fence') as any;
+			const opens = rec.ops.filter((o) => o.op === 'open');
+			const fence_open = opens.find(
+				(o) => (o as any).kind === 'code_fence'
+			) as any;
 			expect(fence_open).toBeDefined();
 
-			const closes = rec.ops.filter(o => o.op === 'close');
-			expect(closes.some(o => (o as any).id === fence_open.id)).toBe(false);
+			const closes = rec.ops.filter((o) => o.op === 'close');
+			expect(closes.some((o) => (o as any).id === fence_open.id)).toBe(false);
 
 			p.feed('```\n');
-			const closes2 = rec.ops.filter(o => o.op === 'close');
-			expect(closes2.some(o => (o as any).id === fence_open.id)).toBe(true);
+			const closes2 = rec.ops.filter((o) => o.op === 'close');
+			expect(closes2.some((o) => (o as any).id === fence_open.id)).toBe(true);
 		});
 
 		it('revokes unclosed emphasis on finish', () => {
@@ -132,11 +174,13 @@ describe('Incremental parsing', () => {
 			p.init();
 			p.feed('hello *friends');
 			// emphasis should be open
-			const emph = rec.ops.find(o => o.op === 'open' && (o as any).kind === 'strong_emphasis');
+			const emph = rec.ops.find(
+				(o) => o.op === 'open' && (o as any).kind === 'strong_emphasis'
+			);
 			expect(emph).toBeDefined();
 
 			p.finish();
-			const revokes = rec.ops.filter(o => o.op === 'revoke');
+			const revokes = rec.ops.filter((o) => o.op === 'revoke');
 			expect(revokes.length).toBeGreaterThan(0);
 		});
 	});
@@ -203,7 +247,8 @@ describe('Incremental parsing', () => {
 	describe('chunk size equivalence', () => {
 		// Larger chunk sizes should match batch since they provide
 		// enough context for all decisions.
-		const input = '# Heading\n\nParagraph with *strong* text.\n\n```\ncode\n```\n\n- item\n';
+		const input =
+			'# Heading\n\nParagraph with *strong* text.\n\n```\ncode\n```\n\n- item\n';
 
 		for (const size of [13, 50, 9999]) {
 			it(`chunk size ${size}`, () => {
@@ -217,26 +262,32 @@ describe('Incremental parsing', () => {
 
 	describe('fixture equivalence (char-by-char)', () => {
 		const fixturesDir = path.resolve(__dirname, 'fixtures/pfm');
-		const categories = fs.readdirSync(fixturesDir, { withFileTypes: true })
-			.filter(d => d.isDirectory())
-			.map(d => d.name)
+		const categories = fs
+			.readdirSync(fixturesDir, { withFileTypes: true })
+			.filter((d) => d.isDirectory())
+			.map((d) => d.name)
 			.sort();
 
-		// Known incremental divergences — these are tracked as todos
+		// Known incremental divergences, these are tracked as todos
 		// so the suite stays green while providing a clear fix backlog.
 		// When a fix lands, the test will start passing and vitest will
-		// flag it — remove the entry to lock in the fix.
+		// flag it, remove the entry to lock in the fix.
 		const KNOWN_DIVERGENT: Set<string> = new Set([
-			'emphasis_and_strong_emphasis/448', 'emphasis_and_strong_emphasis/451',
-			'html/148', 'html/616',
-			'images/573', 'images/576', 'images/577',
+			'emphasis_and_strong_emphasis/448',
+			'emphasis_and_strong_emphasis/451',
+			'html/148',
+			'html/616',
+			'images/573',
+			'images/576',
+			'images/577',
 		]);
 
 		for (const cat of categories) {
 			describe(cat, () => {
 				const catDir = path.join(fixturesDir, cat);
-				const fixtures = fs.readdirSync(catDir)
-					.filter(f => f.endsWith('.md'))
+				const fixtures = fs
+					.readdirSync(catDir)
+					.filter((f) => f.endsWith('.md'))
 					.sort((a, b) => {
 						const na = parseInt(a, 10);
 						const nb = parseInt(b, 10);
@@ -277,8 +328,14 @@ describe('Incremental parsing', () => {
 			['multiple siblings', 'text <a>one</a> and <b>two</b> end\n'],
 			['html inside emphasis', '_<span>text</span>_\n'],
 			['markdown inside html', '<div>*strong* and _em_</div>\n'],
-			['deeply nested block', '<div>\n\n<section>\n\n<p>deep</p>\n\n</section>\n\n</div>\n'],
-			['mixed doc', '# Title\n\n<div class="note">\n\nSome *text* here.\n\n</div>\n\nAfter.\n'],
+			[
+				'deeply nested block',
+				'<div>\n\n<section>\n\n<p>deep</p>\n\n</section>\n\n</div>\n',
+			],
+			[
+				'mixed doc',
+				'# Title\n\n<div class="note">\n\nSome *text* here.\n\n</div>\n\nAfter.\n',
+			],
 		];
 
 		for (const [name, input] of html_cases) {
@@ -294,7 +351,7 @@ describe('Incremental parsing', () => {
 			});
 		}
 
-		// Byte-at-a-time feeding — the harshest incremental test
+		// Byte-at-a-time feeding, the harshest incremental test
 		for (const [name, input] of html_cases) {
 			it(`${name} (1-byte chunks)`, () => {
 				const batch = parse_batch(input);

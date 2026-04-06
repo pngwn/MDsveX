@@ -23,9 +23,7 @@ function numeric_sort(a: string, b: string): number {
 	return a.localeCompare(b);
 }
 
-// ---------------------------------------------------------------------------
 // 1. Markdown fixtures
-// ---------------------------------------------------------------------------
 
 describe('markdown fixtures', () => {
 	const dir = join(FIXTURE_DIR, 'markdown');
@@ -46,9 +44,7 @@ describe('markdown fixtures', () => {
 	}
 });
 
-// ---------------------------------------------------------------------------
 // 2. Hybrid fixtures
-// ---------------------------------------------------------------------------
 
 describe('hybrid fixtures', () => {
 	const dir = join(FIXTURE_DIR, 'hybrid');
@@ -63,14 +59,13 @@ describe('hybrid fixtures', () => {
 			const ast = snapshot_for(input);
 			await expect(ast).toMatchFileSnapshot(
 				join(SNAPSHOT_DIR, 'hybrid', `${name}.snap.ast`),
-				`Input: \n${input}\n\n${ast}`			);
+				`Input: \n${input}\n\n${ast}`
+			);
 		});
 	}
 });
 
-// ---------------------------------------------------------------------------
 // 3. PFM-tests fixtures (implemented categories only)
-// ---------------------------------------------------------------------------
 
 const PFM_CATEGORIES = [
 	'atx_headings',
@@ -118,16 +113,15 @@ describe('pfm-tests fixtures', () => {
 					const ast = snapshot_for(input);
 					await expect(ast).toMatchFileSnapshot(
 						join(SNAPSHOT_DIR, 'pfm', category, `${id}.snap.ast`),
-						`Input: \n${input}\n\n${ast}`					);
+						`Input: \n${input}\n\n${ast}`
+					);
 				});
 			}
 		});
 	}
 });
 
-// ---------------------------------------------------------------------------
 // 4. Svelte fixtures
-// ---------------------------------------------------------------------------
 
 function find_svelte_files(dir: string, base: string = ''): string[] {
 	const entries = readdirSync(dir, { withFileTypes: true });
@@ -154,7 +148,8 @@ describe('svelte fixtures', () => {
 			const snap_path = rel.replace(/\.svelte$/, '.snap.ast');
 			await expect(ast).toMatchFileSnapshot(
 				join(SNAPSHOT_DIR, 'svelte', snap_path),
-				`Input: \n${input}\n\n${ast}`			);
+				`Input: \n${input}\n\n${ast}`
+			);
 		});
 	}
 });

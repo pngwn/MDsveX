@@ -364,7 +364,9 @@ describe('code spans', () => {
 		expect(code_span.value).toEqual([1, 5]);
 
 		// Remaining "bar`" is text (may be split by backtick detection)
-		const rest = paragraph.children.slice(1).map((i: number) => nodes.get_node(i));
+		const rest = paragraph.children
+			.slice(1)
+			.map((i: number) => nodes.get_node(i));
 		expect(rest.every((c: any) => c.kind === 'text')).toBe(true);
 	});
 
@@ -461,7 +463,7 @@ describe('code spans', () => {
 		expect(paragraph.kind).toBe('paragraph');
 	});
 
-	// HTML tag containing backtick: <a href="`" />` — rendered as html
+	// HTML tag containing backtick: <a href="`" />`, rendered as html
 	test('pfm example 344', () => {
 		const input = load_fixture('344');
 		const { nodes } = parse_markdown_svelte(input);
@@ -497,11 +499,8 @@ describe('code spans', () => {
 	});
 
 	test('pfm example 347', () => {
-		// Load raw (no trimEnd) — this is a code fence test that needs the trailing newline
-		const input = readFileSync(
-			resolve(fixtures_root, '347.md'),
-			'utf8'
-		);
+		// Load raw (no trimEnd), this is a code fence test that needs the trailing newline
+		const input = readFileSync(resolve(fixtures_root, '347.md'), 'utf8');
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();

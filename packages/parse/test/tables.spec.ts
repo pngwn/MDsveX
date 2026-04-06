@@ -19,7 +19,11 @@ function get_children(nodes: node_buffer, index: number) {
  * Get the text content of a table cell by reading its child text node's value.
  * Returns empty string if the cell has no children.
  */
-function cell_text(nodes: node_buffer, cell_index: number, source: string): string {
+function cell_text(
+	nodes: node_buffer,
+	cell_index: number,
+	source: string
+): string {
 	const children = get_children(nodes, cell_index);
 	if (children.length === 0) return '';
 	return children
@@ -74,7 +78,8 @@ describe('Tables (GFM)', () => {
 	});
 
 	test('table with alignment', () => {
-		const input = '| left | center | right |\n| :--- | :---: | ---: |\n| a | b | c |\n';
+		const input =
+			'| left | center | right |\n| :--- | :---: | ---: |\n| a | b | c |\n';
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
 
@@ -183,7 +188,10 @@ describe('Tables (GFM)', () => {
 		const table = children[0];
 		expect(table.metadata.col_count).toBe(2);
 
-		const header_cells = get_children(nodes, get_children(nodes, table.index)[0].index);
+		const header_cells = get_children(
+			nodes,
+			get_children(nodes, table.index)[0].index
+		);
 		expect(header_cells.length).toBe(2);
 		// First cell contains the escaped pipe (backslash removed)
 		expect(cell_text(nodes, header_cells[0].index, input)).toBe('a | b');
@@ -203,7 +211,12 @@ describe('Tables (GFM)', () => {
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
 
-		expect(children[0].metadata.alignments).toEqual(['none', 'left', 'right', 'center']);
+		expect(children[0].metadata.alignments).toEqual([
+			'none',
+			'left',
+			'right',
+			'center',
+		]);
 	});
 
 	test('cell content is trimmed', () => {
@@ -212,11 +225,17 @@ describe('Tables (GFM)', () => {
 		const children = non_breaks(nodes);
 		const table = children[0];
 
-		const header_cells = get_children(nodes, get_children(nodes, table.index)[0].index);
+		const header_cells = get_children(
+			nodes,
+			get_children(nodes, table.index)[0].index
+		);
 		expect(cell_text(nodes, header_cells[0].index, input)).toBe('foo');
 		expect(cell_text(nodes, header_cells[1].index, input)).toBe('bar');
 
-		const row_cells = get_children(nodes, get_children(nodes, table.index)[1].index);
+		const row_cells = get_children(
+			nodes,
+			get_children(nodes, table.index)[1].index
+		);
 		expect(cell_text(nodes, row_cells[0].index, input)).toBe('baz');
 		expect(cell_text(nodes, row_cells[1].index, input)).toBe('bim');
 	});
@@ -231,7 +250,9 @@ describe('Tables (GFM)', () => {
 
 		expect(inc_table.kind).toBe('table');
 		expect(inc_table.metadata.col_count).toBe(batch_table.metadata.col_count);
-		expect(inc_table.metadata.alignments).toEqual(batch_table.metadata.alignments);
+		expect(inc_table.metadata.alignments).toEqual(
+			batch_table.metadata.alignments
+		);
 
 		const batch_children = get_children(batch, batch_table.index);
 		const inc_children = get_children(incremental, inc_table.index);
@@ -295,16 +316,18 @@ describe('Tables (GFM)', () => {
 		const parser = new PFMParser(tree);
 		parser.init();
 
-		// Feed the header+delimiter — table is confirmed but no data rows yet
+		// Feed the header+delimiter, table is confirmed but no data rows yet
 		parser.feed(header);
 		const after_header = tree.get_buffer();
 		const table_after_header = non_breaks(after_header);
 		expect(table_after_header.length).toBe(1);
 		expect(table_after_header[0].kind).toBe('table');
 		// Only header child, no data rows yet
-		expect(get_children(after_header, table_after_header[0].index).length).toBe(1);
+		expect(get_children(after_header, table_after_header[0].index).length).toBe(
+			1
+		);
 
-		// Feed '| f' — row+cell should open, text node should open with 'f'
+		// Feed '| f', row+cell should open, text node should open with 'f'
 		parser.feed('| f');
 		const after_f = tree.get_buffer();
 		const table_f = non_breaks(after_f)[0];
@@ -339,7 +362,8 @@ describe('Tables (GFM)', () => {
 	});
 
 	test('incremental: header-only table no trailing newline', () => {
-		const input = '| Feature        | Status | Priority | Owner          | Notes                                                                                              |\n|:---------------|:------:|---------:|:---------------|:---------------------------------------------------------------------------------------------------|\n';
+		const input =
+			'| Feature        | Status | Priority | Owner          | Notes                                                                                              |\n|:---------------|:------:|---------:|:---------------|:---------------------------------------------------------------------------------------------------|\n';
 		const nodes = parse_incremental(input, 1);
 		const children = non_breaks(nodes);
 		expect(children[0].kind).toBe('table');
@@ -350,15 +374,21 @@ describe('Tables (GFM)', () => {
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
 		const table = children[0];
-		const header_cells = get_children(nodes, get_children(nodes, table.index)[0].index);
+		const header_cells = get_children(
+			nodes,
+			get_children(nodes, table.index)[0].index
+		);
 		// Header cell 1 should have emphasis child
 		const h1_children = get_children(nodes, header_cells[0].index);
-		expect(h1_children.some(c => c.kind === 'strong_emphasis')).toBe(true);
+		expect(h1_children.some((c) => c.kind === 'strong_emphasis')).toBe(true);
 
 		// Data row cell 2 should have emphasis
-		const row_cells = get_children(nodes, get_children(nodes, table.index)[1].index);
+		const row_cells = get_children(
+			nodes,
+			get_children(nodes, table.index)[1].index
+		);
 		const r2_children = get_children(nodes, row_cells[1].index);
-		expect(r2_children.some(c => c.kind === 'strong_emphasis')).toBe(true);
+		expect(r2_children.some((c) => c.kind === 'strong_emphasis')).toBe(true);
 	});
 
 	test('inline code span in table cell', () => {
@@ -366,9 +396,12 @@ describe('Tables (GFM)', () => {
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
 		const table = children[0];
-		const header_cells = get_children(nodes, get_children(nodes, table.index)[0].index);
+		const header_cells = get_children(
+			nodes,
+			get_children(nodes, table.index)[0].index
+		);
 		const h1_children = get_children(nodes, header_cells[0].index);
-		expect(h1_children.some(c => c.kind === 'code_span')).toBe(true);
+		expect(h1_children.some((c) => c.kind === 'code_span')).toBe(true);
 	});
 
 	test('inline code span in data row cell', () => {
@@ -376,9 +409,12 @@ describe('Tables (GFM)', () => {
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
 		const table = children[0];
-		const row_cells = get_children(nodes, get_children(nodes, table.index)[1].index);
+		const row_cells = get_children(
+			nodes,
+			get_children(nodes, table.index)[1].index
+		);
 		const cell_children = get_children(nodes, row_cells[0].index);
-		const kinds = cell_children.map(c => c.kind);
+		const kinds = cell_children.map((c) => c.kind);
 		expect(kinds).toContain('code_span');
 	});
 
@@ -387,23 +423,34 @@ describe('Tables (GFM)', () => {
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
 		const table = children[0];
-		const header_cells = get_children(nodes, get_children(nodes, table.index)[0].index);
+		const header_cells = get_children(
+			nodes,
+			get_children(nodes, table.index)[0].index
+		);
 		// Cell 1: text + strong_emphasis
-		const h1_kinds = get_children(nodes, header_cells[0].index).map(c => c.kind);
+		const h1_kinds = get_children(nodes, header_cells[0].index).map(
+			(c) => c.kind
+		);
 		expect(h1_kinds).toContain('text');
 		expect(h1_kinds).toContain('strong_emphasis');
 		// Cell 2: emphasis + text
-		const h2_kinds = get_children(nodes, header_cells[1].index).map(c => c.kind);
+		const h2_kinds = get_children(nodes, header_cells[1].index).map(
+			(c) => c.kind
+		);
 		expect(h2_kinds).toContain('emphasis');
 		expect(h2_kinds).toContain('text');
 	});
 
 	test('inline content preserves whitespace between words', () => {
-		const input = '| a | b |\n| - | - |\n| Finished the *OAuth handshake* and *token refresh* logic |\n';
+		const input =
+			'| a | b |\n| - | - |\n| Finished the *OAuth handshake* and *token refresh* logic |\n';
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
 		const table = children[0];
-		const row_cells = get_children(nodes, get_children(nodes, table.index)[1].index);
+		const row_cells = get_children(
+			nodes,
+			get_children(nodes, table.index)[1].index
+		);
 		// Collect all text content from cell children
 		const cell_children = get_children(nodes, row_cells[0].index);
 		const texts: string[] = [];
@@ -413,7 +460,8 @@ describe('Tables (GFM)', () => {
 			} else if (child.kind === 'strong_emphasis') {
 				const inner = get_children(nodes, child.index);
 				for (const t of inner) {
-					if (t.kind === 'text') texts.push(input.slice(t.value[0], t.value[1]));
+					if (t.kind === 'text')
+						texts.push(input.slice(t.value[0], t.value[1]));
 				}
 			}
 		}
@@ -425,7 +473,8 @@ describe('Tables (GFM)', () => {
 	});
 
 	test('inline emphasis closed before pipe does not leak', () => {
-		const input = '| one | two |\n|:---|:---:|\n| *Auth flow* | ok |\n| Search index | ok |\n';
+		const input =
+			'| one | two |\n|:---|:---:|\n| *Auth flow* | ok |\n| Search index | ok |\n';
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
 		const table = children[0];
@@ -459,7 +508,8 @@ describe('Tables (GFM)', () => {
 	});
 
 	test('emphasis in cell: opcode structure is correct', () => {
-		const input = '| one | two |\n|:---|:---:|\n| *Auth flow* | ok |\n| Search index | ok |\n';
+		const input =
+			'| one | two |\n|:---|:---:|\n| *Auth flow* | ok |\n| Search index | ok |\n';
 
 		// Check byte-by-byte incremental
 		const inc = parse_incremental(input, 1);
@@ -494,12 +544,15 @@ describe('Tables (GFM)', () => {
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
 		const table = children[0];
-		const row_cells = get_children(nodes, get_children(nodes, table.index)[1].index);
+		const row_cells = get_children(
+			nodes,
+			get_children(nodes, table.index)[1].index
+		);
 
-		// Cell 1: unclosed * should be revoked — content is "*foo" as text
+		// Cell 1: unclosed * should be revoked, content is "*foo" as text
 		const c1_kids = get_children(nodes, row_cells[0].index);
-		// Should NOT have emphasis — it was revoked
-		expect(c1_kids.every(c => c.kind === 'text')).toBe(true);
+		// Should NOT have emphasis, it was revoked
+		expect(c1_kids.every((c) => c.kind === 'text')).toBe(true);
 
 		// Cell 2: should be unaffected
 		expect(cell_text(nodes, row_cells[1].index, input)).toBe('bar');
@@ -511,7 +564,7 @@ describe('Tables (GFM)', () => {
 		const children = non_breaks(nodes);
 		expect(children[0].kind).toBe('paragraph');
 		const para_kids = get_children(nodes, children[0].index);
-		const kinds = para_kids.map(c => c.kind);
+		const kinds = para_kids.map((c) => c.kind);
 		expect(kinds).toContain('code_span');
 	});
 
@@ -524,7 +577,7 @@ describe('Tables (GFM)', () => {
 		parser.init();
 		parser.feed(header);
 
-		// Feed '| x ' — cell open, text streaming
+		// Feed '| x ', cell open, text streaming
 		parser.feed('| x ');
 		const before_pipe = tree.get_buffer();
 		const t1 = non_breaks(before_pipe)[0];
@@ -533,7 +586,7 @@ describe('Tables (GFM)', () => {
 		const cells1 = get_children(before_pipe, rows1[1].index);
 		expect(cells1.length).toBe(1); // only first cell
 
-		// Feed '|' — immediately closes first cell, opens second
+		// Feed '|', immediately closes first cell, opens second
 		parser.feed('|');
 		const at_pipe = tree.get_buffer();
 		const t2 = non_breaks(at_pipe)[0];
@@ -542,7 +595,7 @@ describe('Tables (GFM)', () => {
 		expect(cells2.length).toBe(2); // first cell closed, second cell open
 		expect(cell_text(at_pipe, cells2[0].index, input)).toBe('x');
 
-		// Feed ' y |\n' — fills second cell and closes row
+		// Feed ' y |\n', fills second cell and closes row
 		parser.feed(' y |\n');
 		parser.finish();
 		const final = tree.get_buffer();

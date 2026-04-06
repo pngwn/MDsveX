@@ -1,5 +1,5 @@
-import type { Emitter } from './opcodes';
-import { node_buffer, node_kind } from './utils';
+import type { Emitter } from "./opcodes";
+import { node_buffer, node_kind } from "./utils";
 
 /**
  * consumes opcodes from PFMParser and builds a node_buffer.
@@ -8,7 +8,7 @@ import { node_buffer, node_kind } from './utils';
  */
 export class TreeBuilder implements Emitter {
 	private nodes: node_buffer;
-	/** maps opcode id -> node_buffer index. plain array — ids are sequential integers. */
+	/** maps opcode id -> node_buffer index. plain array, ids are sequential integers. */
 	private id_to_index: number[] = [];
 	/** maps opcode id -> node_kind. plain array for o(1) lookup. */
 	private id_to_kind: number[] = [];
@@ -26,9 +26,9 @@ export class TreeBuilder implements Emitter {
 		start: number,
 		parent: number,
 		extra: number,
-		pending: boolean
+		pending: boolean,
 	): void {
-		// Root (id=0) is auto-created by node_buffer constructor — skip
+		// root (id=0) is auto-created by node_buffer constructor, skip
 		if (id === 0) return;
 
 		const parent_idx =
@@ -44,8 +44,8 @@ export class TreeBuilder implements Emitter {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
 		this.nodes.set_end(idx, end);
-		// Pending paragraphs inside list_items are tight-list speculation
-		// wrappers — they stay pending after close until the list closes
+		// pending paragraphs inside list_items are tight-list speculation
+		// wrappers, they stay pending after close until the list closes
 		// and the parser either revokes (tight) or commits (loose) them.
 		const kind = this.id_to_kind[id];
 		const parent_kind = this.nodes._kinds[
@@ -61,8 +61,8 @@ export class TreeBuilder implements Emitter {
 			this.nodes.commit_node(idx);
 		}
 
-		// Tight list unwrapping: if this is a list with tight=true, walk
-		// items and unwrap their paragraph children. Safe no-op when the
+		// tight list unwrapping: if this is a list with tight=true, walk
+		// items and unwrap their paragraph children. safe no-op when the
 		// parser already revoked them via finalize_list_pending_paras.
 		if (kind === node_kind.list) {
 			const meta = this.nodes.metadata_at(idx);
@@ -85,7 +85,7 @@ export class TreeBuilder implements Emitter {
 		if (parent_idx === undefined) return;
 		const parent_kind = this.id_to_kind[parent];
 
-		// Nodes that store content as a value range (no child text node)
+		// nodes that store content as a value range (no child text node)
 		if (
 			parent_kind === node_kind.heading ||
 			parent_kind === node_kind.code_fence ||
@@ -94,7 +94,7 @@ export class TreeBuilder implements Emitter {
 		) {
 			this.nodes.set_value(parent_idx, start, end);
 		} else {
-			// Create a child text node
+			// create a child text node
 			const idx = this.nodes.push(node_kind.text, start, parent_idx);
 			this.nodes.set_value(idx, start, end);
 			this.nodes.set_end(idx, end);
@@ -106,17 +106,17 @@ export class TreeBuilder implements Emitter {
 		if (idx === undefined) return;
 
 		switch (key) {
-			case 'value':
+			case "value":
 				this.nodes.set_value(idx, value[0], value[1]);
 				break;
-			case 'value_start':
+			case "value_start":
 				this.nodes.set_value_start(idx, value);
 				break;
-			case 'value_end':
+			case "value_end":
 				this.nodes.set_value_end(idx, value);
 				break;
 			default: {
-				// Merge into metadata map
+				// merge into metadata map
 				const existing = this.nodes.metadata_at(idx);
 				if (existing) {
 					existing[key] = value;

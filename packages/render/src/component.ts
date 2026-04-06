@@ -12,33 +12,33 @@
  *     {/key}
  *   {/each}
  *
- * Closed blocks have a frozen version — {#key} keeps them stable.
- * Open (streaming) blocks get bumped — {#key} recreates the subtree
+ * Closed blocks have a frozen version, {#key} keeps them stable.
+ * Open (streaming) blocks get bumped, {#key} recreates the subtree
  * with fresh content.
  */
 
-import type { node_buffer } from '@mdsvex/parse/utils';
+import type { node_buffer } from "@mdsvex/parse/utils";
 
 const NONE = 0xffffffff;
 const K_LINE_BREAK = 6;
 
-// ── Block entry ──────────────────────────────────────────────
+//  block entry
 
 export interface ComponentBlock {
-	/** Buffer index — use as Svelte each key. */
+	/** Buffer index, use as Svelte each key. */
 	idx: number;
-	/** Version counter — bumped on each update while the block is open. */
+	/** Version counter, bumped on each update while the block is open. */
 	v: number;
 }
 
-// ── ComponentRenderer ────────────────────────────────────────
+//  componentrenderer
 
 export class ComponentRenderer {
 	blocks: ComponentBlock[] = [];
 	/** The current buffer reference (for passing to Node.svelte). */
 	buf: node_buffer | null = null;
 	/** The current source/text string (for passing to Node.svelte). */
-	source = '';
+	source = "";
 	private closed: Set<number> = new Set();
 
 	update(buf: node_buffer, source: string): ComponentBlock[] {
@@ -48,7 +48,7 @@ export class ComponentRenderer {
 		let blockIdx = 0;
 		let changed = false;
 
-		// Walk root's children via sibling chain
+		// walk root's children via sibling chain
 		let child = buf._children_starts[0]; // root is index 0
 		while (child !== NONE) {
 			const kind = buf._kinds[child];
@@ -82,7 +82,7 @@ export class ComponentRenderer {
 	reset(): void {
 		this.blocks = [];
 		this.buf = null;
-		this.source = '';
+		this.source = "";
 		this.closed.clear();
 	}
 }

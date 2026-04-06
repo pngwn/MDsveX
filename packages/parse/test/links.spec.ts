@@ -4,11 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'vitest';
 
-import {
-	get_all_child_kinds,
-	get_child_range,
-	get_content,
-} from './utils';
+import { get_all_child_kinds, get_child_range, get_content } from './utils';
 
 import { parse_markdown_svelte } from '../src/main';
 
@@ -19,8 +15,8 @@ const load_fixture = (id: string): string =>
 	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
 
 describe('links', () => {
-	// [link](/uri "title") — inline link with title
-	test('pfm example 482 — inline link with title', () => {
+	// [link](/uri "title"), inline link with title
+	test('pfm example 482, inline link with title', () => {
 		const input = load_fixture('482');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -40,7 +36,7 @@ describe('links', () => {
 	});
 
 	// [link](/uri)
-	test('pfm example 483 — simple inline link', () => {
+	test('pfm example 483, simple inline link', () => {
 		const input = load_fixture('483');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -58,8 +54,8 @@ describe('links', () => {
 		expect(value).toBe('link');
 	});
 
-	// [](./target.md) — empty text link
-	test('pfm example 484 — empty text link', () => {
+	// [](./target.md), empty text link
+	test('pfm example 484, empty text link', () => {
 		const input = load_fixture('484');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -70,12 +66,12 @@ describe('links', () => {
 		const link = nodes.get_node(paragraph.children[0]);
 		expect(link.kind).toBe('link');
 		expect(link.metadata.href).toBe('./target.md');
-		// Empty text — no children
+		// Empty text, no children
 		expect(link.children.length).toBe(0);
 	});
 
 	// [link]()
-	test('pfm example 485 — empty destination link', () => {
+	test('pfm example 485, empty destination link', () => {
 		const input = load_fixture('485');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -89,7 +85,7 @@ describe('links', () => {
 	});
 
 	// []()
-	test('pfm example 487 — empty link', () => {
+	test('pfm example 487, empty link', () => {
 		const input = load_fixture('487');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -103,8 +99,8 @@ describe('links', () => {
 		expect(link.children.length).toBe(0);
 	});
 
-	// [link](/my uri) — space in URL, not a valid link
-	test('pfm example 488 — link with space is text', () => {
+	// [link](/my uri), space in URL, not a valid link
+	test('pfm example 488, link with space is text', () => {
 		const input = load_fixture('488');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -116,8 +112,8 @@ describe('links', () => {
 		expect(kinds).not.toContain('link');
 	});
 
-	// [link](foo(and(bar))) — balanced nested parens
-	test('pfm example 496 — link with nested parens', () => {
+	// [link](foo(and(bar))), balanced nested parens
+	test('pfm example 496, link with nested parens', () => {
 		const input = load_fixture('496');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -131,7 +127,7 @@ describe('links', () => {
 	});
 
 	// [link](#fragment)
-	test('pfm example 501 — link with fragment', () => {
+	test('pfm example 501, link with fragment', () => {
 		const input = '[link](#fragment)\n';
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -169,8 +165,8 @@ describe('links', () => {
 		expect(link.metadata.title).toBe('my title');
 	});
 
-	// [link](foo(and(bar)) — unbalanced parens, not a link
-	test('pfm example 497 — unbalanced parens is text', () => {
+	// [link](foo(and(bar)), unbalanced parens, not a link
+	test('pfm example 497, unbalanced parens is text', () => {
 		const input = load_fixture('497');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -182,8 +178,8 @@ describe('links', () => {
 		expect(kinds).not.toContain('link');
 	});
 
-	// [link] (/uri) — space before (, not a link
-	test('pfm example 511 — space between ] and ( is text', () => {
+	// [link] (/uri), space before (, not a link
+	test('pfm example 511, space between ] and ( is text', () => {
 		const input = '[link] (/uri)\n';
 		const { nodes } = parse_markdown_svelte(input);
 

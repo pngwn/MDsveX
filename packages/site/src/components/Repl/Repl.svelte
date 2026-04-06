@@ -120,7 +120,7 @@ setContext("REPL", {
 
 	handle_change: (event) => {
 		selected.update((component) => {
-			// TODO this is a bit hacky — we're relying on mutability
+			// TODO this is a bit hacky, we're relying on mutability
 			// so that updating components works... might be better
 			// if a) components had unique IDs, b) we tracked selected
 			// *index* rather than component, and c) `selected` was
@@ -162,7 +162,7 @@ function handle_select(component) {
 
 let input;
 let sourceErrorLoc;
-let runtimeErrorLoc; // TODO refactor this stuff — runtimeErrorLoc is unused
+let runtimeErrorLoc; // TODO refactor this stuff, runtimeErrorLoc is unused
 let status = null;
 
 const bundler =
@@ -181,73 +181,76 @@ $: if (output && $selected) {
 }
 </script>
 
-<style>
-  .container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-  }
-
-  .container :global(section) {
-    position: relative;
-    padding: 63px 0 0 0;
-    height: 100%;
-    box-sizing: border-box;
-  }
-
-  .container :global(section) > :global(*):first-child {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 63px;
-    box-sizing: border-box;
-    border-bottom: 1px solid #eee;
-  }
-
-  .container :global(section) > :global(*):last-child {
-    width: 100%;
-    height: 100%;
-  }
-
-  .funky {
-    border-radius: 3px;
-    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.02);
-    overflow: hidden;
-    border: 1px solid #ddd;
-  }
-
-  .container section {
-    position: absolute;
-    top: 0;
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
-  }
-</style>
-
 <div class="container" class:orientation>
-  <SplitPane
-    type={orientation === 'rows' ? 'vertical' : 'horizontal'}
-    pos={fixed ? fixedPos : orientation === 'rows' ? 50 : 50}
-    {fixed}>
-    <section slot="a" class:funky>
-      <ComponentSelector {handle_select} {funky} />
-      <ModuleEditor
-        bind:this={input}
-        errorLoc={sourceErrorLoc || runtimeErrorLoc} />
-    </section>
+	<SplitPane
+		type={orientation === 'rows' ? 'vertical' : 'horizontal'}
+		pos={fixed ? fixedPos : orientation === 'rows' ? 50 : 50}
+		{fixed}
+	>
+		<section slot="a" class:funky>
+			<ComponentSelector {handle_select} {funky} />
+			<ModuleEditor
+				bind:this={input}
+				errorLoc={sourceErrorLoc || runtimeErrorLoc}
+			/>
+		</section>
 
-    <section slot="b">
-      <Output
-        walk={true}
-        {funky}
-        {svelteUrl}
-        {workersUrl}
-        {status}
-        {relaxed}
-        {injectedJS}
-        {injectedCSS} />
-    </section>
-  </SplitPane>
+		<section slot="b">
+			<Output
+				walk={true}
+				{funky}
+				{svelteUrl}
+				{workersUrl}
+				{status}
+				{relaxed}
+				{injectedJS}
+				{injectedCSS}
+			/>
+		</section>
+	</SplitPane>
 </div>
+
+<style>
+	.container {
+		position: relative;
+		width: 100%;
+		height: 100%;
+	}
+
+	.container :global(section) {
+		position: relative;
+		padding: 63px 0 0 0;
+		height: 100%;
+		box-sizing: border-box;
+	}
+
+	.container :global(section) > :global(*):first-child {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 63px;
+		box-sizing: border-box;
+		border-bottom: 1px solid #eee;
+	}
+
+	.container :global(section) > :global(*):last-child {
+		width: 100%;
+		height: 100%;
+	}
+
+	.funky {
+		border-radius: 3px;
+		box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.02);
+		overflow: hidden;
+		border: 1px solid #ddd;
+	}
+
+	.container section {
+		position: absolute;
+		top: 0;
+		height: 100%;
+		width: 100%;
+		overflow: hidden;
+	}
+</style>

@@ -4,9 +4,6 @@ const DEFAULT_TOKEN_CAPACITY = 128;
 /** default number of error entries to preallocate. */
 const DEFAULT_ERROR_CAPACITY = 32;
 
-/** default node capacity for the arena allocator. */
-const DEFAULT_NODE_CAPACITY = 128;
-
 export const enum node_kind {
 	root = 0,
 	text = 1,
@@ -66,75 +63,75 @@ function next_power_of_two(value: number): number {
 export const kind_to_string = (kind: node_kind): string => {
 	switch (kind) {
 		case node_kind.root:
-			return 'root';
+			return "root";
 		case node_kind.text:
-			return 'text';
+			return "text";
 		case node_kind.html:
-			return 'html';
+			return "html";
 		case node_kind.heading:
-			return 'heading';
+			return "heading";
 		case node_kind.mustache:
-			return 'mustache';
+			return "mustache";
 		case node_kind.code_fence:
-			return 'code_fence';
+			return "code_fence";
 		case node_kind.line_break:
-			return 'line_break';
+			return "line_break";
 		case node_kind.paragraph:
-			return 'paragraph';
+			return "paragraph";
 		case node_kind.code_span:
-			return 'code_span';
+			return "code_span";
 		case node_kind.emphasis:
-			return 'emphasis';
+			return "emphasis";
 		case node_kind.strong_emphasis:
-			return 'strong_emphasis';
+			return "strong_emphasis";
 		case node_kind.thematic_break:
-			return 'thematic_break';
+			return "thematic_break";
 		case node_kind.link:
-			return 'link';
+			return "link";
 		case node_kind.image:
-			return 'image';
+			return "image";
 		case node_kind.block_quote:
-			return 'block_quote';
+			return "block_quote";
 		case node_kind.list:
-			return 'list';
+			return "list";
 		case node_kind.list_item:
-			return 'list_item';
+			return "list_item";
 		case node_kind.hard_break:
-			return 'hard_break';
+			return "hard_break";
 		case node_kind.soft_break:
-			return 'soft_break';
+			return "soft_break";
 		case node_kind.strikethrough:
-			return 'strikethrough';
+			return "strikethrough";
 		case node_kind.superscript:
-			return 'superscript';
+			return "superscript";
 		case node_kind.subscript:
-			return 'subscript';
+			return "subscript";
 		case node_kind.table:
-			return 'table';
+			return "table";
 		case node_kind.table_header:
-			return 'table_header';
+			return "table_header";
 		case node_kind.table_row:
-			return 'table_row';
+			return "table_row";
 		case node_kind.table_cell:
-			return 'table_cell';
+			return "table_cell";
 		case node_kind.html_comment:
-			return 'html_comment';
+			return "html_comment";
 		case node_kind.svelte_tag:
-			return 'svelte_tag';
+			return "svelte_tag";
 		case node_kind.svelte_block:
-			return 'svelte_block';
+			return "svelte_block";
 		case node_kind.svelte_branch:
-			return 'svelte_branch';
+			return "svelte_branch";
 		case node_kind.directive_inline:
-			return 'directive_inline';
+			return "directive_inline";
 		case node_kind.directive_leaf:
-			return 'directive_leaf';
+			return "directive_leaf";
 		case node_kind.directive_container:
-			return 'directive_container';
+			return "directive_container";
 		case node_kind.frontmatter:
-			return 'frontmatter';
+			return "frontmatter";
 		case node_kind.import_statement:
-			return 'import_statement';
+			return "import_statement";
 	}
 };
 
@@ -146,7 +143,7 @@ export const kind_to_string = (kind: node_kind): string => {
 const extra_to_string = (kind: node_kind): string | undefined => {
 	switch (kind) {
 		case node_kind.heading:
-			return 'depth';
+			return "depth";
 	}
 };
 
@@ -234,7 +231,7 @@ export class node_buffer {
 		cursor: number,
 		parent = 0xffffffff,
 		extra = 0,
-		metadata?: any
+		metadata?: any,
 	): number {
 		const index = this._size;
 		if (index >= this.capacity) {
@@ -255,10 +252,10 @@ export class node_buffer {
 		if (parent !== 0xffffffff) {
 			const last = this.children_ends[parent];
 			if (last === 0xffffffff) {
-				// First child
+				// first child
 				this._children_starts[parent] = index;
 			} else {
-				// Append after last child — O(1)
+				// append after last child, o(1)
 				this._next_siblings[last] = index;
 				this.prev_siblings[index] = last;
 			}
@@ -279,7 +276,7 @@ export class node_buffer {
 		cursor: number,
 		parent = 0xffffffff,
 		extra = 0,
-		metadata?: any
+		metadata?: any,
 	): number {
 		const index = this.push(kind, cursor, parent, extra, metadata);
 		this._pending_nodes[index] = 1;
@@ -303,7 +300,7 @@ export class node_buffer {
 	/**
 	 * repair a revoked (pending) node.
 	 *
-	 * all repair logic lives here — treebuilder and wiretreebuilder
+	 * all repair logic lives here, treebuilder and wiretreebuilder
 	 * both delegate to this method. the strategy depends on context:
 	 *
 	 * **inline revocation** (parent is paragraph, emphasis, link, etc.):
@@ -324,30 +321,30 @@ export class node_buffer {
 		const parent_kind =
 			parent !== 0xffffffff ? (this._kinds[parent] as node_kind) : undefined;
 
-		// ── Tight-list speculation repair ───────────────────────
-		// A pending paragraph inside a list_item represents the "loose"
-		// wrapper that tight lists don't need. Revoking it simply drops
+		// tight-list speculation repair
+		// a pending paragraph inside a list_item represents the "loose"
+		// wrapper that tight lists don't need. revoking it simply drops
 		// the wrapper and reparents children to the list_item.
 		if (kind === node_kind.paragraph && parent_kind === node_kind.list_item) {
 			this.unwrap_node(index);
 			return;
 		}
 
-		// ── Block-level repair ──────────────────────────────────
-		// If the parent is a block container, the revoked node (typically HTML)
+		// block-level repair
+		// if the parent is a block container, the revoked node (typically html)
 		// needs to become a paragraph with a text child spanning the source range.
 		if (
 			parent_kind === node_kind.root ||
 			parent_kind === node_kind.block_quote ||
 			parent_kind === node_kind.list_item
 		) {
-			// Wire path: delimiter_text has the full content — skip byte offset logic.
-			// Source path: compute end from node/children byte offsets.
+			// wire path: delimiter_text has the full content, skip byte offset logic.
+			// source path: compute end from node/children byte offsets.
 			const start = this.starts[index];
 			let end = start; // fallback
 
 			if (delimiter_text === undefined) {
-				// Source path: find end from node end or children
+				// source path: find end from node end or children
 				end = this._ends[index];
 				if (end === 0xffffffff) {
 					let child = this._children_starts[index];
@@ -375,11 +372,11 @@ export class node_buffer {
 				}
 			}
 
-			// Discard existing children (line_breaks, nested content)
+			// discard existing children (line_breaks, nested content)
 			let discard = this._children_starts[index];
 			while (discard !== 0xffffffff && this._parents[discard] === index) {
 				const next = this._next_siblings[discard];
-				// Orphan the child
+				// orphan the child
 				this._parents[discard] = 0xffffffff;
 				this._next_siblings[discard] = 0xffffffff;
 				this.prev_siblings[discard] = 0xffffffff;
@@ -388,12 +385,12 @@ export class node_buffer {
 			this._children_starts[index] = 0xffffffff;
 			this.children_ends[index] = 0xffffffff;
 
-			// Convert to paragraph
+			// convert to paragraph
 			this.set_kind(index, node_kind.paragraph);
 			this.metadata.delete(index);
 			this._ends[index] = end;
 
-			// Create text child with the raw source range
+			// create text child with the raw source range
 			const text_idx = this.push(node_kind.text, start, index);
 			this._value_starts[text_idx] = start;
 			this._value_ends[text_idx] = end;
@@ -404,12 +401,12 @@ export class node_buffer {
 			return;
 		}
 
-		// ── Inline repair ───────────────────────────────────────
+		// inline repair
 		const first_child = this._children_starts[index];
 
-		// Convert the wrapper to a plain text node whose value is the
+		// convert the wrapper to a plain text node whose value is the
 		// literal delimiter (e.g. "~" for subscript, "<div>" for an
-		// inline HTML open tag). Any children stay in the document —
+		// inline html open tag). any children stay in the document,
 		// they are reparented to the grandparent so the streamed
 		// content is preserved after revocation.
 		this.set_kind(index, node_kind.text);
@@ -428,7 +425,7 @@ export class node_buffer {
 				return;
 			}
 
-			// Reparent children and splice them in AFTER this text node.
+			// reparent children and splice them in after this text node.
 			let child = first_child;
 			let last_child = first_child;
 			while (child !== 0xffffffff && this._parents[child] === index) {
@@ -453,7 +450,7 @@ export class node_buffer {
 			return;
 		}
 
-		// Source-based fallback — derive the delimiter byte range from
+		// source-based fallback, derive the delimiter byte range from
 		// the node's own start offset.
 		if (first_child === 0xffffffff) {
 			this._children_starts[index] = 0xffffffff;
@@ -468,7 +465,7 @@ export class node_buffer {
 			return;
 		}
 
-		// Walk sibling chain and reparent ONLY direct children
+		// walk sibling chain and reparent only direct children
 		let child = first_child;
 		let last_child = first_child;
 
@@ -478,7 +475,7 @@ export class node_buffer {
 			child = this._next_siblings[child];
 		}
 
-		// If exactly one child and it's text, merge the delimiter into it
+		// if exactly one child and it's text, merge the delimiter into it
 		if (
 			last_child === first_child &&
 			this._kinds[first_child] === node_kind.text
@@ -487,7 +484,7 @@ export class node_buffer {
 			this._value_ends[index] = this._ends[first_child];
 			this._ends[index] = this._ends[first_child];
 
-			// Skip the child in the sibling chain
+			// skip the child in the sibling chain
 			this._next_siblings[index] = this._next_siblings[first_child];
 			if (this._next_siblings[first_child] !== 0xffffffff) {
 				this.prev_siblings[this._next_siblings[first_child]] = index;
@@ -498,7 +495,7 @@ export class node_buffer {
 			return;
 		}
 
-		// Insert converted node as sibling before first_child, reparent rest
+		// insert converted node as sibling before first_child, reparent rest
 		const first_child_prev = this.prev_siblings[first_child];
 
 		this._next_siblings[index] = first_child;
@@ -513,7 +510,7 @@ export class node_buffer {
 			this.children_ends[parent] = last_child;
 		}
 
-		// Clear children references
+		// clear children references
 		this._children_starts[index] = 0xffffffff;
 		this.children_ends[index] = 0xffffffff;
 
@@ -536,7 +533,7 @@ export class node_buffer {
 
 	/**
 	 * remove a node from the tree and reparent its children to its parent.
-	 * the node is effectively "unwrapped" — its children take its place
+	 * the node is effectively "unwrapped", its children take its place
 	 * in the parent's child list.
 	 */
 	unwrap_node(index: number): void {
@@ -544,7 +541,7 @@ export class node_buffer {
 		const first_child = this._children_starts[index];
 
 		if (first_child === 0xffffffff) {
-			// No children — remove from sibling chain
+			// no children, remove from sibling chain
 			const prev_sib = this.prev_siblings[index];
 			const next_sib = this._next_siblings[index];
 			if (prev_sib !== 0xffffffff) {
@@ -555,14 +552,14 @@ export class node_buffer {
 			if (next_sib !== 0xffffffff) {
 				this.prev_siblings[next_sib] = prev_sib;
 			}
-			// Update parent's last child if we removed the tail
+			// update parent's last child if we removed the tail
 			if (parent !== 0xffffffff && this.children_ends[parent] === index) {
 				this.children_ends[parent] = prev_sib; // 0xffffffff if was only child
 			}
 			return;
 		}
 
-		// Reparent all children and find last child
+		// reparent all children and find last child
 		let child = first_child;
 		let last_child = first_child;
 		while (child !== 0xffffffff && this._parents[child] === index) {
@@ -571,7 +568,7 @@ export class node_buffer {
 			child = this._next_siblings[child];
 		}
 
-		// Splice children into parent's child list where this node was
+		// splice children into parent's child list where this node was
 		const prev_sib = this.prev_siblings[index];
 		const next_sib =
 			this._next_siblings[last_child] !== 0xffffffff &&
@@ -579,7 +576,7 @@ export class node_buffer {
 				? 0xffffffff
 				: this._next_siblings[last_child];
 
-		// The actual next sibling of the unwrapped node (not of last_child)
+		// the actual next sibling of the unwrapped node (not of last_child)
 		const node_next = this._next_siblings[index];
 
 		if (prev_sib !== 0xffffffff) {
@@ -590,7 +587,7 @@ export class node_buffer {
 			this.prev_siblings[first_child] = 0xffffffff;
 		}
 
-		// Link last child to the unwrapped node's next sibling
+		// link last child to the unwrapped node's next sibling
 		if (node_next !== 0xffffffff && node_next !== first_child) {
 			this._next_siblings[last_child] = node_next;
 			this.prev_siblings[node_next] = last_child;
@@ -598,12 +595,12 @@ export class node_buffer {
 			this._next_siblings[last_child] = 0xffffffff;
 		}
 
-		// Update parent's last child if we replaced the tail
+		// update parent's last child if we replaced the tail
 		if (parent !== 0xffffffff && this.children_ends[parent] === index) {
 			this.children_ends[parent] = last_child;
 		}
 
-		// Clear the unwrapped node's links
+		// clear the unwrapped node's links
 		this._children_starts[index] = 0xffffffff;
 		this.children_ends[index] = 0xffffffff;
 	}
@@ -737,9 +734,9 @@ export class node_buffer {
 	}
 
 	metadata_at(index: number): any | undefined {
-		// Check bit first
+		// check bit first
 		if (!(this.has_metadata[index >> 3] & (1 << (index & 7)))) {
-			return undefined; // Fast path: no Map lookup
+			return undefined; // fast path: no map lookup
 		}
 		return this.metadata.get(index);
 	}
@@ -781,7 +778,7 @@ export class node_buffer {
 
 		const _children = [];
 
-		// Walk sibling chain to get all direct children
+		// walk sibling chain to get all direct children
 		let child = this._children_starts[index];
 		while (child !== 0xffffffff && this._parents[child] === index) {
 			_children.push(child);

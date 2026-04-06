@@ -39,7 +39,7 @@ describe('frontmatter', () => {
 		const input = '\n---\ntitle: hello\n---\n';
 		const { nodes } = parse_markdown_svelte(input);
 
-		// Should NOT be parsed as frontmatter — the first node should be
+		// Should NOT be parsed as frontmatter, the first node should be
 		// a line_break or thematic_break, not frontmatter
 		const first = nodes.get_node(1);
 		expect(first.kind).not.toBe('frontmatter');

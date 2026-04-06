@@ -1,9 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import {
-	get_all_child_kinds,
-	get_content,
-} from './utils';
+import { get_all_child_kinds, get_content } from './utils';
 
 import { parse_markdown_svelte } from '../src/main';
 
@@ -110,7 +107,7 @@ describe('svelte expressions - inline', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
 		expect(kinds).toEqual(['code_span']);
-		// No mustache node — braces are just text inside code
+		// No mustache node, braces are just text inside code
 	});
 
 	test('expression not parsed inside code fence', () => {

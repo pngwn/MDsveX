@@ -168,7 +168,7 @@ describe('autolinks', () => {
 		expect(value).toBe('https://example.com/\\[\\');
 	});
 
-	// PFM: email autolinks removed — scheme prefix required.
+	// PFM: email autolinks removed, scheme prefix required.
 	// <foo@bar.example.com> is not an autolink.
 	test('pfm example 604', () => {
 		const input = load_fixture('604');
@@ -178,7 +178,7 @@ describe('autolinks', () => {
 		const children = root.children
 			.map((i: number) => nodes.get_node(i))
 			.filter((n: any) => n.kind !== 'line_break');
-		// Should NOT be a link — no scheme prefix
+		// Should NOT be a link, no scheme prefix
 		const all_kinds = children.flatMap((n: any) =>
 			n.children.length > 0
 				? n.children.map((i: number) => nodes.get_node(i).kind)
@@ -242,7 +242,7 @@ describe('autolinks', () => {
 		expect(kinds).not.toContain('link');
 	});
 
-	// HTML-like: <m:abc> — scheme too short for autolink; opens as HTML tag
+	// HTML-like: <m:abc>, scheme too short for autolink; opens as HTML tag
 	// but never closed, so revoked to text
 	test('pfm example 609', () => {
 		const input = load_fixture('609');
@@ -258,11 +258,11 @@ describe('autolinks', () => {
 			return false;
 		};
 		expect(find_kind(0, 'link')).toBe(false);
-		// Revoked — no html node either
+		// Revoked, no html node either
 		expect(find_kind(0, 'html')).toBe(false);
 	});
 
-	// HTML-like: <foo.bar.baz> — opens as tag, never closed, revoked to text
+	// HTML-like: <foo.bar.baz>, opens as tag, never closed, revoked to text
 	test('pfm example 610', () => {
 		const input = load_fixture('610');
 		const { nodes } = parse_markdown_svelte(input);

@@ -1,53 +1,53 @@
 <script lang="ts">
-	import Token from '$lib/components/Token.svelte';
-	import { onMount } from 'svelte';
-	// import type { parse_node } from '@mdsvex/parse';
+import Token from "$lib/components/Token.svelte";
+import { onMount } from "svelte";
+// import type { parse_node } from '@mdsvex/parse';
 
-	interface Props {
-		nodes: any[];
-		selectedToken: number;
-		onTokenSelect: (index: number) => void;
-		on_meta_click: (meta: [number, number]) => void;
-		depth?: number;
+interface Props {
+	nodes: any[];
+	selectedToken: number;
+	onTokenSelect: (index: number) => void;
+	on_meta_click: (meta: [number, number]) => void;
+	depth?: number;
+}
+
+let {
+	nodes,
+	selectedToken,
+	onTokenSelect,
+	depth = 0,
+	on_meta_click,
+}: Props = $props();
+
+let is_expanded = $state(nodes.map(() => (nodes.length > 20 ? false : true)));
+
+let tokensContainer = $state<HTMLButtonElement[]>([]);
+
+function handleKeydown(event: KeyboardEvent) {
+	console.log("handleKeydown", event.key, { selectedToken });
+	if (event.key === "ArrowDown") {
+		onTokenSelect(selectedToken + 1);
+
+		event.preventDefault();
+	} else if (event.key === "ArrowUp") {
+		onTokenSelect(selectedToken - 1);
+		event.preventDefault();
+	} else {
+		return; // Ignore other keys
 	}
+}
 
-	let {
-		nodes,
-		selectedToken,
-		onTokenSelect,
-		depth = 0,
-		on_meta_click,
-	}: Props = $props();
-
-	let is_expanded = $state(nodes.map(() => (nodes.length > 20 ? false : true)));
-
-	let tokensContainer = $state<HTMLButtonElement[]>([]);
-
-	function handleKeydown(event: KeyboardEvent) {
-		console.log('handleKeydown', event.key, { selectedToken });
-		if (event.key === 'ArrowDown') {
-			onTokenSelect(selectedToken + 1);
-
-			event.preventDefault();
-		} else if (event.key === 'ArrowUp') {
-			onTokenSelect(selectedToken - 1);
-			event.preventDefault();
-		} else {
-			return; // Ignore other keys
-		}
+onMount(() => {
+	if (selectedToken !== undefined && tokensContainer[selectedToken]) {
+		tokensContainer[selectedToken].focus();
 	}
+});
 
-	onMount(() => {
-		if (selectedToken !== undefined && tokensContainer[selectedToken]) {
-			tokensContainer[selectedToken].focus();
-		}
-	});
-
-	function handle_meta_click(event: MouseEvent, meta: [number, number]) {
-		console.log('handle_meta_click');
-		event.stopPropagation();
-		on_meta_click(meta);
-	}
+function handle_meta_click(event: MouseEvent, meta: [number, number]) {
+	console.log("handle_meta_click");
+	event.stopPropagation();
+	on_meta_click(meta);
+}
 </script>
 
 {#each nodes as token, i}

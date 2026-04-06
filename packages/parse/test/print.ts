@@ -72,7 +72,7 @@ export function print_ast(
 			if (INFO_KEYS.has(key)) continue;
 			if (val === undefined || val === null) continue;
 			if (key === 'attributes' && typeof val === 'object') {
-				// HTML attributes — format as key=value pairs inline
+				// HTML attributes, format as key=value pairs inline
 				for (const [ak, av] of Object.entries(val)) {
 					parts.push(`${ak}=${fmt_val(av)}`);
 				}
