@@ -1,4 +1,4 @@
 [foo]: /url
 bar
 ===
-[foo]
+[foo][]

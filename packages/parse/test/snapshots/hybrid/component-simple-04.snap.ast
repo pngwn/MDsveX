@@ -5,6 +5,7 @@ root
   line_break
   line_break
   heading depth=1 "<Heading prop={prop} />"
+    html tag="Heading" prop="prop" self_closing=true
   line_break
   line_break
   block_quote

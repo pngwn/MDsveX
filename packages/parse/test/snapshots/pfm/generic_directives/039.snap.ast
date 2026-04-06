@@ -1,0 +1,9 @@
+root
+  directive_container name="details" "Click to expand"
+    paragraph
+      text "This is hidden content."
+    line_break
+    line_break
+    paragraph
+      text "It has multiple paragraphs."
+    line_break

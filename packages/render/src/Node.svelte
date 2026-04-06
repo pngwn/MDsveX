@@ -53,6 +53,15 @@
 	let kind = $derived(buf._kinds[idx])
 	let extra = $derived(buf._extras[idx])
 	let meta = $derived(buf.metadata_at(idx))
+	// A pending paragraph inside a list_item is a speculative wrapper for
+	// a list that may still become loose. Render its children transparently
+	// so the tight-list default matches the common case and avoids a
+	// <p> flash before the list closes.
+	let skip_list_item_paragraph_wrapper = $derived(
+		kind === K_PARAGRAPH &&
+		buf._pending_nodes[idx] === 1 &&
+		buf._kinds[buf._parents[idx]] === K_LIST_ITEM
+	)
 </script>
 
 {#snippet child_nodes(parent_idx: number)}
@@ -71,10 +80,10 @@
 {#snippet table_body(table_idx: number)}
 	{@const meta = buf.metadata_at(table_idx)}
 	{@const alignments = (meta?.alignments as string[]) ?? []}
+	{@const rows = buf_children(buf, table_idx)}
 	<table>
-		{#each buf_children(buf, table_idx) as row_idx (row_idx)}
-			{@const row_kind = buf._kinds[row_idx]}
-			{#if row_kind === K_TABLE_HEADER}
+		{#each rows as row_idx (row_idx)}
+			{#if buf._kinds[row_idx] === K_TABLE_HEADER}
 				<thead>
 					<tr>
 						{#each buf_children(buf, row_idx).filter(c => buf._kinds[c] === K_TABLE_CELL) as cell_idx, col (cell_idx)}
@@ -85,17 +94,22 @@
 						{/each}
 					</tr>
 				</thead>
-			{:else if row_kind === K_TABLE_ROW}
-				<tr>
-					{#each buf_children(buf, row_idx).filter(c => buf._kinds[c] === K_TABLE_CELL) as cell_idx, col (cell_idx)}
-						{@const align = alignments[col]}
-						<td align={align && align !== 'none' ? align : undefined}>
-							{@render child_nodes(cell_idx)}
-						</td>
-					{/each}
-				</tr>
 			{/if}
 		{/each}
+		<tbody>
+			{#each rows as row_idx (row_idx)}
+				{#if buf._kinds[row_idx] === K_TABLE_ROW}
+					<tr>
+						{#each buf_children(buf, row_idx).filter(c => buf._kinds[c] === K_TABLE_CELL) as cell_idx, col (cell_idx)}
+							{@const align = alignments[col]}
+							<td align={align && align !== 'none' ? align : undefined}>
+								{@render child_nodes(cell_idx)}
+							</td>
+						{/each}
+					</tr>
+				{/if}
+			{/each}
+		</tbody>
 	</table>
 {/snippet}
 
@@ -103,16 +117,20 @@
 	{@render child_nodes(idx)}
 {:else if kind === K_HEADING}
 	<svelte:element this={'h' + extra}>
-		{buf_text(buf, idx, source)}
+		{@render child_nodes(idx)}
 	</svelte:element>
 {:else if kind === K_PARAGRAPH}
-	<p>{@render child_nodes(idx)}</p>
+	{#if skip_list_item_paragraph_wrapper}
+		{@render child_nodes(idx)}
+	{:else}
+		<p>{@render child_nodes(idx)}</p>
+	{/if}
 {:else if kind === K_EMPHASIS}
 	<em>{@render child_nodes(idx)}</em>
 {:else if kind === K_STRONG}
 	<strong>{@render child_nodes(idx)}</strong>
 {:else if kind === K_CODE_SPAN}
-	<code>{buf_text(buf, idx, source)}</code>
+	<code>{buf_text(buf, idx, source).replace(/\n/g, ' ')}</code>
 {:else if kind === K_CODE_FENCE}
 	{@const info = meta?.info as string | undefined ?? (meta?.info_start != null ? source.slice(meta.info_start as number, meta.info_end as number) : undefined)}
 	<pre><code class={info ? 'language-' + info : undefined}>{buf_text(buf, idx, source)}</code></pre>
@@ -156,6 +174,7 @@
 	{@const attrs = meta?.attributes as Record<string, string | boolean> | undefined}
 	{@const spread = attrs ? Object.fromEntries(Object.entries(attrs).map(([k, v]) => [k, v === true ? true : v])) : {}}
 	{@const CustomComponent = components?.[tag]}
+	{@const is_raw_text = tag === 'script' || tag === 'style'}
 	{#if CustomComponent}
 		<CustomComponent {...spread}>
 			{#if !meta?.self_closing}
@@ -164,7 +183,11 @@
 		</CustomComponent>
 	{:else}
 		<svelte:element this={tag} {...spread}>
-			{#if !meta?.self_closing}
+			{#if meta?.self_closing}
+				<!-- void element -->
+			{:else if is_raw_text}
+				{buf_text(buf, idx, source)}
+			{:else}
 				{@render child_nodes(idx)}
 			{/if}
 		</svelte:element>

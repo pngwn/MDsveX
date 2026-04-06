@@ -1,7 +1,8 @@
 root
-  paragraph
-    text "foo"
-    link
-      text "https://example.com/?search=][ref]"
   line_break
+  paragraph
+    text "["
+    text "foo"
+    link href="https://example.com/?search=][ref]"
+      text "https://example.com/?search=][ref]"
   line_break

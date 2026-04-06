@@ -1,3 +1,4 @@
 root
   heading depth=3 "This is an H3 ###"
+    text "This is an H3 ###"
   line_break

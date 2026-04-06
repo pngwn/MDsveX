@@ -1,44 +1,44 @@
 /**
  * WireTreeBuilder — populates a node_buffer from wire format batches.
  *
- * Client-side counterpart to TreeBuilder. Consumes the same JSON
- * opcode batches that WireEmitter produces and builds the same SOA
- * node_buffer structure. The resulting buffer is walkable by PFMCursor
+ * client-side counterpart to TreeBuilder. consumes the same json
+ * opcode batches that WireEmitter produces and builds the same soa
+ * node_buffer structure. the resulting buffer is walkable by Cursor
  * with identical semantics.
  *
- * Text strings from the wire format are stored directly in the buffer's
+ * text strings from the wire format are stored directly in the buffer's
  * _strings array — no slicing needed at render time.
  *
  * Usage:
  *
  *   const builder = new WireTreeBuilder();
- *   builder.apply(batch);          // after each SSE/WS message
+ *   builder.apply(batch);          // after each sse/ws message
  *   const cursor = builder.cursor(); // reusable cursor over the buffer
  *   const html = renderCursor(cursor);
  */
 
 import { node_buffer, node_kind } from './utils';
-import { PFMCursor } from './cursor';
+import { Cursor } from './cursor';
 
 const NONE = 0xffffffff;
 
 export class WireTreeBuilder {
-	/** The SOA buffer. */
+	/** the soa buffer. */
 	private buf: node_buffer;
-	/** Maps wire node ID → buffer index. */
+	/** maps wire node id -> buffer index. */
 	private id_to_index: number[];
-	/** Schema kind names (from S opcode). */
+	/** schema kind names (from s opcode). */
 	private schema: string[] | null;
 
 	constructor(capacity = 128) {
 		this.buf = new node_buffer(capacity);
-		this.id_to_index = [0]; // root ID 0 → buffer index 0
+		this.id_to_index = [0]; // root ID 0 -> buffer index 0
 		this.schema = null;
 	}
 
 	/**
-	 * Apply a batch of wire opcodes to the buffer.
-	 * Call after each SSE/WebSocket message.
+	 * apply a batch of wire opcodes to the buffer.
+	 * call after each sse/websocket message.
 	 */
 	apply(batch: unknown[][]): void {
 		// Ensure capacity — ~1 node per 2 opcodes is a good heuristic
@@ -56,7 +56,7 @@ export class WireTreeBuilder {
 						op[2] as number,
 						op[3] as number,
 						(op[4] as number) === 1,
-						op[5] as number,
+						op[5] as number
 					);
 					break;
 				case 'C':
@@ -71,6 +71,9 @@ export class WireTreeBuilder {
 				case 'R':
 					this._revoke(op[1] as number, op[2] as string);
 					break;
+				case 'K':
+					this._commit(op[1] as number);
+					break;
 				case 'X':
 					this._clear(op[1] as number);
 					break;
@@ -78,17 +81,17 @@ export class WireTreeBuilder {
 		}
 	}
 
-	/** Get a cursor over the current buffer state. */
-	cursor(): PFMCursor {
-		return new PFMCursor(this.buf, '');
+	/** get a cursor over the current buffer state. */
+	cursor(): Cursor {
+		return new Cursor(this.buf, '');
 	}
 
-	/** Get the underlying node_buffer. */
+	/** get the underlying node_buffer. */
 	get_buffer(): node_buffer {
 		return this.buf;
 	}
 
-	/** Reset for a new document. */
+	/** reset for a new document. */
 	reset(): void {
 		this.buf = new node_buffer(128);
 		this.id_to_index = [0];
@@ -102,12 +105,13 @@ export class WireTreeBuilder {
 		kind: number,
 		parent: number,
 		pending: boolean,
-		extra: number,
+		extra: number
 	): void {
 		// Root (id=0) is auto-created by node_buffer constructor
 		if (id === 0) return;
 
-		const parent_idx = parent === -1 ? NONE : (this.id_to_index[parent] ?? NONE);
+		const parent_idx =
+			parent === -1 ? NONE : (this.id_to_index[parent] ?? NONE);
 		const idx = pending
 			? this.buf.push_pending(kind as node_kind, 0, parent_idx, extra)
 			: this.buf.push(kind as node_kind, 0, parent_idx, extra);
@@ -118,10 +122,24 @@ export class WireTreeBuilder {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
 		this.buf.set_end(idx, 1);
-		this.buf.commit_node(idx);
+		// Pending paragraphs inside list_items are tight-list speculation
+		// wrappers — they stay pending after close until the list closes
+		// and the parser either revokes (tight) or commits (loose) them.
+		const kind = this.buf._kinds[idx];
+		const parent_kind = this.buf._kinds[this.buf._parents[idx]];
+		if (
+			!(
+				kind === node_kind.paragraph &&
+				parent_kind === node_kind.list_item &&
+				this.buf._pending_nodes[idx] === 1
+			)
+		) {
+			this.buf.commit_node(idx);
+		}
 
-		// Tight list unwrapping — walk sibling chains directly
-		if (this.buf._kinds[idx] === node_kind.list) {
+		// Tight list unwrapping — walk sibling chains directly. Safe no-op
+		// when the parser already revoked them via finalize_list_pending_paras.
+		if (kind === node_kind.list) {
 			const meta = this.buf.metadata_at(idx);
 			if (meta && meta.tight) {
 				let item = this.buf._children_starts[idx];
@@ -150,7 +168,6 @@ export class WireTreeBuilder {
 
 		// Content leaves: store string directly on the node
 		if (
-			kind === node_kind.heading ||
 			kind === node_kind.code_fence ||
 			kind === node_kind.code_span ||
 			kind === node_kind.html_comment
@@ -161,10 +178,51 @@ export class WireTreeBuilder {
 			return;
 		}
 
-		// Container nodes: create a child text node with the string stored directly
+		// Raw-text html elements (script, style): content lives on the html
+		// node itself, not as a text child. Mirrors the TreeBuilder path where
+		// the parser writes value_start/value_end directly on the html node.
+		if (kind === node_kind.html) {
+			const meta = this.buf.metadata_at(idx);
+			if (meta && (meta.tag === 'script' || meta.tag === 'style')) {
+				const existing = strings[idx];
+				strings[idx] = existing !== undefined ? existing + content : content;
+				return;
+			}
+		}
+
+		// Container nodes: coalesce consecutive T opcodes into a single child
+		// text node. If the last child is already a text node, append to it;
+		// otherwise create a new child. This keeps Clear semantics simple
+		// (remove the trailing in-progress text child) and matches the parser's
+		// model where each parser text node maps to one wire text child.
+		const last_text_idx = this._last_text_child(idx);
+		if (last_text_idx !== NONE) {
+			const existing = strings[last_text_idx];
+			strings[last_text_idx] =
+				existing !== undefined ? existing + content : content;
+			return;
+		}
+
 		const text_idx = this.buf.push(node_kind.text, 0, idx);
 		strings[text_idx] = content;
 		this.buf._ends[text_idx] = 1;
+	}
+
+	/**
+	 * return the buffer index of the last child of `idx` if and only if that
+	 * child is a text node. returns none otherwise. used by _text (coalesce)
+	 * and _clear (discard in-progress text).
+	 */
+	private _last_text_child(idx: number): number {
+		let child = this.buf._children_starts[idx];
+		if (child === NONE) return NONE;
+		let last = child;
+		while (true) {
+			const next = this.buf._next_siblings[last];
+			if (next === NONE || this.buf._parents[next] !== idx) break;
+			last = next;
+		}
+		return this.buf._kinds[last] === node_kind.text ? last : NONE;
 	}
 
 	private _attr(id: number, key: string, value: unknown): void {
@@ -183,50 +241,31 @@ export class WireTreeBuilder {
 	private _revoke(id: number, delimiter: string): void {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
+		this.buf.handle_repair(idx, delimiter || undefined);
+	}
 
-		const parent_idx = this.buf._parents[idx];
-		if (parent_idx === NONE) return;
-
-		// Convert revoked node to text node with the delimiter
-		if (delimiter) {
-			this.buf.set_kind(idx, node_kind.text);
-			this.buf._strings[idx] = delimiter;
-			this.buf.set_end(idx, 1);
-		}
-
-		// Reparent children to grandparent
-		const first_child = this.buf._children_starts[idx];
-		if (first_child !== NONE) {
-			// Walk to find last child
-			let child = first_child;
-			let last_child = first_child;
-			while (child !== NONE) {
-				this.buf._parents[child] = parent_idx;
-				last_child = child;
-				child = this.buf._next_siblings[child];
-			}
-
-			// Link: idx -> first_child ... last_child -> idx.next
-			const idx_next = this.buf._next_siblings[idx];
-			this.buf._next_siblings[idx] = first_child;
-			this.buf.prev_siblings_set(first_child, idx);
-			this.buf._next_siblings[last_child] = idx_next;
-			if (idx_next !== NONE) {
-				this.buf.prev_siblings_set(idx_next, last_child);
-			} else {
-				this.buf.children_ends_set(parent_idx, last_child);
-			}
-
-			// Clear revoked node's children
-			this.buf._children_starts[idx] = NONE;
-			this.buf.children_ends_set(idx, NONE);
-		} else if (!delimiter) {
-			this.buf.unwrap_node(idx);
-		}
+	private _commit(id: number): void {
+		const idx = this.id_to_index[id];
+		if (idx === undefined) return;
+		this.buf.commit_node(idx);
 	}
 
 	private _clear(id: number): void {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
+
+		// Content leaves store text on the node itself — drop it.
+		delete this.buf._strings[idx];
+
+		// Container nodes store text as a trailing child text node created by
+		// _text. Clear means a value range was corrected mid-stream (e.g.
+		// trailing whitespace trimmed), so the in-progress text child must be
+		// discarded. A committed non-text sibling after it would mean the text
+		// child is no longer the tail — in that case there is nothing to undo.
+		const last_text_idx = this._last_text_child(idx);
+		if (last_text_idx === NONE) return;
+		delete this.buf._strings[last_text_idx];
+		// unwrap_node of a childless node removes it from the sibling chain.
+		this.buf.unwrap_node(last_text_idx);
 	}
 }

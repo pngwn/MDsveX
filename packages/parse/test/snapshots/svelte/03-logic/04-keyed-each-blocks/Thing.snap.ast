@@ -1,16 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "// "
-      code_span "current"
-      text " is updated whenever the prop value changes...\nexport let current;"
-    line_break
-    line_break
-    paragraph
-      text "// ...but "
-      code_span "initial"
-      text " is fixed upon initialisation\nconst initial = current;\n"
   line_break
   line_break
   html tag="p"
@@ -26,7 +15,3 @@ root
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text "span "
-      mustache "\n		display: inline-block;\n		padding: 0.2em 0.5em;\n		margin: 0 0.2em 0.2em 0;\n		width: 4em;\n		text-align: center;\n		border-radius: 0.2em;\n		color: white;\n	"

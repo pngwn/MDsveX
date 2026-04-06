@@ -1,34 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " createEventDispatcher "
-      text " from \"svelte\";"
-    line_break
-    line_break
-    paragraph
-      text "export let value = \"\";"
-    line_break
-    line_break
-    paragraph
-      text "const dispatch = createEventDispatcher();"
-    line_break
-    line_break
-    paragraph
-      text "const select = (num) => () => (value += num);\nconst clear = () => (value = \"\");\nconst submit = () => dispatch(\"submit\");\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text ".keypad "
-      mustache "\n		display: grid;\n		grid-template-columns: repeat(3, 5em);\n		grid-template-rows: repeat(4, 3em);\n		grid-gap: 0.5em\n	"
-      line_break
-      line_break
-      paragraph
-        text "button "
-        mustache "\n		margin: 0\n	"
   line_break
   line_break
   html tag="div" class="keypad"

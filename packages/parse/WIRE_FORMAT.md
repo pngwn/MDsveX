@@ -7,7 +7,7 @@ This guide explains how to consume the wire format in any language (Swift, Kotli
 ## Overview
 
 ```
-Source text → PFMParser → WireEmitter → JSON batches → Client (tree + renderer)
+Source text -> PFMParser -> WireEmitter -> JSON batches -> Client (tree + renderer)
 ```
 
 The parser feeds chunks of markdown to a `WireEmitter`, which produces **batches** of opcodes. Each batch is a JSON array of opcode tuples:
@@ -34,11 +34,36 @@ In streaming mode, one batch is produced per `feed()` call. The client applies e
 Sent once as the first opcode in the first batch. Maps numeric kind codes to human-readable names. Store this array — you'll use it to look up kind names from the numeric codes in `O` opcodes.
 
 ```json
-["S", ["root","text","html","heading","mustache","code_fence","line_break",
-       "paragraph","code_span","emphasis","strong_emphasis","thematic_break",
-       "link","image","block_quote","list","list_item","hard_break",
-       "soft_break","strikethrough","superscript","table","table_header",
-       "table_row","table_cell"]]
+[
+	"S",
+	[
+		"root",
+		"text",
+		"html",
+		"heading",
+		"mustache",
+		"code_fence",
+		"line_break",
+		"paragraph",
+		"code_span",
+		"emphasis",
+		"strong_emphasis",
+		"thematic_break",
+		"link",
+		"image",
+		"block_quote",
+		"list",
+		"list_item",
+		"hard_break",
+		"soft_break",
+		"strikethrough",
+		"superscript",
+		"table",
+		"table_header",
+		"table_row",
+		"table_cell"
+	]
+]
 ```
 
 ### O — Open
@@ -49,13 +74,13 @@ Sent once as the first opcode in the first batch. Maps numeric kind codes to hum
 
 Creates a new node and appends it to the parent's content.
 
-| Field    | Description |
-|----------|-------------|
-| `id`     | Unique node ID (monotonically increasing). |
-| `kind`   | Numeric kind code. Look up `schema[kind]` for the name. |
-| `parent` | ID of the parent node. `-1` for the root node. |
-| `pending`| `1` if speculative (may be revoked), `0` if committed. |
-| `extra`  | Kind-specific value. For headings: the depth (1–6). For code fences: the backtick count. `0` for most kinds. |
+| Field     | Description                                                                                                  |
+| --------- | ------------------------------------------------------------------------------------------------------------ |
+| `id`      | Unique node ID (monotonically increasing).                                                                   |
+| `kind`    | Numeric kind code. Look up `schema[kind]` for the name.                                                      |
+| `parent`  | ID of the parent node. `-1` for the root node.                                                               |
+| `pending` | `1` if speculative (may be revoked), `0` if committed.                                                       |
+| `extra`   | Kind-specific value. For headings: the depth (1–6). For code fences: the backtick count. `0` for most kinds. |
 
 ### C — Close
 
@@ -83,16 +108,16 @@ Text is always resolved to strings on the wire — the client never sees byte of
 
 Sets an attribute on a node. Common attributes:
 
-| Kind | Key | Value | Description |
-|------|-----|-------|-------------|
-| `link` | `href` | `string` | Link URL |
-| `link` | `title` | `string` | Link title |
-| `image` | `src` | `string` | Image source URL |
-| `image` | `title` | `string` | Image title |
-| `code_fence` | `info` | `string` | Info string (language identifier) |
-| `list` | `ordered` | `boolean` | `true` for ordered lists |
-| `list` | `start` | `number` | Start number for ordered lists |
-| `table` | `alignments` | `string[]` | Per-column alignment: `"left"`, `"center"`, `"right"`, or `"none"` |
+| Kind         | Key          | Value      | Description                                                        |
+| ------------ | ------------ | ---------- | ------------------------------------------------------------------ |
+| `link`       | `href`       | `string`   | Link URL                                                           |
+| `link`       | `title`      | `string`   | Link title                                                         |
+| `image`      | `src`        | `string`   | Image source URL                                                   |
+| `image`      | `title`      | `string`   | Image title                                                        |
+| `code_fence` | `info`       | `string`   | Info string (language identifier)                                  |
+| `list`       | `ordered`    | `boolean`  | `true` for ordered lists                                           |
+| `list`       | `start`      | `number`   | Start number for ordered lists                                     |
+| `table`      | `alignments` | `string[]` | Per-column alignment: `"left"`, `"center"`, `"right"`, or `"none"` |
 
 ### R — Revoke
 
@@ -166,9 +191,9 @@ for each batch from the wire:
 
     for each block in root.content:
         skip strings and line_break nodes
-        if block is new → render it
-        if block is open (not closed) → re-render it
-        if block is closed → use cached version
+        if block is new -> render it
+        if block is open (not closed) -> re-render it
+        if block is closed -> use cached version
 ```
 
 ## Node Kind Reference
@@ -177,34 +202,34 @@ for each batch from the wire:
 
 These appear as direct children of root:
 
-| Kind | Extra | Attrs | Content | Notes |
-|------|-------|-------|---------|-------|
-| `heading` | depth (1–6) | — | inline content | Render as `<h1>`–`<h6>` |
-| `paragraph` | — | — | inline content | |
-| `code_fence` | backtick count | `info`: language | raw text | Content is raw (no inline parsing) |
-| `block_quote` | — | — | block children | Contains paragraphs, etc. |
-| `list` | — | `ordered`, `start` | list_item children | |
-| `list_item` | — | — | block/inline content | |
-| `thematic_break` | — | — | empty | Render as `<hr>` |
-| `table` | — | `alignments[]` | header + row children | |
-| `line_break` | — | — | — | Structural separator between blocks; skip in rendering |
+| Kind             | Extra          | Attrs              | Content               | Notes                                                  |
+| ---------------- | -------------- | ------------------ | --------------------- | ------------------------------------------------------ |
+| `heading`        | depth (1–6)    | —                  | inline content        | Render as `<h1>`–`<h6>`                                |
+| `paragraph`      | —              | —                  | inline content        |                                                        |
+| `code_fence`     | backtick count | `info`: language   | raw text              | Content is raw (no inline parsing)                     |
+| `block_quote`    | —              | —                  | block children        | Contains paragraphs, etc.                              |
+| `list`           | —              | `ordered`, `start` | list_item children    |                                                        |
+| `list_item`      | —              | —                  | block/inline content  |                                                        |
+| `thematic_break` | —              | —                  | empty                 | Render as `<hr>`                                       |
+| `table`          | —              | `alignments[]`     | header + row children |                                                        |
+| `line_break`     | —              | —                  | —                     | Structural separator between blocks; skip in rendering |
 
 ### Inline nodes
 
 These appear inside paragraphs, headings, list items, and other inline containers:
 
-| Kind | Content | Attrs | Notes |
-|------|---------|-------|-------|
-| `emphasis` | inline content | — | `_text_` → `<em>` |
-| `strong_emphasis` | inline content | — | `*text*` → `<strong>` |
-| `strikethrough` | inline content | — | `~~text~~` → `<del>` |
-| `superscript` | inline content | — | `^text^` → `<sup>` |
-| `subscript` | inline content | — | `~text~` → `<sub>` |
-| `code_span` | raw text | — | `` `code` `` → `<code>` (no inline parsing inside) |
-| `link` | inline content | `href`, `title` | `[text](url "title")` |
-| `image` | alt text | `src`, `title` | `![alt](src "title")` — content is the alt text |
-| `hard_break` | — | — | `\` at end of line → `<br>` |
-| `soft_break` | — | — | Line break within a paragraph → space or `\n` |
+| Kind              | Content        | Attrs           | Notes                                               |
+| ----------------- | -------------- | --------------- | --------------------------------------------------- |
+| `emphasis`        | inline content | —               | `_text_` -> `<em>`                                  |
+| `strong_emphasis` | inline content | —               | `*text*` -> `<strong>`                              |
+| `strikethrough`   | inline content | —               | `~~text~~` -> `<del>`                               |
+| `superscript`     | inline content | —               | `^text^` -> `<sup>`                                 |
+| `subscript`       | inline content | —               | `~text~` -> `<sub>`                                 |
+| `code_span`       | raw text       | —               | `` `code` `` -> `<code>` (no inline parsing inside) |
+| `link`            | inline content | `href`, `title` | `[text](url "title")`                               |
+| `image`           | alt text       | `src`, `title`  | `![alt](src "title")` — content is the alt text     |
+| `hard_break`      | —              | —               | `\` at end of line -> `<br>`                        |
+| `soft_break`      | —              | —               | Line break within a paragraph -> space or `\n`      |
 
 ### Table structure
 
@@ -242,11 +267,12 @@ Given this markdown streamed in two chunks:
 ```
 
 1. `S` — Store the schema.
-2. `O 0` — Create root node (kind=0 → "root", parent=-1).
-3. `O 1` — Create heading node (kind=3 → "heading", parent=0, extra=1 → h1).
+2. `O 0` — Create root node (kind=0 -> "root", parent=-1).
+3. `O 1` — Create heading node (kind=3 -> "heading", parent=0, extra=1 -> h1).
 4. `T 1` — Append "Hel" to node 1's content.
 
 Tree after batch 1:
+
 ```
 root
   └─ heading(h1) "Hel"     [open]
@@ -256,15 +282,16 @@ root
 
 ```json
 [
-  ["T", 1, "lo"],
-  ["C", 1]
+	["T", 1, "lo"],
+	["C", 1]
 ]
 ```
 
-1. `T 1` — Append "lo" to node 1 → content is now "Hello".
+1. `T 1` — Append "lo" to node 1 -> content is now "Hello".
 2. `C 1` — Close node 1. It's finalized.
 
 Tree after batch 2:
+
 ```
 root
   └─ heading(h1) "Hello"   [closed]
@@ -280,21 +307,23 @@ The parser sees `_` and speculatively opens an emphasis node. When it reaches th
 
 ```json
 [
-  ["O", 0, 0, -1, 0, 0],
-  ["O", 1, 7, 0, 0, 0],
-  ["O", 2, 9, 1, 1, 0],
-  ["T", 2, "not emphasis"],
-  ["R", 2, "_"],
-  ["C", 1]
+	["O", 0, 0, -1, 0, 0],
+	["O", 1, 7, 0, 0, 0],
+	["O", 2, 9, 1, 1, 0],
+	["T", 2, "not emphasis"],
+	["R", 2, "_"],
+	["C", 1]
 ]
 ```
 
 After `R 2`:
+
 - Remove emphasis (node 2) from paragraph's content.
 - Insert `"_"` + `"not emphasis"` into paragraph's content.
-- Merge adjacent strings → `"_not emphasis"`.
+- Merge adjacent strings -> `"_not emphasis"`.
 
 Final tree:
+
 ```
 root
   └─ paragraph "_not emphasis"
@@ -415,9 +444,9 @@ const source = new EventSource('/api/parse');
 const doc = new PFMDocument();
 
 source.onmessage = (event) => {
-    const batch = JSON.parse(event.data);
-    doc.apply(batch);
-    renderer.update(doc);
+	const batch = JSON.parse(event.data);
+	doc.apply(batch);
+	renderer.update(doc);
 };
 ```
 
@@ -439,7 +468,7 @@ const parser = new PFMParser(emitter);
 parser.parse(source);
 
 const batch = emitter.flush(); // single batch with all opcodes
-// → send batch to client
+// -> send batch to client
 ```
 
 ### Incremental (streaming) mode
@@ -456,22 +485,22 @@ parser.init(); // required before first feed()
 let accumulated = '';
 
 function onChunk(chunk) {
-    accumulated += chunk;
-    emitter.set_source(accumulated);  // must be the full source so far
-    parser.feed(chunk);               // only the new chunk
-    const batch = emitter.flush();    // opcodes produced by this chunk
-    if (batch.length > 0) {
-        send(batch);                  // send to client
-    }
+	accumulated += chunk;
+	emitter.set_source(accumulated); // must be the full source so far
+	parser.feed(chunk); // only the new chunk
+	const batch = emitter.flush(); // opcodes produced by this chunk
+	if (batch.length > 0) {
+		send(batch); // send to client
+	}
 }
 
 function onEnd() {
-    emitter.set_source(accumulated);
-    parser.finish();                  // finalize all open nodes
-    const batch = emitter.flush();
-    if (batch.length > 0) {
-        send(batch);
-    }
+	emitter.set_source(accumulated);
+	parser.finish(); // finalize all open nodes
+	const batch = emitter.flush();
+	if (batch.length > 0) {
+		send(batch);
+	}
 }
 ```
 
@@ -479,22 +508,22 @@ function onEnd() {
 
 #### `PFMParser`
 
-| Method | Description |
-|--------|-------------|
-| `constructor(emitter: Emitter)` | Create a parser with the given opcode emitter. |
-| `parse(source)` | **Batch mode.** Parse a complete string. Equivalent to `init()` + `feed(source)` + `finish()`. |
-| `init()` | **Streaming mode.** Initialize the parser. Must be called before the first `feed()`. |
-| `feed(chunk)` | Feed a chunk of source text. The parser advances as far as it can, stalling at line boundaries when it needs more input to decide structure (e.g., is this a heading or a paragraph?). |
-| `finish()` | Signal end-of-input. Finalizes all open nodes, revokes unresolved speculation, and emits closing opcodes. Returns `{ errors }`. |
+| Method                          | Description                                                                                                                                                                            |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `constructor(emitter: Emitter)` | Create a parser with the given opcode emitter.                                                                                                                                         |
+| `parse(source)`                 | **Batch mode.** Parse a complete string. Equivalent to `init()` + `feed(source)` + `finish()`.                                                                                         |
+| `init()`                        | **Streaming mode.** Initialize the parser. Must be called before the first `feed()`.                                                                                                   |
+| `feed(chunk)`                   | Feed a chunk of source text. The parser advances as far as it can, stalling at line boundaries when it needs more input to decide structure (e.g., is this a heading or a paragraph?). |
+| `finish()`                      | Signal end-of-input. Finalizes all open nodes, revokes unresolved speculation, and emits closing opcodes. Returns `{ errors }`.                                                        |
 
 #### `WireEmitter`
 
-| Method | Description |
-|--------|-------------|
+| Method               | Description                                                                                                                                                           |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `set_source(source)` | Set the **full accumulated source** string. Must be called before each `feed()` and before `finish()`. The emitter uses this to resolve byte offsets to text content. |
-| `flush()` | Return all accumulated opcodes as a batch (array of tuples) and clear the internal buffer. The first flush includes the `S` (schema) opcode. |
-| `flush_json()` | Convenience — calls `flush()` and returns `JSON.stringify(result)`. |
-| `reset()` | Reset all state for reuse with a new parse. |
+| `flush()`            | Return all accumulated opcodes as a batch (array of tuples) and clear the internal buffer. The first flush includes the `S` (schema) opcode.                          |
+| `flush_json()`       | Convenience — calls `flush()` and returns `JSON.stringify(result)`.                                                                                                   |
+| `reset()`            | Reset all state for reuse with a new parse.                                                                                                                           |
 
 ### How stalling works
 
@@ -518,8 +547,8 @@ The `WireEmitter.flush()` method does more than just return buffered opcodes —
 This means the client sees progressive text content even before nodes are closed:
 
 ```
-feed("# Hel")  → batch: [O(heading), T(heading, "Hel")]
-feed("lo\n")   → batch: [T(heading, "lo"), C(heading)]
+feed("# Hel")  -> batch: [O(heading), T(heading, "Hel")]
+feed("lo\n")   -> batch: [T(heading, "lo"), C(heading)]
 ```
 
 Without eager emission, the client would see nothing until the heading is closed.
@@ -540,19 +569,19 @@ const reader = response.body.getReader();
 const decoder = new TextDecoder();
 
 while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+	const { done, value } = await reader.read();
+	if (done) break;
 
-    const chunk = decoder.decode(value, { stream: true });
-    accumulated += chunk;
-    emitter.set_source(accumulated);
-    parser.feed(chunk);
+	const chunk = decoder.decode(value, { stream: true });
+	accumulated += chunk;
+	emitter.set_source(accumulated);
+	parser.feed(chunk);
 
-    const batch = emitter.flush();
-    if (batch.length > 0) {
-        // Send to client via SSE, WebSocket, etc.
-        res.write(`data: ${JSON.stringify(batch)}\n\n`);
-    }
+	const batch = emitter.flush();
+	if (batch.length > 0) {
+		// Send to client via SSE, WebSocket, etc.
+		res.write(`data: ${JSON.stringify(batch)}\n\n`);
+	}
 }
 
 // Finalize
@@ -560,7 +589,7 @@ emitter.set_source(accumulated);
 parser.finish();
 const finalBatch = emitter.flush();
 if (finalBatch.length > 0) {
-    res.write(`data: ${JSON.stringify(finalBatch)}\n\n`);
+	res.write(`data: ${JSON.stringify(finalBatch)}\n\n`);
 }
 ```
 
@@ -570,42 +599,44 @@ if (finalBatch.length > 0) {
 import { PFMParser, WireEmitter } from '@mdsvex/parse';
 import http from 'node:http';
 
-http.createServer((req, res) => {
-    res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-    });
+http
+	.createServer((req, res) => {
+		res.writeHead(200, {
+			'Content-Type': 'text/event-stream',
+			'Cache-Control': 'no-cache',
+			Connection: 'keep-alive',
+		});
 
-    const emitter = new WireEmitter();
-    const parser = new PFMParser(emitter);
-    parser.init();
-    let accumulated = '';
+		const emitter = new WireEmitter();
+		const parser = new PFMParser(emitter);
+		parser.init();
+		let accumulated = '';
 
-    // Simulate streaming input (replace with real source)
-    const source = '# Hello\n\nThis is *streaming* markdown.\n';
-    const chunkSize = 5;
+		// Simulate streaming input (replace with real source)
+		const source = '# Hello\n\nThis is *streaming* markdown.\n';
+		const chunkSize = 5;
 
-    for (let i = 0; i < source.length; i += chunkSize) {
-        const chunk = source.slice(i, i + chunkSize);
-        accumulated += chunk;
-        emitter.set_source(accumulated);
-        parser.feed(chunk);
-        const batch = emitter.flush();
-        if (batch.length > 0) {
-            res.write(`data: ${JSON.stringify(batch)}\n\n`);
-        }
-    }
+		for (let i = 0; i < source.length; i += chunkSize) {
+			const chunk = source.slice(i, i + chunkSize);
+			accumulated += chunk;
+			emitter.set_source(accumulated);
+			parser.feed(chunk);
+			const batch = emitter.flush();
+			if (batch.length > 0) {
+				res.write(`data: ${JSON.stringify(batch)}\n\n`);
+			}
+		}
 
-    emitter.set_source(accumulated);
-    parser.finish();
-    const batch = emitter.flush();
-    if (batch.length > 0) {
-        res.write(`data: ${JSON.stringify(batch)}\n\n`);
-    }
+		emitter.set_source(accumulated);
+		parser.finish();
+		const batch = emitter.flush();
+		if (batch.length > 0) {
+			res.write(`data: ${JSON.stringify(batch)}\n\n`);
+		}
 
-    res.end();
-}).listen(3000);
+		res.end();
+	})
+	.listen(3000);
 ```
 
 ### Example: complete SSE client
@@ -616,19 +647,31 @@ import { PFMDocument } from '@mdsvex/parse';
 const doc = new PFMDocument();
 
 // Optional: surgical event hooks for fine-grained UI updates
-doc.onopen = (node) => { /* create UI element */ };
-doc.onclose = (node) => { /* cache/finalize UI element */ };
-doc.ontext = (node, contentIndex, appended) => { /* append text to UI */ };
-doc.onattr = (node, key, value) => { /* update attribute */ };
-doc.onrevoke = (parent, revokedNode, delimiter) => { /* restructure UI */ };
-doc.onclear = (node) => { /* clear UI element */ };
+doc.onopen = (node) => {
+	/* create UI element */
+};
+doc.onclose = (node) => {
+	/* cache/finalize UI element */
+};
+doc.ontext = (node, contentIndex, appended) => {
+	/* append text to UI */
+};
+doc.onattr = (node, key, value) => {
+	/* update attribute */
+};
+doc.onrevoke = (parent, revokedNode, delimiter) => {
+	/* restructure UI */
+};
+doc.onclear = (node) => {
+	/* clear UI element */
+};
 
 const source = new EventSource('/api/parse');
 source.onmessage = (event) => {
-    const batch = JSON.parse(event.data);
-    doc.apply(batch);
-    // doc.root is the live tree — render it
-    updateUI(doc);
+	const batch = JSON.parse(event.data);
+	doc.apply(batch);
+	// doc.root is the live tree — render it
+	updateUI(doc);
 };
 ```
 

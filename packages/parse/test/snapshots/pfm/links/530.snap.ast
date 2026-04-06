@@ -1,5 +1,7 @@
 root
+  line_break
   paragraph
+    text "["
     text "link "
     text "*"
     text "foo "
@@ -10,6 +12,6 @@ root
     code_span "#"
     text "*"
     text "]"
+    text "[ref"
     text "]"
-  line_break
   line_break

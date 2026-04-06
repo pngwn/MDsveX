@@ -3,7 +3,7 @@ root
 		text(Foo *bar)
 	line_break
 	paragraph
-		text(baz*→)
+		text(baz*->)
 	line_break
 	paragraph
 		text(====)

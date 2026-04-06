@@ -1,6 +1,7 @@
 root
   paragraph
-    strong_emphasis
+    text "*"
+    text "*"
     text "*_"
     emphasis
       text "foo"

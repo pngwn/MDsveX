@@ -1,1 +1,1 @@
-→foo→baz→→bim
+->foo->baz->->bim

@@ -1,8 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "export let name;\nexport let version;\nexport let speed;\nexport let website;\n"
   line_break
   line_break
   html tag="p"
@@ -13,11 +10,15 @@ root
         mustache "name"
       text " package is "
       mustache "speed"
-      text " fast.\n	Download version "
+      text " fast."
+      soft_break
+      text "	Download version "
       mustache "version"
       text " from "
       html tag="a" href="https://www.npmjs.com/package/{name}"
         text "npm"
+      soft_break
       text "	and "
       html tag="a" href="website"
         text "learn more here"
+      soft_break

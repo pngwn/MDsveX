@@ -47,13 +47,13 @@
 
 	const initial = read_params();
 	let chunk_size = $state(initial.chunk);
-	let step_index = $state(0);
+	let step_index = $state();
 	let playing = $state(false);
 	let play_speed = $state(initial.speed);
 	let play_timer: ReturnType<typeof setInterval> | null = null;
 	let render_mode: 'html' | 'dom' | 'canvas' = $state(initial.renderer);
 
-	// Sync state → URL. Silently skip if router isn't ready yet (SSR/hydration).
+	// Sync state -> URL. Silently skip if router isn't ready yet (SSR/hydration).
 	$effect(() => {
 		chunk_size; play_speed; render_mode;
 		untrack(() => { try { write_params(); } catch {} });
@@ -64,7 +64,7 @@
 		markdown;
 		untrack(() => {
 			stop();
-			step_index = 0;
+			step_index = total_steps	-1;
 		});
 	});
 
@@ -164,6 +164,7 @@
 		}
 
 		renderer.update(builder.get_buffer(), '');
+		console.log(renderer.blocks.map(b => ({ idx: b.idx, html: b.html })))
 		return renderer.blocks.map(b => ({ idx: b.idx, html: b.html }));
 	});
 
@@ -225,6 +226,7 @@
 			case 'text': return `text(${op.parent}, ${op.start}..${op.end})`;
 			case 'attr': return `attr(${op.id}, ${op.key}, ${JSON.stringify(op.value)})`;
 			case 'revoke': return `revoke(${op.id})`;
+			case 'commit': return `commit(${op.id})`;
 		}
 	}
 
@@ -235,6 +237,7 @@
 			case 'text': return 'var(--text-secondary)';
 			case 'attr': return '#a78bfa';
 			case 'revoke': return '#ef4444';
+			case 'commit': return '#10b981';
 		}
 	}
 </script>

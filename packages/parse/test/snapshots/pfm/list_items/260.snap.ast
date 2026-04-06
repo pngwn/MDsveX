@@ -1,8 +1,9 @@
 root
   block_quote
     block_quote
-      paragraph
-        text "- one"
+      list ordered=false start=0 tight=true
+        list_item
+          text "one"
       block_quote
         block_quote
           paragraph

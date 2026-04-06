@@ -1,3 +1,4 @@
 root
   heading depth=1 "foo"
+    text "foo"
   line_break

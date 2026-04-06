@@ -1,18 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import Keypad from \"./Keypad.svelte\";"
-    line_break
-    line_break
-    paragraph
-      text "let pin;\n$: view = pin ? pin.replace(/\\d(?"
-      text "!$)/g, \"•\") : \"enter your pin\";"
-    line_break
-    line_break
-    paragraph
-      text "function handleSubmit() "
-      mustache "\n	alert(`submitted ${pin}`);\n"
   line_break
   line_break
   html tag="h1" style="color: {pin ? '#333' : '#ccc'}"

@@ -1,12 +1,12 @@
 root
   paragraph
+    text "_"
+    text "_"
+    text "_"
     emphasis
-      text "_"
-      text "_"
-      text "_"
-      text "_foo"
-      text "_"
-      text "_"
-      text "_"
-      text "_"
+      emphasis
+        text "foo"
+    text "_"
+    text "_"
+    text "_"
   line_break

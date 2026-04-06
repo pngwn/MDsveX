@@ -1,0 +1,9 @@
+root
+  paragraph
+    text "Foo"
+    soft_break
+    html tag="div"
+      soft_break
+      text "bar"
+      soft_break
+  line_break

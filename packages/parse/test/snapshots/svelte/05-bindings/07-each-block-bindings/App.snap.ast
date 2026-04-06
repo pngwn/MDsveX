@@ -1,38 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "let todos = "
-      text "	"
-      mustache " done: false, text: \"finish Svelte tutorial\" "
-      text ",\n	"
-      mustache " done: false, text: \"build an app\" "
-      text ",\n	"
-      mustache " done: false, text: \"world domination\" "
-      text ",\n"
-      text "];"
-    line_break
-    line_break
-    paragraph
-      text "function add() "
-      mustache "\n	todos = todos.concat({ done: false, text: \"\" });\n"
-    line_break
-    line_break
-    paragraph
-      text "function clear() "
-      mustache "\n	todos = todos.filter((t) => !t.done);\n"
-    line_break
-    line_break
-    paragraph
-      text "$: remaining = todos.filter((t) => "
-      text "!t.done).length;\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text ".done "
-      mustache "\n		opacity: 0.4;\n	"
   line_break
   line_break
   html tag="h1"
@@ -42,6 +12,38 @@ root
   line_break
   paragraph
     mustache "#each todos as todo"
+    soft_break
     text "	"
-    text tag="div" class:done="todo.done" "<div class:done={todo.done}>\n"
+    text tag="div" class:done="todo.done" "<div class:done={todo.done}>"
+    soft_break
     text "		"
+    text tag="input" type="checkbox" bind:checked="todo.done" "<input"
+    line_break
+    line_break
+    text tag="input" placeholder="What needs to be done?" bind:value="todo.text" "<input"
+    line_break
+    paragraph
+      text "</div>"
+      soft_break
+      mustache "/each"
+    line_break
+    line_break
+    html tag="p"
+      paragraph
+        mustache "remaining"
+        text " remaining"
+    line_break
+    line_break
+    html tag="button" on:click="add"
+      line_break
+      paragraph
+        text "Add new"
+        soft_break
+    line_break
+    line_break
+    html tag="button" on:click="clear"
+      line_break
+      paragraph
+        text "Clear completed"
+        soft_break
+    line_break

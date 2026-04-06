@@ -1,0 +1,8 @@
+root
+  html tag="del"
+    line_break
+    paragraph
+      strong_emphasis
+        text "foo"
+      soft_break
+  line_break

@@ -1,0 +1,9 @@
+root
+  html tag="table"
+    html tag="tr"
+      html tag="td"
+        line_break
+        paragraph
+          text "foo"
+          soft_break
+  line_break

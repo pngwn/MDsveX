@@ -1,5 +1,7 @@
 root
   list ordered=true start=1 tight=true
     list_item
-      text "A paragraph\n    with two lines."
+      text "A paragraph"
+      soft_break
+      text "    with two lines."
   line_break

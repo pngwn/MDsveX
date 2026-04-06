@@ -1,31 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " spring "
-      text " from \"svelte/motion\";"
-    line_break
-    line_break
-    paragraph
-      text "let coords = spring(\n	"
-      mustache " x: 50, y: 50 "
-      text ",\n	"
-      mustache "\n		stiffness: 0.1,\n		damping: 0.25,\n	"
-      text ",\n);"
-    line_break
-    line_break
-    paragraph
-      text "let size = spring(10);\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text "svg "
-      mustache " width: 100%; height: 100%; margin: -8px "
-      text "	circle "
-      mustache " fill: #ff3e00 "
   line_break
   line_break
   html tag="div" style="position: absolute; right: 1em;"

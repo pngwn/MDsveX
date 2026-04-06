@@ -8,10 +8,10 @@ import { parse_markdown_svelte } from '../src/main';
 import type { node_buffer } from '../src/utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
-const fixtures_root = resolve(this_dir, '../../pfm-tests/tests/lists');
+const fixtures_root = resolve(this_dir, 'fixtures/pfm/lists');
 
 const load_fixture = (id: string): string =>
-	readFileSync(resolve(fixtures_root, id, 'input.md'), 'utf8');
+	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
 
 function collect_children(nodes: node_buffer, parent: number = 0) {
 	const root = nodes.get_node(parent);
@@ -346,7 +346,20 @@ describe('Lists', () => {
 		}
 	});
 
-	test.todo('pfm example 312: indentation limit for list continuation (PFM: no indented code)');
+	test('pfm example 312: indentation limit for list continuation (PFM: no indented code)', () => {
+		const input = load_fixture('312');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// PFM: no indented code blocks, so all items are in a flat list
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(true);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(5);
+		expect(items.every((i) => i.kind === 'list_item')).toBe(true);
+	});
 	test('pfm example 319: nested list with paragraph continuation', () => {
 		const input = load_fixture('319');
 		const { nodes } = parse_markdown_svelte(input);
@@ -418,7 +431,19 @@ describe('Lists', () => {
 		expect(item3_children.length).toBe(1);
 		expect(item3_children[0].kind).toBe('paragraph');
 	});
-	test.todo('pfm example 317: reference link definition in list item');
+	test('pfm example 317: reference link definition in list item', () => {
+		const input = load_fixture('317');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Loose list with 3 items (a, b, d) — ref def is consumed
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(false);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(3);
+	});
 
 	test('pfm example 309: continuation content and list structure', () => {
 		const input = load_fixture('309');
@@ -451,8 +476,27 @@ describe('Lists', () => {
 		expect(item2_children[0].kind).toBe('paragraph');
 	});
 
-	// Tests that need block-level content in items
-	test.todo('pfm example 308: HTML comment interrupts list');
+	// HTML comment interrupts list, creating two separate lists
+	test('pfm example 308: HTML comment interrupts list', () => {
+		const input = load_fixture('308');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Two separate lists with html_comment between them
+		const lists = children.filter((n) => n.kind === 'list');
+		expect(lists.length).toBe(2);
+
+		const comment = children.find((n) => n.kind === 'html_comment');
+		expect(comment).toBeDefined();
+
+		// First list: foo, bar
+		const items1 = non_breaks(nodes, lists[0].index);
+		expect(items1.length).toBe(2);
+
+		// Second list: baz, bim
+		const items2 = non_breaks(nodes, lists[1].index);
+		expect(items2.length).toBe(2);
+	});
 	test('pfm example 318: code fence in list item', () => {
 		const input = load_fixture('318');
 		const { nodes } = parse_markdown_svelte(input);
@@ -499,6 +543,7 @@ describe('Lists', () => {
 		expect(get_value(nodes, item2_children[0].index, input)).toBe('c');
 	});
 
+	// TODO: block quote inside list item eats subsequent code fence — block quote/fence interaction bug
 	test.todo('pfm example 321: block quote and code fence in list item');
 	test('pfm example 324: ordered list with code fence', () => {
 		const input = load_fixture('324');
@@ -523,6 +568,18 @@ describe('Lists', () => {
 		expect(get_value(nodes, bar_text[0].index, input)).toBe('bar');
 	});
 
-	// PFM adjustment needed (no indented code blocks)
-	test.todo('pfm example 313: indentation limit (PFM: no indented code)');
+	test('pfm example 313: indentation limit (PFM: no indented code)', () => {
+		const input = load_fixture('313');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// PFM: no indented code, so all 3 items in a single loose ordered list
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.ordered).toBe(true);
+		expect(children[0].metadata.tight).toBe(false);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(3);
+	});
 });

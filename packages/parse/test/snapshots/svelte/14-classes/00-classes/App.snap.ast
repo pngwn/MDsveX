@@ -1,20 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "let current = \"foo\";\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text "button "
-      mustache "\n		display: block;\n	"
-      line_break
-      line_break
-      paragraph
-        text ".active "
-        mustache "\n		background-color: #ff3e00;\n		color: white;\n	"
   line_break
   line_break
   html tag="button" class:active="{current === 'foo'}" on:click="{() => current = 'foo'}"

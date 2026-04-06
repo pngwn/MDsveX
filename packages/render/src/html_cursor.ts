@@ -1,17 +1,17 @@
 /**
  * Cursor-based PFM HTML Renderer
  *
- * Renders HTML from a PFMCursor over SOA node_buffer.
+ * Renders HTML from a Cursor over SOA node_buffer.
  * Zero per-node allocations — the cursor walks typed arrays directly,
  * text is lazily sliced from source only when needed.
  *
  * Usage:
  *
- *   const cursor = new PFMCursor(tree.get_buffer(), source);
+ *   const cursor = new Cursor(tree.get_buffer(), source);
  *   const html = renderCursor(cursor);
  */
 
-import { PFMCursor } from '@mdsvex/parse/cursor';
+import { Cursor } from '@mdsvex/parse/cursor';
 import type { node_buffer } from '@mdsvex/parse/utils';
 
 // ── HTML escaping ────────────────────────────────────────────
@@ -71,14 +71,26 @@ const H_OPEN = ['', '<h1>', '<h2>', '<h3>', '<h4>', '<h5>', '<h6>'];
 const H_CLOSE = ['', '</h1>', '</h2>', '</h3>', '</h4>', '</h5>', '</h6>'];
 
 const HTML_VOID_ELEMENTS = new Set([
-	'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
-	'link', 'meta', 'param', 'source', 'track', 'wbr',
+	'area',
+	'base',
+	'br',
+	'col',
+	'embed',
+	'hr',
+	'img',
+	'input',
+	'link',
+	'meta',
+	'param',
+	'source',
+	'track',
+	'wbr',
 ]);
 
 // ── Renderer ────────────────────────────────────────────────
 
 /** Render children of the current cursor position, collecting escaped text and recursive node output. */
-function _children(c: PFMCursor, out: string[]): void {
+function _children(c: Cursor, out: string[]): void {
 	if (!c.gotoFirstChild()) return;
 	do {
 		if (c.kind === K_TEXT) {
@@ -91,7 +103,7 @@ function _children(c: PFMCursor, out: string[]): void {
 }
 
 /** Collect raw text from child text nodes (for image alt, link text fallback, etc.). */
-function _childrenRaw(c: PFMCursor): string {
+function _childrenRaw(c: Cursor): string {
 	if (!c.gotoFirstChild()) return '';
 	let text = '';
 	do {
@@ -106,7 +118,7 @@ function _childrenRaw(c: PFMCursor): string {
 }
 
 /** Render a single node at the current cursor position. */
-function _node(c: PFMCursor, out: string[]): void {
+function _node(c: Cursor, out: string[]): void {
 	switch (c.kind) {
 		case K_ROOT:
 			_children(c, out);
@@ -114,15 +126,21 @@ function _node(c: PFMCursor, out: string[]): void {
 
 		case K_HEADING:
 			out.push(H_OPEN[c.extra]);
-			// Heading text is in value range (content leaf), not children
-			out.push(escape(c.text()));
+			_children(c, out);
 			out.push(H_CLOSE[c.extra]);
 			break;
 
 		case K_PARAGRAPH:
-			out.push('<p>');
-			_children(c, out);
-			out.push('</p>');
+			// Pending paragraphs inside list_items are speculative tight-list
+			// wrappers — render their children transparently until the list
+			// closes (commit keeps the wrapper, revoke drops it).
+			if (c.pending && c.parent_kind === K_LIST_ITEM) {
+				_children(c, out);
+			} else {
+				out.push('<p>');
+				_children(c, out);
+				out.push('</p>');
+			}
 			break;
 
 		case K_EMPHASIS:
@@ -138,7 +156,7 @@ function _node(c: PFMCursor, out: string[]): void {
 			break;
 
 		case K_CODE_SPAN:
-			out.push('<code>', escape(c.text()), '</code>');
+			out.push('<code>', escape(c.text()).replace(/\n/g, ' '), '</code>');
 			break;
 
 		case K_CODE_FENCE: {
@@ -148,10 +166,17 @@ function _node(c: PFMCursor, out: string[]): void {
 			if (!info) {
 				const info_start = meta?.info_start as number | undefined;
 				const info_end = meta?.info_end as number | undefined;
-				if (info_start != null && info_end != null) info = c.slice(info_start, info_end);
+				if (info_start != null && info_end != null)
+					info = c.slice(info_start, info_end);
 			}
 			if (info) {
-				out.push('<pre><code class="language-', escape(info), '">', escape(c.text()), '</code></pre>');
+				out.push(
+					'<pre><code class="language-',
+					escape(info),
+					'">',
+					escape(c.text()),
+					'</code></pre>'
+				);
 			} else {
 				out.push('<pre><code>', escape(c.text()), '</code></pre>');
 			}
@@ -192,7 +217,8 @@ function _node(c: PFMCursor, out: string[]): void {
 			const tag = ordered ? 'ol' : 'ul';
 			const start = meta?.start as number | undefined;
 			out.push('<', tag);
-			if (ordered && start != null && start !== 1) out.push(' start="', String(start), '"');
+			if (ordered && start != null && start !== 1)
+				out.push(' start="', String(start), '"');
 			out.push('>\n');
 			_children(c, out);
 			out.push('\n</', tag, '>');
@@ -238,7 +264,9 @@ function _node(c: PFMCursor, out: string[]): void {
 		case K_HTML: {
 			const meta = c.meta();
 			const tag = meta?.tag as string;
-			const htmlAttrs = meta?.attributes as Record<string, string | boolean> | undefined;
+			const htmlAttrs = meta?.attributes as
+				| Record<string, string | boolean>
+				| undefined;
 
 			out.push('<', tag);
 			if (htmlAttrs) {
@@ -255,7 +283,14 @@ function _node(c: PFMCursor, out: string[]): void {
 				out.push(' />');
 			} else {
 				out.push('>');
-				_children(c, out);
+				// Raw-text elements: parser stores content as value range on
+				// the html node itself (no child nodes). Emit unescaped — the
+				// browser does not parse script/style bodies as HTML.
+				if (tag === 'script' || tag === 'style') {
+					out.push(c.text());
+				} else {
+					_children(c, out);
+				}
 				out.push('</', tag, '>');
 			}
 			break;
@@ -326,7 +361,7 @@ function _node(c: PFMCursor, out: string[]): void {
 	}
 }
 
-function _tableContent(c: PFMCursor, out: string[]): void {
+function _tableContent(c: Cursor, out: string[]): void {
 	const meta = c.meta();
 	const alignments = (meta?.alignments as string[]) ?? [];
 	let inBody = false;
@@ -352,7 +387,12 @@ function _tableContent(c: PFMCursor, out: string[]): void {
 	if (inBody) out.push('</tbody>');
 }
 
-function _tableCells(c: PFMCursor, tag: string, alignments: string[], out: string[]): void {
+function _tableCells(
+	c: Cursor,
+	tag: string,
+	alignments: string[],
+	out: string[]
+): void {
 	let col = 0;
 	if (!c.gotoFirstChild()) return;
 	do {
@@ -374,7 +414,7 @@ function _tableCells(c: PFMCursor, tag: string, alignments: string[], out: strin
 // ── Internal helpers ─────────────────────────────────────────
 
 /** Render the node at the current cursor position to HTML string. */
-function _renderBlock(cursor: PFMCursor): string {
+function _renderBlock(cursor: Cursor): string {
 	const out: string[] = [];
 	_node(cursor, out);
 	return out.join('');
@@ -414,7 +454,7 @@ export class CursorHTMLRenderer {
 	/** Full document HTML (available after update, whether cached or not). */
 	html = '';
 	private closed: Set<number> | null = null;
-	private cursor: PFMCursor | null = null;
+	private cursor: Cursor | null = null;
 	private cache: boolean;
 
 	constructor(opts?: { cache?: boolean }) {
@@ -425,7 +465,7 @@ export class CursorHTMLRenderer {
 	update(buf: node_buffer, source: string): CursorBlockEntry[] {
 		// Reuse or create cursor
 		if (!this.cursor) {
-			this.cursor = new PFMCursor(buf, source);
+			this.cursor = new Cursor(buf, source);
 		} else {
 			this.cursor.reinit(buf, source);
 		}
@@ -461,7 +501,7 @@ export class CursorHTMLRenderer {
 		} while (c.gotoNextSibling());
 
 		c.gotoParent();
-		this.html = this.blocks.map(b => b.html).join('');
+		this.html = this.blocks.map((b) => b.html).join('');
 		return this.blocks;
 	}
 

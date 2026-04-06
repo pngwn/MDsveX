@@ -1,0 +1,4 @@
+root
+  directive_leaf name="leaf-one" "first"
+  line_break
+  directive_leaf name="leaf-two" "second"

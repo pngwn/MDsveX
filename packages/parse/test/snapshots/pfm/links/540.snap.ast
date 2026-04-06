@@ -1,5 +1,8 @@
 root
-  paragraph
-    text "]"
   line_break
+  paragraph
+    text "[ẞ"
+    text "]"
+    text "["
+    text "]"
   line_break

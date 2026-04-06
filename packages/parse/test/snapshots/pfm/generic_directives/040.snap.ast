@@ -1,0 +1,15 @@
+root
+  directive_container name="note"
+    directive_leaf name="toc" "Table of Contents"
+    line_break
+    paragraph
+      text "Some text with "
+      directive_inline name="ref"
+        text "a reference"
+      text " inline."
+    line_break
+    line_break
+    directive_container name="inner"
+      paragraph
+        text "Deep nesting would need more colons."
+      line_break

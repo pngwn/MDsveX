@@ -1,5 +1,5 @@
 root
   paragraph
-    link
+    link href="MAILTO:FOO@BAR.BAZ"
       text "MAILTO:FOO@BAR.BAZ"
   line_break

@@ -1,10 +1,10 @@
 root
   block_quote
     block_quote
-      paragraph
-        text "1.  one"
-      block_quote
-        block_quote
+      list ordered=true start=1 tight=false
+        list_item
+          paragraph
+            text "one"
           paragraph
             text "two"
   line_break

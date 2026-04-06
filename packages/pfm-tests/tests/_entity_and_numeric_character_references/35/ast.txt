@@ -1,6 +1,0 @@
-root
-	paragraph
-		text(`f&ouml;&ouml;`)
-	paragraph
-		text(`)
-	line_break

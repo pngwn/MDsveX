@@ -1,3 +1,10 @@
 root
   block_quote
-    code_fence "foo"
+    paragraph
+      text "```"
+  line_break
+  paragraph
+    text "foo"
+  line_break
+  code_fence "> ```\nfoo\n```\n"
+    line_break

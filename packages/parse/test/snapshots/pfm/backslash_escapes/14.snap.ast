@@ -1,8 +1,25 @@
 root
   paragraph
-    text "\\*not emphasized"
-    text "*\n\\<br/> not a tag\n\\[not a link"
-    text "](/foo)\n\\`not code"
-    text "`\n1\\. not a list\n\\* not a list\n\\# not a heading\n\\[foo"
-    text "]: /url \"not a reference\"\n\\&ouml; not a character entity"
+    text "*not emphasized"
+    text "*"
+    soft_break
+    text "<br/> not a tag"
+    soft_break
+    text "[not a link"
+    text "](/foo)"
+    soft_break
+    text "`not code"
+    text "`"
+    soft_break
+    text "1"
+    text ". not a list"
+    soft_break
+    text "* not a list"
+    soft_break
+    text "# not a heading"
+    soft_break
+    text "[foo"
+    text "]: /url \"not a reference\""
+    soft_break
+    text "&ouml; not a character entity"
   line_break

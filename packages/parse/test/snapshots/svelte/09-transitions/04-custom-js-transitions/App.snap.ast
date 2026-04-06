@@ -1,15 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "let visible = false;"
-    line_break
-    line_break
-    paragraph
-      text "function typewriter(node, "
-      mustache " speed = 50 "
-      text ") "
-      mustache "\n	const valid =\n		node.childNodes.length === 1 && node.childNodes[0].nodeType === 3;\n\n	if (!valid) {\n		throw new Error(\n			`This transition only works on elements with a single text node child`,\n		);\n	}\n\n	const text = node.textContent;\n	const duration = text.length * speed;\n\n	return {\n		duration,\n		tick: (t) => {\n			const i = ~~(text.length * t);\n			node.textContent = text.slice(0, i);\n		},\n	};\n"
   line_break
   line_break
   html tag="label"
@@ -17,12 +7,18 @@ root
     html tag="input" type="checkbox" bind:checked="visible"
       line_break
       paragraph
-        text "visible\n"
+        text "visible"
+        soft_break
   line_break
   line_break
   paragraph
     mustache "#if visible"
+    soft_break
     text "	"
     html tag="p" in:typewriter=true
-      text "		The quick brown fox jumps over the lazy dog\n	"
+      soft_break
+      text "		The quick brown fox jumps over the lazy dog"
+      soft_break
+      text "	"
+    soft_break
     mustache "/if"

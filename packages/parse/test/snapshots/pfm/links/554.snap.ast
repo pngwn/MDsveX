@@ -1,7 +1,8 @@
 root
-  paragraph
-    text "*foo"
-    text "* bar"
-    text "]"
   line_break
+  paragraph
+    link href="/url" title="title"
+      strong_emphasis
+        text "foo"
+      text " bar"
   line_break

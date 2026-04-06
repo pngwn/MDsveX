@@ -1,5 +1,5 @@
 root
   paragraph
-    link
+    link href="https://example.com?find=\\*"
       text "https://example.com?find=\\*"
   line_break

@@ -1,10 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " fade, fly "
-      text " from \"svelte/transition\";\nlet visible = true;\n"
   line_break
   line_break
   html tag="label"
@@ -12,12 +7,18 @@ root
     html tag="input" type="checkbox" bind:checked="visible"
       line_break
       paragraph
-        text "visible\n"
+        text "visible"
+        soft_break
   line_break
   line_break
   paragraph
     mustache "#if visible"
+    soft_break
     text "	"
     html tag="p" in:fly="{{ y: 200, duration: 2000 }}" out:fade=true
-      text "		Flies in, fades out\n	"
+      soft_break
+      text "		Flies in, fades out"
+      soft_break
+      text "	"
+    soft_break
     mustache "/if"

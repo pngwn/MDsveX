@@ -1,7 +1,11 @@
 root
   paragraph
+    text "[a"
     text "]("
-    text tag="b" )c=true [a](<b)c=true "<b)c\n[a](<b)c>\n"
+    text tag="b" )c=true [a](<b)c=true "<b)c"
+    soft_break
+    text "[a"
     text "]("
     text tag="b" "<b>c)"
+    text "c)"
   line_break

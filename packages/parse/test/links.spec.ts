@@ -13,13 +13,10 @@ import {
 import { parse_markdown_svelte } from '../src/main';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
-const fixtures_root = resolve(
-	this_dir,
-	'../../pfm-tests/tests/links'
-);
+const fixtures_root = resolve(this_dir, 'fixtures/pfm/links');
 
 const load_fixture = (id: string): string =>
-	readFileSync(resolve(fixtures_root, id, 'input.md'), 'utf8');
+	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
 
 describe('links', () => {
 	// [link](/uri "title") — inline link with title

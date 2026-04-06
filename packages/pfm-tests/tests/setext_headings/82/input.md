@@ -1,3 +1,3 @@
-  Foo *bar
-baz*→
+Foo _bar
+baz_->
 ====

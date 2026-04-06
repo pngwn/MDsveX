@@ -4,7 +4,8 @@ root
       text "Gomphocarpus ("
       emphasis
         text "Gomphocarpus physocarpus"
-      text ", syn.\n"
+      text ", syn."
+      soft_break
       emphasis
         text "Asclepias physocarpa"
       text ")"

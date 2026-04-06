@@ -205,7 +205,7 @@ export const SECTIONS: Section[] = [
 
 A paragraph with *strong emphasis* and _regular emphasis_.
 
-Also ~~strikethrough~~ and ^superscript^ work.
+Also ~~strikethrough~~ and ^superscript^ and ~subscript~ work.
 
 ## Second heading
 
@@ -236,8 +236,19 @@ Final paragraph with a [link](/url).
 	},
 ];
 
+/** All sections, optionally augmented with fixture sections */
+let _all_sections: Section[] = SECTIONS;
+
+export function set_all_sections(sections: Section[]) {
+	_all_sections = sections;
+}
+
+export function get_all_sections(): Section[] {
+	return _all_sections;
+}
+
 export function find_section(slug: string): Section | undefined {
-	return SECTIONS.find((s) => s.slug === slug);
+	return _all_sections.find((s) => s.slug === slug);
 }
 
 export function find_snippet(section_slug: string, snippet_slug: string): Snippet | undefined {

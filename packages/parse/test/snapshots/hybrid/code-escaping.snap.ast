@@ -1,5 +1,6 @@
 root
   heading depth=1 "hello"
+    text "hello"
   line_break
   line_break
   code_fence info="js" "function some_func(prop1, prop2) {\n  return { prop1, prop2 };\n}"

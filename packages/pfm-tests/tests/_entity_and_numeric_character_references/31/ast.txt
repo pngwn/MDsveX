@@ -1,3 +1,0 @@
-root
-	html(<a href="&ouml;&ouml;.html">)
-	line_break

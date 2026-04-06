@@ -1,5 +1,5 @@
 root
-  text tag="a" href="`"
+  html tag="a" href="`" self_closing=true
   paragraph
     text "`"
   line_break

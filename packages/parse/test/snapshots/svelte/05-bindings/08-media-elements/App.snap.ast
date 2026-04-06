@@ -1,79 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "// These values are bound to properties of the video\nlet time = 0;\nlet duration;\nlet paused = true;"
-    line_break
-    line_break
-    paragraph
-      text "let showControls = true;\nlet showControlsTimeout;"
-    line_break
-    line_break
-    paragraph
-      text "function handleMousemove(e) "
-      mustache "\n	// Make the controls visible, but fade out after\n	// 2.5 seconds of inactivity\n	clearTimeout(showControlsTimeout);\n	showControlsTimeout = setTimeout(() => (showControls = false), 2500);\n	showControls = true;\n\n	if (e.which !== 1) return; // mouse not down\n	if (!duration) return; // video not loaded yet\n\n	const { left, right } = this.getBoundingClientRect();\n	time = (duration * (e.clientX - left)) / (right - left);\n"
-    line_break
-    line_break
-    paragraph
-      text "function handleMousedown(e) "
-      mustache "\n	// we can't rely on the built-in click event, because it fires\n	// after a drag — we have to listen for clicks ourselves\n\n	function handleMouseup() {\n		if (paused) e.target.play();\n		else e.target.pause();\n		cancel();\n	}\n\n	function cancel() {\n		e.target.removeEventListener(\"mouseup\", handleMouseup);\n	}\n\n	e.target.addEventListener(\"mouseup\", handleMouseup);\n\n	setTimeout(cancel, 200);\n"
-    line_break
-    line_break
-    paragraph
-      text "function format(seconds) "
-      mustache "\n	if (isNaN(seconds)) return \"...\";\n\n	const minutes = Math.floor(seconds / 60);\n	seconds = Math.floor(seconds % 60);\n	if (seconds < 10) seconds = \"0\" + seconds;\n\n	return `${minutes}:${seconds}`;\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text "div "
-      mustache "\n		position: relative;\n	"
-      line_break
-      line_break
-      paragraph
-        text ".controls "
-        mustache "\n		position: absolute;\n		top: 0;\n		width: 100%;\n		transition: opacity 1s;\n	"
-      line_break
-      line_break
-      paragraph
-        text ".info "
-        mustache "\n		display: flex;\n		width: 100%;\n		justify-content: space-between;\n	"
-      line_break
-      line_break
-      paragraph
-        text "span "
-        mustache "\n		padding: 0.2em 0.5em;\n		color: white;\n		text-shadow: 0 0 8px black;\n		font-size: 1.4em;\n		opacity: 0.7;\n	"
-      line_break
-      line_break
-      paragraph
-        text ".time "
-        mustache "\n		width: 3em;\n	"
-      line_break
-      line_break
-      paragraph
-        text ".time:last-child "
-        mustache " text-align: right "
-      line_break
-      line_break
-      paragraph
-        text "progress "
-        mustache "\n		display: block;\n		width: 100%;\n		height: 10px;\n		-webkit-appearance: none;\n		appearance: none;\n	"
-      line_break
-      line_break
-      paragraph
-        text "progress::-webkit-progress-bar "
-        mustache "\n		background-color: rgba(0,0,0,0.2);\n	"
-      line_break
-      line_break
-      paragraph
-        text "progress::-webkit-progress-value "
-        mustache "\n		background-color: rgba(255,255,255,0.6);\n	"
-      line_break
-      line_break
-      paragraph
-        text "video "
-        mustache "\n		width: 100%;\n	"
   line_break
   line_break
   html tag="h1"

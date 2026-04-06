@@ -1,6 +1,8 @@
 root
-  paragraph
-    text "\\[foo"
-    text "]"
   line_break
+  paragraph
+    text "[foo"
+    text "]"
+    text "["
+    text "]"
   line_break

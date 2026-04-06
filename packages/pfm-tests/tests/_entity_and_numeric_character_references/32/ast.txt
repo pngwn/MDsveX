@@ -1,4 +1,0 @@
-root
-	paragraph
-		text([foo](/f&ouml;&ouml; "f&ouml;&ouml;"))
-	line_break

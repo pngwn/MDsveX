@@ -8,10 +8,10 @@ import { parse_markdown_svelte } from '../src/main';
 import type { node_buffer } from '../src/utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
-const fixtures_root = resolve(this_dir, '../../pfm-tests/tests/thematic_breaks');
+const fixtures_root = resolve(this_dir, 'fixtures/pfm/thematic_breaks');
 
 const load_fixture = (id: string): string =>
-	readFileSync(resolve(fixtures_root, id, 'input.md'), 'utf8');
+	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
 
 function collect_breaks(nodes: node_buffer) {
 	const root = nodes.get_node();
@@ -72,9 +72,25 @@ describe('Thematic breaks', () => {
 		expect(breaks.length).toBe(3);
 	});
 
-	test.todo('pfm example 48 treats four leading spaces as indented code block');
+	// PFM: no indented code blocks, so 4 leading spaces don't prevent thematic break
+	test('pfm example 48 four leading spaces still a thematic break in PFM', () => {
+		const input = load_fixture('48');
+		const { nodes } = parse_markdown_svelte(input);
+		const breaks = collect_breaks(nodes);
 
-	test.todo('pfm example 49 treats indented markers inside paragraph as continuation');
+		expect(breaks.length).toBe(1);
+	});
+
+	// PFM: *** after paragraph with indentation — paragraph continuation with inline markers
+	test('pfm example 49 indented markers inside paragraph as continuation', () => {
+		const input = load_fixture('49');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = collect_children(nodes);
+
+		// Parser treats this as paragraph continuation (*** becomes inline content)
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('paragraph');
+	});
 
 	test('pfm example 50 accepts many markers', () => {
 		const input = load_fixture('50');
@@ -124,9 +140,29 @@ describe('Thematic breaks', () => {
 		expect(breaks.length).toBe(0);
 	});
 
-	test.todo('pfm example 56 treats *-* as emphasis (depends on _ emphasis)');
+	// PFM: *-* is strong emphasis around "-", not a thematic break
+	test('pfm example 56 treats *-* as strong emphasis', () => {
+		const input = load_fixture('56');
+		const { nodes } = parse_markdown_svelte(input);
+		const breaks = collect_breaks(nodes);
+		const children = collect_children(nodes);
 
-	test.todo('pfm example 57 thematic break between list items (depends on lists)');
+		expect(breaks.length).toBe(0);
+		expect(children[0].kind).toBe('paragraph');
+	});
+
+	// Thematic break interrupts list
+	test('pfm example 57 thematic break between list items', () => {
+		const input = load_fixture('57');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = collect_children(nodes);
+		const breaks = collect_breaks(nodes);
+
+		expect(breaks.length).toBe(1);
+		// list, thematic_break, list
+		const lists = children.filter((n) => n.kind === 'list');
+		expect(lists.length).toBe(2);
+	});
 
 	test('pfm example 58 thematic break interrupts paragraph (non-dash marker)', () => {
 		const input = load_fixture('58');
@@ -141,11 +177,53 @@ describe('Thematic breaks', () => {
 		expect(children[2].kind).toBe('paragraph');
 	});
 
-	test.todo('pfm example 59 dash after paragraph is setext heading (depends on setext headings)');
+	// PFM: no setext headings, so --- after paragraph is thematic break
+	test('pfm example 59 dash after paragraph is thematic break in PFM', () => {
+		const input = load_fixture('59');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = collect_children(nodes);
+		const breaks = collect_breaks(nodes);
 
-	test.todo('pfm example 60 thematic break between list items (depends on lists)');
+		expect(breaks.length).toBe(1);
+		expect(children[0].kind).toBe('paragraph');
+		expect(children[1].kind).toBe('thematic_break');
+		expect(children[2].kind).toBe('paragraph');
+	});
 
-	test.todo('pfm example 61 thematic break inside list item (depends on lists)');
+	// * * * interrupts the list and renders as thematic break
+	test('pfm example 60 thematic break splits list', () => {
+		const input = load_fixture('60');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = collect_children(nodes);
+
+		// list (Foo), thematic_break, list (Bar)
+		const kinds = children.map((c) => c.kind);
+		expect(kinds).toContain('list');
+		expect(kinds).toContain('thematic_break');
+	});
+
+	// Thematic break inside list item
+	test('pfm example 61 thematic break inside list item', () => {
+		const input = load_fixture('61');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = collect_children(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+
+		const items = nodes
+			.get_node(children[0].index)
+			.children.map((i) => nodes.get_node(i))
+			.filter((n) => n.kind !== 'line_break');
+		expect(items.length).toBe(2);
+
+		// Second item contains a thematic break
+		const item2_children = nodes
+			.get_node(items[1].index)
+			.children.map((i) => nodes.get_node(i))
+			.filter((n) => n.kind !== 'line_break');
+		expect(item2_children[0].kind).toBe('thematic_break');
+	});
 
 	test('thematic break at EOF without trailing newline', () => {
 		const input = '---';

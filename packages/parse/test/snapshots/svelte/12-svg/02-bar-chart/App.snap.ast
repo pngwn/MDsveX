@@ -1,108 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " scaleLinear "
-      text " from \"d3-scale\";"
-    line_break
-    line_break
-    paragraph
-      text "const points = "
-      text "	"
-      mustache " year: 1990, birthrate: 16.7 "
-      text ",\n	"
-      mustache " year: 1995, birthrate: 14.6 "
-      text ",\n	"
-      mustache " year: 2000, birthrate: 14.4 "
-      text ",\n	"
-      mustache " year: 2005, birthrate: 14 "
-      text ",\n	"
-      mustache " year: 2010, birthrate: 13 "
-      text ",\n	"
-      mustache " year: 2015, birthrate: 12.4 "
-      text ",\n"
-      text "];"
-    line_break
-    line_break
-    paragraph
-      text "const xTicks = "
-      text "];\nconst yTicks = "
-      text "];\nconst padding = "
-      mustache " top: 20, right: 15, bottom: 20, left: 25 "
-      text ";"
-    line_break
-    line_break
-    paragraph
-      text "let width = 500;\nlet height = 200;"
-    line_break
-    line_break
-    paragraph
-      text "function formatMobile(tick) "
-      mustache "\n	return \"'\" + (tick % 100);\n"
-    line_break
-    line_break
-    paragraph
-      text "$: xScale = scaleLinear()\n	.domain("
-      text "])\n	.range("
-      text "]);"
-    line_break
-    line_break
-    paragraph
-      text "$: yScale = scaleLinear()\n	.domain("
-      text "])\n	.range("
-      text "]);"
-    line_break
-    line_break
-    paragraph
-      text "$: innerWidth = width - (padding.left + padding.right);\n$: barWidth = innerWidth / xTicks.length;\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text "h2 "
-      mustache "\n		text-align: center;\n	"
-      line_break
-      line_break
-      paragraph
-        text ".chart "
-        mustache "\n		width: 100%;\n		max-width: 500px;\n		margin: 0 auto;\n	"
-      line_break
-      line_break
-      paragraph
-        text "svg "
-        mustache "\n		position: relative;\n		width: 100%;\n		height: 200px;\n	"
-      line_break
-      line_break
-      paragraph
-        text ".tick "
-        mustache "\n		font-family: Helvetica, Arial;\n		font-size: .725em;\n		font-weight: 200;\n	"
-      line_break
-      line_break
-      paragraph
-        text ".tick line "
-        mustache "\n		stroke: #e2e2e2;\n		stroke-dasharray: 2;\n	"
-      line_break
-      line_break
-      paragraph
-        text ".tick text "
-        mustache "\n		fill: #ccc;\n		text-anchor: start;\n	"
-      line_break
-      line_break
-      paragraph
-        text ".tick.tick-0 line "
-        mustache "\n		stroke-dasharray: 0;\n	"
-      line_break
-      line_break
-      paragraph
-        text ".x-axis .tick text "
-        mustache "\n		text-anchor: middle;\n	"
-      line_break
-      line_break
-      paragraph
-        text ".bars rect "
-        mustache "\n		fill: #a11;\n		stroke: none;\n		opacity: 0.65;\n	"
   line_break
   line_break
   html tag="h2"
@@ -120,18 +20,24 @@ root
         line_break
         paragraph
           mustache "#each yTicks as tick"
+          soft_break
           text "				"
           html tag="g" class="tick tick-{tick}" transform="translate(0, {yScale(tick) - padding.bottom})"
+            soft_break
             text "					"
             html tag="line" x2="100%"
+            soft_break
             text "					"
             html tag="text" y="-4"
               mustache "tick"
               text " "
               mustache "tick === 20 ? ' per 1,000 population' : ''"
+            soft_break
             text "				"
+          soft_break
           text "			"
           mustache "/each"
+          soft_break
           text "		"
     line_break
   line_break

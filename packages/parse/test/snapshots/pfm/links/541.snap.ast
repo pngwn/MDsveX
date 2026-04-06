@@ -1,9 +1,15 @@
 root
   paragraph
-    text "]: /url"
+    text "[Baz"
+    text "]"
+    text "[Foo bar"
+    text "]"
   line_break
   line_break
   paragraph
-    text "]"
-    text "]"
+    text "["
+    text "Foo"
+    soft_break
+    text "bar"
+    text "]: /url"
   line_break

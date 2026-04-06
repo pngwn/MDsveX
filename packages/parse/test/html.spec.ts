@@ -462,14 +462,22 @@ describe('html - edge cases', () => {
 		expect(link.kind).toBe('link');
 	});
 
-	test('email autolinks still take priority', () => {
+	// PFM: no email autolinks — scheme prefix required.
+	// <foo@bar.example.com> is not an autolink.
+	test('email-like angle brackets are not autolinks in PFM', () => {
 		const input = '<foo@bar.example.com>';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
-		const paragraph = nodes.get_node(root.children[0]);
-		const link = nodes.get_node(paragraph.children[0]);
-		expect(link.kind).toBe('link');
+		const children = root.children
+			.map((i: number) => nodes.get_node(i))
+			.filter((n: any) => n.kind !== 'line_break');
+		const all_kinds = children.flatMap((n: any) =>
+			n.children.length > 0
+				? n.children.map((i: number) => nodes.get_node(i).kind)
+				: [n.kind]
+		);
+		expect(all_kinds).not.toContain('link');
 	});
 
 	test('mismatched close tag is text, unclosed opener is revoked', () => {
@@ -659,5 +667,117 @@ describe('html - edge cases', () => {
 		// because > inside a quoted attribute value is valid HTML
 		// Let's just verify it doesn't crash
 		expect(nodes.size).toBeGreaterThan(0);
+	});
+});
+
+describe('html - raw text elements (script, style)', () => {
+	test('script tag content is not parsed', () => {
+		const input = '<script>\nlet a = 1;\n</script>';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const script = nodes.get_node(root.children[0]);
+		expect(script.kind).toBe('html');
+		expect(script.metadata.tag).toBe('script');
+		// No children — content is stored as value, not parsed
+		expect(script.children).toHaveLength(0);
+		const content = get_content(nodes, script.index, input);
+		expect(content.value).toBe('\nlet a = 1;\n');
+	});
+
+	test('style tag content is not parsed', () => {
+		const input = '<style>\n.foo { color: red; }\n</style>';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const style = nodes.get_node(root.children[0]);
+		expect(style.kind).toBe('html');
+		expect(style.metadata.tag).toBe('style');
+		expect(style.children).toHaveLength(0);
+		const content = get_content(nodes, style.index, input);
+		expect(content.value).toBe('\n.foo { color: red; }\n');
+	});
+
+	test('script with attributes', () => {
+		const input = '<script lang="ts">\nconst x: number = 1;\n</script>';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const script = nodes.get_node(root.children[0]);
+		expect(script.kind).toBe('html');
+		expect(script.metadata.tag).toBe('script');
+		expect(script.metadata.attributes.lang).toBe('ts');
+		expect(script.children).toHaveLength(0);
+		const content = get_content(nodes, script.index, input);
+		expect(content.value).toBe('\nconst x: number = 1;\n');
+	});
+
+	test('script content with angle brackets is not parsed as HTML', () => {
+		const input = '<script>\nif (a < b && c > d) {}\n</script>';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const script = nodes.get_node(root.children[0]);
+		expect(script.kind).toBe('html');
+		expect(script.metadata.tag).toBe('script');
+		expect(script.children).toHaveLength(0);
+		const content = get_content(nodes, script.index, input);
+		expect(content.value).toBe('\nif (a < b && c > d) {}\n');
+	});
+
+	test('script content with markdown-like syntax is not parsed', () => {
+		const input = '<script>\n// # not a heading\n// _not emphasis_\n</script>';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const script = nodes.get_node(root.children[0]);
+		expect(script.kind).toBe('html');
+		expect(script.children).toHaveLength(0);
+		const content = get_content(nodes, script.index, input);
+		expect(content.value).toBe('\n// # not a heading\n// _not emphasis_\n');
+	});
+
+	test('empty script tag', () => {
+		const input = '<script></script>';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const script = nodes.get_node(root.children[0]);
+		expect(script.kind).toBe('html');
+		expect(script.metadata.tag).toBe('script');
+		expect(script.children).toHaveLength(0);
+		const content = get_content(nodes, script.index, input);
+		expect(content.value).toBe('');
+	});
+
+	test('script followed by other content', () => {
+		const input = '<script>\nlet x = 1;\n</script>\n\n# Hello';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		expect(nodes.get_node(root.children[0]).kind).toBe('html');
+		expect(nodes.get_node(root.children[0]).metadata.tag).toBe('script');
+
+		const heading = root.children.find(
+			(i) => nodes.get_node(i).kind === 'heading'
+		);
+		expect(heading).toBeDefined();
+	});
+
+	test('inline script in paragraph', () => {
+		const input = 'before <script>let x = 1;</script> after';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		const script = paragraph.children.find(
+			(i) => nodes.get_node(i).kind === 'html'
+		)!;
+		expect(script).toBeDefined();
+		const script_node = nodes.get_node(script);
+		expect(script_node.metadata.tag).toBe('script');
+		expect(script_node.children).toHaveLength(0);
+		const content = get_content(nodes, script_node.index, input);
+		expect(content.value).toBe('let x = 1;');
 	});
 });

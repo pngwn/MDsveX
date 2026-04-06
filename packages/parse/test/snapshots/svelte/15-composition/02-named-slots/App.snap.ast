@@ -1,8 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import ContactCard from \"./ContactCard.svelte\";\n"
   line_break
   line_break
   html tag="ContactCard"
@@ -10,7 +7,9 @@ root
     html tag="span" slot="name"
       line_break
       paragraph
-        text "P. Sherman\n	"
+        text "P. Sherman"
+        soft_break
+        text "	"
     line_break
     line_break
     html tag="span" slot="address"
@@ -18,4 +17,8 @@ root
       paragraph
         text "42 Wallaby Way"
         html tag="br"
-          text "		Sydney\n	"
+          soft_break
+          text "		Sydney"
+          soft_break
+          text "	"
+    soft_break

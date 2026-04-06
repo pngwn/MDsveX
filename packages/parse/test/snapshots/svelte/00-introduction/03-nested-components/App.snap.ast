@@ -1,15 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import Nested from \"./Nested.svelte\";\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text "p "
-      mustache "\n		color: purple;\n		font-family: 'Comic Sans MS';\n		font-size: 2em;\n	"
   line_break
   line_break
   html tag="p"

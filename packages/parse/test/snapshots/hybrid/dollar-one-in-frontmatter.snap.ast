@@ -1,8 +1,3 @@
 root
-  thematic_break
-  paragraph
-    text "price: '$10'"
-  line_break
-  thematic_break
+  frontmatter "price: '$10'\n"
   html tag="script" context="module"
-    line_break

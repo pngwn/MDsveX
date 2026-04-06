@@ -1,13 +1,19 @@
 root
   heading depth=1 "foo"
+    text "foo"
   line_break
   heading depth=2 "foo"
+    text "foo"
   line_break
   heading depth=3 "foo"
+    text "foo"
   line_break
   heading depth=4 "foo"
+    text "foo"
   line_break
   heading depth=5 "foo"
+    text "foo"
   line_break
   heading depth=6 "foo"
+    text "foo"
   line_break

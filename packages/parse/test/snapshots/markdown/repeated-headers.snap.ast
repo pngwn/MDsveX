@@ -1,5 +1,6 @@
 root
   heading depth=1 "Same Title"
+    text "Same Title"
   line_break
   line_break
   paragraph
@@ -7,4 +8,5 @@ root
   line_break
   line_break
   heading depth=1 "Same Title"
+    text "Same Title"
   line_break

@@ -1,4 +1,6 @@
 root
   paragraph
-    text "foo       \nbaz"
+    text "foo       "
+    soft_break
+    text "baz"
   line_break

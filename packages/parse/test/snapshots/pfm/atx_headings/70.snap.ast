@@ -3,4 +3,5 @@ root
     text "foo"
   line_break
   heading depth=1 "bar"
+    text "bar"
   line_break

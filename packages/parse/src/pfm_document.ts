@@ -1,56 +1,62 @@
 /**
- * PFM Document Client
+ * pfm document client
  *
- * Consumes wire format batches and maintains a stable, mutable document
- * tree. Nodes are never recreated — only mutated in place. Fires surgical
+ * consumes wire format batches and maintains a stable, mutable document
+ * tree. nodes are never recreated — only mutated in place. fires surgical
  * events on each mutation so renderers can apply minimum updates.
  *
- * Architecture:
- *   Wire batch → PFMDocument (mutate nodes, fire events) → Renderer
+ * architecture:
+ *   wire batch -> pfmdocument (mutate nodes, fire events) -> renderer
  *
- * The renderer maintains its own id→artifact map (DOM elements, Svelte
- * components, HTML fragments, etc.) and reacts to events surgically.
+ * the renderer maintains its own id->artifact map (dom elements, svelte
+ * components, html fragments, etc.) and reacts to events surgically.
  *
- * Two consumption modes:
- *   1. applyBatch() — bare SAX-style dispatcher, no tree, no state
- *   2. PFMDocument  — tree builder with stable nodes and events
+ * two consumption modes:
+ *   1. applybatch() — bare sax-style dispatcher, no tree, no state
+ *   2. pfmdocument  — tree builder with stable nodes and events
  */
 
 // ── Types ────────────────────────────────────────────────────
 
-/** A node in the PFM document tree. Stable reference — mutated, never recreated. */
+/** a node in the pfm document tree. stable reference — mutated, never recreated. */
 export interface PFMNode {
-	/** Unique node ID (monotonic, from the parser). */
+	/** unique node id (monotonic, from the parser). */
 	readonly id: number;
-	/** Numeric kind code (maps to schema). */
+	/** numeric kind code (maps to schema). */
 	readonly kind: number;
-	/** Human-readable kind name (e.g., "paragraph", "emphasis"). */
+	/** human-readable kind name (e.g., "paragraph", "emphasis"). */
 	readonly kindName: string;
-	/** Kind-specific extra value (e.g., heading depth, backtick count). */
+	/** kind-specific extra value (e.g., heading depth, backtick count). */
 	readonly extra: number;
-	/** Parent node, or null for root. */
+	/** parent node, or null for root. */
 	parent: PFMNode | null;
 	/**
-	 * Ordered content: interleaved text strings and child nodes.
-	 * Document order is preserved. Consecutive T opcodes for the same
+	 * ordered content: interleaved text strings and child nodes.
+	 * document order is preserved. consecutive t opcodes for the same
 	 * node append to the last string (or push a new one after a child).
 	 */
 	content: (string | PFMNode)[];
-	/** Node attributes (href, title, info, ordered, etc.). */
+	/** node attributes (href, title, info, ordered, etc.). */
 	attrs: Record<string, unknown>;
-	/** True if speculative (may be revoked). */
+	/** true if speculative (may be revoked). */
 	pending: boolean;
-	/** True if closed/finalized. */
+	/** true if closed/finalized. */
 	closed: boolean;
 }
 
 /**
- * Handlers for bare batch dispatch (SAX-style, no tree).
- * Each method receives raw opcode fields.
+ * handlers for bare batch dispatch (sax-style, no tree).
+ * each method receives raw opcode fields.
  */
 export interface PFMHandlers {
 	schema?(kinds: string[]): void;
-	open?(id: number, kind: number, parent: number, pending: boolean, extra: number): void;
+	open?(
+		id: number,
+		kind: number,
+		parent: number,
+		pending: boolean,
+		extra: number
+	): void;
 	close?(id: number): void;
 	text?(id: number, content: string): void;
 	attr?(id: number, key: string, value: unknown): void;
@@ -61,9 +67,9 @@ export interface PFMHandlers {
 // ── Bare dispatcher ──────────────────────────────────────────
 
 /**
- * Bare batch dispatcher. Iterates opcodes and calls handlers directly.
- * No state, no tree — just forwarding. Use when you want SAX-style
- * processing without the tree overhead (e.g., streaming HTML).
+ * bare batch dispatcher. iterates opcodes and calls handlers directly.
+ * no state, no tree — just forwarding. use when you want sax-style
+ * processing without the tree overhead (e.g., streaming html).
  */
 export function applyBatch(batch: unknown[][], handlers: PFMHandlers): void {
 	for (let i = 0; i < batch.length; i++) {
@@ -78,7 +84,7 @@ export function applyBatch(batch: unknown[][], handlers: PFMHandlers): void {
 					op[2] as number,
 					op[3] as number,
 					(op[4] as number) === 1,
-					op[5] as number,
+					op[5] as number
 				);
 				break;
 			case 'C':
@@ -103,54 +109,54 @@ export function applyBatch(batch: unknown[][], handlers: PFMHandlers): void {
 // ── PFMDocument ──────────────────────────────────────────────
 
 /**
- * PFM Document — tree-building client for the wire format.
+ * pfm document — tree-building client for the wire format.
  *
- * Maintains a stable, mutable tree of PFMNode instances. Nodes are
- * created once and mutated in place — downstream references (DOM
+ * maintains a stable, mutable tree of pfmnode instances. nodes are
+ * created once and mutated in place — downstream references (dom
  * elements, component instances, etc.) stay valid.
  *
- * Usage:
- *   const doc = new PFMDocument();
- *   doc.ontext = (node, idx, text) => updateDOM(node.id, idx, text);
- *   doc.apply(JSON.parse(event.data));
+ * usage:
+ *   const doc = new pfmdocument();
+ *   doc.ontext = (node, idx, text) => updatedom(node.id, idx, text);
+ *   doc.apply(json.parse(event.data));
  *   // doc.root is the live tree
  */
 export class PFMDocument {
-	/** Kind name array from the schema opcode. */
+	/** kind name array from the schema opcode. */
 	schema: string[] | null = null;
-	/** Root node of the document tree. */
+	/** root node of the document tree. */
 	root: PFMNode | null = null;
-	/** All nodes by ID. Stable references — never recreated. */
+	/** all nodes by id. stable references — never recreated. */
 	nodes: Map<number, PFMNode> = new Map();
 
 	// ── Event hooks ────────────────────────────────────────────
 
-	/** Fired when a new node is created and added to the tree. */
+	/** fired when a new node is created and added to the tree. */
 	onopen?: (node: PFMNode) => void;
-	/** Fired when a node is closed/finalized. Pending becomes false. */
+	/** fired when a node is closed/finalized. pending becomes false. */
 	onclose?: (node: PFMNode) => void;
 	/**
-	 * Fired when text is appended to a node's content.
-	 * @param node The target node.
-	 * @param contentIndex Index in node.content where text was appended.
-	 * @param appended The new text that was appended (not the full string).
+	 * fired when text is appended to a node's content.
+	 * @param node the target node.
+	 * @param contentindex index in node.content where text was appended.
+	 * @param appended the new text that was appended (not the full string).
 	 */
 	ontext?: (node: PFMNode, contentIndex: number, appended: string) => void;
-	/** Fired when an attribute is set on a node. */
+	/** fired when an attribute is set on a node. */
 	onattr?: (node: PFMNode, key: string, value: unknown) => void;
 	/**
-	 * Fired after a node is revoked and its content spliced into the parent.
-	 * The revoked node is detached from the tree but retains its id/kind.
-	 * Adjacent strings in parent.content have been merged.
+	 * fired after a node is revoked and its content spliced into the parent.
+	 * the revoked node is detached from the tree but retains its id/kind.
+	 * adjacent strings in parent.content have been merged.
 	 */
 	onrevoke?: (parent: PFMNode, revokedNode: PFMNode, delimiter: string) => void;
-	/** Fired when a node's content is cleared. */
+	/** fired when a node's content is cleared. */
 	onclear?: (node: PFMNode) => void;
 
 	// ── Public API ─────────────────────────────────────────────
 
 	/**
-	 * Apply a batch of wire opcodes. Mutates the tree in place
+	 * apply a batch of wire opcodes. mutates the tree in place
 	 * and fires events for each mutation.
 	 */
 	apply(batch: unknown[][]): void {
@@ -166,7 +172,7 @@ export class PFMDocument {
 						op[2] as number,
 						op[3] as number,
 						(op[4] as number) === 1,
-						op[5] as number,
+						op[5] as number
 					);
 					break;
 				case 'C':
@@ -188,7 +194,7 @@ export class PFMDocument {
 		}
 	}
 
-	/** Reset all state for a new document. */
+	/** reset all state for a new document. */
 	reset(): void {
 		this.schema = null;
 		this.root = null;
@@ -202,7 +208,7 @@ export class PFMDocument {
 		kind: number,
 		parent: number,
 		pending: boolean,
-		extra: number,
+		extra: number
 	): void {
 		const parentNode = this.nodes.get(parent) ?? null;
 		const node: PFMNode = {
@@ -324,7 +330,7 @@ export class PFMDocument {
 
 // ── Utilities ────────────────────────────────────────────────
 
-/** Get all text content from a node, recursively. */
+/** get all text content from a node, recursively. */
 export function textContent(node: PFMNode): string {
 	let result = '';
 	for (let i = 0; i < node.content.length; i++) {
@@ -334,7 +340,7 @@ export function textContent(node: PFMNode): string {
 	return result;
 }
 
-/** Merge adjacent string entries in a content array in place. */
+/** merge adjacent string entries in a content array in place. */
 function merge_adjacent_strings(content: (string | PFMNode)[]): void {
 	let i = 0;
 	while (i < content.length - 1) {

@@ -1,43 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "const tomorrow = new Date(Date.now() + 86400000);"
-    line_break
-    line_break
-    paragraph
-      text "let start = "
-      text "].join(\"-\");"
-    line_break
-    line_break
-    paragraph
-      text "let end = start;\nlet isReturn = false;"
-    line_break
-    line_break
-    paragraph
-      text "$: startDate = convertToDate(start);\n$: endDate = convertToDate(end);"
-    line_break
-    line_break
-    paragraph
-      text "function bookFlight() "
-      mustache "\n	const type = isReturn ? \"return\" : \"one-way\";\n\n	let message = `You have booked a ${type} flight, leaving ${startDate.toDateString()}`;\n	if (type === \"return\") {\n		message += ` and returning ${endDate.toDateString()}`;\n	}\n\n	alert(message);\n"
-    line_break
-    line_break
-    paragraph
-      text "function convertToDate(str) "
-      mustache "\n	const split = str.split(\"-\");\n	return new Date(+split[0], +split[1] - 1, +split[2]);\n"
-    line_break
-    line_break
-    paragraph
-      text "function pad(x, len) "
-      mustache "\n	x = String(x);\n	while (x.length < len) x = `0${x}`;\n	return x;\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text "select, input, button "
-      mustache "\n		display: block;\n		margin: 0.5em 0;\n		font-size: inherit;\n	"
   line_break
   line_break
   html_comment " https://github.com/eugenkiss/7guis/wiki#flight-booker "
@@ -54,12 +19,5 @@ root
     line_break
   line_break
   line_break
-  text tag="input" type="date" bind:value="start"
-  line_break
-  text tag="input" type="date" bind:value="end" disabled="!isReturn"
-  line_break
-  line_break
-  html tag="button" on:click="bookFlight" disabled="{isReturn && (startDate >= endDate)}"
-    paragraph
-      text "book"
-  line_break
+  paragraph
+    text

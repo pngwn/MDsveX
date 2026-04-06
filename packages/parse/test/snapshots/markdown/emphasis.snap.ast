@@ -36,7 +36,9 @@ root
   paragraph
     text "text with "
     strong_emphasis
-      text "bold text that\nspans across multiple"
+      text "bold text that"
+      soft_break
+      text "spans across multiple"
     text " lines"
   line_break
   line_break
@@ -93,8 +95,8 @@ root
   paragraph
     text "some line"
     text "_"
-    text "_with"
-    text "_"
+    emphasis
+      text "with"
     text "_inner double underscores"
   line_break
   line_break
@@ -119,7 +121,8 @@ root
   line_break
   paragraph
     text "another line with just "
-    text "__one double underscore"
+    text "__"
+    text "_one double underscore"
   line_break
   line_break
   paragraph
@@ -142,8 +145,8 @@ root
   paragraph
     text "a sentence with"
     text "_"
-    text "_doubleunderscore and another"
-    text "_"
+    emphasis
+      text "doubleunderscore and another"
     text "_doubleunderscore"
   line_break
   line_break
@@ -162,31 +165,46 @@ root
   line_break
   line_break
   paragraph
-    text "escaped word\\_with\\_underscores"
-  line_break
-  line_break
-  paragraph
-    text "escaped word\\_\\_with\\_\\_double underscores"
+    text "escaped word"
+    text "_with"
+    text "_underscores"
   line_break
   line_break
   paragraph
     text "escaped word"
-    text "_\\_with\\_"
+    text "_"
+    text "_with"
+    text "_"
+    text "_double underscores"
+  line_break
+  line_break
+  paragraph
+    text "escaped word"
+    text "_"
+    text "_with"
+    text "_"
     text "_single italic underscore"
   line_break
   line_break
   paragraph
-    text "escaped word\\*with"
+    text "escaped word"
+    text "*with"
     text "*asterixs"
   line_break
   line_break
   paragraph
-    text "escaped word\\*\\*with\\*\\*asterixs"
+    text "escaped word"
+    text "*"
+    text "*with"
+    text "*"
+    text "*asterixs"
   line_break
   line_break
   paragraph
     text "escaped word"
-    text "*\\*with\\*"
+    text "*"
+    text "*with"
+    text "*"
     text "*bold asterixs"
   line_break
   line_break
@@ -199,8 +217,8 @@ root
   paragraph
     text "foo"
     text "_"
-    text "_bar"
-    text "_"
+    emphasis
+      text "bar"
     text "_baz"
   line_break
   line_break
@@ -227,22 +245,22 @@ root
   line_break
   paragraph
     emphasis
-      text "*multiple"
-      text "*"
+      strong_emphasis
+        text "multiple"
     text " italics and bolds with underscores in a "
     emphasis
-      text "*paragraph"
-      text "*"
+      strong_emphasis
+        text "paragraph"
   line_break
   line_break
   paragraph
     emphasis
-      text "*multiple"
-      text "*"
+      strong_emphasis
+        text "multiple"
     text " italics and bolds with asterisks in a "
     emphasis
-      text "*paragraph"
-      text "*"
+      strong_emphasis
+        text "paragraph"
   line_break
   line_break
   paragraph

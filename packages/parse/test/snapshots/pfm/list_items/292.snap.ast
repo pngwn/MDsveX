@@ -1,6 +1,11 @@
 root
   block_quote
-    paragraph
-      text "1. > Blockquote"
-      text "continued here."
+    list ordered=true start=1 tight=true
+      list_item
+        block_quote
+          paragraph
+            text "Blockquote"
+  line_break
+  paragraph
+    text "continued here."
   line_break

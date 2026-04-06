@@ -24,6 +24,7 @@ root
   code_fence "ellipsis in code..."
   line_break
   heading depth=1 "ellipsis in header..."
+    text "ellipsis in header..."
   line_break
   line_break
   paragraph

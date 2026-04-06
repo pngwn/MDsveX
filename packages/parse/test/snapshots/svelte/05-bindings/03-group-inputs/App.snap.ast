@@ -1,19 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "let scoops = 1;\nlet flavours = "
-      text "];"
-    line_break
-    line_break
-    paragraph
-      text "let menu = "
-      text "];"
-    line_break
-    line_break
-    paragraph
-      text "function join(flavours) "
-      mustache "\n	if (flavours.length === 1) return flavours[0];\n	return `${flavours.slice(0, -1).join(\", \")} and ${flavours[flavours.length - 1]}`;\n"
   line_break
   line_break
   html tag="h2"
@@ -26,7 +12,8 @@ root
     html tag="input" type="radio" bind:group="scoops" value="1"
       line_break
       paragraph
-        text "One scoop\n"
+        text "One scoop"
+        soft_break
   line_break
   line_break
   html tag="label"
@@ -34,7 +21,8 @@ root
     html tag="input" type="radio" bind:group="scoops" value="2"
       line_break
       paragraph
-        text "Two scoops\n"
+        text "Two scoops"
+        soft_break
   line_break
   line_break
   html tag="label"
@@ -42,7 +30,8 @@ root
     html tag="input" type="radio" bind:group="scoops" value="3"
       line_break
       paragraph
-        text "Three scoops\n"
+        text "Three scoops"
+        soft_break
   line_break
   line_break
   html tag="h2"
@@ -52,11 +41,16 @@ root
   line_break
   paragraph
     mustache "#each menu as flavour"
+    soft_break
     text "	"
     html tag="label"
+      soft_break
       text "		"
       html tag="input" type="checkbox" bind:group="flavours" value="flavour"
+        soft_break
         text "		"
         mustache "flavour"
+        soft_break
         text "	"
+    soft_break
     mustache "/each"

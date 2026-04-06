@@ -1,6 +1,0 @@
-root
-	paragraph
-		text(&)
-	paragraph
-		text(#X22; &#XD06; &#xcab;)
-	line_break

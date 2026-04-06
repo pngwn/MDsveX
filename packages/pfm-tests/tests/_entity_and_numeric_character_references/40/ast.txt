@@ -1,6 +1,0 @@
-root
-	paragraph
-		text(&)
-	paragraph
-		text(#9;foo)
-	line_break

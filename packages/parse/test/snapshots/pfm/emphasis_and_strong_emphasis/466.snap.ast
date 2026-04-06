@@ -1,7 +1,8 @@
 root
   paragraph
+    text "*"
     strong_emphasis
-    strong_emphasis
-      text "foo"
-    strong_emphasis
+      strong_emphasis
+        text "foo"
+    text "*"
   line_break

@@ -1,6 +1,6 @@
 root
   paragraph
     text "foo "
-    emphasis
-      text "*"
+    text "_*"
+    text "*_"
   line_break

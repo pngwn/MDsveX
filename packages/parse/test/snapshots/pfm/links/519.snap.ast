@@ -1,10 +1,10 @@
 root
   paragraph
-    text "foo "
-    text
     link href="/uri"
-      text "bar "
-      link href="/uri"
-        text "baz"
-    text "*](/uri)"
+      text "foo "
+      strong_emphasis
+        link href="/uri"
+          text "bar "
+          link href="/uri"
+            text "baz"
   line_break

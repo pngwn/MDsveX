@@ -3,39 +3,16 @@ root
   line_break
   line_break
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " onDestroy "
-      text " from \"svelte\";"
-    line_break
-    line_break
-    paragraph
-      text "let elapsed = 0;\nlet duration = 5000;"
-    line_break
-    line_break
-    paragraph
-      text "let last"
-      text "_time = window.performance.now();\nlet frame;"
-    line_break
-    line_break
-    paragraph
-      text "(function update() "
-      mustache "\n	frame = requestAnimationFrame(update);\n\n	const time = window.performance.now();\n	elapsed += Math.min(time - last_time, duration - elapsed);\n\n	last_time = time;\n"
-      text ")();"
-    line_break
-    line_break
-    paragraph
-      text "onDestroy(() => "
-      mustache "\n	cancelAnimationFrame(frame);\n"
-      text ");\n"
   line_break
   line_break
   html tag="label"
     line_break
     paragraph
-      text "elapsed time:\n	"
+      text "elapsed time:"
+      soft_break
+      text "	"
       html tag="progress" value="{elapsed / duration}"
+      soft_break
   line_break
   line_break
   html tag="div"
@@ -47,5 +24,8 @@ root
   html tag="label"
     line_break
     paragraph
-      text "duration:\n	"
+      text "duration:"
+      soft_break
+      text "	"
       html tag="input" type="range" bind:value="duration" min="1" max="20000"
+        soft_break

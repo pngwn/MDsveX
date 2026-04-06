@@ -1,5 +1,6 @@
 root
   paragraph
-    code_span "foo`"
-    text "bar"
-    text "`\n"
+    text "`"
+    text "foo"
+    code_span "bar"
+  line_break

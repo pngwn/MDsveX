@@ -3,7 +3,7 @@ import { bench, describe } from 'vitest';
 
 import { PFMParser, WireEmitter } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
-import { PFMCursor } from '@mdsvex/parse/cursor';
+import { Cursor } from '@mdsvex/parse/cursor';
 import { WireTreeBuilder } from '@mdsvex/parse/wire-tree-builder';
 import { CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
 import { marked } from 'marked';
@@ -27,9 +27,9 @@ const fixtures = {
 
 // ── Helpers ──────────────────────────────────────────────────
 
-/** Batch: parse + render via TreeBuilder → cursor (same-process, fastest). */
+/** Batch: parse + render via TreeBuilder -> cursor (same-process, fastest). */
 function pfm_e2e(source: string): string {
-	const tree = new TreeBuilder((source.length >> 3) || 128);
+	const tree = new TreeBuilder(source.length >> 3 || 128);
 	const parser = new PFMParser(tree);
 	parser.parse(source);
 	const renderer = new CursorHTMLRenderer({ cache: false });
@@ -68,7 +68,7 @@ describe('pfm breakdown: parse vs render (prose)', () => {
 	const source = fixtures.prose;
 
 	bench('parse only (TreeBuilder)', () => {
-		const tree = new TreeBuilder((source.length >> 3) || 128);
+		const tree = new TreeBuilder(source.length >> 3 || 128);
 		const parser = new PFMParser(tree);
 		parser.parse(source);
 	});
@@ -81,7 +81,7 @@ describe('pfm breakdown: parse vs render (prose)', () => {
 		emitter.flush();
 	});
 
-	bench('parse + render (TreeBuilder → cursor)', () => {
+	bench('parse + render (TreeBuilder -> cursor)', () => {
 		pfm_e2e(source);
 	});
 });
@@ -101,8 +101,8 @@ function make_chunks(source: string): string[] {
 const prose_chunks = make_chunks(fixtures.prose);
 
 describe(`incremental e2e: prose (${CHUNK_SIZE}-char chunks, ${prose_chunks.length} chunks)`, () => {
-	bench('pfm incremental (TreeBuilder → CursorHTMLRenderer)', () => {
-		const tree = new TreeBuilder((fixtures.prose.length >> 3) || 128);
+	bench('pfm incremental (TreeBuilder -> CursorHTMLRenderer)', () => {
+		const tree = new TreeBuilder(fixtures.prose.length >> 3 || 128);
 		const parser = new PFMParser(tree);
 		const renderer = new CursorHTMLRenderer();
 
@@ -119,34 +119,37 @@ describe(`incremental e2e: prose (${CHUNK_SIZE}-char chunks, ${prose_chunks.leng
 		renderer.update(tree.get_buffer(), acc);
 	});
 
-	bench('pfm incremental (wire → WireTreeBuilder → CursorHTMLRenderer)', () => {
-		const emitter = new WireEmitter();
-		const parser = new PFMParser(emitter);
-		const builder = new WireTreeBuilder();
-		const renderer = new CursorHTMLRenderer();
+	bench(
+		'pfm incremental (wire -> WireTreeBuilder -> CursorHTMLRenderer)',
+		() => {
+			const emitter = new WireEmitter();
+			const parser = new PFMParser(emitter);
+			const builder = new WireTreeBuilder();
+			const renderer = new CursorHTMLRenderer();
 
-		parser.init();
-		let acc = '';
+			parser.init();
+			let acc = '';
 
-		for (let i = 0; i < prose_chunks.length; i++) {
-			acc += prose_chunks[i];
+			for (let i = 0; i < prose_chunks.length; i++) {
+				acc += prose_chunks[i];
+				emitter.set_source(acc);
+				parser.feed(prose_chunks[i]);
+				const batch = emitter.flush();
+				if (batch.length > 0) {
+					builder.apply(batch);
+					renderer.update(builder.get_buffer(), '');
+				}
+			}
+
 			emitter.set_source(acc);
-			parser.feed(prose_chunks[i]);
-			const batch = emitter.flush();
-			if (batch.length > 0) {
-				builder.apply(batch);
+			parser.finish();
+			const final = emitter.flush();
+			if (final.length > 0) {
+				builder.apply(final);
 				renderer.update(builder.get_buffer(), '');
 			}
 		}
-
-		emitter.set_source(acc);
-		parser.finish();
-		const final = emitter.flush();
-		if (final.length > 0) {
-			builder.apply(final);
-			renderer.update(builder.get_buffer(), '');
-		}
-	});
+	);
 
 	bench('pfm batch (for comparison)', () => {
 		pfm_e2e(fixtures.prose);

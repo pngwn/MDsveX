@@ -1,18 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "let count = 0;"
-    line_break
-    line_break
-    paragraph
-      text "$: if (count >= 10) "
-      mustache "\n	alert(`count is dangerously high!`);\n	count = 9;\n"
-    line_break
-    line_break
-    paragraph
-      text "function handleClick() "
-      mustache "\n	count += 1;\n"
   line_break
   line_break
   html tag="button" on:click="handleClick"
@@ -22,3 +9,4 @@ root
       mustache "count"
       text " "
       mustache "count === 1 ? 'time' : 'times'"
+      soft_break

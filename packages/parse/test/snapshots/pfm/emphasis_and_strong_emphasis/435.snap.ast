@@ -1,5 +1,5 @@
 root
   paragraph
-    emphasis
-    text " is not an empty strong emphasis"
+    text "_"
+    text "_ is not an empty strong emphasis"
   line_break

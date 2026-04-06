@@ -3,6 +3,7 @@
 A markdown variant for mdsvex. Uses CommonMark as baseline. Goals: remove ambiguity, eliminate redundant syntax, add essential missing features.
 
 **Guiding principles:**
+
 1. Markdown is learned, not intuitive — tweaking it doesn't break anything sacred
 2. Ambiguity is bad for users and parsers
 3. Invisible syntax is bad
@@ -19,8 +20,10 @@ A markdown variant for mdsvex. Uses CommonMark as baseline. Goals: remove ambigu
 **Indentation** — Indented code blocks removed. Fenced code blocks only. Indentation is now insignificant.
 
 **Link references** — Shorthand references must be explicit. `[ref]` alone is ambiguous (is it a link or plain text?). Required form:
+
 ```markdown
 [ref]: url
+
 [ref][]
 ```
 
@@ -31,31 +34,52 @@ The definition must appear **before** the reference is used. Forward references 
 **Lists** — Non-sequential numbers supported (`11.`, `27.` etc.). Tight vs. loose is determined locally and per-list: no blank lines between items = tight (no `<p>` wrappers), all items separated by blank lines = loose (with `<p>` wrappers). Mixed blank lines are treated as loose. No cascade behaviour — a blank line in one list never affects another.
 
 **Emphasis** — `_` for emphasis, `*` for strong. These are **distinct and non-interchangeable**. Intraword emphasis via special syntax:
+
 ```markdown
 _emphasis_
-*strong emphasis*
-*_emphasis inside strong_*
+_strong emphasis_
+_*emphasis inside strong*_
 _*strong inside emphasis*_
 intraword: fan~_tas_~tic
 ```
 
 **Line breaks** — Soft breaks supported as-is. Hard breaks (`<br>`) via backslash only — trailing-space syntax removed:
+
 ```markdown
 hello\
 world
 ```
 
-**Superscript** — Added, via `^`:
+**Blockquotes** — No lazy continuation. Every line inside a blockquote must be explicitly prefixed with `>`. The first line without a `>` prefix terminates the blockquote; there is no implicit inheritance of blockquote context from a previous line. This enables line-local parsing decisions without tracking open paragraphs in parent containers.
+
 ```markdown
-Coming Soon ^TM^  →  Coming Soon <sup>TM</sup>
+> foo
+> bar
+```
+
+-> single blockquote containing `foo\nbar`.
+
+```markdown
+> foo
+> bar
+```
+
+-> blockquote containing `foo`, followed by a separate root-level paragraph `bar`.
+
+**Superscript** — Added, via `^`:
+
+```markdown
+Coming Soon ^TM^ -> Coming Soon <sup>TM</sup>
 ```
 
 **Subscript** — Added, syntax TBD, likely `~`:
+
 ```markdown
-x~1~  →  x<sub>1</sub>
+x~1~ -> x<sub>1</sub>
 ```
 
 **Strikethrough** — Added via `~~`:
+
 ```markdown
 ~~word~~
 ```
@@ -63,31 +87,35 @@ x~1~  →  x<sub>1</sub>
 **Tables** — GFM pipe tables as base, with three extensions. Whitespace alignment is insignificant; only structure matters.
 
 Left-side headers via `||` separator:
+
 ```markdown
-|           || title | title 2 |
+| || title | title 2 |
 |-----------||-------|---------|
-| left head || text  | text 2  |
+| left head || text | text 2 |
 ```
 
 Right-side headers via `||` on the right:
+
 ```markdown
-| title | title 2 ||        |
+| title | title 2 || |
 |-------|---------||--------|
-| text  | text 2  || head 1 |
+| text | text 2 || head 1 |
 ```
 
 Horizontal cell merging via `|>` (content of `|>` cells must be empty — a non-empty `|>` cell is a parse error). Column count must remain consistent:
+
 ```markdown
-| spanning three |>  |>  |
-|----------------|----|----|
-| text           | b  | c  |
+| spanning three | >   | >   |
+| -------------- | --- | --- |
+| text           | b   | c   |
 ```
 
 Both extensions compose:
+
 ```markdown
-|           || spanning  |>  |
+| || spanning |> |
 |-----------||-----------|---|
-| left head || text      | b |
+| left head || text | b |
 ```
 
 Vertical merging (`|^`) is reserved for future use.
@@ -95,15 +123,15 @@ Vertical merging (`|^`) is reserved for future use.
 **Generic directives** — First-class plugin syntax covering inline, leaf block, and container block cases. Replaces the need for most ad-hoc extensions:
 
 ```markdown
-:name[content]           ← inline
-::name[content]          ← leaf block
+:name[content] ← inline
+::name[content] ← leaf block
 :::name[content]
-  children
-:::                      ← container block
+children
+::: ← container block
 ```
 
 Handlers are user-supplied functions keyed by name. Attribute syntax (`{key=val}` from the upstream proposal) is not viable in mdsvex since `{}` is reserved — alternative TBD.
 
 ---
 
-*Feedback welcome.*
+_Feedback welcome._

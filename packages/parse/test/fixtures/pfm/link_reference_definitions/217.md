@@ -3,6 +3,6 @@
   "bar"
 [baz]: /baz-url
 
-[foo],
-[bar],
-[baz]
+[foo][],
+[bar][],
+[baz][]

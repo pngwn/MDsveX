@@ -14,13 +14,10 @@ import {
 import { parse_markdown_svelte } from '../src/main';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
-const fixtures_root = resolve(
-	this_dir,
-	'../../pfm-tests/tests/autolinks'
-);
+const fixtures_root = resolve(this_dir, 'fixtures/pfm/autolinks');
 
 const load_fixture = (id: string): string =>
-	readFileSync(resolve(fixtures_root, id, 'input.md'), 'utf8');
+	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
 
 describe('autolinks', () => {
 	// URI autolink: <http://foo.bar.baz>
@@ -171,24 +168,23 @@ describe('autolinks', () => {
 		expect(value).toBe('https://example.com/\\[\\');
 	});
 
-	// Email autolink: <foo@bar.example.com>
+	// PFM: email autolinks removed — scheme prefix required.
+	// <foo@bar.example.com> is not an autolink.
 	test('pfm example 604', () => {
 		const input = load_fixture('604');
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
-		const paragraph = nodes.get_node(root.children[0]);
-		const link = nodes.get_node(paragraph.children[0]);
-		expect(link.kind).toBe('link');
-
-		// Display text is the email
-		const text = nodes.get_node(link.children[0]);
-		expect(text.kind).toBe('text');
-		const text_content = get_content(nodes, text.index, input);
-		expect(text_content.value).toBe('foo@bar.example.com');
-
-		// Metadata has mailto: href
-		expect(link.metadata.href).toBe('mailto:foo@bar.example.com');
+		const children = root.children
+			.map((i: number) => nodes.get_node(i))
+			.filter((n: any) => n.kind !== 'line_break');
+		// Should NOT be a link — no scheme prefix
+		const all_kinds = children.flatMap((n: any) =>
+			n.children.length > 0
+				? n.children.map((i: number) => nodes.get_node(i).kind)
+				: [n.kind]
+		);
+		expect(all_kinds).not.toContain('link');
 	});
 
 	// HTML-like, not autolink: <foo+special@Bar.baz-bar0.com>

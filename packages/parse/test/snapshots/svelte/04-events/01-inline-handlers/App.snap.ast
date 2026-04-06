@@ -1,17 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "let m = "
-      mustache " x: 0, y: 0 "
-      text ";\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text "div "
-      mustache " width: 100%; height: 100%; "
   line_break
   line_break
   html tag="div" on:mousemove="{e => m = { x: e.clientX, y: e.clientY }}"
@@ -21,3 +12,4 @@ root
       mustache "m.x"
       text " x "
       mustache "m.y"
+      soft_break

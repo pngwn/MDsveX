@@ -1,4 +1,6 @@
 root
   paragraph
+    text "["
     text "foo "
-  line_break tag="bar" attr="](baz)"
+    text tag="bar" attr="](baz)" "<bar attr=\"](baz)\">"
+  line_break

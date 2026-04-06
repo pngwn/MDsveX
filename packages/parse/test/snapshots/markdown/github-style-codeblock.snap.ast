@@ -30,6 +30,9 @@ root
   line_break
   paragraph
     text "~~"
-    text "~\nanother piece of code\n"
+    text "~"
+    soft_break
+    text "another piece of code"
+    soft_break
     text "~~~"
   line_break

@@ -1,5 +1,6 @@
 root
   paragraph
     link href="/uri"
-      text "link \\[bar"
+      text "link "
+      text "[bar"
   line_break

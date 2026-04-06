@@ -3,6 +3,6 @@ root
     strong_emphasis
       text "foo "
       link href="/url"
-        text "*bar"
-        text "*"
+        strong_emphasis
+          text "bar"
   line_break

@@ -1,5 +1,9 @@
 root
   paragraph
-    text "] \n"
+    text "![foo"
+    text "] "
+    soft_break
+    text "["
+    text "]"
   line_break
   line_break

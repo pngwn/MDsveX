@@ -1,5 +1,5 @@
 root
   paragraph
-    strong_emphasis
-      text " a "
+    text "* a "
+    text "*"
   line_break

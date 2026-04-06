@@ -1,7 +1,7 @@
 root
 	paragraph
-		text(a→a)
+		text(a->a)
 	line_break
 	paragraph
-		text(ὐ→a)
+		text(ὐ->a)
 	line_break

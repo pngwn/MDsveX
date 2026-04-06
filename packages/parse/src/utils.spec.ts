@@ -161,7 +161,9 @@ describe('node_buffer', () => {
 
 	test('pending nodes can be repaired', () => {
 		const buffer = new node_buffer();
-		const id1 = buffer.push_pending(node_kind.emphasis, 0, 0);
+		// Wrap in paragraph so inline repair path fires (not block-level)
+		const para = buffer.push(node_kind.paragraph, 0, 0);
+		const id1 = buffer.push_pending(node_kind.emphasis, 0, para);
 		const id2 = buffer.push(node_kind.text, 0, id1);
 		expect(buffer.get_node(id2).parent).toEqual(id1);
 
@@ -171,12 +173,14 @@ describe('node_buffer', () => {
 		expect(buffer.get_node(id1).kind).toEqual('text');
 		expect(buffer.get_node(id1).next).toEqual(null);
 		expect(buffer.get_node(id1).children).toEqual([]);
-		expect(buffer.get_node(id1).parent).toEqual(0);
+		expect(buffer.get_node(id1).parent).toEqual(para);
 	});
 
 	test('pending nodes with multiple children stay separate after repair', () => {
 		const buffer = new node_buffer();
-		const id1 = buffer.push_pending(node_kind.emphasis, 0, 0);
+		// Wrap in paragraph so inline repair path fires (not block-level)
+		const para = buffer.push(node_kind.paragraph, 0, 0);
+		const id1 = buffer.push_pending(node_kind.emphasis, 0, para);
 		const id2 = buffer.push(node_kind.text, 1, id1);
 		const id3 = buffer.push(node_kind.text, 3, id1);
 
@@ -185,8 +189,8 @@ describe('node_buffer', () => {
 		// Multiple children: delimiter becomes its own text node, children reparented
 		expect(buffer.get_node(id1).kind).toEqual('text');
 		expect(buffer.get_node(id1).next).toEqual(id2);
-		expect(buffer.get_node(id2).parent).toEqual(0);
-		expect(buffer.get_node(id3).parent).toEqual(0);
+		expect(buffer.get_node(id2).parent).toEqual(para);
+		expect(buffer.get_node(id3).parent).toEqual(para);
 		expect(buffer.get_node(id1).children).toEqual([]);
 	});
 
@@ -304,7 +308,9 @@ describe('node_buffer', () => {
 
 	test('pending nodes can be repaired -- deeply nested', () => {
 		const buffer = new node_buffer();
-		const id1 = buffer.push_pending(node_kind.emphasis, 0, 0);
+		// Wrap in paragraph so inline repair path fires (not block-level)
+		const para = buffer.push(node_kind.paragraph, 0, 0);
+		const id1 = buffer.push_pending(node_kind.emphasis, 0, para);
 		const id2 = buffer.push_pending(node_kind.emphasis, 0, id1);
 		const id3 = buffer.push_pending(node_kind.emphasis, 0, id2);
 		const id4 = buffer.push_pending(node_kind.emphasis, 0, id3);
@@ -316,7 +322,7 @@ describe('node_buffer', () => {
 
 		buffer.repair();
 
-		expect(buffer.get_node().children).toEqual([
+		expect(buffer.get_node(para).children).toEqual([
 			id1,
 			id2,
 			id3,
@@ -332,7 +338,7 @@ describe('node_buffer', () => {
 			let prev = arr[i - 1] || null;
 
 			expect(buffer.get_node(id).kind).toEqual('text');
-			expect(buffer.get_node(id).parent).toEqual(0);
+			expect(buffer.get_node(id).parent).toEqual(para);
 			expect(buffer.get_node(id).next).toEqual(next);
 			expect(buffer.get_node(id).prev).toEqual(prev);
 			expect(buffer.get_node(id).children).toEqual([]);

@@ -11,9 +11,11 @@ root
   line_break
   html_comment " comment "
   paragraph
-    text "words\n   "
+    text "words"
+    soft_break
     html_comment " comment "
-    text "    "
+    soft_break
     html_comment " comment "
+    soft_break
     html_comment "--------------------------------------------------------------------------------------------------------------------------------------------------\n<!------------------------------------------------------------------"
     line_break

@@ -1,0 +1,5 @@
+root
+  paragraph
+    directive_inline name="my_dir"
+      text "stuff"
+  line_break

@@ -4,7 +4,8 @@ root
     html tag="code"
       line_break
       paragraph
-        text "foobar\n"
+        text "foobar"
+        soft_break
     line_break
   line_break
   line_break
@@ -17,7 +18,8 @@ root
       html tag="code" bla="bla"
         line_break
         paragraph
-          text "foobar\n"
+          text "foobar"
+          soft_break
       line_break
     line_break
     line_break

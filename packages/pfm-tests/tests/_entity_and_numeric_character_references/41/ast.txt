@@ -1,4 +1,0 @@
-root
-	paragraph
-		text([a](url &quot;tit&quot;))
-	line_break

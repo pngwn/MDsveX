@@ -1,5 +1,6 @@
 root
   heading depth=1 "some title"
+    text "some title"
   line_break
   line_break
   list ordered=true start=1 tight=true

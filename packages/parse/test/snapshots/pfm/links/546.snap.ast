@@ -1,7 +1,16 @@
 root
   paragraph
-    text "]"
+    text "["
+    text "ref"
+    text "["
+    text "]: /uri"
   line_break
   line_break
   paragraph
+    text "[foo"
+    text "]"
+    text "["
+    text "ref"
+    text "["
+    text "]"
   line_break

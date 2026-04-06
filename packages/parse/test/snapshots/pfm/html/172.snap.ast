@@ -1,0 +1,6 @@
+root
+  html tag="style" type="text/css"
+  line_break
+  paragraph
+    text "okay"
+  line_break

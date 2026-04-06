@@ -1,5 +1,6 @@
 root
   paragraph
+    text "["
     text "link "
     link href="/uri"
       text "bar"

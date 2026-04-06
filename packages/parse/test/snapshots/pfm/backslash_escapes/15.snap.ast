@@ -1,6 +1,6 @@
 root
   paragraph
-    text "\\\\"
-    text "*emphasis"
-    text "*"
+    text "\\"
+    strong_emphasis
+      text "emphasis"
   line_break

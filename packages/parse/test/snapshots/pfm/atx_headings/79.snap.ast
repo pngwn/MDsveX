@@ -4,4 +4,5 @@ root
   heading depth=1
   line_break
   heading depth=3 "###"
+    text "###"
   line_break

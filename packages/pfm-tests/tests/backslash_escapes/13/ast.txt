@@ -1,4 +1,4 @@
 root
 	paragraph
-		text(\\→\\A\\a\\ \\3\\φ\\«)
+		text(\\->\\A\\a\\ \\3\\φ\\«)
 	line_break

@@ -1,5 +1,9 @@
 root
   paragraph
-    text "bar\n===\n"
-    text "]"
+    text "bar"
+    soft_break
+    text "==="
+    soft_break
+    link href="/url"
+      text "foo"
   line_break

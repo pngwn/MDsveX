@@ -14,13 +14,10 @@ import {
 import { parse_markdown_svelte } from '../src/main';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
-const fixtures_root = resolve(
-	this_dir,
-	'../../pfm-tests/tests/backslash_escapes'
-);
+const fixtures_root = resolve(this_dir, 'fixtures/pfm/backslash_escapes');
 
 const load_fixture = (id: string): string =>
-	readFileSync(resolve(fixtures_root, id, 'input.md'), 'utf8');
+	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
 
 describe('backslash escapes', () => {
 	// All ASCII punctuation escaped: \!\"\#\$\%...
@@ -39,16 +36,22 @@ describe('backslash escapes', () => {
 			expect(kind).toBe('text');
 		}
 
-		// Combined text content should include all the escaped characters
-		const { content } = get_child_range(nodes, paragraph.index, input);
-		// Should contain the backslash-escaped pairs
-		expect(content).toContain('\\!');
-		expect(content).toContain('\\*');
-		expect(content).toContain('\\<');
-		expect(content).toContain('\\_');
+		// Escaped punctuation should appear without backslashes in text values
+		const text_values = paragraph.children
+			.map((i: number) => nodes.get_node(i))
+			.filter((n: any) => n.kind === 'text')
+			.map((n: any) => input.slice(n.value[0], n.value[1]));
+		const combined = text_values.join('');
+		// All ASCII punctuation should be present, backslashes removed
+		expect(combined).toContain('!');
+		expect(combined).toContain('*');
+		expect(combined).toContain('<');
+		expect(combined).toContain('_');
+		// Backslashes should only appear for the \\ escape (producing a single \)
+		expect(combined.match(/\\/g)?.length ?? 0).toBe(1);
 	});
 
-	// Backslash before non-ASCII-punctuation: \→\A\a\ \3\φ\«
+	// Backslash before non-ASCII-punctuation: \->\A\a\ \3\φ\«
 	test('pfm example 13 — non-punctuation escapes are regular text', () => {
 		const input = load_fixture('13');
 		const { nodes } = parse_markdown_svelte(input);
@@ -92,9 +95,13 @@ describe('backslash escapes', () => {
 		// Should NOT have link or html nodes
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
 		expect(kinds).not.toContain('link');
-		// Content should include \< as text
-		const { content } = get_child_range(nodes, paragraph.index, input);
-		expect(content).toBe('\\<br/> not a tag');
+		// Content should include < as text (backslash removed by escape)
+		const text_values = paragraph.children
+			.map((i: number) => nodes.get_node(i))
+			.filter((n: any) => n.kind === 'text')
+			.map((n: any) => input.slice(n.value[0], n.value[1]));
+		const combined = text_values.join('');
+		expect(combined).toBe('<br/> not a tag');
 	});
 
 	test('pfm example 14 — \\[ prevents link syntax', () => {
@@ -151,12 +158,10 @@ describe('backslash escapes', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 
-		// \\ escapes the backslash, producing text "\\".
-		// Then *emphasis* follows. In PFM, \ is classified as word,
-		// so * after \ doesn't open emphasis — all is text.
+		// \\ escapes the backslash, producing literal "\".
+		// Then *emphasis* follows — \ is punctuation so * is left-flanking.
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds).not.toContain('emphasis');
-		expect(kinds).not.toContain('strong_emphasis');
+		expect(kinds).toContain('strong_emphasis');
 	});
 
 	// Backslash before newline: foo\<newline>bar
@@ -171,8 +176,20 @@ describe('backslash escapes', () => {
 	});
 
 	// Backtick code spans with escapes inside: `` \[\` ``
-	// Skipped: needs backtick-in-text improvements
-	test.todo('pfm example 17');
+	test('pfm example 17', () => {
+		const input = load_fixture('17');
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		expect(paragraph.kind).toBe('paragraph');
+
+		// Inside code span, backslashes are literal — not escapes
+		const code = paragraph.children
+			.map((i) => nodes.get_node(i))
+			.find((n) => n.kind === 'code_span');
+		expect(code).toBeDefined();
+	});
 
 	// Indented line with escapes: "    \[\]"
 	test('pfm example 18 — indented escaped brackets', () => {
@@ -184,17 +201,28 @@ describe('backslash escapes', () => {
 		expect(paragraph.kind).toBe('paragraph');
 	});
 
-	// Tilde fenced code blocks preserve escapes
-	// Skipped: tilde fences not implemented
-	test.todo('pfm example 19');
-
 	// Autolink with backslash: <https://example.com?find=\*>
-	// Needs html node support (Phase 5)
-	test.todo('pfm example 20');
+	test('pfm example 20', () => {
+		const input = load_fixture('20');
+		const { nodes } = parse_markdown_svelte(input);
 
-	// HTML tag with backslash: <a href="/bar\/)">
-	// Needs html node support (Phase 5)
-	test.todo('pfm example 21');
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		expect(paragraph.kind).toBe('paragraph');
+	});
+
+	// HTML tag with backslash: <a href="/bar\/)"> — block-level HTML
+	test('pfm example 21', () => {
+		const input = load_fixture('21');
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const children = root.children.map((i) => nodes.get_node(i));
+		const found = children.find(
+			(n) => n.kind === 'text' || n.kind === 'html' || n.kind === 'paragraph'
+		);
+		expect(found).toBeDefined();
+	});
 
 	// Link syntax with backslash: [foo](/bar\* "ti\*tle")
 	// Backslashes in link URL/title are preserved

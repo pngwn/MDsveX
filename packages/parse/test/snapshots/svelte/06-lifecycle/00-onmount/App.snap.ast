@@ -1,32 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " onMount "
-      text " from \"svelte\";"
-    line_break
-    line_break
-    paragraph
-      text "let photos = "
-    line_break
-    line_break
-    paragraph
-      text "onMount(async () => "
-      mustache "\n	const res = await fetch(\n		`https://jsonplaceholder.typicode.com/photos?_limit=20`,\n	);\n	photos = await res.json();\n"
-      text ");\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text ".photos "
-      mustache "\n		width: 100%;\n		display: grid;\n		grid-template-columns: repeat(5, 1fr);\n		grid-gap: 8px;\n	"
-      line_break
-      line_break
-      paragraph
-        text "figure, img "
-        mustache "\n		width: 100%;\n		margin: 0;\n	"
   line_break
   line_break
   html tag="h1"
@@ -38,20 +14,29 @@ root
     line_break
     paragraph
       mustache "#each photos as photo"
+      soft_break
       text "		"
       html tag="figure"
+        soft_break
         text "			"
         html tag="img" src="photo.thumbnailUrl" alt="photo.title"
+          soft_break
           text "			"
           html tag="figcaption"
             mustache "photo.title"
+          soft_break
           text "		"
+      soft_break
       text "	"
       mustache ":else"
+      soft_break
       text "		"
       html_comment " this block renders when photos.length === 0 "
+      soft_break
       text "		"
       html tag="p"
         text "loading..."
+      soft_break
       text "	"
       mustache "/each"
+      soft_break

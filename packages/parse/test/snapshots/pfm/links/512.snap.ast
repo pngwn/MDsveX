@@ -1,7 +1,10 @@
 root
   paragraph
+    text "["
     text "link "
+    text "["
     text "foo "
+    text "[bar"
     text "]"
     text "]"
     text "](/uri)"

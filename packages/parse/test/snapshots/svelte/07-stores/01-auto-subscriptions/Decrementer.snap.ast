@@ -1,18 +1,9 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " count "
-      text " from \"./stores.js\";"
-    line_break
-    line_break
-    paragraph
-      text "function decrement() "
-      mustache "\n	count.update((n) => n - 1);\n"
   line_break
   line_break
   html tag="button" on:click="decrement"
     line_break
     paragraph
-      text "-\n"
+      text "-"
+      soft_break

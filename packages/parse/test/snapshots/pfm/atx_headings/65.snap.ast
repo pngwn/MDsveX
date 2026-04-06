@@ -1,4 +1,4 @@
 root
   paragraph
-    text "\\## foo"
+    text "## foo"
   line_break

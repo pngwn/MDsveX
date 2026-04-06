@@ -1,0 +1,9 @@
+root
+  directive_container name="section"
+    heading depth=1 "Heading"
+      text "Heading"
+    line_break
+    line_break
+    paragraph
+      text "Paragraph text."
+    line_break

@@ -1,4 +1,5 @@
 root
   paragraph
     text
-  line_break tag="a" href="_"
+    text tag="a" href="_" "<a href=\"_\">"
+  line_break

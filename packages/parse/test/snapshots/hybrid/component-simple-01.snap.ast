@@ -1,5 +1,6 @@
 root
   heading depth=1 "Hello World"
+    text "Hello World"
   line_break
   line_break
   paragraph

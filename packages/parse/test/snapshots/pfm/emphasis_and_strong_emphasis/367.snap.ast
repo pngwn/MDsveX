@@ -1,6 +1,7 @@
 root
   paragraph
     text "*"
-    text "foo bar\n"
+    text "foo bar"
+    soft_break
     text "*"
   line_break

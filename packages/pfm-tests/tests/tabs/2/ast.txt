@@ -1,4 +1,4 @@
 root
 	paragraph
-		text(→foo→baz→→bim)
+		text(->foo->baz->->bim)
 	line_break

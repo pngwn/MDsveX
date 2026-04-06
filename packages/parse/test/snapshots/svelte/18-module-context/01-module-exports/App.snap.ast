@@ -1,16 +1,12 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import AudioPlayer, "
-      mustache " stopAll "
-      text " from \"./AudioPlayer.svelte\";\n"
   line_break
   line_break
   html tag="button" on:click="stopAll"
     line_break
     paragraph
-      text "stop all audio\n"
+      text "stop all audio"
+      soft_break
   line_break
   line_break
   html_comment " https://musopen.org/music/9862-the-blue-danube-op-314/ "

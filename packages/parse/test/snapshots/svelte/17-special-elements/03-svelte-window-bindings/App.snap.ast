@@ -1,13 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "const layers = "
-      text "];"
-    line_break
-    line_break
-    paragraph
-      text "let y;\n"
   line_break
   line_break
   html tag="svelte:window" bind:scrollY="y" self_closing=true
@@ -17,7 +9,10 @@ root
     line_break
     paragraph
       mustache "#each [0, 1, 2, 3, 4, 5, 6, 7, 8] as layer"
+      soft_break
       text "		"
       html tag="img" style="transform: translate(0,{-y * layer / (layers.length - 1)}px)" src="https://www.firewatchgame.com/images/parallax/parallax{layer}.png" alt="parallax layer {layer}"
+        soft_break
         text "	"
         mustache "/each"
+        soft_break

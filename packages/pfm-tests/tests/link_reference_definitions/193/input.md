@@ -2,4 +2,4 @@
       /url  
            'the title'  
 
-[foo]
+[foo][]

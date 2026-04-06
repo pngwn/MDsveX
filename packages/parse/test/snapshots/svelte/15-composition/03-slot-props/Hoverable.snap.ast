@@ -1,18 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "let hovering;"
-    line_break
-    line_break
-    paragraph
-      text "function enter() "
-      mustache "\n	hovering = true;\n"
-    line_break
-    line_break
-    paragraph
-      text "function leave() "
-      mustache "\n	hovering = false;\n"
   line_break
   line_break
   html tag="div" on:mouseenter="enter" on:mouseleave="leave"

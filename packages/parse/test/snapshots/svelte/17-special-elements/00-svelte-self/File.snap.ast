@@ -1,15 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "export let name;\n$: type = name.slice(name.lastIndexOf(\".\") + 1);\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text "span "
-      mustache "\n		padding: 0 0 0 1.5em;\n		background: 0 0.1em no-repeat;\n		background-size: 1em 1em;\n	"
   line_break
   line_break
   html tag="span" style="background-image: url(tutorial/icons/{type}.svg)"

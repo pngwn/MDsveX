@@ -13,13 +13,10 @@ import {
 import { parse_markdown_svelte } from '../src/main';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
-const fixtures_root = resolve(
-	this_dir,
-	'../../pfm-tests/tests/link_reference_definitions'
-);
+const fixtures_root = resolve(this_dir, 'fixtures/pfm/link_reference_definitions');
 
 const load_fixture = (id: string): string =>
-	readFileSync(resolve(fixtures_root, id, 'input.md'), 'utf8');
+	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
 
 /** Find first child of a given kind under a node. */
 const find_child = (
@@ -199,8 +196,8 @@ describe('link reference definitions', () => {
 	// PFM-specific: no forward references
 	// -----------------------------------------------------------
 
-	// [foo][] before [foo]: url — forward reference is text
-	test('203 — forward reference does not resolve (PFM)', () => {
+	// [foo]: url before [foo][] — definition-first, should resolve
+	test('203 — definition before reference resolves', () => {
 		const input = load_fixture('203');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -208,7 +205,7 @@ describe('link reference definitions', () => {
 		const paragraph = find_child(nodes, root.index, 'paragraph');
 		expect(paragraph).not.toBeNull();
 		const kinds = get_all_child_kinds(nodes, paragraph!.index);
-		expect(kinds).not.toContain('link');
+		expect(kinds).toContain('link');
 	});
 
 	// [foo][] before two definitions — still forward, no link
@@ -403,7 +400,6 @@ describe('link reference definitions', () => {
 		const paragraph = find_child(nodes, root.index, 'paragraph');
 		expect(paragraph).not.toBeNull();
 
-		// Should contain links
 		const kinds = get_all_child_kinds(nodes, paragraph!.index);
 		const link_count = kinds.filter((k) => k === 'link').length;
 		expect(link_count).toBe(3);
@@ -439,7 +435,7 @@ describe('link reference definitions', () => {
 			const child = nodes.get_node(child_idx);
 			expect(child.kind).not.toBe('heading');
 		}
-		// But should have a link from the definition
+		// Should have a link from the collapsed reference [foo][]
 		let found_link = false;
 		for (const child_idx of root.children) {
 			const child = nodes.get_node(child_idx);

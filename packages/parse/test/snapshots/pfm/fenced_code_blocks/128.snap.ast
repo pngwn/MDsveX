@@ -1,3 +1,11 @@
 root
   block_quote
-    code_fence "> aaa\n\nbbb\n"
+    paragraph
+      text "```"
+      soft_break
+      text "aaa"
+  line_break
+  line_break
+  paragraph
+    text "bbb"
+  line_break

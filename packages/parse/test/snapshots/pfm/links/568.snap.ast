@@ -1,5 +1,6 @@
 root
-  paragraph
-    text "](not a link)"
   line_break
+  paragraph
+    text "[foo"
+    text "](not a link)"
   line_break

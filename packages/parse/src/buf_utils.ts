@@ -1,15 +1,15 @@
 /**
- * Buffer utilities for Svelte components.
+ * buffer utilities for svelte components.
  *
- * Pure functions that read from node_buffer typed arrays.
- * No cursor state, no allocations beyond the returned arrays.
+ * pure functions that read from node_buffer typed arrays.
+ * no cursor state, no allocations beyond the returned arrays.
  */
 
 import type { node_buffer } from './utils';
 
 const NONE = 0xffffffff;
 
-/** Get child indices for a node. */
+/** get child indices for a node. */
 export function buf_children(buf: node_buffer, idx: number): number[] {
 	const result: number[] = [];
 	let child = buf._children_starts[idx];
@@ -22,8 +22,12 @@ export function buf_children(buf: node_buffer, idx: number): number[] {
 	return result;
 }
 
-/** Get text content for a node (value range or pre-materialized string). */
-export function buf_text(buf: node_buffer, idx: number, source: string): string {
+/** get text content for a node (value range or pre-materialized string). */
+export function buf_text(
+	buf: node_buffer,
+	idx: number,
+	source: string
+): string {
 	const s = buf._strings[idx];
 	if (s !== undefined) return s;
 	const vs = buf._value_starts[idx];
@@ -32,8 +36,12 @@ export function buf_text(buf: node_buffer, idx: number, source: string): string 
 	return source.slice(vs, ve);
 }
 
-/** Collect all text content from a node and its children recursively. */
-export function buf_text_content(buf: node_buffer, idx: number, source: string): string {
+/** collect all text content from a node and its children recursively. */
+export function buf_text_content(
+	buf: node_buffer,
+	idx: number,
+	source: string
+): string {
 	// Check own value first
 	const own = buf_text(buf, idx, source);
 	if (own) return own;

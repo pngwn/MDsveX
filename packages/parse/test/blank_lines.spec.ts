@@ -8,10 +8,10 @@ import { parse_markdown_svelte } from '../src/main';
 import { node_kind } from '../src/utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
-const fixtures_root = resolve(this_dir, '../../pfm-tests/tests/blank_lines');
+const fixtures_root = resolve(this_dir, 'fixtures/pfm/blank_lines');
 
 const load_fixture = (id: string): string =>
-	readFileSync(resolve(fixtures_root, id, 'input.md'), 'utf8');
+	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
 
 describe('blank lines', () => {
 	test('pfm example 227 blank lines between content produce line_break nodes', () => {

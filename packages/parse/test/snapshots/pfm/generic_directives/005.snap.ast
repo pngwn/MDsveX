@@ -1,0 +1,5 @@
+root
+  paragraph
+    directive_inline name="h2o"
+      text "water"
+  line_break

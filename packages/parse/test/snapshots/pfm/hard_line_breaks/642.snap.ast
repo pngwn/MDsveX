@@ -1,3 +1,3 @@
 root
-  text tag="a" href="foo  \nbar"
-  line_break
+  paragraph
+    text

@@ -1,4 +1,8 @@
 root
   paragraph
-    text "aaa\n             bbb\n                                       ccc"
+    text "aaa"
+    soft_break
+    text "bbb"
+    soft_break
+    text "ccc"
   line_break

@@ -1,16 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "let cats = "
-      text "	"
-      mustache " id: \"J---aiyznGQ\", name: \"Keyboard Cat\" "
-      text ",\n	"
-      mustache " id: \"z_AbfPXTKms\", name: \"Maru\" "
-      text ",\n	"
-      mustache " id: \"OUtn3pvWmpg\", name: \"Henri The Existential Cat\" "
-      text ",\n"
-      text "];\n"
   line_break
   line_break
   html tag="h1"
@@ -22,13 +11,18 @@ root
     line_break
     paragraph
       mustache "#each cats as { id, name }, i"
+      soft_break
       text "		"
       html tag="li"
         html tag="a" target="_blank" href="https://www.youtube.com/watch?v={id}"
+          soft_break
           text "			"
           mustache "i + 1"
           text ": "
           mustache "name"
+          soft_break
           text "		"
+      soft_break
       text "	"
       mustache "/each"
+      soft_break

@@ -9,10 +9,10 @@ import { node_kind } from '../src/utils';
 import type { node_buffer } from '../src/utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
-const fixtures_root = resolve(this_dir, '../../pfm-tests/tests/atx_headings');
+const fixtures_root = resolve(this_dir, 'fixtures/pfm/atx_headings');
 
 const load_fixture = (id: string): string =>
-	readFileSync(resolve(fixtures_root, id, 'input.md'), 'utf8');
+	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
 
 function collect_headings(nodes: node_buffer, source: string) {
 	const root = nodes.get_node();

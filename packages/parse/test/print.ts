@@ -27,9 +27,13 @@ const VALUE_KINDS = new Set([
 	'mustache',
 	'svelte_tag',
 	'svelte_branch',
+	'directive_leaf',
+	'directive_container',
+	'frontmatter',
+	'import_statement',
 ]);
 
-/** Metadata keys that need source-resolution (byte ranges → string). */
+/** Metadata keys that need source-resolution (byte ranges -> string). */
 const INFO_KEYS = new Set(['info_start', 'info_end']);
 
 /**
@@ -45,7 +49,7 @@ export function print_ast(
 	nodes: node_buffer,
 	source: string,
 	index: number = 0,
-	depth: number = 0,
+	depth: number = 0
 ): string {
 	const node = nodes.get_node(index);
 	const indent = '  '.repeat(depth);

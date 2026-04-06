@@ -1,5 +1,5 @@
 root
   paragraph
-    link
+    link href="a+b+c:d"
       text "a+b+c:d"
   line_break

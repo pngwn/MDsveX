@@ -8,13 +8,10 @@ import { parse_markdown_svelte } from '../src/main';
 import { node_kind } from '../src/utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
-const fixtures_root = resolve(
-	this_dir,
-	'../../pfm-tests/tests/fenced_code_blocks'
-);
+const fixtures_root = resolve(this_dir, 'fixtures/pfm/fenced_code_blocks');
 
 const load_fixture = (id: string): string =>
-	readFileSync(resolve(fixtures_root, id, 'input.md'), 'utf8').trim();
+	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8').trim();
 
 describe('fenced code blocks', () => {
 	test('pfm example 119 captures the entire fenced block as a single token', () => {
@@ -154,10 +151,17 @@ describe('fenced code blocks', () => {
 		).toBe('\n```\naaa');
 	});
 
-	// TODO: fix this when we have blockquotes
-	test.todo('pfm example 128 fences in blockquote', () => {
-		const input = load_fixture('127');
+	// Fenced code block inside a blockquote
+	test('pfm example 128 fences in blockquote', () => {
+		const input = load_fixture('128');
 		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const children = root.children
+			.map((i) => nodes.get_node(i))
+			.filter((n) => n.kind !== 'line_break');
+		const block_quote = children.find((n) => n.kind === 'block_quote');
+		expect(block_quote).toBeDefined();
 	});
 
 	test('pfm example 130 empty fence is empty code block', () => {
@@ -281,20 +285,27 @@ describe('fenced code blocks', () => {
 		expect(nodes.get_node(1).value).toEqual([4, 7]);
 	});
 
-	// TODO: fix this when we have paragraphs
-	test.todo('pfm example 140', () => {
+	// Paragraph, then fenced code block, then paragraph
+	test('pfm example 140', () => {
 		const input = load_fixture('140');
 		const { nodes } = parse_markdown_svelte(input);
 
-		expect(nodes.size).toBe(2);
-		expect(input.slice(nodes.get_node(1).start, nodes.get_node(1).end)).toBe(
-			input
-		);
+		const root = nodes.get_node();
+		const children = root.children
+			.map((i) => nodes.get_node(i))
+			.filter((n) => n.kind !== 'line_break');
 
-		expect(
-			input.slice(nodes.get_node(1).value[0], nodes.get_node(1).value[1])
-		).toBe(`aaa`);
-		expect(nodes.get_node(1).value).toEqual([4, 7]);
+		// foo -> paragraph, ``` bar ``` -> code_fence, baz -> paragraph
+		expect(children.length).toBe(3);
+		expect(children[0].kind).toBe('paragraph');
+		expect(children[1].kind).toBe('code_fence');
+		expect(children[2].kind).toBe('paragraph');
+
+		const code_content = input.slice(
+			children[1].value[0],
+			children[1].value[1]
+		);
+		expect(code_content).toBe('bar');
 	});
 
 	test('pfm example 142 meta info should be present', () => {

@@ -3,32 +3,9 @@ root
   line_break
   line_break
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " afterUpdate "
-      text " from \"svelte\";\nimport flash from \"./flash.js\";"
-    line_break
-    line_break
-    paragraph
-      text "export let todo;\nexport let toggle;"
-    line_break
-    line_break
-    paragraph
-      text "let div;"
-    line_break
-    line_break
-    paragraph
-      text "afterUpdate(() => "
-      mustache "\n	flash(div);\n"
-      text ");\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text "div "
-      mustache "\n		cursor: pointer;\n		line-height: 1.5;\n	"
   line_break
   line_break
   html_comment " the text will flash red whenever\n		the `todo` object changes "
@@ -39,4 +16,5 @@ root
       mustache "todo.done ? '👍': ''"
       text " "
       mustache "todo.text"
+      soft_break
   line_break

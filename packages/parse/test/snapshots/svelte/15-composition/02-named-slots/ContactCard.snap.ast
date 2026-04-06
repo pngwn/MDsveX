@@ -1,28 +1,5 @@
 root
   html tag="style"
-    line_break
-    paragraph
-      text ".contact-card "
-      mustache "\n		width: 300px;\n		border: 1px solid #aaa;\n		border-radius: 2px;\n		box-shadow: 2px 2px 8px rgba(0,0,0,0.1);\n		padding: 1em;\n	"
-    line_break
-    line_break
-    paragraph
-      text "h2 "
-      mustache "\n		padding: 0 0 0.2em 0;\n		margin: 0 0 1em 0;\n		border-bottom: 1px solid #ff3e00\n	"
-    line_break
-    line_break
-    paragraph
-      text ".address, .email "
-      mustache "\n		padding: 0 0 0 1.5em;\n		background:  0 0 no-repeat;\n		background-size: 20px 20px;\n		margin: 0 0 0.5em 0;\n		line-height: 1.2;\n	"
-    line_break
-    line_break
-    paragraph
-      text ".address "
-      mustache " background-image: url(tutorial/icons/map-marker.svg) "
-      text "	.email   "
-      mustache " background-image: url(tutorial/icons/email.svg) "
-      text "	.missing "
-      mustache " color: #999 "
   line_break
   line_break
   html tag="article" class="contact-card"

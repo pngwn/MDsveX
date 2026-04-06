@@ -1,10 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " count "
-      text " from \"./stores.js\";\nimport Incrementer from \"./Incrementer.svelte\";\nimport Decrementer from \"./Decrementer.svelte\";\nimport Resetter from \"./Resetter.svelte\";\n"
   line_break
   line_break
   html tag="h1"

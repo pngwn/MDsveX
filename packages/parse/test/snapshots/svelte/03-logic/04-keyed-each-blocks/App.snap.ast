@@ -1,35 +1,12 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import Thing from \"./Thing.svelte\";"
-    line_break
-    line_break
-    paragraph
-      text "let things = "
-      text "	"
-      mustache " id: 1, color: \"#0d0887\" "
-      text ",\n	"
-      mustache " id: 2, color: \"#6a00a8\" "
-      text ",\n	"
-      mustache " id: 3, color: \"#b12a90\" "
-      text ",\n	"
-      mustache " id: 4, color: \"#e16462\" "
-      text ",\n	"
-      mustache " id: 5, color: \"#fca636\" "
-      text ",\n"
-      text "];"
-    line_break
-    line_break
-    paragraph
-      text "function handleClick() "
-      mustache "\n	things = things.slice(1);\n"
   line_break
   line_break
   html tag="button" on:click="handleClick"
     line_break
     paragraph
-      text "Remove first thing\n"
+      text "Remove first thing"
+      soft_break
   line_break
   line_break
   html tag="div" style="display: grid; grid-template-columns: 1fr 1fr; grip-gap: 1em"
@@ -42,10 +19,13 @@ root
       line_break
       paragraph
         mustache "#each things as thing (thing.id)"
+        soft_break
         text "			"
         html tag="Thing" current="thing.color" self_closing=true
+        soft_break
         text "		"
         mustache "/each"
+        soft_break
         text "	"
     line_break
     line_break
@@ -57,9 +37,12 @@ root
       line_break
       paragraph
         mustache "#each things as thing"
+        soft_break
         text "			"
         html tag="Thing" current="thing.color" self_closing=true
+        soft_break
         text "		"
         mustache "/each"
+        soft_break
         text "	"
     line_break

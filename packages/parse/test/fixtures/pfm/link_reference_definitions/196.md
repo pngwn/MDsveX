@@ -4,4 +4,4 @@ line1
 line2
 '
 
-[foo]
+[foo][]

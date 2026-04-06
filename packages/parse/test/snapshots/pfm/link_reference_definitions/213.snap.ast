@@ -1,9 +1,14 @@
 root
   paragraph
-    text "Foo\n"
+    text "Foo"
+    soft_break
+    text "[bar"
     text "]: /baz"
   line_break
   line_break
   paragraph
+    text "[bar"
+    text "]"
+    text "["
     text "]"
   line_break

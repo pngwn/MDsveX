@@ -1,13 +1,21 @@
 root
   paragraph
     text "Search the web at "
+    text "[Google"
     text "]"
+    text "["
+    text "] or "
+    text "[Daring Fireball"
     text "]"
+    text "["
+    text "]."
   line_break
   line_break
   paragraph
     text "Search the web at "
+    text "[Google"
     text "] or "
+    text "[Daring Fireball"
     text "]."
   line_break
   line_break

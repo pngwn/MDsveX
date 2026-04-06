@@ -1,7 +1,9 @@
 root
   paragraph
-    text "*foo"
-    text "* bar"
+    text "![*"
+    strong_emphasis
+      text "foo"
+    text " bar"
     text "]"
   line_break
   line_break

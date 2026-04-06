@@ -2,6 +2,6 @@ root
   paragraph
     text "*"
     text "a"
-    link
+    link href="https://foo.bar/?q=*"
       text "https://foo.bar/?q=*"
   line_break

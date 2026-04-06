@@ -1,9 +1,12 @@
 root
   paragraph
-    text "foo\n"
+    text "foo"
+    soft_break
     text "*"
   line_break
   line_break
   paragraph
-    text "foo\n1."
+    text "foo"
+    soft_break
+    text "1."
   line_break

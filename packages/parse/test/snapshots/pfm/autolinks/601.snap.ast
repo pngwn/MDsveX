@@ -1,5 +1,5 @@
 root
   paragraph
-    link
+    link href="localhost:5001/foo"
       text "localhost:5001/foo"
   line_break

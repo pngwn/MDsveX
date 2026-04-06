@@ -1,25 +1,25 @@
 /**
- * PFMCursor — zero-allocation tree traversal over node_buffer.
+ * cursor — zero-allocation tree traversal over node_buffer.
  *
- * Single reusable object that provides tree-traversal semantics
- * (gotoFirstChild / gotoNextSibling / gotoParent) while reading
- * directly from the SOA typed arrays underneath. No per-node
+ * single reusable object that provides tree-traversal semantics
+ * (gotofirstchild / gotonextsibling / gotoparent) while reading
+ * directly from the soa typed arrays underneath. no per-node
  * objects are created — text is lazily sliced from the source
  * string only when requested.
  *
- * Inspired by tree-sitter's TreeCursor and libxml2's xmlTextReader.
+ * inspired by tree-sitter's treecursor and libxml2's xmltextreader.
  *
- * Usage:
+ * usage:
  *
- *   const tree = new TreeBuilder(128);
- *   const parser = new PFMParser(tree);
+ *   const tree = new treebuilder(128);
+ *   const parser = new pfmparser(tree);
  *   parser.parse(source);
- *   const cursor = new PFMCursor(tree.get_buffer(), source);
+ *   const cursor = new cursor(tree.get_buffer(), source);
  *
- *   // Walk tree
- *   if (cursor.gotoFirstChild()) {
- *     do { process(cursor); } while (cursor.gotoNextSibling());
- *     cursor.gotoParent();
+ *   // walk tree
+ *   if (cursor.gotofirstchild()) {
+ *     do { process(cursor); } while (cursor.gotonextsibling());
+ *     cursor.gotoparent();
  *   }
  */
 
@@ -27,12 +27,12 @@ import type { node_buffer } from './utils';
 
 const NONE = 0xffffffff;
 
-export class PFMCursor {
-	/** The backing SOA buffer. */
+export class Cursor {
+	/** the backing soa buffer. */
 	private buf: node_buffer;
-	/** The full source string for lazy text slicing. */
+	/** the full source string for lazy text slicing. */
 	private src: string;
-	/** Current node index into the buffer. */
+	/** current node index into the buffer. */
 	private idx: number;
 
 	// ── Direct array references (grabbed once, avoids repeated property lookup) ──
@@ -45,6 +45,7 @@ export class PFMCursor {
 	private _parents: Uint32Array;
 	private _next_siblings: Uint32Array;
 	private _children_starts: Uint32Array;
+	private _pending_nodes: Uint32Array;
 
 	constructor(buf: node_buffer, source: string) {
 		this.buf = buf;
@@ -60,34 +61,42 @@ export class PFMCursor {
 		this._parents = buf._parents;
 		this._next_siblings = buf._next_siblings;
 		this._children_starts = buf._children_starts;
+		this._pending_nodes = buf._pending_nodes;
 	}
 
-	// ── Properties (zero-cost reads from typed arrays) ──────────
-
-	/** Numeric kind of the current node. */
+	/** numeric kind of current node. */
 	get kind(): number {
 		return this._kinds[this.idx];
 	}
 
-	/** Kind-specific extra value (e.g. heading depth). */
+	/** kind-specific extra value (eg heading depth). */
 	get extra(): number {
 		return this._extras[this.idx];
 	}
 
-	/** Current node index (for external ID tracking / keyed lists). */
+	/** current node index (for external id tracking / keyed lists). */
 	get index(): number {
 		return this.idx;
 	}
 
-	/** Whether the current node is closed (end offset has been set). */
+	/** if the current node is closed (end offset has been set). */
 	get closed(): boolean {
 		return this._ends[this.idx] !== NONE;
 	}
 
-	// ── Text ────────────────────────────────────────────────────
+	/** if the current node is pending (speculative, may be revoked). */
+	get pending(): boolean {
+		return this._pending_nodes[this.idx] === 1;
+	}
 
-	/** Get the text content for the current node. Pre-materialized strings
-	 *  (from WireTreeBuilder) are returned directly; otherwise sliced lazily. */
+	/** parent kind of the current node,  -1 if at root. */
+	get parent_kind(): number {
+		const p = this._parents[this.idx];
+		return p === NONE ? -1 : this._kinds[p];
+	}
+
+	/** get text content for the current node. prebuilt strings
+	  (from wiretreebuilder) are returned directly; otherwise sliced lazily. */
 	text(): string {
 		const s = this.buf._strings[this.idx];
 		if (s !== undefined) return s;
@@ -97,21 +106,16 @@ export class PFMCursor {
 		return this.src.slice(vs, ve);
 	}
 
-	// ── Metadata (sparse — bitmask fast path in node_buffer) ────
-
-	/** Get metadata for the current node, or undefined if none. */
+	/** get metadata for the current node, or undefined if none. */
 	meta(): Record<string, unknown> | undefined {
 		return this.buf.metadata_at(this.idx);
 	}
 
-	/** Slice the source string by byte offsets. For resolving metadata offset pairs. */
+	/** slice the source string by byte offsets. for resolving metadata offset pairs. */
 	slice(start: number, end: number): string {
 		return this.src.slice(start, end);
 	}
 
-	// ── Traversal (mutates cursor position, returns success) ────
-
-	/** Move to the first child of the current node. Returns false if no children. */
 	gotoFirstChild(): boolean {
 		const child = this._children_starts[this.idx];
 		if (child === NONE) return false;
@@ -119,7 +123,6 @@ export class PFMCursor {
 		return true;
 	}
 
-	/** Move to the next sibling. Returns false if no more siblings. */
 	gotoNextSibling(): boolean {
 		const next = this._next_siblings[this.idx];
 		if (next === NONE) return false;
@@ -129,7 +132,6 @@ export class PFMCursor {
 		return true;
 	}
 
-	/** Move to the parent node. Returns false if already at root. */
 	gotoParent(): boolean {
 		const parent = this._parents[this.idx];
 		if (parent === NONE) return false;
@@ -137,12 +139,11 @@ export class PFMCursor {
 		return true;
 	}
 
-	/** Reset cursor to root (index 0). */
 	reset(): void {
 		this.idx = 0;
 	}
 
-	/** Get child indices as an array (for Svelte {#each} iteration). */
+	/** get child indices as an array (for svelte {#each} iteration). */
 	children(): number[] {
 		const result: number[] = [];
 		let child = this._children_starts[this.idx];
@@ -155,7 +156,7 @@ export class PFMCursor {
 		return result;
 	}
 
-	/** Reinitialize cursor with a (potentially grown) buffer and new source. */
+	/** re-inits cursor with a (potentially grown) buffer and new source. */
 	reinit(buf: node_buffer, source: string): void {
 		this.buf = buf;
 		this.src = source;
@@ -168,5 +169,6 @@ export class PFMCursor {
 		this._parents = buf._parents;
 		this._next_siblings = buf._next_siblings;
 		this._children_starts = buf._children_starts;
+		this._pending_nodes = buf._pending_nodes;
 	}
 }

@@ -1,0 +1,16 @@
+root
+  paragraph
+    text "<"
+    text "!["
+    text "CDATA"
+    text
+    soft_break
+    text "function matchwo(a,b)"
+    soft_break
+    mustache "\n  if (a < b && a < 0) then {\n    return 1;\n\n  } else {\n\n    return 0;\n  }\n"
+    soft_break
+    text "]"
+    text "]>"
+    soft_break
+    text "okay"
+  line_break

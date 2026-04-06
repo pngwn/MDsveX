@@ -1,5 +1,6 @@
 root
   line_break
   paragraph
-    text "]"
+    link href="/url\\bar\\*baz" title="foo\\\"bar\\baz"
+      text "foo"
   line_break

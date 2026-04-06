@@ -1,25 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " tweened "
-      text " from \"svelte/motion\";\nimport "
-      mustache " cubicOut "
-      text " from \"svelte/easing\";"
-    line_break
-    line_break
-    paragraph
-      text "const progress = tweened(0, "
-      mustache "\n	duration: 400,\n	easing: cubicOut,\n"
-      text ");\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text "progress "
-      mustache "\n		display: block;\n		width: 100%;\n	"
   line_break
   line_break
   html tag="progress" value="$progress"
@@ -28,28 +11,33 @@ root
   html tag="button" on:click="{() => progress.set(0)}"
     line_break
     paragraph
-      text "0%\n"
+      text "0%"
+      soft_break
   line_break
   line_break
   html tag="button" on:click="{() => progress.set(0.25)}"
     line_break
     paragraph
-      text "25%\n"
+      text "25%"
+      soft_break
   line_break
   line_break
   html tag="button" on:click="{() => progress.set(0.5)}"
     line_break
     paragraph
-      text "50%\n"
+      text "50%"
+      soft_break
   line_break
   line_break
   html tag="button" on:click="{() => progress.set(0.75)}"
     line_break
     paragraph
-      text "75%\n"
+      text "75%"
+      soft_break
   line_break
   line_break
   html tag="button" on:click="{() => progress.set(1)}"
     line_break
     paragraph
-      text "100%\n"
+      text "100%"
+      soft_break

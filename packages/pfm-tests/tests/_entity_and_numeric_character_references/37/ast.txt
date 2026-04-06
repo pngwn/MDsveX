@@ -1,9 +1,0 @@
-root
-	paragraph
-		text(&)
-	paragraph
-		text(#42;foo&#42;)
-	line_break
-	paragraph
-		text(*foo*)
-	line_break

@@ -29,12 +29,15 @@ root
   line_break
   html tag="article"
     paragraph
-      text "read\nme"
+      text "read"
+      soft_break
+      text "me"
   line_break
   html tag="aside"
     line_break
     paragraph
-      text "ignore me\n"
+      text "ignore me"
+      soft_break
   line_break
   line_break
   paragraph

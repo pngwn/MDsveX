@@ -1,0 +1,6 @@
+root
+  html tag="script" type="text/javascript"
+  line_break
+  paragraph
+    text "okay"
+  line_break

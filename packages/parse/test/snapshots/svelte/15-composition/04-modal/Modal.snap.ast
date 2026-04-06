@@ -1,31 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " createEventDispatcher "
-      text " from \"svelte\";"
-    line_break
-    line_break
-    paragraph
-      text "const dispatch = createEventDispatcher();\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text ".modal-background "
-      mustache "\n		position: fixed;\n		top: 0;\n		left: 0;\n		width: 100%;\n		height: 100%;\n		background: rgba(0,0,0,0.3);\n	"
-      line_break
-      line_break
-      paragraph
-        text ".modal "
-        mustache "\n		position: absolute;\n		left: 50%;\n		top: 50%;\n		width: calc(100vw - 4em);\n		max-width: 32em;\n		max-height: calc(100vh - 4em);\n		overflow: auto;\n		transform: translate(-50%,-50%);\n		padding: 1em;\n		border-radius: 0.2em;\n		background: white;\n	"
-      line_break
-      line_break
-      paragraph
-        text "button "
-        mustache "\n		display: block;\n	"
   line_break
   line_break
   html tag="div" class="modal-background" on:click="{() => dispatch(\"close\")}"

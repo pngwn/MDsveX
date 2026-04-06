@@ -5,10 +5,7 @@ root
       block_quote
         paragraph
           text "b"
-          text "  "
-          text
-          text "  c"
-          text "  "
-          text
-          text "- d"
+      code_fence "  c"
+    list_item
+      text "d"
   line_break

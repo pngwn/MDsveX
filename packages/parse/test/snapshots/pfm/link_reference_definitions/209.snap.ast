@@ -1,4 +1,5 @@
 root
   paragraph
+    text "[foo"
     text "]: /url \"title\" ok"
   line_break

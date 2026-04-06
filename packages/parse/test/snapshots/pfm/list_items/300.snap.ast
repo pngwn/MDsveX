@@ -2,8 +2,11 @@ root
   list ordered=false start=0 tight=true
     list_item
       heading depth=1 "Foo"
+        text "Foo"
     list_item
       text "Bar"
-      thematic_break
-      text "baz"
+  line_break
+  thematic_break
+  paragraph
+    text "baz"
   line_break

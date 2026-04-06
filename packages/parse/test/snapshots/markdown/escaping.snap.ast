@@ -5,61 +5,61 @@ root
   line_break
   line_break
   paragraph
-    text "\\\\"
+    text "\\"
   line_break
   line_break
   paragraph
-    text "\\`"
+    text "`"
   line_break
   line_break
   paragraph
-    text "\\*"
+    text "*"
   line_break
   line_break
   paragraph
-    text "\\_"
+    text "_"
   line_break
   line_break
   paragraph
-    text "\\{"
+    text "{"
   line_break
   line_break
   paragraph
-    text "\\}"
+    text "}"
   line_break
   line_break
   paragraph
-    text "\\["
+    text "["
   line_break
   line_break
   paragraph
-    text "\\]"
+    text "]"
   line_break
   line_break
   paragraph
-    text "\\("
+    text "("
   line_break
   line_break
   paragraph
-    text "\\)"
+    text ")"
   line_break
   line_break
   paragraph
-    text "\\#"
+    text "#"
   line_break
   line_break
   paragraph
-    text "\\+"
+    text "+"
   line_break
   line_break
   paragraph
-    text "\\-"
+    text "-"
   line_break
   line_break
   paragraph
-    text "\\."
+    text "."
   line_break
   line_break
   paragraph
-    text "\\!"
+    text "!"
   line_break

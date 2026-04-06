@@ -1,0 +1,11 @@
+root
+  html tag="div"
+    line_break
+    paragraph
+      text "bar"
+      soft_break
+  line_break
+  paragraph
+    strong_emphasis
+      text "foo"
+    line_break

@@ -1,27 +1,9 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "let language = \"english\";"
-    line_break
-    line_break
-    paragraph
-      text "const translations = "
-      mustache "\n	english: {\n		tooltip: \"Switch Languages\",\n	},\n	latin: {\n		tooltip: \"Itchsway Anguageslay\",\n	},\n"
-      text ";"
-    line_break
-    line_break
-    paragraph
-      text "function tooltip(node, text) "
-      mustache "\n	const tooltip = document.createElement(\"div\");\n	tooltip.textContent = text;\n\n	Object.assign(tooltip.style, {\n		position: \"absolute\",\n		background: \"black\",\n		color: \"white\",\n		padding: \"0.5em 1em\",\n		fontSize: \"12px\",\n		pointerEvents: \"none\",\n		transform: \"translate(5px, -50%)\",\n		borderRadius: \"2px\",\n		transition: \"opacity 0.4s\",\n	});\n\n	function position() {\n		const { top, right, bottom } = node.getBoundingClientRect();\n		tooltip.style.top = `${(top + bottom) / 2}px`;\n		tooltip.style.left = `${right}px`;\n	}\n\n	function append() {\n		document.body.appendChild(tooltip);\n		tooltip.style.opacity = 0;\n		setTimeout(() => (tooltip.style.opacity = 1));\n		position();\n	}\n\n	function remove() {\n		tooltip.remove();\n	}\n\n	node.addEventListener(\"mouseenter\", append);\n	node.addEventListener(\"mouseleave\", remove);\n\n	return {\n		update(text) {\n			tooltip.textContent = text;\n			position();\n		},\n\n		destroy() {\n			tooltip.remove();\n			node.removeEventListener(\"mouseenter\", append);\n			node.removeEventListener(\"mouseleave\", remove);\n		},\n	};\n"
-    line_break
-    line_break
-    paragraph
-      text "function toggleLanguage() "
-      mustache "\n	language = language === \"english\" ? \"latin\" : \"english\";\n"
   line_break
   line_break
   html tag="button" on:click="toggleLanguage" use:tooltip="translations[language].tooltip"
     line_break
     paragraph
       mustache "language"
+      soft_break

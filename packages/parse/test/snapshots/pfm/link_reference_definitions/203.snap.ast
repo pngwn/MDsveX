@@ -1,5 +1,6 @@
 root
-  paragraph
-    text "]"
   line_break
+  paragraph
+    link href="url"
+      text "foo"
   line_break

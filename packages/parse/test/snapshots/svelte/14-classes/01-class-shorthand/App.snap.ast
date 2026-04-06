@@ -1,15 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "let big = false;\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text ".big "
-      mustache "\n		font-size: 4em;\n	"
   line_break
   line_break
   html tag="label"
@@ -17,7 +10,8 @@ root
     html tag="input" type="checkbox" bind:checked="big"
       line_break
       paragraph
-        text "big\n"
+        text "big"
+        soft_break
   line_break
   line_break
   html tag="div" class:big=true
@@ -25,4 +19,5 @@ root
     paragraph
       text "some "
       mustache "big ? 'big' : 'small'"
-      text " text\n"
+      text " text"
+      soft_break

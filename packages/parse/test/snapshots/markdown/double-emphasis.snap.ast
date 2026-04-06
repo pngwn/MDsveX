@@ -2,31 +2,31 @@ root
   paragraph
     text "a "
     emphasis
-      text "*strong and em"
-      text "*"
+      strong_emphasis
+        text "strong and em"
     text " thingy"
   line_break
   line_break
   paragraph
     text "bar"
     text "_"
-    text "*bazinga"
-    text "*"
+    strong_emphasis
+      text "bazinga"
     text "_bar"
   line_break
   line_break
   paragraph
     text "a "
     emphasis
-      text "*strong and em"
-      text "*"
+      strong_emphasis
+        text "strong and em"
     text " thingy"
   line_break
   line_break
   paragraph
     text "bar"
     text "_"
-    text "*bazinga"
-    text "*"
+    strong_emphasis
+      text "bazinga"
     text "_bar"
   line_break

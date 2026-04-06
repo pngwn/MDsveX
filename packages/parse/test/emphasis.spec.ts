@@ -4,12 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'vitest';
 
-import {
-	get_all_child_kinds,
-	get_child_range,
-	get_content,
-	print_all_nodes,
-} from './utils';
+import { get_all_child_kinds, get_child_range, get_content } from './utils';
 
 import { parse_markdown_svelte } from '../src/main';
 import { node_kind } from '../src/utils';
@@ -17,11 +12,11 @@ import { node_kind } from '../src/utils';
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(
 	this_dir,
-	'../../pfm-tests/tests/emphasis_and_strong_emphasis'
+	'fixtures/pfm/emphasis_and_strong_emphasis'
 );
 
 const load_fixture = (id: string): string =>
-	readFileSync(resolve(fixtures_root, id, 'input.md'), 'utf8');
+	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
 
 describe('emphasis and strong emphasis', () => {
 	// strong emphasis
@@ -136,53 +131,16 @@ describe('emphasis and strong emphasis', () => {
 		);
 	});
 
-	//text
+	// NBSP between * and content: * is not flanking, pure text
 	test('pfm example 353', () => {
 		const input = load_fixture('353');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 
 		const paragraph = nodes.get_node(root.children[0]);
-		const paragraph_content = get_content(nodes, paragraph.index, input);
-		const paragraph_child_content = get_child_range(
-			nodes,
-			paragraph.index,
-			input
-		);
-
-		// +1 for trailing line_break
-		expect(nodes.size).toBe(5);
 		expect(paragraph.kind).toBe('paragraph');
-
-		expect(paragraph_content.content).toBe(input.trim());
-		expect(paragraph_child_content.content).toBe(input.trim());
-
-		expect(paragraph.start).toBe(0);
-		expect(paragraph.start).toBe(paragraph_child_content.start);
-		expect(paragraph.end).toBe(paragraph_child_content.end);
-		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
-			'strong_emphasis',
-		]);
-
-		expect(paragraph_child_content.content).toBe('* a *');
-
-		const strong_emphasis = nodes.get_node(paragraph.children[0]);
-		const strong_emphasis_content = get_content(
-			nodes,
-			strong_emphasis.index,
-			input
-		);
-		const strong_emphasis_child_content = get_child_range(
-			nodes,
-			strong_emphasis.index,
-			input
-		);
-
-		expect(strong_emphasis.kind).toBe('strong_emphasis');
-		expect(strong_emphasis_content.content).toBe(input.trim());
-		expect(get_all_child_kinds(nodes, strong_emphasis.index)).toEqual(['text']);
-
-		expect(strong_emphasis_child_content.content).toBe(' a ');
+		const kinds = get_all_child_kinds(nodes, paragraph.index);
+		expect(kinds.every((k) => k === 'text')).toBe(true);
 	});
 
 	//text
@@ -318,7 +276,9 @@ describe('emphasis and strong emphasis', () => {
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
 		expect(kinds.every((k) => k === 'text')).toBe(true);
-		expect(get_child_range(nodes, paragraph.index, input).content).toBe('_ foo bar_');
+		expect(get_child_range(nodes, paragraph.index, input).content).toBe(
+			'_ foo bar_'
+		);
 	});
 
 	// text: a_"foo"_ (opening _ preceded by word)
@@ -383,7 +343,10 @@ describe('emphasis and strong emphasis', () => {
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['text', 'emphasis']);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'text',
+			'emphasis',
+		]);
 		const emphasis = nodes.get_node(paragraph.children[1]);
 		expect(emphasis.kind).toBe('emphasis');
 		const emph_content = get_content(nodes, emphasis.index, input);
@@ -452,23 +415,12 @@ describe('emphasis and strong emphasis', () => {
 		);
 
 		expect(paragraph.kind).toBe('paragraph');
+		// The * is not valid emphasis (not right-flanking).
+		// After revocation: text "*" + text "foo bar" + soft_break + text "*"
 		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
 			'text',
 			'text',
-			'text',
-		]);
-
-		expect(paragraph_content.content).toBe(input.trim());
-		expect(paragraph_child_content.content).toBe(input.trim());
-
-		expect(paragraph.start).toBe(0);
-		expect(paragraph.start).toBe(paragraph_child_content.start);
-		expect(paragraph.end).toBe(paragraph_child_content.end);
-
-		expect(paragraph_child_content.content).toBe('*foo bar\n*');
-		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
-			'text',
-			'text',
+			'soft_break',
 			'text',
 		]);
 	});
@@ -513,7 +465,7 @@ describe('emphasis and strong emphasis', () => {
 	test('pfm example 369', () => {
 		const input = load_fixture('369');
 		const { nodes } = parse_markdown_svelte(input);
-		print_all_nodes(nodes, input);
+
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		const paragraph_content = get_content(nodes, paragraph.index, input);
@@ -545,7 +497,9 @@ describe('emphasis and strong emphasis', () => {
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
 		expect(kinds.every((k) => k === 'text')).toBe(true);
-		expect(get_child_range(nodes, paragraph.index, input).content).toBe('*foo*bar');
+		expect(get_child_range(nodes, paragraph.index, input).content).toBe(
+			'*foo*bar'
+		);
 	});
 
 	// text: _foo bar _ (closing _ preceded by space)
@@ -624,46 +578,38 @@ describe('emphasis and strong emphasis', () => {
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis', 'text']);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'emphasis',
+			'text',
+		]);
 		const emphasis = nodes.get_node(paragraph.children[0]);
 		const emph_content = get_content(nodes, emphasis.index, input);
 		expect(emph_content.value).toBe('(bar)');
 	});
 
-	// strong emphasis
-// PFM: **foo bar** → text(*) + strong(foo bar) + text(*)
-	// PFM: **foo bar** → * is always single-delimiter strong, so ** = nested strong
+	// PFM: *foo bar* -> single-delimiter strong
 	test('pfm example 378', () => {
 		const input = load_fixture('378');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		// In PFM, ** creates nested strong_emphasis (both * are openers)
 		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
-			'strong_emphasis',
-		]);
-		// Inner emphasis wraps content
-		const outer = nodes.get_node(paragraph.children[0]);
-		expect(get_all_child_kinds(nodes, outer.index)).toEqual([
 			'strong_emphasis',
 		]);
 	});
 
-	// strong emphasis
-// PFM: ** foo bar** → first * opens strong, space after second *
+	// PFM: * foo bar* -> * at line start with space is list marker
 	test('pfm example 379', () => {
 		const input = load_fixture('379');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
-		const paragraph = nodes.get_node(root.children[0]);
-		expect(paragraph.kind).toBe('paragraph');
-		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.includes('text')).toBe(true);
+		const first = nodes.get_node(root.children[0]);
+		expect(first.kind).toBe('list');
 	});
 
 	// text
-// PFM: a**"foo"** → first * preceded by word → text
+	// PFM: a**"foo"** -> first * preceded by word -> text
 	test('pfm example 380', () => {
 		const input = load_fixture('380');
 		const { nodes } = parse_markdown_svelte(input);
@@ -675,7 +621,7 @@ describe('emphasis and strong emphasis', () => {
 	});
 
 	// text
-// PFM: foo**bar** → first * preceded by word → text
+	// PFM: foo**bar** -> first * preceded by word -> text
 	test('pfm example 381', () => {
 		const input = load_fixture('381');
 		const { nodes } = parse_markdown_svelte(input);
@@ -687,7 +633,7 @@ describe('emphasis and strong emphasis', () => {
 	});
 
 	// emphasis
-// PFM: __foo bar__ → emphasis (extra _ treated as text content)
+	// PFM: __foo bar__ -> emphasis (extra _ treated as text content)
 	test('pfm example 382', () => {
 		const input = load_fixture('382');
 		const { nodes } = parse_markdown_svelte(input);
@@ -698,7 +644,7 @@ describe('emphasis and strong emphasis', () => {
 	});
 
 	// emphasis
-// PFM: __ foo bar__ → first _ opens (next=_), content includes space
+	// PFM: __ foo bar__ -> first _ opens (next=_), content includes space
 	test('pfm example 383', () => {
 		const input = load_fixture('383');
 		const { nodes } = parse_markdown_svelte(input);
@@ -710,7 +656,7 @@ describe('emphasis and strong emphasis', () => {
 	});
 
 	// emphasis
-// PFM: __\nfoo bar__ → emphasis spans newline
+	// PFM: __\nfoo bar__ -> emphasis spans newline
 	test('pfm example 384', () => {
 		const input = load_fixture('384');
 		const { nodes } = parse_markdown_svelte(input);
@@ -722,7 +668,7 @@ describe('emphasis and strong emphasis', () => {
 	});
 
 	// text
-// PFM: a__"foo"__ → first _ preceded by word → text
+	// PFM: a__"foo"__ -> first _ preceded by word -> text
 	test('pfm example 385', () => {
 		const input = load_fixture('385');
 		const { nodes } = parse_markdown_svelte(input);
@@ -734,7 +680,7 @@ describe('emphasis and strong emphasis', () => {
 	});
 
 	// text
-// PFM: foo__bar__ → intraword __ → all text
+	// PFM: foo__bar__ -> intraword __ -> all text
 	test('pfm example 386', () => {
 		const input = load_fixture('386');
 		const { nodes } = parse_markdown_svelte(input);
@@ -746,7 +692,7 @@ describe('emphasis and strong emphasis', () => {
 	});
 
 	// text
-// PFM: 5__6__78 → intraword __ → all text
+	// PFM: 5__6__78 -> intraword __ -> all text
 	test('pfm example 387', () => {
 		const input = load_fixture('387');
 		const { nodes } = parse_markdown_svelte(input);
@@ -758,7 +704,7 @@ describe('emphasis and strong emphasis', () => {
 	});
 
 	// text
-// PFM: Cyrillic__word__ → intraword __ → all text
+	// PFM: Cyrillic__word__ -> intraword __ -> all text
 	test('pfm example 388', () => {
 		const input = load_fixture('388');
 		const { nodes } = parse_markdown_svelte(input);
@@ -770,7 +716,7 @@ describe('emphasis and strong emphasis', () => {
 	});
 
 	// emphasis
-// PFM: __foo, __bar__, baz__ → emphasis
+	// PFM: __foo, __bar__, baz__ -> emphasis
 	test('pfm example 389', () => {
 		const input = load_fixture('389');
 		const { nodes } = parse_markdown_svelte(input);
@@ -781,7 +727,7 @@ describe('emphasis and strong emphasis', () => {
 	});
 
 	// text
-// PFM: foo-__(bar)__ → emphasis after punctuation
+	// PFM: foo-__(bar)__ -> emphasis after punctuation
 	test('pfm example 390', () => {
 		const input = load_fixture('390');
 		const { nodes } = parse_markdown_svelte(input);
@@ -801,7 +747,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// text
@@ -813,11 +761,12 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
-	// strong emphasis
-	// strong emphasis
+	// PFM: _(*foo*)_ -> emphasis wrapping strong
 	test('pfm example 393', () => {
 		const input = load_fixture('393');
 		const { nodes } = parse_markdown_svelte(input);
@@ -825,7 +774,7 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.includes('strong_emphasis')).toBe(true);
+		expect(kinds).toEqual(['emphasis']);
 	});
 
 	// strong emphasis
@@ -837,7 +786,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -849,7 +800,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// text
@@ -861,7 +814,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// emphasis
@@ -1013,55 +968,50 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
-	// strong emphasis + text
+	// PFM: _foo *bar* baz_ -> emphasis wrapping text+strong+text
 	test('pfm example 410', () => {
 		const input = load_fixture('410');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
 	});
 
-	// strong emphasis
-	// strong emphasis
+	// PFM: _foo*bar*baz_ -> emphasis
 	test('pfm example 411', () => {
 		const input = load_fixture('411');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.includes('strong_emphasis')).toBe(true);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
 	});
 
-	// strong emphasis
-	// strong emphasis
+	// PFM: _foo*bar_ -> emphasis
 	test('pfm example 412', () => {
 		const input = load_fixture('412');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.includes('strong_emphasis')).toBe(true);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
 	});
 
-	// strong emphasis
-	// strong emphasis + text
+	// PFM: _*foo* bar_ -> emphasis
 	test('pfm example 413', () => {
 		const input = load_fixture('413');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
 	});
 
 	// strong emphasis
@@ -1072,20 +1022,20 @@ describe('emphasis and strong emphasis', () => {
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
+		const emphasis = nodes.get_node(paragraph.children[0]);
+		const inner_kinds = get_all_child_kinds(nodes, emphasis.index);
+		expect(inner_kinds).toEqual(['text', 'strong_emphasis']);
 	});
 
-	// strong emphasis
-	// strong emphasis
+	// PFM: _foo*bar*_ -> emphasis
 	test('pfm example 415', () => {
 		const input = load_fixture('415');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.includes('strong_emphasis')).toBe(true);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
 	});
 
 	// text
@@ -1097,7 +1047,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// text
@@ -1109,19 +1061,19 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
-	// strong emphasis
-	// strong emphasis + text
+	// PFM: _foo *bar _baz_ bim* bop_ -> emphasis
 	test('pfm example 418', () => {
 		const input = load_fixture('418');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
 	});
 
 	// strong emphasis
@@ -1136,16 +1088,13 @@ describe('emphasis and strong emphasis', () => {
 		expect(kinds.includes('strong_emphasis')).toBe(true);
 	});
 
-	// text
-	// strong emphasis + text
+	// PFM: * is not an empty emphasis -> list item
 	test('pfm example 420', () => {
 		const input = load_fixture('420');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
-		const paragraph = nodes.get_node(root.children[0]);
-		expect(paragraph.kind).toBe('paragraph');
-		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		const first = nodes.get_node(root.children[0]);
+		expect(first.kind).toBe('list');
 	});
 
 	// text
@@ -1157,7 +1106,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1169,7 +1120,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1181,18 +1134,21 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
-	//  emphasis
-	// emphasis
+	// PFM: *foo _bar_ baz* -> strong wrapping emphasis
 	test('pfm example 424', () => {
 		const input = load_fixture('424');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'strong_emphasis',
+		]);
 	});
 
 	// emphasis
@@ -1227,7 +1183,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1239,7 +1197,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1251,7 +1211,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1263,7 +1225,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1275,7 +1239,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1287,7 +1253,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1299,7 +1267,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// text
@@ -1335,7 +1305,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	//	 strong emphasis
@@ -1347,7 +1319,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1371,7 +1345,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1383,7 +1359,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1407,7 +1385,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1419,7 +1399,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1431,7 +1413,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1443,7 +1427,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1455,7 +1441,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1467,7 +1455,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// emphasis
@@ -1542,70 +1532,76 @@ describe('emphasis and strong emphasis', () => {
 		expect(kinds.some((k) => k === 'emphasis' || k === 'text')).toBe(true);
 	});
 
-	// emphasis
-	// emphasis
+	// PFM: *foo_ -> mismatched delimiters, no emphasis
 	test('pfm example 454', () => {
 		const input = load_fixture('454');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
+		const kinds = get_all_child_kinds(nodes, paragraph.index);
+		expect(kinds.every((k) => k === 'text')).toBe(true);
 	});
 
-	// emphasis
-	// emphasis
+	// PFM: _foo* -> mismatched delimiters, no emphasis
 	test('pfm example 455', () => {
 		const input = load_fixture('455');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
+		const kinds = get_all_child_kinds(nodes, paragraph.index);
+		expect(kinds.every((k) => k === 'text')).toBe(true);
 	});
 
-	// emphasis
-	// emphasis
+	// PFM: _*foo* -> unclosed emphasis, text
 	test('pfm example 456', () => {
 		const input = load_fixture('456');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
+		const kinds = get_all_child_kinds(nodes, paragraph.index);
+		expect(kinds).toContain('strong_emphasis');
 	});
 
-	// emphasis
-	// emphasis
+	// PFM: *_foo_ -> text + emphasis
 	test('pfm example 457', () => {
 		const input = load_fixture('457');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'text',
+			'emphasis',
+		]);
 	});
 
-	// emphasis
-	// emphasis
+	// PFM: *foo*_ -> text
 	test('pfm example 458', () => {
 		const input = load_fixture('458');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'strong_emphasis',
+			'text',
+		]);
 	});
 
-	// emphasis
-	// emphasis
+	// PFM: _foo_* -> emphasis + text
 	test('pfm example 459', () => {
 		const input = load_fixture('459');
 		const { nodes } = parse_markdown_svelte(input);
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'emphasis',
+			'text',
+		]);
 	});
 
 	// strong emphasis
@@ -1617,10 +1613,12 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
-	// PFM: *_foo_* → strong wrapping emphasis (both close correctly)
+	// PFM: *_foo_* -> strong wrapping emphasis (both close correctly)
 	test('pfm example 461', () => {
 		const input = load_fixture('461');
 		const { nodes } = parse_markdown_svelte(input);
@@ -1668,7 +1666,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	//  emphasis
@@ -1691,7 +1691,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1702,8 +1704,8 @@ describe('emphasis and strong emphasis', () => {
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.includes('strong_emphasis')).toBe(true);
+		// PFM: _*foo*_ -> emphasis
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
 	});
 
 	//  emphasis
@@ -1714,7 +1716,8 @@ describe('emphasis and strong emphasis', () => {
 		const root = nodes.get_node();
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
-		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['emphasis']);
+		const kinds = get_all_child_kinds(nodes, paragraph.index);
+		expect(kinds).toContain('emphasis');
 	});
 
 	// strong emphasis
@@ -1738,7 +1741,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1751,7 +1756,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// strong emphasis
@@ -1764,7 +1771,9 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
-		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(true);
+		expect(kinds.some((k) => k === 'strong_emphasis' || k === 'text')).toBe(
+			true
+		);
 	});
 
 	// *[bar*](/url) — emphasis delimiters around link syntax are text
@@ -1797,21 +1806,81 @@ describe('emphasis and strong emphasis', () => {
 		expect(kinds).not.toContain('emphasis');
 	});
 
-	// *<img src="foo" title="*"/> — needs HTML support (Phase 5)
-	test.todo('pfm example 475');
+	// *<img src="foo" title="*"/> — HTML takes precedence over emphasis
+	test('pfm example 475', () => {
+		const input = load_fixture('475');
+		const { nodes } = parse_markdown_svelte(input);
 
-	// **<a href="**"> — needs HTML support (Phase 5)
-	test.todo('pfm example 476');
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		expect(paragraph.kind).toBe('paragraph');
+		const kinds = paragraph.children.map((i) => nodes.get_node(i).kind);
+		expect(kinds).not.toContain('emphasis');
+	});
 
-	// __<a href="__"> — needs HTML support (Phase 5)
-	test.todo('pfm example 477');
+	// *<a href="*"> — HTML takes precedence, no emphasis
+	test('pfm example 476', () => {
+		const input = load_fixture('476');
+		const { nodes } = parse_markdown_svelte(input);
 
-	// *a `*`* — needs code-span-in-emphasis support
-	test.todo('pfm example 478');
+		const root = nodes.get_node();
+		const children = root.children.map((i) => nodes.get_node(i));
+		const paragraph = children.find((n) => n.kind === 'paragraph');
+		expect(paragraph).toBeDefined();
 
-	// _a `_`_ — needs code-span-in-emphasis support
-	test.todo('pfm example 479');
+		const kinds = paragraph!.children.map((i) => nodes.get_node(i).kind);
+		expect(kinds).not.toContain('strong_emphasis');
+		expect(kinds).not.toContain('emphasis');
+	});
 
-	// **a<https://foo.bar/?q=**> — needs HTML support (Phase 5)
-	test.todo('pfm example 480');
+	// _<a href="_"> — HTML takes precedence, no emphasis
+	test('pfm example 477', () => {
+		const input = load_fixture('477');
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const children = root.children.map((i) => nodes.get_node(i));
+		const paragraph = children.find((n) => n.kind === 'paragraph');
+		expect(paragraph).toBeDefined();
+
+		const kinds = paragraph!.children.map((i) => nodes.get_node(i).kind);
+		expect(kinds).not.toContain('strong_emphasis');
+		expect(kinds).not.toContain('emphasis');
+	});
+
+	// *a `*`* — code span takes precedence, prevents emphasis closing
+	test('pfm example 478', () => {
+		const input = load_fixture('478');
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		expect(paragraph.kind).toBe('paragraph');
+		const kinds = paragraph.children.map((i) => nodes.get_node(i).kind);
+		expect(kinds).toContain('code_span');
+	});
+
+	// _a `_`_ — code span takes precedence, prevents emphasis closing
+	test('pfm example 479', () => {
+		const input = load_fixture('479');
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		expect(paragraph.kind).toBe('paragraph');
+		const kinds = paragraph.children.map((i) => nodes.get_node(i).kind);
+		expect(kinds).toContain('code_span');
+	});
+
+	// **a<https://foo.bar/?q=**> — autolink takes precedence over strong
+	test('pfm example 480', () => {
+		const input = load_fixture('480');
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		expect(paragraph.kind).toBe('paragraph');
+		const kinds = paragraph.children.map((i) => nodes.get_node(i).kind);
+		expect(kinds).not.toContain('strong_emphasis');
+	});
 });

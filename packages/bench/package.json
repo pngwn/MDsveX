@@ -6,6 +6,7 @@
   "scripts": {
     "bench": "node --expose-gc ./node_modules/vitest/vitest.mjs bench",
     "bench:parsers": "node --expose-gc ./node_modules/vitest/vitest.mjs bench --run benchmarks/parser-comparison.bench.ts",
+    "bench:html": "node --expose-gc ./node_modules/vitest/vitest.mjs bench --run benchmarks/html-parsing.bench.ts",
     "bench:e2e": "node --expose-gc ./node_modules/vitest/vitest.mjs bench --run benchmarks/e2e-render.bench.ts",
     "bench:throughput": "npx tsx benchmarks/throughput.ts"
   },
@@ -31,11 +32,14 @@
     "@mdsvex/render": "workspace:^",
     "@types/node": "^20.12.7",
     "comark": "^0.1.1",
+    "htmlparser2": "^12.0.0",
     "markdown-exit": "1.0.0-beta.9",
     "marked": "^17.0.5",
+    "parse5": "^8.0.0",
     "remark": "^15.0.1",
     "remark-html": "^16.0.1",
     "remark-parse": "^11.0.0",
+    "svelte": "^5.55.1",
     "unified": "^11.0.5",
     "vitest": "^1.5.0"
   },

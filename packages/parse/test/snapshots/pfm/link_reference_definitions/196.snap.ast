@@ -1,5 +1,6 @@
 root
   line_break
   paragraph
-    text "]"
+    link href="/url" title="\ntitle\nline1\nline2\n"
+      text "foo"
   line_break

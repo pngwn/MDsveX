@@ -1,23 +1,6 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "let user = "
-      mustache "\n	firstname: \"Ada\",\n	lastname: \"Lovelace\",\n"
-      text ";\n"
-  line_break
-  line_break
-  text tag="input" bind:value="user.firstname"
-  line_break
-  text tag="input" bind:value="user.lastname"
   line_break
   line_break
   paragraph
-    svelte_tag tag="debug" "user"
-    line_break
-    line_break
-    html tag="h1"
-      paragraph
-        text "Hello "
-        mustache "user.firstname"
-        text "!"
+    text

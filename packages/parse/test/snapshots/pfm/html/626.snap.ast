@@ -1,0 +1,10 @@
+root
+  paragraph
+    text "foo "
+    html_comment "> foo "
+  line_break
+  line_break
+  paragraph
+    text "foo "
+    html_comment "-> foo "
+  line_break

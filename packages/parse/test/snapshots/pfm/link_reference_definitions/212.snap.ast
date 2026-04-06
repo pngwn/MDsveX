@@ -2,5 +2,8 @@ root
   code_fence "[foo]: /url"
   line_break
   paragraph
+    text "[foo"
+    text "]"
+    text "["
     text "]"
   line_break

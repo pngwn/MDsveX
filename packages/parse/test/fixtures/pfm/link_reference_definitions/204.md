@@ -1,4 +1,4 @@
-[foo]
+[foo][]
 
 [foo]: first
 [foo]: second

@@ -21,7 +21,7 @@
 		"url": "git+https://github.com/pngwn/MDsveX.git"
 	},
 	"scripts": {
-		"build": "rollup -c",
+	"build": "vite build --config vite.config.build.ts",
 		"test": "vitest . **/*.spec.ts"
 	},
 	"files": [
@@ -37,10 +37,8 @@
 	],
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
-	"devDependencies": {
-		"micromark-util-types": "^2.0.2",
-		"remark-parse": "^11.0.0",
-		"unified": "^11.0.5",
-		"vfile": "^6.0.3"
+	"dependencies": {
+  	"@mdsvex/parse": "workspace:*",
+  	"@mdsvex/render": "workspace:*"
 	}
 }

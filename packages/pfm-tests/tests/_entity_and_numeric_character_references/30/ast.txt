@@ -1,4 +1,0 @@
-root
-	paragraph
-		text(&MadeUpEntity;)
-	line_break

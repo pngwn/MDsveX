@@ -1,4 +1,4 @@
 root
 	paragraph
-		text(*→*→*→)
+		text(*->*->*->)
 	line_break

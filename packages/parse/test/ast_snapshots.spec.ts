@@ -40,6 +40,7 @@ describe('markdown fixtures', () => {
 			const ast = snapshot_for(input);
 			await expect(ast).toMatchFileSnapshot(
 				join(SNAPSHOT_DIR, 'markdown', `${name}.snap.ast`),
+				`Input: \n${input}\n\n${ast}`
 			);
 		});
 	}
@@ -62,7 +63,7 @@ describe('hybrid fixtures', () => {
 			const ast = snapshot_for(input);
 			await expect(ast).toMatchFileSnapshot(
 				join(SNAPSHOT_DIR, 'hybrid', `${name}.snap.ast`),
-			);
+				`Input: \n${input}\n\n${ast}`			);
 		});
 	}
 });
@@ -81,6 +82,7 @@ const PFM_CATEGORIES = [
 	'emphasis_and_strong_emphasis',
 	'fenced_code_blocks',
 	'hard_line_breaks',
+	'html',
 	'images',
 	'link_reference_definitions',
 	'links',
@@ -89,6 +91,14 @@ const PFM_CATEGORIES = [
 	'paragraphs',
 	'soft_line_breaks',
 	'thematic_breaks',
+	'generic_directives',
+	'frontmatter',
+	'imports',
+	'setext_headings',
+	'tabs',
+	'textual_content',
+	'precedence',
+	'inlines',
 ];
 
 describe('pfm-tests fixtures', () => {
@@ -108,7 +118,7 @@ describe('pfm-tests fixtures', () => {
 					const ast = snapshot_for(input);
 					await expect(ast).toMatchFileSnapshot(
 						join(SNAPSHOT_DIR, 'pfm', category, `${id}.snap.ast`),
-					);
+						`Input: \n${input}\n\n${ast}`					);
 				});
 			}
 		});
@@ -144,7 +154,7 @@ describe('svelte fixtures', () => {
 			const snap_path = rel.replace(/\.svelte$/, '.snap.ast');
 			await expect(ast).toMatchFileSnapshot(
 				join(SNAPSHOT_DIR, 'svelte', snap_path),
-			);
+				`Input: \n${input}\n\n${ast}`			);
 		});
 	}
 });

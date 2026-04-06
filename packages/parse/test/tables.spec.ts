@@ -22,8 +22,10 @@ function get_children(nodes: node_buffer, index: number) {
 function cell_text(nodes: node_buffer, cell_index: number, source: string): string {
 	const children = get_children(nodes, cell_index);
 	if (children.length === 0) return '';
-	const text_node = children[0];
-	return source.slice(text_node.value[0], text_node.value[1]);
+	return children
+		.filter((n) => n.kind === 'text')
+		.map((n) => source.slice(n.value[0], n.value[1]))
+		.join('');
 }
 
 function parse_incremental(input: string, chunk_size: number = 1) {
@@ -183,8 +185,8 @@ describe('Tables (GFM)', () => {
 
 		const header_cells = get_children(nodes, get_children(nodes, table.index)[0].index);
 		expect(header_cells.length).toBe(2);
-		// First cell contains the escaped pipe
-		expect(cell_text(nodes, header_cells[0].index, input)).toBe('a \\| b');
+		// First cell contains the escaped pipe (backslash removed)
+		expect(cell_text(nodes, header_cells[0].index, input)).toBe('a | b');
 	});
 
 	test('single column table', () => {

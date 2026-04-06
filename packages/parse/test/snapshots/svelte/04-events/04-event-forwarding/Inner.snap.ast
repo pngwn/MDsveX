@@ -1,22 +1,9 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " createEventDispatcher "
-      text " from \"svelte\";"
-    line_break
-    line_break
-    paragraph
-      text "const dispatch = createEventDispatcher();"
-    line_break
-    line_break
-    paragraph
-      text "function sayHello() "
-      mustache "\n	dispatch(\"message\", {\n		text: \"Hello!\",\n	});\n"
   line_break
   line_break
   html tag="button" on:click="sayHello"
     line_break
     paragraph
-      text "Click to say hello\n"
+      text "Click to say hello"
+      soft_break

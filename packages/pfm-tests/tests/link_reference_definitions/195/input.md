@@ -2,4 +2,4 @@
 <my url>
 'title'
 
-[Foo bar]
+[Foo bar][]

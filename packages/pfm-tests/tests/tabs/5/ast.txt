@@ -4,5 +4,5 @@ root
 	line_break
 	line_break
 	paragraph
-		text(→→bar)
+		text(->->bar)
 	line_break

@@ -3,14 +3,13 @@ root
     text "foo"
     text "*"
     emphasis
-      text "*"
-    text "*"
-    emphasis
-      text "bar"
-      text "*"
-    text "*"
-    emphasis
-      text "*"
-    text "*"
-    text "_*baz"
+      strong_emphasis
+        emphasis
+          strong_emphasis
+            emphasis
+              text "bar"
+              text "*"
+    text "*_"
+    text "_*"
+    text "*baz"
   line_break

@@ -1,100 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " quintOut "
-      text " from \"svelte/easing\";\nimport "
-      mustache " crossfade "
-      text " from \"svelte/transition\";\nimport "
-      mustache " flip "
-      text " from \"svelte/animate\";"
-    line_break
-    line_break
-    paragraph
-      text "const "
-      text "] = crossfade("
-      mustache "\n	fallback(node, params) {\n		const style = getComputedStyle(node);\n		const transform = style.transform === \"none\" ? \"\" : style.transform;\n\n		return {\n			duration: 600,\n			easing: quintOut,\n			css: (t) => `\n					transform: ${transform} scale(${t});\n					opacity: ${t}\n				`,\n		};\n	},\n"
-      text ");"
-    line_break
-    line_break
-    paragraph
-      text "let todos = "
-      text "	"
-      mustache " id: 1, done: false, description: \"write some docs\" "
-      text ",\n	"
-      mustache " id: 2, done: false, description: \"start writing JSConf talk\" "
-      text ",\n	"
-      mustache " id: 3, done: true, description: \"buy some milk\" "
-      text ",\n	"
-      mustache " id: 4, done: false, description: \"mow the lawn\" "
-      text ",\n	"
-      mustache " id: 5, done: false, description: \"feed the turtle\" "
-      text ",\n	"
-      mustache " id: 6, done: false, description: \"fix some bugs\" "
-      text ",\n"
-      text "];"
-    line_break
-    line_break
-    paragraph
-      text "let uid = todos.length + 1;"
-    line_break
-    line_break
-    paragraph
-      text "function add(input) "
-      mustache "\n	const todo = {\n		id: uid++,\n		done: false,\n		description: input.value,\n	};\n\n	todos = [todo, ...todos];\n	input.value = \"\";\n"
-    line_break
-    line_break
-    paragraph
-      text "function remove(todo) "
-      mustache "\n	todos = todos.filter((t) => t !== todo);\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text ".new-todo "
-      mustache "\n		font-size: 1.4em;\n		width: 100%;\n		margin: 2em 0 1em 0;\n	"
-      line_break
-      line_break
-      paragraph
-        text ".board "
-        mustache "\n		max-width: 36em;\n		margin: 0 auto;\n	"
-      line_break
-      line_break
-      paragraph
-        text ".left, .right "
-        mustache "\n		float: left;\n		width: 50%;\n		padding: 0 1em 0 0;\n		box-sizing: border-box;\n	"
-      line_break
-      line_break
-      paragraph
-        text "h2 "
-        mustache "\n		font-size: 2em;\n		font-weight: 200;\n		user-select: none;\n	"
-      line_break
-      line_break
-      paragraph
-        text "label "
-        mustache "\n		top: 0;\n		left: 0;\n		display: block;\n		font-size: 1em;\n		line-height: 1;\n		padding: 0.5em;\n		margin: 0 auto 0.5em auto;\n		border-radius: 2px;\n		background-color: #eee;\n		user-select: none;\n	"
-      line_break
-      line_break
-      paragraph
-        text "input "
-        mustache " margin: 0 "
-      line_break
-      line_break
-      paragraph
-        text ".right label "
-        mustache "\n		background-color: rgb(180,240,100);\n	"
-      line_break
-      line_break
-      paragraph
-        text "button "
-        mustache "\n		float: right;\n		height: 1em;\n		box-sizing: border-box;\n		padding: 0 0.5em;\n		line-height: 1;\n		background-color: transparent;\n		border: none;\n		color: rgb(170,30,30);\n		opacity: 0;\n		transition: opacity 0.2s;\n	"
-      line_break
-      line_break
-      paragraph
-        text "label:hover button "
-        mustache "\n		opacity: 1;\n	"
   line_break
   line_break
   html tag="div" class="board"
@@ -110,17 +18,24 @@ root
         line_break
         paragraph
           mustache "#each todos.filter(t => !t.done) as todo (todo.id)"
+          soft_break
           text "			"
           html tag="label" in:receive="{{key: todo.id}}" out:send="{{key: todo.id}}" animate:flip=true
+            soft_break
             text "				"
             html tag="input" type="checkbox" bind:checked="todo.done"
+              soft_break
               text "				"
               mustache "todo.description"
+              soft_break
               text "				"
               html tag="button" on:click="{() => remove(todo)}"
                 text "x"
+              soft_break
               text "			"
+          soft_break
           text "		"
           mustache "/each"
+          soft_break
           text "	"
   line_break

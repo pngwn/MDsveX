@@ -6,5 +6,5 @@ root
 		text(- bar)
 	line_break
 	paragraph
-		text(→ - baz)
+		text(-> - baz)
 	line_break

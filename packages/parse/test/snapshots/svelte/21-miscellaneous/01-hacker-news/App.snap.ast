@@ -1,40 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " onMount "
-      text " from \"svelte\";\nimport List from \"./List.svelte\";\nimport Item from \"./Item.svelte\";"
-    line_break
-    line_break
-    paragraph
-      text "let item;\nlet page;"
-    line_break
-    line_break
-    paragraph
-      text "async function hashchange() "
-      mustache "\n	// the poor man's router!\n	const path = window.location.hash.slice(1);\n\n	if (path.startsWith(\"/item\")) {\n		const id = path.slice(6);\n		item = await fetch(`https://node-hnapi.herokuapp.com/item/${id}`).then(\n			(r) => r.json(),\n		);\n\n		window.scrollTo(0, 0);\n	} else if (path.startsWith(\"/top\")) {\n		page = +path.slice(5);\n		item = null;\n	} else {\n		window.location.hash = \"/top/1\";\n	}\n"
-    line_break
-    line_break
-    paragraph
-      text "onMount(hashchange);\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text "main "
-      mustache "\n		position: relative;\n		max-width: 800px;\n		margin: 0 auto;\n		min-height: 101vh;\n		padding: 1em;\n	"
-      line_break
-      line_break
-      paragraph
-        text "main :global(.meta) "
-        mustache "\n		color: #999;\n		font-size: 12px;\n		margin: 0 0 1em 0;\n	"
-      line_break
-      line_break
-      paragraph
-        text "main :global(a) "
-        mustache "\n		color: rgb(0,0,150);\n	"
   line_break
   line_break
   html tag="svelte:window" on:hashchange="hashchange" self_closing=true
@@ -44,11 +12,16 @@ root
     line_break
     paragraph
       mustache "#if item"
+      soft_break
       text "		"
       html tag="Item" item="item" returnTo="#/top/{page}" self_closing=true
+      soft_break
       text "	"
       mustache ":else if page"
+      soft_break
       text "		"
       html tag="List" page="page" self_closing=true
+      soft_break
       text "	"
       mustache "/if"
+      soft_break

@@ -3,5 +3,6 @@ root
     emphasis
       text "foo"
     text "*"
-    strong_emphasis
+    text "*"
+    text "*"
   line_break

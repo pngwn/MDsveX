@@ -7,6 +7,7 @@ root
       paragraph
         text "And nesting"
         text "!"
-        text "  >"
-        text "  > With more than one line."
+      line_break
+      paragraph
+        text "With more than one line."
   line_break

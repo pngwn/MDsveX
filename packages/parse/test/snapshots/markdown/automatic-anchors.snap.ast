@@ -1,6 +1,6 @@
 root
   line_break
   paragraph
-    link
+    link href="http://example.com/"
       text "http://example.com/"
   line_break

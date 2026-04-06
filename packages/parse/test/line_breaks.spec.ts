@@ -8,13 +8,13 @@ import type { node_buffer } from '../src/utils';
 import { get_content, get_all_child_kinds } from './utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
-const hard_dir = resolve(this_dir, '../../pfm-tests/tests/hard_line_breaks');
-const soft_dir = resolve(this_dir, '../../pfm-tests/tests/soft_line_breaks');
+const hard_dir = resolve(this_dir, 'fixtures/pfm/hard_line_breaks');
+const soft_dir = resolve(this_dir, 'fixtures/pfm/soft_line_breaks');
 
 const load_hard = (id: string): string =>
-	readFileSync(resolve(hard_dir, id, 'input.md'), 'utf8');
+	readFileSync(resolve(hard_dir, `${id}.md`), 'utf8');
 const load_soft = (id: string): string =>
-	readFileSync(resolve(soft_dir, id, 'input.md'), 'utf8');
+	readFileSync(resolve(soft_dir, `${id}.md`), 'utf8');
 
 function non_breaks(nodes: node_buffer, parent: number = 0) {
 	return nodes

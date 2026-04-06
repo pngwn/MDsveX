@@ -1,20 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import Folder from \"./Folder.svelte\";"
-    line_break
-    line_break
-    paragraph
-      text "let root = "
-      text "	"
-      mustache "\n		type: \"folder\",\n		name: \"Important work stuff\",\n		files: [{ type: \"file\", name: \"quarterly-results.xlsx\" }],\n	"
-      text ",\n	"
-      mustache "\n		type: \"folder\",\n		name: \"Animal GIFs\",\n		files: [\n			{\n				type: \"folder\",\n				name: \"Dogs\",\n				files: [\n					{ type: \"file\", name: \"treadmill.gif\" },\n					{ type: \"file\", name: \"rope-jumping.gif\" },\n				],\n			},\n			{\n				type: \"folder\",\n				name: \"Goats\",\n				files: [\n					{ type: \"file\", name: \"parkour.gif\" },\n					{ type: \"file\", name: \"rampage.gif\" },\n				],\n			},\n			{ type: \"file\", name: \"cat-roomba.gif\" },\n			{ type: \"file\", name: \"duck-shuffle.gif\" },\n			{ type: \"file\", name: \"monkey-on-a-pig.gif\" },\n		],\n	"
-      text ",\n	"
-      mustache " type: \"file\", name: \"TODO.md\" "
-      text ",\n"
-      text "];\n"
   line_break
   line_break
   html tag="Folder" name="Home" files="root" expanded=true self_closing=true

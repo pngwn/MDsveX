@@ -2,15 +2,15 @@ import type { Emitter } from './opcodes';
 import { node_buffer, node_kind } from './utils';
 
 /**
- * Consumes opcodes from PFMParser and builds a node_buffer.
- * This is the backward-compatibility layer: the opcode stream is the
+ * consumes opcodes from PFMParser and builds a node_buffer.
+ * this is the backward-compatibility layer: the opcode stream is the
  * primary output, but existing tests and consumers expect a node_buffer.
  */
 export class TreeBuilder implements Emitter {
 	private nodes: node_buffer;
-	/** Maps opcode ID → node_buffer index. Plain array — IDs are sequential integers. */
+	/** maps opcode id -> node_buffer index. plain array — ids are sequential integers. */
 	private id_to_index: number[] = [];
-	/** Maps opcode ID → node_kind. Plain array for O(1) lookup. */
+	/** maps opcode id -> node_kind. plain array for o(1) lookup. */
 	private id_to_kind: number[] = [];
 
 	constructor(capacity: number) {
@@ -26,7 +26,7 @@ export class TreeBuilder implements Emitter {
 		start: number,
 		parent: number,
 		extra: number,
-		pending: boolean,
+		pending: boolean
 	): void {
 		// Root (id=0) is auto-created by node_buffer constructor — skip
 		if (id === 0) return;
@@ -44,12 +44,27 @@ export class TreeBuilder implements Emitter {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
 		this.nodes.set_end(idx, end);
-		// Closing a pending node commits it
-		this.nodes.commit_node(idx);
+		// Pending paragraphs inside list_items are tight-list speculation
+		// wrappers — they stay pending after close until the list closes
+		// and the parser either revokes (tight) or commits (loose) them.
+		const kind = this.id_to_kind[id];
+		const parent_kind = this.nodes._kinds[
+			this.nodes._parents[idx]
+		] as node_kind;
+		if (
+			!(
+				kind === node_kind.paragraph &&
+				parent_kind === node_kind.list_item &&
+				this.nodes._pending_nodes[idx] === 1
+			)
+		) {
+			this.nodes.commit_node(idx);
+		}
 
-		// Tight list unwrapping: if this is a list with tight=true,
-		// walk items and unwrap their paragraph children
-		if (this.id_to_kind[id] === node_kind.list) {
+		// Tight list unwrapping: if this is a list with tight=true, walk
+		// items and unwrap their paragraph children. Safe no-op when the
+		// parser already revoked them via finalize_list_pending_paras.
+		if (kind === node_kind.list) {
 			const meta = this.nodes.metadata_at(idx);
 			if (meta && meta.tight) {
 				const list_node = this.nodes.get_node(idx);
@@ -124,27 +139,21 @@ export class TreeBuilder implements Emitter {
 		if (idx !== undefined) this.nodes.set_value_end(idx, pos);
 	}
 
-	revoke(id: number): void {
+	revoke(id: number, source_text?: string): void {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
+		this.nodes.handle_repair(idx, source_text);
+	}
 
-		const node = this.nodes.get_node(idx);
-		if (node.children.length === 0) {
-			// Empty node (e.g. failed code span) — remove from tree
-			this.nodes.unwrap_node(idx);
-			// If this is the last node in the buffer, reclaim it
-			if (idx === this.nodes.size - 1) {
-				this.nodes.pop();
-			}
-		} else {
-			// Has children (e.g. unclosed emphasis) — convert to text, reparent children
-			this.nodes.handle_repair(idx);
-		}
+	commit(id: number): void {
+		const idx = this.id_to_index[id];
+		if (idx === undefined) return;
+		this.nodes.commit_node(idx);
 	}
 
 	cursor(_pos: number): void {}
 
-	/** Extract the built node_buffer. */
+	/** extract the built node_buffer. */
 	get_buffer(): node_buffer {
 		return this.nodes;
 	}

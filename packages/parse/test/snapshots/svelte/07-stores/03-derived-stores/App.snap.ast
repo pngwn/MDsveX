@@ -1,16 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " time, elapsed "
-      text " from \"./stores.js\";"
-    line_break
-    line_break
-    paragraph
-      text "const formatter = new Intl.DateTimeFormat(\"en\", "
-      mustache "\n	hour12: true,\n	hour: \"numeric\",\n	minute: \"2-digit\",\n	second: \"2-digit\",\n"
-      text ");\n"
   line_break
   line_break
   html tag="h1"
@@ -22,7 +11,10 @@ root
   html tag="p"
     line_break
     paragraph
-      text "This page has been open for\n	"
+      text "This page has been open for"
+      soft_break
+      text "	"
       mustache "$elapsed"
       text " "
       mustache "$elapsed === 1 ? 'second' : 'seconds'"
+      soft_break

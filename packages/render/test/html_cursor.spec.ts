@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { PFMParser } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
-import { PFMCursor } from '@mdsvex/parse/cursor';
+import { Cursor } from '@mdsvex/parse/cursor';
 import { CursorHTMLRenderer } from '../src/html_cursor';
 
 // ── Helpers ───────��──────────────────────────────────────────
 
 function render(source: string): string {
-	const tree = new TreeBuilder((source.length >> 3) || 128);
+	const tree = new TreeBuilder(source.length >> 3 || 128);
 	const parser = new PFMParser(tree);
 	parser.parse(source);
 	const renderer = new CursorHTMLRenderer({ cache: false });
@@ -38,7 +38,8 @@ describe('CursorHTMLRenderer', () => {
 	});
 
 	it('emphasis', () => expect(render('_hello_\n')).toContain('<em>hello</em>'));
-	it('strong', () => expect(render('*bold*\n')).toContain('<strong>bold</strong>'));
+	it('strong', () =>
+		expect(render('*bold*\n')).toContain('<strong>bold</strong>'));
 	it('mixed emphasis', () => {
 		const html = render('before _middle_ after\n');
 		expect(html).toContain('before ');
@@ -51,14 +52,17 @@ describe('CursorHTMLRenderer', () => {
 		expect(html).toContain('<strong>strong</strong>');
 	});
 
-	it('code span', () => expect(render('use `code` here\n')).toContain('<code>code</code>'));
+	it('code span', () =>
+		expect(render('use `code` here\n')).toContain('<code>code</code>'));
 	it('code fence with info', () => {
 		const html = render('```js\nconst x = 1;\n```\n');
 		expect(html).toContain('class="language-js"');
 		expect(html).toContain('const x = 1;');
 	});
 	it('code fence no info', () => {
-		expect(render('```\nhello\n```\n')).toContain('<pre><code>hello</code></pre>');
+		expect(render('```\nhello\n```\n')).toContain(
+			'<pre><code>hello</code></pre>'
+		);
 	});
 
 	it('block quote', () => {
@@ -68,13 +72,17 @@ describe('CursorHTMLRenderer', () => {
 	});
 
 	it('link', () => {
-		expect(render('[click](https://example.com)\n')).toContain('<a href="https://example.com">click</a>');
+		expect(render('[click](https://example.com)\n')).toContain(
+			'<a href="https://example.com">click</a>'
+		);
 	});
 	it('link with title', () => {
 		expect(render('[text](url "title")\n')).toContain('title="title"');
 	});
 	it('image', () => {
-		expect(render('![alt text](image.png)\n')).toContain('<img src="image.png" alt="alt text"');
+		expect(render('![alt text](image.png)\n')).toContain(
+			'<img src="image.png" alt="alt text"'
+		);
 	});
 
 	it('unordered list (tight)', () => {
@@ -92,8 +100,10 @@ describe('CursorHTMLRenderer', () => {
 	});
 
 	it('thematic break', () => expect(render('---\n')).toContain('<hr />'));
-	it('strikethrough', () => expect(render('~~deleted~~\n')).toContain('<del>deleted</del>'));
-	it('superscript', () => expect(render('^super^\n')).toContain('<sup>super</sup>'));
+	it('strikethrough', () =>
+		expect(render('~~deleted~~\n')).toContain('<del>deleted</del>'));
+	it('superscript', () =>
+		expect(render('^super^\n')).toContain('<sup>super</sup>'));
 
 	it('table', () => {
 		const html = render('| foo | bar |\n| --- | --- |\n| baz | bim |\n');
@@ -102,32 +112,39 @@ describe('CursorHTMLRenderer', () => {
 		expect(html).toContain('<td>baz</td>');
 	});
 	it('table with alignment', () => {
-		const html = render('| left | center | right |\n| :--- | :---: | ---: |\n| a | b | c |\n');
+		const html = render(
+			'| left | center | right |\n| :--- | :---: | ---: |\n| a | b | c |\n'
+		);
 		expect(html).toContain('align="left"');
 		expect(html).toContain('align="center"');
 		expect(html).toContain('align="right"');
 	});
 
-	it('html self-closing', () => expect(render('text <br /> more\n')).toContain('<br />'));
-	it('html paired', () => expect(render('text <span>inside</span> end\n')).toContain('<span>inside</span>'));
+	it('html self-closing', () =>
+		expect(render('text <br /> more\n')).toContain('<br />'));
+	it('html paired', () =>
+		expect(render('text <span>inside</span> end\n')).toContain(
+			'<span>inside</span>'
+		));
 	it('html block', () => {
 		const html = render('<section>\n\n# Heading\n\nParagraph.\n\n</section>\n');
 		expect(html).toContain('<section>');
 		expect(html).toContain('<h1>Heading</h1>');
 		expect(html).toContain('<p>Paragraph.</p>');
 	});
-	it('html comment', () => expect(render('text <!-- hidden --> more\n')).toContain('<!-- hidden -->'));
+	it('html comment', () =>
+		expect(render('text <!-- hidden --> more\n')).toContain('<!-- hidden -->'));
 
 	it('complex document', () => {
 		const html = render(
 			'# Title\n\n' +
-			'A paragraph with _emphasis_ and *bold*.\n\n' +
-			'> A block quote with `code`\n\n' +
-			'```js\nconst x = 1;\n```\n\n' +
-			'- item one\n- item two\n\n' +
-			'| a | b |\n| --- | --- |\n| 1 | 2 |\n\n' +
-			'[link](url) and ![img](src)\n\n' +
-			'---\n',
+				'A paragraph with _emphasis_ and *bold*.\n\n' +
+				'> A block quote with `code`\n\n' +
+				'```js\nconst x = 1;\n```\n\n' +
+				'- item one\n- item two\n\n' +
+				'| a | b |\n| --- | --- |\n| 1 | 2 |\n\n' +
+				'[link](url) and ![img](src)\n\n' +
+				'---\n'
 		);
 		expect(html).toContain('<h1>Title</h1>');
 		expect(html).toContain('<em>emphasis</em>');
@@ -156,7 +173,9 @@ describe('CursorHTMLRenderer', () => {
 	});
 
 	it('svelte void tag {@html}', () => {
-		expect(render('{@html "<b>bold</b>"}')).toBe('<p>{@html "<b>bold</b>"}</p>');
+		expect(render('{@html "<b>bold</b>"}')).toBe(
+			'<p>{@html "<b>bold</b>"}</p>'
+		);
 	});
 
 	it('svelte void tag {@debug}', () => {
@@ -178,8 +197,12 @@ describe('CursorHTMLRenderer', () => {
 	});
 
 	it('if/else if/else block', () => {
-		const html = render('{#if a}\none\n{:else if b}\ntwo\n{:else}\nthree\n{/if}');
-		expect(html).toBe('{#if a}\n<p>one</p>{:else if b}\n<p>two</p>{:else}\n<p>three</p>{/if}');
+		const html = render(
+			'{#if a}\none\n{:else if b}\ntwo\n{:else}\nthree\n{/if}'
+		);
+		expect(html).toBe(
+			'{#if a}\n<p>one</p>{:else if b}\n<p>two</p>{:else}\n<p>three</p>{/if}'
+		);
 	});
 
 	it('each block', () => {
@@ -188,8 +211,12 @@ describe('CursorHTMLRenderer', () => {
 	});
 
 	it('await/then/catch block', () => {
-		const html = render('{#await promise}\nloading\n{:then value}\ndone\n{:catch error}\nfail\n{/await}');
-		expect(html).toBe('{#await promise}\n<p>loading</p>{:then value}\n<p>done</p>{:catch error}\n<p>fail</p>{/await}');
+		const html = render(
+			'{#await promise}\nloading\n{:then value}\ndone\n{:catch error}\nfail\n{/await}'
+		);
+		expect(html).toBe(
+			'{#await promise}\n<p>loading</p>{:then value}\n<p>done</p>{:catch error}\n<p>fail</p>{/await}'
+		);
 	});
 
 	it('nested blocks', () => {

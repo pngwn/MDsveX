@@ -1,5 +1,7 @@
 root
   heading depth=1 "foo ##################################"
+    text "foo ##################################"
   line_break
   heading depth=5 "foo ##"
+    text "foo ##"
   line_break

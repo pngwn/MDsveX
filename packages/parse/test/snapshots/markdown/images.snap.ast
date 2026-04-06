@@ -10,19 +10,26 @@ root
   line_break
   line_break
   paragraph
+    text "![Alt text"
     text "]"
-    text "]"
-  line_break
-  line_break
-  paragraph
+    text "[id"
     text "]"
   line_break
   line_break
   paragraph
+    text "![My Image"
     text "]"
   line_break
   line_break
   paragraph
+    text "![leave me alone"
+    text "]"
+  line_break
+  line_break
+  paragraph
+    text "![leave me alone"
+    text "]"
+    text "["
     text "]"
   line_break
   line_break

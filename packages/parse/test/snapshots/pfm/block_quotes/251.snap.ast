@@ -4,6 +4,9 @@ root
       block_quote
         paragraph
           text "foo"
-          text "> bar"
-          text ">>baz"
+        paragraph
+          text "bar"
+        block_quote
+          paragraph
+            text "baz"
   line_break

@@ -1,7 +1,14 @@
 root
   line_break
   paragraph
-    text "],\n"
-    text "],\n"
-    text "]"
+    link href="/foo-url" title="foo"
+      text "foo"
+    text ","
+    soft_break
+    link href="/bar-url" title="bar"
+      text "bar"
+    text ","
+    soft_break
+    link href="/baz-url"
+      text "baz"
   line_break

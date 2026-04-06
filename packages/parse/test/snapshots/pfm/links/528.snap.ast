@@ -1,10 +1,14 @@
 root
-  paragraph
-    text "link "
-    text "foo "
-    text "]"
-    text "]"
-    text "]"
-    text "]"
   line_break
+  paragraph
+    text "["
+    text "link "
+    text "["
+    text "foo "
+    text "[bar"
+    text "]"
+    text "]"
+    text "]"
+    text "[ref"
+    text "]"
   line_break

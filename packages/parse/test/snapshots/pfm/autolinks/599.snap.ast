@@ -1,5 +1,5 @@
 root
   paragraph
-    link
+    link href="made-up-scheme://foo,bar"
       text "made-up-scheme://foo,bar"
   line_break

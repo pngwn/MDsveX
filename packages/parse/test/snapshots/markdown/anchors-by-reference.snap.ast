@@ -2,13 +2,27 @@ root
   line_break
   paragraph
     text "This is "
+    text "[an example"
     text "]"
-    text "] reference-style link.\nThis is "
+    text "[id"
+    text "] reference-style link."
+    soft_break
+    text "This is "
+    text "[another"
     text "] "
-    text "] reference-style link.\nThis is "
+    text "[foo"
+    text "] reference-style link."
+    soft_break
+    text "This is "
+    text "[a third"
     text "]"
-    text "] reference-style link.\nThis is "
+    text "[bar"
+    text "] reference-style link."
+    soft_break
+    text "This is "
+    text "[a fourth"
     text "]"
+    text "[4"
     text "] reference-style link."
   line_break
   line_break

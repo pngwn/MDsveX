@@ -1,14 +1,5 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " fly "
-      text " from \"svelte/transition\";"
-    line_break
-    line_break
-    paragraph
-      text "let visible = true;\nlet status = \"waiting...\";\n"
   line_break
   line_break
   html tag="p"
@@ -22,12 +13,18 @@ root
     html tag="input" type="checkbox" bind:checked="visible"
       line_break
       paragraph
-        text "visible\n"
+        text "visible"
+        soft_break
   line_break
   line_break
   paragraph
     mustache "#if visible"
+    soft_break
     text "	"
     html tag="p" transition:fly="{{ y: 200, duration: 2000 }}" on:introstart="{() => status = 'intro started'}" on:outrostart="{() => status = 'outro started'}" on:introend="{() => status = 'intro ended'}" on:outroend="{() => status = 'outro ended'}"
-      text "		Flies in and out\n	"
+      soft_break
+      text "		Flies in and out"
+      soft_break
+      text "	"
+    soft_break
     mustache "/if"

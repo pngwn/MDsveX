@@ -1,10 +1,13 @@
 root
   paragraph
-    text "awa \\<hi\\>"
+    text "awa "
+    text "<hi"
+    text ">"
   line_break
   line_break
   paragraph
-    text "awoo \\<heyoo"
+    text "awoo "
+    text "<heyoo"
   line_break
   line_break
   paragraph
@@ -12,5 +15,7 @@ root
   line_break
   line_break
   paragraph
-    text "This one shouldn't be \\\\"
-  line_break tag="escaped"
+    text "This one shouldn't be "
+    text "\\"
+    text tag="escaped" "<escaped>"
+  line_break

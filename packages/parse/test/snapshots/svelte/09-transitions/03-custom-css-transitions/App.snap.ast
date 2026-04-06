@@ -1,35 +1,8 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "import "
-      mustache " fade "
-      text " from \"svelte/transition\";\nimport "
-      mustache " elasticOut "
-      text " from \"svelte/easing\";"
-    line_break
-    line_break
-    paragraph
-      text "let visible = true;"
-    line_break
-    line_break
-    paragraph
-      text "function spin(node, "
-      mustache " duration "
-      text ") "
-      mustache "\n	return {\n		duration,\n		css: (t) => {\n			const eased = elasticOut(t);\n\n			return `\n					transform: scale(${eased}) rotate(${eased * 1080}deg);\n					color: hsl(\n						${~~(t * 360)},\n						${Math.min(100, 1000 - 1000 * t)}%,\n						${Math.min(50, 500 - 500 * t)}%\n					);`;\n		},\n	};\n"
   line_break
   line_break
   html tag="style"
-    line_break
-    paragraph
-      text ".centered "
-      mustache "\n		position: absolute;\n		left: 50%;\n		top: 50%;\n		transform: translate(-50%,-50%);\n	"
-      line_break
-      line_break
-      paragraph
-        text "span "
-        mustache "\n		position: absolute;\n		transform: translate(-50%,-50%);\n		font-size: 4em;\n	"
   line_break
   line_break
   html tag="label"
@@ -37,16 +10,21 @@ root
     html tag="input" type="checkbox" bind:checked="visible"
       line_break
       paragraph
-        text "visible\n"
+        text "visible"
+        soft_break
   line_break
   line_break
   paragraph
     mustache "#if visible"
+    soft_break
     text "	"
     html tag="div" class="centered" in:spin="{{duration: 8000}}" out:fade=true
+      soft_break
       text "		"
       html tag="span"
         text "transitions"
         text "!"
+      soft_break
       text "	"
+    soft_break
     mustache "/if"

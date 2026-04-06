@@ -1,26 +1,24 @@
 root
   paragraph
-    link
+    link href="svelte:head"
       text "svelte:head"
-    text "  "
+    soft_break
     html tag="title"
       text "My Title"
-    text "  "
+    soft_break
     html tag="link" rel="stylesheet" type="text/css" href="theme.css" self_closing=true
-    text "  "
+    soft_break
     html tag="style"
-      text "    h1 "
-      mustache "color:red;"
-      text "    p "
-      mustache "color:blue;"
-      text "  "
-    text "</svelte:head>"
+    soft_break
+    text "</svelte"
+    text ":head>"
   line_break
   line_break
   html tag="Counter" prop=""
     line_break
     line_break
     heading depth=1 "hello"
+      text "hello"
     line_break
     line_break
     paragraph
@@ -31,8 +29,10 @@ root
   line_break
   block_quote
     paragraph
-    line_break tag="Counter"
+      text tag="Counter" "<Counter>"
+    line_break
     heading depth=1 "hello"
+      text "hello"
     line_break
     paragraph
       text "text"

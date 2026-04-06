@@ -6,7 +6,6 @@
 	"module": "dist/main.es.js",
 	"type": "module",
 	"scripts": {
-		"build": "rollup -c",
 		"test": "vitest . **/*.spec.ts",
 		"test:watch": "watchlist src test -- pnpm test",
 		"test:generate": "node -r ts-node/register ./test/fixtures/generate.ts"

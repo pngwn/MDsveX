@@ -1,5 +1,6 @@
 root
   paragraph
+    text "["
     text "link "
     text "*"
     text "foo "
@@ -8,6 +9,5 @@ root
         text "bar"
     text " "
     code_span "#"
-    text "*"
-    text "](/uri)"
+    text "*](/uri)"
   line_break

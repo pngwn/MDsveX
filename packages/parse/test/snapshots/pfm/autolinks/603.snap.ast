@@ -1,5 +1,5 @@
 root
   paragraph
-    link
+    link href="https://example.com/\\[\\"
       text "https://example.com/\\[\\"
   line_break

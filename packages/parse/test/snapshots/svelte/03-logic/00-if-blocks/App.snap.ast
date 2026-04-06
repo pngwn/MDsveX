@@ -1,28 +1,30 @@
 root
   html tag="script"
-    line_break
-    paragraph
-      text "let user = "
-      mustache " loggedIn: false "
-      text ";"
-    line_break
-    line_break
-    paragraph
-      text "function toggle() "
-      mustache "\n	user.loggedIn = !user.loggedIn;\n"
   line_break
   line_break
-  paragraph
-    mustache "#if user.loggedIn"
-    text "	"
-    html tag="button" on:click="toggle"
-      text "		Log out\n	"
-    mustache "/if"
-    line_break
-    line_break
-    paragraph
-      mustache "#if !user.loggedIn"
-      text "	"
+  svelte_block tag="if"
+    svelte_branch tag="if" "user.loggedIn"
+      line_break
       html tag="button" on:click="toggle"
-        text "		Log in\n	"
-      mustache "/if"
+        line_break
+        paragraph
+          text "Log out"
+          soft_break
+          text "	"
+      line_break
+      paragraph
+        mustache "/if"
+        line_break
+        line_break
+        paragraph
+          mustache "#if !user.loggedIn"
+          soft_break
+          text "	"
+          html tag="button" on:click="toggle"
+            soft_break
+            text "		Log in"
+            soft_break
+            text "	"
+        line_break
+        paragraph
+          mustache "/if"

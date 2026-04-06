@@ -1,5 +1,8 @@
 root
   paragraph
+    text "![Foo"
+    text "]"
+    text "["
     text "]"
   line_break
   line_break

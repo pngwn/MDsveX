@@ -1,6 +1,6 @@
 root
   paragraph
-    link
+    link href="https://foo.bar.`baz"
       text "https://foo.bar.`baz"
     text "`"
   line_break
