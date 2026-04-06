@@ -1,7 +1,8 @@
 {
 	"include": ["src/**/*"],
-	"rootDir": "src",
+
 	"compilerOptions": {
+		"rootDir": "src",
 		"declaration": true,
 		"target": "es2020",
 		"module": "esnext",
