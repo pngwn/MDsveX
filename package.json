@@ -5,11 +5,10 @@
 	"repository": "https://github.com/pngwn/MDsveX",
 	"type": "module",
 	"scripts": {
-
 		"test": "pnpm -r --filter=!site test",
-		"test:run": "vitest run . ",
+		"test:run": "pnpm --filter=!site --filter=!incremental-parse-test --filter=!mdsvex-demo -r build && vitest run . ",
 		"test:e2e": "pnpm --filter=mdsvex-demo test:e2e",
-		"release": "pnpm --filter=!mdsvex-demo --filter=!@mdsvex/site build && changeset publish",
+		"release": "pnpm --filter=!site --filter=!incremental-parse-test --filter=!mdsvex-demo -r build && changeset publish",
 		"changeset:add": "changeset add",
 		"changeset:pre-enter": "changeset pre enter",
 		"changeset:pre-exit": "changeset pre exit",
@@ -30,11 +29,10 @@
 		"@changesets/changelog-github": "^0.5.1",
 		"@changesets/cli": "^2.28.1",
 		"@types/node": "^22.15.2",
-		"typescript": "^5.8.2"
+		"typescript": "^6.0.2"
 	},
 	"dependencies": {
 		"playwright": "^1.52.0",
-		"tsc": "^2.0.4",
 		"tslib": "^2.8.1",
 		"vite": "^6.3.3",
 		"vitest": "^3.1.2"
