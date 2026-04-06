@@ -20,7 +20,7 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       - run: pnpm i --frozen-lockfile
-      - run: pnpm --filter=!mdsvex-demo --filter=!@mdsvex/site build
+      - run: pnpm --filter=!site --filter=!incremental-parse-test --filter=!mdsvex-demo -r build
         env:
           CI: true
           name: mdsvex

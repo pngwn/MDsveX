@@ -46,4 +46,3 @@ jobs:
           cache-dependency-path: '**/pnpm-lock.yaml'
       - run: pnpm i --frozen-lockfile
       - run: pnpm test:run
-      - run: pnpm --filter=!mdsvex-demo --filter=!@mdsvex/site build
