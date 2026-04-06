@@ -1,0 +1,8 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="h1"
+    paragraph
+      text "The time is "
+      mustache "formatter.format($time)"

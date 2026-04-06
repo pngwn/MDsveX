@@ -1,0 +1,6 @@
+root
+  directive_container name="outer" "Outer Label"
+    directive_container name="inner" "Inner Label"
+      paragraph
+        text "Nested content."
+      line_break

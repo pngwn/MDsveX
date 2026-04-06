@@ -1,11 +1,11 @@
 <script>
-  import { typewriter } from "./typewriter.js";
+import { typewriter } from "./typewriter.js";
 
-  import Penguin from "./Penguin.svelte";
-  export let heading;
-  export let paragraph;
-  export let penguin;
-  export let walk;
+import Penguin from "./Penguin.svelte";
+export let heading;
+export let paragraph;
+export let penguin;
+export let walk;
 </script>
 
 <style>

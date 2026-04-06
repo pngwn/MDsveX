@@ -1,0 +1,12 @@
+root
+  block_quote
+    block_quote
+      block_quote
+        paragraph
+          text "foo"
+        paragraph
+          text "bar"
+        block_quote
+          paragraph
+            text "baz"
+  line_break

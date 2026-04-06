@@ -1,0 +1,7 @@
+root
+  line_break
+  paragraph
+    text "This is a normal paragraph:"
+  line_break
+  line_break
+  code_fence "This is a code block."

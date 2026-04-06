@@ -1,0 +1,12 @@
+root
+  html_comment " https://eugenkiss.github.io/7guis/tasks#crud "
+  line_break
+  line_break
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  paragraph
+    text

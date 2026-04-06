@@ -1,0 +1,16 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="select" bind:value="selected"
+    line_break
+    paragraph
+      mustache "#each options as option"
+      soft_break
+      text "		"
+      html tag="option" value="option"
+        mustache "option.color"
+      soft_break
+      text "	"
+      mustache "/each"
+      soft_break

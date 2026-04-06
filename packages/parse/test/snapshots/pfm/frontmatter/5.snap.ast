@@ -1,0 +1,7 @@
+root
+  frontmatter "title: hello\n"
+  import_statement "import Component from \"./Component.svelte\""
+  line_break
+  heading depth=1 "Hello"
+    text "Hello"
+  line_break

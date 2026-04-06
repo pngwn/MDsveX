@@ -1,103 +1,99 @@
 <script>
-	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
-	import { fade } from 'svelte/transition';
-	import docs from '../_docs.svtext';
-	import Cheatsheet from '../../components/Cheatsheet.svx';
+import { page } from "$app/stores";
+import { onMount } from "svelte";
+import { fade } from "svelte/transition";
+import docs from "../_docs.svtext";
+import Cheatsheet from "../../components/Cheatsheet.svx";
 
-	let root;
-	let scrollY = 0;
-	let width = 1100;
-	let current;
-	let position = '';
+let root;
+let scrollY = 0;
+let width = 1100;
+let current;
+let position = "";
 
-	const nav = [
-		['Install', 'docs#install-it'],
+const nav = [
+	["Install", "docs#install-it"],
+	[
+		"Use",
+		"docs#use-it",
 		[
-			'Use',
-			'docs#use-it',
-			[
-				['mdsvex', 'docs#mdsvex-1', true],
-				['compile', 'docs#compile', true],
-			],
+			["mdsvex", "docs#mdsvex-1", true],
+			["compile", "docs#compile", true],
 		],
+	],
+	[
+		"Options",
+		"docs#options",
 		[
-			'Options',
-			'docs#options',
-			[
-				['extensions', 'docs#extensions', true],
-				['smartypants', 'docs#smartypants', true],
-				['layout', 'docs#layout', true],
-				['remarkPlugins', 'docs#remarkplugins--rehypeplugins', true],
-				['rehypePlugins', 'docs#remarkplugins--rehypeplugins', true],
-				['highlight', 'docs#highlight', true],
-				['frontmatter', 'docs#frontmatter', true],
-			],
+			["extensions", "docs#extensions", true],
+			["smartypants", "docs#smartypants", true],
+			["layout", "docs#layout", true],
+			["remarkPlugins", "docs#remarkplugins--rehypeplugins", true],
+			["rehypePlugins", "docs#remarkplugins--rehypeplugins", true],
+			["highlight", "docs#highlight", true],
+			["frontmatter", "docs#frontmatter", true],
 		],
+	],
+	[
+		"Layouts",
+		"docs#layouts",
 		[
-			'Layouts',
-			'docs#layouts',
-			[
-				['named layouts', 'docs#named-layouts', false],
-				['disabling layouts', 'docs#disabling-layouts', false],
-				['custom components', 'docs#custom-components', false],
-			],
+			["named layouts", "docs#named-layouts", false],
+			["disabling layouts", "docs#disabling-layouts", false],
+			["custom components", "docs#custom-components", false],
 		],
-		['Frontmatter', 'docs#frontmatter-1'],
-		[
-			'Integrations',
-			'docs#integrations',
-			[['shiki', 'docs#with-shiki', false]],
-		],
-		['Limitations', 'docs#limitations'],
-	];
+	],
+	["Frontmatter", "docs#frontmatter-1"],
+	["Integrations", "docs#integrations", [["shiki", "docs#with-shiki", false]]],
+	["Limitations", "docs#limitations"],
+];
 
-	$: root && typeof scrollY === 'number' && width && calculate_positions();
+$: root && typeof scrollY === "number" && width && calculate_positions();
 
-	function remove_origin(href) {
-		const re = new RegExp(`http(s*)://${$page.host}/`);
-		return href.replace(re, '');
+function remove_origin(href) {
+	const re = new RegExp(`http(s*)://${$page.host}/`);
+	return href.replace(re, "");
+}
+
+function calculate_positions() {
+	if (root.getBoundingClientRect().top >= 0 && window.innerWidth > 1100) {
+		position = "absolute";
+	} else {
+		position = "fixed";
 	}
 
-	function calculate_positions() {
-		if (root.getBoundingClientRect().top >= 0 && window.innerWidth > 1100) {
-			position = 'absolute';
-		} else {
-			position = 'fixed';
-		}
+	const nodes = Array.from(root.children).filter(
+		(v) => v.tagName === "H2" || v.tagName === "H3",
+	);
 
-		const nodes = Array.from(root.children).filter(
-			v => v.tagName === 'H2' || v.tagName === 'H3'
-		);
-
-		const last = nodes.length - 1;
-		if (~~root.getBoundingClientRect().bottom === window.innerHeight) {
-			console.log('boo');
-			current = 'docs' + remove_origin(nodes[last].children[0].href);
-			return;
-		}
-
-		for (let node of nodes) {
-			const { top } = node.getBoundingClientRect();
-			if (top > 5) {
-				break;
-			}
-			current = 'docs' + remove_origin(node.children[0].href);
-		}
+	const last = nodes.length - 1;
+	if (~~root.getBoundingClientRect().bottom === window.innerHeight) {
+		console.log("boo");
+		current = "docs" + remove_origin(nodes[last].children[0].href);
+		return;
 	}
 
-	// somebody save me
-
-	onMount(() => {
-		if (window !== undefined && window.location.hash) {
-			const el = document.getElementById(window.location.hash.replace('#', ''));
-			el && el.scrollIntoView();
+	for (let node of nodes) {
+		const { top } = node.getBoundingClientRect();
+		if (top > 5) {
+			break;
 		}
+		current = "docs" + remove_origin(node.children[0].href);
+	}
+}
 
-		calculate_positions();
-	});
+// somebody save me
 
-	let menu_show = false;
+onMount(() => {
+	if (window !== undefined && window.location.hash) {
+		const el = document.getElementById(window.location.hash.replace("#", ""));
+		el && el.scrollIntoView();
+	}
+
+	calculate_positions();
+});
+
+let menu_show = false;
 </script>
 
 <style>

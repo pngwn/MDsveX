@@ -1,0 +1,21 @@
+root
+  paragraph
+    text "awa "
+    text "<hi"
+    text ">"
+  line_break
+  line_break
+  paragraph
+    text "awoo "
+    text "<heyoo"
+  line_break
+  line_break
+  paragraph
+    text "And what happens when I escape like &lt;this&gt;?"
+  line_break
+  line_break
+  paragraph
+    text "This one shouldn't be "
+    text "\\"
+    text tag="escaped" "<escaped>"
+  line_break

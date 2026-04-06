@@ -1,0 +1,18 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="div" bind:this="container"
+    line_break
+    paragraph
+      mustache "#if map"
+      soft_break
+      text "		"
+      html tag="slot"
+      soft_break
+      text "	"
+      mustache "/if"
+      soft_break

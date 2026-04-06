@@ -1,0 +1,6 @@
+root
+  paragraph
+    code_span "hi"
+    text "lo"
+    text "`"
+  line_break

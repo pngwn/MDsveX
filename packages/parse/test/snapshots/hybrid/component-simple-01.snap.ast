@@ -1,0 +1,16 @@
+root
+  heading depth=1 "Hello World"
+    text "Hello World"
+  line_break
+  line_break
+  paragraph
+    text "I am a paragraph."
+  line_break
+  line_break
+  html tag="Counter" count="{0}" self_closing=true
+  line_break
+  line_break
+  html tag="p" id="hello"
+    paragraph
+      text "I am also a paragraph"
+  line_break

@@ -1,0 +1,5 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="Inner" on:message=true self_closing=true

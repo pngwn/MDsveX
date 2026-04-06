@@ -1,0 +1,5 @@
+root
+  paragraph
+    text "see "
+    text ":thing here"
+  line_break

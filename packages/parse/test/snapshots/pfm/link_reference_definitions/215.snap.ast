@@ -1,0 +1,9 @@
+root
+  paragraph
+    text "bar"
+    soft_break
+    text "==="
+    soft_break
+    link href="/url"
+      text "foo"
+  line_break

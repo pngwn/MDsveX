@@ -1,0 +1,42 @@
+root
+  paragraph
+    link href="svelte:head"
+      text "svelte:head"
+    soft_break
+    html tag="title"
+      text "My Title"
+    soft_break
+    html tag="link" rel="stylesheet" type="text/css" href="theme.css" self_closing=true
+    soft_break
+    html tag="style"
+    soft_break
+    text "</svelte"
+    text ":head>"
+  line_break
+  line_break
+  html tag="Counter" prop=""
+    line_break
+    line_break
+    heading depth=1 "hello"
+      text "hello"
+    line_break
+    line_break
+    paragraph
+      text "this is some markdown"
+    line_break
+    line_break
+  line_break
+  line_break
+  block_quote
+    paragraph
+      text tag="Counter" "<Counter>"
+    line_break
+    heading depth=1 "hello"
+      text "hello"
+    line_break
+    paragraph
+      text "text"
+    line_break
+    paragraph
+      text "</Counter>"
+  line_break

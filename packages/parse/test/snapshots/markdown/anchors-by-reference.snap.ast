@@ -1,0 +1,28 @@
+root
+  line_break
+  paragraph
+    text "This is "
+    text "[an example"
+    text "]"
+    text "[id"
+    text "] reference-style link."
+    soft_break
+    text "This is "
+    text "[another"
+    text "] "
+    text "[foo"
+    text "] reference-style link."
+    soft_break
+    text "This is "
+    text "[a third"
+    text "]"
+    text "[bar"
+    text "] reference-style link."
+    soft_break
+    text "This is "
+    text "[a fourth"
+    text "]"
+    text "[4"
+    text "] reference-style link."
+  line_break
+  line_break

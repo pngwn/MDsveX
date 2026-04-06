@@ -1,0 +1,89 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="h2"
+    paragraph
+      text "Size"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="radio" bind:group="scoops" value="1"
+      line_break
+      paragraph
+        text "One scoop"
+        soft_break
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="radio" bind:group="scoops" value="2"
+      line_break
+      paragraph
+        text "Two scoops"
+        soft_break
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="radio" bind:group="scoops" value="3"
+      line_break
+      paragraph
+        text "Three scoops"
+        soft_break
+  line_break
+  line_break
+  html tag="h2"
+    paragraph
+      text "Flavours"
+  line_break
+  line_break
+  html tag="select" multiple=true bind:value="flavours"
+    line_break
+    paragraph
+      mustache "#each menu as flavour"
+      soft_break
+      text "		"
+      html tag="option" value="flavour"
+        soft_break
+        text "			"
+        mustache "flavour"
+        soft_break
+        text "		"
+      soft_break
+      text "	"
+      mustache "/each"
+      soft_break
+  line_break
+  line_break
+  paragraph
+    mustache "#if flavours.length === 0"
+    soft_break
+    text "	"
+    html tag="p"
+      text "Please select at least one flavour"
+    soft_break
+    mustache ":else if flavours.length > scoops"
+    soft_break
+    text "	"
+    html tag="p"
+      text "Can't order more flavours than scoops"
+      text "!"
+    soft_break
+    mustache ":else"
+    soft_break
+    text "	"
+    html tag="p"
+      soft_break
+      text "		You ordered "
+      mustache "scoops"
+      text " "
+      mustache "scoops === 1 ? 'scoop' : 'scoops'"
+      soft_break
+      text "		of "
+      mustache "join(flavours)"
+      soft_break
+      text "	"
+    soft_break
+    mustache "/if"

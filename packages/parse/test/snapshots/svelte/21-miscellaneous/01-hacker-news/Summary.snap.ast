@@ -1,0 +1,28 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="article"
+    line_break
+    html tag="span"
+      paragraph
+        mustache "i + offset + 1"
+    line_break
+    html tag="h2"
+      html tag="a" target="_blank" href="item.url"
+        paragraph
+          mustache "item.title"
+    line_break
+    html tag="p" class="meta"
+      html tag="a" href="#/item/{item.id}"
+        paragraph
+          mustache "comment_text()"
+      paragraph
+        text "by "
+        mustache "item.user"
+        text " "
+        mustache "item.time_ago"
+    line_break

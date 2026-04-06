@@ -7,12 +7,12 @@ export default class ReplProxy {
 
 		this.pending_cmds = new Map();
 
-		this.handle_event = e => this.handle_repl_message(e);
-		window.addEventListener('message', this.handle_event, false);
+		this.handle_event = (e) => this.handle_repl_message(e);
+		window.addEventListener("message", this.handle_event, false);
 	}
 
 	destroy() {
-		window.removeEventListener('message', this.handle_event);
+		window.removeEventListener("message", this.handle_event);
 	}
 
 	iframe_command(action, args) {
@@ -21,7 +21,7 @@ export default class ReplProxy {
 
 			this.pending_cmds.set(cmd_id, { resolve, reject });
 
-			this.iframe.contentWindow.postMessage({ action, cmd_id, args }, '*');
+			this.iframe.contentWindow.postMessage({ action, cmd_id, args }, "*");
 		});
 	}
 
@@ -32,18 +32,20 @@ export default class ReplProxy {
 
 		if (handler) {
 			this.pending_cmds.delete(id);
-			if (action === 'cmd_error') {
+			if (action === "cmd_error") {
 				let { message, stack } = cmd_data;
 				let e = new Error(message);
 				e.stack = stack;
-				handler.reject(e)
+				handler.reject(e);
 			}
 
-			if (action === 'cmd_ok') {
-				handler.resolve(cmd_data.args)
+			if (action === "cmd_ok") {
+				handler.resolve(cmd_data.args);
 			}
 		} else {
-			console.error('command not found', id, cmd_data, [...this.pending_cmds.keys()]);
+			console.error("command not found", id, cmd_data, [
+				...this.pending_cmds.keys(),
+			]);
 		}
 	}
 
@@ -53,25 +55,25 @@ export default class ReplProxy {
 		const { action, args } = event.data;
 
 		switch (action) {
-			case 'cmd_error':
-			case 'cmd_ok':
+			case "cmd_error":
+			case "cmd_ok":
 				return this.handle_command_message(event.data);
-			case 'fetch_progress':
-				return this.handlers.on_fetch_progress(args.remaining)
-			case 'error':
+			case "fetch_progress":
+				return this.handlers.on_fetch_progress(args.remaining);
+			case "error":
 				return this.handlers.on_error(event.data);
-			case 'unhandledrejection':
+			case "unhandledrejection":
 				return this.handlers.on_unhandled_rejection(event.data);
-			case 'console':
+			case "console":
 				return this.handlers.on_console(event.data);
 		}
 	}
 
 	eval(script) {
-		return this.iframe_command('eval', { script });
+		return this.iframe_command("eval", { script });
 	}
 
 	handle_links() {
-		return this.iframe_command('catch_clicks', {});
+		return this.iframe_command("catch_clicks", {});
 	}
 }

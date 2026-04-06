@@ -1,0 +1,8 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="div" class="box" use:pannable=true on:panstart="handlePanStart" on:panmove="handlePanMove" on:panend="handlePanEnd" style="transform:\n		translate({$coords.x}px,{$coords.y}px)\n		rotate({$coords.x * 0.2}deg)"

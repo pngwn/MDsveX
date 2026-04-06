@@ -1,0 +1,20 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="button" class:active="{current === 'foo'}" on:click="{() => current = 'foo'}"
+    paragraph
+      text "foo"
+  line_break
+  line_break
+  html tag="button" class:active="{current === 'bar'}" on:click="{() => current = 'bar'}"
+    paragraph
+      text "bar"
+  line_break
+  line_break
+  html tag="button" class:active="{current === 'baz'}" on:click="{() => current = 'baz'}"
+    paragraph
+      text "baz"

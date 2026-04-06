@@ -1,0 +1,65 @@
+root
+  line_break
+  paragraph
+    text "These should all be escaped:"
+  line_break
+  line_break
+  paragraph
+    text "\\"
+  line_break
+  line_break
+  paragraph
+    text "`"
+  line_break
+  line_break
+  paragraph
+    text "*"
+  line_break
+  line_break
+  paragraph
+    text "_"
+  line_break
+  line_break
+  paragraph
+    text "{"
+  line_break
+  line_break
+  paragraph
+    text "}"
+  line_break
+  line_break
+  paragraph
+    text "["
+  line_break
+  line_break
+  paragraph
+    text "]"
+  line_break
+  line_break
+  paragraph
+    text "("
+  line_break
+  line_break
+  paragraph
+    text ")"
+  line_break
+  line_break
+  paragraph
+    text "#"
+  line_break
+  line_break
+  paragraph
+    text "+"
+  line_break
+  line_break
+  paragraph
+    text "-"
+  line_break
+  line_break
+  paragraph
+    text "."
+  line_break
+  line_break
+  paragraph
+    text "!"
+  line_break

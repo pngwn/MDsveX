@@ -1,0 +1,5 @@
+root
+  paragraph
+    link href="/bar\\*" title="ti\\*tle"
+      text "foo"
+  line_break

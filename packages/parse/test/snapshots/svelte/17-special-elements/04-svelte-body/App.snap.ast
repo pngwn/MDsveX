@@ -1,0 +1,12 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="svelte:body" on:mouseenter="handleMouseenter" on:mouseleave="handleMouseleave" self_closing=true
+  line_break
+  line_break
+  html tag="img" class:curious="hereKitty" alt="Kitten wants to know what's going on" src="tutorial/kitten.png" self_closing=true
+  line_break

@@ -1,0 +1,7 @@
+root
+  import_statement "import { onMount } from \"svelte\""
+  import_statement "import { writable } from \"svelte/store\""
+  line_break
+  paragraph
+    text "Some content."
+  line_break

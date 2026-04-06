@@ -1,0 +1,20 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="h1"
+    paragraph
+      text "The time is "
+      mustache "formatter.format($time)"
+  line_break
+  line_break
+  html tag="p"
+    line_break
+    paragraph
+      text "This page has been open for"
+      soft_break
+      text "	"
+      mustache "$elapsed"
+      text " "
+      mustache "$elapsed === 1 ? 'second' : 'seconds'"
+      soft_break

@@ -6,7 +6,7 @@ export default class Compiler {
 	constructor(workersUrl, svelteUrl) {
 		if (!workers.has(svelteUrl)) {
 			const worker = new Worker(`${workersUrl}/compiler.js`);
-			worker.postMessage({ type: 'init', svelteUrl });
+			worker.postMessage({ type: "init", svelteUrl });
 			workers.set(svelteUrl, worker);
 		}
 
@@ -14,10 +14,11 @@ export default class Compiler {
 
 		this.handlers = new Map();
 
-		this.worker.addEventListener('message', event => {
+		this.worker.addEventListener("message", (event) => {
 			const handler = this.handlers.get(event.data.id);
 
-			if (handler) { // if no handler, was meant for a different REPL
+			if (handler) {
+				// if no handler, was meant for a different REPL
 				handler(event.data.result);
 				this.handlers.delete(event.data.id);
 			}
@@ -25,20 +26,23 @@ export default class Compiler {
 	}
 
 	compile(component, options) {
-		return new Promise(fulfil => {
+		return new Promise((fulfil) => {
 			const id = uid++;
 
 			this.handlers.set(id, fulfil);
 
 			this.worker.postMessage({
 				id,
-				type: 'compile',
+				type: "compile",
 				source: component.source,
-				options: Object.assign({
-					name: component.name,
-					filename: `${component.name}.svelte`
-				}, options),
-				entry: component.name === 'App'
+				options: Object.assign(
+					{
+						name: component.name,
+						filename: `${component.name}.svelte`,
+					},
+					options,
+				),
+				entry: component.name === "App",
 			});
 		});
 	}

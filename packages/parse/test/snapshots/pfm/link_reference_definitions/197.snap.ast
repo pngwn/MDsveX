@@ -1,0 +1,16 @@
+root
+  paragraph
+    text "[foo"
+    text "]: /url 'title"
+  line_break
+  line_break
+  paragraph
+    text "with blank line'"
+  line_break
+  line_break
+  paragraph
+    text "[foo"
+    text "]"
+    text "["
+    text "]"
+  line_break

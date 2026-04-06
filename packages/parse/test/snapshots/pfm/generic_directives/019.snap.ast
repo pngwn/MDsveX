@@ -1,0 +1,5 @@
+root
+  paragraph
+    text "hello"
+  line_break
+  directive_leaf name="note" "interrupts paragraph"

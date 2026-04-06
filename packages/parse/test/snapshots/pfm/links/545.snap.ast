@@ -1,0 +1,10 @@
+root
+  line_break
+  paragraph
+    text "[bar"
+    text "]"
+    text "["
+    text "foo"
+    text "!"
+    text "]"
+  line_break

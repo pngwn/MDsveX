@@ -1,0 +1,27 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="svelte:window" on:hashchange="hashchange" self_closing=true
+  line_break
+  line_break
+  html tag="main"
+    line_break
+    paragraph
+      mustache "#if item"
+      soft_break
+      text "		"
+      html tag="Item" item="item" returnTo="#/top/{page}" self_closing=true
+      soft_break
+      text "	"
+      mustache ":else if page"
+      soft_break
+      text "		"
+      html tag="List" page="page" self_closing=true
+      soft_break
+      text "	"
+      mustache "/if"
+      soft_break

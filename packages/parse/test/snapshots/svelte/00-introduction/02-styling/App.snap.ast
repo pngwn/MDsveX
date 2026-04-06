@@ -1,0 +1,8 @@
+root
+  html tag="style"
+  line_break
+  line_break
+  html tag="p"
+    paragraph
+      text "Styled"
+      text "!"

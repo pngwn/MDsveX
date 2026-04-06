@@ -1,0 +1,5 @@
+root
+  paragraph
+    text
+    html tag="img" src="foo" title="*" self_closing=true
+  line_break

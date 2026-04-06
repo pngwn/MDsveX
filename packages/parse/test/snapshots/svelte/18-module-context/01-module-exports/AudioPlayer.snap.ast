@@ -1,0 +1,27 @@
+root
+  html tag="script" context="module"
+  line_break
+  line_break
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="article" class:playing="!paused"
+    line_break
+    html tag="h2"
+      paragraph
+        mustache "title"
+    line_break
+    html tag="p"
+      html tag="strong"
+        paragraph
+          mustache "composer"
+      paragraph
+        text "/ performed by "
+        mustache "performer"
+    line_break
+    line_break
+    html tag="audio" bind:this="audio" bind:paused=true on:play="stopOthers" controls=true src="src"
+    line_break

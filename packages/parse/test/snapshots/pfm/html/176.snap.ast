@@ -1,0 +1,7 @@
+root
+  html tag="style"
+  line_break
+  paragraph
+    strong_emphasis
+      text "foo"
+  line_break

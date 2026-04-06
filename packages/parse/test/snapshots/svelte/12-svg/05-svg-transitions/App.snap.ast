@@ -1,0 +1,49 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  svelte_block tag="if"
+    svelte_branch tag="if" "visible"
+      line_break
+      html tag="svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 103 124"
+        line_break
+        html tag="g" out:fade="{{duration: 200}}" opacity="0.2"
+          line_break
+          html tag="path" in:expand="{{duration: 400, delay: 1000, easing: quintOut}}" style="stroke: #ff3e00; fill: #ff3e00; stroke-width: 50;" d="outer" self_closing=true
+          line_break
+          html tag="path" in:draw="{{duration: 1000}}" style="stroke:#ff3e00; stroke-width: 1.5" d="inner" self_closing=true
+          line_break
+        line_break
+      line_break
+      line_break
+      html tag="div" class="centered" out:fly="{{y: -20, duration: 800}}"
+        line_break
+        paragraph
+          mustache "#each 'SVELTE' as char, i"
+          soft_break
+          text "			"
+          html tag="span" in:fade="{{delay: 1000 + i * 150, duration: 800}}"
+            mustache "char"
+        line_break
+        paragraph
+          mustache "/each"
+          soft_break
+          text "	"
+      line_break
+      paragraph
+        mustache "/if"
+        line_break
+        line_break
+        html tag="label"
+          line_break
+          html tag="input" type="checkbox" bind:checked="visible"
+            line_break
+            paragraph
+              text "toggle me"
+              soft_break
+        line_break
+        line_break
+        text tag="link" href="https://fonts.googleapis.com/css?family=Overpass:100" rel="stylesheet" "<link href=\"https://fonts.googleapis.com/css?family=Overpass:100\" rel=\"stylesheet\">"

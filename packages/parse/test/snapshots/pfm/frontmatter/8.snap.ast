@@ -1,0 +1,6 @@
+root
+  frontmatter "title: test\n"
+  line_break
+  paragraph
+    text "Some paragraph."
+  line_break

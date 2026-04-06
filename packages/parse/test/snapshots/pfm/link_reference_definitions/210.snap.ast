@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "[foo"
+    text "]: /url"
+    soft_break
+    text "\"title\" ok"
+  line_break

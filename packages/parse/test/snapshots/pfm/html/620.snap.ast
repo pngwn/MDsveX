@@ -1,0 +1,5 @@
+root
+  paragraph
+    text "<a href=\"hi'> "
+    text tag="a" href="hi" '=true "<a href=hi'>"
+  line_break

@@ -1,0 +1,12 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="button" on:click="handleClick"
+    line_break
+    paragraph
+      text "Clicked "
+      mustache "count"
+      text " "
+      mustache "count === 1 ? 'time' : 'times'"
+      soft_break

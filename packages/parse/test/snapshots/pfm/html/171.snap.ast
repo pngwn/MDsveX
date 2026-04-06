@@ -1,0 +1,15 @@
+root
+  html tag="textarea"
+    line_break
+    line_break
+    paragraph
+      strong_emphasis
+        text "foo"
+    line_break
+    line_break
+    paragraph
+      emphasis
+        text "bar"
+    line_break
+    line_break
+  line_break

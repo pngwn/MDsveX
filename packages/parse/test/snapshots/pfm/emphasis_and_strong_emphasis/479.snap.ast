@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "_"
+    text "a "
+    code_span "_"
+    text "_"
+  line_break

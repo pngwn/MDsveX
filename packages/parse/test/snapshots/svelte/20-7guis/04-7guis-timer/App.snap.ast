@@ -1,0 +1,31 @@
+root
+  html_comment " https://eugenkiss.github.io/7guis/tasks#timer "
+  line_break
+  line_break
+  html tag="script"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    paragraph
+      text "elapsed time:"
+      soft_break
+      text "	"
+      html tag="progress" value="{elapsed / duration}"
+      soft_break
+  line_break
+  line_break
+  html tag="div"
+    paragraph
+      mustache "(elapsed / 1000).toFixed(1)"
+      text "s"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    paragraph
+      text "duration:"
+      soft_break
+      text "	"
+      html tag="input" type="range" bind:value="duration" min="1" max="20000"
+        soft_break

@@ -1,0 +1,58 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="div" class="keypad"
+    line_break
+    html tag="button" on:click="select(1)"
+      paragraph
+        text "1"
+    line_break
+    html tag="button" on:click="select(2)"
+      paragraph
+        text "2"
+    line_break
+    html tag="button" on:click="select(3)"
+      paragraph
+        text "3"
+    line_break
+    html tag="button" on:click="select(4)"
+      paragraph
+        text "4"
+    line_break
+    html tag="button" on:click="select(5)"
+      paragraph
+        text "5"
+    line_break
+    html tag="button" on:click="select(6)"
+      paragraph
+        text "6"
+    line_break
+    html tag="button" on:click="select(7)"
+      paragraph
+        text "7"
+    line_break
+    html tag="button" on:click="select(8)"
+      paragraph
+        text "8"
+    line_break
+    html tag="button" on:click="select(9)"
+      paragraph
+        text "9"
+    line_break
+    line_break
+    html tag="button" disabled="!value" on:click="clear"
+      paragraph
+        text "clear"
+    line_break
+    html tag="button" on:click="select(0)"
+      paragraph
+        text "0"
+    line_break
+    html tag="button" disabled="!value" on:click="submit"
+      paragraph
+        text "submit"
+    line_break

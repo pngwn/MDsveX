@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "aaa"
+    soft_break
+    text "bbb"
+  line_break

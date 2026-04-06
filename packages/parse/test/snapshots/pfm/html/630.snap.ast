@@ -1,0 +1,5 @@
+root
+  paragraph
+    text "foo "
+    text tag="a" href="&ouml;" "<a href=\"&ouml;\">"
+  line_break

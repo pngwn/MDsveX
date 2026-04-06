@@ -1,0 +1,15 @@
+root
+  paragraph
+    text "A paragraph"
+    soft_break
+    text "with two lines."
+  line_break
+  line_break
+  paragraph
+    text "indented code"
+  line_break
+  line_break
+  block_quote
+    paragraph
+      text "A block quote."
+  line_break

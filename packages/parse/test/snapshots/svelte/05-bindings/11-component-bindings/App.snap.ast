@@ -1,0 +1,10 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="h1" style="color: {pin ? '#333' : '#ccc'}"
+    paragraph
+      mustache "view"
+  line_break
+  line_break
+  html tag="Keypad" bind:value="pin" on:submit="handleSubmit" self_closing=true

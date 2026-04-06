@@ -1,8 +1,8 @@
-import { decode } from 'sourcemap-codec';
+import { decode } from "sourcemap-codec";
 
 export default function getLocationFromStack(stack, map) {
 	if (!stack) return;
-	const last = stack.split('\n')[1];
+	const last = stack.split("\n")[1];
 	const match = /<anonymous>:(\d+):(\d+)\)$/.exec(last);
 
 	if (!match) return null;

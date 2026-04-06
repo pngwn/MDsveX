@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "[link"
+    text "](   /uri"
+    soft_break
+    text "\"title\"  )"
+  line_break

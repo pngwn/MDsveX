@@ -1,0 +1,8 @@
+root
+  paragraph
+    directive_inline name="a"
+      text "one"
+    text " and "
+    directive_inline name="b"
+      text "two"
+  line_break

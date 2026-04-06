@@ -1,0 +1,2 @@
+root
+  frontmatter "title: hello\n---extra\n"

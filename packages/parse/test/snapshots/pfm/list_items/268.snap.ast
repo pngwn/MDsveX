@@ -1,0 +1,5 @@
+root
+  list ordered=true start=3 tight=true
+    list_item
+      text "ok"
+  line_break

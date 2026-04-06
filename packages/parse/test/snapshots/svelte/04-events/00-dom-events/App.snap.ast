@@ -1,0 +1,15 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="div" on:mousemove="handleMousemove"
+    line_break
+    paragraph
+      text "The mouse position is "
+      mustache "m.x"
+      text " x "
+      mustache "m.y"
+      soft_break

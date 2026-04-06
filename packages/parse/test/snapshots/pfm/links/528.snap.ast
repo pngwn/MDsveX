@@ -1,0 +1,14 @@
+root
+  line_break
+  paragraph
+    text "["
+    text "link "
+    text "["
+    text "foo "
+    text "[bar"
+    text "]"
+    text "]"
+    text "]"
+    text "[ref"
+    text "]"
+  line_break

@@ -2,38 +2,50 @@
 title: Hello, world!
 ---
 
-# {metadata.title}
+<script>
+  let name = $state("THE TITLE");
+</script>
 
-> Some quote
+# {name}
 
-```js
-async function do_thing(arg, arg2) {
-	console.log(arg, arg2);
-}
+A paragraph with *strong emphasis*
+and _regular emphasis_.
+
+Also ~~strikethrough~~ and ^superscript^ and
+~subscript~ work. And `code` works.
+
+
+## Second heading
+
+```python
+def hello():
+    print("world")
 ```
 
-```ocaml
-let add x y = x + y
-let add x = fun y -> x + y
-let add = fun x -> (fun y -> x + y)
+> A block quote with *formatting*.\
+> and \
+> line \
+> breaks
 
-let f x1 x2 ... xn = e
+- Item one
+  - child
+    - grandchild
+- sibling
 
-```
+---
 
-```sql
-SELECT * FROM Customers
-WHERE Country='Mexico';
-```
+Final paragraph with a [link](/url).
 
-## Hello
 
-Hello
+- hi
+	- hi
 
-### Hello
 
-Hello _italic_
+97.  hello
+98.  hello
+99.  hello
 
-**bold**
+		 asdasd
 
-[Link](https://example.com)
+102. hello
+		 hello

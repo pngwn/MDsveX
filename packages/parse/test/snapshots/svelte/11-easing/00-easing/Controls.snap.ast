@@ -1,0 +1,145 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="div" class="easing-sidebar"
+    line_break
+    html tag="div" class="easing-types"
+      line_break
+      html tag="h3"
+        paragraph
+          text "Ease"
+      line_break
+      paragraph
+        mustache "#if mobile"
+        soft_break
+        text "				"
+        html tag="select" bind:value="current_ease"
+          soft_break
+          text "					"
+          mustache "#each [...eases] as [name]"
+          soft_break
+          text "						"
+          html tag="option" value="name" class:selected="name === current_ease"
+            soft_break
+            text "							"
+            mustache "name"
+            soft_break
+            text "						"
+          soft_break
+          text "					"
+          mustache "/each"
+          soft_break
+          text "				"
+        soft_break
+        text "			"
+        mustache ":else"
+        soft_break
+        text "				"
+        html tag="ul"
+          soft_break
+          text "					"
+          mustache "#each [...eases] as [name]"
+          soft_break
+          text "						"
+          html tag="li" class:selected="name === current_ease" on:click="() => current_ease = name"
+            soft_break
+            text "							"
+            mustache "name"
+            soft_break
+            text "						"
+          soft_break
+          text "					"
+          mustache "/each"
+          soft_break
+          text "				"
+        soft_break
+        text "			"
+        mustache "/if"
+        soft_break
+        text "			"
+        html tag="h3"
+          text "Type"
+        soft_break
+        text "			"
+        mustache "#if mobile "
+        soft_break
+        text "				"
+        html tag="select" bind:value="current_type"
+          soft_break
+          text "					"
+          mustache "#each types as [name, type]"
+          soft_break
+          text "						"
+          html tag="option" value="type"
+            soft_break
+            text "							"
+            mustache "name"
+            soft_break
+            text "						"
+          soft_break
+          text "					"
+          mustache "/each"
+          soft_break
+          text "				"
+        soft_break
+        text "			"
+        mustache ":else"
+        soft_break
+        text "				"
+        html tag="ul"
+          soft_break
+          text "					"
+          mustache "#each types as [name, type]"
+          soft_break
+          text "						"
+          html tag="li" class:selected="type === current_type" on:click="() => current_type = type"
+            soft_break
+            text "							"
+            mustache "name"
+            soft_break
+            text "					"
+          soft_break
+          text "					"
+          mustache "/each"
+          soft_break
+          text "				"
+        soft_break
+        text "			"
+        mustache "/if"
+        soft_break
+        text "		"
+    line_break
+    html tag="h4"
+      line_break
+      paragraph
+        text "Duration"
+        soft_break
+        text "		"
+    line_break
+    html tag="div" class="duration"
+      line_break
+      html tag="span"
+        line_break
+        html tag="input" type="number" bind:value="duration" min="0" step="100" self_closing=true
+        line_break
+        html tag="button" class="number" on:click="() => duration -= 100"
+          paragraph
+            text "-"
+        line_break
+        html tag="button" class="number" on:click="() => duration += 100"
+          paragraph
+            text "+"
+        line_break
+      line_break
+      html tag="button" class="play" on:click="() => dispatch('play')"
+        line_break
+        paragraph
+          mustache "playing ? 'Restart' : 'Play'"
+          soft_break
+          text "			"
+      line_break
+    line_break

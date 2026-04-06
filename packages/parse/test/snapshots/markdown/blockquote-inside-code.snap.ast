@@ -1,0 +1,8 @@
+root
+  code_fence "> this is a pseudo blockquote\n> inside a code block"
+  line_break
+  paragraph
+    text "foo"
+  line_break
+  line_break
+  code_fence "> this is another bq\ninside code"

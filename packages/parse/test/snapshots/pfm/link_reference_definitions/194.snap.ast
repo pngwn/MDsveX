@@ -1,0 +1,8 @@
+root
+  line_break
+  paragraph
+    link href="my_(url)" title="title (with parens)"
+      text "Foo"
+      text "*bar"
+      text "]"
+  line_break

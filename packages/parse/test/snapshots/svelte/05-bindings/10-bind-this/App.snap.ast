@@ -1,0 +1,9 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="canvas" bind:this="canvas" width="32" height="32"
+  line_break

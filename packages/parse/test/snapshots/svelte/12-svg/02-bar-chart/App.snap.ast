@@ -1,0 +1,43 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="h2"
+    paragraph
+      text "US birthrate by year"
+  line_break
+  line_break
+  html tag="div" class="chart" bind:clientWidth="width" bind:clientHeight="height"
+    line_break
+    html tag="svg"
+      line_break
+      html_comment " y axis "
+      line_break
+      html tag="g" class="axis y-axis" transform="translate(0,{padding.top})"
+        line_break
+        paragraph
+          mustache "#each yTicks as tick"
+          soft_break
+          text "				"
+          html tag="g" class="tick tick-{tick}" transform="translate(0, {yScale(tick) - padding.bottom})"
+            soft_break
+            text "					"
+            html tag="line" x2="100%"
+            soft_break
+            text "					"
+            html tag="text" y="-4"
+              mustache "tick"
+              text " "
+              mustache "tick === 20 ? ' per 1,000 population' : ''"
+            soft_break
+            text "				"
+          soft_break
+          text "			"
+          mustache "/each"
+          soft_break
+          text "		"
+    line_break
+  line_break

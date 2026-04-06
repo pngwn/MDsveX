@@ -1,0 +1,6 @@
+root
+  html_comment " Foo\n\nbar\n   baz "
+  line_break
+  paragraph
+    text "okay"
+  line_break

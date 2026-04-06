@@ -1,0 +1,7 @@
+root
+  line_break
+  paragraph
+    text "["
+    text "foo"
+    code_span "][ref]"
+  line_break

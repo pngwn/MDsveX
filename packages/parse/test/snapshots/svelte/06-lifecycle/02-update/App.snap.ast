@@ -1,0 +1,32 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="div" class="chat"
+    line_break
+    html tag="h1"
+      paragraph
+        text "Eliza"
+    line_break
+    line_break
+    html tag="div" class="scrollable" bind:this="div"
+      line_break
+      paragraph
+        mustache "#each comments as comment"
+        soft_break
+        text "			"
+        html tag="article" class="comment.author"
+          soft_break
+          text "				"
+          html tag="span"
+            mustache "comment.text"
+          soft_break
+          text "			"
+        soft_break
+        text "		"
+        mustache "/each"
+        soft_break
+        text "	"

@@ -1,0 +1,35 @@
+root
+  paragraph
+    image src="/path/to/img.jpg"
+      text "Alt text"
+  line_break
+  line_break
+  paragraph
+    image src="/path/to/img.jpg" title="Optional title"
+      text "Alt text"
+  line_break
+  line_break
+  paragraph
+    text "![Alt text"
+    text "]"
+    text "[id"
+    text "]"
+  line_break
+  line_break
+  paragraph
+    text "![My Image"
+    text "]"
+  line_break
+  line_break
+  paragraph
+    text "![leave me alone"
+    text "]"
+  line_break
+  line_break
+  paragraph
+    text "![leave me alone"
+    text "]"
+    text "["
+    text "]"
+  line_break
+  line_break

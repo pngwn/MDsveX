@@ -1,0 +1,12 @@
+root
+  paragraph
+    text
+    soft_break
+    text "foo"
+    soft_break
+    text "]: /url"
+  line_break
+  line_break
+  paragraph
+    text "bar"
+  line_break

@@ -1,7 +1,7 @@
 <script>
-  import { getContext } from "svelte";
+import { getContext } from "svelte";
 
-  const { compile_options } = getContext("REPL");
+const { compile_options } = getContext("REPL");
 </script>
 
 <style>

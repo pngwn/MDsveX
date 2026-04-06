@@ -1,0 +1,12 @@
+root
+  paragraph
+    text "aaa"
+    soft_break
+    text "bbb"
+  line_break
+  line_break
+  paragraph
+    text "ccc"
+    soft_break
+    text "ddd"
+  line_break

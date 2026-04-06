@@ -1,0 +1,46 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="a" href="returnTo"
+    paragraph
+      text "&laquo; back"
+  line_break
+  line_break
+  html tag="article"
+    line_break
+    html tag="a" href="{item.url}"
+      line_break
+      html tag="h1"
+        paragraph
+          mustache "item.title"
+      line_break
+      html tag="small"
+        paragraph
+          mustache "item.domain"
+      line_break
+    line_break
+    line_break
+    html tag="p" class="meta"
+      paragraph
+        text "submitted by "
+        mustache "item.user"
+        text " "
+        mustache "item.time_ago"
+        soft_break
+  line_break
+  line_break
+  html tag="div" class="comments"
+    line_break
+    paragraph
+      mustache "#each item.comments as comment"
+      soft_break
+      text "		"
+      html tag="Comment" comment="comment" self_closing=true
+      soft_break
+      text "	"
+      mustache "/each"
+      soft_break

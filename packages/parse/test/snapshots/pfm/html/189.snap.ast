@@ -1,0 +1,9 @@
+root
+  html tag="div"
+    line_break
+    paragraph
+      strong_emphasis
+        text "Emphasized"
+      text " text."
+      soft_break
+  line_break

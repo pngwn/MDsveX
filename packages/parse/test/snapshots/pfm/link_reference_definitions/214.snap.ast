@@ -1,0 +1,11 @@
+root
+  line_break
+  heading depth=1 "[Foo][]"
+    link href="/url"
+      text "Foo"
+  line_break
+  line_break
+  block_quote
+    paragraph
+      text "bar"
+  line_break

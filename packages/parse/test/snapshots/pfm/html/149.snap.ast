@@ -1,0 +1,17 @@
+root
+  html tag="table"
+    line_break
+    html tag="tr"
+      line_break
+      html tag="td"
+        line_break
+        paragraph
+          text "hi"
+          soft_break
+      line_break
+    line_break
+  line_break
+  line_break
+  paragraph
+    text "okay."
+    line_break

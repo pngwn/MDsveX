@@ -1,0 +1,4 @@
+root
+  heading depth=3 "foo ### b"
+    text "foo ### b"
+  line_break

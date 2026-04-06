@@ -1,0 +1,5 @@
+root
+  html tag="Counter" prop="prop" self_closing=true
+  line_break
+  paragraph
+    text

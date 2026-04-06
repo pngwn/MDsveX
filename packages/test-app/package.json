@@ -9,9 +9,8 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"test:e2e": "playwright test",
-		"test:e2e:ui": "playwright test --ui"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.49.1",
@@ -22,11 +21,6 @@
 		"svelte-check": "^4.0.0",
 		"typescript": "^5.0.0",
 		"vite": "^6.2.5"
-	},
-	"pnpm": {
-		"overrides": {
-			"acorn": "8.14.0"
-		}
 	},
 	"dependencies": {
 		"@fontsource/source-code-pro": "^5.2.5",

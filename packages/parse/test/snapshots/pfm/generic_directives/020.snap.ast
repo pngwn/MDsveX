@@ -1,0 +1,5 @@
+root
+  directive_container name="warning" "Caution"
+    paragraph
+      text "Be careful here."
+    line_break

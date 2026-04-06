@@ -1,0 +1,44 @@
+root
+  paragraph
+    text "These HTML5 tags should pass through just fine."
+  line_break
+  line_break
+  html tag="section"
+    paragraph
+      text "hello"
+  line_break
+  html tag="header"
+    paragraph
+      text "head"
+  line_break
+  html tag="footer"
+    paragraph
+      text "footsies"
+  line_break
+  html tag="nav"
+    paragraph
+      text "navigation"
+  line_break
+  html tag="article"
+    paragraph
+      text "read me"
+  line_break
+  html tag="aside"
+    paragraph
+      text "ignore me"
+  line_break
+  html tag="article"
+    paragraph
+      text "read"
+      soft_break
+      text "me"
+  line_break
+  html tag="aside"
+    line_break
+    paragraph
+      text "ignore me"
+      soft_break
+  line_break
+  line_break
+  paragraph
+    text "the end"

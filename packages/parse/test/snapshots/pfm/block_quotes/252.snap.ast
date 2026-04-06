@@ -1,0 +1,10 @@
+root
+  block_quote
+    paragraph
+      text "code"
+  line_break
+  line_break
+  block_quote
+    paragraph
+      text "not code"
+  line_break

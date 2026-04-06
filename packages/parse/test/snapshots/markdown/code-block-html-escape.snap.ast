@@ -1,0 +1,7 @@
+root
+  line_break
+  paragraph
+    text "This is some HTML:"
+  line_break
+  line_break
+  code_fence "<h1>Heading</h1>"

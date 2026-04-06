@@ -1,0 +1,54 @@
+root
+  html_comment "\nhttps://eugenkiss.github.io/7guis/tasks#circle\n\nClick on the canvas to draw a circle. Click on a circle\nto select it. Right-click on the canvas to adjust the\nradius of the selected circle.\n"
+  line_break
+  line_break
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="div" class="controls"
+    line_break
+    html tag="button" on:click="{() => travel(-1)}" disabled="{i === 0}"
+      paragraph
+        text "undo"
+    line_break
+    html tag="button" on:click="{() => travel(+1)}" disabled="{i === undoStack.length -1}"
+      paragraph
+        text "redo"
+    line_break
+  line_break
+  line_break
+  html tag="svg" on:click="handleClick"
+    line_break
+    paragraph
+      mustache "#each circles as circle"
+      soft_break
+      text "		"
+      html tag="circle" cx="circle.cx" cy="circle.cy" r="circle.r" on:click="{event => select(circle, event)}" on:contextmenu|stopPropagation|preventDefault="{() => {\n				adjusting = !adjusting;\n				if (adjusting) selected = circle;\n			}}" fill="{circle === selected ? '#ccc': 'white'}" self_closing=true
+      soft_break
+      text "	"
+      mustache "/each"
+      soft_break
+  line_break
+  line_break
+  paragraph
+    mustache "#if adjusting"
+    soft_break
+    text "	"
+    html tag="div" class="adjuster"
+      soft_break
+      text "		"
+      html tag="p"
+        text "adjust diameter of circle at "
+        mustache "selected.cx"
+        text ", "
+        mustache "selected.cy"
+      soft_break
+      text "		"
+      html tag="input" type="range" value="selected.r" on:input="adjust"
+        soft_break
+        text "	"
+    soft_break
+    mustache "/if"

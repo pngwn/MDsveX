@@ -1,67 +1,67 @@
 <script>
-  import * as yootils from "yootils";
-  import { createEventDispatcher } from "svelte";
+import * as yootils from "yootils";
+import { createEventDispatcher } from "svelte";
 
-  const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-  export let type;
-  export let pos = 50;
-  export let fixed = false;
-  export let buffer = 40;
-  export let min;
-  export let max;
+export let type;
+export let pos = 50;
+export let fixed = false;
+export let buffer = 40;
+export let min;
+export let max;
 
-  let w;
-  let h;
-  $: size = type === "vertical" ? h : w;
+let w;
+let h;
+$: size = type === "vertical" ? h : w;
 
-  $: min = 100 * (buffer / size);
-  $: max = 100 - min;
-  $: pos = yootils.clamp(pos, min, max);
+$: min = 100 * (buffer / size);
+$: max = 100 - min;
+$: pos = yootils.clamp(pos, min, max);
 
-  const refs = {};
+const refs = {};
 
-  let dragging = false;
+let dragging = false;
 
-  function setPos(event) {
-    const { top, left } = refs.container.getBoundingClientRect();
+function setPos(event) {
+	const { top, left } = refs.container.getBoundingClientRect();
 
-    const px = type === "vertical" ? event.clientY - top : event.clientX - left;
+	const px = type === "vertical" ? event.clientY - top : event.clientX - left;
 
-    pos = (100 * px) / size;
-    dispatch("change");
-  }
+	pos = (100 * px) / size;
+	dispatch("change");
+}
 
-  function drag(node, callback) {
-    const mousedown = event => {
-      if (event.which !== 1) return;
+function drag(node, callback) {
+	const mousedown = (event) => {
+		if (event.which !== 1) return;
 
-      event.preventDefault();
+		event.preventDefault();
 
-      dragging = true;
+		dragging = true;
 
-      const onmouseup = () => {
-        dragging = false;
+		const onmouseup = () => {
+			dragging = false;
 
-        window.removeEventListener("mousemove", callback, false);
-        window.removeEventListener("mouseup", onmouseup, false);
-      };
+			window.removeEventListener("mousemove", callback, false);
+			window.removeEventListener("mouseup", onmouseup, false);
+		};
 
-      window.addEventListener("mousemove", callback, false);
-      window.addEventListener("mouseup", onmouseup, false);
-    };
+		window.addEventListener("mousemove", callback, false);
+		window.addEventListener("mouseup", onmouseup, false);
+	};
 
-    node.addEventListener("mousedown", mousedown, false);
+	node.addEventListener("mousedown", mousedown, false);
 
-    return {
-      destroy() {
-        node.removeEventListener("mousedown", onmousedown, false);
-      }
-    };
-  }
+	return {
+		destroy() {
+			node.removeEventListener("mousedown", onmousedown, false);
+		},
+	};
+}
 
-  $: side = type === "horizontal" ? "left" : "top";
-  $: dimension = type === "horizontal" ? "width" : "height";
+$: side = type === "horizontal" ? "left" : "top";
+$: dimension = type === "horizontal" ? "width" : "height";
 </script>
 
 <style>

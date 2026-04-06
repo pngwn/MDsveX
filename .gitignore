@@ -30,3 +30,8 @@ coverage
 
 #config
 config.js
+AGENTS.md
+CLAUDE.md
+PLAN.md
+.claude
+tsc

@@ -1,0 +1,30 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="checkbox" bind:checked="visible"
+      line_break
+      paragraph
+        text "visible"
+        soft_break
+  line_break
+  line_break
+  paragraph
+    mustache "#if visible"
+    soft_break
+    text "	"
+    html tag="div" class="centered" in:spin="{{duration: 8000}}" out:fade=true
+      soft_break
+      text "		"
+      html tag="span"
+        text "transitions"
+        text "!"
+      soft_break
+      text "	"
+    soft_break
+    mustache "/if"

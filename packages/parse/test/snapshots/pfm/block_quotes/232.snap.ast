@@ -1,0 +1,10 @@
+root
+  block_quote
+    heading depth=1 "Foo"
+      text "Foo"
+    paragraph
+      text "bar"
+  line_break
+  paragraph
+    text "baz"
+  line_break

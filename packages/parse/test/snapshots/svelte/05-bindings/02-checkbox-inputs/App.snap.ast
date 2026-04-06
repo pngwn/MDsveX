@@ -1,0 +1,28 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="checkbox" bind:checked="yes"
+      line_break
+      paragraph
+        text "Yes"
+        text "! Send me regular email spam"
+        soft_break
+  line_break
+  line_break
+  paragraph
+    mustache "#if yes"
+    soft_break
+    text "	"
+    html tag="p"
+      text "Thank you. We will bombard your inbox and sell your personal details."
+    soft_break
+    mustache ":else"
+    soft_break
+    text "	"
+    html tag="p"
+      text "You must opt in to continue. If you're not paying, you're the product."
+    soft_break
+    mustache "/if"

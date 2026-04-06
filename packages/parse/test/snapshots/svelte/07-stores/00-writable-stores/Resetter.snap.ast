@@ -1,0 +1,9 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="button" on:click="reset"
+    line_break
+    paragraph
+      text "reset"
+      soft_break

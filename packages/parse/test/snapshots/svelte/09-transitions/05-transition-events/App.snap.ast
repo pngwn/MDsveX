@@ -1,0 +1,30 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="p"
+    paragraph
+      text "status: "
+      mustache "status"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="checkbox" bind:checked="visible"
+      line_break
+      paragraph
+        text "visible"
+        soft_break
+  line_break
+  line_break
+  paragraph
+    mustache "#if visible"
+    soft_break
+    text "	"
+    html tag="p" transition:fly="{{ y: 200, duration: 2000 }}" on:introstart="{() => status = 'intro started'}" on:outrostart="{() => status = 'outro started'}" on:introend="{() => status = 'intro ended'}" on:outroend="{() => status = 'outro ended'}"
+      soft_break
+      text "		Flies in and out"
+      soft_break
+      text "	"
+    soft_break
+    mustache "/if"

@@ -1,0 +1,6 @@
+root
+  line_break
+  paragraph
+    link href="/uri"
+      text "foo"
+  line_break

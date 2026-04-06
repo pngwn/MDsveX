@@ -1,0 +1,38 @@
+root
+  html tag="style"
+  line_break
+  line_break
+  html tag="article" class="contact-card"
+    line_break
+    html tag="h2"
+      line_break
+      html tag="slot" name="name"
+        line_break
+        html tag="span" class="missing"
+          paragraph
+            text "Unknown name"
+        line_break
+      line_break
+    line_break
+    line_break
+    html tag="div" class="address"
+      line_break
+      html tag="slot" name="address"
+        line_break
+        html tag="span" class="missing"
+          paragraph
+            text "Unknown address"
+        line_break
+      line_break
+    line_break
+    line_break
+    html tag="div" class="email"
+      line_break
+      html tag="slot" name="email"
+        line_break
+        html tag="span" class="missing"
+          paragraph
+            text "Unknown email"
+        line_break
+      line_break
+    line_break

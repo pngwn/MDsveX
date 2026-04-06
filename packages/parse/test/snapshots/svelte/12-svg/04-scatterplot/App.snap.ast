@@ -1,0 +1,22 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="div" class="chart"
+    line_break
+    html tag="h2"
+      paragraph
+        text "Anscombe's quartet"
+    line_break
+    line_break
+    html tag="Scatterplot" points="data.a" self_closing=true
+    line_break
+    html tag="Scatterplot" points="data.b" self_closing=true
+    line_break
+    html tag="Scatterplot" points="data.c" self_closing=true
+    line_break
+    html tag="Scatterplot" points="data.d" self_closing=true
+    line_break

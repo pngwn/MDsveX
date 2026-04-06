@@ -1,0 +1,31 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  svelte_block tag="if"
+    svelte_branch tag="if" "items"
+      line_break
+      svelte_block tag="each"
+        svelte_branch tag="each" "items as item, i"
+          line_break
+          html tag="Summary" item="item" i="i" offset="offset" self_closing=true
+          line_break
+      line_break
+      line_break
+      html tag="a" href="#/top/{page + 1}"
+        paragraph
+          text "page "
+          mustache "page + 1"
+      line_break
+      paragraph
+        mustache ":else"
+        soft_break
+        text "	"
+        html tag="p" class="loading"
+          text "loading..."
+        line_break
+        paragraph
+          mustache "/if"

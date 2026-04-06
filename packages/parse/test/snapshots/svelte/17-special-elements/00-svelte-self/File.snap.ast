@@ -1,0 +1,10 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="span" style="background-image: url(tutorial/icons/{type}.svg)"
+    paragraph
+      mustache "name"

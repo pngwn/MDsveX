@@ -1,0 +1,5 @@
+root
+  paragraph
+    text "</a>"
+    text "</foo >"
+  line_break

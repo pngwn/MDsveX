@@ -1,0 +1,50 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="h2"
+    paragraph
+      text "Insecurity questions"
+  line_break
+  line_break
+  html tag="form" on:submit|preventDefault="handleSubmit"
+    line_break
+    html tag="select" bind:value="selected" on:change="{() => answer = ''}"
+      line_break
+      paragraph
+        mustache "#each questions as question"
+        soft_break
+        text "			"
+        html tag="option" value="question"
+          soft_break
+          text "				"
+          mustache "question.text"
+          soft_break
+          text "			"
+        soft_break
+        text "		"
+        mustache "/each"
+        soft_break
+        text "	"
+    line_break
+    line_break
+    html tag="input" bind:value="answer"
+      line_break
+      line_break
+      html tag="button" disabled="!answer" type="submit"
+        line_break
+        paragraph
+          text "Submit"
+          soft_break
+          text "	"
+      line_break
+      paragraph
+  line_break
+  line_break
+  html tag="p"
+    paragraph
+      text "selected question "
+      mustache "selected ? selected.id : '[waiting...]'"

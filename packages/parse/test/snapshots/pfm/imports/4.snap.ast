@@ -1,0 +1,6 @@
+root
+  import_statement "import * as utils from \"./utils\""
+  line_break
+  paragraph
+    text "Paragraph."
+  line_break

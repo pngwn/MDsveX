@@ -1,0 +1,5 @@
+root
+  paragraph
+    text "<"
+    text "!DOCTYPE html>"
+  line_break

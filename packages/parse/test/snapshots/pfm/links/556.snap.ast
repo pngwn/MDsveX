@@ -1,0 +1,9 @@
+root
+  line_break
+  paragraph
+    link href="/url" title="title"
+      text "foo"
+    soft_break
+    text "["
+    text "]"
+  line_break

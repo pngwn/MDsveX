@@ -1,0 +1,6 @@
+root
+  paragraph
+    code_span " "
+    soft_break
+    code_span "  "
+  line_break

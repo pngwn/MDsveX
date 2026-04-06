@@ -1,0 +1,6 @@
+root
+  directive_container name="note"
+    block_quote
+      paragraph
+        text "Block quote inside directive."
+    line_break

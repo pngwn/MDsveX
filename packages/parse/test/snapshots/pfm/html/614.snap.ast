@@ -1,0 +1,4 @@
+root
+  html tag="a" self_closing=true
+  html tag="b2" self_closing=true
+  line_break

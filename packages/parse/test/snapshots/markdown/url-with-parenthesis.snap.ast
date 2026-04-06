@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "There's an "
+    link href="http://en.memory-alpha.org/wiki/Darmok_(episode)"
+      text "episode"
+    text " of Star Trek: The Next Generation"
+  line_break

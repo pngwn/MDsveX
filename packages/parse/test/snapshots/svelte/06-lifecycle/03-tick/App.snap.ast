@@ -1,0 +1,8 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="textarea" value="text" on:keydown="handleKeydown"

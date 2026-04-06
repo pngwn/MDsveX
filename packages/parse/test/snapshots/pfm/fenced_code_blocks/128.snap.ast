@@ -1,0 +1,11 @@
+root
+  block_quote
+    paragraph
+      text "```"
+      soft_break
+      text "aaa"
+  line_break
+  line_break
+  paragraph
+    text "bbb"
+  line_break

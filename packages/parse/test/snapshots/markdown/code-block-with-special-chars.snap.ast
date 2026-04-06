@@ -1,0 +1,2 @@
+root
+  code_fence "//**this** code _has_ special chars\nvar arr = ['foo', 'bar', 'baz'];\nfunction () {\n    return 'foo';\n}\n\\n"

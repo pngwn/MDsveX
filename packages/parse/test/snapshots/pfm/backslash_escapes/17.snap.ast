@@ -1,0 +1,4 @@
+root
+  paragraph
+    code_span "\\[\\`"
+  line_break

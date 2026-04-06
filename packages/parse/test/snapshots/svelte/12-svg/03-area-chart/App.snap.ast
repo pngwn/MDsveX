@@ -1,0 +1,50 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="h2"
+    paragraph
+      text "Arctic sea ice minimum"
+  line_break
+  line_break
+  html tag="div" class="chart" bind:clientWidth="width" bind:clientHeight="height"
+    line_break
+    html tag="svg"
+      line_break
+      html_comment " y axis "
+      line_break
+      html tag="g" class="axis y-axis" transform="translate(0, {padding.top})"
+        line_break
+        paragraph
+          mustache "#each yTicks as tick"
+          soft_break
+          text "				"
+          html tag="g" class="tick tick-{tick}" transform="translate(0, {yScale(tick) - padding.bottom})"
+            soft_break
+            text "					"
+            html tag="line" x2="100%"
+            soft_break
+            text "					"
+            html tag="text" y="-4"
+              mustache "tick"
+              text " "
+              mustache "tick === 8 ? ' million sq km' : ''"
+            soft_break
+            text "				"
+          soft_break
+          text "			"
+          mustache "/each"
+          soft_break
+          text "		"
+    line_break
+  line_break
+  line_break
+  html tag="p"
+    paragraph
+      text "Average September extent. Source: "
+      html tag="a" href="https://climate.nasa.gov/vital-signs/arctic-sea-ice/"
+        text "NSIDC/NASA"
+  line_break
+  line_break
+  html tag="style"
+  line_break

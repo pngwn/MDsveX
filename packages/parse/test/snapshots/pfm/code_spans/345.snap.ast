@@ -1,0 +1,6 @@
+root
+  paragraph
+    code_span "<https://foo.bar."
+    text "baz>"
+    text "`"
+  line_break

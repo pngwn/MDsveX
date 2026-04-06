@@ -1,0 +1,24 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="ContactCard"
+    line_break
+    html tag="span" slot="name"
+      line_break
+      paragraph
+        text "P. Sherman"
+        soft_break
+        text "	"
+    line_break
+    line_break
+    html tag="span" slot="address"
+      line_break
+      paragraph
+        text "42 Wallaby Way"
+        html tag="br"
+          soft_break
+          text "		Sydney"
+          soft_break
+          text "	"
+    soft_break

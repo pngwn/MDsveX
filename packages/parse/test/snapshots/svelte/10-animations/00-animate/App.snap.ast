@@ -1,0 +1,41 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="div" class="board"
+    line_break
+    html tag="input" class="new-todo" placeholder="what needs to be done?" on:keydown="{event => event.which === 13 && add(event.target)}"
+      line_break
+      line_break
+      html tag="div" class="left"
+        line_break
+        html tag="h2"
+          paragraph
+            text "todo"
+        line_break
+        paragraph
+          mustache "#each todos.filter(t => !t.done) as todo (todo.id)"
+          soft_break
+          text "			"
+          html tag="label" in:receive="{{key: todo.id}}" out:send="{{key: todo.id}}" animate:flip=true
+            soft_break
+            text "				"
+            html tag="input" type="checkbox" bind:checked="todo.done"
+              soft_break
+              text "				"
+              mustache "todo.description"
+              soft_break
+              text "				"
+              html tag="button" on:click="{() => remove(todo)}"
+                text "x"
+              soft_break
+              text "			"
+          soft_break
+          text "		"
+          mustache "/each"
+          soft_break
+          text "	"
+  line_break

@@ -1,0 +1,7 @@
+root
+  paragraph
+    code_span "Foo\n----\n"
+  line_break
+  line_break
+  html tag="a" title="a lot\n---\nof dashes" self_closing=true
+  line_break

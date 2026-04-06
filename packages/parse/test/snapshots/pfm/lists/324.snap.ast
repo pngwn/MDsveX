@@ -1,0 +1,7 @@
+root
+  list ordered=true start=1 tight=false
+    list_item
+      code_fence "   foo"
+      paragraph
+        text "bar"
+  line_break

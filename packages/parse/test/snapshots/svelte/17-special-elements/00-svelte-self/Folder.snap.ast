@@ -1,0 +1,47 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="span" class:expanded=true on:click="toggle"
+    paragraph
+      mustache "name"
+  line_break
+  line_break
+  paragraph
+    mustache "#if expanded"
+    soft_break
+    text "	"
+    html tag="ul"
+      soft_break
+      text "		"
+      mustache "#each files as file"
+      soft_break
+      text "			"
+      html tag="li"
+        soft_break
+        text "				"
+        mustache "#if file.type === 'folder'"
+        soft_break
+        text "					"
+        html tag="svelte:self" ...file="...file" self_closing=true
+        soft_break
+        text "				"
+        mustache ":else"
+        soft_break
+        text "					"
+        html tag="File" ...file="...file" self_closing=true
+        soft_break
+        text "				"
+        mustache "/if"
+        soft_break
+        text "			"
+      soft_break
+      text "		"
+      mustache "/each"
+      soft_break
+      text "	"
+    soft_break
+    mustache "/if"

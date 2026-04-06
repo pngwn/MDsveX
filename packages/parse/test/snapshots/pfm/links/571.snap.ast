@@ -1,0 +1,8 @@
+root
+  line_break
+  paragraph
+    text "[foo"
+    text "]"
+    link href="/url1"
+      text "bar"
+  line_break

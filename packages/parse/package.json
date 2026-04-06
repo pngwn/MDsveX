@@ -1,12 +1,18 @@
 {
-	"name": "parse",
+	"name": "@mdsvex/parse",
 	"version": "0.1.1",
 	"description": "",
 	"main": "src/main.ts",
 	"module": "src/main.ts",
 	"private": true,
 	"type": "module",
-	"scripts": {},
+	"scripts": {
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run",
+		"tsc": "tsc --noEmit",
+		"build": "tsc && vite build --config vite.config.build.ts && find tsc/ -name '*.d.ts' -exec cp {} dist/ \\;"
+
+	},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/pfm-parser"
@@ -17,6 +23,40 @@
 		"mdsvex",
 		"ast"
 	],
+	"exports": {
+		".": {
+			"import": "./dist/main.js",
+			"types": "./dist/main.d.ts"
+		},
+		"./opcodes": {
+			"import": "./dist/opcodes.js",
+			"types": "./dist/opcodes.d.ts"
+		},
+		"./tree-builder": {
+			"import": "./dist/tree-builder.js",
+			"types": "./dist/tree_builder.d.ts"
+		},
+		"./utils": {
+			"import": "./dist/utils.js",
+			"types": "./dist/utils.d.ts"
+		},
+		"./cursor": {
+			"import": "./dist/cursor.js",
+			"types": "./dist/cursor.d.ts"
+		},
+		"./buf-utils": {
+			"import": "./dist/buf-utils.js",
+			"types": "./dist/buf-utils.d.ts"
+		},
+		"./wire-tree-builder": {
+			"import": "./dist/wire-tree-builder.js",
+			"types": "./dist/wire_tree_builder.d.ts"
+		},
+		"./package.json": "./package.json"
+	},
 	"author": "pngwn <hello@pngwn.io>",
-	"license": "MIT"
+	"license": "MIT",
+	"dependencies": {
+		"@rollup/plugin-terser": "^1.0.0"
+	}
 }

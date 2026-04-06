@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "!"
+    text "[foo"
+    text "]"
+  line_break
+  line_break

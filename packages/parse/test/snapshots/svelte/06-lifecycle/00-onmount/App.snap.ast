@@ -1,0 +1,42 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="h1"
+    paragraph
+      text "Photo album"
+  line_break
+  line_break
+  html tag="div" class="photos"
+    line_break
+    paragraph
+      mustache "#each photos as photo"
+      soft_break
+      text "		"
+      html tag="figure"
+        soft_break
+        text "			"
+        html tag="img" src="photo.thumbnailUrl" alt="photo.title"
+          soft_break
+          text "			"
+          html tag="figcaption"
+            mustache "photo.title"
+          soft_break
+          text "		"
+      soft_break
+      text "	"
+      mustache ":else"
+      soft_break
+      text "		"
+      html_comment " this block renders when photos.length === 0 "
+      soft_break
+      text "		"
+      html tag="p"
+        text "loading..."
+      soft_break
+      text "	"
+      mustache "/each"
+      soft_break

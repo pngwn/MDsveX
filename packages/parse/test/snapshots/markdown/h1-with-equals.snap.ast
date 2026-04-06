@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "This is an H1"
+    soft_break
+    text "============="
+  line_break

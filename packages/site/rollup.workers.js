@@ -5,11 +5,11 @@ import { terser } from "rollup-plugin-terser";
 const dev = true;
 
 // bundle workers
-export default ["compiler", "bundler"].map(x => ({
+export default ["compiler", "bundler"].map((x) => ({
 	input: `src/components/Repl/workers/${x}/index.js`,
 	output: {
 		file: `static/workers/${x}.js`,
-		format: "iife"
+		format: "iife",
 	},
-	plugins: [resolve(), json(), terser()]
+	plugins: [resolve(), json(), terser()],
 }));

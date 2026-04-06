@@ -1,27 +1,27 @@
 <script>
-	import { getContext } from 'svelte';
-	import { slide } from 'svelte/transition';
+import { getContext } from "svelte";
+import { slide } from "svelte/transition";
 
-	const { navigate } = getContext('REPL');
+const { navigate } = getContext("REPL");
 
-	export let kind;
-	export let details = null;
-	export let filename = null;
-	export let truncate;
+export let kind;
+export let details = null;
+export let filename = null;
+export let truncate;
 
-	function message(details) {
-		let str = details.message || '[missing message]';
+function message(details) {
+	let str = details.message || "[missing message]";
 
-		let loc = [];
+	let loc = [];
 
-		if (details.filename && details.filename !== filename) {
-			loc.push(details.filename);
-		}
+	if (details.filename && details.filename !== filename) {
+		loc.push(details.filename);
+	}
 
-		if (details.start) loc.push(details.start.line, details.start.column);
+	if (details.start) loc.push(details.start.line, details.start.column);
 
-		return str + (loc.length ? ` (${loc.join(':')})` : ``);
-	};
+	return str + (loc.length ? ` (${loc.join(":")})` : ``);
+}
 </script>
 
 <style>

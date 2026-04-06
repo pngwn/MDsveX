@@ -1,0 +1,13 @@
+root
+  list ordered=true start=1 tight=false
+    list_item
+      paragraph
+        text "A paragraph"
+        soft_break
+        text "    with two lines."
+      paragraph
+        text "indented code"
+      block_quote
+        paragraph
+          text "A block quote."
+  line_break

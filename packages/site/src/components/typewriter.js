@@ -12,6 +12,6 @@ export function typewriter(node, { speed = 50, delay }) {
 		tick: (t, u) => {
 			const i = ~~(text.length * t);
 			node.textContent = text.slice(0, i);
-		}
+		},
 	};
 }

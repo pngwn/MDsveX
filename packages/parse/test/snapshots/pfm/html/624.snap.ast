@@ -1,0 +1,4 @@
+root
+  paragraph
+    text "</a href=\"foo\">"
+  line_break

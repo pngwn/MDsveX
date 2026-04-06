@@ -1,0 +1,2 @@
+root
+  code_fence info="md" "```js\nfunction my_function(string)\n    return string.toUpperCase();\n```"

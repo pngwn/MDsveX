@@ -1,98 +1,98 @@
 <script>
-  import { getContext } from "svelte";
+import { getContext } from "svelte";
 
-  export let handle_select;
-  export let funky;
+export let handle_select;
+export let funky;
 
-  let { components, selected, request_focus, rebundle } = getContext("REPL");
+let { components, selected, request_focus, rebundle } = getContext("REPL");
 
-  let editing = null;
+let editing = null;
 
-  function selectComponent(component) {
-    if ($selected !== component) {
-      editing = null;
-      handle_select(component);
-    }
-  }
+function selectComponent(component) {
+	if ($selected !== component) {
+		editing = null;
+		handle_select(component);
+	}
+}
 
-  function editTab(component) {
-    if ($selected === component) {
-      editing = $selected;
-    }
-  }
+function editTab(component) {
+	if ($selected === component) {
+		editing = $selected;
+	}
+}
 
-  function closeEdit() {
-    const match = /(.+)\.(svelte|svx|js)$/.exec($selected.name);
-    $selected.name = match ? match[1] : $selected.name;
-    if (isComponentNameUsed($selected)) {
-      $selected.name = $selected.name + "_1";
-    }
-    if (match && match[2]) $selected.type = match[2];
+function closeEdit() {
+	const match = /(.+)\.(svelte|svx|js)$/.exec($selected.name);
+	$selected.name = match ? match[1] : $selected.name;
+	if (isComponentNameUsed($selected)) {
+		$selected.name = $selected.name + "_1";
+	}
+	if (match && match[2]) $selected.type = match[2];
 
-    editing = null;
+	editing = null;
 
-    // re-select, in case the type changed
-    handle_select($selected);
+	// re-select, in case the type changed
+	handle_select($selected);
 
-    components = components; // TODO necessary?
+	components = components; // TODO necessary?
 
-    // focus the editor, but wait a beat (so key events aren't misdirected)
-    setTimeout(request_focus);
+	// focus the editor, but wait a beat (so key events aren't misdirected)
+	setTimeout(request_focus);
 
-    rebundle();
-  }
+	rebundle();
+}
 
-  function remove(component) {
-    let result = confirm(
-      `Are you sure you want to delete ${component.name}.${component.type}?`
-    );
+function remove(component) {
+	let result = confirm(
+		`Are you sure you want to delete ${component.name}.${component.type}?`,
+	);
 
-    if (result) {
-      const index = $components.indexOf(component);
+	if (result) {
+		const index = $components.indexOf(component);
 
-      if (~index) {
-        components.set(
-          $components.slice(0, index).concat($components.slice(index + 1))
-        );
-      } else {
-        console.error(`Could not find component! That's... odd`);
-      }
+		if (~index) {
+			components.set(
+				$components.slice(0, index).concat($components.slice(index + 1)),
+			);
+		} else {
+			console.error(`Could not find component! That's... odd`);
+		}
 
-      handle_select($components[index] || $components[$components.length - 1]);
-    }
-  }
+		handle_select($components[index] || $components[$components.length - 1]);
+	}
+}
 
-  function selectInput(event) {
-    setTimeout(() => {
-      event.target.select();
-    });
-  }
+function selectInput(event) {
+	setTimeout(() => {
+		event.target.select();
+	});
+}
 
-  let uid = 1;
+let uid = 1;
 
-  function addNew() {
-    const component = {
-      name: uid++ ? `Component${uid}` : "Component1",
-      type: "svelte",
-      source: "",
-    };
+function addNew() {
+	const component = {
+		name: uid++ ? `Component${uid}` : "Component1",
+		type: "svelte",
+		source: "",
+	};
 
-    editing = component;
+	editing = component;
 
-    setTimeout(() => {
-      // TODO we can do this without IDs
-      document.getElementById(component.name).scrollIntoView(false);
-    });
+	setTimeout(() => {
+		// TODO we can do this without IDs
+		document.getElementById(component.name).scrollIntoView(false);
+	});
 
-    components.update((components) => components.concat(component));
-    handle_select(component);
-  }
+	components.update((components) => components.concat(component));
+	handle_select(component);
+}
 
-  function isComponentNameUsed(editing) {
-    return $components.find(
-      (component) => component !== editing && component.name === editing.name
-    );
-  }
+function isComponentNameUsed(editing) {
+	return $components.find(
+		(component) => component !== editing && component.name === editing.name,
+	);
+}
 </script>
 
 <style>

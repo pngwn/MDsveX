@@ -1,0 +1,21 @@
+root
+  html tag="table"
+    html tag="tr"
+      html tag="td"
+        line_break
+        html tag="pre"
+          line_break
+          paragraph
+            strong_emphasis
+              strong_emphasis
+                text "Hello"
+            text ","
+          line_break
+          line_break
+          paragraph
+            emphasis
+              text "world"
+            text "."
+            soft_break
+        line_break
+  line_break

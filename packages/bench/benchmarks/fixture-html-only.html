@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Component Library Documentation</title>
+  <link rel="stylesheet" href="/styles/main.css" />
+  <script type="module" src="/scripts/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <nav aria-label="Main navigation">
+      <ul class="nav-list">
+        <li><a href="/" class="nav-link active">Home</a></li>
+        <li><a href="/docs" class="nav-link">Docs</a></li>
+        <li><a href="/components" class="nav-link">Components</a></li>
+        <li><a href="/examples" class="nav-link">Examples</a></li>
+        <li><a href="/blog" class="nav-link">Blog</a></li>
+      </ul>
+      <div class="search-container">
+        <input type="search" placeholder="Search docs..." aria-label="Search documentation" />
+        <button type="submit" aria-label="Submit search">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" />
+            <line x1="11" y1="11" x2="15" y2="15" stroke="currentColor" stroke-width="1.5" />
+          </svg>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <main id="content">
+    <section class="hero">
+      <h1>Build <em>beautiful</em> interfaces</h1>
+      <p class="lead">A comprehensive component library for modern web applications.
+        Ship faster with <strong>accessible</strong>, <strong>performant</strong>,
+        and <strong>customizable</strong> components.</p>
+      <div class="hero-actions">
+        <a href="/docs/getting-started" class="btn btn-primary">Get Started</a>
+        <a href="https://github.com/example/components" class="btn btn-secondary">
+          View on GitHub
+        </a>
+      </div>
+    </section>
+
+    <section class="features" aria-labelledby="features-heading">
+      <h2 id="features-heading">Features</h2>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" fill="currentColor" />
+              <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" fill="none" />
+            </svg>
+          </div>
+          <h3>Composable</h3>
+          <p>Build complex UIs from small, reusable pieces. Each component is
+            designed to work <em>seamlessly</em> with others.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" fill="none" />
+              <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" />
+            </svg>
+          </div>
+          <h3>Accessible</h3>
+          <p>WAI-ARIA compliant out of the box. Keyboard navigation, screen reader
+            support, and focus management are <strong>built in</strong>.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" fill="none" />
+              <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" />
+            </svg>
+          </div>
+          <h3>Performant</h3>
+          <p>Tree-shakeable, lazy-loadable, and optimized for minimal bundle size.
+            Only ship what you <code>import</code>.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24">
+              <path d="M12 2a10 10 0 100 20 10 10 0 000-20z" stroke="currentColor" fill="none" />
+              <path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20" stroke="currentColor" />
+            </svg>
+          </div>
+          <h3>Themeable</h3>
+          <p>CSS custom properties for easy theming. Supports dark mode, high contrast,
+            and custom color schemes.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="component-showcase">
+      <h2>Component Showcase</h2>
+
+      <!-- Alert components -->
+      <div class="showcase-group">
+        <h3>Alerts</h3>
+        <div role="alert" class="alert alert-info">
+          <span class="alert-icon" aria-hidden="true">ℹ️</span>
+          <div class="alert-content">
+            <strong>Information:</strong> This is an informational alert with
+            <a href="/docs/alerts">documentation link</a>.
+          </div>
+          <button class="alert-close" aria-label="Dismiss alert">&times;</button>
+        </div>
+        <div role="alert" class="alert alert-warning">
+          <span class="alert-icon" aria-hidden="true">⚠️</span>
+          <div class="alert-content">
+            <strong>Warning:</strong> Please review the
+            <a href="/docs/migration">migration guide</a> before upgrading.
+          </div>
+        </div>
+        <div role="alert" class="alert alert-error">
+          <span class="alert-icon" aria-hidden="true">❌</span>
+          <div class="alert-content">
+            <strong>Error:</strong> Failed to load data. <button class="link-btn">Retry</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form components -->
+      <div class="showcase-group">
+        <h3>Forms</h3>
+        <form action="/api/submit" method="POST" class="demo-form" novalidate>
+          <fieldset>
+            <legend>Account Details</legend>
+
+            <div class="form-group">
+              <label for="name">Full Name <span class="required" aria-label="required">*</span></label>
+              <input type="text" id="name" name="name" required autocomplete="name"
+                     placeholder="Jane Smith" class="form-input" />
+              <span class="form-hint">Enter your legal name as it appears on official documents.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="email">Email <span class="required" aria-label="required">*</span></label>
+              <input type="email" id="email" name="email" required autocomplete="email"
+                     placeholder="jane@example.com" class="form-input"
+                     aria-describedby="email-hint" />
+              <span id="email-hint" class="form-hint">We'll never share your email.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="role">Role</label>
+              <select id="role" name="role" class="form-select">
+                <option value="">Select a role...</option>
+                <option value="developer">Developer</option>
+                <option value="designer">Designer</option>
+                <option value="manager">Project Manager</option>
+                <option value="qa">QA Engineer</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="bio">Bio</label>
+              <textarea id="bio" name="bio" rows="4" class="form-textarea"
+                        placeholder="Tell us about yourself..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" name="terms" required />
+                <span>I agree to the <a href="/terms">Terms of Service</a>
+                  and <a href="/privacy">Privacy Policy</a></span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Create Account</button>
+            <button type="reset" class="btn btn-ghost">Reset</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Table component -->
+      <div class="showcase-group">
+        <h3>Data Table</h3>
+        <div class="table-wrapper" role="region" aria-label="Component API" tabindex="0">
+          <table class="data-table">
+            <caption>Button component props</caption>
+            <thead>
+              <tr>
+                <th scope="col">Prop</th>
+                <th scope="col">Type</th>
+                <th scope="col">Default</th>
+                <th scope="col">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>variant</code></td>
+                <td><code>"primary" | "secondary" | "ghost"</code></td>
+                <td><code>"primary"</code></td>
+                <td>Visual style of the button</td>
+              </tr>
+              <tr>
+                <td><code>size</code></td>
+                <td><code>"sm" | "md" | "lg"</code></td>
+                <td><code>"md"</code></td>
+                <td>Size of the button</td>
+              </tr>
+              <tr>
+                <td><code>disabled</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td>Whether the button is disabled</td>
+              </tr>
+              <tr>
+                <td><code>loading</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td>Shows a loading spinner and disables interaction</td>
+              </tr>
+              <tr>
+                <td><code>href</code></td>
+                <td><code>string | undefined</code></td>
+                <td><code>undefined</code></td>
+                <td>If provided, renders as an anchor element</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Card layout -->
+      <div class="showcase-group">
+        <h3>Cards</h3>
+        <div class="card-grid">
+          <article class="card">
+            <img src="/images/placeholder-1.jpg" alt="Abstract geometric pattern"
+                 class="card-image" width="400" height="225" loading="lazy" />
+            <div class="card-body">
+              <h4 class="card-title">Getting Started Guide</h4>
+              <p class="card-text">Learn how to install and configure the component
+                library in your project. Supports <strong>npm</strong>, <strong>yarn</strong>,
+                and <strong>pnpm</strong>.</p>
+              <div class="card-meta">
+                <time datetime="2024-03-15">March 15, 2024</time>
+                <span class="tag">Tutorial</span>
+              </div>
+            </div>
+            <div class="card-footer">
+              <a href="/docs/getting-started" class="card-link">Read more &rarr;</a>
+            </div>
+          </article>
+          <article class="card">
+            <img src="/images/placeholder-2.jpg" alt="Code editor screenshot"
+                 class="card-image" width="400" height="225" loading="lazy" />
+            <div class="card-body">
+              <h4 class="card-title">Theming Deep Dive</h4>
+              <p class="card-text">Explore the theming system, CSS custom properties,
+                and how to create your own <em>design tokens</em>.</p>
+              <div class="card-meta">
+                <time datetime="2024-03-10">March 10, 2024</time>
+                <span class="tag">Advanced</span>
+              </div>
+            </div>
+            <div class="card-footer">
+              <a href="/docs/theming" class="card-link">Read more &rarr;</a>
+            </div>
+          </article>
+          <article class="card">
+            <img src="/images/placeholder-3.jpg" alt="Component tree visualization"
+                 class="card-image" width="400" height="225" loading="lazy" />
+            <div class="card-body">
+              <h4 class="card-title">Accessibility Patterns</h4>
+              <p class="card-text">Best practices for building accessible interfaces
+                with our components. Includes <abbr title="Web Content Accessibility Guidelines">WCAG</abbr>
+                2.1 compliance checklist.</p>
+              <div class="card-meta">
+                <time datetime="2024-03-05">March 5, 2024</time>
+                <span class="tag">Guide</span>
+              </div>
+            </div>
+            <div class="card-footer">
+              <a href="/docs/accessibility" class="card-link">Read more &rarr;</a>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <!-- Dialog / Modal -->
+      <div class="showcase-group">
+        <h3>Dialog</h3>
+        <dialog id="demo-dialog" class="dialog" aria-labelledby="dialog-title">
+          <div class="dialog-header">
+            <h4 id="dialog-title">Confirm Action</h4>
+            <button class="dialog-close" aria-label="Close dialog">&times;</button>
+          </div>
+          <div class="dialog-body">
+            <p>Are you sure you want to delete this item? This action
+              <strong>cannot be undone</strong>.</p>
+            <div class="dialog-details">
+              <dl>
+                <dt>Item</dt>
+                <dd>Component Library v2.3.1</dd>
+                <dt>Created</dt>
+                <dd><time datetime="2024-01-15">January 15, 2024</time></dd>
+                <dt>Size</dt>
+                <dd>42.3 KB</dd>
+              </dl>
+            </div>
+          </div>
+          <div class="dialog-footer">
+            <button class="btn btn-ghost" data-action="cancel">Cancel</button>
+            <button class="btn btn-danger" data-action="confirm">Delete</button>
+          </div>
+        </dialog>
+      </div>
+    </section>
+
+    <!-- Code example section -->
+    <section class="code-examples">
+      <h2>Usage Examples</h2>
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">HTML</span>
+          <button class="copy-btn" data-clipboard-target="#code-1" aria-label="Copy code">
+            Copy
+          </button>
+        </div>
+        <pre id="code-1"><code class="language-html">&lt;button
+  class="btn btn-primary"
+  aria-pressed="false"
+  data-variant="primary"
+&gt;
+  Click me
+&lt;/button&gt;</code></pre>
+      </div>
+    </section>
+  </main>
+
+  <aside class="sidebar" aria-label="Table of contents">
+    <nav>
+      <h2 class="sidebar-title">On this page</h2>
+      <ol class="toc">
+        <li><a href="#features-heading">Features</a></li>
+        <li>
+          <a href="#component-showcase">Component Showcase</a>
+          <ol>
+            <li><a href="#alerts">Alerts</a></li>
+            <li><a href="#forms">Forms</a></li>
+            <li><a href="#data-table">Data Table</a></li>
+            <li><a href="#cards">Cards</a></li>
+            <li><a href="#dialog">Dialog</a></li>
+          </ol>
+        </li>
+        <li><a href="#code-examples">Usage Examples</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <footer class="site-footer">
+    <div class="footer-grid">
+      <div class="footer-section">
+        <h3>Resources</h3>
+        <ul>
+          <li><a href="/docs">Documentation</a></li>
+          <li><a href="/changelog">Changelog</a></li>
+          <li><a href="/roadmap">Roadmap</a></li>
+          <li><a href="/examples">Examples</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h3>Community</h3>
+        <ul>
+          <li><a href="https://github.com/example/components">GitHub</a></li>
+          <li><a href="https://discord.gg/example">Discord</a></li>
+          <li><a href="https://twitter.com/example">Twitter</a></li>
+          <li><a href="/contributing">Contributing</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h3>Legal</h3>
+        <ul>
+          <li><a href="/privacy">Privacy Policy</a></li>
+          <li><a href="/terms">Terms of Service</a></li>
+          <li><a href="/license">License (MIT)</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2024 Example Inc. Built with <span aria-label="love">❤️</span> and open source.</p>
+    </div>
+  </footer>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Component Library",
+    "url": "https://components.example.com"
+  }
+  </script>
+</body>
+</html>

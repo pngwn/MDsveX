@@ -1,0 +1,14 @@
+root
+  paragraph
+    text "[[[foo"
+    text "]"
+    text "]"
+    text "]: /url"
+  line_break
+  line_break
+  paragraph
+    text "[[[foo"
+    text "]"
+    text "]"
+    text "]"
+  line_break

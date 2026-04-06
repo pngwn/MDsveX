@@ -1,0 +1,27 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="div" class="{title} {comicSans}"
+    line_break
+    html tag="h1"
+      line_break
+      html tag="div" class="box"
+        line_break
+        html tag="div" class="box"
+          line_break
+          html tag="div" class="box"
+            paragraph
+              text "CSS"
+          line_break
+          paragraph
+            text "in JS"
+            soft_break
+            text "			"
+        line_break
+        paragraph
+          text "in HTML"
+          soft_break
+          text "		"
+      line_break
+    line_break

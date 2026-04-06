@@ -1,0 +1,7 @@
+root
+  line_break
+  paragraph
+    text "["
+    text "foo "
+    text tag="bar" attr="][ref]" "<bar attr=\"][ref]\">"
+  line_break

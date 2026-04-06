@@ -1,0 +1,10 @@
+root
+  html tag="DIV" CLASS="foo"
+    line_break
+    line_break
+    paragraph
+      strong_emphasis
+        text "Markdown"
+    line_break
+    line_break
+  line_break

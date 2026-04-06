@@ -1,0 +1,27 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="div" class="modal-background" on:click="{() => dispatch(\"close\")}"
+  line_break
+  line_break
+  html tag="div" class="modal"
+    line_break
+    html tag="slot" name="header"
+    line_break
+    html tag="hr"
+      line_break
+      html tag="slot"
+      line_break
+      html tag="hr"
+        line_break
+        line_break
+        html tag="button" on:click="{() => dispatch(\"close\")}"
+          paragraph
+            text "close modal"
+        line_break
+        paragraph
+  line_break

@@ -1,0 +1,16 @@
+root
+  paragraph
+    link href="svelte:head"
+      text "svelte:head"
+    soft_break
+    text "	"
+    text tag="link" rel="stylesheet" href="tutorial/dark-theme.css" "<link rel=\"stylesheet\" href=\"tutorial/dark-theme.css\">"
+    soft_break
+    text "</svelte"
+    text ":head>"
+  line_break
+  line_break
+  html tag="h1"
+    paragraph
+      text "Hello world"
+      text "!"

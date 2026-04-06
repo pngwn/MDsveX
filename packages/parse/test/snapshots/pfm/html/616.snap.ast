@@ -1,0 +1,3 @@
+root
+  html tag="a" foo="bar" bam="baz <em>\"</em>" _boolean=true zoop:33="zoop:33" self_closing=true
+  line_break

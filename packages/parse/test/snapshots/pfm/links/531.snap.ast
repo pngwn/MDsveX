@@ -1,0 +1,7 @@
+root
+  line_break
+  paragraph
+    link href="/uri"
+      image src="moon.jpg"
+        text "moon"
+  line_break

@@ -1,0 +1,7 @@
+root
+  html tag="script"
+  list ordered=true start=1 tight=true
+    list_item
+      strong_emphasis
+        text "bar"
+  line_break

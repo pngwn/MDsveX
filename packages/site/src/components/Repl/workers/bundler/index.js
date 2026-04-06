@@ -9,7 +9,7 @@ let packagesUrl;
 let svelteUrl;
 let current_id;
 
-self.addEventListener("message", event => {
+self.addEventListener("message", (event) => {
 	switch (event.data.type) {
 		case "init":
 			packagesUrl = event.data.packagesUrl;
@@ -40,7 +40,7 @@ self.addEventListener("message", event => {
 
 let cached = {
 	dom: {},
-	ssr: {}
+	ssr: {},
 };
 
 const ABORT = { aborted: true };
@@ -52,17 +52,17 @@ function fetch_if_uncached(url) {
 	}
 
 	const promise = fetch(url)
-		.then(async r => {
+		.then(async (r) => {
 			if (r.ok) {
 				return {
 					url: r.url,
-					body: await r.text()
+					body: await r.text(),
 				};
 			}
 
 			throw new Error(await r.text());
 		})
-		.catch(err => {
+		.catch((err) => {
 			fetch_cache.delete(url);
 			throw err;
 		});
@@ -137,7 +137,7 @@ async function get_bundle(uid, mode, cache, lookup) {
 				self.postMessage({
 					type: "status",
 					uid,
-					message: `resolving ${importee}`
+					message: `resolving ${importee}`,
 				});
 
 				if (importer in lookup) {
@@ -147,7 +147,7 @@ async function get_bundle(uid, mode, cache, lookup) {
 
 				try {
 					const pkg_url = await follow_redirects(
-						`${packagesUrl}/${importee}/package.json`
+						`${packagesUrl}/${importee}/package.json`,
 					);
 					const pkg_json = (await fetch_if_uncached(pkg_url)).body;
 					const pkg = JSON.parse(pkg_json);
@@ -173,7 +173,7 @@ async function get_bundle(uid, mode, cache, lookup) {
 				self.postMessage({
 					type: "status",
 					uid,
-					message: `fetching ${resolved}`
+					message: `fetching ${resolved}`,
 				});
 			}
 
@@ -187,10 +187,7 @@ async function get_bundle(uid, mode, cache, lookup) {
 
 			if (!/\.svelte$|\.svx$/.test(id)) return null;
 
-			const name = id
-				.split("/")
-				.pop()
-				.split(".")[0];
+			const name = id.split("/").pop().split(".")[0];
 
 			let preprocessPromise;
 			if (cache[id] && cache[id].code === code) {
@@ -215,29 +212,29 @@ async function get_bundle(uid, mode, cache, lookup) {
 							format: "esm",
 							dev: true,
 							name,
-							filename: name + ".svelte"
+							filename: name + ".svelte",
 						},
 						has_loopGuardTimeout_feature() && {
-							loopGuardTimeout: 100
-						}
-					)
+							loopGuardTimeout: 100,
+						},
+					),
 				);
 
 				new_cache[id] = { v, result };
 
-				(result.warnings || result.stats.warnings).forEach(warning => {
+				(result.warnings || result.stats.warnings).forEach((warning) => {
 					// TODO remove stats post-launch
 					warnings.push({
 						message: warning.message,
 						filename: warning.filename,
 						start: warning.start,
-						end: warning.end
+						end: warning.end,
 					});
 				});
 
 				return result.js;
 			});
-		}
+		},
 	};
 
 	try {
@@ -247,9 +244,9 @@ async function get_bundle(uid, mode, cache, lookup) {
 			inlineDynamicImports: true,
 			onwarn(warning) {
 				all_warnings.push({
-					message: warning.message
+					message: warning.message,
 				});
-			}
+			},
 		});
 
 		return {
@@ -258,7 +255,7 @@ async function get_bundle(uid, mode, cache, lookup) {
 			cache: new_cache,
 			error: null,
 			warnings,
-			all_warnings
+			all_warnings,
 		};
 	} catch (error) {
 		return {
@@ -267,7 +264,7 @@ async function get_bundle(uid, mode, cache, lookup) {
 			bundle: null,
 			cache: new_cache,
 			warnings,
-			all_warnings
+			all_warnings,
 		};
 	}
 }
@@ -276,11 +273,11 @@ async function bundle({ uid, components }) {
 	// console.clear();
 	console.log(
 		`running Svelte compiler version %c${svelte.VERSION}`,
-		"font-weight: bold"
+		"font-weight: bold",
 	);
 
 	const lookup = {};
-	components.forEach(component => {
+	components.forEach((component) => {
 		const path = `./${component.name}.${component.type}`;
 		lookup[path] = component;
 	});
@@ -301,7 +298,7 @@ async function bundle({ uid, components }) {
 				format: "iife",
 				name: "SvelteComponent",
 				exports: "named",
-				sourcemap: true
+				sourcemap: true,
 			})
 		).output[0];
 
@@ -322,9 +319,9 @@ async function bundle({ uid, components }) {
 						format: "iife",
 						name: "SvelteComponent",
 						exports: "named",
-						sourcemap: true
+						sourcemap: true,
 					})
-			  ).output[0]
+				).output[0]
 			: null;
 
 		return {
@@ -333,7 +330,7 @@ async function bundle({ uid, components }) {
 			ssr: ssr_result,
 			imports: dom.imports,
 			warnings: dom.warnings,
-			error: null
+			error: null,
 		};
 	} catch (err) {
 		console.error(err);
@@ -349,8 +346,8 @@ async function bundle({ uid, components }) {
 			warnings: dom.warnings,
 			error: Object.assign({}, e, {
 				message: e.message,
-				stack: e.stack
-			})
+				stack: e.stack,
+			}),
 		};
 	}
 }

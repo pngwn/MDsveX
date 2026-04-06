@@ -1,0 +1,36 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="svelte:window" on:resize="{resize}" self_closing=true
+  line_break
+  line_break
+  html tag="svg" bind:this="svg"
+    line_break
+    html_comment " y axis "
+    line_break
+    html tag="g" class="axis y-axis"
+      line_break
+      paragraph
+        mustache "#each yTicks as tick"
+        soft_break
+        text "			"
+        html tag="g" class="tick tick-{tick}" transform="translate(0, {yScale(tick)})"
+          soft_break
+          text "				"
+          html tag="line" x1="{padding.left}" x2="{xScale(22)}" self_closing=true
+          soft_break
+          text "				"
+          html tag="text" x="{padding.left - 8}" y="+4"
+            mustache "tick"
+          soft_break
+          text "			"
+        soft_break
+        text "		"
+        mustache "/each"
+        soft_break
+        text "	"
+  line_break
+  line_break
+  html tag="style"
+  line_break

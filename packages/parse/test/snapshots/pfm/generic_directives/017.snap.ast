@@ -1,0 +1,3 @@
+root
+  block_quote
+    directive_leaf name="note" "inside quote"

@@ -1,0 +1,8 @@
+root
+  directive_container name="note"
+    paragraph
+      text "See "
+      directive_inline name="ref"
+        text "here"
+      text " for details."
+    line_break

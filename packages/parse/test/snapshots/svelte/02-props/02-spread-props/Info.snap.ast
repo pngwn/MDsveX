@@ -1,0 +1,24 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="p"
+    line_break
+    paragraph
+      text "The "
+      html tag="code"
+        mustache "name"
+      text " package is "
+      mustache "speed"
+      text " fast."
+      soft_break
+      text "	Download version "
+      mustache "version"
+      text " from "
+      html tag="a" href="https://www.npmjs.com/package/{name}"
+        text "npm"
+      soft_break
+      text "	and "
+      html tag="a" href="website"
+        text "learn more here"
+      soft_break

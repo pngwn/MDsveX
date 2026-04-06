@@ -1,0 +1,34 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="article"
+    line_break
+    html tag="p" class="meta"
+      paragraph
+        mustache "comment.user"
+        text " "
+        mustache "comment.time_ago"
+    line_break
+    line_break
+    paragraph
+      svelte_tag tag="html" "comment.content"
+      line_break
+      line_break
+      html tag="div" class="replies"
+        line_break
+        paragraph
+          mustache "#each comment.comments as child"
+          soft_break
+          text "			"
+          html tag="svelte:self" comment="child" self_closing=true
+          soft_break
+          text "		"
+          mustache "/each"
+          soft_break
+          text "	"
+      line_break
+      paragraph

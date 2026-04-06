@@ -1,0 +1,2 @@
+root
+  directive_leaf name="my-component" "Hello World"

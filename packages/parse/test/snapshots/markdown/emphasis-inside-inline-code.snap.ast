@@ -1,0 +1,5 @@
+root
+  paragraph
+    text "some text "
+    code_span "**foo**"
+  line_break

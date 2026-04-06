@@ -1,0 +1,2 @@
+root
+  frontmatter "block: |\n  line1\n  line2\n"

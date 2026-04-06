@@ -1,0 +1,8 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="div" on:mouseenter="enter" on:mouseleave="leave"
+    line_break
+    html tag="slot" hovering="hovering"
+    line_break

@@ -6,13 +6,13 @@
 }
 
 @font-face {
-	font-family: 'Source Code Pro';
-	src: url('/fonts/SourceCodePro-Regular.ttf') format('truetype');
+	font-family: "Source Code Pro";
+	src: url("/fonts/SourceCodePro-Regular.ttf") format("truetype");
 }
 
 body {
 	margin: 0;
-	font-family: 'Source Code Pro', monospace;
+	font-family: "Source Code Pro", monospace;
 	font-size: 100%;
 	line-height: 1.8;
 }
