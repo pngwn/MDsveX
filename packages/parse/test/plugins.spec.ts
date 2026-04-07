@@ -3,13 +3,13 @@ import { parse_markdown_svelte, node_kind } from "../src/main";
 import type { ParsePlugin } from "../src/plugin_types";
 import { TreeBuilder } from "../src/tree_builder";
 import { PluginDispatcher } from "../src/plugin_dispatch";
-import { SourceTextSource } from "../src/node_view";
-import { PFMParser } from "../src/main";
+import { SourceTextSource, WireTextSource } from "../src/node_view";
+import { PFMParser, WireEmitter } from "../src/main";
+import { WireTreeBuilder } from "../src/wire_tree_builder";
 import { node_buffer, kind_to_string, string_to_kind } from "../src/utils";
 import { UndoLog, UndoEntryKind, ATTR_DID_NOT_EXIST } from "../src/undo_log";
 import { NodeView, ViewCache } from "../src/node_view";
 
-// --- string_to_kind utility ---
 
 describe("string_to_kind", () => {
 	it("maps all known node types", () => {
@@ -36,7 +36,6 @@ describe("string_to_kind", () => {
 	});
 });
 
-// --- node_buffer extensions ---
 
 describe("node_buffer extensions", () => {
 	describe("push_unlinked", () => {
@@ -95,7 +94,6 @@ describe("node_buffer extensions", () => {
 	});
 });
 
-// --- undo log ---
 
 describe("UndoLog", () => {
 	it("records and revokes attr set", () => {
@@ -201,7 +199,6 @@ describe("UndoLog", () => {
 	});
 });
 
-// --- end-to-end plugin tests ---
 
 describe("parse plugins", () => {
 	it("no-op when no plugins provided", () => {
@@ -564,5 +561,349 @@ describe("parse plugins: the heading auto-link example from PLUGINS.md", () => {
 		const link2 = result.nodes.get_node(h2.children[0]);
 		expect(link2.kind).toBe("link");
 		expect(link2.metadata.href).toBe("#second");
+	});
+});
+
+describe("parse plugins: wire path (WireEmitter → WireTreeBuilder)", () => {
+	function slugify(text: string): string {
+		return text
+			.toLowerCase()
+			.replace(/[^\w]+/g, "-")
+			.replace(/^-+|-+$/g, "");
+	}
+
+	it("simple attrs on strong_emphasis through wire pipeline", () => {
+		const plugin: ParsePlugin = {
+			strong_emphasis: {
+				parse(node) {
+					node.attrs.id = "boo";
+				},
+			},
+		};
+
+		const source = "hello *world*\n";
+		const emitter = new WireEmitter();
+		const parser = new PFMParser(emitter);
+		emitter.set_source(source);
+		parser.parse(source);
+		const batches = emitter.flush();
+
+		const dispatcher = new PluginDispatcher(
+			[plugin],
+			new WireTextSource([]),
+		);
+		const builder = new WireTreeBuilder(128, dispatcher);
+		builder.apply(batches);
+
+		const buf = builder.get_buffer();
+
+		// find strong_emphasis
+		let strong_idx = -1;
+		for (let i = 0; i < buf.size; i++) {
+			if (buf.kind_at(i) === node_kind.strong_emphasis) {
+				strong_idx = i;
+				break;
+			}
+		}
+		expect(strong_idx).not.toBe(-1);
+		expect(buf.metadata_at(strong_idx)).toEqual({ id: "boo" });
+	});
+
+	it("autolink works through wire pipeline", () => {
+		const plugin: ParsePlugin = {
+			heading: {
+				parse(node) {
+					const link = node.wrapInner("link");
+					return () => {
+						const slug = slugify(node.textContent);
+						node.attrs.id = slug;
+						link.attrs.href = `#${slug}`;
+					};
+				},
+			},
+		};
+
+		const source = "# Hello World\n";
+
+		// wire pipeline: parser → WireEmitter → batches → WireTreeBuilder
+		const emitter = new WireEmitter();
+		const parser = new PFMParser(emitter);
+		emitter.set_source(source);
+		parser.parse(source);
+		const batches = emitter.flush();
+
+		// build tree with plugin dispatcher
+		const dispatcher = new PluginDispatcher([plugin], new WireTextSource([]));
+		const builder = new WireTreeBuilder(128, dispatcher);
+		builder.apply(batches);
+		dispatcher.run_sequential(builder.get_buffer());
+
+		const buf = builder.get_buffer();
+		const root = buf.get_node(0);
+
+		// find heading
+		const heading_idx = root.children.find(
+			(i: number) => buf.kind_at(i) === node_kind.heading,
+		)!;
+		expect(heading_idx).toBeDefined();
+
+		const heading = buf.get_node(heading_idx);
+		expect(heading.metadata.id).toBe("hello-world");
+
+		// heading's first child should be a link
+		expect(heading.children.length).toBeGreaterThan(0);
+		const link = buf.get_node(heading.children[0]);
+		expect(link.kind).toBe("link");
+		expect(link.metadata.href).toBe("#hello-world");
+	});
+
+	it("autolink works with incremental feeding", () => {
+		const plugin: ParsePlugin = {
+			heading: {
+				parse(node) {
+					const link = node.wrapInner("link");
+					return () => {
+						const slug = slugify(node.textContent);
+						node.attrs.id = slug;
+						link.attrs.href = `#${slug}`;
+					};
+				},
+			},
+		};
+
+		const source = "# Hello World\n";
+
+		// incremental wire pipeline: feed char by char
+		const emitter = new WireEmitter();
+		const parser = new PFMParser(emitter);
+		parser.init();
+
+		const dispatcher = new PluginDispatcher([plugin], new WireTextSource([]));
+		const builder = new WireTreeBuilder(128, dispatcher);
+
+		let accumulated = "";
+		for (let i = 0; i < source.length; i++) {
+			accumulated += source[i];
+			emitter.set_source(accumulated);
+			parser.feed(source[i]);
+			const batch = emitter.flush();
+			if (batch.length > 0) builder.apply(batch);
+		}
+
+		emitter.set_source(accumulated);
+		parser.finish();
+		const final_batch = emitter.flush();
+		if (final_batch.length > 0) builder.apply(final_batch);
+
+		dispatcher.run_sequential(builder.get_buffer());
+
+		const buf = builder.get_buffer();
+		const root = buf.get_node(0);
+
+		const heading_idx = root.children.find(
+			(i: number) => buf.kind_at(i) === node_kind.heading,
+		)!;
+		const heading = buf.get_node(heading_idx);
+		expect(heading.metadata.id).toBe("hello-world");
+
+		const link = buf.get_node(heading.children[0]);
+		expect(link.kind).toBe("link");
+		expect(link.metadata.href).toBe("#hello-world");
+	});
+
+	it("structural mutations are unwound when node is revoked during streaming", () => {
+		const plugin: ParsePlugin = {
+			strong_emphasis: {
+				parse(node) {
+					node.prepend("link", { id: "HELLO" });
+				},
+			},
+		};
+
+		// "*h" opens strong_emphasis (pending), plugin prepends a link.
+		// "*hello\n\n" causes revocation, the * was not valid emphasis.
+		// the prepended link must be cleaned up.
+		const source = "*hello\n\n";
+
+		const emitter = new WireEmitter();
+		const parser = new PFMParser(emitter);
+		parser.init();
+
+		const dispatcher = new PluginDispatcher(
+			[plugin],
+			new WireTextSource([]),
+		);
+		const builder = new WireTreeBuilder(128, dispatcher);
+
+		// feed char by char to trigger incremental open → revoke
+		let accumulated = "";
+		for (let i = 0; i < source.length; i++) {
+			accumulated += source[i];
+			emitter.set_source(accumulated);
+			parser.feed(source[i]);
+			const batch = emitter.flush();
+			if (batch.length > 0) builder.apply(batch);
+		}
+
+		emitter.set_source(accumulated);
+		parser.finish();
+		const final_batch = emitter.flush();
+		if (final_batch.length > 0) builder.apply(final_batch);
+
+		const buf = builder.get_buffer();
+		const root = buf.get_node(0);
+
+		// should have a paragraph with text "*hello", no orphaned link nodes
+		// no node in the tree should have id "HELLO"
+		let found_hello = false;
+		for (let i = 0; i < buf.size; i++) {
+			const meta = buf.metadata_at(i);
+			if (meta?.id === "HELLO" && buf._parents[i] !== 0xffffffff) {
+				found_hello = true;
+			}
+		}
+		expect(found_hello).toBe(false);
+
+		// the paragraph's children should form a valid sibling chain
+		const para_idx = root.children.find(
+			(i: number) => buf.kind_at(i) === node_kind.paragraph,
+		);
+		expect(para_idx).toBeDefined();
+		const para = buf.get_node(para_idx!);
+		expect(para.children.length).toBeGreaterThan(0);
+
+		// walk the sibling chain to verify integrity
+		let child = buf._children_starts[para_idx!];
+		let count = 0;
+		while (child !== 0xffffffff && buf._parents[child] === para_idx!) {
+			count++;
+			child = buf._next_siblings[child];
+		}
+		expect(count).toBe(para.children.length);
+	});
+
+	it("cross-node wrapInner redirects children of the wrapped node", () => {
+		// plugin wraps parent's children from a child handler.
+		// children arriving AFTER the wrap should land inside the wrapper.
+		const plugin: ParsePlugin = {
+			strong_emphasis: {
+				parse(node) {
+					node.parent?.wrapInner("link", { href: "#wrapped" });
+				},
+			},
+		};
+
+		const source = "This *works* fine\n";
+
+		const emitter = new WireEmitter();
+		const parser = new PFMParser(emitter);
+		parser.init();
+
+		const dispatcher = new PluginDispatcher(
+			[plugin],
+			new WireTextSource([]),
+		);
+		const builder = new WireTreeBuilder(128, dispatcher);
+
+		let accumulated = "";
+		for (let i = 0; i < source.length; i++) {
+			accumulated += source[i];
+			emitter.set_source(accumulated);
+			parser.feed(source[i]);
+			const batch = emitter.flush();
+			if (batch.length > 0) builder.apply(batch);
+		}
+
+		emitter.set_source(accumulated);
+		parser.finish();
+		const final_batch = emitter.flush();
+		if (final_batch.length > 0) builder.apply(final_batch);
+
+		const buf = builder.get_buffer();
+		const root = buf.get_node(0);
+
+		// find paragraph
+		const para_idx = root.children.find(
+			(i: number) => buf.kind_at(i) === node_kind.paragraph,
+		)!;
+		const para = buf.get_node(para_idx);
+
+		// paragraph's sole child should be the link wrapper
+		expect(para.children.length).toBe(1);
+		const link_idx = para.children[0];
+		expect(buf.kind_at(link_idx)).toBe(node_kind.link);
+		expect(buf.metadata_at(link_idx)?.href).toBe("#wrapped");
+
+		// the link should contain: text "This ", strong "works", text " fine"
+		const link = buf.get_node(link_idx);
+		expect(link.children.length).toBe(3);
+
+		expect(buf.kind_at(link.children[0])).toBe(node_kind.text);
+		expect(buf.kind_at(link.children[1])).toBe(node_kind.strong_emphasis);
+		expect(buf.kind_at(link.children[2])).toBe(node_kind.text);
+	});
+
+	it("cross-node wrapInner redirect is cleaned up on revocation", () => {
+		// if the handler node is revoked, the cross-node wrapInner
+		// should be undone and the redirect removed.
+		const plugin: ParsePlugin = {
+			strong_emphasis: {
+				parse(node) {
+					node.parent?.wrapInner("link", { href: "#wrapped" });
+				},
+			},
+		};
+
+		// "*hello\n\n", strong_emphasis is revoked (unclosed)
+		const source = "*hello\n\n";
+
+		const emitter = new WireEmitter();
+		const parser = new PFMParser(emitter);
+		parser.init();
+
+		const dispatcher = new PluginDispatcher(
+			[plugin],
+			new WireTextSource([]),
+		);
+		const builder = new WireTreeBuilder(128, dispatcher);
+
+		let accumulated = "";
+		for (let i = 0; i < source.length; i++) {
+			accumulated += source[i];
+			emitter.set_source(accumulated);
+			parser.feed(source[i]);
+			const batch = emitter.flush();
+			if (batch.length > 0) builder.apply(batch);
+		}
+
+		emitter.set_source(accumulated);
+		parser.finish();
+		const final_batch = emitter.flush();
+		if (final_batch.length > 0) builder.apply(final_batch);
+
+		const buf = builder.get_buffer();
+		const root = buf.get_node(0);
+
+		// no link wrapper should remain in the tree
+		let found_link = false;
+		for (let i = 0; i < buf.size; i++) {
+			if (
+				buf.kind_at(i) === node_kind.link &&
+				buf._parents[i] !== 0xffffffff
+			) {
+				found_link = true;
+			}
+		}
+		expect(found_link).toBe(false);
+
+		// paragraph should have text children directly (no wrapper)
+		const para_idx = root.children.find(
+			(i: number) => buf.kind_at(i) === node_kind.paragraph,
+		)!;
+		expect(para_idx).toBeDefined();
+		const para = buf.get_node(para_idx);
+		expect(para.children.length).toBeGreaterThan(0);
+		// first child should be text, not a link
+		expect(buf.kind_at(para.children[0])).toBe(node_kind.text);
 	});
 });

@@ -42,7 +42,7 @@ export type { parse_options, parse_result } from "./types";
 export type { ParsePlugin } from "./plugin_types";
 export { node_kind, node_buffer } from "./utils";
 export { PluginDispatcher } from "./plugin_dispatch";
-export { SourceTextSource } from "./node_view";
+export { SourceTextSource, WireTextSource } from "./node_view";
 
 export { WireEmitter, WireOp } from "./wire_emitter";
 export type { Emitter } from "./opcodes";

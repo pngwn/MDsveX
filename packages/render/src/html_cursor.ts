@@ -87,6 +87,47 @@ const HTML_VOID_ELEMENTS = new Set([
 	"wbr",
 ]);
 
+//  generic attribute emission
+
+/**
+ * metadata keys that are structural / internal and should never be
+ * emitted as html attributes. everything else is fair game.
+ */
+const INTERNAL_KEYS = new Set([
+	// list semantics
+	"ordered", "tight", "start",
+	// code fence info (transformed into class="language-X")
+	"info", "info_start", "info_end",
+	// raw html node internals
+	"tag", "attributes", "self_closing",
+	// table internals
+	"alignments", "col_count",
+	// image src (handled specially with alt ordering)
+	"src",
+]);
+
+/**
+ * emit all non-internal metadata as html attributes.
+ * keys already handled by the caller are passed in `skip`.
+ */
+function _attrs(c: Cursor, out: string[], skip?: Set<string>): void {
+	const meta = c.meta();
+	if (!meta) return;
+	for (const key in meta) {
+		if (INTERNAL_KEYS.has(key)) continue;
+		if (skip !== undefined && skip.has(key)) continue;
+		const val = meta[key];
+		if (val === true) {
+			out.push(" ", key);
+		} else if (val !== false && val != null) {
+			out.push(' ', key, '="', escape(String(val)), '"');
+		}
+	}
+}
+
+const LINK_HANDLED = new Set(["href", "title"]);
+const IMAGE_HANDLED = new Set(["title"]);
+
 //  renderer
 
 /** render children of the current cursor position, collecting escaped text and recursive node output. */
@@ -124,17 +165,13 @@ function _node(c: Cursor, out: string[]): void {
 			_children(c, out);
 			break;
 
-		case K_HEADING: {
-			const meta = c.meta();
-			if (meta?.id) {
-				out.push("<h", String(c.extra), ' id="', escape(meta.id as string), '">');
-			} else {
-				out.push(H_OPEN[c.extra]);
-			}
+		case K_HEADING:
+			out.push("<h", String(c.extra));
+			_attrs(c, out);
+			out.push(">");
 			_children(c, out);
 			out.push(H_CLOSE[c.extra]);
 			break;
-		}
 
 		case K_PARAGRAPH:
 			// pending paragraphs inside list_items are speculative tight-list
@@ -143,26 +180,34 @@ function _node(c: Cursor, out: string[]): void {
 			if (c.pending && c.parent_kind === K_LIST_ITEM) {
 				_children(c, out);
 			} else {
-				out.push("<p>");
+				out.push("<p");
+				_attrs(c, out);
+				out.push(">");
 				_children(c, out);
 				out.push("</p>");
 			}
 			break;
 
 		case K_EMPHASIS:
-			out.push("<em>");
+			out.push("<em");
+			_attrs(c, out);
+			out.push(">");
 			_children(c, out);
 			out.push("</em>");
 			break;
 
 		case K_STRONG:
-			out.push("<strong>");
+			out.push("<strong");
+			_attrs(c, out);
+			out.push(">");
 			_children(c, out);
 			out.push("</strong>");
 			break;
 
 		case K_CODE_SPAN:
-			out.push("<code>", escape(c.text()).replace(/\n/g, " "), "</code>");
+			out.push("<code");
+			_attrs(c, out);
+			out.push(">", escape(c.text()).replace(/\n/g, " "), "</code>");
 			break;
 
 		case K_CODE_FENCE: {
@@ -175,22 +220,17 @@ function _node(c: Cursor, out: string[]): void {
 				if (info_start != null && info_end != null)
 					info = c.slice(info_start, info_end);
 			}
-			if (info) {
-				out.push(
-					'<pre><code class="language-',
-					escape(info),
-					'">',
-					escape(c.text()),
-					"</code></pre>",
-				);
-			} else {
-				out.push("<pre><code>", escape(c.text()), "</code></pre>");
-			}
+			out.push("<pre><code");
+			if (info) out.push(' class="language-', escape(info), '"');
+			_attrs(c, out);
+			out.push(">", escape(c.text()), "</code></pre>");
 			break;
 		}
 
 		case K_BLOCK_QUOTE:
-			out.push("<blockquote>\n");
+			out.push("<blockquote");
+			_attrs(c, out);
+			out.push(">\n");
 			_children(c, out);
 			out.push("\n</blockquote>");
 			break;
@@ -200,6 +240,7 @@ function _node(c: Cursor, out: string[]): void {
 			out.push("<a");
 			if (meta?.href) out.push(' href="', escape(meta.href as string), '"');
 			if (meta?.title) out.push(' title="', escape(meta.title as string), '"');
+			_attrs(c, out, LINK_HANDLED);
 			out.push(">");
 			_children(c, out);
 			out.push("</a>");
@@ -210,9 +251,9 @@ function _node(c: Cursor, out: string[]): void {
 			const meta = c.meta();
 			out.push("<img");
 			if (meta?.src) out.push(' src="', escape(meta.src as string), '"');
-			// alt text is in child text nodes, not value range
 			out.push(' alt="', escape(_childrenRaw(c)), '"');
 			if (meta?.title) out.push(' title="', escape(meta.title as string), '"');
+			_attrs(c, out, IMAGE_HANDLED);
 			out.push(" />");
 			break;
 		}
@@ -225,6 +266,7 @@ function _node(c: Cursor, out: string[]): void {
 			out.push("<", tag);
 			if (ordered && start != null && start !== 1)
 				out.push(' start="', String(start), '"');
+			_attrs(c, out);
 			out.push(">\n");
 			_children(c, out);
 			out.push("\n</", tag, ">");
@@ -232,7 +274,9 @@ function _node(c: Cursor, out: string[]): void {
 		}
 
 		case K_LIST_ITEM:
-			out.push("<li>");
+			out.push("<li");
+			_attrs(c, out);
+			out.push(">");
 			_children(c, out);
 			out.push("</li>\n");
 			break;
@@ -250,19 +294,25 @@ function _node(c: Cursor, out: string[]): void {
 			break;
 
 		case K_STRIKETHROUGH:
-			out.push("<del>");
+			out.push("<del");
+			_attrs(c, out);
+			out.push(">");
 			_children(c, out);
 			out.push("</del>");
 			break;
 
 		case K_SUPERSCRIPT:
-			out.push("<sup>");
+			out.push("<sup");
+			_attrs(c, out);
+			out.push(">");
 			_children(c, out);
 			out.push("</sup>");
 			break;
 
 		case K_SUBSCRIPT:
-			out.push("<sub>");
+			out.push("<sub");
+			_attrs(c, out);
+			out.push(">");
 			_children(c, out);
 			out.push("</sub>");
 			break;
@@ -353,7 +403,9 @@ function _node(c: Cursor, out: string[]): void {
 		}
 
 		case K_TABLE:
-			out.push("<table>\n");
+			out.push("<table");
+			_attrs(c, out);
+			out.push(">\n");
 			_tableContent(c, out);
 			out.push("\n</table>");
 			break;

@@ -39,6 +39,9 @@ importers:
       '@mdsvex/parse':
         specifier: workspace:*
         version: link:../parse
+      '@mdsvex/plugin-autolink':
+        specifier: workspace:*
+        version: link:../../plugins/autolink
       '@mdsvex/render':
         specifier: workspace:*
         version: link:../render

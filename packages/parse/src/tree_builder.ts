@@ -71,6 +71,9 @@ export class TreeBuilder implements Emitter {
 		if (idx === undefined) return;
 		this.nodes.set_end(idx, end);
 
+		// capture pending state before close dispatch / commit
+		const was_pending = this.nodes._pending_nodes[idx] === 1;
+
 		// plugin close dispatch: fire close callbacks before committing
 		if (this.dispatcher) {
 			this.dispatcher.dispatch_close(idx, this.nodes);
@@ -91,6 +94,9 @@ export class TreeBuilder implements Emitter {
 			)
 		) {
 			this.nodes.commit_node(idx);
+			if (this.dispatcher && !was_pending) {
+				this.dispatcher.dispatch_commit(idx);
+			}
 		}
 
 		// tight list unwrapping: if this is a list with tight=true, walk
@@ -194,6 +200,9 @@ export class TreeBuilder implements Emitter {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
 		this.nodes.commit_node(idx);
+		if (this.dispatcher) {
+			this.dispatcher.dispatch_commit(idx);
+		}
 	}
 
 	cursor(_pos: number): void {}

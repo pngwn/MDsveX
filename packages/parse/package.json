@@ -25,28 +25,32 @@
 	],
 	"exports": {
 		".": {
-			"types": "./src/main.ts",
-			"default": "./src/main.ts"
+			"types": "./dist/main.d.ts",
+			"default": "./dist/main.js"
 		},
 		"./opcodes": {
-			"types": "./src/opcodes.ts",
-			"default": "./src/opcodes.ts"
+			"types": "./dist/opcodes.d.ts",
+			"default": "./dist/opcodes.js"
 		},
 		"./tree-builder": {
-			"types": "./src/tree_builder.ts",
-			"default": "./src/tree_builder.ts"
+			"types": "./dist/tree_builder.d.ts",
+			"default": "./dist/tree-builder.js"
 		},
 		"./utils": {
-			"types": "./src/utils.ts",
-			"default": "./src/utils.ts"
+			"types": "./dist/utils.d.ts",
+			"default": "./dist/utils.js"
 		},
 		"./cursor": {
-			"types": "./src/cursor.ts",
-			"default": "./src/cursor.ts"
+			"types": "./dist/cursor.d.ts",
+			"default": "./dist/cursor.js"
+		},
+		"./buf-utils": {
+			"types": "./dist/buf_utils.d.ts",
+			"default": "./dist/buf-utils.js"
 		},
 		"./wire-tree-builder": {
-			"types": "./src/wire_tree_builder.ts",
-			"default": "./src/wire_tree_builder.ts"
+			"types": "./dist/wire_tree_builder.d.ts",
+			"default": "./dist/wire-tree-builder.js"
 		},
 
 		"./package.json": "./package.json"

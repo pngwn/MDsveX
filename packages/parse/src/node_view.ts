@@ -139,7 +139,6 @@ export class NodeView {
 		this._handler_node = handler_node;
 	}
 
-	// --- type ---
 
 	get type(): string {
 		return kind_to_string(this._buf._kinds[this._index] as node_kind);
@@ -153,7 +152,6 @@ export class NodeView {
 		this._buf._kinds[this._index] = numeric;
 	}
 
-	// --- traversal ---
 
 	get parent(): NodeView | null {
 		return this._cache.get(this._buf._parents[this._index]);
@@ -181,7 +179,6 @@ export class NodeView {
 		return this._cache.get(p);
 	}
 
-	// --- text content ---
 
 	/**
 	 * flattened text of all descendants.
@@ -205,12 +202,13 @@ export class NodeView {
 			return this._text_source.slice(vs, ve);
 		}
 
-		// content-leaf nodes: text stored as value range on the node itself
+		// content-leaf nodes: text stored as value range or string on the node itself.
+		// heading is NOT a content-leaf here: in wire mode its text is in
+		// child text nodes, and after wrapInner children may be nested deeper.
 		if (
 			kind === node_kind.code_fence ||
 			kind === node_kind.code_span ||
-			kind === node_kind.html_comment ||
-			kind === node_kind.heading
+			kind === node_kind.html_comment
 		) {
 			const s = this._text_source.get_string(idx);
 			if (s !== undefined) return s;
@@ -218,6 +216,19 @@ export class NodeView {
 			const ve = buf._value_ends[idx];
 			if (vs === NONE || ve === NONE || ve <= vs) return "";
 			return this._text_source.slice(vs, ve);
+		}
+
+		// heading: try value range first (batch mode), fall through to
+		// child walk if no value range is set (wire mode).
+		if (kind === node_kind.heading) {
+			const s = this._text_source.get_string(idx);
+			if (s !== undefined) return s;
+			const vs = buf._value_starts[idx];
+			const ve = buf._value_ends[idx];
+			if (vs !== NONE && ve !== NONE && ve > vs) {
+				return this._text_source.slice(vs, ve);
+			}
+			// fall through to child walk
 		}
 
 		// container node: walk children, concatenate
@@ -230,7 +241,6 @@ export class NodeView {
 		return result;
 	}
 
-	// --- type-specific properties ---
 
 	/** heading depth (1-6). only meaningful when type === 'heading'. */
 	get depth(): number | undefined {
@@ -281,7 +291,6 @@ export class NodeView {
 		return meta?.tight as boolean | undefined;
 	}
 
-	// --- attrs proxy ---
 
 	get attrs(): Record<string, any> {
 		if (this._attrs !== null) return this._attrs;
@@ -347,7 +356,6 @@ export class NodeView {
 		return this._attrs;
 	}
 
-	// --- structural mutations ---
 
 	/**
 	 * insert a new node between this node and its current children.

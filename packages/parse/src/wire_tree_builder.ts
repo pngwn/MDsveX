@@ -20,6 +20,7 @@
 import { node_buffer, node_kind } from "./utils";
 import { Cursor } from "./cursor";
 import type { PluginDispatcher } from "./plugin_dispatch";
+import { WireTextSource } from "./node_view";
 
 const NONE = 0xffffffff;
 
@@ -43,6 +44,14 @@ export class WireTreeBuilder {
 		this.id_to_index = [0]; // root id 0 -> buffer index 0
 		this.schema = null;
 		this.dispatcher = dispatcher ?? null;
+
+		// wire mode: point the dispatcher's text source at the buffer's
+		// _strings array so NodeView.textContent resolves correctly.
+		if (this.dispatcher) {
+			this.dispatcher.set_text_source(
+				new WireTextSource(this.buf._strings),
+			);
+		}
 	}
 
 	/**
@@ -149,6 +158,11 @@ export class WireTreeBuilder {
 		if (idx === undefined) return;
 		this.buf.set_end(idx, 1);
 
+		// capture pending state BEFORE close dispatch / commit.
+		// pending nodes may still be revoked after close, so their
+		// undo logs must be preserved until explicit commit or revoke.
+		const was_pending = this.buf._pending_nodes[idx] === 1;
+
 		// plugin close dispatch
 		if (this.dispatcher) {
 			this.dispatcher.dispatch_close(idx, this.buf);
@@ -167,6 +181,11 @@ export class WireTreeBuilder {
 			)
 		) {
 			this.buf.commit_node(idx);
+			// only commit undo log if the node was NOT pending at close time.
+			// pending nodes keep their undo logs until explicit commit/revoke.
+			if (this.dispatcher && !was_pending) {
+				this.dispatcher.dispatch_commit(idx);
+			}
 		}
 
 		// tight list unwrapping, walk sibling chains directly. safe no-op
@@ -292,6 +311,9 @@ export class WireTreeBuilder {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
 		this.buf.commit_node(idx);
+		if (this.dispatcher) {
+			this.dispatcher.dispatch_commit(idx);
+		}
 	}
 
 	private _clear(id: number): void {

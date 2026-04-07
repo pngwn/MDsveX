@@ -103,7 +103,14 @@
       "Bash(curl -s http://localhost:4173/preprocess)",
       "Bash(PLAYWRIGHT_TEST_REUSE_SERVER=true npx playwright:*)",
       "Bash(lsof -ti:4173)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Bash(pnpm dev:*)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npm info:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npx -y -p @volar/source-map node -e \"const path = require.resolve\\('@volar/source-map'\\); console.log\\(path\\);\")",
+      "Bash(gh api:*)",
+      "Bash(xargs -I{} echo {})"
     ],
     "deny": []
   }

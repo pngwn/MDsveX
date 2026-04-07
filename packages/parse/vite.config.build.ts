@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
-import terser from "@rollup/plugin-terser";
+// import terser from "@rollup/plugin-terser";
 
 export default defineConfig({
 	build: {
@@ -21,7 +21,7 @@ export default defineConfig({
 		rollupOptions: {
 			output: {
 				entryFileNames: "[name].js",
-				plugins: [terser()],
+				// plugins: [terser()],
 			},
 		},
 	},

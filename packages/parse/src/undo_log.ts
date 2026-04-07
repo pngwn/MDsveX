@@ -75,6 +75,34 @@ export type UndoEntry =
 	| UndoEntryAppend;
 
 /**
+ * unlink a child node from its parent's sibling chain and orphan it.
+ * unlike unwrap_node, this does NOT reparent the child's own children,
+ * the entire subtree is detached.
+ */
+function _unlink_child(buf: node_buffer, parent: number, child: number): void {
+	const prev = buf._prev_siblings[child];
+	const next = buf._next_siblings[child];
+
+	if (prev !== NONE) {
+		buf._next_siblings[prev] = next;
+	} else if (buf._children_starts[parent] === child) {
+		buf._children_starts[parent] = next !== NONE && buf._parents[next] === parent ? next : NONE;
+	}
+
+	if (next !== NONE && buf._parents[next] === parent) {
+		buf._prev_siblings[next] = prev;
+	}
+
+	if (buf._children_ends[parent] === child) {
+		buf._children_ends[parent] = prev !== NONE ? prev : NONE;
+	}
+
+	buf._parents[child] = NONE;
+	buf._next_siblings[child] = NONE;
+	buf._prev_siblings[child] = NONE;
+}
+
+/**
  * per-node undo log for plugin mutations.
  *
  * mutations are keyed by the handler node's buffer index, not the
@@ -105,7 +133,6 @@ export class UndoLog {
 		this.active_node = NONE;
 	}
 
-	// --- recording methods (called by NodeView setters) ---
 
 	record_attr_set(target: number, key: string, prior_value: any): void {
 		this._append({
@@ -185,7 +212,6 @@ export class UndoLog {
 		log.push(entry);
 	}
 
-	// --- revocation ---
 
 	/**
 	 * revoke all mutations attributed to the given handler node.
@@ -224,73 +250,25 @@ export class UndoLog {
 				}
 
 				case UndoEntryKind.WrapInner: {
+					// unwrap: reparent wrapper's CURRENT children back to
+					// parent (not just the originals, new children may have
+					// arrived via redirect since the wrap) and remove wrapper.
 					const parent = entry.parent;
 					const wrapper = entry.wrapper;
-
-					// restore parent's original children
-					buf._children_starts[parent] = entry.prior_first_child;
-					buf._children_ends[parent] = entry.prior_last_child;
-
-					// reparent children from wrapper back to parent
-					let child = buf._children_starts[wrapper];
-					while (child !== NONE && buf._parents[child] === wrapper) {
-						buf._parents[child] = parent;
-						child = buf._next_siblings[child];
-					}
-
-					// orphan the wrapper
+					buf.unwrap_node(wrapper);
 					buf._parents[wrapper] = NONE;
-					buf._children_starts[wrapper] = NONE;
-					buf._children_ends[wrapper] = NONE;
-					buf._next_siblings[wrapper] = NONE;
-					buf._prev_siblings[wrapper] = NONE;
 					break;
 				}
 
-				case UndoEntryKind.Prepend: {
-					const parent = entry.parent;
-					const created = entry.created;
-
-					// restore first child pointer
-					buf._children_starts[parent] = entry.prior_first_child;
-					if (entry.prior_first_child !== NONE) {
-						buf._prev_siblings[entry.prior_first_child] = NONE;
-					}
-
-					// if created was the only child, clear children_ends
-					if (buf._children_ends[parent] === created) {
-						buf._children_ends[parent] =
-							entry.prior_first_child === NONE
-								? NONE
-								: entry.prior_first_child;
-					}
-
-					// orphan
-					buf._parents[created] = NONE;
-					buf._next_siblings[created] = NONE;
-					buf._prev_siblings[created] = NONE;
-					break;
-				}
-
+				case UndoEntryKind.Prepend:
 				case UndoEntryKind.Append: {
+					// unlink the synthetic node from wherever it currently
+					// sits in the sibling chain. new siblings may have been
+					// inserted after the original mutation, so we cannot
+					// blindly restore snapshot pointers.
 					const parent = entry.parent;
 					const created = entry.created;
-
-					// restore last child pointer
-					buf._children_ends[parent] = entry.prior_last_child;
-					if (entry.prior_last_child !== NONE) {
-						buf._next_siblings[entry.prior_last_child] = NONE;
-					}
-
-					// if created was the only child, clear children_starts
-					if (buf._children_starts[parent] === created) {
-						buf._children_starts[parent] = NONE;
-					}
-
-					// orphan
-					buf._parents[created] = NONE;
-					buf._next_siblings[created] = NONE;
-					buf._prev_siblings[created] = NONE;
+					_unlink_child(buf, parent, created);
 					break;
 				}
 			}
@@ -300,7 +278,7 @@ export class UndoLog {
 	}
 
 	/**
-	 * commit a node — discard its undo log, making mutations permanent.
+	 * commit a node, discard its undo log, making mutations permanent.
 	 */
 	commit(handler_node: number): void {
 		this.logs.delete(handler_node);

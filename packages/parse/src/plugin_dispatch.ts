@@ -23,7 +23,6 @@ const NODE_KIND_COUNT = 35;
 /** first synthetic id. high bit flag partitions id space from parser ids. */
 const SYNTHETIC_ID_BASE = 0x40000000;
 
-// --- handler composition ---
 
 /** single handler: no wrapper needed, just normalize return type. */
 function compose_1(h: NodeHandler): ComposedHandler {
@@ -119,7 +118,6 @@ function compose(handlers: NodeHandler[]): ComposedHandler {
 	}
 }
 
-// --- handlers table ---
 
 /** 35 slots, one per node_kind. null means no handlers. */
 type HandlersTable = (ComposedHandler | null)[];
@@ -190,7 +188,6 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 	return { fused, sequential, has_handler };
 }
 
-// --- close callback store ---
 
 /**
  * stores close callbacks indexed by buffer index.
@@ -230,7 +227,6 @@ class CloseCallbackStore {
 	}
 }
 
-// --- the 35-arm dispatch switch ---
 
 /**
  * dispatch plugin handlers for a node open event.
@@ -362,7 +358,6 @@ function dispatch_open(
 	}
 }
 
-// --- sequential pass walker ---
 
 /**
  * depth-first walk over the soa buffer.
@@ -409,7 +404,6 @@ function walk_tree(
 	}
 }
 
-// --- PluginDispatcher ---
 
 /**
  * orchestrates plugin dispatch for both TreeBuilder and WireTreeBuilder.
@@ -500,17 +494,15 @@ export class PluginDispatcher {
 		);
 		this.undo.clear_active_node();
 
-		// check if the handler called wrapInner and register redirect.
-		// scan the undo log for WrapInner entries targeting this node.
+		// check if the handler called wrapInner and register redirects.
+		// the wrapped node may be the handler's own node or a node
+		// reached via traversal (e.g. node.parent.wrapInner(...)).
 		const entries = this.undo.get_entries(buf_idx);
 		if (entries) {
 			for (let i = 0; i < entries.length; i++) {
 				const e = entries[i];
-				if (
-					e.kind === UndoEntryKind.WrapInner &&
-					e.parent === buf_idx
-				) {
-					this.redirects.set(buf_idx, e.wrapper);
+				if (e.kind === UndoEntryKind.WrapInner) {
+					this.redirects.set(e.parent, e.wrapper);
 				}
 			}
 		}
@@ -524,7 +516,10 @@ export class PluginDispatcher {
 
 	/**
 	 * dispatch close callbacks for a node.
-	 * fires callbacks with undo attribution, then commits.
+	 * fires callbacks with undo attribution.
+	 * only commits the undo log if the node is no longer pending,
+	 * pending nodes may still be revoked after close (e.g. tight-list
+	 * speculation, inline emphasis).
 	 */
 	dispatch_close(buf_idx: number, buf: node_buffer): void {
 		this.redirects.delete(buf_idx);
@@ -546,7 +541,18 @@ export class PluginDispatcher {
 			cache.clear();
 		}
 
-		// commit: discard undo log, mutations are permanent
+		// only commit if the node is no longer pending.
+		// pending nodes can still be revoked after close.
+		if (buf._pending_nodes[buf_idx] === 0) {
+			this.undo.commit(buf_idx);
+		}
+	}
+
+	/**
+	 * commit a node's undo log after it has been confirmed non-pending.
+	 * called by the builder when a pending node is explicitly committed.
+	 */
+	dispatch_commit(buf_idx: number): void {
 		this.undo.commit(buf_idx);
 	}
 
@@ -558,6 +564,19 @@ export class PluginDispatcher {
 	dispatch_revoke(buf_idx: number, buf: node_buffer): void {
 		this.redirects.delete(buf_idx);
 		this.close_cbs.discard(buf_idx);
+
+		// clean up redirects from any cross-node WrapInner entries
+		// before the undo log is consumed.
+		const entries = this.undo.get_entries(buf_idx);
+		if (entries) {
+			for (let i = 0; i < entries.length; i++) {
+				const e = entries[i];
+				if (e.kind === UndoEntryKind.WrapInner) {
+					this.redirects.delete(e.parent);
+				}
+			}
+		}
+
 		this.undo.revoke(buf_idx, buf);
 
 		// recurse into children to revoke their plugin state too
