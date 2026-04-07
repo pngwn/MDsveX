@@ -37,6 +37,7 @@ export class Cursor {
 
 	private _kinds: Uint8Array;
 	private _extras: Uint16Array;
+	private _starts: Uint32Array;
 	private _ends: Uint32Array;
 	private _value_starts: Uint32Array;
 	private _value_ends: Uint32Array;
@@ -53,6 +54,7 @@ export class Cursor {
 		// cache array references for hot-path access
 		this._kinds = buf._kinds;
 		this._extras = buf._extras;
+		this._starts = buf._starts;
 		this._ends = buf._ends;
 		this._value_starts = buf._value_starts;
 		this._value_ends = buf._value_ends;
@@ -91,6 +93,26 @@ export class Cursor {
 	get parent_kind(): number {
 		const p = this._parents[this.idx];
 		return p === NONE ? -1 : this._kinds[p];
+	}
+
+	/** byte offset where the current node starts in source. */
+	get start(): number {
+		return this._starts[this.idx];
+	}
+
+	/** byte offset where the current node ends in source. */
+	get end(): number {
+		return this._ends[this.idx];
+	}
+
+	/** byte offset where the current node's value content starts. */
+	get value_start(): number {
+		return this._value_starts[this.idx];
+	}
+
+	/** byte offset where the current node's value content ends. */
+	get value_end(): number {
+		return this._value_ends[this.idx];
 	}
 
 	/** get text content for the current node. prebuilt strings
@@ -161,6 +183,7 @@ export class Cursor {
 		this.idx = 0;
 		this._kinds = buf._kinds;
 		this._extras = buf._extras;
+		this._starts = buf._starts;
 		this._ends = buf._ends;
 		this._value_starts = buf._value_starts;
 		this._value_ends = buf._value_ends;

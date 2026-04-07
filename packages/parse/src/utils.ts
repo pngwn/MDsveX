@@ -169,7 +169,8 @@ export class node_buffer {
 	private capacity: number;
 	/** @internal exposed for cursor access. do not mutate externally. */
 	_kinds: Uint8Array;
-	private starts: Uint32Array;
+	/** @internal exposed for cursor access. do not mutate externally. */
+	_starts: Uint32Array;
 	/** @internal */
 	_ends: Uint32Array;
 	/** @internal */
@@ -205,7 +206,7 @@ export class node_buffer {
 		const capacity = next_power_of_two(initial_capacity);
 		this.capacity = capacity;
 		this._kinds = new Uint8Array(capacity);
-		this.starts = new Uint32Array(capacity);
+		this._starts = new Uint32Array(capacity);
 		this._ends = new Uint32Array(capacity);
 		this._extras = new Uint16Array(capacity);
 		this._value_starts = new Uint32Array(capacity);
@@ -256,7 +257,7 @@ export class node_buffer {
 		}
 
 		this._kinds[index] = kind;
-		this.starts[index] = cursor >>> 0;
+		this._starts[index] = cursor >>> 0;
 		this._ends[index] = 0xffffffff;
 		this._extras[index] = extra & 0xffff;
 		this._size = index + 1;
@@ -322,7 +323,7 @@ export class node_buffer {
 		}
 
 		this._kinds[index] = kind;
-		this.starts[index] = cursor >>> 0;
+		this._starts[index] = cursor >>> 0;
 		this._ends[index] = 0xffffffff;
 		this._extras[index] = extra & 0xffff;
 		this._size = index + 1;
@@ -440,7 +441,7 @@ export class node_buffer {
 		) {
 			// wire path: delimiter_text has the full content, skip byte offset logic.
 			// source path: compute end from node/children byte offsets.
-			const start = this.starts[index];
+			const start = this._starts[index];
 			let end = start; // fallback
 
 			if (delimiter_text === undefined) {
@@ -450,7 +451,7 @@ export class node_buffer {
 					let child = this._children_starts[index];
 					while (child !== 0xffffffff && this._parents[child] === index) {
 						if (this._kinds[child] === node_kind.line_break) {
-							const lb_start = this.starts[child];
+							const lb_start = this._starts[child];
 							if (lb_start > 0 && (end === 0xffffffff || lb_start > end)) {
 								end = lb_start;
 							}
@@ -513,7 +514,7 @@ export class node_buffer {
 
 		if (delimiter_text !== undefined) {
 			this._strings[index] = delimiter_text;
-			const start = this.starts[index];
+			const start = this._starts[index];
 			const end = start + delimiter_text.length;
 			this._value_starts[index] = start;
 			this._value_ends[index] = end;
@@ -555,10 +556,10 @@ export class node_buffer {
 		if (first_child === 0xffffffff) {
 			this._children_starts[index] = 0xffffffff;
 			this._children_ends[index] = 0xffffffff;
-			this._value_starts[index] = this.starts[index];
+			this._value_starts[index] = this._starts[index];
 			if (this._ends[index] === 0xffffffff) {
-				this._value_ends[index] = this.starts[index] + 1;
-				this._ends[index] = this.starts[index] + 1;
+				this._value_ends[index] = this._starts[index] + 1;
+				this._ends[index] = this._starts[index] + 1;
 			} else {
 				this._value_ends[index] = this._ends[index];
 			}
@@ -580,7 +581,7 @@ export class node_buffer {
 			last_child === first_child &&
 			this._kinds[first_child] === node_kind.text
 		) {
-			this._value_starts[index] = this.starts[index];
+			this._value_starts[index] = this._starts[index];
 			this._value_ends[index] = this._ends[first_child];
 			this._ends[index] = this._ends[first_child];
 
@@ -614,7 +615,7 @@ export class node_buffer {
 		this._children_starts[index] = 0xffffffff;
 		this._children_ends[index] = 0xffffffff;
 
-		this._value_starts[index] = this.starts[index];
+		this._value_starts[index] = this._starts[index];
 		this._value_ends[index] = this._value_starts[first_child];
 		this._ends[index] = this._value_ends[index];
 	}
@@ -799,7 +800,7 @@ export class node_buffer {
 		const next_has_metadata = new Uint8Array(Math.max(1, next >> 3));
 
 		next_kinds.set(this._kinds);
-		next_starts.set(this.starts);
+		next_starts.set(this._starts);
 		next_ends.set(this._ends);
 		next_extras.set(this._extras);
 		next_value_starts.set(this._value_starts);
@@ -814,7 +815,7 @@ export class node_buffer {
 
 		this.capacity = next;
 		this._kinds = next_kinds;
-		this.starts = next_starts;
+		this._starts = next_starts;
 		this._ends = next_ends;
 		this._extras = next_extras;
 		this._value_starts = next_value_starts;
@@ -887,7 +888,7 @@ export class node_buffer {
 
 		return {
 			kind: kind_to_string(this._kinds[index]),
-			start: this.starts[index],
+			start: this._starts[index],
 			end: this._ends[index],
 			metadata: {
 				...this.metadata_at(index),

@@ -22,7 +22,14 @@
 			"import": "./dist/component.js",
 			"types": "./src/component.ts"
 		},
-
+		"./mappings": {
+			"import": "./dist/mappings.js",
+			"types": "./src/mappings.ts"
+		},
+		"./sourcemap": {
+			"import": "./dist/sourcemap.js",
+			"types": "./src/sourcemap.ts"
+		},
 		"./Node.svelte": {
 			"types": "./src/Node.svelte",
 			"svelte": "./src/Node.svelte",

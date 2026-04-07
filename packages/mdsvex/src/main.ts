@@ -4,9 +4,13 @@ import { TreeBuilder } from "@mdsvex/parse/tree-builder";
 import { Cursor } from "@mdsvex/parse/cursor";
 import { WireTreeBuilder } from "@mdsvex/parse/wire-tree-builder";
 import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
+import { mappings_to_v3 } from "@mdsvex/render/sourcemap";
+import type { Mapping, CodeInformation } from "@mdsvex/render/mappings";
+import type { SourceMapV3 } from "@mdsvex/render/sourcemap";
 import type { PreprocessorGroup } from "svelte/compiler";
 
 export type { ParsePlugin } from "@mdsvex/parse";
+export type { Mapping, CodeInformation, SourceMapV3 };
 
 export interface MdsvexOptions {
 	extensions: string[];
@@ -14,10 +18,15 @@ export interface MdsvexOptions {
 	parsePlugins?: ParsePlugin[];
 }
 
+interface RenderResult {
+	code: string;
+	mappings?: Mapping<CodeInformation>[];
+}
+
 function render(
 	source: string,
-	options?: { parsePlugins?: ParsePlugin[] },
-): string {
+	options?: { parsePlugins?: ParsePlugin[]; sourcemap?: boolean },
+): RenderResult {
 	let dispatcher: PluginDispatcher | undefined;
 	if (options?.parsePlugins && options.parsePlugins.length > 0) {
 		const text_source = new SourceTextSource(source);
@@ -33,8 +42,14 @@ function render(
 	}
 
 	const renderer = new CursorHTMLRenderer({ cache: false });
+
+	if (options?.sourcemap) {
+		const result = renderer.updateMapped(tree.get_buffer(), source);
+		return { code: renderer.html, mappings: result.mappings };
+	}
+
 	renderer.update(tree.get_buffer(), source);
-	return renderer.html;
+	return { code: renderer.html };
 }
 
 export function mdsvex_preprocessor({
@@ -50,12 +65,16 @@ export function mdsvex_preprocessor({
 			if (!extensionsParts.some((ext) => filename && filename.endsWith(ext)))
 				return;
 
-			const parsed = render(content, { parsePlugins });
-			console.log(parsed);
+			const parsed = render(content, {
+				parsePlugins,
+				sourcemap: true,
+			});
+
 			return {
-				code: parsed,
-				data: {},
-				map: "",
+				code: parsed.code,
+				map: parsed.mappings
+					? mappings_to_v3(parsed.mappings, content, parsed.code, filename)
+					: "",
 			};
 		},
 	};
