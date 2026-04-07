@@ -97,7 +97,13 @@
       "Bash(curl -s \"http://localhost:5176/fixtures--atx-headings/62\")",
       "Bash(xargs -I {} basename {})",
       "Bash(git stash:*)",
-      "Bash(npx @sveltejs/mcp svelte-autofixer /Users/peterallen/Projects/mdsvex/packages/render/src/Node.svelte)"
+      "Bash(npx @sveltejs/mcp svelte-autofixer /Users/peterallen/Projects/mdsvex/packages/render/src/Node.svelte)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(npx playwright:*)",
+      "Bash(curl -s http://localhost:4173/preprocess)",
+      "Bash(PLAYWRIGHT_TEST_REUSE_SERVER=true npx playwright:*)",
+      "Bash(lsof -ti:4173)",
+      "Bash(xargs kill:*)"
     ],
     "deny": []
   }

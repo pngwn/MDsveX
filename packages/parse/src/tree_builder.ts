@@ -1,5 +1,6 @@
 import type { Emitter } from "./opcodes";
 import { node_buffer, node_kind } from "./utils";
+import type { PluginDispatcher } from "./plugin_dispatch";
 
 /**
  * consumes opcodes from PFMParser and builds a node_buffer.
@@ -12,12 +13,20 @@ export class TreeBuilder implements Emitter {
 	private id_to_index: number[] = [];
 	/** maps opcode id -> node_kind. plain array for o(1) lookup. */
 	private id_to_kind: number[] = [];
+	/** optional plugin dispatcher. null when no plugins registered. */
+	private dispatcher: PluginDispatcher | null;
 
-	constructor(capacity: number) {
+	/** callback for dispatcher to register synthetic node ids. */
+	private register_id = (synthetic_id: number, buf_idx: number): void => {
+		this.id_to_index[synthetic_id] = buf_idx;
+	};
+
+	constructor(capacity: number, dispatcher?: PluginDispatcher) {
 		this.nodes = new node_buffer(capacity);
 		// node_buffer constructor auto-creates root at index 0
 		this.id_to_index[0] = 0;
 		this.id_to_kind[0] = node_kind.root;
+		this.dispatcher = dispatcher ?? null;
 	}
 
 	open(
@@ -31,19 +40,42 @@ export class TreeBuilder implements Emitter {
 		// root (id=0) is auto-created by node_buffer constructor, skip
 		if (id === 0) return;
 
-		const parent_idx =
+		let parent_idx =
 			parent === -1 ? 0xffffffff : (this.id_to_index[parent] ?? 0xffffffff);
+
+		// plugin redirect: if parent has a wrapInner wrapper, children go there
+		if (this.dispatcher && parent_idx !== 0xffffffff) {
+			const redirect = this.dispatcher.get_redirect(parent_idx);
+			if (redirect !== undefined) parent_idx = redirect;
+		}
+
 		const idx = pending
 			? this.nodes.push_pending(kind, start, parent_idx, extra)
 			: this.nodes.push(kind, start, parent_idx, extra);
 		this.id_to_index[id] = idx;
 		this.id_to_kind[id] = kind;
+
+		// plugin dispatch
+		if (this.dispatcher && this.dispatcher.has_handlers(kind)) {
+			this.dispatcher.dispatch_open(
+				idx,
+				kind,
+				this.nodes,
+				this.register_id,
+			);
+		}
 	}
 
 	close(id: number, end: number): void {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
 		this.nodes.set_end(idx, end);
+
+		// plugin close dispatch: fire close callbacks before committing
+		if (this.dispatcher) {
+			this.dispatcher.dispatch_close(idx, this.nodes);
+		}
+
 		// pending paragraphs inside list_items are tight-list speculation
 		// wrappers, they stay pending after close until the list closes
 		// and the parser either revokes (tight) or commits (loose) them.
@@ -81,8 +113,15 @@ export class TreeBuilder implements Emitter {
 	}
 
 	text(parent: number, start: number, end: number): void {
-		const parent_idx = this.id_to_index[parent];
+		let parent_idx = this.id_to_index[parent];
 		if (parent_idx === undefined) return;
+
+		// plugin redirect: text targeting a wrapped parent goes to the wrapper
+		if (this.dispatcher) {
+			const redirect = this.dispatcher.get_redirect(parent_idx);
+			if (redirect !== undefined) parent_idx = redirect;
+		}
+
 		const parent_kind = this.id_to_kind[parent];
 
 		// nodes that store content as a value range (no child text node)
@@ -142,6 +181,12 @@ export class TreeBuilder implements Emitter {
 	revoke(id: number, source_text?: string): void {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
+
+		// plugin revoke: undo mutations before handle_repair
+		if (this.dispatcher) {
+			this.dispatcher.dispatch_revoke(idx, this.nodes);
+		}
+
 		this.nodes.handle_repair(idx, source_text);
 	}
 

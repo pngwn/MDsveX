@@ -124,11 +124,17 @@ function _node(c: Cursor, out: string[]): void {
 			_children(c, out);
 			break;
 
-		case K_HEADING:
-			out.push(H_OPEN[c.extra]);
+		case K_HEADING: {
+			const meta = c.meta();
+			if (meta?.id) {
+				out.push("<h", String(c.extra), ' id="', escape(meta.id as string), '">');
+			} else {
+				out.push(H_OPEN[c.extra]);
+			}
 			_children(c, out);
 			out.push(H_CLOSE[c.extra]);
 			break;
+		}
 
 		case K_PARAGRAPH:
 			// pending paragraphs inside list_items are speculative tight-list

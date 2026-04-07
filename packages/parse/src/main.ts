@@ -36,8 +36,13 @@ import type { Emitter } from "./opcodes";
 import { node_kind } from "./utils";
 import { node_buffer, error_collector } from "./utils";
 import { TreeBuilder } from "./tree_builder";
+import { PluginDispatcher } from "./plugin_dispatch";
+import { SourceTextSource } from "./node_view";
 export type { parse_options, parse_result } from "./types";
+export type { ParsePlugin } from "./plugin_types";
 export { node_kind, node_buffer } from "./utils";
+export { PluginDispatcher } from "./plugin_dispatch";
+export { SourceTextSource } from "./node_view";
 
 export { WireEmitter, WireOp } from "./wire_emitter";
 export type { Emitter } from "./opcodes";
@@ -7235,8 +7240,20 @@ export function parse_markdown_svelte(
 	input: string,
 	options: parse_options = {},
 ): { nodes: node_buffer; errors: error_collector } {
-	const tree = new TreeBuilder(input.length >> 3 || 128);
+	let dispatcher: PluginDispatcher | undefined;
+	if (options.plugins && options.plugins.length > 0) {
+		const text_source = new SourceTextSource(input);
+		dispatcher = new PluginDispatcher(options.plugins, text_source);
+	}
+
+	const tree = new TreeBuilder(input.length >> 3 || 128, dispatcher);
 	const parser = new PFMParser(tree, options.tab_size);
 	const { errors } = parser.parse(input);
+
+	// run sequential plugins after parse completes
+	if (dispatcher) {
+		dispatcher.run_sequential(tree.get_buffer());
+	}
+
 	return { nodes: tree.get_buffer(), errors };
 }

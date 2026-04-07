@@ -1,0 +1,16 @@
+{
+	"include": ["src/**/*"],
+	"compilerOptions": {
+		"declaration": false,
+		"target": "es2020",
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"forceConsistentCasingInFileNames": true,
+		"esModuleInterop": true,
+		"strict": true,
+		"noEmit": true,
+		"paths": {
+			"@mdsvex/parse": ["../../packages/parse/src/main.ts"]
+		}
+	}
+}

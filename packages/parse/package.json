@@ -25,38 +25,32 @@
 	],
 	"exports": {
 		".": {
-			"import": "./dist/main.js",
-			"types": "./dist/main.d.ts"
+			"types": "./src/main.ts",
+			"default": "./src/main.ts"
 		},
 		"./opcodes": {
-			"import": "./dist/opcodes.js",
-			"types": "./dist/opcodes.d.ts"
+			"types": "./src/opcodes.ts",
+			"default": "./src/opcodes.ts"
 		},
 		"./tree-builder": {
-			"import": "./dist/tree-builder.js",
-			"types": "./dist/tree_builder.d.ts"
+			"types": "./src/tree_builder.ts",
+			"default": "./src/tree_builder.ts"
 		},
 		"./utils": {
-			"import": "./dist/utils.js",
-			"types": "./dist/utils.d.ts"
+			"types": "./src/utils.ts",
+			"default": "./src/utils.ts"
 		},
 		"./cursor": {
-			"import": "./dist/cursor.js",
-			"types": "./dist/cursor.d.ts"
-		},
-		"./buf-utils": {
-			"import": "./dist/buf-utils.js",
-			"types": "./dist/buf-utils.d.ts"
+			"types": "./src/cursor.ts",
+			"default": "./src/cursor.ts"
 		},
 		"./wire-tree-builder": {
-			"import": "./dist/wire-tree-builder.js",
-			"types": "./dist/wire_tree_builder.d.ts"
+			"types": "./src/wire_tree_builder.ts",
+			"default": "./src/wire_tree_builder.ts"
 		},
 		"./package.json": "./package.json"
 	},
 	"author": "pngwn <hello@pngwn.io>",
-	"license": "MIT",
-	"dependencies": {
-		"@rollup/plugin-terser": "^1.0.0"
-	}
+	"license": "MIT"
+
 }
