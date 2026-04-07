@@ -1,4 +1,5 @@
 import type { node_buffer, error_collector } from "./utils";
+import type { ParsePlugin } from "./plugin_types";
 
 /** options for controlling the markdown parser. */
 export interface parse_options {
@@ -7,6 +8,9 @@ export interface parse_options {
 
 	/** column width of a tab character (default: 2). */
 	tab_size?: number;
+
+	/** parse plugins that hook into tree construction. */
+	plugins?: ParsePlugin[];
 }
 
 /** structured output produced by the markdown parser. */

@@ -19,6 +19,8 @@
 
 import { node_buffer, node_kind } from "./utils";
 import { Cursor } from "./cursor";
+import type { PluginDispatcher } from "./plugin_dispatch";
+import { WireTextSource } from "./node_view";
 
 const NONE = 0xffffffff;
 
@@ -29,11 +31,27 @@ export class WireTreeBuilder {
 	private id_to_index: number[];
 	/** schema kind names (from s opcode). */
 	private schema: string[] | null;
+	/** optional plugin dispatcher. null when no plugins registered. */
+	private dispatcher: PluginDispatcher | null;
 
-	constructor(capacity = 128) {
+	/** callback for dispatcher to register synthetic node ids. */
+	private register_id = (synthetic_id: number, buf_idx: number): void => {
+		this.id_to_index[synthetic_id] = buf_idx;
+	};
+
+	constructor(capacity = 128, dispatcher?: PluginDispatcher) {
 		this.buf = new node_buffer(capacity);
 		this.id_to_index = [0]; // root id 0 -> buffer index 0
 		this.schema = null;
+		this.dispatcher = dispatcher ?? null;
+
+		// wire mode: point the dispatcher's text source at the buffer's
+		// _strings array so NodeView.textContent resolves correctly.
+		if (this.dispatcher) {
+			this.dispatcher.set_text_source(
+				new WireTextSource(this.buf._strings),
+			);
+		}
 	}
 
 	/**
@@ -110,18 +128,46 @@ export class WireTreeBuilder {
 		// root (id=0) is auto-created by node_buffer constructor
 		if (id === 0) return;
 
-		const parent_idx =
+		let parent_idx =
 			parent === -1 ? NONE : (this.id_to_index[parent] ?? NONE);
+
+		// plugin redirect: if parent has a wrapInner wrapper, children go there
+		if (this.dispatcher && parent_idx !== NONE) {
+			const redirect = this.dispatcher.get_redirect(parent_idx);
+			if (redirect !== undefined) parent_idx = redirect;
+		}
+
 		const idx = pending
 			? this.buf.push_pending(kind as node_kind, 0, parent_idx, extra)
 			: this.buf.push(kind as node_kind, 0, parent_idx, extra);
 		this.id_to_index[id] = idx;
+
+		// plugin dispatch
+		if (this.dispatcher && this.dispatcher.has_handlers(kind as node_kind)) {
+			this.dispatcher.dispatch_open(
+				idx,
+				kind as node_kind,
+				this.buf,
+				this.register_id,
+			);
+		}
 	}
 
 	private _close(id: number): void {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
 		this.buf.set_end(idx, 1);
+
+		// capture pending state BEFORE close dispatch / commit.
+		// pending nodes may still be revoked after close, so their
+		// undo logs must be preserved until explicit commit or revoke.
+		const was_pending = this.buf._pending_nodes[idx] === 1;
+
+		// plugin close dispatch
+		if (this.dispatcher) {
+			this.dispatcher.dispatch_close(idx, this.buf);
+		}
+
 		// pending paragraphs inside list_items are tight-list speculation
 		// wrappers, they stay pending after close until the list closes
 		// and the parser either revokes (tight) or commits (loose) them.
@@ -135,6 +181,11 @@ export class WireTreeBuilder {
 			)
 		) {
 			this.buf.commit_node(idx);
+			// only commit undo log if the node was NOT pending at close time.
+			// pending nodes keep their undo logs until explicit commit/revoke.
+			if (this.dispatcher && !was_pending) {
+				this.dispatcher.dispatch_commit(idx);
+			}
 		}
 
 		// tight list unwrapping, walk sibling chains directly. safe no-op
@@ -160,8 +211,14 @@ export class WireTreeBuilder {
 	}
 
 	private _text(id: number, content: string): void {
-		const idx = this.id_to_index[id];
+		let idx = this.id_to_index[id];
 		if (idx === undefined) return;
+
+		// plugin redirect: text targeting a wrapped parent goes to the wrapper
+		if (this.dispatcher) {
+			const redirect = this.dispatcher.get_redirect(idx);
+			if (redirect !== undefined) idx = redirect;
+		}
 
 		const kind = this.buf._kinds[idx];
 		const strings = this.buf._strings;
@@ -241,6 +298,12 @@ export class WireTreeBuilder {
 	private _revoke(id: number, delimiter: string): void {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
+
+		// plugin revoke: undo mutations before handle_repair
+		if (this.dispatcher) {
+			this.dispatcher.dispatch_revoke(idx, this.buf);
+		}
+
 		this.buf.handle_repair(idx, delimiter || undefined);
 	}
 
@@ -248,6 +311,9 @@ export class WireTreeBuilder {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
 		this.buf.commit_node(idx);
+		if (this.dispatcher) {
+			this.dispatcher.dispatch_commit(idx);
+		}
 	}
 
 	private _clear(id: number): void {

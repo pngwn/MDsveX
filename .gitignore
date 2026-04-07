@@ -33,5 +33,5 @@ config.js
 AGENTS.md
 CLAUDE.md
 PLAN.md
-.claude
+.claude/
 tsc

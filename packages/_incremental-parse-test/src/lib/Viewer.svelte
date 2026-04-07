@@ -2,7 +2,8 @@
 import { untrack } from "svelte";
 import { page } from "$app/state";
 import { goto } from "$app/navigation";
-import { PFMParser, WireEmitter } from "@mdsvex/parse";
+import { PFMParser, WireEmitter, PluginDispatcher, WireTextSource } from "@mdsvex/parse";
+import type { ParsePlugin } from "@mdsvex/parse";
 import { WireTreeBuilder } from "@mdsvex/parse/wire-tree-builder";
 import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
 import type { CursorBlockEntry } from "@mdsvex/render/html-cursor";
@@ -10,11 +11,31 @@ import { ComponentRenderer } from "@mdsvex/render/component";
 import type { ComponentBlock } from "@mdsvex/render/component";
 import Node from "@mdsvex/render/Node.svelte";
 import { RecordingEmitter, type Op } from "$lib/recorder";
+import { autolink } from "@mdsvex/plugin-autolink";
 import { Play, Pause, SkipForward, SkipBackward, FastForward } from "$lib";
 import Widget from "$lib/components/Widget.svelte";
 import AlertBox from "$lib/components/AlertBox.svelte";
 
+function slugify(text: string): string {
+	return text
+		.toLowerCase()
+		.replace(/[^\w]+/g, "-")
+		.replace(/^-+|-+$/g, "");
+}
+
+export function wrap_parent(): ParsePlugin {
+	return {
+		strong_emphasis: {
+			parse(node) {
+				node.type = "link";
+				node.attrs.href = "HELLO";
+				// node.parent.attrs.style = "background: red;";
+			},
+		},
+	};
+}
 const customComponents = { Widget, AlertBox };
+const parsePlugins = [autolink(), wrap_parent()];
 
 let { markdown }: { markdown: string } = $props();
 
@@ -162,7 +183,9 @@ let wire_step_batches: unknown[][][] = $derived.by(() => {
 });
 
 let html_blocks: CursorBlockEntry[] = $derived.by(() => {
-	const builder = new WireTreeBuilder();
+	const text_source = new WireTextSource([]);
+	const dispatcher = new PluginDispatcher(parsePlugins, text_source);
+	const builder = new WireTreeBuilder(128, dispatcher);
 	const renderer = new CursorHTMLRenderer();
 
 	for (let i = 0; i <= step_index && i < wire_step_batches.length; i++) {
@@ -172,13 +195,17 @@ let html_blocks: CursorBlockEntry[] = $derived.by(() => {
 		}
 	}
 
+	// run sequential plugins after all batches applied
+	dispatcher.run_sequential(builder.get_buffer());
+
 	renderer.update(builder.get_buffer(), "");
-	console.log(renderer.blocks.map((b) => ({ idx: b.idx, html: b.html })));
 	return renderer.blocks.map((b) => ({ idx: b.idx, html: b.html }));
 });
 
 let dom_renderer = $derived.by(() => {
-	const builder = new WireTreeBuilder();
+	const text_source = new WireTextSource([]);
+	const dispatcher = new PluginDispatcher(parsePlugins, text_source);
+	const builder = new WireTreeBuilder(128, dispatcher);
 	const renderer = new ComponentRenderer();
 
 	for (let i = 0; i <= step_index && i < wire_step_batches.length; i++) {
@@ -187,6 +214,8 @@ let dom_renderer = $derived.by(() => {
 			builder.apply(batch);
 		}
 	}
+
+	dispatcher.run_sequential(builder.get_buffer());
 
 	renderer.update(builder.get_buffer(), "");
 	return renderer;

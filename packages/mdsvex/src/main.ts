@@ -1,14 +1,37 @@
-import { PFMParser, WireEmitter } from "@mdsvex/parse";
+import { PFMParser, WireEmitter, PluginDispatcher, SourceTextSource } from "@mdsvex/parse";
+import type { ParsePlugin } from "@mdsvex/parse";
 import { TreeBuilder } from "@mdsvex/parse/tree-builder";
 import { Cursor } from "@mdsvex/parse/cursor";
 import { WireTreeBuilder } from "@mdsvex/parse/wire-tree-builder";
 import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
 import type { PreprocessorGroup } from "svelte/compiler";
 
-function render(source: string): string {
-	const tree = new TreeBuilder(source.length >> 3 || 128);
+export type { ParsePlugin } from "@mdsvex/parse";
+
+export interface MdsvexOptions {
+	extensions: string[];
+	/** parse plugins that hook into tree construction. */
+	parsePlugins?: ParsePlugin[];
+}
+
+function render(
+	source: string,
+	options?: { parsePlugins?: ParsePlugin[] },
+): string {
+	let dispatcher: PluginDispatcher | undefined;
+	if (options?.parsePlugins && options.parsePlugins.length > 0) {
+		const text_source = new SourceTextSource(source);
+		dispatcher = new PluginDispatcher(options.parsePlugins, text_source);
+	}
+
+	const tree = new TreeBuilder(source.length >> 3 || 128, dispatcher);
 	const parser = new PFMParser(tree);
 	parser.parse(source);
+
+	if (dispatcher) {
+		dispatcher.run_sequential(tree.get_buffer());
+	}
+
 	const renderer = new CursorHTMLRenderer({ cache: false });
 	renderer.update(tree.get_buffer(), source);
 	return renderer.html;
@@ -16,9 +39,8 @@ function render(source: string): string {
 
 export function mdsvex_preprocessor({
 	extensions = [],
-}: {
-	extensions: string[];
-}): PreprocessorGroup {
+	parsePlugins,
+}: MdsvexOptions): PreprocessorGroup {
 	return {
 		name: "mdsvex",
 		markup: async ({ content, filename }) => {
@@ -28,10 +50,7 @@ export function mdsvex_preprocessor({
 			if (!extensionsParts.some((ext) => filename && filename.endsWith(ext)))
 				return;
 
-			// before calling parser.process, we need to wait for the layouts to be processed
-			// or else the parser will be frozen
-
-			const parsed = render(content);
+			const parsed = render(content, { parsePlugins });
 			console.log(parsed);
 			return {
 				code: parsed,

@@ -54,6 +54,34 @@ const K_HTML_COMMENT = 26;
 
 const NEWLINE = "\n";
 
+/** metadata keys that are structural and should not become html attributes. */
+const INTERNAL_KEYS = new Set([
+	"ordered", "tight", "start",
+	"info", "info_start", "info_end",
+	"tag", "attributes", "self_closing",
+	"alignments", "col_count",
+	"src",
+]);
+const LINK_SKIP = new Set(["href", "title"]);
+const IMAGE_SKIP = new Set(["title"]);
+
+/** extract plugin-set attrs from metadata as a spreadable object. */
+function get_attrs(meta: Record<string, unknown> | undefined, skip?: Set<string>): Record<string, any> {
+	if (!meta) return {};
+	const result: Record<string, any> = {};
+	for (const key in meta) {
+		if (INTERNAL_KEYS.has(key)) continue;
+		if (skip !== undefined && skip.has(key)) continue;
+		const val = meta[key];
+		if (val === true) {
+			result[key] = true;
+		} else if (val !== false && val != null) {
+			result[key] = String(val);
+		}
+	}
+	return result;
+}
+
 let kind = $derived(buf._kinds[idx]);
 let extra = $derived(buf._extras[idx]);
 let meta = $derived(buf.metadata_at(idx));
@@ -121,34 +149,34 @@ let skip_list_item_paragraph_wrapper = $derived(
 {#if kind === K_ROOT}
 	{@render child_nodes(idx)}
 {:else if kind === K_HEADING}
-	<svelte:element this={'h' + extra}>
+	<svelte:element this={'h' + extra} {...get_attrs(meta)}>
 		{@render child_nodes(idx)}
 	</svelte:element>
 {:else if kind === K_PARAGRAPH}
 	{#if skip_list_item_paragraph_wrapper}
 		{@render child_nodes(idx)}
 	{:else}
-		<p>{@render child_nodes(idx)}</p>
+		<p {...get_attrs(meta)}>{@render child_nodes(idx)}</p>
 	{/if}
 {:else if kind === K_EMPHASIS}
-	<em>{@render child_nodes(idx)}</em>
+	<em {...get_attrs(meta)}>{@render child_nodes(idx)}</em>
 {:else if kind === K_STRONG}
-	<strong>{@render child_nodes(idx)}</strong>
+	<strong {...get_attrs(meta)}>{@render child_nodes(idx)}</strong>
 {:else if kind === K_CODE_SPAN}
-	<code>{buf_text(buf, idx, source).replace(/\n/g, ' ')}</code>
+	<code {...get_attrs(meta)}>{buf_text(buf, idx, source).replace(/\n/g, ' ')}</code>
 {:else if kind === K_CODE_FENCE}
 	{@const info =
 		(meta?.info as string | undefined) ??
 		(meta?.info_start != null
 			? source.slice(meta.info_start as number, meta.info_end as number)
 			: undefined)}
-	<pre><code class={info ? 'language-' + info : undefined}
+	<pre><code class={info ? 'language-' + info : undefined} {...get_attrs(meta)}
 			>{buf_text(buf, idx, source)}</code
 		></pre>
 {:else if kind === K_BLOCK_QUOTE}
-	<blockquote>{@render child_nodes(idx)}</blockquote>
+	<blockquote {...get_attrs(meta)}>{@render child_nodes(idx)}</blockquote>
 {:else if kind === K_LINK}
-	<a href={meta?.href as string} title={(meta?.title as string) || undefined}>
+	<a href={meta?.href as string} title={(meta?.title as string) || undefined} {...get_attrs(meta, LINK_SKIP)}>
 		{@render child_nodes(idx)}
 	</a>
 {:else if kind === K_IMAGE}
@@ -156,30 +184,31 @@ let skip_list_item_paragraph_wrapper = $derived(
 		src={meta?.src as string}
 		alt={buf_text_content(buf, idx, source)}
 		title={(meta?.title as string) || undefined}
+		{...get_attrs(meta, IMAGE_SKIP)}
 	/>
 {:else if kind === K_LIST}
 	{#if meta?.ordered}
 		{@const start = meta?.start as number | undefined}
-		<ol start={start != null && start !== 1 ? start : undefined}>
+		<ol start={start != null && start !== 1 ? start : undefined} {...get_attrs(meta)}>
 			{@render child_nodes(idx)}
 		</ol>
 	{:else}
-		<ul>{@render child_nodes(idx)}</ul>
+		<ul {...get_attrs(meta)}>{@render child_nodes(idx)}</ul>
 	{/if}
 {:else if kind === K_LIST_ITEM}
-	<li>{@render child_nodes(idx)}</li>
+	<li {...get_attrs(meta)}>{@render child_nodes(idx)}</li>
 {:else if kind === K_THEMATIC_BREAK}
-	<hr />
+	<hr {...get_attrs(meta)} />
 {:else if kind === K_HARD_BREAK}
 	<br />
 {:else if kind === K_SOFT_BREAK}
 	{NEWLINE}
 {:else if kind === K_STRIKETHROUGH}
-	<del>{@render child_nodes(idx)}</del>
+	<del {...get_attrs(meta)}>{@render child_nodes(idx)}</del>
 {:else if kind === K_SUPERSCRIPT}
-	<sup>{@render child_nodes(idx)}</sup>
+	<sup {...get_attrs(meta)}>{@render child_nodes(idx)}</sup>
 {:else if kind === K_SUBSCRIPT}
-	<sub>{@render child_nodes(idx)}</sub>
+	<sub {...get_attrs(meta)}>{@render child_nodes(idx)}</sub>
 {:else if kind === K_HTML}
 	{@const tag = meta?.tag as string}
 	{@const attrs = meta?.attributes as Record | undefined}

@@ -4,6 +4,8 @@ import "./prism.css";
 import "./style.css";
 
 import "@fontsource/source-code-pro";
+
+let {children} = $props()
 </script>
 
 
@@ -13,12 +15,11 @@ import "@fontsource/source-code-pro";
 <nav class="menu">
 	<div class="inner">
 		<a href="/preprocess">preprocess</a>
-		<a href="/compile">compile-server</a>
-		<a href="/compile-browser">compile-browser</a>
+
 	</div>
 </nav>
 <main>
-	<slot />
+	{@render children?.()}
 </main>
 
 <style>

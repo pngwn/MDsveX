@@ -37,9 +37,7 @@
 			"optional": true
 		}
 	},
-	"devDependencies": {
-		"@rollup/plugin-terser": "^1.0.0"
-	},
+
 	"dependencies": {
 		"@mdsvex/parse": "workspace:*"
 	},

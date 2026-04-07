@@ -306,7 +306,7 @@ describe('node_buffer', () => {
 		expect(buffer.get_node(id1).metadata).toEqual({ depth: 3 });
 	});
 
-	test('pending nodes can be repaired -- deeply nested', () => {
+	test('pending nodes can be repaired,  deeply nested', () => {
 		const buffer = new node_buffer();
 		// Wrap in paragraph so inline repair path fires (not block-level)
 		const para = buffer.push(node_kind.paragraph, 0, 0);
