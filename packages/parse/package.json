@@ -48,6 +48,7 @@
 			"types": "./src/wire_tree_builder.ts",
 			"default": "./src/wire_tree_builder.ts"
 		},
+
 		"./package.json": "./package.json"
 	},
 	"author": "pngwn <hello@pngwn.io>",
