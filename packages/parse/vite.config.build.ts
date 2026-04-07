@@ -12,6 +12,7 @@ export default defineConfig({
 				cursor: resolve(__dirname, "tsc/cursor.js"),
 				"wire-tree-builder": resolve(__dirname, "tsc/wire_tree_builder.js"),
 				utils: resolve(__dirname, "tsc/utils.js"),
+				"buf-utils": resolve(__dirname, "tsc/buf_utils.js"),
 			},
 			formats: ["es"],
 		},
