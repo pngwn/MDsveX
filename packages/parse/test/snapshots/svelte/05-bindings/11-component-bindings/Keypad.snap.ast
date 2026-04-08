@@ -7,52 +7,52 @@ root
   line_break
   html tag="div" class="keypad"
     line_break
-    html tag="button" on:click="select(1)"
+    html tag="button" on:click=[object Object]
       paragraph
         text "1"
     line_break
-    html tag="button" on:click="select(2)"
+    html tag="button" on:click=[object Object]
       paragraph
         text "2"
     line_break
-    html tag="button" on:click="select(3)"
+    html tag="button" on:click=[object Object]
       paragraph
         text "3"
     line_break
-    html tag="button" on:click="select(4)"
+    html tag="button" on:click=[object Object]
       paragraph
         text "4"
     line_break
-    html tag="button" on:click="select(5)"
+    html tag="button" on:click=[object Object]
       paragraph
         text "5"
     line_break
-    html tag="button" on:click="select(6)"
+    html tag="button" on:click=[object Object]
       paragraph
         text "6"
     line_break
-    html tag="button" on:click="select(7)"
+    html tag="button" on:click=[object Object]
       paragraph
         text "7"
     line_break
-    html tag="button" on:click="select(8)"
+    html tag="button" on:click=[object Object]
       paragraph
         text "8"
     line_break
-    html tag="button" on:click="select(9)"
+    html tag="button" on:click=[object Object]
       paragraph
         text "9"
     line_break
     line_break
-    html tag="button" disabled="!value" on:click="clear"
+    html tag="button" disabled=[object Object] on:click=[object Object]
       paragraph
         text "clear"
     line_break
-    html tag="button" on:click="select(0)"
+    html tag="button" on:click=[object Object]
       paragraph
         text "0"
     line_break
-    html tag="button" disabled="!value" on:click="submit"
+    html tag="button" disabled=[object Object] on:click=[object Object]
       paragraph
         text "submit"
     line_break

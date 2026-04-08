@@ -2,4 +2,4 @@ root
   html tag="script"
   line_break
   line_break
-  html tag="FancyButton" on:click="handleClick" self_closing=true
+  html tag="FancyButton" on:click=[object Object] self_closing=true

@@ -8,14 +8,14 @@ root
       mustache "$count"
   line_break
   line_break
-  html tag="button" on:click="count.increment"
+  html tag="button" on:click=[object Object]
     paragraph
       text "+"
   line_break
-  html tag="button" on:click="count.decrement"
+  html tag="button" on:click=[object Object]
     paragraph
       text "-"
   line_break
-  html tag="button" on:click="count.reset"
+  html tag="button" on:click=[object Object]
     paragraph
       text "reset"

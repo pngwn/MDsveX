@@ -11,7 +11,7 @@ root
       svelte_block tag="each"
         svelte_branch tag="each" "items as item, i"
           line_break
-          html tag="Summary" item="item" i="i" offset="offset" self_closing=true
+          html tag="Summary" item=[object Object] i=[object Object] offset=[object Object] self_closing=true
           line_break
       line_break
       line_break

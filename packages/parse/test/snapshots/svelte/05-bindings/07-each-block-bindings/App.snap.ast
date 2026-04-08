@@ -14,13 +14,13 @@ root
     mustache "#each todos as todo"
     soft_break
     text "	"
-    text tag="div" class:done="todo.done" "<div class:done={todo.done}>"
+    text tag="div" class:done=[object Object] "<div class:done={todo.done}>"
     soft_break
     text "		"
-    text tag="input" type="checkbox" bind:checked="todo.done" "<input"
+    text tag="input" type="checkbox" bind:checked=[object Object] "<input"
     line_break
     line_break
-    text tag="input" placeholder="What needs to be done?" bind:value="todo.text" "<input"
+    text tag="input" placeholder="What needs to be done?" bind:value=[object Object] "<input"
     line_break
     paragraph
       text "</div>"
@@ -34,14 +34,14 @@ root
         text " remaining"
     line_break
     line_break
-    html tag="button" on:click="add"
+    html tag="button" on:click=[object Object]
       line_break
       paragraph
         text "Add new"
         soft_break
     line_break
     line_break
-    html tag="button" on:click="clear"
+    html tag="button" on:click=[object Object]
       line_break
       paragraph
         text "Clear completed"

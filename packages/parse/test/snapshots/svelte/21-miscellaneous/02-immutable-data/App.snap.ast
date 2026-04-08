@@ -13,7 +13,7 @@ root
     mustache "#each todos as todo"
     soft_break
     text "	"
-    html tag="ImmutableTodo" todo="todo" on:click="{() => toggle(todo.id)}" self_closing=true
+    html tag="ImmutableTodo" todo=[object Object] on:click="{() => toggle(todo.id)}" self_closing=true
     soft_break
     mustache "/each"
     line_break
@@ -26,7 +26,7 @@ root
       mustache "#each todos as todo"
       soft_break
       text "	"
-      html tag="MutableTodo" todo="todo" on:click="{() => toggle(todo.id)}" self_closing=true
+      html tag="MutableTodo" todo=[object Object] on:click="{() => toggle(todo.id)}" self_closing=true
       soft_break
       mustache "/each"
       line_break

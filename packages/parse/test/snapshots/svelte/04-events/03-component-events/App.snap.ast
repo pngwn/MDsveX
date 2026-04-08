@@ -2,4 +2,4 @@ root
   html tag="script"
   line_break
   line_break
-  html tag="Inner" on:message="handleMessage" self_closing=true
+  html tag="Inner" on:message=[object Object] self_closing=true

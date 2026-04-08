@@ -1,11 +1,11 @@
 root
   paragraph
     text "This is my "
-    html tag="Counter" prop="0" self_closing=true
+    html tag="Counter" prop=[object Object] self_closing=true
   line_break
   line_break
   heading depth=1 "<Heading prop={prop} />"
-    html tag="Heading" prop="prop" self_closing=true
+    html tag="Heading" prop=[object Object] self_closing=true
   line_break
   line_break
   block_quote
@@ -13,12 +13,12 @@ root
       text "This is a quotation"
     line_break
     paragraph
-      html tag="Citation" author="name" self_closing=true
+      html tag="Citation" author=[object Object] self_closing=true
   line_break
   line_break
   paragraph
     text "This is my "
     emphasis
-      html tag="Counter" prop="0" self_closing=true
+      html tag="Counter" prop=[object Object] self_closing=true
     text " and it is exciting"
   line_break

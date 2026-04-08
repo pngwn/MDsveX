@@ -83,18 +83,37 @@ export function mappings_to_v3(
 		if (role === "open_syntax" || role === "close_syntax") continue;
 
 		for (let i = 0; i < m.sourceOffsets.length; i++) {
+			const gen_start = m.generatedOffsets[i];
+			const src_start = m.sourceOffsets[i];
+
 			if (role === "node") {
 				// collapse node span to start anchor
-				segments.push({
-					gen_offset: m.generatedOffsets[i],
-					src_offset: m.sourceOffsets[i],
-				});
+				segments.push({ gen_offset: gen_start, src_offset: src_start });
 			} else {
-				// content: emit start point
-				segments.push({
-					gen_offset: m.generatedOffsets[i],
-					src_offset: m.sourceOffsets[i],
-				});
+				const gen_len = m.generatedLengths
+					? m.generatedLengths[i]
+					: m.lengths[i];
+				const src_len = m.lengths[i];
+
+				if (!m.generatedLengths && src_len === gen_len) {
+					// identity-mapped content (source text = generated text).
+					// emit per-character segments so downstream chaining
+					// preserves column precision. VLQ is compact for identity
+					// runs (CAAC repeated).
+					for (let d = 0; d < gen_len; d++) {
+						segments.push({
+							gen_offset: gen_start + d,
+							src_offset: src_start + d,
+						});
+					}
+				} else {
+					// escaped/transformed content — lengths differ.
+					// emit start point only.
+					segments.push({
+						gen_offset: gen_start,
+						src_offset: src_start,
+					});
+				}
 			}
 		}
 	}
@@ -142,10 +161,9 @@ export function mappings_to_v3(
 		prev_src_col = src_col;
 	}
 
-	// svelte's preprocessor uses basename for source matching
-	const basename = file
-		? /** @type {string} */ (file.split(/[/\\]/).pop())
-		: "input.md";
+	// use basename to match svelte compiler convention — vite resolves relative
+	// to the served JS file, so the browser can find the source.
+	const basename = file ? file.split(/[/\\]/).pop()! : "input.md";
 
 	return {
 		version: 3,

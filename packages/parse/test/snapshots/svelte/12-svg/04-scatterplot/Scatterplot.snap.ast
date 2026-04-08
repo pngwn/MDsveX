@@ -5,7 +5,7 @@ root
   html tag="svelte:window" on:resize="{resize}" self_closing=true
   line_break
   line_break
-  html tag="svg" bind:this="svg"
+  html tag="svg" bind:this=[object Object]
     line_break
     html_comment " y axis "
     line_break

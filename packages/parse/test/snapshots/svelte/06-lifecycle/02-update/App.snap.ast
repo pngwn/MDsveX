@@ -12,13 +12,13 @@ root
         text "Eliza"
     line_break
     line_break
-    html tag="div" class="scrollable" bind:this="div"
+    html tag="div" class="scrollable" bind:this=[object Object]
       line_break
       paragraph
         mustache "#each comments as comment"
         soft_break
         text "			"
-        html tag="article" class="comment.author"
+        html tag="article" class=[object Object]
           soft_break
           text "				"
           html tag="span"

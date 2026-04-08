@@ -376,7 +376,7 @@ describe('mappings_to_v3', () => {
 		expect(v3.mappings.length).toBeGreaterThan(0);
 	});
 
-	it('uses basename for sources when given full path', () => {
+	it('uses basename for sources', () => {
 		const { html, mappings, source } = renderMapped('hello\n');
 		const v3 = mappings_to_v3(mappings, source, html, '/path/to/file.md');
 

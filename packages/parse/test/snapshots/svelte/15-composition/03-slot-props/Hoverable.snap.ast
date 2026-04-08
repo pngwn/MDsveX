@@ -2,7 +2,7 @@ root
   html tag="script"
   line_break
   line_break
-  html tag="div" on:mouseenter="enter" on:mouseleave="leave"
+  html tag="div" on:mouseenter=[object Object] on:mouseleave=[object Object]
     line_break
-    html tag="slot" hovering="hovering"
+    html tag="slot" hovering=[object Object]
     line_break

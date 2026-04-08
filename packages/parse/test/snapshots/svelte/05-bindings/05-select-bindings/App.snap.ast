@@ -10,15 +10,15 @@ root
       text "Insecurity questions"
   line_break
   line_break
-  html tag="form" on:submit|preventDefault="handleSubmit"
+  html tag="form" on:submit|preventDefault=[object Object]
     line_break
-    html tag="select" bind:value="selected" on:change="{() => answer = ''}"
+    html tag="select" bind:value=[object Object] on:change="{() => answer = ''}"
       line_break
       paragraph
         mustache "#each questions as question"
         soft_break
         text "			"
-        html tag="option" value="question"
+        html tag="option" value=[object Object]
           soft_break
           text "				"
           mustache "question.text"
@@ -31,10 +31,10 @@ root
         text "	"
     line_break
     line_break
-    html tag="input" bind:value="answer"
+    html tag="input" bind:value=[object Object]
       line_break
       line_break
-      html tag="button" disabled="!answer" type="submit"
+      html tag="button" disabled=[object Object] type="submit"
         line_break
         paragraph
           text "Submit"

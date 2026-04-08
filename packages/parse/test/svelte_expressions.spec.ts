@@ -151,7 +151,7 @@ describe('svelte expressions - HTML attributes', () => {
 		const html = nodes.get_node(root.children[0]);
 		expect(html.kind).toBe('html');
 		expect(html.metadata.tag).toBe('div');
-		expect(html.metadata.attributes.class).toBe('styles');
+		expect(html.metadata.attributes.class).toEqual({ type: 'expression', value: 'styles' });
 	});
 
 	test('expression attribute with complex value', () => {
@@ -160,7 +160,7 @@ describe('svelte expressions - HTML attributes', () => {
 
 		const root = nodes.get_node();
 		const html = nodes.get_node(root.children[0]);
-		expect(html.metadata.attributes.class).toBe('active ? "on" : "off"');
+		expect(html.metadata.attributes.class).toEqual({ type: 'expression', value: 'active ? "on" : "off"' });
 	});
 
 	test('shorthand expression attribute', () => {
@@ -170,6 +170,6 @@ describe('svelte expressions - HTML attributes', () => {
 		const root = nodes.get_node();
 		const html = nodes.get_node(root.children[0]);
 		expect(html.metadata.tag).toBe('div');
-		expect(html.metadata.attributes.class).toBe('class');
+		expect(html.metadata.attributes.class).toEqual({ type: 'expression', value: 'class' });
 	});
 });

@@ -1499,7 +1499,7 @@ export class PFMParser {
 	 */
 	private try_parse_html_open_tag(pos: number): {
 		tag: string;
-		attributes: Record<string, string | boolean>;
+		attributes: Record<string, string | boolean | { type: "expression"; value: string }>;
 		self_closing: boolean;
 		end: number;
 	} | null {
@@ -1517,7 +1517,7 @@ export class PFMParser {
 		const tag = source.slice(tag_start, p);
 
 		// parse attributes
-		const attributes: Record<string, string | boolean> = {};
+		const attributes: Record<string, string | boolean | { type: "expression"; value: string }> = {};
 
 		while (p < length) {
 			// skip whitespace
@@ -1551,7 +1551,7 @@ export class PFMParser {
 				const expr_end = this.find_matching_brace(p + 1);
 				if (expr_end === -1) return null;
 				const expr = source.slice(p + 1, expr_end - 1);
-				attributes[expr] = expr;
+				attributes[expr] = { type: "expression", value: expr };
 				p = expr_end;
 				continue;
 			}
@@ -1606,7 +1606,7 @@ export class PFMParser {
 					// svelte expression attribute value: attr={expr}
 					const expr_end = this.find_matching_brace(p + 1);
 					if (expr_end === -1) return null;
-					attributes[attr_name] = source.slice(p + 1, expr_end - 1);
+					attributes[attr_name] = { type: "expression", value: source.slice(p + 1, expr_end - 1) };
 					p = expr_end;
 				} else if (quote === QUOTE || quote === APOSTROPHE) {
 					// quoted value

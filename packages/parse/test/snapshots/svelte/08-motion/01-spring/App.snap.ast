@@ -15,7 +15,7 @@ root
           mustache "coords.stiffness"
           text ")"
       line_break
-      html tag="input" bind:value="coords.stiffness" type="range" min="0" max="1" step="0.01"
+      html tag="input" bind:value=[object Object] type="range" min="0" max="1" step="0.01"
         line_break
         paragraph
     line_break
@@ -28,7 +28,7 @@ root
           mustache "coords.damping"
           text ")"
       line_break
-      html tag="input" bind:value="coords.damping" type="range" min="0" max="1" step="0.01"
+      html tag="input" bind:value=[object Object] type="range" min="0" max="1" step="0.01"
         line_break
         paragraph
     line_break
@@ -36,5 +36,5 @@ root
   line_break
   html tag="svg" on:mousemove="{e => coords.set({ x: e.clientX, y: e.clientY })}" on:mousedown="{() => size.set(30)}" on:mouseup="{() => size.set(10)}"
     line_break
-    html tag="circle" cx="$coords.x" cy="$coords.y" r="$size" self_closing=true
+    html tag="circle" cx=[object Object] cy=[object Object] r=[object Object] self_closing=true
     line_break

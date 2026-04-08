@@ -5,7 +5,7 @@ root
   svelte_block tag="if"
     svelte_branch tag="if" "user.loggedIn"
       line_break
-      html tag="button" on:click="toggle"
+      html tag="button" on:click=[object Object]
         line_break
         paragraph
           text "Log out"
@@ -16,7 +16,7 @@ root
         mustache ":else"
         soft_break
         text "	"
-        html tag="button" on:click="toggle"
+        html tag="button" on:click=[object Object]
           soft_break
           text "		Log in"
           soft_break

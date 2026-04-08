@@ -6,11 +6,11 @@ root
     line_break
     html tag="h1"
       line_break
-      html tag="div" class="box"
+      html tag="div" class=[object Object]
         line_break
-        html tag="div" class="box"
+        html tag="div" class=[object Object]
           line_break
-          html tag="div" class="box"
+          html tag="div" class=[object Object]
             paragraph
               text "CSS"
           line_break

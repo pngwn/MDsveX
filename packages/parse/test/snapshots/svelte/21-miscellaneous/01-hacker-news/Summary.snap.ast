@@ -12,7 +12,7 @@ root
         mustache "i + offset + 1"
     line_break
     html tag="h2"
-      html tag="a" target="_blank" href="item.url"
+      html tag="a" target="_blank" href=[object Object]
         paragraph
           mustache "item.title"
     line_break

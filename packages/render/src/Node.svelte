@@ -214,7 +214,7 @@ let skip_list_item_paragraph_wrapper = $derived(
 	{@const attrs = meta?.attributes as Record | undefined}
 	{@const spread = attrs
 		? Object.fromEntries(
-				Object.entries(attrs).map(([k, v]) => [k, v === true ? true : v])
+				Object.entries(attrs).map(([k, v]) => [k, v === true ? true : typeof v === 'object' && v?.type === 'expression' ? v.value : v])
 			)
 		: {}}
 	{@const CustomComponent = components?.[tag]}

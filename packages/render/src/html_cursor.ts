@@ -176,7 +176,11 @@ function _attrs(c: Cursor, out: string[], skip?: Set<string>): void {
 		if (val === true) {
 			out.push(" ", key);
 		} else if (val !== false && val != null) {
-			out.push(' ', key, '="', escape(String(val)), '"');
+			if (typeof val === "object" && (val as any).type === "expression") {
+				out.push(" ", key, "={", (val as any).value, "}");
+			} else {
+				out.push(' ', key, '="', escape(String(val)), '"');
+			}
 		}
 	}
 }
@@ -470,6 +474,8 @@ function _node(c: Cursor, out: string[], entries?: PendingMapping[]): void {
 					const v = htmlAttrs[k];
 					if (v === true) {
 						out.push(" ", k);
+					} else if (typeof v === "object" && (v as any).type === "expression") {
+						out.push(" ", k, "={", (v as any).value, "}");
 					} else {
 						out.push(" ", k, '="', escape(v as string), '"');
 					}

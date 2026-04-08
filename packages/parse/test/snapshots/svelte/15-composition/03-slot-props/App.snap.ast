@@ -5,7 +5,7 @@ root
   html tag="style"
   line_break
   line_break
-  html tag="Hoverable" let:hovering="active"
+  html tag="Hoverable" let:hovering=[object Object]
     line_break
     html tag="div" class:active=true
       line_break
@@ -31,7 +31,7 @@ root
     line_break
   line_break
   line_break
-  html tag="Hoverable" let:hovering="active"
+  html tag="Hoverable" let:hovering=[object Object]
     line_break
     html tag="div" class:active=true
       line_break
@@ -57,7 +57,7 @@ root
     line_break
   line_break
   line_break
-  html tag="Hoverable" let:hovering="active"
+  html tag="Hoverable" let:hovering=[object Object]
     line_break
     html tag="div" class:active=true
       line_break

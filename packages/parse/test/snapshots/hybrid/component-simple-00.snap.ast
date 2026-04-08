@@ -15,5 +15,5 @@ root
   html tag="Counter" count="{0}" self_closing=true
   line_break
   line_break
-  html tag="CounterCounterManyCaps" prop="0" self_closing=true
+  html tag="CounterCounterManyCaps" prop=[object Object] self_closing=true
   line_break

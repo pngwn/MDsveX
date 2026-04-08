@@ -9,7 +9,7 @@ root
   line_break
   html tag="label"
     line_break
-    html tag="input" type="radio" bind:group="scoops" value="1"
+    html tag="input" type="radio" bind:group=[object Object] value=[object Object]
       line_break
       paragraph
         text "One scoop"
@@ -18,7 +18,7 @@ root
   line_break
   html tag="label"
     line_break
-    html tag="input" type="radio" bind:group="scoops" value="2"
+    html tag="input" type="radio" bind:group=[object Object] value=[object Object]
       line_break
       paragraph
         text "Two scoops"
@@ -27,7 +27,7 @@ root
   line_break
   html tag="label"
     line_break
-    html tag="input" type="radio" bind:group="scoops" value="3"
+    html tag="input" type="radio" bind:group=[object Object] value=[object Object]
       line_break
       paragraph
         text "Three scoops"
@@ -46,7 +46,7 @@ root
     html tag="label"
       soft_break
       text "		"
-      html tag="input" type="checkbox" bind:group="flavours" value="flavour"
+      html tag="input" type="checkbox" bind:group=[object Object] value=[object Object]
         soft_break
         text "		"
         mustache "flavour"

@@ -5,7 +5,7 @@ root
   html tag="style"
   line_break
   line_break
-  html tag="span" class:expanded=true on:click="toggle"
+  html tag="span" class:expanded=true on:click=[object Object]
     paragraph
       mustache "name"
   line_break
@@ -26,13 +26,13 @@ root
         mustache "#if file.type === 'folder'"
         soft_break
         text "					"
-        html tag="svelte:self" ...file="...file" self_closing=true
+        html tag="svelte:self" ...file=[object Object] self_closing=true
         soft_break
         text "				"
         mustache ":else"
         soft_break
         text "					"
-        html tag="File" ...file="...file" self_closing=true
+        html tag="File" ...file=[object Object] self_closing=true
         soft_break
         text "				"
         mustache "/if"

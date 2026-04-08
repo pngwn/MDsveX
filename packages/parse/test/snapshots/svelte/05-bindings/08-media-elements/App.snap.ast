@@ -21,12 +21,12 @@ root
   line_break
   html tag="div"
     line_break
-    html tag="video" poster="http://sveltejs.github.io/assets/caminandes-llamigos.jpg" src="http://sveltejs.github.io/assets/caminandes-llamigos.mp4" on:mousemove="handleMousemove" on:mousedown="handleMousedown" bind:currentTime="time" bind:duration=true bind:paused=true
+    html tag="video" poster="http://sveltejs.github.io/assets/caminandes-llamigos.jpg" src="http://sveltejs.github.io/assets/caminandes-llamigos.mp4" on:mousemove=[object Object] on:mousedown=[object Object] bind:currentTime=[object Object] bind:duration=true bind:paused=true
     line_break
     line_break
     html tag="div" class="controls" style="opacity: {duration && showControls ? 1 : 0}"
       line_break
-      html tag="progress" value="time / duration || 0" self_closing=true
+      html tag="progress" value=[object Object] self_closing=true
       line_break
       line_break
       html tag="div" class="info"

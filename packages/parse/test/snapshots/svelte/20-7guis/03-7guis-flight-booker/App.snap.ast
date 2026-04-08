@@ -7,13 +7,13 @@ root
   line_break
   html_comment " https://github.com/eugenkiss/7guis/wiki#flight-booker "
   line_break
-  html tag="select" bind:value="isReturn"
+  html tag="select" bind:value=[object Object]
     line_break
-    html tag="option" value="false"
+    html tag="option" value=[object Object]
       paragraph
         text "one-way flight"
     line_break
-    html tag="option" value="true"
+    html tag="option" value=[object Object]
       paragraph
         text "return flight"
     line_break

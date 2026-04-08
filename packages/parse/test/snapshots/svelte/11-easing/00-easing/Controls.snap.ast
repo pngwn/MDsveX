@@ -17,13 +17,13 @@ root
         mustache "#if mobile"
         soft_break
         text "				"
-        html tag="select" bind:value="current_ease"
+        html tag="select" bind:value=[object Object]
           soft_break
           text "					"
           mustache "#each [...eases] as [name]"
           soft_break
           text "						"
-          html tag="option" value="name" class:selected="name === current_ease"
+          html tag="option" value=[object Object] class:selected=[object Object]
             soft_break
             text "							"
             mustache "name"
@@ -45,7 +45,7 @@ root
           mustache "#each [...eases] as [name]"
           soft_break
           text "						"
-          html tag="li" class:selected="name === current_ease" on:click="() => current_ease = name"
+          html tag="li" class:selected=[object Object] on:click=[object Object]
             soft_break
             text "							"
             mustache "name"
@@ -68,13 +68,13 @@ root
         mustache "#if mobile "
         soft_break
         text "				"
-        html tag="select" bind:value="current_type"
+        html tag="select" bind:value=[object Object]
           soft_break
           text "					"
           mustache "#each types as [name, type]"
           soft_break
           text "						"
-          html tag="option" value="type"
+          html tag="option" value=[object Object]
             soft_break
             text "							"
             mustache "name"
@@ -96,7 +96,7 @@ root
           mustache "#each types as [name, type]"
           soft_break
           text "						"
-          html tag="li" class:selected="type === current_type" on:click="() => current_type = type"
+          html tag="li" class:selected=[object Object] on:click=[object Object]
             soft_break
             text "							"
             mustache "name"
@@ -124,18 +124,18 @@ root
       line_break
       html tag="span"
         line_break
-        html tag="input" type="number" bind:value="duration" min="0" step="100" self_closing=true
+        html tag="input" type="number" bind:value=[object Object] min="0" step="100" self_closing=true
         line_break
-        html tag="button" class="number" on:click="() => duration -= 100"
+        html tag="button" class="number" on:click=[object Object]
           paragraph
             text "-"
         line_break
-        html tag="button" class="number" on:click="() => duration += 100"
+        html tag="button" class="number" on:click=[object Object]
           paragraph
             text "+"
         line_break
       line_break
-      html tag="button" class="play" on:click="() => dispatch('play')"
+      html tag="button" class="play" on:click=[object Object]
         line_break
         paragraph
           mustache "playing ? 'Restart' : 'Play'"

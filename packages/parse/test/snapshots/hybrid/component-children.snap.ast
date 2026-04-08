@@ -14,7 +14,7 @@ root
     text ":head>"
   line_break
   line_break
-  html tag="Counter" prop=""
+  html tag="Counter" prop=[object Object]
     line_break
     line_break
     heading depth=1 "hello"

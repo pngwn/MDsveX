@@ -2,4 +2,4 @@ root
   html tag="script"
   line_break
   line_break
-  html tag="Folder" name="Home" files="root" expanded=true self_closing=true
+  html tag="Folder" name="Home" files=[object Object] expanded=true self_closing=true

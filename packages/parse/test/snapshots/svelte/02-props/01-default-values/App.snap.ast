@@ -2,6 +2,6 @@ root
   html tag="script"
   line_break
   line_break
-  html tag="Nested" answer="42" self_closing=true
+  html tag="Nested" answer=[object Object] self_closing=true
   line_break
   html tag="Nested" self_closing=true

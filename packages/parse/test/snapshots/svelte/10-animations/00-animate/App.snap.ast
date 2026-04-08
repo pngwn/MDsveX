@@ -23,7 +23,7 @@ root
           html tag="label" in:receive="{{key: todo.id}}" out:send="{{key: todo.id}}" animate:flip=true
             soft_break
             text "				"
-            html tag="input" type="checkbox" bind:checked="todo.done"
+            html tag="input" type="checkbox" bind:checked=[object Object]
               soft_break
               text "				"
               mustache "todo.description"
