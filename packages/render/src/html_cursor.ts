@@ -31,49 +31,51 @@ const ESCAPE_TABLE: Record<string, string> = {
 function escape_replace(ch: string): string {
 	return ESCAPE_TABLE[ch];
 }
-function escape(text: string): string {
+export function escape(text: string): string {
 	if (!ESCAPE_TEST.test(text)) return text;
 	return text.replace(ESCAPE_MATCH, escape_replace);
 }
 
 //  kind constants
 
-const K_ROOT = 0;
-const K_TEXT = 1;
-const K_HTML = 2;
-const K_HEADING = 3;
-const K_CODE_FENCE = 5;
-const K_LINE_BREAK = 6;
-const K_PARAGRAPH = 7;
-const K_CODE_SPAN = 8;
-const K_EMPHASIS = 9;
-const K_STRONG = 10;
-const K_THEMATIC_BREAK = 11;
-const K_LINK = 12;
-const K_IMAGE = 13;
-const K_BLOCK_QUOTE = 14;
-const K_LIST = 15;
-const K_LIST_ITEM = 16;
-const K_HARD_BREAK = 17;
-const K_SOFT_BREAK = 18;
-const K_STRIKETHROUGH = 19;
-const K_SUPERSCRIPT = 20;
-const K_SUBSCRIPT = 21;
-const K_TABLE = 22;
-const K_TABLE_HEADER = 23;
-const K_TABLE_ROW = 24;
-const K_TABLE_CELL = 25;
-const K_HTML_COMMENT = 26;
-const K_SVELTE_TAG = 27;
-const K_SVELTE_BLOCK = 28;
-const K_SVELTE_BRANCH = 29;
-const K_MUSTACHE = 4;
+export const K_ROOT = 0;
+export const K_TEXT = 1;
+export const K_HTML = 2;
+export const K_HEADING = 3;
+export const K_CODE_FENCE = 5;
+export const K_LINE_BREAK = 6;
+export const K_PARAGRAPH = 7;
+export const K_CODE_SPAN = 8;
+export const K_EMPHASIS = 9;
+export const K_STRONG = 10;
+export const K_THEMATIC_BREAK = 11;
+export const K_LINK = 12;
+export const K_IMAGE = 13;
+export const K_BLOCK_QUOTE = 14;
+export const K_LIST = 15;
+export const K_LIST_ITEM = 16;
+export const K_HARD_BREAK = 17;
+export const K_SOFT_BREAK = 18;
+export const K_STRIKETHROUGH = 19;
+export const K_SUPERSCRIPT = 20;
+export const K_SUBSCRIPT = 21;
+export const K_TABLE = 22;
+export const K_TABLE_HEADER = 23;
+export const K_TABLE_ROW = 24;
+export const K_TABLE_CELL = 25;
+export const K_HTML_COMMENT = 26;
+export const K_SVELTE_TAG = 27;
+export const K_SVELTE_BLOCK = 28;
+export const K_SVELTE_BRANCH = 29;
+export const K_MUSTACHE = 4;
+export const K_FRONTMATTER = 33;
+export const K_IMPORT_STATEMENT = 34;
 
-const NONE = 0xffffffff;
+export const NONE = 0xffffffff;
 
-//  pending mapping entry (internal, resolved to Mapping<MappingData> after render)
+//  pending mapping entry (resolved to Mapping<MappingData> after render)
 
-interface PendingMapping {
+export interface PendingMapping {
 	out_idx: number;
 	out_count: number;
 	source_offset: number;
@@ -82,7 +84,7 @@ interface PendingMapping {
 }
 
 /** emit a mapping entry. skips if generated range is empty. */
-function _emit(
+export function _emit(
 	entries: PendingMapping[],
 	out_start: number,
 	out_end: number,
@@ -191,7 +193,7 @@ const IMAGE_HANDLED = new Set(["title"]);
 //  renderer
 
 /** render children of the current cursor position, collecting escaped text and recursive node output. */
-function _children(c: Cursor, out: string[], entries?: PendingMapping[]): void {
+export function _children(c: Cursor, out: string[], entries?: PendingMapping[]): void {
 	if (!c.gotoFirstChild()) return;
 	do {
 		if (c.kind === K_TEXT) {
@@ -224,7 +226,7 @@ function _childrenRaw(c: Cursor): string {
 }
 
 /** render a single node at the current cursor position. */
-function _node(c: Cursor, out: string[], entries?: PendingMapping[]): void {
+export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): void {
 	switch (c.kind) {
 		case K_ROOT:
 			_children(c, out, entries);
@@ -684,7 +686,7 @@ function _tableCells(
 //  mapping resolution
 
 /** convert pending mapping entries to volar-compatible Mapping[] using out[] offsets. */
-function _resolve_mappings(
+export function _resolve_mappings(
 	out: string[],
 	entries: PendingMapping[],
 ): Mapping<MappingData>[] {

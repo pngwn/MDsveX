@@ -43,6 +43,22 @@ importers:
         specifier: ^6.0.2
         version: 6.0.2
 
+  language-tools/source-map:
+    dependencies:
+      '@jridgewell/trace-mapping':
+        specifier: ^0.3.31
+        version: 0.3.31
+      '@mdsvex/parse':
+        specifier: workspace:*
+        version: link:../../packages/parse
+      '@mdsvex/render':
+        specifier: workspace:*
+        version: link:../../packages/render
+    devDependencies:
+      svelte:
+        specifier: ^5.0.0
+        version: 5.55.1
+
   packages/_incremental-parse-test:
     dependencies:
       '@mdsvex/parse':
@@ -78,7 +94,7 @@ importers:
         version: 5.55.0
       svelte-check:
         specifier: ^4.4.2
-        version: 4.4.5(picomatch@4.0.3)(svelte@5.55.0)(typescript@5.9.3)
+        version: 4.4.5(picomatch@4.0.4)(svelte@5.55.0)(typescript@5.9.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -8184,11 +8200,11 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  svelte-check@4.4.5(picomatch@4.0.3)(svelte@5.55.0)(typescript@5.9.3):
+  svelte-check@4.4.5(picomatch@4.0.4)(svelte@5.55.0)(typescript@5.9.3):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       chokidar: 4.0.3
-      fdir: 6.5.0(picomatch@4.0.3)
+      fdir: 6.5.0(picomatch@4.0.4)
       picocolors: 1.1.1
       sade: 1.8.1
       svelte: 5.55.0
