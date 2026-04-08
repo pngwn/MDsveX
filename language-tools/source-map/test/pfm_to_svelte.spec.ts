@@ -82,7 +82,7 @@ describe("pfmToSvelte", () => {
 		assertMappingsValid(source, result);
 
 		expect(result.code).toContain("<script");
-		expect(result.code).toContain("let title: any;");
+		expect(result.code).toContain("const title = ");
 		expect(result.code).toContain("</script>");
 		expect(result.code).toContain("<h1>Hello</h1>");
 
@@ -128,11 +128,11 @@ describe("pfmToSvelte", () => {
 
 		expect(result.code).toContain("<script");
 		expect(result.code).toContain('import A from "./A.svelte"');
-		expect(result.code).toContain("let title: any;");
+		expect(result.code).toContain("const title = ");
 
 		// imports come before frontmatter declarations
 		const importIdx = result.code.indexOf("import A");
-		const letIdx = result.code.indexOf("let title");
+		const letIdx = result.code.indexOf("const title");
 		expect(importIdx).toBeLessThan(letIdx);
 	});
 
@@ -152,9 +152,9 @@ describe("pfmToSvelte", () => {
 		const result = pfmToSvelte(source);
 		assertMappingsValid(source, result);
 
-		expect(result.code).toContain("let title: any;");
-		expect(result.code).toContain("let count: any;");
-		expect(result.code).toContain("let description: any;");
+		expect(result.code).toContain("const title = ");
+		expect(result.code).toContain("const count = ");
+		expect(result.code).toContain("const description = ");
 
 		// each key maps to its source position
 		for (const keyName of ["title", "count", "description"]) {
@@ -171,9 +171,9 @@ describe("pfmToSvelte", () => {
 		assertMappingsValid(source, result);
 
 		// should extract title, body, tags (not line1, line2)
-		expect(result.code).toContain("let title: any;");
-		expect(result.code).toContain("let body: any;");
-		expect(result.code).toContain("let tags: any;");
+		expect(result.code).toContain("const title = ");
+		expect(result.code).toContain("const body = ");
+		expect(result.code).toContain("const tags = ");
 		expect(result.code).not.toContain("let line1");
 		expect(result.code).not.toContain("let line2");
 	});
@@ -185,7 +185,7 @@ describe("pfmToSvelte", () => {
 
 		// empty frontmatter still generates a script block (but with no declarations)
 		expect(result.code).toContain("<script");
-		expect(result.code).not.toContain("let ");
+		expect(result.code).not.toContain("const ");
 		expect(result.code).toContain("<h1>Hello</h1>");
 	});
 
@@ -210,7 +210,7 @@ describe("pfmToSvelte", () => {
 		const result = pfmToSvelte(source);
 		assertMappingsValid(source, result);
 
-		expect(result.code).toContain("let title: any;");
+		expect(result.code).toContain("const title = ");
 		expect(result.code).toContain("let x = 1;");
 
 		// single <script> block
@@ -250,8 +250,8 @@ describe("pfmToSvelte", () => {
 		const result = pfmToSvelte(source);
 		assertMappingsValid(source, result);
 
-		expect(result.code).toContain("let title: any;");
-		expect(result.code).toContain("let $valid: any;");
+		expect(result.code).toContain("const title = ");
+		expect(result.code).toContain("const $valid = ");
 		// hyphenated key should be skipped
 		expect(result.code).not.toContain("my-key");
 	});

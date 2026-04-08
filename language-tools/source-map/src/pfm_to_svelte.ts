@@ -27,35 +27,72 @@ import type { Mapping, MappingData } from "@mdsvex/render/mappings";
 
 export type { Mapping, MappingData } from "@mdsvex/render/mappings";
 
+/** A <style> block found in the PFM source, with positions in both source and generated output. */
+export interface StyleBlock {
+	/** Byte offset of the CSS content start in the PFM source. */
+	sourceStart: number;
+	/** Byte offset of the CSS content end in the PFM source. */
+	sourceEnd: number;
+	/** Byte offset of the CSS content start in the generated Svelte code. */
+	generatedStart: number;
+	/** Byte offset of the CSS content end in the generated Svelte code. */
+	generatedEnd: number;
+}
+
 export interface PfmToSvelteResult {
 	code: string;
 	mappings: Mapping<MappingData>[];
+	/** Style blocks found in the source, with positions for CSS VirtualCode extraction. */
+	styleBlocks: StyleBlock[];
 }
 
-/** regex to extract top-level YAML key names (valid JS identifiers only). */
-const YAML_KEY_RE = /^([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/gm;
+/** regex to extract top-level YAML key-value pairs (valid JS identifiers only). */
+const YAML_KV_RE = /^([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:(.*)/gm;
 
-interface YamlKey {
+interface YamlEntry {
 	name: string;
 	/** byte offset of the key name within the PFM source. */
 	sourceOffset: number;
+	/** JavaScript literal representation of the value. */
+	jsValue: string;
 }
 
 /**
- * Extract top-level YAML key names from frontmatter text.
- * Only extracts keys that are valid JavaScript identifiers.
+ * Convert a YAML scalar value to a JavaScript literal string.
+ * Handles numbers, booleans, null, and falls back to string.
  */
-function extractYamlKeys(yaml: string, yamlSourceOffset: number): YamlKey[] {
-	const keys: YamlKey[] = [];
-	YAML_KEY_RE.lastIndex = 0;
+function yamlValueToJs(raw: string): string {
+	const v = raw.trim();
+	if (v === "" || v === "~" || v === "null") return "null";
+	if (v === "true") return "true";
+	if (v === "false") return "false";
+	// integer or float
+	if (/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(v)) return v;
+	// block scalar indicator (|, >, |-, >+, etc.) — can't parse inline
+	if (/^[|>]/.test(v)) return '"" as string';
+	// inline array [a, b] or object {a: b} — too complex, fall back
+	if (/^\[/.test(v) || /^\{/.test(v)) return `${v} as any`;
+	// plain string — quote it, escaping internal quotes and backslashes
+	return JSON.stringify(v);
+}
+
+/**
+ * Extract top-level YAML key-value pairs from frontmatter text.
+ * Only extracts keys that are valid JavaScript identifiers.
+ * Values are converted to JavaScript literals for type inference.
+ */
+function extractYamlEntries(yaml: string, yamlSourceOffset: number): YamlEntry[] {
+	const entries: YamlEntry[] = [];
+	YAML_KV_RE.lastIndex = 0;
 	let match: RegExpExecArray | null;
-	while ((match = YAML_KEY_RE.exec(yaml)) !== null) {
-		keys.push({
+	while ((match = YAML_KV_RE.exec(yaml)) !== null) {
+		entries.push({
 			name: match[1],
 			sourceOffset: yamlSourceOffset + match.index,
+			jsValue: yamlValueToJs(match[2]),
 		});
 	}
-	return keys;
+	return entries;
 }
 
 /**
@@ -135,25 +172,25 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 			out.push(text, "\n");
 		}
 
-		// frontmatter keys → let declarations
+		// frontmatter keys → const declarations with inferred types
 		if (frontmatterNode) {
 			const yaml = source.slice(
 				frontmatterNode.valueStart,
 				frontmatterNode.valueEnd,
 			);
-			const keys = extractYamlKeys(yaml, frontmatterNode.valueStart);
-			for (const key of keys) {
-				out.push("let ");
+			const fmEntries = extractYamlEntries(yaml, frontmatterNode.valueStart);
+			for (const entry of fmEntries) {
+				out.push("const ");
 				// character-level mapping for the key name
 				_emit(
 					entries,
 					out.length,
 					out.length + 1,
-					key.sourceOffset,
-					key.sourceOffset + key.name.length,
+					entry.sourceOffset,
+					entry.sourceOffset + entry.name.length,
 					{ ...CI_SVELTE, nodeIndex: -1, role: "content" },
 				);
-				out.push(key.name, ": any;\n");
+				out.push(entry.name, " = ", entry.jsValue, ";\n");
 			}
 		}
 
@@ -186,7 +223,26 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 		);
 	}
 
-	// Phase B: Render body nodes (skip frontmatter, imports, scripts)
+	// Phase B: Collect style block source positions before body rendering
+	const styleSourcePositions: { valueStart: number; valueEnd: number }[] = [];
+	cursor.reset();
+	if (cursor.gotoFirstChild()) {
+		do {
+			if (
+				cursor.kind === K_HTML &&
+				cursor.meta()?.tag === "style" &&
+				!bodySkipSet.has(cursor.index)
+			) {
+				styleSourcePositions.push({
+					valueStart: cursor.value_start,
+					valueEnd: cursor.value_end,
+				});
+			}
+		} while (cursor.gotoNextSibling());
+		cursor.gotoParent();
+	}
+
+	// Phase C: Render body nodes (skip frontmatter, imports, scripts)
 	cursor.reset();
 	if (cursor.gotoFirstChild()) {
 		do {
@@ -201,5 +257,21 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 	const code = out.join("");
 	const mappings = _resolve_mappings(out, entries);
 
-	return { code, mappings };
+	// Phase D: Locate style blocks in generated output by matching source content
+	const styleBlocks: StyleBlock[] = [];
+	for (const sp of styleSourcePositions) {
+		const cssContent = source.slice(sp.valueStart, sp.valueEnd);
+		// find this exact CSS content in the generated code
+		const genIdx = code.indexOf(cssContent);
+		if (genIdx !== -1) {
+			styleBlocks.push({
+				sourceStart: sp.valueStart,
+				sourceEnd: sp.valueEnd,
+				generatedStart: genIdx,
+				generatedEnd: genIdx + cssContent.length,
+			});
+		}
+	}
+
+	return { code, mappings, styleBlocks };
 }

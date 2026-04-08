@@ -1,14 +1,14 @@
 /**
  * End-to-end composition test.
  *
- * Tests two things:
+ * Tests three things:
  * 1. pfmToSvelte output is valid Svelte that the compiler accepts
- * 2. The mapping pipeline (pfmToSvelte → v3ToVolar → compose) works correctly
- *    using synthetic v3 maps (since Svelte 5's compiler produces sparse maps
- *    for simple components; the real LS uses svelte2tsx which produces detailed maps)
+ * 2. The mapping pipeline works with synthetic v3 maps
+ * 3. The real pipeline works with svelte2tsx
  */
 import { describe, it, expect } from "vitest";
 import { compile } from "svelte/compiler";
+import { svelte2tsx } from "svelte2tsx";
 import { pfmToSvelte } from "../src/pfm_to_svelte";
 import { v3ToVolarMappings } from "../src/v3_to_volar";
 import { composeMappings } from "../src/compose_mappings";
@@ -266,6 +266,118 @@ The count is {count + 1}.
 				expect(m.generatedOffsets[i] + genLen).toBeLessThanOrEqual(
 					svelte.code.length,
 				);
+			}
+		}
+	});
+});
+
+// ── Real svelte2tsx pipeline tests ──
+
+function realPipeline(pfmSource: string) {
+	const svelte = pfmToSvelte(pfmSource);
+	const tsx = svelte2tsx(svelte.code, {
+		filename: "test.svelte",
+		isTsFile: false,
+		mode: "ts",
+	});
+	const map = tsx.map.toJSON ? tsx.map.toJSON() : tsx.map;
+	const svelteToTs = v3ToVolarMappings(map as any, tsx.code, svelte.code);
+	const composed = composeMappings(svelte.mappings, svelteToTs);
+
+	return { pfmSource, svelteCode: svelte.code, tsCode: tsx.code, composed };
+}
+
+function findComposed(
+	pfmSource: string,
+	tsCode: string,
+	mappings: Mapping<CodeInformation>[],
+	pfmSubstr: string,
+): { srcText: string; genText: string; mapping: Mapping<CodeInformation> }[] {
+	const results: { srcText: string; genText: string; mapping: Mapping<CodeInformation> }[] = [];
+	for (const m of mappings) {
+		for (let i = 0; i < m.sourceOffsets.length; i++) {
+			const srcText = pfmSource.slice(m.sourceOffsets[i], m.sourceOffsets[i] + m.lengths[i]);
+			if (srcText === pfmSubstr) {
+				const genLen = m.generatedLengths ? m.generatedLengths[i] : m.lengths[i];
+				const genText = tsCode.slice(m.generatedOffsets[i], m.generatedOffsets[i] + genLen);
+				results.push({ srcText, genText, mapping: m });
+			}
+		}
+	}
+	return results;
+}
+
+describe("Real svelte2tsx pipeline", () => {
+	it("frontmatter keys survive PFM → Svelte → svelte2tsx composition", () => {
+		const result = realPipeline("---\ntitle: hello\ncount: 42\n---\n\n# Hello\n");
+
+		const titleHits = findComposed(result.pfmSource, result.tsCode, result.composed, "title");
+		const countHits = findComposed(result.pfmSource, result.tsCode, result.composed, "count");
+
+		expect(titleHits.length).toBeGreaterThanOrEqual(1);
+		expect(countHits.length).toBeGreaterThanOrEqual(1);
+
+		// at least one hit should map to "title" in TS
+		expect(titleHits.some((h) => h.genText === "title")).toBe(true);
+		expect(countHits.some((h) => h.genText === "count")).toBe(true);
+	});
+
+	it("import statement maps through svelte2tsx", () => {
+		const pfm = 'import Counter from "./Counter.svelte"\n\n# Hello\n';
+		const result = realPipeline(pfm);
+
+		const importHits = findComposed(
+			result.pfmSource,
+			result.tsCode,
+			result.composed,
+			'import Counter from "./Counter.svelte"',
+		);
+
+		expect(importHits.length).toBeGreaterThanOrEqual(1);
+		expect(
+			importHits.some((h) => h.genText.includes("import Counter")),
+		).toBe(true);
+	});
+
+	it("inline expression maps through svelte2tsx", () => {
+		const pfm = "---\ncount: 0\n---\n\nThe value is {count + 1}.\n";
+		const result = realPipeline(pfm);
+
+		const exprHits = findComposed(
+			result.pfmSource,
+			result.tsCode,
+			result.composed,
+			"count + 1",
+		);
+
+		expect(exprHits.length).toBeGreaterThanOrEqual(1);
+		expect(exprHits.some((h) => h.genText.includes("count + 1"))).toBe(true);
+	});
+
+	it("all composed mappings have valid offsets with svelte2tsx", () => {
+		const pfm = `---
+title: Hello
+count: 42
+---
+import Counter from "./Counter.svelte"
+
+# {title}
+
+<Counter value={count} />
+
+The count is {count + 1}.
+`;
+		const result = realPipeline(pfm);
+
+		expect(result.composed.length).toBeGreaterThan(0);
+
+		for (const m of result.composed) {
+			for (let i = 0; i < m.sourceOffsets.length; i++) {
+				expect(m.sourceOffsets[i]).toBeGreaterThanOrEqual(0);
+				expect(m.sourceOffsets[i] + m.lengths[i]).toBeLessThanOrEqual(pfm.length);
+				expect(m.generatedOffsets[i]).toBeGreaterThanOrEqual(0);
+				const genLen = m.generatedLengths ? m.generatedLengths[i] : m.lengths[i];
+				expect(m.generatedOffsets[i] + genLen).toBeLessThanOrEqual(result.tsCode.length);
 			}
 		}
 	});

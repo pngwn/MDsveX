@@ -32,7 +32,9 @@
 		"@jridgewell/trace-mapping": "^0.3.31"
 	},
 	"devDependencies": {
-		"svelte": "^5.0.0"
+		"svelte": "^5.0.0",
+		"svelte2tsx": "^0.7.53",
+		"typescript": "^5.0.0"
 	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT"

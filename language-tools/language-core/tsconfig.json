@@ -1,0 +1,11 @@
+{
+	"include": ["src/**/*", "test/**/*"],
+	"compilerOptions": {
+		"target": "es2020",
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"forceConsistentCasingInFileNames": true,
+		"esModuleInterop": true,
+		"strict": true
+	}
+}
