@@ -24,5 +24,32 @@ This has a {nonExistentVariable} that should show an error.
 - list {count * 2}
 - list {count > 0 ? "positive" : "non-positive"}
 
+## This is a subtitle
 
 > {title.t}
+
+
+![img](./img.png)
+
+
+### This is a smaller subtitle.
+
+
+
+hello 
+
+## this is another subtitle
+
+<Test />
+
+### boo
+
+asdasd
+
+
+<style>
+h1 {
+  color: red;
+
+}
+</style>

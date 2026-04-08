@@ -182,7 +182,7 @@ describe("Integration: LanguagePlugin in Volar context", () => {
 		expect(vc!.mappings.length).toBeGreaterThan(0);
 
 		// Embedded TS VirtualCode
-		expect(vc!.embeddedCodes!.length).toBe(1);
+		expect(vc!.embeddedCodes!.length).toBe(2); // TS + markdown
 		const tsVc = vc!.embeddedCodes![0];
 		expect(tsVc.id).toBe("ts");
 		expect(tsVc.languageId).toBe("typescript");

@@ -10,6 +10,7 @@ import {
 } from "@volar/language-server/node";
 import { create as createTypeScriptServices } from "volar-service-typescript";
 import { create as createCssService } from "volar-service-css";
+import { create as createMarkdownService } from "volar-service-markdown";
 import { createPfmLanguagePlugin } from "@pfm/language-core";
 import { URI } from "vscode-uri";
 import { forEachEmbeddedCode } from "@volar/language-core";
@@ -129,6 +130,7 @@ connection.onInitialize((params) => {
 		[
 			...createTypeScriptServices(tsdk.typescript),
 			createCssService(),
+			createMarkdownService(),
 		],
 	);
 });

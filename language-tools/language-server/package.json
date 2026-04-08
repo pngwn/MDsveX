@@ -24,6 +24,7 @@
 		"@volar/language-server": "^2.4.28",
 		"@volar/typescript": "^2.4.28",
 		"volar-service-css": "^0.0.70",
+		"volar-service-markdown": "^0.0.70",
 		"volar-service-typescript": "^0.0.70",
 		"vscode-languageserver": "^9.0.1",
 		"vscode-uri": "^3.0.8"

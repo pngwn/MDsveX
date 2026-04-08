@@ -39,11 +39,21 @@ export interface StyleBlock {
 	generatedEnd: number;
 }
 
+/** A region in the PFM source to exclude from the markdown VirtualCode. */
+export interface ExcludedRegion {
+	/** Byte offset of the region start in the PFM source (includes opening tag/fence). */
+	start: number;
+	/** Byte offset of the region end in the PFM source (includes closing tag/fence). */
+	end: number;
+}
+
 export interface PfmToSvelteResult {
 	code: string;
 	mappings: Mapping<MappingData>[];
 	/** Style blocks found in the source, with positions for CSS VirtualCode extraction. */
 	styleBlocks: StyleBlock[];
+	/** Regions to exclude from the markdown VirtualCode (frontmatter, script, style). */
+	excludedRegions: ExcludedRegion[];
 }
 
 /** regex to extract top-level YAML key-value pairs (valid JS identifiers only). */
@@ -118,6 +128,7 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 	const importNodes: { valueStart: number; valueEnd: number }[] = [];
 	const scriptBodies: { valueStart: number; valueEnd: number }[] = [];
 	const bodySkipSet = new Set<number>();
+	const excludedRegions: ExcludedRegion[] = [];
 
 	if (cursor.gotoFirstChild()) {
 		do {
@@ -127,18 +138,21 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 					valueStart: cursor.value_start,
 					valueEnd: cursor.value_end,
 				};
+				excludedRegions.push({ start: cursor.start, end: cursor.end });
 				bodySkipSet.add(cursor.index);
 			} else if (kind === K_IMPORT_STATEMENT) {
 				importNodes.push({
 					valueStart: cursor.value_start,
 					valueEnd: cursor.value_end,
 				});
+				excludedRegions.push({ start: cursor.start, end: cursor.end });
 				bodySkipSet.add(cursor.index);
 			} else if (kind === K_HTML && cursor.meta()?.tag === "script") {
 				scriptBodies.push({
 					valueStart: cursor.value_start,
 					valueEnd: cursor.value_end,
 				});
+				excludedRegions.push({ start: cursor.start, end: cursor.end });
 				bodySkipSet.add(cursor.index);
 			}
 		} while (cursor.gotoNextSibling());
@@ -237,6 +251,7 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 					valueStart: cursor.value_start,
 					valueEnd: cursor.value_end,
 				});
+				excludedRegions.push({ start: cursor.start, end: cursor.end });
 			}
 		} while (cursor.gotoNextSibling());
 		cursor.gotoParent();
@@ -273,5 +288,5 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 		}
 	}
 
-	return { code, mappings, styleBlocks };
+	return { code, mappings, styleBlocks, excludedRegions };
 }

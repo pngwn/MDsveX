@@ -152,6 +152,33 @@ function createVirtualCodeFromSource(
 		});
 	}
 
+	// Build markdown VirtualCode — PFM source with excluded regions
+	// (frontmatter, script, style, imports) blanked out so the markdown
+	// service sees clean markdown without setext-heading false positives.
+	let mdSource = source;
+	for (const region of svelte.excludedRegions) {
+		// Replace excluded bytes with spaces, preserving newlines for line alignment
+		const chunk = source.slice(region.start, region.end);
+		const blanked = chunk.replace(/[^\n]/g, " ");
+		mdSource = mdSource.slice(0, region.start) + blanked + mdSource.slice(region.end);
+	}
+
+	embeddedCodes.push({
+		id: "md",
+		languageId: "markdown",
+		snapshot: createSnapshot(mdSource),
+		mappings: [{
+			sourceOffsets: [0],
+			generatedOffsets: [0],
+			lengths: [source.length],
+			data: {
+				structure: true,
+				navigation: true,
+			},
+		}],
+		embeddedCodes: [],
+	});
+
 	return {
 		id: "root",
 		languageId: PFM_LANGUAGE_ID,
