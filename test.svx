@@ -1,0 +1,10 @@
+<script>
+  let name = 'world';
+  let count = 0;
+</script>
+
+# Hello {name}
+
+The count is {count}.
+
+Some _formatted_ text with *bold* and `code`.

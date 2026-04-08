@@ -5,12 +5,12 @@ import { Cursor } from "@mdsvex/parse/cursor";
 import { WireTreeBuilder } from "@mdsvex/parse/wire-tree-builder";
 import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
 import { mappings_to_v3 } from "@mdsvex/render/sourcemap";
-import type { Mapping, CodeInformation } from "@mdsvex/render/mappings";
+import type { Mapping, MappingData } from "@mdsvex/render/mappings";
 import type { SourceMapV3 } from "@mdsvex/render/sourcemap";
 import type { PreprocessorGroup } from "svelte/compiler";
 
 export type { ParsePlugin } from "@mdsvex/parse";
-export type { Mapping, CodeInformation, SourceMapV3 };
+export type { Mapping, MappingData, SourceMapV3 };
 
 export interface MdsvexOptions {
 	extensions: string[];
@@ -20,7 +20,7 @@ export interface MdsvexOptions {
 
 interface RenderResult {
 	code: string;
-	mappings?: Mapping<CodeInformation>[];
+	mappings?: Mapping<MappingData>[];
 }
 
 function render(

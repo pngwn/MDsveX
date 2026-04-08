@@ -35,26 +35,23 @@ export interface CodeInformation {
 	format?: boolean;
 }
 
+// ── CodeInformation presets ──
+
 /** text content — verification, semantic, navigation. */
-export const TEXT: CodeInformation = {
+export const CI_TEXT: CodeInformation = {
 	verification: true,
 	semantic: true,
 	navigation: true,
 };
 
 /** code content (code spans, fences) — semantic + navigation only. */
-export const CODE: CodeInformation = {
+export const CI_CODE: CodeInformation = {
 	semantic: true,
 	navigation: true,
 };
 
-/** generated html tags — structure only (anchor for sourcemap remapping). */
-export const TAG: CodeInformation = {
-	structure: true,
-};
-
 /** svelte expressions — full capabilities. */
-export const SVELTE: CodeInformation = {
+export const CI_SVELTE: CodeInformation = {
 	verification: true,
 	completion: true,
 	semantic: true,
@@ -62,3 +59,19 @@ export const SVELTE: CodeInformation = {
 	structure: true,
 	format: true,
 };
+
+/** generated structural elements — structure only. */
+export const CI_STRUCTURE: CodeInformation = {
+	structure: true,
+};
+
+// ── mapping identity ──
+
+export type MappingRole = "node" | "content" | "open_syntax" | "close_syntax";
+
+export interface MappingData extends CodeInformation {
+	/** node buffer index — stable, monotonic in document order. */
+	nodeIndex: number;
+	/** what this mapping represents within the node. */
+	role: MappingRole;
+}

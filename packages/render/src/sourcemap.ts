@@ -2,7 +2,7 @@
  * sourcemap utilities: line-starts, offset→position, vlq, v3 conversion.
  */
 
-import type { Mapping, CodeInformation } from "./mappings";
+import type { Mapping, MappingData } from "./mappings";
 
 
 /** build an array of byte offsets where each line begins. line 0 starts at 0. */
@@ -56,8 +56,15 @@ export interface SourceMapV3 {
 	mappings: string;
 }
 
+/**
+ * convert Mapping<MappingData>[] to a v3 sourcemap.
+ *
+ * emits content spans (for cursor placement) and node span start anchors
+ * (for block identification). skips open_syntax and close_syntax to avoid
+ * overlapping ranges that cause nondeterministic cursor jumps in devtools.
+ */
 export function mappings_to_v3(
-	mappings: Mapping<CodeInformation>[],
+	mappings: Mapping<MappingData>[],
 	source: string,
 	generated: string,
 	file?: string,
@@ -65,25 +72,30 @@ export function mappings_to_v3(
 	const src_lines = build_line_starts(source);
 	const gen_lines = build_line_starts(generated);
 
-	// flatten: each mapping can have multiple offset pairs
 	interface Segment {
 		gen_offset: number;
-		gen_length: number;
 		src_offset: number;
-		src_length: number;
 	}
 
 	const segments: Segment[] = [];
 	for (const m of mappings) {
+		const role = m.data.role;
+		if (role === "open_syntax" || role === "close_syntax") continue;
+
 		for (let i = 0; i < m.sourceOffsets.length; i++) {
-			segments.push({
-				gen_offset: m.generatedOffsets[i],
-				gen_length: m.generatedLengths
-					? m.generatedLengths[i]
-					: m.lengths[i],
-				src_offset: m.sourceOffsets[i],
-				src_length: m.lengths[i],
-			});
+			if (role === "node") {
+				// collapse node span to start anchor
+				segments.push({
+					gen_offset: m.generatedOffsets[i],
+					src_offset: m.sourceOffsets[i],
+				});
+			} else {
+				// content: emit start point
+				segments.push({
+					gen_offset: m.generatedOffsets[i],
+					src_offset: m.sourceOffsets[i],
+				});
+			}
 		}
 	}
 
@@ -121,7 +133,7 @@ export function mappings_to_v3(
 
 		// 4-field segment: gen_col, source_idx(0), src_line, src_col
 		result += vlq_encode(gen_col - prev_gen_col);
-		result += vlq_encode(0 - 0); // source index delta (always 0, single source)
+		result += vlq_encode(0); // source index delta (always 0, single source)
 		result += vlq_encode(src_line - prev_src_line);
 		result += vlq_encode(src_col - prev_src_col);
 
@@ -131,7 +143,9 @@ export function mappings_to_v3(
 	}
 
 	// svelte's preprocessor uses basename for source matching
-	const basename = file ? /** @type {string} */ (file.split(/[/\\]/).pop()) : "input.md";
+	const basename = file
+		? /** @type {string} */ (file.split(/[/\\]/).pop())
+		: "input.md";
 
 	return {
 		version: 3,

@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "names": [],
+  "sources": [
+    "test.svx"
+  ],
+  "sourcesContent": [
+    "<script>\n  let name = 'world';\n  let count = 0;\n</script><h1>Hello {name}</h1><p>The count is {count}.</p><p>Some <em>formatted</em> text with <strong>bold</strong> and <code>code</code>.</p>"
+  ],
+  "mappings": ";;;;;;2CAAA;;;;KAKA;;CAAA;;KAEA,cAFA;;CAEA;;;CAFA",
+  "ignoreList": []
+}
