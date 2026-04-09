@@ -2921,9 +2921,9 @@ class Dt {
     ], this.node_stack = [0], this.next_id = 1, this.pending_ids = [], this.pending_count = 0, this.closed_flags = [], this.node_kind_array = [], this.prev = 1, this.current = 1, this.next_class = 1, this.block_quote_depth = 0, this.list_depth = 0, this.list_marker = 0, this.list_ordered = false, this.list_start_num = 0, this.list_node_id = 0, this.list_is_loose = false, this.list_content_offset = 0, this.list_marker_indent = 0, this.list_state_stack = [], this.list_pending_paras = [], this.table_col_count = 0, this.table_node_id = 0, this.table_row_id = 0, this.table_cell_id = 0, this.table_cell_col = 0, this.in_table = false, this.inline_range_parse = false, this.table_cell_has_content = false, this.html_tag_stack = [], this.html_block_depth = 0, this.svelte_block_depth = 0, this.svelte_block_tag = "", this.svelte_branch_id = 0, this.svelte_block_id = 0, this.svelte_block_stack = [], this.extra = 0, this.info_start_pos = 0, this.info_end_pos = 0, this.checkpoint_cursor = 0, this.prev_cursor = 0, this.loop_without_progress = 0, this.frontmatter_failed = false, this.imports_allowed = true, this.ref_map.clear(), this.link_text_start = 0, this.directive_colon_counts = [], this.errors = Z$1, this.out.open(0, 0, 0, -1, 0, false);
   }
   // opcode helpers
-  emit_open(t2, s, n3, e2 = 0, o = false) {
-    const r2 = this.next_id++;
-    return this.out.open(r2, t2, s, n3, e2, o), o && (this.pending_starts[this.pending_count] = s, this.pending_ids[this.pending_count++] = r2), this.node_kind_array[r2] = t2, r2;
+  emit_open(t2, s, n3, e2 = 0, r2 = false) {
+    const o = this.next_id++;
+    return this.out.open(o, t2, s, n3, e2, r2), r2 && (this.pending_starts[this.pending_count] = s, this.pending_ids[this.pending_count++] = o), this.node_kind_array[o] = t2, o;
   }
   emit_close(t2, s) {
     this.out.close(t2, s), this.closed_flags[t2] = 1;
@@ -2976,13 +2976,13 @@ class Dt {
     const e2 = s.charCodeAt(t2 + 6);
     if (e2 !== p$1 && e2 !== N$1)
       return null;
-    let o = t2 + 6;
-    for (; o < n3 && s.charCodeAt(o) !== l; )
-      o++;
-    if (o >= n3 && !this.finished)
+    let r2 = t2 + 6;
+    for (; r2 < n3 && s.charCodeAt(r2) !== l; )
+      r2++;
+    if (r2 >= n3 && !this.finished)
       return false;
-    const r2 = t2, h = o, i = o < n3 ? o + 1 : o;
-    return { value_start: r2, value_end: h, end: i };
+    const o = t2, h = r2, i = r2 < n3 ? r2 + 1 : r2;
+    return { value_start: o, value_end: h, end: i };
   }
   /**
    * try to parse a block-level directive at `pos`.
@@ -2994,24 +2994,24 @@ class Dt {
    */
   try_parse_block_directive(t2) {
     const s = this.source, n3 = s.length;
-    let e2 = t2, o = 0;
+    let e2 = t2, r2 = 0;
     for (; e2 < n3 && s.charCodeAt(e2) === w$2; )
-      o++, e2++;
-    if (o < 2)
+      r2++, e2++;
+    if (r2 < 2)
       return null;
     if (e2 >= n3 && !this.finished)
       return false;
     if (e2 >= n3)
       return null;
-    const r2 = s.charCodeAt(e2);
-    if (!(r2 >= 97 && r2 <= 122 || r2 >= 65 && r2 <= 90))
+    const o = s.charCodeAt(e2);
+    if (!(o >= 97 && o <= 122 || o >= 65 && o <= 90))
       return null;
     const h = e2;
     for (; e2 < n3 && this.is_directive_name_char(s.charCodeAt(e2)); )
       e2++;
     if (e2 >= n3 && !this.finished)
       return false;
-    const i = s.slice(h, e2), c2 = o >= 3 ? "container" : "leaf";
+    const i = s.slice(h, e2), c2 = r2 >= 3 ? "container" : "leaf";
     let a = -1, _2 = -1;
     if (e2 < n3 && s.charCodeAt(e2) === E$1) {
       e2++, a = e2;
@@ -3036,7 +3036,7 @@ class Dt {
       e2++;
     return e2 >= n3 && !this.finished ? false : e2 < n3 && s.charCodeAt(e2) !== l ? null : (e2 < n3 && e2++, {
       kind: c2,
-      colons: o,
+      colons: r2,
       name: i,
       content_start: a,
       content_end: _2,
@@ -3050,16 +3050,16 @@ class Dt {
    */
   try_parse_directive_close(t2, s) {
     const n3 = this.source, e2 = n3.length;
-    let o = t2, r2 = 0;
-    for (; o < e2 && n3.charCodeAt(o) === w$2; )
-      r2++, o++;
-    if (r2 < s)
+    let r2 = t2, o = 0;
+    for (; r2 < e2 && n3.charCodeAt(r2) === w$2; )
+      o++, r2++;
+    if (o < s)
       return -1;
-    if (o >= e2 && !this.finished)
+    if (r2 >= e2 && !this.finished)
       return -2;
-    for (; o < e2 && (n3.charCodeAt(o) === p$1 || n3.charCodeAt(o) === f); )
-      o++;
-    return o >= e2 && !this.finished ? -2 : o < e2 && n3.charCodeAt(o) !== l ? -1 : (o < e2 && o++, o);
+    for (; r2 < e2 && (n3.charCodeAt(r2) === p$1 || n3.charCodeAt(r2) === f); )
+      r2++;
+    return r2 >= e2 && !this.finished ? -2 : r2 < e2 && n3.charCodeAt(r2) !== l ? -1 : (r2 < e2 && r2++, r2);
   }
   chomp(t2, s = false) {
     s ? this.cursor = t2 : this.cursor += t2, t2 > 1 || s ? (this.prev = v$1(this.source.charCodeAt(this.cursor - 1)), this.current = v$1(this.source.charCodeAt(this.cursor)), this.next_class = v$1(this.source.charCodeAt(this.cursor + 1))) : (this.prev = this.current, this.current = this.next_class, this.next_class = v$1(this.source.charCodeAt(this.cursor + 1)));
@@ -3075,31 +3075,31 @@ class Dt {
    */
   count_indent(t2) {
     const s = this.source, n3 = s.length, e2 = this.tab_size;
-    let o = 0;
+    let r2 = 0;
     for (; t2 < n3; ) {
-      const r2 = s.charCodeAt(t2);
-      if (r2 === p$1)
-        o++, t2++;
-      else if (r2 === f)
-        o += e2, t2++;
+      const o = s.charCodeAt(t2);
+      if (o === p$1)
+        r2++, t2++;
+      else if (o === f)
+        r2 += e2, t2++;
       else
         break;
     }
-    return { columns: o, end: t2 };
+    return { columns: r2, end: t2 };
   }
   /**
    * skip enough whitespace characters starting at `pos` to consume
    * at least `target` columns. returns the position after skipping.
    */
   skip_columns(t2, s) {
-    const n3 = this.source, e2 = n3.length, o = this.tab_size;
-    let r2 = 0;
-    for (; t2 < e2 && r2 < s; ) {
+    const n3 = this.source, e2 = n3.length, r2 = this.tab_size;
+    let o = 0;
+    for (; t2 < e2 && o < s; ) {
       const h = n3.charCodeAt(t2);
       if (h === p$1)
-        r2++, t2++;
+        o++, t2++;
       else if (h === f)
-        r2 += o, t2++;
+        o += r2, t2++;
       else
         break;
     }
@@ -3117,27 +3117,27 @@ class Dt {
   can_decide_after_lf(t2) {
     const s = this.source, n3 = s.length;
     if (this.block_quote_depth > 0) {
-      for (let r2 = t2 + 1; r2 < n3; r2++)
-        if (s.charCodeAt(r2) === l)
+      for (let o = t2 + 1; o < n3; o++)
+        if (s.charCodeAt(o) === l)
           return true;
       return false;
     }
     let e2 = t2 + 1;
     for (; e2 < n3; ) {
-      const r2 = s.charCodeAt(e2);
-      if (r2 !== p$1 && r2 !== f)
+      const o = s.charCodeAt(e2);
+      if (o !== p$1 && o !== f)
         break;
       e2++;
     }
     if (e2 >= n3)
       return this.finished;
-    const o = s.charCodeAt(e2);
-    if (o === l)
+    const r2 = s.charCodeAt(e2);
+    if (r2 === l)
       return true;
-    for (let r2 = e2 + 1; r2 < n3; r2++)
-      if (s.charCodeAt(r2) === l)
+    for (let o = e2 + 1; o < n3; o++)
+      if (s.charCodeAt(o) === l)
         return true;
-    switch (o) {
+    switch (r2) {
       case S:
         return e2 + 1 < n3;
       case C$1:
@@ -3147,9 +3147,9 @@ class Dt {
       case A2:
       case O$1:
         if (this.list_depth > 0)
-          for (let r2 = e2 + 1; r2 < n3; r2++) {
-            const h = s.charCodeAt(r2);
-            if (h === l || h !== o && h !== p$1 && h !== f)
+          for (let o = e2 + 1; o < n3; o++) {
+            const h = s.charCodeAt(o);
+            if (h === l || h !== r2 && h !== p$1 && h !== f)
               return true;
           }
         return false;
@@ -3163,16 +3163,16 @@ class Dt {
       case w$2:
         return false;
       default:
-        if (o >= 48 && o <= 57) {
+        if (r2 >= 48 && r2 <= 57) {
           if (this.list_depth === 0)
             return false;
-          let r2 = e2 + 1;
-          for (; r2 < n3 && s.charCodeAt(r2) >= 48 && s.charCodeAt(r2) <= 57; )
-            r2++;
-          if (r2 >= n3)
+          let o = e2 + 1;
+          for (; o < n3 && s.charCodeAt(o) >= 48 && s.charCodeAt(o) <= 57; )
+            o++;
+          if (o >= n3)
             return false;
-          const h = s.charCodeAt(r2);
-          return h !== U$1 && h !== z$1 ? true : r2 + 1 < n3;
+          const h = s.charCodeAt(o);
+          return h !== U$1 && h !== z$1 ? true : o + 1 < n3;
         }
         return true;
     }
@@ -3188,15 +3188,15 @@ class Dt {
       e2++, t2++;
     if (e2 > 6)
       return false;
-    const o = s.charCodeAt(t2);
-    return t2 >= n3 || o === p$1 || o === f || o === l;
+    const r2 = s.charCodeAt(t2);
+    return t2 >= n3 || r2 === p$1 || r2 === f || r2 === l;
   }
   is_blank_line_after(t2) {
     const s = this.source, n3 = s.length;
     let e2 = t2 + 1;
     for (; e2 < n3 && s.charCodeAt(e2) !== l; ) {
-      const o = s.charCodeAt(e2);
-      if (o !== p$1 && o !== f)
+      const r2 = s.charCodeAt(e2);
+      if (r2 !== p$1 && r2 !== f)
         return false;
       e2++;
     }
@@ -3209,26 +3209,26 @@ class Dt {
       e2++, t2++;
     if (e2 > 3 || t2 >= n3)
       return false;
-    const o = s.charCodeAt(t2);
-    if (o !== O$1 && o !== A2 && o !== x$1)
+    const r2 = s.charCodeAt(t2);
+    if (r2 !== O$1 && r2 !== A2 && r2 !== x$1)
       return false;
-    let r2 = 0;
+    let o = 0;
     for (; t2 < n3 && s.charCodeAt(t2) !== l; ) {
       const h = s.charCodeAt(t2);
-      if (h === o)
-        r2++;
+      if (h === r2)
+        o++;
       else if (h !== p$1 && h !== f)
         return false;
       t2++;
     }
-    return t2 >= n3 && !this.finished ? false : r2 >= 3;
+    return t2 >= n3 && !this.finished ? false : o >= 3;
   }
   is_ascii_punctuation(t2) {
     return t2 >= 33 && t2 <= 47 || t2 >= 58 && t2 <= 64 || t2 >= 91 && t2 <= 96 || t2 >= 123 && t2 <= 126;
   }
   skip_bq_markers(t2, s) {
     const n3 = this.source, e2 = n3.length;
-    for (let o = 0; o < s; o++) {
+    for (let r2 = 0; r2 < s; r2++) {
       for (; t2 < e2 && (n3.charCodeAt(t2) === p$1 || n3.charCodeAt(t2) === f); )
         t2++;
       if (t2 >= e2 || n3.charCodeAt(t2) !== C$1)
@@ -3256,28 +3256,28 @@ class Dt {
    * backticks in the opener.
    */
   bq_fence_scan(t2, s, n3) {
-    const e2 = this.source, o = e2.length;
-    let r2 = t2;
-    for (; r2 <= o; ) {
-      if (r2 >= o)
+    const e2 = this.source, r2 = e2.length;
+    let o = t2;
+    for (; o <= r2; ) {
+      if (o >= r2)
         return this.finished ? 1 : 0;
-      const h = this.skip_bq_markers(r2, n3);
+      const h = this.skip_bq_markers(o, n3);
       if (h === -1)
         return -1;
       let i = h;
-      for (; i < o && (e2.charCodeAt(i) === p$1 || e2.charCodeAt(i) === f); )
+      for (; i < r2 && (e2.charCodeAt(i) === p$1 || e2.charCodeAt(i) === f); )
         i++;
       let c2 = 0;
-      for (; i < o && e2.charCodeAt(i) === k; )
+      for (; i < r2 && e2.charCodeAt(i) === k; )
         c2++, i++;
       if (c2 >= s)
         return 1;
       let a = h;
-      for (; a < o && e2.charCodeAt(a) !== l; )
+      for (; a < r2 && e2.charCodeAt(a) !== l; )
         a++;
-      if (a >= o)
+      if (a >= r2)
         return this.finished ? 1 : 0;
-      r2 = a + 1;
+      o = a + 1;
     }
     return this.finished ? 1 : 0;
   }
@@ -3302,17 +3302,17 @@ class Dt {
     const s = this.source, n3 = s.length;
     let e2 = t2;
     for (; e2 < n3; ) {
-      const r2 = s.charCodeAt(e2);
-      if (r2 !== p$1 && r2 !== f)
+      const o = s.charCodeAt(e2);
+      if (o !== p$1 && o !== f)
         break;
       e2++;
     }
     if (e2 >= n3)
       return this.finished;
-    const o = s.charCodeAt(e2);
-    if (o === l || o === N$1 && this.is_svelte_block_boundary(e2))
+    const r2 = s.charCodeAt(e2);
+    if (r2 === l || r2 === N$1 && this.is_svelte_block_boundary(e2))
       return true;
-    switch (o) {
+    switch (r2) {
       case S:
         return this.is_heading_start(t2);
       case C$1:
@@ -3322,13 +3322,13 @@ class Dt {
       case O$1:
       case A2:
       case x$1:
-        return this.is_thematic_break_start(t2) || o !== x$1 && this.is_list_item_start_interrupt(t2);
+        return this.is_thematic_break_start(t2) || r2 !== x$1 && this.is_list_item_start_interrupt(t2);
       case P$1:
         return this.is_list_item_start_interrupt(t2);
       case w$2:
         return e2 + 1 < n3 && s.charCodeAt(e2 + 1) === w$2;
       default:
-        return o >= 48 && o <= 57 ? this.is_list_item_start_interrupt(t2) : false;
+        return r2 >= 48 && r2 <= 57 ? this.is_list_item_start_interrupt(t2) : false;
     }
   }
   try_parse_list_marker(t2) {
@@ -3336,19 +3336,19 @@ class Dt {
     if (t2 >= n3)
       return null;
     const e2 = this.count_indent(t2);
-    let o = e2.columns;
+    let r2 = e2.columns;
     if (t2 = e2.end, t2 >= n3)
       return null;
-    const r2 = s.charCodeAt(t2);
-    if (r2 === A2 || r2 === O$1 || r2 === P$1) {
+    const o = s.charCodeAt(t2);
+    if (o === A2 || o === O$1 || o === P$1) {
       if (t2 + 1 >= n3 && !this.finished)
         return null;
       const h = s.charCodeAt(t2 + 1);
       if (t2 + 1 >= n3 || h === p$1 || h === f || h === l) {
-        let i = t2 + 1, c2 = o + 1;
+        let i = t2 + 1, c2 = r2 + 1;
         return i < n3 && (h === p$1 || h === f) && (c2 += h === f ? this.tab_size : 1, i++), {
-          indent: o,
-          marker_char: r2,
+          indent: r2,
+          marker_char: o,
           ordered: false,
           start_num: 0,
           content_start: i,
@@ -3357,7 +3357,7 @@ class Dt {
       }
       return null;
     }
-    if (r2 >= 48 && r2 <= 57) {
+    if (o >= 48 && o <= 57) {
       const h = t2;
       for (; t2 < n3 && s.charCodeAt(t2) >= 48 && s.charCodeAt(t2) <= 57; )
         t2++;
@@ -3368,11 +3368,11 @@ class Dt {
         return null;
       const c2 = s.charCodeAt(t2 + 1);
       if (t2 + 1 >= n3 || c2 === p$1 || c2 === f || c2 === l) {
-        let a = t2 + 1, _2 = o + (t2 - h) + 1;
+        let a = t2 + 1, _2 = r2 + (t2 - h) + 1;
         a < n3 && (c2 === p$1 || c2 === f) && (_2 += c2 === f ? this.tab_size : 1, a++);
         const u3 = parseInt(s.slice(h, t2), 10);
         return {
-          indent: o,
+          indent: r2,
           marker_char: i,
           ordered: true,
           start_num: u3,
@@ -3392,11 +3392,11 @@ class Dt {
       return true;
     if (e2.ordered && e2.start_num !== 1)
       return false;
-    let o = e2.content_start;
-    for (; o < n3 && s.charCodeAt(o) !== l; ) {
-      if (s.charCodeAt(o) !== p$1 && s.charCodeAt(o) !== f)
+    let r2 = e2.content_start;
+    for (; r2 < n3 && s.charCodeAt(r2) !== l; ) {
+      if (s.charCodeAt(r2) !== p$1 && s.charCodeAt(r2) !== f)
         return true;
-      o++;
+      r2++;
     }
     return false;
   }
@@ -3482,19 +3482,19 @@ class Dt {
   }
   try_parse_uri_autolink(t2) {
     const s = this.source, n3 = s.length;
-    let e2 = t2, o = s.charCodeAt(e2);
-    if (!(o >= 65 && o <= 90 || o >= 97 && o <= 122))
+    let e2 = t2, r2 = s.charCodeAt(e2);
+    if (!(r2 >= 65 && r2 <= 90 || r2 >= 97 && r2 <= 122))
       return -1;
     e2++;
-    let r2 = 1;
-    for (; e2 < n3 && r2 <= 32 && (o = s.charCodeAt(e2), o >= 65 && o <= 90 || o >= 97 && o <= 122 || o >= 48 && o <= 57 || o === 43 || o === 45 || o === 46); )
-      e2++, r2++;
-    if (r2 < 2 || s.charCodeAt(e2) !== w$2)
+    let o = 1;
+    for (; e2 < n3 && o <= 32 && (r2 = s.charCodeAt(e2), r2 >= 65 && r2 <= 90 || r2 >= 97 && r2 <= 122 || r2 >= 48 && r2 <= 57 || r2 === 43 || r2 === 45 || r2 === 46); )
+      e2++, o++;
+    if (o < 2 || s.charCodeAt(e2) !== w$2)
       return -1;
     for (e2++; e2 < n3; ) {
-      if (o = s.charCodeAt(e2), o === C$1)
+      if (r2 = s.charCodeAt(e2), r2 === C$1)
         return e2 + 1;
-      if (o <= 32 || o === j$1)
+      if (r2 <= 32 || r2 === j$1)
         return -1;
       e2++;
     }
@@ -3533,11 +3533,11 @@ class Dt {
    * returns the end position (after `>`) or -1 if not found / input incomplete.
    */
   find_raw_close_tag(t2, s) {
-    const n3 = this.source, e2 = n3.length, o = "</" + s + ">";
-    let r2 = t2;
-    for (; r2 < e2; ) {
-      const h = n3.indexOf(o, r2);
-      return h === -1 ? null : { content_end: h, end: h + o.length };
+    const n3 = this.source, e2 = n3.length, r2 = "</" + s + ">";
+    let o = t2;
+    for (; o < e2; ) {
+      const h = n3.indexOf(r2, o);
+      return h === -1 ? null : { content_end: h, end: h + r2.length };
     }
     return null;
   }
@@ -3550,19 +3550,19 @@ class Dt {
     let e2 = t2;
     if (e2 >= n3 || !this.is_tag_name_start(s.charCodeAt(e2)))
       return null;
-    const o = e2;
+    const r2 = e2;
     for (e2++; e2 < n3 && this.is_tag_name_char(s.charCodeAt(e2)); )
       e2++;
-    const r2 = s.slice(o, e2), h = {};
+    const o = s.slice(r2, e2), h = {};
     for (; e2 < n3; ) {
       for (; e2 < n3 && (s.charCodeAt(e2) === p$1 || s.charCodeAt(e2) === f || s.charCodeAt(e2) === l); )
         e2++;
       if (e2 >= n3)
         return null;
       if (s.charCodeAt(e2) === I)
-        return e2 + 1 < n3 && s.charCodeAt(e2 + 1) === C$1 ? { tag: r2, attributes: h, self_closing: true, end: e2 + 2 } : null;
+        return e2 + 1 < n3 && s.charCodeAt(e2 + 1) === C$1 ? { tag: o, attributes: h, self_closing: true, end: e2 + 2 } : null;
       if (s.charCodeAt(e2) === C$1)
-        return { tag: r2, attributes: h, self_closing: false, end: e2 + 1 };
+        return { tag: o, attributes: h, self_closing: false, end: e2 + 1 };
       if (s.charCodeAt(e2) === N$1) {
         const _2 = this.find_matching_brace(e2 + 1);
         if (_2 === -1)
@@ -3628,13 +3628,13 @@ class Dt {
       e2++;
     if (e2 >= n3 || !this.is_tag_name_start(s.charCodeAt(e2)))
       return null;
-    const o = e2;
+    const r2 = e2;
     for (e2++; e2 < n3 && this.is_tag_name_char(s.charCodeAt(e2)); )
       e2++;
-    const r2 = s.slice(o, e2);
+    const o = s.slice(r2, e2);
     for (; e2 < n3 && (s.charCodeAt(e2) === p$1 || s.charCodeAt(e2) === f); )
       e2++;
-    return e2 >= n3 || s.charCodeAt(e2) !== C$1 ? null : { tag: r2, end: e2 + 1 };
+    return e2 >= n3 || s.charCodeAt(e2) !== C$1 ? null : { tag: o, end: e2 + 1 };
   }
   /**
    * ty to parse an html comment starting at pos (the char after `<`).
@@ -3647,10 +3647,10 @@ class Dt {
     if (s.charCodeAt(e2) !== Q$1 || s.charCodeAt(e2 + 1) !== A2 || s.charCodeAt(e2 + 2) !== A2)
       return e2 + 2 >= n3 && !this.finished ? false : null;
     e2 += 3;
-    const o = e2;
+    const r2 = e2;
     for (; e2 + 2 < n3; ) {
       if (s.charCodeAt(e2) === A2 && s.charCodeAt(e2 + 1) === A2 && s.charCodeAt(e2 + 2) === C$1)
-        return { content_start: o, content_end: e2, end: e2 + 3 };
+        return { content_start: r2, content_end: e2, end: e2 + 3 };
       e2++;
     }
     return this.finished ? null : false;
@@ -3690,10 +3690,10 @@ class Dt {
     let e2 = t2 + 1;
     if (e2 >= n3)
       return null;
-    const o = s.charCodeAt(e2);
-    if (o !== S && o !== w$2 && o !== I)
+    const r2 = s.charCodeAt(e2);
+    if (r2 !== S && r2 !== w$2 && r2 !== I)
       return null;
-    const r2 = o === S ? "#" : o === w$2 ? ":" : "/";
+    const o = r2 === S ? "#" : r2 === w$2 ? ":" : "/";
     e2++;
     const h = e2;
     for (; e2 < n3 && s.charCodeAt(e2) !== p$1 && s.charCodeAt(e2) !== f && s.charCodeAt(e2) !== D$1; )
@@ -3701,24 +3701,24 @@ class Dt {
     if (e2 === h)
       return null;
     let i = s.slice(h, e2);
-    if (r2 === ":" && i === "else") {
+    if (o === ":" && i === "else") {
       const _2 = e2;
       for (; e2 < n3 && (s.charCodeAt(e2) === p$1 || s.charCodeAt(e2) === f); )
         e2++;
       e2 + 1 < n3 && s.charCodeAt(e2) === 105 && s.charCodeAt(e2 + 1) === 102 && (e2 + 2 >= n3 || s.charCodeAt(e2 + 2) === p$1 || s.charCodeAt(e2 + 2) === f || s.charCodeAt(e2 + 2) === D$1) ? (i = "else if", e2 += 2) : e2 = _2;
     }
-    if (r2 === "/") {
+    if (o === "/") {
       for (; e2 < n3 && (s.charCodeAt(e2) === p$1 || s.charCodeAt(e2) === f); )
         e2++;
-      return e2 >= n3 || s.charCodeAt(e2) !== D$1 ? null : { kind: r2, tag: i, expr_start: 0, expr_end: 0, end: e2 + 1 };
+      return e2 >= n3 || s.charCodeAt(e2) !== D$1 ? null : { kind: o, tag: i, expr_start: 0, expr_end: 0, end: e2 + 1 };
     }
     for (; e2 < n3 && (s.charCodeAt(e2) === p$1 || s.charCodeAt(e2) === f); )
       e2++;
     if (e2 < n3 && s.charCodeAt(e2) === D$1)
-      return { kind: r2, tag: i, expr_start: 0, expr_end: 0, end: e2 + 1 };
+      return { kind: o, tag: i, expr_start: 0, expr_end: 0, end: e2 + 1 };
     const c2 = e2, a = this.find_matching_brace(c2);
     return a === -1 ? null : {
-      kind: r2,
+      kind: o,
       tag: i,
       expr_start: c2,
       expr_end: a - 1,
@@ -3746,63 +3746,63 @@ class Dt {
    */
   find_matching_brace(t2) {
     const s = this.source, n3 = s.length;
-    let e2 = 1, o = t2;
-    for (; o < n3; ) {
-      const r2 = s.charCodeAt(o);
-      switch (r2) {
+    let e2 = 1, r2 = t2;
+    for (; r2 < n3; ) {
+      const o = s.charCodeAt(r2);
+      switch (o) {
         case N$1:
-          e2++, o++;
+          e2++, r2++;
           break;
         case D$1:
           if (e2--, e2 === 0)
-            return o + 1;
-          o++;
+            return r2 + 1;
+          r2++;
           break;
         case Y$1:
         case J$1: {
-          for (o++; o < n3 && s.charCodeAt(o) !== r2; )
-            s.charCodeAt(o) === R$1 && o++, o++;
-          o < n3 && o++;
+          for (r2++; r2 < n3 && s.charCodeAt(r2) !== o; )
+            s.charCodeAt(r2) === R$1 && r2++, r2++;
+          r2 < n3 && r2++;
           break;
         }
         case k: {
-          for (o++; o < n3 && s.charCodeAt(o) !== k; ) {
-            if (s.charCodeAt(o) === R$1)
-              o++;
-            else if (s.charCodeAt(o) === 36 && o + 1 < n3 && s.charCodeAt(o + 1) === N$1) {
-              o += 2;
-              const h = this.find_matching_brace(o);
+          for (r2++; r2 < n3 && s.charCodeAt(r2) !== k; ) {
+            if (s.charCodeAt(r2) === R$1)
+              r2++;
+            else if (s.charCodeAt(r2) === 36 && r2 + 1 < n3 && s.charCodeAt(r2 + 1) === N$1) {
+              r2 += 2;
+              const h = this.find_matching_brace(r2);
               if (h === -1)
                 return -1;
-              o = h;
+              r2 = h;
               continue;
             }
-            o++;
+            r2++;
           }
-          o < n3 && o++;
+          r2 < n3 && r2++;
           break;
         }
         case I: {
-          if (o + 1 < n3 && s.charCodeAt(o + 1) === I) {
-            for (o += 2; o < n3 && s.charCodeAt(o) !== l; )
-              o++;
+          if (r2 + 1 < n3 && s.charCodeAt(r2 + 1) === I) {
+            for (r2 += 2; r2 < n3 && s.charCodeAt(r2) !== l; )
+              r2++;
             break;
           }
-          if (o + 1 < n3 && s.charCodeAt(o + 1) === O$1) {
-            for (o += 2; o < n3; ) {
-              if (s.charCodeAt(o) === O$1 && o + 1 < n3 && s.charCodeAt(o + 1) === I) {
-                o += 2;
+          if (r2 + 1 < n3 && s.charCodeAt(r2 + 1) === O$1) {
+            for (r2 += 2; r2 < n3; ) {
+              if (s.charCodeAt(r2) === O$1 && r2 + 1 < n3 && s.charCodeAt(r2 + 1) === I) {
+                r2 += 2;
                 break;
               }
-              o++;
+              r2++;
             }
             break;
           }
-          o++;
+          r2++;
           break;
         }
         default:
-          o++;
+          r2++;
       }
     }
     return -1;
@@ -3827,7 +3827,7 @@ class Dt {
     if (s.charCodeAt(e2) !== E$1)
       return -1;
     e2++;
-    const o = e2;
+    const r2 = e2;
     for (; e2 < n3; ) {
       const g2 = s.charCodeAt(e2);
       if (g2 === M$1)
@@ -3842,9 +3842,9 @@ class Dt {
     }
     if (e2 >= n3)
       return this.finished ? -1 : -2;
-    if (e2 === o)
+    if (e2 === r2)
       return -1;
-    const r2 = s.slice(o, e2);
+    const o = s.slice(r2, e2);
     if (e2++, e2 >= n3)
       return this.finished ? -1 : -2;
     if (s.charCodeAt(e2) !== w$2)
@@ -3941,7 +3941,7 @@ class Dt {
     if (e2 < n3 && s.charCodeAt(e2) !== l)
       return -1;
     e2 < n3 && e2++;
-    const b2 = this.normalize_label(r2);
+    const b2 = this.normalize_label(o);
     return b2 && !this.ref_map.has(b2) && this.ref_map.set(b2, { url: a, title: d2 }), e2;
   }
   /**
@@ -3953,15 +3953,15 @@ class Dt {
     const s = this.source, n3 = s.length, e2 = s.charCodeAt(t2);
     if (e2 !== 34 && e2 !== 39 && e2 !== K)
       return null;
-    const o = e2 === K ? z$1 : e2;
-    let r2 = t2 + 1;
-    const h = r2;
-    for (; r2 < n3; ) {
-      const i = s.charCodeAt(r2);
-      if (i === o)
-        return { title: s.slice(h, r2), end: r2 + 1 };
+    const r2 = e2 === K ? z$1 : e2;
+    let o = t2 + 1;
+    const h = o;
+    for (; o < n3; ) {
+      const i = s.charCodeAt(o);
+      if (i === r2)
+        return { title: s.slice(h, o), end: o + 1 };
       if (i === l) {
-        let c2 = r2 + 1;
+        let c2 = o + 1;
         for (; c2 < n3 && (s.charCodeAt(c2) === p$1 || s.charCodeAt(c2) === f); )
           c2++;
         if (c2 < n3 && s.charCodeAt(c2) === l)
@@ -3969,11 +3969,11 @@ class Dt {
         if (c2 >= n3 && !this.finished)
           return -2;
       }
-      if (i === R$1 && r2 + 1 < n3) {
-        r2 += 2;
+      if (i === R$1 && o + 1 < n3) {
+        o += 2;
         continue;
       }
-      r2++;
+      o++;
     }
     return this.finished ? null : -2;
   }
@@ -3987,9 +3987,9 @@ class Dt {
    */
   start_heading(t2) {
     const s = this.source, n3 = s.length;
-    let e2 = 1, o = this.cursor + 1;
-    for (; o < n3 && s.charCodeAt(o) === S; )
-      e2++, o++;
+    let e2 = 1, r2 = this.cursor + 1;
+    for (; r2 < n3 && s.charCodeAt(r2) === S; )
+      e2++, r2++;
     if (e2 > 6) {
       this.states.push(
         7
@@ -3998,10 +3998,10 @@ class Dt {
       const c2 = this.emit_open(7, this.cursor, t2);
       return this.node_stack.push(c2), true;
     }
-    if (o >= n3 && !this.finished)
+    if (r2 >= n3 && !this.finished)
       return false;
-    const r2 = s.charCodeAt(o);
-    if (o < n3 && r2 !== p$1 && r2 !== f && r2 !== l) {
+    const o = s.charCodeAt(r2);
+    if (r2 < n3 && o !== p$1 && o !== f && o !== l) {
       this.states.push(
         7
         /* state_kind.paragraph */
@@ -4009,8 +4009,8 @@ class Dt {
       const c2 = this.emit_open(7, this.cursor, t2);
       return this.node_stack.push(c2), true;
     }
-    let h = o;
-    if (o < n3 && (r2 === p$1 || r2 === f))
+    let h = r2;
+    if (r2 < n3 && (o === p$1 || o === f))
       for (h++; h < n3 && (s.charCodeAt(h) === p$1 || s.charCodeAt(h) === f); )
         h++;
     if (h >= n3 && !this.finished)
@@ -4020,6 +4020,25 @@ class Dt {
       2
       /* state_kind.heading_marker */
     ), this.chomp(h, true), true;
+  }
+  // returns true when a linefeed inside a delimiter state (emphasis,
+  // strong, strikethrough, superscript, subscript) was consumed by a
+  // block interrupt or blockquote boundary. caller should `continue
+  // main_loop` when true.
+  _delimiter_lf_close(t2) {
+    if (this.block_quote_depth > 0) {
+      const s = this.cursor + 1, n3 = this.skip_bq_markers(s, this.block_quote_depth);
+      if (n3 !== -1 && !this.is_blank_at_pos(n3) && !this.is_heading_start(n3) && !this.is_thematic_break_start(n3)) {
+        const e2 = this.emit_open(18, this.cursor, t2);
+        this.emit_close(e2, this.cursor + 1), this.chomp(n3, true), this.states.push(
+          8
+          /* state_kind.inline */
+        );
+      } else
+        this.states.pop(), this.emit_close(t2, this.cursor), this.out.set_value_end(t2, this.cursor), this.node_stack.pop();
+      return true;
+    }
+    return this.is_blank_line_after(this.cursor) || this.is_heading_start(this.cursor + 1) || this.is_thematic_break_start(this.cursor + 1) ? (this.states.pop(), this.emit_close(t2, this.cursor), this.out.set_value_end(t2, this.cursor), this.node_stack.pop(), true) : false;
   }
   // main loop
   _run() {
@@ -4049,7 +4068,7 @@ class Dt {
           this.pending_count = i;
         }
       }
-      const e2 = this.states[this.states.length - 1], o = t2.charCodeAt(this.cursor), r2 = this.node_stack[this.node_stack.length - 1];
+      const e2 = this.states[this.states.length - 1], r2 = t2.charCodeAt(this.cursor), o = this.node_stack[this.node_stack.length - 1];
       if ((++n3 & 63) === 0) {
         if (this.cursor === this.prev_cursor) {
           if (this.loop_without_progress += 64, this.loop_without_progress > 100) {
@@ -4062,13 +4081,13 @@ class Dt {
       }
       switch (e2) {
         case 0: {
-          if (o !== o) {
+          if (r2 !== r2) {
             this.chomp1();
             continue;
           }
-          if (this.cursor === 0 && !this.frontmatter_failed && o === A2 && !this.finished && s < 4 && (s < 2 || t2.charCodeAt(1) === A2) && (s < 3 || t2.charCodeAt(2) === A2))
+          if (this.cursor === 0 && !this.frontmatter_failed && r2 === A2 && !this.finished && s < 4 && (s < 2 || t2.charCodeAt(1) === A2) && (s < 3 || t2.charCodeAt(2) === A2))
             break t;
-          if (this.cursor === 0 && !this.frontmatter_failed && o === A2 && t2.charCodeAt(1) === A2 && t2.charCodeAt(2) === A2) {
+          if (this.cursor === 0 && !this.frontmatter_failed && r2 === A2 && t2.charCodeAt(1) === A2 && t2.charCodeAt(2) === A2) {
             const h = t2.charCodeAt(3);
             if (h === l || h !== h) {
               if (!this.finished && s < 4)
@@ -4077,26 +4096,26 @@ class Dt {
                 29
                 /* state_kind.frontmatter */
               );
-              const i = this.emit_open(33, 0, r2);
+              const i = this.emit_open(33, 0, o);
               this.node_stack.push(i);
               const c2 = h === l ? 4 : 3;
               this.out.set_value_start(i, c2), this.chomp(c2, true);
               continue;
             }
           }
-          if (this.imports_allowed && o === 105) {
+          if (this.imports_allowed && r2 === 105) {
             const h = this.try_parse_import(this.cursor);
             if (h === false)
               break t;
             if (h !== null) {
-              const i = this.emit_open(34, this.cursor, r2);
+              const i = this.emit_open(34, this.cursor, o);
               this.out.set_value_start(i, h.value_start), this.out.set_value_end(i, h.value_end), this.emit_close(i, h.end), this.chomp(h.end, true);
               continue;
             }
           }
-          switch (this.imports_allowed && o !== l && o !== p$1 && o !== f && (this.imports_allowed = false), o) {
+          switch (this.imports_allowed && r2 !== l && r2 !== p$1 && r2 !== f && (this.imports_allowed = false), r2) {
             case l: {
-              const h = this.emit_open(6, this.cursor, r2);
+              const h = this.emit_open(6, this.cursor, o);
               this.emit_close(h, this.cursor + 1), this.chomp1();
               continue;
             }
@@ -4108,7 +4127,7 @@ class Dt {
               if (h >= s && !this.finished)
                 break t;
               if (h < s && t2.charCodeAt(h) === l) {
-                const i = this.emit_open(6, this.cursor, r2);
+                const i = this.emit_open(6, this.cursor, o);
                 this.emit_close(i, h + 1), this.chomp(h + 1, true);
                 continue;
               }
@@ -4116,7 +4135,7 @@ class Dt {
               continue;
             }
             case S: {
-              if (!this.start_heading(r2))
+              if (!this.start_heading(o))
                 break t;
               continue;
             }
@@ -4138,7 +4157,7 @@ class Dt {
                     i = false;
                     break;
                   }
-                  if (a !== o && a !== p$1 && a !== f) {
+                  if (a !== r2 && a !== p$1 && a !== f) {
                     i = false;
                     break;
                   }
@@ -4150,14 +4169,14 @@ class Dt {
                 let i = this.cursor;
                 for (; i < s && t2.charCodeAt(i) !== l; )
                   i++;
-                const c2 = i < s ? i + 1 : i, a = this.emit_open(11, this.cursor, r2);
+                const c2 = i < s ? i + 1 : i, a = this.emit_open(11, this.cursor, o);
                 this.emit_close(a, c2), this.chomp(c2, true);
                 continue;
               }
-              if (o !== x$1) {
+              if (r2 !== x$1) {
                 const i = this.try_parse_list_marker(this.cursor);
                 if (i) {
-                  this.start_list(i, r2);
+                  this.start_list(i, o);
                   continue;
                 }
               }
@@ -4165,7 +4184,7 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const h = this.emit_open(7, this.cursor, r2);
+              const h = this.emit_open(7, this.cursor, o);
               this.node_stack.push(h);
               continue;
             }
@@ -4177,7 +4196,7 @@ class Dt {
                   7
                   /* state_kind.paragraph */
                 );
-                const _2 = this.emit_open(7, this.cursor, r2);
+                const _2 = this.emit_open(7, this.cursor, o);
                 this.node_stack.push(_2);
                 continue;
               }
@@ -4185,28 +4204,28 @@ class Dt {
               if (i === false)
                 break t;
               if (i) {
-                const _2 = this.emit_open(26, this.cursor, r2);
+                const _2 = this.emit_open(26, this.cursor, o);
                 this.out.text(_2, i.content_start, i.content_end), this.emit_close(_2, i.end), this.chomp(i.end, true);
                 continue;
               }
               const c2 = this.try_parse_html_open_tag(this.cursor + 1);
               if (c2) {
                 if (c2.self_closing) {
-                  const _2 = this.emit_open(2, this.cursor, r2);
+                  const _2 = this.emit_open(2, this.cursor, o);
                   this.out.attr(_2, "tag", c2.tag), Object.keys(c2.attributes).length > 0 && this.out.attr(_2, "attributes", c2.attributes), this.out.attr(_2, "self_closing", true), this.emit_close(_2, c2.end), this.chomp(c2.end, true);
                 } else if (this.is_raw_text_tag(c2.tag)) {
                   const _2 = this.find_raw_close_tag(c2.end, c2.tag);
                   if (_2) {
-                    const u3 = this.emit_open(2, this.cursor, r2);
+                    const u3 = this.emit_open(2, this.cursor, o);
                     this.out.attr(u3, "tag", c2.tag), Object.keys(c2.attributes).length > 0 && this.out.attr(u3, "attributes", c2.attributes), this.out.set_value_start(u3, c2.end), this.out.set_value_end(u3, _2.content_end), this.emit_close(u3, _2.end), this.chomp(_2.end, true);
                   } else {
                     if (!this.finished)
                       break t;
-                    const u3 = this.emit_open(2, this.cursor, r2);
+                    const u3 = this.emit_open(2, this.cursor, o);
                     this.out.attr(u3, "tag", c2.tag), Object.keys(c2.attributes).length > 0 && this.out.attr(u3, "attributes", c2.attributes), this.out.set_value_start(u3, c2.end), this.out.set_value_end(u3, s), this.emit_close(u3, s), this.chomp(s, true);
                   }
                 } else {
-                  const _2 = this.emit_open(2, this.cursor, r2, 0, true);
+                  const _2 = this.emit_open(2, this.cursor, o, 0, true);
                   this.out.attr(_2, "tag", c2.tag), Object.keys(c2.attributes).length > 0 && this.out.attr(_2, "attributes", c2.attributes), this.html_tag_stack.push({ id: _2, tag: c2.tag }), this.node_stack.push(_2), this.states.push(
                     26
                     /* state_kind.html_block_element */
@@ -4218,14 +4237,14 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const a = this.emit_open(7, this.cursor, r2);
+              const a = this.emit_open(7, this.cursor, o);
               this.node_stack.push(a);
               continue;
             }
             case C$1: {
               let h = this.cursor + 1;
               h < s && t2.charCodeAt(h) === p$1 && h++, this.block_quote_depth++;
-              const i = this.emit_open(14, this.cursor, r2);
+              const i = this.emit_open(14, this.cursor, o);
               this.node_stack.push(i), this.states.push(
                 17
                 /* state_kind.block_quote */
@@ -4233,7 +4252,7 @@ class Dt {
               continue;
             }
             case q$1: {
-              const h = this.try_start_table(r2);
+              const h = this.try_start_table(o);
               if (h === false)
                 break t;
               if (h === true)
@@ -4242,7 +4261,7 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const i = this.emit_open(7, this.cursor, r2);
+              const i = this.emit_open(7, this.cursor, o);
               this.node_stack.push(i);
               continue;
             }
@@ -4251,14 +4270,14 @@ class Dt {
                 break t;
               const h = this.try_parse_svelte_block_token(this.cursor);
               if (h && h.kind === "#") {
-                this.start_svelte_block(h, r2);
+                this.start_svelte_block(h, o);
                 continue;
               }
               this.states.push(
                 7
                 /* state_kind.paragraph */
               );
-              const i = this.emit_open(7, this.cursor, r2);
+              const i = this.emit_open(7, this.cursor, o);
               this.node_stack.push(i);
               continue;
             }
@@ -4277,7 +4296,7 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const i = this.emit_open(7, this.cursor, r2);
+              const i = this.emit_open(7, this.cursor, o);
               this.node_stack.push(i);
               continue;
             }
@@ -4290,10 +4309,10 @@ class Dt {
                 break t;
               if (h !== null) {
                 if (h.kind === "leaf") {
-                  const c2 = this.emit_open(31, this.cursor, r2);
+                  const c2 = this.emit_open(31, this.cursor, o);
                   this.out.attr(c2, "name", h.name), h.content_start >= 0 && (this.out.set_value_start(c2, h.content_start), this.out.set_value_end(c2, h.content_end)), this.emit_close(c2, h.end), this.chomp(h.end, true);
                 } else {
-                  const c2 = this.emit_open(32, this.cursor, r2);
+                  const c2 = this.emit_open(32, this.cursor, o);
                   this.out.attr(c2, "name", h.name), h.content_start >= 0 && (this.out.set_value_start(c2, h.content_start), this.out.set_value_end(c2, h.content_end)), this.node_stack.push(c2), this.states.push(
                     28
                     /* state_kind.directive_container */
@@ -4305,15 +4324,15 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const i = this.emit_open(7, this.cursor, r2);
+              const i = this.emit_open(7, this.cursor, o);
               this.node_stack.push(i);
               continue;
             }
             default: {
-              if (o === P$1 || o >= 48 && o <= 57) {
+              if (r2 === P$1 || r2 >= 48 && r2 <= 57) {
                 if (!this.finished) {
                   let c2 = this.cursor + 1;
-                  if (o !== P$1) {
+                  if (r2 !== P$1) {
                     for (; c2 < s && t2.charCodeAt(c2) >= 48 && t2.charCodeAt(c2) <= 57; )
                       c2++;
                     if (c2 >= s)
@@ -4326,7 +4345,7 @@ class Dt {
                 }
                 const i = this.try_parse_list_marker(this.cursor);
                 if (i) {
-                  this.start_list(i, r2);
+                  this.start_list(i, o);
                   continue;
                 }
               }
@@ -4334,7 +4353,7 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const h = this.emit_open(7, this.cursor, r2);
+              const h = this.emit_open(7, this.cursor, o);
               this.node_stack.push(h);
               continue;
             }
@@ -4342,34 +4361,34 @@ class Dt {
         }
         case 7: {
           const h = 1 + this.block_quote_depth + this.list_depth * 2 + this.html_block_depth + this.svelte_block_depth * 2 + this.directive_colon_counts.length;
-          if (!o) {
+          if (!r2) {
             if (!this.finished)
               break t;
-            this.emit_close(r2, this.cursor), this.states.pop(), this.node_stack.length = h;
+            this.emit_close(o, this.cursor), this.states.pop(), this.node_stack.length = h;
             continue;
           }
-          if (o === l && !this.finished && !this.can_decide_after_lf(this.cursor))
+          if (r2 === l && !this.finished && !this.can_decide_after_lf(this.cursor))
             break t;
-          if (o === l) {
+          if (r2 === l) {
             const i = this.cursor + 1;
             if (this.block_quote_depth > 0) {
               const a = this.skip_bq_markers(i, this.block_quote_depth);
               if (a === -1) {
-                this.emit_close(r2, this.cursor), this.states.pop(), this.node_stack.length = h;
+                this.emit_close(o, this.cursor), this.states.pop(), this.node_stack.length = h;
                 continue;
               }
               if (this.is_blank_at_pos(a) || this.is_heading_start(a) || this.is_thematic_break_start(a) || t2.charCodeAt(a) === k && t2.charCodeAt(a + 1) === k && t2.charCodeAt(a + 2) === k) {
-                this.emit_close(r2, this.cursor), this.states.pop(), this.node_stack.length = h;
+                this.emit_close(o, this.cursor), this.states.pop(), this.node_stack.length = h;
                 continue;
               }
               if (this.list_depth > 0) {
                 const { columns: u3 } = this.count_indent(a), d2 = u3 >= this.list_content_offset ? this.skip_columns(a, this.list_content_offset) : a;
                 if (d2 < s && this.try_parse_list_marker(d2) !== null) {
-                  this.emit_close(r2, this.cursor), this.states.pop(), this.node_stack.length = h;
+                  this.emit_close(o, this.cursor), this.states.pop(), this.node_stack.length = h;
                   continue;
                 }
               }
-              const _2 = this.emit_open(18, this.cursor, r2);
+              const _2 = this.emit_open(18, this.cursor, o);
               this.emit_close(_2, this.cursor + 1), this.chomp(a, true), this.states.push(
                 8
                 /* state_kind.inline */
@@ -4377,7 +4396,7 @@ class Dt {
               continue;
             }
             if (this.is_block_interrupt(i)) {
-              this.emit_close(r2, this.cursor), this.states.pop(), this.node_stack.length = h;
+              this.emit_close(o, this.cursor), this.states.pop(), this.node_stack.length = h;
               continue;
             }
             if (this.list_depth > 0) {
@@ -4385,12 +4404,12 @@ class Dt {
               if (a >= this.list_content_offset) {
                 const _2 = this.skip_columns(i, this.list_content_offset);
                 if (_2 < s && this.try_parse_list_marker(_2) !== null) {
-                  this.emit_close(r2, this.cursor), this.states.pop(), this.node_stack.length = h;
+                  this.emit_close(o, this.cursor), this.states.pop(), this.node_stack.length = h;
                   continue;
                 }
               }
             }
-            const c2 = this.emit_open(18, this.cursor, r2);
+            const c2 = this.emit_open(18, this.cursor, o);
             for (this.emit_close(c2, this.cursor + 1), this.chomp1(); this.cursor < s && t2.charCodeAt(this.cursor) === p$1; )
               this.chomp1();
             this.states.push(
@@ -4407,7 +4426,7 @@ class Dt {
           }
         }
         case 3:
-          if (o === k) {
+          if (r2 === k) {
             this.extra += 1, this.chomp1();
             continue;
           } else if (this.extra >= 3) {
@@ -4422,7 +4441,7 @@ class Dt {
                 break t;
               if (c2 === -1) {
                 this.states.pop();
-                const a = this.emit_open(7, this.cursor - this.extra, r2);
+                const a = this.emit_open(7, this.cursor - this.extra, o);
                 this.node_stack.push(a);
                 const _2 = this.emit_open(1, this.cursor - this.extra, a);
                 this.out.set_value_start(_2, this.cursor - this.extra), this.out.set_value_end(_2, this.cursor), this.emit_close(_2, this.cursor), this.states.push(
@@ -4436,12 +4455,12 @@ class Dt {
               4
               /* state_kind.code_fence_info */
             );
-            const h = this.emit_open(5, this.cursor - this.extra, r2);
+            const h = this.emit_open(5, this.cursor - this.extra, o);
             this.node_stack.push(h), this.info_start_pos = this.cursor;
             continue;
           } else {
             this.states.pop();
-            const h = this.emit_open(7, this.cursor - this.extra, r2);
+            const h = this.emit_open(7, this.cursor - this.extra, o);
             this.node_stack.push(h), this.states.push(
               7
               /* state_kind.paragraph */
@@ -4449,21 +4468,21 @@ class Dt {
             continue;
           }
         case 4: {
-          if (!o && this.finished) {
-            this.states.pop(), this.emit_close(r2, s), this.out.set_value_start(r2, s), this.out.set_value_end(r2, s);
+          if (!r2 && this.finished) {
+            this.states.pop(), this.emit_close(o, s), this.out.set_value_start(o, s), this.out.set_value_end(o, s);
             break;
-          } else if (o) {
+          } else if (r2) {
             if (this.cursor + 1 >= s && this.finished) {
-              this.emit_close(r2, s), this.out.set_value_end(r2, s), this.states.pop();
+              this.emit_close(o, s), this.out.set_value_end(o, s), this.states.pop();
               continue;
             } else if (this.cursor + 1 >= s)
               break t;
           } else break t;
-          if (o !== l) {
+          if (r2 !== l) {
             this.chomp1();
             continue;
           } else if (this.cursor >= s && this.finished) {
-            this.emit_close(r2, s), this.out.set_value_end(r2, s), this.states.pop();
+            this.emit_close(o, s), this.out.set_value_end(o, s), this.states.pop();
             continue;
           } else {
             if (this.cursor >= s)
@@ -4471,7 +4490,7 @@ class Dt {
             this.info_end_pos = this.cursor, this.states.pop(), this.states.push(
               5
               /* state_kind.code_fence_content */
-            ), this.out.attr(r2, "info_start", this.info_start_pos), this.out.attr(r2, "info_end", this.cursor), this.chomp1(), this.out.set_value_start(r2, this.cursor);
+            ), this.out.attr(o, "info_start", this.info_start_pos), this.out.attr(o, "info_end", this.cursor), this.chomp1(), this.out.set_value_start(o, this.cursor);
             continue;
           }
         }
@@ -4508,7 +4527,7 @@ class Dt {
           if (c2 === -1) {
             if (!this.finished)
               break t;
-            this.out.set_value_end(r2, s), this.states.pop(), this.states.push(
+            this.out.set_value_end(o, s), this.states.pop(), this.states.push(
               6
               /* state_kind.code_fence_text_end */
             ), this.chomp(s, true);
@@ -4520,17 +4539,17 @@ class Dt {
           this.states.pop(), this.states.push(
             6
             /* state_kind.code_fence_text_end */
-          ), this.out.set_value_end(r2, a), this.chomp(_2, true);
+          ), this.out.set_value_end(o, a), this.chomp(_2, true);
           continue;
         }
         case 6: {
           if (this.cursor >= s && !this.finished)
             break t;
-          if (this.cursor >= s || o === l) {
-            this.emit_close(r2, this.cursor), this.node_stack.pop(), this.states.pop(), this.chomp1();
+          if (this.cursor >= s || r2 === l) {
+            this.emit_close(o, this.cursor), this.node_stack.pop(), this.states.pop(), this.chomp1();
             continue;
           }
-          if (o === k) {
+          if (r2 === k) {
             this.chomp1();
             continue;
           }
@@ -4540,18 +4559,18 @@ class Dt {
               h++;
             if (h >= s && !this.finished)
               break t;
-            this.emit_close(r2, this.cursor), this.node_stack.pop(), this.states.pop(), this.chomp(h, true);
+            this.emit_close(o, this.cursor), this.node_stack.pop(), this.states.pop(), this.chomp(h, true);
             continue;
           }
         }
         case 2: {
-          if (o === l || o !== o) {
-            if (!this.finished && o !== o)
+          if (r2 === l || r2 !== r2) {
+            if (!this.finished && r2 !== r2)
               break t;
             let h = this.cursor;
             for (; h > 0 && (t2.charCodeAt(h - 1) === p$1 || t2.charCodeAt(h - 1) === f); )
               h--;
-            this.out.set_value_end(r2, h), this.emit_close(r2, this.cursor), this.in_heading = false, this.node_stack.pop(), this.states.pop();
+            this.out.set_value_end(o, h), this.emit_close(o, this.cursor), this.in_heading = false, this.node_stack.pop(), this.states.pop();
             continue;
           }
           this.states.push(
@@ -4561,136 +4580,93 @@ class Dt {
           continue;
         }
         case 14: {
-          if (o === O$1 && !this.finished && this.cursor + 1 >= s)
+          if (r2 === O$1 && !this.finished && this.cursor + 1 >= s)
             break t;
-          if (o === O$1 && this.prev & 6 && this.next_class & 3) {
+          if (r2 === O$1 && this.prev & 6 && this.next_class & 3) {
             const h = this.node_stack[this.node_stack.length - 1];
             if (!this.emphasis_has_content) {
               this.out.revoke(h), this.pending_remove(h), this.states.pop(), this.node_stack.pop(), this.states[this.states.length - 1] === 8 && this.states.pop();
               continue;
             }
             this.out.set_value_end(h, this.cursor), this.emit_close(h, this.cursor + 1), this.pending_remove(h), this.states.pop(), this.node_stack.pop(), this.chomp1(), this.states[this.states.length - 1] === 8 && this.states.pop();
-          } else if (o === l && this.block_quote_depth > 0) {
-            const h = this.cursor + 1, i = this.skip_bq_markers(h, this.block_quote_depth);
-            if (i !== -1 && !this.is_blank_at_pos(i) && !this.is_heading_start(i) && !this.is_thematic_break_start(i)) {
-              const c2 = this.emit_open(18, this.cursor, r2);
-              this.emit_close(c2, this.cursor + 1), this.chomp(i, true), this.states.push(
-                8
-                /* state_kind.inline */
-              );
-            } else
-              this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
-            continue;
-          } else if (o === l && this.is_blank_line_after(this.cursor)) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
-            continue;
-          } else if (o === l && this.is_heading_start(this.cursor + 1)) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
-            continue;
-          } else if (o === l && this.is_thematic_break_start(this.cursor + 1)) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
-            continue;
-          } else
+          } else {
+            if (r2 === l && this._delimiter_lf_close(o))
+              continue;
             this.emphasis_has_content = true, this.states.push(
               8
               /* state_kind.inline */
             );
+          }
           continue;
         }
         case 15: {
-          if (o === x$1 && !this.finished && this.cursor + 1 >= s)
+          if (r2 === x$1 && !this.finished && this.cursor + 1 >= s)
             break t;
-          if (o === x$1 && this.prev & 6 && this.next_class & 3) {
+          if (r2 === x$1 && this.prev & 6 && this.next_class & 3) {
             const h = this.node_stack[this.node_stack.length - 1];
             if (!this.emphasis_has_content) {
               this.out.revoke(h), this.pending_remove(h), this.states.pop(), this.node_stack.pop(), this.states[this.states.length - 1] === 8 && this.states.pop();
               continue;
             }
             this.out.set_value_end(h, this.cursor), this.emit_close(h, this.cursor + 1), this.pending_remove(h), this.states.pop(), this.node_stack.pop(), this.chomp1(), this.states[this.states.length - 1] === 8 && this.states.pop();
-          } else if (o === l && this.block_quote_depth > 0) {
-            const h = this.cursor + 1, i = this.skip_bq_markers(h, this.block_quote_depth);
-            if (i !== -1 && !this.is_blank_at_pos(i) && !this.is_heading_start(i) && !this.is_thematic_break_start(i)) {
-              const c2 = this.emit_open(18, this.cursor, r2);
-              this.emit_close(c2, this.cursor + 1), this.chomp(i, true), this.states.push(
-                8
-                /* state_kind.inline */
-              );
-            } else
-              this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
-            continue;
-          } else if (o === l && this.is_blank_line_after(this.cursor)) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
-            continue;
-          } else if (o === l && this.is_heading_start(this.cursor + 1)) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
-            continue;
-          } else if (o === l && this.is_thematic_break_start(this.cursor + 1)) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
-            continue;
-          } else
+          } else {
+            if (r2 === l && this._delimiter_lf_close(o))
+              continue;
             this.emphasis_has_content = true, this.states.push(
               8
               /* state_kind.inline */
             );
+          }
           continue;
         }
         case 19: {
-          if (o === L && !this.finished && this.cursor + 1 >= s)
+          if (r2 === L && !this.finished && this.cursor + 1 >= s)
             break t;
-          if (o === L && t2.charCodeAt(this.cursor + 1) === L && this.prev & 6 && v$1(t2.charCodeAt(this.cursor + 2)) & 3) {
+          if (r2 === L && t2.charCodeAt(this.cursor + 1) === L && this.prev & 6 && v$1(t2.charCodeAt(this.cursor + 2)) & 3) {
             const h = this.node_stack[this.node_stack.length - 1];
             this.out.set_value_end(h, this.cursor), this.emit_close(h, this.cursor + 2), this.pending_remove(h), this.states.pop(), this.node_stack.pop(), this.chomp(2), this.states[this.states.length - 1] === 8 && this.states.pop();
-          } else if (o === l && this.is_blank_line_after(this.cursor)) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
-            continue;
-          } else if (o === l && (this.is_heading_start(this.cursor + 1) || this.is_thematic_break_start(this.cursor + 1))) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
-            continue;
-          } else
+          } else {
+            if (r2 === l && this._delimiter_lf_close(o))
+              continue;
             this.states.push(
               8
               /* state_kind.inline */
             );
+          }
           continue;
         }
         case 20: {
-          if (o === G$1 && this.prev & 6) {
+          if (r2 === G$1 && this.prev & 6) {
             const h = this.node_stack[this.node_stack.length - 1];
             this.out.set_value_end(h, this.cursor), this.emit_close(h, this.cursor + 1), this.pending_remove(h), this.states.pop(), this.node_stack.pop(), this.chomp1(), this.states[this.states.length - 1] === 8 && this.states.pop();
-          } else if (o === l && this.is_blank_line_after(this.cursor)) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
-            continue;
-          } else if (o === l && (this.is_heading_start(this.cursor + 1) || this.is_thematic_break_start(this.cursor + 1))) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
-            continue;
-          } else
+          } else {
+            if (r2 === l && this._delimiter_lf_close(o))
+              continue;
             this.states.push(
               8
               /* state_kind.inline */
             );
+          }
           continue;
         }
         case 21: {
-          if (o === L && t2.charCodeAt(this.cursor + 1) !== L && this.prev & 6) {
+          if (r2 === L && t2.charCodeAt(this.cursor + 1) !== L && this.prev & 6) {
             const h = this.node_stack[this.node_stack.length - 1];
             this.out.set_value_end(h, this.cursor), this.emit_close(h, this.cursor + 1), this.pending_remove(h), this.states.pop(), this.node_stack.pop(), this.chomp1(), this.states[this.states.length - 1] === 8 && this.states.pop();
-          } else if (o === l && this.is_blank_line_after(this.cursor)) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
-            continue;
-          } else if (o === l && (this.is_heading_start(this.cursor + 1) || this.is_thematic_break_start(this.cursor + 1))) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
-            continue;
-          } else
+          } else {
+            if (r2 === l && this._delimiter_lf_close(o))
+              continue;
             this.states.push(
               8
               /* state_kind.inline */
             );
+          }
           continue;
         }
         case 22: {
-          if (o === M$1) {
-            if (this.node_kind_array[r2] === 30) {
-              this.out.set_value_end(r2, this.cursor), this.pending_remove(r2), this.emit_close(r2, this.cursor + 1), this.node_stack.pop(), this.states.pop(), this.states[this.states.length - 1] === 8 && this.states.pop(), this.chomp1();
+          if (r2 === M$1) {
+            if (this.node_kind_array[o] === 30) {
+              this.out.set_value_end(o, this.cursor), this.pending_remove(o), this.emit_close(o, this.cursor + 1), this.node_stack.pop(), this.states.pop(), this.states[this.states.length - 1] === 8 && this.states.pop(), this.chomp1();
               continue;
             }
             const h = this.cursor + 1;
@@ -4748,7 +4724,7 @@ class Dt {
                 i++;
               if (i < s && t2.charCodeAt(i) === z$1) {
                 i++;
-                const d2 = r2, b2 = t2.slice(c2, a), g2 = this.node_kind_array[d2] === 13;
+                const d2 = o, b2 = t2.slice(c2, a), g2 = this.node_kind_array[d2] === 13;
                 this.out.attr(d2, g2 ? "src" : "href", b2), _2 >= 0 && u3 >= 0 && this.out.attr(d2, "title", t2.slice(_2, u3)), this.out.set_value_end(d2, this.cursor), this.pending_remove(d2), this.emit_close(d2, i), this.node_stack.pop(), this.states.pop(), this.states[this.states.length - 1] === 8 && this.states.pop(), this.chomp(i, true);
                 continue;
               }
@@ -4762,11 +4738,11 @@ class Dt {
               if (i < s && t2.charCodeAt(i) === M$1) {
                 const a = t2.slice(this.link_text_start, this.cursor), _2 = this.normalize_label(a), u3 = this.ref_map.get(_2);
                 if (u3) {
-                  const d2 = this.node_kind_array[r2] === 13;
-                  this.out.attr(r2, d2 ? "src" : "href", u3.url), u3.title && this.out.attr(r2, "title", u3.title), this.out.set_value_end(r2, this.cursor), this.pending_remove(r2), this.emit_close(r2, i + 1), this.node_stack.pop(), this.states.pop(), this.states[this.states.length - 1] === 8 && this.states.pop(), this.chomp(i + 1, true);
+                  const d2 = this.node_kind_array[o] === 13;
+                  this.out.attr(o, d2 ? "src" : "href", u3.url), u3.title && this.out.attr(o, "title", u3.title), this.out.set_value_end(o, this.cursor), this.pending_remove(o), this.emit_close(o, i + 1), this.node_stack.pop(), this.states.pop(), this.states[this.states.length - 1] === 8 && this.states.pop(), this.chomp(i + 1, true);
                   continue;
                 }
-                this.out.revoke(r2), this.node_stack.pop(), this.states.pop();
+                this.out.revoke(o), this.node_stack.pop(), this.states.pop();
                 continue;
               }
               const c2 = i;
@@ -4785,17 +4761,17 @@ class Dt {
               if (i < s && t2.charCodeAt(i) === M$1 && i > c2) {
                 const a = t2.slice(c2, i), _2 = this.normalize_label(a), u3 = this.ref_map.get(_2);
                 if (u3) {
-                  const d2 = this.node_kind_array[r2] === 13;
-                  this.out.attr(r2, d2 ? "src" : "href", u3.url), u3.title && this.out.attr(r2, "title", u3.title), this.out.set_value_end(r2, this.cursor), this.pending_remove(r2), this.emit_close(r2, i + 1), this.node_stack.pop(), this.states.pop(), this.states[this.states.length - 1] === 8 && this.states.pop(), this.chomp(i + 1, true);
+                  const d2 = this.node_kind_array[o] === 13;
+                  this.out.attr(o, d2 ? "src" : "href", u3.url), u3.title && this.out.attr(o, "title", u3.title), this.out.set_value_end(o, this.cursor), this.pending_remove(o), this.emit_close(o, i + 1), this.node_stack.pop(), this.states.pop(), this.states[this.states.length - 1] === 8 && this.states.pop(), this.chomp(i + 1, true);
                   continue;
                 }
               }
             }
-            this.out.revoke(r2), this.node_stack.pop(), this.states.pop();
+            this.out.revoke(o), this.node_stack.pop(), this.states.pop();
             continue;
           }
-          if (o === l && this.is_blank_line_after(this.cursor)) {
-            this.out.revoke(r2), this.node_stack.pop(), this.states.pop();
+          if (r2 === l && this.is_blank_line_after(this.cursor)) {
+            this.out.revoke(o), this.node_stack.pop(), this.states.pop();
             continue;
           }
           this.states.push(
@@ -4805,30 +4781,30 @@ class Dt {
           continue;
         }
         case 25: {
-          if (o === j$1) {
+          if (r2 === j$1) {
             if (!this.finished && t2.indexOf(">", this.cursor + 1) === -1)
               break t;
             const h = this.try_parse_html_close_tag(this.cursor + 1);
             if (h) {
               const i = this.find_html_opener(h.tag);
-              if (i !== -1 && this.html_tag_stack[i].id === r2) {
+              if (i !== -1 && this.html_tag_stack[i].id === o) {
                 for (; this.html_tag_stack.length > i + 1; ) {
                   const c2 = this.html_tag_stack.pop();
                   this.close_html_inline(c2.id, this.cursor);
                 }
-                this.html_tag_stack.pop(), this.pending_remove(r2), this.emit_close(r2, h.end), this.node_stack.pop(), this.states.pop(), this.chomp(h.end, true), this.states[this.states.length - 1] === 8 && this.states.pop();
+                this.html_tag_stack.pop(), this.pending_remove(o), this.emit_close(o, h.end), this.node_stack.pop(), this.states.pop(), this.chomp(h.end, true), this.states[this.states.length - 1] === 8 && this.states.pop();
                 continue;
               }
             }
           }
-          if (o === l && this.is_block_interrupt(this.cursor + 1)) {
-            this.html_tag_stack.length > 0 && this.html_tag_stack[this.html_tag_stack.length - 1].id === r2 && this.html_tag_stack.pop(), this.states.pop(), this.node_stack.pop();
+          if (r2 === l && this.is_block_interrupt(this.cursor + 1)) {
+            this.html_tag_stack.length > 0 && this.html_tag_stack[this.html_tag_stack.length - 1].id === o && this.html_tag_stack.pop(), this.states.pop(), this.node_stack.pop();
             continue;
           }
-          if (!o) {
+          if (!r2) {
             if (!this.finished)
               break t;
-            this.html_tag_stack.length > 0 && this.html_tag_stack[this.html_tag_stack.length - 1].id === r2 && this.html_tag_stack.pop(), this.states.pop(), this.node_stack.pop();
+            this.html_tag_stack.length > 0 && this.html_tag_stack[this.html_tag_stack.length - 1].id === o && this.html_tag_stack.pop(), this.states.pop(), this.node_stack.pop();
             continue;
           }
           this.states.push(
@@ -4838,84 +4814,84 @@ class Dt {
           continue;
         }
         case 26: {
-          if (!o) {
+          if (!r2) {
             if (!this.finished)
               break t;
-            this.html_tag_stack.length > 0 && this.html_tag_stack[this.html_tag_stack.length - 1].id === r2 && this.html_tag_stack.pop(), this.html_block_depth--, this.states.pop(), this.node_stack.pop();
+            this.html_tag_stack.length > 0 && this.html_tag_stack[this.html_tag_stack.length - 1].id === o && this.html_tag_stack.pop(), this.html_block_depth--, this.states.pop(), this.node_stack.pop();
             continue;
           }
-          if (o === j$1) {
+          if (r2 === j$1) {
             if (!this.finished && t2.indexOf(">", this.cursor + 1) === -1)
               break t;
             const i = this.try_parse_html_close_tag(this.cursor + 1);
             if (i) {
               const c2 = this.find_html_opener(i.tag);
-              if (c2 !== -1 && this.html_tag_stack[c2].id === r2) {
+              if (c2 !== -1 && this.html_tag_stack[c2].id === o) {
                 for (; this.html_tag_stack.length > c2 + 1; ) {
                   const a = this.html_tag_stack.pop();
                   this.closed_flags[a.id] || this.emit_close(a.id, this.cursor);
                 }
-                this.html_tag_stack.pop(), this.pending_remove(r2), this.emit_close(r2, i.end), this.html_block_depth--, this.node_stack.pop(), this.states.pop(), this.chomp(i.end, true);
+                this.html_tag_stack.pop(), this.pending_remove(o), this.emit_close(o, i.end), this.html_block_depth--, this.node_stack.pop(), this.states.pop(), this.chomp(i.end, true);
                 continue;
               }
             }
           }
-          if (o === l) {
-            const i = this.emit_open(6, this.cursor, r2);
+          if (r2 === l) {
+            const i = this.emit_open(6, this.cursor, o);
             this.emit_close(i, this.cursor + 1), this.chomp1();
             continue;
           }
-          if (o === p$1 || o === f) {
+          if (r2 === p$1 || r2 === f) {
             let i = this.cursor;
             for (; i < s && (t2.charCodeAt(i) === p$1 || t2.charCodeAt(i) === f); )
               i++;
             if (i < s && t2.charCodeAt(i) === l) {
-              const c2 = this.emit_open(6, this.cursor, r2);
+              const c2 = this.emit_open(6, this.cursor, o);
               this.emit_close(c2, i + 1), this.chomp(i + 1, true);
               continue;
             }
             this.chomp1();
             continue;
           }
-          if (o === S) {
-            if (!this.start_heading(r2))
+          if (r2 === S) {
+            if (!this.start_heading(o))
               break t;
             continue;
           }
-          if (o === k) {
+          if (r2 === k) {
             this.states.push(
               3
               /* state_kind.code_fence_start */
             ), this.extra = 0;
             continue;
           }
-          if (o === j$1) {
+          if (r2 === j$1) {
             const i = this.try_parse_html_comment(this.cursor + 1);
             if (i === false)
               break t;
             if (i) {
-              const a = this.emit_open(26, this.cursor, r2);
+              const a = this.emit_open(26, this.cursor, o);
               this.out.text(a, i.content_start, i.content_end), this.emit_close(a, i.end), this.chomp(i.end, true);
               continue;
             }
             const c2 = this.try_parse_html_open_tag(this.cursor + 1);
             if (c2) {
               if (c2.self_closing) {
-                const a = this.emit_open(2, this.cursor, r2);
+                const a = this.emit_open(2, this.cursor, o);
                 this.out.attr(a, "tag", c2.tag), Object.keys(c2.attributes).length > 0 && this.out.attr(a, "attributes", c2.attributes), this.out.attr(a, "self_closing", true), this.emit_close(a, c2.end), this.chomp(c2.end, true);
               } else if (this.is_raw_text_tag(c2.tag)) {
                 const a = this.find_raw_close_tag(c2.end, c2.tag);
                 if (a) {
-                  const _2 = this.emit_open(2, this.cursor, r2);
+                  const _2 = this.emit_open(2, this.cursor, o);
                   this.out.attr(_2, "tag", c2.tag), Object.keys(c2.attributes).length > 0 && this.out.attr(_2, "attributes", c2.attributes), this.out.set_value_start(_2, c2.end), this.out.set_value_end(_2, a.content_end), this.emit_close(_2, a.end), this.chomp(a.end, true);
                 } else {
                   if (!this.finished)
                     break t;
-                  const _2 = this.emit_open(2, this.cursor, r2);
+                  const _2 = this.emit_open(2, this.cursor, o);
                   this.out.attr(_2, "tag", c2.tag), Object.keys(c2.attributes).length > 0 && this.out.attr(_2, "attributes", c2.attributes), this.out.set_value_start(_2, c2.end), this.out.set_value_end(_2, s), this.emit_close(_2, s), this.chomp(s, true);
                 }
               } else {
-                const a = this.emit_open(2, this.cursor, r2, 0, true);
+                const a = this.emit_open(2, this.cursor, o, 0, true);
                 this.out.attr(a, "tag", c2.tag), Object.keys(c2.attributes).length > 0 && this.out.attr(a, "attributes", c2.attributes), this.html_tag_stack.push({ id: a, tag: c2.tag }), this.node_stack.push(a), this.states.push(
                   26
                   /* state_kind.html_block_element */
@@ -4928,12 +4904,12 @@ class Dt {
             7
             /* state_kind.paragraph */
           );
-          const h = this.emit_open(7, this.cursor, r2);
+          const h = this.emit_open(7, this.cursor, o);
           this.node_stack.push(h);
           continue;
         }
         case 27: {
-          if (!o) {
+          if (!r2) {
             if (!this.finished)
               break t;
             if (this.emit_close(this.svelte_branch_id, this.cursor), this.node_stack.pop(), this.emit_close(this.svelte_block_id, this.cursor), this.node_stack.pop(), this.states.pop(), this.svelte_block_depth--, this.svelte_block_depth > 0 && this.svelte_block_stack.length > 0) {
@@ -4942,7 +4918,7 @@ class Dt {
             }
             continue;
           }
-          if (o === N$1) {
+          if (r2 === N$1) {
             if (!this.finished && this.find_matching_brace(this.cursor + 1) === -1)
               break t;
             const i = this.try_parse_svelte_block_token(this.cursor);
@@ -4962,71 +4938,71 @@ class Dt {
                 continue;
               }
               if (i.kind === "#") {
-                this.start_svelte_block(i, r2);
+                this.start_svelte_block(i, o);
                 continue;
               }
             }
           }
-          if (o === l) {
-            const i = this.emit_open(6, this.cursor, r2);
+          if (r2 === l) {
+            const i = this.emit_open(6, this.cursor, o);
             this.emit_close(i, this.cursor + 1), this.chomp1();
             continue;
           }
-          if (o === p$1 || o === f) {
+          if (r2 === p$1 || r2 === f) {
             let i = this.cursor;
             for (; i < s && (t2.charCodeAt(i) === p$1 || t2.charCodeAt(i) === f); )
               i++;
             if (i < s && t2.charCodeAt(i) === l) {
-              const c2 = this.emit_open(6, this.cursor, r2);
+              const c2 = this.emit_open(6, this.cursor, o);
               this.emit_close(c2, i + 1), this.chomp(i + 1, true);
               continue;
             }
             this.chomp1();
             continue;
           }
-          if (o === S) {
-            if (!this.start_heading(r2))
+          if (r2 === S) {
+            if (!this.start_heading(o))
               break t;
             continue;
           }
-          if (o === k) {
+          if (r2 === k) {
             this.states.push(
               3
               /* state_kind.code_fence_start */
             ), this.extra = 0;
             continue;
           }
-          if (o === C$1) {
+          if (r2 === C$1) {
             let i = this.cursor + 1;
             i < s && t2.charCodeAt(i) === p$1 && i++, this.block_quote_depth++;
-            const c2 = this.emit_open(14, this.cursor, r2);
+            const c2 = this.emit_open(14, this.cursor, o);
             this.node_stack.push(c2), this.states.push(
               17
               /* state_kind.block_quote */
             ), this.chomp(i, true);
             continue;
           }
-          if (o === j$1) {
+          if (r2 === j$1) {
             if (!this.finished && t2.indexOf(">", this.cursor + 1) === -1)
               break t;
             const i = this.try_parse_html_open_tag(this.cursor + 1);
             if (i) {
               if (i.self_closing) {
-                const c2 = this.emit_open(2, this.cursor, r2);
+                const c2 = this.emit_open(2, this.cursor, o);
                 this.out.attr(c2, "tag", i.tag), Object.keys(i.attributes).length > 0 && this.out.attr(c2, "attributes", i.attributes), this.out.attr(c2, "self_closing", true), this.emit_close(c2, i.end), this.chomp(i.end, true);
               } else if (this.is_raw_text_tag(i.tag)) {
                 const c2 = this.find_raw_close_tag(i.end, i.tag);
                 if (c2) {
-                  const a = this.emit_open(2, this.cursor, r2);
+                  const a = this.emit_open(2, this.cursor, o);
                   this.out.attr(a, "tag", i.tag), Object.keys(i.attributes).length > 0 && this.out.attr(a, "attributes", i.attributes), this.out.set_value_start(a, i.end), this.out.set_value_end(a, c2.content_end), this.emit_close(a, c2.end), this.chomp(c2.end, true);
                 } else {
                   if (!this.finished)
                     break t;
-                  const a = this.emit_open(2, this.cursor, r2);
+                  const a = this.emit_open(2, this.cursor, o);
                   this.out.attr(a, "tag", i.tag), Object.keys(i.attributes).length > 0 && this.out.attr(a, "attributes", i.attributes), this.out.set_value_start(a, i.end), this.out.set_value_end(a, s), this.emit_close(a, s), this.chomp(s, true);
                 }
               } else {
-                const c2 = this.emit_open(2, this.cursor, r2, 0, true);
+                const c2 = this.emit_open(2, this.cursor, o, 0, true);
                 this.out.attr(c2, "tag", i.tag), Object.keys(i.attributes).length > 0 && this.out.attr(c2, "attributes", i.attributes), this.html_tag_stack.push({ id: c2, tag: i.tag }), this.node_stack.push(c2), this.states.push(
                   26
                   /* state_kind.html_block_element */
@@ -5035,19 +5011,19 @@ class Dt {
               continue;
             }
           }
-          if (o === O$1 || o === A2 || o === x$1) {
+          if (r2 === O$1 || r2 === A2 || r2 === x$1) {
             if (!this.finished && this.cursor + 2 >= s)
               break t;
             if (this.is_thematic_break_start(this.cursor)) {
               let i = this.cursor;
               for (; i < s && t2.charCodeAt(i) !== l; )
                 i++;
-              const c2 = this.emit_open(11, this.cursor, r2);
+              const c2 = this.emit_open(11, this.cursor, o);
               this.emit_close(c2, i), this.chomp(i, true);
               continue;
             }
           }
-          if (o === E$1) {
+          if (r2 === E$1) {
             const i = this.try_parse_link_ref_definition(this.cursor);
             if (i === -2)
               break t;
@@ -5056,16 +5032,16 @@ class Dt {
               continue;
             }
           }
-          if (o === w$2) {
+          if (r2 === w$2) {
             const i = this.try_parse_block_directive(this.cursor);
             if (i === false)
               break t;
             if (i !== null) {
               if (i.kind === "leaf") {
-                const c2 = this.emit_open(31, this.cursor, r2);
+                const c2 = this.emit_open(31, this.cursor, o);
                 this.out.attr(c2, "name", i.name), i.content_start >= 0 && (this.out.set_value_start(c2, i.content_start), this.out.set_value_end(c2, i.content_end)), this.emit_close(c2, i.end), this.chomp(i.end, true);
               } else {
-                const c2 = this.emit_open(32, this.cursor, r2);
+                const c2 = this.emit_open(32, this.cursor, o);
                 this.out.attr(c2, "name", i.name), i.content_start >= 0 && (this.out.set_value_start(c2, i.content_start), this.out.set_value_end(c2, i.content_end)), this.node_stack.push(c2), this.states.push(
                   28
                   /* state_kind.directive_container */
@@ -5078,32 +5054,32 @@ class Dt {
             7
             /* state_kind.paragraph */
           );
-          const h = this.emit_open(7, this.cursor, r2);
+          const h = this.emit_open(7, this.cursor, o);
           this.node_stack.push(h);
           continue;
         }
         case 17: {
-          if (!o) {
+          if (!r2) {
             if (!this.finished)
               break t;
-            this.emit_close(r2, this.cursor), this.states.pop(), this.node_stack.pop(), this.block_quote_depth--;
+            this.emit_close(o, this.cursor), this.states.pop(), this.node_stack.pop(), this.block_quote_depth--;
             continue;
           }
-          switch (o) {
+          switch (r2) {
             case l: {
               if (!this.finished && !this.can_decide_after_lf(this.cursor))
                 break t;
               const h = this.cursor + 1, i = this.skip_bq_markers(h, 1);
               if (i !== -1) {
                 if (this.is_blank_at_pos(i)) {
-                  const c2 = this.emit_open(6, this.cursor, r2);
+                  const c2 = this.emit_open(6, this.cursor, o);
                   this.emit_close(c2, i), this.chomp(i, true);
                   continue;
                 }
                 this.chomp(i, true);
                 continue;
               }
-              this.emit_close(r2, this.cursor), this.states.pop(), this.node_stack.pop(), this.block_quote_depth--;
+              this.emit_close(o, this.cursor), this.states.pop(), this.node_stack.pop(), this.block_quote_depth--;
               continue;
             }
             case p$1:
@@ -5112,7 +5088,7 @@ class Dt {
               continue;
             }
             case S: {
-              if (!this.start_heading(r2))
+              if (!this.start_heading(o))
                 break t;
               continue;
             }
@@ -5133,14 +5109,14 @@ class Dt {
                 let i = this.cursor;
                 for (; i < s && t2.charCodeAt(i) !== l; )
                   i++;
-                const c2 = i, a = this.emit_open(11, this.cursor, r2);
+                const c2 = i, a = this.emit_open(11, this.cursor, o);
                 this.emit_close(a, c2), this.chomp(c2, true);
                 continue;
               }
-              if (o !== x$1) {
+              if (r2 !== x$1) {
                 const i = this.try_parse_list_marker(this.cursor);
                 if (i) {
-                  this.start_list(i, r2);
+                  this.start_list(i, o);
                   continue;
                 }
               }
@@ -5148,14 +5124,14 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const h = this.emit_open(7, this.cursor, r2);
+              const h = this.emit_open(7, this.cursor, o);
               this.node_stack.push(h);
               continue;
             }
             case C$1: {
               let h = this.cursor + 1;
               h < s && t2.charCodeAt(h) === p$1 && h++, this.block_quote_depth++;
-              const i = this.emit_open(14, this.cursor, r2);
+              const i = this.emit_open(14, this.cursor, o);
               this.node_stack.push(i), this.states.push(
                 17
                 /* state_kind.block_quote */
@@ -5163,7 +5139,7 @@ class Dt {
               continue;
             }
             case q$1: {
-              const h = this.try_start_table(r2);
+              const h = this.try_start_table(o);
               if (h === false)
                 break t;
               if (h === true)
@@ -5172,7 +5148,7 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const i = this.emit_open(7, this.cursor, r2);
+              const i = this.emit_open(7, this.cursor, o);
               this.node_stack.push(i);
               continue;
             }
@@ -5188,7 +5164,7 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const i = this.emit_open(7, this.cursor, r2);
+              const i = this.emit_open(7, this.cursor, o);
               this.node_stack.push(i);
               continue;
             }
@@ -5201,10 +5177,10 @@ class Dt {
                 break t;
               if (h !== null) {
                 if (h.kind === "leaf") {
-                  const c2 = this.emit_open(31, this.cursor, r2);
+                  const c2 = this.emit_open(31, this.cursor, o);
                   this.out.attr(c2, "name", h.name), h.content_start >= 0 && (this.out.set_value_start(c2, h.content_start), this.out.set_value_end(c2, h.content_end)), this.emit_close(c2, h.end), this.chomp(h.end, true);
                 } else {
-                  const c2 = this.emit_open(32, this.cursor, r2);
+                  const c2 = this.emit_open(32, this.cursor, o);
                   this.out.attr(c2, "name", h.name), h.content_start >= 0 && (this.out.set_value_start(c2, h.content_start), this.out.set_value_end(c2, h.content_end)), this.node_stack.push(c2), this.states.push(
                     28
                     /* state_kind.directive_container */
@@ -5216,15 +5192,15 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const i = this.emit_open(7, this.cursor, r2);
+              const i = this.emit_open(7, this.cursor, o);
               this.node_stack.push(i);
               continue;
             }
             default: {
-              if (o === P$1 || o >= 48 && o <= 57) {
+              if (r2 === P$1 || r2 >= 48 && r2 <= 57) {
                 if (!this.finished) {
                   let c2 = this.cursor + 1;
-                  if (o !== P$1) {
+                  if (r2 !== P$1) {
                     for (; c2 < s && t2.charCodeAt(c2) >= 48 && t2.charCodeAt(c2) <= 57; )
                       c2++;
                     if (c2 >= s)
@@ -5237,7 +5213,7 @@ class Dt {
                 }
                 const i = this.try_parse_list_marker(this.cursor);
                 if (i) {
-                  this.start_list(i, r2);
+                  this.start_list(i, o);
                   continue;
                 }
               }
@@ -5245,20 +5221,20 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const h = this.emit_open(7, this.cursor, r2);
+              const h = this.emit_open(7, this.cursor, o);
               this.node_stack.push(h);
               continue;
             }
           }
         }
         case 18: {
-          if (!o) {
+          if (!r2) {
             if (!this.finished)
               break t;
             this.end_list();
             continue;
           }
-          switch (o) {
+          switch (r2) {
             case l: {
               const h = this.cursor + 1;
               if (!this.finished && !this.can_decide_after_lf(this.cursor))
@@ -5337,11 +5313,11 @@ class Dt {
                   const u3 = this.try_parse_list_marker(_2);
                   if (u3) {
                     if (u3.indent >= this.list_content_offset) {
-                      this.list_is_loose = true, this.chomp(_2, true), this.start_list(u3, r2);
+                      this.list_is_loose = true, this.chomp(_2, true), this.start_list(u3, o);
                       continue;
                     }
                     if (u3.indent >= this.list_marker_indent && u3.ordered === this.list_ordered && u3.marker_char === this.list_marker) {
-                      this.list_is_loose = true, this.emit_close(r2, this.cursor), this.node_stack.pop();
+                      this.list_is_loose = true, this.emit_close(o, this.cursor), this.node_stack.pop();
                       const g2 = this.emit_open(16, _2, this.list_node_id);
                       this.node_stack.push(g2), this.list_content_offset = u3.content_offset, this.chomp(u3.content_start, true);
                       continue;
@@ -5365,11 +5341,11 @@ class Dt {
               const a = this.try_parse_list_marker(i);
               if (a) {
                 if (a.indent >= this.list_content_offset) {
-                  this.chomp(i, true), this.start_list(a, r2);
+                  this.chomp(i, true), this.start_list(a, o);
                   continue;
                 }
                 if (a.indent >= this.list_marker_indent && a.ordered === this.list_ordered && a.marker_char === this.list_marker) {
-                  this.emit_close(r2, this.cursor), this.node_stack.pop();
+                  this.emit_close(o, this.cursor), this.node_stack.pop();
                   const _2 = this.emit_open(16, i, this.list_node_id);
                   this.node_stack.push(_2), this.list_content_offset = a.content_offset, this.chomp(a.content_start, true);
                   continue;
@@ -5397,7 +5373,7 @@ class Dt {
               continue;
             }
             case S: {
-              if (!this.start_heading(r2))
+              if (!this.start_heading(o))
                 break t;
               continue;
             }
@@ -5419,7 +5395,7 @@ class Dt {
                     i = false;
                     break;
                   }
-                  if (a !== o && a !== p$1 && a !== f) {
+                  if (a !== r2 && a !== p$1 && a !== f) {
                     i = false;
                     break;
                   }
@@ -5431,17 +5407,17 @@ class Dt {
                 let i = this.cursor;
                 for (; i < s && t2.charCodeAt(i) !== l; )
                   i++;
-                const c2 = i < s ? i + 1 : i, a = this.emit_open(11, this.cursor, r2);
+                const c2 = i < s ? i + 1 : i, a = this.emit_open(11, this.cursor, o);
                 this.emit_close(a, c2), this.chomp(c2, true);
                 continue;
               }
-              if (o !== x$1) {
+              if (r2 !== x$1) {
                 const i = this.try_parse_list_marker(this.cursor);
                 if (i) {
                   if (i.indent >= this.list_content_offset)
-                    this.start_list(i, r2);
+                    this.start_list(i, o);
                   else if (i.indent >= this.list_marker_indent && i.ordered === this.list_ordered && i.marker_char === this.list_marker) {
-                    this.emit_close(r2, this.cursor), this.node_stack.pop();
+                    this.emit_close(o, this.cursor), this.node_stack.pop();
                     const c2 = this.emit_open(16, this.cursor, this.list_node_id);
                     this.node_stack.push(c2), this.list_content_offset = i.content_offset, this.chomp(i.content_start, true);
                   } else
@@ -5453,14 +5429,14 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const h = this.emit_open(7, this.cursor, r2, 0, true);
+              const h = this.emit_open(7, this.cursor, o, 0, true);
               this.track_list_pending_para(h), this.node_stack.push(h);
               continue;
             }
             case C$1: {
               let h = this.cursor + 1;
               h < s && t2.charCodeAt(h) === p$1 && h++, this.block_quote_depth++;
-              const i = this.emit_open(14, this.cursor, r2);
+              const i = this.emit_open(14, this.cursor, o);
               this.node_stack.push(i), this.states.push(
                 17
                 /* state_kind.block_quote */
@@ -5468,7 +5444,7 @@ class Dt {
               continue;
             }
             case q$1: {
-              const h = this.try_start_table(r2);
+              const h = this.try_start_table(o);
               if (h === false)
                 break t;
               if (h === true)
@@ -5477,7 +5453,7 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const i = this.emit_open(7, this.cursor, r2, 0, true);
+              const i = this.emit_open(7, this.cursor, o, 0, true);
               this.track_list_pending_para(i), this.node_stack.push(i);
               continue;
             }
@@ -5493,7 +5469,7 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const i = this.emit_open(7, this.cursor, r2, 0, true);
+              const i = this.emit_open(7, this.cursor, o, 0, true);
               this.track_list_pending_para(i), this.node_stack.push(i);
               continue;
             }
@@ -5503,10 +5479,10 @@ class Dt {
                 break t;
               if (h !== null) {
                 if (h.kind === "leaf") {
-                  const c2 = this.emit_open(31, this.cursor, r2);
+                  const c2 = this.emit_open(31, this.cursor, o);
                   this.out.attr(c2, "name", h.name), h.content_start >= 0 && (this.out.set_value_start(c2, h.content_start), this.out.set_value_end(c2, h.content_end)), this.emit_close(c2, h.end), this.chomp(h.end, true);
                 } else {
-                  const c2 = this.emit_open(32, this.cursor, r2);
+                  const c2 = this.emit_open(32, this.cursor, o);
                   this.out.attr(c2, "name", h.name), h.content_start >= 0 && (this.out.set_value_start(c2, h.content_start), this.out.set_value_end(c2, h.content_end)), this.node_stack.push(c2), this.states.push(
                     28
                     /* state_kind.directive_container */
@@ -5518,14 +5494,14 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const i = this.emit_open(7, this.cursor, r2, 0, true);
+              const i = this.emit_open(7, this.cursor, o, 0, true);
               this.track_list_pending_para(i), this.node_stack.push(i);
               continue;
             }
             default: {
-              if (!this.finished && (o === P$1 || o >= 48 && o <= 57)) {
+              if (!this.finished && (r2 === P$1 || r2 >= 48 && r2 <= 57)) {
                 let c2 = this.cursor + 1;
-                if (o !== P$1) {
+                if (r2 !== P$1) {
                   for (; c2 < s && t2.charCodeAt(c2) >= 48 && t2.charCodeAt(c2) <= 57; )
                     c2++;
                   if (c2 >= s)
@@ -5539,9 +5515,9 @@ class Dt {
               const h = this.try_parse_list_marker(this.cursor);
               if (h) {
                 if (h.indent >= this.list_content_offset)
-                  this.start_list(h, r2);
+                  this.start_list(h, o);
                 else if (h.indent >= this.list_marker_indent && h.ordered === this.list_ordered && h.marker_char === this.list_marker) {
-                  this.emit_close(r2, this.cursor), this.node_stack.pop();
+                  this.emit_close(o, this.cursor), this.node_stack.pop();
                   const c2 = this.emit_open(16, this.cursor, this.list_node_id);
                   this.node_stack.push(c2), this.list_content_offset = h.content_offset, this.chomp(h.content_start, true);
                 } else
@@ -5552,25 +5528,25 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const i = this.emit_open(7, this.cursor, r2, 0, true);
+              const i = this.emit_open(7, this.cursor, o, 0, true);
               this.track_list_pending_para(i), this.node_stack.push(i);
               continue;
             }
           }
         }
         case 28: {
-          if (!o) {
+          if (!r2) {
             if (!this.finished)
               break t;
-            this.emit_close(r2, this.cursor), this.node_stack.pop(), this.states.pop(), this.directive_colon_counts.pop();
+            this.emit_close(o, this.cursor), this.node_stack.pop(), this.states.pop(), this.directive_colon_counts.pop();
             continue;
           }
           const h = this.directive_colon_counts[this.directive_colon_counts.length - 1];
-          switch (o) {
+          switch (r2) {
             case l: {
               if (!this.finished && !this.can_decide_after_lf(this.cursor))
                 break t;
-              const i = this.emit_open(6, this.cursor, r2);
+              const i = this.emit_open(6, this.cursor, o);
               this.emit_close(i, this.cursor + 1), this.chomp1();
               continue;
             }
@@ -5582,7 +5558,7 @@ class Dt {
               if (i >= s && !this.finished)
                 break t;
               if (i < s && t2.charCodeAt(i) === l) {
-                const c2 = this.emit_open(6, this.cursor, r2);
+                const c2 = this.emit_open(6, this.cursor, o);
                 this.emit_close(c2, i + 1), this.chomp(i + 1, true);
                 continue;
               }
@@ -5597,7 +5573,7 @@ class Dt {
               if (i === -2)
                 break t;
               if (i >= 0) {
-                this.emit_close(r2, i), this.node_stack.pop(), this.states.pop(), this.directive_colon_counts.pop(), this.chomp(i, true);
+                this.emit_close(o, i), this.node_stack.pop(), this.states.pop(), this.directive_colon_counts.pop(), this.chomp(i, true);
                 continue;
               }
               const c2 = this.try_parse_block_directive(this.cursor);
@@ -5605,10 +5581,10 @@ class Dt {
                 break t;
               if (c2 !== null) {
                 if (c2.kind === "leaf") {
-                  const _2 = this.emit_open(31, this.cursor, r2);
+                  const _2 = this.emit_open(31, this.cursor, o);
                   this.out.attr(_2, "name", c2.name), c2.content_start >= 0 && (this.out.set_value_start(_2, c2.content_start), this.out.set_value_end(_2, c2.content_end)), this.emit_close(_2, c2.end), this.chomp(c2.end, true);
                 } else {
-                  const _2 = this.emit_open(32, this.cursor, r2);
+                  const _2 = this.emit_open(32, this.cursor, o);
                   this.out.attr(_2, "name", c2.name), c2.content_start >= 0 && (this.out.set_value_start(_2, c2.content_start), this.out.set_value_end(_2, c2.content_end)), this.node_stack.push(_2), this.states.push(
                     28
                     /* state_kind.directive_container */
@@ -5620,12 +5596,12 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const a = this.emit_open(7, this.cursor, r2);
+              const a = this.emit_open(7, this.cursor, o);
               this.node_stack.push(a);
               continue;
             }
             case S: {
-              if (!this.start_heading(r2))
+              if (!this.start_heading(o))
                 break t;
               continue;
             }
@@ -5645,7 +5621,7 @@ class Dt {
                 let c2 = this.cursor;
                 for (; c2 < s && t2.charCodeAt(c2) !== l; )
                   c2++;
-                const a = this.emit_open(11, this.cursor, r2);
+                const a = this.emit_open(11, this.cursor, o);
                 this.emit_close(a, c2), this.chomp(c2, true);
                 continue;
               }
@@ -5653,14 +5629,14 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const i = this.emit_open(7, this.cursor, r2);
+              const i = this.emit_open(7, this.cursor, o);
               this.node_stack.push(i);
               continue;
             }
             case C$1: {
               let i = this.cursor + 1;
               i < s && t2.charCodeAt(i) === p$1 && i++, this.block_quote_depth++;
-              const c2 = this.emit_open(14, this.cursor, r2);
+              const c2 = this.emit_open(14, this.cursor, o);
               this.node_stack.push(c2), this.states.push(
                 17
                 /* state_kind.block_quote */
@@ -5668,7 +5644,7 @@ class Dt {
               continue;
             }
             case q$1: {
-              const i = this.try_start_table(r2);
+              const i = this.try_start_table(o);
               if (i === false)
                 break t;
               if (i === true)
@@ -5677,7 +5653,7 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const c2 = this.emit_open(7, this.cursor, r2);
+              const c2 = this.emit_open(7, this.cursor, o);
               this.node_stack.push(c2);
               continue;
             }
@@ -5693,7 +5669,7 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const c2 = this.emit_open(7, this.cursor, r2);
+              const c2 = this.emit_open(7, this.cursor, o);
               this.node_stack.push(c2);
               continue;
             }
@@ -5702,22 +5678,22 @@ class Dt {
                 7
                 /* state_kind.paragraph */
               );
-              const i = this.emit_open(7, this.cursor, r2);
+              const i = this.emit_open(7, this.cursor, o);
               this.node_stack.push(i);
               continue;
             }
           }
         }
         case 8: {
-          if (this.in_table && (o === q$1 || o === l || !o)) {
+          if (this.in_table && (r2 === q$1 || r2 === l || !r2)) {
             this.states.pop();
             continue;
           }
-          if (this.in_heading && (o === l || !o)) {
+          if (this.in_heading && (r2 === l || !r2)) {
             this.states.pop();
             continue;
           }
-          switch (o) {
+          switch (r2) {
             case k: {
               this.states.push(
                 9
@@ -5744,11 +5720,11 @@ class Dt {
                     continue;
                   }
                 }
-                const c2 = this.emit_open(18, this.cursor, r2);
+                const c2 = this.emit_open(18, this.cursor, o);
                 this.emit_close(c2, this.cursor + 1), this.chomp1();
                 continue;
               } else {
-                const h = this.emit_open(18, this.cursor, r2);
+                const h = this.emit_open(18, this.cursor, o);
                 for (this.emit_close(h, this.cursor + 1), this.chomp1(); this.cursor < s && t2.charCodeAt(this.cursor) === p$1; )
                   this.chomp1();
                 continue;
@@ -5758,13 +5734,13 @@ class Dt {
               if (!this.finished && this.cursor + 1 >= s)
                 break t;
               if (this.prev & 3 && this.next_class & 6) {
-                const h = this.emit_open(10, this.cursor, r2, 0, true);
+                const h = this.emit_open(10, this.cursor, o, 0, true);
                 this.out.set_value_start(h, this.cursor + 1), this.node_stack.push(h), this.emphasis_has_content = false, this.states.push(
                   14
                   /* state_kind.strong_emphasis */
                 );
               } else {
-                const h = this.emit_open(1, this.cursor, r2);
+                const h = this.emit_open(1, this.cursor, o);
                 this.out.set_value_start(h, this.cursor), this.node_stack.push(h), this.states.push(
                   1
                   /* state_kind.text */
@@ -5777,13 +5753,13 @@ class Dt {
               if (!this.finished && this.cursor + 1 >= s)
                 break t;
               if (this.prev & 3 && this.next_class & 6) {
-                const h = this.emit_open(9, this.cursor, r2, 0, true);
+                const h = this.emit_open(9, this.cursor, o, 0, true);
                 this.out.set_value_start(h, this.cursor + 1), this.node_stack.push(h), this.emphasis_has_content = false, this.states.push(
                   15
                   /* state_kind.emphasis */
                 );
               } else {
-                const h = this.emit_open(1, this.cursor, r2);
+                const h = this.emit_open(1, this.cursor, o);
                 this.out.set_value_start(h, this.cursor), this.node_stack.push(h), this.states.push(
                   1
                   /* state_kind.text */
@@ -5796,7 +5772,7 @@ class Dt {
               if (!this.finished && this.cursor + 1 >= s)
                 break t;
               if (t2.charCodeAt(this.cursor + 1) === L && this.prev & 3 && v$1(t2.charCodeAt(this.cursor + 2)) & 6) {
-                const h = this.emit_open(19, this.cursor, r2, 0, true);
+                const h = this.emit_open(19, this.cursor, o, 0, true);
                 this.out.set_value_start(h, this.cursor + 2), this.node_stack.push(h), this.states.push(
                   19
                   /* state_kind.strikethrough */
@@ -5805,13 +5781,13 @@ class Dt {
                 // subscript: single ~ with next char word/punctuation
                 t2.charCodeAt(this.cursor + 1) !== L && this.next_class & 6
               ) {
-                const h = this.emit_open(21, this.cursor, r2, 0, true);
+                const h = this.emit_open(21, this.cursor, o, 0, true);
                 this.out.set_value_start(h, this.cursor + 1), this.node_stack.push(h), this.states.push(
                   21
                   /* state_kind.subscript */
                 ), this.chomp1();
               } else {
-                const h = this.emit_open(1, this.cursor, r2);
+                const h = this.emit_open(1, this.cursor, o);
                 this.out.set_value_start(h, this.cursor), this.node_stack.push(h), this.states.push(
                   1
                   /* state_kind.text */
@@ -5821,13 +5797,13 @@ class Dt {
             }
             case G$1: {
               if (this.next_class & 6) {
-                const h = this.emit_open(20, this.cursor, r2, 0, true);
+                const h = this.emit_open(20, this.cursor, o, 0, true);
                 this.out.set_value_start(h, this.cursor + 1), this.node_stack.push(h), this.states.push(
                   20
                   /* state_kind.superscript */
                 );
               } else {
-                const h = this.emit_open(1, this.cursor, r2);
+                const h = this.emit_open(1, this.cursor, o);
                 this.out.set_value_start(h, this.cursor), this.node_stack.push(h), this.states.push(
                   1
                   /* state_kind.text */
@@ -5841,7 +5817,7 @@ class Dt {
                 this.states.pop();
                 continue;
               }
-              const h = this.emit_open(1, this.cursor, r2);
+              const h = this.emit_open(1, this.cursor, o);
               this.out.set_value_start(h, this.cursor), this.node_stack.push(h), this.states.push(
                 1
                 /* state_kind.text */
@@ -5856,11 +5832,11 @@ class Dt {
                 if (!this.finished && !this.can_decide_after_lf(this.cursor + 1))
                   break t;
                 if (this.block_quote_depth > 0 && this.skip_bq_markers(this.cursor + 2, this.block_quote_depth) === -1) {
-                  const a = this.emit_open(17, this.cursor, r2);
+                  const a = this.emit_open(17, this.cursor, o);
                   this.emit_close(a, this.cursor + 2), this.chomp1(), this.states.pop();
                   continue;
                 }
-                const i = this.emit_open(17, this.cursor, r2);
+                const i = this.emit_open(17, this.cursor, o);
                 if (this.emit_close(i, this.cursor + 2), this.chomp(2), this.block_quote_depth > 0) {
                   const c2 = this.skip_bq_markers(this.cursor, this.block_quote_depth);
                   c2 !== -1 && this.chomp(c2, true);
@@ -5870,13 +5846,13 @@ class Dt {
                 continue;
               }
               if (this.is_ascii_punctuation(h)) {
-                const i = this.emit_open(1, this.cursor + 1, r2);
+                const i = this.emit_open(1, this.cursor + 1, o);
                 this.out.set_value_start(i, this.cursor + 1), this.node_stack.push(i), this.states.push(
                   1
                   /* state_kind.text */
                 ), this.chomp(2);
               } else {
-                const i = this.emit_open(1, this.cursor, r2);
+                const i = this.emit_open(1, this.cursor, o);
                 this.out.set_value_start(i, this.cursor), this.node_stack.push(i), this.states.push(
                   1
                   /* state_kind.text */
@@ -5885,7 +5861,7 @@ class Dt {
               continue;
             }
             case E$1: {
-              const h = this.emit_open(12, this.cursor, r2, 0, true);
+              const h = this.emit_open(12, this.cursor, o, 0, true);
               this.node_stack.push(h), this.states.push(
                 22
                 /* state_kind.link_text */
@@ -5896,14 +5872,14 @@ class Dt {
               if (!this.finished && this.cursor + 1 >= s)
                 break t;
               if (t2.charCodeAt(this.cursor + 1) === E$1) {
-                const i = this.emit_open(13, this.cursor, r2, 0, true);
+                const i = this.emit_open(13, this.cursor, o, 0, true);
                 this.node_stack.push(i), this.states.push(
                   22
                   /* state_kind.link_text */
                 ), this.link_text_start = this.cursor + 2, this.chomp(2);
                 continue;
               }
-              const h = this.emit_open(1, this.cursor, r2);
+              const h = this.emit_open(1, this.cursor, o);
               this.node_stack.push(h), this.out.set_value_start(h, this.cursor), this.states.push(
                 1
                 /* state_kind.text */
@@ -5915,7 +5891,7 @@ class Dt {
                 break t;
               const h = this.try_parse_uri_autolink(this.cursor + 1);
               if (h !== -1) {
-                const u3 = t2.slice(this.cursor + 1, h - 1), d2 = this.emit_open(12, this.cursor, r2);
+                const u3 = t2.slice(this.cursor + 1, h - 1), d2 = this.emit_open(12, this.cursor, o);
                 this.out.set_value_start(d2, this.cursor + 1), this.out.set_value_end(d2, h - 1), this.emit_close(d2, h), this.out.attr(d2, "href", u3);
                 const b2 = this.emit_open(1, this.cursor + 1, d2);
                 this.out.set_value_start(b2, this.cursor + 1), this.out.set_value_end(b2, h - 1), this.emit_close(b2, h - 1), this.chomp(h, true), this.states.pop();
@@ -5925,7 +5901,7 @@ class Dt {
               if (i === false)
                 break t;
               if (i) {
-                const u3 = this.emit_open(26, this.cursor, r2);
+                const u3 = this.emit_open(26, this.cursor, o);
                 this.out.text(u3, i.content_start, i.content_end), this.emit_close(u3, i.end), this.chomp(i.end, true), this.states.pop();
                 continue;
               }
@@ -5945,22 +5921,22 @@ class Dt {
               const a = this.try_parse_html_open_tag(this.cursor + 1);
               if (a) {
                 if (a.self_closing) {
-                  const u3 = this.emit_open(2, this.cursor, r2);
+                  const u3 = this.emit_open(2, this.cursor, o);
                   this.out.attr(u3, "tag", a.tag), Object.keys(a.attributes).length > 0 && this.out.attr(u3, "attributes", a.attributes), this.out.attr(u3, "self_closing", true), this.emit_close(u3, a.end), this.chomp(a.end, true), this.states.pop();
                 } else if (this.is_raw_text_tag(a.tag)) {
                   const u3 = this.find_raw_close_tag(a.end, a.tag);
                   if (u3) {
-                    const d2 = this.emit_open(2, this.cursor, r2);
+                    const d2 = this.emit_open(2, this.cursor, o);
                     this.out.attr(d2, "tag", a.tag), Object.keys(a.attributes).length > 0 && this.out.attr(d2, "attributes", a.attributes), this.out.set_value_start(d2, a.end), this.out.set_value_end(d2, u3.content_end), this.emit_close(d2, u3.end), this.chomp(u3.end, true);
                   } else {
                     if (!this.finished)
                       break t;
-                    const d2 = this.emit_open(2, this.cursor, r2);
+                    const d2 = this.emit_open(2, this.cursor, o);
                     this.out.attr(d2, "tag", a.tag), Object.keys(a.attributes).length > 0 && this.out.attr(d2, "attributes", a.attributes), this.out.set_value_start(d2, a.end), this.out.set_value_end(d2, s), this.emit_close(d2, s), this.chomp(s, true);
                   }
                   this.states.pop();
                 } else {
-                  const u3 = this.emit_open(2, this.cursor, r2, 0, true);
+                  const u3 = this.emit_open(2, this.cursor, o, 0, true);
                   this.out.attr(u3, "tag", a.tag), Object.keys(a.attributes).length > 0 && this.out.attr(u3, "attributes", a.attributes), this.html_tag_stack.push({ id: u3, tag: a.tag }), this.node_stack.push(u3), this.states.push(
                     25
                     /* state_kind.html_element */
@@ -5968,7 +5944,7 @@ class Dt {
                 }
                 continue;
               }
-              const _2 = this.emit_open(1, this.cursor, r2);
+              const _2 = this.emit_open(1, this.cursor, o);
               this.node_stack.push(_2), this.out.set_value_start(_2, this.cursor), this.states.push(
                 1
                 /* state_kind.text */
@@ -5986,18 +5962,18 @@ class Dt {
                     a++;
                   const _2 = t2.slice(this.cursor + 2, a);
                   if (_2.length > 0) {
-                    const u3 = this.emit_open(27, this.cursor, r2);
+                    const u3 = this.emit_open(27, this.cursor, o);
                     for (this.out.attr(u3, "tag", _2); a < h - 1 && (t2.charCodeAt(a) === p$1 || t2.charCodeAt(a) === f); )
                       a++;
                     a < h - 1 && (this.out.set_value_start(u3, a), this.out.set_value_end(u3, h - 1)), this.emit_close(u3, h), this.chomp(h, true);
                     continue;
                   }
                 }
-                const c2 = this.emit_open(4, this.cursor, r2);
+                const c2 = this.emit_open(4, this.cursor, o);
                 this.out.set_value_start(c2, this.cursor + 1), this.out.set_value_end(c2, h - 1), this.emit_close(c2, h), this.chomp(h, true);
                 continue;
               }
-              const i = this.emit_open(1, this.cursor, r2);
+              const i = this.emit_open(1, this.cursor, o);
               this.out.set_value_start(i, this.cursor), this.node_stack.push(i), this.states.push(
                 1
                 /* state_kind.text */
@@ -6015,7 +5991,7 @@ class Dt {
                 if (a >= s && !this.finished)
                   break t;
                 if (a < s && t2.charCodeAt(a) === E$1) {
-                  const _2 = t2.slice(h, a), u3 = this.emit_open(30, this.cursor, r2, 0, true);
+                  const _2 = t2.slice(h, a), u3 = this.emit_open(30, this.cursor, o, 0, true);
                   this.out.attr(u3, "name", _2), this.node_stack.push(u3), this.states.push(
                     22
                     /* state_kind.link_text */
@@ -6023,7 +5999,7 @@ class Dt {
                   continue;
                 }
               }
-              const c2 = this.emit_open(1, this.cursor, r2);
+              const c2 = this.emit_open(1, this.cursor, o);
               this.out.set_value_start(c2, this.cursor), this.node_stack.push(c2), this.states.push(
                 1
                 /* state_kind.text */
@@ -6037,11 +6013,11 @@ class Dt {
               }
             // falls through
             default: {
-              if (!o) {
+              if (!r2) {
                 this.states.pop();
                 continue;
               }
-              const h = this.emit_open(1, this.cursor, r2);
+              const h = this.emit_open(1, this.cursor, o);
               this.out.set_value_start(h, this.cursor), this.node_stack.push(h), this.states.push(
                 1
                 /* state_kind.text */
@@ -6051,22 +6027,22 @@ class Dt {
           }
         }
         case 1: {
-          if (this.in_table && (o === q$1 || o === l || !o)) {
+          if (this.in_table && (r2 === q$1 || r2 === l || !r2)) {
             this.unwind_inline_for_table();
             continue;
           }
-          if (this.in_heading && (o === l || !o)) {
+          if (this.in_heading && (r2 === l || !r2)) {
             let h = this.cursor;
             for (; h > 0 && (t2.charCodeAt(h - 1) === p$1 || t2.charCodeAt(h - 1) === f); )
               h--;
-            this.states.pop(), this.emit_close(r2, h), this.out.set_value_end(r2, h), this.node_stack.pop();
+            this.states.pop(), this.emit_close(o, h), this.out.set_value_end(o, h), this.node_stack.pop();
             continue;
           }
-          if (o === q$1 && !this.in_table) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
+          if (r2 === q$1 && !this.in_table) {
+            this.states.pop(), this.emit_close(o, this.cursor), this.out.set_value_end(o, this.cursor), this.node_stack.pop();
             continue;
           }
-          if (o === R$1) {
+          if (r2 === R$1) {
             if (!this.finished && this.cursor + 1 >= s)
               break t;
             const h = t2.charCodeAt(this.cursor + 1);
@@ -6074,12 +6050,12 @@ class Dt {
               if (!this.finished && !this.can_decide_after_lf(this.cursor + 1))
                 break t;
               if (this.block_quote_depth > 0 && this.skip_bq_markers(this.cursor + 2, this.block_quote_depth) === -1) {
-                this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop(), this.states.pop();
+                this.emit_close(o, this.cursor), this.out.set_value_end(o, this.cursor), this.node_stack.pop(), this.states.pop();
                 const _2 = this.node_stack[this.node_stack.length - 1], u3 = this.emit_open(17, this.cursor, _2);
                 this.emit_close(u3, this.cursor + 2), this.chomp1(), this.states[this.states.length - 1] === 8 && this.states.pop();
                 continue;
               }
-              this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop(), this.states.pop();
+              this.emit_close(o, this.cursor), this.out.set_value_end(o, this.cursor), this.node_stack.pop(), this.states.pop();
               const i = this.node_stack[this.node_stack.length - 1], c2 = this.emit_open(17, this.cursor, i);
               if (this.emit_close(c2, this.cursor + 2), this.chomp(2), this.block_quote_depth > 0) {
                 const a = this.skip_bq_markers(this.cursor, this.block_quote_depth);
@@ -6090,47 +6066,47 @@ class Dt {
               continue;
             }
             if (this.is_ascii_punctuation(h)) {
-              this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
+              this.emit_close(o, this.cursor), this.out.set_value_end(o, this.cursor), this.node_stack.pop();
               const i = this.node_stack[this.node_stack.length - 1], c2 = this.emit_open(1, this.cursor + 1, i);
               this.out.set_value_start(c2, this.cursor + 1), this.node_stack.push(c2), this.chomp(2);
               continue;
             }
           }
-          if (o === l && !this.finished && !this.can_decide_after_lf(this.cursor) || !o && !this.finished)
+          if (r2 === l && !this.finished && !this.can_decide_after_lf(this.cursor) || !r2 && !this.finished)
             break t;
-          if (o === l && this.block_quote_depth > 0) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
+          if (r2 === l && this.block_quote_depth > 0) {
+            this.states.pop(), this.emit_close(o, this.cursor), this.out.set_value_end(o, this.cursor), this.node_stack.pop();
             continue;
           }
-          if (!o || o === l && this.is_block_interrupt(this.cursor + 1)) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
+          if (!r2 || r2 === l && this.is_block_interrupt(this.cursor + 1)) {
+            this.states.pop(), this.emit_close(o, this.cursor), this.out.set_value_end(o, this.cursor), this.node_stack.pop();
             continue;
-          } else if (o === l && this.list_depth > 0) {
+          } else if (r2 === l && this.list_depth > 0) {
             const h = this.cursor + 1, { columns: i } = this.count_indent(h);
             if (i >= this.list_content_offset) {
               const c2 = this.skip_columns(h, this.list_content_offset);
               if (c2 < s && this.try_parse_list_marker(c2) !== null) {
-                this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
+                this.states.pop(), this.emit_close(o, this.cursor), this.out.set_value_end(o, this.cursor), this.node_stack.pop();
                 continue;
               }
             }
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
+            this.states.pop(), this.emit_close(o, this.cursor), this.out.set_value_end(o, this.cursor), this.node_stack.pop();
             continue;
-          } else if (o === l) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop();
+          } else if (r2 === l) {
+            this.states.pop(), this.emit_close(o, this.cursor), this.out.set_value_end(o, this.cursor), this.node_stack.pop();
             continue;
-          } else if (o === w$2) {
+          } else if (r2 === w$2) {
             if (!this.finished && this.cursor + 1 >= s)
               break t;
             const h = t2.charCodeAt(this.cursor + 1);
             if (h >= 97 && h <= 122 || h >= 65 && h <= 90) {
-              this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop(), this.states.pop();
+              this.states.pop(), this.emit_close(o, this.cursor), this.out.set_value_end(o, this.cursor), this.node_stack.pop(), this.states.pop();
               continue;
             }
             this.chomp1();
             continue;
-          } else if (o === O$1 || o === x$1 || o === L || o === G$1 || o === j$1 || o === E$1 || o === M$1 || o === Q$1 || o === k || o === N$1) {
-            this.states.pop(), this.emit_close(r2, this.cursor), this.out.set_value_end(r2, this.cursor), this.node_stack.pop(), this.states.pop();
+          } else if (r2 === O$1 || r2 === x$1 || r2 === L || r2 === G$1 || r2 === j$1 || r2 === E$1 || r2 === M$1 || r2 === Q$1 || r2 === k || r2 === N$1) {
+            this.states.pop(), this.emit_close(o, this.cursor), this.out.set_value_end(o, this.cursor), this.node_stack.pop(), this.states.pop();
             continue;
           }
           {
@@ -6151,11 +6127,11 @@ class Dt {
               1
               /* state_kind.text */
             );
-            const h = this.emit_open(1, this.cursor - this.extra, r2);
+            const h = this.emit_open(1, this.cursor - this.extra, o);
             this.node_stack.push(h), this.out.set_value_start(h, this.cursor);
             continue;
           }
-          switch (o) {
+          switch (r2) {
             case k: {
               this.checkpoint_cursor = this.cursor, this.extra += 1, this.chomp1();
               continue;
@@ -6174,7 +6150,7 @@ class Dt {
                 13
                 /* state_kind.code_span_end */
               );
-              const h = this.emit_open(8, this.cursor - this.extra, r2);
+              const h = this.emit_open(8, this.cursor - this.extra, o);
               this.node_stack.push(h), this.out.set_value_start(h, this.cursor);
               continue;
             }
@@ -6185,7 +6161,7 @@ class Dt {
                 11
                 /* state_kind.code_span_content_leading_space */
               );
-              const h = this.emit_open(8, this.cursor - this.extra, r2);
+              const h = this.emit_open(8, this.cursor - this.extra, o);
               this.node_stack.push(h), this.chomp(2);
               continue;
             }
@@ -6194,14 +6170,14 @@ class Dt {
                 13
                 /* state_kind.code_span_end */
               );
-              const h = this.emit_open(8, this.cursor - this.extra, r2);
+              const h = this.emit_open(8, this.cursor - this.extra, o);
               this.node_stack.push(h), this.out.set_value_start(h, this.cursor);
               continue;
             }
           }
         }
         case 10:
-          switch (o) {
+          switch (r2) {
             case p$1: {
               if (!this.finished && this.cursor + 1 >= s)
                 break t;
@@ -6212,7 +6188,7 @@ class Dt {
                 13
                 /* state_kind.code_span_end */
               ), this.chomp1());
-              const h = this.emit_open(8, this.info_start_pos - 2 - this.extra, r2);
+              const h = this.emit_open(8, this.info_start_pos - 2 - this.extra, o);
               this.node_stack.push(h), this.out.attr(h, "info_start", this.info_start_pos), this.out.attr(h, "info_end", this.info_end_pos), t2.charCodeAt(this.cursor - 2) !== p$1 && this.out.set_value_start(h, this.cursor);
               continue;
             }
@@ -6222,23 +6198,23 @@ class Dt {
             }
           }
         case 11: {
-          if (!this.finished && (o === p$1 || o === k) && this.cursor + this.extra >= s)
+          if (!this.finished && (r2 === p$1 || r2 === k) && this.cursor + this.extra >= s)
             break t;
-          if (o === p$1 && t2.charCodeAt(this.cursor + 1) === k) {
+          if (r2 === p$1 && t2.charCodeAt(this.cursor + 1) === k) {
             this.chomp1(), this.states.pop(), this.states.push(
               12
               /* state_kind.code_span_leading_space_end */
             );
             continue;
-          } else if (o === k && t2.charCodeAt(this.cursor - 1) !== k) {
+          } else if (r2 === k && t2.charCodeAt(this.cursor - 1) !== k) {
             if (this.extra === 1 && t2.charCodeAt(this.cursor + 1) !== k || this.extra === 2 && t2.charCodeAt(this.cursor + 1) === k && t2.charCodeAt(this.cursor + 2) !== k) {
-              this.out.set_value_start(r2, this.checkpoint_cursor), this.out.set_value_end(r2, this.cursor), this.emit_close(r2, this.cursor + this.extra), this.node_stack.pop(), this.states.pop(), this.chomp(this.extra);
+              this.out.set_value_start(o, this.checkpoint_cursor), this.out.set_value_end(o, this.cursor), this.emit_close(o, this.cursor + this.extra), this.node_stack.pop(), this.states.pop(), this.chomp(this.extra);
               continue;
             }
             this.chomp1();
             continue;
-          } else if (o === l) {
-            this.out.set_value_start(r2, this.checkpoint_cursor), this.chomp(this.cursor, true), this.states.pop(), this.states.push(
+          } else if (r2 === l) {
+            this.out.set_value_start(o, this.checkpoint_cursor), this.chomp(this.cursor, true), this.states.pop(), this.states.push(
               13
               /* state_kind.code_span_end */
             );
@@ -6249,33 +6225,33 @@ class Dt {
           }
         }
         case 12: {
-          if (!this.finished && o === k && this.cursor + this.extra >= s)
+          if (!this.finished && r2 === k && this.cursor + this.extra >= s)
             break t;
-          this.extra === 1 && o === k && t2.charCodeAt(this.cursor + 1) !== k ? (this.states.pop(), this.out.set_value_start(r2, this.checkpoint_cursor + 1), this.emit_close(r2, this.cursor + this.extra), this.out.set_value_end(r2, this.cursor - 1), this.node_stack.pop()) : this.extra === 2 && o === k && t2.charCodeAt(this.cursor + 1) === k && t2.charCodeAt(this.cursor + 2) !== k ? (this.states.pop(), this.out.set_value_start(r2, this.checkpoint_cursor + 1), this.emit_close(r2, this.cursor + this.extra), this.out.set_value_end(r2, this.cursor - 1), this.node_stack.pop()) : (this.states.pop(), this.states.push(
+          this.extra === 1 && r2 === k && t2.charCodeAt(this.cursor + 1) !== k ? (this.states.pop(), this.out.set_value_start(o, this.checkpoint_cursor + 1), this.emit_close(o, this.cursor + this.extra), this.out.set_value_end(o, this.cursor - 1), this.node_stack.pop()) : this.extra === 2 && r2 === k && t2.charCodeAt(this.cursor + 1) === k && t2.charCodeAt(this.cursor + 2) !== k ? (this.states.pop(), this.out.set_value_start(o, this.checkpoint_cursor + 1), this.emit_close(o, this.cursor + this.extra), this.out.set_value_end(o, this.cursor - 1), this.node_stack.pop()) : (this.states.pop(), this.states.push(
             11
             /* state_kind.code_span_content_leading_space */
           )), this.chomp(this.extra);
           continue;
         }
         case 13: {
-          if (this.in_table && (o === q$1 || o === l)) {
+          if (this.in_table && (r2 === q$1 || r2 === l)) {
             this.unwind_inline_for_table();
             continue;
           }
-          if (o === k) {
+          if (r2 === k) {
             let h = 1;
             for (; this.cursor + h < s && t2.charCodeAt(this.cursor + h) === k; )
               h++;
             if (!this.finished && this.cursor + h >= s)
               break t;
             if (h === this.extra) {
-              this.out.set_value_end(r2, this.cursor), this.states.pop(), this.emit_close(r2, this.cursor + this.extra), this.node_stack.pop(), this.chomp(this.extra);
+              this.out.set_value_end(o, this.cursor), this.states.pop(), this.emit_close(o, this.cursor + this.extra), this.node_stack.pop(), this.chomp(this.extra);
               continue;
             }
             this.cursor += h, this.prev = v$1(t2.charCodeAt(this.cursor - 1)), this.current = v$1(t2.charCodeAt(this.cursor)), this.next_class = v$1(t2.charCodeAt(this.cursor + 1));
             continue;
           }
-          if (o === l && this.is_blank_line_after(this.cursor) || o !== o) {
+          if (r2 === l && this.is_blank_line_after(this.cursor) || r2 !== r2) {
             this.chomp(this.checkpoint_cursor + this.extra, true), this.out.revoke(this.node_stack[this.node_stack.length - 1]), this.node_stack.pop(), this.states.pop();
             continue;
           }
@@ -6283,56 +6259,56 @@ class Dt {
           continue;
         }
         case 23: {
-          if (!o) {
+          if (!r2) {
             if (!this.finished)
               break t;
             this.end_table();
             continue;
           }
-          if (o === l) {
+          if (r2 === l) {
             this.end_table();
             continue;
           }
-          if (o === S && this.is_heading_start(this.cursor)) {
+          if (r2 === S && this.is_heading_start(this.cursor)) {
             this.end_table();
             continue;
           }
-          if (o === k && this.cursor + 2 < s && t2.charCodeAt(this.cursor + 1) === k && t2.charCodeAt(this.cursor + 2) === k) {
+          if (r2 === k && this.cursor + 2 < s && t2.charCodeAt(this.cursor + 1) === k && t2.charCodeAt(this.cursor + 2) === k) {
             this.end_table();
             continue;
           }
-          if (o === C$1) {
+          if (r2 === C$1) {
             this.end_table();
             continue;
           }
-          if ((o === O$1 || o === A2 || o === x$1) && this.is_thematic_break_start(this.cursor)) {
+          if ((r2 === O$1 || r2 === A2 || r2 === x$1) && this.is_thematic_break_start(this.cursor)) {
             this.end_table();
             continue;
           }
-          this.table_row_id = this.emit_open(24, this.cursor, this.table_node_id), this.table_cell_col = 0, o === q$1 && this.chomp1(), this.table_cell_id = this.emit_open(25, this.cursor, this.table_row_id, this.table_cell_col), this.table_cell_has_content = false, this.node_stack.push(this.table_cell_id), this.states.push(
+          this.table_row_id = this.emit_open(24, this.cursor, this.table_node_id), this.table_cell_col = 0, r2 === q$1 && this.chomp1(), this.table_cell_id = this.emit_open(25, this.cursor, this.table_row_id, this.table_cell_col), this.table_cell_has_content = false, this.node_stack.push(this.table_cell_id), this.states.push(
             24
             /* state_kind.table_row_content */
           );
           continue;
         }
         case 24: {
-          if (this.inline_range_parse && !o)
+          if (this.inline_range_parse && !r2)
             break t;
-          if (!o) {
+          if (!r2) {
             if (!this.finished)
               break t;
             this.table_cell_col < this.table_col_count && (this.close_table_cell(), this.table_cell_col++), this.pad_and_close_row(), this.states.pop();
             continue;
           }
-          if (o === q$1) {
+          if (r2 === q$1) {
             this.table_cell_col < this.table_col_count && this.close_table_cell(), this.table_cell_col++, this.chomp1(), this.table_cell_col < this.table_col_count && (this.table_cell_id = this.emit_open(25, this.cursor, this.table_row_id, this.table_cell_col), this.table_cell_has_content = false, this.node_stack.push(this.table_cell_id));
             continue;
           }
-          if (o === l) {
+          if (r2 === l) {
             this.table_cell_col < this.table_col_count && (this.close_table_cell(), this.table_cell_col++), this.pad_and_close_row(), this.states.pop(), this.chomp1();
             continue;
           }
-          if (!this.table_cell_has_content && (o === p$1 || o === f)) {
+          if (!this.table_cell_has_content && (r2 === p$1 || r2 === f)) {
             this.chomp1();
             continue;
           }
@@ -6358,7 +6334,7 @@ class Dt {
             break t;
           const a = t2.charCodeAt(c2);
           if (a === l || a !== a) {
-            const _2 = r2, u3 = a === l ? c2 + 1 : c2;
+            const _2 = o, u3 = a === l ? c2 + 1 : c2;
             this.out.set_value_end(_2, i + 1), this.emit_close(_2, u3), this.node_stack.pop(), this.states.pop(), this.chomp(u3, true);
             continue;
           }
@@ -6385,25 +6361,25 @@ class Dt {
       e2++;
     if (e2 >= n3 && !this.finished)
       return false;
-    const o = this.parse_table_row_cells(this.cursor, e2);
-    if (o.length === 0)
+    const r2 = this.parse_table_row_cells(this.cursor, e2);
+    if (r2.length === 0)
       return null;
-    const r2 = e2 + 1;
-    if (r2 >= n3 && !this.finished)
+    const o = e2 + 1;
+    if (o >= n3 && !this.finished)
       return false;
-    let h = r2;
+    let h = o;
     for (; h < n3 && s.charCodeAt(h) !== l; )
       h++;
     if (h >= n3 && !this.finished)
       return false;
-    const i = this.parse_delimiter_row(r2, h);
-    if (!i || i.length !== o.length)
+    const i = this.parse_delimiter_row(o, h);
+    if (!i || i.length !== r2.length)
       return null;
-    const c2 = o.length, a = this.emit_open(22, this.cursor, t2);
+    const c2 = r2.length, a = this.emit_open(22, this.cursor, t2);
     this.out.attr(a, "alignments", i), this.out.attr(a, "col_count", c2), this.table_col_count = c2, this.table_node_id = a, this.in_table = true;
     const _2 = this.emit_open(23, this.cursor, a);
-    for (let d2 = 0; d2 < o.length; d2++) {
-      const b2 = o[d2], g2 = this.trim_cell_range(b2.start, b2.end);
+    for (let d2 = 0; d2 < r2.length; d2++) {
+      const b2 = r2[d2], g2 = this.trim_cell_range(b2.start, b2.end);
       this.table_cell_id = this.emit_open(25, b2.start, _2, d2), g2.start < g2.end && (this.node_stack.push(this.table_cell_id), this.parse_inline_range(g2.start, g2.end), this.node_stack.pop()), this.emit_close(this.table_cell_id, b2.end);
     }
     this.emit_close(_2, e2), this.node_stack.push(a), this.states.push(
@@ -6423,7 +6399,7 @@ class Dt {
     for (; e2 < s && (n3.charCodeAt(e2) === p$1 || n3.charCodeAt(e2) === f); )
       e2++;
     e2 < s && n3.charCodeAt(e2) === q$1 && e2++;
-    const r2 = [];
+    const o = [];
     let h = e2;
     for (; e2 < s; ) {
       const i = n3.charCodeAt(e2);
@@ -6431,7 +6407,7 @@ class Dt {
         e2 += 2;
         continue;
       }
-      i === q$1 && (r2.push({ start: h, end: e2 }), h = e2 + 1), e2++;
+      i === q$1 && (o.push({ start: h, end: e2 }), h = e2 + 1), e2++;
     }
     if (h < s) {
       let i = true;
@@ -6442,9 +6418,9 @@ class Dt {
           break;
         }
       }
-      i || r2.push({ start: h, end: s });
+      i || o.push({ start: h, end: s });
     }
-    return r2;
+    return o;
   }
   /**
    * parse a delimiter row. returns alignment array or null if invalid.
@@ -6455,14 +6431,14 @@ class Dt {
     for (; e2 < s && (n3.charCodeAt(e2) === p$1 || n3.charCodeAt(e2) === f); )
       e2++;
     e2 < s && n3.charCodeAt(e2) === q$1 && e2++;
-    const o = [];
+    const r2 = [];
     for (; e2 < s; ) {
       for (; e2 < s && n3.charCodeAt(e2) === p$1; )
         e2++;
       if (e2 >= s || n3.charCodeAt(e2) === q$1 && e2 + 1 >= s)
         break;
-      let r2 = false;
-      n3.charCodeAt(e2) === w$2 && (r2 = true, e2++);
+      let o = false;
+      n3.charCodeAt(e2) === w$2 && (o = true, e2++);
       let h = 0;
       for (; e2 < s && n3.charCodeAt(e2) === A2; )
         h++, e2++;
@@ -6476,36 +6452,36 @@ class Dt {
           e2++;
         else
           return null;
-      r2 && i ? o.push("center") : i ? o.push("right") : r2 ? o.push("left") : o.push("none");
+      o && i ? r2.push("center") : i ? r2.push("right") : o ? r2.push("left") : r2.push("none");
     }
-    return o.length > 0 ? o : null;
+    return r2.length > 0 ? r2 : null;
   }
   /**
    * trim whitespace from cell content range.
    */
   trim_cell_range(t2, s) {
     const n3 = this.source;
-    let e2 = t2, o = s;
-    for (; e2 < o && (n3.charCodeAt(e2) === p$1 || n3.charCodeAt(e2) === f); )
+    let e2 = t2, r2 = s;
+    for (; e2 < r2 && (n3.charCodeAt(e2) === p$1 || n3.charCodeAt(e2) === f); )
       e2++;
-    for (; o > e2 && (n3.charCodeAt(o - 1) === p$1 || n3.charCodeAt(o - 1) === f); )
-      o--;
-    return { start: e2, end: o };
+    for (; r2 > e2 && (n3.charCodeAt(r2 - 1) === p$1 || n3.charCodeAt(r2 - 1) === f); )
+      r2--;
+    return { start: e2, end: r2 };
   }
   /**
    * emit a data row with cells, padding/truncating to table_col_count.
    */
   emit_table_row(t2, s, n3) {
-    const e2 = this.parse_table_row_cells(t2, s), o = this.emit_open(24, t2, n3);
-    for (let r2 = 0; r2 < this.table_col_count; r2++)
-      if (r2 < e2.length) {
-        const h = e2[r2], i = this.trim_cell_range(h.start, h.end), c2 = this.emit_open(25, h.start, o, r2);
+    const e2 = this.parse_table_row_cells(t2, s), r2 = this.emit_open(24, t2, n3);
+    for (let o = 0; o < this.table_col_count; o++)
+      if (o < e2.length) {
+        const h = e2[o], i = this.trim_cell_range(h.start, h.end), c2 = this.emit_open(25, h.start, r2, o);
         i.start < i.end && this.out.text(c2, i.start, i.end), this.emit_close(c2, h.end);
       } else {
-        const h = this.emit_open(25, s, o, r2);
+        const h = this.emit_open(25, s, r2, o);
         this.emit_close(h, s);
       }
-    this.emit_close(o, s);
+    this.emit_close(r2, s);
   }
   /**
    * parse inline content for a specific byte range. used for header cells
@@ -6514,9 +6490,9 @@ class Dt {
    * into block-level parsing.
    */
   parse_inline_range(t2, s) {
-    const n3 = this.cursor, e2 = this.finished, o = this.prev;
+    const n3 = this.cursor, e2 = this.finished, r2 = this.prev;
     this.cursor = t2, this.finished = true, this.prev = 1, this.current = v$1(this.source.charCodeAt(t2)), this.next_class = v$1(this.source.charCodeAt(t2 + 1));
-    const r2 = this.states.length;
+    const o = this.states.length;
     this.states.push(
       24
       /* state_kind.table_row_content */
@@ -6525,7 +6501,7 @@ class Dt {
       /* state_kind.inline */
     );
     const h = this.source;
-    for (this.source = this.source.slice(0, s), this.inline_range_parse = true, this._run(), this.source = h, this.inline_range_parse = false; this.states.length > r2; ) {
+    for (this.source = this.source.slice(0, s), this.inline_range_parse = true, this._run(), this.source = h, this.inline_range_parse = false; this.states.length > o; ) {
       const i = this.states[this.states.length - 1];
       if (i === 1 || i === 15 || i === 14 || i === 19 || i === 20 || i === 21 || i === 22) {
         const c2 = this.node_stack[this.node_stack.length - 1];
@@ -6533,7 +6509,7 @@ class Dt {
       }
       this.states.pop();
     }
-    this.cursor = n3, this.finished = e2, this.prev = o, this.current = v$1(this.source.charCodeAt(this.cursor)), this.next_class = v$1(this.source.charCodeAt(this.cursor + 1));
+    this.cursor = n3, this.finished = e2, this.prev = r2, this.current = v$1(this.source.charCodeAt(this.cursor)), this.next_class = v$1(this.source.charCodeAt(this.cursor + 1));
   }
   /**
    * unwind all inline states back to table_row_content.
@@ -6595,11 +6571,11 @@ class Dt {
     for (let s = 0; s < this.pending_count; s++) {
       const n3 = this.pending_ids[s];
       if (this.node_kind_array[n3] === 2) {
-        const o = this.pending_starts[s];
-        let r2 = o;
-        for (; r2 < t2 && this.source.charCodeAt(r2) !== l; )
-          r2++;
-        this.out.revoke(n3, this.source.slice(o, r2));
+        const r2 = this.pending_starts[s];
+        let o = r2;
+        for (; o < t2 && this.source.charCodeAt(o) !== l; )
+          o++;
+        this.out.revoke(n3, this.source.slice(r2, o));
       } else
         this.out.revoke(n3);
     }

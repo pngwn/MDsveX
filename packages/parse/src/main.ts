@@ -2296,6 +2296,56 @@ export class PFMParser {
 		return true;
 	}
 
+	// returns true when a linefeed inside a delimiter state (emphasis,
+	// strong, strikethrough, superscript, subscript) was consumed by a
+	// block interrupt or blockquote boundary. caller should `continue
+	// main_loop` when true.
+	private _delimiter_lf_close(current_node: number): boolean {
+		if (this.block_quote_depth > 0) {
+			const next_pos = this.cursor + 1;
+			const stripped = this.skip_bq_markers(
+				next_pos,
+				this.block_quote_depth,
+			);
+
+			if (
+				stripped !== -1 &&
+				!this.is_blank_at_pos(stripped) &&
+				!this.is_heading_start(stripped) &&
+				!this.is_thematic_break_start(stripped)
+			) {
+				const sb = this.emit_open(
+					node_kind.soft_break,
+					this.cursor,
+					current_node,
+				);
+				this.emit_close(sb, this.cursor + 1);
+				this.chomp(stripped, true);
+				this.states.push(state_kind.inline);
+			} else {
+				this.states.pop();
+				this.emit_close(current_node, this.cursor);
+				this.out.set_value_end(current_node, this.cursor);
+				this.node_stack.pop();
+			}
+			return true;
+		}
+
+		if (
+			this.is_blank_line_after(this.cursor) ||
+			this.is_heading_start(this.cursor + 1) ||
+			this.is_thematic_break_start(this.cursor + 1)
+		) {
+			this.states.pop();
+			this.emit_close(current_node, this.cursor);
+			this.out.set_value_end(current_node, this.cursor);
+			this.node_stack.pop();
+			return true;
+		}
+
+		return false;
+	}
+
 	// main loop
 
 	private _run(): void {
@@ -3268,60 +3318,10 @@ export class PFMParser {
 						if (this.states[this.states.length - 1] === state_kind.inline) {
 							this.states.pop();
 						}
-					} else if (code === LINEFEED && this.block_quote_depth > 0) {
-						const next_pos = this.cursor + 1;
-						const stripped = this.skip_bq_markers(
-							next_pos,
-							this.block_quote_depth,
-						);
-
-						if (
-							stripped !== -1 &&
-							!this.is_blank_at_pos(stripped) &&
-							!this.is_heading_start(stripped) &&
-							!this.is_thematic_break_start(stripped)
-						) {
-							const sb_bq = this.emit_open(
-								node_kind.soft_break,
-								this.cursor,
-								current_node,
-							);
-							this.emit_close(sb_bq, this.cursor + 1);
-							this.chomp(stripped, true);
-							this.states.push(state_kind.inline);
-						} else {
-							this.states.pop();
-							this.emit_close(current_node, this.cursor);
-							this.out.set_value_end(current_node, this.cursor);
-							this.node_stack.pop();
-						}
-						continue;
 					} else if (
 						code === LINEFEED &&
-						this.is_blank_line_after(this.cursor)
+						this._delimiter_lf_close(current_node)
 					) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
-						continue;
-					} else if (
-						code === LINEFEED &&
-						this.is_heading_start(this.cursor + 1)
-					) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
-						continue;
-					} else if (
-						code === LINEFEED &&
-						this.is_thematic_break_start(this.cursor + 1)
-					) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
 						continue;
 					} else {
 						this.emphasis_has_content = true;
@@ -3369,60 +3369,10 @@ export class PFMParser {
 						if (this.states[this.states.length - 1] === state_kind.inline) {
 							this.states.pop();
 						}
-					} else if (code === LINEFEED && this.block_quote_depth > 0) {
-						const next_pos = this.cursor + 1;
-						const stripped = this.skip_bq_markers(
-							next_pos,
-							this.block_quote_depth,
-						);
-
-						if (
-							stripped !== -1 &&
-							!this.is_blank_at_pos(stripped) &&
-							!this.is_heading_start(stripped) &&
-							!this.is_thematic_break_start(stripped)
-						) {
-							const sb_bq = this.emit_open(
-								node_kind.soft_break,
-								this.cursor,
-								current_node,
-							);
-							this.emit_close(sb_bq, this.cursor + 1);
-							this.chomp(stripped, true);
-							this.states.push(state_kind.inline);
-						} else {
-							this.states.pop();
-							this.emit_close(current_node, this.cursor);
-							this.out.set_value_end(current_node, this.cursor);
-							this.node_stack.pop();
-						}
-						continue;
 					} else if (
 						code === LINEFEED &&
-						this.is_blank_line_after(this.cursor)
+						this._delimiter_lf_close(current_node)
 					) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
-						continue;
-					} else if (
-						code === LINEFEED &&
-						this.is_heading_start(this.cursor + 1)
-					) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
-						continue;
-					} else if (
-						code === LINEFEED &&
-						this.is_thematic_break_start(this.cursor + 1)
-					) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
 						continue;
 					} else {
 						this.emphasis_has_content = true;
@@ -3457,22 +3407,8 @@ export class PFMParser {
 						}
 					} else if (
 						code === LINEFEED &&
-						this.is_blank_line_after(this.cursor)
+						this._delimiter_lf_close(current_node)
 					) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
-						continue;
-					} else if (
-						code === LINEFEED &&
-						(this.is_heading_start(this.cursor + 1) ||
-							this.is_thematic_break_start(this.cursor + 1))
-					) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
 						continue;
 					} else {
 						this.states.push(state_kind.inline);
@@ -3499,22 +3435,8 @@ export class PFMParser {
 						}
 					} else if (
 						code === LINEFEED &&
-						this.is_blank_line_after(this.cursor)
+						this._delimiter_lf_close(current_node)
 					) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
-						continue;
-					} else if (
-						code === LINEFEED &&
-						(this.is_heading_start(this.cursor + 1) ||
-							this.is_thematic_break_start(this.cursor + 1))
-					) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
 						continue;
 					} else {
 						this.states.push(state_kind.inline);
@@ -3542,22 +3464,8 @@ export class PFMParser {
 						}
 					} else if (
 						code === LINEFEED &&
-						this.is_blank_line_after(this.cursor)
+						this._delimiter_lf_close(current_node)
 					) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
-						continue;
-					} else if (
-						code === LINEFEED &&
-						(this.is_heading_start(this.cursor + 1) ||
-							this.is_thematic_break_start(this.cursor + 1))
-					) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
 						continue;
 					} else {
 						this.states.push(state_kind.inline);
