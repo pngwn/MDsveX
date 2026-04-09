@@ -159,16 +159,51 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 		cursor.gotoParent();
 	}
 
-	const hasScript =
-		frontmatterNode !== null ||
-		importNodes.length > 0 ||
-		scriptBodies.length > 0;
+	const hasFrontmatter = frontmatterNode !== null;
+	const hasInstanceScript = importNodes.length > 0 || scriptBodies.length > 0;
 
 	const out: string[] = [];
 	const entries: PendingMapping[] = [];
 
-	// Phase A: Build <script> block
-	if (hasScript) {
+	// Phase A1: Build <script module> block for frontmatter exports
+	// Module-level exports are importable from .ts files AND accessible in template
+	if (hasFrontmatter) {
+		const moduleStart = out.length;
+		out.push("<script module lang=\"ts\">\n");
+
+		const yaml = source.slice(
+			frontmatterNode!.valueStart,
+			frontmatterNode!.valueEnd,
+		);
+		const fmEntries = extractYamlEntries(yaml, frontmatterNode!.valueStart);
+		for (const entry of fmEntries) {
+			out.push("export const ");
+			// character-level mapping for the key name
+			_emit(
+				entries,
+				out.length,
+				out.length + 1,
+				entry.sourceOffset,
+				entry.sourceOffset + entry.name.length,
+				{ ...CI_SVELTE, nodeIndex: -1, role: "content" },
+			);
+			out.push(entry.name, " = ", entry.jsValue, ";\n");
+		}
+
+		out.push("</script>\n\n");
+
+		_emit(
+			entries,
+			moduleStart,
+			out.length,
+			0,
+			0,
+			{ ...CI_STRUCTURE, nodeIndex: -1, role: "node" },
+		);
+	}
+
+	// Phase A2: Build <script> block for imports and user code (instance scope)
+	if (hasInstanceScript) {
 		const scriptStart = out.length;
 		out.push("<script lang=\"ts\">\n");
 
@@ -184,28 +219,6 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 				{ ...CI_SVELTE, nodeIndex: -1, role: "content" },
 			);
 			out.push(text, "\n");
-		}
-
-		// frontmatter keys → const declarations with inferred types
-		if (frontmatterNode) {
-			const yaml = source.slice(
-				frontmatterNode.valueStart,
-				frontmatterNode.valueEnd,
-			);
-			const fmEntries = extractYamlEntries(yaml, frontmatterNode.valueStart);
-			for (const entry of fmEntries) {
-				out.push("const ");
-				// character-level mapping for the key name
-				_emit(
-					entries,
-					out.length,
-					out.length + 1,
-					entry.sourceOffset,
-					entry.sourceOffset + entry.name.length,
-					{ ...CI_SVELTE, nodeIndex: -1, role: "content" },
-				);
-				out.push(entry.name, " = ", entry.jsValue, ";\n");
-			}
 		}
 
 		// existing <script> body content (identity-mapped)
@@ -226,7 +239,6 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 
 		out.push("</script>\n\n");
 
-		// emit structure mapping for the whole script block
 		_emit(
 			entries,
 			scriptStart,

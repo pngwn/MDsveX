@@ -11,7 +11,8 @@ import {
 import { create as createTypeScriptServices } from "volar-service-typescript";
 import { create as createCssService } from "volar-service-css";
 import { create as createMarkdownService } from "volar-service-markdown";
-import { createPfmLanguagePlugin } from "@pfm/language-core";
+import { create_pfm_language_plugin, create_svelte_language_plugin } from "@pfm/language-core";
+import { clean_svelte_hover } from "./clean_hover";
 import { URI } from "vscode-uri";
 import { forEachEmbeddedCode } from "@volar/language-core";
 import type { LanguagePlugin, VirtualCode } from "@volar/language-core";
@@ -24,7 +25,7 @@ import type * as ts from "typescript";
  * as a TypeScript-processable extension.
  */
 function createPfmLanguagePluginForServer(): LanguagePlugin<URI> {
-	const inner = createPfmLanguagePlugin();
+	const inner = create_pfm_language_plugin();
 
 	return {
 		getLanguageId(scriptId: URI): string | undefined {
@@ -73,41 +74,83 @@ function createPfmLanguagePluginForServer(): LanguagePlugin<URI> {
 					isMixedContent: true,
 					scriptKind: 7 satisfies ts.ScriptKind.Deferred,
 				},
-				{
-					extension: "svelte",
-					isMixedContent: true,
-					scriptKind: 7 satisfies ts.ScriptKind.Deferred,
-				},
 			],
-			getServiceScript(): undefined {
+			getServiceScript(root: VirtualCode) {
+				const tsCode = root.embeddedCodes?.find(
+					(c) => c.languageId === "typescript",
+				);
+				if (tsCode) {
+					return {
+						code: tsCode,
+						extension: ".ts" as any,
+						scriptKind: 3 satisfies ts.ScriptKind.TS,
+					};
+				}
 				return undefined;
 			},
-			getExtraServiceScripts(fileName: string, root: VirtualCode) {
-				const scripts: TypeScriptExtraServiceScript[] = [];
-				for (const code of forEachEmbeddedCode(root)) {
-					if (code.languageId === "typescript") {
-						scripts.push({
-							fileName: fileName + "." + code.id + ".ts",
-							code,
-							extension: ".ts",
-							scriptKind: 3 satisfies ts.ScriptKind.TS,
-						});
-					} else if (code.languageId === "javascript") {
-						scripts.push({
-							fileName: fileName + "." + code.id + ".js",
-							code,
-							extension: ".js",
-							scriptKind: 1 satisfies ts.ScriptKind.JS,
-						});
-					}
-				}
-				return scripts;
+			getExtraServiceScripts() {
+				return [];
 			},
 		},
 	};
 }
 
+function createSvelteLanguagePluginForServer(): LanguagePlugin<URI> {
+	const inner = create_svelte_language_plugin();
+
+	return {
+		getLanguageId(scriptId: URI): string | undefined {
+			if (scriptId.path.endsWith(".svelte")) {
+				return "svelte";
+			}
+			return undefined;
+		},
+
+		createVirtualCode(scriptId, languageId, snapshot) {
+			if (languageId !== "svelte") return undefined;
+			try {
+				return inner.createVirtualCode!(
+					scriptId.fsPath,
+					languageId,
+					snapshot,
+					{ getAssociatedScript: () => undefined },
+				) as VirtualCode | undefined;
+			} catch {
+				return undefined;
+			}
+		},
+
+		updateVirtualCode(scriptId, virtualCode, newSnapshot) {
+			try {
+				return inner.updateVirtualCode!(
+					scriptId.fsPath,
+					virtualCode as any,
+					newSnapshot,
+					{ getAssociatedScript: () => undefined },
+				) as VirtualCode | undefined;
+			} catch {
+				return undefined;
+			}
+		},
+
+		typescript: inner.typescript as any,
+	};
+}
+
 const connection = createConnection();
+
+// Intercept hover to clean up svelte2tsx internal type noise.
+const _on_hover = connection.onHover.bind(connection);
+(connection as any).onHover = (handler: Function) => {
+	_on_hover(async (params: any, token: any) => {
+		const result = await handler(params, token);
+		if (result?.contents?.kind === "markdown" && typeof result.contents.value === "string") {
+			result.contents.value = clean_svelte_hover(result.contents.value);
+		}
+		return result;
+	});
+};
+
 const server = createServer(connection);
 
 connection.listen();
@@ -124,7 +167,10 @@ connection.onInitialize((params) => {
 			tsdk.typescript,
 			tsdk.diagnosticMessages,
 			() => ({
-				languagePlugins: [createPfmLanguagePluginForServer()],
+				languagePlugins: [
+					createPfmLanguagePluginForServer(),
+					createSvelteLanguagePluginForServer(),
+				],
 			}),
 		),
 		[

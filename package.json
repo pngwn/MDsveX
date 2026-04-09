@@ -8,6 +8,7 @@
 		"test": "pnpm -r --filter=!site test",
 		"test:run": "pnpm --filter=!site --filter=!incremental-parse-test --filter=!mdsvex-demo -r build && vitest run . ",
 		"test:e2e": "pnpm --filter=mdsvex-demo test:e2e",
+		"build:ls": "pnpm --filter @mdsvex/render build && pnpm --filter @pfm/typescript-plugin build && pnpm --filter vscode-pfm build",
 		"release": "pnpm --filter=!site --filter=!incremental-parse-test --filter=!mdsvex-demo -r build && changeset publish",
 		"changeset:add": "changeset add",
 		"changeset:pre-enter": "changeset pre enter",

@@ -381,4 +381,39 @@ The count is {count + 1}.
 			}
 		}
 	});
+
+	it("self-closing component produces per-token mappings (no duplicate hover)", () => {
+		// Regression test: self-closing tags without space before /> must produce
+		// per-token composed mappings, not a single broad mapping for the whole tag.
+		const pfm = '---\ntitle: Hello\n---\nimport Test from "./Test.svelte"\n\n<Test value={42} label="BOO"/>\n';
+		const result = realPipeline(pfm);
+
+		// Simulate hover: find all composed mappings covering each token position
+		function hitsAt(offset: number) {
+			const hits: number[] = [];
+			for (const m of result.composed) {
+				for (let i = 0; i < m.sourceOffsets.length; i++) {
+					if (offset >= m.sourceOffsets[i] && offset < m.sourceOffsets[i] + m.lengths[i]) {
+						hits.push(m.generatedOffsets[i]);
+					}
+				}
+			}
+			return hits;
+		}
+
+		const tagStart = pfm.indexOf("<Test");
+		const testHits = hitsAt(pfm.indexOf("Test", tagStart));
+		const valueHits = hitsAt(pfm.indexOf("value", tagStart));
+		const labelHits = hitsAt(pfm.indexOf("label", tagStart));
+
+		// Each token should map to exactly 1 TS position (not the whole tag's worth)
+		expect(testHits).toHaveLength(1);
+		expect(valueHits).toHaveLength(1);
+		expect(labelHits).toHaveLength(1);
+
+		// And they should be DIFFERENT positions (per-token precision)
+		expect(testHits[0]).not.toBe(valueHits[0]);
+		expect(testHits[0]).not.toBe(labelHits[0]);
+		expect(valueHits[0]).not.toBe(labelHits[0]);
+	});
 });

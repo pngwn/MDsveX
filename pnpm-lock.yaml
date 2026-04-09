@@ -54,6 +54,9 @@ importers:
       '@volar/language-core':
         specifier: ^2.4.28
         version: 2.4.28
+      '@volar/typescript':
+        specifier: ^2.4.28
+        version: 2.4.28
       svelte2tsx:
         specifier: ^0.7.53
         version: 0.7.53(svelte@5.55.1)(typescript@5.9.3)
@@ -79,6 +82,9 @@ importers:
       '@volar/typescript':
         specifier: ^2.4.28
         version: 2.4.28
+      svelte2tsx:
+        specifier: ^0.7.53
+        version: 0.7.53(svelte@5.55.1)(typescript@5.9.3)
       volar-service-css:
         specifier: ^0.0.70
         version: 0.0.70(@volar/language-service@2.4.28)
@@ -127,8 +133,20 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
+  language-tools/typescript-plugin:
+    dependencies:
+      '@pfm/language-core':
+        specifier: workspace:*
+        version: link:../language-core
+      '@volar/typescript':
+        specifier: ^2.4.28
+        version: 2.4.28
+
   language-tools/vscode-pfm:
     dependencies:
+      '@pfm/typescript-plugin':
+        specifier: workspace:*
+        version: link:../typescript-plugin
       '@volar/vscode':
         specifier: ^2.4.28
         version: 2.4.28
@@ -139,6 +157,12 @@ importers:
       '@types/vscode':
         specifier: ^1.85.0
         version: 1.115.0
+
+  language-tools/vscode-pfm/test-fixture:
+    devDependencies:
+      svelte:
+        specifier: ^5.55.2
+        version: 5.55.2
 
   packages/_incremental-parse-test:
     dependencies:
@@ -3997,6 +4021,10 @@ packages:
 
   svelte@5.55.1:
     resolution: {integrity: sha512-QjvU7EFemf6mRzdMGlAFttMWtAAVXrax61SZYHdkD6yoVGQ89VeyKfZD4H1JrV1WLmJBxWhFch9H6ig/87VGjw==}
+    engines: {node: '>=18'}
+
+  svelte@5.55.2:
+    resolution: {integrity: sha512-z41M/hi0ZPTzrwVKLvB/R1/Oo08gL1uIib8HZ+FncqxxtY9MLb01emg2fqk+WLZ/lNrrtNDFh7BZLDxAHvMgLw==}
     engines: {node: '>=18'}
 
   symbol-tree@3.2.4:
@@ -8612,6 +8640,25 @@ snapshots:
       zimmerframe: 1.1.4
 
   svelte@5.55.1:
+    dependencies:
+      '@jridgewell/remapping': 2.3.5
+      '@jridgewell/sourcemap-codec': 1.5.5
+      '@sveltejs/acorn-typescript': 1.0.6(acorn@8.15.0)
+      '@types/estree': 1.0.8
+      '@types/trusted-types': 2.0.7
+      acorn: 8.15.0
+      aria-query: 5.3.1
+      axobject-query: 4.1.0
+      clsx: 2.1.1
+      devalue: 5.6.4
+      esm-env: 1.2.2
+      esrap: 2.2.4
+      is-reference: 3.0.3
+      locate-character: 3.0.0
+      magic-string: 0.30.21
+      zimmerframe: 1.1.4
+
+  svelte@5.55.2:
     dependencies:
       '@jridgewell/remapping': 2.3.5
       '@jridgewell/sourcemap-codec': 1.5.5

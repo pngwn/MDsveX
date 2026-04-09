@@ -5,51 +5,12 @@ draft: true
 ---
 
 <script lang="ts">
-import Test from './Test.svelte';
-  import { lang, clamp } from './const';
+import Test from "./Test.svelte";
+import { lang, clamp } from './const';
 </script>
 
-# {title} and {clamp(count, 0, 100)}
+# { title} {clamp(count, 0, 100)}
+ 
+ {count + 1} 
 
-The count is {count + 1}.
-
-{draft ? "This is a draft." : "This is not a draft."}
-
-This has a {nonExistentVariable} that should show an error.
-
-{lang}
-
-- list {count}
-- list {count + 1}
-- list {count * 2}
-- list {count > 0 ? "positive" : "non-positive"}
-
-## This is a subtitle
-
-> {title.t}
-
-
-![img](./img.png)
-
-
-### This is a smaller subtitle.
-
-
-
-hello 
-
-## this is another subtitle
-
-<Test />
-
-### boo
-
-asdasd
-
-
-<style>
-h1 {
-  color: red;
-
-}
-</style>
+<Test value={count}    label={1}  /> 

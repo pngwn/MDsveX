@@ -483,9 +483,26 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 					}
 				}
 			}
-			if (meta?.self_closing && HTML_VOID_ELEMENTS.has(tag.toLowerCase())) {
-				out.push(" />");
-				if (entries) _spans(entries, pre, out.length, out.length, out.length, c, CI_TEXT);
+			if (meta?.self_closing) {
+				// source passthrough: use exact source text to guarantee
+				// identity mapping. reconstruction can differ from the
+				// source (extra space before />, attribute escaping, quote
+				// style) which makes the mapping non-identity and breaks
+				// per-token precision in the PFM->Svelte->TS composition
+				// pipeline.
+				// falls back to reconstruction when source is unavailable
+				// (e.g. wire/streaming renderer with empty source).
+				const passthrough = c.end > c.start ? c.slice(c.start, c.end) : "";
+				if (passthrough) {
+					out.length = pre;
+					out.push(passthrough);
+				} else {
+					out.push(" />");
+				}
+				if (entries) {
+					_emit(entries, pre, out.length, c.start, c.end,
+						{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
+				}
 			} else {
 				out.push(">");
 				const ao = out.length;

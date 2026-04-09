@@ -82,7 +82,7 @@ describe("pfmToSvelte", () => {
 		assertMappingsValid(source, result);
 
 		expect(result.code).toContain("<script");
-		expect(result.code).toContain("const title = ");
+		expect(result.code).toContain("export const title = ");
 		expect(result.code).toContain("</script>");
 		expect(result.code).toContain("<h1>Hello</h1>");
 
@@ -128,12 +128,12 @@ describe("pfmToSvelte", () => {
 
 		expect(result.code).toContain("<script");
 		expect(result.code).toContain('import A from "./A.svelte"');
-		expect(result.code).toContain("const title = ");
+		expect(result.code).toContain("export const title = ");
 
-		// imports come before frontmatter declarations
-		const importIdx = result.code.indexOf("import A");
-		const letIdx = result.code.indexOf("const title");
-		expect(importIdx).toBeLessThan(letIdx);
+		// frontmatter exports in <script module>, imports in <script>
+		const moduleIdx = result.code.indexOf("<script module");
+		const scriptIdx = result.code.indexOf("<script lang");
+		expect(moduleIdx).toBeLessThan(scriptIdx);
 	});
 
 	it("multiple imports", () => {
@@ -152,8 +152,8 @@ describe("pfmToSvelte", () => {
 		const result = pfmToSvelte(source);
 		assertMappingsValid(source, result);
 
-		expect(result.code).toContain("const title = ");
-		expect(result.code).toContain("const count = ");
+		expect(result.code).toContain("export const title = ");
+		expect(result.code).toContain("export const count = ");
 		expect(result.code).toContain("const description = ");
 
 		// each key maps to its source position
@@ -171,7 +171,7 @@ describe("pfmToSvelte", () => {
 		assertMappingsValid(source, result);
 
 		// should extract title, body, tags (not line1, line2)
-		expect(result.code).toContain("const title = ");
+		expect(result.code).toContain("export const title = ");
 		expect(result.code).toContain("const body = ");
 		expect(result.code).toContain("const tags = ");
 		expect(result.code).not.toContain("let line1");
@@ -185,7 +185,7 @@ describe("pfmToSvelte", () => {
 
 		// empty frontmatter still generates a script block (but with no declarations)
 		expect(result.code).toContain("<script");
-		expect(result.code).not.toContain("const ");
+		expect(result.code).not.toContain("export const ");
 		expect(result.code).toContain("<h1>Hello</h1>");
 	});
 
@@ -210,12 +210,12 @@ describe("pfmToSvelte", () => {
 		const result = pfmToSvelte(source);
 		assertMappingsValid(source, result);
 
-		expect(result.code).toContain("const title = ");
+		expect(result.code).toContain("export const title = ");
 		expect(result.code).toContain("let x = 1;");
 
-		// single <script> block
+		// two script blocks: <script module> for frontmatter + <script> for user code
 		const scriptCount = (result.code.match(/<script[^>]*>/g) || []).length;
-		expect(scriptCount).toBe(1);
+		expect(scriptCount).toBe(2);
 	});
 
 	it("body with mustache expression", () => {
@@ -250,8 +250,8 @@ describe("pfmToSvelte", () => {
 		const result = pfmToSvelte(source);
 		assertMappingsValid(source, result);
 
-		expect(result.code).toContain("const title = ");
-		expect(result.code).toContain("const $valid = ");
+		expect(result.code).toContain("export const title = ");
+		expect(result.code).toContain("export const $valid = ");
 		// hyphenated key should be skipped
 		expect(result.code).not.toContain("my-key");
 	});
@@ -272,5 +272,27 @@ describe("pfmToSvelte", () => {
 		const srcText = srcSlice(source, importMapping!);
 		const genText = genSlice(result.code, importMapping!);
 		expect(genText).toBe(srcText);
+	});
+
+	it("self-closing component tag mapping is identity (no space mismatch)", () => {
+		// Without space before />
+		const noSpace = '<Test value={42} label="BOO"/>\n';
+		const r1 = pfmToSvelte(noSpace);
+		const m1 = byRole(r1.mappings, "content").find(
+			(m) => srcSlice(noSpace, m).includes("Test"),
+		);
+		expect(m1).toBeDefined();
+		expect(srcSlice(noSpace, m1!)).toBe(genSlice(r1.code, m1!));
+		expect(m1!.generatedLengths).toBeUndefined();
+
+		// With space before />
+		const withSpace = '<Test value={42} label="BOO" />\n';
+		const r2 = pfmToSvelte(withSpace);
+		const m2 = byRole(r2.mappings, "content").find(
+			(m) => srcSlice(withSpace, m).includes("Test"),
+		);
+		expect(m2).toBeDefined();
+		expect(srcSlice(withSpace, m2!)).toBe(genSlice(r2.code, m2!));
+		expect(m2!.generatedLengths).toBeUndefined();
 	});
 });

@@ -6,7 +6,7 @@
  * work correctly for editor features.
  */
 import { describe, it, expect } from "vitest";
-import { createPfmLanguagePlugin } from "@pfm/language-core";
+import { create_pfm_language_plugin } from "@pfm/language-core";
 import type { IScriptSnapshot, CodeMapping } from "@volar/language-core";
 
 function snap(text: string): IScriptSnapshot {
@@ -79,7 +79,7 @@ function toSourceOffset(
 }
 
 describe("Integration: LanguagePlugin in Volar context", () => {
-	const plugin = createPfmLanguagePlugin();
+	const plugin = create_pfm_language_plugin();
 
 	it("frontmatter variable is navigable from PFM source to TS", () => {
 		const pfm = "---\ntitle: hello\n---\n\n# {title}\n";

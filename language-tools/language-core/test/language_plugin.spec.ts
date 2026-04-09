@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createPfmLanguagePlugin } from "../src/language_plugin";
+import { create_pfm_language_plugin } from "../src/language_plugin";
 import type { IScriptSnapshot, CodegenContext, VirtualCode, CodeMapping } from "@volar/language-core";
 
 function snap(text: string): IScriptSnapshot {
@@ -14,8 +14,8 @@ const dummyCtx: CodegenContext<string> = {
 	getAssociatedScript: () => undefined,
 };
 
-describe("createPfmLanguagePlugin", () => {
-	const plugin = createPfmLanguagePlugin();
+describe("create_pfm_language_plugin", () => {
+	const plugin = create_pfm_language_plugin();
 
 	it("getLanguageId returns 'pfm' for .pfm files", () => {
 		expect(plugin.getLanguageId("file.pfm")).toBe("pfm");
