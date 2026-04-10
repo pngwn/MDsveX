@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
 import { parse_markdown_svelte } from '../src/main';
-import { node_kind } from '../src/utils';
-import type { node_buffer } from '../src/utils';
+import { NodeKind } from '../src/utils';
+import type { NodeBuffer } from '../src/utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(this_dir, 'fixtures/pfm/atx_headings');
@@ -14,7 +14,7 @@ const fixtures_root = resolve(this_dir, 'fixtures/pfm/atx_headings');
 const load_fixture = (id: string): string =>
 	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
 
-function collect_headings(nodes: node_buffer, source: string) {
+function collect_headings(nodes: NodeBuffer, source: string) {
 	const root = nodes.get_node();
 	return root.children
 		.map((i) => nodes.get_node(i))

@@ -1,16 +1,16 @@
 /**
  * buffer utilities for svelte components.
  *
- * pure functions that read from node_buffer typed arrays.
+ * pure functions that read from NodeBuffer typed arrays.
  * no cursor state, no allocations beyond the returned arrays.
  */
 
-import type { node_buffer } from './utils';
+import type { NodeBuffer } from './utils';
 
 const NONE = 0xffffffff;
 
 /** get child indices for a node. */
-export function buf_children(buf: node_buffer, idx: number): number[] {
+export function buf_children(buf: NodeBuffer, idx: number): number[] {
 	const result: number[] = [];
 	let child = buf._children_starts[idx];
 	while (child !== NONE) {
@@ -24,7 +24,7 @@ export function buf_children(buf: node_buffer, idx: number): number[] {
 
 /** get text content for a node (value range or pre-materialized string). */
 export function buf_text(
-	buf: node_buffer,
+	buf: NodeBuffer,
 	idx: number,
 	source: string
 ): string {
@@ -38,7 +38,7 @@ export function buf_text(
 
 /** collect all text content from a node and its children recursively. */
 export function buf_text_content(
-	buf: node_buffer,
+	buf: NodeBuffer,
 	idx: number,
 	source: string
 ): string {

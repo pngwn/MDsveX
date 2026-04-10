@@ -4,7 +4,7 @@ const DEFAULT_TOKEN_CAPACITY = 128;
 /** default number of error entries to preallocate. */
 const DEFAULT_ERROR_CAPACITY = 32;
 
-export const enum node_kind {
+export const enum NodeKind {
 	root = 0,
 	text = 1,
 	html = 2,
@@ -60,93 +60,93 @@ function next_power_of_two(value: number): number {
  * @param kind node kind
  * @returns string
  */
-export const kind_to_string = (kind: node_kind): string => {
+export const kind_to_string = (kind: NodeKind): string => {
 	switch (kind) {
-		case node_kind.root:
+		case NodeKind.root:
 			return "root";
-		case node_kind.text:
+		case NodeKind.text:
 			return "text";
-		case node_kind.html:
+		case NodeKind.html:
 			return "html";
-		case node_kind.heading:
+		case NodeKind.heading:
 			return "heading";
-		case node_kind.mustache:
+		case NodeKind.mustache:
 			return "mustache";
-		case node_kind.code_fence:
+		case NodeKind.code_fence:
 			return "code_fence";
-		case node_kind.line_break:
+		case NodeKind.line_break:
 			return "line_break";
-		case node_kind.paragraph:
+		case NodeKind.paragraph:
 			return "paragraph";
-		case node_kind.code_span:
+		case NodeKind.code_span:
 			return "code_span";
-		case node_kind.emphasis:
+		case NodeKind.emphasis:
 			return "emphasis";
-		case node_kind.strong_emphasis:
+		case NodeKind.strong_emphasis:
 			return "strong_emphasis";
-		case node_kind.thematic_break:
+		case NodeKind.thematic_break:
 			return "thematic_break";
-		case node_kind.link:
+		case NodeKind.link:
 			return "link";
-		case node_kind.image:
+		case NodeKind.image:
 			return "image";
-		case node_kind.block_quote:
+		case NodeKind.block_quote:
 			return "block_quote";
-		case node_kind.list:
+		case NodeKind.list:
 			return "list";
-		case node_kind.list_item:
+		case NodeKind.list_item:
 			return "list_item";
-		case node_kind.hard_break:
+		case NodeKind.hard_break:
 			return "hard_break";
-		case node_kind.soft_break:
+		case NodeKind.soft_break:
 			return "soft_break";
-		case node_kind.strikethrough:
+		case NodeKind.strikethrough:
 			return "strikethrough";
-		case node_kind.superscript:
+		case NodeKind.superscript:
 			return "superscript";
-		case node_kind.subscript:
+		case NodeKind.subscript:
 			return "subscript";
-		case node_kind.table:
+		case NodeKind.table:
 			return "table";
-		case node_kind.table_header:
+		case NodeKind.table_header:
 			return "table_header";
-		case node_kind.table_row:
+		case NodeKind.table_row:
 			return "table_row";
-		case node_kind.table_cell:
+		case NodeKind.table_cell:
 			return "table_cell";
-		case node_kind.html_comment:
+		case NodeKind.html_comment:
 			return "html_comment";
-		case node_kind.svelte_tag:
+		case NodeKind.svelte_tag:
 			return "svelte_tag";
-		case node_kind.svelte_block:
+		case NodeKind.svelte_block:
 			return "svelte_block";
-		case node_kind.svelte_branch:
+		case NodeKind.svelte_branch:
 			return "svelte_branch";
-		case node_kind.directive_inline:
+		case NodeKind.directive_inline:
 			return "directive_inline";
-		case node_kind.directive_leaf:
+		case NodeKind.directive_leaf:
 			return "directive_leaf";
-		case node_kind.directive_container:
+		case NodeKind.directive_container:
 			return "directive_container";
-		case node_kind.frontmatter:
+		case NodeKind.frontmatter:
 			return "frontmatter";
-		case node_kind.import_statement:
+		case NodeKind.import_statement:
 			return "import_statement";
 	}
 };
 
-/** reverse mapping from string name to numeric node_kind. built once at module load. */
-const _string_to_kind = new Map<string, node_kind>();
+/** reverse mapping from string name to numeric NodeKind. built once at module load. */
+const _string_to_kind = new Map<string, NodeKind>();
 for (let i = 0; i <= 34; i++) {
-	_string_to_kind.set(kind_to_string(i as node_kind), i as node_kind);
+	_string_to_kind.set(kind_to_string(i as NodeKind), i as NodeKind);
 }
 
 /**
- * convert a string name to a node_kind value.
+ * convert a string name to a NodeKind value.
  * @param name node kind name (e.g. 'heading', 'paragraph').
  * @returns the numeric kind, or undefined if unknown.
  */
-export const string_to_kind = (name: string): node_kind | undefined => {
+export const string_to_kind = (name: string): NodeKind | undefined => {
 	return _string_to_kind.get(name);
 };
 
@@ -155,9 +155,9 @@ export const string_to_kind = (name: string): node_kind | undefined => {
  * @param kind node extra
  * @returns string
  */
-const extra_to_string = (kind: node_kind): string | undefined => {
+const extra_to_string = (kind: NodeKind): string | undefined => {
 	switch (kind) {
-		case node_kind.heading:
+		case NodeKind.heading:
 			return "depth";
 	}
 };
@@ -165,7 +165,7 @@ const extra_to_string = (kind: node_kind): string | undefined => {
 /**
  * buffer that stores node metadata with typed arrays.
  */
-export class node_buffer {
+export class NodeBuffer {
 	private capacity: number;
 	/** @internal exposed for cursor access. do not mutate externally. */
 	_kinds: Uint8Array;
@@ -223,7 +223,7 @@ export class node_buffer {
 
 		this._size = 0;
 
-		this.push(node_kind.root, 0);
+		this.push(NodeKind.root, 0);
 	}
 
 	/** clear previously pushed tokens without reallocating storage. */
@@ -245,7 +245,7 @@ export class node_buffer {
 	 * @param metadata optional metadata associated with the node.
 	 */
 	push(
-		kind: node_kind,
+		kind: NodeKind,
 		cursor: number,
 		parent = 0xffffffff,
 		extra = 0,
@@ -290,7 +290,7 @@ export class node_buffer {
 	}
 
 	push_pending(
-		kind: node_kind,
+		kind: NodeKind,
 		cursor: number,
 		parent = 0xffffffff,
 		extra = 0,
@@ -312,7 +312,7 @@ export class node_buffer {
 	 * @returns buffer index of the new node.
 	 */
 	push_unlinked(
-		kind: node_kind,
+		kind: NodeKind,
 		cursor: number,
 		extra = 0,
 		metadata?: any,
@@ -354,7 +354,7 @@ export class node_buffer {
 	 */
 	wrap_children(
 		parent_idx: number,
-		new_kind: node_kind,
+		new_kind: NodeKind,
 		extra = 0,
 		metadata?: any,
 	): number {
@@ -418,15 +418,15 @@ export class node_buffer {
 	 */
 	handle_repair(index: number, delimiter_text?: string): void {
 		const parent = this._parents[index];
-		const kind = this._kinds[index] as node_kind;
+		const kind = this._kinds[index] as NodeKind;
 		const parent_kind =
-			parent !== 0xffffffff ? (this._kinds[parent] as node_kind) : undefined;
+			parent !== 0xffffffff ? (this._kinds[parent] as NodeKind) : undefined;
 
 		// tight-list speculation repair
 		// a pending paragraph inside a list_item represents the "loose"
 		// wrapper that tight lists don't need. revoking it simply drops
 		// the wrapper and reparents children to the list_item.
-		if (kind === node_kind.paragraph && parent_kind === node_kind.list_item) {
+		if (kind === NodeKind.paragraph && parent_kind === NodeKind.list_item) {
 			this.unwrap_node(index);
 			return;
 		}
@@ -435,9 +435,9 @@ export class node_buffer {
 		// if the parent is a block container, the revoked node (typically html)
 		// needs to become a paragraph with a text child spanning the source range.
 		if (
-			parent_kind === node_kind.root ||
-			parent_kind === node_kind.block_quote ||
-			parent_kind === node_kind.list_item
+			parent_kind === NodeKind.root ||
+			parent_kind === NodeKind.block_quote ||
+			parent_kind === NodeKind.list_item
 		) {
 			// wire path: delimiter_text has the full content, skip byte offset logic.
 			// source path: compute end from node/children byte offsets.
@@ -450,7 +450,7 @@ export class node_buffer {
 				if (end === 0xffffffff) {
 					let child = this._children_starts[index];
 					while (child !== 0xffffffff && this._parents[child] === index) {
-						if (this._kinds[child] === node_kind.line_break) {
+						if (this._kinds[child] === NodeKind.line_break) {
 							const lb_start = this._starts[child];
 							if (lb_start > 0 && (end === 0xffffffff || lb_start > end)) {
 								end = lb_start;
@@ -487,12 +487,12 @@ export class node_buffer {
 			this._children_ends[index] = 0xffffffff;
 
 			// convert to paragraph
-			this.set_kind(index, node_kind.paragraph);
+			this.set_kind(index, NodeKind.paragraph);
 			this.metadata.delete(index);
 			this._ends[index] = end;
 
 			// create text child with the raw source range
-			const text_idx = this.push(node_kind.text, start, index);
+			const text_idx = this.push(NodeKind.text, start, index);
 			this._value_starts[text_idx] = start;
 			this._value_ends[text_idx] = end;
 			this._ends[text_idx] = end;
@@ -510,7 +510,7 @@ export class node_buffer {
 		// inline html open tag). any children stay in the document,
 		// they are reparented to the grandparent so the streamed
 		// content is preserved after revocation.
-		this.set_kind(index, node_kind.text);
+		this.set_kind(index, NodeKind.text);
 
 		if (delimiter_text !== undefined) {
 			this._strings[index] = delimiter_text;
@@ -579,7 +579,7 @@ export class node_buffer {
 		// if exactly one child and it's text, merge the delimiter into it
 		if (
 			last_child === first_child &&
-			this._kinds[first_child] === node_kind.text
+			this._kinds[first_child] === NodeKind.text
 		) {
 			this._value_starts[index] = this._starts[index];
 			this._value_ends[index] = this._ends[first_child];
@@ -706,7 +706,7 @@ export class node_buffer {
 		this._children_ends[index] = 0xffffffff;
 	}
 
-	set_parent_kind(index: number, kind: node_kind): void {
+	set_parent_kind(index: number, kind: NodeKind): void {
 		const parent_index = this._parents[index];
 		if (parent_index !== 0xffffffff) {
 			this._kinds[parent_index] = kind;
@@ -714,7 +714,7 @@ export class node_buffer {
 	}
 
 	/** return indices of all nodes matching the given kind (lazy scan). */
-	get_kinds(kind: node_kind): number[] {
+	get_kinds(kind: NodeKind): number[] {
 		const result: number[] = [];
 		for (let i = 0; i < this._size; i++) {
 			if (this._kinds[i] === kind) result.push(i);
@@ -726,8 +726,8 @@ export class node_buffer {
 	 * get the token kind recorded at the supplied index.
 	 * @param index token index.
 	 */
-	kind_at(index: number): node_kind {
-		return this._kinds[index] as node_kind;
+	kind_at(index: number): NodeKind {
+		return this._kinds[index] as NodeKind;
 	}
 
 	/**
@@ -735,7 +735,7 @@ export class node_buffer {
 	 * @param index index of the node whose kind to update
 	 * @param kind new kind
 	 */
-	set_kind(index: number, kind: node_kind): void {
+	set_kind(index: number, kind: NodeKind): void {
 		this._kinds[index] = kind;
 	}
 
@@ -911,7 +911,7 @@ export class node_buffer {
 }
 
 /** collects indices for parse errors encountered during tokenization. */
-export class error_collector {
+export class ErrorCollector {
 	private capacity: number;
 	private indices: Uint32Array;
 	private _size: number;

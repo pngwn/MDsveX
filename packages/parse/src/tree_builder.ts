@@ -1,17 +1,17 @@
 import type { Emitter } from "./opcodes";
-import { node_buffer, node_kind } from "./utils";
+import { NodeBuffer, NodeKind } from "./utils";
 import type { PluginDispatcher } from "./plugin_dispatch";
 
 /**
- * consumes opcodes from PFMParser and builds a node_buffer.
+ * consumes opcodes from PFMParser and builds a NodeBuffer.
  * this is the backward-compatibility layer: the opcode stream is the
- * primary output, but existing tests and consumers expect a node_buffer.
+ * primary output, but existing tests and consumers expect a NodeBuffer.
  */
 export class TreeBuilder implements Emitter {
-	private nodes: node_buffer;
-	/** maps opcode id -> node_buffer index. plain array, ids are sequential integers. */
+	private nodes: NodeBuffer;
+	/** maps opcode id -> NodeBuffer index. plain array, ids are sequential integers. */
 	private id_to_index: number[] = [];
-	/** maps opcode id -> node_kind. plain array for o(1) lookup. */
+	/** maps opcode id -> NodeKind. plain array for o(1) lookup. */
 	private id_to_kind: number[] = [];
 	/** optional plugin dispatcher. null when no plugins registered. */
 	private dispatcher: PluginDispatcher | null;
@@ -22,28 +22,28 @@ export class TreeBuilder implements Emitter {
 	};
 
 	constructor(capacity: number, dispatcher?: PluginDispatcher) {
-		this.nodes = new node_buffer(capacity);
-		// node_buffer constructor auto-creates root at index 0
+		this.nodes = new NodeBuffer(capacity);
+		// NodeBuffer constructor auto-creates root at index 0
 		this.id_to_index[0] = 0;
-		this.id_to_kind[0] = node_kind.root;
+		this.id_to_kind[0] = NodeKind.root;
 		this.dispatcher = dispatcher ?? null;
 	}
 
 	open(
 		id: number,
-		kind: node_kind,
+		kind: NodeKind,
 		start: number,
 		parent: number,
 		extra: number,
 		pending: boolean,
 	): void {
-		// root (id=0) is auto-created by node_buffer constructor, skip
+		// root (id=0) is auto-created by NodeBuffer constructor, skip
 		if (id === 0) return;
 
 		let parent_idx =
 			parent === -1 ? 0xffffffff : (this.id_to_index[parent] ?? 0xffffffff);
 
-		// plugin redirect: if parent has a wrapInner wrapper, children go there
+		// plugin redirect: if parent has a wrap_inner wrapper, children go there
 		if (this.dispatcher && parent_idx !== 0xffffffff) {
 			const redirect = this.dispatcher.get_redirect(parent_idx);
 			if (redirect !== undefined) parent_idx = redirect;
@@ -85,11 +85,11 @@ export class TreeBuilder implements Emitter {
 		const kind = this.id_to_kind[id];
 		const parent_kind = this.nodes._kinds[
 			this.nodes._parents[idx]
-		] as node_kind;
+		] as NodeKind;
 		if (
 			!(
-				kind === node_kind.paragraph &&
-				parent_kind === node_kind.list_item &&
+				kind === NodeKind.paragraph &&
+				parent_kind === NodeKind.list_item &&
 				this.nodes._pending_nodes[idx] === 1
 			)
 		) {
@@ -102,14 +102,14 @@ export class TreeBuilder implements Emitter {
 		// tight list unwrapping: if this is a list with tight=true, walk
 		// items and unwrap their paragraph children. safe no-op when the
 		// parser already revoked them via finalize_list_pending_paras.
-		if (kind === node_kind.list) {
+		if (kind === NodeKind.list) {
 			const meta = this.nodes.metadata_at(idx);
 			if (meta && meta.tight) {
 				const list_node = this.nodes.get_node(idx);
 				for (const item_idx of list_node.children) {
 					const item = this.nodes.get_node(item_idx);
 					for (const child_idx of item.children) {
-						if (this.nodes.kind_at(child_idx) === node_kind.paragraph) {
+						if (this.nodes.kind_at(child_idx) === NodeKind.paragraph) {
 							this.nodes.unwrap_node(child_idx);
 						}
 					}
@@ -132,15 +132,15 @@ export class TreeBuilder implements Emitter {
 
 		// nodes that store content as a value range (no child text node)
 		if (
-			parent_kind === node_kind.heading ||
-			parent_kind === node_kind.code_fence ||
-			parent_kind === node_kind.code_span ||
-			parent_kind === node_kind.html_comment
+			parent_kind === NodeKind.heading ||
+			parent_kind === NodeKind.code_fence ||
+			parent_kind === NodeKind.code_span ||
+			parent_kind === NodeKind.html_comment
 		) {
 			this.nodes.set_value(parent_idx, start, end);
 		} else {
 			// create a child text node
-			const idx = this.nodes.push(node_kind.text, start, parent_idx);
+			const idx = this.nodes.push(NodeKind.text, start, parent_idx);
 			this.nodes.set_value(idx, start, end);
 			this.nodes.set_end(idx, end);
 		}
@@ -207,8 +207,8 @@ export class TreeBuilder implements Emitter {
 
 	cursor(_pos: number): void {}
 
-	/** extract the built node_buffer. */
-	get_buffer(): node_buffer {
+	/** extract the built NodeBuffer. */
+	get_buffer(): NodeBuffer {
 		return this.nodes;
 	}
 }

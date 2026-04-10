@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { node_buffer } from "@mdsvex/parse/utils";
+import type { NodeBuffer } from "@mdsvex/parse/utils";
 import {
 	buf_children,
 	buf_text,
@@ -16,7 +16,7 @@ let {
 	source,
 	components,
 }: {
-	buf: node_buffer;
+	buf: NodeBuffer;
 	idx: number;
 	source: string;
 	components?: ComponentMap;

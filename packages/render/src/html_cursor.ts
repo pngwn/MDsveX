@@ -1,7 +1,7 @@
 /**
  * cursor-based pfm html renderer
  *
- * renders html from a cursor over soa node_buffer.
+ * renders html from a cursor over soa NodeBuffer.
  * zero per-node allocations, the cursor walks typed arrays directly,
  * text is lazily sliced from source only when needed.
  *
@@ -12,7 +12,7 @@
  */
 
 import { Cursor } from "@mdsvex/parse/cursor";
-import type { node_buffer } from "@mdsvex/parse/utils";
+import type { NodeBuffer } from "@mdsvex/parse/utils";
 import { CI_TEXT, CI_CODE, CI_SVELTE, CI_STRUCTURE } from "./mappings";
 import type { Mapping, CodeInformation, MappingData } from "./mappings";
 
@@ -194,7 +194,7 @@ const IMAGE_HANDLED = new Set(["title"]);
 
 /** render children of the current cursor position, collecting escaped text and recursive node output. */
 export function _children(c: Cursor, out: string[], entries?: PendingMapping[]): void {
-	if (!c.gotoFirstChild()) return;
+	if (!c.goto_first_child()) return;
 	do {
 		if (c.kind === K_TEXT) {
 			const vs = c.value_start, ve = c.value_end;
@@ -206,22 +206,22 @@ export function _children(c: Cursor, out: string[], entries?: PendingMapping[]):
 		} else {
 			_node(c, out, entries);
 		}
-	} while (c.gotoNextSibling());
-	c.gotoParent();
+	} while (c.goto_next_sibling());
+	c.goto_parent();
 }
 
 /** collect raw text from child text nodes (for image alt, link text fallback, etc.). */
-function _childrenRaw(c: Cursor): string {
-	if (!c.gotoFirstChild()) return "";
+function _children_raw(c: Cursor): string {
+	if (!c.goto_first_child()) return "";
 	let text = "";
 	do {
 		if (c.kind === K_TEXT) {
 			text += c.text();
 		} else {
-			text += _childrenRaw(c);
+			text += _children_raw(c);
 		}
-	} while (c.gotoNextSibling());
-	c.gotoParent();
+	} while (c.goto_next_sibling());
+	c.goto_parent();
 	return text;
 }
 
@@ -368,7 +368,7 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 			const meta = c.meta();
 			out.push("<img");
 			if (meta?.src) out.push(' src="', escape(meta.src as string), '"');
-			out.push(' alt="', escape(_childrenRaw(c)), '"');
+			out.push(' alt="', escape(_children_raw(c)), '"');
 			if (meta?.title) out.push(' title="', escape(meta.title as string), '"');
 			_attrs(c, out, IMAGE_HANDLED);
 			out.push(" />");
@@ -466,14 +466,14 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 			const pre = out.length;
 			const meta = c.meta();
 			const tag = meta?.tag as string;
-			const htmlAttrs = meta?.attributes as
+			const html_attrs = meta?.attributes as
 				| Record<string, string | boolean>
 				| undefined;
 
 			out.push("<", tag);
-			if (htmlAttrs) {
-				for (const k in htmlAttrs) {
-					const v = htmlAttrs[k];
+			if (html_attrs) {
+				for (const k in html_attrs) {
+					const v = html_attrs[k];
 					if (v === true) {
 						out.push(" ", k);
 					} else if (typeof v === "object" && (v as any).type === "expression") {
@@ -577,36 +577,36 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 		case K_SVELTE_BLOCK: {
 			const pre = out.length;
 			// render branches; each branch handles its own opening tag
-			const blockMeta = c.meta();
-			const blockTag = blockMeta?.tag as string;
-			if (c.gotoFirstChild()) {
-				let isFirst = true;
+			const block_meta = c.meta();
+			const block_tag = block_meta?.tag as string;
+			if (c.goto_first_child()) {
+				let is_first = true;
 				do {
 					if (c.kind === K_SVELTE_BRANCH) {
-						const branchMeta = c.meta();
-						const branchTag = branchMeta?.tag as string;
-						const branchExpr = c.text();
-						if (isFirst) {
-							out.push("{#", blockTag);
-							if (branchExpr) {
+						const branch_meta = c.meta();
+						const branch_tag = branch_meta?.tag as string;
+						const branch_expr = c.text();
+						if (is_first) {
+							out.push("{#", block_tag);
+							if (branch_expr) {
 								out.push(" ");
 								if (entries) {
 									_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
 										{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
 								}
-								out.push(branchExpr);
+								out.push(branch_expr);
 							}
 							out.push("}\n");
-							isFirst = false;
+							is_first = false;
 						} else {
-							out.push("{:", branchTag);
-							if (branchExpr) {
+							out.push("{:", branch_tag);
+							if (branch_expr) {
 								out.push(" ");
 								if (entries) {
 									_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
 										{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
 								}
-								out.push(branchExpr);
+								out.push(branch_expr);
 							}
 							out.push("}\n");
 						}
@@ -614,11 +614,11 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 					} else if (c.kind !== K_LINE_BREAK) {
 						_node(c, out, entries);
 					}
-				} while (c.gotoNextSibling());
-				c.gotoParent();
+				} while (c.goto_next_sibling());
+				c.goto_parent();
 			}
-			out.push("{/", blockTag, "}");
-			// node span for the whole block — use the block node (gotoParent already called)
+			out.push("{/", block_tag, "}");
+			// node span for the whole block — use the block node (goto_parent already called)
 			if (entries) {
 				const idx = c.index;
 				const s = c.start, e = c.end;
@@ -633,7 +633,7 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 			_attrs(c, out);
 			out.push(">\n");
 			const ao = out.length;
-			_tableContent(c, out, entries);
+			_table_content(c, out, entries);
 			const bc = out.length;
 			out.push("\n</table>");
 			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_STRUCTURE);
@@ -649,33 +649,33 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 	}
 }
 
-function _tableContent(c: Cursor, out: string[], entries?: PendingMapping[]): void {
+function _table_content(c: Cursor, out: string[], entries?: PendingMapping[]): void {
 	const meta = c.meta();
 	const alignments = (meta?.alignments as string[]) ?? [];
-	let inBody = false;
+	let in_body = false;
 
-	if (!c.gotoFirstChild()) return;
+	if (!c.goto_first_child()) return;
 	do {
 		if (c.kind === K_TABLE_HEADER) {
 			out.push("<thead>\n<tr>\n");
-			_tableCells(c, "th", alignments, out, entries);
+			_table_cells(c, "th", alignments, out, entries);
 			out.push("</tr>\n</thead>\n");
 		} else if (c.kind === K_TABLE_ROW) {
-			if (!inBody) {
+			if (!in_body) {
 				out.push("<tbody>\n");
-				inBody = true;
+				in_body = true;
 			}
 			out.push("<tr>\n");
-			_tableCells(c, "td", alignments, out, entries);
+			_table_cells(c, "td", alignments, out, entries);
 			out.push("</tr>\n");
 		}
-	} while (c.gotoNextSibling());
-	c.gotoParent();
+	} while (c.goto_next_sibling());
+	c.goto_parent();
 
-	if (inBody) out.push("</tbody>");
+	if (in_body) out.push("</tbody>");
 }
 
-function _tableCells(
+function _table_cells(
 	c: Cursor,
 	tag: string,
 	alignments: string[],
@@ -683,7 +683,7 @@ function _tableCells(
 	entries?: PendingMapping[],
 ): void {
 	let col = 0;
-	if (!c.gotoFirstChild()) return;
+	if (!c.goto_first_child()) return;
 	do {
 		if (c.kind === K_TABLE_CELL) {
 			const align = alignments[col];
@@ -696,8 +696,8 @@ function _tableCells(
 			out.push("</", tag, ">\n");
 			col++;
 		}
-	} while (c.gotoNextSibling());
-	c.gotoParent();
+	} while (c.goto_next_sibling());
+	c.goto_parent();
 }
 
 //  mapping resolution
@@ -735,7 +735,7 @@ export function _resolve_mappings(
 //  internal helpers
 
 /** render the node at the current cursor position to html string. */
-function _renderBlock(cursor: Cursor): string {
+function _render_block(cursor: Cursor): string {
 	const out: string[] = [];
 	_node(cursor, out);
 	return out.join("");
@@ -783,7 +783,7 @@ export class CursorHTMLRenderer {
 		if (this.cache) this.closed = new Set();
 	}
 
-	update(buf: node_buffer, source: string): CursorBlockEntry[] {
+	update(buf: NodeBuffer, source: string): CursorBlockEntry[] {
 		// reuse or create cursor
 		if (!this.cursor) {
 			this.cursor = new Cursor(buf, source);
@@ -802,33 +802,33 @@ export class CursorHTMLRenderer {
 		}
 
 		// cached block-level rendering
-		if (!c.gotoFirstChild()) return this.blocks;
+		if (!c.goto_first_child()) return this.blocks;
 
-		let blockIdx = 0;
+		let block_idx = 0;
 		do {
 			if (c.kind === K_LINE_BREAK) continue;
 
 			const idx = c.index;
 
-			if (blockIdx >= this.blocks.length) {
-				this.blocks.push({ idx, html: _renderBlock(c) });
+			if (block_idx >= this.blocks.length) {
+				this.blocks.push({ idx, html: _render_block(c) });
 				if (c.closed) this.closed!.add(idx);
 			} else if (!this.closed!.has(idx)) {
-				this.blocks[blockIdx].html = _renderBlock(c);
+				this.blocks[block_idx].html = _render_block(c);
 				if (c.closed) this.closed!.add(idx);
 			}
 
-			blockIdx++;
-		} while (c.gotoNextSibling());
+			block_idx++;
+		} while (c.goto_next_sibling());
 
-		c.gotoParent();
+		c.goto_parent();
 		this.html = this.blocks.map((b) => b.html).join("");
 		return this.blocks;
 	}
 
 	/** render with source mapping. always full render (no caching). */
-	updateMapped(
-		buf: node_buffer,
+	update_mapped(
+		buf: NodeBuffer,
 		source: string,
 	): { blocks: CursorBlockEntry[]; mappings: Mapping<MappingData>[] } {
 		if (!this.cursor) {

@@ -1,26 +1,26 @@
 import { describe, it, expect } from "vitest";
-import { parse_markdown_svelte, node_kind } from "../src/main";
+import { parse_markdown_svelte, NodeKind } from "../src/main";
 import type { ParsePlugin } from "../src/plugin_types";
 import { TreeBuilder } from "../src/tree_builder";
 import { PluginDispatcher } from "../src/plugin_dispatch";
 import { SourceTextSource, WireTextSource } from "../src/node_view";
 import { PFMParser, WireEmitter } from "../src/main";
 import { WireTreeBuilder } from "../src/wire_tree_builder";
-import { node_buffer, kind_to_string, string_to_kind } from "../src/utils";
+import { NodeBuffer, kind_to_string, string_to_kind } from "../src/utils";
 import { UndoLog, UndoEntryKind, ATTR_DID_NOT_EXIST } from "../src/undo_log";
 import { NodeView, ViewCache } from "../src/node_view";
 
 
 describe("string_to_kind", () => {
 	it("maps all known node types", () => {
-		expect(string_to_kind("root")).toBe(node_kind.root);
-		expect(string_to_kind("heading")).toBe(node_kind.heading);
-		expect(string_to_kind("paragraph")).toBe(node_kind.paragraph);
-		expect(string_to_kind("link")).toBe(node_kind.link);
-		expect(string_to_kind("code_fence")).toBe(node_kind.code_fence);
-		expect(string_to_kind("emphasis")).toBe(node_kind.emphasis);
+		expect(string_to_kind("root")).toBe(NodeKind.root);
+		expect(string_to_kind("heading")).toBe(NodeKind.heading);
+		expect(string_to_kind("paragraph")).toBe(NodeKind.paragraph);
+		expect(string_to_kind("link")).toBe(NodeKind.link);
+		expect(string_to_kind("code_fence")).toBe(NodeKind.code_fence);
+		expect(string_to_kind("emphasis")).toBe(NodeKind.emphasis);
 		expect(string_to_kind("import_statement")).toBe(
-			node_kind.import_statement,
+			NodeKind.import_statement,
 		);
 	});
 
@@ -30,19 +30,19 @@ describe("string_to_kind", () => {
 
 	it("round-trips with kind_to_string", () => {
 		for (let i = 0; i <= 34; i++) {
-			const name = kind_to_string(i as node_kind);
+			const name = kind_to_string(i as NodeKind);
 			expect(string_to_kind(name)).toBe(i);
 		}
 	});
 });
 
 
-describe("node_buffer extensions", () => {
+describe("NodeBuffer extensions", () => {
 	describe("push_unlinked", () => {
 		it("allocates without parent linking", () => {
-			const buf = new node_buffer(16);
-			const idx = buf.push_unlinked(node_kind.paragraph, 0);
-			expect(buf._kinds[idx]).toBe(node_kind.paragraph);
+			const buf = new NodeBuffer(16);
+			const idx = buf.push_unlinked(NodeKind.paragraph, 0);
+			expect(buf._kinds[idx]).toBe(NodeKind.paragraph);
 			expect(buf._parents[idx]).toBe(0xffffffff);
 			expect(buf._children_starts[0]).toBe(0xffffffff); // root has no children
 		});
@@ -50,13 +50,13 @@ describe("node_buffer extensions", () => {
 
 	describe("wrap_children", () => {
 		it("wraps existing children under a new node", () => {
-			const buf = new node_buffer(16);
+			const buf = new NodeBuffer(16);
 			// push two children under root
-			const a = buf.push(node_kind.paragraph, 0, 0);
-			const b = buf.push(node_kind.paragraph, 10, 0);
+			const a = buf.push(NodeKind.paragraph, 0, 0);
+			const b = buf.push(NodeKind.paragraph, 10, 0);
 
 			// wrap root's children in a block_quote
-			const wrapper = buf.wrap_children(0, node_kind.block_quote);
+			const wrapper = buf.wrap_children(0, NodeKind.block_quote);
 
 			// wrapper is sole child of root
 			expect(buf._children_starts[0]).toBe(wrapper);
@@ -70,8 +70,8 @@ describe("node_buffer extensions", () => {
 		});
 
 		it("works with no existing children", () => {
-			const buf = new node_buffer(16);
-			const wrapper = buf.wrap_children(0, node_kind.paragraph);
+			const buf = new NodeBuffer(16);
+			const wrapper = buf.wrap_children(0, NodeKind.paragraph);
 
 			expect(buf._children_starts[0]).toBe(wrapper);
 			expect(buf._children_ends[0]).toBe(wrapper);
@@ -79,12 +79,12 @@ describe("node_buffer extensions", () => {
 		});
 
 		it("preserves sibling chain order", () => {
-			const buf = new node_buffer(16);
-			const a = buf.push(node_kind.text, 0, 0);
-			const b = buf.push(node_kind.text, 5, 0);
-			const c = buf.push(node_kind.text, 10, 0);
+			const buf = new NodeBuffer(16);
+			const a = buf.push(NodeKind.text, 0, 0);
+			const b = buf.push(NodeKind.text, 5, 0);
+			const c = buf.push(NodeKind.text, 10, 0);
 
-			const wrapper = buf.wrap_children(0, node_kind.emphasis);
+			const wrapper = buf.wrap_children(0, NodeKind.emphasis);
 
 			// sibling chain: a -> b -> c
 			expect(buf._next_siblings[a]).toBe(b);
@@ -97,8 +97,8 @@ describe("node_buffer extensions", () => {
 
 describe("UndoLog", () => {
 	it("records and revokes attr set", () => {
-		const buf = new node_buffer(16);
-		const idx = buf.push(node_kind.heading, 0, 0);
+		const buf = new NodeBuffer(16);
+		const idx = buf.push(NodeKind.heading, 0, 0);
 		buf.set_metadata(idx, { id: "original" });
 
 		const undo = new UndoLog();
@@ -119,8 +119,8 @@ describe("UndoLog", () => {
 	});
 
 	it("records and revokes attr set on non-existent key", () => {
-		const buf = new node_buffer(16);
-		const idx = buf.push(node_kind.heading, 0, 0);
+		const buf = new NodeBuffer(16);
+		const idx = buf.push(NodeKind.heading, 0, 0);
 
 		const undo = new UndoLog();
 		undo.set_active_node(idx);
@@ -136,44 +136,44 @@ describe("UndoLog", () => {
 	});
 
 	it("records and revokes type change", () => {
-		const buf = new node_buffer(16);
-		const idx = buf.push(node_kind.heading, 0, 0);
+		const buf = new NodeBuffer(16);
+		const idx = buf.push(NodeKind.heading, 0, 0);
 
 		const undo = new UndoLog();
 		undo.set_active_node(idx);
-		undo.record_type_change(idx, node_kind.heading);
+		undo.record_type_change(idx, NodeKind.heading);
 		undo.clear_active_node();
 
 		// simulate type change
-		buf._kinds[idx] = node_kind.paragraph;
-		expect(buf._kinds[idx]).toBe(node_kind.paragraph);
+		buf._kinds[idx] = NodeKind.paragraph;
+		expect(buf._kinds[idx]).toBe(NodeKind.paragraph);
 
 		// revoke
 		undo.revoke(idx, buf);
-		expect(buf._kinds[idx]).toBe(node_kind.heading);
+		expect(buf._kinds[idx]).toBe(NodeKind.heading);
 	});
 
 	it("commit discards the log", () => {
-		const buf = new node_buffer(16);
-		const idx = buf.push(node_kind.heading, 0, 0);
+		const buf = new NodeBuffer(16);
+		const idx = buf.push(NodeKind.heading, 0, 0);
 
 		const undo = new UndoLog();
 		undo.set_active_node(idx);
-		undo.record_type_change(idx, node_kind.heading);
+		undo.record_type_change(idx, NodeKind.heading);
 		undo.clear_active_node();
 
-		buf._kinds[idx] = node_kind.paragraph;
+		buf._kinds[idx] = NodeKind.paragraph;
 
 		// commit (not revoke)
 		undo.commit(idx);
 		// type change is permanent
-		expect(buf._kinds[idx]).toBe(node_kind.paragraph);
+		expect(buf._kinds[idx]).toBe(NodeKind.paragraph);
 		expect(undo.has(idx)).toBe(false);
 	});
 
 	it("revokes in reverse order", () => {
-		const buf = new node_buffer(16);
-		const idx = buf.push(node_kind.heading, 0, 0);
+		const buf = new NodeBuffer(16);
+		const idx = buf.push(NodeKind.heading, 0, 0);
 		buf.set_metadata(idx, {});
 
 		const undo = new UndoLog();
@@ -260,13 +260,13 @@ describe("parse plugins", () => {
 		);
 	});
 
-	it("reads textContent in close callback", () => {
+	it("reads text_content in close callback", () => {
 		let text = "";
 		const plugin: ParsePlugin = {
 			heading: {
 				parse(node) {
 					return () => {
-						text = node.textContent;
+						text = node.text_content;
 					};
 				},
 			},
@@ -481,12 +481,12 @@ describe("parse plugins: structural mutations", () => {
 		}
 	});
 
-	it("wrapInner wraps existing children", () => {
+	it("wrap_inner wraps existing children", () => {
 		let wrapper_type = "";
 		const plugin: ParsePlugin = {
 			heading: {
 				parse(node) {
-					const wrapper = node.wrapInner("link");
+					const wrapper = node.wrap_inner("link");
 					wrapper_type = wrapper.type;
 					return () => {
 						wrapper.attrs.href = "#test";
@@ -505,7 +505,7 @@ describe("parse plugins: structural mutations", () => {
 		// heading's first child should be the link wrapper
 		expect(heading.children.length).toBeGreaterThan(0);
 		const first_child_kind = result.nodes.kind_at(heading.children[0]);
-		expect(first_child_kind).toBe(node_kind.link);
+		expect(first_child_kind).toBe(NodeKind.link);
 
 		// link should have href attr
 		const link_meta = result.nodes.metadata_at(heading.children[0]);
@@ -525,9 +525,9 @@ describe("parse plugins: the heading auto-link example from PLUGINS.md", () => {
 		const plugin: ParsePlugin = {
 			heading: {
 				parse(node) {
-					const link = node.wrapInner("link");
+					const link = node.wrap_inner("link");
 					return () => {
-						const slug = slugify(node.textContent);
+						const slug = slugify(node.text_content);
 						node.attrs.id = slug;
 						link.attrs.href = `#${slug}`;
 					};
@@ -600,7 +600,7 @@ describe("parse plugins: wire path (WireEmitter → WireTreeBuilder)", () => {
 		// find strong_emphasis
 		let strong_idx = -1;
 		for (let i = 0; i < buf.size; i++) {
-			if (buf.kind_at(i) === node_kind.strong_emphasis) {
+			if (buf.kind_at(i) === NodeKind.strong_emphasis) {
 				strong_idx = i;
 				break;
 			}
@@ -613,9 +613,9 @@ describe("parse plugins: wire path (WireEmitter → WireTreeBuilder)", () => {
 		const plugin: ParsePlugin = {
 			heading: {
 				parse(node) {
-					const link = node.wrapInner("link");
+					const link = node.wrap_inner("link");
 					return () => {
-						const slug = slugify(node.textContent);
+						const slug = slugify(node.text_content);
 						node.attrs.id = slug;
 						link.attrs.href = `#${slug}`;
 					};
@@ -643,7 +643,7 @@ describe("parse plugins: wire path (WireEmitter → WireTreeBuilder)", () => {
 
 		// find heading
 		const heading_idx = root.children.find(
-			(i: number) => buf.kind_at(i) === node_kind.heading,
+			(i: number) => buf.kind_at(i) === NodeKind.heading,
 		)!;
 		expect(heading_idx).toBeDefined();
 
@@ -661,9 +661,9 @@ describe("parse plugins: wire path (WireEmitter → WireTreeBuilder)", () => {
 		const plugin: ParsePlugin = {
 			heading: {
 				parse(node) {
-					const link = node.wrapInner("link");
+					const link = node.wrap_inner("link");
 					return () => {
-						const slug = slugify(node.textContent);
+						const slug = slugify(node.text_content);
 						node.attrs.id = slug;
 						link.attrs.href = `#${slug}`;
 					};
@@ -701,7 +701,7 @@ describe("parse plugins: wire path (WireEmitter → WireTreeBuilder)", () => {
 		const root = buf.get_node(0);
 
 		const heading_idx = root.children.find(
-			(i: number) => buf.kind_at(i) === node_kind.heading,
+			(i: number) => buf.kind_at(i) === NodeKind.heading,
 		)!;
 		const heading = buf.get_node(heading_idx);
 		expect(heading.metadata.id).toBe("hello-world");
@@ -766,7 +766,7 @@ describe("parse plugins: wire path (WireEmitter → WireTreeBuilder)", () => {
 
 		// the paragraph's children should form a valid sibling chain
 		const para_idx = root.children.find(
-			(i: number) => buf.kind_at(i) === node_kind.paragraph,
+			(i: number) => buf.kind_at(i) === NodeKind.paragraph,
 		);
 		expect(para_idx).toBeDefined();
 		const para = buf.get_node(para_idx!);
@@ -782,13 +782,13 @@ describe("parse plugins: wire path (WireEmitter → WireTreeBuilder)", () => {
 		expect(count).toBe(para.children.length);
 	});
 
-	it("cross-node wrapInner redirects children of the wrapped node", () => {
+	it("cross-node wrap_inner redirects children of the wrapped node", () => {
 		// plugin wraps parent's children from a child handler.
 		// children arriving AFTER the wrap should land inside the wrapper.
 		const plugin: ParsePlugin = {
 			strong_emphasis: {
 				parse(node) {
-					node.parent?.wrapInner("link", { href: "#wrapped" });
+					node.parent?.wrap_inner("link", { href: "#wrapped" });
 				},
 			},
 		};
@@ -824,32 +824,32 @@ describe("parse plugins: wire path (WireEmitter → WireTreeBuilder)", () => {
 
 		// find paragraph
 		const para_idx = root.children.find(
-			(i: number) => buf.kind_at(i) === node_kind.paragraph,
+			(i: number) => buf.kind_at(i) === NodeKind.paragraph,
 		)!;
 		const para = buf.get_node(para_idx);
 
 		// paragraph's sole child should be the link wrapper
 		expect(para.children.length).toBe(1);
 		const link_idx = para.children[0];
-		expect(buf.kind_at(link_idx)).toBe(node_kind.link);
+		expect(buf.kind_at(link_idx)).toBe(NodeKind.link);
 		expect(buf.metadata_at(link_idx)?.href).toBe("#wrapped");
 
 		// the link should contain: text "This ", strong "works", text " fine"
 		const link = buf.get_node(link_idx);
 		expect(link.children.length).toBe(3);
 
-		expect(buf.kind_at(link.children[0])).toBe(node_kind.text);
-		expect(buf.kind_at(link.children[1])).toBe(node_kind.strong_emphasis);
-		expect(buf.kind_at(link.children[2])).toBe(node_kind.text);
+		expect(buf.kind_at(link.children[0])).toBe(NodeKind.text);
+		expect(buf.kind_at(link.children[1])).toBe(NodeKind.strong_emphasis);
+		expect(buf.kind_at(link.children[2])).toBe(NodeKind.text);
 	});
 
-	it("cross-node wrapInner redirect is cleaned up on revocation", () => {
-		// if the handler node is revoked, the cross-node wrapInner
+	it("cross-node wrap_inner redirect is cleaned up on revocation", () => {
+		// if the handler node is revoked, the cross-node wrap_inner
 		// should be undone and the redirect removed.
 		const plugin: ParsePlugin = {
 			strong_emphasis: {
 				parse(node) {
-					node.parent?.wrapInner("link", { href: "#wrapped" });
+					node.parent?.wrap_inner("link", { href: "#wrapped" });
 				},
 			},
 		};
@@ -888,7 +888,7 @@ describe("parse plugins: wire path (WireEmitter → WireTreeBuilder)", () => {
 		let found_link = false;
 		for (let i = 0; i < buf.size; i++) {
 			if (
-				buf.kind_at(i) === node_kind.link &&
+				buf.kind_at(i) === NodeKind.link &&
 				buf._parents[i] !== 0xffffffff
 			) {
 				found_link = true;
@@ -898,12 +898,12 @@ describe("parse plugins: wire path (WireEmitter → WireTreeBuilder)", () => {
 
 		// paragraph should have text children directly (no wrapper)
 		const para_idx = root.children.find(
-			(i: number) => buf.kind_at(i) === node_kind.paragraph,
+			(i: number) => buf.kind_at(i) === NodeKind.paragraph,
 		)!;
 		expect(para_idx).toBeDefined();
 		const para = buf.get_node(para_idx);
 		expect(para.children.length).toBeGreaterThan(0);
 		// first child should be text, not a link
-		expect(buf.kind_at(para.children[0])).toBe(node_kind.text);
+		expect(buf.kind_at(para.children[0])).toBe(NodeKind.text);
 	});
 });

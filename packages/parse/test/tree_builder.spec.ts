@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { TreeBuilder } from '../src/tree_builder';
-import { node_kind } from '../src/utils';
+import { NodeKind } from '../src/utils';
 
 describe('TreeBuilder', () => {
 	describe('basic node creation', () => {
@@ -15,9 +15,9 @@ describe('TreeBuilder', () => {
 		it('creates a paragraph with text child', () => {
 			const tb = new TreeBuilder(64);
 			// open root (skipped, auto-created)
-			tb.open(0, node_kind.root, 0, -1, 0, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
 			// open paragraph under root
-			tb.open(1, node_kind.paragraph, 0, 0, 0, false);
+			tb.open(1, NodeKind.paragraph, 0, 0, 0, false);
 			// text inside paragraph
 			tb.text(1, 0, 5);
 			// close paragraph
@@ -42,8 +42,8 @@ describe('TreeBuilder', () => {
 
 		it('creates a heading with value range', () => {
 			const tb = new TreeBuilder(64);
-			tb.open(0, node_kind.root, 0, -1, 0, false);
-			tb.open(1, node_kind.heading, 0, 0, 2, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
+			tb.open(1, NodeKind.heading, 0, 0, 2, false);
 			// heading text becomes value, not child node
 			tb.text(1, 3, 8);
 			tb.close(1, 9);
@@ -64,8 +64,8 @@ describe('TreeBuilder', () => {
 	describe('attributes', () => {
 		it('sets metadata via attr', () => {
 			const tb = new TreeBuilder(64);
-			tb.open(0, node_kind.root, 0, -1, 0, false);
-			tb.open(1, node_kind.link, 0, 0, 0, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
+			tb.open(1, NodeKind.link, 0, 0, 0, false);
 			tb.text(1, 0, 5);
 			tb.attr(1, 'href', '/url');
 			tb.attr(1, 'title', 'A title');
@@ -82,8 +82,8 @@ describe('TreeBuilder', () => {
 
 		it('sets value range via attr', () => {
 			const tb = new TreeBuilder(64);
-			tb.open(0, node_kind.root, 0, -1, 0, false);
-			tb.open(1, node_kind.code_fence, 0, 0, 0, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
+			tb.open(1, NodeKind.code_fence, 0, 0, 0, false);
 			tb.attr(1, 'value_start', 10);
 			tb.attr(1, 'value_end', 25);
 			tb.close(1, 30);
@@ -97,8 +97,8 @@ describe('TreeBuilder', () => {
 
 		it('sets value as tuple via attr', () => {
 			const tb = new TreeBuilder(64);
-			tb.open(0, node_kind.root, 0, -1, 0, false);
-			tb.open(1, node_kind.code_span, 0, 0, 0, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
+			tb.open(1, NodeKind.code_span, 0, 0, 0, false);
 			tb.attr(1, 'value', [3, 8]);
 			tb.close(1, 9);
 			tb.close(0, 9);
@@ -113,10 +113,10 @@ describe('TreeBuilder', () => {
 	describe('speculation and revocation', () => {
 		it('commits pending node on close', () => {
 			const tb = new TreeBuilder(64);
-			tb.open(0, node_kind.root, 0, -1, 0, false);
-			tb.open(1, node_kind.paragraph, 0, 0, 0, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
+			tb.open(1, NodeKind.paragraph, 0, 0, 0, false);
 			// speculative emphasis
-			tb.open(2, node_kind.strong_emphasis, 5, 1, 0, true);
+			tb.open(2, NodeKind.strong_emphasis, 5, 1, 0, true);
 			tb.text(2, 6, 11);
 			// closing commits it
 			tb.close(2, 12);
@@ -133,10 +133,10 @@ describe('TreeBuilder', () => {
 
 		it('revokes pending node, converts to text', () => {
 			const tb = new TreeBuilder(64);
-			tb.open(0, node_kind.root, 0, -1, 0, false);
-			tb.open(1, node_kind.paragraph, 0, 0, 0, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
+			tb.open(1, NodeKind.paragraph, 0, 0, 0, false);
 			// speculative emphasis that won't close
-			tb.open(2, node_kind.strong_emphasis, 5, 1, 0, true);
+			tb.open(2, NodeKind.strong_emphasis, 5, 1, 0, true);
 			tb.text(2, 6, 11);
 			// revoke, emphasis becomes text
 			tb.revoke(2);
@@ -155,10 +155,10 @@ describe('TreeBuilder', () => {
 
 		it('revokes empty pending node, removes it', () => {
 			const tb = new TreeBuilder(64);
-			tb.open(0, node_kind.root, 0, -1, 0, false);
-			tb.open(1, node_kind.paragraph, 0, 0, 0, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
+			tb.open(1, NodeKind.paragraph, 0, 0, 0, false);
 			// speculative code span with no children
-			tb.open(2, node_kind.code_span, 5, 1, 0, true);
+			tb.open(2, NodeKind.code_span, 5, 1, 0, true);
 			// revoke empty node
 			tb.revoke(2);
 			// add real text after
@@ -176,11 +176,11 @@ describe('TreeBuilder', () => {
 	describe('sibling ordering', () => {
 		it('creates multiple children in order', () => {
 			const tb = new TreeBuilder(64);
-			tb.open(0, node_kind.root, 0, -1, 0, false);
-			tb.open(1, node_kind.heading, 0, 0, 1, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
+			tb.open(1, NodeKind.heading, 0, 0, 1, false);
 			tb.text(1, 2, 7);
 			tb.close(1, 8);
-			tb.open(2, node_kind.paragraph, 9, 0, 0, false);
+			tb.open(2, NodeKind.paragraph, 9, 0, 0, false);
 			tb.text(2, 9, 20);
 			tb.close(2, 20);
 			tb.close(0, 20);
@@ -194,10 +194,10 @@ describe('TreeBuilder', () => {
 
 		it('handles nested inline nodes', () => {
 			const tb = new TreeBuilder(64);
-			tb.open(0, node_kind.root, 0, -1, 0, false);
-			tb.open(1, node_kind.paragraph, 0, 0, 0, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
+			tb.open(1, NodeKind.paragraph, 0, 0, 0, false);
 			tb.text(1, 0, 5); // "hello "
-			tb.open(2, node_kind.strong_emphasis, 5, 1, 0, false);
+			tb.open(2, NodeKind.strong_emphasis, 5, 1, 0, false);
 			tb.text(2, 6, 11); // "world"
 			tb.close(2, 12);
 			tb.text(1, 12, 13); // "!"
@@ -217,19 +217,19 @@ describe('TreeBuilder', () => {
 	describe('tight list unwrapping', () => {
 		it('unwraps paragraphs in tight lists on close', () => {
 			const tb = new TreeBuilder(64);
-			tb.open(0, node_kind.root, 0, -1, 0, false);
-			tb.open(1, node_kind.list, 0, 0, 0, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
+			tb.open(1, NodeKind.list, 0, 0, 0, false);
 
 			// item 1
-			tb.open(2, node_kind.list_item, 0, 1, 0, false);
-			tb.open(3, node_kind.paragraph, 2, 2, 0, false);
+			tb.open(2, NodeKind.list_item, 0, 1, 0, false);
+			tb.open(3, NodeKind.paragraph, 2, 2, 0, false);
 			tb.text(3, 2, 8);
 			tb.close(3, 8);
 			tb.close(2, 8);
 
 			// item 2
-			tb.open(4, node_kind.list_item, 10, 1, 0, false);
-			tb.open(5, node_kind.paragraph, 12, 4, 0, false);
+			tb.open(4, NodeKind.list_item, 10, 1, 0, false);
+			tb.open(5, NodeKind.paragraph, 12, 4, 0, false);
 			tb.text(5, 12, 18);
 			tb.close(5, 18);
 			tb.close(4, 18);
@@ -255,17 +255,17 @@ describe('TreeBuilder', () => {
 
 		it('preserves paragraphs in loose lists', () => {
 			const tb = new TreeBuilder(64);
-			tb.open(0, node_kind.root, 0, -1, 0, false);
-			tb.open(1, node_kind.list, 0, 0, 0, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
+			tb.open(1, NodeKind.list, 0, 0, 0, false);
 
-			tb.open(2, node_kind.list_item, 0, 1, 0, false);
-			tb.open(3, node_kind.paragraph, 2, 2, 0, false);
+			tb.open(2, NodeKind.list_item, 0, 1, 0, false);
+			tb.open(3, NodeKind.paragraph, 2, 2, 0, false);
 			tb.text(3, 2, 8);
 			tb.close(3, 8);
 			tb.close(2, 8);
 
-			tb.open(4, node_kind.list_item, 10, 1, 0, false);
-			tb.open(5, node_kind.paragraph, 12, 4, 0, false);
+			tb.open(4, NodeKind.list_item, 10, 1, 0, false);
+			tb.open(5, NodeKind.paragraph, 12, 4, 0, false);
 			tb.text(5, 12, 18);
 			tb.close(5, 18);
 			tb.close(4, 18);
@@ -292,8 +292,8 @@ describe('TreeBuilder', () => {
 	describe('code fence content', () => {
 		it('sets value range for code fence via text()', () => {
 			const tb = new TreeBuilder(64);
-			tb.open(0, node_kind.root, 0, -1, 0, false);
-			tb.open(1, node_kind.code_fence, 0, 0, 3, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
+			tb.open(1, NodeKind.code_fence, 0, 0, 3, false);
 			tb.attr(1, 'info_start', 3);
 			tb.attr(1, 'info_end', 13);
 			tb.text(1, 14, 30); // code content as value range
@@ -312,11 +312,11 @@ describe('TreeBuilder', () => {
 		});
 	});
 
-	describe('node_buffer size', () => {
+	describe('NodeBuffer size', () => {
 		it('counts all nodes including text children', () => {
 			const tb = new TreeBuilder(64);
-			tb.open(0, node_kind.root, 0, -1, 0, false);
-			tb.open(1, node_kind.paragraph, 0, 0, 0, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
+			tb.open(1, NodeKind.paragraph, 0, 0, 0, false);
 			tb.text(1, 0, 5); // creates child text node
 			tb.close(1, 5);
 			tb.close(0, 5);
@@ -328,8 +328,8 @@ describe('TreeBuilder', () => {
 
 		it('heading text does not create extra nodes', () => {
 			const tb = new TreeBuilder(64);
-			tb.open(0, node_kind.root, 0, -1, 0, false);
-			tb.open(1, node_kind.heading, 0, 0, 1, false);
+			tb.open(0, NodeKind.root, 0, -1, 0, false);
+			tb.open(1, NodeKind.heading, 0, 0, 1, false);
 			tb.text(1, 2, 7); // sets value range, no child node
 			tb.close(1, 8);
 			tb.close(0, 8);

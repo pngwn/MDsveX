@@ -59,7 +59,7 @@ function renderMapped(source: string) {
 	const parser = new PFMParser(tree);
 	parser.parse(source);
 	const renderer = new CursorHTMLRenderer({ cache: false });
-	const { mappings } = renderer.updateMapped(tree.get_buffer(), source);
+	const { mappings } = renderer.update_mapped(tree.get_buffer(), source);
 	return { html: renderer.html, mappings, source };
 }
 
@@ -189,9 +189,9 @@ describe('Mapping collection', () => {
 		assertMappingsValid(source, html, mappings);
 
 		const contents = byRole(mappings, 'content');
-		const textContent = contents[0];
-		expect(textContent.generatedLengths).toBeDefined();
-		expect(textContent.generatedLengths![0]).toBeGreaterThan(textContent.lengths[0]);
+		const text_content = contents[0];
+		expect(text_content.generatedLengths).toBeDefined();
+		expect(text_content.generatedLengths![0]).toBeGreaterThan(text_content.lengths[0]);
 	});
 
 	it('no generatedLengths when escape does not change length', () => {

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
 import { parse_markdown_svelte } from '../src/main';
-import { node_kind } from '../src/utils';
+import { NodeKind } from '../src/utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(this_dir, 'fixtures/pfm/fenced_code_blocks');
@@ -32,7 +32,7 @@ describe('fenced code blocks', () => {
 			info_end: 3,
 		});
 
-		const kinds = nodes.get_kinds(node_kind.code_fence);
+		const kinds = nodes.get_kinds(NodeKind.code_fence);
 		expect(kinds.length).toBe(1);
 
 		expect(input.slice(node.value[0], node.value[1])).toEqual('<\n >');
@@ -57,7 +57,7 @@ describe('fenced code blocks', () => {
 			'```\n<\n >\n```'
 		);
 
-		const kinds = nodes.get_kinds(node_kind.code_fence);
+		const kinds = nodes.get_kinds(NodeKind.code_fence);
 		expect(kinds.length).toBe(1);
 	});
 
@@ -76,7 +76,7 @@ describe('fenced code blocks', () => {
 
 		expect(input.slice(node.value[0], node.value[1])).toEqual('<\n >\n\\```');
 		expect(node.value).toEqual([4, 13]);
-		const kinds = nodes.get_kinds(node_kind.code_fence);
+		const kinds = nodes.get_kinds(NodeKind.code_fence);
 		expect(kinds.length).toBe(1);
 		expect(node.metadata).toEqual({
 			info_start: 3,
@@ -87,7 +87,7 @@ describe('fenced code blocks', () => {
 	test('pfm example 121 requires at least three fence characters', () => {
 		const input = load_fixture('121');
 		const { nodes } = parse_markdown_svelte(input);
-		const kinds = nodes.get_kinds(node_kind.code_fence);
+		const kinds = nodes.get_kinds(NodeKind.code_fence);
 		expect(kinds.length).toBe(0);
 	});
 

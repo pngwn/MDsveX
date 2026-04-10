@@ -1,5 +1,5 @@
 import type { Emitter } from "./opcodes";
-import { node_kind } from "./utils";
+import { NodeKind } from "./utils";
 
 /**
  * wire format for PFM parser opcode streaming.
@@ -46,7 +46,7 @@ import { node_kind } from "./utils";
  *   - one batch per feed() call; transport layer decides framing
  */
 
-/** kind names indexed by node_kind value. */
+/** kind names indexed by NodeKind value. */
 const KIND_NAMES: string[] = [
 	"root",
 	"text",
@@ -104,11 +104,11 @@ interface TextState {
  * raw-text variants (script, style) they are treated as content leaves too,
  * but the decision requires the tag which arrives as a separate attr.
  */
-function is_content_leaf(kind: node_kind): boolean {
+function is_content_leaf(kind: NodeKind): boolean {
 	return (
-		kind === node_kind.code_fence ||
-		kind === node_kind.code_span ||
-		kind === node_kind.html_comment
+		kind === NodeKind.code_fence ||
+		kind === NodeKind.code_span ||
+		kind === NodeKind.html_comment
 	);
 }
 
@@ -132,8 +132,8 @@ export class WireEmitter implements Emitter {
 	/** whether the schema opcode has been emitted. */
 	private schema_emitted = false;
 
-	/** maps node id -> node_kind (for all nodes, including suppressed text nodes). */
-	private kinds: Map<number, node_kind> = new Map();
+	/** maps node id -> NodeKind (for all nodes, including suppressed text nodes). */
+	private kinds: Map<number, NodeKind> = new Map();
 	/** maps pending node id -> source start offset (for revoke source reconstruction). */
 	private pending_starts: Map<number, number> = new Map();
 	/** maps text node id -> wire-visible parent id. */
@@ -159,7 +159,7 @@ export class WireEmitter implements Emitter {
 
 	open(
 		id: number,
-		kind: node_kind,
+		kind: NodeKind,
 		start: number,
 		parent: number,
 		extra: number,
@@ -168,9 +168,9 @@ export class WireEmitter implements Emitter {
 		this.kinds.set(id, kind);
 
 		// suppress text nodes, map to wire-visible parent
-		if (kind === node_kind.text) {
+		if (kind === NodeKind.text) {
 			const wire_parent =
-				this.kinds.get(parent) === node_kind.text
+				this.kinds.get(parent) === NodeKind.text
 					? (this.text_parents.get(parent) ?? parent)
 					: parent;
 			this.text_parents.set(id, wire_parent);
@@ -185,7 +185,7 @@ export class WireEmitter implements Emitter {
 
 	close(id: number, _end: number): void {
 		// suppress close for text nodes
-		if (this.kinds.get(id) === node_kind.text) return;
+		if (this.kinds.get(id) === NodeKind.text) return;
 
 		this.batch.push([WireOp.Close, id]);
 	}
@@ -208,7 +208,7 @@ export class WireEmitter implements Emitter {
 
 		if (
 			key === "tag" &&
-			this.kinds.get(id) === node_kind.html &&
+			this.kinds.get(id) === NodeKind.html &&
 			(value === "script" || value === "style")
 		) {
 			this.raw_html_ids.add(id);
@@ -223,9 +223,9 @@ export class WireEmitter implements Emitter {
 			// and raw-text html elements (script, style -> t on self).
 			// container nodes (emphasis, link, etc.) also get value_start but
 			// their content arrives via child text nodes.
-			const is_raw_html = kind === node_kind.html && this.raw_html_ids.has(id);
+			const is_raw_html = kind === NodeKind.html && this.raw_html_ids.has(id);
 			if (
-				kind !== node_kind.text &&
+				kind !== NodeKind.text &&
 				!is_raw_html &&
 				(kind === undefined || !is_content_leaf(kind))
 			) {
@@ -233,7 +233,7 @@ export class WireEmitter implements Emitter {
 			}
 
 			const target =
-				kind === node_kind.text ? (this.text_parents.get(id) ?? id) : id;
+				kind === NodeKind.text ? (this.text_parents.get(id) ?? id) : id;
 
 			// if value_start is re-set after we've already sent text,
 			// emit a clear so the client discards the stale content.
@@ -247,7 +247,7 @@ export class WireEmitter implements Emitter {
 				sent: value as number,
 				target,
 				done: false,
-				is_fence: kind === node_kind.code_fence,
+				is_fence: kind === NodeKind.code_fence,
 			});
 			return;
 		}
@@ -298,7 +298,7 @@ export class WireEmitter implements Emitter {
 
 		//  skip attrs for suppressed text nodes
 
-		if (this.kinds.get(id) === node_kind.text) return;
+		if (this.kinds.get(id) === NodeKind.text) return;
 
 		//  pass through all other attrs
 
@@ -443,25 +443,25 @@ export class WireEmitter implements Emitter {
 }
 
 /** derive the opening delimiter string from a node kind. */
-function get_delimiter(kind: node_kind | undefined): string {
+function get_delimiter(kind: NodeKind | undefined): string {
 	switch (kind) {
-		case node_kind.emphasis:
+		case NodeKind.emphasis:
 			return "_";
-		case node_kind.strong_emphasis:
+		case NodeKind.strong_emphasis:
 			return "*";
-		case node_kind.strikethrough:
+		case NodeKind.strikethrough:
 			return "~~";
-		case node_kind.superscript:
+		case NodeKind.superscript:
 			return "^";
-		case node_kind.subscript:
+		case NodeKind.subscript:
 			return "~";
-		case node_kind.link:
+		case NodeKind.link:
 			return "[";
-		case node_kind.image:
+		case NodeKind.image:
 			return "![";
-		case node_kind.code_span:
+		case NodeKind.code_span:
 			return "`";
-		case node_kind.html:
+		case NodeKind.html:
 			return "<";
 		default:
 			return "";

@@ -46,10 +46,10 @@ export function autolink(options: AutolinkOptions = {}): ParsePlugin {
 	return {
 		heading: {
 			parse(node) {
-				const link = node.wrapInner("link");
+				const link = node.wrap_inner("link");
 
 				return () => {
-					const slug = to_slug(node.textContent);
+					const slug = to_slug(node.text_content);
 					node.attrs.id = slug;
 					link.attrs.href = `#${slug}`;
 				};

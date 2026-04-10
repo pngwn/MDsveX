@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { parse_markdown_svelte } from '../src/main';
-import { node_kind } from '../src/utils';
+import { NodeKind } from '../src/utils';
 
 describe('frontmatter', () => {
 	test('basic frontmatter with content after', () => {
@@ -113,11 +113,11 @@ describe('frontmatter', () => {
 		);
 	});
 
-	test('frontmatter node_kind is findable', () => {
+	test('frontmatter NodeKind is findable', () => {
 		const input = '---\nk: v\n---\n';
 		const { nodes } = parse_markdown_svelte(input);
 
-		const fms = nodes.get_kinds(node_kind.frontmatter);
+		const fms = nodes.get_kinds(NodeKind.frontmatter);
 		expect(fms.length).toBe(1);
 	});
 

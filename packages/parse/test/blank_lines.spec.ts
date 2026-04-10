@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
 import { parse_markdown_svelte } from '../src/main';
-import { node_kind } from '../src/utils';
+import { NodeKind } from '../src/utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(this_dir, 'fixtures/pfm/blank_lines');
@@ -61,7 +61,7 @@ describe('blank lines', () => {
 		expect(input.slice(heading.value[0], heading.value[1])).toBe('aaa');
 
 		// Verify line_break count
-		const line_breaks = nodes.get_kinds(node_kind.line_break);
+		const line_breaks = nodes.get_kinds(NodeKind.line_break);
 		expect(line_breaks.length).toBe(8);
 	});
 

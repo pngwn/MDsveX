@@ -358,7 +358,7 @@ function op_color(op: Op): string {
 				</div>
 				{#if render_mode === 'canvas'}
 					<div class="render-canvas">
-						<!-- canvas mode TODO: update to use node_buffer -->
+						<!-- canvas mode TODO: update to use NodeBuffer -->
 					</div>
 				{:else}
 					<div class="render-content prose">

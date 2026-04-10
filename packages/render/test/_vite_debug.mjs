@@ -22,7 +22,7 @@ const tree = new TreeBuilder(128);
 const parser = new PFMParser(tree);
 parser.parse(md);
 const renderer = new CursorHTMLRenderer({ cache: false });
-const { mappings } = renderer.updateMapped(tree.get_buffer(), md);
+const { mappings } = renderer.update_mapped(tree.get_buffer(), md);
 const html = renderer.html;
 const mdsvexMap = mappings_to_v3(mappings, md, html, FILE);
 

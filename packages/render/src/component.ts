@@ -1,7 +1,7 @@
 /**
  * PFM Component Renderer
  *
- * Maintains a stable list of block-level entries for a node_buffer,
+ * Maintains a stable list of block-level entries for a NodeBuffer,
  * each holding a buffer index and a version counter.
  *
  * Designed for use with the <Node> Svelte component:
@@ -17,7 +17,7 @@
  * with fresh content.
  */
 
-import type { node_buffer } from "@mdsvex/parse/utils";
+import type { NodeBuffer } from "@mdsvex/parse/utils";
 
 const NONE = 0xffffffff;
 const K_LINE_BREAK = 6;
@@ -36,16 +36,16 @@ export interface ComponentBlock {
 export class ComponentRenderer {
 	blocks: ComponentBlock[] = [];
 	/** The current buffer reference (for passing to Node.svelte). */
-	buf: node_buffer | null = null;
+	buf: NodeBuffer | null = null;
 	/** The current source/text string (for passing to Node.svelte). */
 	source = "";
 	private closed: Set<number> = new Set();
 
-	update(buf: node_buffer, source: string): ComponentBlock[] {
+	update(buf: NodeBuffer, source: string): ComponentBlock[] {
 		this.buf = buf;
 		this.source = source;
 
-		let blockIdx = 0;
+		let block_idx = 0;
 		let changed = false;
 
 		// walk root's children via sibling chain
@@ -58,11 +58,11 @@ export class ComponentRenderer {
 			if (kind !== K_LINE_BREAK) {
 				const closed = buf._ends[child] !== NONE;
 
-				if (blockIdx >= this.blocks.length) {
+				if (block_idx >= this.blocks.length) {
 					this.blocks.push({ idx: child, v: 0 });
 					changed = true;
 				} else if (!this.closed.has(child)) {
-					this.blocks[blockIdx].v++;
+					this.blocks[block_idx].v++;
 					changed = true;
 				}
 
@@ -70,7 +70,7 @@ export class ComponentRenderer {
 					this.closed.add(child);
 				}
 
-				blockIdx++;
+				block_idx++;
 			}
 
 			child = is_sibling ? next : NONE;

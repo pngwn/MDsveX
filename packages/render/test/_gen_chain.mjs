@@ -26,7 +26,7 @@ const tree = new TreeBuilder(128);
 const parser = new PFMParser(tree);
 parser.parse(source);
 const renderer = new CursorHTMLRenderer({ cache: false });
-const { mappings } = renderer.updateMapped(tree.get_buffer(), source);
+const { mappings } = renderer.update_mapped(tree.get_buffer(), source);
 const html = renderer.html;
 const pfmMap = mappings_to_v3(mappings, source, html, 'test.svx');
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PFMParser, node_kind } from '../src/main';
+import { PFMParser, NodeKind } from '../src/main';
 import { WireEmitter, WireOp } from '../src/wire_emitter';
 
 /** Parse in batch mode, return flushed wire opcodes. */
@@ -68,11 +68,11 @@ describe('wire format: schema', () => {
 	it('schema maps kind indices to names', () => {
 		const ops = parse_wire('hello\n');
 		const kinds = ops[0][1] as string[];
-		expect(kinds[node_kind.root]).toBe('root');
-		expect(kinds[node_kind.paragraph]).toBe('paragraph');
-		expect(kinds[node_kind.heading]).toBe('heading');
-		expect(kinds[node_kind.emphasis]).toBe('emphasis');
-		expect(kinds[node_kind.code_fence]).toBe('code_fence');
+		expect(kinds[NodeKind.root]).toBe('root');
+		expect(kinds[NodeKind.paragraph]).toBe('paragraph');
+		expect(kinds[NodeKind.heading]).toBe('heading');
+		expect(kinds[NodeKind.emphasis]).toBe('emphasis');
+		expect(kinds[NodeKind.code_fence]).toBe('code_fence');
 	});
 
 	it('schema is only emitted once across flushes', () => {
@@ -88,7 +88,7 @@ describe('wire format: text node suppression', () => {
 		const ops = parse_wire('hello\n');
 		const opens = ops_of(ops, WireOp.Open);
 		// Should have root + paragraph, no text node
-		const text_opens = opens.filter((op) => op[2] === node_kind.text);
+		const text_opens = opens.filter((op) => op[2] === NodeKind.text);
 		expect(text_opens.length).toBe(0);
 	});
 
@@ -96,7 +96,7 @@ describe('wire format: text node suppression', () => {
 		const ops = parse_wire('hello\n');
 		// Find paragraph
 		const para_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.paragraph
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.paragraph
 		);
 		expect(para_open).toBeDefined();
 		const para_id = para_open![1] as number;
@@ -111,7 +111,7 @@ describe('wire format: paragraphs', () => {
 		const para = first_op(ops, WireOp.Open);
 		// First real open after root should be paragraph (skip schema + root)
 		const opens = ops_of(ops, WireOp.Open);
-		const para_open = opens.find((op) => op[2] === node_kind.paragraph);
+		const para_open = opens.find((op) => op[2] === NodeKind.paragraph);
 		expect(para_open).toBeDefined();
 		const para_id = para_open![1] as number;
 
@@ -124,7 +124,7 @@ describe('wire format: paragraphs', () => {
 	it('multi-line paragraph', () => {
 		const ops = parse_wire('line one\nline two\n');
 		const para_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.paragraph
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.paragraph
 		);
 		const para_id = para_open![1] as number;
 		const content = text_for(ops, para_id);
@@ -137,7 +137,7 @@ describe('wire format: headings', () => {
 	it('ATX heading with depth in extra field', () => {
 		const ops = parse_wire('## Title\n');
 		const h_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.heading
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.heading
 		);
 		expect(h_open).toBeDefined();
 		expect(h_open![5]).toBe(2); // extra = depth
@@ -148,7 +148,7 @@ describe('wire format: headings', () => {
 	it('heading depth 1', () => {
 		const ops = parse_wire('# H1\n');
 		const h_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.heading
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.heading
 		);
 		expect(h_open![5]).toBe(1);
 		expect(text_for(ops, h_open![1] as number)).toBe('H1');
@@ -159,7 +159,7 @@ describe('wire format: emphasis', () => {
 	it('emphasis is emitted with pending flag', () => {
 		const ops = parse_wire('_hello_\n');
 		const em_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.emphasis
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.emphasis
 		);
 		expect(em_open).toBeDefined();
 		expect(em_open![4]).toBe(1); // pending = 1
@@ -168,7 +168,7 @@ describe('wire format: emphasis', () => {
 	it('emphasis text is on the emphasis node', () => {
 		const ops = parse_wire('_hello_\n');
 		const em_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.emphasis
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.emphasis
 		);
 		const em_id = em_open![1] as number;
 		expect(text_for(ops, em_id)).toBe('hello');
@@ -177,11 +177,11 @@ describe('wire format: emphasis', () => {
 	it('mixed text and emphasis', () => {
 		const ops = parse_wire('before _middle_ after\n');
 		const para_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.paragraph
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.paragraph
 		);
 		const para_id = para_open![1] as number;
 		const em_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.emphasis
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.emphasis
 		);
 		const em_id = em_open![1] as number;
 
@@ -199,7 +199,7 @@ describe('wire format: strong emphasis', () => {
 	it('strong emphasis node', () => {
 		const ops = parse_wire('*bold*\n');
 		const strong_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.strong_emphasis
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.strong_emphasis
 		);
 		expect(strong_open).toBeDefined();
 		const strong_id = strong_open![1] as number;
@@ -211,7 +211,7 @@ describe('wire format: code fences', () => {
 	it('code fence with info string', () => {
 		const ops = parse_wire('```js\nconst x = 1;\n```\n');
 		const cf_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.code_fence
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.code_fence
 		);
 		expect(cf_open).toBeDefined();
 		const cf_id = cf_open![1] as number;
@@ -230,7 +230,7 @@ describe('wire format: code fences', () => {
 	it('code fence without info string', () => {
 		const ops = parse_wire('```\nhello\n```\n');
 		const cf_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.code_fence
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.code_fence
 		);
 		const cf_id = cf_open![1] as number;
 
@@ -248,7 +248,7 @@ describe('wire format: code spans', () => {
 	it('inline code span', () => {
 		const ops = parse_wire('use `code` here\n');
 		const cs_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.code_span
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.code_span
 		);
 		expect(cs_open).toBeDefined();
 		const cs_id = cs_open![1] as number;
@@ -260,7 +260,7 @@ describe('wire format: links', () => {
 	it('inline link with href attr', () => {
 		const ops = parse_wire('[click](https://example.com)\n');
 		const link_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.link
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.link
 		);
 		expect(link_open).toBeDefined();
 		const link_id = link_open![1] as number;
@@ -277,7 +277,7 @@ describe('wire format: links', () => {
 	it('link with title', () => {
 		const ops = parse_wire('[text](url "title")\n');
 		const link_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.link
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.link
 		);
 		const link_id = link_open![1] as number;
 
@@ -293,7 +293,7 @@ describe('wire format: block quotes', () => {
 	it('block quote wraps content', () => {
 		const ops = parse_wire('> quoted\n');
 		const bq_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.block_quote
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.block_quote
 		);
 		expect(bq_open).toBeDefined();
 		const bq_id = bq_open![1] as number;
@@ -302,7 +302,7 @@ describe('wire format: block quotes', () => {
 		const para_open = ops.find(
 			(op) =>
 				op[0] === WireOp.Open &&
-				op[2] === node_kind.paragraph &&
+				op[2] === NodeKind.paragraph &&
 				op[3] === bq_id
 		);
 		expect(para_open).toBeDefined();
@@ -313,7 +313,7 @@ describe('wire format: lists', () => {
 	it('unordered list with attrs', () => {
 		const ops = parse_wire('- one\n- two\n');
 		const list_open = ops.find(
-			(op) => op[0] === WireOp.Open && op[2] === node_kind.list
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.list
 		);
 		expect(list_open).toBeDefined();
 		const list_id = list_open![1] as number;

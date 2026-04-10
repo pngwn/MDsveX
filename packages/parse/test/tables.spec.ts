@@ -1,17 +1,17 @@
 import { describe, test, expect } from 'vitest';
 import { parse_markdown_svelte, PFMParser } from '../src/main';
-import { node_kind } from '../src/utils';
-import type { node_buffer } from '../src/utils';
+import { NodeKind } from '../src/utils';
+import type { NodeBuffer } from '../src/utils';
 import { TreeBuilder } from '../src/tree_builder';
 
-function non_breaks(nodes: node_buffer, parent: number = 0) {
+function non_breaks(nodes: NodeBuffer, parent: number = 0) {
 	return nodes
 		.get_node(parent)
 		.children.map((i) => nodes.get_node(i))
 		.filter((n) => n.kind !== 'line_break');
 }
 
-function get_children(nodes: node_buffer, index: number) {
+function get_children(nodes: NodeBuffer, index: number) {
 	return nodes.get_node(index).children.map((i) => nodes.get_node(i));
 }
 
@@ -20,7 +20,7 @@ function get_children(nodes: node_buffer, index: number) {
  * Returns empty string if the cell has no children.
  */
 function cell_text(
-	nodes: node_buffer,
+	nodes: NodeBuffer,
 	cell_index: number,
 	source: string
 ): string {

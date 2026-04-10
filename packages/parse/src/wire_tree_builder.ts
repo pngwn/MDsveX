@@ -1,9 +1,9 @@
 /**
- * WireTreeBuilder, populates a node_buffer from wire format batches.
+ * WireTreeBuilder, populates a NodeBuffer from wire format batches.
  *
  * client-side counterpart to TreeBuilder. consumes the same json
  * opcode batches that WireEmitter produces and builds the same soa
- * node_buffer structure. the resulting buffer is walkable by Cursor
+ * NodeBuffer structure. the resulting buffer is walkable by Cursor
  * with identical semantics.
  *
  * text strings from the wire format are stored directly in the buffer's
@@ -17,7 +17,7 @@
  *   const html = renderCursor(cursor);
  */
 
-import { node_buffer, node_kind } from "./utils";
+import { NodeBuffer, NodeKind } from "./utils";
 import { Cursor } from "./cursor";
 import type { PluginDispatcher } from "./plugin_dispatch";
 import { WireTextSource } from "./node_view";
@@ -26,7 +26,7 @@ const NONE = 0xffffffff;
 
 export class WireTreeBuilder {
 	/** the soa buffer. */
-	private buf: node_buffer;
+	private buf: NodeBuffer;
 	/** maps wire node id -> buffer index. */
 	private id_to_index: number[];
 	/** schema kind names (from s opcode). */
@@ -40,13 +40,13 @@ export class WireTreeBuilder {
 	};
 
 	constructor(capacity = 128, dispatcher?: PluginDispatcher) {
-		this.buf = new node_buffer(capacity);
+		this.buf = new NodeBuffer(capacity);
 		this.id_to_index = [0]; // root id 0 -> buffer index 0
 		this.schema = null;
 		this.dispatcher = dispatcher ?? null;
 
 		// wire mode: point the dispatcher's text source at the buffer's
-		// _strings array so NodeView.textContent resolves correctly.
+		// _strings array so NodeView.text_content resolves correctly.
 		if (this.dispatcher) {
 			this.dispatcher.set_text_source(
 				new WireTextSource(this.buf._strings),
@@ -104,14 +104,14 @@ export class WireTreeBuilder {
 		return new Cursor(this.buf, "");
 	}
 
-	/** get the underlying node_buffer. */
-	get_buffer(): node_buffer {
+	/** get the underlying NodeBuffer. */
+	get_buffer(): NodeBuffer {
 		return this.buf;
 	}
 
 	/** reset for a new document. */
 	reset(): void {
-		this.buf = new node_buffer(128);
+		this.buf = new NodeBuffer(128);
 		this.id_to_index = [0];
 		this.schema = null;
 	}
@@ -125,28 +125,28 @@ export class WireTreeBuilder {
 		pending: boolean,
 		extra: number,
 	): void {
-		// root (id=0) is auto-created by node_buffer constructor
+		// root (id=0) is auto-created by NodeBuffer constructor
 		if (id === 0) return;
 
 		let parent_idx =
 			parent === -1 ? NONE : (this.id_to_index[parent] ?? NONE);
 
-		// plugin redirect: if parent has a wrapInner wrapper, children go there
+		// plugin redirect: if parent has a wrap_inner wrapper, children go there
 		if (this.dispatcher && parent_idx !== NONE) {
 			const redirect = this.dispatcher.get_redirect(parent_idx);
 			if (redirect !== undefined) parent_idx = redirect;
 		}
 
 		const idx = pending
-			? this.buf.push_pending(kind as node_kind, 0, parent_idx, extra)
-			: this.buf.push(kind as node_kind, 0, parent_idx, extra);
+			? this.buf.push_pending(kind as NodeKind, 0, parent_idx, extra)
+			: this.buf.push(kind as NodeKind, 0, parent_idx, extra);
 		this.id_to_index[id] = idx;
 
 		// plugin dispatch
-		if (this.dispatcher && this.dispatcher.has_handlers(kind as node_kind)) {
+		if (this.dispatcher && this.dispatcher.has_handlers(kind as NodeKind)) {
 			this.dispatcher.dispatch_open(
 				idx,
-				kind as node_kind,
+				kind as NodeKind,
 				this.buf,
 				this.register_id,
 			);
@@ -175,8 +175,8 @@ export class WireTreeBuilder {
 		const parent_kind = this.buf._kinds[this.buf._parents[idx]];
 		if (
 			!(
-				kind === node_kind.paragraph &&
-				parent_kind === node_kind.list_item &&
+				kind === NodeKind.paragraph &&
+				parent_kind === NodeKind.list_item &&
 				this.buf._pending_nodes[idx] === 1
 			)
 		) {
@@ -190,7 +190,7 @@ export class WireTreeBuilder {
 
 		// tight list unwrapping, walk sibling chains directly. safe no-op
 		// when the parser already revoked them via finalize_list_pending_paras.
-		if (kind === node_kind.list) {
+		if (kind === NodeKind.list) {
 			const meta = this.buf.metadata_at(idx);
 			if (meta && meta.tight) {
 				let item = this.buf._children_starts[idx];
@@ -199,7 +199,7 @@ export class WireTreeBuilder {
 					let child = this.buf._children_starts[item];
 					while (child !== NONE) {
 						const next_child = this.buf._next_siblings[child];
-						if (this.buf._kinds[child] === node_kind.paragraph) {
+						if (this.buf._kinds[child] === NodeKind.paragraph) {
 							this.buf.unwrap_node(child);
 						}
 						child = next_child;
@@ -225,9 +225,9 @@ export class WireTreeBuilder {
 
 		// content leaves: store string directly on the node
 		if (
-			kind === node_kind.code_fence ||
-			kind === node_kind.code_span ||
-			kind === node_kind.html_comment
+			kind === NodeKind.code_fence ||
+			kind === NodeKind.code_span ||
+			kind === NodeKind.html_comment
 		) {
 			// consecutive t opcodes: concatenate
 			const existing = strings[idx];
@@ -238,7 +238,7 @@ export class WireTreeBuilder {
 		// raw-text html elements (script, style): content lives on the html
 		// node itself, not as a text child. mirrors the treebuilder path where
 		// the parser writes value_start/value_end directly on the html node.
-		if (kind === node_kind.html) {
+		if (kind === NodeKind.html) {
 			const meta = this.buf.metadata_at(idx);
 			if (meta && (meta.tag === "script" || meta.tag === "style")) {
 				const existing = strings[idx];
@@ -260,7 +260,7 @@ export class WireTreeBuilder {
 			return;
 		}
 
-		const text_idx = this.buf.push(node_kind.text, 0, idx);
+		const text_idx = this.buf.push(NodeKind.text, 0, idx);
 		strings[text_idx] = content;
 		this.buf._ends[text_idx] = 1;
 	}
@@ -279,7 +279,7 @@ export class WireTreeBuilder {
 			if (next === NONE || this.buf._parents[next] !== idx) break;
 			last = next;
 		}
-		return this.buf._kinds[last] === node_kind.text ? last : NONE;
+		return this.buf._kinds[last] === NodeKind.text ? last : NONE;
 	}
 
 	private _attr(id: number, key: string, value: unknown): void {

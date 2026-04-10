@@ -1,8 +1,8 @@
-import { node_buffer } from '../src/utils';
+import { NodeBuffer } from '../src/utils';
 
 /** Get the range of all children of the given parent */
 export function get_child_range(
-	nodes: node_buffer,
+	nodes: NodeBuffer,
 	parent: number,
 	source: string
 ): { start: number; end: number; content: string } {
@@ -16,7 +16,7 @@ export function get_child_range(
 
 /** Get the content and value of the given node */
 export function get_content(
-	nodes: node_buffer,
+	nodes: NodeBuffer,
 	node: number,
 	source: string
 ): {
@@ -35,7 +35,7 @@ export function get_content(
 
 /** Print all nodes in the given node buffer starting from the given parent */
 export function print_all_nodes(
-	nodes: node_buffer,
+	nodes: NodeBuffer,
 	source: string,
 	parent: number = 0
 ) {
@@ -47,7 +47,7 @@ export function print_all_nodes(
 	}
 }
 
-export function get_all_child_kinds(nodes: node_buffer, parent: number) {
+export function get_all_child_kinds(nodes: NodeBuffer, parent: number) {
 	const root = nodes.get_node(parent);
 	const children = root.children || [];
 	const kinds = [];

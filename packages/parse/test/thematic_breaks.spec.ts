@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
 import { parse_markdown_svelte } from '../src/main';
-import type { node_buffer } from '../src/utils';
+import type { NodeBuffer } from '../src/utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(this_dir, 'fixtures/pfm/thematic_breaks');
@@ -13,14 +13,14 @@ const fixtures_root = resolve(this_dir, 'fixtures/pfm/thematic_breaks');
 const load_fixture = (id: string): string =>
 	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
 
-function collect_breaks(nodes: node_buffer) {
+function collect_breaks(nodes: NodeBuffer) {
 	const root = nodes.get_node();
 	return root.children
 		.map((i) => nodes.get_node(i))
 		.filter((n) => n.kind === 'thematic_break');
 }
 
-function collect_children(nodes: node_buffer) {
+function collect_children(nodes: NodeBuffer) {
 	const root = nodes.get_node();
 	return root.children
 		.map((i) => nodes.get_node(i))

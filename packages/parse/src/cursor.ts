@@ -1,5 +1,5 @@
 /**
- * cursor, zero-allocation tree traversal over node_buffer.
+ * cursor, zero-allocation tree traversal over NodeBuffer.
  *
  * single reusable object that provides tree-traversal semantics
  * (gotofirstchild / gotonextsibling / gotoparent) while reading
@@ -23,13 +23,13 @@
  *   }
  */
 
-import type { node_buffer } from "./utils";
+import type { NodeBuffer } from "./utils";
 
 const NONE = 0xffffffff;
 
 export class Cursor {
 	/** the backing soa buffer. */
-	private buf: node_buffer;
+	private buf: NodeBuffer;
 	/** the full source string for lazy text slicing. */
 	private src: string;
 	/** current node index into the buffer. */
@@ -46,7 +46,7 @@ export class Cursor {
 	private _children_starts: Uint32Array;
 	private _pending_nodes: Uint32Array;
 
-	constructor(buf: node_buffer, source: string) {
+	constructor(buf: NodeBuffer, source: string) {
 		this.buf = buf;
 		this.src = source;
 		this.idx = 0; // root
@@ -136,14 +136,14 @@ export class Cursor {
 		return this.src.slice(start, end);
 	}
 
-	gotoFirstChild(): boolean {
+	goto_first_child(): boolean {
 		const child = this._children_starts[this.idx];
 		if (child === NONE) return false;
 		this.idx = child;
 		return true;
 	}
 
-	gotoNextSibling(): boolean {
+	goto_next_sibling(): boolean {
 		const next = this._next_siblings[this.idx];
 		if (next === NONE) return false;
 		// verify it's actually a sibling (same parent)
@@ -152,7 +152,7 @@ export class Cursor {
 		return true;
 	}
 
-	gotoParent(): boolean {
+	goto_parent(): boolean {
 		const parent = this._parents[this.idx];
 		if (parent === NONE) return false;
 		this.idx = parent;
@@ -177,7 +177,7 @@ export class Cursor {
 	}
 
 	/** re-inits cursor with a (potentially grown) buffer and new source. */
-	reinit(buf: node_buffer, source: string): void {
+	reinit(buf: NodeBuffer, source: string): void {
 		this.buf = buf;
 		this.src = source;
 		this.idx = 0;

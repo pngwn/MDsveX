@@ -43,7 +43,7 @@ function render(
 	const renderer = new CursorHTMLRenderer({ cache: false });
 
 	if (options?.sourcemap) {
-		const result = renderer.updateMapped(tree.get_buffer(), source);
+		const result = renderer.update_mapped(tree.get_buffer(), source);
 		return { code: renderer.html, mappings: result.mappings };
 	}
 

@@ -130,7 +130,7 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 	const bodySkipSet = new Set<number>();
 	const excludedRegions: ExcludedRegion[] = [];
 
-	if (cursor.gotoFirstChild()) {
+	if (cursor.goto_first_child()) {
 		do {
 			const kind = cursor.kind;
 			if (kind === K_FRONTMATTER) {
@@ -155,8 +155,8 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 				excludedRegions.push({ start: cursor.start, end: cursor.end });
 				bodySkipSet.add(cursor.index);
 			}
-		} while (cursor.gotoNextSibling());
-		cursor.gotoParent();
+		} while (cursor.goto_next_sibling());
+		cursor.goto_parent();
 	}
 
 	const hasFrontmatter = frontmatterNode !== null;
@@ -252,7 +252,7 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 	// Phase B: Collect style block source positions before body rendering
 	const styleSourcePositions: { valueStart: number; valueEnd: number }[] = [];
 	cursor.reset();
-	if (cursor.gotoFirstChild()) {
+	if (cursor.goto_first_child()) {
 		do {
 			if (
 				cursor.kind === K_HTML &&
@@ -265,19 +265,19 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 				});
 				excludedRegions.push({ start: cursor.start, end: cursor.end });
 			}
-		} while (cursor.gotoNextSibling());
-		cursor.gotoParent();
+		} while (cursor.goto_next_sibling());
+		cursor.goto_parent();
 	}
 
 	// Phase C: Render body nodes (skip frontmatter, imports, scripts)
 	cursor.reset();
-	if (cursor.gotoFirstChild()) {
+	if (cursor.goto_first_child()) {
 		do {
 			if (cursor.kind === K_LINE_BREAK) continue;
 			if (bodySkipSet.has(cursor.index)) continue;
 			_node(cursor, out, entries);
-		} while (cursor.gotoNextSibling());
-		cursor.gotoParent();
+		} while (cursor.goto_next_sibling());
+		cursor.goto_parent();
 	}
 
 	// resolve mappings

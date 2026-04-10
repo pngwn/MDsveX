@@ -1,4 +1,4 @@
-import type { node_buffer } from "./utils";
+import type { NodeBuffer } from "./utils";
 
 const NONE = 0xffffffff;
 
@@ -79,7 +79,7 @@ export type UndoEntry =
  * unlike unwrap_node, this does NOT reparent the child's own children,
  * the entire subtree is detached.
  */
-function _unlink_child(buf: node_buffer, parent: number, child: number): void {
+function _unlink_child(buf: NodeBuffer, parent: number, child: number): void {
 	const prev = buf._prev_siblings[child];
 	const next = buf._next_siblings[child];
 
@@ -217,7 +217,7 @@ export class UndoLog {
 	 * revoke all mutations attributed to the given handler node.
 	 * walks the undo log in reverse order, restoring prior state.
 	 */
-	revoke(handler_node: number, buf: node_buffer): void {
+	revoke(handler_node: number, buf: NodeBuffer): void {
 		const log = this.logs.get(handler_node);
 		if (log === undefined) return;
 
