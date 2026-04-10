@@ -2,7 +2,7 @@
  * Clean up svelte2tsx internal types in hover tooltips.
  *
  * 1. Strips `(alias) type X = SvelteComponent<...> & { $$bindings?: ... }\n`
- * 2. Transforms `const X: __sveltets_2_IsomorphicComponent<{props}, ...>` → `const X<{props}>`
+ * 2. Transforms `const X: __sveltets_2_IsomorphicComponent<{props}, ...>` into `const X<{props}>`
  */
 export function clean_svelte_hover(markdown: string): string {
 	markdown = strip_svelte_component_type(markdown);
@@ -60,7 +60,7 @@ function strip_svelte_component_type(md: string): string {
 	}
 }
 
-/** Transform `: __sveltets_2_IsomorphicComponent<{props}, ...>` → `<{props}>`. */
+/** Transform `: __sveltets_2_IsomorphicComponent<{props}, ...>` into `<{props}>`. */
 function clean_isomorphic_component(md: string): string {
 	const marker = ": __sveltets_2_IsomorphicComponent<";
 	const idx = md.indexOf(marker);
@@ -68,7 +68,7 @@ function clean_isomorphic_component(md: string): string {
 
 	const args_start = idx + marker.length;
 
-	// Find end of first generic arg (props) — first comma at brace depth 0
+	// Find end of first generic arg (props), first comma at brace depth 0
 	let depth = 0;
 	let first_arg_end = -1;
 	for (let i = args_start; i < md.length; i++) {

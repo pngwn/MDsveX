@@ -4,7 +4,7 @@
  * Runs svelte2tsx on .svelte files to produce TypeScript VirtualCode,
  * enabling component prop types to resolve when imported from .pfm files.
  *
- * This is NOT a full Svelte language server — it only provides enough
+ * This is NOT a full Svelte language server, it only provides enough
  * for cross-file type resolution.
  */
 

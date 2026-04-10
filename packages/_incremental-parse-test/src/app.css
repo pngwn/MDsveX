@@ -102,7 +102,7 @@ pre code {
 	background: var(--border-light);
 }
 
-/* ── Prose styles (rendered markdown) ────────────────────── */
+/* prose styles (rendered markdown) */
 
 .prose {
 	color: var(--text-primary);
@@ -229,7 +229,7 @@ pre code {
 	color: var(--text-primary);
 }
 
-/* ── HTML element styles (rendered raw HTML) ──────────────── */
+/* HTML element styles (rendered raw HTML) */
 
 .prose div,
 .prose section {

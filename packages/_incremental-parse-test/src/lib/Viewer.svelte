@@ -39,7 +39,7 @@ const parsePlugins = [autolink(), wrap_parent()];
 
 let { markdown }: { markdown: string } = $props();
 
-// ── Query param helpers ──────────────────────────────────
+// query param helpers
 const VALID_CHUNKS = [1, 2, 5, 10, 9999];
 const VALID_SPEEDS = [200, 80, 30, 10];
 const VALID_RENDERERS = ["html", "dom", "canvas"] as const;
@@ -156,7 +156,7 @@ let new_ops_start = $derived.by(() => {
 	return count;
 });
 
-// ── Wire pipeline (for HTML renderer) ────────────────────
+// wire pipeline (for HTML renderer)
 let wire_step_batches: unknown[][][] = $derived.by(() => {
 	const emitter = new WireEmitter();
 	const parser = new PFMParser(emitter);

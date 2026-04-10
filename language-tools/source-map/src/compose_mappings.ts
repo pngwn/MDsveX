@@ -1,8 +1,8 @@
 /**
- * Compose two sets of Volar mappings: A→B + B→C = A→C.
+ * Compose two sets of Volar mappings: A to B + B to C = A to C.
  *
- * For each mapping in A (PFM→Svelte), find overlapping mappings in B
- * (Svelte→TS), and produce composed mappings (PFM→TS).
+ * For each mapping in A (PFM to Svelte), find overlapping mappings in B
+ * (Svelte to TS), and produce composed mappings (PFM to TS).
  */
 
 import type { Mapping, CodeInformation } from "@mdsvex/render/mappings";
@@ -32,7 +32,7 @@ function toSegments<T>(m: Mapping<T>): Segment[] {
 	return segs;
 }
 
-/** merge CodeInformation via intersection — capability present only if both legs have it. */
+/** merge CodeInformation via intersection: capability present only if both legs have it. */
 function intersectCapabilities(
 	a: CodeInformation,
 	b: CodeInformation,
@@ -48,14 +48,14 @@ function intersectCapabilities(
 }
 
 /**
- * Compose mappings A→B and B→C into A→C.
+ * Compose mappings A to B and B to C into A to C.
  *
  * For each A segment that maps A-source to B (generated), finds overlapping
  * B segments that map B-source to C (generated). The overlap region in B-space
- * determines the composed A→C mapping.
+ * determines the composed A to C mapping.
  *
- * @param a - Mappings from A to B (e.g., PFM → Svelte)
- * @param b - Mappings from B to C (e.g., Svelte → TS)
+ * @param a - Mappings from A to B (e.g., PFM to Svelte)
+ * @param b - Mappings from B to C (e.g., Svelte to TS)
  * @param mergeData - Optional custom data merger. Defaults to intersectCapabilities.
  */
 export function composeMappings<
@@ -120,7 +120,7 @@ export function composeMappings<
 					composedSrcStart = aSeg.srcStart + (overlapStart - aGenStart);
 					composedSrcLen = overlapLen;
 				} else {
-					// non-identity A — can only use the start anchor
+					// non-identity A, can only use the start anchor
 					composedSrcStart = aSeg.srcStart;
 					composedSrcLen = aSeg.srcEnd - aSeg.srcStart;
 				}

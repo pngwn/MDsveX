@@ -63,7 +63,7 @@ for (let i = 0; i < CHAR_CLASS_TABLE.length; i += 1) {
 	}
 
 	// ascii punctuation per commonmark spec:
-	// u+0021–002f, u+003a–0040, u+005b–0060, u+007b–007e
+	// u+0021 to 002f, u+003a to 0040, u+005b to 0060, u+007b to 007e
 	if (
 		(i >= 0x21 && i <= 0x2f) ||
 		(i >= 0x3a && i <= 0x40) ||
@@ -80,7 +80,7 @@ for (let i = 0; i < CHAR_CLASS_TABLE.length; i += 1) {
 	CHAR_CLASS_TABLE[i] = mask;
 }
 
-// unicode whitespace code points (zs category + u+0009–000d already handled above)
+// unicode whitespace code points (zs category + u+0009 to 000d already handled above)
 const is_unicode_whitespace = (code: number): boolean =>
 	code === 0xa0 ||
 	code === 0x1680 ||

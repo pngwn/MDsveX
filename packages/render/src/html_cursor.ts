@@ -618,7 +618,7 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 				c.goto_parent();
 			}
 			out.push("{/", block_tag, "}");
-			// node span for the whole block — use the block node (goto_parent already called)
+			// node span for the whole block, use the block node (goto_parent already called)
 			if (entries) {
 				const idx = c.index;
 				const s = c.start, e = c.end;

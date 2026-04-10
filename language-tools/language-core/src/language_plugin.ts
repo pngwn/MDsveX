@@ -4,7 +4,7 @@
  * Teaches Volar how to handle .pfm files by producing TypeScript
  * VirtualCode through the pipeline:
  *
- *   PFM source → pfmToSvelte → svelte2tsx → compose mappings → VirtualCode
+ *   PFM source -> pfmToSvelte -> svelte2tsx -> compose mappings -> VirtualCode
  */
 
 import type {
@@ -79,7 +79,7 @@ function create_fallback_virtual_code(source: string): PfmVirtualCode {
 }
 
 /**
- * Run the full PFM → TypeScript pipeline and produce VirtualCode.
+ * Run the full PFM to TypeScript pipeline and produce VirtualCode.
  * On any error (parse failure, svelte2tsx crash), returns a fallback
  * VirtualCode with no TS features instead of crashing the server.
  */
@@ -89,7 +89,7 @@ function create_virtual_code_from_source(
 ): PfmVirtualCode {
 	let svelte;
 	try {
-		// Step 1: PFM → Svelte
+		// Step 1: PFM to Svelte
 		svelte = pfmToSvelte(source);
 	} catch {
 		return create_fallback_virtual_code(source);
@@ -97,7 +97,7 @@ function create_virtual_code_from_source(
 
 	let tsx;
 	try {
-		// Step 2: Svelte → TypeScript via svelte2tsx
+		// Step 2: Svelte to TypeScript via svelte2tsx
 		tsx = svelte_2_tsx(svelte.code, {
 			filename: script_id.replace(PFM_EXTENSION, ".svelte"),
 			isTsFile: false,
@@ -118,7 +118,7 @@ function create_virtual_code_from_source(
 	// Step 4: Filter mappings for composition.
 	// - Exclude "node" role (broadest spans cause duplicate hover results)
 	// - Exclude zero-length source mappings
-	// - Upgrade capabilities to full — let svelte2tsx's B-side gate features
+	// - Upgrade capabilities to full, let svelte2tsx's B-side gate features
 	const ALL_CAPS: CodeInformation = {
 		verification: true,
 		completion: true,
@@ -130,7 +130,7 @@ function create_virtual_code_from_source(
 		.filter((m) => (m.data as any).role !== "node" && m.lengths[0] > 0)
 		.map((m) => ({ ...m, data: ALL_CAPS }));
 
-	// Step 5: Compose PFM→Svelte + Svelte→TS = PFM→TS
+	// Step 5: Compose PFM to Svelte + Svelte to TS = PFM to TS
 	// Use B's capabilities but disable format (overlapping ranges crash the formatter).
 	const pfm_to_ts = composeMappings(
 		filtered_mappings as any,
@@ -143,10 +143,10 @@ function create_virtual_code_from_source(
 
 	// Step 5b: Merge single-char non-identity mappings into adjacent
 	// neighbors.  svelte2tsx splits attribute names at the first character
-	// (e.g. "v"→'"' + "alue="→'alue"') and maps syntax chars to filler
+	// (e.g. "v" to '"' + "alue=" to 'alue"') and maps syntax chars to filler
 	// spaces.  These 1-char mappings cause two problems via Volar's
 	// inclusive-end (<=) translateOffset:
-	//  1. Diagnostic highlights bleed through whitespace (char→space anchors)
+	//  1. Diagnostic highlights bleed through whitespace (char to space anchors)
 	//  2. Duplicate hover at attribute-name boundaries (v/alue overlap)
 	// Merging them into the next mapping eliminates the boundary overlap
 	// while preserving hover on the first character.
@@ -160,12 +160,12 @@ function create_virtual_code_from_source(
 		if (gen_len !== 1) continue;
 		const src_ch = source.charCodeAt(m.sourceOffsets[0]);
 		const gen_ch = ts_code.charCodeAt(m.generatedOffsets[0]);
-		if (src_ch === gen_ch) continue; // identity — leave as-is
+		if (src_ch === gen_ch) continue; // identity, leave as-is
 
 		const next = pfm_to_ts[i + 1];
 		const next_gen_len = next.generatedLengths ? next.generatedLengths[0] : next.lengths[0];
 
-		// Merge into next if source-adjacent and generated gap ≤ 1
+		// Merge into next if source-adjacent and generated gap <= 1
 		if (m.sourceOffsets[0] + 1 === next.sourceOffsets[0] &&
 			next.generatedOffsets[0] - (m.generatedOffsets[0] + 1) <= 1) {
 			const new_gen_start = m.generatedOffsets[0];
@@ -182,7 +182,7 @@ function create_virtual_code_from_source(
 	// Step 6: Shrink non-identity trailing boundaries at adjacency points.
 	// Volar's translateOffset uses inclusive end (<=) so adjacent mappings
 	// share boundary offsets.  When the last source char differs from the
-	// last generated char (e.g. "}" → ","), the previous mapping wrongly
+	// last generated char (e.g. "}" becomes ","), the previous mapping wrongly
 	// claims the next token's start, causing diagnostic highlights to
 	// bleed through inter-attribute whitespace.  We only shrink when the
 	// next mapping starts at exactly this mapping's generated end, to
@@ -260,7 +260,7 @@ function create_virtual_code_from_source(
 		});
 	}
 
-	// Build markdown VirtualCode — PFM source with excluded regions
+	// Build markdown VirtualCode: PFM source with excluded regions
 	// (frontmatter, script, style, imports) blanked out so the markdown
 	// service sees clean markdown without setext-heading false positives.
 	let md_source = source;
@@ -380,7 +380,7 @@ export function create_pfm_language_plugin(): LanguagePlugin<string, PfmVirtualC
 				},
 			],
 			getServiceScript(root: VirtualCode) {
-				// Return the embedded TS code as the service script —
+				// Return the embedded TS code as the service script:
 				// this tells TypeScript "when resolving this .pfm file
 				// as a module, use this TS code for its exports"
 				const ts_code = root.embeddedCodes?.find(
@@ -397,7 +397,7 @@ export function create_pfm_language_plugin(): LanguagePlugin<string, PfmVirtualC
 			},
 			getExtraServiceScripts(_fileName: string, _root: VirtualCode) {
 				// The main TS code is already returned by getServiceScript.
-				// No extra scripts needed — returning it again causes duplicates.
+				// No extra scripts needed, returning it again causes duplicates.
 				return [];
 			},
 		},

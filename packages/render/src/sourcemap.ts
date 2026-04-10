@@ -1,5 +1,5 @@
 /**
- * sourcemap utilities: line-starts, offset→position, vlq, v3 conversion.
+ * sourcemap utilities: line-starts, offset to position, vlq, v3 conversion.
  */
 
 import type { Mapping, MappingData } from "./mappings";
@@ -107,7 +107,7 @@ export function mappings_to_v3(
 						});
 					}
 				} else {
-					// escaped/transformed content — lengths differ.
+					// escaped/transformed content, lengths differ.
 					// emit start point only.
 					segments.push({
 						gen_offset: gen_start,
@@ -161,7 +161,7 @@ export function mappings_to_v3(
 		prev_src_col = src_col;
 	}
 
-	// use basename to match svelte compiler convention — vite resolves relative
+	// use basename to match svelte compiler convention, vite resolves relative
 	// to the served JS file, so the browser can find the source.
 	const basename = file ? file.split(/[/\\]/).pop()! : "input.md";
 

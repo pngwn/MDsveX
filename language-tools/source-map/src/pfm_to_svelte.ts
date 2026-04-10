@@ -1,12 +1,12 @@
 /**
- * PFM → Svelte component transform with source mappings.
+ * PFM to Svelte component transform with source mappings.
  *
  * Takes PFM source, parses it, and produces a valid Svelte component string
  * along with Volar-compatible source mappings. The output is suitable for
  * feeding into svelte2tsx for TypeScript virtual code generation.
  *
  * Pipeline:
- *   PFM source → parse → classify nodes → build <script> block → render body → mappings
+ *   PFM source -> parse -> classify nodes -> build <script> block -> render body -> mappings
  */
 
 import { PFMParser } from "@mdsvex/parse";
@@ -78,11 +78,11 @@ function yamlValueToJs(raw: string): string {
 	if (v === "false") return "false";
 	// integer or float
 	if (/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(v)) return v;
-	// block scalar indicator (|, >, |-, >+, etc.) — can't parse inline
+	// block scalar indicator (|, >, |-, >+, etc.), can't parse inline
 	if (/^[|>]/.test(v)) return '"" as string';
-	// inline array [a, b] or object {a: b} — too complex, fall back
+	// inline array [a, b] or object {a: b}, too complex, fall back
 	if (/^\[/.test(v) || /^\{/.test(v)) return `${v} as any`;
-	// plain string — quote it, escaping internal quotes and backslashes
+	// plain string, quote it, escaping internal quotes and backslashes
 	return JSON.stringify(v);
 }
 
@@ -108,10 +108,10 @@ function extractYamlEntries(yaml: string, yamlSourceOffset: number): YamlEntry[]
 /**
  * Transform PFM source into a valid Svelte component with source mappings.
  *
- * - Frontmatter YAML keys → `let key: any;` declarations in `<script>`
- * - Import statements → verbatim imports in `<script>`
- * - Explicit `<script>` tags → merged into the generated `<script>` block
- * - Body content → rendered as Svelte markup via the existing HTML renderer
+ * - Frontmatter YAML keys become `let key: any;` declarations in `<script>`
+ * - Import statements become verbatim imports in `<script>`
+ * - Explicit `<script>` tags are merged into the generated `<script>` block
+ * - Body content is rendered as Svelte markup via the existing HTML renderer
  */
 export function pfmToSvelte(source: string): PfmToSvelteResult {
 	// parse

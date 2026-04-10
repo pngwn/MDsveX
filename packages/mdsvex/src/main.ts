@@ -54,11 +54,11 @@ function render(
 /**
  * mdsvex vite plugin. returns a single plugin that:
  *
- * 1. transforms markdown → svelte html (enforce: 'pre')
+ * 1. transforms markdown to svelte html (enforce: 'pre')
  * 2. does NOT return a sourcemap to vite (to avoid poisoning the
  *    svelte compiler's own sourcemap via getCombinedSourcemap())
- * 3. after svelte compiles, chains the compiler's JS→HTML map with
- *    our HTML→markdown map using @ampproject/remapping, and injects
+ * 3. after svelte compiles, chains the compiler's JS to HTML map with
+ *    our HTML to markdown map using @ampproject/remapping, and injects
  *    the result as an inline sourceMappingURL in the output code.
  */
 export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
@@ -95,7 +95,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					storedSources.set(id, code);
 				}
 
-				// return NO map — avoids poisoning getCombinedSourcemap()
+				// return NO map, avoids poisoning getCombinedSourcemap()
 				return { code: result.code };
 			},
 		},
@@ -111,7 +111,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				storedMaps.delete(id);
 				storedSources.delete(id);
 
-				// get the svelte compiler's JS→HTML map from the chain
+				// get the svelte compiler's JS to HTML map from the chain
 				let compileMap: any;
 				try {
 					compileMap = this.getCombinedSourcemap();
@@ -120,7 +120,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				}
 				if (!compileMap?.mappings) return;
 
-				// chain: JS→HTML (compile) + HTML→markdown (pfm) = JS→markdown
+				// chain: JS to HTML (compile) + HTML to markdown (pfm) = JS to markdown
 				const chained = remapping(
 					[compileMap, pfmMap as any],
 					() => null,
