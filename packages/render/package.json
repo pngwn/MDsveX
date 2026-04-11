@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/render",
-	"version": "0.1.0",
+	"version": "1.0.0-next.0",
 	"description": "Renderers for the PFM parser wire format",
 	"private": true,
 	"type": "module",
@@ -44,7 +44,6 @@
 			"optional": true
 		}
 	},
-
 	"dependencies": {
 		"@mdsvex/parse": "workspace:*"
 	},
