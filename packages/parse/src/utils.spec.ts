@@ -1,16 +1,16 @@
 import { describe, test, expect } from 'vitest';
-import { node_buffer, node_kind } from './utils';
+import { NodeBuffer, NodeKind } from './utils';
 
-describe('node_buffer', () => {
+describe('NodeBuffer', () => {
 	test('push should add a node to the buffer', () => {
-		const buffer = new node_buffer();
-		buffer.push(node_kind.text, 0, 0);
+		const buffer = new NodeBuffer();
+		buffer.push(NodeKind.text, 0, 0);
 		expect(buffer.size).toBe(2);
 	});
 
 	test('get_node should return the node at the given index', () => {
-		const buffer = new node_buffer();
-		const id1 = buffer.push(node_kind.text, 0, 0);
+		const buffer = new NodeBuffer();
+		const id1 = buffer.push(NodeKind.text, 0, 0);
 		expect(buffer.get_node(id1)).toEqual({
 			kind: 'text',
 			start: 0,
@@ -39,12 +39,12 @@ describe('node_buffer', () => {
 	});
 
 	test('push should correctly track the parent and sibling relationships', () => {
-		const buffer = new node_buffer(); // 0
-		const id1 = buffer.push(node_kind.text, 0, 0);
-		const id2 = buffer.push(node_kind.text, 1, 0);
-		const id2_2 = buffer.push(node_kind.text, 1, id2);
-		const id3 = buffer.push(node_kind.text, 2, 0);
-		const id4 = buffer.push(node_kind.text, 3, 0);
+		const buffer = new NodeBuffer(); // 0
+		const id1 = buffer.push(NodeKind.text, 0, 0);
+		const id2 = buffer.push(NodeKind.text, 1, 0);
+		const id2_2 = buffer.push(NodeKind.text, 1, id2);
+		const id3 = buffer.push(NodeKind.text, 2, 0);
+		const id4 = buffer.push(NodeKind.text, 3, 0);
 
 		expect(buffer.get_node().children).toEqual([id1, id2, id3, id4]);
 
@@ -70,34 +70,34 @@ describe('node_buffer', () => {
 	});
 
 	test('set_end should update the position of the node at the given index', () => {
-		const buffer = new node_buffer();
-		const id1 = buffer.push(node_kind.text, 0, 0);
+		const buffer = new NodeBuffer();
+		const id1 = buffer.push(NodeKind.text, 0, 0);
 		buffer.set_end(1, 200);
 
 		expect(buffer.get_node(id1).end).toEqual(200);
 	});
 
 	test('set_parent_kind should update the parent of the node at the given index', () => {
-		const buffer = new node_buffer();
-		const id1 = buffer.push(node_kind.text, 0, 0);
+		const buffer = new NodeBuffer();
+		const id1 = buffer.push(NodeKind.text, 0, 0);
 		expect(buffer.get_node().kind).toEqual('root');
-		buffer.set_parent_kind(id1, node_kind.html);
+		buffer.set_parent_kind(id1, NodeKind.html);
 		expect(buffer.get_node().kind).toEqual('html');
 	});
 
 	test('adding a child should update the parent and sibling relationships', () => {
-		const buffer = new node_buffer(); //0
-		const id1 = buffer.push(node_kind.text, 0, 0);
-		const id2 = buffer.push(node_kind.text, 1, 0);
-		const id3 = buffer.push(node_kind.text, 2, 0);
-		const id4 = buffer.push(node_kind.text, 3, 0);
+		const buffer = new NodeBuffer(); //0
+		const id1 = buffer.push(NodeKind.text, 0, 0);
+		const id2 = buffer.push(NodeKind.text, 1, 0);
+		const id3 = buffer.push(NodeKind.text, 2, 0);
+		const id4 = buffer.push(NodeKind.text, 3, 0);
 
-		const id5 = buffer.push(node_kind.text, 4, 4);
-		const id6 = buffer.push(node_kind.text, 4, 4);
-		const id7 = buffer.push(node_kind.text, 4, 4);
-		const id8 = buffer.push(node_kind.text, 4, 4);
+		const id5 = buffer.push(NodeKind.text, 4, 4);
+		const id6 = buffer.push(NodeKind.text, 4, 4);
+		const id7 = buffer.push(NodeKind.text, 4, 4);
+		const id8 = buffer.push(NodeKind.text, 4, 4);
 
-		const id9 = buffer.push(node_kind.text, 4, 0);
+		const id9 = buffer.push(NodeKind.text, 4, 0);
 
 		expect(buffer.get_node().children).toEqual([id1, id2, id3, id4, id9]);
 		expect(buffer.get_node(id4).children).toEqual([id5, id6, id7, id8]);
@@ -105,14 +105,14 @@ describe('node_buffer', () => {
 
 	// metadata
 	test('metadata should be set and retrieved correctly', () => {
-		const buffer = new node_buffer();
-		const id1 = buffer.push(node_kind.text, 0, 0, 0, { foo: 'bar' });
+		const buffer = new NodeBuffer();
+		const id1 = buffer.push(NodeKind.text, 0, 0, 0, { foo: 'bar' });
 		expect(buffer.get_node(id1).metadata).toEqual({ foo: 'bar' });
 	});
 
 	test('extras should be set on metadata when there is a mapping', () => {
-		const buffer = new node_buffer();
-		const id1 = buffer.push(node_kind.heading, 0, 0, 1);
+		const buffer = new NodeBuffer();
+		const id1 = buffer.push(NodeKind.heading, 0, 0, 1);
 
 		expect(buffer.get_node(id1).metadata).toEqual({ depth: 1 });
 
@@ -121,15 +121,15 @@ describe('node_buffer', () => {
 	});
 
 	test('value_start should be set and retrieved correctly', () => {
-		const buffer = new node_buffer();
-		const id1 = buffer.push(node_kind.text, 0, 0, 0, { foo: 'bar' });
+		const buffer = new NodeBuffer();
+		const id1 = buffer.push(NodeKind.text, 0, 0, 0, { foo: 'bar' });
 		buffer.set_value(id1, 1, 2);
 		expect(buffer.get_node(id1).value).toEqual([1, 2]);
 	});
 
 	test('nodes can be pending', () => {
-		const buffer = new node_buffer();
-		const id1 = buffer.push_pending(node_kind.emphasis, 0, 0, 0, {
+		const buffer = new NodeBuffer();
+		const id1 = buffer.push_pending(NodeKind.emphasis, 0, 0, 0, {
 			foo: 'bar',
 		});
 
@@ -139,8 +139,8 @@ describe('node_buffer', () => {
 	});
 
 	test('nodes can be committed', () => {
-		const buffer = new node_buffer();
-		const id1 = buffer.push_pending(node_kind.emphasis, 0, 0, 0, {
+		const buffer = new NodeBuffer();
+		const id1 = buffer.push_pending(NodeKind.emphasis, 0, 0, 0, {
 			foo: 'bar',
 		});
 
@@ -149,9 +149,9 @@ describe('node_buffer', () => {
 	});
 
 	test('pending nodes are the same as any other node', () => {
-		const buffer = new node_buffer();
-		const id1 = buffer.push_pending(node_kind.emphasis, 0, 0);
-		const id2 = buffer.push(node_kind.text, 0, id1);
+		const buffer = new NodeBuffer();
+		const id1 = buffer.push_pending(NodeKind.emphasis, 0, 0);
+		const id2 = buffer.push(NodeKind.text, 0, id1);
 
 		expect(buffer.get_node(id1).kind).toEqual('emphasis');
 		expect(buffer.get_node(id2).kind).toEqual('text');
@@ -160,11 +160,11 @@ describe('node_buffer', () => {
 	});
 
 	test('pending nodes can be repaired', () => {
-		const buffer = new node_buffer();
+		const buffer = new NodeBuffer();
 		// Wrap in paragraph so inline repair path fires (not block-level)
-		const para = buffer.push(node_kind.paragraph, 0, 0);
-		const id1 = buffer.push_pending(node_kind.emphasis, 0, para);
-		const id2 = buffer.push(node_kind.text, 0, id1);
+		const para = buffer.push(NodeKind.paragraph, 0, 0);
+		const id1 = buffer.push_pending(NodeKind.emphasis, 0, para);
+		const id2 = buffer.push(NodeKind.text, 0, id1);
 		expect(buffer.get_node(id2).parent).toEqual(id1);
 
 		buffer.repair();
@@ -177,12 +177,12 @@ describe('node_buffer', () => {
 	});
 
 	test('pending nodes with multiple children stay separate after repair', () => {
-		const buffer = new node_buffer();
+		const buffer = new NodeBuffer();
 		// Wrap in paragraph so inline repair path fires (not block-level)
-		const para = buffer.push(node_kind.paragraph, 0, 0);
-		const id1 = buffer.push_pending(node_kind.emphasis, 0, para);
-		const id2 = buffer.push(node_kind.text, 1, id1);
-		const id3 = buffer.push(node_kind.text, 3, id1);
+		const para = buffer.push(NodeKind.paragraph, 0, 0);
+		const id1 = buffer.push_pending(NodeKind.emphasis, 0, para);
+		const id2 = buffer.push(NodeKind.text, 1, id1);
+		const id3 = buffer.push(NodeKind.text, 3, id1);
 
 		buffer.repair();
 
@@ -196,13 +196,13 @@ describe('node_buffer', () => {
 
 	test('grow should preserve all node data when capacity is exceeded', () => {
 		// Start with a tiny capacity so we force multiple grows
-		const buffer = new node_buffer(2);
+		const buffer = new NodeBuffer(2);
 
 		// Push enough nodes to trigger at least one grow
 		// capacity starts at 2 (next power of two), root takes slot 0
 		const ids: number[] = [];
 		for (let i = 0; i < 10; i++) {
-			ids.push(buffer.push(node_kind.text, i * 10, 0));
+			ids.push(buffer.push(NodeKind.text, i * 10, 0));
 		}
 
 		expect(buffer.size).toBe(11); // 10 + root
@@ -227,13 +227,13 @@ describe('node_buffer', () => {
 	});
 
 	test('grow should preserve parent-child relationships', () => {
-		const buffer = new node_buffer(2);
+		const buffer = new NodeBuffer(2);
 
 		// Create a parent with children, forcing grow in the middle
-		const parent = buffer.push(node_kind.paragraph, 0, 0);
+		const parent = buffer.push(NodeKind.paragraph, 0, 0);
 		const children: number[] = [];
 		for (let i = 0; i < 8; i++) {
-			children.push(buffer.push(node_kind.text, i, parent));
+			children.push(buffer.push(NodeKind.text, i, parent));
 		}
 
 		// Parent should know all its children
@@ -246,16 +246,16 @@ describe('node_buffer', () => {
 	});
 
 	test('grow should preserve metadata', () => {
-		const buffer = new node_buffer(2);
+		const buffer = new NodeBuffer(2);
 
-		const id1 = buffer.push(node_kind.code_fence, 0, 0, 0, {
+		const id1 = buffer.push(NodeKind.code_fence, 0, 0, 0, {
 			info_start: 3,
 			info_end: 5,
 		});
 
 		// Push enough to trigger grow
 		for (let i = 0; i < 8; i++) {
-			buffer.push(node_kind.text, i, 0);
+			buffer.push(NodeKind.text, i, 0);
 		}
 
 		// Metadata should survive the grow
@@ -264,15 +264,15 @@ describe('node_buffer', () => {
 	});
 
 	test('grow should preserve pending node state', () => {
-		const buffer = new node_buffer(2);
+		const buffer = new NodeBuffer(2);
 
-		const pending = buffer.push_pending(node_kind.emphasis, 0, 0);
-		const committed = buffer.push_pending(node_kind.strong_emphasis, 5, 0);
+		const pending = buffer.push_pending(NodeKind.emphasis, 0, 0);
+		const committed = buffer.push_pending(NodeKind.strong_emphasis, 5, 0);
 		buffer.commit_node(committed);
 
 		// Push enough to trigger grow
 		for (let i = 0; i < 8; i++) {
-			buffer.push(node_kind.text, i, 0);
+			buffer.push(NodeKind.text, i, 0);
 		}
 
 		// Pending state should survive
@@ -280,44 +280,44 @@ describe('node_buffer', () => {
 	});
 
 	test('grow should preserve value ranges', () => {
-		const buffer = new node_buffer(2);
+		const buffer = new NodeBuffer(2);
 
-		const id1 = buffer.push(node_kind.code_span, 0, 0);
+		const id1 = buffer.push(NodeKind.code_span, 0, 0);
 		buffer.set_value(id1, 1, 4);
 
 		// Push enough to trigger grow
 		for (let i = 0; i < 8; i++) {
-			buffer.push(node_kind.text, i, 0);
+			buffer.push(NodeKind.text, i, 0);
 		}
 
 		expect(buffer.get_node(id1).value).toEqual([1, 4]);
 	});
 
 	test('grow should preserve extras', () => {
-		const buffer = new node_buffer(2);
+		const buffer = new NodeBuffer(2);
 
-		const id1 = buffer.push(node_kind.heading, 0, 0, 3);
+		const id1 = buffer.push(NodeKind.heading, 0, 0, 3);
 
 		// Push enough to trigger grow
 		for (let i = 0; i < 8; i++) {
-			buffer.push(node_kind.text, i, 0);
+			buffer.push(NodeKind.text, i, 0);
 		}
 
 		expect(buffer.get_node(id1).metadata).toEqual({ depth: 3 });
 	});
 
 	test('pending nodes can be repaired,  deeply nested', () => {
-		const buffer = new node_buffer();
+		const buffer = new NodeBuffer();
 		// Wrap in paragraph so inline repair path fires (not block-level)
-		const para = buffer.push(node_kind.paragraph, 0, 0);
-		const id1 = buffer.push_pending(node_kind.emphasis, 0, para);
-		const id2 = buffer.push_pending(node_kind.emphasis, 0, id1);
-		const id3 = buffer.push_pending(node_kind.emphasis, 0, id2);
-		const id4 = buffer.push_pending(node_kind.emphasis, 0, id3);
-		const id5 = buffer.push_pending(node_kind.emphasis, 0, id4);
-		const id6 = buffer.push_pending(node_kind.emphasis, 0, id5);
-		const id7 = buffer.push_pending(node_kind.emphasis, 0, id6);
-		const id8 = buffer.push_pending(node_kind.emphasis, 0, id7);
+		const para = buffer.push(NodeKind.paragraph, 0, 0);
+		const id1 = buffer.push_pending(NodeKind.emphasis, 0, para);
+		const id2 = buffer.push_pending(NodeKind.emphasis, 0, id1);
+		const id3 = buffer.push_pending(NodeKind.emphasis, 0, id2);
+		const id4 = buffer.push_pending(NodeKind.emphasis, 0, id3);
+		const id5 = buffer.push_pending(NodeKind.emphasis, 0, id4);
+		const id6 = buffer.push_pending(NodeKind.emphasis, 0, id5);
+		const id7 = buffer.push_pending(NodeKind.emphasis, 0, id6);
+		const id8 = buffer.push_pending(NodeKind.emphasis, 0, id7);
 		expect(buffer.get_node(id2).parent).toEqual(id1);
 
 		buffer.repair();

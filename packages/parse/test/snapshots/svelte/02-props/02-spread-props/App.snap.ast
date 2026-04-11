@@ -2,4 +2,4 @@ root
   html tag="script"
   line_break
   line_break
-  html tag="Info" ...pkg="...pkg" self_closing=true
+  html tag="Info" ...pkg=[object Object] self_closing=true

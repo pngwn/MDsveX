@@ -4,7 +4,7 @@ root
   line_break
   html tag="label"
     line_break
-    html tag="input" type="checkbox" bind:checked="visible"
+    html tag="input" type="checkbox" bind:checked=[object Object]
       line_break
       paragraph
         text "visible"

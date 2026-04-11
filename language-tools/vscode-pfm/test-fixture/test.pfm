@@ -1,0 +1,16 @@
+---
+title: Hello World
+count: 42
+draft: true
+---
+
+<script lang="ts">
+import Test from "./Test.svelte";
+import { lang, clamp } from './const';
+</script>
+
+# { title} {clamp(count, 0, 100)}
+ 
+ {count + 1} 
+
+<Test value={count}    label={1}  /> 

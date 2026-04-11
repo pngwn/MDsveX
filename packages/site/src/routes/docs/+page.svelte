@@ -388,7 +388,7 @@ let menu_show = false;
 
 		article {
 			padding: 0px;
-			/* display: block;÷ */
+			/* display: block; */
 		}
 
 		.container {

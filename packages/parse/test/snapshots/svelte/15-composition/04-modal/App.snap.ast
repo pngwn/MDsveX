@@ -2,7 +2,7 @@ root
   html tag="script"
   line_break
   line_break
-  html tag="button" on:click="() => (showModal = true)"
+  html tag="button" on:click=[object Object]
     paragraph
       text "show modal "
   line_break
@@ -11,7 +11,7 @@ root
     mustache "#if showModal"
     soft_break
     text "	"
-    text tag="Modal" on:close="() => (showModal = false)" "<Modal on:close={() => (showModal = false)}>"
+    text tag="Modal" on:close=[object Object] "<Modal on:close={() => (showModal = false)}>"
     soft_break
     text "		"
     html tag="h2" slot="header"

@@ -27,5 +27,5 @@ root
       text "duration:"
       soft_break
       text "	"
-      html tag="input" type="range" bind:value="duration" min="1" max="20000"
+      html tag="input" type="range" bind:value=[object Object] min="1" max="20000"
         soft_break

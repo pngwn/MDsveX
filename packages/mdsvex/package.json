@@ -21,7 +21,7 @@
 		"url": "git+https://github.com/pngwn/MDsveX.git"
 	},
 	"scripts": {
-	"build": "vite build --config vite.config.build.ts",
+		"build": "vite build --config vite.config.build.ts",
 		"test": "vitest . **/*.spec.ts"
 	},
 	"files": [
@@ -38,7 +38,16 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"dependencies": {
-  	"@mdsvex/parse": "workspace:*",
-  	"@mdsvex/render": "workspace:*"
+		"@ampproject/remapping": "^2.3.0",
+		"@mdsvex/parse": "workspace:*",
+		"@mdsvex/render": "workspace:*"
+	},
+	"peerDependencies": {
+		"vite": ">=5.0.0"
+	},
+	"peerDependenciesMeta": {
+		"vite": {
+			"optional": true
+		}
 	}
 }

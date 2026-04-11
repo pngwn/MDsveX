@@ -1,4 +1,4 @@
-import { type node_buffer, node_kind, kind_to_string, string_to_kind } from "./utils";
+import { type NodeBuffer, NodeKind, kind_to_string, string_to_kind } from "./utils";
 import { type UndoLog, ATTR_DID_NOT_EXIST } from "./undo_log";
 
 const NONE = 0xffffffff;
@@ -51,13 +51,13 @@ export class WireTextSource implements TextSource {
  */
 export class ViewCache {
 	private views: Map<number, NodeView> = new Map();
-	private buf: node_buffer;
+	private buf: NodeBuffer;
 	private text_source: TextSource;
 	private undo: UndoLog;
 	private handler_node: number;
 
 	constructor(
-		buf: node_buffer,
+		buf: NodeBuffer,
 		text_source: TextSource,
 		undo: UndoLog,
 		handler_node: number,
@@ -111,7 +111,7 @@ export class NodeView {
 	/** @internal buffer index of this node. */
 	readonly _index: number;
 	/** @internal the backing soa buffer. */
-	private _buf: node_buffer;
+	private _buf: NodeBuffer;
 	/** @internal text resolution strategy. */
 	private _text_source: TextSource;
 	/** @internal identity cache for this dispatch. */
@@ -125,7 +125,7 @@ export class NodeView {
 
 	constructor(
 		index: number,
-		buf: node_buffer,
+		buf: NodeBuffer,
 		text_source: TextSource,
 		cache: ViewCache,
 		undo: UndoLog,
@@ -141,7 +141,7 @@ export class NodeView {
 
 
 	get type(): string {
-		return kind_to_string(this._buf._kinds[this._index] as node_kind);
+		return kind_to_string(this._buf._kinds[this._index] as NodeKind);
 	}
 
 	set type(value: string) {
@@ -157,11 +157,11 @@ export class NodeView {
 		return this._cache.get(this._buf._parents[this._index]);
 	}
 
-	get firstChild(): NodeView | null {
+	get first_child(): NodeView | null {
 		return this._cache.get(this._buf._children_starts[this._index]);
 	}
 
-	get lastChild(): NodeView | null {
+	get last_child(): NodeView | null {
 		return this._cache.get(this._buf._children_ends[this._index]);
 	}
 
@@ -184,16 +184,16 @@ export class NodeView {
 	 * flattened text of all descendants.
 	 * only guaranteed complete in the close callback.
 	 */
-	get textContent(): string {
+	get text_content(): string {
 		return this._collect_text(this._index);
 	}
 
 	private _collect_text(idx: number): string {
 		const buf = this._buf;
-		const kind = buf._kinds[idx] as node_kind;
+		const kind = buf._kinds[idx] as NodeKind;
 
 		// leaf text node
-		if (kind === node_kind.text) {
+		if (kind === NodeKind.text) {
 			const s = this._text_source.get_string(idx);
 			if (s !== undefined) return s;
 			const vs = buf._value_starts[idx];
@@ -204,11 +204,11 @@ export class NodeView {
 
 		// content-leaf nodes: text stored as value range or string on the node itself.
 		// heading is NOT a content-leaf here: in wire mode its text is in
-		// child text nodes, and after wrapInner children may be nested deeper.
+		// child text nodes, and after wrap_inner children may be nested deeper.
 		if (
-			kind === node_kind.code_fence ||
-			kind === node_kind.code_span ||
-			kind === node_kind.html_comment
+			kind === NodeKind.code_fence ||
+			kind === NodeKind.code_span ||
+			kind === NodeKind.html_comment
 		) {
 			const s = this._text_source.get_string(idx);
 			if (s !== undefined) return s;
@@ -220,7 +220,7 @@ export class NodeView {
 
 		// heading: try value range first (batch mode), fall through to
 		// child walk if no value range is set (wire mode).
-		if (kind === node_kind.heading) {
+		if (kind === NodeKind.heading) {
 			const s = this._text_source.get_string(idx);
 			if (s !== undefined) return s;
 			const vs = buf._value_starts[idx];
@@ -244,14 +244,14 @@ export class NodeView {
 
 	/** heading depth (1-6). only meaningful when type === 'heading'. */
 	get depth(): number | undefined {
-		if (this._buf._kinds[this._index] !== node_kind.heading) return undefined;
+		if (this._buf._kinds[this._index] !== NodeKind.heading) return undefined;
 		return this._buf._extras[this._index];
 	}
 
 	/** code block language/info string. */
 	get lang(): string | undefined {
 		const kind = this._buf._kinds[this._index];
-		if (kind !== node_kind.code_fence) return undefined;
+		if (kind !== NodeKind.code_fence) return undefined;
 		const meta = this._buf.metadata_at(this._index);
 		if (!meta) return undefined;
 		if (meta.info) return meta.info as string;
@@ -362,7 +362,7 @@ export class NodeView {
 	 * all current children become children of the new wrapper.
 	 * returns a view for the new wrapper node.
 	 */
-	wrapInner(type: string, attrs?: Record<string, any>): NodeView {
+	wrap_inner(type: string, attrs?: Record<string, any>): NodeView {
 		const kind_num = string_to_kind(type);
 		if (kind_num === undefined)
 			throw new Error(`Unknown node type: ${type}`);

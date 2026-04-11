@@ -2,7 +2,7 @@ root
   html tag="script"
   line_break
   line_break
-  html tag="button" on:click="handleClick"
+  html tag="button" on:click=[object Object]
     line_break
     paragraph
       text "Remove first thing"
@@ -21,7 +21,7 @@ root
         mustache "#each things as thing (thing.id)"
         soft_break
         text "			"
-        html tag="Thing" current="thing.color" self_closing=true
+        html tag="Thing" current=[object Object] self_closing=true
         soft_break
         text "		"
         mustache "/each"
@@ -39,7 +39,7 @@ root
         mustache "#each things as thing"
         soft_break
         text "			"
-        html tag="Thing" current="thing.color" self_closing=true
+        html tag="Thing" current=[object Object] self_closing=true
         soft_break
         text "		"
         mustache "/each"

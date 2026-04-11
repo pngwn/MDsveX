@@ -19,7 +19,7 @@ root
       html tag="figure"
         soft_break
         text "			"
-        html tag="img" src="photo.thumbnailUrl" alt="photo.title"
+        html tag="img" src=[object Object] alt=[object Object]
           soft_break
           text "			"
           html tag="figcaption"

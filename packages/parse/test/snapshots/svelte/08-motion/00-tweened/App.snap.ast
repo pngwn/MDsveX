@@ -5,7 +5,7 @@ root
   html tag="style"
   line_break
   line_break
-  html tag="progress" value="$progress"
+  html tag="progress" value=[object Object]
   line_break
   line_break
   html tag="button" on:click="{() => progress.set(0)}"

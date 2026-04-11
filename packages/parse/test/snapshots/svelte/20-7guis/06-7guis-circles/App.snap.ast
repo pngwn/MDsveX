@@ -20,13 +20,13 @@ root
     line_break
   line_break
   line_break
-  html tag="svg" on:click="handleClick"
+  html tag="svg" on:click=[object Object]
     line_break
     paragraph
       mustache "#each circles as circle"
       soft_break
       text "		"
-      html tag="circle" cx="circle.cx" cy="circle.cy" r="circle.r" on:click="{event => select(circle, event)}" on:contextmenu|stopPropagation|preventDefault="{() => {\n				adjusting = !adjusting;\n				if (adjusting) selected = circle;\n			}}" fill="{circle === selected ? '#ccc': 'white'}" self_closing=true
+      html tag="circle" cx=[object Object] cy=[object Object] r=[object Object] on:click="{event => select(circle, event)}" on:contextmenu|stopPropagation|preventDefault="{() => {\n				adjusting = !adjusting;\n				if (adjusting) selected = circle;\n			}}" fill="{circle === selected ? '#ccc': 'white'}" self_closing=true
       soft_break
       text "	"
       mustache "/each"
@@ -47,7 +47,7 @@ root
         mustache "selected.cy"
       soft_break
       text "		"
-      html tag="input" type="range" value="selected.r" on:input="adjust"
+      html tag="input" type="range" value=[object Object] on:input=[object Object]
         soft_break
         text "	"
     soft_break

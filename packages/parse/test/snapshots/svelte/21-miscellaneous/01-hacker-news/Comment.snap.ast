@@ -24,7 +24,7 @@ root
           mustache "#each comment.comments as child"
           soft_break
           text "			"
-          html tag="svelte:self" comment="child" self_closing=true
+          html tag="svelte:self" comment=[object Object] self_closing=true
           soft_break
           text "		"
           mustache "/each"

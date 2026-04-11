@@ -19,6 +19,6 @@ root
         text "npm"
       soft_break
       text "	and "
-      html tag="a" href="website"
+      html tag="a" href=[object Object]
         text "learn more here"
       soft_break

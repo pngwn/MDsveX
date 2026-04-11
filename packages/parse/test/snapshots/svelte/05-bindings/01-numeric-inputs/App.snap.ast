@@ -4,18 +4,18 @@ root
   line_break
   html tag="label"
     line_break
-    html tag="input" type="number" bind:value="a" min="0" max="10"
+    html tag="input" type="number" bind:value=[object Object] min="0" max="10"
       line_break
-      html tag="input" type="range" bind:value="a" min="0" max="10"
+      html tag="input" type="range" bind:value=[object Object] min="0" max="10"
         line_break
         paragraph
   line_break
   line_break
   html tag="label"
     line_break
-    html tag="input" type="number" bind:value="b" min="0" max="10"
+    html tag="input" type="number" bind:value=[object Object] min="0" max="10"
       line_break
-      html tag="input" type="range" bind:value="b" min="0" max="10"
+      html tag="input" type="range" bind:value=[object Object] min="0" max="10"
         line_break
         paragraph
   line_break

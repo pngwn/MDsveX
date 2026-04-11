@@ -2,7 +2,7 @@ root
   html tag="script"
   line_break
   line_break
-  html tag="svelte:window" bind:scrollY="y" self_closing=true
+  html tag="svelte:window" bind:scrollY=[object Object] self_closing=true
   line_break
   line_break
   html tag="a" class="parallax-container" href="https://www.firewatchgame.com"

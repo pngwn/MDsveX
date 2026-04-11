@@ -2,7 +2,7 @@ root
   html tag="script"
   line_break
   line_break
-  html tag="button" on:click|once="handleClick"
+  html tag="button" on:click|once=[object Object]
     line_break
     paragraph
       text "Click me"

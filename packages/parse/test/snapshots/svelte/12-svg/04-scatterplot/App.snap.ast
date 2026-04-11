@@ -12,11 +12,11 @@ root
         text "Anscombe's quartet"
     line_break
     line_break
-    html tag="Scatterplot" points="data.a" self_closing=true
+    html tag="Scatterplot" points=[object Object] self_closing=true
     line_break
-    html tag="Scatterplot" points="data.b" self_closing=true
+    html tag="Scatterplot" points=[object Object] self_closing=true
     line_break
-    html tag="Scatterplot" points="data.c" self_closing=true
+    html tag="Scatterplot" points=[object Object] self_closing=true
     line_break
-    html tag="Scatterplot" points="data.d" self_closing=true
+    html tag="Scatterplot" points=[object Object] self_closing=true
     line_break

@@ -10,7 +10,7 @@ root
   line_break
   html_comment " the text will flash red whenever\n		the `todo` object changes "
   line_break
-  html tag="div" bind:this="div" on:click=true
+  html tag="div" bind:this=[object Object] on:click=true
     line_break
     paragraph
       mustache "todo.done ? '👍': ''"

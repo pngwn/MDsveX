@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { PFMParser, parse_markdown_svelte, node_kind } from '../src/main';
+import { PFMParser, parse_markdown_svelte, NodeKind } from '../src/main';
 import { TreeBuilder } from '../src/tree_builder';
 import type { Emitter } from '../src/opcodes';
 import { kind_to_string } from '../src/utils';
-import type { node_buffer } from '../src/utils';
+import type { NodeBuffer } from '../src/utils';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -47,8 +47,8 @@ class OpRecorder implements Emitter {
 }
 
 function tree_diff(
-	a: node_buffer,
-	b: node_buffer,
+	a: NodeBuffer,
+	b: NodeBuffer,
 	_source: string,
 	a_idx = 0,
 	b_idx = 0,
@@ -83,11 +83,11 @@ function tree_diff(
 	return diffs;
 }
 
-function parse_batch(source: string): node_buffer {
+function parse_batch(source: string): NodeBuffer {
 	return parse_markdown_svelte(source).nodes;
 }
 
-function parse_incremental(source: string, chunk_size: number): node_buffer {
+function parse_incremental(source: string, chunk_size: number): NodeBuffer {
 	const tree = new TreeBuilder(source.length);
 	const parser = new PFMParser(tree);
 	parser.init();

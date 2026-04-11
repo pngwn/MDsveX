@@ -7,7 +7,7 @@ import { describe, expect, test } from 'vitest';
 import { get_all_child_kinds, get_child_range, get_content } from './utils';
 
 import { parse_markdown_svelte } from '../src/main';
-import { node_kind } from '../src/utils';
+import { NodeKind } from '../src/utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(
@@ -147,7 +147,7 @@ describe('emphasis and strong emphasis', () => {
 	test('pfm example 354', () => {
 		const input = load_fixture('354');
 		const { nodes } = parse_markdown_svelte(input);
-		const p_kinds = nodes.get_kinds(node_kind.paragraph);
+		const p_kinds = nodes.get_kinds(NodeKind.paragraph);
 		const [p1, p2, p3] = p_kinds;
 		const paragraph_one = nodes.get_node(p1);
 		const paragraph_one_content = get_content(nodes, p1, input);

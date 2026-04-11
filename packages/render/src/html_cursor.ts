@@ -1,7 +1,7 @@
 /**
  * cursor-based pfm html renderer
  *
- * renders html from a cursor over soa node_buffer.
+ * renders html from a cursor over soa NodeBuffer.
  * zero per-node allocations, the cursor walks typed arrays directly,
  * text is lazily sliced from source only when needed.
  *
@@ -12,7 +12,11 @@
  */
 
 import { Cursor } from "@mdsvex/parse/cursor";
-import type { node_buffer } from "@mdsvex/parse/utils";
+import type { NodeBuffer } from "@mdsvex/parse/utils";
+import { CI_TEXT, CI_CODE, CI_SVELTE, CI_STRUCTURE } from "./mappings";
+import type { Mapping, CodeInformation, MappingData } from "./mappings";
+
+export type { Mapping, CodeInformation, MappingData } from "./mappings";
 
 //  html escaping
 
@@ -27,43 +31,97 @@ const ESCAPE_TABLE: Record<string, string> = {
 function escape_replace(ch: string): string {
 	return ESCAPE_TABLE[ch];
 }
-function escape(text: string): string {
+export function escape(text: string): string {
 	if (!ESCAPE_TEST.test(text)) return text;
 	return text.replace(ESCAPE_MATCH, escape_replace);
 }
 
 //  kind constants
 
-const K_ROOT = 0;
-const K_TEXT = 1;
-const K_HTML = 2;
-const K_HEADING = 3;
-const K_CODE_FENCE = 5;
-const K_LINE_BREAK = 6;
-const K_PARAGRAPH = 7;
-const K_CODE_SPAN = 8;
-const K_EMPHASIS = 9;
-const K_STRONG = 10;
-const K_THEMATIC_BREAK = 11;
-const K_LINK = 12;
-const K_IMAGE = 13;
-const K_BLOCK_QUOTE = 14;
-const K_LIST = 15;
-const K_LIST_ITEM = 16;
-const K_HARD_BREAK = 17;
-const K_SOFT_BREAK = 18;
-const K_STRIKETHROUGH = 19;
-const K_SUPERSCRIPT = 20;
-const K_SUBSCRIPT = 21;
-const K_TABLE = 22;
-const K_TABLE_HEADER = 23;
-const K_TABLE_ROW = 24;
-const K_TABLE_CELL = 25;
-const K_HTML_COMMENT = 26;
-const K_SVELTE_TAG = 27;
-const K_SVELTE_BLOCK = 28;
-const K_SVELTE_BRANCH = 29;
-const K_MUSTACHE = 4;
+export const K_ROOT = 0;
+export const K_TEXT = 1;
+export const K_HTML = 2;
+export const K_HEADING = 3;
+export const K_CODE_FENCE = 5;
+export const K_LINE_BREAK = 6;
+export const K_PARAGRAPH = 7;
+export const K_CODE_SPAN = 8;
+export const K_EMPHASIS = 9;
+export const K_STRONG = 10;
+export const K_THEMATIC_BREAK = 11;
+export const K_LINK = 12;
+export const K_IMAGE = 13;
+export const K_BLOCK_QUOTE = 14;
+export const K_LIST = 15;
+export const K_LIST_ITEM = 16;
+export const K_HARD_BREAK = 17;
+export const K_SOFT_BREAK = 18;
+export const K_STRIKETHROUGH = 19;
+export const K_SUPERSCRIPT = 20;
+export const K_SUBSCRIPT = 21;
+export const K_TABLE = 22;
+export const K_TABLE_HEADER = 23;
+export const K_TABLE_ROW = 24;
+export const K_TABLE_CELL = 25;
+export const K_HTML_COMMENT = 26;
+export const K_SVELTE_TAG = 27;
+export const K_SVELTE_BLOCK = 28;
+export const K_SVELTE_BRANCH = 29;
+export const K_MUSTACHE = 4;
+export const K_FRONTMATTER = 33;
+export const K_IMPORT_STATEMENT = 34;
+
+export const NONE = 0xffffffff;
+
+//  pending mapping entry (resolved to Mapping<MappingData> after render)
+
+export interface PendingMapping {
+	out_idx: number;
+	out_count: number;
+	source_offset: number;
+	source_length: number;
+	data: MappingData;
+}
+
+/** emit a mapping entry. skips if generated range is empty. */
+export function _emit(
+	entries: PendingMapping[],
+	out_start: number,
+	out_end: number,
+	src_start: number,
+	src_end: number,
+	data: MappingData,
+): void {
+	if (out_end > out_start && src_start !== NONE) {
+		entries.push({
+			out_idx: out_start,
+			out_count: out_end - out_start,
+			source_offset: src_start,
+			source_length: src_end > src_start ? src_end - src_start : 0,
+			data,
+		});
+	}
+}
+
+/** emit node span + open_syntax + close_syntax for a rendered node. */
+function _spans(
+	entries: PendingMapping[],
+	pre: number,
+	after_open: number,
+	before_close: number,
+	post: number,
+	c: Cursor,
+	ci: CodeInformation,
+): void {
+	const idx = c.index;
+	const s = c.start, e = c.end, vs = c.value_start, ve = c.value_end;
+	// value range is meaningful when ve > vs (same check as Cursor.text()).
+	// Uint32Array defaults to 0 for unset slots, so ve !== NONE is not enough.
+	const has_value = ve > vs;
+	_emit(entries, pre, post, s, e, { ...ci, nodeIndex: idx, role: "node" });
+	_emit(entries, pre, after_open, s, has_value ? vs : s, { ...CI_STRUCTURE, nodeIndex: idx, role: "open_syntax" });
+	_emit(entries, before_close, post, has_value ? ve : e, e, { ...CI_STRUCTURE, nodeIndex: idx, role: "close_syntax" });
+}
 
 //  precomputed tag strings
 
@@ -120,7 +178,11 @@ function _attrs(c: Cursor, out: string[], skip?: Set<string>): void {
 		if (val === true) {
 			out.push(" ", key);
 		} else if (val !== false && val != null) {
-			out.push(' ', key, '="', escape(String(val)), '"');
+			if (typeof val === "object" && (val as any).type === "expression") {
+				out.push(" ", key, "={", (val as any).value, "}");
+			} else {
+				out.push(' ', key, '="', escape(String(val)), '"');
+			}
 		}
 	}
 }
@@ -131,86 +193,122 @@ const IMAGE_HANDLED = new Set(["title"]);
 //  renderer
 
 /** render children of the current cursor position, collecting escaped text and recursive node output. */
-function _children(c: Cursor, out: string[]): void {
-	if (!c.gotoFirstChild()) return;
+export function _children(c: Cursor, out: string[], entries?: PendingMapping[]): void {
+	if (!c.goto_first_child()) return;
 	do {
 		if (c.kind === K_TEXT) {
+			const vs = c.value_start, ve = c.value_end;
+			if (entries && vs !== NONE && ve > vs) {
+				_emit(entries, out.length, out.length + 1, vs, ve,
+					{ ...CI_TEXT, nodeIndex: c.index, role: "content" });
+			}
 			out.push(escape(c.text()));
 		} else {
-			_node(c, out);
+			_node(c, out, entries);
 		}
-	} while (c.gotoNextSibling());
-	c.gotoParent();
+	} while (c.goto_next_sibling());
+	c.goto_parent();
 }
 
 /** collect raw text from child text nodes (for image alt, link text fallback, etc.). */
-function _childrenRaw(c: Cursor): string {
-	if (!c.gotoFirstChild()) return "";
+function _children_raw(c: Cursor): string {
+	if (!c.goto_first_child()) return "";
 	let text = "";
 	do {
 		if (c.kind === K_TEXT) {
 			text += c.text();
 		} else {
-			text += _childrenRaw(c);
+			text += _children_raw(c);
 		}
-	} while (c.gotoNextSibling());
-	c.gotoParent();
+	} while (c.goto_next_sibling());
+	c.goto_parent();
 	return text;
 }
 
 /** render a single node at the current cursor position. */
-function _node(c: Cursor, out: string[]): void {
+export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): void {
 	switch (c.kind) {
 		case K_ROOT:
-			_children(c, out);
+			_children(c, out, entries);
 			break;
 
-		case K_HEADING:
+		case K_HEADING: {
+			const pre = out.length;
 			out.push("<h", String(c.extra));
 			_attrs(c, out);
 			out.push(">");
-			_children(c, out);
+			const ao = out.length;
+			_children(c, out, entries);
+			const bc = out.length;
 			out.push(H_CLOSE[c.extra]);
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
 			break;
+		}
 
 		case K_PARAGRAPH:
 			// pending paragraphs inside list_items are speculative tight-list
 			// wrappers, render their children transparently until the list
 			// closes (commit keeps the wrapper, revoke drops it).
 			if (c.pending && c.parent_kind === K_LIST_ITEM) {
-				_children(c, out);
+				_children(c, out, entries);
 			} else {
+				const pre = out.length;
 				out.push("<p");
 				_attrs(c, out);
 				out.push(">");
-				_children(c, out);
+				const ao = out.length;
+				_children(c, out, entries);
+				const bc = out.length;
 				out.push("</p>");
+				if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
 			}
 			break;
 
-		case K_EMPHASIS:
+		case K_EMPHASIS: {
+			const pre = out.length;
 			out.push("<em");
 			_attrs(c, out);
 			out.push(">");
-			_children(c, out);
+			const ao = out.length;
+			_children(c, out, entries);
+			const bc = out.length;
 			out.push("</em>");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
 			break;
+		}
 
-		case K_STRONG:
+		case K_STRONG: {
+			const pre = out.length;
 			out.push("<strong");
 			_attrs(c, out);
 			out.push(">");
-			_children(c, out);
+			const ao = out.length;
+			_children(c, out, entries);
+			const bc = out.length;
 			out.push("</strong>");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
 			break;
+		}
 
-		case K_CODE_SPAN:
+		case K_CODE_SPAN: {
+			const pre = out.length;
 			out.push("<code");
 			_attrs(c, out);
-			out.push(">", escape(c.text()).replace(/\n/g, " "), "</code>");
+			out.push(">");
+			const ao = out.length;
+			if (entries) {
+				_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
+					{ ...CI_CODE, nodeIndex: c.index, role: "content" });
+			}
+			out.push(escape(c.text()).replace(/\n/g, " "));
+			const bc = out.length;
+			out.push("</code>");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_CODE);
 			break;
+		}
 
 		case K_CODE_FENCE: {
+			const pre = out.length;
 			const meta = c.meta();
 			// wire path: resolved 'info' string. treebuilder path: info_start/info_end byte offsets.
 			let info = meta?.info as string | undefined;
@@ -223,42 +321,63 @@ function _node(c: Cursor, out: string[]): void {
 			out.push("<pre><code");
 			if (info) out.push(' class="language-', escape(info), '"');
 			_attrs(c, out);
-			out.push(">", escape(c.text()), "</code></pre>");
+			out.push(">");
+			const ao = out.length;
+			if (entries) {
+				_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
+					{ ...CI_CODE, nodeIndex: c.index, role: "content" });
+			}
+			out.push(escape(c.text()));
+			const bc = out.length;
+			out.push("</code></pre>");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_CODE);
 			break;
 		}
 
-		case K_BLOCK_QUOTE:
+		case K_BLOCK_QUOTE: {
+			const pre = out.length;
 			out.push("<blockquote");
 			_attrs(c, out);
 			out.push(">\n");
-			_children(c, out);
+			const ao = out.length;
+			_children(c, out, entries);
+			const bc = out.length;
 			out.push("\n</blockquote>");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
 			break;
+		}
 
 		case K_LINK: {
+			const pre = out.length;
 			const meta = c.meta();
 			out.push("<a");
 			if (meta?.href) out.push(' href="', escape(meta.href as string), '"');
 			if (meta?.title) out.push(' title="', escape(meta.title as string), '"');
 			_attrs(c, out, LINK_HANDLED);
 			out.push(">");
-			_children(c, out);
+			const ao = out.length;
+			_children(c, out, entries);
+			const bc = out.length;
 			out.push("</a>");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
 			break;
 		}
 
 		case K_IMAGE: {
+			const pre = out.length;
 			const meta = c.meta();
 			out.push("<img");
 			if (meta?.src) out.push(' src="', escape(meta.src as string), '"');
-			out.push(' alt="', escape(_childrenRaw(c)), '"');
+			out.push(' alt="', escape(_children_raw(c)), '"');
 			if (meta?.title) out.push(' title="', escape(meta.title as string), '"');
 			_attrs(c, out, IMAGE_HANDLED);
 			out.push(" />");
+			if (entries) _spans(entries, pre, pre, out.length, out.length, c, CI_TEXT);
 			break;
 		}
 
 		case K_LIST: {
+			const pre = out.length;
 			const meta = c.meta();
 			const ordered = !!meta?.ordered;
 			const tag = ordered ? "ol" : "ul";
@@ -268,22 +387,33 @@ function _node(c: Cursor, out: string[]): void {
 				out.push(' start="', String(start), '"');
 			_attrs(c, out);
 			out.push(">\n");
-			_children(c, out);
+			const ao = out.length;
+			_children(c, out, entries);
+			const bc = out.length;
 			out.push("\n</", tag, ">");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_STRUCTURE);
 			break;
 		}
 
-		case K_LIST_ITEM:
+		case K_LIST_ITEM: {
+			const pre = out.length;
 			out.push("<li");
 			_attrs(c, out);
 			out.push(">");
-			_children(c, out);
+			const ao = out.length;
+			_children(c, out, entries);
+			const bc = out.length;
 			out.push("</li>\n");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
 			break;
+		}
 
-		case K_THEMATIC_BREAK:
+		case K_THEMATIC_BREAK: {
+			const pre = out.length;
 			out.push("<hr />");
+			if (entries) _spans(entries, pre, out.length, out.length, out.length, c, CI_STRUCTURE);
 			break;
+		}
 
 		case K_HARD_BREAK:
 			out.push("<br />\n");
@@ -293,166 +423,267 @@ function _node(c: Cursor, out: string[]): void {
 			out.push("\n");
 			break;
 
-		case K_STRIKETHROUGH:
+		case K_STRIKETHROUGH: {
+			const pre = out.length;
 			out.push("<del");
 			_attrs(c, out);
 			out.push(">");
-			_children(c, out);
+			const ao = out.length;
+			_children(c, out, entries);
+			const bc = out.length;
 			out.push("</del>");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
 			break;
+		}
 
-		case K_SUPERSCRIPT:
+		case K_SUPERSCRIPT: {
+			const pre = out.length;
 			out.push("<sup");
 			_attrs(c, out);
 			out.push(">");
-			_children(c, out);
+			const ao = out.length;
+			_children(c, out, entries);
+			const bc = out.length;
 			out.push("</sup>");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
 			break;
+		}
 
-		case K_SUBSCRIPT:
+		case K_SUBSCRIPT: {
+			const pre = out.length;
 			out.push("<sub");
 			_attrs(c, out);
 			out.push(">");
-			_children(c, out);
+			const ao = out.length;
+			_children(c, out, entries);
+			const bc = out.length;
 			out.push("</sub>");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
 			break;
+		}
 
 		case K_HTML: {
+			const pre = out.length;
 			const meta = c.meta();
 			const tag = meta?.tag as string;
-			const htmlAttrs = meta?.attributes as
+			const html_attrs = meta?.attributes as
 				| Record<string, string | boolean>
 				| undefined;
 
 			out.push("<", tag);
-			if (htmlAttrs) {
-				for (const k in htmlAttrs) {
-					const v = htmlAttrs[k];
+			if (html_attrs) {
+				for (const k in html_attrs) {
+					const v = html_attrs[k];
 					if (v === true) {
 						out.push(" ", k);
+					} else if (typeof v === "object" && (v as any).type === "expression") {
+						out.push(" ", k, "={", (v as any).value, "}");
 					} else {
 						out.push(" ", k, '="', escape(v as string), '"');
 					}
 				}
 			}
-			if (meta?.self_closing && HTML_VOID_ELEMENTS.has(tag.toLowerCase())) {
-				out.push(" />");
+			if (meta?.self_closing) {
+				// source passthrough: use exact source text to guarantee
+				// identity mapping. reconstruction can differ from the
+				// source (extra space before />, attribute escaping, quote
+				// style) which makes the mapping non-identity and breaks
+				// per-token precision in the PFM->Svelte->TS composition
+				// pipeline.
+				// falls back to reconstruction when source is unavailable
+				// (e.g. wire/streaming renderer with empty source).
+				const passthrough = c.end > c.start ? c.slice(c.start, c.end) : "";
+				if (passthrough) {
+					out.length = pre;
+					out.push(passthrough);
+				} else {
+					out.push(" />");
+				}
+				if (entries) {
+					_emit(entries, pre, out.length, c.start, c.end,
+						{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
+				}
 			} else {
 				out.push(">");
+				const ao = out.length;
 				// raw-text elements: parser stores content as value range on
 				// the html node itself (no child nodes). emit unescaped, the
 				// browser does not parse script/style bodies as html.
 				if (tag === "script" || tag === "style") {
+					if (entries) {
+						_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
+							{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
+					}
 					out.push(c.text());
 				} else {
-					_children(c, out);
+					_children(c, out, entries);
 				}
+				const bc = out.length;
 				out.push("</", tag, ">");
+				if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
 			}
 			break;
 		}
 
-		case K_HTML_COMMENT:
-			out.push("<!--", c.text(), "-->");
+		case K_HTML_COMMENT: {
+			const pre = out.length;
+			out.push("<!--");
+			const ao = out.length;
+			if (entries) {
+				_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
+					{ ...CI_TEXT, nodeIndex: c.index, role: "content" });
+			}
+			out.push(c.text());
+			const bc = out.length;
+			out.push("-->");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
 			break;
+		}
 
-		case K_MUSTACHE:
-			out.push("{", c.text(), "}");
+		case K_MUSTACHE: {
+			const pre = out.length;
+			out.push("{");
+			const ao = out.length;
+			if (entries) {
+				_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
+					{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
+			}
+			out.push(c.text());
+			const bc = out.length;
+			out.push("}");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_SVELTE);
 			break;
+		}
 
 		case K_SVELTE_TAG: {
+			const pre = out.length;
 			const meta = c.meta();
 			const tag = meta?.tag as string;
 			const text = c.text();
 			out.push("{@", tag);
-			if (text) out.push(" ", text);
+			if (text) out.push(" ");
+			const ao = out.length;
+			if (text && entries) {
+				_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
+					{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
+			}
+			if (text) out.push(text);
+			const bc = out.length;
 			out.push("}");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_SVELTE);
 			break;
 		}
 
 		case K_SVELTE_BLOCK: {
+			const pre = out.length;
 			// render branches; each branch handles its own opening tag
-			const blockMeta = c.meta();
-			const blockTag = blockMeta?.tag as string;
-			if (c.gotoFirstChild()) {
-				let isFirst = true;
+			const block_meta = c.meta();
+			const block_tag = block_meta?.tag as string;
+			if (c.goto_first_child()) {
+				let is_first = true;
 				do {
 					if (c.kind === K_SVELTE_BRANCH) {
-						const branchMeta = c.meta();
-						const branchTag = branchMeta?.tag as string;
-						const branchExpr = c.text();
-						if (isFirst) {
-							out.push("{#", blockTag);
-							if (branchExpr) out.push(" ", branchExpr);
+						const branch_meta = c.meta();
+						const branch_tag = branch_meta?.tag as string;
+						const branch_expr = c.text();
+						if (is_first) {
+							out.push("{#", block_tag);
+							if (branch_expr) {
+								out.push(" ");
+								if (entries) {
+									_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
+										{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
+								}
+								out.push(branch_expr);
+							}
 							out.push("}\n");
-							isFirst = false;
+							is_first = false;
 						} else {
-							out.push("{:", branchTag);
-							if (branchExpr) out.push(" ", branchExpr);
+							out.push("{:", branch_tag);
+							if (branch_expr) {
+								out.push(" ");
+								if (entries) {
+									_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
+										{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
+								}
+								out.push(branch_expr);
+							}
 							out.push("}\n");
 						}
-						_children(c, out);
+						_children(c, out, entries);
 					} else if (c.kind !== K_LINE_BREAK) {
-						_node(c, out);
+						_node(c, out, entries);
 					}
-				} while (c.gotoNextSibling());
-				c.gotoParent();
+				} while (c.goto_next_sibling());
+				c.goto_parent();
 			}
-			out.push("{/", blockTag, "}");
+			out.push("{/", block_tag, "}");
+			// node span for the whole block, use the block node (goto_parent already called)
+			if (entries) {
+				const idx = c.index;
+				const s = c.start, e = c.end;
+				_emit(entries, pre, out.length, s, e, { ...CI_SVELTE, nodeIndex: idx, role: "node" });
+			}
 			break;
 		}
 
-		case K_TABLE:
+		case K_TABLE: {
+			const pre = out.length;
 			out.push("<table");
 			_attrs(c, out);
 			out.push(">\n");
-			_tableContent(c, out);
+			const ao = out.length;
+			_table_content(c, out, entries);
+			const bc = out.length;
 			out.push("\n</table>");
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_STRUCTURE);
 			break;
+		}
 
 		case K_LINE_BREAK:
 			break;
 
 		default:
-			_children(c, out);
+			_children(c, out, entries);
 			break;
 	}
 }
 
-function _tableContent(c: Cursor, out: string[]): void {
+function _table_content(c: Cursor, out: string[], entries?: PendingMapping[]): void {
 	const meta = c.meta();
 	const alignments = (meta?.alignments as string[]) ?? [];
-	let inBody = false;
+	let in_body = false;
 
-	if (!c.gotoFirstChild()) return;
+	if (!c.goto_first_child()) return;
 	do {
 		if (c.kind === K_TABLE_HEADER) {
 			out.push("<thead>\n<tr>\n");
-			_tableCells(c, "th", alignments, out);
+			_table_cells(c, "th", alignments, out, entries);
 			out.push("</tr>\n</thead>\n");
 		} else if (c.kind === K_TABLE_ROW) {
-			if (!inBody) {
+			if (!in_body) {
 				out.push("<tbody>\n");
-				inBody = true;
+				in_body = true;
 			}
 			out.push("<tr>\n");
-			_tableCells(c, "td", alignments, out);
+			_table_cells(c, "td", alignments, out, entries);
 			out.push("</tr>\n");
 		}
-	} while (c.gotoNextSibling());
-	c.gotoParent();
+	} while (c.goto_next_sibling());
+	c.goto_parent();
 
-	if (inBody) out.push("</tbody>");
+	if (in_body) out.push("</tbody>");
 }
 
-function _tableCells(
+function _table_cells(
 	c: Cursor,
 	tag: string,
 	alignments: string[],
 	out: string[],
+	entries?: PendingMapping[],
 ): void {
 	let col = 0;
-	if (!c.gotoFirstChild()) return;
+	if (!c.goto_first_child()) return;
 	do {
 		if (c.kind === K_TABLE_CELL) {
 			const align = alignments[col];
@@ -461,18 +692,50 @@ function _tableCells(
 			} else {
 				out.push("<", tag, ">");
 			}
-			_children(c, out);
+			_children(c, out, entries);
 			out.push("</", tag, ">\n");
 			col++;
 		}
-	} while (c.gotoNextSibling());
-	c.gotoParent();
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+}
+
+//  mapping resolution
+
+/** convert pending mapping entries to volar-compatible Mapping[] using out[] offsets. */
+export function _resolve_mappings(
+	out: string[],
+	entries: PendingMapping[],
+): Mapping<MappingData>[] {
+	// build cumulative offset table
+	const offsets = new Uint32Array(out.length + 1);
+	for (let i = 0; i < out.length; i++) {
+		offsets[i + 1] = offsets[i] + out[i].length;
+	}
+
+	const mappings: Mapping<MappingData>[] = [];
+	for (let i = 0; i < entries.length; i++) {
+		const e = entries[i];
+		const gen_offset = offsets[e.out_idx];
+		const gen_length = offsets[e.out_idx + e.out_count] - gen_offset;
+		const m: Mapping<MappingData> = {
+			sourceOffsets: [e.source_offset],
+			generatedOffsets: [gen_offset],
+			lengths: [e.source_length],
+			data: e.data,
+		};
+		if (gen_length !== e.source_length) {
+			m.generatedLengths = [gen_length];
+		}
+		mappings.push(m);
+	}
+	return mappings;
 }
 
 //  internal helpers
 
 /** render the node at the current cursor position to html string. */
-function _renderBlock(cursor: Cursor): string {
+function _render_block(cursor: Cursor): string {
 	const out: string[] = [];
 	_node(cursor, out);
 	return out.join("");
@@ -520,7 +783,7 @@ export class CursorHTMLRenderer {
 		if (this.cache) this.closed = new Set();
 	}
 
-	update(buf: node_buffer, source: string): CursorBlockEntry[] {
+	update(buf: NodeBuffer, source: string): CursorBlockEntry[] {
 		// reuse or create cursor
 		if (!this.cursor) {
 			this.cursor = new Cursor(buf, source);
@@ -539,28 +802,49 @@ export class CursorHTMLRenderer {
 		}
 
 		// cached block-level rendering
-		if (!c.gotoFirstChild()) return this.blocks;
+		if (!c.goto_first_child()) return this.blocks;
 
-		let blockIdx = 0;
+		let block_idx = 0;
 		do {
 			if (c.kind === K_LINE_BREAK) continue;
 
 			const idx = c.index;
 
-			if (blockIdx >= this.blocks.length) {
-				this.blocks.push({ idx, html: _renderBlock(c) });
+			if (block_idx >= this.blocks.length) {
+				this.blocks.push({ idx, html: _render_block(c) });
 				if (c.closed) this.closed!.add(idx);
 			} else if (!this.closed!.has(idx)) {
-				this.blocks[blockIdx].html = _renderBlock(c);
+				this.blocks[block_idx].html = _render_block(c);
 				if (c.closed) this.closed!.add(idx);
 			}
 
-			blockIdx++;
-		} while (c.gotoNextSibling());
+			block_idx++;
+		} while (c.goto_next_sibling());
 
-		c.gotoParent();
+		c.goto_parent();
 		this.html = this.blocks.map((b) => b.html).join("");
 		return this.blocks;
+	}
+
+	/** render with source mapping. always full render (no caching). */
+	update_mapped(
+		buf: NodeBuffer,
+		source: string,
+	): { blocks: CursorBlockEntry[]; mappings: Mapping<MappingData>[] } {
+		if (!this.cursor) {
+			this.cursor = new Cursor(buf, source);
+		} else {
+			this.cursor.reinit(buf, source);
+		}
+		const c = this.cursor;
+		c.reset();
+
+		const out: string[] = [];
+		const entries: PendingMapping[] = [];
+		_node(c, out, entries);
+		this.html = out.join("");
+		const mappings = _resolve_mappings(out, entries);
+		return { blocks: this.blocks, mappings };
 	}
 
 	reset(): void {

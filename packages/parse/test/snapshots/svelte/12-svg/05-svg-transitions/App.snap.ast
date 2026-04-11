@@ -12,9 +12,9 @@ root
         line_break
         html tag="g" out:fade="{{duration: 200}}" opacity="0.2"
           line_break
-          html tag="path" in:expand="{{duration: 400, delay: 1000, easing: quintOut}}" style="stroke: #ff3e00; fill: #ff3e00; stroke-width: 50;" d="outer" self_closing=true
+          html tag="path" in:expand="{{duration: 400, delay: 1000, easing: quintOut}}" style="stroke: #ff3e00; fill: #ff3e00; stroke-width: 50;" d=[object Object] self_closing=true
           line_break
-          html tag="path" in:draw="{{duration: 1000}}" style="stroke:#ff3e00; stroke-width: 1.5" d="inner" self_closing=true
+          html tag="path" in:draw="{{duration: 1000}}" style="stroke:#ff3e00; stroke-width: 1.5" d=[object Object] self_closing=true
           line_break
         line_break
       line_break
@@ -39,7 +39,7 @@ root
         line_break
         html tag="label"
           line_break
-          html tag="input" type="checkbox" bind:checked="visible"
+          html tag="input" type="checkbox" bind:checked=[object Object]
             line_break
             paragraph
               text "toggle me"

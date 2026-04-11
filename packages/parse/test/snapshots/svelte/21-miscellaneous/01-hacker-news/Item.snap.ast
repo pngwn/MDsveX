@@ -5,7 +5,7 @@ root
   html tag="style"
   line_break
   line_break
-  html tag="a" href="returnTo"
+  html tag="a" href=[object Object]
     paragraph
       text "&laquo; back"
   line_break
@@ -39,7 +39,7 @@ root
       mustache "#each item.comments as comment"
       soft_break
       text "		"
-      html tag="Comment" comment="comment" self_closing=true
+      html tag="Comment" comment=[object Object] self_closing=true
       soft_break
       text "	"
       mustache "/each"

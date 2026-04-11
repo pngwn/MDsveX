@@ -38,8 +38,8 @@ The view exposes:
 
 **Readable properties**
 - `type` — the node type (`'heading'`, `'paragraph'`, etc.)
-- `textContent` — flattened text of all descendants (populated as children arrive)
-- `parent`, `firstChild`, `lastChild`, `next`, `prev` — lazy traversal, each returns a view for the corresponding node or `null`
+- `text_content` — flattened text of all descendants (populated as children arrive)
+- `parent`, `first_child`, `last_child`, `next`, `prev` — lazy traversal, each returns a view for the corresponding node or `null`
 - Type-specific properties surfaced directly (`depth` for headings, `lang` for code blocks, etc.)
 
 **Writable properties**
@@ -55,7 +55,7 @@ The view exposes:
 
 Property mutations are **local to the node being mutated**. Setting `node.attrs.id = 'foo'` writes to that one node's slot and does nothing else. It cannot cause side effects elsewhere in the tree.
 
-Traversal is cheap and safe. You can reach any node from any other node via `parent`/`firstChild`/etc., and mutate its properties:
+Traversal is cheap and safe. You can reach any node from any other node via `parent`/`first_child`/etc., and mutate its properties:
 
 ```js
 parse(node, ctx) {
@@ -67,7 +67,7 @@ parse(node, ctx) {
 
 The parent is a view over the same backing store. Writing `attrs.class` on it updates the heading's attrs slot directly. The dirty marking machinery handles re-rendering automatically.
 
-Structural mutations (`wrapInner`, `prepend`, `append`) can also be called on any node reached via traversal, not just the handler's own node. The builder handles the consequences — updating SoA pointers, emitting synthetic opcodes where appropriate, marking the affected subtree dirty.
+Structural mutations (`wrap_inner`, `prepend`, `append`) can also be called on any node reached via traversal, not just the handler's own node. The builder handles the consequences — updating SoA pointers, emitting synthetic opcodes where appropriate, marking the affected subtree dirty.
 
 ### Node View Identity
 
@@ -84,9 +84,9 @@ The `parse` function fires when the builder encounters a node's open opcode. At 
 - The node's type and initial attrs are known
 - Its parent is known
 - Its children have not yet arrived
-- `textContent` is empty (or partial, if content is streaming in)
+- `text_content` is empty (or partial, if content is streaming in)
 
-This is the window for structural mutations. `wrapInner` works because the children haven't been emitted downstream yet — the builder can inject the synthetic node's open opcode immediately, and subsequent children stream through it naturally.
+This is the window for structural mutations. `wrap_inner` works because the children haven't been emitted downstream yet — the builder can inject the synthetic node's open opcode immediately, and subsequent children stream through it naturally.
 
 ### Close-Time Execution
 
@@ -95,7 +95,7 @@ Returning a function from the parse handler registers it as a close callback. It
 At close time:
 
 - All children are present in the SoA
-- `textContent` is fully populated
+- `text_content` is fully populated
 - Traversal of descendants is meaningful
 
 This is the window for data-dependent work. Slug generation, content analysis, anything that needs to see the finished node.
@@ -105,10 +105,10 @@ The closure captures whatever state the open handler set up:
 ```js
 heading: {
   parse(node, ctx) {
-    const link = node.wrapInner('link');
+    const link = node.wrap_inner('link');
 
     return () => {
-      const slug = slugify(node.textContent);
+      const slug = slugify(node.text_content);
       node.attrs.id = slug;
       link.attrs.href = `#${slug}`;
     };
@@ -124,7 +124,7 @@ In `WireTreeBuilder` (streaming), the gap between open and close can be arbitrar
 
 In `TreeBuilder` (batch), the gap is effectively zero. Open and close fire back-to-back as the builder walks through a pre-parsed opcode sequence.
 
-Plugin code is identical in both modes. The handler doesn't know which builder it's running in. The only observable difference is that `textContent` is only guaranteed complete in the close callback — during the open handler, it reflects whatever has arrived so far (which is nothing in batch mode, and a partial state in streaming mode).
+Plugin code is identical in both modes. The handler doesn't know which builder it's running in. The only observable difference is that `text_content` is only guaranteed complete in the close callback — during the open handler, it reflects whatever has arrived so far (which is nothing in batch mode, and a partial state in streaming mode).
 
 ## Composition
 
@@ -146,17 +146,17 @@ If multiple plugins return close callbacks for the same node, they all fire on c
 
 ### Structural Mutations Compose via Nesting
 
-If two plugins both call `wrapInner` on the same node, the wrappers nest in registration order:
+If two plugins both call `wrap_inner` on the same node, the wrappers nest in registration order:
 
 ```js
-// Plugin A: wrapInner('link')
-// Plugin B: wrapInner('span')
+// Plugin A: wrap_inner('link')
+// Plugin B: wrap_inner('span')
 
 // Result in SoA:
 // heading → link → span → [original children]
 ```
 
-Each `wrapInner` is its own structural operation on the current state of the tree. The second one wraps whatever the first one produced.
+Each `wrap_inner` is its own structural operation on the current state of the tree. The second one wraps whatever the first one produced.
 
 ## Execution Model
 
@@ -190,7 +190,7 @@ Two levels of dirty state:
 - **attrs dirty** — the node's own output needs re-rendering, children are fine
 - **children dirty** — the node's subtree structure has changed, full subtree needs re-rendering
 
-Attribute setters flip the first bit. Structural methods (`wrapInner`, `prepend`, `append`) and type changes flip the second.
+Attribute setters flip the first bit. Structural methods (`wrap_inner`, `prepend`, `append`) and type changes flip the second.
 
 In streaming mode, dirty marking drives incremental re-rendering — only the changed subtrees get re-rendered and patched into the output. In batch mode, dirty marking is moot because rendering happens once after parse completes, so the dirty state just gets consumed by the initial render.
 
@@ -207,7 +207,7 @@ Multiple plugins on the same node type are composed into a single function at re
 **What parse plugins can do:**
 - Read any property on any node reachable via traversal
 - Write attrs, type, and type-specific properties on any reachable node
-- Inject synthetic children via `wrapInner`/`prepend`/`append` on any reachable node
+- Inject synthetic children via `wrap_inner`/`prepend`/`append` on any reachable node
 - Register close callbacks via return value
 - Capture state in closures between open and close
 
@@ -252,7 +252,7 @@ For each mutation, the builder records enough information to reverse it:
 
 **Type changes.** When a plugin sets `node.type = 'paragraph'`, the setter captures the original type. Revocation restores it. Type-specific properties that became meaningful or meaningless as a result of the change are handled the same way — whatever the plugin touched, the builder has a record of the prior state.
 
-**Structural mutations.** `wrapInner`, `prepend`, and `append` each create synthetic nodes. The builder records the IDs of the created nodes and the SoA pointer state before the mutation. Revocation deletes the synthetic nodes and restores the original parent-child relationships.
+**Structural mutations.** `wrap_inner`, `prepend`, and `append` each create synthetic nodes. The builder records the IDs of the created nodes and the SoA pointer state before the mutation. Revocation deletes the synthetic nodes and restores the original parent-child relationships.
 
 **Cross-node mutations.** When a plugin reaches through traversal to modify a different node (say, setting an attr on `node.parent`), that mutation is captured in the undo log of the node whose handler is running, not the node that was modified. This is because the revocation boundary is the handler's node — if the parser revokes the parent later, that's a separate revocation event with its own undo log.
 

@@ -1,4 +1,4 @@
-import type { node_buffer } from '../src/utils';
+import type { NodeBuffer } from '../src/utils';
 
 const SENTINEL = 0xffffffff;
 
@@ -46,7 +46,7 @@ const INFO_KEYS = new Set(['info_start', 'info_end']);
  *       text "world"
  */
 export function print_ast(
-	nodes: node_buffer,
+	nodes: NodeBuffer,
 	source: string,
 	index: number = 0,
 	depth: number = 0

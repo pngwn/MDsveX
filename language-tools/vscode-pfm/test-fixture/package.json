@@ -1,0 +1,16 @@
+{
+  "name": "test-fixture",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "devDependencies": {
+    "svelte": "^5.55.2"
+  },
+  "scripts": {
+    "test": "node -e \"console.error('Error: no test specified'); process.exit(1)\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

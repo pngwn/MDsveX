@@ -1,5 +1,5 @@
 /**
- * cursor, zero-allocation tree traversal over node_buffer.
+ * cursor, zero-allocation tree traversal over NodeBuffer.
  *
  * single reusable object that provides tree-traversal semantics
  * (gotofirstchild / gotonextsibling / gotoparent) while reading
@@ -23,13 +23,13 @@
  *   }
  */
 
-import type { node_buffer } from "./utils";
+import type { NodeBuffer } from "./utils";
 
 const NONE = 0xffffffff;
 
 export class Cursor {
 	/** the backing soa buffer. */
-	private buf: node_buffer;
+	private buf: NodeBuffer;
 	/** the full source string for lazy text slicing. */
 	private src: string;
 	/** current node index into the buffer. */
@@ -37,6 +37,7 @@ export class Cursor {
 
 	private _kinds: Uint8Array;
 	private _extras: Uint16Array;
+	private _starts: Uint32Array;
 	private _ends: Uint32Array;
 	private _value_starts: Uint32Array;
 	private _value_ends: Uint32Array;
@@ -45,7 +46,7 @@ export class Cursor {
 	private _children_starts: Uint32Array;
 	private _pending_nodes: Uint32Array;
 
-	constructor(buf: node_buffer, source: string) {
+	constructor(buf: NodeBuffer, source: string) {
 		this.buf = buf;
 		this.src = source;
 		this.idx = 0; // root
@@ -53,6 +54,7 @@ export class Cursor {
 		// cache array references for hot-path access
 		this._kinds = buf._kinds;
 		this._extras = buf._extras;
+		this._starts = buf._starts;
 		this._ends = buf._ends;
 		this._value_starts = buf._value_starts;
 		this._value_ends = buf._value_ends;
@@ -93,6 +95,26 @@ export class Cursor {
 		return p === NONE ? -1 : this._kinds[p];
 	}
 
+	/** byte offset where the current node starts in source. */
+	get start(): number {
+		return this._starts[this.idx];
+	}
+
+	/** byte offset where the current node ends in source. */
+	get end(): number {
+		return this._ends[this.idx];
+	}
+
+	/** byte offset where the current node's value content starts. */
+	get value_start(): number {
+		return this._value_starts[this.idx];
+	}
+
+	/** byte offset where the current node's value content ends. */
+	get value_end(): number {
+		return this._value_ends[this.idx];
+	}
+
 	/** get text content for the current node. prebuilt strings
 	  (from wiretreebuilder) are returned directly; otherwise sliced lazily. */
 	text(): string {
@@ -114,14 +136,14 @@ export class Cursor {
 		return this.src.slice(start, end);
 	}
 
-	gotoFirstChild(): boolean {
+	goto_first_child(): boolean {
 		const child = this._children_starts[this.idx];
 		if (child === NONE) return false;
 		this.idx = child;
 		return true;
 	}
 
-	gotoNextSibling(): boolean {
+	goto_next_sibling(): boolean {
 		const next = this._next_siblings[this.idx];
 		if (next === NONE) return false;
 		// verify it's actually a sibling (same parent)
@@ -130,7 +152,7 @@ export class Cursor {
 		return true;
 	}
 
-	gotoParent(): boolean {
+	goto_parent(): boolean {
 		const parent = this._parents[this.idx];
 		if (parent === NONE) return false;
 		this.idx = parent;
@@ -155,12 +177,13 @@ export class Cursor {
 	}
 
 	/** re-inits cursor with a (potentially grown) buffer and new source. */
-	reinit(buf: node_buffer, source: string): void {
+	reinit(buf: NodeBuffer, source: string): void {
 		this.buf = buf;
 		this.src = source;
 		this.idx = 0;
 		this._kinds = buf._kinds;
 		this._extras = buf._extras;
+		this._starts = buf._starts;
 		this._ends = buf._ends;
 		this._value_starts = buf._value_starts;
 		this._value_ends = buf._value_ends;

@@ -1,0 +1,70 @@
+{
+	"name": "vscode-pfm",
+	"displayName": "PFM — Penguin-Flavoured Markdown",
+	"description": "Language support for PFM (Penguin-Flavoured Markdown) files",
+	"version": "0.0.1",
+	"publisher": "pngwn",
+	"private": true,
+	"engines": {
+		"vscode": "^1.85.0"
+	},
+	"categories": ["Programming Languages"],
+	"activationEvents": [
+		"onLanguage:pfm"
+	],
+	"main": "./dist/extension.cjs",
+	"contributes": {
+		"typescriptServerPlugins": [
+			{
+				"name": "@pfm/typescript-plugin",
+				"enableForWorkspaceTypeScriptVersions": true
+			}
+		],
+		"languages": [
+			{
+				"id": "pfm",
+				"aliases": ["PFM", "Penguin-Flavoured Markdown"],
+				"extensions": [".pfm"],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "pfm",
+				"scopeName": "text.html.pfm",
+				"path": "./syntaxes/pfm.tmLanguage.json",
+				"embeddedLanguages": {
+					"source.js": "javascript",
+					"source.ts": "typescript",
+					"source.css": "css",
+					"meta.embedded.block.javascript": "javascript",
+					"meta.embedded.block.typescript": "typescript",
+					"meta.embedded.block.css": "css",
+					"meta.embedded.block.html": "html",
+					"meta.embedded.block.json": "json",
+					"meta.embedded.block.python": "python",
+					"meta.embedded.block.rust": "rust",
+					"meta.embedded.block.go": "go"
+				}
+			}
+		]
+	},
+	"scripts": {
+		"build:server": "pnpm --filter @pfm/language-server build",
+		"build:ext": "vite build --config vite.config.build.ts",
+		"build": "run-s build:server build:ext build:mkdir build:copy-server",
+		"build:mkdir": "shx mkdir -p server",
+		"build:copy-server": "shx cp ../language-server/dist/server.cjs server/server.cjs",
+		"package": "vsce package --no-dependencies"
+	},
+	"dependencies": {
+		"@pfm/typescript-plugin": "workspace:*",
+		"@volar/vscode": "^2.4.28",
+		"vscode-languageclient": "^9.0.1"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.85.0",
+		"npm-run-all2": "^7.0.2",
+		"shx": "^0.3.4"
+	}
+}

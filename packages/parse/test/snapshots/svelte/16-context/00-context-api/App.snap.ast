@@ -2,17 +2,17 @@ root
   html tag="script"
   line_break
   line_break
-  html tag="Map" lat="35" lon="-84" zoom="3.5"
+  html tag="Map" lat=[object Object] lon=[object Object] zoom=[object Object]
     line_break
-    html tag="MapMarker" lat="37.8225" lon="-122.0024" label="Svelte Body Shaping" self_closing=true
+    html tag="MapMarker" lat=[object Object] lon=[object Object] label="Svelte Body Shaping" self_closing=true
     line_break
-    html tag="MapMarker" lat="33.8981" lon="-118.4169" label="Svelte Barbershop & Essentials" self_closing=true
+    html tag="MapMarker" lat=[object Object] lon=[object Object] label="Svelte Barbershop & Essentials" self_closing=true
     line_break
-    html tag="MapMarker" lat="29.7230" lon="-95.4189" label="Svelte Waxing Studio" self_closing=true
+    html tag="MapMarker" lat=[object Object] lon=[object Object] label="Svelte Waxing Studio" self_closing=true
     line_break
-    html tag="MapMarker" lat="28.3378" lon="-81.3966" label="Svelte 30 Nutritional Consultants" self_closing=true
+    html tag="MapMarker" lat=[object Object] lon=[object Object] label="Svelte 30 Nutritional Consultants" self_closing=true
     line_break
-    html tag="MapMarker" lat="40.6483" lon="-74.0237" label="Svelte Brands LLC" self_closing=true
+    html tag="MapMarker" lat=[object Object] lon=[object Object] label="Svelte Brands LLC" self_closing=true
     line_break
-    html tag="MapMarker" lat="40.6986" lon="-74.4100" label="Svelte Medical Systems" self_closing=true
+    html tag="MapMarker" lat=[object Object] lon=[object Object] label="Svelte Medical Systems" self_closing=true
     line_break

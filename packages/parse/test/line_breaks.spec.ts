@@ -3,8 +3,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, test, expect } from 'vitest';
 import { parse_markdown_svelte } from '../src/main';
-import { node_kind } from '../src/utils';
-import type { node_buffer } from '../src/utils';
+import { NodeKind } from '../src/utils';
+import type { NodeBuffer } from '../src/utils';
 import { get_content, get_all_child_kinds } from './utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
@@ -16,14 +16,14 @@ const load_hard = (id: string): string =>
 const load_soft = (id: string): string =>
 	readFileSync(resolve(soft_dir, `${id}.md`), 'utf8');
 
-function non_breaks(nodes: node_buffer, parent: number = 0) {
+function non_breaks(nodes: NodeBuffer, parent: number = 0) {
 	return nodes
 		.get_node(parent)
 		.children.map((i) => nodes.get_node(i))
 		.filter((n) => n.kind !== 'line_break');
 }
 
-function get_value(nodes: node_buffer, index: number, source: string) {
+function get_value(nodes: NodeBuffer, index: number, source: string) {
 	const node = nodes.get_node(index);
 	return source.slice(node.value[0], node.value[1]);
 }

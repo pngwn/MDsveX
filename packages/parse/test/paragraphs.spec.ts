@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
 import { parse_markdown_svelte } from '../src/main';
-import { node_kind } from '../src/utils';
+import { NodeKind } from '../src/utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(this_dir, 'fixtures/pfm/paragraphs');
@@ -20,7 +20,7 @@ describe('paragraphs', () => {
 
 		const root = nodes.get_node();
 
-		const p_kinds = nodes.get_kinds(node_kind.paragraph);
+		const p_kinds = nodes.get_kinds(NodeKind.paragraph);
 		const p_node_1 = nodes.get_node(p_kinds[0]);
 		const t_node_1 = nodes.get_node(p_node_1.children[0]);
 		const p_node_2 = nodes.get_node(p_kinds[1]);
@@ -41,7 +41,7 @@ describe('paragraphs', () => {
 		expect(p_node_2.start).toBe(5);
 		expect(t_node_2.end).toBe(8);
 
-		const t_kinds = nodes.get_kinds(node_kind.text);
+		const t_kinds = nodes.get_kinds(NodeKind.text);
 		expect(p_kinds.length).toBe(2);
 		expect(t_kinds.length).toBe(2);
 
@@ -59,7 +59,7 @@ describe('paragraphs', () => {
 
 		const root = nodes.get_node();
 
-		const p_kinds = nodes.get_kinds(node_kind.paragraph);
+		const p_kinds = nodes.get_kinds(NodeKind.paragraph);
 		const p_node_1 = nodes.get_node(p_kinds[0]);
 		const p_node_2 = nodes.get_node(p_kinds[1]);
 
@@ -93,7 +93,7 @@ describe('paragraphs', () => {
 
 		const root = nodes.get_node();
 
-		const p_kinds = nodes.get_kinds(node_kind.paragraph);
+		const p_kinds = nodes.get_kinds(NodeKind.paragraph);
 		const p_node_1 = nodes.get_node(p_kinds[0]);
 		const t_node_1 = nodes.get_node(p_node_1.children[0]);
 		const p_node_2 = nodes.get_node(p_kinds[1]);
@@ -114,7 +114,7 @@ describe('paragraphs', () => {
 		expect(p_node_2.start).toBe(6);
 		expect(t_node_2.end).toBe(9);
 
-		const t_kinds = nodes.get_kinds(node_kind.text);
+		const t_kinds = nodes.get_kinds(NodeKind.text);
 		expect(p_kinds.length).toBe(2);
 		expect(t_kinds.length).toBe(2);
 

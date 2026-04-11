@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
 import { parse_markdown_svelte } from '../src/main';
-import type { node_buffer } from '../src/utils';
+import type { NodeBuffer } from '../src/utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(this_dir, 'fixtures/pfm/block_quotes');
@@ -13,16 +13,16 @@ const fixtures_root = resolve(this_dir, 'fixtures/pfm/block_quotes');
 const load_fixture = (id: string): string =>
 	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
 
-function collect_children(nodes: node_buffer, parent: number = 0) {
+function collect_children(nodes: NodeBuffer, parent: number = 0) {
 	const root = nodes.get_node(parent);
 	return root.children.map((i) => nodes.get_node(i));
 }
 
-function non_breaks(nodes: node_buffer, parent: number = 0) {
+function non_breaks(nodes: NodeBuffer, parent: number = 0) {
 	return collect_children(nodes, parent).filter((n) => n.kind !== 'line_break');
 }
 
-function get_value(nodes: node_buffer, index: number, source: string) {
+function get_value(nodes: NodeBuffer, index: number, source: string) {
 	const node = nodes.get_node(index);
 	return source.slice(node.value[0], node.value[1]);
 }

@@ -7,7 +7,7 @@ root
       text "Arctic sea ice minimum"
   line_break
   line_break
-  html tag="div" class="chart" bind:clientWidth="width" bind:clientHeight="height"
+  html tag="div" class="chart" bind:clientWidth=[object Object] bind:clientHeight=[object Object]
     line_break
     html tag="svg"
       line_break

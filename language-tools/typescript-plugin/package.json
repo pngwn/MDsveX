@@ -1,0 +1,17 @@
+{
+	"name": "@pfm/typescript-plugin",
+	"version": "0.0.1",
+	"description": "TypeScript plugin that teaches tsserver how to resolve .pfm imports",
+	"private": true,
+	"type": "module",
+	"main": "./lib/index.cjs",
+	"scripts": {
+		"build": "vite build --config vite.config.build.ts"
+	},
+	"dependencies": {
+		"@pfm/language-core": "workspace:*",
+		"@volar/typescript": "^2.4.28"
+	},
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT"
+}

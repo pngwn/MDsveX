@@ -8,7 +8,7 @@ root
   html tag="style"
   line_break
   line_break
-  html tag="article" class:playing="!paused"
+  html tag="article" class:playing=[object Object]
     line_break
     html tag="h2"
       paragraph
@@ -23,5 +23,5 @@ root
         mustache "performer"
     line_break
     line_break
-    html tag="audio" bind:this="audio" bind:paused=true on:play="stopOthers" controls=true src="src"
+    html tag="audio" bind:this=[object Object] bind:paused=true on:play=[object Object] controls=true src=[object Object]
     line_break

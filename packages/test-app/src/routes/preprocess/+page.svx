@@ -1,53 +1,5 @@
----
-title: Hello, world!
----
+hi
+<span onclick={() => console.log("HELLO")}>
+BOO
 
-<script>
-  let name = $state("THE TITLE");
-</script>
-
-# {name}
-
-## hi
-
-A paragraph with *strong emphasis*
-and _regular emphasis_.
-
-Also ~~strikethrough~~ and ^superscript^ and
-~subscript~ work. And `code` works.
-
-
-## Second heading
-
-```python
-def hello():
-    print("world")
-```
-
-> A block quote with *formatting*.\
-> and \
-> line \
-> breaks
-
-- Item one
-  - child
-    - grandchild
-- sibling
-
----
-
-Final paragraph with a [link](/url).
-
-
-- hi
-	- hi
-
-
-97.  hello
-98.  hello
-99.  hello
-
-		 asdasd
-
-102. hello
-		 hello
+</span>

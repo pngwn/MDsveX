@@ -1,8 +1,8 @@
-import type { node_buffer, error_collector } from "./utils";
+import type { NodeBuffer, ErrorCollector } from "./utils";
 import type { ParsePlugin } from "./plugin_types";
 
 /** options for controlling the markdown parser. */
-export interface parse_options {
+export interface ParseOptions {
 	token_capacity?: number;
 	error_capacity?: number;
 
@@ -14,17 +14,17 @@ export interface parse_options {
 }
 
 /** structured output produced by the markdown parser. */
-export interface parse_result {
+export interface ParseResult {
 	root: number;
-	tokens: node_buffer;
-	errors: error_collector;
+	tokens: NodeBuffer;
+	errors: ErrorCollector;
 }
 
 /** aggregate state that flows through the tokenizer. */
-export interface parse_context {
+export interface ParseContext {
 	source: string;
 	length: number;
-	tokens: node_buffer;
-	errors: error_collector;
+	tokens: NodeBuffer;
+	errors: ErrorCollector;
 	root: number;
 }

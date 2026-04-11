@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { parse_markdown_svelte } from '../src/main';
-import { node_kind } from '../src/utils';
+import { NodeKind } from '../src/utils';
 
 describe('import statements', () => {
 	test('single import at start of document', () => {
@@ -139,11 +139,11 @@ describe('import statements', () => {
 		expect(kinds).not.toContain('import_statement');
 	});
 
-	test('import node_kind is findable', () => {
+	test('import NodeKind is findable', () => {
 		const input = 'import A from "./A"\n';
 		const { nodes } = parse_markdown_svelte(input);
 
-		const imps = nodes.get_kinds(node_kind.import_statement);
+		const imps = nodes.get_kinds(NodeKind.import_statement);
 		expect(imps.length).toBe(1);
 	});
 
@@ -152,7 +152,7 @@ describe('import statements', () => {
 			'import A from "./A"\n\nimport B from "./B"\n\n# Hello';
 		const { nodes } = parse_markdown_svelte(input);
 
-		const imps = nodes.get_kinds(node_kind.import_statement);
+		const imps = nodes.get_kinds(NodeKind.import_statement);
 		expect(imps.length).toBe(2);
 	});
 
@@ -160,7 +160,7 @@ describe('import statements', () => {
 		const input = 'Some text.\n\nimport A from "./A"\n';
 		const { nodes } = parse_markdown_svelte(input);
 
-		const imps = nodes.get_kinds(node_kind.import_statement);
+		const imps = nodes.get_kinds(NodeKind.import_statement);
 		expect(imps.length).toBe(0);
 	});
 });

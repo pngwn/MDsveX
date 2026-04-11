@@ -7,4 +7,4 @@ root
       mustache "view"
   line_break
   line_break
-  html tag="Keypad" bind:value="pin" on:submit="handleSubmit" self_closing=true
+  html tag="Keypad" bind:value=[object Object] on:submit=[object Object] self_closing=true

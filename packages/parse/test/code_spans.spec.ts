@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
 import { parse_markdown_svelte } from '../src/main';
-import { node_kind } from '../src/utils';
+import { NodeKind } from '../src/utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(this_dir, 'fixtures/pfm/code_spans');
@@ -36,8 +36,8 @@ describe('code spans', () => {
 		expect(input.slice(code_span.value[0], code_span.value[1])).toEqual('foo');
 		expect(code_span.value).toEqual([1, 4]);
 
-		const paragraph_kinds = nodes.get_kinds(node_kind.paragraph);
-		const code_span_kinds = nodes.get_kinds(node_kind.code_span);
+		const paragraph_kinds = nodes.get_kinds(NodeKind.paragraph);
+		const code_span_kinds = nodes.get_kinds(NodeKind.code_span);
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});
@@ -67,8 +67,8 @@ describe('code spans', () => {
 		);
 		expect(code_span.value).toEqual([3, 12]);
 
-		const paragraph_kinds = nodes.get_kinds(node_kind.paragraph);
-		const code_span_kinds = nodes.get_kinds(node_kind.code_span);
+		const paragraph_kinds = nodes.get_kinds(NodeKind.paragraph);
+		const code_span_kinds = nodes.get_kinds(NodeKind.code_span);
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});
@@ -96,8 +96,8 @@ describe('code spans', () => {
 		expect(input.slice(code_span.value[0], code_span.value[1])).toEqual('``');
 		expect(code_span.value).toEqual([2, 4]);
 
-		const paragraph_kinds = nodes.get_kinds(node_kind.paragraph);
-		const code_span_kinds = nodes.get_kinds(node_kind.code_span);
+		const paragraph_kinds = nodes.get_kinds(NodeKind.paragraph);
+		const code_span_kinds = nodes.get_kinds(NodeKind.code_span);
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});
@@ -138,8 +138,8 @@ describe('code spans', () => {
 		expect(input.slice(code_span.value[0], code_span.value[1])).toEqual(' `` ');
 		expect(code_span.value).toEqual([2, 6]);
 
-		const paragraph_kinds = nodes.get_kinds(node_kind.paragraph);
-		const code_span_kinds = nodes.get_kinds(node_kind.code_span);
+		const paragraph_kinds = nodes.get_kinds(NodeKind.paragraph);
+		const code_span_kinds = nodes.get_kinds(NodeKind.code_span);
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});
@@ -167,8 +167,8 @@ describe('code spans', () => {
 		expect(input.slice(code_span.value[0], code_span.value[1])).toEqual(' a');
 		expect(code_span.value).toEqual([1, 3]);
 
-		const paragraph_kinds = nodes.get_kinds(node_kind.paragraph);
-		const code_span_kinds = nodes.get_kinds(node_kind.code_span);
+		const paragraph_kinds = nodes.get_kinds(NodeKind.paragraph);
+		const code_span_kinds = nodes.get_kinds(NodeKind.code_span);
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});
@@ -196,8 +196,8 @@ describe('code spans', () => {
 		expect(input.slice(code_span.value[0], code_span.value[1])).toEqual(' b ');
 		expect(code_span.value).toEqual([1, 4]);
 
-		const paragraph_kinds = nodes.get_kinds(node_kind.paragraph);
-		const code_span_kinds = nodes.get_kinds(node_kind.code_span);
+		const paragraph_kinds = nodes.get_kinds(NodeKind.paragraph);
+		const code_span_kinds = nodes.get_kinds(NodeKind.code_span);
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});
@@ -240,8 +240,8 @@ describe('code spans', () => {
 			'  '
 		);
 
-		const paragraph_kinds = nodes.get_kinds(node_kind.paragraph);
-		const code_span_kinds = nodes.get_kinds(node_kind.code_span);
+		const paragraph_kinds = nodes.get_kinds(NodeKind.paragraph);
+		const code_span_kinds = nodes.get_kinds(NodeKind.code_span);
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(2);
 	});
@@ -271,8 +271,8 @@ describe('code spans', () => {
 		);
 		expect(code_span.value).toEqual([2, 17]);
 
-		const paragraph_kinds = nodes.get_kinds(node_kind.paragraph);
-		const code_span_kinds = nodes.get_kinds(node_kind.code_span);
+		const paragraph_kinds = nodes.get_kinds(NodeKind.paragraph);
+		const code_span_kinds = nodes.get_kinds(NodeKind.code_span);
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});
@@ -302,8 +302,8 @@ describe('code spans', () => {
 		);
 		expect(code_span.value).toEqual([2, 8]);
 
-		const paragraph_kinds = nodes.get_kinds(node_kind.paragraph);
-		const code_span_kinds = nodes.get_kinds(node_kind.code_span);
+		const paragraph_kinds = nodes.get_kinds(NodeKind.paragraph);
+		const code_span_kinds = nodes.get_kinds(NodeKind.code_span);
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});
@@ -333,8 +333,8 @@ describe('code spans', () => {
 		);
 		expect(code_span.value).toEqual([1, 15]);
 
-		const paragraph_kinds = nodes.get_kinds(node_kind.paragraph);
-		const code_span_kinds = nodes.get_kinds(node_kind.code_span);
+		const paragraph_kinds = nodes.get_kinds(NodeKind.paragraph);
+		const code_span_kinds = nodes.get_kinds(NodeKind.code_span);
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});
@@ -395,8 +395,8 @@ describe('code spans', () => {
 		);
 		expect(code_span.value).toEqual([2, 9]);
 
-		expect(nodes.get_kinds(node_kind.paragraph).length).toEqual(1);
-		expect(nodes.get_kinds(node_kind.code_span).length).toEqual(1);
+		expect(nodes.get_kinds(NodeKind.paragraph).length).toEqual(1);
+		expect(nodes.get_kinds(NodeKind.code_span).length).toEqual(1);
 	});
 
 	test('pfm example 340', () => {
@@ -424,8 +424,8 @@ describe('code spans', () => {
 		);
 		expect(code_span.value).toEqual([2, 12]);
 
-		expect(nodes.get_kinds(node_kind.paragraph).length).toEqual(1);
-		expect(nodes.get_kinds(node_kind.code_span).length).toEqual(1);
+		expect(nodes.get_kinds(NodeKind.paragraph).length).toEqual(1);
+		expect(nodes.get_kinds(NodeKind.code_span).length).toEqual(1);
 	});
 
 	// Code span takes precedence over emphasis
@@ -586,8 +586,8 @@ describe('code spans', () => {
 			input.slice(code_span.metadata.info_start, code_span.metadata.info_end)
 		).toBe('js');
 
-		const paragraph_kinds = nodes.get_kinds(node_kind.paragraph);
-		const code_span_kinds = nodes.get_kinds(node_kind.code_span);
+		const paragraph_kinds = nodes.get_kinds(NodeKind.paragraph);
+		const code_span_kinds = nodes.get_kinds(NodeKind.code_span);
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});
@@ -624,8 +624,8 @@ describe('code spans', () => {
 			input.slice(code_span.metadata.info_start, code_span.metadata.info_end)
 		).toBe('js');
 
-		const paragraph_kinds = nodes.get_kinds(node_kind.paragraph);
-		const code_span_kinds = nodes.get_kinds(node_kind.code_span);
+		const paragraph_kinds = nodes.get_kinds(NodeKind.paragraph);
+		const code_span_kinds = nodes.get_kinds(NodeKind.code_span);
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});
@@ -662,8 +662,8 @@ describe('code spans', () => {
 			input.slice(code_span.metadata.info_start, code_span.metadata.info_end)
 		).toBe('js');
 
-		const paragraph_kinds = nodes.get_kinds(node_kind.paragraph);
-		const code_span_kinds = nodes.get_kinds(node_kind.code_span);
+		const paragraph_kinds = nodes.get_kinds(NodeKind.paragraph);
+		const code_span_kinds = nodes.get_kinds(NodeKind.code_span);
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});
@@ -702,8 +702,8 @@ describe('code spans', () => {
 			input.slice(code_span.metadata.info_start, code_span.metadata.info_end)
 		).toBe('js');
 
-		const paragraph_kinds = nodes.get_kinds(node_kind.paragraph);
-		const code_span_kinds = nodes.get_kinds(node_kind.code_span);
+		const paragraph_kinds = nodes.get_kinds(NodeKind.paragraph);
+		const code_span_kinds = nodes.get_kinds(NodeKind.code_span);
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});

@@ -1,0 +1,30 @@
+{
+	"name": "@pfm/language-core",
+	"version": "0.0.1",
+	"description": "PFM Volar LanguagePlugin — teaches Volar how to handle .pfm files",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run --silent"
+	},
+	"exports": {
+		".": {
+			"import": "./src/index.ts",
+			"types": "./src/index.ts"
+		}
+	},
+	"dependencies": {
+		"@pfm/source-map": "workspace:*",
+		"@mdsvex/render": "workspace:*",
+		"@volar/language-core": "^2.4.28",
+		"@volar/typescript": "^2.4.28",
+		"svelte2tsx": "^0.7.53"
+	},
+	"devDependencies": {
+		"svelte": "^5.0.0",
+		"typescript": "^5.0.0"
+	},
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT"
+}

@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { node_buffer } from "@mdsvex/parse/utils";
+import type { NodeBuffer } from "@mdsvex/parse/utils";
 import {
 	buf_children,
 	buf_text,
@@ -16,7 +16,7 @@ let {
 	source,
 	components,
 }: {
-	buf: node_buffer;
+	buf: NodeBuffer;
 	idx: number;
 	source: string;
 	components?: ComponentMap;
@@ -214,7 +214,7 @@ let skip_list_item_paragraph_wrapper = $derived(
 	{@const attrs = meta?.attributes as Record | undefined}
 	{@const spread = attrs
 		? Object.fromEntries(
-				Object.entries(attrs).map(([k, v]) => [k, v === true ? true : v])
+				Object.entries(attrs).map(([k, v]) => [k, v === true ? true : typeof v === 'object' && v?.type === 'expression' ? v.value : v])
 			)
 		: {}}
 	{@const CustomComponent = components?.[tag]}

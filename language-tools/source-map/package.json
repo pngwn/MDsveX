@@ -1,0 +1,41 @@
+{
+	"name": "@pfm/source-map",
+	"version": "0.0.1",
+	"description": "PFM to Svelte source map pipeline for language tooling",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run --silent"
+	},
+	"exports": {
+		".": {
+			"import": "./src/index.ts",
+			"types": "./src/index.ts"
+		},
+		"./pfm-to-svelte": {
+			"import": "./src/pfm_to_svelte.ts",
+			"types": "./src/pfm_to_svelte.ts"
+		},
+		"./v3-to-volar": {
+			"import": "./src/v3_to_volar.ts",
+			"types": "./src/v3_to_volar.ts"
+		},
+		"./compose-mappings": {
+			"import": "./src/compose_mappings.ts",
+			"types": "./src/compose_mappings.ts"
+		}
+	},
+	"dependencies": {
+		"@mdsvex/parse": "workspace:*",
+		"@mdsvex/render": "workspace:*",
+		"@jridgewell/trace-mapping": "^0.3.31"
+	},
+	"devDependencies": {
+		"svelte": "^5.0.0",
+		"svelte2tsx": "^0.7.53",
+		"typescript": "^5.0.0"
+	},
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT"
+}

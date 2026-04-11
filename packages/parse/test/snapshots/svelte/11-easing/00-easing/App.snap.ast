@@ -5,17 +5,17 @@ root
   html tag="style"
   line_break
   line_break
-  html tag="div" bind:offsetWidth="width" class="easing-vis"
+  html tag="div" bind:offsetWidth=[object Object] class="easing-vis"
     line_break
     html tag="svg" viewBox="0 0 1400 1802"
       line_break
       html tag="g" class="canvas"
         line_break
-        html tag="Grid" x="$time" y="$value" self_closing=true
+        html tag="Grid" x=[object Object] y=[object Object] self_closing=true
         line_break
         html tag="g" class="graph"
           line_break
-          html tag="path" d="$ease_path" stroke="#333" stroke-width="2" fill="none" self_closing=true
+          html tag="path" d=[object Object] stroke="#333" stroke-width="2" fill="none" self_closing=true
           line_break
           line_break
           html tag="path" d="M0,23.647C0,22.41 27.014,0.407 28.496,0.025C29.978,-0.357 69.188,3.744 70.104,4.744C71.02,5.745 71.02,41.499 70.104,42.5C69.188,43.501 29.978,47.601 28.496,47.219C27.014,46.837 0,24.884 0,23.647Z" fill="#ff3e00" style="transform: translate(1060px, {($value - 24)}px)" self_closing=true
@@ -27,5 +27,5 @@ root
       line_break
     line_break
     line_break
-    html tag="Controls" eases="eases" types="types" playing="playing" width="width" bind:duration=true bind:current_ease=true bind:current_type=true on:play="runAnimations" self_closing=true
+    html tag="Controls" eases=[object Object] types=[object Object] playing=[object Object] width=[object Object] bind:duration=true bind:current_ease=true bind:current_type=true on:play=[object Object] self_closing=true
     line_break

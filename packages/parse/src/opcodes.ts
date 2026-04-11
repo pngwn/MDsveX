@@ -1,11 +1,11 @@
-import type { node_kind } from "./utils";
+import type { NodeKind } from "./utils";
 
 /**
  * emitter interface for pfm parser opcodes.
  *
  * the parser calls these methods as it processes input. implementations
  * decide what to do with each opcode:
- * - treebuilder: reconstructs a node_buffer (backward compat)
+ * - treebuilder: reconstructs a NodeBuffer (backward compat)
  * - sseemitter: serializes to sse wire format (streaming)
  */
 export interface Emitter {
@@ -20,7 +20,7 @@ export interface Emitter {
 	 */
 	open(
 		id: number,
-		kind: node_kind,
+		kind: NodeKind,
 		start: number,
 		parent: number,
 		extra: number,

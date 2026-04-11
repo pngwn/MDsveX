@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PFMParser, node_kind } from '../src/main';
+import { PFMParser, NodeKind } from '../src/main';
 import type { Emitter } from '../src/opcodes';
 
 /**
@@ -94,7 +94,7 @@ describe('Opcode stream', () => {
 		it('emits open(strong_emphasis, pending=true) eagerly on *', () => {
 			const ops = parse_to_ops('hello *world*\n');
 			const emph_open = ops.find(
-				(o) => o.op === 'open' && o.kind === node_kind.strong_emphasis
+				(o) => o.op === 'open' && o.kind === NodeKind.strong_emphasis
 			);
 			expect(emph_open).toBeDefined();
 			expect(emph_open!.op).toBe('open');
@@ -104,7 +104,7 @@ describe('Opcode stream', () => {
 		it('emits close (commit) when matching * found', () => {
 			const ops = parse_to_ops('hello *world*\n');
 			const emph_open = ops.find(
-				(o) => o.op === 'open' && o.kind === node_kind.strong_emphasis
+				(o) => o.op === 'open' && o.kind === NodeKind.strong_emphasis
 			) as any;
 			expect(emph_open).toBeDefined();
 
@@ -124,7 +124,7 @@ describe('Opcode stream', () => {
 		it('emits revoke when * is unclosed at paragraph end', () => {
 			const ops = parse_to_ops('hello *friends\n');
 			const emph_open = ops.find(
-				(o) => o.op === 'open' && o.kind === node_kind.strong_emphasis
+				(o) => o.op === 'open' && o.kind === NodeKind.strong_emphasis
 			) as any;
 			expect(emph_open).toBeDefined();
 			expect(emph_open.pending).toBe(true);
@@ -139,7 +139,7 @@ describe('Opcode stream', () => {
 		it('emits revoke when * is unclosed at blank line boundary', () => {
 			const ops = parse_to_ops('hello *friends\n\nnew paragraph\n');
 			const emph_open = ops.find(
-				(o) => o.op === 'open' && o.kind === node_kind.strong_emphasis
+				(o) => o.op === 'open' && o.kind === NodeKind.strong_emphasis
 			) as any;
 			expect(emph_open).toBeDefined();
 
@@ -153,7 +153,7 @@ describe('Opcode stream', () => {
 			// Committed
 			const ops_ok = parse_to_ops('hello _world_\n');
 			const em_open = ops_ok.find(
-				(o) => o.op === 'open' && o.kind === node_kind.emphasis
+				(o) => o.op === 'open' && o.kind === NodeKind.emphasis
 			) as any;
 			expect(em_open).toBeDefined();
 			expect(em_open.pending).toBe(true);
@@ -167,7 +167,7 @@ describe('Opcode stream', () => {
 			// Revoked
 			const ops_fail = parse_to_ops('hello _friends\n');
 			const em_open2 = ops_fail.find(
-				(o) => o.op === 'open' && o.kind === node_kind.emphasis
+				(o) => o.op === 'open' && o.kind === NodeKind.emphasis
 			) as any;
 			expect(em_open2).toBeDefined();
 			expect(
@@ -180,7 +180,7 @@ describe('Opcode stream', () => {
 		it('open comes before close for committed nodes', () => {
 			const ops = parse_to_ops('*bold*\n');
 			const emph_open_idx = ops.findIndex(
-				(o) => o.op === 'open' && o.kind === node_kind.strong_emphasis
+				(o) => o.op === 'open' && o.kind === NodeKind.strong_emphasis
 			);
 			const emph_id = (ops[emph_open_idx] as any).id;
 			const emph_close_idx = ops.findIndex(
@@ -192,7 +192,7 @@ describe('Opcode stream', () => {
 		it('open comes before revoke for uncommitted nodes', () => {
 			const ops = parse_to_ops('*unclosed\n');
 			const emph_open_idx = ops.findIndex(
-				(o) => o.op === 'open' && o.kind === node_kind.strong_emphasis
+				(o) => o.op === 'open' && o.kind === NodeKind.strong_emphasis
 			);
 			const emph_id = (ops[emph_open_idx] as any).id;
 			const emph_revoke_idx = ops.findIndex(
@@ -204,13 +204,13 @@ describe('Opcode stream', () => {
 		it('paragraph open comes before its children', () => {
 			const ops = parse_to_ops('hello world\n');
 			const para_open_idx = ops.findIndex(
-				(o) => o.op === 'open' && o.kind === node_kind.paragraph
+				(o) => o.op === 'open' && o.kind === NodeKind.paragraph
 			);
 			const para_id = (ops[para_open_idx] as any).id;
 			// Text node under paragraph should come after
 			const text_open_idx = ops.findIndex(
 				(o, i) =>
-					i > para_open_idx && o.op === 'open' && o.kind === node_kind.text
+					i > para_open_idx && o.op === 'open' && o.kind === NodeKind.text
 			);
 			expect(text_open_idx).toBeGreaterThan(para_open_idx);
 		});
@@ -244,7 +244,7 @@ describe('Opcode stream', () => {
 			const ops = feed_to_ops(input, 1);
 
 			const emph_open_idx = ops.findIndex(
-				(o) => o.op === 'open' && o.kind === node_kind.strong_emphasis
+				(o) => o.op === 'open' && o.kind === NodeKind.strong_emphasis
 			);
 			expect(emph_open_idx).toBeGreaterThan(-1);
 
@@ -252,7 +252,7 @@ describe('Opcode stream', () => {
 			const emph_id = (ops[emph_open_idx] as any).id;
 			const text_inside = ops.findIndex(
 				(o, i) =>
-					i > emph_open_idx && o.op === 'open' && o.kind === node_kind.text
+					i > emph_open_idx && o.op === 'open' && o.kind === NodeKind.text
 			);
 			expect(text_inside).toBeGreaterThan(emph_open_idx);
 		});
@@ -261,7 +261,7 @@ describe('Opcode stream', () => {
 	describe('node lifecycle', () => {
 		it('heading is atomic (open + close, no children)', () => {
 			const ops = parse_to_ops('# Hello\n');
-			const heading_open = find_open(ops, node_kind.heading) as any;
+			const heading_open = find_open(ops, NodeKind.heading) as any;
 			expect(heading_open).toBeDefined();
 			expect(heading_open.extra).toBe(1); // depth 1
 			expect(heading_open.pending).toBe(false); // not speculative
@@ -274,7 +274,7 @@ describe('Opcode stream', () => {
 
 		it('code fence has value attrs', () => {
 			const ops = parse_to_ops('```js\ncode\n```\n');
-			const fence_open = find_open(ops, node_kind.code_fence) as any;
+			const fence_open = find_open(ops, NodeKind.code_fence) as any;
 			expect(fence_open).toBeDefined();
 
 			const fence_ops = ops_for(ops, fence_open.id);
@@ -289,7 +289,7 @@ describe('Opcode stream', () => {
 
 		it('link has href attr', () => {
 			const ops = parse_to_ops('[text](/url)\n');
-			const link_open = find_open(ops, node_kind.link) as any;
+			const link_open = find_open(ops, NodeKind.link) as any;
 			expect(link_open).toBeDefined();
 
 			const href_attr = ops.find(
@@ -302,7 +302,7 @@ describe('Opcode stream', () => {
 
 		it('list has ordered/start/tight attrs on close', () => {
 			const ops = parse_to_ops('- one\n- two\n');
-			const list_open = find_open(ops, node_kind.list) as any;
+			const list_open = find_open(ops, NodeKind.list) as any;
 			expect(list_open).toBeDefined();
 
 			const list_attrs = ops.filter(
@@ -316,7 +316,7 @@ describe('Opcode stream', () => {
 
 		it('thematic break is atomic (open + close)', () => {
 			const ops = parse_to_ops('---\n');
-			const tb_open = find_open(ops, node_kind.thematic_break) as any;
+			const tb_open = find_open(ops, NodeKind.thematic_break) as any;
 			expect(tb_open).toBeDefined();
 			const tb_close = ops.find((o) => o.op === 'close' && o.id === tb_open.id);
 			expect(tb_close).toBeDefined();

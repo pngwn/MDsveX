@@ -1,4 +1,4 @@
-import { type node_buffer, node_kind, kind_to_string, string_to_kind } from "./utils";
+import { type NodeBuffer, NodeKind, kind_to_string, string_to_kind } from "./utils";
 import { UndoLog, UndoEntryKind } from "./undo_log";
 import {
 	NodeView,
@@ -119,7 +119,7 @@ function compose(handlers: NodeHandler[]): ComposedHandler {
 }
 
 
-/** 35 slots, one per node_kind. null means no handlers. */
+/** 35 slots, one per NodeKind. null means no handlers. */
 type HandlersTable = (ComposedHandler | null)[];
 
 interface RegistrationResult {
@@ -236,7 +236,7 @@ class CloseCallbackStore {
  * per kind.
  */
 function dispatch_open(
-	kind: node_kind,
+	kind: NodeKind,
 	view: NodeView,
 	ctx: PluginContext,
 	fused: HandlersTable,
@@ -364,8 +364,8 @@ function dispatch_open(
  * calls visitor(idx, kind, false) on open, visitor(idx, kind, true) on close.
  */
 function walk_tree(
-	buf: node_buffer,
-	visitor: (idx: number, kind: node_kind, is_close: boolean) => void,
+	buf: NodeBuffer,
+	visitor: (idx: number, kind: NodeKind, is_close: boolean) => void,
 ): void {
 	const children_starts = buf._children_starts;
 	const next_siblings = buf._next_siblings;
@@ -378,7 +378,7 @@ function walk_tree(
 	const stack: number[] = [];
 
 	while (true) {
-		visitor(idx, kinds[idx] as node_kind, false);
+		visitor(idx, kinds[idx] as NodeKind, false);
 
 		const child = children_starts[idx];
 		if (child !== NONE) {
@@ -387,7 +387,7 @@ function walk_tree(
 			continue;
 		}
 
-		visitor(idx, kinds[idx] as node_kind, true);
+		visitor(idx, kinds[idx] as NodeKind, true);
 
 		let next = next_siblings[idx];
 		while (
@@ -395,7 +395,7 @@ function walk_tree(
 			stack.length > 0
 		) {
 			idx = stack.pop()!;
-			visitor(idx, kinds[idx] as node_kind, true);
+			visitor(idx, kinds[idx] as NodeKind, true);
 			next = next_siblings[idx];
 		}
 
@@ -421,7 +421,7 @@ export class PluginDispatcher {
 	private text_source: TextSource;
 
 	/**
-	 * redirect map: when wrapInner is called, subsequent children
+	 * redirect map: when wrap_inner is called, subsequent children
 	 * targeting the parent should land in the wrapper instead.
 	 */
 	private redirects: Map<number, number> = new Map();
@@ -437,16 +437,16 @@ export class PluginDispatcher {
 	}
 
 	/** check whether any fused handlers exist for this kind. */
-	has_handlers(kind: node_kind): boolean {
+	has_handlers(kind: NodeKind): boolean {
 		return !!(this.has_handler[kind >> 5] & (1 << (kind & 31)));
 	}
 
-	/** check if a parent index has a redirect (wrapInner). */
+	/** check if a parent index has a redirect (wrap_inner). */
 	get_redirect(parent_idx: number): number | undefined {
 		return this.redirects.get(parent_idx);
 	}
 
-	/** register a wrapInner redirect. */
+	/** register a wrap_inner redirect. */
 	set_redirect(parent_idx: number, wrapper_idx: number): void {
 		this.redirects.set(parent_idx, wrapper_idx);
 	}
@@ -472,8 +472,8 @@ export class PluginDispatcher {
 	 */
 	dispatch_open(
 		buf_idx: number,
-		kind: node_kind,
-		buf: node_buffer,
+		kind: NodeKind,
+		buf: NodeBuffer,
 		id_register: IdRegister,
 	): void {
 		const cache = new ViewCache(
@@ -494,9 +494,9 @@ export class PluginDispatcher {
 		);
 		this.undo.clear_active_node();
 
-		// check if the handler called wrapInner and register redirects.
+		// check if the handler called wrap_inner and register redirects.
 		// the wrapped node may be the handler's own node or a node
-		// reached via traversal (e.g. node.parent.wrapInner(...)).
+		// reached via traversal (e.g. node.parent.wrap_inner(...)).
 		const entries = this.undo.get_entries(buf_idx);
 		if (entries) {
 			for (let i = 0; i < entries.length; i++) {
@@ -521,7 +521,7 @@ export class PluginDispatcher {
 	 * pending nodes may still be revoked after close (e.g. tight-list
 	 * speculation, inline emphasis).
 	 */
-	dispatch_close(buf_idx: number, buf: node_buffer): void {
+	dispatch_close(buf_idx: number, buf: NodeBuffer): void {
 		this.redirects.delete(buf_idx);
 
 		// take and fire close callbacks with undo attribution
@@ -561,7 +561,7 @@ export class PluginDispatcher {
 	 * walks undo log in reverse, discards close callbacks.
 	 * must be called BEFORE handle_repair().
 	 */
-	dispatch_revoke(buf_idx: number, buf: node_buffer): void {
+	dispatch_revoke(buf_idx: number, buf: NodeBuffer): void {
 		this.redirects.delete(buf_idx);
 		this.close_cbs.discard(buf_idx);
 
@@ -591,7 +591,7 @@ export class PluginDispatcher {
 	 * run sequential plugin passes over a completed tree.
 	 * each sequential plugin gets its own tree walk.
 	 */
-	run_sequential(buf: node_buffer): void {
+	run_sequential(buf: NodeBuffer): void {
 		for (const pass of this.sequential) {
 			const close_store = new CloseCallbackStore();
 

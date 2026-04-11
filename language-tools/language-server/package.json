@@ -1,0 +1,40 @@
+{
+	"name": "@pfm/language-server",
+	"version": "0.0.1",
+	"description": "PFM Language Server — LSP binary for .pfm files",
+	"private": true,
+	"type": "module",
+	"bin": {
+		"pfm-language-server": "./bin/pfm-language-server.js"
+	},
+	"scripts": {
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run --silent",
+		"build": "vite build --config vite.config.build.ts"
+	},
+	"exports": {
+		".": {
+			"import": "./src/index.ts",
+			"types": "./src/index.ts"
+		}
+	},
+	"dependencies": {
+		"@pfm/language-core": "workspace:*",
+		"@volar/language-core": "^2.4.28",
+		"@volar/language-server": "^2.4.28",
+		"@volar/typescript": "^2.4.28",
+		"volar-service-css": "^0.0.70",
+		"volar-service-markdown": "^0.0.70",
+		"svelte2tsx": "^0.7.53",
+		"volar-service-typescript": "^0.0.70",
+		"vscode-languageserver": "^9.0.1",
+		"vscode-uri": "^3.0.8"
+	},
+	"devDependencies": {
+		"@volar/test-utils": "^2.4.28",
+		"svelte": "^5.0.0",
+		"typescript": "^5.0.0"
+	},
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT"
+}
