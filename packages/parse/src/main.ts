@@ -113,6 +113,17 @@ const classify = (code: number): CharMask =>
 /** shared empty error collector - avoids allocation when no errors are recorded. */
 const EMPTY_ERRORS = new ErrorCollector(1);
 
+/**
+ * normalize line endings to `\n`. per commonmark 2.1, a line ending is
+ * `\n`, `\r`, or `\r\n`. the state machine only recognizes `\n`, so we
+ * collapse the others at the input boundary. fast path: no allocation
+ * when the input has no `\r`.
+ */
+function normalize_newlines(source: string): string {
+	if (source.indexOf("\r") === -1) return source;
+	return source.replace(/\r\n?/g, "\n");
+}
+
 const TEXT_BREAK = new Uint8Array(128);
 TEXT_BREAK[LINEFEED] = 1;
 TEXT_BREAK[BACKSLASH] = 1;
@@ -189,6 +200,10 @@ export class PFMParser {
 	private source: string = "";
 	private cursor: number = 0;
 	private finished: boolean = false;
+	// deferred \r at the end of a feed() chunk: we can't tell whether it's
+	// a bare \r (line ending) or the first half of a \r\n until we see the
+	// next chunk's first char.
+	private pending_cr: boolean = false;
 
 	// state machine
 	private states: StateKind[] = [StateKind.root];
@@ -301,9 +316,9 @@ export class PFMParser {
 	 */
 	parse(source: string): { errors: ErrorCollector } {
 		this._init();
-		this.source = source;
-		this.current = classify(source.charCodeAt(0));
-		this.next_class = classify(source.charCodeAt(1));
+		this.source = normalize_newlines(source);
+		this.current = classify(this.source.charCodeAt(0));
+		this.next_class = classify(this.source.charCodeAt(1));
 		this.errors = EMPTY_ERRORS;
 		this.finished = true;
 
@@ -326,8 +341,37 @@ export class PFMParser {
 	 * feed a chunk of source text. the parser advances as far as it
 	 * can, stalling at line boundaries when lookahead is insufficient.
 	 * call init() before the first feed().
+	 *
+	 * line-ending normalization: \r\n and bare \r are collapsed to \n
+	 * before reaching the state machine. a trailing \r is deferred
+	 * across feed() boundaries so a \r\n pair split across chunks is
+	 * handled correctly.
 	 */
 	feed(chunk: string): void {
+		if (chunk.length === 0) return;
+
+		if (this.pending_cr) {
+			// consume a leading \n so a \r\n split across chunks becomes one \n
+			if (chunk.charCodeAt(0) === 0x0a) {
+				chunk = chunk.slice(1);
+			}
+			this.source += "\n";
+			this.pending_cr = false;
+		}
+
+		// defer a trailing \r in case the next chunk starts with \n
+		if (
+			chunk.length > 0 &&
+			chunk.charCodeAt(chunk.length - 1) === 0x0d
+		) {
+			this.pending_cr = true;
+			chunk = chunk.slice(0, -1);
+		}
+
+		if (chunk.indexOf("\r") !== -1) {
+			chunk = chunk.replace(/\r\n?/g, "\n");
+		}
+
 		this.source += chunk;
 		this.current = classify(this.source.charCodeAt(this.cursor));
 		this.next_class = classify(this.source.charCodeAt(this.cursor + 1));
@@ -340,6 +384,10 @@ export class PFMParser {
 	 * pending speculation.
 	 */
 	finish(): { errors: ErrorCollector } {
+		if (this.pending_cr) {
+			this.source += "\n";
+			this.pending_cr = false;
+		}
 		this.finished = true;
 		this._run();
 		this._finalize();
@@ -351,6 +399,7 @@ export class PFMParser {
 		this.source = "";
 		this.cursor = 0;
 		this.finished = false;
+		this.pending_cr = false;
 		this.states = [StateKind.root];
 		this.node_stack = [0];
 		this.next_id = 1;
@@ -7140,28 +7189,36 @@ export class PFMParser {
 
 /**
  * parse markdown that may include svelte syntax into tokens and nodes.
+ *
+ * line endings in `input` are normalized to `\n` per commonmark 2.1.
+ * the returned `source` is the normalized string, and all node
+ * positions are offsets into it. callers slicing for content should
+ * use `source`, not the original `input`.
+ *
  * @param input source markdown string.
  * @param options parser configuration and reusable storage.
- * @returns arena-backed parse result and collected tokens.
+ * @returns arena-backed parse result, the normalized source, and errors.
  */
 export function parse_markdown_svelte(
 	input: string,
 	options: ParseOptions = {},
-): { nodes: NodeBuffer; errors: ErrorCollector } {
+): { nodes: NodeBuffer; errors: ErrorCollector; source: string } {
+	const source = normalize_newlines(input);
+
 	let dispatcher: PluginDispatcher | undefined;
 	if (options.plugins && options.plugins.length > 0) {
-		const text_source = new SourceTextSource(input);
+		const text_source = new SourceTextSource(source);
 		dispatcher = new PluginDispatcher(options.plugins, text_source);
 	}
 
-	const tree = new TreeBuilder(input.length >> 3 || 128, dispatcher);
+	const tree = new TreeBuilder(source.length >> 3 || 128, dispatcher);
 	const parser = new PFMParser(tree, options.tab_size);
-	const { errors } = parser.parse(input);
+	const { errors } = parser.parse(source);
 
 	// run sequential plugins after parse completes
 	if (dispatcher) {
 		dispatcher.run_sequential(tree.get_buffer());
 	}
 
-	return { nodes: tree.get_buffer(), errors };
+	return { nodes: tree.get_buffer(), errors, source };
 }
