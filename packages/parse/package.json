@@ -10,8 +10,10 @@
 		"test": "vitest --disableConsoleIntercept",
 		"test:run": "vitest run",
 		"tsc": "tsc --noEmit",
-		"build": "tsc && vite build --config vite.config.build.ts && find tsc/ -name '*.d.ts' -exec cp {} dist/ \\;"
-
+		"build": "run-s build:tsc build:vite build:copy-dts",
+		"build:tsc": "tsc",
+		"build:vite": "vite build --config vite.config.build.ts",
+		"build:copy-dts": "shx cp tsc/*.d.ts dist/"
 	},
 	"repository": {
 		"type": "git",
@@ -56,6 +58,9 @@
 		"./package.json": "./package.json"
 	},
 	"author": "pngwn <hello@pngwn.io>",
-	"license": "MIT"
-
+	"license": "MIT",
+	"devDependencies": {
+		"npm-run-all2": "^7.0.2",
+		"shx": "^0.3.4"
+	}
 }

@@ -8,14 +8,18 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check": "run-s check:sync check:run",
+		"check:sync": "svelte-kit sync",
+		"check:run": "svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "run-s check:sync check:watch:run",
+		"check:watch:run": "svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.49.1",
 		"@sveltejs/adapter-auto": "^7.0.1",
 		"@sveltejs/kit": "^2.56.1",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
+		"npm-run-all2": "^7.0.2",
 		"svelte": "^5.55.1",
 		"svelte-check": "^4.4.6",
 		"typescript": "^6.0.2",

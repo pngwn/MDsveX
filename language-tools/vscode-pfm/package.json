@@ -50,9 +50,11 @@
 		]
 	},
 	"scripts": {
-		"build:server": "cd ../language-server && pnpm build",
+		"build:server": "pnpm --filter @pfm/language-server build",
 		"build:ext": "vite build --config vite.config.build.ts",
-		"build": "pnpm build:server && pnpm build:ext && mkdir -p server && cp ../language-server/dist/server.cjs server/server.cjs",
+		"build": "run-s build:server build:ext build:mkdir build:copy-server",
+		"build:mkdir": "shx mkdir -p server",
+		"build:copy-server": "shx cp ../language-server/dist/server.cjs server/server.cjs",
 		"package": "vsce package --no-dependencies"
 	},
 	"dependencies": {
@@ -61,6 +63,8 @@
 		"vscode-languageclient": "^9.0.1"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.85.0"
+		"@types/vscode": "^1.85.0",
+		"npm-run-all2": "^7.0.2",
+		"shx": "^0.3.4"
 	}
 }
