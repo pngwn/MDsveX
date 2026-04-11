@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/parse",
-	"version": "0.1.1",
+	"version": "1.0.0-next.0",
 	"description": "",
 	"main": "src/main.ts",
 	"module": "src/main.ts",
@@ -54,7 +54,6 @@
 			"types": "./dist/wire_tree_builder.d.ts",
 			"default": "./dist/wire-tree-builder.js"
 		},
-
 		"./package.json": "./package.json"
 	},
 	"author": "pngwn <hello@pngwn.io>",

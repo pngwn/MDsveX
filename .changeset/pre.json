@@ -1,17 +1,33 @@
 {
-	"mode": "pre",
-	"tag": "next",
-	"initialVersions": {
-		"mdsvex": "0.12.3",
-		"parse": "0.1.1",
-		"pfm-parse": "0.1.1",
-		"@mdsvex/site": "0.0.1",
-		"worker": "1.0.0",
-		"svast": "0.2.1",
-		"svast-stringify": "0.1.1",
-		"svast-utils": "0.0.6",
-		"svelte-parse": "0.1.1",
-		"mdsvex-test": "1.0.0"
-	},
-	"changesets": []
+  "mode": "pre",
+  "tag": "next",
+  "initialVersions": {
+    "mdsvex": "0.12.3",
+    "parse": "0.1.1",
+    "pfm-parse": "0.1.1",
+    "@mdsvex/site": "0.0.1",
+    "worker": "1.0.0",
+    "svast": "0.2.1",
+    "svast-stringify": "0.1.1",
+    "svast-utils": "0.0.6",
+    "svelte-parse": "0.1.1",
+    "mdsvex-test": "1.0.0",
+    "@pfm/language-core": "0.0.1",
+    "@pfm/language-server": "0.0.1",
+    "@pfm/source-map": "0.0.1",
+    "@pfm/typescript-plugin": "0.0.1",
+    "vscode-pfm": "0.0.1",
+    "test-fixture": "1.0.0",
+    "incremental-parse-test": "0.0.1",
+    "@mdsvex/bench": "0.0.6",
+    "@mdsvex/parse": "0.1.1",
+    "@mdsvex/render": "0.1.0",
+    "mdsvex-demo": "0.0.1",
+    "@mdsvex/plugin-autolink": "0.0.1"
+  },
+  "changesets": [
+    "clean-bats-sell",
+    "eleven-shirts-serve",
+    "mighty-doors-punch"
+  ]
 }
