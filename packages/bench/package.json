@@ -45,6 +45,7 @@
   },
   "private": true,
   "dependencies": {
-    "@aibind/markdown": "^0.8.0"
+    "@aibind/markdown": "^0.8.0",
+    "satteri": "^0.1.3"
   }
 }
