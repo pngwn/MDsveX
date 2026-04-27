@@ -2,7 +2,6 @@
 	"name": "@pfm/language-core",
 	"version": "0.0.1",
 	"description": "PFM Volar LanguagePlugin — teaches Volar how to handle .pfm files",
-	"private": true,
 	"type": "module",
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",

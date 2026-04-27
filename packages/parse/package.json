@@ -4,7 +4,6 @@
 	"description": "",
 	"main": "src/main.ts",
 	"module": "src/main.ts",
-	"private": true,
 	"type": "module",
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",

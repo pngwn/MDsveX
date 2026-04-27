@@ -2,7 +2,6 @@
 	"name": "@mdsvex/render",
 	"version": "0.1.0",
 	"description": "Renderers for the PFM parser wire format",
-	"private": true,
 	"type": "module",
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",
