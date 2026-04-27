@@ -2,7 +2,8 @@ root
   list ordered=true start=1 tight=true
     list_item
       text "foo"
-    list_item
+      soft_break
+      text "2."
     list_item
       text "bar"
   line_break

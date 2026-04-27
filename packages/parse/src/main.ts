@@ -1162,6 +1162,28 @@ export class PFMParser {
 		}
 	}
 
+	/**
+	 * a list marker (`-`, `*`, `+`, or `1.`) only opens a list when the
+	 * marker line carries actual content. a bare marker on its own line is
+	 * just text - this prevents stray dashes (e.g. a `-` glyph used as a
+	 * button label inside a custom html element) from spuriously starting
+	 * a list with an empty item.
+	 */
+	private marker_line_has_content(content_start: number): boolean {
+		const source = this.source;
+		const length = source.length;
+		let p = content_start;
+		while (p < length) {
+			const ch = source.charCodeAt(p);
+			if (ch === LINEFEED) return false;
+			if (ch !== SPACE && ch !== TAB) return true;
+			p++;
+		}
+		// reached end of buffer without finding content. in incremental mode
+		// more input may follow, so withhold judgement until finished.
+		return !this.finished ? true : false;
+	}
+
 	private try_parse_list_marker(pos: number): MarkerResult | null {
 		const source = this.source;
 		const length = source.length;
@@ -1194,6 +1216,7 @@ export class PFMParser {
 					content_columns += after === TAB ? this.tab_size : 1;
 					content_start++;
 				}
+				if (!this.marker_line_has_content(content_start)) return null;
 				return {
 					indent,
 					marker_char: ch,
@@ -1238,6 +1261,7 @@ export class PFMParser {
 					content_columns += after === TAB ? this.tab_size : 1;
 					content_start++;
 				}
+				if (!this.marker_line_has_content(content_start)) return null;
 				const num = parseInt(source.slice(num_start, pos), 10);
 				return {
 					indent,
@@ -4201,6 +4225,58 @@ export class PFMParser {
 						}
 					}
 
+					if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
+						if (!this.finished && this.cursor + 2 >= length) {
+							break main_loop;
+						}
+						if (this.is_thematic_break_start(this.cursor)) {
+							let line_end = this.cursor;
+							while (
+								line_end < length &&
+								source.charCodeAt(line_end) !== LINEFEED
+							)
+								line_end++;
+							const tb_id = this.emit_open(
+								NodeKind.thematic_break,
+								this.cursor,
+								current_node,
+							);
+							this.emit_close(tb_id, line_end);
+							this.chomp(line_end, true);
+							continue;
+						}
+						if (code !== UNDERSCORE) {
+							const marker = this.try_parse_list_marker(this.cursor);
+							if (marker) {
+								this.start_list(marker, current_node);
+								continue;
+							}
+						}
+					}
+
+					if (code === PLUS || (code >= 48 && code <= 57)) {
+						if (!this.finished) {
+							let p = this.cursor + 1;
+							if (code !== PLUS) {
+								while (
+									p < length &&
+									source.charCodeAt(p) >= 48 &&
+									source.charCodeAt(p) <= 57
+								)
+									p++;
+								if (p >= length) break main_loop;
+								const after = source.charCodeAt(p);
+								if (after === DOT || after === CLOSE_PAREN) p++;
+							}
+							if (p >= length) break main_loop;
+						}
+						const marker = this.try_parse_list_marker(this.cursor);
+						if (marker) {
+							this.start_list(marker, current_node);
+							continue;
+						}
+					}
+
 					// default: start a paragraph for text content
 					this.states.push(StateKind.paragraph);
 					const blk_html_para = this.emit_open(
@@ -4448,6 +4524,36 @@ export class PFMParser {
 							);
 							this.emit_close(tb_id, line_end);
 							this.chomp(line_end, true);
+							continue;
+						}
+						if (code !== UNDERSCORE) {
+							const marker = this.try_parse_list_marker(this.cursor);
+							if (marker) {
+								this.start_list(marker, current_node);
+								continue;
+							}
+						}
+					}
+
+					if (code === PLUS || (code >= 48 && code <= 57)) {
+						if (!this.finished) {
+							let p = this.cursor + 1;
+							if (code !== PLUS) {
+								while (
+									p < length &&
+									source.charCodeAt(p) >= 48 &&
+									source.charCodeAt(p) <= 57
+								)
+									p++;
+								if (p >= length) break main_loop;
+								const after = source.charCodeAt(p);
+								if (after === DOT || after === CLOSE_PAREN) p++;
+							}
+							if (p >= length) break main_loop;
+						}
+						const marker = this.try_parse_list_marker(this.cursor);
+						if (marker) {
+							this.start_list(marker, current_node);
 							continue;
 						}
 					}

@@ -2,162 +2,8 @@ root
   html tag="script" lang="ts"
   line_break
   line_break
-  html tag="ArticleMain" pane_path="docs / faq" title="frequently asked" subtitle="Short answers to the things that come up most often. If something here is wrong or missing, the source for this page lives in <code>docs/faq.md</code>."
-    line_break
-    line_break
-    svelte_block tag="snippet"
-      svelte_branch tag="snippet" "shiki()"
-        line_break
-        paragraph
-          text "Twinkleplop is significantly "
-          strong_emphasis
-            strong_emphasis
-              text "smaller"
-          text " than Shiki and an order of magnitude faster. It offers similar quality highlighting in terms of correctness and granularity and also offers a similar toolkit for authoring code snippets."
-        line_break
-        line_break
-        paragraph
-          text "Unlike Shiki, Twinkleplop owns "
-          emphasis
-            text "most"
-          text " of its stack, grammars are bespoke and not a downstream concern. Bugs in twinkleplop are bugs in twinkleplop."
-        line_break
-    line_break
-    line_break
-    svelte_block tag="snippet"
-      svelte_branch tag="snippet" "prism()"
-        line_break
-        line_break
-        paragraph
-          text "Twinkleplop is a little larger than Prism but faster (the delta is not as great as against shiki, 3-6x typically). Twinkleplop is ESM and bundler friendly, and treeshakable."
-          soft_break
-          text "		Twinkleplop typically provides higher quality highlighting than Prism and a much richer toolkit. Twinkleplop also supports all features in all environments."
-        line_break
-        line_break
-    line_break
-    line_break
-    svelte_block tag="snippet"
-      svelte_branch tag="snippet" "a_install()"
-        line_break
-        line_break
-        paragraph
-          text "Pick a package manager. Both the core and any language modules are published under the"
-          soft_break
-          text "			"
-          html tag="code"
-            text "@twinkleplop"
-          text " scope."
-        line_break
-        line_break
-        html tag="CodeBlock" fname="install.sh" lang="shell" html=[object Object] self_closing=true
-        line_break
-        paragraph
-          text "That's it — no peer dependencies, no postinstall scripts, no native bindings."
-        line_break
-        line_break
-    line_break
-    line_break
-    svelte_block tag="snippet"
-      svelte_branch tag="snippet" "a_runtimes()"
-        line_break
-        line_break
-        paragraph
-          text "Both. Every package ships ESM, CJS, and a browser-ready IIFE. There are no Node-only APIs in"
-          soft_break
-          text "			the runtime path, so the same import works in a Worker, a Cloudflare edge function, or a"
-          soft_break
-          text "			vanilla "
-          html tag="code"
-            text "&lt;script&gt;"
-          text " tag."
-        line_break
-        line_break
-    line_break
-    line_break
-    svelte_block tag="snippet"
-      svelte_branch tag="snippet" "a_one_per_lang()"
-        line_break
-        line_break
-        paragraph
-          text "Languages are self-contained packages. You install and import only what you need, and"
-          soft_break
-          text "			tree-shaking does the rest. A page that highlights only HTML doesn't pay for the TypeScript"
-          soft_break
-          text "			grammar."
-        line_break
-        line_break
-        line_break
-        paragraph
-          text "Embedded languages — say, JS inside an HTML "
-          html tag="code"
-            text "&lt;script&gt;"
-          text " tag — are an"
-          soft_break
-          text "			implementation detail of the parent language. You don't import them separately."
-        line_break
-        line_break
-    line_break
-    line_break
-    svelte_block tag="snippet"
-      svelte_branch tag="snippet" "a_lazy()"
-        line_break
-        line_break
-        paragraph
-          text "Yes. Every language package is a default-exported factory, so dynamic "
-          html tag="code"
-            text "import()"
-          soft_break
-          text "			works out of the box:"
-        line_break
-        line_break
-        html tag="CodeBlock" fname="lazy.ts" lang="typescript" html=[object Object] self_closing=true
-        line_break
-        line_break
-        paragraph
-          text "Use this when the language depends on user input — an in-browser playground, for example —"
-          soft_break
-          text "			and you'd rather not ship every grammar up front."
-        line_break
-        line_break
-    line_break
-    line_break
-    svelte_block tag="snippet"
-      svelte_branch tag="snippet" "a_supported()"
-        line_break
-        line_break
-        paragraph
-          text "The first-party set covers most of what you'd want for a docs site or a code-review UI:"
-        line_break
-        html tag="ul"
-          line_break
-          html tag="li"
-            paragraph
-              text "html, css, javascript, typescript, jsx, tsx"
-          line_break
-          html tag="li"
-            paragraph
-              text "json, yaml, toml, markdown, mdx"
-          line_break
-          html tag="li"
-            paragraph
-              text "rust, go, python, ruby, swift"
-          line_break
-          html tag="li"
-            paragraph
-              text "shell, sql, graphql, dockerfile"
-          line_break
-        line_break
-        line_break
-        paragraph
-          text "Anything else lives in "
-          html tag="code"
-            text "@twinkleplop-community/"
-            text "*"
-          text ". Grammars there follow the same"
-          soft_break
-          text "			shape and are loaded the same way."
-        line_break
-        line_break
+  paragraph
+    text "<ArticleMain"
     line_break
     line_break
     svelte_block tag="snippet"
@@ -325,6 +171,189 @@ root
     html tag="FaqList" initial_open="01-0" sections=[object Object] self_closing=true
     line_break
     line_break
+  line_break
+  line_break
+  svelte_block tag="snippet"
+    svelte_branch tag="snippet" "shiki()"
+      line_break
+      paragraph
+        text "Twinkleplop is significantly "
+        strong_emphasis
+          strong_emphasis
+            text "smaller"
+        text " than Shiki and an order of magnitude faster. It offers similar quality highlighting in terms of correctness and granularity and also offers a similar toolkit for authoring code snippets."
+      line_break
+      line_break
+      paragraph
+        text "Unlike Shiki, Twinkleplop owns "
+        emphasis
+          text "most"
+        text " of its stack, grammars are bespoke and not a downstream concern. Bugs in twinkleplop are bugs in twinkleplop."
+      line_break
+  line_break
+  line_break
+  svelte_block tag="snippet"
+    svelte_branch tag="snippet" "prism()"
+      line_break
+      line_break
+      paragraph
+        text "Twinkleplop is a little larger than Prism but faster (the delta is not as great as against shiki, 3-6x typically). Twinkleplop is ESM and bundler friendly, and treeshakable."
+        soft_break
+        text "		Twinkleplop typically provides higher quality highlighting than Prism and a much richer toolkit. Twinkleplop also supports all features in all environments."
+      line_break
+      line_break
+  line_break
+  line_break
+  svelte_block tag="snippet"
+    svelte_branch tag="snippet" "a_install()"
+      line_break
+      line_break
+      paragraph
+        text "Pick a package manager. Both the core and any language modules are published under the"
+        soft_break
+        text "			"
+        html tag="code"
+          text "@twinkleplop"
+        text " scope."
+      line_break
+      line_break
+      html tag="CodeBlock" fname="install.sh" lang="shell" html=[object Object] self_closing=true
+      line_break
+      paragraph
+        text "That's it — no peer dependencies, no postinstall scripts, no native bindings."
+      line_break
+      line_break
+  line_break
+  line_break
+  svelte_block tag="snippet"
+    svelte_branch tag="snippet" "a_runtimes()"
+      line_break
+      line_break
+      paragraph
+        text "Both. Every package ships ESM, CJS, and a browser-ready IIFE. There are no Node-only APIs in"
+        soft_break
+        text "			the runtime path, so the same import works in a Worker, a Cloudflare edge function, or a"
+        soft_break
+        text "			vanilla "
+        html tag="code"
+          text "&lt;script&gt;"
+        text " tag."
+      line_break
+      line_break
+  line_break
+  line_break
+  svelte_block tag="snippet"
+    svelte_branch tag="snippet" "a_one_per_lang()"
+      line_break
+      line_break
+      paragraph
+        text "Languages are self-contained packages. You install and import only what you need, and"
+        soft_break
+        text "			tree-shaking does the rest. A page that highlights only HTML doesn't pay for the TypeScript"
+        soft_break
+        text "			grammar."
+      line_break
+      line_break
+      line_break
+      paragraph
+        text "Embedded languages — say, JS inside an HTML "
+        html tag="code"
+          text "&lt;script&gt;"
+        text " tag — are an"
+        soft_break
+        text "			implementation detail of the parent language. You don't import them separately."
+      line_break
+      line_break
+  line_break
+  line_break
+  svelte_block tag="snippet"
+    svelte_branch tag="snippet" "a_lazy()"
+      line_break
+      line_break
+      paragraph
+        text "Yes. Every language package is a default-exported factory, so dynamic "
+        html tag="code"
+          text "import()"
+        soft_break
+        text "			works out of the box:"
+      line_break
+      line_break
+      html tag="CodeBlock" fname="lazy.ts" lang="typescript" html=[object Object] self_closing=true
+      line_break
+      line_break
+      paragraph
+        text "Use this when the language depends on user input — an in-browser playground, for example —"
+        soft_break
+        text "			and you'd rather not ship every grammar up front."
+      line_break
+      line_break
+  line_break
+  line_break
+  svelte_block tag="snippet"
+    svelte_branch tag="snippet" "a_supported()"
+      line_break
+      paragraph
+        text "The first-party set covers most of what you'd want for a docs site or a code-review UI:"
+      line_break
+      html tag="ul"
+        line_break
+        html tag="li"
+          paragraph
+            text "html, css, javascript, typescript, jsx, tsx"
+        line_break
+        html tag="li"
+          paragraph
+            text "json, yaml, toml, markdown, mdx"
+        line_break
+        html tag="li"
+          paragraph
+            text "rust, go, python, ruby, swift"
+        line_break
+        html tag="li"
+          paragraph
+            text "shell, sql, graphql, dockerfile"
+        line_break
+      line_break
+      line_break
+      paragraph
+        text "Anything else lives in "
+        html tag="code"
+          text "@twinkleplop-community/"
+          text "*"
+        text ". Grammars there follow the same"
+        soft_break
+        text "			shape and are loaded the same way."
+      line_break
+      line_break
+  line_break
+  line_break
+  svelte_block tag="snippet"
+    svelte_branch tag="snippet" "a_supported()"
+      line_break
+      paragraph
+        text "The first-party set covers most of what you'd want for a docs site or a code-review UI:"
+      line_break
+      line_break
+      list ordered=false start=0 tight=true
+        list_item
+          text "html, css, javascript, typescript, jsx, tsx"
+        list_item
+          text "json, yaml, toml, markdown, mdx"
+        list_item
+          text "rust, go, python, ruby, swift"
+        list_item
+          text "shell, sql, graphql, dockerfile"
+      line_break
+      line_break
+      paragraph
+        text "Anything else lives in "
+        html tag="code"
+          text "@twinkleplop-community/"
+          text "*"
+        text ". Grammars there follow the same"
+        soft_break
+        text "shape and are loaded the same way."
+      line_break
   line_break
   line_break
   html tag="ArticleOtp" title="faq" sections=[object Object] self_closing=true

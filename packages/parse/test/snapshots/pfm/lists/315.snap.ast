@@ -3,7 +3,8 @@ root
     list_item
       paragraph
         text "a"
-    list_item
+        soft_break
+        text "*"
     list_item
       paragraph
         text "c"

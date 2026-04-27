@@ -85,7 +85,6 @@ const tokens = html_tokenizer("hello world");`);
 {/snippet}
 
 	{#snippet a_supported()}
-
 		The first-party set covers most of what you'd want for a docs site or a code-review UI:
 		<ul>
 			<li>html, css, javascript, typescript, jsx, tsx</li>
@@ -97,6 +96,18 @@ const tokens = html_tokenizer("hello world");`);
 			Anything else lives in <code>@twinkleplop-community/*</code>. Grammars there follow the same
 			shape and are loaded the same way.
 
+	{/snippet}
+
+	{#snippet a_supported()}
+The first-party set covers most of what you'd want for a docs site or a code-review UI:
+
+- html, css, javascript, typescript, jsx, tsx
+- json, yaml, toml, markdown, mdx
+- rust, go, python, ruby, swift
+- shell, sql, graphql, dockerfile
+
+Anything else lives in <code>@twinkleplop-community/*</code>. Grammars there follow the same
+shape and are loaded the same way.
 	{/snippet}
 
 	{#snippet a_html_or_tokens()}

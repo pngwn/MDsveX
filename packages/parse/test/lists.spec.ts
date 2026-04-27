@@ -164,6 +164,9 @@ describe('Lists', () => {
 	});
 
 	test('pfm example 315: empty list item', () => {
+		// pfm: a list marker requires non-blank content on its line, so a
+		// stray `*` between items is treated as a soft-break + text inside
+		// the previous item rather than starting a new (empty) item.
 		const input = load_fixture('315');
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
@@ -172,7 +175,7 @@ describe('Lists', () => {
 		expect(children[0].kind).toBe('list');
 
 		const items = non_breaks(nodes, children[0].index);
-		expect(items.length).toBe(3);
+		expect(items.length).toBe(2);
 	});
 
 	test('pfm example 307: nested sub-lists', () => {
