@@ -4,5 +4,4 @@ root
   line_break
   html_comment " {src} is short for src={src} "
   line_break
-  paragraph
-    text
+  html tag="img" src=[object Object] alt="{name} dancing" self_closing=true

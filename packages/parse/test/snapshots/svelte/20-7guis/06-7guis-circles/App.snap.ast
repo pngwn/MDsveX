@@ -22,33 +22,26 @@ root
   line_break
   html tag="svg" on:click=[object Object]
     line_break
-    paragraph
-      mustache "#each circles as circle"
-      soft_break
-      text "		"
-      html tag="circle" cx=[object Object] cy=[object Object] r=[object Object] on:click="{event => select(circle, event)}" on:contextmenu|stopPropagation|preventDefault="{() => {\n				adjusting = !adjusting;\n				if (adjusting) selected = circle;\n			}}" fill="{circle === selected ? '#ccc': 'white'}" self_closing=true
-      soft_break
-      text "	"
-      mustache "/each"
-      soft_break
+    svelte_block tag="each"
+      svelte_branch tag="each" "circles as circle"
+        line_break
+        html tag="circle" cx=[object Object] cy=[object Object] r=[object Object] on:click="{event => select(circle, event)}" on:contextmenu|stopPropagation|preventDefault="{() => {\n				adjusting = !adjusting;\n				if (adjusting) selected = circle;\n			}}" fill="{circle === selected ? '#ccc': 'white'}" self_closing=true
+        line_break
+    line_break
   line_break
   line_break
-  paragraph
-    mustache "#if adjusting"
-    soft_break
-    text "	"
-    html tag="div" class="adjuster"
-      soft_break
-      text "		"
-      html tag="p"
-        text "adjust diameter of circle at "
-        mustache "selected.cx"
-        text ", "
-        mustache "selected.cy"
-      soft_break
-      text "		"
-      html tag="input" type="range" value=[object Object] on:input=[object Object]
-        soft_break
-        text "	"
-    soft_break
-    mustache "/if"
+  svelte_block tag="if"
+    svelte_branch tag="if" "adjusting"
+      line_break
+      html tag="div" class="adjuster"
+        line_break
+        html tag="p"
+          paragraph
+            text "adjust diameter of circle at "
+            mustache "selected.cx"
+            text ", "
+            mustache "selected.cy"
+        line_break
+        html tag="input" type="range" value=[object Object] on:input=[object Object] self_closing=true
+        line_break
+      line_break

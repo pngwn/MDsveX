@@ -12,15 +12,12 @@ root
           soft_break
           text "	"
       line_break
-      paragraph
-        mustache ":else"
-        soft_break
-        text "	"
-        html tag="button" on:click=[object Object]
-          soft_break
-          text "		Log in"
-          soft_break
-          text "	"
+    svelte_branch tag="else"
+      line_break
+      html tag="button" on:click=[object Object]
         line_break
         paragraph
-          mustache "/if"
+          text "Log in"
+          soft_break
+          text "	"
+      line_break

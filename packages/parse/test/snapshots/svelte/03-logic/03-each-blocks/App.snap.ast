@@ -9,20 +9,17 @@ root
   line_break
   html tag="ul"
     line_break
-    paragraph
-      mustache "#each cats as { id, name }, i"
-      soft_break
-      text "		"
-      html tag="li"
-        html tag="a" target="_blank" href="https://www.youtube.com/watch?v={id}"
-          soft_break
-          text "			"
-          mustache "i + 1"
-          text ": "
-          mustache "name"
-          soft_break
-          text "		"
-      soft_break
-      text "	"
-      mustache "/each"
-      soft_break
+    svelte_block tag="each"
+      svelte_branch tag="each" "cats as { id, name }, i"
+        line_break
+        html tag="li"
+          html tag="a" target="_blank" href="https://www.youtube.com/watch?v={id}"
+            line_break
+            paragraph
+              mustache "i + 1"
+              text ": "
+              mustache "name"
+              soft_break
+              text "		"
+        line_break
+    line_break

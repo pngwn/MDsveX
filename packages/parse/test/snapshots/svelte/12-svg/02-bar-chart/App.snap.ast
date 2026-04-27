@@ -18,26 +18,48 @@ root
       line_break
       html tag="g" class="axis y-axis" transform="translate(0,{padding.top})"
         line_break
-        paragraph
-          mustache "#each yTicks as tick"
-          soft_break
-          text "				"
-          html tag="g" class="tick tick-{tick}" transform="translate(0, {yScale(tick) - padding.bottom})"
-            soft_break
-            text "					"
-            html tag="line" x2="100%"
-            soft_break
-            text "					"
-            html tag="text" y="-4"
-              mustache "tick"
-              text " "
-              mustache "tick === 20 ? ' per 1,000 population' : ''"
-            soft_break
-            text "				"
-          soft_break
-          text "			"
-          mustache "/each"
-          soft_break
-          text "		"
+        svelte_block tag="each"
+          svelte_branch tag="each" "yTicks as tick"
+            line_break
+            html tag="g" class="tick tick-{tick}" transform="translate(0, {yScale(tick) - padding.bottom})"
+              line_break
+              html tag="line" x2="100%"
+              line_break
+              html tag="text" y="-4"
+                paragraph
+                  mustache "tick"
+                  text " "
+                  mustache "tick === 20 ? ' per 1,000 population' : ''"
+              line_break
+            line_break
+        line_break
+      line_break
+      line_break
+      html_comment " x axis "
+      line_break
+      html tag="g" class="axis x-axis"
+        line_break
+        svelte_block tag="each"
+          svelte_branch tag="each" "points as point, i"
+            line_break
+            html tag="g" class="tick" transform="translate({xScale(i)},{height})"
+              line_break
+              html tag="text" x="{barWidth/2}" y="-4"
+                paragraph
+                  mustache "width > 380 ? point.year : formatMobile(point.year)"
+              line_break
+            line_break
+        line_break
+      line_break
+      line_break
+      html tag="g" class="bars"
+        line_break
+        svelte_block tag="each"
+          svelte_branch tag="each" "points as point, i"
+            line_break
+            html tag="rect" x="{xScale(i) + 2}" y="{yScale(point.birthrate)}" width="{barWidth - 4}" height="{height - padding.bottom - yScale(point.birthrate)}"
+            line_break
+        line_break
+      line_break
     line_break
   line_break

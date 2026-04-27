@@ -4,7 +4,7 @@ root
       text "svelte:head"
     soft_break
     text "	"
-    text tag="link" rel="stylesheet" href="tutorial/dark-theme.css" "<link rel=\"stylesheet\" href=\"tutorial/dark-theme.css\">"
+    html tag="link" rel="stylesheet" href="tutorial/dark-theme.css" self_closing=true
     soft_break
     text "</svelte"
     text ":head>"

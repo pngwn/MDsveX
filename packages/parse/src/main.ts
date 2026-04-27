@@ -1523,6 +1523,31 @@ export class PFMParser {
 	}
 
 	/**
+	 * html void elements - never have content or a close tag.
+	 * matches the html living standard set.
+	 */
+	private is_void_tag(tag: string): boolean {
+		switch (tag) {
+			case "area":
+			case "base":
+			case "br":
+			case "col":
+			case "embed":
+			case "hr":
+			case "img":
+			case "input":
+			case "link":
+			case "meta":
+			case "source":
+			case "track":
+			case "wbr":
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	/**
 	 * scan forward from `pos` for the case-sensitive closing tag `</tag>`.
 	 * returns the end position (after `>`) or -1 if not found / input incomplete.
 	 */
@@ -1786,17 +1811,27 @@ export class PFMParser {
 	 * close an inline html element by unwinding state/node stacks.
 	 */
 	private close_html_inline(html_id: number, end: number): void {
-		// unwind the node stack and state stack to find and close this html element
+		// unwind the node stack and state stack to find and close this html element.
+		// the state stack can be deeper than the node stack because some states
+		// (inline) carry no node, so when we hit the target html node we keep
+		// popping states until we drain the owning html_element/html_block_element
+		// frame - otherwise it strands on the stack and swallows trailing content.
 		while (this.node_stack.length > 1) {
 			const top_id = this.node_stack[this.node_stack.length - 1];
-			const top_state = this.states[this.states.length - 1];
 
 			if (top_id === html_id) {
 				// found the html element - commit and close it
 				this.pending_remove(html_id);
 				this.emit_close(html_id, end);
 				this.node_stack.pop();
-				this.states.pop(); // pop html_element state
+				while (this.states.length > 0) {
+					const popped = this.states.pop()!;
+					if (popped === StateKind.html_element) break;
+					if (popped === StateKind.html_block_element) {
+						this.html_block_depth--;
+						break;
+					}
+				}
 				// pop trailing inline state if present
 				if (this.states[this.states.length - 1] === StateKind.inline) {
 					this.states.pop();
@@ -2696,7 +2731,7 @@ export class PFMParser {
 							// try html opening tag at block level
 							const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
 							if (blk_tag) {
-								if (blk_tag.self_closing) {
+								if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
 									const html_id = this.emit_open(
 										NodeKind.html,
 										this.cursor,
@@ -3997,7 +4032,7 @@ export class PFMParser {
 
 						const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
 						if (blk_tag) {
-							if (blk_tag.self_closing) {
+							if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
 								const html_id = this.emit_open(
 									NodeKind.html,
 									this.cursor,
@@ -4060,6 +4095,19 @@ export class PFMParser {
 								this.html_block_depth++;
 								this.chomp(blk_tag.end, true);
 							}
+							continue;
+						}
+					}
+
+					if (code === OPEN_BRACE) {
+						// svelte block opener nested inside an html block element
+						if (!this.finished) {
+							const probe = this.find_matching_brace(this.cursor + 1);
+							if (probe === -1) break main_loop;
+						}
+						const token = this.try_parse_svelte_block_token(this.cursor);
+						if (token && token.kind === "#") {
+							this.start_svelte_block(token, current_node);
 							continue;
 						}
 					}
@@ -4226,7 +4274,7 @@ export class PFMParser {
 						}
 						const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
 						if (blk_tag) {
-							if (blk_tag.self_closing) {
+							if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
 								const html_id = this.emit_open(
 									NodeKind.html,
 									this.cursor,
@@ -5794,7 +5842,7 @@ export class PFMParser {
 							// try html opening tag: <tag ...> or <tag ... />
 							const open_tag = this.try_parse_html_open_tag(this.cursor + 1);
 							if (open_tag) {
-								if (open_tag.self_closing) {
+								if (open_tag.self_closing || this.is_void_tag(open_tag.tag)) {
 									const html_id = this.emit_open(
 										NodeKind.html,
 										this.cursor,

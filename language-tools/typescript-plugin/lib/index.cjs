@@ -210,18 +210,18 @@ function requireSourceMap() {
   if (hasRequiredSourceMap) return sourceMap$1;
   hasRequiredSourceMap = 1;
   (function(exports2) {
-    var __createBinding = sourceMap$1 && sourceMap$1.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding = sourceMap$1 && sourceMap$1.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar = sourceMap$1 && sourceMap$1.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding(exports3, m2, p2);
@@ -482,18 +482,18 @@ function requireLanguageCore() {
   if (hasRequiredLanguageCore) return languageCore;
   hasRequiredLanguageCore = 1;
   (function(exports2) {
-    var __createBinding = languageCore && languageCore.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding = languageCore && languageCore.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar = languageCore && languageCore.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding(exports3, m2, p2);
@@ -2304,13 +2304,13 @@ function requireCreateLanguageServicePlugin() {
   return createLanguageServicePlugin;
 }
 var createLanguageServicePluginExports = requireCreateLanguageServicePlugin();
-function g(c2) {
+function b(c2) {
   let s = 1;
   for (; s < c2; )
     s <<= 1;
   return s;
 }
-const b = (c2) => {
+const v$2 = (c2) => {
   switch (c2) {
     case 0:
       return "root";
@@ -2383,22 +2383,22 @@ const b = (c2) => {
     case 34:
       return "import_statement";
   }
-}, v$2 = /* @__PURE__ */ new Map();
+}, w$3 = /* @__PURE__ */ new Map();
 for (let c2 = 0; c2 <= 34; c2++)
-  v$2.set(b(c2), c2);
-const w$3 = (c2) => {
+  w$3.set(v$2(c2), c2);
+const x$2 = (c2) => {
   switch (c2) {
     case 3:
       return "depth";
   }
 };
-let y$1 = class y {
+let A$1 = class A {
   /**
    * create a buffer that stores token metadata with typed arrays.
    * @param initial_capacity requested starting capacity for tokens.
    */
   constructor(s = 128) {
-    const t2 = g(s);
+    const t2 = b(s);
     this.capacity = t2, this._kinds = new Uint8Array(t2), this._starts = new Uint32Array(t2), this._ends = new Uint32Array(t2), this._extras = new Uint16Array(t2), this._value_starts = new Uint32Array(t2), this._value_ends = new Uint32Array(t2), this.has_metadata = new Uint8Array(Math.max(1, t2 >> 3)), this.metadata = /* @__PURE__ */ new Map(), this._strings = [], this._parents = new Uint32Array(t2), this._next_siblings = new Uint32Array(t2), this._prev_siblings = new Uint32Array(t2), this._children_starts = new Uint32Array(t2), this._children_ends = new Uint32Array(t2), this._pending_nodes = new Uint32Array(t2), this._size = 0, this.push(0, 0);
   }
   /** clear previously pushed tokens without reallocating storage. */
@@ -2417,16 +2417,16 @@ let y$1 = class y {
    * @param extra extra metadata stored alongside the token.
    * @param metadata optional metadata associated with the node.
    */
-  push(s, t2, e2 = 4294967295, _2 = 0, i) {
+  push(s, t2, i = 4294967295, _2 = 0, e2) {
     const f2 = this._size;
-    if (f2 >= this.capacity && this.grow(), this._kinds[f2] = s, this._starts[f2] = t2 >>> 0, this._ends[f2] = 4294967295, this._extras[f2] = _2 & 65535, this._size = f2 + 1, this._parents[f2] = e2, this._next_siblings[f2] = 4294967295, this._prev_siblings[f2] = 4294967295, this._children_starts[f2] = 4294967295, this._children_ends[f2] = 4294967295, e2 !== 4294967295) {
-      const n3 = this._children_ends[e2];
-      n3 === 4294967295 ? this._children_starts[e2] = f2 : (this._next_siblings[n3] = f2, this._prev_siblings[f2] = n3), this._children_ends[e2] = f2;
+    if (f2 >= this.capacity && this.grow(), this._kinds[f2] = s, this._starts[f2] = t2 >>> 0, this._ends[f2] = 4294967295, this._extras[f2] = _2 & 65535, this._size = f2 + 1, this._parents[f2] = i, this._next_siblings[f2] = 4294967295, this._prev_siblings[f2] = 4294967295, this._children_starts[f2] = 4294967295, this._children_ends[f2] = 4294967295, i !== 4294967295) {
+      const n3 = this._children_ends[i];
+      n3 === 4294967295 ? this._children_starts[i] = f2 : (this._next_siblings[n3] = f2, this._prev_siblings[f2] = n3), this._children_ends[i] = f2;
     }
-    return i !== void 0 && (this.metadata.set(f2, i), this.has_metadata[f2 >> 3] |= 1 << (f2 & 7)), f2;
+    return e2 !== void 0 && (this.metadata.set(f2, e2), this.has_metadata[f2 >> 3] |= 1 << (f2 & 7)), f2;
   }
-  push_pending(s, t2, e2 = 4294967295, _2 = 0, i) {
-    const f2 = this.push(s, t2, e2, _2, i);
+  push_pending(s, t2, i = 4294967295, _2 = 0, e2) {
+    const f2 = this.push(s, t2, i, _2, e2);
     return this._pending_nodes[f2] = 1, f2;
   }
   /**
@@ -2439,9 +2439,9 @@ let y$1 = class y {
    * @param metadata optional metadata.
    * @returns buffer index of the new node.
    */
-  push_unlinked(s, t2, e2 = 0, _2) {
-    const i = this._size;
-    return i >= this.capacity && this.grow(), this._kinds[i] = s, this._starts[i] = t2 >>> 0, this._ends[i] = 4294967295, this._extras[i] = e2 & 65535, this._size = i + 1, this._parents[i] = 4294967295, this._next_siblings[i] = 4294967295, this._prev_siblings[i] = 4294967295, this._children_starts[i] = 4294967295, this._children_ends[i] = 4294967295, _2 !== void 0 && (this.metadata.set(i, _2), this.has_metadata[i >> 3] |= 1 << (i & 7)), i;
+  push_unlinked(s, t2, i = 0, _2) {
+    const e2 = this._size;
+    return e2 >= this.capacity && this.grow(), this._kinds[e2] = s, this._starts[e2] = t2 >>> 0, this._ends[e2] = 4294967295, this._extras[e2] = i & 65535, this._size = e2 + 1, this._parents[e2] = 4294967295, this._next_siblings[e2] = 4294967295, this._prev_siblings[e2] = 4294967295, this._children_starts[e2] = 4294967295, this._children_ends[e2] = 4294967295, _2 !== void 0 && (this.metadata.set(e2, _2), this.has_metadata[e2 >> 3] |= 1 << (e2 & 7)), e2;
   }
   /**
    * insert a new wrapper node between a parent and all its current children.
@@ -2454,15 +2454,15 @@ let y$1 = class y {
    * @param metadata optional metadata for the wrapper.
    * @returns buffer index of the new wrapper node.
    */
-  wrap_children(s, t2, e2 = 0, _2) {
-    const i = this._children_starts[s], f2 = this._children_ends[s];
+  wrap_children(s, t2, i = 0, _2) {
+    const e2 = this._children_starts[s], f2 = this._children_ends[s];
     this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295;
-    const n3 = this.push(t2, 0, s, e2, _2);
-    if (i !== 4294967295) {
-      this._children_starts[n3] = i, this._children_ends[n3] = f2;
-      let h = i;
-      for (; h !== 4294967295 && this._parents[h] === s; )
-        this._parents[h] = n3, h = this._next_siblings[h];
+    const n3 = this.push(t2, 0, s, i, _2);
+    if (e2 !== 4294967295) {
+      this._children_starts[n3] = e2, this._children_ends[n3] = f2;
+      let a = e2;
+      for (; a !== 4294967295 && this._parents[a] === s; )
+        this._parents[a] = n3, a = this._next_siblings[a];
     }
     return n3;
   }
@@ -2494,45 +2494,49 @@ let y$1 = class y {
    *   the node's start position.
    */
   handle_repair(s, t2) {
-    const e2 = this._parents[s], _2 = this._kinds[s], i = e2 !== 4294967295 ? this._kinds[e2] : void 0;
-    if (_2 === 7 && i === 16) {
+    const i = this._parents[s], _2 = this._kinds[s], e2 = i !== 4294967295 ? this._kinds[i] : void 0;
+    if (_2 === 7 && e2 === 16) {
       this.unwrap_node(s);
       return;
     }
-    if (i === 0 || i === 14 || i === 16) {
-      const o2 = this._starts[s];
-      let r2 = o2;
-      if (t2 === void 0) {
+    if (e2 === 0 || e2 === 14 || e2 === 16) {
+      const p2 = this._starts[s];
+      let r2;
+      if (t2 !== void 0)
+        r2 = p2 + t2.length;
+      else {
         if (r2 = this._ends[s], r2 === 4294967295) {
-          let l2 = this._children_starts[s];
-          for (; l2 !== 4294967295 && this._parents[l2] === s; ) {
-            if (this._kinds[l2] === 6) {
-              const p2 = this._starts[l2];
-              p2 > 0 && (r2 === 4294967295 || p2 > r2) && (r2 = p2);
+          let h = this._children_starts[s];
+          for (; h !== 4294967295 && this._parents[h] === s; ) {
+            if (this._kinds[h] === 6) {
+              const u3 = this._starts[h];
+              u3 > 0 && (r2 === 4294967295 || u3 > r2) && (r2 = u3);
             } else {
-              const p2 = this._ends[l2];
-              p2 !== 4294967295 && (r2 === 4294967295 || p2 > r2) && (r2 = p2);
+              const u3 = this._ends[h];
+              u3 !== 4294967295 && (r2 === 4294967295 || u3 > r2) && (r2 = u3);
             }
-            l2 = this._next_siblings[l2];
+            h = this._next_siblings[h];
           }
         }
-        if (r2 === 4294967295 || r2 <= o2) {
+        if (r2 === 4294967295 || r2 <= p2) {
           this.unwrap_node(s);
           return;
         }
       }
-      let a = this._children_starts[s];
-      for (; a !== 4294967295 && this._parents[a] === s; ) {
-        const l2 = this._next_siblings[a];
-        this._parents[a] = 4294967295, this._next_siblings[a] = 4294967295, this._prev_siblings[a] = 4294967295, a = l2;
-      }
+      const l2 = this._children_starts[s];
       this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295, this.set_kind(
         s,
         7
         /* NodeKind.paragraph */
       ), this.metadata.delete(s), this._ends[s] = r2;
-      const d = this.push(1, o2, s);
-      this._value_starts[d] = o2, this._value_ends[d] = r2, this._ends[d] = r2, t2 !== void 0 && (this._strings[d] = t2);
+      const d = this.push(1, p2, s);
+      if (this._value_starts[d] = p2, this._value_ends[d] = r2, this._ends[d] = r2, t2 !== void 0 && (this._strings[d] = t2), l2 !== 4294967295) {
+        const h = this._next_siblings[s];
+        let u3 = l2, g = l2;
+        for (; g !== 4294967295 && this._parents[g] === s; )
+          this._parents[g] = i, u3 = g, g = this._next_siblings[g];
+        this._next_siblings[u3] = h, h !== 4294967295 ? this._prev_siblings[h] = u3 : i !== 4294967295 && this._children_ends[i] === s && (this._children_ends[i] = u3), this._next_siblings[s] = l2, this._prev_siblings[l2] = s;
+      }
       return;
     }
     const f2 = this._children_starts[s];
@@ -2542,31 +2546,31 @@ let y$1 = class y {
       /* NodeKind.text */
     ), t2 !== void 0) {
       this._strings[s] = t2;
-      const o2 = this._starts[s], r2 = o2 + t2.length;
-      if (this._value_starts[s] = o2, this._value_ends[s] = r2, this._ends[s] = r2, f2 === 4294967295) {
+      const p2 = this._starts[s], r2 = p2 + t2.length;
+      if (this._value_starts[s] = p2, this._value_ends[s] = r2, this._ends[s] = r2, f2 === 4294967295) {
         this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295;
         return;
       }
-      let a = f2, d = f2;
-      for (; a !== 4294967295 && this._parents[a] === s; )
-        this._parents[a] = e2, d = a, a = this._next_siblings[a];
-      const l2 = this._next_siblings[s];
-      this._next_siblings[s] = f2, this._prev_siblings[f2] = s, l2 !== 4294967295 && this._parents[l2] === e2 ? (this._next_siblings[d] = l2, this._prev_siblings[l2] = d) : this._next_siblings[d] = 4294967295, this._children_ends[e2] === s && (this._children_ends[e2] = d), this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295;
+      let l2 = f2, d = f2;
+      for (; l2 !== 4294967295 && this._parents[l2] === s; )
+        this._parents[l2] = i, d = l2, l2 = this._next_siblings[l2];
+      const h = this._next_siblings[s];
+      this._next_siblings[s] = f2, this._prev_siblings[f2] = s, h !== 4294967295 && this._parents[h] === i ? (this._next_siblings[d] = h, this._prev_siblings[h] = d) : this._next_siblings[d] = 4294967295, this._children_ends[i] === s && (this._children_ends[i] = d), this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295;
       return;
     }
     if (f2 === 4294967295) {
       this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295, this._value_starts[s] = this._starts[s], this._ends[s] === 4294967295 ? (this._value_ends[s] = this._starts[s] + 1, this._ends[s] = this._starts[s] + 1) : this._value_ends[s] = this._ends[s];
       return;
     }
-    let n3 = f2, h = f2;
+    let n3 = f2, a = f2;
     for (; n3 !== 4294967295 && this._parents[n3] === s; )
-      this._parents[n3] = e2, h = n3, n3 = this._next_siblings[n3];
-    if (h === f2 && this._kinds[f2] === 1) {
+      this._parents[n3] = i, a = n3, n3 = this._next_siblings[n3];
+    if (a === f2 && this._kinds[f2] === 1) {
       this._value_starts[s] = this._starts[s], this._value_ends[s] = this._ends[f2], this._ends[s] = this._ends[f2], this._next_siblings[s] = this._next_siblings[f2], this._next_siblings[f2] !== 4294967295 && (this._prev_siblings[this._next_siblings[f2]] = s), this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295;
       return;
     }
-    const u3 = this._prev_siblings[f2];
-    this._next_siblings[s] = f2, this._prev_siblings[f2] = s, u3 !== 4294967295 && (this._next_siblings[u3] = s, this._prev_siblings[s] = u3), this._children_ends[e2] === s && (this._children_ends[e2] = h), this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295, this._value_starts[s] = this._starts[s], this._value_ends[s] = this._value_starts[f2], this._ends[s] = this._value_ends[s];
+    const o2 = this._prev_siblings[f2];
+    this._next_siblings[s] = f2, this._prev_siblings[f2] = s, o2 !== 4294967295 && (this._next_siblings[o2] = s, this._prev_siblings[s] = o2), this._children_ends[i] === s && (this._children_ends[i] = a), this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295, this._value_starts[s] = this._starts[s], this._value_ends[s] = this._value_starts[f2], this._ends[s] = this._value_ends[s];
   }
   repair() {
     this._pending_nodes.forEach((s, t2) => {
@@ -2582,29 +2586,29 @@ let y$1 = class y {
    * in the parent's child list.
    */
   unwrap_node(s) {
-    const t2 = this._parents[s], e2 = this._children_starts[s];
-    if (e2 === 4294967295) {
-      const h = this._prev_siblings[s], u3 = this._next_siblings[s];
-      h !== 4294967295 ? this._next_siblings[h] = u3 : t2 !== 4294967295 && (this._children_starts[t2] = u3), u3 !== 4294967295 && (this._prev_siblings[u3] = h), t2 !== 4294967295 && this._children_ends[t2] === s && (this._children_ends[t2] = h);
+    const t2 = this._parents[s], i = this._children_starts[s];
+    if (i === 4294967295) {
+      const a = this._prev_siblings[s], o2 = this._next_siblings[s];
+      a !== 4294967295 ? this._next_siblings[a] = o2 : t2 !== 4294967295 && (this._children_starts[t2] = o2), o2 !== 4294967295 && (this._prev_siblings[o2] = a), t2 !== 4294967295 && this._children_ends[t2] === s && (this._children_ends[t2] = a);
       return;
     }
-    let _2 = e2, i = e2;
+    let _2 = i, e2 = i;
     for (; _2 !== 4294967295 && this._parents[_2] === s; )
-      this._parents[_2] = t2, i = _2, _2 = this._next_siblings[_2];
+      this._parents[_2] = t2, e2 = _2, _2 = this._next_siblings[_2];
     const f2 = this._prev_siblings[s];
-    this._next_siblings[i] !== 4294967295 && this._parents[this._next_siblings[i]] === s || this._next_siblings[i];
+    this._next_siblings[e2] !== 4294967295 && this._parents[this._next_siblings[e2]] === s || this._next_siblings[e2];
     const n3 = this._next_siblings[s];
-    f2 !== 4294967295 ? (this._next_siblings[f2] = e2, this._prev_siblings[e2] = f2) : t2 !== 4294967295 && (this._children_starts[t2] = e2, this._prev_siblings[e2] = 4294967295), n3 !== 4294967295 && n3 !== e2 ? (this._next_siblings[i] = n3, this._prev_siblings[n3] = i) : this._next_siblings[i] = 4294967295, t2 !== 4294967295 && this._children_ends[t2] === s && (this._children_ends[t2] = i), this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295;
+    f2 !== 4294967295 ? (this._next_siblings[f2] = i, this._prev_siblings[i] = f2) : t2 !== 4294967295 && (this._children_starts[t2] = i, this._prev_siblings[i] = 4294967295), n3 !== 4294967295 && n3 !== i ? (this._next_siblings[e2] = n3, this._prev_siblings[n3] = e2) : this._next_siblings[e2] = 4294967295, t2 !== 4294967295 && this._children_ends[t2] === s && (this._children_ends[t2] = e2), this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295;
   }
   set_parent_kind(s, t2) {
-    const e2 = this._parents[s];
-    e2 !== 4294967295 && (this._kinds[e2] = t2);
+    const i = this._parents[s];
+    i !== 4294967295 && (this._kinds[i] = t2);
   }
   /** return indices of all nodes matching the given kind (lazy scan). */
   get_kinds(s) {
     const t2 = [];
-    for (let e2 = 0; e2 < this._size; e2++)
-      this._kinds[e2] === s && t2.push(e2);
+    for (let i = 0; i < this._size; i++)
+      this._kinds[i] === s && t2.push(i);
     return t2;
   }
   /**
@@ -2659,8 +2663,8 @@ let y$1 = class y {
   }
   /** double the backing storage when capacity is exhausted. */
   grow() {
-    const s = this.capacity << 1, t2 = new Uint8Array(s), e2 = new Uint32Array(s), _2 = new Uint32Array(s), i = new Uint16Array(s), f2 = new Uint32Array(s), n3 = new Uint32Array(s), h = new Uint32Array(s), u3 = new Uint32Array(s), o2 = new Uint32Array(s), r2 = new Uint32Array(s), a = new Uint32Array(s), d = new Uint32Array(s), l2 = new Uint8Array(Math.max(1, s >> 3));
-    t2.set(this._kinds), e2.set(this._starts), _2.set(this._ends), i.set(this._extras), f2.set(this._value_starts), n3.set(this._value_ends), h.set(this._parents), u3.set(this._next_siblings), o2.set(this._prev_siblings), r2.set(this._children_starts), a.set(this._children_ends), d.set(this._pending_nodes), l2.set(this.has_metadata), this.capacity = s, this._kinds = t2, this._starts = e2, this._ends = _2, this._extras = i, this._value_starts = f2, this._value_ends = n3, this._parents = h, this._next_siblings = u3, this._prev_siblings = o2, this._children_starts = r2, this._children_ends = a, this._pending_nodes = d, this.has_metadata = l2;
+    const s = this.capacity << 1, t2 = new Uint8Array(s), i = new Uint32Array(s), _2 = new Uint32Array(s), e2 = new Uint16Array(s), f2 = new Uint32Array(s), n3 = new Uint32Array(s), a = new Uint32Array(s), o2 = new Uint32Array(s), p2 = new Uint32Array(s), r2 = new Uint32Array(s), l2 = new Uint32Array(s), d = new Uint32Array(s), h = new Uint8Array(Math.max(1, s >> 3));
+    t2.set(this._kinds), i.set(this._starts), _2.set(this._ends), e2.set(this._extras), f2.set(this._value_starts), n3.set(this._value_ends), a.set(this._parents), o2.set(this._next_siblings), p2.set(this._prev_siblings), r2.set(this._children_starts), l2.set(this._children_ends), d.set(this._pending_nodes), h.set(this.has_metadata), this.capacity = s, this._kinds = t2, this._starts = i, this._ends = _2, this._extras = e2, this._value_starts = f2, this._value_ends = n3, this._parents = a, this._next_siblings = o2, this._prev_siblings = p2, this._children_starts = r2, this._children_ends = l2, this._pending_nodes = d, this.has_metadata = h;
   }
   set_metadata(s, t2) {
     this.metadata.set(s, t2), this.has_metadata[s >> 3] |= 1 << (s & 7);
@@ -2669,8 +2673,8 @@ let y$1 = class y {
     if (this.has_metadata[s >> 3] & 1 << (s & 7))
       return this.metadata.get(s);
   }
-  set_value(s, t2, e2) {
-    this._value_starts[s] = t2, this._value_ends[s] = e2;
+  set_value(s, t2, i) {
+    this._value_starts[s] = t2, this._value_ends[s] = i;
   }
   set_value_start(s, t2) {
     this._value_starts[s] = t2;
@@ -2684,17 +2688,17 @@ let y$1 = class y {
    * @returns node
    */
   get_node(s = 0) {
-    const t2 = w$3(this._kinds[s]), e2 = t2 ? { [t2]: this._extras[s] } : {}, _2 = [];
-    let i = this._children_starts[s];
-    for (; i !== 4294967295 && this._parents[i] === s; )
-      _2.push(i), i = this._next_siblings[i];
+    const t2 = x$2(this._kinds[s]), i = t2 ? { [t2]: this._extras[s] } : {}, _2 = [];
+    let e2 = this._children_starts[s];
+    for (; e2 !== 4294967295 && this._parents[e2] === s; )
+      _2.push(e2), e2 = this._next_siblings[e2];
     return {
-      kind: b(this._kinds[s]),
+      kind: v$2(this._kinds[s]),
       start: this._starts[s],
       end: this._ends[s],
       metadata: {
         ...this.metadata_at(s),
-        ...e2
+        ...i
       },
       parent: this._parents[s] === 4294967295 ? null : this._parents[s],
       next: this._next_siblings[s] === 4294967295 ? null : this._next_siblings[s],
@@ -2705,13 +2709,13 @@ let y$1 = class y {
     };
   }
 };
-let A$1 = class A {
+let k$1 = class k {
   /**
    * create a collector that records error indices encountered while parsing.
    * @param initial_capacity requested starting capacity for error indices.
    */
   constructor(s = 32) {
-    const t2 = g(s);
+    const t2 = b(s);
     this.capacity = t2, this.indices = new Uint32Array(t2), this._size = 0;
   }
   /** clear previously stored errors. */
@@ -2751,7 +2755,7 @@ let u$1 = class u {
   constructor(e2, i) {
     this.id_to_index = [], this.id_to_kind = [], this.register_id = (t2, s) => {
       this.id_to_index[t2] = s;
-    }, this.nodes = new y$1(e2), this.id_to_index[0] = 0, this.id_to_kind[0] = 0, this.dispatcher = i ?? null;
+    }, this.nodes = new A$1(e2), this.id_to_index[0] = 0, this.id_to_kind[0] = 0, this.dispatcher = i ?? null;
   }
   open(e2, i, t2, s, d, n3) {
     if (e2 === 0)
@@ -2843,13 +2847,13 @@ let u$1 = class u {
     return this.nodes;
   }
 };
-const f = 9, l = 10, p$1 = 32, Y$1 = 34, S = 35, J$1 = 39, A2 = 45, M$1 = 46, P$1 = 47, w$2 = 58, T$1 = 60, W$1 = 61, C = 62, St = 64, R$1 = 123, D$1 = 125, K = 92, k = 96, L$1 = 126, G$1 = 94, q$1 = 124, Q$1 = 33, O$1 = 42, B$1 = 40, j$1 = 41, E$1 = 91, I = 93, x$1 = 95, z$1 = 43;
+const f = 9, l = 10, p$1 = 32, Y$1 = 34, S = 35, J$1 = 39, A2 = 45, M$1 = 46, P$1 = 47, w$2 = 58, T$1 = 60, W$1 = 61, C = 62, Nt = 64, R$1 = 123, D$1 = 125, K = 92, k2 = 96, L$1 = 126, G$1 = 94, q$1 = 124, Q$1 = 33, O$1 = 42, B$1 = 40, j$1 = 41, E$1 = 91, I = 93, x$1 = 95, z$1 = 43;
 const $$1 = new Uint8Array(128);
 for (let m2 = 0; m2 < $$1.length; m2 += 1) {
   let t2 = 0;
   m2 <= 32 && (t2 |= 1), (m2 >= 33 && m2 <= 47 || m2 >= 58 && m2 <= 64 || m2 >= 91 && m2 <= 96 || m2 >= 123 && m2 <= 126) && (t2 |= 2), t2 === 0 && (t2 = 4), $$1[m2] = t2;
 }
-const Ut = (m2) => m2 === 160 || m2 === 5760 || m2 >= 8192 && m2 <= 8202 || m2 === 8232 || m2 === 8233 || m2 === 8239 || m2 === 8287 || m2 === 12288, v$1 = (m2) => (
+const Dt = (m2) => m2 === 160 || m2 === 5760 || m2 >= 8192 && m2 <= 8202 || m2 === 8232 || m2 === 8233 || m2 === 8239 || m2 === 8287 || m2 === 12288, v$1 = (m2) => (
   // common case first: ascii (code < 128). nan < 128 is false, so
   // nan falls through to the second branch where code !== code catches it.
   m2 < 128 ? $$1[m2] : m2 !== m2 ? (
@@ -2857,8 +2861,13 @@ const Ut = (m2) => m2 === 160 || m2 === 5760 || m2 >= 8192 && m2 <= 8202 || m2 =
     // satisfies all flanking checks so both openers and closers
     // commit speculatively. revocation corrects if wrong.
     7
-  ) : Ut(m2) ? 1 : 4
-), Z$1 = new A$1(1), N$1 = new Uint8Array(128);
+  ) : Dt(m2) ? 1 : 4
+), Z$1 = new k$1(1);
+function ht(m2) {
+  return m2.indexOf("\r") === -1 ? m2 : m2.replace(/\r\n?/g, `
+`);
+}
+const N$1 = new Uint8Array(128);
 N$1[l] = 1;
 N$1[K] = 1;
 N$1[O$1] = 1;
@@ -2869,13 +2878,13 @@ N$1[T$1] = 1;
 N$1[E$1] = 1;
 N$1[I] = 1;
 N$1[Q$1] = 1;
-N$1[k] = 1;
+N$1[k2] = 1;
 N$1[q$1] = 1;
 N$1[R$1] = 1;
 N$1[w$2] = 1;
-class Dt {
+class Ht {
   constructor(t2, s = 2) {
-    this.source = "", this.cursor = 0, this.finished = false, this.states = [
+    this.source = "", this.cursor = 0, this.finished = false, this.pending_cr = false, this.states = [
       0
       /* StateKind.root */
     ], this.node_stack = [0], this.next_id = 1, this.pending_ids = [], this.pending_starts = [], this.pending_count = 0, this.closed_flags = [], this.NodeKind_array = [], this.prev = 1, this.current = 0, this.next_class = 0, this.block_quote_depth = 0, this.emphasis_has_content = false, this.list_depth = 0, this.list_marker = 0, this.list_ordered = false, this.list_start_num = 0, this.list_node_id = 0, this.list_is_loose = false, this.list_content_offset = 0, this.list_marker_indent = 0, this.list_state_stack = [], this.list_pending_paras = [], this.table_col_count = 0, this.table_node_id = 0, this.table_row_id = 0, this.table_cell_id = 0, this.table_cell_col = 0, this.in_table = false, this.in_heading = false, this.inline_range_parse = false, this.table_cell_has_content = false, this.html_tag_stack = [], this.html_block_depth = 0, this.svelte_block_depth = 0, this.svelte_block_tag = "", this.svelte_branch_id = 0, this.svelte_block_id = 0, this.svelte_block_stack = [], this.frontmatter_failed = false, this.imports_allowed = true, this.ref_map = /* @__PURE__ */ new Map(), this.link_text_start = 0, this.directive_colon_counts = [], this.extra = 0, this.info_start_pos = 0, this.info_end_pos = 0, this.checkpoint_cursor = 0, this.prev_cursor = 0, this.loop_without_progress = 0, this.tab_size = 2, this.out = t2, this.errors = Z$1, this.tab_size = s;
@@ -2890,7 +2899,7 @@ class Dt {
    * init() + feed(source) + finish().
    */
   parse(t2) {
-    return this._init(), this.source = t2, this.current = v$1(t2.charCodeAt(0)), this.next_class = v$1(t2.charCodeAt(1)), this.errors = Z$1, this.finished = true, this._run(), this._finalize(), { errors: this.errors };
+    return this._init(), this.source = ht(t2), this.current = v$1(this.source.charCodeAt(0)), this.next_class = v$1(this.source.charCodeAt(1)), this.errors = Z$1, this.finished = true, this._run(), this._finalize(), { errors: this.errors };
   }
   /**
    * initialize the parser for incremental feeding. must be called
@@ -2903,19 +2912,27 @@ class Dt {
    * feed a chunk of source text. the parser advances as far as it
    * can, stalling at line boundaries when lookahead is insufficient.
    * call init() before the first feed().
+   *
+   * line-ending normalization: \r\n and bare \r are collapsed to \n
+   * before reaching the state machine. a trailing \r is deferred
+   * across feed() boundaries so a \r\n pair split across chunks is
+   * handled correctly.
    */
   feed(t2) {
-    this.source += t2, this.current = v$1(this.source.charCodeAt(this.cursor)), this.next_class = v$1(this.source.charCodeAt(this.cursor + 1)), this._run(), this.out.cursor(this.cursor);
+    t2.length !== 0 && (this.pending_cr && (t2.charCodeAt(0) === 10 && (t2 = t2.slice(1)), this.source += `
+`, this.pending_cr = false), t2.length > 0 && t2.charCodeAt(t2.length - 1) === 13 && (this.pending_cr = true, t2 = t2.slice(0, -1)), t2.indexOf("\r") !== -1 && (t2 = t2.replace(/\r\n?/g, `
+`)), this.source += t2, this.current = v$1(this.source.charCodeAt(this.cursor)), this.next_class = v$1(this.source.charCodeAt(this.cursor + 1)), this._run(), this.out.cursor(this.cursor));
   }
   /**
    * signal end-of-input. finalizes all open nodes and revokes
    * pending speculation.
    */
   finish() {
-    return this.finished = true, this._run(), this._finalize(), this.out.cursor(this.cursor), { errors: this.errors };
+    return this.pending_cr && (this.source += `
+`, this.pending_cr = false), this.finished = true, this._run(), this._finalize(), this.out.cursor(this.cursor), { errors: this.errors };
   }
   _init() {
-    this.source = "", this.cursor = 0, this.finished = false, this.states = [
+    this.source = "", this.cursor = 0, this.finished = false, this.pending_cr = false, this.states = [
       0
       /* StateKind.root */
     ], this.node_stack = [0], this.next_id = 1, this.pending_ids = [], this.pending_count = 0, this.closed_flags = [], this.NodeKind_array = [], this.prev = 1, this.current = 1, this.next_class = 1, this.block_quote_depth = 0, this.list_depth = 0, this.list_marker = 0, this.list_ordered = false, this.list_start_num = 0, this.list_node_id = 0, this.list_is_loose = false, this.list_content_offset = 0, this.list_marker_indent = 0, this.list_state_stack = [], this.list_pending_paras = [], this.table_col_count = 0, this.table_node_id = 0, this.table_row_id = 0, this.table_cell_id = 0, this.table_cell_col = 0, this.in_table = false, this.inline_range_parse = false, this.table_cell_has_content = false, this.html_tag_stack = [], this.html_block_depth = 0, this.svelte_block_depth = 0, this.svelte_block_tag = "", this.svelte_branch_id = 0, this.svelte_block_id = 0, this.svelte_block_stack = [], this.extra = 0, this.info_start_pos = 0, this.info_end_pos = 0, this.checkpoint_cursor = 0, this.prev_cursor = 0, this.loop_without_progress = 0, this.frontmatter_failed = false, this.imports_allowed = true, this.ref_map.clear(), this.link_text_start = 0, this.directive_colon_counts = [], this.errors = Z$1, this.out.open(0, 0, 0, -1, 0, false);
@@ -3142,8 +3159,8 @@ class Dt {
         return e2 + 1 < n3;
       case C:
         return true;
-      case k:
-        return e2 + 2 < n3 && s.charCodeAt(e2 + 1) === k && s.charCodeAt(e2 + 2) === k;
+      case k2:
+        return e2 + 2 < n3 && s.charCodeAt(e2 + 1) === k2 && s.charCodeAt(e2 + 2) === k2;
       case A2:
       case O$1:
         if (this.list_depth > 0)
@@ -3268,7 +3285,7 @@ class Dt {
       for (; i < r2 && (e2.charCodeAt(i) === p$1 || e2.charCodeAt(i) === f); )
         i++;
       let c2 = 0;
-      for (; i < r2 && e2.charCodeAt(i) === k; )
+      for (; i < r2 && e2.charCodeAt(i) === k2; )
         c2++, i++;
       if (c2 >= s)
         return 1;
@@ -3317,8 +3334,8 @@ class Dt {
         return this.is_heading_start(t2);
       case C:
         return true;
-      case k:
-        return e2 + 2 < n3 && s.charCodeAt(e2 + 1) === k && s.charCodeAt(e2 + 2) === k;
+      case k2:
+        return e2 + 2 < n3 && s.charCodeAt(e2 + 1) === k2 && s.charCodeAt(e2 + 2) === k2;
       case O$1:
       case A2:
       case x$1:
@@ -3519,7 +3536,7 @@ class Dt {
    * invalid: whitespace, ", ', =, <, >, `
    */
   is_unquoted_attr_char(t2) {
-    return t2 > 32 && t2 !== Y$1 && t2 !== J$1 && t2 !== W$1 && t2 !== T$1 && t2 !== C && t2 !== k;
+    return t2 > 32 && t2 !== Y$1 && t2 !== J$1 && t2 !== W$1 && t2 !== T$1 && t2 !== C && t2 !== k2;
   }
   /**
    * returns true for html "raw text" elements whose content should not be
@@ -3527,6 +3544,30 @@ class Dt {
    */
   is_raw_text_tag(t2) {
     return t2 === "script" || t2 === "style";
+  }
+  /**
+   * html void elements - never have content or a close tag.
+   * matches the html living standard set.
+   */
+  is_void_tag(t2) {
+    switch (t2) {
+      case "area":
+      case "base":
+      case "br":
+      case "col":
+      case "embed":
+      case "hr":
+      case "img":
+      case "input":
+      case "link":
+      case "meta":
+      case "source":
+      case "track":
+      case "wbr":
+        return true;
+      default:
+        return false;
+    }
   }
   /**
    * scan forward from `pos` for the case-sensitive closing tag `</tag>`.
@@ -3765,8 +3806,8 @@ class Dt {
           r2 < n3 && r2++;
           break;
         }
-        case k: {
-          for (r2++; r2 < n3 && s.charCodeAt(r2) !== k; ) {
+        case k2: {
+          for (r2++; r2 < n3 && s.charCodeAt(r2) !== k2; ) {
             if (s.charCodeAt(r2) === K)
               r2++;
             else if (s.charCodeAt(r2) === 36 && r2 + 1 < n3 && s.charCodeAt(r2 + 1) === R$1) {
@@ -3829,12 +3870,12 @@ class Dt {
     e2++;
     const r2 = e2;
     for (; e2 < n3; ) {
-      const g2 = s.charCodeAt(e2);
-      if (g2 === I)
+      const g = s.charCodeAt(e2);
+      if (g === I)
         break;
-      if (g2 === l || g2 === E$1)
+      if (g === l || g === E$1)
         return -1;
-      if (g2 === K && e2 + 1 < n3) {
+      if (g === K && e2 + 1 < n3) {
         e2 += 2;
         continue;
       }
@@ -3860,12 +3901,12 @@ class Dt {
     const c2 = s.charCodeAt(e2);
     if (c2 === T$1) {
       for (e2++, h = e2; e2 < n3; ) {
-        const g2 = s.charCodeAt(e2);
-        if (g2 === C)
+        const g = s.charCodeAt(e2);
+        if (g === C)
           break;
-        if (g2 === l || g2 === T$1)
+        if (g === l || g === T$1)
           return -1;
-        if (g2 === K && e2 + 1 < n3) {
+        if (g === K && e2 + 1 < n3) {
           e2 += 2;
           continue;
         }
@@ -3879,23 +3920,23 @@ class Dt {
         return -1;
       {
         h = e2;
-        let g2 = 0;
+        let g = 0;
         for (; e2 < n3; ) {
-          const y3 = s.charCodeAt(e2);
-          if (y3 <= 32)
+          const y2 = s.charCodeAt(e2);
+          if (y2 <= 32)
             break;
-          if (y3 === j$1) {
-            if (g2 === 0)
+          if (y2 === j$1) {
+            if (g === 0)
               break;
-            g2--;
+            g--;
           }
-          if (y3 === B$1 && g2++, y3 === K && e2 + 1 < n3) {
+          if (y2 === B$1 && g++, y2 === K && e2 + 1 < n3) {
             e2 += 2;
             continue;
           }
           e2++;
         }
-        if (g2 !== 0 || (i = e2, h === i))
+        if (g !== 0 || (i = e2, h === i))
           return -1;
       }
     }
@@ -3905,9 +3946,9 @@ class Dt {
     const u3 = e2 > _2;
     let d = "";
     if (e2 < n3) {
-      const g2 = s.charCodeAt(e2);
-      if (g2 === l) {
-        const y3 = e2;
+      const g = s.charCodeAt(e2);
+      if (g === l) {
+        const y2 = e2;
         for (e2++; e2 < n3 && (s.charCodeAt(e2) === p$1 || s.charCodeAt(e2) === f); )
           e2++;
         if (e2 < n3) {
@@ -3916,19 +3957,19 @@ class Dt {
             const U2 = this.parse_ref_title(e2);
             if (U2 === -2)
               return -2;
-            U2 ? (d = U2.title, e2 = U2.end) : e2 = y3;
+            U2 ? (d = U2.title, e2 = U2.end) : e2 = y2;
           } else
-            e2 = y3;
+            e2 = y2;
         } else if (this.finished)
-          e2 = y3;
+          e2 = y2;
         else
           return -2;
-      } else if ((g2 === 34 || g2 === 39 || g2 === B$1) && u3) {
-        const y3 = this.parse_ref_title(e2);
-        if (y3 === -2)
+      } else if ((g === 34 || g === 39 || g === B$1) && u3) {
+        const y2 = this.parse_ref_title(e2);
+        if (y2 === -2)
           return -2;
-        if (y3)
-          d = y3.title, e2 = y3.end;
+        if (y2)
+          d = y2.title, e2 = y2.end;
         else
           return -1;
       }
@@ -4139,7 +4180,7 @@ class Dt {
                 break t;
               continue;
             }
-            case k: {
+            case k2: {
               this.states.push(
                 3
                 /* StateKind.code_fence_start */
@@ -4210,7 +4251,7 @@ class Dt {
               }
               const c2 = this.try_parse_html_open_tag(this.cursor + 1);
               if (c2) {
-                if (c2.self_closing) {
+                if (c2.self_closing || this.is_void_tag(c2.tag)) {
                   const _2 = this.emit_open(2, this.cursor, o2);
                   this.out.attr(_2, "tag", c2.tag), Object.keys(c2.attributes).length > 0 && this.out.attr(_2, "attributes", c2.attributes), this.out.attr(_2, "self_closing", true), this.emit_close(_2, c2.end), this.chomp(c2.end, true);
                 } else if (this.is_raw_text_tag(c2.tag)) {
@@ -4377,7 +4418,7 @@ class Dt {
                 this.emit_close(o2, this.cursor), this.states.pop(), this.node_stack.length = h;
                 continue;
               }
-              if (this.is_blank_at_pos(a) || this.is_heading_start(a) || this.is_thematic_break_start(a) || t2.charCodeAt(a) === k && t2.charCodeAt(a + 1) === k && t2.charCodeAt(a + 2) === k) {
+              if (this.is_blank_at_pos(a) || this.is_heading_start(a) || this.is_thematic_break_start(a) || t2.charCodeAt(a) === k2 && t2.charCodeAt(a + 1) === k2 && t2.charCodeAt(a + 2) === k2) {
                 this.emit_close(o2, this.cursor), this.states.pop(), this.node_stack.length = h;
                 continue;
               }
@@ -4426,7 +4467,7 @@ class Dt {
           }
         }
         case 3:
-          if (r2 === k) {
+          if (r2 === k2) {
             this.extra += 1, this.chomp1();
             continue;
           } else if (this.extra >= 3) {
@@ -4502,7 +4543,7 @@ class Dt {
             for (; u3 < s && (t2.charCodeAt(u3) === p$1 || t2.charCodeAt(u3) === f); )
               u3++;
             const d = u3;
-            for (; u3 < s && t2.charCodeAt(u3) === k; )
+            for (; u3 < s && t2.charCodeAt(u3) === k2; )
               u3++;
             u3 - d >= h && (c2 = d, a = this.cursor > 0 ? this.cursor - 1 : this.cursor);
           }
@@ -4516,7 +4557,7 @@ class Dt {
               for (; d < s && (t2.charCodeAt(d) === p$1 || t2.charCodeAt(d) === f); )
                 d++;
               const b2 = d;
-              for (; d < s && t2.charCodeAt(d) === k; )
+              for (; d < s && t2.charCodeAt(d) === k2; )
                 d++;
               if (d - b2 >= h) {
                 c2 = b2, a = u3;
@@ -4534,7 +4575,7 @@ class Dt {
             continue;
           }
           let _2 = c2;
-          for (; _2 < s && t2.charCodeAt(_2) === k; )
+          for (; _2 < s && t2.charCodeAt(_2) === k2; )
             _2++;
           this.states.pop(), this.states.push(
             6
@@ -4549,7 +4590,7 @@ class Dt {
             this.emit_close(o2, this.cursor), this.node_stack.pop(), this.states.pop(), this.chomp1();
             continue;
           }
-          if (r2 === k) {
+          if (r2 === k2) {
             this.chomp1();
             continue;
           }
@@ -4724,8 +4765,8 @@ class Dt {
                 i++;
               if (i < s && t2.charCodeAt(i) === j$1) {
                 i++;
-                const d = o2, b2 = t2.slice(c2, a), g2 = this.NodeKind_array[d] === 13;
-                this.out.attr(d, g2 ? "src" : "href", b2), _2 >= 0 && u3 >= 0 && this.out.attr(d, "title", t2.slice(_2, u3)), this.out.set_value_end(d, this.cursor), this.pending_remove(d), this.emit_close(d, i), this.node_stack.pop(), this.states.pop(), this.states[this.states.length - 1] === 8 && this.states.pop(), this.chomp(i, true);
+                const d = o2, b2 = t2.slice(c2, a), g = this.NodeKind_array[d] === 13;
+                this.out.attr(d, g ? "src" : "href", b2), _2 >= 0 && u3 >= 0 && this.out.attr(d, "title", t2.slice(_2, u3)), this.out.set_value_end(d, this.cursor), this.pending_remove(d), this.emit_close(d, i), this.node_stack.pop(), this.states.pop(), this.states[this.states.length - 1] === 8 && this.states.pop(), this.chomp(i, true);
                 continue;
               }
               if (!this.finished && i >= s)
@@ -4858,7 +4899,7 @@ class Dt {
               break t;
             continue;
           }
-          if (r2 === k) {
+          if (r2 === k2) {
             this.states.push(
               3
               /* StateKind.code_fence_start */
@@ -4876,7 +4917,7 @@ class Dt {
             }
             const c2 = this.try_parse_html_open_tag(this.cursor + 1);
             if (c2) {
-              if (c2.self_closing) {
+              if (c2.self_closing || this.is_void_tag(c2.tag)) {
                 const a = this.emit_open(2, this.cursor, o2);
                 this.out.attr(a, "tag", c2.tag), Object.keys(c2.attributes).length > 0 && this.out.attr(a, "attributes", c2.attributes), this.out.attr(a, "self_closing", true), this.emit_close(a, c2.end), this.chomp(c2.end, true);
               } else if (this.is_raw_text_tag(c2.tag)) {
@@ -4965,7 +5006,7 @@ class Dt {
               break t;
             continue;
           }
-          if (r2 === k) {
+          if (r2 === k2) {
             this.states.push(
               3
               /* StateKind.code_fence_start */
@@ -4987,7 +5028,7 @@ class Dt {
               break t;
             const i = this.try_parse_html_open_tag(this.cursor + 1);
             if (i) {
-              if (i.self_closing) {
+              if (i.self_closing || this.is_void_tag(i.tag)) {
                 const c2 = this.emit_open(2, this.cursor, o2);
                 this.out.attr(c2, "tag", i.tag), Object.keys(i.attributes).length > 0 && this.out.attr(c2, "attributes", i.attributes), this.out.attr(c2, "self_closing", true), this.emit_close(c2, i.end), this.chomp(i.end, true);
               } else if (this.is_raw_text_tag(i.tag)) {
@@ -5092,7 +5133,7 @@ class Dt {
                 break t;
               continue;
             }
-            case k: {
+            case k2: {
               this.states.push(
                 3
                 /* StateKind.code_fence_start */
@@ -5281,20 +5322,20 @@ class Dt {
                   const d = t2.charCodeAt(u3);
                   if (d === A2 || d === O$1 || d === z$1) {
                     if (d !== z$1) {
-                      let b2 = u3 + 1, g2 = false;
+                      let b2 = u3 + 1, g = false;
                       for (; b2 < s; ) {
-                        const y3 = t2.charCodeAt(b2);
-                        if (y3 === l) {
-                          g2 = true;
+                        const y2 = t2.charCodeAt(b2);
+                        if (y2 === l) {
+                          g = true;
                           break;
                         }
-                        if (y3 !== d && y3 !== p$1 && y3 !== f) {
-                          g2 = true;
+                        if (y2 !== d && y2 !== p$1 && y2 !== f) {
+                          g = true;
                           break;
                         }
                         b2++;
                       }
-                      if (!g2)
+                      if (!g)
                         break t;
                     } else if (u3 + 1 >= s)
                       break t;
@@ -5304,8 +5345,8 @@ class Dt {
                       b2++;
                     if (b2 >= s)
                       break t;
-                    const g2 = t2.charCodeAt(b2);
-                    if ((g2 === M$1 || g2 === j$1) && b2++, b2 >= s)
+                    const g = t2.charCodeAt(b2);
+                    if ((g === M$1 || g === j$1) && b2++, b2 >= s)
                       break t;
                   }
                 }
@@ -5318,8 +5359,8 @@ class Dt {
                     }
                     if (u3.indent >= this.list_marker_indent && u3.ordered === this.list_ordered && u3.marker_char === this.list_marker) {
                       this.list_is_loose = true, this.emit_close(o2, this.cursor), this.node_stack.pop();
-                      const g2 = this.emit_open(16, _2, this.list_node_id);
-                      this.node_stack.push(g2), this.list_content_offset = u3.content_offset, this.chomp(u3.content_start, true);
+                      const g = this.emit_open(16, _2, this.list_node_id);
+                      this.node_stack.push(g), this.list_content_offset = u3.content_offset, this.chomp(u3.content_start, true);
                       continue;
                     }
                     this.end_list();
@@ -5377,7 +5418,7 @@ class Dt {
                 break t;
               continue;
             }
-            case k: {
+            case k2: {
               this.states.push(
                 3
                 /* StateKind.code_fence_start */
@@ -5605,7 +5646,7 @@ class Dt {
                 break t;
               continue;
             }
-            case k: {
+            case k2: {
               this.states.push(
                 3
                 /* StateKind.code_fence_start */
@@ -5694,7 +5735,7 @@ class Dt {
             continue;
           }
           switch (r2) {
-            case k: {
+            case k2: {
               this.states.push(
                 9
                 /* StateKind.code_span_start */
@@ -5920,7 +5961,7 @@ class Dt {
               }
               const a = this.try_parse_html_open_tag(this.cursor + 1);
               if (a) {
-                if (a.self_closing) {
+                if (a.self_closing || this.is_void_tag(a.tag)) {
                   const u3 = this.emit_open(2, this.cursor, o2);
                   this.out.attr(u3, "tag", a.tag), Object.keys(a.attributes).length > 0 && this.out.attr(u3, "attributes", a.attributes), this.out.attr(u3, "self_closing", true), this.emit_close(u3, a.end), this.chomp(a.end, true), this.states.pop();
                 } else if (this.is_raw_text_tag(a.tag)) {
@@ -5956,7 +5997,7 @@ class Dt {
                 break t;
               const h = this.find_matching_brace(this.cursor + 1);
               if (h !== -1) {
-                if (t2.charCodeAt(this.cursor + 1) === St) {
+                if (t2.charCodeAt(this.cursor + 1) === Nt) {
                   let a = this.cursor + 2;
                   for (; a < h - 1 && t2.charCodeAt(a) !== p$1 && t2.charCodeAt(a) !== f && t2.charCodeAt(a) !== l && t2.charCodeAt(a) !== D$1; )
                     a++;
@@ -6105,7 +6146,7 @@ class Dt {
             }
             this.chomp1();
             continue;
-          } else if (r2 === O$1 || r2 === x$1 || r2 === L$1 || r2 === G$1 || r2 === T$1 || r2 === E$1 || r2 === I || r2 === Q$1 || r2 === k || r2 === R$1) {
+          } else if (r2 === O$1 || r2 === x$1 || r2 === L$1 || r2 === G$1 || r2 === T$1 || r2 === E$1 || r2 === I || r2 === Q$1 || r2 === k2 || r2 === R$1) {
             this.states.pop(), this.emit_close(o2, this.cursor), this.out.set_value_end(o2, this.cursor), this.node_stack.pop(), this.states.pop();
             continue;
           }
@@ -6132,7 +6173,7 @@ class Dt {
             continue;
           }
           switch (r2) {
-            case k: {
+            case k2: {
               this.checkpoint_cursor = this.cursor, this.extra += 1, this.chomp1();
               continue;
             }
@@ -6198,16 +6239,16 @@ class Dt {
             }
           }
         case 11: {
-          if (!this.finished && (r2 === p$1 || r2 === k) && this.cursor + this.extra >= s)
+          if (!this.finished && (r2 === p$1 || r2 === k2) && this.cursor + this.extra >= s)
             break t;
-          if (r2 === p$1 && t2.charCodeAt(this.cursor + 1) === k) {
+          if (r2 === p$1 && t2.charCodeAt(this.cursor + 1) === k2) {
             this.chomp1(), this.states.pop(), this.states.push(
               12
               /* StateKind.code_span_leading_space_end */
             );
             continue;
-          } else if (r2 === k && t2.charCodeAt(this.cursor - 1) !== k) {
-            if (this.extra === 1 && t2.charCodeAt(this.cursor + 1) !== k || this.extra === 2 && t2.charCodeAt(this.cursor + 1) === k && t2.charCodeAt(this.cursor + 2) !== k) {
+          } else if (r2 === k2 && t2.charCodeAt(this.cursor - 1) !== k2) {
+            if (this.extra === 1 && t2.charCodeAt(this.cursor + 1) !== k2 || this.extra === 2 && t2.charCodeAt(this.cursor + 1) === k2 && t2.charCodeAt(this.cursor + 2) !== k2) {
               this.out.set_value_start(o2, this.checkpoint_cursor), this.out.set_value_end(o2, this.cursor), this.emit_close(o2, this.cursor + this.extra), this.node_stack.pop(), this.states.pop(), this.chomp(this.extra);
               continue;
             }
@@ -6225,9 +6266,9 @@ class Dt {
           }
         }
         case 12: {
-          if (!this.finished && r2 === k && this.cursor + this.extra >= s)
+          if (!this.finished && r2 === k2 && this.cursor + this.extra >= s)
             break t;
-          this.extra === 1 && r2 === k && t2.charCodeAt(this.cursor + 1) !== k ? (this.states.pop(), this.out.set_value_start(o2, this.checkpoint_cursor + 1), this.emit_close(o2, this.cursor + this.extra), this.out.set_value_end(o2, this.cursor - 1), this.node_stack.pop()) : this.extra === 2 && r2 === k && t2.charCodeAt(this.cursor + 1) === k && t2.charCodeAt(this.cursor + 2) !== k ? (this.states.pop(), this.out.set_value_start(o2, this.checkpoint_cursor + 1), this.emit_close(o2, this.cursor + this.extra), this.out.set_value_end(o2, this.cursor - 1), this.node_stack.pop()) : (this.states.pop(), this.states.push(
+          this.extra === 1 && r2 === k2 && t2.charCodeAt(this.cursor + 1) !== k2 ? (this.states.pop(), this.out.set_value_start(o2, this.checkpoint_cursor + 1), this.emit_close(o2, this.cursor + this.extra), this.out.set_value_end(o2, this.cursor - 1), this.node_stack.pop()) : this.extra === 2 && r2 === k2 && t2.charCodeAt(this.cursor + 1) === k2 && t2.charCodeAt(this.cursor + 2) !== k2 ? (this.states.pop(), this.out.set_value_start(o2, this.checkpoint_cursor + 1), this.emit_close(o2, this.cursor + this.extra), this.out.set_value_end(o2, this.cursor - 1), this.node_stack.pop()) : (this.states.pop(), this.states.push(
             11
             /* StateKind.code_span_content_leading_space */
           )), this.chomp(this.extra);
@@ -6238,9 +6279,9 @@ class Dt {
             this.unwind_inline_for_table();
             continue;
           }
-          if (r2 === k) {
+          if (r2 === k2) {
             let h = 1;
-            for (; this.cursor + h < s && t2.charCodeAt(this.cursor + h) === k; )
+            for (; this.cursor + h < s && t2.charCodeAt(this.cursor + h) === k2; )
               h++;
             if (!this.finished && this.cursor + h >= s)
               break t;
@@ -6273,7 +6314,7 @@ class Dt {
             this.end_table();
             continue;
           }
-          if (r2 === k && this.cursor + 2 < s && t2.charCodeAt(this.cursor + 1) === k && t2.charCodeAt(this.cursor + 2) === k) {
+          if (r2 === k2 && this.cursor + 2 < s && t2.charCodeAt(this.cursor + 1) === k2 && t2.charCodeAt(this.cursor + 2) === k2) {
             this.end_table();
             continue;
           }
@@ -6379,8 +6420,8 @@ class Dt {
     this.out.attr(a, "alignments", i), this.out.attr(a, "col_count", c2), this.table_col_count = c2, this.table_node_id = a, this.in_table = true;
     const _2 = this.emit_open(23, this.cursor, a);
     for (let d = 0; d < r2.length; d++) {
-      const b2 = r2[d], g2 = this.trim_cell_range(b2.start, b2.end);
-      this.table_cell_id = this.emit_open(25, b2.start, _2, d), g2.start < g2.end && (this.node_stack.push(this.table_cell_id), this.parse_inline_range(g2.start, g2.end), this.node_stack.pop()), this.emit_close(this.table_cell_id, b2.end);
+      const b2 = r2[d], g = this.trim_cell_range(b2.start, b2.end);
+      this.table_cell_id = this.emit_open(25, b2.start, _2, d), g.start < g.end && (this.node_stack.push(this.table_cell_id), this.parse_inline_range(g.start, g.end), this.node_stack.pop()), this.emit_close(this.table_cell_id, b2.end);
     }
     this.emit_close(_2, e2), this.node_stack.push(a), this.states.push(
       23
@@ -6706,7 +6747,7 @@ function M(s) {
 function o(s) {
   return N.test(s) ? s.replace(m, M) : s;
 }
-const B = 0, R = 1, y2 = 2, P = 3, D = 5, T = 6, U = 7, G = 8, j = 9, V = 10, q = 11, F = 12, X = 13, Q = 14, W = 15, v = 16, Y = 17, z = 18, J = 19, Z = 20, $ = 21, u2 = 22, nn = 23, sn = 24, en = 25, hn = 26, ln = 27, tn = 28, an = 29, gn = 4, xn = 33, En = 34, O = 4294967295;
+const B = 0, R = 1, y = 2, P = 3, D = 5, T = 6, U = 7, G = 8, j = 9, V = 10, q = 11, F = 12, X = 13, Q = 14, W = 15, v = 16, Y = 17, z = 18, J = 19, Z = 20, $ = 21, u2 = 22, nn = 23, sn = 24, en = 25, hn = 26, ln = 27, tn = 28, an = 29, gn = 4, xn = 33, En = 34, O = 4294967295;
 function r(s, n3, h, t2, e2, l2) {
   h > n3 && t2 !== O && s.push({
     out_idx: n3,
@@ -6717,8 +6758,8 @@ function r(s, n3, h, t2, e2, l2) {
   });
 }
 function p(s, n3, h, t2, e2, l2, a) {
-  const i = l2.index, g2 = l2.start, d = l2.end, K2 = l2.value_start, I2 = l2.value_end, A3 = I2 > K2;
-  r(s, n3, e2, g2, d, { ...a, nodeIndex: i, role: "node" }), r(s, n3, h, g2, A3 ? K2 : g2, { ...i$1, nodeIndex: i, role: "open_syntax" }), r(s, t2, e2, A3 ? I2 : d, d, { ...i$1, nodeIndex: i, role: "close_syntax" });
+  const i = l2.index, g = l2.start, d = l2.end, K2 = l2.value_start, I2 = l2.value_end, A3 = I2 > K2;
+  r(s, n3, e2, g, d, { ...a, nodeIndex: i, role: "node" }), r(s, n3, h, g, A3 ? K2 : g, { ...i$1, nodeIndex: i, role: "open_syntax" }), r(s, t2, e2, A3 ? I2 : d, d, { ...i$1, nodeIndex: i, role: "close_syntax" });
 }
 const pn = ["", "</h1>", "</h2>", "</h3>", "</h4>", "</h5>", "</h6>"], cn = /* @__PURE__ */ new Set([
   // list semantics
@@ -6840,8 +6881,8 @@ function E(s, n3, h) {
       const t2 = n3.length, e2 = s.meta();
       let l2 = e2 == null ? void 0 : e2.info;
       if (!l2) {
-        const g2 = e2 == null ? void 0 : e2.info_start, d = e2 == null ? void 0 : e2.info_end;
-        g2 != null && d != null && (l2 = s.slice(g2, d));
+        const g = e2 == null ? void 0 : e2.info_start, d = e2 == null ? void 0 : e2.info_end;
+        g != null && d != null && (l2 = s.slice(g, d));
       }
       n3.push("<pre><code"), l2 && n3.push(' class="language-', o(l2), '"'), _(s, n3), n3.push(">");
       const a = n3.length;
@@ -6886,11 +6927,11 @@ function E(s, n3, h) {
       const t2 = n3.length, e2 = s.meta(), l2 = !!(e2 != null && e2.ordered), a = l2 ? "ol" : "ul", i = e2 == null ? void 0 : e2.start;
       n3.push("<", a), l2 && i != null && i !== 1 && n3.push(' start="', String(i), '"'), _(s, n3), n3.push(`>
 `);
-      const g2 = n3.length;
+      const g = n3.length;
       c(s, n3, h);
       const d = n3.length;
       n3.push(`
-</`, a, ">"), h && p(h, t2, g2, d, n3.length, s, i$1);
+</`, a, ">"), h && p(h, t2, g, d, n3.length, s, i$1);
       break;
     }
     case v: {
@@ -6943,12 +6984,12 @@ function E(s, n3, h) {
       n3.push("</sub>"), h && p(h, t$1, e2, l2, n3.length, s, t);
       break;
     }
-    case y2: {
+    case y: {
       const t$1 = n3.length, e2 = s.meta(), l2 = e2 == null ? void 0 : e2.tag, a = e2 == null ? void 0 : e2.attributes;
       if (n3.push("<", l2), a)
         for (const i in a) {
-          const g2 = a[i];
-          g2 === true ? n3.push(" ", i) : typeof g2 == "object" && g2.type === "expression" ? n3.push(" ", i, "={", g2.value, "}") : n3.push(" ", i, '="', o(g2), '"');
+          const g = a[i];
+          g === true ? n3.push(" ", i) : typeof g == "object" && g.type === "expression" ? n3.push(" ", i, "={", g.value, "}") : n3.push(" ", i, '="', o(g), '"');
         }
       if (e2 != null && e2.self_closing) {
         const i = s.end > s.start ? s.slice(s.start, s.end) : "";
@@ -6971,8 +7012,8 @@ function E(s, n3, h) {
           s.value_end,
           { ...r$1, nodeIndex: s.index, role: "content" }
         ), n3.push(s.text())) : c(s, n3, h);
-        const g2 = n3.length;
-        n3.push("</", l2, ">"), h && p(h, t$1, i, g2, n3.length, s, t);
+        const g = n3.length;
+        n3.push("</", l2, ">"), h && p(h, t$1, i, g, n3.length, s, t);
       }
       break;
     }
@@ -7020,8 +7061,8 @@ function E(s, n3, h) {
         s.value_end,
         { ...r$1, nodeIndex: s.index, role: "content" }
       ), a && n3.push(a);
-      const g2 = n3.length;
-      n3.push("}"), h && p(h, t2, i, g2, n3.length, s, r$1);
+      const g = n3.length;
+      n3.push("}"), h && p(h, t2, i, g, n3.length, s, r$1);
       break;
     }
     case tn: {
@@ -7030,7 +7071,7 @@ function E(s, n3, h) {
         let a = true;
         do
           if (s.kind === an) {
-            const i = s.meta(), g2 = i == null ? void 0 : i.tag, d = s.text();
+            const i = s.meta(), g = i == null ? void 0 : i.tag, d = s.text();
             a ? (n3.push("{#", l2), d && (n3.push(" "), h && r(
               h,
               n3.length,
@@ -7039,7 +7080,7 @@ function E(s, n3, h) {
               s.value_end,
               { ...r$1, nodeIndex: s.index, role: "content" }
             ), n3.push(d)), n3.push(`}
-`), a = false) : (n3.push("{:", g2), d && (n3.push(" "), h && r(
+`), a = false) : (n3.push("{:", g), d && (n3.push(" "), h && r(
               h,
               n3.length,
               n3.length + 1,
@@ -7053,8 +7094,8 @@ function E(s, n3, h) {
         s.goto_parent();
       }
       if (n3.push("{/", l2, "}"), h) {
-        const a = s.index, i = s.start, g2 = s.end;
-        r(h, t2, n3.length, i, g2, { ...r$1, nodeIndex: a, role: "node" });
+        const a = s.index, i = s.start, g = s.end;
+        r(h, t2, n3.length, i, g, { ...r$1, nodeIndex: a, role: "node" });
       }
       break;
     }
@@ -7112,13 +7153,13 @@ function dn(s, n3) {
     h[e2 + 1] = h[e2] + s[e2].length;
   const t2 = [];
   for (let e2 = 0; e2 < n3.length; e2++) {
-    const l2 = n3[e2], a = h[l2.out_idx], i = h[l2.out_idx + l2.out_count] - a, g2 = {
+    const l2 = n3[e2], a = h[l2.out_idx], i = h[l2.out_idx + l2.out_count] - a, g = {
       sourceOffsets: [l2.source_offset],
       generatedOffsets: [a],
       lengths: [l2.source_length],
       data: l2.data
     };
-    i !== l2.source_length && (g2.generatedLengths = [i]), t2.push(g2);
+    i !== l2.source_length && (g.generatedLengths = [i]), t2.push(g);
   }
   return t2;
 }
@@ -7148,7 +7189,7 @@ function extractYamlEntries(yaml, yamlSourceOffset) {
 }
 function pfmToSvelte(source2) {
   const tree = new u$1(source2.length >> 3 || 128);
-  const parser = new Dt(tree);
+  const parser = new Ht(tree);
   parser.parse(source2);
   const buf = tree.get_buffer();
   const cursor = new n$1(buf, source2);
@@ -7175,7 +7216,7 @@ function pfmToSvelte(source2) {
         });
         excludedRegions.push({ start: cursor.start, end: cursor.end });
         bodySkipSet.add(cursor.index);
-      } else if (kind === y2 && cursor.meta()?.tag === "script") {
+      } else if (kind === y && cursor.meta()?.tag === "script") {
         scriptBodies.push({
           valueStart: cursor.value_start,
           valueEnd: cursor.value_end
@@ -7263,7 +7304,7 @@ function pfmToSvelte(source2) {
   cursor.reset();
   if (cursor.goto_first_child()) {
     do {
-      if (cursor.kind === y2 && cursor.meta()?.tag === "style" && !bodySkipSet.has(cursor.index)) {
+      if (cursor.kind === y && cursor.meta()?.tag === "style" && !bodySkipSet.has(cursor.index)) {
         styleSourcePositions.push({
           valueStart: cursor.value_start,
           valueEnd: cursor.value_end
@@ -7738,7 +7779,7 @@ function composeMappings(a, b2, mergeData) {
       bSegs.push({ ...s, data: bm.data });
     }
   }
-  bSegs.sort((x2, y3) => x2.srcStart - y3.srcStart);
+  bSegs.sort((x2, y2) => x2.srcStart - y2.srcStart);
   const merge = mergeData ?? ((da, db) => intersectCapabilities(da, db));
   const result = [];
   for (const am of a) {
@@ -31030,8 +31071,8 @@ function requireElementRoleMap() {
     var role = _rolesMap.default.get(key);
     if (role) {
       var concepts = [].concat(role.baseConcepts, role.relatedConcepts);
-      for (var k2 = 0; k2 < concepts.length; k2++) {
-        var relation = concepts[k2];
+      for (var k3 = 0; k3 < concepts.length; k3++) {
+        var relation = concepts[k3];
         if (relation.module === "HTML") {
           (function() {
             var concept = relation.concept;
@@ -31225,8 +31266,8 @@ function requireRoleElementMap() {
     var relationConcepts = [];
     if (role) {
       var concepts = [].concat(role.baseConcepts, role.relatedConcepts);
-      for (var k2 = 0; k2 < concepts.length; k2++) {
-        var relation = concepts[k2];
+      for (var k3 = 0; k3 < concepts.length; k3++) {
+        var relation = concepts[k3];
         if (relation.module === "HTML") {
           var concept = relation.concept;
           if (concept != null) {

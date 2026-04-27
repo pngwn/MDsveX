@@ -15,9 +15,8 @@ root
           mustache "coords.stiffness"
           text ")"
       line_break
-      html tag="input" bind:value=[object Object] type="range" min="0" max="1" step="0.01"
-        line_break
-        paragraph
+      html tag="input" bind:value=[object Object] type="range" min="0" max="1" step="0.01" self_closing=true
+      line_break
     line_break
     line_break
     html tag="label"
@@ -28,9 +27,8 @@ root
           mustache "coords.damping"
           text ")"
       line_break
-      html tag="input" bind:value=[object Object] type="range" min="0" max="1" step="0.01"
-        line_break
-        paragraph
+      html tag="input" bind:value=[object Object] type="range" min="0" max="1" step="0.01" self_closing=true
+      line_break
     line_break
   line_break
   line_break

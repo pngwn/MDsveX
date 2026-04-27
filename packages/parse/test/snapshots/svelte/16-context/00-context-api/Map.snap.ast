@@ -7,12 +7,9 @@ root
   line_break
   html tag="div" bind:this=[object Object]
     line_break
-    paragraph
-      mustache "#if map"
-      soft_break
-      text "		"
-      html tag="slot"
-      soft_break
-      text "	"
-      mustache "/if"
-      soft_break
+    svelte_block tag="if"
+      svelte_branch tag="if" "map"
+        line_break
+        html tag="slot"
+        line_break
+    line_break

@@ -13,10 +13,10 @@ root
       text tag="a" href="https://cloud.blender.org/open-projects" "<a "
       text "Blender Open Projects"
       text "</a"
-      line_break
-      paragraph
-        text ">. CC-BY"
-        soft_break
+    line_break
+    paragraph
+      text ">. CC-BY"
+      soft_break
   line_break
   line_break
   html tag="div"

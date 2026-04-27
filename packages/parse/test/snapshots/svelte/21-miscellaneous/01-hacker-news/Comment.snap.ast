@@ -16,19 +16,14 @@ root
     line_break
     paragraph
       svelte_tag tag="html" "comment.content"
+    line_break
+    line_break
+    html tag="div" class="replies"
       line_break
-      line_break
-      html tag="div" class="replies"
-        line_break
-        paragraph
-          mustache "#each comment.comments as child"
-          soft_break
-          text "			"
+      svelte_block tag="each"
+        svelte_branch tag="each" "comment.comments as child"
+          line_break
           html tag="svelte:self" comment=[object Object] self_closing=true
-          soft_break
-          text "		"
-          mustache "/each"
-          soft_break
-          text "	"
+          line_break
       line_break
-      paragraph
+    line_break

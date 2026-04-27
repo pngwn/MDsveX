@@ -17,16 +17,12 @@ root
         paragraph
           text "Keyed"
       line_break
-      paragraph
-        mustache "#each things as thing (thing.id)"
-        soft_break
-        text "			"
-        html tag="Thing" current=[object Object] self_closing=true
-        soft_break
-        text "		"
-        mustache "/each"
-        soft_break
-        text "	"
+      svelte_block tag="each"
+        svelte_branch tag="each" "things as thing (thing.id)"
+          line_break
+          html tag="Thing" current=[object Object] self_closing=true
+          line_break
+      line_break
     line_break
     line_break
     html tag="div"
@@ -35,14 +31,10 @@ root
         paragraph
           text "Unkeyed"
       line_break
-      paragraph
-        mustache "#each things as thing"
-        soft_break
-        text "			"
-        html tag="Thing" current=[object Object] self_closing=true
-        soft_break
-        text "		"
-        mustache "/each"
-        soft_break
-        text "	"
+      svelte_block tag="each"
+        svelte_branch tag="each" "things as thing"
+          line_break
+          html tag="Thing" current=[object Object] self_closing=true
+          line_break
+      line_break
     line_break

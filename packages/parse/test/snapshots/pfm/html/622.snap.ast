@@ -1,3 +1,4 @@
 root
   paragraph
-    text
+    text "<a href='bar'title=title>"
+  line_break

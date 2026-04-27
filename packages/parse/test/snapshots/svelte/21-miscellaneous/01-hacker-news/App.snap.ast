@@ -10,18 +10,13 @@ root
   line_break
   html tag="main"
     line_break
-    paragraph
-      mustache "#if item"
-      soft_break
-      text "		"
-      html tag="Item" item=[object Object] returnTo="#/top/{page}" self_closing=true
-      soft_break
-      text "	"
-      mustache ":else if page"
-      soft_break
-      text "		"
-      html tag="List" page=[object Object] self_closing=true
-      soft_break
-      text "	"
-      mustache "/if"
-      soft_break
+    svelte_block tag="if"
+      svelte_branch tag="if" "item"
+        line_break
+        html tag="Item" item=[object Object] returnTo="#/top/{page}" self_closing=true
+        line_break
+      svelte_branch tag="else if" "page"
+        line_break
+        html tag="List" page=[object Object] self_closing=true
+        line_break
+    line_break

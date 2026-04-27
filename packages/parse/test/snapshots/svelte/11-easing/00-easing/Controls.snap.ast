@@ -13,105 +13,78 @@ root
         paragraph
           text "Ease"
       line_break
-      paragraph
-        mustache "#if mobile"
-        soft_break
-        text "				"
-        html tag="select" bind:value=[object Object]
-          soft_break
-          text "					"
-          mustache "#each [...eases] as [name]"
-          soft_break
-          text "						"
-          html tag="option" value=[object Object] class:selected=[object Object]
-            soft_break
-            text "							"
-            mustache "name"
-            soft_break
-            text "						"
-          soft_break
-          text "					"
-          mustache "/each"
-          soft_break
-          text "				"
-        soft_break
-        text "			"
-        mustache ":else"
-        soft_break
-        text "				"
-        html tag="ul"
-          soft_break
-          text "					"
-          mustache "#each [...eases] as [name]"
-          soft_break
-          text "						"
-          html tag="li" class:selected=[object Object] on:click=[object Object]
-            soft_break
-            text "							"
-            mustache "name"
-            soft_break
-            text "						"
-          soft_break
-          text "					"
-          mustache "/each"
-          soft_break
-          text "				"
-        soft_break
-        text "			"
-        mustache "/if"
-        soft_break
-        text "			"
-        html tag="h3"
+      svelte_block tag="if"
+        svelte_branch tag="if" "mobile"
+          line_break
+          html tag="select" bind:value=[object Object]
+            line_break
+            svelte_block tag="each"
+              svelte_branch tag="each" "[...eases] as [name]"
+                line_break
+                html tag="option" value=[object Object] class:selected=[object Object]
+                  line_break
+                  paragraph
+                    mustache "name"
+                    soft_break
+                    text "						"
+                line_break
+            line_break
+          line_break
+        svelte_branch tag="else"
+          line_break
+          html tag="ul"
+            line_break
+            svelte_block tag="each"
+              svelte_branch tag="each" "[...eases] as [name]"
+                line_break
+                html tag="li" class:selected=[object Object] on:click=[object Object]
+                  line_break
+                  paragraph
+                    mustache "name"
+                    soft_break
+                    text "						"
+                line_break
+            line_break
+          line_break
+      line_break
+      html tag="h3"
+        paragraph
           text "Type"
-        soft_break
-        text "			"
-        mustache "#if mobile "
-        soft_break
-        text "				"
-        html tag="select" bind:value=[object Object]
-          soft_break
-          text "					"
-          mustache "#each types as [name, type]"
-          soft_break
-          text "						"
-          html tag="option" value=[object Object]
-            soft_break
-            text "							"
-            mustache "name"
-            soft_break
-            text "						"
-          soft_break
-          text "					"
-          mustache "/each"
-          soft_break
-          text "				"
-        soft_break
-        text "			"
-        mustache ":else"
-        soft_break
-        text "				"
-        html tag="ul"
-          soft_break
-          text "					"
-          mustache "#each types as [name, type]"
-          soft_break
-          text "						"
-          html tag="li" class:selected=[object Object] on:click=[object Object]
-            soft_break
-            text "							"
-            mustache "name"
-            soft_break
-            text "					"
-          soft_break
-          text "					"
-          mustache "/each"
-          soft_break
-          text "				"
-        soft_break
-        text "			"
-        mustache "/if"
-        soft_break
-        text "		"
+      line_break
+      svelte_block tag="if"
+        svelte_branch tag="if" "mobile "
+          line_break
+          html tag="select" bind:value=[object Object]
+            line_break
+            svelte_block tag="each"
+              svelte_branch tag="each" "types as [name, type]"
+                line_break
+                html tag="option" value=[object Object]
+                  line_break
+                  paragraph
+                    mustache "name"
+                    soft_break
+                    text "						"
+                line_break
+            line_break
+          line_break
+        svelte_branch tag="else"
+          line_break
+          html tag="ul"
+            line_break
+            svelte_block tag="each"
+              svelte_branch tag="each" "types as [name, type]"
+                line_break
+                html tag="li" class:selected=[object Object] on:click=[object Object]
+                  line_break
+                  paragraph
+                    mustache "name"
+                    soft_break
+                    text "					"
+                line_break
+            line_break
+          line_break
+      line_break
     line_break
     html tag="h4"
       line_break

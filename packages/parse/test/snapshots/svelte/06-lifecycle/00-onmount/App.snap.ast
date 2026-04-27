@@ -12,31 +12,25 @@ root
   line_break
   html tag="div" class="photos"
     line_break
-    paragraph
-      mustache "#each photos as photo"
-      soft_break
-      text "		"
-      html tag="figure"
-        soft_break
-        text "			"
-        html tag="img" src=[object Object] alt=[object Object]
-          soft_break
-          text "			"
+    svelte_block tag="each"
+      svelte_branch tag="each" "photos as photo"
+        line_break
+        html tag="figure"
+          line_break
+          html tag="img" src=[object Object] alt=[object Object] self_closing=true
+          line_break
           html tag="figcaption"
-            mustache "photo.title"
+            paragraph
+              mustache "photo.title"
+          line_break
+        line_break
+      svelte_branch tag="else"
+        line_break
+        paragraph
+          html_comment " this block renders when photos.length === 0 "
           soft_break
           text "		"
-      soft_break
-      text "	"
-      mustache ":else"
-      soft_break
-      text "		"
-      html_comment " this block renders when photos.length === 0 "
-      soft_break
-      text "		"
-      html tag="p"
-        text "loading..."
-      soft_break
-      text "	"
-      mustache "/each"
-      soft_break
+          html tag="p"
+            text "loading..."
+        line_break
+    line_break

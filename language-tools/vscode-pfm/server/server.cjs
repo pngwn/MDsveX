@@ -33,12 +33,12 @@ function getAugmentedNamespace(n3) {
     a2.prototype = f2.prototype;
   } else a2 = {};
   Object.defineProperty(a2, "__esModule", { value: true });
-  Object.keys(n3).forEach(function(k2) {
-    var d = Object.getOwnPropertyDescriptor(n3, k2);
-    Object.defineProperty(a2, k2, d.get ? d : {
+  Object.keys(n3).forEach(function(k3) {
+    var d = Object.getOwnPropertyDescriptor(n3, k3);
+    Object.defineProperty(a2, k3, d.get ? d : {
       enumerable: true,
       get: function() {
-        return n3[k2];
+        return n3[k3];
       }
     });
   });
@@ -3089,18 +3089,18 @@ function requireMain$7() {
   if (hasRequiredMain$7) return main$6;
   hasRequiredMain$7 = 1;
   (function(exports2) {
-    var __createBinding2 = main$6 && main$6.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = main$6 && main$6.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar2 = main$6 && main$6.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding2(exports3, m2, p2);
@@ -6317,18 +6317,18 @@ function requireApi$2() {
   if (hasRequiredApi$2) return api$2;
   hasRequiredApi$2 = 1;
   (function(exports2) {
-    var __createBinding2 = api$2 && api$2.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = api$2 && api$2.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar2 = api$2 && api$2.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding2(exports3, m2, p2);
@@ -6360,18 +6360,18 @@ function requireMain$5() {
   if (hasRequiredMain$5) return main$7;
   hasRequiredMain$5 = 1;
   (function(exports2) {
-    var __createBinding2 = main$7 && main$7.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = main$7 && main$7.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar2 = main$7 && main$7.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding2(exports3, m2, p2);
@@ -8606,18 +8606,18 @@ function requireApi$1() {
   if (hasRequiredApi$1) return api$1;
   hasRequiredApi$1 = 1;
   (function(exports2) {
-    var __createBinding2 = api$1 && api$1.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = api$1 && api$1.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar2 = api$1 && api$1.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding2(exports3, m2, p2);
@@ -8654,18 +8654,18 @@ function requireMain$4() {
   if (hasRequiredMain$4) return main$8;
   hasRequiredMain$4 = 1;
   (function(exports2) {
-    var __createBinding2 = main$8 && main$8.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = main$8 && main$8.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar2 = main$8 && main$8.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding2(exports3, m2, p2);
@@ -9111,18 +9111,18 @@ function requireSourceMap() {
   if (hasRequiredSourceMap) return sourceMap$1;
   hasRequiredSourceMap = 1;
   (function(exports2) {
-    var __createBinding2 = sourceMap$1 && sourceMap$1.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = sourceMap$1 && sourceMap$1.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar2 = sourceMap$1 && sourceMap$1.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding2(exports3, m2, p2);
@@ -9383,18 +9383,18 @@ function requireLanguageCore() {
   if (hasRequiredLanguageCore) return languageCore;
   hasRequiredLanguageCore = 1;
   (function(exports2) {
-    var __createBinding2 = languageCore && languageCore.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = languageCore && languageCore.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar2 = languageCore && languageCore.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding2(exports3, m2, p2);
@@ -9831,7 +9831,7 @@ function requireUmd() {
             return a2(e4, true), e4;
           }
           toString(t4 = false) {
-            return y3(this, t4);
+            return y2(this, t4);
           }
           toJSON() {
             return this;
@@ -9856,7 +9856,7 @@ function requireUmd() {
             return this._fsPath || (this._fsPath = v2(this, false)), this._fsPath;
           }
           toString(t4 = false) {
-            return t4 ? y3(this, true) : (this._formatted || (this._formatted = y3(this, false)), this._formatted);
+            return t4 ? y2(this, true) : (this._formatted || (this._formatted = y2(this, false)), this._formatted);
           }
           toJSON() {
             const t4 = { $mid: 1 };
@@ -9889,7 +9889,7 @@ function requireUmd() {
           let r4;
           return r4 = t4.authority && t4.path.length > 1 && "file" === t4.scheme ? `//${t4.authority}${t4.path}` : 47 === t4.path.charCodeAt(0) && (t4.path.charCodeAt(1) >= 65 && t4.path.charCodeAt(1) <= 90 || t4.path.charCodeAt(1) >= 97 && t4.path.charCodeAt(1) <= 122) && 58 === t4.path.charCodeAt(2) ? e4 ? t4.path.substr(1) : t4.path[1].toLowerCase() + t4.path.substr(2) : t4.path, n4.isWindows && (r4 = r4.replace(/\//g, "\\")), r4;
         }
-        function y3(t4, e4) {
+        function y2(t4, e4) {
           const r4 = e4 ? m2 : g2;
           let n5 = "", { scheme: i3, authority: o3, path: s2, query: a3, fragment: h2 } = t4;
           if (i3 && (n5 += i3, n5 += ":"), (o3 || "file" === i3) && (n5 += c2, n5 += c2), o3) {
@@ -13988,18 +13988,18 @@ function requireLanguageService() {
   if (hasRequiredLanguageService) return languageService$1;
   hasRequiredLanguageService = 1;
   (function(exports2) {
-    var __createBinding2 = languageService$1 && languageService$1.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = languageService$1 && languageService$1.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar2 = languageService$1 && languageService$1.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding2(exports3, m2, p2);
@@ -14243,7 +14243,7 @@ function requireMain$3() {
               const v2 = d.default(n5);
               n5.write(`${c3}\r
 `);
-              const { statusCode: m2, buffered: y3 } = yield v2;
+              const { statusCode: m2, buffered: y2 } = yield v2;
               if (200 === m2) {
                 if (e4.once("socket", h), t4.secureEndpoint) {
                   f2("Upgrading socket connection to TLS");
@@ -14260,7 +14260,7 @@ function requireMain$3() {
               n5.destroy();
               const b2 = new s.default.Socket({ writable: false });
               return b2.readable = true, e4.once("socket", (e5) => {
-                f2("replaying proxy buffer for failed request"), i2.default(e5.listenerCount("data") > 0), e5.push(y3), e5.push(null);
+                f2("replaying proxy buffer for failed request"), i2.default(e5.listenerCount("data") > 0), e5.push(y2), e5.push(null);
               }), b2;
             });
           }
@@ -14354,8 +14354,8 @@ function requireMain$3() {
                 }({}, e4, { url: s3, followRedirects: e4.followRedirects - 1 })));
               } else r4({ req: t4, res: o5 });
             };
-            (t4 = "https:" === n5.protocol ? u3.request(s2, c3) : a2.request(s2, c3)).on("error", o4), e4.timeout && t4.setTimeout(e4.timeout), e4.data && t4.write(e4.data), t4.end(), e4.token && (e4.token.isCancellationRequested && t4.destroy(new y3()), e4.token.onCancellationRequested(function() {
-              t4.destroy(new y3());
+            (t4 = "https:" === n5.protocol ? u3.request(s2, c3) : a2.request(s2, c3)).on("error", o4), e4.timeout && t4.setTimeout(e4.timeout), e4.data && t4.write(e4.data), t4.end(), e4.token && (e4.token.isCancellationRequested && t4.destroy(new y2()), e4.token.onCancellationRequested(function() {
+              t4.destroy(new y2());
             }));
           });
         }
@@ -14406,14 +14406,14 @@ function requireMain$3() {
                 }
               }), c3.on("error", function(t4) {
                 var r5;
-                r5 = y3.is(t4) ? t4 : { responseText: h("error", "Unable to access {0}. Error: {1}", e4.url, t4.message), body: Buffer.concat(m3), status: 500, headers: {} }, d2 = true, n5(r5);
-              }), e4.token && (e4.token.isCancellationRequested && c3.destroy(new y3()), e4.token.onCancellationRequested(function() {
-                c3.destroy(new y3());
+                r5 = y2.is(t4) ? t4 : { responseText: h("error", "Unable to access {0}. Error: {1}", e4.url, t4.message), body: Buffer.concat(m3), status: 500, headers: {} }, d2 = true, n5(r5);
+              }), e4.token && (e4.token.isCancellationRequested && c3.destroy(new y2()), e4.token.onCancellationRequested(function() {
+                c3.destroy(new y2());
               }));
             });
           }, function(t4) {
             var r4;
-            return r4 = y3.is(t4) ? t4 : { responseText: e4.agent ? h("error.cannot.connect.proxy", "Unable to connect to {0} through a proxy. Error: {1}", e4.url, t4.message) : h("error.cannot.connect", "Unable to connect to {0}. Error: {1}", e4.url, t4.message), body: Buffer.concat([]), status: 404, headers: {} }, Promise.reject(r4);
+            return r4 = y2.is(t4) ? t4 : { responseText: e4.agent ? h("error.cannot.connect.proxy", "Unable to connect to {0} through a proxy. Error: {1}", e4.url, t4.message) : h("error.cannot.connect", "Unable to connect to {0}. Error: {1}", e4.url, t4.message), body: Buffer.concat([]), status: 404, headers: {} }, Promise.reject(r4);
           });
         }, t3.getErrorStatusDescription = function(e4) {
           if (!(e4 < 400)) switch (e4) {
@@ -14459,7 +14459,7 @@ function requireMain$3() {
               return h("status.416", "HTTP status code {0}", e4);
           }
         };
-        var y3 = function(e4) {
+        var y2 = function(e4) {
           function t4() {
             var r4 = e4.call(this, "The user aborted a request") || this;
             return r4.name = "AbortError", Object.setPrototypeOf(r4, t4.prototype), r4;
@@ -14613,7 +14613,7 @@ function requireMain$3() {
           }
           return r4;
         }
-        function y3(e4) {
+        function y2(e4) {
           if (!e4) return a2.localize;
           var t4 = o3.extname(e4);
           if (t4 && (e4 = e4.substr(0, e4.length - t4.length)), c2.messageFormat === a2.MessageFormat.both || c2.messageFormat === a2.MessageFormat.bundle) {
@@ -14650,7 +14650,7 @@ function requireMain$3() {
             }
           }
           if (c2.messageFormat === a2.MessageFormat.both || c2.messageFormat === a2.MessageFormat.file) try {
-            var y4 = p2(function(e5) {
+            var y3 = p2(function(e5) {
               var t5;
               if (c2.cacheLanguageResolution && t5) ;
               else {
@@ -14668,7 +14668,7 @@ function requireMain$3() {
               }
               return e5 + t5;
             }(e4));
-            return Array.isArray(y4) ? h(y4) : (0, a2.isDefined)(y4.messages) && (0, a2.isDefined)(y4.keys) ? h(y4.messages) : (console.error("String bundle '".concat(e4, "' uses an unsupported format.")), function() {
+            return Array.isArray(y3) ? h(y3) : (0, a2.isDefined)(y3.messages) && (0, a2.isDefined)(y3.keys) ? h(y3.messages) : (console.error("String bundle '".concat(e4, "' uses an unsupported format.")), function() {
               return "File bundle has unsupported format. See console for details";
             });
           } catch (e5) {
@@ -14679,7 +14679,7 @@ function requireMain$3() {
           };
         }
         function b2(e4) {
-          return e4 && (f2(e4.locale) && (c2.locale = e4.locale.toLowerCase(), c2.language = c2.locale, i2 = /* @__PURE__ */ Object.create(null)), void 0 !== e4.messageFormat && (c2.messageFormat = e4.messageFormat), e4.bundleFormat === a2.BundleFormat.standalone && true === c2.languagePackSupport && (c2.languagePackSupport = false)), (0, a2.setPseudo)("pseudo" === c2.locale), y3;
+          return e4 && (f2(e4.locale) && (c2.locale = e4.locale.toLowerCase(), c2.language = c2.locale, i2 = /* @__PURE__ */ Object.create(null)), void 0 !== e4.messageFormat && (c2.messageFormat = e4.messageFormat), e4.bundleFormat === a2.BundleFormat.standalone && true === c2.languagePackSupport && (c2.languagePackSupport = false)), (0, a2.setPseudo)("pseudo" === c2.locale), y2;
         }
         !function() {
           if (c2 = { locale: void 0, language: void 0, languagePackSupport: false, cacheLanguageResolution: true, messageFormat: a2.MessageFormat.bundle }, f2(process.env.VSCODE_NLS_CONFIG)) try {
@@ -14708,7 +14708,7 @@ function requireMain$3() {
           } catch (e5) {
           }
           (0, a2.setPseudo)("pseudo" === c2.locale), i2 = /* @__PURE__ */ Object.create(null);
-        }(), t3.loadMessageBundle = y3, t3.config = b2, s.default.install(Object.freeze({ loadMessageBundle: y3, config: b2 }));
+        }(), t3.loadMessageBundle = y2, t3.config = b2, s.default.install(Object.freeze({ loadMessageBundle: y2, config: b2 }));
       }, 374: (e3, t3) => {
         function r3() {
         }
@@ -14907,18 +14907,18 @@ function requireProtocol() {
   if (hasRequiredProtocol) return protocol;
   hasRequiredProtocol = 1;
   (function(exports2) {
-    var __createBinding2 = protocol && protocol.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = protocol && protocol.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar2 = protocol && protocol.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding2(exports3, m2, p2);
@@ -16363,18 +16363,18 @@ function requireLanguageServer() {
   if (hasRequiredLanguageServer) return languageServer;
   hasRequiredLanguageServer = 1;
   (function(exports2) {
-    var __createBinding2 = languageServer && languageServer.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = languageServer && languageServer.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar2 = languageServer && languageServer.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding2(exports3, m2, p2);
@@ -19960,18 +19960,18 @@ function requireTypescript() {
   if (hasRequiredTypescript) return typescript;
   hasRequiredTypescript = 1;
   (function(exports2) {
-    var __createBinding2 = typescript && typescript.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = typescript && typescript.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar2 = typescript && typescript.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding2(exports3, m2, p2);
@@ -20531,18 +20531,18 @@ function requireNode$2() {
   if (hasRequiredNode$2) return node$6;
   hasRequiredNode$2 = 1;
   (function(exports) {
-    var __createBinding = node$6 && node$6.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding = node$6 && node$6.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar = node$6 && node$6.__exportStar || function(m2, exports2) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports2, p2)) __createBinding(exports2, m2, p2);
@@ -22130,11 +22130,11 @@ function requireRange$1() {
             this.formatted += "||";
           }
           const comps = this.set[i2];
-          for (let k2 = 0; k2 < comps.length; k2++) {
-            if (k2 > 0) {
+          for (let k3 = 0; k3 < comps.length; k3++) {
+            if (k3 > 0) {
               this.formatted += " ";
             }
-            this.formatted += comps[k2].toString().trim();
+            this.formatted += comps[k3].toString().trim();
           }
         }
       }
@@ -31759,22 +31759,22 @@ function xyzFromOKLAB(lab) {
   const m3 = m2 ** 3;
   const s3 = s ** 3;
   const x2 = 1.2270138511 * l3 - 0.5577999807 * m3 + 0.281256149 * s3;
-  const y3 = -0.0405801784 * l3 + 1.1122568696 * m3 - 0.0716766787 * s3;
+  const y2 = -0.0405801784 * l3 + 1.1122568696 * m3 - 0.0716766787 * s3;
   const z2 = -0.0763812845 * l3 - 0.4214819784 * m3 + 1.5861632204 * s3;
   return {
     x: x2 * 100,
-    y: y3 * 100,
+    y: y2 * 100,
     z: z2 * 100,
     alpha: lab.alpha ?? 1
   };
 }
 function xyzToRGB(xyz) {
   const x2 = xyz.x / 100;
-  const y3 = xyz.y / 100;
+  const y2 = xyz.y / 100;
   const z2 = xyz.z / 100;
-  const r2 = 3.2406254773200533 * x2 - 1.5372079722103187 * y3 - 0.4986285986982479 * z2;
-  const g2 = -0.9689307147293197 * x2 + 1.8757560608852415 * y3 + 0.041517523842953964 * z2;
-  const b2 = 0.055710120445510616 * x2 + -0.2040210505984867 * y3 + 1.0569959422543882 * z2;
+  const r2 = 3.2406254773200533 * x2 - 1.5372079722103187 * y2 - 0.4986285986982479 * z2;
+  const g2 = -0.9689307147293197 * x2 + 1.8757560608852415 * y2 + 0.041517523842953964 * z2;
+  const b2 = 0.055710120445510616 * x2 + -0.2040210505984867 * y2 + 1.0569959422543882 * z2;
   const compand = (c2) => {
     return c2 <= 31308e-7 ? 12.92 * c2 : Math.min(1.055 * Math.pow(c2, 1 / 2.4) - 0.055, 1);
   };
@@ -31806,29 +31806,29 @@ function RGBtoXYZ(rgba) {
   g2 = g2 * 100;
   b2 = b2 * 100;
   const x2 = r2 * 0.4124 + g2 * 0.3576 + b2 * 0.1805;
-  const y3 = r2 * 0.2126 + g2 * 0.7152 + b2 * 0.0722;
+  const y2 = r2 * 0.2126 + g2 * 0.7152 + b2 * 0.0722;
   const z2 = r2 * 0.0193 + g2 * 0.1192 + b2 * 0.9505;
-  return { x: x2, y: y3, z: z2, alpha: rgba.alpha };
+  return { x: x2, y: y2, z: z2, alpha: rgba.alpha };
 }
 function XYZtoLAB(xyz, round = true) {
   const ref_X = 95.047, ref_Y = 100, ref_Z = 108.883;
-  let x2 = xyz.x / ref_X, y3 = xyz.y / ref_Y, z2 = xyz.z / ref_Z;
+  let x2 = xyz.x / ref_X, y2 = xyz.y / ref_Y, z2 = xyz.z / ref_Z;
   if (x2 > 8856e-6) {
     x2 = Math.pow(x2, 1 / 3);
   } else {
     x2 = 7.787 * x2 + 16 / 116;
   }
-  if (y3 > 8856e-6) {
-    y3 = Math.pow(y3, 1 / 3);
+  if (y2 > 8856e-6) {
+    y2 = Math.pow(y2, 1 / 3);
   } else {
-    y3 = 7.787 * y3 + 16 / 116;
+    y2 = 7.787 * y2 + 16 / 116;
   }
   if (z2 > 8856e-6) {
     z2 = Math.pow(z2, 1 / 3);
   } else {
     z2 = 7.787 * z2 + 16 / 116;
   }
-  const l2 = 116 * y3 - 16, a2 = 500 * (x2 - y3), b2 = 200 * (y3 - z2);
+  const l2 = 116 * y2 - 16, a2 = 500 * (x2 - y2), b2 = 200 * (y2 - z2);
   if (round) {
     return {
       l: Math.round((l2 + Number.EPSILON) * 100) / 100,
@@ -31847,11 +31847,11 @@ function XYZtoLAB(xyz, round = true) {
 }
 function XYZtoOKLAB(xyz, round = true) {
   const x2 = xyz.x / 100;
-  const y3 = xyz.y / 100;
+  const y2 = xyz.y / 100;
   const z2 = xyz.z / 100;
-  const l2 = 0.8189330101 * x2 + 0.3618667424 * y3 - 0.1288597137 * z2;
-  const m2 = 0.0329845436 * x2 + 0.9293118715 * y3 + 0.0361456387 * z2;
-  const s = 0.0482003018 * x2 + 0.2643662691 * y3 + 0.633851707 * z2;
+  const l2 = 0.8189330101 * x2 + 0.3618667424 * y2 - 0.1288597137 * z2;
+  const m2 = 0.0329845436 * x2 + 0.9293118715 * y2 + 0.0361456387 * z2;
+  const s = 0.0482003018 * x2 + 0.2643662691 * y2 + 0.633851707 * z2;
   const l_ = Math.cbrt(l2);
   const m_ = Math.cbrt(m2);
   const s_ = Math.cbrt(s);
@@ -34744,7 +34744,7 @@ var LIB;
     }
     return -1 !== i3 && (n4 += encodeURIComponent(t3.substring(i3))), void 0 !== n4 ? n4 : t3;
   }
-  function y3(t3) {
+  function y2(t3) {
     let e3;
     for (let r3 = 0; r3 < t3.length; r3++) {
       const n4 = t3.charCodeAt(r3);
@@ -34757,7 +34757,7 @@ var LIB;
     return r3 = t3.authority && t3.path.length > 1 && "file" === t3.scheme ? `//${t3.authority}${t3.path}` : 47 === t3.path.charCodeAt(0) && (t3.path.charCodeAt(1) >= 65 && t3.path.charCodeAt(1) <= 90 || t3.path.charCodeAt(1) >= 97 && t3.path.charCodeAt(1) <= 122) && 58 === t3.path.charCodeAt(2) ? t3.path[1].toLowerCase() + t3.path.substr(2) : t3.path, i2 && (r3 = r3.replace(/\//g, "\\")), r3;
   }
   function b2(t3, e3) {
-    const r3 = e3 ? y3 : m2;
+    const r3 = e3 ? y2 : m2;
     let n4 = "", { scheme: i3, authority: o3, path: s2, query: h2, fragment: a3 } = t3;
     if (i3 && (n4 += i3, n4 += ":"), (o3 || "file" === i3) && (n4 += f2, n4 += f2), o3) {
       let t4 = o3.indexOf("@");
@@ -37493,9 +37493,9 @@ class LintVisitor {
   getMissingNames(expected, actual) {
     const expectedClone = expected.slice(0);
     for (let i2 = 0; i2 < actual.length; i2++) {
-      const k2 = expectedClone.indexOf(actual[i2]);
-      if (k2 !== -1) {
-        expectedClone[k2] = null;
+      const k3 = expectedClone.indexOf(actual[i2]);
+      if (k3 !== -1) {
+        expectedClone[k3] = null;
       }
     }
     let result = null;
@@ -37678,9 +37678,9 @@ class LintVisitor {
         if (value && this.documentText.charAt(value.offset) !== "-") {
           const elements2 = this.fetch(propertyTable, element2.fullPropertyName);
           if (elements2.length > 1) {
-            for (let k2 = 0; k2 < elements2.length; k2++) {
-              const value2 = elements2[k2].node.getValue();
-              if (value2 && this.documentText.charAt(value2.offset) !== "-" && elements2[k2] !== element2) {
+            for (let k3 = 0; k3 < elements2.length; k3++) {
+              const value2 = elements2[k3].node.getValue();
+              if (value2 && this.documentText.charAt(value2.offset) !== "-" && elements2[k3] !== element2) {
                 this.addEntry(element2.node, Rules.DuplicateDeclarations);
               }
             }
@@ -90002,18 +90002,18 @@ function requireMain() {
   if (hasRequiredMain) return main;
   hasRequiredMain = 1;
   (function(exports2) {
-    var __createBinding2 = main && main.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = main && main.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar2 = main && main.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding2(exports3, m2, p2);
@@ -91819,7 +91819,7 @@ function requireConfig() {
   return config;
 }
 var extractLinkDef = {};
-async function g$1(r2) {
+async function g(r2) {
   if (r2.protocol === "http" || r2.protocol === "https") return await (await fetch(r2)).text();
   throw new Error("Unsupported protocol");
 }
@@ -91839,7 +91839,7 @@ function f$1(r2) {
   }
   if (r2.uri) {
     let n3 = r2.uri;
-    return typeof r2.uri == "string" && (n3 = new URL(r2.uri)), g$1(n3).then((t2) => {
+    return typeof r2.uri == "string" && (n3 = new URL(r2.uri)), g(n3).then((t2) => {
       o$1 = JSON.parse(t2);
     });
   }
@@ -93383,8 +93383,8 @@ function requireWorkspaceCache() {
     }
     async entries() {
       await this.#ensureInit();
-      return Promise.all(Array.from(this.#cache.entries(), async ([k2, v2]) => {
-        return [k2, await v2.value.value];
+      return Promise.all(Array.from(this.#cache.entries(), async ([k3, v2]) => {
+        return [k3, await v2.value.value];
       }));
     }
     async values() {
@@ -95303,18 +95303,18 @@ function requireLib$8() {
   if (hasRequiredLib$8) return lib$7;
   hasRequiredLib$8 = 1;
   (function(exports2) {
-    var __createBinding2 = lib$7 && lib$7.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = lib$7 && lib$7.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar2 = lib$7 && lib$7.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding2(exports3, m2, p2);
@@ -95560,18 +95560,18 @@ function requireDecode() {
   if (hasRequiredDecode) return decode$2;
   hasRequiredDecode = 1;
   (function(exports2) {
-    var __createBinding2 = decode$2 && decode$2.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = decode$2 && decode$2.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __setModuleDefault = decode$2 && decode$2.__setModuleDefault || (Object.create ? function(o2, v2) {
       Object.defineProperty(o2, "default", { enumerable: true, value: v2 });
@@ -95582,7 +95582,7 @@ function requireDecode() {
       if (mod && mod.__esModule) return mod;
       var result = {};
       if (mod != null) {
-        for (var k2 in mod) if (k2 !== "default" && Object.prototype.hasOwnProperty.call(mod, k2)) __createBinding2(result, mod, k2);
+        for (var k3 in mod) if (k3 !== "default" && Object.prototype.hasOwnProperty.call(mod, k3)) __createBinding2(result, mod, k3);
       }
       __setModuleDefault(result, mod);
       return result;
@@ -96319,18 +96319,18 @@ function requireLib$6() {
     };
     return __assign.apply(this, arguments);
   };
-  var __createBinding2 = lib$5 && lib$5.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-    if (k22 === void 0) k22 = k2;
-    var desc = Object.getOwnPropertyDescriptor(m2, k2);
+  var __createBinding2 = lib$5 && lib$5.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+    if (k22 === void 0) k22 = k3;
+    var desc = Object.getOwnPropertyDescriptor(m2, k3);
     if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
       desc = { enumerable: true, get: function() {
-        return m2[k2];
+        return m2[k3];
       } };
     }
     Object.defineProperty(o2, k22, desc);
-  } : function(o2, m2, k2, k22) {
-    if (k22 === void 0) k22 = k2;
-    o2[k22] = m2[k2];
+  } : function(o2, m2, k3, k22) {
+    if (k22 === void 0) k22 = k3;
+    o2[k22] = m2[k3];
   });
   var __setModuleDefault = lib$5 && lib$5.__setModuleDefault || (Object.create ? function(o2, v2) {
     Object.defineProperty(o2, "default", { enumerable: true, value: v2 });
@@ -96341,7 +96341,7 @@ function requireLib$6() {
     if (mod && mod.__esModule) return mod;
     var result = {};
     if (mod != null) {
-      for (var k2 in mod) if (k2 !== "default" && Object.prototype.hasOwnProperty.call(mod, k2)) __createBinding2(result, mod, k2);
+      for (var k3 in mod) if (k3 !== "default" && Object.prototype.hasOwnProperty.call(mod, k3)) __createBinding2(result, mod, k3);
     }
     __setModuleDefault(result, mod);
     return result;
@@ -97179,18 +97179,18 @@ function requireLib$5() {
   if (hasRequiredLib$5) return lib$8;
   hasRequiredLib$5 = 1;
   (function(exports2) {
-    var __createBinding2 = lib$8 && lib$8.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = lib$8 && lib$8.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __exportStar2 = lib$8 && lib$8.__exportStar || function(m2, exports3) {
       for (var p2 in m2) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p2)) __createBinding2(exports3, m2, p2);
@@ -98764,18 +98764,18 @@ var hasRequiredCompile;
 function requireCompile() {
   if (hasRequiredCompile) return compile$1;
   hasRequiredCompile = 1;
-  var __createBinding2 = compile$1 && compile$1.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-    if (k22 === void 0) k22 = k2;
-    var desc = Object.getOwnPropertyDescriptor(m2, k2);
+  var __createBinding2 = compile$1 && compile$1.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+    if (k22 === void 0) k22 = k3;
+    var desc = Object.getOwnPropertyDescriptor(m2, k3);
     if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
       desc = { enumerable: true, get: function() {
-        return m2[k2];
+        return m2[k3];
       } };
     }
     Object.defineProperty(o2, k22, desc);
-  } : function(o2, m2, k2, k22) {
-    if (k22 === void 0) k22 = k2;
-    o2[k22] = m2[k2];
+  } : function(o2, m2, k3, k22) {
+    if (k22 === void 0) k22 = k3;
+    o2[k22] = m2[k3];
   });
   var __setModuleDefault = compile$1 && compile$1.__setModuleDefault || (Object.create ? function(o2, v2) {
     Object.defineProperty(o2, "default", { enumerable: true, value: v2 });
@@ -98786,7 +98786,7 @@ function requireCompile() {
     if (mod && mod.__esModule) return mod;
     var result = {};
     if (mod != null) {
-      for (var k2 in mod) if (k2 !== "default" && Object.prototype.hasOwnProperty.call(mod, k2)) __createBinding2(result, mod, k2);
+      for (var k3 in mod) if (k3 !== "default" && Object.prototype.hasOwnProperty.call(mod, k3)) __createBinding2(result, mod, k3);
     }
     __setModuleDefault(result, mod);
     return result;
@@ -98896,18 +98896,18 @@ function requireLib$3() {
   if (hasRequiredLib$3) return lib$9;
   hasRequiredLib$3 = 1;
   (function(exports2) {
-    var __createBinding2 = lib$9 && lib$9.__createBinding || (Object.create ? function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      var desc = Object.getOwnPropertyDescriptor(m2, k2);
+    var __createBinding2 = lib$9 && lib$9.__createBinding || (Object.create ? function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      var desc = Object.getOwnPropertyDescriptor(m2, k3);
       if (!desc || ("get" in desc ? !m2.__esModule : desc.writable || desc.configurable)) {
         desc = { enumerable: true, get: function() {
-          return m2[k2];
+          return m2[k3];
         } };
       }
       Object.defineProperty(o2, k22, desc);
-    } : function(o2, m2, k2, k22) {
-      if (k22 === void 0) k22 = k2;
-      o2[k22] = m2[k2];
+    } : function(o2, m2, k3, k22) {
+      if (k22 === void 0) k22 = k3;
+      o2[k22] = m2[k3];
     });
     var __setModuleDefault = lib$9 && lib$9.__setModuleDefault || (Object.create ? function(o2, v2) {
       Object.defineProperty(o2, "default", { enumerable: true, value: v2 });
@@ -98918,7 +98918,7 @@ function requireLib$3() {
       if (mod && mod.__esModule) return mod;
       var result = {};
       if (mod != null) {
-        for (var k2 in mod) if (k2 !== "default" && Object.prototype.hasOwnProperty.call(mod, k2)) __createBinding2(result, mod, k2);
+        for (var k3 in mod) if (k3 !== "default" && Object.prototype.hasOwnProperty.call(mod, k3)) __createBinding2(result, mod, k3);
       }
       __setModuleDefault(result, mod);
       return result;
@@ -100006,17 +100006,17 @@ function requireHtml$1() {
         if (arguments.length < 2) {
           throw new Error("Failed to execute 'setAttribute' on 'Element'");
         }
-        var k2 = key.toLowerCase();
+        var k22 = key.toLowerCase();
         var attrs = this.rawAttributes;
         for (var k3 in attrs) {
-          if (k3.toLowerCase() === k2) {
+          if (k3.toLowerCase() === k22) {
             key = k3;
             break;
           }
         }
         attrs[key] = String(value);
         if (this._attrs) {
-          this._attrs[k2] = decode2(attrs[key]);
+          this._attrs[k22] = decode2(attrs[key]);
         }
         this.rawAttrs = Object.keys(attrs).map(function(name) {
           var val = _this.quoteAttribute(attrs[name]);
@@ -103051,7 +103051,7 @@ function requireIndex_cjs$3() {
           }
           if (!part.match(hostnamePartPattern)) {
             let newpart = "";
-            for (let j2 = 0, k2 = part.length; j2 < k2; j2++) {
+            for (let j2 = 0, k3 = part.length; j2 < k3; j2++) {
               if (part.charCodeAt(j2) > 127) {
                 newpart += "x";
               } else {
@@ -103220,8 +103220,8 @@ function requireIndex_cjs$1() {
     fuzzyIP: false
   };
   function isOptionsObj(obj) {
-    return Object.keys(obj || {}).reduce(function(acc, k2) {
-      return acc || defaultOptions2.hasOwnProperty(k2);
+    return Object.keys(obj || {}).reduce(function(acc, k3) {
+      return acc || defaultOptions2.hasOwnProperty(k3);
     }, false);
   }
   const defaultSchemas = {
@@ -103617,13 +103617,13 @@ const digitToBasic = function(digit, flag) {
   return digit + 22 + 75 * (digit < 26) - ((flag != 0) << 5);
 };
 const adapt = function(delta, numPoints, firstTime) {
-  let k2 = 0;
+  let k3 = 0;
   delta = firstTime ? floor(delta / damp) : delta >> 1;
   delta += floor(delta / numPoints);
-  for (; delta > baseMinusTMin * tMax >> 1; k2 += base) {
+  for (; delta > baseMinusTMin * tMax >> 1; k3 += base) {
     delta = floor(delta / baseMinusTMin);
   }
-  return floor(k2 + (baseMinusTMin + 1) * delta / (delta + skew));
+  return floor(k3 + (baseMinusTMin + 1) * delta / (delta + skew));
 };
 const decode$1 = function(input) {
   const output = [];
@@ -103643,7 +103643,7 @@ const decode$1 = function(input) {
   }
   for (let index = basic > 0 ? basic + 1 : 0; index < inputLength; ) {
     const oldi = i2;
-    for (let w2 = 1, k2 = base; ; k2 += base) {
+    for (let w2 = 1, k3 = base; ; k3 += base) {
       if (index >= inputLength) {
         error("invalid-input");
       }
@@ -103655,7 +103655,7 @@ const decode$1 = function(input) {
         error("overflow");
       }
       i2 += digit * w2;
-      const t2 = k2 <= bias ? tMin : k2 >= bias + tMax ? tMax : k2 - bias;
+      const t2 = k3 <= bias ? tMin : k3 >= bias + tMax ? tMax : k3 - bias;
       if (digit < t2) {
         break;
       }
@@ -103712,8 +103712,8 @@ const encode$1 = function(input) {
       }
       if (currentValue === n3) {
         let q2 = delta;
-        for (let k2 = base; ; k2 += base) {
-          const t2 = k2 <= bias ? tMin : k2 >= bias + tMax ? tMax : k2 - bias;
+        for (let k3 = base; ; k3 += base) {
+          const t2 = k3 <= bias ? tMin : k3 >= bias + tMax ? tMax : k3 - bias;
           if (q2 < t2) {
             break;
           }
@@ -103792,13 +103792,13 @@ function requireIndex_cjs() {
   function _interopNamespaceDefault(e2) {
     var n3 = /* @__PURE__ */ Object.create(null);
     if (e2) {
-      Object.keys(e2).forEach(function(k2) {
-        if (k2 !== "default") {
-          var d = Object.getOwnPropertyDescriptor(e2, k2);
-          Object.defineProperty(n3, k2, d.get ? d : {
+      Object.keys(e2).forEach(function(k3) {
+        if (k3 !== "default") {
+          var d = Object.getOwnPropertyDescriptor(e2, k3);
+          Object.defineProperty(n3, k3, d.get ? d : {
             enumerable: true,
             get: function() {
-              return e2[k2];
+              return e2[k3];
             }
           });
         }
@@ -107854,13 +107854,13 @@ function requireVolarServiceMarkdown() {
   return volarServiceMarkdown;
 }
 var volarServiceMarkdownExports = /* @__PURE__ */ requireVolarServiceMarkdown();
-function g(c2) {
+function b(c2) {
   let s = 1;
   for (; s < c2; )
     s <<= 1;
   return s;
 }
-const b = (c2) => {
+const v$2 = (c2) => {
   switch (c2) {
     case 0:
       return "root";
@@ -107933,22 +107933,22 @@ const b = (c2) => {
     case 34:
       return "import_statement";
   }
-}, v$2 = /* @__PURE__ */ new Map();
+}, w$3 = /* @__PURE__ */ new Map();
 for (let c2 = 0; c2 <= 34; c2++)
-  v$2.set(b(c2), c2);
-const w$3 = (c2) => {
+  w$3.set(v$2(c2), c2);
+const x$2 = (c2) => {
   switch (c2) {
     case 3:
       return "depth";
   }
 };
-let y$1 = class y2 {
+let A$1 = class A2 {
   /**
    * create a buffer that stores token metadata with typed arrays.
    * @param initial_capacity requested starting capacity for tokens.
    */
   constructor(s = 128) {
-    const t2 = g(s);
+    const t2 = b(s);
     this.capacity = t2, this._kinds = new Uint8Array(t2), this._starts = new Uint32Array(t2), this._ends = new Uint32Array(t2), this._extras = new Uint16Array(t2), this._value_starts = new Uint32Array(t2), this._value_ends = new Uint32Array(t2), this.has_metadata = new Uint8Array(Math.max(1, t2 >> 3)), this.metadata = /* @__PURE__ */ new Map(), this._strings = [], this._parents = new Uint32Array(t2), this._next_siblings = new Uint32Array(t2), this._prev_siblings = new Uint32Array(t2), this._children_starts = new Uint32Array(t2), this._children_ends = new Uint32Array(t2), this._pending_nodes = new Uint32Array(t2), this._size = 0, this.push(0, 0);
   }
   /** clear previously pushed tokens without reallocating storage. */
@@ -107967,16 +107967,16 @@ let y$1 = class y2 {
    * @param extra extra metadata stored alongside the token.
    * @param metadata optional metadata associated with the node.
    */
-  push(s, t2, e2 = 4294967295, _2 = 0, i2) {
+  push(s, t2, i2 = 4294967295, _2 = 0, e2) {
     const f2 = this._size;
-    if (f2 >= this.capacity && this.grow(), this._kinds[f2] = s, this._starts[f2] = t2 >>> 0, this._ends[f2] = 4294967295, this._extras[f2] = _2 & 65535, this._size = f2 + 1, this._parents[f2] = e2, this._next_siblings[f2] = 4294967295, this._prev_siblings[f2] = 4294967295, this._children_starts[f2] = 4294967295, this._children_ends[f2] = 4294967295, e2 !== 4294967295) {
-      const n3 = this._children_ends[e2];
-      n3 === 4294967295 ? this._children_starts[e2] = f2 : (this._next_siblings[n3] = f2, this._prev_siblings[f2] = n3), this._children_ends[e2] = f2;
+    if (f2 >= this.capacity && this.grow(), this._kinds[f2] = s, this._starts[f2] = t2 >>> 0, this._ends[f2] = 4294967295, this._extras[f2] = _2 & 65535, this._size = f2 + 1, this._parents[f2] = i2, this._next_siblings[f2] = 4294967295, this._prev_siblings[f2] = 4294967295, this._children_starts[f2] = 4294967295, this._children_ends[f2] = 4294967295, i2 !== 4294967295) {
+      const n3 = this._children_ends[i2];
+      n3 === 4294967295 ? this._children_starts[i2] = f2 : (this._next_siblings[n3] = f2, this._prev_siblings[f2] = n3), this._children_ends[i2] = f2;
     }
-    return i2 !== void 0 && (this.metadata.set(f2, i2), this.has_metadata[f2 >> 3] |= 1 << (f2 & 7)), f2;
+    return e2 !== void 0 && (this.metadata.set(f2, e2), this.has_metadata[f2 >> 3] |= 1 << (f2 & 7)), f2;
   }
-  push_pending(s, t2, e2 = 4294967295, _2 = 0, i2) {
-    const f2 = this.push(s, t2, e2, _2, i2);
+  push_pending(s, t2, i2 = 4294967295, _2 = 0, e2) {
+    const f2 = this.push(s, t2, i2, _2, e2);
     return this._pending_nodes[f2] = 1, f2;
   }
   /**
@@ -107989,9 +107989,9 @@ let y$1 = class y2 {
    * @param metadata optional metadata.
    * @returns buffer index of the new node.
    */
-  push_unlinked(s, t2, e2 = 0, _2) {
-    const i2 = this._size;
-    return i2 >= this.capacity && this.grow(), this._kinds[i2] = s, this._starts[i2] = t2 >>> 0, this._ends[i2] = 4294967295, this._extras[i2] = e2 & 65535, this._size = i2 + 1, this._parents[i2] = 4294967295, this._next_siblings[i2] = 4294967295, this._prev_siblings[i2] = 4294967295, this._children_starts[i2] = 4294967295, this._children_ends[i2] = 4294967295, _2 !== void 0 && (this.metadata.set(i2, _2), this.has_metadata[i2 >> 3] |= 1 << (i2 & 7)), i2;
+  push_unlinked(s, t2, i2 = 0, _2) {
+    const e2 = this._size;
+    return e2 >= this.capacity && this.grow(), this._kinds[e2] = s, this._starts[e2] = t2 >>> 0, this._ends[e2] = 4294967295, this._extras[e2] = i2 & 65535, this._size = e2 + 1, this._parents[e2] = 4294967295, this._next_siblings[e2] = 4294967295, this._prev_siblings[e2] = 4294967295, this._children_starts[e2] = 4294967295, this._children_ends[e2] = 4294967295, _2 !== void 0 && (this.metadata.set(e2, _2), this.has_metadata[e2 >> 3] |= 1 << (e2 & 7)), e2;
   }
   /**
    * insert a new wrapper node between a parent and all its current children.
@@ -108004,15 +108004,15 @@ let y$1 = class y2 {
    * @param metadata optional metadata for the wrapper.
    * @returns buffer index of the new wrapper node.
    */
-  wrap_children(s, t2, e2 = 0, _2) {
-    const i2 = this._children_starts[s], f2 = this._children_ends[s];
+  wrap_children(s, t2, i2 = 0, _2) {
+    const e2 = this._children_starts[s], f2 = this._children_ends[s];
     this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295;
-    const n3 = this.push(t2, 0, s, e2, _2);
-    if (i2 !== 4294967295) {
-      this._children_starts[n3] = i2, this._children_ends[n3] = f2;
-      let h = i2;
-      for (; h !== 4294967295 && this._parents[h] === s; )
-        this._parents[h] = n3, h = this._next_siblings[h];
+    const n3 = this.push(t2, 0, s, i2, _2);
+    if (e2 !== 4294967295) {
+      this._children_starts[n3] = e2, this._children_ends[n3] = f2;
+      let a2 = e2;
+      for (; a2 !== 4294967295 && this._parents[a2] === s; )
+        this._parents[a2] = n3, a2 = this._next_siblings[a2];
     }
     return n3;
   }
@@ -108044,45 +108044,49 @@ let y$1 = class y2 {
    *   the node's start position.
    */
   handle_repair(s, t2) {
-    const e2 = this._parents[s], _2 = this._kinds[s], i2 = e2 !== 4294967295 ? this._kinds[e2] : void 0;
-    if (_2 === 7 && i2 === 16) {
+    const i2 = this._parents[s], _2 = this._kinds[s], e2 = i2 !== 4294967295 ? this._kinds[i2] : void 0;
+    if (_2 === 7 && e2 === 16) {
       this.unwrap_node(s);
       return;
     }
-    if (i2 === 0 || i2 === 14 || i2 === 16) {
-      const o2 = this._starts[s];
-      let r2 = o2;
-      if (t2 === void 0) {
+    if (e2 === 0 || e2 === 14 || e2 === 16) {
+      const p2 = this._starts[s];
+      let r2;
+      if (t2 !== void 0)
+        r2 = p2 + t2.length;
+      else {
         if (r2 = this._ends[s], r2 === 4294967295) {
-          let l2 = this._children_starts[s];
-          for (; l2 !== 4294967295 && this._parents[l2] === s; ) {
-            if (this._kinds[l2] === 6) {
-              const p2 = this._starts[l2];
-              p2 > 0 && (r2 === 4294967295 || p2 > r2) && (r2 = p2);
+          let h = this._children_starts[s];
+          for (; h !== 4294967295 && this._parents[h] === s; ) {
+            if (this._kinds[h] === 6) {
+              const u3 = this._starts[h];
+              u3 > 0 && (r2 === 4294967295 || u3 > r2) && (r2 = u3);
             } else {
-              const p2 = this._ends[l2];
-              p2 !== 4294967295 && (r2 === 4294967295 || p2 > r2) && (r2 = p2);
+              const u3 = this._ends[h];
+              u3 !== 4294967295 && (r2 === 4294967295 || u3 > r2) && (r2 = u3);
             }
-            l2 = this._next_siblings[l2];
+            h = this._next_siblings[h];
           }
         }
-        if (r2 === 4294967295 || r2 <= o2) {
+        if (r2 === 4294967295 || r2 <= p2) {
           this.unwrap_node(s);
           return;
         }
       }
-      let a2 = this._children_starts[s];
-      for (; a2 !== 4294967295 && this._parents[a2] === s; ) {
-        const l2 = this._next_siblings[a2];
-        this._parents[a2] = 4294967295, this._next_siblings[a2] = 4294967295, this._prev_siblings[a2] = 4294967295, a2 = l2;
-      }
+      const l2 = this._children_starts[s];
       this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295, this.set_kind(
         s,
         7
         /* NodeKind.paragraph */
       ), this.metadata.delete(s), this._ends[s] = r2;
-      const d = this.push(1, o2, s);
-      this._value_starts[d] = o2, this._value_ends[d] = r2, this._ends[d] = r2, t2 !== void 0 && (this._strings[d] = t2);
+      const d = this.push(1, p2, s);
+      if (this._value_starts[d] = p2, this._value_ends[d] = r2, this._ends[d] = r2, t2 !== void 0 && (this._strings[d] = t2), l2 !== 4294967295) {
+        const h = this._next_siblings[s];
+        let u3 = l2, g2 = l2;
+        for (; g2 !== 4294967295 && this._parents[g2] === s; )
+          this._parents[g2] = i2, u3 = g2, g2 = this._next_siblings[g2];
+        this._next_siblings[u3] = h, h !== 4294967295 ? this._prev_siblings[h] = u3 : i2 !== 4294967295 && this._children_ends[i2] === s && (this._children_ends[i2] = u3), this._next_siblings[s] = l2, this._prev_siblings[l2] = s;
+      }
       return;
     }
     const f2 = this._children_starts[s];
@@ -108092,31 +108096,31 @@ let y$1 = class y2 {
       /* NodeKind.text */
     ), t2 !== void 0) {
       this._strings[s] = t2;
-      const o2 = this._starts[s], r2 = o2 + t2.length;
-      if (this._value_starts[s] = o2, this._value_ends[s] = r2, this._ends[s] = r2, f2 === 4294967295) {
+      const p2 = this._starts[s], r2 = p2 + t2.length;
+      if (this._value_starts[s] = p2, this._value_ends[s] = r2, this._ends[s] = r2, f2 === 4294967295) {
         this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295;
         return;
       }
-      let a2 = f2, d = f2;
-      for (; a2 !== 4294967295 && this._parents[a2] === s; )
-        this._parents[a2] = e2, d = a2, a2 = this._next_siblings[a2];
-      const l2 = this._next_siblings[s];
-      this._next_siblings[s] = f2, this._prev_siblings[f2] = s, l2 !== 4294967295 && this._parents[l2] === e2 ? (this._next_siblings[d] = l2, this._prev_siblings[l2] = d) : this._next_siblings[d] = 4294967295, this._children_ends[e2] === s && (this._children_ends[e2] = d), this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295;
+      let l2 = f2, d = f2;
+      for (; l2 !== 4294967295 && this._parents[l2] === s; )
+        this._parents[l2] = i2, d = l2, l2 = this._next_siblings[l2];
+      const h = this._next_siblings[s];
+      this._next_siblings[s] = f2, this._prev_siblings[f2] = s, h !== 4294967295 && this._parents[h] === i2 ? (this._next_siblings[d] = h, this._prev_siblings[h] = d) : this._next_siblings[d] = 4294967295, this._children_ends[i2] === s && (this._children_ends[i2] = d), this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295;
       return;
     }
     if (f2 === 4294967295) {
       this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295, this._value_starts[s] = this._starts[s], this._ends[s] === 4294967295 ? (this._value_ends[s] = this._starts[s] + 1, this._ends[s] = this._starts[s] + 1) : this._value_ends[s] = this._ends[s];
       return;
     }
-    let n3 = f2, h = f2;
+    let n3 = f2, a2 = f2;
     for (; n3 !== 4294967295 && this._parents[n3] === s; )
-      this._parents[n3] = e2, h = n3, n3 = this._next_siblings[n3];
-    if (h === f2 && this._kinds[f2] === 1) {
+      this._parents[n3] = i2, a2 = n3, n3 = this._next_siblings[n3];
+    if (a2 === f2 && this._kinds[f2] === 1) {
       this._value_starts[s] = this._starts[s], this._value_ends[s] = this._ends[f2], this._ends[s] = this._ends[f2], this._next_siblings[s] = this._next_siblings[f2], this._next_siblings[f2] !== 4294967295 && (this._prev_siblings[this._next_siblings[f2]] = s), this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295;
       return;
     }
-    const u3 = this._prev_siblings[f2];
-    this._next_siblings[s] = f2, this._prev_siblings[f2] = s, u3 !== 4294967295 && (this._next_siblings[u3] = s, this._prev_siblings[s] = u3), this._children_ends[e2] === s && (this._children_ends[e2] = h), this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295, this._value_starts[s] = this._starts[s], this._value_ends[s] = this._value_starts[f2], this._ends[s] = this._value_ends[s];
+    const o2 = this._prev_siblings[f2];
+    this._next_siblings[s] = f2, this._prev_siblings[f2] = s, o2 !== 4294967295 && (this._next_siblings[o2] = s, this._prev_siblings[s] = o2), this._children_ends[i2] === s && (this._children_ends[i2] = a2), this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295, this._value_starts[s] = this._starts[s], this._value_ends[s] = this._value_starts[f2], this._ends[s] = this._value_ends[s];
   }
   repair() {
     this._pending_nodes.forEach((s, t2) => {
@@ -108132,29 +108136,29 @@ let y$1 = class y2 {
    * in the parent's child list.
    */
   unwrap_node(s) {
-    const t2 = this._parents[s], e2 = this._children_starts[s];
-    if (e2 === 4294967295) {
-      const h = this._prev_siblings[s], u3 = this._next_siblings[s];
-      h !== 4294967295 ? this._next_siblings[h] = u3 : t2 !== 4294967295 && (this._children_starts[t2] = u3), u3 !== 4294967295 && (this._prev_siblings[u3] = h), t2 !== 4294967295 && this._children_ends[t2] === s && (this._children_ends[t2] = h);
+    const t2 = this._parents[s], i2 = this._children_starts[s];
+    if (i2 === 4294967295) {
+      const a2 = this._prev_siblings[s], o2 = this._next_siblings[s];
+      a2 !== 4294967295 ? this._next_siblings[a2] = o2 : t2 !== 4294967295 && (this._children_starts[t2] = o2), o2 !== 4294967295 && (this._prev_siblings[o2] = a2), t2 !== 4294967295 && this._children_ends[t2] === s && (this._children_ends[t2] = a2);
       return;
     }
-    let _2 = e2, i2 = e2;
+    let _2 = i2, e2 = i2;
     for (; _2 !== 4294967295 && this._parents[_2] === s; )
-      this._parents[_2] = t2, i2 = _2, _2 = this._next_siblings[_2];
+      this._parents[_2] = t2, e2 = _2, _2 = this._next_siblings[_2];
     const f2 = this._prev_siblings[s];
-    this._next_siblings[i2] !== 4294967295 && this._parents[this._next_siblings[i2]] === s || this._next_siblings[i2];
+    this._next_siblings[e2] !== 4294967295 && this._parents[this._next_siblings[e2]] === s || this._next_siblings[e2];
     const n3 = this._next_siblings[s];
-    f2 !== 4294967295 ? (this._next_siblings[f2] = e2, this._prev_siblings[e2] = f2) : t2 !== 4294967295 && (this._children_starts[t2] = e2, this._prev_siblings[e2] = 4294967295), n3 !== 4294967295 && n3 !== e2 ? (this._next_siblings[i2] = n3, this._prev_siblings[n3] = i2) : this._next_siblings[i2] = 4294967295, t2 !== 4294967295 && this._children_ends[t2] === s && (this._children_ends[t2] = i2), this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295;
+    f2 !== 4294967295 ? (this._next_siblings[f2] = i2, this._prev_siblings[i2] = f2) : t2 !== 4294967295 && (this._children_starts[t2] = i2, this._prev_siblings[i2] = 4294967295), n3 !== 4294967295 && n3 !== i2 ? (this._next_siblings[e2] = n3, this._prev_siblings[n3] = e2) : this._next_siblings[e2] = 4294967295, t2 !== 4294967295 && this._children_ends[t2] === s && (this._children_ends[t2] = e2), this._children_starts[s] = 4294967295, this._children_ends[s] = 4294967295;
   }
   set_parent_kind(s, t2) {
-    const e2 = this._parents[s];
-    e2 !== 4294967295 && (this._kinds[e2] = t2);
+    const i2 = this._parents[s];
+    i2 !== 4294967295 && (this._kinds[i2] = t2);
   }
   /** return indices of all nodes matching the given kind (lazy scan). */
   get_kinds(s) {
     const t2 = [];
-    for (let e2 = 0; e2 < this._size; e2++)
-      this._kinds[e2] === s && t2.push(e2);
+    for (let i2 = 0; i2 < this._size; i2++)
+      this._kinds[i2] === s && t2.push(i2);
     return t2;
   }
   /**
@@ -108209,8 +108213,8 @@ let y$1 = class y2 {
   }
   /** double the backing storage when capacity is exhausted. */
   grow() {
-    const s = this.capacity << 1, t2 = new Uint8Array(s), e2 = new Uint32Array(s), _2 = new Uint32Array(s), i2 = new Uint16Array(s), f2 = new Uint32Array(s), n3 = new Uint32Array(s), h = new Uint32Array(s), u3 = new Uint32Array(s), o2 = new Uint32Array(s), r2 = new Uint32Array(s), a2 = new Uint32Array(s), d = new Uint32Array(s), l2 = new Uint8Array(Math.max(1, s >> 3));
-    t2.set(this._kinds), e2.set(this._starts), _2.set(this._ends), i2.set(this._extras), f2.set(this._value_starts), n3.set(this._value_ends), h.set(this._parents), u3.set(this._next_siblings), o2.set(this._prev_siblings), r2.set(this._children_starts), a2.set(this._children_ends), d.set(this._pending_nodes), l2.set(this.has_metadata), this.capacity = s, this._kinds = t2, this._starts = e2, this._ends = _2, this._extras = i2, this._value_starts = f2, this._value_ends = n3, this._parents = h, this._next_siblings = u3, this._prev_siblings = o2, this._children_starts = r2, this._children_ends = a2, this._pending_nodes = d, this.has_metadata = l2;
+    const s = this.capacity << 1, t2 = new Uint8Array(s), i2 = new Uint32Array(s), _2 = new Uint32Array(s), e2 = new Uint16Array(s), f2 = new Uint32Array(s), n3 = new Uint32Array(s), a2 = new Uint32Array(s), o2 = new Uint32Array(s), p2 = new Uint32Array(s), r2 = new Uint32Array(s), l2 = new Uint32Array(s), d = new Uint32Array(s), h = new Uint8Array(Math.max(1, s >> 3));
+    t2.set(this._kinds), i2.set(this._starts), _2.set(this._ends), e2.set(this._extras), f2.set(this._value_starts), n3.set(this._value_ends), a2.set(this._parents), o2.set(this._next_siblings), p2.set(this._prev_siblings), r2.set(this._children_starts), l2.set(this._children_ends), d.set(this._pending_nodes), h.set(this.has_metadata), this.capacity = s, this._kinds = t2, this._starts = i2, this._ends = _2, this._extras = e2, this._value_starts = f2, this._value_ends = n3, this._parents = a2, this._next_siblings = o2, this._prev_siblings = p2, this._children_starts = r2, this._children_ends = l2, this._pending_nodes = d, this.has_metadata = h;
   }
   set_metadata(s, t2) {
     this.metadata.set(s, t2), this.has_metadata[s >> 3] |= 1 << (s & 7);
@@ -108219,8 +108223,8 @@ let y$1 = class y2 {
     if (this.has_metadata[s >> 3] & 1 << (s & 7))
       return this.metadata.get(s);
   }
-  set_value(s, t2, e2) {
-    this._value_starts[s] = t2, this._value_ends[s] = e2;
+  set_value(s, t2, i2) {
+    this._value_starts[s] = t2, this._value_ends[s] = i2;
   }
   set_value_start(s, t2) {
     this._value_starts[s] = t2;
@@ -108234,17 +108238,17 @@ let y$1 = class y2 {
    * @returns node
    */
   get_node(s = 0) {
-    const t2 = w$3(this._kinds[s]), e2 = t2 ? { [t2]: this._extras[s] } : {}, _2 = [];
-    let i2 = this._children_starts[s];
-    for (; i2 !== 4294967295 && this._parents[i2] === s; )
-      _2.push(i2), i2 = this._next_siblings[i2];
+    const t2 = x$2(this._kinds[s]), i2 = t2 ? { [t2]: this._extras[s] } : {}, _2 = [];
+    let e2 = this._children_starts[s];
+    for (; e2 !== 4294967295 && this._parents[e2] === s; )
+      _2.push(e2), e2 = this._next_siblings[e2];
     return {
-      kind: b(this._kinds[s]),
+      kind: v$2(this._kinds[s]),
       start: this._starts[s],
       end: this._ends[s],
       metadata: {
         ...this.metadata_at(s),
-        ...e2
+        ...i2
       },
       parent: this._parents[s] === 4294967295 ? null : this._parents[s],
       next: this._next_siblings[s] === 4294967295 ? null : this._next_siblings[s],
@@ -108255,13 +108259,13 @@ let y$1 = class y2 {
     };
   }
 };
-let A$1 = class A2 {
+let k$1 = class k2 {
   /**
    * create a collector that records error indices encountered while parsing.
    * @param initial_capacity requested starting capacity for error indices.
    */
   constructor(s = 32) {
-    const t2 = g(s);
+    const t2 = b(s);
     this.capacity = t2, this.indices = new Uint32Array(t2), this._size = 0;
   }
   /** clear previously stored errors. */
@@ -108301,7 +108305,7 @@ let u$1 = class u2 {
   constructor(e2, i2) {
     this.id_to_index = [], this.id_to_kind = [], this.register_id = (t2, s) => {
       this.id_to_index[t2] = s;
-    }, this.nodes = new y$1(e2), this.id_to_index[0] = 0, this.id_to_kind[0] = 0, this.dispatcher = i2 ?? null;
+    }, this.nodes = new A$1(e2), this.id_to_index[0] = 0, this.id_to_kind[0] = 0, this.dispatcher = i2 ?? null;
   }
   open(e2, i2, t2, s, d, n3) {
     if (e2 === 0)
@@ -108393,13 +108397,13 @@ let u$1 = class u2 {
     return this.nodes;
   }
 };
-const f = 9, l = 10, p$1 = 32, Y$1 = 34, S = 35, J$1 = 39, A = 45, M$1 = 46, P$1 = 47, w$2 = 58, T$1 = 60, W$1 = 61, C = 62, St = 64, R$1 = 123, D$1 = 125, K = 92, k = 96, L$1 = 126, G$1 = 94, q$1 = 124, Q$1 = 33, O$1 = 42, B$1 = 40, j$1 = 41, E$1 = 91, I = 93, x$1 = 95, z$1 = 43;
+const f = 9, l = 10, p$1 = 32, Y$1 = 34, S = 35, J$1 = 39, A = 45, M$1 = 46, P$1 = 47, w$2 = 58, T$1 = 60, W$1 = 61, C = 62, Nt = 64, R$1 = 123, D$1 = 125, K = 92, k = 96, L$1 = 126, G$1 = 94, q$1 = 124, Q$1 = 33, O$1 = 42, B$1 = 40, j$1 = 41, E$1 = 91, I = 93, x$1 = 95, z$1 = 43;
 const $$1 = new Uint8Array(128);
 for (let m2 = 0; m2 < $$1.length; m2 += 1) {
   let t2 = 0;
   m2 <= 32 && (t2 |= 1), (m2 >= 33 && m2 <= 47 || m2 >= 58 && m2 <= 64 || m2 >= 91 && m2 <= 96 || m2 >= 123 && m2 <= 126) && (t2 |= 2), t2 === 0 && (t2 = 4), $$1[m2] = t2;
 }
-const Ut = (m2) => m2 === 160 || m2 === 5760 || m2 >= 8192 && m2 <= 8202 || m2 === 8232 || m2 === 8233 || m2 === 8239 || m2 === 8287 || m2 === 12288, v$1 = (m2) => (
+const Dt = (m2) => m2 === 160 || m2 === 5760 || m2 >= 8192 && m2 <= 8202 || m2 === 8232 || m2 === 8233 || m2 === 8239 || m2 === 8287 || m2 === 12288, v$1 = (m2) => (
   // common case first: ascii (code < 128). nan < 128 is false, so
   // nan falls through to the second branch where code !== code catches it.
   m2 < 128 ? $$1[m2] : m2 !== m2 ? (
@@ -108407,8 +108411,13 @@ const Ut = (m2) => m2 === 160 || m2 === 5760 || m2 >= 8192 && m2 <= 8202 || m2 =
     // satisfies all flanking checks so both openers and closers
     // commit speculatively. revocation corrects if wrong.
     7
-  ) : Ut(m2) ? 1 : 4
-), Z$1 = new A$1(1), N$1 = new Uint8Array(128);
+  ) : Dt(m2) ? 1 : 4
+), Z$1 = new k$1(1);
+function ht(m2) {
+  return m2.indexOf("\r") === -1 ? m2 : m2.replace(/\r\n?/g, `
+`);
+}
+const N$1 = new Uint8Array(128);
 N$1[l] = 1;
 N$1[K] = 1;
 N$1[O$1] = 1;
@@ -108423,9 +108432,9 @@ N$1[k] = 1;
 N$1[q$1] = 1;
 N$1[R$1] = 1;
 N$1[w$2] = 1;
-class Dt {
+class Ht {
   constructor(t2, s = 2) {
-    this.source = "", this.cursor = 0, this.finished = false, this.states = [
+    this.source = "", this.cursor = 0, this.finished = false, this.pending_cr = false, this.states = [
       0
       /* StateKind.root */
     ], this.node_stack = [0], this.next_id = 1, this.pending_ids = [], this.pending_starts = [], this.pending_count = 0, this.closed_flags = [], this.NodeKind_array = [], this.prev = 1, this.current = 0, this.next_class = 0, this.block_quote_depth = 0, this.emphasis_has_content = false, this.list_depth = 0, this.list_marker = 0, this.list_ordered = false, this.list_start_num = 0, this.list_node_id = 0, this.list_is_loose = false, this.list_content_offset = 0, this.list_marker_indent = 0, this.list_state_stack = [], this.list_pending_paras = [], this.table_col_count = 0, this.table_node_id = 0, this.table_row_id = 0, this.table_cell_id = 0, this.table_cell_col = 0, this.in_table = false, this.in_heading = false, this.inline_range_parse = false, this.table_cell_has_content = false, this.html_tag_stack = [], this.html_block_depth = 0, this.svelte_block_depth = 0, this.svelte_block_tag = "", this.svelte_branch_id = 0, this.svelte_block_id = 0, this.svelte_block_stack = [], this.frontmatter_failed = false, this.imports_allowed = true, this.ref_map = /* @__PURE__ */ new Map(), this.link_text_start = 0, this.directive_colon_counts = [], this.extra = 0, this.info_start_pos = 0, this.info_end_pos = 0, this.checkpoint_cursor = 0, this.prev_cursor = 0, this.loop_without_progress = 0, this.tab_size = 2, this.out = t2, this.errors = Z$1, this.tab_size = s;
@@ -108440,7 +108449,7 @@ class Dt {
    * init() + feed(source) + finish().
    */
   parse(t2) {
-    return this._init(), this.source = t2, this.current = v$1(t2.charCodeAt(0)), this.next_class = v$1(t2.charCodeAt(1)), this.errors = Z$1, this.finished = true, this._run(), this._finalize(), { errors: this.errors };
+    return this._init(), this.source = ht(t2), this.current = v$1(this.source.charCodeAt(0)), this.next_class = v$1(this.source.charCodeAt(1)), this.errors = Z$1, this.finished = true, this._run(), this._finalize(), { errors: this.errors };
   }
   /**
    * initialize the parser for incremental feeding. must be called
@@ -108453,19 +108462,27 @@ class Dt {
    * feed a chunk of source text. the parser advances as far as it
    * can, stalling at line boundaries when lookahead is insufficient.
    * call init() before the first feed().
+   *
+   * line-ending normalization: \r\n and bare \r are collapsed to \n
+   * before reaching the state machine. a trailing \r is deferred
+   * across feed() boundaries so a \r\n pair split across chunks is
+   * handled correctly.
    */
   feed(t2) {
-    this.source += t2, this.current = v$1(this.source.charCodeAt(this.cursor)), this.next_class = v$1(this.source.charCodeAt(this.cursor + 1)), this._run(), this.out.cursor(this.cursor);
+    t2.length !== 0 && (this.pending_cr && (t2.charCodeAt(0) === 10 && (t2 = t2.slice(1)), this.source += `
+`, this.pending_cr = false), t2.length > 0 && t2.charCodeAt(t2.length - 1) === 13 && (this.pending_cr = true, t2 = t2.slice(0, -1)), t2.indexOf("\r") !== -1 && (t2 = t2.replace(/\r\n?/g, `
+`)), this.source += t2, this.current = v$1(this.source.charCodeAt(this.cursor)), this.next_class = v$1(this.source.charCodeAt(this.cursor + 1)), this._run(), this.out.cursor(this.cursor));
   }
   /**
    * signal end-of-input. finalizes all open nodes and revokes
    * pending speculation.
    */
   finish() {
-    return this.finished = true, this._run(), this._finalize(), this.out.cursor(this.cursor), { errors: this.errors };
+    return this.pending_cr && (this.source += `
+`, this.pending_cr = false), this.finished = true, this._run(), this._finalize(), this.out.cursor(this.cursor), { errors: this.errors };
   }
   _init() {
-    this.source = "", this.cursor = 0, this.finished = false, this.states = [
+    this.source = "", this.cursor = 0, this.finished = false, this.pending_cr = false, this.states = [
       0
       /* StateKind.root */
     ], this.node_stack = [0], this.next_id = 1, this.pending_ids = [], this.pending_count = 0, this.closed_flags = [], this.NodeKind_array = [], this.prev = 1, this.current = 1, this.next_class = 1, this.block_quote_depth = 0, this.list_depth = 0, this.list_marker = 0, this.list_ordered = false, this.list_start_num = 0, this.list_node_id = 0, this.list_is_loose = false, this.list_content_offset = 0, this.list_marker_indent = 0, this.list_state_stack = [], this.list_pending_paras = [], this.table_col_count = 0, this.table_node_id = 0, this.table_row_id = 0, this.table_cell_id = 0, this.table_cell_col = 0, this.in_table = false, this.inline_range_parse = false, this.table_cell_has_content = false, this.html_tag_stack = [], this.html_block_depth = 0, this.svelte_block_depth = 0, this.svelte_block_tag = "", this.svelte_branch_id = 0, this.svelte_block_id = 0, this.svelte_block_stack = [], this.extra = 0, this.info_start_pos = 0, this.info_end_pos = 0, this.checkpoint_cursor = 0, this.prev_cursor = 0, this.loop_without_progress = 0, this.frontmatter_failed = false, this.imports_allowed = true, this.ref_map.clear(), this.link_text_start = 0, this.directive_colon_counts = [], this.errors = Z$1, this.out.open(0, 0, 0, -1, 0, false);
@@ -109079,6 +109096,30 @@ class Dt {
     return t2 === "script" || t2 === "style";
   }
   /**
+   * html void elements - never have content or a close tag.
+   * matches the html living standard set.
+   */
+  is_void_tag(t2) {
+    switch (t2) {
+      case "area":
+      case "base":
+      case "br":
+      case "col":
+      case "embed":
+      case "hr":
+      case "img":
+      case "input":
+      case "link":
+      case "meta":
+      case "source":
+      case "track":
+      case "wbr":
+        return true;
+      default:
+        return false;
+    }
+  }
+  /**
    * scan forward from `pos` for the case-sensitive closing tag `</tag>`.
    * returns the end position (after `>`) or -1 if not found / input incomplete.
    */
@@ -109431,15 +109472,15 @@ class Dt {
         h = e2;
         let g2 = 0;
         for (; e2 < n3; ) {
-          const y3 = s.charCodeAt(e2);
-          if (y3 <= 32)
+          const y2 = s.charCodeAt(e2);
+          if (y2 <= 32)
             break;
-          if (y3 === j$1) {
+          if (y2 === j$1) {
             if (g2 === 0)
               break;
             g2--;
           }
-          if (y3 === B$1 && g2++, y3 === K && e2 + 1 < n3) {
+          if (y2 === B$1 && g2++, y2 === K && e2 + 1 < n3) {
             e2 += 2;
             continue;
           }
@@ -109457,7 +109498,7 @@ class Dt {
     if (e2 < n3) {
       const g2 = s.charCodeAt(e2);
       if (g2 === l) {
-        const y3 = e2;
+        const y2 = e2;
         for (e2++; e2 < n3 && (s.charCodeAt(e2) === p$1 || s.charCodeAt(e2) === f); )
           e2++;
         if (e2 < n3) {
@@ -109466,19 +109507,19 @@ class Dt {
             const U2 = this.parse_ref_title(e2);
             if (U2 === -2)
               return -2;
-            U2 ? (d = U2.title, e2 = U2.end) : e2 = y3;
+            U2 ? (d = U2.title, e2 = U2.end) : e2 = y2;
           } else
-            e2 = y3;
+            e2 = y2;
         } else if (this.finished)
-          e2 = y3;
+          e2 = y2;
         else
           return -2;
       } else if ((g2 === 34 || g2 === 39 || g2 === B$1) && u3) {
-        const y3 = this.parse_ref_title(e2);
-        if (y3 === -2)
+        const y2 = this.parse_ref_title(e2);
+        if (y2 === -2)
           return -2;
-        if (y3)
-          d = y3.title, e2 = y3.end;
+        if (y2)
+          d = y2.title, e2 = y2.end;
         else
           return -1;
       }
@@ -109760,7 +109801,7 @@ class Dt {
               }
               const c2 = this.try_parse_html_open_tag(this.cursor + 1);
               if (c2) {
-                if (c2.self_closing) {
+                if (c2.self_closing || this.is_void_tag(c2.tag)) {
                   const _2 = this.emit_open(2, this.cursor, o2);
                   this.out.attr(_2, "tag", c2.tag), Object.keys(c2.attributes).length > 0 && this.out.attr(_2, "attributes", c2.attributes), this.out.attr(_2, "self_closing", true), this.emit_close(_2, c2.end), this.chomp(c2.end, true);
                 } else if (this.is_raw_text_tag(c2.tag)) {
@@ -110426,7 +110467,7 @@ class Dt {
             }
             const c2 = this.try_parse_html_open_tag(this.cursor + 1);
             if (c2) {
-              if (c2.self_closing) {
+              if (c2.self_closing || this.is_void_tag(c2.tag)) {
                 const a2 = this.emit_open(2, this.cursor, o2);
                 this.out.attr(a2, "tag", c2.tag), Object.keys(c2.attributes).length > 0 && this.out.attr(a2, "attributes", c2.attributes), this.out.attr(a2, "self_closing", true), this.emit_close(a2, c2.end), this.chomp(c2.end, true);
               } else if (this.is_raw_text_tag(c2.tag)) {
@@ -110537,7 +110578,7 @@ class Dt {
               break t;
             const i2 = this.try_parse_html_open_tag(this.cursor + 1);
             if (i2) {
-              if (i2.self_closing) {
+              if (i2.self_closing || this.is_void_tag(i2.tag)) {
                 const c2 = this.emit_open(2, this.cursor, o2);
                 this.out.attr(c2, "tag", i2.tag), Object.keys(i2.attributes).length > 0 && this.out.attr(c2, "attributes", i2.attributes), this.out.attr(c2, "self_closing", true), this.emit_close(c2, i2.end), this.chomp(i2.end, true);
               } else if (this.is_raw_text_tag(i2.tag)) {
@@ -110833,12 +110874,12 @@ class Dt {
                     if (d !== z$1) {
                       let b2 = u3 + 1, g2 = false;
                       for (; b2 < s; ) {
-                        const y3 = t2.charCodeAt(b2);
-                        if (y3 === l) {
+                        const y2 = t2.charCodeAt(b2);
+                        if (y2 === l) {
                           g2 = true;
                           break;
                         }
-                        if (y3 !== d && y3 !== p$1 && y3 !== f) {
+                        if (y2 !== d && y2 !== p$1 && y2 !== f) {
                           g2 = true;
                           break;
                         }
@@ -111470,7 +111511,7 @@ class Dt {
               }
               const a2 = this.try_parse_html_open_tag(this.cursor + 1);
               if (a2) {
-                if (a2.self_closing) {
+                if (a2.self_closing || this.is_void_tag(a2.tag)) {
                   const u3 = this.emit_open(2, this.cursor, o2);
                   this.out.attr(u3, "tag", a2.tag), Object.keys(a2.attributes).length > 0 && this.out.attr(u3, "attributes", a2.attributes), this.out.attr(u3, "self_closing", true), this.emit_close(u3, a2.end), this.chomp(a2.end, true), this.states.pop();
                 } else if (this.is_raw_text_tag(a2.tag)) {
@@ -111506,7 +111547,7 @@ class Dt {
                 break t;
               const h = this.find_matching_brace(this.cursor + 1);
               if (h !== -1) {
-                if (t2.charCodeAt(this.cursor + 1) === St) {
+                if (t2.charCodeAt(this.cursor + 1) === Nt) {
                   let a2 = this.cursor + 2;
                   for (; a2 < h - 1 && t2.charCodeAt(a2) !== p$1 && t2.charCodeAt(a2) !== f && t2.charCodeAt(a2) !== l && t2.charCodeAt(a2) !== D$1; )
                     a2++;
@@ -112698,7 +112739,7 @@ function extractYamlEntries(yaml, yamlSourceOffset) {
 }
 function pfmToSvelte(source2) {
   const tree = new u$1(source2.length >> 3 || 128);
-  const parser = new Dt(tree);
+  const parser = new Ht(tree);
   parser.parse(source2);
   const buf = tree.get_buffer();
   const cursor = new n$1(buf, source2);
@@ -113288,7 +113329,7 @@ function composeMappings(a2, b2, mergeData) {
       bSegs.push({ ...s, data: bm.data });
     }
   }
-  bSegs.sort((x2, y3) => x2.srcStart - y3.srcStart);
+  bSegs.sort((x2, y2) => x2.srcStart - y2.srcStart);
   const merge = mergeData ?? ((da, db) => intersectCapabilities(da, db));
   const result = [];
   for (const am of a2) {
@@ -136580,8 +136621,8 @@ function requireElementRoleMap() {
     var role = _rolesMap.default.get(key);
     if (role) {
       var concepts = [].concat(role.baseConcepts, role.relatedConcepts);
-      for (var k2 = 0; k2 < concepts.length; k2++) {
-        var relation = concepts[k2];
+      for (var k3 = 0; k3 < concepts.length; k3++) {
+        var relation = concepts[k3];
         if (relation.module === "HTML") {
           (function() {
             var concept = relation.concept;
@@ -136775,8 +136816,8 @@ function requireRoleElementMap() {
     var relationConcepts = [];
     if (role) {
       var concepts = [].concat(role.baseConcepts, role.relatedConcepts);
-      for (var k2 = 0; k2 < concepts.length; k2++) {
-        var relation = concepts[k2];
+      for (var k3 = 0; k3 < concepts.length; k3++) {
+        var relation = concepts[k3];
         if (relation.module === "HTML") {
           var concept = relation.concept;
           if (concept != null) {

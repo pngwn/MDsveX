@@ -1,3 +1,4 @@
 root
   paragraph
-    text
+    text "<foo.bar.baz>"
+  line_break

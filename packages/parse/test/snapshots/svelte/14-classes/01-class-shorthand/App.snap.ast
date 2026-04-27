@@ -7,11 +7,11 @@ root
   line_break
   html tag="label"
     line_break
-    html tag="input" type="checkbox" bind:checked=[object Object]
-      line_break
-      paragraph
-        text "big"
-        soft_break
+    html tag="input" type="checkbox" bind:checked=[object Object] self_closing=true
+    line_break
+    paragraph
+      text "big"
+      soft_break
   line_break
   line_break
   html tag="div" class:big=true

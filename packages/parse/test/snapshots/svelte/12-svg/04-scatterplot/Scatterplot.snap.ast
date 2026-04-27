@@ -11,25 +11,48 @@ root
     line_break
     html tag="g" class="axis y-axis"
       line_break
-      paragraph
-        mustache "#each yTicks as tick"
-        soft_break
-        text "			"
-        html tag="g" class="tick tick-{tick}" transform="translate(0, {yScale(tick)})"
-          soft_break
-          text "				"
-          html tag="line" x1="{padding.left}" x2="{xScale(22)}" self_closing=true
-          soft_break
-          text "				"
-          html tag="text" x="{padding.left - 8}" y="+4"
-            mustache "tick"
-          soft_break
-          text "			"
-        soft_break
-        text "		"
-        mustache "/each"
-        soft_break
-        text "	"
+      svelte_block tag="each"
+        svelte_branch tag="each" "yTicks as tick"
+          line_break
+          html tag="g" class="tick tick-{tick}" transform="translate(0, {yScale(tick)})"
+            line_break
+            html tag="line" x1="{padding.left}" x2="{xScale(22)}" self_closing=true
+            line_break
+            html tag="text" x="{padding.left - 8}" y="+4"
+              paragraph
+                mustache "tick"
+            line_break
+          line_break
+      line_break
+    line_break
+    line_break
+    html_comment " x axis "
+    line_break
+    html tag="g" class="axis x-axis"
+      line_break
+      svelte_block tag="each"
+        svelte_branch tag="each" "xTicks as tick"
+          line_break
+          html tag="g" class="tick" transform="translate({xScale(tick)},0)"
+            line_break
+            html tag="line" y1="{yScale(0)}" y2="{yScale(13)}" self_closing=true
+            line_break
+            html tag="text" y="{height - padding.bottom + 16}"
+              paragraph
+                mustache "tick"
+            line_break
+          line_break
+      line_break
+    line_break
+    line_break
+    html_comment " data "
+    line_break
+    svelte_block tag="each"
+      svelte_branch tag="each" "points as point"
+        line_break
+        html tag="circle" cx="{xScale(point.x)}" cy="{yScale(point.y)}" r="5" self_closing=true
+        line_break
+    line_break
   line_break
   line_break
   html tag="style"

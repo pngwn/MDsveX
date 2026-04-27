@@ -4,25 +4,31 @@ root
   line_break
   html tag="label"
     line_break
-    html tag="input" type="checkbox" bind:checked=[object Object]
+    html tag="input" type="checkbox" bind:checked=[object Object] self_closing=true
+    line_break
+    paragraph
+      text "Yes"
+      text "! Send me regular email spam"
+      soft_break
+  line_break
+  line_break
+  svelte_block tag="if"
+    svelte_branch tag="if" "yes"
       line_break
-      paragraph
-        text "Yes"
-        text "! Send me regular email spam"
-        soft_break
+      html tag="p"
+        paragraph
+          text "Thank you. We will bombard your inbox and sell your personal details."
+      line_break
+    svelte_branch tag="else"
+      line_break
+      html tag="p"
+        paragraph
+          text "You must opt in to continue. If you're not paying, you're the product."
+      line_break
   line_break
   line_break
-  paragraph
-    mustache "#if yes"
-    soft_break
-    text "	"
-    html tag="p"
-      text "Thank you. We will bombard your inbox and sell your personal details."
-    soft_break
-    mustache ":else"
-    soft_break
-    text "	"
-    html tag="p"
-      text "You must opt in to continue. If you're not paying, you're the product."
-    soft_break
-    mustache "/if"
+  html tag="button" disabled=[object Object]
+    line_break
+    paragraph
+      text "Subscribe"
+      soft_break

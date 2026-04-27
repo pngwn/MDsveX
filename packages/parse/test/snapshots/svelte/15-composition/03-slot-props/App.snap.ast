@@ -9,25 +9,21 @@ root
     line_break
     html tag="div" class:active=true
       line_break
-      paragraph
-        mustache "#if active"
-        soft_break
-        text "			"
-        html tag="p"
-          text "I am being hovered upon."
-        soft_break
-        text "		"
-        mustache ":else"
-        soft_break
-        text "			"
-        html tag="p"
-          text "Hover over me"
-          text "!"
-        soft_break
-        text "		"
-        mustache "/if"
-        soft_break
-        text "	"
+      svelte_block tag="if"
+        svelte_branch tag="if" "active"
+          line_break
+          html tag="p"
+            paragraph
+              text "I am being hovered upon."
+          line_break
+        svelte_branch tag="else"
+          line_break
+          html tag="p"
+            paragraph
+              text "Hover over me"
+              text "!"
+          line_break
+      line_break
     line_break
   line_break
   line_break
@@ -35,25 +31,21 @@ root
     line_break
     html tag="div" class:active=true
       line_break
-      paragraph
-        mustache "#if active"
-        soft_break
-        text "			"
-        html tag="p"
-          text "I am being hovered upon."
-        soft_break
-        text "		"
-        mustache ":else"
-        soft_break
-        text "			"
-        html tag="p"
-          text "Hover over me"
-          text "!"
-        soft_break
-        text "		"
-        mustache "/if"
-        soft_break
-        text "	"
+      svelte_block tag="if"
+        svelte_branch tag="if" "active"
+          line_break
+          html tag="p"
+            paragraph
+              text "I am being hovered upon."
+          line_break
+        svelte_branch tag="else"
+          line_break
+          html tag="p"
+            paragraph
+              text "Hover over me"
+              text "!"
+          line_break
+      line_break
     line_break
   line_break
   line_break
@@ -61,23 +53,19 @@ root
     line_break
     html tag="div" class:active=true
       line_break
-      paragraph
-        mustache "#if active"
-        soft_break
-        text "			"
-        html tag="p"
-          text "I am being hovered upon."
-        soft_break
-        text "		"
-        mustache ":else"
-        soft_break
-        text "			"
-        html tag="p"
-          text "Hover over me"
-          text "!"
-        soft_break
-        text "		"
-        mustache "/if"
-        soft_break
-        text "	"
+      svelte_block tag="if"
+        svelte_branch tag="if" "active"
+          line_break
+          html tag="p"
+            paragraph
+              text "I am being hovered upon."
+          line_break
+        svelte_branch tag="else"
+          line_break
+          html tag="p"
+            paragraph
+              text "Hover over me"
+              text "!"
+          line_break
+      line_break
     line_break

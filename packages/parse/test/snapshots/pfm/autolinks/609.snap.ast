@@ -1,3 +1,4 @@
 root
   paragraph
-    text
+    text "<m:abc>"
+  line_break

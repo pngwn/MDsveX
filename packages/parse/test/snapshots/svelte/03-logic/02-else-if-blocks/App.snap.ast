@@ -10,21 +10,17 @@ root
           mustache "x"
           text " is greater than 10"
       line_break
-      paragraph
-        mustache ":else if 5 > x"
-        soft_break
-        text "	"
-        html tag="p"
+    svelte_branch tag="else if" "5 > x"
+      line_break
+      html tag="p"
+        paragraph
           mustache "x"
           text " is less than 5"
-        line_break
+      line_break
+    svelte_branch tag="else"
+      line_break
+      html tag="p"
         paragraph
-          mustache ":else"
-          soft_break
-          text "	"
-          html tag="p"
-            mustache "x"
-            text " is between 5 and 10"
-        line_break
-        paragraph
-          mustache "/if"
+          mustache "x"
+          text " is between 5 and 10"
+      line_break

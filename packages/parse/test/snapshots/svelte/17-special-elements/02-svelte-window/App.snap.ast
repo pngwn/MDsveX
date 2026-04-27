@@ -10,24 +10,21 @@ root
   line_break
   html tag="div" style="text-align: center"
     line_break
-    paragraph
-      mustache "#if key"
-      soft_break
-      text "		"
-      html tag="kbd"
-        mustache "key === ' ' ? 'Space' : key"
-      soft_break
-      text "		"
-      html tag="p"
-        mustache "keyCode"
-      soft_break
-      text "	"
-      mustache ":else"
-      soft_break
-      text "		"
-      html tag="p"
-        text "Focus this window and press any key"
-      soft_break
-      text "	"
-      mustache "/if"
-      soft_break
+    svelte_block tag="if"
+      svelte_branch tag="if" "key"
+        line_break
+        html tag="kbd"
+          paragraph
+            mustache "key === ' ' ? 'Space' : key"
+        line_break
+        html tag="p"
+          paragraph
+            mustache "keyCode"
+        line_break
+      svelte_branch tag="else"
+        line_break
+        html tag="p"
+          paragraph
+            text "Focus this window and press any key"
+        line_break
+    line_break

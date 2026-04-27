@@ -22,6 +22,4 @@ root
           mustache "error.stack"
       line_break
       line_break
-      paragraph
-        mustache "/if"
-        line_break
+  line_break

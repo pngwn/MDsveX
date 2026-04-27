@@ -42,3 +42,106 @@ root
   line_break
   paragraph
     text "the end"
+  line_break
+  line_break
+  html tag="table" class="test"
+    line_break
+    html tag="tr"
+      line_break
+      html tag="td"
+        paragraph
+          text "Foo"
+      line_break
+    line_break
+    html tag="tr"
+      line_break
+      html tag="td"
+        paragraph
+          text "Bar"
+      line_break
+    line_break
+  line_break
+  line_break
+  html tag="table" class="test"
+    line_break
+    html tag="thead"
+      line_break
+      html tag="tr"
+        line_break
+        html tag="td"
+          paragraph
+            text "Foo"
+        line_break
+      line_break
+    line_break
+    html tag="tr"
+      line_break
+      html tag="td"
+        paragraph
+          text "Bar"
+      line_break
+    line_break
+    html tag="tfoot"
+      line_break
+      html tag="tr"
+        line_break
+        html tag="td"
+          paragraph
+            text "Bar"
+        line_break
+      line_break
+    line_break
+  line_break
+  line_break
+  html tag="audio" class="podcastplayer" controls=true
+    line_break
+    html tag="source" src="foobar.mp3" type="audio/mp3" preload="none" self_closing=true
+    line_break
+    html tag="source" src="foobar.off" type="audio/ogg" preload="none" self_closing=true
+    line_break
+  line_break
+  line_break
+  html tag="video" src="foo.ogg"
+    line_break
+    html tag="track" kind="subtitles" src="foo.en.vtt" srclang="en" label="English" self_closing=true
+    line_break
+    html tag="track" kind="subtitles" src="foo.sv.vtt" srclang="sv" label="Svenska" self_closing=true
+    line_break
+  line_break
+  line_break
+  html tag="address"
+    paragraph
+      text "My street"
+  line_break
+  line_break
+  html tag="canvas" id="canvas" width="300" height="300"
+    line_break
+    paragraph
+      text "Sorry, your browser doesn't support the &lt;canvas&gt; element."
+      soft_break
+  line_break
+  line_break
+  html tag="figure"
+    line_break
+    html tag="img" src="mypic.png" alt="An awesome picture" self_closing=true
+    line_break
+    html tag="figcaption"
+      paragraph
+        text "Caption for the awesome picture"
+    line_break
+  line_break
+  line_break
+  html tag="hgroup"
+    line_break
+    html tag="h1"
+      paragraph
+        text "Main title"
+    line_break
+    html tag="h2"
+      paragraph
+        text "Secondary title"
+    line_break
+  line_break
+  line_break
+  html tag="output" name="result"
+  line_break

@@ -2,5 +2,27 @@ root
   html tag="script"
   line_break
   line_break
+  html tag="input" bind:value=[object Object] self_closing=true
+  line_break
+  html tag="input" bind:value=[object Object] self_closing=true
+  line_break
+  line_break
   paragraph
-    text
+    svelte_tag tag="debug" "user"
+  line_break
+  line_break
+  html tag="h1"
+    paragraph
+      text "Hello "
+      mustache "user.firstname"
+      text "!"
+  line_break
+  line_break
+  line_break
+  svelte_block tag="snippet"
+    svelte_branch tag="snippet" "fn()"
+      line_break
+      paragraph
+        text "hi"
+      line_break
+  line_break

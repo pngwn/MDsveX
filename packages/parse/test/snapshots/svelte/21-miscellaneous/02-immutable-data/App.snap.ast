@@ -9,24 +9,20 @@ root
     paragraph
       text "Immutable"
   line_break
-  paragraph
-    mustache "#each todos as todo"
-    soft_break
-    text "	"
-    html tag="ImmutableTodo" todo=[object Object] on:click="{() => toggle(todo.id)}" self_closing=true
-    soft_break
-    mustache "/each"
-    line_break
-    line_break
-    html tag="h2"
-      paragraph
-        text "Mutable"
-    line_break
-    paragraph
-      mustache "#each todos as todo"
-      soft_break
-      text "	"
-      html tag="MutableTodo" todo=[object Object] on:click="{() => toggle(todo.id)}" self_closing=true
-      soft_break
-      mustache "/each"
+  svelte_block tag="each"
+    svelte_branch tag="each" "todos as todo"
       line_break
+      html tag="ImmutableTodo" todo=[object Object] on:click="{() => toggle(todo.id)}" self_closing=true
+      line_break
+  line_break
+  line_break
+  html tag="h2"
+    paragraph
+      text "Mutable"
+  line_break
+  svelte_block tag="each"
+    svelte_branch tag="each" "todos as todo"
+      line_break
+      html tag="MutableTodo" todo=[object Object] on:click="{() => toggle(todo.id)}" self_closing=true
+      line_break
+  line_break

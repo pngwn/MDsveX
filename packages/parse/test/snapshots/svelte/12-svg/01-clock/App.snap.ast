@@ -12,24 +12,18 @@ root
     line_break
     html_comment " markers "
     line_break
-    paragraph
-      mustache "#each [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55] as minute"
-      soft_break
-      text "		"
-      html tag="line" class="major" y1="35" y2="45" transform="rotate({30 * minute})" self_closing=true
-    line_break
-    line_break
-    paragraph
-      mustache "#each [1, 2, 3, 4] as offset"
-      soft_break
-      text "			"
-      html tag="line" class="minor" y1="42" y2="45" transform="rotate({6 * (minute + offset)})" self_closing=true
-      soft_break
-      text "		"
-      mustache "/each"
-      soft_break
-      text "	"
-      mustache "/each"
+    svelte_block tag="each"
+      svelte_branch tag="each" "[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55] as minute"
+        line_break
+        html tag="line" class="major" y1="35" y2="45" transform="rotate({30 * minute})" self_closing=true
+        line_break
+        line_break
+        svelte_block tag="each"
+          svelte_branch tag="each" "[1, 2, 3, 4] as offset"
+            line_break
+            html tag="line" class="minor" y1="42" y2="45" transform="rotate({6 * (minute + offset)})" self_closing=true
+            line_break
+        line_break
     line_break
     line_break
     html_comment " hour hand "

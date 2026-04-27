@@ -1,5 +1,16 @@
 root
   html_comment " https://github.com/eugenkiss/7guis/wiki#temperature-converter "
   line_break
+  html tag="input" value=[object Object] on:input="{e => setBothFromC(e.target.value)}" type="number" self_closing=true
   paragraph
-    text
+    text "°c ="
+    soft_break
+    html tag="input" value=[object Object] on:input="{e => setBothFromF(e.target.value)}" type="number" self_closing=true
+    text " °f"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="script"
+  line_break
