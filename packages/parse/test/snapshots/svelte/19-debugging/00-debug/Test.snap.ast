@@ -128,7 +128,6 @@ root
         paragraph
           text "The first-party set covers most of what you'd want for a docs site or a code-review UI:"
         line_break
-        line_break
         html tag="ul"
           line_break
           html tag="li"

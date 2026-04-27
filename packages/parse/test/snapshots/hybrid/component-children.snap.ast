@@ -2,14 +2,16 @@ root
   paragraph
     link href="svelte:head"
       text "svelte:head"
-    soft_break
-    html tag="title"
+  line_break
+  html tag="title"
+    paragraph
       text "My Title"
-    soft_break
-    html tag="link" rel="stylesheet" type="text/css" href="theme.css" self_closing=true
-    soft_break
-    html tag="style"
-    soft_break
+  line_break
+  html tag="link" rel="stylesheet" type="text/css" href="theme.css" self_closing=true
+  line_break
+  html tag="style"
+  line_break
+  paragraph
     text "</svelte"
     text ":head>"
   line_break

@@ -11,4 +11,4 @@ root
       mustache "seconds"
       text " "
       mustache "seconds === 1 ? 'second' : 'seconds'"
-      soft_break
+    line_break

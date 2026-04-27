@@ -5,5 +5,5 @@ root
         line_break
         paragraph
           text "foo"
-          soft_break
+        line_break
   line_break

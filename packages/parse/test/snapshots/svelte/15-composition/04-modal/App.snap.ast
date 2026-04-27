@@ -18,13 +18,12 @@ root
             text "modal"
             soft_break
             text "			"
-            html tag="small"
-              html tag="em"
-                text "adjective"
-              text " mod·al \\ˈmō-dəl"
-              text "</small>"
-              soft_break
-              text "		"
+            text tag="small" "<small><em>adjective</em> mod·al \\ˈmō-dəl\\</"
+            html tag="em"
+              text "adjective"
+            text " mod·al \\ˈmō-dəl"
+            text "</small>"
+          line_break
         line_break
         line_break
         html tag="ol" class="definition-list"
@@ -39,8 +38,7 @@ root
               text "containing provisions as to the mode of procedure or the manner of"
               soft_break
               text "				taking effect,used of a contract or legacy"
-              soft_break
-              text "			"
+            line_break
           line_break
           html tag="li"
             paragraph
@@ -56,8 +54,7 @@ root
               text "of, relating to, or constituting a grammatical form or category"
               soft_break
               text "				characteristically indicating predication"
-              soft_break
-              text "			"
+            line_break
           line_break
           html tag="li"
             paragraph

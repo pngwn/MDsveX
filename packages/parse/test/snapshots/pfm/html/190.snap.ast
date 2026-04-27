@@ -9,7 +9,7 @@ root
         line_break
         paragraph
           text "Hi"
-          soft_break
+        line_break
       line_break
       line_break
     line_break

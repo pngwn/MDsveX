@@ -5,5 +5,5 @@ root
       strong_emphasis
         text "Emphasized"
       text " text."
-      soft_break
+    line_break
   line_break

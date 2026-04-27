@@ -18,6 +18,5 @@ root
         line_break
         paragraph
           text "Fades in and out"
-          soft_break
-          text "	"
+        line_break
       line_break

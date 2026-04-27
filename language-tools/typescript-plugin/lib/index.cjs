@@ -2847,7 +2847,7 @@ let u$1 = class u {
     return this.nodes;
   }
 };
-const f = 9, l = 10, p$1 = 32, Y$1 = 34, S = 35, J$1 = 39, A2 = 45, M$1 = 46, P$1 = 47, w$2 = 58, T$1 = 60, W$1 = 61, C = 62, Nt = 64, R$1 = 123, D$1 = 125, K = 92, k2 = 96, L$1 = 126, G$1 = 94, q$1 = 124, Q$1 = 33, O$1 = 42, B$1 = 40, j$1 = 41, E$1 = 91, I = 93, x$1 = 95, z$1 = 43;
+const f = 9, l = 10, p$1 = 32, Y$1 = 34, S = 35, J$1 = 39, A2 = 45, M$1 = 46, P$1 = 47, w$2 = 58, R$1 = 60, W$1 = 61, C = 62, Nt = 64, N$1 = 123, D$1 = 125, K = 92, k2 = 96, L$1 = 126, G$1 = 94, q$1 = 124, Q$1 = 33, O$1 = 42, B$1 = 40, j$1 = 41, E$1 = 91, I = 93, x$1 = 95, z$1 = 43;
 const $$1 = new Uint8Array(128);
 for (let m2 = 0; m2 < $$1.length; m2 += 1) {
   let t2 = 0;
@@ -2867,21 +2867,21 @@ function ht(m2) {
   return m2.indexOf("\r") === -1 ? m2 : m2.replace(/\r\n?/g, `
 `);
 }
-const N$1 = new Uint8Array(128);
-N$1[l] = 1;
-N$1[K] = 1;
-N$1[O$1] = 1;
-N$1[x$1] = 1;
-N$1[L$1] = 1;
-N$1[G$1] = 1;
-N$1[T$1] = 1;
-N$1[E$1] = 1;
-N$1[I] = 1;
-N$1[Q$1] = 1;
-N$1[k2] = 1;
-N$1[q$1] = 1;
-N$1[R$1] = 1;
-N$1[w$2] = 1;
+const T$1 = new Uint8Array(128);
+T$1[l] = 1;
+T$1[K] = 1;
+T$1[O$1] = 1;
+T$1[x$1] = 1;
+T$1[L$1] = 1;
+T$1[G$1] = 1;
+T$1[R$1] = 1;
+T$1[E$1] = 1;
+T$1[I] = 1;
+T$1[Q$1] = 1;
+T$1[k2] = 1;
+T$1[q$1] = 1;
+T$1[N$1] = 1;
+T$1[w$2] = 1;
 class Ht {
   constructor(t2, s = 2) {
     this.source = "", this.cursor = 0, this.finished = false, this.pending_cr = false, this.states = [
@@ -2991,7 +2991,7 @@ class Ht {
     if (s.charCodeAt(t2 + 1) !== 109 || s.charCodeAt(t2 + 2) !== 112 || s.charCodeAt(t2 + 3) !== 111 || s.charCodeAt(t2 + 4) !== 114 || s.charCodeAt(t2 + 5) !== 116)
       return null;
     const e2 = s.charCodeAt(t2 + 6);
-    if (e2 !== p$1 && e2 !== R$1)
+    if (e2 !== p$1 && e2 !== N$1)
       return null;
     let r2 = t2 + 6;
     for (; r2 < n3 && s.charCodeAt(r2) !== l; )
@@ -3173,10 +3173,10 @@ class Ht {
       case z$1:
         return this.list_depth > 0 && e2 + 1 < n3;
       case x$1:
-      case T$1:
+      case R$1:
       case E$1:
       case q$1:
-      case R$1:
+      case N$1:
       case w$2:
         return false;
       default:
@@ -3327,7 +3327,7 @@ class Ht {
     if (e2 >= n3)
       return this.finished;
     const r2 = s.charCodeAt(e2);
-    if (r2 === l || r2 === R$1 && this.is_svelte_block_boundary(e2))
+    if (r2 === l || r2 === N$1 && this.is_svelte_block_boundary(e2))
       return true;
     switch (r2) {
       case S:
@@ -3511,7 +3511,7 @@ class Ht {
     for (e2++; e2 < n3; ) {
       if (r2 = s.charCodeAt(e2), r2 === C)
         return e2 + 1;
-      if (r2 <= 32 || r2 === T$1)
+      if (r2 <= 32 || r2 === R$1)
         return -1;
       e2++;
     }
@@ -3536,7 +3536,7 @@ class Ht {
    * invalid: whitespace, ", ', =, <, >, `
    */
   is_unquoted_attr_char(t2) {
-    return t2 > 32 && t2 !== Y$1 && t2 !== J$1 && t2 !== W$1 && t2 !== T$1 && t2 !== C && t2 !== k2;
+    return t2 > 32 && t2 !== Y$1 && t2 !== J$1 && t2 !== W$1 && t2 !== R$1 && t2 !== C && t2 !== k2;
   }
   /**
    * returns true for html "raw text" elements whose content should not be
@@ -3604,7 +3604,7 @@ class Ht {
         return e2 + 1 < n3 && s.charCodeAt(e2 + 1) === C ? { tag: o2, attributes: h, self_closing: true, end: e2 + 2 } : null;
       if (s.charCodeAt(e2) === C)
         return { tag: o2, attributes: h, self_closing: false, end: e2 + 1 };
-      if (s.charCodeAt(e2) === R$1) {
+      if (s.charCodeAt(e2) === N$1) {
         const _2 = this.find_matching_brace(e2 + 1);
         if (_2 === -1)
           return null;
@@ -3628,7 +3628,7 @@ class Ht {
         if (e2 >= n3)
           return null;
         const _2 = s.charCodeAt(e2);
-        if (_2 === R$1) {
+        if (_2 === N$1) {
           const u3 = this.find_matching_brace(e2 + 1);
           if (u3 === -1)
             return null;
@@ -3712,8 +3712,17 @@ class Ht {
   close_html_inline(t2, s) {
     for (; this.node_stack.length > 1; ) {
       const n3 = this.node_stack[this.node_stack.length - 1];
-      if (this.states[this.states.length - 1], n3 === t2) {
-        this.pending_remove(t2), this.emit_close(t2, s), this.node_stack.pop(), this.states.pop(), this.states[this.states.length - 1] === 8 && this.states.pop();
+      if (n3 === t2) {
+        for (this.pending_remove(t2), this.emit_close(t2, s), this.node_stack.pop(); this.states.length > 0; ) {
+          const e2 = this.states.pop();
+          if (e2 === 25)
+            break;
+          if (e2 === 26) {
+            this.html_block_depth--;
+            break;
+          }
+        }
+        this.states[this.states.length - 1] === 8 && this.states.pop();
         return;
       }
       this.closed_flags[n3] || (this.out.set_value_end(n3, this.cursor), this.emit_close(n3, this.cursor)), this.node_stack.pop(), this.states.pop();
@@ -3726,7 +3735,7 @@ class Ht {
    */
   try_parse_svelte_block_token(t2) {
     const s = this.source, n3 = s.length;
-    if (t2 >= n3 || s.charCodeAt(t2) !== R$1)
+    if (t2 >= n3 || s.charCodeAt(t2) !== N$1)
       return null;
     let e2 = t2 + 1;
     if (e2 >= n3)
@@ -3774,7 +3783,7 @@ class Ht {
     if (this.svelte_block_depth === 0)
       return false;
     const s = this.source;
-    if (t2 >= s.length || s.charCodeAt(t2) !== R$1)
+    if (t2 >= s.length || s.charCodeAt(t2) !== N$1)
       return false;
     const n3 = s.charCodeAt(t2 + 1);
     return n3 === w$2 || n3 === P$1;
@@ -3791,7 +3800,7 @@ class Ht {
     for (; r2 < n3; ) {
       const o2 = s.charCodeAt(r2);
       switch (o2) {
-        case R$1:
+        case N$1:
           e2++, r2++;
           break;
         case D$1:
@@ -3810,7 +3819,7 @@ class Ht {
           for (r2++; r2 < n3 && s.charCodeAt(r2) !== k2; ) {
             if (s.charCodeAt(r2) === K)
               r2++;
-            else if (s.charCodeAt(r2) === 36 && r2 + 1 < n3 && s.charCodeAt(r2 + 1) === R$1) {
+            else if (s.charCodeAt(r2) === 36 && r2 + 1 < n3 && s.charCodeAt(r2 + 1) === N$1) {
               r2 += 2;
               const h = this.find_matching_brace(r2);
               if (h === -1)
@@ -3899,12 +3908,12 @@ class Ht {
       return this.finished ? -1 : -2;
     let h, i;
     const c2 = s.charCodeAt(e2);
-    if (c2 === T$1) {
+    if (c2 === R$1) {
       for (e2++, h = e2; e2 < n3; ) {
         const g = s.charCodeAt(e2);
         if (g === C)
           break;
-        if (g === l || g === T$1)
+        if (g === l || g === R$1)
           return -1;
         if (g === K && e2 + 1 < n3) {
           e2 += 2;
@@ -4229,7 +4238,7 @@ class Ht {
               this.node_stack.push(h);
               continue;
             }
-            case T$1: {
+            case R$1: {
               if (!this.finished && t2.indexOf(">", this.cursor + 1) === -1)
                 break t;
               if (this.try_parse_uri_autolink(this.cursor + 1) !== -1) {
@@ -4306,7 +4315,7 @@ class Ht {
               this.node_stack.push(i);
               continue;
             }
-            case R$1: {
+            case N$1: {
               if (!this.finished && this.find_matching_brace(this.cursor + 1) === -1)
                 break t;
               const h = this.try_parse_svelte_block_token(this.cursor);
@@ -4718,7 +4727,7 @@ class Ht {
               for (; i < s && (t2.charCodeAt(i) === p$1 || t2.charCodeAt(i) === f); )
                 i++;
               let c2 = i, a = i;
-              if (i < s && t2.charCodeAt(i) === T$1) {
+              if (i < s && t2.charCodeAt(i) === R$1) {
                 for (i++, c2 = i; i < s && t2.charCodeAt(i) !== C && t2.charCodeAt(i) !== l; )
                   i++;
                 i < s && t2.charCodeAt(i) === C && (a = i, i++);
@@ -4822,7 +4831,7 @@ class Ht {
           continue;
         }
         case 25: {
-          if (r2 === T$1) {
+          if (r2 === R$1) {
             if (!this.finished && t2.indexOf(">", this.cursor + 1) === -1)
               break t;
             const h = this.try_parse_html_close_tag(this.cursor + 1);
@@ -4861,7 +4870,7 @@ class Ht {
             this.html_tag_stack.length > 0 && this.html_tag_stack[this.html_tag_stack.length - 1].id === o2 && this.html_tag_stack.pop(), this.html_block_depth--, this.states.pop(), this.node_stack.pop();
             continue;
           }
-          if (r2 === T$1) {
+          if (r2 === R$1) {
             if (!this.finished && t2.indexOf(">", this.cursor + 1) === -1)
               break t;
             const i = this.try_parse_html_close_tag(this.cursor + 1);
@@ -4906,7 +4915,7 @@ class Ht {
             ), this.extra = 0;
             continue;
           }
-          if (r2 === T$1) {
+          if (r2 === R$1) {
             const i = this.try_parse_html_comment(this.cursor + 1);
             if (i === false)
               break t;
@@ -4941,6 +4950,15 @@ class Ht {
               continue;
             }
           }
+          if (r2 === N$1) {
+            if (!this.finished && this.find_matching_brace(this.cursor + 1) === -1)
+              break t;
+            const i = this.try_parse_svelte_block_token(this.cursor);
+            if (i && i.kind === "#") {
+              this.start_svelte_block(i, o2);
+              continue;
+            }
+          }
           this.states.push(
             7
             /* StateKind.paragraph */
@@ -4959,7 +4977,7 @@ class Ht {
             }
             continue;
           }
-          if (r2 === R$1) {
+          if (r2 === N$1) {
             if (!this.finished && this.find_matching_brace(this.cursor + 1) === -1)
               break t;
             const i = this.try_parse_svelte_block_token(this.cursor);
@@ -5023,7 +5041,7 @@ class Ht {
             ), this.chomp(i, true);
             continue;
           }
-          if (r2 === T$1) {
+          if (r2 === R$1) {
             if (!this.finished && t2.indexOf(">", this.cursor + 1) === -1)
               break t;
             const i = this.try_parse_html_open_tag(this.cursor + 1);
@@ -5927,7 +5945,7 @@ class Ht {
               ), this.chomp1();
               continue;
             }
-            case T$1: {
+            case R$1: {
               if (!this.finished && t2.indexOf(">", this.cursor + 1) === -1)
                 break t;
               const h = this.try_parse_uri_autolink(this.cursor + 1);
@@ -5992,7 +6010,7 @@ class Ht {
               ), this.chomp1();
               continue;
             }
-            case R$1: {
+            case N$1: {
               if (!this.finished && this.find_matching_brace(this.cursor + 1) === -1)
                 break t;
               const h = this.find_matching_brace(this.cursor + 1);
@@ -6146,7 +6164,7 @@ class Ht {
             }
             this.chomp1();
             continue;
-          } else if (r2 === O$1 || r2 === x$1 || r2 === L$1 || r2 === G$1 || r2 === T$1 || r2 === E$1 || r2 === I || r2 === Q$1 || r2 === k2 || r2 === R$1) {
+          } else if (r2 === O$1 || r2 === x$1 || r2 === L$1 || r2 === G$1 || r2 === R$1 || r2 === E$1 || r2 === I || r2 === Q$1 || r2 === k2 || r2 === N$1) {
             this.states.pop(), this.emit_close(o2, this.cursor), this.out.set_value_end(o2, this.cursor), this.node_stack.pop(), this.states.pop();
             continue;
           }
@@ -6154,7 +6172,7 @@ class Ht {
             let h = this.cursor + 1;
             for (; h < s; ) {
               const i = t2.charCodeAt(h);
-              if (N$1[i])
+              if (T$1[i])
                 break;
               h++;
             }

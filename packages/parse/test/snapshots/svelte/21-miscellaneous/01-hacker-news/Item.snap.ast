@@ -30,7 +30,8 @@ root
         mustache "item.user"
         text " "
         mustache "item.time_ago"
-        soft_break
+      line_break
+      paragraph
   line_break
   line_break
   html tag="div" class="comments"

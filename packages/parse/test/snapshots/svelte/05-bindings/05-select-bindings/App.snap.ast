@@ -21,8 +21,7 @@ root
             line_break
             paragraph
               mustache "question.text"
-              soft_break
-              text "			"
+            line_break
           line_break
       line_break
     line_break

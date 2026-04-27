@@ -28,9 +28,9 @@ root
         line_break
         paragraph
           html_comment " this block renders when photos.length === 0 "
-          soft_break
-          text "		"
-          html tag="p"
+        line_break
+        html tag="p"
+          paragraph
             text "loading..."
         line_break
     line_break

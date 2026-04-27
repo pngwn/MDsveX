@@ -21,4 +21,4 @@ root
       text "	and "
       html tag="a" href=[object Object]
         text "learn more here"
-      soft_break
+    line_break

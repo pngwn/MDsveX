@@ -37,7 +37,7 @@ root
     line_break
     paragraph
       text "ignore me"
-      soft_break
+    line_break
   line_break
   line_break
   paragraph

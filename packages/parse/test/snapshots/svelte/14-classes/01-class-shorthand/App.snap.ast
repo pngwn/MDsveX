@@ -20,4 +20,4 @@ root
       text "some "
       mustache "big ? 'big' : 'small'"
       text " text"
-      soft_break
+    line_break

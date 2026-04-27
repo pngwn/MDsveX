@@ -3,7 +3,7 @@ root
     line_break
     paragraph
       text "bar"
-      soft_break
+    line_break
   line_break
   paragraph
     strong_emphasis

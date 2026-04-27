@@ -87,7 +87,6 @@ const tokens = html_tokenizer("hello world");`);
 	{#snippet a_supported()}
 
 		The first-party set covers most of what you'd want for a docs site or a code-review UI:
-
 		<ul>
 			<li>html, css, javascript, typescript, jsx, tsx</li>
 			<li>json, yaml, toml, markdown, mdx</li>

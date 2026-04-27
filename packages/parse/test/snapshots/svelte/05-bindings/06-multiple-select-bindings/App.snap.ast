@@ -48,8 +48,7 @@ root
           line_break
           paragraph
             mustache "flavour"
-            soft_break
-            text "		"
+          line_break
         line_break
     line_break
   line_break
@@ -80,7 +79,6 @@ root
           soft_break
           text "		of "
           mustache "join(flavours)"
-          soft_break
-          text "	"
+        line_break
       line_break
   line_break

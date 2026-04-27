@@ -25,8 +25,7 @@ root
                   line_break
                   paragraph
                     mustache "name"
-                    soft_break
-                    text "						"
+                  line_break
                 line_break
             line_break
           line_break
@@ -41,8 +40,7 @@ root
                   line_break
                   paragraph
                     mustache "name"
-                    soft_break
-                    text "						"
+                  line_break
                 line_break
             line_break
           line_break
@@ -63,8 +61,7 @@ root
                   line_break
                   paragraph
                     mustache "name"
-                    soft_break
-                    text "						"
+                  line_break
                 line_break
             line_break
           line_break
@@ -79,8 +76,7 @@ root
                   line_break
                   paragraph
                     mustache "name"
-                    soft_break
-                    text "					"
+                  line_break
                 line_break
             line_break
           line_break
@@ -90,8 +86,7 @@ root
       line_break
       paragraph
         text "Duration"
-        soft_break
-        text "		"
+      line_break
     line_break
     html tag="div" class="duration"
       line_break

@@ -18,6 +18,5 @@ root
         line_break
         paragraph
           text "The quick brown fox jumps over the lazy dog"
-          soft_break
-          text "	"
+        line_break
       line_break

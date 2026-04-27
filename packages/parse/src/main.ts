@@ -1141,6 +1141,18 @@ export class PFMParser {
 				);
 			case PLUS:
 				return this.is_list_item_start_interrupt(pos);
+			case OPEN_ANGLE_BRACKET: {
+				// block-level html tag (`<ul>`, `</p>`, etc.) at line start
+				// interrupts an open paragraph.
+				let q = p + 1;
+				if (q < length && source.charCodeAt(q) === SLASH) q++;
+				if (q >= length || !this.is_tag_name_start(source.charCodeAt(q))) {
+					return false;
+				}
+				const name_start = q;
+				while (q < length && this.is_tag_name_char(source.charCodeAt(q))) q++;
+				return this.is_block_html_tag(source.slice(name_start, q));
+			}
 			case COLON:
 				// :: or ::: starts a block directive
 				return p + 1 < length && source.charCodeAt(p + 1) === COLON;
@@ -1541,6 +1553,83 @@ export class PFMParser {
 			case "source":
 			case "track":
 			case "wbr":
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	/**
+	 * html block-level tags. an opening (or closing) tag from this set at
+	 * the start of a line interrupts an open paragraph - matches commonmark
+	 * "html block type 6". keeps wrapping markup like `<ul>` from being
+	 * absorbed into a preceding paragraph and producing a `<p><ul>...</p>`
+	 * tree that downstream renderers (e.g. svelte) reject.
+	 */
+	private is_block_html_tag(tag: string): boolean {
+		switch (tag) {
+			case "address":
+			case "article":
+			case "aside":
+			case "base":
+			case "basefont":
+			case "blockquote":
+			case "body":
+			case "caption":
+			case "center":
+			case "col":
+			case "colgroup":
+			case "dd":
+			case "details":
+			case "dialog":
+			case "dir":
+			case "div":
+			case "dl":
+			case "dt":
+			case "fieldset":
+			case "figcaption":
+			case "figure":
+			case "footer":
+			case "form":
+			case "frame":
+			case "frameset":
+			case "h1":
+			case "h2":
+			case "h3":
+			case "h4":
+			case "h5":
+			case "h6":
+			case "head":
+			case "header":
+			case "hr":
+			case "html":
+			case "iframe":
+			case "legend":
+			case "li":
+			case "link":
+			case "main":
+			case "menu":
+			case "menuitem":
+			case "nav":
+			case "noframes":
+			case "ol":
+			case "optgroup":
+			case "option":
+			case "p":
+			case "param":
+			case "section":
+			case "source":
+			case "summary":
+			case "table":
+			case "tbody":
+			case "td":
+			case "tfoot":
+			case "th":
+			case "thead":
+			case "title":
+			case "tr":
+			case "track":
+			case "ul":
 				return true;
 			default:
 				return false;

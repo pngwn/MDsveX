@@ -31,8 +31,7 @@ root
         text "You have scrolled "
         mustache "y"
         text " pixels"
-        soft_break
-        text "	"
+      line_break
     line_break
   line_break
   line_break
