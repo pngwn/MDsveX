@@ -2563,6 +2563,9 @@ export class PFMParser {
 			// a block-level state - they'll never close. tight-list
 			// paragraphs are left pending on purpose (finalized at list
 			// close or loose promotion) so they are skipped here.
+			// pending nodes that are still ancestors on the node stack
+			// (e.g. an html_block_element parent under an open list) are
+			// also preserved - they have a live close path ahead.
 			if (this.pending_count > 0) {
 				const st = this.states[this.states.length - 1];
 				if (
@@ -2576,6 +2579,13 @@ export class PFMParser {
 						const pkind = this.NodeKind_array[pid];
 						if (pkind === NodeKind.paragraph) {
 							// preserve - finalize_list_pending_para owns this one.
+							this.pending_ids[write] = pid;
+							this.pending_starts[write] = this.pending_starts[pi];
+							write++;
+							continue;
+						}
+						if (this.node_stack.indexOf(pid) !== -1) {
+							// still on the node stack - this frame is open above us.
 							this.pending_ids[write] = pid;
 							this.pending_starts[write] = this.pending_starts[pi];
 							write++;
