@@ -4287,6 +4287,12 @@ export class PFMParser {
 						}
 					}
 
+					if (code === PIPE) {
+						const result = this.try_start_table(current_node);
+						if (result === false) break main_loop;
+						if (result === true) continue;
+					}
+
 					// default: start a paragraph for text content
 					this.states.push(StateKind.paragraph);
 					const blk_html_para = this.emit_open(
@@ -4612,6 +4618,12 @@ export class PFMParser {
 							}
 							continue;
 						}
+					}
+
+					if (code === PIPE) {
+						const result = this.try_start_table(current_node);
+						if (result === false) break main_loop;
+						if (result === true) continue;
 					}
 
 					// default: start a paragraph
