@@ -16,9 +16,9 @@ root
       line_break
       paragraph
         text "42 Wallaby Way"
-        html tag="br"
-          soft_break
-          text "		Sydney"
-          soft_break
-          text "	"
-    soft_break
+        html tag="br" self_closing=true
+        soft_break
+        text "		Sydney"
+        soft_break
+        text "	"
+    line_break

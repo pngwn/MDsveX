@@ -21,29 +21,24 @@ root
       line_break
       html tag="div" class="centered" out:fly="{{y: -20, duration: 800}}"
         line_break
-        paragraph
-          mustache "#each 'SVELTE' as char, i"
-          soft_break
-          text "			"
-          html tag="span" in:fade="{{delay: 1000 + i * 150, duration: 800}}"
-            mustache "char"
-        line_break
-        paragraph
-          mustache "/each"
-          soft_break
-          text "	"
-      line_break
-      paragraph
-        mustache "/if"
-        line_break
-        line_break
-        html tag="label"
-          line_break
-          html tag="input" type="checkbox" bind:checked=[object Object]
+        svelte_block tag="each"
+          svelte_branch tag="each" "'SVELTE' as char, i"
             line_break
-            paragraph
-              text "toggle me"
-              soft_break
+            html tag="span" in:fade="{{delay: 1000 + i * 150, duration: 800}}"
+              paragraph
+                mustache "char"
+            line_break
         line_break
-        line_break
-        text tag="link" href="https://fonts.googleapis.com/css?family=Overpass:100" rel="stylesheet" "<link href=\"https://fonts.googleapis.com/css?family=Overpass:100\" rel=\"stylesheet\">"
+      line_break
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="checkbox" bind:checked=[object Object] self_closing=true
+    line_break
+    paragraph
+      text "toggle me"
+      soft_break
+  line_break
+  line_break
+  html tag="link" href="https://fonts.googleapis.com/css?family=Overpass:100" rel="stylesheet" self_closing=true

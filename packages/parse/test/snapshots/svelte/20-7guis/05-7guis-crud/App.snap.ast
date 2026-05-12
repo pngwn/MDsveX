@@ -8,5 +8,42 @@ root
   html tag="style"
   line_break
   line_break
-  paragraph
-    text
+  html tag="input" placeholder="filter prefix" bind:value=[object Object] self_closing=true
+  line_break
+  line_break
+  html tag="select" bind:value=[object Object] size=[object Object]
+    line_break
+    svelte_block tag="each"
+      svelte_branch tag="each" "filteredPeople as person, i"
+        line_break
+        html tag="option" value=[object Object]
+          paragraph
+            mustache "person.last"
+            text ", "
+            mustache "person.first"
+        line_break
+    line_break
+  line_break
+  line_break
+  html tag="label"
+    html tag="input" bind:value=[object Object] placeholder="first" self_closing=true
+  line_break
+  html tag="label"
+    html tag="input" bind:value=[object Object] placeholder="last" self_closing=true
+  line_break
+  line_break
+  html tag="div" class="buttons"
+    line_break
+    html tag="button" on:click=[object Object] disabled="{!first || !last}"
+      paragraph
+        text "create"
+    line_break
+    html tag="button" on:click=[object Object] disabled="{!first || !last || !selected}"
+      paragraph
+        text "update"
+    line_break
+    html tag="button" on:click=[object Object] disabled="{!selected}"
+      paragraph
+        text "delete"
+    line_break
+  line_break

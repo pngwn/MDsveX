@@ -13,5 +13,5 @@ root
       mustache "todo.done ? '👍': ''"
       text " "
       mustache "todo.text"
-      soft_break
+    line_break
   line_break

@@ -7,22 +7,69 @@ root
       text "show modal "
   line_break
   line_break
-  paragraph
-    mustache "#if showModal"
-    soft_break
-    text "	"
-    text tag="Modal" on:close=[object Object] "<Modal on:close={() => (showModal = false)}>"
-    soft_break
-    text "		"
-    html tag="h2" slot="header"
-      soft_break
-      text "			modal"
-      soft_break
-      text "			"
-      html tag="small"
-        html tag="em"
-          text "adjective"
-        text " mod·al \\ˈmō-dəl"
-        text "</small>"
-        soft_break
-        text "		"
+  svelte_block tag="if"
+    svelte_branch tag="if" "showModal"
+      line_break
+      html tag="Modal" on:close=[object Object]
+        line_break
+        html tag="h2" slot="header"
+          line_break
+          paragraph
+            text "modal"
+            soft_break
+            text "			"
+            text tag="small" "<small><em>adjective</em> mod·al \\ˈmō-dəl\\</"
+            html tag="em"
+              text "adjective"
+            text " mod·al \\ˈmō-dəl"
+            text "</small>"
+          line_break
+        line_break
+        line_break
+        html tag="ol" class="definition-list"
+          line_break
+          html tag="li"
+            paragraph
+              text "of or relating to modality in logic"
+          line_break
+          html tag="li"
+            line_break
+            paragraph
+              text "containing provisions as to the mode of procedure or the manner of"
+              soft_break
+              text "				taking effect,used of a contract or legacy"
+            line_break
+          line_break
+          html tag="li"
+            paragraph
+              text "of or relating to a musical mode"
+          line_break
+          html tag="li"
+            paragraph
+              text "of or relating to structure as opposed to substance"
+          line_break
+          html tag="li"
+            line_break
+            paragraph
+              text "of, relating to, or constituting a grammatical form or category"
+              soft_break
+              text "				characteristically indicating predication"
+            line_break
+          line_break
+          html tag="li"
+            paragraph
+              text "of or relating to a statistical mode"
+          line_break
+        line_break
+        line_break
+        html tag="a" href="https://www.merriam-webster.com/dictionary/modal"
+          paragraph
+            text "merriam-webster.com"
+            text "</a"
+          line_break
+          paragraph
+            text ">"
+            soft_break
+            text "	"
+      line_break
+  line_break

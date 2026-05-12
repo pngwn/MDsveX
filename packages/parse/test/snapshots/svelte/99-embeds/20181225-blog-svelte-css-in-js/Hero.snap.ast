@@ -16,12 +16,10 @@ root
           line_break
           paragraph
             text "in JS"
-            soft_break
-            text "			"
+          line_break
         line_break
         paragraph
           text "in HTML"
-          soft_break
-          text "		"
+        line_break
       line_break
     line_break

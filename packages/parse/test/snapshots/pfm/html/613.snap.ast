@@ -1,3 +1,8 @@
 root
   paragraph
-    text
+    text "<a><bab><c2c>"
+  paragraph
+    text "<bab><c2c>"
+  paragraph
+    text "<c2c>"
+  line_break

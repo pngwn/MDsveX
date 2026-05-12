@@ -432,20 +432,24 @@ export class NodeBuffer {
 		}
 
 		// block-level repair
-		// if the parent is a block container, the revoked node (typically html)
-		// needs to become a paragraph with a text child spanning the source range.
+		// if the parent is a block container, the revoked node (typically an
+		// unclosed html block) is replaced by a paragraph containing the literal
+		// open-tag text. children that were parsed inside are reparented to the
+		// grandparent so already-recognized structure is preserved.
 		if (
 			parent_kind === NodeKind.root ||
 			parent_kind === NodeKind.block_quote ||
 			parent_kind === NodeKind.list_item
 		) {
-			// wire path: delimiter_text has the full content, skip byte offset logic.
-			// source path: compute end from node/children byte offsets.
 			const start = this._starts[index];
-			let end = start; // fallback
+			let end: number;
 
-			if (delimiter_text === undefined) {
-				// source path: find end from node end or children
+			if (delimiter_text !== undefined) {
+				// wire path: delimiter_text is the literal open-tag source
+				end = start + delimiter_text.length;
+			} else {
+				// source path: prefer the node's recorded end; fall back to the
+				// nearest meaningful child position so we never collapse to start.
 				end = this._ends[index];
 				if (end === 0xffffffff) {
 					let child = this._children_starts[index];
@@ -473,31 +477,44 @@ export class NodeBuffer {
 				}
 			}
 
-			// discard existing children (line_breaks, nested content)
-			let discard = this._children_starts[index];
-			while (discard !== 0xffffffff && this._parents[discard] === index) {
-				const next = this._next_siblings[discard];
-				// orphan the child
-				this._parents[discard] = 0xffffffff;
-				this._next_siblings[discard] = 0xffffffff;
-				this._prev_siblings[discard] = 0xffffffff;
-				discard = next;
-			}
+			// reparent children to the grandparent so trailing parsed content
+			// (e.g. block elements that followed the unclosed open tag) is kept.
+			const child_chain = this._children_starts[index];
 			this._children_starts[index] = 0xffffffff;
 			this._children_ends[index] = 0xffffffff;
 
-			// convert to paragraph
+			// convert this node into a paragraph holding the literal open-tag text.
 			this.set_kind(index, NodeKind.paragraph);
 			this.metadata.delete(index);
 			this._ends[index] = end;
 
-			// create text child with the raw source range
 			const text_idx = this.push(NodeKind.text, start, index);
 			this._value_starts[text_idx] = start;
 			this._value_ends[text_idx] = end;
 			this._ends[text_idx] = end;
 			if (delimiter_text !== undefined) {
 				this._strings[text_idx] = delimiter_text;
+			}
+
+			// splice the original children in after the rewritten node so they
+			// appear as siblings under the parent.
+			if (child_chain !== 0xffffffff) {
+				const original_next = this._next_siblings[index];
+				let last_child = child_chain;
+				let scan = child_chain;
+				while (scan !== 0xffffffff && this._parents[scan] === index) {
+					this._parents[scan] = parent;
+					last_child = scan;
+					scan = this._next_siblings[scan];
+				}
+				this._next_siblings[last_child] = original_next;
+				if (original_next !== 0xffffffff) {
+					this._prev_siblings[original_next] = last_child;
+				} else if (parent !== 0xffffffff && this._children_ends[parent] === index) {
+					this._children_ends[parent] = last_child;
+				}
+				this._next_siblings[index] = child_chain;
+				this._prev_siblings[child_chain] = index;
 			}
 			return;
 		}

@@ -1,4 +1,5 @@
 root
   html tag="a" self_closing=true
   paragraph
-    text
+    text "<b2"
+  line_break

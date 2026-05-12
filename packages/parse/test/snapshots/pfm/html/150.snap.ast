@@ -1,3 +1,11 @@
 root
   paragraph
-    text
+    text "<div>"
+  line_break
+  paragraph
+    strong_emphasis
+      text "hello"
+    soft_break
+    text tag="foo" "<foo><a>"
+    text tag="a" "<a>"
+  line_break

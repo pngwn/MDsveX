@@ -14,34 +14,28 @@ root
     line_break
     html tag="select" bind:value=[object Object] on:change="{() => answer = ''}"
       line_break
+      svelte_block tag="each"
+        svelte_branch tag="each" "questions as question"
+          line_break
+          html tag="option" value=[object Object]
+            line_break
+            paragraph
+              mustache "question.text"
+            line_break
+          line_break
+      line_break
+    line_break
+    line_break
+    html tag="input" bind:value=[object Object] self_closing=true
+    line_break
+    line_break
+    html tag="button" disabled=[object Object] type="submit"
+      line_break
       paragraph
-        mustache "#each questions as question"
-        soft_break
-        text "			"
-        html tag="option" value=[object Object]
-          soft_break
-          text "				"
-          mustache "question.text"
-          soft_break
-          text "			"
-        soft_break
-        text "		"
-        mustache "/each"
+        text "Submit"
         soft_break
         text "	"
     line_break
-    line_break
-    html tag="input" bind:value=[object Object]
-      line_break
-      line_break
-      html tag="button" disabled=[object Object] type="submit"
-        line_break
-        paragraph
-          text "Submit"
-          soft_break
-          text "	"
-      line_break
-      paragraph
   line_break
   line_break
   html tag="p"

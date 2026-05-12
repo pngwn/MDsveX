@@ -20,12 +20,9 @@ root
           text "page "
           mustache "page + 1"
       line_break
-      paragraph
-        mustache ":else"
-        soft_break
-        text "	"
-        html tag="p" class="loading"
-          text "loading..."
-        line_break
+    svelte_branch tag="else"
+      line_break
+      html tag="p" class="loading"
         paragraph
-          mustache "/if"
+          text "loading..."
+      line_break

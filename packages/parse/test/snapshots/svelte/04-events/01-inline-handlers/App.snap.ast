@@ -12,4 +12,4 @@ root
       mustache "m.x"
       text " x "
       mustache "m.y"
-      soft_break
+    line_break

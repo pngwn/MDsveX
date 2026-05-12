@@ -19,5 +19,12 @@ root
     line_break
   line_break
   line_break
-  paragraph
-    text
+  html tag="input" type="date" bind:value=[object Object] self_closing=true
+  line_break
+  html tag="input" type="date" bind:value=[object Object] disabled=[object Object] self_closing=true
+  line_break
+  line_break
+  html tag="button" on:click=[object Object] disabled="{isReturn && (startDate >= endDate)}"
+    paragraph
+      text "book"
+  line_break

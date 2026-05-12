@@ -2,7 +2,6 @@
 	"name": "@pfm/source-map",
 	"version": "0.0.1",
 	"description": "PFM to Svelte source map pipeline for language tooling",
-	"private": true,
 	"type": "module",
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",

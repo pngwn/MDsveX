@@ -4,13 +4,14 @@ root
   line_break
   html tag="select" bind:value=[object Object]
     line_break
-    paragraph
-      mustache "#each options as option"
-      soft_break
-      text "		"
-      html tag="option" value=[object Object]
-        mustache "option.color"
-      soft_break
-      text "	"
-      mustache "/each"
-      soft_break
+    svelte_block tag="each"
+      svelte_branch tag="each" "options as option"
+        line_break
+        html tag="option" value=[object Object]
+          paragraph
+            mustache "option.color"
+        line_break
+    line_break
+  line_break
+  line_break
+  html tag="svelte:component" this=[object Object] self_closing=true

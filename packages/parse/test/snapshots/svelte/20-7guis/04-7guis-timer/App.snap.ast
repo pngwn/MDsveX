@@ -27,5 +27,10 @@ root
       text "duration:"
       soft_break
       text "	"
-      html tag="input" type="range" bind:value=[object Object] min="1" max="20000"
-        soft_break
+      html tag="input" type="range" bind:value=[object Object] min="1" max="20000" self_closing=true
+      soft_break
+  line_break
+  line_break
+  html tag="button" on:click="{() => elapsed = 0}"
+    paragraph
+      text "reset"

@@ -30,17 +30,15 @@ root
         mustache "item.user"
         text " "
         mustache "item.time_ago"
-        soft_break
+      line_break
+      paragraph
   line_break
   line_break
   html tag="div" class="comments"
     line_break
-    paragraph
-      mustache "#each item.comments as comment"
-      soft_break
-      text "		"
-      html tag="Comment" comment=[object Object] self_closing=true
-      soft_break
-      text "	"
-      mustache "/each"
-      soft_break
+    svelte_block tag="each"
+      svelte_branch tag="each" "item.comments as comment"
+        line_break
+        html tag="Comment" comment=[object Object] self_closing=true
+        line_break
+    line_break

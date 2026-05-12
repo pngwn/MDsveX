@@ -4,5 +4,8 @@ root
   line_break
   html_comment " https://github.com/eugenkiss/7guis/wiki#counter "
   line_break
-  paragraph
-    text
+  html tag="input" type="number" bind:value=[object Object] self_closing=true
+  line_break
+  html tag="button" on:click="{() => count += 1}"
+    paragraph
+      text "count"

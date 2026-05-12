@@ -17,4 +17,4 @@ root
       mustache "$elapsed"
       text " "
       mustache "$elapsed === 1 ? 'second' : 'seconds'"
-      soft_break
+    line_break

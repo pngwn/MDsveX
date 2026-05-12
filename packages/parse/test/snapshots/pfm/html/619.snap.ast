@@ -1,3 +1,4 @@
 root
   paragraph
-    text
+    text "<a h*#ref=\"hi\">"
+  line_break

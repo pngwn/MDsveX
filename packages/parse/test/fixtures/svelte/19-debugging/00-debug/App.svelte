@@ -11,3 +11,8 @@ let user = {
 {@debug user}
 
 <h1>Hello {user.firstname}!</h1>
+
+
+{#snippet fn()}
+	hi
+{/snippet}

@@ -1,9 +1,10 @@
 root
   paragraph
     text "Foo"
-    soft_break
-    html tag="div"
-      soft_break
+  line_break
+  html tag="div"
+    line_break
+    paragraph
       text "bar"
-      soft_break
+    line_break
   line_break

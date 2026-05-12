@@ -606,4 +606,58 @@ describe('Tables (GFM)', () => {
 		expect(cell_text(final, cellsf[0].index, input)).toBe('x');
 		expect(cell_text(final, cellsf[1].index, input)).toBe('y');
 	});
+
+	test('table inside html block element', () => {
+		const input =
+			'<div>\n\n| foo | bar |\n| --- | --- |\n| baz | bim |\n\n</div>\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const root_children = non_breaks(nodes);
+		expect(root_children.length).toBe(1);
+		expect(root_children[0].kind).toBe('html');
+
+		const html_children = non_breaks(nodes, root_children[0].index);
+		expect(html_children.length).toBe(1);
+		expect(html_children[0].kind).toBe('table');
+
+		const table_children = get_children(nodes, html_children[0].index);
+		expect(table_children[0].kind).toBe('table_header');
+		expect(table_children[1].kind).toBe('table_row');
+
+		const header_cells = get_children(nodes, table_children[0].index);
+		expect(cell_text(nodes, header_cells[0].index, input)).toBe('foo');
+		expect(cell_text(nodes, header_cells[1].index, input)).toBe('bar');
+
+		const row_cells = get_children(nodes, table_children[1].index);
+		expect(cell_text(nodes, row_cells[0].index, input)).toBe('baz');
+		expect(cell_text(nodes, row_cells[1].index, input)).toBe('bim');
+	});
+
+	test('table inside svelte block branch', () => {
+		const input =
+			'{#if x}\n\n| foo | bar |\n| --- | --- |\n| baz | bim |\n\n{/if}\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const root_children = non_breaks(nodes);
+		expect(root_children.length).toBe(1);
+		expect(root_children[0].kind).toBe('svelte_block');
+
+		const block_children = get_children(nodes, root_children[0].index);
+		const branch = block_children.find((n) => n.kind === 'svelte_branch');
+		expect(branch).toBeDefined();
+
+		const branch_children = non_breaks(nodes, branch!.index);
+		expect(branch_children.length).toBe(1);
+		expect(branch_children[0].kind).toBe('table');
+
+		const table_children = get_children(nodes, branch_children[0].index);
+		expect(table_children[0].kind).toBe('table_header');
+		expect(table_children[1].kind).toBe('table_row');
+
+		const header_cells = get_children(nodes, table_children[0].index);
+		expect(cell_text(nodes, header_cells[0].index, input)).toBe('foo');
+		expect(cell_text(nodes, header_cells[1].index, input)).toBe('bar');
+
+		const row_cells = get_children(nodes, table_children[1].index);
+		expect(cell_text(nodes, row_cells[0].index, input)).toBe('baz');
+		expect(cell_text(nodes, row_cells[1].index, input)).toBe('bim');
+	});
 });

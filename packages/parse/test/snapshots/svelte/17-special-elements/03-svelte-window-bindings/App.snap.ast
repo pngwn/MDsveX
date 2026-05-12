@@ -7,12 +7,33 @@ root
   line_break
   html tag="a" class="parallax-container" href="https://www.firewatchgame.com"
     line_break
-    paragraph
-      mustache "#each [0, 1, 2, 3, 4, 5, 6, 7, 8] as layer"
-      soft_break
-      text "		"
-      html tag="img" style="transform: translate(0,{-y * layer / (layers.length - 1)}px)" src="https://www.firewatchgame.com/images/parallax/parallax{layer}.png" alt="parallax layer {layer}"
+    svelte_block tag="each"
+      svelte_branch tag="each" "[0, 1, 2, 3, 4, 5, 6, 7, 8] as layer"
+        line_break
+        html tag="img" style="transform: translate(0,{-y * layer / (layers.length - 1)}px)" src="https://www.firewatchgame.com/images/parallax/parallax{layer}.png" alt="parallax layer {layer}" self_closing=true
+        line_break
+    line_break
+  line_break
+  line_break
+  html tag="div" class="text"
+    line_break
+    html tag="span" style="opacity: {1 - Math.max(0, y / 40)}"
+      line_break
+      paragraph
+        text "scroll down"
         soft_break
         text "	"
-        mustache "/each"
-        soft_break
+    line_break
+    line_break
+    html tag="div" class="foreground"
+      line_break
+      paragraph
+        text "You have scrolled "
+        mustache "y"
+        text " pixels"
+      line_break
+    line_break
+  line_break
+  line_break
+  html tag="style"
+  line_break

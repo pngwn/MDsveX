@@ -1141,6 +1141,18 @@ export class PFMParser {
 				);
 			case PLUS:
 				return this.is_list_item_start_interrupt(pos);
+			case OPEN_ANGLE_BRACKET: {
+				// block-level html tag (`<ul>`, `</p>`, etc.) at line start
+				// interrupts an open paragraph.
+				let q = p + 1;
+				if (q < length && source.charCodeAt(q) === SLASH) q++;
+				if (q >= length || !this.is_tag_name_start(source.charCodeAt(q))) {
+					return false;
+				}
+				const name_start = q;
+				while (q < length && this.is_tag_name_char(source.charCodeAt(q))) q++;
+				return this.is_block_html_tag(source.slice(name_start, q));
+			}
 			case COLON:
 				// :: or ::: starts a block directive
 				return p + 1 < length && source.charCodeAt(p + 1) === COLON;
@@ -1148,6 +1160,28 @@ export class PFMParser {
 				if (ch >= 48 && ch <= 57) return this.is_list_item_start_interrupt(pos);
 				return false;
 		}
+	}
+
+	/**
+	 * a list marker (`-`, `*`, `+`, or `1.`) only opens a list when the
+	 * marker line carries actual content. a bare marker on its own line is
+	 * just text - this prevents stray dashes (e.g. a `-` glyph used as a
+	 * button label inside a custom html element) from spuriously starting
+	 * a list with an empty item.
+	 */
+	private marker_line_has_content(content_start: number): boolean {
+		const source = this.source;
+		const length = source.length;
+		let p = content_start;
+		while (p < length) {
+			const ch = source.charCodeAt(p);
+			if (ch === LINEFEED) return false;
+			if (ch !== SPACE && ch !== TAB) return true;
+			p++;
+		}
+		// reached end of buffer without finding content. in incremental mode
+		// more input may follow, so withhold judgement until finished.
+		return !this.finished ? true : false;
 	}
 
 	private try_parse_list_marker(pos: number): MarkerResult | null {
@@ -1182,6 +1216,7 @@ export class PFMParser {
 					content_columns += after === TAB ? this.tab_size : 1;
 					content_start++;
 				}
+				if (!this.marker_line_has_content(content_start)) return null;
 				return {
 					indent,
 					marker_char: ch,
@@ -1226,6 +1261,7 @@ export class PFMParser {
 					content_columns += after === TAB ? this.tab_size : 1;
 					content_start++;
 				}
+				if (!this.marker_line_has_content(content_start)) return null;
 				const num = parseInt(source.slice(num_start, pos), 10);
 				return {
 					indent,
@@ -1523,6 +1559,108 @@ export class PFMParser {
 	}
 
 	/**
+	 * html void elements - never have content or a close tag.
+	 * matches the html living standard set.
+	 */
+	private is_void_tag(tag: string): boolean {
+		switch (tag) {
+			case "area":
+			case "base":
+			case "br":
+			case "col":
+			case "embed":
+			case "hr":
+			case "img":
+			case "input":
+			case "link":
+			case "meta":
+			case "source":
+			case "track":
+			case "wbr":
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	/**
+	 * html block-level tags. an opening (or closing) tag from this set at
+	 * the start of a line interrupts an open paragraph - matches commonmark
+	 * "html block type 6". keeps wrapping markup like `<ul>` from being
+	 * absorbed into a preceding paragraph and producing a `<p><ul>...</p>`
+	 * tree that downstream renderers (e.g. svelte) reject.
+	 */
+	private is_block_html_tag(tag: string): boolean {
+		switch (tag) {
+			case "address":
+			case "article":
+			case "aside":
+			case "base":
+			case "basefont":
+			case "blockquote":
+			case "body":
+			case "caption":
+			case "center":
+			case "col":
+			case "colgroup":
+			case "dd":
+			case "details":
+			case "dialog":
+			case "dir":
+			case "div":
+			case "dl":
+			case "dt":
+			case "fieldset":
+			case "figcaption":
+			case "figure":
+			case "footer":
+			case "form":
+			case "frame":
+			case "frameset":
+			case "h1":
+			case "h2":
+			case "h3":
+			case "h4":
+			case "h5":
+			case "h6":
+			case "head":
+			case "header":
+			case "hr":
+			case "html":
+			case "iframe":
+			case "legend":
+			case "li":
+			case "link":
+			case "main":
+			case "menu":
+			case "menuitem":
+			case "nav":
+			case "noframes":
+			case "ol":
+			case "optgroup":
+			case "option":
+			case "p":
+			case "param":
+			case "section":
+			case "source":
+			case "summary":
+			case "table":
+			case "tbody":
+			case "td":
+			case "tfoot":
+			case "th":
+			case "thead":
+			case "title":
+			case "tr":
+			case "track":
+			case "ul":
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	/**
 	 * scan forward from `pos` for the case-sensitive closing tag `</tag>`.
 	 * returns the end position (after `>`) or -1 if not found / input incomplete.
 	 */
@@ -1786,17 +1924,27 @@ export class PFMParser {
 	 * close an inline html element by unwinding state/node stacks.
 	 */
 	private close_html_inline(html_id: number, end: number): void {
-		// unwind the node stack and state stack to find and close this html element
+		// unwind the node stack and state stack to find and close this html element.
+		// the state stack can be deeper than the node stack because some states
+		// (inline) carry no node, so when we hit the target html node we keep
+		// popping states until we drain the owning html_element/html_block_element
+		// frame - otherwise it strands on the stack and swallows trailing content.
 		while (this.node_stack.length > 1) {
 			const top_id = this.node_stack[this.node_stack.length - 1];
-			const top_state = this.states[this.states.length - 1];
 
 			if (top_id === html_id) {
 				// found the html element - commit and close it
 				this.pending_remove(html_id);
 				this.emit_close(html_id, end);
 				this.node_stack.pop();
-				this.states.pop(); // pop html_element state
+				while (this.states.length > 0) {
+					const popped = this.states.pop()!;
+					if (popped === StateKind.html_element) break;
+					if (popped === StateKind.html_block_element) {
+						this.html_block_depth--;
+						break;
+					}
+				}
 				// pop trailing inline state if present
 				if (this.states[this.states.length - 1] === StateKind.inline) {
 					this.states.pop();
@@ -2415,6 +2563,9 @@ export class PFMParser {
 			// a block-level state - they'll never close. tight-list
 			// paragraphs are left pending on purpose (finalized at list
 			// close or loose promotion) so they are skipped here.
+			// pending nodes that are still ancestors on the node stack
+			// (e.g. an html_block_element parent under an open list) are
+			// also preserved - they have a live close path ahead.
 			if (this.pending_count > 0) {
 				const st = this.states[this.states.length - 1];
 				if (
@@ -2428,6 +2579,13 @@ export class PFMParser {
 						const pkind = this.NodeKind_array[pid];
 						if (pkind === NodeKind.paragraph) {
 							// preserve - finalize_list_pending_para owns this one.
+							this.pending_ids[write] = pid;
+							this.pending_starts[write] = this.pending_starts[pi];
+							write++;
+							continue;
+						}
+						if (this.node_stack.indexOf(pid) !== -1) {
+							// still on the node stack - this frame is open above us.
 							this.pending_ids[write] = pid;
 							this.pending_starts[write] = this.pending_starts[pi];
 							write++;
@@ -2696,7 +2854,7 @@ export class PFMParser {
 							// try html opening tag at block level
 							const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
 							if (blk_tag) {
-								if (blk_tag.self_closing) {
+								if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
 									const html_id = this.emit_open(
 										NodeKind.html,
 										this.cursor,
@@ -3997,7 +4155,7 @@ export class PFMParser {
 
 						const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
 						if (blk_tag) {
-							if (blk_tag.self_closing) {
+							if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
 								const html_id = this.emit_open(
 									NodeKind.html,
 									this.cursor,
@@ -4062,6 +4220,77 @@ export class PFMParser {
 							}
 							continue;
 						}
+					}
+
+					if (code === OPEN_BRACE) {
+						// svelte block opener nested inside an html block element
+						if (!this.finished) {
+							const probe = this.find_matching_brace(this.cursor + 1);
+							if (probe === -1) break main_loop;
+						}
+						const token = this.try_parse_svelte_block_token(this.cursor);
+						if (token && token.kind === "#") {
+							this.start_svelte_block(token, current_node);
+							continue;
+						}
+					}
+
+					if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
+						if (!this.finished && this.cursor + 2 >= length) {
+							break main_loop;
+						}
+						if (this.is_thematic_break_start(this.cursor)) {
+							let line_end = this.cursor;
+							while (
+								line_end < length &&
+								source.charCodeAt(line_end) !== LINEFEED
+							)
+								line_end++;
+							const tb_id = this.emit_open(
+								NodeKind.thematic_break,
+								this.cursor,
+								current_node,
+							);
+							this.emit_close(tb_id, line_end);
+							this.chomp(line_end, true);
+							continue;
+						}
+						if (code !== UNDERSCORE) {
+							const marker = this.try_parse_list_marker(this.cursor);
+							if (marker) {
+								this.start_list(marker, current_node);
+								continue;
+							}
+						}
+					}
+
+					if (code === PLUS || (code >= 48 && code <= 57)) {
+						if (!this.finished) {
+							let p = this.cursor + 1;
+							if (code !== PLUS) {
+								while (
+									p < length &&
+									source.charCodeAt(p) >= 48 &&
+									source.charCodeAt(p) <= 57
+								)
+									p++;
+								if (p >= length) break main_loop;
+								const after = source.charCodeAt(p);
+								if (after === DOT || after === CLOSE_PAREN) p++;
+							}
+							if (p >= length) break main_loop;
+						}
+						const marker = this.try_parse_list_marker(this.cursor);
+						if (marker) {
+							this.start_list(marker, current_node);
+							continue;
+						}
+					}
+
+					if (code === PIPE) {
+						const result = this.try_start_table(current_node);
+						if (result === false) break main_loop;
+						if (result === true) continue;
 					}
 
 					// default: start a paragraph for text content
@@ -4226,7 +4455,7 @@ export class PFMParser {
 						}
 						const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
 						if (blk_tag) {
-							if (blk_tag.self_closing) {
+							if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
 								const html_id = this.emit_open(
 									NodeKind.html,
 									this.cursor,
@@ -4313,6 +4542,36 @@ export class PFMParser {
 							this.chomp(line_end, true);
 							continue;
 						}
+						if (code !== UNDERSCORE) {
+							const marker = this.try_parse_list_marker(this.cursor);
+							if (marker) {
+								this.start_list(marker, current_node);
+								continue;
+							}
+						}
+					}
+
+					if (code === PLUS || (code >= 48 && code <= 57)) {
+						if (!this.finished) {
+							let p = this.cursor + 1;
+							if (code !== PLUS) {
+								while (
+									p < length &&
+									source.charCodeAt(p) >= 48 &&
+									source.charCodeAt(p) <= 57
+								)
+									p++;
+								if (p >= length) break main_loop;
+								const after = source.charCodeAt(p);
+								if (after === DOT || after === CLOSE_PAREN) p++;
+							}
+							if (p >= length) break main_loop;
+						}
+						const marker = this.try_parse_list_marker(this.cursor);
+						if (marker) {
+							this.start_list(marker, current_node);
+							continue;
+						}
 					}
 
 					if (code === OPEN_SQUARE_BRACKET) {
@@ -4359,6 +4618,12 @@ export class PFMParser {
 							}
 							continue;
 						}
+					}
+
+					if (code === PIPE) {
+						const result = this.try_start_table(current_node);
+						if (result === false) break main_loop;
+						if (result === true) continue;
 					}
 
 					// default: start a paragraph
@@ -5794,7 +6059,7 @@ export class PFMParser {
 							// try html opening tag: <tag ...> or <tag ... />
 							const open_tag = this.try_parse_html_open_tag(this.cursor + 1);
 							if (open_tag) {
-								if (open_tag.self_closing) {
+								if (open_tag.self_closing || this.is_void_tag(open_tag.tag)) {
 									const html_id = this.emit_open(
 										NodeKind.html,
 										this.cursor,

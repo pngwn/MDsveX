@@ -2,5 +2,15 @@ root
   html tag="script"
   line_break
   line_break
-  paragraph
-    text
+  html tag="input" type="number" bind:value=[object Object] self_closing=true
+  line_break
+  html tag="input" type="number" bind:value=[object Object] self_closing=true
+  line_break
+  line_break
+  html tag="p"
+    paragraph
+      mustache "a"
+      text " + "
+      mustache "b"
+      text " = "
+      mustache "a + b"
