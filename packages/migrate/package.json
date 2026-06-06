@@ -1,0 +1,48 @@
+{
+	"name": "@mdsvex/migrate",
+	"version": "0.1.0",
+	"description": "Migrate CommonMark/GFM markdown to Penguin-Flavoured Markdown (PFM)",
+	"main": "src/main.ts",
+	"module": "src/main.ts",
+	"type": "module",
+	"scripts": {
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run",
+		"tsc": "tsc --noEmit",
+		"build": "run-s build:tsc build:vite build:copy-dts",
+		"build:tsc": "tsc",
+		"build:vite": "vite build --config vite.config.build.ts",
+		"build:copy-dts": "shx cp tsc/*.d.ts dist/"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/migrate"
+	},
+	"keywords": [
+		"markdown",
+		"commonmark",
+		"pfm",
+		"mdsvex",
+		"migrate"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/main.d.ts",
+			"default": "./dist/main.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT",
+	"dependencies": {
+		"@types/mdast": "^4.0.4",
+		"remark-gfm": "^4.0.1",
+		"remark-parse": "^11.0.0",
+		"unified": "^11.0.5"
+	},
+	"devDependencies": {
+		"@mdsvex/parse": "workspace:^",
+		"npm-run-all2": "^7.0.2",
+		"shx": "^0.3.4"
+	}
+}
