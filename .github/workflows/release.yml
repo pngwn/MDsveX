@@ -22,6 +22,7 @@ jobs:
           node-version: 22
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
+      - run: pnpm release:build
       - name: Creating .npmrc
         run: |
           cat << EOF > "$HOME/.npmrc"
