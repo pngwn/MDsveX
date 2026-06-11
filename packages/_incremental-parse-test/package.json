@@ -7,7 +7,6 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
-		"prepare": "svelte-kit sync || echo ''",
 		"check": "run-s check:sync check:run",
 		"check:sync": "svelte-kit sync",
 		"check:run": "svelte-check --tsconfig ./tsconfig.json",

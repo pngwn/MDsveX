@@ -9,8 +9,7 @@
 		"preview": "vite preview",
 		"cy:run": "cypress run",
 		"cy:open": "cypress open",
-		"test": "run-p --race dev cy:run",
-		"prepare": "svelte-kit sync"
+		"test": "run-p --race dev cy:run"
 	},
 	"private": "true",
 	"dependencies": {
