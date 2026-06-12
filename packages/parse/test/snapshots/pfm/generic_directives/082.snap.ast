@@ -1,0 +1,11 @@
+root
+  paragraph
+    link href="url"
+      text "x"
+    text " and "
+    directive_inline name="d" args.k="v"
+      text "x"
+    text " and "
+    image src="src"
+      text "y"
+  line_break

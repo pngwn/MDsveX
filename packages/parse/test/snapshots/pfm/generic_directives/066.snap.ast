@@ -1,0 +1,9 @@
+root
+  paragraph
+    directive_inline name="hello"
+      emphasis
+        text "italic"
+    text " and "
+    directive_inline name="hello"
+      code_span "code"
+  line_break

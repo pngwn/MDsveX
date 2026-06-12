@@ -139,7 +139,11 @@ describe('inline directives', () => {
 
 		const root = nodes.get_node();
 		const paragraph = find_child(nodes, root.index, 'paragraph');
-		const directives = find_children(nodes, paragraph!.index, 'directive_inline');
+		const directives = find_children(
+			nodes,
+			paragraph!.index,
+			'directive_inline'
+		);
 		expect(directives.length).toBe(2);
 		expect(directives[0].metadata.name).toBe('a');
 		expect(directives[1].metadata.name).toBe('b');
@@ -174,14 +178,15 @@ describe('leaf block directives', () => {
 		expect(value).toBe('Table of Contents');
 	});
 
-	test('leaf directive without content', () => {
+	test('leaf directive without brackets is not a directive', () => {
 		const input = '::toc\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
 		const directive = find_child(nodes, root.index, 'directive_leaf');
-		expect(directive).not.toBeNull();
-		expect(directive!.metadata.name).toBe('toc');
+		expect(directive).toBeNull();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		expect(paragraph).not.toBeNull();
 	});
 
 	test('leaf directive with empty brackets', () => {
@@ -261,18 +266,19 @@ describe('container block directives', () => {
 		expect(paragraph).not.toBeNull();
 	});
 
-	test('container directive without content label', () => {
+	test('container directive without brackets is not a directive', () => {
 		const input = ':::note\nSome text.\n:::\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
 		const directive = find_child(nodes, root.index, 'directive_container');
-		expect(directive).not.toBeNull();
-		expect(directive!.metadata.name).toBe('note');
+		expect(directive).toBeNull();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		expect(paragraph).not.toBeNull();
 	});
 
 	test('container directive with multiple block children', () => {
-		const input = ':::section\n# Heading\n\nParagraph text.\n:::\n';
+		const input = ':::section[]\n# Heading\n\nParagraph text.\n:::\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -287,7 +293,7 @@ describe('container block directives', () => {
 	});
 
 	test('container closes at EOF if no closing fence', () => {
-		const input = ':::note\nSome text.\n';
+		const input = ':::note[]\nSome text.\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -297,7 +303,7 @@ describe('container block directives', () => {
 	});
 
 	test('nested container directives', () => {
-		const input = '::::outer\n:::inner\nContent.\n:::\n::::\n';
+		const input = '::::outer[]\n:::inner[]\nContent.\n:::\n::::\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -312,7 +318,7 @@ describe('container block directives', () => {
 
 	test('closing fence must have >= opening colons', () => {
 		// ::: opens with 3, so ::: closes it
-		const input = ':::note\nText.\n:::\n';
+		const input = ':::note[]\nText.\n:::\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -321,7 +327,7 @@ describe('container block directives', () => {
 	});
 
 	test('closing fence with more colons closes container', () => {
-		const input = ':::note\nText.\n:::::\n';
+		const input = ':::note[]\nText.\n:::::\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -334,7 +340,7 @@ describe('container block directives', () => {
 		// but :: is a leaf directive opener... let me use a line with just 2 colons and no name
 		// Actually 2 colons without a name won't parse as anything useful, it becomes paragraph
 		// Let me test with 4-colon opener and 3-colon closer
-		const input = '::::note\nText.\n:::\nMore text.\n::::\n';
+		const input = '::::note[]\nText.\n:::\nMore text.\n::::\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -347,7 +353,7 @@ describe('container block directives', () => {
 	});
 
 	test('container directive interrupts paragraph', () => {
-		const input = 'hello\n:::note\nContent.\n:::\n';
+		const input = 'hello\n:::note[]\nContent.\n:::\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -356,7 +362,7 @@ describe('container block directives', () => {
 	});
 
 	test('container with code fence inside', () => {
-		const input = ':::example\n```js\nconsole.log("hi")\n```\n:::\n';
+		const input = ':::example[]\n```js\nconsole.log("hi")\n```\n:::\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -368,7 +374,7 @@ describe('container block directives', () => {
 	});
 
 	test('container with thematic break inside', () => {
-		const input = ':::section\nBefore.\n\n---\n\nAfter.\n:::\n';
+		const input = ':::section[]\nBefore.\n\n---\n\nAfter.\n:::\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -380,7 +386,7 @@ describe('container block directives', () => {
 	});
 
 	test('empty container', () => {
-		const input = ':::note\n:::\n';
+		const input = ':::note[]\n:::\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -390,7 +396,7 @@ describe('container block directives', () => {
 	});
 
 	test('container in block quote', () => {
-		const input = '> :::note\n> Content.\n> :::\n';
+		const input = '> :::note[]\n> Content.\n> :::\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -407,7 +413,7 @@ describe('container block directives', () => {
 
 describe('directive interactions', () => {
 	test('inline directive inside container directive', () => {
-		const input = ':::note\nSee :ref[here] for details.\n:::\n';
+		const input = ':::note[]\nSee :ref[here] for details.\n:::\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -423,7 +429,7 @@ describe('directive interactions', () => {
 	});
 
 	test('leaf directive inside container directive', () => {
-		const input = ':::section\n::toc\n:::\n';
+		const input = ':::section[]\n::toc[]\n:::\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -448,5 +454,323 @@ describe('directive interactions', () => {
 
 		const directive = find_child(nodes, emphasis!.index, 'directive_inline');
 		expect(directive).not.toBeNull();
+	});
+});
+
+// ===========================================================
+// Directive arguments: :name[text](key=val, key2=val2)
+// ===========================================================
+
+describe('directive arguments', () => {
+	test('inline directive with args', () => {
+		const input = ':hello[text](arg_one=val_one, arg_two=val_two)\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive).not.toBeNull();
+		expect(directive!.metadata.args).toEqual({
+			arg_one: 'val_one',
+			arg_two: 'val_two',
+		});
+	});
+
+	test('inline directive with empty text and args', () => {
+		const input = ':hello[](a=1)\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive).not.toBeNull();
+		expect(directive!.metadata.args).toEqual({ a: '1' });
+	});
+
+	test('empty args are allowed but ignored', () => {
+		const input = ':hello[text]()\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive).not.toBeNull();
+		expect(directive!.metadata.args).toBeUndefined();
+		// the () is consumed, not left as text
+		const kinds = get_all_child_kinds(nodes, paragraph!.index);
+		expect(kinds).toEqual(['directive_inline']);
+	});
+
+	test('leaf directive with args', () => {
+		const input = '::leaf[text](a=1, b=2)\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const directive = find_child(nodes, root.index, 'directive_leaf');
+		expect(directive).not.toBeNull();
+		expect(directive!.metadata.args).toEqual({ a: '1', b: '2' });
+	});
+
+	test('container directive with args', () => {
+		const input = ':::box[Label](variant=warning)\nBody.\n:::\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const directive = find_child(nodes, root.index, 'directive_container');
+		expect(directive).not.toBeNull();
+		expect(directive!.metadata.args).toEqual({ variant: 'warning' });
+
+		const paragraph = find_child(nodes, directive!.index, 'paragraph');
+		expect(paragraph).not.toBeNull();
+	});
+
+	test('quoted values may contain spaces, commas, and parens', () => {
+		const input = ':d[x](a="hello world", b=\'one, two\', c="(parens)")\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive!.metadata.args).toEqual({
+			a: 'hello world',
+			b: 'one, two',
+			c: '(parens)',
+		});
+	});
+
+	test('quoted values keep backslash escapes raw', () => {
+		const input = ':d[x](msg="say \\"hi\\"")\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive!.metadata.args).toEqual({ msg: 'say \\"hi\\"' });
+	});
+
+	test('whitespace around = and , is tolerated', () => {
+		const input = ':d[x]( a = 1 , b = 2 )\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive!.metadata.args).toEqual({ a: '1', b: '2' });
+	});
+
+	test('bare values may contain = and url characters', () => {
+		const input = ':d[x](url=https://e.com/a?b=c&d=e, eq=a=b)\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive!.metadata.args).toEqual({
+			url: 'https://e.com/a?b=c&d=e',
+			eq: 'a=b',
+		});
+	});
+
+	test('args on directive nested in link text', () => {
+		const input = '[see :d[x](k=v) here](https://example.com)\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const link = find_child(nodes, paragraph!.index, 'link');
+		expect(link).not.toBeNull();
+		const directive = find_child(nodes, link!.index, 'directive_inline');
+		expect(directive).not.toBeNull();
+		expect(directive!.metadata.args).toEqual({ k: 'v' });
+	});
+});
+
+describe('malformed directive arguments', () => {
+	/** Expect the directive to close at ] with the raw paren text following. */
+	const expect_args_as_text = (input: string, trailing: string) => {
+		const { nodes, source } = parse_markdown_svelte(input);
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive).not.toBeNull();
+		expect(directive!.metadata.args).toBeUndefined();
+		const text = nodes
+			.get_node(paragraph!.index)
+			.children.map((c) => {
+				const n = nodes.get_node(c);
+				return n.kind === 'text' ? source.slice(n.value[0], n.value[1]) : '';
+			})
+			.join('');
+		expect(text).toBe(trailing);
+	};
+
+	test('positional args are not allowed', () => {
+		expect_args_as_text(':d[x](positional)\n', '(positional)');
+	});
+
+	test('trailing comma is malformed', () => {
+		expect_args_as_text(':d[x](a=1,)\n', '(a=1,)');
+	});
+
+	test('duplicate keys are malformed', () => {
+		expect_args_as_text(':d[x](a=1, a=2)\n', '(a=1, a=2)');
+	});
+
+	test('empty value is malformed', () => {
+		expect_args_as_text(':d[x](a=)\n', '(a=)');
+	});
+
+	test('args must follow ] immediately', () => {
+		expect_args_as_text(':d[x] (a=1)\n', ' (a=1)');
+	});
+
+	test('unterminated quote is malformed', () => {
+		expect_args_as_text(':d[x](a="unclosed)\n', '(a="unclosed)');
+	});
+
+	test('newline inside args is malformed', () => {
+		const input = ':d[x](a=1,\nb=2)\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive).not.toBeNull();
+		expect(directive!.metadata.args).toBeUndefined();
+	});
+
+	test('only the first args list is consumed', () => {
+		const input = ':d[x](a=1)(b=2)\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive!.metadata.args).toEqual({ a: '1' });
+	});
+
+	test('malformed args on a leaf directive make it a paragraph', () => {
+		const input = '::leaf[x](positional)\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const root = nodes.get_node();
+		expect(find_child(nodes, root.index, 'directive_leaf')).toBeNull();
+		expect(find_child(nodes, root.index, 'paragraph')).not.toBeNull();
+	});
+
+	test('trailing content after container args makes it a paragraph', () => {
+		const input = ':::box[x](a=1) junk\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const root = nodes.get_node();
+		expect(find_child(nodes, root.index, 'directive_container')).toBeNull();
+		expect(find_child(nodes, root.index, 'paragraph')).not.toBeNull();
+	});
+});
+
+// ===========================================================
+// Directive text content rules
+// ===========================================================
+
+describe('directive text content', () => {
+	test('emphasis and code spans are allowed', () => {
+		const input = ':d[_italic_ and `code`]\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		const kinds = get_all_child_kinds(nodes, directive!.index);
+		expect(kinds).toContain('emphasis');
+		expect(kinds).toContain('code_span');
+	});
+
+	test('links are not allowed and stay literal', () => {
+		const input = ':d[not a [link](url) here]\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive).not.toBeNull();
+		const kinds = get_all_child_kinds(nodes, directive!.index);
+		expect(kinds).not.toContain('link');
+		// the directive closes at the final ], not at the link's ]
+		expect(get_all_child_kinds(nodes, paragraph!.index)).toEqual([
+			'directive_inline',
+		]);
+	});
+
+	test('images are not allowed and stay literal', () => {
+		const input = ':d[not an ![image](src) here]\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive).not.toBeNull();
+		const kinds = get_all_child_kinds(nodes, directive!.index);
+		expect(kinds).not.toContain('image');
+	});
+
+	test('autolinks are not allowed and stay literal', () => {
+		const input = ':d[no <https://auto.link> here]\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive).not.toBeNull();
+		const kinds = get_all_child_kinds(nodes, directive!.index);
+		expect(kinds).not.toContain('link');
+	});
+
+	test('balanced literal brackets stay inside the text', () => {
+		const input = ':d[a [b] c]\n';
+		const { nodes, source } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive).not.toBeNull();
+		// the directive spans through the final ]
+		const { content } = get_content(nodes, directive!.index, source);
+		expect(content).toBe(':d[a [b] c]');
+		expect(get_all_child_kinds(nodes, paragraph!.index)).toEqual([
+			'directive_inline',
+		]);
+	});
+
+	test('nested inline directives are allowed', () => {
+		const input = ':outer[has :inner[x](k=v) inside]\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const outer = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(outer!.metadata.name).toBe('outer');
+		const inner = find_child(nodes, outer!.index, 'directive_inline');
+		expect(inner).not.toBeNull();
+		expect(inner!.metadata.name).toBe('inner');
+		expect(inner!.metadata.args).toEqual({ k: 'v' });
+	});
+
+	test('escaped brackets do not affect balancing', () => {
+		const input = ':d[escaped \\] close]\n';
+		const { nodes, source } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const directive = find_child(nodes, paragraph!.index, 'directive_inline');
+		expect(directive).not.toBeNull();
+		const { content } = get_content(nodes, directive!.index, source);
+		expect(content).toBe(':d[escaped \\] close]');
+	});
+
+	test('links work again after the directive closes', () => {
+		const input = ':d[x] then [a link](url)\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = find_child(nodes, root.index, 'paragraph');
+		const kinds = get_all_child_kinds(nodes, paragraph!.index);
+		expect(kinds).toContain('directive_inline');
+		expect(kinds).toContain('link');
 	});
 });

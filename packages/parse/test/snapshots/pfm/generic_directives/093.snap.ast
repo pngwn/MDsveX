@@ -1,0 +1,6 @@
+root
+  heading depth=1 "heading with :d[directive](k=v)"
+    text "heading with "
+    directive_inline name="d" args.k="v"
+      text "directive"
+  line_break

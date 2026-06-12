@@ -1,0 +1,16 @@
+root
+  paragraph
+    directive_inline name="d"
+      strong_emphasis
+        text "strong"
+      text " and "
+      strikethrough
+        text "struck"
+      text " and x"
+      superscript
+        text "2"
+      text " and h"
+      subscript
+        text "2"
+      text "o"
+  line_break

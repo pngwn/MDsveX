@@ -1,0 +1,7 @@
+root
+  paragraph
+    emphasis
+      directive_inline name="note" args.x="y"
+        text "emphasised"
+      text " directive"
+  line_break

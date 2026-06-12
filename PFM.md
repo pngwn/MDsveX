@@ -130,7 +130,20 @@ children
 ::: ← container block
 ```
 
-Handlers are user-supplied functions keyed by name. Attribute syntax (`{key=val}` from the upstream proposal) is not viable in mdsvex since `{}` is reserved, alternative TBD.
+Handlers are user-supplied functions keyed by name. The `[content]` brackets are required for every directive form — empty text is explicit (`:name[]`, `::name[]`), a bare `::name` is just a paragraph. Names start with a letter, then `[a-zA-Z0-9_-]`.
+
+Directive text accepts simple inline constructs — emphasis, strong, code spans, strikethrough, superscript, subscript, escapes — but not links, images, or autolinks; those stay literal text. Unescaped square brackets inside the text must balance. Directives may nest: `:outer[has :inner[x] inside]`.
+
+An optional argument list may follow the brackets immediately (no space). Arguments are named only — no positional values:
+
+```markdown
+:name[] ← empty text is explicit
+:name[text] ← args are optional
+:name[text](arg_one=val_one, arg_two=val_two) ← key=value pairs, comma separated
+:name[text]() ← empty args are allowed but ignored
+```
+
+Keys start with a letter or underscore, then `[a-zA-Z0-9_-]`. Values are bare (no whitespace, commas, parens, quotes, or backslashes) or single/double quoted (backslash escapes the delimiter; values are kept raw). Spaces and tabs are allowed around `=` and `,`. Duplicate keys, trailing commas, empty values, and newlines make the list malformed: an inline directive then closes at `]` and the `(...)` stays literal text, a block directive line falls back to a paragraph. Attribute syntax (`{key=val}` from the upstream proposal) is not viable in mdsvex since `{}` is reserved — the parenthesised argument list above replaces it.
 
 ---
 

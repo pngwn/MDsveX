@@ -96,3 +96,6 @@ export const UNDERSCORE = 95;
 
 /** ascii code for the plus character (`+`). */
 export const PLUS = 43;
+
+/** ascii code for the comma character (`,`). */
+export const COMMA = 44;

@@ -1,0 +1,5 @@
+root
+  paragraph
+    directive_inline name="d" args.k1="1" args.k2="2" args.k3="3" args.k4="4" args.k5="5" args.k6="6" args.k7="7" args.k8="8" args.k9="9" args.k10="10" args.k11="11" args.k12="12"
+      text "x"
+  line_break

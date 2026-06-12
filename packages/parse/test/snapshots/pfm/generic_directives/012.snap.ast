@@ -1,2 +1,5 @@
 root
-  directive_leaf name="toc"
+  paragraph
+    text ":"
+    text ":toc"
+  line_break

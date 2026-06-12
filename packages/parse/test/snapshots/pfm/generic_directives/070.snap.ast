@@ -1,0 +1,9 @@
+root
+  paragraph
+    directive_inline name="d"
+      text "a "
+      text "[b "
+      text "[c"
+      text "] d"
+      text "] e"
+  line_break

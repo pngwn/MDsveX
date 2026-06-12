@@ -1,0 +1,5 @@
+root
+  paragraph
+    directive_inline name="d" args.url="https://example.com/a?b=c&d=e" args.num="42" args.neg="-3.5" args.color="#fff" args.pct="100%"
+      text "bare values"
+  line_break
