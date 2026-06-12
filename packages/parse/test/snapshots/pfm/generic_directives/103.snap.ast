@@ -1,0 +1,9 @@
+root
+  directive_container name="outer" args.theme="dark" "Kitchen Sink"
+    paragraph
+      directive_inline name="inline" args.k="v"
+        text "here"
+      text " and text."
+    line_break
+    line_break
+    directive_leaf name="leaf" args.deep="true" "inner"

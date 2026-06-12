@@ -1,0 +1,4 @@
+root
+  paragraph
+    directive_inline name="hello" args.a="1"
+  line_break

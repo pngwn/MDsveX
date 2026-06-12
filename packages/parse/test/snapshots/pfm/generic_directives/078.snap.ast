@@ -1,0 +1,8 @@
+root
+  paragraph
+    image src="src.png"
+      text "alt with "
+      directive_inline name="d"
+        text "directive"
+      text " inside"
+  line_break

@@ -1,0 +1,6 @@
+root
+  paragraph
+    directive_inline name="d"
+      text "x"
+    text "(url)"
+  line_break

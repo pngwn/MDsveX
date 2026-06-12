@@ -1,0 +1,8 @@
+root
+  paragraph
+    directive_inline name="d"
+    directive_inline name="e"
+    directive_inline name="f" args.x="y"
+    text ":not a dir: "
+    text name="g" ":"
+  line_break

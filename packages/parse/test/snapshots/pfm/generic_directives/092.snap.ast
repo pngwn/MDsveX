@@ -1,0 +1,16 @@
+root
+  table alignments=["none","none"] col_count=2
+    table_header
+      table_cell
+        directive_inline name="d" args.a="1"
+          text "x"
+      table_cell
+        directive_inline name="e"
+          text "y"
+    table_row
+      table_cell
+        directive_inline name="f" args.b="2"
+          text "z"
+        text
+      table_cell
+        text "w"

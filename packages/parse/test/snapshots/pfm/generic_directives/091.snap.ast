@@ -1,0 +1,5 @@
+root
+  paragraph
+    directive_inline name="d" args.a="=b" args.c="d=e"
+      text "x"
+  line_break

@@ -1,0 +1,7 @@
+root
+  paragraph
+    directive_inline name="d"
+      text "not a "
+      text "[link"
+      text "](url) here"
+  line_break

@@ -1,0 +1,8 @@
+root
+  paragraph
+    link href="https://example.com"
+      text "link with "
+      directive_inline name="d" args.a="1"
+        text "directive"
+      text " inside"
+  line_break

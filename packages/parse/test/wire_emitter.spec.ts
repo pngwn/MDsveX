@@ -301,9 +301,7 @@ describe('wire format: block quotes', () => {
 		// Block quote should contain a paragraph child
 		const para_open = ops.find(
 			(op) =>
-				op[0] === WireOp.Open &&
-				op[2] === NodeKind.paragraph &&
-				op[3] === bq_id
+				op[0] === WireOp.Open && op[2] === NodeKind.paragraph && op[3] === bq_id
 		);
 		expect(para_open).toBeDefined();
 	});
@@ -455,5 +453,35 @@ describe('wire format: reset', () => {
 			.join('');
 		expect(all_text).toContain('second');
 		expect(all_text).not.toContain('first');
+	});
+});
+
+describe('directive args over the wire', () => {
+	it('emits args as a single A op that survives json round-trip', () => {
+		const ops = parse_wire(':d[x](a=1, b="two words")\n');
+
+		const attrs = ops.filter((op) => op[0] === WireOp.Attr && op[2] === 'args');
+		expect(attrs.length).toBe(1);
+
+		const decoded = JSON.parse(JSON.stringify(attrs[0][3]));
+		expect(decoded).toEqual({ a: '1', b: 'two words' });
+
+		// args attach to the directive node
+		const open = ops.find(
+			(op) => op[0] === WireOp.Open && op[1] === attrs[0][1]
+		);
+		expect(open).toBeDefined();
+	});
+
+	it('block directive args arrive incrementally', () => {
+		const batches = parse_wire_incremental(
+			'::leaf[text](key=value)\n',
+			3
+		).flat();
+		const attr = batches.find(
+			(op) => op[0] === WireOp.Attr && op[2] === 'args'
+		);
+		expect(attr).toBeDefined();
+		expect(attr![3]).toEqual({ key: 'value' });
 	});
 });

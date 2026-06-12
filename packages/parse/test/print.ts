@@ -78,6 +78,13 @@ export function print_ast(
 				}
 				continue;
 			}
+			if (key === 'args' && typeof val === 'object') {
+				// directive arguments, format as args.key=value pairs inline
+				for (const [ak, av] of Object.entries(val)) {
+					parts.push(`args.${ak}=${fmt_val(av)}`);
+				}
+				continue;
+			}
 			parts.push(`${key}=${fmt_val(val)}`);
 		}
 	}

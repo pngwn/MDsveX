@@ -1,0 +1,5 @@
+root
+  paragraph
+    directive_inline name="d" args.msg="say \\\"hi\\\"" args.path="C:\\\\temp\\\\dir" args.tick="don\\'t"
+      text "escapes"
+  line_break
