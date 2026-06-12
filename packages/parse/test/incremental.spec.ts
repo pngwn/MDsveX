@@ -362,3 +362,118 @@ describe('Incremental parsing', () => {
 		}
 	});
 });
+
+describe('directive incremental behavior', () => {
+	const opens_of = (rec: OpRecorder, kind: string) =>
+		rec.ops.filter((o) => o.op === 'open' && (o as any).kind === kind) as any[];
+	const closes_for = (rec: OpRecorder, id: number) =>
+		rec.ops.filter((o) => o.op === 'close' && (o as any).id === id);
+	const attrs_for = (rec: OpRecorder, id: number) =>
+		rec.ops
+			.filter((o) => o.op === 'attr' && (o as any).id === id)
+			.map((o) => (o as any).key);
+
+	it('opens eagerly at line start as soon as :name[ is complete', () => {
+		const rec = new OpRecorder();
+		const p = new PFMParser(rec);
+		p.init();
+
+		p.feed(':hel');
+		// single colon can never be a block directive - paragraph opens now
+		expect(opens_of(rec, 'paragraph').length).toBe(1);
+		expect(opens_of(rec, 'directive_inline').length).toBe(0);
+
+		p.feed('lo[wo');
+		const dirs = opens_of(rec, 'directive_inline');
+		expect(dirs.length).toBe(1);
+		expect(dirs[0].pending).toBe(true);
+		expect(attrs_for(rec, dirs[0].id)).toContain('name');
+	});
+
+	it('opens eagerly mid-paragraph', () => {
+		const rec = new OpRecorder();
+		const p = new PFMParser(rec);
+		p.init();
+		p.feed('see :d[co');
+		expect(opens_of(rec, 'directive_inline').length).toBe(1);
+	});
+
+	it('holds the close at ] until args are decided, args arrive atomically', () => {
+		const rec = new OpRecorder();
+		const p = new PFMParser(rec);
+		p.init();
+
+		p.feed(':d[x]');
+		const dir = opens_of(rec, 'directive_inline')[0];
+		expect(dir).toBeDefined();
+		expect(closes_for(rec, dir.id).length).toBe(0);
+
+		p.feed('(a=1');
+		expect(closes_for(rec, dir.id).length).toBe(0);
+		expect(attrs_for(rec, dir.id)).not.toContain('args');
+
+		p.feed(', b=2)');
+		expect(attrs_for(rec, dir.id)).toContain('args');
+		expect(closes_for(rec, dir.id).length).toBe(1);
+	});
+
+	it('closes immediately when the next char rules out args', () => {
+		const rec = new OpRecorder();
+		const p = new PFMParser(rec);
+		p.init();
+
+		p.feed(':d[x]');
+		const dir = opens_of(rec, 'directive_inline')[0];
+		expect(closes_for(rec, dir.id).length).toBe(0);
+
+		p.feed('y');
+		expect(closes_for(rec, dir.id).length).toBe(1);
+		expect(attrs_for(rec, dir.id)).not.toContain('args');
+	});
+
+	it('closes at finish when ] ends the input', () => {
+		const rec = new OpRecorder();
+		const p = new PFMParser(rec);
+		p.init();
+		p.feed(':d[x]');
+		const dir = opens_of(rec, 'directive_inline')[0];
+		expect(closes_for(rec, dir.id).length).toBe(0);
+		p.finish();
+		expect(closes_for(rec, dir.id).length).toBe(1);
+	});
+
+	it('container opens at the end of its opener line, body streams eagerly', () => {
+		const rec = new OpRecorder();
+		const p = new PFMParser(rec);
+		p.init();
+
+		p.feed(':::box[L](k=v)');
+		expect(opens_of(rec, 'directive_container').length).toBe(0);
+
+		p.feed('\n');
+		const box = opens_of(rec, 'directive_container')[0];
+		expect(box).toBeDefined();
+		expect(attrs_for(rec, box.id)).toContain('args');
+		expect(closes_for(rec, box.id).length).toBe(0);
+
+		p.feed('body');
+		expect(opens_of(rec, 'paragraph').length).toBe(1);
+
+		p.feed('\n:::\n');
+		expect(closes_for(rec, box.id).length).toBe(1);
+	});
+
+	it('revokes an unclosed directive at a paragraph boundary', () => {
+		const rec = new OpRecorder();
+		const p = new PFMParser(rec);
+		p.init();
+		p.feed(':d[oops');
+		const dir = opens_of(rec, 'directive_inline')[0];
+		expect(dir).toBeDefined();
+		p.feed('\n\nnext\n');
+		const revokes = rec.ops.filter(
+			(o) => o.op === 'revoke' && (o as any).id === dir.id
+		);
+		expect(revokes.length).toBeGreaterThan(0);
+	});
+});

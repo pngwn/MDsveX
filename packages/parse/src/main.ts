@@ -768,11 +768,12 @@ export class PFMParser {
 			p++;
 		}
 
+		// stall if the colon run reaches the end of the buffer - more
+		// colons may come, so even a single colon is not decidable yet
+		if (p >= length && !this.finished) return false;
+
 		// need at least 2 colons for block directive
 		if (colon_count < 2) return null;
-
-		// stall if at end of buffer - more colons or name may come
-		if (p >= length && !this.finished) return false;
 
 		// must be followed by a letter (start of name)
 		if (p >= length) return null;
@@ -918,10 +919,11 @@ export class PFMParser {
 			p++;
 		}
 
-		if (colon_count < min_colons) return -1;
-
-		// stall if at end of buffer
+		// stall if the colon run reaches the end of the buffer - more
+		// colons may still arrive
 		if (p >= length && !this.finished) return -2;
+
+		if (colon_count < min_colons) return -1;
 
 		// skip trailing whitespace
 		while (
@@ -3235,10 +3237,9 @@ export class PFMParser {
 						}
 
 						case COLON: {
-							// need a complete line for directive detection
-							if (!this.finished && source.indexOf('\n', this.cursor) === -1) {
-								break main_loop;
-							}
+							// try_parse_block_directive stalls internally while the
+							// prefix is still consistent with a directive opener, so
+							// non-directive lines dispatch to paragraph eagerly
 							const dir = this.try_parse_block_directive(this.cursor);
 							if (dir === false) break main_loop;
 							if (dir !== null) {
@@ -4990,10 +4991,9 @@ export class PFMParser {
 						}
 
 						case COLON: {
-							// need a complete line for directive detection
-							if (!this.finished && source.indexOf('\n', this.cursor) === -1) {
-								break main_loop;
-							}
+							// try_parse_block_directive stalls internally while the
+							// prefix is still consistent with a directive opener, so
+							// non-directive lines dispatch to paragraph eagerly
 							const dir = this.try_parse_block_directive(this.cursor);
 							if (dir === false) break main_loop;
 							if (dir !== null) {
@@ -5583,10 +5583,6 @@ export class PFMParser {
 						}
 
 						case COLON: {
-							// need a complete line for directive/close detection
-							if (!this.finished && source.indexOf('\n', this.cursor) === -1) {
-								break main_loop;
-							}
 							// check for closing fence: n+ colons (>= opener) with no name
 							const close_end = this.try_parse_directive_close(
 								this.cursor,
