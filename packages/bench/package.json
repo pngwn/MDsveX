@@ -1,6 +1,6 @@
 {
   "name": "@mdsvex/bench",
-  "version": "0.0.6",
+  "version": "1.0.0-next.0",
   "description": "Benchmarking tools for mdsvex and its parsers.",
   "type": "module",
   "scripts": {
