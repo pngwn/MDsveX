@@ -2722,6 +2722,22 @@ export class PFMParser {
 		return true;
 	}
 
+	// an inline construct that streams nested content (emphasis, strong,
+	// strikethrough, superscript, subscript, link/image/directive text)
+	// opened a span but reached end of input with no matching close. pop the
+	// state and its node, leaving the node pending so _finalize revokes it
+	// into literal text (commonmark degrade behavior). pop the enclosing
+	// inline so the parent block state regains control - mirrors the normal
+	// close path. without this the construct's state and inline ping-pong at
+	// a fixed cursor and trip the no-progress guard.
+	private _unwind_unterminated_delimiter(): void {
+		this.states.pop();
+		this.node_stack.pop();
+		if (this.states[this.states.length - 1] === StateKind.inline) {
+			this.states.pop();
+		}
+	}
+
 	// returns true when a linefeed inside a delimiter state (emphasis,
 	// strong, strikethrough, superscript, subscript) was consumed by a
 	// block interrupt or blockquote boundary. caller should `continue
@@ -3685,6 +3701,10 @@ export class PFMParser {
 				}
 
 				case StateKind.strong_emphasis: {
+					if (!code) {
+						this._unwind_unterminated_delimiter();
+						continue;
+					}
 					// need the char after `*` to do the flanking check without
 					// mis-committing on the nan wildcard mask at end-of-buffer.
 					if (
@@ -3739,6 +3759,10 @@ export class PFMParser {
 				}
 
 				case StateKind.emphasis: {
+					if (!code) {
+						this._unwind_unterminated_delimiter();
+						continue;
+					}
 					// need the char after `_` to do the flanking check without
 					// mis-committing on the nan wildcard mask at end-of-buffer.
 					if (
@@ -3790,6 +3814,10 @@ export class PFMParser {
 				}
 
 				case StateKind.strikethrough: {
+					if (!code) {
+						this._unwind_unterminated_delimiter();
+						continue;
+					}
 					// ~~ is a two-char token - hold back lone ~ at end of buffer
 					if (code === TILDE && !this.finished && this.cursor + 1 >= length) {
 						break main_loop;
@@ -3824,6 +3852,10 @@ export class PFMParser {
 				}
 
 				case StateKind.superscript: {
+					if (!code) {
+						this._unwind_unterminated_delimiter();
+						continue;
+					}
 					// close: ^ after content (no right-flanking needed -
 					// ^ is unambiguous, and x^2^y must work)
 					if (
@@ -3852,6 +3884,10 @@ export class PFMParser {
 				}
 
 				case StateKind.subscript: {
+					if (!code) {
+						this._unwind_unterminated_delimiter();
+						continue;
+					}
 					// close: single ~ after content (no right-flanking needed -
 					// ~ is unambiguous inside subscript, and h~2~o must work)
 					if (
@@ -3883,6 +3919,10 @@ export class PFMParser {
 				case StateKind.link_text: {
 					// inside [link text], ![image alt], or :name[content]
 					// - stream content, watch for closing ]
+					if (!code) {
+						this._unwind_unterminated_delimiter();
+						continue;
+					}
 					if (code === CLOSE_SQUARE_BRACKET) {
 						// inline directive: ] closes the text, an optional
 						// (key=val) argument list may follow immediately
