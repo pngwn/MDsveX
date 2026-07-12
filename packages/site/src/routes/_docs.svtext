@@ -148,6 +148,7 @@ interface MdsvexOptions {
 	extensions: string[];
 	smartypants: boolean | smartypantsOptions;
 	layout: string | { [name: string]: string };
+	layoutPropForwarding: "legacy" | "runes";
 	remarkPlugins: Array<plugin> | Array<[plugin, plugin_options]>;
 	rehypePlugins: Array<plugin> | Array<[plugin, plugin_options]>;
 	highlight: { highlighter: Function, alias: { [alias]: lang }, optimise: boolean };
@@ -322,6 +323,71 @@ mdsvex({
 		_: "./path/to/fallback/layout.svelte"
 	}
 });
+```
+
+### `layoutPropForwarding`
+
+```ts
+layoutPropForwarding: "legacy" | "runes" = "legacy";
+```
+
+When mdsvex applies a layout, it forwards document props to that layout. By default mdsvex uses Svelte's legacy all-props syntax:
+
+```svelte
+<Layout_MDSVEX_DEFAULT {...$$props}>
+```
+
+Svelte 5 runes mode does not allow `$$props`. If your mdsvex files use runes mode and also use mdsvex layouts, set `layoutPropForwarding` to `"runes"`:
+
+```js
+import { fileURLToPath } from "node:url";
+
+const layout = fileURLToPath(new URL("./src/Layout.svelte", import.meta.url));
+
+mdsvex({
+	layout,
+	layoutPropForwarding: "runes"
+});
+```
+
+This generates runes-compatible layout prop forwarding:
+
+```svelte
+<script>
+	import Layout_MDSVEX_DEFAULT from "./path/to/layout.svelte";
+	const __mdsvex_generated_layout_props = $props();
+</script>
+
+<Layout_MDSVEX_DEFAULT {...__mdsvex_generated_layout_props}>
+```
+
+Svelte allows `$props()` to be called only once per component. When `layoutPropForwarding: "runes"` is enabled, mdsvex uses that one call to forward document props to the layout. Do not call `$props()` in the same `.svx` file:
+
+```svx
+<script>
+	let { title } = $props();
+</script>
+```
+
+Move page-specific values to frontmatter metadata instead:
+
+```svx
+---
+title: My page title
+---
+
+# {metadata.title}
+```
+
+The `.svx` file reads frontmatter through `metadata`, while the layout receives each frontmatter value as a prop:
+
+```svelte
+<script>
+	let { children, title } = $props();
+</script>
+
+<h1>{title}</h1>
+{@render children()}
 ```
 
 ### `remarkPlugins` / `rehypePlugins`

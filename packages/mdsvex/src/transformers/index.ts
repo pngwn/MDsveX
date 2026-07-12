@@ -27,6 +27,7 @@ import type {
 	LayoutMode,
 	Layout,
 	LayoutMeta,
+	LayoutPropForwarding,
 } from '../types';
 
 let path: typeof import('path');
@@ -35,6 +36,7 @@ let path: typeof import('path');
 // this needs a big old cleanup
 
 const newline = '\n';
+const layout_props_name = '__mdsvex_generated_layout_props';
 // extract the yaml from 'yaml' nodes and put them in the vfil for later use
 
 export function default_frontmatter(
@@ -302,6 +304,74 @@ function generate_layout({
 	];
 }
 
+function node_contains_props_rune(node: any): boolean {
+	if (!node || typeof node !== 'object') return false;
+
+	if (
+		node.type === 'CallExpression' &&
+		node.callee &&
+		node.callee.type === 'Identifier' &&
+		node.callee.name === '$props'
+	) {
+		return true;
+	}
+
+	for (const key in node) {
+		if (key === 'parent') continue;
+
+		const value = node[key];
+		if (Array.isArray(value)) {
+			for (let i = 0; i < value.length; i += 1) {
+				if (node_contains_props_rune(value[i])) return true;
+			}
+		} else if (value && typeof value === 'object') {
+			if (node_contains_props_rune(value)) return true;
+		}
+	}
+
+	return false;
+}
+
+function script_contains_props_rune(script: string): boolean {
+	try {
+		// @ts-ignore
+		const result = parse(script);
+		return node_contains_props_rune(result.instance && result.instance.content);
+	} catch (e) {
+		return false;
+	}
+}
+
+function create_props_rune_conflict_error(filename: string): Error {
+	return new Error(
+		`mdsvex: Cannot combine \`layoutPropForwarding: "runes"\` with \`$props()\` inside an .svx file that uses an mdsvex layout.\n\n` +
+			`mdsvex generates \`const __mdsvex_generated_layout_props = $props();\` so it can forward document props to your layout. Svelte allows only one \`$props()\` call per component.\n\n` +
+			`Move page-specific values to frontmatter metadata instead.\n\n` +
+			`Invalid:\n` +
+			`<script>\n` +
+			`  let { title } = $props();\n` +
+			`</script>\n\n` +
+			`Valid:\n` +
+			`---\n` +
+			`title: My page title\n` +
+			`---\n\n` +
+			`Use \`metadata.title\` in the .svx file or read the \`title\` prop directly in the layout.\n\n` +
+			`File: ${filename}`
+	);
+}
+
+function create_layout_props_name(script: string | undefined): string {
+	let name = layout_props_name;
+	let i = 1;
+
+	while (script && script.includes(name)) {
+		name = `${layout_props_name}_${i}`;
+		i += 1;
+	}
+
+	return name;
+}
+
 export const handle_path = async (): Promise<void> => {
 	path = await import('path');
 };
@@ -309,9 +379,11 @@ export const handle_path = async (): Promise<void> => {
 export function transform_hast({
 	layout,
 	layout_mode,
+	layoutPropForwarding,
 }: {
 	layout: Layout | undefined;
 	layout_mode: LayoutMode;
+	layoutPropForwarding?: LayoutPropForwarding;
 }): Transformer {
 	return function transformer(tree, vFile) {
 		// we need to keep { and } intact for svelte, so reverse the escaping in links and images
@@ -378,8 +450,22 @@ export function transform_hast({
 				//@ts-ignore
 				filename: vFile.filename,
 			});
+			const use_runes_layout_props = layoutPropForwarding === 'runes';
+			const layout_props = create_layout_props_name(
+				instance[0] && (instance[0].value as string)
+			);
 
 			if (error) vFile.messages.push(new Message(error.reason));
+
+			if (
+				import_script &&
+				use_runes_layout_props &&
+				instance[0] &&
+				script_contains_props_rune(instance[0].value as string)
+			) {
+				//@ts-ignore
+				throw create_props_rune_conflict_error(vFile.filename);
+			}
 
 			if (components) {
 				for (let i = 0; i < components.length; i++) {
@@ -395,12 +481,20 @@ export function transform_hast({
 			if (import_script && !instance[0]) {
 				instance.push({
 					type: 'raw',
-					value: `${newline}<script>${newline}\t${import_script}${newline}</script>${newline}`,
+					value: `${newline}<script>${newline}\t${import_script}${
+						use_runes_layout_props
+							? `${newline}\tconst ${layout_props} = $props();`
+							: ''
+					}${newline}</script>${newline}`,
 				});
 			} else if (import_script) {
 				instance[0].value = (instance[0].value as string).replace(
 					RE_SCRIPT,
-					`$1${newline}\t${import_script}`
+					`$1${newline}\t${import_script}${
+						use_runes_layout_props
+							? `${newline}\tconst ${layout_props} = $props();`
+							: ''
+					}`
 				);
 			}
 
@@ -443,9 +537,9 @@ export function transform_hast({
 					//@ts-ignore
 					type: 'raw',
 					value: import_script
-						? `<Layout_MDSVEX_DEFAULT {...$$props}${
-								fm ? ' {...metadata}' : ''
-						  }>`
+						? `<Layout_MDSVEX_DEFAULT {...${
+								use_runes_layout_props ? layout_props : '$$props'
+						  }}${fm ? ' {...metadata}' : ''}>`
 						: '',
 				},
 				//@ts-ignore

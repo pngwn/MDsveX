@@ -28,6 +28,7 @@
 				['extensions', 'docs#extensions', true],
 				['smartypants', 'docs#smartypants', true],
 				['layout', 'docs#layout', true],
+				['layoutPropForwarding', 'docs#layoutpropforwarding', true],
 				['remarkPlugins', 'docs#remarkplugins--rehypeplugins', true],
 				['rehypePlugins', 'docs#remarkplugins--rehypeplugins', true],
 				['highlight', 'docs#highlight', true],
