@@ -550,47 +550,253 @@ test('runes mode layout output should compile with Svelte 5', async () => {
 	).not.toThrow();
 });
 
-test('runes mode layout output should fail clearly when an mdsvex file already calls $props', async () => {
-	let error: Error | undefined;
-
-	try {
-		await mdsvex({
-			layout: join(fix_dir, 'Layout.svelte'),
-			layoutPropForwarding: 'runes',
-		}).markup({
-			content: `
+test('runes mode layout output should forward destructured props', async () => {
+	const output = await mdsvex({
+		layout: join(fix_dir, 'Layout.svelte'),
+		layoutPropForwarding: 'runes',
+	}).markup({
+		content: `
 <svelte:options runes={true} />
 
 <script>
   let { title } = $props();
 </script>
 
-# hello`,
-			filename: 'file.svx',
-		});
-	} catch (e) {
-		error = e as Error;
-	}
+# {title}`,
+		filename: 'file.svx',
+	});
 
-	expect(error).toBeDefined();
-	expect(error?.message).toContain(
-		'mdsvex: Cannot combine `layoutPropForwarding: "runes"` with `$props()` inside an .svx file that uses an mdsvex layout.'
+	expect(lines(output?.code)).toEqual(
+		lines(`<script>
+	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
+  let {
+    title,
+    title: __mdsvex_generated_layout_prop_title,
+    ...__mdsvex_generated_layout_rest
+  } = $props();
+</script>
+
+<svelte:options runes={true} />
+<Layout_MDSVEX_DEFAULT {...__mdsvex_generated_layout_rest} title={__mdsvex_generated_layout_prop_title}>
+
+<h1>{title}</h1>
+</Layout_MDSVEX_DEFAULT>`)
 	);
-	expect(error?.message).toContain(
-		'mdsvex generates `const __mdsvex_generated_layout_props = $props();`'
+
+	expect(() =>
+		compile_svelte(output?.code ?? '', {
+			filename: 'file.svx',
+			generate: false,
+		})
+	).not.toThrow();
+});
+
+test('runes mode layout output should preserve raw props for fallbacks and aliases', async () => {
+	const output = await mdsvex({
+		layout: join(fix_dir, 'Layout.svelte'),
+		layoutPropForwarding: 'runes',
+	}).markup({
+		content: `
+<svelte:options runes={true} />
+
+<script>
+  let { title = 'Untitled', subtitle: local_subtitle } = $props();
+</script>
+
+# {title}
+
+{local_subtitle}`,
+		filename: 'file.svx',
+	});
+
+	expect(lines(output?.code)).toEqual(
+		lines(`<script>
+	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
+  let {
+    title = 'Untitled',
+    subtitle: local_subtitle,
+    title: __mdsvex_generated_layout_prop_title,
+    subtitle: __mdsvex_generated_layout_prop_subtitle,
+    ...__mdsvex_generated_layout_rest
+  } = $props();
+</script>
+
+<svelte:options runes={true} />
+<Layout_MDSVEX_DEFAULT {...__mdsvex_generated_layout_rest} title={__mdsvex_generated_layout_prop_title} subtitle={__mdsvex_generated_layout_prop_subtitle}>
+
+<h1>{title}</h1>
+<p>{local_subtitle}</p>
+</Layout_MDSVEX_DEFAULT>`)
 	);
-	expect(error?.message).toContain(
-		'Svelte allows only one `$props()` call per component.'
+
+	expect(output?.code).not.toContain('title={title}');
+	expect(output?.code).not.toContain('subtitle={local_subtitle}');
+	expect(() =>
+		compile_svelte(output?.code ?? '', {
+			filename: 'file.svx',
+			generate: false,
+		})
+	).not.toThrow();
+});
+
+test('runes mode layout output should forward quoted prop keys', async () => {
+	const output = await mdsvex({
+		layout: join(fix_dir, 'Layout.svelte'),
+		layoutPropForwarding: 'runes',
+	}).markup({
+		content: `
+<svelte:options runes={true} />
+
+<script>
+  let { 'data-id': data_id } = $props();
+</script>
+
+{data_id}`,
+		filename: 'file.svx',
+	});
+
+	expect(output?.code).toContain(
+		"'data-id': __mdsvex_generated_layout_prop_data_id"
 	);
-	expect(error?.message).toContain(
-		'Move page-specific values to frontmatter metadata instead.'
+	expect(output?.code).toContain(
+		'<Layout_MDSVEX_DEFAULT {...__mdsvex_generated_layout_rest} data-id={__mdsvex_generated_layout_prop_data_id}>'
 	);
-	expect(error?.message).toContain('let { title } = $props();');
-	expect(error?.message).toContain('title: My page title');
-	expect(error?.message).toContain(
-		'Use `metadata.title` in the .svx file or read the `title` prop directly in the layout.'
+	expect(() =>
+		compile_svelte(output?.code ?? '', {
+			filename: 'file.svx',
+			generate: false,
+		})
+	).not.toThrow();
+});
+
+test('runes mode layout output should reuse existing rest props and preserve bindable props', async () => {
+	const output = await mdsvex({
+		layout: join(fix_dir, 'Layout.svelte'),
+		layoutPropForwarding: 'runes',
+	}).markup({
+		content: `
+<svelte:options runes={true} />
+
+<script>
+  let { value = $bindable(), ...other } = $props();
+</script>
+
+<input bind:value />`,
+		filename: 'file.svx',
+	});
+
+	expect(lines(output?.code)).toEqual(
+		lines(`<script>
+	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
+  let {
+    value = $bindable(),
+    value: __mdsvex_generated_layout_prop_value,
+    ...other
+  } = $props();
+</script>
+
+<svelte:options runes={true} />
+<Layout_MDSVEX_DEFAULT {...other} value={__mdsvex_generated_layout_prop_value}>
+
+<input bind:value />
+</Layout_MDSVEX_DEFAULT>`)
 	);
-	expect(error?.message).toContain('File: file.svx');
+
+	expect(output?.code).not.toContain('value={value}');
+	expect(() =>
+		compile_svelte(output?.code ?? '', {
+			filename: 'file.svx',
+			generate: false,
+		})
+	).not.toThrow();
+});
+
+test('runes mode layout output should preserve frontmatter precedence and markdown children', async () => {
+	const output = await mdsvex({
+		layout: join(fix_dir, 'Layout.svelte'),
+		layoutPropForwarding: 'runes',
+	}).markup({
+		content: `---
+title: From frontmatter
+---
+
+<svelte:options runes={true} />
+
+<script>
+  let { title, children } = $props();
+</script>
+
+# {title}`,
+		filename: 'file.svx',
+	});
+
+	expect(lines(output?.code)).toEqual(
+		lines(`<script context="module">
+	export const metadata = {"title":"From frontmatter"};
+	const { title } = metadata;
+</script>
+
+<script>
+	import Layout_MDSVEX_DEFAULT from '${to_posix(join(fix_dir, 'Layout.svelte'))}';
+  let {
+    title,
+    children,
+    title: __mdsvex_generated_layout_prop_title,
+    ...__mdsvex_generated_layout_rest
+  } = $props();
+</script>
+
+<svelte:options runes={true} />
+<Layout_MDSVEX_DEFAULT {...__mdsvex_generated_layout_rest} title={__mdsvex_generated_layout_prop_title} {...metadata}>
+
+<h1>{title}</h1>
+</Layout_MDSVEX_DEFAULT>`)
+	);
+
+	expect(output?.code).not.toContain('children={');
+	expect(() =>
+		compile_svelte(output?.code ?? '', {
+			filename: 'file.svx',
+			generate: false,
+		})
+	).not.toThrow();
+});
+
+test('runes mode layout output should preserve typed destructuring and avoid forwarding name collisions', async () => {
+	const output = await mdsvex({
+		layout: join(fix_dir, 'Layout.svelte'),
+		layoutPropForwarding: 'runes',
+	}).markup({
+		content: `
+<svelte:options runes={true} />
+
+<script lang="ts">
+  interface Props {
+    title: string;
+  }
+
+  const __mdsvex_generated_layout_prop_title = '';
+  const __mdsvex_generated_layout_rest = {};
+  let { title }: Props = $props();
+</script>
+
+# {title}`,
+		filename: 'file.svx',
+	});
+
+	expect(output?.code).toContain(
+		'title: __mdsvex_generated_layout_prop_title_1'
+	);
+	expect(output?.code).toContain('...__mdsvex_generated_layout_rest_1');
+	expect(output?.code).toContain(
+		'<Layout_MDSVEX_DEFAULT {...__mdsvex_generated_layout_rest_1} title={__mdsvex_generated_layout_prop_title_1}>'
+	);
+	expect(() =>
+		compile_svelte(output?.code ?? '', {
+			filename: 'file.svx',
+			generate: false,
+		})
+	).not.toThrow();
 });
 
 test('runes mode layout output should avoid generated props name collisions', async () => {

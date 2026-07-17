@@ -37,6 +37,8 @@ let path: typeof import('path');
 
 const newline = '\n';
 const layout_props_name = '__mdsvex_generated_layout_props';
+const layout_rest_props_name = '__mdsvex_generated_layout_rest';
+const layout_prop_name_prefix = '__mdsvex_generated_layout_prop_';
 // extract the yaml from 'yaml' nodes and put them in the vfil for later use
 
 export function default_frontmatter(
@@ -332,44 +334,182 @@ function node_contains_props_rune(node: any): boolean {
 	return false;
 }
 
-function script_contains_props_rune(script: string): boolean {
-	try {
-		// @ts-ignore
-		const result = parse(script);
-		return node_contains_props_rune(result.instance && result.instance.content);
-	} catch (e) {
-		return false;
+function create_generated_name(script: string, base: string): string {
+	let name = base;
+	let i = 1;
+
+	while (script.includes(name)) {
+		name = `${base}_${i}`;
+		i += 1;
 	}
+
+	return name;
 }
 
 function create_props_rune_conflict_error(filename: string): Error {
 	return new Error(
-		`mdsvex: Cannot combine \`layoutPropForwarding: "runes"\` with \`$props()\` inside an .svx file that uses an mdsvex layout.\n\n` +
-			`mdsvex generates \`const __mdsvex_generated_layout_props = $props();\` so it can forward document props to your layout. Svelte allows only one \`$props()\` call per component.\n\n` +
-			`Move page-specific values to frontmatter metadata instead.\n\n` +
-			`Invalid:\n` +
-			`<script>\n` +
-			`  let { title } = $props();\n` +
-			`</script>\n\n` +
-			`Valid:\n` +
-			`---\n` +
-			`title: My page title\n` +
-			`---\n\n` +
-			`Use \`metadata.title\` in the .svx file or read the \`title\` prop directly in the layout.\n\n` +
+		`mdsvex: Cannot forward \`$props()\` to an mdsvex layout from this .svx file.\n\n` +
+			`Use a top level object destructuring declaration such as \`let { title } = $props();\`, or bind the object directly with \`let props = $props();\`.\n\n` +
 			`File: ${filename}`
 	);
 }
 
 function create_layout_props_name(script: string | undefined): string {
-	let name = layout_props_name;
-	let i = 1;
+	return create_generated_name(script || '', layout_props_name);
+}
 
-	while (script && script.includes(name)) {
-		name = `${layout_props_name}_${i}`;
-		i += 1;
+function get_line_indentation(source: string, index: number): string {
+	const line_start = source.lastIndexOf(newline, index - 1) + 1;
+	const line = source.slice(line_start, index);
+	const match = line.match(/^\s*/);
+	return match ? match[0] : '';
+}
+
+function get_layout_prop_name(property: any): string | false {
+	if (property.computed) return false;
+	if (property.key.type === 'Identifier') return property.key.name;
+	if (property.key.type === 'Literal' && typeof property.key.value === 'string')
+		return property.key.value;
+	return false;
+}
+
+function transform_props_rune_declaration(
+	script: string,
+	declaration: any,
+	variable_declaration: any
+): { script: string; attributes: string } | false {
+	if (declaration.id.type === 'Identifier') {
+		return {
+			script,
+			attributes: `{...${declaration.id.name}}`,
+		};
 	}
 
-	return name;
+	if (declaration.id.type !== 'ObjectPattern') return false;
+
+	const properties = declaration.id.properties as any[];
+	const rest_property = properties.find(
+		(property) => property.type === 'RestElement'
+	);
+	const named_properties = properties.filter(
+		(property) => property.type === 'Property'
+	);
+	const forwarding_properties: Array<{
+		property_name: string;
+		key_source: string;
+	}> = [];
+
+	for (let i = 0; i < named_properties.length; i += 1) {
+		const property_name = get_layout_prop_name(named_properties[i]);
+		if (property_name === false) return false;
+		if (
+			property_name !== 'children' &&
+			!forwarding_properties.some(
+				(property) => property.property_name === property_name
+			)
+		)
+			forwarding_properties.push({
+				property_name,
+				key_source: script.slice(
+					named_properties[i].key.start,
+					named_properties[i].key.end
+				),
+			});
+	}
+
+	if (
+		rest_property &&
+		(!rest_property.argument || rest_property.argument.type !== 'Identifier')
+	)
+		return false;
+
+	const declaration_indentation = get_line_indentation(
+		script,
+		variable_declaration.start
+	);
+	const property_indentation = `${declaration_indentation}  `;
+	const generated_names = new Set<string>();
+	const raw_properties = forwarding_properties.map(
+		({ property_name, key_source }) => {
+			const safe_name = property_name.replace(/[^A-Za-z0-9_$]/g, '_');
+			const base = `${layout_prop_name_prefix}${safe_name}`;
+			let name = create_generated_name(script, base);
+			let i = 1;
+
+			while (generated_names.has(name)) {
+				name = `${base}_${i}`;
+				i += 1;
+			}
+
+			generated_names.add(name);
+			return { property_name, key_source, name };
+		}
+	);
+	const rest_name = rest_property
+		? rest_property.argument.name
+		: create_generated_name(script, layout_rest_props_name);
+	const original_properties = named_properties.map((property) =>
+		script.slice(property.start, property.end)
+	);
+	const generated_properties = raw_properties.map(
+		({ key_source, name }) => `${key_source}: ${name}`
+	);
+	const rest_source = rest_property
+		? script.slice(rest_property.start, rest_property.end)
+		: `...${rest_name}`;
+	const replacement =
+		`{${newline}` +
+		[...original_properties, ...generated_properties, rest_source]
+			.map((property) => `${property_indentation}${property}`)
+			.join(`,${newline}`) +
+		`${newline}${declaration_indentation}}`;
+	const attributes = [
+		`{...${rest_name}}`,
+		...raw_properties.map(
+			({ property_name, name }) => `${property_name}={${name}}`
+		),
+	].join(' ');
+
+	return {
+		script:
+			script.slice(0, declaration.id.start) +
+			replacement +
+			script.slice(declaration.id.end),
+		attributes,
+	};
+}
+
+function get_props_rune_layout_forwarding(
+	script: string
+): { script: string; attributes: string } | false | undefined {
+	try {
+		// @ts-ignore
+		const result = parse(script);
+		const instance = result.instance && result.instance.content;
+		if (!instance) return undefined;
+
+		for (let i = 0; i < instance.body.length; i += 1) {
+			const statement = instance.body[i];
+			if (statement.type !== 'VariableDeclaration') continue;
+
+			for (let j = 0; j < statement.declarations.length; j += 1) {
+				const declaration = statement.declarations[j];
+				if (
+					!declaration.init ||
+					declaration.init.type !== 'CallExpression' ||
+					declaration.init.callee.type !== 'Identifier' ||
+					declaration.init.callee.name !== '$props'
+				)
+					continue;
+
+				return transform_props_rune_declaration(script, declaration, statement);
+			}
+		}
+
+		return node_contains_props_rune(instance) ? false : undefined;
+	} catch (e) {
+		return undefined;
+	}
 }
 
 export const handle_path = async (): Promise<void> => {
@@ -451,20 +591,28 @@ export function transform_hast({
 				filename: vFile.filename,
 			});
 			const use_runes_layout_props = layoutPropForwarding === 'runes';
+			const runes_layout_forwarding =
+				import_script && use_runes_layout_props && instance[0]
+					? get_props_rune_layout_forwarding(instance[0].value as string)
+					: undefined;
 			const layout_props = create_layout_props_name(
 				instance[0] && (instance[0].value as string)
 			);
+			const layout_attributes = use_runes_layout_props
+				? runes_layout_forwarding
+					? runes_layout_forwarding.attributes
+					: `{...${layout_props}}`
+				: '{...$$props}';
 
 			if (error) vFile.messages.push(new Message(error.reason));
 
-			if (
-				import_script &&
-				use_runes_layout_props &&
-				instance[0] &&
-				script_contains_props_rune(instance[0].value as string)
-			) {
+			if (runes_layout_forwarding === false) {
 				//@ts-ignore
 				throw create_props_rune_conflict_error(vFile.filename);
+			}
+
+			if (runes_layout_forwarding && instance[0]) {
+				instance[0].value = runes_layout_forwarding.script;
 			}
 
 			if (components) {
@@ -482,7 +630,7 @@ export function transform_hast({
 				instance.push({
 					type: 'raw',
 					value: `${newline}<script>${newline}\t${import_script}${
-						use_runes_layout_props
+						use_runes_layout_props && !runes_layout_forwarding
 							? `${newline}\tconst ${layout_props} = $props();`
 							: ''
 					}${newline}</script>${newline}`,
@@ -491,7 +639,7 @@ export function transform_hast({
 				instance[0].value = (instance[0].value as string).replace(
 					RE_SCRIPT,
 					`$1${newline}\t${import_script}${
-						use_runes_layout_props
+						use_runes_layout_props && !runes_layout_forwarding
 							? `${newline}\tconst ${layout_props} = $props();`
 							: ''
 					}`
@@ -537,9 +685,9 @@ export function transform_hast({
 					//@ts-ignore
 					type: 'raw',
 					value: import_script
-						? `<Layout_MDSVEX_DEFAULT {...${
-								use_runes_layout_props ? layout_props : '$$props'
-						  }}${fm ? ' {...metadata}' : ''}>`
+						? `<Layout_MDSVEX_DEFAULT ${layout_attributes}${
+								fm ? ' {...metadata}' : ''
+						  }>`
 						: '',
 				},
 				//@ts-ignore
