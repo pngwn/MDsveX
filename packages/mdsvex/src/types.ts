@@ -5,6 +5,7 @@ import type { Text } from 'mdast';
 import type { Plugin, Settings } from 'unified';
 
 export type LayoutMode = 'named' | 'single';
+export type LayoutPropForwarding = 'legacy' | 'runes';
 
 export type parser_frontmatter_options = {
 	parse: (
@@ -207,6 +208,7 @@ export interface TransformOptions {
 	layout?: Layout;
 	highlight?: HighlightOptions | false;
 	layout_mode?: LayoutMode;
+	layoutPropForwarding?: LayoutPropForwarding;
 }
 
 /**
@@ -296,6 +298,15 @@ export interface MdsvexOptions {
 	 * ```
 	 */
 	layout?: string | Record<string, string>;
+	/**
+	 * **layoutPropForwarding** - How mdsvex forwards document props to layout components. Default: `"legacy"`.
+	 *
+	 *  *example:*
+	 * ```js
+	 * layoutPropForwarding: "runes"
+	 * ```
+	 */
+	layoutPropForwarding?: LayoutPropForwarding;
 }
 
 /**

@@ -69,6 +69,7 @@ export function transform(
 		frontmatter,
 		smartypants,
 		highlight,
+		layoutPropForwarding,
 	} = {} as Omit<TransformOptions, 'layout_mode' | 'layout'>
 ): Processor & {
 	add_layouts: (layout: Layout, layout_mode: LayoutMode) => void;
@@ -110,7 +111,11 @@ export function transform(
 	};
 
 	processor.add_layouts = (layout: Layout, layout_mode: LayoutMode) => {
-		processor.use(transform_hast, { layout: layout, layout_mode });
+		processor.use(transform_hast, {
+			layout: layout,
+			layout_mode,
+			layoutPropForwarding,
+		});
 	};
 
 	return processor;
@@ -249,6 +254,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 		layout = false,
 		highlight = { highlighter: code_highlight, optimise: true },
 		frontmatter,
+		layoutPropForwarding = 'legacy',
 	} = options;
 
 	if (highlight === undefined) {
@@ -279,6 +285,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 		'layout',
 		'highlight',
 		'frontmatter',
+		'layoutPropForwarding',
 	];
 
 	for (const opt in options) {
@@ -293,6 +300,12 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 		);
 	}
 
+	if (layoutPropForwarding !== 'legacy' && layoutPropForwarding !== 'runes') {
+		throw new Error(
+			`mdsvex: "layoutPropForwarding" must be either "legacy" or "runes".`
+		);
+	}
+
 	let layouts_processed: Promise<void> | undefined = undefined;
 
 	const parser = transform({
@@ -301,6 +314,7 @@ export const mdsvex = (options: MdsvexOptions = defaults): Preprocessor => {
 		smartypants,
 		highlight,
 		frontmatter,
+		layoutPropForwarding,
 	});
 
 	return {
