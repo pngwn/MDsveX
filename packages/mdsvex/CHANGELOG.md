@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.12.8
+
+### Patch Changes
+
+- [#810](https://github.com/pngwn/MDsveX/pull/810) [`60d6939`](https://github.com/pngwn/MDsveX/commit/60d6939cef092c101960d27836d9ba67b13c0a38) Thanks [@jfbloom22](https://github.com/jfbloom22)! - Add a `layoutPropForwarding` option that can generate Svelte 5 runes-compatible layout prop forwarding.
+
 ## 0.12.7
 
 ### Patch Changes
