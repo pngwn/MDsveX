@@ -47,7 +47,7 @@
 		"svelte-json-tree": "^2.2.0",
 		"typeface-catamaran": "^0.0.72",
 		"typeface-roboto": "^0.0.75",
-		"unist-util-visit": "^2.0.1",
+		"unist-util-visit": "^5.1.0",
 		"vite": "^5.0.12"
 	}
 }
