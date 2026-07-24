@@ -1,0 +1,30 @@
+{
+	"description": "Candidate read-only corpora. Resolve refs to immutable commits before downloading into a local cache.",
+	"sources": [
+		{
+			"repository": "https://github.com/vitejs/vite",
+			"ref": "main",
+			"include": ["docs/**/*.md"],
+			"license": "MIT"
+		},
+		{
+			"repository": "https://github.com/nodejs/node",
+			"ref": "main",
+			"include": ["doc/api/**/*.md"],
+			"license": "MIT"
+		},
+		{
+			"repository": "https://github.com/sveltejs/svelte",
+			"ref": "main",
+			"include": ["documentation/**/*.md", "packages/**/*.svelte"],
+			"license": "MIT"
+		},
+		{
+			"repository": "https://github.com/commonmark/commonmark-spec",
+			"ref": "master",
+			"include": ["spec.txt"],
+			"license": "CC-BY-SA-4.0",
+			"notes": "Keep attribution and do not commit extracted material without reviewing share-alike obligations."
+		}
+	]
+}
