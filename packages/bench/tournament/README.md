@@ -43,6 +43,7 @@ node packages/bench/tournament/run.mjs --smoke --limit 6
 node packages/bench/tournament/run.mjs --screen --match combined
 node packages/bench/tournament/run.mjs --smoke --duration 250 --warmup 80
 node packages/bench/tournament/run.mjs --screen --pairs 5
+node packages/bench/tournament/run.mjs --screen --control-threshold 0.025
 ```
 
 The initial family explores parser/compiler arena sizing. Further families
@@ -52,3 +53,7 @@ the canonical `bench:core` benchmark before integrating them.
 
 `control-rebuild` compares two independent unmodified builds. Its spread is
 the local noise floor; gains smaller than twice that spread should not advance.
+The bracket is automatically invalidated when any control metric exceeds the
+mode's threshold (8% smoke, 3% screen, 2% full). Candidates also declare their
+affected metrics, need wins in at least 75% of pairs, and cannot hide an
+important target regression inside an aggregate score.

@@ -11,9 +11,10 @@ functionality, and a small shipped library remain hard constraints.
 2. Reject candidates whose parser arena, generated code, mappings, or V3
    sourcemap differ on the selected corpus.
 3. Use smoke runs only to reject broken or clearly poor ideas.
-4. Advance screen winners only when the direction repeats across independent
-   pairs with balanced load/order direction and no important workload regresses
-   by more than 5%.
+4. Automatically invalidate a bracket when the no-op control crosses the mode
+   threshold. Advance screen winners only when the direction repeats in at
+   least 75% of independent pairs and no important target regresses by more
+   than 5%.
 5. Run finalists on the full corpus, package tests, the canonical core
    benchmark, allocation/GC profiles, and bundle-size comparison.
 6. Combine survivors in a semifinal because allocation and scanner gains are
