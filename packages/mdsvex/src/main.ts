@@ -17,15 +17,20 @@ export interface MdsvexOptions {
 	parsePlugins?: ParsePlugin[];
 }
 
-interface RenderResult {
+export interface CompileOptions {
+	parsePlugins?: ParsePlugin[];
+	sourcemap?: boolean;
+}
+
+export interface CompileResult {
 	code: string;
 	mappings?: Mapping<MappingData>[];
 }
 
-function render(
+function render_once(
 	source: string,
-	options?: { parsePlugins?: ParsePlugin[]; sourcemap?: boolean },
-): RenderResult {
+	options?: CompileOptions,
+): CompileResult {
 	let dispatcher: PluginDispatcher | undefined;
 	if (options?.parsePlugins && options.parsePlugins.length > 0) {
 		const text_source = new SourceTextSource(source);
@@ -52,6 +57,52 @@ function render(
 }
 
 /**
+ * Reusable no-plugin compiler for sequential documents.
+ *
+ * The arena remains private so resetting it can never mutate an AST held by a
+ * caller. Parse plugins retain the one-shot path because their dispatcher owns
+ * a source-specific text view.
+ */
+export class CompilerSession {
+	private tree: TreeBuilder | null = null;
+	private parser: PFMParser | null = null;
+	private renderer = new CursorHTMLRenderer({ cache: false });
+
+	compile(
+		source: string,
+		options?: CompileOptions,
+	): CompileResult {
+		if (options?.parsePlugins && options.parsePlugins.length > 0) {
+			return render_once(source, options);
+		}
+
+		if (this.tree === null) {
+			this.tree = new TreeBuilder(source.length >> 3 || 128);
+			this.parser = new PFMParser(this.tree);
+		} else {
+			this.tree.reset();
+		}
+
+		this.parser!.parse(source);
+		const nodes = this.tree.get_buffer();
+		if (options?.sourcemap) {
+			const result = this.renderer.update_mapped(nodes, source);
+			return { code: this.renderer.html, mappings: result.mappings };
+		}
+
+		this.renderer.update(nodes, source);
+		return { code: this.renderer.html };
+	}
+}
+
+function render(
+	source: string,
+	options?: CompileOptions,
+): CompileResult {
+	return render_once(source, options);
+}
+
+/**
  * mdsvex vite plugin. returns a single plugin that:
  *
  * 1. transforms markdown to svelte html (enforce: 'pre')
@@ -73,6 +124,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 	const storedMaps = new Map<string, SourceMapV3>();
 	const storedSources = new Map<string, string>();
+	const compiler = new CompilerSession();
 
 	return [
 		{
@@ -82,7 +134,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			transform(code, id) {
 				if (!matches(id)) return;
 
-				const result = render(code, {
+				const result = compiler.compile(code, {
 					parsePlugins: options.parsePlugins,
 					sourcemap: true,
 				});

@@ -15,8 +15,7 @@ in isolated copies, built before measurement, and compared with adjacent
 control runs when results were close.
 
 ```sh
-pnpm --dir packages/bench exec vitest bench \
-	--run benchmarks/core-next.bench.ts
+pnpm --filter @mdsvex/bench bench:core
 ```
 
 The original `next` baseline was:
@@ -97,19 +96,62 @@ gzip. No dependency was added.
 The current string-chunk array plus one cumulative `Uint32Array` mapping pass
 was faster than all tested replacements.
 
+## Architectural compiler session
+
+Allowing an API-level change produced a second retained improvement.
+`CompilerSession` privately reuses its TreeBuilder arena, NodeBuffer storage,
+cursor, output chunks, pending mappings, and mapping-offset scratch across
+sequential documents. Returned HTML and mappings are detached from that
+storage, so a later compile cannot mutate a prior result.
+
+The existing one-shot `compile` and public parser APIs are unchanged. Each
+`mdsvex()` plugin instance now owns a session. Source-bound parse plugins use
+the existing fresh one-shot path because their dispatcher cannot safely move
+between documents.
+
+Two shared, uncontended benchmark runs averaged:
+
+| Case | Operations/second | Change |
+| --- | ---: | ---: |
+| Mapped compile, cold | 1,428.02 | — |
+| Mapped compile, reused | 1,545.75 | +8.2% |
+| HTML compile, cold | 1,836.94 | — |
+| HTML compile, reused | 1,989.23 | +8.3% |
+
+Against the already optimized manual parse-and-mapped-render pipeline, the
+reused compiler averaged 8.4% faster. A 4,000-document allocation run reduced
+sampled peak heap from 73.2 MB to 49.4 MB and typed-array peak allocation from
+64.3 MB to about 120 KB. The mdsvex bundle grew by 0.49 kB gzip and no
+dependency was added.
+
+Session output and complete mapping arrays matched cold compilation in 3,864
+sequential comparisons over all 962 parser fixtures, including reverse order,
+mapped and unmapped output, malformed EOF input, empty input, and a
+large-to-small capacity cycle. Tests also cover prior-result immutability and
+the plugin fallback.
+
+## Rejected architectural experiments
+
+- A direct-index renderer matched HTML and mappings across all 962 parser
+  fixtures, but ranged from +0.2% to -1.9% end-to-end while growing the
+  renderer by 80% raw and 55% gzip.
+- Compact object and forward-threaded compiler trees matched 947 repository
+  documents but were consistently 8–10% slower.
+- A compact SoA compiler also matched all 947 documents. Its apparent 1.7–4%
+  improvement changed direction in paired runs and required another 2.26 kB
+  gzip plus duplicated repair semantics, so it was not retained.
+
 ## Correctness and conclusion
 
-The retained change passed 2,512 parser tests and 109 renderer tests in focused
-runs. The full workspace baseline passed 2,757 tests, with 8 existing todos.
+The retained changes passed 2,512 parser tests and 109 renderer tests in
+focused runs. The final full workspace run passed 2,760 tests, with 8 existing
+todos.
 
 This is not a hard parser ceiling: a small storage-read change still produced a
-repeatable pipeline gain. The current cursor renderer and mapped-output design
-do appear close to a local optimum under the existing APIs.
+repeatable pipeline gain, and private storage reuse then produced another
+architectural gain. The cursor traversal and mapped-output algorithms do appear
+close to a local optimum: independently reimplementing them over direct or
+compact representations did not pay for the extra code.
 
-The next architectural step would be an explicit batch-only, no-plugin
-`compileToHtml` path with private compact storage. It could avoid returning a
-mutable AST, while the current parser and cursor remain the fallback for
-plugins, incremental parsing, mappings, and callers that need NodeBuffer.
-That changes the public performance contract, so it should have its own
-benchmark and API decision rather than being presented as a transparent core
-optimization.
+A future compact batch compiler should build on the proven reusable arena and
+share parser repair semantics rather than duplicating them in the renderer.

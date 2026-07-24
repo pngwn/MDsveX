@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "bench": "node --expose-gc ./node_modules/vitest/vitest.mjs bench",
-    "bench:core": "node --expose-gc ./node_modules/vitest/vitest.mjs bench --run benchmarks/core-next.bench.ts",
+    "bench:core": "pnpm -C ../parse build && pnpm -C ../render build && pnpm -C ../mdsvex build && node --expose-gc ./node_modules/vitest/vitest.mjs bench --run benchmarks/core-next.bench.ts",
     "bench:parsers": "node --expose-gc ./node_modules/vitest/vitest.mjs bench --run benchmarks/parser-comparison.bench.ts",
     "bench:html": "node --expose-gc ./node_modules/vitest/vitest.mjs bench --run benchmarks/html-parsing.bench.ts",
     "bench:e2e": "node --expose-gc ./node_modules/vitest/vitest.mjs bench --run benchmarks/e2e-render.bench.ts",

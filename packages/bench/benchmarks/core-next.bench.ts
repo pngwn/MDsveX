@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { PFMParser, parse_markdown_svelte } from "@mdsvex/parse";
 import { TreeBuilder } from "@mdsvex/parse/tree-builder";
 import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
+import { compile, CompilerSession } from "../../mdsvex/dist/main.js";
 import { bench, describe } from "vitest";
 
 function load(name: string): string {
@@ -17,8 +18,9 @@ const corpus = [
 
 const parsed = corpus.map((source) => parse_markdown_svelte(source));
 const options = { time: 1_500, warmupTime: 300 };
+const compiler = new CompilerSession();
 
-describe(`next core pipeline (${corpus.reduce((n, source) => n + source.length, 0)} bytes)`, () => {
+describe(`next core pipeline (${corpus.reduce((n, source) => n + source.length, 0)} characters)`, () => {
 	bench("parse direct", () => {
 		let nodes = 0;
 		for (const source of corpus) {
@@ -75,5 +77,39 @@ describe(`next core pipeline (${corpus.reduce((n, source) => n + source.length, 
 			mappings += renderer.update_mapped(result.nodes, result.source).mappings.length;
 		}
 		return mappings;
+	}, options);
+
+	bench("compile mapped cold", () => {
+		let mappings = 0;
+		for (const source of corpus) {
+			mappings += compile(source, { sourcemap: true }).mappings!.length;
+		}
+		return mappings;
+	}, options);
+
+	bench("compile mapped reused", () => {
+		let mappings = 0;
+		for (const source of corpus) {
+			mappings += compiler.compile(source, {
+				sourcemap: true,
+			}).mappings!.length;
+		}
+		return mappings;
+	}, options);
+
+	bench("compile cold", () => {
+		let bytes = 0;
+		for (const source of corpus) {
+			bytes += compile(source).code.length;
+		}
+		return bytes;
+	}, options);
+
+	bench("compile reused", () => {
+		let bytes = 0;
+		for (const source of corpus) {
+			bytes += compiler.compile(source).code.length;
+		}
+		return bytes;
 	}, options);
 });

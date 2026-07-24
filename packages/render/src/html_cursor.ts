@@ -706,9 +706,14 @@ function _table_cells(
 export function _resolve_mappings(
 	out: string[],
 	entries: PendingMapping[],
+	scratch?: Uint32Array,
 ): Mapping<MappingData>[] {
 	// build cumulative offset table
-	const offsets = new Uint32Array(out.length + 1);
+	const offsets =
+		scratch !== undefined && scratch.length >= out.length + 1
+			? scratch
+			: new Uint32Array(out.length + 1);
+	offsets[0] = 0;
 	for (let i = 0; i < out.length; i++) {
 		offsets[i + 1] = offsets[i] + out[i].length;
 	}
@@ -777,6 +782,9 @@ export class CursorHTMLRenderer {
 	private closed: Set<number> | null = null;
 	private cursor: Cursor | null = null;
 	private cache: boolean;
+	private out: string[] = [];
+	private entries: PendingMapping[] = [];
+	private mapping_offsets = new Uint32Array(0);
 
 	constructor(opts?: { cache?: boolean }) {
 		this.cache = opts?.cache ?? true;
@@ -795,7 +803,8 @@ export class CursorHTMLRenderer {
 
 		// no caching, single-pass full render
 		if (!this.cache) {
-			const out: string[] = [];
+			const out = this.out;
+			out.length = 0;
 			_node(c, out);
 			this.html = out.join("");
 			return this.blocks;
@@ -839,11 +848,19 @@ export class CursorHTMLRenderer {
 		const c = this.cursor;
 		c.reset();
 
-		const out: string[] = [];
-		const entries: PendingMapping[] = [];
+		const out = this.out;
+		const entries = this.entries;
+		out.length = 0;
+		entries.length = 0;
 		_node(c, out, entries);
 		this.html = out.join("");
-		const mappings = _resolve_mappings(out, entries);
+		const needed = out.length + 1;
+		if (this.mapping_offsets.length < needed) {
+			let capacity = 16;
+			while (capacity < needed) capacity <<= 1;
+			this.mapping_offsets = new Uint32Array(capacity);
+		}
+		const mappings = _resolve_mappings(out, entries, this.mapping_offsets);
 		return { blocks: this.blocks, mappings };
 	}
 

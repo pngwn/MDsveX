@@ -29,6 +29,24 @@ export class TreeBuilder implements Emitter {
 		this.dispatcher = dispatcher ?? null;
 	}
 
+	/**
+	 * Reset a no-plugin builder for another complete document.
+	 *
+	 * A plugin dispatcher owns a source-specific TextSource, so those builders
+	 * cannot be safely reused for a different document.
+	 */
+	reset(): void {
+		if (this.dispatcher !== null) {
+			throw new Error("TreeBuilder with plugins cannot be reset");
+		}
+		this.nodes.reset();
+		this.nodes.push(NodeKind.root, 0);
+		this.id_to_index.length = 1;
+		this.id_to_index[0] = 0;
+		this.id_to_kind.length = 1;
+		this.id_to_kind[0] = NodeKind.root;
+	}
+
 	open(
 		id: number,
 		kind: NodeKind,
