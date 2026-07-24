@@ -195,6 +195,7 @@ export function pending_mappings_to_v3(
 	generated: string,
 	file?: string,
 	offset_scratch?: Uint32Array,
+	ordered = false,
 ): SourceMapV3 {
 	const needed = out.length + 1;
 	const offsets =
@@ -208,18 +209,21 @@ export function pending_mappings_to_v3(
 
 	// Sort mapping entries, not expanded per-character segments. Content spans
 	// are non-overlapping, so their identity runs can be encoded in place.
-	const order: number[] = [];
-	for (let i = 0; i < entries.length; i++) {
-		const entry = entries[i];
-		const role = entry.data.role;
-		if (role === "open_syntax" || role === "close_syntax") continue;
-		order.push(i);
+	let order: number[] | undefined;
+	if (!ordered) {
+		order = [];
+		for (let i = 0; i < entries.length; i++) {
+			const entry = entries[i];
+			const role = entry.data.role;
+			if (role === "open_syntax" || role === "close_syntax") continue;
+			order.push(i);
+		}
+		order.sort(
+			(a, b) =>
+				offsets[entries[a].out_idx] - offsets[entries[b].out_idx] ||
+				a - b,
+		);
 	}
-	order.sort(
-		(a, b) =>
-			offsets[entries[a].out_idx] - offsets[entries[b].out_idx] ||
-			a - b,
-	);
 
 	const source_lines = build_line_starts(source);
 	const generated_lines = build_line_starts(generated);
@@ -229,8 +233,9 @@ export function pending_mappings_to_v3(
 	let previous_generated_line = 0;
 	let result = "";
 
-	for (let i = 0; i < order.length; i++) {
-		const entry = entries[order[i]];
+	const entry_count = ordered ? entries.length : order!.length;
+	for (let i = 0; i < entry_count; i++) {
+		const entry = entries[ordered ? i : order![i]];
 		const generated_offset = offsets[entry.out_idx];
 		const generated_length =
 			offsets[entry.out_idx + entry.out_count] - generated_offset;

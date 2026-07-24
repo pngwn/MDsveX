@@ -85,6 +85,10 @@ export interface PendingMapping {
 	data: MappingData;
 }
 
+interface PendingMappingList extends Array<PendingMapping> {
+	v3?: boolean;
+}
+
 /** emit a mapping entry. skips if generated range is empty. */
 export function _emit(
 	entries: PendingMapping[],
@@ -115,6 +119,7 @@ function _spans(
 	c: Cursor,
 	ci: CodeInformation,
 ): void {
+	if ((entries as PendingMappingList).v3) return;
 	const idx = c.index;
 	const s = c.start, e = c.end, vs = c.value_start, ve = c.value_end;
 	// value range is meaningful when ve > vs (same check as Cursor.text()).
@@ -124,6 +129,29 @@ function _spans(
 	_emit(entries, pre, after_open, s, has_value ? vs : s, { ...CI_STRUCTURE, nodeIndex: idx, role: "open_syntax" });
 	_emit(entries, before_close, post, has_value ? ve : e, e, { ...CI_STRUCTURE, nodeIndex: idx, role: "close_syntax" });
 }
+
+const V3_NODE_KINDS =
+	(1 << K_HTML) |
+	(1 << K_HEADING) |
+	(1 << K_MUSTACHE) |
+	(1 << K_CODE_FENCE) |
+	(1 << K_PARAGRAPH) |
+	(1 << K_CODE_SPAN) |
+	(1 << K_EMPHASIS) |
+	(1 << K_STRONG) |
+	(1 << K_THEMATIC_BREAK) |
+	(1 << K_LINK) |
+	(1 << K_IMAGE) |
+	(1 << K_BLOCK_QUOTE) |
+	(1 << K_LIST) |
+	(1 << K_LIST_ITEM) |
+	(1 << K_STRIKETHROUGH) |
+	(1 << K_SUPERSCRIPT) |
+	(1 << K_SUBSCRIPT) |
+	(1 << K_TABLE) |
+	(1 << K_HTML_COMMENT) |
+	(1 << K_SVELTE_TAG) |
+	(1 << K_SVELTE_BLOCK);
 
 //  precomputed tag strings
 
@@ -229,6 +257,28 @@ function _children_raw(c: Cursor): string {
 
 /** render a single node at the current cursor position. */
 export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): void {
+	const v3_entries = entries as PendingMappingList | undefined;
+	if (
+		v3_entries?.v3 &&
+		c.kind < 32 &&
+		(V3_NODE_KINDS & (1 << c.kind)) !== 0 &&
+		!(
+			(c.kind === K_PARAGRAPH &&
+				c.pending &&
+				c.parent_kind === K_LIST_ITEM) ||
+			(c.kind === K_HTML && c.meta()?.self_closing)
+		) &&
+		c.start !== NONE
+	) {
+		v3_entries.push({
+			out_idx: out.length,
+			out_count: 1,
+			source_offset: c.start,
+			source_length: 0,
+			data: { nodeIndex: c.index, role: "node" },
+		});
+	}
+
 	switch (c.kind) {
 		case K_ROOT:
 			_children(c, out, entries);
@@ -621,7 +671,7 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 			}
 			out.push("{/", block_tag, "}");
 			// node span for the whole block, use the block node (goto_parent already called)
-			if (entries) {
+			if (entries && !(entries as PendingMappingList).v3) {
 				const idx = c.index;
 				const s = c.start, e = c.end;
 				_emit(entries, pre, out.length, s, e, { ...CI_SVELTE, nodeIndex: idx, role: "node" });
@@ -852,6 +902,7 @@ export class CursorHTMLRenderer {
 
 		const out = this.out;
 		const entries = this.entries;
+		(entries as PendingMappingList).v3 = false;
 		out.length = 0;
 		entries.length = 0;
 		_node(c, out, entries);
@@ -882,6 +933,7 @@ export class CursorHTMLRenderer {
 
 		const out = this.out;
 		const entries = this.entries;
+		(entries as PendingMappingList).v3 = true;
 		out.length = 0;
 		entries.length = 0;
 		_node(c, out, entries);
@@ -899,6 +951,7 @@ export class CursorHTMLRenderer {
 			this.html,
 			file,
 			this.mapping_offsets,
+			true,
 		);
 		return { blocks: this.blocks, map };
 	}
