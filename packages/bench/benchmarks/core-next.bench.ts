@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { PFMParser, parse_markdown_svelte } from "@mdsvex/parse";
 import { TreeBuilder } from "@mdsvex/parse/tree-builder";
 import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
+import { mappings_to_v3 } from "@mdsvex/render/sourcemap";
 import { compile, CompilerSession } from "../../mdsvex/dist/main.js";
 import { bench, describe } from "vitest";
 
@@ -95,6 +96,24 @@ describe(`next core pipeline (${corpus.reduce((n, source) => n + source.length, 
 			}).mappings!.length;
 		}
 		return mappings;
+	}, options);
+
+	bench("compile v3 reused", () => {
+		let bytes = 0;
+		for (let index = 0; index < corpus.length; index += 1) {
+			const source = corpus[index];
+			const result = compiler.compile(source, {
+				sourcemap: true,
+			});
+			const map = mappings_to_v3(
+				result.mappings!,
+				source,
+				result.code,
+				`fixture-${index}.svx`,
+			);
+			bytes += result.code.length + map.mappings.length;
+		}
+		return bytes;
 	}, options);
 
 	bench("compile cold", () => {
