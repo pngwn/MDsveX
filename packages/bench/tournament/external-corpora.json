@@ -1,29 +1,41 @@
 {
-	"description": "Candidate read-only corpora. Resolve refs to immutable commits before downloading into a local cache.",
+	"description": "Reviewed read-only corpus sources pinned to immutable commits. Download into a local cache; do not commit source material.",
 	"sources": [
 		{
 			"repository": "https://github.com/vitejs/vite",
-			"ref": "main",
+			"ref": "3ac77d9dd742968961af38a5a91ed6b061ceda7d",
 			"include": ["docs/**/*.md"],
-			"license": "MIT"
+			"license": "MIT",
+			"observedFiles": 57,
+			"observedCharacters": 556010
 		},
 		{
 			"repository": "https://github.com/nodejs/node",
-			"ref": "main",
+			"ref": "e8be132e31f392727d00a10f711cfe748e1eb027",
 			"include": ["doc/api/**/*.md"],
-			"license": "MIT"
+			"license": "MIT with third-party notices",
+			"observedFiles": 70,
+			"observedCharacters": 4351965
 		},
 		{
 			"repository": "https://github.com/sveltejs/svelte",
-			"ref": "main",
-			"include": ["documentation/**/*.md", "packages/**/*.svelte"],
-			"license": "MIT"
+			"ref": "44a7813730579b94004e182e5a67aab27aa9d2a6",
+			"include": ["documentation/docs/**/*.md", "packages/**/*.svelte"],
+			"exclude": ["**/parser-errors/**", "**/compiler-errors/**"],
+			"sample": {
+				"strategy": "deterministic",
+				"maxSvelteFiles": 256
+			},
+			"license": "MIT",
+			"observedFiles": 362,
+			"observedCharacters": 438031
 		},
 		{
 			"repository": "https://github.com/commonmark/commonmark-spec",
 			"ref": "master",
 			"include": ["spec.txt"],
 			"license": "CC-BY-SA-4.0",
+			"enabled": false,
 			"notes": "Keep attribution and do not commit extracted material without reviewing share-alike obligations."
 		}
 	]

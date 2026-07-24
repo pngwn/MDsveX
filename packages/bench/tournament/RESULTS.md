@@ -105,3 +105,49 @@ was integrated.
 
 This family may be worth revisiting only as a document-level prose-specialized
 path after an external corpus establishes that the weighting is representative.
+
+## 2026-07-25 second architectural bracket
+
+### Constant identity VLQ segments — advance
+
+Almost every identity-run segment after the first has the exact delta tuple
+`[1, 0, 0, 1]`, whose encoded form is always `,CAAC`. The original hot loop
+called the VLQ encoder three times and appended five small strings for every
+character. The winner appends the exact constant once and leaves boundary and
+non-identity cases on the generic path.
+
+- Shared 141-document screen: 4.743x median, four wins in four pairs.
+- Canonical four-file corpus: 7.544x median, four wins in four pairs.
+- Combined-worktree canonical run: 48.15 to 379.94 operations/second
+  (7.89x) for legacy versus direct V3.
+- Byte-identical HTML and maps across all 975 local documents.
+- Relevant renderer/mdsvex tests: 114 passed.
+- Bundle delta: approximately +0.12 kB raw / +0.05 kB gzip.
+
+Grouping constants with `repeat()`, typed order scratch, and counting-order
+variants were exact but rejected as flat, noisy, or disproportionate in size.
+
+### Typed parser-ID arena — reject
+
+The arena regressed direct parsing by 6.19% and retained roughly 926 kB after a
+large-to-small workload. O(1) swap-removal also changed pending-node order,
+causing two real AST snapshot regressions. It was slower, larger, and
+semantically invalid.
+
+This experiment exposed an isolation weakness when source checkouts reused an
+absolute package `node_modules` symlink. The tournament now resolves the
+package directory and recreates all `@mdsvex` workspace links inside each
+temporary candidate tree.
+
+### External prose classifier — reject
+
+A pinned MIT/permissive corpus was assembled from Vite, Node, and Svelte:
+489 files and 5,346,006 characters. It has 8.51% scanner-break density and
+48.18% coverage by runs of at least 32 plain characters; Node API documentation
+accounts for 81.4% of its bytes.
+
+The best document classifier averaged +2.43% externally but dominant Node
+documentation was consistently 3.15% slower. Local-screen pairs ranged from
++3.15% to -13.94%, and the implementation added 216 gzip bytes. Exactness and
+all 2,512 parser tests passed, but the candidate did not advance. The pinned
+corpus remains useful for future brackets.

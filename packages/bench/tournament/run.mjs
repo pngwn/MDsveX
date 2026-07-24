@@ -4,6 +4,7 @@ import {
 	mkdtemp,
 	mkdir,
 	readFile,
+	realpath,
 	rm,
 	symlink,
 	writeFile,
@@ -154,10 +155,59 @@ async function copy_workspace(destination) {
 				return !["dist", "tsc", "node_modules"].includes(first);
 			},
 		});
-		await cp(join(source, "node_modules"), join(target, "node_modules"), {
+		const source_node_modules = await realpath(
+			join(source, "node_modules"),
+		);
+		await cp(source_node_modules, join(target, "node_modules"), {
 			recursive: true,
 			verbatimSymlinks: true,
 		});
+	}
+
+	// Always relink workspace packages inside the isolated workspace. This is
+	// required when a source checkout's package node_modules directory is
+	// itself an absolute symlink to another worktree.
+	for (const [package_name, dependency] of [
+		["render", "parse"],
+		["mdsvex", "parse"],
+		["mdsvex", "render"],
+	]) {
+		const scope = join(
+			destination,
+			"packages",
+			package_name,
+			"node_modules",
+			"@mdsvex",
+		);
+		const link = join(scope, dependency);
+		await mkdir(scope, { recursive: true });
+		await rm(link, { recursive: true, force: true });
+		await symlink(`../../../${dependency}`, link);
+	}
+
+	for (const [package_name, dependency] of [
+		["render", "parse"],
+		["mdsvex", "parse"],
+		["mdsvex", "render"],
+	]) {
+		const actual = await realpath(
+			join(
+				destination,
+				"packages",
+				package_name,
+				"node_modules",
+				"@mdsvex",
+				dependency,
+			),
+		);
+		const expected = await realpath(
+			join(destination, "packages", dependency),
+		);
+		if (actual !== expected) {
+			throw new Error(
+				`workspace link escaped isolation: ${package_name} -> ${dependency}`,
+			);
+		}
 	}
 }
 

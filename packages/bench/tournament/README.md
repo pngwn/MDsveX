@@ -4,6 +4,11 @@ This development-only harness screens many source variants against one shared,
 balanced corpus. It never edits the checked-out implementation: baseline and
 candidate builds live in temporary workspaces.
 
+Workspace package links are recreated inside each temporary tree, even when
+the source checkout reuses an absolute `node_modules` symlink from another
+worktree. This ensures compiler metrics actually load the candidate parser and
+renderer rather than the shared checkout.
+
 Every pair swaps isolated baseline and candidate builds into the same absolute
 execution path, then measures them in fresh Node processes in A-B-B-A order.
 This controls module-path, JIT-order, host, and thermal noise. A variant is accepted
@@ -28,7 +33,9 @@ The corpus combines:
 `smoke` uses 24 fixture samples, `screen` uses 128, and `full` uses all local
 fixtures. External material is never downloaded automatically. Candidate
 repositories and their licenses are recorded in `external-corpora.json`;
-resolve refs to immutable commits and place reviewed files in a local cache.
+the reviewed Vite, Node, and Svelte refs are pinned to immutable commits.
+Place downloaded files in a local cache and pass its path with
+`--external-dir`.
 
 ## Running
 
