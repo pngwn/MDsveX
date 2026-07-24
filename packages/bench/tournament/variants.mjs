@@ -39,6 +39,7 @@ const capacity_variants = CAPACITIES.flatMap(({ id, expression }) => {
 				"compileMappedCold",
 				"compileMappedReused",
 				"compileV3",
+				"compileV3Direct",
 			],
 			edits: [edit("packages/mdsvex/src/main.ts", expression, 2)],
 		},
@@ -51,6 +52,7 @@ const capacity_variants = CAPACITIES.flatMap(({ id, expression }) => {
 				"compileMappedCold",
 				"compileMappedReused",
 				"compileV3",
+				"compileV3Direct",
 			],
 			edits: [
 				edit("packages/parse/src/main.ts", expression, 1),
@@ -71,6 +73,7 @@ export const variants = [
 			"compileMappedCold",
 			"compileMappedReused",
 			"compileV3",
+			"compileV3Direct",
 		],
 		edits: [],
 	},

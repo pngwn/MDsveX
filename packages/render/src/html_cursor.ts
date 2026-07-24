@@ -15,6 +15,8 @@ import { Cursor } from "@mdsvex/parse/cursor";
 import type { NodeBuffer } from "@mdsvex/parse/utils";
 import { CI_TEXT, CI_CODE, CI_SVELTE, CI_STRUCTURE } from "./mappings";
 import type { Mapping, CodeInformation, MappingData } from "./mappings";
+import { pending_mappings_to_v3 } from "./sourcemap";
+import type { SourceMapV3 } from "./sourcemap";
 
 export type { Mapping, CodeInformation, MappingData } from "./mappings";
 
@@ -862,6 +864,43 @@ export class CursorHTMLRenderer {
 		}
 		const mappings = _resolve_mappings(out, entries, this.mapping_offsets);
 		return { blocks: this.blocks, mappings };
+	}
+
+	/** render directly to a V3 sourcemap, bypassing public Mapping objects. */
+	update_v3(
+		buf: NodeBuffer,
+		source: string,
+		file?: string,
+	): { blocks: CursorBlockEntry[]; map: SourceMapV3 } {
+		if (!this.cursor) {
+			this.cursor = new Cursor(buf, source);
+		} else {
+			this.cursor.reinit(buf, source);
+		}
+		const c = this.cursor;
+		c.reset();
+
+		const out = this.out;
+		const entries = this.entries;
+		out.length = 0;
+		entries.length = 0;
+		_node(c, out, entries);
+		this.html = out.join("");
+		const needed = out.length + 1;
+		if (this.mapping_offsets.length < needed) {
+			let capacity = 16;
+			while (capacity < needed) capacity <<= 1;
+			this.mapping_offsets = new Uint32Array(capacity);
+		}
+		const map = pending_mappings_to_v3(
+			out,
+			entries,
+			source,
+			this.html,
+			file,
+			this.mapping_offsets,
+		);
+		return { blocks: this.blocks, map };
 	}
 
 	reset(): void {

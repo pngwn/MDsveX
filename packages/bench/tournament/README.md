@@ -10,6 +10,10 @@ This controls module-path, JIT-order, host, and thermal noise. A variant is acce
 only when its parser arena, rendered code, and mappings match the baseline
 exactly across the selected corpus.
 
+The compiler bracket records both the legacy enriched-mapping-to-V3 path and
+the fused direct-V3 path so later changes cannot silently optimize one by
+regressing the other.
+
 ## Corpus
 
 The corpus combines:

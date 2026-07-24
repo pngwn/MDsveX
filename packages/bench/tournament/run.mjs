@@ -370,6 +370,7 @@ function print_result(result) {
 			percent(result.ratios.compileMappedCold).padStart(8),
 			percent(result.ratios.compileMappedReused).padStart(8),
 			percent(result.ratios.compileV3).padStart(8),
+			percent(result.ratios.compileV3Direct).padStart(8),
 			result.id,
 		].join("  "),
 	);
@@ -437,7 +438,7 @@ try {
 	}
 
 	console.log(
-		"state  geomean     parse    render      cold    reused        v3  variant",
+		"state  geomean     parse    render      cold    reused        v3    direct  variant",
 	);
 	const results = [];
 	for (const variant of selected_variants) {

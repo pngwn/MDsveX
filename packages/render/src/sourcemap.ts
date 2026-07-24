@@ -3,6 +3,7 @@
  */
 
 import type { Mapping, MappingData } from "./mappings";
+import type { PendingMapping } from "./html_cursor";
 
 
 /** build an array of byte offsets where each line begins. line 0 starts at 0. */
@@ -44,6 +45,25 @@ function vlq_encode(value: number): string {
 		result += VLQ_CHARS[digit];
 	} while (vlq > 0);
 	return result;
+}
+
+function source_map(
+	source: string,
+	mappings: string,
+	file?: string,
+): SourceMapV3 {
+	// use basename to match svelte compiler convention, vite resolves relative
+	// to the served JS file, so the browser can find the source.
+	const basename = file ? file.split(/[/\\]/).pop()! : "input.md";
+
+	return {
+		version: 3,
+		file: basename,
+		sources: [basename],
+		sourcesContent: [source],
+		names: [],
+		mappings,
+	};
 }
 
 
@@ -161,16 +181,109 @@ export function mappings_to_v3(
 		prev_src_col = src_col;
 	}
 
-	// use basename to match svelte compiler convention, vite resolves relative
-	// to the served JS file, so the browser can find the source.
-	const basename = file ? file.split(/[/\\]/).pop()! : "input.md";
+	return source_map(source, result, file);
+}
 
-	return {
-		version: 3,
-		file: basename,
-		sources: [basename],
-		sourcesContent: [source],
-		names: [],
-		mappings: result,
-	};
+/**
+ * Convert the renderer's pending entries straight to V3 without first
+ * allocating the public Volar Mapping objects and their one-element arrays.
+ */
+export function pending_mappings_to_v3(
+	out: string[],
+	entries: PendingMapping[],
+	source: string,
+	generated: string,
+	file?: string,
+	offset_scratch?: Uint32Array,
+): SourceMapV3 {
+	const needed = out.length + 1;
+	const offsets =
+		offset_scratch !== undefined && offset_scratch.length >= needed
+			? offset_scratch
+			: new Uint32Array(needed);
+	offsets[0] = 0;
+	for (let i = 0; i < out.length; i++) {
+		offsets[i + 1] = offsets[i] + out[i].length;
+	}
+
+	// Sort mapping entries, not expanded per-character segments. Content spans
+	// are non-overlapping, so their identity runs can be encoded in place.
+	const order: number[] = [];
+	for (let i = 0; i < entries.length; i++) {
+		const entry = entries[i];
+		const role = entry.data.role;
+		if (role === "open_syntax" || role === "close_syntax") continue;
+		order.push(i);
+	}
+	order.sort(
+		(a, b) =>
+			offsets[entries[a].out_idx] - offsets[entries[b].out_idx] ||
+			a - b,
+	);
+
+	const source_lines = build_line_starts(source);
+	const generated_lines = build_line_starts(generated);
+	let previous_generated_column = 0;
+	let previous_source_line = 0;
+	let previous_source_column = 0;
+	let previous_generated_line = 0;
+	let result = "";
+
+	for (let i = 0; i < order.length; i++) {
+		const entry = entries[order[i]];
+		const generated_offset = offsets[entry.out_idx];
+		const generated_length =
+			offsets[entry.out_idx + entry.out_count] - generated_offset;
+		const identity =
+			entry.data.role !== "node" &&
+			generated_length === entry.source_length;
+		const segment_count = identity ? generated_length : 1;
+		let [generated_line, generated_column] = offset_to_position(
+			generated_lines,
+			generated_offset,
+		);
+		let [source_line, source_column] = offset_to_position(
+			source_lines,
+			entry.source_offset,
+		);
+
+		for (let delta = 0; delta < segment_count; delta++) {
+			while (previous_generated_line < generated_line) {
+				result += ";";
+				previous_generated_line++;
+				previous_generated_column = 0;
+			}
+			if (result.length > 0 && result[result.length - 1] !== ";") {
+				result += ",";
+			}
+
+			result += vlq_encode(
+				generated_column - previous_generated_column,
+			);
+			result += "A";
+			result += vlq_encode(source_line - previous_source_line);
+			result += vlq_encode(source_column - previous_source_column);
+
+			previous_generated_column = generated_column;
+			previous_source_line = source_line;
+			previous_source_column = source_column;
+
+			if (identity) {
+				if (generated.charCodeAt(generated_offset + delta) === 10) {
+					generated_line++;
+					generated_column = 0;
+				} else {
+					generated_column++;
+				}
+				if (source.charCodeAt(entry.source_offset + delta) === 10) {
+					source_line++;
+					source_column = 0;
+				} else {
+					source_column++;
+				}
+			}
+		}
+	}
+
+	return source_map(source, result, file);
 }

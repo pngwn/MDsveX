@@ -27,6 +27,11 @@ export interface CompileResult {
 	mappings?: Mapping<MappingData>[];
 }
 
+export interface CompileV3Result {
+	code: string;
+	map: SourceMapV3;
+}
+
 function render_once(
 	source: string,
 	options?: CompileOptions,
@@ -93,6 +98,38 @@ export class CompilerSession {
 		this.renderer.update(nodes, source);
 		return { code: this.renderer.html };
 	}
+
+	compile_v3(
+		source: string,
+		file?: string,
+		options?: Omit<CompileOptions, "sourcemap">,
+	): CompileV3Result {
+		if (options?.parsePlugins && options.parsePlugins.length > 0) {
+			const result = render_once(source, {
+				...options,
+				sourcemap: true,
+			});
+			return {
+				code: result.code,
+				map: mappings_to_v3(result.mappings!, source, result.code, file),
+			};
+		}
+
+		if (this.tree === null) {
+			this.tree = new TreeBuilder(source.length >> 3 || 128);
+			this.parser = new PFMParser(this.tree);
+		} else {
+			this.tree.reset();
+		}
+
+		this.parser!.parse(source);
+		const result = this.renderer.update_v3(
+			this.tree.get_buffer(),
+			source,
+			file,
+		);
+		return { code: this.renderer.html, map: result.map };
+	}
 }
 
 function render(
@@ -134,18 +171,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			transform(code, id) {
 				if (!matches(id)) return;
 
-				const result = compiler.compile(code, {
+				const result = compiler.compile_v3(code, id, {
 					parsePlugins: options.parsePlugins,
-					sourcemap: true,
 				});
 
-				if (result.mappings) {
-					storedMaps.set(
-						id,
-						mappings_to_v3(result.mappings, code, result.code, id),
-					);
-					storedSources.set(id, code);
-				}
+				storedMaps.set(id, result.map);
+				storedSources.set(id, code);
 
 				// return NO map, avoids poisoning getCombinedSourcemap()
 				return { code: result.code };

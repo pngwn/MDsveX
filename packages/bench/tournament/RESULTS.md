@@ -63,3 +63,45 @@ The first architectural bracket should compare:
 Direct V3 emission is the leading compiler experiment. The current Vite path
 materializes mapping objects and then immediately converts them again, leaving
 more plausible headroom than the already-tight HTML string builder.
+
+## 2026-07-25 first architectural bracket
+
+### Direct V3 emission — advance
+
+The fused renderer/session path sorts renderer entries and streams identity
+runs directly into V3. It avoids allocating public Mapping objects,
+one-element arrays, and expanded per-character Segment objects. The existing
+Mapping APIs remain unchanged, and parse-plugin calls retain the enriched
+mapping fallback.
+
+- Exact HTML and serialized V3 maps across 975 documents / 217,032 characters.
+- Shared 141-document screen: median +4.07%, four wins in four pairs.
+- Canonical four-file bracket: conservative median +4.18%, six wins in six.
+- Final short confirmation after incremental line tracking: +6.30%.
+- Combined-worktree canonical run: 48.22 to 51.27 operations/second
+  (+6.31%) for legacy versus direct V3.
+- Complete suite: 2,762 tests passed, 8 existing todos.
+- Bundle delta: +2.34 kB raw / approximately +0.59 kB gzip.
+
+The conservative claim remains +4% until another full tournament run confirms
+the final inner-loop refinement.
+
+### Parser scratch reuse — reject
+
+Unconditional retained scratch improved reused mapped compilation by 3.62% in
+five of five screen pairs, but regressed one-shot parsing by 11.27%. Scoping
+reuse to CompilerSession removed the parse regression but also removed the
+repeatable target gain: median reused compilation was -0.30%, winning two of
+five pairs. It also retained roughly 0.9 MB more heap after a large-to-small
+workload. No scratch variant was integrated.
+
+### Bulk text scanning — reject
+
+A native regexp scanner improved long plain prose by 55%, but regressed mixed
+syntax. The best scalar-prefix/regexp hybrid retained a 30.52% prose gain while
+regressing code by 2.03% and HTML by 1.15%. On the shared 141-document screen,
+parser throughput was 6.39% lower with disagreeing pairs. No scanner variant
+was integrated.
+
+This family may be worth revisiting only as a document-level prose-specialized
+path after an external corpus establishes that the weighting is representative.

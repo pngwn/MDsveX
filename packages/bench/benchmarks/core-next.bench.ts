@@ -116,6 +116,19 @@ describe(`next core pipeline (${corpus.reduce((n, source) => n + source.length, 
 		return bytes;
 	}, options);
 
+	bench("compile v3 direct", () => {
+		let bytes = 0;
+		for (let index = 0; index < corpus.length; index += 1) {
+			const source = corpus[index];
+			const result = compiler.compile_v3(
+				source,
+				`fixture-${index}.svx`,
+			);
+			bytes += result.code.length + result.map.mappings.length;
+		}
+		return bytes;
+	}, options);
+
 	bench("compile cold", () => {
 		let bytes = 0;
 		for (const source of corpus) {

@@ -188,6 +188,17 @@ function prepare_pipeline(pipeline, corpus) {
 				}
 				return output;
 			},
+			compileV3Direct() {
+				let output = 0;
+				for (let index = 0; index < sources.length; index += 1) {
+					const result = compiler.compile_v3(
+						sources[index],
+						corpus.documents[index].name,
+					);
+					output += result.code.length + result.map.mappings.length;
+				}
+				return output;
+			},
 		},
 	};
 }
