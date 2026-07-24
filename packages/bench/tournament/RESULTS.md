@@ -189,3 +189,41 @@ local and pinned-external documents: 0.17% of corpus characters. It regressed
 smoke parsing by 8.87%, direct V3 by 6.47%, and added approximately 1.5 kB gzip
 across parser and mdsvex bundles. The extra scan cannot pay for itself at that
 coverage, so the experiment stopped after one counterbalanced pair.
+
+## 2026-07-25 fourth architectural bracket
+
+### Remaining direct V3 tail — reject
+
+The remaining allocation and lookup variants were exact but did not clear the
+4% acceptance threshold. A monotonic generated-line cursor improved the shared
+screen by 1.83%, reusing line indexes improved it by 2.54%, and specialized
+boundary encoding improved it by 0.77%. Repeated constant grouping was flat or
+slower.
+
+The direct V3 path is therefore at a practical local ceiling under the current
+acceptance gate. The combined canonical result remains 402.48 operations/second
+for direct V3 versus 48.33 for the legacy enriched-mapping path, approximately
+8.33x faster.
+
+### Incremental watch compiler — reject
+
+A bounded watch compiler prototype retained parse/render checkpoints and
+spliced direct V3 output for eligible edits. It produced exact code, public
+mappings, and V3 maps across deterministic cases and 600 randomized
+variable-length edits.
+
+Eligible edits were materially faster: 5.13x median aggregate throughput and
+9.62x median per-edit throughput. However, only 10 of 128 mixed-corpus edits
+qualified, leaving a 92.19% fallback rate. Fallback was 7.96x slower than a
+V3-only cold compile because it also materialized public mappings, retained
+state was approximately 153 kB per file, and the API added 2.42 kB gzip.
+
+An independent compact-index prototype reduced edit metadata to 1,568 bytes
+for 98 spans across eight documents, compared with a 69,604-byte
+character-wide segment table for the largest fixture alone. Widening its edit
+eligibility changed 23 of 27 V3 maps; a boundary rewrite still differed on 15
+because interleaved duplicate and node segments require more source-map state.
+
+The current watch API does not advance. A future bracket can combine the
+compact typed-span index with stored boundary checkpoints and the original
+conservative eligibility proof, then attack fallback cost separately.
