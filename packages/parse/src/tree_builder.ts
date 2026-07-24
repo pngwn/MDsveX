@@ -72,7 +72,8 @@ export class TreeBuilder implements Emitter {
 		this.nodes.set_end(idx, end);
 
 		// capture pending state before close dispatch / commit
-		const was_pending = this.nodes._pending_nodes[idx] === 1;
+		const was_pending =
+			this.dispatcher !== null && this.nodes._pending_nodes[idx] === 1;
 
 		// plugin close dispatch: fire close callbacks before committing
 		if (this.dispatcher) {
@@ -83,16 +84,11 @@ export class TreeBuilder implements Emitter {
 		// wrappers, they stay pending after close until the list closes
 		// and the parser either revokes (tight) or commits (loose) them.
 		const kind = this.id_to_kind[id];
-		const parent_kind = this.nodes._kinds[
-			this.nodes._parents[idx]
-		] as NodeKind;
-		if (
-			!(
-				kind === NodeKind.paragraph &&
-				parent_kind === NodeKind.list_item &&
-				this.nodes._pending_nodes[idx] === 1
-			)
-		) {
+		const keep_pending =
+			kind === NodeKind.paragraph &&
+			this.nodes._pending_nodes[idx] === 1 &&
+			this.nodes._kinds[this.nodes._parents[idx]] === NodeKind.list_item;
+		if (!keep_pending) {
 			this.nodes.commit_node(idx);
 			if (this.dispatcher && !was_pending) {
 				this.dispatcher.dispatch_commit(idx);
