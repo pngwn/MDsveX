@@ -151,3 +151,41 @@ documentation was consistently 3.15% slower. Local-screen pairs ranged from
 +3.15% to -13.94%, and the implementation added 216 gzip bytes. Exactness and
 all 2,512 parser tests passed, but the candidate did not advance. The pinned
 corpus remains useful for future brackets.
+
+## 2026-07-25 third architectural bracket
+
+### Sparse metadata array — reject
+
+The full local corpus contains 26,777 nodes; only 3,028 (11.31%) carry
+metadata. HTML tags account for 1,987 metadata objects, followed by attributes,
+links, and list state.
+
+Replacing the sparse Map with an indexed JavaScript array remained exact and
+saved 7 gzip bytes, but a valid three-pair smoke produced only +1.30% target
+geomean: parse +3.13%, render +1.70%, cold compile +2.00%, reused compile
++0.14%, legacy V3 -0.77%, and direct V3 +1.64%. This did not clear the
+noise-adjusted 2% gate, so private metadata lanes were not pursued.
+
+### Generated-order direct V3 — advance
+
+The direct renderer now emits only V3-relevant node/content anchors in
+generated order. Node anchors are emitted pre-order, syntax entries and
+post-order duplicates are suppressed, and the encoder bypasses sorting.
+Enriched public mappings and parse-plugin compilation keep the existing path.
+
+- Canonical direct V3: +5.45% median, four wins in four pairs.
+- Shared 141-document screen: +8.82% median, four wins in four pairs.
+- Combined-worktree canonical run: 379.94 to 402.48 operations/second
+  (+5.93%) after the constant-segment winner.
+- Exact maps across all 975 local documents with 100% direct-path coverage.
+- Pending mapping entries: -45.5%; post-GC heap: -2.1%.
+- Bundle delta: approximately +0.75 kB raw / +0.25 kB gzip.
+- Relevant renderer/mdsvex tests: 114 passed.
+
+### Limited two-phase parsing — reject
+
+The conservative feasibility path remained exact but covered only 32 of 1,464
+local and pinned-external documents: 0.17% of corpus characters. It regressed
+smoke parsing by 8.87%, direct V3 by 6.47%, and added approximately 1.5 kB gzip
+across parser and mdsvex bundles. The extra scan cannot pay for itself at that
+coverage, so the experiment stopped after one counterbalanced pair.

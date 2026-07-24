@@ -62,6 +62,60 @@ const capacity_variants = CAPACITIES.flatMap(({ id, expression }) => {
 	];
 });
 
+const metadata_variants = [
+	{
+		id: "metadata-sparse-array",
+		family: "metadata",
+		description: "store sparse node metadata in an indexed array",
+		metrics: [
+			"parse",
+			"renderMapped",
+			"compileMappedCold",
+			"compileMappedReused",
+			"compileV3",
+			"compileV3Direct",
+		],
+		edits: [
+			{
+				file: "packages/parse/src/utils.ts",
+				find: "private metadata: Map<number, any>;",
+				replace: "private metadata: (any | undefined)[];",
+				expectedCount: 1,
+			},
+			{
+				file: "packages/parse/src/utils.ts",
+				find: "this.metadata = new Map();",
+				replace: "this.metadata = [];",
+				expectedCount: 1,
+			},
+			{
+				file: "packages/parse/src/utils.ts",
+				find: "this.metadata.clear();",
+				replace: "this.metadata.length = 0;",
+				expectedCount: 1,
+			},
+			{
+				file: "packages/parse/src/utils.ts",
+				find: "this.metadata.set(index, metadata);",
+				replace: "this.metadata[index] = metadata;",
+				expectedCount: 3,
+			},
+			{
+				file: "packages/parse/src/utils.ts",
+				find: "this.metadata.delete(index);",
+				replace: "this.metadata[index] = undefined;",
+				expectedCount: 1,
+			},
+			{
+				file: "packages/parse/src/utils.ts",
+				find: "return this.metadata.get(index);",
+				replace: "return this.metadata[index];",
+				expectedCount: 1,
+			},
+		],
+	},
+];
+
 export const variants = [
 	{
 		id: "control-rebuild",
@@ -78,4 +132,5 @@ export const variants = [
 		edits: [],
 	},
 	...capacity_variants,
+	...metadata_variants,
 ];
