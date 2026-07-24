@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 import { build_corpus } from "./corpus.mjs";
 import { variants } from "./variants.mjs";
 
@@ -28,6 +29,7 @@ function parse_arguments(argv) {
 		keep: false,
 		controlThreshold: 0.08,
 		minimumGain: 0.02,
+		maxGzipGrowth: 1_536,
 		externalDirectory: undefined,
 		output: undefined,
 	};
@@ -65,6 +67,8 @@ function parse_arguments(argv) {
 			options.controlThreshold = Number(argv[++index]);
 		} else if (argument === "--minimum-gain") {
 			options.minimumGain = Number(argv[++index]);
+		} else if (argument === "--max-gzip-growth") {
+			options.maxGzipGrowth = Number(argv[++index]);
 		} else if (argument === "--external-dir") {
 			options.externalDirectory = resolve(argv[++index]);
 		} else if (argument === "--output") {
@@ -80,12 +84,14 @@ function parse_arguments(argv) {
 		!Number.isInteger(options.pairs) ||
 		!Number.isFinite(options.controlThreshold) ||
 		!Number.isFinite(options.minimumGain) ||
+		!Number.isFinite(options.maxGzipGrowth) ||
 		options.duration <= 0 ||
 		options.warmup < 0 ||
 		options.limit < 0 ||
 		options.pairs <= 0 ||
 		options.controlThreshold < 0 ||
-		options.minimumGain < 0
+		options.minimumGain < 0 ||
+		options.maxGzipGrowth < 0
 	) {
 		throw new Error("numeric tournament options must be non-negative");
 	}
@@ -162,6 +168,23 @@ async function build_workspace(workspace) {
 			capture: true,
 		});
 	}
+}
+
+async function measure_bundle(workspace) {
+	const files = [
+		"packages/parse/dist/main.js",
+		"packages/render/dist/html_cursor.js",
+		"packages/render/dist/sourcemap.js",
+		"packages/mdsvex/dist/main.js",
+	];
+	let raw = 0;
+	let gzip = 0;
+	for (const file of files) {
+		const contents = await readFile(join(workspace, file));
+		raw += contents.length;
+		gzip += gzipSync(contents).length;
+	}
+	return { raw, gzip };
 }
 
 async function run_worker(
@@ -253,7 +276,7 @@ function summarize_pair(baseline_runs, candidate_runs) {
 	};
 }
 
-function summarize(variant, pair_results) {
+function summarize(variant, pair_results, baseline_bundle, candidate_bundle) {
 	const ratios = {};
 	const wins = {};
 	for (const name of Object.keys(pair_results[0].metrics)) {
@@ -270,6 +293,12 @@ function summarize(variant, pair_results) {
 		family: variant.family,
 		description: variant.description,
 		targetMetrics: variant.metrics,
+		bundle: {
+			baseline: baseline_bundle,
+			candidate: candidate_bundle,
+			rawDelta: candidate_bundle.raw - baseline_bundle.raw,
+			gzipDelta: candidate_bundle.gzip - baseline_bundle.gzip,
+		},
 		correct: pair_results.every((result) => result.correct),
 		ratios,
 		wins,
@@ -340,7 +369,9 @@ function classify_results(results, options) {
 		result.targetWins = wins;
 		if (!bracket_valid) result.decision = "reject-noisy-bracket";
 		else if (!result.correct) result.decision = "reject-correctness";
-		else if (important_regression) result.decision = "reject-regression";
+		else if (result.bundle.gzipDelta > options.maxGzipGrowth) {
+			result.decision = "reject-size";
+		} else if (important_regression) result.decision = "reject-regression";
 		else if (
 			target_geomean < 1 + required_gain ||
 			wins < required_wins
@@ -423,6 +454,7 @@ try {
 		build_workspace(baseline_workspace),
 		build_workspace(candidate_workspace),
 	]);
+	const baseline_bundle = await measure_bundle(baseline_workspace);
 
 	const edited_files = new Set(
 		selected_variants.flatMap((variant) =>
@@ -444,6 +476,7 @@ try {
 	for (const variant of selected_variants) {
 		await apply_variant(candidate_workspace, variant, originals);
 		await build_workspace(candidate_workspace);
+		const candidate_bundle = await measure_bundle(candidate_workspace);
 
 		// A-B-B-A counterbalances process order and uses fresh V8 isolates.
 		const pair_results = [];
@@ -472,7 +505,12 @@ try {
 			pair_results.push(summarize_pair(baseline_runs, candidate_runs));
 		}
 
-		const result = summarize(variant, pair_results);
+		const result = summarize(
+			variant,
+			pair_results,
+			baseline_bundle,
+			candidate_bundle,
+		);
 		results.push(result);
 		print_result(result);
 	}
@@ -488,7 +526,7 @@ try {
 	for (const result of results) {
 		if (result.family !== "control") {
 			console.log(
-				`${result.decision.padEnd(21)} ${((result.targetGeomean - 1) * 100).toFixed(2).padStart(8)}%  ${result.id}`,
+				`${result.decision.padEnd(21)} ${((result.targetGeomean - 1) * 100).toFixed(2).padStart(8)}%  ${String(result.bundle.gzipDelta).padStart(6)} B gzip  ${result.id}`,
 			);
 		}
 	}

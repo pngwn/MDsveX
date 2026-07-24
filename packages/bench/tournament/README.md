@@ -48,6 +48,7 @@ node packages/bench/tournament/run.mjs --screen --match combined
 node packages/bench/tournament/run.mjs --smoke --duration 250 --warmup 80
 node packages/bench/tournament/run.mjs --screen --pairs 5
 node packages/bench/tournament/run.mjs --screen --control-threshold 0.025
+node packages/bench/tournament/run.mjs --screen --max-gzip-growth 1024
 ```
 
 The initial family explores parser/compiler arena sizing. Further families
@@ -61,3 +62,7 @@ The bracket is automatically invalidated when any control metric exceeds the
 mode's threshold (8% smoke, 3% screen, 2% full). Candidates also declare their
 affected metrics, need wins in at least 75% of pairs, and cannot hide an
 important target regression inside an aggregate score.
+
+The report also records raw and gzip deltas across the parser, renderer, V3
+encoder, and mdsvex bundles. Candidates exceeding the configured gzip budget
+(1.5 kB by default) are rejected even when they are faster.
