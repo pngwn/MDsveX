@@ -248,21 +248,32 @@ export function pending_mappings_to_v3(
 		);
 
 		for (let delta = 0; delta < segment_count; delta++) {
-			while (previous_generated_line < generated_line) {
-				result += ";";
-				previous_generated_line++;
-				previous_generated_column = 0;
-			}
-			if (result.length > 0 && result[result.length - 1] !== ";") {
-				result += ",";
-			}
+			if (
+				delta > 0 &&
+				generated_line === previous_generated_line &&
+				source_line === previous_source_line &&
+				generated_column === previous_generated_column + 1 &&
+				source_column === previous_source_column + 1
+			) {
+				// The common identity-run segment is [1, 0, 0, 1].
+				result += ",CAAC";
+			} else {
+				while (previous_generated_line < generated_line) {
+					result += ";";
+					previous_generated_line++;
+					previous_generated_column = 0;
+				}
+				if (result.length > 0 && result[result.length - 1] !== ";") {
+					result += ",";
+				}
 
-			result += vlq_encode(
-				generated_column - previous_generated_column,
-			);
-			result += "A";
-			result += vlq_encode(source_line - previous_source_line);
-			result += vlq_encode(source_column - previous_source_column);
+				result += vlq_encode(
+					generated_column - previous_generated_column,
+				);
+				result += "A";
+				result += vlq_encode(source_line - previous_source_line);
+				result += vlq_encode(source_column - previous_source_column);
+			}
 
 			previous_generated_column = generated_column;
 			previous_source_line = source_line;
