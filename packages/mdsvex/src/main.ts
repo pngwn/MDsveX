@@ -1,6 +1,9 @@
 import { PFMParser, PluginDispatcher, SourceTextSource } from "@mdsvex/parse";
 import type { ParsePlugin } from "@mdsvex/parse";
-import { TreeBuilder } from "@mdsvex/parse/tree-builder";
+import {
+	DirectTreeBuilder,
+	TreeBuilder,
+} from "@mdsvex/parse/tree-builder";
 import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
 import { mappings_to_v3 } from "@mdsvex/render/sourcemap";
 import type { Mapping, MappingData } from "@mdsvex/render/mappings";
@@ -17,22 +20,34 @@ export interface MdsvexOptions {
 	parsePlugins?: ParsePlugin[];
 }
 
-interface RenderResult {
+export interface CompileOptions {
+	parsePlugins?: ParsePlugin[];
+	sourcemap?: boolean;
+}
+
+export interface CompileResult {
 	code: string;
 	mappings?: Mapping<MappingData>[];
 }
 
-function render(
+export interface CompileV3Result {
+	code: string;
+	map: SourceMapV3;
+}
+
+function render_once(
 	source: string,
-	options?: { parsePlugins?: ParsePlugin[]; sourcemap?: boolean },
-): RenderResult {
+	options?: CompileOptions,
+): CompileResult {
 	let dispatcher: PluginDispatcher | undefined;
 	if (options?.parsePlugins && options.parsePlugins.length > 0) {
 		const text_source = new SourceTextSource(source);
 		dispatcher = new PluginDispatcher(options.parsePlugins, text_source);
 	}
 
-	const tree = new TreeBuilder(source.length >> 3 || 128, dispatcher);
+	const tree = dispatcher
+		? new TreeBuilder(source.length >> 3 || 128, dispatcher)
+		: new DirectTreeBuilder(source.length >> 3 || 128);
 	const parser = new PFMParser(tree);
 	parser.parse(source);
 
@@ -49,6 +64,84 @@ function render(
 
 	renderer.update(tree.get_buffer(), source);
 	return { code: renderer.html };
+}
+
+/**
+ * Reusable no-plugin compiler for sequential documents.
+ *
+ * The arena remains private so resetting it can never mutate an AST held by a
+ * caller. Parse plugins retain the one-shot path because their dispatcher owns
+ * a source-specific text view.
+ */
+export class CompilerSession {
+	private tree: DirectTreeBuilder | null = null;
+	private parser: PFMParser | null = null;
+	private renderer = new CursorHTMLRenderer({ cache: false });
+
+	compile(
+		source: string,
+		options?: CompileOptions,
+	): CompileResult {
+		if (options?.parsePlugins && options.parsePlugins.length > 0) {
+			return render_once(source, options);
+		}
+
+		if (this.tree === null) {
+			this.tree = new DirectTreeBuilder(source.length >> 3 || 128);
+			this.parser = new PFMParser(this.tree);
+		} else {
+			this.tree.reset();
+		}
+
+		this.parser!.parse(source);
+		const nodes = this.tree.get_buffer();
+		if (options?.sourcemap) {
+			const result = this.renderer.update_mapped(nodes, source);
+			return { code: this.renderer.html, mappings: result.mappings };
+		}
+
+		this.renderer.update(nodes, source);
+		return { code: this.renderer.html };
+	}
+
+	compile_v3(
+		source: string,
+		file?: string,
+		options?: Omit<CompileOptions, "sourcemap">,
+	): CompileV3Result {
+		if (options?.parsePlugins && options.parsePlugins.length > 0) {
+			const result = render_once(source, {
+				...options,
+				sourcemap: true,
+			});
+			return {
+				code: result.code,
+				map: mappings_to_v3(result.mappings!, source, result.code, file),
+			};
+		}
+
+		if (this.tree === null) {
+			this.tree = new DirectTreeBuilder(source.length >> 3 || 128);
+			this.parser = new PFMParser(this.tree);
+		} else {
+			this.tree.reset();
+		}
+
+		this.parser!.parse(source);
+		const result = this.renderer.update_v3(
+			this.tree.get_buffer(),
+			source,
+			file,
+		);
+		return { code: this.renderer.html, map: result.map };
+	}
+}
+
+function render(
+	source: string,
+	options?: CompileOptions,
+): CompileResult {
+	return render_once(source, options);
 }
 
 /**
@@ -73,6 +166,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 	const storedMaps = new Map<string, SourceMapV3>();
 	const storedSources = new Map<string, string>();
+	const compiler = new CompilerSession();
 
 	return [
 		{
@@ -82,18 +176,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			transform(code, id) {
 				if (!matches(id)) return;
 
-				const result = render(code, {
+				const result = compiler.compile_v3(code, id, {
 					parsePlugins: options.parsePlugins,
-					sourcemap: true,
 				});
 
-				if (result.mappings) {
-					storedMaps.set(
-						id,
-						mappings_to_v3(result.mappings, code, result.code, id),
-					);
-					storedSources.set(id, code);
-				}
+				storedMaps.set(id, result.map);
+				storedSources.set(id, code);
 
 				// return NO map, avoids poisoning getCombinedSourcemap()
 				return { code: result.code };

@@ -36,7 +36,7 @@ import type { ParseOptions } from './types';
 import type { Emitter } from './opcodes';
 import { NodeKind } from './utils';
 import { NodeBuffer, ErrorCollector } from './utils';
-import { TreeBuilder } from './tree_builder';
+import { DirectTreeBuilder, TreeBuilder } from './tree_builder';
 import { PluginDispatcher } from './plugin_dispatch';
 import { SourceTextSource } from './node_view';
 export type { ParseOptions, ParseResult } from './types';
@@ -311,6 +311,12 @@ export class PFMParser {
 		this.out = emitter;
 		this.errors = EMPTY_ERRORS;
 		this.tab_size = tab_size;
+		if (
+			(emitter as Emitter & { readonly direct_ids?: boolean }).direct_ids ===
+			true
+		) {
+			this.emit_open = this.emit_open_direct;
+		}
 	}
 
 	/**
@@ -470,7 +476,38 @@ export class PFMParser {
 		pending = false
 	): number {
 		const id = this.next_id++;
-		this.out.open(id, kind, start, parent, extra, pending);
+		this.out.open(
+			id,
+			kind,
+			start,
+			parent,
+			extra,
+			pending,
+		);
+		if (pending) {
+			this.pending_starts[this.pending_count] = start;
+			this.pending_ids[this.pending_count++] = id;
+		}
+		this.NodeKind_array[id] = kind;
+		return id;
+	}
+
+	private emit_open_direct(
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		extra = 0,
+		pending = false,
+	): number {
+		const opcode_id = this.next_id++;
+		const id = this.out.open(
+			opcode_id,
+			kind,
+			start,
+			parent,
+			extra,
+			pending,
+		) as unknown as number;
 		if (pending) {
 			this.pending_starts[this.pending_count] = start;
 			this.pending_ids[this.pending_count++] = id;
@@ -5769,728 +5806,10 @@ export class PFMParser {
 						this.states.pop();
 						continue;
 					}
-					switch (code) {
-						case BACKTICK: {
-							this.states.push(StateKind.code_span_start);
-							this.extra = 0;
-							continue;
-						}
-						case LINEFEED: {
-							// need to see next line - hold back at end of buffer
-							if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
-								break main_loop;
-							}
-							if (this.block_quote_depth > 0) {
-								this.states.pop();
-								continue;
-							}
-							if (this.is_block_interrupt(this.cursor + 1)) {
-								this.states.pop();
-								continue;
-							} else if (this.list_depth > 0) {
-								const np = this.cursor + 1;
-								const { columns: ind } = this.count_indent(np);
-								if (ind >= this.list_content_offset) {
-									const stripped = this.skip_columns(
-										np,
-										this.list_content_offset
-									);
-									if (
-										stripped < length &&
-										this.try_parse_list_marker(stripped) !== null
-									) {
-										this.states.pop();
-										continue;
-									}
-								}
-								// soft line break - emit soft_break node
-								const sb_il = this.emit_open(
-									NodeKind.soft_break,
-									this.cursor,
-									current_node
-								);
-								this.emit_close(sb_il, this.cursor + 1);
-								this.chomp1();
-								continue;
-							} else {
-								// soft line break - emit soft_break node
-								const sb_inl = this.emit_open(
-									NodeKind.soft_break,
-									this.cursor,
-									current_node
-								);
-								this.emit_close(sb_inl, this.cursor + 1);
-								this.chomp1();
-								// strip leading whitespace on continuation line
-								while (
-									this.cursor < length &&
-									source.charCodeAt(this.cursor) === SPACE
-								) {
-									this.chomp1();
-								}
-								continue;
-							}
-						}
-						case ASTERISK: {
-							// need to see the next char for flanking check
-							if (!this.finished && this.cursor + 1 >= length) break main_loop;
-							if (
-								this.prev & (CharMask.whitespace | CharMask.punctuation) &&
-								this.next_class & (CharMask.word | CharMask.punctuation)
-							) {
-								const n_id = this.emit_open(
-									NodeKind.strong_emphasis,
-									this.cursor,
-									current_node,
-									0,
-									true
-								);
-
-								this.out.set_value_start(n_id, this.cursor + 1);
-								this.node_stack.push(n_id);
-								this.emphasis_has_content = false;
-								this.states.push(StateKind.strong_emphasis);
-							} else {
-								const t_id = this.emit_open(
-									NodeKind.text,
-									this.cursor,
-									current_node
-								);
-								this.out.set_value_start(t_id, this.cursor);
-								this.node_stack.push(t_id);
-								this.states.push(StateKind.text);
-							}
-
-							this.chomp1();
-							continue;
-						}
-
-						case UNDERSCORE: {
-							// need to see the next char for flanking check
-							if (!this.finished && this.cursor + 1 >= length) break main_loop;
-							if (
-								this.prev & (CharMask.whitespace | CharMask.punctuation) &&
-								this.next_class & (CharMask.word | CharMask.punctuation)
-							) {
-								const n_id = this.emit_open(
-									NodeKind.emphasis,
-									this.cursor,
-									current_node,
-									0,
-									true
-								);
-
-								this.out.set_value_start(n_id, this.cursor + 1);
-								this.node_stack.push(n_id);
-								this.emphasis_has_content = false;
-								this.states.push(StateKind.emphasis);
-							} else {
-								const t_id = this.emit_open(
-									NodeKind.text,
-									this.cursor,
-									current_node
-								);
-								this.out.set_value_start(t_id, this.cursor);
-								this.node_stack.push(t_id);
-								this.states.push(StateKind.text);
-							}
-
-							this.chomp1();
-							continue;
-						}
-
-						case TILDE: {
-							// ~~ is a two-char token. if only one ~ is available
-							// and more input is expected, hold back.
-							if (!this.finished && this.cursor + 1 >= length) {
-								break main_loop;
-							}
-							// strikethrough: ~~ must be double tilde with flanking
-							if (
-								source.charCodeAt(this.cursor + 1) === TILDE &&
-								this.prev & (CharMask.whitespace | CharMask.punctuation) &&
-								classify(source.charCodeAt(this.cursor + 2)) &
-									(CharMask.word | CharMask.punctuation)
-							) {
-								const n_id = this.emit_open(
-									NodeKind.strikethrough,
-									this.cursor,
-									current_node,
-									0,
-									true
-								);
-								this.out.set_value_start(n_id, this.cursor + 2);
-								this.node_stack.push(n_id);
-								this.states.push(StateKind.strikethrough);
-								this.chomp(2);
-							} else if (
-								// subscript: single ~ with next char word/punctuation
-								source.charCodeAt(this.cursor + 1) !== TILDE &&
-								this.next_class & (CharMask.word | CharMask.punctuation)
-							) {
-								const n_id = this.emit_open(
-									NodeKind.subscript,
-									this.cursor,
-									current_node,
-									0,
-									true
-								);
-								this.out.set_value_start(n_id, this.cursor + 1);
-								this.node_stack.push(n_id);
-								this.states.push(StateKind.subscript);
-								this.chomp1();
-							} else {
-								const t_id = this.emit_open(
-									NodeKind.text,
-									this.cursor,
-									current_node
-								);
-								this.out.set_value_start(t_id, this.cursor);
-								this.node_stack.push(t_id);
-								this.states.push(StateKind.text);
-								this.chomp1();
-							}
-							continue;
-						}
-
-						case CARET: {
-							// superscript: ^ opens if next char is word/punctuation
-							// (no left-flanking constraint - x^2^ is valid)
-							if (this.next_class & (CharMask.word | CharMask.punctuation)) {
-								const n_id = this.emit_open(
-									NodeKind.superscript,
-									this.cursor,
-									current_node,
-									0,
-									true
-								);
-								this.out.set_value_start(n_id, this.cursor + 1);
-								this.node_stack.push(n_id);
-								this.states.push(StateKind.superscript);
-							} else {
-								const t_id = this.emit_open(
-									NodeKind.text,
-									this.cursor,
-									current_node
-								);
-								this.out.set_value_start(t_id, this.cursor);
-								this.node_stack.push(t_id);
-								this.states.push(StateKind.text);
-							}
-							this.chomp1();
-							continue;
-						}
-
-						case CLOSE_SQUARE_BRACKET: {
-							// if inside a link_text state, pop inline to let it handle ]
-							if (
-								this.states.length >= 2 &&
-								this.states[this.states.length - 2] === StateKind.link_text
-							) {
-								// inside directive text, a ] matching a literal [
-								// is text - fall through to the text path below
-								const dt_top = this.directive_text_ids.length - 1;
-								if (
-									dt_top >= 0 &&
-									this.directive_text_ids[dt_top] === current_node &&
-									this.directive_text_brackets[dt_top] > 0
-								) {
-									this.directive_text_brackets[dt_top]--;
-								} else {
-									this.states.pop();
-									continue;
-								}
-							}
-							// otherwise ] is just text
-							const t_id_br = this.emit_open(
-								NodeKind.text,
-								this.cursor,
-								current_node
-							);
-							this.out.set_value_start(t_id_br, this.cursor);
-							this.node_stack.push(t_id_br);
-							this.states.push(StateKind.text);
-							this.chomp1();
-							continue;
-						}
-
-						case BACKSLASH: {
-							// \ is a two-char token (escape or hard break) - hold back
-							if (!this.finished && this.cursor + 1 >= length) {
-								break main_loop;
-							}
-							const next_code = source.charCodeAt(this.cursor + 1);
-							if (next_code === LINEFEED) {
-								// need to see the complete continuation line to
-								// strip leading whitespace and handle block quotes
-								if (
-									!this.finished &&
-									!this.can_decide_after_lf(this.cursor + 1)
-								) {
-									break main_loop;
-								}
-								// pfm: in a blockquote, the continuation line must
-								// have `>` markers. if absent, emit the hard_break
-								// but leave the cursor on the lf so the paragraph
-								// state's strict-markers path cascade-closes the
-								// enclosing block_quote frames.
-								if (this.block_quote_depth > 0) {
-									const peek = this.skip_bq_markers(
-										this.cursor + 2,
-										this.block_quote_depth
-									);
-									if (peek === -1) {
-										const hb_id = this.emit_open(
-											NodeKind.hard_break,
-											this.cursor,
-											current_node
-										);
-										this.emit_close(hb_id, this.cursor + 2);
-										this.chomp1(); // past `\` only; cursor now on lf
-										this.states.pop(); // pop inline; paragraph will see the lf
-										continue;
-									}
-								}
-								const hb_id = this.emit_open(
-									NodeKind.hard_break,
-									this.cursor,
-									current_node
-								);
-								this.emit_close(hb_id, this.cursor + 2);
-								this.chomp(2);
-								// strip block quote markers
-								if (this.block_quote_depth > 0) {
-									const stripped = this.skip_bq_markers(
-										this.cursor,
-										this.block_quote_depth
-									);
-									if (stripped !== -1) this.chomp(stripped, true);
-								}
-								// skip leading spaces
-								while (
-									this.cursor < length &&
-									source.charCodeAt(this.cursor) === SPACE
-								) {
-									this.chomp1();
-								}
-								continue;
-							}
-							if (this.is_ascii_punctuation(next_code)) {
-								// escape: start text node after the backslash
-								const t_id = this.emit_open(
-									NodeKind.text,
-									this.cursor + 1,
-									current_node
-								);
-								this.out.set_value_start(t_id, this.cursor + 1);
-								this.node_stack.push(t_id);
-								this.states.push(StateKind.text);
-								this.chomp(2);
-							} else {
-								const t_id = this.emit_open(
-									NodeKind.text,
-									this.cursor,
-									current_node
-								);
-								this.out.set_value_start(t_id, this.cursor);
-								this.node_stack.push(t_id);
-								this.states.push(StateKind.text);
-								this.chomp1();
-							}
-							continue;
-						}
-
-						case OPEN_SQUARE_BRACKET: {
-							// links are not allowed inside directive text - the
-							// bracket is literal. track it when it sits directly
-							// in the text so the matching ] stays literal too.
-							if (this.directive_text_ids.length > 0) {
-								const dt_top = this.directive_text_ids.length - 1;
-								if (this.directive_text_ids[dt_top] === current_node) {
-									this.directive_text_brackets[dt_top]++;
-								}
-								const lt_id = this.emit_open(
-									NodeKind.text,
-									this.cursor,
-									current_node
-								);
-								this.out.set_value_start(lt_id, this.cursor);
-								this.node_stack.push(lt_id);
-								this.states.push(StateKind.text);
-								this.chomp1();
-								continue;
-							}
-							// speculatively open a link - [ is a link until proven otherwise
-							const link_id = this.emit_open(
-								NodeKind.link,
-								this.cursor,
-								current_node,
-								0,
-								true
-							);
-							this.node_stack.push(link_id);
-							this.states.push(StateKind.link_text);
-							this.link_text_start = this.cursor + 1;
-							this.chomp1(); // skip [
-							continue;
-						}
-
-						case EXCLAMATION_MARK: {
-							// ![ is a two-char token - hold back lone ! at end of buffer
-							if (!this.finished && this.cursor + 1 >= length) {
-								break main_loop;
-							}
-							// ![  -> speculatively open an image
-							// (not inside directive text - images are forbidden
-							// there, the ! falls through to the text path)
-							if (
-								source.charCodeAt(this.cursor + 1) === OPEN_SQUARE_BRACKET &&
-								this.directive_text_ids.length === 0
-							) {
-								const img_id = this.emit_open(
-									NodeKind.image,
-									this.cursor,
-									current_node,
-									0,
-									true
-								);
-								this.node_stack.push(img_id);
-								this.states.push(StateKind.link_text);
-								this.link_text_start = this.cursor + 2;
-								this.chomp(2); // skip ![
-								continue;
-							}
-
-							// just ! - text
-							const t_id = this.emit_open(
-								NodeKind.text,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(t_id);
-							this.out.set_value_start(t_id, this.cursor);
-							this.states.push(StateKind.text);
-							this.chomp1();
-							continue;
-						}
-
-						case OPEN_ANGLE_BRACKET: {
-							// in incremental mode, stall if the tag might be incomplete
-							if (
-								!this.finished &&
-								source.indexOf('>', this.cursor + 1) === -1
-							) {
-								break main_loop;
-							}
-
-							// autolinks are links - forbidden inside directive text
-							const uri_end =
-								this.directive_text_ids.length > 0
-									? -1
-									: this.try_parse_uri_autolink(this.cursor + 1);
-							if (uri_end !== -1) {
-								const uri_text = source.slice(this.cursor + 1, uri_end - 1);
-								const link_id = this.emit_open(
-									NodeKind.link,
-									this.cursor,
-									current_node
-								);
-								this.out.set_value_start(link_id, this.cursor + 1);
-								this.out.set_value_end(link_id, uri_end - 1);
-								this.emit_close(link_id, uri_end);
-								this.out.attr(link_id, 'href', uri_text);
-
-								const text_id = this.emit_open(
-									NodeKind.text,
-									this.cursor + 1,
-									link_id
-								);
-								this.out.set_value_start(text_id, this.cursor + 1);
-								this.out.set_value_end(text_id, uri_end - 1);
-								this.emit_close(text_id, uri_end - 1);
-
-								this.chomp(uri_end, true);
-								this.states.pop();
-								continue;
-							}
-
-							// try html comment: <!--
-							const comment = this.try_parse_html_comment(this.cursor + 1);
-							if (comment === false) break main_loop;
-							if (comment) {
-								const c_id = this.emit_open(
-									NodeKind.html_comment,
-									this.cursor,
-									current_node
-								);
-								this.out.text(c_id, comment.content_start, comment.content_end);
-								this.emit_close(c_id, comment.end);
-								this.chomp(comment.end, true);
-								this.states.pop();
-								continue;
-							}
-
-							// try html closing tag: </tag>
-							const close = this.try_parse_html_close_tag(this.cursor + 1);
-							if (close) {
-								const opener_idx = this.find_html_opener(close.tag);
-								if (opener_idx !== -1) {
-									// close all intermediate unclosed html elements
-									while (this.html_tag_stack.length > opener_idx + 1) {
-										const intermediate = this.html_tag_stack.pop()!;
-										// unwind states and node stack for intermediate
-										this.close_html_inline(intermediate.id, this.cursor);
-									}
-									// close the matching opener
-									const opener = this.html_tag_stack.pop()!;
-									this.close_html_inline(opener.id, close.end);
-									this.chomp(close.end, true);
-									continue;
-								}
-								// no matching opener - treat as text
-							}
-
-							// try html opening tag: <tag ...> or <tag ... />
-							const open_tag = this.try_parse_html_open_tag(this.cursor + 1);
-							if (open_tag) {
-								if (open_tag.self_closing || this.is_void_tag(open_tag.tag)) {
-									const html_id = this.emit_open(
-										NodeKind.html,
-										this.cursor,
-										current_node
-									);
-									this.out.attr(html_id, 'tag', open_tag.tag);
-									if (Object.keys(open_tag.attributes).length > 0) {
-										this.out.attr(html_id, 'attributes', open_tag.attributes);
-									}
-									this.out.attr(html_id, 'self_closing', true);
-									this.emit_close(html_id, open_tag.end);
-									this.chomp(open_tag.end, true);
-									this.states.pop();
-								} else if (this.is_raw_text_tag(open_tag.tag)) {
-									const raw = this.find_raw_close_tag(
-										open_tag.end,
-										open_tag.tag
-									);
-									if (!raw) {
-										if (!this.finished) break main_loop;
-										const html_id = this.emit_open(
-											NodeKind.html,
-											this.cursor,
-											current_node
-										);
-										this.out.attr(html_id, 'tag', open_tag.tag);
-										if (Object.keys(open_tag.attributes).length > 0) {
-											this.out.attr(html_id, 'attributes', open_tag.attributes);
-										}
-										this.out.set_value_start(html_id, open_tag.end);
-										this.out.set_value_end(html_id, length);
-										this.emit_close(html_id, length);
-										this.chomp(length, true);
-									} else {
-										const html_id = this.emit_open(
-											NodeKind.html,
-											this.cursor,
-											current_node
-										);
-										this.out.attr(html_id, 'tag', open_tag.tag);
-										if (Object.keys(open_tag.attributes).length > 0) {
-											this.out.attr(html_id, 'attributes', open_tag.attributes);
-										}
-										this.out.set_value_start(html_id, open_tag.end);
-										this.out.set_value_end(html_id, raw.content_end);
-										this.emit_close(html_id, raw.end);
-										this.chomp(raw.end, true);
-									}
-									this.states.pop();
-								} else {
-									const html_id = this.emit_open(
-										NodeKind.html,
-										this.cursor,
-										current_node,
-										0,
-										true
-									);
-									this.out.attr(html_id, 'tag', open_tag.tag);
-									if (Object.keys(open_tag.attributes).length > 0) {
-										this.out.attr(html_id, 'attributes', open_tag.attributes);
-									}
-									this.html_tag_stack.push({ id: html_id, tag: open_tag.tag });
-									this.node_stack.push(html_id);
-									this.states.push(StateKind.html_element);
-									this.chomp(open_tag.end, true);
-								}
-								continue;
-							}
-
-							// not an autolink or html tag, treat < as text
-							const t_id = this.emit_open(
-								NodeKind.text,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(t_id);
-							this.out.set_value_start(t_id, this.cursor);
-							this.states.push(StateKind.text);
-							this.chomp1();
-							continue;
-						}
-
-						case OPEN_BRACE: {
-							// in incremental mode, stall if we can't see the closing brace
-							if (!this.finished) {
-								const probe = this.find_matching_brace(this.cursor + 1);
-								if (probe === -1) break main_loop;
-							}
-							const expr_end = this.find_matching_brace(this.cursor + 1);
-							if (expr_end !== -1) {
-								// svelte void tag: {@tag ...}
-								if (source.charCodeAt(this.cursor + 1) === AT) {
-									// find the tag name: scan word chars after @
-									let tp = this.cursor + 2;
-									while (
-										tp < expr_end - 1 &&
-										source.charCodeAt(tp) !== SPACE &&
-										source.charCodeAt(tp) !== TAB &&
-										source.charCodeAt(tp) !== LINEFEED &&
-										source.charCodeAt(tp) !== CLOSE_BRACE
-									)
-										tp++;
-									const tag_name = source.slice(this.cursor + 2, tp);
-									if (tag_name.length > 0) {
-										const st_id = this.emit_open(
-											NodeKind.svelte_tag,
-											this.cursor,
-											current_node
-										);
-										this.out.attr(st_id, 'tag', tag_name);
-										// skip whitespace after tag name to find expression start
-										while (
-											tp < expr_end - 1 &&
-											(source.charCodeAt(tp) === SPACE ||
-												source.charCodeAt(tp) === TAB)
-										)
-											tp++;
-										if (tp < expr_end - 1) {
-											this.out.set_value_start(st_id, tp);
-											this.out.set_value_end(st_id, expr_end - 1);
-										}
-										this.emit_close(st_id, expr_end);
-										this.chomp(expr_end, true);
-										continue;
-									}
-								}
-								// plain svelte expression: {expr}
-								const m_id = this.emit_open(
-									NodeKind.mustache,
-									this.cursor,
-									current_node
-								);
-								this.out.set_value_start(m_id, this.cursor + 1);
-								this.out.set_value_end(m_id, expr_end - 1);
-								this.emit_close(m_id, expr_end);
-								this.chomp(expr_end, true);
-								continue;
-							}
-							// unmatched { - treat as text
-							const t_id_brace = this.emit_open(
-								NodeKind.text,
-								this.cursor,
-								current_node
-							);
-							this.out.set_value_start(t_id_brace, this.cursor);
-							this.node_stack.push(t_id_brace);
-							this.states.push(StateKind.text);
-							this.chomp1();
-							continue;
-						}
-
-						case COLON: {
-							// inline directive: :name[content]
-							// need at least :x[ where x is a letter
-							if (!this.finished && this.cursor + 2 >= length) {
-								break main_loop;
-							}
-							const after_colon = this.cursor + 1;
-							const fc =
-								after_colon < length ? source.charCodeAt(after_colon) : 0;
-							// must start with a letter
-							if ((fc >= 97 && fc <= 122) || (fc >= 65 && fc <= 90)) {
-								// scan name
-								let np = after_colon;
-								while (
-									np < length &&
-									this.is_directive_name_char(source.charCodeAt(np))
-								) {
-									np++;
-								}
-								// stall if name extends to end of buffer
-								if (np >= length && !this.finished) break main_loop;
-								// must be followed by [
-								if (
-									np < length &&
-									source.charCodeAt(np) === OPEN_SQUARE_BRACKET
-								) {
-									const dir_name = source.slice(after_colon, np);
-									const d_id = this.emit_open(
-										NodeKind.directive_inline,
-										this.cursor,
-										current_node,
-										0,
-										true
-									);
-									this.out.attr(d_id, 'name', dir_name);
-									this.node_stack.push(d_id);
-									this.states.push(StateKind.link_text);
-									this.directive_text_ids.push(d_id);
-									this.directive_text_brackets.push(0);
-									this.link_text_start = np + 1;
-									this.chomp(np + 1, true); // skip :name[
-									continue;
-								}
-							}
-							// not a directive - treat as text
-							const t_id_colon = this.emit_open(
-								NodeKind.text,
-								this.cursor,
-								current_node
-							);
-							this.out.set_value_start(t_id_colon, this.cursor);
-							this.node_stack.push(t_id_colon);
-							this.states.push(StateKind.text);
-							this.chomp1();
-							continue;
-						}
-
-						case PIPE: {
-							// transparent intraword delimiter - provides flanking
-							// context for _ and * without producing output.
-							// fan|_tas_|tic -> fan<em>tas</em>tic
-							if (!this.in_table) {
-								this.chomp1();
-								continue;
-							}
-							// in table context, | is a cell separator - fall through
-						}
-						// falls through
-						default: {
-							if (!code) {
-								this.states.pop();
-								continue;
-							}
-							const t_id = this.emit_open(
-								NodeKind.text,
-								this.cursor,
-								current_node
-							);
-							this.out.set_value_start(t_id, this.cursor);
-							this.node_stack.push(t_id);
-
-							this.states.push(StateKind.text);
-							this.chomp1();
-							continue;
-						}
+					if (this.run_inline(code, current_node, source, length)) {
+						break main_loop;
 					}
+					continue;
 				}
 
 				case StateKind.text: {
@@ -7617,6 +6936,737 @@ export class PFMParser {
 		this.in_table = false;
 	}
 
+	private run_inline(
+		code: number,
+		current_node: number,
+		source: string,
+		length: number,
+	): boolean {
+		switch (code) {
+			case BACKTICK: {
+				this.states.push(StateKind.code_span_start);
+				this.extra = 0;
+				return false;
+			}
+			case LINEFEED: {
+				// need to see next line - hold back at end of buffer
+				if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
+					return true;
+				}
+				if (this.block_quote_depth > 0) {
+					this.states.pop();
+					return false;
+				}
+				if (this.is_block_interrupt(this.cursor + 1)) {
+					this.states.pop();
+					return false;
+				} else if (this.list_depth > 0) {
+					const np = this.cursor + 1;
+					const { columns: ind } = this.count_indent(np);
+					if (ind >= this.list_content_offset) {
+						const stripped = this.skip_columns(
+							np,
+							this.list_content_offset
+						);
+						if (
+							stripped < length &&
+							this.try_parse_list_marker(stripped) !== null
+						) {
+							this.states.pop();
+							return false;
+						}
+					}
+					// soft line break - emit soft_break node
+					const sb_il = this.emit_open(
+						NodeKind.soft_break,
+						this.cursor,
+						current_node
+					);
+					this.emit_close(sb_il, this.cursor + 1);
+					this.chomp1();
+					return false;
+				} else {
+					// soft line break - emit soft_break node
+					const sb_inl = this.emit_open(
+						NodeKind.soft_break,
+						this.cursor,
+						current_node
+					);
+					this.emit_close(sb_inl, this.cursor + 1);
+					this.chomp1();
+					// strip leading whitespace on continuation line
+					while (
+						this.cursor < length &&
+						source.charCodeAt(this.cursor) === SPACE
+					) {
+						this.chomp1();
+					}
+					return false;
+				}
+			}
+			case ASTERISK: {
+				// need to see the next char for flanking check
+				if (!this.finished && this.cursor + 1 >= length) return true;
+				if (
+					this.prev & (CharMask.whitespace | CharMask.punctuation) &&
+					this.next_class & (CharMask.word | CharMask.punctuation)
+				) {
+					const n_id = this.emit_open(
+						NodeKind.strong_emphasis,
+						this.cursor,
+						current_node,
+						0,
+						true
+					);
+
+					this.out.set_value_start(n_id, this.cursor + 1);
+					this.node_stack.push(n_id);
+					this.emphasis_has_content = false;
+					this.states.push(StateKind.strong_emphasis);
+				} else {
+					const t_id = this.emit_open(
+						NodeKind.text,
+						this.cursor,
+						current_node
+					);
+					this.out.set_value_start(t_id, this.cursor);
+					this.node_stack.push(t_id);
+					this.states.push(StateKind.text);
+				}
+
+				this.chomp1();
+				return false;
+			}
+
+			case UNDERSCORE: {
+				// need to see the next char for flanking check
+				if (!this.finished && this.cursor + 1 >= length) return true;
+				if (
+					this.prev & (CharMask.whitespace | CharMask.punctuation) &&
+					this.next_class & (CharMask.word | CharMask.punctuation)
+				) {
+					const n_id = this.emit_open(
+						NodeKind.emphasis,
+						this.cursor,
+						current_node,
+						0,
+						true
+					);
+
+					this.out.set_value_start(n_id, this.cursor + 1);
+					this.node_stack.push(n_id);
+					this.emphasis_has_content = false;
+					this.states.push(StateKind.emphasis);
+				} else {
+					const t_id = this.emit_open(
+						NodeKind.text,
+						this.cursor,
+						current_node
+					);
+					this.out.set_value_start(t_id, this.cursor);
+					this.node_stack.push(t_id);
+					this.states.push(StateKind.text);
+				}
+
+				this.chomp1();
+				return false;
+			}
+
+			case TILDE: {
+				// ~~ is a two-char token. if only one ~ is available
+				// and more input is expected, hold back.
+				if (!this.finished && this.cursor + 1 >= length) {
+					return true;
+				}
+				// strikethrough: ~~ must be double tilde with flanking
+				if (
+					source.charCodeAt(this.cursor + 1) === TILDE &&
+					this.prev & (CharMask.whitespace | CharMask.punctuation) &&
+					classify(source.charCodeAt(this.cursor + 2)) &
+						(CharMask.word | CharMask.punctuation)
+				) {
+					const n_id = this.emit_open(
+						NodeKind.strikethrough,
+						this.cursor,
+						current_node,
+						0,
+						true
+					);
+					this.out.set_value_start(n_id, this.cursor + 2);
+					this.node_stack.push(n_id);
+					this.states.push(StateKind.strikethrough);
+					this.chomp(2);
+				} else if (
+					// subscript: single ~ with next char word/punctuation
+					source.charCodeAt(this.cursor + 1) !== TILDE &&
+					this.next_class & (CharMask.word | CharMask.punctuation)
+				) {
+					const n_id = this.emit_open(
+						NodeKind.subscript,
+						this.cursor,
+						current_node,
+						0,
+						true
+					);
+					this.out.set_value_start(n_id, this.cursor + 1);
+					this.node_stack.push(n_id);
+					this.states.push(StateKind.subscript);
+					this.chomp1();
+				} else {
+					const t_id = this.emit_open(
+						NodeKind.text,
+						this.cursor,
+						current_node
+					);
+					this.out.set_value_start(t_id, this.cursor);
+					this.node_stack.push(t_id);
+					this.states.push(StateKind.text);
+					this.chomp1();
+				}
+				return false;
+			}
+
+			case CARET: {
+				// superscript: ^ opens if next char is word/punctuation
+				// (no left-flanking constraint - x^2^ is valid)
+				if (this.next_class & (CharMask.word | CharMask.punctuation)) {
+					const n_id = this.emit_open(
+						NodeKind.superscript,
+						this.cursor,
+						current_node,
+						0,
+						true
+					);
+					this.out.set_value_start(n_id, this.cursor + 1);
+					this.node_stack.push(n_id);
+					this.states.push(StateKind.superscript);
+				} else {
+					const t_id = this.emit_open(
+						NodeKind.text,
+						this.cursor,
+						current_node
+					);
+					this.out.set_value_start(t_id, this.cursor);
+					this.node_stack.push(t_id);
+					this.states.push(StateKind.text);
+				}
+				this.chomp1();
+				return false;
+			}
+
+			case CLOSE_SQUARE_BRACKET: {
+				// if inside a link_text state, pop inline to let it handle ]
+				if (
+					this.states.length >= 2 &&
+					this.states[this.states.length - 2] === StateKind.link_text
+				) {
+					// inside directive text, a ] matching a literal [
+					// is text - fall through to the text path below
+					const dt_top = this.directive_text_ids.length - 1;
+					if (
+						dt_top >= 0 &&
+						this.directive_text_ids[dt_top] === current_node &&
+						this.directive_text_brackets[dt_top] > 0
+					) {
+						this.directive_text_brackets[dt_top]--;
+					} else {
+						this.states.pop();
+						return false;
+					}
+				}
+				// otherwise ] is just text
+				const t_id_br = this.emit_open(
+					NodeKind.text,
+					this.cursor,
+					current_node
+				);
+				this.out.set_value_start(t_id_br, this.cursor);
+				this.node_stack.push(t_id_br);
+				this.states.push(StateKind.text);
+				this.chomp1();
+				return false;
+			}
+
+			case BACKSLASH: {
+				// \ is a two-char token (escape or hard break) - hold back
+				if (!this.finished && this.cursor + 1 >= length) {
+					return true;
+				}
+				const next_code = source.charCodeAt(this.cursor + 1);
+				if (next_code === LINEFEED) {
+					// need to see the complete continuation line to
+					// strip leading whitespace and handle block quotes
+					if (
+						!this.finished &&
+						!this.can_decide_after_lf(this.cursor + 1)
+					) {
+						return true;
+					}
+					// pfm: in a blockquote, the continuation line must
+					// have `>` markers. if absent, emit the hard_break
+					// but leave the cursor on the lf so the paragraph
+					// state's strict-markers path cascade-closes the
+					// enclosing block_quote frames.
+					if (this.block_quote_depth > 0) {
+						const peek = this.skip_bq_markers(
+							this.cursor + 2,
+							this.block_quote_depth
+						);
+						if (peek === -1) {
+							const hb_id = this.emit_open(
+								NodeKind.hard_break,
+								this.cursor,
+								current_node
+							);
+							this.emit_close(hb_id, this.cursor + 2);
+							this.chomp1(); // past `\` only; cursor now on lf
+							this.states.pop(); // pop inline; paragraph will see the lf
+							return false;
+						}
+					}
+					const hb_id = this.emit_open(
+						NodeKind.hard_break,
+						this.cursor,
+						current_node
+					);
+					this.emit_close(hb_id, this.cursor + 2);
+					this.chomp(2);
+					// strip block quote markers
+					if (this.block_quote_depth > 0) {
+						const stripped = this.skip_bq_markers(
+							this.cursor,
+							this.block_quote_depth
+						);
+						if (stripped !== -1) this.chomp(stripped, true);
+					}
+					// skip leading spaces
+					while (
+						this.cursor < length &&
+						source.charCodeAt(this.cursor) === SPACE
+					) {
+						this.chomp1();
+					}
+					return false;
+				}
+				if (this.is_ascii_punctuation(next_code)) {
+					// escape: start text node after the backslash
+					const t_id = this.emit_open(
+						NodeKind.text,
+						this.cursor + 1,
+						current_node
+					);
+					this.out.set_value_start(t_id, this.cursor + 1);
+					this.node_stack.push(t_id);
+					this.states.push(StateKind.text);
+					this.chomp(2);
+				} else {
+					const t_id = this.emit_open(
+						NodeKind.text,
+						this.cursor,
+						current_node
+					);
+					this.out.set_value_start(t_id, this.cursor);
+					this.node_stack.push(t_id);
+					this.states.push(StateKind.text);
+					this.chomp1();
+				}
+				return false;
+			}
+
+			case OPEN_SQUARE_BRACKET: {
+				// links are not allowed inside directive text - the
+				// bracket is literal. track it when it sits directly
+				// in the text so the matching ] stays literal too.
+				if (this.directive_text_ids.length > 0) {
+					const dt_top = this.directive_text_ids.length - 1;
+					if (this.directive_text_ids[dt_top] === current_node) {
+						this.directive_text_brackets[dt_top]++;
+					}
+					const lt_id = this.emit_open(
+						NodeKind.text,
+						this.cursor,
+						current_node
+					);
+					this.out.set_value_start(lt_id, this.cursor);
+					this.node_stack.push(lt_id);
+					this.states.push(StateKind.text);
+					this.chomp1();
+					return false;
+				}
+				// speculatively open a link - [ is a link until proven otherwise
+				const link_id = this.emit_open(
+					NodeKind.link,
+					this.cursor,
+					current_node,
+					0,
+					true
+				);
+				this.node_stack.push(link_id);
+				this.states.push(StateKind.link_text);
+				this.link_text_start = this.cursor + 1;
+				this.chomp1(); // skip [
+				return false;
+			}
+
+			case EXCLAMATION_MARK: {
+				// ![ is a two-char token - hold back lone ! at end of buffer
+				if (!this.finished && this.cursor + 1 >= length) {
+					return true;
+				}
+				// ![  -> speculatively open an image
+				// (not inside directive text - images are forbidden
+				// there, the ! falls through to the text path)
+				if (
+					source.charCodeAt(this.cursor + 1) === OPEN_SQUARE_BRACKET &&
+					this.directive_text_ids.length === 0
+				) {
+					const img_id = this.emit_open(
+						NodeKind.image,
+						this.cursor,
+						current_node,
+						0,
+						true
+					);
+					this.node_stack.push(img_id);
+					this.states.push(StateKind.link_text);
+					this.link_text_start = this.cursor + 2;
+					this.chomp(2); // skip ![
+					return false;
+				}
+
+				// just ! - text
+				const t_id = this.emit_open(
+					NodeKind.text,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(t_id);
+				this.out.set_value_start(t_id, this.cursor);
+				this.states.push(StateKind.text);
+				this.chomp1();
+				return false;
+			}
+
+			case OPEN_ANGLE_BRACKET: {
+				// in incremental mode, stall if the tag might be incomplete
+				if (
+					!this.finished &&
+					source.indexOf('>', this.cursor + 1) === -1
+				) {
+					return true;
+				}
+
+				// autolinks are links - forbidden inside directive text
+				const uri_end =
+					this.directive_text_ids.length > 0
+						? -1
+						: this.try_parse_uri_autolink(this.cursor + 1);
+				if (uri_end !== -1) {
+					const uri_text = source.slice(this.cursor + 1, uri_end - 1);
+					const link_id = this.emit_open(
+						NodeKind.link,
+						this.cursor,
+						current_node
+					);
+					this.out.set_value_start(link_id, this.cursor + 1);
+					this.out.set_value_end(link_id, uri_end - 1);
+					this.emit_close(link_id, uri_end);
+					this.out.attr(link_id, 'href', uri_text);
+
+					const text_id = this.emit_open(
+						NodeKind.text,
+						this.cursor + 1,
+						link_id
+					);
+					this.out.set_value_start(text_id, this.cursor + 1);
+					this.out.set_value_end(text_id, uri_end - 1);
+					this.emit_close(text_id, uri_end - 1);
+
+					this.chomp(uri_end, true);
+					this.states.pop();
+					return false;
+				}
+
+				// try html comment: <!--
+				const comment = this.try_parse_html_comment(this.cursor + 1);
+				if (comment === false) return true;
+				if (comment) {
+					const c_id = this.emit_open(
+						NodeKind.html_comment,
+						this.cursor,
+						current_node
+					);
+					this.out.text(c_id, comment.content_start, comment.content_end);
+					this.emit_close(c_id, comment.end);
+					this.chomp(comment.end, true);
+					this.states.pop();
+					return false;
+				}
+
+				// try html closing tag: </tag>
+				const close = this.try_parse_html_close_tag(this.cursor + 1);
+				if (close) {
+					const opener_idx = this.find_html_opener(close.tag);
+					if (opener_idx !== -1) {
+						// close all intermediate unclosed html elements
+						while (this.html_tag_stack.length > opener_idx + 1) {
+							const intermediate = this.html_tag_stack.pop()!;
+							// unwind states and node stack for intermediate
+							this.close_html_inline(intermediate.id, this.cursor);
+						}
+						// close the matching opener
+						const opener = this.html_tag_stack.pop()!;
+						this.close_html_inline(opener.id, close.end);
+						this.chomp(close.end, true);
+						return false;
+					}
+					// no matching opener - treat as text
+				}
+
+				// try html opening tag: <tag ...> or <tag ... />
+				const open_tag = this.try_parse_html_open_tag(this.cursor + 1);
+				if (open_tag) {
+					if (open_tag.self_closing || this.is_void_tag(open_tag.tag)) {
+						const html_id = this.emit_open(
+							NodeKind.html,
+							this.cursor,
+							current_node
+						);
+						this.out.attr(html_id, 'tag', open_tag.tag);
+						if (Object.keys(open_tag.attributes).length > 0) {
+							this.out.attr(html_id, 'attributes', open_tag.attributes);
+						}
+						this.out.attr(html_id, 'self_closing', true);
+						this.emit_close(html_id, open_tag.end);
+						this.chomp(open_tag.end, true);
+						this.states.pop();
+					} else if (this.is_raw_text_tag(open_tag.tag)) {
+						const raw = this.find_raw_close_tag(
+							open_tag.end,
+							open_tag.tag
+						);
+						if (!raw) {
+							if (!this.finished) return true;
+							const html_id = this.emit_open(
+								NodeKind.html,
+								this.cursor,
+								current_node
+							);
+							this.out.attr(html_id, 'tag', open_tag.tag);
+							if (Object.keys(open_tag.attributes).length > 0) {
+								this.out.attr(html_id, 'attributes', open_tag.attributes);
+							}
+							this.out.set_value_start(html_id, open_tag.end);
+							this.out.set_value_end(html_id, length);
+							this.emit_close(html_id, length);
+							this.chomp(length, true);
+						} else {
+							const html_id = this.emit_open(
+								NodeKind.html,
+								this.cursor,
+								current_node
+							);
+							this.out.attr(html_id, 'tag', open_tag.tag);
+							if (Object.keys(open_tag.attributes).length > 0) {
+								this.out.attr(html_id, 'attributes', open_tag.attributes);
+							}
+							this.out.set_value_start(html_id, open_tag.end);
+							this.out.set_value_end(html_id, raw.content_end);
+							this.emit_close(html_id, raw.end);
+							this.chomp(raw.end, true);
+						}
+						this.states.pop();
+					} else {
+						const html_id = this.emit_open(
+							NodeKind.html,
+							this.cursor,
+							current_node,
+							0,
+							true
+						);
+						this.out.attr(html_id, 'tag', open_tag.tag);
+						if (Object.keys(open_tag.attributes).length > 0) {
+							this.out.attr(html_id, 'attributes', open_tag.attributes);
+						}
+						this.html_tag_stack.push({ id: html_id, tag: open_tag.tag });
+						this.node_stack.push(html_id);
+						this.states.push(StateKind.html_element);
+						this.chomp(open_tag.end, true);
+					}
+					return false;
+				}
+
+				// not an autolink or html tag, treat < as text
+				const t_id = this.emit_open(
+					NodeKind.text,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(t_id);
+				this.out.set_value_start(t_id, this.cursor);
+				this.states.push(StateKind.text);
+				this.chomp1();
+				return false;
+			}
+
+			case OPEN_BRACE: {
+				// in incremental mode, stall if we can't see the closing brace
+				if (!this.finished) {
+					const probe = this.find_matching_brace(this.cursor + 1);
+					if (probe === -1) return true;
+				}
+				const expr_end = this.find_matching_brace(this.cursor + 1);
+				if (expr_end !== -1) {
+					// svelte void tag: {@tag ...}
+					if (source.charCodeAt(this.cursor + 1) === AT) {
+						// find the tag name: scan word chars after @
+						let tp = this.cursor + 2;
+						while (
+							tp < expr_end - 1 &&
+							source.charCodeAt(tp) !== SPACE &&
+							source.charCodeAt(tp) !== TAB &&
+							source.charCodeAt(tp) !== LINEFEED &&
+							source.charCodeAt(tp) !== CLOSE_BRACE
+						)
+							tp++;
+						const tag_name = source.slice(this.cursor + 2, tp);
+						if (tag_name.length > 0) {
+							const st_id = this.emit_open(
+								NodeKind.svelte_tag,
+								this.cursor,
+								current_node
+							);
+							this.out.attr(st_id, 'tag', tag_name);
+							// skip whitespace after tag name to find expression start
+							while (
+								tp < expr_end - 1 &&
+								(source.charCodeAt(tp) === SPACE ||
+									source.charCodeAt(tp) === TAB)
+							)
+								tp++;
+							if (tp < expr_end - 1) {
+								this.out.set_value_start(st_id, tp);
+								this.out.set_value_end(st_id, expr_end - 1);
+							}
+							this.emit_close(st_id, expr_end);
+							this.chomp(expr_end, true);
+							return false;
+						}
+					}
+					// plain svelte expression: {expr}
+					const m_id = this.emit_open(
+						NodeKind.mustache,
+						this.cursor,
+						current_node
+					);
+					this.out.set_value_start(m_id, this.cursor + 1);
+					this.out.set_value_end(m_id, expr_end - 1);
+					this.emit_close(m_id, expr_end);
+					this.chomp(expr_end, true);
+					return false;
+				}
+				// unmatched { - treat as text
+				const t_id_brace = this.emit_open(
+					NodeKind.text,
+					this.cursor,
+					current_node
+				);
+				this.out.set_value_start(t_id_brace, this.cursor);
+				this.node_stack.push(t_id_brace);
+				this.states.push(StateKind.text);
+				this.chomp1();
+				return false;
+			}
+
+			case COLON: {
+				// inline directive: :name[content]
+				// need at least :x[ where x is a letter
+				if (!this.finished && this.cursor + 2 >= length) {
+					return true;
+				}
+				const after_colon = this.cursor + 1;
+				const fc =
+					after_colon < length ? source.charCodeAt(after_colon) : 0;
+				// must start with a letter
+				if ((fc >= 97 && fc <= 122) || (fc >= 65 && fc <= 90)) {
+					// scan name
+					let np = after_colon;
+					while (
+						np < length &&
+						this.is_directive_name_char(source.charCodeAt(np))
+					) {
+						np++;
+					}
+					// stall if name extends to end of buffer
+					if (np >= length && !this.finished) return true;
+					// must be followed by [
+					if (
+						np < length &&
+						source.charCodeAt(np) === OPEN_SQUARE_BRACKET
+					) {
+						const dir_name = source.slice(after_colon, np);
+						const d_id = this.emit_open(
+							NodeKind.directive_inline,
+							this.cursor,
+							current_node,
+							0,
+							true
+						);
+						this.out.attr(d_id, 'name', dir_name);
+						this.node_stack.push(d_id);
+						this.states.push(StateKind.link_text);
+						this.directive_text_ids.push(d_id);
+						this.directive_text_brackets.push(0);
+						this.link_text_start = np + 1;
+						this.chomp(np + 1, true); // skip :name[
+						return false;
+					}
+				}
+				// not a directive - treat as text
+				const t_id_colon = this.emit_open(
+					NodeKind.text,
+					this.cursor,
+					current_node
+				);
+				this.out.set_value_start(t_id_colon, this.cursor);
+				this.node_stack.push(t_id_colon);
+				this.states.push(StateKind.text);
+				this.chomp1();
+				return false;
+			}
+
+			case PIPE: {
+				// transparent intraword delimiter - provides flanking
+				// context for _ and * without producing output.
+				// fan|_tas_|tic -> fan<em>tas</em>tic
+				if (!this.in_table) {
+					this.chomp1();
+					return false;
+				}
+				// in table context, | is a cell separator - fall through
+			}
+			// falls through
+			default: {
+				if (!code) {
+					this.states.pop();
+					return false;
+				}
+				const t_id = this.emit_open(
+					NodeKind.text,
+					this.cursor,
+					current_node
+				);
+				this.out.set_value_start(t_id, this.cursor);
+				this.node_stack.push(t_id);
+
+				this.states.push(StateKind.text);
+				this.chomp1();
+				return false;
+			}
+		}
+		return false;
+	}
+
 	private _finalize(): void {
 		const length = this.source.length;
 
@@ -7649,6 +7699,132 @@ export class PFMParser {
 	}
 }
 
+/** Options for a reusable borrowed parser session. */
+export interface ParserSessionOptions {
+	/** Column width of a tab character (default: 2). */
+	tab_size?: number;
+	/** Initial reusable node capacity (default: 128). */
+	initial_capacity?: number;
+	/**
+	 * Largest node arena retained for another parse (default: 16384).
+	 * Larger result arenas remain valid only until the next parse or clear().
+	 */
+	max_retained_nodes?: number;
+	/**
+	 * Largest source whose parser working state is retained (default: 1 MiB).
+	 */
+	max_retained_source_length?: number;
+	/** Parse plugins are source-bound and unsupported by borrowed sessions. */
+	plugins?: never;
+}
+
+const MAX_PARSER_SESSION_NODES = 1_048_576;
+
+/**
+ * Reusable no-plugin parser for sequential documents.
+ *
+ * Results are borrowed views into session-owned storage. Calling parse() or
+ * clear() invalidates the previous result and its NodeBuffer. Copy data that
+ * must outlive the next call. Parse plugins are deliberately unsupported;
+ * use parse_markdown_svelte() when plugins are required.
+ */
+export class ParserSession {
+	private tree: DirectTreeBuilder;
+	private parser: PFMParser | null;
+	private readonly tab_size: number;
+	private readonly initial_capacity: number;
+	private readonly max_retained_nodes: number;
+	private readonly max_retained_source_length: number;
+	private has_result = false;
+	private discard_on_next_parse = false;
+
+	constructor(options: ParserSessionOptions = {}) {
+		if (options.plugins !== undefined) {
+			throw new Error(
+				'ParserSession does not support plugins; use parse_markdown_svelte()',
+			);
+		}
+		this.tab_size = options.tab_size ?? 2;
+		const requested_initial = options.initial_capacity ?? 128;
+		const requested_max = options.max_retained_nodes ?? 16_384;
+		this.max_retained_source_length =
+			options.max_retained_source_length ?? 1_048_576;
+		for (const value of [
+			this.tab_size,
+			requested_initial,
+			requested_max,
+			this.max_retained_source_length,
+		]) {
+			if (!Number.isSafeInteger(value) || value <= 0) {
+				throw new RangeError(
+					'parser session options must be positive safe integers',
+				);
+			}
+		}
+		if (
+			requested_initial > MAX_PARSER_SESSION_NODES ||
+			requested_max > MAX_PARSER_SESSION_NODES
+		) {
+			throw new RangeError(
+				'parser session node capacity exceeds limit',
+			);
+		}
+		this.max_retained_nodes = 2 ** Math.floor(Math.log2(requested_max));
+		this.initial_capacity = Math.min(
+			requested_initial,
+			this.max_retained_nodes,
+		);
+		this.tree = new DirectTreeBuilder(this.initial_capacity);
+		this.parser = new PFMParser(this.tree, this.tab_size);
+	}
+
+	/**
+	 * Parse one complete document into borrowed session storage.
+	 *
+	 * The returned result and NodeBuffer are invalidated by the next parse()
+	 * or clear() call on this session.
+	 */
+	parse(
+		input: string,
+	): { nodes: NodeBuffer; errors: ErrorCollector; source: string } {
+		if (this.has_result) {
+			if (this.discard_on_next_parse) {
+				this.replace_storage();
+			} else {
+				this.tree.reset();
+			}
+		}
+		if (this.parser === null) {
+			this.parser = new PFMParser(this.tree, this.tab_size);
+		}
+
+		const source = normalize_newlines(input);
+		const { errors } = this.parser.parse(source);
+		const nodes = this.tree.get_buffer();
+		this.has_result = true;
+		this.discard_on_next_parse =
+			nodes.size > this.max_retained_nodes ||
+			source.length > this.max_retained_source_length;
+		if (this.discard_on_next_parse) {
+			// Do not retain the parser's source and working-array high water.
+			this.parser = null;
+		}
+		return { nodes, errors, source };
+	}
+
+	/** Immediately invalidate the current result and release retained storage. */
+	clear(): void {
+		this.replace_storage();
+		this.has_result = false;
+	}
+
+	private replace_storage(): void {
+		this.tree = new DirectTreeBuilder(this.initial_capacity);
+		this.parser = new PFMParser(this.tree, this.tab_size);
+		this.discard_on_next_parse = false;
+	}
+}
+
 /**
  * parse markdown that may include svelte syntax into tokens and nodes.
  *
@@ -7673,7 +7849,9 @@ export function parse_markdown_svelte(
 		dispatcher = new PluginDispatcher(options.plugins, text_source);
 	}
 
-	const tree = new TreeBuilder(source.length >> 3 || 128, dispatcher);
+	const tree = dispatcher
+		? new TreeBuilder(source.length >> 3 || 128, dispatcher)
+		: new DirectTreeBuilder(source.length >> 3 || 128);
 	const parser = new PFMParser(tree, options.tab_size);
 	const { errors } = parser.parse(source);
 

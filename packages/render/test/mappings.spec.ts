@@ -63,6 +63,15 @@ function renderMapped(source: string) {
 	return { html: renderer.html, mappings, source };
 }
 
+function renderV3(source: string, file?: string) {
+	const tree = new TreeBuilder(source.length >> 3 || 128);
+	const parser = new PFMParser(tree);
+	parser.parse(source);
+	const renderer = new CursorHTMLRenderer({ cache: false });
+	const { map } = renderer.update_v3(tree.get_buffer(), source, file);
+	return { html: renderer.html, map, source };
+}
+
 function byRole(mappings: Mapping<MappingData>[], role: MappingRole) {
 	return mappings.filter(m => m.data.role === role);
 }
@@ -363,6 +372,27 @@ describe('offset_to_position', () => {
 // ── v3 conversion tests ──
 
 describe('mappings_to_v3', () => {
+	it('matches direct renderer V3 output exactly', () => {
+		for (const source of [
+			'hello world\n',
+			'### title\n\n`code` and **strong**\n',
+			'<Component value={answer}>content</Component>\n',
+			'| left | right |\n| :--- | ---: |\n| one | two |\n',
+		]) {
+			const expected = renderMapped(source);
+			const direct = renderV3(source, '/path/to/test.md');
+			expect(direct.html).toBe(expected.html);
+			expect(direct.map).toEqual(
+				mappings_to_v3(
+					expected.mappings,
+					source,
+					expected.html,
+					'/path/to/test.md',
+				),
+			);
+		}
+	});
+
 	it('produces valid v3 structure', () => {
 		const { html, mappings, source } = renderMapped('hello\n');
 		const v3 = mappings_to_v3(mappings, source, html, 'test.md');
