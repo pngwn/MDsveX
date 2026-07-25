@@ -1,5 +1,5 @@
 import type { Transformer } from 'unified';
-import type { Text, Code, Html } from 'mdast';
+import type { Text, Code, Html, Literal } from 'mdast';
 import type { Element, Root } from 'hast';
 import type { VFileMessage } from 'vfile-message';
 
@@ -115,6 +115,30 @@ export function escape_brackets(): Transformer {
 				node.value = node.value.replace(entites[i][0], entites[i][1]);
 			}
 		}
+	};
+}
+
+/**
+ * Unescapes pipes in table cells.
+ *
+ * **NOTE**: This is necessary with `remark-parse` v8.  If it gets upgraded and `remark-gfm` is
+ * added, this is probably not necessary anymore.
+ * @returns A `unified` transformer function that visits literal nodes and corrects escaped pipes.
+ */
+export function unescape_pipes_in_tables(): Transformer {
+
+	function isLiteral(node: unknown): node is Literal {
+		return !!node && typeof node === 'object' && 'value' in node && !('children' in node);
+	}
+
+	return (tree) => {
+		visit(tree, 'tableCell', (cell) => {
+			visit(cell, ['text', 'inlineCode'], (cellChild) => {
+				if (isLiteral(cellChild)) {
+					cellChild.value = cellChild.value.replace(/\\\|/g, '|');
+				}
+			})
+		});
 	};
 }
 
