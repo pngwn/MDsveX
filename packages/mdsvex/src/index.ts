@@ -33,6 +33,7 @@ import {
 	default_frontmatter,
 	parse_frontmatter,
 	escape_code,
+	unescape_pipes_in_tables,
 	transform_hast,
 	smartypants_transformer,
 	highlight_blocks,
@@ -82,6 +83,7 @@ export function transform(
 		.use(mdsvex_parser)
 		.use(external, { target: false, rel: ['nofollow'] })
 		.use(escape_brackets)
+		.use(unescape_pipes_in_tables)
 		.use(escape_code, { blocks: !!highlight })
 		.use(extract_frontmatter, [{ type: fm_opts.type, marker: fm_opts.marker }])
 		.use(parse_frontmatter, { parse: fm_opts.parse, type: fm_opts.type });
