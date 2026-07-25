@@ -54,6 +54,27 @@ class RecordingEmitter implements Emitter {
 	cursor(_pos: number): void {}
 }
 
+class NumericReturnEmitter extends RecordingEmitter {
+	open(
+		id: number,
+		kind: number,
+		start: number,
+		parent: number,
+		extra: number,
+		pending: boolean
+	): number {
+		return this.ops.push({
+			op: 'open',
+			id,
+			kind,
+			start,
+			parent,
+			extra,
+			pending,
+		});
+	}
+}
+
 function parse_to_ops(input: string): Op[] {
 	const rec = new RecordingEmitter();
 	const parser = new PFMParser(rec);
@@ -90,6 +111,13 @@ function find_open(ops: Op[], kind: number): Op | undefined {
 }
 
 describe('Opcode stream', () => {
+	it('ignores numeric open returns without direct capability', () => {
+		const input = '**bold**\n';
+		const emitter = new NumericReturnEmitter();
+		new PFMParser(emitter).parse(input);
+		expect(emitter.ops).toEqual(parse_to_ops(input));
+	});
+
 	describe('eager/optimistic emphasis', () => {
 		it('emits open(strong_emphasis, pending=true) eagerly on *', () => {
 			const ops = parse_to_ops('hello *world*\n');

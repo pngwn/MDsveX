@@ -1,5 +1,9 @@
 import { readFileSync } from "node:fs";
-import { PFMParser, parse_markdown_svelte } from "@mdsvex/parse";
+import {
+	ParserSession,
+	PFMParser,
+	parse_markdown_svelte,
+} from "@mdsvex/parse";
 import { TreeBuilder } from "@mdsvex/parse/tree-builder";
 import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
 import { mappings_to_v3 } from "@mdsvex/render/sourcemap";
@@ -19,6 +23,7 @@ const corpus = [
 
 const parsed = corpus.map((source) => parse_markdown_svelte(source));
 const options = { time: 1_500, warmupTime: 300 };
+const parser = new ParserSession();
 const compiler = new CompilerSession();
 
 describe(`next core pipeline (${corpus.reduce((n, source) => n + source.length, 0)} characters)`, () => {
@@ -36,6 +41,14 @@ describe(`next core pipeline (${corpus.reduce((n, source) => n + source.length, 
 		let nodes = 0;
 		for (const source of corpus) {
 			nodes += parse_markdown_svelte(source).nodes.size;
+		}
+		return nodes;
+	}, options);
+
+	bench("parse borrowed", () => {
+		let nodes = 0;
+		for (const source of corpus) {
+			nodes += parser.parse(source).nodes.size;
 		}
 		return nodes;
 	}, options);

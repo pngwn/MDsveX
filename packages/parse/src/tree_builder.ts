@@ -226,3 +226,121 @@ export class TreeBuilder implements Emitter {
 		return this.nodes;
 	}
 }
+
+/**
+ * Plugin-free in-process builder whose parser handles are NodeBuffer indexes.
+ * TreeBuilder remains the opcode compatibility and plugin path.
+ */
+export class DirectTreeBuilder implements Emitter {
+	readonly direct_ids = true;
+	private nodes: NodeBuffer;
+
+	constructor(capacity: number) {
+		this.nodes = new NodeBuffer(capacity);
+	}
+
+	reset(): void {
+		this.nodes.reset();
+		this.nodes.push(NodeKind.root, 0);
+	}
+
+	open(
+		_id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		extra: number,
+		pending: boolean,
+	): number {
+		if (kind === NodeKind.root) return 0;
+		return pending
+			? this.nodes.push_pending(kind, start, parent, extra)
+			: this.nodes.push(kind, start, parent, extra);
+	}
+
+	close(index: number, end: number): void {
+		this.nodes.set_end(index, end);
+		const kind = this.nodes._kinds[index];
+		const keep_pending =
+			kind === NodeKind.paragraph &&
+			this.nodes._pending_nodes[index] === 1 &&
+			this.nodes._kinds[this.nodes._parents[index]] === NodeKind.list_item;
+		if (!keep_pending) this.nodes.commit_node(index);
+
+		if (kind === NodeKind.list) {
+			const meta = this.nodes.metadata_at(index);
+			if (meta?.tight) {
+				const list_node = this.nodes.get_node(index);
+				for (const item_index of list_node.children) {
+					const item = this.nodes.get_node(item_index);
+					for (const child_index of item.children) {
+						if (this.nodes.kind_at(child_index) === NodeKind.paragraph) {
+							this.nodes.unwrap_node(child_index);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	text(parent: number, start: number, end: number): void {
+		const kind = this.nodes._kinds[parent];
+		if (
+			kind === NodeKind.heading ||
+			kind === NodeKind.code_fence ||
+			kind === NodeKind.code_span ||
+			kind === NodeKind.html_comment
+		) {
+			this.nodes.set_value(parent, start, end);
+		} else {
+			const index = this.nodes.push(NodeKind.text, start, parent);
+			this.nodes.set_value(index, start, end);
+			this.nodes.set_end(index, end);
+		}
+	}
+
+	attr(index: number, key: string, value: any): void {
+		switch (key) {
+			case "value":
+				this.nodes.set_value(index, value[0], value[1]);
+				break;
+			case "value_start":
+				this.nodes.set_value_start(index, value);
+				break;
+			case "value_end":
+				this.nodes.set_value_end(index, value);
+				break;
+			default: {
+				const existing = this.nodes.metadata_at(index);
+				if (existing) {
+					existing[key] = value;
+					this.nodes.set_metadata(index, existing);
+				} else {
+					this.nodes.set_metadata(index, { [key]: value });
+				}
+			}
+		}
+	}
+
+	set_value_start(index: number, pos: number): void {
+		this.nodes.set_value_start(index, pos);
+	}
+
+	set_value_end(index: number, pos: number): void {
+		this.nodes.set_value_end(index, pos);
+	}
+
+	revoke(index: number, source_text?: string): void {
+		this.nodes.handle_repair(index, source_text);
+	}
+
+	commit(index: number): void {
+		this.nodes.commit_node(index);
+	}
+
+	cursor(_pos: number): void {}
+
+	get_buffer(): NodeBuffer {
+		return this.nodes;
+	}
+}

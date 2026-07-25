@@ -110,6 +110,7 @@ async function load_pipeline(workspace) {
 
 	return {
 		parse_markdown_svelte: parse_module.parse_markdown_svelte,
+		ParserSession: parse_module.ParserSession,
 		CursorHTMLRenderer: render_module.CursorHTMLRenderer,
 		mappings_to_v3: sourcemap_module.mappings_to_v3,
 		compile: compiler_module.compile,
@@ -120,6 +121,7 @@ async function load_pipeline(workspace) {
 function prepare_pipeline(pipeline, corpus) {
 	const {
 		parse_markdown_svelte,
+		ParserSession,
 		CursorHTMLRenderer,
 		mappings_to_v3,
 		compile,
@@ -127,12 +129,14 @@ function prepare_pipeline(pipeline, corpus) {
 	} = pipeline;
 	const sources = corpus.documents.map((document) => document.source);
 	const parsed = sources.map((source) => parse_markdown_svelte(source));
+	const parser_session = new ParserSession();
 	const compiler = new CompilerSession();
 	const oracle = createHash("sha256");
 
 	for (const source of sources) {
 		const parsed_result = parse_markdown_svelte(source);
 		hash_parse_result(oracle, parsed_result);
+		hash_parse_result(oracle, parser_session.parse(source));
 		const compiled = compile(source, { sourcemap: true });
 		oracle.update(compiled.code);
 		oracle.update(JSON.stringify(compiled.mappings));
@@ -145,6 +149,13 @@ function prepare_pipeline(pipeline, corpus) {
 				let nodes = 0;
 				for (const source of sources) {
 					nodes += parse_markdown_svelte(source).nodes.size;
+				}
+				return nodes;
+			},
+			parseBorrowed() {
+				let nodes = 0;
+				for (const source of sources) {
+					nodes += parser_session.parse(source).nodes.size;
 				}
 				return nodes;
 			},

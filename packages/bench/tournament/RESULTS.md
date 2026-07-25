@@ -227,3 +227,64 @@ because interleaved duplicate and node segments require more source-map state.
 The current watch API does not advance. A future bracket can combine the
 compact typed-span index with stored boundary checkpoints and the original
 conservative eligibility proof, then attack fallback cost separately.
+
+## 2026-07-25 fifth architectural bracket
+
+### Direct node handles and split inline state — advance
+
+The plugin-free parser now uses NodeBuffer indexes as its internal handles,
+removing opcode-to-buffer ID translation. Custom emitters and parse plugins
+retain the legacy opcode path, and direct handles require an explicit
+capability so numeric return values from existing emitters remain ignored.
+
+The monolithic parser loop was also just above V8's default TurboFan bytecode
+limit. Extracting the inline state reduced `_run` below that limit; traces
+confirm that both `_run` and `run_inline` now complete TurboFan optimization.
+
+- Full local parser: +18.93% median, four wins in four pairs.
+- Held-out external parser: +20.50% and +29.61%, both exact.
+- Exact AST/code/mapping/V3 comparisons across all 975 local documents and
+  the pinned Vite, Node, and Svelte corpus.
+- Canonical public parser: 2,958.09 operations/second.
+- Canonical mapped compilation: 1,610.44 cold and 1,704.17 reused.
+- Canonical direct V3 compilation: 410.64 operations/second.
+- Complete suite: 2,769 tests passed, 8 existing todos.
+
+### Borrowed ParserSession — advance
+
+`ParserSession` exposes an explicitly borrowed no-plugin parse result for
+sequential workloads. The next parse or `clear()` invalidates the previous
+arena. Retained node and source high-water marks are bounded, oversized
+storage is discarded, and unsupported capacities are rejected.
+
+- Local screen: +32.37% and +33.96%, both exact.
+- Held-out external screen: +37.52% and +37.69%, both exact.
+- Forward, reverse, and large-to-small local sequences: 2,925 exact
+  comparisons.
+- Canonical borrowed parser: 3,141.71 operations/second.
+
+The final combined addition is 2,014 raw bytes and 1,504 gzip bytes across the
+parser main entry, tree-builder entry, renderer, sourcemap encoder, and mdsvex
+bundle. The tournament now includes the separately shipped tree-builder entry
+in its size gate.
+
+### Compact parse tape — reject
+
+The packed tape itself consumed events 1.32x faster than TreeBuilder, but
+replaying it into the public arena erased the gain. Shared-screen parsing
+regressed by 15.96% with zero wins in four pairs, added 812 gzip bytes, and
+retained approximately 9.93 bytes per source character. A tape remains useful
+only if a future renderer consumes it directly.
+
+### Lazy identity-mapped builder — reject in semifinal
+
+The API-preserving lazy builder was independently valid: public parsing gained
+10.51%, cold compilation 18.79%, and reused compilation 9.04%. It matched
+1,464 local and pinned-external documents plus 10,007 malformed/random
+differentials.
+
+It lost the head-to-head semifinal to direct handles plus the inline split on
+the representative parse and compile pipelines, while adding 1,420 gzip bytes
+before ParserSession. The combined direct architecture was also approximately
+15.5% faster on the longer external parse confirmation, so the lazy builder
+was not integrated.

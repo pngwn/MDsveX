@@ -19,6 +19,10 @@ The compiler bracket records both the legacy enriched-mapping-to-V3 path and
 the fused direct-V3 path so later changes cannot silently optimize one by
 regressing the other.
 
+The parser bracket records both owned one-shot parsing and borrowed
+`ParserSession` parsing. Borrowed results are consumed inside each measured
+iteration before the next parse invalidates their arena.
+
 ## Corpus
 
 The corpus combines:
@@ -70,6 +74,7 @@ mode's threshold (8% smoke, 3% screen, 2% full). Candidates also declare their
 affected metrics, need wins in at least 75% of pairs, and cannot hide an
 important target regression inside an aggregate score.
 
-The report also records raw and gzip deltas across the parser, renderer, V3
-encoder, and mdsvex bundles. Candidates exceeding the configured gzip budget
-(1.5 kB by default) are rejected even when they are faster.
+The report also records raw and gzip deltas across the parser main and
+tree-builder entries, renderer, V3 encoder, and mdsvex bundles. Candidates
+exceeding the configured gzip budget (1.5 kB by default) are rejected even
+when they are faster.

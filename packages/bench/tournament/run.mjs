@@ -223,6 +223,7 @@ async function build_workspace(workspace) {
 async function measure_bundle(workspace) {
 	const files = [
 		"packages/parse/dist/main.js",
+		"packages/parse/dist/tree-builder.js",
 		"packages/render/dist/html_cursor.js",
 		"packages/render/dist/sourcemap.js",
 		"packages/mdsvex/dist/main.js",
@@ -447,6 +448,7 @@ function print_result(result) {
 			marker.padEnd(5),
 			percent(result.geomean).padStart(8),
 			percent(result.ratios.parse).padStart(8),
+			percent(result.ratios.parseBorrowed).padStart(8),
 			percent(result.ratios.renderMapped).padStart(8),
 			percent(result.ratios.compileMappedCold).padStart(8),
 			percent(result.ratios.compileMappedReused).padStart(8),
@@ -520,7 +522,7 @@ try {
 	}
 
 	console.log(
-		"state  geomean     parse    render      cold    reused        v3    direct  variant",
+		"state  geomean     parse  borrowed    render      cold    reused        v3    direct  variant",
 	);
 	const results = [];
 	for (const variant of selected_variants) {

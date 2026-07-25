@@ -1,6 +1,9 @@
 import { PFMParser, PluginDispatcher, SourceTextSource } from "@mdsvex/parse";
 import type { ParsePlugin } from "@mdsvex/parse";
-import { TreeBuilder } from "@mdsvex/parse/tree-builder";
+import {
+	DirectTreeBuilder,
+	TreeBuilder,
+} from "@mdsvex/parse/tree-builder";
 import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
 import { mappings_to_v3 } from "@mdsvex/render/sourcemap";
 import type { Mapping, MappingData } from "@mdsvex/render/mappings";
@@ -42,7 +45,9 @@ function render_once(
 		dispatcher = new PluginDispatcher(options.parsePlugins, text_source);
 	}
 
-	const tree = new TreeBuilder(source.length >> 3 || 128, dispatcher);
+	const tree = dispatcher
+		? new TreeBuilder(source.length >> 3 || 128, dispatcher)
+		: new DirectTreeBuilder(source.length >> 3 || 128);
 	const parser = new PFMParser(tree);
 	parser.parse(source);
 
@@ -69,7 +74,7 @@ function render_once(
  * a source-specific text view.
  */
 export class CompilerSession {
-	private tree: TreeBuilder | null = null;
+	private tree: DirectTreeBuilder | null = null;
 	private parser: PFMParser | null = null;
 	private renderer = new CursorHTMLRenderer({ cache: false });
 
@@ -82,7 +87,7 @@ export class CompilerSession {
 		}
 
 		if (this.tree === null) {
-			this.tree = new TreeBuilder(source.length >> 3 || 128);
+			this.tree = new DirectTreeBuilder(source.length >> 3 || 128);
 			this.parser = new PFMParser(this.tree);
 		} else {
 			this.tree.reset();
@@ -116,7 +121,7 @@ export class CompilerSession {
 		}
 
 		if (this.tree === null) {
-			this.tree = new TreeBuilder(source.length >> 3 || 128);
+			this.tree = new DirectTreeBuilder(source.length >> 3 || 128);
 			this.parser = new PFMParser(this.tree);
 		} else {
 			this.tree.reset();

@@ -69,6 +69,7 @@ const metadata_variants = [
 		description: "store sparse node metadata in an indexed array",
 		metrics: [
 			"parse",
+			"parseBorrowed",
 			"renderMapped",
 			"compileMappedCold",
 			"compileMappedReused",
@@ -123,6 +124,7 @@ export const variants = [
 		description: "independently rebuilt baseline with no source edits",
 		metrics: [
 			"parse",
+			"parseBorrowed",
 			"renderMapped",
 			"compileMappedCold",
 			"compileMappedReused",
