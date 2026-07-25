@@ -118,6 +118,13 @@ export function escape_brackets(): Transformer {
 	};
 }
 
+/**
+ * Unescapes pipes in table cells.
+ *
+ * **NOTE**: This is necessary with `remark-parse` v8.  If it gets upgraded and `remark-parse` is
+ * added, this is probably not necessary anymore.
+ * @returns A `unified` transformer function that visits literal nodes and corrects escaped pipes.
+ */
 export function unescape_pipes_in_tables(): Transformer {
 
 	function isLiteral(node: unknown): node is Literal {
