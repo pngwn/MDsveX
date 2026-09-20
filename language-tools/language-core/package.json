@@ -1,6 +1,11 @@
 {
 	"name": "@mdsvex/language-core",
 	"version": "0.1.0-next.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "language-tools/language-core"
+	},
 	"description": "PFM Volar LanguagePlugin — teaches Volar how to handle .pfm files",
 	"type": "module",
 	"scripts": {

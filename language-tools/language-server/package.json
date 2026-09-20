@@ -1,6 +1,11 @@
 {
 	"name": "@mdsvex/language-server",
 	"version": "0.1.0-next.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "language-tools/language-server"
+	},
 	"description": "PFM Language Server — LSP binary for .pfm files",
 	"type": "module",
 	"bin": {
