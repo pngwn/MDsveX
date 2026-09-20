@@ -1,5 +1,5 @@
 {
-	"name": "@pfm/language-server",
+	"name": "@mdsvex/language-server",
 	"version": "0.1.0-next.0",
 	"description": "PFM Language Server — LSP binary for .pfm files",
 	"type": "module",
@@ -18,7 +18,7 @@
 		}
 	},
 	"dependencies": {
-		"@pfm/language-core": "workspace:*",
+		"@mdsvex/language-core": "workspace:*",
 		"@volar/language-core": "^2.4.28",
 		"@volar/language-server": "^2.4.28",
 		"@volar/typescript": "^2.4.28",

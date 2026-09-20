@@ -1,8 +1,8 @@
 ---
-'@pfm/typescript-plugin': minor
-'@pfm/language-server': minor
-'@pfm/language-core': minor
-'@pfm/source-map': minor
+'@mdsvex/typescript-plugin': minor
+'@mdsvex/language-server': minor
+'@mdsvex/language-core': minor
+'@mdsvex/source-map': minor
 'mdsvex': minor
 '@mdsvex/render': minor
 '@mdsvex/parse': minor

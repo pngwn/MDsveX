@@ -6,7 +6,7 @@
  * work correctly for editor features.
  */
 import { describe, it, expect } from "vitest";
-import { create_pfm_language_plugin } from "@pfm/language-core";
+import { create_pfm_language_plugin } from "@mdsvex/language-core";
 import type { IScriptSnapshot, CodeMapping } from "@volar/language-core";
 
 function snap(text: string): IScriptSnapshot {

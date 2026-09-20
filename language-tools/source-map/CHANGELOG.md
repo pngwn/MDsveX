@@ -1,4 +1,4 @@
-# @pfm/source-map
+# @mdsvex/source-map
 
 ## 0.1.0-next.0
 

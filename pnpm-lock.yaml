@@ -51,7 +51,7 @@ importers:
       '@mdsvex/render':
         specifier: workspace:*
         version: link:../../packages/render
-      '@pfm/source-map':
+      '@mdsvex/source-map':
         specifier: workspace:*
         version: link:../source-map
       '@volar/language-core':
@@ -73,7 +73,7 @@ importers:
 
   language-tools/language-server:
     dependencies:
-      '@pfm/language-core':
+      '@mdsvex/language-core':
         specifier: workspace:*
         version: link:../language-core
       '@volar/language-core':
@@ -138,7 +138,7 @@ importers:
 
   language-tools/typescript-plugin:
     dependencies:
-      '@pfm/language-core':
+      '@mdsvex/language-core':
         specifier: workspace:*
         version: link:../language-core
       '@volar/typescript':
@@ -147,7 +147,7 @@ importers:
 
   language-tools/vscode-pfm:
     dependencies:
-      '@pfm/typescript-plugin':
+      '@mdsvex/typescript-plugin':
         specifier: workspace:*
         version: link:../typescript-plugin
       '@volar/vscode':

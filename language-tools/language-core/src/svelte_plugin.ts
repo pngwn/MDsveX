@@ -19,7 +19,7 @@ import { forEachEmbeddedCode } from "@volar/language-core";
 import type { TypeScriptExtraServiceScript } from "@volar/typescript";
 
 import { svelte2tsx } from "svelte2tsx";
-import { v3ToVolarMappings } from "@pfm/source-map/v3-to-volar";
+import { v3ToVolarMappings } from "@mdsvex/source-map/v3-to-volar";
 
 const SVELTE_EXTENSION = ".svelte";
 

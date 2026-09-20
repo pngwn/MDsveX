@@ -1,5 +1,5 @@
 {
-	"name": "@pfm/language-core",
+	"name": "@mdsvex/language-core",
 	"version": "0.1.0-next.0",
 	"description": "PFM Volar LanguagePlugin — teaches Volar how to handle .pfm files",
 	"type": "module",
@@ -14,7 +14,7 @@
 		}
 	},
 	"dependencies": {
-		"@pfm/source-map": "workspace:*",
+		"@mdsvex/source-map": "workspace:*",
 		"@mdsvex/render": "workspace:*",
 		"@volar/language-core": "^2.4.28",
 		"@volar/typescript": "^2.4.28",

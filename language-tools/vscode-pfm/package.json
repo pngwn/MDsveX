@@ -18,7 +18,7 @@
 	"contributes": {
 		"typescriptServerPlugins": [
 			{
-				"name": "@pfm/typescript-plugin",
+				"name": "@mdsvex/typescript-plugin",
 				"enableForWorkspaceTypeScriptVersions": true
 			}
 		],
@@ -57,7 +57,7 @@
 		]
 	},
 	"scripts": {
-		"build:server": "pnpm --filter @pfm/language-server build",
+		"build:server": "pnpm --filter @mdsvex/language-server build",
 		"build:ext": "vite build --config vite.config.build.ts",
 		"build": "run-s build:server build:ext build:mkdir build:copy-server",
 		"build:mkdir": "shx mkdir -p server",
@@ -65,7 +65,7 @@
 		"package": "vsce package --no-dependencies"
 	},
 	"dependencies": {
-		"@pfm/typescript-plugin": "workspace:*",
+		"@mdsvex/typescript-plugin": "workspace:*",
 		"@volar/vscode": "^2.4.28",
 		"vscode-languageclient": "^9.0.1"
 	},
