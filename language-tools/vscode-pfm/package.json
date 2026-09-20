@@ -2,13 +2,15 @@
 	"name": "vscode-pfm",
 	"displayName": "PFM — Penguin-Flavoured Markdown",
 	"description": "Language support for PFM (Penguin-Flavoured Markdown) files",
-	"version": "0.0.1",
+	"version": "0.0.2-next.0",
 	"publisher": "pngwn",
 	"private": true,
 	"engines": {
 		"vscode": "^1.85.0"
 	},
-	"categories": ["Programming Languages"],
+	"categories": [
+		"Programming Languages"
+	],
 	"activationEvents": [
 		"onLanguage:pfm"
 	],
@@ -23,8 +25,13 @@
 		"languages": [
 			{
 				"id": "pfm",
-				"aliases": ["PFM", "Penguin-Flavoured Markdown"],
-				"extensions": [".pfm"],
+				"aliases": [
+					"PFM",
+					"Penguin-Flavoured Markdown"
+				],
+				"extensions": [
+					".pfm"
+				],
 				"configuration": "./language-configuration.json"
 			}
 		],
