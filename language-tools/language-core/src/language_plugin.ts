@@ -17,9 +17,9 @@ import type {
 import { forEachEmbeddedCode } from "@volar/language-core";
 import type { TypeScriptExtraServiceScript } from "@volar/typescript";
 
-import { pfmToSvelte } from "@pfm/source-map/pfm-to-svelte";
-import { v3ToVolarMappings } from "@pfm/source-map/v3-to-volar";
-import { composeMappings } from "@pfm/source-map/compose-mappings";
+import { pfmToSvelte } from "@mdsvex/source-map/pfm-to-svelte";
+import { v3ToVolarMappings } from "@mdsvex/source-map/v3-to-volar";
+import { composeMappings } from "@mdsvex/source-map/compose-mappings";
 import { svelte2tsx as svelte_2_tsx } from "svelte2tsx";
 import type { CodeInformation } from "@mdsvex/render/mappings";
 

@@ -12,7 +12,7 @@
 		"test:e2e": "pnpm --filter=mdsvex-demo test:e2e",
 		"build:ls": "run-s build:ls:render build:ls:ts-plugin build:ls:vscode",
 		"build:ls:render": "pnpm --filter @mdsvex/render build",
-		"build:ls:ts-plugin": "pnpm --filter @pfm/typescript-plugin build",
+		"build:ls:ts-plugin": "pnpm --filter @mdsvex/typescript-plugin build",
 		"build:ls:vscode": "pnpm --filter vscode-pfm build",
 		"release": "run-s release:build release:publish",
 		"release:build": "pnpm --filter=!site --filter=!incremental-parse-test --filter=!mdsvex-demo -r build",

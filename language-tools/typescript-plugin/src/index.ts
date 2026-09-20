@@ -6,11 +6,11 @@
  * in .ts and .svelte files.
  *
  * Usage in tsconfig.json:
- *   { "compilerOptions": { "plugins": [{ "name": "@pfm/typescript-plugin" }] } }
+ *   { "compilerOptions": { "plugins": [{ "name": "@mdsvex/typescript-plugin" }] } }
  */
 
 import { createLanguageServicePlugin } from "@volar/typescript/lib/quickstart/createLanguageServicePlugin.js";
-import { create_pfm_language_plugin, create_svelte_language_plugin } from "@pfm/language-core";
+import { create_pfm_language_plugin, create_svelte_language_plugin } from "@mdsvex/language-core";
 
 // TS plugins must export a factory function via module.exports
 // (CJS convention that tsserver expects)

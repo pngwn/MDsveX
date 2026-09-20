@@ -1,5 +1,5 @@
 {
-	"name": "@pfm/source-map",
+	"name": "@mdsvex/source-map",
 	"version": "0.1.0-next.0",
 	"description": "PFM to Svelte source map pipeline for language tooling",
 	"type": "module",
