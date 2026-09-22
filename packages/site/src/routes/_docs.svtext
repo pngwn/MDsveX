@@ -771,6 +771,59 @@ const mdsvexOptions = {
 }
 ```
 
+### With twinkleplop
+
+[Twinkleplop](https://twinkleplop.pngwn.at/) is a fast, synchronous syntax highlighter that outputs CSS classes rather than inline styles. Each language is its own package, and themes are plain stylesheets. Install the languages you need and a theme:
+
+```bash
+npm i -D @twinkleplop/typescript @twinkleplop/css @twinkleplop/theme-github
+```
+
+Create a highlighter for each language once, then look it up by the fenced code-block's language in the `highlighter` option:
+
+```js
+import { escapeSvelte } from 'mdsvex';
+import { language as typescript } from '@twinkleplop/typescript';
+import { language as css } from '@twinkleplop/css';
+
+const ts = typescript();
+const languages = { ts, js: ts, css: css() };
+
+const escape_html = (str) =>
+	str.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+
+/** @type {import('mdsvex').MdsvexOptions} */
+const mdsvexOptions = {
+	highlight: {
+		highlighter(code, lang) {
+			const highlight = languages[lang];
+			const html = highlight
+				? highlight(code)
+				: `<pre class="twinkleplop"><code>${escape_html(code)}</code></pre>`;
+			return `{@html \\`${escapeSvelte(html)}\\` }`;
+		}
+	}
+}
+```
+
+Each highlighter also accepts render options as a second argument, such as `highlight(code, { line_numbers: true })`. See the [render options docs](https://twinkleplop.pngwn.at/docs/render_options) for everything you can pass.
+
+Twinkleplop doesn't inline any colours, so you need to import a theme somewhere in your app, such as your root `+layout.svelte`:
+
+```svelte
+<script>
+	import '@twinkleplop/theme-github';
+</script>
+```
+
+Themes include light and dark variants: light colours apply by default, and dark colours apply when an ancestor has a `dark` class. Themes don't style the code block's background; use the `--twp-background` custom property for that:
+
+```css
+.twinkleplop {
+	background: var(--twp-background);
+}
+```
+
 ## Limitations
 
 ### Indentation

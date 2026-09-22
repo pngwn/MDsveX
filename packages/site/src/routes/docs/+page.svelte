@@ -48,7 +48,10 @@
 		[
 			'Integrations',
 			'docs#integrations',
-			[['shiki', 'docs#with-shiki', false]],
+			[
+				['shiki', 'docs#with-shiki', false],
+				['twinkleplop', 'docs#with-twinkleplop', false],
+			],
 		],
 		['Limitations', 'docs#limitations'],
 	];
