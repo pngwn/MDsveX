@@ -22,5 +22,6 @@ export {
 	build_line_starts,
 	offset_to_position,
 	mappings_to_v3,
+	pending_mappings_to_v3,
 } from "./sourcemap";
 export type { SourceMapV3 } from "./sourcemap";
