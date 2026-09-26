@@ -1,5 +1,11 @@
-import { PFMParser, PluginDispatcher, SourceTextSource } from "@mdsvex/parse";
-import type { ParsePlugin } from "@mdsvex/parse";
+import {
+	PFMParser,
+	PluginDispatcher,
+	SourceTextSource,
+	normalize_newlines,
+	raw_offsets,
+} from "@mdsvex/parse";
+import type { ParsePlugin, RawOffsets } from "@mdsvex/parse";
 import { TreeBuilder } from "@mdsvex/parse/tree-builder";
 import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
 import { mappings_to_v3 } from "@mdsvex/render/sourcemap";
@@ -23,9 +29,12 @@ interface RenderResult {
 }
 
 function render(
-	source: string,
+	raw: string,
 	options?: { parsePlugins?: ParsePlugin[]; sourcemap?: boolean },
 ): RenderResult {
+	// parser offsets index the normalized string, so render and plugins read it too
+	const source = normalize_newlines(raw);
+
 	let dispatcher: PluginDispatcher | undefined;
 	if (options?.parsePlugins && options.parsePlugins.length > 0) {
 		const text_source = new SourceTextSource(source);
@@ -44,11 +53,63 @@ function render(
 
 	if (options?.sourcemap) {
 		const result = renderer.update_mapped(tree.get_buffer(), source);
+		const offsets = raw_offsets(raw);
+		if (offsets) {
+			for (const mapping of result.mappings) {
+				remap_source_offsets(mapping, offsets);
+			}
+		}
 		return { code: renderer.html, mappings: result.mappings };
 	}
 
 	renderer.update(tree.get_buffer(), source);
 	return { code: renderer.html };
+}
+
+/**
+ * identity mappings split after each collapsed \n so every piece stays
+ * identity with that \n on its \r, other mappings widen their source range
+ */
+function remap_source_offsets(
+	mapping: Mapping<MappingData>,
+	offsets: RawOffsets,
+): void {
+	const { sourceOffsets, generatedOffsets, lengths } = mapping;
+
+	if (mapping.generatedLengths) {
+		for (let i = 0; i < sourceOffsets.length; i++) {
+			const start = offsets.to_raw(sourceOffsets[i]);
+			lengths[i] = offsets.to_raw(sourceOffsets[i] + lengths[i]) - start;
+			sourceOffsets[i] = start;
+		}
+		return;
+	}
+
+	const { collapsed } = offsets;
+	const src: number[] = [];
+	const gen: number[] = [];
+	const len: number[] = [];
+	for (let i = 0; i < sourceOffsets.length; i++) {
+		let start = sourceOffsets[i];
+		let gen_start = generatedOffsets[i];
+		const end = start + lengths[i];
+		let k = offsets.rank(start);
+		while (k < collapsed.length && collapsed[k] + 1 < end) {
+			const cut = collapsed[k] + 1;
+			src.push(start + k);
+			gen.push(gen_start);
+			len.push(cut - start);
+			gen_start += cut - start;
+			start = cut;
+			k++;
+		}
+		src.push(start + k);
+		gen.push(gen_start);
+		len.push(end - start);
+	}
+	mapping.sourceOffsets = src;
+	mapping.generatedOffsets = gen;
+	mapping.lengths = len;
 }
 
 /**

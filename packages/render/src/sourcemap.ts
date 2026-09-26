@@ -9,7 +9,11 @@ import type { Mapping, MappingData } from "./mappings";
 export function build_line_starts(source: string): Uint32Array {
 	const starts: number[] = [0];
 	for (let i = 0; i < source.length; i++) {
-		if (source.charCodeAt(i) === 10) starts.push(i + 1);
+		const c = source.charCodeAt(i);
+		// bare \r ends a line too, as editors split source
+		if (c === 10 || (c === 13 && source.charCodeAt(i + 1) !== 10)) {
+			starts.push(i + 1);
+		}
 	}
 	return new Uint32Array(starts);
 }
@@ -87,8 +91,10 @@ export function mappings_to_v3(
 			const src_start = m.sourceOffsets[i];
 
 			if (role === "node") {
-				// collapse node span to start anchor
-				segments.push({ gen_offset: gen_start, src_offset: src_start });
+				// one anchor per node even when split around \r\n
+				if (i === 0) {
+					segments.push({ gen_offset: gen_start, src_offset: src_start });
+				}
 			} else {
 				const gen_len = m.generatedLengths
 					? m.generatedLengths[i]
