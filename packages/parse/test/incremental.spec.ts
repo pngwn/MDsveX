@@ -492,3 +492,44 @@ describe('directive incremental behavior', () => {
 		expect(revokes.length).toBeGreaterThan(0);
 	});
 });
+
+describe('retained source window', () => {
+	const lines = (n: number, f: (i: number) => string) =>
+		Array.from({ length: n }, (_, i) => f(i)).join('\n') + '\n';
+	const cases: [string, string][] = [
+		[
+			'code fence',
+			'```js\n' + lines(2000, (i) => `const x${i} = ${i};`) + '```\n',
+		],
+		['tight list', lines(2000, (i) => `- item ${i} *em*`)],
+		['loose list', lines(2000, (i) => (i % 2 ? '' : `- item ${i}`))],
+		[
+			'nested list',
+			lines(2000, (i) => (i % 3 ? `  - sub ${i}` : `- item ${i}`)),
+		],
+		['block quote', lines(2000, (i) => (i % 2 ? '>' : `> quote ${i}`))],
+		['list in block quote', lines(2000, (i) => `> - item ${i}`)],
+		[
+			'fence in list',
+			'- item\n  ```\n' + lines(2000, (i) => `  code ${i}`) + '  ```\n',
+		],
+	];
+
+	for (const [name, source] of cases) {
+		it(`${name} stays bounded and matches batch`, () => {
+			const tree = new TreeBuilder(source.length);
+			const parser = new PFMParser(tree);
+			parser.init();
+			let max_window = 0;
+			for (let i = 0; i < source.length; i += 64) {
+				parser.feed(source.slice(i, i + 64));
+				max_window = Math.max(max_window, (parser as any).source.length);
+			}
+			parser.finish();
+			expect(max_window).toBeLessThan(512);
+			expect(tree_diff(parse_batch(source), tree.get_buffer(), source)).toEqual(
+				[]
+			);
+		});
+	}
+});
