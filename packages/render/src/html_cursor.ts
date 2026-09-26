@@ -142,6 +142,7 @@ function _spans(
 
 //  precomputed tag strings
 
+const H_TAG = ['', '<h1', '<h2', '<h3', '<h4', '<h5', '<h6'];
 const H_OPEN = ['', '<h1>', '<h2>', '<h3>', '<h4>', '<h5>', '<h6>'];
 const H_CLOSE = ['', '</h1>', '</h2>', '</h3>', '</h4>', '</h5>', '</h6>'];
 
@@ -211,6 +212,25 @@ function _attrs(c: Cursor, out: string[], skip?: Set<string>): void {
 	}
 }
 
+/**
+ * push `head`, then any attributes, then `end`. with no attributes it pushes
+ * the precomputed `folded` (head + end) instead, because the final join costs
+ * per chunk rather than per char.
+ */
+function _open(
+	c: Cursor,
+	out: string[],
+	head: string,
+	folded: string,
+	end: string
+): void {
+	const n = out.length;
+	out.push(head);
+	_attrs(c, out);
+	if (out.length > n + 1) out.push(end);
+	else out[n] = folded;
+}
+
 const LINK_HANDLED = new Set(['href', 'title']);
 const IMAGE_HANDLED = new Set(['title']);
 
@@ -273,9 +293,7 @@ export function _node(
 
 		case K_HEADING: {
 			const pre = out.length;
-			out.push('<h', String(c.extra));
-			_attrs(c, out);
-			out.push('>');
+			_open(c, out, H_TAG[c.extra], H_OPEN[c.extra], '>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
@@ -292,9 +310,7 @@ export function _node(
 				_children(c, out, entries);
 			} else {
 				const pre = out.length;
-				out.push('<p');
-				_attrs(c, out);
-				out.push('>');
+				_open(c, out, '<p', '<p>', '>');
 				const ao = out.length;
 				_children(c, out, entries);
 				const bc = out.length;
@@ -305,9 +321,7 @@ export function _node(
 
 		case K_EMPHASIS: {
 			const pre = out.length;
-			out.push('<em');
-			_attrs(c, out);
-			out.push('>');
+			_open(c, out, '<em', '<em>', '>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
@@ -318,9 +332,7 @@ export function _node(
 
 		case K_STRONG: {
 			const pre = out.length;
-			out.push('<strong');
-			_attrs(c, out);
-			out.push('>');
+			_open(c, out, '<strong', '<strong>', '>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
@@ -331,9 +343,7 @@ export function _node(
 
 		case K_CODE_SPAN: {
 			const pre = out.length;
-			out.push('<code');
-			_attrs(c, out);
-			out.push('>');
+			_open(c, out, '<code', '<code>', '>');
 			const ao = out.length;
 			if (entries) {
 				_emit(
@@ -363,10 +373,12 @@ export function _node(
 				if (info_start != null && info_end != null)
 					info = c.slice(info_start, info_end);
 			}
-			out.push('<pre><code');
-			if (info) out.push(' class="language-', escape(info), '"');
-			_attrs(c, out);
-			out.push('>');
+			if (info) {
+				out.push('<pre><code class="language-', escape(info));
+				_open(c, out, '"', '">', '>');
+			} else {
+				_open(c, out, '<pre><code', '<pre><code>', '>');
+			}
 			const ao = out.length;
 			if (entries) {
 				_emit(
@@ -387,9 +399,7 @@ export function _node(
 
 		case K_BLOCK_QUOTE: {
 			const pre = out.length;
-			out.push('<blockquote');
-			_attrs(c, out);
-			out.push('>\n');
+			_open(c, out, '<blockquote', '<blockquote>\n', '>\n');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
@@ -432,26 +442,26 @@ export function _node(
 			const pre = out.length;
 			const meta = c.meta();
 			const ordered = !!meta?.ordered;
-			const tag = ordered ? 'ol' : 'ul';
 			const start = meta?.start as number | undefined;
-			out.push('<', tag);
-			if (ordered && start != null && start !== 1)
-				out.push(' start="', String(start), '"');
-			_attrs(c, out);
-			out.push('>\n');
+			if (ordered && start != null && start !== 1) {
+				out.push('<ol start="', String(start));
+				_open(c, out, '"', '">\n', '>\n');
+			} else if (ordered) {
+				_open(c, out, '<ol', '<ol>\n', '>\n');
+			} else {
+				_open(c, out, '<ul', '<ul>\n', '>\n');
+			}
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
-			out.push('\n</', tag, '>');
+			out.push(ordered ? '\n</ol>' : '\n</ul>');
 			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_structure);
 			break;
 		}
 
 		case K_LIST_ITEM: {
 			const pre = out.length;
-			out.push('<li');
-			_attrs(c, out);
-			out.push('>');
+			_open(c, out, '<li', '<li>', '>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
@@ -486,9 +496,7 @@ export function _node(
 
 		case K_STRIKETHROUGH: {
 			const pre = out.length;
-			out.push('<del');
-			_attrs(c, out);
-			out.push('>');
+			_open(c, out, '<del', '<del>', '>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
@@ -499,9 +507,7 @@ export function _node(
 
 		case K_SUPERSCRIPT: {
 			const pre = out.length;
-			out.push('<sup');
-			_attrs(c, out);
-			out.push('>');
+			_open(c, out, '<sup', '<sup>', '>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
@@ -512,9 +518,7 @@ export function _node(
 
 		case K_SUBSCRIPT: {
 			const pre = out.length;
-			out.push('<sub');
-			_attrs(c, out);
-			out.push('>');
+			_open(c, out, '<sub', '<sub>', '>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
@@ -736,9 +740,7 @@ export function _node(
 
 		case K_TABLE: {
 			const pre = out.length;
-			out.push('<table');
-			_attrs(c, out);
-			out.push('>\n');
+			_open(c, out, '<table', '<table>\n', '>\n');
 			const ao = out.length;
 			_table_content(c, out, entries);
 			const bc = out.length;
@@ -786,6 +788,18 @@ function _table_content(
 	if (in_body) out.push('</tbody>');
 }
 
+/** cell open tags per alignment, precomputed so each is one chunk. */
+function _cell_opens(tag: string): Map<string, string> {
+	return new Map([
+		['none', `<${tag}>`],
+		['left', `<${tag} align="left">`],
+		['center', `<${tag} align="center">`],
+		['right', `<${tag} align="right">`],
+	]);
+}
+const TH_OPEN = _cell_opens('th');
+const TD_OPEN = _cell_opens('td');
+
 function _table_cells(
 	c: Cursor,
 	tag: string,
@@ -793,18 +807,20 @@ function _table_cells(
 	out: string[],
 	entries?: PendingMapping[]
 ): void {
+	const opens = tag === 'th' ? TH_OPEN : TD_OPEN;
+	const close = tag === 'th' ? '</th>\n' : '</td>\n';
 	let col = 0;
 	if (!c.goto_first_child()) return;
 	do {
 		if (c.kind === K_TABLE_CELL) {
 			const align = alignments[col];
-			if (align && align !== 'none') {
-				out.push('<', tag, ' align="', align, '">');
-			} else {
-				out.push('<', tag, '>');
-			}
+			const open = opens.get(align ?? 'none');
+			// the parser only emits the four keys above, anything else is built as before
+			if (open !== undefined) out.push(open);
+			else if (align) out.push(`<${tag} align="${align}">`);
+			else out.push(`<${tag}>`);
 			_children(c, out, entries);
-			out.push('</', tag, '>\n');
+			out.push(close);
 			col++;
 		}
 	} while (c.goto_next_sibling());
