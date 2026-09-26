@@ -68,7 +68,12 @@ function warm() {
 	return sink;
 }
 
-/** nanoseconds per anchor call, repeated until two readings agree within 3% */
+// a reading can sit in a lower tier while turbofan jobs for the parser queue ahead of the anchor's
+// compile, and two such readings agree with each other, so keep measuring for a window and take the minimum
+const WINDOW_MS = 1000;
+const MIN_ATTEMPTS = 3;
+
+/** nanoseconds per anchor call, the fastest reading over a fixed window */
 export function measure_anchor(iterations = 24) {
 	const best_of_8 = () => {
 		let best = Infinity;
@@ -80,17 +85,15 @@ export function measure_anchor(iterations = 24) {
 		}
 		return best;
 	};
-	warm();
-	let previous = best_of_8();
-	for (let attempt = 0; attempt < 10; attempt++) {
+	const deadline = process.hrtime.bigint() + BigInt(WINDOW_MS * 1e6);
+	let best = Infinity;
+	for (let attempt = 0; attempt < 40; attempt++) {
 		warm();
-		const current = best_of_8();
-		const agree =
-			Math.abs(current - previous) / Math.min(current, previous) <= 0.03;
-		previous = current;
-		if (agree) break;
+		best = Math.min(best, best_of_8());
+		if (attempt + 1 >= MIN_ATTEMPTS && process.hrtime.bigint() >= deadline)
+			break;
 	}
-	return previous;
+	return best;
 }
 
 /** positive drift means the machine got slower during the run */
