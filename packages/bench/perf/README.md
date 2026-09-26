@@ -241,8 +241,8 @@ byte-identical to the reference builds:
 | ------- | --------: | ---------------------------------------------------------------------- |
 | `quick` |        57 | iterating. real with parse, render-mapped, vite-transform. about 2 min |
 | `core`  |       233 | the default, and what calibration measures. about 9 min                |
-| `full`  |       709 | every family and mode, before proposing a merge                        |
-| `scale` |        25 | how cost grows with input length (sized and huge)                      |
+| `full`  |       711 | every family and mode, before proposing a merge                        |
+| `scale` |        27 | how cost grows with input length (sized and huge)                      |
 
 `core` runs `micro` and `real` through one mode per distinct code path:
 `parse`, `incremental-64`, `render`, `render-mapped`, `compile-mapped`,
@@ -412,15 +412,17 @@ pnpm -C packages/mdsvex exec vite build --config vite.config.build.ts --minify f
 
 ## Findings from building the harness
 
-These are pre-existing on `next` (b36f2e15). The harness surfaced them, and
-none of them is fixed here.
+These are pre-existing on `next` (b36f2e15). The harness surfaced them.
 
-- **`mappings_to_v3` is quadratic.** It takes 3.2 ms at 10KB, 1.3 s at 100KB
-  and about half an hour at 3.8MB. `result[result.length - 1]` indexes a
-  string that `+=` has turned into a rope, which flattens it on every segment.
-  It accounts for 61 to 99% of the vite plugin's transform on real documents.
-  `sourcemap-v3` and `vite-transform` are therefore not run on the huge
-  document.
+- **`mappings_to_v3` was quadratic (fixed).** It took 3.2 ms at 10KB, 1.3 s
+  at 100KB and about half an hour at 3.8MB. `result[result.length - 1]`
+  indexed a string that `+=` had turned into a rope, which flattened it on
+  every segment. It accounted for 61 to 99% of the vite plugin's transform on
+  real documents. The loop now tracks whether the current line has a segment
+  instead, which takes 100KB to 18 ms and 3.8MB to about 1.5 s with identical
+  output. `sourcemap-v3` and `vite-transform` run on the huge document again,
+  but against a reference older than the fix the baseline arm still takes
+  about half an hour per call there.
 - **Incremental parsing with small chunks is superlinear.** `incremental-64`
   takes 26 ms at 100KB and 27.6 s at 3.8MB, where `parse` takes 0.2 s. After
   `this.source += chunk`, `charCodeAt` has to flatten the rope on every feed.

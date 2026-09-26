@@ -110,7 +110,7 @@ export function expand_modes(modes) {
 	);
 }
 
-// at 3.8MB 64 char feeds take about 30s a call and the v3 map about half an hour, so those run on sized only
+// at 3.8MB 64 char feeds take about 30s a call, so that runs on sized only
 export const HUGE_MODES = [
 	'parse',
 	'parse-direct',
@@ -121,6 +121,8 @@ export const HUGE_MODES = [
 	'compile-mapped',
 	'compile-reused',
 	'compile-reused-mapped',
+	'sourcemap-v3',
+	'vite-transform',
 ];
 
 export const SUITES = {
