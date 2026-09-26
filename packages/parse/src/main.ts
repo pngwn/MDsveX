@@ -242,6 +242,10 @@ export class PFMParser {
 	private trim_point: number = 0;
 	// next line start to check for a closing fence, earlier lines cannot close it
 	private fence_scan: number = 0;
+	// where a stalled scan for the raw close tag of the tag ending at raw_scan_pos resumes
+	private raw_scan: number = 0;
+	private raw_scan_pos: number = -1;
+	private raw_scan_tag: string = '';
 	private cursor: number = 0;
 	private finished: boolean = false;
 	// deferred \r at the end of a feed() chunk: we can't tell whether it's
@@ -463,6 +467,9 @@ export class PFMParser {
 		this.source_base = 0;
 		this.trim_point = 0;
 		this.fence_scan = 0;
+		this.raw_scan = 0;
+		this.raw_scan_pos = -1;
+		this.raw_scan_tag = '';
 		this.cursor = 0;
 		this.finished = false;
 		this.pending_cr = false;
@@ -2039,14 +2046,21 @@ export class PFMParser {
 		const base = this.source_base;
 		const length = base + source.length;
 		const needle = '</' + tag + '>';
-		let scan = pos;
-		while (scan < length) {
-			const rel = source.indexOf(needle, scan - base);
-			if (rel === -1) return null;
-			const idx = rel + base;
-			return { content_end: idx, end: idx + needle.length };
+		// the source only grows, so a stalled scan of this same tag already ruled out
+		// every close tag that ends inside the old buffer
+		const scan =
+			pos === this.raw_scan_pos && tag === this.raw_scan_tag
+				? this.raw_scan
+				: pos;
+		const rel = source.indexOf(needle, scan - base);
+		if (rel === -1) {
+			this.raw_scan_pos = pos;
+			this.raw_scan_tag = tag;
+			this.raw_scan = Math.max(pos, length - needle.length + 1);
+			return null;
 		}
-		return null;
+		const idx = rel + base;
+		return { content_end: idx, end: idx + needle.length };
 	}
 
 	/**
