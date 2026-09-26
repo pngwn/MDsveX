@@ -133,6 +133,8 @@ export function mappings_to_v3(
 	let prev_src_col = 0;
 	let prev_gen_line = 0;
 	let result = "";
+	// indexing result would flatten the rope on every segment
+	let line_has_segment = false;
 
 	for (const seg of segments) {
 		const [gen_line, gen_col] = offset_to_position(
@@ -149,12 +151,12 @@ export function mappings_to_v3(
 			result += ";";
 			prev_gen_line++;
 			prev_gen_col = 0;
+			line_has_segment = false;
 		}
 
 		// comma separator between segments on same line
-		if (result.length > 0 && result[result.length - 1] !== ";") {
-			result += ",";
-		}
+		if (line_has_segment) result += ",";
+		line_has_segment = true;
 
 		// 4-field segment: gen_col, source_idx(0), src_line, src_col
 		result += vlq_encode(gen_col - prev_gen_col);
