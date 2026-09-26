@@ -11,7 +11,9 @@
 		"check:sync": "svelte-kit sync",
 		"check:run": "svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "run-s check:sync check:watch:run",
-		"check:watch:run": "svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch:run": "svelte-check --tsconfig ./tsconfig.json --watch",
+		"test:e2e": "playwright test",
+		"test:e2e:ui": "playwright test --ui"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.49.1",
