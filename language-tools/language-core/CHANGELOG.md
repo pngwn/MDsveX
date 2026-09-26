@@ -1,5 +1,13 @@
 # @mdsvex/language-core
 
+## 0.1.0-next.1
+
+### Patch Changes
+
+- Updated dependencies [[`f2ff5fe`](https://github.com/pngwn/MDsveX/commit/f2ff5fe144a9009a79e0aa7a6f08f1bed5a7696c), [`ed11417`](https://github.com/pngwn/MDsveX/commit/ed11417775290f85a0b14dda03d1c11d48bbd239)]:
+  - @mdsvex/render@1.0.0-next.1
+  - @mdsvex/source-map@0.1.0-next.1
+
 ## 0.1.0-next.0
 
 ### Minor Changes

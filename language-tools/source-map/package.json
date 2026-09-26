@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/source-map",
-	"version": "0.1.0-next.0",
+	"version": "0.1.0-next.1",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/pngwn/MDsveX.git",

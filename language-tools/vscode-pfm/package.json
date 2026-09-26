@@ -2,7 +2,7 @@
 	"name": "vscode-pfm",
 	"displayName": "PFM — Penguin-Flavoured Markdown",
 	"description": "Language support for PFM (Penguin-Flavoured Markdown) files",
-	"version": "0.0.2-next.0",
+	"version": "0.0.2-next.1",
 	"publisher": "pngwn",
 	"private": true,
 	"engines": {
