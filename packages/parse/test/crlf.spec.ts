@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'vitest';
 
-import { parse_markdown_svelte, PFMParser } from '../src/main';
+import {
+	normalize_newlines,
+	parse_markdown_svelte,
+	PFMParser,
+	raw_offsets,
+} from '../src/main';
 import { TreeBuilder } from '../src/tree_builder';
 
 describe('line ending normalization', () => {
@@ -121,5 +126,33 @@ describe('line ending normalization', () => {
 			p.finish();
 			expect(get_source(p)).toBe('abc\ndef');
 		});
+	});
+});
+
+describe('raw_offsets', () => {
+	test('returns null when there is no \\r\\n', () => {
+		expect(raw_offsets('a\nb')).toBe(null);
+		expect(raw_offsets('a\rb')).toBe(null);
+	});
+
+	test('maps every normalized offset to the same character in raw', () => {
+		const raw = 'ab\r\ncd\r\n\r\ne\rf\ng\r\n';
+		const normalized = normalize_newlines(raw);
+		const offsets = raw_offsets(raw)!;
+		expect(offsets.collapsed).toEqual([2, 5, 6, 12]);
+		for (let i = 0; i < normalized.length; i++) {
+			const r = offsets.to_raw(i);
+			// a collapsed \n maps to the \r that started its \r\n
+			const char = raw[r] === '\r' ? '\n' : raw[r];
+			expect(char, `offset ${i}`).toBe(normalized[i]);
+		}
+		expect(offsets.to_raw(normalized.length)).toBe(raw.length);
+	});
+
+	test('a range spanning a \\r\\n grows by one in raw', () => {
+		const raw = 'a\r\nb';
+		const offsets = raw_offsets(raw)!;
+		expect(raw.slice(offsets.to_raw(0), offsets.to_raw(3))).toBe(raw);
+		expect(raw.slice(offsets.to_raw(0), offsets.to_raw(1))).toBe('a');
 	});
 });
