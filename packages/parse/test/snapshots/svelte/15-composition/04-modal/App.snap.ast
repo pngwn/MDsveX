@@ -18,7 +18,7 @@ root
             text "modal"
             soft_break
             text "			"
-            text tag="small" "<small><em>adjective</em> mod·al \\ˈmō-dəl\\</"
+            text tag="small" "<small><em>adjective</em> mod·al \\ˈmō-dəl\\</small>"
             html tag="em"
               text "adjective"
             text " mod·al \\ˈmō-dəl"

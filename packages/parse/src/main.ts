@@ -238,8 +238,10 @@ export class PFMParser {
 	// window starting at source_base so feed does not flatten the whole input, positions stay absolute
 	private source: string = '';
 	private source_base: number = 0;
-	// last point with nothing open or pending, nothing before it is read again
+	// last line start with only containers open and nothing pending that rereads the source
 	private trim_point: number = 0;
+	// next line start to check for a closing fence, earlier lines cannot close it
+	private fence_scan: number = 0;
 	private cursor: number = 0;
 	private finished: boolean = false;
 	// deferred \r at the end of a feed() chunk: we can't tell whether it's
@@ -254,8 +256,12 @@ export class PFMParser {
 	// id generation
 	private next_id: number = 1; // 0 is reserved for root
 	private pending_ids: number[] = [];
+	// index of each id in pending_ids, stale unless pending_ids at that index matches
+	private pending_slots: number[] = [];
 	private pending_starts: number[] = [];
 	private pending_count: number = 0;
+	// pending tight list paragraphs, they commit or revoke without reading the source
+	private pending_para_count: number = 0;
 	private closed_flags: number[] = [];
 	private NodeKind_array: NodeKind[] = [];
 
@@ -456,6 +462,7 @@ export class PFMParser {
 		this.source = '';
 		this.source_base = 0;
 		this.trim_point = 0;
+		this.fence_scan = 0;
 		this.cursor = 0;
 		this.finished = false;
 		this.pending_cr = false;
@@ -463,7 +470,9 @@ export class PFMParser {
 		this.node_stack = [0];
 		this.next_id = 1;
 		this.pending_ids = [];
+		this.pending_slots = [];
 		this.pending_count = 0;
+		this.pending_para_count = 0;
 		this.closed_flags = [];
 		this.NodeKind_array = [];
 		this.prev = CharMask.whitespace;
@@ -528,7 +537,9 @@ export class PFMParser {
 		this.out.open(id, kind, start, parent, extra, pending);
 		if (pending) {
 			this.pending_starts[this.pending_count] = start;
+			this.pending_slots[id] = this.pending_count;
 			this.pending_ids[this.pending_count++] = id;
+			if (kind === NodeKind.paragraph) this.pending_para_count++;
 		}
 		this.NodeKind_array[id] = kind;
 		return id;
@@ -541,24 +552,44 @@ export class PFMParser {
 
 	/** swap-remove an id from the  pending_ids array. */
 	private pending_remove(id: number): void {
+		if (!this.pending_has(id)) return;
 		const ids = this.pending_ids;
-		const len = this.pending_count;
-		for (let i = 0; i < len; i++) {
-			if (ids[i] === id) {
-				ids[i] = ids[len - 1];
-				this.pending_count = len - 1;
-				return;
-			}
-		}
+		const i = this.pending_slots[id];
+		const last = this.pending_count - 1;
+		const moved = ids[last];
+		ids[i] = moved;
+		this.pending_starts[i] = this.pending_starts[last];
+		this.pending_slots[moved] = i;
+		this.pending_count = last;
+		if (this.NodeKind_array[id] === NodeKind.paragraph)
+			this.pending_para_count--;
 	}
 
 	/** check if an id is in the pending_ids array. */
 	private pending_has(id: number): boolean {
-		const ids = this.pending_ids;
-		for (let i = 0; i < this.pending_count; i++) {
-			if (ids[i] === id) return true;
+		const i = this.pending_slots[id];
+		return (
+			i !== undefined && i < this.pending_count && this.pending_ids[i] === id
+		);
+	}
+
+	/**
+	 * only containers below depth and only closed tight list paragraphs pending,
+	 * containers read back one char at most, paragraphs and html revokes reread from their start
+	 */
+	private can_trim(depth: number): boolean {
+		if (this.pending_count !== this.pending_para_count) return false;
+		const stack = this.node_stack;
+		for (let i = 1; i < depth; i++) {
+			const kind = this.NodeKind_array[stack[i]];
+			if (
+				kind !== NodeKind.block_quote &&
+				kind !== NodeKind.list &&
+				kind !== NodeKind.list_item
+			)
+				return false;
 		}
-		return false;
+		return true;
 	}
 
 	/** normalize link reference label: collapse whitespace, lowercase. */
@@ -2973,7 +3004,7 @@ export class PFMParser {
 			// pending nodes that are still ancestors on the node stack
 			// (e.g. an html_block_element parent under an open list) are
 			// also preserved - they have a live close path ahead.
-			if (this.pending_count > 0) {
+			if (this.pending_count > this.pending_para_count) {
 				const st = this.states[this.states.length - 1];
 				if (
 					st === StateKind.root ||
@@ -2988,6 +3019,7 @@ export class PFMParser {
 							// preserve - finalize_list_pending_para owns this one.
 							this.pending_ids[write] = pid;
 							this.pending_starts[write] = this.pending_starts[pi];
+							this.pending_slots[pid] = write;
 							write++;
 							continue;
 						}
@@ -2995,6 +3027,7 @@ export class PFMParser {
 							// still on the node stack - this frame is open above us.
 							this.pending_ids[write] = pid;
 							this.pending_starts[write] = this.pending_starts[pi];
+							this.pending_slots[pid] = write;
 							write++;
 							continue;
 						}
@@ -3038,7 +3071,10 @@ export class PFMParser {
 
 			switch (active) {
 				case StateKind.root: {
-					if (this.node_stack.length === 1 && this.pending_count === 0) {
+					if (
+						this.node_stack.length === 1 &&
+						this.pending_count === this.pending_para_count
+					) {
 						this.trim_point = this.cursor;
 					}
 					if (code !== code) {
@@ -3746,6 +3782,7 @@ export class PFMParser {
 						this.chomp1();
 
 						this.out.set_value_start(current_node, this.cursor);
+						this.fence_scan = this.cursor;
 
 						continue;
 					}
@@ -3754,15 +3791,13 @@ export class PFMParser {
 				case StateKind.code_fence_content: {
 					// scan line-by-line for closing fence: a line with only
 					// optional whitespace followed by >= extra backticks.
+					// resume at fence_scan, a line is ruled out only once its backtick run ends inside the buffer
 					const fence_len = this.extra;
-					let scan = this.cursor;
+					let line = this.fence_scan;
 					let found_index = -1;
-					let found_nl = -1;
 
-					// check if the current line (at cursor, which is a line start)
-					// is itself the closing fence (empty code block case).
-					{
-						let lp = scan;
+					for (;;) {
+						let lp = line;
 						while (
 							lp < length &&
 							(source.charCodeAt(lp - base) === SPACE ||
@@ -3773,39 +3808,20 @@ export class PFMParser {
 						while (lp < length && source.charCodeAt(lp - base) === BACKTICK)
 							lp++;
 						if (lp - bt_start >= fence_len) {
-							// closing fence on the first content line - value is empty
 							found_index = bt_start;
-							found_nl = this.cursor > 0 ? this.cursor - 1 : this.cursor;
+							break;
 						}
-					}
-
-					if (found_index === -1) {
-						while (scan < length) {
-							const rel = source.indexOf('\n', scan - base);
-							if (rel === -1) break;
-							const nl = rel + base;
-
-							let lp = nl + 1;
-							while (
-								lp < length &&
-								(source.charCodeAt(lp - base) === SPACE ||
-									source.charCodeAt(lp - base) === TAB)
-							)
-								lp++;
-							const bt_start = lp;
-							while (lp < length && source.charCodeAt(lp - base) === BACKTICK)
-								lp++;
-							if (lp - bt_start >= fence_len) {
-								found_index = bt_start;
-								found_nl = nl;
-								break;
-							}
-							scan = nl + 1;
-						}
+						const rel = source.indexOf('\n', line - base);
+						if (rel === -1) break;
+						line = rel + base + 1;
 					}
 
 					if (found_index === -1) {
 						if (!this.finished) {
+							this.fence_scan = line;
+							if (this.can_trim(this.node_stack.length - 1)) {
+								this.trim_point = line;
+							}
 							break main_loop;
 						}
 						this.out.set_value_end(current_node, length);
@@ -3814,6 +3830,7 @@ export class PFMParser {
 						this.chomp(length, true);
 						continue;
 					}
+					const found_nl = line - 1;
 
 					// count actual backticks at found_index for chomp
 					let bt_end = found_index;
@@ -5094,6 +5111,9 @@ export class PFMParser {
 				}
 
 				case StateKind.block_quote: {
+					if (this.can_trim(this.node_stack.length)) {
+						this.trim_point = this.cursor;
+					}
 					if (!code) {
 						if (!this.finished) break main_loop;
 						this.emit_close(current_node, this.cursor);
@@ -5303,6 +5323,9 @@ export class PFMParser {
 				}
 
 				case StateKind.list_item: {
+					if (this.can_trim(this.node_stack.length)) {
+						this.trim_point = this.cursor;
+					}
 					if (!code) {
 						if (!this.finished) break main_loop;
 						this.end_list();
@@ -7903,6 +7926,7 @@ export class PFMParser {
 			}
 		}
 		this.pending_count = 0;
+		this.pending_para_count = 0;
 	}
 }
 

@@ -10,7 +10,7 @@ root
     line_break
     paragraph
       text "From "
-      text tag="a" href="https://cloud.blender.org/open-projects" "<a "
+      text tag="a" href="https://cloud.blender.org/open-projects" "<a href=\"https://cloud.blender.org/open-projects\""
       text "Blender Open Projects"
       text "</a"
     line_break
