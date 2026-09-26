@@ -1,5 +1,35 @@
 # parse
 
+## 1.0.0-next.1
+
+### Minor Changes
+
+- [#821](https://github.com/pngwn/MDsveX/pull/821) [`ed11417`](https://github.com/pngwn/MDsveX/commit/ed11417775290f85a0b14dda03d1c11d48bbd239) Thanks [@pngwn](https://github.com/pngwn)! - Export `normalize_newlines` and `raw_offsets`, so tools that read parser positions can map them back to a source with `\r\n` line endings.
+
+  ```ts
+  const offsets = raw_offsets(source); // null when there is nothing to map
+  const start = offsets ? offsets.to_raw(node_start) : node_start;
+  ```
+
+### Patch Changes
+
+- [#847](https://github.com/pngwn/MDsveX/pull/847) [`65c9784`](https://github.com/pngwn/MDsveX/commit/65c9784b51209c7706eebaada3e9908bda9d5fa4) Thanks [@pngwn](https://github.com/pngwn)! - Incremental parsing now ends an unclosed code span at a blank line, like a full parse does, even when a chunk ends right after the line break before it.
+
+- [#852](https://github.com/pngwn/MDsveX/pull/852) [`9903c3a`](https://github.com/pngwn/MDsveX/commit/9903c3ad8d764085285486816736c4f3ea140a99) Thanks [@pngwn](https://github.com/pngwn)! - Streaming a document with `feed()` stays fast when a single list, block quote or code fence is very large. An 8000 line list or code fence fed in 64 character chunks now parses in about 50ms instead of 3 to 6 seconds.
+
+- [#851](https://github.com/pngwn/MDsveX/pull/851) [`7e69d52`](https://github.com/pngwn/MDsveX/commit/7e69d52284e20892752041fb42726480d88cf31c) Thanks [@pngwn](https://github.com/pngwn)! - Incremental parsing with `feed()` now takes time proportional to the input size, so streaming small chunks into a large document is no longer slower than parsing it in one go. A 3.8MB document fed in 64 character chunks parses in about 0.35s instead of 27s.
+
+- [#847](https://github.com/pngwn/MDsveX/pull/847) [`65c9784`](https://github.com/pngwn/MDsveX/commit/65c9784b51209c7706eebaada3e9908bda9d5fa4) Thanks [@pngwn](https://github.com/pngwn)! - An unclosed `*`, `_`, `~~`, `~` or `^` followed by a line that starts a list item, blockquote, fence or HTML block stays literal text, and the rest of the document parses in full.
+
+  ```md
+  1. ~1
+  2. -
+  ```
+
+- [#852](https://github.com/pngwn/MDsveX/pull/852) [`9903c3a`](https://github.com/pngwn/MDsveX/commit/9903c3ad8d764085285486816736c4f3ea140a99) Thanks [@pngwn](https://github.com/pngwn)! - Inline HTML that is never closed and falls back to plain text now keeps its full original text, instead of a truncated or unrelated fragment.
+
+- [#849](https://github.com/pngwn/MDsveX/pull/849) [`cbc0029`](https://github.com/pngwn/MDsveX/commit/cbc00291119021655765fd4f4e05d9f4fb320727) Thanks [@pngwn](https://github.com/pngwn)! - Backticks with no closing run stay as literal text, including every backtick in a run of two or more, and a blank line after them still ends the paragraph.
+
 ## 1.0.0-next.0
 
 ### Major Changes

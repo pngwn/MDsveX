@@ -335,7 +335,7 @@ importers:
         specifier: workspace:*
         version: link:../parse
       mdsvex:
-        specifier: 1.0.0-next.0
+        specifier: 1.0.0-next.1
         version: link:../mdsvex
       refractor:
         specifier: ^5.0.0

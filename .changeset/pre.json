@@ -30,7 +30,16 @@
     "clean-bats-sell",
     "directive-args",
     "eleven-shirts-serve",
+    "incremental-code-span-blank-line",
+    "linear-feed-in-containers",
+    "linear-incremental-feed",
+    "linear-v3-mappings",
     "mighty-doors-punch",
-    "migrate-package"
+    "migrate-package",
+    "raw-source-offsets",
+    "unclosed-delimiter-interrupts",
+    "unclosed-html-fallback-text",
+    "unmatched-backticks",
+    "windows-line-endings"
   ]
 }
