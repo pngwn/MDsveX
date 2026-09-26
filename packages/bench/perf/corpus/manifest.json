@@ -1,5 +1,5 @@
 {
-	"corpus_hash": "097b8c83eed10b7b",
+	"corpus_hash": "7cead3e0336c536a",
 	"entries": [
 		{
 			"family": "micro",
@@ -968,6 +968,18 @@
 		},
 		{
 			"family": "real",
+			"file": "bench-readme.md",
+			"bytes": 2993,
+			"chars": 2969,
+			"lines": 67,
+			"nodes": 173,
+			"hash": "f1ac6f62f61849e9",
+			"sources": [
+				"packages/bench/README.md"
+			]
+		},
+		{
+			"family": "real",
 			"file": "language-tools-architecture.md",
 			"bytes": 3720,
 			"chars": 3712,
@@ -1113,11 +1125,11 @@
 		{
 			"family": "sized",
 			"file": "100k.md",
-			"bytes": 96858,
-			"chars": 95937,
-			"lines": 2367,
-			"nodes": 5719,
-			"hash": "42efb733e52c5cd7",
+			"bytes": 93884,
+			"chars": 92963,
+			"lines": 2283,
+			"nodes": 5592,
+			"hash": "3e3a2d0139e0d682",
 			"sources": [
 				"packages/bench/benchmarks/fixture-code.md",
 				"packages/bench/benchmarks/fixture-html.md",
@@ -1126,12 +1138,12 @@
 				"packages/bench/benchmarks/fixture.md",
 				"packages/bench/NEXT_CORE_PERFORMANCE.md",
 				"packages/bench/parser-performance.md",
+				"packages/bench/README.md",
 				"language-tools/ARCHITECTURE.md",
 				"packages/mdsvex/README.md",
 				"packages/migrate/README.md",
 				"packages/parse/PLUGINS.md",
-				"packages/parse/WIRE_FORMAT.md",
-				"PFM.md"
+				"packages/parse/WIRE_FORMAT.md"
 			]
 		},
 		{
@@ -1163,11 +1175,11 @@
 		{
 			"family": "huge",
 			"file": "4m.md",
-			"bytes": 3778040,
-			"chars": 3747413,
-			"lines": 108476,
-			"nodes": 215509,
-			"hash": "69beed978b246e19",
+			"bytes": 3775550,
+			"chars": 3745100,
+			"lines": 108222,
+			"nodes": 215219,
+			"hash": "6ebfc3c1c59350c1",
 			"sources": [
 				"packages/bench/benchmarks/fixture-code.md",
 				"packages/bench/benchmarks/fixture-html.md",
@@ -1176,6 +1188,7 @@
 				"packages/bench/benchmarks/fixture.md",
 				"packages/bench/NEXT_CORE_PERFORMANCE.md",
 				"packages/bench/parser-performance.md",
+				"packages/bench/README.md",
 				"language-tools/ARCHITECTURE.md",
 				"packages/mdsvex/README.md",
 				"packages/migrate/README.md",
@@ -1196,11 +1209,6 @@
 			"source": "PLAN.md",
 			"family": "real",
 			"reason": "not tracked by git, cannot be reproduced from a commit"
-		},
-		{
-			"source": "packages/bench/README.md",
-			"family": "real",
-			"reason": "parser reports an infinite loop"
 		},
 		{
 			"source": "packages/site/src/routes/_docs.svtext",
