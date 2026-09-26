@@ -296,7 +296,7 @@ The `layout` option allows you to provide a custom layout component that will wr
 ```svelte
 <Layout>
  <MdsvexDocument />
-<Layout>
+</Layout>
 ```
 
 > Layout components receive all frontmatter values as props, which should provide a great deal of flexibility when designing your layouts.
