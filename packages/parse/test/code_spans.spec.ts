@@ -4,8 +4,10 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'vitest';
 
-import { parse_markdown_svelte } from '../src/main';
+import { PFMParser, parse_markdown_svelte } from '../src/main';
+import { TreeBuilder } from '../src/tree_builder';
 import { NodeKind } from '../src/utils';
+import { print_ast } from './print';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(this_dir, 'fixtures/pfm/code_spans');
@@ -707,4 +709,56 @@ describe('code spans', () => {
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});
+});
+
+describe('unmatched code spans', () => {
+	const print_batch = (input: string): string =>
+		print_ast(parse_markdown_svelte(input).nodes, input);
+
+	const print_incremental = (input: string, chunk_size: number): string => {
+		const tree = new TreeBuilder(input.length);
+		const parser = new PFMParser(tree);
+		parser.init();
+		for (let i = 0; i < input.length; i += chunk_size) {
+			parser.feed(input.slice(i, i + chunk_size));
+		}
+		parser.finish();
+		return print_ast(tree.get_buffer(), input);
+	};
+
+	const cases: [string, string][] = [
+		[
+			'a``\n\nx',
+			'root\n  paragraph\n    text "a"\n    text "``"\n  line_break\n  line_break\n  paragraph\n    text "x"',
+		],
+		[
+			'a``\nx',
+			'root\n  paragraph\n    text "a"\n    text "``"\n    soft_break\n    text "x"',
+		],
+		['a``', 'root\n  paragraph\n    text "a"\n    text "``"'],
+		['a```', 'root\n  paragraph\n    text "a"\n    text "```"'],
+		[
+			'a`` b\n\nx',
+			'root\n  paragraph\n    text "a"\n    text "``"\n    text " b"\n  line_break\n  line_break\n  paragraph\n    text "x"',
+		],
+		['x ` c', 'root\n  paragraph\n    text "x "\n    text "`"\n    text " c"'],
+		[
+			'a ``b` c',
+			'root\n  paragraph\n    text "a "\n    text "``"\n    text "b"\n    text "`"\n    text " c"',
+		],
+	];
+
+	for (const [input, expected] of cases) {
+		test(`keeps backticks literal: ${JSON.stringify(input)}`, () => {
+			expect(print_batch(input)).toBe(expected);
+		});
+
+		test(`incremental matches batch: ${JSON.stringify(input)}`, () => {
+			for (let size = 1; size <= 8; size++) {
+				expect(print_incremental(input, size), `chunk size ${size}`).toBe(
+					expected
+				);
+			}
+		});
+	}
 });

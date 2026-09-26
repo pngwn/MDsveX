@@ -337,6 +337,7 @@ export class PFMParser {
 	private info_start_pos: number = 0;
 	private info_end_pos: number = 0;
 	private checkpoint_cursor: number = 0;
+	private code_span_open_pos: number = 0;
 	private prev_cursor: number = 0;
 	private loop_without_progress: number = 0;
 
@@ -483,6 +484,7 @@ export class PFMParser {
 		this.info_start_pos = 0;
 		this.info_end_pos = 0;
 		this.checkpoint_cursor = 0;
+		this.code_span_open_pos = 0;
 		this.prev_cursor = 0;
 		this.loop_without_progress = 0;
 		this.frontmatter_failed = false;
@@ -5811,6 +5813,7 @@ export class PFMParser {
 						case BACKTICK: {
 							this.states.push(StateKind.code_span_start);
 							this.extra = 0;
+							this.code_span_open_pos = this.cursor;
 							continue;
 						}
 						case LINEFEED: {
@@ -6782,13 +6785,12 @@ export class PFMParser {
 							current_node
 						);
 						this.node_stack.push(t_id);
-						this.out.set_value_start(t_id, this.cursor);
+						this.out.set_value_start(t_id, this.cursor - this.extra);
 						continue;
 					}
 
 					switch (code) {
 						case BACKTICK: {
-							this.checkpoint_cursor = this.cursor;
 							this.extra += 1;
 							this.chomp1();
 							continue;
@@ -6931,7 +6933,8 @@ export class PFMParser {
 						}
 						this.chomp1();
 						continue;
-					} else if (code === LINEFEED) {
+					} else if (code === LINEFEED || code !== code) {
+						// code_span_end continues the span or fails it at a blank line or eof
 						this.out.set_value_start(current_node, this.checkpoint_cursor);
 						this.chomp(this.cursor, true);
 						this.states.pop();
@@ -7020,11 +7023,13 @@ export class PFMParser {
 						(code === LINEFEED && this.is_blank_line_after(this.cursor)) ||
 						code !== code
 					) {
-						// code span failure - revoke the code_span node.
-						// handle_repair converts the code_span to a text node
-						// for the backtick(s), so no additional text node needed.
-						this.chomp(this.checkpoint_cursor + this.extra, true);
-						this.out.revoke(this.node_stack[this.node_stack.length - 1]);
+						// handle_repair turns the revoked code_span into text for the backticks
+						const delim_end = this.code_span_open_pos + this.extra;
+						this.chomp(delim_end, true);
+						this.out.revoke(
+							this.node_stack[this.node_stack.length - 1],
+							source.slice(this.code_span_open_pos, delim_end)
+						);
 						this.node_stack.pop();
 						this.states.pop();
 
@@ -7575,20 +7580,17 @@ export class PFMParser {
 				top === StateKind.code_span_leading_space_end ||
 				top === StateKind.code_span_info
 			) {
-				// revoke the code span and emit a text node for the
-				// backtick(s) + content so nothing is lost
 				const cs_id = this.node_stack[this.node_stack.length - 1];
-				this.out.revoke(cs_id);
+				const delim_end = this.code_span_open_pos + this.extra;
+				this.out.revoke(
+					cs_id,
+					this.source.slice(this.code_span_open_pos, delim_end)
+				);
 				this.node_stack.pop();
 				this.states.pop();
-				// create replacement text covering backticks + content
 				const parent_id = this.node_stack[this.node_stack.length - 1];
-				const t_id = this.emit_open(
-					NodeKind.text,
-					this.checkpoint_cursor,
-					parent_id
-				);
-				this.out.set_value_start(t_id, this.checkpoint_cursor);
+				const t_id = this.emit_open(NodeKind.text, delim_end, parent_id);
+				this.out.set_value_start(t_id, delim_end);
 				this.out.set_value_end(t_id, this.cursor);
 				this.emit_close(t_id, this.cursor);
 				// don't push to node_stack - this text node is immediately closed
