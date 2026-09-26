@@ -23,6 +23,18 @@ describe("CompilerSession", () => {
 		}
 	});
 
+	test("matches one-shot output for CRLF sources", () => {
+		const compiler = new CompilerSession();
+		const crlf = documents.map((source) => source.replace(/\n/g, "\r\n"));
+
+		for (const source of [...crlf, ...documents, ...crlf]) {
+			expect(compiler.compile(source)).toEqual(compile(source));
+			expect(compiler.compile(source, { sourcemap: true })).toEqual(
+				compile(source, { sourcemap: true }),
+			);
+		}
+	});
+
 	test("does not mutate a prior result when its arena is reset", () => {
 		const compiler = new CompilerSession();
 		const first = compiler.compile(documents[0], { sourcemap: true });

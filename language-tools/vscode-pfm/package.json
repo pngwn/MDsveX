@@ -2,13 +2,15 @@
 	"name": "vscode-pfm",
 	"displayName": "PFM — Penguin-Flavoured Markdown",
 	"description": "Language support for PFM (Penguin-Flavoured Markdown) files",
-	"version": "0.0.1",
+	"version": "0.0.2-next.0",
 	"publisher": "pngwn",
 	"private": true,
 	"engines": {
 		"vscode": "^1.85.0"
 	},
-	"categories": ["Programming Languages"],
+	"categories": [
+		"Programming Languages"
+	],
 	"activationEvents": [
 		"onLanguage:pfm"
 	],
@@ -16,15 +18,20 @@
 	"contributes": {
 		"typescriptServerPlugins": [
 			{
-				"name": "@pfm/typescript-plugin",
+				"name": "@mdsvex/typescript-plugin",
 				"enableForWorkspaceTypeScriptVersions": true
 			}
 		],
 		"languages": [
 			{
 				"id": "pfm",
-				"aliases": ["PFM", "Penguin-Flavoured Markdown"],
-				"extensions": [".pfm"],
+				"aliases": [
+					"PFM",
+					"Penguin-Flavoured Markdown"
+				],
+				"extensions": [
+					".pfm"
+				],
 				"configuration": "./language-configuration.json"
 			}
 		],
@@ -50,7 +57,7 @@
 		]
 	},
 	"scripts": {
-		"build:server": "pnpm --filter @pfm/language-server build",
+		"build:server": "pnpm --filter @mdsvex/language-server build",
 		"build:ext": "vite build --config vite.config.build.ts",
 		"build": "run-s build:server build:ext build:mkdir build:copy-server",
 		"build:mkdir": "shx mkdir -p server",
@@ -58,7 +65,7 @@
 		"package": "vsce package --no-dependencies"
 	},
 	"dependencies": {
-		"@pfm/typescript-plugin": "workspace:*",
+		"@mdsvex/typescript-plugin": "workspace:*",
 		"@volar/vscode": "^2.4.28",
 		"vscode-languageclient": "^9.0.1"
 	},

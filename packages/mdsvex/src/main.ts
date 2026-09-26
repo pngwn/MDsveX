@@ -1,5 +1,11 @@
-import { PFMParser, PluginDispatcher, SourceTextSource } from "@mdsvex/parse";
-import type { ParsePlugin } from "@mdsvex/parse";
+import {
+	PFMParser,
+	PluginDispatcher,
+	SourceTextSource,
+	normalize_newlines,
+	raw_offsets,
+} from "@mdsvex/parse";
+import type { ParsePlugin, RawOffsets } from "@mdsvex/parse";
 import { TreeBuilder } from "@mdsvex/parse/tree-builder";
 import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
 import { mappings_to_v3 } from "@mdsvex/render/sourcemap";
@@ -28,9 +34,12 @@ export interface CompileResult {
 }
 
 function render_once(
-	source: string,
+	raw: string,
 	options?: CompileOptions,
 ): CompileResult {
+	// parser offsets index the normalized string, so render and plugins read it too
+	const source = normalize_newlines(raw);
+
 	let dispatcher: PluginDispatcher | undefined;
 	if (options?.parsePlugins && options.parsePlugins.length > 0) {
 		const text_source = new SourceTextSource(source);
@@ -49,6 +58,7 @@ function render_once(
 
 	if (options?.sourcemap) {
 		const result = renderer.update_mapped(tree.get_buffer(), source);
+		remap_to_raw(raw, result.mappings);
 		return { code: renderer.html, mappings: result.mappings };
 	}
 
@@ -69,13 +79,14 @@ export class CompilerSession {
 	private renderer = new CursorHTMLRenderer({ cache: false });
 
 	compile(
-		source: string,
+		raw: string,
 		options?: CompileOptions,
 	): CompileResult {
 		if (options?.parsePlugins && options.parsePlugins.length > 0) {
-			return render_once(source, options);
+			return render_once(raw, options);
 		}
 
+		const source = normalize_newlines(raw);
 		if (this.tree === null) {
 			this.tree = new TreeBuilder(source.length >> 3 || 128);
 			this.parser = new PFMParser(this.tree);
@@ -87,6 +98,7 @@ export class CompilerSession {
 		const nodes = this.tree.get_buffer();
 		if (options?.sourcemap) {
 			const result = this.renderer.update_mapped(nodes, source);
+			remap_to_raw(raw, result.mappings);
 			return { code: this.renderer.html, mappings: result.mappings };
 		}
 
@@ -100,6 +112,74 @@ function render(
 	options?: CompileOptions,
 ): CompileResult {
 	return render_once(source, options);
+}
+
+function remap_to_raw(raw: string, mappings: Mapping<MappingData>[]): void {
+	const offsets = raw_offsets(raw);
+	if (!offsets) return;
+	for (const mapping of mappings) {
+		remap_source_offsets(mapping, offsets);
+	}
+}
+
+/**
+ * identity mappings split after each collapsed \n so every piece stays
+ * identity with that \n on its \r, other mappings widen their source range
+ */
+function remap_source_offsets(
+	mapping: Mapping<MappingData>,
+	offsets: RawOffsets,
+): void {
+	const { sourceOffsets, lengths } = mapping;
+	const { collapsed } = offsets;
+	const identity = !mapping.generatedLengths;
+
+	for (let i = 0; i < sourceOffsets.length; i++) {
+		const start = sourceOffsets[i];
+		const end = start + lengths[i];
+		const k = offsets.rank(start);
+		// a trailing collapsed \n maps onto its \r in an identity range
+		const crosses = k < collapsed.length && collapsed[k] + (identity ? 1 : 0) < end;
+		if (crosses) {
+			if (identity) return split_mapping(mapping, offsets, i);
+			lengths[i] = offsets.to_raw(end) - start - k;
+		}
+		sourceOffsets[i] = start + k;
+	}
+}
+
+/** splits pieces from index `from` on, earlier pieces are already shifted */
+function split_mapping(
+	mapping: Mapping<MappingData>,
+	offsets: RawOffsets,
+	from: number,
+): void {
+	const { sourceOffsets, generatedOffsets, lengths } = mapping;
+	const { collapsed } = offsets;
+	const src = sourceOffsets.slice(0, from);
+	const gen = generatedOffsets.slice(0, from);
+	const len = lengths.slice(0, from);
+	for (let i = from; i < sourceOffsets.length; i++) {
+		let start = sourceOffsets[i];
+		let gen_start = generatedOffsets[i];
+		const end = start + lengths[i];
+		let k = offsets.rank(start);
+		while (k < collapsed.length && collapsed[k] + 1 < end) {
+			const cut = collapsed[k] + 1;
+			src.push(start + k);
+			gen.push(gen_start);
+			len.push(cut - start);
+			gen_start += cut - start;
+			start = cut;
+			k++;
+		}
+		src.push(start + k);
+		gen.push(gen_start);
+		len.push(end - start);
+	}
+	mapping.sourceOffsets = src;
+	mapping.generatedOffsets = gen;
+	mapping.lengths = len;
 }
 
 /**

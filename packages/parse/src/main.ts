@@ -120,9 +120,47 @@ const EMPTY_ERRORS = new ErrorCollector(1);
  * collapse the others at the input boundary. fast path: no allocation
  * when the input has no `\r`.
  */
-function normalize_newlines(source: string): string {
+export function normalize_newlines(source: string): string {
 	if (source.indexOf('\r') === -1) return source;
 	return source.replace(/\r\n?/g, '\n');
+}
+
+/** maps parser offsets back to the raw source, a collapsed \n maps to its \r */
+export class RawOffsets {
+	/** normalized offsets of each \n that was \r\n, ascending */
+	readonly collapsed: number[];
+
+	constructor(collapsed: number[]) {
+		this.collapsed = collapsed;
+	}
+
+	/** collapsed line endings before offset */
+	rank(offset: number): number {
+		const collapsed = this.collapsed;
+		let lo = 0;
+		let hi = collapsed.length;
+		while (lo < hi) {
+			const mid = (lo + hi) >>> 1;
+			if (collapsed[mid] < offset) lo = mid + 1;
+			else hi = mid;
+		}
+		return lo;
+	}
+
+	to_raw(offset: number): number {
+		return offset + this.rank(offset);
+	}
+}
+
+/** null when raw has no \r\n */
+export function raw_offsets(raw: string): RawOffsets | null {
+	const collapsed: number[] = [];
+	let i = raw.indexOf('\r\n');
+	while (i !== -1) {
+		collapsed.push(i - collapsed.length);
+		i = raw.indexOf('\r\n', i + 2);
+	}
+	return collapsed.length === 0 ? null : new RawOffsets(collapsed);
 }
 
 const TEXT_BREAK = new Uint8Array(128);

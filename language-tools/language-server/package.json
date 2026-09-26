@@ -1,6 +1,11 @@
 {
-	"name": "@pfm/language-server",
-	"version": "0.0.1",
+	"name": "@mdsvex/language-server",
+	"version": "0.1.0-next.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "language-tools/language-server"
+	},
 	"description": "PFM Language Server — LSP binary for .pfm files",
 	"type": "module",
 	"bin": {
@@ -18,7 +23,7 @@
 		}
 	},
 	"dependencies": {
-		"@pfm/language-core": "workspace:*",
+		"@mdsvex/language-core": "workspace:*",
 		"@volar/language-core": "^2.4.28",
 		"@volar/language-server": "^2.4.28",
 		"@volar/typescript": "^2.4.28",

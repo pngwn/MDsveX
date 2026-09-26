@@ -11,7 +11,7 @@ import {
 import { create as createTypeScriptServices } from "volar-service-typescript";
 import { create as createCssService } from "volar-service-css";
 import { create as createMarkdownService } from "volar-service-markdown";
-import { create_pfm_language_plugin, create_svelte_language_plugin } from "@pfm/language-core";
+import { create_pfm_language_plugin, create_svelte_language_plugin } from "@mdsvex/language-core";
 import { clean_svelte_hover } from "./clean_hover";
 import { URI } from "vscode-uri";
 import { forEachEmbeddedCode } from "@volar/language-core";
