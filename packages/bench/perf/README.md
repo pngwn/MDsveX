@@ -114,7 +114,11 @@ passes separated by the whole suite are not.
 run. It is defined inside the harness, so no change under test can alter it,
 and its shape follows the parser's hot loop. Drift above 3% means the machine
 changed speed during the run. The paired ratios still hold in that case, but
-the absolute timings in the report do not.
+the absolute timings in the report do not. Each reading is the fastest over a
+one second window. Once the parser's `_run` could be optimised, its TurboFan
+jobs sometimes queued ahead of the anchor's own compile. The anchor then
+returned two agreeing readings from a lower tier, and the report showed a
+drift of 47% on a machine that had not changed speed.
 
 **Machine lock.** The lock at `/tmp/mdsvex-perf.lock` covers the whole run of
 `ab.mjs`, `calibrate.mjs`, `parity.mjs` and `profile.mjs`. Other runs block
