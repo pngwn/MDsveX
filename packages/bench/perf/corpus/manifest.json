@@ -1,0 +1,2591 @@
+{
+	"corpus_hash": "097b8c83eed10b7b",
+	"entries": [
+		{
+			"family": "micro",
+			"file": "code-fence.md",
+			"bytes": 50,
+			"chars": 50,
+			"lines": 5,
+			"nodes": 2,
+			"hash": "bbcce6b7b4af1bd0",
+			"sources": [
+				"seed"
+			]
+		},
+		{
+			"family": "micro",
+			"file": "component.md",
+			"bytes": 59,
+			"chars": 59,
+			"lines": 2,
+			"nodes": 7,
+			"hash": "b15e39f86c5c2ebe",
+			"sources": [
+				"seed"
+			]
+		},
+		{
+			"family": "micro",
+			"file": "directive.md",
+			"bytes": 74,
+			"chars": 74,
+			"lines": 4,
+			"nodes": 14,
+			"hash": "5bf672264bd26934",
+			"sources": [
+				"seed"
+			]
+		},
+		{
+			"family": "micro",
+			"file": "empty.md",
+			"bytes": 0,
+			"chars": 0,
+			"lines": 1,
+			"nodes": 1,
+			"hash": "e3b0c44298fc1c14",
+			"sources": [
+				"seed"
+			]
+		},
+		{
+			"family": "micro",
+			"file": "heading.md",
+			"bytes": 30,
+			"chars": 30,
+			"lines": 2,
+			"nodes": 4,
+			"hash": "e0989cee8881f863",
+			"sources": [
+				"seed"
+			]
+		},
+		{
+			"family": "micro",
+			"file": "import.md",
+			"bytes": 60,
+			"chars": 60,
+			"lines": 4,
+			"nodes": 5,
+			"hash": "5420bb8c91d400fe",
+			"sources": [
+				"seed"
+			]
+		},
+		{
+			"family": "micro",
+			"file": "list.md",
+			"bytes": 52,
+			"chars": 52,
+			"lines": 4,
+			"nodes": 13,
+			"hash": "7c8b6d640bf3f124",
+			"sources": [
+				"seed"
+			]
+		},
+		{
+			"family": "micro",
+			"file": "paragraph.md",
+			"bytes": 98,
+			"chars": 98,
+			"lines": 2,
+			"nodes": 21,
+			"hash": "af1ca5e2cc9d30d5",
+			"sources": [
+				"seed"
+			]
+		},
+		{
+			"family": "micro",
+			"file": "svelte-block.md",
+			"bytes": 46,
+			"chars": 46,
+			"lines": 6,
+			"nodes": 12,
+			"hash": "fa8068aafc9cf1c5",
+			"sources": [
+				"seed"
+			]
+		},
+		{
+			"family": "micro",
+			"file": "table.md",
+			"bytes": 55,
+			"chars": 55,
+			"lines": 5,
+			"nodes": 17,
+			"hash": "b8b3fb75fb264deb",
+			"sources": [
+				"seed"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "atx_headings.md",
+			"bytes": 355,
+			"chars": 355,
+			"lines": 50,
+			"nodes": 120,
+			"hash": "cb6c9779d9130dca",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/atx_headings/62.md",
+				"packages/parse/test/fixtures/pfm/atx_headings/63.md",
+				"packages/parse/test/fixtures/pfm/atx_headings/64.md",
+				"packages/parse/test/fixtures/pfm/atx_headings/65.md",
+				"packages/parse/test/fixtures/pfm/atx_headings/66.md",
+				"packages/parse/test/fixtures/pfm/atx_headings/68.md",
+				"packages/parse/test/fixtures/pfm/atx_headings/70.md",
+				"packages/parse/test/fixtures/pfm/atx_headings/71.md",
+				"packages/parse/test/fixtures/pfm/atx_headings/72.md",
+				"packages/parse/test/fixtures/pfm/atx_headings/74.md",
+				"packages/parse/test/fixtures/pfm/atx_headings/75.md",
+				"packages/parse/test/fixtures/pfm/atx_headings/76.md",
+				"packages/parse/test/fixtures/pfm/atx_headings/77.md",
+				"packages/parse/test/fixtures/pfm/atx_headings/78.md",
+				"packages/parse/test/fixtures/pfm/atx_headings/79.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "autolinks.md",
+			"bytes": 420,
+			"chars": 420,
+			"lines": 38,
+			"nodes": 85,
+			"hash": "d8b0824c5fceb768",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/autolinks/594.md",
+				"packages/parse/test/fixtures/pfm/autolinks/595.md",
+				"packages/parse/test/fixtures/pfm/autolinks/596.md",
+				"packages/parse/test/fixtures/pfm/autolinks/597.md",
+				"packages/parse/test/fixtures/pfm/autolinks/598.md",
+				"packages/parse/test/fixtures/pfm/autolinks/599.md",
+				"packages/parse/test/fixtures/pfm/autolinks/600.md",
+				"packages/parse/test/fixtures/pfm/autolinks/601.md",
+				"packages/parse/test/fixtures/pfm/autolinks/602.md",
+				"packages/parse/test/fixtures/pfm/autolinks/603.md",
+				"packages/parse/test/fixtures/pfm/autolinks/604.md",
+				"packages/parse/test/fixtures/pfm/autolinks/605.md",
+				"packages/parse/test/fixtures/pfm/autolinks/606.md",
+				"packages/parse/test/fixtures/pfm/autolinks/607.md",
+				"packages/parse/test/fixtures/pfm/autolinks/608.md",
+				"packages/parse/test/fixtures/pfm/autolinks/609.md",
+				"packages/parse/test/fixtures/pfm/autolinks/610.md",
+				"packages/parse/test/fixtures/pfm/autolinks/611.md",
+				"packages/parse/test/fixtures/pfm/autolinks/612.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "backslash_escapes.md",
+			"bytes": 409,
+			"chars": 405,
+			"lines": 35,
+			"nodes": 107,
+			"hash": "aeec686b96fe9df5",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/backslash_escapes/12.md",
+				"packages/parse/test/fixtures/pfm/backslash_escapes/13.md",
+				"packages/parse/test/fixtures/pfm/backslash_escapes/14.md",
+				"packages/parse/test/fixtures/pfm/backslash_escapes/15.md",
+				"packages/parse/test/fixtures/pfm/backslash_escapes/16.md",
+				"packages/parse/test/fixtures/pfm/backslash_escapes/17.md",
+				"packages/parse/test/fixtures/pfm/backslash_escapes/19.md",
+				"packages/parse/test/fixtures/pfm/backslash_escapes/20.md",
+				"packages/parse/test/fixtures/pfm/backslash_escapes/21.md",
+				"packages/parse/test/fixtures/pfm/backslash_escapes/22.md",
+				"packages/parse/test/fixtures/pfm/backslash_escapes/24.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "blank_lines.md",
+			"bytes": 22,
+			"chars": 22,
+			"lines": 9,
+			"nodes": 13,
+			"hash": "07cf99eb365cde60",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/blank_lines/227.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "block_quotes.md",
+			"bytes": 183,
+			"chars": 183,
+			"lines": 40,
+			"nodes": 94,
+			"hash": "c9cceb06f8d7b42b",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/block_quotes/228.md",
+				"packages/parse/test/fixtures/pfm/block_quotes/229.md",
+				"packages/parse/test/fixtures/pfm/block_quotes/230.md",
+				"packages/parse/test/fixtures/pfm/block_quotes/239.md",
+				"packages/parse/test/fixtures/pfm/block_quotes/242.md",
+				"packages/parse/test/fixtures/pfm/block_quotes/243.md",
+				"packages/parse/test/fixtures/pfm/block_quotes/244.md",
+				"packages/parse/test/fixtures/pfm/block_quotes/245.md",
+				"packages/parse/test/fixtures/pfm/block_quotes/248.md",
+				"packages/parse/test/fixtures/pfm/block_quotes/251.md",
+				"packages/parse/test/fixtures/pfm/block_quotes/252.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "code_spans.md",
+			"bytes": 339,
+			"chars": 336,
+			"lines": 52,
+			"nodes": 115,
+			"hash": "dfc500ef358c3a96",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/code_spans/328.md",
+				"packages/parse/test/fixtures/pfm/code_spans/329.md",
+				"packages/parse/test/fixtures/pfm/code_spans/330.md",
+				"packages/parse/test/fixtures/pfm/code_spans/331.md",
+				"packages/parse/test/fixtures/pfm/code_spans/332.md",
+				"packages/parse/test/fixtures/pfm/code_spans/333.md",
+				"packages/parse/test/fixtures/pfm/code_spans/334.md",
+				"packages/parse/test/fixtures/pfm/code_spans/336.md",
+				"packages/parse/test/fixtures/pfm/code_spans/337.md",
+				"packages/parse/test/fixtures/pfm/code_spans/338.md",
+				"packages/parse/test/fixtures/pfm/code_spans/339.md",
+				"packages/parse/test/fixtures/pfm/code_spans/340.md",
+				"packages/parse/test/fixtures/pfm/code_spans/341.md",
+				"packages/parse/test/fixtures/pfm/code_spans/342.md",
+				"packages/parse/test/fixtures/pfm/code_spans/343.md",
+				"packages/parse/test/fixtures/pfm/code_spans/344.md",
+				"packages/parse/test/fixtures/pfm/code_spans/345.md",
+				"packages/parse/test/fixtures/pfm/code_spans/346.md",
+				"packages/parse/test/fixtures/pfm/code_spans/348.md",
+				"packages/parse/test/fixtures/pfm/code_spans/349.md",
+				"packages/parse/test/fixtures/pfm/code_spans/pfm_328_1.md",
+				"packages/parse/test/fixtures/pfm/code_spans/pfm_328_2.md",
+				"packages/parse/test/fixtures/pfm/code_spans/pfm_328_3.md",
+				"packages/parse/test/fixtures/pfm/code_spans/pfm_328_4.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "emphasis_and_strong_emphasis.md",
+			"bytes": 1921,
+			"chars": 1844,
+			"lines": 274,
+			"nodes": 912,
+			"hash": "8ca7f8b76382c245",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/350.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/351.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/352.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/353.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/354.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/355.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/356.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/357.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/358.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/359.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/360.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/361.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/362.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/363.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/364.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/365.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/366.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/367.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/368.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/369.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/370.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/371.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/372.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/373.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/374.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/375.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/376.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/377.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/378.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/379.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/380.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/381.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/382.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/383.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/384.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/385.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/386.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/387.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/388.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/389.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/390.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/391.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/392.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/393.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/394.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/395.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/396.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/397.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/398.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/399.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/400.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/401.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/402.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/403.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/404.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/405.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/406.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/407.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/408.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/409.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/410.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/411.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/412.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/413.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/414.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/415.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/416.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/417.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/418.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/419.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/420.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/421.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/422.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/423.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/424.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/425.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/426.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/427.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/428.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/429.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/430.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/431.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/432.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/433.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/434.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/435.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/436.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/437.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/438.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/439.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/440.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/441.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/442.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/443.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/444.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/445.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/446.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/447.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/448.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/449.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/450.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/451.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/452.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/453.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/454.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/455.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/456.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/457.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/458.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/459.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/460.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/461.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/462.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/463.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/464.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/465.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/466.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/467.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/468.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/469.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/470.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/471.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/472.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/473.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/474.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/475.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/476.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/477.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/478.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/479.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/480.md",
+				"packages/parse/test/fixtures/pfm/emphasis_and_strong_emphasis/481.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "fenced_code_blocks.md",
+			"bytes": 312,
+			"chars": 312,
+			"lines": 79,
+			"nodes": 51,
+			"hash": "91e1235e8ff90a4f",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/119.md",
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/121.md",
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/122.md",
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/124.md",
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/128.md",
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/130.md",
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/131.md",
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/132.md",
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/133.md",
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/135.md",
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/136.md",
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/140.md",
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/142.md",
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/pfm_119_2.md",
+				"packages/parse/test/fixtures/pfm/fenced_code_blocks/pfm_119_3.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "frontmatter.md",
+			"bytes": 16,
+			"chars": 16,
+			"lines": 5,
+			"nodes": 6,
+			"hash": "f9389c282e8829a4",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/frontmatter/2.md",
+				"packages/parse/test/fixtures/pfm/frontmatter/10.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "generic_directives.md",
+			"bytes": 891,
+			"chars": 891,
+			"lines": 109,
+			"nodes": 175,
+			"hash": "05b23ce7c1de846d",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/generic_directives/001.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/002.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/003.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/004.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/005.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/006.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/007.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/008.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/009.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/010.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/011.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/012.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/013.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/014.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/015.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/016.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/017.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/018.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/019.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/020.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/021.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/022.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/023.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/024.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/025.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/026.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/027.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/028.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/029.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/030.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/033.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/036.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/038.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/044.md",
+				"packages/parse/test/fixtures/pfm/generic_directives/045.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "hard_line_breaks.md",
+			"bytes": 87,
+			"chars": 87,
+			"lines": 19,
+			"nodes": 35,
+			"hash": "a2d66573f610daa6",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/hard_line_breaks/634.md",
+				"packages/parse/test/fixtures/pfm/hard_line_breaks/637.md",
+				"packages/parse/test/fixtures/pfm/hard_line_breaks/639.md",
+				"packages/parse/test/fixtures/pfm/hard_line_breaks/641.md",
+				"packages/parse/test/fixtures/pfm/hard_line_breaks/643.md",
+				"packages/parse/test/fixtures/pfm/hard_line_breaks/644.md",
+				"packages/parse/test/fixtures/pfm/hard_line_breaks/646.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "html.md",
+			"bytes": 853,
+			"chars": 853,
+			"lines": 101,
+			"nodes": 180,
+			"hash": "5404104146f71b65",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/html/148.md",
+				"packages/parse/test/fixtures/pfm/html/149.md",
+				"packages/parse/test/fixtures/pfm/html/150.md",
+				"packages/parse/test/fixtures/pfm/html/152.md",
+				"packages/parse/test/fixtures/pfm/html/153.md",
+				"packages/parse/test/fixtures/pfm/html/154.md",
+				"packages/parse/test/fixtures/pfm/html/155.md",
+				"packages/parse/test/fixtures/pfm/html/156.md",
+				"packages/parse/test/fixtures/pfm/html/157.md",
+				"packages/parse/test/fixtures/pfm/html/158.md",
+				"packages/parse/test/fixtures/pfm/html/165.md",
+				"packages/parse/test/fixtures/pfm/html/166.md",
+				"packages/parse/test/fixtures/pfm/html/167.md",
+				"packages/parse/test/fixtures/pfm/html/168.md",
+				"packages/parse/test/fixtures/pfm/html/169.md",
+				"packages/parse/test/fixtures/pfm/html/170.md",
+				"packages/parse/test/fixtures/pfm/html/171.md",
+				"packages/parse/test/fixtures/pfm/html/172.md",
+				"packages/parse/test/fixtures/pfm/html/173.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "images.md",
+			"bytes": 385,
+			"chars": 385,
+			"lines": 39,
+			"nodes": 89,
+			"hash": "bee5c07f312e45ac",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/images/572.md",
+				"packages/parse/test/fixtures/pfm/images/573.md",
+				"packages/parse/test/fixtures/pfm/images/574.md",
+				"packages/parse/test/fixtures/pfm/images/575.md",
+				"packages/parse/test/fixtures/pfm/images/578.md",
+				"packages/parse/test/fixtures/pfm/images/579.md",
+				"packages/parse/test/fixtures/pfm/images/580.md",
+				"packages/parse/test/fixtures/pfm/images/581.md",
+				"packages/parse/test/fixtures/pfm/images/587.md",
+				"packages/parse/test/fixtures/pfm/images/588.md",
+				"packages/parse/test/fixtures/pfm/images/589.md",
+				"packages/parse/test/fixtures/pfm/images/591.md",
+				"packages/parse/test/fixtures/pfm/images/593.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "imports.md",
+			"bytes": 108,
+			"chars": 108,
+			"lines": 10,
+			"nodes": 18,
+			"hash": "dd1f2da577f55290",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/imports/1.md",
+				"packages/parse/test/fixtures/pfm/imports/8.md",
+				"packages/parse/test/fixtures/pfm/imports/10.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "inlines.md",
+			"bytes": 8,
+			"chars": 8,
+			"lines": 2,
+			"nodes": 6,
+			"hash": "93ca88aadbd1f079",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/inlines/327.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "link_reference_definitions.md",
+			"bytes": 268,
+			"chars": 259,
+			"lines": 36,
+			"nodes": 69,
+			"hash": "5993624d5b516899",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/link_reference_definitions/192.md",
+				"packages/parse/test/fixtures/pfm/link_reference_definitions/194.md",
+				"packages/parse/test/fixtures/pfm/link_reference_definitions/195.md",
+				"packages/parse/test/fixtures/pfm/link_reference_definitions/206.md",
+				"packages/parse/test/fixtures/pfm/link_reference_definitions/207.md",
+				"packages/parse/test/fixtures/pfm/link_reference_definitions/208.md",
+				"packages/parse/test/fixtures/pfm/link_reference_definitions/209.md",
+				"packages/parse/test/fixtures/pfm/link_reference_definitions/210.md",
+				"packages/parse/test/fixtures/pfm/link_reference_definitions/213.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "links.md",
+			"bytes": 2023,
+			"chars": 2020,
+			"lines": 217,
+			"nodes": 603,
+			"hash": "de8b7d5c21559eac",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/links/482.md",
+				"packages/parse/test/fixtures/pfm/links/483.md",
+				"packages/parse/test/fixtures/pfm/links/484.md",
+				"packages/parse/test/fixtures/pfm/links/485.md",
+				"packages/parse/test/fixtures/pfm/links/486.md",
+				"packages/parse/test/fixtures/pfm/links/487.md",
+				"packages/parse/test/fixtures/pfm/links/488.md",
+				"packages/parse/test/fixtures/pfm/links/489.md",
+				"packages/parse/test/fixtures/pfm/links/490.md",
+				"packages/parse/test/fixtures/pfm/links/491.md",
+				"packages/parse/test/fixtures/pfm/links/492.md",
+				"packages/parse/test/fixtures/pfm/links/493.md",
+				"packages/parse/test/fixtures/pfm/links/494.md",
+				"packages/parse/test/fixtures/pfm/links/495.md",
+				"packages/parse/test/fixtures/pfm/links/496.md",
+				"packages/parse/test/fixtures/pfm/links/497.md",
+				"packages/parse/test/fixtures/pfm/links/498.md",
+				"packages/parse/test/fixtures/pfm/links/499.md",
+				"packages/parse/test/fixtures/pfm/links/500.md",
+				"packages/parse/test/fixtures/pfm/links/501.md",
+				"packages/parse/test/fixtures/pfm/links/502.md",
+				"packages/parse/test/fixtures/pfm/links/503.md",
+				"packages/parse/test/fixtures/pfm/links/504.md",
+				"packages/parse/test/fixtures/pfm/links/505.md",
+				"packages/parse/test/fixtures/pfm/links/506.md",
+				"packages/parse/test/fixtures/pfm/links/507.md",
+				"packages/parse/test/fixtures/pfm/links/508.md",
+				"packages/parse/test/fixtures/pfm/links/509.md",
+				"packages/parse/test/fixtures/pfm/links/510.md",
+				"packages/parse/test/fixtures/pfm/links/511.md",
+				"packages/parse/test/fixtures/pfm/links/512.md",
+				"packages/parse/test/fixtures/pfm/links/513.md",
+				"packages/parse/test/fixtures/pfm/links/514.md",
+				"packages/parse/test/fixtures/pfm/links/515.md",
+				"packages/parse/test/fixtures/pfm/links/516.md",
+				"packages/parse/test/fixtures/pfm/links/517.md",
+				"packages/parse/test/fixtures/pfm/links/518.md",
+				"packages/parse/test/fixtures/pfm/links/519.md",
+				"packages/parse/test/fixtures/pfm/links/520.md",
+				"packages/parse/test/fixtures/pfm/links/521.md",
+				"packages/parse/test/fixtures/pfm/links/522.md",
+				"packages/parse/test/fixtures/pfm/links/523.md",
+				"packages/parse/test/fixtures/pfm/links/524.md",
+				"packages/parse/test/fixtures/pfm/links/525.md",
+				"packages/parse/test/fixtures/pfm/links/526.md",
+				"packages/parse/test/fixtures/pfm/links/527.md",
+				"packages/parse/test/fixtures/pfm/links/528.md",
+				"packages/parse/test/fixtures/pfm/links/529.md",
+				"packages/parse/test/fixtures/pfm/links/530.md",
+				"packages/parse/test/fixtures/pfm/links/531.md",
+				"packages/parse/test/fixtures/pfm/links/532.md",
+				"packages/parse/test/fixtures/pfm/links/533.md",
+				"packages/parse/test/fixtures/pfm/links/534.md",
+				"packages/parse/test/fixtures/pfm/links/535.md",
+				"packages/parse/test/fixtures/pfm/links/536.md",
+				"packages/parse/test/fixtures/pfm/links/537.md",
+				"packages/parse/test/fixtures/pfm/links/538.md",
+				"packages/parse/test/fixtures/pfm/links/539.md",
+				"packages/parse/test/fixtures/pfm/links/540.md",
+				"packages/parse/test/fixtures/pfm/links/541.md",
+				"packages/parse/test/fixtures/pfm/links/543.md",
+				"packages/parse/test/fixtures/pfm/links/545.md",
+				"packages/parse/test/fixtures/pfm/links/546.md",
+				"packages/parse/test/fixtures/pfm/links/547.md",
+				"packages/parse/test/fixtures/pfm/links/548.md",
+				"packages/parse/test/fixtures/pfm/links/549.md",
+				"packages/parse/test/fixtures/pfm/links/550.md",
+				"packages/parse/test/fixtures/pfm/links/551.md",
+				"packages/parse/test/fixtures/pfm/links/552.md",
+				"packages/parse/test/fixtures/pfm/links/554.md",
+				"packages/parse/test/fixtures/pfm/links/558.md",
+				"packages/parse/test/fixtures/pfm/links/559.md",
+				"packages/parse/test/fixtures/pfm/links/564.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "list_items.md",
+			"bytes": 675,
+			"chars": 675,
+			"lines": 114,
+			"nodes": 254,
+			"hash": "810873fc171b0bbc",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/list_items/254.md",
+				"packages/parse/test/fixtures/pfm/list_items/255.md",
+				"packages/parse/test/fixtures/pfm/list_items/256.md",
+				"packages/parse/test/fixtures/pfm/list_items/260.md",
+				"packages/parse/test/fixtures/pfm/list_items/261.md",
+				"packages/parse/test/fixtures/pfm/list_items/262.md",
+				"packages/parse/test/fixtures/pfm/list_items/263.md",
+				"packages/parse/test/fixtures/pfm/list_items/264.md",
+				"packages/parse/test/fixtures/pfm/list_items/265.md",
+				"packages/parse/test/fixtures/pfm/list_items/266.md",
+				"packages/parse/test/fixtures/pfm/list_items/267.md",
+				"packages/parse/test/fixtures/pfm/list_items/269.md",
+				"packages/parse/test/fixtures/pfm/list_items/270.md",
+				"packages/parse/test/fixtures/pfm/list_items/273.md",
+				"packages/parse/test/fixtures/pfm/list_items/276.md",
+				"packages/parse/test/fixtures/pfm/list_items/280.md",
+				"packages/parse/test/fixtures/pfm/list_items/281.md",
+				"packages/parse/test/fixtures/pfm/list_items/283.md",
+				"packages/parse/test/fixtures/pfm/list_items/284.md",
+				"packages/parse/test/fixtures/pfm/list_items/285.md",
+				"packages/parse/test/fixtures/pfm/list_items/286.md",
+				"packages/parse/test/fixtures/pfm/list_items/293.md",
+				"packages/parse/test/fixtures/pfm/list_items/294.md",
+				"packages/parse/test/fixtures/pfm/list_items/296.md",
+				"packages/parse/test/fixtures/pfm/list_items/298.md",
+				"packages/parse/test/fixtures/pfm/list_items/299.md",
+				"packages/parse/test/fixtures/pfm/list_items/300.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "lists.md",
+			"bytes": 394,
+			"chars": 394,
+			"lines": 72,
+			"nodes": 181,
+			"hash": "fe5a8490ea7c1084",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/lists/301.md",
+				"packages/parse/test/fixtures/pfm/lists/302.md",
+				"packages/parse/test/fixtures/pfm/lists/303.md",
+				"packages/parse/test/fixtures/pfm/lists/304.md",
+				"packages/parse/test/fixtures/pfm/lists/305.md",
+				"packages/parse/test/fixtures/pfm/lists/306.md",
+				"packages/parse/test/fixtures/pfm/lists/311.md",
+				"packages/parse/test/fixtures/pfm/lists/312.md",
+				"packages/parse/test/fixtures/pfm/lists/313.md",
+				"packages/parse/test/fixtures/pfm/lists/314.md",
+				"packages/parse/test/fixtures/pfm/lists/315.md",
+				"packages/parse/test/fixtures/pfm/lists/316.md",
+				"packages/parse/test/fixtures/pfm/lists/325.md",
+				"packages/parse/test/fixtures/pfm/lists/326.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "paragraphs.md",
+			"bytes": 127,
+			"chars": 127,
+			"lines": 25,
+			"nodes": 49,
+			"hash": "b2d3fef455c1b8fe",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/paragraphs/219.md",
+				"packages/parse/test/fixtures/pfm/paragraphs/220.md",
+				"packages/parse/test/fixtures/pfm/paragraphs/221.md",
+				"packages/parse/test/fixtures/pfm/paragraphs/222.md",
+				"packages/parse/test/fixtures/pfm/paragraphs/223.md",
+				"packages/parse/test/fixtures/pfm/paragraphs/224.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "precedence.md",
+			"bytes": 14,
+			"chars": 14,
+			"lines": 3,
+			"nodes": 6,
+			"hash": "1c7a2eadb37b7f24",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/precedence/42.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "setext_headings.md",
+			"bytes": 119,
+			"chars": 119,
+			"lines": 35,
+			"nodes": 68,
+			"hash": "ad24da18b32c18e5",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/setext_headings/87.md",
+				"packages/parse/test/fixtures/pfm/setext_headings/88.md",
+				"packages/parse/test/fixtures/pfm/setext_headings/94.md",
+				"packages/parse/test/fixtures/pfm/setext_headings/97.md",
+				"packages/parse/test/fixtures/pfm/setext_headings/99.md",
+				"packages/parse/test/fixtures/pfm/setext_headings/104.md",
+				"packages/parse/test/fixtures/pfm/setext_headings/105.md",
+				"packages/parse/test/fixtures/pfm/setext_headings/106.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "soft_line_breaks.md",
+			"bytes": 19,
+			"chars": 19,
+			"lines": 6,
+			"nodes": 12,
+			"hash": "7d574196cf5a96cd",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/soft_line_breaks/648.md",
+				"packages/parse/test/fixtures/pfm/soft_line_breaks/649.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "tabs.md",
+			"bytes": 85,
+			"chars": 85,
+			"lines": 21,
+			"nodes": 51,
+			"hash": "9af7364bd492072a",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/tabs/4.md",
+				"packages/parse/test/fixtures/pfm/tabs/6.md",
+				"packages/parse/test/fixtures/pfm/tabs/7.md",
+				"packages/parse/test/fixtures/pfm/tabs/10.md",
+				"packages/parse/test/fixtures/pfm/tabs/11.md",
+				"packages/parse/test/fixtures/pfm/tabs/12.md",
+				"packages/parse/test/fixtures/pfm/tabs/15.md",
+				"packages/parse/test/fixtures/pfm/tabs/16.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "textual_content.md",
+			"bytes": 52,
+			"chars": 47,
+			"lines": 6,
+			"nodes": 12,
+			"hash": "5425fa426f65d503",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/textual_content/650.md",
+				"packages/parse/test/fixtures/pfm/textual_content/651.md",
+				"packages/parse/test/fixtures/pfm/textual_content/652.md"
+			]
+		},
+		{
+			"family": "fixtures",
+			"file": "thematic_breaks.md",
+			"bytes": 254,
+			"chars": 254,
+			"lines": 50,
+			"nodes": 101,
+			"hash": "6411ff1ca5c4e422",
+			"sources": [
+				"packages/parse/test/fixtures/pfm/thematic_breaks/43.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/44.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/45.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/46.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/47.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/49.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/50.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/51.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/52.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/53.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/55.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/56.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/57.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/58.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/60.md",
+				"packages/parse/test/fixtures/pfm/thematic_breaks/61.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "bench-benchmarks-fixture-code.md",
+			"bytes": 7059,
+			"chars": 7059,
+			"lines": 312,
+			"nodes": 178,
+			"hash": "55264814cfe3be46",
+			"sources": [
+				"packages/bench/benchmarks/fixture-code.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "bench-benchmarks-fixture-html.md",
+			"bytes": 2921,
+			"chars": 2921,
+			"lines": 160,
+			"nodes": 356,
+			"hash": "d87e9e556b3bac5d",
+			"sources": [
+				"packages/bench/benchmarks/fixture-html.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "bench-benchmarks-fixture-short.md",
+			"bytes": 100,
+			"chars": 100,
+			"lines": 10,
+			"nodes": 30,
+			"hash": "1a02dfd520149fd5",
+			"sources": [
+				"packages/bench/benchmarks/fixture-short.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "bench-benchmarks-fixture-tables.md",
+			"bytes": 5343,
+			"chars": 5343,
+			"lines": 77,
+			"nodes": 889,
+			"hash": "77cf402046218e5d",
+			"sources": [
+				"packages/bench/benchmarks/fixture-tables.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "bench-benchmarks-fixture.md",
+			"bytes": 14182,
+			"chars": 13424,
+			"lines": 327,
+			"nodes": 1027,
+			"hash": "595a4a59c806b696",
+			"sources": [
+				"packages/bench/benchmarks/fixture.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "bench-next_core_performance.md",
+			"bytes": 6823,
+			"chars": 6811,
+			"lines": 158,
+			"nodes": 456,
+			"hash": "6183793a9e9966f5",
+			"sources": [
+				"packages/bench/NEXT_CORE_PERFORMANCE.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "bench-parser-performance.md",
+			"bytes": 4354,
+			"chars": 4329,
+			"lines": 53,
+			"nodes": 296,
+			"hash": "58cd5e26c77a2a16",
+			"sources": [
+				"packages/bench/parser-performance.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "language-tools-architecture.md",
+			"bytes": 3720,
+			"chars": 3712,
+			"lines": 59,
+			"nodes": 162,
+			"hash": "d1dbf6304e877221",
+			"sources": [
+				"language-tools/ARCHITECTURE.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "mdsvex-readme.md",
+			"bytes": 488,
+			"chars": 486,
+			"lines": 26,
+			"nodes": 35,
+			"hash": "38fc58a2b034a8f8",
+			"sources": [
+				"packages/mdsvex/README.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "migrate-readme.md",
+			"bytes": 2121,
+			"chars": 2119,
+			"lines": 50,
+			"nodes": 150,
+			"hash": "dd4aeec0170176d7",
+			"sources": [
+				"packages/migrate/README.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "parse-plugins.md",
+			"bytes": 18317,
+			"chars": 18245,
+			"lines": 297,
+			"nodes": 689,
+			"hash": "ee9681f444e397c8",
+			"sources": [
+				"packages/parse/PLUGINS.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "parse-wire_format.md",
+			"bytes": 25451,
+			"chars": 25433,
+			"lines": 687,
+			"nodes": 1151,
+			"hash": "6cd2f471cee4b48f",
+			"sources": [
+				"packages/parse/WIRE_FORMAT.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "pfm.md",
+			"bytes": 5967,
+			"chars": 5943,
+			"lines": 151,
+			"nodes": 300,
+			"hash": "7a2d164b536077ad",
+			"sources": [
+				"PFM.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "plugins-remark_plugins.md",
+			"bytes": 2512,
+			"chars": 2442,
+			"lines": 41,
+			"nodes": 114,
+			"hash": "301218639fb63da1",
+			"sources": [
+				"plugins/REMARK_PLUGINS.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "readme.md",
+			"bytes": 1537,
+			"chars": 1537,
+			"lines": 21,
+			"nodes": 69,
+			"hash": "d928145e03d58d65",
+			"sources": [
+				"README.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "site-src-components-_cheatsheet.md",
+			"bytes": 2268,
+			"chars": 2268,
+			"lines": 118,
+			"nodes": 212,
+			"hash": "2e6d96eed534692e",
+			"sources": [
+				"packages/site/src/components/_cheatsheet.svtext"
+			]
+		},
+		{
+			"family": "real",
+			"file": "site-src-components-cheatsheet.md",
+			"bytes": 4738,
+			"chars": 4738,
+			"lines": 253,
+			"nodes": 13,
+			"hash": "dafe9e329dcae14f",
+			"sources": [
+				"packages/site/src/components/Cheatsheet.svx"
+			]
+		},
+		{
+			"family": "real",
+			"file": "svast-readme.md",
+			"bytes": 13567,
+			"chars": 13567,
+			"lines": 694,
+			"nodes": 815,
+			"hash": "9021825cae9ef803",
+			"sources": [
+				"packages/svast/README.md"
+			]
+		},
+		{
+			"family": "real",
+			"file": "template-readme.md",
+			"bytes": 1418,
+			"chars": 1418,
+			"lines": 48,
+			"nodes": 61,
+			"hash": "fc71fb71c201a012",
+			"sources": [
+				"packages/template/README.md"
+			]
+		},
+		{
+			"family": "sized",
+			"file": "100k.md",
+			"bytes": 96858,
+			"chars": 95937,
+			"lines": 2367,
+			"nodes": 5719,
+			"hash": "42efb733e52c5cd7",
+			"sources": [
+				"packages/bench/benchmarks/fixture-code.md",
+				"packages/bench/benchmarks/fixture-html.md",
+				"packages/bench/benchmarks/fixture-short.md",
+				"packages/bench/benchmarks/fixture-tables.md",
+				"packages/bench/benchmarks/fixture.md",
+				"packages/bench/NEXT_CORE_PERFORMANCE.md",
+				"packages/bench/parser-performance.md",
+				"language-tools/ARCHITECTURE.md",
+				"packages/mdsvex/README.md",
+				"packages/migrate/README.md",
+				"packages/parse/PLUGINS.md",
+				"packages/parse/WIRE_FORMAT.md",
+				"PFM.md"
+			]
+		},
+		{
+			"family": "sized",
+			"file": "10k.md",
+			"bytes": 9981,
+			"chars": 9981,
+			"lines": 472,
+			"nodes": 534,
+			"hash": "f1a5d76ceac36a83",
+			"sources": [
+				"packages/bench/benchmarks/fixture-code.md",
+				"packages/bench/benchmarks/fixture-html.md"
+			]
+		},
+		{
+			"family": "sized",
+			"file": "1k.md",
+			"bytes": 993,
+			"chars": 991,
+			"lines": 76,
+			"nodes": 185,
+			"hash": "103de78714e2eaa3",
+			"sources": [
+				"packages/bench/benchmarks/fixture-short.md",
+				"packages/mdsvex/README.md"
+			]
+		},
+		{
+			"family": "huge",
+			"file": "4m.md",
+			"bytes": 3778040,
+			"chars": 3747413,
+			"lines": 108476,
+			"nodes": 215509,
+			"hash": "69beed978b246e19",
+			"sources": [
+				"packages/bench/benchmarks/fixture-code.md",
+				"packages/bench/benchmarks/fixture-html.md",
+				"packages/bench/benchmarks/fixture-short.md",
+				"packages/bench/benchmarks/fixture-tables.md",
+				"packages/bench/benchmarks/fixture.md",
+				"packages/bench/NEXT_CORE_PERFORMANCE.md",
+				"packages/bench/parser-performance.md",
+				"language-tools/ARCHITECTURE.md",
+				"packages/mdsvex/README.md",
+				"packages/migrate/README.md",
+				"packages/parse/PLUGINS.md",
+				"packages/parse/WIRE_FORMAT.md",
+				"PFM.md",
+				"plugins/REMARK_PLUGINS.md",
+				"README.md",
+				"packages/site/src/components/_cheatsheet.svtext",
+				"packages/site/src/components/Cheatsheet.svx",
+				"packages/svast/README.md",
+				"packages/template/README.md"
+			]
+		}
+	],
+	"excluded": [
+		{
+			"source": "PLAN.md",
+			"family": "real",
+			"reason": "not tracked by git, cannot be reproduced from a commit"
+		},
+		{
+			"source": "packages/bench/README.md",
+			"family": "real",
+			"reason": "parser reports an infinite loop"
+		},
+		{
+			"source": "packages/site/src/routes/_docs.svtext",
+			"family": "real",
+			"reason": "line 3: forward reference [svelte]; line 3: forward reference [mdx]; line 23: forward reference [remark_plugins]; line 23: forward reference [rehype_plugins]; line 393: forward reference [prism]"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/atx_headings/67.md",
+			"family": "fixtures",
+			"reason": "line 1: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/atx_headings/69.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/atx_headings/73.md",
+			"family": "fixtures",
+			"reason": "line 1: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/backslash_escapes/18.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/backslash_escapes/23.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/block_quotes/231.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/block_quotes/232.md",
+			"family": "fixtures",
+			"reason": "line 3: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/block_quotes/233.md",
+			"family": "fixtures",
+			"reason": "line 2: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/block_quotes/234.md",
+			"family": "fixtures",
+			"reason": "line 2: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/block_quotes/235.md",
+			"family": "fixtures",
+			"reason": "line 2: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/block_quotes/236.md",
+			"family": "fixtures",
+			"reason": "line 2: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/block_quotes/237.md",
+			"family": "fixtures",
+			"reason": "line 2: lazy blockquote continuation; line 4: unclosed code fence"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/block_quotes/238.md",
+			"family": "fixtures",
+			"reason": "line 2: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/block_quotes/240.md",
+			"family": "fixtures",
+			"reason": "line 2: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/block_quotes/241.md",
+			"family": "fixtures",
+			"reason": "line 3: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/block_quotes/246.md",
+			"family": "fixtures",
+			"reason": "line 2: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/block_quotes/247.md",
+			"family": "fixtures",
+			"reason": "line 2: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/block_quotes/249.md",
+			"family": "fixtures",
+			"reason": "line 3: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/block_quotes/250.md",
+			"family": "fixtures",
+			"reason": "line 2: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/code_spans/335.md",
+			"family": "fixtures",
+			"reason": "line 3: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/code_spans/347.md",
+			"family": "fixtures",
+			"reason": "line 2: unclosed code fence"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/fenced_code_blocks/126.md",
+			"family": "fixtures",
+			"reason": "line 2: unclosed code fence"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/fenced_code_blocks/127.md",
+			"family": "fixtures",
+			"reason": "line 5: unclosed code fence"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/fenced_code_blocks/134.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/fenced_code_blocks/137.md",
+			"family": "fixtures",
+			"reason": "line 4: unclosed code fence"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/fenced_code_blocks/138.md",
+			"family": "fixtures",
+			"reason": "line 3: unclosed code fence"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/fenced_code_blocks/144.md",
+			"family": "fixtures",
+			"reason": "line 3: unclosed code fence"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/fenced_code_blocks/145.md",
+			"family": "fixtures",
+			"reason": "line 3: unclosed code fence"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/frontmatter/1.md",
+			"family": "fixtures",
+			"reason": "line 3: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/frontmatter/3.md",
+			"family": "fixtures",
+			"reason": "line 4: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/frontmatter/4.md",
+			"family": "fixtures",
+			"reason": "line 5: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/frontmatter/5.md",
+			"family": "fixtures",
+			"reason": "line 3: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/frontmatter/6.md",
+			"family": "fixtures",
+			"reason": "line 3: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/frontmatter/7.md",
+			"family": "fixtures",
+			"reason": "line 4: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/frontmatter/8.md",
+			"family": "fixtures",
+			"reason": "line 3: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/frontmatter/9.md",
+			"family": "fixtures",
+			"reason": "line 4: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/031.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/032.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/034.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/035.md",
+			"family": "fixtures",
+			"reason": "line 3: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/037.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/039.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/040.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/041.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/042.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/043.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/046.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/047.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/048.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/049.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/050.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/051.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/052.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/053.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/054.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/055.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/056.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/057.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/058.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/059.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/060.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/061.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/062.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/063.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/064.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/065.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/066.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/067.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/068.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/069.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/070.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/071.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/072.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/073.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/074.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/075.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/076.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/077.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/078.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/079.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/080.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/081.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/082.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/083.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/084.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/085.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/086.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/087.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/088.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/089.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/090.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/091.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/092.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/093.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/094.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/095.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/096.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/097.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/098.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/099.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/100.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/101.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/102.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/103.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/104.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/generic_directives/105.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/hard_line_breaks/633.md",
+			"family": "fixtures",
+			"reason": "line 1: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/hard_line_breaks/635.md",
+			"family": "fixtures",
+			"reason": "line 1: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/hard_line_breaks/636.md",
+			"family": "fixtures",
+			"reason": "line 1: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/hard_line_breaks/638.md",
+			"family": "fixtures",
+			"reason": "line 1: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/hard_line_breaks/640.md",
+			"family": "fixtures",
+			"reason": "line 1: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/hard_line_breaks/642.md",
+			"family": "fixtures",
+			"reason": "line 1: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/hard_line_breaks/645.md",
+			"family": "fixtures",
+			"reason": "line 1: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/hard_line_breaks/647.md",
+			"family": "fixtures",
+			"reason": "line 1: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/151.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/159.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/160.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/161.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/162.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/163.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/164.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/174.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/175.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/176.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/177.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/178.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/179.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/180.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/181.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/182.md",
+			"family": "fixtures",
+			"reason": "line 9: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/183.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/184.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/185.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/186.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/187.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/188.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/189.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/190.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/191.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/613.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/614.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/615.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/616.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/617.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/618.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/619.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/620.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/621.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/622.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/623.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/624.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/625.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/626.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/627.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/628.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/629.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/630.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/631.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/html/632.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/images/576.md",
+			"family": "fixtures",
+			"reason": "line 1: forward reference [foo *bar*]"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/images/577.md",
+			"family": "fixtures",
+			"reason": "line 1: forward reference [foobar]"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/images/582.md",
+			"family": "fixtures",
+			"reason": "line 1: forward reference [bar]"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/images/583.md",
+			"family": "fixtures",
+			"reason": "line 1: forward reference [bar]"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/images/584.md",
+			"family": "fixtures",
+			"reason": "line 1: forward reference [foo]"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/images/585.md",
+			"family": "fixtures",
+			"reason": "line 1: forward reference [*foo* bar]"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/images/586.md",
+			"family": "fixtures",
+			"reason": "line 1: forward reference [foo]"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/images/590.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/images/592.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/imports/2.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/imports/3.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/imports/4.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/imports/5.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/imports/6.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/imports/7.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/imports/9.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/imports/11.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/193.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/196.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/197.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/198.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/199.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/200.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/201.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/202.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/203.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/204.md",
+			"family": "fixtures",
+			"reason": "line 1: forward reference [foo]"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/205.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/211.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/212.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/214.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/215.md",
+			"family": "fixtures",
+			"reason": "line 3: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/216.md",
+			"family": "fixtures",
+			"reason": "line 2: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/217.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/link_reference_definitions/218.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/542.md",
+			"family": "fixtures",
+			"reason": "line 3: shorthand reference [bar]"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/544.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/553.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/555.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/556.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/557.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/560.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/561.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/562.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/563.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/565.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/566.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/567.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/568.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/569.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/570.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/links/571.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/253.md",
+			"family": "fixtures",
+			"reason": "line 4: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/257.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/258.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/259.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/268.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/271.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/272.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block; line 5: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/274.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/275.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/277.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/278.md",
+			"family": "fixtures",
+			"reason": "line 3: setext heading underline; line 7: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/279.md",
+			"family": "fixtures",
+			"reason": "line 1: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/282.md",
+			"family": "fixtures",
+			"reason": "line 2: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/287.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/288.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/289.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block; line 4: indented code block; line 6: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/290.md",
+			"family": "fixtures",
+			"reason": "line 4: indented code block; line 6: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/291.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/292.md",
+			"family": "fixtures",
+			"reason": "line 2: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/295.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/list_items/297.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/lists/307.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/lists/308.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/lists/309.md",
+			"family": "fixtures",
+			"reason": "line 9: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/lists/310.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/lists/317.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/lists/318.md",
+			"family": "fixtures",
+			"reason": "line 8: unclosed code fence"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/lists/319.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/lists/320.md",
+			"family": "fixtures",
+			"reason": "line 4: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/lists/321.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/lists/322.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/lists/323.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/lists/324.md",
+			"family": "fixtures",
+			"reason": "line 6: unclosed code fence"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/paragraphs/225.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/80.md",
+			"family": "fixtures",
+			"reason": "line 2: setext heading underline; line 5: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/81.md",
+			"family": "fixtures",
+			"reason": "line 3: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/82.md",
+			"family": "fixtures",
+			"reason": "line 3: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/83.md",
+			"family": "fixtures",
+			"reason": "line 2: setext heading underline; line 5: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/84.md",
+			"family": "fixtures",
+			"reason": "line 2: setext heading underline; line 5: setext heading underline; line 8: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/85.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block; line 4: indented code block; line 5: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/86.md",
+			"family": "fixtures",
+			"reason": "line 2: setext heading underline; line 2: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/89.md",
+			"family": "fixtures",
+			"reason": "line 1: trailing space hard break; line 2: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/90.md",
+			"family": "fixtures",
+			"reason": "line 2: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/91.md",
+			"family": "fixtures",
+			"reason": "line 2: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/92.md",
+			"family": "fixtures",
+			"reason": "line 2: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/93.md",
+			"family": "fixtures",
+			"reason": "line 2: lazy blockquote continuation; line 3: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/95.md",
+			"family": "fixtures",
+			"reason": "line 3: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/96.md",
+			"family": "fixtures",
+			"reason": "line 3: setext heading underline; line 5: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/98.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/100.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block; line 2: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/101.md",
+			"family": "fixtures",
+			"reason": "line 2: lazy blockquote continuation"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/102.md",
+			"family": "fixtures",
+			"reason": "line 2: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/setext_headings/103.md",
+			"family": "fixtures",
+			"reason": "line 4: setext heading underline"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/tabs/1.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/tabs/2.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/tabs/3.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/tabs/5.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/tabs/8.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/tabs/9.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/tabs/13.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/tabs/14.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/tabs/17.md",
+			"family": "fixtures",
+			"reason": "changes the parse of neighbouring fixtures when concatenated"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/thematic_breaks/48.md",
+			"family": "fixtures",
+			"reason": "line 1: indented code block"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/thematic_breaks/54.md",
+			"family": "fixtures",
+			"reason": "line 1: trailing space hard break"
+		},
+		{
+			"source": "packages/parse/test/fixtures/pfm/thematic_breaks/59.md",
+			"family": "fixtures",
+			"reason": "line 2: setext heading underline"
+		}
+	]
+}

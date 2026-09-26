@@ -23,15 +23,20 @@ export interface MdsvexOptions {
 	parsePlugins?: ParsePlugin[];
 }
 
-interface RenderResult {
+export interface CompileOptions {
+	parsePlugins?: ParsePlugin[];
+	sourcemap?: boolean;
+}
+
+export interface CompileResult {
 	code: string;
 	mappings?: Mapping<MappingData>[];
 }
 
-function render(
+function render_once(
 	raw: string,
-	options?: { parsePlugins?: ParsePlugin[]; sourcemap?: boolean },
-): RenderResult {
+	options?: CompileOptions,
+): CompileResult {
 	// parser offsets index the normalized string, so render and plugins read it too
 	const source = normalize_newlines(raw);
 
@@ -53,17 +58,68 @@ function render(
 
 	if (options?.sourcemap) {
 		const result = renderer.update_mapped(tree.get_buffer(), source);
-		const offsets = raw_offsets(raw);
-		if (offsets) {
-			for (const mapping of result.mappings) {
-				remap_source_offsets(mapping, offsets);
-			}
-		}
+		remap_to_raw(raw, result.mappings);
 		return { code: renderer.html, mappings: result.mappings };
 	}
 
 	renderer.update(tree.get_buffer(), source);
 	return { code: renderer.html };
+}
+
+/**
+ * Reusable no-plugin compiler for sequential documents.
+ *
+ * The arena remains private so resetting it can never mutate an AST held by a
+ * caller. Parse plugins retain the one-shot path because their dispatcher owns
+ * a source-specific text view.
+ */
+export class CompilerSession {
+	private tree: TreeBuilder | null = null;
+	private parser: PFMParser | null = null;
+	private renderer = new CursorHTMLRenderer({ cache: false });
+
+	compile(
+		raw: string,
+		options?: CompileOptions,
+	): CompileResult {
+		if (options?.parsePlugins && options.parsePlugins.length > 0) {
+			return render_once(raw, options);
+		}
+
+		const source = normalize_newlines(raw);
+		if (this.tree === null) {
+			this.tree = new TreeBuilder(source.length >> 3 || 128);
+			this.parser = new PFMParser(this.tree);
+		} else {
+			this.tree.reset();
+		}
+
+		this.parser!.parse(source);
+		const nodes = this.tree.get_buffer();
+		if (options?.sourcemap) {
+			const result = this.renderer.update_mapped(nodes, source);
+			remap_to_raw(raw, result.mappings);
+			return { code: this.renderer.html, mappings: result.mappings };
+		}
+
+		this.renderer.update(nodes, source);
+		return { code: this.renderer.html };
+	}
+}
+
+function render(
+	source: string,
+	options?: CompileOptions,
+): CompileResult {
+	return render_once(source, options);
+}
+
+function remap_to_raw(raw: string, mappings: Mapping<MappingData>[]): void {
+	const offsets = raw_offsets(raw);
+	if (!offsets) return;
+	for (const mapping of mappings) {
+		remap_source_offsets(mapping, offsets);
+	}
 }
 
 /**
@@ -148,6 +204,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 	const storedMaps = new Map<string, SourceMapV3>();
 	const storedSources = new Map<string, string>();
+	const compiler = new CompilerSession();
 
 	return [
 		{
@@ -157,7 +214,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			transform(code, id) {
 				if (!matches(id)) return;
 
-				const result = render(code, {
+				const result = compiler.compile(code, {
 					parsePlugins: options.parsePlugins,
 					sourcemap: true,
 				});

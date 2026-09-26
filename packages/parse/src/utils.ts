@@ -228,6 +228,13 @@ export class NodeBuffer {
 
 	/** clear previously pushed tokens without reallocating storage. */
 	reset(): void {
+		const size = this._size;
+		this._value_starts.fill(0, 0, size);
+		this._value_ends.fill(0, 0, size);
+		this._pending_nodes.fill(0, 0, size);
+		this.has_metadata.fill(0, 0, (size + 7) >> 3);
+		this.metadata.clear();
+		this._strings.length = 0;
 		this._size = 0;
 	}
 
