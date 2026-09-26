@@ -11,22 +11,22 @@
  *   const html = rendercursor(cursor);
  */
 
-import { Cursor } from "@mdsvex/parse/cursor";
-import type { NodeBuffer } from "@mdsvex/parse/utils";
-import { CI_TEXT, CI_CODE, CI_SVELTE, CI_STRUCTURE } from "./mappings";
-import type { Mapping, CodeInformation, MappingData } from "./mappings";
+import { Cursor } from '@mdsvex/parse/cursor';
+import type { NodeBuffer } from '@mdsvex/parse/utils';
+import { data_text, data_code, data_svelte, data_structure } from './mappings';
+import type { Mapping, MappingData, MappingRole } from './mappings';
 
-export type { Mapping, CodeInformation, MappingData } from "./mappings";
+export type { Mapping, CodeInformation, MappingData } from './mappings';
 
 //  html escaping
 
 const ESCAPE_TEST = /[&<>"]/;
 const ESCAPE_MATCH = /[&<>"]/g;
 const ESCAPE_TABLE: Record<string, string> = {
-	"&": "&amp;",
-	"<": "&lt;",
-	">": "&gt;",
-	'"': "&quot;",
+	'&': '&amp;',
+	'<': '&lt;',
+	'>': '&gt;',
+	'"': '&quot;',
 };
 function escape_replace(ch: string): string {
 	return ESCAPE_TABLE[ch];
@@ -90,7 +90,7 @@ export function _emit(
 	out_end: number,
 	src_start: number,
 	src_end: number,
-	data: MappingData,
+	data: MappingData
 ): void {
 	if (out_end > out_start && src_start !== NONE) {
 		entries.push({
@@ -111,38 +111,55 @@ function _spans(
 	before_close: number,
 	post: number,
 	c: Cursor,
-	ci: CodeInformation,
+	data: (node_index: number, role: MappingRole) => MappingData
 ): void {
 	const idx = c.index;
-	const s = c.start, e = c.end, vs = c.value_start, ve = c.value_end;
+	const s = c.start,
+		e = c.end,
+		vs = c.value_start,
+		ve = c.value_end;
 	// value range is meaningful when ve > vs (same check as Cursor.text()).
 	// Uint32Array defaults to 0 for unset slots, so ve !== NONE is not enough.
 	const has_value = ve > vs;
-	_emit(entries, pre, post, s, e, { ...ci, nodeIndex: idx, role: "node" });
-	_emit(entries, pre, after_open, s, has_value ? vs : s, { ...CI_STRUCTURE, nodeIndex: idx, role: "open_syntax" });
-	_emit(entries, before_close, post, has_value ? ve : e, e, { ...CI_STRUCTURE, nodeIndex: idx, role: "close_syntax" });
+	_emit(entries, pre, post, s, e, data(idx, 'node'));
+	_emit(
+		entries,
+		pre,
+		after_open,
+		s,
+		has_value ? vs : s,
+		data_structure(idx, 'open_syntax')
+	);
+	_emit(
+		entries,
+		before_close,
+		post,
+		has_value ? ve : e,
+		e,
+		data_structure(idx, 'close_syntax')
+	);
 }
 
 //  precomputed tag strings
 
-const H_OPEN = ["", "<h1>", "<h2>", "<h3>", "<h4>", "<h5>", "<h6>"];
-const H_CLOSE = ["", "</h1>", "</h2>", "</h3>", "</h4>", "</h5>", "</h6>"];
+const H_OPEN = ['', '<h1>', '<h2>', '<h3>', '<h4>', '<h5>', '<h6>'];
+const H_CLOSE = ['', '</h1>', '</h2>', '</h3>', '</h4>', '</h5>', '</h6>'];
 
 const HTML_VOID_ELEMENTS = new Set([
-	"area",
-	"base",
-	"br",
-	"col",
-	"embed",
-	"hr",
-	"img",
-	"input",
-	"link",
-	"meta",
-	"param",
-	"source",
-	"track",
-	"wbr",
+	'area',
+	'base',
+	'br',
+	'col',
+	'embed',
+	'hr',
+	'img',
+	'input',
+	'link',
+	'meta',
+	'param',
+	'source',
+	'track',
+	'wbr',
 ]);
 
 //  generic attribute emission
@@ -153,15 +170,22 @@ const HTML_VOID_ELEMENTS = new Set([
  */
 const INTERNAL_KEYS = new Set([
 	// list semantics
-	"ordered", "tight", "start",
+	'ordered',
+	'tight',
+	'start',
 	// code fence info (transformed into class="language-X")
-	"info", "info_start", "info_end",
+	'info',
+	'info_start',
+	'info_end',
 	// raw html node internals
-	"tag", "attributes", "self_closing",
+	'tag',
+	'attributes',
+	'self_closing',
 	// table internals
-	"alignments", "col_count",
+	'alignments',
+	'col_count',
 	// image src (handled specially with alt ordering)
-	"src",
+	'src',
 ]);
 
 /**
@@ -176,10 +200,10 @@ function _attrs(c: Cursor, out: string[], skip?: Set<string>): void {
 		if (skip !== undefined && skip.has(key)) continue;
 		const val = meta[key];
 		if (val === true) {
-			out.push(" ", key);
+			out.push(' ', key);
 		} else if (val !== false && val != null) {
-			if (typeof val === "object" && (val as any).type === "expression") {
-				out.push(" ", key, "={", (val as any).value, "}");
+			if (typeof val === 'object' && (val as any).type === 'expression') {
+				out.push(' ', key, '={', (val as any).value, '}');
 			} else {
 				out.push(' ', key, '="', escape(String(val)), '"');
 			}
@@ -187,20 +211,31 @@ function _attrs(c: Cursor, out: string[], skip?: Set<string>): void {
 	}
 }
 
-const LINK_HANDLED = new Set(["href", "title"]);
-const IMAGE_HANDLED = new Set(["title"]);
+const LINK_HANDLED = new Set(['href', 'title']);
+const IMAGE_HANDLED = new Set(['title']);
 
 //  renderer
 
 /** render children of the current cursor position, collecting escaped text and recursive node output. */
-export function _children(c: Cursor, out: string[], entries?: PendingMapping[]): void {
+export function _children(
+	c: Cursor,
+	out: string[],
+	entries?: PendingMapping[]
+): void {
 	if (!c.goto_first_child()) return;
 	do {
 		if (c.kind === K_TEXT) {
-			const vs = c.value_start, ve = c.value_end;
+			const vs = c.value_start,
+				ve = c.value_end;
 			if (entries && vs !== NONE && ve > vs) {
-				_emit(entries, out.length, out.length + 1, vs, ve,
-					{ ...CI_TEXT, nodeIndex: c.index, role: "content" });
+				_emit(
+					entries,
+					out.length,
+					out.length + 1,
+					vs,
+					ve,
+					data_text(c.index, 'content')
+				);
 			}
 			out.push(escape(c.text()));
 		} else {
@@ -212,8 +247,8 @@ export function _children(c: Cursor, out: string[], entries?: PendingMapping[]):
 
 /** collect raw text from child text nodes (for image alt, link text fallback, etc.). */
 function _children_raw(c: Cursor): string {
-	if (!c.goto_first_child()) return "";
-	let text = "";
+	if (!c.goto_first_child()) return '';
+	let text = '';
 	do {
 		if (c.kind === K_TEXT) {
 			text += c.text();
@@ -226,7 +261,11 @@ function _children_raw(c: Cursor): string {
 }
 
 /** render a single node at the current cursor position. */
-export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): void {
+export function _node(
+	c: Cursor,
+	out: string[],
+	entries?: PendingMapping[]
+): void {
 	switch (c.kind) {
 		case K_ROOT:
 			_children(c, out, entries);
@@ -234,14 +273,14 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 
 		case K_HEADING: {
 			const pre = out.length;
-			out.push("<h", String(c.extra));
+			out.push('<h', String(c.extra));
 			_attrs(c, out);
-			out.push(">");
+			out.push('>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
 			out.push(H_CLOSE[c.extra]);
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
 			break;
 		}
 
@@ -253,57 +292,63 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 				_children(c, out, entries);
 			} else {
 				const pre = out.length;
-				out.push("<p");
+				out.push('<p');
 				_attrs(c, out);
-				out.push(">");
+				out.push('>');
 				const ao = out.length;
 				_children(c, out, entries);
 				const bc = out.length;
-				out.push("</p>");
-				if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
+				out.push('</p>');
+				if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
 			}
 			break;
 
 		case K_EMPHASIS: {
 			const pre = out.length;
-			out.push("<em");
+			out.push('<em');
 			_attrs(c, out);
-			out.push(">");
+			out.push('>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
-			out.push("</em>");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
+			out.push('</em>');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
 			break;
 		}
 
 		case K_STRONG: {
 			const pre = out.length;
-			out.push("<strong");
+			out.push('<strong');
 			_attrs(c, out);
-			out.push(">");
+			out.push('>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
-			out.push("</strong>");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
+			out.push('</strong>');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
 			break;
 		}
 
 		case K_CODE_SPAN: {
 			const pre = out.length;
-			out.push("<code");
+			out.push('<code');
 			_attrs(c, out);
-			out.push(">");
+			out.push('>');
 			const ao = out.length;
 			if (entries) {
-				_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
-					{ ...CI_CODE, nodeIndex: c.index, role: "content" });
+				_emit(
+					entries,
+					out.length,
+					out.length + 1,
+					c.value_start,
+					c.value_end,
+					data_code(c.index, 'content')
+				);
 			}
-			out.push(escape(c.text()).replace(/\n/g, " "));
+			out.push(escape(c.text()).replace(/\n/g, ' '));
 			const bc = out.length;
-			out.push("</code>");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_CODE);
+			out.push('</code>');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_code);
 			break;
 		}
 
@@ -318,61 +363,68 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 				if (info_start != null && info_end != null)
 					info = c.slice(info_start, info_end);
 			}
-			out.push("<pre><code");
+			out.push('<pre><code');
 			if (info) out.push(' class="language-', escape(info), '"');
 			_attrs(c, out);
-			out.push(">");
+			out.push('>');
 			const ao = out.length;
 			if (entries) {
-				_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
-					{ ...CI_CODE, nodeIndex: c.index, role: "content" });
+				_emit(
+					entries,
+					out.length,
+					out.length + 1,
+					c.value_start,
+					c.value_end,
+					data_code(c.index, 'content')
+				);
 			}
 			out.push(escape(c.text()));
 			const bc = out.length;
-			out.push("</code></pre>");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_CODE);
+			out.push('</code></pre>');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_code);
 			break;
 		}
 
 		case K_BLOCK_QUOTE: {
 			const pre = out.length;
-			out.push("<blockquote");
+			out.push('<blockquote');
 			_attrs(c, out);
-			out.push(">\n");
+			out.push('>\n');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
-			out.push("\n</blockquote>");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
+			out.push('\n</blockquote>');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
 			break;
 		}
 
 		case K_LINK: {
 			const pre = out.length;
 			const meta = c.meta();
-			out.push("<a");
+			out.push('<a');
 			if (meta?.href) out.push(' href="', escape(meta.href as string), '"');
 			if (meta?.title) out.push(' title="', escape(meta.title as string), '"');
 			_attrs(c, out, LINK_HANDLED);
-			out.push(">");
+			out.push('>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
-			out.push("</a>");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
+			out.push('</a>');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
 			break;
 		}
 
 		case K_IMAGE: {
 			const pre = out.length;
 			const meta = c.meta();
-			out.push("<img");
+			out.push('<img');
 			if (meta?.src) out.push(' src="', escape(meta.src as string), '"');
 			out.push(' alt="', escape(_children_raw(c)), '"');
 			if (meta?.title) out.push(' title="', escape(meta.title as string), '"');
 			_attrs(c, out, IMAGE_HANDLED);
-			out.push(" />");
-			if (entries) _spans(entries, pre, pre, out.length, out.length, c, CI_TEXT);
+			out.push(' />');
+			if (entries)
+				_spans(entries, pre, pre, out.length, out.length, c, data_text);
 			break;
 		}
 
@@ -380,85 +432,94 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 			const pre = out.length;
 			const meta = c.meta();
 			const ordered = !!meta?.ordered;
-			const tag = ordered ? "ol" : "ul";
+			const tag = ordered ? 'ol' : 'ul';
 			const start = meta?.start as number | undefined;
-			out.push("<", tag);
+			out.push('<', tag);
 			if (ordered && start != null && start !== 1)
 				out.push(' start="', String(start), '"');
 			_attrs(c, out);
-			out.push(">\n");
+			out.push('>\n');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
-			out.push("\n</", tag, ">");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_STRUCTURE);
+			out.push('\n</', tag, '>');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_structure);
 			break;
 		}
 
 		case K_LIST_ITEM: {
 			const pre = out.length;
-			out.push("<li");
+			out.push('<li');
 			_attrs(c, out);
-			out.push(">");
+			out.push('>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
-			out.push("</li>\n");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
+			out.push('</li>\n');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
 			break;
 		}
 
 		case K_THEMATIC_BREAK: {
 			const pre = out.length;
-			out.push("<hr />");
-			if (entries) _spans(entries, pre, out.length, out.length, out.length, c, CI_STRUCTURE);
+			out.push('<hr />');
+			if (entries)
+				_spans(
+					entries,
+					pre,
+					out.length,
+					out.length,
+					out.length,
+					c,
+					data_structure
+				);
 			break;
 		}
 
 		case K_HARD_BREAK:
-			out.push("<br />\n");
+			out.push('<br />\n');
 			break;
 
 		case K_SOFT_BREAK:
-			out.push("\n");
+			out.push('\n');
 			break;
 
 		case K_STRIKETHROUGH: {
 			const pre = out.length;
-			out.push("<del");
+			out.push('<del');
 			_attrs(c, out);
-			out.push(">");
+			out.push('>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
-			out.push("</del>");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
+			out.push('</del>');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
 			break;
 		}
 
 		case K_SUPERSCRIPT: {
 			const pre = out.length;
-			out.push("<sup");
+			out.push('<sup');
 			_attrs(c, out);
-			out.push(">");
+			out.push('>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
-			out.push("</sup>");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
+			out.push('</sup>');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
 			break;
 		}
 
 		case K_SUBSCRIPT: {
 			const pre = out.length;
-			out.push("<sub");
+			out.push('<sub');
 			_attrs(c, out);
-			out.push(">");
+			out.push('>');
 			const ao = out.length;
 			_children(c, out, entries);
 			const bc = out.length;
-			out.push("</sub>");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
+			out.push('</sub>');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
 			break;
 		}
 
@@ -470,16 +531,19 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 				| Record<string, string | boolean>
 				| undefined;
 
-			out.push("<", tag);
+			out.push('<', tag);
 			if (html_attrs) {
 				for (const k in html_attrs) {
 					const v = html_attrs[k];
 					if (v === true) {
-						out.push(" ", k);
-					} else if (typeof v === "object" && (v as any).type === "expression") {
-						out.push(" ", k, "={", (v as any).value, "}");
+						out.push(' ', k);
+					} else if (
+						typeof v === 'object' &&
+						(v as any).type === 'expression'
+					) {
+						out.push(' ', k, '={', (v as any).value, '}');
 					} else {
-						out.push(" ", k, '="', escape(v as string), '"');
+						out.push(' ', k, '="', escape(v as string), '"');
 					}
 				}
 			}
@@ -492,66 +556,90 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 				// pipeline.
 				// falls back to reconstruction when source is unavailable
 				// (e.g. wire/streaming renderer with empty source).
-				const passthrough = c.end > c.start ? c.slice(c.start, c.end) : "";
+				const passthrough = c.end > c.start ? c.slice(c.start, c.end) : '';
 				if (passthrough) {
 					out.length = pre;
 					out.push(passthrough);
 				} else {
-					out.push(" />");
+					out.push(' />');
 				}
 				if (entries) {
-					_emit(entries, pre, out.length, c.start, c.end,
-						{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
+					_emit(
+						entries,
+						pre,
+						out.length,
+						c.start,
+						c.end,
+						data_svelte(c.index, 'content')
+					);
 				}
 			} else {
-				out.push(">");
+				out.push('>');
 				const ao = out.length;
 				// raw-text elements: parser stores content as value range on
 				// the html node itself (no child nodes). emit unescaped, the
 				// browser does not parse script/style bodies as html.
-				if (tag === "script" || tag === "style") {
+				if (tag === 'script' || tag === 'style') {
 					if (entries) {
-						_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
-							{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
+						_emit(
+							entries,
+							out.length,
+							out.length + 1,
+							c.value_start,
+							c.value_end,
+							data_svelte(c.index, 'content')
+						);
 					}
 					out.push(c.text());
 				} else {
 					_children(c, out, entries);
 				}
 				const bc = out.length;
-				out.push("</", tag, ">");
-				if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
+				out.push('</', tag, '>');
+				if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
 			}
 			break;
 		}
 
 		case K_HTML_COMMENT: {
 			const pre = out.length;
-			out.push("<!--");
+			out.push('<!--');
 			const ao = out.length;
 			if (entries) {
-				_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
-					{ ...CI_TEXT, nodeIndex: c.index, role: "content" });
+				_emit(
+					entries,
+					out.length,
+					out.length + 1,
+					c.value_start,
+					c.value_end,
+					data_text(c.index, 'content')
+				);
 			}
 			out.push(c.text());
 			const bc = out.length;
-			out.push("-->");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_TEXT);
+			out.push('-->');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
 			break;
 		}
 
 		case K_MUSTACHE: {
 			const pre = out.length;
-			out.push("{");
+			out.push('{');
 			const ao = out.length;
 			if (entries) {
-				_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
-					{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
+				_emit(
+					entries,
+					out.length,
+					out.length + 1,
+					c.value_start,
+					c.value_end,
+					data_svelte(c.index, 'content')
+				);
 			}
 			out.push(c.text());
 			const bc = out.length;
-			out.push("}");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_SVELTE);
+			out.push('}');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_svelte);
 			break;
 		}
 
@@ -560,17 +648,23 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 			const meta = c.meta();
 			const tag = meta?.tag as string;
 			const text = c.text();
-			out.push("{@", tag);
-			if (text) out.push(" ");
+			out.push('{@', tag);
+			if (text) out.push(' ');
 			const ao = out.length;
 			if (text && entries) {
-				_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
-					{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
+				_emit(
+					entries,
+					out.length,
+					out.length + 1,
+					c.value_start,
+					c.value_end,
+					data_svelte(c.index, 'content')
+				);
 			}
 			if (text) out.push(text);
 			const bc = out.length;
-			out.push("}");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_SVELTE);
+			out.push('}');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_svelte);
 			break;
 		}
 
@@ -587,28 +681,40 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 						const branch_tag = branch_meta?.tag as string;
 						const branch_expr = c.text();
 						if (is_first) {
-							out.push("{#", block_tag);
+							out.push('{#', block_tag);
 							if (branch_expr) {
-								out.push(" ");
+								out.push(' ');
 								if (entries) {
-									_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
-										{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
+									_emit(
+										entries,
+										out.length,
+										out.length + 1,
+										c.value_start,
+										c.value_end,
+										data_svelte(c.index, 'content')
+									);
 								}
 								out.push(branch_expr);
 							}
-							out.push("}\n");
+							out.push('}\n');
 							is_first = false;
 						} else {
-							out.push("{:", branch_tag);
+							out.push('{:', branch_tag);
 							if (branch_expr) {
-								out.push(" ");
+								out.push(' ');
 								if (entries) {
-									_emit(entries, out.length, out.length + 1, c.value_start, c.value_end,
-										{ ...CI_SVELTE, nodeIndex: c.index, role: "content" });
+									_emit(
+										entries,
+										out.length,
+										out.length + 1,
+										c.value_start,
+										c.value_end,
+										data_svelte(c.index, 'content')
+									);
 								}
 								out.push(branch_expr);
 							}
-							out.push("}\n");
+							out.push('}\n');
 						}
 						_children(c, out, entries);
 					} else if (c.kind !== K_LINE_BREAK) {
@@ -617,26 +723,27 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 				} while (c.goto_next_sibling());
 				c.goto_parent();
 			}
-			out.push("{/", block_tag, "}");
+			out.push('{/', block_tag, '}');
 			// node span for the whole block, use the block node (goto_parent already called)
 			if (entries) {
 				const idx = c.index;
-				const s = c.start, e = c.end;
-				_emit(entries, pre, out.length, s, e, { ...CI_SVELTE, nodeIndex: idx, role: "node" });
+				const s = c.start,
+					e = c.end;
+				_emit(entries, pre, out.length, s, e, data_svelte(idx, 'node'));
 			}
 			break;
 		}
 
 		case K_TABLE: {
 			const pre = out.length;
-			out.push("<table");
+			out.push('<table');
 			_attrs(c, out);
-			out.push(">\n");
+			out.push('>\n');
 			const ao = out.length;
 			_table_content(c, out, entries);
 			const bc = out.length;
-			out.push("\n</table>");
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, CI_STRUCTURE);
+			out.push('\n</table>');
+			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_structure);
 			break;
 		}
 
@@ -649,7 +756,11 @@ export function _node(c: Cursor, out: string[], entries?: PendingMapping[]): voi
 	}
 }
 
-function _table_content(c: Cursor, out: string[], entries?: PendingMapping[]): void {
+function _table_content(
+	c: Cursor,
+	out: string[],
+	entries?: PendingMapping[]
+): void {
 	const meta = c.meta();
 	const alignments = (meta?.alignments as string[]) ?? [];
 	let in_body = false;
@@ -657,22 +768,22 @@ function _table_content(c: Cursor, out: string[], entries?: PendingMapping[]): v
 	if (!c.goto_first_child()) return;
 	do {
 		if (c.kind === K_TABLE_HEADER) {
-			out.push("<thead>\n<tr>\n");
-			_table_cells(c, "th", alignments, out, entries);
-			out.push("</tr>\n</thead>\n");
+			out.push('<thead>\n<tr>\n');
+			_table_cells(c, 'th', alignments, out, entries);
+			out.push('</tr>\n</thead>\n');
 		} else if (c.kind === K_TABLE_ROW) {
 			if (!in_body) {
-				out.push("<tbody>\n");
+				out.push('<tbody>\n');
 				in_body = true;
 			}
-			out.push("<tr>\n");
-			_table_cells(c, "td", alignments, out, entries);
-			out.push("</tr>\n");
+			out.push('<tr>\n');
+			_table_cells(c, 'td', alignments, out, entries);
+			out.push('</tr>\n');
 		}
 	} while (c.goto_next_sibling());
 	c.goto_parent();
 
-	if (in_body) out.push("</tbody>");
+	if (in_body) out.push('</tbody>');
 }
 
 function _table_cells(
@@ -680,20 +791,20 @@ function _table_cells(
 	tag: string,
 	alignments: string[],
 	out: string[],
-	entries?: PendingMapping[],
+	entries?: PendingMapping[]
 ): void {
 	let col = 0;
 	if (!c.goto_first_child()) return;
 	do {
 		if (c.kind === K_TABLE_CELL) {
 			const align = alignments[col];
-			if (align && align !== "none") {
-				out.push("<", tag, ' align="', align, '">');
+			if (align && align !== 'none') {
+				out.push('<', tag, ' align="', align, '">');
 			} else {
-				out.push("<", tag, ">");
+				out.push('<', tag, '>');
 			}
 			_children(c, out, entries);
-			out.push("</", tag, ">\n");
+			out.push('</', tag, '>\n');
 			col++;
 		}
 	} while (c.goto_next_sibling());
@@ -706,7 +817,7 @@ function _table_cells(
 export function _resolve_mappings(
 	out: string[],
 	entries: PendingMapping[],
-	scratch?: Uint32Array,
+	scratch?: Uint32Array
 ): Mapping<MappingData>[] {
 	// build cumulative offset table
 	const offsets =
@@ -743,7 +854,7 @@ export function _resolve_mappings(
 function _render_block(cursor: Cursor): string {
 	const out: string[] = [];
 	_node(cursor, out);
-	return out.join("");
+	return out.join('');
 }
 
 //  block entry
@@ -778,7 +889,7 @@ export interface CursorBlockEntry {
 export class CursorHTMLRenderer {
 	blocks: CursorBlockEntry[] = [];
 	/** full document html (available after update, whether cached or not). */
-	html = "";
+	html = '';
 	private closed: Set<number> | null = null;
 	private cursor: Cursor | null = null;
 	private cache: boolean;
@@ -806,7 +917,7 @@ export class CursorHTMLRenderer {
 			const out = this.out;
 			out.length = 0;
 			_node(c, out);
-			this.html = out.join("");
+			this.html = out.join('');
 			return this.blocks;
 		}
 
@@ -831,14 +942,14 @@ export class CursorHTMLRenderer {
 		} while (c.goto_next_sibling());
 
 		c.goto_parent();
-		this.html = this.blocks.map((b) => b.html).join("");
+		this.html = this.blocks.map((b) => b.html).join('');
 		return this.blocks;
 	}
 
 	/** render with source mapping. always full render (no caching). */
 	update_mapped(
 		buf: NodeBuffer,
-		source: string,
+		source: string
 	): { blocks: CursorBlockEntry[]; mappings: Mapping<MappingData>[] } {
 		if (!this.cursor) {
 			this.cursor = new Cursor(buf, source);
@@ -853,7 +964,7 @@ export class CursorHTMLRenderer {
 		out.length = 0;
 		entries.length = 0;
 		_node(c, out, entries);
-		this.html = out.join("");
+		this.html = out.join('');
 		const needed = out.length + 1;
 		if (this.mapping_offsets.length < needed) {
 			let capacity = 16;
@@ -867,6 +978,6 @@ export class CursorHTMLRenderer {
 	reset(): void {
 		this.blocks.length = 0;
 		this.closed?.clear();
-		this.html = "";
+		this.html = '';
 	}
 }
