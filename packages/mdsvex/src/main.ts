@@ -74,22 +74,36 @@ function remap_source_offsets(
 	mapping: Mapping<MappingData>,
 	offsets: RawOffsets,
 ): void {
-	const { sourceOffsets, generatedOffsets, lengths } = mapping;
-
-	if (mapping.generatedLengths) {
-		for (let i = 0; i < sourceOffsets.length; i++) {
-			const start = offsets.to_raw(sourceOffsets[i]);
-			lengths[i] = offsets.to_raw(sourceOffsets[i] + lengths[i]) - start;
-			sourceOffsets[i] = start;
-		}
-		return;
-	}
-
+	const { sourceOffsets, lengths } = mapping;
 	const { collapsed } = offsets;
-	const src: number[] = [];
-	const gen: number[] = [];
-	const len: number[] = [];
+	const identity = !mapping.generatedLengths;
+
 	for (let i = 0; i < sourceOffsets.length; i++) {
+		const start = sourceOffsets[i];
+		const end = start + lengths[i];
+		const k = offsets.rank(start);
+		// a trailing collapsed \n maps onto its \r in an identity range
+		const crosses = k < collapsed.length && collapsed[k] + (identity ? 1 : 0) < end;
+		if (crosses) {
+			if (identity) return split_mapping(mapping, offsets, i);
+			lengths[i] = offsets.to_raw(end) - start - k;
+		}
+		sourceOffsets[i] = start + k;
+	}
+}
+
+/** splits pieces from index `from` on, earlier pieces are already shifted */
+function split_mapping(
+	mapping: Mapping<MappingData>,
+	offsets: RawOffsets,
+	from: number,
+): void {
+	const { sourceOffsets, generatedOffsets, lengths } = mapping;
+	const { collapsed } = offsets;
+	const src = sourceOffsets.slice(0, from);
+	const gen = generatedOffsets.slice(0, from);
+	const len = lengths.slice(0, from);
+	for (let i = from; i < sourceOffsets.length; i++) {
 		let start = sourceOffsets[i];
 		let gen_start = generatedOffsets[i];
 		const end = start + lengths[i];
