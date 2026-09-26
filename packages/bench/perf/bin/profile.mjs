@@ -30,7 +30,6 @@ try {
 		const parse = t('parse-direct');
 		const render = t(mapped ? 'render-mapped' : 'render');
 		const compile = t(mapped ? 'compile-mapped' : 'compile');
-		// the v3 map is quadratic and takes minutes on the huge document, so vite columns follow the ab.mjs mode list
 		const vite_ok =
 			mapped &&
 			(entry.family !== 'huge' || HUGE_MODES.includes('vite-transform'));
