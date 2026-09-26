@@ -260,6 +260,21 @@ describe('Incremental parsing', () => {
 		}
 	});
 
+	describe('code span failed by a blank line across a chunk boundary', () => {
+		for (const input of ['`a\n\nb`', '`a\n  \nb`', '`` a\n\nb``']) {
+			for (const size of [1, 2, 3, 4]) {
+				it(`${JSON.stringify(input)} chunk size ${size}`, () => {
+					const batch = parse_batch(input);
+					expect(
+						batch.get_node(0).children.map((i) => batch.get_node(i).kind)
+					).toEqual(['paragraph', 'line_break', 'line_break', 'paragraph']);
+					const diffs = tree_diff(batch, parse_incremental(input, size), input);
+					expect(diffs).toEqual([]);
+				});
+			}
+		}
+	});
+
 	describe('fixture equivalence (char-by-char)', () => {
 		const fixturesDir = path.resolve(__dirname, 'fixtures/pfm');
 		const categories = fs

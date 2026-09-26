@@ -2776,6 +2776,20 @@ export class PFMParser {
 		}
 	}
 
+	// delimiter states must close wherever inline pops or the two ping pong
+	private lf_ends_inline(lf: number): boolean {
+		const np = lf + 1;
+		if (this.is_block_interrupt(np)) return true;
+		if (this.list_depth === 0) return false;
+		const { columns: ind } = this.count_indent(np);
+		if (ind < this.list_content_offset) return false;
+		const stripped = this.skip_columns(np, this.list_content_offset);
+		return (
+			stripped < this.source.length &&
+			this.try_parse_list_marker(stripped) !== null
+		);
+	}
+
 	// returns true when a linefeed inside a delimiter state (emphasis,
 	// strong, strikethrough, superscript, subscript) was consumed by a
 	// block interrupt or blockquote boundary. caller should `continue
@@ -2811,7 +2825,8 @@ export class PFMParser {
 		if (
 			this.is_blank_line_after(this.cursor) ||
 			this.is_heading_start(this.cursor + 1) ||
-			this.is_thematic_break_start(this.cursor + 1)
+			this.is_thematic_break_start(this.cursor + 1) ||
+			this.lf_ends_inline(this.cursor)
 		) {
 			this.states.pop();
 			this.emit_close(current_node, this.cursor);
@@ -5822,25 +5837,10 @@ export class PFMParser {
 								this.states.pop();
 								continue;
 							}
-							if (this.is_block_interrupt(this.cursor + 1)) {
+							if (this.lf_ends_inline(this.cursor)) {
 								this.states.pop();
 								continue;
 							} else if (this.list_depth > 0) {
-								const np = this.cursor + 1;
-								const { columns: ind } = this.count_indent(np);
-								if (ind >= this.list_content_offset) {
-									const stripped = this.skip_columns(
-										np,
-										this.list_content_offset
-									);
-									if (
-										stripped < length &&
-										this.try_parse_list_marker(stripped) !== null
-									) {
-										this.states.pop();
-										continue;
-									}
-								}
 								// soft line break - emit soft_break node
 								const sb_il = this.emit_open(
 									NodeKind.soft_break,
@@ -7016,6 +7016,14 @@ export class PFMParser {
 						continue;
 					}
 
+					// hold back until the next line shows whether it is blank
+					if (
+						code === LINEFEED &&
+						!this.finished &&
+						!this.can_decide_after_lf(this.cursor)
+					) {
+						break main_loop;
+					}
 					if (
 						(code === LINEFEED && this.is_blank_line_after(this.cursor)) ||
 						code !== code
