@@ -35,3 +35,8 @@ CLAUDE.md
 PLAN.md
 .claude/
 tsc
+
+# perf harness reference builds and per machine outputs
+.perf/
+packages/bench/perf/calibration.json
+packages/bench/perf/reports/
