@@ -546,6 +546,7 @@ export class PFMParser {
 		for (let i = 0; i < len; i++) {
 			if (ids[i] === id) {
 				ids[i] = ids[len - 1];
+				this.pending_starts[i] = this.pending_starts[len - 1];
 				this.pending_count = len - 1;
 				return;
 			}
