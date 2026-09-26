@@ -97,6 +97,25 @@ const evil = '{ } \` \\t \\r \\n';
 	);
 });
 
+const code_block_line_endings: Array<[string, string]> = [
+	['LF', '\n'],
+	['CRLF', '\r\n'],
+];
+
+for (const [name, line_ending] of code_block_line_endings) {
+	test(`it should preserve a backslash before a code-block newline (${name})`, async () => {
+		const slash = String.fromCharCode(92);
+		const output = await mdsvex().markup({
+			content: ['```', `echo before ${slash}`, 'echo after', '```'].join(
+				line_ending
+			),
+			filename: 'thing.svx',
+		});
+
+		expect(output?.code).toContain('echo before &#92;\necho after');
+	});
+}
+
 test('it should highlight code when nothing is passed, with a non-default language', async () => {
 	const output = await mdsvex().markup({
 		content: `

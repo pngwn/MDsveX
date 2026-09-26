@@ -126,9 +126,13 @@ export function escape_brackets(): Transformer {
  * @returns A `unified` transformer function that visits literal nodes and corrects escaped pipes.
  */
 export function unescape_pipes_in_tables(): Transformer {
-
 	function isLiteral(node: unknown): node is Literal {
-		return !!node && typeof node === 'object' && 'value' in node && !('children' in node);
+		return (
+			!!node &&
+			typeof node === 'object' &&
+			'value' in node &&
+			!('children' in node)
+		);
 	}
 
 	return (tree) => {
@@ -137,7 +141,7 @@ export function unescape_pipes_in_tables(): Transformer {
 				if (isLiteral(cellChild)) {
 					cellChild.value = cellChild.value.replace(/\\\|/g, '|');
 				}
-			})
+			});
 		});
 	};
 }
@@ -887,7 +891,7 @@ export function highlight_blocks({
 		}
 	};
 }
-// escape curlies, backtick, \t, \r, \n to avoid breaking output of {@html `here`} in .svelte
+// Escape template-literal syntax, including backslashes before newlines, in generated Svelte.
 export const escape_svelty = (str: string): string =>
 	str
 		.replace(
@@ -895,6 +899,7 @@ export const escape_svelty = (str: string): string =>
 			//@ts-ignore
 			(c) => ({ '{': '&#123;', '}': '&#125;', '`': '&#96;' }[c])
 		)
+		.replace(/\\(?=\r?\n)/g, '&#92;')
 		.replace(/\\([trn])/g, '&#92;$1');
 
 export const code_highlight: Highlighter = async (
