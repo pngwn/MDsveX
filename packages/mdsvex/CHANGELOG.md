@@ -1,5 +1,11 @@
 # mdsvex
 
+## 0.12.9
+
+### Patch Changes
+
+- [#814](https://github.com/pngwn/MDsveX/pull/814) [`d167b20`](https://github.com/pngwn/MDsveX/commit/d167b203357d7bff9537c1b82fbb03757aea3a33) Thanks [@webJose](https://github.com/webJose)! - fix: Remove escaping of pipes inside inline code inside tables
+
 ## 0.12.8
 
 ### Patch Changes
