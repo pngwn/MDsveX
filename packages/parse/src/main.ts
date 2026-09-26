@@ -7016,6 +7016,14 @@ export class PFMParser {
 						continue;
 					}
 
+					// hold back until the next line shows whether it is blank
+					if (
+						code === LINEFEED &&
+						!this.finished &&
+						!this.can_decide_after_lf(this.cursor)
+					) {
+						break main_loop;
+					}
 					if (
 						(code === LINEFEED && this.is_blank_line_after(this.cursor)) ||
 						code !== code
