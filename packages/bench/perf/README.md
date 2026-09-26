@@ -187,7 +187,9 @@ These numbers are from an Apple M1 Max (10 cores, 64GB) on Node 20.20.2, on a
 laptop in normal desktop use rather than an idle machine. The load average
 was around 3 to 5 from the browser, the Claude app and WindowServer.
 `calibration.json` is not committed. The figures are here so that a later
-calibration has something to compare against.
+calibration has something to compare against. They were measured on corpus
+`097b8c83eed10b7b`, before `packages/bench/README.md` joined the `real`
+family, which is why `core` has 233 rows here rather than 240.
 
 | A/A, core, 233 rows, 15 rounds        |    value |
 | ------------------------------------- | -------: |
@@ -239,9 +241,9 @@ byte-identical to the reference builds:
 
 | suite   | workloads | for                                                                    |
 | ------- | --------: | ---------------------------------------------------------------------- |
-| `quick` |        57 | iterating. real with parse, render-mapped, vite-transform. about 2 min |
-| `core`  |       233 | the default, and what calibration measures. about 9 min                |
-| `full`  |       711 | every family and mode, before proposing a merge                        |
+| `quick` |        60 | iterating. real with parse, render-mapped, vite-transform. about 2 min |
+| `core`  |       240 | the default, and what calibration measures. about 9 min                |
+| `full`  |       723 | every family and mode, before proposing a merge                        |
 | `scale` |        27 | how cost grows with input length (sized and huge)                      |
 
 `core` runs `micro` and `real` through one mode per distinct code path:
@@ -293,8 +295,8 @@ Regenerating invalidates every earlier report and calibration.
 | ---------- | ----: | ----: | -------------------------------------------------------------------------------------------------------------- |
 | `micro`    |    10 |   524 | tiny documents: a heading, an inline-rich paragraph, a component, a directive, empty. fixed per-call cost      |
 | `fixtures` |    26 | 10.3K | the parser's own fixtures, concatenated per category. dense in grammar features                                |
-| `real`     |    19 |  123K | the repo's own markdown, site pages and the benchmark `fixture*.md` files. use these for performance summaries |
-| `sized`    |     3 |  108K | about 1KB, 10KB and 100KB, built by cycling whole real documents                                               |
+| `real`     |    20 |  126K | the repo's own markdown, site pages and the benchmark `fixture*.md` files. use these for performance summaries |
+| `sized`    |     3 |  105K | about 1KB, 10KB and 100KB, built by cycling whole real documents                                               |
 | `huge`     |     1 |  3.8M | one multi-MB document for scaling and to catch quadratic behaviour                                             |
 
 **Every input is valid PFM.** The parser never reports errors, so validity is
@@ -318,7 +320,6 @@ the start, is excluded.
 Excluded at the time of writing:
 
 - `PLAN.md`: gitignored, so it cannot be reproduced from a commit.
-- `packages/bench/README.md`: it trips the parser's loop guard (see below).
 - The site's `_docs.svtext`: it uses forward references.
 - 276 fixtures: 178 of them leak into neighbouring fixtures, and the rest use
   CommonMark-only syntax. Most of the latter are in the `setext_headings`,
@@ -331,7 +332,7 @@ node packages/bench/perf/bin/parity.mjs [--baseline <root>] [--candidate <root>]
 ```
 
 This runs every corpus file through every mode on both arms and compares the
-output exactly. The run takes about 25 seconds and makes 822 checks.
+output exactly. The run takes about 25 seconds and makes 836 checks.
 
 - **Parse:** a canonical line per node, covering kind, start, end, extra,
   value range, parent, sibling and child links, the pending word, metadata and
@@ -412,7 +413,8 @@ pnpm -C packages/mdsvex exec vite build --config vite.config.build.ts --minify f
 
 ## Findings from building the harness
 
-These are pre-existing on `next` (b36f2e15). The harness surfaced them.
+These were pre-existing on `next` (b36f2e15), and the harness surfaced them.
+The v3 map, the loop guard and the incremental mismatch have since been fixed.
 
 - **`mappings_to_v3` was quadratic (fixed).** It took 3.2 ms at 10KB, 1.3 s
   at 100KB and about half an hour at 3.8MB. `result[result.length - 1]`
@@ -426,12 +428,16 @@ These are pre-existing on `next` (b36f2e15). The harness surfaced them.
 - **Incremental parsing with small chunks is superlinear.** `incremental-64`
   takes 26 ms at 100KB and 27.6 s at 3.8MB, where `parse` takes 0.2 s. After
   `this.source += chunk`, `charCodeAt` has to flatten the rope on every feed.
-  `incremental-64` is therefore not run on the huge document either.
-- **Parser loop guard.** `"1. ~1\n2. *"` trips "Infinite loop detected". The
-  first place it appeared was the list in `packages/bench/README.md`.
-- **Incremental differs from batch.** `fixtures/code_spans` fed in 64-char
-  chunks gives 110 nodes, while the batch parse gives 115 (root child count
-  109 vs 114). Parity reports this as pre-existing.
+  `incremental-64` is therefore not run on the huge document.
+- **Parser loop guard (fixed).** `"1. ~1\n2. *"` tripped "Infinite loop
+  detected". The first place it appeared was the list in
+  `packages/bench/README.md`, which was excluded from the corpus until the
+  fix. Any unclosed `*`, `_`, `~~`, `~` or `^` followed by a line that
+  interrupts the paragraph did the same.
+- **Incremental differed from batch (fixed).** `fixtures/code_spans` fed in
+  64-char chunks gave 110 nodes, while the batch parse gave 115 (root child
+  count 109 vs 114). A chunk ending right after a linefeed inside a code span
+  let the span run on past the blank line that should fail it.
 - **Leaf directive text is dropped.** `::note[text]` renders as an empty
   string when there is no handler. This may be intended, but the directive
   micro uses a container directive plus inline directives so that it
