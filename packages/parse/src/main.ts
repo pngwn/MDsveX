@@ -300,10 +300,13 @@ export class PFMParser {
 	private closed_flags: number[] = [];
 	private NodeKind_array: NodeKind[] = [];
 
-	// char classification helpers
-	private prev: number = CharMask.whitespace;
-	private current: number = 0;
-	private next_class: number = 0;
+	// flanking classes are read on demand at delimiter sites, so moving the
+	// cursor is a plain increment. the char before class_floor reads as
+	// whitespace (document start, or the start of an inline range).
+	private class_floor: number = 0;
+	// the char after an inline range start was classed against the whole
+	// source, not the range slice
+	private range_next_class: number = 0;
 
 	// block state
 	private block_quote_depth: number = 0;
@@ -411,8 +414,6 @@ export class PFMParser {
 		const n = src.length;
 		this.source = src;
 		this.source_end = n;
-		this.current = classify(n > 0 ? char_code_at.call(src, 0) : NaN);
-		this.next_class = classify(n > 1 ? char_code_at.call(src, 1) : NaN);
 		this.errors = EMPTY_ERRORS;
 		this.finished = true;
 
@@ -479,14 +480,6 @@ export class PFMParser {
 		const src = append_flat(head, chunk);
 		this.source = src;
 		this.source_end += len;
-		const n = this.source_end - this.source_base;
-		// a code fence can move source_base past the cursor, those reads were
-		// always nan. `>>> 0` sends negative offsets past n too
-		const rel = this.cursor - this.source_base;
-		this.current = classify(rel >>> 0 < n ? char_code_at.call(src, rel) : NaN);
-		this.next_class = classify(
-			(rel + 1) >>> 0 < n ? char_code_at.call(src, rel + 1) : NaN
-		);
 		this._run();
 		this.out.cursor(this.cursor);
 	}
@@ -526,9 +519,7 @@ export class PFMParser {
 		this.pending_para_count = 0;
 		this.closed_flags = [];
 		this.NodeKind_array = [];
-		this.prev = CharMask.whitespace;
-		this.current = CharMask.whitespace;
-		this.next_class = CharMask.whitespace;
+		this.class_floor = 0;
 		this.block_quote_depth = 0;
 		this.emphasis_has_content = false;
 		this.in_heading = false;
@@ -1106,37 +1097,36 @@ export class PFMParser {
 	private chomp(count: number, replace: boolean = false): void {
 		if (replace) {
 			this.cursor = count;
+			// a jump reads the real char before it, even back at the floor
+			this.class_floor = -1;
 		} else {
 			this.cursor += count;
 		}
-
-		// guarded like the main loop read, eof and cursor 0 read nan
-		const source = this.source;
-		const n = this.source_end - this.source_base;
-		const i = this.cursor - this.source_base;
-		if (count > 1 || replace) {
-			this.prev = classify(
-				(i - 1) >>> 0 < n ? char_code_at.call(source, i - 1) : NaN
-			);
-			this.current = classify(i >>> 0 < n ? char_code_at.call(source, i) : NaN);
-			this.next_class = classify(
-				(i + 1) >>> 0 < n ? char_code_at.call(source, i + 1) : NaN
-			);
-		} else {
-			this.prev = this.current;
-			this.current = this.next_class;
-			this.next_class = classify(
-				(i + 1) >>> 0 < n ? char_code_at.call(source, i + 1) : NaN
-			);
-		}
 	}
 
-	/** fast path for the common case: advance cursor by 1. */
-	private chomp1(): void {
-		const i = ++this.cursor + 1 - this.source_base;
-		this.prev = this.current;
-		this.current = this.next_class;
-		this.next_class = classify(
+	/**
+	 * class of the char before the cursor. reads outside the window, eof and
+	 * a jump to cursor 0 give the nan wildcard mask.
+	 */
+	private prev_class(): number {
+		const c = this.cursor;
+		if (c === this.class_floor) return CharMask.whitespace;
+		const i = c - 1 - this.source_base;
+		return classify(
+			i >>> 0 < this.source_end - this.source_base
+				? char_code_at.call(this.source, i)
+				: NaN
+		);
+	}
+
+	/** class of the char after the cursor, nan wildcard past the window. */
+	private next_class(): number {
+		const c = this.cursor;
+		if (c === this.class_floor && this.inline_range_parse) {
+			return this.range_next_class;
+		}
+		const i = c + 1 - this.source_base;
+		return classify(
 			i >>> 0 < this.source_end - this.source_base
 				? char_code_at.call(this.source, i)
 				: NaN
@@ -3221,7 +3211,7 @@ export class PFMParser {
 						this.trim_point = this.cursor;
 					}
 					if (code !== code) {
-						this.chomp1();
+						this.cursor++;
 						continue;
 					}
 
@@ -3303,7 +3293,7 @@ export class PFMParser {
 								current_node
 							);
 							this.emit_close(id, this.cursor + 1);
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -3331,7 +3321,7 @@ export class PFMParser {
 								this.chomp(pos + 1, true);
 								continue;
 							}
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -3801,13 +3791,13 @@ export class PFMParser {
 							current_node
 						);
 						this.emit_close(sb_p_nq, this.cursor + 1);
-						this.chomp1();
+						this.cursor++;
 						// strip leading whitespace on continuation line
 						while (
 							this.cursor < length &&
 							char_code_at.call(source, this.cursor - base) === SPACE
 						) {
-							this.chomp1();
+							this.cursor++;
 						}
 						this.states.push(StateKind.inline);
 						continue;
@@ -3879,8 +3869,8 @@ export class PFMParser {
 					}
 					if (
 						code === ASTERISK &&
-						this.prev & (CharMask.word | CharMask.punctuation) &&
-						this.next_class & (CharMask.whitespace | CharMask.punctuation)
+						this.prev_class() & (CharMask.word | CharMask.punctuation) &&
+						this.next_class() & (CharMask.whitespace | CharMask.punctuation)
 					) {
 						const n_id = this.node_stack[this.node_stack.length - 1];
 
@@ -3903,7 +3893,7 @@ export class PFMParser {
 						this.pending_remove(n_id);
 						this.states.pop();
 						this.node_stack.pop();
-						this.chomp1();
+						this.cursor++;
 						// pop trailing inline so parent state sees next char directly
 						if (this.states[this.states.length - 1] === StateKind.inline) {
 							this.states.pop();
@@ -4015,7 +4005,7 @@ export class PFMParser {
 									current_node
 								);
 								this.emit_close(sb_il, this.cursor + 1);
-								this.chomp1();
+								this.cursor++;
 								continue;
 							} else {
 								// soft line break - emit soft_break node
@@ -4025,13 +4015,13 @@ export class PFMParser {
 									current_node
 								);
 								this.emit_close(sb_inl, this.cursor + 1);
-								this.chomp1();
+								this.cursor++;
 								// strip leading whitespace on continuation line
 								while (
 									this.cursor < length &&
 									char_code_at.call(source, this.cursor - base) === SPACE
 								) {
-									this.chomp1();
+									this.cursor++;
 								}
 								continue;
 							}
@@ -4040,8 +4030,9 @@ export class PFMParser {
 							// need to see the next char for flanking check
 							if (!this.finished && this.cursor + 1 >= length) break main_loop;
 							if (
-								this.prev & (CharMask.whitespace | CharMask.punctuation) &&
-								this.next_class & (CharMask.word | CharMask.punctuation)
+								this.prev_class() &
+									(CharMask.whitespace | CharMask.punctuation) &&
+								this.next_class() & (CharMask.word | CharMask.punctuation)
 							) {
 								const n_id = this.emit_open(
 									NodeKind.strong_emphasis,
@@ -4066,7 +4057,7 @@ export class PFMParser {
 								this.states.push(StateKind.text);
 							}
 
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -4074,8 +4065,9 @@ export class PFMParser {
 							// need to see the next char for flanking check
 							if (!this.finished && this.cursor + 1 >= length) break main_loop;
 							if (
-								this.prev & (CharMask.whitespace | CharMask.punctuation) &&
-								this.next_class & (CharMask.word | CharMask.punctuation)
+								this.prev_class() &
+									(CharMask.whitespace | CharMask.punctuation) &&
+								this.next_class() & (CharMask.word | CharMask.punctuation)
 							) {
 								const n_id = this.emit_open(
 									NodeKind.emphasis,
@@ -4100,7 +4092,7 @@ export class PFMParser {
 								this.states.push(StateKind.text);
 							}
 
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -4113,7 +4105,8 @@ export class PFMParser {
 							// strikethrough: ~~ must be double tilde with flanking
 							if (
 								char_code_at.call(source, this.cursor + 1 - base) === TILDE &&
-								this.prev & (CharMask.whitespace | CharMask.punctuation) &&
+								this.prev_class() &
+									(CharMask.whitespace | CharMask.punctuation) &&
 								classify(char_code_at.call(source, this.cursor + 2 - base)) &
 									(CharMask.word | CharMask.punctuation)
 							) {
@@ -4131,7 +4124,7 @@ export class PFMParser {
 							} else if (
 								// subscript: single ~ with next char word/punctuation
 								char_code_at.call(source, this.cursor + 1 - base) !== TILDE &&
-								this.next_class & (CharMask.word | CharMask.punctuation)
+								this.next_class() & (CharMask.word | CharMask.punctuation)
 							) {
 								const n_id = this.emit_open(
 									NodeKind.subscript,
@@ -4143,7 +4136,7 @@ export class PFMParser {
 								this.out.set_value_start(n_id, this.cursor + 1);
 								this.node_stack.push(n_id);
 								this.states.push(StateKind.subscript);
-								this.chomp1();
+								this.cursor++;
 							} else {
 								const t_id = this.emit_open(
 									NodeKind.text,
@@ -4153,7 +4146,7 @@ export class PFMParser {
 								this.out.set_value_start(t_id, this.cursor);
 								this.node_stack.push(t_id);
 								this.states.push(StateKind.text);
-								this.chomp1();
+								this.cursor++;
 							}
 							continue;
 						}
@@ -4161,7 +4154,7 @@ export class PFMParser {
 						case CARET: {
 							// superscript: ^ opens if next char is word/punctuation
 							// (no left-flanking constraint - x^2^ is valid)
-							if (this.next_class & (CharMask.word | CharMask.punctuation)) {
+							if (this.next_class() & (CharMask.word | CharMask.punctuation)) {
 								const n_id = this.emit_open(
 									NodeKind.superscript,
 									this.cursor,
@@ -4182,7 +4175,7 @@ export class PFMParser {
 								this.node_stack.push(t_id);
 								this.states.push(StateKind.text);
 							}
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -4215,7 +4208,7 @@ export class PFMParser {
 							this.out.set_value_start(t_id_br, this.cursor);
 							this.node_stack.push(t_id_br);
 							this.states.push(StateKind.text);
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -4254,7 +4247,7 @@ export class PFMParser {
 											current_node
 										);
 										this.emit_close(hb_id, this.cursor + 2);
-										this.chomp1(); // past `\` only; cursor now on lf
+										this.cursor++; // past `\` only; cursor now on lf
 										this.states.pop(); // pop inline; paragraph will see the lf
 										continue;
 									}
@@ -4279,7 +4272,7 @@ export class PFMParser {
 									this.cursor < length &&
 									char_code_at.call(source, this.cursor - base) === SPACE
 								) {
-									this.chomp1();
+									this.cursor++;
 								}
 								continue;
 							}
@@ -4303,7 +4296,7 @@ export class PFMParser {
 								this.out.set_value_start(t_id, this.cursor);
 								this.node_stack.push(t_id);
 								this.states.push(StateKind.text);
-								this.chomp1();
+								this.cursor++;
 							}
 							continue;
 						}
@@ -4325,7 +4318,7 @@ export class PFMParser {
 								this.out.set_value_start(lt_id, this.cursor);
 								this.node_stack.push(lt_id);
 								this.states.push(StateKind.text);
-								this.chomp1();
+								this.cursor++;
 								continue;
 							}
 							// speculatively open a link - [ is a link until proven otherwise
@@ -4339,7 +4332,7 @@ export class PFMParser {
 							this.node_stack.push(link_id);
 							this.states.push(StateKind.link_text);
 							this.link_text_start = this.cursor + 1;
-							this.chomp1(); // skip [
+							this.cursor++; // skip [
 							continue;
 						}
 
@@ -4379,7 +4372,7 @@ export class PFMParser {
 							this.node_stack.push(t_id);
 							this.out.set_value_start(t_id, this.cursor);
 							this.states.push(StateKind.text);
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -4545,7 +4538,7 @@ export class PFMParser {
 							this.node_stack.push(t_id);
 							this.out.set_value_start(t_id, this.cursor);
 							this.states.push(StateKind.text);
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -4618,7 +4611,7 @@ export class PFMParser {
 							this.out.set_value_start(t_id_brace, this.cursor);
 							this.node_stack.push(t_id_brace);
 							this.states.push(StateKind.text);
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -4683,7 +4676,7 @@ export class PFMParser {
 							this.out.set_value_start(t_id_colon, this.cursor);
 							this.node_stack.push(t_id_colon);
 							this.states.push(StateKind.text);
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -4692,7 +4685,7 @@ export class PFMParser {
 							// context for _ and * without producing output.
 							// fan|_tas_|tic -> fan<em>tas</em>tic
 							if (!this.in_table) {
-								this.chomp1();
+								this.cursor++;
 								continue;
 							}
 							// in table context, | is a cell separator - fall through
@@ -4712,7 +4705,7 @@ export class PFMParser {
 							this.node_stack.push(t_id);
 
 							this.states.push(StateKind.text);
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 					}
@@ -4788,7 +4781,7 @@ export class PFMParser {
 										parent_id_bq
 									);
 									this.emit_close(hb_bq_id, this.cursor + 2);
-									this.chomp1(); // past `\` only; cursor now on lf
+									this.cursor++; // past `\` only; cursor now on lf
 									// pop inline (under text) so paragraph sees the lf directly.
 									if (
 										this.states[this.states.length - 1] === StateKind.inline
@@ -4823,7 +4816,7 @@ export class PFMParser {
 								this.cursor < length &&
 								char_code_at.call(source, this.cursor - base) === SPACE
 							) {
-								this.chomp1();
+								this.cursor++;
 							}
 							continue;
 						}
@@ -4918,7 +4911,7 @@ export class PFMParser {
 							continue;
 						}
 						// not a directive - continue scanning past the colon
-						this.chomp1();
+						this.cursor++;
 						continue;
 					} else if (
 						code === ASTERISK ||
@@ -4952,20 +4945,6 @@ export class PFMParser {
 							p++;
 						}
 						this.cursor = p;
-						const r = p - base;
-						this.prev = classify(
-							(r - 1) >>> 0 < window_len
-								? char_code_at.call(source, r - 1)
-								: NaN
-						);
-						this.current = classify(
-							r >>> 0 < window_len ? char_code_at.call(source, r) : NaN
-						);
-						this.next_class = classify(
-							(r + 1) >>> 0 < window_len
-								? char_code_at.call(source, r + 1)
-								: NaN
-						);
 					}
 					continue;
 				}
@@ -4987,7 +4966,7 @@ export class PFMParser {
 					switch (code) {
 						case BACKTICK: {
 							this.extra += 1;
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 						case OCTOTHERP: {
@@ -5064,7 +5043,7 @@ export class PFMParser {
 								this.chomp(2);
 							} else {
 								this.states.push(StateKind.code_span_end);
-								this.chomp1();
+								this.cursor++;
 							}
 
 							const cs_id = this.emit_open(
@@ -5087,7 +5066,7 @@ export class PFMParser {
 							continue;
 						}
 						default: {
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 					}
@@ -5106,7 +5085,7 @@ export class PFMParser {
 						code === SPACE &&
 						char_code_at.call(source, this.cursor + 1 - base) === BACKTICK
 					) {
-						this.chomp1();
+						this.cursor++;
 						this.states.pop();
 						this.states.push(StateKind.code_span_leading_space_end);
 						continue;
@@ -5131,7 +5110,7 @@ export class PFMParser {
 							this.chomp(this.extra);
 							continue;
 						}
-						this.chomp1();
+						this.cursor++;
 						continue;
 					} else if (code === LINEFEED || code !== code) {
 						// code_span_end continues the span or fails it at a blank line or eof
@@ -5141,7 +5120,7 @@ export class PFMParser {
 						this.states.push(StateKind.code_span_end);
 						continue;
 					} else {
-						this.chomp1();
+						this.cursor++;
 						continue;
 					}
 				}
@@ -5213,15 +5192,6 @@ export class PFMParser {
 						}
 						// wrong count - skip the entire backtick run
 						this.cursor += run;
-						this.prev = classify(
-							char_code_at.call(source, this.cursor - 1 - base)
-						);
-						this.current = classify(
-							char_code_at.call(source, this.cursor - base)
-						);
-						this.next_class = classify(
-							char_code_at.call(source, this.cursor + 1 - base)
-						);
 						continue;
 					}
 
@@ -5253,7 +5223,7 @@ export class PFMParser {
 
 						continue;
 					}
-					this.chomp1();
+					this.cursor++;
 					continue;
 				}
 
@@ -5307,7 +5277,7 @@ export class PFMParser {
 
 					// skip leading pipe
 					if (code === PIPE) {
-						this.chomp1();
+						this.cursor++;
 					}
 
 					// open first cell and push onto node_stack for inline content
@@ -5348,7 +5318,7 @@ export class PFMParser {
 							this.close_table_cell();
 						}
 						this.table_cell_col++;
-						this.chomp1(); // skip the pipe
+						this.cursor++; // skip the pipe
 
 						// open next cell eagerly - don't push inline yet,
 						// let the fallthrough handle whitespace skipping first
@@ -5372,7 +5342,7 @@ export class PFMParser {
 						}
 						this.pad_and_close_row();
 						this.states.pop();
-						this.chomp1();
+						this.cursor++;
 						continue;
 					}
 
@@ -5381,7 +5351,7 @@ export class PFMParser {
 						!this.table_cell_has_content &&
 						(code === SPACE || code === TAB)
 					) {
-						this.chomp1();
+						this.cursor++;
 						continue;
 					}
 
@@ -5397,7 +5367,7 @@ export class PFMParser {
 				}
 
 				default: {
-					this.chomp1();
+					this.cursor++;
 					continue;
 				}
 			}
@@ -5414,7 +5384,7 @@ export class PFMParser {
 		const length = this.source_end;
 		if (code === BACKTICK) {
 			this.extra += 1;
-			this.chomp1();
+			this.cursor++;
 			return false;
 		} else if (this.extra >= 3) {
 			// pfm: inside a blockquote, the fence is only valid if
@@ -5508,7 +5478,7 @@ export class PFMParser {
 			return true; // wait for more input
 		}
 		if (code !== LINEFEED) {
-			this.chomp1();
+			this.cursor++;
 			return false;
 		} else if (this.cursor >= length && this.finished) {
 			this.emit_close(current_node, length);
@@ -5523,7 +5493,7 @@ export class PFMParser {
 			this.states.push(StateKind.code_fence_content);
 			this.out.attr(current_node, 'info_start', this.info_start_pos);
 			this.out.attr(current_node, 'info_end', this.cursor);
-			this.chomp1();
+			this.cursor++;
 
 			this.out.set_value_start(current_node, this.cursor);
 			this.fence_scan = this.cursor;
@@ -5606,11 +5576,11 @@ export class PFMParser {
 			this.emit_close(current_node, this.cursor);
 			this.node_stack.pop();
 			this.states.pop();
-			this.chomp1();
+			this.cursor++;
 			return false;
 		}
 		if (code === BACKTICK) {
-			this.chomp1();
+			this.cursor++;
 			return false;
 		}
 		// non-backtick trailing content - scan to end of line
@@ -5642,8 +5612,8 @@ export class PFMParser {
 		}
 		if (
 			code === UNDERSCORE &&
-			this.prev & (CharMask.word | CharMask.punctuation) &&
-			this.next_class & (CharMask.whitespace | CharMask.punctuation)
+			this.prev_class() & (CharMask.word | CharMask.punctuation) &&
+			this.next_class() & (CharMask.whitespace | CharMask.punctuation)
 		) {
 			const n_id = this.node_stack[this.node_stack.length - 1];
 
@@ -5664,7 +5634,7 @@ export class PFMParser {
 			this.pending_remove(n_id);
 			this.states.pop();
 			this.node_stack.pop();
-			this.chomp1();
+			this.cursor++;
 			if (this.states[this.states.length - 1] === StateKind.inline) {
 				this.states.pop();
 			}
@@ -5694,7 +5664,7 @@ export class PFMParser {
 		if (
 			code === TILDE &&
 			char_code_at.call(source, this.cursor + 1 - base) === TILDE &&
-			this.prev & (CharMask.word | CharMask.punctuation) &&
+			this.prev_class() & (CharMask.word | CharMask.punctuation) &&
 			classify(char_code_at.call(source, this.cursor + 2 - base)) &
 				(CharMask.whitespace | CharMask.punctuation)
 		) {
@@ -5723,14 +5693,17 @@ export class PFMParser {
 		}
 		// close: ^ after content (no right-flanking needed -
 		// ^ is unambiguous, and x^2^y must work)
-		if (code === CARET && this.prev & (CharMask.word | CharMask.punctuation)) {
+		if (
+			code === CARET &&
+			this.prev_class() & (CharMask.word | CharMask.punctuation)
+		) {
 			const n_id = this.node_stack[this.node_stack.length - 1];
 			this.out.set_value_end(n_id, this.cursor);
 			this.emit_close(n_id, this.cursor + 1);
 			this.pending_remove(n_id);
 			this.states.pop();
 			this.node_stack.pop();
-			this.chomp1();
+			this.cursor++;
 			if (this.states[this.states.length - 1] === StateKind.inline) {
 				this.states.pop();
 			}
@@ -5754,7 +5727,7 @@ export class PFMParser {
 		if (
 			code === TILDE &&
 			char_code_at.call(source, this.cursor + 1 - base) !== TILDE &&
-			this.prev & (CharMask.word | CharMask.punctuation)
+			this.prev_class() & (CharMask.word | CharMask.punctuation)
 		) {
 			const n_id = this.node_stack[this.node_stack.length - 1];
 			this.out.set_value_end(n_id, this.cursor);
@@ -5762,7 +5735,7 @@ export class PFMParser {
 			this.pending_remove(n_id);
 			this.states.pop();
 			this.node_stack.pop();
-			this.chomp1();
+			this.cursor++;
 			if (this.states[this.states.length - 1] === StateKind.inline) {
 				this.states.pop();
 			}
@@ -6246,7 +6219,7 @@ export class PFMParser {
 				current_node
 			);
 			this.emit_close(lb_id, this.cursor + 1);
-			this.chomp1();
+			this.cursor++;
 			return false;
 		}
 
@@ -6270,7 +6243,7 @@ export class PFMParser {
 				this.chomp(pos + 1, true);
 				return false;
 			}
-			this.chomp1();
+			this.cursor++;
 			return false;
 		}
 
@@ -6544,7 +6517,7 @@ export class PFMParser {
 				current_node
 			);
 			this.emit_close(lb_id, this.cursor + 1);
-			this.chomp1();
+			this.cursor++;
 			return false;
 		}
 
@@ -6568,7 +6541,7 @@ export class PFMParser {
 				this.chomp(pos + 1, true);
 				return false;
 			}
-			this.chomp1();
+			this.cursor++;
 			return false;
 		}
 
@@ -6810,7 +6783,7 @@ export class PFMParser {
 
 			case SPACE:
 			case TAB: {
-				this.chomp1();
+				this.cursor++;
 				return false;
 			}
 
@@ -7236,7 +7209,7 @@ export class PFMParser {
 
 			case SPACE:
 			case TAB: {
-				this.chomp1();
+				this.cursor++;
 				return false;
 			}
 
@@ -7495,7 +7468,7 @@ export class PFMParser {
 					current_node
 				);
 				this.emit_close(lb_id, this.cursor + 1);
-				this.chomp1();
+				this.cursor++;
 				return false;
 			}
 
@@ -7523,7 +7496,7 @@ export class PFMParser {
 					this.chomp(pos + 1, true);
 					return false;
 				}
-				this.chomp1();
+				this.cursor++;
 				return false;
 			}
 
@@ -7997,17 +7970,12 @@ export class PFMParser {
 	private parse_inline_range(start: number, end: number): void {
 		const saved_cursor = this.cursor;
 		const saved_finished = this.finished;
-		const saved_prev = this.prev;
+		const saved_floor = this.class_floor;
 
 		this.cursor = start;
 		this.finished = true;
-		this.prev = CharMask.whitespace;
-		this.current = classify(
-			start < this.source_end
-				? char_code_at.call(this.source, start - this.source_base)
-				: NaN
-		);
-		this.next_class = classify(
+		this.class_floor = start;
+		this.range_next_class = classify(
 			start + 1 < this.source_end
 				? char_code_at.call(this.source, start + 1 - this.source_base)
 				: NaN
@@ -8056,18 +8024,7 @@ export class PFMParser {
 		// restore
 		this.cursor = saved_cursor;
 		this.finished = saved_finished;
-		this.prev = saved_prev;
-		const i = this.cursor;
-		this.current = classify(
-			i < this.source_end
-				? char_code_at.call(this.source, i - this.source_base)
-				: NaN
-		);
-		this.next_class = classify(
-			i + 1 < this.source_end
-				? char_code_at.call(this.source, i + 1 - this.source_base)
-				: NaN
-		);
+		this.class_floor = saved_floor;
 	}
 
 	/**
