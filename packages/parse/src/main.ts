@@ -114,6 +114,29 @@ const classify = (code: number): CharMask =>
 /** shared empty error collector - avoids allocation when no errors are recorded. */
 const EMPTY_ERRORS = new ErrorCollector(1);
 
+/** reused two slot array for append_flat, cleared after each use. */
+const JOIN_PAIR: string[] = ['', ''];
+
+/**
+ * append `tail` to `head` as one flat sequential string. `head + tail`
+ * makes a cons string, and every charCodeAt on the incremental window
+ * then goes through the cons indirection (about twice the cost per
+ * read, and extra maps at the parser's string sites). join copies both
+ * into a fresh sequential string, which costs the same as the flatten
+ * the cons would get on its first read anyway. when `head` is empty the
+ * join hands back `tail` itself, so the first chunk keeps the caller's
+ * representation until the next feed copies it.
+ */
+function append_flat(head: string, tail: string): string {
+	if (tail.length === 0) return head;
+	JOIN_PAIR[0] = head;
+	JOIN_PAIR[1] = tail;
+	const joined = JOIN_PAIR.join('');
+	JOIN_PAIR[0] = '';
+	JOIN_PAIR[1] = '';
+	return joined;
+}
+
 /**
  * normalize line endings to `\n`. per commonmark 2.1, a line ending is
  * `\n`, `\r`, or `\r\n`. the state machine only recognizes `\n`, so we
@@ -407,11 +430,11 @@ export class PFMParser {
 		if (chunk.length === 0) return;
 
 		if (this.pending_cr) {
-			// consume a leading \n so a \r\n split across chunks becomes one \n
-			if (chunk.charCodeAt(0) === 0x0a) {
-				chunk = chunk.slice(1);
+			// a \r\n split across chunks becomes one \n. the \n goes on the
+			// front of the chunk so the window is still built in one join.
+			if (chunk.charCodeAt(0) !== 0x0a) {
+				chunk = '\n' + chunk;
 			}
-			this.source += '\n';
 			this.pending_cr = false;
 		}
 
@@ -426,12 +449,13 @@ export class PFMParser {
 		}
 
 		// keep one char before trim_point for the previous char lookbehind
+		let head = this.source;
 		if (this.trim_point - 1 > this.source_base) {
-			this.source = this.source.slice(this.trim_point - 1 - this.source_base);
+			head = head.slice(this.trim_point - 1 - this.source_base);
 			this.source_base = this.trim_point - 1;
 		}
 
-		this.source += chunk;
+		this.source = append_flat(head, chunk);
 		this.current = classify(
 			this.source.charCodeAt(this.cursor - this.source_base)
 		);
@@ -448,7 +472,7 @@ export class PFMParser {
 	 */
 	finish(): { errors: ErrorCollector } {
 		if (this.pending_cr) {
-			this.source += '\n';
+			this.source = append_flat(this.source, '\n');
 			this.pending_cr = false;
 		}
 		this.finished = true;
@@ -1173,28 +1197,28 @@ export class PFMParser {
 		const ch = source.charCodeAt(p - base);
 		// blank line is an immediate decision.
 		if (ch === LINEFEED) return true;
-		// full next-line scan for an easy fast path - if a linefeed is
-		// reachable, we have the whole line and can decide anything.
-		for (let q = p + 1; q < length; q++) {
-			if (source.charCodeAt(q - base) === LINEFEED) return true;
-		}
-		// partial next line (no trailing linefeed yet). we can still
-		// decide for unambiguous first-char cases.
+		// most calls are settled by the first char alone, so check it
+		// before scanning the rest of the line. the answer is the same
+		// either way: a visible linefeed always decides, and without one
+		// only the unambiguous first-char cases below can.
 		switch (ch) {
 			case OCTOTHERP:
 				// heading needs at least `#` + one lookahead char
 				// (distinguishes `# x` heading from `#x` paragraph).
-				return p + 1 < length;
+				if (p + 1 < length) return true;
+				break;
 			case CLOSE_ANGLE_BRACKET:
 				// block quote - immediate.
 				return true;
 			case BACKTICK:
 				// code fence needs three backticks visible.
-				return (
+				if (
 					p + 2 < length &&
 					source.charCodeAt(p + 1 - base) === BACKTICK &&
 					source.charCodeAt(p + 2 - base) === BACKTICK
-				);
+				)
+					return true;
+				break;
 			case DASH:
 			case ASTERISK:
 				// could be a list marker or a thematic break. inside a list,
@@ -1209,13 +1233,16 @@ export class PFMParser {
 						if (qch === LINEFEED) return true;
 						if (qch !== ch && qch !== SPACE && qch !== TAB) return true;
 					}
+					// this scan reached the end of input without a linefeed,
+					// so the full-line scan below cannot find one either.
+					return false;
 				}
-				return false;
+				break;
 			case PLUS:
 				// plus is only ever a list marker - no thematic break ambiguity.
 				// one char of lookahead is enough inside a list.
 				if (this.list_depth > 0 && p + 1 < length) return true;
-				return false;
+				break;
 			case UNDERSCORE:
 			case OPEN_ANGLE_BRACKET:
 			case OPEN_SQUARE_BRACKET:
@@ -1223,7 +1250,7 @@ export class PFMParser {
 			case OPEN_BRACE:
 			case COLON:
 				// genuinely ambiguous - need to see the rest of the line.
-				return false;
+				break;
 			default:
 				// digits may start an ordered list marker. inside a list we
 				// can decide early: scan the digit run, then look for the
@@ -1231,7 +1258,7 @@ export class PFMParser {
 				// run hits a non-digit non-delimiter char, it's clearly not
 				// a marker - paragraph continues.
 				if (ch >= 48 && ch <= 57) {
-					if (this.list_depth === 0) return false;
+					if (this.list_depth === 0) break;
 					let q = p + 1;
 					while (
 						q < length &&
@@ -1239,15 +1266,23 @@ export class PFMParser {
 						source.charCodeAt(q - base) <= 57
 					)
 						q++;
+					// digits run to the end of input, so no linefeed follows.
 					if (q >= length) return false;
 					const dch = source.charCodeAt(q - base);
 					if (dch !== DOT && dch !== CLOSE_PAREN) return true; // not a marker - continue paragraph
-					return q + 1 < length;
+					if (q + 1 < length) return true;
+					break;
 				}
 				// everything else (letters, punctuation, etc.) cannot
 				// start a block - the paragraph continues.
 				return true;
 		}
+		// ambiguous first char: decide only once the whole next line,
+		// up to its linefeed, is visible.
+		for (let q = p + 1; q < length; q++) {
+			if (source.charCodeAt(q - base) === LINEFEED) return true;
+		}
+		return false;
 	}
 
 	private is_heading_start(pos: number): boolean {
