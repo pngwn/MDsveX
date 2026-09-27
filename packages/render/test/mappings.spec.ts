@@ -370,6 +370,17 @@ describe('build_line_starts', () => {
 		const ls = build_line_starts('');
 		expect(Array.from(ls)).toEqual([0]);
 	});
+
+	it('crlf and bare cr', () => {
+		const ls = build_line_starts('a\r\nb\rc\n\r');
+		expect(Array.from(ls)).toEqual([0, 3, 5, 7, 8]);
+	});
+
+	it('many lines', () => {
+		const ls = build_line_starts('x\n'.repeat(1000));
+		expect(ls.length).toBe(1001);
+		expect(ls[1000]).toBe(2000);
+	});
 });
 
 describe('offset_to_position', () => {
@@ -448,6 +459,57 @@ describe('mappings_to_v3', () => {
 		const src_col = textSeg![3];
 		const src_lines = source.split('\n');
 		expect(src_lines[src_line].slice(src_col, src_col + 5)).toBe('hello');
+	});
+
+	it('maps every character of long and multi-line runs', () => {
+		const line = 'abcdefghijklmnopqrstuvwxyz0123456789';
+		const source = `${line}\n${line}\n`;
+		const html = `<p>${line}\n${line}</p>`;
+		const content: Mapping<MappingData> = {
+			sourceOffsets: [0],
+			generatedOffsets: [3],
+			lengths: [source.length - 1],
+			data: { role: 'content' } as MappingData,
+		};
+		// a node anchor listed after the content it precedes
+		const node: Mapping<MappingData> = {
+			sourceOffsets: [0],
+			generatedOffsets: [0],
+			lengths: [source.length],
+			data: { role: 'node' } as MappingData,
+		};
+		const v3 = mappings_to_v3([content, node], source, html);
+		const decoded = decodeVLQMappings(v3.mappings);
+		const src_lines = source.split('\n');
+		const gen_lines = html.split('\n');
+		let chars = 0;
+		for (let l = 0; l < decoded.length; l++) {
+			for (const [gen_col, , src_line, src_col] of decoded[l]) {
+				if (l === 0 && gen_col === 0) continue;
+				expect(gen_lines[l][gen_col]).toBe(src_lines[src_line][src_col]);
+				chars++;
+			}
+		}
+		expect(decoded[0][0]).toEqual([0, 0, 0, 0]);
+		// the newline between the lines maps too
+		expect(chars).toBe(source.length - 1);
+	});
+
+	it('does not depend on the order of the mappings', () => {
+		const source = 'ab'.repeat(3000);
+		const sorted: Mapping<MappingData>[] = [];
+		for (let i = 0; i < 3000; i++) {
+			sorted.push({
+				sourceOffsets: [i * 2],
+				generatedOffsets: [i * 2],
+				lengths: [1],
+				data: { role: 'content' } as MappingData,
+			});
+		}
+		const reversed = sorted.slice().reverse();
+		expect(mappings_to_v3(reversed, source, source).mappings).toBe(
+			mappings_to_v3(sorted, source, source).mappings
+		);
 	});
 
 	it('survives svelte compiler remapping', () => {
