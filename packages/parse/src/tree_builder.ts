@@ -15,20 +15,18 @@ const NONE = 0xffffffff;
  * this is the backward-compatibility layer: the opcode stream is the
  * primary output, but existing tests and consumers expect a NodeBuffer.
  *
- * the parser keeps ids dense (see Emitter), so every id is its own buffer
- * index and the builder needs no translation. an id that does not land on
- * the next free slot (a revoke pushed a repair node, or another emitter
- * numbers ids differently) switches the builder to an id map for the rest
- * of the document, and a plugin dispatcher, which pushes synthetic nodes,
- * uses the map from the start.
+ * ids are dense so each id is its own buffer index, an id that misses the next
+ * free slot, as after a revoke pushes a repair node, switches to an id map for
+ * the rest of the document, plugins always use the map since they push
+ * synthetic nodes
  */
 export class TreeBuilder implements Emitter {
 	private nodes: NodeBuffer;
-	/** opcode id -> buffer index, null while ids equal indices. */
+	/** null while ids equal buffer indices */
 	private id_to_index: number[] | null = null;
-	/** opcode id -> kind at open, only kept for plugins because they rewrite kinds. */
+	/** kind at open by id, only kept for plugins since they rewrite kinds */
 	private id_to_kind: number[] | null = null;
-	/** buffer index -> kind at open for nodes a revoke rewrote, null until one does. */
+	/** kind at open by buffer index for nodes a revoke rewrote */
 	private revoked_kinds: Map<number, number> | null = null;
 	/** optional plugin dispatcher. null when no plugins registered. */
 	private dispatcher: PluginDispatcher | null;
@@ -64,13 +62,11 @@ export class TreeBuilder implements Emitter {
 		this.revoked_kinds = null;
 	}
 
-	/** buffer index for an opcode id, undefined when the id was never opened. */
 	private index_of(id: number): number | undefined {
 		const map = this.id_to_index;
 		return map === null ? id : map[id];
 	}
 
-	/** stop treating ids as indices, every id opened so far is its own index. */
 	private start_id_map(): number[] {
 		const size = this.nodes._size;
 		const map: number[] = [];
@@ -79,7 +75,7 @@ export class TreeBuilder implements Emitter {
 		return map;
 	}
 
-	/** kind a node was opened with, a revoke may have rewritten the buffer kind since. */
+	/** a revoke may have rewritten the buffer kind since open */
 	private opened_kind(idx: number): number {
 		const revoked = this.revoked_kinds;
 		if (revoked !== null) {
@@ -194,20 +190,12 @@ export class TreeBuilder implements Emitter {
 		if (kind === NodeKind.list) this.unwrap_tight_list(idx);
 	}
 
-	/**
-	 * tight list unwrapping: if this is a list with tight=true, walk items and
-	 * unwrap their paragraph children. safe no-op when the parser already
-	 * revoked them via finalize_list_pending_paras.
-	 */
+	/** a no op when finalize_list_pending_paras already revoked the paragraphs */
 	private unwrap_tight_list(idx: number): void {
 		const nodes = this.nodes;
 		const meta = nodes.metadata_at(idx);
 		if (!meta || !meta.tight) return;
-		// walk the sibling chains directly instead of get_node, which
-		// allocates a node object and child array per item. each next
-		// sibling and its parent are read before the unwrap, so children
-		// spliced in by an unwrap are skipped, exactly as a child list
-		// captured up front would skip them.
+		// next is read before the unwrap, so children it splices in are skipped
 		let item = nodes.first_child_at(idx);
 		let more_items = item !== NONE && nodes.parent_at(item) === idx;
 		while (more_items) {
@@ -250,7 +238,7 @@ export class TreeBuilder implements Emitter {
 		) {
 			this.nodes.set_value(parent_idx, start, end);
 		} else {
-			// create a child text node, in the slot of the id the parser reserved for it
+			// fills the slot of the id the parser reserved for this text node
 			this.nodes.push_text(start, end, parent_idx);
 		}
 	}
@@ -270,8 +258,7 @@ export class TreeBuilder implements Emitter {
 				this.nodes.set_value_end(idx, value);
 				break;
 			default: {
-				// merge into metadata map. the stored object is mutated in
-				// place, so a merge needs no second map write.
+				// mutated in place, so no set_metadata call is needed
 				const nodes = this.nodes;
 				const existing = nodes.metadata_at(idx);
 				if (existing) {

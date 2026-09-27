@@ -28,15 +28,14 @@ import { NodeField, type NodeBuffer } from './utils';
 const NONE = 0xffffffff;
 
 export class Cursor {
-	/** the backing node buffer. */
 	private buf: NodeBuffer;
 	/** the full source string for lazy text slicing. */
 	private src: string;
 	/** current node index into the buffer. */
 	private idx: number;
-	/** first word of the current node, idx times the stride. */
+	/** idx times NodeField.stride */
 	private b: number;
-	/** the buffer's node words, cached for hot-path access. */
+	/** cached buf._n */
 	private n: Uint32Array;
 
 	constructor(buf: NodeBuffer, source: string) {
@@ -109,12 +108,11 @@ export class Cursor {
 		return this.src.slice(vs, ve);
 	}
 
-	/** the source string that text() slices from. */
 	get source(): string {
 		return this.src;
 	}
 
-	/** prebuilt text for the current node, undefined when text() slices the source. */
+	/** undefined when text slices the source */
 	get prebuilt(): string | undefined {
 		return this.buf._strings[this.idx];
 	}
@@ -182,7 +180,7 @@ export class Cursor {
 		return result;
 	}
 
-	/** drop the source string so a cursor kept for reuse does not pin it. */
+	/** a cursor kept for reuse must not pin the source */
 	release(): void {
 		this.src = '';
 	}

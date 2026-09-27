@@ -343,8 +343,7 @@ describe('TreeBuilder', () => {
 	});
 });
 
-// forwards every opcode to a builder with every non-root id moved by an
-// offset, so no id lands on its slot and the builder has to map them
+// no non-root id lands on its own slot, so the builder has to map them
 class ShiftedIds implements Emitter {
 	constructor(
 		private out: Emitter,
@@ -531,7 +530,6 @@ describe('parser id tables', () => {
 		expect(dump(parse_markdown_svelte(docs[1]).nodes)).toEqual(expected[1]);
 	});
 
-	// every opcode as a plain tuple, so two streams compare with toEqual
 	class Recorder implements Emitter {
 		ops: unknown[][] = [];
 		open(...args: unknown[]): void {
@@ -581,15 +579,12 @@ describe('parser id tables', () => {
 			init(): void;
 		};
 		p.init();
-		// stands in for 2^23 nodes already pending, a document that big is
-		// too slow for a unit test. the slot no longer fits beside the kind
-		// in one int32 from here on
+		// stands in for 2^23 pending nodes, past which the slot no longer fits beside the kind in one int32
 		p.pending_count = 1 << 23;
 		const a = p.emit_open(NodeKind.link, 0, 0, 0, true);
 		const b = p.emit_open(NodeKind.strong_emphasis, 0, 0, 0, true);
 		expect(p.pending_has(a)).toBe(true);
 		expect(p.pending_has(b)).toBe(true);
-		// b moves into the slot a leaves
 		p.pending_remove(a);
 		expect(p.pending_count).toBe((1 << 23) + 1);
 		expect(p.pending_has(a)).toBe(false);
@@ -607,15 +602,13 @@ describe('parser id tables', () => {
 		pc.feed(later);
 		pc.finish();
 
-		// take whatever spare tables earlier tests left, so the next parser
-		// allocates and hands its own tables back
+		// drains spare tables left by earlier tests so pa allocates its own
 		new PFMParser(new Recorder()).init();
 		const first = new Recorder();
 		const pa = new PFMParser(first);
 		pa.parse('# hi *x\n\ntext **b** [y\n');
 		const seen = first.ops.length;
 
-		// takes the tables pa handed back
 		const second = new Recorder();
 		const pb = new PFMParser(second);
 		pb.init();
@@ -629,7 +622,6 @@ describe('parser id tables', () => {
 
 		pb.finish();
 		expect(second.ops).toEqual(clean.ops);
-		// pa had closed or revoked everything already, as before the pool
 		expect(repeat).toEqual([]);
 	});
 });

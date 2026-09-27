@@ -3,15 +3,13 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
-// v8 never optimizes a function with more than 61440 bytes of bytecode
-// (--max-optimized-bytecode-size), so an oversized _run runs the whole state
-// machine in baseline code. the margin leaves room for new states.
+// v8 never optimizes a function over 61440 bytes of bytecode, so an oversized
+// _run keeps the whole state machine in baseline code, the margin is for new states
 const MAX_RUN_BYTECODE = 55000;
 
 const DIST = fileURLToPath(new URL('../dist/main.js', import.meta.url));
 
 describe('PFMParser._run', () => {
-	// measures the shipped build, which only exists after a build
 	test.skipIf(!existsSync(DIST))(
 		'bytecode stays below the turbofan size limit',
 		() => {

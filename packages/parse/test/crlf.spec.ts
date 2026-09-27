@@ -128,8 +128,6 @@ describe('line ending normalization', () => {
 			expect(get_source(p)).toBe('abc\ndef');
 		});
 
-		// the deferred \r used to leave a stale class for the char before it,
-		// so a delimiter there parsed differently than in batch mode
 		for (const input of ['~~~\r', 'a *\r', '{a} *~*\r', '- ~~~\r']) {
 			test(`a trailing lone \\r in ${JSON.stringify(input)} parses as in batch mode`, () => {
 				const tree = new TreeBuilder(128);

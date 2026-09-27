@@ -38,7 +38,6 @@ type CompileMap = {
 };
 type MakeMap = (html: string) => CompileMap | null;
 
-/** the svelte compiler's js to html map, null when the html does not compile. */
 function svelte_map(options: Record<string, unknown>): MakeMap {
 	return (html) => {
 		try {
@@ -49,7 +48,7 @@ function svelte_map(options: Record<string, unknown>): MakeMap {
 	};
 }
 
-/** a map looking up every column of every html line and some past the end. */
+/** every column of every html line and some past the end */
 function dense_map(encoded: boolean): MakeMap {
 	return (html) => {
 		const text = html.split('\n');
@@ -75,7 +74,7 @@ function dense_map(encoded: boolean): MakeMap {
 	};
 }
 
-/** the post transform output the plugin gave when pre stored the whole map. */
+/** the post transform output if pre stored the whole map */
 function eager(raw: string, compile_map: CompileMap, plugins?: ParsePlugin[]) {
 	const { map } = new CompilerSession().compile_v3(raw, ID, plugins);
 	const chained = remapping([compile_map as never, map as never], () => null);
@@ -86,7 +85,6 @@ function eager(raw: string, compile_map: CompileMap, plugins?: ParsePlugin[]) {
 	return `JS\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${base64}\n`;
 }
 
-/** run both transforms of the plugin as vite would around a svelte compile. */
 function transform(raw: string, make: MakeMap, plugins?: ParsePlugin[]) {
 	const [pre, post] = mdsvex({ parsePlugins: plugins }) as any[];
 	const html = pre.transform(raw, ID).code as string;
@@ -152,14 +150,12 @@ describe('vite plugin sourcemap', () => {
 
 	test('falls back to the full map for mappings it cannot read', () => {
 		const raw = '# a\n\ntext {x}\n';
-		// a stray character, a short segment, a sixth field, a negative zero
-		// line and a second source. the last three throw inside remapping
 		const cases = [
-			'A!AA;AACA',
-			'AA;AACA',
-			'AAAAAA,CACA;AACA',
-			'AABA',
-			'AACA,ACBA',
+			'A!AA;AACA', // a stray character
+			'AA;AACA', // a short segment
+			'AAAAAA,CACA;AACA', // a sixth field
+			'AABA', // a negative zero line
+			'AACA,ACBA', // a second source
 		];
 		const outcome = (run: () => string | undefined) => {
 			try {
@@ -183,7 +179,7 @@ describe('vite plugin sourcemap', () => {
 		}
 	});
 
-	test('skips empty documents and maps like before', () => {
+	test('skips empty documents and empty maps', () => {
 		expect(transform('', dense_map(true))!.out).toBeUndefined();
 		const make: MakeMap = () => ({
 			version: 3,

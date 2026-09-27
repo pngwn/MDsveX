@@ -205,7 +205,7 @@ describe('NodeBuffer', () => {
 			ids.push(buffer.push(NodeKind.text, i * 10, 0));
 		}
 
-		expect(buffer.size).toBe(41); // 40 + root
+		expect(buffer.size).toBe(41);
 
 		// All nodes should still be accessible with correct data
 		for (let i = 0; i < ids.length; i++) {
@@ -215,7 +215,6 @@ describe('NodeBuffer', () => {
 			expect(node.parent).toBe(0);
 		}
 
-		// Root should have all 40 as children
 		expect(buffer.get_node().children).toEqual(ids);
 
 		// Sibling chain should be intact
@@ -307,7 +306,6 @@ describe('NodeBuffer', () => {
 	});
 
 	test('grow from a slab carve into a dedicated buffer keeps every field', () => {
-		// small capacities are carved from a shared slab, large ones get their own arraybuffer
 		const buffer = new NodeBuffer(2);
 		const ids: number[] = [];
 		for (let i = 0; i < 300; i++) {
@@ -338,7 +336,6 @@ describe('NodeBuffer', () => {
 	});
 
 	test('buffers carved from shared slabs stay independent and start zeroed', () => {
-		// enough small buffers to fill several slabs, each grown once in turn
 		const buffers: NodeBuffer[] = [];
 		for (let b = 0; b < 120; b++) {
 			const buffer = new NodeBuffer(b % 2 === 0 ? 2 : 100);

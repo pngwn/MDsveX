@@ -45,22 +45,21 @@ export interface CompileResult {
 
 export interface CompileV3Result {
 	code: string;
-	/** equal to mappings_to_v3 over compile's mappings with the raw source. */
+	/** equals mappings_to_v3 over the compile mappings with raw as source */
 	map: SourceMapV3;
 }
 
 export interface CompileTraceResult {
 	code: string;
 	/**
-	 * what the v3 map is built from, trace_to_v3 over it with the raw source
-	 * and code giving compile_v3's map. null when map holds that map.
+	 * trace_to_v3 over this with raw source gives the compile_v3 map, null
+	 * when map is set
 	 */
 	trace: MapTrace | null;
-	/** compile_v3's map, built at once when collapsing \r\n moved offsets. */
+	/** the compile_v3 map, built at once when collapsing \r\n moved offsets */
 	map: SourceMapV3 | null;
 }
 
-/** parse a normalized source into its own tree, running parse plugins over it. */
 function parse_once(source: string, plugins?: ParsePlugin[]): NodeBuffer {
 	let dispatcher: PluginDispatcher | undefined;
 	if (plugins && plugins.length > 0) {
@@ -68,8 +67,8 @@ function parse_once(source: string, plugins?: ParsePlugin[]): NodeBuffer {
 		dispatcher = new PluginDispatcher(plugins, text_source);
 	}
 
-	// short documents are denser in nodes than long ones, so size them
-	// generously to skip the resize, a small buffer is only a slab carve
+	// short documents are denser in nodes and a small buffer is only a slab
+	// carve, so size generously to skip a resize
 	const len = source.length;
 	const tree = new TreeBuilder(
 		len < 512 ? (len >> 2) + 16 : len >> 3,
@@ -100,7 +99,6 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	return { code: renderer.html };
 }
 
-/** html and v3 map of a parsed document, source being raw normalized. */
 function render_v3(
 	renderer: CursorHTMLRenderer,
 	nodes: NodeBuffer,
@@ -108,8 +106,7 @@ function render_v3(
 	raw: string,
 	file?: string
 ): CompileV3Result {
-	// only a collapsed \r\n moves offsets, and it is the only change of length.
-	// without one the records already index raw and encode straight to v3
+	// only a collapsed \r\n changes length, without one the records index raw
 	if (source.length === raw.length) {
 		const map = renderer.update_v3(nodes, source, raw, file);
 		return { code: renderer.html, map };
@@ -120,7 +117,6 @@ function render_v3(
 	return { code, map: mappings_to_v3(result.mappings, raw, code, file) };
 }
 
-/** render_v3 that keeps the records instead of encoding them when it can. */
 function render_trace(
 	renderer: CursorHTMLRenderer,
 	nodes: NodeBuffer,
@@ -150,12 +146,11 @@ export class CompilerSession {
 	// release already reset the arena, so the next compile can skip it
 	private released = false;
 
-	/** @internal node slots the arena holds, zero before the first compile. */
+	/** @internal */
 	get capacity(): number {
 		return this.tree === null ? 0 : this.tree.get_buffer()._capacity;
 	}
 
-	/** parse a normalized source into the session's arena. */
 	private parse(source: string): NodeBuffer {
 		if (this.tree === null) {
 			this.tree = new TreeBuilder(source.length >> 3 || 16);
@@ -186,11 +181,7 @@ export class CompilerSession {
 		return { code: this.renderer.html };
 	}
 
-	/**
-	 * @internal drop everything the last compile left behind except the
-	 * typed array storage, so an idle session holds no source, node
-	 * metadata, html or chunks. the next compile would clear these anyway.
-	 */
+	/** @internal keeps only typed arrays so an idle session holds no document */
 	release(): void {
 		if (this.tree !== null) {
 			this.tree.reset();
@@ -200,11 +191,7 @@ export class CompilerSession {
 		this.renderer.release();
 	}
 
-	/**
-	 * html and v3 map of raw, the map equal to mappings_to_v3 over
-	 * compile(raw, { sourcemap: true }).mappings with raw as the source. the
-	 * vite plugin needs nothing else, so no Mapping objects are built.
-	 */
+	/** the map equals mappings_to_v3 over compile mappings with raw as source */
 	compile_v3(
 		raw: string,
 		file?: string,
@@ -212,7 +199,7 @@ export class CompilerSession {
 	): CompileV3Result {
 		const source = normalize_newlines(raw);
 		if (parse_plugins && parse_plugins.length > 0) {
-			// the dispatcher reads this source, so the tree is not the session's
+			// the dispatcher holds this source, so plugins get their own tree
 			const nodes = parse_once(source, parse_plugins);
 			const renderer = new CursorHTMLRenderer({ cache: false });
 			return render_v3(renderer, nodes, source, raw, file);
@@ -221,9 +208,8 @@ export class CompilerSession {
 	}
 
 	/**
-	 * compile_v3 that defers the map. the vite plugin only looks up the few
-	 * lines the svelte compiler's map points at, so it builds them later
-	 * from the trace rather than encoding every line and decoding it again.
+	 * defers the map, the vite plugin builds only the lines the svelte compiler
+	 * map points at
 	 */
 	compile_trace(
 		raw: string,
@@ -240,9 +226,8 @@ export class CompilerSession {
 	}
 }
 
-// a session retains its arena at the size of the largest document it has
-// seen. large documents gain little from reuse, so they never enter the
-// shared session, and one whose tree outgrew the arena cap drops it
+// a session keeps its arena at its largest document size, so large documents
+// skip the shared session and one whose tree outgrew the cap drops it
 const SHARED_SOURCE_CAP = 1 << 19;
 const SHARED_CAPACITY_CAP = 1 << 16;
 
@@ -250,9 +235,8 @@ let shared_session: CompilerSession | null = null;
 let shared_session_busy = false;
 
 /**
- * one-shot compile. without plugins the result holds no reference into the
- * arena, parser or renderer, so small documents share one lazily created
- * module-level session instead of building and discarding all three.
+ * without plugins a result holds no reference into the arena, parser or
+ * renderer, so small documents can share one session
  */
 function render(source: string, options?: CompileOptions): CompileResult {
 	if (
@@ -278,7 +262,7 @@ function render(source: string, options?: CompileOptions): CompileResult {
 	}
 }
 
-/** @internal the shared one-shot session, for tests. */
+/** @internal for tests */
 export function _shared_session(): CompilerSession | null {
 	return shared_session;
 }
@@ -352,7 +336,6 @@ function split_mapping(
 	mapping.lengths = len;
 }
 
-/** what the pre transform keeps of a document for the post transform. */
 interface StoredDocument {
 	raw: string;
 	html: string;
@@ -361,10 +344,8 @@ interface StoredDocument {
 }
 
 /**
- * the html to markdown map as far as remapping reads it. remapping only
- * looks up the html lines the compile map's segments point at, so those
- * lines alone are built, each equal to the line of the full map. a compile
- * map whose lines cannot be read safely gets the full map.
+ * remapping only reads the html lines the compile map points at, so only those
+ * are built
  */
 function pfm_map(
 	doc: StoredDocument,

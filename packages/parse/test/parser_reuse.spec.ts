@@ -14,7 +14,7 @@ function parse_fresh(source: string) {
 	return parse_with(new PFMParser(builder), builder, source);
 }
 
-// documents that end with parser flags still set, as compiler sessions see them
+// documents that end with parser flags still set
 const LEAKY = ['# ` ', '> # ` ', '- # ` ', '# a\u0000', '## x\u0000y'];
 
 const FOLLOWERS = [

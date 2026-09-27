@@ -1,32 +1,19 @@
 /** default number of token entries to preallocate. */
 const DEFAULT_TOKEN_CAPACITY = 128;
 
-/**
- * smallest node capacity. a carve this size costs well under 2 kb of slab,
- * which is cheaper than the resize a slightly larger document would need.
- */
+/** under 2 kb of slab, cheaper than a resize for a slightly larger document */
 const MIN_NODE_CAPACITY = 32;
 
-/** size of each shared slab that small node buffers are carved from. */
 const SLAB_BYTES = 65536;
 
-/**
- * largest node buffer carved from a slab, larger ones get their own
- * arraybuffer. it caps the tail a full slab can waste at an eighth.
- */
+/** caps the tail a full slab can waste at an eighth */
 const SLAB_MAX_CARVE = 8192;
 
-/** placeholder so the node word field is stored by the constructor. */
 const EMPTY_U32 = new Uint32Array(0);
 
-/**
- * word offsets of a node's fields inside NodeBuffer._n. a node's fields are
- * written together on push and read together by the cursor, so they share
- * one stride of words instead of one typed array each. a const enum so every
- * offset builds to a literal.
- */
+/** push writes and the cursor reads fields together, so they share one stride */
 export const enum NodeField {
-	/** kind in the low byte, extra in the sixteen bits above it. */
+	/** kind in the low byte, extra in the sixteen bits above it */
 	kind = 0,
 	start = 1,
 	end = 2,
@@ -37,22 +24,18 @@ export const enum NodeField {
 	prev = 7,
 	first_child = 8,
 	last_child = 9,
-	/** one while the node is speculative and may still be revoked. */
+	/** one while the node may still be revoked */
 	pending = 10,
-	/** one plus the node's slot in NodeBuffer._meta, zero without metadata. */
+	/** one plus the slot in NodeBuffer._meta, zero without metadata */
 	meta = 11,
-	/** words per node. */
 	stride = 12,
 }
 
-/** bytes per node. */
 const NODE_BYTES = NodeField.stride * 4;
 
 /**
- * the slab small node buffers are carved from. a region is handed out once
- * and never reused, so every carve starts zeroed like a fresh arraybuffer and
- * costs one view instead of a backing store. the trade-off is retention:
- * a live small buffer keeps its whole slab alive, at most 64 kb each.
+ * regions are never reused, so a carve starts zeroed and costs one view not a
+ * backing store, but a live small buffer keeps its whole slab alive
  */
 let slab = new ArrayBuffer(0);
 let slab_used = SLAB_BYTES;
@@ -219,10 +202,8 @@ const extra_to_string = (kind: NodeKind): string | undefined => {
 };
 
 /**
- * build a one-key metadata object. a computed-key literal goes through a
- * slow generic define, so the keys the parser emits get constant-key
- * literals. unknown keys keep the computed literal, which also keeps
- * `__proto__` an own property.
+ * a computed key literal takes a slow generic define, so known keys get
+ * constant key literals, the fallback keeps __proto__ an own property
  */
 export function make_meta(key: string, value: any): Record<string, any> {
 	switch (key) {
@@ -261,11 +242,7 @@ export function make_meta(key: string, value: any): Record<string, any> {
 	}
 }
 
-/**
- * add or overwrite one key on an existing metadata object. named stores
- * keep each site monomorphic where a keyed store would go megamorphic
- * across every node shape.
- */
+/** named stores stay monomorphic, a keyed store goes megamorphic across shapes */
 export function merge_meta(
 	meta: Record<string, any>,
 	key: string,
@@ -322,30 +299,21 @@ export function merge_meta(
 	}
 }
 
-/**
- * buffer that stores nodes as fixed strides of words in one Uint32Array.
- * see NodeField for the layout.
- */
 export class NodeBuffer {
-	// every field is initialized here rather than only in alloc, because v8
-	// sizes the in-object slots from the stores it sees in the constructor
-	// body and would otherwise spill the tail fields out of line
-	/** @internal node slots the storage holds. */
+	// v8 sizes in-object slots from constructor stores, so every field is
+	// initialized here, not only in alloc, or the tail fields spill out of line
+	/** @internal */
 	_capacity = 0;
-	/** @internal node words, NodeField.stride per node. do not mutate externally. */
+	/** @internal do not mutate externally */
 	_n: Uint32Array = EMPTY_U32;
-	/** @internal metadata objects, a node's meta word is one plus its slot. */
+	/** @internal */
 	_meta: any[] = [];
 	/** @internal pre-materialized text strings (used by wiretreebuilder). index -> string. */
 	_strings: (string | undefined)[] = [];
 
-	/** @internal slots in use, read by TreeBuilder to check ids against indices. */
+	/** @internal read by TreeBuilder to check ids against indices */
 	_size = 0;
 
-	/**
-	 * create a buffer that stores nodes in one typed array.
-	 * @param initial_capacity requested starting capacity for nodes.
-	 */
 	constructor(initial_capacity = DEFAULT_TOKEN_CAPACITY) {
 		// the comparison also sends a nan capacity to the floor
 		this.alloc(
@@ -358,11 +326,6 @@ export class NodeBuffer {
 		this.push(NodeKind.root, 0);
 	}
 
-	/**
-	 * point the node words at fresh zeroed storage of the given capacity,
-	 * carved from the current slab when it is small and from a dedicated
-	 * arraybuffer otherwise.
-	 */
 	private alloc(capacity: number): Uint32Array {
 		// a node is a whole number of words, so every carve stays word aligned
 		const bytes = capacity * NODE_BYTES;
@@ -385,23 +348,21 @@ export class NodeBuffer {
 		return n;
 	}
 
-	/** clear previously pushed nodes without reallocating storage. */
+	/** clear nodes without reallocating storage */
 	reset(): void {
-		// push writes every word of a node, so the words the last document
-		// left behind are never read and need no clearing. clear and a length
-		// store are runtime calls even when empty
+		// push writes every word of a node, so stale words need no clearing
+		// a length store is a runtime call even when already empty
 		if (this._meta.length !== 0) this._meta.length = 0;
 		if (this._strings.length !== 0) this._strings.length = 0;
 		this._size = 0;
 	}
 
-	/** number of nodes currently stored. */
 	get size(): number {
 		return this._size;
 	}
 
 	/**
-	 * push a node into the buffer as the last child of parent.
+	 * push a node as the last child of parent
 	 * @param kind node category.
 	 * @param cursor cursor position
 	 * @param parent index of the parent node, or 0xffffffff for none.
@@ -465,10 +426,7 @@ export class NodeBuffer {
 		return index;
 	}
 
-	/**
-	 * push a closed text node holding the source range [start, end) as the
-	 * last child of parent, which must be a node.
-	 */
+	/** parent must be a node, not 0xffffffff */
 	push_text(start: number, end: number, parent: number): number {
 		const index = this._size;
 		let n = this._n;
@@ -919,10 +877,6 @@ export class NodeBuffer {
 		return result;
 	}
 
-	/**
-	 * get the node kind recorded at the supplied index.
-	 * @param index node index.
-	 */
 	kind_at(index: number): NodeKind {
 		return (this._n[index * NodeField.stride] & 0xff) as NodeKind;
 	}
@@ -938,7 +892,6 @@ export class NodeBuffer {
 		n[b] = (n[b] & 0xffff00) | (kind & 0xff);
 	}
 
-	/** kind-specific extra value of the node at the given index. */
 	extra_at(index: number): number {
 		return this._n[index * NodeField.stride] >>> 8;
 	}
@@ -954,12 +907,11 @@ export class NodeBuffer {
 		n[b] = (n[b] & 0xff) | ((extra & 0xffff) << 8);
 	}
 
-	/** source offset where the node at the given index starts. */
 	start_at(index: number): number {
 		return this._n[index * NodeField.stride + NodeField.start];
 	}
 
-	/** source offset where the node at the given index ends, 0xffffffff while open. */
+	/** 0xffffffff while open */
 	end_at(index: number): number {
 		return this._n[index * NodeField.stride + NodeField.end];
 	}
@@ -979,12 +931,10 @@ export class NodeBuffer {
 		this._n[i] = end >>> 0;
 	}
 
-	/** start of the value range of the node at the given index. */
 	value_start_at(index: number): number {
 		return this._n[index * NodeField.stride + NodeField.value_start];
 	}
 
-	/** end of the value range of the node at the given index. */
 	value_end_at(index: number): number {
 		return this._n[index * NodeField.stride + NodeField.value_end];
 	}
@@ -1010,7 +960,6 @@ export class NodeBuffer {
 		this._n[i] = end >>> 0;
 	}
 
-	/** parent index of the node at the given index, 0xffffffff for none. */
 	parent_at(index: number): number {
 		return this._n[index * NodeField.stride + NodeField.parent];
 	}
@@ -1019,7 +968,6 @@ export class NodeBuffer {
 		this._n[index * NodeField.stride + NodeField.parent] = parent;
 	}
 
-	/** next sibling link of the node at the given index, 0xffffffff for none. */
 	next_at(index: number): number {
 		return this._n[index * NodeField.stride + NodeField.next];
 	}
@@ -1028,7 +976,6 @@ export class NodeBuffer {
 		this._n[index * NodeField.stride + NodeField.next] = next;
 	}
 
-	/** previous sibling link of the node at the given index, 0xffffffff for none. */
 	prev_at(index: number): number {
 		return this._n[index * NodeField.stride + NodeField.prev];
 	}
@@ -1037,7 +984,6 @@ export class NodeBuffer {
 		this._n[index * NodeField.stride + NodeField.prev] = prev;
 	}
 
-	/** first child of the node at the given index, 0xffffffff for none. */
 	first_child_at(index: number): number {
 		return this._n[index * NodeField.stride + NodeField.first_child];
 	}
@@ -1046,7 +992,6 @@ export class NodeBuffer {
 		this._n[index * NodeField.stride + NodeField.first_child] = child;
 	}
 
-	/** last child of the node at the given index, 0xffffffff for none. */
 	last_child_at(index: number): number {
 		return this._n[index * NodeField.stride + NodeField.last_child];
 	}
@@ -1055,7 +1000,6 @@ export class NodeBuffer {
 		this._n[index * NodeField.stride + NodeField.last_child] = child;
 	}
 
-	/** one while the node at the given index is pending, otherwise zero. */
 	pending_at(index: number): number {
 		return this._n[index * NodeField.stride + NodeField.pending];
 	}
@@ -1073,7 +1017,6 @@ export class NodeBuffer {
 		return this.resize(this._capacity << 1);
 	}
 
-	/** move every node into fresh storage of a larger capacity. */
 	private resize(next: number): Uint32Array {
 		const old = this._n;
 		const n = this.alloc(next);
@@ -1091,12 +1034,10 @@ export class NodeBuffer {
 
 	metadata_at(index: number): any | undefined {
 		const slot = this._n[index * NodeField.stride + NodeField.meta];
-		// an index past the storage reads undefined, which is not zero and
-		// indexes _meta at nan
+		// an index past the storage reads undefined, which indexes _meta at nan
 		return slot === 0 ? undefined : this._meta[slot - 1];
 	}
 
-	/** drop the metadata of the node at the given index. */
 	delete_metadata(index: number): void {
 		this._n[index * NodeField.stride + NodeField.meta] = 0;
 	}

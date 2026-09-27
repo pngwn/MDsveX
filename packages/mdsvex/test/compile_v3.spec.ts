@@ -25,7 +25,6 @@ function fixture_files(dir: string): string[] {
 
 const ID = '/src/routes/page.svx';
 
-/** what the vite plugin stored before compile_v3, from the Mapping objects. */
 function object_path(raw: string, plugins?: ParsePlugin[]) {
 	const result = compile(raw, { sourcemap: true, parsePlugins: plugins });
 	return {

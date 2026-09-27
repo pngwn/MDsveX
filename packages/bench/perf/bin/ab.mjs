@@ -9,7 +9,7 @@
 //   --families a,b        only these corpus families
 //   --modes a,b           only these modes, incremental means both sizes
 //   --rounds <n>          paired rounds per workload, default 15
-//   --repeat <n>          independent passes, default 1, use 2 for a claim; above 1 each pass is its own process
+//   --repeat <n>          independent passes, default 1, use 2 for a claim, above 1 each pass is its own process
 //   --target-ms <n>       time per window, default 20
 //   --rewarm-ms <n>       untimed run per arm after each round gc, default 20
 //   --noise-floor <pct>   override the calibrated floor in percent
@@ -129,7 +129,7 @@ export function combine_passes(rows, passes) {
 	});
 }
 
-// a child pass runs under its parent's lock, so it checks that the parent really holds it instead of waiting on it forever
+// a child pass runs under the parent lock, waiting on it would hang forever
 function lock_held_by_parent() {
 	const s = lock_status();
 	if (s.held && s.pid === process.ppid) return () => {};
@@ -222,8 +222,7 @@ export async function run_comparison({
 	}
 }
 
-// a module instance keeps its jit outcome for the life of the process, so passes in one process share any
-// accident and agree with each other; a fresh process per pass makes agreement mean replication
+// passes in one process share its jit outcome and agree by accident, a fresh process per pass makes agreement mean replication
 function without_repeat(argv) {
 	const out = [];
 	for (let i = 0; i < argv.length; i++) {
@@ -255,7 +254,7 @@ async function run_in_fresh_processes(args, argv, label) {
 		for (let pass = 0; pass < args.repeat; pass++) {
 			const tag = `${pass + 1}/${args.repeat}`;
 			const out = join(dir, `pass-${pass + 1}.json`);
-			// children inherit cwd, env and cpu affinity, so a taskset on the parent pins every pass
+			// children inherit cpu affinity, so a taskset on the parent pins every pass
 			const child = spawnSync(
 				process.execPath,
 				[

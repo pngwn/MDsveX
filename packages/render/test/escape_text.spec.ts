@@ -20,7 +20,6 @@ function cursor_for(source: string): { c: Cursor } {
 	return { c: new Cursor(tree.get_buffer(), source) };
 }
 
-/** every node index reachable from the root, in document order */
 function indices(c: Cursor): number[] {
 	const out: number[] = [];
 	const walk = (): void => {

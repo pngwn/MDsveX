@@ -40,7 +40,7 @@ describe('NodeBuffer extensions', () => {
 			const idx = buf.push_unlinked(NodeKind.paragraph, 0);
 			expect(buf.kind_at(idx)).toBe(NodeKind.paragraph);
 			expect(buf.parent_at(idx)).toBe(0xffffffff);
-			expect(buf.first_child_at(0)).toBe(0xffffffff); // root has no children
+			expect(buf.first_child_at(0)).toBe(0xffffffff);
 		});
 	});
 
@@ -71,7 +71,7 @@ describe('NodeBuffer extensions', () => {
 
 			expect(buf.first_child_at(0)).toBe(wrapper);
 			expect(buf.last_child_at(0)).toBe(wrapper);
-			expect(buf.first_child_at(wrapper)).toBe(0xffffffff); // no children
+			expect(buf.first_child_at(wrapper)).toBe(0xffffffff);
 		});
 
 		it('preserves sibling chain order', () => {

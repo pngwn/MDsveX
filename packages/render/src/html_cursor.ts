@@ -1,8 +1,8 @@
 /**
  * cursor-based pfm html renderer
  *
- * renders html from a cursor over a NodeBuffer.
- * zero per-node allocations, the cursor reads node words directly,
+ * renders html from a cursor over a NodeBuffer
+ * zero per node allocations, the cursor reads node words directly,
  * text is lazily sliced from source only when needed.
  *
  * usage:
@@ -21,14 +21,13 @@ import type { MapTrace, SourceMapV3 } from './sourcemap';
 export type { Mapping, CodeInformation, MappingData } from './mappings';
 export { MapSink } from './mappings';
 
-// uint32 slot sentinel as NONE in @mdsvex/parse, a const enum like the kinds
+// must equal NONE in @mdsvex/parse
 const enum Slot {
 	NONE = 0xffffffff,
 }
 
-// code span values arrive as seq, cons and sliced strings, so a .indexOf
-// load on them goes megamorphic. calling through one function keeps the
-// call site monomorphic.
+// code span values arrive as seq, cons and sliced strings, so an indexOf load
+// on them goes megamorphic, calling through one function keeps it monomorphic
 const string_index_of = String.prototype.indexOf;
 
 //  html escaping
@@ -51,11 +50,10 @@ function escape_html(text: string): string {
 
 //  source escape index
 
-// text nodes are visited in source order, so rather than testing every value
-// with a regex, keep the next source position of each escapable char and move
-// it forward with a native indexOf. each pointer then scans the source about
-// once per render and a value needs escaping only when a pointer falls in it.
-// the pointers are the first match at or after esc_lo, or esc_len for none.
+// text nodes arrive in source order, so instead of a regex per value each
+// escapable char keeps its next source position and advances it with indexOf,
+// scanning the source about once per render
+// each pointer is the first match at or after esc_lo, or esc_len for none
 let esc_src = '';
 let esc_len = 0;
 let esc_lo = 0;
@@ -79,13 +77,13 @@ function esc_next(ch: string, from: number): number {
 	return i === -1 ? esc_len : i;
 }
 
-/** escape(c.text()) for the current node, using the source index when the text is a source slice. */
+/** equals escape_html of c.text, reading source slices through the escape index */
 function escape_node_text(c: Cursor): string {
 	const s = c.prebuilt;
 	if (s !== undefined) return escape_html(s);
 	const vs = c.value_start;
 	let ve = c.value_end;
-	// same empty cases as Cursor.text()
+	// empty cases must match Cursor.text
 	if (vs === Slot.NONE || ve === Slot.NONE || ve <= vs) return '';
 	const src = c.source;
 	if (src !== esc_src) esc_reset(src);
@@ -107,7 +105,7 @@ function escape_node_text(c: Cursor): string {
 	return escape_hits(src, vs, ve, m);
 }
 
-/** build the escaped value from source slices and entities, m is the first hit. */
+/** m is the first escapable char at or after vs */
 function escape_hits(src: string, vs: number, ve: number, m: number): string {
 	let text = '';
 	let pos = vs;
@@ -140,11 +138,9 @@ function escape_hits(src: string, vs: number, ve: number, m: number): string {
 
 //  kind constants
 
-// the renderer is built as its own entry, so an exported const lives in a
-// module cell that turbofan reloads on every use, and a switch over named
-// consts compiles to a compare chain. local const enums build to literals:
-// the hot reads fold to immediates and switch (c.kind) gets a jump table.
-// the exported names below are the public api and are never read here.
+// the renderer is its own build entry, so exported consts stay module cells
+// turbofan reloads on every use and a switch over them is a compare chain,
+// local const enums build to literals that fold to immediates and a jump table
 const enum K {
 	ROOT = 0,
 	TEXT = 1,
@@ -215,10 +211,9 @@ export const K_IMPORT_STATEMENT = K.IMPORT_STATEMENT;
 
 export const NONE = Slot.NONE;
 
-//  pending mappings, numeric records resolved to Mapping<MappingData> after render
+//  pending mapping records
 
-// the record layout and data presets of mappings.ts, restated locally for
-// the same reason as the kinds
+// must match RECORD_SIZE and Preset in mappings, local for the same reason as K
 const enum Rec {
 	SIZE = 6,
 }
@@ -230,7 +225,7 @@ const enum Preset {
 	STRUCTURE = 3,
 }
 
-// record codes the renderer writes, record_code(preset, role) as literals
+// record_code of preset and role, as literals
 const enum Code {
 	TEXT_CONTENT = 1,
 	CODE_CONTENT = 5,
@@ -240,7 +235,6 @@ const enum Code {
 	STRUCTURE_CLOSE = 15,
 }
 
-/** record a mapping. skips if generated range is empty. */
 function emit_record(
 	sink: MapSink,
 	out_start: number,
@@ -376,11 +370,7 @@ function _attrs(c: Cursor, out: string[], skip?: Set<string>): void {
 	}
 }
 
-/**
- * push `head`, then any attributes, then `end`. with no attributes it pushes
- * the precomputed `folded` (head + end) instead, because the final join costs
- * per chunk rather than per char.
- */
+/** with no attributes push the precomputed folded, the final join costs per chunk */
 function _open(
 	c: Cursor,
 	out: string[],
@@ -960,7 +950,7 @@ function _table_content(c: Cursor, out: string[], sink?: MapSink): void {
 	if (in_body) out.push('</tbody>');
 }
 
-/** cell open tags (none, left, center, right), precomputed so each is one chunk. */
+/** open tags for none, left, center and right, one chunk each */
 function _cell_opens(tag: string): string[] {
 	return [
 		`<${tag}>`,
@@ -986,7 +976,7 @@ function _table_cells(
 	do {
 		if (c.kind === K.TABLE_CELL) {
 			const align = alignments[col];
-			// the parser only emits these four values, anything else is built as before
+			// the parser only emits these four values, others are built at runtime
 			if (align === 'left') out.push(opens[1]);
 			else if (align === 'center') out.push(opens[2]);
 			else if (align === 'right') out.push(opens[3]);
@@ -1003,16 +993,13 @@ function _table_cells(
 //  static chunk fold
 
 // the final join costs about the same per chunk whatever its length, and a
-// third of the chunks are static literals right after another static. every
-// static literal gets a small id, and the unmapped render holds the last
-// static in a one-slot register instead of pushing it. a static after a
-// static looks the pair up in a table of precomputed composites, so the run
-// reaches out as one flat string and nothing is allocated once the table is
-// warm. a concat at runtime would build a cons string that join then walks.
-// the mapped render records spans by chunk index around almost every static,
-// so it could fold next to nothing and keeps its own register-free walk above.
+// third of chunks are a static right after a static, so the unmapped render
+// holds the last static id in a one slot register and folds pairs through a
+// table of precomputed flat composites, allocating nothing once warm where a
+// runtime concat would build a cons string for join to walk
+// the mapped render records spans around almost every static so it does not fold
 
-/** static strings by id, base literals first and then composites. id 0 is the empty register. */
+/** base literals then composites, id 0 is the empty register */
 const FOLD_STR: string[] = [''];
 const FOLD_IDS = new Map<string, number>();
 
@@ -1084,7 +1071,7 @@ const S_TR_CLOSE = fold_base('</tr>\n');
 const S_TH_CLOSE = fold_base('</th>\n');
 const S_TD_CLOSE = fold_base('</td>\n');
 
-/** cell open tag ids (none, left, center, right). */
+/** indexed by alignment none, left, center, right */
 function fold_cell_opens(tag: string): Uint8Array {
 	return Uint8Array.of(
 		fold_base(`<${tag}>`),
@@ -1096,10 +1083,8 @@ function fold_cell_opens(tag: string): Uint8Array {
 const TH_OPEN_ID = fold_cell_opens('th');
 const TD_OPEN_ID = fold_cell_opens('td');
 
-// wrapper nodes (open, children, close) render through one shared path. rows
-// are node kinds, headings use rows past the kinds by depth, and the first
-// heading row covers depths the parser never emits, which the unfolded
-// render writes as empty tags because the tag arrays have no entry for them.
+// rows are node kinds, headings use ROW_HEADING plus depth, and ROW_HEADING
+// alone covers depths the parser never emits, which render as empty tags
 const WRAP_ROWS = 48;
 const ROW_HEADING = 40;
 const WRAP_HEAD = new Uint8Array(WRAP_ROWS);
@@ -1147,38 +1132,34 @@ for (let depth = 1; depth <= 6; depth++) {
 
 //  fold register
 
-// the register is threaded through the fold functions as an argument and a
-// return value rather than kept in module state, so turbofan holds it in a
-// machine register and never loads or stores it through the module context.
-// 0 is an empty register and any other value is the pending static id.
+// the register is passed and returned rather than kept in module state so
+// turbofan keeps it in a machine register, 0 is empty, else a pending static id
 
-// composites stop at a fixed id count and length, so a document full of
-// static runs cannot grow the table without bound. past either cap the
-// register is pushed and restarted, which is what the unfolded render does.
+// caps bound the composite table, past either the pending static is pushed as is
 const FOLD_BASE = FOLD_STR.length;
 const FOLD_MAX_IDS = 1024;
 const FOLD_MAX_LEN = 128;
-// pair keys are (pending << 7) | static, so base ids must stay below 128
+// pair keys shift the pending id by 7 bits, so base ids must stay below 128
 if (FOLD_BASE > 128) throw new Error('too many static literals');
 
-/** composite id for each (pending << 7) | static pair, 0 when not built yet. */
+/** composite id per pair key, 0 when not built yet */
 const FOLD_PAIR = new Uint16Array(FOLD_MAX_IDS << 7);
 
-/** hold a static literal in the register, folding it into any pending one. returns the register. */
+/** fold a static into the register, returns the new register */
 function push_static(out: string[], p: number, id: number): number {
 	if (p === 0) return id;
 	const v = FOLD_PAIR[(p << 7) | id];
 	return v !== 0 ? v : fold_miss(out, p, id);
 }
 
-/** push a dynamic chunk after whatever static is pending. returns the empty register. */
+/** flushes any pending static first, returns the empty register */
 function push_dyn(out: string[], p: number, s: string): number {
 	if (p !== 0) out.push(FOLD_STR[p]);
 	out.push(s);
 	return 0;
 }
 
-/** build the composite for a new pair, or push the pending static past the caps. returns the register. */
+/** build the composite for a new pair, or push the pending static past the caps */
 function fold_miss(out: string[], p: number, id: number): number {
 	const a = FOLD_STR[p];
 	const b = FOLD_STR[id];
@@ -1204,7 +1185,7 @@ function fold_miss(out: string[], p: number, id: number): number {
 
 //  folding renderer, the unmapped twin of _node and _children
 
-/** whether _attrs would emit anything for this metadata. */
+/** true when _attrs would emit anything */
 function has_attrs(meta: Record<string, unknown>): boolean {
 	for (const key in meta) {
 		if (INTERNAL_KEYS.has(key)) continue;
@@ -1214,7 +1195,7 @@ function has_attrs(meta: Record<string, unknown>): boolean {
 	return false;
 }
 
-/** fold twin of _attrs. */
+/** fold twin of _attrs */
 function fold_attrs(
 	meta: Record<string, unknown> | undefined,
 	out: string[],
@@ -1246,7 +1227,7 @@ function fold_attrs(
 	return p;
 }
 
-/** fold twin of _open, taking static ids. */
+/** fold twin of _open, taking static ids */
 function fold_open(
 	c: Cursor,
 	out: string[],
@@ -1449,7 +1430,6 @@ function fold_list(c: Cursor, out: string[], p: number): number {
 	return push_static(out, p, ordered ? S_OL_CLOSE : S_UL_CLOSE);
 }
 
-/** push raw html attributes as parsed. */
 function fold_html_attrs(
 	html_attrs: Record<string, string | boolean>,
 	out: string[],
@@ -1481,9 +1461,8 @@ function fold_html(c: Cursor, out: string[], p: number): number {
 		| undefined;
 
 	if (meta?.self_closing) {
-		// source passthrough, see _node. the unfolded render pushes the tag
-		// and then truncates back, which a pending register cannot undo, so
-		// the passthrough is decided before anything is pushed.
+		// source passthrough as in _node, decided before any push because a
+		// pending register cannot be truncated back
 		const passthrough = c.end > c.start ? c.slice(c.start, c.end) : '';
 		if (passthrough) return push_dyn(out, p, passthrough);
 		p = push_static(out, p, S_LT);
@@ -1496,7 +1475,7 @@ function fold_html(c: Cursor, out: string[], p: number): number {
 	p = push_dyn(out, p, tag);
 	if (html_attrs) p = fold_html_attrs(html_attrs, out, p);
 	p = push_static(out, p, S_GT);
-	// raw-text elements keep their content as the node's value range, see _node
+	// raw text elements keep their content as the node value range, see _node
 	if (tag === 'script' || tag === 'style') {
 		p = push_dyn(out, p, c.text());
 	} else {
@@ -1596,7 +1575,7 @@ function fold_table_cells(
 	do {
 		if (c.kind === K_TABLE_CELL) {
 			const align = alignments[col];
-			// the parser only emits these four values, anything else is built as before
+			// the parser only emits these four values, others are built at runtime
 			if (align === 'left') p = push_static(out, p, opens[1]);
 			else if (align === 'center') p = push_static(out, p, opens[2]);
 			else if (align === 'right') p = push_static(out, p, opens[3]);
@@ -1612,7 +1591,7 @@ function fold_table_cells(
 	return p;
 }
 
-/** render the node at the current cursor position into out, which is only joined. */
+/** out is only for joining, folded chunks do not line up with mappings */
 function render_folded(c: Cursor, out: string[]): void {
 	const p = fold_node(c, out, 0);
 	if (p !== 0) out.push(FOLD_STR[p]);
@@ -1620,11 +1599,10 @@ function render_folded(c: Cursor, out: string[]): void {
 
 //  mapping resolution
 
-// grow-only cumulative offset table shared by every render, resolution is
-// synchronous so one table is enough and a fresh renderer allocates nothing.
+// shared by every render, resolution is synchronous so one table is enough
 let offsets_scratch = new Uint32Array(0);
 
-/** generated offset of each out chunk, and of the end at out.length. */
+/** generated offset of each out chunk, plus the end offset */
 function out_offsets(out: string[], scratch?: Uint32Array): Uint32Array {
 	const needed = out.length + 1;
 	let offsets: Uint32Array;
@@ -1640,19 +1618,14 @@ function out_offsets(out: string[], scratch?: Uint32Array): Uint32Array {
 	}
 	offsets[0] = 0;
 	for (let i = 0; i < out.length; i++) {
-		// out holds seq, cons, sliced and internalized strings, so a plain
-		// .length load is megamorphic. the concat tells turbofan it is a
-		// string and the load becomes a direct length read.
+		// out mixes string representations so a plain length load is megamorphic,
+		// the concat lets turbofan read the length directly
 		offsets[i + 1] = offsets[i] + (out[i] + '').length;
 	}
 	return offsets;
 }
 
-/**
- * copy a sink's records and the offsets of out into a trace. the offsets
- * are written in place rather than through the shared table, and a short
- * record run is copied by hand since a subarray view costs more than it.
- */
+/** a short record run is copied by hand since a subarray view costs more */
 function capture_trace(sink: MapSink, out: string[]): MapTrace {
 	const n = sink.n;
 	const count = out.length;
@@ -1673,7 +1646,6 @@ function capture_trace(sink: MapSink, out: string[]): MapTrace {
 	return trace;
 }
 
-/** convert pending mapping records to volar-compatible Mapping[] using out[] offsets. */
 function resolve_mappings(
 	out: string[],
 	sink: MapSink,
@@ -1704,9 +1676,7 @@ function resolve_mappings(
 	return mappings;
 }
 
-// the public names of the render functions. an exported function is also a
-// module cell, and the walk calls these per node, so the module calls the
-// local declarations and only callers outside it go through the exports.
+// exported functions are module cells too, so the walk calls the locals
 export const escape = escape_html;
 export const escape_text = escape_node_text;
 export const _emit = emit_record;
@@ -1741,7 +1711,7 @@ export interface CursorBlockEntry {
 //  cursorhtmlrenderer (incremental)
 
 /**
- * incremental html renderer using the cursor over node buffers.
+ * incremental html renderer using the cursor over node buffers
  *
  * same caching strategy as htmlrenderer: walks root's children,
  * skips closed+cached blocks, re-renders only open blocks.
@@ -1818,7 +1788,6 @@ export class CursorHTMLRenderer {
 		return this.blocks;
 	}
 
-	/** render the whole document into out with the cursor at the root. */
 	private render_mapped(buf: NodeBuffer, source: string, sink: MapSink): void {
 		if (!this.cursor) {
 			this.cursor = new Cursor(buf, source);
@@ -1849,11 +1818,8 @@ export class CursorHTMLRenderer {
 	}
 
 	/**
-	 * render and encode the v3 map in one pass. the map equals
-	 * mappings_to_v3(update_mapped(buf, source).mappings, raw, html, file)
-	 * for a raw source that normalizes to source without collapsing any \r\n,
-	 * but no Mapping objects are built and the syntax mappings a v3 map skips
-	 * are never recorded.
+	 * equals mappings_to_v3 over update_mapped when raw normalizes to source
+	 * without collapsing any crlf, but builds no Mapping objects
 	 */
 	update_v3(
 		buf: NodeBuffer,
@@ -1875,11 +1841,7 @@ export class CursorHTMLRenderer {
 		return map;
 	}
 
-	/**
-	 * render and keep what update_v3 encodes, for a caller that may need
-	 * only part of the map or none of it. trace_to_v3 over the trace with the
-	 * same arguments gives update_v3's map.
-	 */
+	/** trace_to_v3 over the trace with the same arguments equals update_v3 */
 	update_trace(buf: NodeBuffer, source: string): MapTrace {
 		const sink = render_sink;
 		sink.begin(false);
@@ -1895,15 +1857,9 @@ export class CursorHTMLRenderer {
 		this.html = '';
 	}
 
-	/**
-	 * drop the html and the chunks of the last render, and every reference
-	 * to its source, so a renderer kept for reuse holds no document. update
-	 * and update_mapped truncate these arrays anyway, so the next render pays
-	 * nothing extra. the mapping sink releases itself after every render.
-	 */
+	/** drop every reference to the last render so a kept renderer holds no document */
 	release(): void {
-		// length stores and clear are runtime calls even on an empty array or
-		// set, and an uncached renderer never fills blocks or closed
+		// length stores and clear are runtime calls even when empty
 		if (this.out.length !== 0) this.out.length = 0;
 		this.html = '';
 		if (this.blocks.length !== 0) this.blocks.length = 0;

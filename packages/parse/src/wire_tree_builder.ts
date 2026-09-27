@@ -25,7 +25,6 @@ import { WireTextSource } from './node_view';
 const NONE = 0xffffffff;
 
 export class WireTreeBuilder {
-	/** the node buffer. */
 	private buf: NodeBuffer;
 	/** maps wire node id -> buffer index. */
 	private id_to_index: number[];

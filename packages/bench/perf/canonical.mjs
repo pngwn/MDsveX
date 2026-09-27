@@ -21,9 +21,8 @@ function stable_json(value) {
 }
 
 /**
- * the same lines for a buffer that keeps each node in a stride of words (_n),
- * so arms on either layout compare. word offsets follow NodeField in
- * packages/parse/src/utils.ts, kind and extra share the first word
+ * the same lines for the strided _n layout so arms on either layout compare,
+ * offsets follow NodeField in packages/parse/src/utils.ts
  */
 function canonical_words(nodes) {
 	const n = nodes._n;

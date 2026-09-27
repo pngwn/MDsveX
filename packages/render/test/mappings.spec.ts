@@ -479,7 +479,7 @@ describe('mappings_to_v3', () => {
 		expect(src_lines[src_line].slice(src_col, src_col + 5)).toBe('hello');
 	});
 
-	it('maps every character of long and multi-line runs', () => {
+	it('maps every character of long and multi-line runs listed before their node', () => {
 		const line = 'abcdefghijklmnopqrstuvwxyz0123456789';
 		const source = `${line}\n${line}\n`;
 		const html = `<p>${line}\n${line}</p>`;
@@ -489,7 +489,6 @@ describe('mappings_to_v3', () => {
 			lengths: [source.length - 1],
 			data: { role: 'content' } as MappingData,
 		};
-		// a node anchor listed after the content it precedes
 		const node: Mapping<MappingData> = {
 			sourceOffsets: [0],
 			generatedOffsets: [0],
@@ -509,7 +508,6 @@ describe('mappings_to_v3', () => {
 			}
 		}
 		expect(decoded[0][0]).toEqual([0, 0, 0, 0]);
-		// the newline between the lines maps too
 		expect(chars).toBe(source.length - 1);
 	});
 
@@ -565,8 +563,6 @@ describe('mapping data factories', () => {
 		}
 	});
 });
-
-// ── numeric records ──
 
 const RECORD_DOCS = [
 	'hello\n',
@@ -637,7 +633,6 @@ describe('update_v3', () => {
 describe('records_to_v3', () => {
 	const source = 'abcdef\nghijkl\nmnopqr\n';
 
-	/** records_to_v3 against mappings_to_v3 over the resolved records. */
 	function both(out: string[], fill: (sink: MapSink) => void) {
 		const sink = new MapSink();
 		sink.begin(true);
@@ -673,7 +668,6 @@ describe('records_to_v3', () => {
 	});
 
 	it('falls back to single characters when runs overlap', () => {
-		// the second record's anchor lands inside the first record's run
 		both(['abc', 'def', 'X'], (sink) => {
 			_emit(sink, 0, 2, 0, 6, 0, record_code(P_TEXT, R_CONTENT));
 			_emit(sink, 1, 2, 8, 9, 1, record_code(P_CODE, R_CONTENT));

@@ -48,11 +48,7 @@ export { SourceTextSource, WireTextSource } from './node_view';
 export { WireEmitter, WireOp } from './wire_emitter';
 export type { Emitter } from './opcodes';
 
-// string reads go through these instead of `source.charCodeAt(...)`. the
-// source is seq one or two byte, sliced, cons or internalized depending on
-// the entry point, so a property load on it goes megamorphic once every mode
-// has run in one process. a call through a known builtin lets turbofan inline
-// the read whatever the string map is.
+// a method load on the source goes megamorphic across its string maps, a call through the builtin still inlines
 const char_code_at = String.prototype.charCodeAt;
 const string_slice = String.prototype.slice;
 const string_index_of = String.prototype.indexOf;
@@ -124,53 +120,33 @@ const classify = (code: number): CharMask =>
 /** shared empty error collector - avoids allocation when no errors are recorded. */
 const EMPTY_ERRORS = new ErrorCollector(1);
 
-// a leaked list_depth can leave the stack shorter than base, and blocks then
-// read the padding hole as their parent, so grow it the way a length store did
+// a leaked list_depth can leave the stack short, blocks then read the padding hole as their parent
 function truncate_stack(stack: number[], base: number): void {
 	while (stack.length > base) stack.pop();
 	if (stack.length < base) stack.length = base;
 }
 
-// what a stalled feed waits on, see PFMParser.wait_kind
 const WAIT_NONE = 0;
 const WAIT_FENCE = 1;
 const WAIT_RAW = 2;
 
-// per id state in one int32: the kind an id was opened with in the low
-// seven bits and the closed flag in bit seven. the id's index in
-// pending_ids lives in a second table of the same length, see id_slots
 const ID_KIND_MASK = 0x7f;
 const ID_CLOSED = 0x80;
 // sixteen entries is 64 bytes, the largest typed array v8 keeps on heap
 const ID_MIN_CAPACITY = 16;
-// larger id tables are left to the gc rather than kept for the next parser
 const ID_POOL_CAP = 1 << 16;
 const EMPTY_IDS = new Int32Array(0);
 
-// one spare pair of id tables shared by every parser, always the same
-// length. a parser takes them when it starts a document and hands them back
-// when it finalizes, dropping its own references, so a new parser per
-// document allocates nothing and no two parsers ever hold the same table
+// shared by every parser, a parser drops its references when it hands them back so no two hold the same table
 let spare_ids: Int32Array | null = null;
 let spare_slots: Int32Array = EMPTY_IDS;
 
-// a hole on the node stack (see truncate_stack) reads as an undefined id,
-// and closing it stores a named property on the id table
+// a node stack hole is an undefined id, closing it stores an undefined property on the id table
 type HoleIds = { undefined?: number };
 
-/** reused two slot array for append_flat, cleared after each use. */
 const JOIN_PAIR: string[] = ['', ''];
 
-/**
- * append `tail` to `head` as one flat sequential string. `head + tail`
- * makes a cons string, and every charCodeAt on the incremental window
- * then goes through the cons indirection (about twice the cost per
- * read, and extra maps at the parser's string sites). join copies both
- * into a fresh sequential string, which costs the same as the flatten
- * the cons would get on its first read anyway. when `head` is empty
- * `tail` comes back as is, so the first chunk keeps the caller's
- * representation until the next feed copies it.
- */
+/** join rather than concat, a cons string window costs about twice as much per charCodeAt */
 function append_flat(head: string, tail: string): string {
 	if (tail.length === 0) return head;
 	if (head.length === 0) return tail;
@@ -307,21 +283,17 @@ export class PFMParser {
 	// window starting at source_base so feed does not flatten the whole input, positions stay absolute
 	private source: string = '';
 	private source_base: number = 0;
-	// absolute end of the readable window, kept equal to source_base +
-	// source.length. a smi field read avoids a megamorphic `.length` load
+	// source_base plus source length, a field read avoids a megamorphic length load
 	private source_end: number = 0;
 	// last line start with only containers open and nothing pending that rereads the source
 	private trim_point: number = 0;
 	// next line start to check for a closing fence, earlier lines cannot close it
 	private fence_scan: number = 0;
-	// open raw text element (script, style), its close tag and where the
-	// scan for it resumes. raw text holds no markup so these never nest
+	// raw text holds no markup so raw text elements never nest
 	private raw_node: number = 0;
 	private raw_needle: string = '';
 	private raw_scan: number = 0;
-	// what the last feed stalled on with the window trimmed to its scan point
-	// (WAIT_NONE, WAIT_FENCE or WAIT_RAW). such a stall emits nothing until its
-	// close arrives, so feed can skip a chunk that cannot hold the close
+	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
 	private wait_kind: number = 0;
 	private cursor: number = 0;
 	private finished: boolean = false;
@@ -337,25 +309,19 @@ export class PFMParser {
 	// id generation
 	private next_id: number = 1; // 0 is reserved for root
 	private pending_ids: number[] = [];
-	// per id state, see ID_KIND_MASK. taken from spare_ids on init
 	private id_info: Int32Array = EMPTY_IDS;
-	// index of each pending id in pending_ids, stale unless pending_ids at
-	// that index matches. same length as id_info
+	// index of each pending id in pending_ids, stale unless pending_ids at that index matches
 	private id_slots: Int32Array = EMPTY_IDS;
-	// ids below this were closed or revoked by a finish that has since
-	// handed the id tables back
+	// ids below this were closed by a finish that handed the id tables back
 	private finalized_below: number = 0;
 	private pending_starts: number[] = [];
 	private pending_count: number = 0;
 	// pending tight list paragraphs, they commit or revoke without reading the source
 	private pending_para_count: number = 0;
 
-	// flanking classes are read on demand at delimiter sites, so moving the
-	// cursor is a plain increment. the char before class_floor reads as
-	// whitespace (document start, or the start of an inline range).
+	// the char before class_floor reads as whitespace, at document start or an inline range start
 	private class_floor: number = 0;
-	// the char after an inline range start was classed against the whole
-	// source, not the range slice
+	// the char after an inline range start, classed against the whole source not the range slice
 	private range_next_class: number = 0;
 
 	// block state
@@ -494,14 +460,12 @@ export class PFMParser {
 	 * handled correctly.
 	 */
 	feed(chunk: string): void {
-		// chunk lengths are tracked by hand, a `.length` load on the chunk is
-		// megamorphic once sliced and cons strings have been fed
+		// a length load on the chunk goes megamorphic once sliced and cons strings are fed
 		let len = chunk.length;
 		if (len === 0) return;
 
 		if (this.pending_cr) {
-			// a \r\n split across chunks becomes one \n. the \n goes on the
-			// front of the chunk so the window is still built in one join.
+			// prepend the lf for a bare cr so the window is still built in one join
 			if (char_code_at.call(chunk, 0) !== 0x0a) {
 				chunk = '\n' + chunk;
 				len++;
@@ -541,16 +505,11 @@ export class PFMParser {
 		this.out.cursor(this.cursor);
 	}
 
-	/**
-	 * advance over a chunk that cannot close the stalled fence or raw text
-	 * block, leaving scan, trim point and window where _run would have left
-	 * them. returns false when the chunk might hold the close.
-	 */
+	/** leaves scan, trim point and window where _run would, false when the chunk might hold the close */
 	private skip_wait(chunk: string, len: number): boolean {
 		const end = this.source_end;
 		if (this.wait_kind === WAIT_FENCE) {
-			// the line at fence_scan ran out of backticks short of the fence and
-			// later lines have none. the line after the last lf stays open
+			// no backtick means no close, the line after the last lf stays open
 			if (string_index_of.call(chunk, '`') !== -1) return false;
 			const lf = string_last_index_of.call(chunk, '\n');
 			if (lf === -1) return false;
@@ -561,8 +520,7 @@ export class PFMParser {
 			this.source = string_slice.call(chunk, lf);
 			this.source_base = line - 1;
 		} else {
-			// no close tag starts before raw_scan, and none can start after it
-			// without a '<'. keeping the last needle length chars matches _run
+			// a close tag needs a less than sign, keep the last needle length chars as _run does
 			const keep = this.raw_needle.length;
 			if (len < keep) return false;
 			if (string_index_of.call(chunk, '<') !== -1) return false;
@@ -602,20 +560,13 @@ export class PFMParser {
 		return { errors: this.errors };
 	}
 
-	/**
-	 * @internal point a parser kept for reuse at the next document's
-	 * emitter. same defaults as the constructor, _init resets the rest.
-	 */
+	/** @internal */
 	bind(emitter: Emitter, tab_size: number = 2): void {
 		this.out = emitter;
 		this.tab_size = tab_size;
 	}
 
-	/**
-	 * drop every reference into the last document, so a parser kept for
-	 * reuse does not pin its source. the next parse or init starts over
-	 * anyway, this only clears what holds strings.
-	 */
+	/** drop strings of the last document so a reused parser does not pin them */
 	release(): void {
 		this.source = '';
 		if (this.ref_map.size !== 0) this.ref_map.clear();
@@ -638,9 +589,7 @@ export class PFMParser {
 		this.cursor = 0;
 		this.finished = false;
 		this.pending_cr = false;
-		// the stacks are popped back to the root rather than reallocated, a
-		// frame left open costs one pop while a fresh array per document is an
-		// allocation the next document regrows
+		// pop rather than reallocate, a fresh array would regrow every document
 		const states = this.states;
 		while (states.length > 1) states.pop();
 		if (states.length === 0) states.push(StateKind.root);
@@ -667,8 +616,7 @@ export class PFMParser {
 		this.list_is_loose = false;
 		this.list_content_offset = 0;
 		this.list_marker_indent = 0;
-		// a stack a document left empty is reused, the rest are replaced so
-		// no frame of the last document survives
+		// replace nonempty stacks so no frame of the last document survives
 		if (this.list_state_stack.length !== 0) this.list_state_stack = [];
 		if (this.list_pending_paras.length !== 0) this.list_pending_paras = [];
 		this.table_col_count = 0;
@@ -739,11 +687,7 @@ export class PFMParser {
 		this.id_info[id] |= ID_CLOSED;
 	}
 
-	/**
-	 * take the spare id tables when they hold `needed` ids, new ones
-	 * otherwise. every id writes its state on open and only opened ids are
-	 * read, so tables from an earlier document need no clearing.
-	 */
+	/** open writes an id state before any read, so spare tables need no clearing */
 	private take_ids(needed: number): void {
 		const spare = spare_ids;
 		if (spare !== null && spare.length >= needed) {
@@ -761,15 +705,13 @@ export class PFMParser {
 		this.finalized_below = 0;
 	}
 
-	/** double the id tables until they hold `id`. */
 	private grow_ids(id: number): void {
 		const old = this.id_info;
 		let capacity = old.length > 0 ? old.length << 1 : ID_MIN_CAPACITY;
 		while (capacity <= id) capacity <<= 1;
 		const next = new Int32Array(capacity);
 		next.set(old);
-		// keep the closed flag a hole id stored, see give_back_ids. the shared
-		// empty table only picks one up when a released parser is misused
+		// carry over the closed flag a hole id stored, only a misused released parser puts one on the empty table
 		const hole = (old as unknown as HoleIds).undefined;
 		if (hole !== undefined && old.length > 0)
 			(next as unknown as HoleIds).undefined = hole;
@@ -780,10 +722,8 @@ export class PFMParser {
 	}
 
 	/**
-	 * hand the id tables to the next document once this one is final, and
-	 * drop them here so this parser can never write to a table another
-	 * parser has taken. the ids of this document were all closed or revoked,
-	 * finalized_below keeps a repeated finish from closing them again.
+	 * drop the tables here so this parser never writes one another parser took,
+	 * finalized_below stops a repeated finish closing these ids again
 	 */
 	private give_back_ids(): void {
 		const ids = this.id_info;
@@ -805,7 +745,6 @@ export class PFMParser {
 		}
 	}
 
-	/** kind the id was opened with. */
 	private kind_of(id: number): NodeKind {
 		return (this.id_info[id] & ID_KIND_MASK) as NodeKind;
 	}
@@ -986,7 +925,7 @@ export class PFMParser {
 					p++;
 				}
 				if (p >= length) return this.finished ? null : false;
-				if (char_code_at.call(source, p - base) !== vc) return null; // newline in quoted value
+				if (char_code_at.call(source, p - base) !== vc) return null;
 				value = string_slice.call(source, value_start - base, p - base);
 				p++;
 			} else {
@@ -1037,7 +976,7 @@ export class PFMParser {
 			)
 				p++;
 			if (p >= length) return this.finished ? null : false;
-			if (char_code_at.call(source, p - base) === CLOSE_PAREN) return null; // trailing comma
+			if (char_code_at.call(source, p - base) === CLOSE_PAREN) return null;
 		}
 	}
 
@@ -1322,10 +1261,7 @@ export class PFMParser {
 		}
 	}
 
-	/**
-	 * class of the char before the cursor. reads outside the window, eof and
-	 * a jump to cursor 0 give the nan wildcard mask.
-	 */
+	/** reads outside the window, including a jump to cursor 0, give the nan wildcard mask */
 	private prev_class(): number {
 		const c = this.cursor;
 		if (c === this.class_floor) return CharMask.whitespace;
@@ -1337,7 +1273,6 @@ export class PFMParser {
 		);
 	}
 
-	/** class of the char after the cursor, nan wildcard past the window. */
 	private next_class(): number {
 		const c = this.cursor;
 		if (c === this.class_floor && this.inline_range_parse) {
@@ -1442,10 +1377,7 @@ export class PFMParser {
 		const ch = char_code_at.call(source, p - base);
 		// blank line is an immediate decision.
 		if (ch === LINEFEED) return true;
-		// most calls are settled by the first char alone, so check it
-		// before scanning the rest of the line. the answer is the same
-		// either way: a visible linefeed always decides, and without one
-		// only the unambiguous first-char cases below can.
+		// a visible linefeed decides either way, so settle on the first char before scanning the line
 		switch (ch) {
 			case OCTOTHERP:
 				// heading needs at least `#` + one lookahead char
@@ -1478,8 +1410,6 @@ export class PFMParser {
 						if (qch === LINEFEED) return true;
 						if (qch !== ch && qch !== SPACE && qch !== TAB) return true;
 					}
-					// this scan reached the end of input without a linefeed,
-					// so the full-line scan below cannot find one either.
 					return false;
 				}
 				break;
@@ -1511,7 +1441,6 @@ export class PFMParser {
 						char_code_at.call(source, q - base) <= 57
 					)
 						q++;
-					// digits run to the end of input, so no linefeed follows.
 					if (q >= length) return false;
 					const dch = char_code_at.call(source, q - base);
 					if (dch !== DOT && dch !== CLOSE_PAREN) return true; // not a marker - continue paragraph
@@ -1522,8 +1451,6 @@ export class PFMParser {
 				// start a block - the paragraph continues.
 				return true;
 		}
-		// ambiguous first char: decide only once the whole next line,
-		// up to its linefeed, is visible.
 		for (let q = p + 1; q < length; q++) {
 			if (char_code_at.call(source, q - base) === LINEFEED) return true;
 		}
@@ -2018,7 +1945,7 @@ export class PFMParser {
 			this.out.commit(pid);
 			this.pending_remove(pid);
 		}
-		// pop instead of the generic length setter, the list is short
+		// the generic length setter is slow and the list is short
 		while (paras.length > 0) paras.pop();
 	}
 
@@ -2340,13 +2267,7 @@ export class PFMParser {
 		}
 	}
 
-	/**
-	 * open a raw text element (script, style) whose open tag starts at the
-	 * cursor. its content is not parsed, raw_text scans for the case-sensitive
-	 * `</tag>`. the node opens as soon as the open tag is complete so a close tag
-	 * that has not arrived yet is scanned for once per char across feeds,
-	 * instead of reparsing the open tag and rescanning the content every feed.
-	 */
+	/** opens once the open tag is whole so later feeds scan only new chars for the close tag */
 	private open_raw_text(
 		open_tag: { tag: string; attributes: object; end: number },
 		parent: number
@@ -2901,7 +2822,7 @@ export class PFMParser {
 					// skip string literal
 					p++;
 					while (p < length && char_code_at.call(source, p - base) !== ch) {
-						if (char_code_at.call(source, p - base) === BACKSLASH) p++; // skip escaped char
+						if (char_code_at.call(source, p - base) === BACKSLASH) p++;
 						p++;
 					}
 					if (p < length) p++; // skip closing quote
@@ -3476,9 +3397,7 @@ export class PFMParser {
 			}
 
 			const active = this.states[this.states.length - 1];
-			// eof and a cursor left behind source_base by a code fence both read
-			// nan. the guard keeps the builtin call in bounds so turbofan never
-			// deopts it and stops speculating on it
+			// keeps the builtin call in bounds so turbofan never deopts it, a cursor behind source_base reads nan too
 			const code_at = this.cursor - base;
 			const code =
 				code_at >>> 0 < window_len ? char_code_at.call(source, code_at) : NaN;
@@ -3939,8 +3858,7 @@ export class PFMParser {
 						if (!this.finished) break main_loop;
 						this.emit_close(current_node, this.cursor);
 						this.states.pop();
-						// pop loops instead of the generic length setter, which is
-						// slow and nearly always drops exactly one element
+						// truncate_stack pops, the generic length setter is slow and this nearly always drops one element
 						truncate_stack(this.node_stack, node_stack_base);
 						continue;
 					}
@@ -4513,7 +4431,7 @@ export class PFMParser {
 											current_node
 										);
 										this.emit_close(hb_id, this.cursor + 2);
-										this.cursor++; // past `\` only; cursor now on lf
+										this.cursor++; // leave the cursor on the lf
 										this.states.pop(); // pop inline; paragraph will see the lf
 										continue;
 									}
@@ -4598,7 +4516,7 @@ export class PFMParser {
 							this.node_stack.push(link_id);
 							this.states.push(StateKind.link_text);
 							this.link_text_start = this.cursor + 1;
-							this.cursor++; // skip [
+							this.cursor++;
 							continue;
 						}
 
@@ -5015,7 +4933,7 @@ export class PFMParser {
 										parent_id_bq
 									);
 									this.emit_close(hb_bq_id, this.cursor + 2);
-									this.cursor++; // past `\` only; cursor now on lf
+									this.cursor++; // leave the cursor on the lf
 									// pop inline (under text) so paragraph sees the lf directly.
 									if (
 										this.states[this.states.length - 1] === StateKind.inline
@@ -5171,8 +5089,7 @@ export class PFMParser {
 					// fast scan: skip plain text in a tight loop instead of
 					// re-entering the main loop per character. stops at any
 					// delimiter, escape, line break, or end of buffer.
-					// the ch < 128 guard keeps the table load in bounds, so non-ascii
-					// text never gives it out-of-bounds feedback and a float compare
+					// the ascii guard keeps the table load in bounds so it never takes out of bounds feedback
 					{
 						const text_break = TEXT_BREAK;
 						let p = this.cursor + 1;
@@ -5460,9 +5377,7 @@ export class PFMParser {
 
 						continue;
 					}
-					// the state only reacts to a backtick, a linefeed, a pipe in a
-					// table or the end of the buffer, so skip every other char here
-					// instead of paying the loop head once per char
+					// skip chars the state ignores without paying the loop head per char
 					{
 						const in_table = this.in_table;
 						let p = this.cursor + 1;
@@ -5572,7 +5487,7 @@ export class PFMParser {
 							this.close_table_cell();
 						}
 						this.table_cell_col++;
-						this.cursor++; // skip the pipe
+						this.cursor++;
 
 						// open next cell eagerly - don't push inline yet,
 						// let the fallthrough handle whitespace skipping first
@@ -5639,9 +5554,7 @@ export class PFMParser {
 		}
 	}
 
-	// cold states of _run live in these methods so _run stays small
-	// enough for turbofan (see packages/parse/test/run_bytecode.spec.ts).
-	// each returns true when the main loop must stop, false to continue it.
+	// cold states live outside _run to keep it under the turbofan bytecode size limit, true stops the main loop
 
 	private _run_code_fence_start(code: number, current_node: number): boolean {
 		const source = this.source;
@@ -5670,7 +5583,7 @@ export class PFMParser {
 					this.extra,
 					this.block_quote_depth
 				);
-				if (scan === 0) return true; // stall for more input
+				if (scan === 0) return true;
 				if (scan === -1) {
 					// fence cannot close inside the blockquote -
 					// treat the opening backticks as literal text.
@@ -5733,18 +5646,16 @@ export class PFMParser {
 			this.out.set_value_end(current_node, length);
 			return false;
 		} else if (!code) {
-			return true; // wait for more input
+			return true;
 		} else if (this.cursor + 1 >= length && this.finished) {
 			this.emit_close(current_node, length);
 			this.out.set_value_end(current_node, length);
 			this.states.pop();
 			return false;
 		} else if (this.cursor + 1 >= length) {
-			return true; // wait for more input
+			return true;
 		}
 		if (code !== LINEFEED) {
-			// skip to the next char the checks above react to: a nul, a
-			// linefeed or the last char in the buffer
 			let p = this.cursor + 1;
 			while (p + 1 < length) {
 				const ch = char_code_at.call(source, p - base);
@@ -5864,7 +5775,6 @@ export class PFMParser {
 			}
 			return true;
 		}
-		// eof without a close tag, the rest of the input is the content
 		this.out.set_value_end(id, length);
 		this.emit_close(id, length);
 		this.states.pop();
@@ -8429,11 +8339,7 @@ export class PFMParser {
 	}
 }
 
-// one parser shared by every parse_markdown_svelte call, _init resets its
-// state per document. between documents it is bound to an idle tree so it
-// holds nothing of the last one, a tree rather than a stub so the emitter
-// only ever sees one class. the busy flag sends a reentrant call to a parser
-// of its own
+// idle between documents on a tree rather than a stub so the emitter only ever sees one class
 let spare_parser: PFMParser | null = null;
 let spare_parser_busy = false;
 let idle_tree: TreeBuilder | null = null;
@@ -8462,8 +8368,7 @@ export function parse_markdown_svelte(
 		dispatcher = new PluginDispatcher(options.plugins, text_source);
 	}
 
-	// short documents are denser in nodes than long ones, so size them
-	// generously to skip the resize, a small buffer is only a slab carve
+	// short documents are denser in nodes, oversizing a small buffer is only a slab carve
 	const len = source.length;
 	const tree = new TreeBuilder(
 		len < 512 ? (len >> 2) + 16 : len >> 3,
@@ -8485,9 +8390,7 @@ export function parse_markdown_svelte(
 			errors = spare_parser.parse(source).errors;
 			keep = true;
 		} finally {
-			// a throw can leave the parser half written, the next document
-			// starts from a fresh one. otherwise drop the tree, source and
-			// strings this document left so the spare pins none of them
+			// a throw can leave the parser half written, so the next document gets a fresh one
 			if (keep) {
 				spare_parser!.bind(idle_tree!);
 				spare_parser!.release();

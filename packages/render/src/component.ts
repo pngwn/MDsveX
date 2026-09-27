@@ -49,7 +49,7 @@ export class ComponentRenderer {
 		let changed = false;
 
 		// walk root's children via sibling chain
-		let child = buf.first_child_at(0); // root is index 0
+		let child = buf.first_child_at(0);
 		while (child !== NONE) {
 			const kind = buf.kind_at(child);
 			const next = buf.next_at(child);

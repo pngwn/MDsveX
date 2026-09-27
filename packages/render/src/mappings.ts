@@ -76,9 +76,8 @@ export interface MappingData extends CodeInformation {
 	role: MappingRole;
 }
 
-// one literal per preset rather than spreading a preset: on some node versions
-// the spread copy gets its own hidden class per object, a literal keeps one
-// shape per preset. keys stay in the order the spread produced.
+// a literal per preset rather than a spread, which on some node versions gives
+// each copy its own hidden class, keys keep the spread order
 
 function text_data(node_index: number, role: MappingRole): MappingData {
 	return {
@@ -111,8 +110,7 @@ function structure_data(node_index: number, role: MappingRole): MappingData {
 	return { structure: true, nodeIndex: node_index, role };
 }
 
-// an exported function is a module cell too, so record_data calls the local
-// declarations and only callers outside the module use these names
+// exported functions are module cells too, so record_data calls the locals
 export const data_text = text_data;
 export const data_code = code_data;
 export const data_svelte = svelte_data;
@@ -120,9 +118,8 @@ export const data_structure = structure_data;
 
 // pending mapping records
 
-// local const enums build to literals, where the exported consts below live
-// in module cells that turbofan reloads on every use. html_cursor.ts and
-// sourcemap.ts restate these values the same way.
+// local const enums build to literals while exported consts are module cells
+// turbofan reloads on every use, html_cursor and sourcemap restate these values
 const enum Preset {
 	TEXT = 0,
 	CODE = 1,
@@ -130,7 +127,7 @@ const enum Preset {
 	STRUCTURE = 3,
 }
 
-/** preset of a record's data, packed into its code with the role. */
+/** data preset, packed into a record code with the role */
 export const P_TEXT = Preset.TEXT;
 export const P_CODE = Preset.CODE;
 export const P_SVELTE = Preset.SVELTE;
@@ -141,14 +138,13 @@ export const R_CONTENT = 1;
 export const R_OPEN_SYNTAX = 2;
 export const R_CLOSE_SYNTAX = 3;
 
-/** a record's code, the data preset and the role in one word. */
 export function record_code(preset: number, role: number): number {
 	return (preset << 2) | role;
 }
 
 /**
- * record layout: out index, out chunk count, source offset, source length,
- * node index (as uint32, so -1 reads back through | 0) and code.
+ * words per record, out index, out chunk count, source offset, source length,
+ * node index stored as uint32 and read back signed, and code
  */
 export const RECORD_SIZE = 6;
 
@@ -159,7 +155,7 @@ const ROLE_NAMES: MappingRole[] = [
 	'close_syntax',
 ];
 
-/** the data object a record stands for, built exactly as the presets build it. */
+/** built exactly as the presets build it */
 export function record_data(code: number, node_index: number): MappingData {
 	const role = ROLE_NAMES[code & 3];
 	switch (code >> 2) {
@@ -180,21 +176,16 @@ const SINK_KEEP = 1 << 18;
 const SINK_INITIAL = RECORD_SIZE * 256;
 
 /**
- * pending mappings as flat numeric records in render order, resolved once the
- * generated offsets are known. a renderer walk pushes several per node, so a
- * typed buffer replaces an object and a data object per mapping.
+ * pending mappings as flat records until generated offsets are known, a typed
+ * buffer rather than objects since a walk pushes several per node
  */
 export class MapSink {
 	rec: Uint32Array = new Uint32Array(SINK_INITIAL);
-	/** words used, a multiple of RECORD_SIZE. */
+	/** words used, a multiple of RECORD_SIZE */
 	n = 0;
-	/**
-	 * false drops open_syntax and close_syntax records. a v3 map skips them,
-	 * so its renders never write them.
-	 */
+	/** false drops syntax records, which a v3 map skips */
 	syntax = true;
 
-	/** double the buffer, keeping the used words. */
 	grow(): Uint32Array {
 		const next = new Uint32Array(this.rec.length * 2);
 		next.set(this.rec.subarray(0, this.n));
@@ -202,13 +193,11 @@ export class MapSink {
 		return next;
 	}
 
-	/** empty the sink for a render that keeps or drops syntax records. */
 	begin(syntax: boolean): void {
 		this.n = 0;
 		this.syntax = syntax;
 	}
 
-	/** let go of a buffer that one large render grew. */
 	release(): void {
 		this.n = 0;
 		if (this.rec.length > SINK_KEEP) this.rec = new Uint32Array(SINK_INITIAL);

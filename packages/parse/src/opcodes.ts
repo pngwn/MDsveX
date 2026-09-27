@@ -12,10 +12,8 @@ export interface Emitter {
 	/**
 	 * open a new node.
 	 *
-	 * ids are dense: root is 0 and each open() takes the next id, except that
-	 * a text() call which creates a child node takes the next id itself (see
-	 * text()). a builder that allocates one slot per node can therefore use
-	 * the id as the slot index without a lookup table.
+	 * ids are dense from root 0, each open and each text that creates a child
+	 * node takes the next id, so a builder can use ids as slot indices
 	 * @param id monotonic node id (unique within this parse).
 	 * @param kind node kind (heading, paragraph, emphasis, etc.).
 	 * @param start source byte offset where this node starts.
@@ -41,10 +39,10 @@ export interface Emitter {
 
 	/**
 	 * emit leaf text content within a node.
-	 * for paragraphs/emphasis/links/table cells: creates a child text node,
-	 * which takes the next id although no open() names it.
-	 * for headings/code_fences/code_spans/html comments: sets the node's value
-	 * range and takes no id.
+	 * paragraphs, emphasis, links and table cells get a child text node, which
+	 * takes the next id although no open names it
+	 * headings, code fences, code spans and html comments get a value range and
+	 * take no id
 	 * @param parent id of the parent node.
 	 * @param start source byte offset of text start.
 	 * @param end source byte offset of text end.

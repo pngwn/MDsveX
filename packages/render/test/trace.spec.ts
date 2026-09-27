@@ -60,7 +60,6 @@ function render(source: string) {
 	return tree.get_buffer();
 }
 
-/** the decoded lines of the full map, lines past its end left empty. */
 function full_lines(map: { mappings: string }, count: number) {
 	const decoded = decode(map.mappings);
 	const lines: SourceMapMappings = [];
@@ -68,7 +67,6 @@ function full_lines(map: { mappings: string }, count: number) {
 	return lines;
 }
 
-/** trace_to_decoded against decoding trace_to_v3, for every line and for a sample. */
 function check_trace(trace: MapTrace, source: string, html: string) {
 	const full = trace_to_v3(trace, source, html, '/a/doc.svx');
 	const count = html.split(/\r\n|\r|\n/).length;
@@ -81,7 +79,6 @@ function check_trace(trace: MapTrace, source: string, html: string) {
 		expect(all.mappings[i] ?? [], `line ${i}`).toEqual(want[i] ?? []);
 	}
 
-	// a sparse request keeps its lines and leaves the rest empty
 	const some = every.filter((i) => i % 3 === 1);
 	const sparse = trace_to_decoded(trace, source, html, some, '/a/doc.svx');
 	for (let i = 0; i < sparse.mappings.length; i++) {
@@ -114,8 +111,6 @@ describe('update_trace', () => {
 	});
 
 	it('keeps traces apart across slabs and for large documents', () => {
-		// small traces share slabs, a large one gets its own array, and
-		// enough of them fill several slabs
 		const large = Array.from(
 			{ length: 400 },
 			(_, i) => `para ${i} with *em* and \`code\`\n`

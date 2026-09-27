@@ -4,9 +4,8 @@
 
 import type { Mapping, MappingData, MapSink } from './mappings';
 
-// the record layout and roles of mappings.ts as local const enums, which
-// build to literals. imported consts live in module cells that turbofan
-// reloads on every use.
+// mirrors mappings.ts, local const enums build to literals while imported
+// consts live in module cells that turbofan reloads on every use
 const enum Rec {
 	SIZE = 6,
 }
@@ -17,18 +16,16 @@ const enum Role {
 	CLOSE_SYNTAX = 3,
 }
 
-// past every offset, so the start of the line after the last one needs no
-// bounds check
+// past every offset so the line after the last needs no bounds check
 const PAST_END = 0x7fffffff;
 
-/** line start offsets in a reusable buffer, followed by two past-the-end slots. */
+/** starts ends in two PAST_END slots, find_line_near reads two lines ahead */
 class LineTable {
 	starts = new Int32Array(256);
 	count = 0;
 }
 
-// encode runs to completion without yielding, so one set of buffers serves
-// every call and the hot loops never allocate
+// encoding never yields, so every call shares these buffers
 const src_table = new LineTable();
 const gen_table = new LineTable();
 
@@ -102,7 +99,6 @@ function find_line(starts: Int32Array, count: number, offset: number): number {
 	return lo - 1;
 }
 
-/** find the line of offset, trying the hint line and the one after it first. */
 function find_line_near(
 	starts: Int32Array,
 	count: number,
@@ -126,7 +122,7 @@ export interface SourceMapV3 {
 	mappings: string;
 }
 
-// mapped spans as parallel arrays, in the order the mappings list them
+// spans in the order the mappings list them
 let span_gen = new Int32Array(1024);
 let span_src = new Int32Array(1024);
 let span_len = new Int32Array(1024);
@@ -134,7 +130,6 @@ let span_len = new Int32Array(1024);
 let span_order = new Int32Array(1024);
 let span_count = 0;
 
-/** make room for need spans, keeping the first used. */
 function reserve_spans(used: number, need: number): void {
 	let size = span_gen.length * 2;
 	while (size < need) size *= 2;
@@ -144,10 +139,7 @@ function reserve_spans(used: number, need: number): void {
 	span_order = new Int32Array(size);
 }
 
-/**
- * collect the spans that become v3 segments. identity-mapped content keeps
- * its length and is encoded as a run, one segment per character.
- */
+/** identity pieces stay one span, encoded as a run of per character segments */
 function collect_spans(mappings: Mapping<MappingData>[]): void {
 	let gen = span_gen;
 	let src = span_src;
@@ -176,9 +168,7 @@ function collect_spans(mappings: Mapping<MappingData>[]): void {
 				n++;
 			}
 		} else if (!m.generatedLengths) {
-			// identity-mapped content (source text = generated text).
-			// every character gets a segment so downstream chaining
-			// preserves column precision.
+			// one segment per character so chained maps keep column precision
 			const lengths = m.lengths;
 			for (let i = 0; i < count; i++) {
 				const l = lengths[i];
@@ -203,10 +193,7 @@ function collect_spans(mappings: Mapping<MappingData>[]): void {
 	span_count = n;
 }
 
-/**
- * collect_spans with every identity-mapped character as a span of its own,
- * for when runs overlap and their characters must be sorted one by one.
- */
+/** one span per identity character, for overlapping runs sorted by character */
 function collect_char_spans(mappings: Mapping<MappingData>[]): void {
 	span_count = 0;
 	for (let k = 0; k < mappings.length; k++) {
@@ -233,10 +220,7 @@ function collect_char_spans(mappings: Mapping<MappingData>[]): void {
 	}
 }
 
-/**
- * collect_spans over a renderer's records. a record is one mapping with a
- * single piece, identity when its generated length equals its source length.
- */
+/** a record is one mapping piece, identity when both lengths match */
 function collect_record_spans(
 	rec: Uint32Array,
 	start: number,
@@ -272,7 +256,6 @@ function collect_record_spans(
 	span_count = k;
 }
 
-/** collect_char_spans over a renderer's records. */
 function collect_record_char_spans(
 	rec: Uint32Array,
 	start: number,
@@ -309,9 +292,8 @@ function push_span(gen: number, src: number, len: number): void {
 }
 
 /**
- * order spans by generated offset, ties kept in mapping order. mappings come
- * nearly sorted, only node anchors land a little ahead of the content before
- * them, so an insertion sort does few moves and needs no comparator calls.
+ * mappings come nearly sorted, only node anchors land a little ahead of the
+ * content before them, so insertion sort does few moves and no comparator calls
  */
 function sort_spans(): void {
 	const n = span_count;
@@ -339,10 +321,7 @@ function sort_spans(): void {
 	}
 }
 
-/**
- * whether a span starts inside the run before it. the characters of the two
- * would interleave when sorted one by one, so they cannot be encoded as runs.
- */
+/** a span starting inside the run before it interleaves, so runs cannot be used */
 function runs_overlap(): boolean {
 	const gen = span_gen;
 	const len = span_len;
@@ -375,11 +354,7 @@ export function mappings_to_v3(
 	return v3_map(encoded, source, file);
 }
 
-/**
- * the v3 map of a renderer's mapping records, offsets giving the generated
- * offset of each out chunk. it equals mappings_to_v3 over the Mapping objects
- * the records resolve to, without building them.
- */
+/** equals mappings_to_v3 over the Mapping objects the records resolve to */
 export function records_to_v3(
 	sink: MapSink,
 	offsets: Uint32Array,
@@ -414,7 +389,6 @@ function v3_map(encoded: string, source: string, file?: string): SourceMapV3 {
 	};
 }
 
-// base64 digit char codes
 const VLQ_CODES = new Uint8Array(64);
 {
 	const chars =
@@ -422,7 +396,6 @@ const VLQ_CODES = new Uint8Array(64);
 	for (let i = 0; i < 64; i++) VLQ_CODES[i] = chars.charCodeAt(i);
 }
 
-// base64 digit of each ascii code, -1 for codes that are not one
 const VLQ_DIGITS = new Int8Array(128).fill(-1);
 for (let i = 0; i < 64; i++) VLQ_DIGITS[VLQ_CODES[i]] = i;
 
@@ -431,9 +404,8 @@ const SEMICOLON = 59;
 const CHAR_A = 65;
 const CHAR_C = 67;
 
-// the segment text is ascii bytes, decoded once into a flat string. building
-// it by concatenation left a rope that survived scavenges and was flattened
-// again by every consumer
+// ascii bytes decoded once give a flat string, concatenation leaves a rope
+// that survives scavenges and is flattened again by every consumer
 let out = new Uint8Array(16384);
 let out_view = new DataView(out.buffer);
 const decoder = new TextDecoder();
@@ -447,8 +419,7 @@ function grow_out(used: number, need: number): void {
 	out_view = new DataView(next.buffer);
 }
 
-// four ',CAAC' repeats as five little-endian words, so long runs take one
-// store per four bytes instead of one per byte
+// four CAAC segments as five little endian words, one store per four bytes
 const CAAC_4 = new Uint32Array(5);
 {
 	const bytes = ',CAAC,CAAC,CAAC,CAAC';
@@ -492,10 +463,7 @@ function encode_mappings(
 	return encode_spans();
 }
 
-/**
- * the encoded mappings of the records in rec[start, end), offsets[base + i]
- * giving the generated offset of out chunk i.
- */
+/** offsets from base hold the generated offset of each out chunk */
 function encode_records(
 	rec: Uint32Array,
 	start: number,
@@ -578,7 +546,7 @@ function encode_spans(): string {
 
 			// 4-field segment: gen_col, source_idx(0), src_line, src_col
 			p = write_vlq(buf, p, gen_col - prev_gen_col);
-			buf[p++] = CHAR_A; // source index delta (always 0, single source)
+			buf[p++] = CHAR_A; // source index delta, always 0 with one source
 			p = write_vlq(buf, p, src_line - prev_src_line);
 			p = write_vlq(buf, p, src_col - prev_src_col);
 
@@ -616,10 +584,8 @@ function encode_spans(): string {
 }
 
 /**
- * a render's mapping records and the generated offset of each out chunk,
- * copied out of the shared buffers so its map can be built later. the
- * records are buf[start, split) and the offsets buf[split, end), and buf
- * may hold other traces around them.
+ * a render copied out of the shared buffers to build its map later, records
+ * from start to split then out chunk offsets to end, buf may hold other traces
  */
 export interface MapTrace {
 	buf: Uint32Array;
@@ -628,17 +594,14 @@ export interface MapTrace {
 	end: number;
 }
 
-// a trace per vite pre transform was two sliced arrays, and each off-heap
-// backing store costs far more than copying the words. traces are carved
-// from shared slabs instead. a slab is only appended to, so a trace kept for
-// any time never sees another document's words, and a large trace gets an
-// array of its own so it neither pins a mostly empty slab nor wastes one.
+// an off heap backing store per trace costs far more than copying words, so
+// traces are carved from append only slabs, and a large trace gets its own
+// array so it neither pins a mostly empty slab nor wastes one
 const TRACE_SLAB_WORDS = 32768;
 const TRACE_OWN_WORDS = 8192;
 let trace_slab = new Uint32Array(0);
 let trace_used = 0;
 
-/** room for a trace of rec_words record words and offset_words offsets. */
 export function reserve_trace(
 	rec_words: number,
 	offset_words: number
@@ -666,7 +629,6 @@ export function reserve_trace(
 	};
 }
 
-/** records_to_v3 over a trace. */
 export function trace_to_v3(
 	trace: MapTrace,
 	source: string,
@@ -683,7 +645,6 @@ export function trace_to_v3(
 	return v3_map(encoded, source, file);
 }
 
-/** a v3 segment with a source, as decoding gives it. */
 export type DecodedSegment = [
 	gen_col: number,
 	source: number,
@@ -701,10 +662,8 @@ export interface DecodedSourceMapV3 {
 }
 
 /**
- * trace_to_v3 with decoded mappings that hold segments only on the
- * generated lines listed in lines. each listed line equals the same line of
- * the decoded trace_to_v3 map and every other line is empty, so a lookup on
- * a listed line finds exactly what the full map gives.
+ * only the listed generated lines hold segments, each equal to that line of
+ * the decoded trace_to_v3 map, so lookups on them match the full map
  */
 export function trace_to_decoded(
 	trace: MapTrace,
@@ -729,16 +688,13 @@ export function trace_to_decoded(
 	};
 }
 
-// every line without segments shares this one, nothing writes to it
+// shared by every empty line, never write to it
 const NO_SEGMENTS: DecodedSegment[] = [];
 
 /**
- * the listed generated lines of the decoded map of records. the encoder
- * writes one segment per identity-mapped character and one per other
- * record, ordered by generated offset and then by record, both when it
- * encodes runs and when overlapping runs make it sort single characters.
- * so a line is every such point on it in that order. the records are
- * buf[start, split) and their out chunk offsets follow from split.
+ * the encoder writes one segment per identity character and one per other
+ * record, ordered by generated offset then record whether or not runs
+ * overlap, so each line is those points in that order
  */
 function decode_lines(
 	buf: Uint32Array,
@@ -778,7 +734,7 @@ function decode_lines(
 			role === Role.CONTENT &&
 			buf[out_idx + buf[p + 1]] - g === source_length
 		) {
-			// the characters of the run on wanted lines, it can cross lines
+			// a run can cross lines
 			const end = g + source_length;
 			let at = g;
 			while (at < end) {
@@ -833,10 +789,8 @@ function decode_lines(
 }
 
 /**
- * the source line of every segment with a source in v3 mappings, encoded or
- * decoded, unordered and possibly repeated. null when a segment is not one
- * every decoder reads the same way or names a source other than the first,
- * so the caller can fall back to a full map.
+ * source lines of v3 mappings, unordered with repeats, null when a segment is
+ * one decoders read differently or names another source
  */
 export function mapped_source_lines(
 	mappings: string | readonly (readonly number[])[][]
@@ -895,7 +849,7 @@ export function mapped_source_lines(
 			continue;
 		}
 		const magnitude = value >>> 1;
-		// a negative zero decodes to -2^31 in @jridgewell/sourcemap-codec
+		// @jridgewell/sourcemap-codec decodes negative zero to the int32 minimum
 		if ((value & 1) !== 0 && magnitude === 0) return null;
 		const delta = (value & 1) !== 0 ? -magnitude : magnitude;
 		if (field === 1) source_index += delta;

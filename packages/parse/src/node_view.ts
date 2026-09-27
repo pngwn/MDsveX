@@ -117,7 +117,7 @@ export class ViewCache {
 export class NodeView {
 	/** @internal buffer index of this node. */
 	readonly _index: number;
-	/** @internal the backing node buffer. */
+	/** @internal */
 	private _buf: NodeBuffer;
 	/** @internal text resolution strategy. */
 	private _text_source: TextSource;

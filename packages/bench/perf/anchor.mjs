@@ -73,10 +73,8 @@ function warm() {
 const WINDOW_MS = 1000;
 const MIN_ATTEMPTS = 3;
 
-// in the benchmark process the anchor shared the jit with both arms and read up to 48% slow at the
-// start of a run for longer than any window, so it is measured in a process of its own. the child
-// inherits cpu affinity, so a pinned run still measures the pinned cores
-/** nanoseconds per anchor call, measured in a child process */
+// sharing the jit with both arms reads the anchor slow early in a run, a child process inherits cpu affinity
+/** nanoseconds per anchor call */
 export function measure_anchor() {
 	const script =
 		`import { measure_anchor_here } from ${JSON.stringify(import.meta.url)};` +
@@ -92,7 +90,7 @@ export function measure_anchor() {
 	return ns;
 }
 
-/** nanoseconds per anchor call in this process, the fastest reading over a fixed window */
+/** nanoseconds per anchor call */
 export function measure_anchor_here(iterations = 24) {
 	const best_of_8 = () => {
 		let best = Infinity;
