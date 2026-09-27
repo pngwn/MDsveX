@@ -383,13 +383,16 @@ export function records_to_v3(
 	return v3_map(encoded, source, file);
 }
 
-function v3_map(encoded: string, source: string, file?: string): SourceMapV3 {
+function map_basename(file?: string): string {
 	// use basename to match svelte compiler convention, vite resolves relative
 	// to the served JS file, so the browser can find the source.
-	const basename = file
+	return file
 		? file.slice(Math.max(file.lastIndexOf('/'), file.lastIndexOf('\\')) + 1)
 		: 'input.md';
+}
 
+function v3_map(encoded: string, source: string, file?: string): SourceMapV3 {
+	const basename = map_basename(file);
 	return {
 		version: 3,
 		file: basename,
@@ -407,6 +410,10 @@ const VLQ_CODES = new Uint8Array(64);
 		'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 	for (let i = 0; i < 64; i++) VLQ_CODES[i] = chars.charCodeAt(i);
 }
+
+// base64 digit of each ascii code, -1 for codes that are not one
+const VLQ_DIGITS = new Int8Array(128).fill(-1);
+for (let i = 0; i < 64; i++) VLQ_DIGITS[VLQ_CODES[i]] = i;
 
 const COMMA = 44;
 const SEMICOLON = 59;
@@ -589,4 +596,250 @@ function encode_spans(): string {
 	}
 
 	return decoder.decode(buf.subarray(0, p));
+}
+
+/**
+ * a render's mapping records and the generated offset of each out chunk,
+ * copied out of the shared buffers so its map can be built later.
+ */
+export interface MapTrace {
+	rec: Uint32Array;
+	offsets: Uint32Array;
+}
+
+/** records_to_v3 over a trace. */
+export function trace_to_v3(
+	trace: MapTrace,
+	source: string,
+	generated: string,
+	file?: string
+): SourceMapV3 {
+	const rec = trace.rec;
+	const encoded =
+		rec.length === 0
+			? ''
+			: encode_records(rec, rec.length, trace.offsets, source, generated);
+	return v3_map(encoded, source, file);
+}
+
+/** a v3 segment with a source, as decoding gives it. */
+export type DecodedSegment = [
+	gen_col: number,
+	source: number,
+	src_line: number,
+	src_col: number,
+];
+
+export interface DecodedSourceMapV3 {
+	version: 3;
+	file?: string;
+	sources: string[];
+	sourcesContent: (string | null)[];
+	names: string[];
+	mappings: DecodedSegment[][];
+}
+
+/**
+ * trace_to_v3 with decoded mappings that hold segments only on the
+ * generated lines listed in lines. each listed line equals the same line of
+ * the decoded trace_to_v3 map and every other line is empty, so a lookup on
+ * a listed line finds exactly what the full map gives.
+ */
+export function trace_to_decoded(
+	trace: MapTrace,
+	source: string,
+	generated: string,
+	lines: ArrayLike<number>,
+	file?: string
+): DecodedSourceMapV3 {
+	const rec = trace.rec;
+	const basename = map_basename(file);
+	return {
+		version: 3,
+		file: basename,
+		sources: [basename],
+		sourcesContent: [source],
+		names: [],
+		mappings:
+			lines.length === 0 || rec.length === 0
+				? []
+				: decode_lines(rec, trace.offsets, source, generated, lines),
+	};
+}
+
+// every line without segments shares this one, nothing writes to it
+const NO_SEGMENTS: DecodedSegment[] = [];
+
+/**
+ * the listed generated lines of the decoded map of records. the encoder
+ * writes one segment per identity-mapped character and one per other
+ * record, ordered by generated offset and then by record, both when it
+ * encodes runs and when overlapping runs make it sort single characters.
+ * so a line is every such point on it in that order.
+ */
+function decode_lines(
+	rec: Uint32Array,
+	offsets: Uint32Array,
+	source: string,
+	generated: string,
+	lines: ArrayLike<number>
+): DecodedSegment[][] {
+	fill_line_starts(gen_table, generated);
+	const gen_starts = gen_table.starts;
+	const gen_count = gen_table.count;
+
+	// a line past the last one has no segments in the full map either
+	const wanted = new Uint8Array(gen_count);
+	let last = -1;
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i];
+		if (line >= 0 && line < gen_count) {
+			wanted[line] = 1;
+			if (line > last) last = line;
+		}
+	}
+	const mappings: DecodedSegment[][] = [];
+	if (last < 0) return mappings;
+
+	span_count = 0;
+	let gen_line = 0;
+	const n = rec.length;
+	for (let p = 0; p < n; p += RECORD_SIZE) {
+		const role = rec[p + 5] & 3;
+		if (role === R_OPEN_SYNTAX || role === R_CLOSE_SYNTAX) continue;
+		const out_idx = rec[p];
+		const g = offsets[out_idx];
+		const s = rec[p + 2];
+		const source_length = rec[p + 3];
+		if (
+			role === R_CONTENT &&
+			offsets[out_idx + rec[p + 1]] - g === source_length
+		) {
+			// the characters of the run on wanted lines, it can cross lines
+			const end = g + source_length;
+			let at = g;
+			while (at < end) {
+				gen_line = find_line_near(gen_starts, gen_count, gen_line, at);
+				let stop = gen_starts[gen_line + 1];
+				if (stop > end) stop = end;
+				if (wanted[gen_line] === 1) {
+					for (; at < stop; at++) push_span(at, s + (at - g), 1);
+				} else {
+					at = stop;
+				}
+			}
+		} else {
+			gen_line = find_line_near(gen_starts, gen_count, gen_line, g);
+			if (wanted[gen_line] === 1) push_span(g, s, 1);
+		}
+	}
+	for (let i = 0; i <= last; i++) mappings.push(NO_SEGMENTS);
+	if (span_count === 0) return mappings;
+
+	fill_line_starts(src_table, source);
+	const src_starts = src_table.starts;
+	const src_count = src_table.count;
+	sort_spans();
+
+	const gen = span_gen;
+	const src = span_src;
+	const order = span_order;
+	let src_line = 0;
+	let current = -1;
+	let segments = NO_SEGMENTS;
+	gen_line = 0;
+	for (let k = 0; k < span_count; k++) {
+		const i = order[k];
+		const g = gen[i];
+		const s = src[i];
+		gen_line = find_line_near(gen_starts, gen_count, gen_line, g);
+		if (gen_line !== current) {
+			segments = [];
+			mappings[gen_line] = segments;
+			current = gen_line;
+		}
+		src_line = find_line_near(src_starts, src_count, src_line, s);
+		segments.push([
+			g - gen_starts[gen_line],
+			0,
+			src_line,
+			s - src_starts[src_line],
+		]);
+	}
+	return mappings;
+}
+
+/**
+ * the source line of every segment with a source in v3 mappings, encoded or
+ * decoded, unordered and possibly repeated. null when a segment is not one
+ * every decoder reads the same way or names a source other than the first,
+ * so the caller can fall back to a full map.
+ */
+export function mapped_source_lines(
+	mappings: string | readonly (readonly number[])[][]
+): number[] | null {
+	const lines: number[] = [];
+	if (typeof mappings !== 'string') {
+		if (!Array.isArray(mappings)) return null;
+		for (let i = 0; i < mappings.length; i++) {
+			const line = mappings[i];
+			if (!Array.isArray(line)) return null;
+			for (let j = 0; j < line.length; j++) {
+				const segment = line[j];
+				if (!Array.isArray(segment)) return null;
+				if (segment.length === 1) continue;
+				if (segment.length !== 4 && segment.length !== 5) return null;
+				const src_line = segment[2];
+				if (segment[1] !== 0 || !Number.isInteger(src_line) || src_line < 0)
+					return null;
+				lines.push(src_line);
+			}
+		}
+		return lines;
+	}
+
+	let field = 0;
+	let source_index = 0;
+	let src_line = 0;
+	let last_line = -1;
+	let value = 0;
+	let shift = 0;
+	const length = mappings.length;
+	for (let i = 0; i <= length; i++) {
+		const c = i < length ? mappings.charCodeAt(i) : SEMICOLON;
+		if (c === COMMA || c === SEMICOLON) {
+			// a value cut short, or a segment of a length decoders disagree on
+			if (shift !== 0) return null;
+			if (field === 4 || field === 5) {
+				if (source_index !== 0 || src_line < 0) return null;
+				// consecutive segments mostly stay on one line
+				if (src_line !== last_line) {
+					lines.push(src_line);
+					last_line = src_line;
+				}
+			} else if (field !== 1 && (field !== 0 || c === COMMA)) {
+				return null;
+			}
+			field = 0;
+			continue;
+		}
+		const digit = c < 128 ? VLQ_DIGITS[c] : -1;
+		// past six digits a value no longer fits the int32 decoders use
+		if (digit < 0 || shift > 25) return null;
+		value |= (digit & 31) << shift;
+		if ((digit & 32) !== 0) {
+			shift += 5;
+			continue;
+		}
+		const magnitude = value >>> 1;
+		// a negative zero decodes to -2^31 in @jridgewell/sourcemap-codec
+		if ((value & 1) !== 0 && magnitude === 0) return null;
+		const delta = (value & 1) !== 0 ? -magnitude : magnitude;
+		if (field === 1) source_index += delta;
+		else if (field === 2) src_line += delta;
+		field++;
+		value = 0;
+		shift = 0;
+	}
+	return lines;
 }
