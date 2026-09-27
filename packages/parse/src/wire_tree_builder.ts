@@ -17,12 +17,10 @@
  *   const html = renderCursor(cursor);
  */
 
-import { NodeBuffer, NodeKind, make_meta, merge_meta } from './utils';
+import { Idx, NodeBuffer, NodeKind, make_meta, merge_meta } from './utils';
 import { Cursor } from './cursor';
 import type { PluginDispatcher } from './plugin_dispatch';
 import { WireTextSource } from './node_view';
-
-const NONE = 0xffffffff;
 
 export class WireTreeBuilder {
 	private buf: NodeBuffer;
@@ -125,10 +123,11 @@ export class WireTreeBuilder {
 		// root (id=0) is auto-created by NodeBuffer constructor
 		if (id === 0) return;
 
-		let parent_idx = parent === -1 ? NONE : (this.id_to_index[parent] ?? NONE);
+		let parent_idx =
+			parent === -1 ? Idx.NONE : (this.id_to_index[parent] ?? Idx.NONE);
 
 		// plugin redirect: if parent has a wrap_inner wrapper, children go there
-		if (this.dispatcher && parent_idx !== NONE) {
+		if (this.dispatcher && parent_idx !== Idx.NONE) {
 			const redirect = this.dispatcher.get_redirect(parent_idx);
 			if (redirect !== undefined) parent_idx = redirect;
 		}
@@ -190,10 +189,10 @@ export class WireTreeBuilder {
 			const meta = this.buf.metadata_at(idx);
 			if (meta && meta.tight) {
 				let item = this.buf.first_child_at(idx);
-				while (item !== NONE) {
+				while (item !== Idx.NONE) {
 					const next_item = this.buf.next_at(item);
 					let child = this.buf.first_child_at(item);
-					while (child !== NONE) {
+					while (child !== Idx.NONE) {
 						const next_child = this.buf.next_at(child);
 						if (this.buf.kind_at(child) === NodeKind.paragraph) {
 							this.buf.unwrap_node(child);
@@ -249,7 +248,7 @@ export class WireTreeBuilder {
 		// (remove the trailing in-progress text child) and matches the parser's
 		// model where each parser text node maps to one wire text child.
 		const last_text_idx = this._last_text_child(idx);
-		if (last_text_idx !== NONE) {
+		if (last_text_idx !== Idx.NONE) {
 			const existing = strings[last_text_idx];
 			strings[last_text_idx] =
 				existing !== undefined ? existing + content : content;
@@ -268,14 +267,14 @@ export class WireTreeBuilder {
 	 */
 	private _last_text_child(idx: number): number {
 		let child = this.buf.first_child_at(idx);
-		if (child === NONE) return NONE;
+		if (child === Idx.NONE) return Idx.NONE;
 		let last = child;
 		while (true) {
 			const next = this.buf.next_at(last);
-			if (next === NONE || this.buf.parent_at(next) !== idx) break;
+			if (next === Idx.NONE || this.buf.parent_at(next) !== idx) break;
 			last = next;
 		}
-		return this.buf.kind_at(last) === NodeKind.text ? last : NONE;
+		return this.buf.kind_at(last) === NodeKind.text ? last : Idx.NONE;
 	}
 
 	private _attr(id: number, key: string, value: unknown): void {
@@ -324,7 +323,7 @@ export class WireTreeBuilder {
 		// discarded. a committed non-text sibling after it would mean the text
 		// child is no longer the tail, in that case there is nothing to undo.
 		const last_text_idx = this._last_text_child(idx);
-		if (last_text_idx === NONE) return;
+		if (last_text_idx === Idx.NONE) return;
 		delete this.buf._strings[last_text_idx];
 		// unwrap_node of a childless node removes it from the sibling chain.
 		this.buf.unwrap_node(last_text_idx);

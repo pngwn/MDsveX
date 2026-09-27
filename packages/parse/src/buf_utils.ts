@@ -5,18 +5,16 @@
  * no cursor state, no allocations beyond the returned arrays.
  */
 
-import type { NodeBuffer } from './utils';
-
-const NONE = 0xffffffff;
+import { Idx, type NodeBuffer } from './utils';
 
 /** get child indices for a node. */
 export function buf_children(buf: NodeBuffer, idx: number): number[] {
 	const result: number[] = [];
 	let child = buf.first_child_at(idx);
-	while (child !== NONE) {
+	while (child !== Idx.NONE) {
 		result.push(child);
 		const next = buf.next_at(child);
-		if (next === NONE || buf.parent_at(next) !== idx) break;
+		if (next === Idx.NONE || buf.parent_at(next) !== idx) break;
 		child = next;
 	}
 	return result;
@@ -28,7 +26,7 @@ export function buf_text(buf: NodeBuffer, idx: number, source: string): string {
 	if (s !== undefined) return s;
 	const vs = buf.value_start_at(idx);
 	const ve = buf.value_end_at(idx);
-	if (vs === NONE || ve === NONE || ve <= vs) return '';
+	if (vs === Idx.NONE || ve === Idx.NONE || ve <= vs) return '';
 	return source.slice(vs, ve);
 }
 
@@ -44,10 +42,10 @@ export function buf_text_content(
 	// Walk children
 	let text = '';
 	let child = buf.first_child_at(idx);
-	while (child !== NONE) {
+	while (child !== Idx.NONE) {
 		text += buf_text_content(buf, child, source);
 		const next = buf.next_at(child);
-		if (next === NONE || buf.parent_at(next) !== idx) break;
+		if (next === Idx.NONE || buf.parent_at(next) !== idx) break;
 		child = next;
 	}
 	return text;

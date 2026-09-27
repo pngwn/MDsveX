@@ -1,6 +1,4 @@
-import type { NodeBuffer } from './utils';
-
-const NONE = 0xffffffff;
+import { Idx, type NodeBuffer } from './utils';
 
 /** sentinel: the attribute key did not exist before this write. */
 export const ATTR_DID_NOT_EXIST: unique symbol = Symbol('ATTR_DID_NOT_EXIST');
@@ -83,26 +81,26 @@ function _unlink_child(buf: NodeBuffer, parent: number, child: number): void {
 	const prev = buf.prev_at(child);
 	const next = buf.next_at(child);
 
-	if (prev !== NONE) {
+	if (prev !== Idx.NONE) {
 		buf.set_next(prev, next);
 	} else if (buf.first_child_at(parent) === child) {
 		buf.set_first_child(
 			parent,
-			next !== NONE && buf.parent_at(next) === parent ? next : NONE
+			next !== Idx.NONE && buf.parent_at(next) === parent ? next : Idx.NONE
 		);
 	}
 
-	if (next !== NONE && buf.parent_at(next) === parent) {
+	if (next !== Idx.NONE && buf.parent_at(next) === parent) {
 		buf.set_prev(next, prev);
 	}
 
 	if (buf.last_child_at(parent) === child) {
-		buf.set_last_child(parent, prev !== NONE ? prev : NONE);
+		buf.set_last_child(parent, prev !== Idx.NONE ? prev : Idx.NONE);
 	}
 
-	buf.set_parent(child, NONE);
-	buf.set_next(child, NONE);
-	buf.set_prev(child, NONE);
+	buf.set_parent(child, Idx.NONE);
+	buf.set_next(child, Idx.NONE);
+	buf.set_prev(child, Idx.NONE);
 }
 
 /**
@@ -124,7 +122,7 @@ export class UndoLog {
 	 * set by the dispatcher before calling handlers. all record* calls
 	 * attribute their entries to this node.
 	 */
-	private active_node: number = NONE;
+	private active_node: number = Idx.NONE;
 
 	/** called by dispatcher before invoking plugin handlers for a node. */
 	set_active_node(index: number): void {
@@ -133,7 +131,7 @@ export class UndoLog {
 
 	/** called by dispatcher after handlers complete. */
 	clear_active_node(): void {
-		this.active_node = NONE;
+		this.active_node = Idx.NONE;
 	}
 
 	record_attr_set(target: number, key: string, prior_value: any): void {
@@ -205,7 +203,7 @@ export class UndoLog {
 
 	private _append(entry: UndoEntry): void {
 		const node = this.active_node;
-		if (node === NONE) return;
+		if (node === Idx.NONE) return;
 		let log = this.logs.get(node);
 		if (log === undefined) {
 			log = [];
@@ -257,7 +255,7 @@ export class UndoLog {
 					const parent = entry.parent;
 					const wrapper = entry.wrapper;
 					buf.unwrap_node(wrapper);
-					buf.set_parent(wrapper, NONE);
+					buf.set_parent(wrapper, Idx.NONE);
 					break;
 				}
 
@@ -298,6 +296,6 @@ export class UndoLog {
 	/** discard all logs. */
 	clear(): void {
 		this.logs.clear();
-		this.active_node = NONE;
+		this.active_node = Idx.NONE;
 	}
 }

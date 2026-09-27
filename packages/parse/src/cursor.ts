@@ -23,9 +23,7 @@
  *   }
  */
 
-import { NodeField, type NodeBuffer } from './utils';
-
-const NONE = 0xffffffff;
+import { Idx, NodeField, type NodeBuffer } from './utils';
 
 export class Cursor {
 	private buf: NodeBuffer;
@@ -63,7 +61,7 @@ export class Cursor {
 
 	/** if the current node is closed (end offset has been set). */
 	get closed(): boolean {
-		return this.n[this.b + NodeField.end] !== NONE;
+		return this.n[this.b + NodeField.end] !== Idx.NONE;
 	}
 
 	/** if the current node is pending (speculative, may be revoked). */
@@ -74,7 +72,7 @@ export class Cursor {
 	/** parent kind of the current node,  -1 if at root. */
 	get parent_kind(): number {
 		const p = this.n[this.b + NodeField.parent];
-		return p === NONE ? -1 : this.n[p * NodeField.stride] & 0xff;
+		return p === Idx.NONE ? -1 : this.n[p * NodeField.stride] & 0xff;
 	}
 
 	/** byte offset where the current node starts in source. */
@@ -104,7 +102,7 @@ export class Cursor {
 		if (s !== undefined) return s;
 		const vs = this.n[this.b + NodeField.value_start];
 		const ve = this.n[this.b + NodeField.value_end];
-		if (vs === NONE || ve === NONE || ve <= vs) return '';
+		if (vs === Idx.NONE || ve === Idx.NONE || ve <= vs) return '';
 		return this.src.slice(vs, ve);
 	}
 
@@ -130,7 +128,7 @@ export class Cursor {
 
 	goto_first_child(): boolean {
 		const child = this.n[this.b + NodeField.first_child];
-		if (child === NONE) return false;
+		if (child === Idx.NONE) return false;
 		this.idx = child;
 		this.b = child * NodeField.stride;
 		return true;
@@ -139,7 +137,7 @@ export class Cursor {
 	goto_next_sibling(): boolean {
 		const n = this.n;
 		const next = n[this.b + NodeField.next];
-		if (next === NONE) return false;
+		if (next === Idx.NONE) return false;
 		// verify it's actually a sibling (same parent)
 		const b = next * NodeField.stride;
 		if (n[b + NodeField.parent] !== n[this.b + NodeField.parent]) return false;
@@ -150,7 +148,7 @@ export class Cursor {
 
 	goto_parent(): boolean {
 		const parent = this.n[this.b + NodeField.parent];
-		if (parent === NONE) return false;
+		if (parent === Idx.NONE) return false;
 		this.idx = parent;
 		this.b = parent * NodeField.stride;
 		return true;
@@ -166,11 +164,11 @@ export class Cursor {
 		const n = this.n;
 		const result: number[] = [];
 		let child = n[this.b + NodeField.first_child];
-		while (child !== NONE) {
+		while (child !== Idx.NONE) {
 			result.push(child);
 			const next = n[child * NodeField.stride + NodeField.next];
 			if (
-				next === NONE ||
+				next === Idx.NONE ||
 				n[next * NodeField.stride + NodeField.parent] !==
 					n[child * NodeField.stride + NodeField.parent]
 			)

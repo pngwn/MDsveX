@@ -11,6 +11,11 @@ const SLAB_MAX_CARVE = 8192;
 
 const EMPTY_U32 = new Uint32Array(0);
 
+/** a const enum so the sentinel inlines, as a module const it is a boxed heap number */
+export const enum Idx {
+	NONE = 0xffffffff,
+}
+
 /** push writes and the cursor reads fields together, so they share one stride */
 export const enum NodeField {
 	/** kind in the low byte, extra in the sixteen bits above it */

@@ -1,5 +1,6 @@
 import type { Emitter } from './opcodes';
 import {
+	Idx,
 	NodeBuffer,
 	NodeField,
 	NodeKind,
@@ -7,8 +8,6 @@ import {
 	merge_meta,
 } from './utils';
 import type { PluginDispatcher } from './plugin_dispatch';
-
-const NONE = 0xffffffff;
 
 /**
  * consumes opcodes from PFMParser and builds a NodeBuffer.
@@ -101,7 +100,7 @@ export class TreeBuilder implements Emitter {
 		if (map === null) {
 			if (id === nodes._size) {
 				// parents are opened ids below this one, so they are indices too
-				const parent_idx = parent === -1 ? NONE : parent;
+				const parent_idx = parent === -1 ? Idx.NONE : parent;
 				if (pending) nodes.push_pending(kind, start, parent_idx, extra);
 				else nodes.push(kind, start, parent_idx, extra);
 				return;
@@ -109,11 +108,11 @@ export class TreeBuilder implements Emitter {
 			map = this.start_id_map();
 		}
 
-		let parent_idx = parent === -1 ? NONE : (map[parent] ?? NONE);
+		let parent_idx = parent === -1 ? Idx.NONE : (map[parent] ?? Idx.NONE);
 
 		const dispatcher = this.dispatcher;
 		// plugin redirect: if parent has a wrap_inner wrapper, children go there
-		if (dispatcher !== null && parent_idx !== NONE) {
+		if (dispatcher !== null && parent_idx !== Idx.NONE) {
 			const redirect = dispatcher.get_redirect(parent_idx);
 			if (redirect !== undefined) parent_idx = redirect;
 		}
@@ -197,15 +196,15 @@ export class TreeBuilder implements Emitter {
 		if (!meta || !meta.tight) return;
 		// next is read before the unwrap, so children it splices in are skipped
 		let item = nodes.first_child_at(idx);
-		let more_items = item !== NONE && nodes.parent_at(item) === idx;
+		let more_items = item !== Idx.NONE && nodes.parent_at(item) === idx;
 		while (more_items) {
 			const next_item = nodes.next_at(item);
-			more_items = next_item !== NONE && nodes.parent_at(next_item) === idx;
+			more_items = next_item !== Idx.NONE && nodes.parent_at(next_item) === idx;
 			let child = nodes.first_child_at(item);
-			let more = child !== NONE && nodes.parent_at(child) === item;
+			let more = child !== Idx.NONE && nodes.parent_at(child) === item;
 			while (more) {
 				const next = nodes.next_at(child);
-				more = next !== NONE && nodes.parent_at(next) === item;
+				more = next !== Idx.NONE && nodes.parent_at(next) === item;
 				if (nodes.kind_at(child) === NodeKind.paragraph) {
 					nodes.unwrap_node(child);
 				}

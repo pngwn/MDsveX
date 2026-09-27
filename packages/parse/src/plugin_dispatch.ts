@@ -1,4 +1,5 @@
 import {
+	Idx,
 	type NodeBuffer,
 	NodeField,
 	NodeKind,
@@ -20,8 +21,6 @@ import type {
 	PluginContext,
 	IdRegister,
 } from './plugin_types';
-
-const NONE = 0xffffffff;
 
 /** total number of node kinds in the enum. */
 const NODE_KIND_COUNT = 35;
@@ -374,7 +373,7 @@ function walk_tree(
 	const next_of = (i: number) => n[i * NodeField.stride + NodeField.next];
 
 	let idx = n[NodeField.first_child]; // first child of root
-	if (idx === NONE) return;
+	if (idx === Idx.NONE) return;
 
 	const stack: number[] = [];
 
@@ -382,7 +381,7 @@ function walk_tree(
 		visitor(idx, kind(idx), false);
 
 		const child = n[idx * NodeField.stride + NodeField.first_child];
-		if (child !== NONE) {
+		if (child !== Idx.NONE) {
 			stack.push(idx);
 			idx = child;
 			continue;
@@ -392,7 +391,7 @@ function walk_tree(
 
 		let next = next_of(idx);
 		while (
-			(next === NONE || parent(next) !== parent(idx)) &&
+			(next === Idx.NONE || parent(next) !== parent(idx)) &&
 			stack.length > 0
 		) {
 			idx = stack.pop()!;
@@ -400,7 +399,7 @@ function walk_tree(
 			next = next_of(idx);
 		}
 
-		if (next === NONE || parent(next) !== parent(idx)) break;
+		if (next === Idx.NONE || parent(next) !== parent(idx)) break;
 		idx = next;
 	}
 }
@@ -571,7 +570,7 @@ export class PluginDispatcher {
 
 		// recurse into children to revoke their plugin state too
 		let child = buf.first_child_at(buf_idx);
-		while (child !== NONE && buf.parent_at(child) === buf_idx) {
+		while (child !== Idx.NONE && buf.parent_at(child) === buf_idx) {
 			this.dispatch_revoke(child, buf);
 			child = buf.next_at(child);
 		}

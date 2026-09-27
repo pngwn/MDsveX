@@ -1,4 +1,5 @@
 import {
+	Idx,
 	type NodeBuffer,
 	NodeKind,
 	kind_to_string,
@@ -7,8 +8,6 @@ import {
 	string_to_kind,
 } from './utils';
 import { type UndoLog, ATTR_DID_NOT_EXIST } from './undo_log';
-
-const NONE = 0xffffffff;
 
 /**
  * abstracts text resolution between batch mode (source string slicing)
@@ -77,7 +76,7 @@ export class ViewCache {
 
 	/** get or create a NodeView for the given buffer index. */
 	get(index: number): NodeView | null {
-		if (index === NONE) return null;
+		if (index === Idx.NONE) return null;
 		let view = this.views.get(index);
 		if (view === undefined) {
 			view = new NodeView(
@@ -172,7 +171,7 @@ export class NodeView {
 
 	get next(): NodeView | null {
 		const n = this._buf.next_at(this._index);
-		if (n === NONE) return null;
+		if (n === Idx.NONE) return null;
 		if (this._buf.parent_at(n) !== this._buf.parent_at(this._index))
 			return null;
 		return this._cache.get(n);
@@ -180,7 +179,7 @@ export class NodeView {
 
 	get prev(): NodeView | null {
 		const p = this._buf.prev_at(this._index);
-		if (p === NONE) return null;
+		if (p === Idx.NONE) return null;
 		return this._cache.get(p);
 	}
 
@@ -202,7 +201,7 @@ export class NodeView {
 			if (s !== undefined) return s;
 			const vs = buf.value_start_at(idx);
 			const ve = buf.value_end_at(idx);
-			if (vs === NONE || ve === NONE || ve <= vs) return '';
+			if (vs === Idx.NONE || ve === Idx.NONE || ve <= vs) return '';
 			return this._text_source.slice(vs, ve);
 		}
 
@@ -218,7 +217,7 @@ export class NodeView {
 			if (s !== undefined) return s;
 			const vs = buf.value_start_at(idx);
 			const ve = buf.value_end_at(idx);
-			if (vs === NONE || ve === NONE || ve <= vs) return '';
+			if (vs === Idx.NONE || ve === Idx.NONE || ve <= vs) return '';
 			return this._text_source.slice(vs, ve);
 		}
 
@@ -229,7 +228,7 @@ export class NodeView {
 			if (s !== undefined) return s;
 			const vs = buf.value_start_at(idx);
 			const ve = buf.value_end_at(idx);
-			if (vs !== NONE && ve !== NONE && ve > vs) {
+			if (vs !== Idx.NONE && ve !== Idx.NONE && ve > vs) {
 				return this._text_source.slice(vs, ve);
 			}
 			// fall through to child walk
@@ -238,7 +237,7 @@ export class NodeView {
 		// container node: walk children, concatenate
 		let result = '';
 		let child = buf.first_child_at(idx);
-		while (child !== NONE && buf.parent_at(child) === idx) {
+		while (child !== Idx.NONE && buf.parent_at(child) === idx) {
 			result += this._collect_text(child);
 			child = buf.next_at(child);
 		}
@@ -398,7 +397,7 @@ export class NodeView {
 		const idx = this._index;
 		const prior_first_child = buf.first_child_at(idx);
 
-		if (prior_first_child === NONE) {
+		if (prior_first_child === Idx.NONE) {
 			// no existing children: push is equivalent to prepend
 			const new_idx = buf.push(kind_num, 0, idx, 0, attrs);
 			this._undo.record_prepend(idx, new_idx, prior_first_child);
