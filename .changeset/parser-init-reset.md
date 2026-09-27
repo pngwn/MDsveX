@@ -2,4 +2,4 @@
 '@mdsvex/parse': patch
 ---
 
-A reused parser, as the compiler session and the vite plugin use, no longer carries heading and emphasis state from one document into the next. Before, a document ending in an unfinished heading such as `` # ` `` could make later documents drop text after their first line.
+Compiling several documents with one compiler session, as the vite plugin does, no longer lets a document that ends in an unfinished heading such as `` # ` `` make later documents lose the text after their first line.
