@@ -895,6 +895,624 @@ function _table_cells(
 	c.goto_parent();
 }
 
+//  static chunk fold
+
+// the final join costs about the same per chunk whatever its length, and a
+// third of the chunks are static literals right after another static. every
+// static literal gets a small id, and the unmapped render holds the last
+// static in a one-slot register instead of pushing it. a static after a
+// static looks the pair up in a table of precomputed composites, so the run
+// reaches out as one flat string and nothing is allocated once the table is
+// warm. a concat at runtime would build a cons string that join then walks.
+// the mapped render records spans by chunk index around almost every static,
+// so it could fold next to nothing and keeps its own register-free walk above.
+
+/** static strings by id, base literals first and then composites. id 0 is the empty register. */
+const FOLD_STR: string[] = [''];
+const FOLD_IDS = new Map<string, number>();
+
+function fold_base(s: string): number {
+	let id = FOLD_IDS.get(s);
+	if (id === undefined) {
+		id = FOLD_STR.length;
+		FOLD_STR.push(s);
+		FOLD_IDS.set(s, id);
+	}
+	return id;
+}
+
+//  base literals
+
+const S_SPACE = fold_base(' ');
+const S_ATTR_EQ = fold_base('="');
+const S_QUOTE = fold_base('"');
+const S_EXPR_EQ = fold_base('={');
+const S_BRACE_CLOSE = fold_base('}');
+const S_GT = fold_base('>');
+const S_GT_LF = fold_base('>\n');
+const S_QUOTE_GT = fold_base('">');
+const S_QUOTE_GT_LF = fold_base('">\n');
+const S_LF = fold_base('\n');
+const S_LT = fold_base('<');
+const S_CODE = fold_base('<code');
+const S_CODE_OPEN = fold_base('<code>');
+const S_CODE_CLOSE = fold_base('</code>');
+const S_PRE_CODE_LANG = fold_base('<pre><code class="language-');
+const S_PRE_CODE = fold_base('<pre><code');
+const S_PRE_CODE_OPEN = fold_base('<pre><code>');
+const S_PRE_CODE_CLOSE = fold_base('</code></pre>');
+const S_A = fold_base('<a');
+const S_HREF = fold_base(' href="');
+const S_TITLE = fold_base(' title="');
+const S_A_CLOSE = fold_base('</a>');
+const S_IMG = fold_base('<img');
+const S_SRC = fold_base(' src="');
+const S_ALT = fold_base(' alt="');
+const S_SELF_CLOSE = fold_base(' />');
+const S_OL_START = fold_base('<ol start="');
+const S_OL = fold_base('<ol');
+const S_OL_OPEN = fold_base('<ol>\n');
+const S_OL_CLOSE = fold_base('\n</ol>');
+const S_UL = fold_base('<ul');
+const S_UL_OPEN = fold_base('<ul>\n');
+const S_UL_CLOSE = fold_base('\n</ul>');
+const S_HR = fold_base('<hr />');
+const S_BR = fold_base('<br />\n');
+const S_END_TAG = fold_base('</');
+const S_COMMENT_OPEN = fold_base('<!--');
+const S_COMMENT_CLOSE = fold_base('-->');
+const S_BRACE_OPEN = fold_base('{');
+const S_AT_OPEN = fold_base('{@');
+const S_BLOCK_OPEN = fold_base('{#');
+const S_BRANCH_OPEN = fold_base('{:');
+const S_BLOCK_CLOSE = fold_base('{/');
+const S_BRACE_CLOSE_LF = fold_base('}\n');
+const S_TABLE = fold_base('<table');
+const S_TABLE_OPEN = fold_base('<table>\n');
+const S_TABLE_CLOSE = fold_base('\n</table>');
+const S_THEAD_OPEN = fold_base('<thead>\n<tr>\n');
+const S_THEAD_CLOSE = fold_base('</tr>\n</thead>\n');
+const S_TBODY_OPEN = fold_base('<tbody>\n');
+const S_TBODY_CLOSE = fold_base('</tbody>');
+const S_TR_OPEN = fold_base('<tr>\n');
+const S_TR_CLOSE = fold_base('</tr>\n');
+const S_TH_CLOSE = fold_base('</th>\n');
+const S_TD_CLOSE = fold_base('</td>\n');
+
+/** cell open tag ids (none, left, center, right). */
+function fold_cell_opens(tag: string): Uint8Array {
+	return Uint8Array.of(
+		fold_base(`<${tag}>`),
+		fold_base(`<${tag} align="left">`),
+		fold_base(`<${tag} align="center">`),
+		fold_base(`<${tag} align="right">`)
+	);
+}
+const TH_OPEN_ID = fold_cell_opens('th');
+const TD_OPEN_ID = fold_cell_opens('td');
+
+// wrapper nodes (open, children, close) render through one shared path. rows
+// are node kinds, headings use rows past the kinds by depth, and the first
+// heading row covers depths the parser never emits, which the unfolded
+// render writes as empty tags because the tag arrays have no entry for them.
+const WRAP_ROWS = 48;
+const ROW_HEADING = 40;
+const WRAP_HEAD = new Uint8Array(WRAP_ROWS);
+const WRAP_FOLDED = new Uint8Array(WRAP_ROWS);
+const WRAP_END = new Uint8Array(WRAP_ROWS);
+const WRAP_CLOSE = new Uint8Array(WRAP_ROWS);
+
+function wrap_row(
+	row: number,
+	head: string,
+	folded: string,
+	end: string,
+	close: string
+): void {
+	WRAP_HEAD[row] = fold_base(head);
+	WRAP_FOLDED[row] = fold_base(folded);
+	WRAP_END[row] = fold_base(end);
+	WRAP_CLOSE[row] = fold_base(close);
+}
+
+wrap_row(K_PARAGRAPH, '<p', '<p>', '>', '</p>');
+wrap_row(K_EMPHASIS, '<em', '<em>', '>', '</em>');
+wrap_row(K_STRONG, '<strong', '<strong>', '>', '</strong>');
+wrap_row(K_STRIKETHROUGH, '<del', '<del>', '>', '</del>');
+wrap_row(K_SUPERSCRIPT, '<sup', '<sup>', '>', '</sup>');
+wrap_row(K_SUBSCRIPT, '<sub', '<sub>', '>', '</sub>');
+wrap_row(K_LIST_ITEM, '<li', '<li>', '>', '</li>\n');
+wrap_row(
+	K_BLOCK_QUOTE,
+	'<blockquote',
+	'<blockquote>\n',
+	'>\n',
+	'\n</blockquote>'
+);
+wrap_row(ROW_HEADING, '', '', '>', '');
+for (let depth = 1; depth <= 6; depth++) {
+	wrap_row(
+		ROW_HEADING + depth,
+		`<h${depth}`,
+		`<h${depth}>`,
+		'>',
+		`</h${depth}>`
+	);
+}
+
+//  fold register
+
+// the register is threaded through the fold functions as an argument and a
+// return value rather than kept in module state, so turbofan holds it in a
+// machine register and never loads or stores it through the module context.
+// 0 is an empty register and any other value is the pending static id.
+
+// composites stop at a fixed id count and length, so a document full of
+// static runs cannot grow the table without bound. past either cap the
+// register is pushed and restarted, which is what the unfolded render does.
+const FOLD_BASE = FOLD_STR.length;
+const FOLD_MAX_IDS = 1024;
+const FOLD_MAX_LEN = 128;
+// pair keys are (pending << 7) | static, so base ids must stay below 128
+if (FOLD_BASE > 128) throw new Error('too many static literals');
+
+/** composite id for each (pending << 7) | static pair, 0 when not built yet. */
+const FOLD_PAIR = new Uint16Array(FOLD_MAX_IDS << 7);
+
+/** hold a static literal in the register, folding it into any pending one. returns the register. */
+function push_static(out: string[], p: number, id: number): number {
+	if (p === 0) return id;
+	const v = FOLD_PAIR[(p << 7) | id];
+	return v !== 0 ? v : fold_miss(out, p, id);
+}
+
+/** push a dynamic chunk after whatever static is pending. returns the empty register. */
+function push_dyn(out: string[], p: number, s: string): number {
+	if (p !== 0) out.push(FOLD_STR[p]);
+	out.push(s);
+	return 0;
+}
+
+/** build the composite for a new pair, or push the pending static past the caps. returns the register. */
+function fold_miss(out: string[], p: number, id: number): number {
+	const a = FOLD_STR[p];
+	const b = FOLD_STR[id];
+	if (a.length + b.length > FOLD_MAX_LEN) {
+		out.push(a);
+		return id;
+	}
+	// flatten and internalize so join copies one sequential string
+	const s = Object.keys({ [a + b]: 0 })[0];
+	let v = FOLD_IDS.get(s);
+	if (v === undefined) {
+		if (FOLD_STR.length >= FOLD_MAX_IDS) {
+			out.push(a);
+			return id;
+		}
+		v = FOLD_STR.length;
+		FOLD_STR.push(s);
+		FOLD_IDS.set(s, v);
+	}
+	FOLD_PAIR[(p << 7) | id] = v;
+	return v;
+}
+
+//  folding renderer, the unmapped twin of _node and _children
+
+/** whether _attrs would emit anything for this metadata. */
+function has_attrs(meta: Record<string, unknown>): boolean {
+	for (const key in meta) {
+		if (INTERNAL_KEYS.has(key)) continue;
+		const val = meta[key];
+		if (val !== false && val != null) return true;
+	}
+	return false;
+}
+
+/** fold twin of _attrs. */
+function fold_attrs(
+	meta: Record<string, unknown> | undefined,
+	out: string[],
+	p: number,
+	skip?: Set<string>
+): number {
+	if (!meta) return p;
+	for (const key in meta) {
+		if (INTERNAL_KEYS.has(key)) continue;
+		if (skip !== undefined && skip.has(key)) continue;
+		const val = meta[key];
+		if (val === true) {
+			p = push_static(out, p, S_SPACE);
+			p = push_dyn(out, p, key);
+		} else if (val !== false && val != null) {
+			p = push_static(out, p, S_SPACE);
+			p = push_dyn(out, p, key);
+			if (typeof val === 'object' && (val as any).type === 'expression') {
+				p = push_static(out, p, S_EXPR_EQ);
+				p = push_dyn(out, p, (val as any).value);
+				p = push_static(out, p, S_BRACE_CLOSE);
+			} else {
+				p = push_static(out, p, S_ATTR_EQ);
+				p = push_dyn(out, p, escape(String(val)));
+				p = push_static(out, p, S_QUOTE);
+			}
+		}
+	}
+	return p;
+}
+
+/** fold twin of _open, taking static ids. */
+function fold_open(
+	c: Cursor,
+	out: string[],
+	p: number,
+	head: number,
+	folded: number,
+	end: number
+): number {
+	const meta = c.meta();
+	if (!meta || !has_attrs(meta)) return push_static(out, p, folded);
+	p = push_static(out, p, head);
+	p = fold_attrs(meta, out, p);
+	return push_static(out, p, end);
+}
+
+function fold_children(c: Cursor, out: string[], p: number): number {
+	if (!c.goto_first_child()) return p;
+	do {
+		const k = c.kind;
+		if (k === K_TEXT) {
+			p = push_dyn(out, p, escape_text(c));
+		} else if (k !== K_LINE_BREAK) {
+			// line breaks render nothing, a fifth of visited nodes skip the call
+			p = fold_node(c, out, p);
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return p;
+}
+
+function fold_node(c: Cursor, out: string[], p: number): number {
+	let row = c.kind;
+	switch (row) {
+		case K_ROOT:
+			return fold_children(c, out, p);
+
+		case K_PARAGRAPH:
+			// pending paragraphs inside list_items are speculative tight-list
+			// wrappers, render their children transparently until the list
+			// closes (commit keeps the wrapper, revoke drops it).
+			if (c.pending && c.parent_kind === K_LIST_ITEM) {
+				return fold_children(c, out, p);
+			}
+		// falls through
+		case K_HEADING:
+		case K_EMPHASIS:
+		case K_STRONG:
+		case K_BLOCK_QUOTE:
+		case K_LIST_ITEM:
+		case K_STRIKETHROUGH:
+		case K_SUPERSCRIPT:
+		case K_SUBSCRIPT: {
+			if (row === K_HEADING) {
+				const depth = c.extra;
+				row = depth >= 1 && depth <= 6 ? ROW_HEADING + depth : ROW_HEADING;
+			}
+			p = fold_open(c, out, p, WRAP_HEAD[row], WRAP_FOLDED[row], WRAP_END[row]);
+			p = fold_children(c, out, p);
+			return push_static(out, p, WRAP_CLOSE[row]);
+		}
+
+		case K_CODE_SPAN: {
+			p = fold_open(c, out, p, S_CODE, S_CODE_OPEN, S_GT);
+			const code = escape_text(c);
+			p = push_dyn(
+				out,
+				p,
+				code.indexOf('\n') === -1 ? code : code.replace(/\n/g, ' ')
+			);
+			return push_static(out, p, S_CODE_CLOSE);
+		}
+
+		case K_CODE_FENCE:
+			return fold_code_fence(c, out, p);
+
+		case K_LINK:
+			return fold_link(c, out, p);
+
+		case K_IMAGE:
+			return fold_image(c, out, p);
+
+		case K_LIST:
+			return fold_list(c, out, p);
+
+		case K_THEMATIC_BREAK:
+			return push_static(out, p, S_HR);
+
+		case K_HARD_BREAK:
+			return push_static(out, p, S_BR);
+
+		case K_SOFT_BREAK:
+			return push_static(out, p, S_LF);
+
+		case K_HTML:
+			return fold_html(c, out, p);
+
+		case K_HTML_COMMENT:
+			p = push_static(out, p, S_COMMENT_OPEN);
+			p = push_dyn(out, p, c.text());
+			return push_static(out, p, S_COMMENT_CLOSE);
+
+		case K_MUSTACHE:
+			p = push_static(out, p, S_BRACE_OPEN);
+			p = push_dyn(out, p, c.text());
+			return push_static(out, p, S_BRACE_CLOSE);
+
+		case K_SVELTE_TAG:
+			return fold_svelte_tag(c, out, p);
+
+		case K_SVELTE_BLOCK:
+			return fold_svelte_block(c, out, p);
+
+		case K_TABLE:
+			p = fold_open(c, out, p, S_TABLE, S_TABLE_OPEN, S_GT_LF);
+			p = fold_table_content(c, out, p);
+			return push_static(out, p, S_TABLE_CLOSE);
+
+		case K_LINE_BREAK:
+			return p;
+
+		default:
+			return fold_children(c, out, p);
+	}
+}
+
+function fold_code_fence(c: Cursor, out: string[], p: number): number {
+	const meta = c.meta();
+	// wire path: resolved 'info' string. treebuilder path: info_start/info_end byte offsets.
+	let info = meta?.info as string | undefined;
+	if (!info) {
+		const info_start = meta?.info_start as number | undefined;
+		const info_end = meta?.info_end as number | undefined;
+		if (info_start != null && info_end != null)
+			info = c.slice(info_start, info_end);
+	}
+	if (info) {
+		p = push_static(out, p, S_PRE_CODE_LANG);
+		p = push_dyn(out, p, escape(info));
+		p = fold_open(c, out, p, S_QUOTE, S_QUOTE_GT, S_GT);
+	} else {
+		p = fold_open(c, out, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
+	}
+	p = push_dyn(out, p, escape_text(c));
+	return push_static(out, p, S_PRE_CODE_CLOSE);
+}
+
+function fold_link(c: Cursor, out: string[], p: number): number {
+	const meta = c.meta();
+	p = push_static(out, p, S_A);
+	if (meta?.href) {
+		p = push_static(out, p, S_HREF);
+		p = push_dyn(out, p, escape(meta.href as string));
+		p = push_static(out, p, S_QUOTE);
+	}
+	if (meta?.title) {
+		p = push_static(out, p, S_TITLE);
+		p = push_dyn(out, p, escape(meta.title as string));
+		p = push_static(out, p, S_QUOTE);
+	}
+	p = fold_attrs(meta, out, p, LINK_HANDLED);
+	p = push_static(out, p, S_GT);
+	p = fold_children(c, out, p);
+	return push_static(out, p, S_A_CLOSE);
+}
+
+function fold_image(c: Cursor, out: string[], p: number): number {
+	const meta = c.meta();
+	p = push_static(out, p, S_IMG);
+	if (meta?.src) {
+		p = push_static(out, p, S_SRC);
+		p = push_dyn(out, p, escape(meta.src as string));
+		p = push_static(out, p, S_QUOTE);
+	}
+	p = push_static(out, p, S_ALT);
+	p = push_dyn(out, p, escape(_children_raw(c)));
+	p = push_static(out, p, S_QUOTE);
+	if (meta?.title) {
+		p = push_static(out, p, S_TITLE);
+		p = push_dyn(out, p, escape(meta.title as string));
+		p = push_static(out, p, S_QUOTE);
+	}
+	p = fold_attrs(meta, out, p, IMAGE_HANDLED);
+	return push_static(out, p, S_SELF_CLOSE);
+}
+
+function fold_list(c: Cursor, out: string[], p: number): number {
+	const meta = c.meta();
+	const ordered = !!meta?.ordered;
+	const start = meta?.start as number | undefined;
+	if (ordered && start != null && start !== 1) {
+		p = push_static(out, p, S_OL_START);
+		p = push_dyn(out, p, String(start));
+		p = fold_open(c, out, p, S_QUOTE, S_QUOTE_GT_LF, S_GT_LF);
+	} else if (ordered) {
+		p = fold_open(c, out, p, S_OL, S_OL_OPEN, S_GT_LF);
+	} else {
+		p = fold_open(c, out, p, S_UL, S_UL_OPEN, S_GT_LF);
+	}
+	p = fold_children(c, out, p);
+	return push_static(out, p, ordered ? S_OL_CLOSE : S_UL_CLOSE);
+}
+
+/** push raw html attributes as parsed. */
+function fold_html_attrs(
+	html_attrs: Record<string, string | boolean>,
+	out: string[],
+	p: number
+): number {
+	for (const k in html_attrs) {
+		const v = html_attrs[k];
+		p = push_static(out, p, S_SPACE);
+		p = push_dyn(out, p, k);
+		if (v === true) continue;
+		if (typeof v === 'object' && (v as any).type === 'expression') {
+			p = push_static(out, p, S_EXPR_EQ);
+			p = push_dyn(out, p, (v as any).value);
+			p = push_static(out, p, S_BRACE_CLOSE);
+		} else {
+			p = push_static(out, p, S_ATTR_EQ);
+			p = push_dyn(out, p, escape(v as string));
+			p = push_static(out, p, S_QUOTE);
+		}
+	}
+	return p;
+}
+
+function fold_html(c: Cursor, out: string[], p: number): number {
+	const meta = c.meta();
+	const tag = meta?.tag as string;
+	const html_attrs = meta?.attributes as
+		| Record<string, string | boolean>
+		| undefined;
+
+	if (meta?.self_closing) {
+		// source passthrough, see _node. the unfolded render pushes the tag
+		// and then truncates back, which a pending register cannot undo, so
+		// the passthrough is decided before anything is pushed.
+		const passthrough = c.end > c.start ? c.slice(c.start, c.end) : '';
+		if (passthrough) return push_dyn(out, p, passthrough);
+		p = push_static(out, p, S_LT);
+		p = push_dyn(out, p, tag);
+		if (html_attrs) p = fold_html_attrs(html_attrs, out, p);
+		return push_static(out, p, S_SELF_CLOSE);
+	}
+
+	p = push_static(out, p, S_LT);
+	p = push_dyn(out, p, tag);
+	if (html_attrs) p = fold_html_attrs(html_attrs, out, p);
+	p = push_static(out, p, S_GT);
+	// raw-text elements keep their content as the node's value range, see _node
+	if (tag === 'script' || tag === 'style') {
+		p = push_dyn(out, p, c.text());
+	} else {
+		p = fold_children(c, out, p);
+	}
+	p = push_static(out, p, S_END_TAG);
+	p = push_dyn(out, p, tag);
+	return push_static(out, p, S_GT);
+}
+
+function fold_svelte_tag(c: Cursor, out: string[], p: number): number {
+	const meta = c.meta();
+	const tag = meta?.tag as string;
+	const text = c.text();
+	p = push_static(out, p, S_AT_OPEN);
+	p = push_dyn(out, p, tag);
+	if (text) {
+		p = push_static(out, p, S_SPACE);
+		p = push_dyn(out, p, text);
+	}
+	return push_static(out, p, S_BRACE_CLOSE);
+}
+
+function fold_svelte_block(c: Cursor, out: string[], p: number): number {
+	// render branches; each branch handles its own opening tag
+	const block_meta = c.meta();
+	const block_tag = block_meta?.tag as string;
+	if (c.goto_first_child()) {
+		let is_first = true;
+		do {
+			if (c.kind === K_SVELTE_BRANCH) {
+				const branch_expr = c.text();
+				if (is_first) {
+					p = push_static(out, p, S_BLOCK_OPEN);
+					p = push_dyn(out, p, block_tag);
+					is_first = false;
+				} else {
+					const branch_meta = c.meta();
+					p = push_static(out, p, S_BRANCH_OPEN);
+					p = push_dyn(out, p, branch_meta?.tag as string);
+				}
+				if (branch_expr) {
+					p = push_static(out, p, S_SPACE);
+					p = push_dyn(out, p, branch_expr);
+				}
+				p = push_static(out, p, S_BRACE_CLOSE_LF);
+				p = fold_children(c, out, p);
+			} else if (c.kind !== K_LINE_BREAK) {
+				p = fold_node(c, out, p);
+			}
+		} while (c.goto_next_sibling());
+		c.goto_parent();
+	}
+	p = push_static(out, p, S_BLOCK_CLOSE);
+	p = push_dyn(out, p, block_tag);
+	return push_static(out, p, S_BRACE_CLOSE);
+}
+
+function fold_table_content(c: Cursor, out: string[], p: number): number {
+	const meta = c.meta();
+	const alignments = (meta?.alignments as string[]) ?? [];
+	let in_body = false;
+
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K_TABLE_HEADER) {
+			p = push_static(out, p, S_THEAD_OPEN);
+			p = fold_table_cells(c, TH_OPEN_ID, S_TH_CLOSE, 'th', alignments, out, p);
+			p = push_static(out, p, S_THEAD_CLOSE);
+		} else if (c.kind === K_TABLE_ROW) {
+			if (!in_body) {
+				p = push_static(out, p, S_TBODY_OPEN);
+				in_body = true;
+			}
+			p = push_static(out, p, S_TR_OPEN);
+			p = fold_table_cells(c, TD_OPEN_ID, S_TD_CLOSE, 'td', alignments, out, p);
+			p = push_static(out, p, S_TR_CLOSE);
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+
+	if (in_body) p = push_static(out, p, S_TBODY_CLOSE);
+	return p;
+}
+
+function fold_table_cells(
+	c: Cursor,
+	opens: Uint8Array,
+	close: number,
+	tag: string,
+	alignments: string[],
+	out: string[],
+	p: number
+): number {
+	let col = 0;
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K_TABLE_CELL) {
+			const align = alignments[col];
+			// the parser only emits these four values, anything else is built as before
+			if (align === 'left') p = push_static(out, p, opens[1]);
+			else if (align === 'center') p = push_static(out, p, opens[2]);
+			else if (align === 'right') p = push_static(out, p, opens[3]);
+			else if (align && align !== 'none')
+				p = push_dyn(out, p, `<${tag} align="${align}">`);
+			else p = push_static(out, p, opens[0]);
+			p = fold_children(c, out, p);
+			p = push_static(out, p, close);
+			col++;
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return p;
+}
+
+/** render the node at the current cursor position into out, which is only joined. */
+function render_folded(c: Cursor, out: string[]): void {
+	const p = fold_node(c, out, 0);
+	if (p !== 0) out.push(FOLD_STR[p]);
+}
+
 //  mapping resolution
 
 // grow-only cumulative offset table shared by every render, resolution is
@@ -966,7 +1584,7 @@ const render_sink = new MapSink();
 /** render the node at the current cursor position to html string. */
 function _render_block(cursor: Cursor): string {
 	const out: string[] = [];
-	_node(cursor, out);
+	render_folded(cursor, out);
 	return out.join('');
 }
 
@@ -1029,7 +1647,7 @@ export class CursorHTMLRenderer {
 			const out = this.out;
 			// a fresh renderer has empty arrays and the length store is not free
 			if (out.length !== 0) out.length = 0;
-			_node(c, out);
+			render_folded(c, out);
 			this.html = out.join('');
 			return this.blocks;
 		}
