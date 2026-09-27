@@ -603,6 +603,15 @@ export class PFMParser {
 	}
 
 	/**
+	 * @internal point a parser kept for reuse at the next document's
+	 * emitter. same defaults as the constructor, _init resets the rest.
+	 */
+	bind(emitter: Emitter, tab_size: number = 2): void {
+		this.out = emitter;
+		this.tab_size = tab_size;
+	}
+
+	/**
 	 * drop every reference into the last document, so a parser kept for
 	 * reuse does not pin its source. the next parse or init starts over
 	 * anyway, this only clears what holds strings.
@@ -646,6 +655,7 @@ export class PFMParser {
 		this.pending_para_count = 0;
 		this.take_ids(id_capacity);
 		this.class_floor = 0;
+		this.range_next_class = 0;
 		this.block_quote_depth = 0;
 		this.emphasis_has_content = false;
 		this.in_heading = false;
@@ -8419,6 +8429,15 @@ export class PFMParser {
 	}
 }
 
+// one parser shared by every parse_markdown_svelte call, _init resets its
+// state per document. between documents it is bound to an idle tree so it
+// holds nothing of the last one, a tree rather than a stub so the emitter
+// only ever sees one class. the busy flag sends a reentrant call to a parser
+// of its own
+let spare_parser: PFMParser | null = null;
+let spare_parser_busy = false;
+let idle_tree: TreeBuilder | null = null;
+
 /**
  * parse markdown that may include svelte syntax into tokens and nodes.
  *
@@ -8450,8 +8469,32 @@ export function parse_markdown_svelte(
 		len < 512 ? (len >> 2) + 16 : len >> 3,
 		dispatcher
 	);
-	const parser = new PFMParser(tree, options.tab_size);
-	const { errors } = parser.parse(source);
+	let errors: ErrorCollector;
+	if (spare_parser_busy) {
+		// a plugin or emitter reentered parse, the spare holds the outer document
+		errors = new PFMParser(tree, options.tab_size).parse(source).errors;
+	} else {
+		spare_parser_busy = true;
+		let keep = false;
+		try {
+			if (spare_parser === null) {
+				if (idle_tree === null) idle_tree = new TreeBuilder(0);
+				spare_parser = new PFMParser(idle_tree);
+			}
+			spare_parser.bind(tree, options.tab_size);
+			errors = spare_parser.parse(source).errors;
+			keep = true;
+		} finally {
+			// a throw can leave the parser half written, the next document
+			// starts from a fresh one. otherwise drop the tree, source and
+			// strings this document left so the spare pins none of them
+			if (keep) {
+				spare_parser!.bind(idle_tree!);
+				spare_parser!.release();
+			} else spare_parser = null;
+			spare_parser_busy = false;
+		}
+	}
 
 	// run sequential plugins after parse completes
 	if (dispatcher) {
