@@ -521,10 +521,10 @@ export class PFMParser {
 	 */
 	release(): void {
 		this.source = '';
-		this.ref_map.clear();
-		this.html_tag_stack = [];
+		if (this.ref_map.size !== 0) this.ref_map.clear();
+		if (this.html_tag_stack.length !== 0) this.html_tag_stack = [];
 		this.svelte_block_tag = '';
-		this.svelte_block_stack = [];
+		if (this.svelte_block_stack.length !== 0) this.svelte_block_stack = [];
 		this.errors = EMPTY_ERRORS;
 	}
 
@@ -540,10 +540,19 @@ export class PFMParser {
 		this.cursor = 0;
 		this.finished = false;
 		this.pending_cr = false;
-		this.states = [StateKind.root];
-		this.node_stack = [0];
+		// the stacks are popped back to the root rather than reallocated, a
+		// frame left open costs one pop while a fresh array per document is an
+		// allocation the next document regrows
+		const states = this.states;
+		while (states.length > 1) states.pop();
+		if (states.length === 0) states.push(StateKind.root);
+		else states[0] = StateKind.root;
+		const node_stack = this.node_stack;
+		while (node_stack.length > 1) node_stack.pop();
+		if (node_stack.length === 0) node_stack.push(0);
+		else node_stack[0] = 0;
 		this.next_id = 1;
-		this.pending_ids = [];
+		// pending_ids is only read below pending_count, like pending_starts
 		this.pending_slots = [];
 		this.pending_count = 0;
 		this.pending_para_count = 0;
@@ -561,8 +570,10 @@ export class PFMParser {
 		this.list_is_loose = false;
 		this.list_content_offset = 0;
 		this.list_marker_indent = 0;
-		this.list_state_stack = [];
-		this.list_pending_paras = [];
+		// a stack a document left empty is reused, the rest are replaced so
+		// no frame of the last document survives
+		if (this.list_state_stack.length !== 0) this.list_state_stack = [];
+		if (this.list_pending_paras.length !== 0) this.list_pending_paras = [];
 		this.table_col_count = 0;
 		this.table_node_id = 0;
 		this.table_row_id = 0;
@@ -571,13 +582,13 @@ export class PFMParser {
 		this.in_table = false;
 		this.inline_range_parse = false;
 		this.table_cell_has_content = false;
-		this.html_tag_stack = [];
+		if (this.html_tag_stack.length !== 0) this.html_tag_stack = [];
 		this.html_block_depth = 0;
 		this.svelte_block_depth = 0;
 		this.svelte_block_tag = '';
 		this.svelte_branch_id = 0;
 		this.svelte_block_id = 0;
-		this.svelte_block_stack = [];
+		if (this.svelte_block_stack.length !== 0) this.svelte_block_stack = [];
 		this.extra = 0;
 		this.info_start_pos = 0;
 		this.info_end_pos = 0;
@@ -587,11 +598,15 @@ export class PFMParser {
 		this.loop_without_progress = 0;
 		this.frontmatter_failed = false;
 		this.imports_allowed = true;
-		this.ref_map.clear();
+		if (this.ref_map.size !== 0) this.ref_map.clear();
 		this.link_text_start = 0;
-		this.directive_colon_counts = [];
-		this.directive_text_ids = [];
-		this.directive_text_brackets = [];
+		if (this.directive_colon_counts.length !== 0) {
+			this.directive_colon_counts = [];
+		}
+		if (this.directive_text_ids.length !== 0) this.directive_text_ids = [];
+		if (this.directive_text_brackets.length !== 0) {
+			this.directive_text_brackets = [];
+		}
 		this.errors = EMPTY_ERRORS;
 
 		// emit the root node open
