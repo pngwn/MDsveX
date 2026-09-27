@@ -152,7 +152,7 @@ export class CompilerSession {
 
 	/** @internal node slots the arena holds, zero before the first compile. */
 	get capacity(): number {
-		return this.tree === null ? 0 : this.tree.get_buffer()._kinds.length;
+		return this.tree === null ? 0 : this.tree.get_buffer()._capacity;
 	}
 
 	/** parse a normalized source into the session's arena. */

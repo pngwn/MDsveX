@@ -404,7 +404,7 @@ function dump(nodes: NodeBuffer, index = 0): unknown {
 		end: node.end,
 		value: node.value,
 		metadata: node.metadata,
-		pending: nodes._pending_nodes[index],
+		pending: nodes.pending_at(index),
 		children: node.children.map((child) => dump(nodes, child)),
 	};
 }

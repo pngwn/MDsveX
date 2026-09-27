@@ -1,19 +1,25 @@
-import { type NodeBuffer, NodeKind, kind_to_string, string_to_kind } from "./utils";
-import { UndoLog, UndoEntryKind } from "./undo_log";
+import {
+	type NodeBuffer,
+	NodeField,
+	NodeKind,
+	kind_to_string,
+	string_to_kind,
+} from './utils';
+import { UndoLog, UndoEntryKind } from './undo_log';
 import {
 	NodeView,
 	ViewCache,
 	type TextSource,
 	SourceTextSource,
 	WireTextSource,
-} from "./node_view";
+} from './node_view';
 import type {
 	ParsePlugin,
 	NodeHandler,
 	ComposedHandler,
 	PluginContext,
 	IdRegister,
-} from "./plugin_types";
+} from './plugin_types';
 
 const NONE = 0xffffffff;
 
@@ -23,13 +29,12 @@ const NODE_KIND_COUNT = 35;
 /** first synthetic id. high bit flag partitions id space from parser ids. */
 const SYNTHETIC_ID_BASE = 0x40000000;
 
-
 /** single handler: no wrapper needed, just normalize return type. */
 function compose_1(h: NodeHandler): ComposedHandler {
 	const parse = h.parse;
 	return function handler_1(
 		view: NodeView,
-		ctx: PluginContext,
+		ctx: PluginContext
 	): (() => void)[] | null {
 		const cb = parse(view, ctx);
 		if (cb) return [cb];
@@ -43,7 +48,7 @@ function compose_2(a: NodeHandler, b: NodeHandler): ComposedHandler {
 	const pb = b.parse;
 	return function handler_2(
 		view: NodeView,
-		ctx: PluginContext,
+		ctx: PluginContext
 	): (() => void)[] | null {
 		const ca = pa(view, ctx);
 		const cb = pb(view, ctx);
@@ -60,14 +65,14 @@ function compose_2(a: NodeHandler, b: NodeHandler): ComposedHandler {
 function compose_3(
 	a: NodeHandler,
 	b: NodeHandler,
-	c: NodeHandler,
+	c: NodeHandler
 ): ComposedHandler {
 	const pa = a.parse;
 	const pb = b.parse;
 	const pc = c.parse;
 	return function handler_3(
 		view: NodeView,
-		ctx: PluginContext,
+		ctx: PluginContext
 	): (() => void)[] | null {
 		const ca = pa(view, ctx);
 		const cb = pb(view, ctx);
@@ -92,7 +97,7 @@ function compose_n(handlers: NodeHandler[]): ComposedHandler {
 	const len = parses.length;
 	return function handler_n(
 		view: NodeView,
-		ctx: PluginContext,
+		ctx: PluginContext
 	): (() => void)[] | null {
 		let result: (() => void)[] | null = null;
 		for (let i = 0; i < len; i++) {
@@ -118,7 +123,6 @@ function compose(handlers: NodeHandler[]): ComposedHandler {
 	}
 }
 
-
 /** 35 slots, one per NodeKind. null means no handlers. */
 type HandlersTable = (ComposedHandler | null)[];
 
@@ -142,17 +146,16 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 
 	// build per-kind handler lists for fused plugins
 	const per_kind: (NodeHandler[] | null)[] = new Array(NODE_KIND_COUNT).fill(
-		null,
+		null
 	);
 
 	for (const plugin of fused_plugins) {
 		for (const key of Object.keys(plugin)) {
-			if (key === "sequential") continue;
+			if (key === 'sequential') continue;
 			const kind = string_to_kind(key);
 			if (kind === undefined) continue;
 			const entry = plugin[key];
-			if (!entry || typeof entry !== "object" || !("parse" in entry))
-				continue;
+			if (!entry || typeof entry !== 'object' || !('parse' in entry)) continue;
 			if (!per_kind[kind]) per_kind[kind] = [];
 			per_kind[kind]!.push(entry as NodeHandler);
 		}
@@ -174,12 +177,11 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 	const sequential = sequential_plugins.map((plugin) => {
 		const table: HandlersTable = new Array(NODE_KIND_COUNT).fill(null);
 		for (const key of Object.keys(plugin)) {
-			if (key === "sequential") continue;
+			if (key === 'sequential') continue;
 			const kind = string_to_kind(key);
 			if (kind === undefined) continue;
 			const entry = plugin[key];
-			if (!entry || typeof entry !== "object" || !("parse" in entry))
-				continue;
+			if (!entry || typeof entry !== 'object' || !('parse' in entry)) continue;
 			table[kind] = compose_1(entry as NodeHandler);
 		}
 		return { plugin, handlers: table };
@@ -187,7 +189,6 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 
 	return { fused, sequential, has_handler };
 }
-
 
 /**
  * stores close callbacks indexed by buffer index.
@@ -227,7 +228,6 @@ class CloseCallbackStore {
 	}
 }
 
-
 /**
  * dispatch plugin handlers for a node open event.
  *
@@ -240,7 +240,7 @@ function dispatch_open(
 	view: NodeView,
 	ctx: PluginContext,
 	fused: HandlersTable,
-	has_handler: Uint32Array,
+	has_handler: Uint32Array
 ): (() => void)[] | null {
 	// bitmask fast path: no handler for this kind
 	if (!(has_handler[kind >> 5] & (1 << (kind & 31)))) return null;
@@ -358,52 +358,52 @@ function dispatch_open(
 	}
 }
 
-
 /**
- * depth-first walk over the soa buffer.
+ * depth-first walk over the node buffer.
  * calls visitor(idx, kind, false) on open, visitor(idx, kind, true) on close.
  */
 function walk_tree(
 	buf: NodeBuffer,
-	visitor: (idx: number, kind: NodeKind, is_close: boolean) => void,
+	visitor: (idx: number, kind: NodeKind, is_close: boolean) => void
 ): void {
-	const children_starts = buf._children_starts;
-	const next_siblings = buf._next_siblings;
-	const parents = buf._parents;
-	const kinds = buf._kinds;
+	// the words are read once, so a visitor that grows the buffer keeps
+	// walking the storage the walk started on
+	const n = buf._n;
+	const kind = (i: number) => (n[i * NodeField.stride] & 0xff) as NodeKind;
+	const parent = (i: number) => n[i * NodeField.stride + NodeField.parent];
+	const next_of = (i: number) => n[i * NodeField.stride + NodeField.next];
 
-	let idx = children_starts[0]; // first child of root
+	let idx = n[NodeField.first_child]; // first child of root
 	if (idx === NONE) return;
 
 	const stack: number[] = [];
 
 	while (true) {
-		visitor(idx, kinds[idx] as NodeKind, false);
+		visitor(idx, kind(idx), false);
 
-		const child = children_starts[idx];
+		const child = n[idx * NodeField.stride + NodeField.first_child];
 		if (child !== NONE) {
 			stack.push(idx);
 			idx = child;
 			continue;
 		}
 
-		visitor(idx, kinds[idx] as NodeKind, true);
+		visitor(idx, kind(idx), true);
 
-		let next = next_siblings[idx];
+		let next = next_of(idx);
 		while (
-			(next === NONE || parents[next] !== parents[idx]) &&
+			(next === NONE || parent(next) !== parent(idx)) &&
 			stack.length > 0
 		) {
 			idx = stack.pop()!;
-			visitor(idx, kinds[idx] as NodeKind, true);
-			next = next_siblings[idx];
+			visitor(idx, kind(idx), true);
+			next = next_of(idx);
 		}
 
-		if (next === NONE || parents[next] !== parents[idx]) break;
+		if (next === NONE || parent(next) !== parent(idx)) break;
 		idx = next;
 	}
 }
-
 
 /**
  * orchestrates plugin dispatch for both TreeBuilder and WireTreeBuilder.
@@ -474,14 +474,9 @@ export class PluginDispatcher {
 		buf_idx: number,
 		kind: NodeKind,
 		buf: NodeBuffer,
-		id_register: IdRegister,
+		id_register: IdRegister
 	): void {
-		const cache = new ViewCache(
-			buf,
-			this.text_source,
-			this.undo,
-			buf_idx,
-		);
+		const cache = new ViewCache(buf, this.text_source, this.undo, buf_idx);
 		const view = cache.get(buf_idx)!;
 
 		this.undo.set_active_node(buf_idx);
@@ -490,7 +485,7 @@ export class PluginDispatcher {
 			view,
 			this.ctx,
 			this.fused,
-			this.has_handler,
+			this.has_handler
 		);
 		this.undo.clear_active_node();
 
@@ -527,12 +522,7 @@ export class PluginDispatcher {
 		// take and fire close callbacks with undo attribution
 		const cbs = this.close_cbs.take(buf_idx);
 		if (cbs) {
-			const cache = new ViewCache(
-				buf,
-				this.text_source,
-				this.undo,
-				buf_idx,
-			);
+			const cache = new ViewCache(buf, this.text_source, this.undo, buf_idx);
 			this.undo.set_active_node(buf_idx);
 			for (let i = 0; i < cbs.length; i++) {
 				cbs[i]();
@@ -543,7 +533,7 @@ export class PluginDispatcher {
 
 		// only commit if the node is no longer pending.
 		// pending nodes can still be revoked after close.
-		if (buf._pending_nodes[buf_idx] === 0) {
+		if (buf.pending_at(buf_idx) === 0) {
 			this.undo.commit(buf_idx);
 		}
 	}
@@ -580,10 +570,10 @@ export class PluginDispatcher {
 		this.undo.revoke(buf_idx, buf);
 
 		// recurse into children to revoke their plugin state too
-		let child = buf._children_starts[buf_idx];
-		while (child !== NONE && buf._parents[child] === buf_idx) {
+		let child = buf.first_child_at(buf_idx);
+		while (child !== NONE && buf.parent_at(child) === buf_idx) {
 			this.dispatch_revoke(child, buf);
-			child = buf._next_siblings[child];
+			child = buf.next_at(child);
 		}
 	}
 
@@ -604,12 +594,7 @@ export class PluginDispatcher {
 				const handler = pass.handlers[kind];
 				if (handler === null) return;
 
-				const cache = new ViewCache(
-					buf,
-					this.text_source,
-					this.undo,
-					idx,
-				);
+				const cache = new ViewCache(buf, this.text_source, this.undo, idx);
 				const view = cache.get(idx)!;
 
 				this.undo.set_active_node(idx);

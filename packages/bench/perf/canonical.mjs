@@ -20,8 +20,46 @@ function stable_json(value) {
 	});
 }
 
+/**
+ * the same lines for a buffer that keeps each node in a stride of words (_n),
+ * so arms on either layout compare. word offsets follow NodeField in
+ * packages/parse/src/utils.ts, kind and extra share the first word
+ */
+function canonical_words(nodes) {
+	const n = nodes._n;
+	const lines = [];
+	const meta = [];
+	for (let i = 0; i < nodes.size; i++) {
+		const b = i * 12;
+		const slot = n[b + 11];
+		if (slot !== 0) meta.push(i);
+		lines.push(
+			[
+				i,
+				n[b] & 0xff,
+				n[b + 1],
+				n[b + 2],
+				`x${n[b] >>> 8}`,
+				`v${n[b + 3]}:${n[b + 4]}`,
+				`p${link(n[b + 5])}`,
+				`n${link(n[b + 6])}`,
+				`b${link(n[b + 7])}`,
+				`c${link(n[b + 8])}:${link(n[b + 9])}`,
+				`q${n[b + 10]}`,
+				`m${stable_json(nodes.metadata_at(i) ?? null)}`,
+				`s${stable_json(nodes._strings[i] ?? null)}`,
+			].join(' ')
+		);
+	}
+	for (const i of meta)
+		lines.push(`meta ${i} ${stable_json(nodes.metadata_at(i))}`);
+	lines.push(`size ${nodes.size}`);
+	return lines;
+}
+
 /** the metadata map is also read directly so an entry whose presence bit was lost still shows up */
 export function canonical_nodes(nodes) {
+	if (nodes._n !== undefined) return canonical_words(nodes);
 	const lines = [];
 	for (let i = 0; i < nodes.size; i++) {
 		lines.push(
