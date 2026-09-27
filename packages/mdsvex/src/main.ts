@@ -9,14 +9,23 @@ import type { ParsePlugin, RawOffsets } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import { CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
-import { mappings_to_v3 } from '@mdsvex/render/sourcemap';
+import {
+	mapped_source_lines,
+	mappings_to_v3,
+	trace_to_decoded,
+	trace_to_v3,
+} from '@mdsvex/render/sourcemap';
 import type { Mapping, MappingData } from '@mdsvex/render/mappings';
-import type { SourceMapV3 } from '@mdsvex/render/sourcemap';
+import type {
+	DecodedSourceMapV3,
+	MapTrace,
+	SourceMapV3,
+} from '@mdsvex/render/sourcemap';
 import type { Plugin } from 'vite';
 import remapping from '@ampproject/remapping';
 
 export type { ParsePlugin } from '@mdsvex/parse';
-export type { Mapping, MappingData, SourceMapV3 };
+export type { Mapping, MappingData, SourceMapV3, MapTrace };
 
 export interface MdsvexOptions {
 	extensions?: string[];
@@ -38,6 +47,17 @@ export interface CompileV3Result {
 	code: string;
 	/** equal to mappings_to_v3 over compile's mappings with the raw source. */
 	map: SourceMapV3;
+}
+
+export interface CompileTraceResult {
+	code: string;
+	/**
+	 * what the v3 map is built from, trace_to_v3 over it with the raw source
+	 * and code giving compile_v3's map. null when map holds that map.
+	 */
+	trace: MapTrace | null;
+	/** compile_v3's map, built at once when collapsing \r\n moved offsets. */
+	map: SourceMapV3 | null;
 }
 
 /** parse a normalized source into its own tree, running parse plugins over it. */
@@ -98,6 +118,22 @@ function render_v3(
 	remap_to_raw(raw, result.mappings);
 	const code = renderer.html;
 	return { code, map: mappings_to_v3(result.mappings, raw, code, file) };
+}
+
+/** render_v3 that keeps the records instead of encoding them when it can. */
+function render_trace(
+	renderer: CursorHTMLRenderer,
+	nodes: NodeBuffer,
+	source: string,
+	raw: string,
+	file?: string
+): CompileTraceResult {
+	if (source.length === raw.length) {
+		const trace = renderer.update_trace(nodes, source);
+		return { code: renderer.html, trace, map: null };
+	}
+	const { code, map } = render_v3(renderer, nodes, source, raw, file);
+	return { code, trace: null, map };
 }
 
 /**
@@ -182,6 +218,25 @@ export class CompilerSession {
 			return render_v3(renderer, nodes, source, raw, file);
 		}
 		return render_v3(this.renderer, this.parse(source), source, raw, file);
+	}
+
+	/**
+	 * compile_v3 that defers the map. the vite plugin only looks up the few
+	 * lines the svelte compiler's map points at, so it builds them later
+	 * from the trace rather than encoding every line and decoding it again.
+	 */
+	compile_trace(
+		raw: string,
+		file?: string,
+		parse_plugins?: ParsePlugin[]
+	): CompileTraceResult {
+		const source = normalize_newlines(raw);
+		if (parse_plugins && parse_plugins.length > 0) {
+			const nodes = parse_once(source, parse_plugins);
+			const renderer = new CursorHTMLRenderer({ cache: false });
+			return render_trace(renderer, nodes, source, raw, file);
+		}
+		return render_trace(this.renderer, this.parse(source), source, raw, file);
 	}
 }
 
@@ -297,6 +352,30 @@ function split_mapping(
 	mapping.lengths = len;
 }
 
+/** what the pre transform keeps of a document for the post transform. */
+interface StoredDocument {
+	raw: string;
+	html: string;
+	trace: MapTrace | null;
+	map: SourceMapV3 | null;
+}
+
+/**
+ * the html to markdown map as far as remapping reads it. remapping only
+ * looks up the html lines the compile map's segments point at, so those
+ * lines alone are built, each equal to the line of the full map. a compile
+ * map whose lines cannot be read safely gets the full map.
+ */
+function pfm_map(
+	doc: StoredDocument,
+	compile_mappings: unknown,
+	file: string
+): SourceMapV3 | DecodedSourceMapV3 {
+	const lines = mapped_source_lines(compile_mappings as string);
+	if (lines === null) return trace_to_v3(doc.trace!, doc.raw, doc.html, file);
+	return trace_to_decoded(doc.trace!, doc.raw, doc.html, lines, file);
+}
+
 /**
  * mdsvex vite plugin. returns a single plugin that:
  *
@@ -317,8 +396,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		return extensions.some((ext) => clean.endsWith(ext));
 	}
 
-	const storedMaps = new Map<string, SourceMapV3>();
-	const storedSources = new Map<string, string>();
+	const stored = new Map<string, StoredDocument>();
 	const compiler = new CompilerSession();
 
 	return [
@@ -329,9 +407,13 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			transform(code, id) {
 				if (!matches(id)) return;
 
-				const result = compiler.compile_v3(code, id, options.parsePlugins);
-				storedMaps.set(id, result.map);
-				storedSources.set(id, code);
+				const result = compiler.compile_trace(code, id, options.parsePlugins);
+				stored.set(id, {
+					raw: code,
+					html: result.code,
+					trace: result.trace,
+					map: result.map,
+				});
 
 				// return NO map, avoids poisoning getCombinedSourcemap()
 				return { code: result.code };
@@ -343,11 +425,10 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 			transform(code, id) {
 				if (!matches(id)) return;
-				const pfmMap = storedMaps.get(id);
-				const originalSource = storedSources.get(id);
-				if (!pfmMap || !originalSource) return;
-				storedMaps.delete(id);
-				storedSources.delete(id);
+				const doc = stored.get(id);
+				if (!doc || !doc.raw) return;
+				stored.delete(id);
+				const originalSource = doc.raw;
 
 				// get the svelte compiler's JS to HTML map from the chain
 				let compileMap: any;
@@ -357,6 +438,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					return;
 				}
 				if (!compileMap?.mappings) return;
+
+				const pfmMap = doc.map ?? pfm_map(doc, compileMap.mappings, id);
 
 				// chain: JS to HTML (compile) + HTML to markdown (pfm) = JS to markdown
 				const chained = remapping([compileMap, pfmMap as any], () => null);

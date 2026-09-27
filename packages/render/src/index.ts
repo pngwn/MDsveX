@@ -30,5 +30,13 @@ export {
 	offset_to_position,
 	mappings_to_v3,
 	records_to_v3,
+	trace_to_v3,
+	trace_to_decoded,
+	mapped_source_lines,
 } from './sourcemap';
-export type { SourceMapV3 } from './sourcemap';
+export type {
+	SourceMapV3,
+	MapTrace,
+	DecodedSegment,
+	DecodedSourceMapV3,
+} from './sourcemap';

@@ -24,7 +24,7 @@ import {
 } from './mappings';
 import type { Mapping, MappingData } from './mappings';
 import { records_to_v3 } from './sourcemap';
-import type { SourceMapV3 } from './sourcemap';
+import type { MapTrace, SourceMapV3 } from './sourcemap';
 
 export type { Mapping, CodeInformation, MappingData } from './mappings';
 export { MapSink } from './mappings';
@@ -1732,6 +1732,24 @@ export class CursorHTMLRenderer {
 		);
 		sink.release();
 		return map;
+	}
+
+	/**
+	 * render and keep what update_v3 encodes, for a caller that may need
+	 * only part of the map or none of it. trace_to_v3 over the trace with the
+	 * same arguments gives update_v3's map.
+	 */
+	update_trace(buf: NodeBuffer, source: string): MapTrace {
+		const sink = render_sink;
+		sink.begin(false);
+		this.render_mapped(buf, source, sink);
+		const out = this.out;
+		const trace: MapTrace = {
+			rec: sink.rec.slice(0, sink.n),
+			offsets: _out_offsets(out).slice(0, out.length + 1),
+		};
+		sink.release();
+		return trace;
 	}
 
 	reset(): void {
