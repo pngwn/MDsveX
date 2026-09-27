@@ -2033,6 +2033,12 @@ export class PFMParser {
 	}
 
 	private end_list(): void {
+		this.close_list_nodes();
+		this.states.pop();
+	}
+
+	// leaves the state stack alone, the caller pops it
+	private close_list_nodes(): void {
 		// finalize every pending list-item paragraph for this list.
 		this.finalize_list_pending_paras();
 
@@ -2048,7 +2054,6 @@ export class PFMParser {
 		this.emit_close(list_id, this.cursor);
 		this.node_stack.pop();
 
-		this.states.pop();
 		this.list_depth--;
 
 		// restore outer list state if nested
@@ -2064,6 +2069,16 @@ export class PFMParser {
 			this.list_pending_paras = prev.pending_paras;
 		} else {
 			this.list_pending_paras = [];
+		}
+	}
+
+	private leave_svelte_block(): void {
+		this.svelte_block_depth--;
+		if (this.svelte_block_depth > 0 && this.svelte_block_stack.length > 0) {
+			const prev = this.svelte_block_stack.pop()!;
+			this.svelte_block_id = prev.block_id;
+			this.svelte_branch_id = prev.branch_id;
+			this.svelte_block_tag = prev.tag;
 		}
 	}
 
@@ -2631,42 +2646,100 @@ export class PFMParser {
 	 * close an inline html element by unwinding state/node stacks.
 	 */
 	private close_html_inline(html_id: number, end: number): void {
-		// unwind the node stack and state stack to find and close this html element.
-		// the state stack can be deeper than the node stack because some states
-		// (inline) carry no node, so when we hit the target html node we keep
-		// popping states until we drain the owning html_element/html_block_element
-		// frame - otherwise it strands on the stack and swallows trailing content.
-		while (this.node_stack.length > 1) {
-			const top_id = this.node_stack[this.node_stack.length - 1];
-
-			if (top_id === html_id) {
-				// found the html element - commit and close it
-				this.pending_remove(html_id);
-				this.emit_close(html_id, end);
+		if (this.node_stack.lastIndexOf(html_id) <= 0) {
+			// the opener is no longer on the node stack
+			while (this.node_stack.length > 1) {
+				const top_id = this.node_stack[this.node_stack.length - 1];
+				if (!this.is_closed(top_id)) {
+					this.out.set_value_end(top_id, this.cursor);
+					this.emit_close(top_id, this.cursor);
+				}
 				this.node_stack.pop();
-				while (this.states.length > 0) {
-					const popped = this.states.pop()!;
-					if (popped === StateKind.html_element) break;
-					if (popped === StateKind.html_block_element) {
-						this.html_block_depth--;
-						break;
-					}
-				}
-				// pop trailing inline state if present
-				if (this.states[this.states.length - 1] === StateKind.inline) {
-					this.states.pop();
-				}
-				return;
+				this.states.pop();
 			}
+			return;
+		}
 
-			// close intermediate nodes (text, emphasis, etc.)
-			if (!this.is_closed(top_id)) {
-				this.out.set_value_end(top_id, this.cursor);
-				this.emit_close(top_id, this.cursor);
+		// node and state frames do not pair up one to one, a list owns two
+		// nodes but one state and inline owns none, so close the nodes first
+		// and then drain states down to the owning html frame
+		while (this.node_stack[this.node_stack.length - 1] !== html_id) {
+			this.close_node_inside_html();
+		}
+		this.pending_remove(html_id);
+		this.emit_close(html_id, end);
+		this.node_stack.pop();
+		while (this.states.length > 0) {
+			const popped = this.states.pop()!;
+			if (popped === StateKind.html_element) break;
+			if (popped === StateKind.html_block_element) {
+				this.html_block_depth--;
+				break;
 			}
-			this.node_stack.pop();
+		}
+		// pop trailing inline state if present
+		if (this.states[this.states.length - 1] === StateKind.inline) {
 			this.states.pop();
 		}
+	}
+
+	// containers also unwind their depth counters, paragraph close truncates
+	// the node stack to a base computed from them
+	private close_node_inside_html(): void {
+		const id = this.node_stack[this.node_stack.length - 1];
+		switch (this.kind_of(id)) {
+			case NodeKind.list_item:
+				this.close_list_nodes();
+				return;
+			case NodeKind.table_cell:
+				this.emit_close(id, this.cursor);
+				this.node_stack.pop();
+				this.table_cell_col++;
+				return;
+			case NodeKind.table:
+				// the row is not on the node stack
+				if (this.table_row_id !== 0 && !this.is_closed(this.table_row_id)) {
+					this.pad_and_close_row();
+				}
+				this.close_table_node();
+				return;
+			case NodeKind.block_quote:
+				this.emit_close(id, this.cursor);
+				this.node_stack.pop();
+				this.block_quote_depth--;
+				return;
+			case NodeKind.svelte_branch:
+				this.emit_close(id, this.cursor);
+				this.node_stack.pop();
+				return;
+			case NodeKind.svelte_block:
+				this.emit_close(id, this.cursor);
+				this.node_stack.pop();
+				this.leave_svelte_block();
+				return;
+			case NodeKind.directive_container:
+				this.emit_close(id, this.cursor);
+				this.node_stack.pop();
+				this.directive_colon_counts.pop();
+				return;
+			case NodeKind.heading:
+				this.in_heading = false;
+				break;
+			case NodeKind.directive_inline:
+				this.directive_text_pop(id);
+				break;
+		}
+		if (this.kind_of(id) !== NodeKind.paragraph && this.pending_has(id)) {
+			// an unclosed delimiter becomes literal text now, revoking it only at
+			// finalize would come after a tight list has already unwrapped its
+			// paragraph
+			this.out.revoke(id);
+			this.pending_remove(id);
+		} else if (!this.is_closed(id)) {
+			this.out.set_value_end(id, this.cursor);
+			this.emit_close(id, this.cursor);
+		}
+		this.node_stack.pop();
 	}
 
 	/**
@@ -6602,13 +6675,7 @@ export class PFMParser {
 			this.emit_close(this.svelte_block_id, this.cursor);
 			this.node_stack.pop(); // block
 			this.states.pop();
-			this.svelte_block_depth--;
-			if (this.svelte_block_depth > 0 && this.svelte_block_stack.length > 0) {
-				const prev = this.svelte_block_stack.pop()!;
-				this.svelte_block_id = prev.block_id;
-				this.svelte_branch_id = prev.branch_id;
-				this.svelte_block_tag = prev.tag;
-			}
+			this.leave_svelte_block();
 			return false;
 		}
 
@@ -6647,16 +6714,7 @@ export class PFMParser {
 					this.emit_close(this.svelte_block_id, token.end);
 					this.node_stack.pop(); // block
 					this.states.pop();
-					this.svelte_block_depth--;
-					if (
-						this.svelte_block_depth > 0 &&
-						this.svelte_block_stack.length > 0
-					) {
-						const prev = this.svelte_block_stack.pop()!;
-						this.svelte_block_id = prev.block_id;
-						this.svelte_branch_id = prev.branch_id;
-						this.svelte_block_tag = prev.tag;
-					}
+					this.leave_svelte_block();
 					this.chomp(token.end, true);
 					return false;
 				}
@@ -8263,8 +8321,13 @@ export class PFMParser {
 	 * close the current table and pop state.
 	 */
 	private end_table(): void {
-		this.emit_close(this.table_node_id, this.cursor);
 		this.states.pop(); // pop table_body
+		this.close_table_node();
+	}
+
+	// leaves the state stack alone, the caller pops it
+	private close_table_node(): void {
+		this.emit_close(this.table_node_id, this.cursor);
 		this.node_stack.pop(); // pop table node
 		this.table_col_count = 0;
 		this.table_node_id = 0;
