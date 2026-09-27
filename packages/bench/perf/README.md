@@ -105,10 +105,25 @@ the same iteration count, taken from the slower arm. Each window gets at least
 is a call over 50 ms, which already dwarfs any pause. The quadratic workloads
 (see below) would otherwise take minutes each.
 
-**Independent passes.** `--repeat 2` runs the whole suite twice. A row counts
-only if both passes agree in direction, and the smaller speedup is the one
-reported. Consecutive rounds are correlated by slow machine drift, but two
-passes separated by the whole suite are not.
+**Independent passes.** `--repeat 2` runs the whole suite twice, each pass in
+its own fresh Node process. A row counts only if both passes agree in
+direction, and the smaller speedup is the one reported. Consecutive rounds are
+correlated by slow machine drift, but two passes separated by the whole suite
+are not. Two passes in one process are correlated in another way. Each arm's
+module instance gets its own JIT outcome and keeps it for the life of the
+process. In one A/A calibration, `sourcemap-v3` came out 3.8% off on all 30
+rows, from two builds of the same commit. Two passes in that process would
+have agreed with each other, and the bias would have passed the agreement
+rule. A fresh process per pass makes agreement mean that the result replicated
+across independent JIT outcomes.
+
+The parent `ab.mjs` holds the machine lock for the whole run. It starts each
+pass with the same node binary, the same node flags and the same arguments
+with `--repeat 1`, and it combines the passes. Children inherit the CPU
+affinity, so a `taskset` on the parent pins every pass. Each pass measures its
+own anchor drift, and the report shows the worst one. `--repeat 1` runs in a
+single process as before. `calibrate.mjs` also measures one process, so its
+floor does not include this per-process bias.
 
 **Anchor drift.** A fixed workload is measured at the start and end of every
 run. It is defined inside the harness, so no change under test can alter it,
@@ -141,7 +156,8 @@ A row has moved only if **all** of the following hold:
 
 1. the effect exceeds the calibrated noise floor,
 2. the 95% CI excludes 1.0,
-3. with `--repeat 2`, both passes agree in direction,
+3. with `--repeat 2`, both passes agree in direction, each measured in its own
+   process,
 4. the paired median and the best-of ratio agree. Otherwise the row is
    reported as `unstable`.
 
@@ -417,7 +433,14 @@ pnpm -C packages/mdsvex exec vite build --config vite.config.build.ts --minify f
 
 ## Findings from building the harness
 
-These were pre-existing on `next` (b36f2e15), and the harness surfaced them.
+One finding is about the harness itself. Two builds of the same commit can
+differ by up to 3.8% on a whole mode for the life of a process, because each
+module instance keeps its own JIT outcome. `--repeat` used to run both passes
+in one process, where both passes inherited the same bias and agreed with
+each other, so it could not detect this. Passes now run in separate processes
+(see Independent passes).
+
+The rest were pre-existing on `next` (b36f2e15), and the harness surfaced them.
 The v3 map, the loop guard and the incremental mismatch have since been fixed.
 
 - **`mappings_to_v3` was quadratic (fixed).** It took 3.2 ms at 10KB, 1.3 s
