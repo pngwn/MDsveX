@@ -133,7 +133,6 @@ describe('CompilerSession', () => {
 		expect(session.tree.get_buffer().size).toBe(1);
 		expect(session.renderer.html).toBe('');
 		expect(session.renderer.out.length).toBe(0);
-		expect(session.renderer.entries.length).toBe(0);
 		expect(session.renderer.cursor.src).toBe('');
 	});
 

@@ -1123,14 +1123,13 @@ export class CursorHTMLRenderer {
 	}
 
 	/**
-	 * drop the html, the chunks and the pending mappings of the last render,
-	 * and every reference to its source, so a renderer kept for reuse holds
-	 * no document. update and update_mapped truncate these arrays anyway, so
-	 * the next render pays nothing extra.
+	 * drop the html and the chunks of the last render, and every reference
+	 * to its source, so a renderer kept for reuse holds no document. update
+	 * and update_mapped truncate these arrays anyway, so the next render pays
+	 * nothing extra. the mapping sink releases itself after every render.
 	 */
 	release(): void {
 		this.out.length = 0;
-		this.entries.length = 0;
 		this.html = '';
 		this.blocks.length = 0;
 		this.closed?.clear();
