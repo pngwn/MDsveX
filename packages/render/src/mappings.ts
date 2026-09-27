@@ -116,3 +116,90 @@ export function data_structure(
 ): MappingData {
 	return { structure: true, nodeIndex: node_index, role };
 }
+
+// pending mapping records
+
+/** preset of a record's data, packed into its code with the role. */
+export const P_TEXT = 0;
+export const P_CODE = 1;
+export const P_SVELTE = 2;
+export const P_STRUCTURE = 3;
+
+export const R_NODE = 0;
+export const R_CONTENT = 1;
+export const R_OPEN_SYNTAX = 2;
+export const R_CLOSE_SYNTAX = 3;
+
+/** a record's code, the data preset and the role in one word. */
+export function record_code(preset: number, role: number): number {
+	return (preset << 2) | role;
+}
+
+/**
+ * record layout: out index, out chunk count, source offset, source length,
+ * node index (as uint32, so -1 reads back through | 0) and code.
+ */
+export const RECORD_SIZE = 6;
+
+const ROLE_NAMES: MappingRole[] = [
+	'node',
+	'content',
+	'open_syntax',
+	'close_syntax',
+];
+
+/** the data object a record stands for, built exactly as the presets build it. */
+export function record_data(code: number, node_index: number): MappingData {
+	const role = ROLE_NAMES[code & 3];
+	switch (code >> 2) {
+		case P_TEXT:
+			return data_text(node_index, role);
+		case P_CODE:
+			return data_code(node_index, role);
+		case P_SVELTE:
+			return data_svelte(node_index, role);
+		default:
+			return data_structure(node_index, role);
+	}
+}
+
+// records past this many words are dropped after use rather than kept for
+// the next render, so one huge document does not pin its buffer
+const SINK_KEEP = 1 << 18;
+const SINK_INITIAL = RECORD_SIZE * 256;
+
+/**
+ * pending mappings as flat numeric records in render order, resolved once the
+ * generated offsets are known. a renderer walk pushes several per node, so a
+ * typed buffer replaces an object and a data object per mapping.
+ */
+export class MapSink {
+	rec: Uint32Array = new Uint32Array(SINK_INITIAL);
+	/** words used, a multiple of RECORD_SIZE. */
+	n = 0;
+	/**
+	 * false drops open_syntax and close_syntax records. a v3 map skips them,
+	 * so its renders never write them.
+	 */
+	syntax = true;
+
+	/** double the buffer, keeping the used words. */
+	grow(): Uint32Array {
+		const next = new Uint32Array(this.rec.length * 2);
+		next.set(this.rec.subarray(0, this.n));
+		this.rec = next;
+		return next;
+	}
+
+	/** empty the sink for a render that keeps or drops syntax records. */
+	begin(syntax: boolean): void {
+		this.n = 0;
+		this.syntax = syntax;
+	}
+
+	/** let go of a buffer that one large render grew. */
+	release(): void {
+		this.n = 0;
+		if (this.rec.length > SINK_KEEP) this.rec = new Uint32Array(SINK_INITIAL);
+	}
+}

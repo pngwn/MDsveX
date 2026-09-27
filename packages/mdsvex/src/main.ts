@@ -7,6 +7,7 @@ import {
 } from '@mdsvex/parse';
 import type { ParsePlugin, RawOffsets } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
+import type { NodeBuffer } from '@mdsvex/parse/utils';
 import { CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
 import { mappings_to_v3 } from '@mdsvex/render/sourcemap';
 import type { Mapping, MappingData } from '@mdsvex/render/mappings';
@@ -33,14 +34,18 @@ export interface CompileResult {
 	mappings?: Mapping<MappingData>[];
 }
 
-function render_once(raw: string, options?: CompileOptions): CompileResult {
-	// parser offsets index the normalized string, so render and plugins read it too
-	const source = normalize_newlines(raw);
+export interface CompileV3Result {
+	code: string;
+	/** equal to mappings_to_v3 over compile's mappings with the raw source. */
+	map: SourceMapV3;
+}
 
+/** parse a normalized source into its own tree, running parse plugins over it. */
+function parse_once(source: string, plugins?: ParsePlugin[]): NodeBuffer {
 	let dispatcher: PluginDispatcher | undefined;
-	if (options?.parsePlugins && options.parsePlugins.length > 0) {
+	if (plugins && plugins.length > 0) {
 		const text_source = new SourceTextSource(source);
-		dispatcher = new PluginDispatcher(options.parsePlugins, text_source);
+		dispatcher = new PluginDispatcher(plugins, text_source);
 	}
 
 	const tree = new TreeBuilder(source.length >> 3 || 16, dispatcher);
@@ -50,17 +55,43 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	if (dispatcher) {
 		dispatcher.run_sequential(tree.get_buffer());
 	}
+	return tree.get_buffer();
+}
 
+function render_once(raw: string, options?: CompileOptions): CompileResult {
+	// parser offsets index the normalized string, so render and plugins read it too
+	const source = normalize_newlines(raw);
+	const nodes = parse_once(source, options?.parsePlugins);
 	const renderer = new CursorHTMLRenderer({ cache: false });
 
 	if (options?.sourcemap) {
-		const result = renderer.update_mapped(tree.get_buffer(), source);
+		const result = renderer.update_mapped(nodes, source);
 		remap_to_raw(raw, result.mappings);
 		return { code: renderer.html, mappings: result.mappings };
 	}
 
-	renderer.update(tree.get_buffer(), source);
+	renderer.update(nodes, source);
 	return { code: renderer.html };
+}
+
+/** html and v3 map of a parsed document, source being raw normalized. */
+function render_v3(
+	renderer: CursorHTMLRenderer,
+	nodes: NodeBuffer,
+	source: string,
+	raw: string,
+	file?: string
+): CompileV3Result {
+	// only a collapsed \r\n moves offsets, and it is the only change of length.
+	// without one the records already index raw and encode straight to v3
+	if (source.length === raw.length) {
+		const map = renderer.update_v3(nodes, source, raw, file);
+		return { code: renderer.html, map };
+	}
+	const result = renderer.update_mapped(nodes, source);
+	remap_to_raw(raw, result.mappings);
+	const code = renderer.html;
+	return { code, map: mappings_to_v3(result.mappings, raw, code, file) };
 }
 
 /**
@@ -75,12 +106,8 @@ export class CompilerSession {
 	private parser: PFMParser | null = null;
 	private renderer = new CursorHTMLRenderer({ cache: false });
 
-	compile(raw: string, options?: CompileOptions): CompileResult {
-		if (options?.parsePlugins && options.parsePlugins.length > 0) {
-			return render_once(raw, options);
-		}
-
-		const source = normalize_newlines(raw);
+	/** parse a normalized source into the session's arena. */
+	private parse(source: string): NodeBuffer {
 		if (this.tree === null) {
 			this.tree = new TreeBuilder(source.length >> 3 || 16);
 			this.parser = new PFMParser(this.tree);
@@ -89,7 +116,16 @@ export class CompilerSession {
 		}
 
 		this.parser!.parse(source);
-		const nodes = this.tree.get_buffer();
+		return this.tree.get_buffer();
+	}
+
+	compile(raw: string, options?: CompileOptions): CompileResult {
+		if (options?.parsePlugins && options.parsePlugins.length > 0) {
+			return render_once(raw, options);
+		}
+
+		const source = normalize_newlines(raw);
+		const nodes = this.parse(source);
 		if (options?.sourcemap) {
 			const result = this.renderer.update_mapped(nodes, source);
 			remap_to_raw(raw, result.mappings);
@@ -98,6 +134,26 @@ export class CompilerSession {
 
 		this.renderer.update(nodes, source);
 		return { code: this.renderer.html };
+	}
+
+	/**
+	 * html and v3 map of raw, the map equal to mappings_to_v3 over
+	 * compile(raw, { sourcemap: true }).mappings with raw as the source. the
+	 * vite plugin needs nothing else, so no Mapping objects are built.
+	 */
+	compile_v3(
+		raw: string,
+		file?: string,
+		parse_plugins?: ParsePlugin[]
+	): CompileV3Result {
+		const source = normalize_newlines(raw);
+		if (parse_plugins && parse_plugins.length > 0) {
+			// the dispatcher reads this source, so the tree is not the session's
+			const nodes = parse_once(source, parse_plugins);
+			const renderer = new CursorHTMLRenderer({ cache: false });
+			return render_v3(renderer, nodes, source, raw, file);
+		}
+		return render_v3(this.renderer, this.parse(source), source, raw, file);
 	}
 }
 
@@ -206,18 +262,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			transform(code, id) {
 				if (!matches(id)) return;
 
-				const result = compiler.compile(code, {
-					parsePlugins: options.parsePlugins,
-					sourcemap: true,
-				});
-
-				if (result.mappings) {
-					storedMaps.set(
-						id,
-						mappings_to_v3(result.mappings, code, result.code, id)
-					);
-					storedSources.set(id, code);
-				}
+				const result = compiler.compile_v3(code, id, options.parsePlugins);
+				storedMaps.set(id, result.map);
+				storedSources.set(id, code);
 
 				// return NO map, avoids poisoning getCombinedSourcemap()
 				return { code: result.code };
