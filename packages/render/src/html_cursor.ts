@@ -36,6 +36,95 @@ export function escape(text: string): string {
 	return text.replace(ESCAPE_MATCH, escape_replace);
 }
 
+//  source escape index
+
+// text nodes are visited in source order, so rather than testing every value
+// with a regex, keep the next source position of each escapable char and move
+// it forward with a native indexOf. each pointer then scans the source about
+// once per render and a value needs escaping only when a pointer falls in it.
+// the pointers are the first match at or after esc_lo, or esc_len for none.
+let esc_src = '';
+let esc_len = 0;
+let esc_lo = 0;
+let esc_amp = -1;
+let esc_lt = -1;
+let esc_gt = -1;
+let esc_quot = -1;
+
+function esc_reset(src: string): void {
+	esc_src = src;
+	esc_len = src.length;
+	esc_lo = 0;
+	esc_amp = -1;
+	esc_lt = -1;
+	esc_gt = -1;
+	esc_quot = -1;
+}
+
+function esc_next(ch: string, from: number): number {
+	const i = esc_src.indexOf(ch, from);
+	return i === -1 ? esc_len : i;
+}
+
+/** escape(c.text()) for the current node, using the source index when the text is a source slice. */
+export function escape_text(c: Cursor): string {
+	const s = c.prebuilt;
+	if (s !== undefined) return escape(s);
+	const vs = c.value_start;
+	let ve = c.value_end;
+	// same empty cases as Cursor.text()
+	if (vs === NONE || ve === NONE || ve <= vs) return '';
+	const src = c.source;
+	if (src !== esc_src) esc_reset(src);
+	if (ve > esc_len) {
+		ve = esc_len;
+		if (ve <= vs) return '';
+	}
+	if (vs < esc_lo) esc_reset(src);
+	if (esc_amp < vs) esc_amp = esc_next('&', vs);
+	if (esc_lt < vs) esc_lt = esc_next('<', vs);
+	if (esc_gt < vs) esc_gt = esc_next('>', vs);
+	if (esc_quot < vs) esc_quot = esc_next('"', vs);
+	esc_lo = vs;
+	let m = esc_amp;
+	if (esc_lt < m) m = esc_lt;
+	if (esc_gt < m) m = esc_gt;
+	if (esc_quot < m) m = esc_quot;
+	if (m >= ve) return src.slice(vs, ve);
+	return escape_hits(src, vs, ve, m);
+}
+
+/** build the escaped value from source slices and entities, m is the first hit. */
+function escape_hits(src: string, vs: number, ve: number, m: number): string {
+	let text = '';
+	let pos = vs;
+	while (m < ve) {
+		const ch = src.charCodeAt(m);
+		text += src.slice(pos, m);
+		if (ch === 38) {
+			text += '&amp;';
+			esc_amp = esc_next('&', m + 1);
+		} else if (ch === 60) {
+			text += '&lt;';
+			esc_lt = esc_next('<', m + 1);
+		} else if (ch === 62) {
+			text += '&gt;';
+			esc_gt = esc_next('>', m + 1);
+		} else {
+			text += '&quot;';
+			esc_quot = esc_next('"', m + 1);
+		}
+		pos = m + 1;
+		m = esc_amp;
+		if (esc_lt < m) m = esc_lt;
+		if (esc_gt < m) m = esc_gt;
+		if (esc_quot < m) m = esc_quot;
+	}
+	// every pointer is now at or past ve
+	esc_lo = ve;
+	return text + src.slice(pos, ve);
+}
+
 //  kind constants
 
 export const K_ROOT = 0;
@@ -244,7 +333,8 @@ export function _children(
 ): void {
 	if (!c.goto_first_child()) return;
 	do {
-		if (c.kind === K_TEXT) {
+		const k = c.kind;
+		if (k === K_TEXT) {
 			const vs = c.value_start,
 				ve = c.value_end;
 			if (entries && vs !== NONE && ve > vs) {
@@ -257,8 +347,9 @@ export function _children(
 					data_text(c.index, 'content')
 				);
 			}
-			out.push(escape(c.text()));
-		} else {
+			out.push(escape_text(c));
+		} else if (k !== K_LINE_BREAK) {
+			// line breaks render nothing, a fifth of visited nodes skip the call
 			_node(c, out, entries);
 		}
 	} while (c.goto_next_sibling());
@@ -355,7 +446,8 @@ export function _node(
 					data_code(c.index, 'content')
 				);
 			}
-			out.push(escape(c.text()).replace(/\n/g, ' '));
+			const code = escape_text(c);
+			out.push(code.indexOf('\n') === -1 ? code : code.replace(/\n/g, ' '));
 			const bc = out.length;
 			out.push('</code>');
 			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_code);
@@ -390,7 +482,7 @@ export function _node(
 					data_code(c.index, 'content')
 				);
 			}
-			out.push(escape(c.text()));
+			out.push(escape_text(c));
 			const bc = out.length;
 			out.push('</code></pre>');
 			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_code);
@@ -788,14 +880,14 @@ function _table_content(
 	if (in_body) out.push('</tbody>');
 }
 
-/** cell open tags per alignment, precomputed so each is one chunk. */
-function _cell_opens(tag: string): Map<string, string> {
-	return new Map([
-		['none', `<${tag}>`],
-		['left', `<${tag} align="left">`],
-		['center', `<${tag} align="center">`],
-		['right', `<${tag} align="right">`],
-	]);
+/** cell open tags (none, left, center, right), precomputed so each is one chunk. */
+function _cell_opens(tag: string): string[] {
+	return [
+		`<${tag}>`,
+		`<${tag} align="left">`,
+		`<${tag} align="center">`,
+		`<${tag} align="right">`,
+	];
 }
 const TH_OPEN = _cell_opens('th');
 const TD_OPEN = _cell_opens('td');
@@ -814,11 +906,12 @@ function _table_cells(
 	do {
 		if (c.kind === K_TABLE_CELL) {
 			const align = alignments[col];
-			const open = opens.get(align ?? 'none');
-			// the parser only emits the four keys above, anything else is built as before
-			if (open !== undefined) out.push(open);
-			else if (align) out.push(`<${tag} align="${align}">`);
-			else out.push(`<${tag}>`);
+			// the parser only emits these four values, anything else is built as before
+			if (align === 'left') out.push(opens[1]);
+			else if (align === 'center') out.push(opens[2]);
+			else if (align === 'right') out.push(opens[3]);
+			else if (align && align !== 'none') out.push(`<${tag} align="${align}">`);
+			else out.push(opens[0]);
 			_children(c, out, entries);
 			out.push(close);
 			col++;
@@ -829,6 +922,10 @@ function _table_cells(
 
 //  mapping resolution
 
+// grow-only cumulative offset table shared by every render, resolution is
+// synchronous so one table is enough and a fresh renderer allocates nothing.
+let offsets_scratch = new Uint32Array(0);
+
 /** convert pending mapping entries to volar-compatible Mapping[] using out[] offsets. */
 export function _resolve_mappings(
 	out: string[],
@@ -836,13 +933,24 @@ export function _resolve_mappings(
 	scratch?: Uint32Array
 ): Mapping<MappingData>[] {
 	// build cumulative offset table
-	const offsets =
-		scratch !== undefined && scratch.length >= out.length + 1
-			? scratch
-			: new Uint32Array(out.length + 1);
+	const needed = out.length + 1;
+	let offsets: Uint32Array;
+	if (scratch !== undefined && scratch.length >= needed) {
+		offsets = scratch;
+	} else {
+		if (offsets_scratch.length < needed) {
+			let capacity = 16;
+			while (capacity < needed) capacity <<= 1;
+			offsets_scratch = new Uint32Array(capacity);
+		}
+		offsets = offsets_scratch;
+	}
 	offsets[0] = 0;
 	for (let i = 0; i < out.length; i++) {
-		offsets[i + 1] = offsets[i] + out[i].length;
+		// out holds seq, cons, sliced and internalized strings, so a plain
+		// .length load is megamorphic. the concat tells turbofan it is a
+		// string and the load becomes a direct length read.
+		offsets[i + 1] = offsets[i] + (out[i] + '').length;
 	}
 
 	const mappings: Mapping<MappingData>[] = [];
@@ -911,7 +1019,6 @@ export class CursorHTMLRenderer {
 	private cache: boolean;
 	private out: string[] = [];
 	private entries: PendingMapping[] = [];
-	private mapping_offsets = new Uint32Array(0);
 
 	constructor(opts?: { cache?: boolean }) {
 		this.cache = opts?.cache ?? true;
@@ -927,11 +1034,13 @@ export class CursorHTMLRenderer {
 		}
 		const c = this.cursor;
 		c.reset();
+		esc_reset(source);
 
 		// no caching, single-pass full render
 		if (!this.cache) {
 			const out = this.out;
-			out.length = 0;
+			// a fresh renderer has empty arrays and the length store is not free
+			if (out.length !== 0) out.length = 0;
 			_node(c, out);
 			this.html = out.join('');
 			return this.blocks;
@@ -974,20 +1083,15 @@ export class CursorHTMLRenderer {
 		}
 		const c = this.cursor;
 		c.reset();
+		esc_reset(source);
 
 		const out = this.out;
 		const entries = this.entries;
-		out.length = 0;
-		entries.length = 0;
+		if (out.length !== 0) out.length = 0;
+		if (entries.length !== 0) entries.length = 0;
 		_node(c, out, entries);
 		this.html = out.join('');
-		const needed = out.length + 1;
-		if (this.mapping_offsets.length < needed) {
-			let capacity = 16;
-			while (capacity < needed) capacity <<= 1;
-			this.mapping_offsets = new Uint32Array(capacity);
-		}
-		const mappings = _resolve_mappings(out, entries, this.mapping_offsets);
+		const mappings = _resolve_mappings(out, entries);
 		return { blocks: this.blocks, mappings };
 	}
 
