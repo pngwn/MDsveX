@@ -491,6 +491,52 @@ export class NodeBuffer {
 		return index;
 	}
 
+	/**
+	 * push a closed, committed node with its value range, the same node as a
+	 * push followed by set_value, set_end and commit_node.
+	 * @returns buffer index of the new node.
+	 */
+	push_leaf(
+		kind: NodeKind,
+		start: number,
+		end: number,
+		value_start: number,
+		value_end: number,
+		parent = 0xffffffff
+	): number {
+		const index = this._size;
+		if (index >= this.capacity) {
+			this.grow();
+		}
+
+		this._kinds[index] = kind;
+		this._starts[index] = start >>> 0;
+		this._ends[index] = end >>> 0;
+		this._extras[index] = 0;
+		this._value_starts[index] = value_start;
+		this._value_ends[index] = value_end;
+		this._pending_nodes[index] = 0;
+		this._size = index + 1;
+		this._parents[index] = parent;
+		this._next_siblings[index] = 0xffffffff;
+		this._prev_siblings[index] = 0xffffffff;
+		this._children_starts[index] = 0xffffffff;
+		this._children_ends[index] = 0xffffffff;
+
+		if (parent !== 0xffffffff) {
+			const last = this._children_ends[parent];
+			if (last === 0xffffffff) {
+				this._children_starts[parent] = index;
+			} else {
+				this._next_siblings[last] = index;
+				this._prev_siblings[index] = last;
+			}
+			this._children_ends[parent] = index;
+		}
+
+		return index;
+	}
+
 	push_pending(
 		kind: NodeKind,
 		cursor: number,

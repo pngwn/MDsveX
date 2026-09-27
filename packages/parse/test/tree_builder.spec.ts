@@ -376,6 +376,25 @@ class ShiftedIds implements Emitter {
 	text(parent: number, start: number, end: number): void {
 		this.out.text(this.shift(parent), start, end);
 	}
+	leaf_text(
+		id: number,
+		parent: number,
+		start: number,
+		end: number,
+		value_start: number,
+		value_end: number,
+		value_first: boolean
+	): void {
+		this.out.leaf_text(
+			this.shift(id),
+			this.shift(parent),
+			start,
+			end,
+			value_start,
+			value_end,
+			value_first
+		);
+	}
 	attr(id: number, key: string, value: any): void {
 		this.out.attr(this.shift(id), key, value);
 	}
@@ -439,6 +458,74 @@ describe('TreeBuilder ids as indices', () => {
 	});
 });
 
+// forwards every opcode, replaying leaf_text as the calls it stands for
+class ExpandedLeaves extends ShiftedIds {
+	leaf_count = 0;
+	constructor(out: Emitter) {
+		super(out, 0);
+	}
+	leaf_text(
+		id: number,
+		parent: number,
+		start: number,
+		end: number,
+		value_start: number,
+		value_end: number,
+		value_first: boolean
+	): void {
+		this.leaf_count++;
+		this.open(id, NodeKind.text, start, parent, 0, false);
+		this.set_value_start(id, value_start);
+		if (value_first) {
+			this.set_value_end(id, value_end);
+			this.close(id, end);
+		} else {
+			this.close(id, end);
+			this.set_value_end(id, value_end);
+		}
+	}
+}
+
+describe('leaf text', () => {
+	const docs = [
+		'| a | b |\n| - | - |\n| x  | *y* z |\n\nafter *the* table\n',
+		'# heading text  \n\npara \\* escaped and <https://x.y> autolink\n',
+		'``unclosed code span\n\n> ```\n> fence in quote\n',
+		'- item *one*\n- item two\\\n  hard break\n\ntext:colon :name[dir]\n',
+	];
+
+	for (const doc of docs) {
+		it(`builds the same tree as the calls a leaf stands for: ${JSON.stringify(doc)}`, () => {
+			const direct = new TreeBuilder(8);
+			new PFMParser(direct).parse(doc);
+			const expanded = new TreeBuilder(8);
+			const emitter = new ExpandedLeaves(expanded);
+			new PFMParser(emitter).parse(doc);
+			expect(emitter.leaf_count).toBeGreaterThan(0);
+			expect(dump(direct.get_buffer())).toEqual(dump(expanded.get_buffer()));
+		});
+	}
+
+	it('sends a text run still open at the end of a feed the long way', () => {
+		const tb = new TreeBuilder(8);
+		const emitter = new ExpandedLeaves(tb);
+		const parser = new PFMParser(emitter);
+		parser.init();
+		parser.feed('some text that ');
+		expect(emitter.leaf_count).toBe(0);
+		parser.feed('continues\n\nnext para\n\nlast\n');
+		parser.finish();
+		// only the middle run closes inside the feed that opened it, the
+		// last one waits on its line end until finish
+		expect(emitter.leaf_count).toBe(1);
+		const whole = new TreeBuilder(8);
+		new PFMParser(whole).parse(
+			'some text that continues\n\nnext para\n\nlast\n'
+		);
+		expect(dump(tb.get_buffer())).toEqual(dump(whole.get_buffer()));
+	});
+});
+
 describe('parser id tables', () => {
 	const docs = [
 		'- tight\n- list\n\n1. loose\n\n2. list\n\n> quote **strong\n',
@@ -499,6 +586,25 @@ describe('parser id tables', () => {
 		}
 		text(...args: unknown[]): void {
 			this.ops.push(['text', ...args]);
+		}
+		leaf_text(
+			id: number,
+			parent: number,
+			start: number,
+			end: number,
+			value_start: number,
+			value_end: number,
+			value_first: boolean
+		): void {
+			this.open(id, NodeKind.text, start, parent, 0, false);
+			this.set_value_start(id, value_start);
+			if (value_first) {
+				this.set_value_end(id, value_end);
+				this.close(id, end);
+			} else {
+				this.close(id, end);
+				this.set_value_end(id, value_end);
+			}
 		}
 		attr(...args: unknown[]): void {
 			this.ops.push(['attr', ...args]);

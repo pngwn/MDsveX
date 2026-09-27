@@ -251,6 +251,41 @@ export class TreeBuilder implements Emitter {
 		}
 	}
 
+	leaf_text(
+		id: number,
+		parent: number,
+		start: number,
+		end: number,
+		value_start: number,
+		value_end: number,
+		value_first: boolean
+	): void {
+		const nodes = this.nodes;
+		if (this.id_to_index === null && id === nodes._size) {
+			// a closed text node is committed and never a list, so close has
+			// nothing left to do once the fields are written
+			nodes.push_leaf(
+				NodeKind.text,
+				start,
+				end,
+				value_start,
+				value_end,
+				parent === -1 ? NONE : parent
+			);
+			return;
+		}
+		// an id map or plugins need the full lifecycle, in the order sent
+		this.open(id, NodeKind.text, start, parent, 0, false);
+		this.set_value_start(id, value_start);
+		if (value_first) {
+			this.set_value_end(id, value_end);
+			this.close(id, end);
+		} else {
+			this.close(id, end);
+			this.set_value_end(id, value_end);
+		}
+	}
+
 	attr(id: number, key: string, value: any): void {
 		const idx = this.index_of(id);
 		if (idx === undefined) return;

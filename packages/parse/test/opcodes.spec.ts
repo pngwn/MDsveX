@@ -39,6 +39,25 @@ class RecordingEmitter implements Emitter {
 	text(parent: number, start: number, end: number): void {
 		this.ops.push({ op: 'text', parent, start, end });
 	}
+	leaf_text(
+		id: number,
+		parent: number,
+		start: number,
+		end: number,
+		value_start: number,
+		value_end: number,
+		value_first: boolean
+	): void {
+		this.open(id, NodeKind.text, start, parent, 0, false);
+		this.set_value_start(id, value_start);
+		if (value_first) {
+			this.set_value_end(id, value_end);
+			this.close(id, end);
+		} else {
+			this.close(id, end);
+			this.set_value_end(id, value_end);
+		}
+	}
 	attr(id: number, key: string, value: any): void {
 		this.ops.push({ op: 'attr', id, key, value });
 	}

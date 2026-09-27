@@ -1,10 +1,10 @@
-import type { Emitter } from "@mdsvex/parse/opcodes";
-import { kind_to_string } from "@mdsvex/parse/utils";
-import { SvelteMap } from "svelte/reactivity";
+import type { Emitter } from '@mdsvex/parse/opcodes';
+import { kind_to_string } from '@mdsvex/parse/utils';
+import { SvelteMap } from 'svelte/reactivity';
 
 export type Op =
 	| {
-			op: "open";
+			op: 'open';
 			id: number;
 			kind: number;
 			kindName: string;
@@ -13,11 +13,11 @@ export type Op =
 			extra: number;
 			pending: boolean;
 	  }
-	| { op: "close"; id: number; end: number }
-	| { op: "text"; parent: number; start: number; end: number }
-	| { op: "attr"; id: number; key: string; value: any }
-	| { op: "revoke"; id: number }
-	| { op: "commit"; id: number };
+	| { op: 'close'; id: number; end: number }
+	| { op: 'text'; parent: number; start: number; end: number }
+	| { op: 'attr'; id: number; key: string; value: any }
+	| { op: 'revoke'; id: number }
+	| { op: 'commit'; id: number };
 
 export class RecordingEmitter implements Emitter {
 	ops: Op[] = [];
@@ -28,48 +28,71 @@ export class RecordingEmitter implements Emitter {
 		start: number,
 		parent: number,
 		extra: number,
-		pending: boolean,
+		pending: boolean
 	): void {
 		this.ops.push({
-			op: "open",
+			op: 'open',
 			id,
 			kind,
 			kindName: kind_to_string(kind),
 			start,
 			parent,
 			extra,
-			pending,
+			pending
 		});
 	}
 
 	close(id: number, end: number): void {
-		this.ops.push({ op: "close", id, end });
+		this.ops.push({ op: 'close', id, end });
 	}
 
 	text(parent: number, start: number, end: number): void {
-		this.ops.push({ op: "text", parent, start, end });
+		this.ops.push({ op: 'text', parent, start, end });
+	}
+
+	// the viewer replays node lifecycles, so a leaf is recorded as the calls
+	// it stands for
+	leaf_text(
+		id: number,
+		parent: number,
+		start: number,
+		end: number,
+		value_start: number,
+		value_end: number,
+		value_first: boolean
+	): void {
+		// kind 1 is NodeKind.text, a const enum the dist does not export
+		this.open(id, 1, start, parent, 0, false);
+		this.set_value_start(id, value_start);
+		if (value_first) {
+			this.set_value_end(id, value_end);
+			this.close(id, end);
+		} else {
+			this.close(id, end);
+			this.set_value_end(id, value_end);
+		}
 	}
 
 	attr(id: number, key: string, value: any): void {
-		this.ops.push({ op: "attr", id, key, value });
+		this.ops.push({ op: 'attr', id, key, value });
 	}
 
 	set_value_start(id: number, pos: number): void {
-		this.attr(id, "value_start", pos);
+		this.attr(id, 'value_start', pos);
 	}
 
 	set_value_end(id: number, pos: number): void {
-		this.attr(id, "value_end", pos);
+		this.attr(id, 'value_end', pos);
 	}
 
 	cursor(_pos: number): void {}
 
 	revoke(id: number): void {
-		this.ops.push({ op: "revoke", id });
+		this.ops.push({ op: 'revoke', id });
 	}
 
 	commit(id: number): void {
-		this.ops.push({ op: "commit", id });
+		this.ops.push({ op: 'commit', id });
 	}
 
 	reset(): void {
@@ -98,7 +121,7 @@ const BLOCK_START_CHARS = new Set([
 	0x60, // `  code fence
 	0x7c, // |  table
 	0x5f, // _  thematic break
-	0x3c, // <  html tag / comment
+	0x3c // <  html tag / comment
 ]);
 
 function looks_like_block_start(tail: string): boolean {
@@ -113,71 +136,59 @@ function looks_like_block_start(tail: string): boolean {
 	return BLOCK_START_CHARS.has(ch);
 }
 
-function extract_text(
-	node: RenderNode,
-	source: string,
-	fed_length: number,
-): void {
+function extract_text(node: RenderNode, source: string, fed_length: number): void {
 	const kind = node.kind;
 	if (
-		kind === "text" ||
-		kind === "heading" ||
-		kind === "code_fence" ||
-		kind === "code_span" ||
-		kind === "html_comment"
+		kind === 'text' ||
+		kind === 'heading' ||
+		kind === 'code_fence' ||
+		kind === 'code_span' ||
+		kind === 'html_comment'
 	) {
 		// For code_fence: only render once value_start is known (avoids showing ```info)
-		if (kind === "code_fence" && node.attrs.value_start == null) {
-			node.text = "";
+		if (kind === 'code_fence' && node.attrs.value_start == null) {
+			node.text = '';
 			return;
 		}
 		const vs = node.attrs.value_start ?? node.attrs._open_start;
 		// Use value_end if set, otherwise use fed_length as eager boundary
 		const ve = node.attrs.value_end ?? node.attrs._end ?? fed_length;
-		if (typeof vs === "number" && typeof ve === "number" && ve > vs) {
+		if (typeof vs === 'number' && typeof ve === 'number' && ve > vs) {
 			let text = source.slice(vs, ve);
 			const unclosed = node.attrs.value_end == null && node.attrs._end == null;
 			if (unclosed) {
-				const last_nl = text.lastIndexOf("\n");
+				const last_nl = text.lastIndexOf('\n');
 				if (last_nl !== -1) {
 					const tail = text.slice(last_nl + 1);
 					if (
-						kind === "code_fence"
-							? tail.trimStart().startsWith("`")
-							: looks_like_block_start(tail)
+						kind === 'code_fence' ? tail.trimStart().startsWith('`') : looks_like_block_start(tail)
 					) {
 						text = text.slice(0, last_nl + 1);
 					}
-				} else if (kind === "code_fence" && text.trimStart().startsWith("`")) {
-					text = "";
+				} else if (kind === 'code_fence' && text.trimStart().startsWith('`')) {
+					text = '';
 				}
 			}
 			node.text = text;
 		} else {
-			node.text = "";
+			node.text = '';
 		}
 	}
 }
 
-export function build_render_tree(
-	ops: Op[],
-	source: string,
-	fed_length: number,
-): RenderNode {
+export function build_render_tree(ops: Op[], source: string, fed_length: number): RenderNode {
 	const nodes = new Map<number, RenderNode>();
 	const revoked = new Set<number>();
 	const parent_map = new Map<number, number>(); // child id -> parent id
 	let synthetic_id = -1;
 	for (const op of ops) {
 		switch (op.op) {
-			case "open": {
+			case 'open': {
 				const node: RenderNode = {
 					id: op.id,
 					kind: op.kindName,
-					attrs: op.extra
-						? { extra: op.extra, _open_start: op.start }
-						: { _open_start: op.start },
-					children: [],
+					attrs: op.extra ? { extra: op.extra, _open_start: op.start } : { _open_start: op.start },
+					children: []
 				};
 				if (op.pending) node.attrs._pending = true;
 				nodes.set(op.id, node);
@@ -191,7 +202,7 @@ export function build_render_tree(
 				}
 				break;
 			}
-			case "close": {
+			case 'close': {
 				const node = nodes.get(op.id);
 				if (node) {
 					node.attrs._closed = true;
@@ -201,26 +212,23 @@ export function build_render_tree(
 				}
 				break;
 			}
-			case "text": {
+			case 'text': {
 				// text opcode creates a child text node under the parent
 				const parent = nodes.get(op.parent);
 				if (parent) {
-					const text_content = source.slice(
-						op.start,
-						Math.min(op.end, fed_length),
-					);
+					const text_content = source.slice(op.start, Math.min(op.end, fed_length));
 					const text_node: RenderNode = {
 						id: synthetic_id--,
-						kind: "text",
+						kind: 'text',
 						attrs: { value_start: op.start, value_end: op.end, _closed: true },
 						children: [],
-						text: text_content,
+						text: text_content
 					};
 					parent.children.push(text_node);
 				}
 				break;
 			}
-			case "attr": {
+			case 'attr': {
 				const node = nodes.get(op.id);
 				if (node) {
 					node.attrs[op.key] = op.value;
@@ -229,12 +237,12 @@ export function build_render_tree(
 				}
 				break;
 			}
-			case "commit": {
+			case 'commit': {
 				const node = nodes.get(op.id);
 				if (node) delete node.attrs._pending;
 				break;
 			}
-			case "revoke": {
+			case 'revoke': {
 				revoked.add(op.id);
 				const node = nodes.get(op.id);
 				if (node) {
@@ -250,25 +258,25 @@ export function build_render_tree(
 							//, code spans emit their own replacement text from the parser.
 							if (node.children.length > 0) {
 								const os = node.attrs._open_start;
-								if (typeof os === "number") {
+								if (typeof os === 'number') {
 									// Determine delimiter end: value_start if set,
 									// otherwise infer from kind ([ for link, ![ for image)
 									let delim_end = node.attrs.value_start;
-									if (typeof delim_end !== "number") {
-										if (node.kind === "image") delim_end = os + 2;
-										else if (node.kind === "link") delim_end = os + 1;
+									if (typeof delim_end !== 'number') {
+										if (node.kind === 'image') delim_end = os + 2;
+										else if (node.kind === 'link') delim_end = os + 1;
 									}
-									if (typeof delim_end === "number" && delim_end > os) {
+									if (typeof delim_end === 'number' && delim_end > os) {
 										replacement.push({
 											id: synthetic_id--,
-											kind: "text",
+											kind: 'text',
 											attrs: {
 												value_start: os,
 												value_end: delim_end,
-												_closed: true,
+												_closed: true
 											},
 											children: [],
-											text: source.slice(os, delim_end),
+											text: source.slice(os, delim_end)
 										});
 									}
 								}
@@ -296,7 +304,7 @@ export function build_render_tree(
 			let pid = parent_map.get(id);
 			while (pid !== undefined && pid !== -1) {
 				const p = nodes.get(pid);
-				if (p && p.attrs._closed && typeof p.attrs._end === "number") {
+				if (p && p.attrs._closed && typeof p.attrs._end === 'number') {
 					boundary = Math.min(boundary, p.attrs._end);
 					break;
 				}
@@ -306,50 +314,48 @@ export function build_render_tree(
 		}
 	}
 
-	return nodes.get(0) ?? { id: 0, kind: "root", attrs: {}, children: [] };
+	return nodes.get(0) ?? { id: 0, kind: 'root', attrs: {}, children: [] };
 }
 
 export const SNIPPETS: { name: string; markdown: string }[] = [
 	{
-		name: "Simple paragraph",
-		markdown: "Hello, world!\n",
+		name: 'Simple paragraph',
+		markdown: 'Hello, world!\n'
 	},
 	{
-		name: "Heading + paragraph",
-		markdown:
-			"# Welcome\n\nThis is a paragraph with *strong* and _emphasis_.\n",
+		name: 'Heading + paragraph',
+		markdown: '# Welcome\n\nThis is a paragraph with *strong* and _emphasis_.\n'
 	},
 	{
-		name: "Emphasis nesting",
-		markdown: "Hello *_world_* and ~~deleted~~\n",
+		name: 'Emphasis nesting',
+		markdown: 'Hello *_world_* and ~~deleted~~\n'
 	},
 	{
-		name: "Superscript",
-		markdown: "E = mc^2^ and x^10^\n",
+		name: 'Superscript',
+		markdown: 'E = mc^2^ and x^10^\n'
 	},
 	{
-		name: "Code fence",
-		markdown: "```javascript\nconst x = 42;\nconsole.log(x);\n```\n",
+		name: 'Code fence',
+		markdown: '```javascript\nconst x = 42;\nconsole.log(x);\n```\n'
 	},
 	{
-		name: "Block quote",
-		markdown: "> To be or not to be,\\\n> that is the question.\n",
+		name: 'Block quote',
+		markdown: '> To be or not to be,\\\n> that is the question.\n'
 	},
 	{
-		name: "List",
-		markdown: "- First item\n- Second item\n- Third item\n",
+		name: 'List',
+		markdown: '- First item\n- Second item\n- Third item\n'
 	},
 	{
-		name: "Nested list",
-		markdown: "- Parent\n  - Child\n    - Grandchild\n- Sibling\n",
+		name: 'Nested list',
+		markdown: '- Parent\n  - Child\n    - Grandchild\n- Sibling\n'
 	},
 	{
-		name: "Links and images",
-		markdown:
-			"Visit [example](https://example.com) or see ![alt](/puppy.jpg)\n",
+		name: 'Links and images',
+		markdown: 'Visit [example](https://example.com) or see ![alt](/puppy.jpg)\n'
 	},
 	{
-		name: "Mixed document",
+		name: 'Mixed document',
 		markdown: `# Document Title
 
 A paragraph with *strong emphasis* and _regular emphasis_.
@@ -374,46 +380,46 @@ def hello():
 ---
 
 Final paragraph with a [link](/url).
-`,
+`
 	},
 	{
-		name: "Speculative emphasis",
-		markdown: "hello *friends\n\nThis *works* fine\n",
+		name: 'Speculative emphasis',
+		markdown: 'hello *friends\n\nThis *works* fine\n'
 	},
 	{
-		name: "Speculative emphasis 2",
-		markdown: "hello *friends",
+		name: 'Speculative emphasis 2',
+		markdown: 'hello *friends'
 	},
 	{
-		name: "Hard line break",
-		markdown: "first line\\\nsecond line\n",
+		name: 'Hard line break',
+		markdown: 'first line\\\nsecond line\n'
 	},
 	{
-		name: "Large documents",
+		name: 'Large documents',
 		markdown:
-			"# How to Make Cheese\n\nCheese-making is an ancient process that transforms milk into a preserved, flavourful food. Here's a general overview:\n\n## Basic Ingredients\n\n- *Milk* (cow, goat, sheep, etc.)\n- *Starter culture* (bacteria that acidify the milk)\n- *Rennet* (an enzyme that causes coagulation)\n- *Salt*\n\n---\n\n## The Basic Steps\n\n1. *Heat the milk* to a specific temperature depending on the cheese type (e.g. ~30–32°C for many soft cheeses).\n\n2. *Add starter culture*, beneficial bacteria convert lactose into lactic acid, lowering the pH and beginning to sour the milk.\n\n3. *Add rennet*, this causes the milk proteins (casein) to clump together, forming a semi-solid _curd_ and separating from the liquid _whey_.\n\n4. *Cut the curd*, the size of the cut affects the final texture. Smaller cuts = harder cheese; larger cuts = softer cheese.\n\n5. *Cook and stir*, heating the curds further firms them up and expels more whey.\n\n6. *Drain the whey*, curds are separated from the liquid whey, often using cheesecloth.\n\n7. *Press the curds*, applying pressure removes more moisture and shapes the cheese.\n\n8. *Salt the cheese*, either by rubbing, brining, or mixing salt in directly. This adds flavour and acts as a preservative.\n\n9. *Age (ripen) the cheese*, from days (fresh cheeses like ricotta) to years (aged cheddars, parmesan). During this time, enzymes and bacteria develop complex flavours.\n\n---\n\n## Simple Beginner Cheese: Paneer or Ricotta\n\nIf you want to start simple, *acid-set cheeses* like ricotta require no rennet or cultures, just milk, heat, and an acid like lemon juice or vinegar. Great for first-timers!\n\n---\n\n## Key Variables That Affect the Result\n\n- Type of milk and its fat content\n- Temperature at each stage\n- Type of bacteria/culture used\n- How long and how it's aged\n- Humidity and environment during ageing\n\nCheese-making can go from a simple 30-minute kitchen project to a months-long craft, it's a wonderfully deep rabbit hole!",
+			"# How to Make Cheese\n\nCheese-making is an ancient process that transforms milk into a preserved, flavourful food. Here's a general overview:\n\n## Basic Ingredients\n\n- *Milk* (cow, goat, sheep, etc.)\n- *Starter culture* (bacteria that acidify the milk)\n- *Rennet* (an enzyme that causes coagulation)\n- *Salt*\n\n---\n\n## The Basic Steps\n\n1. *Heat the milk* to a specific temperature depending on the cheese type (e.g. ~30–32°C for many soft cheeses).\n\n2. *Add starter culture*, beneficial bacteria convert lactose into lactic acid, lowering the pH and beginning to sour the milk.\n\n3. *Add rennet*, this causes the milk proteins (casein) to clump together, forming a semi-solid _curd_ and separating from the liquid _whey_.\n\n4. *Cut the curd*, the size of the cut affects the final texture. Smaller cuts = harder cheese; larger cuts = softer cheese.\n\n5. *Cook and stir*, heating the curds further firms them up and expels more whey.\n\n6. *Drain the whey*, curds are separated from the liquid whey, often using cheesecloth.\n\n7. *Press the curds*, applying pressure removes more moisture and shapes the cheese.\n\n8. *Salt the cheese*, either by rubbing, brining, or mixing salt in directly. This adds flavour and acts as a preservative.\n\n9. *Age (ripen) the cheese*, from days (fresh cheeses like ricotta) to years (aged cheddars, parmesan). During this time, enzymes and bacteria develop complex flavours.\n\n---\n\n## Simple Beginner Cheese: Paneer or Ricotta\n\nIf you want to start simple, *acid-set cheeses* like ricotta require no rennet or cultures, just milk, heat, and an acid like lemon juice or vinegar. Great for first-timers!\n\n---\n\n## Key Variables That Affect the Result\n\n- Type of milk and its fat content\n- Temperature at each stage\n- Type of bacteria/culture used\n- How long and how it's aged\n- Humidity and environment during ageing\n\nCheese-making can go from a simple 30-minute kitchen project to a months-long craft, it's a wonderfully deep rabbit hole!"
 	},
 	{
-		name: "Table",
+		name: 'Table',
 		markdown: `| Feature | Status | Priority | Owner | Notes |
 |:---|:---:|---:|:---|:---|
 | Auth flow      |   ✅   |        1 | Pete           | Finished the *OAuth handshake* and *token refresh* logic last week; _needs a review pass_ before merging. |
 | Search index   |   🚧   |        2 | Aisha          | *FTS5*  |
 | Dark mode      |   ❌   |        3 | Unassigned     | *Blocked* on the design system tokens, once those land the CSS swap should be straightforward.       |
 | Export to PDF   |   🚧   |        4 | Pete           | [Basic generation works](www.google.com)  |
-| Onboarding tour |   ❌   |        5 | Aisha          | ![img](puppy.jpg) |`,
+| Onboarding tour |   ❌   |        5 | Aisha          | ![img](puppy.jpg) |`
 	},
 	{
-		name: "Table (inline)",
+		name: 'Table (inline)',
 		markdown: `| one | two |
 |:---|:---:|
 | *Auth flow*     |   ✅   |
-| Search index   |   🚧   |`,
+| Search index   |   🚧   |`
 	},
 	{
-		name: "Table (no body)",
+		name: 'Table (no body)',
 		markdown: `| col A | col B |
 | --- | --- |
-`,
-	},
+`
+	}
 ];

@@ -1,5 +1,5 @@
-import type { Emitter } from "./opcodes";
-import { NodeKind } from "./utils";
+import type { Emitter } from './opcodes';
+import { NodeKind } from './utils';
 
 /**
  * wire format for PFM parser opcode streaming.
@@ -48,36 +48,36 @@ import { NodeKind } from "./utils";
 
 /** kind names indexed by NodeKind value. */
 const KIND_NAMES: string[] = [
-	"root",
-	"text",
-	"html",
-	"heading",
-	"mustache",
-	"code_fence",
-	"line_break",
-	"paragraph",
-	"code_span",
-	"emphasis",
-	"strong_emphasis",
-	"thematic_break",
-	"link",
-	"image",
-	"block_quote",
-	"list",
-	"list_item",
-	"hard_break",
-	"soft_break",
-	"strikethrough",
-	"superscript",
-	"subscript",
-	"table",
-	"table_header",
-	"table_row",
-	"table_cell",
-	"html_comment",
-	"svelte_tag",
-	"svelte_block",
-	"svelte_branch",
+	'root',
+	'text',
+	'html',
+	'heading',
+	'mustache',
+	'code_fence',
+	'line_break',
+	'paragraph',
+	'code_span',
+	'emphasis',
+	'strong_emphasis',
+	'thematic_break',
+	'link',
+	'image',
+	'block_quote',
+	'list',
+	'list_item',
+	'hard_break',
+	'soft_break',
+	'strikethrough',
+	'superscript',
+	'subscript',
+	'table',
+	'table_header',
+	'table_row',
+	'table_cell',
+	'html_comment',
+	'svelte_tag',
+	'svelte_block',
+	'svelte_branch',
 ];
 
 /** tracks progressive text emission for a node. */
@@ -114,19 +114,19 @@ function is_content_leaf(kind: NodeKind): boolean {
 
 // biome-ignore lint/suspicious/no-const-enum: matches project convention
 export const enum WireOp {
-	Schema = "S",
-	Open = "O",
-	Close = "C",
-	Text = "T",
-	Attr = "A",
-	Revoke = "R",
-	Commit = "K",
-	Clear = "X",
+	Schema = 'S',
+	Open = 'O',
+	Close = 'C',
+	Text = 'T',
+	Attr = 'A',
+	Revoke = 'R',
+	Commit = 'K',
+	Clear = 'X',
 }
 
 export class WireEmitter implements Emitter {
 	/** current source string. updated via set_source(). */
-	private source = "";
+	private source = '';
 	/** accumulated opcodes for the current batch. */
 	private batch: unknown[][] = [];
 	/** whether the schema opcode has been emitted. */
@@ -163,7 +163,7 @@ export class WireEmitter implements Emitter {
 		start: number,
 		parent: number,
 		extra: number,
-		pending: boolean,
+		pending: boolean
 	): void {
 		this.kinds.set(id, kind);
 
@@ -201,22 +201,45 @@ export class WireEmitter implements Emitter {
 		}
 	}
 
+	leaf_text(
+		id: number,
+		parent: number,
+		start: number,
+		end: number,
+		value_start: number,
+		value_end: number,
+		value_first: boolean
+	): void {
+		// replayed as the calls it stands for. text nodes are already one t
+		// event on the parent, and the replay keeps the per id text state an
+		// emitter reused without reset() relies on
+		this.open(id, NodeKind.text, start, parent, 0, false);
+		this.set_value_start(id, value_start);
+		if (value_first) {
+			this.set_value_end(id, value_end);
+			this.close(id, end);
+		} else {
+			this.close(id, end);
+			this.set_value_end(id, value_end);
+		}
+	}
+
 	attr(id: number, key: string, value: unknown): void {
 		// tag on html: remember raw-text variants so their value range
 		// (script/style content) becomes t events on self. the 'tag' attr
 		// is always set before value_start/value_end by the parser.
 
 		if (
-			key === "tag" &&
+			key === 'tag' &&
 			this.kinds.get(id) === NodeKind.html &&
-			(value === "script" || value === "style")
+			(value === 'script' || value === 'style')
 		) {
 			this.raw_html_ids.add(id);
 		}
 
 		// value_start / value_end -> progressive t events
 
-		if (key === "value_start") {
+		if (key === 'value_start') {
 			const kind = this.kinds.get(id);
 			// track value ranges for text nodes (suppressed -> t on parent),
 			// content leaves (heading, code_fence, code_span -> t on self),
@@ -252,7 +275,7 @@ export class WireEmitter implements Emitter {
 			return;
 		}
 
-		if (key === "value_end") {
+		if (key === 'value_end') {
 			const state = this.text_state.get(id);
 			if (state) {
 				if ((value as number) > state.sent) {
@@ -279,17 +302,17 @@ export class WireEmitter implements Emitter {
 
 		//  info_start / info_end -> resolved 'info' attr
 
-		if (key === "info_start") {
+		if (key === 'info_start') {
 			this.info_starts.set(id, value as number);
 			return;
 		}
 
-		if (key === "info_end") {
+		if (key === 'info_end') {
 			const info_start = this.info_starts.get(id);
 			if (info_start !== undefined) {
 				const info = this.source.slice(info_start, value as number);
 				if (info) {
-					this.batch.push([WireOp.Attr, id, "info", info]);
+					this.batch.push([WireOp.Attr, id, 'info', info]);
 				}
 				this.info_starts.delete(id);
 			}
@@ -306,11 +329,11 @@ export class WireEmitter implements Emitter {
 	}
 
 	set_value_start(id: number, pos: number): void {
-		this.attr(id, "value_start", pos);
+		this.attr(id, 'value_start', pos);
 	}
 
 	set_value_end(id: number, pos: number): void {
-		this.attr(id, "value_end", pos);
+		this.attr(id, 'value_end', pos);
 	}
 
 	cursor(pos: number): void {
@@ -365,7 +388,7 @@ export class WireEmitter implements Emitter {
 				end = fed_end;
 				if (end > state.sent) {
 					const text = this.source.slice(state.sent, end);
-					const last_nl = text.lastIndexOf("\n");
+					const last_nl = text.lastIndexOf('\n');
 					if (last_nl !== -1) {
 						const tail = text.slice(last_nl + 1);
 						let ti = 0;
@@ -429,7 +452,7 @@ export class WireEmitter implements Emitter {
 	 * reset all state. call when reusing the emitter for a new parse.
 	 */
 	reset(): void {
-		this.source = "";
+		this.source = '';
 		this.batch.length = 0;
 		this.schema_emitted = false;
 		this.kinds.clear();
@@ -446,24 +469,24 @@ export class WireEmitter implements Emitter {
 function get_delimiter(kind: NodeKind | undefined): string {
 	switch (kind) {
 		case NodeKind.emphasis:
-			return "_";
+			return '_';
 		case NodeKind.strong_emphasis:
-			return "*";
+			return '*';
 		case NodeKind.strikethrough:
-			return "~~";
+			return '~~';
 		case NodeKind.superscript:
-			return "^";
+			return '^';
 		case NodeKind.subscript:
-			return "~";
+			return '~';
 		case NodeKind.link:
-			return "[";
+			return '[';
 		case NodeKind.image:
-			return "![";
+			return '![';
 		case NodeKind.code_span:
-			return "`";
+			return '`';
 		case NodeKind.html:
-			return "<";
+			return '<';
 		default:
-			return "";
+			return '';
 	}
 }

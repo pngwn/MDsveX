@@ -336,6 +336,12 @@ export class PFMParser {
 
 	// id generation
 	private next_id: number = 1; // 0 is reserved for root
+	// a text run opened by open_text whose open has not been emitted yet, 0
+	// when there is none. it goes out as one leaf_text call when it closes
+	// before anything else is emitted, see flush_leaf for the other case
+	private leaf_id: number = 0;
+	private leaf_parent: number = 0;
+	private leaf_start: number = 0;
 	private pending_ids: number[] = [];
 	// per id state, see ID_KIND_MASK. taken from spare_ids on init
 	private id_info: Int32Array = EMPTY_IDS;
@@ -641,6 +647,7 @@ export class PFMParser {
 		if (node_stack.length === 0) node_stack.push(0);
 		else node_stack[0] = 0;
 		this.next_id = 1;
+		this.leaf_id = 0;
 		// pending_ids is only read below pending_count, like pending_starts
 		this.pending_count = 0;
 		this.pending_para_count = 0;
@@ -709,6 +716,7 @@ export class PFMParser {
 		extra = 0,
 		pending = false
 	): number {
+		if (this.leaf_id !== 0) this.flush_leaf();
 		const id = this.next_id++;
 		if (id >= this.id_info.length) this.grow_ids(id);
 		this.out.open(id, kind, start, parent, extra, pending);
@@ -727,6 +735,65 @@ export class PFMParser {
 	private emit_close(id: number, end: number): void {
 		this.out.close(id, end);
 		this.id_info[id] |= ID_CLOSED;
+	}
+
+	/**
+	 * open a text node whose value starts where it does. nothing is emitted
+	 * yet: the text state only scans until close_text, so the whole node
+	 * usually goes out as one leaf_text call.
+	 */
+	private open_text(start: number, parent: number): number {
+		if (this.leaf_id !== 0) this.flush_leaf();
+		const id = this.next_id++;
+		if (id >= this.id_info.length) this.grow_ids(id);
+		this.id_info[id] = NodeKind.text;
+		this.leaf_id = id;
+		this.leaf_parent = parent;
+		this.leaf_start = start;
+		return id;
+	}
+
+	/** close a text node from open_text, its value ends where it does. */
+	private close_text(id: number, end: number): void {
+		if (id === this.leaf_id) {
+			this.leaf_id = 0;
+			const start = this.leaf_start;
+			this.out.leaf_text(id, this.leaf_parent, start, end, start, end, false);
+		} else {
+			this.out.close(id, end);
+			this.out.set_value_end(id, end);
+		}
+		this.id_info[id] |= ID_CLOSED;
+	}
+
+	/**
+	 * emit a closed text node whose value is its whole range. the value end
+	 * comes before the close, as it did when these sites used four calls.
+	 */
+	private emit_text(start: number, end: number, parent: number): void {
+		if (this.leaf_id !== 0) this.flush_leaf();
+		const id = this.next_id++;
+		if (id >= this.id_info.length) this.grow_ids(id);
+		this.id_info[id] = NodeKind.text | ID_CLOSED;
+		this.out.leaf_text(id, parent, start, end, start, end, true);
+	}
+
+	/**
+	 * emit the open of the deferred text node, for when something else must
+	 * go out while it is still open or a feed ends inside it.
+	 */
+	private flush_leaf(): void {
+		const id = this.leaf_id;
+		this.leaf_id = 0;
+		this.out.open(
+			id,
+			NodeKind.text,
+			this.leaf_start,
+			this.leaf_parent,
+			0,
+			false
+		);
+		this.out.set_value_start(id, this.leaf_start);
 	}
 
 	/**
@@ -4303,12 +4370,7 @@ export class PFMParser {
 								this.emphasis_has_content = false;
 								this.states.push(StateKind.strong_emphasis);
 							} else {
-								const t_id = this.emit_open(
-									NodeKind.text,
-									this.cursor,
-									current_node
-								);
-								this.out.set_value_start(t_id, this.cursor);
+								const t_id = this.open_text(this.cursor, current_node);
 								this.node_stack.push(t_id);
 								this.states.push(StateKind.text);
 							}
@@ -4338,12 +4400,7 @@ export class PFMParser {
 								this.emphasis_has_content = false;
 								this.states.push(StateKind.emphasis);
 							} else {
-								const t_id = this.emit_open(
-									NodeKind.text,
-									this.cursor,
-									current_node
-								);
-								this.out.set_value_start(t_id, this.cursor);
+								const t_id = this.open_text(this.cursor, current_node);
 								this.node_stack.push(t_id);
 								this.states.push(StateKind.text);
 							}
@@ -4394,12 +4451,7 @@ export class PFMParser {
 								this.states.push(StateKind.subscript);
 								this.cursor++;
 							} else {
-								const t_id = this.emit_open(
-									NodeKind.text,
-									this.cursor,
-									current_node
-								);
-								this.out.set_value_start(t_id, this.cursor);
+								const t_id = this.open_text(this.cursor, current_node);
 								this.node_stack.push(t_id);
 								this.states.push(StateKind.text);
 								this.cursor++;
@@ -4422,12 +4474,7 @@ export class PFMParser {
 								this.node_stack.push(n_id);
 								this.states.push(StateKind.superscript);
 							} else {
-								const t_id = this.emit_open(
-									NodeKind.text,
-									this.cursor,
-									current_node
-								);
-								this.out.set_value_start(t_id, this.cursor);
+								const t_id = this.open_text(this.cursor, current_node);
 								this.node_stack.push(t_id);
 								this.states.push(StateKind.text);
 							}
@@ -4456,12 +4503,7 @@ export class PFMParser {
 								}
 							}
 							// otherwise ] is just text
-							const t_id_br = this.emit_open(
-								NodeKind.text,
-								this.cursor,
-								current_node
-							);
-							this.out.set_value_start(t_id_br, this.cursor);
+							const t_id_br = this.open_text(this.cursor, current_node);
 							this.node_stack.push(t_id_br);
 							this.states.push(StateKind.text);
 							this.cursor++;
@@ -4534,22 +4576,12 @@ export class PFMParser {
 							}
 							if (this.is_ascii_punctuation(next_code)) {
 								// escape: start text node after the backslash
-								const t_id = this.emit_open(
-									NodeKind.text,
-									this.cursor + 1,
-									current_node
-								);
-								this.out.set_value_start(t_id, this.cursor + 1);
+								const t_id = this.open_text(this.cursor + 1, current_node);
 								this.node_stack.push(t_id);
 								this.states.push(StateKind.text);
 								this.chomp(2);
 							} else {
-								const t_id = this.emit_open(
-									NodeKind.text,
-									this.cursor,
-									current_node
-								);
-								this.out.set_value_start(t_id, this.cursor);
+								const t_id = this.open_text(this.cursor, current_node);
 								this.node_stack.push(t_id);
 								this.states.push(StateKind.text);
 								this.cursor++;
@@ -4566,12 +4598,7 @@ export class PFMParser {
 								if (this.directive_text_ids[dt_top] === current_node) {
 									this.directive_text_brackets[dt_top]++;
 								}
-								const lt_id = this.emit_open(
-									NodeKind.text,
-									this.cursor,
-									current_node
-								);
-								this.out.set_value_start(lt_id, this.cursor);
+								const lt_id = this.open_text(this.cursor, current_node);
 								this.node_stack.push(lt_id);
 								this.states.push(StateKind.text);
 								this.cursor++;
@@ -4620,13 +4647,8 @@ export class PFMParser {
 							}
 
 							// just ! - text
-							const t_id = this.emit_open(
-								NodeKind.text,
-								this.cursor,
-								current_node
-							);
+							const t_id = this.open_text(this.cursor, current_node);
 							this.node_stack.push(t_id);
-							this.out.set_value_start(t_id, this.cursor);
 							this.states.push(StateKind.text);
 							this.cursor++;
 							continue;
@@ -4662,14 +4684,7 @@ export class PFMParser {
 								this.emit_close(link_id, uri_end);
 								this.out.attr(link_id, 'href', uri_text);
 
-								const text_id = this.emit_open(
-									NodeKind.text,
-									this.cursor + 1,
-									link_id
-								);
-								this.out.set_value_start(text_id, this.cursor + 1);
-								this.out.set_value_end(text_id, uri_end - 1);
-								this.emit_close(text_id, uri_end - 1);
+								this.emit_text(this.cursor + 1, uri_end - 1, link_id);
 
 								this.chomp(uri_end, true);
 								this.states.pop();
@@ -4754,13 +4769,8 @@ export class PFMParser {
 							}
 
 							// not an autolink or html tag, treat < as text
-							const t_id = this.emit_open(
-								NodeKind.text,
-								this.cursor,
-								current_node
-							);
+							const t_id = this.open_text(this.cursor, current_node);
 							this.node_stack.push(t_id);
-							this.out.set_value_start(t_id, this.cursor);
 							this.states.push(StateKind.text);
 							this.cursor++;
 							continue;
@@ -4827,12 +4837,7 @@ export class PFMParser {
 								continue;
 							}
 							// unmatched { - treat as text
-							const t_id_brace = this.emit_open(
-								NodeKind.text,
-								this.cursor,
-								current_node
-							);
-							this.out.set_value_start(t_id_brace, this.cursor);
+							const t_id_brace = this.open_text(this.cursor, current_node);
 							this.node_stack.push(t_id_brace);
 							this.states.push(StateKind.text);
 							this.cursor++;
@@ -4892,12 +4897,7 @@ export class PFMParser {
 								}
 							}
 							// not a directive - treat as text
-							const t_id_colon = this.emit_open(
-								NodeKind.text,
-								this.cursor,
-								current_node
-							);
-							this.out.set_value_start(t_id_colon, this.cursor);
+							const t_id_colon = this.open_text(this.cursor, current_node);
 							this.node_stack.push(t_id_colon);
 							this.states.push(StateKind.text);
 							this.cursor++;
@@ -4920,12 +4920,7 @@ export class PFMParser {
 								this.states.pop();
 								continue;
 							}
-							const t_id = this.emit_open(
-								NodeKind.text,
-								this.cursor,
-								current_node
-							);
-							this.out.set_value_start(t_id, this.cursor);
+							const t_id = this.open_text(this.cursor, current_node);
 							this.node_stack.push(t_id);
 
 							this.states.push(StateKind.text);
@@ -4953,8 +4948,7 @@ export class PFMParser {
 							value_end--;
 						}
 						this.states.pop();
-						this.emit_close(current_node, value_end);
-						this.out.set_value_end(current_node, value_end);
+						this.close_text(current_node, value_end);
 						this.node_stack.pop();
 						continue;
 					}
@@ -4963,8 +4957,7 @@ export class PFMParser {
 					// close the text node and let inline consume the pipe.
 					if (code === PIPE && !this.in_table) {
 						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
+						this.close_text(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					}
@@ -4993,8 +4986,7 @@ export class PFMParser {
 									this.block_quote_depth
 								);
 								if (peek === -1) {
-									this.emit_close(current_node, this.cursor);
-									this.out.set_value_end(current_node, this.cursor);
+									this.close_text(current_node, this.cursor);
 									this.node_stack.pop();
 									this.states.pop(); // pop text
 									const parent_id_bq =
@@ -5015,8 +5007,7 @@ export class PFMParser {
 									continue;
 								}
 							}
-							this.emit_close(current_node, this.cursor);
-							this.out.set_value_end(current_node, this.cursor);
+							this.close_text(current_node, this.cursor);
 							this.node_stack.pop();
 							this.states.pop(); // pop text
 							const parent_id = this.node_stack[this.node_stack.length - 1];
@@ -5046,17 +5037,11 @@ export class PFMParser {
 						}
 						if (this.is_ascii_punctuation(next_code)) {
 							// close current text node before the backslash
-							this.emit_close(current_node, this.cursor);
-							this.out.set_value_end(current_node, this.cursor);
+							this.close_text(current_node, this.cursor);
 							this.node_stack.pop();
 							// start new text node at the escaped character (skip backslash)
 							const parent_id = this.node_stack[this.node_stack.length - 1];
-							const esc_id = this.emit_open(
-								NodeKind.text,
-								this.cursor + 1,
-								parent_id
-							);
-							this.out.set_value_start(esc_id, this.cursor + 1);
+							const esc_id = this.open_text(this.cursor + 1, parent_id);
 							this.node_stack.push(esc_id);
 							this.chomp(2);
 							continue;
@@ -5078,8 +5063,7 @@ export class PFMParser {
 
 					if (code === LINEFEED && this.block_quote_depth > 0) {
 						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
+						this.close_text(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					}
@@ -5089,8 +5073,7 @@ export class PFMParser {
 						(code === LINEFEED && this.is_block_interrupt(this.cursor + 1))
 					) {
 						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
+						this.close_text(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					} else if (code === LINEFEED && this.list_depth > 0) {
@@ -5103,23 +5086,20 @@ export class PFMParser {
 								this.try_parse_list_marker(stripped) !== null
 							) {
 								this.states.pop();
-								this.emit_close(current_node, this.cursor);
-								this.out.set_value_end(current_node, this.cursor);
+								this.close_text(current_node, this.cursor);
 								this.node_stack.pop();
 								continue;
 							}
 						}
 						// list continuation - close text, let inline emit soft_break
 						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
+						this.close_text(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					} else if (code === LINEFEED) {
 						// non-blockquote, non-list linefeed - close text, let inline emit soft_break
 						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
+						this.close_text(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
 					} else if (code === COLON) {
@@ -5128,8 +5108,7 @@ export class PFMParser {
 						const nc = char_code_at.call(source, this.cursor + 1 - base);
 						if ((nc >= 97 && nc <= 122) || (nc >= 65 && nc <= 90)) {
 							this.states.pop();
-							this.emit_close(current_node, this.cursor);
-							this.out.set_value_end(current_node, this.cursor);
+							this.close_text(current_node, this.cursor);
 							this.node_stack.pop();
 							this.states.pop();
 							continue;
@@ -5151,8 +5130,7 @@ export class PFMParser {
 					) {
 						this.states.pop();
 
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
+						this.close_text(current_node, this.cursor);
 						this.node_stack.pop();
 						this.states.pop();
 
@@ -5177,13 +5155,8 @@ export class PFMParser {
 					if (this.extra > 2) {
 						this.states.pop();
 						this.states.push(StateKind.text);
-						const t_id = this.emit_open(
-							NodeKind.text,
-							this.cursor - this.extra,
-							current_node
-						);
+						const t_id = this.open_text(this.cursor - this.extra, current_node);
 						this.node_stack.push(t_id);
-						this.out.set_value_start(t_id, this.cursor - this.extra);
 						continue;
 					}
 
@@ -5601,6 +5574,9 @@ export class PFMParser {
 				}
 			}
 		}
+		// a text run still open when the input runs out is emitted the long
+		// way, so a streaming consumer sees it before its close
+		if (this.leaf_id !== 0) this.flush_leaf();
 	}
 
 	// cold states of _run live in these methods so _run stays small
@@ -5648,14 +5624,7 @@ export class PFMParser {
 						current_node
 					);
 					this.node_stack.push(bq_fp_id);
-					const bq_ft_id = this.emit_open(
-						NodeKind.text,
-						this.cursor - this.extra,
-						bq_fp_id
-					);
-					this.out.set_value_start(bq_ft_id, this.cursor - this.extra);
-					this.out.set_value_end(bq_ft_id, this.cursor);
-					this.emit_close(bq_ft_id, this.cursor);
+					this.emit_text(this.cursor - this.extra, this.cursor, bq_fp_id);
 					this.states.push(StateKind.paragraph);
 					return false;
 				}
@@ -8238,8 +8207,24 @@ export class PFMParser {
 				) {
 					ve--;
 				}
-				this.out.set_value_end(text_id, ve);
-				this.emit_close(text_id, this.cursor);
+				if (text_id === this.leaf_id) {
+					// the value end goes out before the close here
+					this.leaf_id = 0;
+					const start = this.leaf_start;
+					this.out.leaf_text(
+						text_id,
+						this.leaf_parent,
+						start,
+						this.cursor,
+						start,
+						ve,
+						true
+					);
+					this.id_info[text_id] |= ID_CLOSED;
+				} else {
+					this.out.set_value_end(text_id, ve);
+					this.emit_close(text_id, this.cursor);
+				}
 				this.node_stack.pop();
 				this.states.pop();
 			} else if (top === StateKind.inline) {
@@ -8264,11 +8249,8 @@ export class PFMParser {
 				this.node_stack.pop();
 				this.states.pop();
 				const parent_id = this.node_stack[this.node_stack.length - 1];
-				const t_id = this.emit_open(NodeKind.text, delim_end, parent_id);
-				this.out.set_value_start(t_id, delim_end);
-				this.out.set_value_end(t_id, this.cursor);
-				this.emit_close(t_id, this.cursor);
 				// don't push to node_stack - this text node is immediately closed
+				this.emit_text(delim_end, this.cursor, parent_id);
 			} else {
 				// emphasis, strong, strikethrough, superscript, link_text
 				const node_id = this.node_stack[this.node_stack.length - 1];

@@ -31,6 +31,25 @@ class OpRecorder implements Emitter {
 		this.ops.push({ op: 'close', id });
 	}
 	text(_p: number, _s: number, _e: number) {}
+	leaf_text(
+		id: number,
+		parent: number,
+		start: number,
+		end: number,
+		value_start: number,
+		value_end: number,
+		value_first: boolean
+	) {
+		this.open(id, NodeKind.text, start, parent, 0, false);
+		this.set_value_start(id, value_start);
+		if (value_first) {
+			this.set_value_end(id, value_end);
+			this.close(id, end);
+		} else {
+			this.close(id, end);
+			this.set_value_end(id, value_end);
+		}
+	}
 	attr(id: number, key: string, _v: any) {
 		this.ops.push({ op: 'attr', id, key });
 	}

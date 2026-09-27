@@ -52,6 +52,42 @@ export interface Emitter {
 	text(parent: number, start: number, end: number): void;
 
 	/**
+	 * create a complete text node (kind text) in one call. it stands for
+	 * exactly this sequence, with nothing emitted in between:
+	 *
+	 *   open(id, NodeKind.text, start, parent, 0, false)
+	 *   set_value_start(id, value_start)
+	 *   close(id, end)
+	 *   set_value_end(id, value_end)
+	 *
+	 * with the last two swapped when value_first is true. an emitter that
+	 * only stores the node can ignore the order, one that runs code on close
+	 * (plugins) must replay it, because the close sees the value end only
+	 * when it came first.
+	 *
+	 * the parser sends it when a text run is complete before any other opcode
+	 * has to go out, which in batch parsing is nearly every run. a run still
+	 * open when a feed() ends goes out as the four calls instead, so streaming
+	 * consumers still see it grow. the id is allocated like any open().
+	 * @param id id of the new text node.
+	 * @param parent id of the parent node.
+	 * @param start source byte offset where the node starts.
+	 * @param end source byte offset where the node ends.
+	 * @param value_start source byte offset where the text value starts.
+	 * @param value_end source byte offset where the text value ends.
+	 * @param value_first true when the value end was set before the close.
+	 */
+	leaf_text(
+		id: number,
+		parent: number,
+		start: number,
+		end: number,
+		value_start: number,
+		value_end: number,
+		value_first: boolean
+	): void;
+
+	/**
 	 * set or update an attribute on a node.
 	 * used for metadata (href, title, info), value ranges, and list properties.
 	 * @param id id of the node.
