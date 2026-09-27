@@ -239,20 +239,22 @@ function collect_char_spans(mappings: Mapping<MappingData>[]): void {
  */
 function collect_record_spans(
 	rec: Uint32Array,
-	n: number,
-	offsets: Uint32Array
+	start: number,
+	end: number,
+	offsets: Uint32Array,
+	base: number
 ): void {
 	// at most one span per record
-	const most = n / Rec.SIZE;
+	const most = (end - start) / Rec.SIZE;
 	if (most > span_gen.length) reserve_spans(0, most);
 	const gen = span_gen;
 	const src = span_src;
 	const len = span_len;
 	let k = 0;
-	for (let p = 0; p < n; p += Rec.SIZE) {
+	for (let p = start; p < end; p += Rec.SIZE) {
 		const role = rec[p + 5] & 3;
 		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
-		const out_idx = rec[p];
+		const out_idx = base + rec[p];
 		const g = offsets[out_idx];
 		let l = 1;
 		if (role === Role.CONTENT) {
@@ -273,14 +275,16 @@ function collect_record_spans(
 /** collect_char_spans over a renderer's records. */
 function collect_record_char_spans(
 	rec: Uint32Array,
-	n: number,
-	offsets: Uint32Array
+	start: number,
+	end: number,
+	offsets: Uint32Array,
+	base: number
 ): void {
 	span_count = 0;
-	for (let p = 0; p < n; p += Rec.SIZE) {
+	for (let p = start; p < end; p += Rec.SIZE) {
 		const role = rec[p + 5] & 3;
 		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
-		const out_idx = rec[p];
+		const out_idx = base + rec[p];
 		const g = offsets[out_idx];
 		const s = rec[p + 2];
 		const source_length = rec[p + 3];
@@ -386,7 +390,7 @@ export function records_to_v3(
 	const encoded =
 		sink.n === 0
 			? ''
-			: encode_records(sink.rec, sink.n, offsets, source, generated);
+			: encode_records(sink.rec, 0, sink.n, offsets, 0, source, generated);
 	return v3_map(encoded, source, file);
 }
 
@@ -488,20 +492,26 @@ function encode_mappings(
 	return encode_spans();
 }
 
+/**
+ * the encoded mappings of the records in rec[start, end), offsets[base + i]
+ * giving the generated offset of out chunk i.
+ */
 function encode_records(
 	rec: Uint32Array,
-	n: number,
+	start: number,
+	end: number,
 	offsets: Uint32Array,
+	base: number,
 	source: string,
 	generated: string
 ): string {
 	fill_line_starts(src_table, source);
 	fill_line_starts(gen_table, generated);
 
-	collect_record_spans(rec, n, offsets);
+	collect_record_spans(rec, start, end, offsets, base);
 	sort_spans();
 	if (runs_overlap()) {
-		collect_record_char_spans(rec, n, offsets);
+		collect_record_char_spans(rec, start, end, offsets, base);
 		sort_spans();
 	}
 	return encode_spans();
@@ -607,11 +617,53 @@ function encode_spans(): string {
 
 /**
  * a render's mapping records and the generated offset of each out chunk,
- * copied out of the shared buffers so its map can be built later.
+ * copied out of the shared buffers so its map can be built later. the
+ * records are buf[start, split) and the offsets buf[split, end), and buf
+ * may hold other traces around them.
  */
 export interface MapTrace {
-	rec: Uint32Array;
-	offsets: Uint32Array;
+	buf: Uint32Array;
+	start: number;
+	split: number;
+	end: number;
+}
+
+// a trace per vite pre transform was two sliced arrays, and each off-heap
+// backing store costs far more than copying the words. traces are carved
+// from shared slabs instead. a slab is only appended to, so a trace kept for
+// any time never sees another document's words, and a large trace gets an
+// array of its own so it neither pins a mostly empty slab nor wastes one.
+const TRACE_SLAB_WORDS = 32768;
+const TRACE_OWN_WORDS = 8192;
+let trace_slab = new Uint32Array(0);
+let trace_used = 0;
+
+/** room for a trace of rec_words record words and offset_words offsets. */
+export function reserve_trace(
+	rec_words: number,
+	offset_words: number
+): MapTrace {
+	const words = rec_words + offset_words;
+	if (words > TRACE_OWN_WORDS) {
+		return {
+			buf: new Uint32Array(words),
+			start: 0,
+			split: rec_words,
+			end: words,
+		};
+	}
+	let start = trace_used;
+	if (start + words > trace_slab.length) {
+		trace_slab = new Uint32Array(TRACE_SLAB_WORDS);
+		start = 0;
+	}
+	trace_used = start + words;
+	return {
+		buf: trace_slab,
+		start,
+		split: start + rec_words,
+		end: start + words,
+	};
 }
 
 /** records_to_v3 over a trace. */
@@ -621,11 +673,13 @@ export function trace_to_v3(
 	generated: string,
 	file?: string
 ): SourceMapV3 {
-	const rec = trace.rec;
+	const start = trace.start;
+	const split = trace.split;
+	const buf = trace.buf;
 	const encoded =
-		rec.length === 0
+		split === start
 			? ''
-			: encode_records(rec, rec.length, trace.offsets, source, generated);
+			: encode_records(buf, start, split, buf, split, source, generated);
 	return v3_map(encoded, source, file);
 }
 
@@ -659,7 +713,8 @@ export function trace_to_decoded(
 	lines: ArrayLike<number>,
 	file?: string
 ): DecodedSourceMapV3 {
-	const rec = trace.rec;
+	const start = trace.start;
+	const split = trace.split;
 	const basename = map_basename(file);
 	return {
 		version: 3,
@@ -668,9 +723,9 @@ export function trace_to_decoded(
 		sourcesContent: [source],
 		names: [],
 		mappings:
-			lines.length === 0 || rec.length === 0
+			lines.length === 0 || split === start
 				? []
-				: decode_lines(rec, trace.offsets, source, generated, lines),
+				: decode_lines(trace.buf, start, split, source, generated, lines),
 	};
 }
 
@@ -682,11 +737,13 @@ const NO_SEGMENTS: DecodedSegment[] = [];
  * writes one segment per identity-mapped character and one per other
  * record, ordered by generated offset and then by record, both when it
  * encodes runs and when overlapping runs make it sort single characters.
- * so a line is every such point on it in that order.
+ * so a line is every such point on it in that order. the records are
+ * buf[start, split) and their out chunk offsets follow from split.
  */
 function decode_lines(
-	rec: Uint32Array,
-	offsets: Uint32Array,
+	buf: Uint32Array,
+	start: number,
+	split: number,
 	source: string,
 	generated: string,
 	lines: ArrayLike<number>
@@ -710,17 +767,16 @@ function decode_lines(
 
 	span_count = 0;
 	let gen_line = 0;
-	const n = rec.length;
-	for (let p = 0; p < n; p += Rec.SIZE) {
-		const role = rec[p + 5] & 3;
+	for (let p = start; p < split; p += Rec.SIZE) {
+		const role = buf[p + 5] & 3;
 		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
-		const out_idx = rec[p];
-		const g = offsets[out_idx];
-		const s = rec[p + 2];
-		const source_length = rec[p + 3];
+		const out_idx = split + buf[p];
+		const g = buf[out_idx];
+		const s = buf[p + 2];
+		const source_length = buf[p + 3];
 		if (
 			role === Role.CONTENT &&
-			offsets[out_idx + rec[p + 1]] - g === source_length
+			buf[out_idx + buf[p + 1]] - g === source_length
 		) {
 			// the characters of the run on wanted lines, it can cross lines
 			const end = g + source_length;

@@ -15,7 +15,7 @@ import { Cursor } from '@mdsvex/parse/cursor';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import { MapSink, record_data } from './mappings';
 import type { Mapping, MappingData } from './mappings';
-import { records_to_v3 } from './sourcemap';
+import { records_to_v3, reserve_trace } from './sourcemap';
 import type { MapTrace, SourceMapV3 } from './sourcemap';
 
 export type { Mapping, CodeInformation, MappingData } from './mappings';
@@ -1648,6 +1648,31 @@ function out_offsets(out: string[], scratch?: Uint32Array): Uint32Array {
 	return offsets;
 }
 
+/**
+ * copy a sink's records and the offsets of out into a trace. the offsets
+ * are written in place rather than through the shared table, and a short
+ * record run is copied by hand since a subarray view costs more than it.
+ */
+function capture_trace(sink: MapSink, out: string[]): MapTrace {
+	const n = sink.n;
+	const count = out.length;
+	const trace = reserve_trace(n, count + 1);
+	const buf = trace.buf;
+	const start = trace.start;
+	const rec = sink.rec;
+	if (n > 64) buf.set(rec.subarray(0, n), start);
+	else for (let i = 0; i < n; i++) buf[start + i] = rec[i];
+	let p = trace.split;
+	let at = 0;
+	buf[p] = 0;
+	for (let i = 0; i < count; i++) {
+		// see out_offsets for the concat
+		at += (out[i] + '').length;
+		buf[++p] = at;
+	}
+	return trace;
+}
+
 /** convert pending mapping records to volar-compatible Mapping[] using out[] offsets. */
 function resolve_mappings(
 	out: string[],
@@ -1688,6 +1713,7 @@ export const _emit = emit_record;
 export const _children = render_children;
 export const _node = render_node;
 export const _out_offsets = out_offsets;
+export const _capture_trace = capture_trace;
 export const _resolve_mappings = resolve_mappings;
 
 // mapped renders resolve their records before they return, so every
@@ -1858,11 +1884,7 @@ export class CursorHTMLRenderer {
 		const sink = render_sink;
 		sink.begin(false);
 		this.render_mapped(buf, source, sink);
-		const out = this.out;
-		const trace: MapTrace = {
-			rec: sink.rec.slice(0, sink.n),
-			offsets: _out_offsets(out).slice(0, out.length + 1),
-		};
+		const trace = capture_trace(sink, this.out);
 		sink.release();
 		return trace;
 	}
