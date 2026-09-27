@@ -399,10 +399,12 @@ const VLQ_CODES = new Uint8Array(64);
 const VLQ_DIGITS = new Int8Array(128).fill(-1);
 for (let i = 0; i < 64; i++) VLQ_DIGITS[VLQ_CODES[i]] = i;
 
-const COMMA = 44;
-const SEMICOLON = 59;
-const CHAR_A = 65;
-const CHAR_C = 67;
+const enum Ascii {
+	COMMA = 44,
+	SEMICOLON = 59,
+	A = 65,
+	C = 67,
+}
 
 // ascii bytes decoded once give a flat string, concatenation leaves a rope
 // that survives scavenges and is flattened again by every consumer
@@ -536,17 +538,17 @@ function encode_spans(): string {
 			}
 
 			if (prev_gen_line < gen_line) {
-				do buf[p++] = SEMICOLON;
+				do buf[p++] = Ascii.SEMICOLON;
 				while (++prev_gen_line < gen_line);
 				prev_gen_col = 0;
 			} else if (line_has_segment) {
-				buf[p++] = COMMA;
+				buf[p++] = Ascii.COMMA;
 			}
 			line_has_segment = true;
 
 			// 4-field segment: gen_col, source_idx(0), src_line, src_col
 			p = write_vlq(buf, p, gen_col - prev_gen_col);
-			buf[p++] = CHAR_A; // source index delta, always 0 with one source
+			buf[p++] = Ascii.A; // source index delta, always 0 with one source
 			p = write_vlq(buf, p, src_line - prev_src_line);
 			p = write_vlq(buf, p, src_col - prev_src_col);
 
@@ -561,11 +563,11 @@ function encode_spans(): string {
 				reps -= 4;
 			}
 			for (; reps > 0; reps--) {
-				buf[p] = COMMA;
-				buf[p + 1] = CHAR_C;
-				buf[p + 2] = CHAR_A;
-				buf[p + 3] = CHAR_A;
-				buf[p + 4] = CHAR_C;
+				buf[p] = Ascii.COMMA;
+				buf[p + 1] = Ascii.C;
+				buf[p + 2] = Ascii.A;
+				buf[p + 3] = Ascii.A;
+				buf[p + 4] = Ascii.C;
 				p += 5;
 			}
 
@@ -826,8 +828,8 @@ export function mapped_source_lines(
 	let shift = 0;
 	const length = mappings.length;
 	for (let i = 0; i <= length; i++) {
-		const c = i < length ? mappings.charCodeAt(i) : SEMICOLON;
-		if (c === COMMA || c === SEMICOLON) {
+		const c = i < length ? mappings.charCodeAt(i) : Ascii.SEMICOLON;
+		if (c === Ascii.COMMA || c === Ascii.SEMICOLON) {
 			// a value cut short, or a segment of a length decoders disagree on
 			if (shift !== 0) return null;
 			if (field === 4 || field === 5) {
@@ -837,7 +839,7 @@ export function mapped_source_lines(
 					lines.push(src_line);
 					last_line = src_line;
 				}
-			} else if (field !== 1 && (field !== 0 || c === COMMA)) {
+			} else if (field !== 1 && (field !== 0 || c === Ascii.COMMA)) {
 				return null;
 			}
 			field = 0;
