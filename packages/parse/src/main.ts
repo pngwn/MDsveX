@@ -8211,7 +8211,13 @@ export function parse_markdown_svelte(
 		dispatcher = new PluginDispatcher(options.plugins, text_source);
 	}
 
-	const tree = new TreeBuilder(source.length >> 3 || 16, dispatcher);
+	// short documents are denser in nodes than long ones, so size them
+	// generously to skip the resize, a small buffer is only a slab carve
+	const len = source.length;
+	const tree = new TreeBuilder(
+		len < 512 ? (len >> 2) + 16 : len >> 3,
+		dispatcher
+	);
 	const parser = new PFMParser(tree, options.tab_size);
 	const { errors } = parser.parse(source);
 
