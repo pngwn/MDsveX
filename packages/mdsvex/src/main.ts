@@ -391,9 +391,15 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		ext.startsWith('.') ? ext : '.' + ext
 	);
 
+	// vite asks about every module in both transforms, so this allocates
+	// nothing when the id has no query
 	function matches(id: string): boolean {
-		const clean = id.split('?')[0];
-		return extensions.some((ext) => clean.endsWith(ext));
+		const q = id.indexOf('?');
+		const clean = q < 0 ? id : id.slice(0, q);
+		for (let i = 0; i < extensions.length; i++) {
+			if (clean.endsWith(extensions[i])) return true;
+		}
+		return false;
 	}
 
 	const stored = new Map<string, StoredDocument>();
