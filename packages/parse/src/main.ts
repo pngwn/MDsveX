@@ -136,6 +136,28 @@ const WAIT_NONE = 0;
 const WAIT_FENCE = 1;
 const WAIT_RAW = 2;
 
+// per id state in one int32: the kind an id was opened with in the low
+// seven bits and the closed flag in bit seven. the id's index in
+// pending_ids lives in a second table of the same length, see id_slots
+const ID_KIND_MASK = 0x7f;
+const ID_CLOSED = 0x80;
+// sixteen entries is 64 bytes, the largest typed array v8 keeps on heap
+const ID_MIN_CAPACITY = 16;
+// larger id tables are left to the gc rather than kept for the next parser
+const ID_POOL_CAP = 1 << 16;
+const EMPTY_IDS = new Int32Array(0);
+
+// one spare pair of id tables shared by every parser, always the same
+// length. a parser takes them when it starts a document and hands them back
+// when it finalizes, dropping its own references, so a new parser per
+// document allocates nothing and no two parsers ever hold the same table
+let spare_ids: Int32Array | null = null;
+let spare_slots: Int32Array = EMPTY_IDS;
+
+// a hole on the node stack (see truncate_stack) reads as an undefined id,
+// and closing it stores a named property on the id table
+type HoleIds = { undefined?: number };
+
 /** reused two slot array for append_flat, cleared after each use. */
 const JOIN_PAIR: string[] = ['', ''];
 
@@ -315,14 +337,18 @@ export class PFMParser {
 	// id generation
 	private next_id: number = 1; // 0 is reserved for root
 	private pending_ids: number[] = [];
-	// index of each id in pending_ids, stale unless pending_ids at that index matches
-	private pending_slots: number[] = [];
+	// per id state, see ID_KIND_MASK. taken from spare_ids on init
+	private id_info: Int32Array = EMPTY_IDS;
+	// index of each pending id in pending_ids, stale unless pending_ids at
+	// that index matches. same length as id_info
+	private id_slots: Int32Array = EMPTY_IDS;
+	// ids below this were closed or revoked by a finish that has since
+	// handed the id tables back
+	private finalized_below: number = 0;
 	private pending_starts: number[] = [];
 	private pending_count: number = 0;
 	// pending tight list paragraphs, they commit or revoke without reading the source
 	private pending_para_count: number = 0;
-	private closed_flags: number[] = [];
-	private NodeKind_array: NodeKind[] = [];
 
 	// flanking classes are read on demand at delimiter sites, so moving the
 	// cursor is a plain increment. the char before class_floor reads as
@@ -433,9 +459,10 @@ export class PFMParser {
 	 * init() + feed(source) + finish().
 	 */
 	parse(source: string): { errors: ErrorCollector } {
-		this._init();
 		const src = normalize_newlines(source);
 		const n = src.length;
+		// documents run well above 8 chars a node, so this rarely grows
+		this._init(n >> 3);
 		this.source = src;
 		this.source_end = n;
 		this.errors = EMPTY_ERRORS;
@@ -452,7 +479,7 @@ export class PFMParser {
 	 * before the first feed() call.
 	 */
 	init(): void {
-		this._init();
+		this._init(ID_MIN_CAPACITY);
 		this.finished = false;
 	}
 
@@ -589,7 +616,7 @@ export class PFMParser {
 		this.errors = EMPTY_ERRORS;
 	}
 
-	private _init(): void {
+	private _init(id_capacity: number): void {
 		this.source = '';
 		this.source_base = 0;
 		this.source_end = 0;
@@ -615,11 +642,9 @@ export class PFMParser {
 		else node_stack[0] = 0;
 		this.next_id = 1;
 		// pending_ids is only read below pending_count, like pending_starts
-		this.pending_slots = [];
 		this.pending_count = 0;
 		this.pending_para_count = 0;
-		this.closed_flags = [];
-		this.NodeKind_array = [];
+		this.take_ids(id_capacity);
 		this.class_floor = 0;
 		this.block_quote_depth = 0;
 		this.emphasis_has_content = false;
@@ -685,43 +710,119 @@ export class PFMParser {
 		pending = false
 	): number {
 		const id = this.next_id++;
+		if (id >= this.id_info.length) this.grow_ids(id);
 		this.out.open(id, kind, start, parent, extra, pending);
 		if (pending) {
-			this.pending_starts[this.pending_count] = start;
-			this.pending_slots[id] = this.pending_count;
-			this.pending_ids[this.pending_count++] = id;
+			const slot = this.pending_count;
+			this.pending_starts[slot] = start;
+			this.pending_ids[slot] = id;
+			this.pending_count = slot + 1;
 			if (kind === NodeKind.paragraph) this.pending_para_count++;
+			this.id_slots[id] = slot;
 		}
-		this.NodeKind_array[id] = kind;
+		this.id_info[id] = kind;
 		return id;
 	}
 
 	private emit_close(id: number, end: number): void {
 		this.out.close(id, end);
-		this.closed_flags[id] = 1;
+		this.id_info[id] |= ID_CLOSED;
+	}
+
+	/**
+	 * take the spare id tables when they hold `needed` ids, new ones
+	 * otherwise. every id writes its state on open and only opened ids are
+	 * read, so tables from an earlier document need no clearing.
+	 */
+	private take_ids(needed: number): void {
+		const spare = spare_ids;
+		if (spare !== null && spare.length >= needed) {
+			spare_ids = null;
+			this.id_info = spare;
+			this.id_slots = spare_slots;
+			spare_slots = EMPTY_IDS;
+		} else {
+			let capacity = ID_MIN_CAPACITY;
+			while (capacity < needed) capacity <<= 1;
+			this.id_info = new Int32Array(capacity);
+			this.id_slots = new Int32Array(capacity);
+		}
+		this.id_info[0] = NodeKind.root;
+		this.finalized_below = 0;
+	}
+
+	/** double the id tables until they hold `id`. */
+	private grow_ids(id: number): void {
+		const old = this.id_info;
+		let capacity = old.length > 0 ? old.length << 1 : ID_MIN_CAPACITY;
+		while (capacity <= id) capacity <<= 1;
+		const next = new Int32Array(capacity);
+		next.set(old);
+		// keep the closed flag a hole id stored, see give_back_ids. the shared
+		// empty table only picks one up when a released parser is misused
+		const hole = (old as unknown as HoleIds).undefined;
+		if (hole !== undefined && old.length > 0)
+			(next as unknown as HoleIds).undefined = hole;
+		this.id_info = next;
+		const slots = new Int32Array(capacity);
+		slots.set(this.id_slots);
+		this.id_slots = slots;
+	}
+
+	/**
+	 * hand the id tables to the next document once this one is final, and
+	 * drop them here so this parser can never write to a table another
+	 * parser has taken. the ids of this document were all closed or revoked,
+	 * finalized_below keeps a repeated finish from closing them again.
+	 */
+	private give_back_ids(): void {
+		const ids = this.id_info;
+		const slots = this.id_slots;
+		this.id_info = EMPTY_IDS;
+		this.id_slots = EMPTY_IDS;
+		this.finalized_below = this.next_id;
+		// a closed hole id would read as closed in the next document
+		if (
+			ids.length === 0 ||
+			ids.length > ID_POOL_CAP ||
+			(ids as unknown as HoleIds).undefined !== undefined
+		)
+			return;
+		const spare = spare_ids;
+		if (spare === null || spare.length < ids.length) {
+			spare_ids = ids;
+			spare_slots = slots;
+		}
+	}
+
+	/** kind the id was opened with. */
+	private kind_of(id: number): NodeKind {
+		return (this.id_info[id] & ID_KIND_MASK) as NodeKind;
+	}
+
+	private is_closed(id: number): boolean {
+		return (this.id_info[id] & ID_CLOSED) !== 0;
 	}
 
 	/** swap-remove an id from the  pending_ids array. */
 	private pending_remove(id: number): void {
 		if (!this.pending_has(id)) return;
 		const ids = this.pending_ids;
-		const i = this.pending_slots[id];
+		const slots = this.id_slots;
+		const i = slots[id];
 		const last = this.pending_count - 1;
 		const moved = ids[last];
 		ids[i] = moved;
 		this.pending_starts[i] = this.pending_starts[last];
-		this.pending_slots[moved] = i;
+		slots[moved] = i;
 		this.pending_count = last;
-		if (this.NodeKind_array[id] === NodeKind.paragraph)
-			this.pending_para_count--;
+		if (this.kind_of(id) === NodeKind.paragraph) this.pending_para_count--;
 	}
 
 	/** check if an id is in the pending_ids array. */
 	private pending_has(id: number): boolean {
-		const i = this.pending_slots[id];
-		return (
-			i !== undefined && i < this.pending_count && this.pending_ids[i] === id
-		);
+		const i = this.id_slots[id];
+		return i < this.pending_count && this.pending_ids[i] === id;
 	}
 
 	/**
@@ -732,7 +833,7 @@ export class PFMParser {
 		if (this.pending_count !== this.pending_para_count) return false;
 		const stack = this.node_stack;
 		for (let i = 1; i < depth; i++) {
-			const kind = this.NodeKind_array[stack[i]];
+			const kind = this.kind_of(stack[i]);
 			if (
 				kind !== NodeKind.block_quote &&
 				kind !== NodeKind.list &&
@@ -2559,7 +2660,7 @@ export class PFMParser {
 			}
 
 			// close intermediate nodes (text, emphasis, etc.)
-			if (!this.closed_flags[top_id]) {
+			if (!this.is_closed(top_id)) {
 				this.out.set_value_end(top_id, this.cursor);
 				this.emit_close(top_id, this.cursor);
 			}
@@ -3251,12 +3352,12 @@ export class PFMParser {
 					let write = 0;
 					for (let pi = 0; pi < this.pending_count; pi++) {
 						const pid = this.pending_ids[pi];
-						const pkind = this.NodeKind_array[pid];
+						const pkind = this.kind_of(pid);
 						if (pkind === NodeKind.paragraph) {
 							// preserve - finalize_list_pending_para owns this one.
 							this.pending_ids[write] = pid;
 							this.pending_starts[write] = this.pending_starts[pi];
-							this.pending_slots[pid] = write;
+							this.id_slots[pid] = write;
 							write++;
 							continue;
 						}
@@ -3264,7 +3365,7 @@ export class PFMParser {
 							// still on the node stack - this frame is open above us.
 							this.pending_ids[write] = pid;
 							this.pending_starts[write] = this.pending_starts[pi];
-							this.pending_slots[pid] = write;
+							this.id_slots[pid] = write;
 							write++;
 							continue;
 						}
@@ -5850,7 +5951,7 @@ export class PFMParser {
 		if (code === CLOSE_SQUARE_BRACKET) {
 			// inline directive: ] closes the text, an optional
 			// (key=val) argument list may follow immediately
-			if (this.NodeKind_array[current_node] === NodeKind.directive_inline) {
+			if (this.kind_of(current_node) === NodeKind.directive_inline) {
 				// literal bracket from an unmatched [ in the text -
 				// dispatch to inline which consumes it as text
 				const depth_top = this.directive_text_brackets.length - 1;
@@ -6024,7 +6125,7 @@ export class PFMParser {
 						url_start - base,
 						url_end - base
 					);
-					const is_image = this.NodeKind_array[n_id] === NodeKind.image;
+					const is_image = this.kind_of(n_id) === NodeKind.image;
 					this.out.attr(n_id, is_image ? 'src' : 'href', url);
 					if (title_start >= 0 && title_end >= 0) {
 						this.out.attr(
@@ -6078,8 +6179,7 @@ export class PFMParser {
 					const normalized = this.normalize_label(label);
 					const def = this.ref_map.get(normalized);
 					if (def) {
-						const is_image =
-							this.NodeKind_array[current_node] === NodeKind.image;
+						const is_image = this.kind_of(current_node) === NodeKind.image;
 						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
 						if (def.title) this.out.attr(current_node, 'title', def.title);
 						this.out.set_value_end(current_node, this.cursor);
@@ -6131,8 +6231,7 @@ export class PFMParser {
 					const normalized = this.normalize_label(label);
 					const def = this.ref_map.get(normalized);
 					if (def) {
-						const is_image =
-							this.NodeKind_array[current_node] === NodeKind.image;
+						const is_image = this.kind_of(current_node) === NodeKind.image;
 						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
 						if (def.title) this.out.attr(current_node, 'title', def.title);
 						this.out.set_value_end(current_node, this.cursor);
@@ -6284,7 +6383,7 @@ export class PFMParser {
 					// close intermediate html elements
 					while (this.html_tag_stack.length > opener_idx + 1) {
 						const intermediate = this.html_tag_stack.pop()!;
-						if (!this.closed_flags[intermediate.id]) {
+						if (!this.is_closed(intermediate.id)) {
 							this.emit_close(intermediate.id, this.cursor);
 						}
 					}
@@ -7979,6 +8078,8 @@ export class PFMParser {
 				);
 				if (trimmed.start < trimmed.end) {
 					this.out.text(cell_id, trimmed.start, trimmed.end);
+					// the text node the emitter creates takes the next id
+					this.next_id++;
 				}
 				this.emit_close(cell_id, cell.end);
 			} else {
@@ -8043,7 +8144,7 @@ export class PFMParser {
 				const node_id = this.node_stack[this.node_stack.length - 1];
 				this.out.set_value_end(node_id, end);
 				this.emit_close(node_id, end);
-				if (this.NodeKind_array[node_id] === NodeKind.directive_inline) {
+				if (this.kind_of(node_id) === NodeKind.directive_inline) {
 					this.directive_text_pop(node_id);
 				}
 				this.node_stack.pop();
@@ -8123,7 +8224,7 @@ export class PFMParser {
 					this.out.set_value_end(node_id, this.cursor);
 					this.emit_close(node_id, this.cursor);
 				}
-				if (this.NodeKind_array[node_id] === NodeKind.directive_inline) {
+				if (this.kind_of(node_id) === NodeKind.directive_inline) {
 					this.directive_text_pop(node_id);
 				}
 				this.node_stack.pop();
@@ -8178,9 +8279,12 @@ export class PFMParser {
 
 		// close unclosed nodes gently (set end if not already set)
 		// skip pending nodes - those will be revoked below.
+		// ids an earlier finish already finalized stay as they were
+		const done = this.finalized_below;
 		for (let i = 0; i < this.node_stack.length; i++) {
 			const id = this.node_stack[i];
-			if (!this.closed_flags[id] && !this.pending_has(id)) {
+			if (done > 0 && !(id >= done)) continue;
+			if (!this.is_closed(id) && !this.pending_has(id)) {
 				this.out.set_value_end(id, length - 1);
 				this.emit_close(id, length - 1);
 			}
@@ -8189,7 +8293,7 @@ export class PFMParser {
 		// revoke any remaining pending nodes (unclosed html, unclosed emphasis, etc.)
 		for (let pi = 0; pi < this.pending_count; pi++) {
 			const id = this.pending_ids[pi];
-			const kind = this.NodeKind_array[id];
+			const kind = this.kind_of(id);
 			// block-level revocations (html) need the source text for repair
 			if (kind === NodeKind.html) {
 				const start = this.pending_starts[pi];
@@ -8214,6 +8318,7 @@ export class PFMParser {
 		}
 		this.pending_count = 0;
 		this.pending_para_count = 0;
+		this.give_back_ids();
 	}
 }
 
