@@ -1,6 +1,8 @@
 // fixed workload the change under test cannot alter, timed at the start and end of a run to catch machine drift
 // shaped like the parser hot loop so it tracks the same machine characteristics
 
+import { spawnSync } from 'node:child_process';
+
 const ANCHOR_TEXT = (() => {
 	// joined not concatenated so the first reading does not pay to flatten a cons string
 	let seed = 0x2545f491;
@@ -68,13 +70,30 @@ function warm() {
 	return sink;
 }
 
-// a reading can sit in a lower tier while turbofan jobs for the parser queue ahead of the anchor's
-// compile, and two such readings agree with each other, so keep measuring for a window and take the minimum
 const WINDOW_MS = 1000;
 const MIN_ATTEMPTS = 3;
 
-/** nanoseconds per anchor call, the fastest reading over a fixed window */
-export function measure_anchor(iterations = 24) {
+// in the benchmark process the anchor shared the jit with both arms and read up to 48% slow at the
+// start of a run for longer than any window, so it is measured in a process of its own. the child
+// inherits cpu affinity, so a pinned run still measures the pinned cores
+/** nanoseconds per anchor call, measured in a child process */
+export function measure_anchor() {
+	const script =
+		`import { measure_anchor_here } from ${JSON.stringify(import.meta.url)};` +
+		`process.stdout.write(String(measure_anchor_here()));`;
+	const result = spawnSync(
+		process.execPath,
+		['--input-type=module', '-e', script],
+		{ encoding: 'utf8' }
+	);
+	const ns = Number(result.stdout);
+	if (result.status !== 0 || !Number.isFinite(ns) || ns <= 0)
+		throw new Error(`anchor child failed: ${result.stderr}`);
+	return ns;
+}
+
+/** nanoseconds per anchor call in this process, the fastest reading over a fixed window */
+export function measure_anchor_here(iterations = 24) {
 	const best_of_8 = () => {
 		let best = Infinity;
 		for (let r = 0; r < 8; r++) {
