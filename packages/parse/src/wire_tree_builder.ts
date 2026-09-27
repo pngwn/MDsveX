@@ -17,10 +17,10 @@
  *   const html = renderCursor(cursor);
  */
 
-import { NodeBuffer, NodeKind } from "./utils";
-import { Cursor } from "./cursor";
-import type { PluginDispatcher } from "./plugin_dispatch";
-import { WireTextSource } from "./node_view";
+import { NodeBuffer, NodeKind, make_meta, merge_meta } from './utils';
+import { Cursor } from './cursor';
+import type { PluginDispatcher } from './plugin_dispatch';
+import { WireTextSource } from './node_view';
 
 const NONE = 0xffffffff;
 
@@ -48,9 +48,7 @@ export class WireTreeBuilder {
 		// wire mode: point the dispatcher's text source at the buffer's
 		// _strings array so NodeView.text_content resolves correctly.
 		if (this.dispatcher) {
-			this.dispatcher.set_text_source(
-				new WireTextSource(this.buf._strings),
-			);
+			this.dispatcher.set_text_source(new WireTextSource(this.buf._strings));
 		}
 	}
 
@@ -65,34 +63,34 @@ export class WireTreeBuilder {
 		for (let i = 0; i < batch.length; i++) {
 			const op = batch[i];
 			switch (op[0]) {
-				case "S":
+				case 'S':
 					this.schema = op[1] as string[];
 					break;
-				case "O":
+				case 'O':
 					this._open(
 						op[1] as number,
 						op[2] as number,
 						op[3] as number,
 						(op[4] as number) === 1,
-						op[5] as number,
+						op[5] as number
 					);
 					break;
-				case "C":
+				case 'C':
 					this._close(op[1] as number);
 					break;
-				case "T":
+				case 'T':
 					this._text(op[1] as number, op[2] as string);
 					break;
-				case "A":
+				case 'A':
 					this._attr(op[1] as number, op[2] as string, op[3]);
 					break;
-				case "R":
+				case 'R':
 					this._revoke(op[1] as number, op[2] as string);
 					break;
-				case "K":
+				case 'K':
 					this._commit(op[1] as number);
 					break;
-				case "X":
+				case 'X':
 					this._clear(op[1] as number);
 					break;
 			}
@@ -101,7 +99,7 @@ export class WireTreeBuilder {
 
 	/** get a cursor over the current buffer state. */
 	cursor(): Cursor {
-		return new Cursor(this.buf, "");
+		return new Cursor(this.buf, '');
 	}
 
 	/** get the underlying NodeBuffer. */
@@ -123,13 +121,12 @@ export class WireTreeBuilder {
 		kind: number,
 		parent: number,
 		pending: boolean,
-		extra: number,
+		extra: number
 	): void {
 		// root (id=0) is auto-created by NodeBuffer constructor
 		if (id === 0) return;
 
-		let parent_idx =
-			parent === -1 ? NONE : (this.id_to_index[parent] ?? NONE);
+		let parent_idx = parent === -1 ? NONE : (this.id_to_index[parent] ?? NONE);
 
 		// plugin redirect: if parent has a wrap_inner wrapper, children go there
 		if (this.dispatcher && parent_idx !== NONE) {
@@ -148,7 +145,7 @@ export class WireTreeBuilder {
 				idx,
 				kind as NodeKind,
 				this.buf,
-				this.register_id,
+				this.register_id
 			);
 		}
 	}
@@ -240,7 +237,7 @@ export class WireTreeBuilder {
 		// the parser writes value_start/value_end directly on the html node.
 		if (kind === NodeKind.html) {
 			const meta = this.buf.metadata_at(idx);
-			if (meta && (meta.tag === "script" || meta.tag === "style")) {
+			if (meta && (meta.tag === 'script' || meta.tag === 'style')) {
 				const existing = strings[idx];
 				strings[idx] = existing !== undefined ? existing + content : content;
 				return;
@@ -288,10 +285,9 @@ export class WireTreeBuilder {
 
 		const existing = this.buf.metadata_at(idx);
 		if (existing) {
-			existing[key] = value;
-			this.buf.set_metadata(idx, existing);
+			merge_meta(existing, key, value);
 		} else {
-			this.buf.set_metadata(idx, { [key]: value });
+			this.buf.set_metadata(idx, make_meta(key, value));
 		}
 	}
 
