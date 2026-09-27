@@ -178,6 +178,7 @@ const SINK_INITIAL = RECORD_SIZE * 256;
 /**
  * pending mappings as flat records until generated offsets are known, a typed
  * buffer rather than objects since a walk pushes several per node
+ * @internal
  */
 export class MapSink {
 	rec: Uint32Array = new Uint32Array(SINK_INITIAL);

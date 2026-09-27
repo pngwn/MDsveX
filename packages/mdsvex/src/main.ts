@@ -191,7 +191,7 @@ export class CompilerSession {
 		this.renderer.release();
 	}
 
-	/** the map equals mappings_to_v3 over compile mappings with raw as source */
+	/** @internal the map equals mappings_to_v3 over compile mappings with raw as source */
 	compile_v3(
 		raw: string,
 		file?: string,
@@ -210,6 +210,7 @@ export class CompilerSession {
 	/**
 	 * defers the map, the vite plugin builds only the lines the svelte compiler
 	 * map points at
+	 * @internal
 	 */
 	compile_trace(
 		raw: string,

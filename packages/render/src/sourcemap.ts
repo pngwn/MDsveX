@@ -354,7 +354,7 @@ export function mappings_to_v3(
 	return v3_map(encoded, source, file);
 }
 
-/** equals mappings_to_v3 over the Mapping objects the records resolve to */
+/** @internal equals mappings_to_v3 over the Mapping objects the records resolve to */
 export function records_to_v3(
 	sink: MapSink,
 	offsets: Uint32Array,
@@ -629,6 +629,7 @@ export function reserve_trace(
 	};
 }
 
+/** @internal */
 export function trace_to_v3(
 	trace: MapTrace,
 	source: string,
@@ -664,6 +665,7 @@ export interface DecodedSourceMapV3 {
 /**
  * only the listed generated lines hold segments, each equal to that line of
  * the decoded trace_to_v3 map, so lookups on them match the full map
+ * @internal
  */
 export function trace_to_decoded(
 	trace: MapTrace,
@@ -791,6 +793,7 @@ function decode_lines(
 /**
  * source lines of v3 mappings, unordered with repeats, null when a segment is
  * one decoders read differently or names another source
+ * @internal
  */
 export function mapped_source_lines(
 	mappings: string | readonly (readonly number[])[][]
