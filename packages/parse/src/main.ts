@@ -1,35 +1,4 @@
-import {
-	BACKTICK,
-	CARET,
-	CLOSE_BRACE,
-	TILDE,
-	LINEFEED,
-	OCTOTHERP,
-	OPEN_ANGLE_BRACKET,
-	OPEN_BRACE,
-	SPACE,
-	TAB,
-	CLOSE_ANGLE_BRACKET,
-	BACKSLASH,
-	EXCLAMATION_MARK,
-	AT,
-	ASTERISK,
-	DASH,
-	UNDERSCORE,
-	OPEN_SQUARE_BRACKET,
-	CLOSE_SQUARE_BRACKET,
-	OPEN_PAREN,
-	CLOSE_PAREN,
-	COLON,
-	PLUS,
-	DOT,
-	PIPE,
-	SLASH,
-	QUOTE,
-	APOSTROPHE,
-	EQUALS,
-	COMMA,
-} from './constants';
+import { Ch } from './constants';
 
 import type { ParseOptions } from './types';
 
@@ -126,12 +95,16 @@ function truncate_stack(stack: number[], base: number): void {
 	if (stack.length < base) stack.length = base;
 }
 
-const WAIT_NONE = 0;
-const WAIT_FENCE = 1;
-const WAIT_RAW = 2;
+const enum Wait {
+	NONE = 0,
+	FENCE = 1,
+	RAW = 2,
+}
 
-const ID_KIND_MASK = 0x7f;
-const ID_CLOSED = 0x80;
+const enum IdBit {
+	KIND_MASK = 0x7f,
+	CLOSED = 0x80,
+}
 // sixteen entries is 64 bytes, the largest typed array v8 keeps on heap
 const ID_MIN_CAPACITY = 16;
 const ID_POOL_CAP = 1 << 16;
@@ -208,20 +181,20 @@ export function raw_offsets(raw: string): RawOffsets | null {
 }
 
 const TEXT_BREAK = new Uint8Array(128);
-TEXT_BREAK[LINEFEED] = 1;
-TEXT_BREAK[BACKSLASH] = 1;
-TEXT_BREAK[ASTERISK] = 1;
-TEXT_BREAK[UNDERSCORE] = 1;
-TEXT_BREAK[TILDE] = 1;
-TEXT_BREAK[CARET] = 1;
-TEXT_BREAK[OPEN_ANGLE_BRACKET] = 1;
-TEXT_BREAK[OPEN_SQUARE_BRACKET] = 1;
-TEXT_BREAK[CLOSE_SQUARE_BRACKET] = 1;
-TEXT_BREAK[EXCLAMATION_MARK] = 1;
-TEXT_BREAK[BACKTICK] = 1;
-TEXT_BREAK[PIPE] = 1;
-TEXT_BREAK[OPEN_BRACE] = 1;
-TEXT_BREAK[COLON] = 1;
+TEXT_BREAK[Ch.LINEFEED] = 1;
+TEXT_BREAK[Ch.BACKSLASH] = 1;
+TEXT_BREAK[Ch.ASTERISK] = 1;
+TEXT_BREAK[Ch.UNDERSCORE] = 1;
+TEXT_BREAK[Ch.TILDE] = 1;
+TEXT_BREAK[Ch.CARET] = 1;
+TEXT_BREAK[Ch.OPEN_ANGLE_BRACKET] = 1;
+TEXT_BREAK[Ch.OPEN_SQUARE_BRACKET] = 1;
+TEXT_BREAK[Ch.CLOSE_SQUARE_BRACKET] = 1;
+TEXT_BREAK[Ch.EXCLAMATION_MARK] = 1;
+TEXT_BREAK[Ch.BACKTICK] = 1;
+TEXT_BREAK[Ch.PIPE] = 1;
+TEXT_BREAK[Ch.OPEN_BRACE] = 1;
+TEXT_BREAK[Ch.COLON] = 1;
 
 export const enum StateKind {
 	root = 0,
@@ -485,11 +458,11 @@ export class PFMParser {
 			len = chunk.length;
 		}
 
-		if (this.wait_kind !== WAIT_NONE && this.skip_wait(chunk, len)) {
+		if (this.wait_kind !== Wait.NONE && this.skip_wait(chunk, len)) {
 			this.out.cursor(this.cursor);
 			return;
 		}
-		this.wait_kind = WAIT_NONE;
+		this.wait_kind = Wait.NONE;
 
 		// keep one char before trim_point for the previous char lookbehind
 		let head = this.source;
@@ -508,7 +481,7 @@ export class PFMParser {
 	/** leaves scan, trim point and window where _run would, false when the chunk might hold the close */
 	private skip_wait(chunk: string, len: number): boolean {
 		const end = this.source_end;
-		if (this.wait_kind === WAIT_FENCE) {
+		if (this.wait_kind === Wait.FENCE) {
 			// no backtick means no close, the line after the last lf stays open
 			if (string_index_of.call(chunk, '`') !== -1) return false;
 			const lf = string_last_index_of.call(chunk, '\n');
@@ -552,7 +525,7 @@ export class PFMParser {
 			this.source_end++;
 			this.pending_cr = false;
 		}
-		this.wait_kind = WAIT_NONE;
+		this.wait_kind = Wait.NONE;
 		this.finished = true;
 		this._run();
 		this._finalize();
@@ -585,7 +558,7 @@ export class PFMParser {
 		this.raw_node = 0;
 		this.raw_needle = '';
 		this.raw_scan = 0;
-		this.wait_kind = WAIT_NONE;
+		this.wait_kind = Wait.NONE;
 		this.cursor = 0;
 		this.finished = false;
 		this.pending_cr = false;
@@ -684,7 +657,7 @@ export class PFMParser {
 
 	private emit_close(id: number, end: number): void {
 		this.out.close(id, end);
-		this.id_info[id] |= ID_CLOSED;
+		this.id_info[id] |= IdBit.CLOSED;
 	}
 
 	/** open writes an id state before any read, so spare tables need no clearing */
@@ -746,11 +719,11 @@ export class PFMParser {
 	}
 
 	private kind_of(id: number): NodeKind {
-		return (this.id_info[id] & ID_KIND_MASK) as NodeKind;
+		return (this.id_info[id] & IdBit.KIND_MASK) as NodeKind;
 	}
 
 	private is_closed(id: number): boolean {
-		return (this.id_info[id] & ID_CLOSED) !== 0;
+		return (this.id_info[id] & IdBit.CLOSED) !== 0;
 	}
 
 	/** swap-remove an id from the  pending_ids array. */
@@ -807,8 +780,8 @@ export class PFMParser {
 			(ch >= 97 && ch <= 122) || // a-z
 			(ch >= 65 && ch <= 90) || // a-z
 			(ch >= 48 && ch <= 57) || // 0-9
-			ch === UNDERSCORE || // _
-			ch === DASH
+			ch === Ch.UNDERSCORE || // _
+			ch === Ch.DASH
 		); // -
 	}
 
@@ -861,14 +834,14 @@ export class PFMParser {
 		// skip spaces and tabs
 		while (
 			p < length &&
-			(char_code_at.call(source, p - base) === SPACE ||
-				char_code_at.call(source, p - base) === TAB)
+			(char_code_at.call(source, p - base) === Ch.SPACE ||
+				char_code_at.call(source, p - base) === Ch.TAB)
 		)
 			p++;
 		if (p >= length) return this.finished ? null : false;
 
 		// empty list: ()
-		if (char_code_at.call(source, p - base) === CLOSE_PAREN) {
+		if (char_code_at.call(source, p - base) === Ch.CLOSE_PAREN) {
 			return { args: null, end: p + 1 };
 		}
 
@@ -879,7 +852,7 @@ export class PFMParser {
 				!(
 					(kc >= 97 && kc <= 122) ||
 					(kc >= 65 && kc <= 90) ||
-					kc === UNDERSCORE
+					kc === Ch.UNDERSCORE
 				)
 			) {
 				return null;
@@ -895,33 +868,33 @@ export class PFMParser {
 
 			while (
 				p < length &&
-				(char_code_at.call(source, p - base) === SPACE ||
-					char_code_at.call(source, p - base) === TAB)
+				(char_code_at.call(source, p - base) === Ch.SPACE ||
+					char_code_at.call(source, p - base) === Ch.TAB)
 			)
 				p++;
 			if (p >= length) return this.finished ? null : false;
-			if (char_code_at.call(source, p - base) !== EQUALS) return null;
+			if (char_code_at.call(source, p - base) !== Ch.EQUALS) return null;
 			p++;
 			while (
 				p < length &&
-				(char_code_at.call(source, p - base) === SPACE ||
-					char_code_at.call(source, p - base) === TAB)
+				(char_code_at.call(source, p - base) === Ch.SPACE ||
+					char_code_at.call(source, p - base) === Ch.TAB)
 			)
 				p++;
 			if (p >= length) return this.finished ? null : false;
 
 			let value: string;
 			const vc = char_code_at.call(source, p - base);
-			if (vc === QUOTE || vc === APOSTROPHE) {
+			if (vc === Ch.QUOTE || vc === Ch.APOSTROPHE) {
 				p++;
 				const value_start = p;
 				while (p < length) {
 					const ch = char_code_at.call(source, p - base);
-					if (ch === BACKSLASH && p + 1 < length) {
+					if (ch === Ch.BACKSLASH && p + 1 < length) {
 						p += 2;
 						continue;
 					}
-					if (ch === vc || ch === LINEFEED) break;
+					if (ch === vc || ch === Ch.LINEFEED) break;
 					p++;
 				}
 				if (p >= length) return this.finished ? null : false;
@@ -933,15 +906,15 @@ export class PFMParser {
 				while (p < length) {
 					const ch = char_code_at.call(source, p - base);
 					if (
-						ch === SPACE ||
-						ch === TAB ||
-						ch === LINEFEED ||
-						ch === COMMA ||
-						ch === OPEN_PAREN ||
-						ch === CLOSE_PAREN ||
-						ch === QUOTE ||
-						ch === APOSTROPHE ||
-						ch === BACKSLASH
+						ch === Ch.SPACE ||
+						ch === Ch.TAB ||
+						ch === Ch.LINEFEED ||
+						ch === Ch.COMMA ||
+						ch === Ch.OPEN_PAREN ||
+						ch === Ch.CLOSE_PAREN ||
+						ch === Ch.QUOTE ||
+						ch === Ch.APOSTROPHE ||
+						ch === Ch.BACKSLASH
 					)
 						break;
 					p++;
@@ -957,26 +930,26 @@ export class PFMParser {
 
 			while (
 				p < length &&
-				(char_code_at.call(source, p - base) === SPACE ||
-					char_code_at.call(source, p - base) === TAB)
+				(char_code_at.call(source, p - base) === Ch.SPACE ||
+					char_code_at.call(source, p - base) === Ch.TAB)
 			)
 				p++;
 			if (p >= length) return this.finished ? null : false;
 
 			const sep = char_code_at.call(source, p - base);
-			if (sep === CLOSE_PAREN) {
+			if (sep === Ch.CLOSE_PAREN) {
 				return { args, end: p + 1 };
 			}
-			if (sep !== COMMA) return null;
+			if (sep !== Ch.COMMA) return null;
 			p++;
 			while (
 				p < length &&
-				(char_code_at.call(source, p - base) === SPACE ||
-					char_code_at.call(source, p - base) === TAB)
+				(char_code_at.call(source, p - base) === Ch.SPACE ||
+					char_code_at.call(source, p - base) === Ch.TAB)
 			)
 				p++;
 			if (p >= length) return this.finished ? null : false;
-			if (char_code_at.call(source, p - base) === CLOSE_PAREN) return null;
+			if (char_code_at.call(source, p - base) === Ch.CLOSE_PAREN) return null;
 		}
 	}
 
@@ -1013,11 +986,12 @@ export class PFMParser {
 			return null;
 
 		const after_import = char_code_at.call(source, pos + 6 - base);
-		if (after_import !== SPACE && after_import !== OPEN_BRACE) return null;
+		if (after_import !== Ch.SPACE && after_import !== Ch.OPEN_BRACE)
+			return null;
 
 		// scan to end of line
 		let p = pos + 6;
-		while (p < length && char_code_at.call(source, p - base) !== LINEFEED) {
+		while (p < length && char_code_at.call(source, p - base) !== Ch.LINEFEED) {
 			p++;
 		}
 
@@ -1061,7 +1035,7 @@ export class PFMParser {
 
 		// count colons
 		let colon_count = 0;
-		while (p < length && char_code_at.call(source, p - base) === COLON) {
+		while (p < length && char_code_at.call(source, p - base) === Ch.COLON) {
 			colon_count++;
 			p++;
 		}
@@ -1098,7 +1072,7 @@ export class PFMParser {
 		// [content] is required - empty text must be explicit
 		if (
 			p >= length ||
-			char_code_at.call(source, p - base) !== OPEN_SQUARE_BRACKET
+			char_code_at.call(source, p - base) !== Ch.OPEN_SQUARE_BRACKET
 		) {
 			return null;
 		}
@@ -1108,12 +1082,12 @@ export class PFMParser {
 		let bracket_depth = 1;
 		while (p < length && bracket_depth > 0) {
 			const ch = char_code_at.call(source, p - base);
-			if (ch === OPEN_SQUARE_BRACKET) bracket_depth++;
-			else if (ch === CLOSE_SQUARE_BRACKET) bracket_depth--;
-			else if (ch === BACKSLASH && p + 1 < length) {
+			if (ch === Ch.OPEN_SQUARE_BRACKET) bracket_depth++;
+			else if (ch === Ch.CLOSE_SQUARE_BRACKET) bracket_depth--;
+			else if (ch === Ch.BACKSLASH && p + 1 < length) {
 				p++;
 			} // skip escaped char
-			else if (ch === LINEFEED) break; // no line breaks in content bracket
+			else if (ch === Ch.LINEFEED) break; // no line breaks in content bracket
 			if (bracket_depth > 0) p++;
 		}
 		if (bracket_depth !== 0) {
@@ -1127,7 +1101,7 @@ export class PFMParser {
 		// optional argument list must follow the brackets immediately
 		if (p >= length && !this.finished) return false;
 		let args: Record<string, string> | null = null;
-		if (p < length && char_code_at.call(source, p - base) === OPEN_PAREN) {
+		if (p < length && char_code_at.call(source, p - base) === Ch.OPEN_PAREN) {
 			const parsed = this.try_parse_directive_args(p);
 			if (parsed === false) return false;
 			// malformed args make the whole line a paragraph
@@ -1139,8 +1113,8 @@ export class PFMParser {
 		// skip trailing whitespace
 		while (
 			p < length &&
-			(char_code_at.call(source, p - base) === SPACE ||
-				char_code_at.call(source, p - base) === TAB)
+			(char_code_at.call(source, p - base) === Ch.SPACE ||
+				char_code_at.call(source, p - base) === Ch.TAB)
 		) {
 			p++;
 		}
@@ -1149,7 +1123,7 @@ export class PFMParser {
 		if (p >= length && !this.finished) return false;
 
 		// must be at end of line (or end of input)
-		if (p < length && char_code_at.call(source, p - base) !== LINEFEED) {
+		if (p < length && char_code_at.call(source, p - base) !== Ch.LINEFEED) {
 			return null;
 		}
 
@@ -1220,7 +1194,7 @@ export class PFMParser {
 
 		// count colons
 		let colon_count = 0;
-		while (p < length && char_code_at.call(source, p - base) === COLON) {
+		while (p < length && char_code_at.call(source, p - base) === Ch.COLON) {
 			colon_count++;
 			p++;
 		}
@@ -1234,8 +1208,8 @@ export class PFMParser {
 		// skip trailing whitespace
 		while (
 			p < length &&
-			(char_code_at.call(source, p - base) === SPACE ||
-				char_code_at.call(source, p - base) === TAB)
+			(char_code_at.call(source, p - base) === Ch.SPACE ||
+				char_code_at.call(source, p - base) === Ch.TAB)
 		) {
 			p++;
 		}
@@ -1244,7 +1218,7 @@ export class PFMParser {
 		if (p >= length && !this.finished) return -2;
 
 		// must be at end of line or end of input
-		if (p < length && char_code_at.call(source, p - base) !== LINEFEED)
+		if (p < length && char_code_at.call(source, p - base) !== Ch.LINEFEED)
 			return -1;
 		if (p < length) p++; // consume newline
 
@@ -1299,10 +1273,10 @@ export class PFMParser {
 		let columns = 0;
 		while (pos < length) {
 			const ch = char_code_at.call(source, pos - base);
-			if (ch === SPACE) {
+			if (ch === Ch.SPACE) {
 				columns++;
 				pos++;
-			} else if (ch === TAB) {
+			} else if (ch === Ch.TAB) {
 				columns += ts;
 				pos++;
 			} else {
@@ -1324,10 +1298,10 @@ export class PFMParser {
 		let columns = 0;
 		while (pos < length && columns < target) {
 			const ch = char_code_at.call(source, pos - base);
-			if (ch === SPACE) {
+			if (ch === Ch.SPACE) {
 				columns++;
 				pos++;
-			} else if (ch === TAB) {
+			} else if (ch === Ch.TAB) {
 				columns += ts;
 				pos++;
 			} else {
@@ -1357,7 +1331,7 @@ export class PFMParser {
 		// next line to avoid under-reading the continuation prefix.
 		if (this.block_quote_depth > 0) {
 			for (let p = pos + 1; p < length; p++) {
-				if (char_code_at.call(source, p - base) === LINEFEED) return true;
+				if (char_code_at.call(source, p - base) === Ch.LINEFEED) return true;
 			}
 			return false;
 		}
@@ -1366,7 +1340,7 @@ export class PFMParser {
 		// skip leading whitespace on the next line.
 		while (p < length) {
 			const ch = char_code_at.call(source, p - base);
-			if (ch !== SPACE && ch !== TAB) break;
+			if (ch !== Ch.SPACE && ch !== Ch.TAB) break;
 			p++;
 		}
 		if (p >= length) {
@@ -1376,28 +1350,28 @@ export class PFMParser {
 		}
 		const ch = char_code_at.call(source, p - base);
 		// blank line is an immediate decision.
-		if (ch === LINEFEED) return true;
+		if (ch === Ch.LINEFEED) return true;
 		// a visible linefeed decides either way, so settle on the first char before scanning the line
 		switch (ch) {
-			case OCTOTHERP:
+			case Ch.OCTOTHERP:
 				// heading needs at least `#` + one lookahead char
 				// (distinguishes `# x` heading from `#x` paragraph).
 				if (p + 1 < length) return true;
 				break;
-			case CLOSE_ANGLE_BRACKET:
+			case Ch.CLOSE_ANGLE_BRACKET:
 				// block quote - immediate.
 				return true;
-			case BACKTICK:
+			case Ch.BACKTICK:
 				// code fence needs three backticks visible.
 				if (
 					p + 2 < length &&
-					char_code_at.call(source, p + 1 - base) === BACKTICK &&
-					char_code_at.call(source, p + 2 - base) === BACKTICK
+					char_code_at.call(source, p + 1 - base) === Ch.BACKTICK &&
+					char_code_at.call(source, p + 2 - base) === Ch.BACKTICK
 				)
 					return true;
 				break;
-			case DASH:
-			case ASTERISK:
+			case Ch.DASH:
+			case Ch.ASTERISK:
 				// could be a list marker or a thematic break. inside a list,
 				// scan the visible next-line prefix: as soon as we find a
 				// char that isn't marker/space/tab we know it's not a tb
@@ -1407,23 +1381,23 @@ export class PFMParser {
 				if (this.list_depth > 0) {
 					for (let q = p + 1; q < length; q++) {
 						const qch = char_code_at.call(source, q - base);
-						if (qch === LINEFEED) return true;
-						if (qch !== ch && qch !== SPACE && qch !== TAB) return true;
+						if (qch === Ch.LINEFEED) return true;
+						if (qch !== ch && qch !== Ch.SPACE && qch !== Ch.TAB) return true;
 					}
 					return false;
 				}
 				break;
-			case PLUS:
+			case Ch.PLUS:
 				// plus is only ever a list marker - no thematic break ambiguity.
 				// one char of lookahead is enough inside a list.
 				if (this.list_depth > 0 && p + 1 < length) return true;
 				break;
-			case UNDERSCORE:
-			case OPEN_ANGLE_BRACKET:
-			case OPEN_SQUARE_BRACKET:
-			case PIPE:
-			case OPEN_BRACE:
-			case COLON:
+			case Ch.UNDERSCORE:
+			case Ch.OPEN_ANGLE_BRACKET:
+			case Ch.OPEN_SQUARE_BRACKET:
+			case Ch.PIPE:
+			case Ch.OPEN_BRACE:
+			case Ch.COLON:
 				// genuinely ambiguous - need to see the rest of the line.
 				break;
 			default:
@@ -1443,7 +1417,7 @@ export class PFMParser {
 						q++;
 					if (q >= length) return false;
 					const dch = char_code_at.call(source, q - base);
-					if (dch !== DOT && dch !== CLOSE_PAREN) return true; // not a marker - continue paragraph
+					if (dch !== Ch.DOT && dch !== Ch.CLOSE_PAREN) return true; // not a marker - continue paragraph
 					if (q + 1 < length) return true;
 					break;
 				}
@@ -1452,7 +1426,7 @@ export class PFMParser {
 				return true;
 		}
 		for (let q = p + 1; q < length; q++) {
-			if (char_code_at.call(source, q - base) === LINEFEED) return true;
+			if (char_code_at.call(source, q - base) === Ch.LINEFEED) return true;
 		}
 		return false;
 	}
@@ -1463,24 +1437,26 @@ export class PFMParser {
 		const length = this.source_end;
 		while (
 			pos < length &&
-			(char_code_at.call(source, pos - base) === SPACE ||
-				char_code_at.call(source, pos - base) === TAB)
+			(char_code_at.call(source, pos - base) === Ch.SPACE ||
+				char_code_at.call(source, pos - base) === Ch.TAB)
 		) {
 			pos++;
 		}
-		if (pos >= length || char_code_at.call(source, pos - base) !== OCTOTHERP)
+		if (pos >= length || char_code_at.call(source, pos - base) !== Ch.OCTOTHERP)
 			return false;
 		let count = 0;
 		while (
 			pos < length &&
-			char_code_at.call(source, pos - base) === OCTOTHERP
+			char_code_at.call(source, pos - base) === Ch.OCTOTHERP
 		) {
 			count++;
 			pos++;
 		}
 		if (count > 6) return false;
 		const ch = char_code_at.call(source, pos - base);
-		return pos >= length || ch === SPACE || ch === TAB || ch === LINEFEED;
+		return (
+			pos >= length || ch === Ch.SPACE || ch === Ch.TAB || ch === Ch.LINEFEED
+		);
 	}
 
 	private is_blank_line_after(pos: number): boolean {
@@ -1488,9 +1464,9 @@ export class PFMParser {
 		const base = this.source_base;
 		const length = this.source_end;
 		let p = pos + 1;
-		while (p < length && char_code_at.call(source, p - base) !== LINEFEED) {
+		while (p < length && char_code_at.call(source, p - base) !== Ch.LINEFEED) {
 			const ch = char_code_at.call(source, p - base);
-			if (ch !== SPACE && ch !== TAB) return false;
+			if (ch !== Ch.SPACE && ch !== Ch.TAB) return false;
 			p++;
 		}
 		// hit end-of-buffer without \n, not a confirmed blank line in feed mode
@@ -1503,7 +1479,7 @@ export class PFMParser {
 		const base = this.source_base;
 		const length = this.source_end;
 		let spaces = 0;
-		while (pos < length && char_code_at.call(source, pos - base) === SPACE) {
+		while (pos < length && char_code_at.call(source, pos - base) === Ch.SPACE) {
 			spaces++;
 			pos++;
 		}
@@ -1512,15 +1488,22 @@ export class PFMParser {
 		if (pos >= length) return false;
 
 		const marker = char_code_at.call(source, pos - base);
-		if (marker !== ASTERISK && marker !== DASH && marker !== UNDERSCORE)
+		if (
+			marker !== Ch.ASTERISK &&
+			marker !== Ch.DASH &&
+			marker !== Ch.UNDERSCORE
+		)
 			return false;
 
 		let count = 0;
-		while (pos < length && char_code_at.call(source, pos - base) !== LINEFEED) {
+		while (
+			pos < length &&
+			char_code_at.call(source, pos - base) !== Ch.LINEFEED
+		) {
 			const ch = char_code_at.call(source, pos - base);
 			if (ch === marker) {
 				count++;
-			} else if (ch !== SPACE && ch !== TAB) {
+			} else if (ch !== Ch.SPACE && ch !== Ch.TAB) {
 				return false;
 			}
 			pos++;
@@ -1549,18 +1532,18 @@ export class PFMParser {
 		for (let i = 0; i < depth; i++) {
 			while (
 				pos < length &&
-				(char_code_at.call(source, pos - base) === SPACE ||
-					char_code_at.call(source, pos - base) === TAB)
+				(char_code_at.call(source, pos - base) === Ch.SPACE ||
+					char_code_at.call(source, pos - base) === Ch.TAB)
 			) {
 				pos++;
 			}
 			if (
 				pos >= length ||
-				char_code_at.call(source, pos - base) !== CLOSE_ANGLE_BRACKET
+				char_code_at.call(source, pos - base) !== Ch.CLOSE_ANGLE_BRACKET
 			)
 				return -1;
 			pos++;
-			if (pos < length && char_code_at.call(source, pos - base) === SPACE)
+			if (pos < length && char_code_at.call(source, pos - base) === Ch.SPACE)
 				pos++;
 		}
 		return pos;
@@ -1572,14 +1555,14 @@ export class PFMParser {
 		const length = this.source_end;
 		while (
 			pos < length &&
-			(char_code_at.call(source, pos - base) === SPACE ||
-				char_code_at.call(source, pos - base) === TAB)
+			(char_code_at.call(source, pos - base) === Ch.SPACE ||
+				char_code_at.call(source, pos - base) === Ch.TAB)
 		) {
 			pos++;
 		}
 		return (
 			pos < length &&
-			char_code_at.call(source, pos - base) === CLOSE_ANGLE_BRACKET
+			char_code_at.call(source, pos - base) === Ch.CLOSE_ANGLE_BRACKET
 		);
 	}
 
@@ -1623,19 +1606,25 @@ export class PFMParser {
 			let fp = stripped;
 			while (
 				fp < length &&
-				(char_code_at.call(source, fp - base) === SPACE ||
-					char_code_at.call(source, fp - base) === TAB)
+				(char_code_at.call(source, fp - base) === Ch.SPACE ||
+					char_code_at.call(source, fp - base) === Ch.TAB)
 			)
 				fp++;
 			let bt = 0;
-			while (fp < length && char_code_at.call(source, fp - base) === BACKTICK) {
+			while (
+				fp < length &&
+				char_code_at.call(source, fp - base) === Ch.BACKTICK
+			) {
 				bt++;
 				fp++;
 			}
 			if (bt >= fence_len) return 1;
 			// advance to next line.
 			let nl = stripped;
-			while (nl < length && char_code_at.call(source, nl - base) !== LINEFEED)
+			while (
+				nl < length &&
+				char_code_at.call(source, nl - base) !== Ch.LINEFEED
+			)
 				nl++;
 			if (nl >= length) {
 				// reached eof mid-line. in finished mode, no close found -
@@ -1651,9 +1640,12 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
-		while (pos < length && char_code_at.call(source, pos - base) !== LINEFEED) {
+		while (
+			pos < length &&
+			char_code_at.call(source, pos - base) !== Ch.LINEFEED
+		) {
 			const ch = char_code_at.call(source, pos - base);
-			if (ch !== SPACE && ch !== TAB) return false;
+			if (ch !== Ch.SPACE && ch !== Ch.TAB) return false;
 			pos++;
 		}
 		if (pos >= length && !this.finished) return false;
@@ -1676,7 +1668,7 @@ export class PFMParser {
 		// skip leading whitespace once
 		while (p < length) {
 			const ch = char_code_at.call(source, p - base);
-			if (ch !== SPACE && ch !== TAB) break;
+			if (ch !== Ch.SPACE && ch !== Ch.TAB) break;
 			p++;
 		}
 
@@ -1686,37 +1678,37 @@ export class PFMParser {
 		const ch = char_code_at.call(source, p - base);
 
 		// blank line
-		if (ch === LINEFEED) return true;
+		if (ch === Ch.LINEFEED) return true;
 
 		// svelte block boundary ({: or {/) interrupts paragraphs
-		if (ch === OPEN_BRACE && this.is_svelte_block_boundary(p)) return true;
+		if (ch === Ch.OPEN_BRACE && this.is_svelte_block_boundary(p)) return true;
 
 		// fast exit: first non-ws char can't start any block construct
 		switch (ch) {
-			case OCTOTHERP:
+			case Ch.OCTOTHERP:
 				return this.is_heading_start(pos);
-			case CLOSE_ANGLE_BRACKET:
+			case Ch.CLOSE_ANGLE_BRACKET:
 				return true;
-			case BACKTICK:
+			case Ch.BACKTICK:
 				return (
 					p + 2 < length &&
-					char_code_at.call(source, p + 1 - base) === BACKTICK &&
-					char_code_at.call(source, p + 2 - base) === BACKTICK
+					char_code_at.call(source, p + 1 - base) === Ch.BACKTICK &&
+					char_code_at.call(source, p + 2 - base) === Ch.BACKTICK
 				);
-			case ASTERISK:
-			case DASH:
-			case UNDERSCORE:
+			case Ch.ASTERISK:
+			case Ch.DASH:
+			case Ch.UNDERSCORE:
 				return (
 					this.is_thematic_break_start(pos) ||
-					(ch !== UNDERSCORE && this.is_list_item_start_interrupt(pos))
+					(ch !== Ch.UNDERSCORE && this.is_list_item_start_interrupt(pos))
 				);
-			case PLUS:
+			case Ch.PLUS:
 				return this.is_list_item_start_interrupt(pos);
-			case OPEN_ANGLE_BRACKET: {
+			case Ch.OPEN_ANGLE_BRACKET: {
 				// block-level html tag (`<ul>`, `</p>`, etc.) at line start
 				// interrupts an open paragraph.
 				let q = p + 1;
-				if (q < length && char_code_at.call(source, q - base) === SLASH) q++;
+				if (q < length && char_code_at.call(source, q - base) === Ch.SLASH) q++;
 				if (
 					q >= length ||
 					!this.is_tag_name_start(char_code_at.call(source, q - base))
@@ -1733,10 +1725,10 @@ export class PFMParser {
 					string_slice.call(source, name_start - base, q - base)
 				);
 			}
-			case COLON:
+			case Ch.COLON:
 				// :: or ::: starts a block directive
 				return (
-					p + 1 < length && char_code_at.call(source, p + 1 - base) === COLON
+					p + 1 < length && char_code_at.call(source, p + 1 - base) === Ch.COLON
 				);
 			default:
 				if (ch >= 48 && ch <= 57) return this.is_list_item_start_interrupt(pos);
@@ -1758,8 +1750,8 @@ export class PFMParser {
 		let p = content_start;
 		while (p < length) {
 			const ch = char_code_at.call(source, p - base);
-			if (ch === LINEFEED) return false;
-			if (ch !== SPACE && ch !== TAB) return true;
+			if (ch === Ch.LINEFEED) return false;
+			if (ch !== Ch.SPACE && ch !== Ch.TAB) return true;
 			p++;
 		}
 		// reached end of buffer without finding content. in incremental mode
@@ -1783,21 +1775,24 @@ export class PFMParser {
 		const ch = char_code_at.call(source, pos - base);
 
 		// unordered: -, *, +
-		if (ch === DASH || ch === ASTERISK || ch === PLUS) {
+		if (ch === Ch.DASH || ch === Ch.ASTERISK || ch === Ch.PLUS) {
 			// in incremental mode, don't accept a marker at end of buffer -
 			// more characters may follow (e.g. `---` thematic break)
 			if (pos + 1 >= length && !this.finished) return null;
 			const after = char_code_at.call(source, pos + 1 - base);
 			if (
 				pos + 1 >= length ||
-				after === SPACE ||
-				after === TAB ||
-				after === LINEFEED
+				after === Ch.SPACE ||
+				after === Ch.TAB ||
+				after === Ch.LINEFEED
 			) {
 				let content_start = pos + 1;
 				let content_columns = indent + 1; // marker char = 1 column
-				if (content_start < length && (after === SPACE || after === TAB)) {
-					content_columns += after === TAB ? this.tab_size : 1;
+				if (
+					content_start < length &&
+					(after === Ch.SPACE || after === Ch.TAB)
+				) {
+					content_columns += after === Ch.TAB ? this.tab_size : 1;
 					content_start++;
 				}
 				if (!this.marker_line_has_content(content_start)) return null;
@@ -1827,22 +1822,25 @@ export class PFMParser {
 
 			if (pos >= length) return null;
 			const delimiter = char_code_at.call(source, pos - base);
-			if (delimiter !== DOT && delimiter !== CLOSE_PAREN) return null;
+			if (delimiter !== Ch.DOT && delimiter !== Ch.CLOSE_PAREN) return null;
 
 			// in incremental mode, don't accept a marker at end of buffer
 			if (pos + 1 >= length && !this.finished) return null;
 			const after = char_code_at.call(source, pos + 1 - base);
 			if (
 				pos + 1 >= length ||
-				after === SPACE ||
-				after === TAB ||
-				after === LINEFEED
+				after === Ch.SPACE ||
+				after === Ch.TAB ||
+				after === Ch.LINEFEED
 			) {
 				let content_start = pos + 1;
 				// columns: indent + digits + delimiter
 				let content_columns = indent + (pos - num_start) + 1;
-				if (content_start < length && (after === SPACE || after === TAB)) {
-					content_columns += after === TAB ? this.tab_size : 1;
+				if (
+					content_start < length &&
+					(after === Ch.SPACE || after === Ch.TAB)
+				) {
+					content_columns += after === Ch.TAB ? this.tab_size : 1;
 					content_start++;
 				}
 				if (!this.marker_line_has_content(content_start)) return null;
@@ -1874,10 +1872,10 @@ export class PFMParser {
 		if (this.list_depth > 0) return true;
 		if (marker.ordered && marker.start_num !== 1) return false;
 		let p = marker.content_start;
-		while (p < length && char_code_at.call(source, p - base) !== LINEFEED) {
+		while (p < length && char_code_at.call(source, p - base) !== Ch.LINEFEED) {
 			if (
-				char_code_at.call(source, p - base) !== SPACE &&
-				char_code_at.call(source, p - base) !== TAB
+				char_code_at.call(source, p - base) !== Ch.SPACE &&
+				char_code_at.call(source, p - base) !== Ch.TAB
 			)
 				return true;
 			p++;
@@ -2096,16 +2094,16 @@ export class PFMParser {
 			}
 		}
 
-		if (scheme_len < 2 || char_code_at.call(source, p - base) !== COLON)
+		if (scheme_len < 2 || char_code_at.call(source, p - base) !== Ch.COLON)
 			return -1;
 		p++;
 
 		while (p < length) {
 			ch = char_code_at.call(source, p - base);
-			if (ch === CLOSE_ANGLE_BRACKET) {
+			if (ch === Ch.CLOSE_ANGLE_BRACKET) {
 				return p + 1;
 			}
-			if (ch <= 0x20 || ch === OPEN_ANGLE_BRACKET) {
+			if (ch <= 0x20 || ch === Ch.OPEN_ANGLE_BRACKET) {
 				return -1;
 			}
 			p++;
@@ -2121,7 +2119,7 @@ export class PFMParser {
 	 */
 	private is_tag_name_start(ch: number): boolean {
 		return (
-			(ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122) || ch === UNDERSCORE
+			(ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122) || ch === Ch.UNDERSCORE
 		);
 	}
 
@@ -2134,10 +2132,10 @@ export class PFMParser {
 			(ch >= 65 && ch <= 90) ||
 			(ch >= 97 && ch <= 122) ||
 			(ch >= 48 && ch <= 57) ||
-			ch === DASH ||
-			ch === DOT ||
-			ch === COLON ||
-			ch === UNDERSCORE
+			ch === Ch.DASH ||
+			ch === Ch.DOT ||
+			ch === Ch.COLON ||
+			ch === Ch.UNDERSCORE
 		);
 	}
 
@@ -2148,12 +2146,12 @@ export class PFMParser {
 	private is_unquoted_attr_char(ch: number): boolean {
 		return (
 			ch > 0x20 &&
-			ch !== QUOTE &&
-			ch !== APOSTROPHE &&
-			ch !== EQUALS &&
-			ch !== OPEN_ANGLE_BRACKET &&
-			ch !== CLOSE_ANGLE_BRACKET &&
-			ch !== BACKTICK
+			ch !== Ch.QUOTE &&
+			ch !== Ch.APOSTROPHE &&
+			ch !== Ch.EQUALS &&
+			ch !== Ch.OPEN_ANGLE_BRACKET &&
+			ch !== Ch.CLOSE_ANGLE_BRACKET &&
+			ch !== Ch.BACKTICK
 		);
 	}
 
@@ -2329,31 +2327,31 @@ export class PFMParser {
 			// skip whitespace
 			while (
 				p < length &&
-				(char_code_at.call(source, p - base) === SPACE ||
-					char_code_at.call(source, p - base) === TAB ||
-					char_code_at.call(source, p - base) === LINEFEED)
+				(char_code_at.call(source, p - base) === Ch.SPACE ||
+					char_code_at.call(source, p - base) === Ch.TAB ||
+					char_code_at.call(source, p - base) === Ch.LINEFEED)
 			)
 				p++;
 
 			if (p >= length) return null;
 
 			// check for end of tag
-			if (char_code_at.call(source, p - base) === SLASH) {
+			if (char_code_at.call(source, p - base) === Ch.SLASH) {
 				if (
 					p + 1 < length &&
-					char_code_at.call(source, p + 1 - base) === CLOSE_ANGLE_BRACKET
+					char_code_at.call(source, p + 1 - base) === Ch.CLOSE_ANGLE_BRACKET
 				) {
 					return { tag, attributes, self_closing: true, end: p + 2 };
 				}
 				return null; // stray /
 			}
 
-			if (char_code_at.call(source, p - base) === CLOSE_ANGLE_BRACKET) {
+			if (char_code_at.call(source, p - base) === Ch.CLOSE_ANGLE_BRACKET) {
 				return { tag, attributes, self_closing: false, end: p + 1 };
 			}
 
 			// svelte shorthand attribute: {name}
-			if (char_code_at.call(source, p - base) === OPEN_BRACE) {
+			if (char_code_at.call(source, p - base) === Ch.OPEN_BRACE) {
 				const expr_end = this.find_matching_brace(p + 1);
 				if (expr_end === -1) return null;
 				const expr = string_slice.call(
@@ -2370,18 +2368,22 @@ export class PFMParser {
 			const attr_name_start = p;
 			const ch = char_code_at.call(source, p - base);
 			// attribute name: anything that's not whitespace, =, >, /
-			if (ch === EQUALS || ch === CLOSE_ANGLE_BRACKET || ch === SLASH) {
+			if (
+				ch === Ch.EQUALS ||
+				ch === Ch.CLOSE_ANGLE_BRACKET ||
+				ch === Ch.SLASH
+			) {
 				return null; // invalid attribute start
 			}
 
 			while (
 				p < length &&
-				char_code_at.call(source, p - base) !== SPACE &&
-				char_code_at.call(source, p - base) !== TAB &&
-				char_code_at.call(source, p - base) !== LINEFEED &&
-				char_code_at.call(source, p - base) !== EQUALS &&
-				char_code_at.call(source, p - base) !== CLOSE_ANGLE_BRACKET &&
-				char_code_at.call(source, p - base) !== SLASH
+				char_code_at.call(source, p - base) !== Ch.SPACE &&
+				char_code_at.call(source, p - base) !== Ch.TAB &&
+				char_code_at.call(source, p - base) !== Ch.LINEFEED &&
+				char_code_at.call(source, p - base) !== Ch.EQUALS &&
+				char_code_at.call(source, p - base) !== Ch.CLOSE_ANGLE_BRACKET &&
+				char_code_at.call(source, p - base) !== Ch.SLASH
 			) {
 				p++;
 			}
@@ -2396,27 +2398,27 @@ export class PFMParser {
 			// skip whitespace before potential =
 			while (
 				p < length &&
-				(char_code_at.call(source, p - base) === SPACE ||
-					char_code_at.call(source, p - base) === TAB ||
-					char_code_at.call(source, p - base) === LINEFEED)
+				(char_code_at.call(source, p - base) === Ch.SPACE ||
+					char_code_at.call(source, p - base) === Ch.TAB ||
+					char_code_at.call(source, p - base) === Ch.LINEFEED)
 			)
 				p++;
 
-			if (p < length && char_code_at.call(source, p - base) === EQUALS) {
+			if (p < length && char_code_at.call(source, p - base) === Ch.EQUALS) {
 				p++; // skip =
 				// skip whitespace after =
 				while (
 					p < length &&
-					(char_code_at.call(source, p - base) === SPACE ||
-						char_code_at.call(source, p - base) === TAB ||
-						char_code_at.call(source, p - base) === LINEFEED)
+					(char_code_at.call(source, p - base) === Ch.SPACE ||
+						char_code_at.call(source, p - base) === Ch.TAB ||
+						char_code_at.call(source, p - base) === Ch.LINEFEED)
 				)
 					p++;
 
 				if (p >= length) return null;
 
 				const quote = char_code_at.call(source, p - base);
-				if (quote === OPEN_BRACE) {
+				if (quote === Ch.OPEN_BRACE) {
 					// svelte expression attribute value: attr={expr}
 					const expr_end = this.find_matching_brace(p + 1);
 					if (expr_end === -1) return null;
@@ -2425,7 +2427,7 @@ export class PFMParser {
 						value: string_slice.call(source, p + 1 - base, expr_end - 1 - base),
 					};
 					p = expr_end;
-				} else if (quote === QUOTE || quote === APOSTROPHE) {
+				} else if (quote === Ch.QUOTE || quote === Ch.APOSTROPHE) {
 					// quoted value
 					p++; // skip opening quote
 					const value_start = p;
@@ -2473,15 +2475,15 @@ export class PFMParser {
 		let p = pos;
 
 		// must start with /
-		if (p >= length || char_code_at.call(source, p - base) !== SLASH)
+		if (p >= length || char_code_at.call(source, p - base) !== Ch.SLASH)
 			return null;
 		p++;
 
 		// optional whitespace after /
 		while (
 			p < length &&
-			(char_code_at.call(source, p - base) === SPACE ||
-				char_code_at.call(source, p - base) === TAB)
+			(char_code_at.call(source, p - base) === Ch.SPACE ||
+				char_code_at.call(source, p - base) === Ch.TAB)
 		)
 			p++;
 
@@ -2503,15 +2505,15 @@ export class PFMParser {
 		// optional whitespace before >
 		while (
 			p < length &&
-			(char_code_at.call(source, p - base) === SPACE ||
-				char_code_at.call(source, p - base) === TAB)
+			(char_code_at.call(source, p - base) === Ch.SPACE ||
+				char_code_at.call(source, p - base) === Ch.TAB)
 		)
 			p++;
 
 		// must end with >
 		if (
 			p >= length ||
-			char_code_at.call(source, p - base) !== CLOSE_ANGLE_BRACKET
+			char_code_at.call(source, p - base) !== Ch.CLOSE_ANGLE_BRACKET
 		)
 			return null;
 		return { tag, end: p + 1 };
@@ -2535,9 +2537,9 @@ export class PFMParser {
 
 		// must be <!--
 		if (
-			char_code_at.call(source, p - base) !== EXCLAMATION_MARK ||
-			char_code_at.call(source, p + 1 - base) !== DASH ||
-			char_code_at.call(source, p + 2 - base) !== DASH
+			char_code_at.call(source, p - base) !== Ch.EXCLAMATION_MARK ||
+			char_code_at.call(source, p + 1 - base) !== Ch.DASH ||
+			char_code_at.call(source, p + 2 - base) !== Ch.DASH
 		) {
 			if (p + 2 >= length && !this.finished) return false;
 			return null;
@@ -2548,9 +2550,9 @@ export class PFMParser {
 		// scan for -->
 		while (p + 2 < length) {
 			if (
-				char_code_at.call(source, p - base) === DASH &&
-				char_code_at.call(source, p + 1 - base) === DASH &&
-				char_code_at.call(source, p + 2 - base) === CLOSE_ANGLE_BRACKET
+				char_code_at.call(source, p - base) === Ch.DASH &&
+				char_code_at.call(source, p + 1 - base) === Ch.DASH &&
+				char_code_at.call(source, p + 2 - base) === Ch.CLOSE_ANGLE_BRACKET
 			) {
 				return { content_start, content_end: p, end: p + 3 };
 			}
@@ -2688,22 +2690,27 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
-		if (pos >= length || char_code_at.call(source, pos - base) !== OPEN_BRACE)
+		if (
+			pos >= length ||
+			char_code_at.call(source, pos - base) !== Ch.OPEN_BRACE
+		)
 			return null;
 		let p = pos + 1;
 		if (p >= length) return null;
 		const sigil = char_code_at.call(source, p - base);
-		if (sigil !== OCTOTHERP && sigil !== COLON && sigil !== SLASH) return null;
-		const kind_ch = sigil === OCTOTHERP ? '#' : sigil === COLON ? ':' : '/';
+		if (sigil !== Ch.OCTOTHERP && sigil !== Ch.COLON && sigil !== Ch.SLASH)
+			return null;
+		const kind_ch =
+			sigil === Ch.OCTOTHERP ? '#' : sigil === Ch.COLON ? ':' : '/';
 		p++;
 
 		// tag name
 		const tag_start = p;
 		while (
 			p < length &&
-			char_code_at.call(source, p - base) !== SPACE &&
-			char_code_at.call(source, p - base) !== TAB &&
-			char_code_at.call(source, p - base) !== CLOSE_BRACE
+			char_code_at.call(source, p - base) !== Ch.SPACE &&
+			char_code_at.call(source, p - base) !== Ch.TAB &&
+			char_code_at.call(source, p - base) !== Ch.CLOSE_BRACE
 		)
 			p++;
 		if (p === tag_start) return null;
@@ -2714,8 +2721,8 @@ export class PFMParser {
 			const save = p;
 			while (
 				p < length &&
-				(char_code_at.call(source, p - base) === SPACE ||
-					char_code_at.call(source, p - base) === TAB)
+				(char_code_at.call(source, p - base) === Ch.SPACE ||
+					char_code_at.call(source, p - base) === Ch.TAB)
 			)
 				p++;
 			if (
@@ -2723,9 +2730,9 @@ export class PFMParser {
 				char_code_at.call(source, p - base) === 105 /* i */ &&
 				char_code_at.call(source, p + 1 - base) === 102 /* f */ &&
 				(p + 2 >= length ||
-					char_code_at.call(source, p + 2 - base) === SPACE ||
-					char_code_at.call(source, p + 2 - base) === TAB ||
-					char_code_at.call(source, p + 2 - base) === CLOSE_BRACE)
+					char_code_at.call(source, p + 2 - base) === Ch.SPACE ||
+					char_code_at.call(source, p + 2 - base) === Ch.TAB ||
+					char_code_at.call(source, p + 2 - base) === Ch.CLOSE_BRACE)
 			) {
 				tag = 'else if';
 				p += 2;
@@ -2738,11 +2745,11 @@ export class PFMParser {
 			// {/tag} - no expression
 			while (
 				p < length &&
-				(char_code_at.call(source, p - base) === SPACE ||
-					char_code_at.call(source, p - base) === TAB)
+				(char_code_at.call(source, p - base) === Ch.SPACE ||
+					char_code_at.call(source, p - base) === Ch.TAB)
 			)
 				p++;
-			if (p >= length || char_code_at.call(source, p - base) !== CLOSE_BRACE)
+			if (p >= length || char_code_at.call(source, p - base) !== Ch.CLOSE_BRACE)
 				return null;
 			return { kind: kind_ch, tag, expr_start: 0, expr_end: 0, end: p + 1 };
 		}
@@ -2750,12 +2757,12 @@ export class PFMParser {
 		// skip whitespace after tag name
 		while (
 			p < length &&
-			(char_code_at.call(source, p - base) === SPACE ||
-				char_code_at.call(source, p - base) === TAB)
+			(char_code_at.call(source, p - base) === Ch.SPACE ||
+				char_code_at.call(source, p - base) === Ch.TAB)
 		)
 			p++;
 
-		if (p < length && char_code_at.call(source, p - base) === CLOSE_BRACE) {
+		if (p < length && char_code_at.call(source, p - base) === Ch.CLOSE_BRACE) {
 			// no expression: {#tag} or {:tag}
 			return { kind: kind_ch, tag, expr_start: 0, expr_end: 0, end: p + 1 };
 		}
@@ -2784,11 +2791,11 @@ export class PFMParser {
 		const base = this.source_base;
 		if (
 			pos >= this.source_end ||
-			char_code_at.call(source, pos - base) !== OPEN_BRACE
+			char_code_at.call(source, pos - base) !== Ch.OPEN_BRACE
 		)
 			return false;
 		const next = char_code_at.call(source, pos + 1 - base);
-		return next === COLON || next === SLASH;
+		return next === Ch.COLON || next === Ch.SLASH;
 	}
 
 	/**
@@ -2808,39 +2815,39 @@ export class PFMParser {
 			const ch = char_code_at.call(source, p - base);
 
 			switch (ch) {
-				case OPEN_BRACE:
+				case Ch.OPEN_BRACE:
 					depth++;
 					p++;
 					break;
-				case CLOSE_BRACE:
+				case Ch.CLOSE_BRACE:
 					depth--;
 					if (depth === 0) return p + 1;
 					p++;
 					break;
-				case QUOTE:
-				case APOSTROPHE: {
+				case Ch.QUOTE:
+				case Ch.APOSTROPHE: {
 					// skip string literal
 					p++;
 					while (p < length && char_code_at.call(source, p - base) !== ch) {
-						if (char_code_at.call(source, p - base) === BACKSLASH) p++;
+						if (char_code_at.call(source, p - base) === Ch.BACKSLASH) p++;
 						p++;
 					}
 					if (p < length) p++; // skip closing quote
 					break;
 				}
-				case BACKTICK: {
+				case Ch.BACKTICK: {
 					// skip template literal, respecting ${} interpolations
 					p++;
 					while (
 						p < length &&
-						char_code_at.call(source, p - base) !== BACKTICK
+						char_code_at.call(source, p - base) !== Ch.BACKTICK
 					) {
-						if (char_code_at.call(source, p - base) === BACKSLASH) {
+						if (char_code_at.call(source, p - base) === Ch.BACKSLASH) {
 							p++;
 						} else if (
 							char_code_at.call(source, p - base) === 36 /* $ */ &&
 							p + 1 < length &&
-							char_code_at.call(source, p + 1 - base) === OPEN_BRACE
+							char_code_at.call(source, p + 1 - base) === Ch.OPEN_BRACE
 						) {
 							p += 2; // skip ${
 							// recursively find the matching } for the interpolation
@@ -2854,16 +2861,16 @@ export class PFMParser {
 					if (p < length) p++; // skip closing backtick
 					break;
 				}
-				case SLASH: {
+				case Ch.SLASH: {
 					// skip // line comments
 					if (
 						p + 1 < length &&
-						char_code_at.call(source, p + 1 - base) === SLASH
+						char_code_at.call(source, p + 1 - base) === Ch.SLASH
 					) {
 						p += 2;
 						while (
 							p < length &&
-							char_code_at.call(source, p - base) !== LINEFEED
+							char_code_at.call(source, p - base) !== Ch.LINEFEED
 						)
 							p++;
 						break;
@@ -2871,14 +2878,14 @@ export class PFMParser {
 					// skip /* block comments */
 					if (
 						p + 1 < length &&
-						char_code_at.call(source, p + 1 - base) === ASTERISK
+						char_code_at.call(source, p + 1 - base) === Ch.ASTERISK
 					) {
 						p += 2;
 						while (p < length) {
 							if (
-								char_code_at.call(source, p - base) === ASTERISK &&
+								char_code_at.call(source, p - base) === Ch.ASTERISK &&
 								p + 1 < length &&
-								char_code_at.call(source, p + 1 - base) === SLASH
+								char_code_at.call(source, p + 1 - base) === Ch.SLASH
 							) {
 								p += 2;
 								break;
@@ -2918,23 +2925,24 @@ export class PFMParser {
 		// skip optional leading whitespace
 		while (
 			p < length &&
-			(char_code_at.call(source, p - base) === SPACE ||
-				char_code_at.call(source, p - base) === TAB)
+			(char_code_at.call(source, p - base) === Ch.SPACE ||
+				char_code_at.call(source, p - base) === Ch.TAB)
 		)
 			p++;
 
 		// must start with [
 		if (p >= length) return this.finished ? -1 : -2;
-		if (char_code_at.call(source, p - base) !== OPEN_SQUARE_BRACKET) return -1;
+		if (char_code_at.call(source, p - base) !== Ch.OPEN_SQUARE_BRACKET)
+			return -1;
 		p++;
 
 		// parse label - no line breaks, no empty label
 		const label_start = p;
 		while (p < length) {
 			const ch = char_code_at.call(source, p - base);
-			if (ch === CLOSE_SQUARE_BRACKET) break;
-			if (ch === LINEFEED || ch === OPEN_SQUARE_BRACKET) return -1;
-			if (ch === BACKSLASH && p + 1 < length) {
+			if (ch === Ch.CLOSE_SQUARE_BRACKET) break;
+			if (ch === Ch.LINEFEED || ch === Ch.OPEN_SQUARE_BRACKET) return -1;
+			if (ch === Ch.BACKSLASH && p + 1 < length) {
 				p += 2;
 				continue;
 			}
@@ -2948,24 +2956,24 @@ export class PFMParser {
 
 		// must have : immediately after ]
 		if (p >= length) return this.finished ? -1 : -2;
-		if (char_code_at.call(source, p - base) !== COLON) return -1;
+		if (char_code_at.call(source, p - base) !== Ch.COLON) return -1;
 		p++;
 
 		// skip optional whitespace (including at most one line break)
 		let saw_newline = false;
 		while (
 			p < length &&
-			(char_code_at.call(source, p - base) === SPACE ||
-				char_code_at.call(source, p - base) === TAB)
+			(char_code_at.call(source, p - base) === Ch.SPACE ||
+				char_code_at.call(source, p - base) === Ch.TAB)
 		)
 			p++;
-		if (p < length && char_code_at.call(source, p - base) === LINEFEED) {
+		if (p < length && char_code_at.call(source, p - base) === Ch.LINEFEED) {
 			saw_newline = true;
 			p++;
 			while (
 				p < length &&
-				(char_code_at.call(source, p - base) === SPACE ||
-					char_code_at.call(source, p - base) === TAB)
+				(char_code_at.call(source, p - base) === Ch.SPACE ||
+					char_code_at.call(source, p - base) === Ch.TAB)
 			)
 				p++;
 		}
@@ -2976,15 +2984,15 @@ export class PFMParser {
 		let url_start: number, url_end: number;
 		const dest_ch = char_code_at.call(source, p - base);
 
-		if (dest_ch === OPEN_ANGLE_BRACKET) {
+		if (dest_ch === Ch.OPEN_ANGLE_BRACKET) {
 			// angle-bracket destination: <url>
 			p++;
 			url_start = p;
 			while (p < length) {
 				const ch = char_code_at.call(source, p - base);
-				if (ch === CLOSE_ANGLE_BRACKET) break;
-				if (ch === LINEFEED || ch === OPEN_ANGLE_BRACKET) return -1;
-				if (ch === BACKSLASH && p + 1 < length) {
+				if (ch === Ch.CLOSE_ANGLE_BRACKET) break;
+				if (ch === Ch.LINEFEED || ch === Ch.OPEN_ANGLE_BRACKET) return -1;
+				if (ch === Ch.BACKSLASH && p + 1 < length) {
 					p += 2;
 					continue;
 				}
@@ -2993,7 +3001,7 @@ export class PFMParser {
 			if (p >= length) return this.finished ? -1 : -2;
 			url_end = p;
 			p++; // skip >
-		} else if (dest_ch === LINEFEED) {
+		} else if (dest_ch === Ch.LINEFEED) {
 			// no destination - invalid
 			return -1;
 		} else {
@@ -3003,12 +3011,12 @@ export class PFMParser {
 			while (p < length) {
 				const ch = char_code_at.call(source, p - base);
 				if (ch <= 0x20) break; // whitespace or control
-				if (ch === CLOSE_PAREN) {
+				if (ch === Ch.CLOSE_PAREN) {
 					if (paren_depth === 0) break;
 					paren_depth--;
 				}
-				if (ch === OPEN_PAREN) paren_depth++;
-				if (ch === BACKSLASH && p + 1 < length) {
+				if (ch === Ch.OPEN_PAREN) paren_depth++;
+				if (ch === Ch.BACKSLASH && p + 1 < length) {
 					p += 2;
 					continue;
 				}
@@ -3025,8 +3033,8 @@ export class PFMParser {
 		const pre_title_p = p;
 		while (
 			p < length &&
-			(char_code_at.call(source, p - base) === SPACE ||
-				char_code_at.call(source, p - base) === TAB)
+			(char_code_at.call(source, p - base) === Ch.SPACE ||
+				char_code_at.call(source, p - base) === Ch.TAB)
 		)
 			p++;
 		const had_title_ws = p > pre_title_p;
@@ -3035,19 +3043,19 @@ export class PFMParser {
 		let title = '';
 		if (p < length) {
 			const tc = char_code_at.call(source, p - base);
-			if (tc === LINEFEED) {
+			if (tc === Ch.LINEFEED) {
 				// newline after url - check if next line has a title
 				const nl_p = p;
 				p++;
 				while (
 					p < length &&
-					(char_code_at.call(source, p - base) === SPACE ||
-						char_code_at.call(source, p - base) === TAB)
+					(char_code_at.call(source, p - base) === Ch.SPACE ||
+						char_code_at.call(source, p - base) === Ch.TAB)
 				)
 					p++;
 				if (p < length) {
 					const ntc = char_code_at.call(source, p - base);
-					if (ntc === 34 || ntc === 39 || ntc === OPEN_PAREN) {
+					if (ntc === 34 || ntc === 39 || ntc === Ch.OPEN_PAREN) {
 						// try title on next line
 						const title_result = this.parse_ref_title(p);
 						if (title_result === -2) {
@@ -3069,7 +3077,7 @@ export class PFMParser {
 					p = nl_p;
 				}
 			} else if (
-				(tc === 34 || tc === 39 || tc === OPEN_PAREN) &&
+				(tc === 34 || tc === 39 || tc === Ch.OPEN_PAREN) &&
 				had_title_ws
 			) {
 				// title on same line (whitespace required between destination and title)
@@ -3092,12 +3100,12 @@ export class PFMParser {
 		// must be at end of line (only whitespace allowed after)
 		while (
 			p < length &&
-			(char_code_at.call(source, p - base) === SPACE ||
-				char_code_at.call(source, p - base) === TAB)
+			(char_code_at.call(source, p - base) === Ch.SPACE ||
+				char_code_at.call(source, p - base) === Ch.TAB)
 		)
 			p++;
 		if (p >= length && !this.finished) return -2; // need to see end of line
-		if (p < length && char_code_at.call(source, p - base) !== LINEFEED)
+		if (p < length && char_code_at.call(source, p - base) !== Ch.LINEFEED)
 			return -1;
 		if (p < length) p++; // skip newline
 
@@ -3123,8 +3131,8 @@ export class PFMParser {
 		const length = this.source_end;
 
 		const tc = char_code_at.call(source, pos - base);
-		if (tc !== 34 && tc !== 39 && tc !== OPEN_PAREN) return null;
-		const close_char = tc === OPEN_PAREN ? CLOSE_PAREN : tc;
+		if (tc !== 34 && tc !== 39 && tc !== Ch.OPEN_PAREN) return null;
+		const close_char = tc === Ch.OPEN_PAREN ? Ch.CLOSE_PAREN : tc;
 
 		let p = pos + 1;
 		const title_start = p;
@@ -3135,20 +3143,20 @@ export class PFMParser {
 				const title = string_slice.call(source, title_start - base, p - base);
 				return { title, end: p + 1 };
 			}
-			if (ch === LINEFEED) {
+			if (ch === Ch.LINEFEED) {
 				// check for blank line - that terminates the title (invalid)
 				let q = p + 1;
 				while (
 					q < length &&
-					(char_code_at.call(source, q - base) === SPACE ||
-						char_code_at.call(source, q - base) === TAB)
+					(char_code_at.call(source, q - base) === Ch.SPACE ||
+						char_code_at.call(source, q - base) === Ch.TAB)
 				)
 					q++;
-				if (q < length && char_code_at.call(source, q - base) === LINEFEED)
+				if (q < length && char_code_at.call(source, q - base) === Ch.LINEFEED)
 					return null; // blank line
 				if (q >= length && !this.finished) return -2; // need more input
 			}
-			if (ch === BACKSLASH && p + 1 < length) {
+			if (ch === Ch.BACKSLASH && p + 1 < length) {
 				p += 2;
 				continue;
 			}
@@ -3177,7 +3185,7 @@ export class PFMParser {
 		let pos = this.cursor + 1;
 		while (
 			pos < length &&
-			char_code_at.call(source, pos - base) === OCTOTHERP
+			char_code_at.call(source, pos - base) === Ch.OCTOTHERP
 		) {
 			hash_count++;
 			pos++;
@@ -3199,9 +3207,9 @@ export class PFMParser {
 		const after_hash = char_code_at.call(source, pos - base);
 		if (
 			pos < length &&
-			after_hash !== SPACE &&
-			after_hash !== TAB &&
-			after_hash !== LINEFEED
+			after_hash !== Ch.SPACE &&
+			after_hash !== Ch.TAB &&
+			after_hash !== Ch.LINEFEED
 		) {
 			this.states.push(StateKind.paragraph);
 			const para_id = this.emit_open(NodeKind.paragraph, this.cursor, parent);
@@ -3211,12 +3219,12 @@ export class PFMParser {
 
 		// skip whitespace after # to find content_start.
 		let content_start = pos;
-		if (pos < length && (after_hash === SPACE || after_hash === TAB)) {
+		if (pos < length && (after_hash === Ch.SPACE || after_hash === Ch.TAB)) {
 			content_start++;
 			while (
 				content_start < length &&
-				(char_code_at.call(source, content_start - base) === SPACE ||
-					char_code_at.call(source, content_start - base) === TAB)
+				(char_code_at.call(source, content_start - base) === Ch.SPACE ||
+					char_code_at.call(source, content_start - base) === Ch.TAB)
 			) {
 				content_start++;
 			}
@@ -3378,7 +3386,7 @@ export class PFMParser {
 							let pend = pstart;
 							while (
 								pend < length &&
-								char_code_at.call(source, pend - base) !== LINEFEED
+								char_code_at.call(source, pend - base) !== Ch.LINEFEED
 							)
 								pend++;
 							this.out.revoke(
@@ -3438,23 +3446,23 @@ export class PFMParser {
 					if (
 						this.cursor === 0 &&
 						!this.frontmatter_failed &&
-						code === DASH &&
+						code === Ch.DASH &&
 						!this.finished &&
 						length < 4 &&
-						(length < 2 || char_code_at.call(source, 1 - base) === DASH) &&
-						(length < 3 || char_code_at.call(source, 2 - base) === DASH)
+						(length < 2 || char_code_at.call(source, 1 - base) === Ch.DASH) &&
+						(length < 3 || char_code_at.call(source, 2 - base) === Ch.DASH)
 					) {
 						break main_loop;
 					}
 					if (
 						this.cursor === 0 &&
 						!this.frontmatter_failed &&
-						code === DASH &&
-						char_code_at.call(source, 1 - base) === DASH &&
-						char_code_at.call(source, 2 - base) === DASH
+						code === Ch.DASH &&
+						char_code_at.call(source, 1 - base) === Ch.DASH &&
+						char_code_at.call(source, 2 - base) === Ch.DASH
 					) {
 						const ch3 = char_code_at.call(source, 3 - base);
-						if (ch3 === LINEFEED || ch3 !== ch3 /* nan = eof */) {
+						if (ch3 === Ch.LINEFEED || ch3 !== ch3 /* nan = eof */) {
 							// need at least the opening `---\n` before we commit
 							if (!this.finished && length < 4) break main_loop;
 							this.states.push(StateKind.frontmatter);
@@ -3465,7 +3473,7 @@ export class PFMParser {
 							);
 							this.node_stack.push(fm_id);
 							// advance past `---\n`
-							const content_start = ch3 === LINEFEED ? 4 : 3;
+							const content_start = ch3 === Ch.LINEFEED ? 4 : 3;
 							this.out.set_value_start(fm_id, content_start);
 							this.chomp(content_start, true);
 							continue;
@@ -3493,15 +3501,15 @@ export class PFMParser {
 					// once we see non-whitespace, non-import content, imports are no longer allowed
 					if (
 						this.imports_allowed &&
-						code !== LINEFEED &&
-						code !== SPACE &&
-						code !== TAB
+						code !== Ch.LINEFEED &&
+						code !== Ch.SPACE &&
+						code !== Ch.TAB
 					) {
 						this.imports_allowed = false;
 					}
 
 					switch (code) {
-						case LINEFEED: {
+						case Ch.LINEFEED: {
 							const id = this.emit_open(
 								NodeKind.line_break,
 								this.cursor,
@@ -3512,20 +3520,20 @@ export class PFMParser {
 							continue;
 						}
 
-						case SPACE:
-						case TAB: {
+						case Ch.SPACE:
+						case Ch.TAB: {
 							let pos = this.cursor;
 							while (
 								pos < length &&
-								(char_code_at.call(source, pos - base) === SPACE ||
-									char_code_at.call(source, pos - base) === TAB)
+								(char_code_at.call(source, pos - base) === Ch.SPACE ||
+									char_code_at.call(source, pos - base) === Ch.TAB)
 							) {
 								pos++;
 							}
 							if (pos >= length && !this.finished) break main_loop;
 							if (
 								pos < length &&
-								char_code_at.call(source, pos - base) === LINEFEED
+								char_code_at.call(source, pos - base) === Ch.LINEFEED
 							) {
 								const id = this.emit_open(
 									NodeKind.line_break,
@@ -3540,20 +3548,20 @@ export class PFMParser {
 							continue;
 						}
 
-						case OCTOTHERP: {
+						case Ch.OCTOTHERP: {
 							if (!this.start_heading(current_node)) break main_loop;
 							continue;
 						}
 
-						case BACKTICK: {
+						case Ch.BACKTICK: {
 							this.states.push(StateKind.code_fence_start);
 							this.extra = 0;
 							continue;
 						}
 
-						case ASTERISK:
-						case DASH:
-						case UNDERSCORE: {
+						case Ch.ASTERISK:
+						case Ch.DASH:
+						case Ch.UNDERSCORE: {
 							// distinguish thematic break (`---`) from list (`- `)
 							// from paragraph (`-text`). stall only while the line
 							// could still be a thematic break (marker + ws chars
@@ -3563,11 +3571,11 @@ export class PFMParser {
 								let could_be_tb = true;
 								for (let p = this.cursor + 1; p < length; p++) {
 									const ch = char_code_at.call(source, p - base);
-									if (ch === LINEFEED) {
+									if (ch === Ch.LINEFEED) {
 										could_be_tb = false;
 										break;
 									}
-									if (ch !== code && ch !== SPACE && ch !== TAB) {
+									if (ch !== code && ch !== Ch.SPACE && ch !== Ch.TAB) {
 										could_be_tb = false;
 										break;
 									}
@@ -3578,7 +3586,7 @@ export class PFMParser {
 								let line_end = this.cursor;
 								while (
 									line_end < length &&
-									char_code_at.call(source, line_end - base) !== LINEFEED
+									char_code_at.call(source, line_end - base) !== Ch.LINEFEED
 								) {
 									line_end++;
 								}
@@ -3594,7 +3602,7 @@ export class PFMParser {
 								this.chomp(break_end, true);
 								continue;
 							}
-							if (code !== UNDERSCORE) {
+							if (code !== Ch.UNDERSCORE) {
 								const marker = this.try_parse_list_marker(this.cursor);
 								if (marker) {
 									this.start_list(marker, current_node);
@@ -3611,7 +3619,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case OPEN_ANGLE_BRACKET: {
+						case Ch.OPEN_ANGLE_BRACKET: {
 							// in incremental mode, stall if the tag might be incomplete
 							// (no closing > visible in the available source).
 							if (
@@ -3704,9 +3712,12 @@ export class PFMParser {
 							continue;
 						}
 
-						case CLOSE_ANGLE_BRACKET: {
+						case Ch.CLOSE_ANGLE_BRACKET: {
 							let p = this.cursor + 1;
-							if (p < length && char_code_at.call(source, p - base) === SPACE)
+							if (
+								p < length &&
+								char_code_at.call(source, p - base) === Ch.SPACE
+							)
 								p++;
 
 							this.block_quote_depth++;
@@ -3721,7 +3732,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case PIPE: {
+						case Ch.PIPE: {
 							const result = this.try_start_table(current_node);
 							if (result === false) break main_loop; // hold back
 							if (result === true) continue; // table started
@@ -3736,7 +3747,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case OPEN_BRACE: {
+						case Ch.OPEN_BRACE: {
 							// svelte block opener: {#tag expr}
 							if (!this.finished) {
 								const probe = this.find_matching_brace(this.cursor + 1);
@@ -3758,7 +3769,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case OPEN_SQUARE_BRACKET: {
+						case Ch.OPEN_SQUARE_BRACKET: {
 							// need a complete line for link ref definition detection
 							if (
 								!this.finished &&
@@ -3782,7 +3793,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case COLON: {
+						case Ch.COLON: {
 							// try_parse_block_directive stalls internally while the
 							// prefix is still consistent with a directive opener, so
 							// non-directive lines dispatch to paragraph eagerly
@@ -3803,7 +3814,7 @@ export class PFMParser {
 						}
 
 						default: {
-							if (code === PLUS || (code >= 48 && code <= 57)) {
+							if (code === Ch.PLUS || (code >= 48 && code <= 57)) {
 								// stall only while the marker prefix is still being
 								// read. plus: one char of lookahead is enough (space
 								// /tab/lf = marker, else paragraph). digits: skip the
@@ -3814,7 +3825,7 @@ export class PFMParser {
 								// to paragraph too eagerly.
 								if (!this.finished) {
 									let p = this.cursor + 1;
-									if (code !== PLUS) {
+									if (code !== Ch.PLUS) {
 										while (
 											p < length &&
 											char_code_at.call(source, p - base) >= 48 &&
@@ -3823,7 +3834,7 @@ export class PFMParser {
 											p++;
 										if (p >= length) break main_loop;
 										const after = char_code_at.call(source, p - base);
-										if (after === DOT || after === CLOSE_PAREN) p++;
+										if (after === Ch.DOT || after === Ch.CLOSE_PAREN) p++;
 									}
 									if (p >= length) break main_loop;
 								}
@@ -3866,14 +3877,14 @@ export class PFMParser {
 					// at linefeed: need to see next line to decide boundary.
 					// hold back if nothing follows and more input may come.
 					if (
-						code === LINEFEED &&
+						code === Ch.LINEFEED &&
 						!this.finished &&
 						!this.can_decide_after_lf(this.cursor)
 					) {
 						break main_loop;
 					}
 
-					if (code === LINEFEED) {
+					if (code === Ch.LINEFEED) {
 						const next_pos = this.cursor + 1;
 
 						// pfm: no lazy continuation. every line in a blockquote
@@ -3901,9 +3912,11 @@ export class PFMParser {
 								this.is_blank_at_pos(stripped) ||
 								this.is_heading_start(stripped) ||
 								this.is_thematic_break_start(stripped) ||
-								(char_code_at.call(source, stripped - base) === BACKTICK &&
-									char_code_at.call(source, stripped + 1 - base) === BACKTICK &&
-									char_code_at.call(source, stripped + 2 - base) === BACKTICK)
+								(char_code_at.call(source, stripped - base) === Ch.BACKTICK &&
+									char_code_at.call(source, stripped + 1 - base) ===
+										Ch.BACKTICK &&
+									char_code_at.call(source, stripped + 2 - base) ===
+										Ch.BACKTICK)
 							) {
 								this.emit_close(current_node, this.cursor);
 								this.states.pop();
@@ -3979,7 +3992,7 @@ export class PFMParser {
 						// strip leading whitespace on continuation line
 						while (
 							this.cursor < length &&
-							char_code_at.call(source, this.cursor - base) === SPACE
+							char_code_at.call(source, this.cursor - base) === Ch.SPACE
 						) {
 							this.cursor++;
 						}
@@ -4014,14 +4027,14 @@ export class PFMParser {
 
 				case StateKind.heading_marker: {
 					// heading content: parse inlines until linefeed or eof.
-					if (code === LINEFEED || code !== code) {
+					if (code === Ch.LINEFEED || code !== code) {
 						if (!this.finished && code !== code) break main_loop;
 						// trim trailing whitespace from heading value
 						let value_end = this.cursor;
 						while (
 							value_end > 0 &&
-							(char_code_at.call(source, value_end - 1 - base) === SPACE ||
-								char_code_at.call(source, value_end - 1 - base) === TAB)
+							(char_code_at.call(source, value_end - 1 - base) === Ch.SPACE ||
+								char_code_at.call(source, value_end - 1 - base) === Ch.TAB)
 						) {
 							value_end--;
 						}
@@ -4045,14 +4058,14 @@ export class PFMParser {
 					// need the char after `*` to do the flanking check without
 					// mis-committing on the nan wildcard mask at end-of-buffer.
 					if (
-						code === ASTERISK &&
+						code === Ch.ASTERISK &&
 						!this.finished &&
 						this.cursor + 1 >= length
 					) {
 						break main_loop;
 					}
 					if (
-						code === ASTERISK &&
+						code === Ch.ASTERISK &&
 						this.prev_class() & (CharMask.word | CharMask.punctuation) &&
 						this.next_class() & (CharMask.whitespace | CharMask.punctuation)
 					) {
@@ -4083,7 +4096,7 @@ export class PFMParser {
 							this.states.pop();
 						}
 					} else if (
-						code === LINEFEED &&
+						code === Ch.LINEFEED &&
 						this._delimiter_lf_close(current_node)
 					) {
 						continue;
@@ -4153,23 +4166,26 @@ export class PFMParser {
 
 				case StateKind.inline: {
 					// in table cells, | and \n break through all inline content
-					if (this.in_table && (code === PIPE || code === LINEFEED || !code)) {
+					if (
+						this.in_table &&
+						(code === Ch.PIPE || code === Ch.LINEFEED || !code)
+					) {
 						this.states.pop(); // pop inline
 						continue; // let table_row_content handle it
 					}
 					// in headings, \n and eof terminate - pop back to heading_marker
-					if (this.in_heading && (code === LINEFEED || !code)) {
+					if (this.in_heading && (code === Ch.LINEFEED || !code)) {
 						this.states.pop();
 						continue;
 					}
 					switch (code) {
-						case BACKTICK: {
+						case Ch.BACKTICK: {
 							this.states.push(StateKind.code_span_start);
 							this.extra = 0;
 							this.code_span_open_pos = this.cursor;
 							continue;
 						}
-						case LINEFEED: {
+						case Ch.LINEFEED: {
 							// need to see next line - hold back at end of buffer
 							if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
 								break main_loop;
@@ -4203,14 +4219,14 @@ export class PFMParser {
 								// strip leading whitespace on continuation line
 								while (
 									this.cursor < length &&
-									char_code_at.call(source, this.cursor - base) === SPACE
+									char_code_at.call(source, this.cursor - base) === Ch.SPACE
 								) {
 									this.cursor++;
 								}
 								continue;
 							}
 						}
-						case ASTERISK: {
+						case Ch.ASTERISK: {
 							// need to see the next char for flanking check
 							if (!this.finished && this.cursor + 1 >= length) break main_loop;
 							if (
@@ -4245,7 +4261,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case UNDERSCORE: {
+						case Ch.UNDERSCORE: {
 							// need to see the next char for flanking check
 							if (!this.finished && this.cursor + 1 >= length) break main_loop;
 							if (
@@ -4280,7 +4296,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case TILDE: {
+						case Ch.TILDE: {
 							// ~~ is a two-char token. if only one ~ is available
 							// and more input is expected, hold back.
 							if (!this.finished && this.cursor + 1 >= length) {
@@ -4288,7 +4304,8 @@ export class PFMParser {
 							}
 							// strikethrough: ~~ must be double tilde with flanking
 							if (
-								char_code_at.call(source, this.cursor + 1 - base) === TILDE &&
+								char_code_at.call(source, this.cursor + 1 - base) ===
+									Ch.TILDE &&
 								this.prev_class() &
 									(CharMask.whitespace | CharMask.punctuation) &&
 								classify(char_code_at.call(source, this.cursor + 2 - base)) &
@@ -4307,7 +4324,8 @@ export class PFMParser {
 								this.chomp(2);
 							} else if (
 								// subscript: single ~ with next char word/punctuation
-								char_code_at.call(source, this.cursor + 1 - base) !== TILDE &&
+								char_code_at.call(source, this.cursor + 1 - base) !==
+									Ch.TILDE &&
 								this.next_class() & (CharMask.word | CharMask.punctuation)
 							) {
 								const n_id = this.emit_open(
@@ -4335,7 +4353,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case CARET: {
+						case Ch.CARET: {
 							// superscript: ^ opens if next char is word/punctuation
 							// (no left-flanking constraint - x^2^ is valid)
 							if (this.next_class() & (CharMask.word | CharMask.punctuation)) {
@@ -4363,7 +4381,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case CLOSE_SQUARE_BRACKET: {
+						case Ch.CLOSE_SQUARE_BRACKET: {
 							// if inside a link_text state, pop inline to let it handle ]
 							if (
 								this.states.length >= 2 &&
@@ -4396,7 +4414,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case BACKSLASH: {
+						case Ch.BACKSLASH: {
 							// \ is a two-char token (escape or hard break) - hold back
 							if (!this.finished && this.cursor + 1 >= length) {
 								break main_loop;
@@ -4405,7 +4423,7 @@ export class PFMParser {
 								source,
 								this.cursor + 1 - base
 							);
-							if (next_code === LINEFEED) {
+							if (next_code === Ch.LINEFEED) {
 								// need to see the complete continuation line to
 								// strip leading whitespace and handle block quotes
 								if (
@@ -4454,7 +4472,7 @@ export class PFMParser {
 								// skip leading spaces
 								while (
 									this.cursor < length &&
-									char_code_at.call(source, this.cursor - base) === SPACE
+									char_code_at.call(source, this.cursor - base) === Ch.SPACE
 								) {
 									this.cursor++;
 								}
@@ -4485,7 +4503,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case OPEN_SQUARE_BRACKET: {
+						case Ch.OPEN_SQUARE_BRACKET: {
 							// links are not allowed inside directive text - the
 							// bracket is literal. track it when it sits directly
 							// in the text so the matching ] stays literal too.
@@ -4520,7 +4538,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case EXCLAMATION_MARK: {
+						case Ch.EXCLAMATION_MARK: {
 							// ![ is a two-char token - hold back lone ! at end of buffer
 							if (!this.finished && this.cursor + 1 >= length) {
 								break main_loop;
@@ -4530,7 +4548,7 @@ export class PFMParser {
 							// there, the ! falls through to the text path)
 							if (
 								char_code_at.call(source, this.cursor + 1 - base) ===
-									OPEN_SQUARE_BRACKET &&
+									Ch.OPEN_SQUARE_BRACKET &&
 								this.directive_text_ids.length === 0
 							) {
 								const img_id = this.emit_open(
@@ -4560,7 +4578,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case OPEN_ANGLE_BRACKET: {
+						case Ch.OPEN_ANGLE_BRACKET: {
 							// in incremental mode, stall if the tag might be incomplete
 							if (
 								!this.finished &&
@@ -4694,7 +4712,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case OPEN_BRACE: {
+						case Ch.OPEN_BRACE: {
 							// in incremental mode, stall if we can't see the closing brace
 							if (!this.finished) {
 								const probe = this.find_matching_brace(this.cursor + 1);
@@ -4703,15 +4721,17 @@ export class PFMParser {
 							const expr_end = this.find_matching_brace(this.cursor + 1);
 							if (expr_end !== -1) {
 								// svelte void tag: {@tag ...}
-								if (char_code_at.call(source, this.cursor + 1 - base) === AT) {
+								if (
+									char_code_at.call(source, this.cursor + 1 - base) === Ch.AT
+								) {
 									// find the tag name: scan word chars after @
 									let tp = this.cursor + 2;
 									while (
 										tp < expr_end - 1 &&
-										char_code_at.call(source, tp - base) !== SPACE &&
-										char_code_at.call(source, tp - base) !== TAB &&
-										char_code_at.call(source, tp - base) !== LINEFEED &&
-										char_code_at.call(source, tp - base) !== CLOSE_BRACE
+										char_code_at.call(source, tp - base) !== Ch.SPACE &&
+										char_code_at.call(source, tp - base) !== Ch.TAB &&
+										char_code_at.call(source, tp - base) !== Ch.LINEFEED &&
+										char_code_at.call(source, tp - base) !== Ch.CLOSE_BRACE
 									)
 										tp++;
 									const tag_name = string_slice.call(
@@ -4729,8 +4749,8 @@ export class PFMParser {
 										// skip whitespace after tag name to find expression start
 										while (
 											tp < expr_end - 1 &&
-											(char_code_at.call(source, tp - base) === SPACE ||
-												char_code_at.call(source, tp - base) === TAB)
+											(char_code_at.call(source, tp - base) === Ch.SPACE ||
+												char_code_at.call(source, tp - base) === Ch.TAB)
 										)
 											tp++;
 										if (tp < expr_end - 1) {
@@ -4767,7 +4787,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case COLON: {
+						case Ch.COLON: {
 							// inline directive: :name[content]
 							// need at least :x[ where x is a letter
 							if (!this.finished && this.cursor + 2 >= length) {
@@ -4795,7 +4815,8 @@ export class PFMParser {
 								// must be followed by [
 								if (
 									np < length &&
-									char_code_at.call(source, np - base) === OPEN_SQUARE_BRACKET
+									char_code_at.call(source, np - base) ===
+										Ch.OPEN_SQUARE_BRACKET
 								) {
 									const dir_name = string_slice.call(
 										source,
@@ -4832,7 +4853,7 @@ export class PFMParser {
 							continue;
 						}
 
-						case PIPE: {
+						case Ch.PIPE: {
 							// transparent intraword delimiter - provides flanking
 							// context for _ and * without producing output.
 							// fan|_tas_|tic -> fan<em>tas</em>tic
@@ -4865,18 +4886,21 @@ export class PFMParser {
 
 				case StateKind.text: {
 					// in table cells, | and \n unwind all inline states
-					if (this.in_table && (code === PIPE || code === LINEFEED || !code)) {
+					if (
+						this.in_table &&
+						(code === Ch.PIPE || code === Ch.LINEFEED || !code)
+					) {
 						this.unwind_inline_for_table();
 						continue; // let table_row_content handle it
 					}
 					// in headings, \n and eof close the text and pop back
-					if (this.in_heading && (code === LINEFEED || !code)) {
+					if (this.in_heading && (code === Ch.LINEFEED || !code)) {
 						// trim trailing whitespace from heading text
 						let value_end = this.cursor;
 						while (
 							value_end > 0 &&
-							(char_code_at.call(source, value_end - 1 - base) === SPACE ||
-								char_code_at.call(source, value_end - 1 - base) === TAB)
+							(char_code_at.call(source, value_end - 1 - base) === Ch.SPACE ||
+								char_code_at.call(source, value_end - 1 - base) === Ch.TAB)
 						) {
 							value_end--;
 						}
@@ -4889,7 +4913,7 @@ export class PFMParser {
 
 					// pipe in non-table context: transparent intraword delimiter.
 					// close the text node and let inline consume the pipe.
-					if (code === PIPE && !this.in_table) {
+					if (code === Ch.PIPE && !this.in_table) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
 						this.out.set_value_end(current_node, this.cursor);
@@ -4898,12 +4922,12 @@ export class PFMParser {
 					}
 
 					// handle backslash escapes within text
-					if (code === BACKSLASH) {
+					if (code === Ch.BACKSLASH) {
 						if (!this.finished && this.cursor + 1 >= length) {
 							break main_loop;
 						}
 						const next_code = char_code_at.call(source, this.cursor + 1 - base);
-						if (next_code === LINEFEED) {
+						if (next_code === Ch.LINEFEED) {
 							if (
 								!this.finished &&
 								!this.can_decide_after_lf(this.cursor + 1)
@@ -4966,7 +4990,7 @@ export class PFMParser {
 							// skip leading spaces
 							while (
 								this.cursor < length &&
-								char_code_at.call(source, this.cursor - base) === SPACE
+								char_code_at.call(source, this.cursor - base) === Ch.SPACE
 							) {
 								this.cursor++;
 							}
@@ -4993,7 +5017,7 @@ export class PFMParser {
 
 					// at linefeed: hold back if next line isn't available yet
 					if (
-						code === LINEFEED &&
+						code === Ch.LINEFEED &&
 						!this.finished &&
 						!this.can_decide_after_lf(this.cursor)
 					) {
@@ -5004,7 +5028,7 @@ export class PFMParser {
 						break main_loop;
 					}
 
-					if (code === LINEFEED && this.block_quote_depth > 0) {
+					if (code === Ch.LINEFEED && this.block_quote_depth > 0) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
 						this.out.set_value_end(current_node, this.cursor);
@@ -5014,14 +5038,14 @@ export class PFMParser {
 
 					if (
 						!code ||
-						(code === LINEFEED && this.is_block_interrupt(this.cursor + 1))
+						(code === Ch.LINEFEED && this.is_block_interrupt(this.cursor + 1))
 					) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
 						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
-					} else if (code === LINEFEED && this.list_depth > 0) {
+					} else if (code === Ch.LINEFEED && this.list_depth > 0) {
 						const np = this.cursor + 1;
 						const { columns: ind } = this.count_indent(np);
 						if (ind >= this.list_content_offset) {
@@ -5043,14 +5067,14 @@ export class PFMParser {
 						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
-					} else if (code === LINEFEED) {
+					} else if (code === Ch.LINEFEED) {
 						// non-blockquote, non-list linefeed - close text, let inline emit soft_break
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
 						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
 						continue;
-					} else if (code === COLON) {
+					} else if (code === Ch.COLON) {
 						// only break text for inline directive: :letter...
 						if (!this.finished && this.cursor + 1 >= length) break main_loop;
 						const nc = char_code_at.call(source, this.cursor + 1 - base);
@@ -5066,16 +5090,16 @@ export class PFMParser {
 						this.cursor++;
 						continue;
 					} else if (
-						code === ASTERISK ||
-						code === UNDERSCORE ||
-						code === TILDE ||
-						code === CARET ||
-						code === OPEN_ANGLE_BRACKET ||
-						code === OPEN_SQUARE_BRACKET ||
-						code === CLOSE_SQUARE_BRACKET ||
-						code === EXCLAMATION_MARK ||
-						code === BACKTICK ||
-						code === OPEN_BRACE
+						code === Ch.ASTERISK ||
+						code === Ch.UNDERSCORE ||
+						code === Ch.TILDE ||
+						code === Ch.CARET ||
+						code === Ch.OPEN_ANGLE_BRACKET ||
+						code === Ch.OPEN_SQUARE_BRACKET ||
+						code === Ch.CLOSE_SQUARE_BRACKET ||
+						code === Ch.EXCLAMATION_MARK ||
+						code === Ch.BACKTICK ||
+						code === Ch.OPEN_BRACE
 					) {
 						this.states.pop();
 
@@ -5118,17 +5142,17 @@ export class PFMParser {
 					}
 
 					switch (code) {
-						case BACKTICK: {
+						case Ch.BACKTICK: {
 							this.extra += 1;
 							this.cursor++;
 							continue;
 						}
-						case OCTOTHERP: {
+						case Ch.OCTOTHERP: {
 							// need lookahead for #! annotation
 							if (!this.finished && this.cursor + 1 >= length) break main_loop;
 							if (
 								char_code_at.call(source, this.cursor + 1 - base) ===
-								EXCLAMATION_MARK
+								Ch.EXCLAMATION_MARK
 							) {
 								this.chomp(2);
 								this.states.pop();
@@ -5148,7 +5172,7 @@ export class PFMParser {
 							this.out.set_value_start(cs_id_h, this.cursor);
 							continue;
 						}
-						case SPACE: {
+						case Ch.SPACE: {
 							// need to see at least 1 char after the space
 							if (!this.finished && this.cursor + 1 >= length) break main_loop;
 							this.checkpoint_cursor = this.cursor;
@@ -5186,13 +5210,15 @@ export class PFMParser {
 
 				case StateKind.code_span_info: {
 					switch (code) {
-						case SPACE: {
+						case Ch.SPACE: {
 							// need to see the next char to decide single vs double space
 							if (!this.finished && this.cursor + 1 >= length) break main_loop;
 							this.info_end_pos = this.cursor;
 							this.checkpoint_cursor = this.cursor + 1;
 							this.states.pop();
-							if (char_code_at.call(source, this.cursor + 1 - base) === SPACE) {
+							if (
+								char_code_at.call(source, this.cursor + 1 - base) === Ch.SPACE
+							) {
 								this.states.push(StateKind.code_span_content_leading_space);
 								this.chomp(2);
 							} else {
@@ -5213,7 +5239,9 @@ export class PFMParser {
 							// set value_start only for the non-leading-space path.
 							// the leading-space path defers until its close handler
 							// determines whether stripping applies.
-							if (char_code_at.call(source, this.cursor - 2 - base) !== SPACE) {
+							if (
+								char_code_at.call(source, this.cursor - 2 - base) !== Ch.SPACE
+							) {
 								this.out.set_value_start(cs_id, this.cursor);
 							}
 
@@ -5230,31 +5258,32 @@ export class PFMParser {
 					// need lookahead for closing sequence detection
 					if (
 						!this.finished &&
-						(code === SPACE || code === BACKTICK) &&
+						(code === Ch.SPACE || code === Ch.BACKTICK) &&
 						this.cursor + this.extra >= length
 					) {
 						break main_loop;
 					}
 					if (
-						code === SPACE &&
-						char_code_at.call(source, this.cursor + 1 - base) === BACKTICK
+						code === Ch.SPACE &&
+						char_code_at.call(source, this.cursor + 1 - base) === Ch.BACKTICK
 					) {
 						this.cursor++;
 						this.states.pop();
 						this.states.push(StateKind.code_span_leading_space_end);
 						continue;
 					} else if (
-						code === BACKTICK &&
-						char_code_at.call(source, this.cursor - 1 - base) !== BACKTICK
+						code === Ch.BACKTICK &&
+						char_code_at.call(source, this.cursor - 1 - base) !== Ch.BACKTICK
 					) {
 						if (
 							(this.extra === 1 &&
 								char_code_at.call(source, this.cursor + 1 - base) !==
-									BACKTICK) ||
+									Ch.BACKTICK) ||
 							(this.extra === 2 &&
 								char_code_at.call(source, this.cursor + 1 - base) ===
-									BACKTICK &&
-								char_code_at.call(source, this.cursor + 2 - base) !== BACKTICK)
+									Ch.BACKTICK &&
+								char_code_at.call(source, this.cursor + 2 - base) !==
+									Ch.BACKTICK)
 						) {
 							this.out.set_value_start(current_node, this.checkpoint_cursor);
 							this.out.set_value_end(current_node, this.cursor);
@@ -5266,7 +5295,7 @@ export class PFMParser {
 						}
 						this.cursor++;
 						continue;
-					} else if (code === LINEFEED || code !== code) {
+					} else if (code === Ch.LINEFEED || code !== code) {
 						// code_span_end continues the span or fails it at a blank line or eof
 						this.out.set_value_start(current_node, this.checkpoint_cursor);
 						this.chomp(this.cursor, true);
@@ -5283,15 +5312,15 @@ export class PFMParser {
 					// need lookahead for closing sequence detection
 					if (
 						!this.finished &&
-						code === BACKTICK &&
+						code === Ch.BACKTICK &&
 						this.cursor + this.extra >= length
 					) {
 						break main_loop;
 					}
 					if (
 						this.extra === 1 &&
-						code === BACKTICK &&
-						char_code_at.call(source, this.cursor + 1 - base) !== BACKTICK
+						code === Ch.BACKTICK &&
+						char_code_at.call(source, this.cursor + 1 - base) !== Ch.BACKTICK
 					) {
 						this.states.pop();
 						this.out.set_value_start(current_node, this.checkpoint_cursor + 1);
@@ -5300,9 +5329,9 @@ export class PFMParser {
 						this.node_stack.pop();
 					} else if (
 						this.extra === 2 &&
-						code === BACKTICK &&
-						char_code_at.call(source, this.cursor + 1 - base) === BACKTICK &&
-						char_code_at.call(source, this.cursor + 2 - base) !== BACKTICK
+						code === Ch.BACKTICK &&
+						char_code_at.call(source, this.cursor + 1 - base) === Ch.BACKTICK &&
+						char_code_at.call(source, this.cursor + 2 - base) !== Ch.BACKTICK
 					) {
 						this.states.pop();
 						this.out.set_value_start(current_node, this.checkpoint_cursor + 1);
@@ -5319,16 +5348,17 @@ export class PFMParser {
 
 				case StateKind.code_span_end: {
 					// in table cells, | breaks through code spans
-					if (this.in_table && (code === PIPE || code === LINEFEED)) {
+					if (this.in_table && (code === Ch.PIPE || code === Ch.LINEFEED)) {
 						this.unwind_inline_for_table();
 						continue;
 					}
-					if (code === BACKTICK) {
+					if (code === Ch.BACKTICK) {
 						// count the full backtick run at cursor
 						let run = 1;
 						while (
 							this.cursor + run < length &&
-							char_code_at.call(source, this.cursor + run - base) === BACKTICK
+							char_code_at.call(source, this.cursor + run - base) ===
+								Ch.BACKTICK
 						)
 							run++;
 						// need enough lookahead to see end of run
@@ -5351,14 +5381,14 @@ export class PFMParser {
 
 					// hold back until the next line shows whether it is blank
 					if (
-						code === LINEFEED &&
+						code === Ch.LINEFEED &&
 						!this.finished &&
 						!this.can_decide_after_lf(this.cursor)
 					) {
 						break main_loop;
 					}
 					if (
-						(code === LINEFEED && this.is_blank_line_after(this.cursor)) ||
+						(code === Ch.LINEFEED && this.is_blank_line_after(this.cursor)) ||
 						code !== code
 					) {
 						// handle_repair turns the revoked code_span into text for the backticks
@@ -5384,9 +5414,9 @@ export class PFMParser {
 						while (p < length) {
 							const ch = char_code_at.call(source, p - base);
 							if (
-								ch === BACKTICK ||
-								ch === LINEFEED ||
-								(in_table && ch === PIPE)
+								ch === Ch.BACKTICK ||
+								ch === Ch.LINEFEED ||
+								(in_table && ch === Ch.PIPE)
 							)
 								break;
 							p++;
@@ -5404,32 +5434,34 @@ export class PFMParser {
 						continue;
 					}
 
-					if (code === LINEFEED) {
+					if (code === Ch.LINEFEED) {
 						// blank line -> end table
 						this.end_table();
 						continue;
 					}
 
 					// block-level interrupts end the table
-					if (code === OCTOTHERP && this.is_heading_start(this.cursor)) {
+					if (code === Ch.OCTOTHERP && this.is_heading_start(this.cursor)) {
 						this.end_table();
 						continue;
 					}
 					if (
-						code === BACKTICK &&
+						code === Ch.BACKTICK &&
 						this.cursor + 2 < length &&
-						char_code_at.call(source, this.cursor + 1 - base) === BACKTICK &&
-						char_code_at.call(source, this.cursor + 2 - base) === BACKTICK
+						char_code_at.call(source, this.cursor + 1 - base) === Ch.BACKTICK &&
+						char_code_at.call(source, this.cursor + 2 - base) === Ch.BACKTICK
 					) {
 						this.end_table();
 						continue;
 					}
-					if (code === CLOSE_ANGLE_BRACKET) {
+					if (code === Ch.CLOSE_ANGLE_BRACKET) {
 						this.end_table();
 						continue;
 					}
 					if (
-						(code === ASTERISK || code === DASH || code === UNDERSCORE) &&
+						(code === Ch.ASTERISK ||
+							code === Ch.DASH ||
+							code === Ch.UNDERSCORE) &&
 						this.is_thematic_break_start(this.cursor)
 					) {
 						this.end_table();
@@ -5445,7 +5477,7 @@ export class PFMParser {
 					this.table_cell_col = 0;
 
 					// skip leading pipe
-					if (code === PIPE) {
+					if (code === Ch.PIPE) {
 						this.cursor++;
 					}
 
@@ -5482,7 +5514,7 @@ export class PFMParser {
 						continue;
 					}
 
-					if (code === PIPE) {
+					if (code === Ch.PIPE) {
 						if (this.table_cell_col < this.table_col_count) {
 							this.close_table_cell();
 						}
@@ -5504,7 +5536,7 @@ export class PFMParser {
 						continue;
 					}
 
-					if (code === LINEFEED) {
+					if (code === Ch.LINEFEED) {
 						if (this.table_cell_col < this.table_col_count) {
 							this.close_table_cell();
 							this.table_cell_col++;
@@ -5518,12 +5550,12 @@ export class PFMParser {
 					// skip leading whitespace before cell content
 					if (
 						!this.table_cell_has_content &&
-						(code === SPACE || code === TAB)
+						(code === Ch.SPACE || code === Ch.TAB)
 					) {
 						let p = this.cursor + 1;
 						while (p < length) {
 							const ch = char_code_at.call(source, p - base);
-							if (ch !== SPACE && ch !== TAB) break;
+							if (ch !== Ch.SPACE && ch !== Ch.TAB) break;
 							p++;
 						}
 						this.cursor = p;
@@ -5560,7 +5592,7 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
-		if (code === BACKTICK) {
+		if (code === Ch.BACKTICK) {
 			this.extra += 1;
 			this.cursor++;
 			return false;
@@ -5574,7 +5606,7 @@ export class PFMParser {
 				let info_end = this.cursor;
 				while (
 					info_end < length &&
-					char_code_at.call(source, info_end - base) !== LINEFEED
+					char_code_at.call(source, info_end - base) !== Ch.LINEFEED
 				)
 					info_end++;
 				if (info_end >= length && !this.finished) return true;
@@ -5655,11 +5687,11 @@ export class PFMParser {
 		} else if (this.cursor + 1 >= length) {
 			return true;
 		}
-		if (code !== LINEFEED) {
+		if (code !== Ch.LINEFEED) {
 			let p = this.cursor + 1;
 			while (p + 1 < length) {
 				const ch = char_code_at.call(source, p - base);
-				if (ch === 0 || ch === LINEFEED) break;
+				if (ch === 0 || ch === Ch.LINEFEED) break;
 				p++;
 			}
 			this.cursor = p;
@@ -5701,12 +5733,15 @@ export class PFMParser {
 			let lp = line;
 			while (
 				lp < length &&
-				(char_code_at.call(source, lp - base) === SPACE ||
-					char_code_at.call(source, lp - base) === TAB)
+				(char_code_at.call(source, lp - base) === Ch.SPACE ||
+					char_code_at.call(source, lp - base) === Ch.TAB)
 			)
 				lp++;
 			const bt_start = lp;
-			while (lp < length && char_code_at.call(source, lp - base) === BACKTICK)
+			while (
+				lp < length &&
+				char_code_at.call(source, lp - base) === Ch.BACKTICK
+			)
 				lp++;
 			if (lp - bt_start >= fence_len) {
 				found_index = bt_start;
@@ -5722,7 +5757,7 @@ export class PFMParser {
 				this.fence_scan = line;
 				if (this.can_trim(this.node_stack.length - 1)) {
 					this.trim_point = line;
-					this.wait_kind = WAIT_FENCE;
+					this.wait_kind = Wait.FENCE;
 				}
 				return true;
 			}
@@ -5738,7 +5773,7 @@ export class PFMParser {
 		let bt_end = found_index;
 		while (
 			bt_end < length &&
-			char_code_at.call(source, bt_end - base) === BACKTICK
+			char_code_at.call(source, bt_end - base) === Ch.BACKTICK
 		)
 			bt_end++;
 
@@ -5771,7 +5806,7 @@ export class PFMParser {
 			// the node is not on the node stack, nothing rereads before the scan
 			if (this.can_trim(this.node_stack.length)) {
 				this.trim_point = this.raw_scan;
-				this.wait_kind = WAIT_RAW;
+				this.wait_kind = Wait.RAW;
 			}
 			return true;
 		}
@@ -5790,21 +5825,24 @@ export class PFMParser {
 		const base = this.source_base;
 		const length = this.source_end;
 		if (this.cursor >= length && !this.finished) return true;
-		if (this.cursor >= length || code === LINEFEED) {
+		if (this.cursor >= length || code === Ch.LINEFEED) {
 			this.emit_close(current_node, this.cursor);
 			this.node_stack.pop();
 			this.states.pop();
 			this.cursor++;
 			return false;
 		}
-		if (code === BACKTICK) {
+		if (code === Ch.BACKTICK) {
 			this.cursor++;
 			return false;
 		}
 		// non-backtick trailing content - scan to end of line
 		{
 			let ep = this.cursor;
-			while (ep < length && char_code_at.call(source, ep - base) !== LINEFEED)
+			while (
+				ep < length &&
+				char_code_at.call(source, ep - base) !== Ch.LINEFEED
+			)
 				ep++;
 			if (ep >= length && !this.finished) return true;
 			this.emit_close(current_node, this.cursor);
@@ -5825,11 +5863,11 @@ export class PFMParser {
 		}
 		// need the char after `_` to do the flanking check without
 		// mis-committing on the nan wildcard mask at end-of-buffer.
-		if (code === UNDERSCORE && !this.finished && this.cursor + 1 >= length) {
+		if (code === Ch.UNDERSCORE && !this.finished && this.cursor + 1 >= length) {
 			return true;
 		}
 		if (
-			code === UNDERSCORE &&
+			code === Ch.UNDERSCORE &&
 			this.prev_class() & (CharMask.word | CharMask.punctuation) &&
 			this.next_class() & (CharMask.whitespace | CharMask.punctuation)
 		) {
@@ -5856,7 +5894,7 @@ export class PFMParser {
 			if (this.states[this.states.length - 1] === StateKind.inline) {
 				this.states.pop();
 			}
-		} else if (code === LINEFEED && this._delimiter_lf_close(current_node)) {
+		} else if (code === Ch.LINEFEED && this._delimiter_lf_close(current_node)) {
 			return false;
 		} else {
 			this.emphasis_has_content = true;
@@ -5875,13 +5913,13 @@ export class PFMParser {
 			return false;
 		}
 		// ~~ is a two-char token - hold back lone ~ at end of buffer
-		if (code === TILDE && !this.finished && this.cursor + 1 >= length) {
+		if (code === Ch.TILDE && !this.finished && this.cursor + 1 >= length) {
 			return true;
 		}
 		// close: ~~ with right-flanking
 		if (
-			code === TILDE &&
-			char_code_at.call(source, this.cursor + 1 - base) === TILDE &&
+			code === Ch.TILDE &&
+			char_code_at.call(source, this.cursor + 1 - base) === Ch.TILDE &&
 			this.prev_class() & (CharMask.word | CharMask.punctuation) &&
 			classify(char_code_at.call(source, this.cursor + 2 - base)) &
 				(CharMask.whitespace | CharMask.punctuation)
@@ -5896,7 +5934,7 @@ export class PFMParser {
 			if (this.states[this.states.length - 1] === StateKind.inline) {
 				this.states.pop();
 			}
-		} else if (code === LINEFEED && this._delimiter_lf_close(current_node)) {
+		} else if (code === Ch.LINEFEED && this._delimiter_lf_close(current_node)) {
 			return false;
 		} else {
 			this.states.push(StateKind.inline);
@@ -5912,7 +5950,7 @@ export class PFMParser {
 		// close: ^ after content (no right-flanking needed -
 		// ^ is unambiguous, and x^2^y must work)
 		if (
-			code === CARET &&
+			code === Ch.CARET &&
 			this.prev_class() & (CharMask.word | CharMask.punctuation)
 		) {
 			const n_id = this.node_stack[this.node_stack.length - 1];
@@ -5925,7 +5963,7 @@ export class PFMParser {
 			if (this.states[this.states.length - 1] === StateKind.inline) {
 				this.states.pop();
 			}
-		} else if (code === LINEFEED && this._delimiter_lf_close(current_node)) {
+		} else if (code === Ch.LINEFEED && this._delimiter_lf_close(current_node)) {
 			return false;
 		} else {
 			this.states.push(StateKind.inline);
@@ -5943,8 +5981,8 @@ export class PFMParser {
 		// close: single ~ after content (no right-flanking needed -
 		// ~ is unambiguous inside subscript, and h~2~o must work)
 		if (
-			code === TILDE &&
-			char_code_at.call(source, this.cursor + 1 - base) !== TILDE &&
+			code === Ch.TILDE &&
+			char_code_at.call(source, this.cursor + 1 - base) !== Ch.TILDE &&
 			this.prev_class() & (CharMask.word | CharMask.punctuation)
 		) {
 			const n_id = this.node_stack[this.node_stack.length - 1];
@@ -5957,7 +5995,7 @@ export class PFMParser {
 			if (this.states[this.states.length - 1] === StateKind.inline) {
 				this.states.pop();
 			}
-		} else if (code === LINEFEED && this._delimiter_lf_close(current_node)) {
+		} else if (code === Ch.LINEFEED && this._delimiter_lf_close(current_node)) {
 			return false;
 		} else {
 			this.states.push(StateKind.inline);
@@ -5975,7 +6013,7 @@ export class PFMParser {
 			this._unwind_unterminated_delimiter();
 			return false;
 		}
-		if (code === CLOSE_SQUARE_BRACKET) {
+		if (code === Ch.CLOSE_SQUARE_BRACKET) {
 			// inline directive: ] closes the text, an optional
 			// (key=val) argument list may follow immediately
 			if (this.kind_of(current_node) === NodeKind.directive_inline) {
@@ -5996,7 +6034,7 @@ export class PFMParser {
 				let dir_close_end = dir_after;
 				if (
 					dir_after < length &&
-					char_code_at.call(source, dir_after - base) === OPEN_PAREN
+					char_code_at.call(source, dir_after - base) === Ch.OPEN_PAREN
 				) {
 					const parsed = this.try_parse_directive_args(dir_after);
 					if (parsed === false) return true;
@@ -6031,15 +6069,15 @@ export class PFMParser {
 
 			if (
 				after < length &&
-				char_code_at.call(source, after - base) === OPEN_PAREN
+				char_code_at.call(source, after - base) === Ch.OPEN_PAREN
 			) {
 				// parse the (url "title") part
 				let p = after + 1;
 				// skip whitespace
 				while (
 					p < length &&
-					(char_code_at.call(source, p - base) === SPACE ||
-						char_code_at.call(source, p - base) === TAB)
+					(char_code_at.call(source, p - base) === Ch.SPACE ||
+						char_code_at.call(source, p - base) === Ch.TAB)
 				)
 					p++;
 
@@ -6049,26 +6087,26 @@ export class PFMParser {
 				// check for angle-bracket url
 				if (
 					p < length &&
-					char_code_at.call(source, p - base) === OPEN_ANGLE_BRACKET
+					char_code_at.call(source, p - base) === Ch.OPEN_ANGLE_BRACKET
 				) {
 					p++;
 					url_start = p;
 					while (
 						p < length &&
-						char_code_at.call(source, p - base) !== CLOSE_ANGLE_BRACKET &&
-						char_code_at.call(source, p - base) !== LINEFEED
+						char_code_at.call(source, p - base) !== Ch.CLOSE_ANGLE_BRACKET &&
+						char_code_at.call(source, p - base) !== Ch.LINEFEED
 					)
 						p++;
 					if (
 						p < length &&
-						char_code_at.call(source, p - base) === CLOSE_ANGLE_BRACKET
+						char_code_at.call(source, p - base) === Ch.CLOSE_ANGLE_BRACKET
 					) {
 						url_end = p;
 						p++;
 					}
 				} else if (
 					p < length &&
-					char_code_at.call(source, p - base) === CLOSE_PAREN
+					char_code_at.call(source, p - base) === Ch.CLOSE_PAREN
 				) {
 					// empty url: [text]()
 					url_start = p;
@@ -6080,12 +6118,12 @@ export class PFMParser {
 					while (p < length) {
 						const ch = char_code_at.call(source, p - base);
 						if (ch <= 0x20) break;
-						if (ch === CLOSE_PAREN) {
+						if (ch === Ch.CLOSE_PAREN) {
 							if (paren_depth === 0) break;
 							paren_depth--;
 						}
-						if (ch === OPEN_PAREN) paren_depth++;
-						if (ch === BACKSLASH && p + 1 < length) {
+						if (ch === Ch.OPEN_PAREN) paren_depth++;
+						if (ch === Ch.BACKSLASH && p + 1 < length) {
 							p += 2;
 							continue;
 						}
@@ -6097,8 +6135,8 @@ export class PFMParser {
 				// skip whitespace
 				while (
 					p < length &&
-					(char_code_at.call(source, p - base) === SPACE ||
-						char_code_at.call(source, p - base) === TAB)
+					(char_code_at.call(source, p - base) === Ch.SPACE ||
+						char_code_at.call(source, p - base) === Ch.TAB)
 				)
 					p++;
 
@@ -6107,17 +6145,17 @@ export class PFMParser {
 				let title_end = -1;
 				if (p < length) {
 					const tc = char_code_at.call(source, p - base);
-					if (tc === 34 || tc === 39 || tc === OPEN_PAREN) {
-						const close_char = tc === OPEN_PAREN ? CLOSE_PAREN : tc;
+					if (tc === 34 || tc === 39 || tc === Ch.OPEN_PAREN) {
+						const close_char = tc === Ch.OPEN_PAREN ? Ch.CLOSE_PAREN : tc;
 						p++;
 						title_start = p;
 						while (
 							p < length &&
 							char_code_at.call(source, p - base) !== close_char &&
-							char_code_at.call(source, p - base) !== LINEFEED
+							char_code_at.call(source, p - base) !== Ch.LINEFEED
 						) {
 							if (
-								char_code_at.call(source, p - base) === BACKSLASH &&
+								char_code_at.call(source, p - base) === Ch.BACKSLASH &&
 								p + 1 < length
 							) {
 								p += 2;
@@ -6138,12 +6176,15 @@ export class PFMParser {
 				// skip trailing whitespace
 				while (
 					p < length &&
-					(char_code_at.call(source, p - base) === SPACE ||
-						char_code_at.call(source, p - base) === TAB)
+					(char_code_at.call(source, p - base) === Ch.SPACE ||
+						char_code_at.call(source, p - base) === Ch.TAB)
 				)
 					p++;
 
-				if (p < length && char_code_at.call(source, p - base) === CLOSE_PAREN) {
+				if (
+					p < length &&
+					char_code_at.call(source, p - base) === Ch.CLOSE_PAREN
+				) {
 					p++; // skip )
 					// success - set attrs and close
 					const n_id = current_node;
@@ -6184,7 +6225,7 @@ export class PFMParser {
 			// check for reference syntax: ][ref] or ][]
 			if (
 				after < length &&
-				char_code_at.call(source, after - base) === OPEN_SQUARE_BRACKET
+				char_code_at.call(source, after - base) === Ch.OPEN_SQUARE_BRACKET
 			) {
 				let ref_p = after + 1;
 
@@ -6196,7 +6237,7 @@ export class PFMParser {
 				// ][] - collapsed reference: label = link text
 				if (
 					ref_p < length &&
-					char_code_at.call(source, ref_p - base) === CLOSE_SQUARE_BRACKET
+					char_code_at.call(source, ref_p - base) === Ch.CLOSE_SQUARE_BRACKET
 				) {
 					const label = string_slice.call(
 						source,
@@ -6231,9 +6272,9 @@ export class PFMParser {
 				const ref_start = ref_p;
 				while (ref_p < length) {
 					const ch = char_code_at.call(source, ref_p - base);
-					if (ch === CLOSE_SQUARE_BRACKET) break;
-					if (ch === OPEN_SQUARE_BRACKET || ch === LINEFEED) break;
-					if (ch === BACKSLASH && ref_p + 1 < length) {
+					if (ch === Ch.CLOSE_SQUARE_BRACKET) break;
+					if (ch === Ch.OPEN_SQUARE_BRACKET || ch === Ch.LINEFEED) break;
+					if (ch === Ch.BACKSLASH && ref_p + 1 < length) {
 						ref_p += 2;
 						continue;
 					}
@@ -6247,7 +6288,7 @@ export class PFMParser {
 
 				if (
 					ref_p < length &&
-					char_code_at.call(source, ref_p - base) === CLOSE_SQUARE_BRACKET &&
+					char_code_at.call(source, ref_p - base) === Ch.CLOSE_SQUARE_BRACKET &&
 					ref_p > ref_start
 				) {
 					const label = string_slice.call(
@@ -6282,7 +6323,7 @@ export class PFMParser {
 			return false;
 		}
 
-		if (code === LINEFEED && this.is_blank_line_after(this.cursor)) {
+		if (code === Ch.LINEFEED && this.is_blank_line_after(this.cursor)) {
 			// paragraph boundary - revoke link
 			this.out.revoke(current_node);
 			this.directive_text_pop(current_node);
@@ -6301,7 +6342,7 @@ export class PFMParser {
 		const base = this.source_base;
 		// inline html container state.
 		// check if current char starts a matching closing tag.
-		if (code === OPEN_ANGLE_BRACKET) {
+		if (code === Ch.OPEN_ANGLE_BRACKET) {
 			// stall if tag might be incomplete
 			if (
 				!this.finished &&
@@ -6337,7 +6378,7 @@ export class PFMParser {
 			}
 		}
 
-		if (code === LINEFEED && this.is_block_interrupt(this.cursor + 1)) {
+		if (code === Ch.LINEFEED && this.is_block_interrupt(this.cursor + 1)) {
 			// block interrupt after newline - close unclosed inline html element
 			if (
 				this.html_tag_stack.length > 0 &&
@@ -6392,7 +6433,7 @@ export class PFMParser {
 		}
 
 		// check for closing tag
-		if (code === OPEN_ANGLE_BRACKET) {
+		if (code === Ch.OPEN_ANGLE_BRACKET) {
 			// stall if tag might be incomplete
 			if (
 				!this.finished &&
@@ -6428,7 +6469,7 @@ export class PFMParser {
 		}
 
 		// skip linefeeds - they act as separators
-		if (code === LINEFEED) {
+		if (code === Ch.LINEFEED) {
 			const lb_id = this.emit_open(
 				NodeKind.line_break,
 				this.cursor,
@@ -6440,16 +6481,19 @@ export class PFMParser {
 		}
 
 		// skip leading whitespace
-		if (code === SPACE || code === TAB) {
+		if (code === Ch.SPACE || code === Ch.TAB) {
 			let pos = this.cursor;
 			while (
 				pos < length &&
-				(char_code_at.call(source, pos - base) === SPACE ||
-					char_code_at.call(source, pos - base) === TAB)
+				(char_code_at.call(source, pos - base) === Ch.SPACE ||
+					char_code_at.call(source, pos - base) === Ch.TAB)
 			) {
 				pos++;
 			}
-			if (pos < length && char_code_at.call(source, pos - base) === LINEFEED) {
+			if (
+				pos < length &&
+				char_code_at.call(source, pos - base) === Ch.LINEFEED
+			) {
 				const lb_id = this.emit_open(
 					NodeKind.line_break,
 					this.cursor,
@@ -6465,18 +6509,18 @@ export class PFMParser {
 
 		// dispatch block-level content inside the html element
 		// (headings, code fences, paragraphs, nested html, etc.)
-		if (code === OCTOTHERP) {
+		if (code === Ch.OCTOTHERP) {
 			if (!this.start_heading(current_node)) return true;
 			return false;
 		}
 
-		if (code === BACKTICK) {
+		if (code === Ch.BACKTICK) {
 			this.states.push(StateKind.code_fence_start);
 			this.extra = 0;
 			return false;
 		}
 
-		if (code === OPEN_ANGLE_BRACKET) {
+		if (code === Ch.OPEN_ANGLE_BRACKET) {
 			// nested html at block level
 			const blk_comment = this.try_parse_html_comment(this.cursor + 1);
 			if (blk_comment === false) return true;
@@ -6531,7 +6575,7 @@ export class PFMParser {
 			}
 		}
 
-		if (code === OPEN_BRACE) {
+		if (code === Ch.OPEN_BRACE) {
 			// svelte block opener nested inside an html block element
 			if (!this.finished) {
 				const probe = this.find_matching_brace(this.cursor + 1);
@@ -6544,7 +6588,7 @@ export class PFMParser {
 			}
 		}
 
-		if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
+		if (code === Ch.ASTERISK || code === Ch.DASH || code === Ch.UNDERSCORE) {
 			if (!this.finished && this.cursor + 2 >= length) {
 				return true;
 			}
@@ -6552,7 +6596,7 @@ export class PFMParser {
 				let line_end = this.cursor;
 				while (
 					line_end < length &&
-					char_code_at.call(source, line_end - base) !== LINEFEED
+					char_code_at.call(source, line_end - base) !== Ch.LINEFEED
 				)
 					line_end++;
 				const tb_id = this.emit_open(
@@ -6564,7 +6608,7 @@ export class PFMParser {
 				this.chomp(line_end, true);
 				return false;
 			}
-			if (code !== UNDERSCORE) {
+			if (code !== Ch.UNDERSCORE) {
 				const marker = this.try_parse_list_marker(this.cursor);
 				if (marker) {
 					this.start_list(marker, current_node);
@@ -6573,10 +6617,10 @@ export class PFMParser {
 			}
 		}
 
-		if (code === PLUS || (code >= 48 && code <= 57)) {
+		if (code === Ch.PLUS || (code >= 48 && code <= 57)) {
 			if (!this.finished) {
 				let p = this.cursor + 1;
-				if (code !== PLUS) {
+				if (code !== Ch.PLUS) {
 					while (
 						p < length &&
 						char_code_at.call(source, p - base) >= 48 &&
@@ -6585,7 +6629,7 @@ export class PFMParser {
 						p++;
 					if (p >= length) return true;
 					const after = char_code_at.call(source, p - base);
-					if (after === DOT || after === CLOSE_PAREN) p++;
+					if (after === Ch.DOT || after === Ch.CLOSE_PAREN) p++;
 				}
 				if (p >= length) return true;
 			}
@@ -6596,7 +6640,7 @@ export class PFMParser {
 			}
 		}
 
-		if (code === PIPE) {
+		if (code === Ch.PIPE) {
 			const result = this.try_start_table(current_node);
 			if (result === false) return true;
 			if (result === true) return false;
@@ -6633,7 +6677,7 @@ export class PFMParser {
 			return false;
 		}
 
-		if (code === OPEN_BRACE) {
+		if (code === Ch.OPEN_BRACE) {
 			// stall if closing brace not visible
 			if (!this.finished) {
 				const probe = this.find_matching_brace(this.cursor + 1);
@@ -6681,7 +6725,7 @@ export class PFMParser {
 		}
 
 		// skip linefeeds
-		if (code === LINEFEED) {
+		if (code === Ch.LINEFEED) {
 			const lb_id = this.emit_open(
 				NodeKind.line_break,
 				this.cursor,
@@ -6693,16 +6737,19 @@ export class PFMParser {
 		}
 
 		// skip leading whitespace
-		if (code === SPACE || code === TAB) {
+		if (code === Ch.SPACE || code === Ch.TAB) {
 			let pos = this.cursor;
 			while (
 				pos < length &&
-				(char_code_at.call(source, pos - base) === SPACE ||
-					char_code_at.call(source, pos - base) === TAB)
+				(char_code_at.call(source, pos - base) === Ch.SPACE ||
+					char_code_at.call(source, pos - base) === Ch.TAB)
 			) {
 				pos++;
 			}
-			if (pos < length && char_code_at.call(source, pos - base) === LINEFEED) {
+			if (
+				pos < length &&
+				char_code_at.call(source, pos - base) === Ch.LINEFEED
+			) {
 				const lb_id = this.emit_open(
 					NodeKind.line_break,
 					this.cursor,
@@ -6717,20 +6764,20 @@ export class PFMParser {
 		}
 
 		// dispatch block-level content
-		if (code === OCTOTHERP) {
+		if (code === Ch.OCTOTHERP) {
 			if (!this.start_heading(current_node)) return true;
 			return false;
 		}
 
-		if (code === BACKTICK) {
+		if (code === Ch.BACKTICK) {
 			this.states.push(StateKind.code_fence_start);
 			this.extra = 0;
 			return false;
 		}
 
-		if (code === CLOSE_ANGLE_BRACKET) {
+		if (code === Ch.CLOSE_ANGLE_BRACKET) {
 			let p = this.cursor + 1;
-			if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
+			if (p < length && char_code_at.call(source, p - base) === Ch.SPACE) p++;
 			this.block_quote_depth++;
 			const bq_id = this.emit_open(
 				NodeKind.block_quote,
@@ -6743,7 +6790,7 @@ export class PFMParser {
 			return false;
 		}
 
-		if (code === OPEN_ANGLE_BRACKET) {
+		if (code === Ch.OPEN_ANGLE_BRACKET) {
 			if (
 				!this.finished &&
 				string_index_of.call(source, '>', this.cursor + 1 - base) === -1
@@ -6789,7 +6836,7 @@ export class PFMParser {
 			}
 		}
 
-		if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
+		if (code === Ch.ASTERISK || code === Ch.DASH || code === Ch.UNDERSCORE) {
 			if (!this.finished && this.cursor + 2 >= length) {
 				return true;
 			}
@@ -6797,7 +6844,7 @@ export class PFMParser {
 				let line_end = this.cursor;
 				while (
 					line_end < length &&
-					char_code_at.call(source, line_end - base) !== LINEFEED
+					char_code_at.call(source, line_end - base) !== Ch.LINEFEED
 				)
 					line_end++;
 				const tb_id = this.emit_open(
@@ -6809,7 +6856,7 @@ export class PFMParser {
 				this.chomp(line_end, true);
 				return false;
 			}
-			if (code !== UNDERSCORE) {
+			if (code !== Ch.UNDERSCORE) {
 				const marker = this.try_parse_list_marker(this.cursor);
 				if (marker) {
 					this.start_list(marker, current_node);
@@ -6818,10 +6865,10 @@ export class PFMParser {
 			}
 		}
 
-		if (code === PLUS || (code >= 48 && code <= 57)) {
+		if (code === Ch.PLUS || (code >= 48 && code <= 57)) {
 			if (!this.finished) {
 				let p = this.cursor + 1;
-				if (code !== PLUS) {
+				if (code !== Ch.PLUS) {
 					while (
 						p < length &&
 						char_code_at.call(source, p - base) >= 48 &&
@@ -6830,7 +6877,7 @@ export class PFMParser {
 						p++;
 					if (p >= length) return true;
 					const after = char_code_at.call(source, p - base);
-					if (after === DOT || after === CLOSE_PAREN) p++;
+					if (after === Ch.DOT || after === Ch.CLOSE_PAREN) p++;
 				}
 				if (p >= length) return true;
 			}
@@ -6841,7 +6888,7 @@ export class PFMParser {
 			}
 		}
 
-		if (code === OPEN_SQUARE_BRACKET) {
+		if (code === Ch.OPEN_SQUARE_BRACKET) {
 			const def_end = this.try_parse_link_ref_definition(this.cursor);
 			if (def_end === -2) return true;
 			if (def_end >= 0) {
@@ -6850,7 +6897,7 @@ export class PFMParser {
 			}
 		}
 
-		if (code === COLON) {
+		if (code === Ch.COLON) {
 			const dir = this.try_parse_block_directive(this.cursor);
 			if (dir === false) return true;
 			if (dir !== null) {
@@ -6859,7 +6906,7 @@ export class PFMParser {
 			}
 		}
 
-		if (code === PIPE) {
+		if (code === Ch.PIPE) {
 			const result = this.try_start_table(current_node);
 			if (result === false) return true;
 			if (result === true) return false;
@@ -6893,7 +6940,7 @@ export class PFMParser {
 		}
 
 		switch (code) {
-			case LINEFEED: {
+			case Ch.LINEFEED: {
 				if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
 					return true;
 				}
@@ -6922,26 +6969,26 @@ export class PFMParser {
 				return false;
 			}
 
-			case SPACE:
-			case TAB: {
+			case Ch.SPACE:
+			case Ch.TAB: {
 				this.cursor++;
 				return false;
 			}
 
-			case OCTOTHERP: {
+			case Ch.OCTOTHERP: {
 				if (!this.start_heading(current_node)) return true;
 				return false;
 			}
 
-			case BACKTICK: {
+			case Ch.BACKTICK: {
 				this.states.push(StateKind.code_fence_start);
 				this.extra = 0;
 				return false;
 			}
 
-			case ASTERISK:
-			case DASH:
-			case UNDERSCORE: {
+			case Ch.ASTERISK:
+			case Ch.DASH:
+			case Ch.UNDERSCORE: {
 				// need a complete line to distinguish thematic break
 				// from list marker from paragraph.
 				if (
@@ -6954,7 +7001,7 @@ export class PFMParser {
 					let line_end = this.cursor;
 					while (
 						line_end < length &&
-						char_code_at.call(source, line_end - base) !== LINEFEED
+						char_code_at.call(source, line_end - base) !== Ch.LINEFEED
 					) {
 						line_end++;
 					}
@@ -6970,7 +7017,7 @@ export class PFMParser {
 					this.chomp(break_end, true);
 					return false;
 				}
-				if (code !== UNDERSCORE) {
+				if (code !== Ch.UNDERSCORE) {
 					const marker = this.try_parse_list_marker(this.cursor);
 					if (marker) {
 						this.start_list(marker, current_node);
@@ -6987,9 +7034,9 @@ export class PFMParser {
 				return false;
 			}
 
-			case CLOSE_ANGLE_BRACKET: {
+			case Ch.CLOSE_ANGLE_BRACKET: {
 				let p = this.cursor + 1;
-				if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
+				if (p < length && char_code_at.call(source, p - base) === Ch.SPACE) p++;
 
 				this.block_quote_depth++;
 				const bq_id = this.emit_open(
@@ -7003,7 +7050,7 @@ export class PFMParser {
 				return false;
 			}
 
-			case PIPE: {
+			case Ch.PIPE: {
 				const result = this.try_start_table(current_node);
 				if (result === false) return true;
 				if (result === true) return false;
@@ -7017,7 +7064,7 @@ export class PFMParser {
 				return false;
 			}
 
-			case OPEN_SQUARE_BRACKET: {
+			case Ch.OPEN_SQUARE_BRACKET: {
 				const def_end = this.try_parse_link_ref_definition(this.cursor);
 				if (def_end === -2) return true;
 				if (def_end >= 0) {
@@ -7034,7 +7081,7 @@ export class PFMParser {
 				return false;
 			}
 
-			case COLON: {
+			case Ch.COLON: {
 				// try_parse_block_directive stalls internally while the
 				// prefix is still consistent with a directive opener, so
 				// non-directive lines dispatch to paragraph eagerly
@@ -7055,12 +7102,12 @@ export class PFMParser {
 			}
 
 			default: {
-				if (code === PLUS || (code >= 48 && code <= 57)) {
+				if (code === Ch.PLUS || (code >= 48 && code <= 57)) {
 					// stall only while the marker prefix is still being
 					// read - same logic as the top-level block dispatch.
 					if (!this.finished) {
 						let p = this.cursor + 1;
-						if (code !== PLUS) {
+						if (code !== Ch.PLUS) {
 							while (
 								p < length &&
 								char_code_at.call(source, p - base) >= 48 &&
@@ -7069,7 +7116,7 @@ export class PFMParser {
 								p++;
 							if (p >= length) return true;
 							const after = char_code_at.call(source, p - base);
-							if (after === DOT || after === CLOSE_PAREN) p++;
+							if (after === Ch.DOT || after === Ch.CLOSE_PAREN) p++;
 						}
 						if (p >= length) return true;
 					}
@@ -7105,7 +7152,7 @@ export class PFMParser {
 		}
 
 		switch (code) {
-			case LINEFEED: {
+			case Ch.LINEFEED: {
 				const raw_next_pos = this.cursor + 1;
 
 				// need to see the complete next line to make
@@ -7134,7 +7181,7 @@ export class PFMParser {
 
 				const cur_is_blank =
 					this.cursor === 0 ||
-					char_code_at.call(source, this.cursor - 1 - base) === LINEFEED;
+					char_code_at.call(source, this.cursor - 1 - base) === Ch.LINEFEED;
 				if (
 					next_pos >= length ||
 					cur_is_blank ||
@@ -7145,7 +7192,7 @@ export class PFMParser {
 						if (!this.is_blank_at_pos(p)) break;
 						while (
 							p < length &&
-							char_code_at.call(source, p - base) !== LINEFEED
+							char_code_at.call(source, p - base) !== Ch.LINEFEED
 						)
 							p++;
 						if (p < length) p++;
@@ -7159,7 +7206,7 @@ export class PFMParser {
 								let ep = p;
 								while (
 									ep < length &&
-									char_code_at.call(source, ep - base) !== LINEFEED
+									char_code_at.call(source, ep - base) !== Ch.LINEFEED
 								)
 									ep++;
 								if (ep >= length) return true;
@@ -7185,26 +7232,26 @@ export class PFMParser {
 						// skip optional indent for the marker
 						while (
 							lp < length &&
-							(char_code_at.call(source, lp - base) === SPACE ||
-								char_code_at.call(source, lp - base) === TAB)
+							(char_code_at.call(source, lp - base) === Ch.SPACE ||
+								char_code_at.call(source, lp - base) === Ch.TAB)
 						)
 							lp++;
 						if (lp >= length) return true;
 						const mch = char_code_at.call(source, lp - base);
-						if (mch === DASH || mch === ASTERISK || mch === PLUS) {
+						if (mch === Ch.DASH || mch === Ch.ASTERISK || mch === Ch.PLUS) {
 							// for - and *, we also need to rule out a
 							// thematic break on this line - scan until
 							// we see a non-marker/ws char or lf.
-							if (mch !== PLUS) {
+							if (mch !== Ch.PLUS) {
 								let q = lp + 1;
 								let decided = false;
 								while (q < length) {
 									const qc = char_code_at.call(source, q - base);
-									if (qc === LINEFEED) {
+									if (qc === Ch.LINEFEED) {
 										decided = true;
 										break;
 									}
-									if (qc !== mch && qc !== SPACE && qc !== TAB) {
+									if (qc !== mch && qc !== Ch.SPACE && qc !== Ch.TAB) {
 										decided = true;
 										break;
 									}
@@ -7224,7 +7271,7 @@ export class PFMParser {
 								q++;
 							if (q >= length) return true;
 							const dch = char_code_at.call(source, q - base);
-							if (dch === DOT || dch === CLOSE_PAREN) q++;
+							if (dch === Ch.DOT || dch === Ch.CLOSE_PAREN) q++;
 							if (q >= length) return true;
 						}
 						// otherwise the next line isn't a list marker -
@@ -7267,7 +7314,7 @@ export class PFMParser {
 						if (
 							indent_count >= this.list_content_offset &&
 							ip < length &&
-							char_code_at.call(source, ip - base) !== LINEFEED
+							char_code_at.call(source, ip - base) !== Ch.LINEFEED
 						) {
 							this.list_is_loose = true;
 							this.chomp(this.skip_columns(p, this.list_content_offset), true);
@@ -7322,7 +7369,7 @@ export class PFMParser {
 					if (
 						indent_count >= this.list_content_offset &&
 						ip < length &&
-						char_code_at.call(source, ip - base) !== LINEFEED
+						char_code_at.call(source, ip - base) !== Ch.LINEFEED
 					) {
 						// content indented to list item's content column -
 						// strip indent and continue as list item content
@@ -7348,26 +7395,26 @@ export class PFMParser {
 				return false;
 			}
 
-			case SPACE:
-			case TAB: {
+			case Ch.SPACE:
+			case Ch.TAB: {
 				this.cursor++;
 				return false;
 			}
 
-			case OCTOTHERP: {
+			case Ch.OCTOTHERP: {
 				if (!this.start_heading(current_node)) return true;
 				return false;
 			}
 
-			case BACKTICK: {
+			case Ch.BACKTICK: {
 				this.states.push(StateKind.code_fence_start);
 				this.extra = 0;
 				return false;
 			}
 
-			case ASTERISK:
-			case DASH:
-			case UNDERSCORE: {
+			case Ch.ASTERISK:
+			case Ch.DASH:
+			case Ch.UNDERSCORE: {
 				// distinguish thematic break / nested list / paragraph.
 				// stall only while the line could still be a thematic
 				// break (marker + ws chars). as soon as any other char
@@ -7376,11 +7423,11 @@ export class PFMParser {
 					let could_be_tb = true;
 					for (let p = this.cursor + 1; p < length; p++) {
 						const ch = char_code_at.call(source, p - base);
-						if (ch === LINEFEED) {
+						if (ch === Ch.LINEFEED) {
 							could_be_tb = false;
 							break;
 						}
-						if (ch !== code && ch !== SPACE && ch !== TAB) {
+						if (ch !== code && ch !== Ch.SPACE && ch !== Ch.TAB) {
 							could_be_tb = false;
 							break;
 						}
@@ -7391,7 +7438,7 @@ export class PFMParser {
 					let line_end = this.cursor;
 					while (
 						line_end < length &&
-						char_code_at.call(source, line_end - base) !== LINEFEED
+						char_code_at.call(source, line_end - base) !== Ch.LINEFEED
 					)
 						line_end++;
 					const break_end = line_end < length ? line_end + 1 : line_end;
@@ -7404,7 +7451,7 @@ export class PFMParser {
 					this.chomp(break_end, true);
 					return false;
 				}
-				if (code !== UNDERSCORE) {
+				if (code !== Ch.UNDERSCORE) {
 					const nested = this.try_parse_list_marker(this.cursor);
 					if (nested) {
 						if (nested.indent >= this.list_content_offset) {
@@ -7446,9 +7493,9 @@ export class PFMParser {
 				return false;
 			}
 
-			case CLOSE_ANGLE_BRACKET: {
+			case Ch.CLOSE_ANGLE_BRACKET: {
 				let p = this.cursor + 1;
-				if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
+				if (p < length && char_code_at.call(source, p - base) === Ch.SPACE) p++;
 				this.block_quote_depth++;
 				const bq_id = this.emit_open(
 					NodeKind.block_quote,
@@ -7461,7 +7508,7 @@ export class PFMParser {
 				return false;
 			}
 
-			case PIPE: {
+			case Ch.PIPE: {
 				const result = this.try_start_table(current_node);
 				if (result === false) return true;
 				if (result === true) return false;
@@ -7478,7 +7525,7 @@ export class PFMParser {
 				return false;
 			}
 
-			case OPEN_SQUARE_BRACKET: {
+			case Ch.OPEN_SQUARE_BRACKET: {
 				const def_end = this.try_parse_link_ref_definition(this.cursor);
 				if (def_end === -2) return true;
 				if (def_end >= 0) {
@@ -7498,7 +7545,7 @@ export class PFMParser {
 				return false;
 			}
 
-			case COLON: {
+			case Ch.COLON: {
 				const dir = this.try_parse_block_directive(this.cursor);
 				if (dir === false) return true;
 				if (dir !== null) {
@@ -7522,9 +7569,12 @@ export class PFMParser {
 				// a digit or `+` could start a nested list marker - stall
 				// while the prefix is still being read so we don't commit
 				// the char as paragraph text before the marker decision.
-				if (!this.finished && (code === PLUS || (code >= 48 && code <= 57))) {
+				if (
+					!this.finished &&
+					(code === Ch.PLUS || (code >= 48 && code <= 57))
+				) {
 					let p = this.cursor + 1;
-					if (code !== PLUS) {
+					if (code !== Ch.PLUS) {
 						while (
 							p < length &&
 							char_code_at.call(source, p - base) >= 48 &&
@@ -7533,7 +7583,7 @@ export class PFMParser {
 							p++;
 						if (p >= length) return true;
 						const after = char_code_at.call(source, p - base);
-						if (after === DOT || after === CLOSE_PAREN) p++;
+						if (after === Ch.DOT || after === Ch.CLOSE_PAREN) p++;
 					}
 					if (p >= length) return true;
 				}
@@ -7599,7 +7649,7 @@ export class PFMParser {
 			this.directive_colon_counts[this.directive_colon_counts.length - 1];
 
 		switch (code) {
-			case LINEFEED: {
+			case Ch.LINEFEED: {
 				if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
 					return true;
 				}
@@ -7613,20 +7663,20 @@ export class PFMParser {
 				return false;
 			}
 
-			case SPACE:
-			case TAB: {
+			case Ch.SPACE:
+			case Ch.TAB: {
 				let pos = this.cursor;
 				while (
 					pos < length &&
-					(char_code_at.call(source, pos - base) === SPACE ||
-						char_code_at.call(source, pos - base) === TAB)
+					(char_code_at.call(source, pos - base) === Ch.SPACE ||
+						char_code_at.call(source, pos - base) === Ch.TAB)
 				) {
 					pos++;
 				}
 				if (pos >= length && !this.finished) return true;
 				if (
 					pos < length &&
-					char_code_at.call(source, pos - base) === LINEFEED
+					char_code_at.call(source, pos - base) === Ch.LINEFEED
 				) {
 					const lb_id = this.emit_open(
 						NodeKind.line_break,
@@ -7641,7 +7691,7 @@ export class PFMParser {
 				return false;
 			}
 
-			case COLON: {
+			case Ch.COLON: {
 				// check for closing fence: n+ colons (>= opener) with no name
 				const close_end = this.try_parse_directive_close(
 					this.cursor,
@@ -7675,20 +7725,20 @@ export class PFMParser {
 				return false;
 			}
 
-			case OCTOTHERP: {
+			case Ch.OCTOTHERP: {
 				if (!this.start_heading(current_node)) return true;
 				return false;
 			}
 
-			case BACKTICK: {
+			case Ch.BACKTICK: {
 				this.states.push(StateKind.code_fence_start);
 				this.extra = 0;
 				return false;
 			}
 
-			case ASTERISK:
-			case DASH:
-			case UNDERSCORE: {
+			case Ch.ASTERISK:
+			case Ch.DASH:
+			case Ch.UNDERSCORE: {
 				if (!this.finished && this.cursor + 2 >= length) {
 					return true;
 				}
@@ -7696,7 +7746,7 @@ export class PFMParser {
 					let line_end = this.cursor;
 					while (
 						line_end < length &&
-						char_code_at.call(source, line_end - base) !== LINEFEED
+						char_code_at.call(source, line_end - base) !== Ch.LINEFEED
 					)
 						line_end++;
 					const tb_id = this.emit_open(
@@ -7718,9 +7768,9 @@ export class PFMParser {
 				return false;
 			}
 
-			case CLOSE_ANGLE_BRACKET: {
+			case Ch.CLOSE_ANGLE_BRACKET: {
 				let p = this.cursor + 1;
-				if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
+				if (p < length && char_code_at.call(source, p - base) === Ch.SPACE) p++;
 				this.block_quote_depth++;
 				const bq_id = this.emit_open(
 					NodeKind.block_quote,
@@ -7733,7 +7783,7 @@ export class PFMParser {
 				return false;
 			}
 
-			case PIPE: {
+			case Ch.PIPE: {
 				const result = this.try_start_table(current_node);
 				if (result === false) return true;
 				if (result === true) return false;
@@ -7747,7 +7797,7 @@ export class PFMParser {
 				return false;
 			}
 
-			case OPEN_SQUARE_BRACKET: {
+			case Ch.OPEN_SQUARE_BRACKET: {
 				const def_end = this.try_parse_link_ref_definition(this.cursor);
 				if (def_end === -2) return true;
 				if (def_end >= 0) {
@@ -7804,9 +7854,9 @@ export class PFMParser {
 		// in incremental mode, stall until we can see what follows `---`
 		if (after_fence >= length && !this.finished) return true;
 		const ch_after = char_code_at.call(source, after_fence - base);
-		if (ch_after === LINEFEED || ch_after !== ch_after /* nan = eof */) {
+		if (ch_after === Ch.LINEFEED || ch_after !== ch_after /* nan = eof */) {
 			const fm_id = current_node;
-			const end = ch_after === LINEFEED ? after_fence + 1 : after_fence;
+			const end = ch_after === Ch.LINEFEED ? after_fence + 1 : after_fence;
 			this.out.set_value_end(fm_id, fm_close + 1); // value ends at the \n before ---
 			this.emit_close(fm_id, end);
 			this.node_stack.pop();
@@ -7837,7 +7887,7 @@ export class PFMParser {
 		let header_end = this.cursor;
 		while (
 			header_end < length &&
-			char_code_at.call(source, header_end - base) !== LINEFEED
+			char_code_at.call(source, header_end - base) !== Ch.LINEFEED
 		)
 			header_end++;
 		if (header_end >= length && !this.finished) return false; // hold back - need \n
@@ -7853,7 +7903,7 @@ export class PFMParser {
 		let delim_end = delim_start;
 		while (
 			delim_end < length &&
-			char_code_at.call(source, delim_end - base) !== LINEFEED
+			char_code_at.call(source, delim_end - base) !== Ch.LINEFEED
 		)
 			delim_end++;
 		if (delim_end >= length && !this.finished) return false; // hold back - need full delimiter row
@@ -7924,14 +7974,14 @@ export class PFMParser {
 		// skip leading whitespace
 		while (
 			pos < end &&
-			(char_code_at.call(source, pos - base) === SPACE ||
-				char_code_at.call(source, pos - base) === TAB)
+			(char_code_at.call(source, pos - base) === Ch.SPACE ||
+				char_code_at.call(source, pos - base) === Ch.TAB)
 		)
 			pos++;
 
 		// skip leading pipe
 		const has_leading_pipe =
-			pos < end && char_code_at.call(source, pos - base) === PIPE;
+			pos < end && char_code_at.call(source, pos - base) === Ch.PIPE;
 		if (has_leading_pipe) pos++;
 
 		const cells: { start: number; end: number }[] = [];
@@ -7939,11 +7989,11 @@ export class PFMParser {
 
 		while (pos < end) {
 			const ch = char_code_at.call(source, pos - base);
-			if (ch === BACKSLASH && pos + 1 < end) {
+			if (ch === Ch.BACKSLASH && pos + 1 < end) {
 				pos += 2; // skip escaped char
 				continue;
 			}
-			if (ch === PIPE) {
+			if (ch === Ch.PIPE) {
 				cells.push({ start: cell_start, end: pos });
 				cell_start = pos + 1;
 			}
@@ -7956,7 +8006,7 @@ export class PFMParser {
 			let all_ws = true;
 			for (let i = cell_start; i < end; i++) {
 				const c = char_code_at.call(source, i - base);
-				if (c !== SPACE && c !== TAB) {
+				if (c !== Ch.SPACE && c !== Ch.TAB) {
 					all_ws = false;
 					break;
 				}
@@ -7980,52 +8030,52 @@ export class PFMParser {
 		// skip leading whitespace
 		while (
 			pos < end &&
-			(char_code_at.call(source, pos - base) === SPACE ||
-				char_code_at.call(source, pos - base) === TAB)
+			(char_code_at.call(source, pos - base) === Ch.SPACE ||
+				char_code_at.call(source, pos - base) === Ch.TAB)
 		)
 			pos++;
 
 		// skip leading pipe
-		if (pos < end && char_code_at.call(source, pos - base) === PIPE) pos++;
+		if (pos < end && char_code_at.call(source, pos - base) === Ch.PIPE) pos++;
 
 		const alignments: string[] = [];
 
 		while (pos < end) {
 			// skip whitespace
-			while (pos < end && char_code_at.call(source, pos - base) === SPACE)
+			while (pos < end && char_code_at.call(source, pos - base) === Ch.SPACE)
 				pos++;
 			if (pos >= end) break;
 
 			// check for trailing pipe at end
-			if (char_code_at.call(source, pos - base) === PIPE && pos + 1 >= end)
+			if (char_code_at.call(source, pos - base) === Ch.PIPE && pos + 1 >= end)
 				break;
 
 			let left_colon = false;
-			if (char_code_at.call(source, pos - base) === COLON) {
+			if (char_code_at.call(source, pos - base) === Ch.COLON) {
 				left_colon = true;
 				pos++;
 			}
 
 			let dash_count = 0;
-			while (pos < end && char_code_at.call(source, pos - base) === DASH) {
+			while (pos < end && char_code_at.call(source, pos - base) === Ch.DASH) {
 				dash_count++;
 				pos++;
 			}
 			if (dash_count === 0) return null; // invalid delimiter cell
 
 			let right_colon = false;
-			if (pos < end && char_code_at.call(source, pos - base) === COLON) {
+			if (pos < end && char_code_at.call(source, pos - base) === Ch.COLON) {
 				right_colon = true;
 				pos++;
 			}
 
 			// skip whitespace
-			while (pos < end && char_code_at.call(source, pos - base) === SPACE)
+			while (pos < end && char_code_at.call(source, pos - base) === Ch.SPACE)
 				pos++;
 
 			// expect pipe or end
 			if (pos < end) {
-				if (char_code_at.call(source, pos - base) === PIPE) {
+				if (char_code_at.call(source, pos - base) === Ch.PIPE) {
 					pos++;
 				} else {
 					return null; // unexpected char
@@ -8054,14 +8104,14 @@ export class PFMParser {
 			e = end;
 		while (
 			s < e &&
-			(char_code_at.call(source, s - base) === SPACE ||
-				char_code_at.call(source, s - base) === TAB)
+			(char_code_at.call(source, s - base) === Ch.SPACE ||
+				char_code_at.call(source, s - base) === Ch.TAB)
 		)
 			s++;
 		while (
 			e > s &&
-			(char_code_at.call(source, e - 1 - base) === SPACE ||
-				char_code_at.call(source, e - 1 - base) === TAB)
+			(char_code_at.call(source, e - 1 - base) === Ch.SPACE ||
+				char_code_at.call(source, e - 1 - base) === Ch.TAB)
 		)
 			e--;
 		return { start: s, end: e };
@@ -8187,8 +8237,9 @@ export class PFMParser {
 				while (
 					ve > 0 &&
 					(char_code_at.call(this.source, ve - 1 - this.source_base) ===
-						SPACE ||
-						char_code_at.call(this.source, ve - 1 - this.source_base) === TAB)
+						Ch.SPACE ||
+						char_code_at.call(this.source, ve - 1 - this.source_base) ===
+							Ch.TAB)
 				) {
 					ve--;
 				}
@@ -8318,7 +8369,7 @@ export class PFMParser {
 				let end = start;
 				while (
 					end < length &&
-					char_code_at.call(this.source, end - this.source_base) !== LINEFEED
+					char_code_at.call(this.source, end - this.source_base) !== Ch.LINEFEED
 				)
 					end++;
 				this.out.revoke(
