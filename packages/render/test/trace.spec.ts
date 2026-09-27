@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { PFMParser } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 
-import { CursorHTMLRenderer, _emit, _out_offsets } from '../src/html_cursor';
+import { CursorHTMLRenderer, _capture_trace, _emit } from '../src/html_cursor';
 import {
 	MapSink,
 	P_CODE,
@@ -112,6 +112,53 @@ describe('update_trace', () => {
 		renderer.update_trace(render(DOCS[5]), DOCS[5]);
 		expect(JSON.stringify(trace_to_v3(first, DOCS[2], html))).toBe(before);
 	});
+
+	it('keeps traces apart across slabs and for large documents', () => {
+		// small traces share slabs, a large one gets its own array, and
+		// enough of them fill several slabs
+		const large = Array.from(
+			{ length: 400 },
+			(_, i) => `para ${i} with *em* and \`code\`\n`
+		).join('\n');
+		const sources = [...DOCS, large];
+		const renderer = new CursorHTMLRenderer({ cache: false });
+		const kept: { trace: MapTrace; source: string; html: string }[] = [];
+		const want: string[] = [];
+		for (let round = 0; round < 200; round++) {
+			const source = sources[round % sources.length];
+			const trace = renderer.update_trace(render(source), source);
+			const html = renderer.html;
+			expect(trace.split - trace.start).toBeGreaterThanOrEqual(0);
+			expect(trace.end).toBeLessThanOrEqual(trace.buf.length);
+			kept.push({ trace, source, html });
+			const fused = new CursorHTMLRenderer({ cache: false });
+			want.push(
+				JSON.stringify(fused.update_v3(render(source), source, source))
+			);
+		}
+		for (let i = 0; i < kept.length; i++) {
+			const { trace, source, html } = kept[i];
+			expect(
+				JSON.stringify(trace_to_v3(trace, source, html)),
+				`trace ${i}`
+			).toBe(want[i]);
+		}
+		const regions = kept
+			.map(({ trace }) => trace)
+			.filter((t) => t.end > t.start);
+		const bufs = new Set(regions.map((t) => t.buf));
+		expect(bufs.size).toBeGreaterThan(3);
+		const last = kept[sources.length - 1].trace;
+		expect(last.start === 0 && last.end === last.buf.length).toBe(true);
+		for (let i = 0; i < regions.length; i++) {
+			for (let j = i + 1; j < regions.length; j++) {
+				const a = regions[i];
+				const b = regions[j];
+				if (a.buf !== b.buf) continue;
+				expect(a.end <= b.start || b.end <= a.start).toBe(true);
+			}
+		}
+	});
 });
 
 describe('trace_to_decoded', () => {
@@ -144,10 +191,7 @@ describe('trace_to_decoded', () => {
 		_emit(sink, 1, 2, 3, 3, 3, record_code(P_TEXT, R_CONTENT));
 		_emit(sink, 0, 1, 0, 0, 0, record_code(P_STRUCTURE, R_OPEN_SYNTAX));
 		_emit(sink, 4, 5, 20, 21, 4, record_code(P_STRUCTURE, R_CLOSE_SYNTAX));
-		const trace = {
-			rec: sink.rec.slice(0, sink.n),
-			offsets: _out_offsets(out).slice(0, out.length + 1),
-		};
+		const trace = _capture_trace(sink, out);
 		check_trace(trace, source, out.join(''));
 	});
 });
