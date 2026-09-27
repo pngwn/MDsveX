@@ -2,7 +2,13 @@
  * sourcemap utilities: line-starts, offset to position, vlq, v3 conversion.
  */
 
-import type { Mapping, MappingData } from './mappings';
+import {
+	RECORD_SIZE,
+	R_CONTENT,
+	R_OPEN_SYNTAX,
+	R_CLOSE_SYNTAX,
+} from './mappings';
+import type { Mapping, MappingData, MapSink } from './mappings';
 
 // past every offset, so the start of the line after the last one needs no
 // bounds check
@@ -220,6 +226,68 @@ function collect_char_spans(mappings: Mapping<MappingData>[]): void {
 	}
 }
 
+/**
+ * collect_spans over a renderer's records. a record is one mapping with a
+ * single piece, identity when its generated length equals its source length.
+ */
+function collect_record_spans(
+	rec: Uint32Array,
+	n: number,
+	offsets: Uint32Array
+): void {
+	// at most one span per record
+	const most = n / RECORD_SIZE;
+	if (most > span_gen.length) reserve_spans(0, most);
+	const gen = span_gen;
+	const src = span_src;
+	const len = span_len;
+	let k = 0;
+	for (let p = 0; p < n; p += RECORD_SIZE) {
+		const role = rec[p + 5] & 3;
+		if (role === R_OPEN_SYNTAX || role === R_CLOSE_SYNTAX) continue;
+		const out_idx = rec[p];
+		const g = offsets[out_idx];
+		let l = 1;
+		if (role === R_CONTENT) {
+			const source_length = rec[p + 3];
+			if (offsets[out_idx + rec[p + 1]] - g === source_length) {
+				if (source_length === 0) continue;
+				l = source_length;
+			}
+		}
+		gen[k] = g;
+		src[k] = rec[p + 2];
+		len[k] = l;
+		k++;
+	}
+	span_count = k;
+}
+
+/** collect_char_spans over a renderer's records. */
+function collect_record_char_spans(
+	rec: Uint32Array,
+	n: number,
+	offsets: Uint32Array
+): void {
+	span_count = 0;
+	for (let p = 0; p < n; p += RECORD_SIZE) {
+		const role = rec[p + 5] & 3;
+		if (role === R_OPEN_SYNTAX || role === R_CLOSE_SYNTAX) continue;
+		const out_idx = rec[p];
+		const g = offsets[out_idx];
+		const s = rec[p + 2];
+		const source_length = rec[p + 3];
+		if (
+			role === R_CONTENT &&
+			offsets[out_idx + rec[p + 1]] - g === source_length
+		) {
+			for (let d = 0; d < source_length; d++) push_span(g + d, s + d, 1);
+		} else {
+			push_span(g, s, 1);
+		}
+	}
+}
+
 function push_span(gen: number, src: number, len: number): void {
 	const n = span_count;
 	if (n === span_gen.length) reserve_spans(n, n + 1);
@@ -293,7 +361,29 @@ export function mappings_to_v3(
 	// empty documents are common enough that the span setup would show
 	const encoded =
 		mappings.length === 0 ? '' : encode_mappings(mappings, source, generated);
+	return v3_map(encoded, source, file);
+}
 
+/**
+ * the v3 map of a renderer's mapping records, offsets giving the generated
+ * offset of each out chunk. it equals mappings_to_v3 over the Mapping objects
+ * the records resolve to, without building them.
+ */
+export function records_to_v3(
+	sink: MapSink,
+	offsets: Uint32Array,
+	source: string,
+	generated: string,
+	file?: string
+): SourceMapV3 {
+	const encoded =
+		sink.n === 0
+			? ''
+			: encode_records(sink.rec, sink.n, offsets, source, generated);
+	return v3_map(encoded, source, file);
+}
+
+function v3_map(encoded: string, source: string, file?: string): SourceMapV3 {
 	// use basename to match svelte compiler convention, vite resolves relative
 	// to the served JS file, so the browser can find the source.
 	const basename = file
@@ -379,6 +469,25 @@ function encode_mappings(
 	sort_spans();
 	if (runs_overlap()) {
 		collect_char_spans(mappings);
+		sort_spans();
+	}
+	return encode_spans();
+}
+
+function encode_records(
+	rec: Uint32Array,
+	n: number,
+	offsets: Uint32Array,
+	source: string,
+	generated: string
+): string {
+	fill_line_starts(src_table, source);
+	fill_line_starts(gen_table, generated);
+
+	collect_record_spans(rec, n, offsets);
+	sort_spans();
+	if (runs_overlap()) {
+		collect_record_char_spans(rec, n, offsets);
 		sort_spans();
 	}
 	return encode_spans();
