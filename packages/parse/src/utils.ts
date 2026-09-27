@@ -2,10 +2,19 @@
 const DEFAULT_TOKEN_CAPACITY = 128;
 
 /**
- * largest node capacity that keeps separate per-field typed arrays. v8 puts
- * typed arrays of up to 64 bytes on the js heap, and the widest field is u32.
+ * smallest node capacity. a carve this size costs well under 2 kb of slab,
+ * which is cheaper than the resize a slightly larger document would need.
  */
-const ON_HEAP_MAX_CAPACITY = 16;
+const MIN_NODE_CAPACITY = 32;
+
+/** size of each shared slab that small node buffers are carved from. */
+const SLAB_BYTES = 65536;
+
+/**
+ * largest node buffer carved from a slab, larger ones get their own
+ * arraybuffer. it caps the tail a full slab can waste at an eighth.
+ */
+const SLAB_MAX_CARVE = 8192;
 
 /** number of u32 fields carved out of the shared node arraybuffer. */
 const U32_FIELDS = 10;
@@ -14,6 +23,15 @@ const U32_FIELDS = 10;
 const EMPTY_U8 = new Uint8Array(0);
 const EMPTY_U16 = new Uint16Array(0);
 const EMPTY_U32 = new Uint32Array(0);
+
+/**
+ * the slab small node buffers are carved from. a region is handed out once
+ * and never reused, so every carve starts zeroed like a fresh arraybuffer and
+ * costs thirteen views instead of a backing store. the trade-off is retention:
+ * a live small buffer keeps its whole slab alive, at most 64 kb each.
+ */
+let slab = new ArrayBuffer(0);
+let slab_used = SLAB_BYTES;
 
 /** default number of error entries to preallocate. */
 const DEFAULT_ERROR_CAPACITY = 32;
@@ -220,60 +238,63 @@ export class NodeBuffer {
 	 * @param initial_capacity requested starting capacity for tokens.
 	 */
 	constructor(initial_capacity = DEFAULT_TOKEN_CAPACITY) {
-		this.alloc_fields(next_power_of_two(initial_capacity));
+		// the comparison also sends a nan capacity to the floor
+		this.alloc_fields(
+			next_power_of_two(
+				initial_capacity > MIN_NODE_CAPACITY
+					? initial_capacity
+					: MIN_NODE_CAPACITY
+			)
+		);
 		this.push(NodeKind.root, 0);
 	}
 
 	/**
-	 * point every field at fresh zeroed storage of the given capacity.
-	 * small capacities keep separate arrays because v8 stores typed arrays
-	 * of 64 bytes or less on the js heap, which is cheaper than any off-heap
-	 * backing store. larger ones carve every field out of one arraybuffer, so
-	 * construction and grow pay for one backing store instead of thirteen.
+	 * point every field at fresh zeroed storage of the given capacity. all
+	 * fields share one region, carved from the current slab when it is small
+	 * and from a dedicated arraybuffer otherwise.
 	 */
 	private alloc_fields(capacity: number): void {
-		const meta_bytes = Math.max(1, capacity >> 3);
-		this.capacity = capacity;
-		if (capacity <= ON_HEAP_MAX_CAPACITY) {
-			this._kinds = new Uint8Array(capacity);
-			this._starts = new Uint32Array(capacity);
-			this._ends = new Uint32Array(capacity);
-			this._extras = new Uint16Array(capacity);
-			this._value_starts = new Uint32Array(capacity);
-			this._value_ends = new Uint32Array(capacity);
-			this.has_metadata = new Uint8Array(meta_bytes);
-			this._parents = new Uint32Array(capacity);
-			this._next_siblings = new Uint32Array(capacity);
-			this._prev_siblings = new Uint32Array(capacity);
-			this._children_starts = new Uint32Array(capacity);
-			this._children_ends = new Uint32Array(capacity);
-			this._pending_nodes = new Uint32Array(capacity);
-			return;
-		}
-		// the ten u32 fields come first, then u16, then u8, so each view
-		// starts on a multiple of its element size. assignment order matches
-		// the branch above so both keep one hidden class
+		// capacity is a power of two of at least MIN_NODE_CAPACITY, so the
+		// metadata bitset is a whole number of bytes. the ten u32 fields come
+		// first, then u16, then u8, so each view starts on a multiple of its
+		// element size, and regions are rounded to 8 bytes to keep that true
+		// for the next carve
 		const u32 = capacity << 2;
 		const u16_offset = u32 * U32_FIELDS;
 		const u8_offset = u16_offset + (capacity << 1);
-		const buffer = new ArrayBuffer(u8_offset + capacity + meta_bytes);
-		this._kinds = new Uint8Array(buffer, u8_offset, capacity);
-		this._starts = new Uint32Array(buffer, 0, capacity);
-		this._ends = new Uint32Array(buffer, u32, capacity);
-		this._extras = new Uint16Array(buffer, u16_offset, capacity);
-		this._value_starts = new Uint32Array(buffer, u32 * 2, capacity);
-		this._value_ends = new Uint32Array(buffer, u32 * 3, capacity);
+		const bytes = (u8_offset + capacity + (capacity >> 3) + 7) & ~7;
+		let buffer: ArrayBuffer;
+		let base = 0;
+		if (bytes <= SLAB_MAX_CARVE) {
+			if (slab_used + bytes > SLAB_BYTES) {
+				slab = new ArrayBuffer(SLAB_BYTES);
+				slab_used = 0;
+			}
+			buffer = slab;
+			base = slab_used;
+			slab_used = base + bytes;
+		} else {
+			buffer = new ArrayBuffer(bytes);
+		}
+		this.capacity = capacity;
+		this._kinds = new Uint8Array(buffer, base + u8_offset, capacity);
+		this._starts = new Uint32Array(buffer, base, capacity);
+		this._ends = new Uint32Array(buffer, base + u32, capacity);
+		this._extras = new Uint16Array(buffer, base + u16_offset, capacity);
+		this._value_starts = new Uint32Array(buffer, base + u32 * 2, capacity);
+		this._value_ends = new Uint32Array(buffer, base + u32 * 3, capacity);
 		this.has_metadata = new Uint8Array(
 			buffer,
-			u8_offset + capacity,
-			meta_bytes
+			base + u8_offset + capacity,
+			capacity >> 3
 		);
-		this._parents = new Uint32Array(buffer, u32 * 4, capacity);
-		this._next_siblings = new Uint32Array(buffer, u32 * 5, capacity);
-		this._prev_siblings = new Uint32Array(buffer, u32 * 6, capacity);
-		this._children_starts = new Uint32Array(buffer, u32 * 7, capacity);
-		this._children_ends = new Uint32Array(buffer, u32 * 8, capacity);
-		this._pending_nodes = new Uint32Array(buffer, u32 * 9, capacity);
+		this._parents = new Uint32Array(buffer, base + u32 * 4, capacity);
+		this._next_siblings = new Uint32Array(buffer, base + u32 * 5, capacity);
+		this._prev_siblings = new Uint32Array(buffer, base + u32 * 6, capacity);
+		this._children_starts = new Uint32Array(buffer, base + u32 * 7, capacity);
+		this._children_ends = new Uint32Array(buffer, base + u32 * 8, capacity);
+		this._pending_nodes = new Uint32Array(buffer, base + u32 * 9, capacity);
 	}
 
 	/** clear previously pushed tokens without reallocating storage. */
