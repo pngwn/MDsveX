@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { PFMParser } from '../src/main';
+import type { Emitter } from '../src/opcodes';
 import { TreeBuilder } from '../src/tree_builder';
-import { NodeKind } from '../src/utils';
+import { NodeBuffer, NodeKind } from '../src/utils';
 
 describe('TreeBuilder', () => {
 	describe('basic node creation', () => {
@@ -338,5 +340,101 @@ describe('TreeBuilder', () => {
 			// root (auto) + heading = 2
 			expect(nodes.size).toBe(2);
 		});
+	});
+});
+
+// forwards every opcode to a builder with every non-root id moved by an
+// offset, so no id lands on its slot and the builder has to map them
+class ShiftedIds implements Emitter {
+	constructor(
+		private out: Emitter,
+		private offset: number
+	) {}
+	private shift(id: number): number {
+		return id <= 0 ? id : id + this.offset;
+	}
+	open(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		extra: number,
+		pending: boolean
+	): void {
+		this.out.open(
+			this.shift(id),
+			kind,
+			start,
+			this.shift(parent),
+			extra,
+			pending
+		);
+	}
+	close(id: number, end: number): void {
+		this.out.close(this.shift(id), end);
+	}
+	text(parent: number, start: number, end: number): void {
+		this.out.text(this.shift(parent), start, end);
+	}
+	attr(id: number, key: string, value: any): void {
+		this.out.attr(this.shift(id), key, value);
+	}
+	set_value_start(id: number, pos: number): void {
+		this.out.set_value_start(this.shift(id), pos);
+	}
+	set_value_end(id: number, pos: number): void {
+		this.out.set_value_end(this.shift(id), pos);
+	}
+	revoke(id: number, source_text?: string): void {
+		this.out.revoke(this.shift(id), source_text);
+	}
+	commit(id: number): void {
+		this.out.commit(this.shift(id));
+	}
+	cursor(pos: number): void {
+		this.out.cursor(pos);
+	}
+}
+
+function dump(nodes: NodeBuffer, index = 0): unknown {
+	const node = nodes.get_node(index);
+	return {
+		kind: node.kind,
+		start: node.start,
+		end: node.end,
+		value: node.value,
+		metadata: node.metadata,
+		pending: nodes._pending_nodes[index],
+		children: node.children.map((child) => dump(nodes, child)),
+	};
+}
+
+describe('TreeBuilder ids as indices', () => {
+	const docs = [
+		'| a | b |\n| - | - |\n| x | |\n\nafter *the* table\n',
+		'<div>\nunclosed html block\n\n- item *one*\n- item two\n\npara `code` end\n',
+		'- tight\n- list\n\n1. loose\n\n2. list\n\n> quote **strong\n',
+		'text with snake_case and *unclosed emphasis\n\n| h |\n| - |\n| c |\n',
+		'<span>inline <b>open\n\n# heading {x}\n\n```js\ncode\n```\n',
+	];
+
+	for (const doc of docs) {
+		it(`builds the same tree with ids as slots and with a map: ${JSON.stringify(doc)}`, () => {
+			const direct = new TreeBuilder(8);
+			new PFMParser(direct).parse(doc);
+			const mapped = new TreeBuilder(8);
+			new PFMParser(new ShiftedIds(mapped, 1000)).parse(doc);
+			expect(dump(direct.get_buffer())).toEqual(dump(mapped.get_buffer()));
+		});
+	}
+
+	it('keeps ids equal to slots, so the builder never needs its id map', () => {
+		for (const doc of docs) {
+			const tb = new TreeBuilder(8);
+			new PFMParser(tb).parse(doc);
+			expect((tb as unknown as { id_to_index: unknown }).id_to_index).toBe(
+				null
+			);
+		}
 	});
 });
