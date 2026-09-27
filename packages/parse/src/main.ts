@@ -242,6 +242,7 @@ export const enum StateKind {
 	svelte_branch = 27,
 	directive_container = 28,
 	frontmatter = 29,
+	raw_text = 30,
 }
 
 interface MarkerResult {
@@ -277,6 +278,11 @@ export class PFMParser {
 	private trim_point: number = 0;
 	// next line start to check for a closing fence, earlier lines cannot close it
 	private fence_scan: number = 0;
+	// open raw text element (script, style), its close tag and where the
+	// scan for it resumes. raw text holds no markup so these never nest
+	private raw_node: number = 0;
+	private raw_needle: string = '';
+	private raw_scan: number = 0;
 	private cursor: number = 0;
 	private finished: boolean = false;
 	// deferred \r at the end of a feed() chunk: we can't tell whether it's
@@ -507,6 +513,9 @@ export class PFMParser {
 		this.source_end = 0;
 		this.trim_point = 0;
 		this.fence_scan = 0;
+		this.raw_node = 0;
+		this.raw_needle = '';
+		this.raw_scan = 0;
 		this.cursor = 0;
 		this.finished = false;
 		this.pending_cr = false;
@@ -2105,25 +2114,27 @@ export class PFMParser {
 	}
 
 	/**
-	 * scan forward from `pos` for the case-sensitive closing tag `</tag>`.
-	 * returns the end position (after `>`) or -1 if not found / input incomplete.
+	 * open a raw text element (script, style) whose open tag starts at the
+	 * cursor. its content is not parsed, raw_text scans for the case-sensitive
+	 * `</tag>`. the node opens as soon as the open tag is complete so a close tag
+	 * that has not arrived yet is scanned for once per char across feeds,
+	 * instead of reparsing the open tag and rescanning the content every feed.
 	 */
-	private find_raw_close_tag(
-		pos: number,
-		tag: string
-	): { content_end: number; end: number } | null {
-		const source = this.source;
-		const base = this.source_base;
-		const length = this.source_end;
-		const needle = '</' + tag + '>';
-		let scan = pos;
-		while (scan < length) {
-			const rel = string_index_of.call(source, needle, scan - base);
-			if (rel === -1) return null;
-			const idx = rel + base;
-			return { content_end: idx, end: idx + needle.length };
+	private open_raw_text(
+		open_tag: { tag: string; attributes: object; end: number },
+		parent: number
+	): void {
+		const html_id = this.emit_open(NodeKind.html, this.cursor, parent);
+		this.out.attr(html_id, 'tag', open_tag.tag);
+		if (Object.keys(open_tag.attributes).length > 0) {
+			this.out.attr(html_id, 'attributes', open_tag.attributes);
 		}
-		return null;
+		this.out.set_value_start(html_id, open_tag.end);
+		this.raw_node = html_id;
+		this.raw_needle = '</' + open_tag.tag + '>';
+		this.raw_scan = open_tag.end;
+		this.states.push(StateKind.raw_text);
+		this.chomp(open_tag.end, true);
 	}
 
 	/**
@@ -3456,39 +3467,7 @@ export class PFMParser {
 									this.emit_close(html_id, blk_tag.end);
 									this.chomp(blk_tag.end, true);
 								} else if (this.is_raw_text_tag(blk_tag.tag)) {
-									// raw text elements (script, style): skip content, scan for close tag
-									const raw = this.find_raw_close_tag(blk_tag.end, blk_tag.tag);
-									if (!raw) {
-										if (!this.finished) break main_loop;
-										// eof without close tag - emit with remaining content as value
-										const html_id = this.emit_open(
-											NodeKind.html,
-											this.cursor,
-											current_node
-										);
-										this.out.attr(html_id, 'tag', blk_tag.tag);
-										if (Object.keys(blk_tag.attributes).length > 0) {
-											this.out.attr(html_id, 'attributes', blk_tag.attributes);
-										}
-										this.out.set_value_start(html_id, blk_tag.end);
-										this.out.set_value_end(html_id, length);
-										this.emit_close(html_id, length);
-										this.chomp(length, true);
-									} else {
-										const html_id = this.emit_open(
-											NodeKind.html,
-											this.cursor,
-											current_node
-										);
-										this.out.attr(html_id, 'tag', blk_tag.tag);
-										if (Object.keys(blk_tag.attributes).length > 0) {
-											this.out.attr(html_id, 'attributes', blk_tag.attributes);
-										}
-										this.out.set_value_start(html_id, blk_tag.end);
-										this.out.set_value_end(html_id, raw.content_end);
-										this.emit_close(html_id, raw.end);
-										this.chomp(raw.end, true);
-									}
+									this.open_raw_text(blk_tag, current_node);
 								} else {
 									const html_id = this.emit_open(
 										NodeKind.html,
@@ -4474,41 +4453,9 @@ export class PFMParser {
 									this.chomp(open_tag.end, true);
 									this.states.pop();
 								} else if (this.is_raw_text_tag(open_tag.tag)) {
-									const raw = this.find_raw_close_tag(
-										open_tag.end,
-										open_tag.tag
-									);
-									if (!raw) {
-										if (!this.finished) break main_loop;
-										const html_id = this.emit_open(
-											NodeKind.html,
-											this.cursor,
-											current_node
-										);
-										this.out.attr(html_id, 'tag', open_tag.tag);
-										if (Object.keys(open_tag.attributes).length > 0) {
-											this.out.attr(html_id, 'attributes', open_tag.attributes);
-										}
-										this.out.set_value_start(html_id, open_tag.end);
-										this.out.set_value_end(html_id, length);
-										this.emit_close(html_id, length);
-										this.chomp(length, true);
-									} else {
-										const html_id = this.emit_open(
-											NodeKind.html,
-											this.cursor,
-											current_node
-										);
-										this.out.attr(html_id, 'tag', open_tag.tag);
-										if (Object.keys(open_tag.attributes).length > 0) {
-											this.out.attr(html_id, 'attributes', open_tag.attributes);
-										}
-										this.out.set_value_start(html_id, open_tag.end);
-										this.out.set_value_end(html_id, raw.content_end);
-										this.emit_close(html_id, raw.end);
-										this.chomp(raw.end, true);
-									}
+									// inline goes first so raw_text returns to the enclosing block when it closes
 									this.states.pop();
+									this.open_raw_text(open_tag, current_node);
 								} else {
 									const html_id = this.emit_open(
 										NodeKind.html,
@@ -5366,6 +5313,11 @@ export class PFMParser {
 					continue;
 				}
 
+				case StateKind.raw_text: {
+					if (this._run_raw_text()) break main_loop;
+					continue;
+				}
+
 				default: {
 					this.cursor++;
 					continue;
@@ -5561,6 +5513,39 @@ export class PFMParser {
 		this.states.push(StateKind.code_fence_text_end);
 		this.out.set_value_end(current_node, found_nl);
 		this.chomp(bt_end, true);
+		return false;
+	}
+
+	private _run_raw_text(): boolean {
+		const base = this.source_base;
+		const length = this.source_end;
+		const needle = this.raw_needle;
+		const rel = string_index_of.call(this.source, needle, this.raw_scan - base);
+		const id = this.raw_node;
+		if (rel !== -1) {
+			const idx = rel + base;
+			const end = idx + needle.length;
+			this.out.set_value_end(id, idx);
+			this.emit_close(id, end);
+			this.states.pop();
+			this.chomp(end, true);
+			return false;
+		}
+		if (!this.finished) {
+			// a close tag starting earlier would already be whole in the window
+			const scan = length - needle.length + 1;
+			if (scan > this.raw_scan) this.raw_scan = scan;
+			// the node is not on the node stack, nothing rereads before the scan
+			if (this.can_trim(this.node_stack.length)) {
+				this.trim_point = this.raw_scan;
+			}
+			return true;
+		}
+		// eof without a close tag, the rest of the input is the content
+		this.out.set_value_end(id, length);
+		this.emit_close(id, length);
+		this.states.pop();
+		this.chomp(length, true);
 		return false;
 	}
 
@@ -6292,37 +6277,7 @@ export class PFMParser {
 					this.emit_close(html_id, blk_tag.end);
 					this.chomp(blk_tag.end, true);
 				} else if (this.is_raw_text_tag(blk_tag.tag)) {
-					const raw = this.find_raw_close_tag(blk_tag.end, blk_tag.tag);
-					if (!raw) {
-						if (!this.finished) return true;
-						const html_id = this.emit_open(
-							NodeKind.html,
-							this.cursor,
-							current_node
-						);
-						this.out.attr(html_id, 'tag', blk_tag.tag);
-						if (Object.keys(blk_tag.attributes).length > 0) {
-							this.out.attr(html_id, 'attributes', blk_tag.attributes);
-						}
-						this.out.set_value_start(html_id, blk_tag.end);
-						this.out.set_value_end(html_id, length);
-						this.emit_close(html_id, length);
-						this.chomp(length, true);
-					} else {
-						const html_id = this.emit_open(
-							NodeKind.html,
-							this.cursor,
-							current_node
-						);
-						this.out.attr(html_id, 'tag', blk_tag.tag);
-						if (Object.keys(blk_tag.attributes).length > 0) {
-							this.out.attr(html_id, 'attributes', blk_tag.attributes);
-						}
-						this.out.set_value_start(html_id, blk_tag.end);
-						this.out.set_value_end(html_id, raw.content_end);
-						this.emit_close(html_id, raw.end);
-						this.chomp(raw.end, true);
-					}
+					this.open_raw_text(blk_tag, current_node);
 				} else {
 					const html_id = this.emit_open(
 						NodeKind.html,
@@ -6595,37 +6550,7 @@ export class PFMParser {
 					this.emit_close(html_id, blk_tag.end);
 					this.chomp(blk_tag.end, true);
 				} else if (this.is_raw_text_tag(blk_tag.tag)) {
-					const raw = this.find_raw_close_tag(blk_tag.end, blk_tag.tag);
-					if (!raw) {
-						if (!this.finished) return true;
-						const html_id = this.emit_open(
-							NodeKind.html,
-							this.cursor,
-							current_node
-						);
-						this.out.attr(html_id, 'tag', blk_tag.tag);
-						if (Object.keys(blk_tag.attributes).length > 0) {
-							this.out.attr(html_id, 'attributes', blk_tag.attributes);
-						}
-						this.out.set_value_start(html_id, blk_tag.end);
-						this.out.set_value_end(html_id, length);
-						this.emit_close(html_id, length);
-						this.chomp(length, true);
-					} else {
-						const html_id = this.emit_open(
-							NodeKind.html,
-							this.cursor,
-							current_node
-						);
-						this.out.attr(html_id, 'tag', blk_tag.tag);
-						if (Object.keys(blk_tag.attributes).length > 0) {
-							this.out.attr(html_id, 'attributes', blk_tag.attributes);
-						}
-						this.out.set_value_start(html_id, blk_tag.end);
-						this.out.set_value_end(html_id, raw.content_end);
-						this.emit_close(html_id, raw.end);
-						this.chomp(raw.end, true);
-					}
+					this.open_raw_text(blk_tag, current_node);
 				} else {
 					const html_id = this.emit_open(
 						NodeKind.html,
