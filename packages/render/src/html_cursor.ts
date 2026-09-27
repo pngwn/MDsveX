@@ -13,21 +13,23 @@
 
 import { Cursor } from '@mdsvex/parse/cursor';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
-import {
-	MapSink,
-	RECORD_SIZE,
-	P_TEXT,
-	P_CODE,
-	P_SVELTE,
-	P_STRUCTURE,
-	record_data,
-} from './mappings';
+import { MapSink, record_data } from './mappings';
 import type { Mapping, MappingData } from './mappings';
 import { records_to_v3 } from './sourcemap';
 import type { SourceMapV3 } from './sourcemap';
 
 export type { Mapping, CodeInformation, MappingData } from './mappings';
 export { MapSink } from './mappings';
+
+// uint32 slot sentinel as NONE in @mdsvex/parse, a const enum like the kinds
+const enum Slot {
+	NONE = 0xffffffff,
+}
+
+// code span values arrive as seq, cons and sliced strings, so a .indexOf
+// load on them goes megamorphic. calling through one function keeps the
+// call site monomorphic.
+const string_index_of = String.prototype.indexOf;
 
 //  html escaping
 
@@ -42,7 +44,7 @@ const ESCAPE_TABLE: Record<string, string> = {
 function escape_replace(ch: string): string {
 	return ESCAPE_TABLE[ch];
 }
-export function escape(text: string): string {
+function escape_html(text: string): string {
 	if (!ESCAPE_TEST.test(text)) return text;
 	return text.replace(ESCAPE_MATCH, escape_replace);
 }
@@ -78,13 +80,13 @@ function esc_next(ch: string, from: number): number {
 }
 
 /** escape(c.text()) for the current node, using the source index when the text is a source slice. */
-export function escape_text(c: Cursor): string {
+function escape_node_text(c: Cursor): string {
 	const s = c.prebuilt;
-	if (s !== undefined) return escape(s);
+	if (s !== undefined) return escape_html(s);
 	const vs = c.value_start;
 	let ve = c.value_end;
 	// same empty cases as Cursor.text()
-	if (vs === NONE || ve === NONE || ve <= vs) return '';
+	if (vs === Slot.NONE || ve === Slot.NONE || ve <= vs) return '';
 	const src = c.source;
 	if (src !== esc_src) esc_reset(src);
 	if (ve > esc_len) {
@@ -138,53 +140,108 @@ function escape_hits(src: string, vs: number, ve: number, m: number): string {
 
 //  kind constants
 
-export const K_ROOT = 0;
-export const K_TEXT = 1;
-export const K_HTML = 2;
-export const K_HEADING = 3;
-export const K_CODE_FENCE = 5;
-export const K_LINE_BREAK = 6;
-export const K_PARAGRAPH = 7;
-export const K_CODE_SPAN = 8;
-export const K_EMPHASIS = 9;
-export const K_STRONG = 10;
-export const K_THEMATIC_BREAK = 11;
-export const K_LINK = 12;
-export const K_IMAGE = 13;
-export const K_BLOCK_QUOTE = 14;
-export const K_LIST = 15;
-export const K_LIST_ITEM = 16;
-export const K_HARD_BREAK = 17;
-export const K_SOFT_BREAK = 18;
-export const K_STRIKETHROUGH = 19;
-export const K_SUPERSCRIPT = 20;
-export const K_SUBSCRIPT = 21;
-export const K_TABLE = 22;
-export const K_TABLE_HEADER = 23;
-export const K_TABLE_ROW = 24;
-export const K_TABLE_CELL = 25;
-export const K_HTML_COMMENT = 26;
-export const K_SVELTE_TAG = 27;
-export const K_SVELTE_BLOCK = 28;
-export const K_SVELTE_BRANCH = 29;
-export const K_MUSTACHE = 4;
-export const K_FRONTMATTER = 33;
-export const K_IMPORT_STATEMENT = 34;
+// the renderer is built as its own entry, so an exported const lives in a
+// module cell that turbofan reloads on every use, and a switch over named
+// consts compiles to a compare chain. local const enums build to literals:
+// the hot reads fold to immediates and switch (c.kind) gets a jump table.
+// the exported names below are the public api and are never read here.
+const enum K {
+	ROOT = 0,
+	TEXT = 1,
+	HTML = 2,
+	HEADING = 3,
+	CODE_FENCE = 5,
+	LINE_BREAK = 6,
+	PARAGRAPH = 7,
+	CODE_SPAN = 8,
+	EMPHASIS = 9,
+	STRONG = 10,
+	THEMATIC_BREAK = 11,
+	LINK = 12,
+	IMAGE = 13,
+	BLOCK_QUOTE = 14,
+	LIST = 15,
+	LIST_ITEM = 16,
+	HARD_BREAK = 17,
+	SOFT_BREAK = 18,
+	STRIKETHROUGH = 19,
+	SUPERSCRIPT = 20,
+	SUBSCRIPT = 21,
+	TABLE = 22,
+	TABLE_HEADER = 23,
+	TABLE_ROW = 24,
+	TABLE_CELL = 25,
+	HTML_COMMENT = 26,
+	SVELTE_TAG = 27,
+	SVELTE_BLOCK = 28,
+	SVELTE_BRANCH = 29,
+	MUSTACHE = 4,
+	FRONTMATTER = 33,
+	IMPORT_STATEMENT = 34,
+}
 
-export const NONE = 0xffffffff;
+export const K_ROOT = K.ROOT;
+export const K_TEXT = K.TEXT;
+export const K_HTML = K.HTML;
+export const K_HEADING = K.HEADING;
+export const K_CODE_FENCE = K.CODE_FENCE;
+export const K_LINE_BREAK = K.LINE_BREAK;
+export const K_PARAGRAPH = K.PARAGRAPH;
+export const K_CODE_SPAN = K.CODE_SPAN;
+export const K_EMPHASIS = K.EMPHASIS;
+export const K_STRONG = K.STRONG;
+export const K_THEMATIC_BREAK = K.THEMATIC_BREAK;
+export const K_LINK = K.LINK;
+export const K_IMAGE = K.IMAGE;
+export const K_BLOCK_QUOTE = K.BLOCK_QUOTE;
+export const K_LIST = K.LIST;
+export const K_LIST_ITEM = K.LIST_ITEM;
+export const K_HARD_BREAK = K.HARD_BREAK;
+export const K_SOFT_BREAK = K.SOFT_BREAK;
+export const K_STRIKETHROUGH = K.STRIKETHROUGH;
+export const K_SUPERSCRIPT = K.SUPERSCRIPT;
+export const K_SUBSCRIPT = K.SUBSCRIPT;
+export const K_TABLE = K.TABLE;
+export const K_TABLE_HEADER = K.TABLE_HEADER;
+export const K_TABLE_ROW = K.TABLE_ROW;
+export const K_TABLE_CELL = K.TABLE_CELL;
+export const K_HTML_COMMENT = K.HTML_COMMENT;
+export const K_SVELTE_TAG = K.SVELTE_TAG;
+export const K_SVELTE_BLOCK = K.SVELTE_BLOCK;
+export const K_SVELTE_BRANCH = K.SVELTE_BRANCH;
+export const K_MUSTACHE = K.MUSTACHE;
+export const K_FRONTMATTER = K.FRONTMATTER;
+export const K_IMPORT_STATEMENT = K.IMPORT_STATEMENT;
+
+export const NONE = Slot.NONE;
 
 //  pending mappings, numeric records resolved to Mapping<MappingData> after render
 
+// the record layout and data presets of mappings.ts, restated locally for
+// the same reason as the kinds
+const enum Rec {
+	SIZE = 6,
+}
+
+const enum Preset {
+	TEXT = 0,
+	CODE = 1,
+	SVELTE = 2,
+	STRUCTURE = 3,
+}
+
 // record codes the renderer writes, record_code(preset, role) as literals
-const TEXT_CONTENT = 1;
-const CODE_CONTENT = 5;
-const SVELTE_NODE = 8;
-const SVELTE_CONTENT = 9;
-const STRUCTURE_OPEN = 14;
-const STRUCTURE_CLOSE = 15;
+const enum Code {
+	TEXT_CONTENT = 1,
+	CODE_CONTENT = 5,
+	SVELTE_NODE = 8,
+	SVELTE_CONTENT = 9,
+	STRUCTURE_OPEN = 14,
+	STRUCTURE_CLOSE = 15,
+}
 
 /** record a mapping. skips if generated range is empty. */
-export function _emit(
+function emit_record(
 	sink: MapSink,
 	out_start: number,
 	out_end: number,
@@ -193,17 +250,17 @@ export function _emit(
 	node_index: number,
 	code: number
 ): void {
-	if (out_end > out_start && src_start !== NONE) {
+	if (out_end > out_start && src_start !== Slot.NONE) {
 		let rec = sink.rec;
 		const p = sink.n;
-		if (p + RECORD_SIZE > rec.length) rec = sink.grow();
+		if (p + Rec.SIZE > rec.length) rec = sink.grow();
 		rec[p] = out_start;
 		rec[p + 1] = out_end - out_start;
 		rec[p + 2] = src_start;
 		rec[p + 3] = src_end > src_start ? src_end - src_start : 0;
 		rec[p + 4] = node_index;
 		rec[p + 5] = code;
-		sink.n = p + RECORD_SIZE;
+		sink.n = p + Rec.SIZE;
 	}
 }
 
@@ -220,15 +277,31 @@ function _spans(
 	const idx = c.index;
 	const s = c.start,
 		e = c.end;
-	_emit(sink, pre, post, s, e, idx, preset << 2);
+	emit_record(sink, pre, post, s, e, idx, preset << 2);
 	if (!sink.syntax) return;
 	const vs = c.value_start,
 		ve = c.value_end;
 	// value range is meaningful when ve > vs (same check as Cursor.text()).
 	// Uint32Array defaults to 0 for unset slots, so ve !== NONE is not enough.
 	const has_value = ve > vs;
-	_emit(sink, pre, after_open, s, has_value ? vs : s, idx, STRUCTURE_OPEN);
-	_emit(sink, before_close, post, has_value ? ve : e, e, idx, STRUCTURE_CLOSE);
+	emit_record(
+		sink,
+		pre,
+		after_open,
+		s,
+		has_value ? vs : s,
+		idx,
+		Code.STRUCTURE_OPEN
+	);
+	emit_record(
+		sink,
+		before_close,
+		post,
+		has_value ? ve : e,
+		e,
+		idx,
+		Code.STRUCTURE_CLOSE
+	);
 }
 
 //  precomputed tag strings
@@ -297,7 +370,7 @@ function _attrs(c: Cursor, out: string[], skip?: Set<string>): void {
 			if (typeof val === 'object' && (val as any).type === 'expression') {
 				out.push(' ', key, '={', (val as any).value, '}');
 			} else {
-				out.push(' ', key, '="', escape(String(val)), '"');
+				out.push(' ', key, '="', escape_html(String(val)), '"');
 			}
 		}
 	}
@@ -328,20 +401,28 @@ const IMAGE_HANDLED = new Set(['title']);
 //  renderer
 
 /** render children of the current cursor position, collecting escaped text and recursive node output. */
-export function _children(c: Cursor, out: string[], sink?: MapSink): void {
+function render_children(c: Cursor, out: string[], sink?: MapSink): void {
 	if (!c.goto_first_child()) return;
 	do {
 		const k = c.kind;
-		if (k === K_TEXT) {
+		if (k === K.TEXT) {
 			const vs = c.value_start,
 				ve = c.value_end;
-			if (sink && vs !== NONE && ve > vs) {
-				_emit(sink, out.length, out.length + 1, vs, ve, c.index, TEXT_CONTENT);
+			if (sink && vs !== Slot.NONE && ve > vs) {
+				emit_record(
+					sink,
+					out.length,
+					out.length + 1,
+					vs,
+					ve,
+					c.index,
+					Code.TEXT_CONTENT
+				);
 			}
-			out.push(escape_text(c));
-		} else if (k !== K_LINE_BREAK) {
+			out.push(escape_node_text(c));
+		} else if (k !== K.LINE_BREAK) {
 			// line breaks render nothing, a fifth of visited nodes skip the call
-			_node(c, out, sink);
+			render_node(c, out, sink);
 		}
 	} while (c.goto_next_sibling());
 	c.goto_parent();
@@ -352,7 +433,7 @@ function _children_raw(c: Cursor): string {
 	if (!c.goto_first_child()) return '';
 	let text = '';
 	do {
-		if (c.kind === K_TEXT) {
+		if (c.kind === K.TEXT) {
 			text += c.text();
 		} else {
 			text += _children_raw(c);
@@ -363,86 +444,91 @@ function _children_raw(c: Cursor): string {
 }
 
 /** render a single node at the current cursor position. */
-export function _node(c: Cursor, out: string[], sink?: MapSink): void {
-	switch (c.kind) {
-		case K_ROOT:
-			_children(c, out, sink);
+function render_node(c: Cursor, out: string[], sink?: MapSink): void {
+	// as number, or the case labels narrow c.kind for the reads inside a case
+	switch (c.kind as number) {
+		case K.ROOT:
+			render_children(c, out, sink);
 			break;
 
-		case K_HEADING: {
+		case K.HEADING: {
 			const pre = out.length;
 			_open(c, out, H_TAG[c.extra], H_OPEN[c.extra], '>');
 			const ao = out.length;
-			_children(c, out, sink);
+			render_children(c, out, sink);
 			const bc = out.length;
 			out.push(H_CLOSE[c.extra]);
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
 			break;
 		}
 
-		case K_PARAGRAPH:
+		case K.PARAGRAPH:
 			// pending paragraphs inside list_items are speculative tight-list
 			// wrappers, render their children transparently until the list
 			// closes (commit keeps the wrapper, revoke drops it).
-			if (c.pending && c.parent_kind === K_LIST_ITEM) {
-				_children(c, out, sink);
+			if (c.pending && c.parent_kind === K.LIST_ITEM) {
+				render_children(c, out, sink);
 			} else {
 				const pre = out.length;
 				_open(c, out, '<p', '<p>', '>');
 				const ao = out.length;
-				_children(c, out, sink);
+				render_children(c, out, sink);
 				const bc = out.length;
 				out.push('</p>');
-				if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
+				if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
 			}
 			break;
 
-		case K_EMPHASIS: {
+		case K.EMPHASIS: {
 			const pre = out.length;
 			_open(c, out, '<em', '<em>', '>');
 			const ao = out.length;
-			_children(c, out, sink);
+			render_children(c, out, sink);
 			const bc = out.length;
 			out.push('</em>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
 			break;
 		}
 
-		case K_STRONG: {
+		case K.STRONG: {
 			const pre = out.length;
 			_open(c, out, '<strong', '<strong>', '>');
 			const ao = out.length;
-			_children(c, out, sink);
+			render_children(c, out, sink);
 			const bc = out.length;
 			out.push('</strong>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
 			break;
 		}
 
-		case K_CODE_SPAN: {
+		case K.CODE_SPAN: {
 			const pre = out.length;
 			_open(c, out, '<code', '<code>', '>');
 			const ao = out.length;
 			if (sink) {
-				_emit(
+				emit_record(
 					sink,
 					out.length,
 					out.length + 1,
 					c.value_start,
 					c.value_end,
 					c.index,
-					CODE_CONTENT
+					Code.CODE_CONTENT
 				);
 			}
-			const code = escape_text(c);
-			out.push(code.indexOf('\n') === -1 ? code : code.replace(/\n/g, ' '));
+			const code = escape_node_text(c);
+			out.push(
+				string_index_of.call(code, '\n') === -1
+					? code
+					: code.replace(/\n/g, ' ')
+			);
 			const bc = out.length;
 			out.push('</code>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_CODE);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.CODE);
 			break;
 		}
 
-		case K_CODE_FENCE: {
+		case K.CODE_FENCE: {
 			const pre = out.length;
 			const meta = c.meta();
 			// wire path: resolved 'info' string. treebuilder path: info_start/info_end byte offsets.
@@ -454,71 +540,74 @@ export function _node(c: Cursor, out: string[], sink?: MapSink): void {
 					info = c.slice(info_start, info_end);
 			}
 			if (info) {
-				out.push('<pre><code class="language-', escape(info));
+				out.push('<pre><code class="language-', escape_html(info));
 				_open(c, out, '"', '">', '>');
 			} else {
 				_open(c, out, '<pre><code', '<pre><code>', '>');
 			}
 			const ao = out.length;
 			if (sink) {
-				_emit(
+				emit_record(
 					sink,
 					out.length,
 					out.length + 1,
 					c.value_start,
 					c.value_end,
 					c.index,
-					CODE_CONTENT
+					Code.CODE_CONTENT
 				);
 			}
-			out.push(escape_text(c));
+			out.push(escape_node_text(c));
 			const bc = out.length;
 			out.push('</code></pre>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_CODE);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.CODE);
 			break;
 		}
 
-		case K_BLOCK_QUOTE: {
+		case K.BLOCK_QUOTE: {
 			const pre = out.length;
 			_open(c, out, '<blockquote', '<blockquote>\n', '>\n');
 			const ao = out.length;
-			_children(c, out, sink);
+			render_children(c, out, sink);
 			const bc = out.length;
 			out.push('\n</blockquote>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
 			break;
 		}
 
-		case K_LINK: {
+		case K.LINK: {
 			const pre = out.length;
 			const meta = c.meta();
 			out.push('<a');
-			if (meta?.href) out.push(' href="', escape(meta.href as string), '"');
-			if (meta?.title) out.push(' title="', escape(meta.title as string), '"');
+			if (meta?.href)
+				out.push(' href="', escape_html(meta.href as string), '"');
+			if (meta?.title)
+				out.push(' title="', escape_html(meta.title as string), '"');
 			_attrs(c, out, LINK_HANDLED);
 			out.push('>');
 			const ao = out.length;
-			_children(c, out, sink);
+			render_children(c, out, sink);
 			const bc = out.length;
 			out.push('</a>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
 			break;
 		}
 
-		case K_IMAGE: {
+		case K.IMAGE: {
 			const pre = out.length;
 			const meta = c.meta();
 			out.push('<img');
-			if (meta?.src) out.push(' src="', escape(meta.src as string), '"');
-			out.push(' alt="', escape(_children_raw(c)), '"');
-			if (meta?.title) out.push(' title="', escape(meta.title as string), '"');
+			if (meta?.src) out.push(' src="', escape_html(meta.src as string), '"');
+			out.push(' alt="', escape_html(_children_raw(c)), '"');
+			if (meta?.title)
+				out.push(' title="', escape_html(meta.title as string), '"');
 			_attrs(c, out, IMAGE_HANDLED);
 			out.push(' />');
-			if (sink) _spans(sink, pre, pre, out.length, out.length, c, P_TEXT);
+			if (sink) _spans(sink, pre, pre, out.length, out.length, c, Preset.TEXT);
 			break;
 		}
 
-		case K_LIST: {
+		case K.LIST: {
 			const pre = out.length;
 			const meta = c.meta();
 			const ordered = !!meta?.ordered;
@@ -532,74 +621,82 @@ export function _node(c: Cursor, out: string[], sink?: MapSink): void {
 				_open(c, out, '<ul', '<ul>\n', '>\n');
 			}
 			const ao = out.length;
-			_children(c, out, sink);
+			render_children(c, out, sink);
 			const bc = out.length;
 			out.push(ordered ? '\n</ol>' : '\n</ul>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_STRUCTURE);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.STRUCTURE);
 			break;
 		}
 
-		case K_LIST_ITEM: {
+		case K.LIST_ITEM: {
 			const pre = out.length;
 			_open(c, out, '<li', '<li>', '>');
 			const ao = out.length;
-			_children(c, out, sink);
+			render_children(c, out, sink);
 			const bc = out.length;
 			out.push('</li>\n');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
 			break;
 		}
 
-		case K_THEMATIC_BREAK: {
+		case K.THEMATIC_BREAK: {
 			const pre = out.length;
 			out.push('<hr />');
 			if (sink)
-				_spans(sink, pre, out.length, out.length, out.length, c, P_STRUCTURE);
+				_spans(
+					sink,
+					pre,
+					out.length,
+					out.length,
+					out.length,
+					c,
+					Preset.STRUCTURE
+				);
 			break;
 		}
 
-		case K_HARD_BREAK:
+		case K.HARD_BREAK:
 			out.push('<br />\n');
 			break;
 
-		case K_SOFT_BREAK:
+		case K.SOFT_BREAK:
 			out.push('\n');
 			break;
 
-		case K_STRIKETHROUGH: {
+		case K.STRIKETHROUGH: {
 			const pre = out.length;
 			_open(c, out, '<del', '<del>', '>');
 			const ao = out.length;
-			_children(c, out, sink);
+			render_children(c, out, sink);
 			const bc = out.length;
 			out.push('</del>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
 			break;
 		}
 
-		case K_SUPERSCRIPT: {
+		case K.SUPERSCRIPT: {
 			const pre = out.length;
 			_open(c, out, '<sup', '<sup>', '>');
 			const ao = out.length;
-			_children(c, out, sink);
+			render_children(c, out, sink);
 			const bc = out.length;
 			out.push('</sup>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
 			break;
 		}
 
-		case K_SUBSCRIPT: {
+		case K.SUBSCRIPT: {
 			const pre = out.length;
 			_open(c, out, '<sub', '<sub>', '>');
 			const ao = out.length;
-			_children(c, out, sink);
+			render_children(c, out, sink);
 			const bc = out.length;
 			out.push('</sub>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
 			break;
 		}
 
-		case K_HTML: {
+		case K.HTML: {
 			const pre = out.length;
 			const meta = c.meta();
 			const tag = meta?.tag as string;
@@ -619,7 +716,7 @@ export function _node(c: Cursor, out: string[], sink?: MapSink): void {
 					) {
 						out.push(' ', k, '={', (v as any).value, '}');
 					} else {
-						out.push(' ', k, '="', escape(v as string), '"');
+						out.push(' ', k, '="', escape_html(v as string), '"');
 					}
 				}
 			}
@@ -640,7 +737,15 @@ export function _node(c: Cursor, out: string[], sink?: MapSink): void {
 					out.push(' />');
 				}
 				if (sink) {
-					_emit(sink, pre, out.length, c.start, c.end, c.index, SVELTE_CONTENT);
+					emit_record(
+						sink,
+						pre,
+						out.length,
+						c.start,
+						c.end,
+						c.index,
+						Code.SVELTE_CONTENT
+					);
 				}
 			} else {
 				out.push('>');
@@ -650,72 +755,72 @@ export function _node(c: Cursor, out: string[], sink?: MapSink): void {
 				// browser does not parse script/style bodies as html.
 				if (tag === 'script' || tag === 'style') {
 					if (sink) {
-						_emit(
+						emit_record(
 							sink,
 							out.length,
 							out.length + 1,
 							c.value_start,
 							c.value_end,
 							c.index,
-							SVELTE_CONTENT
+							Code.SVELTE_CONTENT
 						);
 					}
 					out.push(c.text());
 				} else {
-					_children(c, out, sink);
+					render_children(c, out, sink);
 				}
 				const bc = out.length;
 				out.push('</', tag, '>');
-				if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
+				if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
 			}
 			break;
 		}
 
-		case K_HTML_COMMENT: {
+		case K.HTML_COMMENT: {
 			const pre = out.length;
 			out.push('<!--');
 			const ao = out.length;
 			if (sink) {
-				_emit(
+				emit_record(
 					sink,
 					out.length,
 					out.length + 1,
 					c.value_start,
 					c.value_end,
 					c.index,
-					TEXT_CONTENT
+					Code.TEXT_CONTENT
 				);
 			}
 			out.push(c.text());
 			const bc = out.length;
 			out.push('-->');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
 			break;
 		}
 
-		case K_MUSTACHE: {
+		case K.MUSTACHE: {
 			const pre = out.length;
 			out.push('{');
 			const ao = out.length;
 			if (sink) {
-				_emit(
+				emit_record(
 					sink,
 					out.length,
 					out.length + 1,
 					c.value_start,
 					c.value_end,
 					c.index,
-					SVELTE_CONTENT
+					Code.SVELTE_CONTENT
 				);
 			}
 			out.push(c.text());
 			const bc = out.length;
 			out.push('}');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_SVELTE);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.SVELTE);
 			break;
 		}
 
-		case K_SVELTE_TAG: {
+		case K.SVELTE_TAG: {
 			const pre = out.length;
 			const meta = c.meta();
 			const tag = meta?.tag as string;
@@ -724,24 +829,24 @@ export function _node(c: Cursor, out: string[], sink?: MapSink): void {
 			if (text) out.push(' ');
 			const ao = out.length;
 			if (text && sink) {
-				_emit(
+				emit_record(
 					sink,
 					out.length,
 					out.length + 1,
 					c.value_start,
 					c.value_end,
 					c.index,
-					SVELTE_CONTENT
+					Code.SVELTE_CONTENT
 				);
 			}
 			if (text) out.push(text);
 			const bc = out.length;
 			out.push('}');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_SVELTE);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.SVELTE);
 			break;
 		}
 
-		case K_SVELTE_BLOCK: {
+		case K.SVELTE_BLOCK: {
 			const pre = out.length;
 			// render branches; each branch handles its own opening tag
 			const block_meta = c.meta();
@@ -749,7 +854,7 @@ export function _node(c: Cursor, out: string[], sink?: MapSink): void {
 			if (c.goto_first_child()) {
 				let is_first = true;
 				do {
-					if (c.kind === K_SVELTE_BRANCH) {
+					if (c.kind === K.SVELTE_BRANCH) {
 						const branch_meta = c.meta();
 						const branch_tag = branch_meta?.tag as string;
 						const branch_expr = c.text();
@@ -758,14 +863,14 @@ export function _node(c: Cursor, out: string[], sink?: MapSink): void {
 							if (branch_expr) {
 								out.push(' ');
 								if (sink) {
-									_emit(
+									emit_record(
 										sink,
 										out.length,
 										out.length + 1,
 										c.value_start,
 										c.value_end,
 										c.index,
-										SVELTE_CONTENT
+										Code.SVELTE_CONTENT
 									);
 								}
 								out.push(branch_expr);
@@ -777,23 +882,23 @@ export function _node(c: Cursor, out: string[], sink?: MapSink): void {
 							if (branch_expr) {
 								out.push(' ');
 								if (sink) {
-									_emit(
+									emit_record(
 										sink,
 										out.length,
 										out.length + 1,
 										c.value_start,
 										c.value_end,
 										c.index,
-										SVELTE_CONTENT
+										Code.SVELTE_CONTENT
 									);
 								}
 								out.push(branch_expr);
 							}
 							out.push('}\n');
 						}
-						_children(c, out, sink);
-					} else if (c.kind !== K_LINE_BREAK) {
-						_node(c, out, sink);
+						render_children(c, out, sink);
+					} else if (c.kind !== K.LINE_BREAK) {
+						render_node(c, out, sink);
 					}
 				} while (c.goto_next_sibling());
 				c.goto_parent();
@@ -804,27 +909,27 @@ export function _node(c: Cursor, out: string[], sink?: MapSink): void {
 				const idx = c.index;
 				const s = c.start,
 					e = c.end;
-				_emit(sink, pre, out.length, s, e, idx, SVELTE_NODE);
+				emit_record(sink, pre, out.length, s, e, idx, Code.SVELTE_NODE);
 			}
 			break;
 		}
 
-		case K_TABLE: {
+		case K.TABLE: {
 			const pre = out.length;
 			_open(c, out, '<table', '<table>\n', '>\n');
 			const ao = out.length;
 			_table_content(c, out, sink);
 			const bc = out.length;
 			out.push('\n</table>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_STRUCTURE);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.STRUCTURE);
 			break;
 		}
 
-		case K_LINE_BREAK:
+		case K.LINE_BREAK:
 			break;
 
 		default:
-			_children(c, out, sink);
+			render_children(c, out, sink);
 			break;
 	}
 }
@@ -836,11 +941,11 @@ function _table_content(c: Cursor, out: string[], sink?: MapSink): void {
 
 	if (!c.goto_first_child()) return;
 	do {
-		if (c.kind === K_TABLE_HEADER) {
+		if (c.kind === K.TABLE_HEADER) {
 			out.push('<thead>\n<tr>\n');
 			_table_cells(c, 'th', alignments, out, sink);
 			out.push('</tr>\n</thead>\n');
-		} else if (c.kind === K_TABLE_ROW) {
+		} else if (c.kind === K.TABLE_ROW) {
 			if (!in_body) {
 				out.push('<tbody>\n');
 				in_body = true;
@@ -879,7 +984,7 @@ function _table_cells(
 	let col = 0;
 	if (!c.goto_first_child()) return;
 	do {
-		if (c.kind === K_TABLE_CELL) {
+		if (c.kind === K.TABLE_CELL) {
 			const align = alignments[col];
 			// the parser only emits these four values, anything else is built as before
 			if (align === 'left') out.push(opens[1]);
@@ -887,7 +992,7 @@ function _table_cells(
 			else if (align === 'right') out.push(opens[3]);
 			else if (align && align !== 'none') out.push(`<${tag} align="${align}">`);
 			else out.push(opens[0]);
-			_children(c, out, sink);
+			render_children(c, out, sink);
 			out.push(close);
 			col++;
 		}
@@ -902,10 +1007,7 @@ function _table_cells(
 let offsets_scratch = new Uint32Array(0);
 
 /** generated offset of each out chunk, and of the end at out.length. */
-export function _out_offsets(
-	out: string[],
-	scratch?: Uint32Array
-): Uint32Array {
+function out_offsets(out: string[], scratch?: Uint32Array): Uint32Array {
 	const needed = out.length + 1;
 	let offsets: Uint32Array;
 	if (scratch !== undefined && scratch.length >= needed) {
@@ -929,16 +1031,18 @@ export function _out_offsets(
 }
 
 /** convert pending mapping records to volar-compatible Mapping[] using out[] offsets. */
-export function _resolve_mappings(
+function resolve_mappings(
 	out: string[],
 	sink: MapSink,
 	scratch?: Uint32Array
 ): Mapping<MappingData>[] {
-	const offsets = _out_offsets(out, scratch);
+	const offsets = out_offsets(out, scratch);
 	const rec = sink.rec;
 	const n = sink.n;
 	const mappings: Mapping<MappingData>[] = [];
-	for (let p = 0; p < n; p += RECORD_SIZE) {
+	// an imported binding is a module cell, read it once rather than per record
+	const data_of = record_data;
+	for (let p = 0; p < n; p += Rec.SIZE) {
 		const out_idx = rec[p];
 		const source_length = rec[p + 3];
 		const gen_offset = offsets[out_idx];
@@ -947,7 +1051,7 @@ export function _resolve_mappings(
 			sourceOffsets: [rec[p + 2]],
 			generatedOffsets: [gen_offset],
 			lengths: [source_length],
-			data: record_data(rec[p + 5], rec[p + 4] | 0),
+			data: data_of(rec[p + 5], rec[p + 4] | 0),
 		};
 		if (gen_length !== source_length) {
 			m.generatedLengths = [gen_length];
@@ -956,6 +1060,17 @@ export function _resolve_mappings(
 	}
 	return mappings;
 }
+
+// the public names of the render functions. an exported function is also a
+// module cell, and the walk calls these per node, so the module calls the
+// local declarations and only callers outside it go through the exports.
+export const escape = escape_html;
+export const escape_text = escape_node_text;
+export const _emit = emit_record;
+export const _children = render_children;
+export const _node = render_node;
+export const _out_offsets = out_offsets;
+export const _resolve_mappings = resolve_mappings;
 
 // mapped renders resolve their records before they return, so every
 // renderer shares one sink
@@ -966,7 +1081,7 @@ const render_sink = new MapSink();
 /** render the node at the current cursor position to html string. */
 function _render_block(cursor: Cursor): string {
 	const out: string[] = [];
-	_node(cursor, out);
+	render_node(cursor, out);
 	return out.join('');
 }
 
@@ -1029,7 +1144,7 @@ export class CursorHTMLRenderer {
 			const out = this.out;
 			// a fresh renderer has empty arrays and the length store is not free
 			if (out.length !== 0) out.length = 0;
-			_node(c, out);
+			render_node(c, out);
 			this.html = out.join('');
 			return this.blocks;
 		}
@@ -1039,7 +1154,7 @@ export class CursorHTMLRenderer {
 
 		let block_idx = 0;
 		do {
-			if (c.kind === K_LINE_BREAK) continue;
+			if (c.kind === K.LINE_BREAK) continue;
 
 			const idx = c.index;
 
@@ -1072,7 +1187,7 @@ export class CursorHTMLRenderer {
 
 		const out = this.out;
 		if (out.length !== 0) out.length = 0;
-		_node(c, out, sink);
+		render_node(c, out, sink);
 		this.html = out.join('');
 	}
 
@@ -1084,7 +1199,7 @@ export class CursorHTMLRenderer {
 		const sink = render_sink;
 		sink.begin(true);
 		this.render_mapped(buf, source, sink);
-		const mappings = _resolve_mappings(this.out, sink);
+		const mappings = resolve_mappings(this.out, sink);
 		sink.release();
 		return { blocks: this.blocks, mappings };
 	}
@@ -1107,7 +1222,7 @@ export class CursorHTMLRenderer {
 		this.render_mapped(buf, source, sink);
 		const map = records_to_v3(
 			sink,
-			_out_offsets(this.out),
+			out_offsets(this.out),
 			raw,
 			this.html,
 			file

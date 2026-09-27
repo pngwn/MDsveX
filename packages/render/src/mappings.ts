@@ -80,7 +80,7 @@ export interface MappingData extends CodeInformation {
 // the spread copy gets its own hidden class per object, a literal keeps one
 // shape per preset. keys stay in the order the spread produced.
 
-export function data_text(node_index: number, role: MappingRole): MappingData {
+function text_data(node_index: number, role: MappingRole): MappingData {
 	return {
 		verification: true,
 		semantic: true,
@@ -90,14 +90,11 @@ export function data_text(node_index: number, role: MappingRole): MappingData {
 	};
 }
 
-export function data_code(node_index: number, role: MappingRole): MappingData {
+function code_data(node_index: number, role: MappingRole): MappingData {
 	return { semantic: true, navigation: true, nodeIndex: node_index, role };
 }
 
-export function data_svelte(
-	node_index: number,
-	role: MappingRole
-): MappingData {
+function svelte_data(node_index: number, role: MappingRole): MappingData {
 	return {
 		verification: true,
 		completion: true,
@@ -110,20 +107,34 @@ export function data_svelte(
 	};
 }
 
-export function data_structure(
-	node_index: number,
-	role: MappingRole
-): MappingData {
+function structure_data(node_index: number, role: MappingRole): MappingData {
 	return { structure: true, nodeIndex: node_index, role };
 }
 
+// an exported function is a module cell too, so record_data calls the local
+// declarations and only callers outside the module use these names
+export const data_text = text_data;
+export const data_code = code_data;
+export const data_svelte = svelte_data;
+export const data_structure = structure_data;
+
 // pending mapping records
 
+// local const enums build to literals, where the exported consts below live
+// in module cells that turbofan reloads on every use. html_cursor.ts and
+// sourcemap.ts restate these values the same way.
+const enum Preset {
+	TEXT = 0,
+	CODE = 1,
+	SVELTE = 2,
+	STRUCTURE = 3,
+}
+
 /** preset of a record's data, packed into its code with the role. */
-export const P_TEXT = 0;
-export const P_CODE = 1;
-export const P_SVELTE = 2;
-export const P_STRUCTURE = 3;
+export const P_TEXT = Preset.TEXT;
+export const P_CODE = Preset.CODE;
+export const P_SVELTE = Preset.SVELTE;
+export const P_STRUCTURE = Preset.STRUCTURE;
 
 export const R_NODE = 0;
 export const R_CONTENT = 1;
@@ -152,14 +163,14 @@ const ROLE_NAMES: MappingRole[] = [
 export function record_data(code: number, node_index: number): MappingData {
 	const role = ROLE_NAMES[code & 3];
 	switch (code >> 2) {
-		case P_TEXT:
-			return data_text(node_index, role);
-		case P_CODE:
-			return data_code(node_index, role);
-		case P_SVELTE:
-			return data_svelte(node_index, role);
+		case Preset.TEXT:
+			return text_data(node_index, role);
+		case Preset.CODE:
+			return code_data(node_index, role);
+		case Preset.SVELTE:
+			return svelte_data(node_index, role);
 		default:
-			return data_structure(node_index, role);
+			return structure_data(node_index, role);
 	}
 }
 
