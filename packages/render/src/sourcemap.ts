@@ -2,13 +2,20 @@
  * sourcemap utilities: line-starts, offset to position, vlq, v3 conversion.
  */
 
-import {
-	RECORD_SIZE,
-	R_CONTENT,
-	R_OPEN_SYNTAX,
-	R_CLOSE_SYNTAX,
-} from './mappings';
 import type { Mapping, MappingData, MapSink } from './mappings';
+
+// the record layout and roles of mappings.ts as local const enums, which
+// build to literals. imported consts live in module cells that turbofan
+// reloads on every use.
+const enum Rec {
+	SIZE = 6,
+}
+
+const enum Role {
+	CONTENT = 1,
+	OPEN_SYNTAX = 2,
+	CLOSE_SYNTAX = 3,
+}
 
 // past every offset, so the start of the line after the last one needs no
 // bounds check
@@ -236,19 +243,19 @@ function collect_record_spans(
 	offsets: Uint32Array
 ): void {
 	// at most one span per record
-	const most = n / RECORD_SIZE;
+	const most = n / Rec.SIZE;
 	if (most > span_gen.length) reserve_spans(0, most);
 	const gen = span_gen;
 	const src = span_src;
 	const len = span_len;
 	let k = 0;
-	for (let p = 0; p < n; p += RECORD_SIZE) {
+	for (let p = 0; p < n; p += Rec.SIZE) {
 		const role = rec[p + 5] & 3;
-		if (role === R_OPEN_SYNTAX || role === R_CLOSE_SYNTAX) continue;
+		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
 		const out_idx = rec[p];
 		const g = offsets[out_idx];
 		let l = 1;
-		if (role === R_CONTENT) {
+		if (role === Role.CONTENT) {
 			const source_length = rec[p + 3];
 			if (offsets[out_idx + rec[p + 1]] - g === source_length) {
 				if (source_length === 0) continue;
@@ -270,15 +277,15 @@ function collect_record_char_spans(
 	offsets: Uint32Array
 ): void {
 	span_count = 0;
-	for (let p = 0; p < n; p += RECORD_SIZE) {
+	for (let p = 0; p < n; p += Rec.SIZE) {
 		const role = rec[p + 5] & 3;
-		if (role === R_OPEN_SYNTAX || role === R_CLOSE_SYNTAX) continue;
+		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
 		const out_idx = rec[p];
 		const g = offsets[out_idx];
 		const s = rec[p + 2];
 		const source_length = rec[p + 3];
 		if (
-			role === R_CONTENT &&
+			role === Role.CONTENT &&
 			offsets[out_idx + rec[p + 1]] - g === source_length
 		) {
 			for (let d = 0; d < source_length; d++) push_span(g + d, s + d, 1);
@@ -704,15 +711,15 @@ function decode_lines(
 	span_count = 0;
 	let gen_line = 0;
 	const n = rec.length;
-	for (let p = 0; p < n; p += RECORD_SIZE) {
+	for (let p = 0; p < n; p += Rec.SIZE) {
 		const role = rec[p + 5] & 3;
-		if (role === R_OPEN_SYNTAX || role === R_CLOSE_SYNTAX) continue;
+		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
 		const out_idx = rec[p];
 		const g = offsets[out_idx];
 		const s = rec[p + 2];
 		const source_length = rec[p + 3];
 		if (
-			role === R_CONTENT &&
+			role === Role.CONTENT &&
 			offsets[out_idx + rec[p + 1]] - g === source_length
 		) {
 			// the characters of the run on wanted lines, it can cross lines
