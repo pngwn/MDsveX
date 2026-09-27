@@ -508,6 +508,20 @@ export class PFMParser {
 		return { errors: this.errors };
 	}
 
+	/**
+	 * drop every reference into the last document, so a parser kept for
+	 * reuse does not pin its source. the next parse or init starts over
+	 * anyway, this only clears what holds strings.
+	 */
+	release(): void {
+		this.source = '';
+		this.ref_map.clear();
+		this.html_tag_stack = [];
+		this.svelte_block_tag = '';
+		this.svelte_block_stack = [];
+		this.errors = EMPTY_ERRORS;
+	}
+
 	private _init(): void {
 		this.source = '';
 		this.source_base = 0;
