@@ -130,6 +130,26 @@ function truncate_stack(stack: number[], base: number): void {
 	if (stack.length < base) stack.length = base;
 }
 
+// per id tables: one byte of node kind plus a closed bit, and the id's slot
+// in pending_ids. both are carved from one buffer and grown by doubling, a
+// plain array grown one store past its end was most of the parse garbage
+const ID_KIND_MASK = 0x3f;
+const ID_CLOSED = 0x40;
+const ID_TABLE_FLOOR = 256;
+// fresh tables hold one id per eight source chars, doubling past that
+const ID_HINT_SHIFT = 3;
+// tables past this many ids are left to the gc rather than pinned in the pool
+const ID_TABLE_POOL_CAP = 1 << 16;
+
+const EMPTY_ID_INFO = new Uint8Array(0);
+const EMPTY_PENDING_SLOTS = new Int32Array(0);
+
+// clean tables handed back by the last finished parse, so a fresh parser per
+// document does not allocate them again. a nested or concurrent parse finds
+// the slot empty and allocates its own
+let pooled_id_info: Uint8Array = EMPTY_ID_INFO;
+let pooled_pending_slots: Int32Array = EMPTY_PENDING_SLOTS;
+
 /** reused two slot array for append_flat, cleared after each use. */
 const JOIN_PAIR: string[] = ['', ''];
 
@@ -303,15 +323,19 @@ export class PFMParser {
 
 	// id generation
 	private next_id: number = 1; // 0 is reserved for root
+	// kept across documents, only the first pending_count entries are live
 	private pending_ids: number[] = [];
 	// index of each id in pending_ids, stale unless pending_ids at that index matches
-	private pending_slots: number[] = [];
+	private pending_slots: Int32Array = EMPTY_PENDING_SLOTS;
 	private pending_starts: number[] = [];
 	private pending_count: number = 0;
 	// pending tight list paragraphs, they commit or revoke without reading the source
 	private pending_para_count: number = 0;
-	private closed_flags: number[] = [];
-	private NodeKind_array: NodeKind[] = [];
+	// kind and closed bit of each id, zero past next_id. empty until _init
+	// takes tables and again once _finalize hands them to the pool
+	private id_info: Uint8Array = EMPTY_ID_INFO;
+	// ids the tables hold, a smi field rather than a typed array length load
+	private id_cap: number = 0;
 
 	// flanking classes are read on demand at delimiter sites, so moving the
 	// cursor is a plain increment. the char before class_floor reads as
@@ -422,9 +446,9 @@ export class PFMParser {
 	 * init() + feed(source) + finish().
 	 */
 	parse(source: string): { errors: ErrorCollector } {
-		this._init();
 		const src = normalize_newlines(source);
 		const n = src.length;
+		this._init(n);
 		this.source = src;
 		this.source_end = n;
 		this.errors = EMPTY_ERRORS;
@@ -441,7 +465,7 @@ export class PFMParser {
 	 * before the first feed() call.
 	 */
 	init(): void {
-		this._init();
+		this._init(0);
 		this.finished = false;
 	}
 
@@ -528,7 +552,11 @@ export class PFMParser {
 		this.errors = EMPTY_ERRORS;
 	}
 
-	private _init(): void {
+	private _init(size_hint: number): void {
+		// a parser that still holds tables (an init without a finish, or a
+		// throw mid parse) keeps them, cleared over the ids it used
+		if (this.id_cap === 0) this.take_id_tables(size_hint);
+		else this.id_info.fill(0, 0, this.next_id);
 		this.source = '';
 		this.source_base = 0;
 		this.source_end = 0;
@@ -543,12 +571,8 @@ export class PFMParser {
 		this.states = [StateKind.root];
 		this.node_stack = [0];
 		this.next_id = 1;
-		this.pending_ids = [];
-		this.pending_slots = [];
 		this.pending_count = 0;
 		this.pending_para_count = 0;
-		this.closed_flags = [];
-		this.NodeKind_array = [];
 		this.class_floor = 0;
 		this.block_quote_depth = 0;
 		this.emphasis_has_content = false;
@@ -598,6 +622,56 @@ export class PFMParser {
 		this.out.open(0, NodeKind.root, 0, -1, 0, false);
 	}
 
+	/** take the pooled id tables, or allocate ones sized for the source. */
+	private take_id_tables(size_hint: number): void {
+		if (pooled_id_info.length !== 0) {
+			this.id_info = pooled_id_info;
+			this.pending_slots = pooled_pending_slots;
+			this.id_cap = pooled_id_info.length;
+			pooled_id_info = EMPTY_ID_INFO;
+			pooled_pending_slots = EMPTY_PENDING_SLOTS;
+			return;
+		}
+		let cap = ID_TABLE_FLOOR;
+		const want = size_hint >> ID_HINT_SHIFT;
+		while (cap < want) cap <<= 1;
+		this.alloc_id_tables(cap);
+	}
+
+	/** point the id tables at a fresh buffer of cap ids, zero filled. */
+	private alloc_id_tables(cap: number): void {
+		const buffer = new ArrayBuffer(cap * 5);
+		this.pending_slots = new Int32Array(buffer, 0, cap);
+		this.id_info = new Uint8Array(buffer, cap * 4, cap);
+		this.id_cap = cap;
+	}
+
+	/** double the id tables until they hold id, keeping what they hold. */
+	private grow_id_tables(id: number): void {
+		const info = this.id_info;
+		const slots = this.pending_slots;
+		let cap = this.id_cap < ID_TABLE_FLOOR ? ID_TABLE_FLOOR : this.id_cap;
+		while (cap <= id) cap <<= 1;
+		this.alloc_id_tables(cap);
+		this.id_info.set(info);
+		this.pending_slots.set(slots);
+	}
+
+	/** clear the id tables and hand them to the pool, keeping the larger set. */
+	private give_id_tables(): void {
+		const info = this.id_info;
+		const slots = this.pending_slots;
+		const cap = this.id_cap;
+		this.id_info = EMPTY_ID_INFO;
+		this.pending_slots = EMPTY_PENDING_SLOTS;
+		this.id_cap = 0;
+		if (cap === 0 || cap > ID_TABLE_POOL_CAP || cap <= pooled_id_info.length)
+			return;
+		info.fill(0, 0, this.next_id);
+		pooled_id_info = info;
+		pooled_pending_slots = slots;
+	}
+
 	// opcode helpers
 
 	private emit_open(
@@ -609,19 +683,20 @@ export class PFMParser {
 	): number {
 		const id = this.next_id++;
 		this.out.open(id, kind, start, parent, extra, pending);
+		if (id >= this.id_cap) this.grow_id_tables(id);
 		if (pending) {
 			this.pending_starts[this.pending_count] = start;
 			this.pending_slots[id] = this.pending_count;
 			this.pending_ids[this.pending_count++] = id;
 			if (kind === NodeKind.paragraph) this.pending_para_count++;
 		}
-		this.NodeKind_array[id] = kind;
+		this.id_info[id] = kind;
 		return id;
 	}
 
 	private emit_close(id: number, end: number): void {
 		this.out.close(id, end);
-		this.closed_flags[id] = 1;
+		this.id_info[id] |= ID_CLOSED;
 	}
 
 	/** swap-remove an id from the  pending_ids array. */
@@ -635,16 +710,15 @@ export class PFMParser {
 		this.pending_starts[i] = this.pending_starts[last];
 		this.pending_slots[moved] = i;
 		this.pending_count = last;
-		if (this.NodeKind_array[id] === NodeKind.paragraph)
+		if ((this.id_info[id] & ID_KIND_MASK) === NodeKind.paragraph)
 			this.pending_para_count--;
 	}
 
 	/** check if an id is in the pending_ids array. */
 	private pending_has(id: number): boolean {
+		// slots are never cleared, a stale one fails the pending_ids check
 		const i = this.pending_slots[id];
-		return (
-			i !== undefined && i < this.pending_count && this.pending_ids[i] === id
-		);
+		return i < this.pending_count && this.pending_ids[i] === id;
 	}
 
 	/**
@@ -655,7 +729,7 @@ export class PFMParser {
 		if (this.pending_count !== this.pending_para_count) return false;
 		const stack = this.node_stack;
 		for (let i = 1; i < depth; i++) {
-			const kind = this.NodeKind_array[stack[i]];
+			const kind = this.id_info[stack[i]] & ID_KIND_MASK;
 			if (
 				kind !== NodeKind.block_quote &&
 				kind !== NodeKind.list &&
@@ -2482,7 +2556,7 @@ export class PFMParser {
 			}
 
 			// close intermediate nodes (text, emphasis, etc.)
-			if (!this.closed_flags[top_id]) {
+			if ((this.id_info[top_id] & ID_CLOSED) === 0) {
 				this.out.set_value_end(top_id, this.cursor);
 				this.emit_close(top_id, this.cursor);
 			}
@@ -3174,7 +3248,7 @@ export class PFMParser {
 					let write = 0;
 					for (let pi = 0; pi < this.pending_count; pi++) {
 						const pid = this.pending_ids[pi];
-						const pkind = this.NodeKind_array[pid];
+						const pkind = this.id_info[pid] & ID_KIND_MASK;
 						if (pkind === NodeKind.paragraph) {
 							// preserve - finalize_list_pending_para owns this one.
 							this.pending_ids[write] = pid;
@@ -5771,7 +5845,10 @@ export class PFMParser {
 		if (code === CLOSE_SQUARE_BRACKET) {
 			// inline directive: ] closes the text, an optional
 			// (key=val) argument list may follow immediately
-			if (this.NodeKind_array[current_node] === NodeKind.directive_inline) {
+			if (
+				(this.id_info[current_node] & ID_KIND_MASK) ===
+				NodeKind.directive_inline
+			) {
 				// literal bracket from an unmatched [ in the text -
 				// dispatch to inline which consumes it as text
 				const depth_top = this.directive_text_brackets.length - 1;
@@ -5945,7 +6022,8 @@ export class PFMParser {
 						url_start - base,
 						url_end - base
 					);
-					const is_image = this.NodeKind_array[n_id] === NodeKind.image;
+					const is_image =
+						(this.id_info[n_id] & ID_KIND_MASK) === NodeKind.image;
 					this.out.attr(n_id, is_image ? 'src' : 'href', url);
 					if (title_start >= 0 && title_end >= 0) {
 						this.out.attr(
@@ -6000,7 +6078,7 @@ export class PFMParser {
 					const def = this.ref_map.get(normalized);
 					if (def) {
 						const is_image =
-							this.NodeKind_array[current_node] === NodeKind.image;
+							(this.id_info[current_node] & ID_KIND_MASK) === NodeKind.image;
 						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
 						if (def.title) this.out.attr(current_node, 'title', def.title);
 						this.out.set_value_end(current_node, this.cursor);
@@ -6053,7 +6131,7 @@ export class PFMParser {
 					const def = this.ref_map.get(normalized);
 					if (def) {
 						const is_image =
-							this.NodeKind_array[current_node] === NodeKind.image;
+							(this.id_info[current_node] & ID_KIND_MASK) === NodeKind.image;
 						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
 						if (def.title) this.out.attr(current_node, 'title', def.title);
 						this.out.set_value_end(current_node, this.cursor);
@@ -6205,7 +6283,7 @@ export class PFMParser {
 					// close intermediate html elements
 					while (this.html_tag_stack.length > opener_idx + 1) {
 						const intermediate = this.html_tag_stack.pop()!;
-						if (!this.closed_flags[intermediate.id]) {
+						if ((this.id_info[intermediate.id] & ID_CLOSED) === 0) {
 							this.emit_close(intermediate.id, this.cursor);
 						}
 					}
@@ -7964,7 +8042,10 @@ export class PFMParser {
 				const node_id = this.node_stack[this.node_stack.length - 1];
 				this.out.set_value_end(node_id, end);
 				this.emit_close(node_id, end);
-				if (this.NodeKind_array[node_id] === NodeKind.directive_inline) {
+				if (
+					(this.id_info[node_id] & ID_KIND_MASK) ===
+					NodeKind.directive_inline
+				) {
 					this.directive_text_pop(node_id);
 				}
 				this.node_stack.pop();
@@ -8044,7 +8125,10 @@ export class PFMParser {
 					this.out.set_value_end(node_id, this.cursor);
 					this.emit_close(node_id, this.cursor);
 				}
-				if (this.NodeKind_array[node_id] === NodeKind.directive_inline) {
+				if (
+					(this.id_info[node_id] & ID_KIND_MASK) ===
+					NodeKind.directive_inline
+				) {
 					this.directive_text_pop(node_id);
 				}
 				this.node_stack.pop();
@@ -8101,7 +8185,7 @@ export class PFMParser {
 		// skip pending nodes - those will be revoked below.
 		for (let i = 0; i < this.node_stack.length; i++) {
 			const id = this.node_stack[i];
-			if (!this.closed_flags[id] && !this.pending_has(id)) {
+			if ((this.id_info[id] & ID_CLOSED) === 0 && !this.pending_has(id)) {
 				this.out.set_value_end(id, length - 1);
 				this.emit_close(id, length - 1);
 			}
@@ -8110,7 +8194,7 @@ export class PFMParser {
 		// revoke any remaining pending nodes (unclosed html, unclosed emphasis, etc.)
 		for (let pi = 0; pi < this.pending_count; pi++) {
 			const id = this.pending_ids[pi];
-			const kind = this.NodeKind_array[id];
+			const kind = this.id_info[id] & ID_KIND_MASK;
 			// block-level revocations (html) need the source text for repair
 			if (kind === NodeKind.html) {
 				const start = this.pending_starts[pi];
@@ -8135,6 +8219,7 @@ export class PFMParser {
 		}
 		this.pending_count = 0;
 		this.pending_para_count = 0;
+		this.give_id_tables();
 	}
 }
 
