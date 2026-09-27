@@ -229,3 +229,31 @@ describe('CursorHTMLRenderer', () => {
 		expect(html).toBe('{#if show}\n<h1>Title</h1>{/if}');
 	});
 });
+
+describe('static chunk fold', () => {
+	function parse(source: string) {
+		const tree = new TreeBuilder(source.length >> 3 || 128);
+		new PFMParser(tree).parse(source);
+		return tree.get_buffer();
+	}
+
+	it('keeps output past the composite length cap', () => {
+		const html = render('x\n\n' + '***\n\n'.repeat(60));
+		expect(html).toBe('<p>x</p>' + '<hr />'.repeat(60));
+	});
+
+	it('matches the mapped render, which does not fold', () => {
+		const source =
+			'# Title\n\n> quote\n\n- one\n- two\n\n| a | b |\n|:--|--:|\n| 1 | 2 |\n\n' +
+			'[link](/x "t") and ![img](/i.png) and `code`\n\n---\n\n```js\nx\n```\n';
+		const buf = parse(source);
+		const folded = new CursorHTMLRenderer({ cache: false });
+		folded.update(buf, source);
+		const mapped = new CursorHTMLRenderer({ cache: false });
+		mapped.update_mapped(buf, source);
+		expect(folded.html).toBe(mapped.html);
+		const cached = new CursorHTMLRenderer();
+		cached.update(buf, source);
+		expect(cached.html).toBe(mapped.html);
+	});
+});
