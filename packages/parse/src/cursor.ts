@@ -23,7 +23,7 @@
  *   }
  */
 
-import type { NodeBuffer } from "./utils";
+import type { NodeBuffer } from './utils';
 
 const NONE = 0xffffffff;
 
@@ -122,8 +122,18 @@ export class Cursor {
 		if (s !== undefined) return s;
 		const vs = this._value_starts[this.idx];
 		const ve = this._value_ends[this.idx];
-		if (vs === NONE || ve === NONE || ve <= vs) return "";
+		if (vs === NONE || ve === NONE || ve <= vs) return '';
 		return this.src.slice(vs, ve);
+	}
+
+	/** the source string that text() slices from. */
+	get source(): string {
+		return this.src;
+	}
+
+	/** prebuilt text for the current node, undefined when text() slices the source. */
+	get prebuilt(): string | undefined {
+		return this.buf._strings[this.idx];
 	}
 
 	/** get metadata for the current node, or undefined if none. */
