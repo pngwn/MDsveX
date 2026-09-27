@@ -16,6 +16,9 @@ const SLAB_BYTES = 65536;
  */
 const SLAB_MAX_CARVE = 8192;
 
+/** largest reset cleared by plain stores rather than a fill call per field. */
+const RESET_LOOP_MAX = 32;
+
 /** number of u32 fields carved out of the shared node arraybuffer. */
 const U32_FIELDS = 10;
 
@@ -404,14 +407,28 @@ export class NodeBuffer {
 	/** clear previously pushed tokens without reallocating storage. */
 	reset(): void {
 		const size = this._size;
-		if (size !== 0) {
+		if (size > RESET_LOOP_MAX) {
 			this._value_starts.fill(0, 0, size);
 			this._value_ends.fill(0, 0, size);
 			this._pending_nodes.fill(0, 0, size);
 			this.has_metadata.fill(0, 0, (size + 7) >> 3);
+		} else if (size !== 0) {
+			// a builtin call per field costs more than a small document's stores
+			const value_starts = this._value_starts;
+			const value_ends = this._value_ends;
+			const pending = this._pending_nodes;
+			for (let i = 0; i < size; i++) {
+				value_starts[i] = 0;
+				value_ends[i] = 0;
+				pending[i] = 0;
+			}
+			const has_metadata = this.has_metadata;
+			const bytes = (size + 7) >> 3;
+			for (let i = 0; i < bytes; i++) has_metadata[i] = 0;
 		}
-		this.metadata.clear();
-		this._strings.length = 0;
+		// clear and a length store are runtime calls even when empty
+		if (this.metadata.size !== 0) this.metadata.clear();
+		if (this._strings.length !== 0) this._strings.length = 0;
 		this._size = 0;
 	}
 
