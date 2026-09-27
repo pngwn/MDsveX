@@ -80,6 +80,13 @@ export class CompilerSession {
 	private tree: TreeBuilder | null = null;
 	private parser: PFMParser | null = null;
 	private renderer = new CursorHTMLRenderer({ cache: false });
+	// release already reset the arena, so the next compile can skip it
+	private released = false;
+
+	/** @internal node slots the arena holds, zero before the first compile. */
+	get capacity(): number {
+		return this.tree === null ? 0 : this.tree.get_buffer()._kinds.length;
+	}
 
 	compile(raw: string, options?: CompileOptions): CompileResult {
 		if (options?.parsePlugins && options.parsePlugins.length > 0) {
@@ -90,9 +97,10 @@ export class CompilerSession {
 		if (this.tree === null) {
 			this.tree = new TreeBuilder(source.length >> 3 || 16);
 			this.parser = new PFMParser(this.tree);
-		} else {
+		} else if (!this.released) {
 			this.tree.reset();
 		}
+		this.released = false;
 
 		this.parser!.parse(source);
 		const nodes = this.tree.get_buffer();
@@ -105,10 +113,63 @@ export class CompilerSession {
 		this.renderer.update(nodes, source);
 		return { code: this.renderer.html };
 	}
+
+	/**
+	 * @internal drop everything the last compile left behind except the
+	 * typed array storage, so an idle session holds no source, node
+	 * metadata, html or chunks. the next compile would clear these anyway.
+	 */
+	release(): void {
+		if (this.tree !== null) {
+			this.tree.reset();
+			this.parser!.release();
+			this.released = true;
+		}
+		this.renderer.release();
+	}
 }
 
+// a session retains its arena at the size of the largest document it has
+// seen. large documents gain little from reuse, so they never enter the
+// shared session, and one whose tree outgrew the arena cap drops it
+const SHARED_SOURCE_CAP = 1 << 19;
+const SHARED_CAPACITY_CAP = 1 << 16;
+
+let shared_session: CompilerSession | null = null;
+let shared_session_busy = false;
+
+/**
+ * one-shot compile. without plugins the result holds no reference into the
+ * arena, parser or renderer, so small documents share one lazily created
+ * module-level session instead of building and discarding all three.
+ */
 function render(source: string, options?: CompileOptions): CompileResult {
-	return render_once(source, options);
+	if (
+		shared_session_busy ||
+		source.length > SHARED_SOURCE_CAP ||
+		(options?.parsePlugins && options.parsePlugins.length > 0)
+	) {
+		return render_once(source, options);
+	}
+
+	shared_session_busy = true;
+	let keep = false;
+	try {
+		if (shared_session === null) shared_session = new CompilerSession();
+		const result = shared_session.compile(source, options);
+		keep = shared_session.capacity <= SHARED_CAPACITY_CAP;
+		return result;
+	} finally {
+		// a throw can leave the arena or parser half written, start over
+		if (keep) shared_session!.release();
+		else shared_session = null;
+		shared_session_busy = false;
+	}
+}
+
+/** @internal the shared one-shot session, for tests. */
+export function _shared_session(): CompilerSession | null {
+	return shared_session;
 }
 
 function remap_to_raw(raw: string, mappings: Mapping<MappingData>[]): void {

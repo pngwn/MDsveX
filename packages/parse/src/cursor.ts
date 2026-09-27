@@ -186,6 +186,11 @@ export class Cursor {
 		return result;
 	}
 
+	/** drop the source string so a cursor kept for reuse does not pin it. */
+	release(): void {
+		this.src = '';
+	}
+
 	/** re-inits cursor with a (potentially grown) buffer and new source. */
 	reinit(buf: NodeBuffer, source: string): void {
 		this.buf = buf;
