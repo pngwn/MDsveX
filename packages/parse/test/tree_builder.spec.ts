@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { PFMParser } from '../src/main';
+import type { Emitter } from '../src/opcodes';
 import { TreeBuilder } from '../src/tree_builder';
-import { NodeKind } from '../src/utils';
+import { NodeBuffer, NodeKind } from '../src/utils';
 
 describe('TreeBuilder', () => {
 	describe('basic node creation', () => {
@@ -338,5 +340,253 @@ describe('TreeBuilder', () => {
 			// root (auto) + heading = 2
 			expect(nodes.size).toBe(2);
 		});
+	});
+});
+
+// forwards every opcode to a builder with every non-root id moved by an
+// offset, so no id lands on its slot and the builder has to map them
+class ShiftedIds implements Emitter {
+	constructor(
+		private out: Emitter,
+		private offset: number
+	) {}
+	private shift(id: number): number {
+		return id <= 0 ? id : id + this.offset;
+	}
+	open(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		extra: number,
+		pending: boolean
+	): void {
+		this.out.open(
+			this.shift(id),
+			kind,
+			start,
+			this.shift(parent),
+			extra,
+			pending
+		);
+	}
+	close(id: number, end: number): void {
+		this.out.close(this.shift(id), end);
+	}
+	text(parent: number, start: number, end: number): void {
+		this.out.text(this.shift(parent), start, end);
+	}
+	attr(id: number, key: string, value: any): void {
+		this.out.attr(this.shift(id), key, value);
+	}
+	set_value_start(id: number, pos: number): void {
+		this.out.set_value_start(this.shift(id), pos);
+	}
+	set_value_end(id: number, pos: number): void {
+		this.out.set_value_end(this.shift(id), pos);
+	}
+	revoke(id: number, source_text?: string): void {
+		this.out.revoke(this.shift(id), source_text);
+	}
+	commit(id: number): void {
+		this.out.commit(this.shift(id));
+	}
+	cursor(pos: number): void {
+		this.out.cursor(pos);
+	}
+}
+
+function dump(nodes: NodeBuffer, index = 0): unknown {
+	const node = nodes.get_node(index);
+	return {
+		kind: node.kind,
+		start: node.start,
+		end: node.end,
+		value: node.value,
+		metadata: node.metadata,
+		pending: nodes._pending_nodes[index],
+		children: node.children.map((child) => dump(nodes, child)),
+	};
+}
+
+describe('TreeBuilder ids as indices', () => {
+	const docs = [
+		'| a | b |\n| - | - |\n| x | |\n\nafter *the* table\n',
+		'<div>\nunclosed html block\n\n- item *one*\n- item two\n\npara `code` end\n',
+		'- tight\n- list\n\n1. loose\n\n2. list\n\n> quote **strong\n',
+		'text with snake_case and *unclosed emphasis\n\n| h |\n| - |\n| c |\n',
+		'<span>inline <b>open\n\n# heading {x}\n\n```js\ncode\n```\n',
+	];
+
+	for (const doc of docs) {
+		it(`builds the same tree with ids as slots and with a map: ${JSON.stringify(doc)}`, () => {
+			const direct = new TreeBuilder(8);
+			new PFMParser(direct).parse(doc);
+			const mapped = new TreeBuilder(8);
+			new PFMParser(new ShiftedIds(mapped, 1000)).parse(doc);
+			expect(dump(direct.get_buffer())).toEqual(dump(mapped.get_buffer()));
+		});
+	}
+
+	it('keeps ids equal to slots, so the builder never needs its id map', () => {
+		for (const doc of docs) {
+			const tb = new TreeBuilder(8);
+			new PFMParser(tb).parse(doc);
+			expect((tb as unknown as { id_to_index: unknown }).id_to_index).toBe(
+				null
+			);
+		}
+	});
+});
+
+describe('parser id tables', () => {
+	const docs = [
+		'- tight\n- list\n\n1. loose\n\n2. list\n\n> quote **strong\n',
+		'<div>\nunclosed html block\n\n- item *one*\n- item two\n\npara `code` end\n',
+		'text *a* _b_ ~~c~~ [link](x) ![img](y) <span>open\n\n| h | i |\n| - | - |\n| c | d |\n'.repeat(
+			40
+		),
+	];
+
+	function parse_whole(doc: string): unknown {
+		const tb = new TreeBuilder(8);
+		new PFMParser(tb).parse(doc);
+		return dump(tb.get_buffer());
+	}
+
+	it('keeps interleaved incremental parsers apart', () => {
+		const expected = docs.map(parse_whole);
+		const builders = docs.map(() => new TreeBuilder(8));
+		const parsers = builders.map((tb) => new PFMParser(tb));
+		for (const p of parsers) p.init();
+		const longest = Math.max(...docs.map((d) => d.length));
+		for (let at = 0; at < longest; at += 7) {
+			for (let i = 0; i < docs.length; i++) {
+				const chunk = docs[i].slice(at, at + 7);
+				if (chunk.length > 0) parsers[i].feed(chunk);
+			}
+		}
+		for (const p of parsers) p.finish();
+		builders.forEach((tb, i) =>
+			expect(dump(tb.get_buffer())).toEqual(expected[i])
+		);
+	});
+
+	it('gives the same trees when one parser is reused across documents', () => {
+		const expected = docs.map(parse_whole);
+		const tb = new TreeBuilder(8);
+		const parser = new PFMParser(tb);
+		for (const order of [
+			[2, 0, 1],
+			[0, 2, 1, 0],
+		]) {
+			for (const i of order) {
+				tb.reset();
+				parser.parse(docs[i]);
+				expect(dump(tb.get_buffer())).toEqual(expected[i]);
+			}
+		}
+	});
+
+	// every opcode as a plain tuple, so two streams compare with toEqual
+	class Recorder implements Emitter {
+		ops: unknown[][] = [];
+		open(...args: unknown[]): void {
+			this.ops.push(['open', ...args]);
+		}
+		close(...args: unknown[]): void {
+			this.ops.push(['close', ...args]);
+		}
+		text(...args: unknown[]): void {
+			this.ops.push(['text', ...args]);
+		}
+		attr(...args: unknown[]): void {
+			this.ops.push(['attr', ...args]);
+		}
+		set_value_start(...args: unknown[]): void {
+			this.ops.push(['set_value_start', ...args]);
+		}
+		set_value_end(...args: unknown[]): void {
+			this.ops.push(['set_value_end', ...args]);
+		}
+		revoke(...args: unknown[]): void {
+			this.ops.push(['revoke', ...args]);
+		}
+		commit(...args: unknown[]): void {
+			this.ops.push(['commit', ...args]);
+		}
+		cursor(...args: unknown[]): void {
+			this.ops.push(['cursor', ...args]);
+		}
+	}
+
+	interface PendingSlots {
+		pending_count: number;
+		emit_open(
+			kind: NodeKind,
+			start: number,
+			parent: number,
+			extra: number,
+			pending: boolean
+		): number;
+		pending_has(id: number): boolean;
+		pending_remove(id: number): void;
+	}
+
+	it('tracks pending ids past slot 2^23', () => {
+		const p = new PFMParser(new Recorder()) as unknown as PendingSlots & {
+			init(): void;
+		};
+		p.init();
+		// stands in for 2^23 nodes already pending, a document that big is
+		// too slow for a unit test. the slot no longer fits beside the kind
+		// in one int32 from here on
+		p.pending_count = 1 << 23;
+		const a = p.emit_open(NodeKind.link, 0, 0, 0, true);
+		const b = p.emit_open(NodeKind.strong_emphasis, 0, 0, 0, true);
+		expect(p.pending_has(a)).toBe(true);
+		expect(p.pending_has(b)).toBe(true);
+		// b moves into the slot a leaves
+		p.pending_remove(a);
+		expect(p.pending_count).toBe((1 << 23) + 1);
+		expect(p.pending_has(a)).toBe(false);
+		expect(p.pending_has(b)).toBe(true);
+		p.pending_remove(b);
+		expect(p.pending_count).toBe(1 << 23);
+		expect(p.pending_has(b)).toBe(false);
+	});
+
+	it('keeps a finished parser off the id tables it handed back', () => {
+		const later = 'para *e* [x\n\n> more **s**';
+		const clean = new Recorder();
+		const pc = new PFMParser(clean);
+		pc.init();
+		pc.feed(later);
+		pc.finish();
+
+		// take whatever spare tables earlier tests left, so the next parser
+		// allocates and hands its own tables back
+		new PFMParser(new Recorder()).init();
+		const first = new Recorder();
+		const pa = new PFMParser(first);
+		pa.parse('# hi *x\n\ntext **b** [y\n');
+		const seen = first.ops.length;
+
+		// takes the tables pa handed back
+		const second = new Recorder();
+		const pb = new PFMParser(second);
+		pb.init();
+		pb.feed(later);
+
+		// out of contract, pa is not initialized again
+		pa.finish();
+		const repeat = first.ops.slice(seen).filter((op) => op[0] !== 'cursor');
+		pa.feed('\n\nmore *z* [w\n');
+		pa.finish();
+
+		pb.finish();
+		expect(second.ops).toEqual(clean.ops);
+		// pa had closed or revoked everything already, as before the pool
+		expect(repeat).toEqual([]);
 	});
 });
