@@ -1,9 +1,9 @@
-import type { NodeBuffer } from "./utils";
+import type { NodeBuffer } from './utils';
 
 const NONE = 0xffffffff;
 
 /** sentinel: the attribute key did not exist before this write. */
-export const ATTR_DID_NOT_EXIST: unique symbol = Symbol("ATTR_DID_NOT_EXIST");
+export const ATTR_DID_NOT_EXIST: unique symbol = Symbol('ATTR_DID_NOT_EXIST');
 
 // biome-ignore lint/suspicious/no-const-enum: matches project convention
 export const enum UndoEntryKind {
@@ -80,26 +80,29 @@ export type UndoEntry =
  * the entire subtree is detached.
  */
 function _unlink_child(buf: NodeBuffer, parent: number, child: number): void {
-	const prev = buf._prev_siblings[child];
-	const next = buf._next_siblings[child];
+	const prev = buf.prev_at(child);
+	const next = buf.next_at(child);
 
 	if (prev !== NONE) {
-		buf._next_siblings[prev] = next;
-	} else if (buf._children_starts[parent] === child) {
-		buf._children_starts[parent] = next !== NONE && buf._parents[next] === parent ? next : NONE;
+		buf.set_next(prev, next);
+	} else if (buf.first_child_at(parent) === child) {
+		buf.set_first_child(
+			parent,
+			next !== NONE && buf.parent_at(next) === parent ? next : NONE
+		);
 	}
 
-	if (next !== NONE && buf._parents[next] === parent) {
-		buf._prev_siblings[next] = prev;
+	if (next !== NONE && buf.parent_at(next) === parent) {
+		buf.set_prev(next, prev);
 	}
 
-	if (buf._children_ends[parent] === child) {
-		buf._children_ends[parent] = prev !== NONE ? prev : NONE;
+	if (buf.last_child_at(parent) === child) {
+		buf.set_last_child(parent, prev !== NONE ? prev : NONE);
 	}
 
-	buf._parents[child] = NONE;
-	buf._next_siblings[child] = NONE;
-	buf._prev_siblings[child] = NONE;
+	buf.set_parent(child, NONE);
+	buf.set_next(child, NONE);
+	buf.set_prev(child, NONE);
 }
 
 /**
@@ -133,7 +136,6 @@ export class UndoLog {
 		this.active_node = NONE;
 	}
 
-
 	record_attr_set(target: number, key: string, prior_value: any): void {
 		this._append({
 			kind: UndoEntryKind.AttrSet,
@@ -164,7 +166,7 @@ export class UndoLog {
 		parent: number,
 		wrapper: number,
 		prior_first_child: number,
-		prior_last_child: number,
+		prior_last_child: number
 	): void {
 		this._append({
 			kind: UndoEntryKind.WrapInner,
@@ -178,7 +180,7 @@ export class UndoLog {
 	record_prepend(
 		parent: number,
 		created: number,
-		prior_first_child: number,
+		prior_first_child: number
 	): void {
 		this._append({
 			kind: UndoEntryKind.Prepend,
@@ -191,7 +193,7 @@ export class UndoLog {
 	record_append(
 		parent: number,
 		created: number,
-		prior_last_child: number,
+		prior_last_child: number
 	): void {
 		this._append({
 			kind: UndoEntryKind.Append,
@@ -211,7 +213,6 @@ export class UndoLog {
 		}
 		log.push(entry);
 	}
-
 
 	/**
 	 * revoke all mutations attributed to the given handler node.
@@ -245,7 +246,7 @@ export class UndoLog {
 				}
 
 				case UndoEntryKind.TypeChange: {
-					buf._kinds[entry.target] = entry.prior_kind;
+					buf.set_kind(entry.target, entry.prior_kind);
 					break;
 				}
 
@@ -256,7 +257,7 @@ export class UndoLog {
 					const parent = entry.parent;
 					const wrapper = entry.wrapper;
 					buf.unwrap_node(wrapper);
-					buf._parents[wrapper] = NONE;
+					buf.set_parent(wrapper, NONE);
 					break;
 				}
 

@@ -1,8 +1,8 @@
 /**
  * cursor-based pfm html renderer
  *
- * renders html from a cursor over soa NodeBuffer.
- * zero per-node allocations, the cursor walks typed arrays directly,
+ * renders html from a cursor over a NodeBuffer.
+ * zero per-node allocations, the cursor reads node words directly,
  * text is lazily sliced from source only when needed.
  *
  * usage:
@@ -1715,7 +1715,7 @@ export interface CursorBlockEntry {
 //  cursorhtmlrenderer (incremental)
 
 /**
- * incremental html renderer using the cursor over soa buffers.
+ * incremental html renderer using the cursor over node buffers.
  *
  * same caching strategy as htmlrenderer: walks root's children,
  * skips closed+cached blocks, re-renders only open blocks.

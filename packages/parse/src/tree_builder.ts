@@ -1,5 +1,11 @@
 import type { Emitter } from './opcodes';
-import { NodeBuffer, NodeKind, make_meta, merge_meta } from './utils';
+import {
+	NodeBuffer,
+	NodeField,
+	NodeKind,
+	make_meta,
+	merge_meta,
+} from './utils';
 import type { PluginDispatcher } from './plugin_dispatch';
 
 const NONE = 0xffffffff;
@@ -80,7 +86,7 @@ export class TreeBuilder implements Emitter {
 			const kind = revoked.get(idx);
 			if (kind !== undefined) return kind;
 		}
-		return this.nodes._kinds[idx];
+		return this.nodes._n[idx * NodeField.stride] & 0xff;
 	}
 
 	open(
@@ -137,8 +143,9 @@ export class TreeBuilder implements Emitter {
 		}
 		const idx = this.index_of(id);
 		if (idx === undefined) return;
-		const nodes = this.nodes;
-		nodes.set_end(idx, end);
+		const n = this.nodes._n;
+		const b = idx * NodeField.stride;
+		n[b + NodeField.end] = end;
 
 		// pending paragraphs inside list_items are tight-list speculation
 		// wrappers, they stay pending after close until the list closes
@@ -146,12 +153,13 @@ export class TreeBuilder implements Emitter {
 		const kind = this.opened_kind(idx);
 		if (
 			kind === NodeKind.paragraph &&
-			nodes._pending_nodes[idx] === 1 &&
-			nodes._kinds[nodes._parents[idx]] === NodeKind.list_item
+			n[b + NodeField.pending] === 1 &&
+			(n[n[b + NodeField.parent] * NodeField.stride] & 0xff) ===
+				NodeKind.list_item
 		) {
 			return;
 		}
-		nodes.commit_node(idx);
+		n[b + NodeField.pending] = 0;
 		if (kind === NodeKind.list) this.unwrap_tight_list(idx);
 	}
 
@@ -163,7 +171,7 @@ export class TreeBuilder implements Emitter {
 		nodes.set_end(idx, end);
 
 		// capture pending state before close dispatch / commit
-		const was_pending = nodes._pending_nodes[idx] === 1;
+		const was_pending = nodes.pending_at(idx) === 1;
 
 		// plugin close dispatch: fire close callbacks before committing
 		dispatcher.dispatch_close(idx, nodes);
@@ -174,8 +182,8 @@ export class TreeBuilder implements Emitter {
 		const kind = this.id_to_kind![id];
 		const keep_pending =
 			kind === NodeKind.paragraph &&
-			nodes._pending_nodes[idx] === 1 &&
-			nodes._kinds[nodes._parents[idx]] === NodeKind.list_item;
+			nodes.pending_at(idx) === 1 &&
+			nodes.kind_at(nodes.parent_at(idx)) === NodeKind.list_item;
 		if (!keep_pending) {
 			nodes.commit_node(idx);
 			if (!was_pending) {
@@ -200,19 +208,17 @@ export class TreeBuilder implements Emitter {
 		// sibling and its parent are read before the unwrap, so children
 		// spliced in by an unwrap are skipped, exactly as a child list
 		// captured up front would skip them.
-		const parents = nodes._parents;
-		const next_siblings = nodes._next_siblings;
-		let item = nodes._children_starts[idx];
-		let more_items = item !== NONE && parents[item] === idx;
+		let item = nodes.first_child_at(idx);
+		let more_items = item !== NONE && nodes.parent_at(item) === idx;
 		while (more_items) {
-			const next_item = next_siblings[item];
-			more_items = next_item !== NONE && parents[next_item] === idx;
-			let child = nodes._children_starts[item];
-			let more = child !== NONE && parents[child] === item;
+			const next_item = nodes.next_at(item);
+			more_items = next_item !== NONE && nodes.parent_at(next_item) === idx;
+			let child = nodes.first_child_at(item);
+			let more = child !== NONE && nodes.parent_at(child) === item;
 			while (more) {
-				const next = next_siblings[child];
-				more = next !== NONE && parents[next] === item;
-				if (nodes._kinds[child] === NodeKind.paragraph) {
+				const next = nodes.next_at(child);
+				more = next !== NONE && nodes.parent_at(next) === item;
+				if (nodes.kind_at(child) === NodeKind.paragraph) {
 					nodes.unwrap_node(child);
 				}
 				child = next;
@@ -245,9 +251,7 @@ export class TreeBuilder implements Emitter {
 			this.nodes.set_value(parent_idx, start, end);
 		} else {
 			// create a child text node, in the slot of the id the parser reserved for it
-			const idx = this.nodes.push(NodeKind.text, start, parent_idx);
-			this.nodes.set_value(idx, start, end);
-			this.nodes.set_end(idx, end);
+			this.nodes.push_text(start, end, parent_idx);
 		}
 	}
 
@@ -302,10 +306,10 @@ export class TreeBuilder implements Emitter {
 			return;
 		}
 
-		const kind = nodes._kinds[idx];
+		const kind = nodes.kind_at(idx);
 		nodes.handle_repair(idx, source_text);
 		// close and text still act on the kind the node was opened with
-		if (nodes._kinds[idx] !== kind) {
+		if (nodes.kind_at(idx) !== kind) {
 			let revoked = this.revoked_kinds;
 			if (revoked === null) revoked = this.revoked_kinds = new Map();
 			if (!revoked.has(idx)) revoked.set(idx, kind);
