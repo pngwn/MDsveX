@@ -177,6 +177,110 @@ const extra_to_string = (kind: NodeKind): string | undefined => {
 };
 
 /**
+ * build a one-key metadata object. a computed-key literal goes through a
+ * slow generic define, so the keys the parser emits get constant-key
+ * literals. unknown keys keep the computed literal, which also keeps
+ * `__proto__` an own property.
+ */
+export function make_meta(key: string, value: any): Record<string, any> {
+	switch (key) {
+		case 'tag':
+			return { tag: value };
+		case 'href':
+			return { href: value };
+		case 'src':
+			return { src: value };
+		case 'ordered':
+			return { ordered: value };
+		case 'info_start':
+			return { info_start: value };
+		case 'name':
+			return { name: value };
+		case 'alignments':
+			return { alignments: value };
+		case 'attributes':
+			return { attributes: value };
+		case 'self_closing':
+			return { self_closing: value };
+		case 'title':
+			return { title: value };
+		case 'start':
+			return { start: value };
+		case 'tight':
+			return { tight: value };
+		case 'info_end':
+			return { info_end: value };
+		case 'args':
+			return { args: value };
+		case 'col_count':
+			return { col_count: value };
+		default:
+			return { [key]: value };
+	}
+}
+
+/**
+ * add or overwrite one key on an existing metadata object. named stores
+ * keep each site monomorphic where a keyed store would go megamorphic
+ * across every node shape.
+ */
+export function merge_meta(
+	meta: Record<string, any>,
+	key: string,
+	value: any
+): void {
+	switch (key) {
+		case 'attributes':
+			meta.attributes = value;
+			return;
+		case 'start':
+			meta.start = value;
+			return;
+		case 'tight':
+			meta.tight = value;
+			return;
+		case 'title':
+			meta.title = value;
+			return;
+		case 'self_closing':
+			meta.self_closing = value;
+			return;
+		case 'info_end':
+			meta.info_end = value;
+			return;
+		case 'col_count':
+			meta.col_count = value;
+			return;
+		case 'args':
+			meta.args = value;
+			return;
+		case 'tag':
+			meta.tag = value;
+			return;
+		case 'href':
+			meta.href = value;
+			return;
+		case 'src':
+			meta.src = value;
+			return;
+		case 'ordered':
+			meta.ordered = value;
+			return;
+		case 'info_start':
+			meta.info_start = value;
+			return;
+		case 'name':
+			meta.name = value;
+			return;
+		case 'alignments':
+			meta.alignments = value;
+			return;
+		default:
+			meta[key] = value;
+	}
+}
+
+/**
  * buffer that stores node metadata with typed arrays.
  */
 export class NodeBuffer {

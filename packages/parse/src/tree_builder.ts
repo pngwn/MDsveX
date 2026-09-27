@@ -1,6 +1,8 @@
-import type { Emitter } from "./opcodes";
-import { NodeBuffer, NodeKind } from "./utils";
-import type { PluginDispatcher } from "./plugin_dispatch";
+import type { Emitter } from './opcodes';
+import { NodeBuffer, NodeKind, make_meta, merge_meta } from './utils';
+import type { PluginDispatcher } from './plugin_dispatch';
+
+const NONE = 0xffffffff;
 
 /**
  * consumes opcodes from PFMParser and builds a NodeBuffer.
@@ -37,7 +39,7 @@ export class TreeBuilder implements Emitter {
 	 */
 	reset(): void {
 		if (this.dispatcher !== null) {
-			throw new Error("TreeBuilder with plugins cannot be reset");
+			throw new Error('TreeBuilder with plugins cannot be reset');
 		}
 		this.nodes.reset();
 		this.nodes.push(NodeKind.root, 0);
@@ -53,7 +55,7 @@ export class TreeBuilder implements Emitter {
 		start: number,
 		parent: number,
 		extra: number,
-		pending: boolean,
+		pending: boolean
 	): void {
 		// root (id=0) is auto-created by NodeBuffer constructor, skip
 		if (id === 0) return;
@@ -75,12 +77,7 @@ export class TreeBuilder implements Emitter {
 
 		// plugin dispatch
 		if (this.dispatcher && this.dispatcher.has_handlers(kind)) {
-			this.dispatcher.dispatch_open(
-				idx,
-				kind,
-				this.nodes,
-				this.register_id,
-			);
+			this.dispatcher.dispatch_open(idx, kind, this.nodes, this.register_id);
 		}
 	}
 
@@ -119,14 +116,30 @@ export class TreeBuilder implements Emitter {
 		if (kind === NodeKind.list) {
 			const meta = this.nodes.metadata_at(idx);
 			if (meta && meta.tight) {
-				const list_node = this.nodes.get_node(idx);
-				for (const item_idx of list_node.children) {
-					const item = this.nodes.get_node(item_idx);
-					for (const child_idx of item.children) {
-						if (this.nodes.kind_at(child_idx) === NodeKind.paragraph) {
-							this.nodes.unwrap_node(child_idx);
+				// walk the sibling chains directly instead of get_node, which
+				// allocates a node object and child array per item. each next
+				// sibling and its parent are read before the unwrap, so children
+				// spliced in by an unwrap are skipped, exactly as a child list
+				// captured up front would skip them.
+				const nodes = this.nodes;
+				const parents = nodes._parents;
+				const next_siblings = nodes._next_siblings;
+				let item = nodes._children_starts[idx];
+				let more_items = item !== NONE && parents[item] === idx;
+				while (more_items) {
+					const next_item = next_siblings[item];
+					more_items = next_item !== NONE && parents[next_item] === idx;
+					let child = nodes._children_starts[item];
+					let more = child !== NONE && parents[child] === item;
+					while (more) {
+						const next = next_siblings[child];
+						more = next !== NONE && parents[next] === item;
+						if (nodes._kinds[child] === NodeKind.paragraph) {
+							nodes.unwrap_node(child);
 						}
+						child = next;
 					}
+					item = next_item;
 				}
 			}
 		}
@@ -165,23 +178,24 @@ export class TreeBuilder implements Emitter {
 		if (idx === undefined) return;
 
 		switch (key) {
-			case "value":
+			case 'value':
 				this.nodes.set_value(idx, value[0], value[1]);
 				break;
-			case "value_start":
+			case 'value_start':
 				this.nodes.set_value_start(idx, value);
 				break;
-			case "value_end":
+			case 'value_end':
 				this.nodes.set_value_end(idx, value);
 				break;
 			default: {
-				// merge into metadata map
-				const existing = this.nodes.metadata_at(idx);
+				// merge into metadata map. the stored object is mutated in
+				// place, so a merge needs no second map write.
+				const nodes = this.nodes;
+				const existing = nodes.metadata_at(idx);
 				if (existing) {
-					existing[key] = value;
-					this.nodes.set_metadata(idx, existing);
+					merge_meta(existing, key, value);
 				} else {
-					this.nodes.set_metadata(idx, { [key]: value });
+					nodes.set_metadata(idx, make_meta(key, value));
 				}
 				break;
 			}
