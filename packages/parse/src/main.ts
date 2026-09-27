@@ -479,6 +479,8 @@ export class PFMParser {
 		this.current = CharMask.whitespace;
 		this.next_class = CharMask.whitespace;
 		this.block_quote_depth = 0;
+		this.emphasis_has_content = false;
+		this.in_heading = false;
 		this.list_depth = 0;
 		this.list_marker = 0;
 		this.list_ordered = false;
