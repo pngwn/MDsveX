@@ -168,6 +168,24 @@ describe('Incremental parsing', () => {
 			expect(closes2.some((o) => (o as any).id === fence_open.id)).toBe(true);
 		});
 
+		it('raw text element opens once its open tag is complete', () => {
+			const rec = new OpRecorder();
+			const p = new PFMParser(rec);
+			p.init();
+			p.feed('<style>\n.a { color: red }\n</sty');
+			const html_open = rec.ops.find(
+				(o) => o.op === 'open' && o.kind === 'html'
+			) as any;
+			expect(html_open).toBeDefined();
+			expect(html_open.pending).toBe(false);
+			const closed = () =>
+				rec.ops.some((o) => o.op === 'close' && o.id === html_open.id);
+			expect(closed()).toBe(false);
+
+			p.feed('le>\n');
+			expect(closed()).toBe(true);
+		});
+
 		it('revokes unclosed emphasis on finish', () => {
 			const rec = new OpRecorder();
 			const p = new PFMParser(rec);
@@ -351,6 +369,14 @@ describe('Incremental parsing', () => {
 				'mixed doc',
 				'# Title\n\n<div class="note">\n\nSome *text* here.\n\n</div>\n\nAfter.\n',
 			],
+			['block script', '<script>\nlet a = 1 > 0;\n</script>\n\nafter\n'],
+			['inline style', 'text <style>a > b {}</style> end\n'],
+			['unterminated block script', 'text\n\n<script>\nlet a = 1;\n'],
+			['unterminated inline style', 'a <style>b {}\n'],
+			['script in html block', '<div>\n<script>\nfoo()\n</script>\n</div>\n'],
+			['style in svelte block', '{#if a}\n<style>\nb {}\n</style>\n{/if}\n'],
+			['style in block quote', '> <style>\n> a {}\n> </style>\n'],
+			['close tag lookalike', '<script>"</scrip" + "t>";</script>\n'],
 		];
 
 		for (const [name, input] of html_cases) {
@@ -509,6 +535,18 @@ describe('retained source window', () => {
 		],
 		['block quote', lines(2000, (i) => (i % 2 ? '>' : `> quote ${i}`))],
 		['list in block quote', lines(2000, (i) => `> - item ${i}`)],
+		[
+			'style block',
+			'<style>\n' +
+				lines(2000, (i) => `.c${i} > a { color: red }`) +
+				'</style>\n',
+		],
+		[
+			'script after blocks',
+			'# title\n\n- a\n\n<script>\n' +
+				lines(2000, (i) => `let x${i} = ${i} > 0;`) +
+				'</script>\n\nafter\n',
+		],
 		[
 			'fence in list',
 			'- item\n  ```\n' + lines(2000, (i) => `  code ${i}`) + '  ```\n',
