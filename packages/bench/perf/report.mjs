@@ -231,8 +231,15 @@ export function print_integrity(meta) {
 	console.log(`\n${bold('run integrity')}`);
 	const a = meta.anchor;
 	const drift = `${fmt_pct(1 + a.drift)} (${fmt_ns(a.start_ns)} -> ${fmt_ns(a.end_ns)})`;
+	const passes = meta.pass_anchors ?? [a];
+	const across =
+		passes.length > 1
+			? dim(
+					`  worst of ${passes.length} passes: ${passes.map((p) => fmt_pct(1 + p.drift)).join(' ')}`
+				)
+			: '';
 	console.log(
-		`  anchor drift  ${a.stable ? green(drift) : red(`${drift} UNSTABLE`)}`
+		`  anchor drift  ${a.stable ? green(drift) : red(`${drift} UNSTABLE`)}${across}`
 	);
 	if (!a.stable) {
 		console.log(
@@ -253,6 +260,9 @@ export function print_integrity(meta) {
 	console.log(
 		`  node          ${meta.machine.node}  gc ${meta.exposed_gc ? 'exposed' : red('NOT exposed, run with --expose-gc')}`
 	);
+	if (meta.separate_processes) {
+		console.log(`  passes        ${meta.repeat}, each in a fresh process`);
+	}
 }
 
 export function deviation_stats(results) {
