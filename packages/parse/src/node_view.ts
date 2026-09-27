@@ -1,5 +1,12 @@
-import { type NodeBuffer, NodeKind, kind_to_string, string_to_kind } from "./utils";
-import { type UndoLog, ATTR_DID_NOT_EXIST } from "./undo_log";
+import {
+	type NodeBuffer,
+	NodeKind,
+	kind_to_string,
+	make_meta,
+	merge_meta,
+	string_to_kind,
+} from './utils';
+import { type UndoLog, ATTR_DID_NOT_EXIST } from './undo_log';
 
 const NONE = 0xffffffff;
 
@@ -37,7 +44,7 @@ export class WireTextSource implements TextSource {
 		this.strings = strings;
 	}
 	slice(_start: number, _end: number): string {
-		return "";
+		return '';
 	}
 	get_string(index: number): string | undefined {
 		return this.strings[index];
@@ -60,7 +67,7 @@ export class ViewCache {
 		buf: NodeBuffer,
 		text_source: TextSource,
 		undo: UndoLog,
-		handler_node: number,
+		handler_node: number
 	) {
 		this.buf = buf;
 		this.text_source = text_source;
@@ -79,7 +86,7 @@ export class ViewCache {
 				this.text_source,
 				this,
 				this.undo,
-				this.handler_node,
+				this.handler_node
 			);
 			this.views.set(index, view);
 		}
@@ -129,7 +136,7 @@ export class NodeView {
 		text_source: TextSource,
 		cache: ViewCache,
 		undo: UndoLog,
-		handler_node: number,
+		handler_node: number
 	) {
 		this._index = index;
 		this._buf = buf;
@@ -138,7 +145,6 @@ export class NodeView {
 		this._undo = undo;
 		this._handler_node = handler_node;
 	}
-
 
 	get type(): string {
 		return kind_to_string(this._buf._kinds[this._index] as NodeKind);
@@ -151,7 +157,6 @@ export class NodeView {
 		this._undo.record_type_change(this._index, prior);
 		this._buf._kinds[this._index] = numeric;
 	}
-
 
 	get parent(): NodeView | null {
 		return this._cache.get(this._buf._parents[this._index]);
@@ -168,8 +173,7 @@ export class NodeView {
 	get next(): NodeView | null {
 		const n = this._buf._next_siblings[this._index];
 		if (n === NONE) return null;
-		if (this._buf._parents[n] !== this._buf._parents[this._index])
-			return null;
+		if (this._buf._parents[n] !== this._buf._parents[this._index]) return null;
 		return this._cache.get(n);
 	}
 
@@ -178,7 +182,6 @@ export class NodeView {
 		if (p === NONE) return null;
 		return this._cache.get(p);
 	}
-
 
 	/**
 	 * flattened text of all descendants.
@@ -198,7 +201,7 @@ export class NodeView {
 			if (s !== undefined) return s;
 			const vs = buf._value_starts[idx];
 			const ve = buf._value_ends[idx];
-			if (vs === NONE || ve === NONE || ve <= vs) return "";
+			if (vs === NONE || ve === NONE || ve <= vs) return '';
 			return this._text_source.slice(vs, ve);
 		}
 
@@ -214,7 +217,7 @@ export class NodeView {
 			if (s !== undefined) return s;
 			const vs = buf._value_starts[idx];
 			const ve = buf._value_ends[idx];
-			if (vs === NONE || ve === NONE || ve <= vs) return "";
+			if (vs === NONE || ve === NONE || ve <= vs) return '';
 			return this._text_source.slice(vs, ve);
 		}
 
@@ -232,7 +235,7 @@ export class NodeView {
 		}
 
 		// container node: walk children, concatenate
-		let result = "";
+		let result = '';
 		let child = buf._children_starts[idx];
 		while (child !== NONE && buf._parents[child] === idx) {
 			result += this._collect_text(child);
@@ -240,7 +243,6 @@ export class NodeView {
 		}
 		return result;
 	}
-
 
 	/** heading depth (1-6). only meaningful when type === 'heading'. */
 	get depth(): number | undefined {
@@ -291,7 +293,6 @@ export class NodeView {
 		return meta?.tight as boolean | undefined;
 	}
 
-
 	get attrs(): Record<string, any> {
 		if (this._attrs !== null) return this._attrs;
 
@@ -307,15 +308,13 @@ export class NodeView {
 
 			set(_target, prop: string, value: any): boolean {
 				const meta = buf.metadata_at(idx);
-				const prior =
-					meta && prop in meta ? meta[prop] : ATTR_DID_NOT_EXIST;
+				const prior = meta && prop in meta ? meta[prop] : ATTR_DID_NOT_EXIST;
 				undo.record_attr_set(idx, prop, prior);
 
 				if (meta) {
-					meta[prop] = value;
-					buf.set_metadata(idx, meta);
+					merge_meta(meta, prop, value);
 				} else {
-					buf.set_metadata(idx, { [prop]: value });
+					buf.set_metadata(idx, make_meta(prop, value));
 				}
 				return true;
 			},
@@ -356,7 +355,6 @@ export class NodeView {
 		return this._attrs;
 	}
 
-
 	/**
 	 * insert a new node between this node and its current children.
 	 * all current children become children of the new wrapper.
@@ -364,8 +362,7 @@ export class NodeView {
 	 */
 	wrap_inner(type: string, attrs?: Record<string, any>): NodeView {
 		const kind_num = string_to_kind(type);
-		if (kind_num === undefined)
-			throw new Error(`Unknown node type: ${type}`);
+		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
 		const buf = this._buf;
 		const idx = this._index;
@@ -382,7 +379,7 @@ export class NodeView {
 			idx,
 			wrapper_idx,
 			prior_first_child,
-			prior_last_child,
+			prior_last_child
 		);
 
 		return this._cache.get(wrapper_idx)!;
@@ -394,8 +391,7 @@ export class NodeView {
 	 */
 	prepend(type: string, attrs?: Record<string, any>): NodeView {
 		const kind_num = string_to_kind(type);
-		if (kind_num === undefined)
-			throw new Error(`Unknown node type: ${type}`);
+		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
 		const buf = this._buf;
 		const idx = this._index;
@@ -425,8 +421,7 @@ export class NodeView {
 	 */
 	append(type: string, attrs?: Record<string, any>): NodeView {
 		const kind_num = string_to_kind(type);
-		if (kind_num === undefined)
-			throw new Error(`Unknown node type: ${type}`);
+		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
 		const buf = this._buf;
 		const idx = this._index;
