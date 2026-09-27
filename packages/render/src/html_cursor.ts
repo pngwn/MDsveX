@@ -1747,10 +1747,13 @@ export class CursorHTMLRenderer {
 	 * nothing extra. the mapping sink releases itself after every render.
 	 */
 	release(): void {
-		this.out.length = 0;
+		// length stores and clear are runtime calls even on an empty array or
+		// set, and an uncached renderer never fills blocks or closed
+		if (this.out.length !== 0) this.out.length = 0;
 		this.html = '';
-		this.blocks.length = 0;
-		this.closed?.clear();
+		if (this.blocks.length !== 0) this.blocks.length = 0;
+		const closed = this.closed;
+		if (closed !== null && closed.size !== 0) closed.clear();
 		this.cursor?.release();
 		// the escape index is module state and would keep the source alive
 		esc_reset('');

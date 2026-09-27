@@ -3,6 +3,8 @@ import { NodeBuffer, NodeKind, make_meta, merge_meta } from './utils';
 import type { PluginDispatcher } from './plugin_dispatch';
 
 const NONE = 0xffffffff;
+// id table entries a reset builder keeps, the shared compile session's arena cap
+const ID_TABLE_KEEP = 1 << 16;
 
 /**
  * consumes opcodes from PFMParser and builds a NodeBuffer.
@@ -43,9 +45,15 @@ export class TreeBuilder implements Emitter {
 		}
 		this.nodes.reset();
 		this.nodes.push(NodeKind.root, 0);
-		this.id_to_index.length = 1;
+		// ids restart at 1 and open writes each id before anything reads it,
+		// so stale entries past the root are never seen. a length store is a
+		// runtime call that also drops the backing store, so the tables keep
+		// their size unless one document grew them past the cap
+		if (this.id_to_index.length > ID_TABLE_KEEP) {
+			this.id_to_index.length = 1;
+			this.id_to_kind.length = 1;
+		}
 		this.id_to_index[0] = 0;
-		this.id_to_kind.length = 1;
 		this.id_to_kind[0] = NodeKind.root;
 	}
 
