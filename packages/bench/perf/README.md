@@ -129,11 +129,13 @@ floor does not include this per-process bias.
 run. It is defined inside the harness, so no change under test can alter it,
 and its shape follows the parser's hot loop. Drift above 3% means the machine
 changed speed during the run. The paired ratios still hold in that case, but
-the absolute timings in the report do not. Each reading is the fastest over a
-one second window. Once the parser's `_run` could be optimised, its TurboFan
-jobs sometimes queued ahead of the anchor's own compile. The anchor then
-returned two agreeing readings from a lower tier, and the report showed a
-drift of 47% on a machine that had not changed speed.
+the absolute timings in the report do not. Each reading runs in a short child
+process of its own and is the fastest over a one second window. The child
+inherits CPU affinity, so a pinned run measures the pinned cores. Once the
+parser's `_run` could be optimised, an anchor measured inside the benchmark
+process read up to 48% slow at the start of a run, for longer than any window
+we tried, and so reported drift on a machine that had not changed speed. It
+shares the JIT with both arms there.
 
 **Machine lock.** The lock at `/tmp/mdsvex-perf.lock` covers the whole run of
 `ab.mjs`, `calibrate.mjs`, `parity.mjs` and `profile.mjs`. Other runs block
