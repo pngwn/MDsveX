@@ -56,6 +56,7 @@ export type { Emitter } from './opcodes';
 const char_code_at = String.prototype.charCodeAt;
 const string_slice = String.prototype.slice;
 const string_index_of = String.prototype.indexOf;
+const string_last_index_of = String.prototype.lastIndexOf;
 
 const enum CharMask {
 	whitespace = 1 << 0,
@@ -130,6 +131,11 @@ function truncate_stack(stack: number[], base: number): void {
 	if (stack.length < base) stack.length = base;
 }
 
+// what a stalled feed waits on, see PFMParser.wait_kind
+const WAIT_NONE = 0;
+const WAIT_FENCE = 1;
+const WAIT_RAW = 2;
+
 /** reused two slot array for append_flat, cleared after each use. */
 const JOIN_PAIR: string[] = ['', ''];
 
@@ -139,12 +145,13 @@ const JOIN_PAIR: string[] = ['', ''];
  * then goes through the cons indirection (about twice the cost per
  * read, and extra maps at the parser's string sites). join copies both
  * into a fresh sequential string, which costs the same as the flatten
- * the cons would get on its first read anyway. when `head` is empty the
- * join hands back `tail` itself, so the first chunk keeps the caller's
+ * the cons would get on its first read anyway. when `head` is empty
+ * `tail` comes back as is, so the first chunk keeps the caller's
  * representation until the next feed copies it.
  */
 function append_flat(head: string, tail: string): string {
 	if (tail.length === 0) return head;
+	if (head.length === 0) return tail;
 	JOIN_PAIR[0] = head;
 	JOIN_PAIR[1] = tail;
 	const joined = JOIN_PAIR.join('');
@@ -290,6 +297,10 @@ export class PFMParser {
 	private raw_node: number = 0;
 	private raw_needle: string = '';
 	private raw_scan: number = 0;
+	// what the last feed stalled on with the window trimmed to its scan point
+	// (WAIT_NONE, WAIT_FENCE or WAIT_RAW). such a stall emits nothing until its
+	// close arrives, so feed can skip a chunk that cannot hold the close
+	private wait_kind: number = 0;
 	private cursor: number = 0;
 	private finished: boolean = false;
 	// deferred \r at the end of a feed() chunk: we can't tell whether it's
@@ -483,6 +494,12 @@ export class PFMParser {
 			len = chunk.length;
 		}
 
+		if (this.wait_kind !== WAIT_NONE && this.skip_wait(chunk, len)) {
+			this.out.cursor(this.cursor);
+			return;
+		}
+		this.wait_kind = WAIT_NONE;
+
 		// keep one char before trim_point for the previous char lookbehind
 		let head = this.source;
 		if (this.trim_point - 1 > this.source_base) {
@@ -498,6 +515,49 @@ export class PFMParser {
 	}
 
 	/**
+	 * advance over a chunk that cannot close the stalled fence or raw text
+	 * block, leaving scan, trim point and window where _run would have left
+	 * them. returns false when the chunk might hold the close.
+	 */
+	private skip_wait(chunk: string, len: number): boolean {
+		const end = this.source_end;
+		if (this.wait_kind === WAIT_FENCE) {
+			// the line at fence_scan ran out of backticks short of the fence and
+			// later lines have none. the line after the last lf stays open
+			if (string_index_of.call(chunk, '`') !== -1) return false;
+			const lf = string_last_index_of.call(chunk, '\n');
+			if (lf === -1) return false;
+			const line = end + lf + 1;
+			this.fence_scan = line;
+			this.trim_point = line;
+			// the lf stays as the lookbehind char before trim_point
+			this.source = string_slice.call(chunk, lf);
+			this.source_base = line - 1;
+		} else {
+			// no close tag starts before raw_scan, and none can start after it
+			// without a '<'. keeping the last needle length chars matches _run
+			const keep = this.raw_needle.length;
+			if (len < keep) return false;
+			if (string_index_of.call(chunk, '<') !== -1) return false;
+			if (
+				string_index_of.call(
+					this.source,
+					'<',
+					this.raw_scan - this.source_base
+				) !== -1
+			)
+				return false;
+			const scan = end + len - keep + 1;
+			this.raw_scan = scan;
+			this.trim_point = scan;
+			this.source = string_slice.call(chunk, len - keep);
+			this.source_base = scan - 1;
+		}
+		this.source_end = end + len;
+		return true;
+	}
+
+	/**
 	 * signal end-of-input. finalizes all open nodes and revokes
 	 * pending speculation.
 	 */
@@ -507,6 +567,7 @@ export class PFMParser {
 			this.source_end++;
 			this.pending_cr = false;
 		}
+		this.wait_kind = WAIT_NONE;
 		this.finished = true;
 		this._run();
 		this._finalize();
@@ -537,6 +598,7 @@ export class PFMParser {
 		this.raw_node = 0;
 		this.raw_needle = '';
 		this.raw_scan = 0;
+		this.wait_kind = WAIT_NONE;
 		this.cursor = 0;
 		this.finished = false;
 		this.pending_cr = false;
@@ -5516,6 +5578,7 @@ export class PFMParser {
 				this.fence_scan = line;
 				if (this.can_trim(this.node_stack.length - 1)) {
 					this.trim_point = line;
+					this.wait_kind = WAIT_FENCE;
 				}
 				return true;
 			}
@@ -5564,6 +5627,7 @@ export class PFMParser {
 			// the node is not on the node stack, nothing rereads before the scan
 			if (this.can_trim(this.node_stack.length)) {
 				this.trim_point = this.raw_scan;
+				this.wait_kind = WAIT_RAW;
 			}
 			return true;
 		}
