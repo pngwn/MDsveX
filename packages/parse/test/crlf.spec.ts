@@ -7,6 +7,7 @@ import {
 	raw_offsets,
 } from '../src/main';
 import { TreeBuilder } from '../src/tree_builder';
+import { print_ast } from './print';
 
 describe('line ending normalization', () => {
 	describe('batch mode', () => {
@@ -126,6 +127,22 @@ describe('line ending normalization', () => {
 			p.finish();
 			expect(get_source(p)).toBe('abc\ndef');
 		});
+
+		// the deferred \r used to leave a stale class for the char before it,
+		// so a delimiter there parsed differently than in batch mode
+		for (const input of ['~~~\r', 'a *\r', '{a} *~*\r', '- ~~~\r']) {
+			test(`a trailing lone \\r in ${JSON.stringify(input)} parses as in batch mode`, () => {
+				const tree = new TreeBuilder(128);
+				const p = new PFMParser(tree);
+				p.init();
+				p.feed(input);
+				p.finish();
+				const batch = parse_markdown_svelte(input);
+				expect(print_ast(tree.get_buffer(), get_source(p))).toBe(
+					print_ast(batch.nodes, batch.source)
+				);
+			});
+		}
 	});
 });
 
