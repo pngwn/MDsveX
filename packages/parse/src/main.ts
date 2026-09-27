@@ -123,6 +123,13 @@ const classify = (code: number): CharMask =>
 /** shared empty error collector - avoids allocation when no errors are recorded. */
 const EMPTY_ERRORS = new ErrorCollector(1);
 
+// a leaked list_depth can leave the stack shorter than base, and blocks then
+// read the padding hole as their parent, so grow it the way a length store did
+function truncate_stack(stack: number[], base: number): void {
+	while (stack.length > base) stack.pop();
+	if (stack.length < base) stack.length = base;
+}
+
 /** reused two slot array for append_flat, cleared after each use. */
 const JOIN_PAIR: string[] = ['', ''];
 
@@ -1817,12 +1824,14 @@ export class PFMParser {
 	 * wrappers are now real paragraphs that renderers should show.
 	 */
 	private commit_list_pending_paras(): void {
-		for (let i = 0; i < this.list_pending_paras.length; i++) {
-			const pid = this.list_pending_paras[i];
+		const paras = this.list_pending_paras;
+		for (let i = 0; i < paras.length; i++) {
+			const pid = paras[i];
 			this.out.commit(pid);
 			this.pending_remove(pid);
 		}
-		this.list_pending_paras.length = 0;
+		// pop instead of the generic length setter, the list is short
+		while (paras.length > 0) paras.pop();
 	}
 
 	/**
@@ -1832,8 +1841,9 @@ export class PFMParser {
 	 */
 	private finalize_list_pending_paras(): void {
 		const loose = this.list_is_loose;
-		for (let i = 0; i < this.list_pending_paras.length; i++) {
-			const pid = this.list_pending_paras[i];
+		const paras = this.list_pending_paras;
+		for (let i = 0; i < paras.length; i++) {
+			const pid = paras[i];
 			if (loose) {
 				this.out.commit(pid);
 			} else {
@@ -1841,7 +1851,7 @@ export class PFMParser {
 			}
 			this.pending_remove(pid);
 		}
-		this.list_pending_paras.length = 0;
+		while (paras.length > 0) paras.pop();
 	}
 
 	private end_list(): void {
@@ -3668,7 +3678,9 @@ export class PFMParser {
 						if (!this.finished) break main_loop;
 						this.emit_close(current_node, this.cursor);
 						this.states.pop();
-						this.node_stack.length = node_stack_base;
+						// pop loops instead of the generic length setter, which is
+						// slow and nearly always drops exactly one element
+						truncate_stack(this.node_stack, node_stack_base);
 						continue;
 					}
 
@@ -3701,7 +3713,7 @@ export class PFMParser {
 								// handlers (each calls skip_bq_markers(_, 1)).
 								this.emit_close(current_node, this.cursor);
 								this.states.pop();
-								this.node_stack.length = node_stack_base;
+								truncate_stack(this.node_stack, node_stack_base);
 								continue;
 							}
 
@@ -3716,7 +3728,7 @@ export class PFMParser {
 							) {
 								this.emit_close(current_node, this.cursor);
 								this.states.pop();
-								this.node_stack.length = node_stack_base;
+								truncate_stack(this.node_stack, node_stack_base);
 								continue;
 							}
 							// inside a list inside a blockquote: a list marker on the
@@ -3734,7 +3746,7 @@ export class PFMParser {
 								) {
 									this.emit_close(current_node, this.cursor);
 									this.states.pop();
-									this.node_stack.length = node_stack_base;
+									truncate_stack(this.node_stack, node_stack_base);
 									continue;
 								}
 							}
@@ -3754,7 +3766,7 @@ export class PFMParser {
 						if (this.is_block_interrupt(next_pos)) {
 							this.emit_close(current_node, this.cursor);
 							this.states.pop();
-							this.node_stack.length = node_stack_base;
+							truncate_stack(this.node_stack, node_stack_base);
 							continue;
 						}
 
@@ -3772,7 +3784,7 @@ export class PFMParser {
 								) {
 									this.emit_close(current_node, this.cursor);
 									this.states.pop();
-									this.node_stack.length = node_stack_base;
+									truncate_stack(this.node_stack, node_stack_base);
 									continue;
 								}
 							}
