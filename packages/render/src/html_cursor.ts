@@ -1105,15 +1105,15 @@ function wrap_row(
 	WRAP_CLOSE[row] = fold_base(close);
 }
 
-wrap_row(K_PARAGRAPH, '<p', '<p>', '>', '</p>');
-wrap_row(K_EMPHASIS, '<em', '<em>', '>', '</em>');
-wrap_row(K_STRONG, '<strong', '<strong>', '>', '</strong>');
-wrap_row(K_STRIKETHROUGH, '<del', '<del>', '>', '</del>');
-wrap_row(K_SUPERSCRIPT, '<sup', '<sup>', '>', '</sup>');
-wrap_row(K_SUBSCRIPT, '<sub', '<sub>', '>', '</sub>');
-wrap_row(K_LIST_ITEM, '<li', '<li>', '>', '</li>\n');
+wrap_row(K.PARAGRAPH, '<p', '<p>', '>', '</p>');
+wrap_row(K.EMPHASIS, '<em', '<em>', '>', '</em>');
+wrap_row(K.STRONG, '<strong', '<strong>', '>', '</strong>');
+wrap_row(K.STRIKETHROUGH, '<del', '<del>', '>', '</del>');
+wrap_row(K.SUPERSCRIPT, '<sup', '<sup>', '>', '</sup>');
+wrap_row(K.SUBSCRIPT, '<sub', '<sub>', '>', '</sub>');
+wrap_row(K.LIST_ITEM, '<li', '<li>', '>', '</li>\n');
 wrap_row(
-	K_BLOCK_QUOTE,
+	K.BLOCK_QUOTE,
 	'<blockquote',
 	'<blockquote>\n',
 	'>\n',
@@ -1247,9 +1247,9 @@ function fold_children(c: Cursor, out: string[], p: number): number {
 	if (!c.goto_first_child()) return p;
 	do {
 		const k = c.kind;
-		if (k === K_TEXT) {
+		if (k === K.TEXT) {
 			p = push_dyn(out, p, escape_text(c));
-		} else if (k !== K_LINE_BREAK) {
+		} else if (k !== K.LINE_BREAK) {
 			// line breaks render nothing, a fifth of visited nodes skip the call
 			p = fold_node(c, out, p);
 		}
@@ -1261,26 +1261,26 @@ function fold_children(c: Cursor, out: string[], p: number): number {
 function fold_node(c: Cursor, out: string[], p: number): number {
 	let row = c.kind;
 	switch (row) {
-		case K_ROOT:
+		case K.ROOT:
 			return fold_children(c, out, p);
 
-		case K_PARAGRAPH:
+		case K.PARAGRAPH:
 			// pending paragraphs inside list_items are speculative tight-list
 			// wrappers, render their children transparently until the list
 			// closes (commit keeps the wrapper, revoke drops it).
-			if (c.pending && c.parent_kind === K_LIST_ITEM) {
+			if (c.pending && c.parent_kind === K.LIST_ITEM) {
 				return fold_children(c, out, p);
 			}
 		// falls through
-		case K_HEADING:
-		case K_EMPHASIS:
-		case K_STRONG:
-		case K_BLOCK_QUOTE:
-		case K_LIST_ITEM:
-		case K_STRIKETHROUGH:
-		case K_SUPERSCRIPT:
-		case K_SUBSCRIPT: {
-			if (row === K_HEADING) {
+		case K.HEADING:
+		case K.EMPHASIS:
+		case K.STRONG:
+		case K.BLOCK_QUOTE:
+		case K.LIST_ITEM:
+		case K.STRIKETHROUGH:
+		case K.SUPERSCRIPT:
+		case K.SUBSCRIPT: {
+			if (row === K.HEADING) {
 				const depth = c.extra;
 				row = depth >= 1 && depth <= 6 ? ROW_HEADING + depth : ROW_HEADING;
 			}
@@ -1289,7 +1289,7 @@ function fold_node(c: Cursor, out: string[], p: number): number {
 			return push_static(out, p, WRAP_CLOSE[row]);
 		}
 
-		case K_CODE_SPAN: {
+		case K.CODE_SPAN: {
 			p = fold_open(c, out, p, S_CODE, S_CODE_OPEN, S_GT);
 			const code = escape_text(c);
 			p = push_dyn(
@@ -1300,52 +1300,52 @@ function fold_node(c: Cursor, out: string[], p: number): number {
 			return push_static(out, p, S_CODE_CLOSE);
 		}
 
-		case K_CODE_FENCE:
+		case K.CODE_FENCE:
 			return fold_code_fence(c, out, p);
 
-		case K_LINK:
+		case K.LINK:
 			return fold_link(c, out, p);
 
-		case K_IMAGE:
+		case K.IMAGE:
 			return fold_image(c, out, p);
 
-		case K_LIST:
+		case K.LIST:
 			return fold_list(c, out, p);
 
-		case K_THEMATIC_BREAK:
+		case K.THEMATIC_BREAK:
 			return push_static(out, p, S_HR);
 
-		case K_HARD_BREAK:
+		case K.HARD_BREAK:
 			return push_static(out, p, S_BR);
 
-		case K_SOFT_BREAK:
+		case K.SOFT_BREAK:
 			return push_static(out, p, S_LF);
 
-		case K_HTML:
+		case K.HTML:
 			return fold_html(c, out, p);
 
-		case K_HTML_COMMENT:
+		case K.HTML_COMMENT:
 			p = push_static(out, p, S_COMMENT_OPEN);
 			p = push_dyn(out, p, c.text());
 			return push_static(out, p, S_COMMENT_CLOSE);
 
-		case K_MUSTACHE:
+		case K.MUSTACHE:
 			p = push_static(out, p, S_BRACE_OPEN);
 			p = push_dyn(out, p, c.text());
 			return push_static(out, p, S_BRACE_CLOSE);
 
-		case K_SVELTE_TAG:
+		case K.SVELTE_TAG:
 			return fold_svelte_tag(c, out, p);
 
-		case K_SVELTE_BLOCK:
+		case K.SVELTE_BLOCK:
 			return fold_svelte_block(c, out, p);
 
-		case K_TABLE:
+		case K.TABLE:
 			p = fold_open(c, out, p, S_TABLE, S_TABLE_OPEN, S_GT_LF);
 			p = fold_table_content(c, out, p);
 			return push_static(out, p, S_TABLE_CLOSE);
 
-		case K_LINE_BREAK:
+		case K.LINE_BREAK:
 			return p;
 
 		default:
@@ -1506,7 +1506,7 @@ function fold_svelte_block(c: Cursor, out: string[], p: number): number {
 	if (c.goto_first_child()) {
 		let is_first = true;
 		do {
-			if (c.kind === K_SVELTE_BRANCH) {
+			if (c.kind === K.SVELTE_BRANCH) {
 				const branch_expr = c.text();
 				if (is_first) {
 					p = push_static(out, p, S_BLOCK_OPEN);
@@ -1523,7 +1523,7 @@ function fold_svelte_block(c: Cursor, out: string[], p: number): number {
 				}
 				p = push_static(out, p, S_BRACE_CLOSE_LF);
 				p = fold_children(c, out, p);
-			} else if (c.kind !== K_LINE_BREAK) {
+			} else if (c.kind !== K.LINE_BREAK) {
 				p = fold_node(c, out, p);
 			}
 		} while (c.goto_next_sibling());
@@ -1541,11 +1541,11 @@ function fold_table_content(c: Cursor, out: string[], p: number): number {
 
 	if (!c.goto_first_child()) return p;
 	do {
-		if (c.kind === K_TABLE_HEADER) {
+		if (c.kind === K.TABLE_HEADER) {
 			p = push_static(out, p, S_THEAD_OPEN);
 			p = fold_table_cells(c, TH_OPEN_ID, S_TH_CLOSE, 'th', alignments, out, p);
 			p = push_static(out, p, S_THEAD_CLOSE);
-		} else if (c.kind === K_TABLE_ROW) {
+		} else if (c.kind === K.TABLE_ROW) {
 			if (!in_body) {
 				p = push_static(out, p, S_TBODY_OPEN);
 				in_body = true;
@@ -1573,7 +1573,7 @@ function fold_table_cells(
 	let col = 0;
 	if (!c.goto_first_child()) return p;
 	do {
-		if (c.kind === K_TABLE_CELL) {
+		if (c.kind === K.TABLE_CELL) {
 			const align = alignments[col];
 			// the parser only emits these four values, others are built at runtime
 			if (align === 'left') p = push_static(out, p, opens[1]);
