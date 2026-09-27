@@ -5161,11 +5161,14 @@ export class PFMParser {
 					// fast scan: skip plain text in a tight loop instead of
 					// re-entering the main loop per character. stops at any
 					// delimiter, escape, line break, or end of buffer.
+					// the ch < 128 guard keeps the table load in bounds, so non-ascii
+					// text never gives it out-of-bounds feedback and a float compare
 					{
+						const text_break = TEXT_BREAK;
 						let p = this.cursor + 1;
 						while (p < length) {
 							const ch = char_code_at.call(source, p - base);
-							if (TEXT_BREAK[ch]) break;
+							if (ch < 128 && text_break[ch] !== 0) break;
 							p++;
 						}
 						this.cursor = p;
@@ -5447,7 +5450,24 @@ export class PFMParser {
 
 						continue;
 					}
-					this.cursor++;
+					// the state only reacts to a backtick, a linefeed, a pipe in a
+					// table or the end of the buffer, so skip every other char here
+					// instead of paying the loop head once per char
+					{
+						const in_table = this.in_table;
+						let p = this.cursor + 1;
+						while (p < length) {
+							const ch = char_code_at.call(source, p - base);
+							if (
+								ch === BACKTICK ||
+								ch === LINEFEED ||
+								(in_table && ch === PIPE)
+							)
+								break;
+							p++;
+						}
+						this.cursor = p;
+					}
 					continue;
 				}
 
@@ -5575,7 +5595,13 @@ export class PFMParser {
 						!this.table_cell_has_content &&
 						(code === SPACE || code === TAB)
 					) {
-						this.cursor++;
+						let p = this.cursor + 1;
+						while (p < length) {
+							const ch = char_code_at.call(source, p - base);
+							if (ch !== SPACE && ch !== TAB) break;
+							p++;
+						}
+						this.cursor = p;
 						continue;
 					}
 
@@ -5707,7 +5733,15 @@ export class PFMParser {
 			return true; // wait for more input
 		}
 		if (code !== LINEFEED) {
-			this.cursor++;
+			// skip to the next char the checks above react to: a nul, a
+			// linefeed or the last char in the buffer
+			let p = this.cursor + 1;
+			while (p + 1 < length) {
+				const ch = char_code_at.call(source, p - base);
+				if (ch === 0 || ch === LINEFEED) break;
+				p++;
+			}
+			this.cursor = p;
 			return false;
 		} else if (this.cursor >= length && this.finished) {
 			this.emit_close(current_node, length);
