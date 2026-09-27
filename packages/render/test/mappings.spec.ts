@@ -1,22 +1,40 @@
 import { describe, it, expect } from 'vitest';
 import { PFMParser } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
-import { CursorHTMLRenderer } from '../src/html_cursor';
+import {
+	CursorHTMLRenderer,
+	NONE,
+	_emit,
+	_out_offsets,
+	_resolve_mappings,
+} from '../src/html_cursor';
 import type { Mapping, MappingData, MappingRole } from '../src/mappings';
 import {
 	CI_TEXT,
 	CI_CODE,
 	CI_SVELTE,
 	CI_STRUCTURE,
+	MapSink,
+	P_CODE,
+	P_STRUCTURE,
+	P_SVELTE,
+	P_TEXT,
+	R_CLOSE_SYNTAX,
+	R_CONTENT,
+	R_NODE,
+	R_OPEN_SYNTAX,
 	data_text,
 	data_code,
 	data_svelte,
 	data_structure,
+	record_code,
+	record_data,
 } from '../src/mappings';
 import {
 	build_line_starts,
 	offset_to_position,
 	mappings_to_v3,
+	records_to_v3,
 } from '../src/sourcemap';
 
 // ── vlq decoder (for testing round-trips) ──
@@ -545,5 +563,147 @@ describe('mapping data factories', () => {
 			expect(data).toEqual(spread);
 			expect(Object.keys(data)).toEqual(Object.keys(spread));
 		}
+	});
+});
+
+// ── numeric records ──
+
+const RECORD_DOCS = [
+	'hello\n',
+	'# Heading *em* **strong**\n\npara with `code` and <b>html</b>\n',
+	'- one\n- two\n\n1. a\n2. b\n\n> quote\n',
+	'```js\nlet x = 1 < 2;\n```\n\n| a | b |\n| :- | -: |\n| 1 | {x} |\n',
+	'<script>\nlet a = 1;\n</script>\n\n{#if a}\n_y_ {@html z}\n{:else}\nno\n{/if}\n\n<Foo bar={1} />\n',
+	'![alt *x*](src "t") [link](href) <!-- c --> a & b < c "q"\n\n---\n',
+	'',
+];
+
+describe('record_data', () => {
+	it('builds the data objects the presets build', () => {
+		const presets = [data_text, data_code, data_svelte, data_structure];
+		const roles: MappingRole[] = [
+			'node',
+			'content',
+			'open_syntax',
+			'close_syntax',
+		];
+		for (let p = 0; p < presets.length; p++) {
+			for (let r = 0; r < roles.length; r++) {
+				const data = record_data(record_code(p, r), 3);
+				const want = presets[p](3, roles[r]);
+				expect(data).toEqual(want);
+				expect(Object.keys(data)).toEqual(Object.keys(want));
+			}
+		}
+	});
+});
+
+describe('update_v3', () => {
+	it.each(RECORD_DOCS)(
+		'equals mappings_to_v3 over update_mapped: %j',
+		(source) => {
+			const tree = new TreeBuilder(source.length >> 3 || 128);
+			new PFMParser(tree).parse(source);
+			const renderer = new CursorHTMLRenderer({ cache: false });
+			const { mappings } = renderer.update_mapped(tree.get_buffer(), source);
+			const html = renderer.html;
+			const want = mappings_to_v3(mappings, source, html, '/a/doc.svx');
+
+			const fused = new CursorHTMLRenderer({ cache: false });
+			const got = fused.update_v3(
+				tree.get_buffer(),
+				source,
+				source,
+				'/a/doc.svx'
+			);
+			expect(fused.html).toBe(html);
+			expect(JSON.stringify(got)).toBe(JSON.stringify(want));
+		}
+	);
+
+	it('leaves update_mapped unchanged after a fused render', () => {
+		const source = RECORD_DOCS[1];
+		const tree = new TreeBuilder(128);
+		new PFMParser(tree).parse(source);
+		const renderer = new CursorHTMLRenderer({ cache: false });
+		const before = renderer.update_mapped(tree.get_buffer(), source).mappings;
+		renderer.update_v3(tree.get_buffer(), source, source);
+		const after = renderer.update_mapped(tree.get_buffer(), source).mappings;
+		expect(after).toEqual(before);
+		expect(byRole(after, 'open_syntax').length).toBeGreaterThan(0);
+	});
+});
+
+describe('records_to_v3', () => {
+	const source = 'abcdef\nghijkl\nmnopqr\n';
+
+	/** records_to_v3 against mappings_to_v3 over the resolved records. */
+	function both(out: string[], fill: (sink: MapSink) => void) {
+		const sink = new MapSink();
+		sink.begin(true);
+		fill(sink);
+		const generated = out.join('');
+		const want = mappings_to_v3(
+			_resolve_mappings(out, sink),
+			source,
+			generated,
+			'x.md'
+		);
+		const got = records_to_v3(
+			sink,
+			_out_offsets(out),
+			source,
+			generated,
+			'x.md'
+		);
+		expect(JSON.stringify(got)).toBe(JSON.stringify(want));
+		return got;
+	}
+
+	it('encodes identity runs, anchors and nodes like the object path', () => {
+		const out = ['<p>', 'abcdef', '</p>\n', 'gh&amp;', '<br />'];
+		const map = both(out, (sink) => {
+			_emit(sink, 0, 3, 0, 14, 0, record_code(P_TEXT, R_NODE));
+			_emit(sink, 1, 2, 0, 6, 1, record_code(P_TEXT, R_CONTENT));
+			_emit(sink, 3, 4, 7, 10, 2, record_code(P_TEXT, R_CONTENT));
+			_emit(sink, 0, 1, 0, 0, 0, record_code(P_STRUCTURE, R_OPEN_SYNTAX));
+			_emit(sink, 2, 3, 6, 7, 0, record_code(P_STRUCTURE, R_CLOSE_SYNTAX));
+		});
+		expect(map.mappings.length).toBeGreaterThan(0);
+	});
+
+	it('falls back to single characters when runs overlap', () => {
+		// the second record's anchor lands inside the first record's run
+		both(['abc', 'def', 'X'], (sink) => {
+			_emit(sink, 0, 2, 0, 6, 0, record_code(P_TEXT, R_CONTENT));
+			_emit(sink, 1, 2, 8, 9, 1, record_code(P_CODE, R_CONTENT));
+			_emit(sink, 2, 3, 14, 15, 2, record_code(P_SVELTE, R_NODE));
+		});
+	});
+
+	it('skips empty ranges, missing sources and empty identity runs', () => {
+		both(['', 'ab', '', 'c'], (sink) => {
+			_emit(sink, 0, 1, 0, 0, 0, record_code(P_TEXT, R_CONTENT));
+			_emit(sink, 1, 1, 0, 2, 0, record_code(P_TEXT, R_CONTENT));
+			_emit(sink, 1, 2, NONE, 2, 0, record_code(P_TEXT, R_CONTENT));
+			_emit(sink, 1, 2, 0, 2, 0, record_code(P_TEXT, R_CONTENT));
+			_emit(sink, 2, 3, 3, 3, -1, record_code(P_STRUCTURE, R_NODE));
+			_emit(sink, 3, 4, 7, 8, -1, record_code(P_SVELTE, R_CONTENT));
+		});
+	});
+
+	it('grows the sink past its first buffer', () => {
+		const out: string[] = [];
+		both(out, (sink) => {
+			for (let i = 0; i < 2000; i++) {
+				out.push(i % 3 === 0 ? '&amp;' : 'a');
+				const s = i % 20;
+				_emit(sink, i, i + 1, s, s + 1, i, record_code(P_TEXT, R_CONTENT));
+			}
+		});
+	});
+
+	it('gives the empty map for no records', () => {
+		expect(both(['<hr />'], () => {}).mappings).toBe('');
 	});
 });

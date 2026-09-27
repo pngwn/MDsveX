@@ -13,10 +13,21 @@
 
 import { Cursor } from '@mdsvex/parse/cursor';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
-import { data_text, data_code, data_svelte, data_structure } from './mappings';
-import type { Mapping, MappingData, MappingRole } from './mappings';
+import {
+	MapSink,
+	RECORD_SIZE,
+	P_TEXT,
+	P_CODE,
+	P_SVELTE,
+	P_STRUCTURE,
+	record_data,
+} from './mappings';
+import type { Mapping, MappingData } from './mappings';
+import { records_to_v3 } from './sourcemap';
+import type { SourceMapV3 } from './sourcemap';
 
 export type { Mapping, CodeInformation, MappingData } from './mappings';
+export { MapSink } from './mappings';
 
 //  html escaping
 
@@ -162,71 +173,62 @@ export const K_IMPORT_STATEMENT = 34;
 
 export const NONE = 0xffffffff;
 
-//  pending mapping entry (resolved to Mapping<MappingData> after render)
+//  pending mappings, numeric records resolved to Mapping<MappingData> after render
 
-export interface PendingMapping {
-	out_idx: number;
-	out_count: number;
-	source_offset: number;
-	source_length: number;
-	data: MappingData;
-}
+// record codes the renderer writes, record_code(preset, role) as literals
+const TEXT_CONTENT = 1;
+const CODE_CONTENT = 5;
+const SVELTE_NODE = 8;
+const SVELTE_CONTENT = 9;
+const STRUCTURE_OPEN = 14;
+const STRUCTURE_CLOSE = 15;
 
-/** emit a mapping entry. skips if generated range is empty. */
+/** record a mapping. skips if generated range is empty. */
 export function _emit(
-	entries: PendingMapping[],
+	sink: MapSink,
 	out_start: number,
 	out_end: number,
 	src_start: number,
 	src_end: number,
-	data: MappingData
+	node_index: number,
+	code: number
 ): void {
 	if (out_end > out_start && src_start !== NONE) {
-		entries.push({
-			out_idx: out_start,
-			out_count: out_end - out_start,
-			source_offset: src_start,
-			source_length: src_end > src_start ? src_end - src_start : 0,
-			data,
-		});
+		let rec = sink.rec;
+		const p = sink.n;
+		if (p + RECORD_SIZE > rec.length) rec = sink.grow();
+		rec[p] = out_start;
+		rec[p + 1] = out_end - out_start;
+		rec[p + 2] = src_start;
+		rec[p + 3] = src_end > src_start ? src_end - src_start : 0;
+		rec[p + 4] = node_index;
+		rec[p + 5] = code;
+		sink.n = p + RECORD_SIZE;
 	}
 }
 
 /** emit node span + open_syntax + close_syntax for a rendered node. */
 function _spans(
-	entries: PendingMapping[],
+	sink: MapSink,
 	pre: number,
 	after_open: number,
 	before_close: number,
 	post: number,
 	c: Cursor,
-	data: (node_index: number, role: MappingRole) => MappingData
+	preset: number
 ): void {
 	const idx = c.index;
 	const s = c.start,
-		e = c.end,
-		vs = c.value_start,
+		e = c.end;
+	_emit(sink, pre, post, s, e, idx, preset << 2);
+	if (!sink.syntax) return;
+	const vs = c.value_start,
 		ve = c.value_end;
 	// value range is meaningful when ve > vs (same check as Cursor.text()).
 	// Uint32Array defaults to 0 for unset slots, so ve !== NONE is not enough.
 	const has_value = ve > vs;
-	_emit(entries, pre, post, s, e, data(idx, 'node'));
-	_emit(
-		entries,
-		pre,
-		after_open,
-		s,
-		has_value ? vs : s,
-		data_structure(idx, 'open_syntax')
-	);
-	_emit(
-		entries,
-		before_close,
-		post,
-		has_value ? ve : e,
-		e,
-		data_structure(idx, 'close_syntax')
-	);
+	_emit(sink, pre, after_open, s, has_value ? vs : s, idx, STRUCTURE_OPEN);
+	_emit(sink, before_close, post, has_value ? ve : e, e, idx, STRUCTURE_CLOSE);
 }
 
 //  precomputed tag strings
@@ -326,31 +328,20 @@ const IMAGE_HANDLED = new Set(['title']);
 //  renderer
 
 /** render children of the current cursor position, collecting escaped text and recursive node output. */
-export function _children(
-	c: Cursor,
-	out: string[],
-	entries?: PendingMapping[]
-): void {
+export function _children(c: Cursor, out: string[], sink?: MapSink): void {
 	if (!c.goto_first_child()) return;
 	do {
 		const k = c.kind;
 		if (k === K_TEXT) {
 			const vs = c.value_start,
 				ve = c.value_end;
-			if (entries && vs !== NONE && ve > vs) {
-				_emit(
-					entries,
-					out.length,
-					out.length + 1,
-					vs,
-					ve,
-					data_text(c.index, 'content')
-				);
+			if (sink && vs !== NONE && ve > vs) {
+				_emit(sink, out.length, out.length + 1, vs, ve, c.index, TEXT_CONTENT);
 			}
 			out.push(escape_text(c));
 		} else if (k !== K_LINE_BREAK) {
 			// line breaks render nothing, a fifth of visited nodes skip the call
-			_node(c, out, entries);
+			_node(c, out, sink);
 		}
 	} while (c.goto_next_sibling());
 	c.goto_parent();
@@ -372,24 +363,20 @@ function _children_raw(c: Cursor): string {
 }
 
 /** render a single node at the current cursor position. */
-export function _node(
-	c: Cursor,
-	out: string[],
-	entries?: PendingMapping[]
-): void {
+export function _node(c: Cursor, out: string[], sink?: MapSink): void {
 	switch (c.kind) {
 		case K_ROOT:
-			_children(c, out, entries);
+			_children(c, out, sink);
 			break;
 
 		case K_HEADING: {
 			const pre = out.length;
 			_open(c, out, H_TAG[c.extra], H_OPEN[c.extra], '>');
 			const ao = out.length;
-			_children(c, out, entries);
+			_children(c, out, sink);
 			const bc = out.length;
 			out.push(H_CLOSE[c.extra]);
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
 			break;
 		}
 
@@ -398,15 +385,15 @@ export function _node(
 			// wrappers, render their children transparently until the list
 			// closes (commit keeps the wrapper, revoke drops it).
 			if (c.pending && c.parent_kind === K_LIST_ITEM) {
-				_children(c, out, entries);
+				_children(c, out, sink);
 			} else {
 				const pre = out.length;
 				_open(c, out, '<p', '<p>', '>');
 				const ao = out.length;
-				_children(c, out, entries);
+				_children(c, out, sink);
 				const bc = out.length;
 				out.push('</p>');
-				if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
+				if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
 			}
 			break;
 
@@ -414,10 +401,10 @@ export function _node(
 			const pre = out.length;
 			_open(c, out, '<em', '<em>', '>');
 			const ao = out.length;
-			_children(c, out, entries);
+			_children(c, out, sink);
 			const bc = out.length;
 			out.push('</em>');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
 			break;
 		}
 
@@ -425,10 +412,10 @@ export function _node(
 			const pre = out.length;
 			_open(c, out, '<strong', '<strong>', '>');
 			const ao = out.length;
-			_children(c, out, entries);
+			_children(c, out, sink);
 			const bc = out.length;
 			out.push('</strong>');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
 			break;
 		}
 
@@ -436,21 +423,22 @@ export function _node(
 			const pre = out.length;
 			_open(c, out, '<code', '<code>', '>');
 			const ao = out.length;
-			if (entries) {
+			if (sink) {
 				_emit(
-					entries,
+					sink,
 					out.length,
 					out.length + 1,
 					c.value_start,
 					c.value_end,
-					data_code(c.index, 'content')
+					c.index,
+					CODE_CONTENT
 				);
 			}
 			const code = escape_text(c);
 			out.push(code.indexOf('\n') === -1 ? code : code.replace(/\n/g, ' '));
 			const bc = out.length;
 			out.push('</code>');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_code);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_CODE);
 			break;
 		}
 
@@ -472,20 +460,21 @@ export function _node(
 				_open(c, out, '<pre><code', '<pre><code>', '>');
 			}
 			const ao = out.length;
-			if (entries) {
+			if (sink) {
 				_emit(
-					entries,
+					sink,
 					out.length,
 					out.length + 1,
 					c.value_start,
 					c.value_end,
-					data_code(c.index, 'content')
+					c.index,
+					CODE_CONTENT
 				);
 			}
 			out.push(escape_text(c));
 			const bc = out.length;
 			out.push('</code></pre>');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_code);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_CODE);
 			break;
 		}
 
@@ -493,10 +482,10 @@ export function _node(
 			const pre = out.length;
 			_open(c, out, '<blockquote', '<blockquote>\n', '>\n');
 			const ao = out.length;
-			_children(c, out, entries);
+			_children(c, out, sink);
 			const bc = out.length;
 			out.push('\n</blockquote>');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
 			break;
 		}
 
@@ -509,10 +498,10 @@ export function _node(
 			_attrs(c, out, LINK_HANDLED);
 			out.push('>');
 			const ao = out.length;
-			_children(c, out, entries);
+			_children(c, out, sink);
 			const bc = out.length;
 			out.push('</a>');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
 			break;
 		}
 
@@ -525,8 +514,7 @@ export function _node(
 			if (meta?.title) out.push(' title="', escape(meta.title as string), '"');
 			_attrs(c, out, IMAGE_HANDLED);
 			out.push(' />');
-			if (entries)
-				_spans(entries, pre, pre, out.length, out.length, c, data_text);
+			if (sink) _spans(sink, pre, pre, out.length, out.length, c, P_TEXT);
 			break;
 		}
 
@@ -544,10 +532,10 @@ export function _node(
 				_open(c, out, '<ul', '<ul>\n', '>\n');
 			}
 			const ao = out.length;
-			_children(c, out, entries);
+			_children(c, out, sink);
 			const bc = out.length;
 			out.push(ordered ? '\n</ol>' : '\n</ul>');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_structure);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_STRUCTURE);
 			break;
 		}
 
@@ -555,26 +543,18 @@ export function _node(
 			const pre = out.length;
 			_open(c, out, '<li', '<li>', '>');
 			const ao = out.length;
-			_children(c, out, entries);
+			_children(c, out, sink);
 			const bc = out.length;
 			out.push('</li>\n');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
 			break;
 		}
 
 		case K_THEMATIC_BREAK: {
 			const pre = out.length;
 			out.push('<hr />');
-			if (entries)
-				_spans(
-					entries,
-					pre,
-					out.length,
-					out.length,
-					out.length,
-					c,
-					data_structure
-				);
+			if (sink)
+				_spans(sink, pre, out.length, out.length, out.length, c, P_STRUCTURE);
 			break;
 		}
 
@@ -590,10 +570,10 @@ export function _node(
 			const pre = out.length;
 			_open(c, out, '<del', '<del>', '>');
 			const ao = out.length;
-			_children(c, out, entries);
+			_children(c, out, sink);
 			const bc = out.length;
 			out.push('</del>');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
 			break;
 		}
 
@@ -601,10 +581,10 @@ export function _node(
 			const pre = out.length;
 			_open(c, out, '<sup', '<sup>', '>');
 			const ao = out.length;
-			_children(c, out, entries);
+			_children(c, out, sink);
 			const bc = out.length;
 			out.push('</sup>');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
 			break;
 		}
 
@@ -612,10 +592,10 @@ export function _node(
 			const pre = out.length;
 			_open(c, out, '<sub', '<sub>', '>');
 			const ao = out.length;
-			_children(c, out, entries);
+			_children(c, out, sink);
 			const bc = out.length;
 			out.push('</sub>');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
 			break;
 		}
 
@@ -659,15 +639,8 @@ export function _node(
 				} else {
 					out.push(' />');
 				}
-				if (entries) {
-					_emit(
-						entries,
-						pre,
-						out.length,
-						c.start,
-						c.end,
-						data_svelte(c.index, 'content')
-					);
+				if (sink) {
+					_emit(sink, pre, out.length, c.start, c.end, c.index, SVELTE_CONTENT);
 				}
 			} else {
 				out.push('>');
@@ -676,23 +649,24 @@ export function _node(
 				// the html node itself (no child nodes). emit unescaped, the
 				// browser does not parse script/style bodies as html.
 				if (tag === 'script' || tag === 'style') {
-					if (entries) {
+					if (sink) {
 						_emit(
-							entries,
+							sink,
 							out.length,
 							out.length + 1,
 							c.value_start,
 							c.value_end,
-							data_svelte(c.index, 'content')
+							c.index,
+							SVELTE_CONTENT
 						);
 					}
 					out.push(c.text());
 				} else {
-					_children(c, out, entries);
+					_children(c, out, sink);
 				}
 				const bc = out.length;
 				out.push('</', tag, '>');
-				if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
+				if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
 			}
 			break;
 		}
@@ -701,20 +675,21 @@ export function _node(
 			const pre = out.length;
 			out.push('<!--');
 			const ao = out.length;
-			if (entries) {
+			if (sink) {
 				_emit(
-					entries,
+					sink,
 					out.length,
 					out.length + 1,
 					c.value_start,
 					c.value_end,
-					data_text(c.index, 'content')
+					c.index,
+					TEXT_CONTENT
 				);
 			}
 			out.push(c.text());
 			const bc = out.length;
 			out.push('-->');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_text);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_TEXT);
 			break;
 		}
 
@@ -722,20 +697,21 @@ export function _node(
 			const pre = out.length;
 			out.push('{');
 			const ao = out.length;
-			if (entries) {
+			if (sink) {
 				_emit(
-					entries,
+					sink,
 					out.length,
 					out.length + 1,
 					c.value_start,
 					c.value_end,
-					data_svelte(c.index, 'content')
+					c.index,
+					SVELTE_CONTENT
 				);
 			}
 			out.push(c.text());
 			const bc = out.length;
 			out.push('}');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_svelte);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_SVELTE);
 			break;
 		}
 
@@ -747,20 +723,21 @@ export function _node(
 			out.push('{@', tag);
 			if (text) out.push(' ');
 			const ao = out.length;
-			if (text && entries) {
+			if (text && sink) {
 				_emit(
-					entries,
+					sink,
 					out.length,
 					out.length + 1,
 					c.value_start,
 					c.value_end,
-					data_svelte(c.index, 'content')
+					c.index,
+					SVELTE_CONTENT
 				);
 			}
 			if (text) out.push(text);
 			const bc = out.length;
 			out.push('}');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_svelte);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_SVELTE);
 			break;
 		}
 
@@ -780,14 +757,15 @@ export function _node(
 							out.push('{#', block_tag);
 							if (branch_expr) {
 								out.push(' ');
-								if (entries) {
+								if (sink) {
 									_emit(
-										entries,
+										sink,
 										out.length,
 										out.length + 1,
 										c.value_start,
 										c.value_end,
-										data_svelte(c.index, 'content')
+										c.index,
+										SVELTE_CONTENT
 									);
 								}
 								out.push(branch_expr);
@@ -798,34 +776,35 @@ export function _node(
 							out.push('{:', branch_tag);
 							if (branch_expr) {
 								out.push(' ');
-								if (entries) {
+								if (sink) {
 									_emit(
-										entries,
+										sink,
 										out.length,
 										out.length + 1,
 										c.value_start,
 										c.value_end,
-										data_svelte(c.index, 'content')
+										c.index,
+										SVELTE_CONTENT
 									);
 								}
 								out.push(branch_expr);
 							}
 							out.push('}\n');
 						}
-						_children(c, out, entries);
+						_children(c, out, sink);
 					} else if (c.kind !== K_LINE_BREAK) {
-						_node(c, out, entries);
+						_node(c, out, sink);
 					}
 				} while (c.goto_next_sibling());
 				c.goto_parent();
 			}
 			out.push('{/', block_tag, '}');
 			// node span for the whole block, use the block node (goto_parent already called)
-			if (entries) {
+			if (sink) {
 				const idx = c.index;
 				const s = c.start,
 					e = c.end;
-				_emit(entries, pre, out.length, s, e, data_svelte(idx, 'node'));
+				_emit(sink, pre, out.length, s, e, idx, SVELTE_NODE);
 			}
 			break;
 		}
@@ -834,10 +813,10 @@ export function _node(
 			const pre = out.length;
 			_open(c, out, '<table', '<table>\n', '>\n');
 			const ao = out.length;
-			_table_content(c, out, entries);
+			_table_content(c, out, sink);
 			const bc = out.length;
 			out.push('\n</table>');
-			if (entries) _spans(entries, pre, ao, bc, out.length, c, data_structure);
+			if (sink) _spans(sink, pre, ao, bc, out.length, c, P_STRUCTURE);
 			break;
 		}
 
@@ -845,16 +824,12 @@ export function _node(
 			break;
 
 		default:
-			_children(c, out, entries);
+			_children(c, out, sink);
 			break;
 	}
 }
 
-function _table_content(
-	c: Cursor,
-	out: string[],
-	entries?: PendingMapping[]
-): void {
+function _table_content(c: Cursor, out: string[], sink?: MapSink): void {
 	const meta = c.meta();
 	const alignments = (meta?.alignments as string[]) ?? [];
 	let in_body = false;
@@ -863,7 +838,7 @@ function _table_content(
 	do {
 		if (c.kind === K_TABLE_HEADER) {
 			out.push('<thead>\n<tr>\n');
-			_table_cells(c, 'th', alignments, out, entries);
+			_table_cells(c, 'th', alignments, out, sink);
 			out.push('</tr>\n</thead>\n');
 		} else if (c.kind === K_TABLE_ROW) {
 			if (!in_body) {
@@ -871,7 +846,7 @@ function _table_content(
 				in_body = true;
 			}
 			out.push('<tr>\n');
-			_table_cells(c, 'td', alignments, out, entries);
+			_table_cells(c, 'td', alignments, out, sink);
 			out.push('</tr>\n');
 		}
 	} while (c.goto_next_sibling());
@@ -897,7 +872,7 @@ function _table_cells(
 	tag: string,
 	alignments: string[],
 	out: string[],
-	entries?: PendingMapping[]
+	sink?: MapSink
 ): void {
 	const opens = tag === 'th' ? TH_OPEN : TD_OPEN;
 	const close = tag === 'th' ? '</th>\n' : '</td>\n';
@@ -912,7 +887,7 @@ function _table_cells(
 			else if (align === 'right') out.push(opens[3]);
 			else if (align && align !== 'none') out.push(`<${tag} align="${align}">`);
 			else out.push(opens[0]);
-			_children(c, out, entries);
+			_children(c, out, sink);
 			out.push(close);
 			col++;
 		}
@@ -926,13 +901,11 @@ function _table_cells(
 // synchronous so one table is enough and a fresh renderer allocates nothing.
 let offsets_scratch = new Uint32Array(0);
 
-/** convert pending mapping entries to volar-compatible Mapping[] using out[] offsets. */
-export function _resolve_mappings(
+/** generated offset of each out chunk, and of the end at out.length. */
+export function _out_offsets(
 	out: string[],
-	entries: PendingMapping[],
 	scratch?: Uint32Array
-): Mapping<MappingData>[] {
-	// build cumulative offset table
+): Uint32Array {
 	const needed = out.length + 1;
 	let offsets: Uint32Array;
 	if (scratch !== undefined && scratch.length >= needed) {
@@ -952,25 +925,41 @@ export function _resolve_mappings(
 		// string and the load becomes a direct length read.
 		offsets[i + 1] = offsets[i] + (out[i] + '').length;
 	}
+	return offsets;
+}
 
+/** convert pending mapping records to volar-compatible Mapping[] using out[] offsets. */
+export function _resolve_mappings(
+	out: string[],
+	sink: MapSink,
+	scratch?: Uint32Array
+): Mapping<MappingData>[] {
+	const offsets = _out_offsets(out, scratch);
+	const rec = sink.rec;
+	const n = sink.n;
 	const mappings: Mapping<MappingData>[] = [];
-	for (let i = 0; i < entries.length; i++) {
-		const e = entries[i];
-		const gen_offset = offsets[e.out_idx];
-		const gen_length = offsets[e.out_idx + e.out_count] - gen_offset;
+	for (let p = 0; p < n; p += RECORD_SIZE) {
+		const out_idx = rec[p];
+		const source_length = rec[p + 3];
+		const gen_offset = offsets[out_idx];
+		const gen_length = offsets[out_idx + rec[p + 1]] - gen_offset;
 		const m: Mapping<MappingData> = {
-			sourceOffsets: [e.source_offset],
+			sourceOffsets: [rec[p + 2]],
 			generatedOffsets: [gen_offset],
-			lengths: [e.source_length],
-			data: e.data,
+			lengths: [source_length],
+			data: record_data(rec[p + 5], rec[p + 4] | 0),
 		};
-		if (gen_length !== e.source_length) {
+		if (gen_length !== source_length) {
 			m.generatedLengths = [gen_length];
 		}
 		mappings.push(m);
 	}
 	return mappings;
 }
+
+// mapped renders resolve their records before they return, so every
+// renderer shares one sink
+const render_sink = new MapSink();
 
 //  internal helpers
 
@@ -1018,7 +1007,6 @@ export class CursorHTMLRenderer {
 	private cursor: Cursor | null = null;
 	private cache: boolean;
 	private out: string[] = [];
-	private entries: PendingMapping[] = [];
 
 	constructor(opts?: { cache?: boolean }) {
 		this.cache = opts?.cache ?? true;
@@ -1071,11 +1059,8 @@ export class CursorHTMLRenderer {
 		return this.blocks;
 	}
 
-	/** render with source mapping. always full render (no caching). */
-	update_mapped(
-		buf: NodeBuffer,
-		source: string
-	): { blocks: CursorBlockEntry[]; mappings: Mapping<MappingData>[] } {
+	/** render the whole document into out with the cursor at the root. */
+	private render_mapped(buf: NodeBuffer, source: string, sink: MapSink): void {
 		if (!this.cursor) {
 			this.cursor = new Cursor(buf, source);
 		} else {
@@ -1086,13 +1071,49 @@ export class CursorHTMLRenderer {
 		esc_reset(source);
 
 		const out = this.out;
-		const entries = this.entries;
 		if (out.length !== 0) out.length = 0;
-		if (entries.length !== 0) entries.length = 0;
-		_node(c, out, entries);
+		_node(c, out, sink);
 		this.html = out.join('');
-		const mappings = _resolve_mappings(out, entries);
+	}
+
+	/** render with source mapping. always full render (no caching). */
+	update_mapped(
+		buf: NodeBuffer,
+		source: string
+	): { blocks: CursorBlockEntry[]; mappings: Mapping<MappingData>[] } {
+		const sink = render_sink;
+		sink.begin(true);
+		this.render_mapped(buf, source, sink);
+		const mappings = _resolve_mappings(this.out, sink);
+		sink.release();
 		return { blocks: this.blocks, mappings };
+	}
+
+	/**
+	 * render and encode the v3 map in one pass. the map equals
+	 * mappings_to_v3(update_mapped(buf, source).mappings, raw, html, file)
+	 * for a raw source that normalizes to source without collapsing any \r\n,
+	 * but no Mapping objects are built and the syntax mappings a v3 map skips
+	 * are never recorded.
+	 */
+	update_v3(
+		buf: NodeBuffer,
+		source: string,
+		raw: string,
+		file?: string
+	): SourceMapV3 {
+		const sink = render_sink;
+		sink.begin(false);
+		this.render_mapped(buf, source, sink);
+		const map = records_to_v3(
+			sink,
+			_out_offsets(this.out),
+			raw,
+			this.html,
+			file
+		);
+		sink.release();
+		return map;
 	}
 
 	reset(): void {
