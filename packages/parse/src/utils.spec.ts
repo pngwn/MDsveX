@@ -306,6 +306,55 @@ describe('NodeBuffer', () => {
 		expect(buffer.get_node(id1).metadata).toEqual({ depth: 3 });
 	});
 
+	test('grow from separate arrays into one shared buffer keeps every field', () => {
+		// 16 slots and below are separate on-heap arrays, above that one arraybuffer
+		const buffer = new NodeBuffer(2);
+		const ids: number[] = [];
+		for (let i = 0; i < 300; i++) {
+			const id =
+				i % 3 === 0
+					? buffer.push_pending(NodeKind.emphasis, i, 0)
+					: buffer.push(NodeKind.heading, i, 0, i % 7, { n: i });
+			buffer.set_value(id, i + 1, i + 2);
+			buffer.set_end(id, i + 3);
+			ids.push(id);
+		}
+
+		for (let i = 0; i < ids.length; i++) {
+			const node = buffer.get_node(ids[i]);
+			expect(node.kind).toBe(i % 3 === 0 ? 'emphasis' : 'heading');
+			expect(node.start).toBe(i);
+			expect(node.end).toBe(i + 3);
+			expect(node.value).toEqual([i + 1, i + 2]);
+			expect(node.parent).toBe(0);
+			expect(node.prev).toBe(i === 0 ? null : ids[i - 1]);
+			expect(node.next).toBe(i === ids.length - 1 ? null : ids[i + 1]);
+			if (i % 3 !== 0) {
+				expect(node.metadata).toEqual({ n: i, depth: i % 7 });
+			}
+		}
+		expect(buffer.get_pending()).toEqual(ids.filter((_, i) => i % 3 === 0));
+		expect(buffer.get_node().children).toEqual(ids);
+	});
+
+	test('ensure_capacity and reset leave a usable buffer', () => {
+		const buffer = new NodeBuffer(4);
+		const kept = buffer.push(NodeKind.text, 7, 0);
+		buffer.set_value(kept, 1, 2);
+		buffer.ensure_capacity(1000);
+		expect(buffer.get_node(kept).value).toEqual([1, 2]);
+		for (let i = 0; i < 999; i++) buffer.push(NodeKind.text, i, 0);
+		expect(buffer.size).toBe(1001);
+
+		buffer.reset();
+		expect(buffer.size).toBe(0);
+		const id = buffer.push(NodeKind.root, 0);
+		const child = buffer.push(NodeKind.text, 5, id);
+		expect(buffer.get_node(child).value).toEqual([0, 0]);
+		expect(buffer.get_node(child).metadata).toEqual({});
+		expect(buffer.get_pending()).toEqual([]);
+	});
+
 	test('pending nodes can be repaired,  deeply nested', () => {
 		const buffer = new NodeBuffer();
 		// Wrap in paragraph so inline repair path fires (not block-level)

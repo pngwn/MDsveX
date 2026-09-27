@@ -1,6 +1,20 @@
 /** default number of token entries to preallocate. */
 const DEFAULT_TOKEN_CAPACITY = 128;
 
+/**
+ * largest node capacity that keeps separate per-field typed arrays. v8 puts
+ * typed arrays of up to 64 bytes on the js heap, and the widest field is u32.
+ */
+const ON_HEAP_MAX_CAPACITY = 16;
+
+/** number of u32 fields carved out of the shared node arraybuffer. */
+const U32_FIELDS = 10;
+
+/** placeholders so every typed array field is stored by the constructor. */
+const EMPTY_U8 = new Uint8Array(0);
+const EMPTY_U16 = new Uint16Array(0);
+const EMPTY_U32 = new Uint32Array(0);
+
 /** default number of error entries to preallocate. */
 const DEFAULT_ERROR_CAPACITY = 32;
 
@@ -63,75 +77,75 @@ function next_power_of_two(value: number): number {
 export const kind_to_string = (kind: NodeKind): string => {
 	switch (kind) {
 		case NodeKind.root:
-			return "root";
+			return 'root';
 		case NodeKind.text:
-			return "text";
+			return 'text';
 		case NodeKind.html:
-			return "html";
+			return 'html';
 		case NodeKind.heading:
-			return "heading";
+			return 'heading';
 		case NodeKind.mustache:
-			return "mustache";
+			return 'mustache';
 		case NodeKind.code_fence:
-			return "code_fence";
+			return 'code_fence';
 		case NodeKind.line_break:
-			return "line_break";
+			return 'line_break';
 		case NodeKind.paragraph:
-			return "paragraph";
+			return 'paragraph';
 		case NodeKind.code_span:
-			return "code_span";
+			return 'code_span';
 		case NodeKind.emphasis:
-			return "emphasis";
+			return 'emphasis';
 		case NodeKind.strong_emphasis:
-			return "strong_emphasis";
+			return 'strong_emphasis';
 		case NodeKind.thematic_break:
-			return "thematic_break";
+			return 'thematic_break';
 		case NodeKind.link:
-			return "link";
+			return 'link';
 		case NodeKind.image:
-			return "image";
+			return 'image';
 		case NodeKind.block_quote:
-			return "block_quote";
+			return 'block_quote';
 		case NodeKind.list:
-			return "list";
+			return 'list';
 		case NodeKind.list_item:
-			return "list_item";
+			return 'list_item';
 		case NodeKind.hard_break:
-			return "hard_break";
+			return 'hard_break';
 		case NodeKind.soft_break:
-			return "soft_break";
+			return 'soft_break';
 		case NodeKind.strikethrough:
-			return "strikethrough";
+			return 'strikethrough';
 		case NodeKind.superscript:
-			return "superscript";
+			return 'superscript';
 		case NodeKind.subscript:
-			return "subscript";
+			return 'subscript';
 		case NodeKind.table:
-			return "table";
+			return 'table';
 		case NodeKind.table_header:
-			return "table_header";
+			return 'table_header';
 		case NodeKind.table_row:
-			return "table_row";
+			return 'table_row';
 		case NodeKind.table_cell:
-			return "table_cell";
+			return 'table_cell';
 		case NodeKind.html_comment:
-			return "html_comment";
+			return 'html_comment';
 		case NodeKind.svelte_tag:
-			return "svelte_tag";
+			return 'svelte_tag';
 		case NodeKind.svelte_block:
-			return "svelte_block";
+			return 'svelte_block';
 		case NodeKind.svelte_branch:
-			return "svelte_branch";
+			return 'svelte_branch';
 		case NodeKind.directive_inline:
-			return "directive_inline";
+			return 'directive_inline';
 		case NodeKind.directive_leaf:
-			return "directive_leaf";
+			return 'directive_leaf';
 		case NodeKind.directive_container:
-			return "directive_container";
+			return 'directive_container';
 		case NodeKind.frontmatter:
-			return "frontmatter";
+			return 'frontmatter';
 		case NodeKind.import_statement:
-			return "import_statement";
+			return 'import_statement';
 	}
 };
 
@@ -158,7 +172,7 @@ export const string_to_kind = (name: string): NodeKind | undefined => {
 const extra_to_string = (kind: NodeKind): string | undefined => {
 	switch (kind) {
 		case NodeKind.heading:
-			return "depth";
+			return 'depth';
 	}
 };
 
@@ -166,73 +180,111 @@ const extra_to_string = (kind: NodeKind): string | undefined => {
  * buffer that stores node metadata with typed arrays.
  */
 export class NodeBuffer {
-	private capacity: number;
+	// every field is initialized here rather than only in alloc_fields,
+	// because v8 sizes the in-object slots from the stores it sees in the
+	// constructor body and would otherwise spill the tail fields out of line
+	private capacity = 0;
 	/** @internal exposed for cursor access. do not mutate externally. */
-	_kinds: Uint8Array;
+	_kinds: Uint8Array = EMPTY_U8;
 	/** @internal exposed for cursor access. do not mutate externally. */
-	_starts: Uint32Array;
+	_starts: Uint32Array = EMPTY_U32;
 	/** @internal */
-	_ends: Uint32Array;
+	_ends: Uint32Array = EMPTY_U32;
 	/** @internal */
-	_extras: Uint16Array;
+	_extras: Uint16Array = EMPTY_U16;
 	/** @internal */
-	_value_starts: Uint32Array;
+	_value_starts: Uint32Array = EMPTY_U32;
 	/** @internal */
-	_value_ends: Uint32Array;
-	private has_metadata: Uint8Array;
-	private metadata: Map<number, any>;
+	_value_ends: Uint32Array = EMPTY_U32;
+	private has_metadata: Uint8Array = EMPTY_U8;
+	private metadata: Map<number, any> = new Map();
 	/** @internal pre-materialized text strings (used by wiretreebuilder). index -> string. */
-	_strings: (string | undefined)[];
+	_strings: (string | undefined)[] = [];
 	/** @internal */
-	_parents: Uint32Array;
+	_parents: Uint32Array = EMPTY_U32;
 	/** @internal */
-	_next_siblings: Uint32Array;
+	_next_siblings: Uint32Array = EMPTY_U32;
 	/** @internal */
-	_prev_siblings: Uint32Array;
+	_prev_siblings: Uint32Array = EMPTY_U32;
 	/** @internal */
-	_children_starts: Uint32Array;
+	_children_starts: Uint32Array = EMPTY_U32;
 	/** @internal */
-	_children_ends: Uint32Array;
+	_children_ends: Uint32Array = EMPTY_U32;
 	/** @internal */
-	_pending_nodes: Uint32Array;
+	_pending_nodes: Uint32Array = EMPTY_U32;
 
-	private _size: number;
+	private _size = 0;
 
 	/**
 	 * create a buffer that stores token metadata with typed arrays.
 	 * @param initial_capacity requested starting capacity for tokens.
 	 */
 	constructor(initial_capacity = DEFAULT_TOKEN_CAPACITY) {
-		const capacity = next_power_of_two(initial_capacity);
-		this.capacity = capacity;
-		this._kinds = new Uint8Array(capacity);
-		this._starts = new Uint32Array(capacity);
-		this._ends = new Uint32Array(capacity);
-		this._extras = new Uint16Array(capacity);
-		this._value_starts = new Uint32Array(capacity);
-		this._value_ends = new Uint32Array(capacity);
-		this.has_metadata = new Uint8Array(Math.max(1, capacity >> 3));
-		this.metadata = new Map();
-		this._strings = [];
-		this._parents = new Uint32Array(capacity);
-		this._next_siblings = new Uint32Array(capacity);
-		this._prev_siblings = new Uint32Array(capacity);
-		this._children_starts = new Uint32Array(capacity);
-		this._children_ends = new Uint32Array(capacity);
-		this._pending_nodes = new Uint32Array(capacity);
-
-		this._size = 0;
-
+		this.alloc_fields(next_power_of_two(initial_capacity));
 		this.push(NodeKind.root, 0);
+	}
+
+	/**
+	 * point every field at fresh zeroed storage of the given capacity.
+	 * small capacities keep separate arrays because v8 stores typed arrays
+	 * of 64 bytes or less on the js heap, which is cheaper than any off-heap
+	 * backing store. larger ones carve every field out of one arraybuffer, so
+	 * construction and grow pay for one backing store instead of thirteen.
+	 */
+	private alloc_fields(capacity: number): void {
+		const meta_bytes = Math.max(1, capacity >> 3);
+		this.capacity = capacity;
+		if (capacity <= ON_HEAP_MAX_CAPACITY) {
+			this._kinds = new Uint8Array(capacity);
+			this._starts = new Uint32Array(capacity);
+			this._ends = new Uint32Array(capacity);
+			this._extras = new Uint16Array(capacity);
+			this._value_starts = new Uint32Array(capacity);
+			this._value_ends = new Uint32Array(capacity);
+			this.has_metadata = new Uint8Array(meta_bytes);
+			this._parents = new Uint32Array(capacity);
+			this._next_siblings = new Uint32Array(capacity);
+			this._prev_siblings = new Uint32Array(capacity);
+			this._children_starts = new Uint32Array(capacity);
+			this._children_ends = new Uint32Array(capacity);
+			this._pending_nodes = new Uint32Array(capacity);
+			return;
+		}
+		// the ten u32 fields come first, then u16, then u8, so each view
+		// starts on a multiple of its element size. assignment order matches
+		// the branch above so both keep one hidden class
+		const u32 = capacity << 2;
+		const u16_offset = u32 * U32_FIELDS;
+		const u8_offset = u16_offset + (capacity << 1);
+		const buffer = new ArrayBuffer(u8_offset + capacity + meta_bytes);
+		this._kinds = new Uint8Array(buffer, u8_offset, capacity);
+		this._starts = new Uint32Array(buffer, 0, capacity);
+		this._ends = new Uint32Array(buffer, u32, capacity);
+		this._extras = new Uint16Array(buffer, u16_offset, capacity);
+		this._value_starts = new Uint32Array(buffer, u32 * 2, capacity);
+		this._value_ends = new Uint32Array(buffer, u32 * 3, capacity);
+		this.has_metadata = new Uint8Array(
+			buffer,
+			u8_offset + capacity,
+			meta_bytes
+		);
+		this._parents = new Uint32Array(buffer, u32 * 4, capacity);
+		this._next_siblings = new Uint32Array(buffer, u32 * 5, capacity);
+		this._prev_siblings = new Uint32Array(buffer, u32 * 6, capacity);
+		this._children_starts = new Uint32Array(buffer, u32 * 7, capacity);
+		this._children_ends = new Uint32Array(buffer, u32 * 8, capacity);
+		this._pending_nodes = new Uint32Array(buffer, u32 * 9, capacity);
 	}
 
 	/** clear previously pushed tokens without reallocating storage. */
 	reset(): void {
 		const size = this._size;
-		this._value_starts.fill(0, 0, size);
-		this._value_ends.fill(0, 0, size);
-		this._pending_nodes.fill(0, 0, size);
-		this.has_metadata.fill(0, 0, (size + 7) >> 3);
+		if (size !== 0) {
+			this._value_starts.fill(0, 0, size);
+			this._value_ends.fill(0, 0, size);
+			this._pending_nodes.fill(0, 0, size);
+			this.has_metadata.fill(0, 0, (size + 7) >> 3);
+		}
 		this.metadata.clear();
 		this._strings.length = 0;
 		this._size = 0;
@@ -256,7 +308,7 @@ export class NodeBuffer {
 		cursor: number,
 		parent = 0xffffffff,
 		extra = 0,
-		metadata?: any,
+		metadata?: any
 	): number {
 		const index = this._size;
 		if (index >= this.capacity) {
@@ -301,7 +353,7 @@ export class NodeBuffer {
 		cursor: number,
 		parent = 0xffffffff,
 		extra = 0,
-		metadata?: any,
+		metadata?: any
 	): number {
 		const index = this.push(kind, cursor, parent, extra, metadata);
 		this._pending_nodes[index] = 1;
@@ -322,7 +374,7 @@ export class NodeBuffer {
 		kind: NodeKind,
 		cursor: number,
 		extra = 0,
-		metadata?: any,
+		metadata?: any
 	): number {
 		const index = this._size;
 		if (index >= this.capacity) {
@@ -363,7 +415,7 @@ export class NodeBuffer {
 		parent_idx: number,
 		new_kind: NodeKind,
 		extra = 0,
-		metadata?: any,
+		metadata?: any
 	): number {
 		const first_child = this._children_starts[parent_idx];
 		const last_child = this._children_ends[parent_idx];
@@ -517,7 +569,10 @@ export class NodeBuffer {
 				this._next_siblings[last_child] = original_next;
 				if (original_next !== 0xffffffff) {
 					this._prev_siblings[original_next] = last_child;
-				} else if (parent !== 0xffffffff && this._children_ends[parent] === index) {
+				} else if (
+					parent !== 0xffffffff &&
+					this._children_ends[parent] === index
+				) {
 					this._children_ends[parent] = last_child;
 				}
 				this._next_siblings[index] = child_chain;
@@ -803,54 +858,48 @@ export class NodeBuffer {
 
 	/** pre-grow to avoid repeated resizes when the final size is estimable. */
 	ensure_capacity(needed: number): void {
-		while (this.capacity < needed) this.grow();
+		let next = this.capacity;
+		if (next >= needed) return;
+		while (next < needed) next <<= 1;
+		this.resize(next);
 	}
 
 	/** double the backing storage when capacity is exhausted. */
 	private grow(): void {
-		const next = this.capacity << 1;
-		const next_kinds = new Uint8Array(next);
-		const next_starts = new Uint32Array(next);
-		const next_ends = new Uint32Array(next);
-		const next_extras = new Uint16Array(next);
-		const next_value_starts = new Uint32Array(next);
-		const next_value_ends = new Uint32Array(next);
-		const next_parents = new Uint32Array(next);
-		const next_next_siblings = new Uint32Array(next);
-		const next_prev_siblings = new Uint32Array(next);
-		const next_children_starts = new Uint32Array(next);
-		const next_children_ends = new Uint32Array(next);
-		const next_pending_nodes = new Uint32Array(next);
-		const next_has_metadata = new Uint8Array(Math.max(1, next >> 3));
+		this.resize(this.capacity << 1);
+	}
 
-		next_kinds.set(this._kinds);
-		next_starts.set(this._starts);
-		next_ends.set(this._ends);
-		next_extras.set(this._extras);
-		next_value_starts.set(this._value_starts);
-		next_value_ends.set(this._value_ends);
-		next_parents.set(this._parents);
-		next_next_siblings.set(this._next_siblings);
-		next_prev_siblings.set(this._prev_siblings);
-		next_children_starts.set(this._children_starts);
-		next_children_ends.set(this._children_ends);
-		next_pending_nodes.set(this._pending_nodes);
-		next_has_metadata.set(this.has_metadata);
+	/** move every field into fresh storage of a larger capacity. */
+	private resize(next: number): void {
+		const kinds = this._kinds;
+		const starts = this._starts;
+		const ends = this._ends;
+		const extras = this._extras;
+		const value_starts = this._value_starts;
+		const value_ends = this._value_ends;
+		const has_metadata = this.has_metadata;
+		const parents = this._parents;
+		const next_siblings = this._next_siblings;
+		const prev_siblings = this._prev_siblings;
+		const children_starts = this._children_starts;
+		const children_ends = this._children_ends;
+		const pending_nodes = this._pending_nodes;
 
-		this.capacity = next;
-		this._kinds = next_kinds;
-		this._starts = next_starts;
-		this._ends = next_ends;
-		this._extras = next_extras;
-		this._value_starts = next_value_starts;
-		this._value_ends = next_value_ends;
-		this._parents = next_parents;
-		this._next_siblings = next_next_siblings;
-		this._prev_siblings = next_prev_siblings;
-		this._children_starts = next_children_starts;
-		this._children_ends = next_children_ends;
-		this._pending_nodes = next_pending_nodes;
-		this.has_metadata = next_has_metadata;
+		this.alloc_fields(next);
+
+		this._kinds.set(kinds);
+		this._starts.set(starts);
+		this._ends.set(ends);
+		this._extras.set(extras);
+		this._value_starts.set(value_starts);
+		this._value_ends.set(value_ends);
+		this.has_metadata.set(has_metadata);
+		this._parents.set(parents);
+		this._next_siblings.set(next_siblings);
+		this._prev_siblings.set(prev_siblings);
+		this._children_starts.set(children_starts);
+		this._children_ends.set(children_ends);
+		this._pending_nodes.set(pending_nodes);
 	}
 
 	set_metadata(index: number, metadata: any): void {

@@ -4,17 +4,17 @@ import {
 	SourceTextSource,
 	normalize_newlines,
 	raw_offsets,
-} from "@mdsvex/parse";
-import type { ParsePlugin, RawOffsets } from "@mdsvex/parse";
-import { TreeBuilder } from "@mdsvex/parse/tree-builder";
-import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
-import { mappings_to_v3 } from "@mdsvex/render/sourcemap";
-import type { Mapping, MappingData } from "@mdsvex/render/mappings";
-import type { SourceMapV3 } from "@mdsvex/render/sourcemap";
-import type { Plugin } from "vite";
-import remapping from "@ampproject/remapping";
+} from '@mdsvex/parse';
+import type { ParsePlugin, RawOffsets } from '@mdsvex/parse';
+import { TreeBuilder } from '@mdsvex/parse/tree-builder';
+import { CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
+import { mappings_to_v3 } from '@mdsvex/render/sourcemap';
+import type { Mapping, MappingData } from '@mdsvex/render/mappings';
+import type { SourceMapV3 } from '@mdsvex/render/sourcemap';
+import type { Plugin } from 'vite';
+import remapping from '@ampproject/remapping';
 
-export type { ParsePlugin } from "@mdsvex/parse";
+export type { ParsePlugin } from '@mdsvex/parse';
 export type { Mapping, MappingData, SourceMapV3 };
 
 export interface MdsvexOptions {
@@ -33,10 +33,7 @@ export interface CompileResult {
 	mappings?: Mapping<MappingData>[];
 }
 
-function render_once(
-	raw: string,
-	options?: CompileOptions,
-): CompileResult {
+function render_once(raw: string, options?: CompileOptions): CompileResult {
 	// parser offsets index the normalized string, so render and plugins read it too
 	const source = normalize_newlines(raw);
 
@@ -46,7 +43,7 @@ function render_once(
 		dispatcher = new PluginDispatcher(options.parsePlugins, text_source);
 	}
 
-	const tree = new TreeBuilder(source.length >> 3 || 128, dispatcher);
+	const tree = new TreeBuilder(source.length >> 3 || 16, dispatcher);
 	const parser = new PFMParser(tree);
 	parser.parse(source);
 
@@ -78,17 +75,14 @@ export class CompilerSession {
 	private parser: PFMParser | null = null;
 	private renderer = new CursorHTMLRenderer({ cache: false });
 
-	compile(
-		raw: string,
-		options?: CompileOptions,
-	): CompileResult {
+	compile(raw: string, options?: CompileOptions): CompileResult {
 		if (options?.parsePlugins && options.parsePlugins.length > 0) {
 			return render_once(raw, options);
 		}
 
 		const source = normalize_newlines(raw);
 		if (this.tree === null) {
-			this.tree = new TreeBuilder(source.length >> 3 || 128);
+			this.tree = new TreeBuilder(source.length >> 3 || 16);
 			this.parser = new PFMParser(this.tree);
 		} else {
 			this.tree.reset();
@@ -107,10 +101,7 @@ export class CompilerSession {
 	}
 }
 
-function render(
-	source: string,
-	options?: CompileOptions,
-): CompileResult {
+function render(source: string, options?: CompileOptions): CompileResult {
 	return render_once(source, options);
 }
 
@@ -128,7 +119,7 @@ function remap_to_raw(raw: string, mappings: Mapping<MappingData>[]): void {
  */
 function remap_source_offsets(
 	mapping: Mapping<MappingData>,
-	offsets: RawOffsets,
+	offsets: RawOffsets
 ): void {
 	const { sourceOffsets, lengths } = mapping;
 	const { collapsed } = offsets;
@@ -139,7 +130,8 @@ function remap_source_offsets(
 		const end = start + lengths[i];
 		const k = offsets.rank(start);
 		// a trailing collapsed \n maps onto its \r in an identity range
-		const crosses = k < collapsed.length && collapsed[k] + (identity ? 1 : 0) < end;
+		const crosses =
+			k < collapsed.length && collapsed[k] + (identity ? 1 : 0) < end;
 		if (crosses) {
 			if (identity) return split_mapping(mapping, offsets, i);
 			lengths[i] = offsets.to_raw(end) - start - k;
@@ -152,7 +144,7 @@ function remap_source_offsets(
 function split_mapping(
 	mapping: Mapping<MappingData>,
 	offsets: RawOffsets,
-	from: number,
+	from: number
 ): void {
 	const { sourceOffsets, generatedOffsets, lengths } = mapping;
 	const { collapsed } = offsets;
@@ -193,12 +185,12 @@ function split_mapping(
  *    the result as an inline sourceMappingURL in the output code.
  */
 export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
-	const extensions = (options.extensions ?? [".svx"]).map((ext) =>
-		ext.startsWith(".") ? ext : "." + ext,
+	const extensions = (options.extensions ?? ['.svx']).map((ext) =>
+		ext.startsWith('.') ? ext : '.' + ext
 	);
 
 	function matches(id: string): boolean {
-		const clean = id.split("?")[0];
+		const clean = id.split('?')[0];
 		return extensions.some((ext) => clean.endsWith(ext));
 	}
 
@@ -208,8 +200,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 	return [
 		{
-			name: "mdsvex",
-			enforce: "pre",
+			name: 'mdsvex',
+			enforce: 'pre',
 
 			transform(code, id) {
 				if (!matches(id)) return;
@@ -222,7 +214,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				if (result.mappings) {
 					storedMaps.set(
 						id,
-						mappings_to_v3(result.mappings, code, result.code, id),
+						mappings_to_v3(result.mappings, code, result.code, id)
 					);
 					storedSources.set(id, code);
 				}
@@ -232,8 +224,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			},
 		},
 		{
-			name: "mdsvex:sourcemap",
-			enforce: "post",
+			name: 'mdsvex:sourcemap',
+			enforce: 'post',
 
 			transform(code, id) {
 				if (!matches(id)) return;
@@ -253,23 +245,22 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				if (!compileMap?.mappings) return;
 
 				// chain: JS to HTML (compile) + HTML to markdown (pfm) = JS to markdown
-				const chained = remapping(
-					[compileMap, pfmMap as any],
-					() => null,
-				);
+				const chained = remapping([compileMap, pfmMap as any], () => null);
 
 				// override sourcesContent with the original markdown
 				if (chained.sourcesContent) {
-					chained.sourcesContent = chained.sourcesContent.map(() => originalSource);
+					chained.sourcesContent = chained.sourcesContent.map(
+						() => originalSource
+					);
 				}
 
 				// inject as inline sourceMappingURL since vite ignores
 				// post-transform map return values
 				const mapJson = JSON.stringify(chained);
-				const mapBase64 = Buffer.from(mapJson).toString("base64");
+				const mapBase64 = Buffer.from(mapJson).toString('base64');
 				const comment = `\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${mapBase64}\n`;
 
-				return { code: code + comment, map: { mappings: "" as const } };
+				return { code: code + comment, map: { mappings: '' as const } };
 			},
 		},
 	];

@@ -8009,7 +8009,7 @@ export function parse_markdown_svelte(
 		dispatcher = new PluginDispatcher(options.plugins, text_source);
 	}
 
-	const tree = new TreeBuilder(source.length >> 3 || 128, dispatcher);
+	const tree = new TreeBuilder(source.length >> 3 || 16, dispatcher);
 	const parser = new PFMParser(tree, options.tab_size);
 	const { errors } = parser.parse(source);
 
