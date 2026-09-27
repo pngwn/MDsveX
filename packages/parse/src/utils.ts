@@ -335,7 +335,8 @@ export class NodeBuffer {
 	/** @internal */
 	_pending_nodes: Uint32Array = EMPTY_U32;
 
-	private _size = 0;
+	/** @internal slots in use, read by TreeBuilder to check ids against indices. */
+	_size = 0;
 
 	/**
 	 * create a buffer that stores token metadata with typed arrays.
