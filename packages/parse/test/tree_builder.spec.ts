@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PFMParser } from '../src/main';
+import { PFMParser, parse_markdown_svelte } from '../src/main';
 import type { Emitter } from '../src/opcodes';
 import { TreeBuilder } from '../src/tree_builder';
 import { NodeBuffer, NodeKind } from '../src/utils';
@@ -486,6 +486,49 @@ describe('parser id tables', () => {
 				expect(dump(tb.get_buffer())).toEqual(expected[i]);
 			}
 		}
+	});
+
+	it('gives the same trees from the parser parse_markdown_svelte shares', () => {
+		const expected = docs.map(parse_whole);
+		for (const i of [2, 0, 1, 1, 2, 0]) {
+			expect(dump(parse_markdown_svelte(docs[i]).nodes)).toEqual(expected[i]);
+		}
+		const tabs = '\t- a\n\t\t- b\n\tc\n';
+		const wide = new TreeBuilder(8);
+		new PFMParser(wide, 4).parse(tabs);
+		expect(dump(parse_markdown_svelte(tabs, { tab_size: 4 }).nodes)).toEqual(
+			dump(wide.get_buffer())
+		);
+		expect(dump(parse_markdown_svelte(tabs).nodes)).toEqual(parse_whole(tabs));
+	});
+
+	it('recovers the shared parser from a throw and a reentrant parse', () => {
+		const expected = docs.map(parse_whole);
+		const boom = {
+			paragraph: {
+				parse() {
+					throw new Error('boom');
+				},
+			},
+		};
+		expect(() => parse_markdown_svelte(docs[1], { plugins: [boom] })).toThrow(
+			'boom'
+		);
+		expect(dump(parse_markdown_svelte(docs[0]).nodes)).toEqual(expected[0]);
+
+		const inner: unknown[] = [];
+		const reenter = {
+			paragraph: {
+				parse() {
+					inner.push(dump(parse_markdown_svelte(docs[2]).nodes));
+				},
+			},
+		};
+		const outer = parse_markdown_svelte(docs[0], { plugins: [reenter] });
+		expect(inner.length).toBeGreaterThan(0);
+		for (const tree of inner) expect(tree).toEqual(expected[2]);
+		expect(dump(outer.nodes)).toEqual(expected[0]);
+		expect(dump(parse_markdown_svelte(docs[1]).nodes)).toEqual(expected[1]);
 	});
 
 	// every opcode as a plain tuple, so two streams compare with toEqual
