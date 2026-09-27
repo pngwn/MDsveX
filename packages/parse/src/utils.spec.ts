@@ -199,13 +199,13 @@ describe('NodeBuffer', () => {
 		const buffer = new NodeBuffer(2);
 
 		// Push enough nodes to trigger at least one grow
-		// capacity starts at 2 (next power of two), root takes slot 0
+		// capacity is floored at 32, root takes slot 0
 		const ids: number[] = [];
-		for (let i = 0; i < 10; i++) {
+		for (let i = 0; i < 40; i++) {
 			ids.push(buffer.push(NodeKind.text, i * 10, 0));
 		}
 
-		expect(buffer.size).toBe(11); // 10 + root
+		expect(buffer.size).toBe(41); // 40 + root
 
 		// All nodes should still be accessible with correct data
 		for (let i = 0; i < ids.length; i++) {
@@ -215,7 +215,7 @@ describe('NodeBuffer', () => {
 			expect(node.parent).toBe(0);
 		}
 
-		// Root should have all 10 as children
+		// Root should have all 40 as children
 		expect(buffer.get_node().children).toEqual(ids);
 
 		// Sibling chain should be intact
@@ -232,7 +232,7 @@ describe('NodeBuffer', () => {
 		// Create a parent with children, forcing grow in the middle
 		const parent = buffer.push(NodeKind.paragraph, 0, 0);
 		const children: number[] = [];
-		for (let i = 0; i < 8; i++) {
+		for (let i = 0; i < 40; i++) {
 			children.push(buffer.push(NodeKind.text, i, parent));
 		}
 
@@ -254,7 +254,7 @@ describe('NodeBuffer', () => {
 		});
 
 		// Push enough to trigger grow
-		for (let i = 0; i < 8; i++) {
+		for (let i = 0; i < 40; i++) {
 			buffer.push(NodeKind.text, i, 0);
 		}
 
@@ -271,7 +271,7 @@ describe('NodeBuffer', () => {
 		buffer.commit_node(committed);
 
 		// Push enough to trigger grow
-		for (let i = 0; i < 8; i++) {
+		for (let i = 0; i < 40; i++) {
 			buffer.push(NodeKind.text, i, 0);
 		}
 
@@ -286,7 +286,7 @@ describe('NodeBuffer', () => {
 		buffer.set_value(id1, 1, 4);
 
 		// Push enough to trigger grow
-		for (let i = 0; i < 8; i++) {
+		for (let i = 0; i < 40; i++) {
 			buffer.push(NodeKind.text, i, 0);
 		}
 
@@ -299,15 +299,15 @@ describe('NodeBuffer', () => {
 		const id1 = buffer.push(NodeKind.heading, 0, 0, 3);
 
 		// Push enough to trigger grow
-		for (let i = 0; i < 8; i++) {
+		for (let i = 0; i < 40; i++) {
 			buffer.push(NodeKind.text, i, 0);
 		}
 
 		expect(buffer.get_node(id1).metadata).toEqual({ depth: 3 });
 	});
 
-	test('grow from separate arrays into one shared buffer keeps every field', () => {
-		// 16 slots and below are separate on-heap arrays, above that one arraybuffer
+	test('grow from a slab carve into a dedicated buffer keeps every field', () => {
+		// small capacities are carved from a shared slab, large ones get their own arraybuffer
 		const buffer = new NodeBuffer(2);
 		const ids: number[] = [];
 		for (let i = 0; i < 300; i++) {
@@ -335,6 +335,37 @@ describe('NodeBuffer', () => {
 		}
 		expect(buffer.get_pending()).toEqual(ids.filter((_, i) => i % 3 === 0));
 		expect(buffer.get_node().children).toEqual(ids);
+	});
+
+	test('buffers carved from shared slabs stay independent and start zeroed', () => {
+		// enough small buffers to fill several slabs, each grown once in turn
+		const buffers: NodeBuffer[] = [];
+		for (let b = 0; b < 120; b++) {
+			const buffer = new NodeBuffer(b % 2 === 0 ? 2 : 100);
+			for (let i = 0; i < 20; i++) {
+				const id = buffer.push(NodeKind.text, b * 1000 + i, 0);
+				if (i % 2 === 0) buffer.set_value(id, b, i);
+			}
+			buffers.push(buffer);
+		}
+		for (let b = 0; b < buffers.length; b++) {
+			const buffer = buffers[b];
+			for (let i = 0; i < 60; i++) buffer.push(NodeKind.text, i, 0);
+		}
+		for (let b = 0; b < buffers.length; b++) {
+			const buffer = buffers[b];
+			expect(buffer.size).toBe(81);
+			for (let i = 0; i < 20; i++) {
+				const node = buffer.get_node(i + 1);
+				expect(node.start).toBe(b * 1000 + i);
+				expect(node.value).toEqual(i % 2 === 0 ? [b, i] : [0, 0]);
+				expect(node.metadata).toEqual({});
+			}
+			for (let i = 21; i < 81; i++) {
+				expect(buffer.get_node(i).value).toEqual([0, 0]);
+			}
+			expect(buffer.get_pending()).toEqual([]);
+		}
 	});
 
 	test('ensure_capacity and reset leave a usable buffer', () => {
