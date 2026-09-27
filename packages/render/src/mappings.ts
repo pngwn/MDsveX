@@ -19,9 +19,9 @@ export interface CodeInformation {
 		| {
 				shouldReport?(
 					source: string | undefined,
-					code: string | number | undefined,
+					code: string | number | undefined
 				): boolean;
-			};
+		  };
 	completion?: boolean | { isAdditional?: boolean; onlyImport?: boolean };
 	semantic?: boolean | { shouldHighlight?(): boolean };
 	navigation?:
@@ -30,7 +30,7 @@ export interface CodeInformation {
 				shouldRename?(): boolean;
 				resolveRenameNewName?(newName: string): string;
 				resolveRenameEditText?(newText: string): string;
-			};
+		  };
 	structure?: boolean;
 	format?: boolean;
 }
@@ -67,11 +67,140 @@ export const CI_STRUCTURE: CodeInformation = {
 
 // mapping identity
 
-export type MappingRole = "node" | "content" | "open_syntax" | "close_syntax";
+export type MappingRole = 'node' | 'content' | 'open_syntax' | 'close_syntax';
 
 export interface MappingData extends CodeInformation {
 	/** node buffer index: stable, monotonic in document order. */
 	nodeIndex: number;
 	/** what this mapping represents within the node. */
 	role: MappingRole;
+}
+
+// a literal per preset rather than a spread, which on some node versions gives
+// each copy its own hidden class, keys keep the spread order
+
+function text_data(node_index: number, role: MappingRole): MappingData {
+	return {
+		verification: true,
+		semantic: true,
+		navigation: true,
+		nodeIndex: node_index,
+		role,
+	};
+}
+
+function code_data(node_index: number, role: MappingRole): MappingData {
+	return { semantic: true, navigation: true, nodeIndex: node_index, role };
+}
+
+function svelte_data(node_index: number, role: MappingRole): MappingData {
+	return {
+		verification: true,
+		completion: true,
+		semantic: true,
+		navigation: true,
+		structure: true,
+		format: true,
+		nodeIndex: node_index,
+		role,
+	};
+}
+
+function structure_data(node_index: number, role: MappingRole): MappingData {
+	return { structure: true, nodeIndex: node_index, role };
+}
+
+// exported functions are module cells too, so record_data calls the locals
+export const data_text = text_data;
+export const data_code = code_data;
+export const data_svelte = svelte_data;
+export const data_structure = structure_data;
+
+// pending mapping records
+
+// local const enums build to literals while exported consts are module cells
+// turbofan reloads on every use, html_cursor and sourcemap restate these values
+const enum Preset {
+	TEXT = 0,
+	CODE = 1,
+	SVELTE = 2,
+	STRUCTURE = 3,
+}
+
+/** data preset, packed into a record code with the role */
+export const P_TEXT = Preset.TEXT;
+export const P_CODE = Preset.CODE;
+export const P_SVELTE = Preset.SVELTE;
+export const P_STRUCTURE = Preset.STRUCTURE;
+
+export const R_NODE = 0;
+export const R_CONTENT = 1;
+export const R_OPEN_SYNTAX = 2;
+export const R_CLOSE_SYNTAX = 3;
+
+export function record_code(preset: number, role: number): number {
+	return (preset << 2) | role;
+}
+
+/**
+ * words per record, out index, out chunk count, source offset, source length,
+ * node index stored as uint32 and read back signed, and code
+ */
+export const RECORD_SIZE = 6;
+
+const ROLE_NAMES: MappingRole[] = [
+	'node',
+	'content',
+	'open_syntax',
+	'close_syntax',
+];
+
+/** built exactly as the presets build it */
+export function record_data(code: number, node_index: number): MappingData {
+	const role = ROLE_NAMES[code & 3];
+	switch (code >> 2) {
+		case Preset.TEXT:
+			return text_data(node_index, role);
+		case Preset.CODE:
+			return code_data(node_index, role);
+		case Preset.SVELTE:
+			return svelte_data(node_index, role);
+		default:
+			return structure_data(node_index, role);
+	}
+}
+
+// records past this many words are dropped after use rather than kept for
+// the next render, so one huge document does not pin its buffer
+const SINK_KEEP = 1 << 18;
+const SINK_INITIAL = RECORD_SIZE * 256;
+
+/**
+ * pending mappings as flat records until generated offsets are known, a typed
+ * buffer rather than objects since a walk pushes several per node
+ * @internal
+ */
+export class MapSink {
+	rec: Uint32Array = new Uint32Array(SINK_INITIAL);
+	/** words used, a multiple of RECORD_SIZE */
+	n = 0;
+	/** false drops syntax records, which a v3 map skips */
+	syntax = true;
+
+	grow(): Uint32Array {
+		const next = new Uint32Array(this.rec.length * 2);
+		next.set(this.rec.subarray(0, this.n));
+		this.rec = next;
+		return next;
+	}
+
+	begin(syntax: boolean): void {
+		this.n = 0;
+		this.syntax = syntax;
+	}
+
+	release(): void {
+		this.n = 0;
+		if (this.rec.length > SINK_KEEP) this.rec = new Uint32Array(SINK_INITIAL);
+	}
 }

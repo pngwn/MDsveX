@@ -9,9 +9,9 @@
  *   PFM source -> parse -> classify nodes -> build <script> block -> render body -> mappings
  */
 
-import { PFMParser } from "@mdsvex/parse";
-import { TreeBuilder } from "@mdsvex/parse/tree-builder";
-import { Cursor } from "@mdsvex/parse/cursor";
+import { PFMParser } from '@mdsvex/parse';
+import { TreeBuilder } from '@mdsvex/parse/tree-builder';
+import { Cursor } from '@mdsvex/parse/cursor';
 import {
 	_emit,
 	_node,
@@ -20,12 +20,22 @@ import {
 	K_LINE_BREAK,
 	K_FRONTMATTER,
 	K_IMPORT_STATEMENT,
-} from "@mdsvex/render/html-cursor";
-import type { PendingMapping } from "@mdsvex/render/html-cursor";
-import { CI_SVELTE, CI_STRUCTURE } from "@mdsvex/render/mappings";
-import type { Mapping, MappingData } from "@mdsvex/render/mappings";
+} from '@mdsvex/render/html-cursor';
+import {
+	MapSink,
+	P_STRUCTURE,
+	P_SVELTE,
+	R_CONTENT,
+	R_NODE,
+	record_code,
+} from '@mdsvex/render/mappings';
+import type { Mapping, MappingData } from '@mdsvex/render/mappings';
 
-export type { Mapping, MappingData } from "@mdsvex/render/mappings";
+export type { Mapping, MappingData } from '@mdsvex/render/mappings';
+
+// mappings outside any node carry node index -1
+const SVELTE_CONTENT = record_code(P_SVELTE, R_CONTENT);
+const STRUCTURE_NODE = record_code(P_STRUCTURE, R_NODE);
 
 /** A <style> block found in the PFM source, with positions in both source and generated output. */
 export interface StyleBlock {
@@ -73,9 +83,9 @@ interface YamlEntry {
  */
 function yamlValueToJs(raw: string): string {
 	const v = raw.trim();
-	if (v === "" || v === "~" || v === "null") return "null";
-	if (v === "true") return "true";
-	if (v === "false") return "false";
+	if (v === '' || v === '~' || v === 'null') return 'null';
+	if (v === 'true') return 'true';
+	if (v === 'false') return 'false';
 	// integer or float
 	if (/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(v)) return v;
 	// block scalar indicator (|, >, |-, >+, etc.), can't parse inline
@@ -91,7 +101,10 @@ function yamlValueToJs(raw: string): string {
  * Only extracts keys that are valid JavaScript identifiers.
  * Values are converted to JavaScript literals for type inference.
  */
-function extractYamlEntries(yaml: string, yamlSourceOffset: number): YamlEntry[] {
+function extractYamlEntries(
+	yaml: string,
+	yamlSourceOffset: number
+): YamlEntry[] {
 	const entries: YamlEntry[] = [];
 	YAML_KV_RE.lastIndex = 0;
 	let match: RegExpExecArray | null;
@@ -147,7 +160,7 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 				});
 				excludedRegions.push({ start: cursor.start, end: cursor.end });
 				bodySkipSet.add(cursor.index);
-			} else if (kind === K_HTML && cursor.meta()?.tag === "script") {
+			} else if (kind === K_HTML && cursor.meta()?.tag === 'script') {
 				scriptBodies.push({
 					valueStart: cursor.value_start,
 					valueEnd: cursor.value_end,
@@ -163,21 +176,21 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 	const hasInstanceScript = importNodes.length > 0 || scriptBodies.length > 0;
 
 	const out: string[] = [];
-	const entries: PendingMapping[] = [];
+	const entries = new MapSink();
 
 	// Phase A1: Build <script module> block for frontmatter exports
 	// Module-level exports are importable from .ts files AND accessible in template
 	if (hasFrontmatter) {
 		const moduleStart = out.length;
-		out.push("<script module lang=\"ts\">\n");
+		out.push('<script module lang="ts">\n');
 
 		const yaml = source.slice(
 			frontmatterNode!.valueStart,
-			frontmatterNode!.valueEnd,
+			frontmatterNode!.valueEnd
 		);
 		const fmEntries = extractYamlEntries(yaml, frontmatterNode!.valueStart);
 		for (const entry of fmEntries) {
-			out.push("export const ");
+			out.push('export const ');
 			// character-level mapping for the key name
 			_emit(
 				entries,
@@ -185,27 +198,21 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 				out.length + 1,
 				entry.sourceOffset,
 				entry.sourceOffset + entry.name.length,
-				{ ...CI_SVELTE, nodeIndex: -1, role: "content" },
+				-1,
+				SVELTE_CONTENT
 			);
-			out.push(entry.name, " = ", entry.jsValue, ";\n");
+			out.push(entry.name, ' = ', entry.jsValue, ';\n');
 		}
 
-		out.push("</script>\n\n");
+		out.push('</script>\n\n');
 
-		_emit(
-			entries,
-			moduleStart,
-			out.length,
-			0,
-			0,
-			{ ...CI_STRUCTURE, nodeIndex: -1, role: "node" },
-		);
+		_emit(entries, moduleStart, out.length, 0, 0, -1, STRUCTURE_NODE);
 	}
 
 	// Phase A2: Build <script> block for imports and user code (instance scope)
 	if (hasInstanceScript) {
 		const scriptStart = out.length;
-		out.push("<script lang=\"ts\">\n");
+		out.push('<script lang="ts">\n');
 
 		// imports (verbatim, identity-mapped)
 		for (const imp of importNodes) {
@@ -216,9 +223,10 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 				out.length + 1,
 				imp.valueStart,
 				imp.valueEnd,
-				{ ...CI_SVELTE, nodeIndex: -1, role: "content" },
+				-1,
+				SVELTE_CONTENT
 			);
-			out.push(text, "\n");
+			out.push(text, '\n');
 		}
 
 		// existing <script> body content (identity-mapped)
@@ -231,22 +239,16 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 					out.length + 1,
 					script.valueStart,
 					script.valueEnd,
-					{ ...CI_SVELTE, nodeIndex: -1, role: "content" },
+					-1,
+					SVELTE_CONTENT
 				);
-				out.push(text, "\n");
+				out.push(text, '\n');
 			}
 		}
 
-		out.push("</script>\n\n");
+		out.push('</script>\n\n');
 
-		_emit(
-			entries,
-			scriptStart,
-			out.length,
-			0,
-			0,
-			{ ...CI_STRUCTURE, nodeIndex: -1, role: "node" },
-		);
+		_emit(entries, scriptStart, out.length, 0, 0, -1, STRUCTURE_NODE);
 	}
 
 	// Phase B: Collect style block source positions before body rendering
@@ -256,7 +258,7 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 		do {
 			if (
 				cursor.kind === K_HTML &&
-				cursor.meta()?.tag === "style" &&
+				cursor.meta()?.tag === 'style' &&
 				!bodySkipSet.has(cursor.index)
 			) {
 				styleSourcePositions.push({
@@ -281,7 +283,7 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 	}
 
 	// resolve mappings
-	const code = out.join("");
+	const code = out.join('');
 	const mappings = _resolve_mappings(out, entries);
 
 	// Phase D: Locate style blocks in generated output by matching source content

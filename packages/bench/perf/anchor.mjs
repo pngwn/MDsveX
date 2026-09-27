@@ -1,6 +1,8 @@
 // fixed workload the change under test cannot alter, timed at the start and end of a run to catch machine drift
 // shaped like the parser hot loop so it tracks the same machine characteristics
 
+import { spawnSync } from 'node:child_process';
+
 const ANCHOR_TEXT = (() => {
 	// joined not concatenated so the first reading does not pay to flatten a cons string
 	let seed = 0x2545f491;
@@ -68,8 +70,28 @@ function warm() {
 	return sink;
 }
 
-/** nanoseconds per anchor call, repeated until two readings agree within 3% */
-export function measure_anchor(iterations = 24) {
+const WINDOW_MS = 1000;
+const MIN_ATTEMPTS = 3;
+
+// sharing the jit with both arms reads the anchor slow early in a run, a child process inherits cpu affinity
+/** nanoseconds per anchor call */
+export function measure_anchor() {
+	const script =
+		`import { measure_anchor_here } from ${JSON.stringify(import.meta.url)};` +
+		`process.stdout.write(String(measure_anchor_here()));`;
+	const result = spawnSync(
+		process.execPath,
+		['--input-type=module', '-e', script],
+		{ encoding: 'utf8' }
+	);
+	const ns = Number(result.stdout);
+	if (result.status !== 0 || !Number.isFinite(ns) || ns <= 0)
+		throw new Error(`anchor child failed: ${result.stderr}`);
+	return ns;
+}
+
+/** nanoseconds per anchor call */
+export function measure_anchor_here(iterations = 24) {
 	const best_of_8 = () => {
 		let best = Infinity;
 		for (let r = 0; r < 8; r++) {
@@ -80,17 +102,15 @@ export function measure_anchor(iterations = 24) {
 		}
 		return best;
 	};
-	warm();
-	let previous = best_of_8();
-	for (let attempt = 0; attempt < 10; attempt++) {
+	const deadline = process.hrtime.bigint() + BigInt(WINDOW_MS * 1e6);
+	let best = Infinity;
+	for (let attempt = 0; attempt < 40; attempt++) {
 		warm();
-		const current = best_of_8();
-		const agree =
-			Math.abs(current - previous) / Math.min(current, previous) <= 0.03;
-		previous = current;
-		if (agree) break;
+		best = Math.min(best, best_of_8());
+		if (attempt + 1 >= MIN_ATTEMPTS && process.hrtime.bigint() >= deadline)
+			break;
 	}
-	return previous;
+	return best;
 }
 
 /** positive drift means the machine got slower during the run */

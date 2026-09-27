@@ -23,8 +23,8 @@ describe('ComponentRenderer', () => {
 
 		expect(renderer.blocks.length).toBe(2);
 		// Verify the indices point to real nodes
-		expect(buf._kinds[renderer.blocks[0].idx]).toBe(3); // heading
-		expect(buf._kinds[renderer.blocks[1].idx]).toBe(7); // paragraph
+		expect(buf.kind_at(renderer.blocks[0].idx)).toBe(3); // heading
+		expect(buf.kind_at(renderer.blocks[1].idx)).toBe(7); // paragraph
 	});
 
 	it('each block has a unique idx', () => {
@@ -49,7 +49,7 @@ describe('ComponentRenderer', () => {
 		renderer.update(buf, source);
 
 		for (const block of renderer.blocks) {
-			expect(buf._kinds[block.idx]).not.toBe(6); // line_break
+			expect(buf.kind_at(block.idx)).not.toBe(6); // line_break
 		}
 	});
 

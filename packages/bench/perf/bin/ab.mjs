@@ -9,7 +9,7 @@
 //   --families a,b        only these corpus families
 //   --modes a,b           only these modes, incremental means both sizes
 //   --rounds <n>          paired rounds per workload, default 15
-//   --repeat <n>          independent passes, default 1, use 2 for a claim
+//   --repeat <n>          independent passes, default 1, use 2 for a claim, above 1 each pass is its own process
 //   --target-ms <n>       time per window, default 20
 //   --rewarm-ms <n>       untimed run per arm after each round gc, default 20
 //   --noise-floor <pct>   override the calibrated floor in percent
@@ -19,13 +19,22 @@
 //
 // exits 1 if any workload is slower past the floor, 2 on a setup problem
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { anchor_drift, measure_anchor } from '../anchor.mjs';
 import { CORPUS_HASH } from '../corpus.mjs';
-import { acquire_bench_lock } from '../lock.mjs';
+import { acquire_bench_lock, lock_status } from '../lock.mjs';
 import { compare_all, even_rounds } from '../measure.mjs';
 import {
 	baseline_dir,
@@ -71,6 +80,9 @@ export function parse_args(argv) {
 		repeat: Math.max(1, Number(opt('repeat', '1'))),
 		target_ms: Number(opt('target-ms', '20')),
 		rewarm_ms: Number(opt('rewarm-ms', '20')),
+		// internal, set by a parent ab.mjs on each child pass
+		pass_out: opt('pass-out'),
+		pass: opt('pass'),
 	};
 }
 
@@ -89,6 +101,43 @@ function progress(tag) {
 	};
 }
 
+/** the pass that moved least is the honest summary of a repeat */
+export function combine_passes(rows, passes) {
+	return rows.map((w, i) => {
+		const per_pass = passes.map((p) => p[i]);
+		const speedups = per_pass.map((p) => p.speedup);
+		const pick = per_pass.reduce((acc, p) =>
+			Math.abs(p.speedup - 1) < Math.abs(acc.speedup - 1) ? p : acc
+		);
+		return {
+			id: w.id,
+			mode: w.mode,
+			family: w.family,
+			doc: w.doc,
+			bytes: w.bytes,
+			speedup: pick.speedup,
+			pass_speedups: speedups,
+			ci: pick.ci,
+			best_speedup: pick.best_speedup,
+			significant: per_pass.every((p) => p.significant),
+			replicated: speedups.every((s) => s > 1) || speedups.every((s) => s < 1),
+			a: pick.a,
+			b: pick.b,
+			iterations: pick.iterations,
+			ratios: per_pass.map((p) => p.ratios),
+		};
+	});
+}
+
+// a child pass runs under the parent lock, waiting on it would hang forever
+function lock_held_by_parent() {
+	const s = lock_status();
+	if (s.held && s.pid === process.ppid) return () => {};
+	throw new Error(
+		'--pass-out is internal to ab.mjs: the parent process must hold the machine lock'
+	);
+}
+
 /** the paired protocol shared by ab and calibrate */
 export async function run_comparison({
 	a_root,
@@ -101,8 +150,13 @@ export async function run_comparison({
 	repeat,
 	target_ms,
 	rewarm_ms,
+	first_pass = 0,
+	pass_tag = null,
+	parent_lock = false,
 }) {
-	const release = await acquire_bench_lock({ label: lock_label });
+	const release = parent_lock
+		? lock_held_by_parent()
+		: await acquire_bench_lock({ label: lock_label });
 	try {
 		const a = await load_arm(a_root, 'baseline');
 		const b = await load_arm(b_root, b_label);
@@ -122,7 +176,7 @@ export async function run_comparison({
 		}
 
 		process.stderr.write(
-			`suite=${suite} workloads=${workloads.length} rounds=${rounds} repeat=${repeat} target=${target_ms}ms rewarm=${rewarm_ms}ms\n`
+			`suite=${suite} workloads=${workloads.length} rounds=${rounds} ${pass_tag ? `pass=${pass_tag}` : `repeat=${repeat}`} target=${target_ms}ms rewarm=${rewarm_ms}ms\n`
 		);
 		const anchor_start = measure_anchor();
 		const t0 = Date.now();
@@ -134,51 +188,152 @@ export async function run_comparison({
 					rounds,
 					target_ms,
 					rewarm_ms,
-					seed: 0x5eed + pass,
+					seed: 0x5eed + first_pass + pass,
 					on_progress: progress(
-						repeat > 1 ? `pass ${pass + 1}/${repeat} ` : ''
+						pass_tag
+							? `pass ${pass_tag} `
+							: repeat > 1
+								? `pass ${pass + 1}/${repeat} `
+								: ''
 					),
 				})
 			);
 		}
 		const anchor = anchor_drift(anchor_start, measure_anchor());
 
-		const results = workloads.map((w, i) => {
-			const per_pass = passes.map((p) => p[i]);
-			const speedups = per_pass.map((p) => p.speedup);
-			// the pass that moved least is the honest summary of a repeat
-			const pick = per_pass.reduce((acc, p) =>
-				Math.abs(p.speedup - 1) < Math.abs(acc.speedup - 1) ? p : acc
-			);
-			return {
-				id: w.id,
-				mode: w.mode,
-				family: w.family,
-				doc: w.doc,
-				bytes: w.bytes,
-				speedup: pick.speedup,
-				pass_speedups: speedups,
-				ci: pick.ci,
-				best_speedup: pick.best_speedup,
-				significant: per_pass.every((p) => p.significant),
-				replicated:
-					speedups.every((s) => s > 1) || speedups.every((s) => s < 1),
-				a: pick.a,
-				b: pick.b,
-				iterations: pick.iterations,
-				ratios: passes.map((p) => p[i].ratios),
-			};
-		});
+		const rows = workloads.map(({ id, mode, family, doc, bytes }) => ({
+			id,
+			mode,
+			family,
+			doc,
+			bytes,
+		}));
 
 		return {
 			problems: [],
-			results,
+			rows,
+			passes,
+			results: combine_passes(rows, passes),
 			anchor,
 			duration_s: Math.round((Date.now() - t0) / 100) / 10,
 		};
 	} finally {
 		release();
 	}
+}
+
+// passes in one process share its jit outcome and agree by accident, a fresh process per pass makes agreement mean replication
+function without_repeat(argv) {
+	const out = [];
+	for (let i = 0; i < argv.length; i++) {
+		if (argv[i] !== '--repeat') {
+			out.push(argv[i]);
+			continue;
+		}
+		if (argv[i + 1] && !argv[i + 1].startsWith('--')) i++;
+	}
+	return out;
+}
+
+function worst_anchor(anchors) {
+	return anchors.reduce((acc, a) =>
+		Math.abs(a.drift) > Math.abs(acc.drift) ? a : acc
+	);
+}
+
+async function run_in_fresh_processes(args, argv, label) {
+	const release = await acquire_bench_lock({ label: `ab:${label}` });
+	const dir = mkdtempSync(join(tmpdir(), 'mdsvex-perf-pass-'));
+	try {
+		const script = fileURLToPath(import.meta.url);
+		const child_argv = [...without_repeat(argv), '--repeat', '1'];
+		process.stderr.write(
+			`repeat=${args.repeat}, each pass in a fresh process\n`
+		);
+		const passes = [];
+		for (let pass = 0; pass < args.repeat; pass++) {
+			const tag = `${pass + 1}/${args.repeat}`;
+			const out = join(dir, `pass-${pass + 1}.json`);
+			// children inherit cpu affinity, so a taskset on the parent pins every pass
+			const child = spawnSync(
+				process.execPath,
+				[
+					...process.execArgv,
+					script,
+					...child_argv,
+					'--pass-out',
+					out,
+					'--pass',
+					tag,
+				],
+				{ stdio: ['ignore', 'inherit', 'inherit'] }
+			);
+			if (child.error) {
+				return {
+					problems: [`pass ${tag} did not start: ${child.error.message}`],
+				};
+			}
+			if (child.status !== 0 || !existsSync(out)) {
+				return {
+					problems: [
+						`pass ${tag} exited with ${child.signal ?? `code ${child.status}`}`,
+					],
+				};
+			}
+			const result = JSON.parse(readFileSync(out, 'utf8'));
+			if (result.problems.length > 0) return { problems: result.problems };
+			passes.push(result);
+		}
+
+		const rows = passes[0].rows;
+		const ids = rows.map((r) => r.id).join('\n');
+		for (const p of passes) {
+			if (p.rows.map((r) => r.id).join('\n') !== ids) {
+				return { problems: ['passes measured different workloads'] };
+			}
+		}
+		const pass_anchors = passes.map((p) => p.anchor);
+		return {
+			problems: [],
+			results: combine_passes(
+				rows,
+				passes.map((p) => p.pass)
+			),
+			anchor: worst_anchor(pass_anchors),
+			pass_anchors,
+			separate_processes: true,
+			duration_s:
+				Math.round(passes.reduce((acc, p) => acc + p.duration_s, 0) * 10) / 10,
+		};
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+		release();
+	}
+}
+
+async function run_child_pass(args, a_root, b_root, label) {
+	const [index] = args.pass.split('/').map(Number);
+	const run = await run_comparison({
+		a_root,
+		b_root,
+		b_label: label,
+		...args,
+		repeat: 1,
+		first_pass: index - 1,
+		pass_tag: args.pass,
+		parent_lock: true,
+	});
+	const out =
+		run.problems.length > 0
+			? { problems: run.problems }
+			: {
+					problems: [],
+					rows: run.rows,
+					pass: run.passes[0],
+					anchor: run.anchor,
+					duration_s: run.duration_s,
+				};
+	writeFileSync(args.pass_out, `${JSON.stringify(out)}\n`);
 }
 
 function read_noise_floor(args) {
@@ -211,18 +366,27 @@ function reference_for(root) {
 }
 
 async function main() {
-	const args = parse_args(process.argv.slice(2));
+	const argv = process.argv.slice(2);
+	const args = parse_args(argv);
 	const a_root = resolve(args.opt('baseline', baseline_dir));
 	const b_root = resolve(args.opt('candidate', local_root));
 	const label = args.opt('label', 'candidate');
 
-	const run = await run_comparison({
-		a_root,
-		b_root,
-		b_label: label,
-		lock_label: `ab:${label}`,
-		...args,
-	});
+	if (args.pass_out !== null) {
+		await run_child_pass(args, a_root, b_root, label);
+		return;
+	}
+
+	const run =
+		args.repeat > 1
+			? await run_in_fresh_processes(args, argv, label)
+			: await run_comparison({
+					a_root,
+					b_root,
+					b_label: label,
+					lock_label: `ab:${label}`,
+					...args,
+				});
 	if (run.problems.length > 0) {
 		console.error('\ncannot compare:');
 		for (const p of run.problems) console.error(`  ${p}`);
@@ -248,6 +412,8 @@ async function main() {
 		noise_floor_source,
 		calibration_corpus_hash: calibration?.corpus_hash ?? null,
 		anchor: run.anchor,
+		pass_anchors: run.pass_anchors ?? [run.anchor],
+		separate_processes: run.separate_processes ?? false,
 		machine: machine(),
 		exposed_gc: typeof globalThis.gc === 'function',
 		duration_s: run.duration_s,

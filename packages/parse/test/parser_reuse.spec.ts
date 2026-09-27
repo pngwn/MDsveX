@@ -14,13 +14,8 @@ function parse_fresh(source: string) {
 	return parse_with(new PFMParser(builder), builder, source);
 }
 
-const ENDS_WITH_FLAGS_SET = [
-	'# ` ',
-	'> # ` ',
-	'- # ` ',
-	'# a\u0000',
-	'## x\u0000y',
-];
+// documents that end with parser flags still set
+const LEAKY = ['# ` ', '> # ` ', '- # ` ', '# a\u0000', '## x\u0000y'];
 
 const FOLLOWERS = [
 	'a\n~~~\nb',
@@ -30,7 +25,7 @@ const FOLLOWERS = [
 ];
 
 describe('a reused parser', () => {
-	for (const first of ENDS_WITH_FLAGS_SET) {
+	for (const first of LEAKY) {
 		for (const second of FOLLOWERS) {
 			it(`parses ${JSON.stringify(second)} after ${JSON.stringify(first)} like a fresh parser`, () => {
 				const builder = new TreeBuilder(64);

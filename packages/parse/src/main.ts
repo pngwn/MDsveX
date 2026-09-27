@@ -48,6 +48,12 @@ export { SourceTextSource, WireTextSource } from './node_view';
 export { WireEmitter, WireOp } from './wire_emitter';
 export type { Emitter } from './opcodes';
 
+// a method load on the source goes megamorphic across its string maps, a call through the builtin still inlines
+const char_code_at = String.prototype.charCodeAt;
+const string_slice = String.prototype.slice;
+const string_index_of = String.prototype.indexOf;
+const string_last_index_of = String.prototype.lastIndexOf;
+
 const enum CharMask {
 	whitespace = 1 << 0,
 	punctuation = 1 << 1,
@@ -114,6 +120,44 @@ const classify = (code: number): CharMask =>
 /** shared empty error collector - avoids allocation when no errors are recorded. */
 const EMPTY_ERRORS = new ErrorCollector(1);
 
+// a leaked list_depth can leave the stack short, blocks then read the padding hole as their parent
+function truncate_stack(stack: number[], base: number): void {
+	while (stack.length > base) stack.pop();
+	if (stack.length < base) stack.length = base;
+}
+
+const WAIT_NONE = 0;
+const WAIT_FENCE = 1;
+const WAIT_RAW = 2;
+
+const ID_KIND_MASK = 0x7f;
+const ID_CLOSED = 0x80;
+// sixteen entries is 64 bytes, the largest typed array v8 keeps on heap
+const ID_MIN_CAPACITY = 16;
+const ID_POOL_CAP = 1 << 16;
+const EMPTY_IDS = new Int32Array(0);
+
+// shared by every parser, a parser drops its references when it hands them back so no two hold the same table
+let spare_ids: Int32Array | null = null;
+let spare_slots: Int32Array = EMPTY_IDS;
+
+// a node stack hole is an undefined id, closing it stores an undefined property on the id table
+type HoleIds = { undefined?: number };
+
+const JOIN_PAIR: string[] = ['', ''];
+
+/** join rather than concat, a cons string window costs about twice as much per charCodeAt */
+function append_flat(head: string, tail: string): string {
+	if (tail.length === 0) return head;
+	if (head.length === 0) return tail;
+	JOIN_PAIR[0] = head;
+	JOIN_PAIR[1] = tail;
+	const joined = JOIN_PAIR.join('');
+	JOIN_PAIR[0] = '';
+	JOIN_PAIR[1] = '';
+	return joined;
+}
+
 /**
  * normalize line endings to `\n`. per commonmark 2.1, a line ending is
  * `\n`, `\r`, or `\r\n`. the state machine only recognizes `\n`, so we
@@ -121,7 +165,7 @@ const EMPTY_ERRORS = new ErrorCollector(1);
  * when the input has no `\r`.
  */
 export function normalize_newlines(source: string): string {
-	if (source.indexOf('\r') === -1) return source;
+	if (string_index_of.call(source, '\r') === -1) return source;
 	return source.replace(/\r\n?/g, '\n');
 }
 
@@ -210,6 +254,7 @@ export const enum StateKind {
 	svelte_branch = 27,
 	directive_container = 28,
 	frontmatter = 29,
+	raw_text = 30,
 }
 
 interface MarkerResult {
@@ -238,10 +283,18 @@ export class PFMParser {
 	// window starting at source_base so feed does not flatten the whole input, positions stay absolute
 	private source: string = '';
 	private source_base: number = 0;
+	// source_base plus source length, a field read avoids a megamorphic length load
+	private source_end: number = 0;
 	// last line start with only containers open and nothing pending that rereads the source
 	private trim_point: number = 0;
 	// next line start to check for a closing fence, earlier lines cannot close it
 	private fence_scan: number = 0;
+	// raw text holds no markup so raw text elements never nest
+	private raw_node: number = 0;
+	private raw_needle: string = '';
+	private raw_scan: number = 0;
+	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
+	private wait_kind: number = 0;
 	private cursor: number = 0;
 	private finished: boolean = false;
 	// deferred \r at the end of a feed() chunk: we can't tell whether it's
@@ -256,19 +309,20 @@ export class PFMParser {
 	// id generation
 	private next_id: number = 1; // 0 is reserved for root
 	private pending_ids: number[] = [];
-	// index of each id in pending_ids, stale unless pending_ids at that index matches
-	private pending_slots: number[] = [];
+	private id_info: Int32Array = EMPTY_IDS;
+	// index of each pending id in pending_ids, stale unless pending_ids at that index matches
+	private id_slots: Int32Array = EMPTY_IDS;
+	// ids below this were closed by a finish that handed the id tables back
+	private finalized_below: number = 0;
 	private pending_starts: number[] = [];
 	private pending_count: number = 0;
 	// pending tight list paragraphs, they commit or revoke without reading the source
 	private pending_para_count: number = 0;
-	private closed_flags: number[] = [];
-	private NodeKind_array: NodeKind[] = [];
 
-	// char classification helpers
-	private prev: number = CharMask.whitespace;
-	private current: number = 0;
-	private next_class: number = 0;
+	// the char before class_floor reads as whitespace, at document start or an inline range start
+	private class_floor: number = 0;
+	// the char after an inline range start, classed against the whole source not the range slice
+	private range_next_class: number = 0;
 
 	// block state
 	private block_quote_depth: number = 0;
@@ -371,10 +425,12 @@ export class PFMParser {
 	 * init() + feed(source) + finish().
 	 */
 	parse(source: string): { errors: ErrorCollector } {
-		this._init();
-		this.source = normalize_newlines(source);
-		this.current = classify(this.source.charCodeAt(0));
-		this.next_class = classify(this.source.charCodeAt(1));
+		const src = normalize_newlines(source);
+		const n = src.length;
+		// documents run well above 8 chars a node, so this rarely grows
+		this._init(n >> 3);
+		this.source = src;
+		this.source_end = n;
 		this.errors = EMPTY_ERRORS;
 		this.finished = true;
 
@@ -389,7 +445,7 @@ export class PFMParser {
 	 * before the first feed() call.
 	 */
 	init(): void {
-		this._init();
+		this._init(ID_MIN_CAPACITY);
 		this.finished = false;
 	}
 
@@ -404,42 +460,86 @@ export class PFMParser {
 	 * handled correctly.
 	 */
 	feed(chunk: string): void {
-		if (chunk.length === 0) return;
+		// a length load on the chunk goes megamorphic once sliced and cons strings are fed
+		let len = chunk.length;
+		if (len === 0) return;
 
 		if (this.pending_cr) {
-			// consume a leading \n so a \r\n split across chunks becomes one \n
-			if (chunk.charCodeAt(0) === 0x0a) {
-				chunk = chunk.slice(1);
+			// prepend the lf for a bare cr so the window is still built in one join
+			if (char_code_at.call(chunk, 0) !== 0x0a) {
+				chunk = '\n' + chunk;
+				len++;
 			}
-			this.source += '\n';
 			this.pending_cr = false;
 		}
 
 		// defer a trailing \r in case the next chunk starts with \n
-		if (chunk.length > 0 && chunk.charCodeAt(chunk.length - 1) === 0x0d) {
+		if (len > 0 && char_code_at.call(chunk, len - 1) === 0x0d) {
 			this.pending_cr = true;
-			chunk = chunk.slice(0, -1);
+			chunk = string_slice.call(chunk, 0, -1);
+			len--;
 		}
 
-		if (chunk.indexOf('\r') !== -1) {
+		if (string_index_of.call(chunk, '\r') !== -1) {
 			chunk = chunk.replace(/\r\n?/g, '\n');
+			len = chunk.length;
 		}
+
+		if (this.wait_kind !== WAIT_NONE && this.skip_wait(chunk, len)) {
+			this.out.cursor(this.cursor);
+			return;
+		}
+		this.wait_kind = WAIT_NONE;
 
 		// keep one char before trim_point for the previous char lookbehind
+		let head = this.source;
 		if (this.trim_point - 1 > this.source_base) {
-			this.source = this.source.slice(this.trim_point - 1 - this.source_base);
+			head = string_slice.call(head, this.trim_point - 1 - this.source_base);
 			this.source_base = this.trim_point - 1;
 		}
 
-		this.source += chunk;
-		this.current = classify(
-			this.source.charCodeAt(this.cursor - this.source_base)
-		);
-		this.next_class = classify(
-			this.source.charCodeAt(this.cursor + 1 - this.source_base)
-		);
+		const src = append_flat(head, chunk);
+		this.source = src;
+		this.source_end += len;
 		this._run();
 		this.out.cursor(this.cursor);
+	}
+
+	/** leaves scan, trim point and window where _run would, false when the chunk might hold the close */
+	private skip_wait(chunk: string, len: number): boolean {
+		const end = this.source_end;
+		if (this.wait_kind === WAIT_FENCE) {
+			// no backtick means no close, the line after the last lf stays open
+			if (string_index_of.call(chunk, '`') !== -1) return false;
+			const lf = string_last_index_of.call(chunk, '\n');
+			if (lf === -1) return false;
+			const line = end + lf + 1;
+			this.fence_scan = line;
+			this.trim_point = line;
+			// the lf stays as the lookbehind char before trim_point
+			this.source = string_slice.call(chunk, lf);
+			this.source_base = line - 1;
+		} else {
+			// a close tag needs a less than sign, keep the last needle length chars as _run does
+			const keep = this.raw_needle.length;
+			if (len < keep) return false;
+			if (string_index_of.call(chunk, '<') !== -1) return false;
+			if (
+				string_index_of.call(
+					this.source,
+					'<',
+					this.raw_scan - this.source_base
+				) !== -1
+			)
+				return false;
+			const scan = end + len - keep + 1;
+			this.raw_scan = scan;
+			this.trim_point = scan;
+			this.source = string_slice.call(chunk, len - keep);
+			this.source_base = scan - 1;
+		}
+		this.source_end = end + len;
+		return true;
 	}
 
 	/**
@@ -448,9 +548,11 @@ export class PFMParser {
 	 */
 	finish(): { errors: ErrorCollector } {
 		if (this.pending_cr) {
-			this.source += '\n';
+			this.source = append_flat(this.source, '\n');
+			this.source_end++;
 			this.pending_cr = false;
 		}
+		this.wait_kind = WAIT_NONE;
 		this.finished = true;
 		this._run();
 		this._finalize();
@@ -458,26 +560,51 @@ export class PFMParser {
 		return { errors: this.errors };
 	}
 
-	private _init(): void {
+	/** @internal */
+	bind(emitter: Emitter, tab_size: number = 2): void {
+		this.out = emitter;
+		this.tab_size = tab_size;
+	}
+
+	/** drop strings of the last document so a reused parser does not pin them */
+	release(): void {
+		this.source = '';
+		if (this.ref_map.size !== 0) this.ref_map.clear();
+		if (this.html_tag_stack.length !== 0) this.html_tag_stack = [];
+		this.svelte_block_tag = '';
+		if (this.svelte_block_stack.length !== 0) this.svelte_block_stack = [];
+		this.errors = EMPTY_ERRORS;
+	}
+
+	private _init(id_capacity: number): void {
 		this.source = '';
 		this.source_base = 0;
+		this.source_end = 0;
 		this.trim_point = 0;
 		this.fence_scan = 0;
+		this.raw_node = 0;
+		this.raw_needle = '';
+		this.raw_scan = 0;
+		this.wait_kind = WAIT_NONE;
 		this.cursor = 0;
 		this.finished = false;
 		this.pending_cr = false;
-		this.states = [StateKind.root];
-		this.node_stack = [0];
+		// pop rather than reallocate, a fresh array would regrow every document
+		const states = this.states;
+		while (states.length > 1) states.pop();
+		if (states.length === 0) states.push(StateKind.root);
+		else states[0] = StateKind.root;
+		const node_stack = this.node_stack;
+		while (node_stack.length > 1) node_stack.pop();
+		if (node_stack.length === 0) node_stack.push(0);
+		else node_stack[0] = 0;
 		this.next_id = 1;
-		this.pending_ids = [];
-		this.pending_slots = [];
+		// pending_ids is only read below pending_count, like pending_starts
 		this.pending_count = 0;
 		this.pending_para_count = 0;
-		this.closed_flags = [];
-		this.NodeKind_array = [];
-		this.prev = CharMask.whitespace;
-		this.current = CharMask.whitespace;
-		this.next_class = CharMask.whitespace;
+		this.take_ids(id_capacity);
+		this.class_floor = 0;
+		this.range_next_class = 0;
 		this.block_quote_depth = 0;
 		this.emphasis_has_content = false;
 		this.in_heading = false;
@@ -489,8 +616,9 @@ export class PFMParser {
 		this.list_is_loose = false;
 		this.list_content_offset = 0;
 		this.list_marker_indent = 0;
-		this.list_state_stack = [];
-		this.list_pending_paras = [];
+		// replace nonempty stacks so no frame of the last document survives
+		if (this.list_state_stack.length !== 0) this.list_state_stack = [];
+		if (this.list_pending_paras.length !== 0) this.list_pending_paras = [];
 		this.table_col_count = 0;
 		this.table_node_id = 0;
 		this.table_row_id = 0;
@@ -499,13 +627,13 @@ export class PFMParser {
 		this.in_table = false;
 		this.inline_range_parse = false;
 		this.table_cell_has_content = false;
-		this.html_tag_stack = [];
+		if (this.html_tag_stack.length !== 0) this.html_tag_stack = [];
 		this.html_block_depth = 0;
 		this.svelte_block_depth = 0;
 		this.svelte_block_tag = '';
 		this.svelte_branch_id = 0;
 		this.svelte_block_id = 0;
-		this.svelte_block_stack = [];
+		if (this.svelte_block_stack.length !== 0) this.svelte_block_stack = [];
 		this.extra = 0;
 		this.info_start_pos = 0;
 		this.info_end_pos = 0;
@@ -515,11 +643,15 @@ export class PFMParser {
 		this.loop_without_progress = 0;
 		this.frontmatter_failed = false;
 		this.imports_allowed = true;
-		this.ref_map.clear();
+		if (this.ref_map.size !== 0) this.ref_map.clear();
 		this.link_text_start = 0;
-		this.directive_colon_counts = [];
-		this.directive_text_ids = [];
-		this.directive_text_brackets = [];
+		if (this.directive_colon_counts.length !== 0) {
+			this.directive_colon_counts = [];
+		}
+		if (this.directive_text_ids.length !== 0) this.directive_text_ids = [];
+		if (this.directive_text_brackets.length !== 0) {
+			this.directive_text_brackets = [];
+		}
 		this.errors = EMPTY_ERRORS;
 
 		// emit the root node open
@@ -536,43 +668,110 @@ export class PFMParser {
 		pending = false
 	): number {
 		const id = this.next_id++;
+		if (id >= this.id_info.length) this.grow_ids(id);
 		this.out.open(id, kind, start, parent, extra, pending);
 		if (pending) {
-			this.pending_starts[this.pending_count] = start;
-			this.pending_slots[id] = this.pending_count;
-			this.pending_ids[this.pending_count++] = id;
+			const slot = this.pending_count;
+			this.pending_starts[slot] = start;
+			this.pending_ids[slot] = id;
+			this.pending_count = slot + 1;
 			if (kind === NodeKind.paragraph) this.pending_para_count++;
+			this.id_slots[id] = slot;
 		}
-		this.NodeKind_array[id] = kind;
+		this.id_info[id] = kind;
 		return id;
 	}
 
 	private emit_close(id: number, end: number): void {
 		this.out.close(id, end);
-		this.closed_flags[id] = 1;
+		this.id_info[id] |= ID_CLOSED;
+	}
+
+	/** open writes an id state before any read, so spare tables need no clearing */
+	private take_ids(needed: number): void {
+		const spare = spare_ids;
+		if (spare !== null && spare.length >= needed) {
+			spare_ids = null;
+			this.id_info = spare;
+			this.id_slots = spare_slots;
+			spare_slots = EMPTY_IDS;
+		} else {
+			let capacity = ID_MIN_CAPACITY;
+			while (capacity < needed) capacity <<= 1;
+			this.id_info = new Int32Array(capacity);
+			this.id_slots = new Int32Array(capacity);
+		}
+		this.id_info[0] = NodeKind.root;
+		this.finalized_below = 0;
+	}
+
+	private grow_ids(id: number): void {
+		const old = this.id_info;
+		let capacity = old.length > 0 ? old.length << 1 : ID_MIN_CAPACITY;
+		while (capacity <= id) capacity <<= 1;
+		const next = new Int32Array(capacity);
+		next.set(old);
+		// carry over the closed flag a hole id stored, only a misused released parser puts one on the empty table
+		const hole = (old as unknown as HoleIds).undefined;
+		if (hole !== undefined && old.length > 0)
+			(next as unknown as HoleIds).undefined = hole;
+		this.id_info = next;
+		const slots = new Int32Array(capacity);
+		slots.set(this.id_slots);
+		this.id_slots = slots;
+	}
+
+	/**
+	 * drop the tables here so this parser never writes one another parser took,
+	 * finalized_below stops a repeated finish closing these ids again
+	 */
+	private give_back_ids(): void {
+		const ids = this.id_info;
+		const slots = this.id_slots;
+		this.id_info = EMPTY_IDS;
+		this.id_slots = EMPTY_IDS;
+		this.finalized_below = this.next_id;
+		// a closed hole id would read as closed in the next document
+		if (
+			ids.length === 0 ||
+			ids.length > ID_POOL_CAP ||
+			(ids as unknown as HoleIds).undefined !== undefined
+		)
+			return;
+		const spare = spare_ids;
+		if (spare === null || spare.length < ids.length) {
+			spare_ids = ids;
+			spare_slots = slots;
+		}
+	}
+
+	private kind_of(id: number): NodeKind {
+		return (this.id_info[id] & ID_KIND_MASK) as NodeKind;
+	}
+
+	private is_closed(id: number): boolean {
+		return (this.id_info[id] & ID_CLOSED) !== 0;
 	}
 
 	/** swap-remove an id from the  pending_ids array. */
 	private pending_remove(id: number): void {
 		if (!this.pending_has(id)) return;
 		const ids = this.pending_ids;
-		const i = this.pending_slots[id];
+		const slots = this.id_slots;
+		const i = slots[id];
 		const last = this.pending_count - 1;
 		const moved = ids[last];
 		ids[i] = moved;
 		this.pending_starts[i] = this.pending_starts[last];
-		this.pending_slots[moved] = i;
+		slots[moved] = i;
 		this.pending_count = last;
-		if (this.NodeKind_array[id] === NodeKind.paragraph)
-			this.pending_para_count--;
+		if (this.kind_of(id) === NodeKind.paragraph) this.pending_para_count--;
 	}
 
 	/** check if an id is in the pending_ids array. */
 	private pending_has(id: number): boolean {
-		const i = this.pending_slots[id];
-		return (
-			i !== undefined && i < this.pending_count && this.pending_ids[i] === id
-		);
+		const i = this.id_slots[id];
+		return i < this.pending_count && this.pending_ids[i] === id;
 	}
 
 	/**
@@ -583,7 +782,7 @@ export class PFMParser {
 		if (this.pending_count !== this.pending_para_count) return false;
 		const stack = this.node_stack;
 		for (let i = 1; i < depth; i++) {
-			const kind = this.NodeKind_array[stack[i]];
+			const kind = this.kind_of(stack[i]);
 			if (
 				kind !== NodeKind.block_quote &&
 				kind !== NodeKind.list &&
@@ -655,27 +854,27 @@ export class PFMParser {
 	): { args: Record<string, string> | null; end: number } | null | false {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		let p = pos + 1; // skip (
 		let args: Record<string, string> | null = null;
 
 		// skip spaces and tabs
 		while (
 			p < length &&
-			(source.charCodeAt(p - base) === SPACE ||
-				source.charCodeAt(p - base) === TAB)
+			(char_code_at.call(source, p - base) === SPACE ||
+				char_code_at.call(source, p - base) === TAB)
 		)
 			p++;
 		if (p >= length) return this.finished ? null : false;
 
 		// empty list: ()
-		if (source.charCodeAt(p - base) === CLOSE_PAREN) {
+		if (char_code_at.call(source, p - base) === CLOSE_PAREN) {
 			return { args: null, end: p + 1 };
 		}
 
 		for (;;) {
 			// key must start with a letter or underscore
-			const kc = source.charCodeAt(p - base);
+			const kc = char_code_at.call(source, p - base);
 			if (
 				!(
 					(kc >= 97 && kc <= 122) ||
@@ -688,36 +887,36 @@ export class PFMParser {
 			const key_start = p;
 			while (
 				p < length &&
-				this.is_directive_name_char(source.charCodeAt(p - base))
+				this.is_directive_name_char(char_code_at.call(source, p - base))
 			)
 				p++;
 			if (p >= length) return this.finished ? null : false;
-			const key = source.slice(key_start - base, p - base);
+			const key = string_slice.call(source, key_start - base, p - base);
 
 			while (
 				p < length &&
-				(source.charCodeAt(p - base) === SPACE ||
-					source.charCodeAt(p - base) === TAB)
+				(char_code_at.call(source, p - base) === SPACE ||
+					char_code_at.call(source, p - base) === TAB)
 			)
 				p++;
 			if (p >= length) return this.finished ? null : false;
-			if (source.charCodeAt(p - base) !== EQUALS) return null;
+			if (char_code_at.call(source, p - base) !== EQUALS) return null;
 			p++;
 			while (
 				p < length &&
-				(source.charCodeAt(p - base) === SPACE ||
-					source.charCodeAt(p - base) === TAB)
+				(char_code_at.call(source, p - base) === SPACE ||
+					char_code_at.call(source, p - base) === TAB)
 			)
 				p++;
 			if (p >= length) return this.finished ? null : false;
 
 			let value: string;
-			const vc = source.charCodeAt(p - base);
+			const vc = char_code_at.call(source, p - base);
 			if (vc === QUOTE || vc === APOSTROPHE) {
 				p++;
 				const value_start = p;
 				while (p < length) {
-					const ch = source.charCodeAt(p - base);
+					const ch = char_code_at.call(source, p - base);
 					if (ch === BACKSLASH && p + 1 < length) {
 						p += 2;
 						continue;
@@ -726,13 +925,13 @@ export class PFMParser {
 					p++;
 				}
 				if (p >= length) return this.finished ? null : false;
-				if (source.charCodeAt(p - base) !== vc) return null; // newline in quoted value
-				value = source.slice(value_start - base, p - base);
+				if (char_code_at.call(source, p - base) !== vc) return null;
+				value = string_slice.call(source, value_start - base, p - base);
 				p++;
 			} else {
 				const value_start = p;
 				while (p < length) {
-					const ch = source.charCodeAt(p - base);
+					const ch = char_code_at.call(source, p - base);
 					if (
 						ch === SPACE ||
 						ch === TAB ||
@@ -749,7 +948,7 @@ export class PFMParser {
 				}
 				if (p >= length && !this.finished) return false;
 				if (p === value_start) return null; // empty bare value
-				value = source.slice(value_start - base, p - base);
+				value = string_slice.call(source, value_start - base, p - base);
 			}
 
 			if (args === null) args = {};
@@ -758,13 +957,13 @@ export class PFMParser {
 
 			while (
 				p < length &&
-				(source.charCodeAt(p - base) === SPACE ||
-					source.charCodeAt(p - base) === TAB)
+				(char_code_at.call(source, p - base) === SPACE ||
+					char_code_at.call(source, p - base) === TAB)
 			)
 				p++;
 			if (p >= length) return this.finished ? null : false;
 
-			const sep = source.charCodeAt(p - base);
+			const sep = char_code_at.call(source, p - base);
 			if (sep === CLOSE_PAREN) {
 				return { args, end: p + 1 };
 			}
@@ -772,12 +971,12 @@ export class PFMParser {
 			p++;
 			while (
 				p < length &&
-				(source.charCodeAt(p - base) === SPACE ||
-					source.charCodeAt(p - base) === TAB)
+				(char_code_at.call(source, p - base) === SPACE ||
+					char_code_at.call(source, p - base) === TAB)
 			)
 				p++;
 			if (p >= length) return this.finished ? null : false;
-			if (source.charCodeAt(p - base) === CLOSE_PAREN) return null; // trailing comma
+			if (char_code_at.call(source, p - base) === CLOSE_PAREN) return null;
 		}
 	}
 
@@ -798,27 +997,27 @@ export class PFMParser {
 		| false {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 
 		// must match "import " or "import{" at pos
 		// "import" = [105, 109, 112, 111, 114, 116]
 		if (pos + 6 >= length && !this.finished) return false; // stall - need at least "import " + something
 
 		if (
-			source.charCodeAt(pos + 1 - base) !== 109 /* m */ ||
-			source.charCodeAt(pos + 2 - base) !== 112 /* p */ ||
-			source.charCodeAt(pos + 3 - base) !== 111 /* o */ ||
-			source.charCodeAt(pos + 4 - base) !== 114 /* r */ ||
-			source.charCodeAt(pos + 5 - base) !== 116 /* t */
+			char_code_at.call(source, pos + 1 - base) !== 109 /* m */ ||
+			char_code_at.call(source, pos + 2 - base) !== 112 /* p */ ||
+			char_code_at.call(source, pos + 3 - base) !== 111 /* o */ ||
+			char_code_at.call(source, pos + 4 - base) !== 114 /* r */ ||
+			char_code_at.call(source, pos + 5 - base) !== 116 /* t */
 		)
 			return null;
 
-		const after_import = source.charCodeAt(pos + 6 - base);
+		const after_import = char_code_at.call(source, pos + 6 - base);
 		if (after_import !== SPACE && after_import !== OPEN_BRACE) return null;
 
 		// scan to end of line
 		let p = pos + 6;
-		while (p < length && source.charCodeAt(p - base) !== LINEFEED) {
+		while (p < length && char_code_at.call(source, p - base) !== LINEFEED) {
 			p++;
 		}
 
@@ -857,12 +1056,12 @@ export class PFMParser {
 		| false {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		let p = pos;
 
 		// count colons
 		let colon_count = 0;
-		while (p < length && source.charCodeAt(p - base) === COLON) {
+		while (p < length && char_code_at.call(source, p - base) === COLON) {
 			colon_count++;
 			p++;
 		}
@@ -876,7 +1075,7 @@ export class PFMParser {
 
 		// must be followed by a letter (start of name)
 		if (p >= length) return null;
-		const first = source.charCodeAt(p - base);
+		const first = char_code_at.call(source, p - base);
 		if (!((first >= 97 && first <= 122) || (first >= 65 && first <= 90))) {
 			return null;
 		}
@@ -885,7 +1084,7 @@ export class PFMParser {
 		const name_start = p;
 		while (
 			p < length &&
-			this.is_directive_name_char(source.charCodeAt(p - base))
+			this.is_directive_name_char(char_code_at.call(source, p - base))
 		) {
 			p++;
 		}
@@ -893,11 +1092,14 @@ export class PFMParser {
 		// stall if name extends to end of buffer
 		if (p >= length && !this.finished) return false;
 
-		const name = source.slice(name_start - base, p - base);
+		const name = string_slice.call(source, name_start - base, p - base);
 		const kind = colon_count >= 3 ? ('container' as const) : ('leaf' as const);
 
 		// [content] is required - empty text must be explicit
-		if (p >= length || source.charCodeAt(p - base) !== OPEN_SQUARE_BRACKET) {
+		if (
+			p >= length ||
+			char_code_at.call(source, p - base) !== OPEN_SQUARE_BRACKET
+		) {
 			return null;
 		}
 
@@ -905,7 +1107,7 @@ export class PFMParser {
 		const content_start = p;
 		let bracket_depth = 1;
 		while (p < length && bracket_depth > 0) {
-			const ch = source.charCodeAt(p - base);
+			const ch = char_code_at.call(source, p - base);
 			if (ch === OPEN_SQUARE_BRACKET) bracket_depth++;
 			else if (ch === CLOSE_SQUARE_BRACKET) bracket_depth--;
 			else if (ch === BACKSLASH && p + 1 < length) {
@@ -925,7 +1127,7 @@ export class PFMParser {
 		// optional argument list must follow the brackets immediately
 		if (p >= length && !this.finished) return false;
 		let args: Record<string, string> | null = null;
-		if (p < length && source.charCodeAt(p - base) === OPEN_PAREN) {
+		if (p < length && char_code_at.call(source, p - base) === OPEN_PAREN) {
 			const parsed = this.try_parse_directive_args(p);
 			if (parsed === false) return false;
 			// malformed args make the whole line a paragraph
@@ -937,8 +1139,8 @@ export class PFMParser {
 		// skip trailing whitespace
 		while (
 			p < length &&
-			(source.charCodeAt(p - base) === SPACE ||
-				source.charCodeAt(p - base) === TAB)
+			(char_code_at.call(source, p - base) === SPACE ||
+				char_code_at.call(source, p - base) === TAB)
 		) {
 			p++;
 		}
@@ -947,7 +1149,7 @@ export class PFMParser {
 		if (p >= length && !this.finished) return false;
 
 		// must be at end of line (or end of input)
-		if (p < length && source.charCodeAt(p - base) !== LINEFEED) {
+		if (p < length && char_code_at.call(source, p - base) !== LINEFEED) {
 			return null;
 		}
 
@@ -1013,12 +1215,12 @@ export class PFMParser {
 	private try_parse_directive_close(pos: number, min_colons: number): number {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		let p = pos;
 
 		// count colons
 		let colon_count = 0;
-		while (p < length && source.charCodeAt(p - base) === COLON) {
+		while (p < length && char_code_at.call(source, p - base) === COLON) {
 			colon_count++;
 			p++;
 		}
@@ -1032,8 +1234,8 @@ export class PFMParser {
 		// skip trailing whitespace
 		while (
 			p < length &&
-			(source.charCodeAt(p - base) === SPACE ||
-				source.charCodeAt(p - base) === TAB)
+			(char_code_at.call(source, p - base) === SPACE ||
+				char_code_at.call(source, p - base) === TAB)
 		) {
 			p++;
 		}
@@ -1042,7 +1244,8 @@ export class PFMParser {
 		if (p >= length && !this.finished) return -2;
 
 		// must be at end of line or end of input
-		if (p < length && source.charCodeAt(p - base) !== LINEFEED) return -1;
+		if (p < length && char_code_at.call(source, p - base) !== LINEFEED)
+			return -1;
 		if (p < length) p++; // consume newline
 
 		return p;
@@ -1051,36 +1254,35 @@ export class PFMParser {
 	private chomp(count: number, replace: boolean = false): void {
 		if (replace) {
 			this.cursor = count;
+			// a jump reads the real char before it, even back at the floor
+			this.class_floor = -1;
 		} else {
 			this.cursor += count;
 		}
-
-		if (count > 1 || replace) {
-			this.prev = classify(
-				this.source.charCodeAt(this.cursor - 1 - this.source_base)
-			);
-			this.current = classify(
-				this.source.charCodeAt(this.cursor - this.source_base)
-			);
-			this.next_class = classify(
-				this.source.charCodeAt(this.cursor + 1 - this.source_base)
-			);
-		} else {
-			this.prev = this.current;
-			this.current = this.next_class;
-			this.next_class = classify(
-				this.source.charCodeAt(this.cursor + 1 - this.source_base)
-			);
-		}
 	}
 
-	/** fast path for the common case: advance cursor by 1. */
-	private chomp1(): void {
-		this.cursor++;
-		this.prev = this.current;
-		this.current = this.next_class;
-		this.next_class = classify(
-			this.source.charCodeAt(this.cursor + 1 - this.source_base)
+	/** reads outside the window, including a jump to cursor 0, give the nan wildcard mask */
+	private prev_class(): number {
+		const c = this.cursor;
+		if (c === this.class_floor) return CharMask.whitespace;
+		const i = c - 1 - this.source_base;
+		return classify(
+			i >>> 0 < this.source_end - this.source_base
+				? char_code_at.call(this.source, i)
+				: NaN
+		);
+	}
+
+	private next_class(): number {
+		const c = this.cursor;
+		if (c === this.class_floor && this.inline_range_parse) {
+			return this.range_next_class;
+		}
+		const i = c + 1 - this.source_base;
+		return classify(
+			i >>> 0 < this.source_end - this.source_base
+				? char_code_at.call(this.source, i)
+				: NaN
 		);
 	}
 
@@ -1092,11 +1294,11 @@ export class PFMParser {
 	private count_indent(pos: number): { columns: number; end: number } {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		const ts = this.tab_size;
 		let columns = 0;
 		while (pos < length) {
-			const ch = source.charCodeAt(pos - base);
+			const ch = char_code_at.call(source, pos - base);
 			if (ch === SPACE) {
 				columns++;
 				pos++;
@@ -1117,11 +1319,11 @@ export class PFMParser {
 	private skip_columns(pos: number, target: number): number {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		const ts = this.tab_size;
 		let columns = 0;
 		while (pos < length && columns < target) {
-			const ch = source.charCodeAt(pos - base);
+			const ch = char_code_at.call(source, pos - base);
 			if (ch === SPACE) {
 				columns++;
 				pos++;
@@ -1147,7 +1349,7 @@ export class PFMParser {
 	private can_decide_after_lf(pos: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 
 		// inside a block quote the paragraph boundary depends on the `>`
 		// markers and the space that follows them. until the full prefix
@@ -1155,7 +1357,7 @@ export class PFMParser {
 		// next line to avoid under-reading the continuation prefix.
 		if (this.block_quote_depth > 0) {
 			for (let p = pos + 1; p < length; p++) {
-				if (source.charCodeAt(p - base) === LINEFEED) return true;
+				if (char_code_at.call(source, p - base) === LINEFEED) return true;
 			}
 			return false;
 		}
@@ -1163,7 +1365,7 @@ export class PFMParser {
 		let p = pos + 1;
 		// skip leading whitespace on the next line.
 		while (p < length) {
-			const ch = source.charCodeAt(p - base);
+			const ch = char_code_at.call(source, p - base);
 			if (ch !== SPACE && ch !== TAB) break;
 			p++;
 		}
@@ -1172,31 +1374,28 @@ export class PFMParser {
 			// the source is finished (in which case it's a blank line).
 			return this.finished;
 		}
-		const ch = source.charCodeAt(p - base);
+		const ch = char_code_at.call(source, p - base);
 		// blank line is an immediate decision.
 		if (ch === LINEFEED) return true;
-		// full next-line scan for an easy fast path - if a linefeed is
-		// reachable, we have the whole line and can decide anything.
-		for (let q = p + 1; q < length; q++) {
-			if (source.charCodeAt(q - base) === LINEFEED) return true;
-		}
-		// partial next line (no trailing linefeed yet). we can still
-		// decide for unambiguous first-char cases.
+		// a visible linefeed decides either way, so settle on the first char before scanning the line
 		switch (ch) {
 			case OCTOTHERP:
 				// heading needs at least `#` + one lookahead char
 				// (distinguishes `# x` heading from `#x` paragraph).
-				return p + 1 < length;
+				if (p + 1 < length) return true;
+				break;
 			case CLOSE_ANGLE_BRACKET:
 				// block quote - immediate.
 				return true;
 			case BACKTICK:
 				// code fence needs three backticks visible.
-				return (
+				if (
 					p + 2 < length &&
-					source.charCodeAt(p + 1 - base) === BACKTICK &&
-					source.charCodeAt(p + 2 - base) === BACKTICK
-				);
+					char_code_at.call(source, p + 1 - base) === BACKTICK &&
+					char_code_at.call(source, p + 2 - base) === BACKTICK
+				)
+					return true;
+				break;
 			case DASH:
 			case ASTERISK:
 				// could be a list marker or a thematic break. inside a list,
@@ -1207,17 +1406,18 @@ export class PFMParser {
 				// thematic break - keep stalling.
 				if (this.list_depth > 0) {
 					for (let q = p + 1; q < length; q++) {
-						const qch = source.charCodeAt(q - base);
+						const qch = char_code_at.call(source, q - base);
 						if (qch === LINEFEED) return true;
 						if (qch !== ch && qch !== SPACE && qch !== TAB) return true;
 					}
+					return false;
 				}
-				return false;
+				break;
 			case PLUS:
 				// plus is only ever a list marker - no thematic break ambiguity.
 				// one char of lookahead is enough inside a list.
 				if (this.list_depth > 0 && p + 1 < length) return true;
-				return false;
+				break;
 			case UNDERSCORE:
 			case OPEN_ANGLE_BRACKET:
 			case OPEN_SQUARE_BRACKET:
@@ -1225,7 +1425,7 @@ export class PFMParser {
 			case OPEN_BRACE:
 			case COLON:
 				// genuinely ambiguous - need to see the rest of the line.
-				return false;
+				break;
 			default:
 				// digits may start an ordered list marker. inside a list we
 				// can decide early: scan the digit run, then look for the
@@ -1233,55 +1433,63 @@ export class PFMParser {
 				// run hits a non-digit non-delimiter char, it's clearly not
 				// a marker - paragraph continues.
 				if (ch >= 48 && ch <= 57) {
-					if (this.list_depth === 0) return false;
+					if (this.list_depth === 0) break;
 					let q = p + 1;
 					while (
 						q < length &&
-						source.charCodeAt(q - base) >= 48 &&
-						source.charCodeAt(q - base) <= 57
+						char_code_at.call(source, q - base) >= 48 &&
+						char_code_at.call(source, q - base) <= 57
 					)
 						q++;
 					if (q >= length) return false;
-					const dch = source.charCodeAt(q - base);
+					const dch = char_code_at.call(source, q - base);
 					if (dch !== DOT && dch !== CLOSE_PAREN) return true; // not a marker - continue paragraph
-					return q + 1 < length;
+					if (q + 1 < length) return true;
+					break;
 				}
 				// everything else (letters, punctuation, etc.) cannot
 				// start a block - the paragraph continues.
 				return true;
 		}
+		for (let q = p + 1; q < length; q++) {
+			if (char_code_at.call(source, q - base) === LINEFEED) return true;
+		}
+		return false;
 	}
 
 	private is_heading_start(pos: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		while (
 			pos < length &&
-			(source.charCodeAt(pos - base) === SPACE ||
-				source.charCodeAt(pos - base) === TAB)
+			(char_code_at.call(source, pos - base) === SPACE ||
+				char_code_at.call(source, pos - base) === TAB)
 		) {
 			pos++;
 		}
-		if (pos >= length || source.charCodeAt(pos - base) !== OCTOTHERP)
+		if (pos >= length || char_code_at.call(source, pos - base) !== OCTOTHERP)
 			return false;
 		let count = 0;
-		while (pos < length && source.charCodeAt(pos - base) === OCTOTHERP) {
+		while (
+			pos < length &&
+			char_code_at.call(source, pos - base) === OCTOTHERP
+		) {
 			count++;
 			pos++;
 		}
 		if (count > 6) return false;
-		const ch = source.charCodeAt(pos - base);
+		const ch = char_code_at.call(source, pos - base);
 		return pos >= length || ch === SPACE || ch === TAB || ch === LINEFEED;
 	}
 
 	private is_blank_line_after(pos: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		let p = pos + 1;
-		while (p < length && source.charCodeAt(p - base) !== LINEFEED) {
-			const ch = source.charCodeAt(p - base);
+		while (p < length && char_code_at.call(source, p - base) !== LINEFEED) {
+			const ch = char_code_at.call(source, p - base);
 			if (ch !== SPACE && ch !== TAB) return false;
 			p++;
 		}
@@ -1293,9 +1501,9 @@ export class PFMParser {
 	private is_thematic_break_start(pos: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		let spaces = 0;
-		while (pos < length && source.charCodeAt(pos - base) === SPACE) {
+		while (pos < length && char_code_at.call(source, pos - base) === SPACE) {
 			spaces++;
 			pos++;
 		}
@@ -1303,13 +1511,13 @@ export class PFMParser {
 
 		if (pos >= length) return false;
 
-		const marker = source.charCodeAt(pos - base);
+		const marker = char_code_at.call(source, pos - base);
 		if (marker !== ASTERISK && marker !== DASH && marker !== UNDERSCORE)
 			return false;
 
 		let count = 0;
-		while (pos < length && source.charCodeAt(pos - base) !== LINEFEED) {
-			const ch = source.charCodeAt(pos - base);
+		while (pos < length && char_code_at.call(source, pos - base) !== LINEFEED) {
+			const ch = char_code_at.call(source, pos - base);
 			if (ch === marker) {
 				count++;
 			} else if (ch !== SPACE && ch !== TAB) {
@@ -1337,22 +1545,23 @@ export class PFMParser {
 	private skip_bq_markers(pos: number, depth: number): number {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		for (let i = 0; i < depth; i++) {
 			while (
 				pos < length &&
-				(source.charCodeAt(pos - base) === SPACE ||
-					source.charCodeAt(pos - base) === TAB)
+				(char_code_at.call(source, pos - base) === SPACE ||
+					char_code_at.call(source, pos - base) === TAB)
 			) {
 				pos++;
 			}
 			if (
 				pos >= length ||
-				source.charCodeAt(pos - base) !== CLOSE_ANGLE_BRACKET
+				char_code_at.call(source, pos - base) !== CLOSE_ANGLE_BRACKET
 			)
 				return -1;
 			pos++;
-			if (pos < length && source.charCodeAt(pos - base) === SPACE) pos++;
+			if (pos < length && char_code_at.call(source, pos - base) === SPACE)
+				pos++;
 		}
 		return pos;
 	}
@@ -1360,16 +1569,17 @@ export class PFMParser {
 	private is_block_quote_start(pos: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		while (
 			pos < length &&
-			(source.charCodeAt(pos - base) === SPACE ||
-				source.charCodeAt(pos - base) === TAB)
+			(char_code_at.call(source, pos - base) === SPACE ||
+				char_code_at.call(source, pos - base) === TAB)
 		) {
 			pos++;
 		}
 		return (
-			pos < length && source.charCodeAt(pos - base) === CLOSE_ANGLE_BRACKET
+			pos < length &&
+			char_code_at.call(source, pos - base) === CLOSE_ANGLE_BRACKET
 		);
 	}
 
@@ -1392,7 +1602,7 @@ export class PFMParser {
 	): number {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		let line_start = start_pos;
 		while (line_start <= length) {
 			if (line_start >= length) {
@@ -1413,19 +1623,20 @@ export class PFMParser {
 			let fp = stripped;
 			while (
 				fp < length &&
-				(source.charCodeAt(fp - base) === SPACE ||
-					source.charCodeAt(fp - base) === TAB)
+				(char_code_at.call(source, fp - base) === SPACE ||
+					char_code_at.call(source, fp - base) === TAB)
 			)
 				fp++;
 			let bt = 0;
-			while (fp < length && source.charCodeAt(fp - base) === BACKTICK) {
+			while (fp < length && char_code_at.call(source, fp - base) === BACKTICK) {
 				bt++;
 				fp++;
 			}
 			if (bt >= fence_len) return 1;
 			// advance to next line.
 			let nl = stripped;
-			while (nl < length && source.charCodeAt(nl - base) !== LINEFEED) nl++;
+			while (nl < length && char_code_at.call(source, nl - base) !== LINEFEED)
+				nl++;
 			if (nl >= length) {
 				// reached eof mid-line. in finished mode, no close found -
 				// treat as valid (unclosed at eof). in streaming mode, stall.
@@ -1439,9 +1650,9 @@ export class PFMParser {
 	private is_blank_at_pos(pos: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
-		while (pos < length && source.charCodeAt(pos - base) !== LINEFEED) {
-			const ch = source.charCodeAt(pos - base);
+		const length = this.source_end;
+		while (pos < length && char_code_at.call(source, pos - base) !== LINEFEED) {
+			const ch = char_code_at.call(source, pos - base);
 			if (ch !== SPACE && ch !== TAB) return false;
 			pos++;
 		}
@@ -1459,12 +1670,12 @@ export class PFMParser {
 	private is_block_interrupt(pos: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		let p = pos;
 
 		// skip leading whitespace once
 		while (p < length) {
-			const ch = source.charCodeAt(p - base);
+			const ch = char_code_at.call(source, p - base);
 			if (ch !== SPACE && ch !== TAB) break;
 			p++;
 		}
@@ -1472,7 +1683,7 @@ export class PFMParser {
 		// end of buffer -> blank line only if finished
 		if (p >= length) return this.finished;
 
-		const ch = source.charCodeAt(p - base);
+		const ch = char_code_at.call(source, p - base);
 
 		// blank line
 		if (ch === LINEFEED) return true;
@@ -1489,8 +1700,8 @@ export class PFMParser {
 			case BACKTICK:
 				return (
 					p + 2 < length &&
-					source.charCodeAt(p + 1 - base) === BACKTICK &&
-					source.charCodeAt(p + 2 - base) === BACKTICK
+					char_code_at.call(source, p + 1 - base) === BACKTICK &&
+					char_code_at.call(source, p + 2 - base) === BACKTICK
 				);
 			case ASTERISK:
 			case DASH:
@@ -1505,23 +1716,28 @@ export class PFMParser {
 				// block-level html tag (`<ul>`, `</p>`, etc.) at line start
 				// interrupts an open paragraph.
 				let q = p + 1;
-				if (q < length && source.charCodeAt(q - base) === SLASH) q++;
+				if (q < length && char_code_at.call(source, q - base) === SLASH) q++;
 				if (
 					q >= length ||
-					!this.is_tag_name_start(source.charCodeAt(q - base))
+					!this.is_tag_name_start(char_code_at.call(source, q - base))
 				) {
 					return false;
 				}
 				const name_start = q;
-				while (q < length && this.is_tag_name_char(source.charCodeAt(q - base)))
+				while (
+					q < length &&
+					this.is_tag_name_char(char_code_at.call(source, q - base))
+				)
 					q++;
 				return this.is_block_html_tag(
-					source.slice(name_start - base, q - base)
+					string_slice.call(source, name_start - base, q - base)
 				);
 			}
 			case COLON:
 				// :: or ::: starts a block directive
-				return p + 1 < length && source.charCodeAt(p + 1 - base) === COLON;
+				return (
+					p + 1 < length && char_code_at.call(source, p + 1 - base) === COLON
+				);
 			default:
 				if (ch >= 48 && ch <= 57) return this.is_list_item_start_interrupt(pos);
 				return false;
@@ -1538,10 +1754,10 @@ export class PFMParser {
 	private marker_line_has_content(content_start: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		let p = content_start;
 		while (p < length) {
-			const ch = source.charCodeAt(p - base);
+			const ch = char_code_at.call(source, p - base);
 			if (ch === LINEFEED) return false;
 			if (ch !== SPACE && ch !== TAB) return true;
 			p++;
@@ -1554,7 +1770,7 @@ export class PFMParser {
 	private try_parse_list_marker(pos: number): MarkerResult | null {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		if (pos >= length) return null;
 		const start = pos;
 		const ws = this.count_indent(pos);
@@ -1564,14 +1780,14 @@ export class PFMParser {
 		// but pfm removes indented code blocks, indentation is insignificant)
 
 		if (pos >= length) return null;
-		const ch = source.charCodeAt(pos - base);
+		const ch = char_code_at.call(source, pos - base);
 
 		// unordered: -, *, +
 		if (ch === DASH || ch === ASTERISK || ch === PLUS) {
 			// in incremental mode, don't accept a marker at end of buffer -
 			// more characters may follow (e.g. `---` thematic break)
 			if (pos + 1 >= length && !this.finished) return null;
-			const after = source.charCodeAt(pos + 1 - base);
+			const after = char_code_at.call(source, pos + 1 - base);
 			if (
 				pos + 1 >= length ||
 				after === SPACE ||
@@ -1602,20 +1818,20 @@ export class PFMParser {
 			const num_start = pos;
 			while (
 				pos < length &&
-				source.charCodeAt(pos - base) >= 48 &&
-				source.charCodeAt(pos - base) <= 57
+				char_code_at.call(source, pos - base) >= 48 &&
+				char_code_at.call(source, pos - base) <= 57
 			) {
 				pos++;
 			}
 			if (pos - num_start > 9) return null;
 
 			if (pos >= length) return null;
-			const delimiter = source.charCodeAt(pos - base);
+			const delimiter = char_code_at.call(source, pos - base);
 			if (delimiter !== DOT && delimiter !== CLOSE_PAREN) return null;
 
 			// in incremental mode, don't accept a marker at end of buffer
 			if (pos + 1 >= length && !this.finished) return null;
-			const after = source.charCodeAt(pos + 1 - base);
+			const after = char_code_at.call(source, pos + 1 - base);
 			if (
 				pos + 1 >= length ||
 				after === SPACE ||
@@ -1630,7 +1846,10 @@ export class PFMParser {
 					content_start++;
 				}
 				if (!this.marker_line_has_content(content_start)) return null;
-				const num = parseInt(source.slice(num_start - base, pos - base), 10);
+				const num = parseInt(
+					string_slice.call(source, num_start - base, pos - base),
+					10
+				);
 				return {
 					indent,
 					marker_char: delimiter,
@@ -1649,16 +1868,16 @@ export class PFMParser {
 	private is_list_item_start_interrupt(pos: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		const marker = this.try_parse_list_marker(pos);
 		if (!marker) return false;
 		if (this.list_depth > 0) return true;
 		if (marker.ordered && marker.start_num !== 1) return false;
 		let p = marker.content_start;
-		while (p < length && source.charCodeAt(p - base) !== LINEFEED) {
+		while (p < length && char_code_at.call(source, p - base) !== LINEFEED) {
 			if (
-				source.charCodeAt(p - base) !== SPACE &&
-				source.charCodeAt(p - base) !== TAB
+				char_code_at.call(source, p - base) !== SPACE &&
+				char_code_at.call(source, p - base) !== TAB
 			)
 				return true;
 			p++;
@@ -1720,12 +1939,14 @@ export class PFMParser {
 	 * wrappers are now real paragraphs that renderers should show.
 	 */
 	private commit_list_pending_paras(): void {
-		for (let i = 0; i < this.list_pending_paras.length; i++) {
-			const pid = this.list_pending_paras[i];
+		const paras = this.list_pending_paras;
+		for (let i = 0; i < paras.length; i++) {
+			const pid = paras[i];
 			this.out.commit(pid);
 			this.pending_remove(pid);
 		}
-		this.list_pending_paras.length = 0;
+		// the generic length setter is slow and the list is short
+		while (paras.length > 0) paras.pop();
 	}
 
 	/**
@@ -1735,8 +1956,9 @@ export class PFMParser {
 	 */
 	private finalize_list_pending_paras(): void {
 		const loose = this.list_is_loose;
-		for (let i = 0; i < this.list_pending_paras.length; i++) {
-			const pid = this.list_pending_paras[i];
+		const paras = this.list_pending_paras;
+		for (let i = 0; i < paras.length; i++) {
+			const pid = paras[i];
 			if (loose) {
 				this.out.commit(pid);
 			} else {
@@ -1744,7 +1966,7 @@ export class PFMParser {
 			}
 			this.pending_remove(pid);
 		}
-		this.list_pending_paras.length = 0;
+		while (paras.length > 0) paras.pop();
 	}
 
 	private end_list(): void {
@@ -1849,16 +2071,16 @@ export class PFMParser {
 	private try_parse_uri_autolink(pos: number): number {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		let p = pos;
-		let ch = source.charCodeAt(p - base);
+		let ch = char_code_at.call(source, p - base);
 
 		if (!((ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122))) return -1;
 		p++;
 
 		let scheme_len = 1;
 		while (p < length && scheme_len <= 32) {
-			ch = source.charCodeAt(p - base);
+			ch = char_code_at.call(source, p - base);
 			if (
 				(ch >= 65 && ch <= 90) ||
 				(ch >= 97 && ch <= 122) ||
@@ -1874,11 +2096,12 @@ export class PFMParser {
 			}
 		}
 
-		if (scheme_len < 2 || source.charCodeAt(p - base) !== COLON) return -1;
+		if (scheme_len < 2 || char_code_at.call(source, p - base) !== COLON)
+			return -1;
 		p++;
 
 		while (p < length) {
-			ch = source.charCodeAt(p - base);
+			ch = char_code_at.call(source, p - base);
 			if (ch === CLOSE_ANGLE_BRACKET) {
 				return p + 1;
 			}
@@ -2044,26 +2267,22 @@ export class PFMParser {
 		}
 	}
 
-	/**
-	 * scan forward from `pos` for the case-sensitive closing tag `</tag>`.
-	 * returns the end position (after `>`) or -1 if not found / input incomplete.
-	 */
-	private find_raw_close_tag(
-		pos: number,
-		tag: string
-	): { content_end: number; end: number } | null {
-		const source = this.source;
-		const base = this.source_base;
-		const length = base + source.length;
-		const needle = '</' + tag + '>';
-		let scan = pos;
-		while (scan < length) {
-			const rel = source.indexOf(needle, scan - base);
-			if (rel === -1) return null;
-			const idx = rel + base;
-			return { content_end: idx, end: idx + needle.length };
+	/** opens once the open tag is whole so later feeds scan only new chars for the close tag */
+	private open_raw_text(
+		open_tag: { tag: string; attributes: object; end: number },
+		parent: number
+	): void {
+		const html_id = this.emit_open(NodeKind.html, this.cursor, parent);
+		this.out.attr(html_id, 'tag', open_tag.tag);
+		if (Object.keys(open_tag.attributes).length > 0) {
+			this.out.attr(html_id, 'attributes', open_tag.attributes);
 		}
-		return null;
+		this.out.set_value_start(html_id, open_tag.end);
+		this.raw_node = html_id;
+		this.raw_needle = '</' + open_tag.tag + '>';
+		this.raw_scan = open_tag.end;
+		this.states.push(StateKind.raw_text);
+		this.chomp(open_tag.end, true);
 	}
 
 	/**
@@ -2081,18 +2300,24 @@ export class PFMParser {
 	} | null {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		let p = pos;
 
 		// tag name must start with a letter or underscore
-		if (p >= length || !this.is_tag_name_start(source.charCodeAt(p - base)))
+		if (
+			p >= length ||
+			!this.is_tag_name_start(char_code_at.call(source, p - base))
+		)
 			return null;
 
 		const tag_start = p;
 		p++;
-		while (p < length && this.is_tag_name_char(source.charCodeAt(p - base)))
+		while (
+			p < length &&
+			this.is_tag_name_char(char_code_at.call(source, p - base))
+		)
 			p++;
-		const tag = source.slice(tag_start - base, p - base);
+		const tag = string_slice.call(source, tag_start - base, p - base);
 
 		// parse attributes
 		const attributes: Record<
@@ -2104,34 +2329,38 @@ export class PFMParser {
 			// skip whitespace
 			while (
 				p < length &&
-				(source.charCodeAt(p - base) === SPACE ||
-					source.charCodeAt(p - base) === TAB ||
-					source.charCodeAt(p - base) === LINEFEED)
+				(char_code_at.call(source, p - base) === SPACE ||
+					char_code_at.call(source, p - base) === TAB ||
+					char_code_at.call(source, p - base) === LINEFEED)
 			)
 				p++;
 
 			if (p >= length) return null;
 
 			// check for end of tag
-			if (source.charCodeAt(p - base) === SLASH) {
+			if (char_code_at.call(source, p - base) === SLASH) {
 				if (
 					p + 1 < length &&
-					source.charCodeAt(p + 1 - base) === CLOSE_ANGLE_BRACKET
+					char_code_at.call(source, p + 1 - base) === CLOSE_ANGLE_BRACKET
 				) {
 					return { tag, attributes, self_closing: true, end: p + 2 };
 				}
 				return null; // stray /
 			}
 
-			if (source.charCodeAt(p - base) === CLOSE_ANGLE_BRACKET) {
+			if (char_code_at.call(source, p - base) === CLOSE_ANGLE_BRACKET) {
 				return { tag, attributes, self_closing: false, end: p + 1 };
 			}
 
 			// svelte shorthand attribute: {name}
-			if (source.charCodeAt(p - base) === OPEN_BRACE) {
+			if (char_code_at.call(source, p - base) === OPEN_BRACE) {
 				const expr_end = this.find_matching_brace(p + 1);
 				if (expr_end === -1) return null;
-				const expr = source.slice(p + 1 - base, expr_end - 1 - base);
+				const expr = string_slice.call(
+					source,
+					p + 1 - base,
+					expr_end - 1 - base
+				);
 				attributes[expr] = { type: 'expression', value: expr };
 				p = expr_end;
 				continue;
@@ -2139,7 +2368,7 @@ export class PFMParser {
 
 			// parse attribute name
 			const attr_name_start = p;
-			const ch = source.charCodeAt(p - base);
+			const ch = char_code_at.call(source, p - base);
 			// attribute name: anything that's not whitespace, =, >, /
 			if (ch === EQUALS || ch === CLOSE_ANGLE_BRACKET || ch === SLASH) {
 				return null; // invalid attribute start
@@ -2147,58 +2376,63 @@ export class PFMParser {
 
 			while (
 				p < length &&
-				source.charCodeAt(p - base) !== SPACE &&
-				source.charCodeAt(p - base) !== TAB &&
-				source.charCodeAt(p - base) !== LINEFEED &&
-				source.charCodeAt(p - base) !== EQUALS &&
-				source.charCodeAt(p - base) !== CLOSE_ANGLE_BRACKET &&
-				source.charCodeAt(p - base) !== SLASH
+				char_code_at.call(source, p - base) !== SPACE &&
+				char_code_at.call(source, p - base) !== TAB &&
+				char_code_at.call(source, p - base) !== LINEFEED &&
+				char_code_at.call(source, p - base) !== EQUALS &&
+				char_code_at.call(source, p - base) !== CLOSE_ANGLE_BRACKET &&
+				char_code_at.call(source, p - base) !== SLASH
 			) {
 				p++;
 			}
 
 			if (p === attr_name_start) return null;
-			const attr_name = source.slice(attr_name_start - base, p - base);
+			const attr_name = string_slice.call(
+				source,
+				attr_name_start - base,
+				p - base
+			);
 
 			// skip whitespace before potential =
 			while (
 				p < length &&
-				(source.charCodeAt(p - base) === SPACE ||
-					source.charCodeAt(p - base) === TAB ||
-					source.charCodeAt(p - base) === LINEFEED)
+				(char_code_at.call(source, p - base) === SPACE ||
+					char_code_at.call(source, p - base) === TAB ||
+					char_code_at.call(source, p - base) === LINEFEED)
 			)
 				p++;
 
-			if (p < length && source.charCodeAt(p - base) === EQUALS) {
+			if (p < length && char_code_at.call(source, p - base) === EQUALS) {
 				p++; // skip =
 				// skip whitespace after =
 				while (
 					p < length &&
-					(source.charCodeAt(p - base) === SPACE ||
-						source.charCodeAt(p - base) === TAB ||
-						source.charCodeAt(p - base) === LINEFEED)
+					(char_code_at.call(source, p - base) === SPACE ||
+						char_code_at.call(source, p - base) === TAB ||
+						char_code_at.call(source, p - base) === LINEFEED)
 				)
 					p++;
 
 				if (p >= length) return null;
 
-				const quote = source.charCodeAt(p - base);
+				const quote = char_code_at.call(source, p - base);
 				if (quote === OPEN_BRACE) {
 					// svelte expression attribute value: attr={expr}
 					const expr_end = this.find_matching_brace(p + 1);
 					if (expr_end === -1) return null;
 					attributes[attr_name] = {
 						type: 'expression',
-						value: source.slice(p + 1 - base, expr_end - 1 - base),
+						value: string_slice.call(source, p + 1 - base, expr_end - 1 - base),
 					};
 					p = expr_end;
 				} else if (quote === QUOTE || quote === APOSTROPHE) {
 					// quoted value
 					p++; // skip opening quote
 					const value_start = p;
-					while (p < length && source.charCodeAt(p - base) !== quote) p++;
+					while (p < length && char_code_at.call(source, p - base) !== quote)
+						p++;
 					if (p >= length) return null; // unclosed quote
-					const value = source.slice(value_start - base, p - base);
+					const value = string_slice.call(source, value_start - base, p - base);
 					p++; // skip closing quote
 					attributes[attr_name] = value;
 				} else {
@@ -2206,11 +2440,15 @@ export class PFMParser {
 					const value_start = p;
 					while (
 						p < length &&
-						this.is_unquoted_attr_char(source.charCodeAt(p - base))
+						this.is_unquoted_attr_char(char_code_at.call(source, p - base))
 					)
 						p++;
 					if (p === value_start) return null; // empty unquoted value
-					attributes[attr_name] = source.slice(value_start - base, p - base);
+					attributes[attr_name] = string_slice.call(
+						source,
+						value_start - base,
+						p - base
+					);
 				}
 			} else {
 				// boolean attribute
@@ -2231,40 +2469,50 @@ export class PFMParser {
 	): { tag: string; end: number } | null {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		let p = pos;
 
 		// must start with /
-		if (p >= length || source.charCodeAt(p - base) !== SLASH) return null;
+		if (p >= length || char_code_at.call(source, p - base) !== SLASH)
+			return null;
 		p++;
 
 		// optional whitespace after /
 		while (
 			p < length &&
-			(source.charCodeAt(p - base) === SPACE ||
-				source.charCodeAt(p - base) === TAB)
+			(char_code_at.call(source, p - base) === SPACE ||
+				char_code_at.call(source, p - base) === TAB)
 		)
 			p++;
 
 		// tag name
-		if (p >= length || !this.is_tag_name_start(source.charCodeAt(p - base)))
+		if (
+			p >= length ||
+			!this.is_tag_name_start(char_code_at.call(source, p - base))
+		)
 			return null;
 		const tag_start = p;
 		p++;
-		while (p < length && this.is_tag_name_char(source.charCodeAt(p - base)))
+		while (
+			p < length &&
+			this.is_tag_name_char(char_code_at.call(source, p - base))
+		)
 			p++;
-		const tag = source.slice(tag_start - base, p - base);
+		const tag = string_slice.call(source, tag_start - base, p - base);
 
 		// optional whitespace before >
 		while (
 			p < length &&
-			(source.charCodeAt(p - base) === SPACE ||
-				source.charCodeAt(p - base) === TAB)
+			(char_code_at.call(source, p - base) === SPACE ||
+				char_code_at.call(source, p - base) === TAB)
 		)
 			p++;
 
 		// must end with >
-		if (p >= length || source.charCodeAt(p - base) !== CLOSE_ANGLE_BRACKET)
+		if (
+			p >= length ||
+			char_code_at.call(source, p - base) !== CLOSE_ANGLE_BRACKET
+		)
 			return null;
 		return { tag, end: p + 1 };
 	}
@@ -2282,14 +2530,14 @@ export class PFMParser {
 		| false {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		let p = pos;
 
 		// must be <!--
 		if (
-			source.charCodeAt(p - base) !== EXCLAMATION_MARK ||
-			source.charCodeAt(p + 1 - base) !== DASH ||
-			source.charCodeAt(p + 2 - base) !== DASH
+			char_code_at.call(source, p - base) !== EXCLAMATION_MARK ||
+			char_code_at.call(source, p + 1 - base) !== DASH ||
+			char_code_at.call(source, p + 2 - base) !== DASH
 		) {
 			if (p + 2 >= length && !this.finished) return false;
 			return null;
@@ -2300,9 +2548,9 @@ export class PFMParser {
 		// scan for -->
 		while (p + 2 < length) {
 			if (
-				source.charCodeAt(p - base) === DASH &&
-				source.charCodeAt(p + 1 - base) === DASH &&
-				source.charCodeAt(p + 2 - base) === CLOSE_ANGLE_BRACKET
+				char_code_at.call(source, p - base) === DASH &&
+				char_code_at.call(source, p + 1 - base) === DASH &&
+				char_code_at.call(source, p + 2 - base) === CLOSE_ANGLE_BRACKET
 			) {
 				return { content_start, content_end: p, end: p + 3 };
 			}
@@ -2333,7 +2581,7 @@ export class PFMParser {
 			// the opener is no longer on the node stack
 			while (this.node_stack.length > 1) {
 				const top_id = this.node_stack[this.node_stack.length - 1];
-				if (!this.closed_flags[top_id]) {
+				if (!this.is_closed(top_id)) {
 					this.out.set_value_end(top_id, this.cursor);
 					this.emit_close(top_id, this.cursor);
 				}
@@ -2370,7 +2618,7 @@ export class PFMParser {
 	// the node stack to a base computed from them
 	private close_node_inside_html(): void {
 		const id = this.node_stack[this.node_stack.length - 1];
-		switch (this.NodeKind_array[id]) {
+		switch (this.kind_of(id)) {
 			case NodeKind.list_item:
 				this.close_list_nodes();
 				return;
@@ -2381,7 +2629,7 @@ export class PFMParser {
 				return;
 			case NodeKind.table:
 				// the row is not on the node stack
-				if (this.table_row_id !== 0 && !this.closed_flags[this.table_row_id]) {
+				if (this.table_row_id !== 0 && !this.is_closed(this.table_row_id)) {
 					this.pad_and_close_row();
 				}
 				this.close_table_node();
@@ -2412,16 +2660,13 @@ export class PFMParser {
 				this.directive_text_pop(id);
 				break;
 		}
-		if (
-			this.NodeKind_array[id] !== NodeKind.paragraph &&
-			this.pending_has(id)
-		) {
+		if (this.kind_of(id) !== NodeKind.paragraph && this.pending_has(id)) {
 			// an unclosed delimiter becomes literal text now, revoking it only at
 			// finalize would come after a tight list has already unwrapped its
 			// paragraph
 			this.out.revoke(id);
 			this.pending_remove(id);
-		} else if (!this.closed_flags[id]) {
+		} else if (!this.is_closed(id)) {
 			this.out.set_value_end(id, this.cursor);
 			this.emit_close(id, this.cursor);
 		}
@@ -2442,12 +2687,12 @@ export class PFMParser {
 	} | null {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
-		if (pos >= length || source.charCodeAt(pos - base) !== OPEN_BRACE)
+		const length = this.source_end;
+		if (pos >= length || char_code_at.call(source, pos - base) !== OPEN_BRACE)
 			return null;
 		let p = pos + 1;
 		if (p >= length) return null;
-		const sigil = source.charCodeAt(p - base);
+		const sigil = char_code_at.call(source, p - base);
 		if (sigil !== OCTOTHERP && sigil !== COLON && sigil !== SLASH) return null;
 		const kind_ch = sigil === OCTOTHERP ? '#' : sigil === COLON ? ':' : '/';
 		p++;
@@ -2456,31 +2701,31 @@ export class PFMParser {
 		const tag_start = p;
 		while (
 			p < length &&
-			source.charCodeAt(p - base) !== SPACE &&
-			source.charCodeAt(p - base) !== TAB &&
-			source.charCodeAt(p - base) !== CLOSE_BRACE
+			char_code_at.call(source, p - base) !== SPACE &&
+			char_code_at.call(source, p - base) !== TAB &&
+			char_code_at.call(source, p - base) !== CLOSE_BRACE
 		)
 			p++;
 		if (p === tag_start) return null;
-		let tag = source.slice(tag_start - base, p - base);
+		let tag = string_slice.call(source, tag_start - base, p - base);
 
 		// handle {:else if expr} - "else if" is a compound tag name
 		if (kind_ch === ':' && tag === 'else') {
 			const save = p;
 			while (
 				p < length &&
-				(source.charCodeAt(p - base) === SPACE ||
-					source.charCodeAt(p - base) === TAB)
+				(char_code_at.call(source, p - base) === SPACE ||
+					char_code_at.call(source, p - base) === TAB)
 			)
 				p++;
 			if (
 				p + 1 < length &&
-				source.charCodeAt(p - base) === 105 /* i */ &&
-				source.charCodeAt(p + 1 - base) === 102 /* f */ &&
+				char_code_at.call(source, p - base) === 105 /* i */ &&
+				char_code_at.call(source, p + 1 - base) === 102 /* f */ &&
 				(p + 2 >= length ||
-					source.charCodeAt(p + 2 - base) === SPACE ||
-					source.charCodeAt(p + 2 - base) === TAB ||
-					source.charCodeAt(p + 2 - base) === CLOSE_BRACE)
+					char_code_at.call(source, p + 2 - base) === SPACE ||
+					char_code_at.call(source, p + 2 - base) === TAB ||
+					char_code_at.call(source, p + 2 - base) === CLOSE_BRACE)
 			) {
 				tag = 'else if';
 				p += 2;
@@ -2493,11 +2738,11 @@ export class PFMParser {
 			// {/tag} - no expression
 			while (
 				p < length &&
-				(source.charCodeAt(p - base) === SPACE ||
-					source.charCodeAt(p - base) === TAB)
+				(char_code_at.call(source, p - base) === SPACE ||
+					char_code_at.call(source, p - base) === TAB)
 			)
 				p++;
-			if (p >= length || source.charCodeAt(p - base) !== CLOSE_BRACE)
+			if (p >= length || char_code_at.call(source, p - base) !== CLOSE_BRACE)
 				return null;
 			return { kind: kind_ch, tag, expr_start: 0, expr_end: 0, end: p + 1 };
 		}
@@ -2505,12 +2750,12 @@ export class PFMParser {
 		// skip whitespace after tag name
 		while (
 			p < length &&
-			(source.charCodeAt(p - base) === SPACE ||
-				source.charCodeAt(p - base) === TAB)
+			(char_code_at.call(source, p - base) === SPACE ||
+				char_code_at.call(source, p - base) === TAB)
 		)
 			p++;
 
-		if (p < length && source.charCodeAt(p - base) === CLOSE_BRACE) {
+		if (p < length && char_code_at.call(source, p - base) === CLOSE_BRACE) {
 			// no expression: {#tag} or {:tag}
 			return { kind: kind_ch, tag, expr_start: 0, expr_end: 0, end: p + 1 };
 		}
@@ -2538,11 +2783,11 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		if (
-			pos >= base + source.length ||
-			source.charCodeAt(pos - base) !== OPEN_BRACE
+			pos >= this.source_end ||
+			char_code_at.call(source, pos - base) !== OPEN_BRACE
 		)
 			return false;
-		const next = source.charCodeAt(pos + 1 - base);
+		const next = char_code_at.call(source, pos + 1 - base);
 		return next === COLON || next === SLASH;
 	}
 
@@ -2555,12 +2800,12 @@ export class PFMParser {
 	private find_matching_brace(pos: number): number {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		let depth = 1;
 		let p = pos;
 
 		while (p < length) {
-			const ch = source.charCodeAt(p - base);
+			const ch = char_code_at.call(source, p - base);
 
 			switch (ch) {
 				case OPEN_BRACE:
@@ -2576,8 +2821,8 @@ export class PFMParser {
 				case APOSTROPHE: {
 					// skip string literal
 					p++;
-					while (p < length && source.charCodeAt(p - base) !== ch) {
-						if (source.charCodeAt(p - base) === BACKSLASH) p++; // skip escaped char
+					while (p < length && char_code_at.call(source, p - base) !== ch) {
+						if (char_code_at.call(source, p - base) === BACKSLASH) p++;
 						p++;
 					}
 					if (p < length) p++; // skip closing quote
@@ -2586,13 +2831,16 @@ export class PFMParser {
 				case BACKTICK: {
 					// skip template literal, respecting ${} interpolations
 					p++;
-					while (p < length && source.charCodeAt(p - base) !== BACKTICK) {
-						if (source.charCodeAt(p - base) === BACKSLASH) {
+					while (
+						p < length &&
+						char_code_at.call(source, p - base) !== BACKTICK
+					) {
+						if (char_code_at.call(source, p - base) === BACKSLASH) {
 							p++;
 						} else if (
-							source.charCodeAt(p - base) === 36 /* $ */ &&
+							char_code_at.call(source, p - base) === 36 /* $ */ &&
 							p + 1 < length &&
-							source.charCodeAt(p + 1 - base) === OPEN_BRACE
+							char_code_at.call(source, p + 1 - base) === OPEN_BRACE
 						) {
 							p += 2; // skip ${
 							// recursively find the matching } for the interpolation
@@ -2608,19 +2856,29 @@ export class PFMParser {
 				}
 				case SLASH: {
 					// skip // line comments
-					if (p + 1 < length && source.charCodeAt(p + 1 - base) === SLASH) {
+					if (
+						p + 1 < length &&
+						char_code_at.call(source, p + 1 - base) === SLASH
+					) {
 						p += 2;
-						while (p < length && source.charCodeAt(p - base) !== LINEFEED) p++;
+						while (
+							p < length &&
+							char_code_at.call(source, p - base) !== LINEFEED
+						)
+							p++;
 						break;
 					}
 					// skip /* block comments */
-					if (p + 1 < length && source.charCodeAt(p + 1 - base) === ASTERISK) {
+					if (
+						p + 1 < length &&
+						char_code_at.call(source, p + 1 - base) === ASTERISK
+					) {
 						p += 2;
 						while (p < length) {
 							if (
-								source.charCodeAt(p - base) === ASTERISK &&
+								char_code_at.call(source, p - base) === ASTERISK &&
 								p + 1 < length &&
-								source.charCodeAt(p + 1 - base) === SLASH
+								char_code_at.call(source, p + 1 - base) === SLASH
 							) {
 								p += 2;
 								break;
@@ -2654,26 +2912,26 @@ export class PFMParser {
 
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 		let p = pos;
 
 		// skip optional leading whitespace
 		while (
 			p < length &&
-			(source.charCodeAt(p - base) === SPACE ||
-				source.charCodeAt(p - base) === TAB)
+			(char_code_at.call(source, p - base) === SPACE ||
+				char_code_at.call(source, p - base) === TAB)
 		)
 			p++;
 
 		// must start with [
 		if (p >= length) return this.finished ? -1 : -2;
-		if (source.charCodeAt(p - base) !== OPEN_SQUARE_BRACKET) return -1;
+		if (char_code_at.call(source, p - base) !== OPEN_SQUARE_BRACKET) return -1;
 		p++;
 
 		// parse label - no line breaks, no empty label
 		const label_start = p;
 		while (p < length) {
-			const ch = source.charCodeAt(p - base);
+			const ch = char_code_at.call(source, p - base);
 			if (ch === CLOSE_SQUARE_BRACKET) break;
 			if (ch === LINEFEED || ch === OPEN_SQUARE_BRACKET) return -1;
 			if (ch === BACKSLASH && p + 1 < length) {
@@ -2685,29 +2943,29 @@ export class PFMParser {
 		if (p >= length) return this.finished ? -1 : -2;
 		if (p === label_start) return -1; // empty label
 
-		const label = source.slice(label_start - base, p - base);
+		const label = string_slice.call(source, label_start - base, p - base);
 		p++; // skip ]
 
 		// must have : immediately after ]
 		if (p >= length) return this.finished ? -1 : -2;
-		if (source.charCodeAt(p - base) !== COLON) return -1;
+		if (char_code_at.call(source, p - base) !== COLON) return -1;
 		p++;
 
 		// skip optional whitespace (including at most one line break)
 		let saw_newline = false;
 		while (
 			p < length &&
-			(source.charCodeAt(p - base) === SPACE ||
-				source.charCodeAt(p - base) === TAB)
+			(char_code_at.call(source, p - base) === SPACE ||
+				char_code_at.call(source, p - base) === TAB)
 		)
 			p++;
-		if (p < length && source.charCodeAt(p - base) === LINEFEED) {
+		if (p < length && char_code_at.call(source, p - base) === LINEFEED) {
 			saw_newline = true;
 			p++;
 			while (
 				p < length &&
-				(source.charCodeAt(p - base) === SPACE ||
-					source.charCodeAt(p - base) === TAB)
+				(char_code_at.call(source, p - base) === SPACE ||
+					char_code_at.call(source, p - base) === TAB)
 			)
 				p++;
 		}
@@ -2716,14 +2974,14 @@ export class PFMParser {
 		if (p >= length) return this.finished ? -1 : -2;
 
 		let url_start: number, url_end: number;
-		const dest_ch = source.charCodeAt(p - base);
+		const dest_ch = char_code_at.call(source, p - base);
 
 		if (dest_ch === OPEN_ANGLE_BRACKET) {
 			// angle-bracket destination: <url>
 			p++;
 			url_start = p;
 			while (p < length) {
-				const ch = source.charCodeAt(p - base);
+				const ch = char_code_at.call(source, p - base);
 				if (ch === CLOSE_ANGLE_BRACKET) break;
 				if (ch === LINEFEED || ch === OPEN_ANGLE_BRACKET) return -1;
 				if (ch === BACKSLASH && p + 1 < length) {
@@ -2743,7 +3001,7 @@ export class PFMParser {
 			url_start = p;
 			let paren_depth = 0;
 			while (p < length) {
-				const ch = source.charCodeAt(p - base);
+				const ch = char_code_at.call(source, p - base);
 				if (ch <= 0x20) break; // whitespace or control
 				if (ch === CLOSE_PAREN) {
 					if (paren_depth === 0) break;
@@ -2761,14 +3019,14 @@ export class PFMParser {
 			if (url_start === url_end) return -1; // empty bare destination
 		}
 
-		const url = source.slice(url_start - base, url_end - base);
+		const url = string_slice.call(source, url_start - base, url_end - base);
 
 		// skip optional whitespace before title (no line break yet)
 		const pre_title_p = p;
 		while (
 			p < length &&
-			(source.charCodeAt(p - base) === SPACE ||
-				source.charCodeAt(p - base) === TAB)
+			(char_code_at.call(source, p - base) === SPACE ||
+				char_code_at.call(source, p - base) === TAB)
 		)
 			p++;
 		const had_title_ws = p > pre_title_p;
@@ -2776,19 +3034,19 @@ export class PFMParser {
 		// check for optional title
 		let title = '';
 		if (p < length) {
-			const tc = source.charCodeAt(p - base);
+			const tc = char_code_at.call(source, p - base);
 			if (tc === LINEFEED) {
 				// newline after url - check if next line has a title
 				const nl_p = p;
 				p++;
 				while (
 					p < length &&
-					(source.charCodeAt(p - base) === SPACE ||
-						source.charCodeAt(p - base) === TAB)
+					(char_code_at.call(source, p - base) === SPACE ||
+						char_code_at.call(source, p - base) === TAB)
 				)
 					p++;
 				if (p < length) {
-					const ntc = source.charCodeAt(p - base);
+					const ntc = char_code_at.call(source, p - base);
 					if (ntc === 34 || ntc === 39 || ntc === OPEN_PAREN) {
 						// try title on next line
 						const title_result = this.parse_ref_title(p);
@@ -2834,12 +3092,13 @@ export class PFMParser {
 		// must be at end of line (only whitespace allowed after)
 		while (
 			p < length &&
-			(source.charCodeAt(p - base) === SPACE ||
-				source.charCodeAt(p - base) === TAB)
+			(char_code_at.call(source, p - base) === SPACE ||
+				char_code_at.call(source, p - base) === TAB)
 		)
 			p++;
 		if (p >= length && !this.finished) return -2; // need to see end of line
-		if (p < length && source.charCodeAt(p - base) !== LINEFEED) return -1;
+		if (p < length && char_code_at.call(source, p - base) !== LINEFEED)
+			return -1;
 		if (p < length) p++; // skip newline
 
 		// store definition - first one wins
@@ -2861,9 +3120,9 @@ export class PFMParser {
 	): { title: string; end: number } | null | -2 {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 
-		const tc = source.charCodeAt(pos - base);
+		const tc = char_code_at.call(source, pos - base);
 		if (tc !== 34 && tc !== 39 && tc !== OPEN_PAREN) return null;
 		const close_char = tc === OPEN_PAREN ? CLOSE_PAREN : tc;
 
@@ -2871,9 +3130,9 @@ export class PFMParser {
 		const title_start = p;
 
 		while (p < length) {
-			const ch = source.charCodeAt(p - base);
+			const ch = char_code_at.call(source, p - base);
 			if (ch === close_char) {
-				const title = source.slice(title_start - base, p - base);
+				const title = string_slice.call(source, title_start - base, p - base);
 				return { title, end: p + 1 };
 			}
 			if (ch === LINEFEED) {
@@ -2881,11 +3140,12 @@ export class PFMParser {
 				let q = p + 1;
 				while (
 					q < length &&
-					(source.charCodeAt(q - base) === SPACE ||
-						source.charCodeAt(q - base) === TAB)
+					(char_code_at.call(source, q - base) === SPACE ||
+						char_code_at.call(source, q - base) === TAB)
 				)
 					q++;
-				if (q < length && source.charCodeAt(q - base) === LINEFEED) return null; // blank line
+				if (q < length && char_code_at.call(source, q - base) === LINEFEED)
+					return null; // blank line
 				if (q >= length && !this.finished) return -2; // need more input
 			}
 			if (ch === BACKSLASH && p + 1 < length) {
@@ -2911,11 +3171,14 @@ export class PFMParser {
 	private start_heading(parent: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 
 		let hash_count = 1;
 		let pos = this.cursor + 1;
-		while (pos < length && source.charCodeAt(pos - base) === OCTOTHERP) {
+		while (
+			pos < length &&
+			char_code_at.call(source, pos - base) === OCTOTHERP
+		) {
 			hash_count++;
 			pos++;
 		}
@@ -2933,7 +3196,7 @@ export class PFMParser {
 			return false; // hold back
 		}
 
-		const after_hash = source.charCodeAt(pos - base);
+		const after_hash = char_code_at.call(source, pos - base);
 		if (
 			pos < length &&
 			after_hash !== SPACE &&
@@ -2952,8 +3215,8 @@ export class PFMParser {
 			content_start++;
 			while (
 				content_start < length &&
-				(source.charCodeAt(content_start - base) === SPACE ||
-					source.charCodeAt(content_start - base) === TAB)
+				(char_code_at.call(source, content_start - base) === SPACE ||
+					char_code_at.call(source, content_start - base) === TAB)
 			) {
 				content_start++;
 			}
@@ -3005,7 +3268,7 @@ export class PFMParser {
 		if (ind < this.list_content_offset) return false;
 		const stripped = this.skip_columns(np, this.list_content_offset);
 		return (
-			stripped < this.source_base + this.source.length &&
+			stripped < this.source_end &&
 			this.try_parse_list_marker(stripped) !== null
 		);
 	}
@@ -3063,7 +3326,8 @@ export class PFMParser {
 	private _run(): void {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
+		const window_len = length - base;
 
 		// reset progress counter,  new data may have been fed since last _run()
 		this.loop_without_progress = 0;
@@ -3092,12 +3356,12 @@ export class PFMParser {
 					let write = 0;
 					for (let pi = 0; pi < this.pending_count; pi++) {
 						const pid = this.pending_ids[pi];
-						const pkind = this.NodeKind_array[pid];
+						const pkind = this.kind_of(pid);
 						if (pkind === NodeKind.paragraph) {
 							// preserve - finalize_list_pending_para owns this one.
 							this.pending_ids[write] = pid;
 							this.pending_starts[write] = this.pending_starts[pi];
-							this.pending_slots[pid] = write;
+							this.id_slots[pid] = write;
 							write++;
 							continue;
 						}
@@ -3105,7 +3369,7 @@ export class PFMParser {
 							// still on the node stack - this frame is open above us.
 							this.pending_ids[write] = pid;
 							this.pending_starts[write] = this.pending_starts[pi];
-							this.pending_slots[pid] = write;
+							this.id_slots[pid] = write;
 							write++;
 							continue;
 						}
@@ -3114,10 +3378,13 @@ export class PFMParser {
 							let pend = pstart;
 							while (
 								pend < length &&
-								source.charCodeAt(pend - base) !== LINEFEED
+								char_code_at.call(source, pend - base) !== LINEFEED
 							)
 								pend++;
-							this.out.revoke(pid, source.slice(pstart - base, pend - base));
+							this.out.revoke(
+								pid,
+								string_slice.call(source, pstart - base, pend - base)
+							);
 						} else {
 							this.out.revoke(pid);
 							if (pkind === NodeKind.directive_inline) {
@@ -3130,7 +3397,10 @@ export class PFMParser {
 			}
 
 			const active = this.states[this.states.length - 1];
-			const code = source.charCodeAt(this.cursor - base);
+			// keeps the builtin call in bounds so turbofan never deopts it, a cursor behind source_base reads nan too
+			const code_at = this.cursor - base;
+			const code =
+				code_at >>> 0 < window_len ? char_code_at.call(source, code_at) : NaN;
 
 			const current_node = this.node_stack[this.node_stack.length - 1];
 
@@ -3156,7 +3426,7 @@ export class PFMParser {
 						this.trim_point = this.cursor;
 					}
 					if (code !== code) {
-						this.chomp1();
+						this.cursor++;
 						continue;
 					}
 
@@ -3171,8 +3441,8 @@ export class PFMParser {
 						code === DASH &&
 						!this.finished &&
 						length < 4 &&
-						(length < 2 || source.charCodeAt(1 - base) === DASH) &&
-						(length < 3 || source.charCodeAt(2 - base) === DASH)
+						(length < 2 || char_code_at.call(source, 1 - base) === DASH) &&
+						(length < 3 || char_code_at.call(source, 2 - base) === DASH)
 					) {
 						break main_loop;
 					}
@@ -3180,10 +3450,10 @@ export class PFMParser {
 						this.cursor === 0 &&
 						!this.frontmatter_failed &&
 						code === DASH &&
-						source.charCodeAt(1 - base) === DASH &&
-						source.charCodeAt(2 - base) === DASH
+						char_code_at.call(source, 1 - base) === DASH &&
+						char_code_at.call(source, 2 - base) === DASH
 					) {
-						const ch3 = source.charCodeAt(3 - base);
+						const ch3 = char_code_at.call(source, 3 - base);
 						if (ch3 === LINEFEED || ch3 !== ch3 /* nan = eof */) {
 							// need at least the opening `---\n` before we commit
 							if (!this.finished && length < 4) break main_loop;
@@ -3238,7 +3508,7 @@ export class PFMParser {
 								current_node
 							);
 							this.emit_close(id, this.cursor + 1);
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -3247,13 +3517,16 @@ export class PFMParser {
 							let pos = this.cursor;
 							while (
 								pos < length &&
-								(source.charCodeAt(pos - base) === SPACE ||
-									source.charCodeAt(pos - base) === TAB)
+								(char_code_at.call(source, pos - base) === SPACE ||
+									char_code_at.call(source, pos - base) === TAB)
 							) {
 								pos++;
 							}
 							if (pos >= length && !this.finished) break main_loop;
-							if (pos < length && source.charCodeAt(pos - base) === LINEFEED) {
+							if (
+								pos < length &&
+								char_code_at.call(source, pos - base) === LINEFEED
+							) {
 								const id = this.emit_open(
 									NodeKind.line_break,
 									this.cursor,
@@ -3263,7 +3536,7 @@ export class PFMParser {
 								this.chomp(pos + 1, true);
 								continue;
 							}
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -3289,7 +3562,7 @@ export class PFMParser {
 							if (!this.finished) {
 								let could_be_tb = true;
 								for (let p = this.cursor + 1; p < length; p++) {
-									const ch = source.charCodeAt(p - base);
+									const ch = char_code_at.call(source, p - base);
 									if (ch === LINEFEED) {
 										could_be_tb = false;
 										break;
@@ -3305,7 +3578,7 @@ export class PFMParser {
 								let line_end = this.cursor;
 								while (
 									line_end < length &&
-									source.charCodeAt(line_end - base) !== LINEFEED
+									char_code_at.call(source, line_end - base) !== LINEFEED
 								) {
 									line_end++;
 								}
@@ -3343,7 +3616,7 @@ export class PFMParser {
 							// (no closing > visible in the available source).
 							if (
 								!this.finished &&
-								source.indexOf('>', this.cursor + 1 - base) === -1
+								string_index_of.call(source, '>', this.cursor + 1 - base) === -1
 							) {
 								break main_loop;
 							}
@@ -3398,39 +3671,7 @@ export class PFMParser {
 									this.emit_close(html_id, blk_tag.end);
 									this.chomp(blk_tag.end, true);
 								} else if (this.is_raw_text_tag(blk_tag.tag)) {
-									// raw text elements (script, style): skip content, scan for close tag
-									const raw = this.find_raw_close_tag(blk_tag.end, blk_tag.tag);
-									if (!raw) {
-										if (!this.finished) break main_loop;
-										// eof without close tag - emit with remaining content as value
-										const html_id = this.emit_open(
-											NodeKind.html,
-											this.cursor,
-											current_node
-										);
-										this.out.attr(html_id, 'tag', blk_tag.tag);
-										if (Object.keys(blk_tag.attributes).length > 0) {
-											this.out.attr(html_id, 'attributes', blk_tag.attributes);
-										}
-										this.out.set_value_start(html_id, blk_tag.end);
-										this.out.set_value_end(html_id, length);
-										this.emit_close(html_id, length);
-										this.chomp(length, true);
-									} else {
-										const html_id = this.emit_open(
-											NodeKind.html,
-											this.cursor,
-											current_node
-										);
-										this.out.attr(html_id, 'tag', blk_tag.tag);
-										if (Object.keys(blk_tag.attributes).length > 0) {
-											this.out.attr(html_id, 'attributes', blk_tag.attributes);
-										}
-										this.out.set_value_start(html_id, blk_tag.end);
-										this.out.set_value_end(html_id, raw.content_end);
-										this.emit_close(html_id, raw.end);
-										this.chomp(raw.end, true);
-									}
+									this.open_raw_text(blk_tag, current_node);
 								} else {
 									const html_id = this.emit_open(
 										NodeKind.html,
@@ -3465,7 +3706,8 @@ export class PFMParser {
 
 						case CLOSE_ANGLE_BRACKET: {
 							let p = this.cursor + 1;
-							if (p < length && source.charCodeAt(p - base) === SPACE) p++;
+							if (p < length && char_code_at.call(source, p - base) === SPACE)
+								p++;
 
 							this.block_quote_depth++;
 							const bq_id = this.emit_open(
@@ -3520,7 +3762,7 @@ export class PFMParser {
 							// need a complete line for link ref definition detection
 							if (
 								!this.finished &&
-								source.indexOf('\n', this.cursor - base) === -1
+								string_index_of.call(source, '\n', this.cursor - base) === -1
 							) {
 								break main_loop;
 							}
@@ -3575,12 +3817,12 @@ export class PFMParser {
 									if (code !== PLUS) {
 										while (
 											p < length &&
-											source.charCodeAt(p - base) >= 48 &&
-											source.charCodeAt(p - base) <= 57
+											char_code_at.call(source, p - base) >= 48 &&
+											char_code_at.call(source, p - base) <= 57
 										)
 											p++;
 										if (p >= length) break main_loop;
-										const after = source.charCodeAt(p - base);
+										const after = char_code_at.call(source, p - base);
 										if (after === DOT || after === CLOSE_PAREN) p++;
 									}
 									if (p >= length) break main_loop;
@@ -3616,7 +3858,8 @@ export class PFMParser {
 						if (!this.finished) break main_loop;
 						this.emit_close(current_node, this.cursor);
 						this.states.pop();
-						this.node_stack.length = node_stack_base;
+						// truncate_stack pops, the generic length setter is slow and this nearly always drops one element
+						truncate_stack(this.node_stack, node_stack_base);
 						continue;
 					}
 
@@ -3649,7 +3892,7 @@ export class PFMParser {
 								// handlers (each calls skip_bq_markers(_, 1)).
 								this.emit_close(current_node, this.cursor);
 								this.states.pop();
-								this.node_stack.length = node_stack_base;
+								truncate_stack(this.node_stack, node_stack_base);
 								continue;
 							}
 
@@ -3658,13 +3901,13 @@ export class PFMParser {
 								this.is_blank_at_pos(stripped) ||
 								this.is_heading_start(stripped) ||
 								this.is_thematic_break_start(stripped) ||
-								(source.charCodeAt(stripped - base) === BACKTICK &&
-									source.charCodeAt(stripped + 1 - base) === BACKTICK &&
-									source.charCodeAt(stripped + 2 - base) === BACKTICK)
+								(char_code_at.call(source, stripped - base) === BACKTICK &&
+									char_code_at.call(source, stripped + 1 - base) === BACKTICK &&
+									char_code_at.call(source, stripped + 2 - base) === BACKTICK)
 							) {
 								this.emit_close(current_node, this.cursor);
 								this.states.pop();
-								this.node_stack.length = node_stack_base;
+								truncate_stack(this.node_stack, node_stack_base);
 								continue;
 							}
 							// inside a list inside a blockquote: a list marker on the
@@ -3682,7 +3925,7 @@ export class PFMParser {
 								) {
 									this.emit_close(current_node, this.cursor);
 									this.states.pop();
-									this.node_stack.length = node_stack_base;
+									truncate_stack(this.node_stack, node_stack_base);
 									continue;
 								}
 							}
@@ -3702,7 +3945,7 @@ export class PFMParser {
 						if (this.is_block_interrupt(next_pos)) {
 							this.emit_close(current_node, this.cursor);
 							this.states.pop();
-							this.node_stack.length = node_stack_base;
+							truncate_stack(this.node_stack, node_stack_base);
 							continue;
 						}
 
@@ -3720,7 +3963,7 @@ export class PFMParser {
 								) {
 									this.emit_close(current_node, this.cursor);
 									this.states.pop();
-									this.node_stack.length = node_stack_base;
+									truncate_stack(this.node_stack, node_stack_base);
 									continue;
 								}
 							}
@@ -3732,13 +3975,13 @@ export class PFMParser {
 							current_node
 						);
 						this.emit_close(sb_p_nq, this.cursor + 1);
-						this.chomp1();
+						this.cursor++;
 						// strip leading whitespace on continuation line
 						while (
 							this.cursor < length &&
-							source.charCodeAt(this.cursor - base) === SPACE
+							char_code_at.call(source, this.cursor - base) === SPACE
 						) {
-							this.chomp1();
+							this.cursor++;
 						}
 						this.states.push(StateKind.inline);
 						continue;
@@ -3749,207 +3992,24 @@ export class PFMParser {
 				}
 
 				case StateKind.code_fence_start: {
-					if (code === BACKTICK) {
-						this.extra += 1;
-						this.chomp1();
-						continue;
-					} else if (this.extra >= 3) {
-						// pfm: inside a blockquote, the fence is only valid if
-						// all content lines up to the closing fence have `>`
-						// markers. otherwise, the opening backticks become
-						// paragraph text.
-						if (this.block_quote_depth > 0) {
-							// find end of info line.
-							let info_end = this.cursor;
-							while (
-								info_end < length &&
-								source.charCodeAt(info_end - base) !== LINEFEED
-							)
-								info_end++;
-							if (info_end >= length && !this.finished) break main_loop;
-							const scan = this.bq_fence_scan(
-								info_end + 1,
-								this.extra,
-								this.block_quote_depth
-							);
-							if (scan === 0) break main_loop; // stall for more input
-							if (scan === -1) {
-								// fence cannot close inside the blockquote -
-								// treat the opening backticks as literal text.
-								// emit a paragraph with a text node containing
-								// the backticks, then let the paragraph state
-								// continue parsing the rest of the line.
-								this.states.pop();
-								const bq_fp_id = this.emit_open(
-									NodeKind.paragraph,
-									this.cursor - this.extra,
-									current_node
-								);
-								this.node_stack.push(bq_fp_id);
-								const bq_ft_id = this.emit_open(
-									NodeKind.text,
-									this.cursor - this.extra,
-									bq_fp_id
-								);
-								this.out.set_value_start(bq_ft_id, this.cursor - this.extra);
-								this.out.set_value_end(bq_ft_id, this.cursor);
-								this.emit_close(bq_ft_id, this.cursor);
-								this.states.push(StateKind.paragraph);
-								continue;
-							}
-						}
-						this.states.pop();
-						this.states.push(StateKind.code_fence_info);
-						const cf_id = this.emit_open(
-							NodeKind.code_fence,
-							this.cursor - this.extra,
-							current_node
-						);
-						this.node_stack.push(cf_id);
-
-						this.info_start_pos = this.cursor;
-
-						continue;
-					} else {
-						this.states.pop();
-						const para_id = this.emit_open(
-							NodeKind.paragraph,
-							this.cursor - this.extra,
-							current_node
-						);
-						this.node_stack.push(para_id);
-						this.states.push(StateKind.paragraph);
-						this.chomp(this.cursor - this.extra, true);
-						continue;
-					}
+					if (this._run_code_fence_start(code, current_node)) break main_loop;
+					continue;
 				}
 
 				case StateKind.code_fence_info: {
-					if (!code && this.finished) {
-						this.states.pop();
-						this.emit_close(current_node, length);
-						this.out.set_value_start(current_node, length);
-						this.out.set_value_end(current_node, length);
-						break;
-					} else if (!code) {
-						break main_loop; // wait for more input
-					} else if (this.cursor + 1 >= length && this.finished) {
-						this.emit_close(current_node, length);
-						this.out.set_value_end(current_node, length);
-						this.states.pop();
-						continue;
-					} else if (this.cursor + 1 >= length) {
-						break main_loop; // wait for more input
-					}
-					if (code !== LINEFEED) {
-						this.chomp1();
-						continue;
-					} else if (this.cursor >= length && this.finished) {
-						this.emit_close(current_node, length);
-						this.out.set_value_end(current_node, length);
-						this.states.pop();
-						continue;
-					} else if (this.cursor >= length) {
-						break main_loop;
-					} else {
-						this.info_end_pos = this.cursor;
-						this.states.pop();
-						this.states.push(StateKind.code_fence_content);
-						this.out.attr(current_node, 'info_start', this.info_start_pos);
-						this.out.attr(current_node, 'info_end', this.cursor);
-						this.chomp1();
-
-						this.out.set_value_start(current_node, this.cursor);
-						this.fence_scan = this.cursor;
-
-						continue;
-					}
+					if (this._run_code_fence_info(code, current_node)) break main_loop;
+					continue;
 				}
 
 				case StateKind.code_fence_content: {
-					// scan line-by-line for closing fence: a line with only
-					// optional whitespace followed by >= extra backticks.
-					// resume at fence_scan, a line is ruled out only once its backtick run ends inside the buffer
-					const fence_len = this.extra;
-					let line = this.fence_scan;
-					let found_index = -1;
-
-					for (;;) {
-						let lp = line;
-						while (
-							lp < length &&
-							(source.charCodeAt(lp - base) === SPACE ||
-								source.charCodeAt(lp - base) === TAB)
-						)
-							lp++;
-						const bt_start = lp;
-						while (lp < length && source.charCodeAt(lp - base) === BACKTICK)
-							lp++;
-						if (lp - bt_start >= fence_len) {
-							found_index = bt_start;
-							break;
-						}
-						const rel = source.indexOf('\n', line - base);
-						if (rel === -1) break;
-						line = rel + base + 1;
-					}
-
-					if (found_index === -1) {
-						if (!this.finished) {
-							this.fence_scan = line;
-							if (this.can_trim(this.node_stack.length - 1)) {
-								this.trim_point = line;
-							}
-							break main_loop;
-						}
-						this.out.set_value_end(current_node, length);
-						this.states.pop();
-						this.states.push(StateKind.code_fence_text_end);
-						this.chomp(length, true);
-						continue;
-					}
-					const found_nl = line - 1;
-
-					// count actual backticks at found_index for chomp
-					let bt_end = found_index;
-					while (
-						bt_end < length &&
-						source.charCodeAt(bt_end - base) === BACKTICK
-					)
-						bt_end++;
-
-					this.states.pop();
-					this.states.push(StateKind.code_fence_text_end);
-					this.out.set_value_end(current_node, found_nl);
-					this.chomp(bt_end, true);
+					if (this._run_code_fence_content(current_node)) break main_loop;
 					continue;
 				}
 
 				case StateKind.code_fence_text_end: {
-					if (this.cursor >= length && !this.finished) break main_loop;
-					if (this.cursor >= length || code === LINEFEED) {
-						this.emit_close(current_node, this.cursor);
-						this.node_stack.pop();
-						this.states.pop();
-						this.chomp1();
-						continue;
-					}
-					if (code === BACKTICK) {
-						this.chomp1();
-						continue;
-					}
-					// non-backtick trailing content - scan to end of line
-					{
-						let ep = this.cursor;
-						while (ep < length && source.charCodeAt(ep - base) !== LINEFEED)
-							ep++;
-						if (ep >= length && !this.finished) break main_loop;
-						this.emit_close(current_node, this.cursor);
-						this.node_stack.pop();
-						this.states.pop();
-						this.chomp(ep, true);
-						continue;
-					}
+					if (this._run_code_fence_text_end(code, current_node))
+						break main_loop;
+					continue;
 				}
 
 				case StateKind.heading_marker: {
@@ -3960,8 +4020,8 @@ export class PFMParser {
 						let value_end = this.cursor;
 						while (
 							value_end > 0 &&
-							(source.charCodeAt(value_end - 1 - base) === SPACE ||
-								source.charCodeAt(value_end - 1 - base) === TAB)
+							(char_code_at.call(source, value_end - 1 - base) === SPACE ||
+								char_code_at.call(source, value_end - 1 - base) === TAB)
 						) {
 							value_end--;
 						}
@@ -3993,8 +4053,8 @@ export class PFMParser {
 					}
 					if (
 						code === ASTERISK &&
-						this.prev & (CharMask.word | CharMask.punctuation) &&
-						this.next_class & (CharMask.whitespace | CharMask.punctuation)
+						this.prev_class() & (CharMask.word | CharMask.punctuation) &&
+						this.next_class() & (CharMask.whitespace | CharMask.punctuation)
 					) {
 						const n_id = this.node_stack[this.node_stack.length - 1];
 
@@ -4017,7 +4077,7 @@ export class PFMParser {
 						this.pending_remove(n_id);
 						this.states.pop();
 						this.node_stack.pop();
-						this.chomp1();
+						this.cursor++;
 						// pop trailing inline so parent state sees next char directly
 						if (this.states[this.states.length - 1] === StateKind.inline) {
 							this.states.pop();
@@ -4036,2028 +4096,59 @@ export class PFMParser {
 				}
 
 				case StateKind.emphasis: {
-					if (!code) {
-						this._unwind_unterminated_delimiter();
-						continue;
-					}
-					// need the char after `_` to do the flanking check without
-					// mis-committing on the nan wildcard mask at end-of-buffer.
-					if (
-						code === UNDERSCORE &&
-						!this.finished &&
-						this.cursor + 1 >= length
-					) {
-						break main_loop;
-					}
-					if (
-						code === UNDERSCORE &&
-						this.prev & (CharMask.word | CharMask.punctuation) &&
-						this.next_class & (CharMask.whitespace | CharMask.punctuation)
-					) {
-						const n_id = this.node_stack[this.node_stack.length - 1];
-
-						// no empty emphasis: if the node has no children, revoke it.
-						if (!this.emphasis_has_content) {
-							this.out.revoke(n_id);
-							this.pending_remove(n_id);
-							this.states.pop();
-							this.node_stack.pop();
-							if (this.states[this.states.length - 1] === StateKind.inline) {
-								this.states.pop();
-							}
-							continue;
-						}
-
-						this.out.set_value_end(n_id, this.cursor);
-						this.emit_close(n_id, this.cursor + 1);
-						this.pending_remove(n_id);
-						this.states.pop();
-						this.node_stack.pop();
-						this.chomp1();
-						if (this.states[this.states.length - 1] === StateKind.inline) {
-							this.states.pop();
-						}
-					} else if (
-						code === LINEFEED &&
-						this._delimiter_lf_close(current_node)
-					) {
-						continue;
-					} else {
-						this.emphasis_has_content = true;
-						this.states.push(StateKind.inline);
-					}
-
+					if (this._run_emphasis(code, current_node)) break main_loop;
 					continue;
 				}
 
 				case StateKind.strikethrough: {
-					if (!code) {
-						this._unwind_unterminated_delimiter();
-						continue;
-					}
-					// ~~ is a two-char token - hold back lone ~ at end of buffer
-					if (code === TILDE && !this.finished && this.cursor + 1 >= length) {
-						break main_loop;
-					}
-					// close: ~~ with right-flanking
-					if (
-						code === TILDE &&
-						source.charCodeAt(this.cursor + 1 - base) === TILDE &&
-						this.prev & (CharMask.word | CharMask.punctuation) &&
-						classify(source.charCodeAt(this.cursor + 2 - base)) &
-							(CharMask.whitespace | CharMask.punctuation)
-					) {
-						const n_id = this.node_stack[this.node_stack.length - 1];
-						this.out.set_value_end(n_id, this.cursor);
-						this.emit_close(n_id, this.cursor + 2);
-						this.pending_remove(n_id);
-						this.states.pop();
-						this.node_stack.pop();
-						this.chomp(2);
-						if (this.states[this.states.length - 1] === StateKind.inline) {
-							this.states.pop();
-						}
-					} else if (
-						code === LINEFEED &&
-						this._delimiter_lf_close(current_node)
-					) {
-						continue;
-					} else {
-						this.states.push(StateKind.inline);
-					}
+					if (this._run_strikethrough(code, current_node)) break main_loop;
 					continue;
 				}
 
 				case StateKind.superscript: {
-					if (!code) {
-						this._unwind_unterminated_delimiter();
-						continue;
-					}
-					// close: ^ after content (no right-flanking needed -
-					// ^ is unambiguous, and x^2^y must work)
-					if (
-						code === CARET &&
-						this.prev & (CharMask.word | CharMask.punctuation)
-					) {
-						const n_id = this.node_stack[this.node_stack.length - 1];
-						this.out.set_value_end(n_id, this.cursor);
-						this.emit_close(n_id, this.cursor + 1);
-						this.pending_remove(n_id);
-						this.states.pop();
-						this.node_stack.pop();
-						this.chomp1();
-						if (this.states[this.states.length - 1] === StateKind.inline) {
-							this.states.pop();
-						}
-					} else if (
-						code === LINEFEED &&
-						this._delimiter_lf_close(current_node)
-					) {
-						continue;
-					} else {
-						this.states.push(StateKind.inline);
-					}
+					if (this._run_superscript(code, current_node)) break main_loop;
 					continue;
 				}
 
 				case StateKind.subscript: {
-					if (!code) {
-						this._unwind_unterminated_delimiter();
-						continue;
-					}
-					// close: single ~ after content (no right-flanking needed -
-					// ~ is unambiguous inside subscript, and h~2~o must work)
-					if (
-						code === TILDE &&
-						source.charCodeAt(this.cursor + 1 - base) !== TILDE &&
-						this.prev & (CharMask.word | CharMask.punctuation)
-					) {
-						const n_id = this.node_stack[this.node_stack.length - 1];
-						this.out.set_value_end(n_id, this.cursor);
-						this.emit_close(n_id, this.cursor + 1);
-						this.pending_remove(n_id);
-						this.states.pop();
-						this.node_stack.pop();
-						this.chomp1();
-						if (this.states[this.states.length - 1] === StateKind.inline) {
-							this.states.pop();
-						}
-					} else if (
-						code === LINEFEED &&
-						this._delimiter_lf_close(current_node)
-					) {
-						continue;
-					} else {
-						this.states.push(StateKind.inline);
-					}
+					if (this._run_subscript(code, current_node)) break main_loop;
 					continue;
 				}
 
 				case StateKind.link_text: {
-					// inside [link text], ![image alt], or :name[content]
-					// - stream content, watch for closing ]
-					if (!code) {
-						this._unwind_unterminated_delimiter();
-						continue;
-					}
-					if (code === CLOSE_SQUARE_BRACKET) {
-						// inline directive: ] closes the text, an optional
-						// (key=val) argument list may follow immediately
-						if (
-							this.NodeKind_array[current_node] === NodeKind.directive_inline
-						) {
-							// literal bracket from an unmatched [ in the text -
-							// dispatch to inline which consumes it as text
-							const depth_top = this.directive_text_brackets.length - 1;
-							if (this.directive_text_brackets[depth_top] > 0) {
-								this.states.push(StateKind.inline);
-								continue;
-							}
-
-							// hold back - ( might arrive next
-							const dir_after = this.cursor + 1;
-							if (dir_after >= length && !this.finished) {
-								break main_loop;
-							}
-
-							let dir_close_end = dir_after;
-							if (
-								dir_after < length &&
-								source.charCodeAt(dir_after - base) === OPEN_PAREN
-							) {
-								const parsed = this.try_parse_directive_args(dir_after);
-								if (parsed === false) break main_loop;
-								if (parsed !== null) {
-									if (parsed.args)
-										this.out.attr(current_node, 'args', parsed.args);
-									dir_close_end = parsed.end;
-								}
-								// malformed args: close at ] and leave (...) as text
-							}
-
-							this.out.set_value_end(current_node, this.cursor);
-							this.pending_remove(current_node);
-							this.emit_close(current_node, dir_close_end);
-							this.node_stack.pop();
-							this.states.pop();
-							this.directive_text_pop(current_node);
-							if (this.states[this.states.length - 1] === StateKind.inline) {
-								this.states.pop();
-							}
-							this.chomp(dir_close_end, true);
-							continue;
-						}
-
-						// found ] - need to see what follows to decide
-						const after = this.cursor + 1;
-
-						// if ] is at end of buffer and more input may come,
-						// hold back - ( might arrive next
-						if (after >= length && !this.finished) {
-							break main_loop;
-						}
-
-						if (
-							after < length &&
-							source.charCodeAt(after - base) === OPEN_PAREN
-						) {
-							// parse the (url "title") part
-							let p = after + 1;
-							// skip whitespace
-							while (
-								p < length &&
-								(source.charCodeAt(p - base) === SPACE ||
-									source.charCodeAt(p - base) === TAB)
-							)
-								p++;
-
-							let url_start = p;
-							let url_end = p;
-
-							// check for angle-bracket url
-							if (
-								p < length &&
-								source.charCodeAt(p - base) === OPEN_ANGLE_BRACKET
-							) {
-								p++;
-								url_start = p;
-								while (
-									p < length &&
-									source.charCodeAt(p - base) !== CLOSE_ANGLE_BRACKET &&
-									source.charCodeAt(p - base) !== LINEFEED
-								)
-									p++;
-								if (
-									p < length &&
-									source.charCodeAt(p - base) === CLOSE_ANGLE_BRACKET
-								) {
-									url_end = p;
-									p++;
-								}
-							} else if (
-								p < length &&
-								source.charCodeAt(p - base) === CLOSE_PAREN
-							) {
-								// empty url: [text]()
-								url_start = p;
-								url_end = p;
-							} else {
-								// regular url - balanced parens, no spaces
-								url_start = p;
-								let paren_depth = 0;
-								while (p < length) {
-									const ch = source.charCodeAt(p - base);
-									if (ch <= 0x20) break;
-									if (ch === CLOSE_PAREN) {
-										if (paren_depth === 0) break;
-										paren_depth--;
-									}
-									if (ch === OPEN_PAREN) paren_depth++;
-									if (ch === BACKSLASH && p + 1 < length) {
-										p += 2;
-										continue;
-									}
-									p++;
-								}
-								url_end = p;
-							}
-
-							// skip whitespace
-							while (
-								p < length &&
-								(source.charCodeAt(p - base) === SPACE ||
-									source.charCodeAt(p - base) === TAB)
-							)
-								p++;
-
-							// optional title
-							let title_start = -1;
-							let title_end = -1;
-							if (p < length) {
-								const tc = source.charCodeAt(p - base);
-								if (tc === 34 || tc === 39 || tc === OPEN_PAREN) {
-									const close_char = tc === OPEN_PAREN ? CLOSE_PAREN : tc;
-									p++;
-									title_start = p;
-									while (
-										p < length &&
-										source.charCodeAt(p - base) !== close_char &&
-										source.charCodeAt(p - base) !== LINEFEED
-									) {
-										if (
-											source.charCodeAt(p - base) === BACKSLASH &&
-											p + 1 < length
-										) {
-											p += 2;
-											continue;
-										}
-										p++;
-									}
-									if (
-										p < length &&
-										source.charCodeAt(p - base) === close_char
-									) {
-										title_end = p;
-										p++;
-									}
-								}
-							}
-
-							// skip trailing whitespace
-							while (
-								p < length &&
-								(source.charCodeAt(p - base) === SPACE ||
-									source.charCodeAt(p - base) === TAB)
-							)
-								p++;
-
-							if (p < length && source.charCodeAt(p - base) === CLOSE_PAREN) {
-								p++; // skip )
-								// success - set attrs and close
-								const n_id = current_node;
-								const url = source.slice(url_start - base, url_end - base);
-								const is_image = this.NodeKind_array[n_id] === NodeKind.image;
-								this.out.attr(n_id, is_image ? 'src' : 'href', url);
-								if (title_start >= 0 && title_end >= 0) {
-									this.out.attr(
-										n_id,
-										'title',
-										source.slice(title_start - base, title_end - base)
-									);
-								}
-								this.out.set_value_end(n_id, this.cursor);
-								this.pending_remove(n_id);
-								this.emit_close(n_id, p);
-								this.node_stack.pop();
-								this.states.pop();
-								if (this.states[this.states.length - 1] === StateKind.inline) {
-									this.states.pop();
-								}
-								this.chomp(p, true);
-								continue;
-							}
-
-							// url parsing didn't find ) - if we hit end of buffer
-							// and more input may come, hold back
-							if (!this.finished && p >= length) {
-								break main_loop;
-							}
-							// ( found but url is malformed - fall through to revoke
-						}
-
-						// check for reference syntax: ][ref] or ][]
-						if (
-							after < length &&
-							source.charCodeAt(after - base) === OPEN_SQUARE_BRACKET
-						) {
-							let ref_p = after + 1;
-
-							// need to see at least one char after [
-							if (ref_p >= length && !this.finished) {
-								break main_loop;
-							}
-
-							// ][] - collapsed reference: label = link text
-							if (
-								ref_p < length &&
-								source.charCodeAt(ref_p - base) === CLOSE_SQUARE_BRACKET
-							) {
-								const label = source.slice(
-									this.link_text_start - base,
-									this.cursor - base
-								);
-								const normalized = this.normalize_label(label);
-								const def = this.ref_map.get(normalized);
-								if (def) {
-									const is_image =
-										this.NodeKind_array[current_node] === NodeKind.image;
-									this.out.attr(
-										current_node,
-										is_image ? 'src' : 'href',
-										def.url
-									);
-									if (def.title)
-										this.out.attr(current_node, 'title', def.title);
-									this.out.set_value_end(current_node, this.cursor);
-									this.pending_remove(current_node);
-									this.emit_close(current_node, ref_p + 1);
-									this.node_stack.pop();
-									this.states.pop();
-									if (
-										this.states[this.states.length - 1] === StateKind.inline
-									) {
-										this.states.pop();
-									}
-									this.chomp(ref_p + 1, true);
-									continue;
-								}
-								// no definition found - revoke
-								this.out.revoke(current_node);
-								this.node_stack.pop();
-								this.states.pop();
-								continue;
-							}
-
-							// ][label] - full reference
-							const ref_start = ref_p;
-							while (ref_p < length) {
-								const ch = source.charCodeAt(ref_p - base);
-								if (ch === CLOSE_SQUARE_BRACKET) break;
-								if (ch === OPEN_SQUARE_BRACKET || ch === LINEFEED) break;
-								if (ch === BACKSLASH && ref_p + 1 < length) {
-									ref_p += 2;
-									continue;
-								}
-								ref_p++;
-							}
-
-							// stall if we ran out of input
-							if (ref_p >= length && !this.finished) {
-								break main_loop;
-							}
-
-							if (
-								ref_p < length &&
-								source.charCodeAt(ref_p - base) === CLOSE_SQUARE_BRACKET &&
-								ref_p > ref_start
-							) {
-								const label = source.slice(ref_start - base, ref_p - base);
-								const normalized = this.normalize_label(label);
-								const def = this.ref_map.get(normalized);
-								if (def) {
-									const is_image =
-										this.NodeKind_array[current_node] === NodeKind.image;
-									this.out.attr(
-										current_node,
-										is_image ? 'src' : 'href',
-										def.url
-									);
-									if (def.title)
-										this.out.attr(current_node, 'title', def.title);
-									this.out.set_value_end(current_node, this.cursor);
-									this.pending_remove(current_node);
-									this.emit_close(current_node, ref_p + 1);
-									this.node_stack.pop();
-									this.states.pop();
-									if (
-										this.states[this.states.length - 1] === StateKind.inline
-									) {
-										this.states.pop();
-									}
-									this.chomp(ref_p + 1, true);
-									continue;
-								}
-							}
-						}
-
-						// definitively not a link/reference. revoke.
-						this.out.revoke(current_node);
-						this.node_stack.pop();
-						this.states.pop();
-						continue;
-					}
-
-					if (code === LINEFEED && this.is_blank_line_after(this.cursor)) {
-						// paragraph boundary - revoke link
-						this.out.revoke(current_node);
-						this.directive_text_pop(current_node);
-						this.node_stack.pop();
-						this.states.pop();
-						continue;
-					}
-
-					// dispatch inline content inside the link text
-					this.states.push(StateKind.inline);
+					if (this._run_link_text(code, current_node)) break main_loop;
 					continue;
 				}
 
 				case StateKind.html_element: {
-					// inline html container state.
-					// check if current char starts a matching closing tag.
-					if (code === OPEN_ANGLE_BRACKET) {
-						// stall if tag might be incomplete
-						if (
-							!this.finished &&
-							source.indexOf('>', this.cursor + 1 - base) === -1
-						) {
-							break main_loop;
-						}
-						const close = this.try_parse_html_close_tag(this.cursor + 1);
-						if (close) {
-							const opener_idx = this.find_html_opener(close.tag);
-							if (
-								opener_idx !== -1 &&
-								this.html_tag_stack[opener_idx].id === current_node
-							) {
-								// close intermediate unclosed html elements
-								while (this.html_tag_stack.length > opener_idx + 1) {
-									const intermediate = this.html_tag_stack.pop()!;
-									this.close_html_inline(intermediate.id, this.cursor);
-								}
-								// close this html element - commit the pending node
-								this.html_tag_stack.pop();
-								this.pending_remove(current_node);
-								this.emit_close(current_node, close.end);
-								this.node_stack.pop();
-								this.states.pop();
-								this.chomp(close.end, true);
-								// pop trailing inline state if present
-								if (this.states[this.states.length - 1] === StateKind.inline) {
-									this.states.pop();
-								}
-								continue;
-							}
-						}
-					}
-
-					if (code === LINEFEED && this.is_block_interrupt(this.cursor + 1)) {
-						// block interrupt after newline - close unclosed inline html element
-						if (
-							this.html_tag_stack.length > 0 &&
-							this.html_tag_stack[this.html_tag_stack.length - 1].id ===
-								current_node
-						) {
-							this.html_tag_stack.pop();
-						}
-						this.states.pop();
-						this.node_stack.pop();
-						continue;
-					}
-
-					if (!code) {
-						if (!this.finished) break main_loop;
-						// eof: unwind stacks - _finalize will revoke the pending node
-						if (
-							this.html_tag_stack.length > 0 &&
-							this.html_tag_stack[this.html_tag_stack.length - 1].id ===
-								current_node
-						) {
-							this.html_tag_stack.pop();
-						}
-						this.states.pop();
-						this.node_stack.pop();
-						continue;
-					}
-
-					// dispatch to inline for content inside the element
-					this.states.push(StateKind.inline);
+					if (this._run_html_element(code, current_node)) break main_loop;
 					continue;
 				}
 
 				case StateKind.html_block_element: {
-					// block-level html container state.
-					// acts like root but also checks for closing tags.
-
-					if (!code) {
-						if (!this.finished) break main_loop;
-						// eof: unwind stacks - _finalize will revoke the pending node
-						if (
-							this.html_tag_stack.length > 0 &&
-							this.html_tag_stack[this.html_tag_stack.length - 1].id ===
-								current_node
-						) {
-							this.html_tag_stack.pop();
-						}
-						this.html_block_depth--;
-						this.states.pop();
-						this.node_stack.pop();
-						continue;
-					}
-
-					// check for closing tag
-					if (code === OPEN_ANGLE_BRACKET) {
-						// stall if tag might be incomplete
-						if (
-							!this.finished &&
-							source.indexOf('>', this.cursor + 1 - base) === -1
-						) {
-							break main_loop;
-						}
-						const close = this.try_parse_html_close_tag(this.cursor + 1);
-						if (close) {
-							const opener_idx = this.find_html_opener(close.tag);
-							if (
-								opener_idx !== -1 &&
-								this.html_tag_stack[opener_idx].id === current_node
-							) {
-								// close intermediate html elements
-								while (this.html_tag_stack.length > opener_idx + 1) {
-									const intermediate = this.html_tag_stack.pop()!;
-									if (!this.closed_flags[intermediate.id]) {
-										this.emit_close(intermediate.id, this.cursor);
-									}
-								}
-								// close this html element - commit the pending node
-								this.html_tag_stack.pop();
-								this.pending_remove(current_node);
-								this.emit_close(current_node, close.end);
-								this.html_block_depth--;
-								this.node_stack.pop();
-								this.states.pop();
-								this.chomp(close.end, true);
-								continue;
-							}
-						}
-					}
-
-					// skip linefeeds - they act as separators
-					if (code === LINEFEED) {
-						const lb_id = this.emit_open(
-							NodeKind.line_break,
-							this.cursor,
-							current_node
-						);
-						this.emit_close(lb_id, this.cursor + 1);
-						this.chomp1();
-						continue;
-					}
-
-					// skip leading whitespace
-					if (code === SPACE || code === TAB) {
-						let pos = this.cursor;
-						while (
-							pos < length &&
-							(source.charCodeAt(pos - base) === SPACE ||
-								source.charCodeAt(pos - base) === TAB)
-						) {
-							pos++;
-						}
-						if (pos < length && source.charCodeAt(pos - base) === LINEFEED) {
-							const lb_id = this.emit_open(
-								NodeKind.line_break,
-								this.cursor,
-								current_node
-							);
-							this.emit_close(lb_id, pos + 1);
-							this.chomp(pos + 1, true);
-							continue;
-						}
-						this.chomp1();
-						continue;
-					}
-
-					// dispatch block-level content inside the html element
-					// (headings, code fences, paragraphs, nested html, etc.)
-					if (code === OCTOTHERP) {
-						if (!this.start_heading(current_node)) break main_loop;
-						continue;
-					}
-
-					if (code === BACKTICK) {
-						this.states.push(StateKind.code_fence_start);
-						this.extra = 0;
-						continue;
-					}
-
-					if (code === OPEN_ANGLE_BRACKET) {
-						// nested html at block level
-						const blk_comment = this.try_parse_html_comment(this.cursor + 1);
-						if (blk_comment === false) break main_loop;
-						if (blk_comment) {
-							const c_id = this.emit_open(
-								NodeKind.html_comment,
-								this.cursor,
-								current_node
-							);
-							this.out.text(
-								c_id,
-								blk_comment.content_start,
-								blk_comment.content_end
-							);
-							this.emit_close(c_id, blk_comment.end);
-							this.chomp(blk_comment.end, true);
-							continue;
-						}
-
-						const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
-						if (blk_tag) {
-							if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
-								const html_id = this.emit_open(
-									NodeKind.html,
-									this.cursor,
-									current_node
-								);
-								this.out.attr(html_id, 'tag', blk_tag.tag);
-								if (Object.keys(blk_tag.attributes).length > 0) {
-									this.out.attr(html_id, 'attributes', blk_tag.attributes);
-								}
-								this.out.attr(html_id, 'self_closing', true);
-								this.emit_close(html_id, blk_tag.end);
-								this.chomp(blk_tag.end, true);
-							} else if (this.is_raw_text_tag(blk_tag.tag)) {
-								const raw = this.find_raw_close_tag(blk_tag.end, blk_tag.tag);
-								if (!raw) {
-									if (!this.finished) break main_loop;
-									const html_id = this.emit_open(
-										NodeKind.html,
-										this.cursor,
-										current_node
-									);
-									this.out.attr(html_id, 'tag', blk_tag.tag);
-									if (Object.keys(blk_tag.attributes).length > 0) {
-										this.out.attr(html_id, 'attributes', blk_tag.attributes);
-									}
-									this.out.set_value_start(html_id, blk_tag.end);
-									this.out.set_value_end(html_id, length);
-									this.emit_close(html_id, length);
-									this.chomp(length, true);
-								} else {
-									const html_id = this.emit_open(
-										NodeKind.html,
-										this.cursor,
-										current_node
-									);
-									this.out.attr(html_id, 'tag', blk_tag.tag);
-									if (Object.keys(blk_tag.attributes).length > 0) {
-										this.out.attr(html_id, 'attributes', blk_tag.attributes);
-									}
-									this.out.set_value_start(html_id, blk_tag.end);
-									this.out.set_value_end(html_id, raw.content_end);
-									this.emit_close(html_id, raw.end);
-									this.chomp(raw.end, true);
-								}
-							} else {
-								const html_id = this.emit_open(
-									NodeKind.html,
-									this.cursor,
-									current_node,
-									0,
-									true
-								);
-								this.out.attr(html_id, 'tag', blk_tag.tag);
-								if (Object.keys(blk_tag.attributes).length > 0) {
-									this.out.attr(html_id, 'attributes', blk_tag.attributes);
-								}
-								this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
-								this.node_stack.push(html_id);
-								this.states.push(StateKind.html_block_element);
-								this.html_block_depth++;
-								this.chomp(blk_tag.end, true);
-							}
-							continue;
-						}
-					}
-
-					if (code === OPEN_BRACE) {
-						// svelte block opener nested inside an html block element
-						if (!this.finished) {
-							const probe = this.find_matching_brace(this.cursor + 1);
-							if (probe === -1) break main_loop;
-						}
-						const token = this.try_parse_svelte_block_token(this.cursor);
-						if (token && token.kind === '#') {
-							this.start_svelte_block(token, current_node);
-							continue;
-						}
-					}
-
-					if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
-						if (!this.finished && this.cursor + 2 >= length) {
-							break main_loop;
-						}
-						if (this.is_thematic_break_start(this.cursor)) {
-							let line_end = this.cursor;
-							while (
-								line_end < length &&
-								source.charCodeAt(line_end - base) !== LINEFEED
-							)
-								line_end++;
-							const tb_id = this.emit_open(
-								NodeKind.thematic_break,
-								this.cursor,
-								current_node
-							);
-							this.emit_close(tb_id, line_end);
-							this.chomp(line_end, true);
-							continue;
-						}
-						if (code !== UNDERSCORE) {
-							const marker = this.try_parse_list_marker(this.cursor);
-							if (marker) {
-								this.start_list(marker, current_node);
-								continue;
-							}
-						}
-					}
-
-					if (code === PLUS || (code >= 48 && code <= 57)) {
-						if (!this.finished) {
-							let p = this.cursor + 1;
-							if (code !== PLUS) {
-								while (
-									p < length &&
-									source.charCodeAt(p - base) >= 48 &&
-									source.charCodeAt(p - base) <= 57
-								)
-									p++;
-								if (p >= length) break main_loop;
-								const after = source.charCodeAt(p - base);
-								if (after === DOT || after === CLOSE_PAREN) p++;
-							}
-							if (p >= length) break main_loop;
-						}
-						const marker = this.try_parse_list_marker(this.cursor);
-						if (marker) {
-							this.start_list(marker, current_node);
-							continue;
-						}
-					}
-
-					if (code === PIPE) {
-						const result = this.try_start_table(current_node);
-						if (result === false) break main_loop;
-						if (result === true) continue;
-					}
-
-					// default: start a paragraph for text content
-					this.states.push(StateKind.paragraph);
-					const blk_html_para = this.emit_open(
-						NodeKind.paragraph,
-						this.cursor,
-						current_node
-					);
-					this.node_stack.push(blk_html_para);
+					if (this._run_html_block_element(code, current_node)) break main_loop;
 					continue;
 				}
 
 				case StateKind.svelte_branch: {
-					// container state for svelte block branches.
-					// dispatches block content like root, but also handles
-					// {:tag} (new branch) and {/tag} (close block).
-
-					if (!code) {
-						if (!this.finished) break main_loop;
-						// eof: close branch + block
-						this.emit_close(this.svelte_branch_id, this.cursor);
-						this.node_stack.pop(); // branch
-						this.emit_close(this.svelte_block_id, this.cursor);
-						this.node_stack.pop(); // block
-						this.states.pop();
-						this.leave_svelte_block();
-						continue;
-					}
-
-					if (code === OPEN_BRACE) {
-						// stall if closing brace not visible
-						if (!this.finished) {
-							const probe = this.find_matching_brace(this.cursor + 1);
-							if (probe === -1) break main_loop;
-						}
-						const token = this.try_parse_svelte_block_token(this.cursor);
-						if (token) {
-							if (token.kind === ':') {
-								// close current branch, open new one
-								this.emit_close(this.svelte_branch_id, this.cursor);
-								this.node_stack.pop(); // pop old branch
-
-								const branch_id = this.emit_open(
-									NodeKind.svelte_branch,
-									this.cursor,
-									this.svelte_block_id
-								);
-								this.out.attr(branch_id, 'tag', token.tag);
-								if (token.expr_start !== 0 || token.expr_end !== 0) {
-									this.out.set_value_start(branch_id, token.expr_start);
-									this.out.set_value_end(branch_id, token.expr_end);
-								}
-								this.svelte_branch_id = branch_id;
-								this.node_stack.push(branch_id);
-								this.chomp(token.end, true);
-								continue;
-							}
-							if (token.kind === '/') {
-								// close branch + block
-								this.emit_close(this.svelte_branch_id, this.cursor);
-								this.node_stack.pop(); // branch
-								this.emit_close(this.svelte_block_id, token.end);
-								this.node_stack.pop(); // block
-								this.states.pop();
-								this.leave_svelte_block();
-								this.chomp(token.end, true);
-								continue;
-							}
-							if (token.kind === '#') {
-								// nested svelte block - open it within this branch
-								this.start_svelte_block(token, current_node);
-								continue;
-							}
-						}
-					}
-
-					// skip linefeeds
-					if (code === LINEFEED) {
-						const lb_id = this.emit_open(
-							NodeKind.line_break,
-							this.cursor,
-							current_node
-						);
-						this.emit_close(lb_id, this.cursor + 1);
-						this.chomp1();
-						continue;
-					}
-
-					// skip leading whitespace
-					if (code === SPACE || code === TAB) {
-						let pos = this.cursor;
-						while (
-							pos < length &&
-							(source.charCodeAt(pos - base) === SPACE ||
-								source.charCodeAt(pos - base) === TAB)
-						) {
-							pos++;
-						}
-						if (pos < length && source.charCodeAt(pos - base) === LINEFEED) {
-							const lb_id = this.emit_open(
-								NodeKind.line_break,
-								this.cursor,
-								current_node
-							);
-							this.emit_close(lb_id, pos + 1);
-							this.chomp(pos + 1, true);
-							continue;
-						}
-						this.chomp1();
-						continue;
-					}
-
-					// dispatch block-level content
-					if (code === OCTOTHERP) {
-						if (!this.start_heading(current_node)) break main_loop;
-						continue;
-					}
-
-					if (code === BACKTICK) {
-						this.states.push(StateKind.code_fence_start);
-						this.extra = 0;
-						continue;
-					}
-
-					if (code === CLOSE_ANGLE_BRACKET) {
-						let p = this.cursor + 1;
-						if (p < length && source.charCodeAt(p - base) === SPACE) p++;
-						this.block_quote_depth++;
-						const bq_id = this.emit_open(
-							NodeKind.block_quote,
-							this.cursor,
-							current_node
-						);
-						this.node_stack.push(bq_id);
-						this.states.push(StateKind.block_quote);
-						this.chomp(p, true);
-						continue;
-					}
-
-					if (code === OPEN_ANGLE_BRACKET) {
-						if (
-							!this.finished &&
-							source.indexOf('>', this.cursor + 1 - base) === -1
-						) {
-							break main_loop;
-						}
-						const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
-						if (blk_tag) {
-							if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
-								const html_id = this.emit_open(
-									NodeKind.html,
-									this.cursor,
-									current_node
-								);
-								this.out.attr(html_id, 'tag', blk_tag.tag);
-								if (Object.keys(blk_tag.attributes).length > 0) {
-									this.out.attr(html_id, 'attributes', blk_tag.attributes);
-								}
-								this.out.attr(html_id, 'self_closing', true);
-								this.emit_close(html_id, blk_tag.end);
-								this.chomp(blk_tag.end, true);
-							} else if (this.is_raw_text_tag(blk_tag.tag)) {
-								const raw = this.find_raw_close_tag(blk_tag.end, blk_tag.tag);
-								if (!raw) {
-									if (!this.finished) break main_loop;
-									const html_id = this.emit_open(
-										NodeKind.html,
-										this.cursor,
-										current_node
-									);
-									this.out.attr(html_id, 'tag', blk_tag.tag);
-									if (Object.keys(blk_tag.attributes).length > 0) {
-										this.out.attr(html_id, 'attributes', blk_tag.attributes);
-									}
-									this.out.set_value_start(html_id, blk_tag.end);
-									this.out.set_value_end(html_id, length);
-									this.emit_close(html_id, length);
-									this.chomp(length, true);
-								} else {
-									const html_id = this.emit_open(
-										NodeKind.html,
-										this.cursor,
-										current_node
-									);
-									this.out.attr(html_id, 'tag', blk_tag.tag);
-									if (Object.keys(blk_tag.attributes).length > 0) {
-										this.out.attr(html_id, 'attributes', blk_tag.attributes);
-									}
-									this.out.set_value_start(html_id, blk_tag.end);
-									this.out.set_value_end(html_id, raw.content_end);
-									this.emit_close(html_id, raw.end);
-									this.chomp(raw.end, true);
-								}
-							} else {
-								const html_id = this.emit_open(
-									NodeKind.html,
-									this.cursor,
-									current_node,
-									0,
-									true
-								);
-								this.out.attr(html_id, 'tag', blk_tag.tag);
-								if (Object.keys(blk_tag.attributes).length > 0) {
-									this.out.attr(html_id, 'attributes', blk_tag.attributes);
-								}
-								this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
-								this.node_stack.push(html_id);
-								this.states.push(StateKind.html_block_element);
-								this.html_block_depth++;
-								this.chomp(blk_tag.end, true);
-							}
-							continue;
-						}
-					}
-
-					if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
-						if (!this.finished && this.cursor + 2 >= length) {
-							break main_loop;
-						}
-						if (this.is_thematic_break_start(this.cursor)) {
-							let line_end = this.cursor;
-							while (
-								line_end < length &&
-								source.charCodeAt(line_end - base) !== LINEFEED
-							)
-								line_end++;
-							const tb_id = this.emit_open(
-								NodeKind.thematic_break,
-								this.cursor,
-								current_node
-							);
-							this.emit_close(tb_id, line_end);
-							this.chomp(line_end, true);
-							continue;
-						}
-						if (code !== UNDERSCORE) {
-							const marker = this.try_parse_list_marker(this.cursor);
-							if (marker) {
-								this.start_list(marker, current_node);
-								continue;
-							}
-						}
-					}
-
-					if (code === PLUS || (code >= 48 && code <= 57)) {
-						if (!this.finished) {
-							let p = this.cursor + 1;
-							if (code !== PLUS) {
-								while (
-									p < length &&
-									source.charCodeAt(p - base) >= 48 &&
-									source.charCodeAt(p - base) <= 57
-								)
-									p++;
-								if (p >= length) break main_loop;
-								const after = source.charCodeAt(p - base);
-								if (after === DOT || after === CLOSE_PAREN) p++;
-							}
-							if (p >= length) break main_loop;
-						}
-						const marker = this.try_parse_list_marker(this.cursor);
-						if (marker) {
-							this.start_list(marker, current_node);
-							continue;
-						}
-					}
-
-					if (code === OPEN_SQUARE_BRACKET) {
-						const def_end = this.try_parse_link_ref_definition(this.cursor);
-						if (def_end === -2) break main_loop;
-						if (def_end >= 0) {
-							this.chomp(def_end, true);
-							continue;
-						}
-					}
-
-					if (code === COLON) {
-						const dir = this.try_parse_block_directive(this.cursor);
-						if (dir === false) break main_loop;
-						if (dir !== null) {
-							this.start_block_directive(dir, current_node);
-							continue;
-						}
-					}
-
-					if (code === PIPE) {
-						const result = this.try_start_table(current_node);
-						if (result === false) break main_loop;
-						if (result === true) continue;
-					}
-
-					// default: start a paragraph
-					this.states.push(StateKind.paragraph);
-					const svelte_para = this.emit_open(
-						NodeKind.paragraph,
-						this.cursor,
-						current_node
-					);
-					this.node_stack.push(svelte_para);
+					if (this._run_svelte_branch(code, current_node)) break main_loop;
 					continue;
 				}
 
 				case StateKind.block_quote: {
-					if (this.can_trim(this.node_stack.length)) {
-						this.trim_point = this.cursor;
-					}
-					if (!code) {
-						if (!this.finished) break main_loop;
-						this.emit_close(current_node, this.cursor);
-						this.states.pop();
-						this.node_stack.pop();
-						this.block_quote_depth--;
-						continue;
-					}
-
-					switch (code) {
-						case LINEFEED: {
-							if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
-								break main_loop;
-							}
-							const next_pos = this.cursor + 1;
-							const stripped = this.skip_bq_markers(next_pos, 1);
-
-							if (stripped !== -1) {
-								if (this.is_blank_at_pos(stripped)) {
-									const lb_id = this.emit_open(
-										NodeKind.line_break,
-										this.cursor,
-										current_node
-									);
-									this.emit_close(lb_id, stripped);
-									this.chomp(stripped, true);
-									continue;
-								}
-								this.chomp(stripped, true);
-								continue;
-							}
-
-							this.emit_close(current_node, this.cursor);
-							this.states.pop();
-							this.node_stack.pop();
-							this.block_quote_depth--;
-							continue;
-						}
-
-						case SPACE:
-						case TAB: {
-							this.chomp1();
-							continue;
-						}
-
-						case OCTOTHERP: {
-							if (!this.start_heading(current_node)) break main_loop;
-							continue;
-						}
-
-						case BACKTICK: {
-							this.states.push(StateKind.code_fence_start);
-							this.extra = 0;
-							continue;
-						}
-
-						case ASTERISK:
-						case DASH:
-						case UNDERSCORE: {
-							// need a complete line to distinguish thematic break
-							// from list marker from paragraph.
-							if (
-								!this.finished &&
-								source.indexOf('\n', this.cursor - base) === -1
-							) {
-								break main_loop;
-							}
-							if (this.is_thematic_break_start(this.cursor)) {
-								let line_end = this.cursor;
-								while (
-									line_end < length &&
-									source.charCodeAt(line_end - base) !== LINEFEED
-								) {
-									line_end++;
-								}
-								const break_end = line_end < length ? line_end : line_end;
-
-								const tb_id = this.emit_open(
-									NodeKind.thematic_break,
-									this.cursor,
-									current_node
-								);
-								this.emit_close(tb_id, break_end);
-
-								this.chomp(break_end, true);
-								continue;
-							}
-							if (code !== UNDERSCORE) {
-								const marker = this.try_parse_list_marker(this.cursor);
-								if (marker) {
-									this.start_list(marker, current_node);
-									continue;
-								}
-							}
-							this.states.push(StateKind.paragraph);
-							const para_id = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(para_id);
-							continue;
-						}
-
-						case CLOSE_ANGLE_BRACKET: {
-							let p = this.cursor + 1;
-							if (p < length && source.charCodeAt(p - base) === SPACE) p++;
-
-							this.block_quote_depth++;
-							const bq_id = this.emit_open(
-								NodeKind.block_quote,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(bq_id);
-							this.states.push(StateKind.block_quote);
-							this.chomp(p, true);
-							continue;
-						}
-
-						case PIPE: {
-							const result = this.try_start_table(current_node);
-							if (result === false) break main_loop;
-							if (result === true) continue;
-							this.states.push(StateKind.paragraph);
-							const para_id = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(para_id);
-							continue;
-						}
-
-						case OPEN_SQUARE_BRACKET: {
-							const def_end = this.try_parse_link_ref_definition(this.cursor);
-							if (def_end === -2) break main_loop;
-							if (def_end >= 0) {
-								this.chomp(def_end, true);
-								continue;
-							}
-							this.states.push(StateKind.paragraph);
-							const bq_ref_para = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(bq_ref_para);
-							continue;
-						}
-
-						case COLON: {
-							// try_parse_block_directive stalls internally while the
-							// prefix is still consistent with a directive opener, so
-							// non-directive lines dispatch to paragraph eagerly
-							const dir = this.try_parse_block_directive(this.cursor);
-							if (dir === false) break main_loop;
-							if (dir !== null) {
-								this.start_block_directive(dir, current_node);
-								continue;
-							}
-							this.states.push(StateKind.paragraph);
-							const bq_colon_para = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(bq_colon_para);
-							continue;
-						}
-
-						default: {
-							if (code === PLUS || (code >= 48 && code <= 57)) {
-								// stall only while the marker prefix is still being
-								// read - same logic as the top-level block dispatch.
-								if (!this.finished) {
-									let p = this.cursor + 1;
-									if (code !== PLUS) {
-										while (
-											p < length &&
-											source.charCodeAt(p - base) >= 48 &&
-											source.charCodeAt(p - base) <= 57
-										)
-											p++;
-										if (p >= length) break main_loop;
-										const after = source.charCodeAt(p - base);
-										if (after === DOT || after === CLOSE_PAREN) p++;
-									}
-									if (p >= length) break main_loop;
-								}
-								const marker = this.try_parse_list_marker(this.cursor);
-								if (marker) {
-									this.start_list(marker, current_node);
-									continue;
-								}
-							}
-							this.states.push(StateKind.paragraph);
-							const para_id = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(para_id);
-							continue;
-						}
-					}
+					if (this._run_block_quote(code, current_node)) break main_loop;
+					continue;
 				}
 
 				case StateKind.list_item: {
-					if (this.can_trim(this.node_stack.length)) {
-						this.trim_point = this.cursor;
-					}
-					if (!code) {
-						if (!this.finished) break main_loop;
-						this.end_list();
-						continue;
-					}
-
-					switch (code) {
-						case LINEFEED: {
-							const raw_next_pos = this.cursor + 1;
-
-							// need to see the complete next line to make
-							// continuation / interruption decisions
-							if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
-								break main_loop;
-							}
-
-							// pfm: inside a blockquote, the "next line" we care
-							// about for list continuation is the content after
-							// the `>` markers. if markers are absent, end the
-							// list and let enclosing block_quote frames cascade-
-							// close themselves (cursor stays on the lf).
-							let next_pos = raw_next_pos;
-							if (this.block_quote_depth > 0) {
-								const stripped_bq = this.skip_bq_markers(
-									raw_next_pos,
-									this.block_quote_depth
-								);
-								if (stripped_bq === -1) {
-									this.end_list();
-									continue;
-								}
-								next_pos = stripped_bq;
-							}
-
-							const cur_is_blank =
-								this.cursor === 0 ||
-								source.charCodeAt(this.cursor - 1 - base) === LINEFEED;
-							if (
-								next_pos >= length ||
-								cur_is_blank ||
-								this.is_blank_at_pos(next_pos)
-							) {
-								let p = next_pos;
-								while (p < length) {
-									if (!this.is_blank_at_pos(p)) break;
-									while (p < length && source.charCodeAt(p - base) !== LINEFEED)
-										p++;
-									if (p < length) p++;
-									// when inside a blockquote, skip the `>` markers on
-									// the next line before re-testing for blank.
-									if (this.block_quote_depth > 0 && p < length) {
-										// in streaming mode, stall if the line isn't
-										// fully available - skip_bq_markers needs to
-										// see all markers to decide definitively.
-										if (!this.finished) {
-											let ep = p;
-											while (
-												ep < length &&
-												source.charCodeAt(ep - base) !== LINEFEED
-											)
-												ep++;
-											if (ep >= length) break main_loop;
-										}
-										const sp = this.skip_bq_markers(p, this.block_quote_depth);
-										if (sp === -1) {
-											// unmarked line inside blockquote - terminate.
-											this.end_list();
-											continue main_loop;
-										}
-										p = sp;
-									}
-								}
-
-								// stall if we can't see past blank lines yet, or if
-								// we don't have enough of the first non-blank line
-								// to decide whether it's a sibling list marker or
-								// an outer-scope interrupt. we only need as much
-								// lookahead as try_parse_list_marker requires.
-								if (!this.finished) {
-									if (p >= length) break main_loop;
-									let lp = p;
-									// skip optional indent for the marker
-									while (
-										lp < length &&
-										(source.charCodeAt(lp - base) === SPACE ||
-											source.charCodeAt(lp - base) === TAB)
-									)
-										lp++;
-									if (lp >= length) break main_loop;
-									const mch = source.charCodeAt(lp - base);
-									if (mch === DASH || mch === ASTERISK || mch === PLUS) {
-										// for - and *, we also need to rule out a
-										// thematic break on this line - scan until
-										// we see a non-marker/ws char or lf.
-										if (mch !== PLUS) {
-											let q = lp + 1;
-											let decided = false;
-											while (q < length) {
-												const qc = source.charCodeAt(q - base);
-												if (qc === LINEFEED) {
-													decided = true;
-													break;
-												}
-												if (qc !== mch && qc !== SPACE && qc !== TAB) {
-													decided = true;
-													break;
-												}
-												q++;
-											}
-											if (!decided) break main_loop;
-										} else if (lp + 1 >= length) {
-											break main_loop;
-										}
-									} else if (mch >= 48 && mch <= 57) {
-										let q = lp + 1;
-										while (
-											q < length &&
-											source.charCodeAt(q - base) >= 48 &&
-											source.charCodeAt(q - base) <= 57
-										)
-											q++;
-										if (q >= length) break main_loop;
-										const dch = source.charCodeAt(q - base);
-										if (dch === DOT || dch === CLOSE_PAREN) q++;
-										if (q >= length) break main_loop;
-									}
-									// otherwise the next line isn't a list marker -
-									// fall through (will hit end_list / continuation
-									// logic below which is decisive without the lf).
-								}
-
-								if (p < length) {
-									const marker_after = this.try_parse_list_marker(p);
-									if (marker_after) {
-										if (marker_after.indent >= this.list_content_offset) {
-											this.list_is_loose = true;
-											this.chomp(p, true);
-											this.start_list(marker_after, current_node);
-											continue;
-										}
-										if (
-											marker_after.indent >= this.list_marker_indent &&
-											marker_after.ordered === this.list_ordered &&
-											marker_after.marker_char === this.list_marker
-										) {
-											this.list_is_loose = true;
-											this.emit_close(current_node, this.cursor);
-											this.node_stack.pop();
-											const new_item_id = this.emit_open(
-												NodeKind.list_item,
-												p,
-												this.list_node_id
-											);
-											this.node_stack.push(new_item_id);
-											this.list_content_offset = marker_after.content_offset;
-											this.chomp(marker_after.content_start, true);
-											continue;
-										}
-										this.end_list();
-										continue;
-									}
-
-									const { columns: indent_count, end: ip } =
-										this.count_indent(p);
-									if (
-										indent_count >= this.list_content_offset &&
-										ip < length &&
-										source.charCodeAt(ip - base) !== LINEFEED
-									) {
-										this.list_is_loose = true;
-										this.chomp(
-											this.skip_columns(p, this.list_content_offset),
-											true
-										);
-										continue;
-									}
-								}
-
-								this.end_list();
-								continue;
-							}
-
-							// check for thematic break before list marker (precedence)
-							if (this.is_thematic_break_start(next_pos)) {
-								this.end_list();
-								continue;
-							}
-
-							// check for list marker on next line
-							const marker = this.try_parse_list_marker(next_pos);
-							if (marker) {
-								if (marker.indent >= this.list_content_offset) {
-									this.chomp(next_pos, true);
-									this.start_list(marker, current_node);
-									continue;
-								}
-								if (
-									marker.indent >= this.list_marker_indent &&
-									marker.ordered === this.list_ordered &&
-									marker.marker_char === this.list_marker
-								) {
-									this.emit_close(current_node, this.cursor);
-									this.node_stack.pop();
-									const new_item_id = this.emit_open(
-										NodeKind.list_item,
-										next_pos,
-										this.list_node_id
-									);
-									this.node_stack.push(new_item_id);
-									this.list_content_offset = marker.content_offset;
-									this.chomp(marker.content_start, true);
-									continue;
-								}
-								this.end_list();
-								continue;
-							}
-
-							// check for block-level content: if indented enough, it's
-							// inside the list item; otherwise it interrupts the list.
-							{
-								const { columns: indent_count, end: ip } =
-									this.count_indent(next_pos);
-								if (
-									indent_count >= this.list_content_offset &&
-									ip < length &&
-									source.charCodeAt(ip - base) !== LINEFEED
-								) {
-									// content indented to list item's content column -
-									// strip indent and continue as list item content
-									this.chomp(
-										this.skip_columns(next_pos, this.list_content_offset),
-										true
-									);
-									continue;
-								}
-							}
-
-							// block-level interrupts at outer indent level end the list
-							if (
-								this.is_heading_start(next_pos) ||
-								this.is_thematic_break_start(next_pos) ||
-								this.is_block_quote_start(next_pos)
-							) {
-								this.end_list();
-								continue;
-							}
-
-							this.end_list();
-							continue;
-						}
-
-						case SPACE:
-						case TAB: {
-							this.chomp1();
-							continue;
-						}
-
-						case OCTOTHERP: {
-							if (!this.start_heading(current_node)) break main_loop;
-							continue;
-						}
-
-						case BACKTICK: {
-							this.states.push(StateKind.code_fence_start);
-							this.extra = 0;
-							continue;
-						}
-
-						case ASTERISK:
-						case DASH:
-						case UNDERSCORE: {
-							// distinguish thematic break / nested list / paragraph.
-							// stall only while the line could still be a thematic
-							// break (marker + ws chars). as soon as any other char
-							// appears we can commit to a nested list / paragraph.
-							if (!this.finished) {
-								let could_be_tb = true;
-								for (let p = this.cursor + 1; p < length; p++) {
-									const ch = source.charCodeAt(p - base);
-									if (ch === LINEFEED) {
-										could_be_tb = false;
-										break;
-									}
-									if (ch !== code && ch !== SPACE && ch !== TAB) {
-										could_be_tb = false;
-										break;
-									}
-								}
-								if (could_be_tb) break main_loop;
-							}
-							if (this.is_thematic_break_start(this.cursor)) {
-								let line_end = this.cursor;
-								while (
-									line_end < length &&
-									source.charCodeAt(line_end - base) !== LINEFEED
-								)
-									line_end++;
-								const break_end = line_end < length ? line_end + 1 : line_end;
-								const tb_id = this.emit_open(
-									NodeKind.thematic_break,
-									this.cursor,
-									current_node
-								);
-								this.emit_close(tb_id, break_end);
-								this.chomp(break_end, true);
-								continue;
-							}
-							if (code !== UNDERSCORE) {
-								const nested = this.try_parse_list_marker(this.cursor);
-								if (nested) {
-									if (nested.indent >= this.list_content_offset) {
-										// nested sub-list inside this item
-										this.start_list(nested, current_node);
-									} else if (
-										nested.indent >= this.list_marker_indent &&
-										nested.ordered === this.list_ordered &&
-										nested.marker_char === this.list_marker
-									) {
-										// same list, new sibling item (e.g. after code fence in item)
-										this.emit_close(current_node, this.cursor);
-										this.node_stack.pop();
-										const new_item_id = this.emit_open(
-											NodeKind.list_item,
-											this.cursor,
-											this.list_node_id
-										);
-										this.node_stack.push(new_item_id);
-										this.list_content_offset = nested.content_offset;
-										this.chomp(nested.content_start, true);
-									} else {
-										// marker at outer list level - end this list
-										this.end_list();
-									}
-									continue;
-								}
-							}
-							this.states.push(StateKind.paragraph);
-							const para_id = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node,
-								0,
-								true
-							);
-							this.track_list_pending_para(para_id);
-							this.node_stack.push(para_id);
-							continue;
-						}
-
-						case CLOSE_ANGLE_BRACKET: {
-							let p = this.cursor + 1;
-							if (p < length && source.charCodeAt(p - base) === SPACE) p++;
-							this.block_quote_depth++;
-							const bq_id = this.emit_open(
-								NodeKind.block_quote,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(bq_id);
-							this.states.push(StateKind.block_quote);
-							this.chomp(p, true);
-							continue;
-						}
-
-						case PIPE: {
-							const result = this.try_start_table(current_node);
-							if (result === false) break main_loop;
-							if (result === true) continue;
-							this.states.push(StateKind.paragraph);
-							const para_id = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node,
-								0,
-								true
-							);
-							this.track_list_pending_para(para_id);
-							this.node_stack.push(para_id);
-							continue;
-						}
-
-						case OPEN_SQUARE_BRACKET: {
-							const def_end = this.try_parse_link_ref_definition(this.cursor);
-							if (def_end === -2) break main_loop;
-							if (def_end >= 0) {
-								this.chomp(def_end, true);
-								continue;
-							}
-							this.states.push(StateKind.paragraph);
-							const li_ref_para = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node,
-								0,
-								true
-							);
-							this.track_list_pending_para(li_ref_para);
-							this.node_stack.push(li_ref_para);
-							continue;
-						}
-
-						case COLON: {
-							const dir = this.try_parse_block_directive(this.cursor);
-							if (dir === false) break main_loop;
-							if (dir !== null) {
-								this.start_block_directive(dir, current_node);
-								continue;
-							}
-							this.states.push(StateKind.paragraph);
-							const li_colon_para = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node,
-								0,
-								true
-							);
-							this.track_list_pending_para(li_colon_para);
-							this.node_stack.push(li_colon_para);
-							continue;
-						}
-
-						default: {
-							// a digit or `+` could start a nested list marker - stall
-							// while the prefix is still being read so we don't commit
-							// the char as paragraph text before the marker decision.
-							if (
-								!this.finished &&
-								(code === PLUS || (code >= 48 && code <= 57))
-							) {
-								let p = this.cursor + 1;
-								if (code !== PLUS) {
-									while (
-										p < length &&
-										source.charCodeAt(p - base) >= 48 &&
-										source.charCodeAt(p - base) <= 57
-									)
-										p++;
-									if (p >= length) break main_loop;
-									const after = source.charCodeAt(p - base);
-									if (after === DOT || after === CLOSE_PAREN) p++;
-								}
-								if (p >= length) break main_loop;
-							}
-							const nested = this.try_parse_list_marker(this.cursor);
-							if (nested) {
-								if (nested.indent >= this.list_content_offset) {
-									this.start_list(nested, current_node);
-								} else if (
-									nested.indent >= this.list_marker_indent &&
-									nested.ordered === this.list_ordered &&
-									nested.marker_char === this.list_marker
-								) {
-									this.emit_close(current_node, this.cursor);
-									this.node_stack.pop();
-									const new_item_id = this.emit_open(
-										NodeKind.list_item,
-										this.cursor,
-										this.list_node_id
-									);
-									this.node_stack.push(new_item_id);
-									this.list_content_offset = nested.content_offset;
-									this.chomp(nested.content_start, true);
-								} else {
-									this.end_list();
-								}
-								continue;
-							}
-							this.states.push(StateKind.paragraph);
-							const para_id = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node,
-								0,
-								true
-							);
-							this.track_list_pending_para(para_id);
-							this.node_stack.push(para_id);
-							continue;
-						}
-					}
+					if (this._run_list_item(code, current_node)) break main_loop;
+					continue;
 				}
 
 				case StateKind.directive_container: {
-					// container directive: dispatches inner block content,
-					// watches for closing ::: fence.
-					if (!code) {
-						if (!this.finished) break main_loop;
-						// eof: close the container
-						this.emit_close(current_node, this.cursor);
-						this.node_stack.pop();
-						this.states.pop();
-						this.directive_colon_counts.pop();
-						continue;
-					}
-
-					const dc_colons =
-						this.directive_colon_counts[this.directive_colon_counts.length - 1];
-
-					switch (code) {
-						case LINEFEED: {
-							if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
-								break main_loop;
-							}
-							const lb_id = this.emit_open(
-								NodeKind.line_break,
-								this.cursor,
-								current_node
-							);
-							this.emit_close(lb_id, this.cursor + 1);
-							this.chomp1();
-							continue;
-						}
-
-						case SPACE:
-						case TAB: {
-							let pos = this.cursor;
-							while (
-								pos < length &&
-								(source.charCodeAt(pos - base) === SPACE ||
-									source.charCodeAt(pos - base) === TAB)
-							) {
-								pos++;
-							}
-							if (pos >= length && !this.finished) break main_loop;
-							if (pos < length && source.charCodeAt(pos - base) === LINEFEED) {
-								const lb_id = this.emit_open(
-									NodeKind.line_break,
-									this.cursor,
-									current_node
-								);
-								this.emit_close(lb_id, pos + 1);
-								this.chomp(pos + 1, true);
-								continue;
-							}
-							this.chomp1();
-							continue;
-						}
-
-						case COLON: {
-							// check for closing fence: n+ colons (>= opener) with no name
-							const close_end = this.try_parse_directive_close(
-								this.cursor,
-								dc_colons
-							);
-							if (close_end === -2) break main_loop;
-							if (close_end >= 0) {
-								this.emit_close(current_node, close_end);
-								this.node_stack.pop();
-								this.states.pop();
-								this.directive_colon_counts.pop();
-								this.chomp(close_end, true);
-								continue;
-							}
-
-							// check for nested directive (opening fence)
-							const dir = this.try_parse_block_directive(this.cursor);
-							if (dir === false) break main_loop;
-							if (dir !== null) {
-								this.start_block_directive(dir, current_node);
-								continue;
-							}
-							// not a directive - start paragraph
-							this.states.push(StateKind.paragraph);
-							const dc_colon_para = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(dc_colon_para);
-							continue;
-						}
-
-						case OCTOTHERP: {
-							if (!this.start_heading(current_node)) break main_loop;
-							continue;
-						}
-
-						case BACKTICK: {
-							this.states.push(StateKind.code_fence_start);
-							this.extra = 0;
-							continue;
-						}
-
-						case ASTERISK:
-						case DASH:
-						case UNDERSCORE: {
-							if (!this.finished && this.cursor + 2 >= length) {
-								break main_loop;
-							}
-							if (this.is_thematic_break_start(this.cursor)) {
-								let line_end = this.cursor;
-								while (
-									line_end < length &&
-									source.charCodeAt(line_end - base) !== LINEFEED
-								)
-									line_end++;
-								const tb_id = this.emit_open(
-									NodeKind.thematic_break,
-									this.cursor,
-									current_node
-								);
-								this.emit_close(tb_id, line_end);
-								this.chomp(line_end, true);
-								continue;
-							}
-							this.states.push(StateKind.paragraph);
-							const para_id = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(para_id);
-							continue;
-						}
-
-						case CLOSE_ANGLE_BRACKET: {
-							let p = this.cursor + 1;
-							if (p < length && source.charCodeAt(p - base) === SPACE) p++;
-							this.block_quote_depth++;
-							const bq_id = this.emit_open(
-								NodeKind.block_quote,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(bq_id);
-							this.states.push(StateKind.block_quote);
-							this.chomp(p, true);
-							continue;
-						}
-
-						case PIPE: {
-							const result = this.try_start_table(current_node);
-							if (result === false) break main_loop;
-							if (result === true) continue;
-							this.states.push(StateKind.paragraph);
-							const para_id = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(para_id);
-							continue;
-						}
-
-						case OPEN_SQUARE_BRACKET: {
-							const def_end = this.try_parse_link_ref_definition(this.cursor);
-							if (def_end === -2) break main_loop;
-							if (def_end >= 0) {
-								this.chomp(def_end, true);
-								continue;
-							}
-							this.states.push(StateKind.paragraph);
-							const dc_ref_para = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(dc_ref_para);
-							continue;
-						}
-
-						default: {
-							this.states.push(StateKind.paragraph);
-							const para_id = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(para_id);
-							continue;
-						}
-					}
+					if (this._run_directive_container(code, current_node))
+						break main_loop;
+					continue;
 				}
 
 				case StateKind.inline: {
@@ -6098,7 +4189,7 @@ export class PFMParser {
 									current_node
 								);
 								this.emit_close(sb_il, this.cursor + 1);
-								this.chomp1();
+								this.cursor++;
 								continue;
 							} else {
 								// soft line break - emit soft_break node
@@ -6108,13 +4199,13 @@ export class PFMParser {
 									current_node
 								);
 								this.emit_close(sb_inl, this.cursor + 1);
-								this.chomp1();
+								this.cursor++;
 								// strip leading whitespace on continuation line
 								while (
 									this.cursor < length &&
-									source.charCodeAt(this.cursor - base) === SPACE
+									char_code_at.call(source, this.cursor - base) === SPACE
 								) {
-									this.chomp1();
+									this.cursor++;
 								}
 								continue;
 							}
@@ -6123,8 +4214,9 @@ export class PFMParser {
 							// need to see the next char for flanking check
 							if (!this.finished && this.cursor + 1 >= length) break main_loop;
 							if (
-								this.prev & (CharMask.whitespace | CharMask.punctuation) &&
-								this.next_class & (CharMask.word | CharMask.punctuation)
+								this.prev_class() &
+									(CharMask.whitespace | CharMask.punctuation) &&
+								this.next_class() & (CharMask.word | CharMask.punctuation)
 							) {
 								const n_id = this.emit_open(
 									NodeKind.strong_emphasis,
@@ -6149,7 +4241,7 @@ export class PFMParser {
 								this.states.push(StateKind.text);
 							}
 
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -6157,8 +4249,9 @@ export class PFMParser {
 							// need to see the next char for flanking check
 							if (!this.finished && this.cursor + 1 >= length) break main_loop;
 							if (
-								this.prev & (CharMask.whitespace | CharMask.punctuation) &&
-								this.next_class & (CharMask.word | CharMask.punctuation)
+								this.prev_class() &
+									(CharMask.whitespace | CharMask.punctuation) &&
+								this.next_class() & (CharMask.word | CharMask.punctuation)
 							) {
 								const n_id = this.emit_open(
 									NodeKind.emphasis,
@@ -6183,7 +4276,7 @@ export class PFMParser {
 								this.states.push(StateKind.text);
 							}
 
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -6195,9 +4288,10 @@ export class PFMParser {
 							}
 							// strikethrough: ~~ must be double tilde with flanking
 							if (
-								source.charCodeAt(this.cursor + 1 - base) === TILDE &&
-								this.prev & (CharMask.whitespace | CharMask.punctuation) &&
-								classify(source.charCodeAt(this.cursor + 2 - base)) &
+								char_code_at.call(source, this.cursor + 1 - base) === TILDE &&
+								this.prev_class() &
+									(CharMask.whitespace | CharMask.punctuation) &&
+								classify(char_code_at.call(source, this.cursor + 2 - base)) &
 									(CharMask.word | CharMask.punctuation)
 							) {
 								const n_id = this.emit_open(
@@ -6213,8 +4307,8 @@ export class PFMParser {
 								this.chomp(2);
 							} else if (
 								// subscript: single ~ with next char word/punctuation
-								source.charCodeAt(this.cursor + 1 - base) !== TILDE &&
-								this.next_class & (CharMask.word | CharMask.punctuation)
+								char_code_at.call(source, this.cursor + 1 - base) !== TILDE &&
+								this.next_class() & (CharMask.word | CharMask.punctuation)
 							) {
 								const n_id = this.emit_open(
 									NodeKind.subscript,
@@ -6226,7 +4320,7 @@ export class PFMParser {
 								this.out.set_value_start(n_id, this.cursor + 1);
 								this.node_stack.push(n_id);
 								this.states.push(StateKind.subscript);
-								this.chomp1();
+								this.cursor++;
 							} else {
 								const t_id = this.emit_open(
 									NodeKind.text,
@@ -6236,7 +4330,7 @@ export class PFMParser {
 								this.out.set_value_start(t_id, this.cursor);
 								this.node_stack.push(t_id);
 								this.states.push(StateKind.text);
-								this.chomp1();
+								this.cursor++;
 							}
 							continue;
 						}
@@ -6244,7 +4338,7 @@ export class PFMParser {
 						case CARET: {
 							// superscript: ^ opens if next char is word/punctuation
 							// (no left-flanking constraint - x^2^ is valid)
-							if (this.next_class & (CharMask.word | CharMask.punctuation)) {
+							if (this.next_class() & (CharMask.word | CharMask.punctuation)) {
 								const n_id = this.emit_open(
 									NodeKind.superscript,
 									this.cursor,
@@ -6265,7 +4359,7 @@ export class PFMParser {
 								this.node_stack.push(t_id);
 								this.states.push(StateKind.text);
 							}
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -6298,7 +4392,7 @@ export class PFMParser {
 							this.out.set_value_start(t_id_br, this.cursor);
 							this.node_stack.push(t_id_br);
 							this.states.push(StateKind.text);
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -6307,7 +4401,10 @@ export class PFMParser {
 							if (!this.finished && this.cursor + 1 >= length) {
 								break main_loop;
 							}
-							const next_code = source.charCodeAt(this.cursor + 1 - base);
+							const next_code = char_code_at.call(
+								source,
+								this.cursor + 1 - base
+							);
 							if (next_code === LINEFEED) {
 								// need to see the complete continuation line to
 								// strip leading whitespace and handle block quotes
@@ -6334,7 +4431,7 @@ export class PFMParser {
 											current_node
 										);
 										this.emit_close(hb_id, this.cursor + 2);
-										this.chomp1(); // past `\` only; cursor now on lf
+										this.cursor++; // leave the cursor on the lf
 										this.states.pop(); // pop inline; paragraph will see the lf
 										continue;
 									}
@@ -6357,9 +4454,9 @@ export class PFMParser {
 								// skip leading spaces
 								while (
 									this.cursor < length &&
-									source.charCodeAt(this.cursor - base) === SPACE
+									char_code_at.call(source, this.cursor - base) === SPACE
 								) {
-									this.chomp1();
+									this.cursor++;
 								}
 								continue;
 							}
@@ -6383,7 +4480,7 @@ export class PFMParser {
 								this.out.set_value_start(t_id, this.cursor);
 								this.node_stack.push(t_id);
 								this.states.push(StateKind.text);
-								this.chomp1();
+								this.cursor++;
 							}
 							continue;
 						}
@@ -6405,7 +4502,7 @@ export class PFMParser {
 								this.out.set_value_start(lt_id, this.cursor);
 								this.node_stack.push(lt_id);
 								this.states.push(StateKind.text);
-								this.chomp1();
+								this.cursor++;
 								continue;
 							}
 							// speculatively open a link - [ is a link until proven otherwise
@@ -6419,7 +4516,7 @@ export class PFMParser {
 							this.node_stack.push(link_id);
 							this.states.push(StateKind.link_text);
 							this.link_text_start = this.cursor + 1;
-							this.chomp1(); // skip [
+							this.cursor++;
 							continue;
 						}
 
@@ -6432,7 +4529,7 @@ export class PFMParser {
 							// (not inside directive text - images are forbidden
 							// there, the ! falls through to the text path)
 							if (
-								source.charCodeAt(this.cursor + 1 - base) ===
+								char_code_at.call(source, this.cursor + 1 - base) ===
 									OPEN_SQUARE_BRACKET &&
 								this.directive_text_ids.length === 0
 							) {
@@ -6459,7 +4556,7 @@ export class PFMParser {
 							this.node_stack.push(t_id);
 							this.out.set_value_start(t_id, this.cursor);
 							this.states.push(StateKind.text);
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -6467,7 +4564,7 @@ export class PFMParser {
 							// in incremental mode, stall if the tag might be incomplete
 							if (
 								!this.finished &&
-								source.indexOf('>', this.cursor + 1 - base) === -1
+								string_index_of.call(source, '>', this.cursor + 1 - base) === -1
 							) {
 								break main_loop;
 							}
@@ -6478,7 +4575,8 @@ export class PFMParser {
 									? -1
 									: this.try_parse_uri_autolink(this.cursor + 1);
 							if (uri_end !== -1) {
-								const uri_text = source.slice(
+								const uri_text = string_slice.call(
+									source,
 									this.cursor + 1 - base,
 									uri_end - 1 - base
 								);
@@ -6560,41 +4658,9 @@ export class PFMParser {
 									this.chomp(open_tag.end, true);
 									this.states.pop();
 								} else if (this.is_raw_text_tag(open_tag.tag)) {
-									const raw = this.find_raw_close_tag(
-										open_tag.end,
-										open_tag.tag
-									);
-									if (!raw) {
-										if (!this.finished) break main_loop;
-										const html_id = this.emit_open(
-											NodeKind.html,
-											this.cursor,
-											current_node
-										);
-										this.out.attr(html_id, 'tag', open_tag.tag);
-										if (Object.keys(open_tag.attributes).length > 0) {
-											this.out.attr(html_id, 'attributes', open_tag.attributes);
-										}
-										this.out.set_value_start(html_id, open_tag.end);
-										this.out.set_value_end(html_id, length);
-										this.emit_close(html_id, length);
-										this.chomp(length, true);
-									} else {
-										const html_id = this.emit_open(
-											NodeKind.html,
-											this.cursor,
-											current_node
-										);
-										this.out.attr(html_id, 'tag', open_tag.tag);
-										if (Object.keys(open_tag.attributes).length > 0) {
-											this.out.attr(html_id, 'attributes', open_tag.attributes);
-										}
-										this.out.set_value_start(html_id, open_tag.end);
-										this.out.set_value_end(html_id, raw.content_end);
-										this.emit_close(html_id, raw.end);
-										this.chomp(raw.end, true);
-									}
+									// inline goes first so raw_text returns to the enclosing block when it closes
 									this.states.pop();
+									this.open_raw_text(open_tag, current_node);
 								} else {
 									const html_id = this.emit_open(
 										NodeKind.html,
@@ -6624,7 +4690,7 @@ export class PFMParser {
 							this.node_stack.push(t_id);
 							this.out.set_value_start(t_id, this.cursor);
 							this.states.push(StateKind.text);
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -6637,18 +4703,19 @@ export class PFMParser {
 							const expr_end = this.find_matching_brace(this.cursor + 1);
 							if (expr_end !== -1) {
 								// svelte void tag: {@tag ...}
-								if (source.charCodeAt(this.cursor + 1 - base) === AT) {
+								if (char_code_at.call(source, this.cursor + 1 - base) === AT) {
 									// find the tag name: scan word chars after @
 									let tp = this.cursor + 2;
 									while (
 										tp < expr_end - 1 &&
-										source.charCodeAt(tp - base) !== SPACE &&
-										source.charCodeAt(tp - base) !== TAB &&
-										source.charCodeAt(tp - base) !== LINEFEED &&
-										source.charCodeAt(tp - base) !== CLOSE_BRACE
+										char_code_at.call(source, tp - base) !== SPACE &&
+										char_code_at.call(source, tp - base) !== TAB &&
+										char_code_at.call(source, tp - base) !== LINEFEED &&
+										char_code_at.call(source, tp - base) !== CLOSE_BRACE
 									)
 										tp++;
-									const tag_name = source.slice(
+									const tag_name = string_slice.call(
+										source,
 										this.cursor + 2 - base,
 										tp - base
 									);
@@ -6662,8 +4729,8 @@ export class PFMParser {
 										// skip whitespace after tag name to find expression start
 										while (
 											tp < expr_end - 1 &&
-											(source.charCodeAt(tp - base) === SPACE ||
-												source.charCodeAt(tp - base) === TAB)
+											(char_code_at.call(source, tp - base) === SPACE ||
+												char_code_at.call(source, tp - base) === TAB)
 										)
 											tp++;
 										if (tp < expr_end - 1) {
@@ -6696,7 +4763,7 @@ export class PFMParser {
 							this.out.set_value_start(t_id_brace, this.cursor);
 							this.node_stack.push(t_id_brace);
 							this.states.push(StateKind.text);
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -6709,7 +4776,7 @@ export class PFMParser {
 							const after_colon = this.cursor + 1;
 							const fc =
 								after_colon < length
-									? source.charCodeAt(after_colon - base)
+									? char_code_at.call(source, after_colon - base)
 									: 0;
 							// must start with a letter
 							if ((fc >= 97 && fc <= 122) || (fc >= 65 && fc <= 90)) {
@@ -6717,7 +4784,9 @@ export class PFMParser {
 								let np = after_colon;
 								while (
 									np < length &&
-									this.is_directive_name_char(source.charCodeAt(np - base))
+									this.is_directive_name_char(
+										char_code_at.call(source, np - base)
+									)
 								) {
 									np++;
 								}
@@ -6726,9 +4795,13 @@ export class PFMParser {
 								// must be followed by [
 								if (
 									np < length &&
-									source.charCodeAt(np - base) === OPEN_SQUARE_BRACKET
+									char_code_at.call(source, np - base) === OPEN_SQUARE_BRACKET
 								) {
-									const dir_name = source.slice(after_colon - base, np - base);
+									const dir_name = string_slice.call(
+										source,
+										after_colon - base,
+										np - base
+									);
 									const d_id = this.emit_open(
 										NodeKind.directive_inline,
 										this.cursor,
@@ -6755,7 +4828,7 @@ export class PFMParser {
 							this.out.set_value_start(t_id_colon, this.cursor);
 							this.node_stack.push(t_id_colon);
 							this.states.push(StateKind.text);
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 
@@ -6764,7 +4837,7 @@ export class PFMParser {
 							// context for _ and * without producing output.
 							// fan|_tas_|tic -> fan<em>tas</em>tic
 							if (!this.in_table) {
-								this.chomp1();
+								this.cursor++;
 								continue;
 							}
 							// in table context, | is a cell separator - fall through
@@ -6784,7 +4857,7 @@ export class PFMParser {
 							this.node_stack.push(t_id);
 
 							this.states.push(StateKind.text);
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 					}
@@ -6802,8 +4875,8 @@ export class PFMParser {
 						let value_end = this.cursor;
 						while (
 							value_end > 0 &&
-							(source.charCodeAt(value_end - 1 - base) === SPACE ||
-								source.charCodeAt(value_end - 1 - base) === TAB)
+							(char_code_at.call(source, value_end - 1 - base) === SPACE ||
+								char_code_at.call(source, value_end - 1 - base) === TAB)
 						) {
 							value_end--;
 						}
@@ -6829,7 +4902,7 @@ export class PFMParser {
 						if (!this.finished && this.cursor + 1 >= length) {
 							break main_loop;
 						}
-						const next_code = source.charCodeAt(this.cursor + 1 - base);
+						const next_code = char_code_at.call(source, this.cursor + 1 - base);
 						if (next_code === LINEFEED) {
 							if (
 								!this.finished &&
@@ -6860,7 +4933,7 @@ export class PFMParser {
 										parent_id_bq
 									);
 									this.emit_close(hb_bq_id, this.cursor + 2);
-									this.chomp1(); // past `\` only; cursor now on lf
+									this.cursor++; // leave the cursor on the lf
 									// pop inline (under text) so paragraph sees the lf directly.
 									if (
 										this.states[this.states.length - 1] === StateKind.inline
@@ -6893,9 +4966,9 @@ export class PFMParser {
 							// skip leading spaces
 							while (
 								this.cursor < length &&
-								source.charCodeAt(this.cursor - base) === SPACE
+								char_code_at.call(source, this.cursor - base) === SPACE
 							) {
-								this.chomp1();
+								this.cursor++;
 							}
 							continue;
 						}
@@ -6980,7 +5053,7 @@ export class PFMParser {
 					} else if (code === COLON) {
 						// only break text for inline directive: :letter...
 						if (!this.finished && this.cursor + 1 >= length) break main_loop;
-						const nc = source.charCodeAt(this.cursor + 1 - base);
+						const nc = char_code_at.call(source, this.cursor + 1 - base);
 						if ((nc >= 97 && nc <= 122) || (nc >= 65 && nc <= 90)) {
 							this.states.pop();
 							this.emit_close(current_node, this.cursor);
@@ -6990,7 +5063,7 @@ export class PFMParser {
 							continue;
 						}
 						// not a directive - continue scanning past the colon
-						this.chomp1();
+						this.cursor++;
 						continue;
 					} else if (
 						code === ASTERISK ||
@@ -7016,17 +5089,16 @@ export class PFMParser {
 					// fast scan: skip plain text in a tight loop instead of
 					// re-entering the main loop per character. stops at any
 					// delimiter, escape, line break, or end of buffer.
+					// the ascii guard keeps the table load in bounds so it never takes out of bounds feedback
 					{
+						const text_break = TEXT_BREAK;
 						let p = this.cursor + 1;
 						while (p < length) {
-							const ch = source.charCodeAt(p - base);
-							if (TEXT_BREAK[ch]) break;
+							const ch = char_code_at.call(source, p - base);
+							if (ch < 128 && text_break[ch] !== 0) break;
 							p++;
 						}
 						this.cursor = p;
-						this.prev = classify(source.charCodeAt(p - 1 - base));
-						this.current = classify(source.charCodeAt(p - base));
-						this.next_class = classify(source.charCodeAt(p + 1 - base));
 					}
 					continue;
 				}
@@ -7048,14 +5120,15 @@ export class PFMParser {
 					switch (code) {
 						case BACKTICK: {
 							this.extra += 1;
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 						case OCTOTHERP: {
 							// need lookahead for #! annotation
 							if (!this.finished && this.cursor + 1 >= length) break main_loop;
 							if (
-								source.charCodeAt(this.cursor + 1 - base) === EXCLAMATION_MARK
+								char_code_at.call(source, this.cursor + 1 - base) ===
+								EXCLAMATION_MARK
 							) {
 								this.chomp(2);
 								this.states.pop();
@@ -7119,12 +5192,12 @@ export class PFMParser {
 							this.info_end_pos = this.cursor;
 							this.checkpoint_cursor = this.cursor + 1;
 							this.states.pop();
-							if (source.charCodeAt(this.cursor + 1 - base) === SPACE) {
+							if (char_code_at.call(source, this.cursor + 1 - base) === SPACE) {
 								this.states.push(StateKind.code_span_content_leading_space);
 								this.chomp(2);
 							} else {
 								this.states.push(StateKind.code_span_end);
-								this.chomp1();
+								this.cursor++;
 							}
 
 							const cs_id = this.emit_open(
@@ -7140,14 +5213,14 @@ export class PFMParser {
 							// set value_start only for the non-leading-space path.
 							// the leading-space path defers until its close handler
 							// determines whether stripping applies.
-							if (source.charCodeAt(this.cursor - 2 - base) !== SPACE) {
+							if (char_code_at.call(source, this.cursor - 2 - base) !== SPACE) {
 								this.out.set_value_start(cs_id, this.cursor);
 							}
 
 							continue;
 						}
 						default: {
-							this.chomp1();
+							this.cursor++;
 							continue;
 						}
 					}
@@ -7164,22 +5237,24 @@ export class PFMParser {
 					}
 					if (
 						code === SPACE &&
-						source.charCodeAt(this.cursor + 1 - base) === BACKTICK
+						char_code_at.call(source, this.cursor + 1 - base) === BACKTICK
 					) {
-						this.chomp1();
+						this.cursor++;
 						this.states.pop();
 						this.states.push(StateKind.code_span_leading_space_end);
 						continue;
 					} else if (
 						code === BACKTICK &&
-						source.charCodeAt(this.cursor - 1 - base) !== BACKTICK
+						char_code_at.call(source, this.cursor - 1 - base) !== BACKTICK
 					) {
 						if (
 							(this.extra === 1 &&
-								source.charCodeAt(this.cursor + 1 - base) !== BACKTICK) ||
+								char_code_at.call(source, this.cursor + 1 - base) !==
+									BACKTICK) ||
 							(this.extra === 2 &&
-								source.charCodeAt(this.cursor + 1 - base) === BACKTICK &&
-								source.charCodeAt(this.cursor + 2 - base) !== BACKTICK)
+								char_code_at.call(source, this.cursor + 1 - base) ===
+									BACKTICK &&
+								char_code_at.call(source, this.cursor + 2 - base) !== BACKTICK)
 						) {
 							this.out.set_value_start(current_node, this.checkpoint_cursor);
 							this.out.set_value_end(current_node, this.cursor);
@@ -7189,7 +5264,7 @@ export class PFMParser {
 							this.chomp(this.extra);
 							continue;
 						}
-						this.chomp1();
+						this.cursor++;
 						continue;
 					} else if (code === LINEFEED || code !== code) {
 						// code_span_end continues the span or fails it at a blank line or eof
@@ -7199,7 +5274,7 @@ export class PFMParser {
 						this.states.push(StateKind.code_span_end);
 						continue;
 					} else {
-						this.chomp1();
+						this.cursor++;
 						continue;
 					}
 				}
@@ -7216,7 +5291,7 @@ export class PFMParser {
 					if (
 						this.extra === 1 &&
 						code === BACKTICK &&
-						source.charCodeAt(this.cursor + 1 - base) !== BACKTICK
+						char_code_at.call(source, this.cursor + 1 - base) !== BACKTICK
 					) {
 						this.states.pop();
 						this.out.set_value_start(current_node, this.checkpoint_cursor + 1);
@@ -7226,8 +5301,8 @@ export class PFMParser {
 					} else if (
 						this.extra === 2 &&
 						code === BACKTICK &&
-						source.charCodeAt(this.cursor + 1 - base) === BACKTICK &&
-						source.charCodeAt(this.cursor + 2 - base) !== BACKTICK
+						char_code_at.call(source, this.cursor + 1 - base) === BACKTICK &&
+						char_code_at.call(source, this.cursor + 2 - base) !== BACKTICK
 					) {
 						this.states.pop();
 						this.out.set_value_start(current_node, this.checkpoint_cursor + 1);
@@ -7253,7 +5328,7 @@ export class PFMParser {
 						let run = 1;
 						while (
 							this.cursor + run < length &&
-							source.charCodeAt(this.cursor + run - base) === BACKTICK
+							char_code_at.call(source, this.cursor + run - base) === BACKTICK
 						)
 							run++;
 						// need enough lookahead to see end of run
@@ -7271,11 +5346,6 @@ export class PFMParser {
 						}
 						// wrong count - skip the entire backtick run
 						this.cursor += run;
-						this.prev = classify(source.charCodeAt(this.cursor - 1 - base));
-						this.current = classify(source.charCodeAt(this.cursor - base));
-						this.next_class = classify(
-							source.charCodeAt(this.cursor + 1 - base)
-						);
 						continue;
 					}
 
@@ -7296,14 +5366,33 @@ export class PFMParser {
 						this.chomp(delim_end, true);
 						this.out.revoke(
 							this.node_stack[this.node_stack.length - 1],
-							source.slice(this.code_span_open_pos - base, delim_end - base)
+							string_slice.call(
+								source,
+								this.code_span_open_pos - base,
+								delim_end - base
+							)
 						);
 						this.node_stack.pop();
 						this.states.pop();
 
 						continue;
 					}
-					this.chomp1();
+					// skip chars the state ignores without paying the loop head per char
+					{
+						const in_table = this.in_table;
+						let p = this.cursor + 1;
+						while (p < length) {
+							const ch = char_code_at.call(source, p - base);
+							if (
+								ch === BACKTICK ||
+								ch === LINEFEED ||
+								(in_table && ch === PIPE)
+							)
+								break;
+							p++;
+						}
+						this.cursor = p;
+					}
 					continue;
 				}
 
@@ -7329,8 +5418,8 @@ export class PFMParser {
 					if (
 						code === BACKTICK &&
 						this.cursor + 2 < length &&
-						source.charCodeAt(this.cursor + 1 - base) === BACKTICK &&
-						source.charCodeAt(this.cursor + 2 - base) === BACKTICK
+						char_code_at.call(source, this.cursor + 1 - base) === BACKTICK &&
+						char_code_at.call(source, this.cursor + 2 - base) === BACKTICK
 					) {
 						this.end_table();
 						continue;
@@ -7357,7 +5446,7 @@ export class PFMParser {
 
 					// skip leading pipe
 					if (code === PIPE) {
-						this.chomp1();
+						this.cursor++;
 					}
 
 					// open first cell and push onto node_stack for inline content
@@ -7398,7 +5487,7 @@ export class PFMParser {
 							this.close_table_cell();
 						}
 						this.table_cell_col++;
-						this.chomp1(); // skip the pipe
+						this.cursor++;
 
 						// open next cell eagerly - don't push inline yet,
 						// let the fallthrough handle whitespace skipping first
@@ -7422,7 +5511,7 @@ export class PFMParser {
 						}
 						this.pad_and_close_row();
 						this.states.pop();
-						this.chomp1();
+						this.cursor++;
 						continue;
 					}
 
@@ -7431,7 +5520,13 @@ export class PFMParser {
 						!this.table_cell_has_content &&
 						(code === SPACE || code === TAB)
 					) {
-						this.chomp1();
+						let p = this.cursor + 1;
+						while (p < length) {
+							const ch = char_code_at.call(source, p - base);
+							if (ch !== SPACE && ch !== TAB) break;
+							p++;
+						}
+						this.cursor = p;
 						continue;
 					}
 
@@ -7442,52 +5537,2288 @@ export class PFMParser {
 				}
 
 				case StateKind.frontmatter: {
-					// fast scan: look for `\n---` to close frontmatter.
-					// search from cursor-1 so the newline ending the opening
-					// fence can serve as the `\n` prefix for an empty body.
-					const fm_search = this.cursor > 0 ? this.cursor - 1 : 0;
-					const fm_rel = source.indexOf('\n---', fm_search - base);
-					const fm_close = fm_rel === -1 ? -1 : fm_rel + base;
-					if (fm_close === -1) {
-						if (!this.finished) break main_loop;
-						// eof without closing `---`: not valid frontmatter.
-						// revoke and re-parse from position 0 as normal content.
-						this.frontmatter_failed = true;
-						const fm_id = this.node_stack.pop()!;
-						this.states.pop();
-						this.out.revoke(fm_id);
-						this.chomp(0, true);
-						continue;
-					}
+					if (this._run_frontmatter(current_node)) break main_loop;
+					continue;
+				}
 
-					// `\n---` found - check that nothing follows except optional newline/eof
-					const after_fence = fm_close + 4; // position after `\n---`
-					// in incremental mode, stall until we can see what follows `---`
-					if (after_fence >= length && !this.finished) break main_loop;
-					const ch_after = source.charCodeAt(after_fence - base);
-					if (ch_after === LINEFEED || ch_after !== ch_after /* nan = eof */) {
-						const fm_id = current_node;
-						const end = ch_after === LINEFEED ? after_fence + 1 : after_fence;
-						this.out.set_value_end(fm_id, fm_close + 1); // value ends at the \n before ---
-						this.emit_close(fm_id, end);
-						this.node_stack.pop();
-						this.states.pop();
-						this.chomp(end, true);
-						continue;
-					}
-
-					// `---` followed by other chars - not a valid close.
-					// skip past this `\n---` and keep scanning.
-					this.chomp(after_fence, true);
+				case StateKind.raw_text: {
+					if (this._run_raw_text()) break main_loop;
 					continue;
 				}
 
 				default: {
-					this.chomp1();
+					this.cursor++;
 					continue;
 				}
 			}
 		}
+	}
+
+	// cold states live outside _run to keep it under the turbofan bytecode size limit, true stops the main loop
+
+	private _run_code_fence_start(code: number, current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		if (code === BACKTICK) {
+			this.extra += 1;
+			this.cursor++;
+			return false;
+		} else if (this.extra >= 3) {
+			// pfm: inside a blockquote, the fence is only valid if
+			// all content lines up to the closing fence have `>`
+			// markers. otherwise, the opening backticks become
+			// paragraph text.
+			if (this.block_quote_depth > 0) {
+				// find end of info line.
+				let info_end = this.cursor;
+				while (
+					info_end < length &&
+					char_code_at.call(source, info_end - base) !== LINEFEED
+				)
+					info_end++;
+				if (info_end >= length && !this.finished) return true;
+				const scan = this.bq_fence_scan(
+					info_end + 1,
+					this.extra,
+					this.block_quote_depth
+				);
+				if (scan === 0) return true;
+				if (scan === -1) {
+					// fence cannot close inside the blockquote -
+					// treat the opening backticks as literal text.
+					// emit a paragraph with a text node containing
+					// the backticks, then let the paragraph state
+					// continue parsing the rest of the line.
+					this.states.pop();
+					const bq_fp_id = this.emit_open(
+						NodeKind.paragraph,
+						this.cursor - this.extra,
+						current_node
+					);
+					this.node_stack.push(bq_fp_id);
+					const bq_ft_id = this.emit_open(
+						NodeKind.text,
+						this.cursor - this.extra,
+						bq_fp_id
+					);
+					this.out.set_value_start(bq_ft_id, this.cursor - this.extra);
+					this.out.set_value_end(bq_ft_id, this.cursor);
+					this.emit_close(bq_ft_id, this.cursor);
+					this.states.push(StateKind.paragraph);
+					return false;
+				}
+			}
+			this.states.pop();
+			this.states.push(StateKind.code_fence_info);
+			const cf_id = this.emit_open(
+				NodeKind.code_fence,
+				this.cursor - this.extra,
+				current_node
+			);
+			this.node_stack.push(cf_id);
+
+			this.info_start_pos = this.cursor;
+
+			return false;
+		} else {
+			this.states.pop();
+			const para_id = this.emit_open(
+				NodeKind.paragraph,
+				this.cursor - this.extra,
+				current_node
+			);
+			this.node_stack.push(para_id);
+			this.states.push(StateKind.paragraph);
+			this.chomp(this.cursor - this.extra, true);
+			return false;
+		}
+	}
+
+	private _run_code_fence_info(code: number, current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		if (!code && this.finished) {
+			this.states.pop();
+			this.emit_close(current_node, length);
+			this.out.set_value_start(current_node, length);
+			this.out.set_value_end(current_node, length);
+			return false;
+		} else if (!code) {
+			return true;
+		} else if (this.cursor + 1 >= length && this.finished) {
+			this.emit_close(current_node, length);
+			this.out.set_value_end(current_node, length);
+			this.states.pop();
+			return false;
+		} else if (this.cursor + 1 >= length) {
+			return true;
+		}
+		if (code !== LINEFEED) {
+			let p = this.cursor + 1;
+			while (p + 1 < length) {
+				const ch = char_code_at.call(source, p - base);
+				if (ch === 0 || ch === LINEFEED) break;
+				p++;
+			}
+			this.cursor = p;
+			return false;
+		} else if (this.cursor >= length && this.finished) {
+			this.emit_close(current_node, length);
+			this.out.set_value_end(current_node, length);
+			this.states.pop();
+			return false;
+		} else if (this.cursor >= length) {
+			return true;
+		} else {
+			this.info_end_pos = this.cursor;
+			this.states.pop();
+			this.states.push(StateKind.code_fence_content);
+			this.out.attr(current_node, 'info_start', this.info_start_pos);
+			this.out.attr(current_node, 'info_end', this.cursor);
+			this.cursor++;
+
+			this.out.set_value_start(current_node, this.cursor);
+			this.fence_scan = this.cursor;
+
+			return false;
+		}
+	}
+
+	private _run_code_fence_content(current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		// scan line-by-line for closing fence: a line with only
+		// optional whitespace followed by >= extra backticks.
+		// resume at fence_scan, a line is ruled out only once its backtick run ends inside the buffer
+		const fence_len = this.extra;
+		let line = this.fence_scan;
+		let found_index = -1;
+
+		for (;;) {
+			let lp = line;
+			while (
+				lp < length &&
+				(char_code_at.call(source, lp - base) === SPACE ||
+					char_code_at.call(source, lp - base) === TAB)
+			)
+				lp++;
+			const bt_start = lp;
+			while (lp < length && char_code_at.call(source, lp - base) === BACKTICK)
+				lp++;
+			if (lp - bt_start >= fence_len) {
+				found_index = bt_start;
+				break;
+			}
+			const rel = string_index_of.call(source, '\n', line - base);
+			if (rel === -1) break;
+			line = rel + base + 1;
+		}
+
+		if (found_index === -1) {
+			if (!this.finished) {
+				this.fence_scan = line;
+				if (this.can_trim(this.node_stack.length - 1)) {
+					this.trim_point = line;
+					this.wait_kind = WAIT_FENCE;
+				}
+				return true;
+			}
+			this.out.set_value_end(current_node, length);
+			this.states.pop();
+			this.states.push(StateKind.code_fence_text_end);
+			this.chomp(length, true);
+			return false;
+		}
+		const found_nl = line - 1;
+
+		// count actual backticks at found_index for chomp
+		let bt_end = found_index;
+		while (
+			bt_end < length &&
+			char_code_at.call(source, bt_end - base) === BACKTICK
+		)
+			bt_end++;
+
+		this.states.pop();
+		this.states.push(StateKind.code_fence_text_end);
+		this.out.set_value_end(current_node, found_nl);
+		this.chomp(bt_end, true);
+		return false;
+	}
+
+	private _run_raw_text(): boolean {
+		const base = this.source_base;
+		const length = this.source_end;
+		const needle = this.raw_needle;
+		const rel = string_index_of.call(this.source, needle, this.raw_scan - base);
+		const id = this.raw_node;
+		if (rel !== -1) {
+			const idx = rel + base;
+			const end = idx + needle.length;
+			this.out.set_value_end(id, idx);
+			this.emit_close(id, end);
+			this.states.pop();
+			this.chomp(end, true);
+			return false;
+		}
+		if (!this.finished) {
+			// a close tag starting earlier would already be whole in the window
+			const scan = length - needle.length + 1;
+			if (scan > this.raw_scan) this.raw_scan = scan;
+			// the node is not on the node stack, nothing rereads before the scan
+			if (this.can_trim(this.node_stack.length)) {
+				this.trim_point = this.raw_scan;
+				this.wait_kind = WAIT_RAW;
+			}
+			return true;
+		}
+		this.out.set_value_end(id, length);
+		this.emit_close(id, length);
+		this.states.pop();
+		this.chomp(length, true);
+		return false;
+	}
+
+	private _run_code_fence_text_end(
+		code: number,
+		current_node: number
+	): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		if (this.cursor >= length && !this.finished) return true;
+		if (this.cursor >= length || code === LINEFEED) {
+			this.emit_close(current_node, this.cursor);
+			this.node_stack.pop();
+			this.states.pop();
+			this.cursor++;
+			return false;
+		}
+		if (code === BACKTICK) {
+			this.cursor++;
+			return false;
+		}
+		// non-backtick trailing content - scan to end of line
+		{
+			let ep = this.cursor;
+			while (ep < length && char_code_at.call(source, ep - base) !== LINEFEED)
+				ep++;
+			if (ep >= length && !this.finished) return true;
+			this.emit_close(current_node, this.cursor);
+			this.node_stack.pop();
+			this.states.pop();
+			this.chomp(ep, true);
+			return false;
+		}
+	}
+
+	private _run_emphasis(code: number, current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		if (!code) {
+			this._unwind_unterminated_delimiter();
+			return false;
+		}
+		// need the char after `_` to do the flanking check without
+		// mis-committing on the nan wildcard mask at end-of-buffer.
+		if (code === UNDERSCORE && !this.finished && this.cursor + 1 >= length) {
+			return true;
+		}
+		if (
+			code === UNDERSCORE &&
+			this.prev_class() & (CharMask.word | CharMask.punctuation) &&
+			this.next_class() & (CharMask.whitespace | CharMask.punctuation)
+		) {
+			const n_id = this.node_stack[this.node_stack.length - 1];
+
+			// no empty emphasis: if the node has no children, revoke it.
+			if (!this.emphasis_has_content) {
+				this.out.revoke(n_id);
+				this.pending_remove(n_id);
+				this.states.pop();
+				this.node_stack.pop();
+				if (this.states[this.states.length - 1] === StateKind.inline) {
+					this.states.pop();
+				}
+				return false;
+			}
+
+			this.out.set_value_end(n_id, this.cursor);
+			this.emit_close(n_id, this.cursor + 1);
+			this.pending_remove(n_id);
+			this.states.pop();
+			this.node_stack.pop();
+			this.cursor++;
+			if (this.states[this.states.length - 1] === StateKind.inline) {
+				this.states.pop();
+			}
+		} else if (code === LINEFEED && this._delimiter_lf_close(current_node)) {
+			return false;
+		} else {
+			this.emphasis_has_content = true;
+			this.states.push(StateKind.inline);
+		}
+
+		return false;
+	}
+
+	private _run_strikethrough(code: number, current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		if (!code) {
+			this._unwind_unterminated_delimiter();
+			return false;
+		}
+		// ~~ is a two-char token - hold back lone ~ at end of buffer
+		if (code === TILDE && !this.finished && this.cursor + 1 >= length) {
+			return true;
+		}
+		// close: ~~ with right-flanking
+		if (
+			code === TILDE &&
+			char_code_at.call(source, this.cursor + 1 - base) === TILDE &&
+			this.prev_class() & (CharMask.word | CharMask.punctuation) &&
+			classify(char_code_at.call(source, this.cursor + 2 - base)) &
+				(CharMask.whitespace | CharMask.punctuation)
+		) {
+			const n_id = this.node_stack[this.node_stack.length - 1];
+			this.out.set_value_end(n_id, this.cursor);
+			this.emit_close(n_id, this.cursor + 2);
+			this.pending_remove(n_id);
+			this.states.pop();
+			this.node_stack.pop();
+			this.chomp(2);
+			if (this.states[this.states.length - 1] === StateKind.inline) {
+				this.states.pop();
+			}
+		} else if (code === LINEFEED && this._delimiter_lf_close(current_node)) {
+			return false;
+		} else {
+			this.states.push(StateKind.inline);
+		}
+		return false;
+	}
+
+	private _run_superscript(code: number, current_node: number): boolean {
+		if (!code) {
+			this._unwind_unterminated_delimiter();
+			return false;
+		}
+		// close: ^ after content (no right-flanking needed -
+		// ^ is unambiguous, and x^2^y must work)
+		if (
+			code === CARET &&
+			this.prev_class() & (CharMask.word | CharMask.punctuation)
+		) {
+			const n_id = this.node_stack[this.node_stack.length - 1];
+			this.out.set_value_end(n_id, this.cursor);
+			this.emit_close(n_id, this.cursor + 1);
+			this.pending_remove(n_id);
+			this.states.pop();
+			this.node_stack.pop();
+			this.cursor++;
+			if (this.states[this.states.length - 1] === StateKind.inline) {
+				this.states.pop();
+			}
+		} else if (code === LINEFEED && this._delimiter_lf_close(current_node)) {
+			return false;
+		} else {
+			this.states.push(StateKind.inline);
+		}
+		return false;
+	}
+
+	private _run_subscript(code: number, current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		if (!code) {
+			this._unwind_unterminated_delimiter();
+			return false;
+		}
+		// close: single ~ after content (no right-flanking needed -
+		// ~ is unambiguous inside subscript, and h~2~o must work)
+		if (
+			code === TILDE &&
+			char_code_at.call(source, this.cursor + 1 - base) !== TILDE &&
+			this.prev_class() & (CharMask.word | CharMask.punctuation)
+		) {
+			const n_id = this.node_stack[this.node_stack.length - 1];
+			this.out.set_value_end(n_id, this.cursor);
+			this.emit_close(n_id, this.cursor + 1);
+			this.pending_remove(n_id);
+			this.states.pop();
+			this.node_stack.pop();
+			this.cursor++;
+			if (this.states[this.states.length - 1] === StateKind.inline) {
+				this.states.pop();
+			}
+		} else if (code === LINEFEED && this._delimiter_lf_close(current_node)) {
+			return false;
+		} else {
+			this.states.push(StateKind.inline);
+		}
+		return false;
+	}
+
+	private _run_link_text(code: number, current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		// inside [link text], ![image alt], or :name[content]
+		// - stream content, watch for closing ]
+		if (!code) {
+			this._unwind_unterminated_delimiter();
+			return false;
+		}
+		if (code === CLOSE_SQUARE_BRACKET) {
+			// inline directive: ] closes the text, an optional
+			// (key=val) argument list may follow immediately
+			if (this.kind_of(current_node) === NodeKind.directive_inline) {
+				// literal bracket from an unmatched [ in the text -
+				// dispatch to inline which consumes it as text
+				const depth_top = this.directive_text_brackets.length - 1;
+				if (this.directive_text_brackets[depth_top] > 0) {
+					this.states.push(StateKind.inline);
+					return false;
+				}
+
+				// hold back - ( might arrive next
+				const dir_after = this.cursor + 1;
+				if (dir_after >= length && !this.finished) {
+					return true;
+				}
+
+				let dir_close_end = dir_after;
+				if (
+					dir_after < length &&
+					char_code_at.call(source, dir_after - base) === OPEN_PAREN
+				) {
+					const parsed = this.try_parse_directive_args(dir_after);
+					if (parsed === false) return true;
+					if (parsed !== null) {
+						if (parsed.args) this.out.attr(current_node, 'args', parsed.args);
+						dir_close_end = parsed.end;
+					}
+					// malformed args: close at ] and leave (...) as text
+				}
+
+				this.out.set_value_end(current_node, this.cursor);
+				this.pending_remove(current_node);
+				this.emit_close(current_node, dir_close_end);
+				this.node_stack.pop();
+				this.states.pop();
+				this.directive_text_pop(current_node);
+				if (this.states[this.states.length - 1] === StateKind.inline) {
+					this.states.pop();
+				}
+				this.chomp(dir_close_end, true);
+				return false;
+			}
+
+			// found ] - need to see what follows to decide
+			const after = this.cursor + 1;
+
+			// if ] is at end of buffer and more input may come,
+			// hold back - ( might arrive next
+			if (after >= length && !this.finished) {
+				return true;
+			}
+
+			if (
+				after < length &&
+				char_code_at.call(source, after - base) === OPEN_PAREN
+			) {
+				// parse the (url "title") part
+				let p = after + 1;
+				// skip whitespace
+				while (
+					p < length &&
+					(char_code_at.call(source, p - base) === SPACE ||
+						char_code_at.call(source, p - base) === TAB)
+				)
+					p++;
+
+				let url_start = p;
+				let url_end = p;
+
+				// check for angle-bracket url
+				if (
+					p < length &&
+					char_code_at.call(source, p - base) === OPEN_ANGLE_BRACKET
+				) {
+					p++;
+					url_start = p;
+					while (
+						p < length &&
+						char_code_at.call(source, p - base) !== CLOSE_ANGLE_BRACKET &&
+						char_code_at.call(source, p - base) !== LINEFEED
+					)
+						p++;
+					if (
+						p < length &&
+						char_code_at.call(source, p - base) === CLOSE_ANGLE_BRACKET
+					) {
+						url_end = p;
+						p++;
+					}
+				} else if (
+					p < length &&
+					char_code_at.call(source, p - base) === CLOSE_PAREN
+				) {
+					// empty url: [text]()
+					url_start = p;
+					url_end = p;
+				} else {
+					// regular url - balanced parens, no spaces
+					url_start = p;
+					let paren_depth = 0;
+					while (p < length) {
+						const ch = char_code_at.call(source, p - base);
+						if (ch <= 0x20) break;
+						if (ch === CLOSE_PAREN) {
+							if (paren_depth === 0) break;
+							paren_depth--;
+						}
+						if (ch === OPEN_PAREN) paren_depth++;
+						if (ch === BACKSLASH && p + 1 < length) {
+							p += 2;
+							continue;
+						}
+						p++;
+					}
+					url_end = p;
+				}
+
+				// skip whitespace
+				while (
+					p < length &&
+					(char_code_at.call(source, p - base) === SPACE ||
+						char_code_at.call(source, p - base) === TAB)
+				)
+					p++;
+
+				// optional title
+				let title_start = -1;
+				let title_end = -1;
+				if (p < length) {
+					const tc = char_code_at.call(source, p - base);
+					if (tc === 34 || tc === 39 || tc === OPEN_PAREN) {
+						const close_char = tc === OPEN_PAREN ? CLOSE_PAREN : tc;
+						p++;
+						title_start = p;
+						while (
+							p < length &&
+							char_code_at.call(source, p - base) !== close_char &&
+							char_code_at.call(source, p - base) !== LINEFEED
+						) {
+							if (
+								char_code_at.call(source, p - base) === BACKSLASH &&
+								p + 1 < length
+							) {
+								p += 2;
+								continue;
+							}
+							p++;
+						}
+						if (
+							p < length &&
+							char_code_at.call(source, p - base) === close_char
+						) {
+							title_end = p;
+							p++;
+						}
+					}
+				}
+
+				// skip trailing whitespace
+				while (
+					p < length &&
+					(char_code_at.call(source, p - base) === SPACE ||
+						char_code_at.call(source, p - base) === TAB)
+				)
+					p++;
+
+				if (p < length && char_code_at.call(source, p - base) === CLOSE_PAREN) {
+					p++; // skip )
+					// success - set attrs and close
+					const n_id = current_node;
+					const url = string_slice.call(
+						source,
+						url_start - base,
+						url_end - base
+					);
+					const is_image = this.kind_of(n_id) === NodeKind.image;
+					this.out.attr(n_id, is_image ? 'src' : 'href', url);
+					if (title_start >= 0 && title_end >= 0) {
+						this.out.attr(
+							n_id,
+							'title',
+							string_slice.call(source, title_start - base, title_end - base)
+						);
+					}
+					this.out.set_value_end(n_id, this.cursor);
+					this.pending_remove(n_id);
+					this.emit_close(n_id, p);
+					this.node_stack.pop();
+					this.states.pop();
+					if (this.states[this.states.length - 1] === StateKind.inline) {
+						this.states.pop();
+					}
+					this.chomp(p, true);
+					return false;
+				}
+
+				// url parsing didn't find ) - if we hit end of buffer
+				// and more input may come, hold back
+				if (!this.finished && p >= length) {
+					return true;
+				}
+				// ( found but url is malformed - fall through to revoke
+			}
+
+			// check for reference syntax: ][ref] or ][]
+			if (
+				after < length &&
+				char_code_at.call(source, after - base) === OPEN_SQUARE_BRACKET
+			) {
+				let ref_p = after + 1;
+
+				// need to see at least one char after [
+				if (ref_p >= length && !this.finished) {
+					return true;
+				}
+
+				// ][] - collapsed reference: label = link text
+				if (
+					ref_p < length &&
+					char_code_at.call(source, ref_p - base) === CLOSE_SQUARE_BRACKET
+				) {
+					const label = string_slice.call(
+						source,
+						this.link_text_start - base,
+						this.cursor - base
+					);
+					const normalized = this.normalize_label(label);
+					const def = this.ref_map.get(normalized);
+					if (def) {
+						const is_image = this.kind_of(current_node) === NodeKind.image;
+						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
+						if (def.title) this.out.attr(current_node, 'title', def.title);
+						this.out.set_value_end(current_node, this.cursor);
+						this.pending_remove(current_node);
+						this.emit_close(current_node, ref_p + 1);
+						this.node_stack.pop();
+						this.states.pop();
+						if (this.states[this.states.length - 1] === StateKind.inline) {
+							this.states.pop();
+						}
+						this.chomp(ref_p + 1, true);
+						return false;
+					}
+					// no definition found - revoke
+					this.out.revoke(current_node);
+					this.node_stack.pop();
+					this.states.pop();
+					return false;
+				}
+
+				// ][label] - full reference
+				const ref_start = ref_p;
+				while (ref_p < length) {
+					const ch = char_code_at.call(source, ref_p - base);
+					if (ch === CLOSE_SQUARE_BRACKET) break;
+					if (ch === OPEN_SQUARE_BRACKET || ch === LINEFEED) break;
+					if (ch === BACKSLASH && ref_p + 1 < length) {
+						ref_p += 2;
+						continue;
+					}
+					ref_p++;
+				}
+
+				// stall if we ran out of input
+				if (ref_p >= length && !this.finished) {
+					return true;
+				}
+
+				if (
+					ref_p < length &&
+					char_code_at.call(source, ref_p - base) === CLOSE_SQUARE_BRACKET &&
+					ref_p > ref_start
+				) {
+					const label = string_slice.call(
+						source,
+						ref_start - base,
+						ref_p - base
+					);
+					const normalized = this.normalize_label(label);
+					const def = this.ref_map.get(normalized);
+					if (def) {
+						const is_image = this.kind_of(current_node) === NodeKind.image;
+						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
+						if (def.title) this.out.attr(current_node, 'title', def.title);
+						this.out.set_value_end(current_node, this.cursor);
+						this.pending_remove(current_node);
+						this.emit_close(current_node, ref_p + 1);
+						this.node_stack.pop();
+						this.states.pop();
+						if (this.states[this.states.length - 1] === StateKind.inline) {
+							this.states.pop();
+						}
+						this.chomp(ref_p + 1, true);
+						return false;
+					}
+				}
+			}
+
+			// definitively not a link/reference. revoke.
+			this.out.revoke(current_node);
+			this.node_stack.pop();
+			this.states.pop();
+			return false;
+		}
+
+		if (code === LINEFEED && this.is_blank_line_after(this.cursor)) {
+			// paragraph boundary - revoke link
+			this.out.revoke(current_node);
+			this.directive_text_pop(current_node);
+			this.node_stack.pop();
+			this.states.pop();
+			return false;
+		}
+
+		// dispatch inline content inside the link text
+		this.states.push(StateKind.inline);
+		return false;
+	}
+
+	private _run_html_element(code: number, current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		// inline html container state.
+		// check if current char starts a matching closing tag.
+		if (code === OPEN_ANGLE_BRACKET) {
+			// stall if tag might be incomplete
+			if (
+				!this.finished &&
+				string_index_of.call(source, '>', this.cursor + 1 - base) === -1
+			) {
+				return true;
+			}
+			const close = this.try_parse_html_close_tag(this.cursor + 1);
+			if (close) {
+				const opener_idx = this.find_html_opener(close.tag);
+				if (
+					opener_idx !== -1 &&
+					this.html_tag_stack[opener_idx].id === current_node
+				) {
+					// close intermediate unclosed html elements
+					while (this.html_tag_stack.length > opener_idx + 1) {
+						const intermediate = this.html_tag_stack.pop()!;
+						this.close_html_inline(intermediate.id, this.cursor);
+					}
+					// close this html element - commit the pending node
+					this.html_tag_stack.pop();
+					this.pending_remove(current_node);
+					this.emit_close(current_node, close.end);
+					this.node_stack.pop();
+					this.states.pop();
+					this.chomp(close.end, true);
+					// pop trailing inline state if present
+					if (this.states[this.states.length - 1] === StateKind.inline) {
+						this.states.pop();
+					}
+					return false;
+				}
+			}
+		}
+
+		if (code === LINEFEED && this.is_block_interrupt(this.cursor + 1)) {
+			// block interrupt after newline - close unclosed inline html element
+			if (
+				this.html_tag_stack.length > 0 &&
+				this.html_tag_stack[this.html_tag_stack.length - 1].id === current_node
+			) {
+				this.html_tag_stack.pop();
+			}
+			this.states.pop();
+			this.node_stack.pop();
+			return false;
+		}
+
+		if (!code) {
+			if (!this.finished) return true;
+			// eof: unwind stacks - _finalize will revoke the pending node
+			if (
+				this.html_tag_stack.length > 0 &&
+				this.html_tag_stack[this.html_tag_stack.length - 1].id === current_node
+			) {
+				this.html_tag_stack.pop();
+			}
+			this.states.pop();
+			this.node_stack.pop();
+			return false;
+		}
+
+		// dispatch to inline for content inside the element
+		this.states.push(StateKind.inline);
+		return false;
+	}
+
+	private _run_html_block_element(code: number, current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		// block-level html container state.
+		// acts like root but also checks for closing tags.
+
+		if (!code) {
+			if (!this.finished) return true;
+			// eof: unwind stacks - _finalize will revoke the pending node
+			if (
+				this.html_tag_stack.length > 0 &&
+				this.html_tag_stack[this.html_tag_stack.length - 1].id === current_node
+			) {
+				this.html_tag_stack.pop();
+			}
+			this.html_block_depth--;
+			this.states.pop();
+			this.node_stack.pop();
+			return false;
+		}
+
+		// check for closing tag
+		if (code === OPEN_ANGLE_BRACKET) {
+			// stall if tag might be incomplete
+			if (
+				!this.finished &&
+				string_index_of.call(source, '>', this.cursor + 1 - base) === -1
+			) {
+				return true;
+			}
+			const close = this.try_parse_html_close_tag(this.cursor + 1);
+			if (close) {
+				const opener_idx = this.find_html_opener(close.tag);
+				if (
+					opener_idx !== -1 &&
+					this.html_tag_stack[opener_idx].id === current_node
+				) {
+					// close intermediate html elements
+					while (this.html_tag_stack.length > opener_idx + 1) {
+						const intermediate = this.html_tag_stack.pop()!;
+						if (!this.is_closed(intermediate.id)) {
+							this.emit_close(intermediate.id, this.cursor);
+						}
+					}
+					// close this html element - commit the pending node
+					this.html_tag_stack.pop();
+					this.pending_remove(current_node);
+					this.emit_close(current_node, close.end);
+					this.html_block_depth--;
+					this.node_stack.pop();
+					this.states.pop();
+					this.chomp(close.end, true);
+					return false;
+				}
+			}
+		}
+
+		// skip linefeeds - they act as separators
+		if (code === LINEFEED) {
+			const lb_id = this.emit_open(
+				NodeKind.line_break,
+				this.cursor,
+				current_node
+			);
+			this.emit_close(lb_id, this.cursor + 1);
+			this.cursor++;
+			return false;
+		}
+
+		// skip leading whitespace
+		if (code === SPACE || code === TAB) {
+			let pos = this.cursor;
+			while (
+				pos < length &&
+				(char_code_at.call(source, pos - base) === SPACE ||
+					char_code_at.call(source, pos - base) === TAB)
+			) {
+				pos++;
+			}
+			if (pos < length && char_code_at.call(source, pos - base) === LINEFEED) {
+				const lb_id = this.emit_open(
+					NodeKind.line_break,
+					this.cursor,
+					current_node
+				);
+				this.emit_close(lb_id, pos + 1);
+				this.chomp(pos + 1, true);
+				return false;
+			}
+			this.cursor++;
+			return false;
+		}
+
+		// dispatch block-level content inside the html element
+		// (headings, code fences, paragraphs, nested html, etc.)
+		if (code === OCTOTHERP) {
+			if (!this.start_heading(current_node)) return true;
+			return false;
+		}
+
+		if (code === BACKTICK) {
+			this.states.push(StateKind.code_fence_start);
+			this.extra = 0;
+			return false;
+		}
+
+		if (code === OPEN_ANGLE_BRACKET) {
+			// nested html at block level
+			const blk_comment = this.try_parse_html_comment(this.cursor + 1);
+			if (blk_comment === false) return true;
+			if (blk_comment) {
+				const c_id = this.emit_open(
+					NodeKind.html_comment,
+					this.cursor,
+					current_node
+				);
+				this.out.text(c_id, blk_comment.content_start, blk_comment.content_end);
+				this.emit_close(c_id, blk_comment.end);
+				this.chomp(blk_comment.end, true);
+				return false;
+			}
+
+			const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
+			if (blk_tag) {
+				if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
+					const html_id = this.emit_open(
+						NodeKind.html,
+						this.cursor,
+						current_node
+					);
+					this.out.attr(html_id, 'tag', blk_tag.tag);
+					if (Object.keys(blk_tag.attributes).length > 0) {
+						this.out.attr(html_id, 'attributes', blk_tag.attributes);
+					}
+					this.out.attr(html_id, 'self_closing', true);
+					this.emit_close(html_id, blk_tag.end);
+					this.chomp(blk_tag.end, true);
+				} else if (this.is_raw_text_tag(blk_tag.tag)) {
+					this.open_raw_text(blk_tag, current_node);
+				} else {
+					const html_id = this.emit_open(
+						NodeKind.html,
+						this.cursor,
+						current_node,
+						0,
+						true
+					);
+					this.out.attr(html_id, 'tag', blk_tag.tag);
+					if (Object.keys(blk_tag.attributes).length > 0) {
+						this.out.attr(html_id, 'attributes', blk_tag.attributes);
+					}
+					this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
+					this.node_stack.push(html_id);
+					this.states.push(StateKind.html_block_element);
+					this.html_block_depth++;
+					this.chomp(blk_tag.end, true);
+				}
+				return false;
+			}
+		}
+
+		if (code === OPEN_BRACE) {
+			// svelte block opener nested inside an html block element
+			if (!this.finished) {
+				const probe = this.find_matching_brace(this.cursor + 1);
+				if (probe === -1) return true;
+			}
+			const token = this.try_parse_svelte_block_token(this.cursor);
+			if (token && token.kind === '#') {
+				this.start_svelte_block(token, current_node);
+				return false;
+			}
+		}
+
+		if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
+			if (!this.finished && this.cursor + 2 >= length) {
+				return true;
+			}
+			if (this.is_thematic_break_start(this.cursor)) {
+				let line_end = this.cursor;
+				while (
+					line_end < length &&
+					char_code_at.call(source, line_end - base) !== LINEFEED
+				)
+					line_end++;
+				const tb_id = this.emit_open(
+					NodeKind.thematic_break,
+					this.cursor,
+					current_node
+				);
+				this.emit_close(tb_id, line_end);
+				this.chomp(line_end, true);
+				return false;
+			}
+			if (code !== UNDERSCORE) {
+				const marker = this.try_parse_list_marker(this.cursor);
+				if (marker) {
+					this.start_list(marker, current_node);
+					return false;
+				}
+			}
+		}
+
+		if (code === PLUS || (code >= 48 && code <= 57)) {
+			if (!this.finished) {
+				let p = this.cursor + 1;
+				if (code !== PLUS) {
+					while (
+						p < length &&
+						char_code_at.call(source, p - base) >= 48 &&
+						char_code_at.call(source, p - base) <= 57
+					)
+						p++;
+					if (p >= length) return true;
+					const after = char_code_at.call(source, p - base);
+					if (after === DOT || after === CLOSE_PAREN) p++;
+				}
+				if (p >= length) return true;
+			}
+			const marker = this.try_parse_list_marker(this.cursor);
+			if (marker) {
+				this.start_list(marker, current_node);
+				return false;
+			}
+		}
+
+		if (code === PIPE) {
+			const result = this.try_start_table(current_node);
+			if (result === false) return true;
+			if (result === true) return false;
+		}
+
+		// default: start a paragraph for text content
+		this.states.push(StateKind.paragraph);
+		const blk_html_para = this.emit_open(
+			NodeKind.paragraph,
+			this.cursor,
+			current_node
+		);
+		this.node_stack.push(blk_html_para);
+		return false;
+	}
+
+	private _run_svelte_branch(code: number, current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		// container state for svelte block branches.
+		// dispatches block content like root, but also handles
+		// {:tag} (new branch) and {/tag} (close block).
+
+		if (!code) {
+			if (!this.finished) return true;
+			// eof: close branch + block
+			this.emit_close(this.svelte_branch_id, this.cursor);
+			this.node_stack.pop(); // branch
+			this.emit_close(this.svelte_block_id, this.cursor);
+			this.node_stack.pop(); // block
+			this.states.pop();
+			this.leave_svelte_block();
+			return false;
+		}
+
+		if (code === OPEN_BRACE) {
+			// stall if closing brace not visible
+			if (!this.finished) {
+				const probe = this.find_matching_brace(this.cursor + 1);
+				if (probe === -1) return true;
+			}
+			const token = this.try_parse_svelte_block_token(this.cursor);
+			if (token) {
+				if (token.kind === ':') {
+					// close current branch, open new one
+					this.emit_close(this.svelte_branch_id, this.cursor);
+					this.node_stack.pop(); // pop old branch
+
+					const branch_id = this.emit_open(
+						NodeKind.svelte_branch,
+						this.cursor,
+						this.svelte_block_id
+					);
+					this.out.attr(branch_id, 'tag', token.tag);
+					if (token.expr_start !== 0 || token.expr_end !== 0) {
+						this.out.set_value_start(branch_id, token.expr_start);
+						this.out.set_value_end(branch_id, token.expr_end);
+					}
+					this.svelte_branch_id = branch_id;
+					this.node_stack.push(branch_id);
+					this.chomp(token.end, true);
+					return false;
+				}
+				if (token.kind === '/') {
+					// close branch + block
+					this.emit_close(this.svelte_branch_id, this.cursor);
+					this.node_stack.pop(); // branch
+					this.emit_close(this.svelte_block_id, token.end);
+					this.node_stack.pop(); // block
+					this.states.pop();
+					this.leave_svelte_block();
+					this.chomp(token.end, true);
+					return false;
+				}
+				if (token.kind === '#') {
+					// nested svelte block - open it within this branch
+					this.start_svelte_block(token, current_node);
+					return false;
+				}
+			}
+		}
+
+		// skip linefeeds
+		if (code === LINEFEED) {
+			const lb_id = this.emit_open(
+				NodeKind.line_break,
+				this.cursor,
+				current_node
+			);
+			this.emit_close(lb_id, this.cursor + 1);
+			this.cursor++;
+			return false;
+		}
+
+		// skip leading whitespace
+		if (code === SPACE || code === TAB) {
+			let pos = this.cursor;
+			while (
+				pos < length &&
+				(char_code_at.call(source, pos - base) === SPACE ||
+					char_code_at.call(source, pos - base) === TAB)
+			) {
+				pos++;
+			}
+			if (pos < length && char_code_at.call(source, pos - base) === LINEFEED) {
+				const lb_id = this.emit_open(
+					NodeKind.line_break,
+					this.cursor,
+					current_node
+				);
+				this.emit_close(lb_id, pos + 1);
+				this.chomp(pos + 1, true);
+				return false;
+			}
+			this.cursor++;
+			return false;
+		}
+
+		// dispatch block-level content
+		if (code === OCTOTHERP) {
+			if (!this.start_heading(current_node)) return true;
+			return false;
+		}
+
+		if (code === BACKTICK) {
+			this.states.push(StateKind.code_fence_start);
+			this.extra = 0;
+			return false;
+		}
+
+		if (code === CLOSE_ANGLE_BRACKET) {
+			let p = this.cursor + 1;
+			if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
+			this.block_quote_depth++;
+			const bq_id = this.emit_open(
+				NodeKind.block_quote,
+				this.cursor,
+				current_node
+			);
+			this.node_stack.push(bq_id);
+			this.states.push(StateKind.block_quote);
+			this.chomp(p, true);
+			return false;
+		}
+
+		if (code === OPEN_ANGLE_BRACKET) {
+			if (
+				!this.finished &&
+				string_index_of.call(source, '>', this.cursor + 1 - base) === -1
+			) {
+				return true;
+			}
+			const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
+			if (blk_tag) {
+				if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
+					const html_id = this.emit_open(
+						NodeKind.html,
+						this.cursor,
+						current_node
+					);
+					this.out.attr(html_id, 'tag', blk_tag.tag);
+					if (Object.keys(blk_tag.attributes).length > 0) {
+						this.out.attr(html_id, 'attributes', blk_tag.attributes);
+					}
+					this.out.attr(html_id, 'self_closing', true);
+					this.emit_close(html_id, blk_tag.end);
+					this.chomp(blk_tag.end, true);
+				} else if (this.is_raw_text_tag(blk_tag.tag)) {
+					this.open_raw_text(blk_tag, current_node);
+				} else {
+					const html_id = this.emit_open(
+						NodeKind.html,
+						this.cursor,
+						current_node,
+						0,
+						true
+					);
+					this.out.attr(html_id, 'tag', blk_tag.tag);
+					if (Object.keys(blk_tag.attributes).length > 0) {
+						this.out.attr(html_id, 'attributes', blk_tag.attributes);
+					}
+					this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
+					this.node_stack.push(html_id);
+					this.states.push(StateKind.html_block_element);
+					this.html_block_depth++;
+					this.chomp(blk_tag.end, true);
+				}
+				return false;
+			}
+		}
+
+		if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
+			if (!this.finished && this.cursor + 2 >= length) {
+				return true;
+			}
+			if (this.is_thematic_break_start(this.cursor)) {
+				let line_end = this.cursor;
+				while (
+					line_end < length &&
+					char_code_at.call(source, line_end - base) !== LINEFEED
+				)
+					line_end++;
+				const tb_id = this.emit_open(
+					NodeKind.thematic_break,
+					this.cursor,
+					current_node
+				);
+				this.emit_close(tb_id, line_end);
+				this.chomp(line_end, true);
+				return false;
+			}
+			if (code !== UNDERSCORE) {
+				const marker = this.try_parse_list_marker(this.cursor);
+				if (marker) {
+					this.start_list(marker, current_node);
+					return false;
+				}
+			}
+		}
+
+		if (code === PLUS || (code >= 48 && code <= 57)) {
+			if (!this.finished) {
+				let p = this.cursor + 1;
+				if (code !== PLUS) {
+					while (
+						p < length &&
+						char_code_at.call(source, p - base) >= 48 &&
+						char_code_at.call(source, p - base) <= 57
+					)
+						p++;
+					if (p >= length) return true;
+					const after = char_code_at.call(source, p - base);
+					if (after === DOT || after === CLOSE_PAREN) p++;
+				}
+				if (p >= length) return true;
+			}
+			const marker = this.try_parse_list_marker(this.cursor);
+			if (marker) {
+				this.start_list(marker, current_node);
+				return false;
+			}
+		}
+
+		if (code === OPEN_SQUARE_BRACKET) {
+			const def_end = this.try_parse_link_ref_definition(this.cursor);
+			if (def_end === -2) return true;
+			if (def_end >= 0) {
+				this.chomp(def_end, true);
+				return false;
+			}
+		}
+
+		if (code === COLON) {
+			const dir = this.try_parse_block_directive(this.cursor);
+			if (dir === false) return true;
+			if (dir !== null) {
+				this.start_block_directive(dir, current_node);
+				return false;
+			}
+		}
+
+		if (code === PIPE) {
+			const result = this.try_start_table(current_node);
+			if (result === false) return true;
+			if (result === true) return false;
+		}
+
+		// default: start a paragraph
+		this.states.push(StateKind.paragraph);
+		const svelte_para = this.emit_open(
+			NodeKind.paragraph,
+			this.cursor,
+			current_node
+		);
+		this.node_stack.push(svelte_para);
+		return false;
+	}
+
+	private _run_block_quote(code: number, current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		if (this.can_trim(this.node_stack.length)) {
+			this.trim_point = this.cursor;
+		}
+		if (!code) {
+			if (!this.finished) return true;
+			this.emit_close(current_node, this.cursor);
+			this.states.pop();
+			this.node_stack.pop();
+			this.block_quote_depth--;
+			return false;
+		}
+
+		switch (code) {
+			case LINEFEED: {
+				if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
+					return true;
+				}
+				const next_pos = this.cursor + 1;
+				const stripped = this.skip_bq_markers(next_pos, 1);
+
+				if (stripped !== -1) {
+					if (this.is_blank_at_pos(stripped)) {
+						const lb_id = this.emit_open(
+							NodeKind.line_break,
+							this.cursor,
+							current_node
+						);
+						this.emit_close(lb_id, stripped);
+						this.chomp(stripped, true);
+						return false;
+					}
+					this.chomp(stripped, true);
+					return false;
+				}
+
+				this.emit_close(current_node, this.cursor);
+				this.states.pop();
+				this.node_stack.pop();
+				this.block_quote_depth--;
+				return false;
+			}
+
+			case SPACE:
+			case TAB: {
+				this.cursor++;
+				return false;
+			}
+
+			case OCTOTHERP: {
+				if (!this.start_heading(current_node)) return true;
+				return false;
+			}
+
+			case BACKTICK: {
+				this.states.push(StateKind.code_fence_start);
+				this.extra = 0;
+				return false;
+			}
+
+			case ASTERISK:
+			case DASH:
+			case UNDERSCORE: {
+				// need a complete line to distinguish thematic break
+				// from list marker from paragraph.
+				if (
+					!this.finished &&
+					string_index_of.call(source, '\n', this.cursor - base) === -1
+				) {
+					return true;
+				}
+				if (this.is_thematic_break_start(this.cursor)) {
+					let line_end = this.cursor;
+					while (
+						line_end < length &&
+						char_code_at.call(source, line_end - base) !== LINEFEED
+					) {
+						line_end++;
+					}
+					const break_end = line_end < length ? line_end : line_end;
+
+					const tb_id = this.emit_open(
+						NodeKind.thematic_break,
+						this.cursor,
+						current_node
+					);
+					this.emit_close(tb_id, break_end);
+
+					this.chomp(break_end, true);
+					return false;
+				}
+				if (code !== UNDERSCORE) {
+					const marker = this.try_parse_list_marker(this.cursor);
+					if (marker) {
+						this.start_list(marker, current_node);
+						return false;
+					}
+				}
+				this.states.push(StateKind.paragraph);
+				const para_id = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(para_id);
+				return false;
+			}
+
+			case CLOSE_ANGLE_BRACKET: {
+				let p = this.cursor + 1;
+				if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
+
+				this.block_quote_depth++;
+				const bq_id = this.emit_open(
+					NodeKind.block_quote,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(bq_id);
+				this.states.push(StateKind.block_quote);
+				this.chomp(p, true);
+				return false;
+			}
+
+			case PIPE: {
+				const result = this.try_start_table(current_node);
+				if (result === false) return true;
+				if (result === true) return false;
+				this.states.push(StateKind.paragraph);
+				const para_id = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(para_id);
+				return false;
+			}
+
+			case OPEN_SQUARE_BRACKET: {
+				const def_end = this.try_parse_link_ref_definition(this.cursor);
+				if (def_end === -2) return true;
+				if (def_end >= 0) {
+					this.chomp(def_end, true);
+					return false;
+				}
+				this.states.push(StateKind.paragraph);
+				const bq_ref_para = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(bq_ref_para);
+				return false;
+			}
+
+			case COLON: {
+				// try_parse_block_directive stalls internally while the
+				// prefix is still consistent with a directive opener, so
+				// non-directive lines dispatch to paragraph eagerly
+				const dir = this.try_parse_block_directive(this.cursor);
+				if (dir === false) return true;
+				if (dir !== null) {
+					this.start_block_directive(dir, current_node);
+					return false;
+				}
+				this.states.push(StateKind.paragraph);
+				const bq_colon_para = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(bq_colon_para);
+				return false;
+			}
+
+			default: {
+				if (code === PLUS || (code >= 48 && code <= 57)) {
+					// stall only while the marker prefix is still being
+					// read - same logic as the top-level block dispatch.
+					if (!this.finished) {
+						let p = this.cursor + 1;
+						if (code !== PLUS) {
+							while (
+								p < length &&
+								char_code_at.call(source, p - base) >= 48 &&
+								char_code_at.call(source, p - base) <= 57
+							)
+								p++;
+							if (p >= length) return true;
+							const after = char_code_at.call(source, p - base);
+							if (after === DOT || after === CLOSE_PAREN) p++;
+						}
+						if (p >= length) return true;
+					}
+					const marker = this.try_parse_list_marker(this.cursor);
+					if (marker) {
+						this.start_list(marker, current_node);
+						return false;
+					}
+				}
+				this.states.push(StateKind.paragraph);
+				const para_id = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(para_id);
+				return false;
+			}
+		}
+	}
+
+	private _run_list_item(code: number, current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		if (this.can_trim(this.node_stack.length)) {
+			this.trim_point = this.cursor;
+		}
+		if (!code) {
+			if (!this.finished) return true;
+			this.end_list();
+			return false;
+		}
+
+		switch (code) {
+			case LINEFEED: {
+				const raw_next_pos = this.cursor + 1;
+
+				// need to see the complete next line to make
+				// continuation / interruption decisions
+				if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
+					return true;
+				}
+
+				// pfm: inside a blockquote, the "next line" we care
+				// about for list continuation is the content after
+				// the `>` markers. if markers are absent, end the
+				// list and let enclosing block_quote frames cascade-
+				// close themselves (cursor stays on the lf).
+				let next_pos = raw_next_pos;
+				if (this.block_quote_depth > 0) {
+					const stripped_bq = this.skip_bq_markers(
+						raw_next_pos,
+						this.block_quote_depth
+					);
+					if (stripped_bq === -1) {
+						this.end_list();
+						return false;
+					}
+					next_pos = stripped_bq;
+				}
+
+				const cur_is_blank =
+					this.cursor === 0 ||
+					char_code_at.call(source, this.cursor - 1 - base) === LINEFEED;
+				if (
+					next_pos >= length ||
+					cur_is_blank ||
+					this.is_blank_at_pos(next_pos)
+				) {
+					let p = next_pos;
+					while (p < length) {
+						if (!this.is_blank_at_pos(p)) break;
+						while (
+							p < length &&
+							char_code_at.call(source, p - base) !== LINEFEED
+						)
+							p++;
+						if (p < length) p++;
+						// when inside a blockquote, skip the `>` markers on
+						// the next line before re-testing for blank.
+						if (this.block_quote_depth > 0 && p < length) {
+							// in streaming mode, stall if the line isn't
+							// fully available - skip_bq_markers needs to
+							// see all markers to decide definitively.
+							if (!this.finished) {
+								let ep = p;
+								while (
+									ep < length &&
+									char_code_at.call(source, ep - base) !== LINEFEED
+								)
+									ep++;
+								if (ep >= length) return true;
+							}
+							const sp = this.skip_bq_markers(p, this.block_quote_depth);
+							if (sp === -1) {
+								// unmarked line inside blockquote - terminate.
+								this.end_list();
+								return false;
+							}
+							p = sp;
+						}
+					}
+
+					// stall if we can't see past blank lines yet, or if
+					// we don't have enough of the first non-blank line
+					// to decide whether it's a sibling list marker or
+					// an outer-scope interrupt. we only need as much
+					// lookahead as try_parse_list_marker requires.
+					if (!this.finished) {
+						if (p >= length) return true;
+						let lp = p;
+						// skip optional indent for the marker
+						while (
+							lp < length &&
+							(char_code_at.call(source, lp - base) === SPACE ||
+								char_code_at.call(source, lp - base) === TAB)
+						)
+							lp++;
+						if (lp >= length) return true;
+						const mch = char_code_at.call(source, lp - base);
+						if (mch === DASH || mch === ASTERISK || mch === PLUS) {
+							// for - and *, we also need to rule out a
+							// thematic break on this line - scan until
+							// we see a non-marker/ws char or lf.
+							if (mch !== PLUS) {
+								let q = lp + 1;
+								let decided = false;
+								while (q < length) {
+									const qc = char_code_at.call(source, q - base);
+									if (qc === LINEFEED) {
+										decided = true;
+										break;
+									}
+									if (qc !== mch && qc !== SPACE && qc !== TAB) {
+										decided = true;
+										break;
+									}
+									q++;
+								}
+								if (!decided) return true;
+							} else if (lp + 1 >= length) {
+								return true;
+							}
+						} else if (mch >= 48 && mch <= 57) {
+							let q = lp + 1;
+							while (
+								q < length &&
+								char_code_at.call(source, q - base) >= 48 &&
+								char_code_at.call(source, q - base) <= 57
+							)
+								q++;
+							if (q >= length) return true;
+							const dch = char_code_at.call(source, q - base);
+							if (dch === DOT || dch === CLOSE_PAREN) q++;
+							if (q >= length) return true;
+						}
+						// otherwise the next line isn't a list marker -
+						// fall through (will hit end_list / continuation
+						// logic below which is decisive without the lf).
+					}
+
+					if (p < length) {
+						const marker_after = this.try_parse_list_marker(p);
+						if (marker_after) {
+							if (marker_after.indent >= this.list_content_offset) {
+								this.list_is_loose = true;
+								this.chomp(p, true);
+								this.start_list(marker_after, current_node);
+								return false;
+							}
+							if (
+								marker_after.indent >= this.list_marker_indent &&
+								marker_after.ordered === this.list_ordered &&
+								marker_after.marker_char === this.list_marker
+							) {
+								this.list_is_loose = true;
+								this.emit_close(current_node, this.cursor);
+								this.node_stack.pop();
+								const new_item_id = this.emit_open(
+									NodeKind.list_item,
+									p,
+									this.list_node_id
+								);
+								this.node_stack.push(new_item_id);
+								this.list_content_offset = marker_after.content_offset;
+								this.chomp(marker_after.content_start, true);
+								return false;
+							}
+							this.end_list();
+							return false;
+						}
+
+						const { columns: indent_count, end: ip } = this.count_indent(p);
+						if (
+							indent_count >= this.list_content_offset &&
+							ip < length &&
+							char_code_at.call(source, ip - base) !== LINEFEED
+						) {
+							this.list_is_loose = true;
+							this.chomp(this.skip_columns(p, this.list_content_offset), true);
+							return false;
+						}
+					}
+
+					this.end_list();
+					return false;
+				}
+
+				// check for thematic break before list marker (precedence)
+				if (this.is_thematic_break_start(next_pos)) {
+					this.end_list();
+					return false;
+				}
+
+				// check for list marker on next line
+				const marker = this.try_parse_list_marker(next_pos);
+				if (marker) {
+					if (marker.indent >= this.list_content_offset) {
+						this.chomp(next_pos, true);
+						this.start_list(marker, current_node);
+						return false;
+					}
+					if (
+						marker.indent >= this.list_marker_indent &&
+						marker.ordered === this.list_ordered &&
+						marker.marker_char === this.list_marker
+					) {
+						this.emit_close(current_node, this.cursor);
+						this.node_stack.pop();
+						const new_item_id = this.emit_open(
+							NodeKind.list_item,
+							next_pos,
+							this.list_node_id
+						);
+						this.node_stack.push(new_item_id);
+						this.list_content_offset = marker.content_offset;
+						this.chomp(marker.content_start, true);
+						return false;
+					}
+					this.end_list();
+					return false;
+				}
+
+				// check for block-level content: if indented enough, it's
+				// inside the list item; otherwise it interrupts the list.
+				{
+					const { columns: indent_count, end: ip } =
+						this.count_indent(next_pos);
+					if (
+						indent_count >= this.list_content_offset &&
+						ip < length &&
+						char_code_at.call(source, ip - base) !== LINEFEED
+					) {
+						// content indented to list item's content column -
+						// strip indent and continue as list item content
+						this.chomp(
+							this.skip_columns(next_pos, this.list_content_offset),
+							true
+						);
+						return false;
+					}
+				}
+
+				// block-level interrupts at outer indent level end the list
+				if (
+					this.is_heading_start(next_pos) ||
+					this.is_thematic_break_start(next_pos) ||
+					this.is_block_quote_start(next_pos)
+				) {
+					this.end_list();
+					return false;
+				}
+
+				this.end_list();
+				return false;
+			}
+
+			case SPACE:
+			case TAB: {
+				this.cursor++;
+				return false;
+			}
+
+			case OCTOTHERP: {
+				if (!this.start_heading(current_node)) return true;
+				return false;
+			}
+
+			case BACKTICK: {
+				this.states.push(StateKind.code_fence_start);
+				this.extra = 0;
+				return false;
+			}
+
+			case ASTERISK:
+			case DASH:
+			case UNDERSCORE: {
+				// distinguish thematic break / nested list / paragraph.
+				// stall only while the line could still be a thematic
+				// break (marker + ws chars). as soon as any other char
+				// appears we can commit to a nested list / paragraph.
+				if (!this.finished) {
+					let could_be_tb = true;
+					for (let p = this.cursor + 1; p < length; p++) {
+						const ch = char_code_at.call(source, p - base);
+						if (ch === LINEFEED) {
+							could_be_tb = false;
+							break;
+						}
+						if (ch !== code && ch !== SPACE && ch !== TAB) {
+							could_be_tb = false;
+							break;
+						}
+					}
+					if (could_be_tb) return true;
+				}
+				if (this.is_thematic_break_start(this.cursor)) {
+					let line_end = this.cursor;
+					while (
+						line_end < length &&
+						char_code_at.call(source, line_end - base) !== LINEFEED
+					)
+						line_end++;
+					const break_end = line_end < length ? line_end + 1 : line_end;
+					const tb_id = this.emit_open(
+						NodeKind.thematic_break,
+						this.cursor,
+						current_node
+					);
+					this.emit_close(tb_id, break_end);
+					this.chomp(break_end, true);
+					return false;
+				}
+				if (code !== UNDERSCORE) {
+					const nested = this.try_parse_list_marker(this.cursor);
+					if (nested) {
+						if (nested.indent >= this.list_content_offset) {
+							// nested sub-list inside this item
+							this.start_list(nested, current_node);
+						} else if (
+							nested.indent >= this.list_marker_indent &&
+							nested.ordered === this.list_ordered &&
+							nested.marker_char === this.list_marker
+						) {
+							// same list, new sibling item (e.g. after code fence in item)
+							this.emit_close(current_node, this.cursor);
+							this.node_stack.pop();
+							const new_item_id = this.emit_open(
+								NodeKind.list_item,
+								this.cursor,
+								this.list_node_id
+							);
+							this.node_stack.push(new_item_id);
+							this.list_content_offset = nested.content_offset;
+							this.chomp(nested.content_start, true);
+						} else {
+							// marker at outer list level - end this list
+							this.end_list();
+						}
+						return false;
+					}
+				}
+				this.states.push(StateKind.paragraph);
+				const para_id = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node,
+					0,
+					true
+				);
+				this.track_list_pending_para(para_id);
+				this.node_stack.push(para_id);
+				return false;
+			}
+
+			case CLOSE_ANGLE_BRACKET: {
+				let p = this.cursor + 1;
+				if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
+				this.block_quote_depth++;
+				const bq_id = this.emit_open(
+					NodeKind.block_quote,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(bq_id);
+				this.states.push(StateKind.block_quote);
+				this.chomp(p, true);
+				return false;
+			}
+
+			case PIPE: {
+				const result = this.try_start_table(current_node);
+				if (result === false) return true;
+				if (result === true) return false;
+				this.states.push(StateKind.paragraph);
+				const para_id = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node,
+					0,
+					true
+				);
+				this.track_list_pending_para(para_id);
+				this.node_stack.push(para_id);
+				return false;
+			}
+
+			case OPEN_SQUARE_BRACKET: {
+				const def_end = this.try_parse_link_ref_definition(this.cursor);
+				if (def_end === -2) return true;
+				if (def_end >= 0) {
+					this.chomp(def_end, true);
+					return false;
+				}
+				this.states.push(StateKind.paragraph);
+				const li_ref_para = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node,
+					0,
+					true
+				);
+				this.track_list_pending_para(li_ref_para);
+				this.node_stack.push(li_ref_para);
+				return false;
+			}
+
+			case COLON: {
+				const dir = this.try_parse_block_directive(this.cursor);
+				if (dir === false) return true;
+				if (dir !== null) {
+					this.start_block_directive(dir, current_node);
+					return false;
+				}
+				this.states.push(StateKind.paragraph);
+				const li_colon_para = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node,
+					0,
+					true
+				);
+				this.track_list_pending_para(li_colon_para);
+				this.node_stack.push(li_colon_para);
+				return false;
+			}
+
+			default: {
+				// a digit or `+` could start a nested list marker - stall
+				// while the prefix is still being read so we don't commit
+				// the char as paragraph text before the marker decision.
+				if (!this.finished && (code === PLUS || (code >= 48 && code <= 57))) {
+					let p = this.cursor + 1;
+					if (code !== PLUS) {
+						while (
+							p < length &&
+							char_code_at.call(source, p - base) >= 48 &&
+							char_code_at.call(source, p - base) <= 57
+						)
+							p++;
+						if (p >= length) return true;
+						const after = char_code_at.call(source, p - base);
+						if (after === DOT || after === CLOSE_PAREN) p++;
+					}
+					if (p >= length) return true;
+				}
+				const nested = this.try_parse_list_marker(this.cursor);
+				if (nested) {
+					if (nested.indent >= this.list_content_offset) {
+						this.start_list(nested, current_node);
+					} else if (
+						nested.indent >= this.list_marker_indent &&
+						nested.ordered === this.list_ordered &&
+						nested.marker_char === this.list_marker
+					) {
+						this.emit_close(current_node, this.cursor);
+						this.node_stack.pop();
+						const new_item_id = this.emit_open(
+							NodeKind.list_item,
+							this.cursor,
+							this.list_node_id
+						);
+						this.node_stack.push(new_item_id);
+						this.list_content_offset = nested.content_offset;
+						this.chomp(nested.content_start, true);
+					} else {
+						this.end_list();
+					}
+					return false;
+				}
+				this.states.push(StateKind.paragraph);
+				const para_id = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node,
+					0,
+					true
+				);
+				this.track_list_pending_para(para_id);
+				this.node_stack.push(para_id);
+				return false;
+			}
+		}
+	}
+
+	private _run_directive_container(
+		code: number,
+		current_node: number
+	): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		// container directive: dispatches inner block content,
+		// watches for closing ::: fence.
+		if (!code) {
+			if (!this.finished) return true;
+			// eof: close the container
+			this.emit_close(current_node, this.cursor);
+			this.node_stack.pop();
+			this.states.pop();
+			this.directive_colon_counts.pop();
+			return false;
+		}
+
+		const dc_colons =
+			this.directive_colon_counts[this.directive_colon_counts.length - 1];
+
+		switch (code) {
+			case LINEFEED: {
+				if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
+					return true;
+				}
+				const lb_id = this.emit_open(
+					NodeKind.line_break,
+					this.cursor,
+					current_node
+				);
+				this.emit_close(lb_id, this.cursor + 1);
+				this.cursor++;
+				return false;
+			}
+
+			case SPACE:
+			case TAB: {
+				let pos = this.cursor;
+				while (
+					pos < length &&
+					(char_code_at.call(source, pos - base) === SPACE ||
+						char_code_at.call(source, pos - base) === TAB)
+				) {
+					pos++;
+				}
+				if (pos >= length && !this.finished) return true;
+				if (
+					pos < length &&
+					char_code_at.call(source, pos - base) === LINEFEED
+				) {
+					const lb_id = this.emit_open(
+						NodeKind.line_break,
+						this.cursor,
+						current_node
+					);
+					this.emit_close(lb_id, pos + 1);
+					this.chomp(pos + 1, true);
+					return false;
+				}
+				this.cursor++;
+				return false;
+			}
+
+			case COLON: {
+				// check for closing fence: n+ colons (>= opener) with no name
+				const close_end = this.try_parse_directive_close(
+					this.cursor,
+					dc_colons
+				);
+				if (close_end === -2) return true;
+				if (close_end >= 0) {
+					this.emit_close(current_node, close_end);
+					this.node_stack.pop();
+					this.states.pop();
+					this.directive_colon_counts.pop();
+					this.chomp(close_end, true);
+					return false;
+				}
+
+				// check for nested directive (opening fence)
+				const dir = this.try_parse_block_directive(this.cursor);
+				if (dir === false) return true;
+				if (dir !== null) {
+					this.start_block_directive(dir, current_node);
+					return false;
+				}
+				// not a directive - start paragraph
+				this.states.push(StateKind.paragraph);
+				const dc_colon_para = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(dc_colon_para);
+				return false;
+			}
+
+			case OCTOTHERP: {
+				if (!this.start_heading(current_node)) return true;
+				return false;
+			}
+
+			case BACKTICK: {
+				this.states.push(StateKind.code_fence_start);
+				this.extra = 0;
+				return false;
+			}
+
+			case ASTERISK:
+			case DASH:
+			case UNDERSCORE: {
+				if (!this.finished && this.cursor + 2 >= length) {
+					return true;
+				}
+				if (this.is_thematic_break_start(this.cursor)) {
+					let line_end = this.cursor;
+					while (
+						line_end < length &&
+						char_code_at.call(source, line_end - base) !== LINEFEED
+					)
+						line_end++;
+					const tb_id = this.emit_open(
+						NodeKind.thematic_break,
+						this.cursor,
+						current_node
+					);
+					this.emit_close(tb_id, line_end);
+					this.chomp(line_end, true);
+					return false;
+				}
+				this.states.push(StateKind.paragraph);
+				const para_id = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(para_id);
+				return false;
+			}
+
+			case CLOSE_ANGLE_BRACKET: {
+				let p = this.cursor + 1;
+				if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
+				this.block_quote_depth++;
+				const bq_id = this.emit_open(
+					NodeKind.block_quote,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(bq_id);
+				this.states.push(StateKind.block_quote);
+				this.chomp(p, true);
+				return false;
+			}
+
+			case PIPE: {
+				const result = this.try_start_table(current_node);
+				if (result === false) return true;
+				if (result === true) return false;
+				this.states.push(StateKind.paragraph);
+				const para_id = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(para_id);
+				return false;
+			}
+
+			case OPEN_SQUARE_BRACKET: {
+				const def_end = this.try_parse_link_ref_definition(this.cursor);
+				if (def_end === -2) return true;
+				if (def_end >= 0) {
+					this.chomp(def_end, true);
+					return false;
+				}
+				this.states.push(StateKind.paragraph);
+				const dc_ref_para = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(dc_ref_para);
+				return false;
+			}
+
+			default: {
+				this.states.push(StateKind.paragraph);
+				const para_id = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(para_id);
+				return false;
+			}
+		}
+	}
+
+	private _run_frontmatter(current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		// fast scan: look for `\n---` to close frontmatter.
+		// search from cursor-1 so the newline ending the opening
+		// fence can serve as the `\n` prefix for an empty body.
+		const fm_search = this.cursor > 0 ? this.cursor - 1 : 0;
+		const fm_rel = string_index_of.call(source, '\n---', fm_search - base);
+		const fm_close = fm_rel === -1 ? -1 : fm_rel + base;
+		if (fm_close === -1) {
+			if (!this.finished) return true;
+			// eof without closing `---`: not valid frontmatter.
+			// revoke and re-parse from position 0 as normal content.
+			this.frontmatter_failed = true;
+			const fm_id = this.node_stack.pop()!;
+			this.states.pop();
+			this.out.revoke(fm_id);
+			this.chomp(0, true);
+			return false;
+		}
+
+		// `\n---` found - check that nothing follows except optional newline/eof
+		const after_fence = fm_close + 4; // position after `\n---`
+		// in incremental mode, stall until we can see what follows `---`
+		if (after_fence >= length && !this.finished) return true;
+		const ch_after = char_code_at.call(source, after_fence - base);
+		if (ch_after === LINEFEED || ch_after !== ch_after /* nan = eof */) {
+			const fm_id = current_node;
+			const end = ch_after === LINEFEED ? after_fence + 1 : after_fence;
+			this.out.set_value_end(fm_id, fm_close + 1); // value ends at the \n before ---
+			this.emit_close(fm_id, end);
+			this.node_stack.pop();
+			this.states.pop();
+			this.chomp(end, true);
+			return false;
+		}
+
+		// `---` followed by other chars - not a valid close.
+		// skip past this `\n---` and keep scanning.
+		this.chomp(after_fence, true);
+		return false;
 	}
 
 	// table helpers
@@ -7500,13 +7831,13 @@ export class PFMParser {
 	private try_start_table(parent: number): boolean | null {
 		const source = this.source;
 		const base = this.source_base;
-		const length = base + source.length;
+		const length = this.source_end;
 
 		// find end of header row
 		let header_end = this.cursor;
 		while (
 			header_end < length &&
-			source.charCodeAt(header_end - base) !== LINEFEED
+			char_code_at.call(source, header_end - base) !== LINEFEED
 		)
 			header_end++;
 		if (header_end >= length && !this.finished) return false; // hold back - need \n
@@ -7522,7 +7853,7 @@ export class PFMParser {
 		let delim_end = delim_start;
 		while (
 			delim_end < length &&
-			source.charCodeAt(delim_end - base) !== LINEFEED
+			char_code_at.call(source, delim_end - base) !== LINEFEED
 		)
 			delim_end++;
 		if (delim_end >= length && !this.finished) return false; // hold back - need full delimiter row
@@ -7593,21 +7924,21 @@ export class PFMParser {
 		// skip leading whitespace
 		while (
 			pos < end &&
-			(source.charCodeAt(pos - base) === SPACE ||
-				source.charCodeAt(pos - base) === TAB)
+			(char_code_at.call(source, pos - base) === SPACE ||
+				char_code_at.call(source, pos - base) === TAB)
 		)
 			pos++;
 
 		// skip leading pipe
 		const has_leading_pipe =
-			pos < end && source.charCodeAt(pos - base) === PIPE;
+			pos < end && char_code_at.call(source, pos - base) === PIPE;
 		if (has_leading_pipe) pos++;
 
 		const cells: { start: number; end: number }[] = [];
 		let cell_start = pos;
 
 		while (pos < end) {
-			const ch = source.charCodeAt(pos - base);
+			const ch = char_code_at.call(source, pos - base);
 			if (ch === BACKSLASH && pos + 1 < end) {
 				pos += 2; // skip escaped char
 				continue;
@@ -7624,7 +7955,7 @@ export class PFMParser {
 			// check if the content is just whitespace
 			let all_ws = true;
 			for (let i = cell_start; i < end; i++) {
-				const c = source.charCodeAt(i - base);
+				const c = char_code_at.call(source, i - base);
 				if (c !== SPACE && c !== TAB) {
 					all_ws = false;
 					break;
@@ -7649,49 +7980,52 @@ export class PFMParser {
 		// skip leading whitespace
 		while (
 			pos < end &&
-			(source.charCodeAt(pos - base) === SPACE ||
-				source.charCodeAt(pos - base) === TAB)
+			(char_code_at.call(source, pos - base) === SPACE ||
+				char_code_at.call(source, pos - base) === TAB)
 		)
 			pos++;
 
 		// skip leading pipe
-		if (pos < end && source.charCodeAt(pos - base) === PIPE) pos++;
+		if (pos < end && char_code_at.call(source, pos - base) === PIPE) pos++;
 
 		const alignments: string[] = [];
 
 		while (pos < end) {
 			// skip whitespace
-			while (pos < end && source.charCodeAt(pos - base) === SPACE) pos++;
+			while (pos < end && char_code_at.call(source, pos - base) === SPACE)
+				pos++;
 			if (pos >= end) break;
 
 			// check for trailing pipe at end
-			if (source.charCodeAt(pos - base) === PIPE && pos + 1 >= end) break;
+			if (char_code_at.call(source, pos - base) === PIPE && pos + 1 >= end)
+				break;
 
 			let left_colon = false;
-			if (source.charCodeAt(pos - base) === COLON) {
+			if (char_code_at.call(source, pos - base) === COLON) {
 				left_colon = true;
 				pos++;
 			}
 
 			let dash_count = 0;
-			while (pos < end && source.charCodeAt(pos - base) === DASH) {
+			while (pos < end && char_code_at.call(source, pos - base) === DASH) {
 				dash_count++;
 				pos++;
 			}
 			if (dash_count === 0) return null; // invalid delimiter cell
 
 			let right_colon = false;
-			if (pos < end && source.charCodeAt(pos - base) === COLON) {
+			if (pos < end && char_code_at.call(source, pos - base) === COLON) {
 				right_colon = true;
 				pos++;
 			}
 
 			// skip whitespace
-			while (pos < end && source.charCodeAt(pos - base) === SPACE) pos++;
+			while (pos < end && char_code_at.call(source, pos - base) === SPACE)
+				pos++;
 
 			// expect pipe or end
 			if (pos < end) {
-				if (source.charCodeAt(pos - base) === PIPE) {
+				if (char_code_at.call(source, pos - base) === PIPE) {
 					pos++;
 				} else {
 					return null; // unexpected char
@@ -7720,14 +8054,14 @@ export class PFMParser {
 			e = end;
 		while (
 			s < e &&
-			(source.charCodeAt(s - base) === SPACE ||
-				source.charCodeAt(s - base) === TAB)
+			(char_code_at.call(source, s - base) === SPACE ||
+				char_code_at.call(source, s - base) === TAB)
 		)
 			s++;
 		while (
 			e > s &&
-			(source.charCodeAt(e - 1 - base) === SPACE ||
-				source.charCodeAt(e - 1 - base) === TAB)
+			(char_code_at.call(source, e - 1 - base) === SPACE ||
+				char_code_at.call(source, e - 1 - base) === TAB)
 		)
 			e--;
 		return { start: s, end: e };
@@ -7756,6 +8090,8 @@ export class PFMParser {
 				);
 				if (trimmed.start < trimmed.end) {
 					this.out.text(cell_id, trimmed.start, trimmed.end);
+					// the text node the emitter creates takes the next id
+					this.next_id++;
 				}
 				this.emit_close(cell_id, cell.end);
 			} else {
@@ -7777,14 +8113,15 @@ export class PFMParser {
 	private parse_inline_range(start: number, end: number): void {
 		const saved_cursor = this.cursor;
 		const saved_finished = this.finished;
-		const saved_prev = this.prev;
+		const saved_floor = this.class_floor;
 
 		this.cursor = start;
 		this.finished = true;
-		this.prev = CharMask.whitespace;
-		this.current = classify(this.source.charCodeAt(start - this.source_base));
-		this.next_class = classify(
-			this.source.charCodeAt(start + 1 - this.source_base)
+		this.class_floor = start;
+		this.range_next_class = classify(
+			start + 1 < this.source_end
+				? char_code_at.call(this.source, start + 1 - this.source_base)
+				: NaN
 		);
 
 		// use a sentinel on the state stack so _run() stops here
@@ -7793,12 +8130,15 @@ export class PFMParser {
 		this.states.push(StateKind.inline);
 
 		const save_source = this.source;
-		this.source = this.source.slice(0, end - this.source_base);
+		const save_end = this.source_end;
+		this.source = string_slice.call(this.source, 0, end - this.source_base);
+		this.source_end = this.source_base + this.source.length;
 		this.inline_range_parse = true;
 
 		this._run();
 
 		this.source = save_source;
+		this.source_end = save_end;
 		this.inline_range_parse = false;
 
 		// unwind anything left above the sentinel
@@ -7816,7 +8156,7 @@ export class PFMParser {
 				const node_id = this.node_stack[this.node_stack.length - 1];
 				this.out.set_value_end(node_id, end);
 				this.emit_close(node_id, end);
-				if (this.NodeKind_array[node_id] === NodeKind.directive_inline) {
+				if (this.kind_of(node_id) === NodeKind.directive_inline) {
 					this.directive_text_pop(node_id);
 				}
 				this.node_stack.pop();
@@ -7827,13 +8167,7 @@ export class PFMParser {
 		// restore
 		this.cursor = saved_cursor;
 		this.finished = saved_finished;
-		this.prev = saved_prev;
-		this.current = classify(
-			this.source.charCodeAt(this.cursor - this.source_base)
-		);
-		this.next_class = classify(
-			this.source.charCodeAt(this.cursor + 1 - this.source_base)
-		);
+		this.class_floor = saved_floor;
 	}
 
 	/**
@@ -7852,8 +8186,9 @@ export class PFMParser {
 				let ve = this.cursor;
 				while (
 					ve > 0 &&
-					(this.source.charCodeAt(ve - 1 - this.source_base) === SPACE ||
-						this.source.charCodeAt(ve - 1 - this.source_base) === TAB)
+					(char_code_at.call(this.source, ve - 1 - this.source_base) ===
+						SPACE ||
+						char_code_at.call(this.source, ve - 1 - this.source_base) === TAB)
 				) {
 					ve--;
 				}
@@ -7874,7 +8209,8 @@ export class PFMParser {
 				const delim_end = this.code_span_open_pos + this.extra;
 				this.out.revoke(
 					cs_id,
-					this.source.slice(
+					string_slice.call(
+						this.source,
 						this.code_span_open_pos - this.source_base,
 						delim_end - this.source_base
 					)
@@ -7900,7 +8236,7 @@ export class PFMParser {
 					this.out.set_value_end(node_id, this.cursor);
 					this.emit_close(node_id, this.cursor);
 				}
-				if (this.NodeKind_array[node_id] === NodeKind.directive_inline) {
+				if (this.kind_of(node_id) === NodeKind.directive_inline) {
 					this.directive_text_pop(node_id);
 				}
 				this.node_stack.pop();
@@ -7956,13 +8292,16 @@ export class PFMParser {
 	}
 
 	private _finalize(): void {
-		const length = this.source_base + this.source.length;
+		const length = this.source_end;
 
 		// close unclosed nodes gently (set end if not already set)
 		// skip pending nodes - those will be revoked below.
+		// ids an earlier finish already finalized stay as they were
+		const done = this.finalized_below;
 		for (let i = 0; i < this.node_stack.length; i++) {
 			const id = this.node_stack[i];
-			if (!this.closed_flags[id] && !this.pending_has(id)) {
+			if (done > 0 && !(id >= done)) continue;
+			if (!this.is_closed(id) && !this.pending_has(id)) {
 				this.out.set_value_end(id, length - 1);
 				this.emit_close(id, length - 1);
 			}
@@ -7971,7 +8310,7 @@ export class PFMParser {
 		// revoke any remaining pending nodes (unclosed html, unclosed emphasis, etc.)
 		for (let pi = 0; pi < this.pending_count; pi++) {
 			const id = this.pending_ids[pi];
-			const kind = this.NodeKind_array[id];
+			const kind = this.kind_of(id);
 			// block-level revocations (html) need the source text for repair
 			if (kind === NodeKind.html) {
 				const start = this.pending_starts[pi];
@@ -7979,12 +8318,16 @@ export class PFMParser {
 				let end = start;
 				while (
 					end < length &&
-					this.source.charCodeAt(end - this.source_base) !== LINEFEED
+					char_code_at.call(this.source, end - this.source_base) !== LINEFEED
 				)
 					end++;
 				this.out.revoke(
 					id,
-					this.source.slice(start - this.source_base, end - this.source_base)
+					string_slice.call(
+						this.source,
+						start - this.source_base,
+						end - this.source_base
+					)
 				);
 			} else {
 				this.out.revoke(id);
@@ -7992,8 +8335,14 @@ export class PFMParser {
 		}
 		this.pending_count = 0;
 		this.pending_para_count = 0;
+		this.give_back_ids();
 	}
 }
+
+// idle between documents on a tree rather than a stub so the emitter only ever sees one class
+let spare_parser: PFMParser | null = null;
+let spare_parser_busy = false;
+let idle_tree: TreeBuilder | null = null;
 
 /**
  * parse markdown that may include svelte syntax into tokens and nodes.
@@ -8019,9 +8368,36 @@ export function parse_markdown_svelte(
 		dispatcher = new PluginDispatcher(options.plugins, text_source);
 	}
 
-	const tree = new TreeBuilder(source.length >> 3 || 128, dispatcher);
-	const parser = new PFMParser(tree, options.tab_size);
-	const { errors } = parser.parse(source);
+	// short documents are denser in nodes, oversizing a small buffer is only a slab carve
+	const len = source.length;
+	const tree = new TreeBuilder(
+		len < 512 ? (len >> 2) + 16 : len >> 3,
+		dispatcher
+	);
+	let errors: ErrorCollector;
+	if (spare_parser_busy) {
+		// a plugin or emitter reentered parse, the spare holds the outer document
+		errors = new PFMParser(tree, options.tab_size).parse(source).errors;
+	} else {
+		spare_parser_busy = true;
+		let keep = false;
+		try {
+			if (spare_parser === null) {
+				if (idle_tree === null) idle_tree = new TreeBuilder(0);
+				spare_parser = new PFMParser(idle_tree);
+			}
+			spare_parser.bind(tree, options.tab_size);
+			errors = spare_parser.parse(source).errors;
+			keep = true;
+		} finally {
+			// a throw can leave the parser half written, so the next document gets a fresh one
+			if (keep) {
+				spare_parser!.bind(idle_tree!);
+				spare_parser!.release();
+			} else spare_parser = null;
+			spare_parser_busy = false;
+		}
+	}
 
 	// run sequential plugins after parse completes
 	if (dispatcher) {

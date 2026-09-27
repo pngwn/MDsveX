@@ -17,7 +17,7 @@
  * with fresh content.
  */
 
-import type { NodeBuffer } from "@mdsvex/parse/utils";
+import type { NodeBuffer } from '@mdsvex/parse/utils';
 
 const NONE = 0xffffffff;
 const K_LINE_BREAK = 6;
@@ -38,7 +38,7 @@ export class ComponentRenderer {
 	/** The current buffer reference (for passing to Node.svelte). */
 	buf: NodeBuffer | null = null;
 	/** The current source/text string (for passing to Node.svelte). */
-	source = "";
+	source = '';
 	private closed: Set<number> = new Set();
 
 	update(buf: NodeBuffer, source: string): ComponentBlock[] {
@@ -49,14 +49,14 @@ export class ComponentRenderer {
 		let changed = false;
 
 		// walk root's children via sibling chain
-		let child = buf._children_starts[0]; // root is index 0
+		let child = buf.first_child_at(0);
 		while (child !== NONE) {
-			const kind = buf._kinds[child];
-			const next = buf._next_siblings[child];
-			const is_sibling = next !== NONE && buf._parents[next] === 0;
+			const kind = buf.kind_at(child);
+			const next = buf.next_at(child);
+			const is_sibling = next !== NONE && buf.parent_at(next) === 0;
 
 			if (kind !== K_LINE_BREAK) {
-				const closed = buf._ends[child] !== NONE;
+				const closed = buf.end_at(child) !== NONE;
 
 				if (block_idx >= this.blocks.length) {
 					this.blocks.push({ idx: child, v: 0 });
@@ -82,7 +82,7 @@ export class ComponentRenderer {
 	reset(): void {
 		this.blocks = [];
 		this.buf = null;
-		this.source = "";
+		this.source = '';
 		this.closed.clear();
 	}
 }

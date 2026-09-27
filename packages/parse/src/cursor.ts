@@ -3,7 +3,7 @@
  *
  * single reusable object that provides tree-traversal semantics
  * (gotofirstchild / gotonextsibling / gotoparent) while reading
- * directly from the soa typed arrays underneath. no per-node
+ * directly from the node words underneath. no per-node
  * objects are created, text is lazily sliced from the source
  * string only when requested.
  *
@@ -23,55 +23,37 @@
  *   }
  */
 
-import type { NodeBuffer } from "./utils";
+import { NodeField, type NodeBuffer } from './utils';
 
 const NONE = 0xffffffff;
 
 export class Cursor {
-	/** the backing soa buffer. */
 	private buf: NodeBuffer;
 	/** the full source string for lazy text slicing. */
 	private src: string;
 	/** current node index into the buffer. */
 	private idx: number;
-
-	private _kinds: Uint8Array;
-	private _extras: Uint16Array;
-	private _starts: Uint32Array;
-	private _ends: Uint32Array;
-	private _value_starts: Uint32Array;
-	private _value_ends: Uint32Array;
-	private _parents: Uint32Array;
-	private _next_siblings: Uint32Array;
-	private _children_starts: Uint32Array;
-	private _pending_nodes: Uint32Array;
+	/** idx times NodeField.stride */
+	private b: number;
+	/** cached buf._n */
+	private n: Uint32Array;
 
 	constructor(buf: NodeBuffer, source: string) {
 		this.buf = buf;
 		this.src = source;
 		this.idx = 0; // root
-
-		// cache array references for hot-path access
-		this._kinds = buf._kinds;
-		this._extras = buf._extras;
-		this._starts = buf._starts;
-		this._ends = buf._ends;
-		this._value_starts = buf._value_starts;
-		this._value_ends = buf._value_ends;
-		this._parents = buf._parents;
-		this._next_siblings = buf._next_siblings;
-		this._children_starts = buf._children_starts;
-		this._pending_nodes = buf._pending_nodes;
+		this.b = 0;
+		this.n = buf._n;
 	}
 
 	/** numeric kind of current node. */
 	get kind(): number {
-		return this._kinds[this.idx];
+		return this.n[this.b] & 0xff;
 	}
 
 	/** kind-specific extra value (eg heading depth). */
 	get extra(): number {
-		return this._extras[this.idx];
+		return this.n[this.b] >>> 8;
 	}
 
 	/** current node index (for external id tracking / keyed lists). */
@@ -81,38 +63,38 @@ export class Cursor {
 
 	/** if the current node is closed (end offset has been set). */
 	get closed(): boolean {
-		return this._ends[this.idx] !== NONE;
+		return this.n[this.b + NodeField.end] !== NONE;
 	}
 
 	/** if the current node is pending (speculative, may be revoked). */
 	get pending(): boolean {
-		return this._pending_nodes[this.idx] === 1;
+		return this.n[this.b + NodeField.pending] === 1;
 	}
 
 	/** parent kind of the current node,  -1 if at root. */
 	get parent_kind(): number {
-		const p = this._parents[this.idx];
-		return p === NONE ? -1 : this._kinds[p];
+		const p = this.n[this.b + NodeField.parent];
+		return p === NONE ? -1 : this.n[p * NodeField.stride] & 0xff;
 	}
 
 	/** byte offset where the current node starts in source. */
 	get start(): number {
-		return this._starts[this.idx];
+		return this.n[this.b + NodeField.start];
 	}
 
 	/** byte offset where the current node ends in source. */
 	get end(): number {
-		return this._ends[this.idx];
+		return this.n[this.b + NodeField.end];
 	}
 
 	/** byte offset where the current node's value content starts. */
 	get value_start(): number {
-		return this._value_starts[this.idx];
+		return this.n[this.b + NodeField.value_start];
 	}
 
 	/** byte offset where the current node's value content ends. */
 	get value_end(): number {
-		return this._value_ends[this.idx];
+		return this.n[this.b + NodeField.value_end];
 	}
 
 	/** get text content for the current node. prebuilt strings
@@ -120,15 +102,25 @@ export class Cursor {
 	text(): string {
 		const s = this.buf._strings[this.idx];
 		if (s !== undefined) return s;
-		const vs = this._value_starts[this.idx];
-		const ve = this._value_ends[this.idx];
-		if (vs === NONE || ve === NONE || ve <= vs) return "";
+		const vs = this.n[this.b + NodeField.value_start];
+		const ve = this.n[this.b + NodeField.value_end];
+		if (vs === NONE || ve === NONE || ve <= vs) return '';
 		return this.src.slice(vs, ve);
+	}
+
+	get source(): string {
+		return this.src;
+	}
+
+	/** undefined when text slices the source */
+	get prebuilt(): string | undefined {
+		return this.buf._strings[this.idx];
 	}
 
 	/** get metadata for the current node, or undefined if none. */
 	meta(): Record<string, unknown> | undefined {
-		return this.buf.metadata_at(this.idx);
+		const slot = this.n[this.b + NodeField.meta];
+		return slot === 0 ? undefined : this.buf._meta[slot - 1];
 	}
 
 	/** slice the source string by byte offsets. for resolving metadata offset pairs. */
@@ -137,43 +129,60 @@ export class Cursor {
 	}
 
 	goto_first_child(): boolean {
-		const child = this._children_starts[this.idx];
+		const child = this.n[this.b + NodeField.first_child];
 		if (child === NONE) return false;
 		this.idx = child;
+		this.b = child * NodeField.stride;
 		return true;
 	}
 
 	goto_next_sibling(): boolean {
-		const next = this._next_siblings[this.idx];
+		const n = this.n;
+		const next = n[this.b + NodeField.next];
 		if (next === NONE) return false;
 		// verify it's actually a sibling (same parent)
-		if (this._parents[next] !== this._parents[this.idx]) return false;
+		const b = next * NodeField.stride;
+		if (n[b + NodeField.parent] !== n[this.b + NodeField.parent]) return false;
 		this.idx = next;
+		this.b = b;
 		return true;
 	}
 
 	goto_parent(): boolean {
-		const parent = this._parents[this.idx];
+		const parent = this.n[this.b + NodeField.parent];
 		if (parent === NONE) return false;
 		this.idx = parent;
+		this.b = parent * NodeField.stride;
 		return true;
 	}
 
 	reset(): void {
 		this.idx = 0;
+		this.b = 0;
 	}
 
 	/** get child indices as an array (for svelte {#each} iteration). */
 	children(): number[] {
+		const n = this.n;
 		const result: number[] = [];
-		let child = this._children_starts[this.idx];
+		let child = n[this.b + NodeField.first_child];
 		while (child !== NONE) {
 			result.push(child);
-			const next = this._next_siblings[child];
-			if (next === NONE || this._parents[next] !== this._parents[child]) break;
+			const next = n[child * NodeField.stride + NodeField.next];
+			if (
+				next === NONE ||
+				n[next * NodeField.stride + NodeField.parent] !==
+					n[child * NodeField.stride + NodeField.parent]
+			)
+				break;
 			child = next;
 		}
 		return result;
+	}
+
+	/** a cursor kept for reuse must not pin the source */
+	release(): void {
+		this.src = '';
 	}
 
 	/** re-inits cursor with a (potentially grown) buffer and new source. */
@@ -181,15 +190,7 @@ export class Cursor {
 		this.buf = buf;
 		this.src = source;
 		this.idx = 0;
-		this._kinds = buf._kinds;
-		this._extras = buf._extras;
-		this._starts = buf._starts;
-		this._ends = buf._ends;
-		this._value_starts = buf._value_starts;
-		this._value_ends = buf._value_ends;
-		this._parents = buf._parents;
-		this._next_siblings = buf._next_siblings;
-		this._children_starts = buf._children_starts;
-		this._pending_nodes = buf._pending_nodes;
+		this.b = 0;
+		this.n = buf._n;
 	}
 }

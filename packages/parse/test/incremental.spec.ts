@@ -168,6 +168,24 @@ describe('Incremental parsing', () => {
 			expect(closes2.some((o) => (o as any).id === fence_open.id)).toBe(true);
 		});
 
+		it('raw text element opens once its open tag is complete', () => {
+			const rec = new OpRecorder();
+			const p = new PFMParser(rec);
+			p.init();
+			p.feed('<style>\n.a { color: red }\n</sty');
+			const html_open = rec.ops.find(
+				(o) => o.op === 'open' && o.kind === 'html'
+			) as any;
+			expect(html_open).toBeDefined();
+			expect(html_open.pending).toBe(false);
+			const closed = () =>
+				rec.ops.some((o) => o.op === 'close' && o.id === html_open.id);
+			expect(closed()).toBe(false);
+
+			p.feed('le>\n');
+			expect(closed()).toBe(true);
+		});
+
 		it('revokes unclosed emphasis on finish', () => {
 			const rec = new OpRecorder();
 			const p = new PFMParser(rec);
@@ -351,6 +369,14 @@ describe('Incremental parsing', () => {
 				'mixed doc',
 				'# Title\n\n<div class="note">\n\nSome *text* here.\n\n</div>\n\nAfter.\n',
 			],
+			['block script', '<script>\nlet a = 1 > 0;\n</script>\n\nafter\n'],
+			['inline style', 'text <style>a > b {}</style> end\n'],
+			['unterminated block script', 'text\n\n<script>\nlet a = 1;\n'],
+			['unterminated inline style', 'a <style>b {}\n'],
+			['script in html block', '<div>\n<script>\nfoo()\n</script>\n</div>\n'],
+			['style in svelte block', '{#if a}\n<style>\nb {}\n</style>\n{/if}\n'],
+			['style in block quote', '> <style>\n> a {}\n> </style>\n'],
+			['close tag lookalike', '<script>"</scrip" + "t>";</script>\n'],
 		];
 
 		for (const [name, input] of html_cases) {
@@ -510,6 +536,18 @@ describe('retained source window', () => {
 		['block quote', lines(2000, (i) => (i % 2 ? '>' : `> quote ${i}`))],
 		['list in block quote', lines(2000, (i) => `> - item ${i}`)],
 		[
+			'style block',
+			'<style>\n' +
+				lines(2000, (i) => `.c${i} > a { color: red }`) +
+				'</style>\n',
+		],
+		[
+			'script after blocks',
+			'# title\n\n- a\n\n<script>\n' +
+				lines(2000, (i) => `let x${i} = ${i} > 0;`) +
+				'</script>\n\nafter\n',
+		],
+		[
 			'fence in list',
 			'- item\n  ```\n' + lines(2000, (i) => `  code ${i}`) + '  ```\n',
 		],
@@ -532,4 +570,122 @@ describe('retained source window', () => {
 			);
 		});
 	}
+});
+
+describe('feeds skipped while a fence or raw text block waits for its close', () => {
+	const body = (n: number, f: (i: number) => string) =>
+		Array.from({ length: n }, (_, i) => f(i)).join('\n') + '\n';
+	const cases: [string, string][] = [
+		[
+			'fence',
+			'```js\n' + body(40, (i) => `const x${i} = ${i};`) + '```\n\nafter\n',
+		],
+		[
+			'fence with short backtick runs',
+			'````\n' +
+				body(30, (i) => (i % 5 ? `line ${i}` : '```')) +
+				'  ``\n `\n````\nafter\n',
+		],
+		[
+			'fence with indented close',
+			'```\n' + body(30, (i) => `  code ${i}`) + '   ```\n\nafter\n',
+		],
+		[
+			'fence in list',
+			'- item\n  ```\n' + body(30, (i) => `  c ${i}`) + '  ```\n- b\n',
+		],
+		[
+			'fence in block quote',
+			'> ```\n' + body(30, (i) => `> c ${i}`) + '> ```\n',
+		],
+		['unclosed fence', '```\n' + body(30, (i) => `c ${i}`)],
+		[
+			'fence with blank lines',
+			'```\n' + body(30, (i) => (i % 3 ? `c ${i}` : '')) + '```\n',
+		],
+		[
+			'script',
+			'<script>\n' +
+				body(30, (i) => `let x${i} = ${i} > 0;`) +
+				'</script>\n\nafter\n',
+		],
+		[
+			'script with a less than',
+			'<script>\n' +
+				body(30, (i) => (i % 4 ? `let x${i} = ${i};` : `if (a < ${i}) b();`)) +
+				'</scr\n</script>\nafter\n',
+		],
+		[
+			'style',
+			'<style>\n' + body(30, (i) => `.c${i} > a { color: red }`) + '</style>\n',
+		],
+		['unclosed script', '<script>\n' + body(30, (i) => `x(${i});`)],
+		[
+			'script then fence',
+			'<script>\nlet a = 1;\n</script>\n\n```\n' +
+				body(20, (i) => `c${i}`) +
+				'```\n',
+		],
+	];
+	const crlf = (s: string) => s.replace(/\n/g, '\r\n');
+	const cr = (s: string) => s.replace(/\n/g, '\r');
+
+	function feed_counted(source: string, size: number) {
+		const tree = new TreeBuilder(source.length);
+		const parser = new PFMParser(tree);
+		const p = parser as any;
+		const skip = p.skip_wait;
+		let skipped = 0;
+		p.skip_wait = function (chunk: string, len: number) {
+			const r = skip.call(this, chunk, len);
+			if (r) skipped++;
+			return r;
+		};
+		parser.init();
+		for (let i = 0; i < source.length; i += size) {
+			parser.feed(source.slice(i, i + size));
+		}
+		parser.finish();
+		return { nodes: tree.get_buffer(), skipped };
+	}
+
+	for (const [name, source] of cases) {
+		for (const variant of [source, crlf(source), cr(source)]) {
+			const batch = parse_batch(variant);
+			for (const size of [1, 2, 3, 7, 64]) {
+				const label = `${name} ${JSON.stringify(variant.slice(-6))} chunk ${size}`;
+				it(label, () => {
+					const { nodes } = feed_counted(variant, size);
+					expect(tree_diff(batch, nodes, variant)).toEqual([]);
+				});
+			}
+		}
+	}
+
+	it('skips feeds inside a fence', () => {
+		const source = '```\n' + body(40, (i) => `code line ${i}`) + '```\n';
+		const { nodes, skipped } = feed_counted(source, 16);
+		expect(skipped).toBeGreaterThan(20);
+		expect(tree_diff(parse_batch(source), nodes, source)).toEqual([]);
+	});
+
+	it('skips feeds inside a script', () => {
+		const source =
+			'<script>\n' + body(40, (i) => `let x${i} = ${i};`) + '</script>\n';
+		const { nodes, skipped } = feed_counted(source, 16);
+		expect(skipped).toBeGreaterThan(20);
+		expect(tree_diff(parse_batch(source), nodes, source)).toEqual([]);
+	});
+
+	it('does not skip a chunk holding the fence close', () => {
+		const tree = new TreeBuilder(64);
+		const parser = new PFMParser(tree);
+		parser.init();
+		parser.feed('```\nabc\n');
+		parser.feed('x\n`');
+		parser.feed('``\nafter\n');
+		parser.finish();
+		const full = '```\nabc\nx\n```\nafter\n';
+		expect(tree_diff(parse_batch(full), tree.get_buffer(), full)).toEqual([]);
+	});
 });

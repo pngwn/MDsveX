@@ -1,4 +1,4 @@
-import type { NodeKind } from "./utils";
+import type { NodeKind } from './utils';
 
 /**
  * emitter interface for pfm parser opcodes.
@@ -11,6 +11,9 @@ import type { NodeKind } from "./utils";
 export interface Emitter {
 	/**
 	 * open a new node.
+	 *
+	 * ids are dense from root 0, each open and each text that creates a child
+	 * node takes the next id, so a builder can use ids as slot indices
 	 * @param id monotonic node id (unique within this parse).
 	 * @param kind node kind (heading, paragraph, emphasis, etc.).
 	 * @param start source byte offset where this node starts.
@@ -24,7 +27,7 @@ export interface Emitter {
 		start: number,
 		parent: number,
 		extra: number,
-		pending: boolean,
+		pending: boolean
 	): void;
 
 	/**
@@ -36,8 +39,10 @@ export interface Emitter {
 
 	/**
 	 * emit leaf text content within a node.
-	 * for paragraphs/emphasis/links: creates a child text node.
-	 * for headings/code_fences/code_spans: sets the node's value range.
+	 * paragraphs, emphasis, links and table cells get a child text node, which
+	 * takes the next id although no open names it
+	 * headings, code fences, code spans and html comments get a value range and
+	 * take no id
 	 * @param parent id of the parent node.
 	 * @param start source byte offset of text start.
 	 * @param end source byte offset of text end.
