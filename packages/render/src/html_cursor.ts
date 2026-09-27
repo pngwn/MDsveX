@@ -1100,4 +1100,21 @@ export class CursorHTMLRenderer {
 		this.closed?.clear();
 		this.html = '';
 	}
+
+	/**
+	 * drop the html, the chunks and the pending mappings of the last render,
+	 * and every reference to its source, so a renderer kept for reuse holds
+	 * no document. update and update_mapped truncate these arrays anyway, so
+	 * the next render pays nothing extra.
+	 */
+	release(): void {
+		this.out.length = 0;
+		this.entries.length = 0;
+		this.html = '';
+		this.blocks.length = 0;
+		this.closed?.clear();
+		this.cursor?.release();
+		// the escape index is module state and would keep the source alive
+		esc_reset('');
+	}
 }
