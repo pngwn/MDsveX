@@ -1897,8 +1897,39 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			return p;
 
 		case K.CODE_FENCE:
-		case K.LINK:
-		case K.IMAGE:
+			return tr_code_fence(c, sink, p);
+
+		case K.LINK: {
+			const pre = mo.length + FOLD_LEN[p];
+			if (p !== 0) mo += FOLD_STR[p];
+			const meta = c.meta();
+			let s = '<a';
+			if (meta?.href)
+				s += ' href="' + escape_html(meta.href as string) + '"';
+			if (meta?.title)
+				s += ' title="' + escape_html(meta.title as string) + '"';
+			mo = mo + s + _attrs(c, LINK_HANDLED);
+			p = tr_children(c, sink, S_GT);
+			p = tr_push(p, S_A_CLOSE);
+			put_record(sink, pre, mo.length + FOLD_LEN[p], c.start, c.end, c.index, Preset.TEXT << 2);
+			return p;
+		}
+
+		case K.IMAGE: {
+			const pre = mo.length + FOLD_LEN[p];
+			if (p !== 0) mo += FOLD_STR[p];
+			const meta = c.meta();
+			let s = '<img';
+			if (meta?.src) s += ' src="' + escape_html(meta.src as string) + '"';
+			s += ' alt="' + escape_html(_children_raw(c)) + '"';
+			if (meta?.title)
+				s += ' title="' + escape_html(meta.title as string) + '"';
+			mo = mo + s + _attrs(c, IMAGE_HANDLED);
+			// the syntax spans are empty, only the node is recorded
+			put_record(sink, pre, mo.length + FOLD_LEN[S_SELF_CLOSE], c.start, c.end, c.index, 0);
+			return S_SELF_CLOSE;
+		}
+
 		case K.HTML:
 		case K.HTML_COMMENT:
 		case K.MUSTACHE:
@@ -1912,6 +1943,29 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 		default:
 			return tr_children(c, sink, p);
 	}
+}
+
+function tr_code_fence(c: Cursor, sink: MapSink, p: number): number {
+	const pre = mo.length + FOLD_LEN[p];
+	const meta = c.meta();
+	// wire path: resolved 'info' string. treebuilder path: info_start/info_end byte offsets.
+	let info = meta?.info as string | undefined;
+	if (!info) {
+		const info_start = meta?.info_start as number | undefined;
+		const info_end = meta?.info_end as number | undefined;
+		if (info_start != null && info_end != null)
+			info = c.slice(info_start, info_end);
+	}
+	if (info) {
+		if (p !== 0) mo += FOLD_STR[p];
+		mo += '<pre><code class="language-' + escape_html(info);
+		p = tr_open(c, 0, S_QUOTE, S_QUOTE_GT, S_GT);
+	} else {
+		p = tr_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
+	}
+	tr_content(c, sink, p, escape_node_text(c), Code.CODE_CONTENT);
+	put_record(sink, pre, mo.length + FOLD_LEN[S_PRE_CODE_CLOSE], c.start, c.end, c.index, Preset.CODE << 2);
+	return S_PRE_CODE_CLOSE;
 }
 
 function tr_table_content(c: Cursor, sink: MapSink, p: number): number {
