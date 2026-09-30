@@ -4075,6 +4075,9 @@ export class PFMParser {
 	// block interrupt or blockquote boundary. caller should `continue
 	// main_loop` when true.
 	private _delimiter_lf_close(current_node: number): boolean {
+		// the next line is not decidable yet in feed mode: the caller pushes
+		// inline, whose linefeed stalls, and this runs again once it is
+		if (!this.finished && !this.can_decide_after_lf(this.cursor)) return false;
 		if (this.block_quote_depth > 0) {
 			const next_pos = this.cursor + 1;
 			const stripped = this.skip_bq_markers(next_pos, this.block_quote_depth);
