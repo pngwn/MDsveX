@@ -509,6 +509,8 @@ function find_matching_brace_jump(
 	let c_apos = -1;
 	let c_tick = -1;
 	let c_slash = -1;
+	let c_bs = -1;
+	let c_dollar = -1;
 	for (;;) {
 		const r = p - base;
 		if (c_open < r) {
@@ -576,19 +578,41 @@ function find_matching_brace_jump(
 				break;
 			}
 			case BACKTICK: {
-				// skip template literal, respecting ${} interpolations
+				// skip template literal, respecting ${} interpolations: the next
+				// backtick, backslash or $ from their cursors
 				p++;
-				while (
-					p < length &&
-					char_code_at.call(source, p - base) !== BACKTICK
-				) {
-					if (char_code_at.call(source, p - base) === BACKSLASH) {
-						p++;
-					} else if (
-						char_code_at.call(source, p - base) === 36 /* $ */ &&
-						p + 1 < length &&
-						char_code_at.call(source, p + 1 - base) === OPEN_BRACE
-					) {
+				for (;;) {
+					const t = p - base;
+					if (c_tick < t) {
+						c_tick = string_index_of.call(source, '`', t);
+						if (c_tick === -1 || c_tick > end) c_tick = end;
+					}
+					if (c_bs < t) {
+						c_bs = string_index_of.call(source, '\\', t);
+						if (c_bs === -1 || c_bs > end) c_bs = end;
+					}
+					if (c_dollar < t) {
+						c_dollar = string_index_of.call(source, '$', t);
+						if (c_dollar === -1 || c_dollar > end) c_dollar = end;
+					}
+					let u = c_tick;
+					if (c_bs < u) u = c_bs;
+					if (c_dollar < u) u = c_dollar;
+					if (u >= end) {
+						p = length;
+						break;
+					}
+					p = u + base;
+					const c = char_code_at.call(source, u);
+					if (c === BACKTICK) {
+						p++; // skip closing backtick
+						break;
+					}
+					if (c === BACKSLASH) {
+						p += 2;
+						continue;
+					}
+					if (p + 1 < length && char_code_at.call(source, u + 1) === OPEN_BRACE) {
 						p += 2; // skip ${
 						// recursively find the matching } for the interpolation
 						const inner_end = parser.find_matching_brace(p);
@@ -598,41 +622,23 @@ function find_matching_brace_jump(
 					}
 					p++;
 				}
-				if (p < length) p++; // skip closing backtick
 				break;
 			}
 			case SLASH: {
-				// skip // line comments
-				if (
-					p + 1 < length &&
-					char_code_at.call(source, p + 1 - base) === SLASH
-				) {
-					p += 2;
-					while (
-						p < length &&
-						char_code_at.call(source, p - base) !== LINEFEED
-					)
-						p++;
-					break;
-				}
-				// skip /* block comments */
-				if (
-					p + 1 < length &&
-					char_code_at.call(source, p + 1 - base) === ASTERISK
-				) {
-					p += 2;
-					while (p < length) {
-						if (
-							char_code_at.call(source, p - base) === ASTERISK &&
-							p + 1 < length &&
-							char_code_at.call(source, p + 1 - base) === SLASH
-						) {
-							p += 2;
-							break;
-						}
-						p++;
+				if (p + 1 < length) {
+					const n = char_code_at.call(source, p + 1 - base);
+					if (n === SLASH) {
+						// skip // line comments, up to the linefeed
+						const nl = string_index_of.call(source, '\n', p + 2 - base);
+						p = nl === -1 || nl >= end ? length : nl + base;
+						break;
 					}
-					break;
+					if (n === ASTERISK) {
+						// skip /* block comments */
+						const close = string_index_of.call(source, '*/', p + 2 - base);
+						p = close === -1 || close + 1 >= end ? length : close + 2 + base;
+						break;
+					}
 				}
 				p++;
 				break;
