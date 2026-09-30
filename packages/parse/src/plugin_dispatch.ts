@@ -255,26 +255,30 @@ function registration_for(plugins: ParsePlugin[]): RegistrationResult {
 }
 
 /**
- * stores close callbacks indexed by buffer index.
- * flat array gives O(1) access since buffer indices are sequential.
+ * stores close callbacks by buffer index. a Map, not an array: handled nodes
+ * can sit more than 1024 indices apart, and an array written past such a gap
+ * falls back to dictionary elements
  */
 class CloseCallbackStore {
-	private store: ((() => void)[] | undefined)[] = [];
+	private store: Map<number, (() => void)[]> | null = null;
 	// entries still set, most nodes close with none so the lookup is skipped
 	live = 0;
 
 	set(idx: number, callbacks: (() => void)[]): void {
-		if (this.store[idx] === undefined) this.live++;
-		this.store[idx] = callbacks;
+		let store = this.store;
+		if (store === null) store = this.store = new Map();
+		store.set(idx, callbacks);
+		this.live = store.size;
 	}
 
 	/** take close callbacks for a node, removing the entry. returns undefined if none. */
 	take(idx: number): (() => void)[] | undefined {
 		if (this.live === 0) return undefined;
-		const cbs = this.store[idx];
+		const store = this.store!;
+		const cbs = store.get(idx);
 		if (cbs !== undefined) {
-			this.store[idx] = undefined;
-			this.live--;
+			store.delete(idx);
+			this.live = store.size;
 		}
 		return cbs;
 	}
@@ -294,7 +298,7 @@ class CloseCallbackStore {
 	}
 
 	reset(): void {
-		this.store.length = 0;
+		if (this.store !== null) this.store.clear();
 		this.live = 0;
 	}
 }
@@ -488,6 +492,23 @@ export class PluginDispatcher {
 	/** a kind rewrite outside the plugins, a revoke's repair */
 	log_kind(buf_idx: number, prior_kind: number): void {
 		this.undo.log_kind(buf_idx, prior_kind);
+	}
+
+	/** an open of this kind needs a handler call or a redirect lookup */
+	wants_open(kind: NodeKind): boolean {
+		return (
+			(this.has_handler[kind >> 5] & (1 << (kind & 31))) !== 0 ||
+			this.redirects.size !== 0
+		);
+	}
+
+	/** no close callback, redirect or undo entry is live, so a close is a plain close */
+	quiet(): boolean {
+		return (
+			this.close_cbs.live === 0 &&
+			this.redirects.size === 0 &&
+			this.undo.empty
+		);
 	}
 
 	/** check whether any fused handlers exist for this kind. */

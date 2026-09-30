@@ -125,7 +125,7 @@ export class TreeBuilder implements Emitter {
 			if (id === nodes._size) {
 				// parents are opened ids below this one, so they are indices too
 				const parent_idx = parent === -1 ? NONE : parent;
-				if (dispatcher !== null) {
+				if (dispatcher !== null && dispatcher.wants_open(kind)) {
 					this.open_with_plugins(dispatcher, kind, start, parent_idx, extra, pending);
 					return;
 				}
@@ -212,8 +212,9 @@ export class TreeBuilder implements Emitter {
 		const dispatcher = this.dispatcher!;
 		nodes.set_end(idx, end);
 
-		// plugin close dispatch: fire close callbacks before committing
-		dispatcher.dispatch_close(idx, nodes);
+		// plugin close dispatch: fire close callbacks before committing, a
+		// quiet dispatcher has nothing to fire, redirect or commit
+		if (!dispatcher.quiet()) dispatcher.dispatch_close(idx, nodes);
 
 		// pending paragraphs inside list_items are tight-list speculation
 		// wrappers, they stay pending after close until the list closes
