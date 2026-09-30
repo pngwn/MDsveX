@@ -2,6 +2,6 @@ root
   paragraph
     text "[link"
     text "]("
-    text tag="foo" bar=true "<foo"
+    text tag="foo" bar=true "<foo\nbar>"
     text ")"
   line_break
