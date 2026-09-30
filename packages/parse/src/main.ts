@@ -3575,10 +3575,53 @@ export class PFMParser {
 			hash_count
 		);
 		this.out.set_value_start(h_id, content_start);
+		this.chomp(content_start, true);
+		const c0 =
+			content_start < length ? char_code_at.call(source, content_start - base) : 0;
+		if (!this.in_table && (c0 >= 128 || (c0 !== 0 && TEXT_BREAK[c0] === 0))) {
+			// plain content: the heading_marker trip's text run here, and when the
+			// run reaches the linefeed its close of the text and the heading too
+			const t_id = this.emit_open(NodeKind.text, content_start, h_id);
+			this.out.set_value_start(t_id, content_start);
+			let p = content_start + 1;
+			if (p < length) {
+				const c1 = char_code_at.call(source, p - base);
+				if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
+					p++;
+					while (p < length) {
+						const ch = char_code_at.call(source, p - base);
+						if (ch < 128 && TEXT_BREAK[ch] !== 0) break;
+						p++;
+					}
+				}
+			}
+			this.cursor = p;
+			if (p < length && char_code_at.call(source, p - base) === LINEFEED) {
+				let ve = p;
+				while (
+					ve > 0 &&
+					(char_code_at.call(source, ve - 1 - base) === SPACE ||
+						char_code_at.call(source, ve - 1 - base) === TAB)
+				) {
+					ve--;
+				}
+				this.emit_close(t_id, ve);
+				this.out.set_value_end(t_id, ve);
+				this.out.set_value_end(h_id, ve);
+				this.emit_close(h_id, p);
+				return true;
+			}
+			this.node_stack.push(h_id);
+			this.in_heading = true;
+			this.states.push(StateKind.heading_marker);
+			this.states.push(StateKind.inline);
+			this.node_stack.push(t_id);
+			this.states.push(StateKind.text);
+			return true;
+		}
 		this.node_stack.push(h_id);
 		this.in_heading = true;
 		this.states.push(StateKind.heading_marker);
-		this.chomp(content_start, true);
 		return true;
 	}
 
