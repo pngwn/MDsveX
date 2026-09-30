@@ -4361,6 +4361,50 @@ export class PFMParser {
 					}
 					// dispatch to inline parsing for heading content
 					this.states.push(StateKind.inline);
+					if (!this.in_table && (code >= 128 || TEXT_BREAK[code] === 0)) {
+						// what inline then text would do for a plain run: open the text
+						// node here, and close it too when the run reaches the linefeed
+						const t_id = this.emit_open(
+							NodeKind.text,
+							this.cursor,
+							current_node
+						);
+						this.out.set_value_start(t_id, this.cursor);
+						let p = this.cursor + 1;
+						if (p < length) {
+							const c1 = char_code_at.call(source, p - base);
+							if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
+								const text_break = TEXT_BREAK;
+								p++;
+								while (p < length) {
+									const ch = char_code_at.call(source, p - base);
+									if (ch < 128 && text_break[ch] !== 0) break;
+									p++;
+								}
+							}
+						}
+						if (
+							p < length &&
+							char_code_at.call(source, p - base) === LINEFEED
+						) {
+							let ve = p;
+							while (
+								ve > 0 &&
+								(char_code_at.call(source, ve - 1 - base) === SPACE ||
+									char_code_at.call(source, ve - 1 - base) === TAB)
+							) {
+								ve--;
+							}
+							this.emit_close(t_id, ve);
+							this.out.set_value_end(t_id, ve);
+							this.states.pop();
+							this.cursor = p;
+							continue;
+						}
+						this.node_stack.push(t_id);
+						this.states.push(StateKind.text);
+						this.cursor = p;
+					}
 					continue;
 				}
 
@@ -7333,7 +7377,8 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
-		if (this.can_trim(this.node_stack.length)) {
+		// only feed() reads trim_point, a finished parse never trims
+		if (!this.finished && this.can_trim(this.node_stack.length)) {
 			this.trim_point = this.cursor;
 		}
 		if (!code) {
@@ -7548,7 +7593,8 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
-		if (this.can_trim(this.node_stack.length)) {
+		// only feed() reads trim_point, a finished parse never trims
+		if (!this.finished && this.can_trim(this.node_stack.length)) {
 			this.trim_point = this.cursor;
 		}
 		if (!code) {
