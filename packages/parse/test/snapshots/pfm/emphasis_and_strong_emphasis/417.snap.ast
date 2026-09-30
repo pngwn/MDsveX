@@ -9,7 +9,7 @@ root
             emphasis
               text "bar"
               text "*"
-    text "*_"
-    text "_*"
+    text "*"
+    text "_"
     text "*baz"
   line_break

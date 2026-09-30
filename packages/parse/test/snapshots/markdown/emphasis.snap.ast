@@ -121,7 +121,7 @@ root
   line_break
   paragraph
     text "another line with just "
-    text "__"
+    text "_"
     text "_one double underscore"
   line_break
   line_break
@@ -132,7 +132,7 @@ root
   line_break
   paragraph
     text "another line with just "
-    text "**"
+    text "*"
     text "*one double asterix"
   line_break
   line_break

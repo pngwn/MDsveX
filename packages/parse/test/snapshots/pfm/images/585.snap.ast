@@ -1,6 +1,6 @@
 root
   paragraph
-    text "![*"
+    text "!["
     strong_emphasis
       text "foo"
     text " bar"

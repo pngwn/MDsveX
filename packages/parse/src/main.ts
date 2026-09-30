@@ -4302,9 +4302,14 @@ export class PFMParser {
 						}
 
 						case TILDE: {
-							// ~~ is a two-char token. if only one ~ is available
-							// and more input is expected, hold back.
-							if (!this.finished && this.cursor + 1 >= length) {
+							// the ~~ flanking check needs the char after both tildes
+							if (
+								!this.finished &&
+								(this.cursor + 1 >= length ||
+									(this.cursor + 2 >= length &&
+										char_code_at.call(source, this.cursor + 1 - base) ===
+											TILDE))
+							) {
 								break main_loop;
 							}
 							// strikethrough: ~~ must be double tilde with flanking
@@ -4359,6 +4364,7 @@ export class PFMParser {
 						case CARET: {
 							// superscript: ^ opens if next char is word/punctuation
 							// (no left-flanking constraint - x^2^ is valid)
+							if (!this.finished && this.cursor + 1 >= length) break main_loop;
 							if (this.next_class() & (CharMask.word | CharMask.punctuation)) {
 								const n_id = this.emit_open(
 									NodeKind.superscript,

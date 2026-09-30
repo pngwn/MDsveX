@@ -772,8 +772,9 @@ export class NodeBuffer {
 		this.set_first_child(index, 0xffffffff);
 		this.set_last_child(index, 0xffffffff);
 
+		// use start, a soft_break child has no value range
 		const value_start = this.start_at(index);
-		const value_end = this.value_start_at(first_child);
+		const value_end = this.start_at(first_child);
 		this.set_value(index, value_start, value_end);
 		this.set_end(index, value_end);
 	}
