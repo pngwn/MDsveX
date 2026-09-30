@@ -1071,9 +1071,12 @@ export class NodeBuffer {
 		const slot = n[i];
 		if (slot !== 0) this._meta[slot - 1] = metadata;
 		else {
-			let meta = this._meta;
-			if (meta === NO_META) meta = this._meta = [];
-			n[i] = meta.push(metadata);
+			const meta = this._meta;
+			// a literal holds one slot, a push onto [] reserves seventeen
+			if (meta === NO_META) {
+				this._meta = [metadata];
+				n[i] = 1;
+			} else n[i] = meta.push(metadata);
 		}
 	}
 
