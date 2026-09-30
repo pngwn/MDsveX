@@ -4188,6 +4188,7 @@ export class PFMParser {
 								current_node
 							);
 							this.node_stack.push(para_id);
+							if ((code >= 128 || (code !== 0 && TEXT_BREAK[code] === 0))) this.para_text(para_id);
 							continue;
 						}
 					}
@@ -7666,6 +7667,7 @@ export class PFMParser {
 					current_node
 				);
 				this.node_stack.push(para_id);
+				if ((code >= 128 || (code !== 0 && TEXT_BREAK[code] === 0))) this.para_text(para_id);
 				return false;
 			}
 		}
@@ -8157,6 +8159,7 @@ export class PFMParser {
 				);
 				this.track_list_pending_para(para_id);
 				this.node_stack.push(para_id);
+				if ((code >= 128 || (code !== 0 && TEXT_BREAK[code] === 0))) this.para_text(para_id);
 				return false;
 			}
 		}
@@ -8511,6 +8514,48 @@ export class PFMParser {
 		const after_delim = delim_end < length ? delim_end + 1 : delim_end;
 		this.chomp(after_delim, true);
 		return true;
+	}
+
+	/**
+	 * a paragraph just opened and pushed at a plain char: open its first text node
+	 * and skip the plain run, what the paragraph, inline and text states would do
+	 * in three trips. inside a list or block quote a run that reaches the linefeed
+	 * closes the text there too (the text state's linefeed close) and leaves inline
+	 * on the linefeed to make the continuation call
+	 */
+	private para_text(para_id: number): void {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const start = this.cursor;
+		const t_id = this.emit_open(NodeKind.text, start, para_id);
+		this.out.set_value_start(t_id, start);
+		this.states.push(StateKind.inline);
+		let p = start + 1;
+		if (p < length) {
+			const c1 = char_code_at.call(source, p - base);
+			if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
+				p++;
+				while (p < length) {
+					const ch = char_code_at.call(source, p - base);
+					if (ch < 128 && TEXT_BREAK[ch] !== 0) break;
+					p++;
+				}
+			}
+		}
+		if (
+			(this.list_depth > 0 || this.block_quote_depth > 0) &&
+			p < length &&
+			char_code_at.call(source, p - base) === LINEFEED
+		) {
+			this.emit_close(t_id, p);
+			this.out.set_value_end(t_id, p);
+			this.cursor = p;
+			return;
+		}
+		this.node_stack.push(t_id);
+		this.states.push(StateKind.text);
+		this.cursor = p;
 	}
 
 	/**
