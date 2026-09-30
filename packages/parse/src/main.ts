@@ -379,7 +379,9 @@ function find_matching_brace_far(
 	p: number,
 	depth: number,
 ): number {
-	while (p < length) {
+	// a scan still going after this window finds its stops with indexOf
+	const lim = length - p > 4096 ? p + 4096 : length;
+	while (p < lim) {
 		const ch = char_code_at.call(source, p - base);
 		if (ch >= 128 || BRACE_STOP[ch] === 0) {
 			p++;
@@ -483,7 +485,162 @@ function find_matching_brace_far(
 		}
 	}
 
+	if (p < length) return find_matching_brace_jump(parser, source, base, length, p, depth);
 	return -1;
+}
+
+/**
+ * find_matching_brace_far for scans that run on for thousands of chars (a
+ * stray brace in prose): the next char it has to look at comes from one
+ * indexOf cursor per stop char, each advanced only once passed. same result
+ */
+function find_matching_brace_jump(
+	parser: PFMParser,
+	source: string,
+	base: number,
+	length: number,
+	p: number,
+	depth: number,
+): number {
+	const end = length - base;
+	let c_open = -1;
+	let c_close = -1;
+	let c_quote = -1;
+	let c_apos = -1;
+	let c_tick = -1;
+	let c_slash = -1;
+	for (;;) {
+		const r = p - base;
+		if (c_open < r) {
+			c_open = string_index_of.call(source, '{', r);
+			if (c_open === -1 || c_open > end) c_open = end;
+		}
+		if (c_close < r) {
+			c_close = string_index_of.call(source, '}', r);
+			if (c_close === -1 || c_close > end) c_close = end;
+		}
+		if (c_quote < r) {
+			c_quote = string_index_of.call(source, '"', r);
+			if (c_quote === -1 || c_quote > end) c_quote = end;
+		}
+		if (c_apos < r) {
+			c_apos = string_index_of.call(source, "'", r);
+			if (c_apos === -1 || c_apos > end) c_apos = end;
+		}
+		if (c_tick < r) {
+			c_tick = string_index_of.call(source, '`', r);
+			if (c_tick === -1 || c_tick > end) c_tick = end;
+		}
+		if (c_slash < r) {
+			c_slash = string_index_of.call(source, '/', r);
+			if (c_slash === -1 || c_slash > end) c_slash = end;
+		}
+		let q = c_open;
+		if (c_close < q) q = c_close;
+		if (c_quote < q) q = c_quote;
+		if (c_apos < q) q = c_apos;
+		if (c_tick < q) q = c_tick;
+		if (c_slash < q) q = c_slash;
+		if (q >= end) return -1;
+		const ch = char_code_at.call(source, q);
+		p = q + base;
+
+		switch (ch) {
+			case OPEN_BRACE:
+				depth++;
+				p++;
+				break;
+			case CLOSE_BRACE:
+				depth--;
+				if (depth === 0) return p + 1;
+				p++;
+				break;
+			case QUOTE:
+			case APOSTROPHE: {
+				// skip string literal: jump between quotes, one after an odd run of
+				// backslashes is escaped
+				const needle = ch === QUOTE ? '"' : "'";
+				let r = p + 1 - base;
+				p = length;
+				for (;;) {
+					const q = string_index_of.call(source, needle, r);
+					if (q === -1) break;
+					let k = q;
+					while (k > r && char_code_at.call(source, k - 1) === BACKSLASH) k--;
+					if (((q - k) & 1) === 0) {
+						p = q + 1 + base;
+						break;
+					}
+					r = q + 1;
+				}
+				break;
+			}
+			case BACKTICK: {
+				// skip template literal, respecting ${} interpolations
+				p++;
+				while (
+					p < length &&
+					char_code_at.call(source, p - base) !== BACKTICK
+				) {
+					if (char_code_at.call(source, p - base) === BACKSLASH) {
+						p++;
+					} else if (
+						char_code_at.call(source, p - base) === 36 /* $ */ &&
+						p + 1 < length &&
+						char_code_at.call(source, p + 1 - base) === OPEN_BRACE
+					) {
+						p += 2; // skip ${
+						// recursively find the matching } for the interpolation
+						const inner_end = parser.find_matching_brace(p);
+						if (inner_end === -1) return -2;
+						p = inner_end;
+						continue;
+					}
+					p++;
+				}
+				if (p < length) p++; // skip closing backtick
+				break;
+			}
+			case SLASH: {
+				// skip // line comments
+				if (
+					p + 1 < length &&
+					char_code_at.call(source, p + 1 - base) === SLASH
+				) {
+					p += 2;
+					while (
+						p < length &&
+						char_code_at.call(source, p - base) !== LINEFEED
+					)
+						p++;
+					break;
+				}
+				// skip /* block comments */
+				if (
+					p + 1 < length &&
+					char_code_at.call(source, p + 1 - base) === ASTERISK
+				) {
+					p += 2;
+					while (p < length) {
+						if (
+							char_code_at.call(source, p - base) === ASTERISK &&
+							p + 1 < length &&
+							char_code_at.call(source, p + 1 - base) === SLASH
+						) {
+							p += 2;
+							break;
+						}
+						p++;
+					}
+					break;
+				}
+				p++;
+				break;
+			}
+			default:
+				p++;
+		}
+	}
 }
 
 /**
