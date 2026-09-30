@@ -2046,6 +2046,30 @@ export class PFMParser {
 
 		this.states.push(StateKind.list_item);
 		this.chomp(marker.content_start, true);
+		this.item_para(item_id);
+	}
+
+	/**
+	 * a new list item's content in a finished parse: a letter or non ascii char
+	 * there can only open a paragraph (the list_item trip's default branch finds
+	 * no marker), so open it and take its plain run here. feeds keep the trip,
+	 * it sets the trim point
+	 */
+	private item_para(item_id: number): void {
+		if (!this.finished) return;
+		const c = char_code_at.call(this.source, this.cursor - this.source_base);
+		if (!(c >= 128 || ((c | 32) >= 97 && (c | 32) <= 122))) return;
+		this.states.push(StateKind.paragraph);
+		const para_id = this.emit_open(
+			NodeKind.paragraph,
+			this.cursor,
+			item_id,
+			0,
+			true
+		);
+		this.track_list_pending_para(para_id);
+		this.node_stack.push(para_id);
+		this.para_text(para_id);
 	}
 
 	/**
@@ -7949,6 +7973,7 @@ export class PFMParser {
 						this.node_stack.push(new_item_id);
 						this.list_content_offset = marker.content_offset;
 						this.chomp(marker.content_start, true);
+						this.item_para(new_item_id);
 						return false;
 					}
 					this.end_list();
