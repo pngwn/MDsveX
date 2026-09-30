@@ -1212,7 +1212,8 @@ function push_dyn(p: number, s: string): number {
 function fold_miss(p: number, id: number): number {
 	const a = FOLD_STR[p];
 	const b = FOLD_STR[id];
-	if (a.length + b.length > FOLD_MAX_LEN) {
+	// a full table would build, internalize and hash the composite on every later miss
+	if (a.length + b.length > FOLD_MAX_LEN || FOLD_STR.length >= FOLD_MAX_IDS) {
 		fold_out += a;
 		return id;
 	}
@@ -1220,10 +1221,6 @@ function fold_miss(p: number, id: number): number {
 	const s = Object.keys({ [a + b]: 0 })[0];
 	let v = FOLD_IDS.get(s);
 	if (v === undefined) {
-		if (FOLD_STR.length >= FOLD_MAX_IDS) {
-			fold_out += a;
-			return id;
-		}
 		v = FOLD_STR.length;
 		FOLD_STR.push(s);
 		FOLD_IDS.set(s, v);
