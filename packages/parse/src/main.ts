@@ -345,6 +345,8 @@ function tag_rec_put(kind: number, a: number, b: number, c: number, d: number): 
 const tag_marks: number[] = [];
 // where the last failed open tag scan stopped
 let tag_fail_p = 0;
+// what a scan that ran off the end waits for in feed mode: a closing quote, brace or >
+let tag_need = '>';
 // whether the last open tag scan that parsed ended in />
 let tag_self_closing = false;
 const TAG_ATTR_BOOL = 0;
@@ -435,6 +437,8 @@ export class PFMParser {
 	// block state
 	private block_quote_depth: number = 0;
 	private emphasis_has_content: boolean = false;
+	// try_parse_html_open_tag in feed mode: the tag may still close, a '>' wait is set
+	private tag_wait: boolean = false;
 	private list_depth: number = 0;
 	private list_marker: number = 0;
 	private list_ordered: boolean = false;
@@ -2631,6 +2635,7 @@ export class PFMParser {
 		const base = this.source_base;
 		const length = this.source_end;
 
+		this.tag_wait = false;
 		// tag name must start with a letter or underscore
 		if (
 			pos >= length ||
@@ -2643,6 +2648,13 @@ export class PFMParser {
 			memo = this.tag_memo = null;
 		const end = this.scan_open_tag(pos, memo);
 		if (end < 0) {
+			// feed mode: the scan ran off the end (an attribute value or
+			// expression holding a '>' is still open), a later '>' decides
+			if (!this.finished && tag_fail_p >= length) {
+				this.tag_wait = true;
+				this.wait_for(tag_need);
+				return null;
+			}
 			this.open_tag_failed(pos);
 			return null;
 		}
@@ -2715,6 +2727,7 @@ export class PFMParser {
 		const marks = tag_marks;
 		if (memo !== null) marks.length = 0;
 		tag_rec_n = 0;
+		tag_need = '>';
 		let p = pos + 1;
 		while (
 			p < length &&
@@ -2749,7 +2762,8 @@ export class PFMParser {
 					tag_self_closing = true;
 					return p + 2;
 				}
-				tag_fail_p = p;
+				// a / at the end may still be followed by its >
+				tag_fail_p = p + 1 >= length ? length : p;
 				return -1; // stray /
 			}
 
@@ -2763,6 +2777,7 @@ export class PFMParser {
 				const expr_end = this.find_matching_brace(p + 1);
 				if (expr_end === -1) {
 					tag_fail_p = length;
+					tag_need = '}';
 					return -1;
 				}
 				tag_rec_put(TAG_ATTR_SHORTHAND, p + 1, expr_end - 1, 0, 0);
@@ -2828,6 +2843,7 @@ export class PFMParser {
 					const expr_end = this.find_matching_brace(p + 1);
 					if (expr_end === -1) {
 						tag_fail_p = length;
+						tag_need = '}';
 						return -1;
 					}
 					tag_rec_put(TAG_ATTR_EXPR, attr_name_start, attr_name_end, p + 1, expr_end - 1);
@@ -2838,7 +2854,10 @@ export class PFMParser {
 					const value_start = p;
 					while (p < length && char_code_at.call(source, p - base) !== quote)
 						p++;
-					if (p >= length) break; // unclosed quote
+					if (p >= length) {
+						tag_need = quote === QUOTE ? '"' : "'";
+						break; // unclosed quote
+					}
 					tag_rec_put(TAG_ATTR_VALUE, attr_name_start, attr_name_end, value_start, p);
 					p++; // skip closing quote
 				} else {
@@ -4476,6 +4495,7 @@ export class PFMParser {
 
 							// try html opening tag at block level
 							const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
+							if (blk_tag === null && this.tag_wait) break main_loop;
 							if (blk_tag) {
 								if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
 									const html_id = this.emit_open(
@@ -5597,6 +5617,7 @@ export class PFMParser {
 
 							// try html opening tag: <tag ...> or <tag ... />
 							const open_tag = this.try_parse_html_open_tag(this.cursor + 1);
+							if (open_tag === null && this.tag_wait) break main_loop;
 							if (open_tag) {
 								if (open_tag.self_closing || this.is_void_tag(open_tag.tag)) {
 									const html_id = this.emit_open(
@@ -7739,6 +7760,7 @@ export class PFMParser {
 			}
 
 			const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
+			if (blk_tag === null && this.tag_wait) return true;
 			if (blk_tag) {
 				if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
 					const html_id = this.emit_open(
@@ -7990,6 +8012,7 @@ export class PFMParser {
 				return true;
 			}
 			const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
+			if (blk_tag === null && this.tag_wait) return true;
 			if (blk_tag) {
 				if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
 					const html_id = this.emit_open(
