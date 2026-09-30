@@ -1186,6 +1186,8 @@ const FOLD_MAX_IDS = 1024;
 const FOLD_MAX_LEN = 128;
 // pair keys shift the pending id by 7 bits, so base ids must stay below 128
 if (FOLD_BASE > 128) throw new Error('too many static literals');
+// FOLD_LEN is declared before the cap, it must cover every id
+if (FOLD_LEN.length < FOLD_MAX_IDS) throw new Error('FOLD_LEN smaller than the fold table');
 
 /** composite id per pair key, 0 when not built yet */
 const FOLD_PAIR = new Uint16Array(FOLD_MAX_IDS << 7);
@@ -1896,6 +1898,12 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 		case K.LINE_BREAK:
 			return p;
 
+		case K.HTML:
+			return tr_html(c, sink, p);
+
+		case K.SVELTE_BLOCK:
+			return tr_svelte_block(c, sink, p);
+
 		case K.CODE_FENCE:
 			return tr_code_fence(c, sink, p);
 
@@ -1930,11 +1938,9 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			return S_SELF_CLOSE;
 		}
 
-		case K.HTML:
 		case K.HTML_COMMENT:
 		case K.MUSTACHE:
 		case K.SVELTE_TAG:
-		case K.SVELTE_BLOCK:
 			// rarer constructs render through the mapped render as they are
 			if (p !== 0) mo += FOLD_STR[p];
 			render_node(c, sink);
@@ -1966,6 +1972,99 @@ function tr_code_fence(c: Cursor, sink: MapSink, p: number): number {
 	tr_content(c, sink, p, escape_node_text(c), Code.CODE_CONTENT);
 	put_record(sink, pre, mo.length + FOLD_LEN[S_PRE_CODE_CLOSE], c.start, c.end, c.index, Preset.CODE << 2);
 	return S_PRE_CODE_CLOSE;
+}
+
+/** the mapped render's html case, children folded */
+function tr_html(c: Cursor, sink: MapSink, p: number): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	const pre = mo.length;
+	const meta = c.meta();
+	const tag = meta?.tag as string;
+	// source passthrough and reconstruction exactly as render_node
+	const self_closing = !!meta?.self_closing;
+	const passthrough =
+		self_closing && c.end > c.start ? c.slice(c.start, c.end) : '';
+	if (passthrough) {
+		mo += passthrough;
+	} else {
+		let s = '<' + meta_str(tag);
+		const html_attrs = meta?.attributes as
+			| Record<string, string | boolean>
+			| undefined;
+		if (html_attrs) {
+			for (const k in html_attrs) {
+				const v = html_attrs[k];
+				if (v === true) {
+					s += ' ' + k;
+				} else if (
+					typeof v === 'object' &&
+					(v as any).type === 'expression'
+				) {
+					s += ' ' + k + '={' + meta_str((v as any).value) + '}';
+				} else {
+					s += ' ' + k + '="' + escape_html(v as string) + '"';
+				}
+			}
+		}
+		if (self_closing) {
+			mo += s;
+			put_record(sink, pre, mo.length + FOLD_LEN[S_SELF_CLOSE], c.start, c.end, c.index, Code.SVELTE_CONTENT);
+			return S_SELF_CLOSE;
+		}
+		mo += s;
+	}
+	if (self_closing) {
+		put_record(sink, pre, mo.length, c.start, c.end, c.index, Code.SVELTE_CONTENT);
+		return 0;
+	}
+	if (tag === 'script' || tag === 'style') {
+		tr_content(c, sink, S_GT, c.text(), Code.SVELTE_CONTENT);
+	} else {
+		const q = tr_children(c, sink, S_GT);
+		if (q !== 0) mo += FOLD_STR[q];
+	}
+	mo = mo + '</' + meta_str(tag);
+	put_record(sink, pre, mo.length + FOLD_LEN[S_GT], c.start, c.end, c.index, Preset.TEXT << 2);
+	return S_GT;
+}
+
+/** the mapped render's svelte block case, branch children folded */
+function tr_svelte_block(c: Cursor, sink: MapSink, p: number): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	p = 0;
+	const pre = mo.length;
+	// render branches; each branch handles its own opening tag
+	const block_meta = c.meta();
+	const block_tag = meta_str(block_meta?.tag);
+	if (c.goto_first_child()) {
+		let is_first = true;
+		do {
+			if (c.kind === K.SVELTE_BRANCH) {
+				const branch_expr = c.text();
+				if (p !== 0) mo += FOLD_STR[p];
+				if (is_first) {
+					mo = mo + '{#' + block_tag;
+					is_first = false;
+				} else {
+					mo = mo + '{:' + meta_str(c.meta()?.tag);
+				}
+				if (branch_expr) {
+					mo += ' ';
+					put_record(sink, mo.length, mo.length + branch_expr.length, c.value_start, c.value_end, c.index, Code.SVELTE_CONTENT);
+					mo += branch_expr;
+				}
+				p = tr_children(c, sink, S_BRACE_CLOSE_LF);
+			} else if (c.kind !== K.LINE_BREAK) {
+				p = tr_node(c, sink, p);
+			}
+		} while (c.goto_next_sibling());
+		c.goto_parent();
+	}
+	if (p !== 0) mo += FOLD_STR[p];
+	mo = mo + '{/' + block_tag;
+	// node span for the whole block, use the block node (goto_parent already called)
+	put_record(sink, pre, mo.length + FOLD_LEN[S_BRACE_CLOSE], c.start, c.end, c.index, Code.SVELTE_NODE);
+	return S_BRACE_CLOSE;
 }
 
 function tr_table_content(c: Cursor, sink: MapSink, p: number): number {
