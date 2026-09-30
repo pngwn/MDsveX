@@ -133,6 +133,18 @@ const WAIT_NONE = 0;
 const WAIT_FENCE = 1;
 const WAIT_RAW = 2;
 
+// states of the resumable brace probe, one char at a time so a scan cut at the end of the input resumes exactly
+const BM_CODE = 0;
+const BM_SLASH = 1;
+const BM_STR = 2;
+const BM_STR_ESC = 3;
+const BM_TPL = 4;
+const BM_TPL_ESC = 5;
+const BM_TPL_DOLLAR = 6;
+const BM_LINE = 7;
+const BM_BLOCK = 8;
+const BM_BLOCK_STAR = 9;
+
 const ID_KIND_MASK = 0x7f;
 const ID_CLOSED = 0x80;
 // sixteen entries is 64 bytes, the largest typed array v8 keeps on heap
@@ -312,6 +324,13 @@ export class PFMParser {
 	private raw_node: number = 0;
 	private raw_needle: string = '';
 	private raw_scan: number = 0;
+	// the brace probe's saved scan: start (-1 none), resume point, state, quote, and frames (brace depth, 0 for a template)
+	private bp_start: number = -1;
+	private bp_p: number = 0;
+	private bp_mode: number = 0;
+	private bp_quote: number = 0;
+	private bp_end: number = -1;
+	private bp_frames: number[] = [];
 	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
 	private wait_kind: number = 0;
 	private cursor: number = 0;
@@ -612,6 +631,7 @@ export class PFMParser {
 		this.source_end = 0;
 		this.trim_point = 0;
 		this.fence_scan = 0;
+		this.bp_start = -1;
 		this.raw_node = 0;
 		this.raw_needle = '';
 		this.raw_scan = 0;
@@ -2938,6 +2958,140 @@ export class PFMParser {
 	}
 
 	/**
+	 * find_matching_brace for the incremental stall checks. from the second
+	 * failed scan of a brace on, the scan keeps its state and the next probe
+	 * of the same brace resumes it, so a
+	 * brace that stays open across many feeds is scanned once rather than
+	 * once per feed. same result as find_matching_brace on the same input.
+	 */
+	private probe_matching_brace(pos: number): number {
+		const frames = this.bp_frames;
+		let p: number;
+		let mode: number;
+		let quote: number;
+		if (this.bp_start !== pos) {
+			// most braces close within the chunk, the plain scan is quicker for those
+			const end = this.find_matching_brace(pos);
+			if (end !== -1) return end;
+			this.bp_start = pos;
+			this.bp_end = -1;
+			this.bp_p = -1;
+			return -1;
+		}
+		if (this.bp_end !== -1) return this.bp_end;
+		if (this.bp_p === -1) {
+			// still open after a second feed, scan once more keeping state from here on
+			frames.length = 0;
+			frames.push(1);
+			p = pos;
+			mode = BM_CODE;
+			quote = 0;
+		} else {
+			p = this.bp_p;
+			mode = this.bp_mode;
+			quote = this.bp_quote;
+		}
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+
+		while (p < length) {
+			const ch = char_code_at.call(source, p - base);
+			switch (mode) {
+				case BM_CODE:
+					if (ch === OPEN_BRACE) {
+						frames[frames.length - 1]++;
+					} else if (ch === CLOSE_BRACE) {
+						const top = frames.length - 1;
+						if (--frames[top] === 0) {
+							frames.pop();
+							if (top === 0) {
+								this.bp_end = p + 1;
+								return p + 1;
+							}
+							// an interpolation closed, back in its template
+							mode = BM_TPL;
+						}
+					} else if (ch === QUOTE || ch === APOSTROPHE) {
+						quote = ch;
+						mode = BM_STR;
+					} else if (ch === BACKTICK) {
+						frames.push(0);
+						mode = BM_TPL;
+					} else if (ch === SLASH) {
+						mode = BM_SLASH;
+					}
+					p++;
+					break;
+				case BM_SLASH:
+					if (ch === SLASH) {
+						mode = BM_LINE;
+						p++;
+					} else if (ch === ASTERISK) {
+						mode = BM_BLOCK;
+						p++;
+					} else {
+						// a lone slash, this char is code
+						mode = BM_CODE;
+					}
+					break;
+				case BM_STR:
+					if (ch === BACKSLASH) mode = BM_STR_ESC;
+					else if (ch === quote) mode = BM_CODE;
+					p++;
+					break;
+				case BM_STR_ESC:
+					mode = BM_STR;
+					p++;
+					break;
+				case BM_TPL:
+					if (ch === BACKTICK) {
+						frames.pop();
+						mode = BM_CODE;
+					} else if (ch === BACKSLASH) {
+						mode = BM_TPL_ESC;
+					} else if (ch === 36 /* $ */) {
+						mode = BM_TPL_DOLLAR;
+					}
+					p++;
+					break;
+				case BM_TPL_ESC:
+					mode = BM_TPL;
+					p++;
+					break;
+				case BM_TPL_DOLLAR:
+					if (ch === OPEN_BRACE) {
+						frames.push(1);
+						mode = BM_CODE;
+						p++;
+					} else {
+						// not an interpolation, this char is template text
+						mode = BM_TPL;
+					}
+					break;
+				case BM_LINE:
+					if (ch === LINEFEED) mode = BM_CODE;
+					p++;
+					break;
+				case BM_BLOCK:
+					if (ch === ASTERISK) mode = BM_BLOCK_STAR;
+					p++;
+					break;
+				default:
+					// BM_BLOCK_STAR
+					if (ch === SLASH) mode = BM_CODE;
+					else if (ch !== ASTERISK) mode = BM_BLOCK;
+					p++;
+			}
+		}
+
+		this.bp_p = p;
+		this.bp_mode = mode;
+		this.bp_quote = quote;
+		return -1;
+	}
+
+	/**
 	 * try to parse a link reference definition at block level.
 	 * syntax: [label]: destination "title"
 	 *
@@ -3789,7 +3943,7 @@ export class PFMParser {
 						case OPEN_BRACE: {
 							// svelte block opener: {#tag expr}
 							if (!this.finished) {
-								const probe = this.find_matching_brace(this.cursor + 1);
+								const probe = this.probe_matching_brace(this.cursor + 1);
 								if (probe === -1) break main_loop;
 							}
 							const token = this.try_parse_svelte_block_token(this.cursor);
@@ -4757,7 +4911,7 @@ export class PFMParser {
 						case OPEN_BRACE: {
 							// in incremental mode, stall if we can't see the closing brace
 							if (!this.finished) {
-								const probe = this.find_matching_brace(this.cursor + 1);
+								const probe = this.probe_matching_brace(this.cursor + 1);
 								if (probe === -1) break main_loop;
 							}
 							const expr_end = this.find_matching_brace(this.cursor + 1);
@@ -6646,7 +6800,7 @@ export class PFMParser {
 		if (code === OPEN_BRACE) {
 			// svelte block opener nested inside an html block element
 			if (!this.finished) {
-				const probe = this.find_matching_brace(this.cursor + 1);
+				const probe = this.probe_matching_brace(this.cursor + 1);
 				if (probe === -1) return true;
 			}
 			const token = this.try_parse_svelte_block_token(this.cursor);
@@ -6748,7 +6902,7 @@ export class PFMParser {
 		if (code === OPEN_BRACE) {
 			// stall if closing brace not visible
 			if (!this.finished) {
-				const probe = this.find_matching_brace(this.cursor + 1);
+				const probe = this.probe_matching_brace(this.cursor + 1);
 				if (probe === -1) return true;
 			}
 			const token = this.try_parse_svelte_block_token(this.cursor);
