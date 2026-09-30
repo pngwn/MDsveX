@@ -863,6 +863,32 @@ export class PFMParser {
 		if (this.kind_of(id) === NodeKind.paragraph) this.pending_para_count--;
 	}
 
+	/** open a text node at p0 (a plain char) under parent and skip its plain run */
+	private open_text_run(p0: number, parent: number): void {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const t_id = this.emit_open(NodeKind.text, p0, parent);
+		this.out.set_value_start(t_id, p0);
+		this.node_stack.push(t_id);
+		this.states.push(StateKind.text);
+		// same as inline's default: a nul or break char right after p0 is left for the text state
+		let p = p0 + 1;
+		if (p < length) {
+			const c1 = char_code_at.call(source, p - base);
+			if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
+				const text_break = TEXT_BREAK;
+				p++;
+				while (p < length) {
+					const ch = char_code_at.call(source, p - base);
+					if (ch < 128 && text_break[ch] !== 0) break;
+					p++;
+				}
+			}
+		}
+		this.cursor = p;
+	}
+
 	/** check if an id is in the pending_ids array. */
 	private pending_has(id: number): boolean {
 		const i = this.id_slots[id];
@@ -4535,6 +4561,48 @@ export class PFMParser {
 					}
 					switch (code) {
 						case BACKTICK: {
+							// common case in one trip: a run of one or two backticks followed by a
+							// plain content char opens the span, and a matching run later on the
+							// same line closes it. anything else goes through code_span_start
+							let q = this.cursor + 1;
+							if (q < length && char_code_at.call(source, q - base) === BACKTICK)
+								q++;
+							const run_n = q - this.cursor;
+							const c0 = q < length ? char_code_at.call(source, q - base) : -1;
+							if (
+								!this.in_table &&
+								c0 !== -1 &&
+								c0 !== BACKTICK &&
+								c0 !== SPACE &&
+								c0 !== OCTOTHERP &&
+								c0 !== LINEFEED
+							) {
+								let e = q + 1;
+								while (e < length) {
+									const ch = char_code_at.call(source, e - base);
+									if (ch === BACKTICK || ch === LINEFEED) break;
+									e++;
+								}
+								if (e < length && char_code_at.call(source, e - base) === BACKTICK) {
+									let r = e + 1;
+									while (r < length && char_code_at.call(source, r - base) === BACKTICK)
+										r++;
+									if (r - e === run_n && r < length) {
+										const cs_id = this.emit_open(
+											NodeKind.code_span,
+											this.cursor,
+											current_node
+										);
+										this.out.set_value_start(cs_id, q);
+										this.out.set_value_end(cs_id, e);
+										this.emit_close(cs_id, r);
+										this.extra = run_n;
+										this.code_span_open_pos = this.cursor;
+										this.cursor = r;
+										continue;
+									}
+								}
+							}
 							this.states.push(StateKind.code_span_start);
 							this.extra = 0;
 							this.code_span_open_pos = this.cursor;
@@ -4601,6 +4669,18 @@ export class PFMParser {
 								this.node_stack.push(n_id);
 								this.emphasis_has_content = false;
 								this.states.push(StateKind.strong_emphasis);
+								// a plain char next: the delimiter state would push inline and inline
+								// would open a text node and skip its run, do both here
+								const c_next =
+									this.cursor + 1 < length
+										? char_code_at.call(source, this.cursor + 1 - base)
+										: 0;
+								if (c_next !== 0 && (c_next >= 128 || TEXT_BREAK[c_next] === 0)) {
+									this.emphasis_has_content = true;
+									this.states.push(StateKind.inline);
+									this.open_text_run(this.cursor + 1, n_id);
+									continue;
+								}
 							} else {
 								const t_id = this.emit_open(
 									NodeKind.text,
@@ -4636,6 +4716,18 @@ export class PFMParser {
 								this.node_stack.push(n_id);
 								this.emphasis_has_content = false;
 								this.states.push(StateKind.emphasis);
+								// a plain char next: the delimiter state would push inline and inline
+								// would open a text node and skip its run, do both here
+								const c_next =
+									this.cursor + 1 < length
+										? char_code_at.call(source, this.cursor + 1 - base)
+										: 0;
+								if (c_next !== 0 && (c_next >= 128 || TEXT_BREAK[c_next] === 0)) {
+									this.emphasis_has_content = true;
+									this.states.push(StateKind.inline);
+									this.open_text_run(this.cursor + 1, n_id);
+									continue;
+								}
 							} else {
 								const t_id = this.emit_open(
 									NodeKind.text,
@@ -4887,6 +4979,19 @@ export class PFMParser {
 							this.node_stack.push(link_id);
 							this.states.push(StateKind.link_text);
 							this.link_text_start = this.cursor + 1;
+							{
+								// a plain char next: link_text would push inline and inline would
+								// open a text node and skip its run, do both here
+								const c_next =
+									this.cursor + 1 < length
+										? char_code_at.call(source, this.cursor + 1 - base)
+										: 0;
+								if (c_next !== 0 && (c_next >= 128 || TEXT_BREAK[c_next] === 0)) {
+									this.states.push(StateKind.inline);
+									this.open_text_run(this.cursor + 1, link_id);
+									continue;
+								}
+							}
 							this.cursor++;
 							continue;
 						}
