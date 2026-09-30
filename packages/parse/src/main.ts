@@ -5204,7 +5204,12 @@ export class PFMParser {
 						case TILDE: {
 							// ~~ is a two-char token. if only one ~ is available
 							// and more input is expected, hold back.
-							if (!this.finished && this.cursor + 1 >= length) {
+							if (
+								!this.finished &&
+								(this.cursor + 1 >= length ||
+									(this.cursor + 2 >= length &&
+										char_code_at.call(source, this.cursor + 1 - base) === TILDE))
+							) {
 								break main_loop;
 							}
 							// strikethrough: ~~ must be double tilde with flanking
@@ -5259,6 +5264,7 @@ export class PFMParser {
 						case CARET: {
 							// superscript: ^ opens if next char is word/punctuation
 							// (no left-flanking constraint - x^2^ is valid)
+							if (!this.finished && this.cursor + 1 >= length) break main_loop;
 							if (this.next_class() & (CharMask.word | CharMask.punctuation)) {
 								const n_id = this.emit_open(
 									NodeKind.superscript,
@@ -6995,7 +7001,13 @@ export class PFMParser {
 			return false;
 		}
 		// ~~ is a two-char token - hold back lone ~ at end of buffer
-		if (code === TILDE && !this.finished && this.cursor + 1 >= length) {
+		if (
+			code === TILDE &&
+			!this.finished &&
+			(this.cursor + 1 >= length ||
+				(this.cursor + 2 >= length &&
+					char_code_at.call(source, this.cursor + 1 - base) === TILDE))
+		) {
 			return true;
 		}
 		// close: ~~ with right-flanking
@@ -7059,6 +7071,10 @@ export class PFMParser {
 		if (!code) {
 			this._unwind_unterminated_delimiter();
 			return false;
+		}
+		// a lone ~ at the end of the buffer could still become ~~
+		if (code === TILDE && !this.finished && this.cursor + 1 >= this.source_end) {
+			return true;
 		}
 		// close: single ~ after content (no right-flanking needed -
 		// ~ is unambiguous inside subscript, and h~2~o must work)
