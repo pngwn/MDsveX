@@ -1139,7 +1139,7 @@ export function chain_trace(
 		let scol = 0;
 		let name = -1;
 		if (cseg_len[k] !== 1) {
-			// greatest lower bound in the trace line, the first of equal columns
+			// greatest lower bound in the trace line
 			const l = cseg_sline[k];
 			if (l >= lines) continue;
 			const c = cseg_scol[k];
@@ -1154,9 +1154,12 @@ export function chain_trace(
 				} else hi = mid - 1;
 			}
 			if (found < 0) continue;
-			const fc = pcol[found];
-			const lower = first[l];
-			while (found > lower && pcol[found - 1] === fc) found--;
+			// an equal column takes the first of its run, a lower one the last,
+			// as trace-mapping's greatest lower bound does
+			if (pcol[found] === c) {
+				const lower = first[l];
+				while (found > lower && pcol[found - 1] === c) found--;
+			}
 			seg_len = 4;
 			sline = psline[found];
 			scol = pscol[found];
