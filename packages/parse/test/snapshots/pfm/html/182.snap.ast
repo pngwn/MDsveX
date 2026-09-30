@@ -3,7 +3,7 @@ root
     text "<"
     text "!["
     text "CDATA"
-    text
+    text "["
     soft_break
     text "function matchwo(a,b)"
     soft_break

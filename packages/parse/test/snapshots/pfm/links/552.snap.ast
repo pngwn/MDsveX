@@ -1,12 +1,12 @@
 root
   paragraph
-    text
+    text "["
     soft_break
     text "]"
   line_break
   line_break
   paragraph
-    text
+    text "["
     soft_break
     text "]: /uri"
   line_break

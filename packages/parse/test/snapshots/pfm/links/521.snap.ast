@@ -1,6 +1,6 @@
 root
   paragraph
-    text
+    text "*"
     link href="/uri"
       text "foo"
       text "*"
