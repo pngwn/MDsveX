@@ -1684,8 +1684,8 @@ export class PFMParser {
 				break;
 			case PLUS:
 				// plus is only ever a list marker - no thematic break ambiguity.
-				// one char of lookahead is enough inside a list.
-				if (this.list_depth > 0 && p + 1 < length) return true;
+				// inside a list the marker and the start of its content decide.
+				if (this.list_depth > 0 && !this.plus_marker_pending(p)) return true;
 				break;
 			case UNDERSCORE:
 			case OPEN_ANGLE_BRACKET:
@@ -1697,23 +1697,13 @@ export class PFMParser {
 				break;
 			default:
 				// digits may start an ordered list marker. inside a list we
-				// can decide early: scan the digit run, then look for the
-				// `.`/`)` delimiter and one char of lookahead. if the digit
-				// run hits a non-digit non-delimiter char, it's clearly not
-				// a marker - paragraph continues.
+				// can decide once the digit run, the `.`/`)` delimiter and the
+				// start of the marker's content are visible. if the digit run
+				// hits a non-digit non-delimiter char, it's clearly not a
+				// marker - paragraph continues.
 				if (ch >= 48 && ch <= 57) {
 					if (this.list_depth === 0) break;
-					let q = p + 1;
-					while (
-						q < length &&
-						char_code_at.call(source, q - base) >= 48 &&
-						char_code_at.call(source, q - base) <= 57
-					)
-						q++;
-					if (q >= length) return false;
-					const dch = char_code_at.call(source, q - base);
-					if (dch !== DOT && dch !== CLOSE_PAREN) return true; // not a marker - continue paragraph
-					if (q + 1 < length) return true;
+					if (!this.plus_marker_pending(p)) return true;
 					break;
 				}
 				// everything else (letters, punctuation, etc.) cannot
@@ -2034,6 +2024,40 @@ export class PFMParser {
 		// reached end of buffer without finding content. in incremental mode
 		// more input may follow, so withhold judgement until finished.
 		return !this.finished ? true : false;
+	}
+
+	/**
+	 * feed mode: a `+` or `1.` marker at pos can not be decided yet, its prefix or
+	 * the blank rest of its line is still arriving (a marker line with no content
+	 * is a paragraph, so taking the list early would differ from a batch parse)
+	 */
+	private plus_marker_pending(pos: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		let p = pos + 1;
+		if (char_code_at.call(source, pos - base) !== PLUS) {
+			while (
+				p < length &&
+				char_code_at.call(source, p - base) >= 48 &&
+				char_code_at.call(source, p - base) <= 57
+			)
+				p++;
+			if (p >= length) return true;
+			const d = char_code_at.call(source, p - base);
+			if (d !== DOT && d !== CLOSE_PAREN) return false;
+			p++;
+		}
+		if (p >= length) return true;
+		let c = char_code_at.call(source, p - base);
+		if (c !== SPACE && c !== TAB) return false;
+		do {
+			p++;
+		} while (
+			p < length &&
+			((c = char_code_at.call(source, p - base)) === SPACE || c === TAB)
+		);
+		return p >= length;
 	}
 
 	private try_parse_list_marker(pos: number): MarkerResult | null {
@@ -4594,29 +4618,10 @@ export class PFMParser {
 
 						default: {
 							if (code === PLUS || (code >= 48 && code <= 57)) {
-								// stall only while the marker prefix is still being
-								// read. plus: one char of lookahead is enough (space
-								// /tab/lf = marker, else paragraph). digits: skip the
-								// digit run, then the delimiter char (. or )), then
-								// one more char. try_parse_list_marker has the same
-								// incremental safeguards and returns null when data
-								// is insufficient, so this just prevents committing
-								// to paragraph too eagerly.
-								if (!this.finished) {
-									let p = this.cursor + 1;
-									if (code !== PLUS) {
-										while (
-											p < length &&
-											char_code_at.call(source, p - base) >= 48 &&
-											char_code_at.call(source, p - base) <= 57
-										)
-											p++;
-										if (p >= length) break main_loop;
-										const after = char_code_at.call(source, p - base);
-										if (after === DOT || after === CLOSE_PAREN) p++;
-									}
-									if (p >= length) break main_loop;
-								}
+								// stall while the marker prefix, or the blank rest of
+								// its line, is still being read, so neither a paragraph
+								// nor a list is committed too eagerly
+								if (!this.finished && this.plus_marker_pending(this.cursor)) break main_loop;
 								const marker = this.try_parse_list_marker(this.cursor);
 								if (marker) {
 									this.start_list(marker, current_node);
@@ -7789,21 +7794,7 @@ export class PFMParser {
 		}
 
 		if (code === PLUS || (code >= 48 && code <= 57)) {
-			if (!this.finished) {
-				let p = this.cursor + 1;
-				if (code !== PLUS) {
-					while (
-						p < length &&
-						char_code_at.call(source, p - base) >= 48 &&
-						char_code_at.call(source, p - base) <= 57
-					)
-						p++;
-					if (p >= length) return true;
-					const after = char_code_at.call(source, p - base);
-					if (after === DOT || after === CLOSE_PAREN) p++;
-				}
-				if (p >= length) return true;
-			}
+			if (!this.finished && this.plus_marker_pending(this.cursor)) return true;
 			const marker = this.try_parse_list_marker(this.cursor);
 			if (marker) {
 				this.start_list(marker, current_node);
@@ -8041,21 +8032,7 @@ export class PFMParser {
 		}
 
 		if (code === PLUS || (code >= 48 && code <= 57)) {
-			if (!this.finished) {
-				let p = this.cursor + 1;
-				if (code !== PLUS) {
-					while (
-						p < length &&
-						char_code_at.call(source, p - base) >= 48 &&
-						char_code_at.call(source, p - base) <= 57
-					)
-						p++;
-					if (p >= length) return true;
-					const after = char_code_at.call(source, p - base);
-					if (after === DOT || after === CLOSE_PAREN) p++;
-				}
-				if (p >= length) return true;
-			}
+			if (!this.finished && this.plus_marker_pending(this.cursor)) return true;
 			const marker = this.try_parse_list_marker(this.cursor);
 			if (marker) {
 				this.start_list(marker, current_node);
@@ -8280,21 +8257,7 @@ export class PFMParser {
 				if (code === PLUS || (code >= 48 && code <= 57)) {
 					// stall only while the marker prefix is still being
 					// read - same logic as the top-level block dispatch.
-					if (!this.finished) {
-						let p = this.cursor + 1;
-						if (code !== PLUS) {
-							while (
-								p < length &&
-								char_code_at.call(source, p - base) >= 48 &&
-								char_code_at.call(source, p - base) <= 57
-							)
-								p++;
-							if (p >= length) return true;
-							const after = char_code_at.call(source, p - base);
-							if (after === DOT || after === CLOSE_PAREN) p++;
-						}
-						if (p >= length) return true;
-					}
+					if (!this.finished && this.plus_marker_pending(this.cursor)) return true;
 					const marker = this.try_parse_list_marker(this.cursor);
 					if (marker) {
 						this.start_list(marker, current_node);
@@ -8435,21 +8398,11 @@ export class PFMParser {
 									q++;
 								}
 								if (!decided) return true;
-							} else if (lp + 1 >= length) {
+							} else if (this.plus_marker_pending(lp)) {
 								return true;
 							}
 						} else if (mch >= 48 && mch <= 57) {
-							let q = lp + 1;
-							while (
-								q < length &&
-								char_code_at.call(source, q - base) >= 48 &&
-								char_code_at.call(source, q - base) <= 57
-							)
-								q++;
-							if (q >= length) return true;
-							const dch = char_code_at.call(source, q - base);
-							if (dch === DOT || dch === CLOSE_PAREN) q++;
-							if (q >= length) return true;
+							if (this.plus_marker_pending(lp)) return true;
 						}
 						// otherwise the next line isn't a list marker -
 						// fall through (will hit end_list / continuation
@@ -8751,21 +8704,12 @@ export class PFMParser {
 				// a digit or `+` could start a nested list marker - stall
 				// while the prefix is still being read so we don't commit
 				// the char as paragraph text before the marker decision.
-				if (!this.finished && (code === PLUS || (code >= 48 && code <= 57))) {
-					let p = this.cursor + 1;
-					if (code !== PLUS) {
-						while (
-							p < length &&
-							char_code_at.call(source, p - base) >= 48 &&
-							char_code_at.call(source, p - base) <= 57
-						)
-							p++;
-						if (p >= length) return true;
-						const after = char_code_at.call(source, p - base);
-						if (after === DOT || after === CLOSE_PAREN) p++;
-					}
-					if (p >= length) return true;
-				}
+				if (
+					!this.finished &&
+					(code === PLUS || (code >= 48 && code <= 57)) &&
+					this.plus_marker_pending(this.cursor)
+				)
+					return true;
 				const nested = this.try_parse_list_marker(this.cursor);
 				if (nested) {
 					if (nested.indent >= this.list_content_offset) {
