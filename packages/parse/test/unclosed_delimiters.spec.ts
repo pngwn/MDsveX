@@ -304,6 +304,56 @@ describe('heading marker at the end of a fed chunk', () => {
 	}
 });
 
+describe('unclosed inline directive', () => {
+	const cases: [string, string[]][] = [
+		[
+			':x[\n#',
+			[
+				'  paragraph',
+				'    text name="x" ":x["',
+				'  line_break',
+				'  heading depth=1',
+			],
+		],
+		[
+			':abc[\n> a',
+			[
+				'  paragraph',
+				'    text name="abc" ":abc["',
+				'  line_break',
+				'  block_quote',
+				'    paragraph',
+				'      text "a"',
+			],
+		],
+		[
+			'a :x[\n\nb',
+			[
+				'  paragraph',
+				'    text "a "',
+				'    text name="x" ":x["',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "b"',
+			],
+		],
+	];
+
+	for (const [input, lines] of cases) {
+		test(JSON.stringify(input), () => {
+			expect(print_batch(input)).toBe(['root', ...lines].join('\n'));
+			expect_incremental_matches(input);
+		});
+	}
+
+	for (const input of [':x[\n#a', '[~~*:x[\n#[']) {
+		test(JSON.stringify(input), () => {
+			expect_incremental_matches(input);
+		});
+	}
+});
+
 describe('batch and incremental parity', () => {
 	const atoms = [
 		'*',
@@ -337,11 +387,6 @@ describe('batch and incremental parity', () => {
 		};
 	}
 
-	const known_mismatches = [
-		// incremental keeps only the : of a revoked :x[
-		'[~~*:x[\n#[',
-	];
-
 	test('seeded inputs parse the same in any chunk size', () => {
 		const random = mulberry32(1);
 		const mismatched: string[] = [];
@@ -362,6 +407,6 @@ describe('batch and incremental parity', () => {
 			}
 		}
 
-		expect(mismatched).toEqual(known_mismatches);
+		expect(mismatched).toEqual([]);
 	});
 });

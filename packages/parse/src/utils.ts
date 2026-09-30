@@ -713,11 +713,14 @@ export class NodeBuffer {
 			this.set_first_child(index, 0xffffffff);
 			this.set_last_child(index, 0xffffffff);
 			const start = this.start_at(index);
-			this.set_value_start(index, start);
 			if (this.end_at(index) === 0xffffffff) {
-				this.set_value_end(index, start + 1);
-				this.set_end(index, start + 1);
+				// an opener that records where its content starts ends there
+				const content_start = this.value_start_at(index);
+				const end = content_start > start ? content_start : start + 1;
+				this.set_value(index, start, end);
+				this.set_end(index, end);
 			} else {
+				this.set_value_start(index, start);
 				this.set_value_end(index, this.end_at(index));
 			}
 			return;

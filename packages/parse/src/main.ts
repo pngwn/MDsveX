@@ -4841,6 +4841,7 @@ export class PFMParser {
 										true
 									);
 									this.out.attr(d_id, 'name', dir_name);
+									this.out.set_value_start(d_id, np + 1);
 									this.node_stack.push(d_id);
 									this.states.push(StateKind.link_text);
 									this.directive_text_ids.push(d_id);
