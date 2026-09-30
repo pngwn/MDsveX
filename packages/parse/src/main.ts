@@ -303,6 +303,9 @@ interface LinkResult {
 	end: number;
 }
 
+// braces a find_matching_brace_memo scan opened and has not closed, positions just past each (always empty between scans)
+const brace_open: number[] = [];
+
 /**
  * pfm parser - state machine that emits opcodes via an emitter interface.
  */
@@ -336,6 +339,8 @@ export class PFMParser {
 	private bp_quote: number = 0;
 	private bp_end: number = -1;
 	private bp_frames: number[] = [];
+	// finished input only, set by the first brace scan that runs out of input: positions past braces known never to close
+	private brace_memo: Set<number> | null = null;
 	// chunks fed while waiting on a brace, joined onto the window once it closes
 	private wait_chunks: string[] = [];
 	// a WAIT_NEEDLE stall resumes once this string appears
@@ -679,6 +684,7 @@ export class PFMParser {
 		this.trim_point = 0;
 		this.fence_scan = 0;
 		this.bp_start = -1;
+		if (this.brace_memo !== null) this.brace_memo = null;
 		if (this.wait_chunks.length !== 0) this.wait_chunks.length = 0;
 		this.raw_node = 0;
 		this.raw_needle = '';
@@ -2958,6 +2964,7 @@ export class PFMParser {
 	 * returns the position just past the closing `}`, or -1 if not found.
 	 */
 	private find_matching_brace(pos: number): number {
+		if (this.brace_memo !== null) return this.find_matching_brace_memo(pos);
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
@@ -3055,6 +3062,145 @@ export class PFMParser {
 			}
 		}
 
+		return this.brace_failed(pos);
+	}
+
+	/**
+	 * a brace scan from pos ran out of input. on finished input it never
+	 * closes, and from here on scans go through find_matching_brace_memo,
+	 * which also remembers braces they open and leave open. k braces that
+	 * never close then cost two scans to the end rather than k, and
+	 * documents whose braces all close keep the plain scan
+	 */
+	private brace_failed(pos: number): number {
+		if (this.finished && !this.inline_range_parse) {
+			const memo = (this.brace_memo = new Set());
+			memo.add(pos);
+		}
+		return -1;
+	}
+
+	/**
+	 * find_matching_brace once a scan has failed on finished input. a scan
+	 * from just past any brace it opened in code and left open follows the
+	 * same path and fails too, so those are remembered as well
+	 */
+	private find_matching_brace_memo(pos: number): number {
+		const memo = this.brace_memo!;
+		if (memo.has(pos)) return -1;
+		const open = brace_open;
+		const floor = open.length;
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		let depth = 1;
+		let p = pos;
+
+		while (p < length) {
+			const ch = char_code_at.call(source, p - base);
+
+			switch (ch) {
+				case OPEN_BRACE:
+					depth++;
+					p++;
+					open.push(p);
+					break;
+				case CLOSE_BRACE:
+					depth--;
+					if (depth === 0) return p + 1;
+					open.pop();
+					p++;
+					break;
+				case QUOTE:
+				case APOSTROPHE: {
+					// skip string literal
+					p++;
+					while (p < length && char_code_at.call(source, p - base) !== ch) {
+						if (char_code_at.call(source, p - base) === BACKSLASH) p++;
+						p++;
+					}
+					if (p < length) p++; // skip closing quote
+					break;
+				}
+				case BACKTICK: {
+					// skip template literal, respecting ${} interpolations
+					p++;
+					while (
+						p < length &&
+						char_code_at.call(source, p - base) !== BACKTICK
+					) {
+						if (char_code_at.call(source, p - base) === BACKSLASH) {
+							p++;
+						} else if (
+							char_code_at.call(source, p - base) === 36 /* $ */ &&
+							p + 1 < length &&
+							char_code_at.call(source, p + 1 - base) === OPEN_BRACE
+						) {
+							p += 2; // skip ${
+							// recursively find the matching } for the interpolation
+							const inner_end = this.find_matching_brace_memo(p);
+							if (inner_end === -1) return this.brace_memo_failed(pos, floor);
+							p = inner_end;
+							continue;
+						}
+						p++;
+					}
+					if (p < length) p++; // skip closing backtick
+					break;
+				}
+				case SLASH: {
+					// skip // line comments
+					if (
+						p + 1 < length &&
+						char_code_at.call(source, p + 1 - base) === SLASH
+					) {
+						p += 2;
+						while (
+							p < length &&
+							char_code_at.call(source, p - base) !== LINEFEED
+						)
+							p++;
+						break;
+					}
+					// skip /* block comments */
+					if (
+						p + 1 < length &&
+						char_code_at.call(source, p + 1 - base) === ASTERISK
+					) {
+						p += 2;
+						while (p < length) {
+							if (
+								char_code_at.call(source, p - base) === ASTERISK &&
+								p + 1 < length &&
+								char_code_at.call(source, p + 1 - base) === SLASH
+							) {
+								p += 2;
+								break;
+							}
+							p++;
+						}
+						break;
+					}
+					p++;
+					break;
+				}
+				default:
+					p++;
+			}
+		}
+
+		return this.brace_memo_failed(pos, floor);
+	}
+
+	private brace_memo_failed(pos: number, floor: number): number {
+		const open = brace_open;
+		// a table header cell parses with the source cut at the cell end
+		if (!this.inline_range_parse) {
+			const memo = this.brace_memo!;
+			memo.add(pos);
+			for (let i = floor; i < open.length; i++) memo.add(open[i]);
+		}
+		open.length = floor;
 		return -1;
 	}
 
