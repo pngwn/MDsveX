@@ -306,6 +306,39 @@ interface LinkResult {
 // braces a find_matching_brace_memo scan opened and has not closed, positions just past each (always empty between scans)
 const brace_open: number[] = [];
 
+// open tag scans: the name end, then five words per attribute (kind, name start, name end, value start, value end)
+let tag_rec = new Int32Array(80);
+let tag_rec_n = 0;
+let tag_name_end = 0;
+
+function tag_rec_put(kind: number, a: number, b: number, c: number, d: number): void {
+	let rec = tag_rec;
+	const n = tag_rec_n;
+	if (n + 5 > rec.length) {
+		const grown = new Int32Array(rec.length * 2);
+		grown.set(rec);
+		rec = tag_rec = grown;
+	}
+	rec[n] = kind;
+	rec[n + 1] = a;
+	rec[n + 2] = b;
+	rec[n + 3] = c;
+	rec[n + 4] = d;
+	tag_rec_n = n + 5;
+}
+// token starts a memo backed open tag scan passed through
+const tag_marks: number[] = [];
+// where the last failed open tag scan stopped
+let tag_fail_p = 0;
+// whether the last open tag scan that parsed ended in />
+let tag_self_closing = false;
+const TAG_ATTR_BOOL = 0;
+const TAG_ATTR_VALUE = 1;
+const TAG_ATTR_SHORTHAND = 2;
+const TAG_ATTR_EXPR = 3;
+// failed scans shorter than this never start the open tag memo
+const TAG_MEMO_MIN = 256;
+
 /**
  * pfm parser - state machine that emits opcodes via an emitter interface.
  */
@@ -341,6 +374,9 @@ export class PFMParser {
 	private bp_frames: number[] = [];
 	// finished input only, set by the first brace scan that runs out of input: positions past braces known never to close
 	private brace_memo: Set<number> | null = null;
+	// finished input only: attribute token starts from which an open tag scan fails
+	private tag_memo: Uint8Array | null = null;
+	private tag_memo_base: number = 0;
 	// chunks fed while waiting on a brace, joined onto the window once it closes
 	private wait_chunks: string[] = [];
 	// a WAIT_NEEDLE stall resumes once this string appears
@@ -687,6 +723,7 @@ export class PFMParser {
 		this.fence_scan = 0;
 		this.bp_start = -1;
 		if (this.brace_memo !== null) this.brace_memo = null;
+		if (this.tag_memo !== null) this.tag_memo = null;
 		if (this.wait_chunks.length !== 0) this.wait_chunks.length = 0;
 		this.raw_node = 0;
 		this.raw_needle = '';
@@ -2469,30 +2506,98 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
-		let p = pos;
 
 		// tag name must start with a letter or underscore
 		if (
-			p >= length ||
-			!this.is_tag_name_start(char_code_at.call(source, p - base))
+			pos >= length ||
+			!this.is_tag_name_start(char_code_at.call(source, pos - base))
 		)
 			return null;
 
-		const tag_start = p;
-		p++;
+		let memo = this.tag_memo;
+		if (memo !== null && (this.tag_memo_base !== base || memo.length !== length - base))
+			memo = this.tag_memo = null;
+		const end = this.scan_open_tag(pos, memo);
+		if (end < 0) {
+			this.open_tag_failed(pos);
+			return null;
+		}
+
+		// attributes are built only once the tag is known to close
+		const rec = tag_rec;
+		const tag = string_slice.call(source, pos - base, tag_name_end - base);
+		const attributes: Record<
+			string,
+			string | boolean | { type: 'expression'; value: string }
+		> = {};
+		const n = tag_rec_n;
+		for (let i = 0; i < n; i += 5) {
+			const kind = rec[i];
+			const name = string_slice.call(source, rec[i + 1] - base, rec[i + 2] - base);
+			if (kind === TAG_ATTR_BOOL) attributes[name] = true;
+			else if (kind === TAG_ATTR_VALUE)
+				attributes[name] = string_slice.call(
+					source,
+					rec[i + 3] - base,
+					rec[i + 4] - base
+				);
+			else if (kind === TAG_ATTR_SHORTHAND)
+				attributes[name] = { type: 'expression', value: name };
+			else
+				attributes[name] = {
+					type: 'expression',
+					value: string_slice.call(source, rec[i + 3] - base, rec[i + 4] - base),
+				};
+		}
+		return { tag, attributes, self_closing: tag_self_closing, end, has_attrs: n > 0 };
+	}
+
+	/**
+	 * a scan from pos failed. on finished input the scan is a pure function of
+	 * the position each attribute token starts at, so a later scan that reaches
+	 * a token start this one passed through fails too. the first long failure
+	 * starts the memo (rescanning once to fill it), later failures add theirs.
+	 * without it every stray `<word` in prose rescans to the next `>`
+	 */
+	private open_tag_failed(pos: number): void {
+		let memo = this.tag_memo;
+		if (memo === null) {
+			if (
+				!this.finished ||
+				this.inline_range_parse ||
+				tag_fail_p - pos < TAG_MEMO_MIN
+			)
+				return;
+			const base = this.source_base;
+			this.tag_memo_base = base;
+			memo = this.tag_memo = new Uint8Array(this.source_end - base);
+			this.scan_open_tag(pos, memo);
+		}
+		const marks = tag_marks;
+		const base = this.tag_memo_base;
+		for (let i = 0; i < marks.length; i++) memo[marks[i] - base] = 1;
+	}
+
+	/**
+	 * scan an open tag whose name starts at pos without allocating. returns the
+	 * end, or -1 when it does not parse (-2 when a memo hit decided it). tag_rec
+	 * gets the name end then kind, name start, name end, value start, value end
+	 * per attribute. with a memo, token starts go to tag_marks
+	 */
+	private scan_open_tag(pos: number, memo: Uint8Array | null): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const marks = tag_marks;
+		if (memo !== null) marks.length = 0;
+		tag_rec_n = 0;
+		let p = pos + 1;
 		while (
 			p < length &&
 			this.is_tag_name_char(char_code_at.call(source, p - base))
 		)
 			p++;
-		const tag = string_slice.call(source, tag_start - base, p - base);
-
-		// parse attributes
-		const attributes: Record<
-			string,
-			string | boolean | { type: 'expression'; value: string }
-		> = {};
-		let has_attrs = false;
+		tag_name_end = p;
 
 		while (p < length) {
 			// skip whitespace
@@ -2504,7 +2609,12 @@ export class PFMParser {
 			)
 				p++;
 
-			if (p >= length) return null;
+			if (p >= length) break;
+
+			if (memo !== null) {
+				if (memo[p - base] === 1) return -2;
+				marks.push(p);
+			}
 
 			// check for end of tag
 			if (char_code_at.call(source, p - base) === SLASH) {
@@ -2512,26 +2622,26 @@ export class PFMParser {
 					p + 1 < length &&
 					char_code_at.call(source, p + 1 - base) === CLOSE_ANGLE_BRACKET
 				) {
-					return { tag, attributes, self_closing: true, end: p + 2, has_attrs };
+					tag_self_closing = true;
+					return p + 2;
 				}
-				return null; // stray /
+				tag_fail_p = p;
+				return -1; // stray /
 			}
 
 			if (char_code_at.call(source, p - base) === CLOSE_ANGLE_BRACKET) {
-				return { tag, attributes, self_closing: false, end: p + 1, has_attrs };
+				tag_self_closing = false;
+				return p + 1;
 			}
 
 			// svelte shorthand attribute: {name}
 			if (char_code_at.call(source, p - base) === OPEN_BRACE) {
 				const expr_end = this.find_matching_brace(p + 1);
-				if (expr_end === -1) return null;
-				const expr = string_slice.call(
-					source,
-					p + 1 - base,
-					expr_end - 1 - base
-				);
-				has_attrs = true;
-				attributes[expr] = { type: 'expression', value: expr };
+				if (expr_end === -1) {
+					tag_fail_p = length;
+					return -1;
+				}
+				tag_rec_put(TAG_ATTR_SHORTHAND, p + 1, expr_end - 1, 0, 0);
 				p = expr_end;
 				continue;
 			}
@@ -2541,27 +2651,30 @@ export class PFMParser {
 			const ch = char_code_at.call(source, p - base);
 			// attribute name: anything that's not whitespace, =, >, /
 			if (ch === EQUALS || ch === CLOSE_ANGLE_BRACKET || ch === SLASH) {
-				return null; // invalid attribute start
+				tag_fail_p = p;
+				return -1; // invalid attribute start
 			}
 
-			while (
-				p < length &&
-				char_code_at.call(source, p - base) !== SPACE &&
-				char_code_at.call(source, p - base) !== TAB &&
-				char_code_at.call(source, p - base) !== LINEFEED &&
-				char_code_at.call(source, p - base) !== EQUALS &&
-				char_code_at.call(source, p - base) !== CLOSE_ANGLE_BRACKET &&
-				char_code_at.call(source, p - base) !== SLASH
-			) {
+			while (p < length) {
+				const c = char_code_at.call(source, p - base);
+				if (
+					c <= CLOSE_ANGLE_BRACKET &&
+					(c === SPACE ||
+						c === TAB ||
+						c === LINEFEED ||
+						c === EQUALS ||
+						c === CLOSE_ANGLE_BRACKET ||
+						c === SLASH)
+				)
+					break;
 				p++;
 			}
 
-			if (p === attr_name_start) return null;
-			const attr_name = string_slice.call(
-				source,
-				attr_name_start - base,
-				p - base
-			);
+			if (p === attr_name_start) {
+				tag_fail_p = p;
+				return -1;
+			}
+			const attr_name_end = p;
 
 			// skip whitespace before potential =
 			while (
@@ -2583,18 +2696,17 @@ export class PFMParser {
 				)
 					p++;
 
-				if (p >= length) return null;
+				if (p >= length) break;
 
 				const quote = char_code_at.call(source, p - base);
 				if (quote === OPEN_BRACE) {
 					// svelte expression attribute value: attr={expr}
 					const expr_end = this.find_matching_brace(p + 1);
-					if (expr_end === -1) return null;
-					has_attrs = true;
-					attributes[attr_name] = {
-						type: 'expression',
-						value: string_slice.call(source, p + 1 - base, expr_end - 1 - base),
-					};
+					if (expr_end === -1) {
+						tag_fail_p = length;
+						return -1;
+					}
+					tag_rec_put(TAG_ATTR_EXPR, attr_name_start, attr_name_end, p + 1, expr_end - 1);
 					p = expr_end;
 				} else if (quote === QUOTE || quote === APOSTROPHE) {
 					// quoted value
@@ -2602,11 +2714,9 @@ export class PFMParser {
 					const value_start = p;
 					while (p < length && char_code_at.call(source, p - base) !== quote)
 						p++;
-					if (p >= length) return null; // unclosed quote
-					const value = string_slice.call(source, value_start - base, p - base);
+					if (p >= length) break; // unclosed quote
+					tag_rec_put(TAG_ATTR_VALUE, attr_name_start, attr_name_end, value_start, p);
 					p++; // skip closing quote
-					has_attrs = true;
-					attributes[attr_name] = value;
 				} else {
 					// unquoted value
 					const value_start = p;
@@ -2615,22 +2725,20 @@ export class PFMParser {
 						this.is_unquoted_attr_char(char_code_at.call(source, p - base))
 					)
 						p++;
-					if (p === value_start) return null; // empty unquoted value
-					has_attrs = true;
-					attributes[attr_name] = string_slice.call(
-						source,
-						value_start - base,
-						p - base
-					);
+					if (p === value_start) {
+						tag_fail_p = p;
+						return -1; // empty unquoted value
+					}
+					tag_rec_put(TAG_ATTR_VALUE, attr_name_start, attr_name_end, value_start, p);
 				}
 			} else {
 				// boolean attribute
-				has_attrs = true;
-				attributes[attr_name] = true;
+				tag_rec_put(TAG_ATTR_BOOL, attr_name_start, attr_name_end, 0, 0);
 			}
 		}
 
-		return null; // ran off end of input
+		tag_fail_p = length;
+		return -1; // ran off end of input
 	}
 
 	/**
