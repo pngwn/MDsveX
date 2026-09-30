@@ -26,8 +26,13 @@ export class TreeBuilder implements Emitter {
 	private id_to_index: number[] | null = null;
 	/** kind at open by id, only kept for plugins since they rewrite kinds */
 	private id_to_kind: number[] | null = null;
-	/** kind at open by buffer index for nodes a revoke rewrote */
-	private revoked_kinds: Map<number, number> | null = null;
+	/**
+	 * kind at open plus one by buffer index for nodes a revoke rewrote, zero for
+	 * the rest, a byte table since every later close and text looks it up
+	 */
+	private revoked_kinds: Uint8Array | null = null;
+	/** highest index written to revoked_kinds, so a reset clears only that */
+	private revoked_max = -1;
 	/** optional plugin dispatcher. null when no plugins registered. */
 	private dispatcher: PluginDispatcher | null;
 
@@ -59,7 +64,12 @@ export class TreeBuilder implements Emitter {
 		this.nodes.reset();
 		this.nodes.push(NodeKind.root, 0);
 		this.id_to_index = null;
-		this.revoked_kinds = null;
+		// the table is kept across documents, so clear what the last one wrote
+		const max = this.revoked_max;
+		if (max !== -1) {
+			this.revoked_kinds!.fill(0, 0, max + 1);
+			this.revoked_max = -1;
+		}
 	}
 
 	private index_of(id: number): number | undefined {
@@ -77,10 +87,9 @@ export class TreeBuilder implements Emitter {
 
 	/** a revoke may have rewritten the buffer kind since open */
 	private opened_kind(idx: number): number {
-		const revoked = this.revoked_kinds;
-		if (revoked !== null) {
-			const kind = revoked.get(idx);
-			if (kind !== undefined) return kind;
+		if (idx <= this.revoked_max) {
+			const kind = this.revoked_kinds![idx];
+			if (kind !== 0) return kind - 1;
 		}
 		return this.nodes._n[idx * NodeField.stride] & 0xff;
 	}
@@ -298,9 +307,22 @@ export class TreeBuilder implements Emitter {
 		// close and text still act on the kind the node was opened with
 		if (nodes.kind_at(idx) !== kind) {
 			let revoked = this.revoked_kinds;
-			if (revoked === null) revoked = this.revoked_kinds = new Map();
-			if (!revoked.has(idx)) revoked.set(idx, kind);
+			if (revoked === null || idx >= revoked.length) {
+				revoked = this.grow_revoked(idx);
+			}
+			if (revoked[idx] === 0) revoked[idx] = kind + 1;
+			if (idx > this.revoked_max) this.revoked_max = idx;
 		}
+	}
+
+	private grow_revoked(idx: number): Uint8Array {
+		const old = this.revoked_kinds;
+		let size = old === null ? 256 : old.length;
+		while (size <= idx) size <<= 1;
+		const table = new Uint8Array(size);
+		if (old !== null) table.set(old);
+		this.revoked_kinds = table;
+		return table;
 	}
 
 	commit(id: number): void {
