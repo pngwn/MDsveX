@@ -1,7 +1,7 @@
 root
   line_break
   paragraph
-    text
+    text "["
     link href="/url" title="title"
       strong_emphasis
         text "foo"

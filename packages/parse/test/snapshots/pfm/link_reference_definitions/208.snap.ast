@@ -1,6 +1,6 @@
 root
   paragraph
-    text
+    text "["
     soft_break
     text "foo"
     soft_break

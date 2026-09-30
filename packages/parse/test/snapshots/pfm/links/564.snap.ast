@@ -1,7 +1,7 @@
 root
   line_break
   paragraph
-    text
+    text "*"
     link href="/url"
       text "foo"
       text "*"

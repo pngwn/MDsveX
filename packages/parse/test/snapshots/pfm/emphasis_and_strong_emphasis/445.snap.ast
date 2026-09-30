@@ -2,7 +2,7 @@ root
   paragraph
     text "*"
     text "*"
-    text "*_"
+    text "*"
     emphasis
       text "foo"
   line_break

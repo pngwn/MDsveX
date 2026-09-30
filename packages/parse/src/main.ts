@@ -1379,11 +1379,14 @@ export class PFMParser {
 		if (ch === LINEFEED) return true;
 		// a visible linefeed decides either way, so settle on the first char before scanning the line
 		switch (ch) {
-			case OCTOTHERP:
-				// heading needs at least `#` + one lookahead char
-				// (distinguishes `# x` heading from `#x` paragraph).
-				if (p + 1 < length) return true;
+			case OCTOTHERP: {
+				// a heading needs the char after the whole # run
+				let q = p + 1;
+				while (q < length && char_code_at.call(source, q - base) === OCTOTHERP)
+					q++;
+				if (q < length || q - p > 6) return true;
 				break;
+			}
 			case CLOSE_ANGLE_BRACKET:
 				// block quote - immediate.
 				return true;
@@ -1495,6 +1498,19 @@ export class PFMParser {
 		}
 		// hit end-of-buffer without \n, not a confirmed blank line in feed mode
 		if (p >= length && !this.finished) return false;
+		return true;
+	}
+
+	/** in feed mode, true while the line from `pos` holds only its marker and whitespace so far */
+	private could_be_thematic_break(pos: number, marker: number): boolean {
+		if (this.finished) return false;
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		for (let p = pos + 1; p < length; p++) {
+			const ch = char_code_at.call(source, p - base);
+			if (ch !== marker && ch !== SPACE && ch !== TAB) return false;
+		}
 		return true;
 	}
 
@@ -3580,20 +3596,8 @@ export class PFMParser {
 							// could still be a thematic break (marker + ws chars
 							// only). as soon as we see a non-marker/ws char, we
 							// can commit to list or paragraph speculatively.
-							if (!this.finished) {
-								let could_be_tb = true;
-								for (let p = this.cursor + 1; p < length; p++) {
-									const ch = char_code_at.call(source, p - base);
-									if (ch === LINEFEED) {
-										could_be_tb = false;
-										break;
-									}
-									if (ch !== code && ch !== SPACE && ch !== TAB) {
-										could_be_tb = false;
-										break;
-									}
-								}
-								if (could_be_tb) break main_loop;
+							if (this.could_be_thematic_break(this.cursor, code)) {
+								break main_loop;
 							}
 							if (this.is_thematic_break_start(this.cursor)) {
 								let line_end = this.cursor;
@@ -4302,9 +4306,14 @@ export class PFMParser {
 						}
 
 						case TILDE: {
-							// ~~ is a two-char token. if only one ~ is available
-							// and more input is expected, hold back.
-							if (!this.finished && this.cursor + 1 >= length) {
+							// the ~~ flanking check needs the char after both tildes
+							if (
+								!this.finished &&
+								(this.cursor + 1 >= length ||
+									(this.cursor + 2 >= length &&
+										char_code_at.call(source, this.cursor + 1 - base) ===
+											TILDE))
+							) {
 								break main_loop;
 							}
 							// strikethrough: ~~ must be double tilde with flanking
@@ -4359,6 +4368,7 @@ export class PFMParser {
 						case CARET: {
 							// superscript: ^ opens if next char is word/punctuation
 							// (no left-flanking constraint - x^2^ is valid)
+							if (!this.finished && this.cursor + 1 >= length) break main_loop;
 							if (this.next_class() & (CharMask.word | CharMask.punctuation)) {
 								const n_id = this.emit_open(
 									NodeKind.superscript,
@@ -4831,6 +4841,7 @@ export class PFMParser {
 										true
 									);
 									this.out.attr(d_id, 'name', dir_name);
+									this.out.set_value_start(d_id, np + 1);
 									this.node_stack.push(d_id);
 									this.states.push(StateKind.link_text);
 									this.directive_text_ids.push(d_id);
@@ -5895,8 +5906,14 @@ export class PFMParser {
 			this._unwind_unterminated_delimiter();
 			return false;
 		}
-		// ~~ is a two-char token - hold back lone ~ at end of buffer
-		if (code === TILDE && !this.finished && this.cursor + 1 >= length) {
+		// the ~~ flanking check needs the char after both tildes
+		if (
+			code === TILDE &&
+			!this.finished &&
+			(this.cursor + 1 >= length ||
+				(this.cursor + 2 >= length &&
+					char_code_at.call(source, this.cursor + 1 - base) === TILDE))
+		) {
 			return true;
 		}
 		// close: ~~ with right-flanking
@@ -5960,6 +5977,14 @@ export class PFMParser {
 		if (!code) {
 			this._unwind_unterminated_delimiter();
 			return false;
+		}
+		// a ~ followed by another ~ does not close
+		if (
+			code === TILDE &&
+			!this.finished &&
+			this.cursor + 1 >= this.source_end
+		) {
+			return true;
 		}
 		// close: single ~ after content (no right-flanking needed -
 		// ~ is unambiguous inside subscript, and h~2~o must work)
@@ -6304,6 +6329,7 @@ export class PFMParser {
 		}
 
 		if (code === LINEFEED) {
+			if (!this.finished && !this.can_decide_after_lf(this.cursor)) return true;
 			const resume = this.inline_lf_resume();
 			if (resume === -1) {
 				this.out.revoke(current_node);
@@ -6364,6 +6390,13 @@ export class PFMParser {
 			}
 		}
 
+		if (
+			code === LINEFEED &&
+			!this.finished &&
+			!this.can_decide_after_lf(this.cursor)
+		) {
+			return true;
+		}
 		// pop wherever inline pops at a linefeed or the two ping pong
 		if (
 			code === LINEFEED &&
@@ -6578,9 +6611,7 @@ export class PFMParser {
 		}
 
 		if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
-			if (!this.finished && this.cursor + 2 >= length) {
-				return true;
-			}
+			if (this.could_be_thematic_break(this.cursor, code)) return true;
 			if (this.is_thematic_break_start(this.cursor)) {
 				let line_end = this.cursor;
 				while (
@@ -6823,9 +6854,7 @@ export class PFMParser {
 		}
 
 		if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
-			if (!this.finished && this.cursor + 2 >= length) {
-				return true;
-			}
+			if (this.could_be_thematic_break(this.cursor, code)) return true;
 			if (this.is_thematic_break_start(this.cursor)) {
 				let line_end = this.cursor;
 				while (
@@ -7405,21 +7434,7 @@ export class PFMParser {
 				// stall only while the line could still be a thematic
 				// break (marker + ws chars). as soon as any other char
 				// appears we can commit to a nested list / paragraph.
-				if (!this.finished) {
-					let could_be_tb = true;
-					for (let p = this.cursor + 1; p < length; p++) {
-						const ch = char_code_at.call(source, p - base);
-						if (ch === LINEFEED) {
-							could_be_tb = false;
-							break;
-						}
-						if (ch !== code && ch !== SPACE && ch !== TAB) {
-							could_be_tb = false;
-							break;
-						}
-					}
-					if (could_be_tb) return true;
-				}
+				if (this.could_be_thematic_break(this.cursor, code)) return true;
 				if (this.is_thematic_break_start(this.cursor)) {
 					let line_end = this.cursor;
 					while (
@@ -7722,9 +7737,7 @@ export class PFMParser {
 			case ASTERISK:
 			case DASH:
 			case UNDERSCORE: {
-				if (!this.finished && this.cursor + 2 >= length) {
-					return true;
-				}
+				if (this.could_be_thematic_break(this.cursor, code)) return true;
 				if (this.is_thematic_break_start(this.cursor)) {
 					let line_end = this.cursor;
 					while (
