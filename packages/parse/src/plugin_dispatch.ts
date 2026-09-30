@@ -568,6 +568,17 @@ export class PluginDispatcher {
 			const n = buf._n;
 			let idx = n[NodeField.first_child];
 			if (idx === NONE) continue;
+			// the walk only calls handlers, so with no handled kind anywhere in the
+			// buffer (linked or not) it would do nothing
+			const size = buf._size;
+			let handled = false;
+			for (let b = 0, end = size * NodeField.stride; b < end; b += NodeField.stride) {
+				if (handlers[n[b] & 0xff] != null) {
+					handled = true;
+					break;
+				}
+			}
+			if (!handled) continue;
 			const stack: number[] = [];
 
 			while (true) {
