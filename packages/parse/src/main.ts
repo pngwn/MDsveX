@@ -1045,7 +1045,12 @@ export class PFMParser {
 			if (pkind !== NodeKind.html || stack.indexOf(id) === -1) return false;
 			const start = this.pending_starts[pi];
 			if (start < base) return false;
-			const lf = string_index_of.call(source, '\n', start - base);
+			// the revoke rereads the open tag, which may span lines
+			const lf = string_index_of.call(
+				source,
+				'\n',
+				this.html_open_tag_end(start) - base
+			);
 			if (lf === -1 || lf + base >= line - 1) return false;
 		}
 		return true;
@@ -1089,9 +1094,10 @@ export class PFMParser {
 
 	/**
 	 * the window trim of feed when nodes other than paragraphs are pending:
-	 * the opening lines of pending html containers before the cut go first,
-	 * each ending in a linefeed, and their pending starts move onto them so
-	 * a revoke repair reads the same line
+	 * the opening lines of pending html containers before the cut go first
+	 * (every line of an open tag that spans lines), each ending in a linefeed,
+	 * and their pending starts move onto them so a revoke repair reads the
+	 * same open tag
 	 */
 	private trim_keeping_html(head: string): string {
 		const base = this.source_base;
@@ -1103,7 +1109,11 @@ export class PFMParser {
 			const start = this.pending_starts[pi];
 			if (start >= cut || this.kind_of(this.pending_ids[pi]) !== NodeKind.html)
 				continue;
-			const lf = string_index_of.call(head, '\n', start - base);
+			const lf = string_index_of.call(
+				head,
+				'\n',
+				this.html_open_tag_end(start) - base
+			);
 			offsets.push(prefix.length);
 			slots.push(pi);
 			prefix += string_slice.call(head, start - base, lf + 1);
@@ -3401,20 +3411,27 @@ export class PFMParser {
 
 	/** open tag source for a revoke, the parsed children stay after it */
 	private html_open_tag_text(start: number): string {
+		const base = this.source_base;
+		return string_slice.call(
+			this.source,
+			start - base,
+			this.html_open_tag_end(start) - base
+		);
+	}
+
+	/** end of the text html_open_tag_text takes, a tag may span lines */
+	private html_open_tag_end(start: number): number {
+		const tag = this.try_parse_html_open_tag(start + 1);
+		if (tag !== null) return tag.end;
 		const source = this.source;
 		const base = this.source_base;
-		const tag = this.try_parse_html_open_tag(start + 1);
 		let end = start + 1;
-		if (tag !== null) {
-			end = tag.end;
-		} else {
-			while (
-				end < this.source_end &&
-				char_code_at.call(source, end - base) !== LINEFEED
-			)
-				end++;
-		}
-		return string_slice.call(source, start - base, end - base);
+		while (
+			end < this.source_end &&
+			char_code_at.call(source, end - base) !== LINEFEED
+		)
+			end++;
+		return end;
 	}
 
 	/**
