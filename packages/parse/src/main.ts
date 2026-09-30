@@ -5673,28 +5673,42 @@ export class PFMParser {
 		// scan line-by-line for closing fence: a line with only
 		// optional whitespace followed by >= extra backticks.
 		// resume at fence_scan, a line is ruled out only once its backtick run ends inside the buffer
+		// jumps between backticks instead of walking every line: only a line
+		// whose first non whitespace char is a backtick can close the fence
 		const fence_len = this.extra;
 		let line = this.fence_scan;
 		let found_index = -1;
 
 		for (;;) {
-			let lp = line;
-			while (
-				lp < length &&
-				(char_code_at.call(source, lp - base) === SPACE ||
-					char_code_at.call(source, lp - base) === TAB)
-			)
-				lp++;
-			const bt_start = lp;
-			while (lp < length && char_code_at.call(source, lp - base) === BACKTICK)
-				lp++;
-			if (lp - bt_start >= fence_len) {
-				found_index = bt_start;
+			const rel = string_index_of.call(source, '`', line - base);
+			if (rel === -1) {
+				// no candidate left, resume at the start of the last line
+				const lf = string_last_index_of.call(source, '\n', length - 1 - base);
+				if (lf !== -1 && lf + base + 1 > line) line = lf + base + 1;
 				break;
 			}
-			const rel = string_index_of.call(source, '\n', line - base);
-			if (rel === -1) break;
-			line = rel + base + 1;
+			const bt = rel + base;
+			if (bt > line) {
+				const lf = string_last_index_of.call(source, '\n', bt - 1 - base);
+				if (lf !== -1 && lf + base + 1 > line) line = lf + base + 1;
+			}
+			let lp = line;
+			while (lp < bt) {
+				const ch = char_code_at.call(source, lp - base);
+				if (ch !== SPACE && ch !== TAB) break;
+				lp++;
+			}
+			if (lp === bt) {
+				while (lp < length && char_code_at.call(source, lp - base) === BACKTICK)
+					lp++;
+				if (lp - bt >= fence_len) {
+					found_index = bt;
+					break;
+				}
+			}
+			const nl = string_index_of.call(source, '\n', lp - base);
+			if (nl === -1) break;
+			line = nl + base + 1;
 		}
 
 		if (found_index === -1) {
