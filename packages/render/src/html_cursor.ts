@@ -456,6 +456,8 @@ function _open(c: Cursor, head: string, folded: string, end: string): void {
 
 // node word offsets, must follow NodeField in @mdsvex/parse
 const enum W {
+	start = 1,
+	end = 2,
 	value_start = 3,
 	value_end = 4,
 	parent = 5,
@@ -1299,22 +1301,78 @@ function fold_children(c: Cursor, p: number): number {
 	for (;;) {
 		const b = child * W.stride;
 		const k = n[b] & 0xff;
+		let next = n[b + W.next];
 		if (k === K.TEXT) {
-			p = push_dyn(
-				p,
-				escape_text_at(c, child, n[b + W.value_start], n[b + W.value_end])
-			);
+			const first = child;
+			let ve = n[b + W.value_end];
+			// a text sibling or soft break that continues this value in the source
+			// renders as one slice with it, one rope piece instead of two or three
+			if (next !== Slot.NONE && !esc_prebuilt) {
+				const nk = n[next * W.stride] & 0xff;
+				if (nk === K.TEXT || nk === K.SOFT_BREAK) {
+					child = text_run_last(n, child, parent, c.source);
+					const lb = child * W.stride;
+					ve = n[lb + W.value_end];
+					next = n[lb + W.next];
+				}
+			}
+			p = push_dyn(p, escape_text_at(c, first, n[b + W.value_start], ve));
 		} else if (k !== K.LINE_BREAK) {
 			// line breaks render nothing, a fifth of visited nodes skip the call
 			c.move_to(child);
 			p = fold_node(c, p);
 		}
-		const next = n[b + W.next];
 		if (next === Slot.NONE || n[next * W.stride + W.parent] !== parent) break;
 		child = next;
 	}
 	c.move_to(parent !== Slot.NONE ? parent : child);
 	return p;
+}
+
+/**
+ * the last text sibling of a run starting at text node first whose output is
+ * the source over the run: each text continues the previous value and a soft
+ * break between two texts is exactly the source '\n' joining them
+ */
+function text_run_last(
+	n: Uint32Array,
+	first: number,
+	parent: number,
+	src: string
+): number {
+	let last = first;
+	let b = first * W.stride;
+	let ve = n[b + W.value_end];
+	if (ve === Slot.NONE || ve < n[b + W.value_start]) return first;
+	for (;;) {
+		let next = n[b + W.next];
+		if (next === Slot.NONE) return last;
+		let nb = next * W.stride;
+		if (n[nb + W.parent] !== parent) return last;
+		let k = n[nb] & 0xff;
+		if (k === K.SOFT_BREAK) {
+			const s = n[nb + W.start];
+			if (
+				s !== ve ||
+				n[nb + W.end] !== s + 1 ||
+				src.charCodeAt(s) !== 10
+			)
+				return last;
+			next = n[nb + W.next];
+			if (next === Slot.NONE) return last;
+			nb = next * W.stride;
+			if (n[nb + W.parent] !== parent) return last;
+			k = n[nb] & 0xff;
+			if (k !== K.TEXT || n[nb + W.value_start] !== s + 1) return last;
+		} else if (k !== K.TEXT || n[nb + W.value_start] !== ve) {
+			return last;
+		}
+		const e = n[nb + W.value_end];
+		if (e === Slot.NONE || e < n[nb + W.value_start]) return last;
+		last = next;
+		b = nb;
+		ve = e;
+	}
 }
 
 function fold_node(c: Cursor, p: number): number {
