@@ -332,8 +332,6 @@ export class PFMParser {
 	private bp_quote: number = 0;
 	private bp_end: number = -1;
 	private bp_frames: number[] = [];
-	// a failed resumable probe was the last thing _run did
-	private bp_stall: boolean = false;
 	// chunks fed while waiting on a brace, joined onto the window once it closes
 	private bp_pending: string[] = [];
 	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
@@ -550,24 +548,10 @@ export class PFMParser {
 			this.source_base = this.trim_point - 1;
 		}
 
-		let src: string;
-		const pending = this.bp_pending;
-		if (pending.length !== 0) {
-			pending.unshift(head);
-			pending.push(chunk);
-			src = pending.join('');
-			pending.length = 0;
-		} else {
-			src = append_flat(head, chunk);
-		}
+		const src = append_flat(head, chunk);
 		this.source = src;
 		this.source_end += len;
 		this._run();
-		if (this.bp_stall) {
-			this.bp_stall = false;
-			// _run stopped at the open brace, later chunks only need the brace scan until it closes
-			if (this.cursor === this.bp_start - 1) this.wait_kind = WAIT_BRACE;
-		}
 		this.out.cursor(this.cursor);
 	}
 
@@ -575,11 +559,23 @@ export class PFMParser {
 	private skip_wait(chunk: string, len: number): boolean {
 		const end = this.source_end;
 		if (this.wait_kind === WAIT_BRACE) {
-			// the saved scan stopped at the end of the input, the chunk continues it
-			if (this.brace_scan(chunk, end, end + len)) return false;
-			this.bp_pending.push(chunk);
-			this.source_end = end + len;
-			return true;
+			const pending = this.bp_pending;
+			// the probe set the wait, it holds only if _run stopped at that brace
+			if (this.cursor === this.bp_start - 1) {
+				// the saved scan stopped at the end of the input, the chunk continues it
+				if (!this.brace_scan(chunk, end, end + len)) {
+					pending.push(chunk);
+					this.source_end = end + len;
+					return true;
+				}
+			}
+			if (pending.length !== 0) {
+				// the chunks held back while waiting go onto the window in one join, feed appends this one
+				pending.unshift(this.source);
+				this.source = pending.join('');
+				pending.length = 0;
+			}
+			return false;
 		}
 		if (this.wait_kind === WAIT_FENCE) {
 			// no backtick means no close, the line after the last lf stays open
@@ -665,7 +661,6 @@ export class PFMParser {
 		this.trim_point = 0;
 		this.fence_scan = 0;
 		this.bp_start = -1;
-		this.bp_stall = false;
 		if (this.bp_pending.length !== 0) this.bp_pending.length = 0;
 		this.raw_node = 0;
 		this.raw_needle = '';
@@ -3021,7 +3016,8 @@ export class PFMParser {
 		}
 		if (this.brace_scan(this.source, this.source_base, this.source_end))
 			return this.bp_end;
-		this.bp_stall = true;
+		// _run stalls here, later chunks only need the brace scan until it closes (skip_wait checks the stall)
+		this.wait_kind = WAIT_BRACE;
 		return -1;
 	}
 
