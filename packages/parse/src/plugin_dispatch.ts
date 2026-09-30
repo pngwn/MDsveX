@@ -187,7 +187,14 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 		return { plugin, handlers: table };
 	});
 
-	return { fused, sequential, has_handler };
+	// a pass with no handler visits nothing and fires nothing, so it is dropped
+	return {
+		fused,
+		sequential: sequential.filter((pass) =>
+			pass.handlers.some((h) => h !== null)
+		),
+		has_handler,
+	};
 }
 
 /** parse_of for an entry the registration skips */
@@ -225,15 +232,18 @@ function snapshot_matches(plugins: ParsePlugin[], snap: unknown[]): boolean {
 		const p = plugins[i];
 		if (snap[j++] !== p) return false;
 		if (snap[j++] !== !!p.sequential) return false;
-		const keys = Object.keys(p);
-		if (snap[j++] !== keys.length) return false;
-		for (let k = 0; k < keys.length; k++) {
-			const key = keys[k];
-			if (snap[j++] !== key) return false;
+		// for-in walks the own keys in Object.keys order then any inherited
+		// enumerable key, which makes the count or a key differ, so an exact
+		// match means the same own keys without allocating their array
+		const count = snap[j++] as number;
+		const keys_end = j + count * 3;
+		for (const key in p) {
+			if (j === keys_end || snap[j++] !== key) return false;
 			const entry = p[key];
 			if (snap[j++] !== entry) return false;
 			if (snap[j++] !== parse_of(entry)) return false;
 		}
+		if (j !== keys_end) return false;
 	}
 	return true;
 }
@@ -306,9 +316,8 @@ class CloseCallbackStore {
 /**
  * dispatch plugin handlers for a node open event.
  *
- * the switch destructures the handlers table into 35 locals at the top.
- * each arm calls its own local, giving the jit a monomorphic call site
- * per kind.
+ * each switch arm calls the table entry for its own kind, giving the jit
+ * a monomorphic call site per kind, without loading all 35 entries first.
  */
 function dispatch_open(
 	kind: NodeKind,
@@ -320,114 +329,78 @@ function dispatch_open(
 	// bitmask fast path: no handler for this kind
 	if (!(has_handler[kind >> 5] & (1 << (kind & 31)))) return null;
 
-	// destructure into monomorphic locals
-	const h_0 = fused[0];
-	const h_1 = fused[1];
-	const h_2 = fused[2];
-	const h_3 = fused[3];
-	const h_4 = fused[4];
-	const h_5 = fused[5];
-	const h_6 = fused[6];
-	const h_7 = fused[7];
-	const h_8 = fused[8];
-	const h_9 = fused[9];
-	const h_10 = fused[10];
-	const h_11 = fused[11];
-	const h_12 = fused[12];
-	const h_13 = fused[13];
-	const h_14 = fused[14];
-	const h_15 = fused[15];
-	const h_16 = fused[16];
-	const h_17 = fused[17];
-	const h_18 = fused[18];
-	const h_19 = fused[19];
-	const h_20 = fused[20];
-	const h_21 = fused[21];
-	const h_22 = fused[22];
-	const h_23 = fused[23];
-	const h_24 = fused[24];
-	const h_25 = fused[25];
-	const h_26 = fused[26];
-	const h_27 = fused[27];
-	const h_28 = fused[28];
-	const h_29 = fused[29];
-	const h_30 = fused[30];
-	const h_31 = fused[31];
-	const h_32 = fused[32];
-	const h_33 = fused[33];
-	const h_34 = fused[34];
-
+	// a call site per kind, each stays monomorphic
 	switch (kind) {
 		case 0:
-			return h_0!(view, ctx);
+			return fused[0]!(view, ctx);
 		case 1:
-			return h_1!(view, ctx);
+			return fused[1]!(view, ctx);
 		case 2:
-			return h_2!(view, ctx);
+			return fused[2]!(view, ctx);
 		case 3:
-			return h_3!(view, ctx);
+			return fused[3]!(view, ctx);
 		case 4:
-			return h_4!(view, ctx);
+			return fused[4]!(view, ctx);
 		case 5:
-			return h_5!(view, ctx);
+			return fused[5]!(view, ctx);
 		case 6:
-			return h_6!(view, ctx);
+			return fused[6]!(view, ctx);
 		case 7:
-			return h_7!(view, ctx);
+			return fused[7]!(view, ctx);
 		case 8:
-			return h_8!(view, ctx);
+			return fused[8]!(view, ctx);
 		case 9:
-			return h_9!(view, ctx);
+			return fused[9]!(view, ctx);
 		case 10:
-			return h_10!(view, ctx);
+			return fused[10]!(view, ctx);
 		case 11:
-			return h_11!(view, ctx);
+			return fused[11]!(view, ctx);
 		case 12:
-			return h_12!(view, ctx);
+			return fused[12]!(view, ctx);
 		case 13:
-			return h_13!(view, ctx);
+			return fused[13]!(view, ctx);
 		case 14:
-			return h_14!(view, ctx);
+			return fused[14]!(view, ctx);
 		case 15:
-			return h_15!(view, ctx);
+			return fused[15]!(view, ctx);
 		case 16:
-			return h_16!(view, ctx);
+			return fused[16]!(view, ctx);
 		case 17:
-			return h_17!(view, ctx);
+			return fused[17]!(view, ctx);
 		case 18:
-			return h_18!(view, ctx);
+			return fused[18]!(view, ctx);
 		case 19:
-			return h_19!(view, ctx);
+			return fused[19]!(view, ctx);
 		case 20:
-			return h_20!(view, ctx);
+			return fused[20]!(view, ctx);
 		case 21:
-			return h_21!(view, ctx);
+			return fused[21]!(view, ctx);
 		case 22:
-			return h_22!(view, ctx);
+			return fused[22]!(view, ctx);
 		case 23:
-			return h_23!(view, ctx);
+			return fused[23]!(view, ctx);
 		case 24:
-			return h_24!(view, ctx);
+			return fused[24]!(view, ctx);
 		case 25:
-			return h_25!(view, ctx);
+			return fused[25]!(view, ctx);
 		case 26:
-			return h_26!(view, ctx);
+			return fused[26]!(view, ctx);
 		case 27:
-			return h_27!(view, ctx);
+			return fused[27]!(view, ctx);
 		case 28:
-			return h_28!(view, ctx);
+			return fused[28]!(view, ctx);
 		case 29:
-			return h_29!(view, ctx);
+			return fused[29]!(view, ctx);
 		case 30:
-			return h_30!(view, ctx);
+			return fused[30]!(view, ctx);
 		case 31:
-			return h_31!(view, ctx);
+			return fused[31]!(view, ctx);
 		case 32:
-			return h_32!(view, ctx);
+			return fused[32]!(view, ctx);
 		case 33:
-			return h_33!(view, ctx);
+			return fused[33]!(view, ctx);
 		case 34:
-			return h_34!(view, ctx);
+			return fused[34]!(view, ctx);
 		default:
 			return null;
 	}
@@ -675,14 +648,6 @@ export class PluginDispatcher {
 	run_sequential(buf: NodeBuffer): void {
 		for (const pass of this.sequential) {
 			const handlers = pass.handlers;
-			let any = false;
-			for (let k = 0; k < NODE_KIND_COUNT; k++) {
-				if (handlers[k] !== null) any = true;
-			}
-			// a pass with no handler visits nothing and fires nothing
-			if (!any) continue;
-			const close_store = new CloseCallbackStore();
-			const ctx = this.ctx;
 
 			// depth first, pre order opens and post order closes, the words are read once so a handler
 			// that grows the buffer keeps walking the storage the walk started on
@@ -700,10 +665,13 @@ export class PluginDispatcher {
 				}
 			}
 			if (!handled) continue;
+			const close_store = new CloseCallbackStore();
+			const ctx = this.ctx;
 			const stack: number[] = [];
 
 			while (true) {
-				const handler = handlers[n[idx * NodeField.stride] & 0xff];
+				const b = idx * NodeField.stride;
+				const handler = handlers[n[b] & 0xff];
 				if (handler != null) {
 					const cache = this.views(buf);
 					const view = cache.get(idx)!;
@@ -714,31 +682,33 @@ export class PluginDispatcher {
 					cache.clear();
 				}
 
-				const child = n[idx * NodeField.stride + NodeField.first_child];
+				const child = n[b + NodeField.first_child];
 				if (child !== NONE) {
 					stack.push(idx);
 					idx = child;
 					continue;
 				}
 
-				close_store.fire(idx);
+				if (close_store.live !== 0) close_store.fire(idx);
 
-				let next = n[idx * NodeField.stride + NodeField.next];
+				// read after the callbacks, which may relink the node
+				let next = n[b + NodeField.next];
+				let parent = n[b + NodeField.parent];
 				while (
 					(next === NONE ||
-						n[next * NodeField.stride + NodeField.parent] !==
-							n[idx * NodeField.stride + NodeField.parent]) &&
+						n[next * NodeField.stride + NodeField.parent] !== parent) &&
 					stack.length > 0
 				) {
 					idx = stack.pop()!;
-					close_store.fire(idx);
-					next = n[idx * NodeField.stride + NodeField.next];
+					if (close_store.live !== 0) close_store.fire(idx);
+					const bi = idx * NodeField.stride;
+					next = n[bi + NodeField.next];
+					parent = n[bi + NodeField.parent];
 				}
 
 				if (
 					next === NONE ||
-					n[next * NodeField.stride + NodeField.parent] !==
-						n[idx * NodeField.stride + NodeField.parent]
+					n[next * NodeField.stride + NodeField.parent] !== parent
 				)
 					break;
 				idx = next;
