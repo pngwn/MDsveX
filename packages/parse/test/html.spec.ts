@@ -7,7 +7,9 @@ import {
 	print_all_nodes,
 } from './utils';
 
-import { parse_markdown_svelte } from '../src/main';
+import { PFMParser, parse_markdown_svelte } from '../src/main';
+import { TreeBuilder } from '../src/tree_builder';
+import type { NodeBuffer } from '../src/utils';
 
 describe('html - self-closing inline tags', () => {
 	test('simple self-closing tag <br />', () => {
@@ -783,4 +785,45 @@ describe('html - raw text elements (script, style)', () => {
 		const content = get_content(nodes, script_node.index, input);
 		expect(content.value).toBe('let x = 1;');
 	});
+});
+
+describe('html - unclosed tags', () => {
+	function texts(nodes: NodeBuffer, source: string, id = 0): string {
+		const n = nodes.get_node(id);
+		if (n.kind === 'text') return source.slice(n.value[0], n.value[1]);
+		return n.children.map((c: number) => texts(nodes, source, c)).join('');
+	}
+
+	function parse_incremental(source: string, chunk_size: number): NodeBuffer {
+		const tree = new TreeBuilder(source.length);
+		const parser = new PFMParser(tree);
+		parser.init();
+		for (let i = 0; i < source.length; i += chunk_size) {
+			parser.feed(source.slice(i, i + chunk_size));
+		}
+		parser.finish();
+		return tree.get_buffer();
+	}
+
+	const cases: [string, string][] = [
+		['a <b>x', 'a <b>x'],
+		['a <b a="1">x', 'a <b a="1">x'],
+		['a <b><i>x', 'a <b><i>x'],
+		['a <b>x\ny', 'a <b>xy'],
+		['- a <b>x', 'a <b>x'],
+		['> a <b>x\nfoo', 'a <b>xfoo'],
+		['<div>foo', '<div>foo'],
+		['<a href="foo\nbar">', '<a href="foo\nbar">'],
+		['a <b\nc="1">x', 'a <b\nc="1">x'],
+	];
+
+	for (const [input, expected] of cases) {
+		test(`keeps the text of ${JSON.stringify(input)} once`, () => {
+			const batch = parse_markdown_svelte(input);
+			expect(texts(batch.nodes, batch.source)).toBe(expected);
+			for (const size of [1, 2, 3]) {
+				expect(texts(parse_incremental(input, size), input)).toBe(expected);
+			}
+		});
+	}
 });

@@ -2,7 +2,7 @@ root
   paragraph
     text "[foo"
     text "]: "
-    text tag="bar" "<bar>(baz)"
+    text tag="bar" "<bar>"
     text "(baz)"
   line_break
   line_break

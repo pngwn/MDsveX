@@ -1,4 +1,4 @@
 root
   paragraph
-    text "<a href=\"foo\\"
+    text "<a href=\"foo\\\nbar\">"
   line_break
