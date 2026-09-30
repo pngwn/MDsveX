@@ -262,6 +262,28 @@ describe('tilde closer split across chunks', () => {
 	}
 });
 
+describe('thematic break at the end of a fed chunk', () => {
+	const inputs = [
+		'<b>---',
+		'<b>\n---',
+		'<b>\n\n---',
+		'<b>\n***',
+		'<div>\n- - -',
+		'<div>\n- a',
+		'<div>\n-a',
+		'{#if x}\n---',
+		'{#if x}\n---\n{/if}',
+		':::x[]\n___',
+		':::x[]\n---\n:::',
+	];
+
+	for (const input of inputs) {
+		test(JSON.stringify(input), () => {
+			expect_incremental_matches(input);
+		});
+	}
+});
+
 describe('batch and incremental parity', () => {
 	const atoms = [
 		'*',
