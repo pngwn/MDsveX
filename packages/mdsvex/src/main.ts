@@ -121,7 +121,12 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	const renderer = take_renderer();
 
 	if (options?.sourcemap) {
-		const result = renderer.update_mapped(nodes, source, collapsed_of(raw));
+		// only a collapsed \r\n changes length, without one raw needs no \r\n scan
+		const result = renderer.update_mapped(
+			nodes,
+			source,
+			source.length === raw.length ? null : collapsed_of(raw)
+		);
 		const code = renderer.html;
 		give_renderer(renderer);
 		return { code, mappings: result.mappings };
