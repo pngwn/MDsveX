@@ -1380,8 +1380,7 @@ export class PFMParser {
 		// a visible linefeed decides either way, so settle on the first char before scanning the line
 		switch (ch) {
 			case OCTOTHERP: {
-				// heading needs the char after the whole `#` run
-				// (distinguishes `## x` heading from `##x` paragraph).
+				// a heading needs the char after the whole # run
 				let q = p + 1;
 				while (q < length && char_code_at.call(source, q - base) === OCTOTHERP)
 					q++;
