@@ -1379,11 +1379,15 @@ export class PFMParser {
 		if (ch === LINEFEED) return true;
 		// a visible linefeed decides either way, so settle on the first char before scanning the line
 		switch (ch) {
-			case OCTOTHERP:
-				// heading needs at least `#` + one lookahead char
-				// (distinguishes `# x` heading from `#x` paragraph).
-				if (p + 1 < length) return true;
+			case OCTOTHERP: {
+				// heading needs the char after the whole `#` run
+				// (distinguishes `## x` heading from `##x` paragraph).
+				let q = p + 1;
+				while (q < length && char_code_at.call(source, q - base) === OCTOTHERP)
+					q++;
+				if (q < length || q - p > 6) return true;
 				break;
+			}
 			case CLOSE_ANGLE_BRACKET:
 				// block quote - immediate.
 				return true;

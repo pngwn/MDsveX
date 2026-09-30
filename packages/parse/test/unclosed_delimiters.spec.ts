@@ -284,6 +284,26 @@ describe('thematic break at the end of a fed chunk', () => {
 	}
 });
 
+describe('heading marker at the end of a fed chunk', () => {
+	const inputs = [
+		'a\n##](',
+		'a\n##b',
+		'a\n## b',
+		'a\n ##b',
+		'a\n######x',
+		'a\n#######',
+		'*a\n##b',
+		'~~a\n##b',
+		'[a\n##b',
+	];
+
+	for (const input of inputs) {
+		test(JSON.stringify(input), () => {
+			expect_incremental_matches(input);
+		});
+	}
+});
+
 describe('batch and incremental parity', () => {
 	const atoms = [
 		'*',
