@@ -371,17 +371,19 @@ function chained_json(
 	if (chained === null) return null;
 	let json = '{"version":3';
 	if (out_file) json += ',"file":' + JSON.stringify(out_file);
+	const chained_names = chained.names;
 	json +=
 		',"mappings":"' +
 		chained.mappings +
 		'","names":' +
-		JSON.stringify(chained.names) +
+		(chained_names.length === 0 ? '[]' : JSON.stringify(chained_names)) +
 		',"ignoreList":[],"sources":';
 	if (chained.sourced) {
+		// a plain basename has no char JSON escapes, so quoting it is stringify
 		json +=
-			'[' +
-			JSON.stringify(base) +
-			'],"sourcesContent":[' +
+			'["' +
+			base +
+			'"],"sourcesContent":[' +
 			JSON.stringify(doc.raw) +
 			']}';
 	} else {

@@ -979,6 +979,9 @@ let pseg_sline = new Int32Array(1024);
 let pseg_scol = new Int32Array(1024);
 let line_first = new Int32Array(256);
 let query_buf = new Int32Array(256);
+// generated lines holding a query, cleared per chain rather than reallocated
+let wanted_buf = new Uint8Array(256);
+const QUERY_SORT_SMALL = 32;
 
 /** fills the p arrays with the segments decode_lines would build, returns the line count */
 function trace_lines(
@@ -1110,7 +1113,12 @@ export function chain_trace(
 
 	fill_line_starts(gen_table, generated);
 	const gen_count = gen_table.count;
-	const wanted = new Uint8Array(gen_count);
+	let wanted = wanted_buf;
+	if (wanted.length < gen_count) {
+		let size = wanted.length * 2;
+		while (size < gen_count) size *= 2;
+		wanted = wanted_buf = new Uint8Array(size);
+	} else wanted.fill(0, 0, gen_count);
 	if (query_buf.length < count) query_buf = new Int32Array(count * 2);
 	const queries = query_buf;
 	let query_count = 0;
@@ -1125,7 +1133,18 @@ export function chain_trace(
 		}
 	}
 	if (query_count > 1) {
-		queries.subarray(0, query_count).sort();
+		if (query_count <= QUERY_SORT_SMALL) {
+			// a few queries sort by insertion without a view or a runtime call
+			for (let k = 1; k < query_count; k++) {
+				const q = queries[k];
+				let j = k - 1;
+				while (j >= 0 && queries[j] > q) {
+					queries[j + 1] = queries[j];
+					j--;
+				}
+				queries[j + 1] = q;
+			}
+		} else queries.subarray(0, query_count).sort();
 		let kept = 1;
 		for (let k = 1; k < query_count; k++) {
 			if (queries[k] !== queries[kept - 1]) queries[kept++] = queries[k];
