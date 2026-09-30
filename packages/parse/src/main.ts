@@ -6872,6 +6872,11 @@ export class PFMParser {
 		const length = this.source_end;
 		// inside [link text], ![image alt], or :name[content]
 		// - stream content, watch for closing ]
+		// inline pops at | and linefeeds in table cells, the text state unwinds there
+		if (this.in_table && (code === PIPE || code === LINEFEED)) {
+			this.unwind_inline_for_table();
+			return false;
+		}
 		if (!code) {
 			this._unwind_unterminated_delimiter();
 			return false;
