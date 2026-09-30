@@ -4,12 +4,22 @@ const DEFAULT_TOKEN_CAPACITY = 128;
 /** under 2 kb of slab, cheaper than a resize for a slightly larger document */
 const MIN_NODE_CAPACITY = 32;
 
-const SLAB_BYTES = 65536;
+/**
+ * a buffer past the carve cap is its own ArrayBuffer, which costs far more
+ * than the carve, so the slab is big enough that small documents carve
+ */
+const SLAB_BYTES = 1048576;
 
-/** caps the tail a full slab can waste at an eighth */
-const SLAB_MAX_CARVE = 8192;
+/**
+ * caps the tail a full slab can waste at a quarter, a one shot parse gives
+ * back what it did not use, so a medium document's generous estimate carves
+ */
+const SLAB_MAX_CARVE = 262144;
 
 const EMPTY_U32 = new Uint32Array(0);
+
+/** most documents set no metadata, the first set_metadata swaps in a real array */
+const NO_META: any[] = Object.freeze([]) as unknown as any[];
 
 /** push writes and the cursor reads fields together, so they share one stride */
 export const enum NodeField {
@@ -39,6 +49,11 @@ const NODE_BYTES = NodeField.stride * 4;
  */
 let slab = new ArrayBuffer(0);
 let slab_used = SLAB_BYTES;
+/**
+ * the view whose region ends at slab_used, it can grow in place and give back
+ * its unused tail, slab bytes cost about as much as the nodes they hold
+ */
+let last_carve: Uint32Array | null = null;
 
 /** default number of error entries to preallocate. */
 const DEFAULT_ERROR_CAPACITY = 32;
@@ -203,7 +218,7 @@ const extra_to_string = (kind: NodeKind): string | undefined => {
 
 /**
  * a computed key literal takes a slow generic define, so known keys get
- * constant key literals, the fallback keeps __proto__ an own property
+ * constant key literals and other keys a store into an empty literal
  */
 export function make_meta(key: string, value: any): Record<string, any> {
 	switch (key) {
@@ -237,8 +252,15 @@ export function make_meta(key: string, value: any): Record<string, any> {
 			return { args: value };
 		case 'col_count':
 			return { col_count: value };
-		default:
-			return { [key]: value };
+		default: {
+			// a set would change the prototype, a literal defines an own property
+			if (key === '__proto__') return { [key]: value };
+			// a keyed store on an empty literal is several times cheaper than the
+			// computed key literal and makes the same object
+			const meta: Record<string, any> = {};
+			meta[key] = value;
+			return meta;
+		}
 	}
 }
 
@@ -307,7 +329,7 @@ export class NodeBuffer {
 	/** @internal do not mutate externally */
 	_n: Uint32Array = EMPTY_U32;
 	/** @internal */
-	_meta: any[] = [];
+	_meta: any[] = NO_META;
 	/** @internal pre-materialized text strings (used by wiretreebuilder). index -> string. */
 	_strings: (string | undefined)[] = [];
 
@@ -343,9 +365,20 @@ export class NodeBuffer {
 			buffer = new ArrayBuffer(bytes);
 		}
 		const n = new Uint32Array(buffer, base, capacity * NodeField.stride);
+		if (buffer === slab) last_carve = n;
 		this._capacity = capacity;
 		this._n = n;
 		return n;
+	}
+
+	/**
+	 * give the unused tail of the last slab carve back to the slab, the
+	 * capacity drops to the size so a later push resizes
+	 */
+	trim(): void {
+		if (this._n !== last_carve) return;
+		slab_used -= (this._capacity - this._size) * NODE_BYTES;
+		this._capacity = this._size;
 	}
 
 	/** clear nodes without reallocating storage */
@@ -376,6 +409,34 @@ export class NodeBuffer {
 		extra = 0,
 		metadata?: any
 	): number {
+		const index = this.push_node(kind, cursor, parent, extra, false);
+		if (metadata !== undefined) this.set_metadata(index, metadata);
+		return index;
+	}
+
+	push_pending(
+		kind: NodeKind,
+		cursor: number,
+		parent = 0xffffffff,
+		extra = 0,
+		metadata?: any
+	): number {
+		const index = this.push_node(kind, cursor, parent, extra, true);
+		if (metadata !== undefined) this.set_metadata(index, metadata);
+		return index;
+	}
+
+	/**
+	 * push a node as the last child of parent, pending or not, one body for
+	 * every open so the builder inlines a single copy
+	 */
+	push_node(
+		kind: NodeKind,
+		cursor: number,
+		parent: number,
+		extra: number,
+		pending: boolean
+	): number {
 		const index = this._size;
 		let n = this._n;
 		if (index >= this._capacity) n = this.grow();
@@ -391,7 +452,7 @@ export class NodeBuffer {
 		n[b + NodeField.prev] = 0xffffffff;
 		n[b + NodeField.first_child] = 0xffffffff;
 		n[b + NodeField.last_child] = 0xffffffff;
-		n[b + NodeField.pending] = 0;
+		n[b + NodeField.pending] = pending ? 1 : 0;
 		n[b + NodeField.meta] = 0;
 		this._size = index + 1;
 
@@ -408,21 +469,6 @@ export class NodeBuffer {
 			}
 			n[p + NodeField.last_child] = index;
 		}
-
-		if (metadata !== undefined) this.set_metadata(index, metadata);
-
-		return index;
-	}
-
-	push_pending(
-		kind: NodeKind,
-		cursor: number,
-		parent = 0xffffffff,
-		extra = 0,
-		metadata?: any
-	): number {
-		const index = this.push(kind, cursor, parent, extra, metadata);
-		this._n[index * NodeField.stride + NodeField.pending] = 1;
 		return index;
 	}
 
@@ -553,8 +599,15 @@ export class NodeBuffer {
 	 * @param delimiter_text optional pre-resolved delimiter string (wire path).
 	 *   if provided, stored in _strings. if absent, value range is set from
 	 *   the node's start position.
+	 * @param text_start source offset of delimiter_text. when it equals the
+	 *   node's start the repaired value range slices exactly delimiter_text,
+	 *   so the string is not stored (renders skip prebuilt lookups).
 	 */
-	handle_repair(index: number, delimiter_text?: string): void {
+	handle_repair(
+		index: number,
+		delimiter_text?: string,
+		text_start?: number
+	): void {
 		const parent = this.parent_at(index);
 		const kind = this.kind_at(index);
 		const parent_kind =
@@ -629,7 +682,7 @@ export class NodeBuffer {
 			const text_idx = this.push(NodeKind.text, start, index);
 			this.set_value(text_idx, start, end);
 			this.set_end(text_idx, end);
-			if (delimiter_text !== undefined) {
+			if (delimiter_text !== undefined && text_start !== start) {
 				this._strings[text_idx] = delimiter_text;
 			}
 
@@ -670,8 +723,8 @@ export class NodeBuffer {
 		this.set_kind(index, NodeKind.text);
 
 		if (delimiter_text !== undefined) {
-			this._strings[index] = delimiter_text;
 			const start = this.start_at(index);
+			if (text_start !== start) this._strings[index] = delimiter_text;
 			const end = start + delimiter_text.length;
 			this.set_value(index, start, end);
 			this.set_end(index, end);
@@ -1019,8 +1072,23 @@ export class NodeBuffer {
 
 	private resize(next: number): Uint32Array {
 		const old = this._n;
+		const words = this._capacity * NodeField.stride;
+		if (old === last_carve) {
+			// nothing was carved since, so extend the region in place
+			const base = slab_used - words * 4;
+			const bytes = next * NODE_BYTES;
+			if (bytes <= SLAB_MAX_CARVE && base + bytes <= SLAB_BYTES) {
+				const n = new Uint32Array(slab, base, next * NodeField.stride);
+				slab_used = base + bytes;
+				last_carve = n;
+				this._capacity = next;
+				this._n = n;
+				return n;
+			}
+		}
 		const n = this.alloc(next);
-		n.set(old);
+		// a trimmed view is longer than its capacity
+		n.set(old.length === words ? old : old.subarray(0, words));
 		return n;
 	}
 
@@ -1029,7 +1097,14 @@ export class NodeBuffer {
 		const i = index * NodeField.stride + NodeField.meta;
 		const slot = n[i];
 		if (slot !== 0) this._meta[slot - 1] = metadata;
-		else n[i] = this._meta.push(metadata);
+		else {
+			const meta = this._meta;
+			// a literal holds one slot, a push onto [] reserves seventeen
+			if (meta === NO_META) {
+				this._meta = [metadata];
+				n[i] = 1;
+			} else n[i] = meta.push(metadata);
+		}
 	}
 
 	metadata_at(index: number): any | undefined {

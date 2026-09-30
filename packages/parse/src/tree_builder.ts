@@ -7,6 +7,7 @@ import {
 	merge_meta,
 } from './utils';
 import type { PluginDispatcher } from './plugin_dispatch';
+import type { IdRegister } from './plugin_types';
 
 const NONE = 0xffffffff;
 
@@ -24,25 +25,30 @@ export class TreeBuilder implements Emitter {
 	private nodes: NodeBuffer;
 	/** null while ids equal buffer indices */
 	private id_to_index: number[] | null = null;
-	/** kind at open by id, only kept for plugins since they rewrite kinds */
-	private id_to_kind: number[] | null = null;
-	/** kind at open by buffer index for nodes a revoke rewrote */
-	private revoked_kinds: Map<number, number> | null = null;
+	/**
+	 * buffer index and kind at open of each node a revoke rewrote, in revoke
+	 * order, only read for a close or text that does not pass the kind
+	 */
+	private revoked: number[] | null = null;
+	/** kind at open by index, built from revoked on the first read */
+	private revoked_map: Map<number, number> | null = null;
+	/** entries of revoked already copied into revoked_map */
+	private revoked_mapped = 0;
 	/** optional plugin dispatcher. null when no plugins registered. */
 	private dispatcher: PluginDispatcher | null;
 
 	/** callback for dispatcher to register synthetic node ids. */
-	private register_id = (synthetic_id: number, buf_idx: number): void => {
-		this.id_to_index![synthetic_id] = buf_idx;
-	};
+	private register_id: IdRegister | null = null;
 
 	constructor(capacity: number, dispatcher?: PluginDispatcher) {
 		this.nodes = new NodeBuffer(capacity);
 		this.dispatcher = dispatcher ?? null;
 		// NodeBuffer constructor auto-creates root at index 0
 		if (this.dispatcher !== null) {
-			this.id_to_index = [0];
-			this.id_to_kind = [NodeKind.root];
+			// only plugins register synthetic ids, so only they pay for the closure
+			this.register_id = (synthetic_id: number, buf_idx: number): void => {
+				(this.id_to_index ?? this.start_id_map())[synthetic_id] = buf_idx;
+			};
 		}
 	}
 
@@ -59,7 +65,11 @@ export class TreeBuilder implements Emitter {
 		this.nodes.reset();
 		this.nodes.push(NodeKind.root, 0);
 		this.id_to_index = null;
-		this.revoked_kinds = null;
+		if (this.revoked !== null) {
+			this.revoked = null;
+			this.revoked_map = null;
+			this.revoked_mapped = 0;
+		}
 	}
 
 	private index_of(id: number): number | undefined {
@@ -75,11 +85,23 @@ export class TreeBuilder implements Emitter {
 		return map;
 	}
 
-	/** a revoke may have rewritten the buffer kind since open */
+	/**
+	 * a revoke may have rewritten the buffer kind since open, only for callers
+	 * that do not pass the kind, the parser always does
+	 */
 	private opened_kind(idx: number): number {
-		const revoked = this.revoked_kinds;
+		// plugins rewrite kinds too, the dispatcher logs every rewrite
+		const revoked =
+			this.dispatcher !== null ? this.dispatcher.kind_log() : this.revoked;
 		if (revoked !== null) {
-			const kind = revoked.get(idx);
+			let map = this.revoked_map;
+			if (map === null) map = this.revoked_map = new Map();
+			// the first revoke of an index holds the kind at open
+			for (let i = this.revoked_mapped; i < revoked.length; i += 2) {
+				if (!map.has(revoked[i])) map.set(revoked[i], revoked[i + 1]);
+			}
+			this.revoked_mapped = revoked.length;
+			const kind = map.get(idx);
 			if (kind !== undefined) return kind;
 		}
 		return this.nodes._n[idx * NodeField.stride] & 0xff;
@@ -97,44 +119,76 @@ export class TreeBuilder implements Emitter {
 		if (id === 0) return;
 
 		const nodes = this.nodes;
-		let map = this.id_to_index;
-		if (map === null) {
-			if (id === nodes._size) {
-				// parents are opened ids below this one, so they are indices too
-				const parent_idx = parent === -1 ? NONE : parent;
-				if (pending) nodes.push_pending(kind, start, parent_idx, extra);
-				else nodes.push(kind, start, parent_idx, extra);
+		if (this.id_to_index === null && id === nodes._size) {
+			// parents are opened ids below this one, so they are indices too
+			const parent_idx = parent === -1 ? NONE : parent;
+			const dispatcher = this.dispatcher;
+			if (dispatcher !== null && dispatcher.wants_open(kind)) {
+				this.open_with_plugins(dispatcher, kind, start, parent_idx, extra, pending);
 				return;
 			}
-			map = this.start_id_map();
+			nodes.push_node(kind, start, parent_idx, extra, pending);
+			return;
 		}
+		this.open_mapped(id, kind, start, parent, extra, pending);
+	}
+
+	/**
+	 * an open once ids and indices part: a plugin pushed nodes the parser has
+	 * no id for, or ids skipped a slot
+	 */
+	private open_mapped(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		extra: number,
+		pending: boolean
+	): void {
+		const nodes = this.nodes;
+		const dispatcher = this.dispatcher;
+		const map = this.id_to_index ?? this.start_id_map();
 
 		let parent_idx = parent === -1 ? NONE : (map[parent] ?? NONE);
 
-		const dispatcher = this.dispatcher;
 		// plugin redirect: if parent has a wrap_inner wrapper, children go there
 		if (dispatcher !== null && parent_idx !== NONE) {
 			const redirect = dispatcher.get_redirect(parent_idx);
 			if (redirect !== undefined) parent_idx = redirect;
 		}
 
-		const idx = pending
-			? nodes.push_pending(kind, start, parent_idx, extra)
-			: nodes.push(kind, start, parent_idx, extra);
+		const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
 		map[id] = idx;
 
-		if (dispatcher !== null) {
-			this.id_to_kind![id] = kind;
-			// plugin dispatch
-			if (dispatcher.has_handlers(kind)) {
-				dispatcher.dispatch_open(idx, kind, nodes, this.register_id);
-			}
+		if (dispatcher !== null && dispatcher.has_handlers(kind)) {
+			dispatcher.dispatch_open(idx, kind, nodes, this.register_id!);
 		}
 	}
 
-	close(id: number, end: number): void {
+	/** an open whose id is its buffer index */
+	private open_with_plugins(
+		dispatcher: PluginDispatcher,
+		kind: NodeKind,
+		start: number,
+		parent_idx: number,
+		extra: number,
+		pending: boolean
+	): void {
+		const nodes = this.nodes;
+		// plugin redirect: if parent has a wrap_inner wrapper, children go there
+		if (parent_idx !== NONE) {
+			const redirect = dispatcher.get_redirect(parent_idx);
+			if (redirect !== undefined) parent_idx = redirect;
+		}
+		const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
+		if (dispatcher.has_handlers(kind)) {
+			dispatcher.dispatch_open(idx, kind, nodes, this.register_id!);
+		}
+	}
+
+	close(id: number, end: number, kind?: NodeKind): void {
 		if (this.dispatcher !== null) {
-			this.close_with_plugins(id, end);
+			this.close_with_plugins(id, end, kind);
 			return;
 		}
 		const idx = this.index_of(id);
@@ -146,7 +200,7 @@ export class TreeBuilder implements Emitter {
 		// pending paragraphs inside list_items are tight-list speculation
 		// wrappers, they stay pending after close until the list closes
 		// and the parser either revokes (tight) or commits (loose) them.
-		const kind = this.opened_kind(idx);
+		if (kind === undefined) kind = this.opened_kind(idx);
 		if (
 			kind === NodeKind.paragraph &&
 			n[b + NodeField.pending] === 1 &&
@@ -159,33 +213,27 @@ export class TreeBuilder implements Emitter {
 		if (kind === NodeKind.list) this.unwrap_tight_list(idx);
 	}
 
-	private close_with_plugins(id: number, end: number): void {
-		const idx = this.id_to_index![id];
+	private close_with_plugins(id: number, end: number, opened?: NodeKind): void {
+		const idx = this.index_of(id);
 		if (idx === undefined) return;
 		const nodes = this.nodes;
 		const dispatcher = this.dispatcher!;
 		nodes.set_end(idx, end);
 
-		// capture pending state before close dispatch / commit
-		const was_pending = nodes.pending_at(idx) === 1;
-
-		// plugin close dispatch: fire close callbacks before committing
-		dispatcher.dispatch_close(idx, nodes);
+		// plugin close dispatch: fire close callbacks before committing, a
+		// quiet dispatcher has nothing to fire, redirect or commit
+		if (!dispatcher.quiet()) dispatcher.dispatch_close(idx, nodes);
 
 		// pending paragraphs inside list_items are tight-list speculation
 		// wrappers, they stay pending after close until the list closes
 		// and the parser either revokes (tight) or commits (loose) them.
-		const kind = this.id_to_kind![id];
+		const kind = opened !== undefined ? opened : this.opened_kind(idx);
 		const keep_pending =
 			kind === NodeKind.paragraph &&
 			nodes.pending_at(idx) === 1 &&
 			nodes.kind_at(nodes.parent_at(idx)) === NodeKind.list_item;
-		if (!keep_pending) {
-			nodes.commit_node(idx);
-			if (!was_pending) {
-				dispatcher.dispatch_commit(idx);
-			}
-		}
+		// dispatch_close already committed the undo log of a node not pending
+		if (!keep_pending) nodes.commit_node(idx);
 
 		if (kind === NodeKind.list) this.unwrap_tight_list(idx);
 	}
@@ -215,17 +263,21 @@ export class TreeBuilder implements Emitter {
 		}
 	}
 
-	text(parent: number, start: number, end: number): void {
+	text(
+		parent: number,
+		start: number,
+		end: number,
+		parent_kind?: NodeKind
+	): void {
 		let parent_idx = this.index_of(parent);
 		if (parent_idx === undefined) return;
 
-		let parent_kind: number;
 		if (this.dispatcher !== null) {
-			parent_kind = this.id_to_kind![parent];
+			if (parent_kind === undefined) parent_kind = this.opened_kind(parent_idx);
 			// plugin redirect: text targeting a wrapped parent goes to the wrapper
 			const redirect = this.dispatcher.get_redirect(parent_idx);
 			if (redirect !== undefined) parent_idx = redirect;
-		} else {
+		} else if (parent_kind === undefined) {
 			parent_kind = this.opened_kind(parent_idx);
 		}
 
@@ -281,7 +333,7 @@ export class TreeBuilder implements Emitter {
 		if (idx !== undefined) this.nodes.set_value_end(idx, pos);
 	}
 
-	revoke(id: number, source_text?: string): void {
+	revoke(id: number, source_text?: string, text_start?: number): void {
 		const idx = this.index_of(id);
 		if (idx === undefined) return;
 		const nodes = this.nodes;
@@ -289,17 +341,20 @@ export class TreeBuilder implements Emitter {
 		// plugin revoke: undo mutations before handle_repair
 		if (this.dispatcher !== null) {
 			this.dispatcher.dispatch_revoke(idx, nodes);
-			nodes.handle_repair(idx, source_text);
+			const kind = nodes.kind_at(idx);
+			nodes.handle_repair(idx, source_text, text_start);
+			if (nodes.kind_at(idx) !== kind) this.dispatcher.log_kind(idx, kind);
 			return;
 		}
 
 		const kind = nodes.kind_at(idx);
-		nodes.handle_repair(idx, source_text);
-		// close and text still act on the kind the node was opened with
+		nodes.handle_repair(idx, source_text, text_start);
+		// close and text still act on the kind the node was opened with, the
+		// parser passes it, other callers read it back from this list
 		if (nodes.kind_at(idx) !== kind) {
-			let revoked = this.revoked_kinds;
-			if (revoked === null) revoked = this.revoked_kinds = new Map();
-			if (!revoked.has(idx)) revoked.set(idx, kind);
+			const revoked = this.revoked;
+			if (revoked === null) this.revoked = [idx, kind];
+			else revoked.push(idx, kind);
 		}
 	}
 
@@ -313,6 +368,11 @@ export class TreeBuilder implements Emitter {
 	}
 
 	cursor(_pos: number): void {}
+
+	/** an incremental document is complete, give its unused slab tail back */
+	end(): void {
+		this.nodes.trim();
+	}
 
 	/** extract the built NodeBuffer. */
 	get_buffer(): NodeBuffer {

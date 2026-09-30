@@ -57,52 +57,133 @@ export class WireTextSource implements TextSource {
  * short-lived: created before handler invocation, cleared after.
  */
 export class ViewCache {
-	private views: Map<number, NodeView> = new Map();
+	// most dispatches only view the handler node, so the map waits for a second view
+	private first: NodeView | null = null;
+	private views: Map<number, NodeView> | null = null;
 	private buf: NodeBuffer;
 	private text_source: TextSource;
 	private undo: UndoLog;
-	private handler_node: number;
 
-	constructor(
-		buf: NodeBuffer,
-		text_source: TextSource,
-		undo: UndoLog,
-		handler_node: number
-	) {
+	constructor(buf: NodeBuffer, text_source: TextSource, undo: UndoLog) {
 		this.buf = buf;
 		this.text_source = text_source;
 		this.undo = undo;
-		this.handler_node = handler_node;
 	}
 
 	/** get or create a NodeView for the given buffer index. */
 	get(index: number): NodeView | null {
 		if (index === NONE) return null;
-		let view = this.views.get(index);
+		const first = this.first;
+		if (first === null) {
+			return (this.first = this.make(index));
+		}
+		if (first._index === index) return first;
+		let views = this.views;
+		if (views === null) views = this.views = new Map();
+		let view = views.get(index);
 		if (view === undefined) {
-			view = new NodeView(
-				index,
-				this.buf,
-				this.text_source,
-				this,
-				this.undo,
-				this.handler_node
-			);
-			this.views.set(index, view);
+			view = this.make(index);
+			views.set(index, view);
 		}
 		return view;
 	}
 
-	/** discard all cached views. */
-	clear(): void {
-		this.views.clear();
+	private make(index: number): NodeView {
+		return new NodeView(index, this.buf, this.text_source, this, this.undo);
 	}
 
-	/** update the handler node (for re-use across dispatches). */
-	set_handler_node(handler_node: number): void {
-		this.handler_node = handler_node;
+	/** discard all cached views. */
+	clear(): void {
+		this.first = null;
+		if (this.views !== null) this.views.clear();
+	}
+
+	/** views made from here on read this buffer and text source */
+	rebind(buf: NodeBuffer, text_source: TextSource): void {
+		this.buf = buf;
+		this.text_source = text_source;
 	}
 }
+
+/**
+ * what an attrs proxy reads, keyed by module symbols so reflection on the
+ * proxy (all through its traps) never meets them, one handler serves every proxy
+ */
+const BUF: unique symbol = Symbol('buf');
+const IDX: unique symbol = Symbol('idx');
+const UNDO: unique symbol = Symbol('undo');
+
+class AttrsTarget {
+	[BUF]: NodeBuffer;
+	[IDX]: number;
+	[UNDO]: UndoLog;
+
+	constructor(buf: NodeBuffer, idx: number, undo: UndoLog) {
+		this[BUF] = buf;
+		this[IDX] = idx;
+		this[UNDO] = undo;
+	}
+}
+
+const ATTRS_HANDLER: ProxyHandler<AttrsTarget> = {
+	get(target, prop: string): any {
+		const meta = target[BUF].metadata_at(target[IDX]);
+		return meta ? meta[prop] : undefined;
+	},
+
+	set(target, prop: string, value: any): boolean {
+		const buf = target[BUF];
+		const idx = target[IDX];
+		const meta = buf.metadata_at(idx);
+		const undo = target[UNDO];
+		if (undo.recording) {
+			const prior = meta && prop in meta ? meta[prop] : ATTR_DID_NOT_EXIST;
+			undo.record_attr_set(idx, prop, prior);
+		}
+
+		if (meta) {
+			merge_meta(meta, prop, value);
+		} else {
+			buf.set_metadata(idx, make_meta(prop, value));
+		}
+		return true;
+	},
+
+	deleteProperty(target, prop: string): boolean {
+		const buf = target[BUF];
+		const idx = target[IDX];
+		const meta = buf.metadata_at(idx);
+		if (!meta || !(prop in meta)) return true;
+
+		const prior = meta[prop];
+		target[UNDO].record_attr_delete(idx, prop, prior);
+		delete meta[prop];
+		buf.set_metadata(idx, meta);
+		return true;
+	},
+
+	has(target, prop: string): boolean {
+		const meta = target[BUF].metadata_at(target[IDX]);
+		return meta ? prop in meta : false;
+	},
+
+	ownKeys(target): string[] {
+		const meta = target[BUF].metadata_at(target[IDX]);
+		return meta ? Object.keys(meta) : [];
+	},
+
+	getOwnPropertyDescriptor(target, prop: string) {
+		const meta = target[BUF].metadata_at(target[IDX]);
+		if (meta && prop in meta) {
+			return {
+				configurable: true,
+				enumerable: true,
+				value: meta[prop],
+			};
+		}
+		return undefined;
+	},
+};
 
 /**
  * a view over a single node in the NodeBuffer.
@@ -125,8 +206,6 @@ export class NodeView {
 	private _cache: ViewCache;
 	/** @internal undo log for recording mutations. */
 	private _undo: UndoLog;
-	/** @internal which handler node's undo log to attribute mutations to. */
-	private _handler_node: number;
 	/** lazily created attrs proxy. */
 	private _attrs: Record<string, any> | null = null;
 
@@ -135,15 +214,13 @@ export class NodeView {
 		buf: NodeBuffer,
 		text_source: TextSource,
 		cache: ViewCache,
-		undo: UndoLog,
-		handler_node: number
+		undo: UndoLog
 	) {
 		this._index = index;
 		this._buf = buf;
 		this._text_source = text_source;
 		this._cache = cache;
 		this._undo = undo;
-		this._handler_node = handler_node;
 	}
 
 	get type(): string {
@@ -296,64 +373,10 @@ export class NodeView {
 
 	get attrs(): Record<string, any> {
 		if (this._attrs !== null) return this._attrs;
-
-		const buf = this._buf;
-		const idx = this._index;
-		const undo = this._undo;
-
-		this._attrs = new Proxy({} as Record<string, any>, {
-			get(_target, prop: string): any {
-				const meta = buf.metadata_at(idx);
-				return meta ? meta[prop] : undefined;
-			},
-
-			set(_target, prop: string, value: any): boolean {
-				const meta = buf.metadata_at(idx);
-				const prior = meta && prop in meta ? meta[prop] : ATTR_DID_NOT_EXIST;
-				undo.record_attr_set(idx, prop, prior);
-
-				if (meta) {
-					merge_meta(meta, prop, value);
-				} else {
-					buf.set_metadata(idx, make_meta(prop, value));
-				}
-				return true;
-			},
-
-			deleteProperty(_target, prop: string): boolean {
-				const meta = buf.metadata_at(idx);
-				if (!meta || !(prop in meta)) return true;
-
-				const prior = meta[prop];
-				undo.record_attr_delete(idx, prop, prior);
-				delete meta[prop];
-				buf.set_metadata(idx, meta);
-				return true;
-			},
-
-			has(_target, prop: string): boolean {
-				const meta = buf.metadata_at(idx);
-				return meta ? prop in meta : false;
-			},
-
-			ownKeys(): string[] {
-				const meta = buf.metadata_at(idx);
-				return meta ? Object.keys(meta) : [];
-			},
-
-			getOwnPropertyDescriptor(_target, prop: string) {
-				const meta = buf.metadata_at(idx);
-				if (meta && prop in meta) {
-					return {
-						configurable: true,
-						enumerable: true,
-						value: meta[prop],
-					};
-				}
-				return undefined;
-			},
-		});
-		return this._attrs;
+		return (this._attrs = new Proxy(
+			new AttrsTarget(this._buf, this._index, this._undo) as any,
+			ATTRS_HANDLER
+		));
 	}
 
 	/**

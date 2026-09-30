@@ -5,11 +5,13 @@ import {
 	normalize_newlines,
 	raw_offsets,
 } from '@mdsvex/parse';
-import type { ParsePlugin, RawOffsets } from '@mdsvex/parse';
+import type { ParsePlugin } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import { CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
 import {
+	chain_trace,
+	map_basename,
 	mapped_source_lines,
 	mappings_to_v3,
 	trace_to_decoded,
@@ -52,12 +54,31 @@ export interface CompileV3Result {
 export interface CompileTraceResult {
 	code: string;
 	/**
-	 * trace_to_v3 over this with raw source gives the compile_v3 map, null
-	 * when map is set
+	 * trace_to_v3 over this with the normalized source gives the compile_v3
+	 * mappings: collapsing \r\n keeps every line and column, so positions in
+	 * the normalized source are positions in raw
 	 */
-	trace: MapTrace | null;
-	/** the compile_v3 map, built at once when collapsing \r\n moved offsets */
-	map: SourceMapV3 | null;
+	trace: MapTrace;
+	/** the normalized source the trace indexes */
+	source: string;
+}
+
+// a one shot compile binds its own tree to a spare parser and renders with a
+// spare renderer, one taken while in use (a plugin that compiles) leaves null
+let spare_parser: PFMParser | null = null;
+let spare_renderer: CursorHTMLRenderer | null = null;
+
+function take_renderer(): CursorHTMLRenderer {
+	const renderer = spare_renderer;
+	if (renderer === null) return new CursorHTMLRenderer({ cache: false });
+	spare_renderer = null;
+	return renderer;
+}
+
+/** results hold no reference into the renderer, so it can serve the next compile */
+function give_renderer(renderer: CursorHTMLRenderer): void {
+	renderer.release();
+	spare_renderer = renderer;
 }
 
 function parse_once(source: string, plugins?: ParsePlugin[]): NodeBuffer {
@@ -74,29 +95,47 @@ function parse_once(source: string, plugins?: ParsePlugin[]): NodeBuffer {
 		len < 512 ? (len >> 2) + 16 : len >> 3,
 		dispatcher
 	);
-	const parser = new PFMParser(tree);
-	parser.parse(source);
-
-	if (dispatcher) {
-		dispatcher.run_sequential(tree.get_buffer());
+	let parser = spare_parser;
+	if (parser === null) parser = new PFMParser(tree);
+	else {
+		spare_parser = null;
+		parser.bind(tree);
 	}
-	return tree.get_buffer();
+	parser.parse_normalized(source);
+	// a throw above drops the parser, it may be half written
+	parser.release();
+	spare_parser = parser;
+
+	const nodes = tree.get_buffer();
+	if (dispatcher) {
+		dispatcher.run_sequential(nodes);
+	}
+	nodes.trim();
+	return nodes;
 }
 
 function render_once(raw: string, options?: CompileOptions): CompileResult {
 	// parser offsets index the normalized string, so render and plugins read it too
 	const source = normalize_newlines(raw);
 	const nodes = parse_once(source, options?.parsePlugins);
-	const renderer = new CursorHTMLRenderer({ cache: false });
+	const renderer = take_renderer();
 
 	if (options?.sourcemap) {
-		const result = renderer.update_mapped(nodes, source);
-		remap_to_raw(raw, result.mappings);
-		return { code: renderer.html, mappings: result.mappings };
+		// only a collapsed \r\n changes length, without one raw needs no \r\n scan
+		const result = renderer.update_mapped(
+			nodes,
+			source,
+			source.length === raw.length ? null : collapsed_of(raw)
+		);
+		const code = renderer.html;
+		give_renderer(renderer);
+		return { code, mappings: result.mappings };
 	}
 
 	renderer.update(nodes, source);
-	return { code: renderer.html };
+	const code = renderer.html;
+	give_renderer(renderer);
+	return { code };
 }
 
 function render_v3(
@@ -111,8 +150,7 @@ function render_v3(
 		const map = renderer.update_v3(nodes, source, raw, file);
 		return { code: renderer.html, map };
 	}
-	const result = renderer.update_mapped(nodes, source);
-	remap_to_raw(raw, result.mappings);
+	const result = renderer.update_mapped(nodes, source, collapsed_of(raw));
 	const code = renderer.html;
 	return { code, map: mappings_to_v3(result.mappings, raw, code, file) };
 }
@@ -120,16 +158,10 @@ function render_v3(
 function render_trace(
 	renderer: CursorHTMLRenderer,
 	nodes: NodeBuffer,
-	source: string,
-	raw: string,
-	file?: string
+	source: string
 ): CompileTraceResult {
-	if (source.length === raw.length) {
-		const trace = renderer.update_trace(nodes, source);
-		return { code: renderer.html, trace, map: null };
-	}
-	const { code, map } = render_v3(renderer, nodes, source, raw, file);
-	return { code, trace: null, map };
+	const trace = renderer.update_trace(nodes, source);
+	return { code: renderer.html, trace, source };
 }
 
 /**
@@ -160,7 +192,7 @@ export class CompilerSession {
 		}
 		this.released = false;
 
-		this.parser!.parse(source);
+		this.parser!.parse_normalized(source);
 		return this.tree.get_buffer();
 	}
 
@@ -172,8 +204,11 @@ export class CompilerSession {
 		const source = normalize_newlines(raw);
 		const nodes = this.parse(source);
 		if (options?.sourcemap) {
-			const result = this.renderer.update_mapped(nodes, source);
-			remap_to_raw(raw, result.mappings);
+			const result = this.renderer.update_mapped(
+				nodes,
+				source,
+				source.length === raw.length ? null : collapsed_of(raw)
+			);
 			return { code: this.renderer.html, mappings: result.mappings };
 		}
 
@@ -214,16 +249,15 @@ export class CompilerSession {
 	 */
 	compile_trace(
 		raw: string,
-		file?: string,
 		parse_plugins?: ParsePlugin[]
 	): CompileTraceResult {
 		const source = normalize_newlines(raw);
 		if (parse_plugins && parse_plugins.length > 0) {
 			const nodes = parse_once(source, parse_plugins);
 			const renderer = new CursorHTMLRenderer({ cache: false });
-			return render_trace(renderer, nodes, source, raw, file);
+			return render_trace(renderer, nodes, source);
 		}
-		return render_trace(this.renderer, this.parse(source), source, raw, file);
+		return render_trace(this.renderer, this.parse(source), source);
 	}
 }
 
@@ -268,80 +302,18 @@ export function _shared_session(): CompilerSession | null {
 	return shared_session;
 }
 
-function remap_to_raw(raw: string, mappings: Mapping<MappingData>[]): void {
+/** normalized offsets of each \n that was \r\n in raw, null when none */
+function collapsed_of(raw: string): number[] | null {
 	const offsets = raw_offsets(raw);
-	if (!offsets) return;
-	for (const mapping of mappings) {
-		remap_source_offsets(mapping, offsets);
-	}
-}
-
-/**
- * identity mappings split after each collapsed \n so every piece stays
- * identity with that \n on its \r, other mappings widen their source range
- */
-function remap_source_offsets(
-	mapping: Mapping<MappingData>,
-	offsets: RawOffsets
-): void {
-	const { sourceOffsets, lengths } = mapping;
-	const { collapsed } = offsets;
-	const identity = !mapping.generatedLengths;
-
-	for (let i = 0; i < sourceOffsets.length; i++) {
-		const start = sourceOffsets[i];
-		const end = start + lengths[i];
-		const k = offsets.rank(start);
-		// a trailing collapsed \n maps onto its \r in an identity range
-		const crosses =
-			k < collapsed.length && collapsed[k] + (identity ? 1 : 0) < end;
-		if (crosses) {
-			if (identity) return split_mapping(mapping, offsets, i);
-			lengths[i] = offsets.to_raw(end) - start - k;
-		}
-		sourceOffsets[i] = start + k;
-	}
-}
-
-/** splits pieces from index `from` on, earlier pieces are already shifted */
-function split_mapping(
-	mapping: Mapping<MappingData>,
-	offsets: RawOffsets,
-	from: number
-): void {
-	const { sourceOffsets, generatedOffsets, lengths } = mapping;
-	const { collapsed } = offsets;
-	const src = sourceOffsets.slice(0, from);
-	const gen = generatedOffsets.slice(0, from);
-	const len = lengths.slice(0, from);
-	for (let i = from; i < sourceOffsets.length; i++) {
-		let start = sourceOffsets[i];
-		let gen_start = generatedOffsets[i];
-		const end = start + lengths[i];
-		let k = offsets.rank(start);
-		while (k < collapsed.length && collapsed[k] + 1 < end) {
-			const cut = collapsed[k] + 1;
-			src.push(start + k);
-			gen.push(gen_start);
-			len.push(cut - start);
-			gen_start += cut - start;
-			start = cut;
-			k++;
-		}
-		src.push(start + k);
-		gen.push(gen_start);
-		len.push(end - start);
-	}
-	mapping.sourceOffsets = src;
-	mapping.generatedOffsets = gen;
-	mapping.lengths = len;
+	return offsets === null ? null : offsets.collapsed;
 }
 
 interface StoredDocument {
 	raw: string;
+	/** normalized raw, the trace's source offsets and lines index it */
+	source: string;
 	html: string;
-	trace: MapTrace | null;
-	map: SourceMapV3 | null;
+	trace: MapTrace;
 }
 
 /**
@@ -353,9 +325,91 @@ function pfm_map(
 	compile_mappings: unknown,
 	file: string
 ): SourceMapV3 | DecodedSourceMapV3 {
+	// sourcesContent is replaced by raw after chaining
 	const lines = mapped_source_lines(compile_mappings as string);
-	if (lines === null) return trace_to_v3(doc.trace!, doc.raw, doc.html, file);
-	return trace_to_decoded(doc.trace!, doc.raw, doc.html, lines, file);
+	if (lines === null) return trace_to_v3(doc.trace, doc.source, doc.html, file);
+	return trace_to_decoded(doc.trace, doc.source, doc.html, lines, file);
+}
+
+// names resolve-uri keeps as they are, as remapping resolves the source
+const PLAIN_BASENAME = /^[\w\-+~@][\w.\-+~@]*$/;
+
+/**
+ * the inline map JSON remapping would give for [compile, pfm map] with
+ * sourcesContent set to the raw source, null for anything left to remapping
+ */
+function chained_json(
+	doc: StoredDocument,
+	compile: any,
+	file: string
+): string | null {
+	if (compile._decodedMemo) return null;
+	const mappings = compile.mappings;
+	if (typeof mappings !== 'string') return null;
+	const sources = compile.sources;
+	if (!Array.isArray(sources) || sources.length > 1) return null;
+	if (
+		sources.length === 1 &&
+		sources[0] != null &&
+		typeof sources[0] !== 'string'
+	)
+		return null;
+	const root = compile.sourceRoot;
+	if (root != null && typeof root !== 'string') return null;
+	const out_file = compile.file;
+	if (out_file != null && typeof out_file !== 'string') return null;
+	let names = compile.names;
+	if (names == null) names = [];
+	else if (!Array.isArray(names)) return null;
+	for (let i = 0; i < names.length; i++) {
+		if (typeof names[i] !== 'string') return null;
+	}
+	const base = map_basename(file);
+	if (!PLAIN_BASENAME.test(base)) return null;
+
+	const chained = chain_trace(mappings, names, doc.trace, doc.source, doc.html);
+	if (chained === null) return null;
+	let json = '{"version":3';
+	if (out_file) json += ',"file":' + JSON.stringify(out_file);
+	const chained_names = chained.names;
+	json +=
+		',"mappings":"' +
+		chained.mappings +
+		'","names":' +
+		(chained_names.length === 0 ? '[]' : JSON.stringify(chained_names)) +
+		',"ignoreList":[],"sources":';
+	if (chained.sourced) {
+		// a plain basename has no char JSON escapes, so quoting it is stringify
+		json +=
+			'["' +
+			base +
+			'"],"sourcesContent":[' +
+			JSON.stringify(doc.raw) +
+			']}';
+	} else {
+		json += '[],"sourcesContent":[]}';
+	}
+	return json;
+}
+
+// utf8 bytes of a map before base64, reused so a large map does not allocate
+// an off heap buffer on every transform, bounded so no huge one is pinned
+const BASE64_KEEP = 1 << 22;
+let base64_bytes: Buffer | null = null;
+
+/** equals Buffer.from(json).toString('base64') */
+function base64_utf8(json: string): string {
+	// three utf8 bytes per utf16 unit at most
+	const most = json.length * 3;
+	if (most > BASE64_KEEP) return Buffer.from(json).toString('base64');
+	let bytes = base64_bytes;
+	if (bytes === null || bytes.length < most) {
+		let size = 1 << 14;
+		while (size < most) size <<= 1;
+		bytes = base64_bytes = Buffer.allocUnsafe(size);
+	}
+	const n = bytes.write(json, 0, 'utf8');
+	return bytes.toString('base64', 0, n);
 }
 
 /**
@@ -395,12 +449,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			transform(code, id) {
 				if (!matches(id)) return;
 
-				const result = compiler.compile_trace(code, id, options.parsePlugins);
+				const result = compiler.compile_trace(code, options.parsePlugins);
 				stored.set(id, {
 					raw: code,
+					source: result.source,
 					html: result.code,
 					trace: result.trace,
-					map: result.map,
 				});
 
 				// return NO map, avoids poisoning getCombinedSourcemap()
@@ -427,22 +481,25 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				}
 				if (!compileMap?.mappings) return;
 
-				const pfmMap = doc.map ?? pfm_map(doc, compileMap.mappings, id);
+				let mapJson = chained_json(doc, compileMap, id);
+				if (mapJson === null) {
+					const pfmMap = pfm_map(doc, compileMap.mappings, id);
 
-				// chain: JS to HTML (compile) + HTML to markdown (pfm) = JS to markdown
-				const chained = remapping([compileMap, pfmMap as any], () => null);
+					// chain: JS to HTML (compile) + HTML to markdown (pfm) = JS to markdown
+					const chained = remapping([compileMap, pfmMap as any], () => null);
 
-				// override sourcesContent with the original markdown
-				if (chained.sourcesContent) {
-					chained.sourcesContent = chained.sourcesContent.map(
-						() => originalSource
-					);
+					// override sourcesContent with the original markdown
+					if (chained.sourcesContent) {
+						chained.sourcesContent = chained.sourcesContent.map(
+							() => originalSource
+						);
+					}
+					mapJson = JSON.stringify(chained);
 				}
 
 				// inject as inline sourceMappingURL since vite ignores
 				// post-transform map return values
-				const mapJson = JSON.stringify(chained);
-				const mapBase64 = Buffer.from(mapJson).toString('base64');
+				const mapBase64 = base64_utf8(mapJson);
 				const comment = `\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${mapBase64}\n`;
 
 				return { code: code + comment, map: { mappings: '' as const } };
