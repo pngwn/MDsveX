@@ -218,7 +218,7 @@ const extra_to_string = (kind: NodeKind): string | undefined => {
 
 /**
  * a computed key literal takes a slow generic define, so known keys get
- * constant key literals, the fallback keeps __proto__ an own property
+ * constant key literals and other keys a store into an empty literal
  */
 export function make_meta(key: string, value: any): Record<string, any> {
 	switch (key) {
@@ -252,8 +252,15 @@ export function make_meta(key: string, value: any): Record<string, any> {
 			return { args: value };
 		case 'col_count':
 			return { col_count: value };
-		default:
-			return { [key]: value };
+		default: {
+			// a set would change the prototype, a literal defines an own property
+			if (key === '__proto__') return { [key]: value };
+			// a keyed store on an empty literal is several times cheaper than the
+			// computed key literal and makes the same object
+			const meta: Record<string, any> = {};
+			meta[key] = value;
+			return meta;
+		}
 	}
 }
 
