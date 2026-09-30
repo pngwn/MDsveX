@@ -190,6 +190,70 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 	return { fused, sequential, has_handler };
 }
 
+/** parse_of for an entry the registration skips */
+const NO_PARSE = {};
+
+function parse_of(entry: unknown): unknown {
+	return entry && typeof entry === 'object' && 'parse' in entry
+		? (entry as NodeHandler).parse
+		: NO_PARSE;
+}
+
+/**
+ * everything register_plugins read, in the order it read it: the plugin
+ * count, then per plugin the object, its sequential flag, its key count and
+ * per key the key, the entry and its parse function
+ */
+function snapshot_plugins(plugins: ParsePlugin[]): unknown[] {
+	const snap: unknown[] = [plugins.length];
+	for (let i = 0; i < plugins.length; i++) {
+		const p = plugins[i];
+		const keys = Object.keys(p);
+		snap.push(p, !!p.sequential, keys.length);
+		for (let k = 0; k < keys.length; k++) {
+			const entry = p[keys[k]];
+			snap.push(keys[k], entry, parse_of(entry));
+		}
+	}
+	return snap;
+}
+
+function snapshot_matches(plugins: ParsePlugin[], snap: unknown[]): boolean {
+	let j = 0;
+	if (snap[j++] !== plugins.length) return false;
+	for (let i = 0; i < plugins.length; i++) {
+		const p = plugins[i];
+		if (snap[j++] !== p) return false;
+		if (snap[j++] !== !!p.sequential) return false;
+		const keys = Object.keys(p);
+		if (snap[j++] !== keys.length) return false;
+		for (let k = 0; k < keys.length; k++) {
+			const key = keys[k];
+			if (snap[j++] !== key) return false;
+			const entry = p[key];
+			if (snap[j++] !== entry) return false;
+			if (snap[j++] !== parse_of(entry)) return false;
+		}
+	}
+	return true;
+}
+
+// the last registration and what it was built from, nothing writes a
+// registration's tables after register_plugins, so a later document whose
+// plugins still hold the same objects, keys and handlers can share them
+let last_snapshot: unknown[] | null = null;
+let last_registration: RegistrationResult | null = null;
+
+function registration_for(plugins: ParsePlugin[]): RegistrationResult {
+	if (last_snapshot !== null && snapshot_matches(plugins, last_snapshot)) {
+		return last_registration!;
+	}
+	const reg = register_plugins(plugins);
+	last_snapshot = snapshot_plugins(plugins);
+	last_registration = reg;
+	return reg;
+}
+
 /**
  * stores close callbacks indexed by buffer index.
  * flat array gives O(1) access since buffer indices are sequential.
@@ -365,6 +429,9 @@ function dispatch_open(
 	}
 }
 
+/** a dispatcher's redirects until its first wrap_inner, never written */
+const NO_REDIRECTS: Map<number, number> = new Map();
+
 /**
  * orchestrates plugin dispatch for both TreeBuilder and WireTreeBuilder.
  *
@@ -384,12 +451,12 @@ export class PluginDispatcher {
 	 * redirect map: when wrap_inner is called, subsequent children
 	 * targeting the parent should land in the wrapper instead.
 	 */
-	private redirects: Map<number, number> = new Map();
+	private redirects: Map<number, number> = NO_REDIRECTS;
 
 	private next_synthetic_id = SYNTHETIC_ID_BASE;
 
 	constructor(plugins: ParsePlugin[], text_source: TextSource) {
-		const reg = register_plugins(plugins);
+		const reg = registration_for(plugins);
 		this.fused = reg.fused;
 		this.has_handler = reg.has_handler;
 		this.sequential = reg.sequential;
@@ -409,7 +476,13 @@ export class PluginDispatcher {
 
 	/** register a wrap_inner redirect. */
 	set_redirect(parent_idx: number, wrapper_idx: number): void {
-		this.redirects.set(parent_idx, wrapper_idx);
+		this.own_redirects().set(parent_idx, wrapper_idx);
+	}
+
+	private own_redirects(): Map<number, number> {
+		let redirects = this.redirects;
+		if (redirects === NO_REDIRECTS) redirects = this.redirects = new Map();
+		return redirects;
 	}
 
 	/** clear a redirect (on parent close). */
@@ -458,7 +531,7 @@ export class PluginDispatcher {
 			for (let i = 0; i < entries.length; i++) {
 				const e = entries[i];
 				if (e.kind === UndoEntryKind.WrapInner) {
-					this.redirects.set(e.parent, e.wrapper);
+					this.own_redirects().set(e.parent, e.wrapper);
 				}
 			}
 		}
