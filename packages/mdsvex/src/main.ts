@@ -54,12 +54,13 @@ export interface CompileV3Result {
 export interface CompileTraceResult {
 	code: string;
 	/**
-	 * trace_to_v3 over this with raw source gives the compile_v3 map, null
-	 * when map is set
+	 * trace_to_v3 over this with the normalized source gives the compile_v3
+	 * mappings: collapsing \r\n keeps every line and column, so positions in
+	 * the normalized source are positions in raw
 	 */
-	trace: MapTrace | null;
-	/** the compile_v3 map, built at once when collapsing \r\n moved offsets */
-	map: SourceMapV3 | null;
+	trace: MapTrace;
+	/** the normalized source the trace indexes */
+	source: string;
 }
 
 // a one shot compile binds its own tree to a spare parser and renders with a
@@ -152,16 +153,10 @@ function render_v3(
 function render_trace(
 	renderer: CursorHTMLRenderer,
 	nodes: NodeBuffer,
-	source: string,
-	raw: string,
-	file?: string
+	source: string
 ): CompileTraceResult {
-	if (source.length === raw.length) {
-		const trace = renderer.update_trace(nodes, source);
-		return { code: renderer.html, trace, map: null };
-	}
-	const { code, map } = render_v3(renderer, nodes, source, raw, file);
-	return { code, trace: null, map };
+	const trace = renderer.update_trace(nodes, source);
+	return { code: renderer.html, trace, source };
 }
 
 /**
@@ -249,16 +244,15 @@ export class CompilerSession {
 	 */
 	compile_trace(
 		raw: string,
-		file?: string,
 		parse_plugins?: ParsePlugin[]
 	): CompileTraceResult {
 		const source = normalize_newlines(raw);
 		if (parse_plugins && parse_plugins.length > 0) {
 			const nodes = parse_once(source, parse_plugins);
 			const renderer = new CursorHTMLRenderer({ cache: false });
-			return render_trace(renderer, nodes, source, raw, file);
+			return render_trace(renderer, nodes, source);
 		}
-		return render_trace(this.renderer, this.parse(source), source, raw, file);
+		return render_trace(this.renderer, this.parse(source), source);
 	}
 }
 
@@ -311,9 +305,10 @@ function collapsed_of(raw: string): number[] | null {
 
 interface StoredDocument {
 	raw: string;
+	/** normalized raw, the trace's source offsets and lines index it */
+	source: string;
 	html: string;
-	trace: MapTrace | null;
-	map: SourceMapV3 | null;
+	trace: MapTrace;
 }
 
 /**
@@ -325,9 +320,10 @@ function pfm_map(
 	compile_mappings: unknown,
 	file: string
 ): SourceMapV3 | DecodedSourceMapV3 {
+	// sourcesContent is replaced by raw after chaining
 	const lines = mapped_source_lines(compile_mappings as string);
-	if (lines === null) return trace_to_v3(doc.trace!, doc.raw, doc.html, file);
-	return trace_to_decoded(doc.trace!, doc.raw, doc.html, lines, file);
+	if (lines === null) return trace_to_v3(doc.trace, doc.source, doc.html, file);
+	return trace_to_decoded(doc.trace, doc.source, doc.html, lines, file);
 }
 
 // names resolve-uri keeps as they are, as remapping resolves the source
@@ -342,7 +338,7 @@ function chained_json(
 	compile: any,
 	file: string
 ): string | null {
-	if (doc.trace === null || compile._decodedMemo) return null;
+	if (compile._decodedMemo) return null;
 	const mappings = compile.mappings;
 	if (typeof mappings !== 'string') return null;
 	const sources = compile.sources;
@@ -366,7 +362,7 @@ function chained_json(
 	const base = map_basename(file);
 	if (!PLAIN_BASENAME.test(base)) return null;
 
-	const chained = chain_trace(mappings, names, doc.trace, doc.raw, doc.html);
+	const chained = chain_trace(mappings, names, doc.trace, doc.source, doc.html);
 	if (chained === null) return null;
 	let json = '{"version":3';
 	if (out_file) json += ',"file":' + JSON.stringify(out_file);
@@ -426,12 +422,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			transform(code, id) {
 				if (!matches(id)) return;
 
-				const result = compiler.compile_trace(code, id, options.parsePlugins);
+				const result = compiler.compile_trace(code, options.parsePlugins);
 				stored.set(id, {
 					raw: code,
+					source: result.source,
 					html: result.code,
 					trace: result.trace,
-					map: result.map,
 				});
 
 				// return NO map, avoids poisoning getCombinedSourcemap()
@@ -460,7 +456,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 				let mapJson = chained_json(doc, compileMap, id);
 				if (mapJson === null) {
-					const pfmMap = doc.map ?? pfm_map(doc, compileMap.mappings, id);
+					const pfmMap = pfm_map(doc, compileMap.mappings, id);
 
 					// chain: JS to HTML (compile) + HTML to markdown (pfm) = JS to markdown
 					const chained = remapping([compileMap, pfmMap as any], () => null);
