@@ -8,10 +8,13 @@ const MIN_NODE_CAPACITY = 32;
  * a buffer past the carve cap is its own ArrayBuffer, which costs far more
  * than the carve, so the slab is big enough that small documents carve
  */
-const SLAB_BYTES = 524288;
+const SLAB_BYTES = 1048576;
 
-/** caps the tail a full slab can waste at an eighth */
-const SLAB_MAX_CARVE = 65536;
+/**
+ * caps the tail a full slab can waste at a quarter, a one shot parse gives
+ * back what it did not use, so a medium document's generous estimate carves
+ */
+const SLAB_MAX_CARVE = 262144;
 
 const EMPTY_U32 = new Uint32Array(0);
 
