@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import { PFMParser, parse_markdown_svelte } from '../src/main';
 import { TreeBuilder } from '../src/tree_builder';
@@ -282,5 +282,48 @@ describe('every later block stays a root child', () => {
 				}
 			});
 		}
+	}
+});
+
+describe('unclosed inline html at the end of a block quote', () => {
+	const cases: [string, Shape[]][] = [
+		['> <l>\nfoo', [['block_quote', ['paragraph', 'text:<l>']]]],
+		['><div>\nfoo', [['block_quote', ['paragraph', 'text:<div>']]]],
+		['> <span>\nfoo', [['block_quote', ['paragraph', 'text:<span>']]]],
+		[
+			'> > <l>\nfoo',
+			[['block_quote', ['block_quote', ['paragraph', 'text:<l>']]]],
+		],
+		[
+			'- > <l>\nfoo',
+			[['list', ['list_item', ['block_quote', ['paragraph', 'text:<l>']]]]],
+		],
+		[
+			'> <l>\n> bar\nfoo',
+			[['block_quote', ['paragraph', 'text:<l>', 'soft_break', 'text:bar']]],
+		],
+	];
+
+	for (const [input, quote] of cases) {
+		test(JSON.stringify(input), () => {
+			const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+			try {
+				expect(strip_line_breaks(root_shape(input))).toEqual([
+					...quote,
+					['paragraph', 'text:foo'],
+				]);
+
+				const batch = parse_markdown_svelte(input);
+				for (const size of [1, 2, 3]) {
+					const inc = parse_incremental(input, size);
+					expect(shape(inc, batch.source)).toEqual(
+						shape(batch.nodes, batch.source)
+					);
+				}
+				expect(error).not.toHaveBeenCalled();
+			} finally {
+				error.mockRestore();
+			}
+		});
 	}
 });

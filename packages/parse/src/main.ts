@@ -6337,7 +6337,11 @@ export class PFMParser {
 			}
 		}
 
-		if (code === LINEFEED && this.is_block_interrupt(this.cursor + 1)) {
+		// pop wherever inline pops at a linefeed or the two ping pong
+		if (
+			code === LINEFEED &&
+			(this.block_quote_depth > 0 || this.lf_ends_inline(this.cursor))
+		) {
 			// block interrupt after newline - close unclosed inline html element
 			if (
 				this.html_tag_stack.length > 0 &&
