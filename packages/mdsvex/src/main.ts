@@ -5,7 +5,7 @@ import {
 	normalize_newlines,
 	raw_offsets,
 } from '@mdsvex/parse';
-import type { ParsePlugin, RawOffsets } from '@mdsvex/parse';
+import type { ParsePlugin } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import { CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
@@ -120,8 +120,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	const renderer = take_renderer();
 
 	if (options?.sourcemap) {
-		const result = renderer.update_mapped(nodes, source);
-		remap_to_raw(raw, result.mappings);
+		const result = renderer.update_mapped(nodes, source, collapsed_of(raw));
 		const code = renderer.html;
 		give_renderer(renderer);
 		return { code, mappings: result.mappings };
@@ -145,8 +144,7 @@ function render_v3(
 		const map = renderer.update_v3(nodes, source, raw, file);
 		return { code: renderer.html, map };
 	}
-	const result = renderer.update_mapped(nodes, source);
-	remap_to_raw(raw, result.mappings);
+	const result = renderer.update_mapped(nodes, source, collapsed_of(raw));
 	const code = renderer.html;
 	return { code, map: mappings_to_v3(result.mappings, raw, code, file) };
 }
@@ -206,8 +204,11 @@ export class CompilerSession {
 		const source = normalize_newlines(raw);
 		const nodes = this.parse(source);
 		if (options?.sourcemap) {
-			const result = this.renderer.update_mapped(nodes, source);
-			remap_to_raw(raw, result.mappings);
+			const result = this.renderer.update_mapped(
+				nodes,
+				source,
+				source.length === raw.length ? null : collapsed_of(raw)
+			);
 			return { code: this.renderer.html, mappings: result.mappings };
 		}
 
@@ -302,73 +303,10 @@ export function _shared_session(): CompilerSession | null {
 	return shared_session;
 }
 
-function remap_to_raw(raw: string, mappings: Mapping<MappingData>[]): void {
+/** normalized offsets of each \n that was \r\n in raw, null when none */
+function collapsed_of(raw: string): number[] | null {
 	const offsets = raw_offsets(raw);
-	if (!offsets) return;
-	for (const mapping of mappings) {
-		remap_source_offsets(mapping, offsets);
-	}
-}
-
-/**
- * identity mappings split after each collapsed \n so every piece stays
- * identity with that \n on its \r, other mappings widen their source range
- */
-function remap_source_offsets(
-	mapping: Mapping<MappingData>,
-	offsets: RawOffsets
-): void {
-	const { sourceOffsets, lengths } = mapping;
-	const { collapsed } = offsets;
-	const identity = !mapping.generatedLengths;
-
-	for (let i = 0; i < sourceOffsets.length; i++) {
-		const start = sourceOffsets[i];
-		const end = start + lengths[i];
-		const k = offsets.rank(start);
-		// a trailing collapsed \n maps onto its \r in an identity range
-		const crosses =
-			k < collapsed.length && collapsed[k] + (identity ? 1 : 0) < end;
-		if (crosses) {
-			if (identity) return split_mapping(mapping, offsets, i);
-			lengths[i] = offsets.to_raw(end) - start - k;
-		}
-		sourceOffsets[i] = start + k;
-	}
-}
-
-/** splits pieces from index `from` on, earlier pieces are already shifted */
-function split_mapping(
-	mapping: Mapping<MappingData>,
-	offsets: RawOffsets,
-	from: number
-): void {
-	const { sourceOffsets, generatedOffsets, lengths } = mapping;
-	const { collapsed } = offsets;
-	const src = sourceOffsets.slice(0, from);
-	const gen = generatedOffsets.slice(0, from);
-	const len = lengths.slice(0, from);
-	for (let i = from; i < sourceOffsets.length; i++) {
-		let start = sourceOffsets[i];
-		let gen_start = generatedOffsets[i];
-		const end = start + lengths[i];
-		let k = offsets.rank(start);
-		while (k < collapsed.length && collapsed[k] + 1 < end) {
-			const cut = collapsed[k] + 1;
-			src.push(start + k);
-			gen.push(gen_start);
-			len.push(cut - start);
-			gen_start += cut - start;
-			start = cut;
-			k++;
-		}
-		src.push(start + k);
-		gen.push(gen_start);
-		len.push(end - start);
-	}
-	mapping.sourceOffsets = src;
-	mapping.generatedOffsets = gen;
-	mapping.lengths = len;
+	return offsets === null ? null : offsets.collapsed;
 }
 
 interface StoredDocument {

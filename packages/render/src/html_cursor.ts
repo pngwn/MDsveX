@@ -1688,6 +1688,91 @@ function resolve_mappings(
 	return mappings;
 }
 
+/** collapsed \r\n before a normalized offset */
+function rank_of(collapsed: readonly number[], offset: number): number {
+	let lo = 0;
+	let hi = collapsed.length;
+	while (lo < hi) {
+		const mid = (lo + hi) >>> 1;
+		if (collapsed[mid] < offset) lo = mid + 1;
+		else hi = mid;
+	}
+	return lo;
+}
+
+/**
+ * resolve_mappings with source offsets moved onto raw, where collapsed holds
+ * the normalized offset of each \n that was \r\n: an identity piece splits
+ * after each collapsed \n so every piece stays identity with that \n on its
+ * \r, any other piece widens its source length over the \r
+ */
+function resolve_raw_mappings(
+	out: string[],
+	sink: MapSink,
+	collapsed: readonly number[]
+): Mapping<MappingData>[] {
+	const offsets = out_offsets(out);
+	const rec = sink.rec;
+	const n = sink.n;
+	const count = collapsed.length;
+	const mappings: Mapping<MappingData>[] = [];
+	const data_of = record_data;
+	for (let p = 0; p < n; p += Rec.SIZE) {
+		const out_idx = rec[p];
+		const source_length = rec[p + 3];
+		const gen_offset = offsets[out_idx];
+		const gen_length = offsets[out_idx + rec[p + 1]] - gen_offset;
+		let start = rec[p + 2];
+		const end = start + source_length;
+		const identity = gen_length === source_length;
+		let k = rank_of(collapsed, start);
+		let length = source_length;
+		let src_offsets: number[];
+		let gen_offsets: number[];
+		let lengths: number[];
+		if (k < count && collapsed[k] + (identity ? 1 : 0) < end) {
+			if (identity) {
+				src_offsets = [];
+				gen_offsets = [];
+				lengths = [];
+				let gen_start = gen_offset;
+				while (k < count && collapsed[k] + 1 < end) {
+					const cut = collapsed[k] + 1;
+					src_offsets.push(start + k);
+					gen_offsets.push(gen_start);
+					lengths.push(cut - start);
+					gen_start += cut - start;
+					start = cut;
+					k++;
+				}
+				src_offsets.push(start + k);
+				gen_offsets.push(gen_start);
+				lengths.push(end - start);
+			} else {
+				length = end + rank_of(collapsed, end) - start - k;
+				src_offsets = [start + k];
+				gen_offsets = [gen_offset];
+				lengths = [length];
+			}
+		} else {
+			src_offsets = [start + k];
+			gen_offsets = [gen_offset];
+			lengths = [length];
+		}
+		const m: Mapping<MappingData> = {
+			sourceOffsets: src_offsets,
+			generatedOffsets: gen_offsets,
+			lengths,
+			data: data_of(rec[p + 5], rec[p + 4] | 0),
+		};
+		if (!identity) {
+			m.generatedLengths = [gen_length];
+		}
+		mappings.push(m);
+	}
+	return mappings;
+}
+
 // exported functions are module cells too, so the walk calls the locals
 export const escape = escape_html;
 export const escape_text = escape_node_text;
@@ -1818,15 +1903,23 @@ export class CursorHTMLRenderer {
 		this.html = out.join('');
 	}
 
-	/** render with source mapping. always full render (no caching). */
+	/**
+	 * render with source mapping. always full render (no caching). collapsed,
+	 * the normalized offset of each \n that was \r\n in raw, moves the
+	 * source offsets onto raw
+	 */
 	update_mapped(
 		buf: NodeBuffer,
-		source: string
+		source: string,
+		collapsed?: readonly number[] | null
 	): { blocks: CursorBlockEntry[]; mappings: Mapping<MappingData>[] } {
 		const sink = render_sink;
 		sink.begin(true);
 		this.render_mapped(buf, source, sink);
-		const mappings = resolve_mappings(this.out, sink);
+		const mappings =
+			collapsed == null || collapsed.length === 0
+				? resolve_mappings(this.out, sink)
+				: resolve_raw_mappings(this.out, sink, collapsed);
 		sink.release();
 		return { blocks: this.blocks, mappings };
 	}
