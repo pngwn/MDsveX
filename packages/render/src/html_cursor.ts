@@ -61,6 +61,9 @@ let esc_amp = -1;
 let esc_lt = -1;
 let esc_gt = -1;
 let esc_quot = -1;
+// false only while a render walks a buffer without prebuilt strings, which the
+// tree builder never makes, so text skips the lookup
+let esc_prebuilt = true;
 
 function esc_reset(src: string): void {
 	esc_src = src;
@@ -79,8 +82,10 @@ function esc_next(ch: string, from: number): number {
 
 /** equals escape_html of c.text, reading source slices through the escape index */
 function escape_node_text(c: Cursor): string {
-	const s = c.prebuilt;
-	if (s !== undefined) return escape_html(s);
+	if (esc_prebuilt) {
+		const s = c.prebuilt;
+		if (s !== undefined) return escape_html(s);
+	}
 	const vs = c.value_start;
 	let ve = c.value_end;
 	// empty cases must match Cursor.text
@@ -1763,7 +1768,12 @@ export class CursorHTMLRenderer {
 			// a mapped render may have left chunks, drop them so they hold no document
 			const out = this.out;
 			if (out.length !== 0) out.length = 0;
-			this.html = render_folded(c);
+			esc_prebuilt = buf._strings.length !== 0;
+			try {
+				this.html = render_folded(c);
+			} finally {
+				esc_prebuilt = true;
+			}
 			return this.blocks;
 		}
 
