@@ -120,6 +120,9 @@ const classify = (code: number): CharMask =>
 /** shared empty error collector - avoids allocation when no errors are recorded. */
 const EMPTY_ERRORS = new ErrorCollector(1);
 
+/** never written, a parser swaps in its own map at the first definition */
+const NO_REFS: Map<string, { url: string; title: string }> = new Map();
+
 // a leaked list_depth can leave the stack short, blocks then read the padding hole as their parent
 function truncate_stack(stack: number[], base: number): void {
 	while (stack.length > base) stack.pop();
@@ -389,7 +392,8 @@ export class PFMParser {
 	private imports_allowed: boolean = true;
 
 	// link reference definitions
-	private ref_map: Map<string, { url: string; title: string }> = new Map();
+	// most documents define no references, so the first definition swaps in a map
+	private ref_map: Map<string, { url: string; title: string }> = NO_REFS;
 	private link_text_start: number = 0;
 
 	// directive container state
@@ -3109,8 +3113,10 @@ export class PFMParser {
 
 		// store definition - first one wins
 		const normalized = this.normalize_label(label);
-		if (normalized && !this.ref_map.has(normalized)) {
-			this.ref_map.set(normalized, { url, title });
+		if (normalized) {
+			let refs = this.ref_map;
+			if (refs === NO_REFS) refs = this.ref_map = new Map();
+			if (!refs.has(normalized)) refs.set(normalized, { url, title });
 		}
 
 		return p;

@@ -7,6 +7,7 @@ import {
 	merge_meta,
 } from './utils';
 import type { PluginDispatcher } from './plugin_dispatch';
+import type { IdRegister } from './plugin_types';
 
 const NONE = 0xffffffff;
 
@@ -37,9 +38,7 @@ export class TreeBuilder implements Emitter {
 	private dispatcher: PluginDispatcher | null;
 
 	/** callback for dispatcher to register synthetic node ids. */
-	private register_id = (synthetic_id: number, buf_idx: number): void => {
-		this.id_to_index![synthetic_id] = buf_idx;
-	};
+	private register_id: IdRegister | null = null;
 
 	constructor(capacity: number, dispatcher?: PluginDispatcher) {
 		this.nodes = new NodeBuffer(capacity);
@@ -48,6 +47,10 @@ export class TreeBuilder implements Emitter {
 		if (this.dispatcher !== null) {
 			this.id_to_index = [0];
 			this.id_to_kind = [NodeKind.root];
+			// only plugins register synthetic ids, so only they pay for the closure
+			this.register_id = (synthetic_id: number, buf_idx: number): void => {
+				this.id_to_index![synthetic_id] = buf_idx;
+			};
 		}
 	}
 
@@ -136,7 +139,7 @@ export class TreeBuilder implements Emitter {
 			this.id_to_kind![id] = kind;
 			// plugin dispatch
 			if (dispatcher.has_handlers(kind)) {
-				dispatcher.dispatch_open(idx, kind, nodes, this.register_id);
+				dispatcher.dispatch_open(idx, kind, nodes, this.register_id!);
 			}
 		}
 	}

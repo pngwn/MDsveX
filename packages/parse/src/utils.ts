@@ -11,6 +11,9 @@ const SLAB_MAX_CARVE = 8192;
 
 const EMPTY_U32 = new Uint32Array(0);
 
+/** most documents set no metadata, the first set_metadata swaps in a real array */
+const NO_META: any[] = Object.freeze([]) as unknown as any[];
+
 /** push writes and the cursor reads fields together, so they share one stride */
 export const enum NodeField {
 	/** kind in the low byte, extra in the sixteen bits above it */
@@ -307,7 +310,7 @@ export class NodeBuffer {
 	/** @internal do not mutate externally */
 	_n: Uint32Array = EMPTY_U32;
 	/** @internal */
-	_meta: any[] = [];
+	_meta: any[] = NO_META;
 	/** @internal pre-materialized text strings (used by wiretreebuilder). index -> string. */
 	_strings: (string | undefined)[] = [];
 
@@ -1029,7 +1032,11 @@ export class NodeBuffer {
 		const i = index * NodeField.stride + NodeField.meta;
 		const slot = n[i];
 		if (slot !== 0) this._meta[slot - 1] = metadata;
-		else n[i] = this._meta.push(metadata);
+		else {
+			let meta = this._meta;
+			if (meta === NO_META) meta = this._meta = [];
+			n[i] = meta.push(metadata);
+		}
 	}
 
 	metadata_at(index: number): any | undefined {
