@@ -133,6 +133,7 @@ const WAIT_NONE = 0;
 const WAIT_FENCE = 1;
 const WAIT_RAW = 2;
 const WAIT_BRACE = 3;
+const WAIT_NEEDLE = 4;
 
 // states of the resumable brace probe, one char at a time so a scan cut at the end of the input resumes exactly
 const BM_CODE = 0;
@@ -333,7 +334,11 @@ export class PFMParser {
 	private bp_end: number = -1;
 	private bp_frames: number[] = [];
 	// chunks fed while waiting on a brace, joined onto the window once it closes
-	private bp_pending: string[] = [];
+	private wait_chunks: string[] = [];
+	// a WAIT_NEEDLE stall resumes once this string appears
+	private wait_needle: string = '';
+	// the cursor _run stopped at when a brace or needle wait was set
+	private wait_cursor: number = -1;
 	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
 	private wait_kind: number = 0;
 	private cursor: number = 0;
@@ -558,12 +563,17 @@ export class PFMParser {
 	/** leaves scan, trim point and window where _run would, false when the chunk might hold the close */
 	private skip_wait(chunk: string, len: number): boolean {
 		const end = this.source_end;
-		if (this.wait_kind === WAIT_BRACE) {
-			const pending = this.bp_pending;
-			// the probe set the wait, it holds only if _run stopped at that brace
-			if (this.cursor === this.bp_start - 1) {
-				// the saved scan stopped at the end of the input, the chunk continues it
-				if (!this.brace_scan(chunk, end, end + len)) {
+		const kind = this.wait_kind;
+		if (kind >= WAIT_BRACE) {
+			const pending = this.wait_chunks;
+			// the probe set the wait, it holds only if _run stopped there
+			if (this.cursor === this.wait_cursor) {
+				// the saved brace scan stopped at the end of the input, the chunk continues it
+				if (
+					kind === WAIT_BRACE
+						? !this.brace_scan(chunk, end, end + len)
+						: !this.needle_in(chunk, len)
+				) {
 					pending.push(chunk);
 					this.source_end = end + len;
 					return true;
@@ -577,7 +587,7 @@ export class PFMParser {
 			}
 			return false;
 		}
-		if (this.wait_kind === WAIT_FENCE) {
+		if (kind === WAIT_FENCE) {
 			// no backtick means no close, the line after the last lf stays open
 			if (string_index_of.call(chunk, '`') !== -1) return false;
 			const lf = string_last_index_of.call(chunk, '\n');
@@ -616,7 +626,7 @@ export class PFMParser {
 	 * pending speculation.
 	 */
 	finish(): { errors: ErrorCollector } {
-		const pending = this.bp_pending;
+		const pending = this.wait_chunks;
 		if (pending.length !== 0) {
 			pending.unshift(this.source);
 			this.source = pending.join('');
@@ -646,7 +656,7 @@ export class PFMParser {
 	/** drop strings of the last document so a reused parser does not pin them */
 	release(): void {
 		this.source = '';
-		if (this.bp_pending.length !== 0) this.bp_pending.length = 0;
+		if (this.wait_chunks.length !== 0) this.wait_chunks.length = 0;
 		if (this.ref_map.size !== 0) this.ref_map.clear();
 		if (this.html_tag_stack.length !== 0) this.html_tag_stack = [];
 		this.svelte_block_tag = '';
@@ -661,7 +671,7 @@ export class PFMParser {
 		this.trim_point = 0;
 		this.fence_scan = 0;
 		this.bp_start = -1;
-		if (this.bp_pending.length !== 0) this.bp_pending.length = 0;
+		if (this.wait_chunks.length !== 0) this.wait_chunks.length = 0;
 		this.raw_node = 0;
 		this.raw_needle = '';
 		this.raw_scan = 0;
@@ -3018,7 +3028,34 @@ export class PFMParser {
 			return this.bp_end;
 		// _run stalls here, later chunks only need the brace scan until it closes (skip_wait checks the stall)
 		this.wait_kind = WAIT_BRACE;
+		this.wait_cursor = this.cursor;
 		return -1;
+	}
+
+	/**
+	 * _run stops at the cursor and nothing it reads can change until needle
+	 * appears in the input, so feed holds later chunks back until one might
+	 * hold it instead of rejoining and rescanning the window on every feed
+	 */
+	private wait_for(needle: string): void {
+		this.wait_kind = WAIT_NEEDLE;
+		this.wait_needle = needle;
+		this.wait_cursor = this.cursor;
+	}
+
+	/** false only when the needle is not in the chunk and not across its start */
+	private needle_in(chunk: string, len: number): boolean {
+		const needle = this.wait_needle;
+		if (string_index_of.call(chunk, needle) !== -1) return true;
+		const k = needle.length - 1;
+		if (k === 0) return false;
+		const pending = this.wait_chunks;
+		const prev = pending.length !== 0 ? pending[pending.length - 1] : this.source;
+		const n = prev.length;
+		// too short to hold the part before the boundary, let _run look
+		if (n < k || len < k) return true;
+		const edge = string_slice.call(prev, n - k) + string_slice.call(chunk, 0, k);
+		return string_index_of.call(edge, needle) !== -1;
 	}
 
 	/** runs the saved brace scan over source up to length, true (and bp_end set) once the brace closes */
@@ -3854,6 +3891,7 @@ export class PFMParser {
 								!this.finished &&
 								string_index_of.call(source, '>', this.cursor + 1 - base) === -1
 							) {
+								this.wait_for('>');
 								break main_loop;
 							}
 
@@ -3873,7 +3911,10 @@ export class PFMParser {
 
 							// try html comment at block level
 							const blk_comment = this.try_parse_html_comment(this.cursor + 1);
-							if (blk_comment === false) break main_loop;
+							if (blk_comment === false) {
+								if (this.cursor + 3 < length) this.wait_for('-->');
+								break main_loop;
+							}
 							if (blk_comment) {
 								const c_id = this.emit_open(
 									NodeKind.html_comment,
@@ -4808,6 +4849,7 @@ export class PFMParser {
 								!this.finished &&
 								string_index_of.call(source, '>', this.cursor + 1 - base) === -1
 							) {
+								this.wait_for('>');
 								break main_loop;
 							}
 
@@ -4848,7 +4890,10 @@ export class PFMParser {
 
 							// try html comment: <!--
 							const comment = this.try_parse_html_comment(this.cursor + 1);
-							if (comment === false) break main_loop;
+							if (comment === false) {
+								if (this.cursor + 3 < length) this.wait_for('-->');
+								break main_loop;
+							}
 							if (comment) {
 								const c_id = this.emit_open(
 									NodeKind.html_comment,
@@ -6689,6 +6734,7 @@ export class PFMParser {
 				!this.finished &&
 				string_index_of.call(source, '>', this.cursor + 1 - base) === -1
 			) {
+				this.wait_for('>');
 				return true;
 			}
 			const close = this.try_parse_html_close_tag(this.cursor + 1);
@@ -6773,7 +6819,10 @@ export class PFMParser {
 		if (code === OPEN_ANGLE_BRACKET) {
 			// nested html at block level
 			const blk_comment = this.try_parse_html_comment(this.cursor + 1);
-			if (blk_comment === false) return true;
+			if (blk_comment === false) {
+				if (this.cursor + 3 < this.source_end) this.wait_for('-->');
+				return true;
+			}
 			if (blk_comment) {
 				const c_id = this.emit_open(
 					NodeKind.html_comment,
@@ -7050,6 +7099,7 @@ export class PFMParser {
 				!this.finished &&
 				string_index_of.call(source, '>', this.cursor + 1 - base) === -1
 			) {
+				this.wait_for('>');
 				return true;
 			}
 			const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
@@ -8090,7 +8140,10 @@ export class PFMParser {
 		const fm_rel = string_index_of.call(source, '\n---', fm_search - base);
 		const fm_close = fm_rel === -1 ? -1 : fm_rel + base;
 		if (fm_close === -1) {
-			if (!this.finished) return true;
+			if (!this.finished) {
+				this.wait_for('\n---');
+				return true;
+			}
 			// eof without closing `---`: not valid frontmatter.
 			// revoke and re-parse from position 0 as normal content.
 			this.frontmatter_failed = true;
