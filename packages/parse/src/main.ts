@@ -3065,8 +3065,45 @@ export class PFMParser {
 		let mode = this.bp_mode;
 		let quote = this.bp_quote;
 
-		while (p < length) {
-			const ch = char_code_at.call(source, p - base);
+		scan: while (p < length) {
+			let ch = char_code_at.call(source, p - base);
+			// runs of chars that leave the state as it is, skipped in tight loops
+			if (mode === BM_CODE) {
+				while (
+					ch !== OPEN_BRACE &&
+					ch !== CLOSE_BRACE &&
+					ch !== QUOTE &&
+					ch !== APOSTROPHE &&
+					ch !== BACKTICK &&
+					ch !== SLASH
+				) {
+					if (++p >= length) break scan;
+					ch = char_code_at.call(source, p - base);
+				}
+			} else if (mode === BM_STR) {
+				while (ch !== quote && ch !== BACKSLASH) {
+					if (++p >= length) break scan;
+					ch = char_code_at.call(source, p - base);
+				}
+			} else if (mode === BM_LINE) {
+				const nl = string_index_of.call(source, '\n', p - base);
+				if (nl === -1) {
+					p = length;
+					break;
+				}
+				p = nl + base;
+				ch = LINEFEED;
+			} else if (mode === BM_BLOCK) {
+				while (ch !== ASTERISK) {
+					if (++p >= length) break scan;
+					ch = char_code_at.call(source, p - base);
+				}
+			} else if (mode === BM_TPL) {
+				while (ch !== BACKTICK && ch !== BACKSLASH && ch !== 36 /* $ */) {
+					if (++p >= length) break scan;
+					ch = char_code_at.call(source, p - base);
+				}
+			}
 			switch (mode) {
 				case BM_CODE:
 					if (ch === OPEN_BRACE) {
@@ -4988,11 +5025,20 @@ export class PFMParser {
 
 						case OPEN_BRACE: {
 							// in incremental mode, stall if we can't see the closing brace
+							let expr_end: number;
 							if (!this.finished) {
-								const probe = this.probe_matching_brace(this.cursor + 1);
-								if (probe === -1) break main_loop;
+								expr_end = this.probe_matching_brace(this.cursor + 1);
+								if (expr_end === -1) break main_loop;
+							} else if (
+								this.bp_start === this.cursor + 1 &&
+								this.bp_p === this.source_end &&
+								this.bp_end === -1
+							) {
+								// the saved probe already ran to the end without a close
+								expr_end = -1;
+							} else {
+								expr_end = this.find_matching_brace(this.cursor + 1);
 							}
-							const expr_end = this.find_matching_brace(this.cursor + 1);
 							if (expr_end !== -1) {
 								// svelte void tag: {@tag ...}
 								if (char_code_at.call(source, this.cursor + 1 - base) === AT) {
