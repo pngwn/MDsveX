@@ -5922,6 +5922,22 @@ export class PFMParser {
 							);
 							this.table_cell_has_content = false;
 							this.node_stack.push(this.table_cell_id);
+							// the next trips would skip the cell's leading whitespace and
+							// take a plain run, do both here
+							let q = this.cursor;
+							while (q < length) {
+								const ch = char_code_at.call(source, q - base);
+								if (ch !== SPACE && ch !== TAB) break;
+								q++;
+							}
+							this.cursor = q;
+							if (q < length) {
+								const c0 = char_code_at.call(source, q - base);
+								if (c0 !== 0 && (c0 >= 128 || TEXT_BREAK[c0] === 0)) {
+									this.table_cell_has_content = true;
+									this.table_cell_text(this.table_cell_id);
+								}
+							}
 						}
 						continue;
 					}
@@ -5955,46 +5971,7 @@ export class PFMParser {
 					// push inline to handle cell content
 					this.table_cell_has_content = true;
 					if (code >= 128 || TEXT_BREAK[code] === 0) {
-						// a plain run ending at the next | or \n is one text node, close it here
-						// instead of trips through inline, text and the unwind
-						const t_id = this.emit_open(
-							NodeKind.text,
-							this.cursor,
-							current_node
-						);
-						this.out.set_value_start(t_id, this.cursor);
-						let p = this.cursor + 1;
-						if (p < length) {
-							const c1 = char_code_at.call(source, p - base);
-							if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
-								const text_break = TEXT_BREAK;
-								p++;
-								while (p < length) {
-									const ch = char_code_at.call(source, p - base);
-									if (ch < 128 && text_break[ch] !== 0) break;
-									p++;
-								}
-							}
-						}
-						const stop = p < length ? char_code_at.call(source, p - base) : 0;
-						if (stop === PIPE || stop === LINEFEED) {
-							let ve = p;
-							while (
-								ve > 0 &&
-								(char_code_at.call(source, ve - 1 - base) === SPACE ||
-									char_code_at.call(source, ve - 1 - base) === TAB)
-							) {
-								ve--;
-							}
-							this.out.set_value_end(t_id, ve);
-							this.emit_close(t_id, p);
-							this.cursor = p;
-							continue;
-						}
-						this.states.push(StateKind.inline);
-						this.node_stack.push(t_id);
-						this.states.push(StateKind.text);
-						this.cursor = p;
+						this.table_cell_text(current_node);
 						continue;
 					}
 					this.states.push(StateKind.inline);
@@ -8429,6 +8406,52 @@ export class PFMParser {
 		const after_delim = delim_end < length ? delim_end + 1 : delim_end;
 		this.chomp(after_delim, true);
 		return true;
+	}
+
+	/**
+	 * a data cell's content starting at the cursor with a plain char. a plain run
+	 * ending at the next | or \n is one text node, closed here instead of trips
+	 * through inline, text and the unwind. otherwise leaves inline and text pushed
+	 * past the run as the inline state would
+	 */
+	private table_cell_text(parent: number): void {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const start = this.cursor;
+		const t_id = this.emit_open(NodeKind.text, start, parent);
+		this.out.set_value_start(t_id, start);
+		let p = start + 1;
+		if (p < length) {
+			const c1 = char_code_at.call(source, p - base);
+			if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
+				p++;
+				while (p < length) {
+					const ch = char_code_at.call(source, p - base);
+					if (ch < 128 && TEXT_BREAK[ch] !== 0) break;
+					p++;
+				}
+			}
+		}
+		const stop = p < length ? char_code_at.call(source, p - base) : 0;
+		if (stop === PIPE || stop === LINEFEED) {
+			let ve = p;
+			while (
+				ve > 0 &&
+				(char_code_at.call(source, ve - 1 - base) === SPACE ||
+					char_code_at.call(source, ve - 1 - base) === TAB)
+			) {
+				ve--;
+			}
+			this.out.set_value_end(t_id, ve);
+			this.emit_close(t_id, p);
+			this.cursor = p;
+			return;
+		}
+		this.states.push(StateKind.inline);
+		this.node_stack.push(t_id);
+		this.states.push(StateKind.text);
+		this.cursor = p;
 	}
 
 	/** true when no char in [start, end) makes the inline or text state yield */
