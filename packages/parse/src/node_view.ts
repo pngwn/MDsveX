@@ -63,18 +63,11 @@ export class ViewCache {
 	private buf: NodeBuffer;
 	private text_source: TextSource;
 	private undo: UndoLog;
-	private handler_node: number;
 
-	constructor(
-		buf: NodeBuffer,
-		text_source: TextSource,
-		undo: UndoLog,
-		handler_node: number
-	) {
+	constructor(buf: NodeBuffer, text_source: TextSource, undo: UndoLog) {
 		this.buf = buf;
 		this.text_source = text_source;
 		this.undo = undo;
-		this.handler_node = handler_node;
 	}
 
 	/** get or create a NodeView for the given buffer index. */
@@ -96,14 +89,7 @@ export class ViewCache {
 	}
 
 	private make(index: number): NodeView {
-		return new NodeView(
-			index,
-			this.buf,
-			this.text_source,
-			this,
-			this.undo,
-			this.handler_node
-		);
+		return new NodeView(index, this.buf, this.text_source, this, this.undo);
 	}
 
 	/** discard all cached views. */
@@ -116,11 +102,6 @@ export class ViewCache {
 	rebind(buf: NodeBuffer, text_source: TextSource): void {
 		this.buf = buf;
 		this.text_source = text_source;
-	}
-
-	/** update the handler node (for re-use across dispatches). */
-	set_handler_node(handler_node: number): void {
-		this.handler_node = handler_node;
 	}
 }
 
@@ -154,8 +135,11 @@ const ATTRS_HANDLER: ProxyHandler<AttrsTarget> = {
 		const buf = target[BUF];
 		const idx = target[IDX];
 		const meta = buf.metadata_at(idx);
-		const prior = meta && prop in meta ? meta[prop] : ATTR_DID_NOT_EXIST;
-		target[UNDO].record_attr_set(idx, prop, prior);
+		const undo = target[UNDO];
+		if (undo.recording) {
+			const prior = meta && prop in meta ? meta[prop] : ATTR_DID_NOT_EXIST;
+			undo.record_attr_set(idx, prop, prior);
+		}
 
 		if (meta) {
 			merge_meta(meta, prop, value);
@@ -222,8 +206,6 @@ export class NodeView {
 	private _cache: ViewCache;
 	/** @internal undo log for recording mutations. */
 	private _undo: UndoLog;
-	/** @internal which handler node's undo log to attribute mutations to. */
-	private _handler_node: number;
 	/** lazily created attrs proxy. */
 	private _attrs: Record<string, any> | null = null;
 
@@ -232,15 +214,13 @@ export class NodeView {
 		buf: NodeBuffer,
 		text_source: TextSource,
 		cache: ViewCache,
-		undo: UndoLog,
-		handler_node: number
+		undo: UndoLog
 	) {
 		this._index = index;
 		this._buf = buf;
 		this._text_source = text_source;
 		this._cache = cache;
 		this._undo = undo;
-		this._handler_node = handler_node;
 	}
 
 	get type(): string {

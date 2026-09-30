@@ -130,6 +130,18 @@ export class UndoLog {
 	 */
 	private active_node: number = NONE;
 
+	/**
+	 * buffer index and prior kind of every kind rewrite, recorded or not, in
+	 * order, so the first entry of an index holds its kind at open
+	 */
+	kind_changes: number[] | null = null;
+
+	log_kind(target: number, prior_kind: number): void {
+		const log = this.kind_changes;
+		if (log === null) this.kind_changes = [target, prior_kind];
+		else log.push(target, prior_kind);
+	}
+
 	/** called by dispatcher before invoking plugin handlers for a node. */
 	set_active_node(index: number): void {
 		this.active_node = index;
@@ -140,7 +152,13 @@ export class UndoLog {
 		this.active_node = NONE;
 	}
 
+	/** false while nothing would keep an entry */
+	get recording(): boolean {
+		return this.active_node !== NONE;
+	}
+
 	record_attr_set(target: number, key: string, prior_value: any): void {
+		if (this.active_node === NONE) return;
 		this._append({
 			kind: UndoEntryKind.AttrSet,
 			target,
@@ -159,6 +177,8 @@ export class UndoLog {
 	}
 
 	record_type_change(target: number, prior_kind: number): void {
+		this.log_kind(target, prior_kind);
+		if (this.active_node === NONE) return;
 		this._append({
 			kind: UndoEntryKind.TypeChange,
 			target,
@@ -310,6 +330,7 @@ export class UndoLog {
 	/** discard all logs. */
 	clear(): void {
 		this.logs.clear();
+		this.kind_changes = null;
 		this.active_node = NONE;
 	}
 }

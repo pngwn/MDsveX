@@ -473,11 +473,21 @@ export class PluginDispatcher {
 	private views(buf: NodeBuffer): ViewCache {
 		const cache = this.cache;
 		if (cache === null) {
-			return (this.cache = new ViewCache(buf, this.text_source, this.undo, 0));
+			return (this.cache = new ViewCache(buf, this.text_source, this.undo));
 		}
 		cache.clear();
 		cache.rebind(buf, this.text_source);
 		return cache;
+	}
+
+	/** buffer index and prior kind of each kind rewrite, see UndoLog */
+	kind_log(): number[] | null {
+		return this.undo.kind_changes;
+	}
+
+	/** a kind rewrite outside the plugins, a revoke's repair */
+	log_kind(buf_idx: number, prior_kind: number): void {
+		this.undo.log_kind(buf_idx, prior_kind);
 	}
 
 	/** check whether any fused handlers exist for this kind. */
