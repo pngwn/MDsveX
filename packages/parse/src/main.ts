@@ -134,6 +134,12 @@ const WAIT_FENCE = 1;
 const WAIT_RAW = 2;
 const WAIT_BRACE = 3;
 const WAIT_NEEDLE = 4;
+// feed only wait kinds, a const enum so the module scope gains no binding (a new
+// module level binding shifts later context slots and can widen batch path bytecode)
+const enum FeedWait {
+	// an unclosed code span scanning past the trim gap: chunks with no backtick and no line that may be blank cannot end it
+	code_span = 5,
+}
 
 // states of the resumable brace probe, one char at a time so a scan cut at the end of the input resumes exactly
 const BM_CODE = 0;
@@ -925,34 +931,66 @@ export class PFMParser {
 		this._run();
 		// the root trims the window between blocks, paragraphs and containers other than lists and block quotes need this
 		if (this.cursor - this.trim_point > TRIM_GAP) this.trim_at_stall();
+		// a fence stall leaves the cursor at its content start while its scan line moves on
+		else if (this.fence_scan - this.trim_point > TRIM_GAP) this.trim_fence();
 		this.out.cursor(this.cursor);
 	}
 
 	/**
-	 * _run stopped inside a paragraph with no open inline construct (at most
-	 * its text node above it), or at a line start right inside a container,
-	 * and every ancestor is a container that rereads nothing before the
-	 * cursor's line (block quotes, lists, svelte blocks, html containers).
-	 * pending nodes are paragraphs or html containers on the node stack whose
-	 * opening line ends before that line, the only text they reread is that
-	 * line for the revoke repair: trim_keeping_html keeps it. the window then
-	 * trims at the start of the cursor's line
+	 * _run stopped inside a paragraph with no open inline construct but
+	 * delimiters (at most its text node above them), in a table body row, or
+	 * at a line start right inside a container, and every ancestor is a
+	 * container that rereads nothing before the cursor's line (block quotes,
+	 * lists, svelte blocks, html containers). pending nodes are paragraphs,
+	 * delimiters or html containers on the node stack whose opening line ends
+	 * before that line, the only text they reread is that line for the revoke
+	 * repair: trim_keeping_html keeps it. the window then trims at the start
+	 * of the cursor's line. an unclosed code span sets a wait instead. feed
+	 * alone calls these trims, none of them is reachable from a batch parse
 	 */
 	private trim_at_stall(): void {
 		const stack = this.node_stack;
 		let top = stack.length - 1;
 		if (top < 1) return;
+		if (this.states[this.states.length - 1] === StateKind.code_fence_content) {
+			this.trim_fence();
+			return;
+		}
 		const base = this.source_base;
 		const source = this.source;
 		const cursor = this.cursor;
 		let kind = this.kind_of(stack[top]);
 		if (kind === NodeKind.text) kind = this.kind_of(stack[--top]);
+		while (this.is_trim_delimiter(kind)) kind = this.kind_of(stack[--top]);
 		let line: number;
 		if (kind === NodeKind.paragraph) {
 			const lf = string_last_index_of.call(source, '\n', cursor - 1 - base);
 			if (lf === -1) return;
 			line = lf + 1 + base;
+		} else if (kind === NodeKind.table_cell || kind === NodeKind.table) {
+			// a table body row is one line and reads nothing of the rows before it
+			if (kind === NodeKind.table_cell) {
+				if (this.kind_of(stack[--top]) !== NodeKind.table) return;
+				const states = this.states;
+				let si = states.length - 1;
+				while (si > 1 && states[si] !== StateKind.table_row_content) si--;
+				if (states[si] !== StateKind.table_row_content || states[si - 1] !== StateKind.table_body)
+					return;
+				// the line holding the char before the cursor, a row whose lf was just read included
+				const lf = string_last_index_of.call(source, '\n', cursor - 2 - base);
+				if (lf === -1) return;
+				line = lf + 1 + base;
+			} else {
+				if (this.states[this.states.length - 1] !== StateKind.table_body) return;
+				if (cursor <= base || char_code_at.call(source, cursor - 1 - base) !== LINEFEED)
+					return;
+				line = cursor;
+			}
 		} else {
+			if (kind === NodeKind.code_span) {
+				this.wait_code_span();
+				return;
+			}
 			if (!is_trim_container(kind)) return;
 			if (cursor <= base || char_code_at.call(source, cursor - 1 - base) !== LINEFEED)
 				return;
@@ -960,20 +998,93 @@ export class PFMParser {
 			top++;
 		}
 		if (line <= this.trim_point) return;
+		if (this.can_trim_to(line, top)) this.trim_point = line;
+	}
+
+	/** inline delimiter nodes: a revoke needs no source text and nothing rescans from their opener */
+	private is_trim_delimiter(kind: number): boolean {
+		return (
+			kind === NodeKind.strong_emphasis ||
+			kind === NodeKind.emphasis ||
+			kind === NodeKind.strikethrough ||
+			kind === NodeKind.superscript ||
+			kind === NodeKind.subscript
+		);
+	}
+
+	/**
+	 * a code fence stalled inside html or svelte containers, where the fence's
+	 * own trim (can_trim) declines: the window may still trim at the fence scan
+	 * line. no fence wait, its window skip would drop kept html lines
+	 */
+	private trim_fence(): void {
+		const states = this.states;
+		if (states[states.length - 1] !== StateKind.code_fence_content || this.wait_kind !== WAIT_NONE)
+			return;
+		const line = this.fence_scan;
+		if (line > this.trim_point && this.can_trim_to(line, this.node_stack.length - 1))
+			this.trim_point = line;
+	}
+
+	/**
+	 * the node stack below top holds only trim containers, and pending nodes
+	 * are paragraphs, delimiters or html containers on the node stack whose
+	 * opening line ends before line: the window may trim at line
+	 */
+	private can_trim_to(line: number, top: number): boolean {
+		const stack = this.node_stack;
 		for (let i = 1; i < top; i++) {
-			if (!is_trim_container(this.kind_of(stack[i]))) return;
+			if (!is_trim_container(this.kind_of(stack[i]))) return false;
 		}
+		const base = this.source_base;
+		const source = this.source;
 		for (let pi = 0; pi < this.pending_count; pi++) {
 			const id = this.pending_ids[pi];
 			const pkind = this.kind_of(id);
-			if (pkind === NodeKind.paragraph) continue;
-			if (pkind !== NodeKind.html || stack.indexOf(id) === -1) return;
+			if (pkind === NodeKind.paragraph || this.is_trim_delimiter(pkind)) continue;
+			if (pkind !== NodeKind.html || stack.indexOf(id) === -1) return false;
 			const start = this.pending_starts[pi];
-			if (start < base) return;
+			if (start < base) return false;
 			const lf = string_index_of.call(source, '\n', start - base);
-			if (lf === -1 || lf + base >= line - 1) return;
+			if (lf === -1 || lf + base >= line - 1) return false;
 		}
-		this.trim_point = line;
+		return true;
+	}
+
+	/**
+	 * _run stopped scanning an unclosed code span for its closing run (the
+	 * window holds it from the opener, its revoke rescans from there): until
+	 * a chunk may hold a backtick or a blank line, _run would only step over
+	 * it, so feed holds chunks back instead of rejoining the window
+	 */
+	private wait_code_span(): void {
+		if (this.in_table || this.wait_kind !== WAIT_NONE) return;
+		if (this.states[this.states.length - 1] !== StateKind.code_span_end) return;
+		// a backtick run at the window end may still grow into the closer
+		if (string_index_of.call(this.source, '`', this.cursor - this.source_base) !== -1) return;
+		this.wait_kind = FeedWait.code_span;
+		this.wait_cursor = this.cursor;
+	}
+
+	/** false only when the chunk has no backtick and no line starting in it starts with a space, tab or linefeed */
+	private code_span_may_end(chunk: string, len: number): boolean {
+		if (len === 0 || string_index_of.call(chunk, '`') !== -1) return true;
+		// the chunk starts a line only after a linefeed
+		const pending = this.wait_chunks;
+		const prev = pending.length !== 0 ? pending[pending.length - 1] : this.source;
+		let c = char_code_at.call(chunk, 0);
+		if (
+			char_code_at.call(prev, prev.length - 1) === LINEFEED &&
+			(c === SPACE || c === TAB || c === LINEFEED)
+		)
+			return true;
+		let lf = string_index_of.call(chunk, '\n');
+		while (lf !== -1 && lf + 1 < len) {
+			c = char_code_at.call(chunk, lf + 1);
+			if (c === SPACE || c === TAB || c === LINEFEED) return true;
+			lf = string_index_of.call(chunk, '\n', lf + 1);
+		}
+		return false;
 	}
 
 	/**
@@ -1017,7 +1128,9 @@ export class PFMParser {
 				if (
 					kind === WAIT_BRACE
 						? !this.brace_scan(chunk, end, end + len)
-						: !this.needle_in(chunk, len)
+						: kind === WAIT_NEEDLE
+							? !this.needle_in(chunk, len)
+							: !this.code_span_may_end(chunk, len)
 				) {
 					pending.push(chunk);
 					this.source_end = end + len;
