@@ -4,10 +4,14 @@ const DEFAULT_TOKEN_CAPACITY = 128;
 /** under 2 kb of slab, cheaper than a resize for a slightly larger document */
 const MIN_NODE_CAPACITY = 32;
 
-const SLAB_BYTES = 65536;
+/**
+ * a buffer past the carve cap is its own ArrayBuffer, which costs far more
+ * than the carve, so the slab is big enough that small documents carve
+ */
+const SLAB_BYTES = 262144;
 
 /** caps the tail a full slab can waste at an eighth */
-const SLAB_MAX_CARVE = 8192;
+const SLAB_MAX_CARVE = 32768;
 
 const EMPTY_U32 = new Uint32Array(0);
 
