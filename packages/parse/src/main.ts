@@ -234,6 +234,15 @@ export function raw_offsets(raw: string): RawOffsets | null {
 	return collapsed.length === 0 ? null : new RawOffsets(collapsed);
 }
 
+// chars a brace scan has to look at, the rest it steps over
+const BRACE_STOP = new Uint8Array(128);
+BRACE_STOP[OPEN_BRACE] = 1;
+BRACE_STOP[CLOSE_BRACE] = 1;
+BRACE_STOP[QUOTE] = 1;
+BRACE_STOP[APOSTROPHE] = 1;
+BRACE_STOP[BACKTICK] = 1;
+BRACE_STOP[SLASH] = 1;
+
 const TEXT_BREAK = new Uint8Array(128);
 TEXT_BREAK[LINEFEED] = 1;
 TEXT_BREAK[BACKSLASH] = 1;
@@ -3224,8 +3233,10 @@ export class PFMParser {
 		const length = this.source_end;
 		let depth = 1;
 		let p = pos;
+		// short expressions stay in this small loop, a scan that runs on goes to the far one
+		const lim = length - pos > 256 ? pos + 256 : length;
 
-		while (p < length) {
+		while (p < lim) {
 			const ch = char_code_at.call(source, p - base);
 
 			switch (ch) {
@@ -3247,6 +3258,120 @@ export class PFMParser {
 						p++;
 					}
 					if (p < length) p++; // skip closing quote
+					break;
+				}
+				case BACKTICK: {
+					// skip template literal, respecting ${} interpolations
+					p++;
+					while (
+						p < length &&
+						char_code_at.call(source, p - base) !== BACKTICK
+					) {
+						if (char_code_at.call(source, p - base) === BACKSLASH) {
+							p++;
+						} else if (
+							char_code_at.call(source, p - base) === 36 /* $ */ &&
+							p + 1 < length &&
+							char_code_at.call(source, p + 1 - base) === OPEN_BRACE
+						) {
+							p += 2; // skip ${
+							// recursively find the matching } for the interpolation
+							const inner_end = this.find_matching_brace(p);
+							if (inner_end === -1) return -1;
+							p = inner_end;
+							continue;
+						}
+						p++;
+					}
+					if (p < length) p++; // skip closing backtick
+					break;
+				}
+				case SLASH: {
+					// skip // line comments
+					if (
+						p + 1 < length &&
+						char_code_at.call(source, p + 1 - base) === SLASH
+					) {
+						p += 2;
+						while (
+							p < length &&
+							char_code_at.call(source, p - base) !== LINEFEED
+						)
+							p++;
+						break;
+					}
+					// skip /* block comments */
+					if (
+						p + 1 < length &&
+						char_code_at.call(source, p + 1 - base) === ASTERISK
+					) {
+						p += 2;
+						while (p < length) {
+							if (
+								char_code_at.call(source, p - base) === ASTERISK &&
+								p + 1 < length &&
+								char_code_at.call(source, p + 1 - base) === SLASH
+							) {
+								p += 2;
+								break;
+							}
+							p++;
+						}
+						break;
+					}
+					p++;
+					break;
+				}
+				default:
+					p++;
+			}
+		}
+
+		if (p < length) return this.find_matching_brace_far(pos, p, depth);
+		return this.brace_failed(pos);
+	}
+
+	/** find_matching_brace from p at depth, for scans that run past its window: steps over ignored chars and jumps between quotes */
+	private find_matching_brace_far(pos: number, p: number, depth: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+
+		while (p < length) {
+			const ch = char_code_at.call(source, p - base);
+			if (ch >= 128 || BRACE_STOP[ch] === 0) {
+				p++;
+				continue;
+			}
+
+			switch (ch) {
+				case OPEN_BRACE:
+					depth++;
+					p++;
+					break;
+				case CLOSE_BRACE:
+					depth--;
+					if (depth === 0) return p + 1;
+					p++;
+					break;
+				case QUOTE:
+				case APOSTROPHE: {
+					// skip string literal: jump between quotes, one after an odd run of
+					// backslashes is escaped
+					const needle = ch === QUOTE ? '"' : "'";
+					let r = p + 1 - base;
+					p = length;
+					for (;;) {
+						const q = string_index_of.call(source, needle, r);
+						if (q === -1) break;
+						let k = q;
+						while (k > r && char_code_at.call(source, k - 1) === BACKSLASH) k--;
+						if (((q - k) & 1) === 0) {
+							p = q + 1 + base;
+							break;
+						}
+						r = q + 1;
+					}
 					break;
 				}
 				case BACKTICK: {
@@ -3352,6 +3477,10 @@ export class PFMParser {
 
 		while (p < length) {
 			const ch = char_code_at.call(source, p - base);
+			if (ch >= 128 || BRACE_STOP[ch] === 0) {
+				p++;
+				continue;
+			}
 
 			switch (ch) {
 				case OPEN_BRACE:
@@ -3367,13 +3496,22 @@ export class PFMParser {
 					break;
 				case QUOTE:
 				case APOSTROPHE: {
-					// skip string literal
-					p++;
-					while (p < length && char_code_at.call(source, p - base) !== ch) {
-						if (char_code_at.call(source, p - base) === BACKSLASH) p++;
-						p++;
+					// skip string literal: jump between quotes, one after an odd run of
+					// backslashes is escaped
+					const needle = ch === QUOTE ? '"' : "'";
+					let r = p + 1 - base;
+					p = length;
+					for (;;) {
+						const q = string_index_of.call(source, needle, r);
+						if (q === -1) break;
+						let k = q;
+						while (k > r && char_code_at.call(source, k - 1) === BACKSLASH) k--;
+						if (((q - k) & 1) === 0) {
+							p = q + 1 + base;
+							break;
+						}
+						r = q + 1;
 					}
-					if (p < length) p++; // skip closing quote
 					break;
 				}
 				case BACKTICK: {
