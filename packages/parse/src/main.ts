@@ -321,6 +321,9 @@ export class PFMParser {
 	// and only while the list and svelte depths it was taken under hold
 	private interrupt_pos: number = -1;
 	private interrupt_list_depth: number = 0;
+	// the list marker an interrupt check parsed at this position, only valid within one _run
+	private interrupt_marker_pos: number = -1;
+	private interrupt_marker: MarkerResult | null = null;
 	private interrupt_svelte_depth: number = 0;
 	// raw text holds no markup so raw text elements never nest
 	private raw_node: number = 0;
@@ -1963,6 +1966,9 @@ export class PFMParser {
 		const length = this.source_end;
 		const marker = this.try_parse_list_marker(pos);
 		if (!marker) return false;
+		// callers checked for a thematic break at pos first, the list item lf reuses both answers
+		this.interrupt_marker_pos = pos;
+		this.interrupt_marker = marker;
 		if (this.list_depth > 0) return true;
 		if (marker.ordered && marker.start_num !== 1) return false;
 		let p = marker.content_start;
@@ -3641,6 +3647,7 @@ export class PFMParser {
 		// reset progress counter,  new data may have been fed since last _run()
 		this.loop_without_progress = 0;
 		this.interrupt_pos = -1;
+		this.interrupt_marker_pos = -1;
 		let iter_count = 0;
 
 		main_loop: while (this.cursor <= length) {
@@ -7725,14 +7732,19 @@ export class PFMParser {
 					return false;
 				}
 
-				// check for thematic break before list marker (precedence)
-				if (this.is_thematic_break_start(next_pos)) {
-					this.end_list();
-					return false;
+				// check for thematic break before list marker (precedence). the
+				// paragraph's interrupt check may already have answered both here
+				let marker: MarkerResult | null;
+				if (this.interrupt_marker_pos === next_pos) {
+					marker = this.interrupt_marker;
+				} else {
+					if (this.is_thematic_break_start(next_pos)) {
+						this.end_list();
+						return false;
+					}
+					// check for list marker on next line
+					marker = this.try_parse_list_marker(next_pos);
 				}
-
-				// check for list marker on next line
-				const marker = this.try_parse_list_marker(next_pos);
 				if (marker) {
 					if (marker.indent >= this.list_content_offset) {
 						this.chomp(next_pos, true);
@@ -8649,6 +8661,7 @@ export class PFMParser {
 		this.finished = saved_finished;
 		this.class_floor = saved_floor;
 		this.interrupt_pos = -1;
+		this.interrupt_marker_pos = -1;
 	}
 
 	/**
