@@ -6391,6 +6391,20 @@ export class PFMParser {
 						continue;
 					}
 
+					// a heading, fence or thematic break needs its whole line in
+					// feed mode, a row taken early could not become one
+					if (
+						!this.finished &&
+						(code === ASTERISK ||
+							code === DASH ||
+							code === UNDERSCORE ||
+							code === OCTOTHERP ||
+							code === BACKTICK) &&
+						string_index_of.call(source, '\n', this.cursor - base) === -1
+					) {
+						break main_loop;
+					}
+
 					// block-level interrupts end the table
 					if (code === OCTOTHERP && this.is_heading_start(this.cursor)) {
 						this.end_table();
@@ -7742,7 +7756,11 @@ export class PFMParser {
 		}
 
 		if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
-			if (!this.finished && this.cursor + 2 >= length) {
+			if (
+				!this.finished &&
+				(this.cursor + 2 >= length ||
+					string_index_of.call(source, '\n', this.cursor - base) === -1)
+			) {
 				return true;
 			}
 			if (this.is_thematic_break_start(this.cursor)) {
@@ -7990,7 +8008,11 @@ export class PFMParser {
 		}
 
 		if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
-			if (!this.finished && this.cursor + 2 >= length) {
+			if (
+				!this.finished &&
+				(this.cursor + 2 >= length ||
+					string_index_of.call(source, '\n', this.cursor - base) === -1)
+			) {
 				return true;
 			}
 			if (this.is_thematic_break_start(this.cursor)) {
@@ -8896,7 +8918,11 @@ export class PFMParser {
 			case ASTERISK:
 			case DASH:
 			case UNDERSCORE: {
-				if (!this.finished && this.cursor + 2 >= length) {
+				if (
+					!this.finished &&
+					(this.cursor + 2 >= length ||
+						string_index_of.call(source, '\n', this.cursor - base) === -1)
+				) {
 					return true;
 				}
 				if (this.is_thematic_break_start(this.cursor)) {
