@@ -555,9 +555,13 @@ export class PluginDispatcher {
 
 		// take and fire close callbacks with undo attribution
 		const cbs = this.close_cbs.take(buf_idx);
+		// callbacks cannot change a node's pending flag
+		const pending = buf.pending_at(buf_idx) !== 0;
 		if (cbs) {
 			const cache = new ViewCache(buf, this.text_source, this.undo, buf_idx);
-			this.undo.set_active_node(buf_idx);
+			// a node no longer pending commits right after its callbacks, so
+			// anything they recorded would be dropped unread
+			if (pending) this.undo.set_active_node(buf_idx);
 			for (let i = 0; i < cbs.length; i++) {
 				cbs[i]();
 			}
@@ -567,7 +571,7 @@ export class PluginDispatcher {
 
 		// only commit if the node is no longer pending.
 		// pending nodes can still be revoked after close.
-		if (buf.pending_at(buf_idx) === 0) {
+		if (!pending) {
 			this.undo.commit(buf_idx);
 		}
 	}
@@ -659,9 +663,9 @@ export class PluginDispatcher {
 				if (handler != null) {
 					const cache = new ViewCache(buf, text_source, undo, idx);
 					const view = cache.get(idx)!;
-					undo.set_active_node(idx);
+					// the tree is complete, nothing revokes a sequential write, so
+					// none is recorded (no active node)
 					const callbacks = handler(view, ctx);
-					undo.clear_active_node();
 					if (callbacks) close_store.set(idx, callbacks);
 					cache.clear();
 				}
