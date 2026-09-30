@@ -7557,6 +7557,14 @@ export class PFMParser {
 			return false;
 		}
 
+		// the next line decides, hold back until it is visible
+		if (
+			code === LINEFEED &&
+			!this.finished &&
+			!this.can_decide_after_lf(this.cursor)
+		) {
+			return true;
+		}
 		if (
 			code === LINEFEED &&
 			// inline pops at every linefeed in a heading and a block quote, a
