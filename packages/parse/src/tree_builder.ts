@@ -119,23 +119,35 @@ export class TreeBuilder implements Emitter {
 		if (id === 0) return;
 
 		const nodes = this.nodes;
-		const dispatcher = this.dispatcher;
-		let map = this.id_to_index;
-		if (map === null) {
-			if (id === nodes._size) {
-				// parents are opened ids below this one, so they are indices too
-				const parent_idx = parent === -1 ? NONE : parent;
-				if (dispatcher !== null && dispatcher.wants_open(kind)) {
-					this.open_with_plugins(dispatcher, kind, start, parent_idx, extra, pending);
-					return;
-				}
-				if (pending) nodes.push_pending(kind, start, parent_idx, extra);
-				else nodes.push(kind, start, parent_idx, extra);
+		if (this.id_to_index === null && id === nodes._size) {
+			// parents are opened ids below this one, so they are indices too
+			const parent_idx = parent === -1 ? NONE : parent;
+			const dispatcher = this.dispatcher;
+			if (dispatcher !== null && dispatcher.wants_open(kind)) {
+				this.open_with_plugins(dispatcher, kind, start, parent_idx, extra, pending);
 				return;
 			}
-			// a plugin pushed nodes the parser has no id for, or ids skipped a slot
-			map = this.start_id_map();
+			nodes.push_node(kind, start, parent_idx, extra, pending);
+			return;
 		}
+		this.open_mapped(id, kind, start, parent, extra, pending);
+	}
+
+	/**
+	 * an open once ids and indices part: a plugin pushed nodes the parser has
+	 * no id for, or ids skipped a slot
+	 */
+	private open_mapped(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		extra: number,
+		pending: boolean
+	): void {
+		const nodes = this.nodes;
+		const dispatcher = this.dispatcher;
+		const map = this.id_to_index ?? this.start_id_map();
 
 		let parent_idx = parent === -1 ? NONE : (map[parent] ?? NONE);
 
@@ -145,9 +157,7 @@ export class TreeBuilder implements Emitter {
 			if (redirect !== undefined) parent_idx = redirect;
 		}
 
-		const idx = pending
-			? nodes.push_pending(kind, start, parent_idx, extra)
-			: nodes.push(kind, start, parent_idx, extra);
+		const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
 		map[id] = idx;
 
 		if (dispatcher !== null && dispatcher.has_handlers(kind)) {
@@ -170,9 +180,7 @@ export class TreeBuilder implements Emitter {
 			const redirect = dispatcher.get_redirect(parent_idx);
 			if (redirect !== undefined) parent_idx = redirect;
 		}
-		const idx = pending
-			? nodes.push_pending(kind, start, parent_idx, extra)
-			: nodes.push(kind, start, parent_idx, extra);
+		const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
 		if (dispatcher.has_handlers(kind)) {
 			dispatcher.dispatch_open(idx, kind, nodes, this.register_id!);
 		}

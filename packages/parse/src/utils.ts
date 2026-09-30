@@ -409,6 +409,34 @@ export class NodeBuffer {
 		extra = 0,
 		metadata?: any
 	): number {
+		const index = this.push_node(kind, cursor, parent, extra, false);
+		if (metadata !== undefined) this.set_metadata(index, metadata);
+		return index;
+	}
+
+	push_pending(
+		kind: NodeKind,
+		cursor: number,
+		parent = 0xffffffff,
+		extra = 0,
+		metadata?: any
+	): number {
+		const index = this.push_node(kind, cursor, parent, extra, true);
+		if (metadata !== undefined) this.set_metadata(index, metadata);
+		return index;
+	}
+
+	/**
+	 * push a node as the last child of parent, pending or not, one body for
+	 * every open so the builder inlines a single copy
+	 */
+	push_node(
+		kind: NodeKind,
+		cursor: number,
+		parent: number,
+		extra: number,
+		pending: boolean
+	): number {
 		const index = this._size;
 		let n = this._n;
 		if (index >= this._capacity) n = this.grow();
@@ -424,7 +452,7 @@ export class NodeBuffer {
 		n[b + NodeField.prev] = 0xffffffff;
 		n[b + NodeField.first_child] = 0xffffffff;
 		n[b + NodeField.last_child] = 0xffffffff;
-		n[b + NodeField.pending] = 0;
+		n[b + NodeField.pending] = pending ? 1 : 0;
 		n[b + NodeField.meta] = 0;
 		this._size = index + 1;
 
@@ -441,21 +469,6 @@ export class NodeBuffer {
 			}
 			n[p + NodeField.last_child] = index;
 		}
-
-		if (metadata !== undefined) this.set_metadata(index, metadata);
-
-		return index;
-	}
-
-	push_pending(
-		kind: NodeKind,
-		cursor: number,
-		parent = 0xffffffff,
-		extra = 0,
-		metadata?: any
-	): number {
-		const index = this.push(kind, cursor, parent, extra, metadata);
-		this._n[index * NodeField.stride + NodeField.pending] = 1;
 		return index;
 	}
 
