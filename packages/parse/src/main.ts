@@ -2283,12 +2283,12 @@ export class PFMParser {
 
 	/** opens once the open tag is whole so later feeds scan only new chars for the close tag */
 	private open_raw_text(
-		open_tag: { tag: string; attributes: object; end: number },
+		open_tag: { tag: string; attributes: object; end: number; has_attrs: boolean },
 		parent: number
 	): void {
 		const html_id = this.emit_open(NodeKind.html, this.cursor, parent);
 		this.out.attr(html_id, 'tag', open_tag.tag);
-		if (Object.keys(open_tag.attributes).length > 0) {
+		if (open_tag.has_attrs) {
 			this.out.attr(html_id, 'attributes', open_tag.attributes);
 		}
 		this.out.set_value_start(html_id, open_tag.end);
@@ -2311,6 +2311,7 @@ export class PFMParser {
 		>;
 		self_closing: boolean;
 		end: number;
+		has_attrs: boolean;
 	} | null {
 		const source = this.source;
 		const base = this.source_base;
@@ -2338,6 +2339,7 @@ export class PFMParser {
 			string,
 			string | boolean | { type: 'expression'; value: string }
 		> = {};
+		let has_attrs = false;
 
 		while (p < length) {
 			// skip whitespace
@@ -2357,13 +2359,13 @@ export class PFMParser {
 					p + 1 < length &&
 					char_code_at.call(source, p + 1 - base) === CLOSE_ANGLE_BRACKET
 				) {
-					return { tag, attributes, self_closing: true, end: p + 2 };
+					return { tag, attributes, self_closing: true, end: p + 2, has_attrs };
 				}
 				return null; // stray /
 			}
 
 			if (char_code_at.call(source, p - base) === CLOSE_ANGLE_BRACKET) {
-				return { tag, attributes, self_closing: false, end: p + 1 };
+				return { tag, attributes, self_closing: false, end: p + 1, has_attrs };
 			}
 
 			// svelte shorthand attribute: {name}
@@ -2375,6 +2377,7 @@ export class PFMParser {
 					p + 1 - base,
 					expr_end - 1 - base
 				);
+				has_attrs = true;
 				attributes[expr] = { type: 'expression', value: expr };
 				p = expr_end;
 				continue;
@@ -2434,6 +2437,7 @@ export class PFMParser {
 					// svelte expression attribute value: attr={expr}
 					const expr_end = this.find_matching_brace(p + 1);
 					if (expr_end === -1) return null;
+					has_attrs = true;
 					attributes[attr_name] = {
 						type: 'expression',
 						value: string_slice.call(source, p + 1 - base, expr_end - 1 - base),
@@ -2448,6 +2452,7 @@ export class PFMParser {
 					if (p >= length) return null; // unclosed quote
 					const value = string_slice.call(source, value_start - base, p - base);
 					p++; // skip closing quote
+					has_attrs = true;
 					attributes[attr_name] = value;
 				} else {
 					// unquoted value
@@ -2458,6 +2463,7 @@ export class PFMParser {
 					)
 						p++;
 					if (p === value_start) return null; // empty unquoted value
+					has_attrs = true;
 					attributes[attr_name] = string_slice.call(
 						source,
 						value_start - base,
@@ -2466,6 +2472,7 @@ export class PFMParser {
 				}
 			} else {
 				// boolean attribute
+				has_attrs = true;
 				attributes[attr_name] = true;
 			}
 		}
@@ -2559,16 +2566,11 @@ export class PFMParser {
 		p += 3;
 		const content_start = p;
 
-		// scan for -->
-		while (p + 2 < length) {
-			if (
-				char_code_at.call(source, p - base) === DASH &&
-				char_code_at.call(source, p + 1 - base) === DASH &&
-				char_code_at.call(source, p + 2 - base) === CLOSE_ANGLE_BRACKET
-			) {
-				return { content_start, content_end: p, end: p + 3 };
-			}
-			p++;
+		// source runs to exactly source_end, so any match lies within it
+		const close = string_index_of.call(source, '-->', p - base);
+		if (close !== -1) {
+			const content_end = close + base;
+			return { content_start, content_end, end: content_end + 3 };
 		}
 
 		if (!this.finished) return false; // need more input
@@ -3326,12 +3328,9 @@ export class PFMParser {
 			return true;
 		}
 
-		if (
-			this.is_blank_line_after(this.cursor) ||
-			this.is_heading_start(this.cursor + 1) ||
-			this.is_thematic_break_start(this.cursor + 1) ||
-			this.lf_ends_inline(this.cursor)
-		) {
+		// lf_ends_inline's is_block_interrupt covers blank lines, headings and
+		// thematic breaks with the same end of buffer handling
+		if (this.lf_ends_inline(this.cursor)) {
 			this.states.pop();
 			this.emit_close(current_node, this.cursor);
 			this.out.set_value_end(current_node, this.cursor);
@@ -3687,7 +3686,7 @@ export class PFMParser {
 										current_node
 									);
 									this.out.attr(html_id, 'tag', blk_tag.tag);
-									if (Object.keys(blk_tag.attributes).length > 0) {
+									if (blk_tag.has_attrs) {
 										this.out.attr(html_id, 'attributes', blk_tag.attributes);
 									}
 									this.out.attr(html_id, 'self_closing', true);
@@ -3704,7 +3703,7 @@ export class PFMParser {
 										true
 									);
 									this.out.attr(html_id, 'tag', blk_tag.tag);
-									if (Object.keys(blk_tag.attributes).length > 0) {
+									if (blk_tag.has_attrs) {
 										this.out.attr(html_id, 'attributes', blk_tag.attributes);
 									}
 									this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
@@ -4683,7 +4682,7 @@ export class PFMParser {
 										current_node
 									);
 									this.out.attr(html_id, 'tag', open_tag.tag);
-									if (Object.keys(open_tag.attributes).length > 0) {
+									if (open_tag.has_attrs) {
 										this.out.attr(html_id, 'attributes', open_tag.attributes);
 									}
 									this.out.attr(html_id, 'self_closing', true);
@@ -4703,7 +4702,7 @@ export class PFMParser {
 										true
 									);
 									this.out.attr(html_id, 'tag', open_tag.tag);
-									if (Object.keys(open_tag.attributes).length > 0) {
+									if (open_tag.has_attrs) {
 										this.out.attr(html_id, 'attributes', open_tag.attributes);
 									}
 									this.html_tag_stack.push({ id: html_id, tag: open_tag.tag });
@@ -6585,7 +6584,7 @@ export class PFMParser {
 						current_node
 					);
 					this.out.attr(html_id, 'tag', blk_tag.tag);
-					if (Object.keys(blk_tag.attributes).length > 0) {
+					if (blk_tag.has_attrs) {
 						this.out.attr(html_id, 'attributes', blk_tag.attributes);
 					}
 					this.out.attr(html_id, 'self_closing', true);
@@ -6602,7 +6601,7 @@ export class PFMParser {
 						true
 					);
 					this.out.attr(html_id, 'tag', blk_tag.tag);
-					if (Object.keys(blk_tag.attributes).length > 0) {
+					if (blk_tag.has_attrs) {
 						this.out.attr(html_id, 'attributes', blk_tag.attributes);
 					}
 					this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
@@ -6845,7 +6844,7 @@ export class PFMParser {
 						current_node
 					);
 					this.out.attr(html_id, 'tag', blk_tag.tag);
-					if (Object.keys(blk_tag.attributes).length > 0) {
+					if (blk_tag.has_attrs) {
 						this.out.attr(html_id, 'attributes', blk_tag.attributes);
 					}
 					this.out.attr(html_id, 'self_closing', true);
@@ -6862,7 +6861,7 @@ export class PFMParser {
 						true
 					);
 					this.out.attr(html_id, 'tag', blk_tag.tag);
-					if (Object.keys(blk_tag.attributes).length > 0) {
+					if (blk_tag.has_attrs) {
 						this.out.attr(html_id, 'attributes', blk_tag.attributes);
 					}
 					this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
