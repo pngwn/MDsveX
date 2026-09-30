@@ -4880,7 +4880,23 @@ export class PFMParser {
 							this.node_stack.push(t_id);
 
 							this.states.push(StateKind.text);
-							this.cursor++;
+							// the text state would skip a plain run next, so skip it here and
+							// save the trip through the main loop. only a break char, nul or the
+							// end of the buffer is left for the text state to look at
+							let p = this.cursor + 1;
+							if (p < length) {
+								const c1 = char_code_at.call(source, p - base);
+								if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
+									const text_break = TEXT_BREAK;
+									p++;
+									while (p < length) {
+										const ch = char_code_at.call(source, p - base);
+										if (ch < 128 && text_break[ch] !== 0) break;
+										p++;
+									}
+								}
+							}
+							this.cursor = p;
 							continue;
 						}
 					}
@@ -5035,6 +5051,57 @@ export class PFMParser {
 						this.emit_close(current_node, this.cursor);
 						this.out.set_value_end(current_node, this.cursor);
 						this.node_stack.pop();
+						const states = this.states;
+						if (
+							code === LINEFEED &&
+							this.block_quote_depth === 0 &&
+							this.list_depth === 0 &&
+							states[states.length - 1] === StateKind.inline &&
+							(this.finished || this.can_decide_after_lf(this.cursor))
+						) {
+							// make inline's linefeed call here: an interrupting next line pops
+							// inline, anything else is its soft break, emitted here
+							if (this.lf_ends_inline(this.cursor)) {
+								states.pop();
+								continue;
+							}
+							const parent_id = this.node_stack[this.node_stack.length - 1];
+							const sb_id = this.emit_open(
+								NodeKind.soft_break,
+								this.cursor,
+								parent_id
+							);
+							this.emit_close(sb_id, this.cursor + 1);
+							let p = this.cursor + 1;
+							while (p < length && char_code_at.call(source, p - base) === SPACE) {
+								p++;
+							}
+							// a plain char next is where inline would open the next text
+							// node and skip its run, do that here too
+							if (p + 1 < length) {
+								const c0 = char_code_at.call(source, p - base);
+								const c1 = char_code_at.call(source, p + 1 - base);
+								if (
+									c0 !== 0 &&
+									(c0 >= 128 || TEXT_BREAK[c0] === 0) &&
+									c1 !== 0 &&
+									(c1 >= 128 || TEXT_BREAK[c1] === 0)
+								) {
+									const t_id = this.emit_open(NodeKind.text, p, parent_id);
+									this.out.set_value_start(t_id, p);
+									this.node_stack.push(t_id);
+									states.push(StateKind.text);
+									const text_break = TEXT_BREAK;
+									p += 2;
+									while (p < length) {
+										const ch = char_code_at.call(source, p - base);
+										if (ch < 128 && text_break[ch] !== 0) break;
+										p++;
+									}
+								}
+							}
+							this.cursor = p;
+						}
 						continue;
 					} else if (code === COLON) {
 						// only break text for inline directive: :letter...
