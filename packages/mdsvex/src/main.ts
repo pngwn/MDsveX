@@ -62,6 +62,24 @@ export interface CompileTraceResult {
 	map: SourceMapV3 | null;
 }
 
+// a one shot compile binds its own tree to a spare parser and renders with a
+// spare renderer, one taken while in use (a plugin that compiles) leaves null
+let spare_parser: PFMParser | null = null;
+let spare_renderer: CursorHTMLRenderer | null = null;
+
+function take_renderer(): CursorHTMLRenderer {
+	const renderer = spare_renderer;
+	if (renderer === null) return new CursorHTMLRenderer({ cache: false });
+	spare_renderer = null;
+	return renderer;
+}
+
+/** results hold no reference into the renderer, so it can serve the next compile */
+function give_renderer(renderer: CursorHTMLRenderer): void {
+	renderer.release();
+	spare_renderer = renderer;
+}
+
 function parse_once(source: string, plugins?: ParsePlugin[]): NodeBuffer {
 	let dispatcher: PluginDispatcher | undefined;
 	if (plugins && plugins.length > 0) {
@@ -76,8 +94,16 @@ function parse_once(source: string, plugins?: ParsePlugin[]): NodeBuffer {
 		len < 512 ? (len >> 2) + 16 : len >> 3,
 		dispatcher
 	);
-	const parser = new PFMParser(tree);
+	let parser = spare_parser;
+	if (parser === null) parser = new PFMParser(tree);
+	else {
+		spare_parser = null;
+		parser.bind(tree);
+	}
 	parser.parse(source);
+	// a throw above drops the parser, it may be half written
+	parser.release();
+	spare_parser = parser;
 
 	if (dispatcher) {
 		dispatcher.run_sequential(tree.get_buffer());
@@ -89,16 +115,20 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	// parser offsets index the normalized string, so render and plugins read it too
 	const source = normalize_newlines(raw);
 	const nodes = parse_once(source, options?.parsePlugins);
-	const renderer = new CursorHTMLRenderer({ cache: false });
+	const renderer = take_renderer();
 
 	if (options?.sourcemap) {
 		const result = renderer.update_mapped(nodes, source);
 		remap_to_raw(raw, result.mappings);
-		return { code: renderer.html, mappings: result.mappings };
+		const code = renderer.html;
+		give_renderer(renderer);
+		return { code, mappings: result.mappings };
 	}
 
 	renderer.update(nodes, source);
-	return { code: renderer.html };
+	const code = renderer.html;
+	give_renderer(renderer);
+	return { code };
 }
 
 function render_v3(
