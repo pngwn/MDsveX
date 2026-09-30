@@ -3962,8 +3962,7 @@ export class PFMParser {
 						}
 
 						case BACKTICK: {
-							this.states.push(StateKind.code_fence_start);
-							this.extra = 0;
+							this.start_fence(current_node);
 							continue;
 						}
 
@@ -6188,6 +6187,106 @@ export class PFMParser {
 
 	// cold states live outside _run to keep it under the turbofan bytecode size limit, true stops the main loop
 
+	/**
+	 * a backtick at a block start. a finished parse outside blockquotes takes a
+	 * whole fence (open, info string, content, closing run) in one call when its
+	 * info line ends inside the source with no nul char; everything else goes
+	 * through the code fence states.
+	 */
+	private start_fence(parent: number): void {
+		if (!this.finished || this.block_quote_depth > 0 || !this.fence_whole(parent)) {
+			this.states.push(StateKind.code_fence_start);
+			this.extra = 0;
+		}
+	}
+
+	private fence_whole(parent: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const start = this.cursor;
+		let p0 = start + 1;
+		while (p0 < length && char_code_at.call(source, p0 - base) === BACKTICK) p0++;
+		const fence_len = p0 - start;
+		if (fence_len < 3) return false;
+		const nl_rel = string_index_of.call(source, '\n', p0 - base);
+		if (nl_rel === -1) return false;
+		const info_end = nl_rel + base;
+		if (info_end + 1 >= length) return false;
+		for (let q = p0; q < info_end; q++) {
+			if (char_code_at.call(source, q - base) === 0) return false;
+		}
+
+		const out = this.out;
+		const cf_id = this.emit_open(NodeKind.code_fence, start, parent);
+		this.node_stack.push(cf_id);
+		this.extra = fence_len;
+		this.info_start_pos = p0;
+		this.info_end_pos = info_end;
+		out.attr(cf_id, 'info_start', p0);
+		out.attr(cf_id, 'info_end', info_end);
+		let line = info_end + 1;
+		out.set_value_start(cf_id, line);
+
+		// same closing fence scan as _run_code_fence_content
+		let found_index = -1;
+		for (;;) {
+			const rel = string_index_of.call(source, '`', line - base);
+			if (rel === -1) break;
+			const bt = rel + base;
+			if (bt > line) {
+				const lf = string_last_index_of.call(source, '\n', bt - 1 - base);
+				if (lf !== -1 && lf + base + 1 > line) line = lf + base + 1;
+			}
+			let lp = line;
+			while (lp < bt) {
+				const ch = char_code_at.call(source, lp - base);
+				if (ch !== SPACE && ch !== TAB) break;
+				lp++;
+			}
+			if (lp === bt) {
+				while (lp < length && char_code_at.call(source, lp - base) === BACKTICK)
+					lp++;
+				if (lp - bt >= fence_len) {
+					found_index = bt;
+					break;
+				}
+			}
+			const nl = string_index_of.call(source, '\n', lp - base);
+			if (nl === -1) break;
+			line = nl + base + 1;
+		}
+
+		this.class_floor = -1;
+		if (found_index === -1) {
+			out.set_value_end(cf_id, length);
+			this.emit_close(cf_id, length);
+			this.node_stack.pop();
+			this.cursor = length + 1;
+			return true;
+		}
+		out.set_value_end(cf_id, line - 1);
+		let end = found_index;
+		while (end < length && char_code_at.call(source, end - base) === BACKTICK)
+			end++;
+		const ch = end < length ? char_code_at.call(source, end - base) : -1;
+		if (ch === -1 || ch === LINEFEED) {
+			this.emit_close(cf_id, end);
+			this.node_stack.pop();
+			this.cursor = end + 1;
+			return true;
+		}
+		// trailing content after the closing run: the fence ends at the run,
+		// the rest of the line is skipped
+		let ep = end;
+		while (ep < length && char_code_at.call(source, ep - base) !== LINEFEED)
+			ep++;
+		this.emit_close(cf_id, end);
+		this.node_stack.pop();
+		this.cursor = ep;
+		return true;
+	}
+
 	private _run_code_fence_start(code: number, current_node: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
@@ -7123,8 +7222,7 @@ export class PFMParser {
 		}
 
 		if (code === BACKTICK) {
-			this.states.push(StateKind.code_fence_start);
-			this.extra = 0;
+			this.start_fence(current_node);
 			return false;
 		}
 
@@ -7386,8 +7484,7 @@ export class PFMParser {
 		}
 
 		if (code === BACKTICK) {
-			this.states.push(StateKind.code_fence_start);
-			this.extra = 0;
+			this.start_fence(current_node);
 			return false;
 		}
 
@@ -7599,8 +7696,7 @@ export class PFMParser {
 			}
 
 			case BACKTICK: {
-				this.states.push(StateKind.code_fence_start);
-				this.extra = 0;
+				this.start_fence(current_node);
 				return false;
 			}
 
@@ -8033,8 +8129,7 @@ export class PFMParser {
 			}
 
 			case BACKTICK: {
-				this.states.push(StateKind.code_fence_start);
-				this.extra = 0;
+				this.start_fence(current_node);
 				return false;
 			}
 
@@ -8355,8 +8450,7 @@ export class PFMParser {
 			}
 
 			case BACKTICK: {
-				this.states.push(StateKind.code_fence_start);
-				this.extra = 0;
+				this.start_fence(current_node);
 				return false;
 			}
 
