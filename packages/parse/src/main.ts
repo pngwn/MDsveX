@@ -3868,8 +3868,9 @@ export class PFMParser {
 		}
 
 		// lf_ends_inline's is_block_interrupt covers blank lines, headings and
-		// thematic breaks with the same end of buffer handling
-		if (this.lf_ends_inline(this.cursor)) {
+		// thematic breaks with the same end of buffer handling, a heading's
+		// inline pops at every linefeed
+		if (this.in_heading || this.lf_ends_inline(this.cursor)) {
 			this.states.pop();
 			this.emit_close(current_node, this.cursor);
 			this.out.set_value_end(current_node, this.cursor);
@@ -7184,7 +7185,14 @@ export class PFMParser {
 			return false;
 		}
 
-		if (code === LINEFEED && this.is_blank_line_after(this.cursor)) {
+		if (
+			code === LINEFEED &&
+			!this.finished &&
+			!this.can_decide_after_lf(this.cursor)
+		) {
+			return true;
+		}
+		if (code === LINEFEED && this.link_text_lf_ends(current_node)) {
 			// paragraph boundary - revoke link
 			this.out.revoke(current_node);
 			this.directive_text_pop(current_node);
@@ -7196,6 +7204,64 @@ export class PFMParser {
 		// dispatch inline content inside the link text
 		this.states.push(StateKind.inline);
 		return false;
+	}
+
+	/**
+	 * link text at a linefeed inline popped back to: true when the paragraph
+	 * ends there, else a block quote continuation is taken (soft break, markers
+	 * chomped, inline pushed), outside quotes it ends where inline would end
+	 */
+	private link_text_lf_ends(current_node: number): boolean {
+		if (this.block_quote_depth > 0) {
+			const stripped = this.skip_bq_markers(
+				this.cursor + 1,
+				this.block_quote_depth
+			);
+			if (
+				stripped === -1 ||
+				this.is_blank_at_pos(stripped) ||
+				this.is_heading_start(stripped) ||
+				this.is_thematic_break_start(stripped) ||
+				this.is_fence_start(stripped) ||
+				(this.list_depth > 0 && this.bq_list_marker(stripped))
+			) {
+				return true;
+			}
+			const sb = this.emit_open(NodeKind.soft_break, this.cursor, current_node);
+			this.emit_close(sb, this.cursor + 1);
+			this.chomp(stripped, true);
+			this.states.push(StateKind.inline);
+			return false;
+		}
+		return (
+			this.in_heading ||
+			this.is_blank_line_after(this.cursor) ||
+			this.lf_ends_inline(this.cursor)
+		);
+	}
+
+	private is_fence_start(pos: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		return (
+			pos + 2 < this.source_end &&
+			char_code_at.call(source, pos - base) === BACKTICK &&
+			char_code_at.call(source, pos + 1 - base) === BACKTICK &&
+			char_code_at.call(source, pos + 2 - base) === BACKTICK
+		);
+	}
+
+	/** a list marker on a marked continuation line inside a list in a quote */
+	private bq_list_marker(stripped: number): boolean {
+		const { columns: ind } = this.count_indent(stripped);
+		const marker_pos =
+			ind >= this.list_content_offset
+				? this.skip_columns(stripped, this.list_content_offset)
+				: stripped;
+		return (
+			marker_pos < this.source_end &&
+			this.try_parse_list_marker(marker_pos) !== null
+		);
 	}
 
 	private _run_html_element(code: number, current_node: number): boolean {
@@ -7239,7 +7305,20 @@ export class PFMParser {
 			}
 		}
 
-		if (code === LINEFEED && this.is_block_interrupt(this.cursor + 1)) {
+		// inline pops at | and linefeeds in table cells, the text state unwinds there
+		if (this.in_table && (code === PIPE || code === LINEFEED)) {
+			this.unwind_inline_for_table();
+			return false;
+		}
+
+		if (
+			code === LINEFEED &&
+			// inline pops at every linefeed in a heading and a block quote, a
+			// marked line is a block interrupt and an unmarked one ends the quote
+			(this.block_quote_depth > 0 ||
+				this.in_heading ||
+				this.is_block_interrupt(this.cursor + 1))
+		) {
 			// block interrupt after newline - close unclosed inline html element
 			if (
 				this.html_tag_stack.length > 0 &&
