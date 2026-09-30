@@ -354,6 +354,16 @@ describe('unclosed inline directive', () => {
 	}
 });
 
+describe('linefeed in link text at the end of a fed chunk', () => {
+	const inputs = ['[\n##b', '![\n##b', '*:x[\n#]', '[<b>\n#]', ':x[<b>\n#]#'];
+
+	for (const input of inputs) {
+		test(JSON.stringify(input), () => {
+			expect_incremental_matches(input);
+		});
+	}
+});
+
 describe('batch and incremental parity', () => {
 	const atoms = [
 		'*',

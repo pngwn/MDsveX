@@ -6329,6 +6329,7 @@ export class PFMParser {
 		}
 
 		if (code === LINEFEED) {
+			if (!this.finished && !this.can_decide_after_lf(this.cursor)) return true;
 			const resume = this.inline_lf_resume();
 			if (resume === -1) {
 				this.out.revoke(current_node);
@@ -6389,6 +6390,13 @@ export class PFMParser {
 			}
 		}
 
+		if (
+			code === LINEFEED &&
+			!this.finished &&
+			!this.can_decide_after_lf(this.cursor)
+		) {
+			return true;
+		}
 		// pop wherever inline pops at a linefeed or the two ping pong
 		if (
 			code === LINEFEED &&
