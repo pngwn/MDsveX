@@ -101,7 +101,7 @@ function parse_once(source: string, plugins?: ParsePlugin[]): NodeBuffer {
 		spare_parser = null;
 		parser.bind(tree);
 	}
-	parser.parse(source);
+	parser.parse_normalized(source);
 	// a throw above drops the parser, it may be half written
 	parser.release();
 	spare_parser = parser;
@@ -187,7 +187,7 @@ export class CompilerSession {
 		}
 		this.released = false;
 
-		this.parser!.parse(source);
+		this.parser!.parse_normalized(source);
 		return this.tree.get_buffer();
 	}
 

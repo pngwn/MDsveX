@@ -445,7 +445,15 @@ export class PFMParser {
 	 * init() + feed(source) + finish().
 	 */
 	parse(source: string): { errors: ErrorCollector } {
-		const src = normalize_newlines(source);
+		return this.parse_normalized(normalize_newlines(source));
+	}
+
+	/**
+	 * parse() for a source normalize_newlines already returned, so a caller
+	 * that keeps the normalized string does not scan the input for \r twice
+	 * @internal
+	 */
+	parse_normalized(src: string): { errors: ErrorCollector } {
 		const n = src.length;
 		// documents run well above 8 chars a node, so this rarely grows
 		this._init(n >> 3);
@@ -2293,7 +2301,12 @@ export class PFMParser {
 
 	/** opens once the open tag is whole so later feeds scan only new chars for the close tag */
 	private open_raw_text(
-		open_tag: { tag: string; attributes: object; end: number; has_attrs: boolean },
+		open_tag: {
+			tag: string;
+			attributes: object;
+			end: number;
+			has_attrs: boolean;
+		},
 		parent: number
 	): void {
 		const html_id = this.emit_open(NodeKind.html, this.cursor, parent);
@@ -2976,7 +2989,11 @@ export class PFMParser {
 		if (p >= length) return this.finished ? -1 : -2;
 		if (char_code_at.call(source, p - base) !== COLON) return -1;
 		p++;
-		const label = string_slice.call(source, label_start - base, label_end - base);
+		const label = string_slice.call(
+			source,
+			label_start - base,
+			label_end - base
+		);
 
 		// skip optional whitespace (including at most one line break)
 		let saw_newline = false;
@@ -8481,7 +8498,9 @@ export function parse_markdown_svelte(
 	let errors: ErrorCollector;
 	if (spare_parser_busy) {
 		// a plugin or emitter reentered parse, the spare holds the outer document
-		errors = new PFMParser(tree, options.tab_size).parse(source).errors;
+		errors = new PFMParser(tree, options.tab_size).parse_normalized(
+			source
+		).errors;
 	} else {
 		spare_parser_busy = true;
 		let keep = false;
@@ -8491,7 +8510,7 @@ export function parse_markdown_svelte(
 				spare_parser = new PFMParser(idle_tree);
 			}
 			spare_parser.bind(tree, options.tab_size);
-			errors = spare_parser.parse(source).errors;
+			errors = spare_parser.parse_normalized(source).errors;
 			keep = true;
 		} finally {
 			// a throw can leave the parser half written, so the next document gets a fresh one
