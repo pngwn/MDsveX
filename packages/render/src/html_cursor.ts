@@ -15,7 +15,7 @@ import { Cursor } from '@mdsvex/parse/cursor';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import { MapSink, record_data } from './mappings';
 import type { Mapping, MappingData } from './mappings';
-import { records_to_v3, reserve_trace } from './sourcemap';
+import { records_by_offset, records_to_v3, reserve_trace } from './sourcemap';
 import type { MapTrace, SourceMapV3 } from './sourcemap';
 
 export type { Mapping, CodeInformation, MappingData } from './mappings';
@@ -293,6 +293,33 @@ function emit_record(
 	}
 }
 
+/**
+ * a record of the mapped render, offsets in html characters: every span the
+ * render records covers at least one chunk, so none is dropped for its width
+ */
+function put_record(
+	sink: MapSink,
+	gen_start: number,
+	gen_end: number,
+	src_start: number,
+	src_end: number,
+	node_index: number,
+	code: number
+): void {
+	if (src_start !== Slot.NONE) {
+		let rec = sink.rec;
+		const p = sink.n;
+		if (p + Rec.SIZE > rec.length) rec = sink.grow();
+		rec[p] = gen_start;
+		rec[p + 1] = gen_end - gen_start;
+		rec[p + 2] = src_start;
+		rec[p + 3] = src_end > src_start ? src_end - src_start : 0;
+		rec[p + 4] = node_index;
+		rec[p + 5] = code;
+		sink.n = p + Rec.SIZE;
+	}
+}
+
 /** emit node span + open_syntax + close_syntax for a rendered node. */
 function _spans(
 	sink: MapSink,
@@ -306,14 +333,14 @@ function _spans(
 	const idx = c.index;
 	const s = c.start,
 		e = c.end;
-	emit_record(sink, pre, post, s, e, idx, preset << 2);
+	put_record(sink, pre, post, s, e, idx, preset << 2);
 	if (!sink.syntax) return;
 	const vs = c.value_start,
 		ve = c.value_end;
 	// value range is meaningful when ve > vs (same check as Cursor.text()).
 	// Uint32Array defaults to 0 for unset slots, so ve !== NONE is not enough.
 	const has_value = ve > vs;
-	emit_record(
+	put_record(
 		sink,
 		pre,
 		after_open,
@@ -322,7 +349,7 @@ function _spans(
 		idx,
 		Code.STRUCTURE_OPEN
 	);
-	emit_record(
+	put_record(
 		sink,
 		before_close,
 		post,
@@ -382,72 +409,79 @@ const INTERNAL_KEYS = new Set([
 	'src',
 ]);
 
+/** a metadata value as join wrote it, nullish is empty */
+function meta_str(v: unknown): string {
+	return v == null ? '' : typeof v === 'string' ? v : `${v}`;
+}
+
 /**
- * emit all non-internal metadata as html attributes.
- * keys already handled by the caller are passed in `skip`.
+ * all non-internal metadata as html attributes, keys already handled by the
+ * caller are passed in `skip`
  */
-function _attrs(c: Cursor, out: string[], skip?: Set<string>): void {
+function _attrs(c: Cursor, skip?: Set<string>): string {
 	const meta = c.meta();
-	if (!meta) return;
+	if (!meta) return '';
+	let s = '';
 	for (const key in meta) {
 		if (INTERNAL_KEYS.has(key)) continue;
 		if (skip !== undefined && skip.has(key)) continue;
 		const val = meta[key];
 		if (val === true) {
-			out.push(' ', key);
+			s += ' ' + key;
 		} else if (val !== false && val != null) {
 			if (typeof val === 'object' && (val as any).type === 'expression') {
-				out.push(' ', key, '={', (val as any).value, '}');
+				s += ' ' + key + '={' + meta_str((val as any).value) + '}';
 			} else {
-				out.push(' ', key, '="', escape_html(String(val)), '"');
+				s += ' ' + key + '="' + escape_html(String(val)) + '"';
 			}
 		}
 	}
+	return s;
 }
 
-/** with no attributes push the precomputed folded, the final join costs per chunk */
-function _open(
-	c: Cursor,
-	out: string[],
-	head: string,
-	folded: string,
-	end: string
-): void {
-	const n = out.length;
-	out.push(head);
-	_attrs(c, out);
-	if (out.length > n + 1) out.push(end);
-	else out[n] = folded;
+//  mapped renderer
+
+// the mapped render appends to one string and records generated offsets as
+// they happen, so there is no chunk array to join or offset table to build
+let mo = '';
+
+/** with no attributes append the precomputed folded */
+function _open(c: Cursor, head: string, folded: string, end: string): void {
+	const a = _attrs(c);
+	if (a.length !== 0) mo = mo + head + a + end;
+	else mo += folded;
 }
 
 const LINK_HANDLED = new Set(['href', 'title']);
 const IMAGE_HANDLED = new Set(['title']);
 
-//  renderer
-
 /** render children of the current cursor position, collecting escaped text and recursive node output. */
-function render_children(c: Cursor, out: string[], sink?: MapSink): void {
+function render_children(c: Cursor, sink?: MapSink): void {
 	if (!c.goto_first_child()) return;
 	do {
 		const k = c.kind;
 		if (k === K.TEXT) {
-			const vs = c.value_start,
-				ve = c.value_end;
-			if (sink && vs !== Slot.NONE && ve > vs) {
-				emit_record(
-					sink,
-					out.length,
-					out.length + 1,
-					vs,
-					ve,
-					c.index,
-					Code.TEXT_CONTENT
-				);
+			const t = escape_node_text(c);
+			if (sink) {
+				const vs = c.value_start,
+					ve = c.value_end;
+				if (vs !== Slot.NONE && ve > vs) {
+					const at = mo.length;
+					put_record(
+						sink,
+						at,
+						at + t.length,
+						vs,
+						ve,
+						c.index,
+						Code.TEXT_CONTENT
+					);
+				}
 			}
-			out.push(escape_node_text(c));
+			mo += t;
 		} else if (k !== K.LINE_BREAK) {
 			// line breaks render nothing, a fifth of visited nodes skip the call
-			render_node(c, out, sink);
+			render_node(c, sink);
 		}
 	} while (c.goto_next_sibling());
 	c.goto_parent();
@@ -468,22 +502,45 @@ function _children_raw(c: Cursor): string {
 	return text;
 }
 
+/** a content record over the text about to be appended at the end */
+function content_record(
+	sink: MapSink,
+	c: Cursor,
+	text: string,
+	code: number
+): void {
+	const at = mo.length;
+	put_record(
+		sink,
+		at,
+		at + text.length,
+		c.value_start,
+		c.value_end,
+		c.index,
+		code
+	);
+}
+
 /** render a single node at the current cursor position. */
-function render_node(c: Cursor, out: string[], sink?: MapSink): void {
+function render_node(c: Cursor, sink?: MapSink): void {
 	// as number, or the case labels narrow c.kind for the reads inside a case
 	switch (c.kind as number) {
 		case K.ROOT:
-			render_children(c, out, sink);
+			render_children(c, sink);
 			break;
 
 		case K.HEADING: {
-			const pre = out.length;
-			_open(c, out, H_TAG[c.extra], H_OPEN[c.extra], '>');
-			const ao = out.length;
-			render_children(c, out, sink);
-			const bc = out.length;
-			out.push(H_CLOSE[c.extra]);
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
+			const pre = mo.length;
+			// depths the parser never emits render as empty tags, as join wrote
+			// the missing entries
+			const e = c.extra;
+			const d = e >= 1 && e <= 6 ? e : 0;
+			_open(c, H_TAG[d], H_OPEN[d], '>');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += H_CLOSE[d];
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
 			break;
 		}
 
@@ -492,69 +549,57 @@ function render_node(c: Cursor, out: string[], sink?: MapSink): void {
 			// wrappers, render their children transparently until the list
 			// closes (commit keeps the wrapper, revoke drops it).
 			if (c.pending && c.parent_kind === K.LIST_ITEM) {
-				render_children(c, out, sink);
+				render_children(c, sink);
 			} else {
-				const pre = out.length;
-				_open(c, out, '<p', '<p>', '>');
-				const ao = out.length;
-				render_children(c, out, sink);
-				const bc = out.length;
-				out.push('</p>');
-				if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
+				const pre = mo.length;
+				_open(c, '<p', '<p>', '>');
+				const ao = mo.length;
+				render_children(c, sink);
+				const bc = mo.length;
+				mo += '</p>';
+				if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
 			}
 			break;
 
 		case K.EMPHASIS: {
-			const pre = out.length;
-			_open(c, out, '<em', '<em>', '>');
-			const ao = out.length;
-			render_children(c, out, sink);
-			const bc = out.length;
-			out.push('</em>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
+			const pre = mo.length;
+			_open(c, '<em', '<em>', '>');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '</em>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
 			break;
 		}
 
 		case K.STRONG: {
-			const pre = out.length;
-			_open(c, out, '<strong', '<strong>', '>');
-			const ao = out.length;
-			render_children(c, out, sink);
-			const bc = out.length;
-			out.push('</strong>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
+			const pre = mo.length;
+			_open(c, '<strong', '<strong>', '>');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '</strong>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
 			break;
 		}
 
 		case K.CODE_SPAN: {
-			const pre = out.length;
-			_open(c, out, '<code', '<code>', '>');
-			const ao = out.length;
-			if (sink) {
-				emit_record(
-					sink,
-					out.length,
-					out.length + 1,
-					c.value_start,
-					c.value_end,
-					c.index,
-					Code.CODE_CONTENT
-				);
-			}
-			const code = escape_node_text(c);
-			out.push(
-				string_index_of.call(code, '\n') === -1
-					? code
-					: code.replace(/\n/g, ' ')
-			);
-			const bc = out.length;
-			out.push('</code>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.CODE);
+			const pre = mo.length;
+			_open(c, '<code', '<code>', '>');
+			const ao = mo.length;
+			let code = escape_node_text(c);
+			if (string_index_of.call(code, '\n') !== -1)
+				code = code.replace(/\n/g, ' ');
+			if (sink) content_record(sink, c, code, Code.CODE_CONTENT);
+			mo += code;
+			const bc = mo.length;
+			mo += '</code>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.CODE);
 			break;
 		}
 
 		case K.CODE_FENCE: {
-			const pre = out.length;
+			const pre = mo.length;
 			const meta = c.meta();
 			// wire path: resolved 'info' string. treebuilder path: info_start/info_end byte offsets.
 			let info = meta?.info as string | undefined;
@@ -565,207 +610,214 @@ function render_node(c: Cursor, out: string[], sink?: MapSink): void {
 					info = c.slice(info_start, info_end);
 			}
 			if (info) {
-				out.push('<pre><code class="language-', escape_html(info));
-				_open(c, out, '"', '">', '>');
+				mo += '<pre><code class="language-' + escape_html(info);
+				_open(c, '"', '">', '>');
 			} else {
-				_open(c, out, '<pre><code', '<pre><code>', '>');
+				_open(c, '<pre><code', '<pre><code>', '>');
 			}
-			const ao = out.length;
-			if (sink) {
-				emit_record(
-					sink,
-					out.length,
-					out.length + 1,
-					c.value_start,
-					c.value_end,
-					c.index,
-					Code.CODE_CONTENT
-				);
-			}
-			out.push(escape_node_text(c));
-			const bc = out.length;
-			out.push('</code></pre>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.CODE);
+			const ao = mo.length;
+			const text = escape_node_text(c);
+			if (sink) content_record(sink, c, text, Code.CODE_CONTENT);
+			mo += text;
+			const bc = mo.length;
+			mo += '</code></pre>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.CODE);
 			break;
 		}
 
 		case K.BLOCK_QUOTE: {
-			const pre = out.length;
-			_open(c, out, '<blockquote', '<blockquote>\n', '>\n');
-			const ao = out.length;
-			render_children(c, out, sink);
-			const bc = out.length;
-			out.push('\n</blockquote>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
+			const pre = mo.length;
+			_open(c, '<blockquote', '<blockquote>\n', '>\n');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '\n</blockquote>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
 			break;
 		}
 
 		case K.LINK: {
-			const pre = out.length;
+			const pre = mo.length;
 			const meta = c.meta();
-			out.push('<a');
+			let s = '<a';
 			if (meta?.href)
-				out.push(' href="', escape_html(meta.href as string), '"');
+				s += ' href="' + escape_html(meta.href as string) + '"';
 			if (meta?.title)
-				out.push(' title="', escape_html(meta.title as string), '"');
-			_attrs(c, out, LINK_HANDLED);
-			out.push('>');
-			const ao = out.length;
-			render_children(c, out, sink);
-			const bc = out.length;
-			out.push('</a>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
+				s += ' title="' + escape_html(meta.title as string) + '"';
+			mo = mo + s + _attrs(c, LINK_HANDLED) + '>';
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '</a>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
 			break;
 		}
 
 		case K.IMAGE: {
-			const pre = out.length;
+			const pre = mo.length;
 			const meta = c.meta();
-			out.push('<img');
-			if (meta?.src) out.push(' src="', escape_html(meta.src as string), '"');
-			out.push(' alt="', escape_html(_children_raw(c)), '"');
+			let s = '<img';
+			if (meta?.src) s += ' src="' + escape_html(meta.src as string) + '"';
+			s += ' alt="' + escape_html(_children_raw(c)) + '"';
 			if (meta?.title)
-				out.push(' title="', escape_html(meta.title as string), '"');
-			_attrs(c, out, IMAGE_HANDLED);
-			out.push(' />');
-			if (sink) _spans(sink, pre, pre, out.length, out.length, c, Preset.TEXT);
+				s += ' title="' + escape_html(meta.title as string) + '"';
+			mo = mo + s + _attrs(c, IMAGE_HANDLED) + ' />';
+			// the syntax spans are empty, only the node is recorded
+			if (sink)
+				put_record(sink, pre, mo.length, c.start, c.end, c.index, 0);
 			break;
 		}
 
 		case K.LIST: {
-			const pre = out.length;
+			const pre = mo.length;
 			const meta = c.meta();
 			const ordered = !!meta?.ordered;
 			const start = meta?.start as number | undefined;
 			if (ordered && start != null && start !== 1) {
-				out.push('<ol start="', String(start));
-				_open(c, out, '"', '">\n', '>\n');
+				mo += '<ol start="' + String(start);
+				_open(c, '"', '">\n', '>\n');
 			} else if (ordered) {
-				_open(c, out, '<ol', '<ol>\n', '>\n');
+				_open(c, '<ol', '<ol>\n', '>\n');
 			} else {
-				_open(c, out, '<ul', '<ul>\n', '>\n');
+				_open(c, '<ul', '<ul>\n', '>\n');
 			}
-			const ao = out.length;
-			render_children(c, out, sink);
-			const bc = out.length;
-			out.push(ordered ? '\n</ol>' : '\n</ul>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.STRUCTURE);
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += ordered ? '\n</ol>' : '\n</ul>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.STRUCTURE);
 			break;
 		}
 
 		case K.LIST_ITEM: {
-			const pre = out.length;
-			_open(c, out, '<li', '<li>', '>');
-			const ao = out.length;
-			render_children(c, out, sink);
-			const bc = out.length;
-			out.push('</li>\n');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
+			const pre = mo.length;
+			_open(c, '<li', '<li>', '>');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '</li>\n';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
 			break;
 		}
 
 		case K.THEMATIC_BREAK: {
-			const pre = out.length;
-			out.push('<hr />');
-			if (sink)
-				_spans(
+			const pre = mo.length;
+			mo += '<hr />';
+			// node and open syntax, the close syntax span is empty
+			if (sink) {
+				const post = mo.length;
+				put_record(
 					sink,
 					pre,
-					out.length,
-					out.length,
-					out.length,
-					c,
-					Preset.STRUCTURE
+					post,
+					c.start,
+					c.end,
+					c.index,
+					Preset.STRUCTURE << 2
 				);
+				if (sink.syntax) {
+					const vs = c.value_start;
+					put_record(
+						sink,
+						pre,
+						post,
+						c.start,
+						c.value_end > vs ? vs : c.start,
+						c.index,
+						Code.STRUCTURE_OPEN
+					);
+				}
+			}
 			break;
 		}
 
 		case K.HARD_BREAK:
-			out.push('<br />\n');
+			mo += '<br />\n';
 			break;
 
 		case K.SOFT_BREAK:
-			out.push('\n');
+			mo += '\n';
 			break;
 
 		case K.STRIKETHROUGH: {
-			const pre = out.length;
-			_open(c, out, '<del', '<del>', '>');
-			const ao = out.length;
-			render_children(c, out, sink);
-			const bc = out.length;
-			out.push('</del>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
+			const pre = mo.length;
+			_open(c, '<del', '<del>', '>');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '</del>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
 			break;
 		}
 
 		case K.SUPERSCRIPT: {
-			const pre = out.length;
-			_open(c, out, '<sup', '<sup>', '>');
-			const ao = out.length;
-			render_children(c, out, sink);
-			const bc = out.length;
-			out.push('</sup>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
+			const pre = mo.length;
+			_open(c, '<sup', '<sup>', '>');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '</sup>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
 			break;
 		}
 
 		case K.SUBSCRIPT: {
-			const pre = out.length;
-			_open(c, out, '<sub', '<sub>', '>');
-			const ao = out.length;
-			render_children(c, out, sink);
-			const bc = out.length;
-			out.push('</sub>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
+			const pre = mo.length;
+			_open(c, '<sub', '<sub>', '>');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '</sub>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
 			break;
 		}
 
 		case K.HTML: {
-			const pre = out.length;
+			const pre = mo.length;
 			const meta = c.meta();
 			const tag = meta?.tag as string;
-			const html_attrs = meta?.attributes as
-				| Record<string, string | boolean>
-				| undefined;
 
-			out.push('<', tag);
-			if (html_attrs) {
-				for (const k in html_attrs) {
-					const v = html_attrs[k];
-					if (v === true) {
-						out.push(' ', k);
-					} else if (
-						typeof v === 'object' &&
-						(v as any).type === 'expression'
-					) {
-						out.push(' ', k, '={', (v as any).value, '}');
-					} else {
-						out.push(' ', k, '="', escape_html(v as string), '"');
+			// source passthrough: use exact source text to guarantee
+			// identity mapping. reconstruction can differ from the
+			// source (extra space before />, attribute escaping, quote
+			// style) which makes the mapping non-identity and breaks
+			// per-token precision in the PFM->Svelte->TS composition
+			// pipeline.
+			// falls back to reconstruction when source is unavailable
+			// (e.g. wire/streaming renderer with empty source).
+			const self_closing = !!meta?.self_closing;
+			const passthrough =
+				self_closing && c.end > c.start ? c.slice(c.start, c.end) : '';
+			if (passthrough) {
+				mo += passthrough;
+			} else {
+				let s = '<' + meta_str(tag);
+				const html_attrs = meta?.attributes as
+					| Record<string, string | boolean>
+					| undefined;
+				if (html_attrs) {
+					for (const k in html_attrs) {
+						const v = html_attrs[k];
+						if (v === true) {
+							s += ' ' + k;
+						} else if (
+							typeof v === 'object' &&
+							(v as any).type === 'expression'
+						) {
+							s += ' ' + k + '={' + meta_str((v as any).value) + '}';
+						} else {
+							s += ' ' + k + '="' + escape_html(v as string) + '"';
+						}
 					}
 				}
+				mo += self_closing ? s + ' />' : s + '>';
 			}
-			if (meta?.self_closing) {
-				// source passthrough: use exact source text to guarantee
-				// identity mapping. reconstruction can differ from the
-				// source (extra space before />, attribute escaping, quote
-				// style) which makes the mapping non-identity and breaks
-				// per-token precision in the PFM->Svelte->TS composition
-				// pipeline.
-				// falls back to reconstruction when source is unavailable
-				// (e.g. wire/streaming renderer with empty source).
-				const passthrough = c.end > c.start ? c.slice(c.start, c.end) : '';
-				if (passthrough) {
-					out.length = pre;
-					out.push(passthrough);
-				} else {
-					out.push(' />');
-				}
+			if (self_closing) {
 				if (sink) {
-					emit_record(
+					put_record(
 						sink,
 						pre,
-						out.length,
+						mo.length,
 						c.start,
 						c.end,
 						c.index,
@@ -773,180 +825,122 @@ function render_node(c: Cursor, out: string[], sink?: MapSink): void {
 					);
 				}
 			} else {
-				out.push('>');
-				const ao = out.length;
+				const ao = mo.length;
 				// raw-text elements: parser stores content as value range on
 				// the html node itself (no child nodes). emit unescaped, the
 				// browser does not parse script/style bodies as html.
 				if (tag === 'script' || tag === 'style') {
-					if (sink) {
-						emit_record(
-							sink,
-							out.length,
-							out.length + 1,
-							c.value_start,
-							c.value_end,
-							c.index,
-							Code.SVELTE_CONTENT
-						);
-					}
-					out.push(c.text());
+					const text = c.text();
+					if (sink) content_record(sink, c, text, Code.SVELTE_CONTENT);
+					mo += text;
 				} else {
-					render_children(c, out, sink);
+					render_children(c, sink);
 				}
-				const bc = out.length;
-				out.push('</', tag, '>');
-				if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
+				const bc = mo.length;
+				mo = mo + '</' + meta_str(tag) + '>';
+				if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
 			}
 			break;
 		}
 
 		case K.HTML_COMMENT: {
-			const pre = out.length;
-			out.push('<!--');
-			const ao = out.length;
-			if (sink) {
-				emit_record(
-					sink,
-					out.length,
-					out.length + 1,
-					c.value_start,
-					c.value_end,
-					c.index,
-					Code.TEXT_CONTENT
-				);
-			}
-			out.push(c.text());
-			const bc = out.length;
-			out.push('-->');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.TEXT);
+			const pre = mo.length;
+			mo += '<!--';
+			const ao = mo.length;
+			const text = c.text();
+			if (sink) content_record(sink, c, text, Code.TEXT_CONTENT);
+			mo += text;
+			const bc = mo.length;
+			mo += '-->';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
 			break;
 		}
 
 		case K.MUSTACHE: {
-			const pre = out.length;
-			out.push('{');
-			const ao = out.length;
-			if (sink) {
-				emit_record(
-					sink,
-					out.length,
-					out.length + 1,
-					c.value_start,
-					c.value_end,
-					c.index,
-					Code.SVELTE_CONTENT
-				);
-			}
-			out.push(c.text());
-			const bc = out.length;
-			out.push('}');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.SVELTE);
+			const pre = mo.length;
+			mo += '{';
+			const ao = mo.length;
+			const text = c.text();
+			if (sink) content_record(sink, c, text, Code.SVELTE_CONTENT);
+			mo += text;
+			const bc = mo.length;
+			mo += '}';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.SVELTE);
 			break;
 		}
 
 		case K.SVELTE_TAG: {
-			const pre = out.length;
+			const pre = mo.length;
 			const meta = c.meta();
 			const tag = meta?.tag as string;
 			const text = c.text();
-			out.push('{@', tag);
-			if (text) out.push(' ');
-			const ao = out.length;
-			if (text && sink) {
-				emit_record(
-					sink,
-					out.length,
-					out.length + 1,
-					c.value_start,
-					c.value_end,
-					c.index,
-					Code.SVELTE_CONTENT
-				);
+			mo = mo + '{@' + meta_str(tag);
+			if (text) mo += ' ';
+			const ao = mo.length;
+			if (text) {
+				if (sink) content_record(sink, c, text, Code.SVELTE_CONTENT);
+				mo += text;
 			}
-			if (text) out.push(text);
-			const bc = out.length;
-			out.push('}');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.SVELTE);
+			const bc = mo.length;
+			mo += '}';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.SVELTE);
 			break;
 		}
 
 		case K.SVELTE_BLOCK: {
-			const pre = out.length;
+			const pre = mo.length;
 			// render branches; each branch handles its own opening tag
 			const block_meta = c.meta();
-			const block_tag = block_meta?.tag as string;
+			const block_tag = meta_str(block_meta?.tag);
 			if (c.goto_first_child()) {
 				let is_first = true;
 				do {
 					if (c.kind === K.SVELTE_BRANCH) {
-						const branch_meta = c.meta();
-						const branch_tag = branch_meta?.tag as string;
 						const branch_expr = c.text();
 						if (is_first) {
-							out.push('{#', block_tag);
-							if (branch_expr) {
-								out.push(' ');
-								if (sink) {
-									emit_record(
-										sink,
-										out.length,
-										out.length + 1,
-										c.value_start,
-										c.value_end,
-										c.index,
-										Code.SVELTE_CONTENT
-									);
-								}
-								out.push(branch_expr);
-							}
-							out.push('}\n');
+							mo = mo + '{#' + block_tag;
 							is_first = false;
 						} else {
-							out.push('{:', branch_tag);
-							if (branch_expr) {
-								out.push(' ');
-								if (sink) {
-									emit_record(
-										sink,
-										out.length,
-										out.length + 1,
-										c.value_start,
-										c.value_end,
-										c.index,
-										Code.SVELTE_CONTENT
-									);
-								}
-								out.push(branch_expr);
-							}
-							out.push('}\n');
+							mo = mo + '{:' + meta_str(c.meta()?.tag);
 						}
-						render_children(c, out, sink);
+						if (branch_expr) {
+							mo += ' ';
+							if (sink)
+								content_record(sink, c, branch_expr, Code.SVELTE_CONTENT);
+							mo += branch_expr;
+						}
+						mo += '}\n';
+						render_children(c, sink);
 					} else if (c.kind !== K.LINE_BREAK) {
-						render_node(c, out, sink);
+						render_node(c, sink);
 					}
 				} while (c.goto_next_sibling());
 				c.goto_parent();
 			}
-			out.push('{/', block_tag, '}');
+			mo = mo + '{/' + block_tag + '}';
 			// node span for the whole block, use the block node (goto_parent already called)
 			if (sink) {
-				const idx = c.index;
-				const s = c.start,
-					e = c.end;
-				emit_record(sink, pre, out.length, s, e, idx, Code.SVELTE_NODE);
+				put_record(
+					sink,
+					pre,
+					mo.length,
+					c.start,
+					c.end,
+					c.index,
+					Code.SVELTE_NODE
+				);
 			}
 			break;
 		}
 
 		case K.TABLE: {
-			const pre = out.length;
-			_open(c, out, '<table', '<table>\n', '>\n');
-			const ao = out.length;
-			_table_content(c, out, sink);
-			const bc = out.length;
-			out.push('\n</table>');
-			if (sink) _spans(sink, pre, ao, bc, out.length, c, Preset.STRUCTURE);
+			const pre = mo.length;
+			_open(c, '<table', '<table>\n', '>\n');
+			const ao = mo.length;
+			_table_content(c, sink);
+			const bc = mo.length;
+			mo += '\n</table>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.STRUCTURE);
 			break;
 		}
 
@@ -954,12 +948,12 @@ function render_node(c: Cursor, out: string[], sink?: MapSink): void {
 			break;
 
 		default:
-			render_children(c, out, sink);
+			render_children(c, sink);
 			break;
 	}
 }
 
-function _table_content(c: Cursor, out: string[], sink?: MapSink): void {
+function _table_content(c: Cursor, sink?: MapSink): void {
 	const meta = c.meta();
 	const alignments = (meta?.alignments as string[]) ?? [];
 	let in_body = false;
@@ -967,25 +961,25 @@ function _table_content(c: Cursor, out: string[], sink?: MapSink): void {
 	if (!c.goto_first_child()) return;
 	do {
 		if (c.kind === K.TABLE_HEADER) {
-			out.push('<thead>\n<tr>\n');
-			_table_cells(c, 'th', alignments, out, sink);
-			out.push('</tr>\n</thead>\n');
+			mo += '<thead>\n<tr>\n';
+			_table_cells(c, 'th', alignments, sink);
+			mo += '</tr>\n</thead>\n';
 		} else if (c.kind === K.TABLE_ROW) {
 			if (!in_body) {
-				out.push('<tbody>\n');
+				mo += '<tbody>\n';
 				in_body = true;
 			}
-			out.push('<tr>\n');
-			_table_cells(c, 'td', alignments, out, sink);
-			out.push('</tr>\n');
+			mo += '<tr>\n';
+			_table_cells(c, 'td', alignments, sink);
+			mo += '</tr>\n';
 		}
 	} while (c.goto_next_sibling());
 	c.goto_parent();
 
-	if (in_body) out.push('</tbody>');
+	if (in_body) mo += '</tbody>';
 }
 
-/** open tags for none, left, center and right, one chunk each */
+/** open tags for none, left, center and right */
 function _cell_opens(tag: string): string[] {
 	return [
 		`<${tag}>`,
@@ -1001,7 +995,6 @@ function _table_cells(
 	c: Cursor,
 	tag: string,
 	alignments: string[],
-	out: string[],
 	sink?: MapSink
 ): void {
 	const opens = tag === 'th' ? TH_OPEN : TD_OPEN;
@@ -1012,13 +1005,13 @@ function _table_cells(
 		if (c.kind === K.TABLE_CELL) {
 			const align = alignments[col];
 			// the parser only emits these four values, others are built at runtime
-			if (align === 'left') out.push(opens[1]);
-			else if (align === 'center') out.push(opens[2]);
-			else if (align === 'right') out.push(opens[3]);
-			else if (align && align !== 'none') out.push(`<${tag} align="${align}">`);
-			else out.push(opens[0]);
-			render_children(c, out, sink);
-			out.push(close);
+			if (align === 'left') mo += opens[1];
+			else if (align === 'center') mo += opens[2];
+			else if (align === 'right') mo += opens[3];
+			else if (align && align !== 'none') mo += `<${tag} align="${align}">`;
+			else mo += opens[0];
+			render_children(c, sink);
+			mo += close;
 			col++;
 		}
 	} while (c.goto_next_sibling());
@@ -1667,46 +1660,39 @@ function out_offsets(out: string[], scratch?: Uint32Array): Uint32Array {
 	return offsets;
 }
 
+/** a sink filled by out chunk index, as a sink of generated offsets */
+function by_offset(sink: MapSink, out: string[]): MapSink {
+	const copy = new MapSink();
+	copy.syntax = sink.syntax;
+	copy.rec = records_by_offset(sink.rec, sink.n, out_offsets(out));
+	copy.n = sink.n;
+	return copy;
+}
+
 /** a short record run is copied by hand since a subarray view costs more */
-function capture_trace(sink: MapSink, out: string[]): MapTrace {
+function capture_trace(sink: MapSink): MapTrace {
 	const n = sink.n;
-	const count = out.length;
-	const trace = reserve_trace(n, count + 1);
+	const trace = reserve_trace(n, 0);
 	const buf = trace.buf;
 	const start = trace.start;
 	const rec = sink.rec;
 	if (n > 64) buf.set(rec.subarray(0, n), start);
 	else for (let i = 0; i < n; i++) buf[start + i] = rec[i];
-	let p = trace.split;
-	let at = 0;
-	buf[p] = 0;
-	for (let i = 0; i < count; i++) {
-		// see out_offsets for the concat
-		at += (out[i] + '').length;
-		buf[++p] = at;
-	}
 	return trace;
 }
 
-function resolve_mappings(
-	out: string[],
-	sink: MapSink,
-	scratch?: Uint32Array
-): Mapping<MappingData>[] {
-	const offsets = out_offsets(out, scratch);
+function resolve_mappings(sink: MapSink): Mapping<MappingData>[] {
 	const rec = sink.rec;
 	const n = sink.n;
 	const mappings: Mapping<MappingData>[] = [];
 	// an imported binding is a module cell, read it once rather than per record
 	const data_of = record_data;
 	for (let p = 0; p < n; p += Rec.SIZE) {
-		const out_idx = rec[p];
 		const source_length = rec[p + 3];
-		const gen_offset = offsets[out_idx];
-		const gen_length = offsets[out_idx + rec[p + 1]] - gen_offset;
+		const gen_length = rec[p + 1];
 		const m: Mapping<MappingData> = {
 			sourceOffsets: [rec[p + 2]],
-			generatedOffsets: [gen_offset],
+			generatedOffsets: [rec[p]],
 			lengths: [source_length],
 			data: data_of(rec[p + 5], rec[p + 4] | 0),
 		};
@@ -1737,21 +1723,18 @@ function rank_of(collapsed: readonly number[], offset: number): number {
  * \r, any other piece widens its source length over the \r
  */
 function resolve_raw_mappings(
-	out: string[],
 	sink: MapSink,
 	collapsed: readonly number[]
 ): Mapping<MappingData>[] {
-	const offsets = out_offsets(out);
 	const rec = sink.rec;
 	const n = sink.n;
 	const count = collapsed.length;
 	const mappings: Mapping<MappingData>[] = [];
 	const data_of = record_data;
 	for (let p = 0; p < n; p += Rec.SIZE) {
-		const out_idx = rec[p];
 		const source_length = rec[p + 3];
-		const gen_offset = offsets[out_idx];
-		const gen_length = offsets[out_idx + rec[p + 1]] - gen_offset;
+		const gen_offset = rec[p];
+		const gen_length = rec[p + 1];
 		let start = rec[p + 2];
 		const end = start + source_length;
 		const identity = gen_length === source_length;
@@ -1810,8 +1793,19 @@ export const _emit = emit_record;
 export const _children = render_children;
 export const _node = render_node;
 export const _out_offsets = out_offsets;
-export const _capture_trace = capture_trace;
-export const _resolve_mappings = resolve_mappings;
+
+/** @internal the trace of a sink filled by out chunk index */
+export function _capture_trace(sink: MapSink, out: string[]): MapTrace {
+	return capture_trace(by_offset(sink, out));
+}
+
+/** @internal the mappings of a sink filled by out chunk index */
+export function _resolve_mappings(
+	out: string[],
+	sink: MapSink
+): Mapping<MappingData>[] {
+	return resolve_mappings(by_offset(sink, out));
+}
 
 // mapped renders resolve their records before they return, so every
 // renderer shares one sink
@@ -1860,6 +1854,7 @@ export class CursorHTMLRenderer {
 	private closed: Set<number> | null = null;
 	private cursor: Cursor | null = null;
 	private cache: boolean;
+	/** unused since mapped renders append to one string, always empty */
 	private out: string[] = [];
 
 	constructor(opts?: { cache?: boolean }) {
@@ -1880,9 +1875,6 @@ export class CursorHTMLRenderer {
 
 		// no caching, single-pass full render
 		if (!this.cache) {
-			// a mapped render may have left chunks, drop them so they hold no document
-			const out = this.out;
-			if (out.length !== 0) out.length = 0;
 			prebuilt_begin(buf);
 			try {
 				this.html = render_folded(c);
@@ -1928,16 +1920,20 @@ export class CursorHTMLRenderer {
 		c.reset();
 		esc_reset(source);
 
-		const out = this.out;
-		if (out.length !== 0) out.length = 0;
+		mo = '';
 		prebuilt_begin(buf);
 		try {
-			render_node(c, out, sink);
+			render_node(c, sink);
 		} finally {
 			esc_prebuilt = true;
 			esc_bits = null;
 		}
-		this.html = out.join('');
+		// the module string would keep the document alive
+		const html = mo;
+		mo = '';
+		// flat, so every later read of the html pays no rope walk
+		if (html.length !== 0) flat_sink[0] = html.charCodeAt(0);
+		this.html = html;
 	}
 
 	/**
@@ -1955,8 +1951,8 @@ export class CursorHTMLRenderer {
 		this.render_mapped(buf, source, sink);
 		const mappings =
 			collapsed == null || collapsed.length === 0
-				? resolve_mappings(this.out, sink)
-				: resolve_raw_mappings(this.out, sink, collapsed);
+				? resolve_mappings(sink)
+				: resolve_raw_mappings(sink, collapsed);
 		sink.release();
 		return { blocks: this.blocks, mappings };
 	}
@@ -1976,7 +1972,7 @@ export class CursorHTMLRenderer {
 		this.render_mapped(buf, source, sink);
 		const map = records_to_v3(
 			sink,
-			out_offsets(this.out),
+			null,
 			raw,
 			this.html,
 			file
@@ -1990,7 +1986,7 @@ export class CursorHTMLRenderer {
 		const sink = render_sink;
 		sink.begin(false);
 		this.render_mapped(buf, source, sink);
-		const trace = capture_trace(sink, this.out);
+		const trace = capture_trace(sink);
 		sink.release();
 		return trace;
 	}
@@ -2004,7 +2000,6 @@ export class CursorHTMLRenderer {
 	/** drop every reference to the last render so a kept renderer holds no document */
 	release(): void {
 		// length stores and clear are runtime calls even when empty
-		if (this.out.length !== 0) this.out.length = 0;
 		this.html = '';
 		if (this.blocks.length !== 0) this.blocks.length = 0;
 		const closed = this.closed;

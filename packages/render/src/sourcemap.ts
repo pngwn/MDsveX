@@ -224,9 +224,7 @@ function collect_char_spans(mappings: Mapping<MappingData>[]): void {
 function collect_record_spans(
 	rec: Uint32Array,
 	start: number,
-	end: number,
-	offsets: Uint32Array,
-	base: number
+	end: number
 ): void {
 	// at most one span per record
 	const most = (end - start) / Rec.SIZE;
@@ -238,12 +236,11 @@ function collect_record_spans(
 	for (let p = start; p < end; p += Rec.SIZE) {
 		const role = rec[p + 5] & 3;
 		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
-		const out_idx = base + rec[p];
-		const g = offsets[out_idx];
+		const g = rec[p];
 		let l = 1;
 		if (role === Role.CONTENT) {
 			const source_length = rec[p + 3];
-			if (offsets[out_idx + rec[p + 1]] - g === source_length) {
+			if (rec[p + 1] === source_length) {
 				if (source_length === 0) continue;
 				l = source_length;
 			}
@@ -259,22 +256,16 @@ function collect_record_spans(
 function collect_record_char_spans(
 	rec: Uint32Array,
 	start: number,
-	end: number,
-	offsets: Uint32Array,
-	base: number
+	end: number
 ): void {
 	span_count = 0;
 	for (let p = start; p < end; p += Rec.SIZE) {
 		const role = rec[p + 5] & 3;
 		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
-		const out_idx = base + rec[p];
-		const g = offsets[out_idx];
+		const g = rec[p];
 		const s = rec[p + 2];
 		const source_length = rec[p + 3];
-		if (
-			role === Role.CONTENT &&
-			offsets[out_idx + rec[p + 1]] - g === source_length
-		) {
+		if (role === Role.CONTENT && rec[p + 1] === source_length) {
 			for (let d = 0; d < source_length; d++) push_span(g + d, s + d, 1);
 		} else {
 			push_span(g, s, 1);
@@ -357,16 +348,42 @@ export function mappings_to_v3(
 /** @internal equals mappings_to_v3 over the Mapping objects the records resolve to */
 export function records_to_v3(
 	sink: MapSink,
-	offsets: Uint32Array,
+	offsets: Uint32Array | null,
 	source: string,
 	generated: string,
 	file?: string
 ): SourceMapV3 {
-	const encoded =
-		sink.n === 0
-			? ''
-			: encode_records(sink.rec, 0, sink.n, offsets, 0, source, generated);
+	const n = sink.n;
+	let encoded = '';
+	if (n !== 0) {
+		const rec =
+			offsets === null ? sink.rec : records_by_offset(sink.rec, n, offsets);
+		encoded = encode_records(rec, 0, n, source, generated);
+	}
 	return v3_map(encoded, source, file);
+}
+
+/**
+ * records whose generated start and length count out chunks, as records of
+ * generated offsets, offsets holding each chunk's offset then the end
+ * @internal
+ */
+export function records_by_offset(
+	rec: Uint32Array,
+	n: number,
+	offsets: Uint32Array
+): Uint32Array {
+	const copy = new Uint32Array(n > 0 ? n : Rec.SIZE);
+	for (let p = 0; p < n; p += Rec.SIZE) {
+		const g = offsets[rec[p]];
+		copy[p] = g;
+		copy[p + 1] = offsets[rec[p] + rec[p + 1]] - g;
+		copy[p + 2] = rec[p + 2];
+		copy[p + 3] = rec[p + 3];
+		copy[p + 4] = rec[p + 4];
+		copy[p + 5] = rec[p + 5];
+	}
+	return copy;
 }
 
 export function map_basename(file?: string): string {
@@ -463,23 +480,21 @@ function encode_mappings(
 	return encode_spans();
 }
 
-/** offsets from base hold the generated offset of each out chunk */
+/** records hold generated offsets and lengths */
 function encode_records(
 	rec: Uint32Array,
 	start: number,
 	end: number,
-	offsets: Uint32Array,
-	base: number,
 	source: string,
 	generated: string
 ): string {
 	fill_line_starts(src_table, source);
 	fill_line_starts(gen_table, generated);
 
-	collect_record_spans(rec, start, end, offsets, base);
+	collect_record_spans(rec, start, end);
 	sort_spans();
 	if (runs_overlap()) {
-		collect_record_char_spans(rec, start, end, offsets, base);
+		collect_record_char_spans(rec, start, end);
 		sort_spans();
 	}
 	return encode_spans();
@@ -585,7 +600,7 @@ function encode_spans(): string {
 
 /**
  * a render copied out of the shared buffers to build its map later, records
- * from start to split then out chunk offsets to end, buf may hold other traces
+ * of generated offsets from start to split, buf may hold other traces
  */
 export interface MapTrace {
 	buf: Uint32Array;
@@ -642,7 +657,7 @@ export function trace_to_v3(
 	const encoded =
 		split === start
 			? ''
-			: encode_records(buf, start, split, buf, split, source, generated);
+			: encode_records(buf, start, split, source, generated);
 	return v3_map(encoded, source, file);
 }
 
@@ -728,14 +743,10 @@ function decode_lines(
 	for (let p = start; p < split; p += Rec.SIZE) {
 		const role = buf[p + 5] & 3;
 		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
-		const out_idx = split + buf[p];
-		const g = buf[out_idx];
+		const g = buf[p];
 		const s = buf[p + 2];
 		const source_length = buf[p + 3];
-		if (
-			role === Role.CONTENT &&
-			buf[out_idx + buf[p + 1]] - g === source_length
-		) {
+		if (role === Role.CONTENT && buf[p + 1] === source_length) {
 			// a run can cross lines
 			const end = g + source_length;
 			let at = g;
@@ -985,14 +996,10 @@ function trace_lines(
 	for (let p = start; p < split; p += Rec.SIZE) {
 		const role = buf[p + 5] & 3;
 		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
-		const out_idx = split + buf[p];
-		const g = buf[out_idx];
+		const g = buf[p];
 		const s = buf[p + 2];
 		const source_length = buf[p + 3];
-		if (
-			role === Role.CONTENT &&
-			buf[out_idx + buf[p + 1]] - g === source_length
-		) {
+		if (role === Role.CONTENT && buf[p + 1] === source_length) {
 			const end = g + source_length;
 			let at = g;
 			while (at < end) {
