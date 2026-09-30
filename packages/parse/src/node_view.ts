@@ -112,6 +112,12 @@ export class ViewCache {
 		if (this.views !== null) this.views.clear();
 	}
 
+	/** views made from here on read this buffer and text source */
+	rebind(buf: NodeBuffer, text_source: TextSource): void {
+		this.buf = buf;
+		this.text_source = text_source;
+	}
+
 	/** update the handler node (for re-use across dispatches). */
 	set_handler_node(handler_node: number): void {
 		this.handler_node = handler_node;

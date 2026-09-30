@@ -455,12 +455,29 @@ export class PluginDispatcher {
 
 	private next_synthetic_id = SYNTHETIC_ID_BASE;
 
+	/** one cache serves every dispatch, a view only holds an index */
+	private cache: ViewCache | null = null;
+
 	constructor(plugins: ParsePlugin[], text_source: TextSource) {
 		const reg = registration_for(plugins);
 		this.fused = reg.fused;
 		this.has_handler = reg.has_handler;
 		this.sequential = reg.sequential;
 		this.text_source = text_source;
+	}
+
+	/**
+	 * the view cache for one dispatch, emptied first since a callback's view
+	 * may have navigated through it since the last dispatch
+	 */
+	private views(buf: NodeBuffer): ViewCache {
+		const cache = this.cache;
+		if (cache === null) {
+			return (this.cache = new ViewCache(buf, this.text_source, this.undo, 0));
+		}
+		cache.clear();
+		cache.rebind(buf, this.text_source);
+		return cache;
 	}
 
 	/** check whether any fused handlers exist for this kind. */
@@ -510,7 +527,7 @@ export class PluginDispatcher {
 		buf: NodeBuffer,
 		id_register: IdRegister
 	): void {
-		const cache = new ViewCache(buf, this.text_source, this.undo, buf_idx);
+		const cache = this.views(buf);
 		const view = cache.get(buf_idx)!;
 
 		this.undo.set_active_node(buf_idx);
@@ -558,7 +575,6 @@ export class PluginDispatcher {
 		// callbacks cannot change a node's pending flag
 		const pending = buf.pending_at(buf_idx) !== 0;
 		if (cbs) {
-			const cache = new ViewCache(buf, this.text_source, this.undo, buf_idx);
 			// a node no longer pending commits right after its callbacks, so
 			// anything they recorded would be dropped unread
 			if (pending) this.undo.set_active_node(buf_idx);
@@ -566,7 +582,6 @@ export class PluginDispatcher {
 				cbs[i]();
 			}
 			this.undo.clear_active_node();
-			cache.clear();
 		}
 
 		// only commit if the node is no longer pending.
@@ -636,8 +651,6 @@ export class PluginDispatcher {
 			// a pass with no handler visits nothing and fires nothing
 			if (!any) continue;
 			const close_store = new CloseCallbackStore();
-			const text_source = this.text_source;
-			const undo = this.undo;
 			const ctx = this.ctx;
 
 			// depth first, pre order opens and post order closes, the words are read once so a handler
@@ -661,7 +674,7 @@ export class PluginDispatcher {
 			while (true) {
 				const handler = handlers[n[idx * NodeField.stride] & 0xff];
 				if (handler != null) {
-					const cache = new ViewCache(buf, text_source, undo, idx);
+					const cache = this.views(buf);
 					const view = cache.get(idx)!;
 					// the tree is complete, nothing revokes a sequential write, so
 					// none is recorded (no active node)
