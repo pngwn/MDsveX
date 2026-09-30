@@ -3680,9 +3680,29 @@ export class PFMParser {
 					ch = char_code_at.call(source, p - base);
 				}
 			} else if (mode === BM_STR) {
-				while (ch !== quote && ch !== BACKSLASH) {
-					if (++p >= length) break scan;
-					ch = char_code_at.call(source, p - base);
+				if (ch !== quote && ch !== BACKSLASH) {
+					// jump between quotes, one after an odd run of backslashes is escaped. a run
+					// of backslashes at the end of the input leaves the escape state for the next chunk
+					const r = p - base;
+					const end = length - base;
+					let s = r;
+					for (;;) {
+						let q = string_index_of.call(source, quote === QUOTE ? '"' : "'", s);
+						if (q === -1 || q >= end) q = end;
+						let k = q;
+						while (k > r && char_code_at.call(source, k - 1) === BACKSLASH) k--;
+						if (q === end) {
+							p = length;
+							if (((q - k) & 1) !== 0) mode = BM_STR_ESC;
+							break scan;
+						}
+						if (((q - k) & 1) === 0) {
+							p = q + base;
+							ch = quote;
+							break;
+						}
+						s = q + 1;
+					}
 				}
 			} else if (mode === BM_LINE) {
 				const nl = string_index_of.call(source, '\n', p - base);
