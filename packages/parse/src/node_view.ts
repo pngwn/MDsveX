@@ -57,7 +57,9 @@ export class WireTextSource implements TextSource {
  * short-lived: created before handler invocation, cleared after.
  */
 export class ViewCache {
-	private views: Map<number, NodeView> = new Map();
+	// most dispatches only view the handler node, so the map waits for a second view
+	private first: NodeView | null = null;
+	private views: Map<number, NodeView> | null = null;
 	private buf: NodeBuffer;
 	private text_source: TextSource;
 	private undo: UndoLog;
@@ -78,24 +80,36 @@ export class ViewCache {
 	/** get or create a NodeView for the given buffer index. */
 	get(index: number): NodeView | null {
 		if (index === NONE) return null;
-		let view = this.views.get(index);
+		const first = this.first;
+		if (first === null) {
+			return (this.first = this.make(index));
+		}
+		if (first._index === index) return first;
+		let views = this.views;
+		if (views === null) views = this.views = new Map();
+		let view = views.get(index);
 		if (view === undefined) {
-			view = new NodeView(
-				index,
-				this.buf,
-				this.text_source,
-				this,
-				this.undo,
-				this.handler_node
-			);
-			this.views.set(index, view);
+			view = this.make(index);
+			views.set(index, view);
 		}
 		return view;
 	}
 
+	private make(index: number): NodeView {
+		return new NodeView(
+			index,
+			this.buf,
+			this.text_source,
+			this,
+			this.undo,
+			this.handler_node
+		);
+	}
+
 	/** discard all cached views. */
 	clear(): void {
-		this.views.clear();
+		this.first = null;
+		if (this.views !== null) this.views.clear();
 	}
 
 	/** update the handler node (for re-use across dispatches). */

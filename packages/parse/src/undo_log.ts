@@ -282,7 +282,12 @@ export class UndoLog {
 	 * commit a node, discard its undo log, making mutations permanent.
 	 */
 	commit(handler_node: number): void {
-		this.logs.delete(handler_node);
+		if (this.logs.size !== 0) this.logs.delete(handler_node);
+	}
+
+	/** true when no node holds a mutation that a revoke would undo */
+	get empty(): boolean {
+		return this.logs.size === 0;
 	}
 
 	/** check whether a node has any recorded mutations. */
@@ -292,6 +297,7 @@ export class UndoLog {
 
 	/** get undo entries for a node (for redirect detection). */
 	get_entries(handler_node: number): UndoEntry[] | undefined {
+		if (this.logs.size === 0) return undefined;
 		return this.logs.get(handler_node);
 	}
 

@@ -196,35 +196,42 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
  */
 class CloseCallbackStore {
 	private store: ((() => void)[] | undefined)[] = [];
+	// entries still set, most nodes close with none so the lookup is skipped
+	live = 0;
 
 	set(idx: number, callbacks: (() => void)[]): void {
+		if (this.store[idx] === undefined) this.live++;
 		this.store[idx] = callbacks;
 	}
 
 	/** take close callbacks for a node, removing the entry. returns undefined if none. */
 	take(idx: number): (() => void)[] | undefined {
+		if (this.live === 0) return undefined;
 		const cbs = this.store[idx];
-		if (cbs !== undefined) this.store[idx] = undefined;
+		if (cbs !== undefined) {
+			this.store[idx] = undefined;
+			this.live--;
+		}
 		return cbs;
 	}
 
 	/** fire close callbacks for a node, removing the entry. */
 	fire(idx: number): void {
-		const cbs = this.store[idx];
+		const cbs = this.take(idx);
 		if (cbs === undefined) return;
 		for (let i = 0; i < cbs.length; i++) {
 			cbs[i]();
 		}
-		this.store[idx] = undefined;
 	}
 
 	/** discard callbacks without firing (for revocation). */
 	discard(idx: number): void {
-		this.store[idx] = undefined;
+		this.take(idx);
 	}
 
 	reset(): void {
 		this.store.length = 0;
+		this.live = 0;
 	}
 }
 
@@ -359,53 +366,6 @@ function dispatch_open(
 }
 
 /**
- * depth-first walk over the node buffer.
- * calls visitor(idx, kind, false) on open, visitor(idx, kind, true) on close.
- */
-function walk_tree(
-	buf: NodeBuffer,
-	visitor: (idx: number, kind: NodeKind, is_close: boolean) => void
-): void {
-	// the words are read once, so a visitor that grows the buffer keeps
-	// walking the storage the walk started on
-	const n = buf._n;
-	const kind = (i: number) => (n[i * NodeField.stride] & 0xff) as NodeKind;
-	const parent = (i: number) => n[i * NodeField.stride + NodeField.parent];
-	const next_of = (i: number) => n[i * NodeField.stride + NodeField.next];
-
-	let idx = n[NodeField.first_child]; // first child of root
-	if (idx === NONE) return;
-
-	const stack: number[] = [];
-
-	while (true) {
-		visitor(idx, kind(idx), false);
-
-		const child = n[idx * NodeField.stride + NodeField.first_child];
-		if (child !== NONE) {
-			stack.push(idx);
-			idx = child;
-			continue;
-		}
-
-		visitor(idx, kind(idx), true);
-
-		let next = next_of(idx);
-		while (
-			(next === NONE || parent(next) !== parent(idx)) &&
-			stack.length > 0
-		) {
-			idx = stack.pop()!;
-			visitor(idx, kind(idx), true);
-			next = next_of(idx);
-		}
-
-		if (next === NONE || parent(next) !== parent(idx)) break;
-		idx = next;
-	}
-}
-
-/**
  * orchestrates plugin dispatch for both TreeBuilder and WireTreeBuilder.
  *
  * holds the handler tables, undo log, close callbacks, redirect map,
@@ -443,6 +403,7 @@ export class PluginDispatcher {
 
 	/** check if a parent index has a redirect (wrap_inner). */
 	get_redirect(parent_idx: number): number | undefined {
+		if (this.redirects.size === 0) return undefined;
 		return this.redirects.get(parent_idx);
 	}
 
@@ -517,7 +478,7 @@ export class PluginDispatcher {
 	 * speculation, inline emphasis).
 	 */
 	dispatch_close(buf_idx: number, buf: NodeBuffer): void {
-		this.redirects.delete(buf_idx);
+		if (this.redirects.size !== 0) this.redirects.delete(buf_idx);
 
 		// take and fire close callbacks with undo attribution
 		const cbs = this.close_cbs.take(buf_idx);
@@ -552,6 +513,13 @@ export class PluginDispatcher {
 	 * must be called BEFORE handle_repair().
 	 */
 	dispatch_revoke(buf_idx: number, buf: NodeBuffer): void {
+		// nothing recorded anywhere, so nothing in this subtree to undo
+		if (
+			this.redirects.size === 0 &&
+			this.close_cbs.live === 0 &&
+			this.undo.empty
+		)
+			return;
 		this.redirects.delete(buf_idx);
 		this.close_cbs.discard(buf_idx);
 
@@ -583,30 +551,66 @@ export class PluginDispatcher {
 	 */
 	run_sequential(buf: NodeBuffer): void {
 		for (const pass of this.sequential) {
+			const handlers = pass.handlers;
+			let any = false;
+			for (let k = 0; k < NODE_KIND_COUNT; k++) {
+				if (handlers[k] !== null) any = true;
+			}
+			// a pass with no handler visits nothing and fires nothing
+			if (!any) continue;
 			const close_store = new CloseCallbackStore();
+			const text_source = this.text_source;
+			const undo = this.undo;
+			const ctx = this.ctx;
 
-			walk_tree(buf, (idx, kind, is_close) => {
-				if (is_close) {
+			// depth first, pre order opens and post order closes, the words are read once so a handler
+			// that grows the buffer keeps walking the storage the walk started on
+			const n = buf._n;
+			let idx = n[NodeField.first_child];
+			if (idx === NONE) continue;
+			const stack: number[] = [];
+
+			while (true) {
+				const handler = handlers[n[idx * NodeField.stride] & 0xff];
+				if (handler != null) {
+					const cache = new ViewCache(buf, text_source, undo, idx);
+					const view = cache.get(idx)!;
+					undo.set_active_node(idx);
+					const callbacks = handler(view, ctx);
+					undo.clear_active_node();
+					if (callbacks) close_store.set(idx, callbacks);
+					cache.clear();
+				}
+
+				const child = n[idx * NodeField.stride + NodeField.first_child];
+				if (child !== NONE) {
+					stack.push(idx);
+					idx = child;
+					continue;
+				}
+
+				close_store.fire(idx);
+
+				let next = n[idx * NodeField.stride + NodeField.next];
+				while (
+					(next === NONE ||
+						n[next * NodeField.stride + NodeField.parent] !==
+							n[idx * NodeField.stride + NodeField.parent]) &&
+					stack.length > 0
+				) {
+					idx = stack.pop()!;
 					close_store.fire(idx);
-					return;
+					next = n[idx * NodeField.stride + NodeField.next];
 				}
 
-				const handler = pass.handlers[kind];
-				if (handler === null) return;
-
-				const cache = new ViewCache(buf, this.text_source, this.undo, idx);
-				const view = cache.get(idx)!;
-
-				this.undo.set_active_node(idx);
-				const callbacks = handler(view, this.ctx);
-				this.undo.clear_active_node();
-
-				if (callbacks) {
-					close_store.set(idx, callbacks);
-				}
-
-				cache.clear();
-			});
+				if (
+					next === NONE ||
+					n[next * NodeField.stride + NodeField.parent] !==
+						n[idx * NodeField.stride + NodeField.parent]
+				)
+					break;
+				idx = next;
+			}
 		}
 	}
 
