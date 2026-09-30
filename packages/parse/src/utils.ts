@@ -46,6 +46,11 @@ const NODE_BYTES = NodeField.stride * 4;
  */
 let slab = new ArrayBuffer(0);
 let slab_used = SLAB_BYTES;
+/**
+ * the view whose region ends at slab_used, it can grow in place and give back
+ * its unused tail, slab bytes cost about as much as the nodes they hold
+ */
+let last_carve: Uint32Array | null = null;
 
 /** default number of error entries to preallocate. */
 const DEFAULT_ERROR_CAPACITY = 32;
@@ -350,9 +355,20 @@ export class NodeBuffer {
 			buffer = new ArrayBuffer(bytes);
 		}
 		const n = new Uint32Array(buffer, base, capacity * NodeField.stride);
+		if (buffer === slab) last_carve = n;
 		this._capacity = capacity;
 		this._n = n;
 		return n;
+	}
+
+	/**
+	 * give the unused tail of the last slab carve back to the slab, the
+	 * capacity drops to the size so a later push resizes
+	 */
+	trim(): void {
+		if (this._n !== last_carve) return;
+		slab_used -= (this._capacity - this._size) * NODE_BYTES;
+		this._capacity = this._size;
 	}
 
 	/** clear nodes without reallocating storage */
@@ -1026,8 +1042,23 @@ export class NodeBuffer {
 
 	private resize(next: number): Uint32Array {
 		const old = this._n;
+		const words = this._capacity * NodeField.stride;
+		if (old === last_carve) {
+			// nothing was carved since, so extend the region in place
+			const base = slab_used - words * 4;
+			const bytes = next * NODE_BYTES;
+			if (bytes <= SLAB_MAX_CARVE && base + bytes <= SLAB_BYTES) {
+				const n = new Uint32Array(slab, base, next * NodeField.stride);
+				slab_used = base + bytes;
+				last_carve = n;
+				this._capacity = next;
+				this._n = n;
+				return n;
+			}
+		}
 		const n = this.alloc(next);
-		n.set(old);
+		// a trimmed view is longer than its capacity
+		n.set(old.length === words ? old : old.subarray(0, words));
 		return n;
 	}
 

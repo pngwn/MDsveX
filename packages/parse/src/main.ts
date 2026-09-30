@@ -8486,9 +8486,11 @@ export function parse_markdown_svelte(
 	}
 
 	// run sequential plugins after parse completes
+	const nodes = tree.get_buffer();
 	if (dispatcher) {
-		dispatcher.run_sequential(tree.get_buffer());
+		dispatcher.run_sequential(nodes);
 	}
+	nodes.trim();
 
-	return { nodes: tree.get_buffer(), errors, source };
+	return { nodes, errors, source };
 }

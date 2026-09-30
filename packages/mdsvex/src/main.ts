@@ -105,10 +105,12 @@ function parse_once(source: string, plugins?: ParsePlugin[]): NodeBuffer {
 	parser.release();
 	spare_parser = parser;
 
+	const nodes = tree.get_buffer();
 	if (dispatcher) {
-		dispatcher.run_sequential(tree.get_buffer());
+		dispatcher.run_sequential(nodes);
 	}
-	return tree.get_buffer();
+	nodes.trim();
+	return nodes;
 }
 
 function render_once(raw: string, options?: CompileOptions): CompileResult {
