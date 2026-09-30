@@ -5901,8 +5901,14 @@ export class PFMParser {
 			this._unwind_unterminated_delimiter();
 			return false;
 		}
-		// ~~ is a two-char token - hold back lone ~ at end of buffer
-		if (code === TILDE && !this.finished && this.cursor + 1 >= length) {
+		// the ~~ flanking check needs the char after both tildes
+		if (
+			code === TILDE &&
+			!this.finished &&
+			(this.cursor + 1 >= length ||
+				(this.cursor + 2 >= length &&
+					char_code_at.call(source, this.cursor + 1 - base) === TILDE))
+		) {
 			return true;
 		}
 		// close: ~~ with right-flanking
@@ -5966,6 +5972,14 @@ export class PFMParser {
 		if (!code) {
 			this._unwind_unterminated_delimiter();
 			return false;
+		}
+		// a ~ followed by another ~ does not close
+		if (
+			code === TILDE &&
+			!this.finished &&
+			this.cursor + 1 >= this.source_end
+		) {
+			return true;
 		}
 		// close: single ~ after content (no right-flanking needed -
 		// ~ is unambiguous inside subscript, and h~2~o must work)

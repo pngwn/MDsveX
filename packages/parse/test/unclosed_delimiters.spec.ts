@@ -242,6 +242,26 @@ describe('unclosed delimiter before a linefeed', () => {
 	}
 });
 
+describe('tilde closer split across chunks', () => {
+	const inputs = [
+		'~a~~',
+		'~-~~-',
+		'h~2~o',
+		'~a~ b',
+		'~~~~a',
+		'~~>~~a',
+		'~~a~~',
+		'~~a~~b',
+		'~~a~~ b',
+	];
+
+	for (const input of inputs) {
+		test(JSON.stringify(input), () => {
+			expect_incremental_matches(input);
+		});
+	}
+});
+
 describe('batch and incremental parity', () => {
 	const atoms = [
 		'*',
@@ -278,12 +298,6 @@ describe('batch and incremental parity', () => {
 	const known_mismatches = [
 		// incremental keeps only the : of a revoked :x[
 		'[~~*:x[\n#[',
-		// a ~ or ~~ closes before the char after it is fed
-		' ~#>~~',
-		'~---~~](_:x[',
-		'\n\n^:x[~</b> #~~',
-		'~]~~~~',
-		'*~]~~[_]',
 	];
 
 	test('seeded inputs parse the same in any chunk size', () => {
