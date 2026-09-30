@@ -693,8 +693,10 @@ export class PFMParser {
 	}
 
 	private emit_close(id: number, end: number): void {
-		this.out.close(id, end);
-		this.id_info[id] |= ID_CLOSED;
+		const info = this.id_info[id];
+		// the builder needs the kind at open, a revoke may have rewritten its node
+		this.out.close(id, end, (info & ID_KIND_MASK) as NodeKind);
+		this.id_info[id] = info | ID_CLOSED;
 	}
 
 	/** open writes an id state before any read, so spare tables need no clearing */
@@ -3665,7 +3667,8 @@ export class PFMParser {
 								this.out.text(
 									c_id,
 									blk_comment.content_start,
-									blk_comment.content_end
+									blk_comment.content_end,
+									NodeKind.html_comment
 								);
 								this.emit_close(c_id, blk_comment.end);
 								this.chomp(blk_comment.end, true);
@@ -4636,7 +4639,12 @@ export class PFMParser {
 									this.cursor,
 									current_node
 								);
-								this.out.text(c_id, comment.content_start, comment.content_end);
+								this.out.text(
+									c_id,
+									comment.content_start,
+									comment.content_end,
+									NodeKind.html_comment
+								);
 								this.emit_close(c_id, comment.end);
 								this.chomp(comment.end, true);
 								this.states.pop();
@@ -6553,7 +6561,12 @@ export class PFMParser {
 					this.cursor,
 					current_node
 				);
-				this.out.text(c_id, blk_comment.content_start, blk_comment.content_end);
+				this.out.text(
+					c_id,
+					blk_comment.content_start,
+					blk_comment.content_end,
+					NodeKind.html_comment
+				);
 				this.emit_close(c_id, blk_comment.end);
 				this.chomp(blk_comment.end, true);
 				return false;
@@ -8156,7 +8169,12 @@ export class PFMParser {
 					i
 				);
 				if (trimmed.start < trimmed.end) {
-					this.out.text(cell_id, trimmed.start, trimmed.end);
+					this.out.text(
+						cell_id,
+						trimmed.start,
+						trimmed.end,
+						(this.id_info[cell_id] & ID_KIND_MASK) as NodeKind
+					);
 					// the text node the emitter creates takes the next id
 					this.next_id++;
 				}

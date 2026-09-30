@@ -34,8 +34,10 @@ export interface Emitter {
 	 * close a previously opened node. implicitly commits pending nodes.
 	 * @param id id of the node to close.
 	 * @param end source byte offset where this node ends.
+	 * @param kind the kind the node was opened with, a revoke may since have
+	 *   rewritten it, callers that omit it make the builder track revokes.
 	 */
-	close(id: number, end: number): void;
+	close(id: number, end: number, kind?: NodeKind): void;
 
 	/**
 	 * emit leaf text content within a node.
@@ -46,8 +48,9 @@ export interface Emitter {
 	 * @param parent id of the parent node.
 	 * @param start source byte offset of text start.
 	 * @param end source byte offset of text end.
+	 * @param parent_kind the kind the parent was opened with, as for close.
 	 */
-	text(parent: number, start: number, end: number): void;
+	text(parent: number, start: number, end: number, parent_kind?: NodeKind): void;
 
 	/**
 	 * set or update an attribute on a node.

@@ -28,12 +28,14 @@ export class TreeBuilder implements Emitter {
 	/** kind at open by id, only kept for plugins since they rewrite kinds */
 	private id_to_kind: number[] | null = null;
 	/**
-	 * kind at open plus one by buffer index for nodes a revoke rewrote, zero for
-	 * the rest, a byte table since every later close and text looks it up
+	 * buffer index and kind at open of each node a revoke rewrote, in revoke
+	 * order, only read for a close or text that does not pass the kind
 	 */
-	private revoked_kinds: Uint8Array | null = null;
-	/** highest index written to revoked_kinds, so a reset clears only that */
-	private revoked_max = -1;
+	private revoked: number[] | null = null;
+	/** kind at open by index, built from revoked on the first read */
+	private revoked_map: Map<number, number> | null = null;
+	/** entries of revoked already copied into revoked_map */
+	private revoked_mapped = 0;
 	/** optional plugin dispatcher. null when no plugins registered. */
 	private dispatcher: PluginDispatcher | null;
 
@@ -67,11 +69,10 @@ export class TreeBuilder implements Emitter {
 		this.nodes.reset();
 		this.nodes.push(NodeKind.root, 0);
 		this.id_to_index = null;
-		// the table is kept across documents, so clear what the last one wrote
-		const max = this.revoked_max;
-		if (max !== -1) {
-			this.revoked_kinds!.fill(0, 0, max + 1);
-			this.revoked_max = -1;
+		if (this.revoked !== null) {
+			this.revoked = null;
+			this.revoked_map = null;
+			this.revoked_mapped = 0;
 		}
 	}
 
@@ -88,11 +89,22 @@ export class TreeBuilder implements Emitter {
 		return map;
 	}
 
-	/** a revoke may have rewritten the buffer kind since open */
+	/**
+	 * a revoke may have rewritten the buffer kind since open, only for callers
+	 * that do not pass the kind, the parser always does
+	 */
 	private opened_kind(idx: number): number {
-		if (idx <= this.revoked_max) {
-			const kind = this.revoked_kinds![idx];
-			if (kind !== 0) return kind - 1;
+		const revoked = this.revoked;
+		if (revoked !== null) {
+			let map = this.revoked_map;
+			if (map === null) map = this.revoked_map = new Map();
+			// the first revoke of an index holds the kind at open
+			for (let i = this.revoked_mapped; i < revoked.length; i += 2) {
+				if (!map.has(revoked[i])) map.set(revoked[i], revoked[i + 1]);
+			}
+			this.revoked_mapped = revoked.length;
+			const kind = map.get(idx);
+			if (kind !== undefined) return kind;
 		}
 		return this.nodes._n[idx * NodeField.stride] & 0xff;
 	}
@@ -144,9 +156,9 @@ export class TreeBuilder implements Emitter {
 		}
 	}
 
-	close(id: number, end: number): void {
+	close(id: number, end: number, kind?: NodeKind): void {
 		if (this.dispatcher !== null) {
-			this.close_with_plugins(id, end);
+			this.close_with_plugins(id, end, kind);
 			return;
 		}
 		const idx = this.index_of(id);
@@ -158,7 +170,7 @@ export class TreeBuilder implements Emitter {
 		// pending paragraphs inside list_items are tight-list speculation
 		// wrappers, they stay pending after close until the list closes
 		// and the parser either revokes (tight) or commits (loose) them.
-		const kind = this.opened_kind(idx);
+		if (kind === undefined) kind = this.opened_kind(idx);
 		if (
 			kind === NodeKind.paragraph &&
 			n[b + NodeField.pending] === 1 &&
@@ -171,7 +183,7 @@ export class TreeBuilder implements Emitter {
 		if (kind === NodeKind.list) this.unwrap_tight_list(idx);
 	}
 
-	private close_with_plugins(id: number, end: number): void {
+	private close_with_plugins(id: number, end: number, opened?: NodeKind): void {
 		const idx = this.id_to_index![id];
 		if (idx === undefined) return;
 		const nodes = this.nodes;
@@ -187,7 +199,7 @@ export class TreeBuilder implements Emitter {
 		// pending paragraphs inside list_items are tight-list speculation
 		// wrappers, they stay pending after close until the list closes
 		// and the parser either revokes (tight) or commits (loose) them.
-		const kind = this.id_to_kind![id];
+		const kind = opened !== undefined ? opened : this.id_to_kind![id];
 		const keep_pending =
 			kind === NodeKind.paragraph &&
 			nodes.pending_at(idx) === 1 &&
@@ -227,17 +239,21 @@ export class TreeBuilder implements Emitter {
 		}
 	}
 
-	text(parent: number, start: number, end: number): void {
+	text(
+		parent: number,
+		start: number,
+		end: number,
+		parent_kind?: NodeKind
+	): void {
 		let parent_idx = this.index_of(parent);
 		if (parent_idx === undefined) return;
 
-		let parent_kind: number;
 		if (this.dispatcher !== null) {
-			parent_kind = this.id_to_kind![parent];
+			if (parent_kind === undefined) parent_kind = this.id_to_kind![parent];
 			// plugin redirect: text targeting a wrapped parent goes to the wrapper
 			const redirect = this.dispatcher.get_redirect(parent_idx);
 			if (redirect !== undefined) parent_idx = redirect;
-		} else {
+		} else if (parent_kind === undefined) {
 			parent_kind = this.opened_kind(parent_idx);
 		}
 
@@ -307,25 +323,13 @@ export class TreeBuilder implements Emitter {
 
 		const kind = nodes.kind_at(idx);
 		nodes.handle_repair(idx, source_text);
-		// close and text still act on the kind the node was opened with
+		// close and text still act on the kind the node was opened with, the
+		// parser passes it, other callers read it back from this list
 		if (nodes.kind_at(idx) !== kind) {
-			let revoked = this.revoked_kinds;
-			if (revoked === null || idx >= revoked.length) {
-				revoked = this.grow_revoked(idx);
-			}
-			if (revoked[idx] === 0) revoked[idx] = kind + 1;
-			if (idx > this.revoked_max) this.revoked_max = idx;
+			const revoked = this.revoked;
+			if (revoked === null) this.revoked = [idx, kind];
+			else revoked.push(idx, kind);
 		}
-	}
-
-	private grow_revoked(idx: number): Uint8Array {
-		const old = this.revoked_kinds;
-		let size = old === null ? 256 : old.length;
-		while (size <= idx) size <<= 1;
-		const table = new Uint8Array(size);
-		if (old !== null) table.set(old);
-		this.revoked_kinds = table;
-		return table;
 	}
 
 	commit(id: number): void {
