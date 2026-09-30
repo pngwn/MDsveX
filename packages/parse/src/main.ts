@@ -5388,7 +5388,10 @@ export class PFMParser {
 							);
 							this.emit_close(sb_id, this.cursor + 1);
 							let p = this.cursor + 1;
-							while (p < length && char_code_at.call(source, p - base) === SPACE) {
+							while (
+								p < length &&
+								char_code_at.call(source, p - base) === SPACE
+							) {
 								p++;
 							}
 							// a plain char next is where inline would open the next text
@@ -5900,6 +5903,49 @@ export class PFMParser {
 
 					// push inline to handle cell content
 					this.table_cell_has_content = true;
+					if (code >= 128 || TEXT_BREAK[code] === 0) {
+						// a plain run ending at the next | or \n is one text node, close it here
+						// instead of trips through inline, text and the unwind
+						const t_id = this.emit_open(
+							NodeKind.text,
+							this.cursor,
+							current_node
+						);
+						this.out.set_value_start(t_id, this.cursor);
+						let p = this.cursor + 1;
+						if (p < length) {
+							const c1 = char_code_at.call(source, p - base);
+							if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
+								const text_break = TEXT_BREAK;
+								p++;
+								while (p < length) {
+									const ch = char_code_at.call(source, p - base);
+									if (ch < 128 && text_break[ch] !== 0) break;
+									p++;
+								}
+							}
+						}
+						const stop = p < length ? char_code_at.call(source, p - base) : 0;
+						if (stop === PIPE || stop === LINEFEED) {
+							let ve = p;
+							while (
+								ve > 0 &&
+								(char_code_at.call(source, ve - 1 - base) === SPACE ||
+									char_code_at.call(source, ve - 1 - base) === TAB)
+							) {
+								ve--;
+							}
+							this.out.set_value_end(t_id, ve);
+							this.emit_close(t_id, p);
+							this.cursor = p;
+							continue;
+						}
+						this.states.push(StateKind.inline);
+						this.node_stack.push(t_id);
+						this.states.push(StateKind.text);
+						this.cursor = p;
+						continue;
+					}
 					this.states.push(StateKind.inline);
 					continue;
 				}
@@ -6585,8 +6631,9 @@ export class PFMParser {
 						this.link_text_start - base,
 						this.cursor - base
 					);
-					const normalized = this.normalize_label(label);
-					const def = this.ref_map.get(normalized);
+					const refs = this.ref_map;
+					const def =
+						refs.size === 0 ? undefined : refs.get(this.normalize_label(label));
 					if (def) {
 						const is_image = this.kind_of(current_node) === NodeKind.image;
 						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
@@ -6637,8 +6684,9 @@ export class PFMParser {
 						ref_start - base,
 						ref_p - base
 					);
-					const normalized = this.normalize_label(label);
-					const def = this.ref_map.get(normalized);
+					const refs = this.ref_map;
+					const def =
+						refs.size === 0 ? undefined : refs.get(this.normalize_label(label));
 					if (def) {
 						const is_image = this.kind_of(current_node) === NodeKind.image;
 						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
@@ -8290,7 +8338,22 @@ export class PFMParser {
 				header_id,
 				i
 			);
-			if (trimmed.start < trimmed.end) {
+			if (
+				trimmed.start < trimmed.end &&
+				this.is_plain_range(trimmed.start, trimmed.end)
+			) {
+				// a plain cell is one text node, no inline pass over a sliced source
+				const t_id = this.emit_open(
+					NodeKind.text,
+					trimmed.start,
+					this.table_cell_id
+				);
+				this.out.set_value_start(t_id, trimmed.start);
+				this.out.set_value_end(t_id, trimmed.end);
+				this.emit_close(t_id, trimmed.end);
+				this.interrupt_pos = -1;
+				this.loop_without_progress = 0;
+			} else if (trimmed.start < trimmed.end) {
 				// parse cell content through inline machinery
 				this.node_stack.push(this.table_cell_id);
 				this.parse_inline_range(trimmed.start, trimmed.end);
@@ -8307,6 +8370,17 @@ export class PFMParser {
 		// advance cursor past delimiter row
 		const after_delim = delim_end < length ? delim_end + 1 : delim_end;
 		this.chomp(after_delim, true);
+		return true;
+	}
+
+	/** true when no char in [start, end) makes the inline or text state yield */
+	private is_plain_range(start: number, end: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		for (let p = start; p < end; p++) {
+			const ch = char_code_at.call(source, p - base);
+			if (ch < 128 && (ch === 0 || TEXT_BREAK[ch] !== 0)) return false;
+		}
 		return true;
 	}
 
