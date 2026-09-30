@@ -586,8 +586,15 @@ export class NodeBuffer {
 	 * @param delimiter_text optional pre-resolved delimiter string (wire path).
 	 *   if provided, stored in _strings. if absent, value range is set from
 	 *   the node's start position.
+	 * @param text_start source offset of delimiter_text. when it equals the
+	 *   node's start the repaired value range slices exactly delimiter_text,
+	 *   so the string is not stored (renders skip prebuilt lookups).
 	 */
-	handle_repair(index: number, delimiter_text?: string): void {
+	handle_repair(
+		index: number,
+		delimiter_text?: string,
+		text_start?: number
+	): void {
 		const parent = this.parent_at(index);
 		const kind = this.kind_at(index);
 		const parent_kind =
@@ -662,7 +669,7 @@ export class NodeBuffer {
 			const text_idx = this.push(NodeKind.text, start, index);
 			this.set_value(text_idx, start, end);
 			this.set_end(text_idx, end);
-			if (delimiter_text !== undefined) {
+			if (delimiter_text !== undefined && text_start !== start) {
 				this._strings[text_idx] = delimiter_text;
 			}
 
@@ -703,8 +710,8 @@ export class NodeBuffer {
 		this.set_kind(index, NodeKind.text);
 
 		if (delimiter_text !== undefined) {
-			this._strings[index] = delimiter_text;
 			const start = this.start_at(index);
+			if (text_start !== start) this._strings[index] = delimiter_text;
 			const end = start + delimiter_text.length;
 			this.set_value(index, start, end);
 			this.set_end(index, end);

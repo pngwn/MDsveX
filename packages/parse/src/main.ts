@@ -346,6 +346,9 @@ export class PFMParser {
 	private wait_kind: number = 0;
 	private cursor: number = 0;
 	private finished: boolean = false;
+	// set by parse(), a repair may then drop a delimiter string that slices the
+	// source at the node start. incremental trees keep theirs
+	private one_shot: boolean = false;
 	// deferred \r at the end of a feed() chunk: we can't tell whether it's
 	// a bare \r (line ending) or the first half of a \r\n until we see the
 	// next chunk's first char.
@@ -491,6 +494,7 @@ export class PFMParser {
 		this.source_end = n;
 		this.errors = EMPTY_ERRORS;
 		this.finished = true;
+		this.one_shot = true;
 
 		this._run();
 		this._finalize();
@@ -505,6 +509,7 @@ export class PFMParser {
 	init(): void {
 		this._init(ID_MIN_CAPACITY);
 		this.finished = false;
+		this.one_shot = false;
 	}
 
 	/**
@@ -3793,7 +3798,8 @@ export class PFMParser {
 								pend++;
 							this.out.revoke(
 								pid,
-								string_slice.call(source, pstart - base, pend - base)
+								string_slice.call(source, pstart - base, pend - base),
+								this.one_shot ? pstart : undefined
 							);
 						} else {
 							this.out.revoke(pid);
@@ -5975,7 +5981,8 @@ export class PFMParser {
 								source,
 								this.code_span_open_pos - base,
 								delim_end - base
-							)
+							),
+							this.one_shot ? this.code_span_open_pos : undefined
 						);
 						this.node_stack.pop();
 						this.states.pop();
@@ -9045,7 +9052,8 @@ export class PFMParser {
 						this.source,
 						this.code_span_open_pos - this.source_base,
 						delim_end - this.source_base
-					)
+					),
+					this.one_shot ? this.code_span_open_pos : undefined
 				);
 				this.node_stack.pop();
 				this.states.pop();
@@ -9159,7 +9167,8 @@ export class PFMParser {
 						this.source,
 						start - this.source_base,
 						end - this.source_base
-					)
+					),
+					this.one_shot ? start : undefined
 				);
 			} else {
 				this.out.revoke(id);

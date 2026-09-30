@@ -325,7 +325,7 @@ export class TreeBuilder implements Emitter {
 		if (idx !== undefined) this.nodes.set_value_end(idx, pos);
 	}
 
-	revoke(id: number, source_text?: string): void {
+	revoke(id: number, source_text?: string, text_start?: number): void {
 		const idx = this.index_of(id);
 		if (idx === undefined) return;
 		const nodes = this.nodes;
@@ -334,13 +334,13 @@ export class TreeBuilder implements Emitter {
 		if (this.dispatcher !== null) {
 			this.dispatcher.dispatch_revoke(idx, nodes);
 			const kind = nodes.kind_at(idx);
-			nodes.handle_repair(idx, source_text);
+			nodes.handle_repair(idx, source_text, text_start);
 			if (nodes.kind_at(idx) !== kind) this.dispatcher.log_kind(idx, kind);
 			return;
 		}
 
 		const kind = nodes.kind_at(idx);
-		nodes.handle_repair(idx, source_text);
+		nodes.handle_repair(idx, source_text, text_start);
 		// close and text still act on the kind the node was opened with, the
 		// parser passes it, other callers read it back from this list
 		if (nodes.kind_at(idx) !== kind) {

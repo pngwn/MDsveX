@@ -76,8 +76,11 @@ export interface Emitter {
 	 * @param source_text optional raw source text for the revoked node.
 	 *   used for block-level revocations where the content must be
 	 *   reconstructed (e.g. failed html tags becoming paragraph text).
+	 * @param text_start source offset where source_text starts. a tree that
+	 *   reads text from the source need not keep source_text when this is
+	 *   the node's start, the repaired value range slices the same text.
 	 */
-	revoke(id: number, source_text?: string): void;
+	revoke(id: number, source_text?: string, text_start?: number): void;
 
 	/**
 	 * clear the pending flag on a node without touching its structure.

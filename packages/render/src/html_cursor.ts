@@ -108,16 +108,18 @@ function esc_next(ch: string, from: number): number {
 
 /** equals escape_html of c.text, reading source slices through the escape index */
 function escape_node_text(c: Cursor): string {
+	return escape_text_at(c, c.index, c.value_start, c.value_end);
+}
+
+/** escape_node_text of node i with value range vs..ve, the cursor may sit elsewhere */
+function escape_text_at(c: Cursor, i: number, vs: number, ve: number): string {
 	if (esc_prebuilt) {
 		const bits = esc_bits;
-		const i = c.index;
 		if (bits === null || (bits[i >>> 3] & (1 << (i & 7))) !== 0) {
-			const s = c.prebuilt;
+			const s = c.prebuilt_at(i);
 			if (s !== undefined) return escape_html(s);
 		}
 	}
-	const vs = c.value_start;
-	let ve = c.value_end;
 	// empty cases must match Cursor.text
 	if (vs === Slot.NONE || ve === Slot.NONE || ve <= vs) return '';
 	const src = c.source;
@@ -452,39 +454,50 @@ function _open(c: Cursor, head: string, folded: string, end: string): void {
 	else mo += folded;
 }
 
+// node word offsets, must follow NodeField in @mdsvex/parse
+const enum W {
+	value_start = 3,
+	value_end = 4,
+	parent = 5,
+	next = 6,
+	first_child = 8,
+	stride = 12,
+}
+
 const LINK_HANDLED = new Set(['href', 'title']);
 const IMAGE_HANDLED = new Set(['title']);
 
 /** render children of the current cursor position, collecting escaped text and recursive node output. */
 function render_children(c: Cursor, sink?: MapSink): void {
-	if (!c.goto_first_child()) return;
-	do {
-		const k = c.kind;
+	const n = c.words;
+	let child = n[c.index * W.stride + W.first_child];
+	if (child === Slot.NONE) return;
+	// siblings share the first child's parent word, as goto_next_sibling checks
+	const parent = n[child * W.stride + W.parent];
+	for (;;) {
+		const b = child * W.stride;
+		const k = n[b] & 0xff;
 		if (k === K.TEXT) {
-			const t = escape_node_text(c);
+			const vs = n[b + W.value_start];
+			const ve = n[b + W.value_end];
+			const t = escape_text_at(c, child, vs, ve);
 			if (sink) {
-				const vs = c.value_start,
-					ve = c.value_end;
 				if (vs !== Slot.NONE && ve > vs) {
 					const at = mo.length;
-					put_record(
-						sink,
-						at,
-						at + t.length,
-						vs,
-						ve,
-						c.index,
-						Code.TEXT_CONTENT
-					);
+					put_record(sink, at, at + t.length, vs, ve, child, Code.TEXT_CONTENT);
 				}
 			}
 			mo += t;
 		} else if (k !== K.LINE_BREAK) {
 			// line breaks render nothing, a fifth of visited nodes skip the call
+			c.move_to(child);
 			render_node(c, sink);
 		}
-	} while (c.goto_next_sibling());
-	c.goto_parent();
+		const next = n[b + W.next];
+		if (next === Slot.NONE || n[next * W.stride + W.parent] !== parent) break;
+		child = next;
+	}
+	c.move_to(parent !== Slot.NONE ? parent : child);
 }
 
 /** collect raw text from child text nodes (for image alt, link text fallback, etc.). */
@@ -663,8 +676,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 				s += ' title="' + escape_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, IMAGE_HANDLED) + ' />';
 			// the syntax spans are empty, only the node is recorded
-			if (sink)
-				put_record(sink, pre, mo.length, c.start, c.end, c.index, 0);
+			if (sink) put_record(sink, pre, mo.length, c.start, c.end, c.index, 0);
 			break;
 		}
 
@@ -1233,7 +1245,7 @@ function has_attrs(meta: Record<string, unknown>): boolean {
 /** fold twin of _attrs */
 function fold_attrs(
 	meta: Record<string, unknown> | undefined,
-		p: number,
+	p: number,
 	skip?: Set<string>
 ): number {
 	if (!meta) return p;
@@ -1264,7 +1276,7 @@ function fold_attrs(
 /** fold twin of _open, taking static ids */
 function fold_open(
 	c: Cursor,
-		p: number,
+	p: number,
 	head: number,
 	folded: number,
 	end: number
@@ -1276,18 +1288,32 @@ function fold_open(
 	return push_static(p, end);
 }
 
+// text and line break children, over half of all nodes, are read from the
+// words without moving the cursor, it moves only for a fold_node call
 function fold_children(c: Cursor, p: number): number {
-	if (!c.goto_first_child()) return p;
-	do {
-		const k = c.kind;
+	const n = c.words;
+	let child = n[c.index * W.stride + W.first_child];
+	if (child === Slot.NONE) return p;
+	// siblings share the first child's parent word, as goto_next_sibling checks
+	const parent = n[child * W.stride + W.parent];
+	for (;;) {
+		const b = child * W.stride;
+		const k = n[b] & 0xff;
 		if (k === K.TEXT) {
-			p = push_dyn(p, escape_text(c));
+			p = push_dyn(
+				p,
+				escape_text_at(c, child, n[b + W.value_start], n[b + W.value_end])
+			);
 		} else if (k !== K.LINE_BREAK) {
 			// line breaks render nothing, a fifth of visited nodes skip the call
+			c.move_to(child);
 			p = fold_node(c, p);
 		}
-	} while (c.goto_next_sibling());
-	c.goto_parent();
+		const next = n[b + W.next];
+		if (next === Slot.NONE || n[next * W.stride + W.parent] !== parent) break;
+		child = next;
+	}
+	c.move_to(parent !== Slot.NONE ? parent : child);
 	return p;
 }
 
@@ -1464,7 +1490,7 @@ function fold_list(c: Cursor, p: number): number {
 
 function fold_html_attrs(
 	html_attrs: Record<string, string | boolean>,
-		p: number
+	p: number
 ): number {
 	for (const k in html_attrs) {
 		const v = html_attrs[k];
@@ -1598,7 +1624,7 @@ function fold_table_cells(
 	close: number,
 	tag: string,
 	alignments: string[],
-		p: number
+	p: number
 ): number {
 	let col = 0;
 	if (!c.goto_first_child()) return p;
@@ -1970,13 +1996,7 @@ export class CursorHTMLRenderer {
 		const sink = render_sink;
 		sink.begin(false);
 		this.render_mapped(buf, source, sink);
-		const map = records_to_v3(
-			sink,
-			null,
-			raw,
-			this.html,
-			file
-		);
+		const map = records_to_v3(sink, null, raw, this.html, file);
 		sink.release();
 		return map;
 	}
