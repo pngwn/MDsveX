@@ -1938,13 +1938,33 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			return S_SELF_CLOSE;
 		}
 
-		case K.HTML_COMMENT:
-		case K.MUSTACHE:
-		case K.SVELTE_TAG:
-			// rarer constructs render through the mapped render as they are
+		case K.HTML_COMMENT: {
+			const pre = mo.length + FOLD_LEN[p];
+			p = tr_push(p, S_COMMENT_OPEN);
+			tr_content(c, sink, p, c.text(), Code.TEXT_CONTENT);
+			put_record(sink, pre, mo.length + FOLD_LEN[S_COMMENT_CLOSE], c.start, c.end, c.index, Preset.TEXT << 2);
+			return S_COMMENT_CLOSE;
+		}
+
+		case K.MUSTACHE: {
+			const pre = mo.length + FOLD_LEN[p];
+			p = tr_push(p, S_BRACE_OPEN);
+			tr_content(c, sink, p, c.text(), Code.SVELTE_CONTENT);
+			put_record(sink, pre, mo.length + FOLD_LEN[S_BRACE_CLOSE], c.start, c.end, c.index, Preset.SVELTE << 2);
+			return S_BRACE_CLOSE;
+		}
+
+		case K.SVELTE_TAG: {
 			if (p !== 0) mo += FOLD_STR[p];
-			render_node(c, sink);
-			return 0;
+			const pre = mo.length;
+			const meta = c.meta();
+			const tag = meta?.tag as string;
+			const text = c.text();
+			mo = mo + '{@' + meta_str(tag);
+			if (text) tr_content(c, sink, S_SPACE, text, Code.SVELTE_CONTENT);
+			put_record(sink, pre, mo.length + FOLD_LEN[S_BRACE_CLOSE], c.start, c.end, c.index, Preset.SVELTE << 2);
+			return S_BRACE_CLOSE;
+		}
 
 		default:
 			return tr_children(c, sink, p);
