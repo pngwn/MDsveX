@@ -303,6 +303,21 @@ interface LinkResult {
 	end: number;
 }
 
+// feed looks for a trim point inside paragraphs and containers once the window holds this much before the cursor
+const TRIM_GAP = 1024;
+
+/** containers whose states reread nothing before the current line but an html opener's line */
+function is_trim_container(kind: number): boolean {
+	return (
+		kind === NodeKind.block_quote ||
+		kind === NodeKind.list ||
+		kind === NodeKind.list_item ||
+		kind === NodeKind.svelte_block ||
+		kind === NodeKind.svelte_branch ||
+		kind === NodeKind.html
+	);
+}
+
 // braces a find_matching_brace_memo scan opened and has not closed, positions just past each (always empty between scans)
 const brace_open: number[] = [];
 
@@ -600,15 +615,97 @@ export class PFMParser {
 		// keep one char before trim_point for the previous char lookbehind
 		let head = this.source;
 		if (this.trim_point - 1 > this.source_base) {
-			head = string_slice.call(head, this.trim_point - 1 - this.source_base);
-			this.source_base = this.trim_point - 1;
+			if (this.pending_count !== this.pending_para_count) head = this.trim_keeping_html(head);
+			else {
+				head = string_slice.call(head, this.trim_point - 1 - this.source_base);
+				this.source_base = this.trim_point - 1;
+			}
 		}
 
 		const src = append_flat(head, chunk);
 		this.source = src;
 		this.source_end += len;
 		this._run();
+		// the root trims the window between blocks, paragraphs and containers other than lists and block quotes need this
+		if (this.cursor - this.trim_point > TRIM_GAP) this.trim_at_stall();
 		this.out.cursor(this.cursor);
+	}
+
+	/**
+	 * _run stopped inside a paragraph with no open inline construct (at most
+	 * its text node above it), or at a line start right inside a container,
+	 * and every ancestor is a container that rereads nothing before the
+	 * cursor's line (block quotes, lists, svelte blocks, html containers).
+	 * pending nodes are paragraphs or html containers on the node stack whose
+	 * opening line ends before that line, the only text they reread is that
+	 * line for the revoke repair: trim_keeping_html keeps it. the window then
+	 * trims at the start of the cursor's line
+	 */
+	private trim_at_stall(): void {
+		const stack = this.node_stack;
+		let top = stack.length - 1;
+		if (top < 1) return;
+		const base = this.source_base;
+		const source = this.source;
+		const cursor = this.cursor;
+		let kind = this.kind_of(stack[top]);
+		if (kind === NodeKind.text) kind = this.kind_of(stack[--top]);
+		let line: number;
+		if (kind === NodeKind.paragraph) {
+			const lf = string_last_index_of.call(source, '\n', cursor - 1 - base);
+			if (lf === -1) return;
+			line = lf + 1 + base;
+		} else {
+			if (!is_trim_container(kind)) return;
+			if (cursor <= base || char_code_at.call(source, cursor - 1 - base) !== LINEFEED)
+				return;
+			line = cursor;
+			top++;
+		}
+		if (line <= this.trim_point) return;
+		for (let i = 1; i < top; i++) {
+			if (!is_trim_container(this.kind_of(stack[i]))) return;
+		}
+		for (let pi = 0; pi < this.pending_count; pi++) {
+			const id = this.pending_ids[pi];
+			const pkind = this.kind_of(id);
+			if (pkind === NodeKind.paragraph) continue;
+			if (pkind !== NodeKind.html || stack.indexOf(id) === -1) return;
+			const start = this.pending_starts[pi];
+			if (start < base) return;
+			const lf = string_index_of.call(source, '\n', start - base);
+			if (lf === -1 || lf + base >= line - 1) return;
+		}
+		this.trim_point = line;
+	}
+
+	/**
+	 * the window trim of feed when nodes other than paragraphs are pending:
+	 * the opening lines of pending html containers before the cut go first,
+	 * each ending in a linefeed, and their pending starts move onto them so
+	 * a revoke repair reads the same line
+	 */
+	private trim_keeping_html(head: string): string {
+		const base = this.source_base;
+		const cut = this.trim_point - 1;
+		let prefix = '';
+		const offsets: number[] = [];
+		const slots: number[] = [];
+		for (let pi = 0; pi < this.pending_count; pi++) {
+			const start = this.pending_starts[pi];
+			if (start >= cut || this.kind_of(this.pending_ids[pi]) !== NodeKind.html)
+				continue;
+			const lf = string_index_of.call(head, '\n', start - base);
+			offsets.push(prefix.length);
+			slots.push(pi);
+			prefix += string_slice.call(head, start - base, lf + 1);
+		}
+		const new_base = cut - prefix.length;
+		for (let i = 0; i < slots.length; i++) {
+			this.pending_starts[slots[i]] = new_base + offsets[i];
+		}
+		this.source_base = new_base;
+		return prefix + string_slice.call(head, cut - base);
 	}
 
 	/** leaves scan, trim point and window where _run would, false when the chunk might hold the close */
