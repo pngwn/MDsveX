@@ -168,8 +168,18 @@ function append_flat(head: string, tail: string): string {
  * when the input has no `\r`.
  */
 export function normalize_newlines(source: string): string {
-	if (string_index_of.call(source, '\r') === -1) return source;
-	return source.replace(/\r\n?/g, '\n');
+	let cr = string_index_of.call(source, '\r');
+	if (cr === -1) return source;
+	// jumping between \r with indexOf beats a global regex replace
+	let out = '';
+	let from = 0;
+	while (cr !== -1) {
+		out += string_slice.call(source, from, cr) + '\n';
+		from = cr + 1;
+		if (char_code_at.call(source, from) === 0x0a) from++;
+		cr = string_index_of.call(source, '\r', from);
+	}
+	return out + string_slice.call(source, from);
 }
 
 /** maps parser offsets back to the raw source, a collapsed \n maps to its \r */
@@ -2959,13 +2969,14 @@ export class PFMParser {
 		if (p >= length) return this.finished ? -1 : -2;
 		if (p === label_start) return -1; // empty label
 
-		const label = string_slice.call(source, label_start - base, p - base);
+		const label_end = p;
 		p++; // skip ]
 
 		// must have : immediately after ]
 		if (p >= length) return this.finished ? -1 : -2;
 		if (char_code_at.call(source, p - base) !== COLON) return -1;
 		p++;
+		const label = string_slice.call(source, label_start - base, label_end - base);
 
 		// skip optional whitespace (including at most one line break)
 		let saw_newline = false;
@@ -6537,7 +6548,8 @@ export class PFMParser {
 				this.chomp(pos + 1, true);
 				return false;
 			}
-			this.cursor++;
+			// the rest of the run would come back here one char at a time
+			this.cursor = pos;
 			return false;
 		}
 
@@ -6797,7 +6809,8 @@ export class PFMParser {
 				this.chomp(pos + 1, true);
 				return false;
 			}
-			this.cursor++;
+			// the rest of the run would come back here one char at a time
+			this.cursor = pos;
 			return false;
 		}
 
