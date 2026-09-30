@@ -289,6 +289,12 @@ export class PFMParser {
 	private trim_point: number = 0;
 	// next line start to check for a closing fence, earlier lines cannot close it
 	private fence_scan: number = 0;
+	// line start that lf_ends_inline just found to interrupt, so the paragraph
+	// closing on the same linefeed does not scan it again. valid for one _run
+	// and only while the list and svelte depths it was taken under hold
+	private interrupt_pos: number = -1;
+	private interrupt_list_depth: number = 0;
+	private interrupt_svelte_depth: number = 0;
 	// raw text holds no markup so raw text elements never nest
 	private raw_node: number = 0;
 	private raw_needle: string = '';
@@ -3262,7 +3268,12 @@ export class PFMParser {
 	// delimiter states must close wherever inline pops or the two ping pong
 	private lf_ends_inline(lf: number): boolean {
 		const np = lf + 1;
-		if (this.is_block_interrupt(np)) return true;
+		if (this.is_block_interrupt(np)) {
+			this.interrupt_pos = np;
+			this.interrupt_list_depth = this.list_depth;
+			this.interrupt_svelte_depth = this.svelte_block_depth;
+			return true;
+		}
 		if (this.list_depth === 0) return false;
 		const { columns: ind } = this.count_indent(np);
 		if (ind < this.list_content_offset) return false;
@@ -3331,6 +3342,7 @@ export class PFMParser {
 
 		// reset progress counter,  new data may have been fed since last _run()
 		this.loop_without_progress = 0;
+		this.interrupt_pos = -1;
 		let iter_count = 0;
 
 		main_loop: while (this.cursor <= length) {
@@ -3942,7 +3954,12 @@ export class PFMParser {
 						}
 
 						// not in block quote - use is_block_interrupt for the common case
-						if (this.is_block_interrupt(next_pos)) {
+						if (
+							(this.interrupt_pos === next_pos &&
+								this.interrupt_list_depth === this.list_depth &&
+								this.interrupt_svelte_depth === this.svelte_block_depth) ||
+							this.is_block_interrupt(next_pos)
+						) {
 							this.emit_close(current_node, this.cursor);
 							this.states.pop();
 							truncate_stack(this.node_stack, node_stack_base);
@@ -5004,47 +5021,10 @@ export class PFMParser {
 						break main_loop;
 					}
 
-					if (code === LINEFEED && this.block_quote_depth > 0) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
-						continue;
-					}
-
-					if (
-						!code ||
-						(code === LINEFEED && this.is_block_interrupt(this.cursor + 1))
-					) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
-						continue;
-					} else if (code === LINEFEED && this.list_depth > 0) {
-						const np = this.cursor + 1;
-						const { columns: ind } = this.count_indent(np);
-						if (ind >= this.list_content_offset) {
-							const stripped = this.skip_columns(np, this.list_content_offset);
-							if (
-								stripped < length &&
-								this.try_parse_list_marker(stripped) !== null
-							) {
-								this.states.pop();
-								this.emit_close(current_node, this.cursor);
-								this.out.set_value_end(current_node, this.cursor);
-								this.node_stack.pop();
-								continue;
-							}
-						}
-						// list continuation - close text, let inline emit soft_break
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
-						continue;
-					} else if (code === LINEFEED) {
-						// non-blockquote, non-list linefeed - close text, let inline emit soft_break
+					// a linefeed or eof always closes the text node, whether the next
+					// line interrupts, starts a list item or continues, the enclosing
+					// inline and paragraph states make that call
+					if (!code || code === LINEFEED) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
 						this.out.set_value_end(current_node, this.cursor);
@@ -8168,6 +8148,7 @@ export class PFMParser {
 		this.cursor = saved_cursor;
 		this.finished = saved_finished;
 		this.class_floor = saved_floor;
+		this.interrupt_pos = -1;
 	}
 
 	/**
