@@ -64,6 +64,32 @@ let esc_quot = -1;
 // false only while a render walks a buffer without prebuilt strings, which the
 // tree builder never makes, so text skips the lookup
 let esc_prebuilt = true;
+// while set, only nodes whose bit is set can hold a prebuilt string. a late
+// repair can store one at a large index, which turns the sparse strings array
+// into a dictionary, so reading it for every text node hashes
+let esc_bits: Uint8Array | null = null;
+const PREBUILT_BITS_MIN = 1024;
+
+/** one bit per node index that holds a prebuilt string */
+function prebuilt_bits(buf: NodeBuffer): Uint8Array {
+	const bits = new Uint8Array((buf.size >>> 3) + 1);
+	const strings = buf._strings;
+	// for-in walks only the present keys, also of a dictionary array
+	for (const k in strings) {
+		const i = +k;
+		bits[i >>> 3] |= 1 << (i & 7);
+	}
+	return bits;
+}
+
+/** set the prebuilt state for a render of buf, the caller restores it after */
+function prebuilt_begin(buf: NodeBuffer): void {
+	const len = buf._strings.length;
+	if (len === 0) esc_prebuilt = false;
+	// a short array stays in fast elements where a direct read is cheaper than
+	// building the bitmap (for-in costs more than a small document's render)
+	else if (len > PREBUILT_BITS_MIN) esc_bits = prebuilt_bits(buf);
+}
 
 function esc_reset(src: string): void {
 	esc_src = src;
@@ -83,8 +109,12 @@ function esc_next(ch: string, from: number): number {
 /** equals escape_html of c.text, reading source slices through the escape index */
 function escape_node_text(c: Cursor): string {
 	if (esc_prebuilt) {
-		const s = c.prebuilt;
-		if (s !== undefined) return escape_html(s);
+		const bits = esc_bits;
+		const i = c.index;
+		if (bits === null || (bits[i >>> 3] & (1 << (i & 7))) !== 0) {
+			const s = c.prebuilt;
+			if (s !== undefined) return escape_html(s);
+		}
 	}
 	const vs = c.value_start;
 	let ve = c.value_end;
@@ -1853,11 +1883,12 @@ export class CursorHTMLRenderer {
 			// a mapped render may have left chunks, drop them so they hold no document
 			const out = this.out;
 			if (out.length !== 0) out.length = 0;
-			esc_prebuilt = buf._strings.length !== 0;
+			prebuilt_begin(buf);
 			try {
 				this.html = render_folded(c);
 			} finally {
 				esc_prebuilt = true;
+				esc_bits = null;
 			}
 			return this.blocks;
 		}
@@ -1899,7 +1930,13 @@ export class CursorHTMLRenderer {
 
 		const out = this.out;
 		if (out.length !== 0) out.length = 0;
-		render_node(c, out, sink);
+		prebuilt_begin(buf);
+		try {
+			render_node(c, out, sink);
+		} finally {
+			esc_prebuilt = true;
+			esc_bits = null;
+		}
 		this.html = out.join('');
 	}
 
