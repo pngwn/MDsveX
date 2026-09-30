@@ -6526,6 +6526,8 @@ export class PFMParser {
 			) {
 				pos++;
 			}
+			// a chunk end inside the run may still be followed by a linefeed
+			if (pos >= length && !this.finished) return true;
 			if (pos < length && char_code_at.call(source, pos - base) === LINEFEED) {
 				const lb_id = this.emit_open(
 					NodeKind.line_break,
@@ -6784,6 +6786,8 @@ export class PFMParser {
 			) {
 				pos++;
 			}
+			// a chunk end inside the run may still be followed by a linefeed
+			if (pos >= length && !this.finished) return true;
 			if (pos < length && char_code_at.call(source, pos - base) === LINEFEED) {
 				const lb_id = this.emit_open(
 					NodeKind.line_break,
