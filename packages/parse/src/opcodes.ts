@@ -96,4 +96,10 @@ export interface Emitter {
 	 * @param pos current byte offset in the source.
 	 */
 	cursor(pos: number): void;
+
+	/**
+	 * the incremental finish() emitted the last opcode, a builder can drop
+	 * storage it reserved for more nodes.
+	 */
+	end?(): void;
 }

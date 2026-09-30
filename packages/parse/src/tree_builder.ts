@@ -343,6 +343,11 @@ export class TreeBuilder implements Emitter {
 
 	cursor(_pos: number): void {}
 
+	/** an incremental document is complete, give its unused slab tail back */
+	end(): void {
+		this.nodes.trim();
+	}
+
 	/** extract the built NodeBuffer. */
 	get_buffer(): NodeBuffer {
 		return this.nodes;

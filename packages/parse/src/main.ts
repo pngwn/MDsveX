@@ -566,7 +566,9 @@ export class PFMParser {
 		this.finished = true;
 		this._run();
 		this._finalize();
-		this.out.cursor(this.cursor);
+		const out = this.out;
+		out.cursor(this.cursor);
+		if (out.end !== undefined) out.end();
 		return { errors: this.errors };
 	}
 
