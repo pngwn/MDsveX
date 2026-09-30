@@ -132,6 +132,7 @@ function truncate_stack(stack: number[], base: number): void {
 const WAIT_NONE = 0;
 const WAIT_FENCE = 1;
 const WAIT_RAW = 2;
+const WAIT_BRACE = 3;
 
 // states of the resumable brace probe, one char at a time so a scan cut at the end of the input resumes exactly
 const BM_CODE = 0;
@@ -331,6 +332,10 @@ export class PFMParser {
 	private bp_quote: number = 0;
 	private bp_end: number = -1;
 	private bp_frames: number[] = [];
+	// a failed resumable probe was the last thing _run did
+	private bp_stall: boolean = false;
+	// chunks fed while waiting on a brace, joined onto the window once it closes
+	private bp_pending: string[] = [];
 	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
 	private wait_kind: number = 0;
 	private cursor: number = 0;
@@ -545,16 +550,37 @@ export class PFMParser {
 			this.source_base = this.trim_point - 1;
 		}
 
-		const src = append_flat(head, chunk);
+		let src: string;
+		const pending = this.bp_pending;
+		if (pending.length !== 0) {
+			pending.unshift(head);
+			pending.push(chunk);
+			src = pending.join('');
+			pending.length = 0;
+		} else {
+			src = append_flat(head, chunk);
+		}
 		this.source = src;
 		this.source_end += len;
 		this._run();
+		if (this.bp_stall) {
+			this.bp_stall = false;
+			// _run stopped at the open brace, later chunks only need the brace scan until it closes
+			if (this.cursor === this.bp_start - 1) this.wait_kind = WAIT_BRACE;
+		}
 		this.out.cursor(this.cursor);
 	}
 
 	/** leaves scan, trim point and window where _run would, false when the chunk might hold the close */
 	private skip_wait(chunk: string, len: number): boolean {
 		const end = this.source_end;
+		if (this.wait_kind === WAIT_BRACE) {
+			// the saved scan stopped at the end of the input, the chunk continues it
+			if (this.brace_scan(chunk, end, end + len)) return false;
+			this.bp_pending.push(chunk);
+			this.source_end = end + len;
+			return true;
+		}
 		if (this.wait_kind === WAIT_FENCE) {
 			// no backtick means no close, the line after the last lf stays open
 			if (string_index_of.call(chunk, '`') !== -1) return false;
@@ -594,6 +620,12 @@ export class PFMParser {
 	 * pending speculation.
 	 */
 	finish(): { errors: ErrorCollector } {
+		const pending = this.bp_pending;
+		if (pending.length !== 0) {
+			pending.unshift(this.source);
+			this.source = pending.join('');
+			pending.length = 0;
+		}
 		if (this.pending_cr) {
 			this.source = append_flat(this.source, '\n');
 			this.source_end++;
@@ -618,6 +650,7 @@ export class PFMParser {
 	/** drop strings of the last document so a reused parser does not pin them */
 	release(): void {
 		this.source = '';
+		if (this.bp_pending.length !== 0) this.bp_pending.length = 0;
 		if (this.ref_map.size !== 0) this.ref_map.clear();
 		if (this.html_tag_stack.length !== 0) this.html_tag_stack = [];
 		this.svelte_block_tag = '';
@@ -632,6 +665,8 @@ export class PFMParser {
 		this.trim_point = 0;
 		this.fence_scan = 0;
 		this.bp_start = -1;
+		this.bp_stall = false;
+		if (this.bp_pending.length !== 0) this.bp_pending.length = 0;
 		this.raw_node = 0;
 		this.raw_needle = '';
 		this.raw_scan = 0;
@@ -2965,10 +3000,6 @@ export class PFMParser {
 	 * once per feed. same result as find_matching_brace on the same input.
 	 */
 	private probe_matching_brace(pos: number): number {
-		const frames = this.bp_frames;
-		let p: number;
-		let mode: number;
-		let quote: number;
 		if (this.bp_start !== pos) {
 			// most braces close within the chunk, the plain scan is quicker for those
 			const end = this.find_matching_brace(pos);
@@ -2981,19 +3012,25 @@ export class PFMParser {
 		if (this.bp_end !== -1) return this.bp_end;
 		if (this.bp_p === -1) {
 			// still open after a second feed, scan once more keeping state from here on
+			const frames = this.bp_frames;
 			frames.length = 0;
 			frames.push(1);
-			p = pos;
-			mode = BM_CODE;
-			quote = 0;
-		} else {
-			p = this.bp_p;
-			mode = this.bp_mode;
-			quote = this.bp_quote;
+			this.bp_p = pos;
+			this.bp_mode = BM_CODE;
+			this.bp_quote = 0;
 		}
-		const source = this.source;
-		const base = this.source_base;
-		const length = this.source_end;
+		if (this.brace_scan(this.source, this.source_base, this.source_end))
+			return this.bp_end;
+		this.bp_stall = true;
+		return -1;
+	}
+
+	/** runs the saved brace scan over source up to length, true (and bp_end set) once the brace closes */
+	private brace_scan(source: string, base: number, length: number): boolean {
+		const frames = this.bp_frames;
+		let p = this.bp_p;
+		let mode = this.bp_mode;
+		let quote = this.bp_quote;
 
 		while (p < length) {
 			const ch = char_code_at.call(source, p - base);
@@ -3007,7 +3044,7 @@ export class PFMParser {
 							frames.pop();
 							if (top === 0) {
 								this.bp_end = p + 1;
-								return p + 1;
+								return true;
 							}
 							// an interpolation closed, back in its template
 							mode = BM_TPL;
@@ -3088,7 +3125,7 @@ export class PFMParser {
 		this.bp_p = p;
 		this.bp_mode = mode;
 		this.bp_quote = quote;
-		return -1;
+		return false;
 	}
 
 	/**
