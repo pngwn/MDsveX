@@ -390,6 +390,26 @@ function chained_json(
 	return json;
 }
 
+// utf8 bytes of a map before base64, reused so a large map does not allocate
+// an off heap buffer on every transform, bounded so no huge one is pinned
+const BASE64_KEEP = 1 << 22;
+let base64_bytes: Buffer | null = null;
+
+/** equals Buffer.from(json).toString('base64') */
+function base64_utf8(json: string): string {
+	// three utf8 bytes per utf16 unit at most
+	const most = json.length * 3;
+	if (most > BASE64_KEEP) return Buffer.from(json).toString('base64');
+	let bytes = base64_bytes;
+	if (bytes === null || bytes.length < most) {
+		let size = 1 << 14;
+		while (size < most) size <<= 1;
+		bytes = base64_bytes = Buffer.allocUnsafe(size);
+	}
+	const n = bytes.write(json, 0, 'utf8');
+	return bytes.toString('base64', 0, n);
+}
+
 /**
  * mdsvex vite plugin. returns a single plugin that:
  *
@@ -477,7 +497,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 				// inject as inline sourceMappingURL since vite ignores
 				// post-transform map return values
-				const mapBase64 = Buffer.from(mapJson).toString('base64');
+				const mapBase64 = base64_utf8(mapJson);
 				const comment = `\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${mapBase64}\n`;
 
 				return { code: code + comment, map: { mappings: '' as const } };

@@ -978,6 +978,7 @@ let pseg_col = new Int32Array(1024);
 let pseg_sline = new Int32Array(1024);
 let pseg_scol = new Int32Array(1024);
 let line_first = new Int32Array(256);
+let query_buf = new Int32Array(256);
 
 /** fills the p arrays with the segments decode_lines would build, returns the line count */
 function trace_lines(
@@ -986,7 +987,9 @@ function trace_lines(
 	split: number,
 	source: string,
 	generated: string,
-	wanted: Uint8Array
+	wanted: Uint8Array,
+	queries: Int32Array,
+	query_count: number
 ): number {
 	const gen_starts = gen_table.starts;
 	const gen_count = gen_table.count;
@@ -1007,10 +1010,24 @@ function trace_lines(
 				let stop = gen_starts[gen_line + 1];
 				if (stop > end) stop = end;
 				if (wanted[gen_line] === 1) {
-					for (; at < stop; at++) push_span(at, s + (at - g), 1);
-				} else {
-					at = stop;
+					// a lookup lands on a queried offset in the run or, when no run
+					// holds that offset, on the last point of a run, so only those
+					// points change a lookup
+					const last = stop - 1;
+					let lo = 0;
+					let hi = query_count;
+					while (lo < hi) {
+						const mid = (lo + hi) >>> 1;
+						if (queries[mid] < at) lo = mid + 1;
+						else hi = mid;
+					}
+					for (; lo < query_count && queries[lo] < last; lo++) {
+						const q = queries[lo];
+						push_span(q, s + (q - g), 1);
+					}
+					push_span(last, s + (last - g), 1);
 				}
+				at = stop;
 			}
 		} else {
 			gen_line = find_line_near(gen_starts, gen_count, gen_line, g);
@@ -1094,11 +1111,26 @@ export function chain_trace(
 	fill_line_starts(gen_table, generated);
 	const gen_count = gen_table.count;
 	const wanted = new Uint8Array(gen_count);
+	if (query_buf.length < count) query_buf = new Int32Array(count * 2);
+	const queries = query_buf;
+	let query_count = 0;
+	const gen_starts = gen_table.starts;
 	for (let k = 0; k < count; k++) {
 		if (cseg_len[k] !== 1) {
 			const l = cseg_sline[k];
-			if (l < gen_count) wanted[l] = 1;
+			if (l < gen_count) {
+				wanted[l] = 1;
+				queries[query_count++] = gen_starts[l] + cseg_scol[k];
+			}
 		}
+	}
+	if (query_count > 1) {
+		queries.subarray(0, query_count).sort();
+		let kept = 1;
+		for (let k = 1; k < query_count; k++) {
+			if (queries[k] !== queries[kept - 1]) queries[kept++] = queries[k];
+		}
+		query_count = kept;
 	}
 	const lines =
 		trace.split === trace.start
@@ -1109,7 +1141,9 @@ export function chain_trace(
 					trace.split,
 					source,
 					generated,
-					wanted
+					wanted,
+					queries,
+					query_count
 				);
 	const first = line_first;
 	const pcol = pseg_col;
