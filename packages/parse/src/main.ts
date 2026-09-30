@@ -3734,6 +3734,29 @@ export class PFMParser {
 		return false;
 	}
 
+	/**
+	 * inline at a linefeed lf_ends_inline said ends it, outside block quotes: pop
+	 * inline, and when a paragraph is under it make the paragraph state's close
+	 * on that linefeed here (its interrupt check reaches the same answer)
+	 */
+	private inline_lf_end(): void {
+		const states = this.states;
+		states.pop();
+		if (states[states.length - 1] !== StateKind.paragraph) return;
+		const node_stack = this.node_stack;
+		this.emit_close(node_stack[node_stack.length - 1], this.cursor);
+		states.pop();
+		truncate_stack(
+			node_stack,
+			1 +
+				this.block_quote_depth +
+				this.list_depth * 2 +
+				this.html_block_depth +
+				this.svelte_block_depth * 2 +
+				this.directive_colon_counts.length
+		);
+	}
+
 	// main loop
 
 	private _run(): void {
@@ -4694,7 +4717,7 @@ export class PFMParser {
 								continue;
 							}
 							if (this.lf_ends_inline(this.cursor)) {
-								this.states.pop();
+								this.inline_lf_end();
 								continue;
 							} else if (this.list_depth > 0) {
 								// soft line break - emit soft_break node
@@ -5616,7 +5639,7 @@ export class PFMParser {
 							// make inline's linefeed call here: an interrupting next line pops
 							// inline, anything else is its soft break, emitted here
 							if (this.lf_ends_inline(this.cursor)) {
-								states.pop();
+								this.inline_lf_end();
 								continue;
 							}
 							const parent_id = this.node_stack[this.node_stack.length - 1];
@@ -6070,6 +6093,7 @@ export class PFMParser {
 					this.table_cell_has_content = false;
 					this.node_stack.push(this.table_cell_id);
 					this.states.push(StateKind.table_row_content);
+					this.table_cells();
 					continue;
 				}
 
@@ -6111,22 +6135,7 @@ export class PFMParser {
 							);
 							this.table_cell_has_content = false;
 							this.node_stack.push(this.table_cell_id);
-							// the next trips would skip the cell's leading whitespace and
-							// take a plain run, do both here
-							let q = this.cursor;
-							while (q < length) {
-								const ch = char_code_at.call(source, q - base);
-								if (ch !== SPACE && ch !== TAB) break;
-								q++;
-							}
-							this.cursor = q;
-							if (q < length) {
-								const c0 = char_code_at.call(source, q - base);
-								if (c0 !== 0 && (c0 >= 128 || TEXT_BREAK[c0] === 0)) {
-									this.table_cell_has_content = true;
-									this.table_cell_text(this.table_cell_id);
-								}
-							}
+							this.table_cells();
 						}
 						continue;
 					}
@@ -8775,6 +8784,49 @@ export class PFMParser {
 				return;
 			}
 			start = q;
+		}
+	}
+
+	/**
+	 * a data cell just opened at the cursor: what the next table_row_content
+	 * trips would do, in one. skip the leading whitespace, take a plain run, and
+	 * while that run ends at a | close the cell, open the next and go again.
+	 * anything else is left for the table_row_content state at the cursor
+	 */
+	private table_cells(): void {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		for (;;) {
+			let q = this.cursor;
+			while (q < length) {
+				const ch = char_code_at.call(source, q - base);
+				if (ch !== SPACE && ch !== TAB) break;
+				q++;
+			}
+			this.cursor = q;
+			if (q >= length) return;
+			const c0 = char_code_at.call(source, q - base);
+			if (c0 === 0 || (c0 < 128 && TEXT_BREAK[c0] !== 0)) return;
+			this.table_cell_has_content = true;
+			this.table_cell_text(this.table_cell_id);
+			// inline and text were pushed: the run did not end at a | or \n
+			if (this.states[this.states.length - 1] !== StateKind.table_row_content)
+				return;
+			if (char_code_at.call(source, this.cursor - base) !== PIPE) return;
+			// table_row_content's | branch
+			this.close_table_cell();
+			this.table_cell_col++;
+			this.cursor++;
+			if (this.table_cell_col >= this.table_col_count) return;
+			this.table_cell_id = this.emit_open(
+				NodeKind.table_cell,
+				this.cursor,
+				this.table_row_id,
+				this.table_cell_col
+			);
+			this.table_cell_has_content = false;
+			this.node_stack.push(this.table_cell_id);
 		}
 	}
 
