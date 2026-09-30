@@ -10,6 +10,8 @@ import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import { CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
 import {
+	chain_trace,
+	map_basename,
 	mapped_source_lines,
 	mappings_to_v3,
 	trace_to_decoded,
@@ -358,6 +360,65 @@ function pfm_map(
 	return trace_to_decoded(doc.trace!, doc.raw, doc.html, lines, file);
 }
 
+// names resolve-uri keeps as they are, as remapping resolves the source
+const PLAIN_BASENAME = /^[\w\-+~@][\w.\-+~@]*$/;
+
+/**
+ * the inline map JSON remapping would give for [compile, pfm map] with
+ * sourcesContent set to the raw source, null for anything left to remapping
+ */
+function chained_json(
+	doc: StoredDocument,
+	compile: any,
+	file: string
+): string | null {
+	if (doc.trace === null || compile._decodedMemo) return null;
+	const mappings = compile.mappings;
+	if (typeof mappings !== 'string') return null;
+	const sources = compile.sources;
+	if (!Array.isArray(sources) || sources.length > 1) return null;
+	if (
+		sources.length === 1 &&
+		sources[0] != null &&
+		typeof sources[0] !== 'string'
+	)
+		return null;
+	const root = compile.sourceRoot;
+	if (root != null && typeof root !== 'string') return null;
+	const out_file = compile.file;
+	if (out_file != null && typeof out_file !== 'string') return null;
+	let names = compile.names;
+	if (names == null) names = [];
+	else if (!Array.isArray(names)) return null;
+	for (let i = 0; i < names.length; i++) {
+		if (typeof names[i] !== 'string') return null;
+	}
+	const base = map_basename(file);
+	if (!PLAIN_BASENAME.test(base)) return null;
+
+	const chained = chain_trace(mappings, names, doc.trace, doc.raw, doc.html);
+	if (chained === null) return null;
+	let json = '{"version":3';
+	if (out_file) json += ',"file":' + JSON.stringify(out_file);
+	json +=
+		',"mappings":"' +
+		chained.mappings +
+		'","names":' +
+		JSON.stringify(chained.names) +
+		',"ignoreList":[],"sources":';
+	if (chained.sourced) {
+		json +=
+			'[' +
+			JSON.stringify(base) +
+			'],"sourcesContent":[' +
+			JSON.stringify(doc.raw) +
+			']}';
+	} else {
+		json += '[],"sourcesContent":[]}';
+	}
+	return json;
+}
+
 /**
  * mdsvex vite plugin. returns a single plugin that:
  *
@@ -427,21 +488,24 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				}
 				if (!compileMap?.mappings) return;
 
-				const pfmMap = doc.map ?? pfm_map(doc, compileMap.mappings, id);
+				let mapJson = chained_json(doc, compileMap, id);
+				if (mapJson === null) {
+					const pfmMap = doc.map ?? pfm_map(doc, compileMap.mappings, id);
 
-				// chain: JS to HTML (compile) + HTML to markdown (pfm) = JS to markdown
-				const chained = remapping([compileMap, pfmMap as any], () => null);
+					// chain: JS to HTML (compile) + HTML to markdown (pfm) = JS to markdown
+					const chained = remapping([compileMap, pfmMap as any], () => null);
 
-				// override sourcesContent with the original markdown
-				if (chained.sourcesContent) {
-					chained.sourcesContent = chained.sourcesContent.map(
-						() => originalSource
-					);
+					// override sourcesContent with the original markdown
+					if (chained.sourcesContent) {
+						chained.sourcesContent = chained.sourcesContent.map(
+							() => originalSource
+						);
+					}
+					mapJson = JSON.stringify(chained);
 				}
 
 				// inject as inline sourceMappingURL since vite ignores
 				// post-transform map return values
-				const mapJson = JSON.stringify(chained);
 				const mapBase64 = Buffer.from(mapJson).toString('base64');
 				const comment = `\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${mapBase64}\n`;
 

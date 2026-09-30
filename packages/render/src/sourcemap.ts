@@ -369,7 +369,7 @@ export function records_to_v3(
 	return v3_map(encoded, source, file);
 }
 
-function map_basename(file?: string): string {
+export function map_basename(file?: string): string {
 	// use basename to match svelte compiler convention, vite resolves relative
 	// to the served JS file, so the browser can find the source.
 	return file
@@ -862,4 +862,360 @@ export function mapped_source_lines(
 		shift = 0;
 	}
 	return lines;
+}
+
+export interface ChainedMappings {
+	/** encoded mappings of the chained map */
+	mappings: string;
+	/** names in first use order */
+	names: string[];
+	/** whether any segment reached the source, then it is the only source */
+	sourced: boolean;
+}
+
+// compile map segments decoded flat, one entry per segment
+let cseg_line = new Int32Array(1024);
+let cseg_col = new Int32Array(1024);
+let cseg_len = new Int32Array(1024);
+let cseg_sline = new Int32Array(1024);
+let cseg_scol = new Int32Array(1024);
+let cseg_name = new Int32Array(1024);
+
+function grow_cseg(used: number): void {
+	const size = cseg_line.length * 2;
+	cseg_line = copy_i32(cseg_line, used, size);
+	cseg_col = copy_i32(cseg_col, used, size);
+	cseg_len = copy_i32(cseg_len, used, size);
+	cseg_sline = copy_i32(cseg_sline, used, size);
+	cseg_scol = copy_i32(cseg_scol, used, size);
+	cseg_name = copy_i32(cseg_name, used, size);
+}
+
+/**
+ * decodes like @jridgewell/sourcemap-codec, -1 for input it reads
+ * differently, a line out of order or a source other than the first
+ */
+function decode_compile(mappings: string): number {
+	let n = 0;
+	let line = 0;
+	let field = 0;
+	let gen_col = 0;
+	let last_col = 0;
+	let source_index = 0;
+	let src_line = 0;
+	let src_col = 0;
+	let name_index = 0;
+	let value = 0;
+	let shift = 0;
+	const length = mappings.length;
+	for (let i = 0; i <= length; i++) {
+		const c = i < length ? mappings.charCodeAt(i) : SEMICOLON;
+		if (c === COMMA || c === SEMICOLON) {
+			if (shift !== 0) return -1;
+			if (field === 1 || field === 4 || field === 5) {
+				if (gen_col < last_col || gen_col < 0) return -1;
+				last_col = gen_col;
+				if (field !== 1) {
+					if (source_index !== 0 || src_line < 0 || src_col < 0) return -1;
+					if (field === 5 && name_index < 0) return -1;
+				}
+				if (n === cseg_line.length) grow_cseg(n);
+				cseg_line[n] = line;
+				cseg_col[n] = gen_col;
+				cseg_len[n] = field;
+				cseg_sline[n] = src_line;
+				cseg_scol[n] = src_col;
+				cseg_name[n] = name_index;
+				n++;
+			} else if (field !== 0 || c === COMMA) {
+				return -1;
+			}
+			field = 0;
+			if (c === SEMICOLON) {
+				line++;
+				gen_col = 0;
+				last_col = 0;
+			}
+			continue;
+		}
+		const digit = c < 128 ? VLQ_DIGITS[c] : -1;
+		if (digit < 0 || shift > 25) return -1;
+		value |= (digit & 31) << shift;
+		if ((digit & 32) !== 0) {
+			shift += 5;
+			continue;
+		}
+		const magnitude = value >>> 1;
+		if ((value & 1) !== 0 && magnitude === 0) return -1;
+		const delta = (value & 1) !== 0 ? -magnitude : magnitude;
+		if (field === 0) gen_col += delta;
+		else if (field === 1) source_index += delta;
+		else if (field === 2) src_line += delta;
+		else if (field === 3) src_col += delta;
+		else if (field === 4) name_index += delta;
+		else return -1;
+		field++;
+		value = 0;
+		shift = 0;
+	}
+	return n;
+}
+
+// trace segments of the wanted generated lines, line l holds
+// line_first[l] to line_first[l + 1]
+let pseg_col = new Int32Array(1024);
+let pseg_sline = new Int32Array(1024);
+let pseg_scol = new Int32Array(1024);
+let line_first = new Int32Array(256);
+
+/** fills the p arrays with the segments decode_lines would build, returns the line count */
+function trace_lines(
+	buf: Uint32Array,
+	start: number,
+	split: number,
+	source: string,
+	generated: string,
+	wanted: Uint8Array
+): number {
+	const gen_starts = gen_table.starts;
+	const gen_count = gen_table.count;
+
+	span_count = 0;
+	let gen_line = 0;
+	for (let p = start; p < split; p += Rec.SIZE) {
+		const role = buf[p + 5] & 3;
+		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
+		const out_idx = split + buf[p];
+		const g = buf[out_idx];
+		const s = buf[p + 2];
+		const source_length = buf[p + 3];
+		if (
+			role === Role.CONTENT &&
+			buf[out_idx + buf[p + 1]] - g === source_length
+		) {
+			const end = g + source_length;
+			let at = g;
+			while (at < end) {
+				gen_line = find_line_near(gen_starts, gen_count, gen_line, at);
+				let stop = gen_starts[gen_line + 1];
+				if (stop > end) stop = end;
+				if (wanted[gen_line] === 1) {
+					for (; at < stop; at++) push_span(at, s + (at - g), 1);
+				} else {
+					at = stop;
+				}
+			}
+		} else {
+			gen_line = find_line_near(gen_starts, gen_count, gen_line, g);
+			if (wanted[gen_line] === 1) push_span(g, s, 1);
+		}
+	}
+
+	if (line_first.length < gen_count + 1)
+		line_first = new Int32Array(gen_count + 1);
+	const first = line_first;
+	const n = span_count;
+	if (n === 0) {
+		first.fill(0, 0, gen_count + 1);
+		return gen_count;
+	}
+	if (pseg_col.length < n) {
+		let size = pseg_col.length * 2;
+		while (size < n) size *= 2;
+		pseg_col = new Int32Array(size);
+		pseg_sline = new Int32Array(size);
+		pseg_scol = new Int32Array(size);
+	}
+
+	fill_line_starts(src_table, source);
+	const src_starts = src_table.starts;
+	const src_count = src_table.count;
+	sort_spans();
+
+	const gen = span_gen;
+	const src = span_src;
+	const order = span_order;
+	const col = pseg_col;
+	const sline = pseg_sline;
+	const scol = pseg_scol;
+	let src_line = 0;
+	let filled = 0;
+	gen_line = 0;
+	for (let k = 0; k < n; k++) {
+		const i = order[k];
+		const g = gen[i];
+		const s = src[i];
+		gen_line = find_line_near(gen_starts, gen_count, gen_line, g);
+		while (filled <= gen_line) first[filled++] = k;
+		src_line = find_line_near(src_starts, src_count, src_line, s);
+		col[k] = g - gen_starts[gen_line];
+		sline[k] = src_line;
+		scol[k] = s - src_starts[src_line];
+	}
+	while (filled <= gen_count) first[filled++] = n;
+	return gen_count;
+}
+
+function write_vlq_codec(buf: Uint8Array, p: number, delta: number): number {
+	// as @jridgewell/sourcemap-codec encodes
+	delta = delta < 0 ? (-delta << 1) | 1 : delta << 1;
+	do {
+		let clamped = delta & 31;
+		delta >>>= 5;
+		if (delta > 0) clamped |= 32;
+		buf[p++] = VLQ_CODES[clamped];
+	} while (delta > 0);
+	return p;
+}
+
+/**
+ * chains a compile map from the html onto the trace's map of the html, the
+ * mappings and names equal @ampproject/remapping of [compile, trace_to_v3],
+ * null when the compile mappings are ones it leaves to remapping
+ * @internal
+ */
+export function chain_trace(
+	compile_mappings: string,
+	compile_names: readonly string[],
+	trace: MapTrace,
+	source: string,
+	generated: string
+): ChainedMappings | null {
+	const count = decode_compile(compile_mappings);
+	if (count < 0) return null;
+
+	fill_line_starts(gen_table, generated);
+	const gen_count = gen_table.count;
+	const wanted = new Uint8Array(gen_count);
+	for (let k = 0; k < count; k++) {
+		if (cseg_len[k] !== 1) {
+			const l = cseg_sline[k];
+			if (l < gen_count) wanted[l] = 1;
+		}
+	}
+	const lines =
+		trace.split === trace.start
+			? 0
+			: trace_lines(
+					trace.buf,
+					trace.start,
+					trace.split,
+					source,
+					generated,
+					wanted
+				);
+	const first = line_first;
+	const pcol = pseg_col;
+	const psline = pseg_sline;
+	const pscol = pseg_scol;
+
+	const names: string[] = [];
+	let name_ids: Map<string, number> | null = null;
+	let sourced = false;
+
+	let buf = out;
+	let p = 0;
+	let out_line = 0;
+	// the previous segment kept on the current line, len 0 when none
+	let cur_line = -1;
+	let prev_len = 0;
+	let prev_sline = 0;
+	let prev_scol = 0;
+	let prev_name = -1;
+	let enc_col = 0;
+	let enc_sline = 0;
+	let enc_scol = 0;
+	let enc_name = 0;
+
+	for (let k = 0; k < count; k++) {
+		const line = cseg_line[k];
+		if (line !== cur_line) {
+			cur_line = line;
+			prev_len = 0;
+		}
+		const col = cseg_col[k];
+		let seg_len = 1;
+		let sline = 0;
+		let scol = 0;
+		let name = -1;
+		if (cseg_len[k] !== 1) {
+			// greatest lower bound in the trace line, the first of equal columns
+			const l = cseg_sline[k];
+			if (l >= lines) continue;
+			const c = cseg_scol[k];
+			let lo = first[l];
+			let hi = first[l + 1] - 1;
+			let found = -1;
+			while (lo <= hi) {
+				const mid = (lo + hi) >>> 1;
+				if (pcol[mid] <= c) {
+					found = mid;
+					lo = mid + 1;
+				} else hi = mid - 1;
+			}
+			if (found < 0) continue;
+			const fc = pcol[found];
+			const lower = first[l];
+			while (found > lower && pcol[found - 1] === fc) found--;
+			seg_len = 4;
+			sline = psline[found];
+			scol = pscol[found];
+			sourced = true;
+			if (cseg_len[k] === 5) {
+				const text = compile_names[cseg_name[k]];
+				if (text) {
+					if (name_ids === null) name_ids = new Map();
+					let id = name_ids.get(text);
+					if (id === undefined) {
+						id = names.length;
+						names.push(text);
+						name_ids.set(text, id);
+					}
+					name = id;
+					seg_len = 5;
+				}
+			}
+			if (
+				prev_len > 1 &&
+				prev_sline === sline &&
+				prev_scol === scol &&
+				prev_name === name
+			)
+				continue;
+		} else if (prev_len === 0 || prev_len === 1) {
+			continue;
+		}
+
+		const need = p + (line - out_line) + 40;
+		if (need > buf.length) {
+			grow_out(p, need);
+			buf = out;
+		}
+		if (out_line < line) {
+			do buf[p++] = SEMICOLON;
+			while (++out_line < line);
+			enc_col = 0;
+		} else if (p > 0) {
+			// out_line only reaches a line by writing a segment on it
+			buf[p++] = COMMA;
+		}
+		p = write_vlq_codec(buf, p, col - enc_col);
+		enc_col = col;
+		if (seg_len !== 1) {
+			buf[p++] = CHAR_A;
+			p = write_vlq_codec(buf, p, sline - enc_sline);
+			enc_sline = sline;
+			p = write_vlq_codec(buf, p, scol - enc_scol);
+			enc_scol = scol;
+			if (seg_len === 5) {
+				p = write_vlq_codec(buf, p, name - enc_name);
+				enc_name = name;
+			}
+		}
+		prev_len = seg_len;
+		prev_sline = sline;
+		prev_scol = scol;
+		prev_name = name;
+	}
+	return { mappings: decoder.decode(buf.subarray(0, p)), names, sourced };
 }
