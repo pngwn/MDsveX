@@ -460,6 +460,8 @@ export class PFMParser {
 	private checkpoint_cursor: number = 0;
 	private code_span_open_pos: number = 0;
 	private prev_cursor: number = 0;
+	// the lowest state stack depth sampled since the cursor last moved
+	private prev_depth: number = 0;
 	private loop_without_progress: number = 0;
 
 	private out: Emitter;
@@ -744,6 +746,7 @@ export class PFMParser {
 		this.checkpoint_cursor = 0;
 		this.code_span_open_pos = 0;
 		this.prev_cursor = 0;
+		this.prev_depth = 0;
 		this.loop_without_progress = 0;
 		this.frontmatter_failed = false;
 		this.imports_allowed = true;
@@ -3990,17 +3993,9 @@ export class PFMParser {
 
 			const current_node = this.node_stack[this.node_stack.length - 1];
 
-			if ((++iter_count & 63) === 0) {
-				if (this.cursor === this.prev_cursor) {
-					this.loop_without_progress += 64;
-					if (this.loop_without_progress > 100) {
-						console.error('Infinite loop detected');
-						break;
-					}
-				} else {
-					this.loop_without_progress = 0;
-				}
-				this.prev_cursor = this.cursor;
+			if ((++iter_count & 63) === 0 && this.stalled()) {
+				console.error('Infinite loop detected');
+				break;
 			}
 
 			switch (active) {
@@ -8943,6 +8938,30 @@ export class PFMParser {
 	 * paragraph, anything else is a soft break and the next line's plain run is
 	 * taken the same way. in a block quote the paragraph makes the linefeed call
 	 */
+	/**
+	 * the main loop's progress check, sampled every 64 trips. a trip that moves
+	 * the cursor or pops the state stack below any depth sampled since the
+	 * cursor last moved is progress: unwinding a paragraph's pending
+	 * delimiters takes a trip per delimiter at one cursor. the lowest depth
+	 * can only fall so far, so a real loop still stops
+	 */
+	private stalled(): boolean {
+		const depth = this.states.length;
+		if (this.cursor !== this.prev_cursor) {
+			this.prev_cursor = this.cursor;
+			this.prev_depth = depth;
+			this.loop_without_progress = 0;
+			return false;
+		}
+		if (depth < this.prev_depth) {
+			this.prev_depth = depth;
+			this.loop_without_progress = 0;
+			return false;
+		}
+		this.loop_without_progress += 64;
+		return this.loop_without_progress > 100;
+	}
+
 	private para_text(para_id: number): void {
 		const source = this.source;
 		const base = this.source_base;
