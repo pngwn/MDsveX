@@ -3291,52 +3291,62 @@ export class PFMParser {
 		);
 	}
 
-	// returns true when a linefeed inside a delimiter state (emphasis,
-	// strong, strikethrough, superscript, subscript) was consumed by a
-	// block interrupt or blockquote boundary. caller should `continue
-	// main_loop` when true.
-	private _delimiter_lf_close(current_node: number): boolean {
+	/**
+	 * where a delimiter or link text goes at a linefeed, it must match inline or the two ping pong
+	 * @returns -1 when it ends, 0 when inline takes the linefeed, otherwise
+	 *   the position past the quote markers on the next line
+	 */
+	private inline_lf_resume(): number {
+		if (this.in_heading) return -1;
 		if (this.block_quote_depth > 0) {
-			const next_pos = this.cursor + 1;
-			const stripped = this.skip_bq_markers(next_pos, this.block_quote_depth);
-
+			const stripped = this.skip_bq_markers(
+				this.cursor + 1,
+				this.block_quote_depth
+			);
 			if (
 				stripped !== -1 &&
 				!this.is_blank_at_pos(stripped) &&
 				!this.is_heading_start(stripped) &&
 				!this.is_thematic_break_start(stripped)
 			) {
-				const sb = this.emit_open(
-					NodeKind.soft_break,
-					this.cursor,
-					current_node
-				);
-				this.emit_close(sb, this.cursor + 1);
-				this.chomp(stripped, true);
-				this.states.push(StateKind.inline);
-			} else {
-				this.states.pop();
-				this.emit_close(current_node, this.cursor);
-				this.out.set_value_end(current_node, this.cursor);
-				this.node_stack.pop();
+				return stripped;
 			}
-			return true;
+			return -1;
 		}
-
 		if (
 			this.is_blank_line_after(this.cursor) ||
 			this.is_heading_start(this.cursor + 1) ||
 			this.is_thematic_break_start(this.cursor + 1) ||
 			this.lf_ends_inline(this.cursor)
 		) {
+			return -1;
+		}
+		return 0;
+	}
+
+	private continue_on_quote_line(current_node: number, resume: number): void {
+		const sb = this.emit_open(NodeKind.soft_break, this.cursor, current_node);
+		this.emit_close(sb, this.cursor + 1);
+		this.chomp(resume, true);
+		this.states.push(StateKind.inline);
+	}
+
+	// returns true when a linefeed inside a delimiter state (emphasis,
+	// strong, strikethrough, superscript, subscript) was consumed by a
+	// block interrupt or blockquote boundary. caller should `continue
+	// main_loop` when true.
+	private _delimiter_lf_close(current_node: number): boolean {
+		const resume = this.inline_lf_resume();
+		if (resume === 0) return false;
+		if (resume > 0) {
+			this.continue_on_quote_line(current_node, resume);
+		} else {
 			this.states.pop();
 			this.emit_close(current_node, this.cursor);
 			this.out.set_value_end(current_node, this.cursor);
 			this.node_stack.pop();
-			return true;
 		}
-
-		return false;
+		return true;
 	}
 
 	// main loop
@@ -6293,13 +6303,19 @@ export class PFMParser {
 			return false;
 		}
 
-		if (code === LINEFEED && this.is_blank_line_after(this.cursor)) {
-			// paragraph boundary - revoke link
-			this.out.revoke(current_node);
-			this.directive_text_pop(current_node);
-			this.node_stack.pop();
-			this.states.pop();
-			return false;
+		if (code === LINEFEED) {
+			const resume = this.inline_lf_resume();
+			if (resume === -1) {
+				this.out.revoke(current_node);
+				this.directive_text_pop(current_node);
+				this.node_stack.pop();
+				this.states.pop();
+				return false;
+			}
+			if (resume > 0) {
+				this.continue_on_quote_line(current_node, resume);
+				return false;
+			}
 		}
 
 		// dispatch inline content inside the link text
@@ -6351,7 +6367,9 @@ export class PFMParser {
 		// pop wherever inline pops at a linefeed or the two ping pong
 		if (
 			code === LINEFEED &&
-			(this.block_quote_depth > 0 || this.lf_ends_inline(this.cursor))
+			(this.in_heading ||
+				this.block_quote_depth > 0 ||
+				this.lf_ends_inline(this.cursor))
 		) {
 			// block interrupt after newline - close unclosed inline html element
 			if (
