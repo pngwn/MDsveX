@@ -1,0 +1,356 @@
+import { compile as svelte_compile } from 'svelte/compiler';
+import { describe, expect, test } from 'vitest';
+
+import { compile, CompilerSession, DirectiveError } from '../src/main';
+import type { ComponentSource, ParsePlugin } from '../src/main';
+
+const D = 'mdsvex:directives';
+
+function only(...names: string[]): ComponentSource[] {
+	return [{ specifier: D, names }];
+}
+
+/** the body after the generated script */
+function body(code: string): string {
+	return code.replace(/^<script>\n[^]*?<\/script>/, '');
+}
+
+function imports_of(code: string): string {
+	const m = /^<script>\n([^]*?)<\/script>/.exec(code);
+	return m === null ? '' : m[1];
+}
+
+/** every walk must render the same html, the vite plugin uses the trace one */
+function compile_all(
+	raw: string,
+	directives: ComponentSource[],
+	components?: ComponentSource[]
+): string {
+	const plain = compile(raw, { components, directives }).code;
+	expect(compile(raw, { components, directives, sourcemap: true }).code).toBe(
+		plain
+	);
+	const session = new CompilerSession();
+	expect(
+		session.compile_trace(raw, undefined, components, undefined, directives)
+			.code
+	).toBe(plain);
+	expect(
+		session.compile_v3(
+			raw,
+			'doc.svx',
+			undefined,
+			components,
+			undefined,
+			directives
+		).code
+	).toBe(plain);
+	return plain;
+}
+
+function error_of(fn: () => unknown): DirectiveError {
+	try {
+		fn();
+	} catch (e) {
+		expect(e).toBeInstanceOf(DirectiveError);
+		return e as DirectiveError;
+	}
+	throw new Error('did not throw');
+}
+
+describe('the three forms', () => {
+	test('inline passes its content as children', () => {
+		expect(body(compile_all('a :abbr[HTML _x_] b', only('abbr')))).toBe(
+			'<p>a <Abbr_MDSVEX_D_G>HTML <em>x</em></Abbr_MDSVEX_D_G> b</p>'
+		);
+	});
+
+	test('inline with empty text has no children', () => {
+		expect(body(compile_all('a :icon[] b', only('icon')))).toBe(
+			'<p>a <Icon_MDSVEX_D_G /> b</p>'
+		);
+	});
+
+	test('leaf passes its text as the label snippet only', () => {
+		expect(body(compile_all('::youtube[A talk]', only('youtube')))).toBe(
+			'<Youtube_MDSVEX_D_G>{#snippet label()}A talk{/snippet}</Youtube_MDSVEX_D_G>'
+		);
+	});
+
+	test('leaf with empty text is void', () => {
+		expect(body(compile_all('::toc[]', only('toc')))).toBe(
+			'<Toc_MDSVEX_D_G />'
+		);
+	});
+
+	test('container passes its text as label and its body as children', () => {
+		expect(
+			body(
+				compile_all(
+					':::Callout[Heads up](kind=warn)\nBody *markdown*\n:::',
+					only('Callout')
+				)
+			)
+		).toBe(
+			'<Callout_MDSVEX_D_G kind="warn">{#snippet label()}Heads up{/snippet}\n' +
+				'<p>Body <strong>markdown</strong></p>\n' +
+				'</Callout_MDSVEX_D_G>'
+		);
+	});
+
+	test('container without text has only children', () => {
+		expect(body(compile_all(':::note[]\n# h\n\n> q\n:::', only('note')))).toBe(
+			'<Note_MDSVEX_D_G>\n<h1>h</h1><blockquote>\n<p>q</p>\n</blockquote>\n</Note_MDSVEX_D_G>'
+		);
+	});
+
+	test('container without a body has only the label', () => {
+		expect(body(compile_all(':::note[x]\n:::', only('note')))).toBe(
+			'<Note_MDSVEX_D_G>{#snippet label()}x{/snippet}</Note_MDSVEX_D_G>'
+		);
+		expect(body(compile_all(':::note[]\n:::', only('note')))).toBe(
+			'<Note_MDSVEX_D_G />'
+		);
+	});
+
+	test('directives nest', () => {
+		expect(
+			body(
+				compile_all(
+					'::::outer[o]\n:::inner[i]\nsee :k[x]\n:::\n::::',
+					only('outer', 'inner', 'k')
+				)
+			)
+		).toBe(
+			'<Outer_MDSVEX_D_G>{#snippet label()}o{/snippet}\n' +
+				'<Inner_MDSVEX_D_G>{#snippet label()}i{/snippet}\n' +
+				'<p>see <K_MDSVEX_D_G>x</K_MDSVEX_D_G></p>\n' +
+				'</Inner_MDSVEX_D_G>\n' +
+				'</Outer_MDSVEX_D_G>'
+		);
+	});
+
+	test('the label is escaped text', () => {
+		expect(body(compile_all('::x[a < b & "c"]', only('x')))).toBe(
+			'<X_MDSVEX_D_G>{#snippet label()}a &lt; b &amp; &quot;c&quot;{/snippet}</X_MDSVEX_D_G>'
+		);
+	});
+});
+
+describe('args', () => {
+	test('become string props', () => {
+		expect(
+			body(
+				compile_all(
+					'::embed[x](src=/v.mp4, title="A < B", data-id=\'7\')',
+					only('embed')
+				)
+			)
+		).toBe(
+			'<Embed_MDSVEX_D_G src="/v.mp4" title="A &lt; B" data-id="7">' +
+				'{#snippet label()}x{/snippet}</Embed_MDSVEX_D_G>'
+		);
+	});
+
+	test('a value with braces stays a string, not an expression', () => {
+		expect(body(compile_all(':k[x](v="{a}")', only('k')))).toBe(
+			'<p><K_MDSVEX_D_G v={"{a}"}>x</K_MDSVEX_D_G></p>'
+		);
+	});
+
+	test('children is reserved on every form', () => {
+		const e = error_of(() =>
+			compile('a :k[x](children=1)', { directives: only('k') })
+		);
+		expect(e.message).toBe(
+			'the directive :k at 1:3 has an argument named children, which its component receives as a snippet'
+		);
+	});
+
+	test('label is reserved on leaf and container, an inline prop', () => {
+		const e = error_of(() =>
+			compile('\n:::k[x](label=y)\n:::', { directives: only('k') })
+		);
+		expect(e.message).toContain(':::k at 2:1 has an argument named label');
+		expect(body(compile_all(':k[x](label=y)', only('k')))).toBe(
+			'<p><K_MDSVEX_D_G label="y">x</K_MDSVEX_D_G></p>'
+		);
+	});
+});
+
+describe('unknown directives', () => {
+	const cases: [string, string, string, number, number][] = [
+		['inline', 'text\n\nsome :thing[x] here', ':thing', 3, 6],
+		['leaf', '::thing[x]', '::thing', 1, 1],
+		['container', '# t\n\n:::thing[x]\nbody\n:::', ':::thing', 3, 1],
+	];
+	for (const [form, raw, shown, line, column] of cases) {
+		test(`an unknown ${form} directive is a compile error naming it`, () => {
+			for (const run of [
+				() => compile(raw),
+				() => compile(raw, { sourcemap: true }),
+				() => compile(raw, { directives: only('other') }),
+				() => new CompilerSession().compile_trace(raw),
+				() => new CompilerSession().compile_v3(raw),
+			]) {
+				const e = error_of(run);
+				expect(e.directive).toBe(shown);
+				expect(e.line).toBe(line);
+				expect(e.column).toBe(column);
+				expect(e.message).toContain(`${shown} at ${line}:${column}`);
+				expect(e.message).toContain('"thing"');
+				expect(e.message).toContain('export * as directives');
+			}
+		});
+	}
+
+	test('one inside a known directive is still an error', () => {
+		const e = error_of(() =>
+			compile(':::box[]\nsee :nope[x]\n:::', { directives: only('box') })
+		);
+		expect(e.directive).toBe(':nope');
+	});
+
+	test('the shared compile recovers after an error', () => {
+		expect(() => compile('::x[]')).toThrow(DirectiveError);
+		expect(compile('# fine').code).toBe('<h1>fine</h1>');
+	});
+});
+
+describe('precedence', () => {
+	test('directives and elements are separate namespaces', () => {
+		const components: ComponentSource[] = [
+			{ specifier: 'mdsvex:components', names: ['table', 'hr', 'p'] },
+		];
+		expect(() =>
+			compile('::hr[]', { components, directives: only('p') })
+		).toThrow(DirectiveError);
+		const code = compile_all(
+			'---\n\ntext\n\n::table[]',
+			only('table', 'em'),
+			components
+		);
+		expect(body(code)).toBe(
+			'<Hr_MDSVEX_G /><P_MDSVEX_G>text</P_MDSVEX_G><Table_MDSVEX_D_G />'
+		);
+		expect(body(compile_all('_a_', only('em')))).toBe('<p><em>a</em></p>');
+	});
+
+	test('a later directives source wins', () => {
+		const directives = [
+			{ specifier: 'mdsvex:directives/0', names: ['note', 'tip'] },
+			{ specifier: 'mdsvex:directives/1', names: ['note'] },
+		];
+		const code = compile_all('::note[]\n\n::tip[]', directives);
+		expect(imports_of(code)).toBe(
+			"import { note as Note_MDSVEX_D_G } from 'mdsvex:directives/1';\n" +
+				"import { tip as Tip_MDSVEX_D_G } from 'mdsvex:directives/0';\n"
+		);
+	});
+
+	const plugin: ParsePlugin = {
+		directive_container: {
+			parse(node) {
+				// a handler keyed by name reads it at the close
+				return () => {
+					if (node.attrs.name !== 'aside') return;
+					node.type = 'block_quote';
+					node.attrs.name = undefined;
+				};
+			},
+		},
+	};
+
+	test('a registered directive never reaches a plugin directive handler', () => {
+		const seen: string[] = [];
+		const watch: ParsePlugin = {
+			directive_leaf: {
+				parse(node) {
+					return () => seen.push(node.attrs.name);
+				},
+			},
+		};
+		const raw = '::mine[]\n\n:::aside[]\nx\n:::';
+		const code = compile(raw, {
+			directives: only('mine', 'aside'),
+			parse_plugins: [plugin, watch],
+		}).code;
+		expect(body(code)).toBe(
+			'<Mine_MDSVEX_D_G /><Aside_MDSVEX_D_G>\n<p>x</p>\n</Aside_MDSVEX_D_G>'
+		);
+		expect(seen).toEqual([]);
+	});
+
+	test('an unregistered directive falls through to a plugin', () => {
+		const raw = ':::aside[]\nx\n:::\n\n::mine[]';
+		const options = { directives: only('mine'), parse_plugins: [plugin] };
+		expect(body(compile(raw, options).code)).toBe(
+			'<blockquote>\n<p>x</p>\n</blockquote><Mine_MDSVEX_D_G />'
+		);
+		expect(
+			body(
+				new CompilerSession().compile_trace(
+					raw,
+					[plugin],
+					undefined,
+					undefined,
+					only('mine')
+				).code
+			)
+		).toBe(body(compile(raw, options).code));
+		expect(
+			compile(':::aside[]\nx\n:::', { parse_plugins: [plugin] }).code
+		).toBe('<blockquote>\n<p>x</p>\n</blockquote>');
+	});
+
+	test('a plugin that leaves a directive in place does not handle it', () => {
+		const watch: ParsePlugin = {
+			directive_container: { parse() {} },
+		};
+		expect(() =>
+			compile(':::aside[]\nx\n:::', { parse_plugins: [watch] })
+		).toThrow(/:::aside at 1:1/);
+	});
+});
+
+describe('imports', () => {
+	test('one named import per used directive, a name that is not an identifier quoted', () => {
+		const code = compile_all(
+			'::my-box[]\n\n::my-box[]\n\n:x[y]',
+			only('x', 'my-box', 'unused')
+		);
+		expect(imports_of(code)).toBe(
+			'import { "my-box" as My_box_MDSVEX_D_G, x as X_MDSVEX_D_G } from \'mdsvex:directives\';\n'
+		);
+	});
+
+	test('directive imports join the document script', () => {
+		const code = compile('<script>\n\tlet a = 1;\n</script>\n\n::x[]', {
+			directives: only('x'),
+		}).code;
+		expect(code).toBe(
+			"<script>\nimport { x as X_MDSVEX_D_G } from 'mdsvex:directives';\n\n\tlet a = 1;\n</script><X_MDSVEX_D_G />"
+		);
+	});
+});
+
+describe('svelte 5', () => {
+	test('every form compiles', () => {
+		const raw = [
+			'a :abbr[HTML](title=x) and :icon[]',
+			'',
+			'::youtube[A talk](id=abc)',
+			'',
+			':::Callout[Heads up](kind=warn)',
+			'Body *markdown* :abbr[y]',
+			':::',
+		].join('\n');
+		const code = compile(raw, {
+			directives: only('abbr', 'icon', 'youtube', 'Callout'),
+		}).code;
+		for (const generate of ['client', 'server'] as const) {
+			const out = svelte_compile(code, { generate, filename: 'doc.svelte' });
+			expect(out.js.code).toContain('label');
+		}
+	});
+});

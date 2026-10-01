@@ -9,6 +9,7 @@ import { ComponentScope, component_imports } from '@mdsvex/render/html-cursor';
 
 import { compile, CompilerSession } from '../src/main';
 import type { ComponentSource, ParsePlugin } from '../src/main';
+import { all_directives } from './utils';
 
 const FIXTURES = resolve(
 	dirname(fileURLToPath(import.meta.url)),
@@ -280,9 +281,11 @@ describe('element replacement, markdown mode', () => {
 		for (const file of fixture_files(FIXTURES)) {
 			const raw = readFileSync(file, 'utf8');
 			const components = only('nothing-here', 'mark');
-			expect(session.compile(raw, { components, frontmatter }).code, file).toBe(
-				compile(raw, { frontmatter }).code
-			);
+			const directives = all_directives(raw);
+			expect(
+				session.compile(raw, { components, directives, frontmatter }).code,
+				file
+			).toBe(compile(raw, { directives, frontmatter }).code);
 		}
 	});
 });
@@ -387,10 +390,18 @@ describe('walks agree with replacements', () => {
 	test('the v3 map equals mappings_to_v3 over the mapped compile', () => {
 		const session = new CompilerSession();
 		let replaced = 0;
+		let with_directives = 0;
 		for (const file of files) {
 			const raw = readFileSync(file, 'utf8');
-			const mapped = compile(raw, { components, sourcemap: true, frontmatter });
-			const plain = compile(raw, { components, frontmatter });
+			const directives = all_directives(raw);
+			if (directives !== undefined) with_directives++;
+			const mapped = compile(raw, {
+				components,
+				directives,
+				sourcemap: true,
+				frontmatter,
+			});
+			const plain = compile(raw, { components, directives, frontmatter });
 			expect(mapped.code, file).toBe(plain.code);
 			if (plain.code.includes('_MDSVEX_G')) replaced++;
 			const got = session.compile_v3(
@@ -398,7 +409,8 @@ describe('walks agree with replacements', () => {
 				'doc.svx',
 				undefined,
 				components,
-				frontmatter.parse
+				frontmatter.parse,
+				directives
 			);
 			expect(got.code, file).toBe(mapped.code);
 			expect(JSON.stringify(got.map), file).toBe(
@@ -407,12 +419,18 @@ describe('walks agree with replacements', () => {
 				)
 			);
 			expect(
-				session.compile_trace(raw, undefined, components, frontmatter.parse)
-					.code,
+				session.compile_trace(
+					raw,
+					undefined,
+					components,
+					frontmatter.parse,
+					directives
+				).code,
 				file
 			).toBe(mapped.code);
 		}
 		expect(replaced).toBeGreaterThan(100);
+		expect(with_directives).toBeGreaterThan(10);
 	});
 });
 
