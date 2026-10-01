@@ -735,6 +735,8 @@ interface ColdState {
 	table_bounds: Int32Array | null;
 	// pending html nodes of an incremental parse, the feed trim skips the kept html scan at none
 	pending_html: number;
+	// pending slots below it hold only paragraphs, see revoke_stale_pending
+	np_floor: number;
 }
 
 /**
@@ -784,6 +786,7 @@ export class PFMParser {
 		kept_count: 0,
 		table_bounds: null,
 		pending_html: 0,
+		np_floor: 0,
 	};
 	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
 	private wait_kind: number = 0;
@@ -1326,6 +1329,65 @@ export class PFMParser {
 	}
 
 	/**
+	 * revoke pending speculative nodes that will never close, keeping tight list paragraphs
+	 * and nodes still on the node stack. slots below the floor the last pass left held only
+	 * paragraphs, which stay where they are, so the scan starts there while the paragraph count
+	 * says they still do (a swap remove since may have moved another kind below it). a tight
+	 * list with a non link '[x]' per item rescanned every item paragraph per item
+	 */
+	private revoke_stale_pending(): void {
+		const cold = this.cold;
+		const count = this.pending_count;
+		let write = cold.np_floor;
+		if (write > count) write = 0;
+		else if (write !== 0) {
+			let paras = 0;
+			for (let pi = write; pi < count; pi++) {
+				if (this.kind_of(this.pending_ids[pi]) === NodeKind.paragraph) paras++;
+			}
+			if (this.pending_para_count - paras !== write) write = 0;
+		}
+		let floor = -1;
+		for (let pi = write; pi < this.pending_count; pi++) {
+			const pid = this.pending_ids[pi];
+			const pkind = this.kind_of(pid);
+			if (pkind === NodeKind.paragraph) {
+				// preserve - finalize_list_pending_para owns this one.
+				this.pending_ids[write] = pid;
+				this.pending_starts[write] = this.pending_starts[pi];
+				this.id_slots[pid] = write;
+				write++;
+				continue;
+			}
+			if (this.node_stack.indexOf(pid) !== -1) {
+				// still on the node stack - this frame is open above us.
+				if (floor < 0) floor = write;
+				this.pending_ids[write] = pid;
+				this.pending_starts[write] = this.pending_starts[pi];
+				this.id_slots[pid] = write;
+				write++;
+				continue;
+			}
+			if (pkind === NodeKind.html) {
+				cold.pending_html--;
+				const pstart = this.pending_starts[pi];
+				this.out.revoke(
+					pid,
+					this.html_open_tag_text(pstart),
+					this.one_shot ? pstart : undefined
+				);
+			} else {
+				this.out.revoke(pid);
+				if (pkind === NodeKind.directive_inline) {
+					this.directive_text_pop(pid);
+				}
+			}
+		}
+		this.pending_count = write;
+		cold.np_floor = floor < 0 ? write : floor;
+	}
+
+	/**
 	 * feed window trim when non paragraph nodes are pending, keeps the open tag lines of
 	 * pending html containers before the cut and moves their pending starts onto them
 	 * so a revoke repair reads the same open tag
@@ -1556,6 +1618,7 @@ export class PFMParser {
 		this.pending_count = 0;
 		this.pending_para_count = 0;
 		this.cold.pending_html = 0;
+		this.cold.np_floor = 0;
 		this.take_ids(id_capacity);
 		this.class_floor = 0;
 		this.range_next_class = 0;
@@ -5153,42 +5216,7 @@ export class PFMParser {
 					st === StateKind.block_quote ||
 					st === StateKind.list_item
 				) {
-					let write = 0;
-					for (let pi = 0; pi < this.pending_count; pi++) {
-						const pid = this.pending_ids[pi];
-						const pkind = this.kind_of(pid);
-						if (pkind === NodeKind.paragraph) {
-							// preserve - finalize_list_pending_para owns this one.
-							this.pending_ids[write] = pid;
-							this.pending_starts[write] = this.pending_starts[pi];
-							this.id_slots[pid] = write;
-							write++;
-							continue;
-						}
-						if (this.node_stack.indexOf(pid) !== -1) {
-							// still on the node stack - this frame is open above us.
-							this.pending_ids[write] = pid;
-							this.pending_starts[write] = this.pending_starts[pi];
-							this.id_slots[pid] = write;
-							write++;
-							continue;
-						}
-						if (pkind === NodeKind.html) {
-							this.cold.pending_html--;
-							const pstart = this.pending_starts[pi];
-							this.out.revoke(
-								pid,
-								this.html_open_tag_text(pstart),
-								this.one_shot ? pstart : undefined
-							);
-						} else {
-							this.out.revoke(pid);
-							if (pkind === NodeKind.directive_inline) {
-								this.directive_text_pop(pid);
-							}
-						}
-					}
-					this.pending_count = write;
+					this.revoke_stale_pending();
 				}
 			}
 
