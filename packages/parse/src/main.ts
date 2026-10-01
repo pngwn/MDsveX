@@ -645,6 +645,32 @@ function find_matching_brace_jump(
 	}
 }
 
+/** PFMParser fields only rare paths touch */
+interface ColdState {
+	// raw text holds no markup so raw text elements never nest
+	raw_node: number;
+	raw_needle: string;
+	raw_scan: number;
+	// saved brace probe scan, start or -1, resume point, state, quote and frames of brace depth or 0 for a template
+	bp_start: number;
+	bp_p: number;
+	bp_mode: number;
+	bp_quote: number;
+	bp_end: number;
+	bp_frames: number[] | null;
+	// finished input only, positions past braces known never to close, set by the first brace scan that runs out
+	brace_memo: Set<number> | null;
+	// finished input only, attribute token starts from which an open tag scan fails
+	tag_memo: Uint8Array | null;
+	tag_memo_base: number;
+	wait_needle: string;
+	wait_cursor: number;
+	// the cut, window base and kept html openers of the last trim_keeping_html, an equal trim keeps the window
+	kept_cut: number;
+	kept_base: number;
+	kept_count: number;
+}
+
 /**
  * pfm parser - state machine that emits opcodes via an emitter interface.
  */
@@ -666,26 +692,29 @@ export class PFMParser {
 	private interrupt_marker_pos: number = -1;
 	private interrupt_marker: MarkerResult | null = null;
 	private interrupt_svelte_depth: number = 0;
-	// raw text holds no markup so raw text elements never nest
-	private raw_node: number = 0;
-	private raw_needle: string = '';
-	private raw_scan: number = 0;
-	// saved brace probe scan, start or -1, resume point, state, quote and frames of brace depth or 0 for a template
-	private bp_start: number = -1;
-	private bp_p: number = 0;
-	private bp_mode: number = 0;
-	private bp_quote: number = 0;
-	private bp_end: number = -1;
-	private bp_frames: number[] = [];
-	// finished input only, positions past braces known never to close, set by the first brace scan that runs out
-	private brace_memo: Set<number> | null = null;
-	// finished input only, attribute token starts from which an open tag scan fails
-	private tag_memo: Uint8Array | null = null;
-	private tag_memo_base: number = 0;
 	// chunks fed while waiting on a brace, joined onto the window once it closes
 	private wait_chunks: string[] = NO_STACK;
-	private wait_needle: string = '';
-	private wait_cursor: number = -1;
+	// state of rare paths (raw text, brace probes, tag and brace memos, feed waits, kept html
+	// trims) in one literal clone, so the constructor stays small enough to inline
+	private cold: ColdState = {
+		raw_node: 0,
+		raw_needle: '',
+		raw_scan: 0,
+		bp_start: -1,
+		bp_p: 0,
+		bp_mode: 0,
+		bp_quote: 0,
+		bp_end: -1,
+		bp_frames: null,
+		brace_memo: null,
+		tag_memo: null,
+		tag_memo_base: 0,
+		wait_needle: '',
+		wait_cursor: -1,
+		kept_cut: -1,
+		kept_base: 0,
+		kept_count: 0,
+	};
 	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
 	private wait_kind: number = 0;
 	private cursor: number = 0;
@@ -807,11 +836,7 @@ export class PFMParser {
 	private out: Emitter;
 	private errors: ErrorCollector;
 
-	private tab_size: number = 2;
-	// the cut, window base and kept html openers of the last trim_keeping_html, an equal trim keeps the window
-	private kept_cut: number = -1;
-	private kept_base: number = 0;
-	private kept_count: number = 0;
+	private tab_size: number;
 
 	constructor(emitter: Emitter, tab_size: number = 2) {
 		this.out = emitter;
@@ -862,7 +887,7 @@ export class PFMParser {
 			this.take_ids(ID_MIN_CAPACITY);
 			this.out.open(0, NodeKind.root, 0, -1, 0, false);
 		} else this._init(ID_MIN_CAPACITY);
-		this.kept_cut = -1;
+		this.cold.kept_cut = -1;
 		this.finished = false;
 		this.one_shot = false;
 	}
@@ -1075,7 +1100,7 @@ export class PFMParser {
 		)
 			return;
 		this.wait_kind = FeedWait.code_span;
-		this.wait_cursor = this.cursor;
+		this.cold.wait_cursor = this.cursor;
 	}
 
 	/** false only when the chunk has no backtick and no line starting in it starts with a space, tab or linefeed */
@@ -1109,7 +1134,7 @@ export class PFMParser {
 		const cut = this.trim_point - 1;
 		// the window already holds the kept lines and the text from cut while no kept opener closed
 		// html opens after the trim point, so only a close changes the set before cut
-		if (cut === this.kept_cut && base === this.kept_base) {
+		if (cut === this.cold.kept_cut && base === this.cold.kept_base) {
 			let kept = 0;
 			for (let pi = 0; pi < this.pending_count; pi++) {
 				if (
@@ -1118,7 +1143,7 @@ export class PFMParser {
 				)
 					kept++;
 			}
-			if (kept === this.kept_count) return head;
+			if (kept === this.cold.kept_count) return head;
 		}
 		let prefix = '';
 		const offsets: number[] = [];
@@ -1141,9 +1166,9 @@ export class PFMParser {
 			this.pending_starts[slots[i]] = new_base + offsets[i];
 		}
 		this.source_base = new_base;
-		this.kept_cut = cut;
-		this.kept_base = new_base;
-		this.kept_count = slots.length;
+		this.cold.kept_cut = cut;
+		this.cold.kept_base = new_base;
+		this.cold.kept_count = slots.length;
 		return prefix + string_slice.call(head, cut - base);
 	}
 
@@ -1154,7 +1179,7 @@ export class PFMParser {
 		if (kind >= WAIT_BRACE) {
 			const pending = this.wait_chunks;
 			// the probe set the wait, it holds only if _run stopped there
-			if (this.cursor === this.wait_cursor) {
+			if (this.cursor === this.cold.wait_cursor) {
 				// the saved brace scan stopped at the end of the input, the chunk continues it
 				if (
 					kind === WAIT_BRACE
@@ -1190,19 +1215,19 @@ export class PFMParser {
 			this.source_base = line - 1;
 		} else {
 			// a close tag needs a less than sign, keep the last needle length chars as _run does
-			const keep = this.raw_needle.length;
+			const keep = this.cold.raw_needle.length;
 			if (len < keep) return false;
 			if (string_index_of.call(chunk, '<') !== -1) return false;
 			if (
 				string_index_of.call(
 					this.source,
 					'<',
-					this.raw_scan - this.source_base
+					this.cold.raw_scan - this.source_base
 				) !== -1
 			)
 				return false;
 			const scan = end + len - keep + 1;
-			this.raw_scan = scan;
+			this.cold.raw_scan = scan;
 			this.trim_point = scan;
 			this.source = string_slice.call(chunk, len - keep);
 			this.source_base = scan - 1;
@@ -1260,13 +1285,14 @@ export class PFMParser {
 		this.source_end = 0;
 		this.trim_point = 0;
 		this.fence_scan = 0;
-		this.bp_start = -1;
-		if (this.brace_memo !== null) this.brace_memo = null;
-		if (this.tag_memo !== null) this.tag_memo = null;
+		const cold = this.cold;
+		cold.bp_start = -1;
+		if (cold.brace_memo !== null) cold.brace_memo = null;
+		if (cold.tag_memo !== null) cold.tag_memo = null;
 		if (this.wait_chunks.length !== 0) this.wait_chunks.length = 0;
-		this.raw_node = 0;
-		this.raw_needle = '';
-		this.raw_scan = 0;
+		cold.raw_node = 0;
+		cold.raw_needle = '';
+		cold.raw_scan = 0;
 		this.wait_kind = WAIT_NONE;
 		this.cursor = 0;
 		this.finished = false;
@@ -3058,9 +3084,9 @@ export class PFMParser {
 			this.out.attr(html_id, 'attributes', open_tag.attributes);
 		}
 		this.out.set_value_start(html_id, open_tag.end);
-		this.raw_node = html_id;
-		this.raw_needle = '</' + open_tag.tag + '>';
-		this.raw_scan = open_tag.end;
+		this.cold.raw_node = html_id;
+		this.cold.raw_needle = '</' + open_tag.tag + '>';
+		this.cold.raw_scan = open_tag.end;
 		this.states.push(StateKind.raw_text);
 		this.chomp(open_tag.end, true);
 	}
@@ -3091,12 +3117,12 @@ export class PFMParser {
 		)
 			return null;
 
-		let memo = this.tag_memo;
+		let memo = this.cold.tag_memo;
 		if (
 			memo !== null &&
-			(this.tag_memo_base !== base || memo.length !== length - base)
+			(this.cold.tag_memo_base !== base || memo.length !== length - base)
 		)
-			memo = this.tag_memo = null;
+			memo = this.cold.tag_memo = null;
 		const end = this.scan_open_tag(pos, memo);
 		if (end < 0) {
 			// feed mode, the scan ran off the end so the tag may still close
@@ -3157,7 +3183,7 @@ export class PFMParser {
 	 * without the memo every stray tag opener in prose rescans to the next close bracket
 	 */
 	private open_tag_failed(pos: number): void {
-		let memo = this.tag_memo;
+		let memo = this.cold.tag_memo;
 		if (memo === null) {
 			if (
 				!this.finished ||
@@ -3166,12 +3192,12 @@ export class PFMParser {
 			)
 				return;
 			const base = this.source_base;
-			this.tag_memo_base = base;
-			memo = this.tag_memo = new Uint8Array(this.source_end - base);
+			this.cold.tag_memo_base = base;
+			memo = this.cold.tag_memo = new Uint8Array(this.source_end - base);
 			this.scan_open_tag(pos, memo);
 		}
 		const marks = tag_marks;
-		const base = this.tag_memo_base;
+		const base = this.cold.tag_memo_base;
 		for (let i = 0; i < marks.length; i++) memo[marks[i] - base] = 1;
 	}
 
@@ -3720,7 +3746,7 @@ export class PFMParser {
 	 * returns the position just past the closing `}`, or -1 if not found.
 	 */
 	find_matching_brace(pos: number): number {
-		if (this.brace_memo !== null) return this.find_matching_brace_memo(pos);
+		if (this.cold.brace_memo !== null) return this.find_matching_brace_memo(pos);
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
@@ -3754,7 +3780,7 @@ export class PFMParser {
 	 */
 	private brace_failed(pos: number): number {
 		if (this.finished && !this.inline_range_parse) {
-			const memo = (this.brace_memo = new Set());
+			const memo = (this.cold.brace_memo = new Set());
 			memo.add(pos);
 		}
 		return -1;
@@ -3762,7 +3788,7 @@ export class PFMParser {
 
 	/** a scan from just past a brace this one opened and left open fails too, so those are remembered */
 	private find_matching_brace_memo(pos: number): number {
-		const memo = this.brace_memo!;
+		const memo = this.cold.brace_memo!;
 		if (memo.has(pos)) return -1;
 		const open = brace_open;
 		const floor = open.length;
@@ -3884,7 +3910,7 @@ export class PFMParser {
 		const open = brace_open;
 		// a table header cell parses with the source cut at the cell end
 		if (!this.inline_range_parse) {
-			const memo = this.brace_memo!;
+			const memo = this.cold.brace_memo!;
 			memo.add(pos);
 			for (let i = floor; i < open.length; i++) memo.add(open[i]);
 		}
@@ -3897,30 +3923,33 @@ export class PFMParser {
 	 * scan of a brace on the scan keeps its state and resumes, so a brace open across feeds is scanned once
 	 */
 	private probe_matching_brace(pos: number): number {
-		if (this.bp_start !== pos) {
+		if (this.cold.bp_start !== pos) {
 			// most braces close within the chunk, the plain scan is quicker for those
 			const end = this.find_matching_brace(pos);
 			if (end !== -1) return end;
-			this.bp_start = pos;
-			this.bp_end = -1;
-			this.bp_p = -1;
+			this.cold.bp_start = pos;
+			this.cold.bp_end = -1;
+			this.cold.bp_p = -1;
 			return -1;
 		}
-		if (this.bp_end !== -1) return this.bp_end;
-		if (this.bp_p === -1) {
+		if (this.cold.bp_end !== -1) return this.cold.bp_end;
+		if (this.cold.bp_p === -1) {
 			// still open after a second feed, scan once more keeping state from here on
-			const frames = this.bp_frames;
-			frames.length = 0;
-			frames.push(1);
-			this.bp_p = pos;
-			this.bp_mode = BM_CODE;
-			this.bp_quote = 0;
+			const frames = this.cold.bp_frames;
+			if (frames === null) this.cold.bp_frames = [1];
+			else {
+				frames.length = 0;
+				frames.push(1);
+			}
+			this.cold.bp_p = pos;
+			this.cold.bp_mode = BM_CODE;
+			this.cold.bp_quote = 0;
 		}
 		if (this.brace_scan(this.source, this.source_base, this.source_end))
-			return this.bp_end;
+			return this.cold.bp_end;
 		// _run stalls here, later chunks only need the brace scan until it closes
 		this.wait_kind = WAIT_BRACE;
-		this.wait_cursor = this.cursor;
+		this.cold.wait_cursor = this.cursor;
 		return -1;
 	}
 
@@ -3930,13 +3959,13 @@ export class PFMParser {
 	 */
 	private wait_for(needle: string): void {
 		this.wait_kind = WAIT_NEEDLE;
-		this.wait_needle = needle;
-		this.wait_cursor = this.cursor;
+		this.cold.wait_needle = needle;
+		this.cold.wait_cursor = this.cursor;
 	}
 
 	/** false only when the needle is not in the chunk and not across its start */
 	private needle_in(chunk: string, len: number): boolean {
-		const needle = this.wait_needle;
+		const needle = this.cold.wait_needle;
 		if (string_index_of.call(chunk, needle) !== -1) return true;
 		const k = needle.length - 1;
 		if (k === 0) return false;
@@ -3953,10 +3982,11 @@ export class PFMParser {
 
 	/** resume the saved brace scan up to length, true with bp_end set once the brace closes */
 	private brace_scan(source: string, base: number, length: number): boolean {
-		const frames = this.bp_frames;
-		let p = this.bp_p;
-		let mode = this.bp_mode;
-		let quote = this.bp_quote;
+		// the probe made the frames before any resume
+		const frames = this.cold.bp_frames!;
+		let p = this.cold.bp_p;
+		let mode = this.cold.bp_mode;
+		let quote = this.cold.bp_quote;
 		// code and template text jump to their next stop char, each stop has its own indexOf
 		// cursor advanced only once passed, -1 until first searched
 		const end = length - base;
@@ -4094,7 +4124,7 @@ export class PFMParser {
 						if (--frames[top] === 0) {
 							frames.pop();
 							if (top === 0) {
-								this.bp_end = p + 1;
+								this.cold.bp_end = p + 1;
 								return true;
 							}
 							// an interpolation closed, back in its template
@@ -4173,9 +4203,9 @@ export class PFMParser {
 			}
 		}
 
-		this.bp_p = p;
-		this.bp_mode = mode;
-		this.bp_quote = quote;
+		this.cold.bp_p = p;
+		this.cold.bp_mode = mode;
+		this.cold.bp_quote = quote;
 		return false;
 	}
 
@@ -6185,9 +6215,9 @@ export class PFMParser {
 								expr_end = this.probe_matching_brace(this.cursor + 1);
 								if (expr_end === -1) break main_loop;
 							} else if (
-								this.bp_start === this.cursor + 1 &&
-								this.bp_p === this.source_end &&
-								this.bp_end === -1
+								this.cold.bp_start === this.cursor + 1 &&
+								this.cold.bp_p === this.source_end &&
+								this.cold.bp_end === -1
 							) {
 								// the saved probe already ran to the end without a close
 								expr_end = -1;
@@ -7447,9 +7477,9 @@ export class PFMParser {
 	private _run_raw_text(): boolean {
 		const base = this.source_base;
 		const length = this.source_end;
-		const needle = this.raw_needle;
-		const rel = string_index_of.call(this.source, needle, this.raw_scan - base);
-		const id = this.raw_node;
+		const needle = this.cold.raw_needle;
+		const rel = string_index_of.call(this.source, needle, this.cold.raw_scan - base);
+		const id = this.cold.raw_node;
 		if (rel !== -1) {
 			const idx = rel + base;
 			const end = idx + needle.length;
@@ -7462,10 +7492,10 @@ export class PFMParser {
 		if (!this.finished) {
 			// a close tag starting earlier would already be whole in the window
 			const scan = length - needle.length + 1;
-			if (scan > this.raw_scan) this.raw_scan = scan;
+			if (scan > this.cold.raw_scan) this.cold.raw_scan = scan;
 			// the node is not on the node stack, nothing rereads before the scan
 			if (this.can_trim(this.node_stack.length)) {
-				this.trim_point = this.raw_scan;
+				this.trim_point = this.cold.raw_scan;
 				this.wait_kind = WAIT_RAW;
 			}
 			return true;
