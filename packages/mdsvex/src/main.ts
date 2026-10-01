@@ -12,6 +12,7 @@ import type { NodeBuffer } from '@mdsvex/parse/utils';
 import {
 	ComponentScope,
 	CursorHTMLRenderer,
+	K_FRONTMATTER,
 } from '@mdsvex/render/html-cursor';
 import type { ComponentSource } from '@mdsvex/render/html-cursor';
 import {
@@ -30,17 +31,25 @@ import type {
 import type { Plugin, PluginOption, Rollup } from 'vite';
 import { scan_exports_detail } from './scan_exports';
 import remapping from '@ampproject/remapping';
+import { metadata_export, parse_frontmatter } from './frontmatter';
+import type { FrontmatterOptions } from './frontmatter';
 
 export type { ParsePlugin } from '@mdsvex/parse';
 export type { Mapping, MappingData, SourceMapV3, MapTrace };
 export type { ComponentSource };
-export { scan_exports, scan_exports_detail, module_script } from './scan_exports';
+export {
+	scan_exports,
+	scan_exports_detail,
+	module_script,
+} from './scan_exports';
 export type { ScanKind, ScannedExports } from './scan_exports';
+export type { FrontmatterOptions };
+export { FrontmatterError } from './frontmatter';
 
 export interface MdsvexOptions {
 	extensions?: string[];
 	/** parse plugins that hook into tree construction. */
-	parsePlugins?: ParsePlugin[];
+	parse_plugins?: ParsePlugin[];
 	/**
 	 * modules whose exports named after an element replace it, lowest
 	 * precedence first, each resolves as an import from the vite root would
@@ -50,6 +59,7 @@ export interface MdsvexOptions {
 	 */
 	components?: string | URL | (string | URL)[];
 	component_mode?: ComponentMode;
+	frontmatter?: FrontmatterOptions;
 }
 
 /**
@@ -59,22 +69,32 @@ export interface MdsvexOptions {
 export type ComponentMode = 'markdown' | 'all';
 
 export interface CompileOptions {
-	parsePlugins?: ParsePlugin[];
+	parse_plugins?: ParsePlugin[];
 	sourcemap?: boolean;
 	/** root fallback replacements, lowest precedence first, each specifier is imported as written */
 	components?: ComponentSource[];
 	component_mode?: ComponentMode;
+	frontmatter?: FrontmatterOptions;
 }
+
+/** the frontmatter, exported from the module script as metadata */
+type Metadata = Record<string, unknown>;
+
+type FrontmatterParse = FrontmatterOptions['parse'];
 
 export interface CompileResult {
 	code: string;
 	mappings?: Mapping<MappingData>[];
+	/** the parsed frontmatter, undefined when the document has none */
+	metadata?: Metadata;
 }
 
 export interface CompileV3Result {
 	code: string;
 	/** equals mappings_to_v3 over the compile mappings with raw as source */
 	map: SourceMapV3;
+	/** the parsed frontmatter, undefined when the document has none */
+	metadata?: Metadata;
 }
 
 export interface CompileTraceResult {
@@ -83,6 +103,8 @@ export interface CompileTraceResult {
 	trace: MapTrace;
 	/** the normalized source the trace indexes */
 	source: string;
+	/** the parsed frontmatter, undefined when the document has none */
+	metadata?: Metadata;
 }
 
 // plugins keep one components array per config, so its scope is built once
@@ -156,11 +178,37 @@ function parse_once(source: string, plugins?: ParsePlugin[]): NodeBuffer {
 	return nodes;
 }
 
+// must equal NONE in @mdsvex/parse
+const NONE = 0xffffffff;
+
+/** undefined without frontmatter */
+function metadata_of(
+	nodes: NodeBuffer,
+	source: string,
+	parse: FrontmatterParse
+): Metadata | undefined {
+	// frontmatter can only be the first node
+	const first = nodes.first_child_at(0);
+	if (first === NONE || (nodes.kind_at(first) as number) !== K_FRONTMATTER)
+		return undefined;
+	return parse_frontmatter(
+		source,
+		nodes.value_start_at(first),
+		nodes.value_end_at(first),
+		parse
+	);
+}
+
+function module_code_of(metadata: Metadata | undefined): string | undefined {
+	return metadata === undefined ? undefined : metadata_export(metadata);
+}
+
 function render_once(raw: string, options?: CompileOptions): CompileResult {
 	// parser offsets index the normalized string, so render and plugins read it too
 	const source = normalize_newlines(raw);
-	const nodes = parse_once(source, options?.parsePlugins);
+	const nodes = parse_once(source, options?.parse_plugins);
 	const scope = scope_of(options?.components, options?.component_mode);
+	const metadata = metadata_of(nodes, source, options?.frontmatter?.parse);
 	const renderer = take_renderer();
 	renderer.scope = scope;
 
@@ -169,17 +217,18 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		const result = renderer.update_mapped(
 			nodes,
 			source,
-			source.length === raw.length ? null : collapsed_of(raw)
+			source.length === raw.length ? null : collapsed_of(raw),
+			module_code_of(metadata)
 		);
 		const code = renderer.html;
 		give_renderer(renderer);
-		return { code, mappings: result.mappings };
+		return { code, mappings: result.mappings, metadata };
 	}
 
-	renderer.update(nodes, source);
+	renderer.update(nodes, source, module_code_of(metadata));
 	const code = renderer.html;
 	give_renderer(renderer);
-	return { code };
+	return { code, metadata };
 }
 
 function render_v3(
@@ -187,25 +236,39 @@ function render_v3(
 	nodes: NodeBuffer,
 	source: string,
 	raw: string,
-	file?: string
+	file: string | undefined,
+	parse: FrontmatterParse
 ): CompileV3Result {
+	const metadata = metadata_of(nodes, source, parse);
+	const module_code = module_code_of(metadata);
 	// only a collapsed \r\n changes length, without one the records index raw
 	if (source.length === raw.length) {
-		const map = renderer.update_v3(nodes, source, raw, file);
-		return { code: renderer.html, map };
+		const map = renderer.update_v3(nodes, source, raw, file, module_code);
+		return { code: renderer.html, map, metadata };
 	}
-	const result = renderer.update_mapped(nodes, source, collapsed_of(raw));
+	const result = renderer.update_mapped(
+		nodes,
+		source,
+		collapsed_of(raw),
+		module_code
+	);
 	const code = renderer.html;
-	return { code, map: mappings_to_v3(result.mappings, raw, code, file) };
+	return {
+		code,
+		map: mappings_to_v3(result.mappings, raw, code, file),
+		metadata,
+	};
 }
 
 function render_trace(
 	renderer: CursorHTMLRenderer,
 	nodes: NodeBuffer,
-	source: string
+	source: string,
+	parse: FrontmatterParse
 ): CompileTraceResult {
-	const trace = renderer.update_trace(nodes, source);
-	return { code: renderer.html, trace, source };
+	const metadata = metadata_of(nodes, source, parse);
+	const trace = renderer.update_trace(nodes, source, module_code_of(metadata));
+	return { code: renderer.html, trace, source, metadata };
 }
 
 /**
@@ -241,25 +304,31 @@ export class CompilerSession {
 	}
 
 	compile(raw: string, options?: CompileOptions): CompileResult {
-		if (options?.parsePlugins && options.parsePlugins.length > 0) {
+		if (options?.parse_plugins && options.parse_plugins.length > 0) {
 			return render_once(raw, options);
 		}
 
 		const scope = scope_of(options?.components, options?.component_mode);
 		const source = normalize_newlines(raw);
 		const nodes = this.parse(source);
+		const metadata = metadata_of(nodes, source, options?.frontmatter?.parse);
 		this.renderer.scope = scope;
 		if (options?.sourcemap) {
 			const result = this.renderer.update_mapped(
 				nodes,
 				source,
-				source.length === raw.length ? null : collapsed_of(raw)
+				source.length === raw.length ? null : collapsed_of(raw),
+				module_code_of(metadata)
 			);
-			return { code: this.renderer.html, mappings: result.mappings };
+			return {
+				code: this.renderer.html,
+				mappings: result.mappings,
+				metadata,
+			};
 		}
 
-		this.renderer.update(nodes, source);
-		return { code: this.renderer.html };
+		this.renderer.update(nodes, source, module_code_of(metadata));
+		return { code: this.renderer.html, metadata };
 	}
 
 	/** @internal keeps only typed arrays so an idle session holds no document */
@@ -277,7 +346,8 @@ export class CompilerSession {
 		raw: string,
 		file?: string,
 		parse_plugins?: ParsePlugin[],
-		components?: ComponentSource[]
+		components?: ComponentSource[],
+		parse?: FrontmatterParse
 	): CompileV3Result {
 		const scope = components === undefined ? null : scope_of(components);
 		const source = normalize_newlines(raw);
@@ -286,11 +356,11 @@ export class CompilerSession {
 			const nodes = parse_once(source, parse_plugins);
 			const renderer = new CursorHTMLRenderer({ cache: false });
 			renderer.scope = scope;
-			return render_v3(renderer, nodes, source, raw, file);
+			return render_v3(renderer, nodes, source, raw, file, parse);
 		}
 		const nodes = this.parse(source);
 		this.renderer.scope = scope;
-		return render_v3(this.renderer, nodes, source, raw, file);
+		return render_v3(this.renderer, nodes, source, raw, file, parse);
 	}
 
 	/**
@@ -301,7 +371,8 @@ export class CompilerSession {
 	compile_trace(
 		raw: string,
 		parse_plugins?: ParsePlugin[],
-		components?: ComponentSource[]
+		components?: ComponentSource[],
+		parse?: FrontmatterParse
 	): CompileTraceResult {
 		const scope = components === undefined ? null : scope_of(components);
 		const source = normalize_newlines(raw);
@@ -309,11 +380,11 @@ export class CompilerSession {
 			const nodes = parse_once(source, parse_plugins);
 			const renderer = new CursorHTMLRenderer({ cache: false });
 			renderer.scope = scope;
-			return render_trace(renderer, nodes, source);
+			return render_trace(renderer, nodes, source, parse);
 		}
 		const nodes = this.parse(source);
 		this.renderer.scope = scope;
-		return render_trace(this.renderer, nodes, source);
+		return render_trace(this.renderer, nodes, source, parse);
 	}
 
 	/**
@@ -324,7 +395,8 @@ export class CompilerSession {
 		raw: string,
 		parse_plugins: ParsePlugin[] | undefined,
 		out: TraceTarget,
-		components?: ComponentSource[]
+		components?: ComponentSource[],
+		parse?: FrontmatterParse
 	): void {
 		const scope = components === undefined ? null : scope_of(components);
 		const source = normalize_newlines(raw);
@@ -336,8 +408,10 @@ export class CompilerSession {
 		} else {
 			nodes = this.parse(source);
 		}
+		const metadata = metadata_of(nodes, source, parse);
+		out.metadata = metadata;
 		renderer.scope = scope;
-		renderer.update_trace_into(nodes, source, out);
+		renderer.update_trace_into(nodes, source, out, module_code_of(metadata));
 		out.source = source;
 		out.html = renderer.html;
 	}
@@ -347,6 +421,7 @@ export class CompilerSession {
 interface TraceTarget extends MapTrace {
 	source: string;
 	html: string;
+	metadata: Metadata | undefined;
 }
 
 // a session keeps its arena at its largest document size, so large documents
@@ -365,7 +440,7 @@ function render(source: string, options?: CompileOptions): CompileResult {
 	if (
 		shared_session_busy ||
 		source.length > SHARED_SOURCE_CAP ||
-		(options?.parsePlugins && options.parsePlugins.length > 0)
+		(options?.parse_plugins && options.parse_plugins.length > 0)
 	) {
 		return render_once(source, options);
 	}
@@ -1052,8 +1127,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		written === undefined ? [] : Array.isArray(written) ? written : [written];
 	// a config without replacements builds none of their state
 	const tracker = list.length === 0 ? null : export_tracker();
-	const registry =
-		tracker === null ? null : component_registry(list, tracker);
+	const registry = tracker === null ? null : component_registry(list, tracker);
 	let command: 'build' | 'serve' = 'serve';
 
 	function compile_doc(
@@ -1067,6 +1141,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				raw: '',
 				source: '',
 				html: '',
+				metadata: undefined,
 				buf: no_records,
 				start: 0,
 				split: 0,
@@ -1076,7 +1151,13 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		}
 		// raw last, so a compile that throws leaves no document for post
 		doc.raw = '';
-		compiler.compile_trace_into(code, options.parsePlugins, doc, components);
+		compiler.compile_trace_into(
+			code,
+			options.parse_plugins,
+			doc,
+			components,
+			options.frontmatter?.parse
+		);
 		doc.raw = code;
 
 		// return NO map, avoids poisoning getCombinedSourcemap()
@@ -1229,6 +1310,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					doc.raw = '';
 					doc.source = '';
 					doc.html = '';
+					doc.metadata = undefined;
 					doc.buf = no_records;
 					doc.start = 0;
 					doc.split = 0;

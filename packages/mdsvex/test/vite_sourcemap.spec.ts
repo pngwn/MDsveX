@@ -30,6 +30,9 @@ function fixture_files(dir: string): string[] {
 
 const ID = '/src/routes/page.svx';
 
+// some fixtures open with frontmatter that is not yaml, keep it as metadata
+const frontmatter = { parse: (raw: string) => ({ raw }) };
+
 type CompileMap = {
 	version: 3;
 	sources: string[];
@@ -76,7 +79,13 @@ function dense_map(encoded: boolean): MakeMap {
 
 /** the post transform output if pre stored the whole map */
 function eager(raw: string, compile_map: CompileMap, plugins?: ParsePlugin[]) {
-	const { map } = new CompilerSession().compile_v3(raw, ID, plugins);
+	const { map } = new CompilerSession().compile_v3(
+		raw,
+		ID,
+		plugins,
+		undefined,
+		frontmatter.parse
+	);
 	const chained = remapping([compile_map as never, map as never], () => null);
 	if (chained.sourcesContent) {
 		chained.sourcesContent = chained.sourcesContent.map(() => raw);
@@ -86,7 +95,7 @@ function eager(raw: string, compile_map: CompileMap, plugins?: ParsePlugin[]) {
 }
 
 function transform(raw: string, make: MakeMap, plugins?: ParsePlugin[]) {
-	const [pre, post] = mdsvex({ parsePlugins: plugins }) as any[];
+	const [pre, post] = mdsvex({ parse_plugins: plugins, frontmatter }) as any[];
 	const html = pre.transform(raw, ID).code as string;
 	const compile_map = make(html);
 	if (compile_map === null) return null;
