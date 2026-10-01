@@ -296,6 +296,31 @@ export class TreeBuilder implements Emitter {
 		}
 	}
 
+	leaf(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		value_start: number,
+		value_end: number,
+		end: number
+	): void {
+		const nodes = this.nodes;
+		const dispatcher = this.dispatcher;
+		if (
+			this.id_to_index === null &&
+			id === nodes._size &&
+			(dispatcher === null || (!this.wants[kind] && dispatcher.quiet()))
+		) {
+			nodes.push_leaf(kind, start, value_start, value_end, end, parent);
+			return;
+		}
+		this.open(id, kind, start, parent, 0, false);
+		this.set_value_start(id, value_start);
+		this.set_value_end(id, value_end);
+		this.close(id, end, kind);
+	}
+
 	attr(id: number, key: string, value: any): void {
 		const idx = this.index_of(id);
 		if (idx === undefined) return;

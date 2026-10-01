@@ -574,6 +574,40 @@ export class NodeBuffer {
 		return index;
 	}
 
+	/** a closed node with no extra and a value range, as open, value and close would leave it */
+	push_leaf(
+		kind: NodeKind,
+		start: number,
+		value_start: number,
+		value_end: number,
+		end: number,
+		parent: number
+	): number {
+		const index = this._size;
+		let n = this._n;
+		if (index >= this._filled) n = this.fill(index);
+
+		const b = index * NodeField.stride;
+		n[b] = kind;
+		n[b + NodeField.start] = start;
+		n[b + NodeField.end] = end;
+		n[b + NodeField.value_start] = value_start;
+		n[b + NodeField.value_end] = value_end;
+		n[b + NodeField.parent] = parent;
+		this._size = index + 1;
+
+		const p = parent * NodeField.stride;
+		const last = n[p + NodeField.last_child];
+		if (last === 0xffffffff) {
+			n[p + NodeField.first_child] = index;
+		} else {
+			n[last * NodeField.stride + NodeField.next] = index;
+			n[b + NodeField.prev] = last;
+		}
+		n[p + NodeField.last_child] = index;
+		return index;
+	}
+
 	/** grow when full, then template the next chunk of a buffer past the carve cap */
 	private fill(index: number): Uint32Array {
 		let n = this._n;

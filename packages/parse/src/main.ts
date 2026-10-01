@@ -1734,6 +1734,72 @@ export class PFMParser {
 		return id;
 	}
 
+	/** a node with no extra opened, valued and closed at once */
+	private emit_leaf(
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		value_start: number,
+		value_end: number,
+		end: number
+	): void {
+		const id = this.next_id++;
+		if (id >= this.id_info.length) this.grow_ids(id);
+		const out = this.out;
+		if (out.leaf !== undefined) {
+			out.leaf(id, kind, start, parent, value_start, value_end, end);
+		} else {
+			this.emit_leaf_ops(id, kind, start, parent, value_start, value_end, end);
+		}
+		this.id_info[id] = kind | ID_CLOSED;
+	}
+
+	/** a node with no extra and no value opened and closed at once */
+	private emit_bare_leaf(
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		end: number
+	): void {
+		const id = this.next_id++;
+		if (id >= this.id_info.length) this.grow_ids(id);
+		const out = this.out;
+		// a fresh node's value words are 0, as leaf writes them
+		if (out.leaf !== undefined) out.leaf(id, kind, start, parent, 0, 0, end);
+		else this.emit_bare_ops(id, kind, start, parent, end);
+		this.id_info[id] = kind | ID_CLOSED;
+	}
+
+	/** emit_bare_leaf for an emitter without leaf */
+	private emit_bare_ops(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		end: number
+	): void {
+		const out = this.out;
+		out.open(id, kind, start, parent, 0, false);
+		out.close(id, end, kind);
+	}
+
+	/** emit_leaf for an emitter without leaf */
+	private emit_leaf_ops(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		value_start: number,
+		value_end: number,
+		end: number
+	): void {
+		const out = this.out;
+		out.open(id, kind, start, parent, 0, false);
+		out.set_value_start(id, value_start);
+		out.set_value_end(id, value_end);
+		out.close(id, end, kind);
+	}
+
 	/** an open the parser may still revoke */
 	private emit_open_pending(
 		kind: NodeKind,
@@ -1937,10 +2003,7 @@ export class PFMParser {
 		let r = e + 1;
 		while (r < length && char_code_at.call(source, r - base) === BACKTICK) r++;
 		if (r - e !== run_n || r >= length) return false;
-		const cs_id = this.emit_open(NodeKind.code_span, this.cursor, current_node);
-		this.out.set_value_start(cs_id, q);
-		this.out.set_value_end(cs_id, e);
-		this.emit_close(cs_id, r);
+		this.emit_leaf(NodeKind.code_span, this.cursor, current_node, q, e, r);
 		this.extra = run_n;
 		this.code_span_open_pos = this.cursor;
 		// a plain char next, the inline default's text run (r < length here)
@@ -5181,12 +5244,12 @@ export class PFMParser {
 					!this.is_heading_start(stripped) &&
 					!this.is_thematic_break_start(stripped)
 				) {
-					const sb = this.emit_open(
+					this.emit_bare_leaf(
 						NodeKind.soft_break,
 						this.cursor,
-						current_node
+						current_node,
+						this.cursor + 1
 					);
-					this.emit_close(sb, this.cursor + 1);
 					this.chomp(stripped, true);
 					this.states.push(StateKind.inline);
 					return true;
@@ -5761,12 +5824,12 @@ export class PFMParser {
 								}
 							}
 							// continuation line inside block quote - emit soft break
-							const sb_p = this.emit_open(
+							this.emit_bare_leaf(
 								NodeKind.soft_break,
 								this.cursor,
-								current_node
+								current_node,
+								this.cursor + 1
 							);
-							this.emit_close(sb_p, this.cursor + 1);
 							this.chomp(stripped, true);
 							const bq_c = char_code_at.call(source, stripped - base);
 							if (bq_c >= 128 || (bq_c !== 0 && TEXT_BREAK[bq_c] === 0))
@@ -5808,12 +5871,12 @@ export class PFMParser {
 							}
 						}
 						// continuation line - emit soft break
-						const sb_p_nq = this.emit_open(
+						this.emit_bare_leaf(
 							NodeKind.soft_break,
 							this.cursor,
-							current_node
+							current_node,
+							this.cursor + 1
 						);
-						this.emit_close(sb_p_nq, this.cursor + 1);
 						this.cursor++;
 						// strip leading whitespace on continuation line
 						while (
@@ -6059,12 +6122,12 @@ export class PFMParser {
 								continue;
 							} else if (this.list_depth > 0) {
 								// soft line break - emit soft_break node
-								const sb_il = this.emit_open(
+								this.emit_bare_leaf(
 									NodeKind.soft_break,
 									this.cursor,
-									current_node
+									current_node,
+									this.cursor + 1
 								);
-								this.emit_close(sb_il, this.cursor + 1);
 								const li_c = char_code_at.call(source, ++this.cursor - base);
 								if (
 									(li_c >= 128 || (li_c !== 0 && TEXT_BREAK[li_c] === 0)) &&
@@ -6076,12 +6139,12 @@ export class PFMParser {
 								continue;
 							} else {
 								// soft line break - emit soft_break node
-								const sb_inl = this.emit_open(
+								this.emit_bare_leaf(
 									NodeKind.soft_break,
 									this.cursor,
-									current_node
+									current_node,
+									this.cursor + 1
 								);
-								this.emit_close(sb_inl, this.cursor + 1);
 								this.cursor++;
 								// strip leading whitespace on continuation line
 								while (
@@ -6974,12 +7037,12 @@ export class PFMParser {
 								continue;
 							}
 							const parent_id = this.node_stack[this.node_stack.length - 1];
-							const sb_id = this.emit_open(
+							this.emit_bare_leaf(
 								NodeKind.soft_break,
 								this.cursor,
-								parent_id
+								parent_id,
+								this.cursor + 1
 							);
-							this.emit_close(sb_id, this.cursor + 1);
 							let p = this.cursor + 1;
 							while (
 								p < length &&
@@ -8539,8 +8602,12 @@ export class PFMParser {
 			) {
 				return true;
 			}
-			const sb = this.emit_open(NodeKind.soft_break, this.cursor, current_node);
-			this.emit_close(sb, this.cursor + 1);
+			this.emit_bare_leaf(
+				NodeKind.soft_break,
+				this.cursor,
+				current_node,
+				this.cursor + 1
+			);
 			this.chomp(stripped, true);
 			this.states.push(StateKind.inline);
 			return false;
@@ -10180,10 +10247,7 @@ export class PFMParser {
 			if (e >= 0) {
 				if (s < e) {
 					// a plain cell is one text node, no inline pass over a sliced source
-					const t_id = this.emit_open(NodeKind.text, s, this.table_cell_id);
-					this.out.set_value_start(t_id, s);
-					this.out.set_value_end(t_id, e);
-					this.emit_close(t_id, e);
+					this.emit_leaf(NodeKind.text, s, this.table_cell_id, s, e, e);
 					this.interrupt_pos = -1;
 					this.loop_without_progress = 0;
 				}
@@ -10297,8 +10361,12 @@ export class PFMParser {
 				this.cursor = p;
 				return;
 			}
-			const sb_id = this.emit_open(NodeKind.soft_break, p, para_id);
-			this.emit_close(sb_id, p + 1);
+			this.emit_bare_leaf(
+				NodeKind.soft_break,
+				p,
+				para_id,
+				p + 1
+			);
 			let q = p + 1;
 			// the root strips the continuation line's leading spaces, a list keeps them
 			if (this.list_depth === 0) {
@@ -10393,10 +10461,7 @@ export class PFMParser {
 		while (r < length && char_code_at.call(source, r - base) === BACKTICK) r++;
 		if (r - e !== run_n || r >= length) return false;
 		const cell = this.table_cell_id;
-		const cs_id = this.emit_open(NodeKind.code_span, start, cell);
-		this.out.set_value_start(cs_id, q);
-		this.out.set_value_end(cs_id, e);
-		this.emit_close(cs_id, r);
+		this.emit_leaf(NodeKind.code_span, start, cell, q, e, r);
 		this.extra = run_n;
 		this.code_span_open_pos = start;
 		this.cursor = r;
@@ -10416,8 +10481,6 @@ export class PFMParser {
 		const base = this.source_base;
 		const length = this.source_end;
 		const start = this.cursor;
-		const t_id = this.emit_open(NodeKind.text, start, parent);
-		this.out.set_value_start(t_id, start);
 		// ve is the end of the run's last char after the first that is not a space or tab,
 		// so trailing cell padding is never scanned back over; start while there is none
 		let ve = start;
@@ -10441,11 +10504,12 @@ export class PFMParser {
 		}
 		if (p < length && (ch === PIPE || ch === LINEFEED)) {
 			if (ve === start) ve = this.blank_run_end(start + 1);
-			this.out.set_value_end(t_id, ve);
-			this.emit_close(t_id, p);
+			this.emit_leaf(NodeKind.text, start, parent, start, ve, p);
 			this.cursor = p;
 			return true;
 		}
+		const t_id = this.emit_open(NodeKind.text, start, parent);
+		this.out.set_value_start(t_id, start);
 		this.states.push(StateKind.inline);
 		this.node_stack.push(t_id);
 		this.states.push(StateKind.text);
