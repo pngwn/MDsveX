@@ -176,14 +176,6 @@ type HoleIds = { undefined?: number };
 
 const JOIN_PAIR: string[] = ['', ''];
 
-// a table start's header cell bounds as start, end pairs, shared since try_start_table never reenters
-let table_bounds: Int32Array = new Int32Array(32);
-
-function grow_bounds(bounds: Int32Array): Int32Array {
-	const next = new Int32Array(bounds.length << 1);
-	next.set(bounds);
-	return next;
-}
 
 /** join rather than concat, a cons string window costs about twice as much per charCodeAt */
 function append_flat(head: string, tail: string): string {
@@ -719,6 +711,8 @@ interface ColdState {
 	kept_cut: number;
 	kept_base: number;
 	kept_count: number;
+	// a table start's header cell bounds as start, end pairs, allocated by the first table start
+	table_bounds: Int32Array | null;
 }
 
 /**
@@ -766,6 +760,7 @@ export class PFMParser {
 		kept_cut: -1,
 		kept_base: 0,
 		kept_count: 0,
+		table_bounds: null,
 	};
 	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
 	private wait_kind: number = 0;
@@ -9980,7 +9975,8 @@ export class PFMParser {
 			pos++;
 		}
 		if (pos < length && char_code_at.call(source, pos - base) === PIPE) pos++;
-		let bounds = table_bounds;
+		let bounds = this.cold.table_bounds;
+		if (bounds === null) bounds = this.cold.table_bounds = new Int32Array(16);
 		let n = 0;
 		let cell_start = pos;
 		let last_text = pos;
@@ -9992,7 +9988,7 @@ export class PFMParser {
 				break;
 			}
 			if (ch === PIPE) {
-				if (n + 2 > bounds.length) bounds = table_bounds = grow_bounds(bounds);
+				if (n + 2 > bounds.length) bounds = this.grow_table_bounds(bounds);
 				bounds[n] = cell_start;
 				bounds[n + 1] = pos;
 				n += 2;
@@ -10017,7 +10013,7 @@ export class PFMParser {
 		}
 		// trailing content after the last pipe is a cell unless it is only whitespace
 		if (last_text > cell_start) {
-			if (n + 2 > bounds.length) bounds = table_bounds = grow_bounds(bounds);
+			if (n + 2 > bounds.length) bounds = this.grow_table_bounds(bounds);
 			bounds[n] = cell_start;
 			bounds[n + 1] = header_end;
 			n += 2;
@@ -10104,6 +10100,13 @@ export class PFMParser {
 		const after_delim = delim_end < length ? delim_end + 1 : delim_end;
 		this.chomp(after_delim, true);
 		return true;
+	}
+
+	private grow_table_bounds(bounds: Int32Array): Int32Array {
+		const next = new Int32Array(bounds.length << 1);
+		next.set(bounds);
+		this.cold.table_bounds = next;
+		return next;
 	}
 
 	/**
