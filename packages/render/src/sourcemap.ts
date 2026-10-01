@@ -35,28 +35,40 @@ function copy_i32(a: Int32Array, used: number, size: number): Int32Array {
 	return b;
 }
 
-function fill_line_starts(table: LineTable, s: string): void {
+/**
+ * line starts of s, stopping after line max_line or before the first line
+ * starting past max_offset, whichever comes first, the last line held then
+ * stands for every line after it
+ */
+function fill_line_starts(
+	table: LineTable,
+	s: string,
+	max_line: number,
+	max_offset: number
+): void {
 	let starts = table.starts;
 	let n = 1;
 	starts[0] = 0;
 	if (s.indexOf('\r') === -1) {
 		// without \r only \n ends a line, and indexOf finds it far faster than
 		// a charCodeAt loop
-		let i = s.indexOf('\n');
-		while (i !== -1) {
+		let i = max_line > 0 ? s.indexOf('\n') : -1;
+		while (i !== -1 && i < max_offset) {
 			if (n + 2 >= starts.length)
 				starts = copy_i32(starts, n, starts.length * 2);
 			starts[n++] = i + 1;
+			if (n > max_line) break;
 			i = s.indexOf('\n', i + 1);
 		}
-	} else {
-		for (let i = 0; i < s.length; i++) {
+	} else if (max_line > 0) {
+		for (let i = 0; i < s.length && i < max_offset; i++) {
 			const c = s.charCodeAt(i);
 			// bare \r ends a line too, as editors split source
 			if (c === 10 || (c === 13 && s.charCodeAt(i + 1) !== 10)) {
 				if (n + 2 >= starts.length)
 					starts = copy_i32(starts, n, starts.length * 2);
 				starts[n++] = i + 1;
+				if (n > max_line) break;
 			}
 		}
 	}
@@ -69,7 +81,7 @@ function fill_line_starts(table: LineTable, s: string): void {
 /** build an array of byte offsets where each line begins. line 0 starts at 0. */
 export function build_line_starts(source: string): Uint32Array {
 	const table = new LineTable();
-	fill_line_starts(table, source);
+	fill_line_starts(table, source, PAST_END, PAST_END);
 	return new Uint32Array(table.starts.subarray(0, table.count));
 }
 
@@ -468,8 +480,8 @@ function encode_mappings(
 	source: string,
 	generated: string
 ): string {
-	fill_line_starts(src_table, source);
-	fill_line_starts(gen_table, generated);
+	fill_line_starts(src_table, source, PAST_END, PAST_END);
+	fill_line_starts(gen_table, generated, PAST_END, PAST_END);
 
 	collect_spans(mappings);
 	sort_spans();
@@ -488,8 +500,8 @@ function encode_records(
 	source: string,
 	generated: string
 ): string {
-	fill_line_starts(src_table, source);
-	fill_line_starts(gen_table, generated);
+	fill_line_starts(src_table, source, PAST_END, PAST_END);
+	fill_line_starts(gen_table, generated, PAST_END, PAST_END);
 
 	collect_record_spans(rec, start, end);
 	sort_spans();
@@ -719,7 +731,7 @@ function decode_lines(
 	generated: string,
 	lines: ArrayLike<number>
 ): DecodedSegment[][] {
-	fill_line_starts(gen_table, generated);
+	fill_line_starts(gen_table, generated, PAST_END, PAST_END);
 	const gen_starts = gen_table.starts;
 	const gen_count = gen_table.count;
 
@@ -766,7 +778,7 @@ function decode_lines(
 	for (let i = 0; i <= last; i++) mappings.push(NO_SEGMENTS);
 	if (span_count === 0) return mappings;
 
-	fill_line_starts(src_table, source);
+	fill_line_starts(src_table, source, PAST_END, PAST_END);
 	const src_starts = src_table.starts;
 	const src_count = src_table.count;
 	sort_spans();
@@ -989,7 +1001,8 @@ function trace_lines(
 	generated: string,
 	wanted: Uint8Array,
 	queries: Int32Array,
-	query_count: number
+	query_count: number,
+	limit: number
 ): number {
 	const gen_starts = gen_table.starts;
 	const gen_count = gen_table.count;
@@ -1000,6 +1013,8 @@ function trace_lines(
 		const role = buf[p + 5] & 3;
 		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
 		const g = buf[p];
+		// no wanted line starts at or past limit
+		if (g >= limit) continue;
 		const s = buf[p + 2];
 		const source_length = buf[p + 3];
 		if (role === Role.CONTENT && buf[p + 1] === source_length) {
@@ -1051,13 +1066,16 @@ function trace_lines(
 		pseg_scol = new Int32Array(size);
 	}
 
-	fill_line_starts(src_table, source);
+	// only the lines up to the last span source need starts
+	const src = span_src;
+	let max_src = 0;
+	for (let k = 0; k < n; k++) if (src[k] > max_src) max_src = src[k];
+	fill_line_starts(src_table, source, PAST_END, max_src);
 	const src_starts = src_table.starts;
 	const src_count = src_table.count;
 	sort_spans();
 
 	const gen = span_gen;
-	const src = span_src;
 	const order = span_order;
 	const col = pseg_col;
 	const sline = pseg_sline;
@@ -1108,7 +1126,13 @@ export function chain_trace(
 	const count = decode_compile(compile_mappings);
 	if (count < 0) return null;
 
-	fill_line_starts(gen_table, generated);
+	// only the lines a segment queries need starts, the line after the last
+	// one ends it
+	let max_line = -1;
+	for (let k = 0; k < count; k++) {
+		if (cseg_len[k] !== 1 && cseg_sline[k] > max_line) max_line = cseg_sline[k];
+	}
+	fill_line_starts(gen_table, generated, max_line + 1, PAST_END);
 	const gen_count = gen_table.count;
 	let wanted = wanted_buf;
 	if (wanted.length < gen_count) {
@@ -1159,7 +1183,8 @@ export function chain_trace(
 					generated,
 					wanted,
 					queries,
-					query_count
+					query_count,
+					max_line + 1 < gen_count ? gen_starts[max_line + 1] : PAST_END
 				);
 	const first = line_first;
 	const pcol = pseg_col;
