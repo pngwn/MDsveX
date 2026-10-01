@@ -10310,8 +10310,7 @@ export class PFMParser {
 		const length = this.source_end;
 		let start = this.cursor;
 		for (;;) {
-			const t_id = this.emit_open(NodeKind.text, start, para_id);
-			this.out.set_value_start(t_id, start);
+			// the text is emitted once the run's end decides between a leaf and an open
 			let p = start + 1;
 			if (p < length) {
 				const c1 = char_code_at.call(source, p - base);
@@ -10324,61 +10323,49 @@ export class PFMParser {
 					}
 				}
 			}
-			if (p >= length || char_code_at.call(source, p - base) !== LINEFEED) {
-				this.states.push(StateKind.inline);
-				this.node_stack.push(t_id);
-				this.states.push(StateKind.text);
-				this.cursor = p;
-				return;
-			}
-			if (this.block_quote_depth > 0) {
-				// inline would only pop on the linefeed
-				this.emit_close(t_id, p);
-				this.out.set_value_end(t_id, p);
-				this.cursor = p;
-				return;
-			}
-			if (!this.finished && !this.can_decide_after_lf(p)) {
+			if (p < length && char_code_at.call(source, p - base) === LINEFEED) {
+				const bq = this.block_quote_depth > 0;
 				// at the root the text state holds back on the linefeed, in a list inline does
-				this.states.push(StateKind.inline);
-				if (this.list_depth > 0) {
-					this.emit_close(t_id, p);
-					this.out.set_value_end(t_id, p);
-				} else {
-					this.node_stack.push(t_id);
-					this.states.push(StateKind.text);
+				const hold = !bq && !this.finished && !this.can_decide_after_lf(p);
+				if (!hold || this.list_depth > 0) {
+					if (hold) this.states.push(StateKind.inline);
+					this.emit_leaf(NodeKind.text, start, para_id, start, p, p);
+					// in a block quote inline would only pop on the linefeed
+					if (bq || hold) {
+						this.cursor = p;
+						return;
+					}
+					if (this.lf_ends_inline(p)) {
+						// close the paragraph as its state would on the interrupting linefeed
+						this.emit_close(para_id, p);
+						this.states.pop();
+						this.node_stack.pop();
+						this.cursor = p;
+						return;
+					}
+					this.emit_bare_leaf(NodeKind.soft_break, p, para_id, p + 1);
+					let q = p + 1;
+					// the root strips the continuation line's leading spaces, a list keeps them
+					if (this.list_depth === 0) {
+						while (q < length && char_code_at.call(source, q - base) === SPACE) q++;
+					}
+					const c0 = q < length ? char_code_at.call(source, q - base) : 0;
+					if (!(c0 >= 128 || (c0 !== 0 && TEXT_BREAK[c0] === 0))) {
+						this.states.push(StateKind.inline);
+						this.cursor = q;
+						return;
+					}
+					start = q;
+					continue;
 				}
-				this.cursor = p;
-				return;
 			}
-			this.emit_close(t_id, p);
-			this.out.set_value_end(t_id, p);
-			if (this.lf_ends_inline(p)) {
-				// close the paragraph as its state would on the interrupting linefeed
-				this.emit_close(para_id, p);
-				this.states.pop();
-				this.node_stack.pop();
-				this.cursor = p;
-				return;
-			}
-			this.emit_bare_leaf(
-				NodeKind.soft_break,
-				p,
-				para_id,
-				p + 1
-			);
-			let q = p + 1;
-			// the root strips the continuation line's leading spaces, a list keeps them
-			if (this.list_depth === 0) {
-				while (q < length && char_code_at.call(source, q - base) === SPACE) q++;
-			}
-			const c0 = q < length ? char_code_at.call(source, q - base) : 0;
-			if (!(c0 >= 128 || (c0 !== 0 && TEXT_BREAK[c0] === 0))) {
-				this.states.push(StateKind.inline);
-				this.cursor = q;
-				return;
-			}
-			start = q;
+			const t_id = this.emit_open(NodeKind.text, start, para_id);
+			this.out.set_value_start(t_id, start);
+			this.states.push(StateKind.inline);
+			this.node_stack.push(t_id);
+			this.states.push(StateKind.text);
+			this.cursor = p;
+			return;
 		}
 	}
 
