@@ -1034,9 +1034,22 @@ export class PFMParser {
 		while (this.is_trim_delimiter(kind)) kind = this.kind_of(stack[--top]);
 		let line: number;
 		if (kind === NodeKind.paragraph) {
-			const lf = string_last_index_of.call(source, '\n', cursor - 1 - base);
-			if (lf === -1) return;
-			line = lf + 1 + base;
+			if (
+				cursor === this.source_end &&
+				cursor > base &&
+				this.states[this.states.length - 1] === StateKind.text &&
+				this.kind_of(stack[stack.length - 1]) === NodeKind.text
+			) {
+				// a text run stalled at the window end reads only the char before the cursor,
+				// which the trim keeps, unless a backward whitespace scan could run past it
+				const prev = char_code_at.call(source, cursor - 1 - base);
+				line = prev === SPACE || prev === TAB ? -1 : cursor;
+			} else line = -1;
+			if (line === -1) {
+				const lf = string_last_index_of.call(source, '\n', cursor - 1 - base);
+				if (lf === -1) return;
+				line = lf + 1 + base;
+			}
 		} else if (kind === NodeKind.table_cell || kind === NodeKind.table) {
 			// a table body row is one line and reads nothing of the rows before it
 			if (kind === NodeKind.table_cell) {
