@@ -204,9 +204,26 @@ export class TreeBuilder implements Emitter {
 	close(id: number, end: number, kind?: NodeKind): void {
 		const idx = this.index_of(id);
 		if (idx === undefined) return;
-		const nodes = this.nodes;
 		const b = idx * NodeField.stride;
-		nodes._n[b + NodeField.end] = end;
+		const n = this.nodes._n;
+		n[b + NodeField.end] = end;
+		// lists, list item paragraphs still pending, plugins and kindless closes
+		// are a few percent of closes, their tail stays a call so close inlines
+		// cheaply at every emit site
+		if (
+			this.dispatcher === null &&
+			kind !== undefined &&
+			kind !== NodeKind.list &&
+			(kind !== NodeKind.paragraph || n[b + NodeField.pending] === 0)
+		) {
+			n[b + NodeField.pending] = 0;
+			return;
+		}
+		this.close_rest(idx, b, kind);
+	}
+
+	private close_rest(idx: number, b: number, kind: NodeKind | undefined): void {
+		const nodes = this.nodes;
 		// fire close callbacks before committing, a quiet dispatcher has none
 		const dispatcher = this.dispatcher;
 		if (dispatcher !== null && !dispatcher.quiet()) {
