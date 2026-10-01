@@ -381,6 +381,39 @@ describe('linefeed after a closed element in an unclosed delimiter', () => {
 	}
 });
 
+describe('list marker with no content at the end of a fed chunk', () => {
+	const cases: [string, string[]][] = [
+		['+ ', ['  paragraph', '    text "+ "']],
+		['1. ', ['  paragraph', '    text "1. "']],
+		['12) ', ['  paragraph', '    text "12) "']],
+	];
+
+	for (const [input, lines] of cases) {
+		test(JSON.stringify(input), () => {
+			expect(print_batch(input)).toBe(['root', ...lines].join('\n'));
+			expect_incremental_matches(input);
+		});
+	}
+
+	const inputs = [
+		'+ a',
+		'1. a',
+		'> + ',
+		'<div>\n1. ',
+		'{#if x}\n+ ',
+		'- a\n+ ',
+		'- a\n  1. ',
+		'+ a\n\n+ ',
+		'1. a\n\n1. ',
+		'1. >\n\n1. ',
+	];
+	for (const input of inputs) {
+		test(JSON.stringify(input), () => {
+			expect_incremental_matches(input);
+		});
+	}
+});
+
 describe('batch and incremental parity', () => {
 	const atoms = [
 		'*',
