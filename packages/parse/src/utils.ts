@@ -43,9 +43,26 @@ export const enum NodeField {
 
 const NODE_BYTES = NodeField.stride * 4;
 
+/** most documents repair nothing, the first prebuilt string swaps in a real array */
+const NO_STRINGS: (string | undefined)[] = [];
+
 /**
- * regions are never reused, so a carve starts zeroed and costs one view not a
- * backing store, but a live small buffer keeps its whole slab alive
+ * node storage, uninitialized where the host can give it since push writes
+ * every word of a node before anything reads it, and trimmed tails are reused
+ * anyway, zero filling a slab was pure cost
+ */
+const host_buffer: any = (globalThis as any).Buffer;
+const unzeroed =
+	host_buffer !== undefined && typeof host_buffer.allocUnsafeSlow === 'function';
+function new_storage(bytes: number): ArrayBuffer {
+	return unzeroed
+		? (host_buffer.allocUnsafeSlow(bytes).buffer as ArrayBuffer)
+		: new ArrayBuffer(bytes);
+}
+
+/**
+ * a carve costs one view not a backing store, but a live small buffer keeps
+ * its whole slab alive
  */
 let slab = new ArrayBuffer(0);
 let slab_used = SLAB_BYTES;
@@ -326,7 +343,7 @@ export class NodeBuffer {
 	/** @internal */
 	_meta: any[] = NO_META;
 	/** @internal pre-materialized text strings (used by wiretreebuilder). index -> string. */
-	_strings: (string | undefined)[] = [];
+	_strings: (string | undefined)[] = NO_STRINGS;
 
 	/** @internal read by TreeBuilder to check ids against indices */
 	_size = 0;
@@ -350,20 +367,26 @@ export class NodeBuffer {
 		let base = 0;
 		if (bytes <= SLAB_MAX_CARVE) {
 			if (slab_used + bytes > SLAB_BYTES) {
-				slab = new ArrayBuffer(SLAB_BYTES);
+				slab = new_storage(SLAB_BYTES);
 				slab_used = 0;
 			}
 			buffer = slab;
 			base = slab_used;
 			slab_used = base + bytes;
 		} else {
-			buffer = new ArrayBuffer(bytes);
+			buffer = new_storage(bytes);
 		}
 		const n = new Uint32Array(buffer, base, capacity * NodeField.stride);
 		if (buffer === slab) last_carve = n;
 		this._capacity = capacity;
 		this._n = n;
 		return n;
+	}
+
+	/** @internal the strings array to write to, never the shared empty one */
+	own_strings(): (string | undefined)[] {
+		const strings = this._strings;
+		return strings === NO_STRINGS ? (this._strings = []) : strings;
 	}
 
 	/** gives the unused tail of the last slab carve back, a later push resizes */
@@ -671,7 +694,7 @@ export class NodeBuffer {
 			this.set_value(text_idx, start, end);
 			this.set_end(text_idx, end);
 			if (delimiter_text !== undefined && text_start !== start) {
-				this._strings[text_idx] = delimiter_text;
+				this.own_strings()[text_idx] = delimiter_text;
 			}
 
 			// splice the original children in after the rewritten node so they
@@ -712,7 +735,7 @@ export class NodeBuffer {
 
 		if (delimiter_text !== undefined) {
 			const start = this.start_at(index);
-			if (text_start !== start) this._strings[index] = delimiter_text;
+			if (text_start !== start) this.own_strings()[index] = delimiter_text;
 			const end = start + delimiter_text.length;
 			this.set_value(index, start, end);
 			this.set_end(index, end);

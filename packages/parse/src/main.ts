@@ -824,14 +824,14 @@ export class PFMParser {
 	 * init() + feed(source) + finish().
 	 */
 	parse(source: string): { errors: ErrorCollector } {
-		return this.parse_normalized(normalize_newlines(source));
+		return { errors: this.parse_normalized(normalize_newlines(source)) };
 	}
 
 	/**
 	 * parse for a source normalize_newlines already returned, so the input is not scanned for \r twice
 	 * @internal
 	 */
-	parse_normalized(src: string): { errors: ErrorCollector } {
+	parse_normalized(src: string): ErrorCollector {
 		const n = src.length;
 		// documents run well above 8 chars a node, so this rarely grows
 		this._init(n >> 3);
@@ -844,7 +844,7 @@ export class PFMParser {
 		this._run();
 		this._finalize();
 
-		return { errors: this.errors };
+		return this.errors;
 	}
 
 	/**
@@ -10259,14 +10259,19 @@ let idle_tree: TreeBuilder | null = null;
  */
 export function parse_markdown_svelte(
 	input: string,
-	options: ParseOptions = {}
+	options?: ParseOptions
 ): { nodes: NodeBuffer; errors: ErrorCollector; source: string } {
 	const source = normalize_newlines(input);
 
 	let dispatcher: PluginDispatcher | undefined;
-	if (options.plugins && options.plugins.length > 0) {
-		const text_source = new SourceTextSource(source);
-		dispatcher = new PluginDispatcher(options.plugins, text_source);
+	let tab_size: number | undefined;
+	if (options !== undefined) {
+		tab_size = options.tab_size;
+		const plugins = options.plugins;
+		if (plugins && plugins.length > 0) {
+			const text_source = new SourceTextSource(source);
+			dispatcher = new PluginDispatcher(plugins, text_source);
+		}
 	}
 
 	// short documents are denser in nodes, oversizing a small buffer is only a slab carve
@@ -10278,9 +10283,7 @@ export function parse_markdown_svelte(
 	let errors: ErrorCollector;
 	if (spare_parser_busy) {
 		// a plugin or emitter reentered parse, the spare holds the outer document
-		errors = new PFMParser(tree, options.tab_size).parse_normalized(
-			source
-		).errors;
+		errors = new PFMParser(tree, tab_size).parse_normalized(source);
 	} else {
 		spare_parser_busy = true;
 		let keep = false;
@@ -10289,8 +10292,8 @@ export function parse_markdown_svelte(
 				if (idle_tree === null) idle_tree = new TreeBuilder(0);
 				spare_parser = new PFMParser(idle_tree);
 			}
-			spare_parser.bind(tree, options.tab_size);
-			errors = spare_parser.parse_normalized(source).errors;
+			spare_parser.bind(tree, tab_size);
+			errors = spare_parser.parse_normalized(source);
 			keep = true;
 		} finally {
 			// a throw can leave the parser half written, so the next document gets a fresh one

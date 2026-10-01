@@ -40,6 +40,8 @@ export class WireTreeBuilder {
 
 	constructor(capacity = 128, dispatcher?: PluginDispatcher) {
 		this.buf = new NodeBuffer(capacity);
+		// this builder writes strings in place and its text source holds the array
+		this.buf.own_strings();
 		this.id_to_index = [0]; // root id 0 -> buffer index 0
 		this.schema = null;
 		this.dispatcher = dispatcher ?? null;
