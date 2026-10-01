@@ -11,6 +11,9 @@ import type { IdRegister } from './plugin_types';
 
 const NONE = 0xffffffff;
 
+/** open_wants of a builder without plugins, never written */
+const NO_WANTS = new Uint8Array(64);
+
 /**
  * consumes opcodes from PFMParser and builds a NodeBuffer.
  * this is the backward-compatibility layer: the opcode stream is the
@@ -36,6 +39,8 @@ export class TreeBuilder implements Emitter {
 	private revoked_mapped = 0;
 	/** optional plugin dispatcher. null when no plugins registered. */
 	private dispatcher: PluginDispatcher | null;
+	/** kinds whose open goes to the dispatcher, see PluginDispatcher.open_wants */
+	private wants: Uint8Array;
 
 	/** callback for dispatcher to register synthetic node ids. */
 	private register_id: IdRegister | null = null;
@@ -43,6 +48,7 @@ export class TreeBuilder implements Emitter {
 	constructor(capacity: number, dispatcher?: PluginDispatcher) {
 		this.nodes = new NodeBuffer(capacity);
 		this.dispatcher = dispatcher ?? null;
+		this.wants = dispatcher !== undefined ? dispatcher.open_wants : NO_WANTS;
 		// NodeBuffer constructor auto-creates root at index 0
 		if (this.dispatcher !== null) {
 			// only plugins register synthetic ids, so only they pay for the closure
@@ -114,11 +120,13 @@ export class TreeBuilder implements Emitter {
 	): void {
 		const nodes = this.nodes;
 		// ids are buffer indices and parents are opened ids below this one,
-		// the root (id 0) never matches, the buffer creates it
+		// the root (id 0) never matches, the buffer creates it. a plugin open
+		// of a kind no handler wants is the same push, so it stays here and
+		// the slow path is rare enough that V8 keeps it out of this body
 		if (
 			this.id_to_index === null &&
 			id === nodes._size &&
-			this.dispatcher === null
+			this.wants[kind] === 0
 		) {
 			nodes.push_node(
 				kind,
@@ -132,7 +140,7 @@ export class TreeBuilder implements Emitter {
 		if (id !== 0) this.open_slow(id, kind, start, parent, extra, pending);
 	}
 
-	/** an open with plugins, or once ids stopped being buffer indices */
+	/** an open a plugin wants, or once ids stopped being buffer indices */
 	private open_slow(
 		id: number,
 		kind: NodeKind,
@@ -197,20 +205,23 @@ export class TreeBuilder implements Emitter {
 	}
 
 	close(id: number, end: number, kind?: NodeKind): void {
-		if (this.dispatcher !== null) {
-			this.close_with_plugins(id, end, kind);
-			return;
-		}
 		const idx = this.index_of(id);
 		if (idx === undefined) return;
-		const n = this.nodes._n;
+		const nodes = this.nodes;
 		const b = idx * NodeField.stride;
-		n[b + NodeField.end] = end;
+		nodes._n[b + NodeField.end] = end;
+		// fire close callbacks before committing, a quiet dispatcher has none
+		const dispatcher = this.dispatcher;
+		if (dispatcher !== null && !dispatcher.quiet()) {
+			dispatcher.dispatch_close(idx, nodes);
+		}
 
 		// pending paragraphs inside list_items are tight-list speculation
 		// wrappers, they stay pending after close until the list closes
 		// and the parser either revokes (tight) or commits (loose) them.
+		// dispatch_close already committed the undo log of a node not pending
 		if (kind === undefined) kind = this.opened_kind(idx);
+		const n = nodes._n;
 		if (
 			kind === NodeKind.paragraph &&
 			n[b + NodeField.pending] === 1 &&
@@ -220,30 +231,6 @@ export class TreeBuilder implements Emitter {
 			return;
 		}
 		n[b + NodeField.pending] = 0;
-		if (kind === NodeKind.list) this.unwrap_tight_list(idx);
-	}
-
-	private close_with_plugins(id: number, end: number, opened?: NodeKind): void {
-		const idx = this.index_of(id);
-		if (idx === undefined) return;
-		const nodes = this.nodes;
-		const dispatcher = this.dispatcher!;
-		nodes.set_end(idx, end);
-
-		// fire close callbacks before committing, a quiet dispatcher has none
-		if (!dispatcher.quiet()) dispatcher.dispatch_close(idx, nodes);
-
-		// pending paragraphs inside list_items are tight-list speculation
-		// wrappers, they stay pending after close until the list closes
-		// and the parser either revokes (tight) or commits (loose) them.
-		const kind = opened !== undefined ? opened : this.opened_kind(idx);
-		const keep_pending =
-			kind === NodeKind.paragraph &&
-			nodes.pending_at(idx) === 1 &&
-			nodes.kind_at(nodes.parent_at(idx)) === NodeKind.list_item;
-		// dispatch_close already committed the undo log of a node not pending
-		if (!keep_pending) nodes.commit_node(idx);
-
 		if (kind === NodeKind.list) this.unwrap_tight_list(idx);
 	}
 

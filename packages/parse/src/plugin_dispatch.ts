@@ -426,12 +426,22 @@ export class PluginDispatcher {
 	/** one cache serves every dispatch, a view only holds an index */
 	private cache: ViewCache | null = null;
 
+	/**
+	 * 1 for each kind whose open needs the dispatcher, read by the builder's
+	 * open in place of wants_open, every kind once a redirect was registered
+	 */
+	readonly open_wants: Uint8Array = new Uint8Array(64);
+
 	constructor(plugins: ParsePlugin[], text_source: TextSource) {
 		const reg = registration_for(plugins);
 		this.fused = reg.fused;
-		this.has_handler = reg.has_handler;
+		const has_handler = (this.has_handler = reg.has_handler);
 		this.sequential = reg.sequential;
 		this.text_source = text_source;
+		const wants = this.open_wants;
+		for (let k = 0; k < 64; k++) {
+			if (has_handler[k >> 5] & (1 << (k & 31))) wants[k] = 1;
+		}
 	}
 
 	/** cleared since a callback view may have filled it after the last dispatch */
@@ -488,7 +498,11 @@ export class PluginDispatcher {
 
 	private own_redirects(): Map<number, number> {
 		let redirects = this.redirects;
-		if (redirects === NO_REDIRECTS) redirects = this.redirects = new Map();
+		if (redirects === NO_REDIRECTS) {
+			redirects = this.redirects = new Map();
+			// a redirect can retarget the parent of any open
+			this.open_wants.fill(1);
+		}
 		return redirects;
 	}
 
