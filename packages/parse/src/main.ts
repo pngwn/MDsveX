@@ -2069,12 +2069,9 @@ export class PFMParser {
 		// markers and the space that follows them. until the full prefix
 		// is visible, skip_bq_markers can mis-strip. require the complete
 		// next line to avoid under-reading the continuation prefix.
-		if (this.block_quote_depth > 0) {
-			for (let p = pos + 1; p < length; p++) {
-				if (char_code_at.call(source, p - base) === LINEFEED) return true;
-			}
-			return false;
-		}
+		// the window runs to exactly length, so any lf found lies within it
+		if (this.block_quote_depth > 0)
+			return pos + 1 < length && string_index_of.call(source, '\n', pos + 1 - base) !== -1;
 
 		let p = pos + 1;
 		// skip leading whitespace on the next line.
@@ -2154,10 +2151,7 @@ export class PFMParser {
 				// start a block - the paragraph continues.
 				return true;
 		}
-		for (let q = p + 1; q < length; q++) {
-			if (char_code_at.call(source, q - base) === LINEFEED) return true;
-		}
-		return false;
+		return p + 1 < length && string_index_of.call(source, '\n', p + 1 - base) !== -1;
 	}
 
 	private is_heading_start(pos: number): boolean {
@@ -7109,13 +7103,52 @@ export class PFMParser {
 	 */
 	private start_fence(parent: number): void {
 		if (
-			!this.finished ||
-			this.block_quote_depth > 0 ||
-			!this.fence_whole(parent)
+			!this.finished
+				? !this.fence_open(parent)
+				: this.block_quote_depth > 0 || !this.fence_whole(parent)
 		) {
 			this.states.push(StateKind.code_fence_start);
 			this.extra = 0;
 		}
+	}
+
+	/**
+	 * incremental fence opener once its info line and the char after it are visible, emits what
+	 * the start and info states would and leaves the content state to find the close
+	 */
+	private fence_open(parent: number): boolean {
+		if (this.block_quote_depth > 0) return false;
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const start = this.cursor;
+		let p0 = start + 1;
+		while (p0 < length && char_code_at.call(source, p0 - base) === BACKTICK)
+			p0++;
+		const fence_len = p0 - start;
+		if (fence_len < 3) return false;
+		const nl_rel = string_index_of.call(source, '\n', p0 - base);
+		if (nl_rel === -1) return false;
+		const info_end = nl_rel + base;
+		if (info_end + 1 >= length) return false;
+		for (let q = p0; q < info_end; q++) {
+			if (char_code_at.call(source, q - base) === 0) return false;
+		}
+		const out = this.out;
+		const cf_id = this.emit_open(NodeKind.code_fence, start, parent);
+		this.node_stack.push(cf_id);
+		this.extra = fence_len;
+		this.info_start_pos = p0;
+		this.info_end_pos = info_end;
+		out.attr(cf_id, 'info_start', p0);
+		out.attr(cf_id, 'info_end', info_end);
+		const line = info_end + 1;
+		out.set_value_start(cf_id, line);
+		this.states.push(StateKind.code_fence_content);
+		this.fence_scan = line;
+		this.cursor = line;
+		this.class_floor = -1;
+		return true;
 	}
 
 	private fence_whole(parent: number): boolean {
