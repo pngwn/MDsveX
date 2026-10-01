@@ -1572,6 +1572,54 @@ export class PFMParser {
 		}
 	}
 
+	/**
+	 * the inline state's backtick: a one or two backtick span with plain content closing on the
+	 * same line is emitted here, and a plain run after it opened as the inline default would
+	 * false leaves everything to code_span_start
+	 */
+	private line_code_span(current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		let q = this.cursor + 1;
+		if (q < length && char_code_at.call(source, q - base) === BACKTICK) q++;
+		const run_n = q - this.cursor;
+		if (q >= length) return false;
+		const c0 = char_code_at.call(source, q - base);
+		// in a table cell a pipe ends the span, so one before the closer takes the slow path
+		const cs_pipe = this.in_table ? PIPE : LINEFEED;
+		if (
+			c0 === BACKTICK ||
+			c0 === SPACE ||
+			c0 === OCTOTHERP ||
+			c0 === LINEFEED ||
+			c0 === cs_pipe
+		)
+			return false;
+		let e = q + 1;
+		while (e < length) {
+			const ch = char_code_at.call(source, e - base);
+			if (ch === BACKTICK || ch === LINEFEED || ch === cs_pipe) break;
+			e++;
+		}
+		if (e >= length || char_code_at.call(source, e - base) !== BACKTICK)
+			return false;
+		let r = e + 1;
+		while (r < length && char_code_at.call(source, r - base) === BACKTICK) r++;
+		if (r - e !== run_n || r >= length) return false;
+		const cs_id = this.emit_open(NodeKind.code_span, this.cursor, current_node);
+		this.out.set_value_start(cs_id, q);
+		this.out.set_value_end(cs_id, e);
+		this.emit_close(cs_id, r);
+		this.extra = run_n;
+		this.code_span_open_pos = this.cursor;
+		// a plain char next, the inline default's text run (r < length here)
+		const c = char_code_at.call(source, r - base);
+		if (c !== 0 && (c >= 128 || TEXT_BREAK[c] === 0)) this.open_text_run(r, current_node);
+		else this.cursor = r;
+		return true;
+	}
+
 	private open_text_run(p0: number, parent: number): void {
 		const source = this.source;
 		const base = this.source_base;
@@ -5641,57 +5689,8 @@ export class PFMParser {
 					switch (code) {
 						case BACKTICK: {
 							// a one or two backtick span with plain content that closes on the same line takes one trip
+							if (this.line_code_span(current_node)) continue;
 							// the rest goes through code_span_start
-							let q = this.cursor + 1;
-							if (
-								q < length &&
-								char_code_at.call(source, q - base) === BACKTICK
-							)
-								q++;
-							const run_n = q - this.cursor;
-							const c0 = q < length ? char_code_at.call(source, q - base) : -1;
-							// in a table cell a pipe ends the span, so one before the closer takes the slow path
-							const cs_pipe = this.in_table ? PIPE : LINEFEED;
-							if (
-								c0 !== -1 &&
-								c0 !== BACKTICK &&
-								c0 !== SPACE &&
-								c0 !== OCTOTHERP &&
-								c0 !== LINEFEED &&
-								c0 !== cs_pipe
-							) {
-								let e = q + 1;
-								while (e < length) {
-									const ch = char_code_at.call(source, e - base);
-									if (ch === BACKTICK || ch === LINEFEED || ch === cs_pipe) break;
-									e++;
-								}
-								if (
-									e < length &&
-									char_code_at.call(source, e - base) === BACKTICK
-								) {
-									let r = e + 1;
-									while (
-										r < length &&
-										char_code_at.call(source, r - base) === BACKTICK
-									)
-										r++;
-									if (r - e === run_n && r < length) {
-										const cs_id = this.emit_open(
-											NodeKind.code_span,
-											this.cursor,
-											current_node
-										);
-										this.out.set_value_start(cs_id, q);
-										this.out.set_value_end(cs_id, e);
-										this.emit_close(cs_id, r);
-										this.extra = run_n;
-										this.code_span_open_pos = this.cursor;
-										this.cursor = r;
-										continue;
-									}
-								}
-							}
 							this.states.push(StateKind.code_span_start);
 							this.extra = 0;
 							this.code_span_open_pos = this.cursor;
