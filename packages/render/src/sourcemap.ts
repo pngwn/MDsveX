@@ -1050,11 +1050,10 @@ function decode_compile(mappings: string): number {
 	return n;
 }
 
-// trace segments of the wanted generated lines, line l holds
-// line_first[l] to line_first[l + 1]
-let pseg_col = new Int32Array(1024);
-let pseg_sline = new Int32Array(1024);
-let pseg_scol = new Int32Array(1024);
+// the trace position each query lands on, source line -1 for none, the
+// queries of generated line l are line_first[l] to line_first[l + 1]
+let q_sline = new Int32Array(256);
+let q_scol = new Int32Array(256);
 let line_first = new Int32Array(256);
 let query_buf = new Int32Array(256);
 // generated lines holding a query
@@ -1071,7 +1070,8 @@ function trace_lines(
 	wanted: Uint8Array,
 	queries: Int32Array,
 	query_count: number,
-	limit: number
+	limit: number,
+	all_spans: boolean
 ): number {
 	const gen_starts = gen_table.starts;
 	const gen_count = gen_table.count;
@@ -1130,50 +1130,84 @@ function trace_lines(
 
 	if (line_first.length < gen_count + 1)
 		line_first = new Int32Array(gen_count + 1);
-	const first = line_first;
-	const n = span_count;
-	if (n === 0) {
-		first.fill(0, 0, gen_count + 1);
-		return gen_count;
+	if (q_sline.length < query_count) {
+		let size = q_sline.length * 2;
+		while (size < query_count) size *= 2;
+		q_sline = new Int32Array(size);
+		q_scol = new Int32Array(size);
 	}
-	if (pseg_col.length < n) {
-		let size = pseg_col.length * 2;
-		while (size < n) size *= 2;
-		pseg_col = new Int32Array(size);
-		pseg_sline = new Int32Array(size);
-		pseg_scol = new Int32Array(size);
+	const first = line_first;
+	const qs = q_sline;
+	const qc = q_scol;
+	const n = span_count;
+	sort_spans();
+
+	// each query takes the greatest span at or before it on its line, an equal
+	// one the first of its run, a lower one the last, as the greatest lower
+	// bound of trace-mapping does; qc holds the span source until lines resolve
+	const gen = span_gen;
+	const src = span_src;
+	const order = span_order;
+	let max_src = -1;
+	let filled = 0;
+	let k = 0;
+	gen_line = 0;
+	for (let qi = 0; qi < query_count; qi++) {
+		const q = queries[qi];
+		gen_line = find_line_ahead(gen_starts, gen_count, gen_line, q);
+		while (filled <= gen_line) first[filled++] = qi;
+		while (k < n && gen[order[k]] <= q) k++;
+		let s = -1;
+		if (k > 0) {
+			let j = k - 1;
+			const g = gen[order[j]];
+			if (g === q) {
+				while (j > 0 && gen[order[j - 1]] === q) j--;
+				s = src[order[j]];
+			} else if (g >= gen_starts[gen_line]) {
+				s = src[order[j]];
+			}
+		}
+		qs[qi] = s < 0 ? -1 : 0;
+		qc[qi] = s;
+		if (s > max_src) max_src = s;
+	}
+	while (filled <= gen_count) first[filled++] = query_count;
+	if (all_spans) {
+		for (let i = 0; i < n; i++) if (src[i] > max_src) max_src = src[i];
 	}
 
-	// only the lines up to the last span source need starts
-	const src = span_src;
-	let max_src = 0;
-	for (let k = 0; k < n; k++) if (src[k] > max_src) max_src = src[k];
+	// only the lines up to the last source found need starts
 	fill_line_starts(src_table, source, PAST_END, max_src);
 	const src_starts = src_table.starts;
 	const src_count = src_table.count;
-	sort_spans();
+	let src_line = 0;
+	for (let qi = 0; qi < query_count; qi++) {
+		if (qs[qi] < 0) continue;
+		const s = qc[qi];
+		src_line = find_line_ahead(src_starts, src_count, src_line, s);
+		qs[qi] = src_line;
+		qc[qi] = s - src_starts[src_line];
+	}
+	return gen_count;
+}
 
+/**
+ * source of the last sorted span from start up to before next, -1 for none,
+ * as the lookup of a column past its line's end finds it
+ */
+function last_span_before(start: number, next: number): number {
 	const gen = span_gen;
 	const order = span_order;
-	const col = pseg_col;
-	const sline = pseg_sline;
-	const scol = pseg_scol;
-	let src_line = 0;
-	let filled = 0;
-	gen_line = 0;
-	for (let k = 0; k < n; k++) {
-		const i = order[k];
-		const g = gen[i];
-		const s = src[i];
-		gen_line = find_line_ahead(gen_starts, gen_count, gen_line, g);
-		while (filled <= gen_line) first[filled++] = k;
-		src_line = find_line_ahead(src_starts, src_count, src_line, s);
-		col[k] = g - gen_starts[gen_line];
-		sline[k] = src_line;
-		scol[k] = s - src_starts[src_line];
+	let lo = 0;
+	let hi = span_count;
+	while (lo < hi) {
+		const mid = (lo + hi) >>> 1;
+		if (gen[order[mid]] < next) lo = mid + 1;
+		else hi = mid;
 	}
-	while (filled <= gen_count) first[filled++] = n;
-	return gen_count;
+	if (lo === 0 || gen[order[lo - 1]] < start) return -1;
+	return span_src[order[lo - 1]];
 }
 
 function write_vlq_codec(buf: Uint8Array, p: number, delta: number): number {
@@ -1223,12 +1257,17 @@ export function chain_trace(
 	const queries = query_buf;
 	let query_count = 0;
 	const gen_starts = gen_table.starts;
+	// a column past its line end looks up the line's last span, apart from the
+	// query its offset makes
+	let overflow = false;
 	for (let k = 0; k < count; k++) {
 		if (cseg_len[k] !== 1) {
 			const l = cseg_sline[k];
 			if (l < gen_count) {
 				wanted[l] = 1;
-				queries[query_count++] = gen_starts[l] + cseg_scol[k];
+				const q = gen_starts[l] + cseg_scol[k];
+				if (q >= gen_starts[l + 1]) overflow = true;
+				queries[query_count++] = q;
 			}
 		}
 	}
@@ -1269,12 +1308,12 @@ export function chain_trace(
 					wanted,
 					queries,
 					query_count,
-					max_line + 1 < gen_count ? gen_starts[max_line + 1] : PAST_END
+					max_line + 1 < gen_count ? gen_starts[max_line + 1] : PAST_END,
+					overflow
 				);
 	const first = line_first;
-	const pcol = pseg_col;
-	const psline = pseg_sline;
-	const pscol = pseg_scol;
+	const qsline = q_sline;
+	const qscol = q_scol;
 
 	// most maps carry no names, so the array is made on the first one
 	let names: string[] | null = null;
@@ -1309,27 +1348,27 @@ export function chain_trace(
 		if (cseg_len[k] !== 1) {
 			const l = cseg_sline[k];
 			if (l >= lines) continue;
-			const c = cseg_scol[k];
-			let lo = first[l];
-			let hi = first[l + 1] - 1;
-			let found = -1;
-			while (lo <= hi) {
-				const mid = (lo + hi) >>> 1;
-				if (pcol[mid] <= c) {
-					found = mid;
-					lo = mid + 1;
-				} else hi = mid - 1;
-			}
-			if (found < 0) continue;
-			// an equal column takes the first of its run, a lower one the last,
-			// as the greatest lower bound of trace-mapping does
-			if (pcol[found] === c) {
-				const lower = first[l];
-				while (found > lower && pcol[found - 1] === c) found--;
+			const q = gen_starts[l] + cseg_scol[k];
+			const next = gen_starts[l + 1];
+			if (q < next) {
+				// the query is among its line's, which are sorted
+				let lo = first[l];
+				let hi = first[l + 1] - 1;
+				while (lo < hi) {
+					const mid = (lo + hi) >>> 1;
+					if (queries[mid] < q) lo = mid + 1;
+					else hi = mid;
+				}
+				sline = qsline[lo];
+				if (sline < 0) continue;
+				scol = qscol[lo];
+			} else {
+				const s = last_span_before(gen_starts[l], next);
+				if (s < 0) continue;
+				sline = find_line(src_table.starts, src_table.count, s);
+				scol = s - src_table.starts[sline];
 			}
 			seg_len = 4;
-			sline = psline[found];
-			scol = pscol[found];
 			sourced = true;
 			if (cseg_len[k] === 5) {
 				const text = compile_names[cseg_name[k]];
