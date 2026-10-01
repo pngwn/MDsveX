@@ -2361,15 +2361,15 @@ function resolve_raw_mappings(
 		const end = start + source_length;
 		const identity = gen_length === source_length;
 		let k = rank_of(collapsed, start);
-		let length = source_length;
-		let src_offsets: number[];
-		let gen_offsets: number[];
-		let lengths: number[];
-		if (k < count && collapsed[k] + (identity ? 1 : 0) < end) {
-			if (identity) {
-				src_offsets = [];
-				gen_offsets = [];
-				lengths = [];
+		const data = data_of(rec[p + 5], rec[p + 4] | 0);
+		// one class for every mapping so readers stay monomorphic, only a piece
+		// split around \r\n or whose widened length meets its generated length
+		// keeps arrays
+		if (identity) {
+			if (k < count && collapsed[k] + 1 < end) {
+				const src_offsets: number[] = [];
+				const gen_offsets: number[] = [];
+				const lengths: number[] = [];
 				let gen_start = gen_offset;
 				while (k < count && collapsed[k] + 1 < end) {
 					const cut = collapsed[k] + 1;
@@ -2383,42 +2383,43 @@ function resolve_raw_mappings(
 				src_offsets.push(start + k);
 				gen_offsets.push(gen_start);
 				lengths.push(end - start);
-			} else {
-				length = end + rank_of(collapsed, end) - start - k;
-				src_offsets = [start + k];
-				gen_offsets = [gen_offset];
-				lengths = [length];
-			}
-		} else {
-			src_offsets = [start + k];
-			gen_offsets = [gen_offset];
-			lengths = [length];
-		}
-		const data = data_of(rec[p + 5], rec[p + 4] | 0);
-		// one class for every mapping so readers stay monomorphic, a piece
-		// that split or whose widened length meets its generated length keeps
-		// its arrays
-		if (src_offsets.length === 1 && (identity || length !== gen_length)) {
-			mappings.push(
-				new RecordMapping(
-					src_offsets[0],
-					gen_offset,
-					length,
-					identity ? length : gen_length,
+				const m: Mapping<MappingData> = {
+					sourceOffsets: src_offsets,
+					generatedOffsets: gen_offsets,
+					lengths,
 					data,
-					null
-				)
+				};
+				mappings.push(new RecordMapping(0, 0, 0, 0, data, m));
+			} else {
+				mappings.push(
+					new RecordMapping(
+						start + k,
+						gen_offset,
+						source_length,
+						source_length,
+						data,
+						null
+					)
+				);
+			}
+			continue;
+		}
+		let length = source_length;
+		if (k < count && collapsed[k] < end) {
+			length = end + rank_of(collapsed, end) - start - k;
+		}
+		if (length !== gen_length) {
+			mappings.push(
+				new RecordMapping(start + k, gen_offset, length, gen_length, data, null)
 			);
 		} else {
 			const m: Mapping<MappingData> = {
-				sourceOffsets: src_offsets,
-				generatedOffsets: gen_offsets,
-				lengths,
+				sourceOffsets: [start + k],
+				generatedOffsets: [gen_offset],
+				lengths: [length],
 				data,
+				generatedLengths: [gen_length],
 			};
-			if (!identity) {
-				m.generatedLengths = [gen_length];
-			}
 			mappings.push(new RecordMapping(0, 0, 0, 0, data, m));
 		}
 	}
