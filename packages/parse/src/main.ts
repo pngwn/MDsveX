@@ -803,6 +803,10 @@ export class PFMParser {
 	private errors: ErrorCollector;
 
 	private tab_size: number = 2;
+	// the cut, window base and kept html openers of the last trim_keeping_html, an equal trim keeps the window
+	private kept_cut: number = -1;
+	private kept_base: number = 0;
+	private kept_count: number = 0;
 
 	constructor(emitter: Emitter, tab_size: number = 2) {
 		this.out = emitter;
@@ -849,6 +853,7 @@ export class PFMParser {
 	 */
 	init(): void {
 		this._init(ID_MIN_CAPACITY);
+		this.kept_cut = -1;
 		this.finished = false;
 		this.one_shot = false;
 	}
@@ -1093,6 +1098,19 @@ export class PFMParser {
 	private trim_keeping_html(head: string): string {
 		const base = this.source_base;
 		const cut = this.trim_point - 1;
+		// the window already holds the kept lines and the text from cut while no kept opener closed
+		// html opens after the trim point, so only a close changes the set before cut
+		if (cut === this.kept_cut && base === this.kept_base) {
+			let kept = 0;
+			for (let pi = 0; pi < this.pending_count; pi++) {
+				if (
+					this.pending_starts[pi] < cut &&
+					this.kind_of(this.pending_ids[pi]) === NodeKind.html
+				)
+					kept++;
+			}
+			if (kept === this.kept_count) return head;
+		}
 		let prefix = '';
 		const offsets: number[] = [];
 		const slots: number[] = [];
@@ -1114,6 +1132,9 @@ export class PFMParser {
 			this.pending_starts[slots[i]] = new_base + offsets[i];
 		}
 		this.source_base = new_base;
+		this.kept_cut = cut;
+		this.kept_base = new_base;
+		this.kept_count = slots.length;
 		return prefix + string_slice.call(head, cut - base);
 	}
 
