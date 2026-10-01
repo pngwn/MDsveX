@@ -561,6 +561,9 @@ const VLQ_CODES = new Uint8Array(64);
 
 const VLQ_DIGITS = new Int8Array(128).fill(-1);
 for (let i = 0; i < 64; i++) VLQ_DIGITS[VLQ_CODES[i]] = i;
+// every byte, those of non-ascii utf8 read as no digit
+const VLQ_BYTE_DIGITS = new Int8Array(256).fill(-1);
+for (let i = 0; i < 64; i++) VLQ_BYTE_DIGITS[VLQ_CODES[i]] = i;
 
 const COMMA = 44;
 const SEMICOLON = 59;
@@ -1085,8 +1088,9 @@ export function mapped_source_lines(
 
 /** the chained mappings as ascii bytes */
 export interface ChainedMappings {
-	/** mappings in bytes 0 to length */
+	/** mappings in bytes start to start + length */
 	bytes: Uint8Array;
+	start: number;
 	length: number;
 	/** names in first use order, null for none */
 	names: string[] | null;
@@ -1112,6 +1116,9 @@ function grow_cseg(used: number): void {
 	cseg_name = copy_i32(cseg_name, used, size);
 }
 
+// the greatest html line a segment of the last decode looks up, -1 for none
+let cseg_max_line = -1;
+
 /**
  * decodes like @jridgewell/sourcemap-codec, -1 for input it reads
  * differently, a line out of order or a source other than the first
@@ -1133,6 +1140,7 @@ function decode_compile(mappings: string): number {
 	let src_line = 0;
 	let src_col = 0;
 	let name_index = 0;
+	let max_line = -1;
 	let i = 0;
 	while (i < length) {
 		let c = mappings.charCodeAt(i);
@@ -1180,6 +1188,7 @@ function decode_compile(mappings: string): number {
 		if (field !== 1) {
 			if (source_index !== 0 || src_line < 0 || src_col < 0) return -1;
 			if (field === 5 && name_index < 0) return -1;
+			if (src_line > max_line) max_line = src_line;
 		}
 		if (n === seg_line.length) {
 			grow_cseg(n);
@@ -1200,6 +1209,98 @@ function decode_compile(mappings: string): number {
 		// a comma is passed here, a semicolon at the top
 		if (i < length && c === COMMA) i++;
 	}
+	cseg_max_line = max_line;
+	return n;
+}
+
+
+/** decode_compile over the utf8 bytes of the mappings, which read the same */
+function decode_compile_bytes(mappings: Uint8Array, length: number): number {
+	const digits = VLQ_BYTE_DIGITS;
+	let seg_line = cseg_line;
+	let seg_col = cseg_col;
+	let seg_len = cseg_len;
+	let seg_sline = cseg_sline;
+	let seg_scol = cseg_scol;
+	let seg_name = cseg_name;
+	let n = 0;
+	let line = 0;
+	let gen_col = 0;
+	let last_col = 0;
+	let source_index = 0;
+	let src_line = 0;
+	let src_col = 0;
+	let name_index = 0;
+	let max_line = -1;
+	let i = 0;
+	while (i < length) {
+		let c = mappings[i];
+		if (c === SEMICOLON) {
+			line++;
+			gen_col = 0;
+			last_col = 0;
+			i++;
+			continue;
+		}
+		// a segment, its values read one after another up to a separator or
+		// the end, a separator inside a value or a stray comma reads as no digit
+		let field = 0;
+		for (;;) {
+			let value = 0;
+			let shift = 0;
+			for (;;) {
+				const digit = digits[c];
+				if (digit < 0 || shift > 25) return -1;
+				value |= (digit & 31) << shift;
+				i++;
+				if ((digit & 32) === 0) break;
+				if (i === length) return -1;
+				shift += 5;
+				c = mappings[i];
+			}
+			const magnitude = value >>> 1;
+			if ((value & 1) !== 0 && magnitude === 0) return -1;
+			const delta = (value & 1) !== 0 ? -magnitude : magnitude;
+			if (field === 0) gen_col += delta;
+			else if (field === 1) source_index += delta;
+			else if (field === 2) src_line += delta;
+			else if (field === 3) src_col += delta;
+			else name_index += delta;
+			field++;
+			if (i === length) break;
+			c = mappings[i];
+			if (c === COMMA || c === SEMICOLON) break;
+			// a sixth value
+			if (field === 5) return -1;
+		}
+		if (field === 2 || field === 3) return -1;
+		if (gen_col < last_col || gen_col < 0) return -1;
+		last_col = gen_col;
+		if (field !== 1) {
+			if (source_index !== 0 || src_line < 0 || src_col < 0) return -1;
+			if (field === 5 && name_index < 0) return -1;
+			if (src_line > max_line) max_line = src_line;
+		}
+		if (n === seg_line.length) {
+			grow_cseg(n);
+			seg_line = cseg_line;
+			seg_col = cseg_col;
+			seg_len = cseg_len;
+			seg_sline = cseg_sline;
+			seg_scol = cseg_scol;
+			seg_name = cseg_name;
+		}
+		seg_line[n] = line;
+		seg_col[n] = gen_col;
+		seg_len[n] = field;
+		seg_sline[n] = src_line;
+		seg_scol[n] = src_col;
+		seg_name[n] = name_index;
+		n++;
+		// a comma is passed here, a semicolon at the top
+		if (i < length && c === COMMA) i++;
+	}
+	cseg_max_line = max_line;
 	return n;
 }
 
@@ -1381,7 +1482,9 @@ function write_vlq_codec(buf: Uint8Array, p: number, delta: number): number {
  * mappings and names equal @ampproject/remapping of [compile, trace_to_v3],
  * null when the compile mappings are ones it leaves to remapping, the bytes
  * are reused by the next call, source_normalized says source holds no \r, as
- * normalize_newlines returns it
+ * normalize_newlines returns it, given dest the mappings are written into it
+ * from dest_start on, unless they outgrow it, before dest_start bytes are kept,
+ * mappings_bytes holds the utf8 of compile_mappings when given
  * @internal
  */
 export function chain_trace(
@@ -1390,17 +1493,21 @@ export function chain_trace(
 	trace: MapTrace,
 	source: string,
 	generated: string,
-	source_normalized = false
+	source_normalized = false,
+	dest: Uint8Array | null = null,
+	dest_start = 0,
+	mappings_bytes: Uint8Array | null = null,
+	mappings_length = 0
 ): ChainedMappings | null {
-	const count = decode_compile(compile_mappings);
+	const count =
+		mappings_bytes !== null
+			? decode_compile_bytes(mappings_bytes, mappings_length)
+			: decode_compile(compile_mappings);
 	if (count < 0) return null;
 
 	// only the lines a segment queries need starts, the line after the last
 	// one ends it
-	let max_line = -1;
-	for (let k = 0; k < count; k++) {
-		if (cseg_len[k] !== 1 && cseg_sline[k] > max_line) max_line = cseg_sline[k];
-	}
+	const max_line = cseg_max_line;
 	fill_line_starts(gen_table, generated, max_line + 1, PAST_END);
 	const gen_count = gen_table.count;
 	let wanted = wanted_buf;
@@ -1480,8 +1587,8 @@ export function chain_trace(
 	let name_ids: Map<string, number> | null = null;
 	let sourced = false;
 
-	let buf = out;
-	let p = 0;
+	let buf = dest !== null ? dest : out;
+	let p = dest_start;
 	let out_line = 0;
 	// the previous segment kept on the current line, len 0 when none
 	let cur_line = -1;
@@ -1560,14 +1667,14 @@ export function chain_trace(
 
 		const need = p + (line - out_line) + 40;
 		if (need > buf.length) {
-			grow_out(p, need);
+			grow_chain(buf, p, need);
 			buf = out;
 		}
 		if (out_line < line) {
 			do buf[p++] = SEMICOLON;
 			while (++out_line < line);
 			enc_col = 0;
-		} else if (p > 0) {
+		} else if (p > dest_start) {
 			// out_line only reaches a line by writing a segment on it
 			buf[p++] = COMMA;
 		}
@@ -1589,5 +1696,19 @@ export function chain_trace(
 		prev_scol = scol;
 		prev_name = name;
 	}
-	return { bytes: buf, length: p, names, sourced };
+	return { bytes: buf, start: dest_start, length: p - dest_start, names, sourced };
+}
+
+/** moves bytes 0 to used of buf into out, grown past need */
+function grow_chain(buf: Uint8Array, used: number, need: number): void {
+	if (buf !== out && out.length >= need) {
+		out.set(buf.subarray(0, used));
+		return;
+	}
+	let size = out.length;
+	while (size < need) size *= 2;
+	const next = new Uint8Array(size);
+	next.set(buf.subarray(0, used));
+	out = next;
+	out_view = new DataView(next.buffer);
 }
