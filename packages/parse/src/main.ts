@@ -2960,7 +2960,10 @@ export class PFMParser {
 	private item_para(item_id: number): void {
 		if (!this.finished) return;
 		const c = char_code_at.call(this.source, this.cursor - this.source_base);
-		if (!(c >= 128 || ((c | 32) >= 97 && (c | 32) <= 122))) return;
+		if (!(c >= 128 || ((c | 32) >= 97 && (c | 32) <= 122))) {
+			if (c === ASTERISK) this.item_strong(item_id);
+			return;
+		}
 		this.states.push(StateKind.paragraph);
 		const para_id = this.emit_open_pending(
 			NodeKind.paragraph,
@@ -2970,6 +2973,51 @@ export class PFMParser {
 		this.track_list_pending_para(para_id);
 		this.node_stack.push(para_id);
 		this.para_text(para_id);
+	}
+
+	/**
+	 * finished parse, new item content '*' or '**' then a word char is no thematic break and no
+	 * nested marker: open the paragraph, the strong(s) and the first run as their states would
+	 */
+	private item_strong(item_id: number): void {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const p = this.cursor + 1;
+		if (p + 1 >= length) return;
+		let c1 = char_code_at.call(source, p - base);
+		const double = c1 === ASTERISK;
+		if (double) {
+			if (p + 2 >= length) return;
+			c1 = char_code_at.call(source, p + 1 - base);
+		}
+		if (classify(c1) !== CharMask.word) return;
+		if (!(this.prev_class() & (CharMask.whitespace | CharMask.punctuation)))
+			return;
+		this.states.push(StateKind.paragraph);
+		const para_id = this.emit_open_pending(
+			NodeKind.paragraph,
+			this.cursor,
+			item_id
+		);
+		this.track_list_pending_para(para_id);
+		this.node_stack.push(para_id);
+		this.states.push(StateKind.inline);
+		const n_id = this.emit_open_pending(
+			NodeKind.strong_emphasis,
+			this.cursor,
+			para_id
+		);
+		this.out.set_value_start(n_id, p);
+		this.node_stack.push(n_id);
+		this.states.push(StateKind.strong_emphasis);
+		if (double) {
+			this.open_inner_strong(n_id);
+			return;
+		}
+		this.emphasis_has_content = true;
+		this.states.push(StateKind.inline);
+		this.open_text_run(p, n_id);
 	}
 
 	/**
@@ -7314,9 +7362,35 @@ export class PFMParser {
 				? !this.fence_open(parent)
 				: this.block_quote_depth > 0 || !this.fence_whole(parent)
 		) {
+			if (this.finished && this.span_para(parent)) return;
 			this.states.push(StateKind.code_fence_start);
 			this.extra = 0;
 		}
+	}
+
+	/**
+	 * finished parse, one or two backticks starting a block are no fence: open the paragraph
+	 * code_fence_start would and take the inline state's code span step
+	 */
+	private span_para(parent: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const start = this.cursor;
+		let p = start + 1;
+		if (p < length && char_code_at.call(source, p - base) === BACKTICK) p++;
+		if (p >= length || char_code_at.call(source, p - base) === BACKTICK)
+			return false;
+		const para_id = this.emit_open(NodeKind.paragraph, start, parent);
+		this.node_stack.push(para_id);
+		this.states.push(StateKind.paragraph);
+		this.class_floor = -1;
+		this.states.push(StateKind.inline);
+		if (this.line_code_span(para_id)) return true;
+		this.states.push(StateKind.code_span_start);
+		this.extra = 0;
+		this.code_span_open_pos = start;
+		return true;
 	}
 
 	/**
