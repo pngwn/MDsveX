@@ -134,6 +134,8 @@ interface CompileOptions {
   // existing
   parse_plugins?: ParsePlugin[];
   sourcemap?: boolean;
+  /** Replaces the built-in YAML subset parser; see Q7. */
+  frontmatter?: { parse?: (raw: string) => Record<string, unknown> };
 
   /** Named templates; see §4. */
   templates?: Record<string, TemplateEntry>;
@@ -474,7 +476,7 @@ The plugin builds the template and root parts of `CompileOptions` once per confi
 
 ## 9. Prerequisites and phasing
 
-0. **Prerequisite: frontmatter → `metadata`** (#831). This needs YAML parsing in core: a pure JS dependency, or an injected `parse` function to keep the core lean. It also needs the `<script module>` export, and the existing module-script merge must be correct (#261).
+0. **Prerequisite: frontmatter → `metadata`** (#831). This needs YAML parsing in core: our own subset parser plus an optional injected `parse` function (Q7). It also needs the `<script module>` export, and the existing module-script merge must be correct (#261). `compile()` returns the metadata too, so the plugin and template selection don't parse it again.
 1. **Templates.** Core: the selection plus wrapper plus hoisting rules in §3.2 and §4. Plugin: specifier resolution, `resolveId`, template export scan, HMR invalidation.
 2. **Components, `'markdown'` mode, template scope.** Ship per-template replacements at legacy parity, plus the root fallback. The renderer needs:
    - **A per-kind tag lookup in the fold renderer.** The fast path must be unchanged when no names are registered, so put the check behind one `if (has_components)` per open/close. Measure it with `packages/bench/perf`.
@@ -496,7 +498,7 @@ Deferred: **nested scopes** (§5.4). Pick these up only once the per-template se
 - **Q4. Per-document sets.** Is a frontmatter `components: blog` key selecting a named set (#455's `type` profiles) worth it, or would nested scopes (§5.4) cover the same need better if they ever ship? My view: leave both out of v1.
 - **Q5. Metadata as spread vs. a single prop.** Spreading is friendly and legacy-compatible, but it collides with `children` and with forwarded document props. The alternative is `metadata={…}` as one prop.
 - **Q6. Directive namespace.** Should directives and elements share one registry? Sharing is simpler, but `:::table` and `<table>` would both hit a `table` export.
-- **Q7. YAML in core.** Bundle a YAML parser, or take `frontmatter.parse` as an option and have the plugin supply it? The latter keeps the browser bundle small.
+- **Q7. YAML in core.** *Resolved 2026-10-01: both.* Core ships its own lightweight YAML parser in plain JS, with no Node APIs, so `compile()` still runs in a browser. It covers the common cases: plain and quoted scalars, numbers, booleans and null, dates as strings, nested maps, block and flow sequences, `|` and `>` blocks, and comments. Anything else throws an error that names the line and suggests a parse function. `frontmatter: { parse?: (raw: string) => Record<string, unknown> }` replaces the built-in parser, for full YAML or another format.
 - **Q8. Non-Vite story.** Is "pass specifiers to `compile()`" enough for everyone else, or do we want a thin Svelte-preprocessor wrapper? A preprocessor wrapper could emit the same virtual ids, but only if some resolver knows them.
 - **Q9. Registering extensions (SvelteKit 3).** *Resolved 2026-10-01: `mdsvex({ extensions })` registers its extensions with kit through kit's exposed config, so they no longer need repeating in `sveltekit({ extensions })`. Checked against kit 3.0.0, vite-plugin-svelte 7.3.1 and Vite 8.3.2.*
 
