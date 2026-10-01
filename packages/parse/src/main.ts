@@ -1159,7 +1159,7 @@ export class PFMParser {
 
 	/**
 	 * true when the node stack below top holds only trim containers and every pending node
-	 * is a paragraph, a delimiter or an open html container whose open tag ends before line
+	 * is a paragraph, a delimiter, a revoked link or an open html container whose open tag ends before line
 	 */
 	private can_trim_to(line: number, top: number): boolean {
 		const stack = this.node_stack;
@@ -1173,7 +1173,16 @@ export class PFMParser {
 			const pkind = this.kind_of(id);
 			if (pkind === NodeKind.paragraph || this.is_trim_delimiter(pkind))
 				continue;
-			if (pkind !== NodeKind.html || stack.indexOf(id) === -1) return false;
+			if (pkind !== NodeKind.html) {
+				// a bracket the link text state revoked stays pending off the stack, its later revoke reads no source
+				if (
+					(pkind === NodeKind.link || pkind === NodeKind.image) &&
+					stack.indexOf(id) === -1
+				)
+					continue;
+				return false;
+			}
+			if (stack.indexOf(id) === -1) return false;
 			const start = this.pending_starts[pi];
 			if (start < base) return false;
 			// the revoke rereads the open tag, which may span lines
