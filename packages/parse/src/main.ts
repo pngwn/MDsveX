@@ -9379,14 +9379,13 @@ export class PFMParser {
 							// in streaming mode, stall if the line isn't
 							// fully available - skip_bq_markers needs to
 							// see all markers to decide definitively.
-							if (!this.finished) {
-								let ep = p;
-								while (
-									ep < length &&
-									char_code_at.call(source, ep - base) !== LINEFEED
-								)
-									ep++;
-								if (ep >= length) return true;
+							// nothing read here changes before that lf, chunks wait whole for it
+							if (
+								!this.finished &&
+								string_index_of.call(source, '\n', p - base) === -1
+							) {
+								this.wait_for('\n');
+								return true;
 							}
 							const sp = this.skip_bq_markers(p, this.block_quote_depth);
 							if (sp === -1) {
