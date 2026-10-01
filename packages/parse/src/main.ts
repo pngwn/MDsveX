@@ -10228,11 +10228,9 @@ export class PFMParser {
 			} else {
 				if (c0 === 0 || (c0 < 128 && TEXT_BREAK[c0] !== 0)) return;
 				this.table_cell_has_content = true;
-				this.table_cell_text(this.table_cell_id);
+				// false: inline and text were pushed, the run did not end at a pipe or linefeed
+				if (!this.table_cell_text(this.table_cell_id)) return;
 			}
-			// inline and text were pushed, the run did not end at a pipe or linefeed
-			if (this.states[this.states.length - 1] !== StateKind.table_row_content)
-				return;
 			if (char_code_at.call(source, this.cursor - base) !== PIPE) return;
 			// the pipe branch of table_row_content
 			this.close_table_cell();
@@ -10252,8 +10250,8 @@ export class PFMParser {
 
 	/**
 	 * a cell starting with a backtick at q: the cell's inline push and the inline state's one trip
-	 * code span; a plain char after the span continues as table_cell_text. false leaves inline
-	 * pushed with the cursor at the backtick or after the span for the main loop
+	 * code span; a plain char after the span continues as table_cell_text. true when the cell's
+	 * content ended at a pipe or linefeed, false leaves inline pushed for the main loop
 	 */
 	private table_cell_code(start: number): boolean {
 		const source = this.source;
@@ -10297,52 +10295,65 @@ export class PFMParser {
 		if (c === 0 || (c < 128 && TEXT_BREAK[c] !== 0)) return false;
 		// table_cell_text pushes inline again when its run does not end the cell
 		this.states.pop();
-		this.table_cell_text(cell);
-		return true;
+		return this.table_cell_text(cell);
 	}
 
 	/**
 	 * a plain run from the cursor ending at a pipe or linefeed is one text node closed here
 	 * otherwise inline and text are left pushed past the run as inline would
 	 */
-	private table_cell_text(parent: number): void {
+	private table_cell_text(parent: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
 		const start = this.cursor;
 		const t_id = this.emit_open(NodeKind.text, start, parent);
 		this.out.set_value_start(t_id, start);
+		// ve tracks the end of the run's last char that is not a space or tab, so the value
+		// is trimmed without scanning trailing padding back (-1 while the run is all blank)
+		const c0 = char_code_at.call(source, start - base);
+		let ve = c0 === SPACE || c0 === TAB ? -1 : start + 1;
 		let p = start + 1;
 		if (p < length) {
 			const c1 = char_code_at.call(source, p - base);
 			if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
 				p++;
+				if (c1 !== SPACE && c1 !== TAB) ve = p;
 				while (p < length) {
 					const ch = char_code_at.call(source, p - base);
+					if (ch <= SPACE) {
+						// a linefeed is the only text break at or below a space
+						if (ch === LINEFEED) break;
+						p++;
+						if (ch !== SPACE && ch !== TAB) ve = p;
+						continue;
+					}
 					if (ch < 128 && TEXT_BREAK[ch] !== 0) break;
 					p++;
+					ve = p;
 				}
 			}
 		}
 		const stop = p < length ? char_code_at.call(source, p - base) : 0;
 		if (stop === PIPE || stop === LINEFEED) {
-			let ve = p;
-			while (
-				ve > 0 &&
-				(char_code_at.call(source, ve - 1 - base) === SPACE ||
-					char_code_at.call(source, ve - 1 - base) === TAB)
-			) {
-				ve--;
+			if (ve < 0) {
+				ve = start;
+				while (ve > 0) {
+					const c = char_code_at.call(source, ve - 1 - base);
+					if (c !== SPACE && c !== TAB) break;
+					ve--;
+				}
 			}
 			this.out.set_value_end(t_id, ve);
 			this.emit_close(t_id, p);
 			this.cursor = p;
-			return;
+			return true;
 		}
 		this.states.push(StateKind.inline);
 		this.node_stack.push(t_id);
 		this.states.push(StateKind.text);
 		this.cursor = p;
+		return false;
 	}
 
 	/** true when no char from start to end makes the inline or text state yield */
