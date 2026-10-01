@@ -13,6 +13,8 @@ export default defineConfig({
 		outDir: "dist",
 		reportCompressedSize: true,
 		rollupOptions: {
+			// the plugin loads these on first use, a compile never does
+			external: ["vite", "es-module-lexer", /^node:/],
 			output: {
 				entryFileNames: "[name].js",
 				plugins: [

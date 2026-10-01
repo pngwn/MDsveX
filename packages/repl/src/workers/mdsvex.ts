@@ -1,5 +1,5 @@
 import * as acorn from 'acorn';
-import { compile, type CompileOptions } from 'mdsvex';
+import { compile, type CompileOptions, type ComponentMode } from 'mdsvex';
 import { mappings_to_v3, type SourceMapV3 } from '@mdsvex/render/sourcemap';
 import { strip_types } from './typescript_strip_types';
 
@@ -9,7 +9,7 @@ export const COMPONENTS_ID = 'mdsvex:components';
 
 const DEFAULT_EXTENSIONS = ['.svx', '.md'];
 
-export type ComponentMode = 'markdown' | 'all';
+export type { ComponentMode };
 
 /** the shape of mdsvex.config.json, mirroring the vite plugin options */
 export interface ReplConfig {
@@ -36,12 +36,10 @@ export interface ResolvedConfig {
 	component_mode: ComponentMode;
 }
 
-/** template and component options follow the design doc ahead of core, which ignores them for now */
+/** template options follow the design doc ahead of core, which ignores them for now */
 export interface MdsvexCompileOptions extends CompileOptions {
 	templates?: Record<string, { specifier: string; components?: string[] }>;
 	default_template?: string;
-	components?: { specifier: string; names: string[] }[];
-	component_mode?: ComponentMode;
 }
 
 export interface Prepared {
