@@ -498,7 +498,7 @@ Deferred: **nested scopes** (§5.4). Pick these up only once the per-template se
 - **Q6. Directive namespace.** Should directives and elements share one registry? Sharing is simpler, but `:::table` and `<table>` would both hit a `table` export.
 - **Q7. YAML in core.** Bundle a YAML parser, or take `frontmatter.parse` as an option and have the plugin supply it? The latter keeps the browser bundle small.
 - **Q8. Non-Vite story.** Is "pass specifiers to `compile()`" enough for everyone else, or do we want a thin Svelte-preprocessor wrapper? A preprocessor wrapper could emit the same virtual ids, but only if some resolver knows them.
-- **Q9. Registering extensions (SvelteKit 3).** *Checked on 2026-10-01 against kit 3.0.0, vite-plugin-svelte 7.3.1 and Vite 8.3.2, in a scratch app. The result: it works from our `config` hook, through kit's exposed config.*
+- **Q9. Registering extensions (SvelteKit 3).** *Resolved 2026-10-01: `mdsvex({ extensions })` registers its extensions with kit through kit's exposed config, so they no longer need repeating in `sveltekit({ extensions })`. Checked against kit 3.0.0, vite-plugin-svelte 7.3.1 and Vite 8.3.2.*
 
   **Why a normal config-hook return doesn't work.** vite-plugin-svelte merges only its inline options and `svelte.config.js`, inside its own `config` hook (`order: 'pre'`). It never reads the Vite config. In kit 3, `sveltekit()` builds those inline options with `configFile: false`. So returning `{ … }` from our hook can't reach vite-plugin-svelte.
 
@@ -518,8 +518,10 @@ Deferred: **nested scopes** (§5.4). Pick these up only once the per-template se
   - **It mutates kit's module-level default.** When the user sets no `extensions`, kit's fallback `['.svelte']` is a single array shared by every `sveltekit()` call in the process. An `includes` guard keeps the push idempotent, but it is still shared mutable state.
   - **Plain vite-plugin-svelte (no kit)** has no equivalent handle. Its `api.options` only exists after `configResolved`, and by then the id filter has already been built. That case is reasoned from the source, not tested.
 
-  **Plan:**
-  - Inject through kit's `api.options` when it is present.
-  - In `configResolved`, read `vite-plugin-svelte:config`'s `api.options.extensions`. If our extensions are missing, as with plain vite-plugin-svelte or a future kit change, throw an error telling the user to add them to `sveltekit({ extensions })` or `svelte({ extensions })`.
-  - Separately, ask upstream for a sanctioned hook. For example, vite-plugin-svelte could read extra `extensions` from a `config()`-returned field, or kit could document `api.options` as mutable during `config`.
+  **What shipped:**
+  - The plugin injects through kit's `api.options` when it is present.
+  - In `configResolved`, it reads `vite-plugin-svelte:config`'s `api.options.extensions`. If our extensions are missing, as with plain vite-plugin-svelte or a future kit change, it throws an error telling the user to add them to `sveltekit({ extensions })` or `svelte({ extensions })`.
+  - An integration test builds and serves a `+page.svx` route in a kit 3 app, in both plugin orders, and checks the error with plain vite-plugin-svelte. A kit or vite-plugin-svelte upgrade that breaks either internal fails it.
+
+  **Still open:** ask upstream for a sanctioned hook. For example, vite-plugin-svelte could read extra `extensions` from a `config()`-returned field, or kit could document `api.options` as mutable during `config`.
 - **Q11. `layout:` alias.** Should frontmatter `layout:` be accepted as a deprecated alias for `template:` for one major version, with a warning? `@mdsvex/migrate` can rewrite the key either way, so the alias only helps people who upgrade without running the migrator. The risk is that `layout` is a common user-owned key.
