@@ -364,6 +364,23 @@ describe('linefeed in link text at the end of a fed chunk', () => {
 	}
 });
 
+describe('linefeed after a closed element in an unclosed delimiter', () => {
+	const inputs = [
+		'*:x[a]\n#b',
+		'*<b>a</b>\n#b',
+		'~<b></b>\n#b',
+		'~~a<b></b>\n#b',
+		'^a<b></b>\n#b',
+		'> ~<b></b>\n> #b',
+	];
+
+	for (const input of inputs) {
+		test(JSON.stringify(input), () => {
+			expect_incremental_matches(input);
+		});
+	}
+});
+
 describe('batch and incremental parity', () => {
 	const atoms = [
 		'*',
