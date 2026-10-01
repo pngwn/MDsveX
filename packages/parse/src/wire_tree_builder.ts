@@ -33,11 +33,6 @@ export class WireTreeBuilder {
 	/** optional plugin dispatcher. null when no plugins registered. */
 	private dispatcher: PluginDispatcher | null;
 
-	/** callback for dispatcher to register synthetic node ids. */
-	private register_id = (synthetic_id: number, buf_idx: number): void => {
-		this.id_to_index[synthetic_id] = buf_idx;
-	};
-
 	constructor(capacity = 128, dispatcher?: PluginDispatcher) {
 		this.buf = new NodeBuffer(capacity);
 		// this builder writes strings in place and its text source holds the array
@@ -142,12 +137,7 @@ export class WireTreeBuilder {
 
 		// plugin dispatch
 		if (this.dispatcher && this.dispatcher.has_handlers(kind as NodeKind)) {
-			this.dispatcher.dispatch_open(
-				idx,
-				kind as NodeKind,
-				this.buf,
-				this.register_id
-			);
+			this.dispatcher.dispatch_open(idx, kind as NodeKind, this.buf);
 		}
 	}
 

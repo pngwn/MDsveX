@@ -358,7 +358,7 @@ function pfm_map(
 
 // the map json up to its mappings when the compile map names no file
 const PLAIN_HEAD = '{"version":3,"mappings":"';
-const PLAIN_HEAD_BYTES = /* @__PURE__ */ ascii_bytes(PLAIN_HEAD);
+const PLAIN_HEAD_BYTES = /* @__PURE__ */ ascii_table(PLAIN_HEAD);
 
 // names resolve-uri keeps as they are, as remapping resolves the source,
 // /^[\w\-+~@][\w.\-+~@]*$/: 1 for a char one may start with, 2 for a dot,
@@ -488,55 +488,83 @@ function chained_base64(
 		while (size < most) size <<= 1;
 		bytes = base64_bytes = new_buffer(size);
 	}
-	// ascii tables as stores cost less than a utf8 write call
+	// ascii tables as word stores cost less than a utf8 write call or byte
+	// stores, a table's last word may write up to three bytes past its end,
+	// the next part overwrites them or they lie past the map
+	const view = view_of(bytes);
 	let n = out_file
 		? utf8_into(bytes, head, 0)
-		: put_bytes(bytes, 0, PLAIN_HEAD_BYTES);
+		: put_table(view, 0, PLAIN_HEAD_BYTES);
 	if (length > 64) bytes.set(src.subarray(0, length), n);
-	else for (let i = 0; i < length; i++) bytes[n + i] = src[i];
-	n += length;
-	if (chained_names === null) n = put_bytes(bytes, n, NO_NAMES_BYTES);
 	else {
-		n = put_bytes(bytes, n, NAMES_BYTES);
+		// four bytes a load and store, the chain reuses its output buffer
+		if (chain_bytes !== src) {
+			chain_bytes = src;
+			chain_view = new DataView(src.buffer, src.byteOffset, src.length);
+		}
+		const from = chain_view!;
+		let i = 0;
+		for (; i + 4 <= length; i += 4)
+			view.setUint32(n + i, from.getUint32(i, true), true);
+		for (; i < length; i++) bytes[n + i] = src[i];
+	}
+	n += length;
+	if (chained_names === null)
+		n = put_table(view, n, sourced ? NO_NAMES_OPEN_BYTES : NO_NAMES_BYTES);
+	else {
+		n = put_table(view, n, NAMES_BYTES);
 		n += utf8_into(bytes, names_json, n);
-		n = put_bytes(bytes, n, AFTER_NAMES_BYTES);
+		n = put_table(view, n, AFTER_NAMES_BYTES);
+		if (sourced) n = put_table(view, n, SOURCE_OPEN_BYTES);
 	}
 	if (sourced) {
-		n = put_bytes(bytes, n, SOURCE_OPEN_BYTES);
 		// a plain basename is ascii with no char json escapes
 		for (let i = 0; i < base.length; i++) bytes[n++] = base.charCodeAt(i);
-		n = put_bytes(bytes, n, SOURCE_CLOSE_BYTES);
+		n = put_table(view, n, SOURCE_CLOSE_BYTES);
 		if (escape) n = write_json_string(raw, bytes, n);
 		else n += utf8_into(bytes, raw_json, n);
 		bytes[n++] = 93; // ]
 		bytes[n++] = 125; // }
-	} else n = put_bytes(bytes, n, NO_SOURCE_BYTES);
+	} else n = put_table(view, n, NO_SOURCE_BYTES);
 	return base64_of(bytes, n);
 }
 
-function ascii_bytes(s: string): Uint8Array {
-	const b = new Uint8Array(s.length);
-	for (let i = 0; i < b.length; i++) b[i] = s.charCodeAt(i);
-	return b;
+/** an ascii string as little endian words, the last one zero padded */
+interface AsciiTable {
+	words: Uint32Array;
+	length: number;
+}
+
+function ascii_table(s: string): AsciiTable {
+	const words = new Uint32Array((s.length + 3) >> 2);
+	for (let i = 0; i < s.length; i++)
+		words[i >> 2] |= s.charCodeAt(i) << ((i & 3) << 3);
+	return { words, length: s.length };
 }
 
 // the fixed parts of a chained map json around its mappings, names and source
-const NAMES_BYTES = /* @__PURE__ */ ascii_bytes('","names":');
-const AFTER_NAMES_BYTES = /* @__PURE__ */ ascii_bytes(
+const NAMES_BYTES = /* @__PURE__ */ ascii_table('","names":');
+const AFTER_NAMES_BYTES = /* @__PURE__ */ ascii_table(
 	',"ignoreList":[],"sources":'
 );
-const NO_NAMES_BYTES = /* @__PURE__ */ ascii_bytes(
+const NO_NAMES_BYTES = /* @__PURE__ */ ascii_table(
 	'","names":[],"ignoreList":[],"sources":'
 );
-const SOURCE_OPEN_BYTES = /* @__PURE__ */ ascii_bytes('["');
-const SOURCE_CLOSE_BYTES = /* @__PURE__ */ ascii_bytes('"],"sourcesContent":[');
-const NO_SOURCE_BYTES = /* @__PURE__ */ ascii_bytes('[],"sourcesContent":[]}');
-// more than every fixed table and the two closing bytes together
+const NO_NAMES_OPEN_BYTES = /* @__PURE__ */ ascii_table(
+	'","names":[],"ignoreList":[],"sources":["'
+);
+const SOURCE_OPEN_BYTES = /* @__PURE__ */ ascii_table('["');
+const SOURCE_CLOSE_BYTES = /* @__PURE__ */ ascii_table('"],"sourcesContent":[');
+const NO_SOURCE_BYTES = /* @__PURE__ */ ascii_table('[],"sourcesContent":[]}');
+// more than every fixed table, the three bytes a table's last word may write
+// past it, and the two closing bytes together
 const MAP_FIXED_BYTES = 128;
 
-/** copies a short table into b at n, returns the end */
-function put_bytes(b: Uint8Array, n: number, table: Uint8Array): number {
-	for (let i = 0; i < table.length; i++) b[n + i] = table[i];
+/** writes a table into the viewed buffer at n, returns the table's end */
+function put_table(view: DataView, n: number, table: AsciiTable): number {
+	const words = table.words;
+	for (let i = 0; i < words.length; i++)
+		view.setUint32(n + (i << 2), words[i], true);
 	return n + table.length;
 }
 
@@ -588,7 +616,19 @@ const JSON_ESCAPES = /* @__PURE__ */ (() => {
 let json_stage: Buffer | null = null;
 let json_stage_view: DataView | null = null;
 let json_out: Buffer | null = null;
+// the chained mappings buffer and a view of it, made once per buffer
+let chain_bytes: Uint8Array | null = null;
+let chain_view: DataView | null = null;
 let json_out_view: DataView | null = null;
+
+/** a view of the buffer maps are written into, made once per buffer */
+function view_of(out: Buffer): DataView {
+	if (json_out !== out) {
+		json_out = out;
+		json_out_view = new DataView(out.buffer, out.byteOffset, out.length);
+	}
+	return json_out_view!;
+}
 
 /**
  * writes the utf8 of JSON.stringify(raw) into out at n, raw well formed (no
@@ -605,11 +645,7 @@ function write_json_string(raw: string, out: Buffer, n: number): number {
 	}
 	const len = utf8_into(stage, raw, 0);
 	const view = json_stage_view!;
-	if (json_out !== out) {
-		json_out = out;
-		json_out_view = new DataView(out.buffer, out.byteOffset, out.length);
-	}
-	const out_view = json_out_view!;
+	const out_view = view_of(out);
 	const escapes = JSON_ESCAPES;
 	out[n++] = 34;
 	const words = len - 3;

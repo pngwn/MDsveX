@@ -18,7 +18,6 @@ import type {
 	NodeHandler,
 	ComposedHandler,
 	PluginContext,
-	IdRegister,
 } from './plugin_types';
 
 const NONE = 0xffffffff;
@@ -411,6 +410,12 @@ function dispatch_open(
 	}
 }
 
+/** the undo log of a dispatcher that made no view and logged no kind */
+const NO_UNDO = new UndoLog();
+
+/** shared close callbacks until the first is set, never written */
+const NO_CLOSE_CBS = new CloseCallbackStore();
+
 /** shared redirects until the first wrap_inner, never written */
 const NO_REDIRECTS: Map<number, number> = new Map();
 
@@ -424,9 +429,12 @@ export class PluginDispatcher {
 	private fused: HandlersTable;
 	private has_handler: Uint32Array;
 	private sequential: { plugin: ParsePlugin; handlers: HandlersTable }[];
-	private undo: UndoLog = new UndoLog();
-	private close_cbs: CloseCallbackStore = new CloseCallbackStore();
-	private ctx: PluginContext = {};
+	// shared empty until a view or a kind rewrite needs one, never written
+	private undo: UndoLog = NO_UNDO;
+	// shared empty until a handler returns a close callback
+	private close_cbs: CloseCallbackStore = NO_CLOSE_CBS;
+	// made at the first handler call, most small documents make none
+	private ctx: PluginContext | null = null;
 	private text_source: TextSource;
 
 	/**
@@ -460,7 +468,9 @@ export class PluginDispatcher {
 	private views(buf: NodeBuffer): ViewCache {
 		const cache = this.cache;
 		if (cache === null) {
-			return (this.cache = new ViewCache(buf, this.text_source, this.undo));
+			let undo = this.undo;
+			if (undo === NO_UNDO) undo = this.undo = new UndoLog();
+			return (this.cache = new ViewCache(buf, this.text_source, undo));
 		}
 		cache.clear();
 		cache.rebind(buf, this.text_source);
@@ -474,7 +484,9 @@ export class PluginDispatcher {
 
 	/** a kind rewrite outside the plugins, such as a revoke repair */
 	log_kind(buf_idx: number, prior_kind: number): void {
-		this.undo.log_kind(buf_idx, prior_kind);
+		let undo = this.undo;
+		if (undo === NO_UNDO) undo = this.undo = new UndoLog();
+		undo.log_kind(buf_idx, prior_kind);
 	}
 
 	/** an open of this kind needs a handler call or a redirect lookup */
@@ -530,8 +542,7 @@ export class PluginDispatcher {
 	dispatch_open(
 		buf_idx: number,
 		kind: NodeKind,
-		buf: NodeBuffer,
-		id_register: IdRegister
+		buf: NodeBuffer
 	): void {
 		const cache = this.views(buf);
 		const view = cache.get(buf_idx)!;
@@ -540,7 +551,7 @@ export class PluginDispatcher {
 		const callbacks = dispatch_open(
 			kind,
 			view,
-			this.ctx,
+			this.ctx ?? (this.ctx = {}),
 			this.fused,
 			this.has_handler
 		);
@@ -560,7 +571,10 @@ export class PluginDispatcher {
 		}
 
 		if (callbacks) {
-			this.close_cbs.set(buf_idx, callbacks);
+			let close_cbs = this.close_cbs;
+			if (close_cbs === NO_CLOSE_CBS)
+				close_cbs = this.close_cbs = new CloseCallbackStore();
+			close_cbs.set(buf_idx, callbacks);
 		}
 
 		cache.clear();
@@ -671,7 +685,7 @@ export class PluginDispatcher {
 			}
 			if (!handled) continue;
 			const close_store = new CloseCallbackStore();
-			const ctx = this.ctx;
+			const ctx = this.ctx ?? (this.ctx = {});
 			const stack: number[] = [];
 
 			while (true) {
@@ -730,7 +744,7 @@ export class PluginDispatcher {
 
 	/** reset all state. */
 	reset(): void {
-		this.undo.clear();
+		if (this.undo !== NO_UNDO) this.undo.clear();
 		this.close_cbs.reset();
 		this.redirects.clear();
 		this.next_synthetic_id = SYNTHETIC_ID_BASE;
