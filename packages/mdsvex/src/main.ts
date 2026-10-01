@@ -548,6 +548,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	}
 
 	const stored = new Map<string, StoredDocument>();
+	const empty_trace: MapTrace = {
+		buf: new Uint32Array(0),
+		start: 0,
+		split: 0,
+		end: 0,
+	};
 	const compiler = new CompilerSession();
 
 	return [
@@ -559,12 +565,21 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				if (!matches(id)) return;
 
 				const result = compiler.compile_trace(code, options.parsePlugins);
-				stored.set(id, {
-					raw: code,
-					source: result.source,
-					html: result.code,
-					trace: result.trace,
-				});
+				// one entry per id, refilled by each transform of it
+				const doc = stored.get(id);
+				if (doc === undefined) {
+					stored.set(id, {
+						raw: code,
+						source: result.source,
+						html: result.code,
+						trace: result.trace,
+					});
+				} else {
+					doc.raw = code;
+					doc.source = result.source;
+					doc.html = result.code;
+					doc.trace = result.trace;
+				}
 
 				// return NO map, avoids poisoning getCombinedSourcemap()
 				return { code: result.code };
@@ -578,39 +593,46 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				if (!matches(id)) return;
 				const doc = stored.get(id);
 				if (!doc || !doc.raw) return;
-				stored.delete(id);
-				const originalSource = doc.raw;
-
-				// get the svelte compiler's JS to HTML map from the chain
-				let compileMap: any;
 				try {
-					compileMap = this.getCombinedSourcemap();
-				} catch {
-					return;
-				}
-				if (!compileMap?.mappings) return;
+					const originalSource = doc.raw;
 
-				let mapBase64 = chained_base64(doc, compileMap, id);
-				if (mapBase64 === null) {
-					const pfmMap = pfm_map(doc, compileMap.mappings, id);
-
-					// chain: JS to HTML (compile) + HTML to markdown (pfm) = JS to markdown
-					const chained = remapping([compileMap, pfmMap as any], () => null);
-
-					// override sourcesContent with the original markdown
-					if (chained.sourcesContent) {
-						chained.sourcesContent = chained.sourcesContent.map(
-							() => originalSource
-						);
+					// get the svelte compiler's JS to HTML map from the chain
+					let compileMap: any;
+					try {
+						compileMap = this.getCombinedSourcemap();
+					} catch {
+						return;
 					}
-					mapBase64 = base64_utf8(JSON.stringify(chained));
+					if (!compileMap?.mappings) return;
+
+					let mapBase64 = chained_base64(doc, compileMap, id);
+					if (mapBase64 === null) {
+						const pfmMap = pfm_map(doc, compileMap.mappings, id);
+
+						// chain: JS to HTML (compile) + HTML to markdown (pfm) = JS to markdown
+						const chained = remapping([compileMap, pfmMap as any], () => null);
+
+						// override sourcesContent with the original markdown
+						if (chained.sourcesContent) {
+							chained.sourcesContent = chained.sourcesContent.map(
+								() => originalSource
+							);
+						}
+						mapBase64 = base64_utf8(JSON.stringify(chained));
+					}
+
+					// inject as inline sourceMappingURL since vite ignores
+					// post-transform map return values
+					const comment = `\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${mapBase64}\n`;
+
+					return { code: code + comment, map: { mappings: '' as const } };
+				} finally {
+					// the entry stays for the id's next transform, holding no document
+					doc.raw = '';
+					doc.source = '';
+					doc.html = '';
+					doc.trace = empty_trace;
 				}
-
-				// inject as inline sourceMappingURL since vite ignores
-				// post-transform map return values
-				const comment = `\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${mapBase64}\n`;
-
-				return { code: code + comment, map: { mappings: '' as const } };
 			},
 		},
 	];
