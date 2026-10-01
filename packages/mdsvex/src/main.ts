@@ -372,10 +372,18 @@ function chained_base64(
 		'","names":' +
 		(chained_names === null ? '[]' : JSON.stringify(chained_names)) +
 		',"ignoreList":[],"sources":';
+	// a longer well formed source is escaped from its utf8 bytes, faster than
+	// JSON.stringify, and written after the tail
+	const raw = doc.raw;
+	let escape = false;
 	if (chained.sourced) {
 		// a plain basename has no char json escapes, so quoting equals JSON.stringify
-		tail +=
-			'["' + base + '"],"sourcesContent":[' + JSON.stringify(doc.raw) + ']}';
+		tail += '["' + base + '"],"sourcesContent":[';
+		escape =
+			raw.length >= JSON_ESCAPE_MIN &&
+			typeof (raw as any).isWellFormed === 'function' &&
+			(raw as any).isWellFormed();
+		if (!escape) tail += JSON.stringify(raw) + ']}';
 	} else {
 		tail += '[],"sourcesContent":[]}';
 	}
@@ -384,11 +392,15 @@ function chained_base64(
 	// and its encode, head and tail end and start in ascii so their utf8 joins
 	const length = chained.length;
 	const src = chained.bytes;
-	const most = (head.length + tail.length) * 3 + length;
+	const most =
+		(head.length + tail.length) * 3 +
+		length +
+		(escape ? raw.length * 6 + 4 : 0);
 	if (most > BASE64_KEEP) {
 		const text = Buffer.from(src.buffer, src.byteOffset, length).toString(
 			'latin1'
 		);
+		if (escape) tail += JSON.stringify(raw) + ']}';
 		return Buffer.from(head + text + tail).toString('base64');
 	}
 	let bytes = base64_bytes;
@@ -402,7 +414,91 @@ function chained_base64(
 	else for (let i = 0; i < length; i++) bytes[n + i] = src[i];
 	n += length;
 	n += bytes.write(tail, n, 'utf8');
+	if (escape) {
+		n = write_json_string(raw, bytes, n);
+		bytes[n++] = 93; // ]
+		bytes[n++] = 125; // }
+	}
 	return bytes.toString('base64', 0, n);
+}
+
+// below this JSON.stringify is as fast as escaping bytes
+const JSON_ESCAPE_MIN = 128;
+
+// the escape after a backslash for each byte, 0 for none, u for \u00XX
+const JSON_ESCAPES = /* @__PURE__ */ (() => {
+	const t = new Uint8Array(256);
+	for (let c = 0; c < 32; c++) t[c] = 117;
+	t[8] = 98; // b
+	t[9] = 116; // t
+	t[10] = 110; // n
+	t[12] = 102; // f
+	t[13] = 114; // r
+	t[34] = 34; // "
+	t[92] = 92; // \
+	return t;
+})();
+
+// utf8 of a source being escaped, reused across transforms
+let json_stage: Buffer | null = null;
+
+/**
+ * writes the utf8 of JSON.stringify(raw) into out at n, raw well formed (no
+ * lone surrogate, which utf8 would replace), out holding 6 bytes per unit of
+ * raw and 2 more, returns the end
+ */
+function write_json_string(raw: string, out: Buffer, n: number): number {
+	let stage = json_stage;
+	if (stage === null || stage.length < raw.length * 3) {
+		let size = 1 << 14;
+		while (size < raw.length * 3) size <<= 1;
+		stage = json_stage = Buffer.allocUnsafe(size);
+	}
+	const len = stage.write(raw, 0, 'utf8');
+	const view = new DataView(stage.buffer, stage.byteOffset, len);
+	const out_view = new DataView(out.buffer, out.byteOffset, out.length);
+	const escapes = JSON_ESCAPES;
+	out[n++] = 34;
+	const words = len - 3;
+	let i = 0;
+	while (i < len) {
+		if (i < words) {
+			// four bytes at once while none is below 0x20, a quote or a backslash,
+			// utf8 bytes past 0x7f have the top bit the checks look at set in ~w
+			const w = view.getUint32(i, true);
+			const q = w ^ 0x22222222;
+			const b = w ^ 0x5c5c5c5c;
+			if (
+				((((w - 0x20202020) & ~w) |
+					((q - 0x01010101) & ~q) |
+					((b - 0x01010101) & ~b)) &
+					0x80808080) ===
+				0
+			) {
+				out_view.setUint32(n, w, true);
+				n += 4;
+				i += 4;
+				continue;
+			}
+		}
+		const c = stage[i++];
+		const e = escapes[c];
+		if (e === 0) {
+			out[n++] = c;
+			continue;
+		}
+		out[n++] = 92;
+		out[n++] = e;
+		if (e === 117) {
+			const h = c & 15;
+			out[n++] = 48;
+			out[n++] = 48;
+			out[n++] = c < 16 ? 48 : 49;
+			out[n++] = h < 10 ? 48 + h : 87 + h;
+		}
+	}
+	out[n++] = 34;
+	return n;
 }
 
 // utf8 bytes of a map before base64, reused so a large map does not allocate

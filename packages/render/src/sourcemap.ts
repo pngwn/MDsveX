@@ -125,6 +125,21 @@ function find_line_near(
 	return find_line(starts, count, offset);
 }
 
+// ascending lookups that may skip a few lines, as sorted spans do over the
+// lines no query wants or the blank lines between source blocks
+function find_line_ahead(
+	starts: Int32Array,
+	count: number,
+	hint: number,
+	offset: number
+): number {
+	if (offset >= starts[hint]) {
+		const stop = hint + 8 < count ? hint + 8 : count;
+		for (let l = hint; l < stop; l++) if (offset < starts[l + 1]) return l;
+	}
+	return find_line(starts, count, offset);
+}
+
 export interface SourceMapV3 {
 	version: 3;
 	file?: string;
@@ -1012,6 +1027,7 @@ function trace_lines(
 
 	span_count = 0;
 	let gen_line = 0;
+	let query_at = 0;
 	for (let p = start; p < split; p += Rec.SIZE) {
 		const role = buf[p + 5] & 3;
 		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
@@ -1032,17 +1048,25 @@ function trace_lines(
 					// holds that offset, on the last point of a run, so only those
 					// points change a lookup
 					const last = stop - 1;
-					let lo = 0;
-					let hi = query_count;
-					while (lo < hi) {
-						const mid = (lo + hi) >>> 1;
-						if (queries[mid] < at) lo = mid + 1;
-						else hi = mid;
+					// runs come in generated order, so the first query at or past at
+					// is mostly a step on from the last run's
+					let lo = query_at;
+					if (lo > 0 && queries[lo - 1] >= at) {
+						lo = 0;
+						let hi = query_count;
+						while (lo < hi) {
+							const mid = (lo + hi) >>> 1;
+							if (queries[mid] < at) lo = mid + 1;
+							else hi = mid;
+						}
+					} else {
+						while (lo < query_count && queries[lo] < at) lo++;
 					}
 					for (; lo < query_count && queries[lo] < last; lo++) {
 						const q = queries[lo];
 						push_span(q, s + (q - g), 1);
 					}
+					query_at = lo;
 					push_span(last, s + (last - g), 1);
 				}
 				at = stop;
@@ -1090,9 +1114,9 @@ function trace_lines(
 		const i = order[k];
 		const g = gen[i];
 		const s = src[i];
-		gen_line = find_line_near(gen_starts, gen_count, gen_line, g);
+		gen_line = find_line_ahead(gen_starts, gen_count, gen_line, g);
 		while (filled <= gen_line) first[filled++] = k;
-		src_line = find_line_near(src_starts, src_count, src_line, s);
+		src_line = find_line_ahead(src_starts, src_count, src_line, s);
 		col[k] = g - gen_starts[gen_line];
 		sline[k] = src_line;
 		scol[k] = s - src_starts[src_line];
@@ -1158,18 +1182,24 @@ export function chain_trace(
 		}
 	}
 	if (query_count > 1) {
-		if (query_count <= QUERY_SORT_SMALL) {
-			// a few queries sort by insertion without a view or a runtime call
-			for (let k = 1; k < query_count; k++) {
-				const q = queries[k];
-				let j = k - 1;
-				while (j >= 0 && queries[j] > q) {
-					queries[j + 1] = queries[j];
-					j--;
-				}
-				queries[j + 1] = q;
+		// queries come mostly in html order, so insertion sorts them without a
+		// view or a runtime call, past this many moves a real sort wins
+		const move_limit = 8 * query_count + QUERY_SORT_SMALL * QUERY_SORT_SMALL;
+		let moves = 0;
+		for (let k = 1; k < query_count; k++) {
+			const q = queries[k];
+			let j = k - 1;
+			while (j >= 0 && queries[j] > q) {
+				queries[j + 1] = queries[j];
+				j--;
 			}
-		} else queries.subarray(0, query_count).sort();
+			queries[j + 1] = q;
+			moves += k - 1 - j;
+			if (moves > move_limit) {
+				queries.subarray(0, query_count).sort();
+				break;
+			}
+		}
 		let kept = 1;
 		for (let k = 1; k < query_count; k++) {
 			if (queries[k] !== queries[kept - 1]) queries[kept++] = queries[k];
