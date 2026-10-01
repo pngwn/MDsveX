@@ -23,7 +23,7 @@ import type {
 	MapTrace,
 	SourceMapV3,
 } from '@mdsvex/render/sourcemap';
-import type { Plugin } from 'vite';
+import type { Plugin, PluginOption } from 'vite';
 import remapping from '@ampproject/remapping';
 
 export type { ParsePlugin } from '@mdsvex/parse';
@@ -718,6 +718,25 @@ function base64_utf8(json: string): string {
 	return base64_of(bytes, utf8_into(bytes, json, 0));
 }
 
+/** sveltekit() is async, so its plugins arrive as a promise */
+async function flat_plugins(
+	options: PluginOption[] | undefined,
+	out: Plugin[] = []
+): Promise<Plugin[]> {
+	if (!options) return out;
+	for (const option of options) {
+		const resolved = await option;
+		if (Array.isArray(resolved)) await flat_plugins(resolved, out);
+		else if (resolved) out.push(resolved as Plugin);
+	}
+	return out;
+}
+
+function api_extensions(plugin: Plugin | undefined): string[] | undefined {
+	const extensions = plugin?.api?.options?.extensions;
+	return Array.isArray(extensions) ? extensions : undefined;
+}
+
 /**
  * mdsvex vite plugin. returns a single plugin that:
  *
@@ -754,6 +773,39 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		{
 			name: 'mdsvex',
 			enforce: 'pre',
+
+			config: {
+				order: 'pre',
+				async handler(config) {
+					// kit passes this same array to vite-plugin-svelte and reads it
+					// lazily, so pushing here registers our extensions with both
+					const plugins = await flat_plugins(config.plugins);
+					const registered = api_extensions(
+						plugins.find((p) => p.name === 'vite-plugin-sveltekit-setup')
+					);
+					if (!registered) return;
+					// with no extensions option this is a default shared by every
+					// sveltekit() call in the process
+					for (const ext of extensions) {
+						if (!registered.includes(ext)) registered.push(ext);
+					}
+				},
+			},
+
+			configResolved(config) {
+				const svelte = config.plugins.find(
+					(p) => p.name === 'vite-plugin-svelte:config'
+				);
+				if (!svelte) return;
+				const registered = api_extensions(svelte) ?? [];
+				const missing = extensions.filter((ext) => !registered.includes(ext));
+				if (missing.length === 0) return;
+				const all = [...registered, ...missing].map((ext) => `'${ext}'`);
+				throw new Error(
+					`[mdsvex] vite-plugin-svelte does not handle ${missing.join(', ')} files. ` +
+						`Add them to the extensions option of sveltekit() or svelte(): extensions: [${all.join(', ')}]`
+				);
+			},
 
 			transform(code, id) {
 				if (!matches(id)) return;

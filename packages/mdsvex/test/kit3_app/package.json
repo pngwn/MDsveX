@@ -1,0 +1,13 @@
+{
+	"name": "mdsvex-kit3-fixture",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"devDependencies": {
+		"@sveltejs/kit": "^3.0.0",
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"mdsvex": "workspace:*",
+		"svelte": "^5.57.1",
+		"vite": "^8.3.2"
+	}
+}
