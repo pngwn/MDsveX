@@ -2990,16 +2990,19 @@ export class PFMParser {
 	}
 
 	/**
-	 * finished parse only, a letter or non ascii char starting new item content can only open
-	 * a paragraph, so open it and take its plain run here
-	 * feeds keep the list_item trip since it sets the trim point
+	 * a letter or non ascii char starting new item content can only open a paragraph, so open
+	 * it and take its plain run here instead of a list_item trip
+	 * a feed sets the trim point as that trip would, after its revoke of stale pending nodes
 	 */
 	private item_para(item_id: number): void {
-		if (!this.finished) return;
 		const c = char_code_at.call(this.source, this.cursor - this.source_base);
 		if (!(c >= 128 || ((c | 32) >= 97 && (c | 32) <= 122))) {
-			if (c === ASTERISK) this.item_strong(item_id);
+			if (c === ASTERISK && this.finished) this.item_strong(item_id);
 			return;
+		}
+		if (!this.finished) {
+			if (this.pending_count !== this.pending_para_count) return;
+			if (this.can_trim(this.node_stack.length)) this.trim_point = this.cursor;
 		}
 		this.states.push(StateKind.paragraph);
 		const para_id = this.emit_open_pending(
@@ -7460,12 +7463,46 @@ export class PFMParser {
 		this.info_end_pos = info_end;
 		out.attr(cf_id, 'info_start', p0);
 		out.attr(cf_id, 'info_end', info_end);
-		const line = info_end + 1;
+		let line = info_end + 1;
 		out.set_value_start(cf_id, line);
+		this.class_floor = -1;
+		// the closing fence scan of _run_code_fence_content, a close whose lf is visible takes the
+		// whole fence here, else the content state resumes at the line the scan stopped on
+		for (;;) {
+			const rel = string_index_of.call(source, '`', line - base);
+			if (rel === -1) break;
+			const bt = rel + base;
+			if (bt > line) {
+				const lf = string_last_index_of.call(source, '\n', bt - 1 - base);
+				if (lf !== -1 && lf + base + 1 > line) line = lf + base + 1;
+			}
+			let lp = line;
+			while (lp < bt) {
+				const ch = char_code_at.call(source, lp - base);
+				if (ch !== SPACE && ch !== TAB) break;
+				lp++;
+			}
+			if (lp === bt) {
+				while (lp < length && char_code_at.call(source, lp - base) === BACKTICK)
+					lp++;
+				if (lp - bt >= fence_len) {
+					if (lp < length && char_code_at.call(source, lp - base) === LINEFEED) {
+						out.set_value_end(cf_id, line - 1);
+						this.emit_close(cf_id, lp);
+						this.node_stack.pop();
+						this.cursor = lp + 1;
+						return true;
+					}
+					break;
+				}
+			}
+			const nl = string_index_of.call(source, '\n', lp - base);
+			if (nl === -1) break;
+			line = nl + base + 1;
+		}
 		this.states.push(StateKind.code_fence_content);
 		this.fence_scan = line;
-		this.cursor = line;
-		this.class_floor = -1;
+		this.cursor = info_end + 1;
 		return true;
 	}
 
