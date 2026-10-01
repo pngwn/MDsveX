@@ -1213,7 +1213,6 @@ function decode_compile(mappings: string): number {
 	return n;
 }
 
-
 /** decode_compile over the utf8 bytes of the mappings, which read the same */
 function decode_compile_bytes(mappings: Uint8Array, length: number): number {
 	const digits = VLQ_BYTE_DIGITS;
@@ -1313,6 +1312,49 @@ let query_buf = new Int32Array(256);
 // generated lines holding a query
 let wanted_buf = new Uint8Array(256);
 const QUERY_SORT_SMALL = 32;
+// segments times records up to which each segment scans the records
+const SMALL_TRACE = 256;
+
+/**
+ * the source offset the sorted span lookup of trace_lines finds for the query
+ * q on the generated line from start to next, -1 for none: the first record
+ * holding q, else the last of the records whose last point on the line is the
+ * greatest before q; a q past the line looks up its last point
+ */
+function resolve_small(
+	buf: Uint32Array,
+	from: number,
+	to: number,
+	q: number,
+	start: number,
+	next: number
+): number {
+	let best = -1;
+	let found = -1;
+	for (let p = from; p < to; p += Trace.SIZE) {
+		const g = buf[p];
+		const length = buf[p + 2];
+		if (length > 1) {
+			const a = g > start ? g : start;
+			let b = g + length;
+			if (b > next) b = next;
+			if (a >= b) continue;
+			if (q >= a && q < b) return buf[p + 1] + (q - g);
+			const last = b - 1;
+			if (last < q && last >= best) {
+				best = last;
+				found = buf[p + 1] + (last - g);
+			}
+		} else if (g >= start && g < next) {
+			if (g === q) return buf[p + 1];
+			if (g < q && g >= best) {
+				best = g;
+				found = buf[p + 1];
+			}
+		}
+	}
+	return found;
+}
 
 /** fills the p arrays with the segments decode_lines would build, returns the line count */
 function trace_lines(
@@ -1510,74 +1552,107 @@ export function chain_trace(
 	const max_line = cseg_max_line;
 	fill_line_starts(gen_table, generated, max_line + 1, PAST_END);
 	const gen_count = gen_table.count;
-	let wanted = wanted_buf;
-	if (wanted.length < gen_count) {
-		let size = wanted.length * 2;
-		while (size < gen_count) size *= 2;
-		wanted = wanted_buf = new Uint8Array(size);
-	} else if (gen_count < 256) {
-		// a short fill as stores costs less than the builtin's call
-		for (let l = 0; l < gen_count; l++) wanted[l] = 0;
-	} else wanted.fill(0, 0, gen_count);
 	if (query_buf.length < count) query_buf = new Int32Array(count * 2);
 	const queries = query_buf;
-	let query_count = 0;
 	const gen_starts = gen_table.starts;
-	// a column past its line end looks up the line's last span, apart from the
-	// query its offset makes
-	let overflow = false;
-	for (let k = 0; k < count; k++) {
-		if (cseg_len[k] !== 1) {
-			const l = cseg_sline[k];
-			if (l < gen_count) {
-				wanted[l] = 1;
-				const q = gen_starts[l] + cseg_scol[k];
-				if (q >= gen_starts[l + 1]) overflow = true;
-				queries[query_count++] = q;
-			}
-		}
-	}
-	if (query_count > 1) {
-		// queries come mostly in html order, so insertion sorts them without a
-		// view or a runtime call, past this many moves a real sort wins
-		const move_limit = 8 * query_count + QUERY_SORT_SMALL * QUERY_SORT_SMALL;
-		let moves = 0;
-		for (let k = 1; k < query_count; k++) {
-			const q = queries[k];
-			let j = k - 1;
-			while (j >= 0 && queries[j] > q) {
-				queries[j + 1] = queries[j];
-				j--;
-			}
-			queries[j + 1] = q;
-			moves += k - 1 - j;
-			if (moves > move_limit) {
-				queries.subarray(0, query_count).sort();
-				break;
-			}
-		}
-		let kept = 1;
-		for (let k = 1; k < query_count; k++) {
-			if (queries[k] !== queries[kept - 1]) queries[kept++] = queries[k];
-		}
-		query_count = kept;
-	}
-	const lines =
-		trace.split === trace.start || query_count === 0
-			? 0
-			: trace_lines(
+	// few segments over few records resolve each straight from the records,
+	// no span list, sorts or line index
+	const small = count * (trace.split - trace.start) <= SMALL_TRACE * Trace.SIZE;
+	let lines = 0;
+	if (small) {
+		if (trace.split !== trace.start) {
+			lines = gen_count;
+			let max_src = -1;
+			for (let k = 0; k < count; k++) {
+				if (cseg_len[k] === 1) continue;
+				const l = cseg_sline[k];
+				if (l >= gen_count) continue;
+				const s = resolve_small(
 					trace.buf,
 					trace.start,
 					trace.split,
+					gen_starts[l] + cseg_scol[k],
+					gen_starts[l],
+					gen_starts[l + 1]
+				);
+				queries[k] = s;
+				if (s > max_src) max_src = s;
+			}
+			if (max_src >= 0)
+				fill_line_starts(
+					src_table,
 					source,
-					generated,
-					wanted,
-					queries,
-					query_count,
-					max_line + 1 < gen_count ? gen_starts[max_line + 1] : PAST_END,
-					overflow,
+					PAST_END,
+					max_src,
 					source_normalized
 				);
+		}
+	} else {
+		let wanted = wanted_buf;
+
+		if (wanted.length < gen_count) {
+			let size = wanted.length * 2;
+			while (size < gen_count) size *= 2;
+			wanted = wanted_buf = new Uint8Array(size);
+		} else if (gen_count < 256) {
+			// a short fill as stores costs less than the builtin's call
+			for (let l = 0; l < gen_count; l++) wanted[l] = 0;
+		} else wanted.fill(0, 0, gen_count);
+		let query_count = 0;
+		// a column past its line end looks up the line's last span, apart from the
+		// query its offset makes
+		let overflow = false;
+		for (let k = 0; k < count; k++) {
+			if (cseg_len[k] !== 1) {
+				const l = cseg_sline[k];
+				if (l < gen_count) {
+					wanted[l] = 1;
+					const q = gen_starts[l] + cseg_scol[k];
+					if (q >= gen_starts[l + 1]) overflow = true;
+					queries[query_count++] = q;
+				}
+			}
+		}
+		if (query_count > 1) {
+			// queries come mostly in html order, so insertion sorts them without a
+			// view or a runtime call, past this many moves a real sort wins
+			const move_limit = 8 * query_count + QUERY_SORT_SMALL * QUERY_SORT_SMALL;
+			let moves = 0;
+			for (let k = 1; k < query_count; k++) {
+				const q = queries[k];
+				let j = k - 1;
+				while (j >= 0 && queries[j] > q) {
+					queries[j + 1] = queries[j];
+					j--;
+				}
+				queries[j + 1] = q;
+				moves += k - 1 - j;
+				if (moves > move_limit) {
+					queries.subarray(0, query_count).sort();
+					break;
+				}
+			}
+			let kept = 1;
+			for (let k = 1; k < query_count; k++) {
+				if (queries[k] !== queries[kept - 1]) queries[kept++] = queries[k];
+			}
+			query_count = kept;
+		}
+		if (trace.split !== trace.start && query_count !== 0)
+			lines = trace_lines(
+				trace.buf,
+				trace.start,
+				trace.split,
+				source,
+				generated,
+				wanted,
+				queries,
+				query_count,
+				max_line + 1 < gen_count ? gen_starts[max_line + 1] : PAST_END,
+				overflow,
+				source_normalized
+			);
+	}
 	const first = line_first;
 	const qsline = q_sline;
 	const qscol = q_scol;
@@ -1617,7 +1692,12 @@ export function chain_trace(
 			if (l >= lines) continue;
 			const q = gen_starts[l] + cseg_scol[k];
 			const next = gen_starts[l + 1];
-			if (q < next) {
+			if (small) {
+				const s = queries[k];
+				if (s < 0) continue;
+				sline = find_line(src_table.starts, src_table.count, s);
+				scol = s - src_table.starts[sline];
+			} else if (q < next) {
 				// the query is among its line's, which are sorted
 				let lo = first[l];
 				let hi = first[l + 1] - 1;
@@ -1696,7 +1776,13 @@ export function chain_trace(
 		prev_scol = scol;
 		prev_name = name;
 	}
-	return { bytes: buf, start: dest_start, length: p - dest_start, names, sourced };
+	return {
+		bytes: buf,
+		start: dest_start,
+		length: p - dest_start,
+		names,
+		sourced,
+	};
 }
 
 /** moves bytes 0 to used of buf into out, grown past need */
