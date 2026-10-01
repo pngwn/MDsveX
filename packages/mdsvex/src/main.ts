@@ -9,7 +9,11 @@ import {
 import type { ParsePlugin } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
-import { CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
+import {
+	ComponentScope,
+	CursorHTMLRenderer,
+} from '@mdsvex/render/html-cursor';
+import type { ComponentSource } from '@mdsvex/render/html-cursor';
 import {
 	chain_trace,
 	mapped_source_lines,
@@ -23,21 +27,43 @@ import type {
 	MapTrace,
 	SourceMapV3,
 } from '@mdsvex/render/sourcemap';
-import type { Plugin, PluginOption } from 'vite';
+import type { Plugin, PluginOption, Rollup } from 'vite';
+import { scan_exports_detail } from './scan_exports';
 import remapping from '@ampproject/remapping';
 
 export type { ParsePlugin } from '@mdsvex/parse';
 export type { Mapping, MappingData, SourceMapV3, MapTrace };
+export type { ComponentSource };
+export { scan_exports, scan_exports_detail, module_script } from './scan_exports';
+export type { ScanKind, ScannedExports } from './scan_exports';
 
 export interface MdsvexOptions {
 	extensions?: string[];
 	/** parse plugins that hook into tree construction. */
 	parsePlugins?: ParsePlugin[];
+	/**
+	 * modules whose exports named after an element replace it, lowest
+	 * precedence first, each resolves as an import from the vite root would
+	 *
+	 * @example
+	 * components: ['#lib/markdown.ts', new URL('./md.ts', import.meta.url)]
+	 */
+	components?: string | URL | (string | URL)[];
+	component_mode?: ComponentMode;
 }
+
+/**
+ * markdown replaces elements from markdown syntax and parse plugins, never
+ * typed html, all is not implemented yet and behaves as markdown
+ */
+export type ComponentMode = 'markdown' | 'all';
 
 export interface CompileOptions {
 	parsePlugins?: ParsePlugin[];
 	sourcemap?: boolean;
+	/** root fallback replacements, lowest precedence first, each specifier is imported as written */
+	components?: ComponentSource[];
+	component_mode?: ComponentMode;
 }
 
 export interface CompileResult {
@@ -57,6 +83,27 @@ export interface CompileTraceResult {
 	trace: MapTrace;
 	/** the normalized source the trace indexes */
 	source: string;
+}
+
+// plugins keep one components array per config, so its scope is built once
+const root_scopes = new WeakMap<ComponentSource[], ComponentScope>();
+
+/** the scope chain for the root fallback, null when nothing is replaced */
+function scope_of(
+	components: ComponentSource[] | undefined,
+	mode?: ComponentMode
+): ComponentScope | null {
+	if (mode !== undefined && mode !== 'markdown' && mode !== 'all')
+		throw new Error(
+			`component_mode must be 'markdown' or 'all', got ${JSON.stringify(mode)}`
+		);
+	if (components === undefined || components.length === 0) return null;
+	let scope = root_scopes.get(components);
+	if (scope === undefined) {
+		scope = new ComponentScope(components, 'G');
+		root_scopes.set(components, scope);
+	}
+	return scope;
 }
 
 // null while taken, so a compile inside a plugin makes its own
@@ -113,7 +160,9 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	// parser offsets index the normalized string, so render and plugins read it too
 	const source = normalize_newlines(raw);
 	const nodes = parse_once(source, options?.parsePlugins);
+	const scope = scope_of(options?.components, options?.component_mode);
 	const renderer = take_renderer();
+	renderer.scope = scope;
 
 	if (options?.sourcemap) {
 		// only a collapsed \r\n changes length, without one raw needs no \r\n scan
@@ -196,8 +245,10 @@ export class CompilerSession {
 			return render_once(raw, options);
 		}
 
+		const scope = scope_of(options?.components, options?.component_mode);
 		const source = normalize_newlines(raw);
 		const nodes = this.parse(source);
+		this.renderer.scope = scope;
 		if (options?.sourcemap) {
 			const result = this.renderer.update_mapped(
 				nodes,
@@ -225,16 +276,21 @@ export class CompilerSession {
 	compile_v3(
 		raw: string,
 		file?: string,
-		parse_plugins?: ParsePlugin[]
+		parse_plugins?: ParsePlugin[],
+		components?: ComponentSource[]
 	): CompileV3Result {
+		const scope = components === undefined ? null : scope_of(components);
 		const source = normalize_newlines(raw);
 		if (parse_plugins && parse_plugins.length > 0) {
 			// the dispatcher holds this source, so plugins get their own tree
 			const nodes = parse_once(source, parse_plugins);
 			const renderer = new CursorHTMLRenderer({ cache: false });
+			renderer.scope = scope;
 			return render_v3(renderer, nodes, source, raw, file);
 		}
-		return render_v3(this.renderer, this.parse(source), source, raw, file);
+		const nodes = this.parse(source);
+		this.renderer.scope = scope;
+		return render_v3(this.renderer, nodes, source, raw, file);
 	}
 
 	/**
@@ -244,15 +300,20 @@ export class CompilerSession {
 	 */
 	compile_trace(
 		raw: string,
-		parse_plugins?: ParsePlugin[]
+		parse_plugins?: ParsePlugin[],
+		components?: ComponentSource[]
 	): CompileTraceResult {
+		const scope = components === undefined ? null : scope_of(components);
 		const source = normalize_newlines(raw);
 		if (parse_plugins && parse_plugins.length > 0) {
 			const nodes = parse_once(source, parse_plugins);
 			const renderer = new CursorHTMLRenderer({ cache: false });
+			renderer.scope = scope;
 			return render_trace(renderer, nodes, source);
 		}
-		return render_trace(this.renderer, this.parse(source), source);
+		const nodes = this.parse(source);
+		this.renderer.scope = scope;
+		return render_trace(this.renderer, nodes, source);
 	}
 
 	/**
@@ -262,8 +323,10 @@ export class CompilerSession {
 	compile_trace_into(
 		raw: string,
 		parse_plugins: ParsePlugin[] | undefined,
-		out: TraceTarget
+		out: TraceTarget,
+		components?: ComponentSource[]
 	): void {
+		const scope = components === undefined ? null : scope_of(components);
 		const source = normalize_newlines(raw);
 		let renderer = this.renderer;
 		let nodes: NodeBuffer;
@@ -273,6 +336,7 @@ export class CompilerSession {
 		} else {
 			nodes = this.parse(source);
 		}
+		renderer.scope = scope;
 		renderer.update_trace_into(nodes, source, out);
 		out.source = source;
 		out.html = renderer.html;
@@ -737,6 +801,219 @@ function api_extensions(plugin: Plugin | undefined): string[] | undefined {
 	return Array.isArray(extensions) ? extensions : undefined;
 }
 
+// documents import these virtual ids, so output holds no paths and the graph edge is the real file
+const COMPONENTS_ID = 'mdsvex:components';
+
+function clean_id(id: string): string {
+	const q = id.indexOf('?');
+	return q < 0 ? id : id.slice(0, q);
+}
+
+function same_names(a: readonly string[], b: readonly string[]): boolean {
+	if (a.length !== b.length) return false;
+	const set = new Set(a);
+	for (let i = 0; i < b.length; i++) if (!set.has(b[i])) return false;
+	return true;
+}
+
+type Warn = (message: string) => void;
+
+/**
+ * export scans per resolved file and the files each document read names from,
+ * any module that supplies replacements scans through here
+ */
+function export_tracker() {
+	const scanned = new Map<string, { code: string; names: string[] }>();
+	const doc_files = new Map<string, readonly string[]>();
+	/** the timestamp of each file whose export set changed */
+	const changed_at = new Map<string, number>();
+
+	return {
+		/** scanned again only when the code changed */
+		async scan(file: string, warn: Warn, code?: string): Promise<string[]> {
+			if (code === undefined) {
+				const fs = await import('node:fs/promises');
+				code = await fs.readFile(file, 'utf8');
+			}
+			const hit = scanned.get(file);
+			if (hit !== undefined && hit.code === code) return hit.names;
+			const result = await scan_exports_detail(
+				code,
+				file.endsWith('.svelte') ? 'svelte' : 'js'
+			);
+			for (const star of result.stars) {
+				warn(
+					`${file} re-exports "${star}" with export *, whose names a static ` +
+						`scan cannot see. export each replacement by name`
+				);
+			}
+			scanned.set(file, { code, names: result.names });
+			return result.names;
+		},
+		/** true when the names differ, or differed at this timestamp, so every environment sees one change */
+		changed(
+			file: string,
+			before: readonly string[],
+			after: readonly string[],
+			timestamp: number
+		): boolean {
+			if (!same_names(before, after)) {
+				changed_at.set(file, timestamp);
+				return true;
+			}
+			return changed_at.get(file) === timestamp;
+		},
+		track(doc: string, files: readonly string[]): void {
+			doc_files.set(doc, files);
+		},
+		docs_using(file: string): string[] {
+			const docs: string[] = [];
+			for (const [doc, files] of doc_files) {
+				if (files.includes(file)) docs.push(doc);
+			}
+			return docs;
+		},
+	};
+}
+
+type ExportTracker = ReturnType<typeof export_tracker>;
+
+interface ComponentModule {
+	/** the id documents import */
+	virtual: string;
+	/** the specifier resolved, a URL as a path */
+	spec: string;
+	/** the resolved id without its query */
+	file: string;
+	names: string[];
+}
+
+/**
+ * the root components modules resolve and scan once, every document compiles
+ * with the same option until an export set changes
+ */
+function component_registry(
+	written: readonly (string | URL)[],
+	tracker: ExportTracker
+) {
+	const virtual_ids =
+		written.length === 1
+			? [COMPONENTS_ID]
+			: written.map((_, i) => COMPONENTS_ID + '/' + i);
+
+	let root = '';
+	let modules: ComponentModule[] | null = null;
+	let loading: Promise<ComponentModule[]> | null = null;
+	/** the compile option, replaced whenever an export set changes */
+	let sources: ComponentSource[] | undefined;
+	let files: readonly string[] = [];
+
+	function importer(): string {
+		const base = root || (globalThis as any).process?.cwd?.() || '';
+		return base.replace(/\/$/, '') + '/vite.config';
+	}
+
+	function publish(list: ComponentModule[]): void {
+		modules = list;
+		files = list.map((m) => m.file);
+		sources = list.map((m) => ({ specifier: m.virtual, names: m.names }));
+	}
+
+	async function load(ctx: Rollup.PluginContext): Promise<ComponentModule[]> {
+		const from = importer();
+		const list: ComponentModule[] = [];
+		const failed: string[] = [];
+		for (let i = 0; i < written.length; i++) {
+			const entry = written[i];
+			const shown = typeof entry === 'string' ? entry : entry.href;
+			let spec = shown;
+			if (spec.startsWith('file:')) {
+				const url = await import('node:url');
+				spec = url.fileURLToPath(spec);
+			}
+			const resolved = await ctx.resolve(spec, from, { skipSelf: true });
+			if (resolved === null || resolved.external) {
+				failed.push(JSON.stringify(shown));
+				continue;
+			}
+			list.push({
+				virtual: virtual_ids[i],
+				spec,
+				file: clean_id(resolved.id),
+				names: [],
+			});
+		}
+		if (failed.length !== 0) {
+			throw new Error(
+				`[mdsvex] could not resolve the components module ${failed.join(', ')} ` +
+					`from the vite root ${from.slice(0, -'/vite.config'.length)}`
+			);
+		}
+		const warn = (message: string) => ctx.warn(message);
+		for (const m of list) m.names = await tracker.scan(m.file, warn);
+		publish(list);
+		return list;
+	}
+
+	/** resolves and scans once, a failure is kept so it is reported once */
+	function ensure(ctx: Rollup.PluginContext): Promise<ComponentModule[]> {
+		if (loading === null) loading = load(ctx);
+		return loading;
+	}
+
+	return {
+		set_root(dir: string): void {
+			root = dir;
+		},
+		ensure,
+		/** resolve and scan again on the next use, keeping the scans of unchanged code */
+		reset(): void {
+			loading = null;
+			modules = null;
+		},
+		ready(): boolean {
+			return modules !== null;
+		},
+		files(): readonly string[] {
+			return files;
+		},
+		/** the compile option for a document, noting the files it read */
+		for_doc(id: string): ComponentSource[] | undefined {
+			tracker.track(id, files);
+			return sources;
+		},
+		/** resolved in the environment of ctx, whose conditions may differ */
+		async resolve(
+			ctx: Rollup.PluginContext,
+			id: string
+		): Promise<Rollup.ResolvedId | null | undefined> {
+			const i = virtual_ids.indexOf(id);
+			if (i < 0) return undefined;
+			const list = await ensure(ctx);
+			return ctx.resolve(list[i].spec, importer(), { skipSelf: true });
+		},
+		/** scan a changed file again, true when its export set changed */
+		async rescan(
+			file: string,
+			timestamp: number,
+			warn: Warn,
+			code: string
+		): Promise<boolean> {
+			if (modules === null) return false;
+			const at = modules.findIndex((m) => m.file === file);
+			if (at < 0) return false;
+			const before = modules[at].names;
+			const names = await tracker.scan(file, warn, code);
+			if (names !== before) {
+				const list = modules.slice();
+				list[at] = { ...list[at], names };
+				publish(list);
+			}
+			return tracker.changed(file, before, names, timestamp);
+		},
+	};
+}
+
 /**
  * mdsvex vite plugin. returns a single plugin that:
  *
@@ -768,6 +1045,43 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	const stored = new Map<string, StoredDocument>();
 	const no_records = new Uint32Array(0);
 	const compiler = new CompilerSession();
+	if (options.component_mode !== undefined)
+		scope_of(undefined, options.component_mode);
+	const written = options.components;
+	const list =
+		written === undefined ? [] : Array.isArray(written) ? written : [written];
+	// a config without replacements builds none of their state
+	const tracker = list.length === 0 ? null : export_tracker();
+	const registry =
+		tracker === null ? null : component_registry(list, tracker);
+	let command: 'build' | 'serve' = 'serve';
+
+	function compile_doc(
+		code: string,
+		id: string,
+		components: ComponentSource[] | undefined
+	): { code: string } {
+		let doc = stored.get(id);
+		if (doc === undefined) {
+			doc = {
+				raw: '',
+				source: '',
+				html: '',
+				buf: no_records,
+				start: 0,
+				split: 0,
+				end: 0,
+			};
+			stored.set(id, doc);
+		}
+		// raw last, so a compile that throws leaves no document for post
+		doc.raw = '';
+		compiler.compile_trace_into(code, options.parsePlugins, doc, components);
+		doc.raw = code;
+
+		// return NO map, avoids poisoning getCombinedSourcemap()
+		return { code: doc.html };
+	}
 
 	return [
 		{
@@ -793,6 +1107,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			},
 
 			configResolved(config) {
+				registry?.set_root(config.root);
+				command = config.command;
 				const svelte = config.plugins.find(
 					(p) => p.name === 'vite-plugin-svelte:config'
 				);
@@ -807,29 +1123,64 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				);
 			},
 
+			async buildStart() {
+				// one clear error at startup rather than one per document
+				if (registry !== null) await registry.ensure(this);
+			},
+
+			resolveId(id) {
+				if (registry === null || !id.startsWith(COMPONENTS_ID)) return;
+				return registry.resolve(this, id);
+			},
+
 			transform(code, id) {
 				if (!matches(id)) return;
+				if (registry === null) return compile_doc(code, id, undefined);
 
-				let doc = stored.get(id);
-				if (doc === undefined) {
-					doc = {
-						raw: '',
-						source: '',
-						html: '',
-						buf: no_records,
-						start: 0,
-						split: 0,
-						end: 0,
-					};
-					stored.set(id, doc);
+				const finish = () => {
+					// a watch build compiles again when the exports change, in dev the virtual import is the edge
+					if (command === 'build')
+						for (const file of registry.files()) this.addWatchFile(file);
+					return compile_doc(code, id, registry.for_doc(id));
+				};
+				if (registry.ready()) return finish();
+				return registry.ensure(this).then(finish);
+			},
+
+			watchChange(id) {
+				// the dev server rescans in hotUpdate instead
+				if (
+					registry !== null &&
+					command === 'build' &&
+					registry.files().includes(clean_id(id))
+				)
+					registry.reset();
+			},
+
+			async hotUpdate(update) {
+				if (registry === null || !registry.ready()) return;
+				const file = update.file;
+				if (!registry.files().includes(file)) return;
+				const changed = await registry.rescan(
+					file,
+					update.timestamp,
+					(m) => this.environment.logger.warn('[mdsvex] ' + m),
+					await update.read()
+				);
+				if (!changed) return;
+
+				// names changed, documents compiled against the old set compile again
+				const graph = this.environment.moduleGraph;
+				const modules = update.modules.slice();
+				for (const doc of tracker!.docs_using(file)) {
+					const mods = graph.getModulesByFile(clean_id(doc));
+					if (mods === undefined) continue;
+					for (const mod of mods) {
+						graph.invalidateModule(mod, new Set(), update.timestamp, true);
+						if (!modules.includes(mod)) modules.push(mod);
+					}
 				}
-				// raw last, so a compile that throws leaves no document for post
-				doc.raw = '';
-				compiler.compile_trace_into(code, options.parsePlugins, doc);
-				doc.raw = code;
-
-				// return NO map, avoids poisoning getCombinedSourcemap()
-				return { code: doc.html };
+				return modules;
 			},
 		},
 		{
