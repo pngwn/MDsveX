@@ -4,6 +4,7 @@ import {
 	SourceTextSource,
 	normalize_newlines,
 	raw_offsets,
+	take_collapsed,
 } from '@mdsvex/parse';
 import type { ParsePlugin } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
@@ -298,6 +299,9 @@ export function _shared_session(): CompilerSession | null {
 
 /** normalized offsets of each \n that was \r\n in raw, null when none */
 function collapsed_of(raw: string): number[] | null {
+	// normalize_newlines just split raw, its lines give the offsets
+	const taken = take_collapsed(raw);
+	if (taken !== undefined) return taken;
 	const offsets = raw_offsets(raw);
 	return offsets === null ? null : offsets.collapsed;
 }

@@ -202,14 +202,46 @@ export function normalize_newlines(source: string): string {
 	// every later charCodeAt in the parser and renderer has to unwrap
 	const lines: string[] = [];
 	let from = 0;
+	let lone = false;
 	while (cr !== -1) {
 		lines.push(string_slice.call(source, from, cr));
 		from = cr + 1;
 		if (char_code_at.call(source, from) === 0x0a) from++;
+		else lone = true;
 		cr = string_index_of.call(source, '\r', from);
 	}
 	lines.push(string_slice.call(source, from));
+	// a mapped compile reads the collapsed offsets off these lines, raw is not
+	// scanned again. a lone \r breaks a line without collapsing, those rescan
+	crlf_raw = lone ? null : source;
+	crlf_lines = lone ? null : lines;
 	return lines.join('\n');
+}
+
+let crlf_raw: string | null = null;
+let crlf_lines: string[] | null = null;
+
+/**
+ * collapsed offsets (as raw_offsets(raw).collapsed) from the lines the last
+ * normalize_newlines(raw) split, undefined when that call was not for raw or
+ * saw a lone \r. clears them, a mapped compile does not keep raw alive
+ */
+export function take_collapsed(raw: string): number[] | undefined {
+	const lines = crlf_lines;
+	const last = crlf_raw;
+	crlf_raw = null;
+	crlf_lines = null;
+	if (lines === null || last !== raw) return undefined;
+	// every line but the last ended in a \r\n that became one \n
+	const n = lines.length - 1;
+	const collapsed: number[] = new Array(n);
+	let at = 0;
+	for (let i = 0; i < n; i++) {
+		at += lines[i].length;
+		collapsed[i] = at;
+		at++;
+	}
+	return collapsed;
 }
 
 /** maps parser offsets back to the raw source, a collapsed \n maps to its \r */
