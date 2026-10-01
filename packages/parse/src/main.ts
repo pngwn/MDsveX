@@ -5399,14 +5399,14 @@ export class PFMParser {
 						const imp = this.try_parse_import(this.cursor);
 						if (imp === false) break main_loop; // stall
 						if (imp !== null) {
-							const imp_id = this.emit_open(
+							this.emit_leaf(
 								NodeKind.import_statement,
 								this.cursor,
-								current_node
+								current_node,
+								imp.value_start,
+								imp.value_end,
+								imp.end
 							);
-							this.out.set_value_start(imp_id, imp.value_start);
-							this.out.set_value_end(imp_id, imp.value_end);
-							this.emit_close(imp_id, imp.end);
 							this.chomp(imp.end, true);
 							continue;
 						}
@@ -5424,12 +5424,12 @@ export class PFMParser {
 
 					switch (code) {
 						case LINEFEED: {
-							const id = this.emit_open(
+							this.emit_bare_leaf(
 								NodeKind.line_break,
 								this.cursor,
-								current_node
+								current_node,
+								this.cursor + 1
 							);
-							this.emit_close(id, this.cursor + 1);
 							this.cursor++;
 							continue;
 						}
@@ -5449,12 +5449,12 @@ export class PFMParser {
 								pos < length &&
 								char_code_at.call(source, pos - base) === LINEFEED
 							) {
-								const id = this.emit_open(
+								this.emit_bare_leaf(
 									NodeKind.line_break,
 									this.cursor,
-									current_node
+									current_node,
+									pos + 1
 								);
-								this.emit_close(id, pos + 1);
 								this.chomp(pos + 1, true);
 								continue;
 							}
@@ -5493,12 +5493,12 @@ export class PFMParser {
 								}
 								const break_end = line_end < length ? line_end + 1 : line_end;
 
-								const tb_id = this.emit_open(
+								this.emit_bare_leaf(
 									NodeKind.thematic_break,
 									this.cursor,
-									current_node
+									current_node,
+									break_end
 								);
-								this.emit_close(tb_id, break_end);
 
 								this.chomp(break_end, true);
 								continue;
@@ -6397,23 +6397,23 @@ export class PFMParser {
 										this.block_quote_depth
 									);
 									if (peek === -1) {
-										const hb_id = this.emit_open(
+										this.emit_bare_leaf(
 											NodeKind.hard_break,
 											this.cursor,
-											current_node
+											current_node,
+											this.cursor + 2
 										);
-										this.emit_close(hb_id, this.cursor + 2);
 										this.cursor++; // leave the cursor on the lf
 										this.states.pop(); // pop inline; paragraph will see the lf
 										continue;
 									}
 								}
-								const hb_id = this.emit_open(
+								this.emit_bare_leaf(
 									NodeKind.hard_break,
 									this.cursor,
-									current_node
+									current_node,
+									this.cursor + 2
 								);
-								this.emit_close(hb_id, this.cursor + 2);
 								this.chomp(2);
 								// strip block quote markers
 								if (this.block_quote_depth > 0) {
@@ -6574,14 +6574,14 @@ export class PFMParser {
 								this.emit_close(link_id, uri_end);
 								this.out.attr(link_id, 'href', uri_text);
 
-								const text_id = this.emit_open(
+								this.emit_leaf(
 									NodeKind.text,
 									this.cursor + 1,
-									link_id
+									link_id,
+									this.cursor + 1,
+									uri_end - 1,
+									uri_end - 1
 								);
-								this.out.set_value_start(text_id, this.cursor + 1);
-								this.out.set_value_end(text_id, uri_end - 1);
-								this.emit_close(text_id, uri_end - 1);
 
 								this.chomp(uri_end, true);
 								this.states.pop();
@@ -6743,14 +6743,14 @@ export class PFMParser {
 									}
 								}
 								// plain svelte expression: {expr}
-								const m_id = this.emit_open(
+								this.emit_leaf(
 									NodeKind.mustache,
 									this.cursor,
-									current_node
+									current_node,
+									this.cursor + 1,
+									expr_end - 1,
+									expr_end
 								);
-								this.out.set_value_start(m_id, this.cursor + 1);
-								this.out.set_value_end(m_id, expr_end - 1);
-								this.emit_close(m_id, expr_end);
 								this.chomp(expr_end, true);
 								continue;
 							}
@@ -6940,12 +6940,12 @@ export class PFMParser {
 									this.states.pop(); // pop text
 									const parent_id_bq =
 										this.node_stack[this.node_stack.length - 1];
-									const hb_bq_id = this.emit_open(
+									this.emit_bare_leaf(
 										NodeKind.hard_break,
 										this.cursor,
-										parent_id_bq
+										parent_id_bq,
+										this.cursor + 2
 									);
-									this.emit_close(hb_bq_id, this.cursor + 2);
 									this.cursor++; // leave the cursor on the lf
 									// pop inline (under text) so paragraph sees the lf directly.
 									if (
@@ -6961,12 +6961,12 @@ export class PFMParser {
 							this.node_stack.pop();
 							this.states.pop(); // pop text
 							const parent_id = this.node_stack[this.node_stack.length - 1];
-							const hb_id = this.emit_open(
+							this.emit_bare_leaf(
 								NodeKind.hard_break,
 								this.cursor,
-								parent_id
+								parent_id,
+								this.cursor + 2
 							);
-							this.emit_close(hb_id, this.cursor + 2);
 							this.chomp(2);
 							// strip block quote markers
 							if (this.block_quote_depth > 0) {
@@ -7842,14 +7842,14 @@ export class PFMParser {
 						current_node
 					);
 					this.node_stack.push(bq_fp_id);
-					const bq_ft_id = this.emit_open(
+					this.emit_leaf(
 						NodeKind.text,
 						this.cursor - this.extra,
-						bq_fp_id
+						bq_fp_id,
+						this.cursor - this.extra,
+						this.cursor,
+						this.cursor
 					);
-					this.out.set_value_start(bq_ft_id, this.cursor - this.extra);
-					this.out.set_value_end(bq_ft_id, this.cursor);
-					this.emit_close(bq_ft_id, this.cursor);
 					this.states.push(StateKind.paragraph);
 					return false;
 				}
@@ -8795,12 +8795,12 @@ export class PFMParser {
 
 		// skip linefeeds - they act as separators
 		if (code === LINEFEED) {
-			const lb_id = this.emit_open(
+			this.emit_bare_leaf(
 				NodeKind.line_break,
 				this.cursor,
-				current_node
+				current_node,
+				this.cursor + 1
 			);
-			this.emit_close(lb_id, this.cursor + 1);
 			this.cursor++;
 			return false;
 		}
@@ -8818,12 +8818,12 @@ export class PFMParser {
 			// a chunk end inside the run may still be followed by a linefeed
 			if (pos >= length && !this.finished) return true;
 			if (pos < length && char_code_at.call(source, pos - base) === LINEFEED) {
-				const lb_id = this.emit_open(
+				this.emit_bare_leaf(
 					NodeKind.line_break,
 					this.cursor,
-					current_node
+					current_node,
+					pos + 1
 				);
-				this.emit_close(lb_id, pos + 1);
 				this.chomp(pos + 1, true);
 				return false;
 			}
@@ -8928,12 +8928,12 @@ export class PFMParser {
 					char_code_at.call(source, line_end - base) !== LINEFEED
 				)
 					line_end++;
-				const tb_id = this.emit_open(
+				this.emit_bare_leaf(
 					NodeKind.thematic_break,
 					this.cursor,
-					current_node
+					current_node,
+					line_end
 				);
-				this.emit_close(tb_id, line_end);
 				this.chomp(line_end, true);
 				return false;
 			}
@@ -9041,12 +9041,12 @@ export class PFMParser {
 
 		// skip linefeeds
 		if (code === LINEFEED) {
-			const lb_id = this.emit_open(
+			this.emit_bare_leaf(
 				NodeKind.line_break,
 				this.cursor,
-				current_node
+				current_node,
+				this.cursor + 1
 			);
-			this.emit_close(lb_id, this.cursor + 1);
 			this.cursor++;
 			return false;
 		}
@@ -9064,12 +9064,12 @@ export class PFMParser {
 			// a chunk end inside the run may still be followed by a linefeed
 			if (pos >= length && !this.finished) return true;
 			if (pos < length && char_code_at.call(source, pos - base) === LINEFEED) {
-				const lb_id = this.emit_open(
+				this.emit_bare_leaf(
 					NodeKind.line_break,
 					this.cursor,
-					current_node
+					current_node,
+					pos + 1
 				);
-				this.emit_close(lb_id, pos + 1);
 				this.chomp(pos + 1, true);
 				return false;
 			}
@@ -9159,12 +9159,12 @@ export class PFMParser {
 					char_code_at.call(source, line_end - base) !== LINEFEED
 				)
 					line_end++;
-				const tb_id = this.emit_open(
+				this.emit_bare_leaf(
 					NodeKind.thematic_break,
 					this.cursor,
-					current_node
+					current_node,
+					line_end
 				);
-				this.emit_close(tb_id, line_end);
 				this.chomp(line_end, true);
 				return false;
 			}
@@ -9248,12 +9248,12 @@ export class PFMParser {
 
 				if (stripped !== -1) {
 					if (this.is_blank_at_pos(stripped)) {
-						const lb_id = this.emit_open(
+						this.emit_bare_leaf(
 							NodeKind.line_break,
 							this.cursor,
-							current_node
+							current_node,
+							stripped
 						);
-						this.emit_close(lb_id, stripped);
 						this.chomp(stripped, true);
 						return false;
 					}
@@ -9305,12 +9305,12 @@ export class PFMParser {
 					}
 					const break_end = line_end < length ? line_end : line_end;
 
-					const tb_id = this.emit_open(
+					this.emit_bare_leaf(
 						NodeKind.thematic_break,
 						this.cursor,
-						current_node
+						current_node,
+						break_end
 					);
-					this.emit_close(tb_id, break_end);
 
 					this.chomp(break_end, true);
 					return false;
@@ -9709,12 +9709,12 @@ export class PFMParser {
 					)
 						line_end++;
 					const break_end = line_end < length ? line_end + 1 : line_end;
-					const tb_id = this.emit_open(
+					this.emit_bare_leaf(
 						NodeKind.thematic_break,
 						this.cursor,
-						current_node
+						current_node,
+						break_end
 					);
-					this.emit_close(tb_id, break_end);
 					this.chomp(break_end, true);
 					return false;
 				}
@@ -9900,12 +9900,12 @@ export class PFMParser {
 				if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
 					return true;
 				}
-				const lb_id = this.emit_open(
+				this.emit_bare_leaf(
 					NodeKind.line_break,
 					this.cursor,
-					current_node
+					current_node,
+					this.cursor + 1
 				);
-				this.emit_close(lb_id, this.cursor + 1);
 				this.cursor++;
 				return false;
 			}
@@ -9925,12 +9925,12 @@ export class PFMParser {
 					pos < length &&
 					char_code_at.call(source, pos - base) === LINEFEED
 				) {
-					const lb_id = this.emit_open(
+					this.emit_bare_leaf(
 						NodeKind.line_break,
 						this.cursor,
-						current_node
+						current_node,
+						pos + 1
 					);
-					this.emit_close(lb_id, pos + 1);
 					this.chomp(pos + 1, true);
 					return false;
 				}
@@ -9993,12 +9993,12 @@ export class PFMParser {
 						char_code_at.call(source, line_end - base) !== LINEFEED
 					)
 						line_end++;
-					const tb_id = this.emit_open(
+					this.emit_bare_leaf(
 						NodeKind.thematic_break,
 						this.cursor,
-						current_node
+						current_node,
+						line_end
 					);
-					this.emit_close(tb_id, line_end);
 					this.chomp(line_end, true);
 					return false;
 				}
@@ -10721,10 +10721,14 @@ export class PFMParser {
 				this.node_stack.pop();
 				this.states.pop();
 				const parent_id = this.node_stack[this.node_stack.length - 1];
-				const t_id = this.emit_open(NodeKind.text, delim_end, parent_id);
-				this.out.set_value_start(t_id, delim_end);
-				this.out.set_value_end(t_id, this.cursor);
-				this.emit_close(t_id, this.cursor);
+				this.emit_leaf(
+					NodeKind.text,
+					delim_end,
+					parent_id,
+					delim_end,
+					this.cursor,
+					this.cursor
+				);
 				// don't push to node_stack - this text node is immediately closed
 			} else {
 				// emphasis, strong, strikethrough, superscript, link_text
