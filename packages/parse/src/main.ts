@@ -1447,12 +1447,12 @@ export class PFMParser {
 
 	/** true when only spaces and tabs precede the backtick at bt on its line, the line may start in the window at fence_scan */
 	private fence_close_may_start(chunk: string, bt: number): boolean {
-		const ls = bt === 0 ? -1 : string_last_index_of.call(chunk, '\n', bt - 1);
-		for (let i = ls + 1; i < bt; i++) {
+		// walk back to the line start, the first char that is no space or tab decides
+		for (let i = bt - 1; i >= 0; i--) {
 			const c = char_code_at.call(chunk, i);
+			if (c === LINEFEED) return true;
 			if (c !== SPACE && c !== TAB) return false;
 		}
-		if (ls !== -1) return true;
 		const source = this.source;
 		const base = this.source_base;
 		// a backtick run cut by the window end continues into the chunk
@@ -1499,23 +1499,22 @@ export class PFMParser {
 				if (nl === -1) break;
 				bt = string_index_of.call(chunk, '`', nl + 1);
 			}
-			const lf = string_last_index_of.call(chunk, '\n');
+			// the last char that is no space, tab or backtick: an lf leaves the line after it open,
+			// any other char cannot be followed by a close on its line, it becomes the scan start
+			// and the content scan rules out the rest of that line
+			let m = len - 1;
+			let c = char_code_at.call(chunk, m);
+			while (m > 0 && (c === SPACE || c === TAB || c === BACKTICK))
+				c = char_code_at.call(chunk, --m);
 			let line: number;
-			if (lf === -1) {
-				// a long line: once it holds a char that is no space, tab or backtick it cannot close,
-				// that char becomes the scan start, the content scan then rules out the rest of the line
-				let m = len - 1;
-				for (; m > 0; m--) {
-					const c = char_code_at.call(chunk, m);
-					if (c !== SPACE && c !== TAB && c !== BACKTICK) break;
-				}
+			if (c === LINEFEED) {
+				line = end + m + 1;
+				// the lf stays as the lookbehind char before trim_point
+				this.source = string_slice.call(chunk, m);
+			} else {
 				if (m <= 0) return false;
 				line = end + m;
 				this.source = string_slice.call(chunk, m - 1);
-			} else {
-				line = end + lf + 1;
-				// the lf stays as the lookbehind char before trim_point
-				this.source = string_slice.call(chunk, lf);
 			}
 			this.fence_scan = line;
 			this.trim_point = line;
