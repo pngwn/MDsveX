@@ -112,26 +112,56 @@ export class TreeBuilder implements Emitter {
 		extra: number,
 		pending: boolean
 	): void {
-		// root (id=0) is auto-created by NodeBuffer constructor, skip
-		if (id === 0) return;
-
 		const nodes = this.nodes;
-		if (this.id_to_index === null && id === nodes._size) {
-			// parents are opened ids below this one, so they are indices too
-			const parent_idx = parent === -1 ? NONE : parent;
-			const dispatcher = this.dispatcher;
-			if (dispatcher !== null && dispatcher.wants_open(kind)) {
-				this.open_with_plugins(
-					dispatcher,
-					kind,
-					start,
-					parent_idx,
-					extra,
-					pending
-				);
+		// ids are buffer indices and parents are opened ids below this one,
+		// the root (id 0) never matches, the buffer creates it
+		if (
+			this.id_to_index === null &&
+			id === nodes._size &&
+			this.dispatcher === null
+		) {
+			nodes.push_node(
+				kind,
+				start,
+				parent === -1 ? NONE : parent,
+				extra,
+				pending
+			);
+			return;
+		}
+		if (id !== 0) this.open_slow(id, kind, start, parent, extra, pending);
+	}
+
+	/** an open with plugins, or once ids stopped being buffer indices */
+	private open_slow(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		extra: number,
+		pending: boolean
+	): void {
+		const nodes = this.nodes;
+		const dispatcher = this.dispatcher;
+		if (
+			dispatcher !== null &&
+			this.id_to_index === null &&
+			id === nodes._size
+		) {
+			let parent_idx = parent === -1 ? NONE : parent;
+			if (!dispatcher.wants_open(kind)) {
+				nodes.push_node(kind, start, parent_idx, extra, pending);
 				return;
 			}
-			nodes.push_node(kind, start, parent_idx, extra, pending);
+			// children of a wrap_inner parent go to its wrapper
+			if (parent_idx !== NONE) {
+				const redirect = dispatcher.get_redirect(parent_idx);
+				if (redirect !== undefined) parent_idx = redirect;
+			}
+			const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
+			if (dispatcher.has_handlers(kind)) {
+				dispatcher.dispatch_open(idx, kind, nodes, this.register_id!);
+			}
 			return;
 		}
 		this.open_mapped(id, kind, start, parent, extra, pending);
@@ -162,27 +192,6 @@ export class TreeBuilder implements Emitter {
 		map[id] = idx;
 
 		if (dispatcher !== null && dispatcher.has_handlers(kind)) {
-			dispatcher.dispatch_open(idx, kind, nodes, this.register_id!);
-		}
-	}
-
-	/** an open whose id is its buffer index */
-	private open_with_plugins(
-		dispatcher: PluginDispatcher,
-		kind: NodeKind,
-		start: number,
-		parent_idx: number,
-		extra: number,
-		pending: boolean
-	): void {
-		const nodes = this.nodes;
-		// children of a wrap_inner parent go to its wrapper
-		if (parent_idx !== NONE) {
-			const redirect = dispatcher.get_redirect(parent_idx);
-			if (redirect !== undefined) parent_idx = redirect;
-		}
-		const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
-		if (dispatcher.has_handlers(kind)) {
 			dispatcher.dispatch_open(idx, kind, nodes, this.register_id!);
 		}
 	}

@@ -53,7 +53,8 @@ const NO_STRINGS: (string | undefined)[] = [];
  */
 const host_buffer: any = (globalThis as any).Buffer;
 const unzeroed =
-	host_buffer !== undefined && typeof host_buffer.allocUnsafeSlow === 'function';
+	host_buffer !== undefined &&
+	typeof host_buffer.allocUnsafeSlow === 'function';
 function new_storage(bytes: number): ArrayBuffer {
 	return unzeroed
 		? (host_buffer.allocUnsafeSlow(bytes).buffer as ArrayBuffer)
@@ -61,8 +62,48 @@ function new_storage(bytes: number): ArrayBuffer {
 }
 
 /**
+ * write the node template into slots [from, to): no end, no value, no links,
+ * not pending, no metadata, so a push only writes kind, start, parent and the
+ * links it makes; the first nodes by stores, the rest by doubling copies
+ */
+function fill_template(n: Uint32Array, from: number, to: number): void {
+	// a copy is a runtime call, stores beat it for the few nodes a small document has
+	const short = to - from <= 64 ? to : from + 64;
+	for (let b = from * NodeField.stride; b < short * NodeField.stride; ) {
+		n[b + NodeField.end] = 0xffffffff;
+		n[b + NodeField.value_start] = 0;
+		n[b + NodeField.value_end] = 0;
+		n[b + NodeField.next] = 0xffffffff;
+		n[b + NodeField.prev] = 0xffffffff;
+		n[b + NodeField.first_child] = 0xffffffff;
+		n[b + NodeField.last_child] = 0xffffffff;
+		n[b + NodeField.pending] = 0;
+		n[b + NodeField.meta] = 0;
+		b += NodeField.stride;
+	}
+	let done = short;
+	while (done < to) {
+		let count = done - from;
+		if (count > to - done) count = to - done;
+		n.copyWithin(
+			done * NodeField.stride,
+			from * NodeField.stride,
+			(from + count) * NodeField.stride
+		);
+		done += count;
+	}
+}
+
+/** whole nodes in a slab, the tail past them is never carved */
+const SLAB_NODES = (SLAB_BYTES / NODE_BYTES) | 0;
+
+/** a buffer past the carve cap fills its template this many nodes at a time at least */
+const FILL_CHUNK = 4096;
+
+/**
  * a carve costs one view not a backing store, but a live small buffer keeps
- * its whole slab alive
+ * its whole slab alive; a slab holds the node template from slab_used on, so
+ * a carve starts filled, and a trim gives back only slots no push wrote
  */
 let slab = new ArrayBuffer(0);
 let slab_used = SLAB_BYTES;
@@ -347,6 +388,11 @@ export class NodeBuffer {
 
 	/** @internal read by TreeBuilder to check ids against indices */
 	_size = 0;
+	/**
+	 * slots from _size up to here hold the template, the whole capacity for
+	 * a slab carve, a buffer past the carve cap fills as pushes reach it
+	 */
+	private _filled = 0;
 
 	constructor(initial_capacity = DEFAULT_TOKEN_CAPACITY) {
 		// the comparison also sends a nan capacity to the floor
@@ -369,6 +415,7 @@ export class NodeBuffer {
 			if (slab_used + bytes > SLAB_BYTES) {
 				slab = new_storage(SLAB_BYTES);
 				slab_used = 0;
+				fill_template(new Uint32Array(slab), 0, SLAB_NODES);
 			}
 			buffer = slab;
 			base = slab_used;
@@ -377,7 +424,10 @@ export class NodeBuffer {
 			buffer = new_storage(bytes);
 		}
 		const n = new Uint32Array(buffer, base, capacity * NodeField.stride);
-		if (buffer === slab) last_carve = n;
+		if (buffer === slab) {
+			last_carve = n;
+			this._filled = capacity;
+		} else this._filled = 0;
 		this._capacity = capacity;
 		this._n = n;
 		return n;
@@ -394,6 +444,7 @@ export class NodeBuffer {
 		if (this._n !== last_carve) return;
 		slab_used -= (this._capacity - this._size) * NODE_BYTES;
 		this._capacity = this._size;
+		this._filled = this._size;
 	}
 
 	/** clear nodes without reallocating storage */
@@ -402,7 +453,12 @@ export class NodeBuffer {
 		// a length store is a runtime call even when already empty
 		if (this._meta.length !== 0) this._meta.length = 0;
 		if (this._strings.length !== 0) this._strings.length = 0;
-		this._size = 0;
+		// pushes left their words in the slots below _size, make them template again
+		const size = this._size;
+		if (size !== 0) {
+			fill_template(this._n, 0, size);
+			this._size = 0;
+		}
 	}
 
 	get size(): number {
@@ -451,21 +507,14 @@ export class NodeBuffer {
 	): number {
 		const index = this._size;
 		let n = this._n;
-		if (index >= this._capacity) n = this.grow();
+		if (index >= this._filled) n = this.fill(index);
 
+		// the template holds every other word
 		const b = index * NodeField.stride;
 		n[b] = (kind & 0xff) | ((extra & 0xffff) << 8);
-		n[b + NodeField.start] = cursor >>> 0;
-		n[b + NodeField.end] = 0xffffffff;
-		n[b + NodeField.value_start] = 0;
-		n[b + NodeField.value_end] = 0;
+		n[b + NodeField.start] = cursor;
 		n[b + NodeField.parent] = parent;
-		n[b + NodeField.next] = 0xffffffff;
-		n[b + NodeField.prev] = 0xffffffff;
-		n[b + NodeField.first_child] = 0xffffffff;
-		n[b + NodeField.last_child] = 0xffffffff;
-		n[b + NodeField.pending] = pending ? 1 : 0;
-		n[b + NodeField.meta] = 0;
+		if (pending) n[b + NodeField.pending] = 1;
 		this._size = index + 1;
 
 		if (parent !== 0xffffffff) {
@@ -488,7 +537,7 @@ export class NodeBuffer {
 	push_text(start: number, end: number, parent: number): number {
 		const index = this._size;
 		let n = this._n;
-		if (index >= this._capacity) n = this.grow();
+		if (index >= this._filled) n = this.fill(index);
 
 		const b = index * NodeField.stride;
 		n[b] = NodeKind.text;
@@ -497,12 +546,6 @@ export class NodeBuffer {
 		n[b + NodeField.value_start] = start;
 		n[b + NodeField.value_end] = end;
 		n[b + NodeField.parent] = parent;
-		n[b + NodeField.next] = 0xffffffff;
-		n[b + NodeField.prev] = 0xffffffff;
-		n[b + NodeField.first_child] = 0xffffffff;
-		n[b + NodeField.last_child] = 0xffffffff;
-		n[b + NodeField.pending] = 0;
-		n[b + NodeField.meta] = 0;
 		this._size = index + 1;
 
 		const p = parent * NodeField.stride;
@@ -515,6 +558,20 @@ export class NodeBuffer {
 		}
 		n[p + NodeField.last_child] = index;
 		return index;
+	}
+
+	/** grow when full, then template the next chunk of a buffer past the carve cap */
+	private fill(index: number): Uint32Array {
+		let n = this._n;
+		if (index >= this._capacity) n = this.grow();
+		let filled = this._filled;
+		if (index >= filled) {
+			let to = filled + (filled > FILL_CHUNK ? filled : FILL_CHUNK);
+			if (to > this._capacity) to = this._capacity;
+			fill_template(n, filled, to);
+			this._filled = filled = to;
+		}
+		return n;
 	}
 
 	/**
@@ -856,7 +913,9 @@ export class NodeBuffer {
 	}
 
 	pop(): void {
-		this._size -= 1;
+		const i = --this._size;
+		// the popped slot is the template again, as a push expects
+		fill_template(this._n, i, i + 1);
 	}
 
 	/**
@@ -1097,13 +1156,20 @@ export class NodeBuffer {
 				slab_used = base + bytes;
 				last_carve = n;
 				this._capacity = next;
+				this._filled = next;
 				this._n = n;
 				return n;
 			}
 		}
 		const n = this.alloc(next);
-		// a trimmed view is longer than its capacity
-		n.set(old.length === words ? old : old.subarray(0, words));
+		// slots from _size on are template in both, a carve has it already
+		const size = this._size;
+		n.set(
+			old.length === size * NodeField.stride
+				? old
+				: old.subarray(0, size * NodeField.stride)
+		);
+		if (this._filled < size) this._filled = size;
 		return n;
 	}
 

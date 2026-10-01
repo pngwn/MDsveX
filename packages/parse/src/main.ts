@@ -1370,24 +1370,40 @@ export class PFMParser {
 
 	// opcode helpers
 
+	/** inlined at every open site, so it stays small, pending opens call their own */
 	private emit_open(
 		kind: NodeKind,
 		start: number,
 		parent: number,
 		extra = 0,
-		pending = false
+		pending?: boolean
+	): number {
+		if (pending === true) {
+			return this.emit_open_pending(kind, start, parent, extra);
+		}
+		const id = this.next_id++;
+		if (id >= this.id_info.length) this.grow_ids(id);
+		this.out.open(id, kind, start, parent, extra, false);
+		this.id_info[id] = kind;
+		return id;
+	}
+
+	/** an open the parser may still revoke */
+	private emit_open_pending(
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		extra = 0
 	): number {
 		const id = this.next_id++;
 		if (id >= this.id_info.length) this.grow_ids(id);
-		this.out.open(id, kind, start, parent, extra, pending);
-		if (pending) {
-			const slot = this.pending_count;
-			this.pending_starts[slot] = start;
-			this.pending_ids[slot] = id;
-			this.pending_count = slot + 1;
-			if (kind === NodeKind.paragraph) this.pending_para_count++;
-			this.id_slots[id] = slot;
-		}
+		this.out.open(id, kind, start, parent, extra, true);
+		const slot = this.pending_count;
+		this.pending_starts[slot] = start;
+		this.pending_ids[slot] = id;
+		this.pending_count = slot + 1;
+		if (kind === NodeKind.paragraph) this.pending_para_count++;
+		this.id_slots[id] = slot;
 		this.id_info[id] = kind;
 		return id;
 	}
@@ -2709,12 +2725,10 @@ export class PFMParser {
 		const c = char_code_at.call(this.source, this.cursor - this.source_base);
 		if (!(c >= 128 || ((c | 32) >= 97 && (c | 32) <= 122))) return;
 		this.states.push(StateKind.paragraph);
-		const para_id = this.emit_open(
+		const para_id = this.emit_open_pending(
 			NodeKind.paragraph,
 			this.cursor,
-			item_id,
-			0,
-			true
+			item_id
 		);
 		this.track_list_pending_para(para_id);
 		this.node_stack.push(para_id);
@@ -5039,12 +5053,10 @@ export class PFMParser {
 								} else if (this.is_raw_text_tag(blk_tag.tag)) {
 									this.open_raw_text(blk_tag, current_node);
 								} else {
-									const html_id = this.emit_open(
+									const html_id = this.emit_open_pending(
 										NodeKind.html,
 										this.cursor,
-										current_node,
-										0,
-										true
+										current_node
 									);
 									this.out.attr(html_id, 'tag', blk_tag.tag);
 									if (blk_tag.has_attrs) {
@@ -5673,12 +5685,10 @@ export class PFMParser {
 									(CharMask.whitespace | CharMask.punctuation) &&
 								this.next_class() & (CharMask.word | CharMask.punctuation)
 							) {
-								const n_id = this.emit_open(
+								const n_id = this.emit_open_pending(
 									NodeKind.strong_emphasis,
 									this.cursor,
-									current_node,
-									0,
-									true
+									current_node
 								);
 
 								this.out.set_value_start(n_id, this.cursor + 1);
@@ -5722,12 +5732,10 @@ export class PFMParser {
 									(CharMask.whitespace | CharMask.punctuation) &&
 								this.next_class() & (CharMask.word | CharMask.punctuation)
 							) {
-								const n_id = this.emit_open(
+								const n_id = this.emit_open_pending(
 									NodeKind.emphasis,
 									this.cursor,
-									current_node,
-									0,
-									true
+									current_node
 								);
 
 								this.out.set_value_start(n_id, this.cursor + 1);
@@ -5782,12 +5790,10 @@ export class PFMParser {
 								classify(char_code_at.call(source, this.cursor + 2 - base)) &
 									(CharMask.word | CharMask.punctuation)
 							) {
-								const n_id = this.emit_open(
+								const n_id = this.emit_open_pending(
 									NodeKind.strikethrough,
 									this.cursor,
-									current_node,
-									0,
-									true
+									current_node
 								);
 								this.out.set_value_start(n_id, this.cursor + 2);
 								this.node_stack.push(n_id);
@@ -5798,12 +5804,10 @@ export class PFMParser {
 								char_code_at.call(source, this.cursor + 1 - base) !== TILDE &&
 								this.next_class() & (CharMask.word | CharMask.punctuation)
 							) {
-								const n_id = this.emit_open(
+								const n_id = this.emit_open_pending(
 									NodeKind.subscript,
 									this.cursor,
-									current_node,
-									0,
-									true
+									current_node
 								);
 								this.out.set_value_start(n_id, this.cursor + 1);
 								this.node_stack.push(n_id);
@@ -5828,12 +5832,10 @@ export class PFMParser {
 							// (no left-flanking constraint - x^2^ is valid)
 							if (!this.finished && this.cursor + 1 >= length) break main_loop;
 							if (this.next_class() & (CharMask.word | CharMask.punctuation)) {
-								const n_id = this.emit_open(
+								const n_id = this.emit_open_pending(
 									NodeKind.superscript,
 									this.cursor,
-									current_node,
-									0,
-									true
+									current_node
 								);
 								this.out.set_value_start(n_id, this.cursor + 1);
 								this.node_stack.push(n_id);
@@ -5995,12 +5997,10 @@ export class PFMParser {
 								continue;
 							}
 							// speculatively open a link - [ is a link until proven otherwise
-							const link_id = this.emit_open(
+							const link_id = this.emit_open_pending(
 								NodeKind.link,
 								this.cursor,
-								current_node,
-								0,
-								true
+								current_node
 							);
 							this.node_stack.push(link_id);
 							this.states.push(StateKind.link_text);
@@ -6037,12 +6037,10 @@ export class PFMParser {
 									OPEN_SQUARE_BRACKET &&
 								this.directive_text_ids.length === 0
 							) {
-								const img_id = this.emit_open(
+								const img_id = this.emit_open_pending(
 									NodeKind.image,
 									this.cursor,
-									current_node,
-									0,
-									true
+									current_node
 								);
 								this.node_stack.push(img_id);
 								this.states.push(StateKind.link_text);
@@ -6176,12 +6174,10 @@ export class PFMParser {
 									this.states.pop();
 									this.open_raw_text(open_tag, current_node);
 								} else {
-									const html_id = this.emit_open(
+									const html_id = this.emit_open_pending(
 										NodeKind.html,
 										this.cursor,
-										current_node,
-										0,
-										true
+										current_node
 									);
 									this.out.attr(html_id, 'tag', open_tag.tag);
 									if (open_tag.has_attrs) {
@@ -6325,12 +6321,10 @@ export class PFMParser {
 										after_colon - base,
 										np - base
 									);
-									const d_id = this.emit_open(
+									const d_id = this.emit_open_pending(
 										NodeKind.directive_inline,
 										this.cursor,
-										current_node,
-										0,
-										true
+										current_node
 									);
 									this.out.attr(d_id, 'name', dir_name);
 									this.out.set_value_start(d_id, np + 1);
@@ -8350,12 +8344,10 @@ export class PFMParser {
 				} else if (this.is_raw_text_tag(blk_tag.tag)) {
 					this.open_raw_text(blk_tag, current_node);
 				} else {
-					const html_id = this.emit_open(
+					const html_id = this.emit_open_pending(
 						NodeKind.html,
 						this.cursor,
-						current_node,
-						0,
-						true
+						current_node
 					);
 					this.out.attr(html_id, 'tag', blk_tag.tag);
 					if (blk_tag.has_attrs) {
@@ -8596,12 +8588,10 @@ export class PFMParser {
 				} else if (this.is_raw_text_tag(blk_tag.tag)) {
 					this.open_raw_text(blk_tag, current_node);
 				} else {
-					const html_id = this.emit_open(
+					const html_id = this.emit_open_pending(
 						NodeKind.html,
 						this.cursor,
-						current_node,
-						0,
-						true
+						current_node
 					);
 					this.out.attr(html_id, 'tag', blk_tag.tag);
 					if (blk_tag.has_attrs) {
@@ -9216,12 +9206,10 @@ export class PFMParser {
 					}
 				}
 				this.states.push(StateKind.paragraph);
-				const para_id = this.emit_open(
+				const para_id = this.emit_open_pending(
 					NodeKind.paragraph,
 					this.cursor,
-					current_node,
-					0,
-					true
+					current_node
 				);
 				this.track_list_pending_para(para_id);
 				this.node_stack.push(para_id);
@@ -9248,12 +9236,10 @@ export class PFMParser {
 				if (result === false) return true;
 				if (result === true) return false;
 				this.states.push(StateKind.paragraph);
-				const para_id = this.emit_open(
+				const para_id = this.emit_open_pending(
 					NodeKind.paragraph,
 					this.cursor,
-					current_node,
-					0,
-					true
+					current_node
 				);
 				this.track_list_pending_para(para_id);
 				this.node_stack.push(para_id);
@@ -9268,12 +9254,10 @@ export class PFMParser {
 					return false;
 				}
 				this.states.push(StateKind.paragraph);
-				const li_ref_para = this.emit_open(
+				const li_ref_para = this.emit_open_pending(
 					NodeKind.paragraph,
 					this.cursor,
-					current_node,
-					0,
-					true
+					current_node
 				);
 				this.track_list_pending_para(li_ref_para);
 				this.node_stack.push(li_ref_para);
@@ -9288,12 +9272,10 @@ export class PFMParser {
 					return false;
 				}
 				this.states.push(StateKind.paragraph);
-				const li_colon_para = this.emit_open(
+				const li_colon_para = this.emit_open_pending(
 					NodeKind.paragraph,
 					this.cursor,
-					current_node,
-					0,
-					true
+					current_node
 				);
 				this.track_list_pending_para(li_colon_para);
 				this.node_stack.push(li_colon_para);
@@ -9335,12 +9317,10 @@ export class PFMParser {
 					return false;
 				}
 				this.states.push(StateKind.paragraph);
-				const para_id = this.emit_open(
+				const para_id = this.emit_open_pending(
 					NodeKind.paragraph,
 					this.cursor,
-					current_node,
-					0,
-					true
+					current_node
 				);
 				this.track_list_pending_para(para_id);
 				this.node_stack.push(para_id);
