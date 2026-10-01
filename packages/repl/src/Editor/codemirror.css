@@ -1,0 +1,313 @@
+.codemirror-wrapper {
+	height: 100%;
+}
+
+.cm-editor {
+	color: var(--repl-code-text);
+	background-color: transparent;
+	height: 100%;
+
+	&.cm-focused {
+		outline: none;
+
+		.cm-cursor {
+			border-left-color: var(--repl-fg-3);
+		}
+
+		> .cm-scroller > .cm-selectionLayer .cm-selectionBackground,
+		.cm-selectionBackground,
+		.cm-content ::selection {
+			background-color: var(--repl-bg-selection);
+		}
+
+		.cm-matchingBracket,
+		.cm-nonmatchingBracket {
+			background-color: #bad0f847;
+		}
+	}
+
+	.cm-scroller {
+		font: var(--repl-font-mono);
+	}
+
+	.cm-gutters {
+		background: var(--repl-bg-3);
+		border: none;
+		padding: 0;
+		width: 50px;
+	}
+
+	.cm-activeLine {
+		background: inherit;
+	}
+
+	.cm-foldGutter {
+		width: 14px;
+	}
+
+	.cm-activeLineGutter {
+		/* this must be translucent, or it will obscure the selection */
+		background: hsl(0, 0%, 0%, 0.04);
+
+		.mdsvex-repl.dark & {
+			background: hsl(0, 0%, 100%, 0.04);
+		}
+	}
+
+	.cm-gutterElement {
+		position: relative;
+
+		&:where(:has([title='Fold line']), :has([title='Unfold line'])) {
+			&::after {
+				content: '';
+				position: absolute;
+				width: 100%;
+				right: 0;
+				top: 0;
+				height: 24px;
+				background: currentColor;
+				mask: url(icons/chevron) no-repeat 50% 50%;
+				mask-size: contain;
+				transition: transform 0.2s;
+				cursor: pointer;
+				rotate: 180deg;
+			}
+		}
+
+		&:has([title='Unfold line'])::after {
+			transform: rotate(90deg);
+		}
+
+		span {
+			color: transparent;
+		}
+	}
+
+	.cm-lineNumbers {
+		flex: 1;
+
+		.cm-gutterElement:not(:last-child) {
+			display: flex;
+			justify-content: end;
+			align-items: end;
+		}
+	}
+
+	.cm-foldPlaceholder {
+		background-color: transparent;
+		border: none;
+		color: #ddd;
+	}
+
+	.cm-lintRange {
+		background-position: left bottom;
+		background-repeat: repeat-x;
+		padding-bottom: 4px;
+	}
+
+	.cm-content {
+		padding: 4px 0;
+	}
+
+	.cm-line {
+		padding: 0 10px;
+	}
+
+	.cm-selectionBackground {
+		border-radius: 2px;
+		background-color: var(--repl-bg-unfocused-selection);
+	}
+
+	.cm-selectionMatch {
+		background: var(--selection-color);
+		color: var(--repl-fg-2);
+	}
+
+	.cm-tooltip.cm-tooltip-autocomplete {
+		color: var(--repl-fg-3) !important;
+		perspective: 1px;
+
+		& > ul > li[aria-selected] {
+			background-color: var(--repl-bg-4);
+			color: var(--repl-fg-2) !important;
+		}
+
+		& > ul {
+			font: var(--repl-font-mono);
+		}
+	}
+
+	.cm-panels {
+		font: var(--repl-font-ui-small);
+		background: var(--repl-bg-2);
+		color: inherit;
+
+		&.cm-panels-top,
+		&.cm-panels-bottom {
+			border-top: 1px solid var(--repl-border);
+			border-bottom: 1px solid var(--repl-border);
+		}
+
+		.cm-panel {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 5px;
+			padding: 5px 42px 5px 5px;
+
+			.cm-button,
+			button[aria-label='close'] {
+				margin: 0;
+				font: inherit;
+				background: inherit;
+				height: 32px;
+				padding: 0 8px;
+				border-style: solid;
+				border-width: var(--repl-raised-width);
+				border-color: var(--repl-raised-color);
+				border-radius: var(--repl-border-radius);
+
+				&:hover {
+					border-color: var(--repl-raised-hover-color);
+				}
+
+				&:active {
+					border-color: var(--repl-raised-active-color);
+					border-width: var(--repl-raised-active-width);
+				}
+			}
+
+			button[aria-label='close'] {
+				aspect-ratio: 1;
+				top: 5px;
+				right: 5px;
+
+				&::after {
+					content: '';
+					position: absolute;
+					width: 100%;
+					height: 100%;
+					left: 0;
+					top: 0;
+					background: currentColor;
+					mask: url(icons/close) 50% 50% no-repeat;
+					mask-size: 18px;
+				}
+			}
+
+			.cm-textfield {
+				font: inherit;
+				background: inherit;
+				color: inherit;
+				border: 1px solid var(--repl-border);
+				border-radius: var(--repl-border-radius);
+				margin: 0;
+			}
+
+			.cm-search button:focus-visible,
+			.cm-search input:focus-visible {
+				border: 2px solid var(--flash);
+			}
+
+			.cm-search input[type='checkbox']:focus-visible {
+				outline: 2px solid var(--flash);
+			}
+
+			label {
+				font: inherit;
+				display: inline-flex;
+				gap: 5px;
+				align-items: center;
+				margin: 0 0 0 5px;
+			}
+		}
+	}
+
+	.cm-searchMatch.cm-searchMatch-selected {
+		background-color: #6199ff2f;
+	}
+
+	.cm-tooltip {
+		--warning: hsl(40 100% 70%);
+		--error: hsl(0 100% 90%);
+		border: none;
+		background: var(--repl-bg-3);
+		font: var(--repl-font-ui-small);
+		max-width: calc(100vw - 10em);
+		position: relative;
+		padding: 10px;
+		filter: var(--repl-shadow);
+		z-index: 9999;
+
+		.mdsvex-repl.dark & {
+			--warning: hsl(40 100% 50%);
+			--error: hsl(0 100% 70%);
+		}
+
+		&:has(.cm-diagnostic) {
+			background: transparent;
+		}
+
+		&:has(.cm-diagnostic-warning) {
+			--bg: var(--warning);
+			--fg: #222;
+		}
+
+		&:has(.cm-diagnostic-error) {
+			--bg: var(--error);
+			--fg: #222;
+		}
+
+		.cm-tooltip-section {
+			position: relative;
+			padding: 10px;
+			background: var(--bg);
+			border-radius: 2px;
+			max-width: 64em;
+
+			.cm-diagnostic {
+				padding: 0;
+				margin: 0;
+				position: relative;
+				border: none;
+				border-radius: var(--repl-border-radius);
+
+				&:not(:last-child) {
+					border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+					margin-bottom: 10px;
+					padding-bottom: 10px;
+				}
+
+				:not(code) {
+					font: var(--repl-font-ui-small);
+				}
+
+				.cm-diagnosticText {
+					position: relative;
+					display: flex;
+					color: var(--fg);
+					z-index: 2;
+
+					code {
+						color: inherit;
+						background-color: rgba(0, 0, 0, 0.05);
+						font-size: 1em;
+						margin: 0;
+						padding: 2px 4px;
+					}
+
+					a {
+						font: var(--repl-font-mono);
+						color: inherit;
+						font-size: 1em;
+						text-decoration: underline;
+					}
+				}
+			}
+		}
+	}
+
+	.highlight {
+		background: var(--repl-bg-highlight);
+		padding: 4px 0;
+	}
+}

@@ -1,0 +1,98 @@
+/* every token can be overridden from outside, the defaults are a plain light and dark pair */
+.mdsvex-repl {
+	color-scheme: light;
+	--repl-bg-1: #ffffff;
+	--repl-bg-2: #f7f7f8;
+	--repl-bg-3: #f0f0f2;
+	--repl-bg-4: #e4e4e7;
+	--repl-bg-highlight: rgba(255, 200, 0, 0.25);
+	--repl-bg-selection: rgba(0, 120, 255, 0.18);
+	--repl-bg-unfocused-selection: rgba(0, 0, 0, 0.08);
+	--repl-fg-1: #18181b;
+	--repl-fg-2: #3f3f46;
+	--repl-fg-3: #52525b;
+	--repl-fg-4: #8e8e96;
+	--repl-fg-accent: #0a9b5c;
+	--repl-border: #e4e4e7;
+	--repl-border-radius: 4px;
+	--repl-shadow: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15));
+	--repl-pane-controls-height: 42px;
+
+	--repl-font-family-ui:
+		system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--repl-font-family-mono:
+		'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+	--repl-font-ui-small: 400 12px/1.5 var(--repl-font-family-ui);
+	--repl-font-ui-medium: 400 14px/1.5 var(--repl-font-family-ui);
+	--repl-font-mono: 400 13px/1.6 var(--repl-font-family-mono);
+
+	--repl-raised-color: #d4d4d8;
+	--repl-raised-hover-color: #a1a1aa;
+	--repl-raised-active-color: #71717a;
+	--repl-raised-width: 1px 1px 2px 1px;
+	--repl-raised-active-width: 2px 1px 1px 1px;
+
+	--repl-code-text: #24292e;
+	--repl-code-keyword: #d73a49;
+	--repl-code-function: #6f42c1;
+	--repl-code-string: #032f62;
+	--repl-code-comment: #6a737d;
+	--repl-code-atom: #005cc5;
+}
+
+.mdsvex-repl.dark {
+	color-scheme: dark;
+	--repl-bg-1: #111113;
+	--repl-bg-2: #18181b;
+	--repl-bg-3: #1f1f23;
+	--repl-bg-4: #2a2a2f;
+	--repl-bg-highlight: rgba(255, 200, 0, 0.2);
+	--repl-bg-selection: rgba(80, 160, 255, 0.28);
+	--repl-bg-unfocused-selection: rgba(255, 255, 255, 0.08);
+	--repl-fg-1: #ededed;
+	--repl-fg-2: #d4d4d8;
+	--repl-fg-3: #a1a1aa;
+	--repl-fg-4: #71717a;
+	--repl-fg-accent: #00dc82;
+	--repl-border: #2a2a2f;
+	--repl-shadow: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+
+	--repl-raised-color: #3f3f46;
+	--repl-raised-hover-color: #52525b;
+	--repl-raised-active-color: #71717a;
+
+	--repl-code-text: #e1e4e8;
+	--repl-code-keyword: #f97583;
+	--repl-code-function: #b392f0;
+	--repl-code-string: #9ecbff;
+	--repl-code-comment: #6a737d;
+	--repl-code-atom: #79b8ff;
+}
+
+.mdsvex-repl button {
+	font: var(--repl-font-ui-small);
+	color: inherit;
+	background: transparent;
+	border: none;
+	cursor: pointer;
+}
+
+.mdsvex-repl button:disabled {
+	cursor: default;
+}
+
+.mdsvex-repl .raised {
+	border: 1px solid var(--repl-raised-color);
+	border-width: var(--repl-raised-width);
+	border-radius: var(--repl-border-radius);
+	background: var(--repl-bg-2);
+}
+
+.mdsvex-repl .raised:hover:not(:disabled) {
+	border-color: var(--repl-raised-hover-color);
+}
+
+.mdsvex-repl .raised:active:not(:disabled) {
+	border-color: var(--repl-raised-active-color);
+	border-width: var(--repl-raised-active-width);
+}

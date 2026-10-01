@@ -1,0 +1,41 @@
+---
+title: Hello mdsvex
+---
+
+<script>
+	import Counter from './Counter.svelte';
+
+	let name = $state('world');
+</script>
+
+# Hello {name}!
+
+This is *markdown* with _Svelte_ in it. Edit anything on the left and the
+preview updates as you type.
+
+<input bind:value={name} />
+
+## Components
+
+Import a component in a script tag and use it like you would in Svelte:
+
+<Counter />
+
+## Penguin-flavoured markdown
+
+- `*` is strong and `_` is emphasis, they never swap
+- superscript: E = mc^2^
+- subscript: H~2~O
+- strikethrough: ~~old~~ new
+
+| syntax | output |
+| ------ | ------ |
+| `^x^`  | ^x^    |
+| `~x~`  | ~x~    |
+
+```js
+console.log('fenced code only, indentation means nothing');
+```
+
+> blockquotes need a `>`
+> on every line

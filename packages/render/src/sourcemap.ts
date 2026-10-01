@@ -34,7 +34,11 @@ class LineTable {
 const src_table = new LineTable();
 const gen_table = new LineTable();
 
-function copy_i32(a: Int32Array, used: number, size: number): Int32Array {
+function copy_i32(
+	a: Int32Array,
+	used: number,
+	size: number
+): Int32Array<ArrayBuffer> {
 	const b = new Int32Array(size);
 	b.set(a.subarray(0, used));
 	return b;
