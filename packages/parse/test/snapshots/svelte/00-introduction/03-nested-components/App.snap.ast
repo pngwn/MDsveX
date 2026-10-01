@@ -6,7 +6,6 @@ root
   line_break
   line_break
   html tag="p"
-    paragraph
-      text "These styles..."
-  line_break
+    text "These styles..."
+  soft_break
   html tag="Nested" self_closing=true

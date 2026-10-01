@@ -12,8 +12,7 @@ root
     paragraph
       text "This is a quotation"
     line_break
-    paragraph
-      html tag="Citation" author=[object Object] self_closing=true
+    html tag="Citation" author=[object Object] self_closing=true
   line_break
   line_break
   paragraph

@@ -6,8 +6,7 @@ root
   line_break
   line_break
   html tag="span" class:expanded=true on:click=[object Object]
-    paragraph
-      mustache "name"
+    mustache "name"
   line_break
   line_break
   svelte_block tag="if"

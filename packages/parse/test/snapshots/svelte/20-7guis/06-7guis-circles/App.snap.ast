@@ -11,12 +11,11 @@ root
   html tag="div" class="controls"
     line_break
     html tag="button" on:click="{() => travel(-1)}" disabled="{i === 0}"
-      paragraph
-        text "undo"
-    line_break
+      text "undo"
+    soft_break
+    text "	"
     html tag="button" on:click="{() => travel(+1)}" disabled="{i === undoStack.length -1}"
-      paragraph
-        text "redo"
+      text "redo"
     line_break
   line_break
   line_break
@@ -36,12 +35,12 @@ root
       html tag="div" class="adjuster"
         line_break
         html tag="p"
-          paragraph
-            text "adjust diameter of circle at "
-            mustache "selected.cx"
-            text ", "
-            mustache "selected.cy"
-        line_break
+          text "adjust diameter of circle at "
+          mustache "selected.cx"
+          text ", "
+          mustache "selected.cy"
+        soft_break
+        text "		"
         html tag="input" type="range" value=[object Object] on:input=[object Object] self_closing=true
         line_break
       line_break

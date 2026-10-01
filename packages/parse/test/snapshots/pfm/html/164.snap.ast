@@ -1,8 +1,7 @@
 root
   html tag="i" class="foo"
     line_break
-    paragraph
-      strong_emphasis
-        text "bar"
+    strong_emphasis
+      text "bar"
     line_break
   line_break

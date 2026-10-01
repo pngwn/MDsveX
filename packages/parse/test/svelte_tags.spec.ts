@@ -10,8 +10,7 @@ describe('svelte void tags - {@tag ...}', () => {
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
-		const paragraph = nodes.get_node(root.children[0]);
-		const tag = nodes.get_node(paragraph.children[0]);
+		const tag = nodes.get_node(root.children[0]);
 		expect(tag.kind).toBe('svelte_tag');
 		expect(tag.metadata.tag).toBe('html');
 		const { content, value } = get_content(nodes, tag.index, input);
@@ -24,8 +23,7 @@ describe('svelte void tags - {@tag ...}', () => {
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
-		const paragraph = nodes.get_node(root.children[0]);
-		const tag = nodes.get_node(paragraph.children[0]);
+		const tag = nodes.get_node(root.children[0]);
 		expect(tag.kind).toBe('svelte_tag');
 		expect(tag.metadata.tag).toBe('debug');
 		const { value } = get_content(nodes, tag.index, input);
@@ -37,8 +35,7 @@ describe('svelte void tags - {@tag ...}', () => {
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
-		const paragraph = nodes.get_node(root.children[0]);
-		const tag = nodes.get_node(paragraph.children[0]);
+		const tag = nodes.get_node(root.children[0]);
 		expect(tag.kind).toBe('svelte_tag');
 		expect(tag.metadata.tag).toBe('const');
 		const { value } = get_content(nodes, tag.index, input);
@@ -50,8 +47,7 @@ describe('svelte void tags - {@tag ...}', () => {
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
-		const paragraph = nodes.get_node(root.children[0]);
-		const tag = nodes.get_node(paragraph.children[0]);
+		const tag = nodes.get_node(root.children[0]);
 		expect(tag.kind).toBe('svelte_tag');
 		expect(tag.metadata.tag).toBe('render');
 		const { value } = get_content(nodes, tag.index, input);
@@ -78,8 +74,7 @@ describe('svelte void tags - {@tag ...}', () => {
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
-		const paragraph = nodes.get_node(root.children[0]);
-		const tag = nodes.get_node(paragraph.children[0]);
+		const tag = nodes.get_node(root.children[0]);
 		expect(tag.kind).toBe('svelte_tag');
 		expect(tag.metadata.tag).toBe('debug');
 		// No value, tag has no expression content
@@ -92,12 +87,32 @@ describe('svelte void tags - {@tag ...}', () => {
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
-		const paragraph = nodes.get_node(root.children[0]);
-		const tag = nodes.get_node(paragraph.children[0]);
+		const tag = nodes.get_node(root.children[0]);
 		expect(tag.kind).toBe('svelte_tag');
 		expect(tag.metadata.tag).toBe('html');
 		const { value } = get_content(nodes, tag.index, input);
 		expect(value).toBe('items.map(i => `<li>${i}</li>`).join("")');
+	});
+
+	test('a tag with text keeps its paragraph', () => {
+		const input = '{@html raw} after\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		expect(paragraph.kind).toBe('paragraph');
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'svelte_tag',
+			'text',
+		]);
+	});
+
+	test('a plain expression is text and keeps its paragraph', () => {
+		const input = '{title}\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const paragraph = nodes.get_node(nodes.get_node().children[0]);
+		expect(paragraph.kind).toBe('paragraph');
 	});
 
 	test('not parsed inside code span', () => {

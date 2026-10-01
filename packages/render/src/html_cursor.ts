@@ -516,7 +516,144 @@ const enum W {
 	parent = 5,
 	next = 6,
 	first_child = 8,
+	meta = 11,
 	stride = 12,
+}
+
+//  top level scripts
+
+// set by hoist_begin before a document render, hoist_reset for a render of parts
+
+/** the instance script the import statements go into, -1 when there is none */
+let hoist_script = -1;
+/** the first import statement, it renders a script of every import when there is no instance script */
+let hoist_at = -1;
+/** import statement indices in document order */
+const hoist_nodes: number[] = [];
+
+function hoist_reset(): void {
+	hoist_script = -1;
+	hoist_at = -1;
+	if (hoist_nodes.length !== 0) hoist_nodes.length = 0;
+}
+
+/** find the import statements and, when there are some, the instance script */
+function hoist_begin(buf: NodeBuffer): void {
+	hoist_reset();
+	const n = buf._n;
+	let child = n[W.first_child];
+	// imports come first, after any frontmatter and blank lines
+	while (child !== Slot.NONE) {
+		const b = child * W.stride;
+		if (n[b + W.parent] !== 0) return;
+		const kind = n[b] & 0xff;
+		if (kind === K.IMPORT_STATEMENT) hoist_nodes.push(child);
+		else if (kind !== K.LINE_BREAK && kind !== K.FRONTMATTER) break;
+		child = n[b + W.next];
+	}
+	if (hoist_nodes.length === 0) return;
+	while (child !== Slot.NONE) {
+		const b = child * W.stride;
+		if (n[b + W.parent] !== 0) break;
+		if ((n[b] & 0xff) === K.HTML) {
+			const slot = n[b + W.meta];
+			const meta = slot === 0 ? undefined : buf._meta[slot - 1];
+			if (
+				meta !== undefined &&
+				meta.tag === 'script' &&
+				!meta.self_closing &&
+				!is_other_script(meta.attributes as Record<string, unknown> | undefined)
+			) {
+				hoist_script = child;
+				return;
+			}
+		}
+		child = n[b + W.next];
+	}
+	hoist_at = hoist_nodes[0];
+}
+
+/** a module script or an external one, not the instance script */
+function is_other_script(attrs: Record<string, unknown> | undefined): boolean {
+	return (
+		attrs !== undefined &&
+		(attrs.src !== undefined ||
+			attrs.module !== undefined ||
+			attrs.context === 'module')
+	);
+}
+
+/**
+ * a top level script with a src and no body, svelte would read it as the
+ * component script, a browser ignores the body of an external script
+ */
+function is_embed_script(c: Cursor, tag: string): boolean {
+	if (tag !== 'script' || c.parent_kind !== K.ROOT) return false;
+	const attrs = c.meta()!.attributes as Record<string, unknown> | undefined;
+	return (
+		attrs !== undefined && attrs.src !== undefined && c.text().trim() === ''
+	);
+}
+
+/** an external script as a svelte:element, which svelte leaves in the markup */
+function embed_html(c: Cursor): string {
+	let s = '<svelte:element this={"script"}';
+	const attrs = c.meta()!.attributes as Record<string, string | boolean>;
+	for (const k in attrs) {
+		const v = attrs[k];
+		if (v === true) s += ' ' + k;
+		else if (typeof v === 'object' && (v as any).type === 'expression') {
+			s += ' ' + k + '={' + meta_str((v as any).value) + '}';
+		} else s += ' ' + k + '="' + escape_html(v as string) + '"';
+	}
+	return s + '></svelte:element>';
+}
+
+/** append each import statement as a line, mapped to its source when sink is given */
+function mo_imports(
+	c: Cursor,
+	sink: MapSink | undefined,
+	trace: boolean
+): void {
+	const n = c.words;
+	for (let i = 0; i < hoist_nodes.length; i++) {
+		const idx = hoist_nodes[i];
+		const b = idx * W.stride;
+		const vs = n[b + W.value_start];
+		const ve = n[b + W.value_end];
+		const text = c.prebuilt_at(idx) ?? c.slice(vs, ve);
+		if (sink !== undefined) {
+			const at = mo.length;
+			if (trace) tr_run(sink, at, at + text.length, vs, ve);
+			else if (vs !== Slot.NONE && ve > vs)
+				put_record(
+					sink,
+					at,
+					at + text.length,
+					vs,
+					ve,
+					idx,
+					Code.SVELTE_CONTENT
+				);
+		}
+		mo = mo + text + '\n';
+	}
+}
+
+/** the import statements as script lines */
+function import_lines(c: Cursor): string {
+	const n = c.words;
+	let s = '';
+	for (let i = 0; i < hoist_nodes.length; i++) {
+		const idx = hoist_nodes[i];
+		const b = idx * W.stride;
+		s =
+			s +
+			(c.prebuilt_at(idx) ??
+				c.slice(n[b + W.value_start], n[b + W.value_end])) +
+			'\n';
+	}
+	return s;
 }
 
 const LINK_HANDLED = new Set(['href', 'title']);
@@ -841,6 +978,21 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			const pre = mo.length;
 			const meta = c.meta();
 			const tag = meta?.tag as string;
+			if (is_embed_script(c, tag)) {
+				mo += embed_html(c);
+				if (sink) {
+					put_record(
+						sink,
+						pre,
+						mo.length,
+						c.start,
+						c.end,
+						c.index,
+						Code.SVELTE_CONTENT
+					);
+				}
+				break;
+			}
 
 			// source passthrough: use exact source text to guarantee
 			// identity mapping. reconstruction can differ from the
@@ -895,6 +1047,10 @@ function render_node(c: Cursor, sink?: MapSink): void {
 				// the html node itself (no child nodes). emit unescaped, the
 				// browser does not parse script/style bodies as html.
 				if (tag === 'script' || tag === 'style') {
+					if (c.index === hoist_script) {
+						mo += '\n';
+						mo_imports(c, sink, false);
+					}
 					const text = c.text();
 					if (sink) content_record(sink, c, text, Code.SVELTE_CONTENT);
 					mo += text;
@@ -1010,6 +1166,14 @@ function render_node(c: Cursor, sink?: MapSink): void {
 		}
 
 		case K.LINE_BREAK:
+			break;
+
+		case K.IMPORT_STATEMENT:
+			if (c.index === hoist_at) {
+				mo += '<script>\n';
+				mo_imports(c, sink, false);
+				mo += '</script>';
+			}
 			break;
 
 		default:
@@ -1512,6 +1676,17 @@ function fold_node(c: Cursor, p: number): number {
 		case K.LINE_BREAK:
 			return p;
 
+		// only a root child renders alone, its parent renders text in fold_children
+		case K.TEXT:
+			return push_dyn(
+				p,
+				escape_text_at(c, c.index, c.value_start, c.value_end)
+			);
+
+		case K.IMPORT_STATEMENT:
+			if (c.index !== hoist_at) return p;
+			return push_dyn(p, '<script>\n' + import_lines(c) + '</script>');
+
 		default:
 			return fold_children(c, p);
 	}
@@ -1619,6 +1794,7 @@ function fold_html_attrs(
 function fold_html(c: Cursor, p: number): number {
 	const meta = c.meta();
 	const tag = meta?.tag as string;
+	if (is_embed_script(c, tag)) return push_dyn(p, embed_html(c));
 	const html_attrs = meta?.attributes as
 		| Record<string, string | boolean>
 		| undefined;
@@ -1640,6 +1816,7 @@ function fold_html(c: Cursor, p: number): number {
 	p = push_static(p, S_GT);
 	// raw text elements keep their content as the node value range, see _node
 	if (tag === 'script' || tag === 'style') {
+		if (c.index === hoist_script) p = push_dyn(p, '\n' + import_lines(c));
 		p = push_dyn(p, c.text());
 	} else {
 		p = fold_children(c, p);
@@ -2067,6 +2244,14 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			return S_BRACE_CLOSE;
 		}
 
+		case K.IMPORT_STATEMENT:
+			if (c.index !== hoist_at) return p;
+			if (p !== 0) mo += FOLD_STR[p];
+			mo += '<script>\n';
+			mo_imports(c, sink, true);
+			mo += '</script>';
+			return 0;
+
 		default:
 			return tr_children(c, sink, p);
 	}
@@ -2101,6 +2286,11 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 	const pre = mo.length;
 	const meta = c.meta();
 	const tag = meta?.tag as string;
+	if (is_embed_script(c, tag)) {
+		mo += embed_html(c);
+		tr_run(sink, pre, mo.length, c.start, c.end);
+		return 0;
+	}
 	// source passthrough and reconstruction exactly as render_node
 	const self_closing = !!meta?.self_closing;
 	const passthrough =
@@ -2136,7 +2326,11 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 		return 0;
 	}
 	if (tag === 'script' || tag === 'style') {
-		tr_text(c, sink, S_GT, c.text());
+		if (c.index === hoist_script) {
+			mo = mo + FOLD_STR[S_GT] + '\n';
+			mo_imports(c, sink, true);
+			tr_text(c, sink, 0, c.text());
+		} else tr_text(c, sink, S_GT, c.text());
 	} else {
 		const q = tr_children(c, sink, S_GT);
 		if (q !== 0) mo += FOLD_STR[q];
@@ -2496,6 +2690,14 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			return S_BRACE_CLOSE;
 		}
 
+		case K.IMPORT_STATEMENT:
+			if (c.index !== hoist_at) return p;
+			if (p !== 0) mo += FOLD_STR[p];
+			mo += '<script>\n';
+			mo_imports(c, sink, false);
+			mo += '</script>';
+			return 0;
+
 		default:
 			return mp_children(c, sink, p);
 	}
@@ -2532,6 +2734,19 @@ function mp_html(c: Cursor, sink: MapSink, p: number): number {
 	const pre = mo.length;
 	const meta = c.meta();
 	const tag = meta?.tag as string;
+	if (is_embed_script(c, tag)) {
+		mo += embed_html(c);
+		put_record(
+			sink,
+			pre,
+			mo.length,
+			c.start,
+			c.end,
+			c.index,
+			Code.SVELTE_CONTENT
+		);
+		return 0;
+	}
 	// source passthrough and reconstruction exactly as render_node
 	const self_closing = !!meta?.self_closing;
 	const passthrough =
@@ -2583,7 +2798,11 @@ function mp_html(c: Cursor, sink: MapSink, p: number): number {
 	}
 	const ao = mo.length + FOLD_LEN[S_GT];
 	if (tag === 'script' || tag === 'style') {
-		tr_content(c, sink, S_GT, c.text(), Code.SVELTE_CONTENT);
+		if (c.index === hoist_script) {
+			mo = mo + FOLD_STR[S_GT] + '\n';
+			mo_imports(c, sink, false);
+			tr_content(c, sink, 0, c.text(), Code.SVELTE_CONTENT);
+		} else tr_content(c, sink, S_GT, c.text(), Code.SVELTE_CONTENT);
 	} else {
 		const q = mp_children(c, sink, S_GT);
 		if (q !== 0) mo += FOLD_STR[q];
@@ -3011,6 +3230,7 @@ export class CursorHTMLRenderer {
 		const c = this.cursor;
 		c.reset();
 		esc_reset(source);
+		hoist_begin(buf);
 
 		// no caching, single-pass full render
 		if (!this.cache) {
@@ -3033,12 +3253,15 @@ export class CursorHTMLRenderer {
 
 			const idx = c.index;
 
+			// imports and the instance script render from document state, never cached
+			const keep =
+				c.closed && c.kind !== K.IMPORT_STATEMENT && idx !== hoist_script;
 			if (block_idx >= this.blocks.length) {
 				this.blocks.push({ idx, html: _render_block(c) });
-				if (c.closed) this.closed!.add(idx);
+				if (keep) this.closed!.add(idx);
 			} else if (!this.closed!.has(idx)) {
 				this.blocks[block_idx].html = _render_block(c);
-				if (c.closed) this.closed!.add(idx);
+				if (keep) this.closed!.add(idx);
 			}
 
 			block_idx++;
@@ -3064,6 +3287,7 @@ export class CursorHTMLRenderer {
 		const c = this.cursor;
 		c.reset();
 		esc_reset(source);
+		hoist_begin(buf);
 
 		mo = '';
 		prebuilt_begin(buf);
@@ -3192,6 +3416,8 @@ export function _mapped_begin(
 ): void {
 	esc_reset(source);
 	prebuilt_begin(buf);
+	// callers render parts, they place imports and scripts themselves
+	hoist_reset();
 	mo = html;
 }
 

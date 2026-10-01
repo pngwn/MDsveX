@@ -3,19 +3,16 @@ root
   line_break
   line_break
   html tag="h1"
-    paragraph
-      text "Caminandes: Llamigos"
+    text "Caminandes: Llamigos"
   line_break
   html tag="p"
     line_break
-    paragraph
-      text "From "
-      text tag="a" href="https://cloud.blender.org/open-projects" "<a href=\"https://cloud.blender.org/open-projects\"\n		>"
-      text "Blender Open Projects"
-      text "</a"
+    text "From "
+    text tag="a" href="https://cloud.blender.org/open-projects" "<a href=\"https://cloud.blender.org/open-projects\"\n		>"
+    text "Blender Open Projects"
+    text "</a"
     line_break
-    paragraph
-      text ">. CC-BY"
+    text ">. CC-BY"
     line_break
   line_break
   line_break
@@ -32,18 +29,17 @@ root
       html tag="div" class="info"
         line_break
         html tag="span" class="time"
-          paragraph
-            mustache "format(time)"
-        line_break
+          mustache "format(time)"
+        soft_break
+        text "			"
         html tag="span"
-          paragraph
-            text "click anywhere to "
-            mustache "paused ? 'play' : 'pause'"
-            text " / drag to seek"
-        line_break
+          text "click anywhere to "
+          mustache "paused ? 'play' : 'pause'"
+          text " / drag to seek"
+        soft_break
+        text "			"
         html tag="span" class="time"
-          paragraph
-            mustache "format(duration)"
+          mustache "format(duration)"
         line_break
       line_break
     line_break

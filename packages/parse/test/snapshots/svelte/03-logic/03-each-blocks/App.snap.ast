@@ -3,8 +3,7 @@ root
   line_break
   line_break
   html tag="h1"
-    paragraph
-      text "The Famous Cats of YouTube"
+    text "The Famous Cats of YouTube"
   line_break
   line_break
   html tag="ul"
@@ -15,10 +14,9 @@ root
         html tag="li"
           html tag="a" target="_blank" href="https://www.youtube.com/watch?v={id}"
             line_break
-            paragraph
-              mustache "i + 1"
-              text ": "
-              mustache "name"
+            mustache "i + 1"
+            text ": "
+            mustache "name"
             line_break
         line_break
     line_break

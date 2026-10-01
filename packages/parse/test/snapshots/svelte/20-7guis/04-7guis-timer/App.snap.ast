@@ -7,30 +7,26 @@ root
   line_break
   html tag="label"
     line_break
-    paragraph
-      text "elapsed time:"
-      soft_break
-      text "	"
-      html tag="progress" value="{elapsed / duration}"
+    text "elapsed time:"
+    soft_break
+    text "	"
+    html tag="progress" value="{elapsed / duration}"
     line_break
   line_break
   line_break
   html tag="div"
-    paragraph
-      mustache "(elapsed / 1000).toFixed(1)"
-      text "s"
+    mustache "(elapsed / 1000).toFixed(1)"
+    text "s"
   line_break
   line_break
   html tag="label"
     line_break
-    paragraph
-      text "duration:"
-      soft_break
-      text "	"
-      html tag="input" type="range" bind:value=[object Object] min="1" max="20000" self_closing=true
+    text "duration:"
+    soft_break
+    text "	"
+    html tag="input" type="range" bind:value=[object Object] min="1" max="20000" self_closing=true
     line_break
   line_break
   line_break
   html tag="button" on:click="{() => elapsed = 0}"
-    paragraph
-      text "reset"
+    text "reset"

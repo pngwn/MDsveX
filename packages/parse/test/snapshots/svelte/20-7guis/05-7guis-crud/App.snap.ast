@@ -17,17 +17,16 @@ root
       svelte_branch tag="each" "filteredPeople as person, i"
         line_break
         html tag="option" value=[object Object]
-          paragraph
-            mustache "person.last"
-            text ", "
-            mustache "person.first"
+          mustache "person.last"
+          text ", "
+          mustache "person.first"
         line_break
     line_break
   line_break
   line_break
   html tag="label"
     html tag="input" bind:value=[object Object] placeholder="first" self_closing=true
-  line_break
+  soft_break
   html tag="label"
     html tag="input" bind:value=[object Object] placeholder="last" self_closing=true
   line_break
@@ -35,15 +34,14 @@ root
   html tag="div" class="buttons"
     line_break
     html tag="button" on:click=[object Object] disabled="{!first || !last}"
-      paragraph
-        text "create"
-    line_break
+      text "create"
+    soft_break
+    text "	"
     html tag="button" on:click=[object Object] disabled="{!first || !last || !selected}"
-      paragraph
-        text "update"
-    line_break
+      text "update"
+    soft_break
+    text "	"
     html tag="button" on:click=[object Object] disabled="{!selected}"
-      paragraph
-        text "delete"
+      text "delete"
     line_break
   line_break

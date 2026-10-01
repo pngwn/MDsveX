@@ -4,22 +4,19 @@ root
   line_break
   html tag="button" on:click=[object Object]
     line_break
-    paragraph
-      text "Count: "
-      mustache "count"
+    text "Count: "
+    mustache "count"
     line_break
   line_break
   line_break
   html tag="p"
-    paragraph
-      mustache "count"
-      text " "
-      text "* 2 = "
-      mustache "doubled"
+    mustache "count"
+    text " "
+    text "* 2 = "
+    mustache "doubled"
   line_break
   html tag="p"
-    paragraph
-      mustache "doubled"
-      text " "
-      text "* 2 = "
-      mustache "quadrupled"
+    mustache "doubled"
+    text " "
+    text "* 2 = "
+    mustache "quadrupled"

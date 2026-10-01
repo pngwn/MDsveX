@@ -4,28 +4,22 @@ root
   line_break
   line_break
   html tag="section"
-    paragraph
-      text "hello"
+    text "hello"
   line_break
   html tag="header"
-    paragraph
-      text "head"
+    text "head"
   line_break
   html tag="footer"
-    paragraph
-      text "footsies"
+    text "footsies"
   line_break
   html tag="nav"
-    paragraph
-      text "navigation"
+    text "navigation"
   line_break
   html tag="article"
-    paragraph
-      text "read me"
+    text "read me"
   line_break
   html tag="aside"
-    paragraph
-      text "ignore me"
+    text "ignore me"
   line_break
   html tag="article"
     paragraph
@@ -49,15 +43,13 @@ root
     html tag="tr"
       line_break
       html tag="td"
-        paragraph
-          text "Foo"
+        text "Foo"
       line_break
     line_break
     html tag="tr"
       line_break
       html tag="td"
-        paragraph
-          text "Bar"
+        text "Bar"
       line_break
     line_break
   line_break
@@ -69,16 +61,14 @@ root
       html tag="tr"
         line_break
         html tag="td"
-          paragraph
-            text "Foo"
+          text "Foo"
         line_break
       line_break
     line_break
     html tag="tr"
       line_break
       html tag="td"
-        paragraph
-          text "Bar"
+        text "Bar"
       line_break
     line_break
     html tag="tfoot"
@@ -86,8 +76,7 @@ root
       html tag="tr"
         line_break
         html tag="td"
-          paragraph
-            text "Bar"
+          text "Bar"
         line_break
       line_break
     line_break
@@ -110,8 +99,7 @@ root
   line_break
   line_break
   html tag="address"
-    paragraph
-      text "My street"
+    text "My street"
   line_break
   line_break
   html tag="canvas" id="canvas" width="300" height="300"
@@ -126,20 +114,17 @@ root
     html tag="img" src="mypic.png" alt="An awesome picture" self_closing=true
     line_break
     html tag="figcaption"
-      paragraph
-        text "Caption for the awesome picture"
+      text "Caption for the awesome picture"
     line_break
   line_break
   line_break
   html tag="hgroup"
     line_break
     html tag="h1"
-      paragraph
-        text "Main title"
+      text "Main title"
     line_break
     html tag="h2"
-      paragraph
-        text "Secondary title"
+      text "Secondary title"
     line_break
   line_break
   line_break

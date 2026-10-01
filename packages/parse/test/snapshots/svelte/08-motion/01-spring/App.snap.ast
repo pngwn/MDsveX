@@ -10,11 +10,11 @@ root
     html tag="label"
       line_break
       html tag="h3"
-        paragraph
-          text "stiffness ("
-          mustache "coords.stiffness"
-          text ")"
-      line_break
+        text "stiffness ("
+        mustache "coords.stiffness"
+        text ")"
+      soft_break
+      text "		"
       html tag="input" bind:value=[object Object] type="range" min="0" max="1" step="0.01" self_closing=true
       line_break
     line_break
@@ -22,11 +22,11 @@ root
     html tag="label"
       line_break
       html tag="h3"
-        paragraph
-          text "damping ("
-          mustache "coords.damping"
-          text ")"
-      line_break
+        text "damping ("
+        mustache "coords.damping"
+        text ")"
+      soft_break
+      text "		"
       html tag="input" bind:value=[object Object] type="range" min="0" max="1" step="0.01" self_closing=true
       line_break
     line_break

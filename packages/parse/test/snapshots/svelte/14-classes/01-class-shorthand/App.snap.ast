@@ -8,9 +8,8 @@ root
   html tag="label"
     line_break
     html tag="input" type="checkbox" bind:checked=[object Object] self_closing=true
-    line_break
-    paragraph
-      text "big"
+    soft_break
+    text "	big"
     line_break
   line_break
   line_break

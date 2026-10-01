@@ -18,8 +18,7 @@ root
       line_break
       line_break
       html tag="pre"
-        paragraph
-          mustache "error.stack"
+        mustache "error.stack"
       line_break
       line_break
   line_break

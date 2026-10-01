@@ -173,17 +173,19 @@ describe('CursorHTMLRenderer', () => {
 	});
 
 	it('svelte void tag {@html}', () => {
-		expect(render('{@html "<b>bold</b>"}')).toBe(
-			'<p>{@html "<b>bold</b>"}</p>'
-		);
+		expect(render('{@html "<b>bold</b>"}')).toBe('{@html "<b>bold</b>"}');
 	});
 
 	it('svelte void tag {@debug}', () => {
-		expect(render('{@debug myVar}')).toBe('<p>{@debug myVar}</p>');
+		expect(render('{@debug myVar}')).toBe('{@debug myVar}');
 	});
 
 	it('svelte void tag {@const} no expression', () => {
-		expect(render('{@debug}')).toBe('<p>{@debug}</p>');
+		expect(render('{@debug}')).toBe('{@debug}');
+	});
+
+	it('svelte void tag with text keeps the paragraph', () => {
+		expect(render('{@html raw} after')).toBe('<p>{@html raw} after</p>');
 	});
 
 	it('simple if block', () => {
@@ -257,4 +259,38 @@ describe('static chunk fold', () => {
 		cached.update(buf, source);
 		expect(cached.html).toBe(mapped.html);
 	});
+});
+
+describe('paragraphs around tags and components', () => {
+	const cases: [string, string][] = [
+		['<X />\n', '<X />'],
+		['<X /> <Y />\n', '<X /> <Y />'],
+		['<X />\n<Y />\n', '<X />\n<Y />'],
+		['<X>child</X>\n', '<X>child</X>'],
+		['<img src="a.png">\n', '<img src="a.png">'],
+		['<!-- note -->\n', '<!-- note -->'],
+		['<X /> hello\n', '<p><X /> hello</p>'],
+		['<X />\nhello *world*\n', '<p><X />\nhello <strong>world</strong></p>'],
+		['hello\n<X />\n', '<p>hello\n<X /></p>'],
+		['a <X />\n<Y />\n', '<p>a <X />\n<Y /></p>'],
+		['<X>child</X> after\n', '<p><X>child</X> after</p>'],
+		['{title}\n', '<p>{title}</p>'],
+		['<div><p>hi</p></div>\n', '<div><p>hi</p></div>'],
+		['<div>a</div>\n', '<div>a</div>'],
+		['<div>*a*</div>\n', '<div><strong>a</strong></div>'],
+		['<div>a</div> b\n', '<div>a</div> b'],
+		['<div>\n# hi\n</div>\n', '<div><h1>hi</h1></div>'],
+		[
+			'<details><summary>Title</summary>\n\nBody\n\n</details>\n',
+			'<details><summary>Title</summary><p>Body</p></details>',
+		],
+		['<p>\ntext\n</p>\n', '<p>text</p>'],
+		['<span>\ntext\n</span>\n', '<span>text</span>'],
+	];
+
+	for (const [input, expected] of cases) {
+		it(JSON.stringify(input), () => {
+			expect(render(input).replace(/\n+$/, '')).toBe(expected);
+		});
+	}
 });

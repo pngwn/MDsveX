@@ -6,8 +6,7 @@ root
   line_break
   line_break
   html tag="h2"
-    paragraph
-      text "Immutable"
+    text "Immutable"
   line_break
   svelte_block tag="each"
     svelte_branch tag="each" "todos as todo"
@@ -17,8 +16,7 @@ root
   line_break
   line_break
   html tag="h2"
-    paragraph
-      text "Mutable"
+    text "Mutable"
   line_break
   svelte_block tag="each"
     svelte_branch tag="each" "todos as todo"

@@ -5,7 +5,6 @@ root
   html tag="input" bind:value=[object Object] placeholder="enter your name" self_closing=true
   line_break
   html tag="p"
-    paragraph
-      text "Hello "
-      mustache "name || 'stranger'"
-      text "!"
+    text "Hello "
+    mustache "name || 'stranger'"
+    text "!"

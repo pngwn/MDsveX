@@ -3,19 +3,15 @@ root
   line_break
   line_break
   html tag="h1"
-    paragraph
-      text "The count is "
-      mustache "$count"
+    text "The count is "
+    mustache "$count"
   line_break
   line_break
   html tag="button" on:click=[object Object]
-    paragraph
-      text "+"
-  line_break
+    text "+"
+  soft_break
   html tag="button" on:click=[object Object]
-    paragraph
-      text "-"
-  line_break
+    text "-"
+  soft_break
   html tag="button" on:click=[object Object]
-    paragraph
-      text "reset"
+    text "reset"

@@ -4,8 +4,7 @@ root
   line_break
   html tag="button" on:click=[object Object]
     line_break
-    paragraph
-      text "stop all audio"
+    text "stop all audio"
     line_break
   line_break
   line_break

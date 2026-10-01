@@ -1,4 +1,3 @@
 root
   html tag="p"
-    paragraph
-      text "...don't affect this element"
+    text "...don't affect this element"

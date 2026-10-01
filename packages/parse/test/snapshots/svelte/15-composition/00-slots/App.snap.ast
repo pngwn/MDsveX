@@ -5,11 +5,9 @@ root
   html tag="Box"
     line_break
     html tag="h2"
-      paragraph
-        text "Hello"
-        text "!"
+      text "Hello"
+      text "!"
     line_break
     html tag="p"
-      paragraph
-        text "This is a box. It can contain anything."
+      text "This is a box. It can contain anything."
     line_break

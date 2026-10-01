@@ -9,8 +9,7 @@ root
       html tag="slot" name="name"
         line_break
         html tag="span" class="missing"
-          paragraph
-            text "Unknown name"
+          text "Unknown name"
         line_break
       line_break
     line_break
@@ -20,8 +19,7 @@ root
       html tag="slot" name="address"
         line_break
         html tag="span" class="missing"
-          paragraph
-            text "Unknown address"
+          text "Unknown address"
         line_break
       line_break
     line_break
@@ -31,8 +29,7 @@ root
       html tag="slot" name="email"
         line_break
         html tag="span" class="missing"
-          paragraph
-            text "Unknown email"
+          text "Unknown email"
         line_break
       line_break
     line_break

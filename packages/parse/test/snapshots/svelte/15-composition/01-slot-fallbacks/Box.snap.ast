@@ -7,7 +7,6 @@ root
     html tag="slot"
       line_break
       html tag="em"
-        paragraph
-          text "no content was provided"
+        text "no content was provided"
       line_break
     line_break

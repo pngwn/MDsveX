@@ -8,8 +8,7 @@ root
       svelte_branch tag="each" "options as option"
         line_break
         html tag="option" value=[object Object]
-          paragraph
-            mustache "option.color"
+          mustache "option.color"
         line_break
     line_break
   line_break

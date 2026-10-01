@@ -5,14 +5,19 @@ root
   html tag="Map" lat=[object Object] lon=[object Object] zoom=[object Object]
     line_break
     html tag="MapMarker" lat=[object Object] lon=[object Object] label="Svelte Body Shaping" self_closing=true
-    line_break
+    soft_break
+    text "	"
     html tag="MapMarker" lat=[object Object] lon=[object Object] label="Svelte Barbershop & Essentials" self_closing=true
-    line_break
+    soft_break
+    text "	"
     html tag="MapMarker" lat=[object Object] lon=[object Object] label="Svelte Waxing Studio" self_closing=true
-    line_break
+    soft_break
+    text "	"
     html tag="MapMarker" lat=[object Object] lon=[object Object] label="Svelte 30 Nutritional Consultants" self_closing=true
-    line_break
+    soft_break
+    text "	"
     html tag="MapMarker" lat=[object Object] lon=[object Object] label="Svelte Brands LLC" self_closing=true
-    line_break
+    soft_break
+    text "	"
     html tag="MapMarker" lat=[object Object] lon=[object Object] label="Svelte Medical Systems" self_closing=true
     line_break

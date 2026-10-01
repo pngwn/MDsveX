@@ -1,16 +1,16 @@
 root
-  html tag="Counter" prop="prop" self_closing=true
-  line_break
   paragraph
-    text "<Counter prop=prop/>"
-  line_break
-  html tag="Counter" prop="{prop}" self_closing=true
-  line_break
-  html tag="Counter" prop=[object Object] self_closing=true
-  line_break
-  html tag="Counter" prop="{[1, 2, 3, 4, 5, 6, 7]]}" self_closing=true
-  line_break
-  html tag="Counter" prop="{[{a: 1, b: { c: 2}}, {a: 1, b: { c: 2}}, {a: 1, b: { c: 2}}, {a: 1, b: { c: 2}}, {a: 1, b: { c: 2}}]}" self_closing=true
-  line_break
-  html tag="Counter" prop=[object Object] self_closing=true
+    html tag="Counter" prop="prop" self_closing=true
+    soft_break
+    text tag="Counter" prop="prop/" "<Counter prop=prop/>"
+    soft_break
+    html tag="Counter" prop="{prop}" self_closing=true
+    soft_break
+    html tag="Counter" prop=[object Object] self_closing=true
+    soft_break
+    html tag="Counter" prop="{[1, 2, 3, 4, 5, 6, 7]]}" self_closing=true
+    soft_break
+    html tag="Counter" prop="{[{a: 1, b: { c: 2}}, {a: 1, b: { c: 2}}, {a: 1, b: { c: 2}}, {a: 1, b: { c: 2}}, {a: 1, b: { c: 2}}]}" self_closing=true
+    soft_break
+    html tag="Counter" prop=[object Object] self_closing=true
   line_break

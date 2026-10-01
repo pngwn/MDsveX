@@ -8,9 +8,8 @@ root
   html tag="label"
     line_break
     html tag="input" type="checkbox" bind:checked=[object Object] self_closing=true
-    line_break
-    paragraph
-      text "visible"
+    soft_break
+    text "	visible"
     line_break
   line_break
   line_break
@@ -20,8 +19,7 @@ root
       html tag="div" class="centered" in:spin="{{duration: 8000}}" out:fade=true
         line_break
         html tag="span"
-          paragraph
-            text "transitions"
-            text "!"
+          text "transitions"
+          text "!"
         line_break
       line_break

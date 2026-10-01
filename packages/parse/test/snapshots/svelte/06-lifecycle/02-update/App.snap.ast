@@ -8,8 +8,7 @@ root
   html tag="div" class="chat"
     line_break
     html tag="h1"
-      paragraph
-        text "Eliza"
+      text "Eliza"
     line_break
     line_break
     html tag="div" class="scrollable" bind:this=[object Object]
@@ -20,8 +19,7 @@ root
           html tag="article" class=[object Object]
             line_break
             html tag="span"
-              paragraph
-                mustache "comment.text"
+              mustache "comment.text"
             line_break
           line_break
       line_break

@@ -3,6 +3,5 @@ root
   line_break
   line_break
   html tag="p"
-    paragraph
-      text "The answer is "
-      mustache "answer"
+    text "The answer is "
+    mustache "answer"

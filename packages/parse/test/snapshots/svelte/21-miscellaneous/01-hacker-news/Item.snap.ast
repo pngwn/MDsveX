@@ -6,8 +6,7 @@ root
   line_break
   line_break
   html tag="a" href=[object Object]
-    paragraph
-      text "&laquo; back"
+    text "&laquo; back"
   line_break
   line_break
   html tag="article"
@@ -15,23 +14,20 @@ root
     html tag="a" href="{item.url}"
       line_break
       html tag="h1"
-        paragraph
-          mustache "item.title"
-      line_break
+        mustache "item.title"
+      soft_break
+      text "		"
       html tag="small"
-        paragraph
-          mustache "item.domain"
+        mustache "item.domain"
       line_break
     line_break
     line_break
     html tag="p" class="meta"
-      paragraph
-        text "submitted by "
-        mustache "item.user"
-        text " "
-        mustache "item.time_ago"
+      text "submitted by "
+      mustache "item.user"
+      text " "
+      mustache "item.time_ago"
       line_break
-      paragraph
   line_break
   line_break
   html tag="div" class="comments"

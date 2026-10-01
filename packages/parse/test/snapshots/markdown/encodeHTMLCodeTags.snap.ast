@@ -13,7 +13,6 @@ root
     html tag="code"
       line_break
       html tag="div"
-        paragraph
-          text "foo"
+        text "foo"
       line_break
   line_break

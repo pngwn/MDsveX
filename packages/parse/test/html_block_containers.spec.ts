@@ -42,8 +42,15 @@ const after_shape: Shape[] = [
 
 describe('html block closing containers opened inside it', () => {
 	test('list on the opener line keeps later paragraphs', () => {
+		expect(strip_line_breaks(root_shape(`<div>- a\n</div>${after}`))).toEqual([
+			['html', ['list', ['list_item', 'text:a']], 'line_break'],
+			...after_shape,
+		]);
+	});
+
+	test('an element closing on its opener line holds inline content', () => {
 		expect(strip_line_breaks(root_shape(`<div>- a</div>${after}`))).toEqual([
-			['html', ['list', ['list_item', 'text:a']]],
+			['html', 'text:- a'],
 			...after_shape,
 		]);
 	});
@@ -68,15 +75,23 @@ describe('html block closing containers opened inside it', () => {
 	});
 
 	test('empty list item followed by a stray angle bracket', () => {
-		expect(root_shape('<p>- </p><\n')).toEqual([
-			['html', ['list', 'list_item']],
+		expect(root_shape('<div>\n- </div><\n')).toEqual([
+			['html', 'line_break', ['list', 'list_item']],
 			['paragraph', 'text:<'],
 			'line_break',
 		]);
 	});
 
+	test('inline element followed by a stray angle bracket', () => {
+		expect(root_shape('<p>- </p><\n')).toEqual([
+			['html', 'text:- '],
+			'text:<',
+			'line_break',
+		]);
+	});
+
 	test('list closed by the html tag is marked tight', () => {
-		const { nodes } = parse_markdown_svelte(`<div>- a</div>${after}`);
+		const { nodes } = parse_markdown_svelte(`<div>- a\n</div>${after}`);
 		const html = nodes.get_node(nodes.get_node().children[0]);
 		const list = nodes.get_node(html.children[0]);
 		expect(list.kind).toBe('list');
@@ -381,4 +396,46 @@ describe('a container close tag on its own line ends the paragraph', () => {
 			}
 		});
 	}
+});
+
+describe('paragraphs that start with a tag', () => {
+	const inputs = [
+		'<X />\n',
+		'<X /> <Y />\n',
+		'<X />\n<Y />\n\nafter\n',
+		'<X /> hello\n',
+		'<X />\nhello *world*\n',
+		'<div><p>hi</p></div>\n',
+		'<div>a</div> b\n',
+		'<X>`<div>`</X> c\n',
+		'{@html raw}\n',
+		'{@html raw} text\n',
+		'> <X />\n> <Y />\n',
+		'> <X />\n> text\n',
+		'{#if a}\n<X />\n{/if}\n',
+		'<div>\n<X />\n</div>\n',
+		'<p>\nline\n\nline\n</p>\n',
+		'<span>unclosed\n\nnext\n',
+	];
+
+	for (const input of inputs) {
+		test(`${JSON.stringify(input)} matches when fed in chunks`, () => {
+			const { nodes, source } = parse_markdown_svelte(input);
+			const batch = shape(nodes, source);
+			for (const size of [1, 2, 5]) {
+				expect(shape(parse_incremental(input, size), source)).toEqual(batch);
+			}
+		});
+	}
+
+	test('a long tag only paragraph survives feed window trims', () => {
+		const input = '<X />\n'.repeat(400) + 'tail text\n\n<Y />\n';
+		const { nodes, source } = parse_markdown_svelte(input);
+		const batch = shape(nodes, source) as Shape[];
+		expect((batch[1] as Shape[])[0]).toBe('paragraph');
+		expect(batch[batch.length - 2]).toBe('html');
+		for (const size of [1, 7, 64]) {
+			expect(shape(parse_incremental(input, size), source)).toEqual(batch);
+		}
+	});
 });

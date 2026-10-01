@@ -16,13 +16,11 @@ root
       line_break
       line_break
       html tag="a" href="#/top/{page + 1}"
-        paragraph
-          text "page "
-          mustache "page + 1"
+        text "page "
+        mustache "page + 1"
       line_break
     svelte_branch tag="else"
       line_break
       html tag="p" class="loading"
-        paragraph
-          text "loading..."
+        text "loading..."
       line_break

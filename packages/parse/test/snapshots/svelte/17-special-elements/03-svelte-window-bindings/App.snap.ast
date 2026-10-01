@@ -19,8 +19,7 @@ root
     line_break
     html tag="span" style="opacity: {1 - Math.max(0, y / 40)}"
       line_break
-      paragraph
-        text "scroll down"
+      text "scroll down"
       line_break
     line_break
     line_break

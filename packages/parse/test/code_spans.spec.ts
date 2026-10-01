@@ -475,9 +475,11 @@ describe('code spans', () => {
 			.map((i: number) => nodes.get_node(i))
 			.filter((n: any) => n.kind !== 'line_break');
 
-		expect(children.length).toBeGreaterThanOrEqual(1);
-		expect(children[0].kind).toBe('html');
-		expect(children[1].kind).toBe('paragraph');
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('paragraph');
+		expect(
+			children[0].children.map((i: number) => nodes.get_node(i).kind)
+		).toEqual(['html', 'text']);
 	});
 
 	// Autolink with backtick

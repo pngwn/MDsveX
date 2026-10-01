@@ -8,14 +8,12 @@ root
   html tag="article"
     line_break
     html tag="p" class="meta"
-      paragraph
-        mustache "comment.user"
-        text " "
-        mustache "comment.time_ago"
+      mustache "comment.user"
+      text " "
+      mustache "comment.time_ago"
     line_break
     line_break
-    paragraph
-      svelte_tag tag="html" "comment.content"
+    svelte_tag tag="html" "comment.content"
     line_break
     line_break
     html tag="div" class="replies"

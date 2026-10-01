@@ -3,17 +3,15 @@ root
   line_break
   line_break
   html tag="p"
-    paragraph
-      text "status: "
-      mustache "status"
+    text "status: "
+    mustache "status"
   line_break
   line_break
   html tag="label"
     line_break
     html tag="input" type="checkbox" bind:checked=[object Object] self_closing=true
-    line_break
-    paragraph
-      text "visible"
+    soft_break
+    text "	visible"
     line_break
   line_break
   line_break
@@ -22,7 +20,6 @@ root
       line_break
       html tag="p" transition:fly="{{ y: 200, duration: 2000 }}" on:introstart="{() => status = 'intro started'}" on:outrostart="{() => status = 'outro started'}" on:introend="{() => status = 'intro ended'}" on:outroend="{() => status = 'outro ended'}"
         line_break
-        paragraph
-          text "Flies in and out"
+        text "Flies in and out"
         line_break
       line_break

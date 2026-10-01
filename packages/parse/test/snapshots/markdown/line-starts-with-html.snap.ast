@@ -1,12 +1,11 @@
 root
-  html tag="a" href="foo"
-    paragraph
+  paragraph
+    html tag="a" href="foo"
       text "some text"
-  paragraph
-    text "words"
+    text " words"
   line_break
   line_break
-  html tag="br" self_closing=true
   paragraph
-    text "words"
+    html tag="br" self_closing=true
+    text " words"
   line_break

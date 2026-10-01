@@ -49,10 +49,10 @@ root
           text " scope."
         line_break
         line_break
-        html tag="CodeBlock" fname="install.sh" lang="shell" html=[object Object] self_closing=true
-        line_break
         paragraph
-          text "That's it — no peer dependencies, no postinstall scripts, no native bindings."
+          html tag="CodeBlock" fname="install.sh" lang="shell" html=[object Object] self_closing=true
+          soft_break
+          text "		That's it — no peer dependencies, no postinstall scripts, no native bindings."
         line_break
         line_break
     line_break
@@ -130,20 +130,16 @@ root
         html tag="ul"
           line_break
           html tag="li"
-            paragraph
-              text "html, css, javascript, typescript, jsx, tsx"
+            text "html, css, javascript, typescript, jsx, tsx"
           line_break
           html tag="li"
-            paragraph
-              text "json, yaml, toml, markdown, mdx"
+            text "json, yaml, toml, markdown, mdx"
           line_break
           html tag="li"
-            paragraph
-              text "rust, go, python, ruby, swift"
+            text "rust, go, python, ruby, swift"
           line_break
           html tag="li"
-            paragraph
-              text "shell, sql, graphql, dockerfile"
+            text "shell, sql, graphql, dockerfile"
           line_break
         line_break
         line_break

@@ -729,11 +729,8 @@ export class NodeBuffer {
 		const parent_kind =
 			parent !== 0xffffffff ? this.kind_at(parent) : undefined;
 
-		// tight-list speculation repair
-		// a pending paragraph inside a list_item represents the "loose"
-		// wrapper that tight lists don't need. revoking it simply drops
-		// the wrapper and reparents children to the list_item.
-		if (kind === NodeKind.paragraph && parent_kind === NodeKind.list_item) {
+		// a revoked paragraph is a wrapper a tight list item or a paragraph of only tags does not need
+		if (kind === NodeKind.paragraph) {
 			this.unwrap_node(index);
 			return;
 		}

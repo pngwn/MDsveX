@@ -6,8 +6,7 @@ root
   line_break
   line_break
   html tag="h1"
-    paragraph
-      text "Photo album"
+    text "Photo album"
   line_break
   line_break
   html tag="div" class="photos"
@@ -20,8 +19,7 @@ root
           html tag="img" src=[object Object] alt=[object Object] self_closing=true
           line_break
           html tag="figcaption"
-            paragraph
-              mustache "photo.title"
+            mustache "photo.title"
           line_break
         line_break
       svelte_branch tag="else"
@@ -30,7 +28,6 @@ root
           html_comment " this block renders when photos.length === 0 "
         line_break
         html tag="p"
-          paragraph
-            text "loading..."
+          text "loading..."
         line_break
     line_break
