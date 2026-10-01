@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "pnpm --filter \"@mdsvex/site^...\" build && vite build",
 		"preview": "vite preview",
 		"cy:run": "cypress run",
 		"cy:open": "cypress open",
