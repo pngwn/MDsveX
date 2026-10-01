@@ -138,6 +138,9 @@ const WAIT_NEEDLE = 4;
 const enum FeedWait {
 	// an unclosed code span past the trim gap, a chunk with no backtick and no possibly blank line cannot end it
 	code_span = 5,
+	// a block quote fence waiting for its close or an unmarked line, a chunk with no backtick
+	// whose lines all start with the quote markers decides nothing
+	bq_fence = 6,
 }
 
 // resumable brace probe states, one char at a time so a scan cut at the input end resumes exactly
@@ -668,6 +671,9 @@ interface ColdState {
 	tag_memo_base: number;
 	wait_needle: string;
 	wait_cursor: number;
+	// the stalled block quote fence scan, fence cursor or -1 and the first line it has not passed
+	bqf_at: number;
+	bqf_line: number;
 	// the cut, window base and kept html openers of the last trim_keeping_html, an equal trim keeps the window
 	kept_cut: number;
 	kept_base: number;
@@ -714,6 +720,8 @@ export class PFMParser {
 		tag_memo_base: 0,
 		wait_needle: '',
 		wait_cursor: -1,
+		bqf_at: -1,
+		bqf_line: 0,
 		kept_cut: -1,
 		kept_base: 0,
 		kept_count: 0,
@@ -891,6 +899,7 @@ export class PFMParser {
 			this.out.open(0, NodeKind.root, 0, -1, 0, false);
 		} else this._init(ID_MIN_CAPACITY);
 		this.cold.kept_cut = -1;
+		this.cold.bqf_at = -1;
 		this.finished = false;
 		this.one_shot = false;
 	}
@@ -1117,6 +1126,109 @@ export class PFMParser {
 		this.cold.wait_cursor = this.cursor;
 	}
 
+	/**
+	 * bq_fence_scan for unfinished input, resumes at the first line the last stalled scan of
+	 * this fence did not pass and stalls on a line whose markers run off the end
+	 * a stall on a marked line sets a wait, later lines decide only once a chunk may
+	 */
+	private bq_fence_feed(start_pos: number, fence_len: number, depth: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const cold = this.cold;
+		let line = start_pos;
+		if (cold.bqf_at === this.cursor && cold.bqf_line > line) line = cold.bqf_line;
+		for (;;) {
+			let marked = false;
+			if (line < length) {
+				let pos = line;
+				let i = 0;
+				for (; i < depth; i++) {
+					while (pos < length) {
+						const c = char_code_at.call(source, pos - base);
+						if (c !== SPACE && c !== TAB) break;
+						pos++;
+					}
+					if (pos >= length) break;
+					if (char_code_at.call(source, pos - base) !== CLOSE_ANGLE_BRACKET) {
+						cold.bqf_at = -1;
+						return -1;
+					}
+					pos++;
+					if (pos < length && char_code_at.call(source, pos - base) === SPACE)
+						pos++;
+				}
+				if (i === depth) {
+					marked = true;
+					while (pos < length) {
+						const c = char_code_at.call(source, pos - base);
+						if (c !== SPACE && c !== TAB) break;
+						pos++;
+					}
+					let bt = 0;
+					while (
+						pos < length &&
+						char_code_at.call(source, pos - base) === BACKTICK
+					) {
+						bt++;
+						pos++;
+					}
+					if (bt >= fence_len) {
+						cold.bqf_at = -1;
+						return 1;
+					}
+					const nl = string_index_of.call(source, '\n', pos - base);
+					if (nl !== -1) {
+						line = nl + base + 1;
+						continue;
+					}
+				}
+			}
+			cold.bqf_at = this.cursor;
+			cold.bqf_line = line;
+			// a line start at the end or a marked line, the next chunk decides nothing without a backtick or an unmarked line
+			if (line >= length || marked) {
+				this.wait_kind = FeedWait.bq_fence;
+				cold.wait_cursor = this.cursor;
+			}
+			return 0;
+		}
+	}
+
+	/** false only when the chunk has no backtick and every line starting in it starts with all the quote markers */
+	private bq_fence_may_decide(chunk: string, len: number): boolean {
+		if (string_index_of.call(chunk, '`') !== -1) return true;
+		const depth = this.block_quote_depth;
+		const pending = this.wait_chunks;
+		const prev =
+			pending.length !== 0 ? pending[pending.length - 1] : this.source;
+		let line = char_code_at.call(prev, prev.length - 1) === LINEFEED ? 0 : -1;
+		if (line === -1) {
+			const lf = string_index_of.call(chunk, '\n');
+			if (lf === -1) return false;
+			line = lf + 1;
+		}
+		while (line < len) {
+			let pos = line;
+			for (let i = 0; i < depth; i++) {
+				while (pos < len) {
+					const c = char_code_at.call(chunk, pos);
+					if (c !== SPACE && c !== TAB) break;
+					pos++;
+				}
+				// markers cut by the chunk end, let _run look
+				if (pos >= len || char_code_at.call(chunk, pos) !== CLOSE_ANGLE_BRACKET)
+					return true;
+				pos++;
+				if (pos < len && char_code_at.call(chunk, pos) === SPACE) pos++;
+			}
+			const lf = string_index_of.call(chunk, '\n', pos);
+			if (lf === -1) return false;
+			line = lf + 1;
+		}
+		return false;
+	}
+
 	/** false only when the chunk has no backtick and no line starting in it starts with a space, tab or linefeed */
 	private code_span_may_end(chunk: string, len: number): boolean {
 		if (len === 0 || string_index_of.call(chunk, '`') !== -1) return true;
@@ -1210,7 +1322,9 @@ export class PFMParser {
 						? !this.brace_scan(chunk, end, end + len)
 						: kind === WAIT_NEEDLE
 							? !this.needle_in(chunk, len)
-							: !this.code_span_may_end(chunk, len)
+							: kind === FeedWait.code_span
+								? !this.code_span_may_end(chunk, len)
+								: !this.bq_fence_may_decide(chunk, len)
 				) {
 					if (pending === NO_STACK) this.wait_chunks = [chunk];
 					else pending.push(chunk);
@@ -7353,11 +7467,9 @@ export class PFMParser {
 				)
 					info_end++;
 				if (info_end >= length && !this.finished) return true;
-				const scan = this.bq_fence_scan(
-					info_end + 1,
-					this.extra,
-					this.block_quote_depth
-				);
+				const scan = this.finished
+					? this.bq_fence_scan(info_end + 1, this.extra, this.block_quote_depth)
+					: this.bq_fence_feed(info_end + 1, this.extra, this.block_quote_depth);
 				if (scan === 0) return true;
 				if (scan === -1) {
 					// fence cannot close inside the blockquote -
