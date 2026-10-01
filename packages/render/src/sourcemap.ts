@@ -1177,7 +1177,9 @@ function trace_lines(
 		for (let i = 0; i < n; i++) if (src[i] > max_src) max_src = src[i];
 	}
 
-	// only the lines up to the last source found need starts
+	// only the lines up to the last source found need starts, none when no
+	// query found one, which spares the scan for \r
+	if (max_src < 0) return gen_count;
 	fill_line_starts(src_table, source, PAST_END, max_src);
 	const src_starts = src_table.starts;
 	const src_count = src_table.count;
@@ -1252,6 +1254,9 @@ export function chain_trace(
 		let size = wanted.length * 2;
 		while (size < gen_count) size *= 2;
 		wanted = wanted_buf = new Uint8Array(size);
+	} else if (gen_count < 256) {
+		// a short fill as stores costs less than the builtin's call
+		for (let l = 0; l < gen_count; l++) wanted[l] = 0;
 	} else wanted.fill(0, 0, gen_count);
 	if (query_buf.length < count) query_buf = new Int32Array(count * 2);
 	const queries = query_buf;
@@ -1297,7 +1302,7 @@ export function chain_trace(
 		query_count = kept;
 	}
 	const lines =
-		trace.split === trace.start
+		trace.split === trace.start || query_count === 0
 			? 0
 			: trace_lines(
 					trace.buf,

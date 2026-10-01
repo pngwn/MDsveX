@@ -439,8 +439,12 @@ const JSON_ESCAPES = /* @__PURE__ */ (() => {
 	return t;
 })();
 
-// utf8 of a source being escaped, reused across transforms
+// utf8 of a source being escaped, reused across transforms, with a view of
+// it and of the buffer it is escaped into, made once per buffer
 let json_stage: Buffer | null = null;
+let json_stage_view: DataView | null = null;
+let json_out: Buffer | null = null;
+let json_out_view: DataView | null = null;
 
 /**
  * writes the utf8 of JSON.stringify(raw) into out at n, raw well formed (no
@@ -453,10 +457,15 @@ function write_json_string(raw: string, out: Buffer, n: number): number {
 		let size = 1 << 14;
 		while (size < raw.length * 3) size <<= 1;
 		stage = json_stage = Buffer.allocUnsafe(size);
+		json_stage_view = new DataView(stage.buffer, stage.byteOffset, size);
 	}
 	const len = stage.write(raw, 0, 'utf8');
-	const view = new DataView(stage.buffer, stage.byteOffset, len);
-	const out_view = new DataView(out.buffer, out.byteOffset, out.length);
+	const view = json_stage_view!;
+	if (json_out !== out) {
+		json_out = out;
+		json_out_view = new DataView(out.buffer, out.byteOffset, out.length);
+	}
+	const out_view = json_out_view!;
 	const escapes = JSON_ESCAPES;
 	out[n++] = 34;
 	const words = len - 3;
