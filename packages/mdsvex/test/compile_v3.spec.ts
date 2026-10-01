@@ -25,8 +25,15 @@ function fixture_files(dir: string): string[] {
 
 const ID = '/src/routes/page.svx';
 
+// some fixtures open with frontmatter that is not yaml, keep it as metadata
+const frontmatter = { parse: (raw: string) => ({ raw }) };
+
 function object_path(raw: string, plugins?: ParsePlugin[]) {
-	const result = compile(raw, { sourcemap: true, parse_plugins: plugins });
+	const result = compile(raw, {
+		sourcemap: true,
+		parse_plugins: plugins,
+		frontmatter,
+	});
 	return {
 		code: result.code,
 		map: mappings_to_v3(result.mappings!, raw, result.code, ID),
@@ -52,7 +59,13 @@ describe('CompilerSession.compile_v3', () => {
 			const session = new CompilerSession();
 			for (const file of files) {
 				const raw = to(readFileSync(file, 'utf8'));
-				const got = session.compile_v3(raw, ID);
+				const got = session.compile_v3(
+					raw,
+					ID,
+					undefined,
+					undefined,
+					frontmatter.parse
+				);
 				const want = object_path(raw);
 				expect(got.code, file).toBe(want.code);
 				expect(JSON.stringify(got.map), file).toBe(JSON.stringify(want.map));
@@ -70,7 +83,13 @@ describe('CompilerSession.compile_v3', () => {
 		};
 		const session = new CompilerSession();
 		for (const raw of ['# a\n\ntext *b*\n', '# a\r\n\r\ntext\r\n']) {
-			const got = session.compile_v3(raw, ID, [plugin]);
+			const got = session.compile_v3(
+				raw,
+				ID,
+				[plugin],
+				undefined,
+				frontmatter.parse
+			);
 			expect(got.code).toContain('from-plugin');
 			expect(JSON.stringify(got)).toBe(
 				JSON.stringify(object_path(raw, [plugin]))
