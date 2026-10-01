@@ -123,6 +123,26 @@ const EMPTY_ERRORS = new ErrorCollector(1);
 /** never written, most documents define no references so a parser swaps in its own map at the first definition */
 const NO_REFS: Map<string, { url: string; title: string }> = new Map();
 
+/**
+ * normalize link reference label: collapse whitespace, lowercase. an ascii label
+ * with no uppercase, no control chars and single inner spaces is already normal
+ */
+function normalize_label(label: string): string {
+	const n = label.length;
+	let prev = SPACE;
+	for (let i = 0; i < n; i++) {
+		const c = char_code_at.call(label, i);
+		if (c <= SPACE ? c !== SPACE || prev === SPACE : c >= 65 && (c <= 90 || c >= 128))
+			return normalize_label_slow(label);
+		prev = c;
+	}
+	return prev === SPACE ? normalize_label_slow(label) : label;
+}
+
+function normalize_label_slow(label: string): string {
+	return label.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 // a leaked list_depth can leave the stack short, blocks then read the padding hole as their parent
 function truncate_stack(stack: number[], base: number): void {
 	while (stack.length > base) stack.pop();
@@ -1870,10 +1890,6 @@ export class PFMParser {
 		return true;
 	}
 
-	/** normalize link reference label: collapse whitespace, lowercase. */
-	private normalize_label(label: string): string {
-		return label.trim().replace(/\s+/g, ' ').toLowerCase();
-	}
 
 	/**
 	 * check if a character code is valid in a directive name.
@@ -4806,7 +4822,7 @@ export class PFMParser {
 		if (p < length) p++; // skip newline
 
 		// store definition - first one wins
-		const normalized = this.normalize_label(label);
+		const normalized = normalize_label(label);
 		if (normalized) {
 			let refs = this.ref_map;
 			if (refs === NO_REFS) refs = this.ref_map = new Map();
@@ -8321,7 +8337,7 @@ export class PFMParser {
 					);
 					const refs = this.ref_map;
 					const def =
-						refs.size === 0 ? undefined : refs.get(this.normalize_label(label));
+						refs.size === 0 ? undefined : refs.get(normalize_label(label));
 					if (def) {
 						const is_image = this.kind_of(current_node) === NodeKind.image;
 						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
@@ -8374,7 +8390,7 @@ export class PFMParser {
 					);
 					const refs = this.ref_map;
 					const def =
-						refs.size === 0 ? undefined : refs.get(this.normalize_label(label));
+						refs.size === 0 ? undefined : refs.get(normalize_label(label));
 					if (def) {
 						const is_image = this.kind_of(current_node) === NodeKind.image;
 						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
