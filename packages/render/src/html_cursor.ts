@@ -2394,15 +2394,7 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 				code = code.replace(/\n/g, ' ');
 			tr_content(c, sink, p, code, Code.CODE_CONTENT);
 			const bc = mo.length;
-			_spans(
-				sink,
-				pre,
-				ao,
-				bc,
-				bc + FOLD_LEN[S_CODE_CLOSE],
-				c,
-				Preset.CODE
-			);
+			_spans(sink, pre, ao, bc, bc + FOLD_LEN[S_CODE_CLOSE], c, Preset.CODE);
 			return S_CODE_CLOSE;
 		}
 
@@ -2532,15 +2524,7 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			const ao = mo.length + FOLD_LEN[p];
 			tr_content(c, sink, p, c.text(), Code.TEXT_CONTENT);
 			const bc = mo.length;
-			_spans(
-				sink,
-				pre,
-				ao,
-				bc,
-				bc + FOLD_LEN[S_COMMENT_CLOSE],
-				c,
-				Preset.TEXT
-			);
+			_spans(sink, pre, ao, bc, bc + FOLD_LEN[S_COMMENT_CLOSE], c, Preset.TEXT);
 			return S_COMMENT_CLOSE;
 		}
 
@@ -2550,15 +2534,7 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			const ao = mo.length + FOLD_LEN[p];
 			tr_content(c, sink, p, c.text(), Code.SVELTE_CONTENT);
 			const bc = mo.length;
-			_spans(
-				sink,
-				pre,
-				ao,
-				bc,
-				bc + FOLD_LEN[S_BRACE_CLOSE],
-				c,
-				Preset.SVELTE
-			);
+			_spans(sink, pre, ao, bc, bc + FOLD_LEN[S_BRACE_CLOSE], c, Preset.SVELTE);
 			return S_BRACE_CLOSE;
 		}
 
@@ -2575,15 +2551,7 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 				tr_content(c, sink, S_SPACE, text, Code.SVELTE_CONTENT);
 			}
 			const bc = mo.length;
-			_spans(
-				sink,
-				pre,
-				ao,
-				bc,
-				bc + FOLD_LEN[S_BRACE_CLOSE],
-				c,
-				Preset.SVELTE
-			);
+			_spans(sink, pre, ao, bc, bc + FOLD_LEN[S_BRACE_CLOSE], c, Preset.SVELTE);
 			return S_BRACE_CLOSE;
 		}
 
@@ -2863,10 +2831,53 @@ function resolve_mappings(sink: MapSink): Mapping<MappingData>[] {
 	return record_mappings(sink.rec, sink.n);
 }
 
-/** collapsed \r\n before a normalized offset */
-function rank_of(collapsed: readonly number[], offset: number): number {
-	let lo = 0;
-	let hi = collapsed.length;
+/**
+ * collapsed \r\n before a normalized offset, searched outward from the rank
+ * of a nearby offset, records come in document order with parents after
+ * their children, so most searches end within a step or two of the hint
+ */
+function rank_near(
+	collapsed: readonly number[],
+	offset: number,
+	hint: number
+): number {
+	const count = collapsed.length;
+	let lo: number;
+	let hi: number;
+	if (hint < count && collapsed[hint] < offset) {
+		// gallop forward, the rank is in (hint, count]
+		lo = hint + 1;
+		let step = 1;
+		for (;;) {
+			hi = hint + step;
+			if (hi >= count) {
+				hi = count;
+				break;
+			}
+			if (collapsed[hi] >= offset) break;
+			lo = hi + 1;
+			step += step;
+		}
+	} else if (hint > 0 && collapsed[hint - 1] >= offset) {
+		// gallop backward, the rank is in [0, hint)
+		hi = hint - 1;
+		let step = 1;
+		for (;;) {
+			lo = hint - 1 - step;
+			if (lo <= 0) {
+				lo = 0;
+				break;
+			}
+			if (collapsed[lo] < offset) {
+				lo++;
+				break;
+			}
+			hi = lo;
+			step += step;
+		}
+	} else {
+		return hint;
+	}
 	while (lo < hi) {
 		const mid = (lo + hi) >>> 1;
 		if (collapsed[mid] < offset) lo = mid + 1;
@@ -2888,8 +2899,11 @@ function resolve_raw_mappings(
 	const rec = sink.rec;
 	const n = sink.n;
 	const count = collapsed.length;
-	const mappings: Mapping<MappingData>[] = [];
+	// one mapping per record, sized once as record_mappings does
+	const mappings: Mapping<MappingData>[] = new Array(n / Rec.SIZE);
+	let at = 0;
 	const data_of = record_data;
+	let k = 0;
 	for (let p = 0; p < n; p += Rec.SIZE) {
 		const source_length = rec[p + 3];
 		const gen_offset = rec[p];
@@ -2897,7 +2911,7 @@ function resolve_raw_mappings(
 		let start = rec[p + 2];
 		const end = start + source_length;
 		const identity = gen_length === source_length;
-		let k = rank_of(collapsed, start);
+		k = rank_near(collapsed, start, k);
 		const code = rec[p + 5];
 		const node_index = rec[p + 4] | 0;
 		// one class for every mapping so readers stay monomorphic, only a piece
@@ -2927,37 +2941,33 @@ function resolve_raw_mappings(
 					lengths,
 					data: data_of(code, node_index),
 				};
-				mappings.push(new RecordMapping(0, 0, 0, 0, code, node_index, m));
+				mappings[at++] = new RecordMapping(0, 0, 0, 0, code, node_index, m);
 			} else {
-				mappings.push(
-					new RecordMapping(
-						start + k,
-						gen_offset,
-						source_length,
-						source_length,
-						code,
-						node_index,
-						null
-					)
+				mappings[at++] = new RecordMapping(
+					start + k,
+					gen_offset,
+					source_length,
+					source_length,
+					code,
+					node_index,
+					null
 				);
 			}
 			continue;
 		}
 		let length = source_length;
 		if (k < count && collapsed[k] < end) {
-			length = end + rank_of(collapsed, end) - start - k;
+			length = end + rank_near(collapsed, end, k) - start - k;
 		}
 		if (length !== gen_length) {
-			mappings.push(
-				new RecordMapping(
-					start + k,
-					gen_offset,
-					length,
-					gen_length,
-					code,
-					node_index,
-					null
-				)
+			mappings[at++] = new RecordMapping(
+				start + k,
+				gen_offset,
+				length,
+				gen_length,
+				code,
+				node_index,
+				null
 			);
 		} else {
 			const m: Mapping<MappingData> = {
@@ -2967,7 +2977,7 @@ function resolve_raw_mappings(
 				data: data_of(code, node_index),
 				generatedLengths: [gen_length],
 			};
-			mappings.push(new RecordMapping(0, 0, 0, 0, code, node_index, m));
+			mappings[at++] = new RecordMapping(0, 0, 0, 0, code, node_index, m);
 		}
 	}
 	return mappings;
