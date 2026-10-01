@@ -6821,6 +6821,23 @@ export class PFMParser {
 								this.states.pop();
 								continue;
 							}
+							// trailing whitespace in a heading is trimmed, so it gets no text node
+							if (this.in_heading && (code === SPACE || code === TAB)) {
+								let p = this.cursor + 1;
+								while (p < length) {
+									const ch = char_code_at.call(source, p - base);
+									if (ch !== SPACE && ch !== TAB) break;
+									p++;
+								}
+								if (p >= length && !this.finished) break main_loop;
+								if (
+									p >= length ||
+									char_code_at.call(source, p - base) === LINEFEED
+								) {
+									this.chomp(p, true);
+									continue;
+								}
+							}
 							const t_id = this.emit_open(
 								NodeKind.text,
 								this.cursor,
@@ -7164,7 +7181,8 @@ export class PFMParser {
 							// applies until the closing backtick. the close handler
 							// sets both value_start and value_end with correct boundaries.
 
-							this.chomp(2);
+							// a space at the end of the input leaves nothing to skip after it
+							this.chomp(this.cursor + 1 >= length ? 1 : 2);
 
 							continue;
 						}
