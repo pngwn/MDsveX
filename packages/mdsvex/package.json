@@ -40,7 +40,8 @@
 	"dependencies": {
 		"@ampproject/remapping": "^2.3.0",
 		"@mdsvex/parse": "workspace:*",
-		"@mdsvex/render": "workspace:*"
+		"@mdsvex/render": "workspace:*",
+		"es-module-lexer": "^1.6.0"
 	},
 	"peerDependencies": {
 		"vite": ">=5.0.0"
@@ -49,5 +50,10 @@
 		"vite": {
 			"optional": true
 		}
+	},
+	"devDependencies": {
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"svelte": "^5.55.0",
+		"vite": "^7.3.1"
 	}
 }

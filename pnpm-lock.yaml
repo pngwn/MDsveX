@@ -282,8 +282,18 @@ importers:
       '@mdsvex/render':
         specifier: workspace:*
         version: link:../render
+      es-module-lexer:
+        specifier: ^1.6.0
+        version: 1.6.0
+    devDependencies:
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^6.2.4
+        version: 6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
+      svelte:
+        specifier: ^5.55.0
+        version: 5.57.1(@typescript-eslint/types@8.57.2)
       vite:
-        specifier: '>=5.0.0'
+        specifier: ^7.3.1
         version: 7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)
 
   packages/mdsvex/test/kit3_app:
@@ -6841,6 +6851,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@sveltejs/vite-plugin-svelte-inspector@5.0.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)))(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))':
+    dependencies:
+      '@sveltejs/vite-plugin-svelte': 6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
+      debug: 4.4.3
+      svelte: 5.57.1(@typescript-eslint/types@8.57.2)
+      vite: 7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)
+    transitivePeerDependencies:
+      - supports-color
+
   '@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.39.11)(vite@7.1.9(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))':
     dependencies:
       '@sveltejs/vite-plugin-svelte-inspector': 5.0.1(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.39.11)(vite@7.1.9(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)))(svelte@5.39.11)(vite@7.1.9(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
@@ -6860,6 +6879,18 @@ snapshots:
       magic-string: 0.30.21
       obug: 2.1.1
       svelte: 5.55.0
+      vite: 7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)
+      vitefu: 1.1.1(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
+    transitivePeerDependencies:
+      - supports-color
+
+  '@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))':
+    dependencies:
+      '@sveltejs/vite-plugin-svelte-inspector': 5.0.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)))(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
+      deepmerge: 4.3.1
+      magic-string: 0.30.21
+      obug: 2.1.1
+      svelte: 5.57.1(@typescript-eslint/types@8.57.2)
       vite: 7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)
       vitefu: 1.1.1(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
     transitivePeerDependencies:
