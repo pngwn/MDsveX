@@ -6,17 +6,15 @@ root
     line_break
     html tag="span" slot="name"
       line_break
-      paragraph
-        text "P. Sherman"
+      text "P. Sherman"
       line_break
     line_break
     line_break
     html tag="span" slot="address"
       line_break
-      paragraph
-        text "42 Wallaby Way"
-        html tag="br" self_closing=true
-        soft_break
-        text "		Sydney"
+      text "42 Wallaby Way"
+      html tag="br" self_closing=true
+      soft_break
+      text "		Sydney"
       line_break
     line_break

@@ -4,11 +4,10 @@ root
   line_break
   html tag="p"
     line_break
-    paragraph
-      text "The page has been open for"
-      soft_break
-      text "	"
-      mustache "seconds"
-      text " "
-      mustache "seconds === 1 ? 'second' : 'seconds'"
+    text "The page has been open for"
+    soft_break
+    text "	"
+    mustache "seconds"
+    text " "
+    mustache "seconds === 1 ? 'second' : 'seconds'"
     line_break

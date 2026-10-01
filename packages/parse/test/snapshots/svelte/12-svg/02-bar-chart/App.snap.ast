@@ -6,8 +6,7 @@ root
   line_break
   line_break
   html tag="h2"
-    paragraph
-      text "US birthrate by year"
+    text "US birthrate by year"
   line_break
   line_break
   html tag="div" class="chart" bind:clientWidth=[object Object] bind:clientHeight=[object Object]
@@ -24,12 +23,12 @@ root
             html tag="g" class="tick tick-{tick}" transform="translate(0, {yScale(tick) - padding.bottom})"
               line_break
               html tag="line" x2="100%"
-              line_break
+              soft_break
+              text "					"
               html tag="text" y="-4"
-                paragraph
-                  mustache "tick"
-                  text " "
-                  mustache "tick === 20 ? ' per 1,000 population' : ''"
+                mustache "tick"
+                text " "
+                mustache "tick === 20 ? ' per 1,000 population' : ''"
               line_break
             line_break
         line_break
@@ -45,8 +44,7 @@ root
             html tag="g" class="tick" transform="translate({xScale(i)},{height})"
               line_break
               html tag="text" x="{barWidth/2}" y="-4"
-                paragraph
-                  mustache "width > 380 ? point.year : formatMobile(point.year)"
+                mustache "width > 380 ? point.year : formatMobile(point.year)"
               line_break
             line_break
         line_break

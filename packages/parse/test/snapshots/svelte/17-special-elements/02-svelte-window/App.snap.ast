@@ -14,17 +14,14 @@ root
       svelte_branch tag="if" "key"
         line_break
         html tag="kbd"
-          paragraph
-            mustache "key === ' ' ? 'Space' : key"
+          mustache "key === ' ' ? 'Space' : key"
         line_break
         html tag="p"
-          paragraph
-            mustache "keyCode"
+          mustache "keyCode"
         line_break
       svelte_branch tag="else"
         line_break
         html tag="p"
-          paragraph
-            text "Focus this window and press any key"
+          text "Focus this window and press any key"
         line_break
     line_break

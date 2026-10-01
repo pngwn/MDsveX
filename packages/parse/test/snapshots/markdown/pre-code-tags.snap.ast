@@ -3,8 +3,7 @@ root
     line_break
     html tag="code"
       line_break
-      paragraph
-        text "foobar"
+      text "foobar"
       line_break
     line_break
   line_break
@@ -17,8 +16,7 @@ root
     line_break
     html tag="code" bla="bla"
       line_break
-      paragraph
-        text "foobar"
+      text "foobar"
       line_break
     line_break
   line_break
@@ -28,8 +26,7 @@ root
     html tag="code"
       line_break
       html tag="div"
-        paragraph
-          text "some html code"
+        text "some html code"
       line_break
     line_break
   line_break

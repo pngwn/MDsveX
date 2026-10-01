@@ -1,11 +1,10 @@
 root
   html tag="code"
-    paragraph
-      text "some "
+    text "some "
+    strong_emphasis
       strong_emphasis
-        strong_emphasis
-          text "code"
-      text " yeah"
+        text "code"
+    text " yeah"
   line_break
   line_break
   paragraph
@@ -18,14 +17,13 @@ root
       text " block"
   line_break
   line_break
-  html tag="code"
-    paragraph
+  paragraph
+    html tag="code"
       text "some inline "
       strong_emphasis
         strong_emphasis
           text "code"
-  paragraph
-    text "block"
+    text " block"
   line_break
   line_break
   paragraph
@@ -38,10 +36,9 @@ root
   line_break
   line_break
   html tag="div"
-    paragraph
-      text "some "
+    text "some "
+    strong_emphasis
       strong_emphasis
-        strong_emphasis
-          text "div"
-      text " yeah"
+        text "div"
+    text " yeah"
   line_break

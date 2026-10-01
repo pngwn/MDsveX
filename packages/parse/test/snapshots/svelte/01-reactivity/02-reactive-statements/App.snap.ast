@@ -4,9 +4,8 @@ root
   line_break
   html tag="button" on:click=[object Object]
     line_break
-    paragraph
-      text "Clicked "
-      mustache "count"
-      text " "
-      mustache "count === 1 ? 'time' : 'times'"
+    text "Clicked "
+    mustache "count"
+    text " "
+    mustache "count === 1 ? 'time' : 'times'"
     line_break

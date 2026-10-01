@@ -7,8 +7,7 @@ root
       line_break
       html tag="button" on:click=[object Object]
         line_break
-        paragraph
-          text "Log out"
+        text "Log out"
         line_break
       line_break
   line_break
@@ -18,7 +17,6 @@ root
       line_break
       html tag="button" on:click=[object Object]
         line_break
-        paragraph
-          text "Log in"
+        text "Log in"
         line_break
       line_break

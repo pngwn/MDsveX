@@ -3,5 +3,4 @@ root
   line_break
   line_break
   html tag="strong"
-    paragraph
-      text "red thing"
+    text "red thing"

@@ -5,12 +5,11 @@ root
   html tag="p"
     line_break
     html tag="span" style="background-color: {initial}"
-      paragraph
-        text "initial"
-    line_break
+      text "initial"
+    soft_break
+    text "	"
     html tag="span" style="background-color: {current}"
-      paragraph
-        text "current"
+      text "current"
     line_break
   line_break
   line_break

@@ -3,5 +3,4 @@ root
   line_break
   line_break
   html tag="p"
-    paragraph
-      svelte_tag tag="html" "string"
+    svelte_tag tag="html" "string"

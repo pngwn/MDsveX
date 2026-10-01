@@ -3,13 +3,12 @@ root
   line_break
   line_break
   html tag="h1"
-    paragraph
-      text "The count is "
-      mustache "count_value"
+    text "The count is "
+    mustache "count_value"
   line_break
   line_break
   html tag="Incrementer" self_closing=true
-  line_break
+  soft_break
   html tag="Decrementer" self_closing=true
-  line_break
+  soft_break
   html tag="Resetter" self_closing=true

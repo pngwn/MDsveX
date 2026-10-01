@@ -17,10 +17,10 @@ root
           html tag="g" class="tick tick-{tick}" transform="translate(0, {yScale(tick)})"
             line_break
             html tag="line" x1="{padding.left}" x2="{xScale(22)}" self_closing=true
-            line_break
+            soft_break
+            text "				"
             html tag="text" x="{padding.left - 8}" y="+4"
-              paragraph
-                mustache "tick"
+              mustache "tick"
             line_break
           line_break
       line_break
@@ -36,10 +36,10 @@ root
           html tag="g" class="tick" transform="translate({xScale(tick)},0)"
             line_break
             html tag="line" y1="{yScale(0)}" y2="{yScale(13)}" self_closing=true
-            line_break
+            soft_break
+            text "				"
             html tag="text" y="{height - padding.bottom + 16}"
-              paragraph
-                mustache "tick"
+              mustache "tick"
             line_break
           line_break
       line_break

@@ -52,6 +52,7 @@ export type { Emitter } from './opcodes';
 const char_code_at = String.prototype.charCodeAt;
 const string_slice = String.prototype.slice;
 const string_index_of = String.prototype.indexOf;
+const string_starts_with = String.prototype.startsWith;
 const string_last_index_of = String.prototype.lastIndexOf;
 
 const enum CharMask {
@@ -385,6 +386,10 @@ function is_trim_container(kind: number): boolean {
 		kind === NodeKind.svelte_branch ||
 		kind === NodeKind.html
 	);
+}
+
+function is_ascii_letter(c: number): boolean {
+	return (c | 32) >= 97 && (c | 32) <= 122;
 }
 
 // positions just past braces a find_matching_brace_memo scan opened and has not closed, empty between scans
@@ -858,6 +863,17 @@ export class PFMParser {
 	private html_tag_stack: { id: number; tag: string }[] = [];
 	private html_block_depth: number = 0;
 
+	// a paragraph opened at a tag stays pending, it keeps its wrapper only with
+	// text outside tags and no block level tag
+	private spec_para: number = -1;
+	// source before spec_scan is scanned, spec_depth tags are open there
+	private spec_scan: number = 0;
+	private spec_depth: number = 0;
+	private spec_text: boolean = false;
+	private spec_block: boolean = false;
+	// in a phrasing element, the wrapper always goes
+	private spec_never: boolean = false;
+
 	// svelte block state
 	private svelte_block_depth: number = 0;
 	private svelte_block_tag: string = '';
@@ -1004,6 +1020,9 @@ export class PFMParser {
 		if (this.trim_point - 1 > this.source_base) {
 			this.trim_before_indent();
 		}
+		// the scan rereads from spec_scan at the paragraph close
+		if (this.spec_para !== -1 && this.trim_point > this.spec_scan)
+			this.trim_point = this.spec_scan;
 		if (this.trim_point - 1 > this.source_base) {
 			if (
 				this.pending_count !== this.pending_para_count &&
@@ -1029,6 +1048,7 @@ export class PFMParser {
 		this.source = src;
 		this.source_end += len;
 		this._run();
+		if (this.spec_para !== -1) this.spec_scan_to(this.cursor);
 		// the root trims between blocks itself, this trims inside paragraphs and containers
 		if (this.cursor - this.trim_point > TRIM_GAP) this.trim_at_stall();
 		// a fence stall leaves the cursor at its content start while its scan line moves on
@@ -1685,6 +1705,7 @@ export class PFMParser {
 		this.table_cell_has_content = false;
 		if (this.html_tag_stack.length !== 0) this.html_tag_stack = [];
 		this.html_block_depth = 0;
+		this.spec_para = -1;
 		this.svelte_block_depth = 0;
 		this.svelte_block_tag = '';
 		this.svelte_branch_id = 0;
@@ -1823,6 +1844,7 @@ export class PFMParser {
 		// the builder needs the kind at open, a revoke may have rewritten its node
 		this.out.close(id, end, (info & ID_KIND_MASK) as NodeKind);
 		this.id_info[id] = info | ID_CLOSED;
+		if (id === this.spec_para) this.end_spec_para(end);
 	}
 
 	/** open writes an id state before any read, so spare tables need no clearing */
@@ -2987,6 +3009,12 @@ export class PFMParser {
 
 		// svelte block boundary ({: or {/) interrupts paragraphs
 		if (ch === OPEN_BRACE && this.is_svelte_block_boundary(p)) return true;
+		if (
+			ch === OPEN_BRACE &&
+			char_code_at.call(source, p + 1 - base) === OCTOTHERP &&
+			is_ascii_letter(char_code_at.call(source, p + 2 - base))
+		)
+			return true;
 
 		// fast exit: first non-ws char can't start any block construct
 		switch (ch) {
@@ -3510,6 +3538,12 @@ export class PFMParser {
 		}
 
 		if (scheme_len < 2 || char_code_at.call(source, p - base) !== COLON)
+			return -1;
+		// svelte elements like svelte:head are not autolinks
+		if (
+			scheme_len === 6 &&
+			string_slice.call(source, pos - base, p - base) === 'svelte'
+		)
 			return -1;
 		p++;
 
@@ -4096,7 +4130,10 @@ export class PFMParser {
 		return null; // no closing -->
 	}
 
-	/** whether a close tag named tag closes an html container around the open paragraph */
+	/**
+	 * whether a close tag named tag closes an html container around the open
+	 * paragraph, or around the cursor when none is open
+	 */
 	private closes_container(tag: string): boolean {
 		if (this.html_block_depth === 0) return false;
 		const idx = this.find_html_opener(tag);
@@ -4105,12 +4142,360 @@ export class PFMParser {
 		const stack = this.node_stack;
 		for (let i = stack.length - 1; i > 0; i--) {
 			const n = stack[i];
-			// opened inside the paragraph, the close is inline
-			if (n === id) return false;
+			if (n === id) {
+				// opened inside a paragraph the close is inline, with none open it closes a container
+				for (let j = i - 1; j > 0; j--) {
+					if (this.kind_of(stack[j]) === NodeKind.paragraph) return false;
+				}
+				return true;
+			}
 			if (this.kind_of(n) === NodeKind.paragraph)
 				return stack.lastIndexOf(id, i - 1) !== -1;
 		}
 		return false;
+	}
+
+	/** open a paragraph at the cursor whose wrapper is decided at its close */
+	private open_spec_para(parent: number, never: boolean): void {
+		const id = this.emit_open_pending(NodeKind.paragraph, this.cursor, parent);
+		this.spec_para = id;
+		this.spec_scan = this.cursor;
+		this.spec_depth = 0;
+		this.spec_text = false;
+		this.spec_block = false;
+		this.spec_never = never;
+		this.states.push(StateKind.paragraph);
+		this.node_stack.push(id);
+	}
+
+	/**
+	 * open a spec paragraph at a tag the caller parsed, whose element closes at
+	 * close_end on its line, and the tag in it as the inline state would
+	 */
+	private open_spec_tag(
+		tag: {
+			tag: string;
+			attributes: object;
+			self_closing: boolean;
+			end: number;
+			has_attrs: boolean;
+		},
+		close_end: number,
+		parent: number,
+		never: boolean
+	): void {
+		const leaf = tag.self_closing || this.is_void_tag(tag.tag);
+		// a paragraph of just this element keeps no wrapper, so it gets none
+		const alone = this.line_ends_block(close_end);
+		let para = parent;
+		if (!alone) {
+			this.open_spec_para(parent, never);
+			para = this.spec_para;
+			// the scan skips the element, a block level one cannot sit in a <p>
+			this.spec_scan = close_end;
+			if (this.is_block_html_tag(tag.tag)) this.spec_block = true;
+		}
+		if (leaf) {
+			const html_id = this.emit_open(NodeKind.html, this.cursor, para);
+			this.out.attr(html_id, 'tag', tag.tag);
+			if (tag.has_attrs) this.out.attr(html_id, 'attributes', tag.attributes);
+			this.out.attr(html_id, 'self_closing', true);
+			this.emit_close(html_id, tag.end);
+			this.chomp(tag.end, true);
+			return;
+		}
+		this.states.push(StateKind.inline);
+		const html_id = this.emit_open_pending(NodeKind.html, this.cursor, para);
+		this.out.attr(html_id, 'tag', tag.tag);
+		if (tag.has_attrs) this.out.attr(html_id, 'attributes', tag.attributes);
+		this.html_tag_stack.push({ id: html_id, tag: tag.tag });
+		this.node_stack.push(html_id);
+		this.states.push(StateKind.html_element);
+		this.chomp(tag.end, true);
+	}
+
+	/**
+	 * only whitespace follows pos on its line and the next line is blank, starts a
+	 * block or is missing, false when that line is not whole yet
+	 */
+	private line_ends_block(pos: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		let p = pos;
+		while (p < length) {
+			const ch = char_code_at.call(source, p - base);
+			if (ch === LINEFEED) break;
+			if (ch !== SPACE && ch !== TAB) return false;
+			p++;
+		}
+		if (p >= length) return this.finished;
+		p++;
+		if (
+			!this.finished &&
+			(p >= length || string_index_of.call(source, '\n', p - base) === -1)
+		)
+			return false;
+		return this.is_block_interrupt(p);
+	}
+
+	/** the paragraph keeps its wrapper only with text outside tags and no block level tag */
+	private end_spec_para(end: number): void {
+		const id = this.spec_para;
+		this.spec_para = -1;
+		this.spec_scan_to(end);
+		// an element still open becomes its literal open tag
+		if (this.spec_depth > 0) this.spec_text = true;
+		this.pending_remove(id);
+		if (this.spec_never || !this.spec_text || this.spec_block)
+			this.out.revoke(id);
+	}
+
+	/**
+	 * scan the spec paragraph up to limit for text outside tags and block level tags,
+	 * stopping before a construct that is not whole below limit
+	 */
+	private spec_scan_to(limit: number): void {
+		// either decides the paragraph already
+		if (this.spec_never || this.spec_block) return;
+		const source = this.source;
+		const base = this.source_base;
+		let p = this.spec_scan;
+		scan: while (p < limit) {
+			const ch = char_code_at.call(source, p - base);
+			switch (ch) {
+				case SPACE:
+				case TAB:
+					p++;
+					break;
+				case LINEFEED: {
+					p++;
+					if (this.block_quote_depth > 0 && p < limit) {
+						const q = this.skip_bq_markers(p, this.block_quote_depth);
+						if (q !== -1 && q <= limit) p = q;
+					}
+					break;
+				}
+				case OPEN_ANGLE_BRACKET: {
+					const end = this.spec_tag(p, limit);
+					if (end === -1) break scan;
+					if (end === -2) {
+						if (this.spec_depth === 0) this.spec_text = true;
+						p++;
+					} else p = end;
+					if (this.spec_block) {
+						p = limit;
+						break scan;
+					}
+					break;
+				}
+				case OPEN_BRACE: {
+					const end = this.find_matching_brace(p + 1);
+					if (end === -1 && !this.finished) break scan;
+					if (end > limit) break scan;
+					if (this.spec_depth === 0) {
+						// a plain expression renders text, {@tag {# {: {/ are structure
+						const n = char_code_at.call(source, p + 1 - base);
+						if (
+							end === -1 ||
+							(n === AT
+								? !is_ascii_letter(char_code_at.call(source, p + 2 - base))
+								: n !== OCTOTHERP && n !== COLON && n !== SLASH)
+						)
+							this.spec_text = true;
+					}
+					p = end === -1 ? p + 1 : end;
+					break;
+				}
+				case BACKTICK: {
+					if (this.spec_depth === 0) this.spec_text = true;
+					// a code span holds no markup, a run with no closer is literal
+					let q = p + 1;
+					while (q < limit && char_code_at.call(source, q - base) === BACKTICK)
+						q++;
+					const run = q - p;
+					p = q;
+					let r = q;
+					while (r < limit) {
+						const i = string_index_of.call(source, '`', r - base);
+						if (i === -1 || i + base >= limit) break;
+						let k = i + base + 1;
+						while (
+							k < limit &&
+							char_code_at.call(source, k - base) === BACKTICK
+						)
+							k++;
+						if (k - i - base === run) {
+							p = k;
+							break;
+						}
+						r = k;
+					}
+					break;
+				}
+				case BACKSLASH:
+					if (this.spec_depth === 0) this.spec_text = true;
+					p = p + 2 < limit ? p + 2 : limit;
+					break;
+				default:
+					if (this.spec_depth === 0) this.spec_text = true;
+					p++;
+			}
+		}
+		this.spec_scan = p;
+	}
+
+	/**
+	 * the end of a comment or tag at p for spec_scan_to, tracking spec_depth and
+	 * spec_block, -1 when not whole below limit, -2 when not markup
+	 */
+	private spec_tag(p: number, limit: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		if (p + 1 >= limit) return -2;
+		const c1 = char_code_at.call(source, p + 1 - base);
+		if (c1 === EXCLAMATION_MARK) {
+			const comment = this.try_parse_html_comment(p + 1);
+			if (comment === false) return -1;
+			if (comment === null) return -2;
+			return comment.end > limit ? -1 : comment.end;
+		}
+		if (c1 === SLASH) {
+			const close = this.try_parse_html_close_tag(p + 1);
+			if (close === null) return -2;
+			if (close.end > limit) return -1;
+			if (this.spec_depth > 0) this.spec_depth--;
+			return close.end;
+		}
+		if (!this.is_tag_name_start(c1)) return -2;
+		if (this.try_parse_uri_autolink(p + 1) !== -1) return -2;
+		const end = this.scan_open_tag(p + 1, null);
+		if (end < 0) {
+			return !this.finished && tag_fail_p >= this.source_end ? -1 : -2;
+		}
+		if (end > limit) return -1;
+		const tag = string_slice.call(source, p + 1 - base, tag_name_end - base);
+		// a block level element cannot sit in a <p>
+		if (this.spec_depth === 0 && this.is_block_html_tag(tag)) {
+			this.spec_block = true;
+			return end;
+		}
+		if (tag_self_closing || this.is_void_tag(tag)) return end;
+		if (this.is_raw_text_tag(tag)) {
+			const close = string_index_of.call(source, '</' + tag, end - base);
+			if (close === -1) return -1;
+			const gt = string_index_of.call(source, '>', close);
+			if (gt === -1 || gt + base + 1 > limit) return -1;
+			return gt + base + 1;
+		}
+		this.spec_depth++;
+		return end;
+	}
+
+	/**
+	 * the end of the close tag when the element whose open tag ends at from closes on
+	 * that line, 0 when it stays open past it, -1 when the line is not whole yet
+	 */
+	private closes_on_line(tag: string, from: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const lf = string_index_of.call(source, '\n', from - base);
+		if (lf === -1 && !this.finished) return -1;
+		const line_end = lf === -1 ? this.source_end : lf + base;
+		const n = tag.length;
+		let depth = 1;
+		let p = from;
+		for (;;) {
+			const i = string_index_of.call(source, '<', p - base);
+			if (i === -1) return 0;
+			const q = i + base;
+			if (q >= line_end) return 0;
+			const closing = char_code_at.call(source, q + 1 - base) === SLASH;
+			const name = closing ? q + 2 : q + 1;
+			if (
+				name + n <= line_end &&
+				string_starts_with.call(source, tag, name - base)
+			) {
+				const after = char_code_at.call(source, name + n - base);
+				if (
+					after === CLOSE_ANGLE_BRACKET ||
+					after === SPACE ||
+					after === TAB ||
+					after === SLASH ||
+					after === LINEFEED
+				) {
+					if (!closing) depth++;
+					else if (--depth === 0) {
+						const gt = string_index_of.call(source, '>', name + n - base);
+						return gt === -1 || gt + base >= line_end ? 0 : gt + base + 1;
+					}
+				}
+			}
+			p = q + 1;
+		}
+	}
+
+	/** whether node is an html element whose content is phrasing only */
+	private in_phrasing(node: number): boolean {
+		const stack = this.html_tag_stack;
+		if (stack.length === 0) return false;
+		const top = stack[stack.length - 1];
+		return top.id === node && this.is_phrasing_tag(top.tag);
+	}
+
+	/** a {@tag at the cursor, structure like an element */
+	private at_svelte_tag(code: number): boolean {
+		const base = this.source_base;
+		return (
+			code === OPEN_BRACE &&
+			char_code_at.call(this.source, this.cursor + 1 - base) === AT &&
+			is_ascii_letter(char_code_at.call(this.source, this.cursor + 2 - base))
+		);
+	}
+
+	/** elements whose content is phrasing only, a paragraph inside one keeps no wrapper */
+	private is_phrasing_tag(tag: string): boolean {
+		switch (tag) {
+			case 'p':
+			case 'h1':
+			case 'h2':
+			case 'h3':
+			case 'h4':
+			case 'h5':
+			case 'h6':
+			case 'a':
+			case 'abbr':
+			case 'b':
+			case 'bdi':
+			case 'bdo':
+			case 'button':
+			case 'cite':
+			case 'code':
+			case 'data':
+			case 'dfn':
+			case 'em':
+			case 'i':
+			case 'kbd':
+			case 'label':
+			case 'legend':
+			case 'mark':
+			case 'output':
+			case 'q':
+			case 's':
+			case 'samp':
+			case 'small':
+			case 'span':
+			case 'strong':
+			case 'sub':
+			case 'summary':
+			case 'sup':
+			case 'time':
+			case 'u':
+			case 'var':
+				return true;
+			default:
+				return false;
+		}
 	}
 
 	/**
@@ -5617,19 +6002,19 @@ export class PFMParser {
 							const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
 							if (blk_tag === null && this.tag_wait) break main_loop;
 							if (blk_tag) {
-								if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
-									const html_id = this.emit_open(
-										NodeKind.html,
-										this.cursor,
-										current_node
-									);
-									this.out.attr(html_id, 'tag', blk_tag.tag);
-									if (blk_tag.has_attrs) {
-										this.out.attr(html_id, 'attributes', blk_tag.attributes);
-									}
-									this.out.attr(html_id, 'self_closing', true);
-									this.emit_close(html_id, blk_tag.end);
-									this.chomp(blk_tag.end, true);
+								// an element that closes on its line is inline in a paragraph, close_end is past its close
+								const close_end =
+									blk_tag.self_closing || this.is_void_tag(blk_tag.tag)
+										? blk_tag.end
+										: this.is_raw_text_tag(blk_tag.tag)
+											? 0
+											: this.closes_on_line(blk_tag.tag, blk_tag.end);
+								if (close_end === -1) {
+									this.wait_for('\n');
+									break main_loop;
+								}
+								if (close_end > 0) {
+									this.open_spec_tag(blk_tag, close_end, current_node, false);
 								} else if (this.is_raw_text_tag(blk_tag.tag)) {
 									this.open_raw_text(blk_tag, current_node);
 								} else {
@@ -5706,6 +6091,10 @@ export class PFMParser {
 								continue;
 							}
 							// not a block - start paragraph (inline will handle {expr})
+							if (this.at_svelte_tag(code)) {
+								this.open_spec_para(current_node, false);
+								continue;
+							}
 							this.states.push(StateKind.paragraph);
 							const brace_para = this.emit_open(
 								NodeKind.paragraph,
@@ -8939,19 +9328,24 @@ export class PFMParser {
 			const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
 			if (blk_tag === null && this.tag_wait) return true;
 			if (blk_tag) {
-				if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
-					const html_id = this.emit_open(
-						NodeKind.html,
-						this.cursor,
-						current_node
+				// an element that closes on its line is inline in a paragraph, close_end is past its close
+				const close_end =
+					blk_tag.self_closing || this.is_void_tag(blk_tag.tag)
+						? blk_tag.end
+						: this.is_raw_text_tag(blk_tag.tag)
+							? 0
+							: this.closes_on_line(blk_tag.tag, blk_tag.end);
+				if (close_end === -1) {
+					this.wait_for('\n');
+					return true;
+				}
+				if (close_end > 0) {
+					this.open_spec_tag(
+						blk_tag,
+						close_end,
+						current_node,
+						this.in_phrasing(current_node)
 					);
-					this.out.attr(html_id, 'tag', blk_tag.tag);
-					if (blk_tag.has_attrs) {
-						this.out.attr(html_id, 'attributes', blk_tag.attributes);
-					}
-					this.out.attr(html_id, 'self_closing', true);
-					this.emit_close(html_id, blk_tag.end);
-					this.chomp(blk_tag.end, true);
 				} else if (this.is_raw_text_tag(blk_tag.tag)) {
 					this.open_raw_text(blk_tag, current_node);
 				} else {
@@ -9030,6 +9424,11 @@ export class PFMParser {
 		}
 
 		// default: start a paragraph for text content
+		const phrasing = this.in_phrasing(current_node);
+		if (phrasing || this.at_svelte_tag(code)) {
+			this.open_spec_para(current_node, phrasing);
+			return false;
+		}
 		this.states.push(StateKind.paragraph);
 		const blk_html_para = this.emit_open(
 			NodeKind.paragraph,
@@ -9183,19 +9582,24 @@ export class PFMParser {
 			const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
 			if (blk_tag === null && this.tag_wait) return true;
 			if (blk_tag) {
-				if (blk_tag.self_closing || this.is_void_tag(blk_tag.tag)) {
-					const html_id = this.emit_open(
-						NodeKind.html,
-						this.cursor,
-						current_node
+				// an element that closes on its line is inline in a paragraph, close_end is past its close
+				const close_end =
+					blk_tag.self_closing || this.is_void_tag(blk_tag.tag)
+						? blk_tag.end
+						: this.is_raw_text_tag(blk_tag.tag)
+							? 0
+							: this.closes_on_line(blk_tag.tag, blk_tag.end);
+				if (close_end === -1) {
+					this.wait_for('\n');
+					return true;
+				}
+				if (close_end > 0) {
+					this.open_spec_tag(
+						blk_tag,
+						close_end,
+						current_node,
+						this.in_phrasing(current_node)
 					);
-					this.out.attr(html_id, 'tag', blk_tag.tag);
-					if (blk_tag.has_attrs) {
-						this.out.attr(html_id, 'attributes', blk_tag.attributes);
-					}
-					this.out.attr(html_id, 'self_closing', true);
-					this.emit_close(html_id, blk_tag.end);
-					this.chomp(blk_tag.end, true);
 				} else if (this.is_raw_text_tag(blk_tag.tag)) {
 					this.open_raw_text(blk_tag, current_node);
 				} else {
@@ -9279,6 +9683,10 @@ export class PFMParser {
 		}
 
 		// default: start a paragraph
+		if (this.at_svelte_tag(code)) {
+			this.open_spec_para(current_node, false);
+			return false;
+		}
 		this.states.push(StateKind.paragraph);
 		const svelte_para = this.emit_open(
 			NodeKind.paragraph,
@@ -9478,6 +9886,10 @@ export class PFMParser {
 						this.start_list(marker, current_node);
 						return false;
 					}
+				}
+				if (code === OPEN_ANGLE_BRACKET || this.at_svelte_tag(code)) {
+					this.open_spec_para(current_node, false);
+					return false;
 				}
 				this.states.push(StateKind.paragraph);
 				const para_id = this.emit_open(

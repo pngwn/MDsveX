@@ -8,15 +8,17 @@ root
   html tag="div" class="chart"
     line_break
     html tag="h2"
-      paragraph
-        text "Anscombe's quartet"
+      text "Anscombe's quartet"
     line_break
     line_break
     html tag="Scatterplot" points=[object Object] self_closing=true
-    line_break
+    soft_break
+    text "	"
     html tag="Scatterplot" points=[object Object] self_closing=true
-    line_break
+    soft_break
+    text "	"
     html tag="Scatterplot" points=[object Object] self_closing=true
-    line_break
+    soft_break
+    text "	"
     html tag="Scatterplot" points=[object Object] self_closing=true
     line_break

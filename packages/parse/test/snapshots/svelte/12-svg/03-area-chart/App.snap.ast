@@ -3,8 +3,7 @@ root
   line_break
   line_break
   html tag="h2"
-    paragraph
-      text "Arctic sea ice minimum"
+    text "Arctic sea ice minimum"
   line_break
   line_break
   html tag="div" class="chart" bind:clientWidth=[object Object] bind:clientHeight=[object Object]
@@ -21,12 +20,12 @@ root
             html tag="g" class="tick tick-{tick}" transform="translate(0, {yScale(tick) - padding.bottom})"
               line_break
               html tag="line" x2="100%"
-              line_break
+              soft_break
+              text "					"
               html tag="text" y="-4"
-                paragraph
-                  mustache "tick"
-                  text " "
-                  mustache "tick === 8 ? ' million sq km' : ''"
+                mustache "tick"
+                text " "
+                mustache "tick === 8 ? ' million sq km' : ''"
               line_break
             line_break
         line_break
@@ -42,10 +41,10 @@ root
             html tag="g" class="tick tick-{ tick }" transform="translate({xScale(tick)},{height})"
               line_break
               html tag="line" y1="-{height}" y2="-{padding.bottom}" x1="0" x2="0"
-              line_break
+              soft_break
+              text "					"
               html tag="text" y="-2"
-                paragraph
-                  mustache "width > 380 ? tick : formatMobile(tick)"
+                mustache "width > 380 ? tick : formatMobile(tick)"
               line_break
             line_break
         line_break
@@ -54,17 +53,17 @@ root
       html_comment " data "
       line_break
       html tag="path" class="path-area" d=[object Object]
-      line_break
+      soft_break
+      text "		"
       html tag="path" class="path-line" d=[object Object]
       line_break
     line_break
   line_break
   line_break
   html tag="p"
-    paragraph
-      text "Average September extent. Source: "
-      html tag="a" href="https://climate.nasa.gov/vital-signs/arctic-sea-ice/"
-        text "NSIDC/NASA"
+    text "Average September extent. Source: "
+    html tag="a" href="https://climate.nasa.gov/vital-signs/arctic-sea-ice/"
+      text "NSIDC/NASA"
   line_break
   line_break
   html tag="style"

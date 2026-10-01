@@ -3,40 +3,35 @@ root
   line_break
   line_break
   html tag="h2"
-    paragraph
-      text "Size"
+    text "Size"
   line_break
   line_break
   html tag="label"
     line_break
     html tag="input" type="radio" bind:group=[object Object] value=[object Object] self_closing=true
-    line_break
-    paragraph
-      text "One scoop"
-    line_break
-  line_break
-  line_break
-  html tag="label"
-    line_break
-    html tag="input" type="radio" bind:group=[object Object] value=[object Object] self_closing=true
-    line_break
-    paragraph
-      text "Two scoops"
+    soft_break
+    text "	One scoop"
     line_break
   line_break
   line_break
   html tag="label"
     line_break
     html tag="input" type="radio" bind:group=[object Object] value=[object Object] self_closing=true
+    soft_break
+    text "	Two scoops"
     line_break
-    paragraph
-      text "Three scoops"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="radio" bind:group=[object Object] value=[object Object] self_closing=true
+    soft_break
+    text "	Three scoops"
     line_break
   line_break
   line_break
   html tag="h2"
-    paragraph
-      text "Flavours"
+    text "Flavours"
   line_break
   line_break
   svelte_block tag="each"
@@ -45,9 +40,9 @@ root
       html tag="label"
         line_break
         html tag="input" type="checkbox" bind:group=[object Object] value=[object Object] self_closing=true
-        line_break
-        paragraph
-          mustache "flavour"
+        soft_break
+        text "		"
+        mustache "flavour"
         line_break
       line_break
   line_break
@@ -56,28 +51,25 @@ root
     svelte_branch tag="if" "flavours.length === 0"
       line_break
       html tag="p"
-        paragraph
-          text "Please select at least one flavour"
+        text "Please select at least one flavour"
       line_break
     svelte_branch tag="else if" "flavours.length > scoops"
       line_break
       html tag="p"
-        paragraph
-          text "Can't order more flavours than scoops"
-          text "!"
+        text "Can't order more flavours than scoops"
+        text "!"
       line_break
     svelte_branch tag="else"
       line_break
       html tag="p"
         line_break
-        paragraph
-          text "You ordered "
-          mustache "scoops"
-          text " "
-          mustache "scoops === 1 ? 'scoop' : 'scoops'"
-          soft_break
-          text "		of "
-          mustache "join(flavours)"
+        text "You ordered "
+        mustache "scoops"
+        text " "
+        mustache "scoops === 1 ? 'scoop' : 'scoops'"
+        soft_break
+        text "		of "
+        mustache "join(flavours)"
         line_break
       line_break
   line_break

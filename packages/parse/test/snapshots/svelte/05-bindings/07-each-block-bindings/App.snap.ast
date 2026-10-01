@@ -6,8 +6,7 @@ root
   line_break
   line_break
   html tag="h1"
-    paragraph
-      text "Todos"
+    text "Todos"
   line_break
   line_break
   svelte_block tag="each"
@@ -24,21 +23,18 @@ root
   line_break
   line_break
   html tag="p"
-    paragraph
-      mustache "remaining"
-      text " remaining"
+    mustache "remaining"
+    text " remaining"
   line_break
   line_break
   html tag="button" on:click=[object Object]
     line_break
-    paragraph
-      text "Add new"
+    text "Add new"
     line_break
   line_break
   line_break
   html tag="button" on:click=[object Object]
     line_break
-    paragraph
-      text "Clear completed"
+    text "Clear completed"
     line_break
   line_break

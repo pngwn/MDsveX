@@ -6,8 +6,7 @@ root
   line_break
   line_break
   html tag="h2"
-    paragraph
-      text "Insecurity questions"
+    text "Insecurity questions"
   line_break
   line_break
   html tag="form" on:submit|preventDefault=[object Object]
@@ -31,13 +30,11 @@ root
     line_break
     html tag="button" disabled=[object Object] type="submit"
       line_break
-      paragraph
-        text "Submit"
+      text "Submit"
       line_break
     line_break
   line_break
   line_break
   html tag="p"
-    paragraph
-      text "selected question "
-      mustache "selected ? selected.id : '[waiting...]'"
+    text "selected question "
+    mustache "selected ? selected.id : '[waiting...]'"

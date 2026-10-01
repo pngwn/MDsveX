@@ -3,8 +3,7 @@ root
   line_break
   line_break
   html tag="h1" style="color: {pin ? '#333' : '#ccc'}"
-    paragraph
-      mustache "view"
+    mustache "view"
   line_break
   line_break
   html tag="Keypad" bind:value=[object Object] on:submit=[object Object] self_closing=true

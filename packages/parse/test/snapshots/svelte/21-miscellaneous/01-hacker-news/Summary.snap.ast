@@ -8,21 +8,17 @@ root
   html tag="article"
     line_break
     html tag="span"
-      paragraph
-        mustache "i + offset + 1"
+      mustache "i + offset + 1"
     line_break
     html tag="h2"
       html tag="a" target="_blank" href=[object Object]
-        paragraph
-          mustache "item.title"
+        mustache "item.title"
     line_break
     html tag="p" class="meta"
       html tag="a" href="#/item/{item.id}"
-        paragraph
-          mustache "comment_text()"
-      paragraph
-        text "by "
-        mustache "item.user"
-        text " "
-        mustache "item.time_ago"
+        mustache "comment_text()"
+      text " by "
+      mustache "item.user"
+      text " "
+      mustache "item.time_ago"
     line_break

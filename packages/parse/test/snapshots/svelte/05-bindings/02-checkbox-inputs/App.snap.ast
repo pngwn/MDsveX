@@ -5,10 +5,9 @@ root
   html tag="label"
     line_break
     html tag="input" type="checkbox" bind:checked=[object Object] self_closing=true
-    line_break
-    paragraph
-      text "Yes"
-      text "! Send me regular email spam"
+    soft_break
+    text "	Yes"
+    text "! Send me regular email spam"
     line_break
   line_break
   line_break
@@ -16,19 +15,16 @@ root
     svelte_branch tag="if" "yes"
       line_break
       html tag="p"
-        paragraph
-          text "Thank you. We will bombard your inbox and sell your personal details."
+        text "Thank you. We will bombard your inbox and sell your personal details."
       line_break
     svelte_branch tag="else"
       line_break
       html tag="p"
-        paragraph
-          text "You must opt in to continue. If you're not paying, you're the product."
+        text "You must opt in to continue. If you're not paying, you're the product."
       line_break
   line_break
   line_break
   html tag="button" disabled=[object Object]
     line_break
-    paragraph
-      text "Subscribe"
+    text "Subscribe"
     line_break

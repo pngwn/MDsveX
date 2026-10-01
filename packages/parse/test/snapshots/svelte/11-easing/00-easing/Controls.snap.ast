@@ -10,8 +10,7 @@ root
     html tag="div" class="easing-types"
       line_break
       html tag="h3"
-        paragraph
-          text "Ease"
+        text "Ease"
       line_break
       svelte_block tag="if"
         svelte_branch tag="if" "mobile"
@@ -46,8 +45,7 @@ root
           line_break
       line_break
       html tag="h3"
-        paragraph
-          text "Type"
+        text "Type"
       line_break
       svelte_block tag="if"
         svelte_branch tag="if" "mobile "
@@ -84,8 +82,7 @@ root
     line_break
     html tag="h4"
       line_break
-      paragraph
-        text "Duration"
+      text "Duration"
       line_break
     line_break
     html tag="div" class="duration"
@@ -93,20 +90,19 @@ root
       html tag="span"
         line_break
         html tag="input" type="number" bind:value=[object Object] min="0" step="100" self_closing=true
-        line_break
+        soft_break
+        text "				"
         html tag="button" class="number" on:click=[object Object]
-          paragraph
-            text "-"
-        line_break
+          text "-"
+        soft_break
+        text "				"
         html tag="button" class="number" on:click=[object Object]
-          paragraph
-            text "+"
+          text "+"
         line_break
       line_break
       html tag="button" class="play" on:click=[object Object]
         line_break
-        paragraph
-          mustache "playing ? 'Restart' : 'Play'"
+        mustache "playing ? 'Restart' : 'Play'"
         line_break
       line_break
     line_break

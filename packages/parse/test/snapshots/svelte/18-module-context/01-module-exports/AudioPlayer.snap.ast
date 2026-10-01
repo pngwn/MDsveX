@@ -11,16 +11,13 @@ root
   html tag="article" class:playing=[object Object]
     line_break
     html tag="h2"
-      paragraph
-        mustache "title"
+      mustache "title"
     line_break
     html tag="p"
       html tag="strong"
-        paragraph
-          mustache "composer"
-      paragraph
-        text "/ performed by "
-        mustache "performer"
+        mustache "composer"
+      text " / performed by "
+      mustache "performer"
     line_break
     line_break
     html tag="audio" bind:this=[object Object] bind:paused=true on:play=[object Object] controls=true src=[object Object]

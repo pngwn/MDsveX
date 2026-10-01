@@ -1,19 +1,13 @@
 root
-  paragraph
-    link href="svelte:head"
-      text "svelte:head"
-  line_break
-  html tag="title"
-    paragraph
+  html tag="svelte:head"
+    line_break
+    html tag="title"
       text "My Title"
-  line_break
-  html tag="link" rel="stylesheet" type="text/css" href="theme.css" self_closing=true
-  line_break
-  html tag="style"
-  line_break
-  paragraph
-    text "</svelte"
-    text ":head>"
+    line_break
+    html tag="link" rel="stylesheet" type="text/css" href="theme.css" self_closing=true
+    soft_break
+    html tag="style"
+    line_break
   line_break
   line_break
   html tag="Counter" prop=[object Object]
@@ -39,6 +33,5 @@ root
     paragraph
       text "text"
     line_break
-    paragraph
-      text "</Counter>"
+    text "</Counter>"
   line_break

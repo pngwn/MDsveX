@@ -11,6 +11,5 @@ root
   line_break
   line_break
   html tag="p" id="hello"
-    paragraph
-      text "I am also a paragraph"
+    text "I am also a paragraph"
   line_break

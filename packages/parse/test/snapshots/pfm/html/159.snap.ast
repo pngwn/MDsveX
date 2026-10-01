@@ -1,7 +1,6 @@
 root
   html tag="div"
     html tag="a" href="bar"
-      paragraph
-        strong_emphasis
-          text "foo"
+      strong_emphasis
+        text "foo"
   line_break

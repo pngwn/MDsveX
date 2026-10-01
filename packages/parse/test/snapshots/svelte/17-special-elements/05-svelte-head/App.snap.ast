@@ -1,16 +1,10 @@
 root
-  paragraph
-    link href="svelte:head"
-      text "svelte:head"
-  line_break
-  html tag="link" rel="stylesheet" href="tutorial/dark-theme.css" self_closing=true
-  line_break
-  paragraph
-    text "</svelte"
-    text ":head>"
+  html tag="svelte:head"
+    line_break
+    html tag="link" rel="stylesheet" href="tutorial/dark-theme.css" self_closing=true
+    line_break
   line_break
   line_break
   html tag="h1"
-    paragraph
-      text "Hello world"
-      text "!"
+    text "Hello world"
+    text "!"

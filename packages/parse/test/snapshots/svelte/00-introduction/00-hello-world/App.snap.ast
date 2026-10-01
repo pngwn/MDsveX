@@ -3,7 +3,6 @@ root
   line_break
   line_break
   html tag="h1"
-    paragraph
-      text "Hello "
-      mustache "name"
-      text "!"
+    text "Hello "
+    mustache "name"
+    text "!"

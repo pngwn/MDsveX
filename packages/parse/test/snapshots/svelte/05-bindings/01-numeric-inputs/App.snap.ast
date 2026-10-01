@@ -5,7 +5,8 @@ root
   html tag="label"
     line_break
     html tag="input" type="number" bind:value=[object Object] min="0" max="10" self_closing=true
-    line_break
+    soft_break
+    text "	"
     html tag="input" type="range" bind:value=[object Object] min="0" max="10" self_closing=true
     line_break
   line_break
@@ -13,15 +14,15 @@ root
   html tag="label"
     line_break
     html tag="input" type="number" bind:value=[object Object] min="0" max="10" self_closing=true
-    line_break
+    soft_break
+    text "	"
     html tag="input" type="range" bind:value=[object Object] min="0" max="10" self_closing=true
     line_break
   line_break
   line_break
   html tag="p"
-    paragraph
-      mustache "a"
-      text " + "
-      mustache "b"
-      text " = "
-      mustache "a + b"
+    mustache "a"
+    text " + "
+    mustache "b"
+    text " = "
+    mustache "a + b"

@@ -3,5 +3,5 @@ root
   line_break
   line_break
   html tag="Nested" answer=[object Object] self_closing=true
-  line_break
+  soft_break
   html tag="Nested" self_closing=true

@@ -3,8 +3,7 @@ root
   line_break
   line_break
   html tag="button" on:click=[object Object]
-    paragraph
-      text "show modal "
+    text " show modal "
   line_break
   line_break
   svelte_block tag="if"
@@ -14,23 +13,21 @@ root
         line_break
         html tag="h2" slot="header"
           line_break
-          paragraph
-            text "modal"
-            soft_break
-            text "			"
-            text tag="small" "<small>"
-            html tag="em"
-              text "adjective"
-            text " mod·al \\ˈmō-dəl"
-            text "</small>"
+          text "modal"
+          soft_break
+          text "			"
+          text tag="small" "<small>"
+          html tag="em"
+            text "adjective"
+          text " mod·al \\ˈmō-dəl"
+          text "</small>"
           line_break
         line_break
         line_break
         html tag="ol" class="definition-list"
           line_break
           html tag="li"
-            paragraph
-              text "of or relating to modality in logic"
+            text "of or relating to modality in logic"
           line_break
           html tag="li"
             line_break
@@ -41,12 +38,10 @@ root
             line_break
           line_break
           html tag="li"
-            paragraph
-              text "of or relating to a musical mode"
+            text "of or relating to a musical mode"
           line_break
           html tag="li"
-            paragraph
-              text "of or relating to structure as opposed to substance"
+            text "of or relating to structure as opposed to substance"
           line_break
           html tag="li"
             line_break
@@ -57,19 +52,15 @@ root
             line_break
           line_break
           html tag="li"
-            paragraph
-              text "of or relating to a statistical mode"
+            text "of or relating to a statistical mode"
           line_break
         line_break
         line_break
         html tag="a" href="https://www.merriam-webster.com/dictionary/modal"
-          paragraph
-            text "merriam-webster.com"
-            text "</a"
+          text "merriam-webster.com"
+          text "</a"
           line_break
-          paragraph
-            text ">"
+          text ">"
           line_break
-          paragraph
       line_break
   line_break

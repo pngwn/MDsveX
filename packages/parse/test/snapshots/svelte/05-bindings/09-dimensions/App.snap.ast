@@ -6,22 +6,20 @@ root
   line_break
   line_break
   html tag="input" type="range" bind:value=[object Object] self_closing=true
-  line_break
+  soft_break
   html tag="input" bind:value=[object Object] self_closing=true
   line_break
   line_break
   html tag="p"
-    paragraph
-      text "size: "
-      mustache "w"
-      text "px x "
-      mustache "h"
-      text "px"
+    text "size: "
+    mustache "w"
+    text "px x "
+    mustache "h"
+    text "px"
   line_break
   line_break
   html tag="div" bind:clientWidth=[object Object] bind:clientHeight=[object Object]
     line_break
     html tag="span" style="font-size: {size}px"
-      paragraph
-        mustache "text"
+      mustache "text"
     line_break

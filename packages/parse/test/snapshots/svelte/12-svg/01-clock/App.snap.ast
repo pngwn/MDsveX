@@ -41,7 +41,8 @@ root
     html tag="g" transform="rotate({6 * seconds})"
       line_break
       html tag="line" class="second" y1="10" y2="-38" self_closing=true
-      line_break
+      soft_break
+      text "		"
       html tag="line" class="second-counterweight" y1="10" y2="2" self_closing=true
       line_break
     line_break

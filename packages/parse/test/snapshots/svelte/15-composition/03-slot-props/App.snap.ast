@@ -13,15 +13,13 @@ root
         svelte_branch tag="if" "active"
           line_break
           html tag="p"
-            paragraph
-              text "I am being hovered upon."
+            text "I am being hovered upon."
           line_break
         svelte_branch tag="else"
           line_break
           html tag="p"
-            paragraph
-              text "Hover over me"
-              text "!"
+            text "Hover over me"
+            text "!"
           line_break
       line_break
     line_break
@@ -35,15 +33,13 @@ root
         svelte_branch tag="if" "active"
           line_break
           html tag="p"
-            paragraph
-              text "I am being hovered upon."
+            text "I am being hovered upon."
           line_break
         svelte_branch tag="else"
           line_break
           html tag="p"
-            paragraph
-              text "Hover over me"
-              text "!"
+            text "Hover over me"
+            text "!"
           line_break
       line_break
     line_break
@@ -57,15 +53,13 @@ root
         svelte_branch tag="if" "active"
           line_break
           html tag="p"
-            paragraph
-              text "I am being hovered upon."
+            text "I am being hovered upon."
           line_break
         svelte_branch tag="else"
           line_break
           html tag="p"
-            paragraph
-              text "Hover over me"
-              text "!"
+            text "Hover over me"
+            text "!"
           line_break
       line_break
     line_break

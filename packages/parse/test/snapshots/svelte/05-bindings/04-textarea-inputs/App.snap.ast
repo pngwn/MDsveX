@@ -8,5 +8,4 @@ root
   html tag="textarea" bind:value=[object Object]
   line_break
   line_break
-  paragraph
-    svelte_tag tag="html" "marked(text)"
+  svelte_tag tag="html" "marked(text)"
