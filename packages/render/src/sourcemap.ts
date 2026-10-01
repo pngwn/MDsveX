@@ -15,6 +15,12 @@ const enum Rec {
 	SIZE = 6,
 }
 
+// a trace record: generated offset, source offset, identity run length (1 for
+// a point), see tr_point in html_cursor.ts
+const enum Trace {
+	SIZE = 3,
+}
+
 const enum Role {
 	CONTENT = 1,
 	OPEN_SYNTAX = 2,
@@ -327,6 +333,66 @@ function collect_record_spans(
 	span_count = k;
 }
 
+function collect_trace_spans(
+	rec: Uint32Array,
+	start: number,
+	end: number
+): void {
+	const most = (end - start) / Trace.SIZE;
+	if (most > span_gen.length) reserve_spans(0, most);
+	const gen = span_gen;
+	const src = span_src;
+	const len = span_len;
+	let k = 0;
+	for (let p = start; p < end; p += Trace.SIZE) {
+		gen[k] = rec[p];
+		src[k] = rec[p + 1];
+		len[k] = rec[p + 2];
+		k++;
+	}
+	span_count = k;
+}
+
+function collect_trace_char_spans(
+	rec: Uint32Array,
+	start: number,
+	end: number
+): void {
+	span_count = 0;
+	for (let p = start; p < end; p += Trace.SIZE) {
+		const g = rec[p];
+		const s = rec[p + 1];
+		const l = rec[p + 2];
+		for (let d = 0; d < l; d++) push_span(g + d, s + d, 1);
+	}
+}
+
+/**
+ * trace records as Rec records encode, dropping what the encoding skips
+ * @internal
+ */
+export function trace_of_records(rec: Uint32Array, n: number): Uint32Array {
+	const out = new Uint32Array(n > 0 ? (n / Rec.SIZE) * Trace.SIZE : 0);
+	let k = 0;
+	for (let p = 0; p < n; p += Rec.SIZE) {
+		const role = rec[p + 5] & 3;
+		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
+		let l = 1;
+		if (role === Role.CONTENT) {
+			const source_length = rec[p + 3];
+			if (rec[p + 1] === source_length) {
+				if (source_length === 0) continue;
+				l = source_length;
+			}
+		}
+		out[k] = rec[p];
+		out[k + 1] = rec[p + 2];
+		out[k + 2] = l;
+		k += Trace.SIZE;
+	}
+	return out.subarray(0, k);
+}
+
 function collect_record_char_spans(
 	rec: Uint32Array,
 	start: number,
@@ -580,6 +646,40 @@ function encode_records(
 	return encode_spans();
 }
 
+function encode_trace(
+	rec: Uint32Array,
+	start: number,
+	end: number,
+	source: string,
+	generated: string
+): string {
+	fill_line_starts(src_table, source, PAST_END, PAST_END);
+	fill_line_starts(gen_table, generated, PAST_END, PAST_END);
+
+	collect_trace_spans(rec, start, end);
+	sort_spans();
+	if (runs_overlap()) {
+		collect_trace_char_spans(rec, start, end);
+		sort_spans();
+	}
+	return encode_spans();
+}
+
+/** @internal trace_to_v3 over the trace records of a sink */
+export function trace_records_to_v3(
+	sink: MapSink,
+	source: string,
+	generated: string,
+	file?: string
+): SourceMapV3 {
+	const n = sink.n;
+	return v3_map(
+		n === 0 ? '' : encode_trace(sink.rec, 0, n, source, generated),
+		source,
+		file
+	);
+}
+
 function encode_spans(): string {
 	const n = span_count;
 	const gen = span_gen;
@@ -697,18 +797,19 @@ const TRACE_OWN_WORDS = 8192;
 let trace_slab = new Uint32Array(0);
 let trace_used = 0;
 
+/** fills out with room for a trace, returns out */
 export function reserve_trace(
 	rec_words: number,
-	offset_words: number
+	offset_words: number,
+	out: MapTrace
 ): MapTrace {
 	const words = rec_words + offset_words;
 	if (words > TRACE_OWN_WORDS) {
-		return {
-			buf: new Uint32Array(words),
-			start: 0,
-			split: rec_words,
-			end: words,
-		};
+		out.buf = new Uint32Array(words);
+		out.start = 0;
+		out.split = rec_words;
+		out.end = words;
+		return out;
 	}
 	let start = trace_used;
 	if (start + words > trace_slab.length) {
@@ -716,12 +817,43 @@ export function reserve_trace(
 		start = 0;
 	}
 	trace_used = start + words;
-	return {
-		buf: trace_slab,
-		start,
-		split: start + rec_words,
-		end: start + words,
-	};
+	out.buf = trace_slab;
+	out.start = start;
+	out.split = start + rec_words;
+	out.end = start + words;
+	return out;
+}
+
+/**
+ * the slab, with at least words free from trace_free_at, for a render that
+ * writes its records in place instead of copying them out of a sink
+ */
+export function trace_room(words: number): Uint32Array {
+	if (trace_used + words > trace_slab.length) {
+		trace_slab = new Uint32Array(TRACE_SLAB_WORDS);
+		trace_used = 0;
+	}
+	return trace_slab;
+}
+
+/** the first free word of the slab */
+export function trace_free_at(): number {
+	return trace_used;
+}
+
+/** out as the trace of words start to end written in place into buf */
+export function trace_take(
+	buf: Uint32Array,
+	start: number,
+	end: number,
+	out: MapTrace
+): void {
+	// a sink that outgrew the slab moved to its own array
+	if (buf === trace_slab) trace_used = end;
+	out.buf = buf;
+	out.start = start;
+	out.split = end;
+	out.end = end;
 }
 
 /** @internal */
@@ -735,7 +867,7 @@ export function trace_to_v3(
 	const split = trace.split;
 	const buf = trace.buf;
 	const encoded =
-		split === start ? '' : encode_records(buf, start, split, source, generated);
+		split === start ? '' : encode_trace(buf, start, split, source, generated);
 	return v3_map(encoded, source, file);
 }
 
@@ -818,13 +950,11 @@ function decode_lines(
 
 	span_count = 0;
 	let gen_line = 0;
-	for (let p = start; p < split; p += Rec.SIZE) {
-		const role = buf[p + 5] & 3;
-		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
+	for (let p = start; p < split; p += Trace.SIZE) {
 		const g = buf[p];
-		const s = buf[p + 2];
-		const source_length = buf[p + 3];
-		if (role === Role.CONTENT && buf[p + 1] === source_length) {
+		const s = buf[p + 1];
+		const source_length = buf[p + 2];
+		if (source_length > 1) {
 			// a run can cross lines
 			const end = g + source_length;
 			let at = g;
@@ -1103,15 +1233,13 @@ function trace_lines(
 	span_count = 0;
 	let gen_line = 0;
 	let query_at = 0;
-	for (let p = start; p < split; p += Rec.SIZE) {
-		const role = buf[p + 5] & 3;
-		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
+	for (let p = start; p < split; p += Trace.SIZE) {
 		const g = buf[p];
 		// no wanted line starts at or past limit
 		if (g >= limit) continue;
-		const s = buf[p + 2];
-		const source_length = buf[p + 3];
-		if (role === Role.CONTENT && buf[p + 1] === source_length) {
+		const s = buf[p + 1];
+		const source_length = buf[p + 2];
+		if (source_length > 1) {
 			const end = g + source_length;
 			let at = g;
 			while (at < end) {

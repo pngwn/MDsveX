@@ -254,6 +254,36 @@ export class CompilerSession {
 		}
 		return render_trace(this.renderer, this.parse(source), source);
 	}
+
+	/**
+	 * compile_trace filling out, whose trace fields are the trace, with no
+	 * result objects
+	 * @internal
+	 */
+	compile_trace_into(
+		raw: string,
+		parse_plugins: ParsePlugin[] | undefined,
+		out: TraceTarget
+	): void {
+		const source = normalize_newlines(raw);
+		let renderer = this.renderer;
+		let nodes: NodeBuffer;
+		if (parse_plugins && parse_plugins.length > 0) {
+			nodes = parse_once(source, parse_plugins);
+			renderer = new CursorHTMLRenderer({ cache: false });
+		} else {
+			nodes = this.parse(source);
+		}
+		renderer.update_trace_into(nodes, source, out);
+		out.source = source;
+		out.html = renderer.html;
+	}
+}
+
+/** a trace with the document it maps, html from the normalized source */
+interface TraceTarget extends MapTrace {
+	source: string;
+	html: string;
 }
 
 // a session keeps its arena at its largest document size, so large documents
@@ -306,12 +336,9 @@ function collapsed_of(raw: string): number[] | null {
 	return offsets === null ? null : offsets.collapsed;
 }
 
-interface StoredDocument {
+/** the trace fields are the trace of html, so the document is its own trace */
+interface StoredDocument extends TraceTarget {
 	raw: string;
-	/** normalized raw, the trace indexes it */
-	source: string;
-	html: string;
-	trace: MapTrace;
 }
 
 /**
@@ -325,8 +352,8 @@ function pfm_map(
 ): SourceMapV3 | DecodedSourceMapV3 {
 	// sourcesContent is replaced by raw after chaining
 	const lines = mapped_source_lines(compile_mappings as string);
-	if (lines === null) return trace_to_v3(doc.trace, doc.source, doc.html, file);
-	return trace_to_decoded(doc.trace, doc.source, doc.html, lines, file);
+	if (lines === null) return trace_to_v3(doc, doc.source, doc.html, file);
+	return trace_to_decoded(doc, doc.source, doc.html, lines, file);
 }
 
 // the map json up to its mappings when the compile map names no file
@@ -397,7 +424,7 @@ function chained_base64(
 	const chained = chain_trace(
 		mappings,
 		names,
-		doc.trace,
+		doc,
 		doc.source,
 		doc.html,
 		true
@@ -673,12 +700,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	}
 
 	const stored = new Map<string, StoredDocument>();
-	const empty_trace: MapTrace = {
-		buf: new Uint32Array(0),
-		start: 0,
-		split: 0,
-		end: 0,
-	};
+	const no_records = new Uint32Array(0);
 	const compiler = new CompilerSession();
 
 	return [
@@ -689,25 +711,27 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			transform(code, id) {
 				if (!matches(id)) return;
 
-				const result = compiler.compile_trace(code, options.parsePlugins);
 				// one entry per id, refilled by each transform of it
-				const doc = stored.get(id);
+				let doc = stored.get(id);
 				if (doc === undefined) {
-					stored.set(id, {
-						raw: code,
-						source: result.source,
-						html: result.code,
-						trace: result.trace,
-					});
-				} else {
-					doc.raw = code;
-					doc.source = result.source;
-					doc.html = result.code;
-					doc.trace = result.trace;
+					doc = {
+						raw: '',
+						source: '',
+						html: '',
+						buf: no_records,
+						start: 0,
+						split: 0,
+						end: 0,
+					};
+					stored.set(id, doc);
 				}
+				// raw last, so a compile that throws leaves no document for post
+				doc.raw = '';
+				compiler.compile_trace_into(code, options.parsePlugins, doc);
+				doc.raw = code;
 
 				// return NO map, avoids poisoning getCombinedSourcemap()
-				return { code: result.code };
+				return { code: doc.html };
 			},
 		},
 		{
@@ -756,7 +780,10 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					doc.raw = '';
 					doc.source = '';
 					doc.html = '';
-					doc.trace = empty_trace;
+					doc.buf = no_records;
+					doc.start = 0;
+					doc.split = 0;
+					doc.end = 0;
 				}
 			},
 		},

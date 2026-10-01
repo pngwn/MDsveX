@@ -20,7 +20,15 @@ import {
 	record_mappings,
 } from './mappings';
 import type { Mapping, MappingData } from './mappings';
-import { records_by_offset, records_to_v3, reserve_trace } from './sourcemap';
+import {
+	records_by_offset,
+	reserve_trace,
+	trace_of_records,
+	trace_records_to_v3,
+	trace_free_at,
+	trace_room,
+	trace_take,
+} from './sourcemap';
 import type { MapTrace, SourceMapV3 } from './sourcemap';
 
 export type { Mapping, CodeInformation, MappingData } from './mappings';
@@ -254,6 +262,11 @@ export const NONE = Slot.NONE;
 // must match RECORD_SIZE and Preset in mappings, local for the same reason as K
 const enum Rec {
 	SIZE = 6,
+}
+
+// mirrors sourcemap.ts
+const enum Trace {
+	SIZE = 3,
 }
 
 const enum Preset {
@@ -1747,6 +1760,48 @@ function fold_table_cells(
 // whole span and text its content span, output must equal the mapped render
 // a position is mo.length + FOLD_LEN[p]
 
+// a trace record is three words: generated offset, source offset and the
+// length of an identity run, 1 for a point, which is all the v3 encoding
+// reads of a node span or a content span (rec_spans in sourcemap.ts)
+
+/** the start of a node span */
+function tr_point(sink: MapSink, gen: number, src: number): void {
+	if (src !== Slot.NONE) {
+		let rec = sink.rec;
+		const p = sink.n;
+		if (p + Trace.SIZE > rec.length) rec = sink.grow();
+		rec[p] = gen;
+		rec[p + 1] = src;
+		rec[p + 2] = 1;
+		sink.n = p + Trace.SIZE;
+	}
+}
+
+/** a content span, a run when it copies the source, empty spans map nothing */
+function tr_run(
+	sink: MapSink,
+	gen_start: number,
+	gen_end: number,
+	src_start: number,
+	src_end: number
+): void {
+	if (src_start !== Slot.NONE) {
+		const src_len = src_end > src_start ? src_end - src_start : 0;
+		let len = 1;
+		if (gen_end - gen_start === src_len) {
+			if (src_len === 0) return;
+			len = src_len;
+		}
+		let rec = sink.rec;
+		const p = sink.n;
+		if (p + Trace.SIZE > rec.length) rec = sink.grow();
+		rec[p] = gen_start;
+		rec[p + 1] = src_start;
+		rec[p + 2] = len;
+		sink.n = p + Trace.SIZE;
+	}
+}
+
 /** push_static appending to mo */
 function tr_push(p: number, id: number): number {
 	if (p === 0) return id;
@@ -1782,10 +1837,11 @@ function tr_open(
 	folded: number,
 	end: number
 ): number {
-	const a = _attrs(c);
-	if (a.length === 0) return tr_push(p, folded);
+	// most nodes have no meta, _attrs is too large to inline
+	const meta = c.meta();
+	if (meta === undefined || !has_attrs(meta)) return tr_push(p, folded);
 	if (p !== 0) mo += FOLD_STR[p];
-	mo = mo + FOLD_STR[head] + a;
+	mo = mo + FOLD_STR[head] + _attrs(c);
 	return end;
 }
 
@@ -1812,6 +1868,15 @@ function tr_content(
 	return 0;
 }
 
+/** tr_content writing a trace record */
+function tr_text(c: Cursor, sink: MapSink, p: number, text: string): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	const at = mo.length;
+	tr_run(sink, at, at + text.length, c.value_start, c.value_end);
+	mo += text;
+	return 0;
+}
+
 function tr_children(c: Cursor, sink: MapSink, p: number): number {
 	const n = c.words;
 	let child = n[c.index * W.stride + W.first_child];
@@ -1831,7 +1896,7 @@ function tr_children(c: Cursor, sink: MapSink, p: number): number {
 			}
 			if (vs !== Slot.NONE && ve > vs) {
 				const at = mo.length;
-				put_record(sink, at, at + t.length, vs, ve, child, Code.TEXT_CONTENT);
+				tr_run(sink, at, at + t.length, vs, ve);
 			}
 			mo += t;
 		} else if (k !== K.LINE_BREAK) {
@@ -1877,15 +1942,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			p = tr_open(c, p, WRAP_HEAD[row], WRAP_FOLDED[row], WRAP_END[row]);
 			p = tr_children(c, sink, p);
 			p = tr_push(p, WRAP_CLOSE[row]);
-			put_record(
-				sink,
-				pre,
-				mo.length + FOLD_LEN[p],
-				c.start,
-				c.end,
-				c.index,
-				Preset.TEXT << 2
-			);
+			tr_point(sink, pre, c.start);
 			return p;
 		}
 
@@ -1895,16 +1952,8 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			let code = escape_node_text(c);
 			if (string_index_of.call(code, '\n') !== -1)
 				code = code.replace(/\n/g, ' ');
-			tr_content(c, sink, p, code, Code.CODE_CONTENT);
-			put_record(
-				sink,
-				pre,
-				mo.length + FOLD_LEN[S_CODE_CLOSE],
-				c.start,
-				c.end,
-				c.index,
-				Preset.CODE << 2
-			);
+			tr_text(c, sink, p, code);
+			tr_point(sink, pre, c.start);
 			return S_CODE_CLOSE;
 		}
 
@@ -1924,30 +1973,14 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			}
 			p = tr_children(c, sink, p);
 			p = tr_push(p, ordered ? S_OL_CLOSE : S_UL_CLOSE);
-			put_record(
-				sink,
-				pre,
-				mo.length + FOLD_LEN[p],
-				c.start,
-				c.end,
-				c.index,
-				Preset.STRUCTURE << 2
-			);
+			tr_point(sink, pre, c.start);
 			return p;
 		}
 
 		case K.THEMATIC_BREAK: {
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_push(p, S_HR);
-			put_record(
-				sink,
-				pre,
-				mo.length + FOLD_LEN[p],
-				c.start,
-				c.end,
-				c.index,
-				Preset.STRUCTURE << 2
-			);
+			tr_point(sink, pre, c.start);
 			return p;
 		}
 
@@ -1962,15 +1995,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			p = tr_open(c, p, S_TABLE, S_TABLE_OPEN, S_GT_LF);
 			p = tr_table_content(c, sink, p);
 			p = tr_push(p, S_TABLE_CLOSE);
-			put_record(
-				sink,
-				pre,
-				mo.length + FOLD_LEN[p],
-				c.start,
-				c.end,
-				c.index,
-				Preset.STRUCTURE << 2
-			);
+			tr_point(sink, pre, c.start);
 			return p;
 		}
 
@@ -1997,15 +2022,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			mo = mo + s + _attrs(c, LINK_HANDLED);
 			p = tr_children(c, sink, S_GT);
 			p = tr_push(p, S_A_CLOSE);
-			put_record(
-				sink,
-				pre,
-				mo.length + FOLD_LEN[p],
-				c.start,
-				c.end,
-				c.index,
-				Preset.TEXT << 2
-			);
+			tr_point(sink, pre, c.start);
 			return p;
 		}
 
@@ -2020,47 +2037,23 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 				s += ' title="' + escape_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, IMAGE_HANDLED);
 			// the syntax spans are empty, only the node is recorded
-			put_record(
-				sink,
-				pre,
-				mo.length + FOLD_LEN[S_SELF_CLOSE],
-				c.start,
-				c.end,
-				c.index,
-				0
-			);
+			tr_point(sink, pre, c.start);
 			return S_SELF_CLOSE;
 		}
 
 		case K.HTML_COMMENT: {
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_push(p, S_COMMENT_OPEN);
-			tr_content(c, sink, p, c.text(), Code.TEXT_CONTENT);
-			put_record(
-				sink,
-				pre,
-				mo.length + FOLD_LEN[S_COMMENT_CLOSE],
-				c.start,
-				c.end,
-				c.index,
-				Preset.TEXT << 2
-			);
+			tr_text(c, sink, p, c.text());
+			tr_point(sink, pre, c.start);
 			return S_COMMENT_CLOSE;
 		}
 
 		case K.MUSTACHE: {
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_push(p, S_BRACE_OPEN);
-			tr_content(c, sink, p, c.text(), Code.SVELTE_CONTENT);
-			put_record(
-				sink,
-				pre,
-				mo.length + FOLD_LEN[S_BRACE_CLOSE],
-				c.start,
-				c.end,
-				c.index,
-				Preset.SVELTE << 2
-			);
+			tr_text(c, sink, p, c.text());
+			tr_point(sink, pre, c.start);
 			return S_BRACE_CLOSE;
 		}
 
@@ -2071,16 +2064,8 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			const tag = meta?.tag as string;
 			const text = c.text();
 			mo = mo + '{@' + meta_str(tag);
-			if (text) tr_content(c, sink, S_SPACE, text, Code.SVELTE_CONTENT);
-			put_record(
-				sink,
-				pre,
-				mo.length + FOLD_LEN[S_BRACE_CLOSE],
-				c.start,
-				c.end,
-				c.index,
-				Preset.SVELTE << 2
-			);
+			if (text) tr_text(c, sink, S_SPACE, text);
+			tr_point(sink, pre, c.start);
 			return S_BRACE_CLOSE;
 		}
 
@@ -2107,16 +2092,8 @@ function tr_code_fence(c: Cursor, sink: MapSink, p: number): number {
 	} else {
 		p = tr_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
 	}
-	tr_content(c, sink, p, escape_node_text(c), Code.CODE_CONTENT);
-	put_record(
-		sink,
-		pre,
-		mo.length + FOLD_LEN[S_PRE_CODE_CLOSE],
-		c.start,
-		c.end,
-		c.index,
-		Preset.CODE << 2
-	);
+	tr_text(c, sink, p, escape_node_text(c));
+	tr_point(sink, pre, c.start);
 	return S_PRE_CODE_CLOSE;
 }
 
@@ -2151,47 +2128,23 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 		}
 		if (self_closing) {
 			mo += s;
-			put_record(
-				sink,
-				pre,
-				mo.length + FOLD_LEN[S_SELF_CLOSE],
-				c.start,
-				c.end,
-				c.index,
-				Code.SVELTE_CONTENT
-			);
+			tr_run(sink, pre, mo.length + FOLD_LEN[S_SELF_CLOSE], c.start, c.end);
 			return S_SELF_CLOSE;
 		}
 		mo += s;
 	}
 	if (self_closing) {
-		put_record(
-			sink,
-			pre,
-			mo.length,
-			c.start,
-			c.end,
-			c.index,
-			Code.SVELTE_CONTENT
-		);
+		tr_run(sink, pre, mo.length, c.start, c.end);
 		return 0;
 	}
 	if (tag === 'script' || tag === 'style') {
-		tr_content(c, sink, S_GT, c.text(), Code.SVELTE_CONTENT);
+		tr_text(c, sink, S_GT, c.text());
 	} else {
 		const q = tr_children(c, sink, S_GT);
 		if (q !== 0) mo += FOLD_STR[q];
 	}
 	mo = mo + '</' + meta_str(tag);
-	put_record(
-		sink,
-		pre,
-		mo.length + FOLD_LEN[S_GT],
-		c.start,
-		c.end,
-		c.index,
-		Preset.TEXT << 2
-	);
+	tr_point(sink, pre, c.start);
 	return S_GT;
 }
 
@@ -2217,15 +2170,7 @@ function tr_svelte_block(c: Cursor, sink: MapSink, p: number): number {
 				}
 				if (branch_expr) {
 					mo += ' ';
-					put_record(
-						sink,
-						mo.length,
-						mo.length + branch_expr.length,
-						c.value_start,
-						c.value_end,
-						c.index,
-						Code.SVELTE_CONTENT
-					);
+					tr_run(sink, mo.length, mo.length + branch_expr.length, c.value_start, c.value_end);
 					mo += branch_expr;
 				}
 				p = tr_children(c, sink, S_BRACE_CLOSE_LF);
@@ -2238,15 +2183,7 @@ function tr_svelte_block(c: Cursor, sink: MapSink, p: number): number {
 	if (p !== 0) mo += FOLD_STR[p];
 	mo = mo + '{/' + block_tag;
 	// node span for the whole block, use the block node (goto_parent already called)
-	put_record(
-		sink,
-		pre,
-		mo.length + FOLD_LEN[S_BRACE_CLOSE],
-		c.start,
-		c.end,
-		c.index,
-		Code.SVELTE_NODE
-	);
+	tr_point(sink, pre, c.start);
 	return S_BRACE_CLOSE;
 }
 
@@ -2816,9 +2753,9 @@ function by_offset(sink: MapSink, out: string[]): MapSink {
 }
 
 /** a short record run is copied by hand since a subarray view costs more */
-function capture_trace(sink: MapSink): MapTrace {
+function capture_trace(sink: MapSink, out: MapTrace): MapTrace {
 	const n = sink.n;
-	const trace = reserve_trace(n, 0);
+	const trace = reserve_trace(n, 0, out);
 	const buf = trace.buf;
 	const start = trace.start;
 	const rec = sink.rec;
@@ -2992,7 +2929,11 @@ export const _out_offsets = out_offsets;
 
 /** @internal the trace of a sink filled by out chunk index */
 export function _capture_trace(sink: MapSink, out: string[]): MapTrace {
-	return capture_trace(by_offset(sink, out));
+	const rec = by_offset(sink, out);
+	const trace = new MapSink();
+	trace.rec = trace_of_records(rec.rec, rec.n);
+	trace.n = trace.rec.length;
+	return capture_trace(trace, { buf: trace.rec, start: 0, split: 0, end: 0 });
 }
 
 /** @internal the mappings of a sink filled by out chunk index */
@@ -3006,6 +2947,8 @@ export function _resolve_mappings(
 // mapped renders resolve their records before they return, so every
 // renderer shares one sink
 const render_sink = new MapSink();
+// half a trace slab, see reserve_trace
+const TRACE_DIRECT_WORDS = 16384;
 
 //  internal helpers
 
@@ -3174,19 +3117,44 @@ export class CursorHTMLRenderer {
 		const sink = render_sink;
 		sink.begin(false);
 		this.render_mapped(buf, source, sink, true);
-		const map = records_to_v3(sink, null, raw, this.html, file);
+		const map = trace_records_to_v3(sink, raw, this.html, file);
 		sink.release();
 		return map;
 	}
 
 	/** trace_to_v3 over the trace with the same arguments equals update_v3 */
 	update_trace(buf: NodeBuffer, source: string): MapTrace {
+		const trace: MapTrace = { buf: render_sink.rec, start: 0, split: 0, end: 0 };
+		this.update_trace_into(buf, source, trace);
+		return trace;
+	}
+
+	/** update_trace filling out instead of a new trace */
+	update_trace_into(buf: NodeBuffer, source: string, out: MapTrace): void {
 		const sink = render_sink;
+		// a node writes at most two records, so a small render fits the slab
+		// and writes its records there, no copy out of the sink
+		const bound = buf.size * (2 * Trace.SIZE);
+		if (bound <= TRACE_DIRECT_WORDS) {
+			const own = sink.rec;
+			sink.rec = trace_room(bound);
+			const start = trace_free_at();
+			sink.n = start;
+			sink.syntax = false;
+			try {
+				this.render_mapped(buf, source, sink, true);
+				trace_take(sink.rec, start, sink.n, out);
+				return;
+			} finally {
+				// the slab holds live traces, the next sink write must not land there
+				sink.rec = own;
+				sink.n = 0;
+			}
+		}
 		sink.begin(false);
 		this.render_mapped(buf, source, sink, true);
-		const trace = capture_trace(sink);
+		capture_trace(sink, out);
 		sink.release();
-		return trace;
 	}
 
 	reset(): void {
