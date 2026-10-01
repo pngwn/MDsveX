@@ -939,16 +939,27 @@ export class PFMParser {
 
 		// keep one char before trim_point for the previous char lookbehind
 		let head = this.source;
+		const pending = this.wait_chunks;
 		if (this.trim_point - 1 > this.source_base) {
-			if (this.pending_count !== this.pending_para_count)
+			if (this.pending_count !== this.pending_para_count) {
+				// the kept html lines are read from a whole window
+				if (pending.length !== 0) head = this.join_held(head);
 				head = this.trim_keeping_html(head);
-			else {
+			} else {
 				head = string_slice.call(head, this.trim_point - 1 - this.source_base);
 				this.source_base = this.trim_point - 1;
 			}
 		}
 
-		const src = append_flat(head, chunk);
+		let src: string;
+		if (pending.length === 0) src = append_flat(head, chunk);
+		else {
+			// the window, the chunks held back by a wait and this one in one join
+			pending.unshift(head);
+			pending.push(chunk);
+			src = pending.join('');
+			pending.length = 0;
+		}
 		this.source = src;
 		this.source_end += len;
 		this._run();
@@ -1175,6 +1186,16 @@ export class PFMParser {
 		return prefix + string_slice.call(head, cut - base);
 	}
 
+	/** the window with the chunks a released wait held back */
+	private join_held(head: string): string {
+		const pending = this.wait_chunks;
+		pending.unshift(head);
+		const joined = pending.join('');
+		pending.length = 0;
+		this.source = joined;
+		return joined;
+	}
+
 	/** leaves scan, trim point and window where _run would, false when the chunk might hold the close */
 	private skip_wait(chunk: string, len: number): boolean {
 		const end = this.source_end;
@@ -1197,12 +1218,7 @@ export class PFMParser {
 					return true;
 				}
 			}
-			if (pending.length !== 0) {
-				// the chunks held back while waiting go onto the window in one join, feed appends this one
-				pending.unshift(this.source);
-				this.source = pending.join('');
-				pending.length = 0;
-			}
+			// feed joins the chunks held back while waiting onto the window with this one
 			return false;
 		}
 		if (kind === WAIT_FENCE) {
@@ -7445,7 +7461,7 @@ export class PFMParser {
 				if (this.can_trim(this.node_stack.length - 1)) {
 					this.trim_point = line;
 					this.wait_kind = WAIT_FENCE;
-				}
+				} else this.wait_for('`'); // kept html lines stay, chunks wait whole for a backtick
 				return true;
 			}
 			this.out.set_value_end(current_node, length);
@@ -9598,7 +9614,10 @@ export class PFMParser {
 			char_code_at.call(source, header_end - base) !== LINEFEED
 		)
 			header_end++;
-		if (header_end >= length && !this.finished) return false; // hold back - need \n
+		if (header_end >= length && !this.finished) {
+			this.wait_for('\n');
+			return false; // hold back - need \n
+		}
 
 		// parse header cells
 		const header_cells = this.parse_table_row_cells(this.cursor, header_end);
@@ -9614,7 +9633,10 @@ export class PFMParser {
 			char_code_at.call(source, delim_end - base) !== LINEFEED
 		)
 			delim_end++;
-		if (delim_end >= length && !this.finished) return false; // hold back - need full delimiter row
+		if (delim_end >= length && !this.finished) {
+			this.wait_for('\n');
+			return false; // hold back - need full delimiter row
+		}
 
 		// parse delimiter row
 		const alignments = this.parse_delimiter_row(delim_start, delim_end);
