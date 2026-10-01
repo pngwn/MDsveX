@@ -13,7 +13,12 @@
 
 import { Cursor } from '@mdsvex/parse/cursor';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
-import { MapSink, record_data, record_mappings } from './mappings';
+import {
+	MapSink,
+	RecordMapping,
+	record_data,
+	record_mappings,
+} from './mappings';
 import type { Mapping, MappingData } from './mappings';
 import { records_by_offset, records_to_v3, reserve_trace } from './sourcemap';
 import type { MapTrace, SourceMapV3 } from './sourcemap';
@@ -2389,16 +2394,33 @@ function resolve_raw_mappings(
 			gen_offsets = [gen_offset];
 			lengths = [length];
 		}
-		const m: Mapping<MappingData> = {
-			sourceOffsets: src_offsets,
-			generatedOffsets: gen_offsets,
-			lengths,
-			data: data_of(rec[p + 5], rec[p + 4] | 0),
-		};
-		if (!identity) {
-			m.generatedLengths = [gen_length];
+		const data = data_of(rec[p + 5], rec[p + 4] | 0);
+		// one class for every mapping so readers stay monomorphic, a piece
+		// that split or whose widened length meets its generated length keeps
+		// its arrays
+		if (src_offsets.length === 1 && (identity || length !== gen_length)) {
+			mappings.push(
+				new RecordMapping(
+					src_offsets[0],
+					gen_offset,
+					length,
+					identity ? length : gen_length,
+					data,
+					null
+				)
+			);
+		} else {
+			const m: Mapping<MappingData> = {
+				sourceOffsets: src_offsets,
+				generatedOffsets: gen_offsets,
+				lengths,
+				data,
+			};
+			if (!identity) {
+				m.generatedLengths = [gen_length];
+			}
+			mappings.push(new RecordMapping(0, 0, 0, 0, data, m));
 		}
-		mappings.push(m);
 	}
 	return mappings;
 }
