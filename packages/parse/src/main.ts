@@ -176,6 +176,15 @@ type HoleIds = { undefined?: number };
 
 const JOIN_PAIR: string[] = ['', ''];
 
+// a table start's header cell bounds as start, end pairs, shared since try_start_table never reenters
+let table_bounds: Int32Array = new Int32Array(32);
+
+function grow_bounds(bounds: Int32Array): Int32Array {
+	const next = new Int32Array(bounds.length << 1);
+	next.set(bounds);
+	return next;
+}
+
 /** join rather than concat, a cons string window costs about twice as much per charCodeAt */
 function append_flat(head: string, tail: string): string {
 	if (tail.length === 0) return head;
@@ -9961,22 +9970,60 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
+		const row_start = this.cursor;
 
-		// find end of header row
-		let header_end = this.cursor;
-		while (
-			header_end < length &&
-			char_code_at.call(source, header_end - base) !== LINEFEED
-		)
-			header_end++;
+		// one pass over the header row finds its end and its cells' bounds (pairs in table_bounds)
+		let pos = row_start;
+		while (pos < length) {
+			const c = char_code_at.call(source, pos - base);
+			if (c !== SPACE && c !== TAB) break;
+			pos++;
+		}
+		if (pos < length && char_code_at.call(source, pos - base) === PIPE) pos++;
+		let bounds = table_bounds;
+		let n = 0;
+		let cell_start = pos;
+		let last_text = pos;
+		let header_end = length;
+		while (pos < length) {
+			const ch = char_code_at.call(source, pos - base);
+			if (ch === LINEFEED) {
+				header_end = pos;
+				break;
+			}
+			if (ch === PIPE) {
+				if (n + 2 > bounds.length) bounds = table_bounds = grow_bounds(bounds);
+				bounds[n] = cell_start;
+				bounds[n + 1] = pos;
+				n += 2;
+				cell_start = last_text = pos + 1;
+			} else if (ch !== SPACE && ch !== TAB) {
+				last_text = pos + 1;
+				// an escaped char is skipped unless the row ends after the backslash
+				if (
+					ch === BACKSLASH &&
+					pos + 1 < length &&
+					char_code_at.call(source, pos + 1 - base) !== LINEFEED
+				) {
+					pos++;
+					last_text = pos + 1;
+				}
+			}
+			pos++;
+		}
 		if (header_end >= length && !this.finished) {
 			this.wait_for('\n');
 			return false; // hold back - need \n
 		}
-
-		// parse header cells
-		const header_cells = this.parse_table_row_cells(this.cursor, header_end);
-		if (header_cells.length === 0) return null;
+		// trailing content after the last pipe is a cell unless it is only whitespace
+		if (last_text > cell_start) {
+			if (n + 2 > bounds.length) bounds = table_bounds = grow_bounds(bounds);
+			bounds[n] = cell_start;
+			bounds[n + 1] = header_end;
+			n += 2;
+		}
+		if (n === 0) return null;
+		const col_count = n >> 1;
 
 		// find delimiter row
 		const delim_start = header_end + 1;
@@ -9995,11 +10042,10 @@ export class PFMParser {
 
 		// parse delimiter row
 		const alignments = this.parse_delimiter_row(delim_start, delim_end);
-		if (!alignments || alignments.length !== header_cells.length) return null; // not a table
+		if (!alignments || alignments.length !== col_count) return null; // not a table
 
 		// confirmed table - emit structure
-		const col_count = header_cells.length;
-		const table_id = this.emit_open(NodeKind.table, this.cursor, parent);
+		const table_id = this.emit_open(NodeKind.table, row_start, parent);
 		this.out.attr(table_id, 'alignments', alignments);
 		this.out.attr(table_id, 'col_count', col_count);
 
@@ -10010,42 +10056,43 @@ export class PFMParser {
 
 		// emit header row using the inline state machinery:
 		// open header node, then parse each cell through inline
-		const header_id = this.emit_open(
-			NodeKind.table_header,
-			this.cursor,
-			table_id
-		);
-		for (let i = 0; i < header_cells.length; i++) {
-			const cell = header_cells[i];
-			const trimmed = this.trim_cell_range(cell.start, cell.end);
+		const header_id = this.emit_open(NodeKind.table_header, row_start, table_id);
+		for (let i = 0; i < col_count; i++) {
+			const c_start = bounds[i << 1];
+			const c_end = bounds[(i << 1) + 1];
+			let s = c_start;
+			let e = c_end;
+			while (s < e) {
+				const c = char_code_at.call(source, s - base);
+				if (c !== SPACE && c !== TAB) break;
+				s++;
+			}
+			while (e > s) {
+				const c = char_code_at.call(source, e - 1 - base);
+				if (c !== SPACE && c !== TAB) break;
+				e--;
+			}
 			this.table_cell_id = this.emit_open(
 				NodeKind.table_cell,
-				cell.start,
+				c_start,
 				header_id,
 				i
 			);
-			if (
-				trimmed.start < trimmed.end &&
-				this.is_plain_range(trimmed.start, trimmed.end)
-			) {
+			if (s < e && this.is_plain_range(s, e)) {
 				// a plain cell is one text node, no inline pass over a sliced source
-				const t_id = this.emit_open(
-					NodeKind.text,
-					trimmed.start,
-					this.table_cell_id
-				);
-				this.out.set_value_start(t_id, trimmed.start);
-				this.out.set_value_end(t_id, trimmed.end);
-				this.emit_close(t_id, trimmed.end);
+				const t_id = this.emit_open(NodeKind.text, s, this.table_cell_id);
+				this.out.set_value_start(t_id, s);
+				this.out.set_value_end(t_id, e);
+				this.emit_close(t_id, e);
 				this.interrupt_pos = -1;
 				this.loop_without_progress = 0;
-			} else if (trimmed.start < trimmed.end) {
-				// parse cell content through inline machinery
+			} else if (s < e) {
+				// parse cell content through inline machinery (never a table start, bounds stay ours)
 				this.node_stack.push(this.table_cell_id);
-				this.parse_inline_range(trimmed.start, trimmed.end);
+				this.parse_inline_range(s, e);
 				this.node_stack.pop();
 			}
-			this.emit_close(this.table_cell_id, cell.end);
+			this.emit_close(this.table_cell_id, c_end);
 		}
 		this.emit_close(header_id, header_end);
 
@@ -10310,66 +10357,6 @@ export class PFMParser {
 	}
 
 	/**
-	 * parse cells from a table row between start and end positions.
-	 * handles leading/trailing pipes and escaped pipes.
-	 */
-	private parse_table_row_cells(
-		start: number,
-		end: number
-	): { start: number; end: number }[] {
-		const source = this.source;
-		const base = this.source_base;
-		let pos = start;
-
-		// skip leading whitespace
-		while (
-			pos < end &&
-			(char_code_at.call(source, pos - base) === SPACE ||
-				char_code_at.call(source, pos - base) === TAB)
-		)
-			pos++;
-
-		// skip leading pipe
-		const has_leading_pipe =
-			pos < end && char_code_at.call(source, pos - base) === PIPE;
-		if (has_leading_pipe) pos++;
-
-		const cells: { start: number; end: number }[] = [];
-		let cell_start = pos;
-
-		while (pos < end) {
-			const ch = char_code_at.call(source, pos - base);
-			if (ch === BACKSLASH && pos + 1 < end) {
-				pos += 2; // skip escaped char
-				continue;
-			}
-			if (ch === PIPE) {
-				cells.push({ start: cell_start, end: pos });
-				cell_start = pos + 1;
-			}
-			pos++;
-		}
-
-		// trailing content after last pipe (only if no leading pipe - gfm allows pipeless rows)
-		if (cell_start < end) {
-			// check if the content is just whitespace
-			let all_ws = true;
-			for (let i = cell_start; i < end; i++) {
-				const c = char_code_at.call(source, i - base);
-				if (c !== SPACE && c !== TAB) {
-					all_ws = false;
-					break;
-				}
-			}
-			if (!all_ws) {
-				cells.push({ start: cell_start, end: end });
-			}
-		}
-
-		return cells;
-	}
-
-	/**
 	 * parse a delimiter row. returns alignment array or null if invalid.
 	 */
 	private parse_delimiter_row(start: number, end: number): string[] | null {
@@ -10439,74 +10426,6 @@ export class PFMParser {
 		}
 
 		return alignments.length > 0 ? alignments : null;
-	}
-
-	/**
-	 * trim whitespace from cell content range.
-	 */
-	private trim_cell_range(
-		start: number,
-		end: number
-	): { start: number; end: number } {
-		const source = this.source;
-		const base = this.source_base;
-		let s = start,
-			e = end;
-		while (
-			s < e &&
-			(char_code_at.call(source, s - base) === SPACE ||
-				char_code_at.call(source, s - base) === TAB)
-		)
-			s++;
-		while (
-			e > s &&
-			(char_code_at.call(source, e - 1 - base) === SPACE ||
-				char_code_at.call(source, e - 1 - base) === TAB)
-		)
-			e--;
-		return { start: s, end: e };
-	}
-
-	/**
-	 * emit a data row with cells, padding/truncating to table_col_count.
-	 */
-	private emit_table_row(
-		row_start: number,
-		row_end: number,
-		parent: number
-	): void {
-		const cells = this.parse_table_row_cells(row_start, row_end);
-		const row_id = this.emit_open(NodeKind.table_row, row_start, parent);
-
-		for (let i = 0; i < this.table_col_count; i++) {
-			if (i < cells.length) {
-				const cell = cells[i];
-				const trimmed = this.trim_cell_range(cell.start, cell.end);
-				const cell_id = this.emit_open(
-					NodeKind.table_cell,
-					cell.start,
-					row_id,
-					i
-				);
-				if (trimmed.start < trimmed.end) {
-					this.out.text(
-						cell_id,
-						trimmed.start,
-						trimmed.end,
-						(this.id_info[cell_id] & ID_KIND_MASK) as NodeKind
-					);
-					// the text node the emitter creates takes the next id
-					this.next_id++;
-				}
-				this.emit_close(cell_id, cell.end);
-			} else {
-				// pad with empty cells
-				const cell_id = this.emit_open(NodeKind.table_cell, row_end, row_id, i);
-				this.emit_close(cell_id, row_end);
-			}
-		}
-
-		this.emit_close(row_id, row_end);
 	}
 
 	/**
