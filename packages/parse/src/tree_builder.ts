@@ -38,10 +38,7 @@ export class TreeBuilder implements Emitter {
 	private revoked_mapped = 0;
 	/** optional plugin dispatcher. null when no plugins registered. */
 	private dispatcher: PluginDispatcher | null;
-	/** kinds whose open goes to the dispatcher, see PluginDispatcher.open_wants */
 	private wants: Uint8Array;
-
-	/** callback for dispatcher to register synthetic node ids. */
 
 	constructor(capacity: number, dispatcher?: PluginDispatcher) {
 		this.nodes = new NodeBuffer(capacity);
@@ -110,15 +107,9 @@ export class TreeBuilder implements Emitter {
 		pending: boolean
 	): void {
 		const nodes = this.nodes;
-		// ids are buffer indices and parents are opened ids below this one,
-		// the root (id 0) never matches, the buffer creates it. a plugin open
-		// of a kind no handler wants is the same push, so it stays here and
-		// the slow path is rare enough that V8 keeps it out of this body
-		if (
-			this.id_to_index === null &&
-			id === nodes._size &&
-			!this.wants[kind]
-		) {
+		// parents are opened ids below this one so they are indices too, id 0
+		// never matches as the buffer makes the root, the rare rest stays out of line
+		if (this.id_to_index === null && id === nodes._size && !this.wants[kind]) {
 			// >>> 0 turns the -1 of no parent into NONE
 			nodes.push_node(kind, start, parent >>> 0, extra, pending);
 			return;
@@ -126,7 +117,6 @@ export class TreeBuilder implements Emitter {
 		if (id !== 0) this.open_slow(id, kind, start, parent, extra, pending);
 	}
 
-	/** an open a plugin wants, or once ids stopped being buffer indices */
 	private open_slow(
 		id: number,
 		kind: NodeKind,
@@ -198,9 +188,7 @@ export class TreeBuilder implements Emitter {
 		const b = idx * NodeField.stride;
 		const n = this.nodes._n;
 		n[b + NodeField.end] = end;
-		// lists, list item paragraphs still pending, plugins and kindless closes
-		// are a few percent of closes, their tail stays a call so close inlines
-		// cheaply at every emit site
+		// the rare closes go to a call so close inlines cheaply at every emit site
 		if (
 			this.dispatcher === null &&
 			kind !== undefined &&

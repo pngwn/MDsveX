@@ -2,12 +2,7 @@
  * sourcemap utilities: line-starts, offset to position, vlq, v3 conversion.
  */
 
-import type {
-	Mapping,
-	MappingData,
-	MapSink,
-	RecordMapping,
-} from './mappings';
+import type { Mapping, MappingData, MapSink, RecordMapping } from './mappings';
 
 // mirrors mappings.ts, local const enums build to literals while imported
 // consts live in module cells that turbofan reloads on every use
@@ -15,8 +10,7 @@ const enum Rec {
 	SIZE = 6,
 }
 
-// a trace record: generated offset, source offset, identity run length (1 for
-// a point), see tr_point in html_cursor.ts
+// a trace record, generated offset, source offset, run length, 1 for a point
 const enum Trace {
 	SIZE = 3,
 }
@@ -47,9 +41,8 @@ function copy_i32(a: Int32Array, used: number, size: number): Int32Array {
 }
 
 /**
- * line starts of s, stopping after line max_line or before the first line
- * starting past max_offset, whichever comes first, the last line held then
- * stands for every line after it
+ * line starts of s up to line max_line or the first line starting past
+ * max_offset, the last line held then stands for every line after it
  */
 function fill_line_starts(
 	table: LineTable,
@@ -137,8 +130,7 @@ function find_line_near(
 	return find_line(starts, count, offset);
 }
 
-// ascending lookups that may skip a few lines, as sorted spans do over the
-// lines no query wants or the blank lines between source blocks
+// for ascending lookups that may skip a few lines
 function find_line_ahead(
 	starts: Int32Array,
 	count: number,
@@ -186,8 +178,8 @@ function collect_spans(mappings: Mapping<MappingData>[]): void {
 	let n = 0;
 	for (let k = 0; k < mappings.length; k++) {
 		const m = mappings[k];
-		// a one piece RecordMapping is read from its fields, building no arrays or
-		// data, checked by field so a copy of the class from another bundle counts
+		// a one piece RecordMapping is read from its fields, tested by field so a
+		// copy of the class from another bundle counts
 		const r = m as RecordMapping;
 		if (r._arrays === null) {
 			const source = r._source;
@@ -530,8 +522,7 @@ export function map_basename(file?: string): string {
 	// use basename to match svelte compiler convention, vite resolves relative
 	// to the served JS file, so the browser can find the source.
 	if (!file) return 'input.md';
-	// a name is short, so walking back to the last separator beats two
-	// lastIndexOf scans of the whole path
+	// a name is short, walking back beats two lastIndexOf scans of the path
 	let k = file.length - 1;
 	for (; k >= 0; k--) {
 		const c = file.charCodeAt(k);
@@ -800,7 +791,6 @@ const TRACE_OWN_WORDS = 8192;
 let trace_slab = new Uint32Array(0);
 let trace_used = 0;
 
-/** fills out with room for a trace, returns out */
 export function reserve_trace(
 	rec_words: number,
 	offset_words: number,
@@ -828,8 +818,8 @@ export function reserve_trace(
 }
 
 /**
- * the slab, with at least words free from trace_free_at, for a render that
- * writes its records in place instead of copying them out of a sink
+ * the slab with at least words free from trace_free_at, for records written
+ * in place
  */
 export function trace_room(words: number): Uint32Array {
 	if (trace_used + words > trace_slab.length) {
@@ -839,7 +829,6 @@ export function trace_room(words: number): Uint32Array {
 	return trace_slab;
 }
 
-/** the first free word of the slab */
 export function trace_free_at(): number {
 	return trace_used;
 }
@@ -1088,7 +1077,7 @@ export function mapped_source_lines(
 
 /** the chained mappings as ascii bytes */
 export interface ChainedMappings {
-	/** mappings in bytes start to start + length */
+	/** the mappings run from start for length bytes */
 	bytes: Uint8Array;
 	start: number;
 	length: number;
@@ -1151,8 +1140,7 @@ function decode_compile(mappings: string): number {
 			i++;
 			continue;
 		}
-		// a segment, its values read one after another up to a separator or
-		// the end, a separator inside a value or a stray comma reads as no digit
+		// a separator inside a value or a stray comma reads as no digit
 		let field = 0;
 		for (;;) {
 			let value = 0;
@@ -1241,8 +1229,7 @@ function decode_compile_bytes(mappings: Uint8Array, length: number): number {
 			i++;
 			continue;
 		}
-		// a segment, its values read one after another up to a separator or
-		// the end, a separator inside a value or a stray comma reads as no digit
+		// a separator inside a value or a stray comma reads as no digit
 		let field = 0;
 		for (;;) {
 			let value = 0;
@@ -1316,10 +1303,9 @@ const QUERY_SORT_SMALL = 32;
 const SMALL_TRACE = 256;
 
 /**
- * the source offset the sorted span lookup of trace_lines finds for the query
- * q on the generated line from start to next, -1 for none: the first record
- * holding q, else the last of the records whose last point on the line is the
- * greatest before q; a q past the line looks up its last point
+ * the source offset trace_lines finds for q on the line start to next, -1 for
+ * none, the first record holding q, else the last record whose last point on
+ * the line is the greatest before q
  */
 function resolve_small(
 	buf: Uint32Array,
@@ -1356,7 +1342,7 @@ function resolve_small(
 	return found;
 }
 
-/** fills the p arrays with the segments decode_lines would build, returns the line count */
+/** collects the spans the queried lines need from the trace records, returns the line count */
 function trace_lines(
 	buf: Uint32Array,
 	start: number,
@@ -1395,7 +1381,7 @@ function trace_lines(
 					// points change a lookup
 					const last = stop - 1;
 					// runs come in generated order, so the first query at or past at
-					// is mostly a step on from the last run's
+					// is mostly a few steps on from the previous run
 					let lo = query_at;
 					if (lo > 0 && queries[lo - 1] >= at) {
 						lo = 0;
@@ -1439,7 +1425,7 @@ function trace_lines(
 
 	// each query takes the greatest span at or before it on its line, an equal
 	// one the first of its run, a lower one the last, as the greatest lower
-	// bound of trace-mapping does; qc holds the span source until lines resolve
+	// bound of trace-mapping does, qc holds the span source until lines resolve
 	const gen = span_gen;
 	const src = span_src;
 	const order = span_order;
@@ -1472,8 +1458,7 @@ function trace_lines(
 		for (let i = 0; i < n; i++) if (src[i] > max_src) max_src = src[i];
 	}
 
-	// only the lines up to the last source found need starts, none when no
-	// query found one, which spares the scan for \r
+	// starts are needed only up to the greatest source found
 	if (max_src < 0) return gen_count;
 	fill_line_starts(src_table, source, PAST_END, max_src, source_normalized);
 	const src_starts = src_table.starts;
@@ -1490,8 +1475,8 @@ function trace_lines(
 }
 
 /**
- * source of the last sorted span from start up to before next, -1 for none,
- * as the lookup of a column past its line's end finds it
+ * source of the last sorted span from start to before next, -1 for none, as
+ * a column past its line end looks it up
  */
 function last_span_before(start: number, next: number): number {
 	const gen = span_gen;
@@ -1522,11 +1507,10 @@ function write_vlq_codec(buf: Uint8Array, p: number, delta: number): number {
 /**
  * chains a compile map from the html onto the map of the html in trace, the
  * mappings and names equal @ampproject/remapping of [compile, trace_to_v3],
- * null when the compile mappings are ones it leaves to remapping, the bytes
- * are reused by the next call, source_normalized says source holds no \r, as
- * normalize_newlines returns it, given dest the mappings are written into it
- * from dest_start on, unless they outgrow it, before dest_start bytes are kept,
- * mappings_bytes holds the utf8 of compile_mappings when given
+ * null when the compile mappings are ones it leaves to remapping, the next
+ * call reuses the bytes, source_normalized means source holds no \r, the
+ * mappings go into dest from dest_start unless they outgrow it, keeping the
+ * bytes before dest_start, mappings_bytes is the utf8 of compile_mappings
  * @internal
  */
 export function chain_trace(
@@ -1555,8 +1539,7 @@ export function chain_trace(
 	if (query_buf.length < count) query_buf = new Int32Array(count * 2);
 	const queries = query_buf;
 	const gen_starts = gen_table.starts;
-	// few segments over few records resolve each straight from the records,
-	// no span list, sorts or line index
+	// few segments over few records resolve straight from the records
 	const small = count * (trace.split - trace.start) <= SMALL_TRACE * Trace.SIZE;
 	let lines = 0;
 	if (small) {
@@ -1595,12 +1578,11 @@ export function chain_trace(
 			while (size < gen_count) size *= 2;
 			wanted = wanted_buf = new Uint8Array(size);
 		} else if (gen_count < 256) {
-			// a short fill as stores costs less than the builtin's call
+			// a short fill by stores costs less than calling fill
 			for (let l = 0; l < gen_count; l++) wanted[l] = 0;
 		} else wanted.fill(0, 0, gen_count);
 		let query_count = 0;
-		// a column past its line end looks up the line's last span, apart from the
-		// query its offset makes
+		// a column past its line end takes the last span of the line
 		let overflow = false;
 		for (let k = 0; k < count; k++) {
 			if (cseg_len[k] !== 1) {
@@ -1657,7 +1639,7 @@ export function chain_trace(
 	const qsline = q_sline;
 	const qscol = q_scol;
 
-	// most maps carry no names, so the array is made on the first one
+	// most maps carry no names
 	let names: string[] | null = null;
 	let name_ids: Map<string, number> | null = null;
 	let sourced = false;
@@ -1698,7 +1680,7 @@ export function chain_trace(
 				sline = find_line(src_table.starts, src_table.count, s);
 				scol = s - src_table.starts[sline];
 			} else if (q < next) {
-				// the query is among its line's, which are sorted
+				// q is among the sorted queries of its line
 				let lo = first[l];
 				let hi = first[l + 1] - 1;
 				while (lo < hi) {
@@ -1785,7 +1767,6 @@ export function chain_trace(
 	};
 }
 
-/** moves bytes 0 to used of buf into out, grown past need */
 function grow_chain(buf: Uint8Array, used: number, need: number): void {
 	if (buf !== out && out.length >= need) {
 		out.set(buf.subarray(0, used));

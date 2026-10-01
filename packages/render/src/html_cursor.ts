@@ -358,7 +358,6 @@ function _spans(
 		_spans_some(sink, pre, after_open, before_close, post, c, preset);
 		return;
 	}
-	// all three records present, written under one capacity check
 	const idx = c.index;
 	const open_end = has_value ? vs : s;
 	let rec = sink.rec;
@@ -1760,9 +1759,8 @@ function fold_table_cells(
 // whole span and text its content span, output must equal the mapped render
 // a position is mo.length + FOLD_LEN[p]
 
-// a trace record is three words: generated offset, source offset and the
-// length of an identity run, 1 for a point, which is all the v3 encoding
-// reads of a node span or a content span (rec_spans in sourcemap.ts)
+// a trace record is generated offset, source offset and identity run length,
+// 1 for a point, all the v3 encoding reads of a span
 
 /** the start of a node span */
 function tr_point(sink: MapSink, gen: number, src: number): void {
@@ -2170,7 +2168,13 @@ function tr_svelte_block(c: Cursor, sink: MapSink, p: number): number {
 				}
 				if (branch_expr) {
 					mo += ' ';
-					tr_run(sink, mo.length, mo.length + branch_expr.length, c.value_start, c.value_end);
+					tr_run(
+						sink,
+						mo.length,
+						mo.length + branch_expr.length,
+						c.value_start,
+						c.value_end
+					);
 					mo += branch_expr;
 				}
 				p = tr_children(c, sink, S_BRACE_CLOSE_LF);
@@ -2769,9 +2773,8 @@ function resolve_mappings(sink: MapSink): Mapping<MappingData>[] {
 }
 
 /**
- * collapsed \r\n before a normalized offset, searched outward from the rank
- * of a nearby offset, records come in document order with parents after
- * their children, so most searches end within a step or two of the hint
+ * the count of collapsed below offset, galloping from hint, records come in
+ * document order with parents after children so most end near the hint
  */
 function rank_near(
 	collapsed: readonly number[],
@@ -2782,7 +2785,7 @@ function rank_near(
 	let lo: number;
 	let hi: number;
 	if (hint < count && collapsed[hint] < offset) {
-		// gallop forward, the rank is in (hint, count]
+		// gallop forward, the rank is above hint and at most count
 		lo = hint + 1;
 		let step = 1;
 		for (;;) {
@@ -2796,7 +2799,7 @@ function rank_near(
 			step += step;
 		}
 	} else if (hint > 0 && collapsed[hint - 1] >= offset) {
-		// gallop backward, the rank is in [0, hint)
+		// gallop backward, the rank is below hint
 		hi = hint - 1;
 		let step = 1;
 		for (;;) {
@@ -2836,7 +2839,6 @@ function resolve_raw_mappings(
 	const rec = sink.rec;
 	const n = sink.n;
 	const count = collapsed.length;
-	// one mapping per record, sized once as record_mappings does
 	const mappings: Mapping<MappingData>[] = new Array(n / Rec.SIZE);
 	let at = 0;
 	const data_of = record_data;
@@ -2852,9 +2854,7 @@ function resolve_raw_mappings(
 		const code = rec[p + 5];
 		const node_index = rec[p + 4] | 0;
 		const key = (node_index + 1) * 16 + code;
-		// one class for every mapping so readers stay monomorphic, only a piece
-		// split around \r\n or whose widened length meets its generated length
-		// keeps arrays
+		// one class for every mapping keeps readers monomorphic
 		if (identity) {
 			if (k < count && collapsed[k] + 1 < end) {
 				const src_offsets: number[] = [];
@@ -3124,7 +3124,12 @@ export class CursorHTMLRenderer {
 
 	/** trace_to_v3 over the trace with the same arguments equals update_v3 */
 	update_trace(buf: NodeBuffer, source: string): MapTrace {
-		const trace: MapTrace = { buf: render_sink.rec, start: 0, split: 0, end: 0 };
+		const trace: MapTrace = {
+			buf: render_sink.rec,
+			start: 0,
+			split: 0,
+			end: 0,
+		};
 		this.update_trace_into(buf, source, trace);
 		return trace;
 	}
@@ -3132,8 +3137,7 @@ export class CursorHTMLRenderer {
 	/** update_trace filling out instead of a new trace */
 	update_trace_into(buf: NodeBuffer, source: string, out: MapTrace): void {
 		const sink = render_sink;
-		// a node writes at most two records, so a small render fits the slab
-		// and writes its records there, no copy out of the sink
+		// a node writes at most two records, so a small render writes straight into the slab
 		const bound = buf.size * (2 * Trace.SIZE);
 		if (bound <= TRACE_DIRECT_WORDS) {
 			const own = sink.rec;

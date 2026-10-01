@@ -256,8 +256,7 @@ export class CompilerSession {
 	}
 
 	/**
-	 * compile_trace filling out, whose trace fields are the trace, with no
-	 * result objects
+	 * compile_trace without result objects, the trace goes into out
 	 * @internal
 	 */
 	compile_trace_into(
@@ -280,7 +279,7 @@ export class CompilerSession {
 	}
 }
 
-/** a trace with the document it maps, html from the normalized source */
+/** source is the normalized raw the trace and html come from */
 interface TraceTarget extends MapTrace {
 	source: string;
 	html: string;
@@ -336,7 +335,6 @@ function collapsed_of(raw: string): number[] | null {
 	return offsets === null ? null : offsets.collapsed;
 }
 
-/** the trace fields are the trace of html, so the document is its own trace */
 interface StoredDocument extends TraceTarget {
 	raw: string;
 }
@@ -356,13 +354,12 @@ function pfm_map(
 	return trace_to_decoded(doc, doc.source, doc.html, lines, file);
 }
 
-// the map json up to its mappings when the compile map names no file
+// the map json head when the compile map names no file
 const PLAIN_HEAD = '{"version":3,"mappings":"';
 const PLAIN_HEAD_BYTES = /* @__PURE__ */ ascii_table(PLAIN_HEAD);
 
-// names resolve-uri keeps as they are, as remapping resolves the source,
-// /^[\w\-+~@][\w.\-+~@]*$/: 1 for a char one may start with, 2 for a dot,
-// which may only follow
+// chars of names resolve-uri keeps as they are when remapping resolves the
+// source, 1 for a char a name may start with, 2 for a dot, which may only follow
 const PLAIN_CHARS = /* @__PURE__ */ (() => {
 	const t = new Uint8Array(128);
 	const plain =
@@ -420,11 +417,9 @@ function chained_base64(
 	const base = plain_basename(file);
 	if (base === null) return null;
 
-	// only the parts that vary are made as strings, the rest are byte tables
 	const head = out_file
 		? '{"version":3,"file":' + JSON.stringify(out_file) + ',"mappings":"'
 		: '';
-	// the head goes first and the mappings are written right after it
 	let bytes = base64_bytes;
 	if (bytes === null || bytes.length < head.length * 3 + MAP_FIXED_BYTES) {
 		let size = 1 << 14;
@@ -437,7 +432,6 @@ function chained_base64(
 		n = utf8_into(bytes, head, 0);
 		plain_head_kept = false;
 	} else {
-		// the plain head stays in the buffer from one map to the next
 		if (!plain_head_kept) {
 			put_table(view_of(bytes), 0, PLAIN_HEAD_BYTES);
 			plain_head_kept = true;
@@ -445,8 +439,7 @@ function chained_base64(
 		n = PLAIN_HEAD_BYTES.length;
 	}
 
-	// the mappings are read from their utf8 bytes, a byte loop runs faster
-	// than charCodeAt
+	// chain_trace reads the mappings as utf8 bytes, a byte loop beats charCodeAt
 	let map_bytes: Buffer | null = null;
 	let map_length = 0;
 	if (mappings.length * 3 <= BASE64_KEEP) {
@@ -459,7 +452,7 @@ function chained_base64(
 		map_length = utf8_into(map_bytes, mappings, 0);
 	}
 
-	// the source is normalize_newlines(raw), no \r is left in it
+	// doc.source is normalized raw
 	const chained = chain_trace(
 		mappings,
 		names,
@@ -476,8 +469,7 @@ function chained_base64(
 	const chained_names = chained.names;
 	const names_json =
 		chained_names === null ? '' : JSON.stringify(chained_names);
-	// a well formed source is escaped from its utf8 bytes, faster than
-	// JSON.stringify and its utf8 write
+	// a well formed raw is escaped from its utf8 bytes, beating JSON.stringify
 	const raw = doc.raw;
 	const sourced = chained.sourced;
 	let escape = false;
@@ -489,8 +481,8 @@ function chained_base64(
 		if (!escape) raw_json = JSON.stringify(raw);
 	}
 
-	// the mappings are ascii, written as bytes they skip a decode to a string
-	// and its encode, every part ends and starts in ascii so their utf8 joins
+	// the ascii mappings stay bytes, every part starts and ends in ascii so the
+	// utf8 joins
 	const length = chained.length;
 	const src = chained.bytes;
 	const most =
@@ -525,17 +517,15 @@ function chained_base64(
 	}
 	n += length;
 	if (src !== bytes || bytes.length < most) {
-		// the mappings outgrew the buffer, or the rest will, the head and
-		// mappings move to one that holds it all
+		// chain_trace outgrew the buffer or the rest will, move to a larger one
 		let size = 1 << 14;
 		while (size < most) size <<= 1;
 		const next = new_buffer(size);
 		next.set(src.subarray(0, n));
 		bytes = base64_bytes = next;
 	}
-	// ascii tables as word stores cost less than a utf8 write call or byte
-	// stores, a table's last word may write up to three bytes past its end,
-	// the next part overwrites them or they lie past the map
+	// word stores beat utf8 writes and byte stores, a table may write three bytes
+	// past its end, which the next part overwrites or which lie past the map
 	const view = view_of(bytes);
 	if (chained_names === null)
 		n = put_table(view, n, sourced ? NO_NAMES_OPEN_BYTES : NO_NAMES_BYTES);
@@ -570,7 +560,6 @@ function ascii_table(s: string): AsciiTable {
 	return { words, length: s.length };
 }
 
-// the fixed parts of a chained map json around its mappings, names and source
 const NAMES_BYTES = /* @__PURE__ */ ascii_table('","names":');
 const AFTER_NAMES_BYTES = /* @__PURE__ */ ascii_table(
 	',"ignoreList":[],"sources":'
@@ -584,11 +573,9 @@ const NO_NAMES_OPEN_BYTES = /* @__PURE__ */ ascii_table(
 const SOURCE_OPEN_BYTES = /* @__PURE__ */ ascii_table('["');
 const SOURCE_CLOSE_BYTES = /* @__PURE__ */ ascii_table('"],"sourcesContent":[');
 const NO_SOURCE_BYTES = /* @__PURE__ */ ascii_table('[],"sourcesContent":[]}');
-// more than every fixed table, the three bytes a table's last word may write
-// past it, and the two closing bytes together
+// covers every fixed table, three bytes of overrun and the two closing bytes
 const MAP_FIXED_BYTES = 128;
 
-/** writes a table into the viewed buffer at n, returns the table's end */
 function put_table(view: DataView, n: number, table: AsciiTable): number {
 	const words = table.words;
 	for (let i = 0; i < words.length; i++)
@@ -596,9 +583,8 @@ function put_table(view: DataView, n: number, table: AsciiTable): number {
 	return n + table.length;
 }
 
-// node, deno and bun put the utf8 write and base64 slice that Buffer#write and
-// Buffer#toString dispatch to on the prototype, called straight they skip the
-// argument and encoding checks, set when a reused buffer is made
+// node, deno and bun expose utf8Write and base64Slice on Buffer, calling them
+// skips the checks in write and toString, set when a reused buffer is made
 let buffer_direct = false;
 
 function new_buffer(size: number): Buffer {
@@ -608,20 +594,17 @@ function new_buffer(size: number): Buffer {
 	return b;
 }
 
-/** equals b.write(s, n, 'utf8') */
 function utf8_into(b: Buffer, s: string, n: number): number {
 	return buffer_direct
 		? (b as any).utf8Write(s, n, b.length - n)
 		: b.write(s, n, 'utf8');
 }
 
-/** equals b.toString('base64', 0, n) */
 function base64_of(b: Buffer, n: number): string {
 	return buffer_direct
 		? (b as any).base64Slice(0, n)
 		: b.toString('base64', 0, n);
 }
-
 
 // the escape after a backslash for each byte, 0 for none, u for \u00XX
 const JSON_ESCAPES = /* @__PURE__ */ (() => {
@@ -637,14 +620,12 @@ const JSON_ESCAPES = /* @__PURE__ */ (() => {
 	return t;
 })();
 
-// utf8 of a source being escaped, reused across transforms, with a view of
-// it and of the buffer it is escaped into, made once per buffer
+// reused across transforms, each view made once per buffer
 let json_stage: Buffer | null = null;
 let json_stage_view: DataView | null = null;
 let json_out: Buffer | null = null;
 let json_out_view: DataView | null = null;
 
-/** a view of the buffer maps are written into, made once per buffer */
 function view_of(out: Buffer): DataView {
 	if (json_out !== out) {
 		json_out = out;
@@ -654,9 +635,8 @@ function view_of(out: Buffer): DataView {
 }
 
 /**
- * writes the utf8 of JSON.stringify(raw) into out at n, raw well formed (no
- * lone surrogate, which utf8 would replace), out holding 6 bytes per unit of
- * raw and 2 more, returns the end
+ * writes the utf8 of JSON.stringify(raw) into out at n and returns the end,
+ * raw has no lone surrogate and out holds 6 bytes per unit of raw plus 2
  */
 function write_json_string(raw: string, out: Buffer, n: number): number {
 	let stage = json_stage;
@@ -778,7 +758,6 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			transform(code, id) {
 				if (!matches(id)) return;
 
-				// one entry per id, refilled by each transform of it
 				let doc = stored.get(id);
 				if (doc === undefined) {
 					doc = {
@@ -843,7 +822,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 					return { code: code + comment, map: { mappings: '' as const } };
 				} finally {
-					// the entry stays for the id's next transform, holding no document
+					// keep the entry for reuse but drop the document
 					doc.raw = '';
 					doc.source = '';
 					doc.html = '';

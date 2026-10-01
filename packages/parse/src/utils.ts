@@ -43,13 +43,12 @@ export const enum NodeField {
 
 const NODE_BYTES = NodeField.stride * 4;
 
-/** most documents repair nothing, the first prebuilt string swaps in a real array */
+/** shared empty strings until own_strings, never written */
 const NO_STRINGS: (string | undefined)[] = [];
 
 /**
- * node storage, uninitialized where the host can give it since push writes
- * every word of a node before anything reads it, and trimmed tails are reused
- * anyway, zero filling a slab was pure cost
+ * uninitialized where the host allows, the template and a push write every
+ * word of a node before anything reads it
  */
 const host_buffer: any = (globalThis as any).Buffer;
 const unzeroed =
@@ -61,18 +60,12 @@ function new_storage(bytes: number): ArrayBuffer {
 		: new ArrayBuffer(bytes);
 }
 
-/**
- * template copies repeat a block this many nodes long at most: a doubling copy
- * past it reads a source that no longer sits in the core's cache, so a slab's
- * last copies ran at memory speed
- */
+/** a template copy repeats at most this many nodes, a longer source falls out of cache */
 const TEMPLATE_BLOCK = 512;
 
 /**
- * write the node template into slots [from, to): no end, no value, no links,
- * not pending, no metadata, so a push only writes kind, start, parent and the
- * links it makes; the first nodes by stores, the rest by doubling copies up
- * to a block, then by copies of that block
+ * template slots from up to to, no end, value, links, pending or meta, so a
+ * push writes only kind, start, parent and the links it makes
  */
 function fill_template(n: Uint32Array, from: number, to: number): void {
 	// a copy is a runtime call, stores beat it for the few nodes a small document has
@@ -103,16 +96,13 @@ function fill_template(n: Uint32Array, from: number, to: number): void {
 	}
 }
 
-/** whole nodes in a slab, the tail past them is never carved */
 const SLAB_NODES = (SLAB_BYTES / NODE_BYTES) | 0;
 
-/** a buffer past the carve cap fills its template this many nodes at a time at least */
 const FILL_CHUNK = 4096;
 
 /**
- * a carve costs one view not a backing store, but a live small buffer keeps
- * its whole slab alive; a slab holds the node template from slab_used on, so
- * a carve starts filled, and a trim gives back only slots no push wrote
+ * a carve costs one view not a backing store but keeps its whole slab alive,
+ * a slab holds the template from slab_used on, a trim returns only unwritten slots
  */
 let slab = new ArrayBuffer(0);
 let slab_used = SLAB_BYTES;
@@ -397,10 +387,7 @@ export class NodeBuffer {
 
 	/** @internal read by TreeBuilder to check ids against indices */
 	_size = 0;
-	/**
-	 * slots from _size up to here hold the template, the whole capacity for
-	 * a slab carve, a buffer past the carve cap fills as pushes reach it
-	 */
+	/** slots from _size up to here hold the template */
 	private _filled = 0;
 
 	constructor(initial_capacity = DEFAULT_TOKEN_CAPACITY) {
@@ -412,8 +399,8 @@ export class NodeBuffer {
 					: MIN_NODE_CAPACITY
 			)
 		);
-		// push_node's stores for the root, written here so the inlined push_node does not
-		// count against the inlining budget of every `new TreeBuilder` caller
+		// the root push by hand, an inlined push_node would count against the
+		// inlining budget of every new TreeBuilder caller
 		if (this._filled === 0) n = this.fill(0);
 		n[0] = NodeKind.root;
 		n[NodeField.start] = 0;
@@ -448,7 +435,7 @@ export class NodeBuffer {
 		return n;
 	}
 
-	/** @internal the strings array to write to, never the shared empty one */
+	/** @internal */
 	own_strings(): (string | undefined)[] {
 		const strings = this._strings;
 		return strings === NO_STRINGS ? (this._strings = []) : strings;
@@ -468,9 +455,8 @@ export class NodeBuffer {
 		// a length store is a runtime call even when already empty
 		if (this._meta.length !== 0) this._meta.length = 0;
 		if (this._strings.length !== 0) this._strings.length = 0;
-		// pushes left their words in the slots below _size, make them template
-		// again, from a copy of the template slots above it when there are as
-		// many, one copy costs about what stores for eight nodes cost
+		// make the pushed slots template again, copying the template above them
+		// when there is enough, one copy costs about what stores for eight nodes do
 		const size = this._size;
 		if (size !== 0) {
 			if (size > 8 && size << 1 <= this._filled) {
@@ -623,7 +609,6 @@ export class NodeBuffer {
 		return index;
 	}
 
-	/** grow when full, then template the next chunk of a buffer past the carve cap */
 	private fill(index: number): Uint32Array {
 		let n = this._n;
 		if (index >= this._capacity) n = this.grow();

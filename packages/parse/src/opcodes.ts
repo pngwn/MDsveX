@@ -58,8 +58,8 @@ export interface Emitter {
 	): void;
 
 	/**
-	 * optional: open, set_value_start, set_value_end and close of a node with no
-	 * extra in one call, the parser emits those four opcodes when it is missing
+	 * open, set_value_start, set_value_end and close of a node with no extra in
+	 * one call, when it is missing the parser emits those four opcodes
 	 */
 	leaf?(
 		id: number,

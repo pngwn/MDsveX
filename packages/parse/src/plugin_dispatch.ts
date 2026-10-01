@@ -133,7 +133,7 @@ interface RegistrationResult {
 	open_wants: Uint8Array;
 }
 
-/** open_wants once a redirect exists: any open may need retargeting */
+/** open_wants once a redirect exists, any open may need retargeting */
 const ALL_WANTS = new Uint8Array(64).fill(1);
 
 function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
@@ -410,7 +410,7 @@ function dispatch_open(
 	}
 }
 
-/** the undo log of a dispatcher that made no view and logged no kind */
+/** shared undo log until a view or a kind rewrite needs one, never written */
 const NO_UNDO = new UndoLog();
 
 /** shared close callbacks until the first is set, never written */
@@ -429,11 +429,8 @@ export class PluginDispatcher {
 	private fused: HandlersTable;
 	private has_handler: Uint32Array;
 	private sequential: { plugin: ParsePlugin; handlers: HandlersTable }[];
-	// shared empty until a view or a kind rewrite needs one, never written
 	private undo: UndoLog = NO_UNDO;
-	// shared empty until a handler returns a close callback
 	private close_cbs: CloseCallbackStore = NO_CLOSE_CBS;
-	// made at the first handler call, most small documents make none
 	private ctx: PluginContext | null = null;
 	private text_source: TextSource;
 
@@ -449,9 +446,8 @@ export class PluginDispatcher {
 	private cache: ViewCache | null = null;
 
 	/**
-	 * 1 for each kind whose open needs the dispatcher, read by the builder's
-	 * open in place of wants_open, every kind once a redirect was registered.
-	 * redirects only start inside dispatch_open, builders reread it after one
+	 * 1 for each kind whose open needs the dispatcher, every kind once a redirect
+	 * exists, redirects only start in dispatch_open so builders reread it after one
 	 */
 	open_wants: Uint8Array;
 
@@ -519,7 +515,6 @@ export class PluginDispatcher {
 		let redirects = this.redirects;
 		if (redirects === NO_REDIRECTS) {
 			redirects = this.redirects = new Map();
-			// a redirect can retarget the parent of any open
 			this.open_wants = ALL_WANTS;
 		}
 		return redirects;
@@ -539,11 +534,7 @@ export class PluginDispatcher {
 	 * dispatch fused plugin handlers on node open.
 	 * creates a ViewCache, runs handlers, stores close callbacks.
 	 */
-	dispatch_open(
-		buf_idx: number,
-		kind: NodeKind,
-		buf: NodeBuffer
-	): void {
+	dispatch_open(buf_idx: number, kind: NodeKind, buf: NodeBuffer): void {
 		const cache = this.views(buf);
 		const view = cache.get(buf_idx)!;
 
@@ -665,8 +656,7 @@ export class PluginDispatcher {
 		for (const pass of this.sequential) {
 			const handlers = pass.handlers;
 
-			// read again after plugin code runs, a handler or callback that grows the
-			// buffer moves it to new storage
+			// reread after plugin code runs, growing the buffer moves it to new storage
 			let n = buf._n;
 			let idx = n[NodeField.first_child];
 			if (idx === NONE) continue;

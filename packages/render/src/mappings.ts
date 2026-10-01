@@ -171,16 +171,15 @@ export function record_data(code: number, node_index: number): MappingData {
 }
 
 /**
- * a mapping of one record, its arrays and data built on each read from plain
- * fields, so a resolved document keeps one object per piece rather than four
- * arrays and a data object that stay alive until the caller drops the result
+ * builds its arrays and data on each read, so a resolved document keeps one
+ * object per piece rather than four arrays and a data object
  */
 export class RecordMapping implements Mapping<MappingData> {
 	_source: number;
 	_generated: number;
 	_length: number;
 	_generated_length: number;
-	/** (node index + 1) * 16 + record code, data preset and role */
+	/** 16 * node index + 16 + record code */
 	_key: number;
 	/** the arrays of a mapping that is not one plain piece, held as given */
 	_arrays: Mapping<MappingData> | null;
@@ -227,7 +226,7 @@ export class RecordMapping implements Mapping<MappingData> {
 		return key_data(this._key);
 	}
 
-	/** the plain mapping, keys in the order a plain literal had them */
+	/** keys in the order a plain literal had them */
 	toJSON(): Mapping<MappingData> {
 		const a = this._arrays;
 		if (a !== null) return a;
@@ -244,11 +243,7 @@ export class RecordMapping implements Mapping<MappingData> {
 	}
 }
 
-/**
- * record_data of a RecordMapping key, its node index is read signed (-1 for
- * none) so the key is a non negative integer, & 15 keeps the low bits of any
- * safe integer
- */
+/** a key can pass 32 bits, & 15 and a division split any safe integer */
 function key_data(key: number): MappingData {
 	const code = key & 15;
 	return record_data(code, (key - code) / 16 - 1);
@@ -257,13 +252,11 @@ function key_data(key: number): MappingData {
 // new Array(length) far past this gives dictionary elements
 const MAPPINGS_PRESIZE_MAX = 1 << 20;
 
-/** one RecordMapping per record of rec[0, n) */
 export function record_mappings(
 	rec: Uint32Array,
 	n: number
 ): Mapping<MappingData>[] {
-	// sized once rather than grown by push, which copies the elements at every
-	// growth step, past the cap stores append as push would
+	// presized since push copies at every growth step, past the cap stores append
 	const count = n / RECORD_SIZE;
 	const mappings: Mapping<MappingData>[] = new Array(
 		count < MAPPINGS_PRESIZE_MAX ? count : MAPPINGS_PRESIZE_MAX
