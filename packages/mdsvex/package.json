@@ -21,7 +21,10 @@
 		"url": "git+https://github.com/pngwn/MDsveX.git"
 	},
 	"scripts": {
-		"build": "vite build --config vite.config.build.ts",
+		"build": "run-s build:tsc build:vite build:copy-dts",
+		"build:tsc": "tsc",
+		"build:vite": "vite build --config vite.config.build.ts",
+		"build:copy-dts": "shx cp tsc/*.d.ts dist/",
 		"test": "vitest . **/*.spec.ts"
 	},
 	"files": [
@@ -41,6 +44,10 @@
 		"@ampproject/remapping": "^2.3.0",
 		"@mdsvex/parse": "workspace:*",
 		"@mdsvex/render": "workspace:*"
+	},
+	"devDependencies": {
+		"npm-run-all2": "^7.0.2",
+		"shx": "^0.3.4"
 	},
 	"peerDependencies": {
 		"vite": ">=5.0.0"

@@ -6,7 +6,7 @@ export default defineConfig({
 	build: {
 		lib: {
 			entry: {
-				main: resolve(__dirname, "src/main.ts"),
+				main: resolve(__dirname, "tsc/main.js"),
 			},
 			formats: ["es"],
 		},
