@@ -11,7 +11,6 @@ import type { NodeBuffer } from '@mdsvex/parse/utils';
 import { CursorHTMLRenderer } from '@mdsvex/render/html-cursor';
 import {
 	chain_trace,
-	map_basename,
 	mapped_source_lines,
 	mappings_to_v3,
 	trace_to_decoded,
@@ -326,8 +325,36 @@ function pfm_map(
 	return trace_to_decoded(doc.trace, doc.source, doc.html, lines, file);
 }
 
-// names resolve-uri keeps as they are, as remapping resolves the source
-const PLAIN_BASENAME = /^[\w\-+~@][\w.\-+~@]*$/;
+// the map json up to its mappings when the compile map names no file
+const PLAIN_HEAD = '{"version":3,"mappings":"';
+const PLAIN_HEAD_BYTES = /* @__PURE__ */ ascii_bytes(PLAIN_HEAD);
+
+// names resolve-uri keeps as they are, as remapping resolves the source,
+// /^[\w\-+~@][\w.\-+~@]*$/: 1 for a char one may start with, 2 for a dot,
+// which may only follow
+const PLAIN_CHARS = /* @__PURE__ */ (() => {
+	const t = new Uint8Array(128);
+	const plain =
+		'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-+~@';
+	for (let i = 0; i < plain.length; i++) t[plain.charCodeAt(i)] = 1;
+	t[46] = 2;
+	return t;
+})();
+
+/** map_basename(file) when it is a plain name, null otherwise */
+function plain_basename(file: string): string | null {
+	if (!file) return 'input.md';
+	const table = PLAIN_CHARS;
+	let k = file.length - 1;
+	for (; k >= 0; k--) {
+		const c = file.charCodeAt(k);
+		if (c === 47 || c === 92) break;
+		if (c >= 128 || table[c] === 0) return null;
+	}
+	const first = k + 1;
+	if (first === file.length || table[file.charCodeAt(first)] !== 1) return null;
+	return file.slice(first);
+}
 
 /**
  * base64 of the inline map json remapping gives for the compile and pfm maps
@@ -359,67 +386,153 @@ function chained_base64(
 	for (let i = 0; i < names.length; i++) {
 		if (typeof names[i] !== 'string') return null;
 	}
-	const base = map_basename(file);
-	if (!PLAIN_BASENAME.test(base)) return null;
+	const base = plain_basename(file);
+	if (base === null) return null;
 
-	const chained = chain_trace(mappings, names, doc.trace, doc.source, doc.html);
+	// the source is normalize_newlines(raw), no \r is left in it
+	const chained = chain_trace(
+		mappings,
+		names,
+		doc.trace,
+		doc.source,
+		doc.html,
+		true
+	);
 	if (chained === null) return null;
-	let head = '{"version":3';
-	if (out_file) head += ',"file":' + JSON.stringify(out_file);
-	head += ',"mappings":"';
+	// only the parts that vary are made as strings, the rest are byte tables
+	const head = out_file
+		? '{"version":3,"file":' + JSON.stringify(out_file) + ',"mappings":"'
+		: '';
 	const chained_names = chained.names;
-	let tail =
-		'","names":' +
-		(chained_names === null ? '[]' : JSON.stringify(chained_names)) +
-		',"ignoreList":[],"sources":';
+	const names_json =
+		chained_names === null ? '' : JSON.stringify(chained_names);
 	// a longer well formed source is escaped from its utf8 bytes, faster than
-	// JSON.stringify, and written after the tail
+	// JSON.stringify
 	const raw = doc.raw;
+	const sourced = chained.sourced;
 	let escape = false;
-	if (chained.sourced) {
-		// a plain basename has no char json escapes, so quoting equals JSON.stringify
-		tail += '["' + base + '"],"sourcesContent":[';
+	let raw_json = '';
+	if (sourced) {
 		escape =
 			raw.length >= JSON_ESCAPE_MIN &&
 			typeof (raw as any).isWellFormed === 'function' &&
 			(raw as any).isWellFormed();
-		if (!escape) tail += JSON.stringify(raw) + ']}';
-	} else {
-		tail += '[],"sourcesContent":[]}';
+		if (!escape) raw_json = JSON.stringify(raw);
 	}
 
 	// the mappings are ascii, written as bytes they skip a decode to a string
-	// and its encode, head and tail end and start in ascii so their utf8 joins
+	// and its encode, every part ends and starts in ascii so their utf8 joins
 	const length = chained.length;
 	const src = chained.bytes;
 	const most =
-		(head.length + tail.length) * 3 +
+		MAP_FIXED_BYTES +
+		base.length +
 		length +
-		(escape ? raw.length * 6 + 4 : 0);
+		(head.length + names_json.length + raw_json.length) * 3 +
+		(escape ? raw.length * 6 : 0);
 	if (most > BASE64_KEEP) {
 		const text = Buffer.from(src.buffer, src.byteOffset, length).toString(
 			'latin1'
 		);
-		if (escape) tail += JSON.stringify(raw) + ']}';
-		return Buffer.from(head + text + tail).toString('base64');
+		let json =
+			(out_file ? head : PLAIN_HEAD) +
+			text +
+			'","names":' +
+			(chained_names === null ? '[]' : names_json) +
+			',"ignoreList":[],"sources":';
+		// a plain basename has no char json escapes, so quoting equals JSON.stringify
+		if (sourced)
+			json +=
+				'["' +
+				base +
+				'"],"sourcesContent":[' +
+				(escape ? JSON.stringify(raw) : raw_json) +
+				']}';
+		else json += '[],"sourcesContent":[]}';
+		return Buffer.from(json).toString('base64');
 	}
 	let bytes = base64_bytes;
 	if (bytes === null || bytes.length < most) {
 		let size = 1 << 14;
 		while (size < most) size <<= 1;
-		bytes = base64_bytes = Buffer.allocUnsafe(size);
+		bytes = base64_bytes = new_buffer(size);
 	}
-	let n = bytes.write(head, 0, 'utf8');
+	// ascii tables as stores cost less than a utf8 write call
+	let n = out_file
+		? utf8_into(bytes, head, 0)
+		: put_bytes(bytes, 0, PLAIN_HEAD_BYTES);
 	if (length > 64) bytes.set(src.subarray(0, length), n);
 	else for (let i = 0; i < length; i++) bytes[n + i] = src[i];
 	n += length;
-	n += bytes.write(tail, n, 'utf8');
-	if (escape) {
-		n = write_json_string(raw, bytes, n);
+	if (chained_names === null) n = put_bytes(bytes, n, NO_NAMES_BYTES);
+	else {
+		n = put_bytes(bytes, n, NAMES_BYTES);
+		n += utf8_into(bytes, names_json, n);
+		n = put_bytes(bytes, n, AFTER_NAMES_BYTES);
+	}
+	if (sourced) {
+		n = put_bytes(bytes, n, SOURCE_OPEN_BYTES);
+		// a plain basename is ascii with no char json escapes
+		for (let i = 0; i < base.length; i++) bytes[n++] = base.charCodeAt(i);
+		n = put_bytes(bytes, n, SOURCE_CLOSE_BYTES);
+		if (escape) n = write_json_string(raw, bytes, n);
+		else n += utf8_into(bytes, raw_json, n);
 		bytes[n++] = 93; // ]
 		bytes[n++] = 125; // }
-	}
-	return bytes.toString('base64', 0, n);
+	} else n = put_bytes(bytes, n, NO_SOURCE_BYTES);
+	return base64_of(bytes, n);
+}
+
+function ascii_bytes(s: string): Uint8Array {
+	const b = new Uint8Array(s.length);
+	for (let i = 0; i < b.length; i++) b[i] = s.charCodeAt(i);
+	return b;
+}
+
+// the fixed parts of a chained map json around its mappings, names and source
+const NAMES_BYTES = /* @__PURE__ */ ascii_bytes('","names":');
+const AFTER_NAMES_BYTES = /* @__PURE__ */ ascii_bytes(
+	',"ignoreList":[],"sources":'
+);
+const NO_NAMES_BYTES = /* @__PURE__ */ ascii_bytes(
+	'","names":[],"ignoreList":[],"sources":'
+);
+const SOURCE_OPEN_BYTES = /* @__PURE__ */ ascii_bytes('["');
+const SOURCE_CLOSE_BYTES = /* @__PURE__ */ ascii_bytes('"],"sourcesContent":[');
+const NO_SOURCE_BYTES = /* @__PURE__ */ ascii_bytes('[],"sourcesContent":[]}');
+// more than every fixed table and the two closing bytes together
+const MAP_FIXED_BYTES = 128;
+
+/** copies a short table into b at n, returns the end */
+function put_bytes(b: Uint8Array, n: number, table: Uint8Array): number {
+	for (let i = 0; i < table.length; i++) b[n + i] = table[i];
+	return n + table.length;
+}
+
+// node, deno and bun put the utf8 write and base64 slice that Buffer#write and
+// Buffer#toString dispatch to on the prototype, called straight they skip the
+// argument and encoding checks, set when a reused buffer is made
+let buffer_direct = false;
+
+function new_buffer(size: number): Buffer {
+	const b: any = Buffer.allocUnsafe(size);
+	buffer_direct =
+		typeof b.utf8Write === 'function' && typeof b.base64Slice === 'function';
+	return b;
+}
+
+/** equals b.write(s, n, 'utf8') */
+function utf8_into(b: Buffer, s: string, n: number): number {
+	return buffer_direct
+		? (b as any).utf8Write(s, n, b.length - n)
+		: b.write(s, n, 'utf8');
+}
+
+/** equals b.toString('base64', 0, n) */
+function base64_of(b: Buffer, n: number): string {
+	return buffer_direct
+		? (b as any).base64Slice(0, n)
+		: b.toString('base64', 0, n);
 }
 
 // below this JSON.stringify is as fast as escaping bytes
@@ -456,10 +569,10 @@ function write_json_string(raw: string, out: Buffer, n: number): number {
 	if (stage === null || stage.length < raw.length * 3) {
 		let size = 1 << 14;
 		while (size < raw.length * 3) size <<= 1;
-		stage = json_stage = Buffer.allocUnsafe(size);
+		stage = json_stage = new_buffer(size);
 		json_stage_view = new DataView(stage.buffer, stage.byteOffset, size);
 	}
-	const len = stage.write(raw, 0, 'utf8');
+	const len = utf8_into(stage, raw, 0);
 	const view = json_stage_view!;
 	if (json_out !== out) {
 		json_out = out;
@@ -524,10 +637,9 @@ function base64_utf8(json: string): string {
 	if (bytes === null || bytes.length < most) {
 		let size = 1 << 14;
 		while (size < most) size <<= 1;
-		bytes = base64_bytes = Buffer.allocUnsafe(size);
+		bytes = base64_bytes = new_buffer(size);
 	}
-	const n = bytes.write(json, 0, 'utf8');
-	return bytes.toString('base64', 0, n);
+	return base64_of(bytes, utf8_into(bytes, json, 0));
 }
 
 /**

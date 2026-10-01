@@ -49,12 +49,13 @@ function fill_line_starts(
 	table: LineTable,
 	s: string,
 	max_line: number,
-	max_offset: number
+	max_offset: number,
+	no_cr = false
 ): void {
 	let starts = table.starts;
 	let n = 1;
 	starts[0] = 0;
-	if (s.indexOf('\r') === -1) {
+	if (no_cr || s.indexOf('\r') === -1) {
 		// without \r only \n ends a line, and indexOf finds it far faster than
 		// a charCodeAt loop
 		let i = max_line > 0 ? s.indexOf('\n') : -1;
@@ -985,67 +986,88 @@ function grow_cseg(used: number): void {
  * differently, a line out of order or a source other than the first
  */
 function decode_compile(mappings: string): number {
+	const length = mappings.length;
+	const digits = VLQ_DIGITS;
+	let seg_line = cseg_line;
+	let seg_col = cseg_col;
+	let seg_len = cseg_len;
+	let seg_sline = cseg_sline;
+	let seg_scol = cseg_scol;
+	let seg_name = cseg_name;
 	let n = 0;
 	let line = 0;
-	let field = 0;
 	let gen_col = 0;
 	let last_col = 0;
 	let source_index = 0;
 	let src_line = 0;
 	let src_col = 0;
 	let name_index = 0;
-	let value = 0;
-	let shift = 0;
-	const length = mappings.length;
-	for (let i = 0; i <= length; i++) {
-		const c = i < length ? mappings.charCodeAt(i) : SEMICOLON;
-		if (c === COMMA || c === SEMICOLON) {
-			if (shift !== 0) return -1;
-			if (field === 1 || field === 4 || field === 5) {
-				if (gen_col < last_col || gen_col < 0) return -1;
-				last_col = gen_col;
-				if (field !== 1) {
-					if (source_index !== 0 || src_line < 0 || src_col < 0) return -1;
-					if (field === 5 && name_index < 0) return -1;
-				}
-				if (n === cseg_line.length) grow_cseg(n);
-				cseg_line[n] = line;
-				cseg_col[n] = gen_col;
-				cseg_len[n] = field;
-				cseg_sline[n] = src_line;
-				cseg_scol[n] = src_col;
-				cseg_name[n] = name_index;
-				n++;
-			} else if (field !== 0 || c === COMMA) {
-				return -1;
-			}
-			field = 0;
-			if (c === SEMICOLON) {
-				line++;
-				gen_col = 0;
-				last_col = 0;
-			}
+	let i = 0;
+	while (i < length) {
+		let c = mappings.charCodeAt(i);
+		if (c === SEMICOLON) {
+			line++;
+			gen_col = 0;
+			last_col = 0;
+			i++;
 			continue;
 		}
-		const digit = c < 128 ? VLQ_DIGITS[c] : -1;
-		if (digit < 0 || shift > 25) return -1;
-		value |= (digit & 31) << shift;
-		if ((digit & 32) !== 0) {
-			shift += 5;
-			continue;
+		// a segment, its values read one after another up to a separator or
+		// the end, a separator inside a value or a stray comma reads as no digit
+		let field = 0;
+		for (;;) {
+			let value = 0;
+			let shift = 0;
+			for (;;) {
+				const digit = c < 128 ? digits[c] : -1;
+				if (digit < 0 || shift > 25) return -1;
+				value |= (digit & 31) << shift;
+				i++;
+				if ((digit & 32) === 0) break;
+				if (i === length) return -1;
+				shift += 5;
+				c = mappings.charCodeAt(i);
+			}
+			const magnitude = value >>> 1;
+			if ((value & 1) !== 0 && magnitude === 0) return -1;
+			const delta = (value & 1) !== 0 ? -magnitude : magnitude;
+			if (field === 0) gen_col += delta;
+			else if (field === 1) source_index += delta;
+			else if (field === 2) src_line += delta;
+			else if (field === 3) src_col += delta;
+			else name_index += delta;
+			field++;
+			if (i === length) break;
+			c = mappings.charCodeAt(i);
+			if (c === COMMA || c === SEMICOLON) break;
+			// a sixth value
+			if (field === 5) return -1;
 		}
-		const magnitude = value >>> 1;
-		if ((value & 1) !== 0 && magnitude === 0) return -1;
-		const delta = (value & 1) !== 0 ? -magnitude : magnitude;
-		if (field === 0) gen_col += delta;
-		else if (field === 1) source_index += delta;
-		else if (field === 2) src_line += delta;
-		else if (field === 3) src_col += delta;
-		else if (field === 4) name_index += delta;
-		else return -1;
-		field++;
-		value = 0;
-		shift = 0;
+		if (field === 2 || field === 3) return -1;
+		if (gen_col < last_col || gen_col < 0) return -1;
+		last_col = gen_col;
+		if (field !== 1) {
+			if (source_index !== 0 || src_line < 0 || src_col < 0) return -1;
+			if (field === 5 && name_index < 0) return -1;
+		}
+		if (n === seg_line.length) {
+			grow_cseg(n);
+			seg_line = cseg_line;
+			seg_col = cseg_col;
+			seg_len = cseg_len;
+			seg_sline = cseg_sline;
+			seg_scol = cseg_scol;
+			seg_name = cseg_name;
+		}
+		seg_line[n] = line;
+		seg_col[n] = gen_col;
+		seg_len[n] = field;
+		seg_sline[n] = src_line;
+		seg_scol[n] = src_col;
+		seg_name[n] = name_index;
+		n++;
+		// a comma is passed here, a semicolon at the top
+		if (i < length && c === COMMA) i++;
 	}
 	return n;
 }
@@ -1071,7 +1093,8 @@ function trace_lines(
 	queries: Int32Array,
 	query_count: number,
 	limit: number,
-	all_spans: boolean
+	all_spans: boolean,
+	source_normalized: boolean
 ): number {
 	const gen_starts = gen_table.starts;
 	const gen_count = gen_table.count;
@@ -1180,7 +1203,7 @@ function trace_lines(
 	// only the lines up to the last source found need starts, none when no
 	// query found one, which spares the scan for \r
 	if (max_src < 0) return gen_count;
-	fill_line_starts(src_table, source, PAST_END, max_src);
+	fill_line_starts(src_table, source, PAST_END, max_src, source_normalized);
 	const src_starts = src_table.starts;
 	const src_count = src_table.count;
 	let src_line = 0;
@@ -1228,7 +1251,8 @@ function write_vlq_codec(buf: Uint8Array, p: number, delta: number): number {
  * chains a compile map from the html onto the map of the html in trace, the
  * mappings and names equal @ampproject/remapping of [compile, trace_to_v3],
  * null when the compile mappings are ones it leaves to remapping, the bytes
- * are reused by the next call
+ * are reused by the next call, source_normalized says source holds no \r, as
+ * normalize_newlines returns it
  * @internal
  */
 export function chain_trace(
@@ -1236,7 +1260,8 @@ export function chain_trace(
 	compile_names: readonly string[],
 	trace: MapTrace,
 	source: string,
-	generated: string
+	generated: string,
+	source_normalized = false
 ): ChainedMappings | null {
 	const count = decode_compile(compile_mappings);
 	if (count < 0) return null;
@@ -1314,7 +1339,8 @@ export function chain_trace(
 					queries,
 					query_count,
 					max_line + 1 < gen_count ? gen_starts[max_line + 1] : PAST_END,
-					overflow
+					overflow,
+					source_normalized
 				);
 	const first = line_first;
 	const qsline = q_sline;
