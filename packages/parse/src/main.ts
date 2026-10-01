@@ -733,6 +733,8 @@ interface ColdState {
 	kept_count: number;
 	// a table start's header cell bounds as start, end pairs, allocated by the first table start
 	table_bounds: Int32Array | null;
+	// pending html nodes of an incremental parse, the feed trim skips the kept html scan at none
+	pending_html: number;
 }
 
 /**
@@ -781,6 +783,7 @@ export class PFMParser {
 		kept_base: 0,
 		kept_count: 0,
 		table_bounds: null,
+		pending_html: 0,
 	};
 	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
 	private wait_kind: number = 0;
@@ -1006,7 +1009,10 @@ export class PFMParser {
 		let head = this.source;
 		const pending = this.wait_chunks;
 		if (this.trim_point - 1 > this.source_base) {
-			if (this.pending_count !== this.pending_para_count) {
+			if (
+				this.pending_count !== this.pending_para_count &&
+				this.cold.pending_html !== 0
+			) {
 				// the kept html lines are read from a whole window
 				if (pending.length !== 0) head = this.join_held(head);
 				head = this.trim_keeping_html(head);
@@ -1549,6 +1555,7 @@ export class PFMParser {
 		// pending_ids is only read below pending_count, like pending_starts
 		this.pending_count = 0;
 		this.pending_para_count = 0;
+		this.cold.pending_html = 0;
 		this.take_ids(id_capacity);
 		this.class_floor = 0;
 		this.range_next_class = 0;
@@ -1642,6 +1649,7 @@ export class PFMParser {
 		this.pending_ids[slot] = id;
 		this.pending_count = slot + 1;
 		if (kind === NodeKind.paragraph) this.pending_para_count++;
+		else if (kind === NodeKind.html) this.cold.pending_html++;
 		this.id_slots[id] = slot;
 		this.id_info[id] = kind;
 		return id;
@@ -1732,7 +1740,9 @@ export class PFMParser {
 		this.pending_starts[i] = this.pending_starts[last];
 		slots[moved] = i;
 		this.pending_count = last;
-		if (this.kind_of(id) === NodeKind.paragraph) this.pending_para_count--;
+		const kind = this.kind_of(id);
+		if (kind === NodeKind.paragraph) this.pending_para_count--;
+		else if (kind === NodeKind.html) this.cold.pending_html--;
 	}
 
 	/** open a text node at the plain char p0 under parent and skip its plain run */
@@ -5164,6 +5174,7 @@ export class PFMParser {
 							continue;
 						}
 						if (pkind === NodeKind.html) {
+							this.cold.pending_html--;
 							const pstart = this.pending_starts[pi];
 							this.out.revoke(
 								pid,
