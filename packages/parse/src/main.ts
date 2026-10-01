@@ -9967,7 +9967,9 @@ export class PFMParser {
 		const length = this.source_end;
 		const row_start = this.cursor;
 
-		// one pass over the header row finds its end and its cells' bounds (pairs in table_bounds)
+		// one pass over the header row finds its end and per cell its bounds, trimmed content
+		// bounds and whether the content is plain: four words in table_bounds, the trimmed end
+		// stored as ~end when the content holds a char the inline or text state yields at
 		let pos = row_start;
 		while (pos < length) {
 			const c = char_code_at.call(source, pos - base);
@@ -9979,31 +9981,44 @@ export class PFMParser {
 		if (bounds === null) bounds = this.cold.table_bounds = new Int32Array(16);
 		let n = 0;
 		let cell_start = pos;
-		let last_text = pos;
+		let first = -1;
+		let last = pos;
+		let plain = true;
 		let header_end = length;
 		while (pos < length) {
 			const ch = char_code_at.call(source, pos - base);
-			if (ch === LINEFEED) {
-				header_end = pos;
-				break;
-			}
-			if (ch === PIPE) {
-				if (n + 2 > bounds.length) bounds = this.grow_table_bounds(bounds);
-				bounds[n] = cell_start;
-				bounds[n + 1] = pos;
-				n += 2;
-				cell_start = last_text = pos + 1;
-			} else if (ch !== SPACE && ch !== TAB) {
-				last_text = pos + 1;
-				// an escaped char is skipped unless the row ends after the backslash
-				if (
-					ch === BACKSLASH &&
-					pos + 1 < length &&
-					char_code_at.call(source, pos + 1 - base) !== LINEFEED
-				) {
-					pos++;
-					last_text = pos + 1;
+			if (ch < 128 && TEXT_BREAK[ch] !== 0) {
+				if (ch === LINEFEED) {
+					header_end = pos;
+					break;
 				}
+				if (ch === PIPE) {
+					if (n + 4 > bounds.length) bounds = this.grow_table_bounds(bounds);
+					bounds[n] = cell_start;
+					bounds[n + 1] = pos;
+					bounds[n + 2] = first < 0 ? pos : first;
+					bounds[n + 3] = first < 0 ? pos : plain ? last : ~last;
+					n += 4;
+					cell_start = pos + 1;
+					first = -1;
+					plain = true;
+				} else {
+					plain = false;
+					if (first < 0) first = pos;
+					last = pos + 1;
+					// an escaped char is skipped unless the row ends after the backslash
+					if (ch === BACKSLASH && pos + 1 < length) {
+						const e = char_code_at.call(source, pos + 1 - base);
+						if (e !== LINEFEED) {
+							pos++;
+							if (e !== SPACE && e !== TAB) last = pos + 1;
+						}
+					}
+				}
+			} else if (ch !== SPACE && ch !== TAB) {
+				if (ch === 0) plain = false;
+				if (first < 0) first = pos;
+				last = pos + 1;
 			}
 			pos++;
 		}
@@ -10012,33 +10027,34 @@ export class PFMParser {
 			return false; // hold back - need \n
 		}
 		// trailing content after the last pipe is a cell unless it is only whitespace
-		if (last_text > cell_start) {
-			if (n + 2 > bounds.length) bounds = this.grow_table_bounds(bounds);
+		if (first >= 0) {
+			if (n + 4 > bounds.length) bounds = this.grow_table_bounds(bounds);
 			bounds[n] = cell_start;
 			bounds[n + 1] = header_end;
-			n += 2;
+			bounds[n + 2] = first;
+			bounds[n + 3] = plain ? last : ~last;
+			n += 4;
 		}
 		if (n === 0) return null;
-		const col_count = n >> 1;
+		const col_count = n >> 2;
 
 		// find delimiter row
 		const delim_start = header_end + 1;
 		if (delim_start >= length && !this.finished) return false; // hold back
 
-		let delim_end = delim_start;
-		while (
-			delim_end < length &&
-			char_code_at.call(source, delim_end - base) !== LINEFEED
-		)
-			delim_end++;
+		let delim_end = length;
+		if (delim_start < length) {
+			const lf = string_index_of.call(source, '\n', delim_start - base);
+			if (lf !== -1) delim_end = lf + base;
+		}
 		if (delim_end >= length && !this.finished) {
 			this.wait_for('\n');
 			return false; // hold back - need full delimiter row
 		}
 
 		// parse delimiter row
-		const alignments = this.parse_delimiter_row(delim_start, delim_end);
-		if (!alignments || alignments.length !== col_count) return null; // not a table
+		const alignments = this.parse_delimiter_row(delim_start, delim_end, col_count);
+		if (alignments === null) return null; // not a table
 
 		// confirmed table - emit structure
 		const table_id = this.emit_open(NodeKind.table, row_start, parent);
@@ -10054,35 +10070,28 @@ export class PFMParser {
 		// open header node, then parse each cell through inline
 		const header_id = this.emit_open(NodeKind.table_header, row_start, table_id);
 		for (let i = 0; i < col_count; i++) {
-			const c_start = bounds[i << 1];
-			const c_end = bounds[(i << 1) + 1];
-			let s = c_start;
-			let e = c_end;
-			while (s < e) {
-				const c = char_code_at.call(source, s - base);
-				if (c !== SPACE && c !== TAB) break;
-				s++;
-			}
-			while (e > s) {
-				const c = char_code_at.call(source, e - 1 - base);
-				if (c !== SPACE && c !== TAB) break;
-				e--;
-			}
+			const c_start = bounds[i << 2];
+			const c_end = bounds[(i << 2) + 1];
+			const s = bounds[(i << 2) + 2];
+			let e = bounds[(i << 2) + 3];
 			this.table_cell_id = this.emit_open(
 				NodeKind.table_cell,
 				c_start,
 				header_id,
 				i
 			);
-			if (s < e && this.is_plain_range(s, e)) {
-				// a plain cell is one text node, no inline pass over a sliced source
-				const t_id = this.emit_open(NodeKind.text, s, this.table_cell_id);
-				this.out.set_value_start(t_id, s);
-				this.out.set_value_end(t_id, e);
-				this.emit_close(t_id, e);
-				this.interrupt_pos = -1;
-				this.loop_without_progress = 0;
-			} else if (s < e) {
+			if (e >= 0) {
+				if (s < e) {
+					// a plain cell is one text node, no inline pass over a sliced source
+					const t_id = this.emit_open(NodeKind.text, s, this.table_cell_id);
+					this.out.set_value_start(t_id, s);
+					this.out.set_value_end(t_id, e);
+					this.emit_close(t_id, e);
+					this.interrupt_pos = -1;
+					this.loop_without_progress = 0;
+				}
+			} else {
+				e = ~e;
 				// parse cell content through inline machinery (never a table start, bounds stay ours)
 				this.node_stack.push(this.table_cell_id);
 				this.parse_inline_range(s, e);
@@ -10359,87 +10368,79 @@ export class PFMParser {
 		return end;
 	}
 
-	/** true when no char from start to end makes the inline or text state yield */
-	private is_plain_range(start: number, end: number): boolean {
-		const source = this.source;
-		const base = this.source_base;
-		for (let p = start; p < end; p++) {
-			const ch = char_code_at.call(source, p - base);
-			if (ch < 128 && (ch === 0 || TEXT_BREAK[ch] !== 0)) return false;
-		}
-		return true;
-	}
-
 	/**
 	 * parse a delimiter row. returns alignment array or null if invalid.
 	 */
-	private parse_delimiter_row(start: number, end: number): string[] | null {
+	private parse_delimiter_row(
+		start: number,
+		end: number,
+		col_count: number
+	): string[] | null {
 		const source = this.source;
 		const base = this.source_base;
+		// c is the char at pos, -1 at the row end, so each position is read once
 		let pos = start;
-
-		// skip leading whitespace
-		while (
-			pos < end &&
-			(char_code_at.call(source, pos - base) === SPACE ||
-				char_code_at.call(source, pos - base) === TAB)
-		)
+		let c = pos < end ? char_code_at.call(source, pos - base) : -1;
+		while (c === SPACE || c === TAB) {
 			pos++;
-
-		// skip leading pipe
-		if (pos < end && char_code_at.call(source, pos - base) === PIPE) pos++;
+			c = pos < end ? char_code_at.call(source, pos - base) : -1;
+		}
+		if (c === PIPE) {
+			pos++;
+			c = pos < end ? char_code_at.call(source, pos - base) : -1;
+		}
 
 		const alignments: string[] = [];
-
 		while (pos < end) {
-			// skip whitespace
-			while (pos < end && char_code_at.call(source, pos - base) === SPACE)
+			while (c === SPACE) {
 				pos++;
+				c = pos < end ? char_code_at.call(source, pos - base) : -1;
+			}
 			if (pos >= end) break;
 
-			// check for trailing pipe at end
-			if (char_code_at.call(source, pos - base) === PIPE && pos + 1 >= end)
-				break;
+			// a trailing pipe ends the row
+			if (c === PIPE && pos + 1 >= end) break;
 
 			let left_colon = false;
-			if (char_code_at.call(source, pos - base) === COLON) {
+			if (c === COLON) {
 				left_colon = true;
 				pos++;
+				c = pos < end ? char_code_at.call(source, pos - base) : -1;
 			}
-
-			let dash_count = 0;
-			while (pos < end && char_code_at.call(source, pos - base) === DASH) {
-				dash_count++;
+			const dashes = pos;
+			while (c === DASH) {
 				pos++;
+				c = pos < end ? char_code_at.call(source, pos - base) : -1;
 			}
-			if (dash_count === 0) return null; // invalid delimiter cell
+			if (pos === dashes) return null; // invalid delimiter cell
 
 			let right_colon = false;
-			if (pos < end && char_code_at.call(source, pos - base) === COLON) {
+			if (c === COLON) {
 				right_colon = true;
 				pos++;
+				c = pos < end ? char_code_at.call(source, pos - base) : -1;
 			}
-
-			// skip whitespace
-			while (pos < end && char_code_at.call(source, pos - base) === SPACE)
+			while (c === SPACE) {
 				pos++;
+				c = pos < end ? char_code_at.call(source, pos - base) : -1;
+			}
 
 			// expect pipe or end
 			if (pos < end) {
-				if (char_code_at.call(source, pos - base) === PIPE) {
-					pos++;
-				} else {
-					return null; // unexpected char
-				}
+				if (c !== PIPE) return null; // unexpected char
+				pos++;
+				c = pos < end ? char_code_at.call(source, pos - base) : -1;
 			}
 
+			// more cells than the header can never be a table
+			if (alignments.length === col_count) return null;
 			if (left_colon && right_colon) alignments.push('center');
 			else if (right_colon) alignments.push('right');
 			else if (left_colon) alignments.push('left');
 			else alignments.push('none');
 		}
 
-		return alignments.length > 0 ? alignments : null;
+		return alignments.length === col_count ? alignments : null;
 	}
 
 	/**
