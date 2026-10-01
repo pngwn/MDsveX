@@ -194,16 +194,19 @@ function append_flat(head: string, tail: string): string {
 export function normalize_newlines(source: string): string {
 	let cr = string_index_of.call(source, '\r');
 	if (cr === -1) return source;
-	// jumping between \r with indexOf beats a global regex replace
-	let out = '';
+	// jumping between \r with indexOf beats a global regex replace. join
+	// builds one sequential string, a += rope would flatten into a cons that
+	// every later charCodeAt in the parser and renderer has to unwrap
+	const lines: string[] = [];
 	let from = 0;
 	while (cr !== -1) {
-		out += string_slice.call(source, from, cr) + '\n';
+		lines.push(string_slice.call(source, from, cr));
 		from = cr + 1;
 		if (char_code_at.call(source, from) === 0x0a) from++;
 		cr = string_index_of.call(source, '\r', from);
 	}
-	return out + string_slice.call(source, from);
+	lines.push(string_slice.call(source, from));
+	return lines.join('\n');
 }
 
 /** maps parser offsets back to the raw source, a collapsed \n maps to its \r */
