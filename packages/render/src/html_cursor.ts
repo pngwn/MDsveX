@@ -3171,8 +3171,10 @@ export class CursorHTMLRenderer {
 		const closed = this.closed;
 		if (closed !== null && closed.size !== 0) closed.clear();
 		this.cursor?.release();
-		// the escape index is module state and would keep the source alive
-		esc_reset('');
+		// the escape index is module state and would keep the source alive,
+		// every render resets it, a zero length clamps any text of '' to empty
+		esc_src = '';
+		esc_len = 0;
 	}
 }
 

@@ -62,9 +62,17 @@ function new_storage(bytes: number): ArrayBuffer {
 }
 
 /**
+ * template copies repeat a block this many nodes long at most: a doubling copy
+ * past it reads a source that no longer sits in the core's cache, so a slab's
+ * last copies ran at memory speed
+ */
+const TEMPLATE_BLOCK = 512;
+
+/**
  * write the node template into slots [from, to): no end, no value, no links,
  * not pending, no metadata, so a push only writes kind, start, parent and the
- * links it makes; the first nodes by stores, the rest by doubling copies
+ * links it makes; the first nodes by stores, the rest by doubling copies up
+ * to a block, then by copies of that block
  */
 function fill_template(n: Uint32Array, from: number, to: number): void {
 	// a copy is a runtime call, stores beat it for the few nodes a small document has
@@ -84,6 +92,7 @@ function fill_template(n: Uint32Array, from: number, to: number): void {
 	let done = short;
 	while (done < to) {
 		let count = done - from;
+		if (count > TEMPLATE_BLOCK) count = TEMPLATE_BLOCK;
 		if (count > to - done) count = to - done;
 		n.copyWithin(
 			done * NodeField.stride,
@@ -464,13 +473,19 @@ export class NodeBuffer {
 		// many, one copy costs about what stores for eight nodes cost
 		const size = this._size;
 		if (size !== 0) {
-			if (size > 8 && size << 1 <= this._filled)
-				this._n.copyWithin(
-					0,
-					size * NodeField.stride,
-					(size << 1) * NodeField.stride
-				);
-			else fill_template(this._n, 0, size);
+			if (size > 8 && size << 1 <= this._filled) {
+				const n = this._n;
+				for (let done = 0; done < size; ) {
+					let count = size - done;
+					if (count > TEMPLATE_BLOCK) count = TEMPLATE_BLOCK;
+					n.copyWithin(
+						done * NodeField.stride,
+						size * NodeField.stride,
+						(size + count) * NodeField.stride
+					);
+					done += count;
+				}
+			} else fill_template(this._n, 0, size);
 			this._size = 0;
 		}
 	}
