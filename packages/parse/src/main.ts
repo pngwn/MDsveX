@@ -9872,9 +9872,13 @@ export class PFMParser {
 			this.cursor = q;
 			if (q >= length) return;
 			const c0 = char_code_at.call(source, q - base);
-			if (c0 === 0 || (c0 < 128 && TEXT_BREAK[c0] !== 0)) return;
-			this.table_cell_has_content = true;
-			this.table_cell_text(this.table_cell_id);
+			if (c0 === BACKTICK) {
+				if (!this.table_cell_code(q)) return;
+			} else {
+				if (c0 === 0 || (c0 < 128 && TEXT_BREAK[c0] !== 0)) return;
+				this.table_cell_has_content = true;
+				this.table_cell_text(this.table_cell_id);
+			}
 			// inline and text were pushed, the run did not end at a pipe or linefeed
 			if (this.states[this.states.length - 1] !== StateKind.table_row_content)
 				return;
@@ -9893,6 +9897,57 @@ export class PFMParser {
 			this.table_cell_has_content = false;
 			this.node_stack.push(this.table_cell_id);
 		}
+	}
+
+	/**
+	 * a cell starting with a backtick at q: the cell's inline push and the inline state's one trip
+	 * code span; a plain char after the span continues as table_cell_text. false leaves inline
+	 * pushed with the cursor at the backtick or after the span for the main loop
+	 */
+	private table_cell_code(start: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		this.table_cell_has_content = true;
+		this.states.push(StateKind.inline);
+		let q = start + 1;
+		if (q < length && char_code_at.call(source, q - base) === BACKTICK) q++;
+		const run_n = q - start;
+		if (q >= length) return false;
+		const c0 = char_code_at.call(source, q - base);
+		if (
+			c0 === BACKTICK ||
+			c0 === SPACE ||
+			c0 === OCTOTHERP ||
+			c0 === LINEFEED ||
+			c0 === PIPE
+		)
+			return false;
+		let e = q + 1;
+		while (e < length) {
+			const ch = char_code_at.call(source, e - base);
+			if (ch === BACKTICK || ch === LINEFEED || ch === PIPE) break;
+			e++;
+		}
+		if (e >= length || char_code_at.call(source, e - base) !== BACKTICK)
+			return false;
+		let r = e + 1;
+		while (r < length && char_code_at.call(source, r - base) === BACKTICK) r++;
+		if (r - e !== run_n || r >= length) return false;
+		const cell = this.table_cell_id;
+		const cs_id = this.emit_open(NodeKind.code_span, start, cell);
+		this.out.set_value_start(cs_id, q);
+		this.out.set_value_end(cs_id, e);
+		this.emit_close(cs_id, r);
+		this.extra = run_n;
+		this.code_span_open_pos = start;
+		this.cursor = r;
+		const c = char_code_at.call(source, r - base);
+		if (c === 0 || (c < 128 && TEXT_BREAK[c] !== 0)) return false;
+		// table_cell_text pushes inline again when its run does not end the cell
+		this.states.pop();
+		this.table_cell_text(cell);
+		return true;
 	}
 
 	/**
