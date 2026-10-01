@@ -396,14 +396,20 @@ export class NodeBuffer {
 
 	constructor(initial_capacity = DEFAULT_TOKEN_CAPACITY) {
 		// the comparison also sends a nan capacity to the floor
-		this.alloc(
+		let n = this.alloc(
 			next_power_of_two(
 				initial_capacity > MIN_NODE_CAPACITY
 					? initial_capacity
 					: MIN_NODE_CAPACITY
 			)
 		);
-		this.push(NodeKind.root, 0);
+		// push_node's stores for the root, written here so the inlined push_node does not
+		// count against the inlining budget of every `new TreeBuilder` caller
+		if (this._filled === 0) n = this.fill(0);
+		n[0] = NodeKind.root;
+		n[NodeField.start] = 0;
+		n[NodeField.parent] = 0xffffffff;
+		this._size = 1;
 	}
 
 	private alloc(capacity: number): Uint32Array {
