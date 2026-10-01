@@ -414,6 +414,47 @@ describe('list marker with no content at the end of a fed chunk', () => {
 	}
 });
 
+describe('trailing whitespace in a heading', () => {
+	const cases: [string, string[]][] = [
+		['# <b> ', ['  heading depth=1 "<b>"', '    text tag="b" "<b>"']],
+		[
+			'# <b> \t\na',
+			[
+				'  heading depth=1 "<b>"',
+				'    text tag="b" "<b>"',
+				'  line_break',
+				'  paragraph',
+				'    text "a"',
+			],
+		],
+		[
+			'# ^<http://a> ',
+			[
+				'  heading depth=1 "^<http://a>"',
+				'    text "^"',
+				'    link href="http://a"',
+				'      text "http://a"',
+			],
+		],
+		[
+			'# a <b> b',
+			[
+				'  heading depth=1 "a <b> b"',
+				'    text "a "',
+				'    text tag="b" "<b>"',
+				'    text " b"',
+			],
+		],
+	];
+
+	for (const [input, lines] of cases) {
+		test(JSON.stringify(input), () => {
+			expect(print_batch(input)).toBe(['root', ...lines].join('\n'));
+			expect_incremental_matches(input);
+		});
+	}
+});
+
 describe('batch and incremental parity', () => {
 	const atoms = [
 		'*',
