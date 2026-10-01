@@ -107,7 +107,6 @@ root
         line_break
         paragraph
           mustache "playing ? 'Restart' : 'Play'"
-          soft_break
-          text "			"
+        line_break
       line_break
     line_break

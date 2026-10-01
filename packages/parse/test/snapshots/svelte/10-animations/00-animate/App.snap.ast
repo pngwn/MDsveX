@@ -29,8 +29,7 @@ root
               text "				"
               html tag="button" on:click="{() => remove(todo)}"
                 text "x"
-              soft_break
-              text "			"
+            line_break
           line_break
       line_break
     line_break
@@ -54,8 +53,7 @@ root
               text "				"
               html tag="button" on:click="{() => remove(todo)}"
                 text "x"
-              soft_break
-              text "			"
+            line_break
           line_break
       line_break
     line_break

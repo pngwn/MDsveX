@@ -4,5 +4,5 @@ root
     paragraph
       strong_emphasis
         text "bar"
-      soft_break
+    line_break
   line_break

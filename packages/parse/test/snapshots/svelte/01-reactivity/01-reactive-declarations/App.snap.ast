@@ -7,7 +7,7 @@ root
     paragraph
       text "Count: "
       mustache "count"
-      soft_break
+    line_break
   line_break
   line_break
   html tag="p"

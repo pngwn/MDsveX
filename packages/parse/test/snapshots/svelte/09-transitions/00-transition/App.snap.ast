@@ -8,7 +8,7 @@ root
     line_break
     paragraph
       text "visible"
-      soft_break
+    line_break
   line_break
   line_break
   svelte_block tag="if"

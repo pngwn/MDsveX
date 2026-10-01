@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'vitest';
 
-import { parse_markdown_svelte } from '../src/main';
+import { PFMParser, parse_markdown_svelte } from '../src/main';
+import { TreeBuilder } from '../src/tree_builder';
 import type { NodeBuffer } from '../src/utils';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
@@ -584,5 +585,110 @@ describe('Lists', () => {
 
 		const items = non_breaks(nodes, children[0].index);
 		expect(items.length).toBe(3);
+	});
+});
+
+type Shape = string | [string, ...Shape[]];
+
+function shape(nodes: NodeBuffer, source: string, id = 0): Shape {
+	const n = nodes.get_node(id);
+	if (n.kind === 'text') return `text:${source.slice(n.value[0], n.value[1])}`;
+	const children = n.children
+		.map((c: number) => shape(nodes, source, c))
+		.filter((c: Shape) => c !== 'line_break');
+	if (children.length === 0) return n.kind;
+	return [n.kind, ...children];
+}
+
+function root_shape(input: string): Shape[] {
+	const { nodes, source } = parse_markdown_svelte(input);
+	return (shape(nodes, source) as Shape[]).slice(1);
+}
+
+function incremental_shape(input: string, chunk_size: number): Shape[] {
+	const tree = new TreeBuilder(input.length);
+	const parser = new PFMParser(tree);
+	parser.init();
+	for (let i = 0; i < input.length; i += chunk_size) {
+		parser.feed(input.slice(i, i + chunk_size));
+	}
+	parser.finish();
+	return (shape(tree.get_buffer(), input) as Shape[]).slice(1);
+}
+
+describe('indented lists', () => {
+	const siblings: Shape[] = [
+		['list', ['list_item', 'text:a'], ['list_item', 'text:b']],
+	];
+
+	const cases: [string, string, Shape[]][] = [
+		['two spaces', '  - a\n  - b\n', siblings],
+		['four spaces', '    - a\n    - b\n', siblings],
+		['a tab', '\t- a\n\t- b\n', siblings],
+		['ordered', '   1. a\n   2. b\n', siblings],
+		['in a block quote', '>   - a\n>   - b\n', [['block_quote', ...siblings]]],
+		[
+			'in an html block',
+			'<div>\n\n    - a\n    - b\n\n</div>\n',
+			[['html', ...siblings]],
+		],
+		[
+			'in a component',
+			'<Item>\n    - a\n    - b\n</Item>\n',
+			[['html', ...siblings]],
+		],
+		[
+			'in a svelte block',
+			'{#if x}\n  - a\n  - b\n{/if}\n',
+			[['svelte_block', ['svelte_branch', ...siblings]]],
+		],
+		[
+			'nested relative to the first marker',
+			'  - a\n    - b\n  - c\n',
+			[
+				[
+					'list',
+					['list_item', 'text:a', ['list', ['list_item', 'text:b']]],
+					['list_item', 'text:c'],
+				],
+			],
+		],
+		[
+			'nested in a block quote',
+			'>   - a\n>     - b\n',
+			[
+				[
+					'block_quote',
+					['list', ['list_item', 'text:a', ['list', ['list_item', 'text:b']]]],
+				],
+			],
+		],
+		[
+			'later paragraph at the list indent leaves the list',
+			'<div>\n\n    - a\n    - b\n\n    after\n\n</div>\n',
+			[['html', ...siblings, ['paragraph', 'text:after']]],
+		],
+	];
+
+	for (const [name, input, expected] of cases) {
+		test(name, () => {
+			expect(root_shape(input)).toEqual(expected);
+		});
+
+		test(`${name}, fed in chunks`, () => {
+			for (const size of [1, 2, 3, 7]) {
+				expect(incremental_shape(input, size)).toEqual(expected);
+			}
+		});
+	}
+
+	test('indent survives a feed window trim', () => {
+		// enough text before the list for the window to trim
+		const input = 'word '.repeat(400) + '\n\n' + '    - a\n    - b\n';
+		const expected = root_shape(input);
+		expect(expected[1]).toEqual(siblings[0]);
+		for (const size of [1, 5, 64]) {
+			expect(incremental_shape(input, size)).toEqual(expected);
+		}
 	});
 });

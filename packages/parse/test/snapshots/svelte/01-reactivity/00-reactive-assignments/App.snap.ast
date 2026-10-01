@@ -9,4 +9,4 @@ root
       mustache "count"
       text " "
       mustache "count === 1 ? 'time' : 'times'"
-      soft_break
+    line_break

@@ -33,12 +33,12 @@ root
     line_break
     paragraph
       text "Add new"
-      soft_break
+    line_break
   line_break
   line_break
   html tag="button" on:click=[object Object]
     line_break
     paragraph
       text "Clear completed"
-      soft_break
+    line_break
   line_break

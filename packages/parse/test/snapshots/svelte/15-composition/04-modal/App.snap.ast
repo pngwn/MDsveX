@@ -69,7 +69,7 @@ root
           line_break
           paragraph
             text ">"
-            soft_break
-            text "	"
+          line_break
+          paragraph
       line_break
   line_break

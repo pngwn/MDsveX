@@ -21,8 +21,7 @@ root
       line_break
       paragraph
         text "scroll down"
-        soft_break
-        text "	"
+      line_break
     line_break
     line_break
     html tag="div" class="foreground"
