@@ -13,7 +13,7 @@
 
 import { Cursor } from '@mdsvex/parse/cursor';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
-import { MapSink, record_data } from './mappings';
+import { MapSink, record_data, record_mappings } from './mappings';
 import type { Mapping, MappingData } from './mappings';
 import { records_by_offset, records_to_v3, reserve_trace } from './sourcemap';
 import type { MapTrace, SourceMapV3 } from './sourcemap';
@@ -2318,26 +2318,7 @@ function capture_trace(sink: MapSink): MapTrace {
 }
 
 function resolve_mappings(sink: MapSink): Mapping<MappingData>[] {
-	const rec = sink.rec;
-	const n = sink.n;
-	const mappings: Mapping<MappingData>[] = [];
-	// an imported binding is a module cell, read it once rather than per record
-	const data_of = record_data;
-	for (let p = 0; p < n; p += Rec.SIZE) {
-		const source_length = rec[p + 3];
-		const gen_length = rec[p + 1];
-		const m: Mapping<MappingData> = {
-			sourceOffsets: [rec[p + 2]],
-			generatedOffsets: [rec[p]],
-			lengths: [source_length],
-			data: data_of(rec[p + 5], rec[p + 4] | 0),
-		};
-		if (gen_length !== source_length) {
-			m.generatedLengths = [gen_length];
-		}
-		mappings.push(m);
-	}
-	return mappings;
+	return record_mappings(sink.rec, sink.n);
 }
 
 /** collapsed \r\n before a normalized offset */

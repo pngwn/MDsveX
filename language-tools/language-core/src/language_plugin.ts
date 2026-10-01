@@ -128,7 +128,14 @@ function create_virtual_code_from_source(
 	};
 	const filtered_mappings = svelte.mappings
 		.filter((m) => (m.data as any).role !== "node" && m.lengths[0] > 0)
-		.map((m) => ({ ...m, data: ALL_CAPS }));
+		// mappings read through accessors, so a spread would drop the arrays
+		.map((m) => ({
+			sourceOffsets: m.sourceOffsets,
+			generatedOffsets: m.generatedOffsets,
+			lengths: m.lengths,
+			...(m.generatedLengths ? { generatedLengths: m.generatedLengths } : {}),
+			data: ALL_CAPS,
+		}));
 
 	// Step 5: Compose PFM to Svelte + Svelte to TS = PFM to TS
 	// Use B's capabilities but disable format (overlapping ranges crash the formatter).

@@ -170,6 +170,84 @@ export function record_data(code: number, node_index: number): MappingData {
 	}
 }
 
+/**
+ * a mapping of one record, its arrays built on each read from plain fields,
+ * so a resolved document keeps one object and its data per piece rather than
+ * four arrays that stay alive until the caller drops the result
+ */
+export class RecordMapping implements Mapping<MappingData> {
+	_source: number;
+	_generated: number;
+	_length: number;
+	_generated_length: number;
+	data: MappingData;
+
+	constructor(
+		source: number,
+		generated: number,
+		length: number,
+		generated_length: number,
+		data: MappingData
+	) {
+		this._source = source;
+		this._generated = generated;
+		this._length = length;
+		this._generated_length = generated_length;
+		this.data = data;
+	}
+
+	get sourceOffsets(): number[] {
+		return [this._source];
+	}
+
+	get generatedOffsets(): number[] {
+		return [this._generated];
+	}
+
+	get lengths(): number[] {
+		return [this._length];
+	}
+
+	get generatedLengths(): number[] | undefined {
+		const gen_length = this._generated_length;
+		return gen_length === this._length ? undefined : [gen_length];
+	}
+
+	/** the plain mapping, keys in the order a plain literal had them */
+	toJSON(): Mapping<MappingData> {
+		const m: Mapping<MappingData> = {
+			sourceOffsets: [this._source],
+			generatedOffsets: [this._generated],
+			lengths: [this._length],
+			data: this.data,
+		};
+		if (this._generated_length !== this._length) {
+			m.generatedLengths = [this._generated_length];
+		}
+		return m;
+	}
+}
+
+/** one RecordMapping per record of rec[0, n) */
+export function record_mappings(
+	rec: Uint32Array,
+	n: number
+): Mapping<MappingData>[] {
+	const mappings: Mapping<MappingData>[] = [];
+	for (let p = 0; p < n; p += RECORD_SIZE) {
+		mappings.push(
+			new RecordMapping(
+				rec[p + 2],
+				rec[p],
+				rec[p + 3],
+				rec[p + 1],
+				record_data(rec[p + 5], rec[p + 4] | 0)
+			)
+		);
+	}
+	return mappings;
+}
+
 // records past this many words are dropped after use rather than kept for
 // the next render, so one huge document does not pin its buffer, 4mb still
 // keeps the records of a 1mb document
