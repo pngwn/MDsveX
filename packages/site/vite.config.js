@@ -69,6 +69,19 @@ function mdsvex_transform() {
 /** @type {import('vite').UserConfig} */
 const config = {
 	plugins: [mdsvex_transform(), sveltekit()],
+	server: {
+		fs: {
+			// the repl workers are loaded by url, outside the import graph
+			allow: ["../repl"],
+		},
+	},
+	optimizeDeps: {
+		// prebundling moves the rollup wasm away from the file that fetches it
+		exclude: ["@rollup/browser"],
+	},
+	worker: {
+		format: "es",
+	},
 };
 
 export default config;

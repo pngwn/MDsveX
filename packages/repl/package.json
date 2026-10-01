@@ -1,0 +1,70 @@
+{
+	"name": "@mdsvex/repl",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Browser REPL for mdsvex, adapted from the Svelte playground",
+	"type": "module",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "packages/repl"
+	},
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"svelte": "./src/index.ts",
+			"default": "./src/index.ts"
+		},
+		"./url-state": {
+			"types": "./src/url_state.ts",
+			"default": "./src/url_state.ts"
+		},
+		"./package.json": "./package.json"
+	},
+	"scripts": {
+		"test": "vitest",
+		"test:run": "vitest run"
+	},
+	"peerDependencies": {
+		"svelte": "^5.0.0"
+	},
+	"dependencies": {
+		"@ampproject/remapping": "^2.3.0",
+		"@codemirror/autocomplete": "^6.20.0",
+		"@codemirror/commands": "^6.10.2",
+		"@codemirror/lang-css": "^6.3.1",
+		"@codemirror/lang-html": "^6.4.11",
+		"@codemirror/lang-javascript": "^6.2.4",
+		"@codemirror/lang-json": "^6.0.2",
+		"@codemirror/lang-markdown": "^6.5.0",
+		"@codemirror/language": "^6.12.1",
+		"@codemirror/lint": "^6.9.4",
+		"@codemirror/state": "^6.5.4",
+		"@codemirror/view": "^6.39.15",
+		"@jridgewell/sourcemap-codec": "^1.5.5",
+		"@lezer/highlight": "^1.2.3",
+		"@mdsvex/parse": "workspace:*",
+		"@mdsvex/render": "workspace:*",
+		"@replit/codemirror-lang-svelte": "^6.0.0",
+		"@replit/codemirror-vim": "^6.3.0",
+		"@rich_harris/svelte-split-pane": "^3.0.0",
+		"@rollup/browser": "^4.59.0",
+		"@sveltejs/acorn-typescript": "^1.0.9",
+		"@sveltejs/svelte-json-tree": "^2.2.1",
+		"acorn": "^8.16.0",
+		"codemirror": "^6.0.2",
+		"esm-env": "^1.2.2",
+		"esrap": "^2.2.5",
+		"locate-character": "^3.0.0",
+		"magic-string": "^0.30.21",
+		"mdsvex": "workspace:*",
+		"resolve.exports": "^2.0.3",
+		"tarparser": "^0.0.5",
+		"zimmerframe": "^1.1.4"
+	},
+	"devDependencies": {
+		"@types/estree": "^1.0.8",
+		"svelte": "^5.55.1"
+	}
+}

@@ -1,0 +1,7 @@
+{
+	"templates": {
+		"default": "./Template.svelte"
+	},
+	"components": "./components.js",
+	"component_mode": "markdown"
+}
