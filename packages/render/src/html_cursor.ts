@@ -333,6 +333,55 @@ function _spans(
 	c: Cursor,
 	preset: number
 ): void {
+	const s = c.start;
+	const vs = c.value_start,
+		ve = c.value_end;
+	// value range is meaningful when ve > vs (same check as Cursor.text()).
+	// Uint32Array defaults to 0 for unset slots, so ve !== NONE is not enough.
+	const has_value = ve > vs;
+	const e = c.end;
+	const close_start = has_value ? ve : e;
+	if (s === Slot.NONE || close_start === Slot.NONE || !sink.syntax) {
+		_spans_some(sink, pre, after_open, before_close, post, c, preset);
+		return;
+	}
+	// all three records present, written under one capacity check
+	const idx = c.index;
+	const open_end = has_value ? vs : s;
+	let rec = sink.rec;
+	const p = sink.n;
+	if (p + 3 * Rec.SIZE > rec.length) rec = sink.grow();
+	rec[p] = pre;
+	rec[p + 1] = post - pre;
+	rec[p + 2] = s;
+	rec[p + 3] = e > s ? e - s : 0;
+	rec[p + 4] = idx;
+	rec[p + 5] = preset << 2;
+	rec[p + 6] = pre;
+	rec[p + 7] = after_open - pre;
+	rec[p + 8] = s;
+	rec[p + 9] = open_end > s ? open_end - s : 0;
+	rec[p + 10] = idx;
+	rec[p + 11] = Code.STRUCTURE_OPEN;
+	rec[p + 12] = before_close;
+	rec[p + 13] = post - before_close;
+	rec[p + 14] = close_start;
+	rec[p + 15] = e > close_start ? e - close_start : 0;
+	rec[p + 16] = idx;
+	rec[p + 17] = Code.STRUCTURE_CLOSE;
+	sink.n = p + 3 * Rec.SIZE;
+}
+
+/** _spans when a record is dropped or syntax is off */
+function _spans_some(
+	sink: MapSink,
+	pre: number,
+	after_open: number,
+	before_close: number,
+	post: number,
+	c: Cursor,
+	preset: number
+): void {
 	const idx = c.index;
 	const s = c.start,
 		e = c.end;
@@ -340,8 +389,6 @@ function _spans(
 	if (!sink.syntax) return;
 	const vs = c.value_start,
 		ve = c.value_end;
-	// value range is meaningful when ve > vs (same check as Cursor.text()).
-	// Uint32Array defaults to 0 for unset slots, so ve !== NONE is not enough.
 	const has_value = ve > vs;
 	put_record(
 		sink,
