@@ -53,18 +53,13 @@ export interface CompileV3Result {
 
 export interface CompileTraceResult {
 	code: string;
-	/**
-	 * trace_to_v3 over this with the normalized source gives the compile_v3
-	 * mappings: collapsing \r\n keeps every line and column, so positions in
-	 * the normalized source are positions in raw
-	 */
+	/** collapsing \r\n keeps every line and column, so its positions hold in raw */
 	trace: MapTrace;
 	/** the normalized source the trace indexes */
 	source: string;
 }
 
-// a one shot compile binds its own tree to a spare parser and renders with a
-// spare renderer, one taken while in use (a plugin that compiles) leaves null
+// null while taken, so a compile inside a plugin makes its own
 let spare_parser: PFMParser | null = null;
 let spare_renderer: CursorHTMLRenderer | null = null;
 
@@ -310,7 +305,7 @@ function collapsed_of(raw: string): number[] | null {
 
 interface StoredDocument {
 	raw: string;
-	/** normalized raw, the trace's source offsets and lines index it */
+	/** normalized raw, the trace indexes it */
 	source: string;
 	html: string;
 	trace: MapTrace;
@@ -335,8 +330,8 @@ function pfm_map(
 const PLAIN_BASENAME = /^[\w\-+~@][\w.\-+~@]*$/;
 
 /**
- * the inline map JSON remapping would give for [compile, pfm map] with
- * sourcesContent set to the raw source, null for anything left to remapping
+ * the inline map json remapping gives for the compile and pfm maps with raw
+ * as sourcesContent, null for anything left to remapping
  */
 function chained_json(
 	doc: StoredDocument,
@@ -379,13 +374,9 @@ function chained_json(
 		(chained_names.length === 0 ? '[]' : JSON.stringify(chained_names)) +
 		',"ignoreList":[],"sources":';
 	if (chained.sourced) {
-		// a plain basename has no char JSON escapes, so quoting it is stringify
+		// a plain basename has no char json escapes, so quoting equals JSON.stringify
 		json +=
-			'["' +
-			base +
-			'"],"sourcesContent":[' +
-			JSON.stringify(doc.raw) +
-			']}';
+			'["' + base + '"],"sourcesContent":[' + JSON.stringify(doc.raw) + ']}';
 	} else {
 		json += '[],"sourcesContent":[]}';
 	}

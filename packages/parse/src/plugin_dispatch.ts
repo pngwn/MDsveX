@@ -187,7 +187,7 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 		return { plugin, handlers: table };
 	});
 
-	// a pass with no handler visits nothing and fires nothing, so it is dropped
+	// a pass with no handler would do nothing
 	return {
 		fused,
 		sequential: sequential.filter((pass) =>
@@ -206,11 +206,7 @@ function parse_of(entry: unknown): unknown {
 		: NO_PARSE;
 }
 
-/**
- * everything register_plugins read, in the order it read it: the plugin
- * count, then per plugin the object, its sequential flag, its key count and
- * per key the key, the entry and its parse function
- */
+/** everything register_plugins reads, in the order it reads it */
 function snapshot_plugins(plugins: ParsePlugin[]): unknown[] {
 	const snap: unknown[] = [plugins.length];
 	for (let i = 0; i < plugins.length; i++) {
@@ -232,9 +228,8 @@ function snapshot_matches(plugins: ParsePlugin[], snap: unknown[]): boolean {
 		const p = plugins[i];
 		if (snap[j++] !== p) return false;
 		if (snap[j++] !== !!p.sequential) return false;
-		// for-in walks the own keys in Object.keys order then any inherited
-		// enumerable key, which makes the count or a key differ, so an exact
-		// match means the same own keys without allocating their array
+		// inherited enumerable keys change the count or a key, so an exact match
+		// means the same own keys without allocating Object.keys
 		const count = snap[j++] as number;
 		const keys_end = j + count * 3;
 		for (const key in p) {
@@ -248,9 +243,8 @@ function snapshot_matches(plugins: ParsePlugin[], snap: unknown[]): boolean {
 	return true;
 }
 
-// the last registration and what it was built from, nothing writes a
-// registration's tables after register_plugins, so a later document whose
-// plugins still hold the same objects, keys and handlers can share them
+// nothing writes a registration after register_plugins, so documents whose
+// plugins hold the same objects, keys and handlers can share one
 let last_snapshot: unknown[] | null = null;
 let last_registration: RegistrationResult | null = null;
 
@@ -265,9 +259,8 @@ function registration_for(plugins: ParsePlugin[]): RegistrationResult {
 }
 
 /**
- * stores close callbacks by buffer index. a Map, not an array: handled nodes
- * can sit more than 1024 indices apart, and an array written past such a gap
- * falls back to dictionary elements
+ * a Map since handled nodes can sit over 1024 indices apart, and an array
+ * written past such a gap falls back to dictionary elements
  */
 class CloseCallbackStore {
 	private store: Map<number, (() => void)[]> | null = null;
@@ -316,8 +309,7 @@ class CloseCallbackStore {
 /**
  * dispatch plugin handlers for a node open event.
  *
- * each switch arm calls the table entry for its own kind, giving the jit
- * a monomorphic call site per kind, without loading all 35 entries first.
+ * each switch arm is a monomorphic call site for its own kind
  */
 function dispatch_open(
 	kind: NodeKind,
@@ -329,7 +321,6 @@ function dispatch_open(
 	// bitmask fast path: no handler for this kind
 	if (!(has_handler[kind >> 5] & (1 << (kind & 31)))) return null;
 
-	// a call site per kind, each stays monomorphic
 	switch (kind) {
 		case 0:
 			return fused[0]!(view, ctx);
@@ -406,7 +397,7 @@ function dispatch_open(
 	}
 }
 
-/** a dispatcher's redirects until its first wrap_inner, never written */
+/** shared redirects until the first wrap_inner, never written */
 const NO_REDIRECTS: Map<number, number> = new Map();
 
 /**
@@ -443,10 +434,7 @@ export class PluginDispatcher {
 		this.text_source = text_source;
 	}
 
-	/**
-	 * the view cache for one dispatch, emptied first since a callback's view
-	 * may have navigated through it since the last dispatch
-	 */
+	/** cleared since a callback view may have filled it after the last dispatch */
 	private views(buf: NodeBuffer): ViewCache {
 		const cache = this.cache;
 		if (cache === null) {
@@ -462,7 +450,7 @@ export class PluginDispatcher {
 		return this.undo.kind_changes;
 	}
 
-	/** a kind rewrite outside the plugins, a revoke's repair */
+	/** a kind rewrite outside the plugins, such as a revoke repair */
 	log_kind(buf_idx: number, prior_kind: number): void {
 		this.undo.log_kind(buf_idx, prior_kind);
 	}
@@ -475,12 +463,10 @@ export class PluginDispatcher {
 		);
 	}
 
-	/** no close callback, redirect or undo entry is live, so a close is a plain close */
+	/** a close needs no dispatch */
 	quiet(): boolean {
 		return (
-			this.close_cbs.live === 0 &&
-			this.redirects.size === 0 &&
-			this.undo.empty
+			this.close_cbs.live === 0 && this.redirects.size === 0 && this.undo.empty
 		);
 	}
 
@@ -576,7 +562,7 @@ export class PluginDispatcher {
 
 		// take and fire close callbacks with undo attribution
 		const cbs = this.close_cbs.take(buf_idx);
-		// callbacks cannot change a node's pending flag
+		// callbacks cannot change the pending flag
 		const pending = buf.pending_at(buf_idx) !== 0;
 		if (cbs) {
 			// a node no longer pending commits right after its callbacks, so
@@ -609,7 +595,7 @@ export class PluginDispatcher {
 	 * must be called BEFORE handle_repair().
 	 */
 	dispatch_revoke(buf_idx: number, buf: NodeBuffer): void {
-		// nothing recorded anywhere, so nothing in this subtree to undo
+		// nothing recorded, so nothing to undo
 		if (
 			this.redirects.size === 0 &&
 			this.close_cbs.live === 0 &&
@@ -649,16 +635,18 @@ export class PluginDispatcher {
 		for (const pass of this.sequential) {
 			const handlers = pass.handlers;
 
-			// depth first, pre order opens and post order closes, the words are read once so a handler
-			// that grows the buffer keeps walking the storage the walk started on
+			// read once so a handler that grows the buffer keeps walking the old storage
 			const n = buf._n;
 			let idx = n[NodeField.first_child];
 			if (idx === NONE) continue;
-			// the walk only calls handlers, so with no handled kind anywhere in the
-			// buffer (linked or not) it would do nothing
+			// with no handled kind anywhere in the buffer, linked or not, the walk does nothing
 			const size = buf._size;
 			let handled = false;
-			for (let b = 0, end = size * NodeField.stride; b < end; b += NodeField.stride) {
+			for (
+				let b = 0, end = size * NodeField.stride;
+				b < end;
+				b += NodeField.stride
+			) {
 				if (handlers[n[b] & 0xff] != null) {
 					handled = true;
 					break;
@@ -675,8 +663,8 @@ export class PluginDispatcher {
 				if (handler != null) {
 					const cache = this.views(buf);
 					const view = cache.get(idx)!;
-					// the tree is complete, nothing revokes a sequential write, so
-					// none is recorded (no active node)
+					// the tree is complete so nothing revokes a sequential write, no
+					// active node means none is recorded
 					const callbacks = handler(view, ctx);
 					if (callbacks) close_store.set(idx, callbacks);
 					cache.clear();

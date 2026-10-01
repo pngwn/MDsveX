@@ -156,17 +156,17 @@ export class Cursor {
 		return true;
 	}
 
-	/** @internal the node words, for walkers that read links directly */
+	/** @internal */
 	get words(): Uint32Array {
 		return this.n;
 	}
 
-	/** @internal prebuilt string of node idx, undefined when text slices the source */
+	/** @internal undefined when text slices the source */
 	prebuilt_at(idx: number): string | undefined {
 		return this.buf._strings[idx];
 	}
 
-	/** @internal move to node idx without checks */
+	/** @internal no bounds checks */
 	move_to(idx: number): void {
 		this.idx = idx;
 		this.b = idx * NodeField.stride;

@@ -106,8 +106,8 @@ export class ViewCache {
 }
 
 /**
- * what an attrs proxy reads, keyed by module symbols so reflection on the
- * proxy (all through its traps) never meets them, one handler serves every proxy
+ * attrs proxy target fields, symbol keyed so reflection through the traps
+ * never meets them, one handler serves every proxy
  */
 const BUF: unique symbol = Symbol('buf');
 const IDX: unique symbol = Symbol('idx');

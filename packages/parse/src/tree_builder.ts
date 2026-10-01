@@ -26,8 +26,8 @@ export class TreeBuilder implements Emitter {
 	/** null while ids equal buffer indices */
 	private id_to_index: number[] | null = null;
 	/**
-	 * buffer index and kind at open of each node a revoke rewrote, in revoke
-	 * order, only read for a close or text that does not pass the kind
+	 * buffer index and kind at open of each node a revoke rewrote, read only
+	 * for a close or text that does not pass the kind
 	 */
 	private revoked: number[] | null = null;
 	/** kind at open by index, built from revoked on the first read */
@@ -85,10 +85,7 @@ export class TreeBuilder implements Emitter {
 		return map;
 	}
 
-	/**
-	 * a revoke may have rewritten the buffer kind since open, only for callers
-	 * that do not pass the kind, the parser always does
-	 */
+	/** for callers that do not pass the kind, a revoke may have rewritten it */
 	private opened_kind(idx: number): number {
 		// plugins rewrite kinds too, the dispatcher logs every rewrite
 		const revoked =
@@ -124,7 +121,14 @@ export class TreeBuilder implements Emitter {
 			const parent_idx = parent === -1 ? NONE : parent;
 			const dispatcher = this.dispatcher;
 			if (dispatcher !== null && dispatcher.wants_open(kind)) {
-				this.open_with_plugins(dispatcher, kind, start, parent_idx, extra, pending);
+				this.open_with_plugins(
+					dispatcher,
+					kind,
+					start,
+					parent_idx,
+					extra,
+					pending
+				);
 				return;
 			}
 			nodes.push_node(kind, start, parent_idx, extra, pending);
@@ -133,10 +137,7 @@ export class TreeBuilder implements Emitter {
 		this.open_mapped(id, kind, start, parent, extra, pending);
 	}
 
-	/**
-	 * an open once ids and indices part: a plugin pushed nodes the parser has
-	 * no id for, or ids skipped a slot
-	 */
+	/** an open once a plugin pushed nodes without ids or ids skipped a slot */
 	private open_mapped(
 		id: number,
 		kind: NodeKind,
@@ -175,7 +176,7 @@ export class TreeBuilder implements Emitter {
 		pending: boolean
 	): void {
 		const nodes = this.nodes;
-		// plugin redirect: if parent has a wrap_inner wrapper, children go there
+		// children of a wrap_inner parent go to its wrapper
 		if (parent_idx !== NONE) {
 			const redirect = dispatcher.get_redirect(parent_idx);
 			if (redirect !== undefined) parent_idx = redirect;
@@ -220,8 +221,7 @@ export class TreeBuilder implements Emitter {
 		const dispatcher = this.dispatcher!;
 		nodes.set_end(idx, end);
 
-		// plugin close dispatch: fire close callbacks before committing, a
-		// quiet dispatcher has nothing to fire, redirect or commit
+		// fire close callbacks before committing, a quiet dispatcher has none
 		if (!dispatcher.quiet()) dispatcher.dispatch_close(idx, nodes);
 
 		// pending paragraphs inside list_items are tight-list speculation
@@ -349,8 +349,7 @@ export class TreeBuilder implements Emitter {
 
 		const kind = nodes.kind_at(idx);
 		nodes.handle_repair(idx, source_text, text_start);
-		// close and text still act on the kind the node was opened with, the
-		// parser passes it, other callers read it back from this list
+		// close and text act on the kind at open, callers that omit it read it here
 		if (nodes.kind_at(idx) !== kind) {
 			const revoked = this.revoked;
 			if (revoked === null) this.revoked = [idx, kind];

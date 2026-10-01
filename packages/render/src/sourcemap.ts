@@ -364,8 +364,8 @@ export function records_to_v3(
 }
 
 /**
- * records whose generated start and length count out chunks, as records of
- * generated offsets, offsets holding each chunk's offset then the end
+ * records counted in out chunks as records of generated offsets, offsets holds
+ * the offset of each chunk then the end
  * @internal
  */
 export function records_by_offset(
@@ -655,9 +655,7 @@ export function trace_to_v3(
 	const split = trace.split;
 	const buf = trace.buf;
 	const encoded =
-		split === start
-			? ''
-			: encode_records(buf, start, split, source, generated);
+		split === start ? '' : encode_records(buf, start, split, source, generated);
 	return v3_map(encoded, source, file);
 }
 
@@ -876,7 +874,6 @@ export function mapped_source_lines(
 }
 
 export interface ChainedMappings {
-	/** encoded mappings of the chained map */
 	mappings: string;
 	/** names in first use order */
 	names: string[];
@@ -884,7 +881,7 @@ export interface ChainedMappings {
 	sourced: boolean;
 }
 
-// compile map segments decoded flat, one entry per segment
+// compile map segments decoded flat
 let cseg_line = new Int32Array(1024);
 let cseg_col = new Int32Array(1024);
 let cseg_len = new Int32Array(1024);
@@ -979,7 +976,7 @@ let pseg_sline = new Int32Array(1024);
 let pseg_scol = new Int32Array(1024);
 let line_first = new Int32Array(256);
 let query_buf = new Int32Array(256);
-// generated lines holding a query, cleared per chain rather than reallocated
+// generated lines holding a query
 let wanted_buf = new Uint8Array(256);
 const QUERY_SORT_SMALL = 32;
 
@@ -1096,7 +1093,7 @@ function write_vlq_codec(buf: Uint8Array, p: number, delta: number): number {
 }
 
 /**
- * chains a compile map from the html onto the trace's map of the html, the
+ * chains a compile map from the html onto the map of the html in trace, the
  * mappings and names equal @ampproject/remapping of [compile, trace_to_v3],
  * null when the compile mappings are ones it leaves to remapping
  * @internal
@@ -1199,7 +1196,6 @@ export function chain_trace(
 		let scol = 0;
 		let name = -1;
 		if (cseg_len[k] !== 1) {
-			// greatest lower bound in the trace line
 			const l = cseg_sline[k];
 			if (l >= lines) continue;
 			const c = cseg_scol[k];
@@ -1215,7 +1211,7 @@ export function chain_trace(
 			}
 			if (found < 0) continue;
 			// an equal column takes the first of its run, a lower one the last,
-			// as trace-mapping's greatest lower bound does
+			// as the greatest lower bound of trace-mapping does
 			if (pcol[found] === c) {
 				const lower = first[l];
 				while (found > lower && pcol[found - 1] === c) found--;

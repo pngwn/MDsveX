@@ -61,16 +61,13 @@ let esc_amp = -1;
 let esc_lt = -1;
 let esc_gt = -1;
 let esc_quot = -1;
-// false only while a render walks a buffer without prebuilt strings, which the
-// tree builder never makes, so text skips the lookup
+// false for a buffer with no prebuilt strings, so text skips the lookup
 let esc_prebuilt = true;
-// while set, only nodes whose bit is set can hold a prebuilt string. a late
-// repair can store one at a large index, which turns the sparse strings array
-// into a dictionary, so reading it for every text node hashes
+// only nodes whose bit is set hold a prebuilt string, a late repair can turn
+// the sparse strings array into a dictionary that hashes on every read
 let esc_bits: Uint8Array | null = null;
 const PREBUILT_BITS_MIN = 1024;
 
-/** one bit per node index that holds a prebuilt string */
 function prebuilt_bits(buf: NodeBuffer): Uint8Array {
 	const bits = new Uint8Array((buf.size >>> 3) + 1);
 	const strings = buf._strings;
@@ -82,12 +79,11 @@ function prebuilt_bits(buf: NodeBuffer): Uint8Array {
 	return bits;
 }
 
-/** set the prebuilt state for a render of buf, the caller restores it after */
+/** the caller restores the prebuilt state after the render */
 function prebuilt_begin(buf: NodeBuffer): void {
 	const len = buf._strings.length;
 	if (len === 0) esc_prebuilt = false;
-	// a short array stays in fast elements where a direct read is cheaper than
-	// building the bitmap (for-in costs more than a small document's render)
+	// a short array stays in fast elements, a direct read beats building the bitmap
 	else if (len > PREBUILT_BITS_MIN) esc_bits = prebuilt_bits(buf);
 }
 
@@ -111,7 +107,7 @@ function escape_node_text(c: Cursor): string {
 	return escape_text_at(c, c.index, c.value_start, c.value_end);
 }
 
-/** escape_node_text of node i with value range vs..ve, the cursor may sit elsewhere */
+/** escape_node_text of node i, the cursor may sit elsewhere */
 function escape_text_at(c: Cursor, i: number, vs: number, ve: number): string {
 	if (esc_prebuilt) {
 		const bits = esc_bits;
@@ -296,8 +292,8 @@ function emit_record(
 }
 
 /**
- * a record of the mapped render, offsets in html characters: every span the
- * render records covers at least one chunk, so none is dropped for its width
+ * offsets in html characters, every span the render records covers at least
+ * one chunk, so none is dropped for its width
  */
 function put_record(
 	sink: MapSink,
@@ -411,15 +407,10 @@ const INTERNAL_KEYS = new Set([
 	'src',
 ]);
 
-/** a metadata value as join wrote it, nullish is empty */
 function meta_str(v: unknown): string {
 	return v == null ? '' : typeof v === 'string' ? v : `${v}`;
 }
 
-/**
- * all non-internal metadata as html attributes, keys already handled by the
- * caller are passed in `skip`
- */
 function _attrs(c: Cursor, skip?: Set<string>): string {
 	const meta = c.meta();
 	if (!meta) return '';
@@ -443,11 +434,9 @@ function _attrs(c: Cursor, skip?: Set<string>): string {
 
 //  mapped renderer
 
-// the mapped render appends to one string and records generated offsets as
-// they happen, so there is no chunk array to join or offset table to build
+// records of the mapped render take generated offsets from its length
 let mo = '';
 
-/** with no attributes append the precomputed folded */
 function _open(c: Cursor, head: string, folded: string, end: string): void {
 	const a = _attrs(c);
 	if (a.length !== 0) mo = mo + head + a + end;
@@ -474,7 +463,7 @@ function render_children(c: Cursor, sink?: MapSink): void {
 	const n = c.words;
 	let child = n[c.index * W.stride + W.first_child];
 	if (child === Slot.NONE) return;
-	// siblings share the first child's parent word, as goto_next_sibling checks
+	// siblings share the parent word of the first child, as goto_next_sibling checks
 	const parent = n[child * W.stride + W.parent];
 	for (;;) {
 		const b = child * W.stride;
@@ -517,7 +506,7 @@ function _children_raw(c: Cursor): string {
 	return text;
 }
 
-/** a content record over the text about to be appended at the end */
+/** call before appending text to mo */
 function content_record(
 	sink: MapSink,
 	c: Cursor,
@@ -546,8 +535,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 
 		case K.HEADING: {
 			const pre = mo.length;
-			// depths the parser never emits render as empty tags, as join wrote
-			// the missing entries
+			// depths the parser never emits render as empty tags
 			const e = c.extra;
 			const d = e >= 1 && e <= 6 ? e : 0;
 			_open(c, H_TAG[d], H_OPEN[d], '>');
@@ -655,8 +643,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			const pre = mo.length;
 			const meta = c.meta();
 			let s = '<a';
-			if (meta?.href)
-				s += ' href="' + escape_html(meta.href as string) + '"';
+			if (meta?.href) s += ' href="' + escape_html(meta.href as string) + '"';
 			if (meta?.title)
 				s += ' title="' + escape_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, LINK_HANDLED) + '>';
@@ -1044,7 +1031,7 @@ function _table_cells(
 /** base literals then composites, id 0 is the empty register */
 const FOLD_STR: string[] = [''];
 const FOLD_IDS = new Map<string, number>();
-/** length of each FOLD_STR entry (FOLD_MAX_IDS), so the trace render reads a position without a string load */
+/** length of each FOLD_STR entry, so the trace render reads a position without a string load */
 const FOLD_LEN = new Uint16Array(1024);
 
 function fold_base(s: string): number {
@@ -1187,13 +1174,13 @@ const FOLD_MAX_LEN = 128;
 // pair keys shift the pending id by 7 bits, so base ids must stay below 128
 if (FOLD_BASE > 128) throw new Error('too many static literals');
 // FOLD_LEN is declared before the cap, it must cover every id
-if (FOLD_LEN.length < FOLD_MAX_IDS) throw new Error('FOLD_LEN smaller than the fold table');
+if (FOLD_LEN.length < FOLD_MAX_IDS)
+	throw new Error('FOLD_LEN smaller than the fold table');
 
 /** composite id per pair key, 0 when not built yet */
 const FOLD_PAIR = new Uint16Array(FOLD_MAX_IDS << 7);
 
-// the folding render appends to one string instead of pushing chunks, a cons
-// append is cheaper than an array push and one flatten beats a join
+// a cons append is cheaper than an array push and one flatten beats a join
 let fold_out = '';
 // a char load flattens a cons string in place, a store to a typed array is
 // observable so neither the minifier nor turbofan drops the load
@@ -1293,13 +1280,12 @@ function fold_open(
 	return push_static(p, end);
 }
 
-// text and line break children, over half of all nodes, are read from the
-// words without moving the cursor, it moves only for a fold_node call
+// text and line breaks, over half of all nodes, are read without moving the cursor
 function fold_children(c: Cursor, p: number): number {
 	const n = c.words;
 	let child = n[c.index * W.stride + W.first_child];
 	if (child === Slot.NONE) return p;
-	// siblings share the first child's parent word, as goto_next_sibling checks
+	// siblings share the parent word of the first child, as goto_next_sibling checks
 	const parent = n[child * W.stride + W.parent];
 	for (;;) {
 		const b = child * W.stride;
@@ -1333,9 +1319,8 @@ function fold_children(c: Cursor, p: number): number {
 }
 
 /**
- * the last text sibling of a run starting at text node first whose output is
- * the source over the run: each text continues the previous value and a soft
- * break between two texts is exactly the source '\n' joining them
+ * the last text of a run from first whose output is the source slice, each text
+ * continues the previous value and each soft break is the source newline
  */
 function text_run_last(
 	n: Uint32Array,
@@ -1355,11 +1340,7 @@ function text_run_last(
 		let k = n[nb] & 0xff;
 		if (k === K.SOFT_BREAK) {
 			const s = n[nb + W.start];
-			if (
-				s !== ve ||
-				n[nb + W.end] !== s + 1 ||
-				src.charCodeAt(s) !== 10
-			)
+			if (s !== ve || n[nb + W.end] !== s + 1 || src.charCodeAt(s) !== 10)
 				return last;
 			next = n[nb + W.next];
 			if (next === Slot.NONE) return last;
@@ -1711,12 +1692,10 @@ function fold_table_cells(
 //  trace renderer, the mapped render without syntax records
 
 // update_trace and update_v3 drop syntax records, so a node records only its
-// whole span and text its content span. the walk folds statics like fold_node,
-// the pending static id threaded through as p, and appends to mo so the
-// constructs it hands to render_node render exactly as the mapped render does.
+// whole span and text its content span, output must equal the mapped render
 // a position is mo.length + FOLD_LEN[p]
 
-/** fold a static into the register, appending to mo, returns the new register */
+/** push_static appending to mo */
 function tr_push(p: number, id: number): number {
 	if (p === 0) return id;
 	const v = FOLD_PAIR[(p << 7) | id];
@@ -1758,7 +1737,7 @@ function tr_open(
 	return end;
 }
 
-/** content over the node value: flushes the register, returns it empty */
+/** content_record after flushing the register */
 function tr_content(
 	c: Cursor,
 	sink: MapSink,
@@ -1768,7 +1747,15 @@ function tr_content(
 ): number {
 	if (p !== 0) mo += FOLD_STR[p];
 	const at = mo.length;
-	put_record(sink, at, at + text.length, c.value_start, c.value_end, c.index, code);
+	put_record(
+		sink,
+		at,
+		at + text.length,
+		c.value_start,
+		c.value_end,
+		c.index,
+		code
+	);
 	mo += text;
 	return 0;
 }
@@ -1777,7 +1764,7 @@ function tr_children(c: Cursor, sink: MapSink, p: number): number {
 	const n = c.words;
 	let child = n[c.index * W.stride + W.first_child];
 	if (child === Slot.NONE) return p;
-	// siblings share the first child's parent word, as goto_next_sibling checks
+	// siblings share the parent word of the first child, as goto_next_sibling checks
 	const parent = n[child * W.stride + W.parent];
 	for (;;) {
 		const b = child * W.stride;
@@ -1838,7 +1825,15 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			p = tr_open(c, p, WRAP_HEAD[row], WRAP_FOLDED[row], WRAP_END[row]);
 			p = tr_children(c, sink, p);
 			p = tr_push(p, WRAP_CLOSE[row]);
-			put_record(sink, pre, mo.length + FOLD_LEN[p], c.start, c.end, c.index, Preset.TEXT << 2);
+			put_record(
+				sink,
+				pre,
+				mo.length + FOLD_LEN[p],
+				c.start,
+				c.end,
+				c.index,
+				Preset.TEXT << 2
+			);
 			return p;
 		}
 
@@ -1849,7 +1844,15 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			if (string_index_of.call(code, '\n') !== -1)
 				code = code.replace(/\n/g, ' ');
 			tr_content(c, sink, p, code, Code.CODE_CONTENT);
-			put_record(sink, pre, mo.length + FOLD_LEN[S_CODE_CLOSE], c.start, c.end, c.index, Preset.CODE << 2);
+			put_record(
+				sink,
+				pre,
+				mo.length + FOLD_LEN[S_CODE_CLOSE],
+				c.start,
+				c.end,
+				c.index,
+				Preset.CODE << 2
+			);
 			return S_CODE_CLOSE;
 		}
 
@@ -1869,14 +1872,30 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			}
 			p = tr_children(c, sink, p);
 			p = tr_push(p, ordered ? S_OL_CLOSE : S_UL_CLOSE);
-			put_record(sink, pre, mo.length + FOLD_LEN[p], c.start, c.end, c.index, Preset.STRUCTURE << 2);
+			put_record(
+				sink,
+				pre,
+				mo.length + FOLD_LEN[p],
+				c.start,
+				c.end,
+				c.index,
+				Preset.STRUCTURE << 2
+			);
 			return p;
 		}
 
 		case K.THEMATIC_BREAK: {
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_push(p, S_HR);
-			put_record(sink, pre, mo.length + FOLD_LEN[p], c.start, c.end, c.index, Preset.STRUCTURE << 2);
+			put_record(
+				sink,
+				pre,
+				mo.length + FOLD_LEN[p],
+				c.start,
+				c.end,
+				c.index,
+				Preset.STRUCTURE << 2
+			);
 			return p;
 		}
 
@@ -1891,7 +1910,15 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			p = tr_open(c, p, S_TABLE, S_TABLE_OPEN, S_GT_LF);
 			p = tr_table_content(c, sink, p);
 			p = tr_push(p, S_TABLE_CLOSE);
-			put_record(sink, pre, mo.length + FOLD_LEN[p], c.start, c.end, c.index, Preset.STRUCTURE << 2);
+			put_record(
+				sink,
+				pre,
+				mo.length + FOLD_LEN[p],
+				c.start,
+				c.end,
+				c.index,
+				Preset.STRUCTURE << 2
+			);
 			return p;
 		}
 
@@ -1912,14 +1939,21 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			if (p !== 0) mo += FOLD_STR[p];
 			const meta = c.meta();
 			let s = '<a';
-			if (meta?.href)
-				s += ' href="' + escape_html(meta.href as string) + '"';
+			if (meta?.href) s += ' href="' + escape_html(meta.href as string) + '"';
 			if (meta?.title)
 				s += ' title="' + escape_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, LINK_HANDLED);
 			p = tr_children(c, sink, S_GT);
 			p = tr_push(p, S_A_CLOSE);
-			put_record(sink, pre, mo.length + FOLD_LEN[p], c.start, c.end, c.index, Preset.TEXT << 2);
+			put_record(
+				sink,
+				pre,
+				mo.length + FOLD_LEN[p],
+				c.start,
+				c.end,
+				c.index,
+				Preset.TEXT << 2
+			);
 			return p;
 		}
 
@@ -1934,7 +1968,15 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 				s += ' title="' + escape_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, IMAGE_HANDLED);
 			// the syntax spans are empty, only the node is recorded
-			put_record(sink, pre, mo.length + FOLD_LEN[S_SELF_CLOSE], c.start, c.end, c.index, 0);
+			put_record(
+				sink,
+				pre,
+				mo.length + FOLD_LEN[S_SELF_CLOSE],
+				c.start,
+				c.end,
+				c.index,
+				0
+			);
 			return S_SELF_CLOSE;
 		}
 
@@ -1942,7 +1984,15 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_push(p, S_COMMENT_OPEN);
 			tr_content(c, sink, p, c.text(), Code.TEXT_CONTENT);
-			put_record(sink, pre, mo.length + FOLD_LEN[S_COMMENT_CLOSE], c.start, c.end, c.index, Preset.TEXT << 2);
+			put_record(
+				sink,
+				pre,
+				mo.length + FOLD_LEN[S_COMMENT_CLOSE],
+				c.start,
+				c.end,
+				c.index,
+				Preset.TEXT << 2
+			);
 			return S_COMMENT_CLOSE;
 		}
 
@@ -1950,7 +2000,15 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_push(p, S_BRACE_OPEN);
 			tr_content(c, sink, p, c.text(), Code.SVELTE_CONTENT);
-			put_record(sink, pre, mo.length + FOLD_LEN[S_BRACE_CLOSE], c.start, c.end, c.index, Preset.SVELTE << 2);
+			put_record(
+				sink,
+				pre,
+				mo.length + FOLD_LEN[S_BRACE_CLOSE],
+				c.start,
+				c.end,
+				c.index,
+				Preset.SVELTE << 2
+			);
 			return S_BRACE_CLOSE;
 		}
 
@@ -1962,7 +2020,15 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			const text = c.text();
 			mo = mo + '{@' + meta_str(tag);
 			if (text) tr_content(c, sink, S_SPACE, text, Code.SVELTE_CONTENT);
-			put_record(sink, pre, mo.length + FOLD_LEN[S_BRACE_CLOSE], c.start, c.end, c.index, Preset.SVELTE << 2);
+			put_record(
+				sink,
+				pre,
+				mo.length + FOLD_LEN[S_BRACE_CLOSE],
+				c.start,
+				c.end,
+				c.index,
+				Preset.SVELTE << 2
+			);
 			return S_BRACE_CLOSE;
 		}
 
@@ -1990,11 +2056,19 @@ function tr_code_fence(c: Cursor, sink: MapSink, p: number): number {
 		p = tr_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
 	}
 	tr_content(c, sink, p, escape_node_text(c), Code.CODE_CONTENT);
-	put_record(sink, pre, mo.length + FOLD_LEN[S_PRE_CODE_CLOSE], c.start, c.end, c.index, Preset.CODE << 2);
+	put_record(
+		sink,
+		pre,
+		mo.length + FOLD_LEN[S_PRE_CODE_CLOSE],
+		c.start,
+		c.end,
+		c.index,
+		Preset.CODE << 2
+	);
 	return S_PRE_CODE_CLOSE;
 }
 
-/** the mapped render's html case, children folded */
+/** the render_node html case with children folded */
 function tr_html(c: Cursor, sink: MapSink, p: number): number {
 	if (p !== 0) mo += FOLD_STR[p];
 	const pre = mo.length;
@@ -2016,10 +2090,7 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 				const v = html_attrs[k];
 				if (v === true) {
 					s += ' ' + k;
-				} else if (
-					typeof v === 'object' &&
-					(v as any).type === 'expression'
-				) {
+				} else if (typeof v === 'object' && (v as any).type === 'expression') {
 					s += ' ' + k + '={' + meta_str((v as any).value) + '}';
 				} else {
 					s += ' ' + k + '="' + escape_html(v as string) + '"';
@@ -2028,13 +2099,29 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 		}
 		if (self_closing) {
 			mo += s;
-			put_record(sink, pre, mo.length + FOLD_LEN[S_SELF_CLOSE], c.start, c.end, c.index, Code.SVELTE_CONTENT);
+			put_record(
+				sink,
+				pre,
+				mo.length + FOLD_LEN[S_SELF_CLOSE],
+				c.start,
+				c.end,
+				c.index,
+				Code.SVELTE_CONTENT
+			);
 			return S_SELF_CLOSE;
 		}
 		mo += s;
 	}
 	if (self_closing) {
-		put_record(sink, pre, mo.length, c.start, c.end, c.index, Code.SVELTE_CONTENT);
+		put_record(
+			sink,
+			pre,
+			mo.length,
+			c.start,
+			c.end,
+			c.index,
+			Code.SVELTE_CONTENT
+		);
 		return 0;
 	}
 	if (tag === 'script' || tag === 'style') {
@@ -2044,11 +2131,19 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 		if (q !== 0) mo += FOLD_STR[q];
 	}
 	mo = mo + '</' + meta_str(tag);
-	put_record(sink, pre, mo.length + FOLD_LEN[S_GT], c.start, c.end, c.index, Preset.TEXT << 2);
+	put_record(
+		sink,
+		pre,
+		mo.length + FOLD_LEN[S_GT],
+		c.start,
+		c.end,
+		c.index,
+		Preset.TEXT << 2
+	);
 	return S_GT;
 }
 
-/** the mapped render's svelte block case, branch children folded */
+/** the render_node svelte block case with branch children folded */
 function tr_svelte_block(c: Cursor, sink: MapSink, p: number): number {
 	if (p !== 0) mo += FOLD_STR[p];
 	p = 0;
@@ -2070,7 +2165,15 @@ function tr_svelte_block(c: Cursor, sink: MapSink, p: number): number {
 				}
 				if (branch_expr) {
 					mo += ' ';
-					put_record(sink, mo.length, mo.length + branch_expr.length, c.value_start, c.value_end, c.index, Code.SVELTE_CONTENT);
+					put_record(
+						sink,
+						mo.length,
+						mo.length + branch_expr.length,
+						c.value_start,
+						c.value_end,
+						c.index,
+						Code.SVELTE_CONTENT
+					);
 					mo += branch_expr;
 				}
 				p = tr_children(c, sink, S_BRACE_CLOSE_LF);
@@ -2083,7 +2186,15 @@ function tr_svelte_block(c: Cursor, sink: MapSink, p: number): number {
 	if (p !== 0) mo += FOLD_STR[p];
 	mo = mo + '{/' + block_tag;
 	// node span for the whole block, use the block node (goto_parent already called)
-	put_record(sink, pre, mo.length + FOLD_LEN[S_BRACE_CLOSE], c.start, c.end, c.index, Code.SVELTE_NODE);
+	put_record(
+		sink,
+		pre,
+		mo.length + FOLD_LEN[S_BRACE_CLOSE],
+		c.start,
+		c.end,
+		c.index,
+		Code.SVELTE_NODE
+	);
 	return S_BRACE_CLOSE;
 }
 
@@ -2146,7 +2257,7 @@ function tr_table_cells(
 	return p;
 }
 
-/** html of the node at the cursor, flat so the caller never pays for a rope */
+/** flat so the caller never pays for a rope */
 function render_folded(c: Cursor): string {
 	fold_out = '';
 	const p = fold_node(c, 0);
@@ -2242,10 +2353,10 @@ function rank_of(collapsed: readonly number[], offset: number): number {
 }
 
 /**
- * resolve_mappings with source offsets moved onto raw, where collapsed holds
- * the normalized offset of each \n that was \r\n: an identity piece splits
- * after each collapsed \n so every piece stays identity with that \n on its
- * \r, any other piece widens its source length over the \r
+ * resolve_mappings with source offsets moved onto raw, collapsed holds the
+ * normalized offset of each \n that was \r\n, an identity piece splits after
+ * each collapsed \n so it stays identity with that \n on its \r, any other
+ * piece widens its source length over the \r
  */
 function resolve_raw_mappings(
 	sink: MapSink,
@@ -2379,7 +2490,7 @@ export class CursorHTMLRenderer {
 	private closed: Set<number> | null = null;
 	private cursor: Cursor | null = null;
 	private cache: boolean;
-	/** unused since mapped renders append to one string, always empty */
+	/** unused, always empty */
 	private out: string[] = [];
 
 	constructor(opts?: { cache?: boolean }) {
@@ -2471,9 +2582,8 @@ export class CursorHTMLRenderer {
 	}
 
 	/**
-	 * render with source mapping. always full render (no caching). collapsed,
-	 * the normalized offset of each \n that was \r\n in raw, moves the
-	 * source offsets onto raw
+	 * render with source mapping. always full render (no caching).
+	 * collapsed moves the source offsets onto raw
 	 */
 	update_mapped(
 		buf: NodeBuffer,

@@ -120,7 +120,7 @@ const classify = (code: number): CharMask =>
 /** shared empty error collector - avoids allocation when no errors are recorded. */
 const EMPTY_ERRORS = new ErrorCollector(1);
 
-/** never written, a parser swaps in its own map at the first definition */
+/** never written, most documents define no references so a parser swaps in its own map at the first definition */
 const NO_REFS: Map<string, { url: string; title: string }> = new Map();
 
 // a leaked list_depth can leave the stack short, blocks then read the padding hole as their parent
@@ -134,14 +134,13 @@ const WAIT_FENCE = 1;
 const WAIT_RAW = 2;
 const WAIT_BRACE = 3;
 const WAIT_NEEDLE = 4;
-// feed only wait kinds, a const enum so the module scope gains no binding (a new
-// module level binding shifts later context slots and can widen batch path bytecode)
+// a const enum adds no module binding, a new one shifts later context slots and can widen batch path bytecode
 const enum FeedWait {
-	// an unclosed code span scanning past the trim gap: chunks with no backtick and no line that may be blank cannot end it
+	// an unclosed code span past the trim gap, a chunk with no backtick and no possibly blank line cannot end it
 	code_span = 5,
 }
 
-// states of the resumable brace probe, one char at a time so a scan cut at the end of the input resumes exactly
+// resumable brace probe states, one char at a time so a scan cut at the input end resumes exactly
 const BM_CODE = 0;
 const BM_SLASH = 1;
 const BM_STR = 2;
@@ -240,7 +239,6 @@ export function raw_offsets(raw: string): RawOffsets | null {
 	return collapsed.length === 0 ? null : new RawOffsets(collapsed);
 }
 
-// chars a brace scan has to look at, the rest it steps over
 const BRACE_STOP = new Uint8Array(128);
 BRACE_STOP[OPEN_BRACE] = 1;
 BRACE_STOP[CLOSE_BRACE] = 1;
@@ -318,10 +316,10 @@ interface LinkResult {
 	end: number;
 }
 
-// feed looks for a trim point inside paragraphs and containers once the window holds this much before the cursor
+// feed trims inside paragraphs and containers once the window holds this much before the cursor
 const TRIM_GAP = 1024;
 
-/** containers whose states reread nothing before the current line but an html opener's line */
+/** containers whose states reread nothing before the current line except an html opener line */
 function is_trim_container(kind: number): boolean {
 	return (
 		kind === NodeKind.block_quote ||
@@ -333,15 +331,21 @@ function is_trim_container(kind: number): boolean {
 	);
 }
 
-// braces a find_matching_brace_memo scan opened and has not closed, positions just past each (always empty between scans)
+// positions just past braces a find_matching_brace_memo scan opened and has not closed, empty between scans
 const brace_open: number[] = [];
 
-// open tag scans: the name end, then five words per attribute (kind, name start, name end, value start, value end)
+// open tag scan record, the name end then kind, name start, name end, value start, value end per attribute
 let tag_rec = new Int32Array(80);
 let tag_rec_n = 0;
 let tag_name_end = 0;
 
-function tag_rec_put(kind: number, a: number, b: number, c: number, d: number): void {
+function tag_rec_put(
+	kind: number,
+	a: number,
+	b: number,
+	c: number,
+	d: number
+): void {
 	let rec = tag_rec;
 	const n = tag_rec_n;
 	if (n + 5 > rec.length) {
@@ -358,11 +362,9 @@ function tag_rec_put(kind: number, a: number, b: number, c: number, d: number): 
 }
 // token starts a memo backed open tag scan passed through
 const tag_marks: number[] = [];
-// where the last failed open tag scan stopped
 let tag_fail_p = 0;
-// what a scan that ran off the end waits for in feed mode: a closing quote, brace or >
+// in feed mode what a scan that ran off the end waits for, a closing quote, brace or angle bracket
 let tag_need = '>';
-// whether the last open tag scan that parsed ended in />
 let tag_self_closing = false;
 const TAG_ATTR_BOOL = 0;
 const TAG_ATTR_VALUE = 1;
@@ -372,10 +374,9 @@ const TAG_ATTR_EXPR = 3;
 const TAG_MEMO_MIN = 256;
 
 /**
- * find_matching_brace from p at depth, for strings, comments and scans that run
- * past its window: steps over ignored chars and jumps between quotes. -1 when
- * the scan runs out of input, -2 when a nested template brace did. a module
- * function so short scans and PFMParser stay as they were
+ * find_matching_brace from p at depth for strings, comments and long scans
+ * -1 when the input runs out, -2 when a nested template brace did
+ * a module function so find_matching_brace stays small
  */
 function find_matching_brace_far(
 	parser: PFMParser,
@@ -383,7 +384,7 @@ function find_matching_brace_far(
 	base: number,
 	length: number,
 	p: number,
-	depth: number,
+	depth: number
 ): number {
 	// a scan still going after this window finds its stops with indexOf
 	const lim = length - p > 4096 ? p + 4096 : length;
@@ -406,8 +407,6 @@ function find_matching_brace_far(
 				break;
 			case QUOTE:
 			case APOSTROPHE: {
-				// skip string literal: jump between quotes, one after an odd run of
-				// backslashes is escaped
 				const needle = ch === QUOTE ? '"' : "'";
 				let r = p + 1 - base;
 				p = length;
@@ -425,12 +424,8 @@ function find_matching_brace_far(
 				break;
 			}
 			case BACKTICK: {
-				// skip template literal, respecting ${} interpolations
 				p++;
-				while (
-					p < length &&
-					char_code_at.call(source, p - base) !== BACKTICK
-				) {
+				while (p < length && char_code_at.call(source, p - base) !== BACKTICK) {
 					if (char_code_at.call(source, p - base) === BACKSLASH) {
 						p++;
 					} else if (
@@ -438,8 +433,7 @@ function find_matching_brace_far(
 						p + 1 < length &&
 						char_code_at.call(source, p + 1 - base) === OPEN_BRACE
 					) {
-						p += 2; // skip ${
-						// recursively find the matching } for the interpolation
+						p += 2;
 						const inner_end = parser.find_matching_brace(p);
 						if (inner_end === -1) return -2;
 						p = inner_end;
@@ -447,24 +441,19 @@ function find_matching_brace_far(
 					}
 					p++;
 				}
-				if (p < length) p++; // skip closing backtick
+				if (p < length) p++;
 				break;
 			}
 			case SLASH: {
-				// skip // line comments
 				if (
 					p + 1 < length &&
 					char_code_at.call(source, p + 1 - base) === SLASH
 				) {
 					p += 2;
-					while (
-						p < length &&
-						char_code_at.call(source, p - base) !== LINEFEED
-					)
+					while (p < length && char_code_at.call(source, p - base) !== LINEFEED)
 						p++;
 					break;
 				}
-				// skip /* block comments */
 				if (
 					p + 1 < length &&
 					char_code_at.call(source, p + 1 - base) === ASTERISK
@@ -491,14 +480,14 @@ function find_matching_brace_far(
 		}
 	}
 
-	if (p < length) return find_matching_brace_jump(parser, source, base, length, p, depth);
+	if (p < length)
+		return find_matching_brace_jump(parser, source, base, length, p, depth);
 	return -1;
 }
 
 /**
- * find_matching_brace_far for scans that run on for thousands of chars (a
- * stray brace in prose): the next char it has to look at comes from one
- * indexOf cursor per stop char, each advanced only once passed. same result
+ * find_matching_brace_far for scans that run thousands of chars, like a stray brace in prose
+ * each stop char has its own indexOf cursor, advanced only once passed, same result
  */
 function find_matching_brace_jump(
 	parser: PFMParser,
@@ -506,7 +495,7 @@ function find_matching_brace_jump(
 	base: number,
 	length: number,
 	p: number,
-	depth: number,
+	depth: number
 ): number {
 	const end = length - base;
 	let c_open = -1;
@@ -565,8 +554,6 @@ function find_matching_brace_jump(
 				break;
 			case QUOTE:
 			case APOSTROPHE: {
-				// skip string literal: jump between quotes, one after an odd run of
-				// backslashes is escaped
 				const needle = ch === QUOTE ? '"' : "'";
 				let r = p + 1 - base;
 				p = length;
@@ -584,8 +571,6 @@ function find_matching_brace_jump(
 				break;
 			}
 			case BACKTICK: {
-				// skip template literal, respecting ${} interpolations: the next
-				// backtick, backslash or $ from their cursors
 				p++;
 				for (;;) {
 					const t = p - base;
@@ -611,16 +596,18 @@ function find_matching_brace_jump(
 					p = u + base;
 					const c = char_code_at.call(source, u);
 					if (c === BACKTICK) {
-						p++; // skip closing backtick
+						p++;
 						break;
 					}
 					if (c === BACKSLASH) {
 						p += 2;
 						continue;
 					}
-					if (p + 1 < length && char_code_at.call(source, u + 1) === OPEN_BRACE) {
-						p += 2; // skip ${
-						// recursively find the matching } for the interpolation
+					if (
+						p + 1 < length &&
+						char_code_at.call(source, u + 1) === OPEN_BRACE
+					) {
+						p += 2;
 						const inner_end = parser.find_matching_brace(p);
 						if (inner_end === -1) return -2;
 						p = inner_end;
@@ -634,13 +621,11 @@ function find_matching_brace_jump(
 				if (p + 1 < length) {
 					const n = char_code_at.call(source, p + 1 - base);
 					if (n === SLASH) {
-						// skip // line comments, up to the linefeed
 						const nl = string_index_of.call(source, '\n', p + 2 - base);
 						p = nl === -1 || nl >= end ? length : nl + base;
 						break;
 					}
 					if (n === ASTERISK) {
-						// skip /* block comments */
 						const close = string_index_of.call(source, '*/', p + 2 - base);
 						p = close === -1 || close + 1 >= end ? length : close + 2 + base;
 						break;
@@ -668,9 +653,8 @@ export class PFMParser {
 	private trim_point: number = 0;
 	// next line start to check for a closing fence, earlier lines cannot close it
 	private fence_scan: number = 0;
-	// line start that lf_ends_inline just found to interrupt, so the paragraph
-	// closing on the same linefeed does not scan it again. valid for one _run
-	// and only while the list and svelte depths it was taken under hold
+	// a line start lf_ends_inline found to interrupt, so the paragraph close on that linefeed skips a rescan
+	// valid within one _run while the list and svelte depths it was taken under hold
 	private interrupt_pos: number = -1;
 	private interrupt_list_depth: number = 0;
 	// the list marker an interrupt check parsed at this position, only valid within one _run
@@ -681,30 +665,28 @@ export class PFMParser {
 	private raw_node: number = 0;
 	private raw_needle: string = '';
 	private raw_scan: number = 0;
-	// the brace probe's saved scan: start (-1 none), resume point, state, quote, and frames (brace depth, 0 for a template)
+	// saved brace probe scan, start or -1, resume point, state, quote and frames of brace depth or 0 for a template
 	private bp_start: number = -1;
 	private bp_p: number = 0;
 	private bp_mode: number = 0;
 	private bp_quote: number = 0;
 	private bp_end: number = -1;
 	private bp_frames: number[] = [];
-	// finished input only, set by the first brace scan that runs out of input: positions past braces known never to close
+	// finished input only, positions past braces known never to close, set by the first brace scan that runs out
 	private brace_memo: Set<number> | null = null;
-	// finished input only: attribute token starts from which an open tag scan fails
+	// finished input only, attribute token starts from which an open tag scan fails
 	private tag_memo: Uint8Array | null = null;
 	private tag_memo_base: number = 0;
 	// chunks fed while waiting on a brace, joined onto the window once it closes
 	private wait_chunks: string[] = [];
-	// a WAIT_NEEDLE stall resumes once this string appears
 	private wait_needle: string = '';
-	// the cursor _run stopped at when a brace or needle wait was set
 	private wait_cursor: number = -1;
 	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
 	private wait_kind: number = 0;
 	private cursor: number = 0;
 	private finished: boolean = false;
-	// set by parse(), a repair may then drop a delimiter string that slices the
-	// source at the node start. incremental trees keep theirs
+	// set by parse, a repair may then drop a delimiter string that slices the source at the node start
+	// incremental trees keep theirs
 	private one_shot: boolean = false;
 	// deferred \r at the end of a feed() chunk: we can't tell whether it's
 	// a bare \r (line ending) or the first half of a \r\n until we see the
@@ -736,7 +718,7 @@ export class PFMParser {
 	// block state
 	private block_quote_depth: number = 0;
 	private emphasis_has_content: boolean = false;
-	// try_parse_html_open_tag in feed mode: the tag may still close, a '>' wait is set
+	// set by try_parse_html_open_tag in feed mode when the tag may still close and a wait for its end is set
 	private tag_wait: boolean = false;
 	private list_depth: number = 0;
 	private list_marker: number = 0;
@@ -794,7 +776,6 @@ export class PFMParser {
 	private imports_allowed: boolean = true;
 
 	// link reference definitions
-	// most documents define no references, so the first definition swaps in a map
 	private ref_map: Map<string, { url: string; title: string }> = NO_REFS;
 	private link_text_start: number = 0;
 
@@ -843,8 +824,7 @@ export class PFMParser {
 	}
 
 	/**
-	 * parse() for a source normalize_newlines already returned, so a caller
-	 * that keeps the normalized string does not scan the input for \r twice
+	 * parse for a source normalize_newlines already returned, so the input is not scanned for \r twice
 	 * @internal
 	 */
 	parse_normalized(src: string): { errors: ErrorCollector } {
@@ -918,7 +898,8 @@ export class PFMParser {
 		// keep one char before trim_point for the previous char lookbehind
 		let head = this.source;
 		if (this.trim_point - 1 > this.source_base) {
-			if (this.pending_count !== this.pending_para_count) head = this.trim_keeping_html(head);
+			if (this.pending_count !== this.pending_para_count)
+				head = this.trim_keeping_html(head);
 			else {
 				head = string_slice.call(head, this.trim_point - 1 - this.source_base);
 				this.source_base = this.trim_point - 1;
@@ -929,7 +910,7 @@ export class PFMParser {
 		this.source = src;
 		this.source_end += len;
 		this._run();
-		// the root trims the window between blocks, paragraphs and containers other than lists and block quotes need this
+		// the root trims between blocks itself, this trims inside paragraphs and containers
 		if (this.cursor - this.trim_point > TRIM_GAP) this.trim_at_stall();
 		// a fence stall leaves the cursor at its content start while its scan line moves on
 		else if (this.fence_scan - this.trim_point > TRIM_GAP) this.trim_fence();
@@ -937,16 +918,11 @@ export class PFMParser {
 	}
 
 	/**
-	 * _run stopped inside a paragraph with no open inline construct but
-	 * delimiters (at most its text node above them), in a table body row, or
-	 * at a line start right inside a container, and every ancestor is a
-	 * container that rereads nothing before the cursor's line (block quotes,
-	 * lists, svelte blocks, html containers). pending nodes are paragraphs,
-	 * delimiters or html containers on the node stack whose opening line ends
-	 * before that line, the only text they reread is that line for the revoke
-	 * repair: trim_keeping_html keeps it. the window then trims at the start
-	 * of the cursor's line. an unclosed code span sets a wait instead. feed
-	 * alone calls these trims, none of them is reachable from a batch parse
+	 * trim the window to the start of the cursor line when _run stopped in a paragraph
+	 * with only delimiters open, in a table body row, or at a line start right inside
+	 * a container, with every ancestor a trim container
+	 * pending html openers are reread on revoke, trim_keeping_html keeps them
+	 * an unclosed code span sets a wait instead, a batch parse never calls this
 	 */
 	private trim_at_stall(): void {
 		const stack = this.node_stack;
@@ -974,15 +950,22 @@ export class PFMParser {
 				const states = this.states;
 				let si = states.length - 1;
 				while (si > 1 && states[si] !== StateKind.table_row_content) si--;
-				if (states[si] !== StateKind.table_row_content || states[si - 1] !== StateKind.table_body)
+				if (
+					states[si] !== StateKind.table_row_content ||
+					states[si - 1] !== StateKind.table_body
+				)
 					return;
-				// the line holding the char before the cursor, a row whose lf was just read included
+				// cursor minus two so a row whose lf was just read is the current line
 				const lf = string_last_index_of.call(source, '\n', cursor - 2 - base);
 				if (lf === -1) return;
 				line = lf + 1 + base;
 			} else {
-				if (this.states[this.states.length - 1] !== StateKind.table_body) return;
-				if (cursor <= base || char_code_at.call(source, cursor - 1 - base) !== LINEFEED)
+				if (this.states[this.states.length - 1] !== StateKind.table_body)
+					return;
+				if (
+					cursor <= base ||
+					char_code_at.call(source, cursor - 1 - base) !== LINEFEED
+				)
 					return;
 				line = cursor;
 			}
@@ -992,7 +975,10 @@ export class PFMParser {
 				return;
 			}
 			if (!is_trim_container(kind)) return;
-			if (cursor <= base || char_code_at.call(source, cursor - 1 - base) !== LINEFEED)
+			if (
+				cursor <= base ||
+				char_code_at.call(source, cursor - 1 - base) !== LINEFEED
+			)
 				return;
 			line = cursor;
 			top++;
@@ -1001,7 +987,7 @@ export class PFMParser {
 		if (this.can_trim_to(line, top)) this.trim_point = line;
 	}
 
-	/** inline delimiter nodes: a revoke needs no source text and nothing rescans from their opener */
+	/** inline delimiters, a revoke needs no source text and nothing rescans from their opener */
 	private is_trim_delimiter(kind: number): boolean {
 		return (
 			kind === NodeKind.strong_emphasis ||
@@ -1013,23 +999,27 @@ export class PFMParser {
 	}
 
 	/**
-	 * a code fence stalled inside html or svelte containers, where the fence's
-	 * own trim (can_trim) declines: the window may still trim at the fence scan
-	 * line. no fence wait, its window skip would drop kept html lines
+	 * trim at the fence scan line for a fence in html or svelte containers, where can_trim declines
+	 * no fence wait, its window skip would drop kept html lines
 	 */
 	private trim_fence(): void {
 		const states = this.states;
-		if (states[states.length - 1] !== StateKind.code_fence_content || this.wait_kind !== WAIT_NONE)
+		if (
+			states[states.length - 1] !== StateKind.code_fence_content ||
+			this.wait_kind !== WAIT_NONE
+		)
 			return;
 		const line = this.fence_scan;
-		if (line > this.trim_point && this.can_trim_to(line, this.node_stack.length - 1))
+		if (
+			line > this.trim_point &&
+			this.can_trim_to(line, this.node_stack.length - 1)
+		)
 			this.trim_point = line;
 	}
 
 	/**
-	 * the node stack below top holds only trim containers, and pending nodes
-	 * are paragraphs, delimiters or html containers on the node stack whose
-	 * opening line ends before line: the window may trim at line
+	 * true when the node stack below top holds only trim containers and every pending node
+	 * is a paragraph, a delimiter or an open html container whose open tag ends before line
 	 */
 	private can_trim_to(line: number, top: number): boolean {
 		const stack = this.node_stack;
@@ -1041,7 +1031,8 @@ export class PFMParser {
 		for (let pi = 0; pi < this.pending_count; pi++) {
 			const id = this.pending_ids[pi];
 			const pkind = this.kind_of(id);
-			if (pkind === NodeKind.paragraph || this.is_trim_delimiter(pkind)) continue;
+			if (pkind === NodeKind.paragraph || this.is_trim_delimiter(pkind))
+				continue;
 			if (pkind !== NodeKind.html || stack.indexOf(id) === -1) return false;
 			const start = this.pending_starts[pi];
 			if (start < base) return false;
@@ -1057,16 +1048,18 @@ export class PFMParser {
 	}
 
 	/**
-	 * _run stopped scanning an unclosed code span for its closing run (the
-	 * window holds it from the opener, its revoke rescans from there): until
-	 * a chunk may hold a backtick or a blank line, _run would only step over
-	 * it, so feed holds chunks back instead of rejoining the window
+	 * an unclosed code span cannot end until a chunk may hold a backtick or a blank line
+	 * so feed holds chunks back instead of rejoining the window
 	 */
 	private wait_code_span(): void {
 		if (this.in_table || this.wait_kind !== WAIT_NONE) return;
 		if (this.states[this.states.length - 1] !== StateKind.code_span_end) return;
 		// a backtick run at the window end may still grow into the closer
-		if (string_index_of.call(this.source, '`', this.cursor - this.source_base) !== -1) return;
+		if (
+			string_index_of.call(this.source, '`', this.cursor - this.source_base) !==
+			-1
+		)
+			return;
 		this.wait_kind = FeedWait.code_span;
 		this.wait_cursor = this.cursor;
 	}
@@ -1074,9 +1067,9 @@ export class PFMParser {
 	/** false only when the chunk has no backtick and no line starting in it starts with a space, tab or linefeed */
 	private code_span_may_end(chunk: string, len: number): boolean {
 		if (len === 0 || string_index_of.call(chunk, '`') !== -1) return true;
-		// the chunk starts a line only after a linefeed
 		const pending = this.wait_chunks;
-		const prev = pending.length !== 0 ? pending[pending.length - 1] : this.source;
+		const prev =
+			pending.length !== 0 ? pending[pending.length - 1] : this.source;
 		let c = char_code_at.call(chunk, 0);
 		if (
 			char_code_at.call(prev, prev.length - 1) === LINEFEED &&
@@ -1093,11 +1086,9 @@ export class PFMParser {
 	}
 
 	/**
-	 * the window trim of feed when nodes other than paragraphs are pending:
-	 * the opening lines of pending html containers before the cut go first
-	 * (every line of an open tag that spans lines), each ending in a linefeed,
-	 * and their pending starts move onto them so a revoke repair reads the
-	 * same open tag
+	 * feed window trim when non paragraph nodes are pending, keeps the open tag lines of
+	 * pending html containers before the cut and moves their pending starts onto them
+	 * so a revoke repair reads the same open tag
 	 */
 	private trim_keeping_html(head: string): string {
 		const base = this.source_base;
@@ -1431,7 +1422,7 @@ export class PFMParser {
 		if (this.kind_of(id) === NodeKind.paragraph) this.pending_para_count--;
 	}
 
-	/** open a text node at p0 (a plain char) under parent and skip its plain run */
+	/** open a text node at the plain char p0 under parent and skip its plain run */
 	private open_text_run(p0: number, parent: number): void {
 		const source = this.source;
 		const base = this.source_base;
@@ -1440,7 +1431,7 @@ export class PFMParser {
 		this.out.set_value_start(t_id, p0);
 		this.node_stack.push(t_id);
 		this.states.push(StateKind.text);
-		// same as inline's default: a nul or break char right after p0 is left for the text state
+		// as in the inline default, a nul or break char right after p0 is left for the text state
 		let p = p0 + 1;
 		if (p < length) {
 			const c1 = char_code_at.call(source, p - base);
@@ -2107,7 +2098,6 @@ export class PFMParser {
 				break;
 			case PLUS:
 				// plus is only ever a list marker - no thematic break ambiguity.
-				// inside a list the marker and the start of its content decide.
 				if (this.list_depth > 0 && !this.plus_marker_pending(p)) return true;
 				break;
 			case UNDERSCORE:
@@ -2120,10 +2110,7 @@ export class PFMParser {
 				break;
 			default:
 				// digits may start an ordered list marker. inside a list we
-				// can decide once the digit run, the `.`/`)` delimiter and the
-				// start of the marker's content are visible. if the digit run
-				// hits a non-digit non-delimiter char, it's clearly not a
-				// marker - paragraph continues.
+				// decide once the marker and the start of its content are visible
 				if (ch >= 48 && ch <= 57) {
 					if (this.list_depth === 0) break;
 					if (!this.plus_marker_pending(p)) return true;
@@ -2463,9 +2450,8 @@ export class PFMParser {
 	}
 
 	/**
-	 * feed mode: a `+` or `1.` marker at pos can not be decided yet, its prefix or
-	 * the blank rest of its line is still arriving (a marker line with no content
-	 * is a paragraph, so taking the list early would differ from a batch parse)
+	 * feed mode, the marker at pos is undecided while its prefix or the blank rest of its line arrives
+	 * a marker line with no content is a paragraph, taking the list early would differ from batch
 	 */
 	private plus_marker_pending(pos: number): boolean {
 		const source = this.source;
@@ -2658,10 +2644,9 @@ export class PFMParser {
 	}
 
 	/**
-	 * a new list item's content in a finished parse: a letter or non ascii char
-	 * there can only open a paragraph (the list_item trip's default branch finds
-	 * no marker), so open it and take its plain run here. feeds keep the trip,
-	 * it sets the trim point
+	 * finished parse only, a letter or non ascii char starting new item content can only open
+	 * a paragraph, so open it and take its plain run here
+	 * feeds keep the list_item trip since it sets the trim point
 	 */
 	private item_para(item_id: number): void {
 		if (!this.finished) return;
@@ -3073,12 +3058,14 @@ export class PFMParser {
 			return null;
 
 		let memo = this.tag_memo;
-		if (memo !== null && (this.tag_memo_base !== base || memo.length !== length - base))
+		if (
+			memo !== null &&
+			(this.tag_memo_base !== base || memo.length !== length - base)
+		)
 			memo = this.tag_memo = null;
 		const end = this.scan_open_tag(pos, memo);
 		if (end < 0) {
-			// feed mode: the scan ran off the end (an attribute value or
-			// expression holding a '>' is still open), a later '>' decides
+			// feed mode, the scan ran off the end so the tag may still close
 			if (!this.finished && tag_fail_p >= length) {
 				this.tag_wait = true;
 				this.wait_for(tag_need);
@@ -3088,7 +3075,6 @@ export class PFMParser {
 			return null;
 		}
 
-		// attributes are built only once the tag is known to close
 		const rec = tag_rec;
 		const tag = string_slice.call(source, pos - base, tag_name_end - base);
 		const attributes: Record<
@@ -3098,7 +3084,11 @@ export class PFMParser {
 		const n = tag_rec_n;
 		for (let i = 0; i < n; i += 5) {
 			const kind = rec[i];
-			const name = string_slice.call(source, rec[i + 1] - base, rec[i + 2] - base);
+			const name = string_slice.call(
+				source,
+				rec[i + 1] - base,
+				rec[i + 2] - base
+			);
 			if (kind === TAG_ATTR_BOOL) attributes[name] = true;
 			else if (kind === TAG_ATTR_VALUE)
 				attributes[name] = string_slice.call(
@@ -3111,18 +3101,26 @@ export class PFMParser {
 			else
 				attributes[name] = {
 					type: 'expression',
-					value: string_slice.call(source, rec[i + 3] - base, rec[i + 4] - base),
+					value: string_slice.call(
+						source,
+						rec[i + 3] - base,
+						rec[i + 4] - base
+					),
 				};
 		}
-		return { tag, attributes, self_closing: tag_self_closing, end, has_attrs: n > 0 };
+		return {
+			tag,
+			attributes,
+			self_closing: tag_self_closing,
+			end,
+			has_attrs: n > 0,
+		};
 	}
 
 	/**
-	 * a scan from pos failed. on finished input the scan is a pure function of
-	 * the position each attribute token starts at, so a later scan that reaches
-	 * a token start this one passed through fails too. the first long failure
-	 * starts the memo (rescanning once to fill it), later failures add theirs.
-	 * without it every stray `<word` in prose rescans to the next `>`
+	 * on finished input a scan is a pure function of where each attribute token starts
+	 * so a later scan reaching a token start a failed one passed through fails too
+	 * without the memo every stray tag opener in prose rescans to the next close bracket
 	 */
 	private open_tag_failed(pos: number): void {
 		let memo = this.tag_memo;
@@ -3144,10 +3142,8 @@ export class PFMParser {
 	}
 
 	/**
-	 * scan an open tag whose name starts at pos without allocating. returns the
-	 * end, or -1 when it does not parse (-2 when a memo hit decided it). tag_rec
-	 * gets the name end then kind, name start, name end, value start, value end
-	 * per attribute. with a memo, token starts go to tag_marks
+	 * scan an open tag at pos without allocating, the end or -1 when it does not parse, -2 on a memo hit
+	 * fills tag_rec, and tag_marks when given a memo
 	 */
 	private scan_open_tag(pos: number, memo: Uint8Array | null): number {
 		const source = this.source;
@@ -3191,7 +3187,7 @@ export class PFMParser {
 					tag_self_closing = true;
 					return p + 2;
 				}
-				// a / at the end may still be followed by its >
+				// a slash at the input end may still get its close bracket
 				tag_fail_p = p + 1 >= length ? length : p;
 				return -1; // stray /
 			}
@@ -3275,7 +3271,13 @@ export class PFMParser {
 						tag_need = '}';
 						return -1;
 					}
-					tag_rec_put(TAG_ATTR_EXPR, attr_name_start, attr_name_end, p + 1, expr_end - 1);
+					tag_rec_put(
+						TAG_ATTR_EXPR,
+						attr_name_start,
+						attr_name_end,
+						p + 1,
+						expr_end - 1
+					);
 					p = expr_end;
 				} else if (quote === QUOTE || quote === APOSTROPHE) {
 					// quoted value
@@ -3287,7 +3289,13 @@ export class PFMParser {
 						tag_need = quote === QUOTE ? '"' : "'";
 						break; // unclosed quote
 					}
-					tag_rec_put(TAG_ATTR_VALUE, attr_name_start, attr_name_end, value_start, p);
+					tag_rec_put(
+						TAG_ATTR_VALUE,
+						attr_name_start,
+						attr_name_end,
+						value_start,
+						p
+					);
 					p++; // skip closing quote
 				} else {
 					// unquoted value
@@ -3301,7 +3309,13 @@ export class PFMParser {
 						tag_fail_p = p;
 						return -1; // empty unquoted value
 					}
-					tag_rec_put(TAG_ATTR_VALUE, attr_name_start, attr_name_end, value_start, p);
+					tag_rec_put(
+						TAG_ATTR_VALUE,
+						attr_name_start,
+						attr_name_end,
+						value_start,
+						p
+					);
 				}
 			} else {
 				// boolean attribute
@@ -3678,8 +3692,7 @@ export class PFMParser {
 		const length = this.source_end;
 		let depth = 1;
 		let p = pos;
-		// short plain expressions stay in this small loop; strings, comments and
-		// scans that run on go to the far one
+		// short plain expressions stay in this small loop, the rest goes to find_matching_brace_far
 		const lim = length - pos > 256 ? pos + 256 : length;
 
 		while (p < lim) {
@@ -3702,11 +3715,8 @@ export class PFMParser {
 	}
 
 	/**
-	 * a brace scan from pos ran out of input. on finished input it never
-	 * closes, and from here on scans go through find_matching_brace_memo,
-	 * which also remembers braces they open and leave open. k braces that
-	 * never close then cost two scans to the end rather than k, and
-	 * documents whose braces all close keep the plain scan
+	 * on finished input a scan that ran out never closes, later scans go through
+	 * find_matching_brace_memo so k unclosed braces cost two scans to the end, not k
 	 */
 	private brace_failed(pos: number): number {
 		if (this.finished && !this.inline_range_parse) {
@@ -3716,11 +3726,7 @@ export class PFMParser {
 		return -1;
 	}
 
-	/**
-	 * find_matching_brace once a scan has failed on finished input. a scan
-	 * from just past any brace it opened in code and left open follows the
-	 * same path and fails too, so those are remembered as well
-	 */
+	/** a scan from just past a brace this one opened and left open fails too, so those are remembered */
 	private find_matching_brace_memo(pos: number): number {
 		const memo = this.brace_memo!;
 		if (memo.has(pos)) return -1;
@@ -3753,8 +3759,7 @@ export class PFMParser {
 					break;
 				case QUOTE:
 				case APOSTROPHE: {
-					// skip string literal: jump between quotes, one after an odd run of
-					// backslashes is escaped
+					// skip string literal
 					const needle = ch === QUOTE ? '"' : "'";
 					let r = p + 1 - base;
 					p = length;
@@ -3854,11 +3859,8 @@ export class PFMParser {
 	}
 
 	/**
-	 * find_matching_brace for the incremental stall checks. from the second
-	 * failed scan of a brace on, the scan keeps its state and the next probe
-	 * of the same brace resumes it, so a
-	 * brace that stays open across many feeds is scanned once rather than
-	 * once per feed. same result as find_matching_brace on the same input.
+	 * find_matching_brace for feed stall checks with the same result, from the second failed
+	 * scan of a brace on the scan keeps its state and resumes, so a brace open across feeds is scanned once
 	 */
 	private probe_matching_brace(pos: number): number {
 		if (this.bp_start !== pos) {
@@ -3882,16 +3884,15 @@ export class PFMParser {
 		}
 		if (this.brace_scan(this.source, this.source_base, this.source_end))
 			return this.bp_end;
-		// _run stalls here, later chunks only need the brace scan until it closes (skip_wait checks the stall)
+		// _run stalls here, later chunks only need the brace scan until it closes
 		this.wait_kind = WAIT_BRACE;
 		this.wait_cursor = this.cursor;
 		return -1;
 	}
 
 	/**
-	 * _run stops at the cursor and nothing it reads can change until needle
-	 * appears in the input, so feed holds later chunks back until one might
-	 * hold it instead of rejoining and rescanning the window on every feed
+	 * nothing _run reads changes until needle appears, so feed holds chunks back until one
+	 * might hold it instead of rescanning the window every feed
 	 */
 	private wait_for(needle: string): void {
 		this.wait_kind = WAIT_NEEDLE;
@@ -3906,15 +3907,17 @@ export class PFMParser {
 		const k = needle.length - 1;
 		if (k === 0) return false;
 		const pending = this.wait_chunks;
-		const prev = pending.length !== 0 ? pending[pending.length - 1] : this.source;
+		const prev =
+			pending.length !== 0 ? pending[pending.length - 1] : this.source;
 		const n = prev.length;
 		// too short to hold the part before the boundary, let _run look
 		if (n < k || len < k) return true;
-		const edge = string_slice.call(prev, n - k) + string_slice.call(chunk, 0, k);
+		const edge =
+			string_slice.call(prev, n - k) + string_slice.call(chunk, 0, k);
 		return string_index_of.call(edge, needle) !== -1;
 	}
 
-	/** runs the saved brace scan over source up to length, true (and bp_end set) once the brace closes */
+	/** resume the saved brace scan up to length, true with bp_end set once the brace closes */
 	private brace_scan(source: string, base: number, length: number): boolean {
 		const frames = this.bp_frames;
 		let p = this.bp_p;
@@ -3923,7 +3926,6 @@ export class PFMParser {
 
 		scan: while (p < length) {
 			let ch = char_code_at.call(source, p - base);
-			// runs of chars that leave the state as it is, skipped in tight loops
 			if (mode === BM_CODE) {
 				while (
 					ch !== OPEN_BRACE &&
@@ -3938,13 +3940,16 @@ export class PFMParser {
 				}
 			} else if (mode === BM_STR) {
 				if (ch !== quote && ch !== BACKSLASH) {
-					// jump between quotes, one after an odd run of backslashes is escaped. a run
-					// of backslashes at the end of the input leaves the escape state for the next chunk
+					// an odd backslash run at the input end leaves the escape state for the next chunk
 					const r = p - base;
 					const end = length - base;
 					let s = r;
 					for (;;) {
-						let q = string_index_of.call(source, quote === QUOTE ? '"' : "'", s);
+						let q = string_index_of.call(
+							source,
+							quote === QUOTE ? '"' : "'",
+							s
+						);
 						if (q === -1 || q >= end) q = end;
 						let k = q;
 						while (k > r && char_code_at.call(source, k - 1) === BACKSLASH) k--;
@@ -4421,10 +4426,11 @@ export class PFMParser {
 		this.out.set_value_start(h_id, content_start);
 		this.chomp(content_start, true);
 		const c0 =
-			content_start < length ? char_code_at.call(source, content_start - base) : 0;
+			content_start < length
+				? char_code_at.call(source, content_start - base)
+				: 0;
 		if (!this.in_table && (c0 >= 128 || (c0 !== 0 && TEXT_BREAK[c0] === 0))) {
-			// plain content: the heading_marker trip's text run here, and when the
-			// run reaches the linefeed its close of the text and the heading too
+			// plain content, take the text run of the heading_marker trip and its close of text and heading at the linefeed
 			const t_id = this.emit_open(NodeKind.text, content_start, h_id);
 			this.out.set_value_start(t_id, content_start);
 			let p = content_start + 1;
@@ -4511,8 +4517,7 @@ export class PFMParser {
 	private _delimiter_lf_close(current_node: number): boolean {
 		// a heading's inline pops at every linefeed, in a block quote too
 		if (!this.in_heading) {
-			// the next line is not decidable yet in feed mode: the caller pushes
-			// inline, whose linefeed stalls, and this runs again once it is
+			// feed mode, the caller pushes inline whose linefeed stalls until the next line decides
 			if (!this.finished && !this.can_decide_after_lf(this.cursor))
 				return false;
 			if (this.block_quote_depth > 0) {
@@ -4537,8 +4542,7 @@ export class PFMParser {
 					return true;
 				}
 			} else if (!this.lf_ends_inline(this.cursor)) {
-				// lf_ends_inline's is_block_interrupt covers blank lines, headings
-				// and thematic breaks with the same end of buffer handling
+				// is_block_interrupt in lf_ends_inline covers blank lines, headings and thematic breaks as above
 				return false;
 			}
 		}
@@ -4550,9 +4554,8 @@ export class PFMParser {
 	}
 
 	/**
-	 * inline at a linefeed lf_ends_inline said ends it, outside block quotes: pop
-	 * inline, and when a paragraph is under it make the paragraph state's close
-	 * on that linefeed here (its interrupt check reaches the same answer)
+	 * outside block quotes, pop inline at a linefeed lf_ends_inline ends and close a paragraph
+	 * under it here, its own interrupt check would reach the same answer
 	 */
 	private inline_lf_end(): void {
 		const states = this.states;
@@ -5037,10 +5040,8 @@ export class PFMParser {
 
 						default: {
 							if (code === PLUS || (code >= 48 && code <= 57)) {
-								// stall while the marker prefix, or the blank rest of
-								// its line, is still being read, so neither a paragraph
-								// nor a list is committed too eagerly
-								if (!this.finished && this.plus_marker_pending(this.cursor)) break main_loop;
+								if (!this.finished && this.plus_marker_pending(this.cursor))
+									break main_loop;
 								const marker = this.try_parse_list_marker(this.cursor);
 								if (marker) {
 									this.start_list(marker, current_node);
@@ -5054,7 +5055,8 @@ export class PFMParser {
 								current_node
 							);
 							this.node_stack.push(para_id);
-							if ((code >= 128 || (code !== 0 && TEXT_BREAK[code] === 0))) this.para_text(para_id);
+							if (code >= 128 || (code !== 0 && TEXT_BREAK[code] === 0))
+								this.para_text(para_id);
 							continue;
 						}
 					}
@@ -5258,8 +5260,7 @@ export class PFMParser {
 					// dispatch to inline parsing for heading content
 					this.states.push(StateKind.inline);
 					if (!this.in_table && (code >= 128 || TEXT_BREAK[code] === 0)) {
-						// what inline then text would do for a plain run: open the text
-						// node here, and close it too when the run reaches the linefeed
+						// take the plain run inline then text would, closing the text node at the linefeed
 						const t_id = this.emit_open(
 							NodeKind.text,
 							this.cursor,
@@ -5431,11 +5432,13 @@ export class PFMParser {
 					}
 					switch (code) {
 						case BACKTICK: {
-							// common case in one trip: a run of one or two backticks followed by a
-							// plain content char opens the span, and a matching run later on the
-							// same line closes it. anything else goes through code_span_start
+							// a one or two backtick span with plain content that closes on the same line takes one trip
+							// the rest goes through code_span_start
 							let q = this.cursor + 1;
-							if (q < length && char_code_at.call(source, q - base) === BACKTICK)
+							if (
+								q < length &&
+								char_code_at.call(source, q - base) === BACKTICK
+							)
 								q++;
 							const run_n = q - this.cursor;
 							const c0 = q < length ? char_code_at.call(source, q - base) : -1;
@@ -5453,9 +5456,15 @@ export class PFMParser {
 									if (ch === BACKTICK || ch === LINEFEED) break;
 									e++;
 								}
-								if (e < length && char_code_at.call(source, e - base) === BACKTICK) {
+								if (
+									e < length &&
+									char_code_at.call(source, e - base) === BACKTICK
+								) {
 									let r = e + 1;
-									while (r < length && char_code_at.call(source, r - base) === BACKTICK)
+									while (
+										r < length &&
+										char_code_at.call(source, r - base) === BACKTICK
+									)
 										r++;
 									if (r - e === run_n && r < length) {
 										const cs_id = this.emit_open(
@@ -5546,13 +5555,15 @@ export class PFMParser {
 								this.node_stack.push(n_id);
 								this.emphasis_has_content = false;
 								this.states.push(StateKind.strong_emphasis);
-								// a plain char next: the delimiter state would push inline and inline
-								// would open a text node and skip its run, do both here
+								// a plain char next, do here what the delimiter state then inline would
 								const c_next =
 									this.cursor + 1 < length
 										? char_code_at.call(source, this.cursor + 1 - base)
 										: 0;
-								if (c_next !== 0 && (c_next >= 128 || TEXT_BREAK[c_next] === 0)) {
+								if (
+									c_next !== 0 &&
+									(c_next >= 128 || TEXT_BREAK[c_next] === 0)
+								) {
 									this.emphasis_has_content = true;
 									this.states.push(StateKind.inline);
 									this.open_text_run(this.cursor + 1, n_id);
@@ -5593,13 +5604,15 @@ export class PFMParser {
 								this.node_stack.push(n_id);
 								this.emphasis_has_content = false;
 								this.states.push(StateKind.emphasis);
-								// a plain char next: the delimiter state would push inline and inline
-								// would open a text node and skip its run, do both here
+								// a plain char next, do here what the delimiter state then inline would
 								const c_next =
 									this.cursor + 1 < length
 										? char_code_at.call(source, this.cursor + 1 - base)
 										: 0;
-								if (c_next !== 0 && (c_next >= 128 || TEXT_BREAK[c_next] === 0)) {
+								if (
+									c_next !== 0 &&
+									(c_next >= 128 || TEXT_BREAK[c_next] === 0)
+								) {
 									this.emphasis_has_content = true;
 									this.states.push(StateKind.inline);
 									this.open_text_run(this.cursor + 1, n_id);
@@ -5621,13 +5634,13 @@ export class PFMParser {
 						}
 
 						case TILDE: {
-							// ~~ is a two-char token. if only one ~ is available
-							// and more input is expected, hold back.
+							// feed mode, the char after one or two tildes decides
 							if (
 								!this.finished &&
 								(this.cursor + 1 >= length ||
 									(this.cursor + 2 >= length &&
-										char_code_at.call(source, this.cursor + 1 - base) === TILDE))
+										char_code_at.call(source, this.cursor + 1 - base) ===
+											TILDE))
 							) {
 								break main_loop;
 							}
@@ -5863,13 +5876,15 @@ export class PFMParser {
 							this.states.push(StateKind.link_text);
 							this.link_text_start = this.cursor + 1;
 							{
-								// a plain char next: link_text would push inline and inline would
-								// open a text node and skip its run, do both here
+								// a plain char next, do here what link_text then inline would
 								const c_next =
 									this.cursor + 1 < length
 										? char_code_at.call(source, this.cursor + 1 - base)
 										: 0;
-								if (c_next !== 0 && (c_next >= 128 || TEXT_BREAK[c_next] === 0)) {
+								if (
+									c_next !== 0 &&
+									(c_next >= 128 || TEXT_BREAK[c_next] === 0)
+								) {
 									this.states.push(StateKind.inline);
 									this.open_text_run(this.cursor + 1, link_id);
 									continue;
@@ -6236,9 +6251,7 @@ export class PFMParser {
 							this.node_stack.push(t_id);
 
 							this.states.push(StateKind.text);
-							// the text state would skip a plain run next, so skip it here and
-							// save the trip through the main loop. only a break char, nul or the
-							// end of the buffer is left for the text state to look at
+							// skip the plain run the text state would, leaving a break char, nul or the buffer end for it
 							let p = this.cursor + 1;
 							if (p < length) {
 								const c1 = char_code_at.call(source, p - base);
@@ -6399,9 +6412,7 @@ export class PFMParser {
 						break main_loop;
 					}
 
-					// a linefeed or eof always closes the text node, whether the next
-					// line interrupts, starts a list item or continues, the enclosing
-					// inline and paragraph states make that call
+					// a linefeed or eof always closes the text node, the enclosing states decide what follows
 					if (!code || code === LINEFEED) {
 						this.states.pop();
 						this.emit_close(current_node, this.cursor);
@@ -6415,8 +6426,7 @@ export class PFMParser {
 							states[states.length - 1] === StateKind.inline &&
 							(this.finished || this.can_decide_after_lf(this.cursor))
 						) {
-							// make inline's linefeed call here: an interrupting next line pops
-							// inline, anything else is its soft break, emitted here
+							// make the inline linefeed call here, an interrupting line pops inline, anything else is a soft break
 							if (this.lf_ends_inline(this.cursor)) {
 								this.inline_lf_end();
 								continue;
@@ -6435,8 +6445,7 @@ export class PFMParser {
 							) {
 								p++;
 							}
-							// a plain char next is where inline would open the next text
-							// node and skip its run, do that here too
+							// a plain char next, open the next text run as inline would
 							if (p + 1 < length) {
 								const c0 = char_code_at.call(source, p - base);
 								const c1 = char_code_at.call(source, p + 1 - base);
@@ -6823,8 +6832,7 @@ export class PFMParser {
 						continue;
 					}
 
-					// a heading, fence or thematic break needs its whole line in
-					// feed mode, a row taken early could not become one
+					// in feed mode a heading, fence or thematic break needs its whole line, a row taken early could not become one
 					if (
 						!this.finished &&
 						(code === ASTERISK ||
@@ -6990,13 +6998,15 @@ export class PFMParser {
 	// cold states live outside _run to keep it under the turbofan bytecode size limit, true stops the main loop
 
 	/**
-	 * a backtick at a block start. a finished parse outside blockquotes takes a
-	 * whole fence (open, info string, content, closing run) in one call when its
-	 * info line ends inside the source with no nul char; everything else goes
-	 * through the code fence states.
+	 * a finished parse outside block quotes takes a whole fence in one call when fence_whole can
+	 * else the code fence states run
 	 */
 	private start_fence(parent: number): void {
-		if (!this.finished || this.block_quote_depth > 0 || !this.fence_whole(parent)) {
+		if (
+			!this.finished ||
+			this.block_quote_depth > 0 ||
+			!this.fence_whole(parent)
+		) {
 			this.states.push(StateKind.code_fence_start);
 			this.extra = 0;
 		}
@@ -7008,7 +7018,8 @@ export class PFMParser {
 		const length = this.source_end;
 		const start = this.cursor;
 		let p0 = start + 1;
-		while (p0 < length && char_code_at.call(source, p0 - base) === BACKTICK) p0++;
+		while (p0 < length && char_code_at.call(source, p0 - base) === BACKTICK)
+			p0++;
 		const fence_len = p0 - start;
 		if (fence_len < 3) return false;
 		const nl_rel = string_index_of.call(source, '\n', p0 - base);
@@ -7078,8 +7089,7 @@ export class PFMParser {
 			this.cursor = end + 1;
 			return true;
 		}
-		// trailing content after the closing run: the fence ends at the run,
-		// the rest of the line is skipped
+		// the fence ends at the closing run, the rest of its line is skipped
 		let ep = end;
 		while (ep < length && char_code_at.call(source, ep - base) !== LINEFEED)
 			ep++;
@@ -7226,8 +7236,7 @@ export class PFMParser {
 		// scan line-by-line for closing fence: a line with only
 		// optional whitespace followed by >= extra backticks.
 		// resume at fence_scan, a line is ruled out only once its backtick run ends inside the buffer
-		// jumps between backticks instead of walking every line: only a line
-		// whose first non whitespace char is a backtick can close the fence
+		// jump between backticks, only a line whose first non whitespace char is a backtick can close
 		const fence_len = this.extra;
 		let line = this.fence_scan;
 		let found_index = -1;
@@ -7421,7 +7430,7 @@ export class PFMParser {
 			this._unwind_unterminated_delimiter();
 			return false;
 		}
-		// ~~ is a two-char token - hold back lone ~ at end of buffer
+		// feed mode, the char after one or two tildes decides
 		if (
 			code === TILDE &&
 			!this.finished &&
@@ -7493,8 +7502,12 @@ export class PFMParser {
 			this._unwind_unterminated_delimiter();
 			return false;
 		}
-		// a lone ~ at the end of the buffer could still become ~~
-		if (code === TILDE && !this.finished && this.cursor + 1 >= this.source_end) {
+		// a lone tilde at the buffer end could still become a double tilde
+		if (
+			code === TILDE &&
+			!this.finished &&
+			this.cursor + 1 >= this.source_end
+		) {
 			return true;
 		}
 		// close: single ~ after content (no right-flanking needed -
@@ -7528,7 +7541,7 @@ export class PFMParser {
 		const length = this.source_end;
 		// inside [link text], ![image alt], or :name[content]
 		// - stream content, watch for closing ]
-		// inline pops at | and linefeeds in table cells, the text state unwinds there
+		// in table cells inline pops at pipes and linefeeds, the text state unwinds there
 		if (this.in_table && (code === PIPE || code === LINEFEED)) {
 			this.unwind_inline_for_table();
 			return false;
@@ -7854,7 +7867,6 @@ export class PFMParser {
 			return true;
 		}
 		if (code === LINEFEED && this.link_text_lf_ends(current_node)) {
-			// paragraph boundary - revoke link
 			this.out.revoke(current_node);
 			this.directive_text_pop(current_node);
 			this.node_stack.pop();
@@ -7868,10 +7880,8 @@ export class PFMParser {
 	}
 
 	/**
-	 * link text at a linefeed inline popped back to: true when the paragraph
-	 * ends there, else a block quote continuation is taken (soft break, markers
-	 * chomped, inline pushed), outside quotes it ends where inline would end.
-	 * a heading's inline pops at every linefeed, in a block quote too
+	 * true when the paragraph ends at this linefeed, in a block quote a continuation line
+	 * is taken instead, a heading ends at every linefeed
 	 */
 	private link_text_lf_ends(current_node: number): boolean {
 		if (this.in_heading) return true;
@@ -7966,13 +7976,12 @@ export class PFMParser {
 			}
 		}
 
-		// inline pops at | and linefeeds in table cells, the text state unwinds there
+		// in table cells inline pops at pipes and linefeeds, the text state unwinds there
 		if (this.in_table && (code === PIPE || code === LINEFEED)) {
 			this.unwind_inline_for_table();
 			return false;
 		}
 
-		// the next line decides, hold back until it is visible
 		if (
 			code === LINEFEED &&
 			!this.finished &&
@@ -7982,9 +7991,8 @@ export class PFMParser {
 		}
 		if (
 			code === LINEFEED &&
-			// pop wherever inline pops at a linefeed or the two ping pong: every
-			// linefeed in a heading and a block quote (a marked line is a block
-			// interrupt and an unmarked one ends the quote), else lf_ends_inline
+			// pop wherever inline pops at a linefeed or the two ping pong, in a block quote
+			// a marked line interrupts and an unmarked one ends the quote
 			(this.block_quote_depth > 0 ||
 				this.in_heading ||
 				this.lf_ends_inline(this.cursor))
@@ -8515,7 +8523,7 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
-		// only feed() reads trim_point, a finished parse never trims
+		// only feed reads trim_point, a finished parse never trims
 		if (!this.finished && this.can_trim(this.node_stack.length)) {
 			this.trim_point = this.cursor;
 		}
@@ -8693,7 +8701,8 @@ export class PFMParser {
 				if (code === PLUS || (code >= 48 && code <= 57)) {
 					// stall only while the marker prefix is still being
 					// read - same logic as the top-level block dispatch.
-					if (!this.finished && this.plus_marker_pending(this.cursor)) return true;
+					if (!this.finished && this.plus_marker_pending(this.cursor))
+						return true;
 					const marker = this.try_parse_list_marker(this.cursor);
 					if (marker) {
 						this.start_list(marker, current_node);
@@ -8707,7 +8716,8 @@ export class PFMParser {
 					current_node
 				);
 				this.node_stack.push(para_id);
-				if ((code >= 128 || (code !== 0 && TEXT_BREAK[code] === 0))) this.para_text(para_id);
+				if (code >= 128 || (code !== 0 && TEXT_BREAK[code] === 0))
+					this.para_text(para_id);
 				return false;
 			}
 		}
@@ -8717,7 +8727,7 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
-		// only feed() reads trim_point, a finished parse never trims
+		// only feed reads trim_point, a finished parse never trims
 		if (!this.finished && this.can_trim(this.node_stack.length)) {
 			this.trim_point = this.cursor;
 		}
@@ -8892,8 +8902,7 @@ export class PFMParser {
 					return false;
 				}
 
-				// check for thematic break before list marker (precedence). the
-				// paragraph's interrupt check may already have answered both here
+				// thematic break before list marker, the paragraph interrupt check may already have answered both
 				let marker: MarkerResult | null;
 				if (this.interrupt_marker_pos === next_pos) {
 					marker = this.interrupt_marker;
@@ -9166,7 +9175,8 @@ export class PFMParser {
 				);
 				this.track_list_pending_para(para_id);
 				this.node_stack.push(para_id);
-				if ((code >= 128 || (code !== 0 && TEXT_BREAK[code] === 0))) this.para_text(para_id);
+				if (code >= 128 || (code !== 0 && TEXT_BREAK[code] === 0))
+					this.para_text(para_id);
 				return false;
 			}
 		}
@@ -9521,20 +9531,8 @@ export class PFMParser {
 	}
 
 	/**
-	 * a paragraph just opened and pushed at a plain char (or a block quote
-	 * continuation line): open its text node and skip the plain run, what the
-	 * paragraph, inline and text states would do in three trips. a run that
-	 * reaches the linefeed also takes the text state's linefeed close and, outside
-	 * block quotes, inline's linefeed call: an interrupting next line closes the
-	 * paragraph, anything else is a soft break and the next line's plain run is
-	 * taken the same way. in a block quote the paragraph makes the linefeed call
-	 */
-	/**
-	 * the main loop's progress check, sampled every 64 trips. a trip that moves
-	 * the cursor or pops the state stack below any depth sampled since the
-	 * cursor last moved is progress: unwinding a paragraph's pending
-	 * delimiters takes a trip per delimiter at one cursor. the lowest depth
-	 * can only fall so far, so a real loop still stops
+	 * sampled every 64 trips, popping below the lowest depth sampled at this cursor is progress
+	 * since unwinding pending delimiters takes a trip each, depth only falls so far so a real loop still stops
 	 */
 	private stalled(): boolean {
 		const depth = this.states.length;
@@ -9553,6 +9551,10 @@ export class PFMParser {
 		return this.loop_without_progress > 100;
 	}
 
+	/**
+	 * a paragraph just opened at a plain char, take the plain run its states would in three trips
+	 * outside block quotes take the linefeed call too and carry on across soft breaks
+	 */
 	private para_text(para_id: number): void {
 		const source = this.source;
 		const base = this.source_base;
@@ -9588,7 +9590,7 @@ export class PFMParser {
 				return;
 			}
 			if (!this.finished && !this.can_decide_after_lf(p)) {
-				// the text (at the root) or inline (in a list) holds back on the linefeed
+				// at the root the text state holds back on the linefeed, in a list inline does
 				this.states.push(StateKind.inline);
 				if (this.list_depth > 0) {
 					this.emit_close(t_id, p);
@@ -9603,7 +9605,7 @@ export class PFMParser {
 			this.emit_close(t_id, p);
 			this.out.set_value_end(t_id, p);
 			if (this.lf_ends_inline(p)) {
-				// the paragraph state's close on the interrupting linefeed
+				// close the paragraph as its state would on the interrupting linefeed
 				this.emit_close(para_id, p);
 				this.states.pop();
 				this.node_stack.pop();
@@ -9628,10 +9630,8 @@ export class PFMParser {
 	}
 
 	/**
-	 * a data cell just opened at the cursor: what the next table_row_content
-	 * trips would do, in one. skip the leading whitespace, take a plain run, and
-	 * while that run ends at a | close the cell, open the next and go again.
-	 * anything else is left for the table_row_content state at the cursor
+	 * a data cell just opened, take the table_row_content trips for plain cells in one
+	 * and leave anything else for that state at the cursor
 	 */
 	private table_cells(): void {
 		const source = this.source;
@@ -9650,11 +9650,11 @@ export class PFMParser {
 			if (c0 === 0 || (c0 < 128 && TEXT_BREAK[c0] !== 0)) return;
 			this.table_cell_has_content = true;
 			this.table_cell_text(this.table_cell_id);
-			// inline and text were pushed: the run did not end at a | or \n
+			// inline and text were pushed, the run did not end at a pipe or linefeed
 			if (this.states[this.states.length - 1] !== StateKind.table_row_content)
 				return;
 			if (char_code_at.call(source, this.cursor - base) !== PIPE) return;
-			// table_row_content's | branch
+			// the pipe branch of table_row_content
 			this.close_table_cell();
 			this.table_cell_col++;
 			this.cursor++;
@@ -9671,10 +9671,8 @@ export class PFMParser {
 	}
 
 	/**
-	 * a data cell's content starting at the cursor with a plain char. a plain run
-	 * ending at the next | or \n is one text node, closed here instead of trips
-	 * through inline, text and the unwind. otherwise leaves inline and text pushed
-	 * past the run as the inline state would
+	 * a plain run from the cursor ending at a pipe or linefeed is one text node closed here
+	 * otherwise inline and text are left pushed past the run as inline would
 	 */
 	private table_cell_text(parent: number): void {
 		const source = this.source;
@@ -9716,7 +9714,7 @@ export class PFMParser {
 		this.cursor = p;
 	}
 
-	/** true when no char in [start, end) makes the inline or text state yield */
+	/** true when no char from start to end makes the inline or text state yield */
 	private is_plain_range(start: number, end: number): boolean {
 		const source = this.source;
 		const base = this.source_base;

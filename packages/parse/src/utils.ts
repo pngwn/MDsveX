@@ -5,14 +5,14 @@ const DEFAULT_TOKEN_CAPACITY = 128;
 const MIN_NODE_CAPACITY = 32;
 
 /**
- * a buffer past the carve cap is its own ArrayBuffer, which costs far more
- * than the carve, so the slab is big enough that small documents carve
+ * a buffer past the carve cap is its own ArrayBuffer, far costlier than a
+ * carve, so small documents should fit the slab
  */
 const SLAB_BYTES = 1048576;
 
 /**
- * caps the tail a full slab can waste at a quarter, a one shot parse gives
- * back what it did not use, so a medium document's generous estimate carves
+ * caps the tail a full slab can waste at a quarter, high since a one shot
+ * parse gives back what it does not use
  */
 const SLAB_MAX_CARVE = 262144;
 
@@ -49,10 +49,7 @@ const NODE_BYTES = NodeField.stride * 4;
  */
 let slab = new ArrayBuffer(0);
 let slab_used = SLAB_BYTES;
-/**
- * the view whose region ends at slab_used, it can grow in place and give back
- * its unused tail, slab bytes cost about as much as the nodes they hold
- */
+/** the view whose region ends at slab_used, it can grow in place or shrink */
 let last_carve: Uint32Array | null = null;
 
 /** default number of error entries to preallocate. */
@@ -255,8 +252,6 @@ export function make_meta(key: string, value: any): Record<string, any> {
 		default: {
 			// a set would change the prototype, a literal defines an own property
 			if (key === '__proto__') return { [key]: value };
-			// a keyed store on an empty literal is several times cheaper than the
-			// computed key literal and makes the same object
 			const meta: Record<string, any> = {};
 			meta[key] = value;
 			return meta;
@@ -371,10 +366,7 @@ export class NodeBuffer {
 		return n;
 	}
 
-	/**
-	 * give the unused tail of the last slab carve back to the slab, the
-	 * capacity drops to the size so a later push resizes
-	 */
+	/** gives the unused tail of the last slab carve back, a later push resizes */
 	trim(): void {
 		if (this._n !== last_carve) return;
 		slab_used -= (this._capacity - this._size) * NODE_BYTES;
@@ -426,10 +418,7 @@ export class NodeBuffer {
 		return index;
 	}
 
-	/**
-	 * push a node as the last child of parent, pending or not, one body for
-	 * every open so the builder inlines a single copy
-	 */
+	/** one body for every open so the builder inlines a single copy */
 	push_node(
 		kind: NodeKind,
 		cursor: number,
@@ -599,9 +588,8 @@ export class NodeBuffer {
 	 * @param delimiter_text optional pre-resolved delimiter string (wire path).
 	 *   if provided, stored in _strings. if absent, value range is set from
 	 *   the node's start position.
-	 * @param text_start source offset of delimiter_text. when it equals the
-	 *   node's start the repaired value range slices exactly delimiter_text,
-	 *   so the string is not stored (renders skip prebuilt lookups).
+	 * @param text_start source offset of delimiter_text, at the node start the
+	 *   repaired range slices the same text so it is not stored
 	 */
 	handle_repair(
 		index: number,
@@ -1103,7 +1091,7 @@ export class NodeBuffer {
 		if (slot !== 0) this._meta[slot - 1] = metadata;
 		else {
 			const meta = this._meta;
-			// a literal holds one slot, a push onto [] reserves seventeen
+			// a literal holds one slot, a push onto an empty array reserves seventeen
 			if (meta === NO_META) {
 				this._meta = [metadata];
 				n[i] = 1;

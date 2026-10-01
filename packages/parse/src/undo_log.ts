@@ -105,6 +105,9 @@ function _unlink_child(buf: NodeBuffer, parent: number, child: number): void {
 	buf.set_prev(child, NONE);
 }
 
+/** never written, every write swaps in a map of its own first */
+const NO_LOGS: Map<number, UndoEntry[]> = new Map();
+
 /**
  * per-node undo log for plugin mutations.
  *
@@ -115,9 +118,6 @@ function _unlink_child(buf: NodeBuffer, parent: number, child: number): void {
  * the log is only allocated when a handler actually mutates, so
  * nodes without plugin activity pay nothing.
  */
-/** never written, every write swaps in a map of its own first */
-const NO_LOGS: Map<number, UndoEntry[]> = new Map();
-
 export class UndoLog {
 	/** per-handler-node logs. maps buffer index -> append-only entry array. */
 	// a shared empty map until the first entry, most documents record none
