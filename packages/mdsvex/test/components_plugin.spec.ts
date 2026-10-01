@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-import { createServer, createServerModuleRunner } from 'vite';
+import { createServer, createServerModuleRunner, normalizePath } from 'vite';
 import type { Plugin, ViteDevServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
@@ -139,6 +139,11 @@ function write_app(): string {
 	return root;
 }
 
+/** ids and hot update files use forward slashes on every platform */
+function vite_path(root: string, path: string): string {
+	return normalizePath(join(root, path));
+}
+
 async function serve(root: string, main: Plugin[]): Promise<ViteDevServer> {
 	return createServer({
 		root,
@@ -196,8 +201,8 @@ describe('components option', () => {
 		const container = server.environments.client.pluginContainer;
 		const first = await container.resolveId('mdsvex:components/0');
 		const second = await container.resolveId('mdsvex:components/1');
-		expect(first?.id).toBe(join(root, 'src/lib/Defaults.svelte'));
-		expect(second?.id).toBe(join(root, 'src/lib/markdown.ts'));
+		expect(first?.id).toBe(vite_path(root, 'src/lib/Defaults.svelte'));
+		expect(second?.id).toBe(vite_path(root, 'src/lib/markdown.ts'));
 	});
 
 	test('compiles against the scanned names and imports virtual ids', async () => {
@@ -208,7 +213,7 @@ describe('components option', () => {
 		const result = await transform.call(
 			{ addWatchFile() {} },
 			'# Title\n\n![cat](/cat.png)\n',
-			join(root, 'src/doc.svx')
+			vite_path(root, 'src/doc.svx')
 		);
 		expect(result.code).toContain(
 			"import { h1 as H1_MDSVEX_G } from 'mdsvex:components/1';\n" +
@@ -234,7 +239,7 @@ describe('components option', () => {
 		await ssr_env.transformRequest('/src/doc.svx');
 		await client_env.transformRequest('/src/doc.svx');
 
-		const file = join(root, 'src/lib/markdown.ts');
+		const file = vite_path(root, 'src/lib/markdown.ts');
 		const code = [
 			"export { default as h1 } from './Heading.svelte';",
 			"export { default as p } from './Paragraph.svelte';",
@@ -259,7 +264,7 @@ describe('components option', () => {
 
 		const in_ssr = await update(ssr_env, 1);
 		const in_client = await update(client_env, 1);
-		const doc = join(root, 'src/doc.svx');
+		const doc = vite_path(root, 'src/doc.svx');
 		expect(in_ssr.map((m: any) => m.file)).toContain(doc);
 		expect(in_client.map((m: any) => m.file)).toContain(doc);
 		for (const mod of ssr_env.moduleGraph.getModulesByFile(doc)!)
@@ -302,7 +307,7 @@ describe('components resolution failure', () => {
 			);
 			expect(message).toBe(
 				'[mdsvex] could not resolve the components module "#lib/missing.ts", "./nope.ts" ' +
-					`from the vite root ${root}`
+					`from the vite root ${normalizePath(root)}`
 			);
 		} finally {
 			rmSync(root, { recursive: true, force: true });
