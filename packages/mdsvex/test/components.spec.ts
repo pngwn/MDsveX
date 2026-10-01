@@ -227,7 +227,7 @@ describe('element replacement, markdown mode', () => {
 		};
 		const code = compile('## Header 2', {
 			components: only('h2'),
-			parsePlugins: [plugin],
+			parse_plugins: [plugin],
 		}).code;
 		expect(body(code)).toBe(
 			'<H2_MDSVEX_G id="header-2" level={2}>Header 2</H2_MDSVEX_G>'
@@ -245,7 +245,7 @@ describe('element replacement, markdown mode', () => {
 		};
 		const code = compile('- a\n- b', {
 			components: only('li'),
-			parsePlugins: [plugin],
+			parse_plugins: [plugin],
 		}).code;
 		expect(body(code)).toBe(
 			'<ul>\n<Li_MDSVEX_G checked={true}>a</Li_MDSVEX_G>\n<Li_MDSVEX_G checked={false}>b</Li_MDSVEX_G>\n\n</ul>'
@@ -262,7 +262,7 @@ describe('element replacement, markdown mode', () => {
 		};
 		const code = compile('text <mark>typed</mark>', {
 			components: only('mark'),
-			parsePlugins: [plugin],
+			parse_plugins: [plugin],
 		}).code;
 		expect(imports_of(code)).toBe(
 			"import { mark as Mark_MDSVEX_G } from 'mdsvex:components';\n"

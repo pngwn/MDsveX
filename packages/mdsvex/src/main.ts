@@ -40,7 +40,7 @@ export type { ScanKind, ScannedExports } from './scan_exports';
 export interface MdsvexOptions {
 	extensions?: string[];
 	/** parse plugins that hook into tree construction. */
-	parsePlugins?: ParsePlugin[];
+	parse_plugins?: ParsePlugin[];
 	/**
 	 * modules whose exports named after an element replace it, lowest
 	 * precedence first, each resolves as an import from the vite root would
@@ -59,7 +59,7 @@ export interface MdsvexOptions {
 export type ComponentMode = 'markdown' | 'all';
 
 export interface CompileOptions {
-	parsePlugins?: ParsePlugin[];
+	parse_plugins?: ParsePlugin[];
 	sourcemap?: boolean;
 	/** root fallback replacements, lowest precedence first, each specifier is imported as written */
 	components?: ComponentSource[];
@@ -159,7 +159,7 @@ function parse_once(source: string, plugins?: ParsePlugin[]): NodeBuffer {
 function render_once(raw: string, options?: CompileOptions): CompileResult {
 	// parser offsets index the normalized string, so render and plugins read it too
 	const source = normalize_newlines(raw);
-	const nodes = parse_once(source, options?.parsePlugins);
+	const nodes = parse_once(source, options?.parse_plugins);
 	const scope = scope_of(options?.components, options?.component_mode);
 	const renderer = take_renderer();
 	renderer.scope = scope;
@@ -241,7 +241,7 @@ export class CompilerSession {
 	}
 
 	compile(raw: string, options?: CompileOptions): CompileResult {
-		if (options?.parsePlugins && options.parsePlugins.length > 0) {
+		if (options?.parse_plugins && options.parse_plugins.length > 0) {
 			return render_once(raw, options);
 		}
 
@@ -365,7 +365,7 @@ function render(source: string, options?: CompileOptions): CompileResult {
 	if (
 		shared_session_busy ||
 		source.length > SHARED_SOURCE_CAP ||
-		(options?.parsePlugins && options.parsePlugins.length > 0)
+		(options?.parse_plugins && options.parse_plugins.length > 0)
 	) {
 		return render_once(source, options);
 	}
@@ -1076,7 +1076,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		}
 		// raw last, so a compile that throws leaves no document for post
 		doc.raw = '';
-		compiler.compile_trace_into(code, options.parsePlugins, doc, components);
+		compiler.compile_trace_into(code, options.parse_plugins, doc, components);
 		doc.raw = code;
 
 		// return NO map, avoids poisoning getCombinedSourcemap()

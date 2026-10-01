@@ -55,7 +55,7 @@ describe('CompilerSession', () => {
 				},
 			},
 		};
-		const options = { parsePlugins: [plugin], sourcemap: true };
+		const options = { parse_plugins: [plugin], sourcemap: true };
 		const compiler = new CompilerSession();
 
 		expect(compiler.compile(documents[0], options)).toEqual(

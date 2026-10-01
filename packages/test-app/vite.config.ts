@@ -7,7 +7,7 @@ export default defineConfig({
 	plugins: [
 		mdsvex({
 			extensions: [".svx"],
-			parsePlugins: [autolink()],
+			parse_plugins: [autolink()],
 		}),
 		sveltekit(),
 	],
