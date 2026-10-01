@@ -3923,11 +3923,22 @@ export class PFMParser {
 		let p = this.bp_p;
 		let mode = this.bp_mode;
 		let quote = this.bp_quote;
+		// code and template text jump to their next stop char, each stop has its own indexOf
+		// cursor advanced only once passed, -1 until first searched
+		const end = length - base;
+		let c_open = -1;
+		let c_close = -1;
+		let c_quote = -1;
+		let c_apos = -1;
+		let c_tick = -1;
+		let c_slash = -1;
+		let c_bs = -1;
+		let c_dollar = -1;
 
 		scan: while (p < length) {
 			let ch = char_code_at.call(source, p - base);
 			if (mode === BM_CODE) {
-				while (
+				if (
 					ch !== OPEN_BRACE &&
 					ch !== CLOSE_BRACE &&
 					ch !== QUOTE &&
@@ -3935,8 +3946,43 @@ export class PFMParser {
 					ch !== BACKTICK &&
 					ch !== SLASH
 				) {
-					if (++p >= length) break scan;
-					ch = char_code_at.call(source, p - base);
+					const r = p - base;
+					if (c_open < r) {
+						c_open = string_index_of.call(source, '{', r);
+						if (c_open === -1 || c_open > end) c_open = end;
+					}
+					if (c_close < r) {
+						c_close = string_index_of.call(source, '}', r);
+						if (c_close === -1 || c_close > end) c_close = end;
+					}
+					if (c_quote < r) {
+						c_quote = string_index_of.call(source, '"', r);
+						if (c_quote === -1 || c_quote > end) c_quote = end;
+					}
+					if (c_apos < r) {
+						c_apos = string_index_of.call(source, "'", r);
+						if (c_apos === -1 || c_apos > end) c_apos = end;
+					}
+					if (c_tick < r) {
+						c_tick = string_index_of.call(source, '`', r);
+						if (c_tick === -1 || c_tick > end) c_tick = end;
+					}
+					if (c_slash < r) {
+						c_slash = string_index_of.call(source, '/', r);
+						if (c_slash === -1 || c_slash > end) c_slash = end;
+					}
+					let q = c_open;
+					if (c_close < q) q = c_close;
+					if (c_quote < q) q = c_quote;
+					if (c_apos < q) q = c_apos;
+					if (c_tick < q) q = c_tick;
+					if (c_slash < q) q = c_slash;
+					if (q >= end) {
+						p = length;
+						break scan;
+					}
+					p = q + base;
+					ch = char_code_at.call(source, q);
 				}
 			} else if (mode === BM_STR) {
 				if (ch !== quote && ch !== BACKSLASH) {
@@ -3980,9 +4026,29 @@ export class PFMParser {
 					ch = char_code_at.call(source, p - base);
 				}
 			} else if (mode === BM_TPL) {
-				while (ch !== BACKTICK && ch !== BACKSLASH && ch !== 36 /* $ */) {
-					if (++p >= length) break scan;
-					ch = char_code_at.call(source, p - base);
+				if (ch !== BACKTICK && ch !== BACKSLASH && ch !== 36 /* $ */) {
+					const r = p - base;
+					if (c_tick < r) {
+						c_tick = string_index_of.call(source, '`', r);
+						if (c_tick === -1 || c_tick > end) c_tick = end;
+					}
+					if (c_bs < r) {
+						c_bs = string_index_of.call(source, '\\', r);
+						if (c_bs === -1 || c_bs > end) c_bs = end;
+					}
+					if (c_dollar < r) {
+						c_dollar = string_index_of.call(source, '$', r);
+						if (c_dollar === -1 || c_dollar > end) c_dollar = end;
+					}
+					let q = c_tick;
+					if (c_bs < q) q = c_bs;
+					if (c_dollar < q) q = c_dollar;
+					if (q >= end) {
+						p = length;
+						break scan;
+					}
+					p = q + base;
+					ch = char_code_at.call(source, q);
 				}
 			}
 			switch (mode) {
