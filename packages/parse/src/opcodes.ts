@@ -34,8 +34,10 @@ export interface Emitter {
 	 * close a previously opened node. implicitly commits pending nodes.
 	 * @param id id of the node to close.
 	 * @param end source byte offset where this node ends.
+	 * @param kind kind at open, a revoke may have rewritten it since, omitting
+	 *   it makes the builder track revokes
 	 */
-	close(id: number, end: number): void;
+	close(id: number, end: number, kind?: NodeKind): void;
 
 	/**
 	 * emit leaf text content within a node.
@@ -46,8 +48,14 @@ export interface Emitter {
 	 * @param parent id of the parent node.
 	 * @param start source byte offset of text start.
 	 * @param end source byte offset of text end.
+	 * @param parent_kind parent kind at open, as for close
 	 */
-	text(parent: number, start: number, end: number): void;
+	text(
+		parent: number,
+		start: number,
+		end: number,
+		parent_kind?: NodeKind
+	): void;
 
 	/**
 	 * set or update an attribute on a node.
@@ -73,8 +81,10 @@ export interface Emitter {
 	 * @param source_text optional raw source text for the revoked node.
 	 *   used for block-level revocations where the content must be
 	 *   reconstructed (e.g. failed html tags becoming paragraph text).
+	 * @param text_start source offset of source_text, at the node start a tree
+	 *   that reads the source need not keep source_text
 	 */
-	revoke(id: number, source_text?: string): void;
+	revoke(id: number, source_text?: string, text_start?: number): void;
 
 	/**
 	 * clear the pending flag on a node without touching its structure.
@@ -93,4 +103,7 @@ export interface Emitter {
 	 * @param pos current byte offset in the source.
 	 */
 	cursor(pos: number): void;
+
+	/** the incremental finish emitted the last opcode, reserved storage can go */
+	end?(): void;
 }

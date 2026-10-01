@@ -105,6 +105,9 @@ function _unlink_child(buf: NodeBuffer, parent: number, child: number): void {
 	buf.set_prev(child, NONE);
 }
 
+/** never written, every write swaps in a map of its own first */
+const NO_LOGS: Map<number, UndoEntry[]> = new Map();
+
 /**
  * per-node undo log for plugin mutations.
  *
@@ -117,7 +120,8 @@ function _unlink_child(buf: NodeBuffer, parent: number, child: number): void {
  */
 export class UndoLog {
 	/** per-handler-node logs. maps buffer index -> append-only entry array. */
-	private logs: Map<number, UndoEntry[]> = new Map();
+	// a shared empty map until the first entry, most documents record none
+	private logs: Map<number, UndoEntry[]> = NO_LOGS;
 
 	/**
 	 * the buffer index of the node whose handler is currently running.
@@ -125,6 +129,18 @@ export class UndoLog {
 	 * attribute their entries to this node.
 	 */
 	private active_node: number = NONE;
+
+	/**
+	 * buffer index and prior kind of every kind rewrite, recorded or not, in
+	 * order, so the first entry of an index holds its kind at open
+	 */
+	kind_changes: number[] | null = null;
+
+	log_kind(target: number, prior_kind: number): void {
+		const log = this.kind_changes;
+		if (log === null) this.kind_changes = [target, prior_kind];
+		else log.push(target, prior_kind);
+	}
 
 	/** called by dispatcher before invoking plugin handlers for a node. */
 	set_active_node(index: number): void {
@@ -136,7 +152,13 @@ export class UndoLog {
 		this.active_node = NONE;
 	}
 
+	/** false while nothing would keep an entry */
+	get recording(): boolean {
+		return this.active_node !== NONE;
+	}
+
 	record_attr_set(target: number, key: string, prior_value: any): void {
+		if (this.active_node === NONE) return;
 		this._append({
 			kind: UndoEntryKind.AttrSet,
 			target,
@@ -155,6 +177,8 @@ export class UndoLog {
 	}
 
 	record_type_change(target: number, prior_kind: number): void {
+		this.log_kind(target, prior_kind);
+		if (this.active_node === NONE) return;
 		this._append({
 			kind: UndoEntryKind.TypeChange,
 			target,
@@ -206,10 +230,12 @@ export class UndoLog {
 	private _append(entry: UndoEntry): void {
 		const node = this.active_node;
 		if (node === NONE) return;
-		let log = this.logs.get(node);
+		let logs = this.logs;
+		if (logs === NO_LOGS) logs = this.logs = new Map();
+		let log = logs.get(node);
 		if (log === undefined) {
 			log = [];
-			this.logs.set(node, log);
+			logs.set(node, log);
 		}
 		log.push(entry);
 	}
@@ -282,7 +308,12 @@ export class UndoLog {
 	 * commit a node, discard its undo log, making mutations permanent.
 	 */
 	commit(handler_node: number): void {
-		this.logs.delete(handler_node);
+		if (this.logs.size !== 0) this.logs.delete(handler_node);
+	}
+
+	/** true when no node holds a mutation that a revoke would undo */
+	get empty(): boolean {
+		return this.logs.size === 0;
 	}
 
 	/** check whether a node has any recorded mutations. */
@@ -292,12 +323,14 @@ export class UndoLog {
 
 	/** get undo entries for a node (for redirect detection). */
 	get_entries(handler_node: number): UndoEntry[] | undefined {
+		if (this.logs.size === 0) return undefined;
 		return this.logs.get(handler_node);
 	}
 
 	/** discard all logs. */
 	clear(): void {
 		this.logs.clear();
+		this.kind_changes = null;
 		this.active_node = NONE;
 	}
 }

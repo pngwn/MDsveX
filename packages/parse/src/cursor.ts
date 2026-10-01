@@ -156,6 +156,22 @@ export class Cursor {
 		return true;
 	}
 
+	/** @internal */
+	get words(): Uint32Array {
+		return this.n;
+	}
+
+	/** @internal undefined when text slices the source */
+	prebuilt_at(idx: number): string | undefined {
+		return this.buf._strings[idx];
+	}
+
+	/** @internal no bounds checks */
+	move_to(idx: number): void {
+		this.idx = idx;
+		this.b = idx * NodeField.stride;
+	}
+
 	reset(): void {
 		this.idx = 0;
 		this.b = 0;

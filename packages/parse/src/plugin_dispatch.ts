@@ -187,53 +187,129 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 		return { plugin, handlers: table };
 	});
 
-	return { fused, sequential, has_handler };
+	// a pass with no handler would do nothing
+	return {
+		fused,
+		sequential: sequential.filter((pass) =>
+			pass.handlers.some((h) => h !== null)
+		),
+		has_handler,
+	};
+}
+
+/** parse_of for an entry the registration skips */
+const NO_PARSE = {};
+
+function parse_of(entry: unknown): unknown {
+	return entry && typeof entry === 'object' && 'parse' in entry
+		? (entry as NodeHandler).parse
+		: NO_PARSE;
+}
+
+/** everything register_plugins reads, in the order it reads it */
+function snapshot_plugins(plugins: ParsePlugin[]): unknown[] {
+	const snap: unknown[] = [plugins.length];
+	for (let i = 0; i < plugins.length; i++) {
+		const p = plugins[i];
+		const keys = Object.keys(p);
+		snap.push(p, !!p.sequential, keys.length);
+		for (let k = 0; k < keys.length; k++) {
+			const entry = p[keys[k]];
+			snap.push(keys[k], entry, parse_of(entry));
+		}
+	}
+	return snap;
+}
+
+function snapshot_matches(plugins: ParsePlugin[], snap: unknown[]): boolean {
+	let j = 0;
+	if (snap[j++] !== plugins.length) return false;
+	for (let i = 0; i < plugins.length; i++) {
+		const p = plugins[i];
+		if (snap[j++] !== p) return false;
+		if (snap[j++] !== !!p.sequential) return false;
+		// inherited enumerable keys change the count or a key, so an exact match
+		// means the same own keys without allocating Object.keys
+		const count = snap[j++] as number;
+		const keys_end = j + count * 3;
+		for (const key in p) {
+			if (j === keys_end || snap[j++] !== key) return false;
+			const entry = p[key];
+			if (snap[j++] !== entry) return false;
+			if (snap[j++] !== parse_of(entry)) return false;
+		}
+		if (j !== keys_end) return false;
+	}
+	return true;
+}
+
+// nothing writes a registration after register_plugins, so documents whose
+// plugins hold the same objects, keys and handlers can share one
+let last_snapshot: unknown[] | null = null;
+let last_registration: RegistrationResult | null = null;
+
+function registration_for(plugins: ParsePlugin[]): RegistrationResult {
+	if (last_snapshot !== null && snapshot_matches(plugins, last_snapshot)) {
+		return last_registration!;
+	}
+	const reg = register_plugins(plugins);
+	last_snapshot = snapshot_plugins(plugins);
+	last_registration = reg;
+	return reg;
 }
 
 /**
- * stores close callbacks indexed by buffer index.
- * flat array gives O(1) access since buffer indices are sequential.
+ * a Map since handled nodes can sit over 1024 indices apart, and an array
+ * written past such a gap falls back to dictionary elements
  */
 class CloseCallbackStore {
-	private store: ((() => void)[] | undefined)[] = [];
+	private store: Map<number, (() => void)[]> | null = null;
+	// entries still set, most nodes close with none so the lookup is skipped
+	live = 0;
 
 	set(idx: number, callbacks: (() => void)[]): void {
-		this.store[idx] = callbacks;
+		let store = this.store;
+		if (store === null) store = this.store = new Map();
+		store.set(idx, callbacks);
+		this.live = store.size;
 	}
 
 	/** take close callbacks for a node, removing the entry. returns undefined if none. */
 	take(idx: number): (() => void)[] | undefined {
-		const cbs = this.store[idx];
-		if (cbs !== undefined) this.store[idx] = undefined;
+		if (this.live === 0) return undefined;
+		const store = this.store!;
+		const cbs = store.get(idx);
+		if (cbs !== undefined) {
+			store.delete(idx);
+			this.live = store.size;
+		}
 		return cbs;
 	}
 
 	/** fire close callbacks for a node, removing the entry. */
 	fire(idx: number): void {
-		const cbs = this.store[idx];
+		const cbs = this.take(idx);
 		if (cbs === undefined) return;
 		for (let i = 0; i < cbs.length; i++) {
 			cbs[i]();
 		}
-		this.store[idx] = undefined;
 	}
 
 	/** discard callbacks without firing (for revocation). */
 	discard(idx: number): void {
-		this.store[idx] = undefined;
+		this.take(idx);
 	}
 
 	reset(): void {
-		this.store.length = 0;
+		if (this.store !== null) this.store.clear();
+		this.live = 0;
 	}
 }
 
 /**
  * dispatch plugin handlers for a node open event.
  *
- * the switch destructures the handlers table into 35 locals at the top.
- * each arm calls its own local, giving the jit a monomorphic call site
- * per kind.
+ * each switch arm is a monomorphic call site for its own kind
  */
 function dispatch_open(
 	kind: NodeKind,
@@ -245,165 +321,84 @@ function dispatch_open(
 	// bitmask fast path: no handler for this kind
 	if (!(has_handler[kind >> 5] & (1 << (kind & 31)))) return null;
 
-	// destructure into monomorphic locals
-	const h_0 = fused[0];
-	const h_1 = fused[1];
-	const h_2 = fused[2];
-	const h_3 = fused[3];
-	const h_4 = fused[4];
-	const h_5 = fused[5];
-	const h_6 = fused[6];
-	const h_7 = fused[7];
-	const h_8 = fused[8];
-	const h_9 = fused[9];
-	const h_10 = fused[10];
-	const h_11 = fused[11];
-	const h_12 = fused[12];
-	const h_13 = fused[13];
-	const h_14 = fused[14];
-	const h_15 = fused[15];
-	const h_16 = fused[16];
-	const h_17 = fused[17];
-	const h_18 = fused[18];
-	const h_19 = fused[19];
-	const h_20 = fused[20];
-	const h_21 = fused[21];
-	const h_22 = fused[22];
-	const h_23 = fused[23];
-	const h_24 = fused[24];
-	const h_25 = fused[25];
-	const h_26 = fused[26];
-	const h_27 = fused[27];
-	const h_28 = fused[28];
-	const h_29 = fused[29];
-	const h_30 = fused[30];
-	const h_31 = fused[31];
-	const h_32 = fused[32];
-	const h_33 = fused[33];
-	const h_34 = fused[34];
-
 	switch (kind) {
 		case 0:
-			return h_0!(view, ctx);
+			return fused[0]!(view, ctx);
 		case 1:
-			return h_1!(view, ctx);
+			return fused[1]!(view, ctx);
 		case 2:
-			return h_2!(view, ctx);
+			return fused[2]!(view, ctx);
 		case 3:
-			return h_3!(view, ctx);
+			return fused[3]!(view, ctx);
 		case 4:
-			return h_4!(view, ctx);
+			return fused[4]!(view, ctx);
 		case 5:
-			return h_5!(view, ctx);
+			return fused[5]!(view, ctx);
 		case 6:
-			return h_6!(view, ctx);
+			return fused[6]!(view, ctx);
 		case 7:
-			return h_7!(view, ctx);
+			return fused[7]!(view, ctx);
 		case 8:
-			return h_8!(view, ctx);
+			return fused[8]!(view, ctx);
 		case 9:
-			return h_9!(view, ctx);
+			return fused[9]!(view, ctx);
 		case 10:
-			return h_10!(view, ctx);
+			return fused[10]!(view, ctx);
 		case 11:
-			return h_11!(view, ctx);
+			return fused[11]!(view, ctx);
 		case 12:
-			return h_12!(view, ctx);
+			return fused[12]!(view, ctx);
 		case 13:
-			return h_13!(view, ctx);
+			return fused[13]!(view, ctx);
 		case 14:
-			return h_14!(view, ctx);
+			return fused[14]!(view, ctx);
 		case 15:
-			return h_15!(view, ctx);
+			return fused[15]!(view, ctx);
 		case 16:
-			return h_16!(view, ctx);
+			return fused[16]!(view, ctx);
 		case 17:
-			return h_17!(view, ctx);
+			return fused[17]!(view, ctx);
 		case 18:
-			return h_18!(view, ctx);
+			return fused[18]!(view, ctx);
 		case 19:
-			return h_19!(view, ctx);
+			return fused[19]!(view, ctx);
 		case 20:
-			return h_20!(view, ctx);
+			return fused[20]!(view, ctx);
 		case 21:
-			return h_21!(view, ctx);
+			return fused[21]!(view, ctx);
 		case 22:
-			return h_22!(view, ctx);
+			return fused[22]!(view, ctx);
 		case 23:
-			return h_23!(view, ctx);
+			return fused[23]!(view, ctx);
 		case 24:
-			return h_24!(view, ctx);
+			return fused[24]!(view, ctx);
 		case 25:
-			return h_25!(view, ctx);
+			return fused[25]!(view, ctx);
 		case 26:
-			return h_26!(view, ctx);
+			return fused[26]!(view, ctx);
 		case 27:
-			return h_27!(view, ctx);
+			return fused[27]!(view, ctx);
 		case 28:
-			return h_28!(view, ctx);
+			return fused[28]!(view, ctx);
 		case 29:
-			return h_29!(view, ctx);
+			return fused[29]!(view, ctx);
 		case 30:
-			return h_30!(view, ctx);
+			return fused[30]!(view, ctx);
 		case 31:
-			return h_31!(view, ctx);
+			return fused[31]!(view, ctx);
 		case 32:
-			return h_32!(view, ctx);
+			return fused[32]!(view, ctx);
 		case 33:
-			return h_33!(view, ctx);
+			return fused[33]!(view, ctx);
 		case 34:
-			return h_34!(view, ctx);
+			return fused[34]!(view, ctx);
 		default:
 			return null;
 	}
 }
 
-/**
- * depth-first walk over the node buffer.
- * calls visitor(idx, kind, false) on open, visitor(idx, kind, true) on close.
- */
-function walk_tree(
-	buf: NodeBuffer,
-	visitor: (idx: number, kind: NodeKind, is_close: boolean) => void
-): void {
-	// the words are read once, so a visitor that grows the buffer keeps
-	// walking the storage the walk started on
-	const n = buf._n;
-	const kind = (i: number) => (n[i * NodeField.stride] & 0xff) as NodeKind;
-	const parent = (i: number) => n[i * NodeField.stride + NodeField.parent];
-	const next_of = (i: number) => n[i * NodeField.stride + NodeField.next];
-
-	let idx = n[NodeField.first_child]; // first child of root
-	if (idx === NONE) return;
-
-	const stack: number[] = [];
-
-	while (true) {
-		visitor(idx, kind(idx), false);
-
-		const child = n[idx * NodeField.stride + NodeField.first_child];
-		if (child !== NONE) {
-			stack.push(idx);
-			idx = child;
-			continue;
-		}
-
-		visitor(idx, kind(idx), true);
-
-		let next = next_of(idx);
-		while (
-			(next === NONE || parent(next) !== parent(idx)) &&
-			stack.length > 0
-		) {
-			idx = stack.pop()!;
-			visitor(idx, kind(idx), true);
-			next = next_of(idx);
-		}
-
-		if (next === NONE || parent(next) !== parent(idx)) break;
-		idx = next;
-	}
-}
+/** shared redirects until the first wrap_inner, never written */
+const NO_REDIRECTS: Map<number, number> = new Map();
 
 /**
  * orchestrates plugin dispatch for both TreeBuilder and WireTreeBuilder.
@@ -424,16 +419,55 @@ export class PluginDispatcher {
 	 * redirect map: when wrap_inner is called, subsequent children
 	 * targeting the parent should land in the wrapper instead.
 	 */
-	private redirects: Map<number, number> = new Map();
+	private redirects: Map<number, number> = NO_REDIRECTS;
 
 	private next_synthetic_id = SYNTHETIC_ID_BASE;
 
+	/** one cache serves every dispatch, a view only holds an index */
+	private cache: ViewCache | null = null;
+
 	constructor(plugins: ParsePlugin[], text_source: TextSource) {
-		const reg = register_plugins(plugins);
+		const reg = registration_for(plugins);
 		this.fused = reg.fused;
 		this.has_handler = reg.has_handler;
 		this.sequential = reg.sequential;
 		this.text_source = text_source;
+	}
+
+	/** cleared since a callback view may have filled it after the last dispatch */
+	private views(buf: NodeBuffer): ViewCache {
+		const cache = this.cache;
+		if (cache === null) {
+			return (this.cache = new ViewCache(buf, this.text_source, this.undo));
+		}
+		cache.clear();
+		cache.rebind(buf, this.text_source);
+		return cache;
+	}
+
+	/** buffer index and prior kind of each kind rewrite, see UndoLog */
+	kind_log(): number[] | null {
+		return this.undo.kind_changes;
+	}
+
+	/** a kind rewrite outside the plugins, such as a revoke repair */
+	log_kind(buf_idx: number, prior_kind: number): void {
+		this.undo.log_kind(buf_idx, prior_kind);
+	}
+
+	/** an open of this kind needs a handler call or a redirect lookup */
+	wants_open(kind: NodeKind): boolean {
+		return (
+			(this.has_handler[kind >> 5] & (1 << (kind & 31))) !== 0 ||
+			this.redirects.size !== 0
+		);
+	}
+
+	/** a close needs no dispatch */
+	quiet(): boolean {
+		return (
+			this.close_cbs.live === 0 && this.redirects.size === 0 && this.undo.empty
+		);
 	}
 
 	/** check whether any fused handlers exist for this kind. */
@@ -443,12 +477,19 @@ export class PluginDispatcher {
 
 	/** check if a parent index has a redirect (wrap_inner). */
 	get_redirect(parent_idx: number): number | undefined {
+		if (this.redirects.size === 0) return undefined;
 		return this.redirects.get(parent_idx);
 	}
 
 	/** register a wrap_inner redirect. */
 	set_redirect(parent_idx: number, wrapper_idx: number): void {
-		this.redirects.set(parent_idx, wrapper_idx);
+		this.own_redirects().set(parent_idx, wrapper_idx);
+	}
+
+	private own_redirects(): Map<number, number> {
+		let redirects = this.redirects;
+		if (redirects === NO_REDIRECTS) redirects = this.redirects = new Map();
+		return redirects;
 	}
 
 	/** clear a redirect (on parent close). */
@@ -476,7 +517,7 @@ export class PluginDispatcher {
 		buf: NodeBuffer,
 		id_register: IdRegister
 	): void {
-		const cache = new ViewCache(buf, this.text_source, this.undo, buf_idx);
+		const cache = this.views(buf);
 		const view = cache.get(buf_idx)!;
 
 		this.undo.set_active_node(buf_idx);
@@ -497,7 +538,7 @@ export class PluginDispatcher {
 			for (let i = 0; i < entries.length; i++) {
 				const e = entries[i];
 				if (e.kind === UndoEntryKind.WrapInner) {
-					this.redirects.set(e.parent, e.wrapper);
+					this.own_redirects().set(e.parent, e.wrapper);
 				}
 			}
 		}
@@ -517,23 +558,25 @@ export class PluginDispatcher {
 	 * speculation, inline emphasis).
 	 */
 	dispatch_close(buf_idx: number, buf: NodeBuffer): void {
-		this.redirects.delete(buf_idx);
+		if (this.redirects.size !== 0) this.redirects.delete(buf_idx);
 
 		// take and fire close callbacks with undo attribution
 		const cbs = this.close_cbs.take(buf_idx);
+		// callbacks cannot change the pending flag
+		const pending = buf.pending_at(buf_idx) !== 0;
 		if (cbs) {
-			const cache = new ViewCache(buf, this.text_source, this.undo, buf_idx);
-			this.undo.set_active_node(buf_idx);
+			// a node no longer pending commits right after its callbacks, so
+			// anything they recorded would be dropped unread
+			if (pending) this.undo.set_active_node(buf_idx);
 			for (let i = 0; i < cbs.length; i++) {
 				cbs[i]();
 			}
 			this.undo.clear_active_node();
-			cache.clear();
 		}
 
 		// only commit if the node is no longer pending.
 		// pending nodes can still be revoked after close.
-		if (buf.pending_at(buf_idx) === 0) {
+		if (!pending) {
 			this.undo.commit(buf_idx);
 		}
 	}
@@ -552,6 +595,13 @@ export class PluginDispatcher {
 	 * must be called BEFORE handle_repair().
 	 */
 	dispatch_revoke(buf_idx: number, buf: NodeBuffer): void {
+		// nothing recorded, so nothing to undo
+		if (
+			this.redirects.size === 0 &&
+			this.close_cbs.live === 0 &&
+			this.undo.empty
+		)
+			return;
 		this.redirects.delete(buf_idx);
 		this.close_cbs.discard(buf_idx);
 
@@ -583,30 +633,74 @@ export class PluginDispatcher {
 	 */
 	run_sequential(buf: NodeBuffer): void {
 		for (const pass of this.sequential) {
+			const handlers = pass.handlers;
+
+			// read once so a handler that grows the buffer keeps walking the old storage
+			const n = buf._n;
+			let idx = n[NodeField.first_child];
+			if (idx === NONE) continue;
+			// with no handled kind anywhere in the buffer, linked or not, the walk does nothing
+			const size = buf._size;
+			let handled = false;
+			for (
+				let b = 0, end = size * NodeField.stride;
+				b < end;
+				b += NodeField.stride
+			) {
+				if (handlers[n[b] & 0xff] != null) {
+					handled = true;
+					break;
+				}
+			}
+			if (!handled) continue;
 			const close_store = new CloseCallbackStore();
+			const ctx = this.ctx;
+			const stack: number[] = [];
 
-			walk_tree(buf, (idx, kind, is_close) => {
-				if (is_close) {
-					close_store.fire(idx);
-					return;
+			while (true) {
+				const b = idx * NodeField.stride;
+				const handler = handlers[n[b] & 0xff];
+				if (handler != null) {
+					const cache = this.views(buf);
+					const view = cache.get(idx)!;
+					// the tree is complete so nothing revokes a sequential write, no
+					// active node means none is recorded
+					const callbacks = handler(view, ctx);
+					if (callbacks) close_store.set(idx, callbacks);
+					cache.clear();
 				}
 
-				const handler = pass.handlers[kind];
-				if (handler === null) return;
-
-				const cache = new ViewCache(buf, this.text_source, this.undo, idx);
-				const view = cache.get(idx)!;
-
-				this.undo.set_active_node(idx);
-				const callbacks = handler(view, this.ctx);
-				this.undo.clear_active_node();
-
-				if (callbacks) {
-					close_store.set(idx, callbacks);
+				const child = n[b + NodeField.first_child];
+				if (child !== NONE) {
+					stack.push(idx);
+					idx = child;
+					continue;
 				}
 
-				cache.clear();
-			});
+				if (close_store.live !== 0) close_store.fire(idx);
+
+				// read after the callbacks, which may relink the node
+				let next = n[b + NodeField.next];
+				let parent = n[b + NodeField.parent];
+				while (
+					(next === NONE ||
+						n[next * NodeField.stride + NodeField.parent] !== parent) &&
+					stack.length > 0
+				) {
+					idx = stack.pop()!;
+					if (close_store.live !== 0) close_store.fire(idx);
+					const bi = idx * NodeField.stride;
+					next = n[bi + NodeField.next];
+					parent = n[bi + NodeField.parent];
+				}
+
+				if (
+					next === NONE ||
+					n[next * NodeField.stride + NodeField.parent] !== parent
+				)
+					break;
+				idx = next;
+			}
 		}
 	}
 

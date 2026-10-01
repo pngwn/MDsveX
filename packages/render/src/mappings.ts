@@ -171,8 +171,9 @@ export function record_data(code: number, node_index: number): MappingData {
 }
 
 // records past this many words are dropped after use rather than kept for
-// the next render, so one huge document does not pin its buffer
-const SINK_KEEP = 1 << 18;
+// the next render, so one huge document does not pin its buffer, 4mb still
+// keeps the records of a 1mb document
+const SINK_KEEP = 1 << 20;
 const SINK_INITIAL = RECORD_SIZE * 256;
 
 /**
