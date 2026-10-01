@@ -330,10 +330,10 @@ function pfm_map(
 const PLAIN_BASENAME = /^[\w\-+~@][\w.\-+~@]*$/;
 
 /**
- * the inline map json remapping gives for the compile and pfm maps with raw
- * as sourcesContent, null for anything left to remapping
+ * base64 of the inline map json remapping gives for the compile and pfm maps
+ * with raw as sourcesContent, null for anything left to remapping
  */
-function chained_json(
+function chained_base64(
 	doc: StoredDocument,
 	compile: any,
 	file: string
@@ -364,23 +364,45 @@ function chained_json(
 
 	const chained = chain_trace(mappings, names, doc.trace, doc.source, doc.html);
 	if (chained === null) return null;
-	let json = '{"version":3';
-	if (out_file) json += ',"file":' + JSON.stringify(out_file);
+	let head = '{"version":3';
+	if (out_file) head += ',"file":' + JSON.stringify(out_file);
+	head += ',"mappings":"';
 	const chained_names = chained.names;
-	json +=
-		',"mappings":"' +
-		chained.mappings +
+	let tail =
 		'","names":' +
-		(chained_names.length === 0 ? '[]' : JSON.stringify(chained_names)) +
+		(chained_names === null ? '[]' : JSON.stringify(chained_names)) +
 		',"ignoreList":[],"sources":';
 	if (chained.sourced) {
 		// a plain basename has no char json escapes, so quoting equals JSON.stringify
-		json +=
+		tail +=
 			'["' + base + '"],"sourcesContent":[' + JSON.stringify(doc.raw) + ']}';
 	} else {
-		json += '[],"sourcesContent":[]}';
+		tail += '[],"sourcesContent":[]}';
 	}
-	return json;
+
+	// the mappings are ascii, written as bytes they skip a decode to a string
+	// and its encode, head and tail end and start in ascii so their utf8 joins
+	const length = chained.length;
+	const src = chained.bytes;
+	const most = (head.length + tail.length) * 3 + length;
+	if (most > BASE64_KEEP) {
+		const text = Buffer.from(src.buffer, src.byteOffset, length).toString(
+			'latin1'
+		);
+		return Buffer.from(head + text + tail).toString('base64');
+	}
+	let bytes = base64_bytes;
+	if (bytes === null || bytes.length < most) {
+		let size = 1 << 14;
+		while (size < most) size <<= 1;
+		bytes = base64_bytes = Buffer.allocUnsafe(size);
+	}
+	let n = bytes.write(head, 0, 'utf8');
+	if (length > 64) bytes.set(src.subarray(0, length), n);
+	else for (let i = 0; i < length; i++) bytes[n + i] = src[i];
+	n += length;
+	n += bytes.write(tail, n, 'utf8');
+	return bytes.toString('base64', 0, n);
 }
 
 // utf8 bytes of a map before base64, reused so a large map does not allocate
@@ -472,8 +494,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				}
 				if (!compileMap?.mappings) return;
 
-				let mapJson = chained_json(doc, compileMap, id);
-				if (mapJson === null) {
+				let mapBase64 = chained_base64(doc, compileMap, id);
+				if (mapBase64 === null) {
 					const pfmMap = pfm_map(doc, compileMap.mappings, id);
 
 					// chain: JS to HTML (compile) + HTML to markdown (pfm) = JS to markdown
@@ -485,12 +507,11 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 							() => originalSource
 						);
 					}
-					mapJson = JSON.stringify(chained);
+					mapBase64 = base64_utf8(JSON.stringify(chained));
 				}
 
 				// inject as inline sourceMappingURL since vite ignores
 				// post-transform map return values
-				const mapBase64 = base64_utf8(mapJson);
 				const comment = `\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${mapBase64}\n`;
 
 				return { code: code + comment, map: { mappings: '' as const } };

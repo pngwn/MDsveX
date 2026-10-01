@@ -885,10 +885,13 @@ export function mapped_source_lines(
 	return lines;
 }
 
+/** the chained mappings as ascii bytes */
 export interface ChainedMappings {
-	mappings: string;
-	/** names in first use order */
-	names: string[];
+	/** mappings in bytes 0 to length */
+	bytes: Uint8Array;
+	length: number;
+	/** names in first use order, null for none */
+	names: string[] | null;
 	/** whether any segment reached the source, then it is the only source */
 	sourced: boolean;
 }
@@ -1113,7 +1116,8 @@ function write_vlq_codec(buf: Uint8Array, p: number, delta: number): number {
 /**
  * chains a compile map from the html onto the map of the html in trace, the
  * mappings and names equal @ampproject/remapping of [compile, trace_to_v3],
- * null when the compile mappings are ones it leaves to remapping
+ * null when the compile mappings are ones it leaves to remapping, the bytes
+ * are reused by the next call
  * @internal
  */
 export function chain_trace(
@@ -1191,7 +1195,8 @@ export function chain_trace(
 	const psline = pseg_sline;
 	const pscol = pseg_scol;
 
-	const names: string[] = [];
+	// most maps carry no names, so the array is made on the first one
+	let names: string[] | null = null;
 	let name_ids: Map<string, number> | null = null;
 	let sourced = false;
 
@@ -1248,11 +1253,14 @@ export function chain_trace(
 			if (cseg_len[k] === 5) {
 				const text = compile_names[cseg_name[k]];
 				if (text) {
-					if (name_ids === null) name_ids = new Map();
+					if (name_ids === null) {
+						name_ids = new Map();
+						names = [];
+					}
 					let id = name_ids.get(text);
 					if (id === undefined) {
-						id = names.length;
-						names.push(text);
+						id = names!.length;
+						names!.push(text);
 						name_ids.set(text, id);
 					}
 					name = id;
@@ -1301,5 +1309,5 @@ export function chain_trace(
 		prev_scol = scol;
 		prev_name = name;
 	}
-	return { mappings: decoder.decode(buf.subarray(0, p)), names, sourced };
+	return { bytes: buf, length: p, names, sourced };
 }
