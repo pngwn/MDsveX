@@ -183,8 +183,8 @@ function collect_spans(mappings: Mapping<MappingData>[]): void {
 		// a one piece RecordMapping is read from its fields, building no arrays or
 		// data, checked by field so a copy of the class from another bundle counts
 		const r = m as RecordMapping;
-		const source = r._source;
-		if (typeof source === 'number') {
+		if (r._arrays === null) {
+			const source = r._source;
 			const code = r._key & 3;
 			if (code === Role.OPEN_SYNTAX || code === Role.CLOSE_SYNTAX) continue;
 			let l = 1;
@@ -259,11 +259,11 @@ function collect_char_spans(mappings: Mapping<MappingData>[]): void {
 	for (let k = 0; k < mappings.length; k++) {
 		const m = mappings[k];
 		const r = m as RecordMapping;
-		const s = r._source;
-		if (typeof s === 'number') {
+		if (r._arrays === null) {
 			const code = r._key & 3;
 			if (code === Role.OPEN_SYNTAX || code === Role.CLOSE_SYNTAX) continue;
 			const g = r._generated;
+			const s = r._source;
 			const length = r._length;
 			if (code === Role.CONTENT && r._generated_length === length) {
 				for (let d = 0; d < length; d++) push_span(g + d, s + d, 1);

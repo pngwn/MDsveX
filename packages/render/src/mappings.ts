@@ -176,49 +176,49 @@ export function record_data(code: number, node_index: number): MappingData {
  * arrays and a data object that stay alive until the caller drops the result
  */
 export class RecordMapping implements Mapping<MappingData> {
-	/**
-	 * the source offset, or the arrays of a mapping that is not one plain
-	 * piece, held as given (the other offsets are then 0)
-	 */
-	_source: number | Mapping<MappingData>;
+	_source: number;
 	_generated: number;
 	_length: number;
 	_generated_length: number;
 	/** (node index + 1) * 16 + record code, data preset and role */
 	_key: number;
+	/** the arrays of a mapping that is not one plain piece, held as given */
+	_arrays: Mapping<MappingData> | null;
 
 	constructor(
-		source: number | Mapping<MappingData>,
+		source: number,
 		generated: number,
 		length: number,
 		generated_length: number,
-		key: number
+		key: number,
+		arrays: Mapping<MappingData> | null
 	) {
 		this._source = source;
 		this._generated = generated;
 		this._length = length;
 		this._generated_length = generated_length;
 		this._key = key;
+		this._arrays = arrays;
 	}
 
 	get sourceOffsets(): number[] {
-		const s = this._source;
-		return typeof s === 'number' ? [s] : s.sourceOffsets;
+		const a = this._arrays;
+		return a === null ? [this._source] : a.sourceOffsets;
 	}
 
 	get generatedOffsets(): number[] {
-		const s = this._source;
-		return typeof s === 'number' ? [this._generated] : s.generatedOffsets;
+		const a = this._arrays;
+		return a === null ? [this._generated] : a.generatedOffsets;
 	}
 
 	get lengths(): number[] {
-		const s = this._source;
-		return typeof s === 'number' ? [this._length] : s.lengths;
+		const a = this._arrays;
+		return a === null ? [this._length] : a.lengths;
 	}
 
 	get generatedLengths(): number[] | undefined {
-		const s = this._source;
-		if (typeof s !== 'number') return s.generatedLengths;
+		const a = this._arrays;
+		if (a !== null) return a.generatedLengths;
 		const gen_length = this._generated_length;
 		return gen_length === this._length ? undefined : [gen_length];
 	}
@@ -229,10 +229,10 @@ export class RecordMapping implements Mapping<MappingData> {
 
 	/** the plain mapping, keys in the order a plain literal had them */
 	toJSON(): Mapping<MappingData> {
-		const s = this._source;
-		if (typeof s !== 'number') return s;
+		const a = this._arrays;
+		if (a !== null) return a;
 		const m: Mapping<MappingData> = {
-			sourceOffsets: [s],
+			sourceOffsets: [this._source],
 			generatedOffsets: [this._generated],
 			lengths: [this._length],
 			data: key_data(this._key),
@@ -275,7 +275,8 @@ export function record_mappings(
 			rec[p],
 			rec[p + 3],
 			rec[p + 1],
-			((rec[p + 4] | 0) + 1) * 16 + rec[p + 5]
+			((rec[p + 4] | 0) + 1) * 16 + rec[p + 5],
+			null
 		);
 	}
 	return mappings;

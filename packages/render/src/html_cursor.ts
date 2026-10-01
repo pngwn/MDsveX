@@ -2942,14 +2942,15 @@ function resolve_raw_mappings(
 					lengths,
 					data: data_of(code, node_index),
 				};
-				mappings[at++] = new RecordMapping(m, 0, 0, 0, key);
+				mappings[at++] = new RecordMapping(0, 0, 0, 0, key, m);
 			} else {
 				mappings[at++] = new RecordMapping(
 					start + k,
 					gen_offset,
 					source_length,
 					source_length,
-					key
+					key,
+					null
 				);
 			}
 			continue;
@@ -2964,7 +2965,8 @@ function resolve_raw_mappings(
 				gen_offset,
 				length,
 				gen_length,
-				key
+				key,
+				null
 			);
 		} else {
 			const m: Mapping<MappingData> = {
@@ -2974,7 +2976,7 @@ function resolve_raw_mappings(
 				data: data_of(code, node_index),
 				generatedLengths: [gen_length],
 			};
-			mappings[at++] = new RecordMapping(m, 0, 0, 0, key);
+			mappings[at++] = new RecordMapping(0, 0, 0, 0, key, m);
 		}
 	}
 	return mappings;
