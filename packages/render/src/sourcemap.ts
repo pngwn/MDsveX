@@ -2,7 +2,12 @@
  * sourcemap utilities: line-starts, offset to position, vlq, v3 conversion.
  */
 
-import type { Mapping, MappingData, MapSink } from './mappings';
+import type {
+	Mapping,
+	MappingData,
+	MapSink,
+	RecordMapping,
+} from './mappings';
 
 // mirrors mappings.ts, local const enums build to literals while imported
 // consts live in module cells that turbofan reloads on every use
@@ -174,6 +179,32 @@ function collect_spans(mappings: Mapping<MappingData>[]): void {
 	let n = 0;
 	for (let k = 0; k < mappings.length; k++) {
 		const m = mappings[k];
+		// a one piece RecordMapping is read from its fields, building no arrays or
+		// data, checked by field so a copy of the class from another bundle counts
+		const r = m as RecordMapping;
+		if (r._arrays === null) {
+			const code = r._code & 3;
+			if (code === Role.OPEN_SYNTAX || code === Role.CLOSE_SYNTAX) continue;
+			let l = 1;
+			if (code === Role.CONTENT) {
+				const length = r._length;
+				if (r._generated_length === length) {
+					if (length === 0) continue;
+					l = length;
+				}
+			}
+			if (n === gen.length) {
+				reserve_spans(n, n + 1);
+				gen = span_gen;
+				src = span_src;
+				len = span_len;
+			}
+			gen[n] = r._generated;
+			src[n] = r._source;
+			len[n] = l;
+			n++;
+			continue;
+		}
 		const role = m.data.role;
 		if (role === 'open_syntax' || role === 'close_syntax') continue;
 
@@ -225,6 +256,20 @@ function collect_char_spans(mappings: Mapping<MappingData>[]): void {
 	span_count = 0;
 	for (let k = 0; k < mappings.length; k++) {
 		const m = mappings[k];
+		const r = m as RecordMapping;
+		if (r._arrays === null) {
+			const code = r._code & 3;
+			if (code === Role.OPEN_SYNTAX || code === Role.CLOSE_SYNTAX) continue;
+			const g = r._generated;
+			const s = r._source;
+			const length = r._length;
+			if (code === Role.CONTENT && r._generated_length === length) {
+				for (let d = 0; d < length; d++) push_span(g + d, s + d, 1);
+			} else {
+				push_span(g, s, 1);
+			}
+			continue;
+		}
 		const role = m.data.role;
 		if (role === 'open_syntax' || role === 'close_syntax') continue;
 

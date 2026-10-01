@@ -2361,7 +2361,8 @@ function resolve_raw_mappings(
 		const end = start + source_length;
 		const identity = gen_length === source_length;
 		let k = rank_of(collapsed, start);
-		const data = data_of(rec[p + 5], rec[p + 4] | 0);
+		const code = rec[p + 5];
+		const node_index = rec[p + 4] | 0;
 		// one class for every mapping so readers stay monomorphic, only a piece
 		// split around \r\n or whose widened length meets its generated length
 		// keeps arrays
@@ -2387,9 +2388,9 @@ function resolve_raw_mappings(
 					sourceOffsets: src_offsets,
 					generatedOffsets: gen_offsets,
 					lengths,
-					data,
+					data: data_of(code, node_index),
 				};
-				mappings.push(new RecordMapping(0, 0, 0, 0, data, m));
+				mappings.push(new RecordMapping(0, 0, 0, 0, code, node_index, m));
 			} else {
 				mappings.push(
 					new RecordMapping(
@@ -2397,7 +2398,8 @@ function resolve_raw_mappings(
 						gen_offset,
 						source_length,
 						source_length,
-						data,
+						code,
+						node_index,
 						null
 					)
 				);
@@ -2410,17 +2412,25 @@ function resolve_raw_mappings(
 		}
 		if (length !== gen_length) {
 			mappings.push(
-				new RecordMapping(start + k, gen_offset, length, gen_length, data, null)
+				new RecordMapping(
+					start + k,
+					gen_offset,
+					length,
+					gen_length,
+					code,
+					node_index,
+					null
+				)
 			);
 		} else {
 			const m: Mapping<MappingData> = {
 				sourceOffsets: [start + k],
 				generatedOffsets: [gen_offset],
 				lengths: [length],
-				data,
+				data: data_of(code, node_index),
 				generatedLengths: [gen_length],
 			};
-			mappings.push(new RecordMapping(0, 0, 0, 0, data, m));
+			mappings.push(new RecordMapping(0, 0, 0, 0, code, node_index, m));
 		}
 	}
 	return mappings;

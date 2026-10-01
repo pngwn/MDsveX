@@ -171,16 +171,18 @@ export function record_data(code: number, node_index: number): MappingData {
 }
 
 /**
- * a mapping of one record, its arrays built on each read from plain fields,
- * so a resolved document keeps one object and its data per piece rather than
- * four arrays that stay alive until the caller drops the result
+ * a mapping of one record, its arrays and data built on each read from plain
+ * fields, so a resolved document keeps one object per piece rather than four
+ * arrays and a data object that stay alive until the caller drops the result
  */
 export class RecordMapping implements Mapping<MappingData> {
 	_source: number;
 	_generated: number;
 	_length: number;
 	_generated_length: number;
-	data: MappingData;
+	/** record code, data preset and role */
+	_code: number;
+	_node_index: number;
 	/** the arrays of a mapping that is not one plain piece, held as given */
 	_arrays: Mapping<MappingData> | null;
 
@@ -189,14 +191,16 @@ export class RecordMapping implements Mapping<MappingData> {
 		generated: number,
 		length: number,
 		generated_length: number,
-		data: MappingData,
+		code: number,
+		node_index: number,
 		arrays: Mapping<MappingData> | null
 	) {
 		this._source = source;
 		this._generated = generated;
 		this._length = length;
 		this._generated_length = generated_length;
-		this.data = data;
+		this._code = code;
+		this._node_index = node_index;
 		this._arrays = arrays;
 	}
 
@@ -222,6 +226,10 @@ export class RecordMapping implements Mapping<MappingData> {
 		return gen_length === this._length ? undefined : [gen_length];
 	}
 
+	get data(): MappingData {
+		return record_data(this._code, this._node_index);
+	}
+
 	/** the plain mapping, keys in the order a plain literal had them */
 	toJSON(): Mapping<MappingData> {
 		const a = this._arrays;
@@ -230,7 +238,7 @@ export class RecordMapping implements Mapping<MappingData> {
 			sourceOffsets: [this._source],
 			generatedOffsets: [this._generated],
 			lengths: [this._length],
-			data: this.data,
+			data: record_data(this._code, this._node_index),
 		};
 		if (this._generated_length !== this._length) {
 			m.generatedLengths = [this._generated_length];
@@ -252,7 +260,8 @@ export function record_mappings(
 				rec[p],
 				rec[p + 3],
 				rec[p + 1],
-				record_data(rec[p + 5], rec[p + 4] | 0),
+				rec[p + 5],
+				rec[p + 4] | 0,
 				null
 			)
 		);
