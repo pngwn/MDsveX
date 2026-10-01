@@ -82,6 +82,10 @@ const config = {
 	},
 	worker: {
 		format: "es",
+		rollupOptions: {
+			// the mdsvex plugin loads these lazily, compiling in a worker never does
+			external: ["vite", /^node:/],
+		},
 	},
 };
 
