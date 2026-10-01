@@ -59,7 +59,7 @@ function mdsvex_transform() {
 			if (extname(id) !== ".svtext") return;
 
 			const { code: html } = compile(code, {
-				parsePlugins: [heading_anchors()],
+				parse_plugins: [heading_anchors()],
 			});
 			return `export default ${JSON.stringify(highlight(html))};`;
 		},

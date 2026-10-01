@@ -86,7 +86,7 @@ function eager(raw: string, compile_map: CompileMap, plugins?: ParsePlugin[]) {
 }
 
 function transform(raw: string, make: MakeMap, plugins?: ParsePlugin[]) {
-	const [pre, post] = mdsvex({ parsePlugins: plugins }) as any[];
+	const [pre, post] = mdsvex({ parse_plugins: plugins }) as any[];
 	const html = pre.transform(raw, ID).code as string;
 	const compile_map = make(html);
 	if (compile_map === null) return null;

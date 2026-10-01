@@ -26,7 +26,7 @@ function fixture_files(dir: string): string[] {
 const ID = '/src/routes/page.svx';
 
 function object_path(raw: string, plugins?: ParsePlugin[]) {
-	const result = compile(raw, { sourcemap: true, parsePlugins: plugins });
+	const result = compile(raw, { sourcemap: true, parse_plugins: plugins });
 	return {
 		code: result.code,
 		map: mappings_to_v3(result.mappings!, raw, result.code, ID),
