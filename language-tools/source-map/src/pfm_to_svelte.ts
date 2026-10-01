@@ -14,8 +14,10 @@ import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import { Cursor } from '@mdsvex/parse/cursor';
 import {
 	_emit,
+	_mapped_begin,
+	_mapped_end,
 	_node,
-	_resolve_mappings,
+	_resolve_offset_mappings,
 	K_HTML,
 	K_LINE_BREAK,
 	K_FRONTMATTER,
@@ -175,14 +177,14 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 	const hasFrontmatter = frontmatterNode !== null;
 	const hasInstanceScript = importNodes.length > 0 || scriptBodies.length > 0;
 
-	const out: string[] = [];
+	let html = '';
 	const entries = new MapSink();
 
 	// Phase A1: Build <script module> block for frontmatter exports
 	// Module-level exports are importable from .ts files AND accessible in template
 	if (hasFrontmatter) {
-		const moduleStart = out.length;
-		out.push('<script module lang="ts">\n');
+		const moduleStart = html.length;
+		html += '<script module lang="ts">\n';
 
 		const yaml = source.slice(
 			frontmatterNode!.valueStart,
@@ -190,43 +192,43 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 		);
 		const fmEntries = extractYamlEntries(yaml, frontmatterNode!.valueStart);
 		for (const entry of fmEntries) {
-			out.push('export const ');
+			html += 'export const ';
 			// character-level mapping for the key name
 			_emit(
 				entries,
-				out.length,
-				out.length + 1,
+				html.length,
+				html.length + entry.name.length,
 				entry.sourceOffset,
 				entry.sourceOffset + entry.name.length,
 				-1,
 				SVELTE_CONTENT
 			);
-			out.push(entry.name, ' = ', entry.jsValue, ';\n');
+			html += entry.name + ' = ' + entry.jsValue + ';\n';
 		}
 
-		out.push('</script>\n\n');
+		html += '</script>\n\n';
 
-		_emit(entries, moduleStart, out.length, 0, 0, -1, STRUCTURE_NODE);
+		_emit(entries, moduleStart, html.length, 0, 0, -1, STRUCTURE_NODE);
 	}
 
 	// Phase A2: Build <script> block for imports and user code (instance scope)
 	if (hasInstanceScript) {
-		const scriptStart = out.length;
-		out.push('<script lang="ts">\n');
+		const scriptStart = html.length;
+		html += '<script lang="ts">\n';
 
 		// imports (verbatim, identity-mapped)
 		for (const imp of importNodes) {
 			const text = source.slice(imp.valueStart, imp.valueEnd);
 			_emit(
 				entries,
-				out.length,
-				out.length + 1,
+				html.length,
+				html.length + text.length,
 				imp.valueStart,
 				imp.valueEnd,
 				-1,
 				SVELTE_CONTENT
 			);
-			out.push(text, '\n');
+			html += text + '\n';
 		}
 
 		// existing <script> body content (identity-mapped)
@@ -235,20 +237,20 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 			if (text.length > 0) {
 				_emit(
 					entries,
-					out.length,
-					out.length + 1,
+					html.length,
+					html.length + text.length,
 					script.valueStart,
 					script.valueEnd,
 					-1,
 					SVELTE_CONTENT
 				);
-				out.push(text, '\n');
+				html += text + '\n';
 			}
 		}
 
-		out.push('</script>\n\n');
+		html += '</script>\n\n';
 
-		_emit(entries, scriptStart, out.length, 0, 0, -1, STRUCTURE_NODE);
+		_emit(entries, scriptStart, html.length, 0, 0, -1, STRUCTURE_NODE);
 	}
 
 	// Phase B: Collect style block source positions before body rendering
@@ -273,18 +275,23 @@ export function pfmToSvelte(source: string): PfmToSvelteResult {
 
 	// Phase C: Render body nodes (skip frontmatter, imports, scripts)
 	cursor.reset();
-	if (cursor.goto_first_child()) {
-		do {
-			if (cursor.kind === K_LINE_BREAK) continue;
-			if (bodySkipSet.has(cursor.index)) continue;
-			_node(cursor, out, entries);
-		} while (cursor.goto_next_sibling());
-		cursor.goto_parent();
+	_mapped_begin(buf, source, html);
+	try {
+		if (cursor.goto_first_child()) {
+			do {
+				if (cursor.kind === K_LINE_BREAK) continue;
+				if (bodySkipSet.has(cursor.index)) continue;
+				_node(cursor, entries);
+			} while (cursor.goto_next_sibling());
+			cursor.goto_parent();
+		}
+	} finally {
+		html = _mapped_end();
 	}
 
 	// resolve mappings
-	const code = out.join('');
-	const mappings = _resolve_mappings(out, entries);
+	const code = html;
+	const mappings = _resolve_offset_mappings(entries);
 
 	// Phase D: Locate style blocks in generated output by matching source content
 	const styleBlocks: StyleBlock[] = [];

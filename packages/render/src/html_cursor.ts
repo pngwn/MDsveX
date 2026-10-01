@@ -2647,3 +2647,32 @@ export class CursorHTMLRenderer {
 		esc_reset('');
 	}
 }
+
+// declared last so no module binding the walk reads moves to a higher slot
+
+/** @internal starts a mapped render that _node appends to html, record offsets index the result */
+export function _mapped_begin(
+	buf: NodeBuffer,
+	source: string,
+	html: string
+): void {
+	esc_reset(source);
+	prebuilt_begin(buf);
+	mo = html;
+}
+
+/** @internal ends the mapped render started by _mapped_begin and returns its html */
+export function _mapped_end(): string {
+	esc_prebuilt = true;
+	esc_bits = null;
+	const html = mo;
+	mo = '';
+	return html;
+}
+
+/** @internal the mappings of a sink whose records hold html offsets */
+export function _resolve_offset_mappings(
+	sink: MapSink
+): Mapping<MappingData>[] {
+	return resolve_mappings(sink);
+}
