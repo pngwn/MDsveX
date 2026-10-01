@@ -349,9 +349,6 @@ importers:
 
   packages/site:
     dependencies:
-      '@mdsvex/parse':
-        specifier: workspace:*
-        version: link:../parse
       mdsvex:
         specifier: 1.0.0-next.0
         version: link:../mdsvex

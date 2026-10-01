@@ -13,7 +13,6 @@
 	},
 	"private": "true",
 	"dependencies": {
-		"@mdsvex/parse": "workspace:*",
 		"mdsvex": "1.0.0-next.0",
 		"refractor": "^5.0.0",
 		"sourcemap-codec": "^1.4.8",
