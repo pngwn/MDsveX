@@ -416,9 +416,15 @@ export function records_by_offset(
 export function map_basename(file?: string): string {
 	// use basename to match svelte compiler convention, vite resolves relative
 	// to the served JS file, so the browser can find the source.
-	return file
-		? file.slice(Math.max(file.lastIndexOf('/'), file.lastIndexOf('\\')) + 1)
-		: 'input.md';
+	if (!file) return 'input.md';
+	// a name is short, so walking back to the last separator beats two
+	// lastIndexOf scans of the whole path
+	let k = file.length - 1;
+	for (; k >= 0; k--) {
+		const c = file.charCodeAt(k);
+		if (c === 47 || c === 92) break;
+	}
+	return file.slice(k + 1);
 }
 
 function v3_map(encoded: string, source: string, file?: string): SourceMapV3 {
