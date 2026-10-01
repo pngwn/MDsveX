@@ -7,9 +7,11 @@ import {
 	merge_meta,
 } from './utils';
 import type { PluginDispatcher } from './plugin_dispatch';
-import type { IdRegister } from './plugin_types';
 
 const NONE = 0xffffffff;
+
+/** open_wants of a builder without plugins, never written */
+const NO_WANTS = new Uint8Array(64);
 
 /**
  * consumes opcodes from PFMParser and builds a NodeBuffer.
@@ -36,20 +38,12 @@ export class TreeBuilder implements Emitter {
 	private revoked_mapped = 0;
 	/** optional plugin dispatcher. null when no plugins registered. */
 	private dispatcher: PluginDispatcher | null;
-
-	/** callback for dispatcher to register synthetic node ids. */
-	private register_id: IdRegister | null = null;
+	private wants: Uint8Array;
 
 	constructor(capacity: number, dispatcher?: PluginDispatcher) {
 		this.nodes = new NodeBuffer(capacity);
 		this.dispatcher = dispatcher ?? null;
-		// NodeBuffer constructor auto-creates root at index 0
-		if (this.dispatcher !== null) {
-			// only plugins register synthetic ids, so only they pay for the closure
-			this.register_id = (synthetic_id: number, buf_idx: number): void => {
-				(this.id_to_index ?? this.start_id_map())[synthetic_id] = buf_idx;
-			};
-		}
+		this.wants = dispatcher !== undefined ? dispatcher.open_wants : NO_WANTS;
 	}
 
 	/**
@@ -112,26 +106,47 @@ export class TreeBuilder implements Emitter {
 		extra: number,
 		pending: boolean
 	): void {
-		// root (id=0) is auto-created by NodeBuffer constructor, skip
-		if (id === 0) return;
-
 		const nodes = this.nodes;
-		if (this.id_to_index === null && id === nodes._size) {
-			// parents are opened ids below this one, so they are indices too
-			const parent_idx = parent === -1 ? NONE : parent;
-			const dispatcher = this.dispatcher;
-			if (dispatcher !== null && dispatcher.wants_open(kind)) {
-				this.open_with_plugins(
-					dispatcher,
-					kind,
-					start,
-					parent_idx,
-					extra,
-					pending
-				);
+		// parents are opened ids below this one so they are indices too, id 0
+		// never matches as the buffer makes the root, the rare rest stays out of line
+		if (this.id_to_index === null && id === nodes._size && !this.wants[kind]) {
+			// >>> 0 turns the -1 of no parent into NONE
+			nodes.push_node(kind, start, parent >>> 0, extra, pending);
+			return;
+		}
+		if (id !== 0) this.open_slow(id, kind, start, parent, extra, pending);
+	}
+
+	private open_slow(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		extra: number,
+		pending: boolean
+	): void {
+		const nodes = this.nodes;
+		const dispatcher = this.dispatcher;
+		if (
+			dispatcher !== null &&
+			this.id_to_index === null &&
+			id === nodes._size
+		) {
+			let parent_idx = parent === -1 ? NONE : parent;
+			if (!dispatcher.wants_open(kind)) {
+				nodes.push_node(kind, start, parent_idx, extra, pending);
 				return;
 			}
-			nodes.push_node(kind, start, parent_idx, extra, pending);
+			// children of a wrap_inner parent go to its wrapper
+			if (parent_idx !== NONE) {
+				const redirect = dispatcher.get_redirect(parent_idx);
+				if (redirect !== undefined) parent_idx = redirect;
+			}
+			const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
+			if (dispatcher.has_handlers(kind)) {
+				dispatcher.dispatch_open(idx, kind, nodes);
+				this.wants = dispatcher.open_wants;
+			}
 			return;
 		}
 		this.open_mapped(id, kind, start, parent, extra, pending);
@@ -162,46 +177,44 @@ export class TreeBuilder implements Emitter {
 		map[id] = idx;
 
 		if (dispatcher !== null && dispatcher.has_handlers(kind)) {
-			dispatcher.dispatch_open(idx, kind, nodes, this.register_id!);
-		}
-	}
-
-	/** an open whose id is its buffer index */
-	private open_with_plugins(
-		dispatcher: PluginDispatcher,
-		kind: NodeKind,
-		start: number,
-		parent_idx: number,
-		extra: number,
-		pending: boolean
-	): void {
-		const nodes = this.nodes;
-		// children of a wrap_inner parent go to its wrapper
-		if (parent_idx !== NONE) {
-			const redirect = dispatcher.get_redirect(parent_idx);
-			if (redirect !== undefined) parent_idx = redirect;
-		}
-		const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
-		if (dispatcher.has_handlers(kind)) {
-			dispatcher.dispatch_open(idx, kind, nodes, this.register_id!);
+			dispatcher.dispatch_open(idx, kind, nodes);
+			this.wants = dispatcher.open_wants;
 		}
 	}
 
 	close(id: number, end: number, kind?: NodeKind): void {
-		if (this.dispatcher !== null) {
-			this.close_with_plugins(id, end, kind);
-			return;
-		}
 		const idx = this.index_of(id);
 		if (idx === undefined) return;
-		const n = this.nodes._n;
 		const b = idx * NodeField.stride;
+		const n = this.nodes._n;
 		n[b + NodeField.end] = end;
+		// the rare closes go to a call so close inlines cheaply at every emit site
+		if (
+			this.dispatcher === null &&
+			kind !== undefined &&
+			kind !== NodeKind.list &&
+			(kind !== NodeKind.paragraph || n[b + NodeField.pending] === 0)
+		) {
+			n[b + NodeField.pending] = 0;
+			return;
+		}
+		this.close_rest(idx, b, kind);
+	}
+
+	private close_rest(idx: number, b: number, kind: NodeKind | undefined): void {
+		const nodes = this.nodes;
+		// fire close callbacks before committing, a quiet dispatcher has none
+		const dispatcher = this.dispatcher;
+		if (dispatcher !== null && !dispatcher.quiet()) {
+			dispatcher.dispatch_close(idx, nodes);
+		}
 
 		// pending paragraphs inside list_items are tight-list speculation
 		// wrappers, they stay pending after close until the list closes
 		// and the parser either revokes (tight) or commits (loose) them.
+		// dispatch_close already committed the undo log of a node not pending
 		if (kind === undefined) kind = this.opened_kind(idx);
+		const n = nodes._n;
 		if (
 			kind === NodeKind.paragraph &&
 			n[b + NodeField.pending] === 1 &&
@@ -211,30 +224,6 @@ export class TreeBuilder implements Emitter {
 			return;
 		}
 		n[b + NodeField.pending] = 0;
-		if (kind === NodeKind.list) this.unwrap_tight_list(idx);
-	}
-
-	private close_with_plugins(id: number, end: number, opened?: NodeKind): void {
-		const idx = this.index_of(id);
-		if (idx === undefined) return;
-		const nodes = this.nodes;
-		const dispatcher = this.dispatcher!;
-		nodes.set_end(idx, end);
-
-		// fire close callbacks before committing, a quiet dispatcher has none
-		if (!dispatcher.quiet()) dispatcher.dispatch_close(idx, nodes);
-
-		// pending paragraphs inside list_items are tight-list speculation
-		// wrappers, they stay pending after close until the list closes
-		// and the parser either revokes (tight) or commits (loose) them.
-		const kind = opened !== undefined ? opened : this.opened_kind(idx);
-		const keep_pending =
-			kind === NodeKind.paragraph &&
-			nodes.pending_at(idx) === 1 &&
-			nodes.kind_at(nodes.parent_at(idx)) === NodeKind.list_item;
-		// dispatch_close already committed the undo log of a node not pending
-		if (!keep_pending) nodes.commit_node(idx);
-
 		if (kind === NodeKind.list) this.unwrap_tight_list(idx);
 	}
 
@@ -293,6 +282,31 @@ export class TreeBuilder implements Emitter {
 			// fills the slot of the id the parser reserved for this text node
 			this.nodes.push_text(start, end, parent_idx);
 		}
+	}
+
+	leaf(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		value_start: number,
+		value_end: number,
+		end: number
+	): void {
+		const nodes = this.nodes;
+		const dispatcher = this.dispatcher;
+		if (
+			this.id_to_index === null &&
+			id === nodes._size &&
+			(dispatcher === null || (!this.wants[kind] && dispatcher.quiet()))
+		) {
+			nodes.push_leaf(kind, start, value_start, value_end, end, parent);
+			return;
+		}
+		this.open(id, kind, start, parent, 0, false);
+		this.set_value_start(id, value_start);
+		this.set_value_end(id, value_end);
+		this.close(id, end, kind);
 	}
 
 	attr(id: number, key: string, value: any): void {

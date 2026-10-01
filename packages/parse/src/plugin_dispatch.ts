@@ -18,7 +18,6 @@ import type {
 	NodeHandler,
 	ComposedHandler,
 	PluginContext,
-	IdRegister,
 } from './plugin_types';
 
 const NONE = 0xffffffff;
@@ -130,7 +129,12 @@ interface RegistrationResult {
 	fused: HandlersTable;
 	sequential: { plugin: ParsePlugin; handlers: HandlersTable }[];
 	has_handler: Uint32Array;
+	/** 1 for each kind with a fused handler, shared, never written */
+	open_wants: Uint8Array;
 }
+
+/** open_wants once a redirect exists, any open may need retargeting */
+const ALL_WANTS = new Uint8Array(64).fill(1);
 
 function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 	const fused_plugins: ParsePlugin[] = [];
@@ -194,7 +198,16 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 			pass.handlers.some((h) => h !== null)
 		),
 		has_handler,
+		open_wants: wants_of(has_handler),
 	};
+}
+
+function wants_of(has_handler: Uint32Array): Uint8Array {
+	const wants = new Uint8Array(64);
+	for (let k = 0; k < 64; k++) {
+		if (has_handler[k >> 5] & (1 << (k & 31))) wants[k] = 1;
+	}
+	return wants;
 }
 
 /** parse_of for an entry the registration skips */
@@ -397,6 +410,12 @@ function dispatch_open(
 	}
 }
 
+/** shared undo log until a view or a kind rewrite needs one, never written */
+const NO_UNDO = new UndoLog();
+
+/** shared close callbacks until the first is set, never written */
+const NO_CLOSE_CBS = new CloseCallbackStore();
+
 /** shared redirects until the first wrap_inner, never written */
 const NO_REDIRECTS: Map<number, number> = new Map();
 
@@ -410,9 +429,9 @@ export class PluginDispatcher {
 	private fused: HandlersTable;
 	private has_handler: Uint32Array;
 	private sequential: { plugin: ParsePlugin; handlers: HandlersTable }[];
-	private undo: UndoLog = new UndoLog();
-	private close_cbs: CloseCallbackStore = new CloseCallbackStore();
-	private ctx: PluginContext = {};
+	private undo: UndoLog = NO_UNDO;
+	private close_cbs: CloseCallbackStore = NO_CLOSE_CBS;
+	private ctx: PluginContext | null = null;
 	private text_source: TextSource;
 
 	/**
@@ -426,19 +445,28 @@ export class PluginDispatcher {
 	/** one cache serves every dispatch, a view only holds an index */
 	private cache: ViewCache | null = null;
 
+	/**
+	 * 1 for each kind whose open needs the dispatcher, every kind once a redirect
+	 * exists, redirects only start in dispatch_open so builders reread it after one
+	 */
+	open_wants: Uint8Array;
+
 	constructor(plugins: ParsePlugin[], text_source: TextSource) {
 		const reg = registration_for(plugins);
 		this.fused = reg.fused;
 		this.has_handler = reg.has_handler;
 		this.sequential = reg.sequential;
 		this.text_source = text_source;
+		this.open_wants = reg.open_wants;
 	}
 
 	/** cleared since a callback view may have filled it after the last dispatch */
 	private views(buf: NodeBuffer): ViewCache {
 		const cache = this.cache;
 		if (cache === null) {
-			return (this.cache = new ViewCache(buf, this.text_source, this.undo));
+			let undo = this.undo;
+			if (undo === NO_UNDO) undo = this.undo = new UndoLog();
+			return (this.cache = new ViewCache(buf, this.text_source, undo));
 		}
 		cache.clear();
 		cache.rebind(buf, this.text_source);
@@ -452,7 +480,9 @@ export class PluginDispatcher {
 
 	/** a kind rewrite outside the plugins, such as a revoke repair */
 	log_kind(buf_idx: number, prior_kind: number): void {
-		this.undo.log_kind(buf_idx, prior_kind);
+		let undo = this.undo;
+		if (undo === NO_UNDO) undo = this.undo = new UndoLog();
+		undo.log_kind(buf_idx, prior_kind);
 	}
 
 	/** an open of this kind needs a handler call or a redirect lookup */
@@ -481,20 +511,13 @@ export class PluginDispatcher {
 		return this.redirects.get(parent_idx);
 	}
 
-	/** register a wrap_inner redirect. */
-	set_redirect(parent_idx: number, wrapper_idx: number): void {
-		this.own_redirects().set(parent_idx, wrapper_idx);
-	}
-
 	private own_redirects(): Map<number, number> {
 		let redirects = this.redirects;
-		if (redirects === NO_REDIRECTS) redirects = this.redirects = new Map();
+		if (redirects === NO_REDIRECTS) {
+			redirects = this.redirects = new Map();
+			this.open_wants = ALL_WANTS;
+		}
 		return redirects;
-	}
-
-	/** clear a redirect (on parent close). */
-	clear_redirect(parent_idx: number): void {
-		this.redirects.delete(parent_idx);
 	}
 
 	/** allocate a new synthetic node id. */
@@ -511,12 +534,7 @@ export class PluginDispatcher {
 	 * dispatch fused plugin handlers on node open.
 	 * creates a ViewCache, runs handlers, stores close callbacks.
 	 */
-	dispatch_open(
-		buf_idx: number,
-		kind: NodeKind,
-		buf: NodeBuffer,
-		id_register: IdRegister
-	): void {
+	dispatch_open(buf_idx: number, kind: NodeKind, buf: NodeBuffer): void {
 		const cache = this.views(buf);
 		const view = cache.get(buf_idx)!;
 
@@ -524,7 +542,7 @@ export class PluginDispatcher {
 		const callbacks = dispatch_open(
 			kind,
 			view,
-			this.ctx,
+			this.ctx ?? (this.ctx = {}),
 			this.fused,
 			this.has_handler
 		);
@@ -544,7 +562,10 @@ export class PluginDispatcher {
 		}
 
 		if (callbacks) {
-			this.close_cbs.set(buf_idx, callbacks);
+			let close_cbs = this.close_cbs;
+			if (close_cbs === NO_CLOSE_CBS)
+				close_cbs = this.close_cbs = new CloseCallbackStore();
+			close_cbs.set(buf_idx, callbacks);
 		}
 
 		cache.clear();
@@ -635,8 +656,8 @@ export class PluginDispatcher {
 		for (const pass of this.sequential) {
 			const handlers = pass.handlers;
 
-			// read once so a handler that grows the buffer keeps walking the old storage
-			const n = buf._n;
+			// reread after plugin code runs, growing the buffer moves it to new storage
+			let n = buf._n;
 			let idx = n[NodeField.first_child];
 			if (idx === NONE) continue;
 			// with no handled kind anywhere in the buffer, linked or not, the walk does nothing
@@ -654,7 +675,7 @@ export class PluginDispatcher {
 			}
 			if (!handled) continue;
 			const close_store = new CloseCallbackStore();
-			const ctx = this.ctx;
+			const ctx = this.ctx ?? (this.ctx = {});
 			const stack: number[] = [];
 
 			while (true) {
@@ -668,6 +689,7 @@ export class PluginDispatcher {
 					const callbacks = handler(view, ctx);
 					if (callbacks) close_store.set(idx, callbacks);
 					cache.clear();
+					n = buf._n;
 				}
 
 				const child = n[b + NodeField.first_child];
@@ -677,7 +699,10 @@ export class PluginDispatcher {
 					continue;
 				}
 
-				if (close_store.live !== 0) close_store.fire(idx);
+				if (close_store.live !== 0) {
+					close_store.fire(idx);
+					n = buf._n;
+				}
 
 				// read after the callbacks, which may relink the node
 				let next = n[b + NodeField.next];
@@ -688,7 +713,10 @@ export class PluginDispatcher {
 					stack.length > 0
 				) {
 					idx = stack.pop()!;
-					if (close_store.live !== 0) close_store.fire(idx);
+					if (close_store.live !== 0) {
+						close_store.fire(idx);
+						n = buf._n;
+					}
 					const bi = idx * NodeField.stride;
 					next = n[bi + NodeField.next];
 					parent = n[bi + NodeField.parent];
@@ -706,7 +734,7 @@ export class PluginDispatcher {
 
 	/** reset all state. */
 	reset(): void {
-		this.undo.clear();
+		if (this.undo !== NO_UNDO) this.undo.clear();
 		this.close_cbs.reset();
 		this.redirects.clear();
 		this.next_synthetic_id = SYNTHETIC_ID_BASE;

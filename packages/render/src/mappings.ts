@@ -170,6 +170,111 @@ export function record_data(code: number, node_index: number): MappingData {
 	}
 }
 
+/**
+ * builds its arrays and data on each read, so a resolved document keeps one
+ * object per piece rather than four arrays and a data object
+ */
+export class RecordMapping implements Mapping<MappingData> {
+	_source: number;
+	_generated: number;
+	_length: number;
+	_generated_length: number;
+	/** 16 * node index + 16 + record code */
+	_key: number;
+	/** the arrays of a mapping that is not one plain piece, held as given */
+	_arrays: Mapping<MappingData> | null;
+
+	constructor(
+		source: number,
+		generated: number,
+		length: number,
+		generated_length: number,
+		key: number,
+		arrays: Mapping<MappingData> | null
+	) {
+		this._source = source;
+		this._generated = generated;
+		this._length = length;
+		this._generated_length = generated_length;
+		this._key = key;
+		this._arrays = arrays;
+	}
+
+	get sourceOffsets(): number[] {
+		const a = this._arrays;
+		return a === null ? [this._source] : a.sourceOffsets;
+	}
+
+	get generatedOffsets(): number[] {
+		const a = this._arrays;
+		return a === null ? [this._generated] : a.generatedOffsets;
+	}
+
+	get lengths(): number[] {
+		const a = this._arrays;
+		return a === null ? [this._length] : a.lengths;
+	}
+
+	get generatedLengths(): number[] | undefined {
+		const a = this._arrays;
+		if (a !== null) return a.generatedLengths;
+		const gen_length = this._generated_length;
+		return gen_length === this._length ? undefined : [gen_length];
+	}
+
+	get data(): MappingData {
+		return key_data(this._key);
+	}
+
+	/** keys in the order a plain literal had them */
+	toJSON(): Mapping<MappingData> {
+		const a = this._arrays;
+		if (a !== null) return a;
+		const m: Mapping<MappingData> = {
+			sourceOffsets: [this._source],
+			generatedOffsets: [this._generated],
+			lengths: [this._length],
+			data: key_data(this._key),
+		};
+		if (this._generated_length !== this._length) {
+			m.generatedLengths = [this._generated_length];
+		}
+		return m;
+	}
+}
+
+/** a key can pass 32 bits, & 15 and a division split any safe integer */
+function key_data(key: number): MappingData {
+	const code = key & 15;
+	return record_data(code, (key - code) / 16 - 1);
+}
+
+// new Array(length) far past this gives dictionary elements
+const MAPPINGS_PRESIZE_MAX = 1 << 20;
+
+export function record_mappings(
+	rec: Uint32Array,
+	n: number
+): Mapping<MappingData>[] {
+	// presized since push copies at every growth step, past the cap stores append
+	const count = n / RECORD_SIZE;
+	const mappings: Mapping<MappingData>[] = new Array(
+		count < MAPPINGS_PRESIZE_MAX ? count : MAPPINGS_PRESIZE_MAX
+	);
+	let i = 0;
+	for (let p = 0; p < n; p += RECORD_SIZE) {
+		mappings[i++] = new RecordMapping(
+			rec[p + 2],
+			rec[p],
+			rec[p + 3],
+			rec[p + 1],
+			((rec[p + 4] | 0) + 1) * 16 + rec[p + 5],
+			null
+		);
+	}
+	return mappings;
+}
+
 // records past this many words are dropped after use rather than kept for
 // the next render, so one huge document does not pin its buffer, 4mb still
 // keeps the records of a 1mb document

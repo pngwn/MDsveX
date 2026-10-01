@@ -43,9 +43,66 @@ export const enum NodeField {
 
 const NODE_BYTES = NodeField.stride * 4;
 
+/** shared empty strings until own_strings, never written */
+const NO_STRINGS: (string | undefined)[] = [];
+
 /**
- * regions are never reused, so a carve starts zeroed and costs one view not a
- * backing store, but a live small buffer keeps its whole slab alive
+ * uninitialized where the host allows, the template and a push write every
+ * word of a node before anything reads it
+ */
+const host_buffer: any = (globalThis as any).Buffer;
+const unzeroed =
+	host_buffer !== undefined &&
+	typeof host_buffer.allocUnsafeSlow === 'function';
+function new_storage(bytes: number): ArrayBuffer {
+	return unzeroed
+		? (host_buffer.allocUnsafeSlow(bytes).buffer as ArrayBuffer)
+		: new ArrayBuffer(bytes);
+}
+
+/** a template copy repeats at most this many nodes, a longer source falls out of cache */
+const TEMPLATE_BLOCK = 512;
+
+/**
+ * template slots from up to to, no end, value, links, pending or meta, so a
+ * push writes only kind, start, parent and the links it makes
+ */
+function fill_template(n: Uint32Array, from: number, to: number): void {
+	// a copy is a runtime call, stores beat it for the few nodes a small document has
+	const short = to - from <= 64 ? to : from + 64;
+	for (let b = from * NodeField.stride; b < short * NodeField.stride; ) {
+		n[b + NodeField.end] = 0xffffffff;
+		n[b + NodeField.value_start] = 0;
+		n[b + NodeField.value_end] = 0;
+		n[b + NodeField.next] = 0xffffffff;
+		n[b + NodeField.prev] = 0xffffffff;
+		n[b + NodeField.first_child] = 0xffffffff;
+		n[b + NodeField.last_child] = 0xffffffff;
+		n[b + NodeField.pending] = 0;
+		n[b + NodeField.meta] = 0;
+		b += NodeField.stride;
+	}
+	let done = short;
+	while (done < to) {
+		let count = done - from;
+		if (count > TEMPLATE_BLOCK) count = TEMPLATE_BLOCK;
+		if (count > to - done) count = to - done;
+		n.copyWithin(
+			done * NodeField.stride,
+			from * NodeField.stride,
+			(from + count) * NodeField.stride
+		);
+		done += count;
+	}
+}
+
+const SLAB_NODES = (SLAB_BYTES / NODE_BYTES) | 0;
+
+const FILL_CHUNK = 4096;
+
+/**
+ * a carve costs one view not a backing store but keeps its whole slab alive,
+ * a slab holds the template from slab_used on, a trim returns only unwritten slots
  */
 let slab = new ArrayBuffer(0);
 let slab_used = SLAB_BYTES;
@@ -326,21 +383,29 @@ export class NodeBuffer {
 	/** @internal */
 	_meta: any[] = NO_META;
 	/** @internal pre-materialized text strings (used by wiretreebuilder). index -> string. */
-	_strings: (string | undefined)[] = [];
+	_strings: (string | undefined)[] = NO_STRINGS;
 
 	/** @internal read by TreeBuilder to check ids against indices */
 	_size = 0;
+	/** slots from _size up to here hold the template */
+	private _filled = 0;
 
 	constructor(initial_capacity = DEFAULT_TOKEN_CAPACITY) {
 		// the comparison also sends a nan capacity to the floor
-		this.alloc(
+		let n = this.alloc(
 			next_power_of_two(
 				initial_capacity > MIN_NODE_CAPACITY
 					? initial_capacity
 					: MIN_NODE_CAPACITY
 			)
 		);
-		this.push(NodeKind.root, 0);
+		// the root push by hand, an inlined push_node would count against the
+		// inlining budget of every new TreeBuilder caller
+		if (this._filled === 0) n = this.fill(0);
+		n[0] = NodeKind.root;
+		n[NodeField.start] = 0;
+		n[NodeField.parent] = 0xffffffff;
+		this._size = 1;
 	}
 
 	private alloc(capacity: number): Uint32Array {
@@ -350,20 +415,30 @@ export class NodeBuffer {
 		let base = 0;
 		if (bytes <= SLAB_MAX_CARVE) {
 			if (slab_used + bytes > SLAB_BYTES) {
-				slab = new ArrayBuffer(SLAB_BYTES);
+				slab = new_storage(SLAB_BYTES);
 				slab_used = 0;
+				fill_template(new Uint32Array(slab), 0, SLAB_NODES);
 			}
 			buffer = slab;
 			base = slab_used;
 			slab_used = base + bytes;
 		} else {
-			buffer = new ArrayBuffer(bytes);
+			buffer = new_storage(bytes);
 		}
 		const n = new Uint32Array(buffer, base, capacity * NodeField.stride);
-		if (buffer === slab) last_carve = n;
+		if (buffer === slab) {
+			last_carve = n;
+			this._filled = capacity;
+		} else this._filled = 0;
 		this._capacity = capacity;
 		this._n = n;
 		return n;
+	}
+
+	/** @internal */
+	own_strings(): (string | undefined)[] {
+		const strings = this._strings;
+		return strings === NO_STRINGS ? (this._strings = []) : strings;
 	}
 
 	/** gives the unused tail of the last slab carve back, a later push resizes */
@@ -371,6 +446,7 @@ export class NodeBuffer {
 		if (this._n !== last_carve) return;
 		slab_used -= (this._capacity - this._size) * NODE_BYTES;
 		this._capacity = this._size;
+		this._filled = this._size;
 	}
 
 	/** clear nodes without reallocating storage */
@@ -379,7 +455,25 @@ export class NodeBuffer {
 		// a length store is a runtime call even when already empty
 		if (this._meta.length !== 0) this._meta.length = 0;
 		if (this._strings.length !== 0) this._strings.length = 0;
-		this._size = 0;
+		// make the pushed slots template again, copying the template above them
+		// when there is enough, one copy costs about what stores for eight nodes do
+		const size = this._size;
+		if (size !== 0) {
+			if (size > 8 && size << 1 <= this._filled) {
+				const n = this._n;
+				for (let done = 0; done < size; ) {
+					let count = size - done;
+					if (count > TEMPLATE_BLOCK) count = TEMPLATE_BLOCK;
+					n.copyWithin(
+						done * NodeField.stride,
+						size * NodeField.stride,
+						(size + count) * NodeField.stride
+					);
+					done += count;
+				}
+			} else fill_template(this._n, 0, size);
+			this._size = 0;
+		}
 	}
 
 	get size(): number {
@@ -428,21 +522,14 @@ export class NodeBuffer {
 	): number {
 		const index = this._size;
 		let n = this._n;
-		if (index >= this._capacity) n = this.grow();
+		if (index >= this._filled) n = this.fill(index);
 
+		// the template holds every other word
 		const b = index * NodeField.stride;
 		n[b] = (kind & 0xff) | ((extra & 0xffff) << 8);
-		n[b + NodeField.start] = cursor >>> 0;
-		n[b + NodeField.end] = 0xffffffff;
-		n[b + NodeField.value_start] = 0;
-		n[b + NodeField.value_end] = 0;
+		n[b + NodeField.start] = cursor;
 		n[b + NodeField.parent] = parent;
-		n[b + NodeField.next] = 0xffffffff;
-		n[b + NodeField.prev] = 0xffffffff;
-		n[b + NodeField.first_child] = 0xffffffff;
-		n[b + NodeField.last_child] = 0xffffffff;
-		n[b + NodeField.pending] = pending ? 1 : 0;
-		n[b + NodeField.meta] = 0;
+		if (pending) n[b + NodeField.pending] = 1;
 		this._size = index + 1;
 
 		if (parent !== 0xffffffff) {
@@ -465,7 +552,7 @@ export class NodeBuffer {
 	push_text(start: number, end: number, parent: number): number {
 		const index = this._size;
 		let n = this._n;
-		if (index >= this._capacity) n = this.grow();
+		if (index >= this._filled) n = this.fill(index);
 
 		const b = index * NodeField.stride;
 		n[b] = NodeKind.text;
@@ -474,12 +561,6 @@ export class NodeBuffer {
 		n[b + NodeField.value_start] = start;
 		n[b + NodeField.value_end] = end;
 		n[b + NodeField.parent] = parent;
-		n[b + NodeField.next] = 0xffffffff;
-		n[b + NodeField.prev] = 0xffffffff;
-		n[b + NodeField.first_child] = 0xffffffff;
-		n[b + NodeField.last_child] = 0xffffffff;
-		n[b + NodeField.pending] = 0;
-		n[b + NodeField.meta] = 0;
 		this._size = index + 1;
 
 		const p = parent * NodeField.stride;
@@ -492,6 +573,53 @@ export class NodeBuffer {
 		}
 		n[p + NodeField.last_child] = index;
 		return index;
+	}
+
+	/** a closed node with no extra and a value range, as open, value and close would leave it */
+	push_leaf(
+		kind: NodeKind,
+		start: number,
+		value_start: number,
+		value_end: number,
+		end: number,
+		parent: number
+	): number {
+		const index = this._size;
+		let n = this._n;
+		if (index >= this._filled) n = this.fill(index);
+
+		const b = index * NodeField.stride;
+		n[b] = kind;
+		n[b + NodeField.start] = start;
+		n[b + NodeField.end] = end;
+		n[b + NodeField.value_start] = value_start;
+		n[b + NodeField.value_end] = value_end;
+		n[b + NodeField.parent] = parent;
+		this._size = index + 1;
+
+		const p = parent * NodeField.stride;
+		const last = n[p + NodeField.last_child];
+		if (last === 0xffffffff) {
+			n[p + NodeField.first_child] = index;
+		} else {
+			n[last * NodeField.stride + NodeField.next] = index;
+			n[b + NodeField.prev] = last;
+		}
+		n[p + NodeField.last_child] = index;
+		return index;
+	}
+
+	private fill(index: number): Uint32Array {
+		let n = this._n;
+		if (index >= this._capacity) n = this.grow();
+		let filled = this._filled;
+		if (index >= filled) {
+			let to = filled + (filled > FILL_CHUNK ? filled : FILL_CHUNK);
+			if (to > this._capacity) to = this._capacity;
+			fill_template(n, filled, to);
+			this._filled = filled = to;
+		}
+		return n;
 	}
 
 	/**
@@ -671,7 +799,7 @@ export class NodeBuffer {
 			this.set_value(text_idx, start, end);
 			this.set_end(text_idx, end);
 			if (delimiter_text !== undefined && text_start !== start) {
-				this._strings[text_idx] = delimiter_text;
+				this.own_strings()[text_idx] = delimiter_text;
 			}
 
 			// splice the original children in after the rewritten node so they
@@ -712,7 +840,7 @@ export class NodeBuffer {
 
 		if (delimiter_text !== undefined) {
 			const start = this.start_at(index);
-			if (text_start !== start) this._strings[index] = delimiter_text;
+			if (text_start !== start) this.own_strings()[index] = delimiter_text;
 			const end = start + delimiter_text.length;
 			this.set_value(index, start, end);
 			this.set_end(index, end);
@@ -833,7 +961,9 @@ export class NodeBuffer {
 	}
 
 	pop(): void {
-		this._size -= 1;
+		const i = --this._size;
+		// the popped slot is the template again, as a push expects
+		fill_template(this._n, i, i + 1);
 	}
 
 	/**
@@ -1074,13 +1204,20 @@ export class NodeBuffer {
 				slab_used = base + bytes;
 				last_carve = n;
 				this._capacity = next;
+				this._filled = next;
 				this._n = n;
 				return n;
 			}
 		}
 		const n = this.alloc(next);
-		// a trimmed view is longer than its capacity
-		n.set(old.length === words ? old : old.subarray(0, words));
+		// slots from _size on are template in both, a carve has it already
+		const size = this._size;
+		n.set(
+			old.length === size * NodeField.stride
+				? old
+				: old.subarray(0, size * NodeField.stride)
+		);
+		if (this._filled < size) this._filled = size;
 		return n;
 	}
 

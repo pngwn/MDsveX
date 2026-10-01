@@ -58,6 +58,20 @@ export interface Emitter {
 	): void;
 
 	/**
+	 * open, set_value_start, set_value_end and close of a node with no extra in
+	 * one call, when it is missing the parser emits those four opcodes
+	 */
+	leaf?(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		value_start: number,
+		value_end: number,
+		end: number
+	): void;
+
+	/**
 	 * set or update an attribute on a node.
 	 * used for metadata (href, title, info), value ranges, and list properties.
 	 * @param id id of the node.

@@ -2,12 +2,17 @@
  * sourcemap utilities: line-starts, offset to position, vlq, v3 conversion.
  */
 
-import type { Mapping, MappingData, MapSink } from './mappings';
+import type { Mapping, MappingData, MapSink, RecordMapping } from './mappings';
 
 // mirrors mappings.ts, local const enums build to literals while imported
 // consts live in module cells that turbofan reloads on every use
 const enum Rec {
 	SIZE = 6,
+}
+
+// a trace record, generated offset, source offset, run length, 1 for a point
+const enum Trace {
+	SIZE = 3,
 }
 
 const enum Role {
@@ -35,28 +40,40 @@ function copy_i32(a: Int32Array, used: number, size: number): Int32Array {
 	return b;
 }
 
-function fill_line_starts(table: LineTable, s: string): void {
+/**
+ * line starts of s up to line max_line or the first line starting past
+ * max_offset, the last line held then stands for every line after it
+ */
+function fill_line_starts(
+	table: LineTable,
+	s: string,
+	max_line: number,
+	max_offset: number,
+	no_cr = false
+): void {
 	let starts = table.starts;
 	let n = 1;
 	starts[0] = 0;
-	if (s.indexOf('\r') === -1) {
+	if (no_cr || s.indexOf('\r') === -1) {
 		// without \r only \n ends a line, and indexOf finds it far faster than
 		// a charCodeAt loop
-		let i = s.indexOf('\n');
-		while (i !== -1) {
+		let i = max_line > 0 ? s.indexOf('\n') : -1;
+		while (i !== -1 && i < max_offset) {
 			if (n + 2 >= starts.length)
 				starts = copy_i32(starts, n, starts.length * 2);
 			starts[n++] = i + 1;
+			if (n > max_line) break;
 			i = s.indexOf('\n', i + 1);
 		}
-	} else {
-		for (let i = 0; i < s.length; i++) {
+	} else if (max_line > 0) {
+		for (let i = 0; i < s.length && i < max_offset; i++) {
 			const c = s.charCodeAt(i);
 			// bare \r ends a line too, as editors split source
 			if (c === 10 || (c === 13 && s.charCodeAt(i + 1) !== 10)) {
 				if (n + 2 >= starts.length)
 					starts = copy_i32(starts, n, starts.length * 2);
 				starts[n++] = i + 1;
+				if (n > max_line) break;
 			}
 		}
 	}
@@ -69,7 +86,7 @@ function fill_line_starts(table: LineTable, s: string): void {
 /** build an array of byte offsets where each line begins. line 0 starts at 0. */
 export function build_line_starts(source: string): Uint32Array {
 	const table = new LineTable();
-	fill_line_starts(table, source);
+	fill_line_starts(table, source, PAST_END, PAST_END);
 	return new Uint32Array(table.starts.subarray(0, table.count));
 }
 
@@ -113,6 +130,20 @@ function find_line_near(
 	return find_line(starts, count, offset);
 }
 
+// for ascending lookups that may skip a few lines
+function find_line_ahead(
+	starts: Int32Array,
+	count: number,
+	hint: number,
+	offset: number
+): number {
+	if (offset >= starts[hint]) {
+		const stop = hint + 8 < count ? hint + 8 : count;
+		for (let l = hint; l < stop; l++) if (offset < starts[l + 1]) return l;
+	}
+	return find_line(starts, count, offset);
+}
+
 export interface SourceMapV3 {
 	version: 3;
 	file?: string;
@@ -147,6 +178,33 @@ function collect_spans(mappings: Mapping<MappingData>[]): void {
 	let n = 0;
 	for (let k = 0; k < mappings.length; k++) {
 		const m = mappings[k];
+		// a one piece RecordMapping is read from its fields, tested by field so a
+		// copy of the class from another bundle counts
+		const r = m as RecordMapping;
+		if (r._arrays === null) {
+			const source = r._source;
+			const code = r._key & 3;
+			if (code === Role.OPEN_SYNTAX || code === Role.CLOSE_SYNTAX) continue;
+			let l = 1;
+			if (code === Role.CONTENT) {
+				const length = r._length;
+				if (r._generated_length === length) {
+					if (length === 0) continue;
+					l = length;
+				}
+			}
+			if (n === gen.length) {
+				reserve_spans(n, n + 1);
+				gen = span_gen;
+				src = span_src;
+				len = span_len;
+			}
+			gen[n] = r._generated;
+			src[n] = source;
+			len[n] = l;
+			n++;
+			continue;
+		}
 		const role = m.data.role;
 		if (role === 'open_syntax' || role === 'close_syntax') continue;
 
@@ -198,6 +256,20 @@ function collect_char_spans(mappings: Mapping<MappingData>[]): void {
 	span_count = 0;
 	for (let k = 0; k < mappings.length; k++) {
 		const m = mappings[k];
+		const r = m as RecordMapping;
+		if (r._arrays === null) {
+			const code = r._key & 3;
+			if (code === Role.OPEN_SYNTAX || code === Role.CLOSE_SYNTAX) continue;
+			const g = r._generated;
+			const s = r._source;
+			const length = r._length;
+			if (code === Role.CONTENT && r._generated_length === length) {
+				for (let d = 0; d < length; d++) push_span(g + d, s + d, 1);
+			} else {
+				push_span(g, s, 1);
+			}
+			continue;
+		}
 		const role = m.data.role;
 		if (role === 'open_syntax' || role === 'close_syntax') continue;
 
@@ -251,6 +323,66 @@ function collect_record_spans(
 		k++;
 	}
 	span_count = k;
+}
+
+function collect_trace_spans(
+	rec: Uint32Array,
+	start: number,
+	end: number
+): void {
+	const most = (end - start) / Trace.SIZE;
+	if (most > span_gen.length) reserve_spans(0, most);
+	const gen = span_gen;
+	const src = span_src;
+	const len = span_len;
+	let k = 0;
+	for (let p = start; p < end; p += Trace.SIZE) {
+		gen[k] = rec[p];
+		src[k] = rec[p + 1];
+		len[k] = rec[p + 2];
+		k++;
+	}
+	span_count = k;
+}
+
+function collect_trace_char_spans(
+	rec: Uint32Array,
+	start: number,
+	end: number
+): void {
+	span_count = 0;
+	for (let p = start; p < end; p += Trace.SIZE) {
+		const g = rec[p];
+		const s = rec[p + 1];
+		const l = rec[p + 2];
+		for (let d = 0; d < l; d++) push_span(g + d, s + d, 1);
+	}
+}
+
+/**
+ * trace records as Rec records encode, dropping what the encoding skips
+ * @internal
+ */
+export function trace_of_records(rec: Uint32Array, n: number): Uint32Array {
+	const out = new Uint32Array(n > 0 ? (n / Rec.SIZE) * Trace.SIZE : 0);
+	let k = 0;
+	for (let p = 0; p < n; p += Rec.SIZE) {
+		const role = rec[p + 5] & 3;
+		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
+		let l = 1;
+		if (role === Role.CONTENT) {
+			const source_length = rec[p + 3];
+			if (rec[p + 1] === source_length) {
+				if (source_length === 0) continue;
+				l = source_length;
+			}
+		}
+		out[k] = rec[p];
+		out[k + 1] = rec[p + 2];
+		out[k + 2] = l;
+		k += Trace.SIZE;
+	}
+	return out.subarray(0, k);
 }
 
 function collect_record_char_spans(
@@ -389,9 +521,14 @@ export function records_by_offset(
 export function map_basename(file?: string): string {
 	// use basename to match svelte compiler convention, vite resolves relative
 	// to the served JS file, so the browser can find the source.
-	return file
-		? file.slice(Math.max(file.lastIndexOf('/'), file.lastIndexOf('\\')) + 1)
-		: 'input.md';
+	if (!file) return 'input.md';
+	// a name is short, walking back beats two lastIndexOf scans of the path
+	let k = file.length - 1;
+	for (; k >= 0; k--) {
+		const c = file.charCodeAt(k);
+		if (c === 47 || c === 92) break;
+	}
+	return file.slice(k + 1);
 }
 
 function v3_map(encoded: string, source: string, file?: string): SourceMapV3 {
@@ -415,6 +552,9 @@ const VLQ_CODES = new Uint8Array(64);
 
 const VLQ_DIGITS = new Int8Array(128).fill(-1);
 for (let i = 0; i < 64; i++) VLQ_DIGITS[VLQ_CODES[i]] = i;
+// every byte, those of non-ascii utf8 read as no digit
+const VLQ_BYTE_DIGITS = new Int8Array(256).fill(-1);
+for (let i = 0; i < 64; i++) VLQ_BYTE_DIGITS[VLQ_CODES[i]] = i;
 
 const COMMA = 44;
 const SEMICOLON = 59;
@@ -468,8 +608,8 @@ function encode_mappings(
 	source: string,
 	generated: string
 ): string {
-	fill_line_starts(src_table, source);
-	fill_line_starts(gen_table, generated);
+	fill_line_starts(src_table, source, PAST_END, PAST_END);
+	fill_line_starts(gen_table, generated, PAST_END, PAST_END);
 
 	collect_spans(mappings);
 	sort_spans();
@@ -488,8 +628,8 @@ function encode_records(
 	source: string,
 	generated: string
 ): string {
-	fill_line_starts(src_table, source);
-	fill_line_starts(gen_table, generated);
+	fill_line_starts(src_table, source, PAST_END, PAST_END);
+	fill_line_starts(gen_table, generated, PAST_END, PAST_END);
 
 	collect_record_spans(rec, start, end);
 	sort_spans();
@@ -498,6 +638,40 @@ function encode_records(
 		sort_spans();
 	}
 	return encode_spans();
+}
+
+function encode_trace(
+	rec: Uint32Array,
+	start: number,
+	end: number,
+	source: string,
+	generated: string
+): string {
+	fill_line_starts(src_table, source, PAST_END, PAST_END);
+	fill_line_starts(gen_table, generated, PAST_END, PAST_END);
+
+	collect_trace_spans(rec, start, end);
+	sort_spans();
+	if (runs_overlap()) {
+		collect_trace_char_spans(rec, start, end);
+		sort_spans();
+	}
+	return encode_spans();
+}
+
+/** @internal trace_to_v3 over the trace records of a sink */
+export function trace_records_to_v3(
+	sink: MapSink,
+	source: string,
+	generated: string,
+	file?: string
+): SourceMapV3 {
+	const n = sink.n;
+	return v3_map(
+		n === 0 ? '' : encode_trace(sink.rec, 0, n, source, generated),
+		source,
+		file
+	);
 }
 
 function encode_spans(): string {
@@ -619,16 +793,16 @@ let trace_used = 0;
 
 export function reserve_trace(
 	rec_words: number,
-	offset_words: number
+	offset_words: number,
+	out: MapTrace
 ): MapTrace {
 	const words = rec_words + offset_words;
 	if (words > TRACE_OWN_WORDS) {
-		return {
-			buf: new Uint32Array(words),
-			start: 0,
-			split: rec_words,
-			end: words,
-		};
+		out.buf = new Uint32Array(words);
+		out.start = 0;
+		out.split = rec_words;
+		out.end = words;
+		return out;
 	}
 	let start = trace_used;
 	if (start + words > trace_slab.length) {
@@ -636,12 +810,42 @@ export function reserve_trace(
 		start = 0;
 	}
 	trace_used = start + words;
-	return {
-		buf: trace_slab,
-		start,
-		split: start + rec_words,
-		end: start + words,
-	};
+	out.buf = trace_slab;
+	out.start = start;
+	out.split = start + rec_words;
+	out.end = start + words;
+	return out;
+}
+
+/**
+ * the slab with at least words free from trace_free_at, for records written
+ * in place
+ */
+export function trace_room(words: number): Uint32Array {
+	if (trace_used + words > trace_slab.length) {
+		trace_slab = new Uint32Array(TRACE_SLAB_WORDS);
+		trace_used = 0;
+	}
+	return trace_slab;
+}
+
+export function trace_free_at(): number {
+	return trace_used;
+}
+
+/** out as the trace of words start to end written in place into buf */
+export function trace_take(
+	buf: Uint32Array,
+	start: number,
+	end: number,
+	out: MapTrace
+): void {
+	// a sink that outgrew the slab moved to its own array
+	if (buf === trace_slab) trace_used = end;
+	out.buf = buf;
+	out.start = start;
+	out.split = end;
+	out.end = end;
 }
 
 /** @internal */
@@ -655,7 +859,7 @@ export function trace_to_v3(
 	const split = trace.split;
 	const buf = trace.buf;
 	const encoded =
-		split === start ? '' : encode_records(buf, start, split, source, generated);
+		split === start ? '' : encode_trace(buf, start, split, source, generated);
 	return v3_map(encoded, source, file);
 }
 
@@ -719,7 +923,7 @@ function decode_lines(
 	generated: string,
 	lines: ArrayLike<number>
 ): DecodedSegment[][] {
-	fill_line_starts(gen_table, generated);
+	fill_line_starts(gen_table, generated, PAST_END, PAST_END);
 	const gen_starts = gen_table.starts;
 	const gen_count = gen_table.count;
 
@@ -738,13 +942,11 @@ function decode_lines(
 
 	span_count = 0;
 	let gen_line = 0;
-	for (let p = start; p < split; p += Rec.SIZE) {
-		const role = buf[p + 5] & 3;
-		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
+	for (let p = start; p < split; p += Trace.SIZE) {
 		const g = buf[p];
-		const s = buf[p + 2];
-		const source_length = buf[p + 3];
-		if (role === Role.CONTENT && buf[p + 1] === source_length) {
+		const s = buf[p + 1];
+		const source_length = buf[p + 2];
+		if (source_length > 1) {
 			// a run can cross lines
 			const end = g + source_length;
 			let at = g;
@@ -766,7 +968,7 @@ function decode_lines(
 	for (let i = 0; i <= last; i++) mappings.push(NO_SEGMENTS);
 	if (span_count === 0) return mappings;
 
-	fill_line_starts(src_table, source);
+	fill_line_starts(src_table, source, PAST_END, PAST_END);
 	const src_starts = src_table.starts;
 	const src_count = src_table.count;
 	sort_spans();
@@ -873,10 +1075,14 @@ export function mapped_source_lines(
 	return lines;
 }
 
+/** the chained mappings as ascii bytes */
 export interface ChainedMappings {
-	mappings: string;
-	/** names in first use order */
-	names: string[];
+	/** the mappings run from start for length bytes */
+	bytes: Uint8Array;
+	start: number;
+	length: number;
+	/** names in first use order, null for none */
+	names: string[] | null;
 	/** whether any segment reached the source, then it is the only source */
 	sourced: boolean;
 }
@@ -899,88 +1105,244 @@ function grow_cseg(used: number): void {
 	cseg_name = copy_i32(cseg_name, used, size);
 }
 
+// the greatest html line a segment of the last decode looks up, -1 for none
+let cseg_max_line = -1;
+
 /**
  * decodes like @jridgewell/sourcemap-codec, -1 for input it reads
  * differently, a line out of order or a source other than the first
  */
 function decode_compile(mappings: string): number {
+	const length = mappings.length;
+	const digits = VLQ_DIGITS;
+	let seg_line = cseg_line;
+	let seg_col = cseg_col;
+	let seg_len = cseg_len;
+	let seg_sline = cseg_sline;
+	let seg_scol = cseg_scol;
+	let seg_name = cseg_name;
 	let n = 0;
 	let line = 0;
-	let field = 0;
 	let gen_col = 0;
 	let last_col = 0;
 	let source_index = 0;
 	let src_line = 0;
 	let src_col = 0;
 	let name_index = 0;
-	let value = 0;
-	let shift = 0;
-	const length = mappings.length;
-	for (let i = 0; i <= length; i++) {
-		const c = i < length ? mappings.charCodeAt(i) : SEMICOLON;
-		if (c === COMMA || c === SEMICOLON) {
-			if (shift !== 0) return -1;
-			if (field === 1 || field === 4 || field === 5) {
-				if (gen_col < last_col || gen_col < 0) return -1;
-				last_col = gen_col;
-				if (field !== 1) {
-					if (source_index !== 0 || src_line < 0 || src_col < 0) return -1;
-					if (field === 5 && name_index < 0) return -1;
-				}
-				if (n === cseg_line.length) grow_cseg(n);
-				cseg_line[n] = line;
-				cseg_col[n] = gen_col;
-				cseg_len[n] = field;
-				cseg_sline[n] = src_line;
-				cseg_scol[n] = src_col;
-				cseg_name[n] = name_index;
-				n++;
-			} else if (field !== 0 || c === COMMA) {
-				return -1;
-			}
-			field = 0;
-			if (c === SEMICOLON) {
-				line++;
-				gen_col = 0;
-				last_col = 0;
-			}
+	let max_line = -1;
+	let i = 0;
+	while (i < length) {
+		let c = mappings.charCodeAt(i);
+		if (c === SEMICOLON) {
+			line++;
+			gen_col = 0;
+			last_col = 0;
+			i++;
 			continue;
 		}
-		const digit = c < 128 ? VLQ_DIGITS[c] : -1;
-		if (digit < 0 || shift > 25) return -1;
-		value |= (digit & 31) << shift;
-		if ((digit & 32) !== 0) {
-			shift += 5;
-			continue;
+		// a separator inside a value or a stray comma reads as no digit
+		let field = 0;
+		for (;;) {
+			let value = 0;
+			let shift = 0;
+			for (;;) {
+				const digit = c < 128 ? digits[c] : -1;
+				if (digit < 0 || shift > 25) return -1;
+				value |= (digit & 31) << shift;
+				i++;
+				if ((digit & 32) === 0) break;
+				if (i === length) return -1;
+				shift += 5;
+				c = mappings.charCodeAt(i);
+			}
+			const magnitude = value >>> 1;
+			if ((value & 1) !== 0 && magnitude === 0) return -1;
+			const delta = (value & 1) !== 0 ? -magnitude : magnitude;
+			if (field === 0) gen_col += delta;
+			else if (field === 1) source_index += delta;
+			else if (field === 2) src_line += delta;
+			else if (field === 3) src_col += delta;
+			else name_index += delta;
+			field++;
+			if (i === length) break;
+			c = mappings.charCodeAt(i);
+			if (c === COMMA || c === SEMICOLON) break;
+			// a sixth value
+			if (field === 5) return -1;
 		}
-		const magnitude = value >>> 1;
-		if ((value & 1) !== 0 && magnitude === 0) return -1;
-		const delta = (value & 1) !== 0 ? -magnitude : magnitude;
-		if (field === 0) gen_col += delta;
-		else if (field === 1) source_index += delta;
-		else if (field === 2) src_line += delta;
-		else if (field === 3) src_col += delta;
-		else if (field === 4) name_index += delta;
-		else return -1;
-		field++;
-		value = 0;
-		shift = 0;
+		if (field === 2 || field === 3) return -1;
+		if (gen_col < last_col || gen_col < 0) return -1;
+		last_col = gen_col;
+		if (field !== 1) {
+			if (source_index !== 0 || src_line < 0 || src_col < 0) return -1;
+			if (field === 5 && name_index < 0) return -1;
+			if (src_line > max_line) max_line = src_line;
+		}
+		if (n === seg_line.length) {
+			grow_cseg(n);
+			seg_line = cseg_line;
+			seg_col = cseg_col;
+			seg_len = cseg_len;
+			seg_sline = cseg_sline;
+			seg_scol = cseg_scol;
+			seg_name = cseg_name;
+		}
+		seg_line[n] = line;
+		seg_col[n] = gen_col;
+		seg_len[n] = field;
+		seg_sline[n] = src_line;
+		seg_scol[n] = src_col;
+		seg_name[n] = name_index;
+		n++;
+		// a comma is passed here, a semicolon at the top
+		if (i < length && c === COMMA) i++;
 	}
+	cseg_max_line = max_line;
 	return n;
 }
 
-// trace segments of the wanted generated lines, line l holds
-// line_first[l] to line_first[l + 1]
-let pseg_col = new Int32Array(1024);
-let pseg_sline = new Int32Array(1024);
-let pseg_scol = new Int32Array(1024);
+/** decode_compile over the utf8 bytes of the mappings, which read the same */
+function decode_compile_bytes(mappings: Uint8Array, length: number): number {
+	const digits = VLQ_BYTE_DIGITS;
+	let seg_line = cseg_line;
+	let seg_col = cseg_col;
+	let seg_len = cseg_len;
+	let seg_sline = cseg_sline;
+	let seg_scol = cseg_scol;
+	let seg_name = cseg_name;
+	let n = 0;
+	let line = 0;
+	let gen_col = 0;
+	let last_col = 0;
+	let source_index = 0;
+	let src_line = 0;
+	let src_col = 0;
+	let name_index = 0;
+	let max_line = -1;
+	let i = 0;
+	while (i < length) {
+		let c = mappings[i];
+		if (c === SEMICOLON) {
+			line++;
+			gen_col = 0;
+			last_col = 0;
+			i++;
+			continue;
+		}
+		// a separator inside a value or a stray comma reads as no digit
+		let field = 0;
+		for (;;) {
+			let value = 0;
+			let shift = 0;
+			for (;;) {
+				const digit = digits[c];
+				if (digit < 0 || shift > 25) return -1;
+				value |= (digit & 31) << shift;
+				i++;
+				if ((digit & 32) === 0) break;
+				if (i === length) return -1;
+				shift += 5;
+				c = mappings[i];
+			}
+			const magnitude = value >>> 1;
+			if ((value & 1) !== 0 && magnitude === 0) return -1;
+			const delta = (value & 1) !== 0 ? -magnitude : magnitude;
+			if (field === 0) gen_col += delta;
+			else if (field === 1) source_index += delta;
+			else if (field === 2) src_line += delta;
+			else if (field === 3) src_col += delta;
+			else name_index += delta;
+			field++;
+			if (i === length) break;
+			c = mappings[i];
+			if (c === COMMA || c === SEMICOLON) break;
+			// a sixth value
+			if (field === 5) return -1;
+		}
+		if (field === 2 || field === 3) return -1;
+		if (gen_col < last_col || gen_col < 0) return -1;
+		last_col = gen_col;
+		if (field !== 1) {
+			if (source_index !== 0 || src_line < 0 || src_col < 0) return -1;
+			if (field === 5 && name_index < 0) return -1;
+			if (src_line > max_line) max_line = src_line;
+		}
+		if (n === seg_line.length) {
+			grow_cseg(n);
+			seg_line = cseg_line;
+			seg_col = cseg_col;
+			seg_len = cseg_len;
+			seg_sline = cseg_sline;
+			seg_scol = cseg_scol;
+			seg_name = cseg_name;
+		}
+		seg_line[n] = line;
+		seg_col[n] = gen_col;
+		seg_len[n] = field;
+		seg_sline[n] = src_line;
+		seg_scol[n] = src_col;
+		seg_name[n] = name_index;
+		n++;
+		// a comma is passed here, a semicolon at the top
+		if (i < length && c === COMMA) i++;
+	}
+	cseg_max_line = max_line;
+	return n;
+}
+
+// the trace position each query lands on, source line -1 for none, the
+// queries of generated line l are line_first[l] to line_first[l + 1]
+let q_sline = new Int32Array(256);
+let q_scol = new Int32Array(256);
 let line_first = new Int32Array(256);
 let query_buf = new Int32Array(256);
 // generated lines holding a query
 let wanted_buf = new Uint8Array(256);
 const QUERY_SORT_SMALL = 32;
+// segments times records up to which each segment scans the records
+const SMALL_TRACE = 256;
 
-/** fills the p arrays with the segments decode_lines would build, returns the line count */
+/**
+ * the source offset trace_lines finds for q on the line start to next, -1 for
+ * none, the first record holding q, else the last record whose last point on
+ * the line is the greatest before q
+ */
+function resolve_small(
+	buf: Uint32Array,
+	from: number,
+	to: number,
+	q: number,
+	start: number,
+	next: number
+): number {
+	let best = -1;
+	let found = -1;
+	for (let p = from; p < to; p += Trace.SIZE) {
+		const g = buf[p];
+		const length = buf[p + 2];
+		if (length > 1) {
+			const a = g > start ? g : start;
+			let b = g + length;
+			if (b > next) b = next;
+			if (a >= b) continue;
+			if (q >= a && q < b) return buf[p + 1] + (q - g);
+			const last = b - 1;
+			if (last < q && last >= best) {
+				best = last;
+				found = buf[p + 1] + (last - g);
+			}
+		} else if (g >= start && g < next) {
+			if (g === q) return buf[p + 1];
+			if (g < q && g >= best) {
+				best = g;
+				found = buf[p + 1];
+			}
+		}
+	}
+	return found;
+}
+
+/** collects the spans the queried lines need from the trace records, returns the line count */
 function trace_lines(
 	buf: Uint32Array,
 	start: number,
@@ -989,20 +1351,24 @@ function trace_lines(
 	generated: string,
 	wanted: Uint8Array,
 	queries: Int32Array,
-	query_count: number
+	query_count: number,
+	limit: number,
+	all_spans: boolean,
+	source_normalized: boolean
 ): number {
 	const gen_starts = gen_table.starts;
 	const gen_count = gen_table.count;
 
 	span_count = 0;
 	let gen_line = 0;
-	for (let p = start; p < split; p += Rec.SIZE) {
-		const role = buf[p + 5] & 3;
-		if (role === Role.OPEN_SYNTAX || role === Role.CLOSE_SYNTAX) continue;
+	let query_at = 0;
+	for (let p = start; p < split; p += Trace.SIZE) {
 		const g = buf[p];
-		const s = buf[p + 2];
-		const source_length = buf[p + 3];
-		if (role === Role.CONTENT && buf[p + 1] === source_length) {
+		// no wanted line starts at or past limit
+		if (g >= limit) continue;
+		const s = buf[p + 1];
+		const source_length = buf[p + 2];
+		if (source_length > 1) {
 			const end = g + source_length;
 			let at = g;
 			while (at < end) {
@@ -1014,17 +1380,25 @@ function trace_lines(
 					// holds that offset, on the last point of a run, so only those
 					// points change a lookup
 					const last = stop - 1;
-					let lo = 0;
-					let hi = query_count;
-					while (lo < hi) {
-						const mid = (lo + hi) >>> 1;
-						if (queries[mid] < at) lo = mid + 1;
-						else hi = mid;
+					// runs come in generated order, so the first query at or past at
+					// is mostly a few steps on from the previous run
+					let lo = query_at;
+					if (lo > 0 && queries[lo - 1] >= at) {
+						lo = 0;
+						let hi = query_count;
+						while (lo < hi) {
+							const mid = (lo + hi) >>> 1;
+							if (queries[mid] < at) lo = mid + 1;
+							else hi = mid;
+						}
+					} else {
+						while (lo < query_count && queries[lo] < at) lo++;
 					}
 					for (; lo < query_count && queries[lo] < last; lo++) {
 						const q = queries[lo];
 						push_span(q, s + (q - g), 1);
 					}
+					query_at = lo;
 					push_span(last, s + (last - g), 1);
 				}
 				at = stop;
@@ -1037,47 +1411,85 @@ function trace_lines(
 
 	if (line_first.length < gen_count + 1)
 		line_first = new Int32Array(gen_count + 1);
+	if (q_sline.length < query_count) {
+		let size = q_sline.length * 2;
+		while (size < query_count) size *= 2;
+		q_sline = new Int32Array(size);
+		q_scol = new Int32Array(size);
+	}
 	const first = line_first;
+	const qs = q_sline;
+	const qc = q_scol;
 	const n = span_count;
-	if (n === 0) {
-		first.fill(0, 0, gen_count + 1);
-		return gen_count;
-	}
-	if (pseg_col.length < n) {
-		let size = pseg_col.length * 2;
-		while (size < n) size *= 2;
-		pseg_col = new Int32Array(size);
-		pseg_sline = new Int32Array(size);
-		pseg_scol = new Int32Array(size);
-	}
-
-	fill_line_starts(src_table, source);
-	const src_starts = src_table.starts;
-	const src_count = src_table.count;
 	sort_spans();
 
+	// each query takes the greatest span at or before it on its line, an equal
+	// one the first of its run, a lower one the last, as the greatest lower
+	// bound of trace-mapping does, qc holds the span source until lines resolve
 	const gen = span_gen;
 	const src = span_src;
 	const order = span_order;
-	const col = pseg_col;
-	const sline = pseg_sline;
-	const scol = pseg_scol;
-	let src_line = 0;
+	let max_src = -1;
 	let filled = 0;
+	let k = 0;
 	gen_line = 0;
-	for (let k = 0; k < n; k++) {
-		const i = order[k];
-		const g = gen[i];
-		const s = src[i];
-		gen_line = find_line_near(gen_starts, gen_count, gen_line, g);
-		while (filled <= gen_line) first[filled++] = k;
-		src_line = find_line_near(src_starts, src_count, src_line, s);
-		col[k] = g - gen_starts[gen_line];
-		sline[k] = src_line;
-		scol[k] = s - src_starts[src_line];
+	for (let qi = 0; qi < query_count; qi++) {
+		const q = queries[qi];
+		gen_line = find_line_ahead(gen_starts, gen_count, gen_line, q);
+		while (filled <= gen_line) first[filled++] = qi;
+		while (k < n && gen[order[k]] <= q) k++;
+		let s = -1;
+		if (k > 0) {
+			let j = k - 1;
+			const g = gen[order[j]];
+			if (g === q) {
+				while (j > 0 && gen[order[j - 1]] === q) j--;
+				s = src[order[j]];
+			} else if (g >= gen_starts[gen_line]) {
+				s = src[order[j]];
+			}
+		}
+		qs[qi] = s < 0 ? -1 : 0;
+		qc[qi] = s;
+		if (s > max_src) max_src = s;
 	}
-	while (filled <= gen_count) first[filled++] = n;
+	while (filled <= gen_count) first[filled++] = query_count;
+	if (all_spans) {
+		for (let i = 0; i < n; i++) if (src[i] > max_src) max_src = src[i];
+	}
+
+	// starts are needed only up to the greatest source found
+	if (max_src < 0) return gen_count;
+	fill_line_starts(src_table, source, PAST_END, max_src, source_normalized);
+	const src_starts = src_table.starts;
+	const src_count = src_table.count;
+	let src_line = 0;
+	for (let qi = 0; qi < query_count; qi++) {
+		if (qs[qi] < 0) continue;
+		const s = qc[qi];
+		src_line = find_line_ahead(src_starts, src_count, src_line, s);
+		qs[qi] = src_line;
+		qc[qi] = s - src_starts[src_line];
+	}
 	return gen_count;
+}
+
+/**
+ * source of the last sorted span from start to before next, -1 for none, as
+ * a column past its line end looks it up
+ */
+function last_span_before(start: number, next: number): number {
+	const gen = span_gen;
+	const order = span_order;
+	let lo = 0;
+	let hi = span_count;
+	while (lo < hi) {
+		const mid = (lo + hi) >>> 1;
+		if (gen[order[mid]] < next) lo = mid + 1;
+		else hi = mid;
+	}
+	if (lo === 0 || gen[order[lo - 1]] < start) return -1;
+	return span_src[order[lo - 1]];
 }
 
 function write_vlq_codec(buf: Uint8Array, p: number, delta: number): number {
@@ -1095,7 +1507,10 @@ function write_vlq_codec(buf: Uint8Array, p: number, delta: number): number {
 /**
  * chains a compile map from the html onto the map of the html in trace, the
  * mappings and names equal @ampproject/remapping of [compile, trace_to_v3],
- * null when the compile mappings are ones it leaves to remapping
+ * null when the compile mappings are ones it leaves to remapping, the next
+ * call reuses the bytes, source_normalized means source holds no \r, the
+ * mappings go into dest from dest_start unless they outgrow it, keeping the
+ * bytes before dest_start, mappings_bytes is the utf8 of compile_mappings
  * @internal
  */
 export function chain_trace(
@@ -1103,35 +1518,88 @@ export function chain_trace(
 	compile_names: readonly string[],
 	trace: MapTrace,
 	source: string,
-	generated: string
+	generated: string,
+	source_normalized = false,
+	dest: Uint8Array | null = null,
+	dest_start = 0,
+	mappings_bytes: Uint8Array | null = null,
+	mappings_length = 0
 ): ChainedMappings | null {
-	const count = decode_compile(compile_mappings);
+	const count =
+		mappings_bytes !== null
+			? decode_compile_bytes(mappings_bytes, mappings_length)
+			: decode_compile(compile_mappings);
 	if (count < 0) return null;
 
-	fill_line_starts(gen_table, generated);
+	// only the lines a segment queries need starts, the line after the last
+	// one ends it
+	const max_line = cseg_max_line;
+	fill_line_starts(gen_table, generated, max_line + 1, PAST_END);
 	const gen_count = gen_table.count;
-	let wanted = wanted_buf;
-	if (wanted.length < gen_count) {
-		let size = wanted.length * 2;
-		while (size < gen_count) size *= 2;
-		wanted = wanted_buf = new Uint8Array(size);
-	} else wanted.fill(0, 0, gen_count);
 	if (query_buf.length < count) query_buf = new Int32Array(count * 2);
 	const queries = query_buf;
-	let query_count = 0;
 	const gen_starts = gen_table.starts;
-	for (let k = 0; k < count; k++) {
-		if (cseg_len[k] !== 1) {
-			const l = cseg_sline[k];
-			if (l < gen_count) {
-				wanted[l] = 1;
-				queries[query_count++] = gen_starts[l] + cseg_scol[k];
+	// few segments over few records resolve straight from the records
+	const small = count * (trace.split - trace.start) <= SMALL_TRACE * Trace.SIZE;
+	let lines = 0;
+	if (small) {
+		if (trace.split !== trace.start) {
+			lines = gen_count;
+			let max_src = -1;
+			for (let k = 0; k < count; k++) {
+				if (cseg_len[k] === 1) continue;
+				const l = cseg_sline[k];
+				if (l >= gen_count) continue;
+				const s = resolve_small(
+					trace.buf,
+					trace.start,
+					trace.split,
+					gen_starts[l] + cseg_scol[k],
+					gen_starts[l],
+					gen_starts[l + 1]
+				);
+				queries[k] = s;
+				if (s > max_src) max_src = s;
+			}
+			if (max_src >= 0)
+				fill_line_starts(
+					src_table,
+					source,
+					PAST_END,
+					max_src,
+					source_normalized
+				);
+		}
+	} else {
+		let wanted = wanted_buf;
+
+		if (wanted.length < gen_count) {
+			let size = wanted.length * 2;
+			while (size < gen_count) size *= 2;
+			wanted = wanted_buf = new Uint8Array(size);
+		} else if (gen_count < 256) {
+			// a short fill by stores costs less than calling fill
+			for (let l = 0; l < gen_count; l++) wanted[l] = 0;
+		} else wanted.fill(0, 0, gen_count);
+		let query_count = 0;
+		// a column past its line end takes the last span of the line
+		let overflow = false;
+		for (let k = 0; k < count; k++) {
+			if (cseg_len[k] !== 1) {
+				const l = cseg_sline[k];
+				if (l < gen_count) {
+					wanted[l] = 1;
+					const q = gen_starts[l] + cseg_scol[k];
+					if (q >= gen_starts[l + 1]) overflow = true;
+					queries[query_count++] = q;
+				}
 			}
 		}
-	}
-	if (query_count > 1) {
-		if (query_count <= QUERY_SORT_SMALL) {
-			// a few queries sort by insertion without a view or a runtime call
+		if (query_count > 1) {
+			// queries come mostly in html order, so insertion sorts them without a
+			// view or a runtime call, past this many moves a real sort wins
+			const move_limit = 8 * query_count + QUERY_SORT_SMALL * QUERY_SORT_SMALL;
+			let moves = 0;
 			for (let k = 1; k < query_count; k++) {
 				const q = queries[k];
 				let j = k - 1;
@@ -1140,38 +1608,44 @@ export function chain_trace(
 					j--;
 				}
 				queries[j + 1] = q;
+				moves += k - 1 - j;
+				if (moves > move_limit) {
+					queries.subarray(0, query_count).sort();
+					break;
+				}
 			}
-		} else queries.subarray(0, query_count).sort();
-		let kept = 1;
-		for (let k = 1; k < query_count; k++) {
-			if (queries[k] !== queries[kept - 1]) queries[kept++] = queries[k];
+			let kept = 1;
+			for (let k = 1; k < query_count; k++) {
+				if (queries[k] !== queries[kept - 1]) queries[kept++] = queries[k];
+			}
+			query_count = kept;
 		}
-		query_count = kept;
+		if (trace.split !== trace.start && query_count !== 0)
+			lines = trace_lines(
+				trace.buf,
+				trace.start,
+				trace.split,
+				source,
+				generated,
+				wanted,
+				queries,
+				query_count,
+				max_line + 1 < gen_count ? gen_starts[max_line + 1] : PAST_END,
+				overflow,
+				source_normalized
+			);
 	}
-	const lines =
-		trace.split === trace.start
-			? 0
-			: trace_lines(
-					trace.buf,
-					trace.start,
-					trace.split,
-					source,
-					generated,
-					wanted,
-					queries,
-					query_count
-				);
 	const first = line_first;
-	const pcol = pseg_col;
-	const psline = pseg_sline;
-	const pscol = pseg_scol;
+	const qsline = q_sline;
+	const qscol = q_scol;
 
-	const names: string[] = [];
+	// most maps carry no names
+	let names: string[] | null = null;
 	let name_ids: Map<string, number> | null = null;
 	let sourced = false;
 
-	let buf = out;
-	let p = 0;
+	let buf = dest !== null ? dest : out;
+	let p = dest_start;
 	let out_line = 0;
 	// the previous segment kept on the current line, len 0 when none
 	let cur_line = -1;
@@ -1198,36 +1672,44 @@ export function chain_trace(
 		if (cseg_len[k] !== 1) {
 			const l = cseg_sline[k];
 			if (l >= lines) continue;
-			const c = cseg_scol[k];
-			let lo = first[l];
-			let hi = first[l + 1] - 1;
-			let found = -1;
-			while (lo <= hi) {
-				const mid = (lo + hi) >>> 1;
-				if (pcol[mid] <= c) {
-					found = mid;
-					lo = mid + 1;
-				} else hi = mid - 1;
-			}
-			if (found < 0) continue;
-			// an equal column takes the first of its run, a lower one the last,
-			// as the greatest lower bound of trace-mapping does
-			if (pcol[found] === c) {
-				const lower = first[l];
-				while (found > lower && pcol[found - 1] === c) found--;
+			const q = gen_starts[l] + cseg_scol[k];
+			const next = gen_starts[l + 1];
+			if (small) {
+				const s = queries[k];
+				if (s < 0) continue;
+				sline = find_line(src_table.starts, src_table.count, s);
+				scol = s - src_table.starts[sline];
+			} else if (q < next) {
+				// q is among the sorted queries of its line
+				let lo = first[l];
+				let hi = first[l + 1] - 1;
+				while (lo < hi) {
+					const mid = (lo + hi) >>> 1;
+					if (queries[mid] < q) lo = mid + 1;
+					else hi = mid;
+				}
+				sline = qsline[lo];
+				if (sline < 0) continue;
+				scol = qscol[lo];
+			} else {
+				const s = last_span_before(gen_starts[l], next);
+				if (s < 0) continue;
+				sline = find_line(src_table.starts, src_table.count, s);
+				scol = s - src_table.starts[sline];
 			}
 			seg_len = 4;
-			sline = psline[found];
-			scol = pscol[found];
 			sourced = true;
 			if (cseg_len[k] === 5) {
 				const text = compile_names[cseg_name[k]];
 				if (text) {
-					if (name_ids === null) name_ids = new Map();
+					if (name_ids === null) {
+						name_ids = new Map();
+						names = [];
+					}
 					let id = name_ids.get(text);
 					if (id === undefined) {
-						id = names.length;
-						names.push(text);
+						id = names!.length;
+						names!.push(text);
 						name_ids.set(text, id);
 					}
 					name = id;
@@ -1247,14 +1729,14 @@ export function chain_trace(
 
 		const need = p + (line - out_line) + 40;
 		if (need > buf.length) {
-			grow_out(p, need);
+			grow_chain(buf, p, need);
 			buf = out;
 		}
 		if (out_line < line) {
 			do buf[p++] = SEMICOLON;
 			while (++out_line < line);
 			enc_col = 0;
-		} else if (p > 0) {
+		} else if (p > dest_start) {
 			// out_line only reaches a line by writing a segment on it
 			buf[p++] = COMMA;
 		}
@@ -1276,5 +1758,24 @@ export function chain_trace(
 		prev_scol = scol;
 		prev_name = name;
 	}
-	return { mappings: decoder.decode(buf.subarray(0, p)), names, sourced };
+	return {
+		bytes: buf,
+		start: dest_start,
+		length: p - dest_start,
+		names,
+		sourced,
+	};
+}
+
+function grow_chain(buf: Uint8Array, used: number, need: number): void {
+	if (buf !== out && out.length >= need) {
+		out.set(buf.subarray(0, used));
+		return;
+	}
+	let size = out.length;
+	while (size < need) size *= 2;
+	const next = new Uint8Array(size);
+	next.set(buf.subarray(0, used));
+	out = next;
+	out_view = new DataView(next.buffer);
 }
