@@ -327,3 +327,58 @@ describe('unclosed inline html at the end of a block quote', () => {
 		});
 	}
 });
+
+describe('a container close tag on its own line ends the paragraph', () => {
+	const cases: [string, string, Shape[]][] = [
+		[
+			'component',
+			'<Card>\npara\n</Card>\n',
+			[['html', 'line_break', ['paragraph', 'text:para'], 'line_break']],
+		],
+		[
+			'indented component close',
+			'<Card>\n  para\n  </Card>\n',
+			[['html', 'line_break', ['paragraph', 'text:para'], 'line_break']],
+		],
+		[
+			'tight list item',
+			'<Card>\n- a\n- b\n</Card>\n',
+			[
+				[
+					'html',
+					'line_break',
+					['list', ['list_item', 'text:a'], ['list_item', 'text:b']],
+					'line_break',
+				],
+			],
+		],
+		[
+			'inline element opened in the paragraph',
+			'<Card>\na <b>bold\n</b> c\n</Card>\n',
+			[
+				[
+					'html',
+					'line_break',
+					[
+						'paragraph',
+						'text:a ',
+						['html', 'text:bold', 'soft_break'],
+						'text: c',
+					],
+					'line_break',
+				],
+			],
+		],
+	];
+
+	for (const [name, input, expected] of cases) {
+		test(name, () => {
+			expect(strip_line_breaks(root_shape(input))).toEqual(expected);
+			for (const size of [1, 3]) {
+				const { source } = parse_markdown_svelte(input);
+				const root = shape(parse_incremental(input, size), source) as Shape[];
+				expect(strip_line_breaks(root.slice(1))).toEqual(expected);
+			}
+		});
+	}
+});

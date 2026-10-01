@@ -4,5 +4,5 @@ root
     paragraph
       strong_emphasis
         text "foo"
-      soft_break
+    line_break
   line_break

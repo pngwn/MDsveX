@@ -8,8 +8,7 @@ root
       line_break
       paragraph
         text "P. Sherman"
-        soft_break
-        text "	"
+      line_break
     line_break
     line_break
     html tag="span" slot="address"
@@ -19,6 +18,5 @@ root
         html tag="br" self_closing=true
         soft_break
         text "		Sydney"
-        soft_break
-        text "	"
+      line_break
     line_break

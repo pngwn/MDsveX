@@ -6,4 +6,4 @@ root
     line_break
     paragraph
       text "reset"
-      soft_break
+    line_break

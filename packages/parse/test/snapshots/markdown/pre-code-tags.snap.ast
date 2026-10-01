@@ -5,7 +5,7 @@ root
       line_break
       paragraph
         text "foobar"
-        soft_break
+      line_break
     line_break
   line_break
   line_break
@@ -19,7 +19,7 @@ root
       line_break
       paragraph
         text "foobar"
-        soft_break
+      line_break
     line_break
   line_break
   line_break

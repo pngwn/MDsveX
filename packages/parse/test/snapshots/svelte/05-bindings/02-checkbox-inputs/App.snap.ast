@@ -9,7 +9,7 @@ root
     paragraph
       text "Yes"
       text "! Send me regular email spam"
-      soft_break
+    line_break
   line_break
   line_break
   svelte_block tag="if"
@@ -31,4 +31,4 @@ root
     line_break
     paragraph
       text "Subscribe"
-      soft_break
+    line_break

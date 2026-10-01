@@ -6,7 +6,7 @@ root
     line_break
     paragraph
       text "Remove first thing"
-      soft_break
+    line_break
   line_break
   line_break
   html tag="div" style="display: grid; grid-template-columns: 1fr 1fr; grip-gap: 1em"

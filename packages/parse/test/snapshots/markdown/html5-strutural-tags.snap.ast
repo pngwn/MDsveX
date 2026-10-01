@@ -118,7 +118,7 @@ root
     line_break
     paragraph
       text "Sorry, your browser doesn't support the &lt;canvas&gt; element."
-      soft_break
+    line_break
   line_break
   line_break
   html tag="figure"

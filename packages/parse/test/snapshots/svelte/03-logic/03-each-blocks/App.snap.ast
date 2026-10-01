@@ -19,7 +19,6 @@ root
               mustache "i + 1"
               text ": "
               mustache "name"
-              soft_break
-              text "		"
+            line_break
         line_break
     line_break

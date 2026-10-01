@@ -11,7 +11,7 @@ root
     line_break
     paragraph
       text "big"
-      soft_break
+    line_break
   line_break
   line_break
   html tag="div" class:big=true

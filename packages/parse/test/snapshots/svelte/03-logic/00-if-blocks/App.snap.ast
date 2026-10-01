@@ -9,8 +9,7 @@ root
         line_break
         paragraph
           text "Log out"
-          soft_break
-          text "	"
+        line_break
       line_break
   line_break
   line_break
@@ -21,6 +20,5 @@ root
         line_break
         paragraph
           text "Log in"
-          soft_break
-          text "	"
+        line_break
       line_break

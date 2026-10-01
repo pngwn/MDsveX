@@ -1,8 +1,9 @@
 root
-  list ordered=false start=0 tight=false
+  list ordered=false start=0 tight=true
     list_item
-      paragraph
-        text "foo"
-      paragraph
-        text "bar"
+      text "foo"
+  line_break
+  line_break
+  paragraph
+    text "bar"
   line_break

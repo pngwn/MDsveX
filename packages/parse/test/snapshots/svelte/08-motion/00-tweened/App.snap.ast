@@ -12,32 +12,32 @@ root
     line_break
     paragraph
       text "0%"
-      soft_break
+    line_break
   line_break
   line_break
   html tag="button" on:click="{() => progress.set(0.25)}"
     line_break
     paragraph
       text "25%"
-      soft_break
+    line_break
   line_break
   line_break
   html tag="button" on:click="{() => progress.set(0.5)}"
     line_break
     paragraph
       text "50%"
-      soft_break
+    line_break
   line_break
   line_break
   html tag="button" on:click="{() => progress.set(0.75)}"
     line_break
     paragraph
       text "75%"
-      soft_break
+    line_break
   line_break
   line_break
   html tag="button" on:click="{() => progress.set(1)}"
     line_break
     paragraph
       text "100%"
-      soft_break
+    line_break

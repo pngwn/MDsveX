@@ -38,7 +38,7 @@ root
     line_break
     paragraph
       text "toggle me"
-      soft_break
+    line_break
   line_break
   line_break
   html tag="link" href="https://fonts.googleapis.com/css?family=Overpass:100" rel="stylesheet" self_closing=true

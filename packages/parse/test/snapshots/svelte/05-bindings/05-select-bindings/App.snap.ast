@@ -33,8 +33,7 @@ root
       line_break
       paragraph
         text "Submit"
-        soft_break
-        text "	"
+      line_break
     line_break
   line_break
   line_break

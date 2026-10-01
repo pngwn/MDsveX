@@ -13,7 +13,7 @@ root
     line_break
     paragraph
       text "One scoop"
-      soft_break
+    line_break
   line_break
   line_break
   html tag="label"
@@ -22,7 +22,7 @@ root
     line_break
     paragraph
       text "Two scoops"
-      soft_break
+    line_break
   line_break
   line_break
   html tag="label"
@@ -31,7 +31,7 @@ root
     line_break
     paragraph
       text "Three scoops"
-      soft_break
+    line_break
   line_break
   line_break
   html tag="h2"
@@ -48,8 +48,7 @@ root
         line_break
         paragraph
           mustache "flavour"
-          soft_break
-          text "	"
+        line_break
       line_break
   line_break
   line_break

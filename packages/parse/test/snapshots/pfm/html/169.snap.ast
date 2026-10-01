@@ -10,7 +10,7 @@ root
         text "main :: IO ()"
         soft_break
         text "main = print $ parseTags tags"
-        soft_break
+      line_break
   line_break
   paragraph
     text "okay"

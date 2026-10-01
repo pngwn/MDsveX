@@ -16,6 +16,6 @@ root
             emphasis
               text "world"
             text "."
-            soft_break
+          line_break
         line_break
   line_break

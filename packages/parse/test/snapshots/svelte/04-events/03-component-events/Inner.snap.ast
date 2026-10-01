@@ -6,4 +6,4 @@ root
     line_break
     paragraph
       text "Click to say hello"
-      soft_break
+    line_break

@@ -1002,6 +1002,9 @@ export class PFMParser {
 		let head = this.source;
 		const pending = this.wait_chunks;
 		if (this.trim_point - 1 > this.source_base) {
+			this.trim_before_indent();
+		}
+		if (this.trim_point - 1 > this.source_base) {
 			if (
 				this.pending_count !== this.pending_para_count &&
 				this.cold.pending_html !== 0
@@ -1403,6 +1406,26 @@ export class PFMParser {
 			cold.np_floor = floor;
 			return floor;
 		}
+	}
+
+	/**
+	 * move a trim point inside a whitespace run back to keep the char before the run,
+	 * lead_columns rereads the run and that char
+	 */
+	private trim_before_indent(): void {
+		const source = this.source;
+		const base = this.source_base;
+		let p = this.trim_point - 1;
+		while (p >= base) {
+			const ch = char_code_at.call(source, p - base);
+			if (ch !== SPACE && ch !== TAB) {
+				this.trim_point = p + 1;
+				return;
+			}
+			p--;
+		}
+		// the run opens the document
+		if (p < 0) this.trim_point = 0;
 	}
 
 	/**
@@ -2552,6 +2575,35 @@ export class PFMParser {
 	}
 
 	/**
+	 * columns of whitespace before pos when it indents its line, counted from the line
+	 * start or from where skip_bq_markers leaves a block quote line, 0 otherwise
+	 */
+	private lead_columns(pos: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		let p = pos;
+		let columns = 0;
+		while (p > base) {
+			const ch = char_code_at.call(source, p - 1 - base);
+			if (ch === SPACE) columns++;
+			else if (ch === TAB) columns += this.tab_size;
+			else break;
+			p--;
+		}
+		if (columns === 0 || p === 0) return columns;
+		// a trim never cuts a whitespace run, so the window holds the char before it
+		const before = char_code_at.call(source, p - 1 - base);
+		if (before === LINEFEED) return columns;
+		if (before === CLOSE_ANGLE_BRACKET && this.block_quote_depth > 0) {
+			// the space after the marker belongs to it
+			return char_code_at.call(source, p - base) === SPACE
+				? columns - 1
+				: columns;
+		}
+		return 0;
+	}
+
+	/**
 	 * skip enough whitespace characters starting at `pos` to consume
 	 * at least `target` columns. returns the position after skipping.
 	 */
@@ -2961,7 +3013,9 @@ export class PFMParser {
 				// block-level html tag (`<ul>`, `</p>`, etc.) at line start
 				// interrupts an open paragraph.
 				let q = p + 1;
-				if (q < length && char_code_at.call(source, q - base) === SLASH) q++;
+				const closing =
+					q < length && char_code_at.call(source, q - base) === SLASH;
+				if (closing) q++;
 				if (
 					q >= length ||
 					!this.is_tag_name_start(char_code_at.call(source, q - base))
@@ -2974,9 +3028,9 @@ export class PFMParser {
 					this.is_tag_name_char(char_code_at.call(source, q - base))
 				)
 					q++;
-				return this.is_block_html_tag(
-					string_slice.call(source, name_start - base, q - base)
-				);
+				const name = string_slice.call(source, name_start - base, q - base);
+				if (this.is_block_html_tag(name)) return true;
+				return closing && this.closes_container(name);
 			}
 			case COLON:
 				// :: or ::: starts a block directive
@@ -3052,7 +3106,8 @@ export class PFMParser {
 		if (pos >= length) return null;
 		const start = pos;
 		const ws = this.count_indent(pos);
-		let indent = ws.columns;
+		// later lines measure from the line start, so count whitespace a state already skipped
+		let indent = this.lead_columns(pos) + ws.columns;
 		pos = ws.end;
 		// no indent limit (commonmark limits to 0-3 because 4+ is indented code,
 		// but pfm removes indented code blocks, indentation is insignificant)
@@ -4041,11 +4096,27 @@ export class PFMParser {
 		return null; // no closing -->
 	}
 
+	/** whether a close tag named tag closes an html container around the open paragraph */
+	private closes_container(tag: string): boolean {
+		if (this.html_block_depth === 0) return false;
+		const idx = this.find_html_opener(tag);
+		if (idx === -1) return false;
+		const id = this.html_tag_stack[idx].id;
+		const stack = this.node_stack;
+		for (let i = stack.length - 1; i > 0; i--) {
+			const n = stack[i];
+			// opened inside the paragraph, the close is inline
+			if (n === id) return false;
+			if (this.kind_of(n) === NodeKind.paragraph)
+				return stack.lastIndexOf(id, i - 1) !== -1;
+		}
+		return false;
+	}
+
 	/**
 	 * find the matching html opener on the html_tag_stack for a closing tag.
 	 * returns the stack index or -1 if not found.
 	 */
-
 	private find_html_opener(tag: string): number {
 		for (let i = this.html_tag_stack.length - 1; i >= 0; i--) {
 			if (this.html_tag_stack[i].tag === tag) return i;

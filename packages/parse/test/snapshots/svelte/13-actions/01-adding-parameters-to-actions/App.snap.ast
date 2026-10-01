@@ -6,4 +6,4 @@ root
     line_break
     paragraph
       mustache "language"
-      soft_break
+    line_break
