@@ -2552,8 +2552,14 @@ export class PFMParser {
 		// is visible, skip_bq_markers can mis-strip. require the complete
 		// next line to avoid under-reading the continuation prefix.
 		// the window runs to exactly length, so any lf found lies within it
-		if (this.block_quote_depth > 0)
-			return pos + 1 < length && string_index_of.call(source, '\n', pos + 1 - base) !== -1;
+		if (this.block_quote_depth > 0) {
+			if (pos + 1 < length && string_index_of.call(source, '\n', pos + 1 - base) !== -1)
+				return true;
+			// a long partial line, hold chunks until one may end it instead of rejoining and rescanning it every feed
+			// short quoted lines end within a chunk or two, a wait there costs its release join
+			if (length - pos > 128) this.wait_for('\n');
+			return false;
+		}
 
 		let p = pos + 1;
 		// skip leading whitespace on the next line.
