@@ -635,8 +635,9 @@ export class PluginDispatcher {
 		for (const pass of this.sequential) {
 			const handlers = pass.handlers;
 
-			// read once so a handler that grows the buffer keeps walking the old storage
-			const n = buf._n;
+			// read again after plugin code runs, a handler or callback that grows the
+			// buffer moves it to new storage
+			let n = buf._n;
 			let idx = n[NodeField.first_child];
 			if (idx === NONE) continue;
 			// with no handled kind anywhere in the buffer, linked or not, the walk does nothing
@@ -668,6 +669,7 @@ export class PluginDispatcher {
 					const callbacks = handler(view, ctx);
 					if (callbacks) close_store.set(idx, callbacks);
 					cache.clear();
+					n = buf._n;
 				}
 
 				const child = n[b + NodeField.first_child];
@@ -677,7 +679,10 @@ export class PluginDispatcher {
 					continue;
 				}
 
-				if (close_store.live !== 0) close_store.fire(idx);
+				if (close_store.live !== 0) {
+					close_store.fire(idx);
+					n = buf._n;
+				}
 
 				// read after the callbacks, which may relink the node
 				let next = n[b + NodeField.next];
@@ -688,7 +693,10 @@ export class PluginDispatcher {
 					stack.length > 0
 				) {
 					idx = stack.pop()!;
-					if (close_store.live !== 0) close_store.fire(idx);
+					if (close_store.live !== 0) {
+						close_store.fire(idx);
+						n = buf._n;
+					}
 					const bi = idx * NodeField.stride;
 					next = n[bi + NodeField.next];
 					parent = n[bi + NodeField.parent];
