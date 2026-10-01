@@ -158,6 +158,11 @@ const ID_CLOSED = 0x80;
 const ID_MIN_CAPACITY = 16;
 const ID_POOL_CAP = 1 << 16;
 const EMPTY_IDS = new Int32Array(0);
+/**
+ * rarely used stacks hold this until their first push, so a parser costs no
+ * allocation for them, it is never written, a pop on it changes nothing
+ */
+const NO_STACK: any[] = [];
 
 // shared by every parser, a parser drops its references when it hands them back so no two hold the same table
 let spare_ids: Int32Array | null = null;
@@ -678,7 +683,7 @@ export class PFMParser {
 	private tag_memo: Uint8Array | null = null;
 	private tag_memo_base: number = 0;
 	// chunks fed while waiting on a brace, joined onto the window once it closes
-	private wait_chunks: string[] = [];
+	private wait_chunks: string[] = NO_STACK;
 	private wait_needle: string = '';
 	private wait_cursor: number = -1;
 	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
@@ -737,13 +742,13 @@ export class PFMParser {
 		content_offset: number;
 		marker_indent: number;
 		pending_paras: number[];
-	}[] = [];
+	}[] = NO_STACK;
 
 	// tight-list speculation:  every list_item's content paragraph is
 	// emitted as pending. at list close we finalize the collection,
 	// committing them all if the list became loose, or revoking (unwrap)
 	// them all if it stayed tight.
-	private list_pending_paras: number[] = [];
+	private list_pending_paras: number[] = NO_STACK;
 
 	// table
 	private table_col_count: number = 0;
@@ -770,7 +775,7 @@ export class PFMParser {
 		block_id: number;
 		branch_id: number;
 		tag: string;
-	}[] = [];
+	}[] = NO_STACK;
 
 	private frontmatter_failed: boolean = false;
 	private imports_allowed: boolean = true;
@@ -780,7 +785,7 @@ export class PFMParser {
 	private link_text_start: number = 0;
 
 	// directive container state
-	private directive_colon_counts: number[] = [];
+	private directive_colon_counts: number[] = NO_STACK;
 
 	// open inline directives whose [text] is being parsed. ids and
 	// literal bracket depths are parallel stacks - a non-empty stack
@@ -852,7 +857,11 @@ export class PFMParser {
 	 * before the first feed() call.
 	 */
 	init(): void {
-		this._init(ID_MIN_CAPACITY);
+		// a parser that never ran still holds its constructor state
+		if (this.id_info === EMPTY_IDS && this.finalized_below === 0) {
+			this.take_ids(ID_MIN_CAPACITY);
+			this.out.open(0, NodeKind.root, 0, -1, 0, false);
+		} else this._init(ID_MIN_CAPACITY);
 		this.kept_cut = -1;
 		this.finished = false;
 		this.one_shot = false;
@@ -1154,7 +1163,8 @@ export class PFMParser {
 							? !this.needle_in(chunk, len)
 							: !this.code_span_may_end(chunk, len)
 				) {
-					pending.push(chunk);
+					if (pending === NO_STACK) this.wait_chunks = [chunk];
+					else pending.push(chunk);
 					this.source_end = end + len;
 					return true;
 				}
@@ -1240,7 +1250,7 @@ export class PFMParser {
 		if (this.ref_map.size !== 0) this.ref_map.clear();
 		if (this.html_tag_stack.length !== 0) this.html_tag_stack = [];
 		this.svelte_block_tag = '';
-		if (this.svelte_block_stack.length !== 0) this.svelte_block_stack = [];
+		if (this.svelte_block_stack.length !== 0) this.svelte_block_stack = NO_STACK;
 		this.errors = EMPTY_ERRORS;
 	}
 
@@ -1289,8 +1299,9 @@ export class PFMParser {
 		this.list_content_offset = 0;
 		this.list_marker_indent = 0;
 		// replace nonempty stacks so no frame of the last document survives
-		if (this.list_state_stack.length !== 0) this.list_state_stack = [];
-		if (this.list_pending_paras.length !== 0) this.list_pending_paras = [];
+		if (this.list_state_stack.length !== 0) this.list_state_stack = NO_STACK;
+		if (this.list_pending_paras.length !== 0)
+			this.list_pending_paras = NO_STACK;
 		this.table_col_count = 0;
 		this.table_node_id = 0;
 		this.table_row_id = 0;
@@ -1305,7 +1316,7 @@ export class PFMParser {
 		this.svelte_block_tag = '';
 		this.svelte_branch_id = 0;
 		this.svelte_block_id = 0;
-		if (this.svelte_block_stack.length !== 0) this.svelte_block_stack = [];
+		if (this.svelte_block_stack.length !== 0) this.svelte_block_stack = NO_STACK;
 		this.extra = 0;
 		this.info_start_pos = 0;
 		this.info_end_pos = 0;
@@ -1319,7 +1330,7 @@ export class PFMParser {
 		if (this.ref_map.size !== 0) this.ref_map.clear();
 		this.link_text_start = 0;
 		if (this.directive_colon_counts.length !== 0) {
-			this.directive_colon_counts = [];
+			this.directive_colon_counts = NO_STACK;
 		}
 		if (this.directive_text_ids.length !== 0) this.directive_text_ids = [];
 		if (this.directive_text_brackets.length !== 0) {
@@ -1903,7 +1914,9 @@ export class PFMParser {
 		} else {
 			this.node_stack.push(d_id);
 			this.states.push(StateKind.directive_container);
-			this.directive_colon_counts.push(dir.colons);
+			const counts = this.directive_colon_counts;
+			if (counts === NO_STACK) this.directive_colon_counts = [dir.colons];
+			else counts.push(dir.colons);
 		}
 		this.chomp(dir.end, true);
 	}
@@ -2627,7 +2640,9 @@ export class PFMParser {
 	private start_list(marker: MarkerResult, parent: number): void {
 		// save current list state for nesting
 		if (this.list_depth > 0) {
-			this.list_state_stack.push({
+			let stack = this.list_state_stack;
+			if (stack === NO_STACK) stack = this.list_state_stack = [];
+			stack.push({
 				marker: this.list_marker,
 				ordered: this.list_ordered,
 				start_num: this.list_start_num,
@@ -2646,7 +2661,7 @@ export class PFMParser {
 		this.list_is_loose = false;
 		this.list_content_offset = marker.content_offset;
 		this.list_marker_indent = marker.indent;
-		this.list_pending_paras = [];
+		this.list_pending_paras = NO_STACK;
 
 		const list_id = this.emit_open(NodeKind.list, this.cursor, parent);
 		this.node_stack.push(list_id);
@@ -2692,7 +2707,9 @@ export class PFMParser {
 	 * loose -> commit).
 	 */
 	private track_list_pending_para(id: number): void {
-		this.list_pending_paras.push(id);
+		const paras = this.list_pending_paras;
+		if (paras === NO_STACK) this.list_pending_paras = [id];
+		else paras.push(id);
 	}
 
 	/**
@@ -2767,7 +2784,7 @@ export class PFMParser {
 			this.list_marker_indent = prev.marker_indent;
 			this.list_pending_paras = prev.pending_paras;
 		} else {
-			this.list_pending_paras = [];
+			this.list_pending_paras = NO_STACK;
 		}
 	}
 
@@ -2796,7 +2813,9 @@ export class PFMParser {
 	): void {
 		// save current svelte block state for nesting
 		if (this.svelte_block_depth > 0) {
-			this.svelte_block_stack.push({
+			let stack = this.svelte_block_stack;
+			if (stack === NO_STACK) stack = this.svelte_block_stack = [];
+			stack.push({
 				block_id: this.svelte_block_id,
 				branch_id: this.svelte_branch_id,
 				tag: this.svelte_block_tag,
