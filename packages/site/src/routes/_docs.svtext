@@ -1,3 +1,12 @@
+[svelte]: https://svelte.dev/
+[mdx]: https://mdxjs.com/
+[unified]: https://unifiedjs.com/
+[remark]: https://github.com/remarkjs
+[rehype]: https://github.com/rehypejs/rehype
+[remark_plugins]: https://github.com/remarkjs/remark/blob/main/doc/plugins.md#list-of-plugins
+[rehype_plugins]: https://github.com/rehypejs/rehype/blob/main/doc/plugins.md#list-of-plugins
+[prism]: https://prismjs.com/
+
 # mdsvex
 
 mdsvex is a markdown preprocessor for [Svelte][svelte] components. Basically [MDX][mdx] for Svelte.
@@ -20,7 +29,7 @@ The chart is rendered inside our MDsveX document.
 <Chart />
 ```
 
-It uses [unified], [remark] and [rehype] and you can use any [remark plugins][remark_plugins] or [rehype plugins][rehype_plugins] to enhance your experience.
+It uses [unified][], [remark][] and [rehype][] and you can use any [remark plugins][remark_plugins] or [rehype plugins][rehype_plugins] to enhance your experience.
 
 [Try it](/playground)
 
@@ -333,7 +342,7 @@ rehypePlugins: Array<plugin> | Array<[plugin, plugin_options]>;
 
 mdsvex has a simple pipeline. Your source file is first parsed into a Markdown AST (MDAST), this is where remark plugins would run. Then it is converted into an HTML AST (HAST), this is where rehype plugins would be run. After this it is converted (stringified) into a valid Svelte component ready to be compiled.
 
-[remark] and [rehype] have a vibrant plugin ecosystem and mdsvex allows you to pass any [remark plugins][remark_plugins] or [rehype plugins][rehype_plugins] as options, which will run on the remark and rehype ASTs at the correct point in the pipeline.
+[remark][] and [rehype][] have a vibrant plugin ecosystem and mdsvex allows you to pass any [remark plugins][remark_plugins] or [rehype plugins][rehype_plugins] as options, which will run on the remark and rehype ASTs at the correct point in the pipeline.
 
 These options take an array. If you do not wish to pass any options to a plugin then you can simply pass an array of plugins like so:
 
@@ -716,19 +725,10 @@ In general you have a lot more flexibility when it comes to indenting code in md
 
 The following code block will break in a way that is both very bad and quite unexpected:
 
-```mdsvex
+````mdsvex
 		```js
 					console.log('Hello, World!')
 		```
 ````
 
 The solution is to not do this. When working with fenced code blocks, do not indent them. This isn't an issue that can really be worked around, even if the parser did make assumptions about what you meant. Because code blocks are designed to respect whitespace, any fix would simply result in a different but equally frustrating failure. Don't indent code blocks.
-
-[svelte]: https://svelte.dev/
-[mdx]: https://mdxjs.com/
-[unified]: https://unifiedjs.com/
-[remark]: https://github.com/remarkjs
-[rehype]: https://github.com/rehypejs/rehype
-[remark_plugins]: https://github.com/remarkjs/remark/blob/main/doc/plugins.md#list-of-plugins
-[rehype_plugins]: https://github.com/rehypejs/rehype/blob/main/doc/plugins.md#list-of-plugins
-[prism]: https://prismjs.com/
