@@ -10312,41 +10312,29 @@ export class PFMParser {
 		const start = this.cursor;
 		const t_id = this.emit_open(NodeKind.text, start, parent);
 		this.out.set_value_start(t_id, start);
-		// ve tracks the end of the run's last char that is not a space or tab, so the value
-		// is trimmed without scanning trailing padding back (-1 while the run is all blank)
-		const c0 = char_code_at.call(source, start - base);
-		let ve = c0 === SPACE || c0 === TAB ? -1 : start + 1;
+		// ve is the end of the run's last char after the first that is not a space or tab,
+		// so trailing cell padding is never scanned back over; start while there is none
+		let ve = start;
 		let p = start + 1;
-		if (p < length) {
-			const c1 = char_code_at.call(source, p - base);
-			if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
-				p++;
-				if (c1 !== SPACE && c1 !== TAB) ve = p;
-				while (p < length) {
-					const ch = char_code_at.call(source, p - base);
-					if (ch <= SPACE) {
-						// a linefeed is the only text break at or below a space
-						if (ch === LINEFEED) break;
-						p++;
-						if (ch !== SPACE && ch !== TAB) ve = p;
-						continue;
-					}
+		let ch = p < length ? char_code_at.call(source, p - base) : 0;
+		if (ch !== 0) {
+			for (;;) {
+				if (ch <= SPACE) {
+					// a linefeed is the only text break at or below a space
+					if (ch === LINEFEED) break;
+					p++;
+					if (ch !== SPACE && ch !== TAB) ve = p;
+				} else {
 					if (ch < 128 && TEXT_BREAK[ch] !== 0) break;
 					p++;
 					ve = p;
 				}
+				if (p >= length) break;
+				ch = char_code_at.call(source, p - base);
 			}
 		}
-		const stop = p < length ? char_code_at.call(source, p - base) : 0;
-		if (stop === PIPE || stop === LINEFEED) {
-			if (ve < 0) {
-				ve = start;
-				while (ve > 0) {
-					const c = char_code_at.call(source, ve - 1 - base);
-					if (c !== SPACE && c !== TAB) break;
-					ve--;
-				}
-			}
+		if (p < length && (ch === PIPE || ch === LINEFEED)) {
+			if (ve === start) ve = this.blank_run_end(start + 1);
 			this.out.set_value_end(t_id, ve);
 			this.emit_close(t_id, p);
 			this.cursor = p;
@@ -10357,6 +10345,18 @@ export class PFMParser {
 		this.states.push(StateKind.text);
 		this.cursor = p;
 		return false;
+	}
+
+	/** end steps back over the spaces and tabs before it */
+	private blank_run_end(end: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		while (end > 0) {
+			const c = char_code_at.call(source, end - 1 - base);
+			if (c !== SPACE && c !== TAB) break;
+			end--;
+		}
+		return end;
 	}
 
 	/** true when no char from start to end makes the inline or text state yield */
