@@ -455,6 +455,22 @@ describe('trailing whitespace in a heading', () => {
 	}
 });
 
+describe('backtick and space at the end of the input', () => {
+	const cases: [string, string[]][] = [
+		['` ', ['  paragraph', '    text "`"', '    text " "']],
+		['a ` ', ['  paragraph', '    text "a "', '    text "`"', '    text " "']],
+		['# ` ', ['  heading depth=1 "`"', '    text "`"']],
+		['`` ', ['  paragraph', '    text "``"', '    text " "']],
+	];
+
+	for (const [input, lines] of cases) {
+		test(JSON.stringify(input), () => {
+			expect(print_batch(input)).toBe(['root', ...lines].join('\n'));
+			expect_incremental_matches(input);
+		});
+	}
+});
+
 describe('batch and incremental parity', () => {
 	const atoms = [
 		'*',

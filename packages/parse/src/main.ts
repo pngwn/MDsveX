@@ -6602,7 +6602,8 @@ export class PFMParser {
 							// applies until the closing backtick. the close handler
 							// sets both value_start and value_end with correct boundaries.
 
-							this.chomp(2);
+							// a space at the end of the input leaves nothing to skip after it
+							this.chomp(this.cursor + 1 >= length ? 1 : 2);
 
 							continue;
 						}
