@@ -176,75 +176,82 @@ export function record_data(code: number, node_index: number): MappingData {
  * arrays and a data object that stay alive until the caller drops the result
  */
 export class RecordMapping implements Mapping<MappingData> {
-	_source: number;
+	/**
+	 * the source offset, or the arrays of a mapping that is not one plain
+	 * piece, held as given (the other offsets are then 0)
+	 */
+	_source: number | Mapping<MappingData>;
 	_generated: number;
 	_length: number;
 	_generated_length: number;
-	/** record code, data preset and role */
-	_code: number;
-	_node_index: number;
-	/** the arrays of a mapping that is not one plain piece, held as given */
-	_arrays: Mapping<MappingData> | null;
+	/** (node index + 1) * 16 + record code, data preset and role */
+	_key: number;
 
 	constructor(
-		source: number,
+		source: number | Mapping<MappingData>,
 		generated: number,
 		length: number,
 		generated_length: number,
-		code: number,
-		node_index: number,
-		arrays: Mapping<MappingData> | null
+		key: number
 	) {
 		this._source = source;
 		this._generated = generated;
 		this._length = length;
 		this._generated_length = generated_length;
-		this._code = code;
-		this._node_index = node_index;
-		this._arrays = arrays;
+		this._key = key;
 	}
 
 	get sourceOffsets(): number[] {
-		const a = this._arrays;
-		return a === null ? [this._source] : a.sourceOffsets;
+		const s = this._source;
+		return typeof s === 'number' ? [s] : s.sourceOffsets;
 	}
 
 	get generatedOffsets(): number[] {
-		const a = this._arrays;
-		return a === null ? [this._generated] : a.generatedOffsets;
+		const s = this._source;
+		return typeof s === 'number' ? [this._generated] : s.generatedOffsets;
 	}
 
 	get lengths(): number[] {
-		const a = this._arrays;
-		return a === null ? [this._length] : a.lengths;
+		const s = this._source;
+		return typeof s === 'number' ? [this._length] : s.lengths;
 	}
 
 	get generatedLengths(): number[] | undefined {
-		const a = this._arrays;
-		if (a !== null) return a.generatedLengths;
+		const s = this._source;
+		if (typeof s !== 'number') return s.generatedLengths;
 		const gen_length = this._generated_length;
 		return gen_length === this._length ? undefined : [gen_length];
 	}
 
 	get data(): MappingData {
-		return record_data(this._code, this._node_index);
+		return key_data(this._key);
 	}
 
 	/** the plain mapping, keys in the order a plain literal had them */
 	toJSON(): Mapping<MappingData> {
-		const a = this._arrays;
-		if (a !== null) return a;
+		const s = this._source;
+		if (typeof s !== 'number') return s;
 		const m: Mapping<MappingData> = {
-			sourceOffsets: [this._source],
+			sourceOffsets: [s],
 			generatedOffsets: [this._generated],
 			lengths: [this._length],
-			data: record_data(this._code, this._node_index),
+			data: key_data(this._key),
 		};
 		if (this._generated_length !== this._length) {
 			m.generatedLengths = [this._generated_length];
 		}
 		return m;
 	}
+}
+
+/**
+ * record_data of a RecordMapping key, its node index is read signed (-1 for
+ * none) so the key is a non negative integer, & 15 keeps the low bits of any
+ * safe integer
+ */
+function key_data(key: number): MappingData {
+	const code = key & 15;
+	return record_data(code, (key - code) / 16 - 1);
 }
 
 // new Array(length) far past this gives dictionary elements
@@ -268,9 +275,7 @@ export function record_mappings(
 			rec[p],
 			rec[p + 3],
 			rec[p + 1],
-			rec[p + 5],
-			rec[p + 4] | 0,
-			null
+			((rec[p + 4] | 0) + 1) * 16 + rec[p + 5]
 		);
 	}
 	return mappings;

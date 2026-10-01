@@ -2914,6 +2914,7 @@ function resolve_raw_mappings(
 		k = rank_near(collapsed, start, k);
 		const code = rec[p + 5];
 		const node_index = rec[p + 4] | 0;
+		const key = (node_index + 1) * 16 + code;
 		// one class for every mapping so readers stay monomorphic, only a piece
 		// split around \r\n or whose widened length meets its generated length
 		// keeps arrays
@@ -2941,16 +2942,14 @@ function resolve_raw_mappings(
 					lengths,
 					data: data_of(code, node_index),
 				};
-				mappings[at++] = new RecordMapping(0, 0, 0, 0, code, node_index, m);
+				mappings[at++] = new RecordMapping(m, 0, 0, 0, key);
 			} else {
 				mappings[at++] = new RecordMapping(
 					start + k,
 					gen_offset,
 					source_length,
 					source_length,
-					code,
-					node_index,
-					null
+					key
 				);
 			}
 			continue;
@@ -2965,9 +2964,7 @@ function resolve_raw_mappings(
 				gen_offset,
 				length,
 				gen_length,
-				code,
-				node_index,
-				null
+				key
 			);
 		} else {
 			const m: Mapping<MappingData> = {
@@ -2977,7 +2974,7 @@ function resolve_raw_mappings(
 				data: data_of(code, node_index),
 				generatedLengths: [gen_length],
 			};
-			mappings[at++] = new RecordMapping(0, 0, 0, 0, code, node_index, m);
+			mappings[at++] = new RecordMapping(m, 0, 0, 0, key);
 		}
 	}
 	return mappings;
