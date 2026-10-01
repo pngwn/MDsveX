@@ -275,11 +275,13 @@ describe('element replacement, markdown mode', () => {
 
 	test('a document that uses no replacement renders as without components', () => {
 		const session = new CompilerSession();
+		// some fixtures open with frontmatter that is not yaml, keep it as metadata
+		const frontmatter = { parse: (raw: string) => ({ raw }) };
 		for (const file of fixture_files(FIXTURES)) {
 			const raw = readFileSync(file, 'utf8');
 			const components = only('nothing-here', 'mark');
-			expect(session.compile(raw, { components }).code, file).toBe(
-				compile(raw).code
+			expect(session.compile(raw, { components, frontmatter }).code, file).toBe(
+				compile(raw, { frontmatter }).code
 			);
 		}
 	});
@@ -379,26 +381,36 @@ describe('ComponentScope', () => {
 describe('walks agree with replacements', () => {
 	const files = fixture_files(FIXTURES);
 	const components = only(...ELEMENTS);
+	// some fixtures open with frontmatter that is not yaml, keep it as metadata
+	const frontmatter = { parse: (raw: string) => ({ raw }) };
 
 	test('the v3 map equals mappings_to_v3 over the mapped compile', () => {
 		const session = new CompilerSession();
 		let replaced = 0;
 		for (const file of files) {
 			const raw = readFileSync(file, 'utf8');
-			const mapped = compile(raw, { components, sourcemap: true });
-			const plain = compile(raw, { components });
+			const mapped = compile(raw, { components, sourcemap: true, frontmatter });
+			const plain = compile(raw, { components, frontmatter });
 			expect(mapped.code, file).toBe(plain.code);
 			if (plain.code.includes('_MDSVEX_G')) replaced++;
-			const got = session.compile_v3(raw, 'doc.svx', undefined, components);
+			const got = session.compile_v3(
+				raw,
+				'doc.svx',
+				undefined,
+				components,
+				frontmatter.parse
+			);
 			expect(got.code, file).toBe(mapped.code);
 			expect(JSON.stringify(got.map), file).toBe(
 				JSON.stringify(
 					mappings_to_v3(mapped.mappings!, raw, mapped.code, 'doc.svx')
 				)
 			);
-			expect(session.compile_trace(raw, undefined, components).code, file).toBe(
-				mapped.code
-			);
+			expect(
+				session.compile_trace(raw, undefined, components, frontmatter.parse)
+					.code,
+				file
+			).toBe(mapped.code);
 		}
 		expect(replaced).toBeGreaterThan(100);
 	});

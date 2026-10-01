@@ -557,6 +557,10 @@ let hoist_script = -1;
 let hoist_at = -1;
 /** import statement indices in document order */
 const hoist_nodes: number[] = [];
+/** code the module script starts with, '' for none */
+let module_code = '';
+/** the module script the module code goes into, -1 renders a new one in place of the frontmatter */
+let hoist_module = -1;
 
 function hoist_reset(): void {
 	hoist_script = -1;
@@ -603,6 +607,48 @@ function hoist_begin(buf: NodeBuffer): void {
 	if (hoist_nodes.length !== 0) hoist_at = hoist_nodes[0];
 	// no script and no import to start one, the render starts with one
 	else comp_prefix = '<script>\n' + comp_lines + '</script>';
+}
+
+/**
+ * find the top level module script the module code goes into, a render with
+ * module code ends with module_end so a render without any reads no state
+ */
+function module_begin(buf: NodeBuffer, code: string): void {
+	module_code = code;
+	const n = buf._n;
+	let child = n[W.first_child];
+	while (child !== Slot.NONE) {
+		const b = child * W.stride;
+		if (n[b + W.parent] !== 0) return;
+		if ((n[b] & 0xff) === K.HTML) {
+			const slot = n[b + W.meta];
+			const meta = slot === 0 ? undefined : buf._meta[slot - 1];
+			const attrs = meta?.attributes as Record<string, unknown> | undefined;
+			if (
+				meta !== undefined &&
+				meta.tag === 'script' &&
+				!meta.self_closing &&
+				attrs !== undefined &&
+				attrs.src === undefined &&
+				(attrs.module !== undefined || attrs.context === 'module')
+			) {
+				hoist_module = child;
+				return;
+			}
+		}
+		child = n[b + W.next];
+	}
+}
+
+function module_end(): void {
+	module_code = '';
+	hoist_module = -1;
+}
+
+/** the module script with the module code, for a document with none */
+function module_script(): string {
+	if (hoist_module !== -1) return '';
+	return '<script module>\n' + module_code + '\n</script>';
 }
 
 /** a module script or an external one, not the instance script */
@@ -1083,6 +1129,8 @@ function render_node(c: Cursor, sink?: MapSink): void {
 					if (c.index === hoist_script) {
 						mo += '\n';
 						mo_imports(c, sink, false);
+					} else if (c.index === hoist_module) {
+						mo = mo + '\n' + module_code + '\n';
 					}
 					const text = c.text();
 					if (sink) content_record(sink, c, text, Code.SVELTE_CONTENT);
@@ -1207,6 +1255,10 @@ function render_node(c: Cursor, sink?: MapSink): void {
 				mo_imports(c, sink, false);
 				mo += '</script>';
 			}
+			break;
+
+		case K.FRONTMATTER:
+			if (module_code !== '') mo += module_script();
 			break;
 
 		default:
@@ -1724,6 +1776,10 @@ function fold_node(c: Cursor, p: number): number {
 			if (c.index !== hoist_at) return p;
 			return push_dyn(p, '<script>\n' + import_lines(c) + '</script>');
 
+		case K.FRONTMATTER:
+			if (module_code === '') return p;
+			return push_dyn(p, module_script());
+
 		default:
 			return fold_children(c, p);
 	}
@@ -1854,6 +1910,8 @@ function fold_html(c: Cursor, p: number): number {
 	// raw text elements keep their content as the node value range, see _node
 	if (tag === 'script' || tag === 'style') {
 		if (c.index === hoist_script) p = push_dyn(p, '\n' + import_lines(c));
+		else if (c.index === hoist_module)
+			p = push_dyn(p, '\n' + module_code + '\n');
 		p = push_dyn(p, c.text());
 	} else {
 		p = fold_children(c, p);
@@ -2372,6 +2430,9 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 			mo = mo + FOLD_STR[S_GT] + '\n';
 			mo_imports(c, sink, true);
 			tr_text(c, sink, 0, c.text());
+		} else if (c.index === hoist_module) {
+			mo = mo + FOLD_STR[S_GT] + '\n' + module_code + '\n';
+			tr_text(c, sink, 0, c.text());
 		} else tr_text(c, sink, S_GT, c.text());
 	} else {
 		const q = tr_children(c, sink, S_GT);
@@ -2849,6 +2910,9 @@ function mp_html(c: Cursor, sink: MapSink, p: number): number {
 			mo = mo + FOLD_STR[S_GT] + '\n';
 			mo_imports(c, sink, false);
 			tr_content(c, sink, 0, c.text(), Code.SVELTE_CONTENT);
+		} else if (c.index === hoist_module) {
+			mo = mo + FOLD_STR[S_GT] + '\n' + module_code + '\n';
+			tr_content(c, sink, 0, c.text(), Code.SVELTE_CONTENT);
 		} else tr_content(c, sink, S_GT, c.text(), Code.SVELTE_CONTENT);
 	} else {
 		const q = mp_children(c, sink, S_GT);
@@ -3153,7 +3217,9 @@ function cm_put(p: number, s: string): number {
 function cm_children(c: Cursor, sink: MapSink | undefined, p: number): number {
 	if (comp_mode === CM.FOLD) return fold_children(c, p);
 	const q =
-		comp_mode === CM.TRACE ? tr_children(c, sink!, p) : mp_children(c, sink!, p);
+		comp_mode === CM.TRACE
+			? tr_children(c, sink!, p)
+			: mp_children(c, sink!, p);
 	if (q !== 0) mo += FOLD_STR[q];
 	return 0;
 }
@@ -3194,8 +3260,7 @@ function cm_spans(
 	preset: number
 ): void {
 	if (comp_mode === CM.TRACE) tr_point(sink!, pre, c.start);
-	else if (comp_mode === CM.MAPPED)
-		_spans(sink!, pre, ao, bc, post, c, preset);
+	else if (comp_mode === CM.MAPPED) _spans(sink!, pre, ao, bc, post, c, preset);
 }
 
 /** a void replacement records the node, hr also its open syntax, as the walks do */
@@ -3271,7 +3336,8 @@ function comp_node(
 
 		case K.LINK: {
 			const meta = c.meta();
-			if (meta?.href) open += ' href="' + escape_html(meta.href as string) + '"';
+			if (meta?.href)
+				open += ' href="' + escape_html(meta.href as string) + '"';
 			if (meta?.title)
 				open += ' title="' + escape_html(meta.title as string) + '"';
 			open += _attrs(c, LINK_HANDLED);
@@ -3417,7 +3483,10 @@ function cm_table(c: Cursor, sink: MapSink | undefined, p: number): number {
 		if (c.kind === K.TABLE_HEADER) {
 			p = cm_put(p, (head ? '<' + head.local + '>\n' : '<thead>\n') + row_open);
 			p = cm_cells(c, sink, p, 'th', alignments);
-			p = cm_put(p, row_close + (head ? '</' + head.local + '>\n' : '</thead>\n'));
+			p = cm_put(
+				p,
+				row_close + (head ? '</' + head.local + '>\n' : '</thead>\n')
+			);
 		} else if (c.kind === K.TABLE_ROW) {
 			let s = row_open;
 			if (!in_body) {
@@ -3751,7 +3820,11 @@ export class CursorHTMLRenderer {
 		if (this.cache) this.closed = new Set();
 	}
 
-	update(buf: NodeBuffer, source: string): CursorBlockEntry[] {
+	/**
+	 * @param code code the module script starts with, it goes into the top
+	 * level module script or a new one in place of the frontmatter
+	 */
+	update(buf: NodeBuffer, source: string, code?: string): CursorBlockEntry[] {
 		// reuse or create cursor
 		if (!this.cursor) {
 			this.cursor = new Cursor(buf, source);
@@ -3766,23 +3839,33 @@ export class CursorHTMLRenderer {
 		if (!this.cache) {
 			const scope = this.scope;
 			try {
-				if (scope !== null && scope.size !== 0)
-					comp_begin(c, scope, CM.FOLD);
+				if (scope !== null && scope.size !== 0) comp_begin(c, scope, CM.FOLD);
 				hoist_begin(buf);
+				if (code) module_begin(buf, code);
 				prebuilt_begin(buf);
 				this.html = render_folded(c);
 			} finally {
 				esc_prebuilt = true;
 				esc_bits = null;
 				if (comp_scope !== null) comp_end();
+				if (code) module_end();
 			}
 			return this.blocks;
 		}
 
-		hoist_begin(buf);
+		try {
+			hoist_begin(buf);
+			if (code) module_begin(buf, code);
+			this.update_blocks(c);
+		} finally {
+			if (code) module_end();
+		}
+		return this.blocks;
+	}
 
-		// cached block-level rendering
-		if (!c.goto_first_child()) return this.blocks;
+	/** the cached render, block by block */
+	private update_blocks(c: Cursor): void {
+		if (!c.goto_first_child()) return;
 
 		let block_idx = 0;
 		do {
@@ -3790,9 +3873,13 @@ export class CursorHTMLRenderer {
 
 			const idx = c.index;
 
-			// imports and the instance script render from document state, never cached
+			// imports, frontmatter and top level scripts render from document state, never cached
 			const keep =
-				c.closed && c.kind !== K.IMPORT_STATEMENT && idx !== hoist_script;
+				c.closed &&
+				c.kind !== K.IMPORT_STATEMENT &&
+				c.kind !== K.FRONTMATTER &&
+				idx !== hoist_script &&
+				idx !== hoist_module;
 			if (block_idx >= this.blocks.length) {
 				this.blocks.push({ idx, html: _render_block(c) });
 				if (keep) this.closed!.add(idx);
@@ -3806,7 +3893,6 @@ export class CursorHTMLRenderer {
 
 		c.goto_parent();
 		this.html = this.blocks.map((b) => b.html).join('');
-		return this.blocks;
 	}
 
 	/** trace renders with no syntax records, see tr_node */
@@ -3814,7 +3900,8 @@ export class CursorHTMLRenderer {
 		buf: NodeBuffer,
 		source: string,
 		sink: MapSink,
-		trace: boolean
+		trace: boolean,
+		code: string | undefined
 	): void {
 		if (!this.cursor) {
 			this.cursor = new Cursor(buf, source);
@@ -3832,6 +3919,11 @@ export class CursorHTMLRenderer {
 				comp_begin(c, scope, trace ? CM.TRACE : CM.MAPPED);
 			hoist_begin(buf);
 			mo = comp_prefix;
+			if (code) {
+				module_begin(buf, code);
+				// the frontmatter is the first node, the mapped walk has no case for it
+				mo += module_script();
+			}
 			prebuilt_begin(buf);
 			if (trace) p = tr_node(c, sink, 0);
 			else p = mp_node(c, sink, 0);
@@ -3839,6 +3931,7 @@ export class CursorHTMLRenderer {
 			esc_prebuilt = true;
 			esc_bits = null;
 			if (comp_scope !== null) comp_end();
+			if (code) module_end();
 		}
 		// the module string would keep the document alive
 		let html = mo;
@@ -3856,11 +3949,12 @@ export class CursorHTMLRenderer {
 	update_mapped(
 		buf: NodeBuffer,
 		source: string,
-		collapsed?: readonly number[] | null
+		collapsed?: readonly number[] | null,
+		module_code?: string
 	): { blocks: CursorBlockEntry[]; mappings: Mapping<MappingData>[] } {
 		const sink = render_sink;
 		sink.begin(true);
-		this.render_mapped(buf, source, sink, false);
+		this.render_mapped(buf, source, sink, false, module_code);
 		const mappings =
 			collapsed == null || collapsed.length === 0
 				? resolve_mappings(sink)
@@ -3877,30 +3971,40 @@ export class CursorHTMLRenderer {
 		buf: NodeBuffer,
 		source: string,
 		raw: string,
-		file?: string
+		file?: string,
+		module_code?: string
 	): SourceMapV3 {
 		const sink = render_sink;
 		sink.begin(false);
-		this.render_mapped(buf, source, sink, true);
+		this.render_mapped(buf, source, sink, true, module_code);
 		const map = trace_records_to_v3(sink, raw, this.html, file);
 		sink.release();
 		return map;
 	}
 
 	/** trace_to_v3 over the trace with the same arguments equals update_v3 */
-	update_trace(buf: NodeBuffer, source: string): MapTrace {
+	update_trace(
+		buf: NodeBuffer,
+		source: string,
+		module_code?: string
+	): MapTrace {
 		const trace: MapTrace = {
 			buf: render_sink.rec,
 			start: 0,
 			split: 0,
 			end: 0,
 		};
-		this.update_trace_into(buf, source, trace);
+		this.update_trace_into(buf, source, trace, module_code);
 		return trace;
 	}
 
 	/** update_trace filling out instead of a new trace */
-	update_trace_into(buf: NodeBuffer, source: string, out: MapTrace): void {
+	update_trace_into(
+		buf: NodeBuffer,
+		source: string,
+		out: MapTrace,
+		module_code?: string
+	): void {
 		const sink = render_sink;
 		// a node writes at most two records, so a small render writes straight into the slab
 		const bound = buf.size * (2 * Trace.SIZE);
@@ -3911,7 +4015,7 @@ export class CursorHTMLRenderer {
 			sink.n = start;
 			sink.syntax = false;
 			try {
-				this.render_mapped(buf, source, sink, true);
+				this.render_mapped(buf, source, sink, true, module_code);
 				trace_take(sink.rec, start, sink.n, out);
 				return;
 			} finally {
@@ -3921,7 +4025,7 @@ export class CursorHTMLRenderer {
 			}
 		}
 		sink.begin(false);
-		this.render_mapped(buf, source, sink, true);
+		this.render_mapped(buf, source, sink, true, module_code);
 		capture_trace(sink, out);
 		sink.release();
 	}
