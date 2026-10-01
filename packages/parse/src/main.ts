@@ -1308,6 +1308,24 @@ export class PFMParser {
 		return joined;
 	}
 
+	/** true when only spaces and tabs precede the backtick at bt on its line, the line may start in the window at fence_scan */
+	private fence_close_may_start(chunk: string, bt: number): boolean {
+		const ls = bt === 0 ? -1 : string_last_index_of.call(chunk, '\n', bt - 1);
+		for (let i = ls + 1; i < bt; i++) {
+			const c = char_code_at.call(chunk, i);
+			if (c !== SPACE && c !== TAB) return false;
+		}
+		if (ls !== -1) return true;
+		const source = this.source;
+		const base = this.source_base;
+		// a backtick run cut by the window end continues into the chunk
+		for (let p = this.fence_scan; p < this.source_end; p++) {
+			const c = char_code_at.call(source, p - base);
+			if (c !== SPACE && c !== TAB && c !== BACKTICK) return false;
+		}
+		return true;
+	}
+
 	/** leaves scan, trim point and window where _run would, false when the chunk might hold the close */
 	private skip_wait(chunk: string, len: number): boolean {
 		const end = this.source_end;
@@ -1336,15 +1354,34 @@ export class PFMParser {
 			return false;
 		}
 		if (kind === WAIT_FENCE) {
-			// no backtick means no close, the line after the last lf stays open
-			if (string_index_of.call(chunk, '`') !== -1) return false;
+			// only a backtick led by nothing but spaces and tabs on its line can close, the line after the last lf stays open
+			let bt = string_index_of.call(chunk, '`');
+			while (bt !== -1) {
+				if (this.fence_close_may_start(chunk, bt)) return false;
+				const nl = string_index_of.call(chunk, '\n', bt);
+				if (nl === -1) break;
+				bt = string_index_of.call(chunk, '`', nl + 1);
+			}
 			const lf = string_last_index_of.call(chunk, '\n');
-			if (lf === -1) return false;
-			const line = end + lf + 1;
+			let line: number;
+			if (lf === -1) {
+				// a long line: once it holds a char that is no space, tab or backtick it cannot close,
+				// that char becomes the scan start, the content scan then rules out the rest of the line
+				let m = len - 1;
+				for (; m > 0; m--) {
+					const c = char_code_at.call(chunk, m);
+					if (c !== SPACE && c !== TAB && c !== BACKTICK) break;
+				}
+				if (m <= 0) return false;
+				line = end + m;
+				this.source = string_slice.call(chunk, m - 1);
+			} else {
+				line = end + lf + 1;
+				// the lf stays as the lookbehind char before trim_point
+				this.source = string_slice.call(chunk, lf);
+			}
 			this.fence_scan = line;
 			this.trim_point = line;
-			// the lf stays as the lookbehind char before trim_point
-			this.source = string_slice.call(chunk, lf);
 			this.source_base = line - 1;
 		} else {
 			// a close tag needs a less than sign, keep the last needle length chars as _run does
