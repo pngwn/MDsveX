@@ -1516,6 +1516,62 @@ export class PFMParser {
 	}
 
 	/** open a text node at the plain char p0 under parent and skip its plain run */
+	/**
+	 * the inline asterisk case opened `outer` at the cursor and the next char is another asterisk
+	 * a word char after it makes the strong state push inline, inline open a second strong and
+	 * its first plain run, all done here; false leaves the states as they were
+	 */
+	private open_inner_strong(outer: number): boolean {
+		const p = this.cursor + 2;
+		if (p >= this.source_end) return false;
+		if (classify(char_code_at.call(this.source, p - this.source_base)) !== CharMask.word)
+			return false;
+		this.states.push(StateKind.inline);
+		const n_id = this.emit_open_pending(NodeKind.strong_emphasis, p - 1, outer);
+		this.out.set_value_start(n_id, p);
+		this.node_stack.push(n_id);
+		this.states.push(StateKind.strong_emphasis);
+		this.emphasis_has_content = true;
+		this.states.push(StateKind.inline);
+		this.open_text_run(p, n_id);
+		return true;
+	}
+
+	/**
+	 * close the strong `n_id` at the asterisk under the cursor; when that leaves the enclosing
+	 * strong's state on top and its closing asterisk follows ('**' closers), close it too
+	 */
+	private close_strong(n_id: number): void {
+		const states = this.states;
+		const node_stack = this.node_stack;
+		for (;;) {
+			this.out.set_value_end(n_id, this.cursor);
+			this.emit_close(n_id, this.cursor + 1);
+			this.pending_remove(n_id);
+			states.pop();
+			node_stack.pop();
+			const p = ++this.cursor;
+			// pop trailing inline so parent state sees next char directly
+			if (states[states.length - 1] === StateKind.inline) states.pop();
+			if (
+				states[states.length - 1] !== StateKind.strong_emphasis ||
+				!this.emphasis_has_content ||
+				p + 1 >= this.source_end
+			)
+				return;
+			// the strong state's close test, the char before p is the asterisk just closed
+			const base = this.source_base;
+			if (
+				char_code_at.call(this.source, p - base) !== ASTERISK ||
+				(classify(char_code_at.call(this.source, p + 1 - base)) &
+					(CharMask.whitespace | CharMask.punctuation)) ===
+					0
+			)
+				return;
+			n_id = node_stack[node_stack.length - 1];
+		}
+	}
+
 	private open_text_run(p0: number, parent: number): void {
 		const source = this.source;
 		const base = this.source_base;
@@ -5501,16 +5557,7 @@ export class PFMParser {
 							continue;
 						}
 
-						this.out.set_value_end(n_id, this.cursor);
-						this.emit_close(n_id, this.cursor + 1);
-						this.pending_remove(n_id);
-						this.states.pop();
-						this.node_stack.pop();
-						this.cursor++;
-						// pop trailing inline so parent state sees next char directly
-						if (this.states[this.states.length - 1] === StateKind.inline) {
-							this.states.pop();
-						}
+						this.close_strong(n_id);
 					} else if (
 						code === LINEFEED &&
 						this._delimiter_lf_close(current_node)
@@ -5603,18 +5650,20 @@ export class PFMParser {
 								q++;
 							const run_n = q - this.cursor;
 							const c0 = q < length ? char_code_at.call(source, q - base) : -1;
+							// in a table cell a pipe ends the span, so one before the closer takes the slow path
+							const cs_pipe = this.in_table ? PIPE : LINEFEED;
 							if (
-								!this.in_table &&
 								c0 !== -1 &&
 								c0 !== BACKTICK &&
 								c0 !== SPACE &&
 								c0 !== OCTOTHERP &&
-								c0 !== LINEFEED
+								c0 !== LINEFEED &&
+								c0 !== cs_pipe
 							) {
 								let e = q + 1;
 								while (e < length) {
 									const ch = char_code_at.call(source, e - base);
-									if (ch === BACKTICK || ch === LINEFEED) break;
+									if (ch === BACKTICK || ch === LINEFEED || ch === cs_pipe) break;
 									e++;
 								}
 								if (
@@ -5728,6 +5777,8 @@ export class PFMParser {
 									this.open_text_run(this.cursor + 1, n_id);
 									continue;
 								}
+								// '**' then a word char: the inner strong and its first run too
+								if (c_next === ASTERISK && this.open_inner_strong(n_id)) continue;
 							} else {
 								const t_id = this.emit_open(
 									NodeKind.text,
