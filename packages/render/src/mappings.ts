@@ -247,23 +247,30 @@ export class RecordMapping implements Mapping<MappingData> {
 	}
 }
 
+// new Array(length) far past this gives dictionary elements
+const MAPPINGS_PRESIZE_MAX = 1 << 20;
+
 /** one RecordMapping per record of rec[0, n) */
 export function record_mappings(
 	rec: Uint32Array,
 	n: number
 ): Mapping<MappingData>[] {
-	const mappings: Mapping<MappingData>[] = [];
+	// sized once rather than grown by push, which copies the elements at every
+	// growth step, past the cap stores append as push would
+	const count = n / RECORD_SIZE;
+	const mappings: Mapping<MappingData>[] = new Array(
+		count < MAPPINGS_PRESIZE_MAX ? count : MAPPINGS_PRESIZE_MAX
+	);
+	let i = 0;
 	for (let p = 0; p < n; p += RECORD_SIZE) {
-		mappings.push(
-			new RecordMapping(
-				rec[p + 2],
-				rec[p],
-				rec[p + 3],
-				rec[p + 1],
-				rec[p + 5],
-				rec[p + 4] | 0,
-				null
-			)
+		mappings[i++] = new RecordMapping(
+			rec[p + 2],
+			rec[p],
+			rec[p + 3],
+			rec[p + 1],
+			rec[p + 5],
+			rec[p + 4] | 0,
+			null
 		);
 	}
 	return mappings;
