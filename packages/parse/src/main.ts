@@ -1168,7 +1168,7 @@ export class PFMParser {
 		}
 		const base = this.source_base;
 		const source = this.source;
-		for (let pi = 0; pi < this.pending_count; pi++) {
+		for (let pi = this.pending_floor(); pi < this.pending_count; pi++) {
 			const id = this.pending_ids[pi];
 			const pkind = this.kind_of(id);
 			if (pkind === NodeKind.paragraph || this.is_trim_delimiter(pkind))
@@ -1388,6 +1388,33 @@ export class PFMParser {
 	}
 
 	/**
+	 * the first pending slot that may hold another kind than a paragraph, raised past the
+	 * paragraphs above the last floor while the paragraph count says the slots below it still
+	 * hold only paragraphs (see revoke_stale_pending), feed trims scan pending nodes from it
+	 */
+	private pending_floor(): number {
+		const cold = this.cold;
+		const count = this.pending_count;
+		let floor = cold.np_floor;
+		if (floor > count) floor = 0;
+		for (;;) {
+			let paras = 0;
+			let first = -1;
+			for (let pi = floor; pi < count; pi++) {
+				if (this.kind_of(this.pending_ids[pi]) === NodeKind.paragraph) paras++;
+				else if (first < 0) first = pi;
+			}
+			if (floor !== 0 && this.pending_para_count - paras !== floor) {
+				floor = 0;
+				continue;
+			}
+			floor = first < 0 ? count : first;
+			cold.np_floor = floor;
+			return floor;
+		}
+	}
+
+	/**
 	 * feed window trim when non paragraph nodes are pending, keeps the open tag lines of
 	 * pending html containers before the cut and moves their pending starts onto them
 	 * so a revoke repair reads the same open tag
@@ -1397,9 +1424,11 @@ export class PFMParser {
 		const cut = this.trim_point - 1;
 		// the window already holds the kept lines and the text from cut while no kept opener closed
 		// html opens after the trim point, so only a close changes the set before cut
+		// the slots below the floor hold only tight list paragraphs, a long list need not rescan them
+		const floor = this.pending_floor();
 		if (cut === this.cold.kept_cut && base === this.cold.kept_base) {
 			let kept = 0;
-			for (let pi = 0; pi < this.pending_count; pi++) {
+			for (let pi = floor; pi < this.pending_count; pi++) {
 				if (
 					this.pending_starts[pi] < cut &&
 					this.kind_of(this.pending_ids[pi]) === NodeKind.html
@@ -1411,7 +1440,7 @@ export class PFMParser {
 		let prefix = '';
 		const offsets: number[] = [];
 		const slots: number[] = [];
-		for (let pi = 0; pi < this.pending_count; pi++) {
+		for (let pi = floor; pi < this.pending_count; pi++) {
 			const start = this.pending_starts[pi];
 			if (start >= cut || this.kind_of(this.pending_ids[pi]) !== NodeKind.html)
 				continue;
