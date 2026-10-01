@@ -459,10 +459,18 @@ export class NodeBuffer {
 		// a length store is a runtime call even when already empty
 		if (this._meta.length !== 0) this._meta.length = 0;
 		if (this._strings.length !== 0) this._strings.length = 0;
-		// pushes left their words in the slots below _size, make them template again
+		// pushes left their words in the slots below _size, make them template
+		// again, from a copy of the template slots above it when there are as
+		// many, one copy costs about what stores for eight nodes cost
 		const size = this._size;
 		if (size !== 0) {
-			fill_template(this._n, 0, size);
+			if (size > 8 && size << 1 <= this._filled)
+				this._n.copyWithin(
+					0,
+					size * NodeField.stride,
+					(size << 1) * NodeField.stride
+				);
+			else fill_template(this._n, 0, size);
 			this._size = 0;
 		}
 	}
