@@ -130,7 +130,12 @@ interface RegistrationResult {
 	fused: HandlersTable;
 	sequential: { plugin: ParsePlugin; handlers: HandlersTable }[];
 	has_handler: Uint32Array;
+	/** 1 for each kind with a fused handler, shared, never written */
+	open_wants: Uint8Array;
 }
+
+/** open_wants once a redirect exists: any open may need retargeting */
+const ALL_WANTS = new Uint8Array(64).fill(1);
 
 function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 	const fused_plugins: ParsePlugin[] = [];
@@ -194,7 +199,16 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 			pass.handlers.some((h) => h !== null)
 		),
 		has_handler,
+		open_wants: wants_of(has_handler),
 	};
+}
+
+function wants_of(has_handler: Uint32Array): Uint8Array {
+	const wants = new Uint8Array(64);
+	for (let k = 0; k < 64; k++) {
+		if (has_handler[k >> 5] & (1 << (k & 31))) wants[k] = 1;
+	}
+	return wants;
 }
 
 /** parse_of for an entry the registration skips */
@@ -428,20 +442,18 @@ export class PluginDispatcher {
 
 	/**
 	 * 1 for each kind whose open needs the dispatcher, read by the builder's
-	 * open in place of wants_open, every kind once a redirect was registered
+	 * open in place of wants_open, every kind once a redirect was registered.
+	 * redirects only start inside dispatch_open, builders reread it after one
 	 */
-	readonly open_wants: Uint8Array = new Uint8Array(64);
+	open_wants: Uint8Array;
 
 	constructor(plugins: ParsePlugin[], text_source: TextSource) {
 		const reg = registration_for(plugins);
 		this.fused = reg.fused;
-		const has_handler = (this.has_handler = reg.has_handler);
+		this.has_handler = reg.has_handler;
 		this.sequential = reg.sequential;
 		this.text_source = text_source;
-		const wants = this.open_wants;
-		for (let k = 0; k < 64; k++) {
-			if (has_handler[k >> 5] & (1 << (k & 31))) wants[k] = 1;
-		}
+		this.open_wants = reg.open_wants;
 	}
 
 	/** cleared since a callback view may have filled it after the last dispatch */
@@ -491,24 +503,14 @@ export class PluginDispatcher {
 		return this.redirects.get(parent_idx);
 	}
 
-	/** register a wrap_inner redirect. */
-	set_redirect(parent_idx: number, wrapper_idx: number): void {
-		this.own_redirects().set(parent_idx, wrapper_idx);
-	}
-
 	private own_redirects(): Map<number, number> {
 		let redirects = this.redirects;
 		if (redirects === NO_REDIRECTS) {
 			redirects = this.redirects = new Map();
 			// a redirect can retarget the parent of any open
-			this.open_wants.fill(1);
+			this.open_wants = ALL_WANTS;
 		}
 		return redirects;
-	}
-
-	/** clear a redirect (on parent close). */
-	clear_redirect(parent_idx: number): void {
-		this.redirects.delete(parent_idx);
 	}
 
 	/** allocate a new synthetic node id. */

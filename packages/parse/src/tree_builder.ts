@@ -126,15 +126,10 @@ export class TreeBuilder implements Emitter {
 		if (
 			this.id_to_index === null &&
 			id === nodes._size &&
-			this.wants[kind] === 0
+			!this.wants[kind]
 		) {
-			nodes.push_node(
-				kind,
-				start,
-				parent === -1 ? NONE : parent,
-				extra,
-				pending
-			);
+			// >>> 0 turns the -1 of no parent into NONE
+			nodes.push_node(kind, start, parent >>> 0, extra, pending);
 			return;
 		}
 		if (id !== 0) this.open_slow(id, kind, start, parent, extra, pending);
@@ -169,6 +164,7 @@ export class TreeBuilder implements Emitter {
 			const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
 			if (dispatcher.has_handlers(kind)) {
 				dispatcher.dispatch_open(idx, kind, nodes, this.register_id!);
+				this.wants = dispatcher.open_wants;
 			}
 			return;
 		}
@@ -201,6 +197,7 @@ export class TreeBuilder implements Emitter {
 
 		if (dispatcher !== null && dispatcher.has_handlers(kind)) {
 			dispatcher.dispatch_open(idx, kind, nodes, this.register_id!);
+			this.wants = dispatcher.open_wants;
 		}
 	}
 
