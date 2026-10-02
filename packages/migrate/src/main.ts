@@ -4,7 +4,7 @@ import remarkGfm from "remark-gfm";
 import type { Root } from "mdast";
 
 import { serialize, type SerializeOptions } from "./serialize.js";
-import { split_frontmatter } from "./frontmatter.js";
+import { migrate_frontmatter, split_frontmatter } from "./frontmatter.js";
 
 export interface MigrateOptions extends SerializeOptions {}
 
@@ -18,7 +18,7 @@ const processor = unified().use(remarkParse).use(remarkGfm);
  * `_`/`*` emphasis/strong, backslash hard breaks, fully-prefixed blockquotes,
  * explicit reference links with hoisted definitions, and GFM tables/strike.
  *
- * frontmatter is kept as it is
+ * frontmatter is kept, with its layout key renamed to template
  */
 export function migrate(markdown: string, options: MigrateOptions = {}): string {
 	const { frontmatter, body } = split_frontmatter(markdown);
@@ -26,9 +26,11 @@ export function migrate(markdown: string, options: MigrateOptions = {}): string 
 	const out = serialize(tree, options);
 	if (frontmatter === "") return out;
 
-	let head = frontmatter;
+	let head = migrate_frontmatter(frontmatter).code;
 	if (!head.endsWith("\n")) head += "\n";
 	return out === "\n" ? head : head + "\n" + out;
 }
 
 export { serialize, type SerializeOptions } from "./serialize.js";
+export { migrate_frontmatter } from "./frontmatter.js";
+export type { MigrateResult, MigrationNote, NoteKind } from "./notes.js";
