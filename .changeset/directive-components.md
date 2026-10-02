@@ -17,8 +17,6 @@ export { default as Callout } from './Callout.svelte';
 export { default as abbr } from './Abbr.svelte';
 ```
 
-A template's module script can export its own `directives` namespace the same way. For a document wrapped in that template, its directives take precedence over the root ones.
-
 Here is what each directive passes to its component:
 
 - **Args** arrive as string props.
