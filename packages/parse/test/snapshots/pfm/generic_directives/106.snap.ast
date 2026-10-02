@@ -1,0 +1,9 @@
+root
+  directive_leaf name="note"
+    directive_label
+      text "Heads "
+      strong_emphasis
+        text "up"
+      text " and "
+      emphasis
+        text "soft"

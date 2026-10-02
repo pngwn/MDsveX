@@ -1,6 +1,10 @@
 root
-  directive_container name="outer" "Outer Label"
-    directive_container name="inner" "Inner Label"
+  directive_container name="outer"
+    directive_label
+      text "Outer Label"
+    directive_container name="inner"
+      directive_label
+        text "Inner Label"
       paragraph
         text "Nested content."
       line_break

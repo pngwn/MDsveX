@@ -1,0 +1,10 @@
+root
+  directive_leaf name="x"
+    directive_label
+      text "see "
+      text "[docs"
+      text "](/d) "
+      text "<https://x.y> "
+      text "!"
+      text "[i"
+      text "](s)"

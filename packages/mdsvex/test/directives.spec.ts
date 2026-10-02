@@ -1,3 +1,4 @@
+import { originalPositionFor, TraceMap } from '@jridgewell/trace-mapping';
 import { compile as svelte_compile } from 'svelte/compiler';
 import { describe, expect, test } from 'vitest';
 
@@ -141,6 +142,138 @@ describe('the three forms', () => {
 		expect(body(compile_all('::x[a < b & "c"]', only('x')))).toBe(
 			'<X_MDSVEX_D_G>{#snippet label()}a &lt; b &amp; &quot;c&quot;{/snippet}</X_MDSVEX_D_G>'
 		);
+	});
+});
+
+/** the source offset the innermost mapping of a compile gives the generated offset */
+function mapped_source(
+	mappings: {
+		sourceOffsets: number[];
+		generatedOffsets: number[];
+		lengths: number[];
+		generatedLengths?: number[];
+	}[],
+	generated: number
+): number {
+	let best = -1;
+	let best_len = Infinity;
+	for (const m of mappings) {
+		for (let i = 0; i < m.generatedOffsets.length; i++) {
+			const g = m.generatedOffsets[i];
+			const len = m.generatedLengths?.[i] ?? m.lengths[i];
+			// a text record has equal lengths, so an offset inside it maps one to one
+			if (generated < g || generated >= g + len || len >= best_len) continue;
+			if (m.lengths[i] !== len) continue;
+			best = m.sourceOffsets[i] + (generated - g);
+			best_len = len;
+		}
+	}
+	return best;
+}
+
+describe('labels', () => {
+	test('a leaf label renders its inline markdown', () => {
+		expect(
+			body(compile_all('::Youtube[A *great* `talk`](id=x)', only('Youtube')))
+		).toBe(
+			'<Youtube_MDSVEX_D_G id="x">{#snippet label()}A <strong>great</strong> <code>talk</code>{/snippet}</Youtube_MDSVEX_D_G>'
+		);
+	});
+
+	test('a container label renders apart from its body', () => {
+		expect(
+			body(
+				compile_all(
+					':::Callout[Heads *up*](kind=warn)\nBody _soft_\n:::',
+					only('Callout')
+				)
+			)
+		).toBe(
+			'<Callout_MDSVEX_D_G kind="warn">{#snippet label()}Heads <strong>up</strong>{/snippet}\n' +
+				'<p>Body <em>soft</em></p>\n' +
+				'</Callout_MDSVEX_D_G>'
+		);
+	});
+
+	test('a label holds inline directives and replaced elements', () => {
+		const code = compile_all(
+			':::Callout[see :abbr[HTML](title=t) *now*]\nb\n:::',
+			only('Callout', 'abbr'),
+			[{ specifier: '#c', names: ['strong'] }]
+		);
+		expect(body(code)).toBe(
+			'<Callout_MDSVEX_D_G>{#snippet label()}see <Abbr_MDSVEX_D_G title="t">HTML</Abbr_MDSVEX_D_G> ' +
+				'<Strong_MDSVEX_G>now</Strong_MDSVEX_G>{/snippet}\n<p>b</p>\n</Callout_MDSVEX_D_G>'
+		);
+		expect(imports_of(code)).toContain('abbr as Abbr_MDSVEX_D_G');
+		expect(imports_of(code)).toContain('strong as Strong_MDSVEX_G');
+	});
+
+	test('an unknown directive inside a label is still an error', () => {
+		const e = error_of(() =>
+			compile('::Note[see :nope[x]]', { directives: only('Note') })
+		);
+		expect(e.message).toContain(':nope at 1:12');
+	});
+
+	test('links stay literal and the label never takes the args', () => {
+		expect(body(compile_all('::X[see [a](b) <https://c.d>]', only('X')))).toBe(
+			'<X_MDSVEX_D_G>{#snippet label()}see [a](b) &lt;https://c.d&gt;{/snippet}</X_MDSVEX_D_G>'
+		);
+		expect(body(compile_all('::X[*a](k=*)', only('X')))).toBe(
+			'<X_MDSVEX_D_G k="*">{#snippet label()}*a{/snippet}</X_MDSVEX_D_G>'
+		);
+	});
+
+	test('the snippet maps each label node to its source', () => {
+		const raw = ':::Callout[Heads *up* `c`](kind=warn)\nBody\n:::';
+		const out = compile(raw, { directives: only('Callout'), sourcemap: true });
+		const at = (needle: string, from = 0) =>
+			mapped_source(out.mappings!, out.code.indexOf(needle, from));
+		const snippet = out.code.indexOf('{#snippet label()}');
+		expect(at('Heads', snippet)).toBe(raw.indexOf('Heads'));
+		expect(at('up', snippet)).toBe(raw.indexOf('up'));
+		expect(at('c</code>', snippet)).toBe(raw.indexOf('c`'));
+		expect(at('Body')).toBe(raw.indexOf('Body'));
+		const strong = out.mappings!.find((m) =>
+			out.code.slice(m.generatedOffsets[0]).startsWith('<strong>up')
+		);
+		expect(strong?.sourceOffsets[0]).toBe(raw.indexOf('*up*'));
+	});
+
+	test('the trace map points label text at its source', () => {
+		const raw = 'intro\n\n::Youtube[A *great* talk](id=x)\n';
+		const out = new CompilerSession().compile_v3(
+			raw,
+			'doc.svx',
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			only('Youtube')
+		);
+		const map = new TraceMap(out.map as never);
+		const position = (needle: string) => {
+			const i = out.code.indexOf(needle, out.code.indexOf('{#snippet'));
+			const before = out.code.slice(0, i);
+			const line = before.split('\n').length;
+			return originalPositionFor(map, {
+				line,
+				column: i - (before.lastIndexOf('\n') + 1),
+			});
+		};
+		expect(position('great')).toMatchObject({ line: 3, column: 13 });
+		expect(position(' talk')).toMatchObject({ line: 3, column: 19 });
+	});
+
+	test('a label with markup compiles as svelte 5', () => {
+		const code = compile(
+			':::Callout[Heads *up* :abbr[x]]\nb\n:::\n\n::Note[`a`]',
+			{ directives: only('Callout', 'abbr', 'Note') }
+		).code;
+		for (const generate of ['client', 'server'] as const) {
+			svelte_compile(code, { generate, filename: 'doc.svelte' });
+		}
 	});
 });
 

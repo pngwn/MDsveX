@@ -1,0 +1,4 @@
+root
+  directive_leaf name="x" args.k="*"
+    directive_label
+      text "*open"

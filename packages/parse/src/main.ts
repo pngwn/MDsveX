@@ -2395,7 +2395,13 @@ export class PFMParser {
 			else if (ch === BACKSLASH && p + 1 < length) {
 				p++;
 			} // skip escaped char
-			else if (ch === LINEFEED) break; // no line breaks in content bracket
+			else if (ch === BACKTICK) {
+				// brackets in a code span are code, as in inline directive text
+				const span_end = this.label_code_span_end(p);
+				if (span_end === -2) return false;
+				p = span_end;
+				continue;
+			} else if (ch === LINEFEED) break; // no line breaks in content bracket
 			if (bracket_depth > 0) p++;
 		}
 		if (bracket_depth !== 0) {
@@ -2450,9 +2456,39 @@ export class PFMParser {
 	}
 
 	/**
+	 * the end of the backtick run at pos, past its closing run when one of
+	 * the same length follows on the line, -2 when the line is not all buffered
+	 */
+	private label_code_span_end(pos: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		let p = pos + 1;
+		while (p < length && char_code_at.call(source, p - base) === BACKTICK) p++;
+		const run = p - pos;
+		const after = p;
+		while (p < length) {
+			const ch = char_code_at.call(source, p - base);
+			if (ch === LINEFEED) return after;
+			if (ch === BACKTICK) {
+				const q = p;
+				p++;
+				while (p < length && char_code_at.call(source, p - base) === BACKTICK)
+					p++;
+				if (p - q === run) return p;
+				continue;
+			}
+			p++;
+		}
+		return this.finished ? after : -2;
+	}
+
+	/**
 	 * open a block directive node from a successful
 	 * try_parse_block_directive result. leaf directives close
 	 * immediately, containers push their state and colon count.
+	 * a nonempty label becomes the first child, a directive_label whose
+	 * inline content parses as a range so nothing in it reaches past the bracket
 	 */
 	private start_block_directive(
 		dir: {
@@ -2479,6 +2515,9 @@ export class PFMParser {
 			this.out.set_value_start(d_id, dir.content_start);
 			this.out.set_value_end(d_id, dir.content_end);
 		}
+		if (dir.content_end > dir.content_start) {
+			this.directive_label(d_id, dir.content_start, dir.content_end);
+		}
 		if (dir.kind === 'leaf') {
 			this.emit_close(d_id, dir.end);
 		} else {
@@ -2489,6 +2528,41 @@ export class PFMParser {
 			else counts.push(dir.colons);
 		}
 		this.chomp(dir.end, true);
+	}
+
+	/** the label spans its brackets, its value and children the text between */
+	private directive_label(parent: number, start: number, end: number): void {
+		const l_id = this.emit_open(NodeKind.directive_label, start - 1, parent);
+		this.out.set_value_start(l_id, start);
+		// plain text is one text node, as a plain table header cell takes it
+		const source = this.source;
+		const base = this.source_base;
+		let p = start;
+		while (p < end) {
+			const ch = char_code_at.call(source, p - base);
+			if (ch === 0 || (ch < 128 && TEXT_BREAK[ch] !== 0)) break;
+			p++;
+		}
+		if (p === end) {
+			this.emit_leaf(NodeKind.text, start, l_id, start, end, end);
+			this.out.set_value_end(l_id, end);
+			this.emit_close(l_id, end + 1);
+			return;
+		}
+		this.node_stack.push(l_id);
+		// links, images and autolinks stay literal, as in inline directive text
+		this.directive_text_ids.push(l_id);
+		this.directive_text_brackets.push(0);
+		// the container state is the sentinel, _run_directive_container knows it by the label on top
+		this.parse_inline_range(start, end, StateKind.directive_container);
+		this.directive_text_pop(l_id);
+		this.node_stack.pop();
+		this.out.set_value_end(l_id, end);
+		this.emit_close(l_id, end + 1);
+		// an inline left open at the range end becomes literal text now
+		if (this.pending_count > this.pending_para_count) {
+			this.revoke_stale_pending();
+		}
 	}
 
 	/**
@@ -10360,6 +10434,15 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
+		// the sentinel under a label inline range, its end stops the loop
+		if (
+			this.inline_range_parse &&
+			this.kind_of(current_node) === NodeKind.directive_label
+		) {
+			if (!code) return true;
+			this.states.push(StateKind.inline);
+			return false;
+		}
 		// container directive: dispatches inner block content,
 		// watches for closing ::: fence.
 		if (!code) {
@@ -11086,11 +11169,15 @@ export class PFMParser {
 
 	/**
 	 * parse inline content for a specific byte range. used for header cells
-	 * where the full content is available atomically.
+	 * and block directive labels where the full content is available atomically.
 	 * saves/restores parser state, uses a sentinel state to prevent leaking
 	 * into block-level parsing.
 	 */
-	private parse_inline_range(start: number, end: number): void {
+	private parse_inline_range(
+		start: number,
+		end: number,
+		sentinel_state: StateKind = StateKind.table_row_content
+	): void {
 		const saved_cursor = this.cursor;
 		const saved_finished = this.finished;
 		const saved_floor = this.class_floor;
@@ -11106,7 +11193,7 @@ export class PFMParser {
 
 		// use a sentinel on the state stack so _run() stops here
 		const sentinel = this.states.length;
-		this.states.push(StateKind.table_row_content); // sentinel
+		this.states.push(sentinel_state);
 		this.states.push(StateKind.inline);
 
 		const save_source = this.source;

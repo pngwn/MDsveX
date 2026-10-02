@@ -2,4 +2,6 @@ root
   paragraph
     text "hello"
   line_break
-  directive_leaf name="note" "interrupts paragraph"
+  directive_leaf name="note"
+    directive_label
+      text "interrupts paragraph"

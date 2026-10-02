@@ -1,0 +1,5 @@
+root
+  directive_leaf name="x"
+    directive_label
+      code_span "a]b"
+      text " code"

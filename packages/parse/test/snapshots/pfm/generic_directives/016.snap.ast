@@ -1,2 +1,4 @@
 root
-  directive_leaf name="my-component" "Hello World"
+  directive_leaf name="my-component"
+    directive_label
+      text "Hello World"

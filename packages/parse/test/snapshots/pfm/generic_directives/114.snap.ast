@@ -1,0 +1,12 @@
+root
+  list ordered=false start=0 tight=true
+    list_item
+      directive_leaf name="x"
+        directive_label
+          text "a "
+          strong_emphasis
+            text "b"
+    list_item
+      directive_leaf name="y"
+        directive_label
+          code_span "c"

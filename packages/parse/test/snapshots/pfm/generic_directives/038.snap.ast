@@ -1,4 +1,8 @@
 root
-  directive_leaf name="leaf-one" "first"
+  directive_leaf name="leaf-one"
+    directive_label
+      text "first"
   line_break
-  directive_leaf name="leaf-two" "second"
+  directive_leaf name="leaf-two"
+    directive_label
+      text "second"

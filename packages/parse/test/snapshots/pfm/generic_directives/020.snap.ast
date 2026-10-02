@@ -1,5 +1,7 @@
 root
-  directive_container name="warning" "Caution"
+  directive_container name="warning"
+    directive_label
+      text "Caution"
     paragraph
       text "Be careful here."
     line_break

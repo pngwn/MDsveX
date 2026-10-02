@@ -1,7 +1,19 @@
 import { describe, expect, test } from 'vitest';
 
 import { get_content, get_all_child_kinds } from './utils';
-import { parse_markdown_svelte } from '../src/main';
+import { print_ast } from './print';
+import {
+	NodeKind,
+	PFMParser,
+	WireEmitter,
+	parse_markdown_svelte,
+} from '../src/main';
+import type { Emitter } from '../src/opcodes';
+import type { ParsePlugin } from '../src/plugin_types';
+import { TreeBuilder } from '../src/tree_builder';
+import { kind_to_string } from '../src/utils';
+import type { NodeBuffer } from '../src/utils';
+import { WireTreeBuilder } from '../src/wire_tree_builder';
 
 /** Find first child of a given kind under a node. */
 const find_child = (
@@ -959,5 +971,312 @@ describe('directive text content', () => {
 		const kinds = get_all_child_kinds(nodes, paragraph!.index);
 		expect(kinds).toContain('directive_inline');
 		expect(kinds).toContain('link');
+	});
+});
+
+/** the tree under the root, as print_ast prints it */
+const ast = (input: string) => {
+	const { nodes, source } = parse_markdown_svelte(input);
+	return print_ast(nodes, source).split('\n').slice(1).join('\n');
+};
+
+/** kinds and text of a buffer, text read from the source or a wire string */
+function shape(nodes: NodeBuffer, source: string | null, index = 0): unknown {
+	const node = nodes.get_node(index);
+	if (node.kind === 'text') {
+		const text =
+			source === null
+				? nodes._strings[index]
+				: source.slice(node.value[0], node.value[1]);
+		return 'text:' + text;
+	}
+	const kids = node.children
+		.filter((c) => nodes.get_node(c).kind !== 'line_break')
+		.map((c) => shape(nodes, source, c));
+	return kids.length === 0 ? node.kind : [node.kind, ...kids];
+}
+
+function parse_fed(source: string, chunk: number): NodeBuffer {
+	const tree = new TreeBuilder(source.length);
+	const parser = new PFMParser(tree);
+	parser.init();
+	for (let i = 0; i < source.length; i += chunk) {
+		parser.feed(source.slice(i, i + chunk));
+	}
+	parser.finish();
+	return tree.get_buffer();
+}
+
+function parse_over_wire(source: string, chunk: number): NodeBuffer {
+	const emitter = new WireEmitter();
+	const parser = new PFMParser(emitter);
+	const builder = new WireTreeBuilder();
+	parser.init();
+	for (let i = 0; i < source.length; i += chunk) {
+		emitter.set_source(source.slice(0, i + chunk));
+		parser.feed(source.slice(i, i + chunk));
+		builder.apply(emitter.flush());
+	}
+	emitter.set_source(source);
+	parser.finish();
+	builder.apply(emitter.flush());
+	return builder.get_buffer();
+}
+
+describe('block directive labels', () => {
+	test('a leaf label is a directive_label child holding inline nodes', () => {
+		expect(ast('::note[Heads *up* and _soft_]\n')).toBe(
+			[
+				'  directive_leaf name="note"',
+				'    directive_label',
+				'      text "Heads "',
+				'      strong_emphasis',
+				'        text "up"',
+				'      text " and "',
+				'      emphasis',
+				'        text "soft"',
+			].join('\n')
+		);
+	});
+
+	test('a container label comes first, the body blocks follow it', () => {
+		const input = ':::Callout[Heads *up*](kind=warn)\nbody\n\n> quote\n:::\n';
+		const { nodes, source } = parse_markdown_svelte(input);
+		const box = find_child(nodes, 0, 'directive_container')!;
+		expect(box.metadata.args).toEqual({ kind: 'warn' });
+		expect(shape(nodes, source, box.index)).toEqual([
+			'directive_container',
+			['directive_label', 'text:Heads ', ['strong_emphasis', 'text:up']],
+			['paragraph', 'text:body'],
+			['block_quote', ['paragraph', 'text:quote']],
+		]);
+		const kinds = get_all_child_kinds(nodes, box.index);
+		expect(kinds.filter((k) => k === 'directive_label')).toHaveLength(1);
+	});
+
+	test('the label spans its brackets, its value is the text between', () => {
+		const input = '::x[a *b*](k=v)\n';
+		const { nodes, source } = parse_markdown_svelte(input);
+		const leaf = find_child(nodes, 0, 'directive_leaf')!;
+		const label = find_child(nodes, leaf.index, 'directive_label')!;
+		expect(get_content(nodes, label.index, source)).toEqual({
+			content: '[a *b*]',
+			value: 'a *b*',
+		});
+		expect(get_content(nodes, leaf.index, source).value).toBe('a *b*');
+		const strong = find_child(nodes, label.index, 'strong_emphasis')!;
+		expect(get_content(nodes, strong.index, source)).toEqual({
+			content: '*b*',
+			value: 'b',
+		});
+	});
+
+	test('empty brackets make no label', () => {
+		expect(ast('::x[]\n')).toBe('  directive_leaf name="x"');
+		expect(
+			get_all_child_kinds(parse_markdown_svelte(':::x[]\na\n:::\n').nodes, 1)
+		).toEqual(['paragraph', 'line_break']);
+	});
+
+	test('whitespace only text is still a label', () => {
+		expect(ast('::x[ ]\n')).toBe(
+			[
+				'  directive_leaf name="x"',
+				'    directive_label',
+				'      text " "',
+			].join('\n')
+		);
+	});
+
+	test('an unclosed delimiter stays literal and never reaches the args', () => {
+		expect(ast('::x[*open](k=*)\n')).toBe(
+			[
+				'  directive_leaf name="x" args.k="*"',
+				'    directive_label',
+				'      text "*open"',
+			].join('\n')
+		);
+	});
+
+	test('a delimiter cannot close past the ], the line stays a directive', () => {
+		const { nodes } = parse_markdown_svelte('::x[a _b](c=d_)\n');
+		const leaf = find_child(nodes, 0, 'directive_leaf')!;
+		expect(leaf.metadata.args).toEqual({ c: 'd_' });
+		const label = find_child(nodes, leaf.index, 'directive_label')!;
+		expect(get_all_child_kinds(nodes, label.index)).not.toContain('emphasis');
+	});
+
+	test('a code span keeps its brackets', () => {
+		expect(ast('::x[`a]b` code]\n')).toBe(
+			[
+				'  directive_leaf name="x"',
+				'    directive_label',
+				'      code_span "a]b"',
+				'      text " code"',
+			].join('\n')
+		);
+		const { nodes } = parse_markdown_svelte('::x[a `b] c\n');
+		expect(get_all_child_kinds(nodes, 0)).toEqual(['paragraph', 'line_break']);
+	});
+
+	test('links, images and autolinks stay literal text', () => {
+		const { nodes } = parse_markdown_svelte(
+			'::x[see [docs](/d) <https://x.y> ![i](s)]\n'
+		);
+		const leaf = find_child(nodes, 0, 'directive_leaf')!;
+		const label = find_child(nodes, leaf.index, 'directive_label')!;
+		const kinds = get_all_child_kinds(nodes, label.index);
+		expect(kinds.every((k) => k === 'text')).toBe(true);
+	});
+
+	test('an inline directive nests in a label', () => {
+		expect(ast(':::x[a :y[b](k=v) c]\n:::\n')).toBe(
+			[
+				'  directive_container name="x"',
+				'    directive_label',
+				'      text "a "',
+				'      directive_inline name="y" args.k="v"',
+				'        text "b"',
+				'      text " c"',
+			].join('\n')
+		);
+	});
+
+	test('links parse again in the body after a label', () => {
+		const { nodes } = parse_markdown_svelte(':::x[a]\n[l](u)\n:::\n');
+		const box = find_child(nodes, 0, 'directive_container')!;
+		const para = find_child(nodes, box.index, 'paragraph')!;
+		expect(get_all_child_kinds(nodes, para.index)).toEqual(['link']);
+	});
+
+	test('labels in a block quote and a list', () => {
+		const quoted = parse_markdown_svelte('> ::q[*a*]\n');
+		expect(shape(quoted.nodes, quoted.source)).toEqual([
+			'root',
+			[
+				'block_quote',
+				['directive_leaf', ['directive_label', ['strong_emphasis', 'text:a']]],
+			],
+		]);
+		const { nodes, source } = parse_markdown_svelte(
+			'- ::x[a *b*]\n- ::y[`c`]\n'
+		);
+		expect(shape(nodes, source)).toEqual([
+			'root',
+			[
+				'list',
+				[
+					'list_item',
+					[
+						'directive_leaf',
+						['directive_label', 'text:a ', ['strong_emphasis', 'text:b']],
+					],
+				],
+				['list_item', ['directive_leaf', ['directive_label', 'code_span']]],
+			],
+		]);
+	});
+
+	describe('incremental', () => {
+		const cases = [
+			'::note[Heads *up* and _soft_]\n',
+			':::Callout[Heads *up*](kind=warn)\nbody *x*\n:::\n',
+			'::x[*open](k=*)\n',
+			'::x[`a]b` and :y[c](k=v)]\nafter\n',
+			'text\n::x[~~s~~ ^up^ ~down~ \\*l\\* {e} <b>h</b>]\n',
+			'> ::q[*a*]\n\n- ::x[a *b*]\n',
+			':::a[*o*]\n:::b[_i_]\nx\n:::\n:::\n',
+			'::x[a',
+			'::x[*a*]',
+		];
+		for (const input of cases) {
+			test(`fed in chunks matches the batch tree: ${JSON.stringify(input)}`, () => {
+				const { nodes, source } = parse_markdown_svelte(input);
+				const batch = print_ast(nodes, source);
+				for (const chunk of [1, 2, 3, 5, 8, 64]) {
+					expect(print_ast(parse_fed(input, chunk), source)).toBe(batch);
+				}
+			});
+		}
+
+		test('the label opens and closes at the end of its line, before the body', () => {
+			const ops: string[] = [];
+			const rec: Emitter = {
+				open: (_id, kind) => ops.push('open ' + kind_to_string(kind)),
+				close: (id) => ops.push('close ' + id),
+				text() {},
+				attr() {},
+				set_value_start() {},
+				set_value_end() {},
+				revoke: (id) => ops.push('revoke ' + id),
+				commit() {},
+				cursor() {},
+			};
+			const p = new PFMParser(rec);
+			p.init();
+			p.feed(':::box[*L*](k=v)');
+			expect(ops).toEqual(['open root']);
+			p.feed('\n');
+			expect(ops).toEqual([
+				'open root',
+				'open directive_container',
+				'open directive_label',
+				'open strong_emphasis',
+				'open text',
+				'close 4',
+				'close 3',
+				'close 2',
+			]);
+			p.feed('body\n:::\n');
+			p.finish();
+			expect(ops.slice(8, 10)).toEqual(['open paragraph', 'open text']);
+		});
+	});
+
+	describe('wire', () => {
+		test('the schema names the label kind', () => {
+			const emitter = new WireEmitter();
+			emitter.set_source('::x[a]\n');
+			new PFMParser(emitter).parse('::x[a]\n');
+			const schema = emitter.flush()[0];
+			expect(schema[0]).toBe('S');
+			expect((schema[1] as string[])[NodeKind.directive_label]).toBe(
+				'directive_label'
+			);
+		});
+
+		const cases = [
+			':::Callout[Heads *up* `c`](kind=warn)\nbody\n:::\n',
+			'::x[a :y[b] c]\n',
+			'> ::q[_a_ b]\n',
+		];
+		for (const input of cases) {
+			test(`the wire tree matches the batch tree: ${JSON.stringify(input)}`, () => {
+				const { nodes, source } = parse_markdown_svelte(input);
+				const expected = shape(nodes, source);
+				for (const chunk of [1, 4, input.length]) {
+					expect(shape(parse_over_wire(input, chunk), null)).toEqual(expected);
+				}
+			});
+		}
+	});
+
+	test('a parse plugin can address the label', () => {
+		const seen: string[] = [];
+		const plugin: ParsePlugin = {
+			directive_label: {
+				parse(node) {
+					seen.push(node.type);
+					node.attrs.role = 'caption';
+				},
+			},
+		};
+		const { nodes } = parse_markdown_svelte(':::x[*a*]\nb\n:::\n', {
+			plugins: [plugin],
+		});
+		expect(seen).toEqual(['directive_label']);
+		const box = find_child(nodes, 0, 'directive_container')!;
+		const label = find_child(nodes, box.index, 'directive_label')!;
+		expect(label.metadata).toEqual({ role: 'caption' });
 	});
 });

@@ -1,5 +1,7 @@
 root
-  directive_container name="details" "Click to expand"
+  directive_container name="details"
+    directive_label
+      text "Click to expand"
     paragraph
       text "This is hidden content."
     line_break

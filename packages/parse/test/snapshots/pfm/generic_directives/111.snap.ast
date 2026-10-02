@@ -1,0 +1,7 @@
+root
+  directive_leaf name="x"
+    directive_label
+      text "a "
+      directive_inline name="y" args.k="v"
+        text "b"
+      text " c"
