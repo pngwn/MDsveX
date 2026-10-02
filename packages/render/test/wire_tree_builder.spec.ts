@@ -113,6 +113,10 @@ describe('WireTreeBuilder produces same HTML as TreeBuilder', () => {
 	it('html block', () =>
 		assert_same('<section>\n\n# Heading\n\nParagraph.\n\n</section>\n'));
 	it('html comment', () => assert_same('text <!-- hidden --> more\n'));
+	it('html attribute values as typed', () =>
+		assert_same(
+			`text <span title='"a" &amp; <b>'>x</span> <img alt="a &amp; b" />\n`
+		));
 
 	it('code span with leading space preserved', () => assert_same('` a`\n'));
 	it('code span with both spaces stripped', () =>

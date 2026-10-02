@@ -181,10 +181,10 @@ const VITE_ID = '/corpus/doc.svx';
 
 // a compile throws on a directive no component renders and the plugin has no module to register one from,
 // loose so a document it misses never reaches the plugin, a false match only skips a row
-const DIRECTIVE = /:[A-Za-z][\w-]*\[/;
+export const DIRECTIVE = /:[A-Za-z][\w-]*\[/;
 
 /** the compile options that render every directive of src, a build before directives ignores them */
-function compile_options(arm, src, options) {
+export function compile_options(arm, src, options) {
 	if (!DIRECTIVE.test(src)) return options;
 	const { nodes } = arm.parse_markdown_svelte(src);
 	const names = new Set();

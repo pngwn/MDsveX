@@ -449,6 +449,18 @@ describe('element replacement, all mode', () => {
 			'<Img src="a" /><svelte:head><Title_MDSVEX_G>t</Title_MDSVEX_G></svelte:head>',
 		],
 		[
+			'entities in a typed value stay as typed',
+			'<div title="a &amp; b < c">x</div>',
+			['div'],
+			'<Div_MDSVEX_G title="a &amp; b < c">x</Div_MDSVEX_G>',
+		],
+		[
+			'a rebuilt value keeps its entities',
+			'<span title="a &amp; b" title="c &amp; d">x</span>',
+			['span'],
+			'<Span_MDSVEX_G title="c &amp; d">x</Span_MDSVEX_G>',
+		],
+		[
 			'attributes the source does not spell are rebuilt',
 			'<span title="a" title="b">x</span>',
 			['span'],
@@ -733,6 +745,76 @@ describe('typed attributes in braces', () => {
 		const renderer = new CursorHTMLRenderer();
 		renderer.update(tree.get_buffer(), raw);
 		expect(renderer.html).toBe(want);
+	});
+});
+
+describe('raw html attribute values', () => {
+	const cases: [string, string, string][] = [
+		[
+			'an entity renders as typed',
+			'<div title="a &amp; b">x</div>',
+			'<div title="a &amp; b">x</div>',
+		],
+		[
+			'bare ampersands and angle brackets render as typed',
+			'<div title="a & b < c > d">x</div>',
+			'<div title="a & b < c > d">x</div>',
+		],
+		[
+			'a quote from a single quoted value is escaped',
+			`<div title='say "hi" &amp; go'>x</div>`,
+			'<div title="say &quot;hi&quot; &amp; go">x</div>',
+		],
+		[
+			'an external script renders as typed',
+			'<script src="/a.js?x=1&amp;y=2"></script>',
+			'<svelte:element this={"script"} src="/a.js?x=1&amp;y=2"></svelte:element>',
+		],
+		[
+			'a self closing tag passes its source through',
+			'<img alt="a &amp; b" />',
+			'<img alt="a &amp; b" />',
+		],
+	];
+
+	for (const [name, raw, want] of cases) {
+		test(name, () => {
+			expect(body(compile_all(raw, []))).toBe(want);
+			expect(body(compile_all(raw, only(...ELEMENTS, 'div')))).toBe(want);
+		});
+	}
+
+	const plugin: ParsePlugin = {
+		paragraph: {
+			parse(node) {
+				node.append('html', {
+					tag: 'mark',
+					attributes: { title: 'a &amp; <b> "c"' },
+				});
+			},
+		},
+	};
+
+	test('a value a plugin set is escaped in full', () => {
+		const code = compile('text', { parse_plugins: [plugin] }).code;
+		expect(body(code)).toBe(
+			'<p><mark title="a &amp;amp; &lt;b&gt; &quot;c&quot;"></mark>text</p>'
+		);
+		const mapped = compile('text', {
+			parse_plugins: [plugin],
+			sourcemap: true,
+		});
+		expect(mapped.code).toBe(code);
+	});
+
+	test('a value a plugin set is escaped in full as a prop', () => {
+		const code = compile('text', {
+			components: only('mark'),
+			parse_plugins: [plugin],
+		}).code;
+		expect(body(code)).toBe(
+			'<p><Mark_MDSVEX_G title="a &amp;amp; &lt;b&gt; &quot;c&quot;"></Mark_MDSVEX_G>text</p>'
+		);
 	});
 });
 

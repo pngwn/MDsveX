@@ -143,6 +143,8 @@ export interface TemplateEntry {
 	specifier: string;
 	/** the element names the template exports from its module script, its replacements */
 	components?: string[];
+	/** its directives, chained in front of the root directives, lowest precedence first */
+	directives?: ComponentSource[];
 }
 
 export interface TemplateOptions {
@@ -430,6 +432,53 @@ function template_scope(
 	return scope;
 }
 
+const template_directive_scopes = new WeakMap<
+	TemplateEntry,
+	{ parent: ComponentScope | null; scope: ComponentScope }
+>();
+
+/** the template directives chained in front of the root directives */
+function template_directives(
+	entry: TemplateEntry,
+	root: ComponentScope | null
+): ComponentScope | null {
+	const sources = entry.directives;
+	if (sources === undefined || sources.length === 0) return root;
+	const hit = template_directive_scopes.get(entry);
+	if (hit !== undefined && hit.parent === root) return hit.scope;
+	const scope = new ComponentScope(sources, 'D_T', root);
+	template_directive_scopes.set(entry, { parent: root, scope });
+	return scope;
+}
+
+const reserved_scopes = new WeakMap<
+	Record<string, TemplateEntry>,
+	{ root: ComponentScope | null; scope: ComponentScope | null }
+>();
+
+/**
+ * every directive name the root or any template registers, the template is
+ * picked after the parse so plugins never see a name one of them could render
+ */
+function reserved_directives(
+	root: ComponentScope | null,
+	options: TemplateOptions | undefined
+): ComponentScope | null {
+	const templates = options?.templates;
+	if (templates === undefined) return root;
+	const hit = reserved_scopes.get(templates);
+	if (hit !== undefined && hit.root === root) return hit.scope;
+	const sources: ComponentSource[] = [];
+	for (const name in templates) {
+		const own = templates[name].directives;
+		if (own !== undefined) sources.push(...own);
+	}
+	const scope =
+		sources.length === 0 ? root : new ComponentScope(sources, 'R', root);
+	reserved_scopes.set(templates, { root, scope });
+	return scope;
+}
+
 /** sets the scope and the template a document renders with, returns the template name */
 function prepare(
 	renderer: CursorHTMLRenderer,
@@ -446,6 +495,7 @@ function prepare(
 	}
 	const entry = options!.templates![name];
 	renderer.scope = template_scope(entry, root);
+	renderer.directives = template_directives(entry, renderer.directives);
 	renderer.template = {
 		specifier: entry.specifier,
 		metadata: metadata !== undefined,
@@ -575,7 +625,11 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	const source = normalize_newlines(raw);
 	const scope = scope_of(options?.components, options?.component_mode);
 	const directives = directive_scope_of(options?.directives);
-	const nodes = parse_once(source, options?.parse_plugins, directives);
+	const nodes = parse_once(
+		source,
+		options?.parse_plugins,
+		reserved_directives(directives, options)
+	);
 	const metadata = metadata_of(nodes, source, options?.frontmatter?.parse);
 	const renderer = take_renderer();
 	bind_scopes(renderer, scope, directives);
@@ -789,7 +843,11 @@ export class CompilerSession {
 		const source = normalize_newlines(raw);
 		if (parse_plugins && parse_plugins.length > 0) {
 			// the dispatcher holds this source, so plugins get their own tree
-			const nodes = parse_once(source, parse_plugins, directives);
+			const nodes = parse_once(
+				source,
+				parse_plugins,
+				reserved_directives(directives, templates)
+			);
 			const renderer = new CursorHTMLRenderer({ cache: false });
 			return render_v3(
 				renderer,
@@ -837,7 +895,11 @@ export class CompilerSession {
 		const directives = directive_scope_of(directive_sources);
 		const source = normalize_newlines(raw);
 		if (parse_plugins && parse_plugins.length > 0) {
-			const nodes = parse_once(source, parse_plugins, directives);
+			const nodes = parse_once(
+				source,
+				parse_plugins,
+				reserved_directives(directives, templates)
+			);
 			const renderer = new CursorHTMLRenderer({ cache: false });
 			return render_trace(
 				renderer,
@@ -883,7 +945,11 @@ export class CompilerSession {
 		let renderer = this.renderer;
 		let nodes: NodeBuffer;
 		if (parse_plugins && parse_plugins.length > 0) {
-			nodes = parse_once(source, parse_plugins, directives);
+			nodes = parse_once(
+				source,
+				parse_plugins,
+				reserved_directives(directives, templates)
+			);
 			renderer = new CursorHTMLRenderer({ cache: false });
 		} else {
 			nodes = this.parse(source);
@@ -1372,6 +1438,7 @@ const DIRECTIVES_ID = 'mdsvex:directives';
 /** the namespace export of a replacement module that holds its directives */
 const DIRECTIVES_EXPORT = 'directives';
 const TEMPLATE_ID = 'mdsvex:template/';
+const TEMPLATE_DIRECTIVES_ID = 'mdsvex:template-directives/';
 
 /** a URL as a path, a string as written */
 async function spec_of(entry: string | URL): Promise<string> {
@@ -1722,6 +1789,17 @@ interface TemplateModule {
 	names: string[];
 	/** a module of replacements merged over those of the template */
 	extra: { spec: string; file: string; names: string[] } | null;
+	/** the directives modules of the template and then of extra */
+	directives: TemplateDirectives[];
+}
+
+interface TemplateDirectives {
+	virtual: string;
+	/** the template or extra file whose namespace export names spec */
+	owner: string;
+	spec: string;
+	file: string;
+	names: string[];
 }
 
 /**
@@ -1740,22 +1818,57 @@ function template_registry(
 	let entries: Record<string, TemplateEntry> = {};
 	let files: readonly string[] = [];
 	let files_by_name = new Map<string, readonly string[]>();
+	/** the directives module of each virtual id */
+	let directive_ids = new Map<string, TemplateDirectives>();
 
 	function publish(list: Map<string, TemplateModule>): void {
 		modules = list;
 		const next: Record<string, TemplateEntry> = {};
 		const all: string[] = [];
 		files_by_name = new Map();
+		directive_ids = new Map();
 		for (const m of list.values()) {
 			// the extra module wins a shared name, the facade exports its binding
 			const names = m.extra === null ? m.names : union(m.names, m.extra.names);
-			next[m.name] = { specifier: TEMPLATE_ID + m.name, components: names };
+			const entry: TemplateEntry = {
+				specifier: TEMPLATE_ID + m.name,
+				components: names,
+			};
 			const own = m.extra === null ? [m.file] : [m.file, m.extra.file];
+			if (m.directives.length !== 0) {
+				entry.directives = [];
+				for (const d of m.directives) {
+					entry.directives.push({ specifier: d.virtual, names: d.names });
+					directive_ids.set(d.virtual, d);
+					own.push(d.file);
+				}
+			}
+			next[m.name] = entry;
 			files_by_name.set(m.name, own);
 			all.push(...own);
 		}
 		entries = next;
 		files = all;
+	}
+
+	/** the directives module the namespace export of owner names, null for none */
+	async function directives_of(
+		ctx: Rollup.PluginContext,
+		owner: string,
+		spec: string | null,
+		virtual: string,
+		warn: Warn
+	): Promise<TemplateDirectives | null> {
+		if (spec === null) return null;
+		const resolved = await ctx.resolve(spec, owner, { skipSelf: true });
+		if (resolved === null || resolved.external) {
+			throw new Error(
+				`[mdsvex] could not resolve the directives module ${JSON.stringify(spec)} from ${owner}`
+			);
+		}
+		const file = clean_id(resolved.id);
+		const names = (await tracker.scan(file, warn)).names;
+		return { virtual, owner, spec, file, names };
 	}
 
 	async function load(ctx: Rollup.PluginContext) {
@@ -1785,16 +1898,31 @@ function template_registry(
 					? null
 					: await resolve(extra, `the components of template "${name}" at`);
 			if (main === null || (extra !== undefined && more === null)) continue;
-			list.set(name, { name, ...main, extra: more });
+			list.set(name, { name, ...main, extra: more, directives: [] });
 		}
 		if (failed.length !== 0) throw new Error(failed.join('\n'));
 		const warn = (message: string) => ctx.warn(message);
 		for (const m of list.values()) {
-			m.names = without_default((await tracker.scan(m.file, warn)).names);
-			if (m.extra !== null)
-				m.extra.names = without_default(
-					(await tracker.scan(m.extra.file, warn)).names
+			const own = split_exports(m.file, await tracker.scan(m.file, warn));
+			m.names = without_default(own.names);
+			const base = TEMPLATE_DIRECTIVES_ID + m.name;
+			const mine = await directives_of(ctx, m.file, own.directives, base, warn);
+			if (mine !== null) m.directives.push(mine);
+			if (m.extra !== null) {
+				const more = split_exports(
+					m.extra.file,
+					await tracker.scan(m.extra.file, warn)
 				);
+				m.extra.names = without_default(more.names);
+				const theirs = await directives_of(
+					ctx,
+					m.extra.file,
+					more.directives,
+					base + '/components',
+					warn
+				);
+				if (theirs !== null) m.directives.push(theirs);
+			}
 		}
 		publish(list);
 		return list;
@@ -1804,6 +1932,11 @@ function template_registry(
 	function ensure(ctx: Rollup.PluginContext) {
 		if (loading === null) loading = load(ctx);
 		return loading;
+	}
+
+	function reset(): void {
+		loading = null;
+		modules = null;
 	}
 
 	/** the current module of a template, a rescan replaces it */
@@ -1818,15 +1951,23 @@ function template_registry(
 		},
 		ensure,
 		/** resolve and scan again on the next use, keeping the scans of unchanged code */
-		reset(): void {
-			loading = null;
-			modules = null;
-		},
+		reset,
 		ready(): boolean {
 			return modules !== null;
 		},
+		/** kept over a reset, so every environment sees the change that caused it */
 		files(): readonly string[] {
 			return files;
+		},
+		/** a template directives id resolves to the module the namespace export names */
+		async resolve_directives(
+			ctx: Rollup.PluginContext,
+			id: string
+		): Promise<Rollup.ResolvedId | null | undefined> {
+			await ensure(ctx);
+			const d = directive_ids.get(id);
+			if (d === undefined) return undefined;
+			return ctx.resolve(d.spec, d.owner, { skipSelf: true });
 		},
 		/** the files a document wrapped in the named template read names from */
 		files_of(name: string | undefined): readonly string[] {
@@ -1882,25 +2023,48 @@ function template_registry(
 			warn: Warn,
 			code: string
 		): Promise<boolean> {
-			if (modules === null || !files.includes(file)) return false;
-			const names = without_default(
-				(await tracker.scan(file, warn, code)).names
-			);
+			// an earlier environment reset for this change
+			if (modules === null) return tracker.marked(file, timestamp);
+			if (!files.includes(file)) return false;
+			const scanned = await tracker.scan(file, warn, code);
 			let before: readonly string[] | null = null;
+			let after: readonly string[] = [];
 			const list = new Map(modules);
 			for (const [name, m] of modules) {
-				if (m.file === file) {
-					before ??= m.names;
-					list.set(name, { ...m, names });
+				const main = m.file === file;
+				if (main || (m.extra !== null && m.extra.file === file)) {
+					const own = split_exports(file, scanned);
+					const spec = m.directives.find((d) => d.owner === file)?.spec;
+					if (own.directives !== (spec ?? null)) {
+						// a new directives module resolves in the next transform
+						tracker.mark(file, timestamp);
+						reset();
+						return true;
+					}
+					const names = without_default(own.names);
+					const cur = list.get(name)!;
+					before ??= main ? m.names : m.extra!.names;
+					after = names;
+					list.set(
+						name,
+						main
+							? { ...cur, names }
+							: { ...cur, extra: { ...cur.extra!, names } }
+					);
 				}
-				if (m.extra !== null && m.extra.file === file) {
-					before ??= m.extra.names;
-					list.set(name, { ...m, extra: { ...m.extra, names } });
+				for (let i = 0; i < m.directives.length; i++) {
+					if (m.directives[i].file !== file) continue;
+					const cur = list.get(name)!;
+					const directives = cur.directives.slice();
+					directives[i] = { ...directives[i], names: scanned.names };
+					before ??= m.directives[i].names;
+					after = scanned.names;
+					list.set(name, { ...cur, directives });
 				}
 			}
 			if (before === null) return false;
-			if (!same_names(before, names)) publish(list);
-			return tracker.changed(file, before, names, timestamp);
+			if (!same_names(before, after)) publish(list);
+			return tracker.changed(file, before, after, timestamp);
 		},
 	};
 }
@@ -2121,6 +2285,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					return registry.resolve(this, id);
 				if (templates !== null && id.startsWith(TEMPLATE_ID))
 					return templates.resolve(this, id);
+				if (templates !== null && id.startsWith(TEMPLATE_DIRECTIVES_ID))
+					return templates.resolve_directives(this, id);
 			},
 
 			// only templates with extra replacements load a module
@@ -2188,9 +2354,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				// files outlive a reset, so a later environment still sees the change
 				const in_root = registry !== null && registry.files().includes(file);
 				const in_templates =
-					templates !== null &&
-					templates.ready() &&
-					templates.files().includes(file);
+					templates !== null && templates.files().includes(file);
 				if (!in_root && !in_templates) return;
 				const warn = (m: string) =>
 					this.environment.logger.warn('[mdsvex] ' + m);

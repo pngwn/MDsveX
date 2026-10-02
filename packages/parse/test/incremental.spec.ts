@@ -504,6 +504,65 @@ describe('directive incremental behavior', () => {
 		expect(closes_for(rec, box.id).length).toBe(1);
 	});
 
+	it('container body starts a list, the fence closes it before the container', () => {
+		const rec = new OpRecorder();
+		const p = new PFMParser(rec);
+		p.init();
+
+		p.feed(':::note[]\n- a');
+		const list = opens_of(rec, 'list')[0];
+		const box = opens_of(rec, 'directive_container')[0];
+		// a tight item paragraph stays pending, as at the root
+		expect(
+			rec.ops
+				.filter((o) => o.op === 'open')
+				.map((o) => (o as any).kind + ((o as any).pending ? '?' : ''))
+		).toEqual([
+			'root',
+			'directive_container',
+			'list',
+			'list_item',
+			'paragraph?',
+			'text',
+		]);
+
+		p.feed('\n- b\n');
+		expect(opens_of(rec, 'list_item').length).toBe(2);
+		expect(closes_for(rec, list.id).length).toBe(0);
+
+		p.feed(':::\n');
+		const close_ids = rec.ops
+			.filter((o) => o.op === 'close')
+			.map((o) => (o as any).id);
+		const list_close = close_ids.indexOf(list.id);
+		expect(list_close).toBeGreaterThanOrEqual(0);
+		expect(close_ids.indexOf(box.id)).toBeGreaterThan(list_close);
+	});
+
+	describe('lists in containers match batch at every chunk size', () => {
+		const cases: [string, string][] = [
+			['bullet', ':::note[]\n- a\n- b\n:::\n'],
+			['plus', ':::note[]\n+ a\n+ b\n:::\n'],
+			['ordered', ':::note[]\n10. a\n11. b\n:::\n'],
+			['task', ':::note[]\n- [ ] a\n- [x] b\n:::\n'],
+			['nested', ':::note[]\n- a\n  1. b\n- c\n:::\nafter\n'],
+			['loose', ':::note[]\n- a\n\n- b\n:::\n'],
+			['after paragraph', ':::note[]\nintro\n- a\n:::\n'],
+			['thematic break', ':::note[]\n- - -\n:::\n'],
+			['no fence', ':::note[]\n- a\n- b'],
+			['nested containers', '::::o[]\n:::i[]\n- a\n:::\n2. b\n::::\n'],
+		];
+		for (const [name, input] of cases) {
+			for (const size of [1, 2, 3, 5, 8]) {
+				it(`${name} chunk size ${size}`, () => {
+					const batch = parse_batch(input);
+					const diffs = tree_diff(batch, parse_incremental(input, size), input);
+					expect(diffs).toEqual([]);
+				});
+			}
+		}
+	});
+
 	it('revokes an unclosed directive at a paragraph boundary', () => {
 		const rec = new OpRecorder();
 		const p = new PFMParser(rec);
