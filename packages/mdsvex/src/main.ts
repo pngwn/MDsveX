@@ -2184,6 +2184,11 @@ function query_template(id: string): string | false | undefined {
 	return value === 'false' ? false : value;
 }
 
+/** a vite-plugin-svelte sub-request of a document, ?svelte&type=style holds its css */
+function svelte_request(id: string, q: number): boolean {
+	return new URLSearchParams(id.slice(q + 1)).has('svelte');
+}
+
 type TemplateRegistry = ReturnType<typeof template_registry>;
 
 function union(a: readonly string[], b: readonly string[]): string[] {
@@ -2224,6 +2229,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	const only = extensions.length === 1 ? extensions[0] : null;
 	function matches(id: string): boolean {
 		const q = id.indexOf('?');
+		if (q >= 0 && svelte_request(id, q)) return false;
 		const clean = q < 0 ? id : id.slice(0, q);
 		if (only !== null) return clean.endsWith(only);
 		for (let i = 0; i < extensions.length; i++) {
