@@ -12,6 +12,15 @@ export interface ComponentImport {
 	readonly local: string;
 }
 
+/** an element component_mode all keeps because a component can not take its directive */
+export interface ReplaceWarning {
+	readonly tag: string;
+	/** the first directive it carries, such as bind:value */
+	readonly directive: string;
+	/** offset of the element in the source */
+	readonly start: number;
+}
+
 export interface ComponentSource {
 	/** emitted verbatim as an import specifier */
 	specifier: string;

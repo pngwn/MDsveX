@@ -31,12 +31,12 @@ import {
 } from './sourcemap';
 import type { MapTrace, SourceMapV3 } from './sourcemap';
 import { component_imports } from './scope';
-import type { ComponentImport, ComponentScope } from './scope';
+import type { ComponentImport, ComponentScope, ReplaceWarning } from './scope';
 
 export type { Mapping, CodeInformation, MappingData } from './mappings';
 export { MapSink } from './mappings';
 export { ComponentScope, component_imports } from './scope';
-export type { ComponentImport, ComponentSource } from './scope';
+export type { ComponentImport, ComponentSource, ReplaceWarning } from './scope';
 
 // must equal NONE in @mdsvex/parse
 const enum Slot {
@@ -479,6 +479,26 @@ function meta_str(v: unknown): string {
 	return v == null ? '' : typeof v === 'string' ? v : `${v}`;
 }
 
+// a shorthand the parser keys by its braced text, which is a name when it starts as one
+const NAME_START = /^[A-Za-z_$]/;
+
+/** true for a typed attribute that is only braces, a spread or an attachment */
+function bare_expr(k: string, v: unknown): boolean {
+	return (
+		typeof v === 'object' &&
+		v !== null &&
+		(v as any).value === k &&
+		!NAME_START.test(k)
+	);
+}
+
+/** an expression attribute, a bare one keeps only its braces */
+function expr_attr(k: string, value: string): string {
+	return value === k && !NAME_START.test(k)
+		? ' {' + k + '}'
+		: ' ' + k + '={' + value + '}';
+}
+
 function _attrs(c: Cursor, skip?: Set<string>): string {
 	const meta = c.meta();
 	if (!meta) return '';
@@ -539,6 +559,13 @@ let has_components = false;
 let comp_table = false;
 let comp_scope: ComponentScope | null = null;
 let comp_mode: number = CM.FOLD;
+/** component_mode all, typed lowercase elements are replaced too */
+let comp_all = false;
+/** elements comp_scan kept for a directive, comp_begin hands them out */
+const comp_warnings: ReplaceWarning[] = [];
+const NO_WARNINGS: readonly ReplaceWarning[] = Object.freeze([]);
+/** what the last comp_begin handed out */
+let comp_last = NO_WARNINGS;
 /** import lines of the used replacements, they join the instance script */
 let comp_lines = '';
 /** a script of comp_lines when the document has no script and no import to start one */
@@ -681,7 +708,7 @@ function embed_html(c: Cursor): string {
 		const v = attrs[k];
 		if (v === true) s += ' ' + k;
 		else if (typeof v === 'object' && (v as any).type === 'expression') {
-			s += ' ' + k + '={' + meta_str((v as any).value) + '}';
+			s += expr_attr(k, meta_str((v as any).value));
 		} else s += ' ' + k + '="' + escape_html(v as string) + '"';
 	}
 	return s + '></svelte:element>';
@@ -1100,7 +1127,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 							typeof v === 'object' &&
 							(v as any).type === 'expression'
 						) {
-							s += ' ' + k + '={' + meta_str((v as any).value) + '}';
+							s += expr_attr(k, meta_str((v as any).value));
 						} else {
 							s += ' ' + k + '="' + escape_html(v as string) + '"';
 						}
@@ -1868,6 +1895,10 @@ function fold_html_attrs(
 ): number {
 	for (const k in html_attrs) {
 		const v = html_attrs[k];
+		if (bare_expr(k, v)) {
+			p = push_dyn(p, ' {' + k + '}');
+			continue;
+		}
 		p = push_static(p, S_SPACE);
 		p = push_dyn(p, k);
 		if (v === true) continue;
@@ -2408,7 +2439,7 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 				if (v === true) {
 					s += ' ' + k;
 				} else if (typeof v === 'object' && (v as any).type === 'expression') {
-					s += ' ' + k + '={' + meta_str((v as any).value) + '}';
+					s += expr_attr(k, meta_str((v as any).value));
 				} else {
 					s += ' ' + k + '="' + escape_html(v as string) + '"';
 				}
@@ -2872,7 +2903,7 @@ function mp_html(c: Cursor, sink: MapSink, p: number): number {
 				if (v === true) {
 					s += ' ' + k;
 				} else if (typeof v === 'object' && (v as any).type === 'expression') {
-					s += ' ' + k + '={' + meta_str((v as any).value) + '}';
+					s += expr_attr(k, meta_str((v as any).value));
 				} else {
 					s += ' ' + k + '="' + escape_html(v as string) + '"';
 				}
@@ -3100,26 +3131,64 @@ function comp_name(c: Cursor): string {
 		case K.TABLE:
 			return 'table';
 		case K.HTML:
-			return plugin_tag(c);
+			return comp_all ? html_tag(c) : plugin_tag(c);
 		default:
 			return '';
 	}
 }
 
+/** lowercase elements only, never svelte tags or components */
+const ELEMENT_NAME = /^[a-z][a-z0-9-]*$/;
+
 /** the tag of an element a parse plugin created, empty for typed html, which has a source span */
 function plugin_tag(c: Cursor): string {
 	const e = c.end;
-	if (e !== Slot.NONE && e > c.start) return '';
+	return e !== Slot.NONE && e > c.start ? '' : html_tag(c);
+}
+
+/** the tag of an element, typed or from a plugin */
+function html_tag(c: Cursor): string {
 	const tag = c.meta()?.tag;
 	if (typeof tag !== 'string' || tag === 'script' || tag === 'style') return '';
-	// lowercase elements only, never svelte tags or components
-	return /^[a-z][a-z0-9-]*$/.test(tag) ? tag : '';
+	return ELEMENT_NAME.test(tag) ? tag : '';
+}
+
+const DIRECTIVES = [
+	'bind:',
+	'on:',
+	'use:',
+	'class:',
+	'style:',
+	'transition:',
+	'in:',
+	'out:',
+	'animate:',
+	'let:',
+];
+
+/** the first directive of an element, which a component can not take, empty for none */
+function directive_of(c: Cursor): string {
+	const attrs = c.meta()?.attributes as Record<string, unknown> | undefined;
+	if (attrs === undefined) return '';
+	for (const k in attrs) {
+		const colon = string_index_of.call(k, ':');
+		if (colon === -1) continue;
+		for (let i = 0; i < DIRECTIVES.length; i++) {
+			const d = DIRECTIVES[i];
+			if (d.length === colon + 1 && k.startsWith(d)) return k;
+		}
+	}
+	return '';
 }
 
 function comp_ref(c: Cursor): ComponentImport | null {
 	const name = comp_name(c);
 	if (name === '') return null;
-	return comp_scope!.get(name) ?? null;
+	const ref = comp_scope!.get(name);
+	if (ref === undefined) return null;
+	// comp_scan warned about it
+	if (comp_all && c.kind === K.HTML && directive_of(c) !== '') return null;
+	return ref;
 }
 
 function comp_use(name: string): ComponentImport | undefined {
@@ -3131,6 +3200,14 @@ function comp_use(name: string): ComponentImport | undefined {
 	return ref;
 }
 
+/** comp_use for an element, one with a directive stays an element and is warned about */
+function comp_use_html(c: Cursor, name: string): void {
+	if (comp_scope!.get(name) === undefined) return;
+	const directive = directive_of(c);
+	if (directive === '') comp_use(name);
+	else comp_warnings.push({ tag: name, directive, start: c.start });
+}
+
 /** walk what the render walks below c and note each replacement it will use */
 function comp_scan(c: Cursor): void {
 	if (!c.goto_first_child()) return;
@@ -3138,7 +3215,10 @@ function comp_scan(c: Cursor): void {
 		const k = c.kind as number;
 		if (k === K.TEXT || k === K.LINE_BREAK) continue;
 		const name = comp_name(c);
-		if (name !== '') comp_use(name);
+		if (name !== '') {
+			if (comp_all && k === K.HTML) comp_use_html(c, name);
+			else comp_use(name);
+		}
 		if (k === K.TABLE) comp_scan_table(c);
 		// image children are its alt text, code has none
 		else if (k !== K.IMAGE && k !== K.CODE_SPAN && k !== K.CODE_FENCE)
@@ -3179,18 +3259,30 @@ function comp_scan_cells(c: Cursor, tag: string): void {
 	c.goto_parent();
 }
 
-/** c is at the root, the walk that follows renders in mode */
-function comp_begin(c: Cursor, scope: ComponentScope, mode: number): void {
+/**
+ * c is at the root, the walk that follows renders in mode, all also replaces
+ * typed elements, returns the warnings about elements that stay
+ */
+function comp_begin(
+	c: Cursor,
+	scope: ComponentScope,
+	mode: number,
+	all: boolean
+): readonly ReplaceWarning[] {
 	comp_scope = scope;
 	comp_mode = mode;
+	comp_all = all;
 	comp_scan(c);
-	if (comp_used.length === 0) return;
+	const warnings =
+		comp_warnings.length === 0 ? NO_WARNINGS : comp_warnings.splice(0);
+	if (comp_used.length === 0) return warnings;
 	has_components = true;
 	for (let i = 0; i < TABLE_PARTS.length; i++) {
 		const ref = scope.get(TABLE_PARTS[i]);
 		if (ref !== undefined && comp_seen.has(ref)) comp_table = true;
 	}
 	comp_lines = component_imports(comp_used);
+	return warnings;
 }
 
 function comp_end(): void {
@@ -3198,8 +3290,11 @@ function comp_end(): void {
 	comp_table = false;
 	comp_scope = null;
 	comp_mode = CM.FOLD;
+	comp_all = false;
 	comp_lines = '';
 	comp_prefix = '';
+	// a scan that threw leaves its warnings
+	if (comp_warnings.length !== 0) comp_warnings.length = 0;
 	if (comp_used.length !== 0) {
 		comp_used.length = 0;
 		comp_seen.clear();
@@ -3286,6 +3381,125 @@ function cm_void(
 				Code.STRUCTURE_OPEN
 			);
 		}
+	}
+}
+
+// end of the attributes open_tag_end found, before the space ahead of > or />
+let tag_attrs_end = 0;
+
+function skip_space(src: string, p: number): number {
+	for (;;) {
+		const ch = src.charCodeAt(p);
+		if (ch !== 32 && ch !== 9 && ch !== 10) return p;
+		p++;
+	}
+}
+
+/**
+ * past the > of the typed open tag at c, -1 when its attributes do not spell
+ * it, as when a plugin changed them, sets tag_attrs_end
+ */
+function open_tag_end(
+	c: Cursor,
+	tag: string,
+	attrs: Record<string, unknown> | undefined
+): number {
+	const src = c.source;
+	let p = c.start + 1;
+	if (!src.startsWith(tag, p)) return -1;
+	p += tag.length;
+	// each attribute in the order the parser met them, values are source slices
+	if (attrs !== undefined)
+		for (const k in attrs) {
+			const v = attrs[k];
+			const q = skip_space(src, p);
+			if (q === p) return -1;
+			p = q;
+			if (src.charCodeAt(p) === 123) {
+				// {name}, {...spread} or {@attach f}, keyed by the text in braces
+				if (typeof v !== 'object' || v === null || (v as any).value !== k)
+					return -1;
+				if (
+					!src.startsWith(k, p + 1) ||
+					src.charCodeAt(p + 1 + k.length) !== 125
+				)
+					return -1;
+				p += k.length + 2;
+				continue;
+			}
+			if (!src.startsWith(k, p)) return -1;
+			p += k.length;
+			if (v === true) continue;
+			p = skip_space(src, p);
+			if (src.charCodeAt(p) !== 61) return -1;
+			p = skip_space(src, p + 1);
+			let value: string;
+			let open = -1;
+			let shut = -1;
+			if (typeof v === 'string') {
+				value = v;
+				const ch = src.charCodeAt(p);
+				if (ch === 34 || ch === 39) open = shut = ch;
+			} else if (typeof v === 'object' && v !== null) {
+				value = meta_str((v as any).value);
+				open = 123;
+				shut = 125;
+			} else return -1;
+			if (open !== -1) {
+				if (src.charCodeAt(p) !== open) return -1;
+				p++;
+			}
+			if (!src.startsWith(value, p)) return -1;
+			p += value.length;
+			if (shut !== -1) {
+				if (src.charCodeAt(p) !== shut) return -1;
+				p++;
+			}
+		}
+	tag_attrs_end = p;
+	p = skip_space(src, p);
+	const ch = src.charCodeAt(p);
+	if (ch === 62) return p + 1;
+	if (ch === 47 && src.charCodeAt(p + 1) === 62) return p + 2;
+	return -1;
+}
+
+/** the per kind extras of a typed element, those the author wrote are kept */
+function typed_extras(
+	tag: string,
+	attrs: Record<string, unknown> | undefined
+): string {
+	if (tag.length === 2 && tag.charCodeAt(0) === 104) {
+		const d = tag.charCodeAt(1) - 48;
+		if (d >= 1 && d <= 6 && (attrs === undefined || !('level' in attrs)))
+			return ' level={' + d + '}';
+	} else if (tag === 'ol' && (attrs === undefined || !('start' in attrs)))
+		return ' start={1}';
+	return '';
+}
+
+/**
+ * the attributes of a typed tag, copied from source, and what follows them up
+ * to > or />, which maps as identity only when it is as long
+ */
+function cm_tag(
+	c: Cursor,
+	sink: MapSink | undefined,
+	at: number,
+	from: number,
+	to: number,
+	tail: number,
+	end: number
+): void {
+	if (comp_mode === CM.FOLD) return;
+	const mid = at + (to - from);
+	if (comp_mode === CM.TRACE) {
+		tr_run(sink!, at, mid, from, to);
+		tr_run(sink!, mid, tail, to, end);
+	} else {
+		if (to > from)
+			put_record(sink!, at, mid, from, to, c.index, Code.SVELTE_CONTENT);
+		put_record(sink!, mid, tail, to, end, c.index, Code.SVELTE_CONTENT);
 	}
 }
 
@@ -3436,18 +3650,37 @@ function comp_node(
 
 		case K.HTML: {
 			const meta = c.meta()!;
+			const tag = meta.tag as string;
 			const attrs = meta.attributes as Record<string, unknown> | undefined;
-			if (attrs) {
+			const typed = c.end !== Slot.NONE && c.end > c.start;
+			const end = typed ? open_tag_end(c, tag, attrs) : -1;
+			// a typed tag keeps its attributes as written, they map as identity
+			const from = c.start + 1 + tag.length;
+			const at = pre + open.length;
+			if (end !== -1) open += c.slice(from, tag_attrs_end);
+			else if (attrs) {
 				for (const k in attrs) {
 					const v = attrs[k];
 					if (v === true) open += ' ' + k;
 					else if (typeof v === 'object' && (v as any).type === 'expression')
-						open += ' ' + k + '={' + meta_str((v as any).value) + '}';
+						open += expr_attr(k, meta_str((v as any).value));
 					else open += ' ' + k + '="' + escape_html(meta_str(v)) + '"';
 				}
 			}
+			if (typed) open += typed_extras(tag, attrs);
+			const shut = meta.self_closing ? ' />' : '>';
+			if (end !== -1)
+				cm_tag(
+					c,
+					sink,
+					at,
+					from,
+					tag_attrs_end,
+					pre + open.length + shut.length,
+					end
+				);
 			if (meta.self_closing) {
-				p = cm_put(p, open + ' />');
+				p = cm_put(p, open + shut);
 				cm_void(c, sink, pre, Preset.TEXT);
 				return p;
 			}
@@ -3814,6 +4047,12 @@ export class CursorHTMLRenderer {
 	 * cached render of update ignores it as a replacement needs a document import
 	 */
 	scope: ComponentScope | null = null;
+	/** also replace the lowercase elements the author typed, component_mode all */
+	replace_typed = false;
+	/** elements the last render with a scope kept for a directive, a render without one stores nothing */
+	get warnings(): readonly ReplaceWarning[] {
+		return comp_last;
+	}
 
 	constructor(opts?: { cache?: boolean }) {
 		this.cache = opts?.cache ?? true;
@@ -3839,7 +4078,8 @@ export class CursorHTMLRenderer {
 		if (!this.cache) {
 			const scope = this.scope;
 			try {
-				if (scope !== null && scope.size !== 0) comp_begin(c, scope, CM.FOLD);
+				if (scope !== null && scope.size !== 0)
+					comp_last = comp_begin(c, scope, CM.FOLD, this.replace_typed);
 				hoist_begin(buf);
 				if (code) module_begin(buf, code);
 				prebuilt_begin(buf);
@@ -3916,7 +4156,12 @@ export class CursorHTMLRenderer {
 		let p = 0;
 		try {
 			if (scope !== null && scope.size !== 0)
-				comp_begin(c, scope, trace ? CM.TRACE : CM.MAPPED);
+				comp_last = comp_begin(
+					c,
+					scope,
+					trace ? CM.TRACE : CM.MAPPED,
+					this.replace_typed
+				);
 			hoist_begin(buf);
 			mo = comp_prefix;
 			if (code) {
@@ -4045,6 +4290,9 @@ export class CursorHTMLRenderer {
 		if (closed !== null && closed.size !== 0) closed.clear();
 		this.cursor?.release();
 		this.scope = null;
+		this.replace_typed = false;
+		// a tag is a slice that would keep the source alive
+		comp_last = NO_WARNINGS;
 		// the escape index is module state and would keep the source alive,
 		// every render resets it, a zero length clamps any text of '' to empty
 		esc_src = '';

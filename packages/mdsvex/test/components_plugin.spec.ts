@@ -129,6 +129,33 @@ function write_app(): string {
 			'</script>',
 			'<p class="para">{@render children()}</p>',
 		].join('\n'),
+		'src/lib/all.ts': [
+			"export { default as h2 } from './Heading.svelte';",
+			"export { default as warning } from './Warning.svelte';",
+			"export { default as input } from './Ignored.svelte';",
+		].join('\n'),
+		'src/lib/Warning.svelte': [
+			'<script>',
+			'  let { type, children } = $props();',
+			'</script>',
+			'<aside class="warning {type}">{@render children()}</aside>',
+		].join('\n'),
+		'src/all.svx': [
+			'<script>',
+			"  let v = $state('a');",
+			'</script>',
+			'',
+			'<h2 id="raw">Raw</h2>',
+			'',
+			'<warning type="tip">',
+			'',
+			'*careful*',
+			'',
+			'</warning>',
+			'',
+			'<input bind:value={v}>',
+			'',
+		].join('\n'),
 		'src/doc.svx': '# Title\n\n![cat](/cat.png)\n',
 		'src/plain.svx': 'no replacement here\n',
 	};
@@ -286,6 +313,53 @@ describe('components option', () => {
 			}
 		);
 		expect(other).toBeUndefined();
+	});
+});
+
+describe('component_mode all', () => {
+	let root: string;
+	let server: ViteDevServer;
+	let plugins: Plugin[];
+
+	beforeAll(async () => {
+		root = write_app();
+		plugins = mdsvex({ components: '#lib/all.ts', component_mode: 'all' });
+		server = await serve(root, plugins);
+	});
+
+	afterAll(async () => {
+		await server?.close();
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	test('renders typed elements as their replacements', async () => {
+		const html = await ssr(server, '/src/all.svx');
+		expect(html).toContain(
+			'<h1 class="custom" data-level="2" id="raw">Raw</h1>'
+		);
+		expect(html).toContain(
+			'<aside class="warning tip"><p><strong>careful</strong></p></aside>'
+		);
+		expect(html).toContain('<input value="a"/>');
+	});
+
+	test('warns about an element a directive keeps', async () => {
+		await server.environments.ssr.pluginContainer.resolveId(
+			'mdsvex:components'
+		);
+		const warned: unknown[][] = [];
+		const transform = plugins[0].transform as Function;
+		await transform.call(
+			{ addWatchFile() {}, warn: (...args: unknown[]) => warned.push(args) },
+			'text\n\n<input bind:value={v}>\n',
+			vite_path(root, 'src/inline.svx')
+		);
+		expect(warned).toEqual([
+			[
+				"<input> stays an element, a component can't take bind:value",
+				{ line: 3, column: 0 },
+			],
+		]);
 	});
 });
 
