@@ -61,6 +61,21 @@ export function parse_frontmatter(
 	return metadata;
 }
 
+/**
+ * the 1 based line of a top level key in the frontmatter from start to end,
+ * its first line when no line starts with the key, as with another format
+ */
+export function key_line(
+	source: string,
+	start: number,
+	end: number,
+	key: string
+): number {
+	const re = new RegExp(`^["']?${key}["']?[ \\t]*[:=]`, 'm');
+	const found = re.exec(source.slice(start, end));
+	return lines_before(source, start + (found === null ? 0 : found.index)) + 1;
+}
+
 function lines_before(source: string, offset: number): number {
 	let n = 0;
 	let i = source.indexOf('\n');

@@ -9,6 +9,10 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const APP = resolve(HERE, 'kit3_app');
 const VITE = resolve(APP, 'node_modules/vite/bin/vite.js');
 const RENDERED = '<h1>Hello from svx</h1><p>Some <strong>markdown</strong>';
+// a #lib template, its heading replacement and its hoisted svelte:head
+const TEMPLATED =
+	'<article class="post" data-title="Templated"><h1 class="post-heading">Hello from a template</h1></article>';
+const TEMPLATED_HEAD = '<title>From the template route</title>';
 
 const [major, minor] = process.versions.node.split('.').map(Number);
 const kit_supported = major > 22 || (major === 22 && minor >= 17);
@@ -74,12 +78,25 @@ describe.skipIf(!kit_supported)('sveltekit 3', () => {
 				'utf8'
 			);
 			expect(page).toContain(RENDERED);
+			const templated = readFileSync(
+				resolve(APP, '.svelte-kit/output/prerendered/pages/templated.html'),
+				'utf8'
+			);
+			expect(templated.replace(/<!--[^]*?-->/g, '')).toContain(TEMPLATED);
+			expect(templated).toContain(TEMPLATED_HEAD);
 		});
 
 		test('serves a +page.svx route in dev', { timeout: 60_000 }, async () => {
 			const { status, html } = await dev_page('/doc', env);
 			expect(status).toBe(200);
 			expect(html).toContain(RENDERED);
+		});
+
+		test('serves a #lib template in dev', { timeout: 60_000 }, async () => {
+			const { status, html } = await dev_page('/templated', env);
+			expect(status).toBe(200);
+			expect(html.replace(/<!--[^]*?-->/g, '')).toContain(TEMPLATED);
+			expect(html).toContain(TEMPLATED_HEAD);
 		});
 	});
 });
