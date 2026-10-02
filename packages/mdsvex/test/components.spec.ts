@@ -410,6 +410,7 @@ describe('walks agree with replacements', () => {
 				undefined,
 				components,
 				frontmatter.parse,
+				undefined,
 				directives
 			);
 			expect(got.code, file).toBe(mapped.code);
@@ -424,6 +425,7 @@ describe('walks agree with replacements', () => {
 					undefined,
 					components,
 					frontmatter.parse,
+					undefined,
 					directives
 				).code,
 				file

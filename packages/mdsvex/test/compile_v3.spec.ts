@@ -67,6 +67,7 @@ describe('CompilerSession.compile_v3', () => {
 					undefined,
 					undefined,
 					frontmatter.parse,
+					undefined,
 					all_directives(raw)
 				);
 				const want = object_path(raw);

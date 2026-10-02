@@ -36,7 +36,7 @@ import type { ComponentImport } from './scope';
 export type { Mapping, CodeInformation, MappingData } from './mappings';
 export { MapSink } from './mappings';
 export { ComponentScope, component_imports } from './scope';
-export type { ComponentImport, ComponentSource } from './scope';
+export type { ComponentImport, ComponentSource, DefaultImport } from './scope';
 
 // must equal NONE in @mdsvex/parse
 const enum Slot {
@@ -617,6 +617,82 @@ function hoist_begin(buf: NodeBuffer): void {
 	if (hoist_nodes.length !== 0) hoist_at = hoist_nodes[0];
 	// no script and no import to start one, the render starts with one
 	else comp_prefix = '<script>\n' + comp_lines + '</script>';
+}
+
+/** the import statements, returns the root child after them */
+function hoist_imports(buf: NodeBuffer): number {
+	hoist_reset();
+	const n = buf._n;
+	let child = n[W.first_child];
+	// imports come first, after any frontmatter and blank lines
+	while (child !== Slot.NONE) {
+		const b = child * W.stride;
+		if (n[b + W.parent] !== 0) break;
+		const kind = n[b] & 0xff;
+		if (kind === K.IMPORT_STATEMENT) hoist_nodes.push(child);
+		else if (kind !== K.LINE_BREAK && kind !== K.FRONTMATTER) break;
+		child = n[b + W.next];
+	}
+	return child;
+}
+
+/** the instance script from child on, or the first import that starts one */
+function hoist_script_from(buf: NodeBuffer, child: number): void {
+	const n = buf._n;
+	while (child !== Slot.NONE) {
+		const b = child * W.stride;
+		if (n[b + W.parent] !== 0) break;
+		if ((n[b] & 0xff) === K.HTML) {
+			const slot = n[b + W.meta];
+			const meta = slot === 0 ? undefined : buf._meta[slot - 1];
+			if (
+				meta !== undefined &&
+				meta.tag === 'script' &&
+				!meta.self_closing &&
+				!is_other_script(meta.attributes as Record<string, unknown> | undefined)
+			) {
+				hoist_script = child;
+				return;
+			}
+		}
+		child = n[b + W.next];
+	}
+	if (hoist_nodes.length !== 0) hoist_at = hoist_nodes[0];
+}
+
+/**
+ * hoist_begin for a wrapped render, the instance script starts with the
+ * replacement imports, the template import and the props it forwards
+ */
+function wrap_hoist_begin(c: Cursor, buf: NodeBuffer): void {
+	hoist_script_from(buf, hoist_imports(buf));
+	let props = WRAP_PROPS;
+	let declare = true;
+	if (hoist_script !== -1) {
+		const b = hoist_script * W.stride;
+		const n = c.words;
+		const body = c.slice(n[b + W.value_start], n[b + W.value_end]);
+		// $props() is allowed once, a document that calls it forwards a whole binding
+		if (body.indexOf('$props') !== -1 && PROPS_CALL.test(body)) {
+			declare = false;
+			const named = PROPS_NAME.exec(body);
+			props = named === null ? '' : named[1];
+		}
+	}
+	comp_lines = component_imports(comp_used, {
+		specifier: wrap_spec,
+		local: WRAP_LOCAL,
+	});
+	if (declare) comp_lines += 'let ' + WRAP_PROPS + ' = $props();\n';
+	wrap_open =
+		'<' +
+		WRAP_LOCAL +
+		(wrap_metadata ? ' {...metadata}' : '') +
+		(props === '' ? '' : ' {...' + props + '}') +
+		'>';
+	// no script and no import to start one, the render starts with one
+	if (hoist_script === -1 && hoist_at === -1)
+		comp_prefix = '<script>\n' + comp_lines + '</script>';
 }
 
 /**
@@ -3989,6 +4065,131 @@ const render_sink = new MapSink();
 // half a trace slab, see reserve_trace
 const TRACE_DIRECT_WORDS = 16384;
 
+//  template wrapper
+
+/** wraps a document, the template module and whether the metadata export spreads into it */
+export interface TemplateWrapper {
+	/** emitted verbatim as the import specifier */
+	specifier: string;
+	/** true spreads the module script metadata export as props */
+	metadata: boolean;
+}
+
+const WRAP_LOCAL = 'Template_MDSVEX';
+const WRAP_PROPS = '__mdsvex_props';
+const PROPS_CALL = /\$props\s*\(\s*\)/;
+const PROPS_NAME =
+	/\b(?:let|const|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]*)?=\s*\$props\s*\(\s*\)/;
+/** top level elements svelte only allows outside markup, or that belong to the document */
+const WRAP_HOISTED = new Set([
+	'script',
+	'style',
+	'svelte:head',
+	'svelte:window',
+	'svelte:body',
+	'svelte:document',
+	'svelte:options',
+]);
+
+// set by wrap_begin, '' when the render wraps nothing
+let wrap_spec = '';
+let wrap_metadata = false;
+let wrap_open = '';
+let wrap_mode: number = CM.FOLD;
+
+function wrap_begin(wrapper: TemplateWrapper, mode: number): void {
+	wrap_spec = wrapper.specifier;
+	wrap_metadata = wrapper.metadata;
+	wrap_mode = mode;
+}
+
+function wrap_end(): void {
+	wrap_spec = '';
+	wrap_metadata = false;
+	wrap_open = '';
+	wrap_mode = CM.FOLD;
+	comp_lines = '';
+	comp_prefix = '';
+}
+
+/** a root child that renders before the wrapper rather than inside it */
+function wrap_hoists(c: Cursor, kind: number): boolean {
+	if (kind === K.IMPORT_STATEMENT || kind === K.FRONTMATTER) return true;
+	if (kind !== K.HTML) return false;
+	const tag = c.meta()?.tag;
+	return (
+		typeof tag === 'string' &&
+		WRAP_HOISTED.has(tag) &&
+		// an external script renders as an element, it is markup
+		!is_embed_script(c, tag)
+	);
+}
+
+/** the root children that hoist, or the rest, in document order */
+function wrap_pass(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	hoisted: boolean
+): number {
+	const n = c.words;
+	let child = n[W.first_child];
+	while (child !== Slot.NONE) {
+		const b = child * W.stride;
+		if (n[b + W.parent] !== 0) break;
+		const k = n[b] & 0xff;
+		if (k !== K.LINE_BREAK) {
+			c.move_to(child);
+			if (wrap_hoists(c, k) === hoisted) {
+				if (wrap_mode === CM.FOLD) p = fold_node(c, p);
+				else if (k === K.TEXT) {
+					// the mapped walks render text in their children loops
+					const vs = n[b + W.value_start];
+					const ve = n[b + W.value_end];
+					const t = escape_text_at(c, child, vs, ve);
+					if (p !== 0) mo += FOLD_STR[p];
+					p = 0;
+					if (vs !== Slot.NONE && ve > vs) {
+						const at = mo.length;
+						if (wrap_mode === CM.TRACE)
+							tr_run(sink!, at, at + t.length, vs, ve);
+						else
+							put_record(
+								sink!,
+								at,
+								at + t.length,
+								vs,
+								ve,
+								child,
+								Code.TEXT_CONTENT
+							);
+					}
+					mo += t;
+				} else if (wrap_mode === CM.TRACE) p = tr_node(c, sink!, p);
+				else p = mp_node(c, sink!, p);
+			}
+		}
+		child = n[b + W.next];
+	}
+	c.move_to(0);
+	return p;
+}
+
+/** c is at the root, the hoisted children then the rest inside the wrapper */
+function wrap_root(c: Cursor, sink: MapSink | undefined, p: number): number {
+	p = wrap_pass(c, sink, p, true);
+	p = cm_wrap(p, wrap_open);
+	p = wrap_pass(c, sink, p, false);
+	return cm_wrap(p, '</' + WRAP_LOCAL + '>');
+}
+
+function cm_wrap(p: number, s: string): number {
+	if (wrap_mode === CM.FOLD) return push_dyn(p, s);
+	if (p !== 0) mo += FOLD_STR[p];
+	mo += s;
+	return 0;
+}
+
 //  internal helpers
 
 /** render the node at the current cursor position to html string. */
@@ -4046,6 +4247,13 @@ export class CursorHTMLRenderer {
 	 * renders as its children, which suits a preview
 	 */
 	strict_directives = false;
+	/**
+	 * the template the next render wraps the document in, hoisting its scripts,
+	 * styles and top level svelte elements, that render clears it, the cached
+	 * render of update ignores it
+	 */
+	// declared, so a renderer that never wraps builds and keeps no field
+	declare template?: TemplateWrapper;
 
 	constructor(opts?: { cache?: boolean }) {
 		this.cache = opts?.cache ?? true;
@@ -4071,6 +4279,10 @@ export class CursorHTMLRenderer {
 		if (!this.cache) {
 			const scope = this.scope;
 			const directives = this.directives;
+			if (this.template !== undefined) {
+				this.html = this.render_wrapped(c, buf, null, false, code);
+				return this.blocks;
+			}
 			try {
 				if (
 					(scope !== null && scope.size !== 0) ||
@@ -4151,6 +4363,10 @@ export class CursorHTMLRenderer {
 		c.reset();
 		esc_reset(source);
 
+		if (this.template !== undefined) {
+			this.html = this.render_wrapped(c, buf, sink, trace, code);
+			return;
+		}
 		const scope = this.scope;
 		const directives = this.directives;
 		let p = 0;
@@ -4185,6 +4401,61 @@ export class CursorHTMLRenderer {
 		// flat, so every later read of the html pays no rope walk
 		if (html.length !== 0) flat_sink[0] = html.charCodeAt(0);
 		this.html = html;
+	}
+
+	/**
+	 * a render wrapped in the template, kept apart so a plain render pays one
+	 * check, sink null for the fold walk
+	 */
+	private render_wrapped(
+		c: Cursor,
+		buf: NodeBuffer,
+		sink: MapSink | null,
+		trace: boolean,
+		code: string | undefined
+	): string {
+		const scope = this.scope;
+		const directives = this.directives;
+		const mode = sink === null ? CM.FOLD : trace ? CM.TRACE : CM.MAPPED;
+		let html: string;
+		try {
+			if (
+				(scope !== null && scope.size !== 0) ||
+				(directives !== null && directives.size !== 0)
+			)
+				comp_begin(c, scope, directives, mode);
+			if (this.strict_directives) dir_strict = true;
+			wrap_begin(this.template!, mode);
+			wrap_hoist_begin(c, buf);
+			if (code) module_begin(buf, code);
+			prebuilt_begin(buf);
+			if (sink === null) {
+				fold_out = comp_prefix;
+				const p = wrap_root(c, undefined, 0);
+				html = fold_out;
+				fold_out = '';
+				if (p !== 0) html += FOLD_STR[p];
+			} else {
+				mo = comp_prefix;
+				// the frontmatter is the first node, the mapped walk has no case for it
+				if (code) mo += module_script();
+				const p = wrap_root(c, sink, 0);
+				html = mo;
+				mo = '';
+				if (p !== 0) html += FOLD_STR[p];
+			}
+		} finally {
+			esc_prebuilt = true;
+			esc_bits = null;
+			if (dir_strict) dir_strict = false;
+			if (comp_scope !== null) comp_end();
+			wrap_end();
+			if (code) module_end();
+			this.template = undefined;
+		}
+		// flat, so every later read of the html pays no rope walk
+		if (html.length !== 0) flat_sink[0] = html.charCodeAt(0);
+		return html;
 	}
 
 	/**
@@ -4291,6 +4562,7 @@ export class CursorHTMLRenderer {
 		this.cursor?.release();
 		this.scope = null;
 		this.directives = null;
+		if (this.template !== undefined) this.template = undefined;
 		// the escape index is module state and would keep the source alive,
 		// every render resets it, a zero length clamps any text of '' to empty
 		esc_src = '';

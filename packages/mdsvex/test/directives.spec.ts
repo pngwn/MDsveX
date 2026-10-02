@@ -32,8 +32,14 @@ function compile_all(
 	);
 	const session = new CompilerSession();
 	expect(
-		session.compile_trace(raw, undefined, components, undefined, directives)
-			.code
+		session.compile_trace(
+			raw,
+			undefined,
+			components,
+			undefined,
+			undefined,
+			directives
+		).code
 	).toBe(plain);
 	expect(
 		session.compile_v3(
@@ -41,6 +47,7 @@ function compile_all(
 			'doc.svx',
 			undefined,
 			components,
+			undefined,
 			undefined,
 			directives
 		).code
@@ -292,6 +299,7 @@ describe('precedence', () => {
 				new CompilerSession().compile_trace(
 					raw,
 					[plugin],
+					undefined,
 					undefined,
 					undefined,
 					only('mine')

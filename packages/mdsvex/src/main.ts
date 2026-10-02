@@ -32,7 +32,12 @@ import type { Plugin, PluginOption, Rollup } from 'vite';
 import { scan_exports_detail } from './scan_exports';
 import type { ScannedExports } from './scan_exports';
 import remapping from '@ampproject/remapping';
-import { metadata_export, parse_frontmatter } from './frontmatter';
+import {
+	FrontmatterError,
+	key_line,
+	metadata_export,
+	parse_frontmatter,
+} from './frontmatter';
 import type { FrontmatterOptions } from './frontmatter';
 
 export type { ParsePlugin } from '@mdsvex/parse';
@@ -62,7 +67,38 @@ export interface MdsvexOptions {
 	components?: string | URL | (string | URL)[];
 	component_mode?: ComponentMode;
 	frontmatter?: FrontmatterOptions;
+	/**
+	 * svelte components that wrap documents by name, each resolves as an import
+	 * from the vite root would, the default entry wraps documents that pick none,
+	 * an element named export of the module script of a template replaces that element
+	 *
+	 * @example
+	 * templates: {
+	 *   default: '#lib/templates/Post.svelte',
+	 *   blog: new URL('./src/Blog.svelte', import.meta.url),
+	 *   // replacements for a template you cannot edit, merged over its own
+	 *   theme: { component: '@acme/theme/Layout.svelte', components: '#lib/theme.ts' },
+	 * }
+	 */
+	templates?: Record<string, TemplateSpec>;
+	/**
+	 * picks the template of a document whose frontmatter has no template key, a
+	 * name picks that template, false picks none and undefined the default
+	 *
+	 * @example
+	 * select_template: (id) => (id.includes('/blog/') ? 'blog' : undefined)
+	 */
+	select_template?: (
+		id: string,
+		metadata: Record<string, unknown>
+	) => string | false | undefined;
 }
+
+/** a template module, or one with a module of replacements merged over its own */
+export type TemplateSpec =
+	| string
+	| URL
+	| { component: string | URL; components?: string | URL };
 
 /**
  * markdown replaces elements from markdown syntax and parse plugins, never
@@ -70,7 +106,7 @@ export interface MdsvexOptions {
  */
 export type ComponentMode = 'markdown' | 'all';
 
-export interface CompileOptions {
+export interface CompileOptions extends TemplateOptions {
 	parse_plugins?: ParsePlugin[];
 	sourcemap?: boolean;
 	/** root fallback replacements, lowest precedence first, each specifier is imported as written */
@@ -84,6 +120,28 @@ export interface CompileOptions {
 	frontmatter?: FrontmatterOptions;
 }
 
+/** a svelte component that wraps documents, its replacements chain in front of the root */
+export interface TemplateEntry {
+	/** emitted verbatim as an import specifier */
+	specifier: string;
+	/** the element names the template exports from its module script, its replacements */
+	components?: string[];
+}
+
+export interface TemplateOptions {
+	/** templates by name, a frontmatter template key picks one */
+	templates?: Record<string, TemplateEntry>;
+	/** the template when neither the frontmatter nor select_template picks one, in place of the default entry */
+	default_template?: string;
+	/**
+	 * called when the frontmatter has no template key, a name picks that
+	 * template, false picks none and undefined falls through to the default
+	 */
+	select_template?: (metadata: Metadata) => string | false | undefined;
+	/** the template ahead of the frontmatter, false for none, as an import query asks */
+	template?: string | false;
+}
+
 /** the frontmatter, exported from the module script as metadata */
 type Metadata = Record<string, unknown>;
 
@@ -94,6 +152,8 @@ export interface CompileResult {
 	mappings?: Mapping<MappingData>[];
 	/** the parsed frontmatter, undefined when the document has none */
 	metadata?: Metadata;
+	/** the name of the template the document is wrapped in, undefined for none */
+	template?: string;
 }
 
 export interface CompileV3Result {
@@ -102,6 +162,8 @@ export interface CompileV3Result {
 	map: SourceMapV3;
 	/** the parsed frontmatter, undefined when the document has none */
 	metadata?: Metadata;
+	/** the name of the template the document is wrapped in, undefined for none */
+	template?: string;
 }
 
 export interface CompileTraceResult {
@@ -112,6 +174,8 @@ export interface CompileTraceResult {
 	source: string;
 	/** the parsed frontmatter, undefined when the document has none */
 	metadata?: Metadata;
+	/** the name of the template the document is wrapped in, undefined for none */
+	template?: string;
 }
 
 // plugins keep one components array per config, so its scope is built once
@@ -216,6 +280,156 @@ function guard_plugins(
 	return out;
 }
 
+const has_own = Object.prototype.hasOwnProperty;
+
+/** false when nothing but frontmatter can pick a template */
+function picks_template(options: TemplateOptions | undefined): boolean {
+	return (
+		options !== undefined &&
+		(options.templates !== undefined ||
+			options.template !== undefined ||
+			options.select_template !== undefined ||
+			options.default_template !== undefined)
+	);
+}
+
+/** the name of the template a document is wrapped in, undefined for none */
+function template_of(
+	metadata: Metadata | undefined,
+	options: TemplateOptions | undefined,
+	nodes: NodeBuffer,
+	source: string
+): string | undefined {
+	const in_frontmatter =
+		metadata !== undefined && has_own.call(metadata, 'template');
+	if (options === undefined) {
+		if (!in_frontmatter) return undefined;
+		options = {};
+	}
+	let name: unknown = options.template;
+	let from = 'the template option';
+	if (name === undefined && in_frontmatter) {
+		name = metadata!.template;
+		from = 'frontmatter';
+		if (name !== false && typeof name !== 'string') {
+			throw frontmatter_error(
+				nodes,
+				source,
+				'template',
+				`template must be the name of a template or false, got ${JSON.stringify(name)}`
+			);
+		}
+	}
+	if (name === undefined && options.select_template !== undefined) {
+		name = options.select_template(metadata ?? {});
+		from = 'select_template';
+		if (name !== undefined && name !== false && typeof name !== 'string') {
+			throw new Error(
+				`[mdsvex] select_template must return a template name, false or undefined, it returned ${JSON.stringify(name)}`
+			);
+		}
+	}
+	const templates = options.templates;
+	if (name === undefined) {
+		if (options.default_template !== undefined) {
+			name = options.default_template;
+			from = 'default_template';
+		} else if (templates !== undefined && has_own.call(templates, 'default'))
+			name = 'default';
+		else return undefined;
+	}
+	if (name === false) return undefined;
+
+	const entry =
+		templates !== undefined && has_own.call(templates, name as string)
+			? templates[name as string]
+			: undefined;
+	if (entry === undefined) {
+		const known = templates === undefined ? [] : Object.keys(templates);
+		const message =
+			`Unknown template ${JSON.stringify(name)} from ${from}. ` +
+			(known.length === 0
+				? 'No templates are configured'
+				: `Known templates: ${known.join(', ')}`);
+		if (from === 'frontmatter')
+			throw frontmatter_error(nodes, source, 'template', message);
+		throw new Error('[mdsvex] ' + message);
+	}
+	if (metadata !== undefined && has_own.call(metadata, 'children')) {
+		throw frontmatter_error(
+			nodes,
+			source,
+			'children',
+			`The frontmatter key children collides with the children of template ${JSON.stringify(name)}, rename it`
+		);
+	}
+	return name as string;
+}
+
+/** an error at the line of a frontmatter key */
+function frontmatter_error(
+	nodes: NodeBuffer,
+	source: string,
+	key: string,
+	message: string
+): FrontmatterError {
+	const fm = nodes.first_child_at(0);
+	const line = key_line(
+		source,
+		nodes.value_start_at(fm),
+		nodes.value_end_at(fm),
+		key
+	);
+	return new FrontmatterError(`${message} (frontmatter line ${line})`, line, 1);
+}
+
+// keyed by the entry and then its parent, plugins keep both per config
+const template_scopes = new WeakMap<
+	TemplateEntry,
+	{ parent: ComponentScope | null; scope: ComponentScope }
+>();
+
+/** the template replacements chained in front of the root scope */
+function template_scope(
+	entry: TemplateEntry,
+	root: ComponentScope | null
+): ComponentScope | null {
+	const names = entry.components;
+	if (names === undefined || names.length === 0) return root;
+	const hit = template_scopes.get(entry);
+	if (hit !== undefined && hit.parent === root) return hit.scope;
+	const scope = new ComponentScope(
+		[{ specifier: entry.specifier, names }],
+		'T',
+		root
+	);
+	template_scopes.set(entry, { parent: root, scope });
+	return scope;
+}
+
+/** sets the scope and the template a document renders with, returns the template name */
+function prepare(
+	renderer: CursorHTMLRenderer,
+	root: ComponentScope | null,
+	metadata: Metadata | undefined,
+	options: TemplateOptions | undefined,
+	nodes: NodeBuffer,
+	source: string
+): string | undefined {
+	const name = template_of(metadata, options, nodes, source);
+	if (name === undefined) {
+		renderer.scope = root;
+		return undefined;
+	}
+	const entry = options!.templates![name];
+	renderer.scope = template_scope(entry, root);
+	renderer.template = {
+		specifier: entry.specifier,
+		metadata: metadata !== undefined,
+	};
+	return name;
+}
+
 // null while taken, so a compile inside a plugin makes its own
 let spare_parser: PFMParser | null = null;
 let spare_renderer: CursorHTMLRenderer | null = null;
@@ -307,6 +521,15 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	const metadata = metadata_of(nodes, source, options?.frontmatter?.parse);
 	const renderer = take_renderer();
 	bind_scopes(renderer, scope, directives);
+	let template: string | undefined;
+	if (metadata !== undefined || picks_template(options)) {
+		try {
+			template = prepare(renderer, scope, metadata, options, nodes, source);
+		} catch (e) {
+			give_renderer(renderer);
+			throw e;
+		}
+	}
 
 	if (options?.sourcemap) {
 		// only a collapsed \r\n changes length, without one raw needs no \r\n scan
@@ -318,13 +541,13 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		);
 		const code = renderer.html;
 		give_renderer(renderer);
-		return { code, mappings: result.mappings, metadata };
+		return { code, mappings: result.mappings, metadata, template };
 	}
 
 	renderer.update(nodes, source, module_code_of(metadata));
 	const code = renderer.html;
 	give_renderer(renderer);
-	return { code, metadata };
+	return { code, metadata, template };
 }
 
 function render_v3(
@@ -333,14 +556,19 @@ function render_v3(
 	source: string,
 	raw: string,
 	file: string | undefined,
-	parse: FrontmatterParse
+	parse: FrontmatterParse,
+	scope: ComponentScope | null,
+	directives: ComponentScope | null,
+	templates: TemplateOptions | undefined
 ): CompileV3Result {
 	const metadata = metadata_of(nodes, source, parse);
+	bind_scopes(renderer, scope, directives);
+	const template = prepare(renderer, scope, metadata, templates, nodes, source);
 	const module_code = module_code_of(metadata);
 	// only a collapsed \r\n changes length, without one the records index raw
 	if (source.length === raw.length) {
 		const map = renderer.update_v3(nodes, source, raw, file, module_code);
-		return { code: renderer.html, map, metadata };
+		return { code: renderer.html, map, metadata, template };
 	}
 	const result = renderer.update_mapped(
 		nodes,
@@ -353,6 +581,7 @@ function render_v3(
 		code,
 		map: mappings_to_v3(result.mappings, raw, code, file),
 		metadata,
+		template,
 	};
 }
 
@@ -360,11 +589,16 @@ function render_trace(
 	renderer: CursorHTMLRenderer,
 	nodes: NodeBuffer,
 	source: string,
-	parse: FrontmatterParse
+	parse: FrontmatterParse,
+	scope: ComponentScope | null,
+	directives: ComponentScope | null,
+	templates: TemplateOptions | undefined
 ): CompileTraceResult {
 	const metadata = metadata_of(nodes, source, parse);
+	bind_scopes(renderer, scope, directives);
+	const template = prepare(renderer, scope, metadata, templates, nodes, source);
 	const trace = renderer.update_trace(nodes, source, module_code_of(metadata));
-	return { code: renderer.html, trace, source, metadata };
+	return { code: renderer.html, trace, source, metadata, template };
 }
 
 /**
@@ -410,6 +644,10 @@ export class CompilerSession {
 		const nodes = this.parse(source);
 		const metadata = metadata_of(nodes, source, options?.frontmatter?.parse);
 		bind_scopes(this.renderer, scope, directives);
+		const template =
+			metadata === undefined && !picks_template(options)
+				? undefined
+				: prepare(this.renderer, scope, metadata, options, nodes, source);
 		if (options?.sourcemap) {
 			const result = this.renderer.update_mapped(
 				nodes,
@@ -421,11 +659,12 @@ export class CompilerSession {
 				code: this.renderer.html,
 				mappings: result.mappings,
 				metadata,
+				template,
 			};
 		}
 
 		this.renderer.update(nodes, source, module_code_of(metadata));
-		return { code: this.renderer.html, metadata };
+		return { code: this.renderer.html, metadata, template };
 	}
 
 	/** @internal keeps only typed arrays so an idle session holds no document */
@@ -445,6 +684,7 @@ export class CompilerSession {
 		parse_plugins?: ParsePlugin[],
 		components?: ComponentSource[],
 		parse?: FrontmatterParse,
+		templates?: TemplateOptions,
 		directive_sources?: ComponentSource[]
 	): CompileV3Result {
 		const scope = components === undefined ? null : scope_of(components);
@@ -454,12 +694,30 @@ export class CompilerSession {
 			// the dispatcher holds this source, so plugins get their own tree
 			const nodes = parse_once(source, parse_plugins, directives);
 			const renderer = new CursorHTMLRenderer({ cache: false });
-			bind_scopes(renderer, scope, directives);
-			return render_v3(renderer, nodes, source, raw, file, parse);
+			return render_v3(
+				renderer,
+				nodes,
+				source,
+				raw,
+				file,
+				parse,
+				scope,
+				directives,
+				templates
+			);
 		}
 		const nodes = this.parse(source);
-		bind_scopes(this.renderer, scope, directives);
-		return render_v3(this.renderer, nodes, source, raw, file, parse);
+		return render_v3(
+			this.renderer,
+			nodes,
+			source,
+			raw,
+			file,
+			parse,
+			scope,
+			directives,
+			templates
+		);
 	}
 
 	/**
@@ -472,6 +730,7 @@ export class CompilerSession {
 		parse_plugins?: ParsePlugin[],
 		components?: ComponentSource[],
 		parse?: FrontmatterParse,
+		templates?: TemplateOptions,
 		directive_sources?: ComponentSource[]
 	): CompileTraceResult {
 		const scope = components === undefined ? null : scope_of(components);
@@ -480,12 +739,26 @@ export class CompilerSession {
 		if (parse_plugins && parse_plugins.length > 0) {
 			const nodes = parse_once(source, parse_plugins, directives);
 			const renderer = new CursorHTMLRenderer({ cache: false });
-			bind_scopes(renderer, scope, directives);
-			return render_trace(renderer, nodes, source, parse);
+			return render_trace(
+				renderer,
+				nodes,
+				source,
+				parse,
+				scope,
+				directives,
+				templates
+			);
 		}
 		const nodes = this.parse(source);
-		bind_scopes(this.renderer, scope, directives);
-		return render_trace(this.renderer, nodes, source, parse);
+		return render_trace(
+			this.renderer,
+			nodes,
+			source,
+			parse,
+			scope,
+			directives,
+			templates
+		);
 	}
 
 	/**
@@ -498,6 +771,7 @@ export class CompilerSession {
 		out: TraceTarget,
 		components?: ComponentSource[],
 		parse?: FrontmatterParse,
+		templates?: TemplateOptions,
 		directive_sources?: ComponentSource[]
 	): void {
 		const scope = components === undefined ? null : scope_of(components);
@@ -514,6 +788,11 @@ export class CompilerSession {
 		const metadata = metadata_of(nodes, source, parse);
 		out.metadata = metadata;
 		bind_scopes(renderer, scope, directives);
+		// only options or frontmatter pick a template
+		out.template =
+			templates === undefined && metadata === undefined
+				? undefined
+				: prepare(renderer, scope, metadata, templates, nodes, source);
 		renderer.update_trace_into(nodes, source, out, module_code_of(metadata));
 		out.source = source;
 		out.html = renderer.html;
@@ -525,6 +804,7 @@ interface TraceTarget extends MapTrace {
 	source: string;
 	html: string;
 	metadata: Metadata | undefined;
+	template: string | undefined;
 }
 
 // a session keeps its arena at its largest document size, so large documents
@@ -984,6 +1264,25 @@ const COMPONENTS_ID = 'mdsvex:components';
 const DIRECTIVES_ID = 'mdsvex:directives';
 /** the namespace export of a replacement module that holds its directives */
 const DIRECTIVES_EXPORT = 'directives';
+const TEMPLATE_ID = 'mdsvex:template/';
+
+/** a URL as a path, a string as written */
+async function spec_of(entry: string | URL): Promise<string> {
+	const spec = typeof entry === 'string' ? entry : entry.href;
+	if (!spec.startsWith('file:')) return spec;
+	const url = await import('node:url');
+	return url.fileURLToPath(spec);
+}
+
+function shown(entry: string | URL): string {
+	return JSON.stringify(typeof entry === 'string' ? entry : entry.href);
+}
+
+/** the directory documents resolve configured specifiers from */
+function importer_in(root: string): string {
+	const base = root || (globalThis as any).process?.cwd?.() || '';
+	return base.replace(/\/$/, '') + '/vite.config';
+}
 
 function clean_id(id: string): string {
 	const q = id.indexOf('?');
@@ -1139,8 +1438,7 @@ function component_registry(
 	let files: readonly string[] = [];
 
 	function importer(): string {
-		const base = root || (globalThis as any).process?.cwd?.() || '';
-		return base.replace(/\/$/, '') + '/vite.config';
+		return importer_in(root);
 	}
 
 	function publish(list: ComponentModule[]): void {
@@ -1169,15 +1467,10 @@ function component_registry(
 		const failed: string[] = [];
 		for (let i = 0; i < written.length; i++) {
 			const entry = written[i];
-			const shown = typeof entry === 'string' ? entry : entry.href;
-			let spec = shown;
-			if (spec.startsWith('file:')) {
-				const url = await import('node:url');
-				spec = url.fileURLToPath(spec);
-			}
+			const spec = await spec_of(entry);
 			const resolved = await ctx.resolve(spec, from, { skipSelf: true });
 			if (resolved === null || resolved.external) {
-				failed.push(JSON.stringify(shown));
+				failed.push(shown(entry));
 				continue;
 			}
 			list.push({
@@ -1246,13 +1539,13 @@ function component_registry(
 		files(): readonly string[] {
 			return files;
 		},
-		/** the compile options for a document, noting the files it read */
-		for_doc(id: string): {
-			components: ComponentSource[] | undefined;
-			directives: ComponentSource[] | undefined;
-		} {
-			tracker.track(id, files);
-			return { components: sources, directives: directive_sources };
+		/** the compile option */
+		sources(): ComponentSource[] | undefined {
+			return sources;
+		},
+		/** the directives compile option */
+		directive_sources(): ComponentSource[] | undefined {
+			return directive_sources;
 		},
 		/** resolved in the environment of ctx, whose conditions may differ */
 		async resolve(
@@ -1311,6 +1604,260 @@ function component_registry(
 	};
 }
 
+interface TemplateModule {
+	/** the template key */
+	name: string;
+	/** the specifier of the component resolved, a URL as a path */
+	spec: string;
+	/** the resolved component id without its query */
+	file: string;
+	/** the export names of its module script */
+	names: string[];
+	/** a module of replacements merged over those of the template */
+	extra: { spec: string; file: string; names: string[] } | null;
+}
+
+/**
+ * the templates resolve and scan once, every document compiles with the same
+ * option until an export set changes
+ */
+function template_registry(
+	written: Record<string, TemplateSpec>,
+	tracker: ExportTracker
+) {
+	const keys = Object.keys(written);
+	let root = '';
+	let modules: Map<string, TemplateModule> | null = null;
+	let loading: Promise<Map<string, TemplateModule>> | null = null;
+	/** the compile option, replaced whenever an export set changes */
+	let entries: Record<string, TemplateEntry> = {};
+	let files: readonly string[] = [];
+	let files_by_name = new Map<string, readonly string[]>();
+
+	function publish(list: Map<string, TemplateModule>): void {
+		modules = list;
+		const next: Record<string, TemplateEntry> = {};
+		const all: string[] = [];
+		files_by_name = new Map();
+		for (const m of list.values()) {
+			// the extra module wins a shared name, the facade exports its binding
+			const names = m.extra === null ? m.names : union(m.names, m.extra.names);
+			next[m.name] = { specifier: TEMPLATE_ID + m.name, components: names };
+			const own = m.extra === null ? [m.file] : [m.file, m.extra.file];
+			files_by_name.set(m.name, own);
+			all.push(...own);
+		}
+		entries = next;
+		files = all;
+	}
+
+	async function load(ctx: Rollup.PluginContext) {
+		const from = importer_in(root);
+		const shown_root = from.slice(0, -'/vite.config'.length);
+		const list = new Map<string, TemplateModule>();
+		const failed: string[] = [];
+		const resolve = async (entry: string | URL, what: string) => {
+			const spec = await spec_of(entry);
+			const resolved = await ctx.resolve(spec, from, { skipSelf: true });
+			if (resolved === null || resolved.external) {
+				failed.push(
+					`[mdsvex] could not resolve ${what} ${shown(entry)} from the vite root ${shown_root}`
+				);
+				return null;
+			}
+			return { spec, file: clean_id(resolved.id), names: [] as string[] };
+		};
+		for (const name of keys) {
+			const entry = written[name];
+			const pair = typeof entry === 'object' && 'component' in entry;
+			const component = pair ? entry.component : entry;
+			const extra = pair ? entry.components : undefined;
+			const main = await resolve(component, `template "${name}" at`);
+			const more =
+				extra === undefined
+					? null
+					: await resolve(extra, `the components of template "${name}" at`);
+			if (main === null || (extra !== undefined && more === null)) continue;
+			list.set(name, { name, ...main, extra: more });
+		}
+		if (failed.length !== 0) throw new Error(failed.join('\n'));
+		const warn = (message: string) => ctx.warn(message);
+		for (const m of list.values()) {
+			m.names = without_default((await tracker.scan(m.file, warn)).names);
+			if (m.extra !== null)
+				m.extra.names = without_default(
+					(await tracker.scan(m.extra.file, warn)).names
+				);
+		}
+		publish(list);
+		return list;
+	}
+
+	/** resolves and scans once, a failure is kept so it is reported once */
+	function ensure(ctx: Rollup.PluginContext) {
+		if (loading === null) loading = load(ctx);
+		return loading;
+	}
+
+	/** the current module of a template, a rescan replaces it */
+	async function module_of(ctx: Rollup.PluginContext, name: string) {
+		await ensure(ctx);
+		return modules?.get(name);
+	}
+
+	return {
+		set_root(dir: string): void {
+			root = dir;
+		},
+		ensure,
+		/** resolve and scan again on the next use, keeping the scans of unchanged code */
+		reset(): void {
+			loading = null;
+			modules = null;
+		},
+		ready(): boolean {
+			return modules !== null;
+		},
+		files(): readonly string[] {
+			return files;
+		},
+		/** the files a document wrapped in the named template read names from */
+		files_of(name: string | undefined): readonly string[] {
+			return name === undefined ? [] : (files_by_name.get(name) ?? []);
+		},
+		entries(): Record<string, TemplateEntry> {
+			return entries;
+		},
+		/** the templates whose merging module reads names from file */
+		names_using(file: string): string[] {
+			const out: string[] = [];
+			if (modules !== null)
+				for (const m of modules.values())
+					if (m.extra !== null && (m.file === file || m.extra.file === file))
+						out.push(m.name);
+			return out;
+		},
+		/**
+		 * a template id resolves to the component, so the graph edge is the real
+		 * file, or with extra replacements to a module that merges both
+		 */
+		async resolve(
+			ctx: Rollup.PluginContext,
+			id: string
+		): Promise<Rollup.ResolvedId | string | null | undefined> {
+			const name = id.slice(TEMPLATE_ID.length);
+			if (!has_own.call(written, name)) return undefined;
+			const m = await module_of(ctx, name);
+			if (m === undefined) return undefined;
+			if (m.extra !== null) return '\0' + id;
+			return ctx.resolve(m.spec, importer_in(root), { skipSelf: true });
+		},
+		/** the module of a template with extra replacements, resolved in the environment of ctx */
+		async load(ctx: Rollup.PluginContext, id: string) {
+			const name = id.slice(1 + TEMPLATE_ID.length);
+			const m = await module_of(ctx, name);
+			if (m === undefined || m.extra === null) return undefined;
+			const from = importer_in(root);
+			const main = await ctx.resolve(m.spec, from, { skipSelf: true });
+			const extra = await ctx.resolve(m.extra.spec, from, { skipSelf: true });
+			const a = JSON.stringify(main!.id);
+			const b = JSON.stringify(extra!.id);
+			// a named export shadows the same name from export *
+			let code = `export * from ${a};\nexport { default } from ${a};\n`;
+			if (m.extra.names.length !== 0)
+				code += `export { ${m.extra.names.map(export_name).join(', ')} } from ${b};\n`;
+			return code;
+		},
+		/** scan a changed file again, true when its export set changed */
+		async rescan(
+			file: string,
+			timestamp: number,
+			warn: Warn,
+			code: string
+		): Promise<boolean> {
+			if (modules === null || !files.includes(file)) return false;
+			const names = without_default(
+				(await tracker.scan(file, warn, code)).names
+			);
+			let before: readonly string[] | null = null;
+			const list = new Map(modules);
+			for (const [name, m] of modules) {
+				if (m.file === file) {
+					before ??= m.names;
+					list.set(name, { ...m, names });
+				}
+				if (m.extra !== null && m.extra.file === file) {
+					before ??= m.extra.names;
+					list.set(name, { ...m, extra: { ...m.extra, names } });
+				}
+			}
+			if (before === null) return false;
+			if (!same_names(before, names)) publish(list);
+			return tracker.changed(file, before, names, timestamp);
+		},
+	};
+}
+
+function check_templates(written: Record<string, TemplateSpec>): void {
+	for (const name of Object.keys(written)) {
+		const entry = written[name] as unknown;
+		const ok =
+			typeof entry === 'string' ||
+			(typeof entry === 'object' &&
+				entry !== null &&
+				(typeof (entry as URL).href === 'string' ||
+					'component' in (entry as object)));
+		if (!ok || name === '')
+			throw new Error(
+				`[mdsvex] templates.${name} must be a specifier, a URL or { component, components? }`
+			);
+	}
+}
+
+/** the template options of a document, with the import query and the id bound */
+function templates_for(
+	templates: TemplateRegistry | null,
+	select: MdsvexOptions['select_template'],
+	id: string
+): TemplateOptions {
+	const file = clean_id(id);
+	return {
+		templates: templates === null ? undefined : templates.entries(),
+		select_template:
+			select === undefined ? undefined : (metadata) => select(file, metadata),
+		template: query_template(id),
+	};
+}
+
+/** ?template=name or ?template=false on the import, undefined without one */
+function query_template(id: string): string | false | undefined {
+	const q = id.indexOf('?');
+	if (q < 0) return undefined;
+	const value = new URLSearchParams(id.slice(q + 1)).get('template');
+	if (value === null) return undefined;
+	return value === 'false' ? false : value;
+}
+
+type TemplateRegistry = ReturnType<typeof template_registry>;
+
+function union(a: readonly string[], b: readonly string[]): string[] {
+	const out = a.slice();
+	for (const name of b) if (!out.includes(name)) out.push(name);
+	return out;
+}
+
+function without_default(names: string[]): string[] {
+	return names.includes('default')
+		? names.filter((n) => n !== 'default')
+		: names;
+}
+
+const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+
+function export_name(name: string): string {
+	return IDENTIFIER.test(name) ? name : JSON.stringify(name);
+}
+
 /**
  * mdsvex vite plugin. returns a single plugin that:
  *
@@ -1347,18 +1894,30 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	const written = options.components;
 	const list =
 		written === undefined ? [] : Array.isArray(written) ? written : [written];
-	// a config without replacements builds none of their state
-	const tracker = list.length === 0 ? null : export_tracker();
-	const registry = tracker === null ? null : component_registry(list, tracker);
+	const written_templates = options.templates;
+	if (written_templates !== undefined) check_templates(written_templates);
+	const select = options.select_template;
+	if (select !== undefined && typeof select !== 'function')
+		throw new Error('[mdsvex] select_template must be a function');
+	const has_templates =
+		written_templates !== undefined &&
+		Object.keys(written_templates).length !== 0;
+	// a config without replacements or templates builds none of their state
+	const tracker = list.length === 0 && !has_templates ? null : export_tracker();
+	const registry =
+		list.length === 0 ? null : component_registry(list, tracker!);
+	const templates = has_templates
+		? template_registry(written_templates!, tracker!)
+		: null;
 	let command: 'build' | 'serve' = 'serve';
+
+	const no_templates = templates === null && select === undefined;
 
 	function compile_doc(
 		code: string,
 		id: string,
-		replacements: {
-			components: ComponentSource[] | undefined;
-			directives: ComponentSource[] | undefined;
-		} | null
+		components: ComponentSource[] | undefined,
+		directives: ComponentSource[] | undefined
 	): { code: string } {
 		let doc = stored.get(id);
 		if (doc === undefined) {
@@ -1367,6 +1926,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				source: '',
 				html: '',
 				metadata: undefined,
+				template: undefined,
 				buf: no_records,
 				start: 0,
 				split: 0,
@@ -1380,9 +1940,11 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			code,
 			options.parse_plugins,
 			doc,
-			replacements?.components,
+			components,
 			options.frontmatter?.parse,
-			replacements?.directives
+			// without templates or a selector a query has nothing to pick
+			no_templates ? undefined : templates_for(templates, select, id),
+			directives
 		);
 		doc.raw = code;
 
@@ -1415,6 +1977,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 			configResolved(config) {
 				registry?.set_root(config.root);
+				templates?.set_root(config.root);
 				command = config.command;
 				const svelte = config.plugins.find(
 					(p) => p.name === 'vite-plugin-svelte:config'
@@ -1433,59 +1996,116 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			async buildStart() {
 				// one clear error at startup rather than one per document
 				if (registry !== null) await registry.ensure(this);
+				if (templates !== null) await templates.ensure(this);
 			},
 
 			resolveId(id) {
 				if (
-					registry === null ||
-					!(id.startsWith(COMPONENTS_ID) || id.startsWith(DIRECTIVES_ID))
+					registry !== null &&
+					(id.startsWith(COMPONENTS_ID) || id.startsWith(DIRECTIVES_ID))
 				)
-					return;
-				return registry.resolve(this, id);
+					return registry.resolve(this, id);
+				if (templates !== null && id.startsWith(TEMPLATE_ID))
+					return templates.resolve(this, id);
 			},
+
+			// only templates with extra replacements load a module
+			load:
+				templates === null
+					? undefined
+					: function (id) {
+							if (id.startsWith('\0' + TEMPLATE_ID))
+								return templates.load(this, id);
+						},
 
 			transform(code, id) {
 				if (!matches(id)) return;
-				if (registry === null) return compile_doc(code, id, null);
+				if (tracker === null)
+					return compile_doc(code, id, undefined, undefined);
 
 				const finish = () => {
 					// a watch build compiles again when the exports change, in dev the virtual import is the edge
-					if (command === 'build')
-						for (const file of registry.files()) this.addWatchFile(file);
-					return compile_doc(code, id, registry.for_doc(id));
+					if (command === 'build') {
+						if (registry !== null)
+							for (const file of registry.files()) this.addWatchFile(file);
+						if (templates !== null)
+							for (const file of templates.files()) this.addWatchFile(file);
+					}
+					const result = compile_doc(
+						code,
+						id,
+						registry?.sources(),
+						registry?.directive_sources()
+					);
+					const used = templates?.files_of(stored.get(id)!.template) ?? [];
+					const root = registry === null ? [] : registry.files();
+					tracker.track(
+						id,
+						used.length === 0
+							? root
+							: root.length === 0
+								? used
+								: [...root, ...used]
+					);
+					return result;
 				};
-				if (registry.ready()) return finish();
-				return registry.ensure(this).then(finish);
+				const waits: Promise<unknown>[] = [];
+				if (registry !== null && !registry.ready())
+					waits.push(registry.ensure(this));
+				if (templates !== null && !templates.ready())
+					waits.push(templates.ensure(this));
+				if (waits.length === 0) return finish();
+				return Promise.all(waits).then(finish);
 			},
 
 			watchChange(id) {
 				// the dev server rescans in hotUpdate instead
-				if (
-					registry !== null &&
-					command === 'build' &&
-					registry.files().includes(clean_id(id))
-				)
+				if (command !== 'build') return;
+				const file = clean_id(id);
+				if (registry !== null && registry.files().includes(file))
 					registry.reset();
+				if (templates !== null && templates.files().includes(file))
+					templates.reset();
 			},
 
 			async hotUpdate(update) {
-				// files outlive a reset, so a later environment still sees the change
-				if (registry === null) return;
 				const file = update.file;
-				if (!registry.files().includes(file)) return;
-				const changed = await registry.rescan(
-					file,
-					update.timestamp,
-					(m) => this.environment.logger.warn('[mdsvex] ' + m),
-					await update.read()
-				);
+				// files outlive a reset, so a later environment still sees the change
+				const in_root = registry !== null && registry.files().includes(file);
+				const in_templates =
+					templates !== null &&
+					templates.ready() &&
+					templates.files().includes(file);
+				if (!in_root && !in_templates) return;
+				const warn = (m: string) =>
+					this.environment.logger.warn('[mdsvex] ' + m);
+				const code = await update.read();
+				let changed = false;
+				if (in_root)
+					changed = await registry!.rescan(file, update.timestamp, warn, code);
+				if (in_templates)
+					changed =
+						(await templates!.rescan(file, update.timestamp, warn, code)) ||
+						changed;
 				if (!changed) return;
 
 				// names changed, documents compiled against the old set compile again
 				const graph = this.environment.moduleGraph;
 				const modules = update.modules.slice();
+				if (in_templates) {
+					// a merging template module lists the names it exports
+					for (const name of templates!.names_using(file)) {
+						const mod = graph.getModuleById('\0' + TEMPLATE_ID + name);
+						if (mod === undefined) continue;
+						graph.invalidateModule(mod, new Set(), update.timestamp, true);
+						if (!modules.includes(mod)) modules.push(mod);
+					}
+				}
 				for (const doc of tracker!.docs_using(file)) {
-					const mods = graph.getModulesByFile(clean_id(doc));
+					// the id the document compiled as, an import query picks its template
+					const mod = graph.getModuleById(doc);
+					const mods =
+						mod !== undefined ? [mod] : graph.getModulesByFile(clean_id(doc));
 					if (mods === undefined) continue;
 					for (const mod of mods) {
 						graph.invalidateModule(mod, new Set(), update.timestamp, true);
@@ -1542,6 +2162,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					doc.source = '';
 					doc.html = '';
 					doc.metadata = undefined;
+					doc.template = undefined;
 					doc.buf = no_records;
 					doc.start = 0;
 					doc.split = 0;

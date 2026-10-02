@@ -81,12 +81,23 @@ function js_string(s: string): string {
 	return /^[\w$@#:./~+%-]*$/.test(s) ? "'" + s + "'" : JSON.stringify(s);
 }
 
+/** a default import, a template the document is wrapped in */
+export interface DefaultImport {
+	readonly specifier: string;
+	readonly local: string;
+}
+
 /**
  * one statement per module and one named import per replacement in first use
- * order, never a namespace import so unused components shake out
+ * order, never a namespace import so unused components shake out, a default
+ * import comes first and shares the statement of its module
  */
-export function component_imports(used: readonly ComponentImport[]): string {
+export function component_imports(
+	used: readonly ComponentImport[],
+	main?: DefaultImport
+): string {
 	const by_module = new Map<string, string[]>();
+	if (main !== undefined) by_module.set(main.specifier, []);
 	for (let i = 0; i < used.length; i++) {
 		const { name, specifier, local } = used[i];
 		let list = by_module.get(specifier);
@@ -98,8 +109,10 @@ export function component_imports(used: readonly ComponentImport[]): string {
 	}
 	let s = '';
 	for (const [specifier, list] of by_module) {
-		s +=
-			'import { ' + list.join(', ') + ' } from ' + js_string(specifier) + ';\n';
+		let clause = list.length === 0 ? '' : '{ ' + list.join(', ') + ' }';
+		if (main !== undefined && specifier === main.specifier)
+			clause = clause === '' ? main.local : main.local + ', ' + clause;
+		s += 'import ' + clause + ' from ' + js_string(specifier) + ';\n';
 	}
 	return s;
 }
