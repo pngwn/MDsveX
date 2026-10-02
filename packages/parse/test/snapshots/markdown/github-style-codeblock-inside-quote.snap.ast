@@ -8,14 +8,6 @@ root
     block_quote
       paragraph
         text "And some nested quote"
-      block_quote
-        block_quote
-          paragraph
-            text "```"
-            text "html"
-          block_quote
-            html tag="div"
-              text "HTML"
-              text "!"
-            block_quote
-              code_fence
+      line_break
+      code_fence info="html" ">> <div>HTML!</div>"
+  line_break
