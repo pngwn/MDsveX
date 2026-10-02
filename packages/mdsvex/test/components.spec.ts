@@ -204,7 +204,7 @@ describe('element replacement, markdown mode', () => {
 			'```js title="x" {1}\nlet a = {b: "</script>"};\n```',
 			['pre'],
 			'<Pre_MDSVEX_G lang={"js"} meta={"title=\\"x\\" {1}"} code={"let a = {b: \\"</script>\\"};"}>' +
-				'<code class="language-js title=&quot;x&quot; {1}">let a = {b: &quot;&lt;/script&gt;&quot;};</code></Pre_MDSVEX_G>',
+				'<code class="language-js title=&quot;x&quot; &#123;1&#125;">let a = &#123;b: &quot;&lt;/script&gt;&quot;&#125;;</code></Pre_MDSVEX_G>',
 		],
 		[
 			'fenced code with only a language has no meta',

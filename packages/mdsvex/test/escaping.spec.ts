@@ -12,14 +12,18 @@ const DIRECTIVES: ComponentSource[] = [
 ];
 
 /** the code every walk renders, they must agree */
-function compile_all(raw: string): string {
-	const plain = compile(raw, { directives: DIRECTIVES });
-	const mapped = compile(raw, { directives: DIRECTIVES, sourcemap: true });
+function compile_all(raw: string, components?: ComponentSource[]): string {
+	const plain = compile(raw, { components, directives: DIRECTIVES });
+	const mapped = compile(raw, {
+		components,
+		directives: DIRECTIVES,
+		sourcemap: true,
+	});
 	const session = new CompilerSession();
 	const trace = session.compile_trace(
 		raw,
 		undefined,
-		undefined,
+		components,
 		undefined,
 		undefined,
 		DIRECTIVES
@@ -28,13 +32,18 @@ function compile_all(raw: string): string {
 		raw,
 		'doc.svx',
 		undefined,
-		undefined,
+		components,
 		undefined,
 		undefined,
 		DIRECTIVES
 	);
 	for (const other of [mapped, trace, v3]) expect(other.code).toBe(plain.code);
 	return plain.code;
+}
+
+/** the body after the generated script */
+function body(code: string): string {
+	return code.replace(/^<script>\n[^]*?<\/script>/, '');
 }
 
 interface SvelteNode {
@@ -87,8 +96,8 @@ function shown(node: SvelteNode): string {
 }
 
 /** the text of every element named tag, as svelte shows it */
-function shown_in(raw: string, tag: string) {
-	const nodes = svelte_nodes(compile_all(raw));
+function shown_in(raw: string, tag: string, components?: ComponentSource[]) {
+	const nodes = svelte_nodes(compile_all(raw, components));
 	return find_all(nodes, tag).map(shown);
 }
 
@@ -167,5 +176,86 @@ describe('character references', () => {
 		const [img] = find_all(nodes, 'img');
 		expect(attr_value(img, 'src')).toBe('/i.png?a&b');
 		expect(attr_value(img, 'alt')).toBe('i ©');
+	});
+});
+
+describe('braces in code (#839)', () => {
+	test('the code span from the issue', () => {
+		expect(compile_all('Use `{ a: 1 }` here.')).toBe(
+			'<p>Use <code>&#123; a: 1 &#125;</code> here.</p>'
+		);
+		expect(shown_in('Use `{ a: 1 }` here.', 'code')).toEqual(['{ a: 1 }']);
+	});
+
+	test('the fence from the issue', () => {
+		const raw = '```js\nconst o = { a: 1 };\n```';
+		expect(compile_all(raw)).toBe(
+			'<pre><code class="language-js">const o = &#123; a: 1 &#125;;</code></pre>'
+		);
+		expect(shown_in(raw, 'code')).toEqual(['const o = { a: 1 };']);
+	});
+
+	test('a code span holding a name shows it, not its value', () => {
+		expect(shown_in('`{name}`', 'code')).toEqual(['{name}']);
+	});
+
+	test('braces in prose stay expressions', () => {
+		expect(shown_in('{name} and `{name}`', 'p')).toEqual([
+			'<expr name> and {name}',
+		]);
+	});
+
+	const nested: [string, string, string, string[]][] = [
+		['block quote', '> `{a}`\n>\n> ```\n> {b}\n> ```', 'code', ['{a}', '{b}']],
+		['nested block quote', '> > ```\n> > {a}\n> > ```', 'code', ['{a}']],
+		['list', '- `{a}`\n- ```\n  {b}\n  ```', 'code', ['{a}', '  {b}']],
+		['heading', '# `{a}`', 'code', ['{a}']],
+		['link text', '[`{a}`](/x)', 'code', ['{a}']],
+		['table cell', '| `{a}` |\n|-|\n| `{b}` |', 'code', ['{a}', '{b}']],
+		['inline raw html', '<div>`{a}`</div>', 'code', ['{a}']],
+		['raw html block', '<div>\n\n```\n{a}\n```\n\n</div>', 'code', ['{a}']],
+		['directive label', '::note[`{a}`]', 'code', ['{a}']],
+		['container directive', ':::note[x]\n```\n{a}\n```\n:::', 'code', ['{a}']],
+	];
+	for (const [name, raw, tag, want] of nested) {
+		test(`inside a ${name}`, () => {
+			expect(shown_in(raw, tag)).toEqual(want);
+		});
+	}
+
+	test('an info string keeps its braces as text', () => {
+		const raw = '```js {1,3}\nx\n```';
+		expect(compile_all(raw)).toBe(
+			'<pre><code class="language-js &#123;1,3&#125;">x</code></pre>'
+		);
+		const [code] = find_all(svelte_nodes(compile_all(raw)), 'code');
+		expect(attr_value(code, 'class')).toBe('language-js {1,3}');
+	});
+
+	test('a pre replacement gets the raw code as a string prop', () => {
+		const pre: ComponentSource[] = [
+			{ specifier: 'mdsvex:components', names: ['pre', 'code'] },
+		];
+		const source = 'const s = "&amp;" + {a: 1} + `</script>`;';
+		const raw = '```js\n' + source + '\n```';
+		const code = compile_all(raw, pre);
+		expect(body(code)).toBe(
+			'<Pre_MDSVEX_G lang={"js"} code={' +
+				JSON.stringify(source) +
+				'}><code class="language-js">const s = &quot;&amp;amp;&quot; + &#123;a: 1&#125; + `&lt;/script&gt;`;</code></Pre_MDSVEX_G>'
+		);
+		const [node] = find_all(svelte_nodes(code), 'Pre_MDSVEX_G');
+		const prop = node.attributes!.find((a) => a.name === 'code')!;
+		expect((prop.value as SvelteNode).expression!.value).toBe(source);
+		expect(find_all(node.fragment!.nodes, 'code').map(shown)).toEqual([source]);
+	});
+
+	test('a code replacement shows braces as text', () => {
+		const code_only: ComponentSource[] = [
+			{ specifier: 'mdsvex:components', names: ['code'] },
+		];
+		expect(shown_in('`{a} &lt;`', 'Code_MDSVEX_G', code_only)).toEqual([
+			'{a} &lt;',
+		]);
 	});
 });

@@ -3,6 +3,7 @@ import { PFMParser } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import { Cursor } from '@mdsvex/parse/cursor';
 import {
+	_escape_code,
 	_escape_code_text,
 	_escape_text_html,
 	escape,
@@ -20,6 +21,7 @@ const DOCS = [
 	'a &lt; b &copy; & c &#123; &#x7d; &MadeUp; &copy\n\n`&lt; {x}` &amp;\n',
 	'<div>\n\na &mdash; b & "c"\n\n</div>\n\n&#12345678; &#; &;\n',
 	'```js\nconst s = "&amp;" && 1;\n```\n\n&copy; `&lt;` &copy;\n',
+	'{x} `{ a: "1" }` {y} and `}{`\n\n```js {1}\nconst o = { a: 1 } && "b";\n```\n\n{z} } {\n',
 ];
 
 function cursor_for(source: string): { c: Cursor } {
@@ -47,7 +49,7 @@ function check(c: Cursor, order: number[]): void {
 		(c as unknown as { idx: number }).idx = idx;
 		expect(escape_text(c)).toBe(_escape_text_html(c.text()));
 		// code shares the index, so its lookups interleave with the text ones
-		expect(_escape_code_text(c)).toBe(escape(c.text()));
+		expect(_escape_code_text(c)).toBe(_escape_code(c.text()));
 	}
 }
 

@@ -332,6 +332,43 @@ describe('character references', () => {
 	}
 });
 
+describe('braces in code', () => {
+	const cases: [string, string][] = [
+		[
+			'Use `{ a: 1 }` here.\n',
+			'<p>Use <code>&#123; a: 1 &#125;</code> here.</p>',
+		],
+		[
+			'```js {1}\nconst o = { a: 1 };\n```\n',
+			'<pre><code class="language-js &#123;1&#125;">const o = &#123; a: 1 &#125;;</code></pre>',
+		],
+		[
+			'> ```\n> {a} &lt;\n> ```\n',
+			'<blockquote>\n<pre><code>&#123;a&#125; &amp;lt;</code></pre>\n</blockquote>',
+		],
+	];
+
+	for (const [input, expected] of cases) {
+		it(JSON.stringify(input), () => {
+			const tree = new TreeBuilder(128);
+			new PFMParser(tree).parse(input);
+			const buf = tree.get_buffer();
+			const folded = new CursorHTMLRenderer({ cache: false });
+			folded.update(buf, input);
+			expect(folded.html).toBe(expected);
+			const mapped = new CursorHTMLRenderer({ cache: false });
+			mapped.update_mapped(buf, input);
+			expect(mapped.html).toBe(expected);
+			const traced = new CursorHTMLRenderer({ cache: false });
+			traced.update_trace(buf, input);
+			expect(traced.html).toBe(expected);
+			const cached = new CursorHTMLRenderer();
+			cached.update(buf, input);
+			expect(cached.html).toBe(expected);
+		});
+	}
+});
+
 describe('paragraphs around tags and components', () => {
 	const cases: [string, string][] = [
 		['<X />\n', '<X />'],

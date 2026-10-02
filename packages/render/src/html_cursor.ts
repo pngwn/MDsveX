@@ -133,6 +133,36 @@ function escape_text_html(text: string): string {
 	return pos === 0 ? text : out + text.slice(pos);
 }
 
+// code shows braces as text, svelte would read them as expressions
+const CODE_TEST = /[&<>"{}]/;
+const CODE_MATCH = /[&<>"{}]/g;
+const CODE_TABLE: Record<string, string> = {
+	'&': '&amp;',
+	'<': '&lt;',
+	'>': '&gt;',
+	'"': '&quot;',
+	'{': '&#123;',
+	'}': '&#125;',
+};
+function code_replace(ch: string): string {
+	return CODE_TABLE[ch];
+}
+function escape_code(text: string): string {
+	if (!CODE_TEST.test(text)) return text;
+	return text.replace(CODE_MATCH, code_replace);
+}
+
+const BRACE_TEST = /[{}]/;
+const BRACE_MATCH = /[{}]/g;
+
+/** an info string is an attribute, braces as code has them */
+function escape_info(info: string): string {
+	if (!CODE_TEST.test(info)) return info;
+	const s = escape_html(info);
+	if (!BRACE_TEST.test(s)) return s;
+	return s.replace(BRACE_MATCH, code_replace);
+}
+
 const QUOTE_MATCH = /"/g;
 
 // a typed value is its source slice with entities as written, so only a
@@ -156,6 +186,9 @@ let esc_amp = -1;
 let esc_lt = -1;
 let esc_gt = -1;
 let esc_quot = -1;
+// only code reads the brace pointers, so prose never scans for braces
+let esc_lbrace = -1;
+let esc_rbrace = -1;
 // false for a buffer with no prebuilt strings, so text skips the lookup
 let esc_prebuilt = true;
 // only nodes whose bit is set hold a prebuilt string, a late repair can turn
@@ -190,6 +223,8 @@ function esc_reset(src: string): void {
 	esc_lt = -1;
 	esc_gt = -1;
 	esc_quot = -1;
+	esc_lbrace = -1;
+	esc_rbrace = -1;
 }
 
 function esc_next(ch: string, from: number): number {
@@ -203,11 +238,6 @@ function esc_next(ch: string, from: number): number {
  */
 function escape_node_text(c: Cursor): string {
 	return escape_text_at(c, c.index, c.value_start, c.value_end, false);
-}
-
-/** equals escape_html of c.text, code shows references as written */
-function escape_code_text(c: Cursor): string {
-	return escape_text_at(c, c.index, c.value_start, c.value_end, true);
 }
 
 function bq_depth(n: Uint32Array, i: number): number {
@@ -264,11 +294,75 @@ function fence_text(c: Cursor): string {
 	return depth === 0 ? c.text() : strip_bq(c.text(), depth);
 }
 
-/** equals escape_html of fence_text */
+/** equals escape_code of fence_text */
 function escape_fence_text(c: Cursor): string {
 	const depth = bq_depth(c.words, c.index);
 	if (depth === 0) return escape_code_text(c);
-	return escape_html(strip_bq(c.text(), depth));
+	return escape_code(strip_bq(c.text(), depth));
+}
+
+/** equals escape_code of c.text, reading source slices through the escape index */
+function escape_code_text(c: Cursor): string {
+	return escape_text_at(c, c.index, c.value_start, c.value_end, true);
+}
+
+/** m is the first of & < > " at or after vs */
+function escape_code_slice(
+	src: string,
+	vs: number,
+	ve: number,
+	m: number
+): string {
+	if (esc_lbrace < vs) esc_lbrace = esc_next('{', vs);
+	if (esc_rbrace < vs) esc_rbrace = esc_next('}', vs);
+	if (esc_lbrace < m) m = esc_lbrace;
+	if (esc_rbrace < m) m = esc_rbrace;
+	if (m >= ve) return src.slice(vs, ve);
+	return escape_code_hits(src, vs, ve, m);
+}
+
+/** escape_hits for code, m is the first escapable char at or after vs */
+function escape_code_hits(
+	src: string,
+	vs: number,
+	ve: number,
+	m: number
+): string {
+	let text = '';
+	let pos = vs;
+	while (m < ve) {
+		const ch = src.charCodeAt(m);
+		text += src.slice(pos, m);
+		if (ch === 38) {
+			text += '&amp;';
+			esc_amp = esc_next('&', m + 1);
+		} else if (ch === 60) {
+			text += '&lt;';
+			esc_lt = esc_next('<', m + 1);
+		} else if (ch === 62) {
+			text += '&gt;';
+			esc_gt = esc_next('>', m + 1);
+		} else if (ch === 34) {
+			text += '&quot;';
+			esc_quot = esc_next('"', m + 1);
+		} else if (ch === 123) {
+			text += '&#123;';
+			esc_lbrace = esc_next('{', m + 1);
+		} else {
+			text += '&#125;';
+			esc_rbrace = esc_next('}', m + 1);
+		}
+		pos = m + 1;
+		m = esc_amp;
+		if (esc_lt < m) m = esc_lt;
+		if (esc_gt < m) m = esc_gt;
+		if (esc_quot < m) m = esc_quot;
+		if (esc_lbrace < m) m = esc_lbrace;
+		if (esc_rbrace < m) m = esc_rbrace;
+	}
+	// every pointer is now at or past ve
+	esc_lo = ve;
+	return text + src.slice(pos, ve);
 }
 
 /** escape_node_text of node i, or escape_code_text for code, the cursor may sit elsewhere */
@@ -283,7 +377,7 @@ function escape_text_at(
 		const bits = esc_bits;
 		if (bits === null || (bits[i >>> 3] & (1 << (i & 7))) !== 0) {
 			const s = c.prebuilt_at(i);
-			if (s !== undefined) return code ? escape_html(s) : escape_text_html(s);
+			if (s !== undefined) return code ? escape_code(s) : escape_text_html(s);
 		}
 	}
 	// empty cases must match Cursor.text
@@ -304,8 +398,9 @@ function escape_text_at(
 	if (esc_lt < m) m = esc_lt;
 	if (esc_gt < m) m = esc_gt;
 	if (esc_quot < m) m = esc_quot;
+	if (code) return escape_code_slice(src, vs, ve, m);
 	if (m >= ve) return src.slice(vs, ve);
-	return escape_hits(src, vs, ve, m, code);
+	return escape_hits(src, vs, ve, m);
 }
 
 /** a reference in text stays as written, unless a backslash escaped its & */
@@ -321,13 +416,7 @@ function text_reference(
 }
 
 /** m is the first escapable char at or after vs */
-function escape_hits(
-	src: string,
-	vs: number,
-	ve: number,
-	m: number,
-	code: boolean
-): string {
+function escape_hits(src: string, vs: number, ve: number, m: number): string {
 	let text = '';
 	let pos = vs;
 	while (m < ve) {
@@ -336,7 +425,7 @@ function escape_hits(
 		pos = m + 1;
 		if (ch === 38) {
 			esc_amp = esc_next('&', m + 1);
-			if (!code && text_reference(src, vs, ve, m)) pos = m;
+			if (text_reference(src, vs, ve, m)) pos = m;
 			else text += '&amp;';
 		} else if (ch === 60) {
 			text += '&lt;';
@@ -1181,7 +1270,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 					info = c.slice(info_start, info_end);
 			}
 			if (info) {
-				mo += '<pre><code class="language-' + escape_html(info);
+				mo += '<pre><code class="language-' + escape_info(info);
 				_open(c, '"', '">', '>');
 			} else {
 				_open(c, '<pre><code', '<pre><code>', '>');
@@ -2095,7 +2184,7 @@ function fold_code_fence(c: Cursor, p: number): number {
 	}
 	if (info) {
 		p = push_static(p, S_PRE_CODE_LANG);
-		p = push_dyn(p, escape(info));
+		p = push_dyn(p, escape_info(info));
 		p = fold_open(c, p, S_QUOTE, S_QUOTE_GT, S_GT);
 	} else {
 		p = fold_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
@@ -2678,7 +2767,7 @@ function tr_code_fence(c: Cursor, sink: MapSink, p: number): number {
 	}
 	if (info) {
 		if (p !== 0) mo += FOLD_STR[p];
-		mo += '<pre><code class="language-' + escape_html(info);
+		mo += '<pre><code class="language-' + escape_info(info);
 		p = tr_open(c, 0, S_QUOTE, S_QUOTE_GT, S_GT);
 	} else {
 		p = tr_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
@@ -3138,7 +3227,7 @@ function mp_code_fence(c: Cursor, sink: MapSink, p: number): number {
 	}
 	if (info) {
 		if (p !== 0) mo += FOLD_STR[p];
-		mo += '<pre><code class="language-' + escape_html(info);
+		mo += '<pre><code class="language-' + escape_info(info);
 		p = tr_open(c, 0, S_QUOTE, S_QUOTE_GT, S_GT);
 	} else {
 		p = tr_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
@@ -3946,7 +4035,7 @@ function comp_node(
 				const rest = space === -1 ? '' : info.slice(space).trim();
 				open += js_prop('lang', lang);
 				if (rest) open += js_prop('meta', rest);
-				inner = '<code class="language-' + escape_html(info) + '">';
+				inner = '<code class="language-' + escape_info(info) + '">';
 			}
 			// children are the content of the element, code is the raw text
 			p = cm_put(p, open + js_prop('code', fence_text(c)) + '>' + inner);
@@ -4464,6 +4553,7 @@ function resolve_raw_mappings(
 // exported functions are module cells too, so the walk calls the locals
 export const escape = escape_html;
 export const escape_text = escape_node_text;
+export const _escape_code = escape_code;
 export const _escape_code_text = escape_code_text;
 export const _escape_text_html = escape_text_html;
 export const _emit = emit_record;
