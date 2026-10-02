@@ -12,8 +12,16 @@ export default defineConfig({
 		outDir: "dist",
 		reportCompressedSize: true,
 		rollupOptions: {
-			// keep the remark/unified ecosystem external
-			external: [/^remark/, /^unified/, /^mdast/, /^micromark/, /^unist/],
+			// keep the remark unified ecosystem and the js parser external
+			external: [
+				/^remark/,
+				/^unified/,
+				/^mdast/,
+				/^micromark/,
+				/^unist/,
+				/^acorn/,
+				/^@sveltejs\/acorn-typescript/,
+			],
 			output: {
 				entryFileNames: "[name].js",
 			},

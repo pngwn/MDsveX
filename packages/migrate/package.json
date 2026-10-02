@@ -1,7 +1,7 @@
 {
 	"name": "@mdsvex/migrate",
 	"version": "0.2.0-next.0",
-	"description": "Migrate CommonMark/GFM markdown to Penguin-Flavoured Markdown (PFM)",
+	"description": "Migrate CommonMark/GFM markdown to Penguin-Flavoured Markdown (PFM), and mdsvex 0.x layouts to templates",
 	"main": "src/main.ts",
 	"module": "src/main.ts",
 	"type": "module",
@@ -35,7 +35,9 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"dependencies": {
+		"@sveltejs/acorn-typescript": "^1.0.13",
 		"@types/mdast": "^4.0.4",
+		"acorn": "^8.18.0",
 		"remark-gfm": "^4.0.1",
 		"remark-parse": "^11.0.0",
 		"unified": "^11.0.5"
