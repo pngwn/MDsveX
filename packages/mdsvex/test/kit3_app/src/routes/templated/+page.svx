@@ -1,0 +1,10 @@
+---
+title: Templated
+template: post
+---
+
+<svelte:head>
+	<title>From the template route</title>
+</svelte:head>
+
+# Hello from a template
