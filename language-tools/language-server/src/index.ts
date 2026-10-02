@@ -11,8 +11,15 @@ import {
 import { create as createTypeScriptServices } from "volar-service-typescript";
 import { create as createCssService } from "volar-service-css";
 import { create as createMarkdownService } from "volar-service-markdown";
-import { create_pfm_language_plugin, create_svelte_language_plugin } from "@mdsvex/language-core";
+import {
+	create_config_loader,
+	create_pfm_language_plugin,
+	create_svelte_language_plugin,
+} from "@mdsvex/language-core";
+import type { ConfigLoader } from "@mdsvex/language-core";
+import { watch } from "node:fs";
 import { clean_svelte_hover } from "./clean_hover";
+import { create_compile_diagnostics } from "./compile_diagnostics";
 import { URI } from "vscode-uri";
 import { forEachEmbeddedCode } from "@volar/language-core";
 import type { LanguagePlugin, VirtualCode } from "@volar/language-core";
@@ -24,15 +31,18 @@ import type * as ts from "typescript";
  * with the critical `typescript` property that registers .pfm
  * as a TypeScript-processable extension.
  */
-function createPfmLanguagePluginForServer(): LanguagePlugin<URI> {
-	const inner = create_pfm_language_plugin();
+function createPfmLanguagePluginForServer(
+	typescript: typeof ts,
+	config: ConfigLoader,
+): LanguagePlugin<URI> {
+	const inner = create_pfm_language_plugin({ typescript, config });
 
 	return {
 		getLanguageId(scriptId: URI): string | undefined {
-			if (scriptId.path.endsWith(".pfm")) {
-				return "pfm";
+			if (scriptId.scheme !== "file" && scriptId.scheme !== "untitled") {
+				return undefined;
 			}
-			return undefined;
+			return inner.getLanguageId(scriptId.fsPath);
 		},
 
 		createVirtualCode(scriptId, languageId, snapshot) {
@@ -66,15 +76,9 @@ function createPfmLanguagePluginForServer(): LanguagePlugin<URI> {
 			}
 		},
 
-		// This is the critical piece: tells TypeScript about .pfm files
+		// tells typescript about the document extensions
 		typescript: {
-			extraFileExtensions: [
-				{
-					extension: "pfm",
-					isMixedContent: true,
-					scriptKind: 7 satisfies ts.ScriptKind.Deferred,
-				},
-			],
+			extraFileExtensions: inner.typescript!.extraFileExtensions,
 			getServiceScript(root: VirtualCode) {
 				const tsCode = root.embeddedCodes?.find(
 					(c) => c.languageId === "typescript",
@@ -155,11 +159,40 @@ const server = createServer(connection);
 
 connection.listen();
 
+// the manifest sits in node_modules, which editors do not watch, so the server does
+const watched = new Set<string>();
+let reload_timer: ReturnType<typeof setTimeout> | undefined;
+function config_changed() {
+	clearTimeout(reload_timer);
+	reload_timer = setTimeout(() => {
+		server.project.reload();
+		server.languageFeatures.requestRefresh(false);
+	}, 100);
+}
+function watch_config(file: string) {
+	if (watched.has(file)) return;
+	watched.add(file);
+	try {
+		// a rename replaces the manifest, which ends a watch on its old inode
+		const watcher = watch(file, () => {
+			watcher.close();
+			watched.delete(file);
+			config_changed();
+		});
+		watcher.on("error", () => watched.delete(file));
+	} catch {
+		watched.delete(file);
+	}
+}
+
 connection.onInitialize((params) => {
 	const tsdk = loadTsdkByPath(
 		params.initializationOptions?.typescript?.tsdk,
 		params.locale,
 	);
+	// the tsdk types against the typescript volar was built with
+	const typescript = tsdk.typescript as unknown as typeof ts;
+	const config = create_config_loader({ typescript, on_read: watch_config });
 
 	return server.initialize(
 		params,
@@ -168,7 +201,7 @@ connection.onInitialize((params) => {
 			tsdk.diagnosticMessages,
 			() => ({
 				languagePlugins: [
-					createPfmLanguagePluginForServer(),
+					createPfmLanguagePluginForServer(typescript, config),
 					createSvelteLanguagePluginForServer(),
 				],
 			}),
@@ -177,10 +210,29 @@ connection.onInitialize((params) => {
 			...createTypeScriptServices(tsdk.typescript),
 			createCssService(),
 			createMarkdownService(),
+			create_compile_diagnostics(),
 		],
 	);
 });
 
-connection.onInitialized(server.initialized);
+connection.onInitialized(() => {
+	server.initialized();
+	// a config that appears later, or one an editor does watch, reloads too
+	server.fileWatcher.watchFiles([
+		"**/mdsvex.config.json",
+		"**/node_modules/.mdsvex/manifest.json",
+	]);
+	server.fileWatcher.onDidChangeWatchedFiles(({ changes }) => {
+		if (
+			changes.some(
+				(c) =>
+					c.uri.endsWith("/mdsvex.config.json") ||
+					c.uri.endsWith("/.mdsvex/manifest.json"),
+			)
+		) {
+			config_changed();
+		}
+	});
+});
 
 connection.onShutdown(server.shutdown);

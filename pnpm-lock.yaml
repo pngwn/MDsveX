@@ -63,6 +63,9 @@ importers:
       '@volar/typescript':
         specifier: ^2.4.28
         version: 2.4.28
+      mdsvex:
+        specifier: workspace:*
+        version: link:../../packages/mdsvex
       svelte2tsx:
         specifier: ^0.7.53
         version: 0.7.53(svelte@5.55.1)(typescript@5.9.3)
@@ -128,6 +131,9 @@ importers:
       '@mdsvex/render':
         specifier: workspace:*
         version: link:../../packages/render
+      mdsvex:
+        specifier: workspace:*
+        version: link:../../packages/mdsvex
     devDependencies:
       svelte:
         specifier: ^5.0.0

@@ -355,6 +355,21 @@ describe('unknown directives', () => {
 		expect(() => compile('::x[]')).toThrow(DirectiveError);
 		expect(compile('# fine').code).toBe('<h1>fine</h1>');
 	});
+
+	test('strict_directives false renders an unknown one as its children', () => {
+		const raw = ':::thing[x]\nbody :nope[y]\n:::\n\n:::box[]\nin\n:::';
+		for (const sourcemap of [false, true]) {
+			const { code } = compile(raw, {
+				sourcemap,
+				strict_directives: false,
+				directives: only('box'),
+			});
+			expect(code).toContain('<p>body y</p>');
+			expect(code).toContain('<Box_MDSVEX_D_G>');
+		}
+		// the next compile is strict again
+		expect(() => compile('::x[]')).toThrow(DirectiveError);
+	});
 });
 
 describe('precedence', () => {

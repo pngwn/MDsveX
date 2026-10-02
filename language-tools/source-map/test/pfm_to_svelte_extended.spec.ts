@@ -115,6 +115,7 @@ draft: true
 import Counter from "./Counter.svelte"
 
 <script lang="ts">
+  const { count, draft } = metadata;
   const doubled = count * 2;
 </script>
 
@@ -123,7 +124,7 @@ import Counter from "./Counter.svelte"
   p { margin: 1rem; }
 </style>
 
-# {title}
+# {metadata.title}
 
 {#if !draft}
 <Counter value={count} />
@@ -133,7 +134,7 @@ import Counter from "./Counter.svelte"
 
 The doubled value is {doubled}.
 
-> A blockquote with {title}
+> A blockquote with {metadata.title}
 
 - Item {count}
 - Item {count + 1}
@@ -148,9 +149,9 @@ const x: number = 42;
 		// script block merged
 		expect(result.code).toContain("const doubled = count * 2");
 		expect(result.code).toContain('import Counter from "./Counter.svelte"');
-		expect(result.code).toContain("export const title = ");
-		expect(result.code).toContain("export const count = ");
-		expect(result.code).toContain("export const draft = ");
+		expect(result.code).toContain(
+			'export const metadata = {title: "My Page", count: 42, draft: true};',
+		);
 
 		// style block detected
 		expect(result.styleBlocks.length).toBe(1);
@@ -178,7 +179,7 @@ const x: number = 42;
 		const source = "---\ntitle: hello\n---\n";
 		const result = pfmToSvelte(source);
 		assertValid(source, result);
-		expect(result.code).toContain("export const title = ");
+		expect(result.code).toContain('export const metadata = {title: "hello"};');
 	});
 
 	it("frontmatter with all YAML scalar types", () => {
@@ -186,13 +187,19 @@ const x: number = 42;
 		const result = pfmToSvelte(source);
 		assertValid(source, result);
 
-		expect(result.code).toContain('export const str = "hello world"');
-		expect(result.code).toContain("export const num = 3.14");
-		expect(result.code).toContain("export const bool = false");
-		expect(result.code).toContain("export const null_val = null");
-		expect(result.code).toContain("export const tilde_null = null");
-		expect(result.code).toContain("export const empty = null");
-		expect(result.code).toContain("export const int = -42");
-		expect(result.code).toContain("export const sci = 1e10");
+		// values are what the core yaml parser gives, the build exports the same
+		expect(result.metadata).toEqual({
+			str: "hello world",
+			num: 3.14,
+			bool: false,
+			null_val: null,
+			tilde_null: null,
+			empty: null,
+			int: -42,
+			sci: 1e10,
+		});
+		expect(result.code).toContain(
+			'{str: "hello world", num: 3.14, bool: false, null_val: null, tilde_null: null, empty: null, int: -42, sci: 10000000000}',
+		);
 	});
 });

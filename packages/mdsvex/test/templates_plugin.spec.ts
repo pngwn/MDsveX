@@ -1,14 +1,20 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { createServer, createServerModuleRunner, normalizePath } from 'vite';
 import type { Plugin, ViteDevServer } from 'vite';
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
-import { mdsvex } from '../src/main';
-import type { MdsvexOptions } from '../src/main';
+import { MANIFEST_PATH, mdsvex } from '../src/main';
+import type { MdsvexManifest, MdsvexOptions } from '../src/main';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -250,6 +256,49 @@ describe('templates option', () => {
 		);
 		const notes = await ssr(server, '/src/changelog/notes.svx');
 		expect(notes).not.toContain('<article');
+	});
+
+	test('writes what it resolved and picked to the editor manifest', async () => {
+		await ssr(server, '/src/blog/entry.svx');
+		await ssr(server, '/src/changelog/notes.svx');
+		const file = join(root, MANIFEST_PATH);
+		const read = (): MdsvexManifest => JSON.parse(readFileSync(file, 'utf8'));
+		await vi.waitFor(() => {
+			expect(
+				Object.keys(read().documents).some((d) => d.endsWith('notes.svx'))
+			).toBe(true);
+		});
+		const manifest = read();
+		const at = (path: string) => vite_path(root, path);
+		expect(manifest.version).toBe(1);
+		expect(manifest.root).toBe(at(''));
+		expect(manifest.extensions).toEqual(['.svx']);
+		expect(manifest.component_mode).toBe('markdown');
+		expect(manifest.select_template).toBe(true);
+		expect(manifest.frontmatter_parse).toBe(false);
+		expect(manifest.templates.default).toEqual({
+			id: 'mdsvex:template/default',
+			file: at('src/lib/templates/Post.svelte'),
+			components: ['h1'],
+			extra: null,
+			directives: [],
+		});
+		expect(manifest.templates.blog.file).toBe(at('src/Blog.svelte'));
+		expect(manifest.templates.theme).toMatchObject({
+			file: at('node_modules/@acme/theme/Layout.svelte'),
+			components: ['h1', 'p'],
+			extra: { file: at('src/lib/theme.ts'), names: ['h1'] },
+		});
+		expect(manifest.components).toEqual([
+			{
+				id: 'mdsvex:components',
+				file: at('src/lib/markdown.ts'),
+				names: ['h1', 'img'],
+			},
+		]);
+		// only select_template picks need recording, by file
+		expect(manifest.documents[at('src/blog/entry.svx')]).toBe('blog');
+		expect(manifest.documents[at('src/changelog/notes.svx')]).toBeNull();
 	});
 
 	test('a template you cannot edit takes extra replacements over its own', async () => {

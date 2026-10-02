@@ -30,7 +30,8 @@
 					"Penguin-Flavoured Markdown"
 				],
 				"extensions": [
-					".pfm"
+					".pfm",
+					".svx"
 				],
 				"configuration": "./language-configuration.json"
 			}

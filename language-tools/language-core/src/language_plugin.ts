@@ -18,13 +18,25 @@ import { forEachEmbeddedCode } from '@volar/language-core';
 import type { TypeScriptExtraServiceScript } from '@volar/typescript';
 
 import { pfmToSvelte } from '@mdsvex/source-map/pfm-to-svelte';
+import type {
+	EditorMappingData,
+	PfmDiagnostic,
+	PfmToSvelteOptions,
+} from '@mdsvex/source-map/pfm-to-svelte';
 import { v3ToVolarMappings } from '@mdsvex/source-map/v3-to-volar';
 import { composeMappings } from '@mdsvex/source-map/compose-mappings';
 import { svelte2tsx as svelte_2_tsx } from 'svelte2tsx';
 import type { CodeInformation } from '@mdsvex/render/mappings';
+import type * as TS from 'typescript';
 
-const PFM_EXTENSION = '.pfm';
+import { create_config_loader } from './config';
+import type { ConfigLoader } from './config';
+
 const PFM_LANGUAGE_ID = 'pfm';
+/** always documents, .svx is the default extension of the vite plugin */
+const EXTENSIONS = ['.pfm', '.svx'];
+/** never documents, so their language needs no config lookup */
+const NOT_DOCUMENTS = /\.(?:[cm]?[jt]sx?|svelte|json|css|d\.ts|map)$/;
 
 import { SVELTE_SHIMS } from './_svelte_shims';
 
@@ -51,6 +63,15 @@ export interface PfmVirtualCode extends VirtualCode {
 	snapshot: IScriptSnapshot;
 	mappings: CodeMapping[];
 	embeddedCodes: VirtualCode[];
+	/** compile errors and warnings, typescript reports the rest */
+	diagnostics: PfmDiagnostic[];
+}
+
+export interface PfmLanguagePluginOptions {
+	/** reads the exports of templates a mdsvex.config.json names, without it they replace nothing */
+	typescript?: typeof TS;
+	/** where the mdsvex config of a document comes from, by default the nearest manifest or json config */
+	config?: ConfigLoader;
 }
 
 /** Create a simple IScriptSnapshot from a string. */
@@ -77,7 +98,23 @@ function create_fallback_virtual_code(source: string): PfmVirtualCode {
 			},
 		],
 		embeddedCodes: [],
+		diagnostics: [],
 	};
+}
+
+/** the composed capabilities, a mapping the converter added keeps only what it allows */
+function merge_capabilities(
+	a: CodeInformation & { editor?: true },
+	b: CodeInformation
+): CodeInformation & { editor?: true } {
+	if (!a.editor) return { ...b, format: false };
+	const out: CodeInformation & { editor?: true } = { editor: true };
+	if (a.verification && b.verification) out.verification = b.verification;
+	if (a.completion && b.completion) out.completion = b.completion;
+	if (a.semantic && b.semantic) out.semantic = b.semantic;
+	if (a.navigation && b.navigation) out.navigation = b.navigation;
+	if (a.structure && b.structure) out.structure = b.structure;
+	return out;
 }
 
 /**
@@ -87,12 +124,13 @@ function create_fallback_virtual_code(source: string): PfmVirtualCode {
  */
 function create_virtual_code_from_source(
 	source: string,
-	script_id: string
+	script_id: string,
+	options: PfmToSvelteOptions
 ): PfmVirtualCode {
 	let svelte;
 	try {
 		// Step 1: PFM to Svelte
-		svelte = pfmToSvelte(source);
+		svelte = pfmToSvelte(source, options);
 	} catch {
 		return create_fallback_virtual_code(source);
 	}
@@ -101,7 +139,7 @@ function create_virtual_code_from_source(
 	try {
 		// Step 2: Svelte to TypeScript via svelte2tsx
 		tsx = svelte_2_tsx(svelte.code, {
-			filename: script_id.replace(PFM_EXTENSION, '.svelte'),
+			filename: script_id.replace(/\.[^./\\]+$/, '.svelte'),
 			isTsFile: false,
 			mode: 'ts',
 		});
@@ -140,7 +178,10 @@ function create_virtual_code_from_source(
 			generatedOffsets: m.generatedOffsets,
 			lengths: m.lengths,
 			...(m.generatedLengths ? { generatedLengths: m.generatedLengths } : {}),
-			data: ALL_CAPS,
+			// a mapping the converter added keeps its own capabilities
+			data: (m.data as EditorMappingData).editor
+				? editor_caps(m.data as EditorMappingData)
+				: ALL_CAPS,
 		}));
 
 	// Step 5: Compose PFM to Svelte + Svelte to TS = PFM to TS
@@ -148,11 +189,8 @@ function create_virtual_code_from_source(
 	const pfm_to_ts = composeMappings(
 		filtered_mappings as any,
 		svelte_to_ts_mappings,
-		(_a: CodeInformation, b: CodeInformation): CodeInformation => ({
-			...b,
-			format: false,
-		})
-	);
+		merge_capabilities
+	).filter((m) => !is_empty(m.data));
 
 	// Step 5b: Merge single-char non-identity mappings into adjacent
 	// neighbors.  svelte2tsx splits attribute names at the first character
@@ -174,6 +212,8 @@ function create_virtual_code_from_source(
 		if (src_ch === gen_ch) continue; // identity, leave as-is
 
 		const next = pfm_to_ts[i + 1];
+		// a mapping the converter added keeps its capabilities apart
+		if (!m.data.editor !== !next.data.editor) continue;
 		const next_gen_len = next.generatedLengths
 			? next.generatedLengths[0]
 			: next.lengths[0];
@@ -195,6 +235,15 @@ function create_virtual_code_from_source(
 		}
 	}
 
+	// svelte2tsx quotes a prop key and typescript spans both quotes, so an arg takes the closing one
+	for (const m of pfm_to_ts) {
+		if (!m.data.editor) continue;
+		const start = m.generatedOffsets[0];
+		const len = m.generatedLengths ? m.generatedLengths[0] : m.lengths[0];
+		if (ts_code[start] === '"' && ts_code[start + len] === '"' && len > 1)
+			m.generatedLengths = [len + 1];
+	}
+
 	// Step 6: Shrink non-identity trailing boundaries at adjacency points.
 	// Volar's translateOffset uses inclusive end (<=) so adjacent mappings
 	// share boundary offsets.  When the last source char differs from the
@@ -209,6 +258,7 @@ function create_virtual_code_from_source(
 	for (let i = 0; i < by_gen_offset.length - 1; i++) {
 		const m = by_gen_offset[i];
 		const next = by_gen_offset[i + 1];
+		if (m.data.editor) continue;
 		const src_len = m.lengths[0];
 		const gen_len = m.generatedLengths ? m.generatedLengths[0] : src_len;
 		if (gen_len <= 1) continue;
@@ -231,7 +281,9 @@ function create_virtual_code_from_source(
 		let write = 0;
 		for (let read = 0; read < pfm_to_ts.length; read++) {
 			const m = pfm_to_ts[read];
-			const key = m.sourceOffsets[0] + ':' + m.lengths[0];
+			// a frontmatter key maps once to hover and once to check
+			const key =
+				m.sourceOffsets[0] + ':' + m.lengths[0] + ':' + caps_key(m.data);
 			if (seen.has(key)) continue;
 			seen.add(key);
 			pfm_to_ts[write++] = m;
@@ -317,11 +369,45 @@ function create_virtual_code_from_source(
 				sourceOffsets: [0],
 				generatedOffsets: [0],
 				lengths: [source.length],
-				data: { structure: true },
+				// verification lets a service report compile diagnostics on the root
+				data: { structure: true, verification: true },
 			},
 		],
 		embeddedCodes: embedded_codes,
+		diagnostics: svelte.diagnostics,
 	};
+}
+
+function editor_caps(
+	data: EditorMappingData
+): CodeInformation & { editor: true } {
+	const out: CodeInformation & { editor: true } = { editor: true };
+	if (data.verification) out.verification = true;
+	if (data.completion) out.completion = true;
+	if (data.semantic) out.semantic = true;
+	if (data.navigation) out.navigation = true;
+	if (data.structure) out.structure = true;
+	return out;
+}
+
+function is_empty(data: CodeInformation): boolean {
+	return (
+		!data.verification &&
+		!data.completion &&
+		!data.semantic &&
+		!data.navigation &&
+		!data.structure &&
+		!data.format
+	);
+}
+
+function caps_key(data: CodeInformation): string {
+	return (
+		(data.verification ? 'v' : '') +
+		(data.semantic ? 's' : '') +
+		(data.navigation ? 'n' : '') +
+		(data.completion ? 'c' : '')
+	);
 }
 
 /** Simple string hash for content-based caching. */
@@ -340,19 +426,35 @@ function hash_string(s: string): number {
  *   const plugin = createPfmLanguagePlugin();
  *   // Pass to @volar/language-server or @volar/kit
  */
-export function create_pfm_language_plugin(): LanguagePlugin<
-	string,
-	PfmVirtualCode
-> {
-	// Per-file cache: skip full pipeline if content hash hasn't changed
-	const cache = new Map<string, { hash: number; result: PfmVirtualCode }>();
+export function create_pfm_language_plugin(
+	plugin_options: PfmLanguagePluginOptions = {}
+): LanguagePlugin<string, PfmVirtualCode> {
+	// a file converts again only when its content or config changed
+	const cache = new Map<
+		string,
+		{ hash: number; stamp: string; result: PfmVirtualCode }
+	>();
+	const config =
+		plugin_options.config ??
+		create_config_loader({ typescript: plugin_options.typescript });
+
+	function virtual_code(scriptId: string, snapshot: IScriptSnapshot) {
+		const source = snapshot.getText(0, snapshot.getLength());
+		const hash = hash_string(source);
+		const { stamp, options } = config.options_for(scriptId);
+		const cached = cache.get(scriptId);
+		if (cached && cached.hash === hash && cached.stamp === stamp) {
+			return cached.result;
+		}
+
+		const result = create_virtual_code_from_source(source, scriptId, options);
+		cache.set(scriptId, { hash, stamp, result });
+		return result;
+	}
 
 	return {
 		getLanguageId(scriptId: string): string | undefined {
-			if (scriptId.endsWith(PFM_EXTENSION)) {
-				return PFM_LANGUAGE_ID;
-			}
-			return undefined;
+			return is_document(scriptId, config) ? PFM_LANGUAGE_ID : undefined;
 		},
 
 		createVirtualCode(
@@ -362,17 +464,7 @@ export function create_pfm_language_plugin(): LanguagePlugin<
 			_ctx: CodegenContext<string>
 		): PfmVirtualCode | undefined {
 			if (languageId !== PFM_LANGUAGE_ID) return undefined;
-
-			const source = snapshot.getText(0, snapshot.getLength());
-			const hash = hash_string(source);
-			const cached = cache.get(scriptId);
-			if (cached && cached.hash === hash) {
-				return cached.result;
-			}
-
-			const result = create_virtual_code_from_source(source, scriptId);
-			cache.set(scriptId, { hash, result });
-			return result;
+			return virtual_code(scriptId, snapshot);
 		},
 
 		updateVirtualCode(
@@ -381,16 +473,7 @@ export function create_pfm_language_plugin(): LanguagePlugin<
 			newSnapshot: IScriptSnapshot,
 			_ctx: CodegenContext<string>
 		): PfmVirtualCode | undefined {
-			const source = newSnapshot.getText(0, newSnapshot.getLength());
-			const hash = hash_string(source);
-			const cached = cache.get(scriptId);
-			if (cached && cached.hash === hash) {
-				return cached.result;
-			}
-
-			const result = create_virtual_code_from_source(source, scriptId);
-			cache.set(scriptId, { hash, result });
-			return result;
+			return virtual_code(scriptId, newSnapshot);
 		},
 
 		disposeVirtualCode(scriptId: string) {
@@ -399,11 +482,11 @@ export function create_pfm_language_plugin(): LanguagePlugin<
 
 		typescript: {
 			extraFileExtensions: [
-				{
-					extension: 'pfm',
+				...EXTENSIONS.map((ext) => ({
+					extension: ext.slice(1),
 					isMixedContent: true,
 					scriptKind: 7 as any, // ts.ScriptKind.Deferred
-				},
+				})),
 			],
 			getServiceScript(root: VirtualCode) {
 				// Return the embedded TS code as the service script:
@@ -421,11 +504,14 @@ export function create_pfm_language_plugin(): LanguagePlugin<
 				}
 				return undefined;
 			},
-			getExtraServiceScripts(_fileName: string, _root: VirtualCode) {
-				// The main TS code is already returned by getServiceScript.
-				// No extra scripts needed, returning it again causes duplicates.
-				return [];
-			},
 		},
 	};
+}
+
+/** .pfm and .svx always, another extension when the config of the file lists it */
+export function is_document(file: string, config: ConfigLoader): boolean {
+	for (const ext of EXTENSIONS) if (file.endsWith(ext)) return true;
+	if (NOT_DOCUMENTS.test(file) || !/\.[^./\\]+$/.test(file)) return false;
+	const extensions = config.load(file)?.manifest.extensions;
+	return extensions !== undefined && extensions.some((e) => file.endsWith(e));
 }

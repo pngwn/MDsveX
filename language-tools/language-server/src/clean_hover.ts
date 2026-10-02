@@ -6,8 +6,17 @@
  */
 export function clean_svelte_hover(markdown: string): string {
 	markdown = strip_svelte_component_type(markdown);
+	markdown = strip_runes_component_type(markdown);
 	markdown = clean_isomorphic_component(markdown);
 	return markdown;
+}
+
+/** the $on and $set alias svelte2tsx declares beside a runes component */
+function strip_runes_component_type(md: string): string {
+	const re = /^(?:\(alias\) )?type [\w$]+ = \{\n(?:[ \t]+\$(?:on|set)\?\(.*\n)+\}\n/m;
+	for (let m = re.exec(md); m !== null; m = re.exec(md))
+		md = md.slice(0, m.index) + md.slice(m.index + m[0].length);
+	return md;
 }
 
 /** Remove `(alias) type X = SvelteComponent<...> & { ... }\n` lines. */

@@ -14,9 +14,13 @@ import { create_pfm_language_plugin, create_svelte_language_plugin } from "@mdsv
 
 // TS plugins must export a factory function via module.exports
 // (CJS convention that tsserver expects)
-module.exports = createLanguageServicePlugin((_ts, info) => {
+module.exports = createLanguageServicePlugin((ts, info) => {
 	console.log("[PFM TS Plugin] Loaded! Project:", info.project.getProjectName());
 	return {
-		languagePlugins: [create_pfm_language_plugin(), create_svelte_language_plugin()],
+		languagePlugins: [
+			// typescript reads the exports of templates a mdsvex.config.json names
+			create_pfm_language_plugin({ typescript: ts as any }),
+			create_svelte_language_plugin(),
+		],
 	};
 });

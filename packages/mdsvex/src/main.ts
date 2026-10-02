@@ -39,6 +39,12 @@ import {
 	parse_frontmatter,
 } from './frontmatter';
 import type { FrontmatterOptions } from './frontmatter';
+import { MANIFEST_VERSION, manifest_writer } from './manifest';
+import type {
+	ManifestModule,
+	ManifestTemplate,
+	MdsvexManifest,
+} from './manifest';
 
 export type { ParsePlugin } from '@mdsvex/parse';
 export type { Mapping, MappingData, SourceMapV3, MapTrace };
@@ -51,6 +57,12 @@ export {
 export type { ScanKind, ScannedExports } from './scan_exports';
 export type { FrontmatterOptions };
 export { FrontmatterError } from './frontmatter';
+export { MANIFEST_PATH, MANIFEST_VERSION } from './manifest';
+export type {
+	ManifestModule,
+	ManifestTemplate,
+	MdsvexManifest,
+} from './manifest';
 export { DirectiveError } from '@mdsvex/render/html-cursor';
 
 export interface MdsvexOptions {
@@ -135,6 +147,11 @@ export interface CompileOptions extends TemplateOptions {
 	directives?: ComponentSource[];
 	component_mode?: ComponentMode;
 	frontmatter?: FrontmatterOptions;
+	/**
+	 * false renders a directive no component takes as its children rather
+	 * than throwing a DirectiveError, as an editor wants while the author types
+	 */
+	strict_directives?: boolean;
 }
 
 /** a svelte component that wraps documents, its replacements chain in front of the root */
@@ -239,15 +256,16 @@ function directive_scope_of(
 	return scope;
 }
 
-/** a compile renders every directive as a component or throws */
+/** a compile renders every directive as a component or throws, unless strict is false */
 function bind_scopes(
 	renderer: CursorHTMLRenderer,
 	scope: ComponentScope | null,
-	directives: ComponentScope | null
+	directives: ComponentScope | null,
+	strict = true
 ): void {
 	renderer.scope = scope;
 	renderer.directives = directives;
-	renderer.strict_directives = true;
+	renderer.strict_directives = strict;
 }
 
 const DIRECTIVE_KINDS = [
@@ -632,7 +650,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	);
 	const metadata = metadata_of(nodes, source, options?.frontmatter?.parse);
 	const renderer = take_renderer();
-	bind_scopes(renderer, scope, directives);
+	bind_scopes(renderer, scope, directives, options?.strict_directives);
 	let template: string | undefined;
 	if (metadata !== undefined || picks_template(options)) {
 		try {
@@ -784,7 +802,7 @@ export class CompilerSession {
 		const source = normalize_newlines(raw);
 		const nodes = this.parse(source);
 		const metadata = metadata_of(nodes, source, options?.frontmatter?.parse);
-		bind_scopes(this.renderer, scope, directives);
+		bind_scopes(this.renderer, scope, directives, options?.strict_directives);
 		const template =
 			metadata === undefined && !picks_template(options)
 				? undefined
@@ -1615,8 +1633,12 @@ function component_registry(
 		return importer_in(root);
 	}
 
+	/** the last list published, kept over a reset for the editor manifest */
+	let published: ComponentModule[] = [];
+
 	function publish(list: ComponentModule[]): void {
 		modules = list;
+		published = list;
 		const all: string[] = [];
 		sources = [];
 		const directive_list: ComponentSource[] = [];
@@ -1721,6 +1743,18 @@ function component_registry(
 		directive_sources(): ComponentSource[] | undefined {
 			return directive_sources;
 		},
+		/** the modules for the editor manifest, empty until resolved */
+		describe(): { components: ManifestModule[]; directives: ManifestModule[] } {
+			const components: ManifestModule[] = [];
+			const directives: ManifestModule[] = [];
+			for (const m of published) {
+				components.push({ id: m.virtual, file: m.file, names: m.names });
+				if (m.directives === null) continue;
+				const d = m.directives;
+				directives.push({ id: d.virtual, file: d.file, names: d.names });
+			}
+			return { components, directives };
+		},
 		/** resolved in the environment of ctx, whose conditions may differ */
 		async resolve(
 			ctx: Rollup.PluginContext,
@@ -1821,8 +1855,12 @@ function template_registry(
 	/** the directives module of each virtual id */
 	let directive_ids = new Map<string, TemplateDirectives>();
 
+	/** the last templates published, kept over a reset for the editor manifest */
+	let published = new Map<string, TemplateModule>();
+
 	function publish(list: Map<string, TemplateModule>): void {
 		modules = list;
+		published = list;
 		const next: Record<string, TemplateEntry> = {};
 		const all: string[] = [];
 		files_by_name = new Map();
@@ -1975,6 +2013,31 @@ function template_registry(
 		},
 		entries(): Record<string, TemplateEntry> {
 			return entries;
+		},
+		/** the templates for the editor manifest, empty until resolved */
+		describe(): Record<string, ManifestTemplate> {
+			const out: Record<string, ManifestTemplate> = {};
+			for (const m of published.values()) {
+				out[m.name] = {
+					id: TEMPLATE_ID + m.name,
+					file: m.file,
+					components: m.names,
+					extra:
+						m.extra === null
+							? null
+							: {
+									id: TEMPLATE_ID + m.name,
+									file: m.extra.file,
+									names: m.extra.names,
+								},
+					directives: m.directives.map((d) => ({
+						id: d.virtual,
+						file: d.file,
+						names: d.names,
+					})),
+				};
+			}
+			return out;
 		},
 		/** the templates whose merging module reads names from file */
 		names_using(file: string): string[] {
@@ -2184,6 +2247,31 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 	const no_templates = templates === null && select === undefined;
 
+	// what select_template picked, only it can not be worked out from the source
+	const documents =
+		select === undefined ? null : new Map<string, string | null>();
+	let log: (message: string) => void = () => {};
+	let root = '';
+	const manifest = manifest_writer(
+		(): MdsvexManifest => {
+			const root_modules = registry?.describe();
+			return {
+				version: MANIFEST_VERSION,
+				root,
+				extensions,
+				component_mode: options.component_mode ?? 'markdown',
+				frontmatter_parse: options.frontmatter?.parse !== undefined,
+				parse_plugins: (options.parse_plugins?.length ?? 0) !== 0,
+				select_template: select !== undefined,
+				templates: templates?.describe() ?? {},
+				components: root_modules?.components ?? [],
+				directives: root_modules?.directives ?? [],
+				documents: documents === null ? {} : Object.fromEntries(documents),
+			};
+		},
+		(message) => log(message)
+	);
+
 	function compile_doc(
 		ctx: Rollup.TransformPluginContext,
 		code: string,
@@ -2257,6 +2345,10 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				registry?.set_root(config.root);
 				templates?.set_root(config.root);
 				command = config.command;
+				root = config.root;
+				log = (message) => config.logger.warn('[mdsvex] ' + message);
+				manifest.set_root(config.root);
+				manifest.schedule();
 				const svelte = config.plugins.find(
 					(p) => p.name === 'vite-plugin-svelte:config'
 				);
@@ -2275,6 +2367,11 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				// one clear error at startup rather than one per document
 				if (registry !== null) await registry.ensure(this);
 				if (templates !== null) await templates.ensure(this);
+				manifest.schedule();
+			},
+
+			async buildEnd() {
+				await manifest.flush();
 			},
 
 			resolveId(id) {
@@ -2318,7 +2415,16 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 						registry?.sources(),
 						registry?.directive_sources()
 					);
-					const used = templates?.files_of(stored.get(id)!.template) ?? [];
+					const picked = stored.get(id)!.template;
+					// a query picks for one import, not for the file
+					if (documents !== null && id.indexOf('?') < 0) {
+						const now = picked ?? null;
+						if (documents.get(id) !== now) {
+							documents.set(id, now);
+							manifest.schedule();
+						}
+					}
+					const used = templates?.files_of(picked) ?? [];
 					const root = registry === null ? [] : registry.files();
 					tracker.track(
 						id,
@@ -2336,7 +2442,11 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				if (templates !== null && !templates.ready())
 					waits.push(templates.ensure(this));
 				if (waits.length === 0) return finish();
-				return Promise.all(waits).then(finish);
+				return Promise.all(waits).then(() => {
+					// a reset resolved again, which may have moved a module
+					manifest.schedule();
+					return finish();
+				});
 			},
 
 			watchChange(id) {
@@ -2367,6 +2477,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 						(await templates!.rescan(file, update.timestamp, warn, code)) ||
 						changed;
 				if (!changed) return;
+				manifest.schedule();
 
 				// names changed, documents compiled against the old set compile again
 				const graph = this.environment.moduleGraph;
