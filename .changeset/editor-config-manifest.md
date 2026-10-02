@@ -12,4 +12,4 @@ The editor now knows your templates, replacement components and directives. The 
 { "templates": { "docs": "#lib/templates/Docs.svelte" }, "components": "#lib/markdown.ts" }
 ```
 
-Hovering a replaced element or directive shows its component. Directive args and the frontmatter of a templated document are type-checked against the component's props, and `metadata` is typed by the same YAML parser `compile()` uses. Compile errors such as an unknown template show on their line, and `.svx` files are supported alongside `.pfm`.
+Hovering a replaced element or directive shows its component, and go to definition opens it. The frontmatter `template` key is typed as your template names or `false`, and they are offered as completions. Directive args and the frontmatter of a templated document are type-checked against the component's props, and `metadata` is typed by the same YAML parser `compile()` uses. Compile errors such as an unknown template show on their line, and `.svx` files are supported alongside `.pfm`.

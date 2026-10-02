@@ -2261,7 +2261,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				extensions,
 				component_mode: options.component_mode ?? 'markdown',
 				frontmatter_parse: options.frontmatter?.parse !== undefined,
-				parse_plugins: (options.parse_plugins?.length ?? 0) !== 0,
+				directive_plugins: (options.parse_plugins ?? []).some(
+					(p) =>
+						p.directive_inline !== undefined ||
+						p.directive_leaf !== undefined ||
+						p.directive_container !== undefined
+				),
 				select_template: select !== undefined,
 				templates: templates?.describe() ?? {},
 				components: root_modules?.components ?? [],

@@ -40,7 +40,7 @@ function manifest(root: string, extra: Partial<MdsvexManifest> = {}): string {
 		extensions: [".svx"],
 		component_mode: "markdown",
 		frontmatter_parse: false,
-		parse_plugins: false,
+		directive_plugins: false,
 		select_template: false,
 		templates: {},
 		components: [],
@@ -130,7 +130,7 @@ describe("document options from a manifest", () => {
 		extensions: [".svx"],
 		component_mode: "all",
 		frontmatter_parse: true,
-		parse_plugins: false,
+		directive_plugins: false,
 		select_template: true,
 		templates: {
 			theme: {
@@ -211,7 +211,7 @@ describe("document options from a manifest", () => {
 		expect(opts.report_directives).toBe(true);
 		expect(opts.lenient_frontmatter).toBe(true);
 		expect(
-			document_options({ ...m, parse_plugins: true }, "/app/a.svx").report_directives,
+			document_options({ ...m, directive_plugins: true }, "/app/a.svx").report_directives,
 		).toBe(false);
 	});
 });

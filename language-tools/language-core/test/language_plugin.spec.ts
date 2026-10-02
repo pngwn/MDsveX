@@ -179,6 +179,29 @@ The count is {count + 1}.
 		}
 	});
 
+	it("carries the templates and the frontmatter the template key completes from", () => {
+		const config = {
+			load: () => null,
+			options_for: () => ({
+				stamp: "t",
+				options: {
+					compile: { templates: { docs: { specifier: "mdsvex:template/docs" } } },
+					resolve: (id: string) =>
+						id === "mdsvex:template/docs" ? "./lib/Docs.svelte" : undefined,
+				},
+			}),
+		};
+		const pfm = "---\ntemplate: docs\n---\n\n# x\n";
+		const vc = create_pfm_language_plugin({ config }).createVirtualCode!(
+			"test.svx",
+			"pfm",
+			snap(pfm),
+			dummyCtx,
+		)!;
+		expect(vc.templates).toEqual([{ name: "docs", file: "./lib/Docs.svelte" }]);
+		expect(pfm.slice(vc.frontmatter!.start, vc.frontmatter!.end)).toBe("template: docs\n");
+	});
+
 	it("carries compile diagnostics on the root, which reports them", () => {
 		const config = {
 			load: () => null,
@@ -195,6 +218,7 @@ The count is {count + 1}.
 		const vc = known.createVirtualCode!("test.svx", "pfm", snap(pfm), dummyCtx)!;
 		expect(vc.diagnostics.map((d) => pfm.slice(d.start, d.end))).toEqual(["::nope"]);
 		expect(vc.mappings[0].data.verification).toBe(true);
+		expect(vc.mappings[0].data.completion).toBe(true);
 		// the same source under another config converts again
 		const unknown = create_pfm_language_plugin();
 		expect(unknown.createVirtualCode!("test.svx", "pfm", snap(pfm), dummyCtx)!.diagnostics).toEqual([]);

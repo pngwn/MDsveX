@@ -9,7 +9,12 @@ export {
 	scan_exports,
 } from "./config";
 
-export type { PfmLanguagePluginOptions, PfmVirtualCode } from "./language_plugin";
+export type {
+	PfmLanguagePluginOptions,
+	PfmVirtualCode,
+	TemplateChoice,
+} from "./language_plugin";
+export { template_value_at } from "@mdsvex/source-map/pfm-to-svelte";
 export type {
 	ConfigLoader,
 	ConfigLoaderOptions,

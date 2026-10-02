@@ -73,3 +73,29 @@ function top_key(
 	if (m === null) return null;
 	return { name: m[1], start: 0, end: m[1].length };
 }
+
+const TEMPLATE_KEY = /^(["']?)template\1[ \t]*:[ \t]*/;
+
+/**
+ * the value of a top level template key on the line holding offset, the
+ * range a completion replaces, null when offset is not in one
+ */
+export function template_value_at(
+	source: string,
+	offset: number,
+	frontmatter: KeyRange
+): KeyRange | null {
+	if (offset < frontmatter.start || offset > frontmatter.end) return null;
+	const line_start = source.lastIndexOf('\n', offset - 1) + 1;
+	let line_end = source.indexOf('\n', offset);
+	if (line_end < 0 || line_end > frontmatter.end) line_end = frontmatter.end;
+	const line = source.slice(line_start, line_end).replace(/\r$/, '');
+	const key = TEMPLATE_KEY.exec(line);
+	if (key === null) return null;
+	const start = line_start + key[0].length;
+	if (offset < start) return null;
+	// a comment ends the value, trailing space is not part of it
+	const rest = line.slice(key[0].length).replace(/[ \t]+#.*$/, '');
+	const end = Math.max(start + rest.trimEnd().length, offset);
+	return { start, end };
+}

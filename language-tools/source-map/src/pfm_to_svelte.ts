@@ -21,10 +21,11 @@ import type {
 
 import { apply_edits, plain } from './edit';
 import type { Edit } from './edit';
-import { yaml_keys } from './keys';
+import { template_value_at, yaml_keys } from './keys';
 import type { KeyRange } from './keys';
 
 export type { Mapping, MappingData } from '@mdsvex/render/mappings';
+export { template_value_at } from './keys';
 
 /** A <style> block found in the PFM source, with positions in both source and generated output. */
 export interface StyleBlock {
@@ -88,6 +89,8 @@ export interface PfmToSvelteResult {
 	metadata?: Record<string, unknown>;
 	/** the template the document is wrapped in */
 	template?: string;
+	/** the yaml of the frontmatter, null without any */
+	frontmatter: { start: number; end: number } | null;
 }
 
 const HOVER: CodeInformation = { semantic: true, navigation: true };
@@ -198,7 +201,8 @@ function without_directives(
 function compile_leniently(
 	source: string,
 	options: PfmToSvelteOptions,
-	diagnostics: PfmDiagnostic[]
+	diagnostics: PfmDiagnostic[],
+	frontmatter: { start: number; end: number } | null
 ): { result: CompileResult; metadata_known: boolean } {
 	let opts: CompileOptions = {
 		...options.compile,
@@ -235,8 +239,14 @@ function compile_leniently(
 					e.message
 				);
 				if (!(unparsed && options.lenient_frontmatter)) {
+					const line = line_range(source, e.line);
+					// a template error is about its value
+					const value =
+						unparsed || frontmatter === null
+							? null
+							: template_value_at(source, line.end, frontmatter);
 					diagnostics.push({
-						...line_range(source, e.line),
+						...(value !== null && value.end > value.start ? value : line),
 						message: e.message,
 						severity: 'error',
 					});
@@ -257,6 +267,7 @@ const METADATA_EXPORT = 'export const metadata = ';
 const IMPORT_LINE = /^import (.+) from '(mdsvex:[^']*)';$/gm;
 const NAMED = /^\{ (.*) \}$/;
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+const has_own = Object.prototype.hasOwnProperty;
 // svelte and preprocessors find script and style tags even inside strings
 const TAG = /<(?=\/?(?:script|style))/gi;
 
@@ -266,7 +277,8 @@ function object_literal(
 	keys: Map<string, KeyRange>,
 	caps: CodeInformation,
 	open: string,
-	close: string
+	close: string,
+	types: Record<string, string> = {}
 ): { text: string; mappings: Mapping<MappingData>[] } {
 	let text = open;
 	const mappings: Mapping<MappingData>[] = [];
@@ -289,6 +301,7 @@ function object_literal(
 				)
 			);
 		text += `${written}: ${json.replace(TAG, '\\u003c')}`;
+		if (has_own.call(types, name)) text += ` as ${types[name]}`;
 	}
 	return { text: text + close, mappings };
 }
@@ -575,7 +588,8 @@ export function pfmToSvelte(
 	const { result, metadata_known } = compile_leniently(
 		source,
 		options,
-		diagnostics
+		diagnostics,
+		regions.frontmatter
 	);
 	const original = result.code;
 	const mappings = (result.mappings ?? []).map(plain);
@@ -614,7 +628,17 @@ export function pfmToSvelte(
 		} else if (metadata !== undefined) {
 			// the same object with bare keys, typescript spans a quoted key with its quotes
 			const end = original.indexOf(';\n', json);
-			const object = object_literal(metadata, keys, HOVER, '{', '}');
+			const names = Object.keys(options.compile?.templates ?? {});
+			// the template key holds a template name or false, so it types as their union
+			const types: Record<string, string> =
+				names.length === 0
+					? {}
+					: {
+							template: [...names.map((n) => JSON.stringify(n)), 'false'].join(
+								' | '
+							),
+						};
+			const object = object_literal(metadata, keys, HOVER, '{', '}', types);
 			edits.push({
 				start: json,
 				end: end < 0 ? original.length : end,
@@ -764,5 +788,6 @@ export function pfmToSvelte(
 		diagnostics,
 		metadata,
 		template: result.template,
+		frontmatter: regions.frontmatter,
 	};
 }

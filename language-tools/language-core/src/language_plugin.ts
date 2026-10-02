@@ -65,6 +65,16 @@ export interface PfmVirtualCode extends VirtualCode {
 	embeddedCodes: VirtualCode[];
 	/** compile errors and warnings, typescript reports the rest */
 	diagnostics: PfmDiagnostic[];
+	/** the yaml of the frontmatter, null without any */
+	frontmatter: { start: number; end: number } | null;
+	/** the templates the frontmatter template key can name */
+	templates: TemplateChoice[];
+}
+
+export interface TemplateChoice {
+	name: string;
+	/** the template file relative to the document, when the config resolves it */
+	file?: string;
 }
 
 export interface PfmLanguagePluginOptions {
@@ -99,7 +109,17 @@ function create_fallback_virtual_code(source: string): PfmVirtualCode {
 		],
 		embeddedCodes: [],
 		diagnostics: [],
+		frontmatter: null,
+		templates: [],
 	};
+}
+
+function template_choices(options: PfmToSvelteOptions): TemplateChoice[] {
+	const templates = options.compile?.templates ?? {};
+	return Object.keys(templates).map((name) => {
+		const file = options.resolve?.(templates[name].specifier, 'default');
+		return file === undefined ? { name } : { name, file };
+	});
 }
 
 /** the composed capabilities, a mapping the converter added keeps only what it allows */
@@ -369,12 +389,14 @@ function create_virtual_code_from_source(
 				sourceOffsets: [0],
 				generatedOffsets: [0],
 				lengths: [source.length],
-				// verification lets a service report compile diagnostics on the root
-				data: { structure: true, verification: true },
+				// so a service reports compile diagnostics and completes frontmatter on the root
+				data: { structure: true, verification: true, completion: true },
 			},
 		],
 		embeddedCodes: embedded_codes,
 		diagnostics: svelte.diagnostics,
+		frontmatter: svelte.frontmatter,
+		templates: template_choices(options),
 	};
 }
 

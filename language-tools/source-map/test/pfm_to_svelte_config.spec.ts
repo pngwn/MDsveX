@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pfmToSvelte } from "../src/pfm_to_svelte";
+import { pfmToSvelte, template_value_at } from "../src/pfm_to_svelte";
 import type {
 	EditorMappingData,
 	PfmToSvelteOptions,
@@ -184,6 +184,19 @@ describe("pfmToSvelte with a config", () => {
 		expect(instance).toContain("satisfies");
 	});
 
+	it("types the template key as the union of template names and false", () => {
+		const source = "---\ntitle: Hi\ntemplate: docs\n---\n\n# x\n";
+		const r = pfmToSvelte(source, docs);
+		expect(r.code).toContain(
+			'export const metadata = {title: "Hi", template: "docs" as "docs" | false};',
+		);
+		expect(r.frontmatter).toEqual({ start: 4, end: 29 });
+		// without templates the key is whatever the frontmatter holds
+		expect(pfmToSvelte(source).code).toContain(
+			'export const metadata = {title: "Hi", template: "docs"};',
+		);
+	});
+
 	it("checks nothing without a template", () => {
 		const source = "---\ntitle: Hi\n---\n\n# x\n";
 		const r = pfmToSvelte(source, docs);
@@ -236,7 +249,7 @@ describe("pfmToSvelte compile diagnostics", () => {
 		const r = pfmToSvelte(source, docs);
 		expect(r.diagnostics).toHaveLength(1);
 		const [d] = r.diagnostics;
-		expect(source.slice(d.start, d.end)).toBe("template: nope");
+		expect(source.slice(d.start, d.end)).toBe("nope");
 		expect(d.message).toContain('Unknown template "nope"');
 		expect(r.template).toBeUndefined();
 		expect(r.code).not.toContain("Template_MDSVEX");
@@ -271,5 +284,32 @@ describe("pfmToSvelte compile diagnostics", () => {
 		const [d] = r.diagnostics;
 		expect(d.severity).toBe("warning");
 		expect(source.slice(d.start, d.end)).toBe("<img");
+	});
+});
+
+describe("template_value_at", () => {
+	const source = "---\ntitle: x\ntemplate: docs # main\n'template':\n---\n";
+	const frontmatter = { start: 4, end: source.indexOf("\n---", 4) };
+	const value = (offset: number) => {
+		const r = template_value_at(source, offset, frontmatter);
+		return r && [source.slice(r.start, r.end), r.start];
+	};
+
+	it("gives the value of the template key the offset is in, without a comment", () => {
+		const at = source.indexOf("docs");
+		expect(value(at)).toEqual(["docs", at]);
+		expect(value(at + 2)).toEqual(["docs", at]);
+		expect(value(at + 4)).toEqual(["docs", at]);
+	});
+
+	it("gives an empty range for a key with no value yet", () => {
+		const end = source.indexOf("\n---");
+		expect(value(end)).toEqual(["", end]);
+	});
+
+	it("is null before the value, on another key or outside the frontmatter", () => {
+		expect(value(source.indexOf("template:") + 3)).toBeNull();
+		expect(value(source.indexOf("title") + 8)).toBeNull();
+		expect(value(source.length)).toBeNull();
 	});
 });

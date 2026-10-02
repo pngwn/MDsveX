@@ -51,7 +51,7 @@ function manifest(root: string) {
 		extensions: [".svx"],
 		component_mode: "all",
 		frontmatter_parse: false,
-		parse_plugins: false,
+		directive_plugins: false,
 		select_template: false,
 		templates: {
 			docs: {
@@ -166,6 +166,8 @@ describe("with a plugin manifest", () => {
 	it("hovers frontmatter keys and directive args with their types", () => {
 		const doc = "src/valid.svx";
 		expect(p.hover(doc, "title:")).toBe("(property) title: string");
+		// the names of the configured templates, as only they or false compile
+		expect(p.hover(doc, "template:")).toBe('(property) template: false | "docs"');
 		expect(p.hover(doc, "tags:")).toBe("(property) tags: string[]");
 		// the prop the arg becomes, as the component declares it
 		expect(p.hover(doc, "kind=")).toBe('(property) kind: "info" | "warn"');

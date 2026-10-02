@@ -19,7 +19,9 @@ import {
 import type { ConfigLoader } from "@mdsvex/language-core";
 import { watch } from "node:fs";
 import { clean_svelte_hover } from "./clean_hover";
+import { without_self } from "./definitions";
 import { create_compile_diagnostics } from "./compile_diagnostics";
+import { create_template_completions } from "./template_completions";
 import { URI } from "vscode-uri";
 import { forEachEmbeddedCode } from "@volar/language-core";
 import type { LanguagePlugin, VirtualCode } from "@volar/language-core";
@@ -155,6 +157,14 @@ const _on_hover = connection.onHover.bind(connection);
 	});
 };
 
+const _on_definition = connection.onDefinition.bind(connection);
+(connection as any).onDefinition = (handler: Function) => {
+	_on_definition(
+		async (params: any, token: any) =>
+			without_self(await handler(params, token), params.textDocument.uri, params.position) as any,
+	);
+};
+
 const server = createServer(connection);
 
 connection.listen();
@@ -211,6 +221,7 @@ connection.onInitialize((params) => {
 			createCssService(),
 			createMarkdownService(),
 			create_compile_diagnostics(),
+			create_template_completions(),
 		],
 	);
 });

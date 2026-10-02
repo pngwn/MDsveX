@@ -544,7 +544,7 @@ The plugin builds the template and root parts of `CompileOptions` once per confi
 Deferred: **nested scopes** (§5.4). Pick these up only once the per-template sets are in use and #601-style demand is clear.
 
 5. **Language tools.** *Done, 2026-10-02.* The editor learns the config without running Vite, from the first of these found walking up from the document:
-   - **`node_modules/.mdsvex/manifest.json`.** The plugin writes it when its resolution or scan changes. It holds each `mdsvex:*` id resolved to a file, the scanned names, `component_mode`, `extensions`, whether a custom frontmatter parser, parse plugins or `select_template` are configured, and the template `select_template` last picked for each document. It is stale until Vite has run once, like `.svelte-kit`.
+   - **`node_modules/.mdsvex/manifest.json`.** The plugin writes it when its resolution or scan changes. It holds each `mdsvex:*` id resolved to a file, the scanned names, `component_mode`, `extensions`, whether a custom frontmatter parser, a parse plugin that handles directives, or `select_template` is configured, and the template `select_template` last picked for each document. It is stale until Vite has run once, like `.svelte-kit`.
    - **`mdsvex.config.json`.** The playground's static config. language-core resolves its relative, `file:`, `#` subpath and package specifiers itself, without Vite aliases, and reads export names from the TypeScript syntax tree.
 
    We rejected having `language-core` load the Vite config itself: it would run user code in the editor, it is slow, and the synchronous tsserver plugin can't await it. A config path option for the extension would be a second source of truth with no Vite resolution.

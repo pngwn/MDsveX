@@ -28,7 +28,7 @@ The mapping pipeline. Converts PFM source into valid Svelte (`pfm_to_svelte`), c
 
 `pfm_to_svelte` doesn't build its own Svelte. It calls core `compile()` from `mdsvex` with the document's config and `strict_directives: false`, so the editor checks the same component the build makes. That includes the `metadata` export from the core YAML parser, the template wrapper and replacement imports. It then edits the output for the editor and carries the mappings along (`edit.ts`):
 
-- **Frontmatter keys.** The `metadata` object is re-emitted with bare keys, each mapped to its key in the YAML, so hover and go-to-definition work from either side.
+- **Frontmatter keys.** The `metadata` object is re-emitted with bare keys, each mapped to its key in the YAML, so hover and go-to-definition work from either side. With templates configured, its `template` value is typed as their names or `false`.
 - **Virtual ids.** Each `mdsvex:*` import becomes one import per binding from the file the id resolves to, so TypeScript sees the real template and components.
 - **Replaced elements and directives.** Each one maps its syntax, tag name or directive name to the export it uses, so hovering it shows the replacement. Its open and close syntax lose their capabilities, because they span the whole component tag and would otherwise report props the author never wrote. A typed element in `component_mode: 'all'` keeps checking its attribute values and expressions, but not its attribute names, since an unknown prop isn't an error.
 - **Directive args** map to the props they become, so a wrong value is a type error on the arg.
@@ -40,10 +40,10 @@ A compile error becomes a diagnostic, and the compile runs again without what fa
 
 The language server can't run Vite, so it reads what the Vite plugin knows from files (`language-core/src/config.ts`). For each document, the nearest directory holding one of these wins:
 
-1. **`node_modules/.mdsvex/manifest.json`.** The plugin writes it whenever its resolution or scan changes (`packages/mdsvex/src/manifest.ts`). It has every template and components module resolved to a file with Vite's resolver, their scanned export names, `component_mode`, `extensions`, and whether a custom frontmatter parser, parse plugins or `select_template` are configured. For `select_template`, it also records the template each document picked when it last compiled. It is stale until `vite dev` or `vite build` has run once.
+1. **`node_modules/.mdsvex/manifest.json`.** The plugin writes it whenever its resolution or scan changes (`packages/mdsvex/src/manifest.ts`). It has every template and components module resolved to a file with Vite's resolver, their scanned export names, `component_mode`, `extensions`, and whether a custom frontmatter parser, a parse plugin that handles directives, or `select_template` is configured. For `select_template`, it also records the template each document picked when it last compiled. It is stale until `vite dev` or `vite build` has run once.
 2. **`mdsvex.config.json`.** This is the static config the playground reads. language-core resolves its specifiers itself, covering relative paths, `file:` URLs, package.json `imports` such as `#lib/*` and package `exports`, but not Vite aliases. It reads export names from the TypeScript syntax tree, so the `typescript` option must be passed.
 
-With neither, a document compiles with no templates or replacements, and unknown directives aren't reported, so nothing valid shows an error. Directives are also not reported when the manifest says parse plugins exist, since a plugin might handle them. A custom frontmatter parser silences YAML errors. The server watches each config file it reads and reloads its projects when one changes.
+With neither, a document compiles with no templates or replacements, and unknown directives aren't reported, so nothing valid shows an error. Directives are also not reported when the manifest says a parse plugin handles directives, since it might handle them. A custom frontmatter parser silences YAML errors. The server watches each config file it reads and reloads its projects when one changes.
 
 ### `language-core`
 
@@ -51,7 +51,7 @@ The Volar language plugin. Orchestrates the full pipeline — calls `pfm_to_svel
 
 ### `language-server`
 
-The LSP server process. Wraps the language-core plugins for Volar's URI-based server API, registers TypeScript/CSS/Markdown service plugins plus one that reports compile diagnostics from the root virtual code, and intercepts hover responses to clean up svelte2tsx's verbose internal type display (stripping `__sveltets_2_IsomorphicComponent` wrappers and `SvelteComponent` type aliases down to just the component name and props).
+The LSP server process. Wraps the language-core plugins for Volar's URI-based server API, registers TypeScript/CSS/Markdown service plugins plus two of its own: one reports compile diagnostics from the root virtual code, and one completes template names as the value of the frontmatter `template` key. It drops the markdown service's self-definition of a heading when another target exists, so a jump from a replaced heading goes straight to its component, and it intercepts hover responses to clean up svelte2tsx's verbose internal type display (stripping `__sveltets_2_IsomorphicComponent` wrappers and `SvelteComponent` type aliases down to just the component name and props).
 
 ### `typescript-plugin`
 

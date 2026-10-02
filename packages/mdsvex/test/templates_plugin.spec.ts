@@ -276,6 +276,7 @@ describe('templates option', () => {
 		expect(manifest.component_mode).toBe('markdown');
 		expect(manifest.select_template).toBe(true);
 		expect(manifest.frontmatter_parse).toBe(false);
+		expect(manifest.directive_plugins).toBe(false);
 		expect(manifest.templates.default).toEqual({
 			id: 'mdsvex:template/default',
 			file: at('src/lib/templates/Post.svelte'),
@@ -401,6 +402,30 @@ describe('templates option', () => {
 		expect(await ssr(server, '/src/theme.svx')).toContain(
 			'<p class="docs-p">para</p>'
 		);
+	});
+});
+
+describe('the editor manifest', () => {
+	test('says whether a parse plugin handles directives', async () => {
+		const root = write_app();
+		const server = await serve(
+			root,
+			mdsvex({
+				templates: { default: '#lib/templates/Post.svelte' },
+				parse_plugins: [{ name: 'note', directive_leaf: { parse() {} } }],
+			})
+		);
+		try {
+			await ssr(server, '/src/post.svx');
+			const file = join(root, MANIFEST_PATH);
+			await vi.waitFor(() => {
+				const manifest: MdsvexManifest = JSON.parse(readFileSync(file, 'utf8'));
+				expect(manifest.directive_plugins).toBe(true);
+			});
+		} finally {
+			await server.close();
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });
 

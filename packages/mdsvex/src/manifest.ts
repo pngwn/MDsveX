@@ -41,8 +41,8 @@ export interface MdsvexManifest {
 	component_mode: ComponentMode;
 	/** a frontmatter.parse replaces the built in yaml parser */
 	frontmatter_parse: boolean;
-	/** parse plugins may rewrite nodes and handle directives no component takes */
-	parse_plugins: boolean;
+	/** a parse plugin handles directives, so one no component takes may still render */
+	directive_plugins: boolean;
 	/** select_template picks templates, documents holds what it picked */
 	select_template: boolean;
 	templates: Record<string, ManifestTemplate>;

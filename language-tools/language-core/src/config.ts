@@ -187,8 +187,8 @@ export function document_options(
 			const file = files.get(id)?.(name);
 			return file === undefined ? undefined : specifier_from(doc, file);
 		},
-		// parse plugins may handle directives no component renders
-		report_directives: !manifest.parse_plugins,
+		// a parse plugin may handle a directive no component renders
+		report_directives: !manifest.directive_plugins,
 		lenient_frontmatter: manifest.frontmatter_parse,
 	};
 }
@@ -214,7 +214,7 @@ export function from_json(
 		extensions,
 		component_mode: config.component_mode ?? 'markdown',
 		frontmatter_parse: false,
-		parse_plugins: false,
+		directive_plugins: false,
 		select_template: false,
 		templates: {},
 		components: [],
