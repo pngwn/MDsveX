@@ -5,27 +5,24 @@
 Quick installation instructions.
 
 ```bash
-npm i -D mdsvex
+npm i -D mdsvex@next
 ```
 
 ```bash
-yarn add --dev mdsvex
+pnpm add -D mdsvex@next
 ```
 
   </div>
   <div class="box use">
     <h2><a href="docs#use-it">Use</a></h2>
 
-Add mdsvex to your project
+Add mdsvex to your Vite config
 
 ```js
-svelte({
-  extensions: [
-    '.svelte',
-    '.svx'
-  ],
-  preprocess: mdsvex(config)
-})
+plugins: [
+  mdsvex(config),
+  sveltekit()
+]
 ```
   </div>
   <div class="box config">
@@ -37,55 +34,55 @@ svelte({
       </dt>
       <dd>use custom extensions</dd>
       <dt>
-        <a href="docs#smartypants"><span>smartypants</a></span>
-      </dt>
-      <dd>fancy typography</dd>
-      <dt>
-        <a href="docs#layout"><span>layout</span></a>
-      </dt>
-      <dd>custom layouts</dd>
-      <dt>
-        <a href="docs#remarkplugins--rehypeplugins"><span>remarkPlugins</span></a>
-      </dt>
-      <dd>use remark plugins</dd>
-      <dt>
-        <a href="docs#remarkplugins--rehypeplugins"><span>rehypePlugins</span></a>
-      </dt>
-      <dd>use rehype plugins</dd>
-      <dt>
-        <a href="docs#highlight"><span>highlight</span></a>
-      </dt>
-      <dd>syntax highlighting</dd>
-      <dt>
         <a href="docs#frontmatter"><span>frontmatter</span></a>
       </dt>
       <dd>change frontmatter language</dd>
+      <dt>
+        <a href="docs#templates"><span>templates</span></a>
+      </dt>
+      <dd>wrap documents</dd>
+      <dt>
+        <a href="docs#select_template"><span>select_template</span></a>
+      </dt>
+      <dd>pick templates by path</dd>
+      <dt>
+        <a href="docs#components"><span>components</span></a>
+      </dt>
+      <dd>replace elements everywhere</dd>
+      <dt>
+        <a href="docs#component_mode"><span>component_mode</span></a>
+      </dt>
+      <dd>replace typed html too</dd>
+      <dt>
+        <a href="docs#parse_plugins"><span>parse_plugins</span></a>
+      </dt>
+      <dd>change the markdown tree</dd>
     </dl>
 
   </div>
 
   <div class="box layouts">
-    <h2><a href="docs#layouts">Layouts</a></h2>
+    <h2><a href="docs#templates-1">Templates</a></h2>
 
-Custom layouts for mdsvex documents.
+Wrap mdsvex documents in components.
 
-<h3><a href="docs#named-layouts">named layouts</a></h3>
+<h3><a href="docs#choosing-a-template">named templates</a></h3>
 
-Reference layouts by name.
+Pick a template by name.
 
 ```svx
 ---
-layout: blog
+template: blog
 ---
 ```
 
-<h3><a href="docs#disabling-layouts">disabling layouts</a></h3>
+<h3><a href="docs#opting-out">opting out</a></h3>
 
-Disable named layouts when needed.
+Render a document without one.
 
 ```svx
 ---
-layout: false
+template: false
 ---
 ```
 
@@ -98,20 +95,20 @@ layout: false
   <div class="box frontmatter">
     <h2><a href="docs#frontmatter-1">Frontmatter</a></h2>
 
-Use frontmatter values directly in markdown.
+Frontmatter is exported as metadata.
 
 ```mdsvex
 ---
 title: Fabuloso
 ---
 
-# {title}
+# {metadata.title}
 ```
 
   </div>
 
   <div class="box integrations">
-    <h2><a href="docs#integrations">Integrations</a></h2>
-    <p class="keep">Using mdsvex with other things</p>
+    <h2><a href="docs#directives">Directives</a></h2>
+    <p class="keep">Markdown syntax for your own components</p>
   </div>
 </div>

@@ -1,11 +1,10 @@
 [svelte]: https://svelte.dev/
 [mdx]: https://mdxjs.com/
-[unified]: https://unifiedjs.com/
-[remark]: https://github.com/remarkjs
-[rehype]: https://github.com/rehypejs/rehype
-[remark_plugins]: https://github.com/remarkjs/remark/blob/main/doc/plugins.md#list-of-plugins
-[rehype_plugins]: https://github.com/rehypejs/rehype/blob/main/doc/plugins.md#list-of-plugins
-[prism]: https://prismjs.com/
+[kit3]: https://svelte.dev/docs/kit/migrating-to-sveltekit-3
+[subpath]: https://nodejs.org/api/packages.html#subpath-imports
+[yaml]: https://eemeli.org/yaml/
+[smol-toml]: https://github.com/squirrelchat/smol-toml
+[sv-migrate]: https://svelte.dev/docs/cli/sv-migrate
 
 # mdsvex
 
@@ -13,23 +12,23 @@ mdsvex is a markdown preprocessor for [Svelte][svelte] components. Basically [MD
 
 This preprocessor allows you to use Svelte components in your markdown, or markdown in your Svelte components.
 
-mdsvex supports all Svelte syntax and _almost_ all markdown syntax. See [limitations](docs/#limitations) for more information.
+mdsvex supports all Svelte syntax and _almost_ all markdown syntax. See [limitations](docs#limitations) for more information.
 
 You can do this:
 
 ```svx
 <script>
-	import { Chart } from "../components/Chart.svelte";
+	import Chart from '#lib/Chart.svelte';
 </script>
 
 # Here’s a chart
 
-The chart is rendered inside our MDsveX document.
+The chart is rendered inside our mdsvex document.
 
 <Chart />
 ```
 
-It uses [unified][], [remark][] and [rehype][] and you can use any [remark plugins][remark_plugins] or [rehype plugins][rehype_plugins] to enhance your experience.
+mdsvex has its own markdown parser, and [parse plugins](docs#parse_plugins) can change the tree it builds.
 
 [Try it](/playground)
 
@@ -40,680 +39,787 @@ Install it as a dev-dependency.
 With `npm`:
 
 ```bash
-npm i --save-dev mdsvex
+npm i --save-dev mdsvex@next
 ```
 
-With `yarn`:
+With `pnpm`:
 
 ```bash
-yarn add --dev mdsvex
+pnpm add --save-dev mdsvex@next
 ```
 
 ## Use it
 
-There are two named exports from `mdsvex` that can be used to transform mdsvex documents, `mdsvex` and `compile`. `mdsvex` is a Svelte preprocessor and is the preferred way to use this library. The `compile` function is useful when you wish to compile mdsvex documents to Svelte components directly, without hooking into the Svelte compiler.
+mdsvex is a Vite plugin. It turns markdown files into Svelte components, and the Svelte plugin compiles them like any other component.
 
-### `mdsvex`
+### SvelteKit
 
-The `mdsvex` preprocessor function is a named import from the `mdsvex` module. Add it as a preprocessor to your rollup or webpack config, and tell the Svelte plugin or loader to also handle `.svx` files.
-
-With rollup and `rollup-plugin-svelte`:
+SvelteKit 3 has no `svelte.config.js`, so mdsvex goes in `vite.config.js`, beside `sveltekit()`:
 
 ```js
-import { mdsvex } from "mdsvex";
+// vite.config.js
+import { sveltekit } from '@sveltejs/kit/vite';
+import { mdsvex } from 'mdsvex';
+import { defineConfig } from 'vite';
 
-export default {
-	...boring_config_stuff,
-	plugins: [
-		svelte({
-			// these are the defaults. If you want to add more extensions, see https://mdsvex.pngwn.io/docs#extensions
-			extensions: [".svelte", ".svx"],
-			preprocess: mdsvex()
-		})
-	]
-};
+export default defineConfig({
+	plugins: [mdsvex({ extensions: ['.svx', '.md'] }), sveltekit()]
+});
 ```
 
-With webpack and `svelte-loader`:
+Declare the extensions once, in `mdsvex()`. It registers them with SvelteKit, so you don't repeat them in `sveltekit({ extensions })`. The order of the two plugins doesn't matter.
 
-```js
-const { mdsvex } = require('mdsvex')
+Any markdown file is now a component, and a `+page.svx` is a route:
 
-// add ".svx" to the extensions array
-const extensions = ['.mjs', '.js', '.json', '.svelte', '.html', '.svx'];
+```
+src/routes/
+├── +page.svelte
+└── blog/
+    └── hello/
+        └── +page.svx
+```
 
-module.exports = {
-	...boring_config_stuff,
-	resolve: { alias, extensions, mainFields },
-	module: {
-		rules: [
-			{
-				// tell svelte-loader to handle svx files as well
-				test: /\.(svelte|html|svx)$/,
-				use: {
-					loader: 'svelte-loader',
-					options: {
-						...svelte_options,
-						preprocess: mdsvex()
-					}
-				}
-			}
-		]
+Options that point at a file, such as [`templates`](docs#templates) and [`components`](docs#components), resolve the way an import from your project root would. That includes aliases, packages, relative paths and SvelteKit 3's `#lib` [subpath imports][subpath], which replace `$lib` (see the [SvelteKit 3 migration guide][kit3]):
+
+```json
+{
+	"imports": {
+		"#lib/*": "./src/lib/*"
 	}
-};
+}
 ```
-
-If you want to use mdsvex without a bundler because you are your own person, then you can use `svelte.preprocess` directly:
 
 ```js
-const svelte = require('svelte/compiler');
-const { mdsvex } = require('mdsvex');
-
-// This will give you a valid svelte component
-const preprocessed = await svelte.preprocess(
-	source,
-	mdsvex(mdsvex_opts)
-);
-
-// Now you can compile it if you wish
-const compiled = svelte.compile(
-	preprocessed,
-	compiler_options
-);
+mdsvex({
+	templates: { default: '#lib/templates/Post.svelte' }
+});
 ```
 
-> If you don't like the `.svx` file extension, fear not, it is easily customised.
+Imports inside a document work the same way, `import Chart from '#lib/Chart.svelte'`. Subpath imports need the file extension.
+
+### Vite without SvelteKit
+
+With `@sveltejs/vite-plugin-svelte` on its own, add the extensions to `svelte()` as well. mdsvex can't register them there. If one is missing, the build stops with an error that names it.
+
+```js
+// vite.config.js
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { mdsvex } from 'mdsvex';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+	plugins: [mdsvex(), svelte({ extensions: ['.svelte', '.svx'] })]
+});
+```
 
 ### `compile`
 
-This option performs a very similar task to the preprocessor but it can be used directly, without needing to hook into the Svelte compiler, either directly or via a bundler. The compile option will transform valid mdsvex code into valid svelte code, but it will perform no further actions such as resolving imports.
-
-It supports all of the same options as the preprocessor although the function signature is slightly different. The first argument should be the mdsvex source code you wish to compile, the second argument is an object of options.
+`compile` turns one document into Svelte component source without Vite. It is synchronous and never touches the filesystem, so it also runs in a browser.
 
 ```js
 import { compile } from 'mdsvex';
 
-const transformed_code = await compile(`
-<script>
-  import Chart from './Chart.svelte';
-</script>
+const { code, metadata } = compile(`---
+title: Hello
+---
 
-# Hello friends
-
-<Chart />
-`,
-	mdsvexOptions
-);
+# {metadata.title}
+`);
 ```
 
-In addition to the standard mdsvex options, the options object can also take an optional `filename` property which will be passed to mdsvex. There is no significant advantage to doing this but this provided filename may be used for error reporting in the future. The extension you give to this filename must match one of the extensions provided in the options (defaults to `['.svx']`).
+The result has:
+
+- `code`, the Svelte 5 component source;
+- `metadata`, the parsed frontmatter, or `undefined` when there is none;
+- `template`, the name of the template wrapping the document, or `undefined`;
+- `warnings`, or `undefined` when there are none.
+
+`compile` resolves nothing. Templates, components and directives are given as the import specifier to write plus the names that module exports. Finding those names is what the Vite plugin does for you.
+
+```js
+compile(source, {
+	templates: {
+		default: { specifier: '/src/Post.svelte', components: ['h2', 'p'] }
+	},
+	components: [{ specifier: '/src/markdown.js', names: ['img'] }],
+	directives: [{ specifier: '/src/directives.js', names: ['Callout'] }]
+});
+```
+
+The output imports from those specifiers exactly as written.
 
 ## Options
 
-The preprocessor function accepts an object of options, that allow you to customise your experience. The options are global to all parsed files.
+`mdsvex()` takes one object of options. They apply to every document.
 
-```typescript
+```ts
 interface MdsvexOptions {
-	extensions: string[];
-	smartypants: boolean | smartypantsOptions;
-	layout: string | { [name: string]: string };
-	remarkPlugins: Array<plugin> | Array<[plugin, plugin_options]>;
-	rehypePlugins: Array<plugin> | Array<[plugin, plugin_options]>;
-	highlight: { highlighter: Function, alias: { [alias]: lang }, optimise: boolean };
-	frontmatter: { parse: Function; marker: string };
+	extensions?: string[];
+	frontmatter?: {
+		parse?: (raw: string) => Record<string, unknown> | null | undefined;
+	};
+	templates?: Record<
+		string,
+		string | URL | { component: string | URL; components?: string | URL }
+	>;
+	select_template?: (
+		id: string,
+		metadata: Record<string, unknown>
+	) => string | false | undefined;
+	components?: string | URL | (string | URL)[];
+	component_mode?: 'markdown' | 'all';
+	parse_plugins?: ParsePlugin[];
 }
 ```
 
 ### `extensions`
 
 ```ts
-extensions: string[] = [".svx"];
+extensions: string[] = ['.svx'];
 ```
 
-The `extensions` option allows you to set custom file extensions for files written in mdsvex; the default value is `['.svx']`. Whatever value you choose here must be passed to the `extensions` field of `rollup-plugin-svelte` or `svelte-loader`. If you do not change the default, you must still pass the extension name to the plugin or loader config.
+The file extensions mdsvex compiles. To use `.md` files as components too:
 
 ```js
-export default {
-	...config,
-	plugins: [
-		svelte({
-			extensions: [".svelte", ".custom"],
-			preprocess: mdsvex({
-				extensions: [".custom"]
-			})
-		})
-	]
-};
+mdsvex({ extensions: ['.svx', '.md'] });
 ```
 
-To import markdown files as components, add `.md` to both the Svelte compiler and `mdsvex` extensions:
-
-```js
-// svelte.config.js
-import { mdsvex } from 'mdsvex'
-
-export default {
-  extensions: ['.svelte', '.svx', '.md'],
-  preprocess: mdsvex({ extensions: ['.svx', '.md'] }),
-}
-```
-
-If you use TypeScript, you should also declare an ambient module:
-```ts
-declare module '*.md' {
-	import type { SvelteComponent } from 'svelte'
-
-	export default class Comp extends SvelteComponent{}
-
-	export const metadata: Record<string, unknown>
-}
-```
-
-Then you can do:
-
-```svx
-<script>
-  import Readme from '../readme.md'
-</script>
-
-<Readme />
-```
-
-### `smartypants`
-
-```ts
-smartypants: boolean | {
-	quotes: boolean = true;
-	ellipses: boolean = true;
-	backticks: boolean | 'all' = true;
-	dashes: boolean | 'oldschool' | 'inverted' = true;
-} = true;
-```
-
-The `smartypants` option transforms ASCII punctuation into fancy typographic punctuation HTML entities.
-
-It turns stuff like:
-
-```md
-"They said it was free..."
-```
-
-into:
-
-> "They said it was free..."
-
-Notice the beautiful punctuation. It does other nice things.
-
-`smartypants` can be either a `boolean` (pass `false` to disable it) or an options object (defaults to `true`). The possible options are as follows.
-
-```sig
-quotes: boolean = true;
-```
-
-Converts straight double and single quotes to smart double or single quotes.
-
-- `"words"` **becomes**: "words"
-- `'words'` **becomes** 'words'
-
-```sig
-ellipses: boolean = true;
-```
-
-Converts triple-dot characters (with or without spaces) into a single Unicode ellipsis character.
-
-- `words...` **becomes** words...
-
-```sig
-backticks: boolean | 'all' = true;
-```
-
-When `true`, converts double back-ticks into an opening double quote, and double straight single quotes into a closing double quote.
-
-- ` ``words'' ` **becomes** ``words''
-
-When `'all'` it also converts single back-ticks into a single opening quote, and a single straight quote into a closing single, smart quote.
-
-Note: Quotes can not be `true` when backticks is `'all'`;
-
-```sig
-dashes: boolean | 'oldschool' | 'inverted' = true;
-```
-
-When `true`, converts two dashes into an em-dash character.
-
-- `--` **becomes**,
-
-When `'oldschool'`, converts two dashes into an en-dash, and three dashes into an em-dash.
-
-- `--` **becomes** –
-- `---` **becomes**,
-
-When `'inverted'`, converts two dashes into an em-dash, and three dashes into an en-dash.
-
-- `--` **becomes**,
-- `---` **becomes** –
-
-### `layout`
-
-```ts
-layout: string | Array<string | RegExp, string>;
-```
-
-The `layout` option allows you to provide a custom layout component that will wrap your mdsvex file like so:
-
-```svelte
-<Layout>
- <MdsvexDocument />
-<Layout>
-```
-
-> Layout components receive all frontmatter values as props, which should provide a great deal of flexibility when designing your layouts.
-
-You can provide a `string`, which should be the path to your layout component. An absolute path is preferred but mdsvex tries to resolve relative paths based upon the current working directory.
-
-```js
-import { join } from "path";
-
-const path_to_layout = join(__dirname, "./src/Layout.svelte");
-
-mdsvex({
-	layout: path_to_layout
-});
-```
-
-In some cases you may want different layouts for different types of document, to address this you may pass an object of named layouts instead. Each key should be a name for your layout, the value should be a path as described above. A fallback layout, or default, can be passed using `_` (underscore) as a key name.
-
-```js
-mdsvex({
-	layout: {
-		blog: "./path/to/blog/layout.svelte",
-		article: "./path/to/article/layout.svelte",
-		_: "./path/to/fallback/layout.svelte"
-	}
-});
-```
-
-### `remarkPlugins` / `rehypePlugins`
-
-```ts
-remarkPlugins: Array<plugin> | Array<[plugin, plugin_options]>;
-rehypePlugins: Array<plugin> | Array<[plugin, plugin_options]>;
-```
-
-mdsvex has a simple pipeline. Your source file is first parsed into a Markdown AST (MDAST), this is where remark plugins would run. Then it is converted into an HTML AST (HAST), this is where rehype plugins would be run. After this it is converted (stringified) into a valid Svelte component ready to be compiled.
-
-[remark][] and [rehype][] have a vibrant plugin ecosystem and mdsvex allows you to pass any [remark plugins][remark_plugins] or [rehype plugins][rehype_plugins] as options, which will run on the remark and rehype ASTs at the correct point in the pipeline.
-
-These options take an array. If you do not wish to pass any options to a plugin then you can simply pass an array of plugins like so:
-
-```js
-import containers from "remark-containers";
-import github from "remark-github";
-
-mdsvex({
-	remarkPlugins: [containers, github]
-});
-```
-
-If you _do_ wish to pass options to your plugins then those array items should be an array of `[plugin, options]`, like so:
-
-```js
-import containers from "remark-containers";
-import github from "remark-github";
-
-mdsvex({
-	remarkPlugins: [
-		[containers, container_opts],
-		[github, github_opts]
-	]
-});
-```
-
-You can mix and match as needed, only providing an array when options are needed:
-
-```js
-import containers from "remark-containers";
-import github from "remark-github";
-
-mdsvex({
-	remarkPlugins: [
-		[containers, container_opts],
-		github,
-		another_plugin,
-		[yet_another_plugin, more_options]
-	]
-});
-```
-
-While these examples use `remarkPlugins`, the `rehypePlugins` option works in exactly the same way. You are free to use one or both of these options as you wish.
-
-Remark plugins work on the Markdown AST (MDAST) produced by remark, rehype plugins work on the HTML AST (HAST) produced by rehype and it is possible to write your own custom plugins if the existing ones do not satisfy your needs!
-
-### `highlight`
-
-```ts
-highlight: {
-	highlighter: (code: string, lang: string) => string | Promise<string>
-	alias: { [lang : string]: string }
-	optimise: boolean
-};
-```
-
-Without any configuration, mdsvex will automatically highlight the syntax of over 100 languages using [PrismJS][prism], you simply need to add the language name to the fenced code block and import the CSS file for a Prism theme of your choosing. See [here for available options](https://github.com/PrismJS/prism-themes). Languages are loaded on-demand and cached for later use, this feature does not unnecessarily load all languages for highlighting purposes.
-
-Custom aliases for language names can be defined via the `alias` property of the highlight option. This property takes an object of key-value pairs: the key should be the alias you wish to define, the value should be the language you wish to assign it to.
-
-```js
-mdsvex({
-	highlight: {
-		alias: { yavascript: "javascript" }
-	}
-})
-```
-
-If you wish to handle syntax-highlighting yourself, you can provide a custom highlight function via the `highlighter` property.  The function will receive two arguments, the `code` to be highlighted and the `lang` defined in the fenced code-block, both are strings. You can use this information to highlight as you wish. The function should return a string of highlighted code.
-
-You can disable syntax highlighting by passing a function that does nothing:
-
-```js
-function highlighter(code, lang) {
-	return `<pre><code>${code}</code></pre>`;
-}
-
-mdsvex({
-	highlight: {
-		highlighter
-	}
-})
-```
-
-By default `mdsvex` will optimise your code blocks by placing them in a Svelte `@html` block. To disable this behaviour either because you love chaos or you are using `mdsvex` without Svelte (perhaps via the `compile` function), set `optimise: false`
-
-```js
-mdsvex({
-	highlight: {
-		optimise: false
-	}
-})
-```
+SvelteKit picks them up from here, see [SvelteKit](docs#sveltekit).
 
 ### `frontmatter`
 
 ```ts
-frontmatter: { parse: Function, marker: string };
+frontmatter: { parse?: (raw: string) => Record<string, unknown> | null | undefined };
 ```
 
-By default mdsvex supports yaml frontmatter, this is defined by enclosing the YAML in three hyphens (`---`). If you want to use a custom language or marker for frontmatter then you can use the `frontmatter` option.
+Replaces the built-in YAML parser. See [custom frontmatter parsers](docs#custom-frontmatter-parsers).
 
-`frontmatter` should be an object that can contain a `marker` and a `parse` property.
+### `templates`
 
-```sig
-marker: string = '-';
+```ts
+templates: Record<string, string | URL | { component: string | URL; components?: string | URL }>;
 ```
 
-The marker option defines the fence for your frontmatter. This defaults to `-` which corresponds to the standard triple-hyphen syntax (`---`) that you would normally use to define frontmatter. You can pass in a custom string to change this behaviour:
+Components that wrap documents, by name. The `default` entry wraps every document that doesn't pick another. See [Templates](docs#templates-1).
+
+### `select_template`
+
+```ts
+select_template: (id: string, metadata: Record<string, unknown>) => string | false | undefined;
+```
+
+Picks the template of a document whose frontmatter doesn't. See [choosing a template](docs#choosing-a-template).
+
+### `components`
+
+```ts
+components: string | URL | (string | URL)[];
+```
+
+One or more modules whose exports replace elements in every document, below any template's own replacements. See [Custom components](docs#custom-components).
+
+### `component_mode`
+
+```ts
+component_mode: 'markdown' | 'all' = 'markdown';
+```
+
+Which elements can be replaced. `'markdown'` only replaces elements written as markdown, `'all'` also replaces HTML you type. See [`component_mode: 'all'`](docs#component_mode-all).
+
+### `parse_plugins`
+
+```ts
+parse_plugins: ParsePlugin[];
+```
+
+Parse plugins change the tree as the parser builds it. A plugin is an object keyed by node type. Each `parse` function gets the node, and can return a function that runs when the node closes, once its text is known:
 
 ```js
+const heading_ids = {
+	heading: {
+		parse(node) {
+			return () => {
+				node.attrs.id = node.text_content.toLowerCase().replace(/\W+/g, '-');
+			};
+		}
+	}
+};
+
+mdsvex({ parse_plugins: [heading_ids] });
+```
+
+Elements a plugin creates count as markdown, so a [replacement](docs#custom-components) for `mark` also replaces the `<mark>` a highlight plugin adds.
+
+## Frontmatter
+
+A document can start with YAML frontmatter between two `---` lines:
+
+```svx
+---
+title: My lovely article
+author: Dr. Fabuloso the Fabulous
+tags: [svelte, markdown]
+---
+
+# {metadata.title}
+
+By {metadata.author}.
+```
+
+The frontmatter is exported from the document's module script as `metadata`, so the document can read it and so can anything that imports the document:
+
+```svelte
+<script module>
+	export const metadata = {
+		title: 'My lovely article',
+		author: 'Dr. Fabuloso the Fabulous',
+		tags: ['svelte', 'markdown']
+	};
+</script>
+```
+
+```js
+import { metadata } from './article.svx';
+```
+
+Keys are not separate variables, so write `{metadata.title}` rather than `{title}`. [Templates](docs#template-props) get every key as its own prop.
+
+To list posts in SvelteKit, import their metadata with `import.meta.glob`:
+
+```js
+// src/routes/blog/+page.js
+const posts = import.meta.glob('./*/+page.svx', { eager: true });
+
+export function load() {
+	return {
+		posts: Object.entries(posts).map(([path, post]) => ({
+			slug: path.split('/')[1],
+			...post.metadata
+		}))
+	};
+}
+```
+
+### Supported YAML
+
+mdsvex parses frontmatter itself, with no dependency, so `compile` still runs anywhere. It understands the YAML that frontmatter tends to use:
+
+- plain, single quoted and double quoted strings, including escapes in double quotes;
+- numbers (`1`, `-4.2`, `1e3`, `0x1F`, `0o17`, `.inf`, `.nan`), booleans and `null` or `~`, as in YAML 1.2, so `yes` and `off` stay strings;
+- dates, which stay strings, such as `2026-10-02`;
+- nested maps, block sequences (`- a`), flow sequences (`[a, b]`) and flow maps (`{ a: 1 }`);
+- literal `|` and folded `>` blocks, with `-` and `+` chomping;
+- comments.
+
+These are errors that name the line, and point you at [`frontmatter.parse`](docs#custom-frontmatter-parsers):
+
+- anchors (`&`), aliases (`*`), tags (`!!str`), complex keys (`?`) and merge keys (`<<`);
+- indenting with tabs;
+- a duplicate key;
+- frontmatter that isn't a map of keys to values;
+- a plain value containing `: `, such as `title: Hello: World`. Quote it: `title: 'Hello: World'`.
+
+### Custom frontmatter parsers
+
+`frontmatter.parse` replaces the built-in parser. It gets the raw text between the `---` lines and returns an object of metadata. Returning `null` or `undefined` means no metadata.
+
+For full YAML, use a YAML library such as [`yaml`][yaml]:
+
+```js
+import { mdsvex } from 'mdsvex';
+import { parse } from 'yaml';
+
 mdsvex({
-	frontmatter: {
-		marker: "+"
+	frontmatter: { parse: (raw) => parse(raw) }
+});
+```
+
+The fences stay `---`, but what goes between them is up to the parser. For TOML, with [`smol-toml`][smol-toml]:
+
+```js
+import { mdsvex } from 'mdsvex';
+import { parse } from 'smol-toml';
+
+mdsvex({
+	frontmatter: { parse: (raw) => parse(raw) }
+});
+```
+
+```svx
+---
+title = "TOML Example"
+
+[owner]
+name = "some name"
+---
+```
+
+## Templates
+
+A template is a Svelte component that wraps documents. It's the place for a document's title, byline and surrounding layout, and it can [replace the elements](docs#custom-components) of the documents it wraps. mdsvex 0.x called these layouts.
+
+### Defining templates
+
+Name your templates in the `templates` option:
+
+```js
+// vite.config.js
+mdsvex({
+	templates: {
+		default: '#lib/templates/Post.svelte',
+		docs: '#lib/templates/Docs.svelte'
 	}
 });
 ```
 
-Now you can use `+++` to mark frontmatter. Setting _only_ the marker will keep the default frontmatter parser which only supports YAML.
+Each value is a specifier, resolved from the project root like an import, or a `URL`, such as `new URL('./src/Blog.svelte', import.meta.url)`.
 
-```sig
-parse: (frontmatter, message) => Object | undefined
+A template renders the document with `{@render children()}`:
+
+```svelte
+<!-- src/lib/templates/Post.svelte -->
+<script>
+	let { title, date, children } = $props();
+</script>
+
+<article>
+	<h1>{title}</h1>
+	<time datetime={date}>{date}</time>
+
+	{@render children()}
+</article>
 ```
 
-The `parse` property accepts a function which allows you to provide a custom parser for frontmatter. This is useful if you want to use a different language in your frontmatter.
+Templates are ordinary components, so editing one hot reloads the documents that use it. See the [templates playground example](/playground/templates).
 
-The parse function gets the raw frontmatter as the first argument and a `messages` array as the second.
+### Choosing a template
 
-If parsing is successful, the function should return the parsed frontmatter (as an object of key-value pairs), if there is a problem the function should return `undefined` or `false` . Any parsing errors or warnings should be pushed into the `messages` array which will be printed to the console when mdsvex has finished parsing. If you would prefer to throw an error, you are free to do so but it will interrupt the parsing process.
+mdsvex picks a document's template from the first of these that gives an answer:
 
-In the following example, we will modify the frontmatter handling so we can write our frontmatter in TOML with a triple-`+` fence.
+1. The `?template=` query on the import, see [opting out](docs#opting-out).
+2. The `template` key in the frontmatter, a template name or `false`.
+3. `select_template(id, metadata)`, if you configured one.
+4. The `default` entry in `templates`.
+5. Otherwise, no template.
+
+```svx
+---
+title: Writing docs
+template: docs
+---
+```
+
+An unknown name is an error that lists the templates you configured.
+
+`select_template` runs for documents whose frontmatter has no `template` key. It gets the file path and the metadata. It returns a template name, `false` for none, or `undefined` to fall through to `default`:
 
 ```js
 mdsvex({
-	marker: "+",
-	parse(frontmatter, messages) {
-		try {
-			return toml.parse(frontmatter);
-		} catch (e) {
-			messages.push(
-				"Parsing error on line " +
-					e.line +
-					", column " +
-					e.column +
-					": " +
-					e.message
-			);
+	templates: {
+		default: '#lib/templates/Post.svelte',
+		docs: '#lib/templates/Docs.svelte'
+	},
+	select_template: (id) =>
+		id.includes('/changelog/') ? false : id.includes('/docs/') ? 'docs' : undefined
+});
+```
+
+### Opting out
+
+`template: false` in the frontmatter renders a document without one:
+
+```svx
+---
+template: false
+---
+```
+
+To choose for one import only, add `?template=` to it. `?template=false` unwraps the document and `?template=docs` picks another template. The query wins over the frontmatter:
+
+```svelte
+<script>
+	import Intro from './intro.svx?template=false';
+</script>
+
+<Intro />
+```
+
+### Template props
+
+A template gets:
+
+- every frontmatter key as its own prop, so `let { title } = $props()` reads `title`;
+- `children`, a snippet that renders the document;
+- the props passed to the document, so `<Post featured />` reaches the template as `featured`.
+
+The frontmatter can't have a `children` key when the document has a template. It is an error that points at the line.
+
+A document that reads its own props with `let props = $props()` still forwards them all to its template. If it destructures them, `let { featured } = $props()`, it forwards none, as `$props()` can only be called once.
+
+### What gets hoisted
+
+Some things only work at the top level of a component, so they stay outside the template:
+
+- `<script>` and `<script module>`;
+- `<style>`;
+- `<svelte:head>`, `<svelte:window>`, `<svelte:body>`, `<svelte:document>` and `<svelte:options>`.
+
+Everything else, markdown, HTML and components alike, is the document body that the template renders as `children`.
+
+## Custom components
+
+Custom components replace the elements markdown produces. A `## heading` can render your `Heading.svelte`, and a fenced code block your `CodeBlock.svelte`.
+
+### Replacing elements in a template
+
+A template's `<script module>` exports replace elements by name, in the documents it wraps:
+
+```svelte
+<!-- src/lib/templates/Docs.svelte -->
+<script module>
+	export { default as h2 } from './docs/Heading.svelte';
+	export { default as pre } from './docs/CodeBlock.svelte';
+</script>
+
+<script>
+	let { title, children } = $props();
+</script>
+
+<main class="docs">
+	<h1>{title}</h1>
+	{@render children()}
+</main>
+```
+
+The export name is the element name. mdsvex reads the names without running the module, so export each one by name. A name `export *` re-exports can't be seen, and mdsvex warns about it.
+
+For a template you can't edit, such as one from a package, give the replacements in a module of their own. They are merged over the template's own:
+
+```js
+mdsvex({
+	templates: {
+		theme: {
+			component: '@acme/theme/Layout.svelte',
+			components: '#lib/theme-overrides.js'
 		}
 	}
 });
 ```
 
-Now we will be able to write TOML frontmatter:
+### The `components` option
 
-```mdsvex
-+++
-title = "TOML Example"
+`components` names one or more modules whose exports replace elements in every document, including documents with no template:
 
-[owner]
-name = "some name"
-dob = 1879-05-27T07:32:00-08:00
-+++
+```js
+// src/lib/markdown.js
+export { default as img } from './Image.svelte';
+export { default as a } from './Link.svelte';
 ```
 
-## Layouts
+```js
+mdsvex({ components: '#lib/markdown.js' });
+```
 
-Layouts are one of the more powerful features available in mdsvex and allow for a great deal of flexibility. At their simplest a layout is just a component that wraps an mdsvex document. Providing a string as the layout option will enable this behaviour:
+See the [templates playground example](/playground/templates), which uses both.
+
+### Precedence
+
+For each element, mdsvex uses the first match from:
+
+1. the document's template, including its `components` override module;
+2. the `components` modules, the last module in the list winning;
+3. no match, the plain element.
+
+`template: false` documents only use the `components` modules.
+
+Markdown inside a component you use, such as `<Aside>`, uses the same replacements as the rest of the document.
+
+### Element props
+
+Every replacement gets the element's attributes as props, including any a parse plugin added, such as an `id`. Unless the element is void, it gets its content as `children`. Some elements get more:
+
+| element | extra props |
+| --- | --- |
+| `h1` to `h6` | `level`, a number from 1 to 6 |
+| `a` | `href`, `title` |
+| `img` | `src`, `alt`, `title`, and no `children` |
+| `pre` | `lang` and `meta` from the info string, `code`, the raw source text |
+| `code` | inline code only, its text as `children` |
+| `ol` | `start` |
+| `li` | `checked`, when a task list plugin sets it |
+| `th`, `td` | `align`, `"left"`, `"right"` or `"center"` |
+
+`hr` and `br` are void too. For a fenced code block, `children` is the default rendering, a `<code>` element. The info string `js title="x"` gives `lang="js"` and `meta='title="x"'`. A block with no info string gets only `code`.
+
+One component can serve several elements:
+
+```svelte
+<!-- src/lib/templates/docs/Heading.svelte -->
+<script>
+	let { level, id, children } = $props();
+</script>
+
+<svelte:element this={`h${level}`} {id}>
+	<a href="#{id}">#</a>
+	{@render children()}
+</svelte:element>
+```
+
+```js
+export { default as h2, default as h3 } from './docs/Heading.svelte';
+```
+
+Svelte ignores props a component doesn't declare, so a replacement only reads what it needs.
+
+### `component_mode: 'all'`
+
+By default, only elements written as markdown are replaced, so typing HTML such as `<a>` gets you the plain element. With `component_mode: 'all'`, lowercase HTML you type is replaced as well:
 
 ```js
 mdsvex({
-	layout: "./path/to/layout.svelte"
+	components: '#lib/markdown.js',
+	component_mode: 'all'
 });
 ```
 
-Layouts receive all values defined in frontmatter as props:
+```svx
+<a href="/about">Replaced by the a export</a>
 
-```svelte
-<Layout {...props} >
-  <!-- mdsvex content here -->
-</Layout>
+<svelte:element this={'a'} href="/about">Never replaced</svelte:element>
 ```
 
-You can then use these values in your layout however you wish, a typical use might be to define some fancy formatting for headings, authors, and dates. Although you could do all kinds of wonderful things. You just need to make sure you provide a default `slot` so the mdsvex content can be passed into your layout and rendered.
+- `<svelte:element this={'a'}>` is the escape hatch, it is never replaced.
+- `<svelte:*>` elements and capitalised components are never replaced.
+- An element with a directive, such as `bind:`, `on:`, `use:`, `class:`, `style:`, `transition:`, `in:`, `out:`, `animate:` or `let:`, stays a plain element even when it has a replacement, because a component can't take a directive. mdsvex warns, naming the element and the directive. Event attributes such as `onclick` are plain props and are passed along.
 
-```svelte
-<script>
-  export let title;
-  export let author;
-  export let date;
-</script>
+### Lowercase custom tags
 
-<h1>{ title }</h1>
-<p class="date">on: { date }</p>
-<p class="date">by: { author }</p>
-<slot>
-  <!-- the mdsvex content will be slotted in here -->
-</slot>
-```
-
-### Named Layouts
-
-In some cases you may want different layouts for different types of document. To address this you can pass an object of named layouts instead. Each key should be a name for your layout, the value should be the path to that layout file. A fallback layout, or default, can be passed using `_` (underscore) as a key name.
+With `component_mode: 'all'`, a lowercase tag matching an export is replaced too. A `warning` export gives every document a `<warning>` tag, with no import:
 
 ```js
-mdsvex({
-	layout: {
-		blog: "./path/to/blog/layout.svelte",
-		article: "./path/to/article/layout.svelte",
-		_: "./path/to/fallback/layout.svelte"
-	}
-});
+// src/lib/markdown.js
+export { default as warning } from './Warning.svelte';
 ```
 
-If you pass an object of named layouts, you can decide which layout to use on a file-by-file basis by declaring it in the frontmatter. For example, if you wanted to force a document to be wrapped with the `blog` layout you would do the following:
+```svx
+<warning type="tip">
 
-```mdsvex
----
-layout: blog
----
+Markdown *inside* still works.
+
+</warning>
 ```
 
-If you are using named layouts and do not have a layout field in the frontmatter then mdsvex will try to pick the correct one based on the folder a file is stored in. Take the following folder structure:
+A tag name that isn't a JavaScript identifier, such as `<info-box>`, matches a string export: `export { default as 'info-box' } from './InfoBox.svelte'`. Capitalised tags are always plain Svelte components, imported as usual. See the [all mode playground example](/playground/all-mode).
 
-```
-.
-├── blog
-│   └── my-blog-post.svx
-└── article
-    └── my-article.svx
-```
+### Nested scopes
 
-If there is a layout named `blog` and `article` then documents in the `blog` folder will use the `blog` layout, articles in the `articles` folder will use the `article` layout. mdsvex will try to check both singular and pluralised names, as you may have named a folder `events` but the matching layout could be named `event`, however, having the same folder and layout name will make this process more reliable. The current working directory is removed from the path when checking for matches but nested folders can still cause problems if there are conflicts. Shallow folder structures and unique folder and layout names will prevent these kinds of collisions.
+Markdown inside a component always uses the document's replacements, never ones the wrapping component supplies. Letting `<Aside>` change how the markdown inside it renders is deferred for now.
 
-If there is no matching layout then the fallback layout (`_`) will be applied, if there is no fallback then no layout will be applied.
-
-### disabling layouts
-
-If you are using layouts but wish to disable them for a specific component, then you can set the `layout` field to `false` to prevent the application of a layout.
-
-```mdsvex
----
-layout: false
----
-```
-
-### Custom Components
-
-Layouts also allow you to provide custom components to any mdsvex file they are applied to. Custom components replace the elements that markdown would normally generate.
-
-```mdsvex
-# Title
-
-Some text
-
-- a
-- short
-- list
-```
-
-Would normally compile to:
+Until then, move that markdown into a document of its own, and give it a template with the replacements you want. Here that is an `aside` entry in `templates`, which `?template=` picks on the import:
 
 ```svelte
-<h1>Title</h1>
-<p>Some text</p>
-<ul>
-  <li>a</li>
-  <li>short</li>
-  <li>list</li>
-</ul>
-```
-
-Custom components allow you to replace these elements with components. You can define components by exporting named exports from the `context="module"` script of your Layout file:
-
-```svelte
-<script context="module">
-  import { h1, p, li } from './components.js';
-  export { h1, p, li };
+<!-- src/lib/templates/Aside.svelte -->
+<script module>
+	export { default as p } from './aside/Paragraph.svelte';
 </script>
-```
 
-The named exports must be named after the actual element you want to replace (`p`, `blockquote`, etc.), the value must be the component you wish to replace them with. This makes certain named exports 'protected' API, make sure you don't use html names as export names for other values. Named exports whose names do not correspond to an HTML element will be ignored, so feel free to continue using them for other purposes as well. As these are named exports it is possible for the bundler to treeshake unused custom components, even if they are exported.
-
-The above custom components would generate:
-
-```svelte
 <script>
-  import * as Components from './Layout.svelte';
+	let { children } = $props();
 </script>
 
-<Components.h1>Title</Components.h1>
-<Components.p>Some text</Components.p>
-<ul>
-  <Components.li>a</Components.li>
-  <Components.li>short</Components.li>
-  <Components.li>list</Components.li>
-</ul>
+{@render children()}
 ```
 
-Notice that the `ul` is left intact: elements are replaced _after_ the markdown is parsed to HTML. This allows greater flexibility, for example, when using custom components to customise lists, tables or other markdown that compiles to a combination of different HTML elements.
-
-You may also receive attributes of the normal HTML component. For example, to render a custom `<img>` tag you could do:
-
-```svelte
+```svx
 <script>
-  export let src;
+	import AsideText from './aside-text.svx?template=aside';
 </script>
 
-<img src={src} />
+## Header 2
+
+<aside>
+	<AsideText />
+</aside>
 ```
 
-## Frontmatter
+## Directives
 
-YAML frontmatter is a common convention in blog posts and mdsvex supports it out of the box. If you want to use a custom language or marker for frontmatter than you can use the [`frontmatter`](docs#frontmatter) option to modify the default behaviour.
+Directives give markdown a syntax for your own components, without writing HTML. Each one renders a Svelte component:
 
-Mdsvex integrates well with frontmatter providing additional flexibility when authoring documents.
-
-All variables defined in frontmatter are available directly in the component, exactly as you wrote them:
-
-```mdsvex
----
-title: My lovely article
-author: Dr. Fabuloso the Fabulous
----
-
-# {title} by {author}
-
-Some amazing content.
+```svx
+:::Callout[Heads up](kind=warn)
+Body *markdown*
+:::
 ```
 
-Additionally, all of these variables are exported as a single object named `metadata` from the `context="module"` script, so they can easily be imported in javascript:
+See the [directives playground example](/playground/directives).
 
-```svelte
-<script context="module">
-  export let metadata = {
-    title: "My lovely article",
-    author: "Dr. Fabuloso the Fabulous"
-  };
-</script>
-```
+### Declaring directives
 
-Due to how `context="module"` scripts work, this metadata can be imported like this:
+Directives come from a `directives` namespace export. Any module that can replace elements can have one, the `components` modules and a template's `<script module>` alike:
 
 ```js
-import { metadata } from "./some-mdsvex-file.svx";
+// src/lib/markdown.js
+export { default as img } from './Image.svelte';
+export * as directives from './directives.js';
 ```
 
-Frontmatter also interacts with layouts, you can find more details in the [Layout section](docs#layouts).
+```js
+// src/lib/directives.js
+export { default as Callout } from './Callout.svelte';
+export { default as youtube } from './YouTube.svelte';
+```
 
-## Integrations
+A directive's name matches an export name exactly, so `:::Callout` uses `Callout`. Directives and elements are separate, so a `table` directive never replaces tables, and an element export never serves a directive.
 
-### With shiki
+Write it as `export * as directives from '...'`, so mdsvex can read the names without running the module. Any other `directives` export is an error.
 
-You can use shiki for highlighting rather than prism by leveraging the `highlighter` option:
+A template's directives come before those of the `components` modules, in the same order as [element replacements](docs#precedence).
+
+### The three forms
+
+| form | example | props |
+| --- | --- | --- |
+| inline | `:abbr[HTML](title=HyperText)` | args, and the text in brackets as `children` |
+| leaf | `::youtube[A talk](id=dQw4w9WgXcQ)` | args, and the text in brackets as `label` |
+| container | `:::Callout[Heads up](kind=warn)` ... `:::` | args, the text in brackets as `label` and the body as `children` |
+
+The brackets are required, and can be empty: `::toc[]`. A leaf or container takes a line of its own, and a container ends at a line of colons. Containers nest when the outer one uses more colons. The bracket text can hold emphasis, strong, code and other directives, but links and images in it stay plain text.
+
+A name starts with a letter, then letters, digits, `_` or `-`. A name that isn't a JavaScript identifier, such as `info-box`, matches a string export: `export { default as 'info-box' } from './InfoBox.svelte'`.
+
+### Directive props
+
+- Args in parentheses become string props: `(kind=warn, title="A title")` gives `kind="warn"` and `title="A title"`. Values are never Svelte expressions.
+- `label` is a snippet of the bracket text of a leaf or container. Its inline markdown is rendered, and empty brackets pass no `label`.
+- `children` is a snippet of an inline directive's bracket text, or of a container's body.
+
+```svelte
+<!-- src/lib/Callout.svelte -->
+<script>
+	let { kind = 'note', label, children } = $props();
+</script>
+
+<aside class="callout {kind}">
+	{#if label}<strong>{@render label()}</strong>{/if}
+	{@render children?.()}
+</aside>
+```
+
+An arg named `children` is an error. So is `label` on a leaf or container, though an inline directive can take a `label` arg as a plain prop.
+
+### Unknown directives
+
+A directive with no component is an error that names it and its line and column:
+
+```
+no component renders the directive :::Calout at 3:1. Export a component named "Calout" from a directives module (export * as directives from './directives.ts'), or replace the directive_container node in a parse plugin
+```
+
+A [parse plugin](docs#parse_plugins) can handle directives that have no component, through the `directive_inline`, `directive_leaf` and `directive_container` node types. A directive with a component never reaches a plugin.
+
+## Migrating from mdsvex 0.x
+
+Layouts are now [templates](docs#templates-1). The idea is the same, a component that wraps documents and replaces their elements, with new names and Svelte 5 components.
+
+### Run the migrator
+
+`@mdsvex/migrate` rewrites your config and documents, and flags what it can't rewrite:
+
+```bash
+npm i --save-dev @mdsvex/migrate@next
+```
+
+It is a library of functions. Each returns the new `code` and a list of `notes`, things to check by hand, each with a `line` and a `message`. A short script runs them over a project. Commit your work first, then set `config` to the file that calls `mdsvex()` and `layouts` to your layout components:
 
 ```js
-import { mdsvex } from 'mdsvex';
-import { createHighlighter } from 'shiki';
+// migrate.js
+import { readFileSync, writeFileSync, globSync } from 'node:fs';
+import { migrate_config, migrate_frontmatter, check_template } from '@mdsvex/migrate';
 
-const theme = 'github-dark';
-const highlighter = await createHighlighter({
-	themes: [theme],
-	langs: ['javascript', 'typescript']
-});
+const config = 'svelte.config.js';
+const layouts = ['src/lib/layouts/Blog.svelte'];
 
-/** @type {import('mdsvex').MdsvexOptions} */
-const mdsvexOptions = {
-	highlight: {
-		highlighter: (code, lang = 'text') => highlighter.codeToHtml(code, { lang, theme })
-	},
+function report(file, notes) {
+	for (const note of notes) console.log(`${file}:${note.line}: ${note.message}`);
 }
+
+function rewrite(file, migrate) {
+	const { code, notes } = migrate(readFileSync(file, 'utf8'));
+	writeFileSync(file, code);
+	report(file, notes);
+}
+
+rewrite(config, migrate_config);
+for (const file of globSync('src/**/*.{svx,md}')) rewrite(file, migrate_frontmatter);
+for (const file of layouts) report(file, check_template(readFileSync(file, 'utf8')));
 ```
+
+```bash
+node migrate.js
+```
+
+- `migrate_config` rewrites the `layout` option into `templates`, in a JavaScript or TypeScript config.
+- `migrate_frontmatter` renames a document's `layout:` key to `template:`.
+- `check_template` lists what a layout component needs changed. It rewrites nothing.
+
+The options stay where they were. SvelteKit 3 has no `svelte.config.js`, so move the `mdsvex()` call from `preprocess` into the `plugins` of `vite.config.js`, as in [SvelteKit](docs#sveltekit). mdsvex registers its extensions, so they don't need to move with it.
+
+To also convert CommonMark documents to mdsvex's markdown, use `migrate`, which renames the `layout:` key as well. Its README has the details.
+
+### What changes
+
+| mdsvex 0.x | now |
+| --- | --- |
+| `layout: './src/Layout.svelte'` | `templates: { default: './src/Layout.svelte' }` |
+| `layout: { _: …, blog: … }` | `templates: { default: …, blog: … }` |
+| a named layout applied to documents in a folder of the same name | `select_template`, which the migrator writes for you as a note |
+| frontmatter `layout: blog`, `layout: false` | `template: blog`, `template: false` |
+| frontmatter `layout: _` | `template: default` |
+| `layoutPropForwarding` | always on, the migrator flags it |
+| `<slot />` in a layout | `{@render children()}` |
+| `export let title` in a layout | `let { title } = $props()` |
+| `<script context="module">` exports | `<script module>` exports |
+| `{title}` in a document | `{metadata.title}` |
+| `remarkPlugins`, `rehypePlugins` | [`parse_plugins`](docs#parse_plugins) |
+
+The migrator handles the `layout` rows and flags `<slot />` and `layoutPropForwarding`. The other rows are yours to change.
+
+0.x matched named layouts to folders. Templates aren't matched by folder, so for named layouts the notes include a `select_template` to paste into your config:
+
+```js
+select_template: (id) => (id.includes('/blog/') ? 'blog' : undefined),
+```
+
+### `layout:` in frontmatter
+
+mdsvex doesn't read a `layout:` key any more, and there is no alias for it. The migrator renames it to `template:`. A document you haven't migrated keeps `layout:` as ordinary metadata, and gets the `default` template, or the one `select_template` picks.
+
+### Layout components
+
+A layout needs two changes to work as a template:
+
+```svelte
+<!-- before -->
+<script>
+	export let title;
+</script>
+
+<h1>{title}</h1>
+<slot />
+```
+
+```svelte
+<!-- after -->
+<script>
+	let { title, children } = $props();
+</script>
+
+<h1>{title}</h1>
+{@render children()}
+```
+
+`check_template` finds `<slot />`, `$$props`, `$$restProps` and `{...$$props}`. [`npx sv migrate svelte-5`][sv-migrate] migrates the rest of the component. Element replacements stay in the module script, now `<script module>`, and keep working.
 
 ## Limitations
 
