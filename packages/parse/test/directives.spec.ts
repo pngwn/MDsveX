@@ -407,6 +407,193 @@ describe('container block directives', () => {
 	});
 });
 
+const shape_without_positions = (
+	nodes: ReturnType<typeof parse_markdown_svelte>['nodes'],
+	idx: number,
+	input: string
+): unknown => {
+	const node = nodes.get_node(idx);
+	return {
+		kind: node.kind,
+		metadata: node.metadata,
+		text: node.kind === 'text' ? input.slice(node.value[0], node.value[1]) : '',
+		children: node.children.map((c) =>
+			shape_without_positions(nodes, c, input)
+		),
+	};
+};
+
+/** parses body at the root and inside a note container */
+const root_and_container_lists = (body: string) => {
+	const at_root = parse_markdown_svelte(body);
+	const root_list = find_child(
+		at_root.nodes,
+		at_root.nodes.get_node().index,
+		'list'
+	);
+	expect(root_list).not.toBeNull();
+
+	const input = `:::note[]\n${body}:::\n`;
+	const { nodes } = parse_markdown_svelte(input);
+	const container = find_child(
+		nodes,
+		nodes.get_node().index,
+		'directive_container'
+	);
+	expect(container).not.toBeNull();
+	expect(find_children(nodes, container!.index, 'paragraph')).toEqual([]);
+	const list = find_child(nodes, container!.index, 'list');
+	expect(list).not.toBeNull();
+
+	return {
+		root: shape_without_positions(at_root.nodes, root_list!.index, body),
+		container: shape_without_positions(nodes, list!.index, input),
+		list: list!,
+		nodes,
+	};
+};
+
+describe('lists in container directives', () => {
+	test('bullet list', () => {
+		const { root, container, list, nodes } =
+			root_and_container_lists('- a\n- b\n');
+		expect(container).toEqual(root);
+		expect(list.metadata.ordered).toBe(false);
+		expect(find_children(nodes, list.index, 'list_item').length).toBe(2);
+	});
+
+	test('bullet list with * and + markers', () => {
+		for (const body of ['* a\n* b\n', '+ a\n+ b\n']) {
+			const { root, container } = root_and_container_lists(body);
+			expect(container).toEqual(root);
+		}
+	});
+
+	test('ordered list', () => {
+		const { root, container, list } = root_and_container_lists('3. a\n4. b\n');
+		expect(container).toEqual(root);
+		expect(list.metadata.ordered).toBe(true);
+		expect(list.metadata.start).toBe(3);
+	});
+
+	test('ordered list with ) delimiter', () => {
+		const { root, container } = root_and_container_lists('1) a\n2) b\n');
+		expect(container).toEqual(root);
+	});
+
+	test('task list items', () => {
+		const { root, container, list, nodes } =
+			root_and_container_lists('- [ ] a\n- [x] b\n');
+		expect(container).toEqual(root);
+		expect(find_children(nodes, list.index, 'list_item').length).toBe(2);
+	});
+
+	test('nested list', () => {
+		const { root, container } = root_and_container_lists(
+			'- a\n  - b\n  - c\n- d\n'
+		);
+		expect(container).toEqual(root);
+	});
+
+	test('loose list', () => {
+		const { root, container, list } = root_and_container_lists('- a\n\n- b\n');
+		expect(container).toEqual(root);
+		expect(list.metadata.tight).toBe(false);
+	});
+
+	test('list after a paragraph', () => {
+		const input = ':::note[]\nintro\n- a\n:::\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const container = find_child(
+			nodes,
+			nodes.get_node().index,
+			'directive_container'
+		);
+		const kinds = get_all_child_kinds(nodes, container!.index).filter(
+			(k) => k !== 'line_break'
+		);
+		expect(kinds).toEqual(['paragraph', 'list']);
+	});
+
+	test('closing fence ends the list and the container', () => {
+		const input = ':::note[]\n- a\n- b\n:::\nafter\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const root_kinds = get_all_child_kinds(nodes, root.index).filter(
+			(k) => k !== 'line_break'
+		);
+		expect(root_kinds).toEqual(['directive_container', 'paragraph']);
+
+		const container = find_child(nodes, root.index, 'directive_container');
+		const list = find_child(nodes, container!.index, 'list');
+		const items = find_children(nodes, list!.index, 'list_item');
+		expect(items.length).toBe(2);
+		const text = find_child(nodes, items[1].index, 'text');
+		expect(get_content(nodes, text!.index, input).value).toBe('b');
+	});
+
+	test('list closes at eof without a closing fence', () => {
+		const input = ':::note[]\n- a\n- b';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const container = find_child(
+			nodes,
+			nodes.get_node().index,
+			'directive_container'
+		);
+		const list = find_child(nodes, container!.index, 'list');
+		expect(find_children(nodes, list!.index, 'list_item').length).toBe(2);
+	});
+
+	test('list in a nested container, then in the outer one', () => {
+		const input = '::::outer[]\n:::inner[]\n- a\n:::\n1. b\n::::\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const outer = find_child(
+			nodes,
+			nodes.get_node().index,
+			'directive_container'
+		);
+		const inner = find_child(nodes, outer!.index, 'directive_container');
+		expect(find_child(nodes, inner!.index, 'list')!.metadata.ordered).toBe(
+			false
+		);
+		expect(find_child(nodes, outer!.index, 'list')!.metadata.ordered).toBe(
+			true
+		);
+	});
+
+	test('thematic break is still a thematic break', () => {
+		const input = ':::note[]\n- - -\n:::\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const container = find_child(
+			nodes,
+			nodes.get_node().index,
+			'directive_container'
+		);
+		expect(
+			find_child(nodes, container!.index, 'thematic_break')
+		).not.toBeNull();
+		expect(find_child(nodes, container!.index, 'list')).toBeNull();
+	});
+
+	test('number without a list delimiter is a paragraph', () => {
+		const input = ':::note[]\n2026 was a year\n:::\n';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const container = find_child(
+			nodes,
+			nodes.get_node().index,
+			'directive_container'
+		);
+		expect(find_child(nodes, container!.index, 'paragraph')).not.toBeNull();
+		expect(find_child(nodes, container!.index, 'list')).toBeNull();
+	});
+});
+
 // ===========================================================
 // Interactions with other constructs
 // ===========================================================
