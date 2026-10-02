@@ -132,7 +132,7 @@ children
 
 Handlers are user-supplied functions keyed by name. The `[content]` brackets are required for every directive form — empty text is explicit (`:name[]`, `::name[]`), a bare `::name` is just a paragraph. Names start with a letter, then `[a-zA-Z0-9_-]`.
 
-Directive text accepts simple inline constructs — emphasis, strong, code spans, strikethrough, superscript, subscript, escapes — but not links, images, or autolinks; those stay literal text. Unescaped square brackets inside the text must balance. Directives may nest: `:outer[has :inner[x] inside]`.
+Directive text accepts simple inline constructs — emphasis, strong, code spans, strikethrough, superscript, subscript, escapes — but not links, images, or autolinks; those stay literal text. Unescaped square brackets inside the text must balance. Directives may nest: `:outer[has :inner[x] inside]`. In the leaf and container forms the brackets are matched first, with brackets inside a code span left out, and nothing in the text reaches past the closing `]`: `::name[*a](k=v)` keeps `*a` literal.
 
 An optional argument list may follow the brackets immediately (no space). Arguments are named only — no positional values:
 

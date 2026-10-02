@@ -472,17 +472,12 @@ The rule has these consequences:
 ### 6.3 Props contract
 
 - **Args** become string props: `kind="warn"`, or `v={"{a}"}` when the value holds braces, so they are never read as expressions.
-- **Bracket content** of a leaf or container becomes a `label` snippet. This also answers "named slots for a blockquote title" (#263). Empty brackets pass no snippet, so `{#if label}` works.
+- **Bracket content** of a leaf or container becomes a `label` snippet. This also answers "named slots for a blockquote title" (#263). The parser parses it as inline content into a `directive_label` node, the directive's first child, so the snippet renders `:::x[Heads *up*]` as `Heads <strong>up</strong>`, with replaced elements and inline directives inside. Empty brackets pass no snippet, so `{#if label}` works.
 - **Inline** `:name[…]` passes its content as `children`.
 - **Container** passes its body as `children`.
 - **Leaf** `::name[…]` passes `label` only.
 - **Reserved names.** An arg named `children` is a compile error, and so is `label` on a leaf or container. On an inline directive, `label` is a plain prop.
 - **Void output.** A directive with no label and no children renders self-closing.
-
-Known gaps, both in the parser:
-
-- **Labels are plain text.** Leaf and container labels are kept as a raw value range, so `:::x[Heads *up*]` renders the `*` literally. Inline directive text is parsed.
-- **No lists in containers.** Lists inside a directive container don't parse.
 
 ### 6.4 Nested scopes later (§5.4)
 
