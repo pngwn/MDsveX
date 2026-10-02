@@ -22,6 +22,8 @@ import { baseline_dir, local_root } from '../paths.mjs';
 import { bold, dim, green, red, yellow } from '../report.mjs';
 import {
 	CHUNK_SIZES,
+	compile_options,
+	DIRECTIVE,
 	HUGE_MODES,
 	load_arm,
 	MODES,
@@ -97,16 +99,26 @@ function output(arm, mode, src, session) {
 			const { mappings } = r.update_mapped(nodes, source);
 			return append(canonical_text(r.html), canonical_mappings(mappings));
 		}
+		// directives render through the options the workloads pass, see compile_options
 		case 'compile':
-			return compiled(arm.compile(src), false);
+			return compiled(arm.compile(src, compile_options(arm, src)), false);
 		case 'compile-mapped':
-			return compiled(arm.compile(src, { sourcemap: true }), true);
+			return compiled(
+				arm.compile(src, compile_options(arm, src, { sourcemap: true })),
+				true
+			);
 		case 'compile-reused':
-			return compiled(session.compile(src), false);
+			return compiled(session.compile(src, compile_options(arm, src)), false);
 		case 'compile-reused-mapped':
-			return compiled(session.compile(src, { sourcemap: true }), true);
+			return compiled(
+				session.compile(src, compile_options(arm, src, { sourcemap: true })),
+				true
+			);
 		case 'sourcemap-v3': {
-			const { code, mappings } = arm.compile(src, { sourcemap: true });
+			const { code, mappings } = arm.compile(
+				src,
+				compile_options(arm, src, { sourcemap: true })
+			);
 			return [JSON.stringify(arm.mappings_to_v3(mappings, src, code, VITE_ID))];
 		}
 		case 'vite-transform': {
@@ -164,6 +176,8 @@ for (const entry of corpus({ families })) {
 	const src = entry.source;
 	for (const mode of modes) {
 		if (entry.family === 'huge' && !HUGE_MODES.includes(mode)) continue;
+		// the plugin cannot register directives, as in the workloads
+		if (mode === 'vite-transform' && DIRECTIVE.test(src)) continue;
 		const pick = mode === 'compile-reused-mapped' ? mapped_sessions : sessions;
 		const a = output(base, mode, src, pick.base);
 		const b = output(cand, mode, src, pick.cand);
