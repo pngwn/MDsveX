@@ -1,5 +1,7 @@
 root
-  directive_container name="box" args.variant="warning" args.size="large" "Label"
+  directive_container name="box" args.variant="warning" args.size="large"
+    directive_label
+      text "Label"
     paragraph
       text "Body content."
     line_break

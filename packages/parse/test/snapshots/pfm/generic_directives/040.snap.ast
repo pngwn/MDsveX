@@ -1,6 +1,8 @@
 root
   directive_container name="note"
-    directive_leaf name="toc" "Table of Contents"
+    directive_leaf name="toc"
+      directive_label
+        text "Table of Contents"
     line_break
     paragraph
       text "Some text with "

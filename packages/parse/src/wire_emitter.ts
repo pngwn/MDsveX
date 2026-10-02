@@ -78,6 +78,12 @@ const KIND_NAMES: string[] = [
 	"svelte_tag",
 	"svelte_block",
 	"svelte_branch",
+	"directive_inline",
+	"directive_leaf",
+	"directive_container",
+	"frontmatter",
+	"import_statement",
+	"directive_label",
 ];
 
 /** tracks progressive text emission for a node. */

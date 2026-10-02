@@ -1,3 +1,5 @@
 root
   block_quote
-    directive_leaf name="note" "inside quote"
+    directive_leaf name="note"
+      directive_label
+        text "inside quote"

@@ -148,6 +148,7 @@ export const enum NodeKind {
 	directive_container = 32,
 	frontmatter = 33,
 	import_statement = 34,
+	directive_label = 35,
 }
 
 /**
@@ -240,12 +241,14 @@ export const kind_to_string = (kind: NodeKind): string => {
 			return 'frontmatter';
 		case NodeKind.import_statement:
 			return 'import_statement';
+		case NodeKind.directive_label:
+			return 'directive_label';
 	}
 };
 
 /** reverse mapping from string name to numeric NodeKind. built once at module load. */
 const _string_to_kind = new Map<string, NodeKind>();
-for (let i = 0; i <= 34; i++) {
+for (let i = 0; i <= 35; i++) {
 	_string_to_kind.set(kind_to_string(i as NodeKind), i as NodeKind);
 }
 

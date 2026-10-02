@@ -192,7 +192,11 @@ describe('html block closing containers opened inside it', () => {
 					[
 						'svelte_branch',
 						'line_break',
-						['directive_container', ['paragraph', 'text:foo']],
+						[
+							'directive_container',
+							['directive_label', 'text:hi'],
+							['paragraph', 'text:foo'],
+						],
 					],
 				],
 			],

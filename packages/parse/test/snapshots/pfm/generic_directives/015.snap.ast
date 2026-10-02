@@ -3,4 +3,6 @@ root
     text "hello"
   line_break
   line_break
-  directive_leaf name="note" "content"
+  directive_leaf name="note"
+    directive_label
+      text "content"

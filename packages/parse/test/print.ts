@@ -16,7 +16,8 @@ function fmt_val(v: unknown): string {
 
 /**
  * Node kinds that carry a meaningful value range to display as a quoted string.
- * Container nodes (paragraph, emphasis, etc.) let children convey content.
+ * Container nodes (paragraph, emphasis, etc.) let children convey content, as
+ * does a block directive, whose bracket text is its directive_label child.
  */
 const VALUE_KINDS = new Set([
 	'text',
@@ -27,8 +28,6 @@ const VALUE_KINDS = new Set([
 	'mustache',
 	'svelte_tag',
 	'svelte_branch',
-	'directive_leaf',
-	'directive_container',
 	'frontmatter',
 	'import_statement',
 ]);

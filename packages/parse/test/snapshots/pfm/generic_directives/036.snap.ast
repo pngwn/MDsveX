@@ -1,2 +1,6 @@
 root
-  directive_leaf name="note" "with [brackets] inside"
+  directive_leaf name="note"
+    directive_label
+      text "with "
+      text "[brackets"
+      text "] inside"

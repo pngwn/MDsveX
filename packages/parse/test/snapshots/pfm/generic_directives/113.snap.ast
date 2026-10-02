@@ -1,0 +1,7 @@
+root
+  block_quote
+    directive_leaf name="q"
+      directive_label
+        strong_emphasis
+          text "quoted"
+        text " text"

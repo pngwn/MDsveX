@@ -1,2 +1,4 @@
 root
-  directive_leaf name="toc" "Table of Contents"
+  directive_leaf name="toc"
+    directive_label
+      text "Table of Contents"
