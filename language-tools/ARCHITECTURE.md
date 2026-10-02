@@ -76,3 +76,12 @@ packages/{parse,render,mdsvex}  ->  language-tools/typescript-plugin
 ```
 
 Run `pnpm build:ls` from the repo root to build everything in the correct order.
+
+## Trying it locally
+
+1. Run `pnpm build:ls` from the repo root.
+2. Run `pnpm --filter mdsvex-demo dev` once, so the plugin writes `packages/test-app/node_modules/.mdsvex/manifest.json`. You can stop it once it has started.
+3. Open `language-tools/vscode-pfm` in VS Code and run **Launch Extension (demo app)**. It opens `packages/test-app`.
+4. Open `src/routes/editor/+page.svx`. The page lists what to hover, and it has two deliberate type errors.
+
+**Launch Extension** opens `test-fixture` instead. There is no Vite there, so `note.pfm` gets its template from `mdsvex.config.json`.

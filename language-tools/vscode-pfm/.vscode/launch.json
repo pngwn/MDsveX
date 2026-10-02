@@ -10,7 +10,23 @@
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"${workspaceFolder}/test-fixture"
 			],
-			"outFiles": ["${workspaceFolder}/dist/**/*.cjs"],
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.cjs"
+			],
+			"preLaunchTask": "build"
+		},
+		{
+			"name": "Launch Extension (demo app)",
+			"type": "extensionHost",
+			"request": "launch",
+			"runtimeExecutable": "${execPath}",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"${workspaceFolder}/../../packages/test-app"
+			],
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.cjs"
+			],
 			"preLaunchTask": "build"
 		}
 	]
