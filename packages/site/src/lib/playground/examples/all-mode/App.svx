@@ -1,0 +1,24 @@
+<script>
+	let name = $state('world');
+</script>
+
+With `component_mode: 'all'` in `mdsvex.config.json`, HTML you type is
+replaced too, not only markdown.
+
+## A markdown heading
+
+<h2>A typed heading, replaced as well</h2>
+
+<svelte:element this={'h2'}>svelte:element is never replaced</svelte:element>
+
+A lowercase tag matching an export needs no import:
+
+<warning>
+
+Markdown *inside* still works, {name}.
+
+</warning>
+
+An element with a directive stays an element, as a component can't take one:
+
+<input bind:value={name} />
