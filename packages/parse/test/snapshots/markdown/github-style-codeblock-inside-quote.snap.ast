@@ -3,4 +3,19 @@ root
     paragraph
       text "Define a function in javascript:"
     line_break
-    code_fence "> function MyFunc(a) {\n>     var s = '`';\n> }\n> ```\n>\n>> And some nested quote\n>>\n>> ```html\n>> <div>HTML!</div>\n>> ```\n"
+    code_fence "> function MyFunc(a) {\n>     var s = '`';\n> }"
+    line_break
+    block_quote
+      paragraph
+        text "And some nested quote"
+      block_quote
+        block_quote
+          paragraph
+            text "```"
+            text "html"
+          block_quote
+            html tag="div"
+              text "HTML"
+              text "!"
+            block_quote
+              code_fence

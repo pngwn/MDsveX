@@ -412,6 +412,31 @@ describe('Block quotes', () => {
 		expect(bq_children[0].kind).toBe('code_fence');
 	});
 
+	test('pfm: code fence closes on a quoted closing line, its value keeps the markers', () => {
+		const input = '> ```\n> code\n> ```\n> after\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+		expect(children.length).toBe(1);
+
+		const bq_children = non_breaks(nodes, children[0].index);
+		expect(bq_children.map((n) => n.kind)).toEqual(['code_fence', 'paragraph']);
+		expect(get_value(nodes, bq_children[0].index, input)).toBe('> code');
+		const text = nodes.get_node(bq_children[1].children[0]);
+		expect(get_value(nodes, text.index, input)).toBe('after');
+	});
+
+	test('pfm: code fence in a nested blockquote closes on its markers', () => {
+		const input = '> > ```\n> > a\n> > ```\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const outer = non_breaks(nodes)[0];
+		const inner = non_breaks(nodes, outer.index)[0];
+		expect(inner.kind).toBe('block_quote');
+
+		const fence = non_breaks(nodes, inner.index);
+		expect(fence.map((n) => n.kind)).toEqual(['code_fence']);
+		expect(get_value(nodes, fence[0].index, input)).toBe('> > a');
+	});
+
 	test('pfm: cascade close through nested blockquotes then resume', () => {
 		// > > foo
 		// bar

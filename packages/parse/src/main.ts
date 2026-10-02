@@ -8345,11 +8345,12 @@ export class PFMParser {
 		}
 
 		this.class_floor = -1;
+		// the cursor stays at eof so an enclosing container runs its own eof close
 		if (found_index === -1) {
 			out.set_value_end(cf_id, length);
 			this.emit_close(cf_id, length);
 			this.node_stack.pop();
-			this.cursor = length + 1;
+			this.cursor = length;
 			return true;
 		}
 		out.set_value_end(cf_id, line - 1);
@@ -8360,7 +8361,7 @@ export class PFMParser {
 		if (ch === -1 || ch === LINEFEED) {
 			this.emit_close(cf_id, end);
 			this.node_stack.pop();
-			this.cursor = end + 1;
+			this.cursor = ch === -1 ? end : end + 1;
 			return true;
 		}
 		// the fence ends at the closing run, the rest of its line is skipped
@@ -8459,17 +8460,15 @@ export class PFMParser {
 		const base = this.source_base;
 		const length = this.source_end;
 		if (!code && this.finished) {
-			this.states.pop();
-			this.emit_close(current_node, length);
-			this.out.set_value_start(current_node, length);
-			this.out.set_value_end(current_node, length);
+			this.fence_info_eof(current_node, this.cursor);
 			return false;
 		} else if (!code) {
 			return true;
 		} else if (this.cursor + 1 >= length && this.finished) {
-			this.emit_close(current_node, length);
-			this.out.set_value_end(current_node, length);
-			this.states.pop();
+			this.fence_info_eof(
+				current_node,
+				code === LINEFEED ? this.cursor : length
+			);
 			return false;
 		} else if (this.cursor + 1 >= length) {
 			return true;
@@ -8505,6 +8504,19 @@ export class PFMParser {
 		}
 	}
 
+	/** finished parse with the info line at eof, the fence is empty */
+	private fence_info_eof(id: number, info_end: number): void {
+		const length = this.source_end;
+		this.out.attr(id, 'info_start', this.info_start_pos);
+		this.out.attr(id, 'info_end', info_end);
+		this.out.set_value_start(id, length);
+		this.out.set_value_end(id, length);
+		this.emit_close(id, length);
+		this.node_stack.pop();
+		this.states.pop();
+		this.cursor = length;
+	}
+
 	private _run_code_fence_content(current_node: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
@@ -8513,7 +8525,9 @@ export class PFMParser {
 		// optional whitespace followed by >= extra backticks.
 		// resume at fence_scan, a line is ruled out only once its backtick run ends inside the buffer
 		// jump between backticks, only a line whose first non whitespace char is a backtick can close
+		// in a block quote the markers come first, as bq_fence_scan reads them
 		const fence_len = this.extra;
+		const depth = this.block_quote_depth;
 		let line = this.fence_scan;
 		let found_index = -1;
 
@@ -8531,6 +8545,11 @@ export class PFMParser {
 				if (lf !== -1 && lf + base + 1 > line) line = lf + base + 1;
 			}
 			let lp = line;
+			if (depth > 0) {
+				// a line missing its markers cannot close
+				const q = this.skip_bq_markers(line, depth);
+				lp = q === -1 ? bt + 1 : q;
+			}
 			while (lp < bt) {
 				const ch = char_code_at.call(source, lp - base);
 				if (ch !== SPACE && ch !== TAB) break;
@@ -8630,7 +8649,9 @@ export class PFMParser {
 			this.emit_close(current_node, this.cursor);
 			this.node_stack.pop();
 			this.states.pop();
-			this.cursor++;
+			// at eof the cursor stays so an enclosing container runs its own eof close
+			// in a block quote it stays on the lf so the quote strips the next line markers
+			if (this.cursor < length && this.block_quote_depth === 0) this.cursor++;
 			return false;
 		}
 		if (code === BACKTICK) {

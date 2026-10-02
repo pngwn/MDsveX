@@ -6,5 +6,4 @@ root
   paragraph
     text "foo"
   line_break
-  code_fence "> ```\nfoo\n```\n"
-    line_break
+  code_fence
