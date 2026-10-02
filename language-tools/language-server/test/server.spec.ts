@@ -218,6 +218,16 @@ describe.skipIf(!existsSync(SERVER))("the language server", () => {
 		).toEqual([]);
 	});
 
+	it("does not link directive args as urls", async () => {
+		const links = (await server.sendDocumentLinkRequest(doc.uri)) ?? [];
+		const text = doc.getText();
+		expect(
+			links.map((l) =>
+				text.slice(doc.offsetAt(l.range.start), doc.offsetAt(l.range.end)),
+			),
+		).toEqual([]);
+	});
+
 	it("reports type errors and compile errors where they come from", async () => {
 		const report = (await server.sendDocumentDiagnosticRequest(doc.uri)) as {
 			items: { range: { start: unknown; end: unknown }; message: string }[];

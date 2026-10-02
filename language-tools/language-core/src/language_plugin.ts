@@ -36,6 +36,10 @@ import type { ConfigLoader } from './config';
 const PFM_LANGUAGE_ID = 'pfm';
 /** always documents, .svx is the default extension of the vite plugin */
 const EXTENSIONS = ['.pfm', '.svx'];
+// a directive up to its label, then its args in parens
+const DIRECTIVE_ARGS =
+	/((?<![\w:]):{1,3}[A-Za-z_][\w-]*\[(?:[^[\]\n\\]|\\.|\[[^[\]\n]*\])*\])(\([^)\n]*\))/g;
+
 /** never documents, so their language needs no config lookup */
 const NOT_DOCUMENTS = /\.(?:[cm]?[jt]sx?|svelte|json|css|d\.ts|map)$/;
 
@@ -367,6 +371,11 @@ function create_virtual_code_from_source(
 		md_source =
 			md_source.slice(0, region.start) + blanked + md_source.slice(region.end);
 	}
+	// the args of a directive would read as the url of a link
+	md_source = md_source.replace(
+		DIRECTIVE_ARGS,
+		(_, head: string, args: string) => head + ' '.repeat(args.length)
+	);
 
 	embedded_codes.push({
 		id: 'md',

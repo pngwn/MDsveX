@@ -179,6 +179,16 @@ The count is {count + 1}.
 		}
 	});
 
+	it("blanks directive args in the markdown code, which would read them as link urls", () => {
+		const pfm = ":::Note[a *b*](tone=urgent)\nsee :kbd[F12](x=y) and [a link](/url)\n:::\n";
+		const vc = plugin.createVirtualCode!("test.svx", "pfm", snap(pfm), dummyCtx)!;
+		const md = vc.embeddedCodes.find((c) => c.languageId === "markdown")!;
+		expect(md.snapshot.getText(0, md.snapshot.getLength())).toBe(
+			`:::Note[a *b*]${" ".repeat("(tone=urgent)".length)}\n` +
+				`see :kbd[F12]${" ".repeat("(x=y)".length)} and [a link](/url)\n:::\n`,
+		);
+	});
+
 	it("carries the templates and the frontmatter the template key completes from", () => {
 		const config = {
 			load: () => null,
