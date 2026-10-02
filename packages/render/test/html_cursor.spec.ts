@@ -261,6 +261,38 @@ describe('static chunk fold', () => {
 	});
 });
 
+describe('raw html attribute values', () => {
+	const cases: [string, string][] = [
+		['<div title="a &amp; b">x</div>\n', '<div title="a &amp; b">x</div>'],
+		['<div title="a & <b>">x</div>\n', '<div title="a & <b>">x</div>'],
+		[
+			`<div title='"a" &amp; b'>x</div>\n`,
+			'<div title="&quot;a&quot; &amp; b">x</div>',
+		],
+		[
+			'text <span title="&lt;&gt;">x</span>\n',
+			'<p>text <span title="&lt;&gt;">x</span></p>',
+		],
+	];
+
+	for (const [input, expected] of cases) {
+		it(JSON.stringify(input), () => {
+			const tree = new TreeBuilder(128);
+			new PFMParser(tree).parse(input);
+			const buf = tree.get_buffer();
+			const folded = new CursorHTMLRenderer({ cache: false });
+			folded.update(buf, input);
+			expect(folded.html).toBe(expected);
+			const mapped = new CursorHTMLRenderer({ cache: false });
+			mapped.update_mapped(buf, input);
+			expect(mapped.html).toBe(expected);
+			const cached = new CursorHTMLRenderer();
+			cached.update(buf, input);
+			expect(cached.html).toBe(expected);
+		});
+	}
+});
+
 describe('paragraphs around tags and components', () => {
 	const cases: [string, string][] = [
 		['<X />\n', '<X />'],

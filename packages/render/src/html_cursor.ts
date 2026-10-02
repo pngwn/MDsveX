@@ -65,6 +65,16 @@ function escape_html(text: string): string {
 	return text.replace(ESCAPE_MATCH, escape_replace);
 }
 
+const QUOTE_MATCH = /"/g;
+
+// a typed value is its source slice with entities as written, so only a
+// quote needs escaping, a plugin node never closes and gets the full escape
+function escape_attr(v: string, typed: boolean): string {
+	if (!typed) return escape_html(v);
+	if (string_index_of.call(v, '"') === -1) return v;
+	return v.replace(QUOTE_MATCH, '&quot;');
+}
+
 //  source escape index
 
 // text nodes arrive in source order, so instead of a regex per value each
@@ -677,12 +687,13 @@ function is_embed_script(c: Cursor, tag: string): boolean {
 function embed_html(c: Cursor): string {
 	let s = '<svelte:element this={"script"}';
 	const attrs = c.meta()!.attributes as Record<string, string | boolean>;
+	const typed = c.end !== Slot.NONE;
 	for (const k in attrs) {
 		const v = attrs[k];
 		if (v === true) s += ' ' + k;
 		else if (typeof v === 'object' && (v as any).type === 'expression') {
 			s += ' ' + k + '={' + meta_str((v as any).value) + '}';
-		} else s += ' ' + k + '="' + escape_html(v as string) + '"';
+		} else s += ' ' + k + '="' + escape_attr(v as string, typed) + '"';
 	}
 	return s + '></svelte:element>';
 }
@@ -1092,6 +1103,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 					| Record<string, string | boolean>
 					| undefined;
 				if (html_attrs) {
+					const typed = c.end !== Slot.NONE;
 					for (const k in html_attrs) {
 						const v = html_attrs[k];
 						if (v === true) {
@@ -1102,7 +1114,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 						) {
 							s += ' ' + k + '={' + meta_str((v as any).value) + '}';
 						} else {
-							s += ' ' + k + '="' + escape_html(v as string) + '"';
+							s += ' ' + k + '="' + escape_attr(v as string, typed) + '"';
 						}
 					}
 				}
@@ -1864,6 +1876,7 @@ function fold_list(c: Cursor, p: number): number {
 
 function fold_html_attrs(
 	html_attrs: Record<string, string | boolean>,
+	typed: boolean,
 	p: number
 ): number {
 	for (const k in html_attrs) {
@@ -1877,7 +1890,7 @@ function fold_html_attrs(
 			p = push_static(p, S_BRACE_CLOSE);
 		} else {
 			p = push_static(p, S_ATTR_EQ);
-			p = push_dyn(p, escape(v as string));
+			p = push_dyn(p, escape_attr(v as string, typed));
 			p = push_static(p, S_QUOTE);
 		}
 	}
@@ -1899,13 +1912,13 @@ function fold_html(c: Cursor, p: number): number {
 		if (passthrough) return push_dyn(p, passthrough);
 		p = push_static(p, S_LT);
 		p = push_dyn(p, tag);
-		if (html_attrs) p = fold_html_attrs(html_attrs, p);
+		if (html_attrs) p = fold_html_attrs(html_attrs, c.end !== Slot.NONE, p);
 		return push_static(p, S_SELF_CLOSE);
 	}
 
 	p = push_static(p, S_LT);
 	p = push_dyn(p, tag);
-	if (html_attrs) p = fold_html_attrs(html_attrs, p);
+	if (html_attrs) p = fold_html_attrs(html_attrs, c.end !== Slot.NONE, p);
 	p = push_static(p, S_GT);
 	// raw text elements keep their content as the node value range, see _node
 	if (tag === 'script' || tag === 'style') {
@@ -2403,6 +2416,7 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 			| Record<string, string | boolean>
 			| undefined;
 		if (html_attrs) {
+			const typed = c.end !== Slot.NONE;
 			for (const k in html_attrs) {
 				const v = html_attrs[k];
 				if (v === true) {
@@ -2410,7 +2424,7 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 				} else if (typeof v === 'object' && (v as any).type === 'expression') {
 					s += ' ' + k + '={' + meta_str((v as any).value) + '}';
 				} else {
-					s += ' ' + k + '="' + escape_html(v as string) + '"';
+					s += ' ' + k + '="' + escape_attr(v as string, typed) + '"';
 				}
 			}
 		}
@@ -2867,6 +2881,7 @@ function mp_html(c: Cursor, sink: MapSink, p: number): number {
 			| Record<string, string | boolean>
 			| undefined;
 		if (html_attrs) {
+			const typed = c.end !== Slot.NONE;
 			for (const k in html_attrs) {
 				const v = html_attrs[k];
 				if (v === true) {
@@ -2874,7 +2889,7 @@ function mp_html(c: Cursor, sink: MapSink, p: number): number {
 				} else if (typeof v === 'object' && (v as any).type === 'expression') {
 					s += ' ' + k + '={' + meta_str((v as any).value) + '}';
 				} else {
-					s += ' ' + k + '="' + escape_html(v as string) + '"';
+					s += ' ' + k + '="' + escape_attr(v as string, typed) + '"';
 				}
 			}
 		}
@@ -3438,12 +3453,13 @@ function comp_node(
 			const meta = c.meta()!;
 			const attrs = meta.attributes as Record<string, unknown> | undefined;
 			if (attrs) {
+				const typed = c.end !== Slot.NONE;
 				for (const k in attrs) {
 					const v = attrs[k];
 					if (v === true) open += ' ' + k;
 					else if (typeof v === 'object' && (v as any).type === 'expression')
 						open += ' ' + k + '={' + meta_str((v as any).value) + '}';
-					else open += ' ' + k + '="' + escape_html(meta_str(v)) + '"';
+					else open += ' ' + k + '="' + escape_attr(meta_str(v), typed) + '"';
 				}
 			}
 			if (meta.self_closing) {
