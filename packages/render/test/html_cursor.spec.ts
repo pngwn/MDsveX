@@ -326,3 +326,28 @@ describe('paragraphs around tags and components', () => {
 		});
 	}
 });
+
+describe('directives no component replaces', () => {
+	const cases: [string, string][] = [
+		['::x[a *b*]\n', ''],
+		[':::x[a *b*]\nbody\n:::\n', '<p>body</p>'],
+		['a\n\n::x[`l` :y[i]](k=v)\n\nc\n', '<p>a</p><p>c</p>'],
+	];
+	it.each(cases)('every walk leaves out the label of %j', (source, html) => {
+		const parse = () => {
+			const tree = new TreeBuilder(64);
+			new PFMParser(tree).parse(source);
+			return tree.get_buffer();
+		};
+		expect(render(source)).toBe(html);
+		const cached = new CursorHTMLRenderer();
+		cached.update(parse(), source);
+		expect(cached.html).toBe(html);
+		const mapped = new CursorHTMLRenderer({ cache: false });
+		mapped.update_mapped(parse(), source);
+		expect(mapped.html).toBe(html);
+		const traced = new CursorHTMLRenderer({ cache: false });
+		traced.update_trace(parse(), source);
+		expect(traced.html).toBe(html);
+	});
+});

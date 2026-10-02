@@ -237,6 +237,7 @@ const enum K {
 	DIRECTIVE_CONTAINER = 32,
 	FRONTMATTER = 33,
 	IMPORT_STATEMENT = 34,
+	DIRECTIVE_LABEL = 35,
 }
 
 export const K_ROOT = K.ROOT;
@@ -274,6 +275,7 @@ export const K_DIRECTIVE_LEAF = K.DIRECTIVE_LEAF;
 export const K_DIRECTIVE_CONTAINER = K.DIRECTIVE_CONTAINER;
 export const K_FRONTMATTER = K.FRONTMATTER;
 export const K_IMPORT_STATEMENT = K.IMPORT_STATEMENT;
+export const K_DIRECTIVE_LABEL = K.DIRECTIVE_LABEL;
 
 export const NONE = Slot.NONE;
 
@@ -1360,7 +1362,8 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			break;
 
 		default:
-			render_children(c, sink);
+			// a label renders only as the snippet of a replaced directive
+			if (c.kind !== K.DIRECTIVE_LABEL) render_children(c, sink);
 			break;
 	}
 }
@@ -1879,6 +1882,8 @@ function fold_node(c: Cursor, p: number): number {
 			return push_dyn(p, module_script());
 
 		default:
+			// a label renders only as the snippet of a replaced directive
+			if (c.kind === K.DIRECTIVE_LABEL) return p;
 			// a replaced directive never gets here, see comp_ref
 			if (dir_strict) dir_check(c);
 			return fold_children(c, p);
@@ -2454,6 +2459,8 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			return 0;
 
 		default:
+			// a label renders only as the snippet of a replaced directive
+			if (c.kind === K.DIRECTIVE_LABEL) return p;
 			// a replaced directive never gets here, see comp_ref
 			if (dir_strict) dir_check(c);
 			return tr_children(c, sink, p);
@@ -2911,6 +2918,8 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			return 0;
 
 		default:
+			// a label renders only as the snippet of a replaced directive
+			if (c.kind === K.DIRECTIVE_LABEL) return p;
 			// a replaced directive never gets here, see comp_ref
 			if (dir_strict) dir_check(c);
 			return mp_children(c, sink, p);
@@ -3697,7 +3706,7 @@ function dir_props(c: Cursor, kind: number): string {
 	return s;
 }
 
-/** true when a child renders something, a container keeps its line breaks */
+/** true when a child other than the label renders, a container keeps its line breaks */
 function dir_has_body(c: Cursor): boolean {
 	const n = c.words;
 	let child = n[c.index * W.stride + W.first_child];
@@ -3706,39 +3715,43 @@ function dir_has_body(c: Cursor): boolean {
 	do {
 		const b = child * W.stride;
 		if (n[b + W.parent] !== parent) return false;
-		if ((n[b] & 0xff) !== K.LINE_BREAK) return true;
+		const k = n[b] & 0xff;
+		if (k !== K.LINE_BREAK && k !== K.DIRECTIVE_LABEL) return true;
 		child = n[b + W.next];
 	} while (child !== Slot.NONE);
 	return false;
 }
 
-/** the bracket text as a label snippet, mapped as text */
-function dir_label(c: Cursor, sink: MapSink | undefined, p: number): number {
+/** the directive_label of a leaf or container, its first child, or NONE */
+function dir_label_of(c: Cursor): number {
+	const n = c.words;
+	const child = n[c.index * W.stride + W.first_child];
+	if (child === Slot.NONE) return Slot.NONE;
+	const b = child * W.stride;
+	return n[b + W.parent] === c.index && (n[b] & 0xff) === K.DIRECTIVE_LABEL
+		? child
+		: Slot.NONE;
+}
+
+/** the label inline content as a snippet, mapped as the walks map it */
+function dir_label(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	label: number
+): number {
 	p = cm_put(p, '{#snippet label()}');
-	const text = escape_node_text(c);
-	if (comp_mode === CM.FOLD) p = push_dyn(p, text);
-	else {
-		const at = mo.length;
-		if (comp_mode === CM.TRACE)
-			tr_run(sink!, at, at + text.length, c.value_start, c.value_end);
-		else
-			put_record(
-				sink!,
-				at,
-				at + text.length,
-				c.value_start,
-				c.value_end,
-				c.index,
-				Code.TEXT_CONTENT
-			);
-		mo += text;
-	}
+	const at = c.index;
+	c.move_to(label);
+	p = cm_children(c, sink, p);
+	c.move_to(at);
 	return cm_put(p, '{/snippet}');
 }
 
 /**
- * a directive as the component ref, args as props, the bracket text of a leaf
- * or container as the label snippet, inline text and container body as children
+ * a directive as the component ref, args as props, the directive_label of a
+ * leaf or container as the label snippet, inline text and container body as
+ * children, the walks skip the label among them
  */
 function dir_node(
 	c: Cursor,
@@ -3750,7 +3763,8 @@ function dir_node(
 	const kind = c.kind as number;
 	const local = ref.local;
 	const open = '<' + local + dir_props(c, kind);
-	const label = kind !== K.DIRECTIVE_INLINE && c.value_end > c.value_start;
+	const label_at = kind === K.DIRECTIVE_INLINE ? Slot.NONE : dir_label_of(c);
+	const label = label_at !== Slot.NONE;
 	const body =
 		kind === K.DIRECTIVE_INLINE
 			? c.words[c.index * W.stride + W.first_child] !== Slot.NONE
@@ -3762,7 +3776,7 @@ function dir_node(
 		return p;
 	}
 	p = cm_put(p, open + '>');
-	if (label) p = dir_label(c, sink, p);
+	if (label) p = dir_label(c, sink, p, label_at);
 	const ao = mo.length;
 	if (body) {
 		// a container renders its blocks as a blockquote does

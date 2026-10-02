@@ -1,17 +1,15 @@
 ---
 '@mdsvex/parse': minor
+'@mdsvex/render': patch
+'mdsvex': patch
 ---
 
-The bracket text of leaf and container directives is now parsed as inline content, as inline directive text already was. It becomes a `directive_label` node, the first child of the directive, so a container's label stays apart from its body blocks:
+Leaf and container directive labels now take inline markdown, as inline directive text does. A directive component's `label` snippet renders it, so `:::Callout[Heads *up*]` passes `Heads <strong>up</strong>`. Links, images and autolinks stay literal, and nothing in a label reaches past its closing `]`, so `::x[*a](k=*)` keeps `*a` as text and its args intact.
+
+In the parse tree the label is a `directive_label` node, the directive's first child, so a container's label stays apart from its body:
 
 ```
-:::Callout[Heads *up*](kind=warn)
-body
-:::
-```
-
-```
-directive_container name="Callout" args.kind="warn"
+directive_container name="Callout"
   directive_label
     text "Heads "
     strong_emphasis
@@ -19,5 +17,3 @@ directive_container name="Callout" args.kind="warn"
   paragraph
     text "body"
 ```
-
-The label takes the same inline constructs as inline directive text: emphasis, strong, code spans, strikethrough, superscript, subscript, escapes, nested inline directives, mustaches and html. Links, images and autolinks stay literal. Nothing in the label reaches past its closing `]`, so `::x[*a](k=*)` keeps `*a` as text and its args intact, and brackets inside a code span no longer end the label. Empty brackets make no label node. The directive keeps the raw bracket text as its value range.

@@ -51,6 +51,7 @@
 	const K_TABLE_ROW = 24;
 	const K_TABLE_CELL = 25;
 	const K_HTML_COMMENT = 26;
+	const K_DIRECTIVE_LABEL = 35;
 
 	const NEWLINE = '\n';
 
@@ -266,6 +267,8 @@
 	<!-- {buf_text(buf, idx, source)} -->
 {:else if kind === K_TABLE}
 	{@render table_body(idx)}
+{:else if kind === K_DIRECTIVE_LABEL}
+	<!-- a directive renders as its children, its label is not one of them -->
 {:else}
 	{@render child_nodes(idx)}
 {/if}
