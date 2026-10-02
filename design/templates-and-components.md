@@ -1,6 +1,6 @@
 # Templates and custom components: design
 
-Status: draft for discussion, 2026-10-01. Targets `next`.
+Status: drafted 2026-10-01, phases 0 to 5 shipped on `next` by 2026-10-02 (§9). Targets `next`.
 
 Sources:
 - Trackers #829 (custom components), #830 (layouts) and #831 (frontmatter).
@@ -522,7 +522,7 @@ The plugin builds the template and root parts of `CompileOptions` once per confi
 | `layout: { _: …, blog: … }` | `templates: { default: …, blog: … }` |
 | folder-name auto-match | `select_template(id, metadata)` |
 | legacy layout module exports → components | kept as the main mechanism (§5.1); nested scopes possible later (§5.4) |
-| frontmatter `layout: false` / `layout: name` | `template: false` / `template: name`. The migrator rewrites the key; Q11 covers accepting `layout:` as a deprecated alias. |
+| frontmatter `layout: false` / `layout: name` | `template: false` / `template: name`. The migrator rewrites the key, and there is no `layout:` alias (Q11). |
 | `{...$$props}` / `layoutPropForwarding` | always runes forwarding |
 | `<slot />` in layouts | `{@render children()}` in templates |
 | `import * as Components` | per-name imports |
@@ -531,16 +531,18 @@ The plugin builds the template and root parts of `CompileOptions` once per confi
 
 ## 9. Prerequisites and phasing
 
-0. **Prerequisite: frontmatter → `metadata`** (#831). This needs YAML parsing in core: our own subset parser plus an optional injected `parse` function (Q7). It also needs the `<script module>` export, and the existing module-script merge must be correct (#261). `compile()` returns the metadata too, so the plugin and template selection don't parse it again.
-1. **Templates.** Core: the selection plus wrapper plus hoisting rules in §3.2 and §4. Plugin: specifier resolution, `resolveId`, template export scan, HMR invalidation.
-2. **Components, `'markdown'` mode, template scope.** Ship per-template replacements at legacy parity, plus the root fallback. The renderer needs:
+Phases 0 to 5 have shipped on `next`, along with `@mdsvex/migrate` support for legacy layouts (#881). Nested scopes stay deferred.
+
+0. **Prerequisite: frontmatter → `metadata`** (#831). *Shipped.* This needs YAML parsing in core: our own subset parser plus an optional injected `parse` function (Q7). It also needs the `<script module>` export, and the existing module-script merge must be correct (#261). `compile()` returns the metadata too, so the plugin and template selection don't parse it again.
+1. **Templates.** Core: the selection plus wrapper plus hoisting rules in §3.2 and §4. Plugin: specifier resolution, `resolveId`, template export scan, HMR invalidation. *Shipped in #876.*
+2. **Components, `'markdown'` mode, template scope.** Ship per-template replacements at legacy parity, plus the root fallback. *Shipped, the root fallback before templates and the template scope in #876.* The renderer needs:
    - **A per-kind tag lookup in the fold renderer.** The fast path must be unchanged when no names are registered, so put the check behind one `if (has_components)` per open/close. Measure it with `packages/bench/perf`.
    - **Lookups through the scope chain.** These go through `scope.get(name)` (§5.1), so that nested scopes stay possible.
-3. **`'all'` mode.** Changes to the `K_HTML` render path:
+3. **`'all'` mode.** *Shipped in #873.* Changes to the `K_HTML` render path:
    - Disable the source-slice passthrough for substituted self-closing tags.
    - Fix spread attribute rendering (`{...x}` currently looks like it renders as `...x={...x}`; to verify).
    - Add the directive rule.
-4. **Directives → components** (§6). *Done, for the root fallback and per template.*
+4. **Directives → components** (§6). *Shipped for the root fallback in #874 and per template in #877.*
 Deferred: **nested scopes** (§5.4). Pick these up only once the per-template sets are in use and #601-style demand is clear.
 
 5. **Language tools.** *Done, 2026-10-02.* The editor learns the config without running Vite, from the first of these found walking up from the document:
@@ -557,7 +559,7 @@ Deferred: **nested scopes** (§5.4). Pick these up only once the per-template se
 - **Q2. Mode granularity.** Is a global `component_mode` enough? Or do we want per-name control, for example `'all'` for `img` but `'markdown'` for `a`? One option is `component_mode: { all: ['img', 'table'] }`. I'd ship global first.
 - **Q3. Is the root fallback needed at all?** With per-template sets, the root `components` module only matters for `template: false` documents and for sites with no templates. It is cheap to keep, but it is extra surface.
 - **Q4. Per-document sets.** Is a frontmatter `components: blog` key selecting a named set (#455's `type` profiles) worth it, or would nested scopes (§5.4) cover the same need better if they ever ship? My view: leave both out of v1.
-- **Q5. Metadata as spread vs. a single prop.** Spreading is friendly and legacy-compatible, but it collides with `children` and with forwarded document props. The alternative is `metadata={…}` as one prop.
+- **Q5. Metadata as spread vs. a single prop.** *Resolved 2026-10-02: spread (§4.1).* Every frontmatter key is its own template prop, as in legacy. A frontmatter `children` key is a compile error at its line when the document has a template. Forwarded document props are spread after the metadata, so they win a shared name. The alternative was `metadata={…}` as one prop.
 - **Q6. Directive namespace.** *Resolved 2026-10-02: a separate namespace, declared by a `directives` namespace export (`export * as directives from './directives.ts'`) in any replacement module (§6.1).* We considered two alternatives. A separate `directives` option has no self-contained per-template form. A capitalisation rule is lossy, and it would silently register capitalised helper exports. Sharing one registry would make `:::table` and `<table>` both hit a `table` export.
 - **Q7. YAML in core.** *Resolved 2026-10-01: both.* Core ships its own lightweight YAML parser in plain JS, with no Node APIs, so `compile()` still runs in a browser. It covers the common cases: plain and quoted scalars, numbers, booleans and null, dates as strings, nested maps, block and flow sequences, `|` and `>` blocks, and comments. Anything else throws an error that names the line and suggests a parse function. `frontmatter: { parse?: (raw: string) => Record<string, unknown> }` replaces the built-in parser, for full YAML or another format.
 - **Q8. Non-Vite story.** Is "pass specifiers to `compile()`" enough for everyone else, or do we want a thin Svelte-preprocessor wrapper? A preprocessor wrapper could emit the same virtual ids, but only if some resolver knows them.
@@ -587,4 +589,4 @@ Deferred: **nested scopes** (§5.4). Pick these up only once the per-template se
   - An integration test builds and serves a `+page.svx` route in a kit 3 app, in both plugin orders, and checks the error with plain vite-plugin-svelte. A kit or vite-plugin-svelte upgrade that breaks either internal fails it.
 
   **Still open:** ask upstream for a sanctioned hook. For example, vite-plugin-svelte could read extra `extensions` from a `config()`-returned field, or kit could document `api.options` as mutable during `config`.
-- **Q11. `layout:` alias.** Should frontmatter `layout:` be accepted as a deprecated alias for `template:` for one major version, with a warning? `@mdsvex/migrate` can rewrite the key either way, so the alias only helps people who upgrade without running the migrator. The risk is that `layout` is a common user-owned key.
+- **Q11. `layout:` alias.** *Resolved 2026-10-02: no alias.* `@mdsvex/migrate` rewrites `layout:` to `template:`. An unmigrated `layout:` key is ordinary metadata, and the document gets whatever template `select_template` or `default` gives it. An alias would only have helped people who upgrade without running the migrator, and `layout` is a common user-owned key.

@@ -1,0 +1,30 @@
+---
+title: Directives
+---
+
+Directives render your own components from markdown. They come from the
+`directives` namespace export of `markdown.js`, set as `components` in
+`mdsvex.config.json`.
+
+## Inline
+
+Press :kbd[Ctrl] + :kbd[S] to save, the bracket text is `children`.
+
+## Leaf
+
+::figure[A penguin, *very* svexy](src=https://mdsvex.com/penguin.gif)
+
+The bracket text of a leaf is its `label`, and the args are props.
+
+## Container
+
+:::Callout[Heads up](kind=warn)
+The body of a container is `children`, and it can hold any markdown:
+
+- a list
+- with _emphasis_
+:::
+
+:::Callout[]
+Empty brackets pass no label.
+:::

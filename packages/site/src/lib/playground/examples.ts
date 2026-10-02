@@ -16,6 +16,8 @@ const ORDER: [slug: string, title: string][] = [
 	['basics', 'Basics'],
 	['components', 'Components'],
 	['templates', 'Templates'],
+	['directives', 'Directives'],
+	['all-mode', 'All mode'],
 ];
 
 /** the entry and config lead, everything else keeps its path order */

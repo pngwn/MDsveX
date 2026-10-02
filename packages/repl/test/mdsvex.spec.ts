@@ -3,6 +3,8 @@ import { decode } from '@jridgewell/sourcemap-codec';
 
 import {
 	COMPONENTS_ID,
+	DIRECTIVES_ID,
+	TEMPLATE_DIRECTIVES_PREFIX,
 	TEMPLATE_PREFIX,
 	compile_markdown,
 	is_markdown,
@@ -151,6 +153,7 @@ describe('prepare', () => {
 			file: null,
 			specifier: '@acme/theme/Layout.svelte',
 			components: [],
+			directives: [],
 		});
 	});
 
@@ -165,6 +168,53 @@ describe('prepare', () => {
 		);
 		expect(is_markdown('a.md', config)).toBe(true);
 		expect(is_markdown('a.svx', config)).toBe(false);
+	});
+
+	test('a directives namespace export becomes the directives options', () => {
+		const { options, config, error } = prepare(
+			files({
+				'mdsvex.config.json': JSON.stringify({
+					templates: { default: './lib/Docs.svelte' },
+					components: './lib/markdown.js',
+				}),
+				'lib/Docs.svelte': `<script module>
+	export { default as p } from './P.svelte';
+	export * as directives from './docs-directives.js';
+</script>`,
+				'lib/docs-directives.js': `export { default as note } from './Note.svelte';`,
+				'lib/markdown.js': `export { default as img } from './Image.svelte';
+export * as directives from './directives.js';`,
+				'lib/directives.js': `export { default as Callout } from './Callout.svelte';`,
+			})
+		);
+
+		expect(error).toBeNull();
+		expect(options.components).toEqual([
+			{ specifier: COMPONENTS_ID, names: ['img'] },
+		]);
+		expect(options.directives).toEqual([
+			{ specifier: DIRECTIVES_ID, names: ['Callout'] },
+		]);
+		const docs = TEMPLATE_DIRECTIVES_PREFIX + 'default/0';
+		expect(options.templates?.default).toEqual({
+			specifier: TEMPLATE_PREFIX + 'default',
+			components: ['p'],
+			directives: [{ specifier: docs, names: ['note'] }],
+		});
+		expect(resolve_virtual(DIRECTIVES_ID, config).file).toBe(
+			'lib/directives.js'
+		);
+		expect(resolve_virtual(docs, config).file).toBe('lib/docs-directives.js');
+	});
+
+	test('a directives export that is not a namespace re-export is an error', () => {
+		const { error } = prepare(
+			files({
+				'mdsvex.config.json': '{ "components": "./markdown.js" }',
+				'markdown.js': 'export const directives = {};',
+			})
+		);
+		expect(error?.message).toMatch(/must be a namespace re-export/);
 	});
 
 	test('virtual ids resolve to workspace files', () => {
