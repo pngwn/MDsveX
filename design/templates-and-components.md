@@ -543,7 +543,13 @@ The plugin builds the template and root parts of `CompileOptions` once per confi
 4. **Directives → components** (§6). *Done, for the root fallback and per template.*
 Deferred: **nested scopes** (§5.4). Pick these up only once the per-template sets are in use and #601-style demand is clear.
 
-5. **Language tools.** `mdsvex:*` ids need types. Option A: the plugin writes generated `paths` into a tsconfig, like `.svelte-kit/tsconfig.json`. Option B: `language-core` reads the plugin config. Until then, type them as `any`.
+5. **Language tools.** *Done, 2026-10-02.* The editor learns the config without running Vite, from the first of these found walking up from the document:
+   - **`node_modules/.mdsvex/manifest.json`.** The plugin writes it when its resolution or scan changes. It holds each `mdsvex:*` id resolved to a file, the scanned names, `component_mode`, `extensions`, whether a custom frontmatter parser, a parse plugin that handles directives, or `select_template` is configured, and the template `select_template` last picked for each document. It is stale until Vite has run once, like `.svelte-kit`.
+   - **`mdsvex.config.json`.** The playground's static config. language-core resolves its relative, `file:`, `#` subpath and package specifiers itself, without Vite aliases, and reads export names from the TypeScript syntax tree.
+
+   We rejected having `language-core` load the Vite config itself: it would run user code in the editor, it is slow, and the synchronous tsserver plugin can't await it. A config path option for the extension would be a second source of truth with no Vite resolution.
+
+   `pfm_to_svelte` now runs core `compile()` with `strict_directives: false`, a pure option added for editors, instead of a parallel converter. It then rewrites `mdsvex:*` imports to the resolved files, maps each replaced element and directive to its export for hover, maps directive args to their props, and checks the frontmatter against the template's props with `satisfies`. Compile errors become editor diagnostics. Without a config, nothing is replaced and unknown directives aren't reported. See `language-tools/ARCHITECTURE.md`.
 
 ## 10. Open questions
 

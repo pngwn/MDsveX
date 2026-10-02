@@ -81,10 +81,12 @@ describe("pfmToSvelte", () => {
 		const result = pfmToSvelte(source);
 		assertMappingsValid(source, result);
 
-		expect(result.code).toContain("<script");
-		expect(result.code).toContain("export const title = ");
+		// the metadata export compile emits, with bare keys
+		expect(result.code).toContain("<script module>");
+		expect(result.code).toContain('export const metadata = {title: "hello"};');
 		expect(result.code).toContain("</script>");
 		expect(result.code).toContain("<h1>Hello</h1>");
+		expect(result.metadata).toEqual({ title: "hello" });
 
 		// title key maps back to source
 		const titleMapping = findContentByGenerated(
@@ -126,14 +128,14 @@ describe("pfmToSvelte", () => {
 		const result = pfmToSvelte(source);
 		assertMappingsValid(source, result);
 
-		expect(result.code).toContain("<script");
 		expect(result.code).toContain('import A from "./A.svelte"');
-		expect(result.code).toContain("export const title = ");
+		expect(result.code).toContain("export const metadata = {title: ");
 
 		// frontmatter exports in <script module>, imports in <script>
-		const moduleIdx = result.code.indexOf("<script module");
-		const scriptIdx = result.code.indexOf("<script lang");
-		expect(moduleIdx).toBeLessThan(scriptIdx);
+		const module = /<script module>[^]*?<\/script>/.exec(result.code)![0];
+		const instance = /<script>[^]*?<\/script>/.exec(result.code)![0];
+		expect(module).toContain("export const metadata");
+		expect(instance).toContain('import A from "./A.svelte"');
 	});
 
 	it("multiple imports", () => {
@@ -152,9 +154,9 @@ describe("pfmToSvelte", () => {
 		const result = pfmToSvelte(source);
 		assertMappingsValid(source, result);
 
-		expect(result.code).toContain("export const title = ");
-		expect(result.code).toContain("export const count = ");
-		expect(result.code).toContain("const description = ");
+		expect(result.code).toContain(
+			'export const metadata = {title: "hello", count: 42, description: "world"};',
+		);
 
 		// each key maps to its source position
 		for (const keyName of ["title", "count", "description"]) {
@@ -170,12 +172,17 @@ describe("pfmToSvelte", () => {
 		const result = pfmToSvelte(source);
 		assertMappingsValid(source, result);
 
-		// should extract title, body, tags (not line1, line2)
-		expect(result.code).toContain("export const title = ");
-		expect(result.code).toContain("const body = ");
-		expect(result.code).toContain("const tags = ");
-		expect(result.code).not.toContain("let line1");
-		expect(result.code).not.toContain("let line2");
+		// the core yaml parser reads the block, its lines are no keys
+		expect(result.metadata).toEqual({
+			title: "hello",
+			body: "line1\nline2\n",
+			tags: "foo",
+		});
+		expect(result.code).toContain('body: "line1\\nline2\\n"');
+		for (const key of ["title", "body", "tags"]) {
+			const m = findContentBySource(source, result.mappings, key);
+			expect(srcSlice(source, m!)).toBe(key);
+		}
 	});
 
 	it("empty frontmatter", () => {
@@ -183,9 +190,9 @@ describe("pfmToSvelte", () => {
 		const result = pfmToSvelte(source);
 		assertMappingsValid(source, result);
 
-		// empty frontmatter still generates a script block (but with no declarations)
-		expect(result.code).toContain("<script");
-		expect(result.code).not.toContain("export const ");
+		// empty frontmatter is empty metadata
+		expect(result.code).toContain("export const metadata = {};");
+		expect(result.metadata).toEqual({});
 		expect(result.code).toContain("<h1>Hello</h1>");
 	});
 
@@ -210,7 +217,7 @@ describe("pfmToSvelte", () => {
 		const result = pfmToSvelte(source);
 		assertMappingsValid(source, result);
 
-		expect(result.code).toContain("export const title = ");
+		expect(result.code).toContain("export const metadata = {title: ");
 		expect(result.code).toContain("let x = 1;");
 
 		// two script blocks: <script module> for frontmatter + <script> for user code
@@ -245,15 +252,17 @@ describe("pfmToSvelte", () => {
 		expect(result.code).toContain("value={count}");
 	});
 
-	it("frontmatter keys with invalid JS identifiers are skipped", () => {
+	it("frontmatter keys that are not identifiers stay quoted and mapped", () => {
 		const source = "---\ntitle: hello\nmy-key: value\n$valid: yes\n---\n\n# Hello\n";
 		const result = pfmToSvelte(source);
 		assertMappingsValid(source, result);
 
-		expect(result.code).toContain("export const title = ");
-		expect(result.code).toContain("export const $valid = ");
-		// hyphenated key should be skipped
-		expect(result.code).not.toContain("my-key");
+		expect(result.code).toContain(
+			'export const metadata = {title: "hello", "my-key": "value", $valid: "yes"};',
+		);
+		const m = findContentBySource(source, result.mappings, "my-key");
+		expect(srcSlice(source, m!)).toBe("my-key");
+		expect(genSlice(result.code, m!)).toBe('"my-key"');
 	});
 
 	it("preserves mapping accuracy for identity-mapped imports", () => {

@@ -267,6 +267,7 @@
 				{ "include": "#emphasis" },
 				{ "include": "#strong" },
 				{ "include": "#strikethrough" },
+				{ "include": "#directive" },
 				{ "include": "#link" },
 				{ "include": "#image" },
 				{ "include": "#autolink" },
@@ -397,6 +398,35 @@
 				"1": { "name": "punctuation.definition.strikethrough.end.pfm" }
 			},
 			"patterns": [{ "include": "#inline" }]
+		},
+
+		"directive": {
+			"name": "meta.directive.pfm",
+			"match": "(?<![\\w:])(:{1,3})([A-Za-z_][\\w-]*)(\\[)((?:[^\\[\\]\\n\\\\]|\\\\.|\\[[^\\[\\]\\n]*\\])*)(\\])(?:(\\()([^)\\n]*)(\\)))?",
+			"captures": {
+				"1": { "name": "punctuation.definition.directive.pfm" },
+				"2": { "name": "entity.name.tag.directive.pfm" },
+				"3": { "name": "punctuation.definition.directive.label.begin.pfm" },
+				"4": { "name": "meta.directive.label.pfm", "patterns": [{ "include": "#inline" }] },
+				"5": { "name": "punctuation.definition.directive.label.end.pfm" },
+				"6": { "name": "punctuation.definition.directive.args.begin.pfm" },
+				"7": { "name": "meta.directive.args.pfm", "patterns": [{ "include": "#directive-arg" }] },
+				"8": { "name": "punctuation.definition.directive.args.end.pfm" }
+			}
+		},
+
+		"directive-arg": {
+			"patterns": [
+				{
+					"match": "([A-Za-z_][\\w-]*)\\s*(=)\\s*(\"[^\"]*\"|'[^']*'|[^,\\s)]*)",
+					"captures": {
+						"1": { "name": "entity.other.attribute-name.pfm" },
+						"2": { "name": "punctuation.separator.key-value.pfm" },
+						"3": { "name": "string.unquoted.directive-arg.pfm" }
+					}
+				},
+				{ "match": ",", "name": "punctuation.separator.arguments.pfm" }
+			]
 		},
 
 		"link": {
