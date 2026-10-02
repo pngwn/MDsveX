@@ -108,6 +108,7 @@ function compile_warned(
 		undefined,
 		components,
 		undefined,
+		undefined,
 		component_mode
 	);
 	const v3 = session.compile_v3(
@@ -115,6 +116,7 @@ function compile_warned(
 		'doc.svx',
 		undefined,
 		components,
+		undefined,
 		undefined,
 		component_mode
 	);
@@ -468,6 +470,32 @@ describe('element replacement, all mode', () => {
 		expect(compile_all(raw, only('h2', 'warning'), 'markdown')).toBe(want);
 	});
 
+	test('a template scope replaces typed elements without root components', () => {
+		const templates = {
+			docs: { specifier: 'mdsvex:template/docs', components: ['h2'] },
+		};
+		const raw = '<h2>typed</h2>\n\n<input bind:value={v}>';
+		const all = compile(raw, {
+			templates,
+			template: 'docs',
+			component_mode: 'all',
+		});
+		expect(all.code).toContain('<H2_MDSVEX_T level={2}>typed</H2_MDSVEX_T>');
+		expect(all.warnings).toBeUndefined();
+		const markdown = compile(raw, { templates, template: 'docs' });
+		expect(markdown.code).toContain('<h2>typed</h2>');
+		const session = new CompilerSession();
+		const trace = session.compile_trace(
+			raw,
+			undefined,
+			undefined,
+			undefined,
+			{ templates, template: 'docs' },
+			'all'
+		);
+		expect(trace.code).toBe(all.code);
+	});
+
 	test('an element a parse plugin creates gets no extras', () => {
 		const plugin: ParsePlugin = {
 			paragraph: {
@@ -630,6 +658,7 @@ describe('element replacement, all mode', () => {
 				undefined,
 				components,
 				undefined,
+				undefined,
 				'all'
 			);
 			const mapped = compile(raw, {
@@ -641,6 +670,7 @@ describe('element replacement, all mode', () => {
 				raw,
 				undefined,
 				components,
+				undefined,
 				undefined,
 				'all'
 			);
@@ -816,6 +846,7 @@ describe('walks agree with replacements', () => {
 					undefined,
 					components,
 					frontmatter.parse,
+					undefined,
 					component_mode
 				);
 				expect(got.code, file).toBe(mapped.code);
@@ -829,6 +860,7 @@ describe('walks agree with replacements', () => {
 					undefined,
 					components,
 					frontmatter.parse,
+					undefined,
 					component_mode
 				);
 				expect(trace.code, file).toBe(mapped.code);

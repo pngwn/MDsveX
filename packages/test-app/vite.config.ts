@@ -8,6 +8,7 @@ export default defineConfig({
 		mdsvex({
 			extensions: [".svx"],
 			parse_plugins: [autolink()],
+			templates: { article: "$lib/templates/Article.svelte" },
 		}),
 		sveltekit(),
 	],
