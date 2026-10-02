@@ -179,6 +179,27 @@ function capacity(src) {
 
 const VITE_ID = '/corpus/doc.svx';
 
+// a compile throws on a directive no component renders and the plugin has no module to register one from,
+// loose so a document it misses never reaches the plugin, a false match only skips a row
+const DIRECTIVE = /:[A-Za-z][\w-]*\[/;
+
+/** the compile options that render every directive of src, a build before directives ignores them */
+function compile_options(arm, src, options) {
+	if (!DIRECTIVE.test(src)) return options;
+	const { nodes } = arm.parse_markdown_svelte(src);
+	const names = new Set();
+	for (let i = 0; i < nodes.size; i++) {
+		const kind = nodes.kind_at(i);
+		// directive_inline, directive_leaf and directive_container
+		if (kind < 30 || kind > 32) continue;
+		const name = nodes.metadata_at(i)?.name;
+		if (typeof name === 'string') names.add(name);
+	}
+	if (names.size === 0) return options;
+	const directives = [{ specifier: 'mdsvex:directives', names: [...names] }];
+	return { ...options, directives };
+}
+
 /** one callable per mode, bound to one arm and one source */
 export function make_doc_run(arm, mode, src) {
 	const {
@@ -226,20 +247,29 @@ export function make_doc_run(arm, mode, src) {
 							source
 						);
 		}
-		case 'compile':
-			return () => compile(src);
-		case 'compile-mapped':
-			return () => compile(src, { sourcemap: true });
+		case 'compile': {
+			const options = compile_options(arm, src, undefined);
+			return () => compile(src, options);
+		}
+		case 'compile-mapped': {
+			const options = compile_options(arm, src, { sourcemap: true });
+			return () => compile(src, options);
+		}
 		case 'compile-reused': {
 			const session = new CompilerSession();
-			return () => session.compile(src);
+			const options = compile_options(arm, src, undefined);
+			return () => session.compile(src, options);
 		}
 		case 'compile-reused-mapped': {
 			const session = new CompilerSession();
-			return () => session.compile(src, { sourcemap: true });
+			const options = compile_options(arm, src, { sourcemap: true });
+			return () => session.compile(src, options);
 		}
 		case 'sourcemap-v3': {
-			const { code, mappings } = compile(src, { sourcemap: true });
+			const { code, mappings } = compile(
+				src,
+				compile_options(arm, src, { sourcemap: true })
+			);
 			return () => mappings_to_v3(mappings, src, code, VITE_ID);
 		}
 		case 'vite-transform': {
@@ -287,6 +317,8 @@ export function plan_workloads(suite_name = 'core', filter = {}) {
 			for (const mode of modes) {
 				if (!keep_mode(mode)) continue;
 				if (family === 'huge' && !HUGE_MODES.includes(mode)) continue;
+				// the plugin cannot register directives, see compile_options
+				if (mode === 'vite-transform' && DIRECTIVE.test(entry.source)) continue;
 				plan.push({
 					id: `${entry.id}:${mode}`,
 					family,
