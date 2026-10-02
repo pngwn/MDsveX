@@ -33,4 +33,5 @@ export function migrate(markdown: string, options: MigrateOptions = {}): string 
 
 export { serialize, type SerializeOptions } from "./serialize.js";
 export { migrate_frontmatter } from "./frontmatter.js";
+export { migrate_config } from "./config.js";
 export type { MigrateResult, MigrationNote, NoteKind } from "./notes.js";

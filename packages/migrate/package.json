@@ -35,7 +35,9 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"dependencies": {
+		"@sveltejs/acorn-typescript": "^1.0.13",
 		"@types/mdast": "^4.0.4",
+		"acorn": "^8.18.0",
 		"remark-gfm": "^4.0.1",
 		"remark-parse": "^11.0.0",
 		"unified": "^11.0.5"
