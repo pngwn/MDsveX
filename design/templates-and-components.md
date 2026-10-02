@@ -457,7 +457,7 @@ The rule has these consequences:
 - **Matching.** A directive name matches an export name exactly. `:::Callout` matches `Callout` and `:::note` matches `note`. A name that isn't an identifier, such as `:::my-box`, matches an ES2022 string export, `export { default as "my-box" }`.
 - **Static analysis only.** `scan_exports` records `export * as name from 'specifier'` as a namespace. The plugin resolves the specifier from the owning module, then scans that module with the same scanner. Any other form of a `directives` export is a startup error, because its names can't be read without running the module. That covers `export const directives = {…}` and `import * as d; export { d as directives }`.
 - **Never an element name.** The `directives` export itself is never treated as an element name, so `<directives>` in `'all'` mode isn't replaced.
-- **Output.** Compiled output imports each used directive by name from a virtual id: `mdsvex:directives`, or `mdsvex:directives/<i>` beside `mdsvex:components/<i>`. A template's would be `mdsvex:template/<name>/directives`. Locals use their own suffix (`_MDSVEX_D_<scope>`), so they never collide with element locals.
+- **Output.** Compiled output imports each used directive by name from a virtual id: `mdsvex:directives`, or `mdsvex:directives/<i>` beside `mdsvex:components/<i>`. A template's is `mdsvex:template-directives/<name>`, or `mdsvex:template-directives/<name>/components` for the namespace of its config override module. Locals use their own suffix (`_MDSVEX_D_<scope>`), so they never collide with element locals.
 - **Core input.** The core receives directives as pure data: `CompileOptions.directives` for the root, and `TemplateEntry.directives` per template.
 - **HMR.** The plugin tracks the directives module like any scanned file. If its export set changes, the documents that used it recompile. If the owning module drops or moves its `directives` namespace, the registry resolves again on the next transform.
 
@@ -466,7 +466,7 @@ The rule has these consequences:
 - **A separate scope chain.** Directives resolve through a second `ComponentScope` chain, closest first, with the same shape as §5.1. The chain is the selected template's directives, then the root modules' directives in order, with a later module winning. The renderer looks names up through `scope.get`, as for elements.
 - **Separate namespaces.** An element export `table` never serves `:::table`, and a directive `p` never replaces paragraphs.
 - **Plugin fallthrough.** A directive with no component falls through to parse-plugin `directive_inline`, `directive_leaf` and `directive_container` handlers. A plugin handles a directive by rewriting the node, for example `node.type = 'block_quote'`.
-- **Registered beats plugin.** A registered directive never reaches a plugin's directive handlers. The parser sets `name` after the open, so with directive replacements configured, the core runs a plugin's directive handler at the close, where `node.attrs.name` is known. Handlers that key on the name already have to work there.
+- **Registered beats plugin.** A registered directive never reaches a plugin's directive handlers. The template is picked after the parse, so every name the root or any template registers is held back from plugins. The parser sets `name` after the open, so with directive replacements configured, the core runs a plugin's directive handler at the close, where `node.attrs.name` is known. Handlers that key on the name already have to work there.
 - **Unhandled is an error.** A directive left in the tree with no component is a compile error naming it, for example `no component renders the directive :::thing at 3:1 …`. It is thrown as a `DirectiveError` with `directive`, `line` and `column`. It used to render as its children, and a leaf vanished. The renderer only throws when `strict_directives` is set, which `compile()` always sets. A preview renderer keeps rendering children.
 
 ### 6.3 Props contract
@@ -545,7 +545,7 @@ The plugin builds the template and root parts of `CompileOptions` once per confi
    - Disable the source-slice passthrough for substituted self-closing tags.
    - Fix spread attribute rendering (`{...x}` currently looks like it renders as `...x={...x}`; to verify).
    - Add the directive rule.
-4. **Directives → components** (§6). *Done for the root fallback; templates carry their own `directives` namespace once templates land.*
+4. **Directives → components** (§6). *Done, for the root fallback and per template.*
 Deferred: **nested scopes** (§5.4). Pick these up only once the per-template sets are in use and #601-style demand is clear.
 
 5. **Language tools.** `mdsvex:*` ids need types. Option A: the plugin writes generated `paths` into a tsconfig, like `.svelte-kit/tsconfig.json`. Option B: `language-core` reads the plugin config. Until then, type them as `any`.

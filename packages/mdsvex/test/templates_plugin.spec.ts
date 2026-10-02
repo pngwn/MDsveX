@@ -394,3 +394,129 @@ describe('template resolution failure', () => {
 		);
 	});
 });
+
+function directive(cls: string): string {
+	return [
+		'<script>',
+		'  let { label, children } = $props();',
+		'</script>',
+		`<aside class="${cls}">{@render label?.()}|{@render children?.()}</aside>`,
+	].join('\n');
+}
+
+describe('template directives', () => {
+	let root: string;
+	let server: ViteDevServer;
+	let plugins: Plugin[];
+
+	beforeAll(async () => {
+		root = write_app();
+		const files: Record<string, string> = {
+			'src/lib/markdown.ts': [
+				"export { default as h1 } from './RootHeading.svelte';",
+				"export * as directives from './directives/root.ts';",
+			].join('\n'),
+			'src/lib/directives/root.ts': [
+				"export { default as Callout } from './RootCallout.svelte';",
+				"export { default as note } from './RootNote.svelte';",
+			].join('\n'),
+			'src/lib/directives/RootCallout.svelte': directive('root-callout'),
+			'src/lib/directives/RootNote.svelte': directive('root-note'),
+			'src/lib/directives/docs.ts':
+				"export { default as Callout } from './DocsCallout.svelte';\n",
+			'src/lib/directives/DocsCallout.svelte': directive('docs-callout'),
+			'src/lib/directives/DocsTip.svelte': directive('docs-tip'),
+			'src/lib/directives/theme.ts':
+				"export { default as Callout } from './ThemeCallout.svelte';\n",
+			'src/lib/directives/ThemeCallout.svelte': directive('theme-callout'),
+			'src/lib/theme.ts': [
+				"export { default as h1 } from './OverrideHeading.svelte';",
+				"export * as directives from './directives/theme.ts';",
+			].join('\n'),
+			'src/Docs.svelte': template('docs', [
+				"  export { default as p } from './lib/DocsParagraph.svelte';",
+				"  export * as directives from './lib/directives/docs.ts';",
+			]),
+			'src/docs.svx':
+				'---\ntemplate: docs\n---\n\n:::Callout[Hi]\nbody\n:::\n\n::note[n]\n',
+			'src/post.svx': ':::Callout[Hi]\nbody\n:::\n',
+			'src/theme.svx': '---\ntemplate: theme\n---\n\n:::Callout[Hi]\n:::\n',
+			'src/tip.svx': '---\ntemplate: docs\n---\n\n::tip[t]\n',
+		};
+		for (const [path, content] of Object.entries(files)) {
+			mkdirSync(dirname(join(root, path)), { recursive: true });
+			writeFileSync(join(root, path), content);
+		}
+		plugins = mdsvex(options_for(root));
+		server = await serve(root, plugins);
+	});
+
+	afterAll(async () => {
+		await server?.close();
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	test('maps each template directives id to the module its namespace names', async () => {
+		const container = server.environments.client.pluginContainer;
+		const id = async (name: string) =>
+			(await container.resolveId('mdsvex:template-directives/' + name))?.id;
+		expect(await id('docs')).toBe(
+			vite_path(root, 'src/lib/directives/docs.ts')
+		);
+		// the namespace of the extra replacements module of a template
+		expect(await id('theme/components')).toBe(
+			vite_path(root, 'src/lib/directives/theme.ts')
+		);
+		expect(await id('post')).toBeUndefined();
+	});
+
+	test('chain in front of the root directives, closest first', async () => {
+		const docs = await ssr(server, '/src/docs.svx');
+		expect(docs).toContain(
+			'<aside class="docs-callout">Hi|<p class="docs-p">body</p></aside>'
+		);
+		// docs has no note, the root one applies
+		expect(docs).toContain('<aside class="root-note">n|</aside>');
+		// the default template has no directives
+		expect(await ssr(server, '/src/post.svx')).toContain(
+			'<aside class="root-callout">Hi|<p>body</p></aside>'
+		);
+		expect(await ssr(server, '/src/theme.svx')).toContain(
+			'<aside class="theme-callout">Hi|</aside>'
+		);
+	});
+
+	test('a changed template directives module recompiles its documents', async () => {
+		const ssr_env = server.environments.ssr;
+		await expect(ssr_env.transformRequest('/src/tip.svx')).rejects.toThrow(
+			/::tip at 5:1/
+		);
+		await ssr_env.transformRequest('/src/docs.svx');
+
+		const file = vite_path(root, 'src/lib/directives/docs.ts');
+		const code = [
+			"export { default as Callout } from './DocsCallout.svelte';",
+			"export { default as tip } from './DocsTip.svelte';",
+		].join('\n');
+		writeFileSync(file, code);
+		ssr_env.moduleGraph.onFileChange(file);
+		const hot = plugins[0].hotUpdate as Function;
+		const result = await hot.call(
+			{ environment: ssr_env },
+			{
+				type: 'update',
+				file,
+				timestamp: 1,
+				modules: [],
+				read: async () => code,
+				server,
+			}
+		);
+		expect(result.map((m: any) => m.id)).toContain(
+			vite_path(root, 'src/docs.svx')
+		);
+		expect(await ssr(server, '/src/tip.svx')).toContain(
+			'<aside class="docs-tip">t|</aside>'
+		);
+	});
+});
