@@ -370,6 +370,14 @@ describe('Block quotes', () => {
 		expect(bq1_children[0].kind).toBe('block_quote');
 	});
 
+	test('pfm: extra marker interrupts a paragraph inside a quote', () => {
+		const input = '> bar\n>> baz';
+		const { nodes } = parse_markdown_svelte(input);
+		const bq1 = non_breaks(nodes);
+		const outer = non_breaks(nodes, bq1[0].index);
+		expect(outer.map((n) => n.kind)).toEqual(['paragraph', 'block_quote']);
+	});
+
 	test('pfm: code fence opener without > continuation is paragraph text', () => {
 		// > ```
 		// foo

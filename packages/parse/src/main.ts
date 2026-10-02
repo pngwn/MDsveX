@@ -6345,6 +6345,7 @@ export class PFMParser {
 							// markers present - check for block interrupt at stripped pos
 							if (
 								this.is_blank_at_pos(stripped) ||
+								this.is_block_quote_start(stripped) ||
 								this.is_heading_start(stripped) ||
 								this.is_thematic_break_start(stripped) ||
 								(char_code_at.call(source, stripped - base) === BACKTICK &&
