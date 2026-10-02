@@ -2442,7 +2442,17 @@ export class PFMParser {
 		}
 
 		// consume the newline
-		if (p < length) p++;
+		if (p < length) {
+			// stripping quote markers needs the whole first body line
+			if (
+				kind === 'container' &&
+				this.block_quote_depth > 0 &&
+				!this.finished &&
+				!this.can_decide_after_lf(p)
+			)
+				return false;
+			p++;
+		}
 
 		return {
 			kind,
@@ -2526,6 +2536,15 @@ export class PFMParser {
 			const counts = this.directive_colon_counts;
 			if (counts === NO_STACK) this.directive_colon_counts = [dir.colons];
 			else counts.push(dir.colons);
+			if (
+				this.block_quote_depth > 0 &&
+				char_code_at.call(this.source, dir.end - 1 - this.source_base) ===
+					LINEFEED
+			) {
+				// an unmarked first body line leaves the cursor on the opener lf to close there
+				this.chomp(this.bq_line_start(dir.end), true);
+				return;
+			}
 		}
 		this.chomp(dir.end, true);
 	}
@@ -2563,6 +2582,31 @@ export class PFMParser {
 		if (this.pending_count > this.pending_para_count) {
 			this.revoke_stale_pending();
 		}
+	}
+
+	/** start of the line after a fence lf inside a block quote, or the lf itself when that line is unmarked */
+	private bq_line_start(lf_end: number): number {
+		const stripped = this.skip_bq_markers(lf_end, this.block_quote_depth);
+		return stripped === -1 ? lf_end - 1 : stripped;
+	}
+
+	private is_directive_close_line(pos: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		let p = pos;
+		while (
+			p < length &&
+			(char_code_at.call(source, p - base) === SPACE ||
+				char_code_at.call(source, p - base) === TAB)
+		)
+			p++;
+		const counts = this.directive_colon_counts;
+		return (
+			p < length &&
+			char_code_at.call(source, p - base) === COLON &&
+			this.try_parse_directive_close(p, counts[counts.length - 1]) >= 0
+		);
 	}
 
 	/**
@@ -6305,7 +6349,10 @@ export class PFMParser {
 								this.is_thematic_break_start(stripped) ||
 								(char_code_at.call(source, stripped - base) === BACKTICK &&
 									char_code_at.call(source, stripped + 1 - base) === BACKTICK &&
-									char_code_at.call(source, stripped + 2 - base) === BACKTICK)
+									char_code_at.call(source, stripped + 2 - base) ===
+										BACKTICK) ||
+								(this.directive_colon_counts.length !== 0 &&
+									this.is_directive_close_line(stripped))
 							) {
 								this.emit_close(current_node, this.cursor);
 								this.states.pop();
@@ -10463,6 +10510,28 @@ export class PFMParser {
 				if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
 					return true;
 				}
+				// an unmarked line ends the quote, the lf stays for the enclosing block_quote frames
+				if (this.block_quote_depth > 0) {
+					const stripped = this.skip_bq_markers(
+						this.cursor + 1,
+						this.block_quote_depth
+					);
+					if (stripped === -1) {
+						this.emit_close(current_node, this.cursor);
+						this.node_stack.pop();
+						this.states.pop();
+						this.directive_colon_counts.pop();
+						return false;
+					}
+					this.emit_bare_leaf(
+						NodeKind.line_break,
+						this.cursor,
+						current_node,
+						this.cursor + 1
+					);
+					this.chomp(stripped, true);
+					return false;
+				}
 				this.emit_bare_leaf(
 					NodeKind.line_break,
 					this.cursor,
@@ -10509,11 +10578,21 @@ export class PFMParser {
 				);
 				if (close_end === -2) return true;
 				if (close_end >= 0) {
+					const bq_lf =
+						this.block_quote_depth > 0 &&
+						char_code_at.call(source, close_end - 1 - base) === LINEFEED;
+					// bq_line_start needs the whole next line
+					if (
+						bq_lf &&
+						!this.finished &&
+						!this.can_decide_after_lf(close_end - 1)
+					)
+						return true;
 					this.emit_close(current_node, close_end);
 					this.node_stack.pop();
 					this.states.pop();
 					this.directive_colon_counts.pop();
-					this.chomp(close_end, true);
+					this.chomp(bq_lf ? this.bq_line_start(close_end) : close_end, true);
 					return false;
 				}
 

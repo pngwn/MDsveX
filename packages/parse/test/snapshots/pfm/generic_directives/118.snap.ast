@@ -1,0 +1,10 @@
+root
+  block_quote
+    directive_container name="q"
+      directive_container name="r"
+        paragraph
+          text "x"
+        line_break
+    paragraph
+      text "tail"
+  line_break
