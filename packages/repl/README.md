@@ -84,7 +84,7 @@ Every colour and font is a `--repl-*` custom property on `.mdsvex-repl`, so a ho
 
 ## Vite setup
 
-The package ships source, so the consuming app compiles it. Its workers are loaded by URL, and Rollup's wasm must stay next to the file that fetches it:
+The package ships source, so the consuming app compiles it. Its workers are loaded by URL, and Rollup's wasm must stay next to the file that fetches it. The mdsvex worker imports `mdsvex/compile`, which holds only the compiler, so neither Vite nor Node builtins reach the browser and nothing else needs excluding:
 
 ```js
 export default {

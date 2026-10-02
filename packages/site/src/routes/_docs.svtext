@@ -116,6 +116,8 @@ export default defineConfig({
 
 `compile` turns one document into Svelte component source without Vite. It is synchronous and never touches the filesystem, so it also runs in a browser.
 
+In a browser or worker, import it from `mdsvex/compile`. That entry holds only the compiler, so a bundler never sees the Vite plugin or its lazy imports of Vite and Node builtins.
+
 ```js
 import { compile } from 'mdsvex';
 
