@@ -139,6 +139,67 @@ function escape_node_text(c: Cursor): string {
 	return escape_text_at(c, c.index, c.value_start, c.value_end);
 }
 
+function bq_depth(n: Uint32Array, i: number): number {
+	let depth = 0;
+	for (
+		let p = n[i * W.stride + W.parent];
+		p !== Slot.NONE;
+		p = n[p * W.stride + W.parent]
+	)
+		if ((n[p * W.stride] & 0xff) === K.BLOCK_QUOTE) depth++;
+	return depth;
+}
+
+/** each value line keeps its quote markers, skipped as skip_bq_markers does */
+function strip_bq(text: string, depth: number): string {
+	const len = text.length;
+	let out = '';
+	let pos = 0;
+	for (;;) {
+		let mark = pos;
+		for (let i = 0; i < depth; i++) {
+			while (
+				pos < len &&
+				(text.charCodeAt(pos) === 32 || text.charCodeAt(pos) === 9)
+			)
+				pos++;
+			if (pos >= len || text.charCodeAt(pos) !== 62) {
+				// not a marker, keep the indent
+				pos = mark;
+				break;
+			}
+			pos++;
+			if (pos < len && text.charCodeAt(pos) === 32) pos++;
+			mark = pos;
+		}
+		let eol = pos;
+		while (eol < len) {
+			const ch = text.charCodeAt(eol);
+			if (ch === 10) break;
+			if (ch === 13) {
+				if (eol + 1 < len && text.charCodeAt(eol + 1) === 10) eol++;
+				break;
+			}
+			eol++;
+		}
+		if (eol >= len) return out + text.slice(pos);
+		out += text.slice(pos, eol + 1);
+		pos = eol + 1;
+	}
+}
+
+function fence_text(c: Cursor): string {
+	const depth = bq_depth(c.words, c.index);
+	return depth === 0 ? c.text() : strip_bq(c.text(), depth);
+}
+
+/** equals escape_html of fence_text */
+function escape_fence_text(c: Cursor): string {
+	const depth = bq_depth(c.words, c.index);
+	if (depth === 0) return escape_node_text(c);
+	return escape_html(strip_bq(c.text(), depth));
+}
+
 /** escape_node_text of node i, the cursor may sit elsewhere */
 function escape_text_at(c: Cursor, i: number, vs: number, ve: number): string {
 	if (esc_prebuilt) {
@@ -1030,7 +1091,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 				_open(c, '<pre><code', '<pre><code>', '>');
 			}
 			const ao = mo.length;
-			const text = escape_node_text(c);
+			const text = escape_fence_text(c);
 			if (sink) content_record(sink, c, text, Code.CODE_CONTENT);
 			mo += text;
 			const bc = mo.length;
@@ -1939,7 +2000,7 @@ function fold_code_fence(c: Cursor, p: number): number {
 	} else {
 		p = fold_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
 	}
-	p = push_dyn(p, escape_text(c));
+	p = push_dyn(p, escape_fence_text(c));
 	return push_static(p, S_PRE_CODE_CLOSE);
 }
 
@@ -2521,7 +2582,7 @@ function tr_code_fence(c: Cursor, sink: MapSink, p: number): number {
 	} else {
 		p = tr_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
 	}
-	tr_text(c, sink, p, escape_node_text(c));
+	tr_text(c, sink, p, escape_fence_text(c));
 	tr_point(sink, pre, c.start);
 	return S_PRE_CODE_CLOSE;
 }
@@ -2981,7 +3042,7 @@ function mp_code_fence(c: Cursor, sink: MapSink, p: number): number {
 		p = tr_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
 	}
 	const ao = mo.length + FOLD_LEN[p];
-	tr_content(c, sink, p, escape_node_text(c), Code.CODE_CONTENT);
+	tr_content(c, sink, p, escape_fence_text(c), Code.CODE_CONTENT);
 	const bc = mo.length;
 	_spans(sink, pre, ao, bc, bc + FOLD_LEN[S_PRE_CODE_CLOSE], c, Preset.CODE);
 	return S_PRE_CODE_CLOSE;
@@ -3785,9 +3846,9 @@ function comp_node(
 				inner = '<code class="language-' + escape_html(info) + '">';
 			}
 			// children are the content of the element, code is the raw text
-			p = cm_put(p, open + js_prop('code', c.text()) + '>' + inner);
+			p = cm_put(p, open + js_prop('code', fence_text(c)) + '>' + inner);
 			const ao = mo.length;
-			p = cm_text(c, sink, p, escape_node_text(c));
+			p = cm_text(c, sink, p, escape_fence_text(c));
 			const bc = mo.length;
 			p = cm_put(p, '</code>' + close);
 			cm_spans(c, sink, pre, ao, bc, mo.length, Preset.CODE);

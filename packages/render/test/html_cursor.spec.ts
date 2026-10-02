@@ -351,3 +351,50 @@ describe('directives no component replaces', () => {
 		expect(traced.html).toBe(html);
 	});
 });
+
+describe('code fences inside block quotes', () => {
+	const cases: [string, string, string][] = [
+		[
+			'depth 1',
+			'> ```js\n> a\n> b\n> ```\n',
+			'<blockquote>\n<pre><code class="language-js">a\nb</code></pre>\n</blockquote>',
+		],
+		[
+			'depth 2',
+			'> > ```\n> > a\n> > b\n> > ```\n',
+			'<blockquote>\n<blockquote>\n<pre><code>a\nb</code></pre>\n</blockquote>\n</blockquote>',
+		],
+		[
+			'a blank > line',
+			'> ```\n> a\n>\n> b\n> ```\n',
+			'<blockquote>\n<pre><code>a\n\nb</code></pre>\n</blockquote>',
+		],
+		[
+			'indented content',
+			'> ```\n> a\n>   b\n> ```\n',
+			'<blockquote>\n<pre><code>a\n  b</code></pre>\n</blockquote>',
+		],
+		[
+			'markers without a space',
+			'>```\n>a\n>>b\n>```\n',
+			'<blockquote>\n<pre><code>a\n&gt;b</code></pre>\n</blockquote>',
+		],
+	];
+	it.each(cases)('every walk strips the markers, %s', (_, source, html) => {
+		const parse = () => {
+			const tree = new TreeBuilder(64);
+			new PFMParser(tree).parse(source);
+			return tree.get_buffer();
+		};
+		expect(render(source)).toBe(html);
+		const cached = new CursorHTMLRenderer();
+		cached.update(parse(), source);
+		expect(cached.html).toBe(html);
+		const mapped = new CursorHTMLRenderer({ cache: false });
+		mapped.update_mapped(parse(), source);
+		expect(mapped.html).toBe(html);
+		const traced = new CursorHTMLRenderer({ cache: false });
+		traced.update_trace(parse(), source);
+		expect(traced.html).toBe(html);
+	});
+});
