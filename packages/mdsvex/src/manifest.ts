@@ -59,10 +59,11 @@ export interface MdsvexManifest {
 
 /**
  * writes the manifest a little after the last change, and only when it
- * differs from what it last wrote, a failure warns once and never throws
+ * differs from what it last wrote, a failure warns once and never throws,
+ * build gives null until there is something true to write
  */
 export function manifest_writer(
-	build: () => MdsvexManifest,
+	build: () => MdsvexManifest | null,
 	warn: (message: string) => void
 ) {
 	let root = '';
@@ -75,6 +76,7 @@ export function manifest_writer(
 		timer = null;
 		if (root === '') return;
 		const manifest = build();
+		if (manifest === null) return;
 		const json = JSON.stringify(manifest, null, '\t') + '\n';
 		if (json === last) return;
 		last = json;

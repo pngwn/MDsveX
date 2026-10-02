@@ -1,4 +1,5 @@
 import {
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -9,7 +10,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-import { createServer, createServerModuleRunner, normalizePath } from 'vite';
+import {
+	createServer,
+	createServerModuleRunner,
+	normalizePath,
+	resolveConfig,
+} from 'vite';
 import type { Plugin, ViteDevServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
@@ -406,6 +412,28 @@ describe('templates option', () => {
 });
 
 describe('the editor manifest', () => {
+	test('is not written until the templates resolve', async () => {
+		const root = write_app();
+		try {
+			// vite preview and test runners resolve the config and never build
+			await resolveConfig(
+				{
+					root,
+					configFile: false,
+					logLevel: 'silent',
+					plugins: [
+						mdsvex({ templates: { default: '#lib/templates/Post.svelte' } }),
+					],
+				},
+				'serve'
+			);
+			await new Promise((done) => setTimeout(done, 200));
+			expect(existsSync(join(root, MANIFEST_PATH))).toBe(false);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
 	test('says whether a parse plugin handles directives', async () => {
 		const root = write_app();
 		const server = await serve(

@@ -1635,10 +1635,12 @@ function component_registry(
 
 	/** the last list published, kept over a reset for the editor manifest */
 	let published: ComponentModule[] = [];
+	let resolved = false;
 
 	function publish(list: ComponentModule[]): void {
 		modules = list;
 		published = list;
+		resolved = true;
 		const all: string[] = [];
 		sources = [];
 		const directive_list: ComponentSource[] = [];
@@ -1742,6 +1744,10 @@ function component_registry(
 		/** the directives compile option */
 		directive_sources(): ComponentSource[] | undefined {
 			return directive_sources;
+		},
+		/** true once resolved, a reset keeps it */
+		resolved(): boolean {
+			return resolved;
 		},
 		/** the modules for the editor manifest, empty until resolved */
 		describe(): { components: ManifestModule[]; directives: ManifestModule[] } {
@@ -1857,10 +1863,12 @@ function template_registry(
 
 	/** the last templates published, kept over a reset for the editor manifest */
 	let published = new Map<string, TemplateModule>();
+	let resolved = false;
 
 	function publish(list: Map<string, TemplateModule>): void {
 		modules = list;
 		published = list;
+		resolved = true;
 		const next: Record<string, TemplateEntry> = {};
 		const all: string[] = [];
 		files_by_name = new Map();
@@ -2013,6 +2021,10 @@ function template_registry(
 		},
 		entries(): Record<string, TemplateEntry> {
 			return entries;
+		},
+		/** true once resolved, a reset keeps it */
+		resolved(): boolean {
+			return resolved;
 		},
 		/** the templates for the editor manifest, empty until resolved */
 		describe(): Record<string, ManifestTemplate> {
@@ -2253,7 +2265,11 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	let log: (message: string) => void = () => {};
 	let root = '';
 	const manifest = manifest_writer(
-		(): MdsvexManifest => {
+		(): MdsvexManifest | null => {
+			// a process that resolves the config and never builds, such as vite
+			// preview or a test runner, must not replace a manifest with an empty one
+			if (registry?.resolved() === false || templates?.resolved() === false)
+				return null;
 			const root_modules = registry?.describe();
 			return {
 				version: MANIFEST_VERSION,
