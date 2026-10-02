@@ -296,6 +296,15 @@ because the profile shows that the v3 map is where the vite plugin spends its
 time: 61 to 99% of the plugin transform on real documents. The plugin's post
 transform needs a live Svelte compile, so it is not measured.
 
+A compile fails on a directive that no component renders. So the compile modes
+and `sourcemap-v3` pass a `directives` option naming every directive the
+document uses. A build from before directives rendered as components ignores
+that option, so for those documents the arms do different work, and parity
+reports a difference until the baseline catches up. The plugin can only
+register directives from a module on disk, so `vite-transform` skips documents
+that contain one. They are `micro/directive`, `fixtures/generic_directives`,
+`real/pfm` and `huge/4m`.
+
 Parse-only modes use `@mdsvex/parse`'s `dist`, and the render modes use
 `@mdsvex/render`'s `dist`. Compile modes use `mdsvex`'s `dist`, which bundles
 its own copy of both.

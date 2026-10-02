@@ -10,6 +10,7 @@ import { describe, expect, test } from 'vitest';
 
 import { CompilerSession, mdsvex } from '../src/main';
 import type { ParsePlugin } from '../src/main';
+import { directive_names } from './utils';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = resolve(HERE, '../../parse/test/fixtures');
@@ -131,6 +132,8 @@ describe('vite plugin sourcemap', () => {
 				// every fifth fixture keeps the svelte compiles quick
 				for (let i = 0; i < files.length; i += 5) {
 					const raw = to(readFileSync(files[i], 'utf8'));
+					// no components module renders its directives, so it does not compile
+					if (directive_names(raw).length !== 0) continue;
 					const result = transform(raw, make);
 					if (result === null || raw === '') continue;
 					expect(result.out, files[i]).toBe(eager(raw, result.compile_map));

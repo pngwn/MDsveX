@@ -15,7 +15,7 @@ Sources:
 - **No compile-time component substitution.** Tag names are literals in each renderer `case`, so there is no single place where an element could be swapped for a component.
 - **Frontmatter isn't metadata yet.** It is parsed as a raw span and then dropped from the output. There is no YAML parsing and no `metadata` export.
 - **Raw HTML already parses into element nodes.** `NodeKind.html` carries `tag`, `attributes` and `self_closing`, and component tags and lowercase tags share that one node kind. This makes it possible to substitute raw `<h1>` as well as `# h1`.
-- **Directives are parsed, not rendered.** The parser records `name` and `args` for all three directive forms. The renderer has no case for them and just emits their children.
+- **Directives are parsed, not rendered.** The parser records `name` and `args` for all three directive forms. The renderer has no case for them and just emits their children. *(Since 2026-10-02 they render as components; see §6.)*
 - **Integration is a Vite plugin only.** `mdsvex()` registers a `transform` hook and a sourcemap post hook. There is no `resolveId`, no `load` and no Svelte preprocessor.
 - **The core is already pure.** `packages/{parse,render}` use no `fs`, `path`, `process` or `require`. The only Node API in the package is `Buffer` in the sourcemap hook.
 
@@ -149,6 +149,8 @@ interface CompileOptions {
 
   /** Optional root fallback scope(s), lowest precedence, applies even with template: false. */
   components?: ComponentSource[];
+  /** Root fallback directive replacements, a namespace apart from components; see §6. */
+  directives?: ComponentSource[];
   /** Which elements are eligible for substitution; see §5. */
   component_mode?: 'markdown' | 'all';
 }
@@ -158,6 +160,8 @@ interface TemplateEntry {
   specifier: string;
   /** Names the template's <script module> exports (its replacements). */
   components?: string[];
+  /** The module its `directives` namespace export re-exports, and that module's names; see §6. */
+  directives?: ComponentSource;
 }
 
 interface ComponentSource {
@@ -404,9 +408,9 @@ Svelte 5 doesn't warn about unknown props, so the extras cost nothing for compon
 - **Which components open a scope.** Only those with markdown children, or self-closing ones too?
 - **Non-scope paths.** What about components rendered via `<svelte:component>`, or conditionally?
 
-## 6. Directives → components (phase 3, but the design has to fit)
+## 6. Directives → components
 
-Generic directives are parsed with `name`, `args` and bracket content. They map onto the same registry:
+Generic directives are parsed with `name`, `args` and bracket content. Each one renders as a component from a **directives namespace** that is separate from element replacements (Q6):
 
 ```md
 :::Callout[Heads up](kind=warn)
@@ -415,19 +419,74 @@ Body **markdown**
 ```
 
 ```svelte
-<Callout_MDSVEX kind="warn">
-  {#snippet label()}Heads up{/snippet}
+<Callout_MDSVEX_D_T kind="warn">{#snippet label()}Heads up{/snippet}
   <p>Body <strong>markdown</strong></p>
-</Callout_MDSVEX>
+</Callout_MDSVEX_D_T>
 ```
 
-- **Lookup** uses the same scope stack as §5.1. That means each template can provide its own `Callout`, and with nested scopes (§5.4) a region can override it. A directive whose name isn't registered falls through to parse-plugin directive handlers (the PFM.md "handlers keyed by name"). If nothing handles it, it is a compile error, not silent dropping. Today it is silently dropped.
-- **Args** become string props.
-- **Bracket content** becomes a `label` snippet. This also answers "named slots for a blockquote title" (#263).
-- **Children** become `children`.
-- **Leaf** `::name[…]` has `label` only. **Inline** `:name[…]` passes its content as `children`.
+### 6.1 Declaring directives
 
-Sharing one namespace means `export { default as Callout }` serves `:::Callout`, and with `'all'` mode a lowercase `export … as note` also serves `<note>`.
+A module's element-named exports replace elements. Its `directives` **namespace export** holds its directives:
+
+```ts
+// src/lib/markdown.ts: a root components module
+export { default as img } from './Img.svelte';
+export * as directives from './directives.ts';
+
+// src/lib/directives.ts
+export { default as Callout } from './Callout.svelte';
+export { default as note } from './Note.svelte';
+```
+
+```svelte
+<!-- a template's module script -->
+<script module>
+  export { default as h2 } from './docs/Heading.svelte';
+  export * as directives from './docs/directives.ts';
+</script>
+```
+
+The same rule applies everywhere a replacement module appears, so there is no extra option:
+
+- **Root fallback:** each `components` module can carry a `directives` namespace export.
+- **Per template:** the template's `<script module>` can carry one.
+- **Config overrides for a template you can't edit:** the `components` module can carry one.
+
+The rule has these consequences:
+
+- **Matching.** A directive name matches an export name exactly. `:::Callout` matches `Callout` and `:::note` matches `note`. A name that isn't an identifier, such as `:::my-box`, matches an ES2022 string export, `export { default as "my-box" }`.
+- **Static analysis only.** `scan_exports` records `export * as name from 'specifier'` as a namespace. The plugin resolves the specifier from the owning module, then scans that module with the same scanner. Any other form of a `directives` export is a startup error, because its names can't be read without running the module. That covers `export const directives = {…}` and `import * as d; export { d as directives }`.
+- **Never an element name.** The `directives` export itself is never treated as an element name, so `<directives>` in `'all'` mode isn't replaced.
+- **Output.** Compiled output imports each used directive by name from a virtual id: `mdsvex:directives`, or `mdsvex:directives/<i>` beside `mdsvex:components/<i>`. A template's would be `mdsvex:template/<name>/directives`. Locals use their own suffix (`_MDSVEX_D_<scope>`), so they never collide with element locals.
+- **Core input.** The core receives directives as pure data: `CompileOptions.directives` for the root, and `TemplateEntry.directives` per template.
+- **HMR.** The plugin tracks the directives module like any scanned file. If its export set changes, the documents that used it recompile. If the owning module drops or moves its `directives` namespace, the registry resolves again on the next transform.
+
+### 6.2 Lookup and precedence
+
+- **A separate scope chain.** Directives resolve through a second `ComponentScope` chain, closest first, with the same shape as §5.1. The chain is the selected template's directives, then the root modules' directives in order, with a later module winning. The renderer looks names up through `scope.get`, as for elements.
+- **Separate namespaces.** An element export `table` never serves `:::table`, and a directive `p` never replaces paragraphs.
+- **Plugin fallthrough.** A directive with no component falls through to parse-plugin `directive_inline`, `directive_leaf` and `directive_container` handlers. A plugin handles a directive by rewriting the node, for example `node.type = 'block_quote'`.
+- **Registered beats plugin.** A registered directive never reaches a plugin's directive handlers. The parser sets `name` after the open, so with directive replacements configured, the core runs a plugin's directive handler at the close, where `node.attrs.name` is known. Handlers that key on the name already have to work there.
+- **Unhandled is an error.** A directive left in the tree with no component is a compile error naming it, for example `no component renders the directive :::thing at 3:1 …`. It is thrown as a `DirectiveError` with `directive`, `line` and `column`. It used to render as its children, and a leaf vanished. The renderer only throws when `strict_directives` is set, which `compile()` always sets. A preview renderer keeps rendering children.
+
+### 6.3 Props contract
+
+- **Args** become string props: `kind="warn"`, or `v={"{a}"}` when the value holds braces, so they are never read as expressions.
+- **Bracket content** of a leaf or container becomes a `label` snippet. This also answers "named slots for a blockquote title" (#263). Empty brackets pass no snippet, so `{#if label}` works.
+- **Inline** `:name[…]` passes its content as `children`.
+- **Container** passes its body as `children`.
+- **Leaf** `::name[…]` passes `label` only.
+- **Reserved names.** An arg named `children` is a compile error, and so is `label` on a leaf or container. On an inline directive, `label` is a plain prop.
+- **Void output.** A directive with no label and no children renders self-closing.
+
+Known gaps, both in the parser:
+
+- **Labels are plain text.** Leaf and container labels are kept as a raw value range, so `:::x[Heads *up*]` renders the `*` literally. Inline directive text is parsed.
+- **No lists in containers.** Lists inside a directive container don't parse.
+
+### 6.4 Nested scopes later (§5.4)
+
+The `directives` namespace export is the §5.4 "marker export" shape. A wrapper component could opt in as a directive scope the same way, with no new concept. The renderer pushes and pops the directive chain alongside the element chain.
 
 ## 7. Plugin config, all together
 
@@ -442,7 +501,7 @@ mdsvex({
              components: '#lib/theme-overrides.ts' },
   },
   select_template: (id, metadata) => (id.includes('/changelog/') ? false : undefined),
-  components: '#lib/markdown/defaults.ts',               // optional root fallback
+  components: '#lib/markdown/defaults.ts',               // optional root fallback, may export * as directives
   component_mode: 'markdown',
 });
 ```
@@ -455,6 +514,7 @@ The plugin builds the template and root parts of `CompileOptions` once per confi
   default_template: 'default',
   select_template: (m) => user_select(id, m),   // bound per transform
   components: [{ specifier: 'mdsvex:components', names: ['img', 'pre'] }],
+  directives: [{ specifier: 'mdsvex:directives', names: ['Callout', 'note'] }],
   component_mode: 'markdown',
 }
 ```
@@ -485,7 +545,7 @@ The plugin builds the template and root parts of `CompileOptions` once per confi
    - Disable the source-slice passthrough for substituted self-closing tags.
    - Fix spread attribute rendering (`{...x}` currently looks like it renders as `...x={...x}`; to verify).
    - Add the directive rule.
-4. **Directives → components** (§6).
+4. **Directives → components** (§6). *Done for the root fallback; templates carry their own `directives` namespace once templates land.*
 Deferred: **nested scopes** (§5.4). Pick these up only once the per-template sets are in use and #601-style demand is clear.
 
 5. **Language tools.** `mdsvex:*` ids need types. Option A: the plugin writes generated `paths` into a tsconfig, like `.svelte-kit/tsconfig.json`. Option B: `language-core` reads the plugin config. Until then, type them as `any`.
@@ -497,7 +557,7 @@ Deferred: **nested scopes** (§5.4). Pick these up only once the per-template se
 - **Q3. Is the root fallback needed at all?** With per-template sets, the root `components` module only matters for `template: false` documents and for sites with no templates. It is cheap to keep, but it is extra surface.
 - **Q4. Per-document sets.** Is a frontmatter `components: blog` key selecting a named set (#455's `type` profiles) worth it, or would nested scopes (§5.4) cover the same need better if they ever ship? My view: leave both out of v1.
 - **Q5. Metadata as spread vs. a single prop.** Spreading is friendly and legacy-compatible, but it collides with `children` and with forwarded document props. The alternative is `metadata={…}` as one prop.
-- **Q6. Directive namespace.** Should directives and elements share one registry? Sharing is simpler, but `:::table` and `<table>` would both hit a `table` export.
+- **Q6. Directive namespace.** *Resolved 2026-10-02: a separate namespace, declared by a `directives` namespace export (`export * as directives from './directives.ts'`) in any replacement module (§6.1).* We considered two alternatives. A separate `directives` option has no self-contained per-template form. A capitalisation rule is lossy, and it would silently register capitalised helper exports. Sharing one registry would make `:::table` and `<table>` both hit a `table` export.
 - **Q7. YAML in core.** *Resolved 2026-10-01: both.* Core ships its own lightweight YAML parser in plain JS, with no Node APIs, so `compile()` still runs in a browser. It covers the common cases: plain and quoted scalars, numbers, booleans and null, dates as strings, nested maps, block and flow sequences, `|` and `>` blocks, and comments. Anything else throws an error that names the line and suggests a parse function. `frontmatter: { parse?: (raw: string) => Record<string, unknown> }` replaces the built-in parser, for full YAML or another format.
 - **Q8. Non-Vite story.** Is "pass specifiers to `compile()`" enough for everyone else, or do we want a thin Svelte-preprocessor wrapper? A preprocessor wrapper could emit the same virtual ids, but only if some resolver knows them.
 - **Q9. Registering extensions (SvelteKit 3).** *Resolved 2026-10-01: `mdsvex({ extensions })` registers its extensions with kit through kit's exposed config, so they no longer need repeating in `sveltekit({ extensions })`. Checked against kit 3.0.0, vite-plugin-svelte 7.3.1 and Vite 8.3.2.*

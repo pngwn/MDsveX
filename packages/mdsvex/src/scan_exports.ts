@@ -10,7 +10,12 @@ export interface ScannedExports {
 	names: string[];
 	/** specifiers of star re-exports, whose names a static scan cannot see */
 	stars: string[];
+	/** namespace re-exports, export * as name from specifier */
+	namespaces: { name: string; specifier: string }[];
 }
+
+// the name of export * as name from, an es2022 string name keeps its quotes
+const NAMESPACE = /^export\s*\*\s*as\s+([\w$]+|"[^"]*"|'[^']*')\s*from/;
 
 /** the names code exports, for a svelte file those of its module script */
 export async function scan_exports(
@@ -25,7 +30,8 @@ export async function scan_exports_detail(
 	kind: ScanKind
 ): Promise<ScannedExports> {
 	const js = kind === 'svelte' ? module_script(code) : code;
-	if (js === null || js.trim() === '') return { names: [], stars: [] };
+	if (js === null || js.trim() === '')
+		return { names: [], stars: [], namespaces: [] };
 
 	const stripped = await strip_types(js);
 	const lexer = await import('es-module-lexer');
@@ -35,17 +41,22 @@ export async function scan_exports_detail(
 	const names: string[] = [];
 	for (let i = 0; i < exports.length; i++) names.push(exports[i].n);
 	const stars: string[] = [];
+	const namespaces: { name: string; specifier: string }[] = [];
 	for (let i = 0; i < imports.length; i++) {
 		const imp = imports[i];
 		// a re-export statement starts with export, a namespace re-export is a name instead
-		if (
-			imp.n !== undefined &&
-			stripped.startsWith('export', imp.ss) &&
-			/^export\s*\*\s*from/.test(stripped.slice(imp.ss, imp.se))
-		)
-			stars.push(imp.n);
+		if (imp.n === undefined || !stripped.startsWith('export', imp.ss)) continue;
+		const statement = stripped.slice(imp.ss, imp.se);
+		if (/^export\s*\*\s*from/.test(statement)) stars.push(imp.n);
+		else {
+			const m = NAMESPACE.exec(statement);
+			if (m !== null) {
+				const name = /^["']/.test(m[1]) ? m[1].slice(1, -1) : m[1];
+				namespaces.push({ name, specifier: imp.n });
+			}
+		}
 	}
-	return { names, stars };
+	return { names, stars, namespaces };
 }
 
 // a quoted attribute value may hold a closing angle bracket

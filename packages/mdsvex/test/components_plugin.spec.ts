@@ -53,7 +53,32 @@ describe('scan_exports', () => {
 			"export * from './md.js';\nexport { default as p } from './P.svelte';",
 			'js'
 		);
-		expect(result).toEqual({ names: ['p'], stars: ['./md.js'] });
+		expect(result).toEqual({
+			names: ['p'],
+			stars: ['./md.js'],
+			namespaces: [],
+		});
+	});
+
+	test('reports namespace re-exports with their specifiers', async () => {
+		const result = await scan_exports_detail(
+			[
+				"export * as directives from './directives.ts';",
+				'export * as \'odd name\' from "./odd.js";',
+				"export { default as p } from './P.svelte';",
+				"import * as other from './other.js';",
+				'export { other };',
+			].join('\n'),
+			'js'
+		);
+		expect(result).toEqual({
+			names: ['directives', 'odd name', 'p', 'other'],
+			stars: [],
+			namespaces: [
+				{ name: 'directives', specifier: './directives.ts' },
+				{ name: 'odd name', specifier: './odd.js' },
+			],
+		});
 	});
 
 	test('reads only the module script of a svelte file', async () => {
@@ -317,6 +342,228 @@ describe('components resolution failure', () => {
 	test('an unknown component_mode throws when the plugin is made', () => {
 		expect(() => mdsvex({ component_mode: 'every' as any })).toThrow(
 			/component_mode/
+		);
+	});
+});
+
+/** a components module whose directives namespace re-exports a second module */
+function write_directives_app(markdown: string[]): string {
+	const root = mkdtempSync(join(HERE, '.tmp-directives-'));
+	const files: Record<string, string> = {
+		'package.json': JSON.stringify({
+			name: 'app',
+			private: true,
+			type: 'module',
+			imports: { '#lib/*': './src/lib/*' },
+		}),
+		'src/lib/markdown.ts': markdown.join('\n'),
+		'src/lib/directives/index.ts': [
+			"export { default as Callout } from './Callout.svelte';",
+			"export { default as abbr } from './Abbr.svelte';",
+		].join('\n'),
+		'src/lib/directives/Callout.svelte': [
+			'<script>',
+			'  let { kind, label, children } = $props();',
+			'</script>',
+			'<aside class={kind}><strong>{@render label?.()}</strong>{@render children?.()}</aside>',
+		].join('\n'),
+		'src/lib/directives/Abbr.svelte': [
+			'<script>',
+			'  let { title, children } = $props();',
+			'</script>',
+			'<abbr {title}>{@render children()}</abbr>',
+		].join('\n'),
+		'src/lib/directives/Toc.svelte': '<nav>toc</nav>',
+		'src/lib/Paragraph.svelte': [
+			'<script>',
+			'  let { children } = $props();',
+			'</script>',
+			'<p class="para">{@render children()}</p>',
+		].join('\n'),
+		'src/doc.svx': [
+			':::Callout[Heads up](kind=warn)',
+			'Read :abbr[PFM](title="Penguin flavoured markdown").',
+			':::',
+			'',
+		].join('\n'),
+		'src/toc.svx': '::toc[]\n',
+	};
+	for (const [path, content] of Object.entries(files)) {
+		mkdirSync(dirname(join(root, path)), { recursive: true });
+		writeFileSync(join(root, path), content);
+	}
+	return root;
+}
+
+describe('directives namespace', () => {
+	let root: string;
+	let server: ViteDevServer;
+	let plugins: Plugin[];
+
+	beforeAll(async () => {
+		root = write_directives_app([
+			"export { default as p } from './Paragraph.svelte';",
+			"export * as directives from './directives/index.ts';",
+		]);
+		plugins = mdsvex({ components: '#lib/markdown.ts' });
+		server = await serve(root, plugins);
+	});
+
+	afterAll(async () => {
+		await server?.close();
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	test('maps the directives id to the module the namespace re-exports', async () => {
+		const container = server.environments.client.pluginContainer;
+		expect((await container.resolveId('mdsvex:directives'))?.id).toBe(
+			vite_path(root, 'src/lib/directives/index.ts')
+		);
+		expect((await container.resolveId('mdsvex:components'))?.id).toBe(
+			vite_path(root, 'src/lib/markdown.ts')
+		);
+	});
+
+	test('imports directives apart from elements, never the namespace name', async () => {
+		await server.environments.ssr.pluginContainer.resolveId(
+			'mdsvex:components'
+		);
+		const transform = plugins[0].transform as Function;
+		const result = await transform.call(
+			{ addWatchFile() {} },
+			'directives :abbr[x]\n',
+			vite_path(root, 'src/other.svx')
+		);
+		expect(result.code).toContain(
+			"import { p as P_MDSVEX_G } from 'mdsvex:components';\n" +
+				"import { abbr as Abbr_MDSVEX_D_G } from 'mdsvex:directives';\n"
+		);
+		expect(result.code).not.toContain('directives as');
+	});
+
+	test('renders args as props, the text as label and the body as children', async () => {
+		const html = await ssr(server, '/src/doc.svx');
+		expect(html).toBe(
+			'<aside class="warn"><strong>Heads up</strong><p class="para">Read ' +
+				'<abbr title="Penguin flavoured markdown">PFM</abbr>.</p></aside>'
+		);
+	});
+
+	test('an unregistered directive fails the transform, naming it', async () => {
+		await expect(
+			server.environments.ssr.transformRequest('/src/toc.svx')
+		).rejects.toThrow(/::toc at 1:1/);
+	});
+
+	test('a changed directives module recompiles the documents that used it', async () => {
+		const ssr_env = server.environments.ssr;
+		await ssr_env.transformRequest('/src/doc.svx');
+
+		const file = vite_path(root, 'src/lib/directives/index.ts');
+		const code = [
+			"export { default as Callout } from './Callout.svelte';",
+			"export { default as abbr } from './Abbr.svelte';",
+			"export { default as toc } from './Toc.svelte';",
+		].join('\n');
+		writeFileSync(file, code);
+		ssr_env.moduleGraph.onFileChange(file);
+
+		const hot = plugins[0].hotUpdate as Function;
+		const result = await hot.call(
+			{ environment: ssr_env },
+			{
+				type: 'update',
+				file,
+				timestamp: 1,
+				modules: [],
+				read: async () => code,
+				server,
+			}
+		);
+		expect(result.map((m: any) => m.file)).toContain(
+			vite_path(root, 'src/doc.svx')
+		);
+		expect(await ssr(server, '/src/toc.svx')).toBe('<nav>toc</nav>');
+	});
+
+	test('moving the namespace to another module resolves it again in every environment', async () => {
+		const ssr_env = server.environments.ssr;
+		const client_env = server.environments.client;
+		await ssr_env.transformRequest('/src/doc.svx');
+		await client_env.transformRequest('/src/doc.svx');
+
+		writeFileSync(
+			join(root, 'src/lib/more.ts'),
+			"export { default as Callout } from './directives/Toc.svelte';\n" +
+				"export { default as abbr } from './directives/Abbr.svelte';"
+		);
+		const file = vite_path(root, 'src/lib/markdown.ts');
+		const code = [
+			"export { default as p } from './Paragraph.svelte';",
+			"export * as directives from './more.ts';",
+		].join('\n');
+		writeFileSync(file, code);
+		for (const env of [ssr_env, client_env]) env.moduleGraph.onFileChange(file);
+
+		const hot = plugins[0].hotUpdate as Function;
+		const update = (environment: unknown) =>
+			hot.call(
+				{ environment },
+				{
+					type: 'update',
+					file,
+					timestamp: 2,
+					modules: [],
+					read: async () => code,
+					server,
+				}
+			);
+		const doc = vite_path(root, 'src/doc.svx');
+		expect((await update(ssr_env)).map((m: any) => m.file)).toContain(doc);
+		expect((await update(client_env)).map((m: any) => m.file)).toContain(doc);
+
+		expect(await ssr(server, '/src/doc.svx')).toBe('<nav>toc</nav>');
+		expect(
+			(await client_env.pluginContainer.resolveId('mdsvex:directives'))?.id
+		).toBe(vite_path(root, 'src/lib/more.ts'));
+	});
+});
+
+describe('directives namespace errors', () => {
+	async function start_error(markdown: string[]): Promise<string> {
+		const root = write_directives_app(markdown);
+		try {
+			return await serve(root, mdsvex({ components: '#lib/markdown.ts' })).then(
+				async (server) => {
+					await server.close();
+					return 'started';
+				},
+				(e: Error) => e.message.replace(normalizePath(root), '<root>')
+			);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	}
+
+	test('a directives export that is not a namespace re-export', async () => {
+		const message = await start_error([
+			"import Callout from './directives/Callout.svelte';",
+			'export const directives = { Callout };',
+		]);
+		expect(message).toBe(
+			'[mdsvex] <root>/src/lib/markdown.ts exports directives, which must be a ' +
+				'namespace re-export so its names can be read without running it: ' +
+				"export * as directives from './directives.ts'"
+		);
+	});
+
+	test('a directives module that does not resolve', async () => {
+		const message = await start_error([
+			"export * as directives from './missing.ts';",
+		]);
+		expect(message).toBe(
+			'[mdsvex] could not resolve the directives module "./missing.ts" ' +
+				'from <root>/src/lib/markdown.ts'
 		);
 	});
 });

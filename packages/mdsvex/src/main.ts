@@ -30,6 +30,7 @@ import type {
 } from '@mdsvex/render/sourcemap';
 import type { Plugin, PluginOption, Rollup } from 'vite';
 import { scan_exports_detail } from './scan_exports';
+import type { ScannedExports } from './scan_exports';
 import remapping from '@ampproject/remapping';
 import {
 	FrontmatterError,
@@ -50,6 +51,7 @@ export {
 export type { ScanKind, ScannedExports } from './scan_exports';
 export type { FrontmatterOptions };
 export { FrontmatterError } from './frontmatter';
+export { DirectiveError } from '@mdsvex/render/html-cursor';
 
 export interface MdsvexOptions {
 	extensions?: string[];
@@ -109,6 +111,11 @@ export interface CompileOptions extends TemplateOptions {
 	sourcemap?: boolean;
 	/** root fallback replacements, lowest precedence first, each specifier is imported as written */
 	components?: ComponentSource[];
+	/**
+	 * root fallback directive replacements apart from components, lowest
+	 * precedence first, the plugin reads them from each components module
+	 */
+	directives?: ComponentSource[];
 	component_mode?: ComponentMode;
 	frontmatter?: FrontmatterOptions;
 }
@@ -190,6 +197,87 @@ function scope_of(
 		root_scopes.set(components, scope);
 	}
 	return scope;
+}
+
+const directive_scopes = new WeakMap<ComponentSource[], ComponentScope>();
+
+/** the scope chain for root directives, its locals apart from the elements */
+function directive_scope_of(
+	directives: ComponentSource[] | undefined
+): ComponentScope | null {
+	if (directives === undefined || directives.length === 0) return null;
+	let scope = directive_scopes.get(directives);
+	if (scope === undefined) {
+		scope = new ComponentScope(directives, 'D_G');
+		directive_scopes.set(directives, scope);
+	}
+	return scope;
+}
+
+/** a compile renders every directive as a component or throws */
+function bind_scopes(
+	renderer: CursorHTMLRenderer,
+	scope: ComponentScope | null,
+	directives: ComponentScope | null
+): void {
+	renderer.scope = scope;
+	renderer.directives = directives;
+	renderer.strict_directives = true;
+}
+
+const DIRECTIVE_KINDS = [
+	'directive_inline',
+	'directive_leaf',
+	'directive_container',
+] as const;
+
+const guarded = new WeakMap<
+	ParsePlugin[],
+	{ scope: ComponentScope; plugins: ParsePlugin[] }
+>();
+
+/**
+ * a directive a component replaces never reaches the directive handlers of
+ * a plugin, which then run at the close where the parser has set the name
+ */
+function guard_plugins(
+	plugins: ParsePlugin[],
+	scope: ComponentScope | null
+): ParsePlugin[] {
+	if (scope === null) return plugins;
+	const hit = guarded.get(plugins);
+	if (hit !== undefined && hit.scope === scope) return hit.plugins;
+	let out = plugins;
+	for (let i = 0; i < plugins.length; i++) {
+		const plugin = plugins[i];
+		let copy: ParsePlugin | null = null;
+		for (const kind of DIRECTIVE_KINDS) {
+			const entry = plugin[kind];
+			if (typeof entry !== 'object' || typeof entry.parse !== 'function')
+				continue;
+			const parse = entry.parse;
+			copy ??= { ...plugin };
+			copy[kind] = {
+				parse(node, ctx) {
+					const name = node.attrs.name;
+					if (typeof name === 'string')
+						return scope.get(name) === undefined ? parse(node, ctx) : undefined;
+					// the parser sets the name after the open, the close sees it
+					return () => {
+						if (scope.get(node.attrs.name) !== undefined) return;
+						const close = parse(node, ctx);
+						if (close) close();
+					};
+				},
+			};
+		}
+		if (copy !== null) {
+			if (out === plugins) out = plugins.slice();
+			out[i] = copy;
+		}
+	}
+	guarded.set(plugins, { scope, plugins: out });
+	return out;
 }
 
 const has_own = Object.prototype.hasOwnProperty;
@@ -359,11 +447,18 @@ function give_renderer(renderer: CursorHTMLRenderer): void {
 	spare_renderer = renderer;
 }
 
-function parse_once(source: string, plugins?: ParsePlugin[]): NodeBuffer {
+function parse_once(
+	source: string,
+	plugins: ParsePlugin[] | undefined,
+	directives: ComponentScope | null
+): NodeBuffer {
 	let dispatcher: PluginDispatcher | undefined;
 	if (plugins && plugins.length > 0) {
 		const text_source = new SourceTextSource(source);
-		dispatcher = new PluginDispatcher(plugins, text_source);
+		dispatcher = new PluginDispatcher(
+			guard_plugins(plugins, directives),
+			text_source
+		);
 	}
 
 	// short documents are denser in nodes and a small buffer is only a slab
@@ -420,11 +515,12 @@ function module_code_of(metadata: Metadata | undefined): string | undefined {
 function render_once(raw: string, options?: CompileOptions): CompileResult {
 	// parser offsets index the normalized string, so render and plugins read it too
 	const source = normalize_newlines(raw);
-	const nodes = parse_once(source, options?.parse_plugins);
 	const scope = scope_of(options?.components, options?.component_mode);
+	const directives = directive_scope_of(options?.directives);
+	const nodes = parse_once(source, options?.parse_plugins, directives);
 	const metadata = metadata_of(nodes, source, options?.frontmatter?.parse);
 	const renderer = take_renderer();
-	renderer.scope = scope;
+	bind_scopes(renderer, scope, directives);
 	let template: string | undefined;
 	if (metadata !== undefined || picks_template(options)) {
 		try {
@@ -462,9 +558,11 @@ function render_v3(
 	file: string | undefined,
 	parse: FrontmatterParse,
 	scope: ComponentScope | null,
+	directives: ComponentScope | null,
 	templates: TemplateOptions | undefined
 ): CompileV3Result {
 	const metadata = metadata_of(nodes, source, parse);
+	bind_scopes(renderer, scope, directives);
 	const template = prepare(renderer, scope, metadata, templates, nodes, source);
 	const module_code = module_code_of(metadata);
 	// only a collapsed \r\n changes length, without one the records index raw
@@ -493,9 +591,11 @@ function render_trace(
 	source: string,
 	parse: FrontmatterParse,
 	scope: ComponentScope | null,
+	directives: ComponentScope | null,
 	templates: TemplateOptions | undefined
 ): CompileTraceResult {
 	const metadata = metadata_of(nodes, source, parse);
+	bind_scopes(renderer, scope, directives);
 	const template = prepare(renderer, scope, metadata, templates, nodes, source);
 	const trace = renderer.update_trace(nodes, source, module_code_of(metadata));
 	return { code: renderer.html, trace, source, metadata, template };
@@ -539,10 +639,11 @@ export class CompilerSession {
 		}
 
 		const scope = scope_of(options?.components, options?.component_mode);
+		const directives = directive_scope_of(options?.directives);
 		const source = normalize_newlines(raw);
 		const nodes = this.parse(source);
 		const metadata = metadata_of(nodes, source, options?.frontmatter?.parse);
-		this.renderer.scope = scope;
+		bind_scopes(this.renderer, scope, directives);
 		const template =
 			metadata === undefined && !picks_template(options)
 				? undefined
@@ -583,13 +684,15 @@ export class CompilerSession {
 		parse_plugins?: ParsePlugin[],
 		components?: ComponentSource[],
 		parse?: FrontmatterParse,
-		templates?: TemplateOptions
+		templates?: TemplateOptions,
+		directive_sources?: ComponentSource[]
 	): CompileV3Result {
 		const scope = components === undefined ? null : scope_of(components);
+		const directives = directive_scope_of(directive_sources);
 		const source = normalize_newlines(raw);
 		if (parse_plugins && parse_plugins.length > 0) {
 			// the dispatcher holds this source, so plugins get their own tree
-			const nodes = parse_once(source, parse_plugins);
+			const nodes = parse_once(source, parse_plugins, directives);
 			const renderer = new CursorHTMLRenderer({ cache: false });
 			return render_v3(
 				renderer,
@@ -599,6 +702,7 @@ export class CompilerSession {
 				file,
 				parse,
 				scope,
+				directives,
 				templates
 			);
 		}
@@ -611,6 +715,7 @@ export class CompilerSession {
 			file,
 			parse,
 			scope,
+			directives,
 			templates
 		);
 	}
@@ -625,17 +730,35 @@ export class CompilerSession {
 		parse_plugins?: ParsePlugin[],
 		components?: ComponentSource[],
 		parse?: FrontmatterParse,
-		templates?: TemplateOptions
+		templates?: TemplateOptions,
+		directive_sources?: ComponentSource[]
 	): CompileTraceResult {
 		const scope = components === undefined ? null : scope_of(components);
+		const directives = directive_scope_of(directive_sources);
 		const source = normalize_newlines(raw);
 		if (parse_plugins && parse_plugins.length > 0) {
-			const nodes = parse_once(source, parse_plugins);
+			const nodes = parse_once(source, parse_plugins, directives);
 			const renderer = new CursorHTMLRenderer({ cache: false });
-			return render_trace(renderer, nodes, source, parse, scope, templates);
+			return render_trace(
+				renderer,
+				nodes,
+				source,
+				parse,
+				scope,
+				directives,
+				templates
+			);
 		}
 		const nodes = this.parse(source);
-		return render_trace(this.renderer, nodes, source, parse, scope, templates);
+		return render_trace(
+			this.renderer,
+			nodes,
+			source,
+			parse,
+			scope,
+			directives,
+			templates
+		);
 	}
 
 	/**
@@ -648,21 +771,23 @@ export class CompilerSession {
 		out: TraceTarget,
 		components?: ComponentSource[],
 		parse?: FrontmatterParse,
-		templates?: TemplateOptions
+		templates?: TemplateOptions,
+		directive_sources?: ComponentSource[]
 	): void {
 		const scope = components === undefined ? null : scope_of(components);
+		const directives = directive_scope_of(directive_sources);
 		const source = normalize_newlines(raw);
 		let renderer = this.renderer;
 		let nodes: NodeBuffer;
 		if (parse_plugins && parse_plugins.length > 0) {
-			nodes = parse_once(source, parse_plugins);
+			nodes = parse_once(source, parse_plugins, directives);
 			renderer = new CursorHTMLRenderer({ cache: false });
 		} else {
 			nodes = this.parse(source);
 		}
 		const metadata = metadata_of(nodes, source, parse);
 		out.metadata = metadata;
-		renderer.scope = scope;
+		bind_scopes(renderer, scope, directives);
 		// only options or frontmatter pick a template
 		out.template =
 			templates === undefined && metadata === undefined
@@ -1136,6 +1261,9 @@ function api_extensions(plugin: Plugin | undefined): string[] | undefined {
 
 // documents import these virtual ids, so output holds no paths and the graph edge is the real file
 const COMPONENTS_ID = 'mdsvex:components';
+const DIRECTIVES_ID = 'mdsvex:directives';
+/** the namespace export of a replacement module that holds its directives */
+const DIRECTIVES_EXPORT = 'directives';
 const TEMPLATE_ID = 'mdsvex:template/';
 
 /** a URL as a path, a string as written */
@@ -1175,20 +1303,24 @@ type Warn = (message: string) => void;
  * any module that supplies replacements scans through here
  */
 function export_tracker() {
-	const scanned = new Map<string, { code: string; names: string[] }>();
+	const scanned = new Map<string, { code: string; result: ScannedExports }>();
 	const doc_files = new Map<string, readonly string[]>();
 	/** the timestamp of each file whose export set changed */
 	const changed_at = new Map<string, number>();
 
 	return {
 		/** scanned again only when the code changed */
-		async scan(file: string, warn: Warn, code?: string): Promise<string[]> {
+		async scan(
+			file: string,
+			warn: Warn,
+			code?: string
+		): Promise<ScannedExports> {
 			if (code === undefined) {
 				const fs = await import('node:fs/promises');
 				code = await fs.readFile(file, 'utf8');
 			}
 			const hit = scanned.get(file);
-			if (hit !== undefined && hit.code === code) return hit.names;
+			if (hit !== undefined && hit.code === code) return hit.result;
 			const result = await scan_exports_detail(
 				code,
 				file.endsWith('.svelte') ? 'svelte' : 'js'
@@ -1199,8 +1331,15 @@ function export_tracker() {
 						`scan cannot see. export each replacement by name`
 				);
 			}
-			scanned.set(file, { code, names: result.names });
-			return result.names;
+			scanned.set(file, { code, result });
+			return result;
+		},
+		/** note a change the names cannot show, such as a moved directives module */
+		mark(file: string, timestamp: number): void {
+			changed_at.set(file, timestamp);
+		},
+		marked(file: string, timestamp: number): boolean {
+			return changed_at.get(file) === timestamp;
 		},
 		/** true when the names differ, or differed at this timestamp, so every environment sees one change */
 		changed(
@@ -1238,26 +1377,64 @@ interface ComponentModule {
 	/** the resolved id without its query */
 	file: string;
 	names: string[];
+	/** the module its directives namespace export re-exports */
+	directives: DirectiveModule | null;
+}
+
+interface DirectiveModule {
+	virtual: string;
+	/** as written in the owning module, resolved from it */
+	spec: string;
+	file: string;
+	names: string[];
 }
 
 /**
- * the root components modules resolve and scan once, every document compiles
- * with the same option until an export set changes
+ * the element names of a replacement module, and the specifier of its
+ * directives namespace, which only export * as directives from can declare
+ */
+function split_exports(
+	file: string,
+	scanned: ScannedExports
+): { names: string[]; directives: string | null } {
+	const at = scanned.names.indexOf(DIRECTIVES_EXPORT);
+	if (at < 0) return { names: scanned.names, directives: null };
+	const ns = scanned.namespaces.find((n) => n.name === DIRECTIVES_EXPORT);
+	if (ns === undefined) {
+		throw new Error(
+			`[mdsvex] ${file} exports ${DIRECTIVES_EXPORT}, which must be a namespace ` +
+				`re-export so its names can be read without running it: ` +
+				`export * as ${DIRECTIVES_EXPORT} from './directives.ts'`
+		);
+	}
+	const names = scanned.names.slice();
+	names.splice(at, 1);
+	return { names, directives: ns.specifier };
+}
+
+/**
+ * the root components modules and their directives modules resolve and scan
+ * once, every document compiles with the same options until an export set changes
  */
 function component_registry(
 	written: readonly (string | URL)[],
 	tracker: ExportTracker
 ) {
-	const virtual_ids =
-		written.length === 1
-			? [COMPONENTS_ID]
-			: written.map((_, i) => COMPONENTS_ID + '/' + i);
+	const many = written.length !== 1;
+	const virtual_ids = many
+		? written.map((_, i) => COMPONENTS_ID + '/' + i)
+		: [COMPONENTS_ID];
+	const directive_ids = many
+		? written.map((_, i) => DIRECTIVES_ID + '/' + i)
+		: [DIRECTIVES_ID];
 
 	let root = '';
 	let modules: ComponentModule[] | null = null;
 	let loading: Promise<ComponentModule[]> | null = null;
-	/** the compile option, replaced whenever an export set changes */
+	/** the compile options, replaced whenever an export set changes */
 	let sources: ComponentSource[] | undefined;
+	let directive_sources: ComponentSource[] | undefined;
+	/** kept over a reset, so every environment sees the change that caused it */
 	let files: readonly string[] = [];
 
 	function importer(): string {
@@ -1266,8 +1443,22 @@ function component_registry(
 
 	function publish(list: ComponentModule[]): void {
 		modules = list;
-		files = list.map((m) => m.file);
-		sources = list.map((m) => ({ specifier: m.virtual, names: m.names }));
+		const all: string[] = [];
+		sources = [];
+		const directive_list: ComponentSource[] = [];
+		for (const m of list) {
+			all.push(m.file);
+			sources.push({ specifier: m.virtual, names: m.names });
+			if (m.directives === null) continue;
+			all.push(m.directives.file);
+			directive_list.push({
+				specifier: m.directives.virtual,
+				names: m.directives.names,
+			});
+		}
+		files = all;
+		directive_sources =
+			directive_list.length === 0 ? undefined : directive_list;
 	}
 
 	async function load(ctx: Rollup.PluginContext): Promise<ComponentModule[]> {
@@ -1287,6 +1478,7 @@ function component_registry(
 				spec,
 				file: clean_id(resolved.id),
 				names: [],
+				directives: null,
 			});
 		}
 		if (failed.length !== 0) {
@@ -1296,7 +1488,29 @@ function component_registry(
 			);
 		}
 		const warn = (message: string) => ctx.warn(message);
-		for (const m of list) m.names = await tracker.scan(m.file, warn);
+		for (let i = 0; i < list.length; i++) {
+			const m = list[i];
+			const own = split_exports(m.file, await tracker.scan(m.file, warn));
+			m.names = own.names;
+			if (own.directives === null) continue;
+			const resolved = await ctx.resolve(own.directives, m.file, {
+				skipSelf: true,
+			});
+			if (resolved === null || resolved.external) {
+				throw new Error(
+					`[mdsvex] could not resolve the directives module ` +
+						`${JSON.stringify(own.directives)} from ${m.file}`
+				);
+			}
+			const file = clean_id(resolved.id);
+			m.directives = {
+				// a failed resolution threw above, so list lines up with written
+				virtual: directive_ids[i],
+				spec: own.directives,
+				file,
+				names: (await tracker.scan(file, warn)).names,
+			};
+		}
 		publish(list);
 		return list;
 	}
@@ -1307,16 +1521,18 @@ function component_registry(
 		return loading;
 	}
 
+	function reset(): void {
+		loading = null;
+		modules = null;
+	}
+
 	return {
 		set_root(dir: string): void {
 			root = dir;
 		},
 		ensure,
 		/** resolve and scan again on the next use, keeping the scans of unchanged code */
-		reset(): void {
-			loading = null;
-			modules = null;
-		},
+		reset,
 		ready(): boolean {
 			return modules !== null;
 		},
@@ -1327,15 +1543,26 @@ function component_registry(
 		sources(): ComponentSource[] | undefined {
 			return sources;
 		},
+		/** the directives compile option */
+		directive_sources(): ComponentSource[] | undefined {
+			return directive_sources;
+		},
 		/** resolved in the environment of ctx, whose conditions may differ */
 		async resolve(
 			ctx: Rollup.PluginContext,
 			id: string
 		): Promise<Rollup.ResolvedId | null | undefined> {
-			const i = virtual_ids.indexOf(id);
+			let i = virtual_ids.indexOf(id);
+			if (i >= 0) {
+				const list = await ensure(ctx);
+				return ctx.resolve(list[i].spec, importer(), { skipSelf: true });
+			}
+			i = directive_ids.indexOf(id);
 			if (i < 0) return undefined;
 			const list = await ensure(ctx);
-			return ctx.resolve(list[i].spec, importer(), { skipSelf: true });
+			const m = list[i];
+			if (m.directives === null) return null;
+			return ctx.resolve(m.directives.spec, m.file, { skipSelf: true });
 		},
 		/** scan a changed file again, true when its export set changed */
 		async rescan(
@@ -1344,17 +1571,35 @@ function component_registry(
 			warn: Warn,
 			code: string
 		): Promise<boolean> {
-			if (modules === null) return false;
+			// an earlier environment reset for this change
+			if (modules === null) return tracker.marked(file, timestamp);
 			const at = modules.findIndex((m) => m.file === file);
-			if (at < 0) return false;
-			const before = modules[at].names;
-			const names = await tracker.scan(file, warn, code);
-			if (names !== before) {
+			if (at >= 0) {
+				const m = modules[at];
+				const own = split_exports(file, await tracker.scan(file, warn, code));
+				if (own.directives !== (m.directives?.spec ?? null)) {
+					// a new directives module resolves in the next transform
+					tracker.mark(file, timestamp);
+					reset();
+					return true;
+				}
+				if (own.names !== m.names && !same_names(own.names, m.names)) {
+					const list = modules.slice();
+					list[at] = { ...m, names: own.names };
+					publish(list);
+				}
+				return tracker.changed(file, m.names, own.names, timestamp);
+			}
+			const owner = modules.findIndex((m) => m.directives?.file === file);
+			if (owner < 0) return false;
+			const d = modules[owner].directives!;
+			const names = (await tracker.scan(file, warn, code)).names;
+			if (!same_names(names, d.names)) {
 				const list = modules.slice();
-				list[at] = { ...list[at], names };
+				list[owner] = { ...list[owner], directives: { ...d, names } };
 				publish(list);
 			}
-			return tracker.changed(file, before, names, timestamp);
+			return tracker.changed(file, d.names, names, timestamp);
 		},
 	};
 }
@@ -1438,9 +1683,11 @@ function template_registry(
 		if (failed.length !== 0) throw new Error(failed.join('\n'));
 		const warn = (message: string) => ctx.warn(message);
 		for (const m of list.values()) {
-			m.names = without_default(await tracker.scan(m.file, warn));
+			m.names = without_default((await tracker.scan(m.file, warn)).names);
 			if (m.extra !== null)
-				m.extra.names = without_default(await tracker.scan(m.extra.file, warn));
+				m.extra.names = without_default(
+					(await tracker.scan(m.extra.file, warn)).names
+				);
 		}
 		publish(list);
 		return list;
@@ -1529,7 +1776,9 @@ function template_registry(
 			code: string
 		): Promise<boolean> {
 			if (modules === null || !files.includes(file)) return false;
-			const names = without_default(await tracker.scan(file, warn, code));
+			const names = without_default(
+				(await tracker.scan(file, warn, code)).names
+			);
 			let before: readonly string[] | null = null;
 			const list = new Map(modules);
 			for (const [name, m] of modules) {
@@ -1667,7 +1916,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	function compile_doc(
 		code: string,
 		id: string,
-		components: ComponentSource[] | undefined
+		components: ComponentSource[] | undefined,
+		directives: ComponentSource[] | undefined
 	): { code: string } {
 		let doc = stored.get(id);
 		if (doc === undefined) {
@@ -1693,7 +1943,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			components,
 			options.frontmatter?.parse,
 			// without templates or a selector a query has nothing to pick
-			no_templates ? undefined : templates_for(templates, select, id)
+			no_templates ? undefined : templates_for(templates, select, id),
+			directives
 		);
 		doc.raw = code;
 
@@ -1749,7 +2000,10 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			},
 
 			resolveId(id) {
-				if (registry !== null && id.startsWith(COMPONENTS_ID))
+				if (
+					registry !== null &&
+					(id.startsWith(COMPONENTS_ID) || id.startsWith(DIRECTIVES_ID))
+				)
 					return registry.resolve(this, id);
 				if (templates !== null && id.startsWith(TEMPLATE_ID))
 					return templates.resolve(this, id);
@@ -1766,7 +2020,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 			transform(code, id) {
 				if (!matches(id)) return;
-				if (tracker === null) return compile_doc(code, id, undefined);
+				if (tracker === null)
+					return compile_doc(code, id, undefined, undefined);
 
 				const finish = () => {
 					// a watch build compiles again when the exports change, in dev the virtual import is the edge
@@ -1776,7 +2031,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 						if (templates !== null)
 							for (const file of templates.files()) this.addWatchFile(file);
 					}
-					const result = compile_doc(code, id, registry?.sources());
+					const result = compile_doc(
+						code,
+						id,
+						registry?.sources(),
+						registry?.directive_sources()
+					);
 					const used = templates?.files_of(stored.get(id)!.template) ?? [];
 					const root = registry === null ? [] : registry.files();
 					tracker.track(
@@ -1810,10 +2070,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 			async hotUpdate(update) {
 				const file = update.file;
-				const in_root =
-					registry !== null &&
-					registry.ready() &&
-					registry.files().includes(file);
+				// files outlive a reset, so a later environment still sees the change
+				const in_root = registry !== null && registry.files().includes(file);
 				const in_templates =
 					templates !== null &&
 					templates.ready() &&
