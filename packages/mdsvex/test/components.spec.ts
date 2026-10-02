@@ -219,6 +219,12 @@ describe('element replacement, markdown mode', () => {
 			'<Pre_MDSVEX_G code={"plain"}><code>plain</code></Pre_MDSVEX_G>',
 		],
 		[
+			'fenced code in a block quote passes the code without the markers',
+			'> ```\n> a\n>\n>   b\n> ```',
+			['pre'],
+			'<blockquote>\n<Pre_MDSVEX_G code={"a\\n\\n  b"}><code>a\n\n  b</code></Pre_MDSVEX_G>\n</blockquote>',
+		],
+		[
 			'fenced code does not use the inline code replacement',
 			'```\nplain\n```',
 			['code'],
