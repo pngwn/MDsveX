@@ -55,7 +55,16 @@
 					"meta.embedded.block.go": "go"
 				}
 			}
-		]
+		],
+		"configurationDefaults": {
+			"[pfm]": {
+				"editor.quickSuggestions": {
+					"other": "on",
+					"comments": "off",
+					"strings": "on"
+				}
+			}
+		}
 	},
 	"scripts": {
 		"build:server": "pnpm --filter @mdsvex/language-server build",

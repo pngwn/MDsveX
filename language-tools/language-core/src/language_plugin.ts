@@ -22,6 +22,7 @@ import type {
 	EditorMappingData,
 	PfmDiagnostic,
 	PfmToSvelteOptions,
+	PropsProbe,
 } from '@mdsvex/source-map/pfm-to-svelte';
 import { v3ToVolarMappings } from '@mdsvex/source-map/v3-to-volar';
 import { composeMappings } from '@mdsvex/source-map/compose-mappings';
@@ -69,6 +70,10 @@ export interface PfmVirtualCode extends VirtualCode {
 	frontmatter: { start: number; end: number } | null;
 	/** the templates the frontmatter template key can name */
 	templates: TemplateChoice[];
+	/** the template the document compiled with */
+	template?: string;
+	/** type aliases in the typescript code holding the props of each template and directive */
+	probes: PropsProbe[];
 }
 
 export interface TemplateChoice {
@@ -111,6 +116,7 @@ function create_fallback_virtual_code(source: string): PfmVirtualCode {
 		diagnostics: [],
 		frontmatter: null,
 		templates: [],
+		probes: [],
 	};
 }
 
@@ -397,6 +403,8 @@ function create_virtual_code_from_source(
 		diagnostics: svelte.diagnostics,
 		frontmatter: svelte.frontmatter,
 		templates: template_choices(options),
+		template: svelte.template,
+		probes: svelte.probes,
 	};
 }
 

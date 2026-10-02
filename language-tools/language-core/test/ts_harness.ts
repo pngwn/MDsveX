@@ -30,6 +30,8 @@ export interface Project {
 	hover(file: string, needle: string, delta?: number): string | undefined;
 	/** syntactic and semantic diagnostics of file, with the text they cover */
 	diagnostics(file: string): { text: string; message: string; code: number }[];
+	/** the program over the generated typescript, as the language server holds it */
+	program(): ts.Program;
 	dispose(): void;
 }
 
@@ -135,6 +137,7 @@ export function project(files: Record<string, string>): Project {
 				code: d.code,
 			}));
 		},
+		program: () => proxy.getProgram()!,
 		dispose() {
 			rmSync(root, { recursive: true, force: true });
 		},

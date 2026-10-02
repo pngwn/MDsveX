@@ -15,6 +15,13 @@ export type {
 	TemplateChoice,
 } from "./language_plugin";
 export { template_value_at } from "@mdsvex/source-map/pfm-to-svelte";
+export {
+	completion_context,
+	probe_for,
+	props_of,
+	template_named,
+} from "./completions";
+export type { CompletionContext, Prop } from "./completions";
 export type {
 	ConfigLoader,
 	ConfigLoaderOptions,

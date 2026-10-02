@@ -26,7 +26,7 @@ const svelte = (props: string, module = "") =>
 
 const FILES: Record<string, string> = {
 	"src/lib/Docs.svelte": svelte(
-		"title: string; draft?: boolean; children: Snippet",
+		"title: string; draft?: boolean; level?: 'beginner' | 'advanced'; children: Snippet",
 		"  export { default as h2 } from './Heading.svelte';\n  export * as directives from './directives.ts';",
 	),
 	"src/lib/Plain.svelte": svelte("children: Snippet"),
@@ -159,6 +159,63 @@ describe.skipIf(!existsSync(SERVER))("the language server", () => {
 		expect(await server.sendCompletionRequest(doc.uri, at("## Heading", 3))).toMatchObject({
 			items: expect.not.arrayContaining([expect.objectContaining({ label: "plain" })]),
 		});
+	});
+
+	/** labels of the completions at the cursor marked | in a document beside doc.svx */
+	async function complete(name: string, marked: string) {
+		const at = marked.indexOf("|");
+		const uri = URI.file(join(root, "src", name)).toString();
+		const opened = await server.openInMemoryDocument(
+			uri,
+			"pfm",
+			marked.replace("|", ""),
+		);
+		const list = await server.sendCompletionRequest(uri, opened.positionAt(at));
+		await server.closeTextDocument(uri);
+		return (list?.items ?? []).map((i) => [
+			i.label,
+			i.textEdit && "newText" in i.textEdit ? i.textEdit.newText : i.label,
+		]);
+	}
+
+	it("completes frontmatter keys from the template props, while the yaml is half typed", async () => {
+		expect(
+			await complete("keys.svx", "---\ntitle: x\nd|\ntemplate: docs\n---\n\n# x\n"),
+		).toEqual([
+			["draft", "draft: "],
+			["level", "level: "],
+		]);
+	});
+
+	it("completes a frontmatter value from the literals its prop allows", async () => {
+		expect(
+			await complete("values.svx", "---\nlevel: |\ntemplate: docs\n---\n\n# x\n"),
+		).toEqual([
+			["beginner", "beginner"],
+			["advanced", "advanced"],
+		]);
+		expect(
+			await complete("flags.svx", "---\ndraft: t|\ntemplate: docs\n---\n\n# x\n"),
+		).toEqual([
+			["false", "false"],
+			["true", "true"],
+		]);
+	});
+
+	it("completes directive arg names and values from the component props", async () => {
+		const head = "---\ntemplate: docs\n---\n\n";
+		expect(await complete("arg-keys.svx", head + ":::Callout[x](|)\n:::\n")).toEqual([
+			["tone", "tone="],
+		]);
+		expect(
+			await complete("arg-values.svx", head + ":::Callout[x](tone=|)\n:::\n"),
+		).toEqual([
+			["info", "info"],
+			["warn", "warn"],
+		]);
+		expect(
+			await complete("arg-used.svx", head + ":::Callout[x](tone=info, |)\n:::\n"),
+		).toEqual([]);
 	});
 
 	it("reports type errors and compile errors where they come from", async () => {

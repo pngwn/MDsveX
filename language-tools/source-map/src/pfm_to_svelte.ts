@@ -25,7 +25,7 @@ import { template_value_at, yaml_keys } from './keys';
 import type { KeyRange } from './keys';
 
 export type { Mapping, MappingData } from '@mdsvex/render/mappings';
-export { template_value_at } from './keys';
+export { template_value_at, yaml_keys } from './keys';
 
 /** A <style> block found in the PFM source, with positions in both source and generated output. */
 export interface StyleBlock {
@@ -91,6 +91,18 @@ export interface PfmToSvelteResult {
 	template?: string;
 	/** the yaml of the frontmatter, null without any */
 	frontmatter: { start: number; end: number } | null;
+	/** type aliases in the code whose properties are the props of each template and directive */
+	probes: PropsProbe[];
+}
+
+/** names the props of a template or directive component, whether or not the document uses it */
+export interface PropsProbe {
+	kind: 'template' | 'directive';
+	name: string;
+	/** the template whose scope holds the directive, undefined for the root */
+	template?: string;
+	/** a type alias in the code, its properties are the props */
+	alias: string;
 }
 
 const HOVER: CodeInformation = { semantic: true, navigation: true };
@@ -270,6 +282,49 @@ const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 const has_own = Object.prototype.hasOwnProperty;
 // svelte and preprocessors find script and style tags even inside strings
 const TAG = /<(?=\/?(?:script|style))/gi;
+
+/**
+ * a props type alias for every template and directive the config knows, so
+ * completions work while the document does not compile or use them
+ */
+function props_probes(options: PfmToSvelteOptions): {
+	text: string;
+	list: PropsProbe[];
+} {
+	const list: PropsProbe[] = [];
+	let text = '';
+	const resolve = options.resolve;
+	if (resolve === undefined) return { text, list };
+	const add = (
+		kind: PropsProbe['kind'],
+		name: string,
+		template: string | undefined,
+		specifier: string,
+		member: string
+	) => {
+		const file = resolve(specifier, member);
+		if (file === undefined) return;
+		const alias = `__mdsvex_props_${list.length}`;
+		text +=
+			`type ${alias} = import('svelte').ComponentProps<` +
+			`typeof import(${JSON.stringify(file)})[${JSON.stringify(member)}]>;\n`;
+		list.push(
+			template === undefined
+				? { kind, name, alias }
+				: { kind, name, template, alias }
+		);
+	};
+	const templates = options.compile?.templates ?? {};
+	for (const name of Object.keys(templates)) {
+		const entry = templates[name];
+		add('template', name, undefined, entry.specifier, 'default');
+		for (const d of entry.directives ?? [])
+			for (const n of d.names) add('directive', n, name, d.specifier, n);
+	}
+	for (const d of options.compile?.directives ?? [])
+		for (const n of d.names) add('directive', n, undefined, d.specifier, n);
+	return { text, list };
+}
 
 /** metadata as an object literal, each key mapped to its frontmatter key */
 function object_literal(
@@ -763,6 +818,22 @@ export function pfmToSvelte(
 		}
 	}
 
+	const probes = props_probes(options);
+	if (probes.text !== '') {
+		const script = /<script(?![^>]*\bmodule\b)[^>]*>/.exec(original);
+		const close =
+			script === null ? -1 : original.indexOf('</script>', script.index);
+		edits.push(
+			close >= 0
+				? { start: close, end: close, text: '\n' + probes.text }
+				: {
+						start: 0,
+						end: 0,
+						text: `<script lang="ts">\n${probes.text}</script>\n`,
+					}
+		);
+	}
+
 	const { code, mappings: moved } = apply_edits(original, mappings, edits);
 
 	// style content is copied verbatim, so find it in the output
@@ -789,5 +860,6 @@ export function pfmToSvelte(
 		metadata,
 		template: result.template,
 		frontmatter: regions.frontmatter,
+		probes: probes.list,
 	};
 }

@@ -21,7 +21,7 @@ import { watch } from "node:fs";
 import { clean_svelte_hover } from "./clean_hover";
 import { without_self } from "./definitions";
 import { create_compile_diagnostics } from "./compile_diagnostics";
-import { create_template_completions } from "./template_completions";
+import { create_completions } from "./completions";
 import { URI } from "vscode-uri";
 import { forEachEmbeddedCode } from "@volar/language-core";
 import type { LanguagePlugin, VirtualCode } from "@volar/language-core";
@@ -221,7 +221,7 @@ connection.onInitialize((params) => {
 			createCssService(),
 			createMarkdownService(),
 			create_compile_diagnostics(),
-			create_template_completions(),
+			create_completions(typescript),
 		],
 	);
 });

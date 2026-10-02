@@ -197,6 +197,30 @@ describe("pfmToSvelte with a config", () => {
 		);
 	});
 
+	it("emits a props type for every template and directive the config knows", () => {
+		const r = pfmToSvelte("# x\n", {
+			...docs,
+			compile: {
+				...docs.compile,
+				directives: [{ specifier: "mdsvex:directives", names: ["box"] }],
+			},
+		});
+		expect(r.probes).toEqual([
+			{ kind: "template", name: "docs", alias: "__mdsvex_props_0" },
+			{ kind: "directive", name: "Callout", template: "docs", alias: "__mdsvex_props_1" },
+			{ kind: "directive", name: "box", alias: "__mdsvex_props_2" },
+		]);
+		// a document with no instance script gets one to hold them
+		expect(r.code).toContain(
+			'<script lang="ts">\n' +
+				"type __mdsvex_props_0 = import('svelte').ComponentProps<typeof import(\"./lib/Docs.svelte\")[\"default\"]>;\n" +
+				"type __mdsvex_props_1 = import('svelte').ComponentProps<typeof import(\"./lib/directives.js\")[\"Callout\"]>;\n" +
+				"type __mdsvex_props_2 = import('svelte').ComponentProps<typeof import(\"./lib/root-directives.js\")[\"box\"]>;\n" +
+				"</script>\n<h1>x</h1>",
+		);
+		expect(pfmToSvelte("# x\n").probes).toEqual([]);
+	});
+
 	it("checks nothing without a template", () => {
 		const source = "---\ntitle: Hi\n---\n\n# x\n";
 		const r = pfmToSvelte(source, docs);
