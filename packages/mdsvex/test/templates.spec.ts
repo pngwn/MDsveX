@@ -13,6 +13,7 @@ import type {
 	ComponentSource,
 	TemplateEntry,
 } from '../src/main';
+import { all_directives } from './utils';
 
 const FIXTURES = resolve(
 	dirname(fileURLToPath(import.meta.url)),
@@ -451,8 +452,10 @@ describe('walks agree with a template', () => {
 		expect(files.length).toBeGreaterThan(100);
 		for (const file of files) {
 			const raw = readFileSync(file, 'utf8');
-			const mapped = compile(raw, { ...options, sourcemap: true });
-			expect(mapped.code, file).toBe(compile(raw, options).code);
+			const directives = all_directives(raw);
+			const doc = { ...options, directives };
+			const mapped = compile(raw, { ...doc, sourcemap: true });
+			expect(mapped.code, file).toBe(compile(raw, doc).code);
 			expect(wrapped_in(mapped.code), file).toBe('mdsvex:template/docs');
 			const got = session.compile_v3(
 				raw,
@@ -460,7 +463,8 @@ describe('walks agree with a template', () => {
 				undefined,
 				options.components,
 				options.frontmatter!.parse,
-				options
+				options,
+				directives
 			);
 			expect(got.code, file).toBe(mapped.code);
 			expect(JSON.stringify(got.map), file).toBe(

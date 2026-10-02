@@ -21,6 +21,7 @@ import type {
 	CompileWarning,
 	ParsePlugin,
 } from '../src/main';
+import { all_directives } from './utils';
 
 const FIXTURES = resolve(
 	dirname(fileURLToPath(import.meta.url)),
@@ -109,6 +110,7 @@ function compile_warned(
 		components,
 		undefined,
 		undefined,
+		undefined,
 		component_mode
 	);
 	const v3 = session.compile_v3(
@@ -116,6 +118,7 @@ function compile_warned(
 		'doc.svx',
 		undefined,
 		components,
+		undefined,
 		undefined,
 		undefined,
 		component_mode
@@ -323,9 +326,11 @@ describe('element replacement, markdown mode', () => {
 		for (const file of fixture_files(FIXTURES)) {
 			const raw = readFileSync(file, 'utf8');
 			const components = only('nothing-here', 'mark');
-			expect(session.compile(raw, { components, frontmatter }).code, file).toBe(
-				compile(raw, { frontmatter }).code
-			);
+			const directives = all_directives(raw);
+			expect(
+				session.compile(raw, { components, directives, frontmatter }).code,
+				file
+			).toBe(compile(raw, { directives, frontmatter }).code);
 		}
 	});
 });
@@ -491,6 +496,7 @@ describe('element replacement, all mode', () => {
 			undefined,
 			undefined,
 			{ templates, template: 'docs' },
+			undefined,
 			'all'
 		);
 		expect(trace.code).toBe(all.code);
@@ -533,7 +539,7 @@ describe('element replacement, all mode', () => {
 				expect(code).toBe(compile(raw).code);
 				expect(warnings).toEqual([
 					{
-						code: 'replacement_directive',
+						code: 'element_directive',
 						message: `<div> stays an element, a component can't take ${name}`,
 						start: { line: 3, column: 0 },
 					},
@@ -659,6 +665,7 @@ describe('element replacement, all mode', () => {
 				components,
 				undefined,
 				undefined,
+				undefined,
 				'all'
 			);
 			const mapped = compile(raw, {
@@ -670,6 +677,7 @@ describe('element replacement, all mode', () => {
 				raw,
 				undefined,
 				components,
+				undefined,
 				undefined,
 				undefined,
 				'all'
@@ -833,9 +841,12 @@ describe('walks agree with replacements', () => {
 			const components = only(...names);
 			const session = new CompilerSession();
 			let replaced = 0;
+			let with_directives = 0;
 			for (const file of files) {
 				const raw = readFileSync(file, 'utf8');
-				const options = { components, component_mode, frontmatter };
+				const directives = all_directives(raw);
+				if (directives !== undefined) with_directives++;
+				const options = { components, directives, component_mode, frontmatter };
 				const mapped = compile(raw, { ...options, sourcemap: true });
 				const plain = compile(raw, options);
 				expect(mapped.code, file).toBe(plain.code);
@@ -847,6 +858,7 @@ describe('walks agree with replacements', () => {
 					components,
 					frontmatter.parse,
 					undefined,
+					directives,
 					component_mode
 				);
 				expect(got.code, file).toBe(mapped.code);
@@ -861,6 +873,7 @@ describe('walks agree with replacements', () => {
 					components,
 					frontmatter.parse,
 					undefined,
+					directives,
 					component_mode
 				);
 				expect(trace.code, file).toBe(mapped.code);
@@ -872,6 +885,7 @@ describe('walks agree with replacements', () => {
 				).toBe(JSON.stringify(got.map));
 			}
 			expect(replaced).toBeGreaterThan(100);
+			expect(with_directives).toBeGreaterThan(10);
 		});
 	}
 
@@ -881,6 +895,7 @@ describe('walks agree with replacements', () => {
 			const raw = readFileSync(file, 'utf8');
 			const code = compile(raw, {
 				components: only('div', 'span'),
+				directives: all_directives(raw),
 				component_mode: 'all',
 				frontmatter,
 			}).code;

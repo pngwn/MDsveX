@@ -30,8 +30,8 @@ import {
 	trace_take,
 } from './sourcemap';
 import type { MapTrace, SourceMapV3 } from './sourcemap';
-import { component_imports } from './scope';
-import type { ComponentImport, ComponentScope, ReplaceWarning } from './scope';
+import { ComponentScope, component_imports } from './scope';
+import type { ComponentImport, ReplaceWarning } from './scope';
 
 export type { Mapping, CodeInformation, MappingData } from './mappings';
 export { MapSink } from './mappings';
@@ -227,6 +227,9 @@ const enum K {
 	SVELTE_BLOCK = 28,
 	SVELTE_BRANCH = 29,
 	MUSTACHE = 4,
+	DIRECTIVE_INLINE = 30,
+	DIRECTIVE_LEAF = 31,
+	DIRECTIVE_CONTAINER = 32,
 	FRONTMATTER = 33,
 	IMPORT_STATEMENT = 34,
 }
@@ -261,6 +264,9 @@ export const K_SVELTE_TAG = K.SVELTE_TAG;
 export const K_SVELTE_BLOCK = K.SVELTE_BLOCK;
 export const K_SVELTE_BRANCH = K.SVELTE_BRANCH;
 export const K_MUSTACHE = K.MUSTACHE;
+export const K_DIRECTIVE_INLINE = K.DIRECTIVE_INLINE;
+export const K_DIRECTIVE_LEAF = K.DIRECTIVE_LEAF;
+export const K_DIRECTIVE_CONTAINER = K.DIRECTIVE_CONTAINER;
 export const K_FRONTMATTER = K.FRONTMATTER;
 export const K_IMPORT_STATEMENT = K.IMPORT_STATEMENT;
 
@@ -563,6 +569,10 @@ let has_components = false;
 /** true when the document replaces a table part, which the table walks check */
 let comp_table = false;
 let comp_scope: ComponentScope | null = null;
+/** directive replacements, a namespace apart from the elements of comp_scope */
+let dir_scope: ComponentScope | null = null;
+/** a directive no scope replaces throws, otherwise it renders as its children */
+let dir_strict = false;
 let comp_mode: number = CM.FOLD;
 /** component_mode all, typed lowercase elements are replaced too */
 let comp_all = false;
@@ -1889,6 +1899,8 @@ function fold_node(c: Cursor, p: number): number {
 			return push_dyn(p, module_script());
 
 		default:
+			// a replaced directive never gets here, see comp_ref
+			if (dir_strict) dir_check(c);
 			return fold_children(c, p);
 	}
 }
@@ -2465,6 +2477,8 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			return 0;
 
 		default:
+			// a replaced directive never gets here, see comp_ref
+			if (dir_strict) dir_check(c);
 			return tr_children(c, sink, p);
 	}
 }
@@ -2919,6 +2933,8 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			return 0;
 
 		default:
+			// a replaced directive never gets here, see comp_ref
+			if (dir_strict) dir_check(c);
 			return mp_children(c, sink, p);
 	}
 }
@@ -3234,7 +3250,7 @@ function html_tag(c: Cursor): string {
 	return ELEMENT_NAME.test(tag) ? tag : '';
 }
 
-const DIRECTIVES = [
+const ELEMENT_DIRECTIVES = [
 	'bind:',
 	'on:',
 	'use:',
@@ -3247,15 +3263,15 @@ const DIRECTIVES = [
 	'let:',
 ];
 
-/** the first directive of an element, which a component can not take, empty for none */
-function directive_of(c: Cursor): string {
+/** the first svelte directive of an element, which a component can not take, empty for none */
+function element_directive(c: Cursor): string {
 	const attrs = c.meta()?.attributes as Record<string, unknown> | undefined;
 	if (attrs === undefined) return '';
 	for (const k in attrs) {
 		const colon = string_index_of.call(k, ':');
 		if (colon === -1) continue;
-		for (let i = 0; i < DIRECTIVES.length; i++) {
-			const d = DIRECTIVES[i];
+		for (let i = 0; i < ELEMENT_DIRECTIVES.length; i++) {
+			const d = ELEMENT_DIRECTIVES[i];
 			if (d.length === colon + 1 && k.startsWith(d)) return k;
 		}
 	}
@@ -3263,28 +3279,40 @@ function directive_of(c: Cursor): string {
 }
 
 function comp_ref(c: Cursor): ComponentImport | null {
+	const k = c.kind as number;
+	if (k >= K.DIRECTIVE_INLINE && k <= K.DIRECTIVE_CONTAINER)
+		return dir_scope!.get(dir_name(c)) ?? null;
 	const name = comp_name(c);
 	if (name === '') return null;
 	const ref = comp_scope!.get(name);
 	if (ref === undefined) return null;
 	// comp_scan warned about it
-	if (comp_all && c.kind === K.HTML && directive_of(c) !== '') return null;
+	if (comp_all && c.kind === K.HTML && element_directive(c) !== '') return null;
 	return ref;
+}
+
+function dir_name(c: Cursor): string {
+	const name = c.meta()?.name;
+	return typeof name === 'string' ? name : '';
+}
+
+function note_use(ref: ComponentImport): void {
+	if (!comp_seen.has(ref)) {
+		comp_seen.add(ref);
+		comp_used.push(ref);
+	}
 }
 
 function comp_use(name: string): ComponentImport | undefined {
 	const ref = comp_scope!.get(name);
-	if (ref !== undefined && !comp_seen.has(ref)) {
-		comp_seen.add(ref);
-		comp_used.push(ref);
-	}
+	if (ref !== undefined) note_use(ref);
 	return ref;
 }
 
 /** comp_use for an element, one with a directive stays an element and is warned about */
 function comp_use_html(c: Cursor, name: string): void {
 	if (comp_scope!.get(name) === undefined) return;
-	const directive = directive_of(c);
+	const directive = element_directive(c);
 	if (directive === '') comp_use(name);
 	else comp_warnings.push({ tag: name, directive, start: c.start });
 }
@@ -3295,10 +3323,15 @@ function comp_scan(c: Cursor): void {
 	do {
 		const k = c.kind as number;
 		if (k === K.TEXT || k === K.LINE_BREAK) continue;
-		const name = comp_name(c);
-		if (name !== '') {
-			if (comp_all && k === K.HTML) comp_use_html(c, name);
-			else comp_use(name);
+		if (k >= K.DIRECTIVE_INLINE && k <= K.DIRECTIVE_CONTAINER) {
+			const ref = dir_scope!.get(dir_name(c));
+			if (ref !== undefined) note_use(ref);
+		} else {
+			const name = comp_name(c);
+			if (name !== '') {
+				if (comp_all && k === K.HTML) comp_use_html(c, name);
+				else comp_use(name);
+			}
 		}
 		if (k === K.TABLE) comp_scan_table(c);
 		// image children are its alt text, code has none
@@ -3340,17 +3373,22 @@ function comp_scan_cells(c: Cursor, tag: string): void {
 	c.goto_parent();
 }
 
+/** neither scope is ever null while a walk renders replacements */
+const NO_SCOPE = new ComponentScope([], '');
+
 /**
  * c is at the root, the walk that follows renders in mode, all also replaces
  * typed elements, returns the warnings about elements that stay
  */
 function comp_begin(
 	c: Cursor,
-	scope: ComponentScope,
+	scope: ComponentScope | null,
+	directives: ComponentScope | null,
 	mode: number,
 	all: boolean
 ): readonly ReplaceWarning[] {
-	comp_scope = scope;
+	comp_scope = scope ?? NO_SCOPE;
+	dir_scope = directives ?? NO_SCOPE;
 	comp_mode = mode;
 	comp_all = all;
 	comp_scan(c);
@@ -3359,7 +3397,7 @@ function comp_begin(
 	if (comp_used.length === 0) return warnings;
 	has_components = true;
 	for (let i = 0; i < TABLE_PARTS.length; i++) {
-		const ref = scope.get(TABLE_PARTS[i]);
+		const ref = comp_scope.get(TABLE_PARTS[i]);
 		if (ref !== undefined && comp_seen.has(ref)) comp_table = true;
 	}
 	comp_lines = component_imports(comp_used);
@@ -3370,6 +3408,7 @@ function comp_end(): void {
 	has_components = false;
 	comp_table = false;
 	comp_scope = null;
+	dir_scope = null;
 	comp_mode = CM.FOLD;
 	comp_all = false;
 	comp_lines = '';
@@ -3615,9 +3654,11 @@ function comp_node(
 		mo += FOLD_STR[p];
 		p = 0;
 	}
+	const kind = c.kind as number;
+	if (kind >= K.DIRECTIVE_INLINE && kind <= K.DIRECTIVE_CONTAINER)
+		return dir_node(c, sink, p, ref);
 	const pre = mo.length;
 	const local = ref.local;
-	const kind = c.kind as number;
 	let open = '<' + local;
 	// newlines inside the tags, kept as the element renders them
 	let lead = '';
@@ -3778,6 +3819,186 @@ function comp_node(
 	const bc = mo.length;
 	p = cm_put(p, close);
 	cm_spans(c, sink, pre, ao, bc, mo.length, preset);
+	return p;
+}
+
+//  directives
+
+/** a directive the compile cannot render, start indexes the source */
+export class DirectiveError extends Error {
+	readonly directive: string;
+	readonly start: number;
+	readonly line: number;
+	readonly column: number;
+
+	constructor(c: Cursor, message: string) {
+		const start = c.start;
+		const src = c.source;
+		let line = 1;
+		let from = 0;
+		for (
+			let i = src.indexOf('\n');
+			i !== -1 && i < start;
+			i = src.indexOf('\n', i + 1)
+		) {
+			line++;
+			from = i + 1;
+		}
+		const column = start - from + 1;
+		const directive = dir_syntax(c);
+		super(message.replace('%', directive + ' at ' + line + ':' + column));
+		this.name = 'DirectiveError';
+		this.directive = directive;
+		this.start = start;
+		this.line = line;
+		this.column = column;
+	}
+}
+
+/** the colons and name, as the directive is written */
+function dir_syntax(c: Cursor): string {
+	const k = c.kind as number;
+	const colons =
+		k === K.DIRECTIVE_INLINE ? ':' : k === K.DIRECTIVE_LEAF ? '::' : ':::';
+	return colons + dir_name(c);
+}
+
+/** throws for a directive, the walks reach it only from their default case */
+function dir_check(c: Cursor): void {
+	const k = c.kind as number;
+	if (k >= K.DIRECTIVE_INLINE && k <= K.DIRECTIVE_CONTAINER) dir_unknown(c);
+}
+
+function dir_unknown(c: Cursor): never {
+	const k = c.kind as number;
+	const kind =
+		k === K.DIRECTIVE_INLINE
+			? 'directive_inline'
+			: k === K.DIRECTIVE_LEAF
+				? 'directive_leaf'
+				: 'directive_container';
+	throw new DirectiveError(
+		c,
+		'no component renders the directive %. Export a component named ' +
+			JSON.stringify(dir_name(c)) +
+			" from a directives module (export * as directives from './directives.ts'), " +
+			'or replace the ' +
+			kind +
+			' node in a parse plugin'
+	);
+}
+
+/** args as string props, children and label are the snippets */
+function dir_props(c: Cursor, kind: number): string {
+	const args = c.meta()?.args as Record<string, string> | undefined;
+	if (args === undefined) return '';
+	let s = '';
+	for (const key in args) {
+		if (
+			key === 'children' ||
+			(key === 'label' && kind !== K.DIRECTIVE_INLINE)
+		) {
+			throw new DirectiveError(
+				c,
+				'the directive % has an argument named ' +
+					key +
+					', which its component receives as a snippet'
+			);
+		}
+		const v = args[key];
+		// braces in attribute text would read as an expression
+		s +=
+			v.indexOf('{') === -1 && v.indexOf('}') === -1
+				? ' ' + key + '="' + escape_html(v) + '"'
+				: js_prop(key, v);
+	}
+	return s;
+}
+
+/** true when a child renders something, a container keeps its line breaks */
+function dir_has_body(c: Cursor): boolean {
+	const n = c.words;
+	let child = n[c.index * W.stride + W.first_child];
+	if (child === Slot.NONE) return false;
+	const parent = c.index;
+	do {
+		const b = child * W.stride;
+		if (n[b + W.parent] !== parent) return false;
+		if ((n[b] & 0xff) !== K.LINE_BREAK) return true;
+		child = n[b + W.next];
+	} while (child !== Slot.NONE);
+	return false;
+}
+
+/** the bracket text as a label snippet, mapped as text */
+function dir_label(c: Cursor, sink: MapSink | undefined, p: number): number {
+	p = cm_put(p, '{#snippet label()}');
+	const text = escape_node_text(c);
+	if (comp_mode === CM.FOLD) p = push_dyn(p, text);
+	else {
+		const at = mo.length;
+		if (comp_mode === CM.TRACE)
+			tr_run(sink!, at, at + text.length, c.value_start, c.value_end);
+		else
+			put_record(
+				sink!,
+				at,
+				at + text.length,
+				c.value_start,
+				c.value_end,
+				c.index,
+				Code.TEXT_CONTENT
+			);
+		mo += text;
+	}
+	return cm_put(p, '{/snippet}');
+}
+
+/**
+ * a directive as the component ref, args as props, the bracket text of a leaf
+ * or container as the label snippet, inline text and container body as children
+ */
+function dir_node(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	ref: ComponentImport
+): number {
+	const pre = mo.length;
+	const kind = c.kind as number;
+	const local = ref.local;
+	const open = '<' + local + dir_props(c, kind);
+	const label = kind !== K.DIRECTIVE_INLINE && c.value_end > c.value_start;
+	const body =
+		kind === K.DIRECTIVE_INLINE
+			? c.words[c.index * W.stride + W.first_child] !== Slot.NONE
+			: kind === K.DIRECTIVE_CONTAINER && dir_has_body(c);
+
+	if (!label && !body) {
+		p = cm_put(p, open + ' />');
+		cm_void(c, sink, pre, Preset.STRUCTURE);
+		return p;
+	}
+	p = cm_put(p, open + '>');
+	if (label) p = dir_label(c, sink, p);
+	const ao = mo.length;
+	if (body) {
+		// a container renders its blocks as a blockquote does
+		if (kind === K.DIRECTIVE_CONTAINER) p = cm_put(p, '\n');
+		p = cm_children(c, sink, p);
+		if (kind === K.DIRECTIVE_CONTAINER) p = cm_put(p, '\n');
+	}
+	const bc = mo.length;
+	p = cm_put(p, '</' + local + '>');
+	cm_spans(
+		c,
+		sink,
+		pre,
+		ao,
+		bc,
+		mo.length,
+		kind === K.DIRECTIVE_INLINE ? Preset.TEXT : Preset.STRUCTURE
+	);
 	return p;
 }
 
@@ -4259,6 +4480,13 @@ export class CursorHTMLRenderer {
 	get warnings(): readonly ReplaceWarning[] {
 		return comp_last;
 	}
+	/** directive replacements, a namespace apart from scope */
+	directives: ComponentScope | null = null;
+	/**
+	 * a directive no scope replaces throws a DirectiveError, otherwise it
+	 * renders as its children, which suits a preview
+	 */
+	strict_directives = false;
 	/**
 	 * the template the next render wraps the document in, hoisting its scripts,
 	 * styles and top level svelte elements, that render clears it, the cached
@@ -4290,13 +4518,24 @@ export class CursorHTMLRenderer {
 		// no caching, single-pass full render
 		if (!this.cache) {
 			const scope = this.scope;
+			const directives = this.directives;
 			if (this.template !== undefined) {
 				this.html = this.render_wrapped(c, buf, null, false, code);
 				return this.blocks;
 			}
 			try {
-				if (scope !== null && scope.size !== 0)
-					comp_last = comp_begin(c, scope, CM.FOLD, this.replace_typed);
+				if (
+					(scope !== null && scope.size !== 0) ||
+					(directives !== null && directives.size !== 0)
+				)
+					comp_last = comp_begin(
+						c,
+						scope,
+						directives,
+						CM.FOLD,
+						this.replace_typed
+					);
+				if (this.strict_directives) dir_strict = true;
 				hoist_begin(buf);
 				if (code) module_begin(buf, code);
 				prebuilt_begin(buf);
@@ -4304,6 +4543,7 @@ export class CursorHTMLRenderer {
 			} finally {
 				esc_prebuilt = true;
 				esc_bits = null;
+				if (dir_strict) dir_strict = false;
 				if (comp_scope !== null) comp_end();
 				if (code) module_end();
 			}
@@ -4374,15 +4614,21 @@ export class CursorHTMLRenderer {
 			return;
 		}
 		const scope = this.scope;
+		const directives = this.directives;
 		let p = 0;
 		try {
-			if (scope !== null && scope.size !== 0)
+			if (
+				(scope !== null && scope.size !== 0) ||
+				(directives !== null && directives.size !== 0)
+			)
 				comp_last = comp_begin(
 					c,
 					scope,
+					directives,
 					trace ? CM.TRACE : CM.MAPPED,
 					this.replace_typed
 				);
+			if (this.strict_directives) dir_strict = true;
 			hoist_begin(buf);
 			mo = comp_prefix;
 			if (code) {
@@ -4396,6 +4642,7 @@ export class CursorHTMLRenderer {
 		} finally {
 			esc_prebuilt = true;
 			esc_bits = null;
+			if (dir_strict) dir_strict = false;
 			if (comp_scope !== null) comp_end();
 			if (code) module_end();
 		}
@@ -4420,11 +4667,16 @@ export class CursorHTMLRenderer {
 		code: string | undefined
 	): string {
 		const scope = this.scope;
+		const directives = this.directives;
 		const mode = sink === null ? CM.FOLD : trace ? CM.TRACE : CM.MAPPED;
 		let html: string;
 		try {
-			if (scope !== null && scope.size !== 0)
-				comp_last = comp_begin(c, scope, mode, this.replace_typed);
+			if (
+				(scope !== null && scope.size !== 0) ||
+				(directives !== null && directives.size !== 0)
+			)
+				comp_last = comp_begin(c, scope, directives, mode, this.replace_typed);
+			if (this.strict_directives) dir_strict = true;
 			wrap_begin(this.template!, mode);
 			wrap_hoist_begin(c, buf);
 			if (code) module_begin(buf, code);
@@ -4447,6 +4699,7 @@ export class CursorHTMLRenderer {
 		} finally {
 			esc_prebuilt = true;
 			esc_bits = null;
+			if (dir_strict) dir_strict = false;
 			if (comp_scope !== null) comp_end();
 			wrap_end();
 			if (code) module_end();
@@ -4560,6 +4813,7 @@ export class CursorHTMLRenderer {
 		if (closed !== null && closed.size !== 0) closed.clear();
 		this.cursor?.release();
 		this.scope = null;
+		this.directives = null;
 		this.replace_typed = false;
 		// a tag is a slice that would keep the source alive
 		comp_last = NO_WARNINGS;

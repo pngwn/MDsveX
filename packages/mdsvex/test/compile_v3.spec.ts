@@ -7,6 +7,7 @@ import { mappings_to_v3 } from '@mdsvex/render/sourcemap';
 
 import { compile, CompilerSession } from '../src/main';
 import type { ParsePlugin } from '../src/main';
+import { all_directives } from './utils';
 
 const FIXTURES = resolve(
 	dirname(fileURLToPath(import.meta.url)),
@@ -33,6 +34,7 @@ function object_path(raw: string, plugins?: ParsePlugin[]) {
 		sourcemap: true,
 		parse_plugins: plugins,
 		frontmatter,
+		directives: all_directives(raw),
 	});
 	return {
 		code: result.code,
@@ -64,7 +66,9 @@ describe('CompilerSession.compile_v3', () => {
 					ID,
 					undefined,
 					undefined,
-					frontmatter.parse
+					frontmatter.parse,
+					undefined,
+					all_directives(raw)
 				);
 				const want = object_path(raw);
 				expect(got.code, file).toBe(want.code);
