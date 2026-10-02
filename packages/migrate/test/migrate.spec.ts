@@ -170,6 +170,12 @@ describe("thematic break", () => {
 	});
 });
 
+describe("frontmatter", () => {
+	test("is kept as it is", () => {
+		expect(m("---\ntitle: Hi\n---\n\nTitle\n=====")).toBe("---\ntitle: Hi\n---\n\n# Title");
+	});
+});
+
 describe("valid PFM output (round-trip through @mdsvex/parse)", () => {
 	const cases: Record<string, string> = {
 		heading: "# Title\n\nA paragraph.",
@@ -187,6 +193,7 @@ describe("valid PFM output (round-trip through @mdsvex/parse)", () => {
 		"hard break": "line one  \nline two",
 		mixed:
 			"# Doc\n\nSome *text* with `code` and a [link](/a).\n\n> a quote\n\n- list a\n- list b",
+		frontmatter: "---\nlayout: blog\ntitle: Hi\n---\n\n# Hi\n\nSome *text*.",
 	};
 
 	for (const [name, input] of Object.entries(cases)) {
