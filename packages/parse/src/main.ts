@@ -10482,6 +10482,13 @@ export class PFMParser {
 					this.chomp(line_end, true);
 					return false;
 				}
+				if (code !== UNDERSCORE) {
+					const marker = this.try_parse_list_marker(this.cursor);
+					if (marker) {
+						this.start_list(marker, current_node);
+						return false;
+					}
+				}
 				this.states.push(StateKind.paragraph);
 				const para_id = this.emit_open(
 					NodeKind.paragraph,
@@ -10539,6 +10546,16 @@ export class PFMParser {
 			}
 
 			default: {
+				if (code === PLUS || (code >= 48 && code <= 57)) {
+					// stall only while the marker prefix is still being read
+					if (!this.finished && this.plus_marker_pending(this.cursor))
+						return true;
+					const marker = this.try_parse_list_marker(this.cursor);
+					if (marker) {
+						this.start_list(marker, current_node);
+						return false;
+					}
+				}
 				this.states.push(StateKind.paragraph);
 				const para_id = this.emit_open(
 					NodeKind.paragraph,
