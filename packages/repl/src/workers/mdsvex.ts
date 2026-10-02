@@ -6,6 +6,11 @@ import { strip_types } from './typescript_strip_types';
 export const CONFIG_FILE = 'mdsvex.config.json';
 export const TEMPLATE_PREFIX = 'mdsvex:template/';
 export const COMPONENTS_ID = 'mdsvex:components';
+export const DIRECTIVES_ID = 'mdsvex:directives';
+export const TEMPLATE_DIRECTIVES_PREFIX = 'mdsvex:template-directives/';
+
+/** the namespace export of a replacement module that holds its directives */
+const DIRECTIVES_EXPORT = 'directives';
 
 const DEFAULT_EXTENSIONS = ['.svx', '.md'];
 
@@ -27,18 +32,29 @@ interface TemplateTarget {
 	file: string | null;
 	specifier: string;
 	components: string[];
+	/** the modules its directives namespace exports name */
+	directives: TemplateTarget[];
 }
 
 export interface ResolvedConfig {
 	extensions: string[];
 	templates: Map<string, TemplateTarget>;
 	components: TemplateTarget | null;
+	/** directives modules by the virtual id documents import them from */
+	directives: Map<string, TemplateTarget>;
 	component_mode: ComponentMode;
 }
 
 /** template options follow the design doc ahead of core, which ignores them for now */
 export interface MdsvexCompileOptions extends CompileOptions {
-	templates?: Record<string, { specifier: string; components?: string[] }>;
+	templates?: Record<
+		string,
+		{
+			specifier: string;
+			components?: string[];
+			directives?: { specifier: string; names: string[] }[];
+		}
+	>;
 	default_template?: string;
 }
 
@@ -67,6 +83,7 @@ function empty_config(): ResolvedConfig {
 		extensions: DEFAULT_EXTENSIONS,
 		templates: new Map(),
 		components: null,
+		directives: new Map(),
 		component_mode: 'markdown',
 	};
 }
@@ -112,6 +129,7 @@ export function prepare(files: FileMap): Prepared {
 				for (const n of extra.components) {
 					if (!target.components.includes(n)) target.components.push(n);
 				}
+				target.directives.push(...extra.directives);
 			}
 			config.templates.set(name, target);
 		}
@@ -134,6 +152,12 @@ export function prepare(files: FileMap): Prepared {
 				specifier: TEMPLATE_PREFIX + name,
 				components: target.components,
 			};
+			if (target.directives.length === 0) continue;
+			options.templates[name].directives = target.directives.map((d, i) => {
+				const id = `${TEMPLATE_DIRECTIVES_PREFIX}${name}/${i}`;
+				config.directives.set(id, d);
+				return { specifier: id, names: d.components };
+			});
 		}
 		if (config.templates.has('default')) options.default_template = 'default';
 	}
@@ -142,6 +166,13 @@ export function prepare(files: FileMap): Prepared {
 		options.components = [
 			{ specifier: COMPONENTS_ID, names: config.components.components },
 		];
+		const [directives] = config.components.directives;
+		if (directives) {
+			config.directives.set(DIRECTIVES_ID, directives);
+			options.directives = [
+				{ specifier: DIRECTIVES_ID, names: directives.components },
+			];
+		}
 	}
 
 	return { config, options, error: null };
@@ -160,9 +191,20 @@ function target_of(
 			);
 		}
 		// a package specifier, the bundler resolves it and it gets no replacements
-		return { file: null, specifier, components: [] };
+		return { file: null, specifier, components: [], directives: [] };
 	}
-	return { file, specifier, components: scan_exports(file, files) };
+	const components = scan_exports(file, files);
+	const at = components.indexOf(DIRECTIVES_EXPORT);
+	if (at < 0) return { file, specifier, components, directives: [] };
+	components.splice(at, 1);
+	const from = directives_source(file, files);
+	if (from === null) {
+		throw new Error(
+			`${file} exports ${DIRECTIVES_EXPORT}, which must be a namespace re-export: export * as ${DIRECTIVES_EXPORT} from './directives.js'`
+		);
+	}
+	const directives = target_of(from, files, `the directives of ${file}`);
+	return { file, specifier, components, directives: [directives] };
 }
 
 /** maps a virtual id from compiled output to a workspace file or a bare specifier */
@@ -172,6 +214,8 @@ export function resolve_virtual(id: string, config: ResolvedConfig) {
 		target = config.templates.get(id.slice(TEMPLATE_PREFIX.length));
 	} else if (id === COMPONENTS_ID) {
 		target = config.components;
+	} else {
+		target = config.directives.get(id);
 	}
 	if (!target) throw new Error(`'${id}' is not configured in ${CONFIG_FILE}`);
 	return target;
@@ -192,6 +236,51 @@ function module_script(source: string) {
 	return null;
 }
 
+/** a module program, for a svelte file that of its module script, null without one */
+function program_of(name: string, files: FileMap): acorn.Program | null {
+	const source = files.get(name);
+	if (source === undefined) return null;
+
+	let code = source;
+	if (name.endsWith('.svelte')) {
+		const script = module_script(source);
+		if (!script) return null;
+		code = script.ts ? strip_types(script.code) : script.code;
+	} else if (name.endsWith('.ts')) {
+		code = strip_types(source);
+	}
+
+	try {
+		return acorn.parse(code, { ecmaVersion: 'latest', sourceType: 'module' });
+	} catch (e) {
+		throw new Error(
+			`could not scan the exports of ${name}: ${(e as Error).message}`
+		);
+	}
+}
+
+/** the workspace path of from, which is relative to the module name */
+function relative_to(name: string, from: string) {
+	return new URL(from, `file:///${name}`).pathname.slice(1);
+}
+
+/** the module export * as directives from names, as a workspace path, null for none */
+function directives_source(name: string, files: FileMap): string | null {
+	const program = program_of(name, files);
+	if (program === null) return null;
+	for (const node of program.body) {
+		if (node.type !== 'ExportAllDeclaration' || !node.exported) continue;
+		const exported =
+			node.exported.type === 'Identifier'
+				? node.exported.name
+				: String(node.exported.value);
+		if (exported !== DIRECTIVES_EXPORT) continue;
+		const from = String(node.source.value);
+		return from.startsWith('.') ? relative_to(name, from) : from;
+	}
+	return null;
+}
+
 /** export names of a module, following star exports through the workspace, without evaluating it */
 export function scan_exports(
 	name: string,
@@ -201,29 +290,8 @@ export function scan_exports(
 	if (seen.has(name)) return [];
 	seen.add(name);
 
-	const source = files.get(name);
-	if (source === undefined) return [];
-
-	let code = source;
-	if (name.endsWith('.svelte')) {
-		const script = module_script(source);
-		if (!script) return [];
-		code = script.ts ? strip_types(script.code) : script.code;
-	} else if (name.endsWith('.ts')) {
-		code = strip_types(source);
-	}
-
-	let program: acorn.Program;
-	try {
-		program = acorn.parse(code, {
-			ecmaVersion: 'latest',
-			sourceType: 'module',
-		});
-	} catch (e) {
-		throw new Error(
-			`could not scan the exports of ${name}: ${(e as Error).message}`
-		);
-	}
+	const program = program_of(name, files);
+	if (program === null) return [];
 
 	const names: string[] = [];
 	const add = (n: string) => {
@@ -257,8 +325,8 @@ export function scan_exports(
 			} else {
 				const from = String(node.source.value);
 				if (from.startsWith('.')) {
-					const target = new URL(from, `file:///${name}`).pathname.slice(1);
-					for (const n of scan_exports(target, files, seen)) add(n);
+					for (const n of scan_exports(relative_to(name, from), files, seen))
+						add(n);
 				}
 			}
 		}
