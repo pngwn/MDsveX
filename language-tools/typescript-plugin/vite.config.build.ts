@@ -13,7 +13,8 @@ export default defineConfig({
 		ssr: true,
 		minify: false,
 		rollupOptions: {
-			external: ["typescript"],
+			// the vite plugin half of mdsvex loads vite lazily, the editor never reaches it
+			external: ["typescript", "vite"],
 			output: {
 				entryFileNames: "index.cjs",
 			},

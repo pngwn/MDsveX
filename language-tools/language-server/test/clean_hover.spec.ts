@@ -46,6 +46,23 @@ import Test
     expect(result).not.toContain("}, {");
   });
 
+  it("strips the $on/$set alias of a runes component", () => {
+    const input = `\`\`\`typescript
+(alias) type h2 = {
+    $on?(type: string, callback: (e: any) => void): () => void;
+    $set?(props: Partial<$$ComponentProps>): void;
+}
+(alias) const h2: Component<$$ComponentProps, {}, "">
+export h2
+\`\`\``;
+
+    const result = clean_svelte_hover(input);
+    expect(result).not.toContain("$on?");
+    expect(result).not.toContain("type h2");
+    expect(result).toContain('(alias) const h2: Component<$$ComponentProps, {}, "">');
+    expect(result).toContain("export h2");
+  });
+
   it("returns unchanged markdown when no marker present", () => {
     const input = "```typescript\nconst x: number\n```";
     expect(clean_svelte_hover(input)).toBe(input);

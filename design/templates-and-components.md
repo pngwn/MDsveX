@@ -1,6 +1,6 @@
 # Templates and custom components: design
 
-Status: drafted 2026-10-01, phases 0 to 4 shipped on `next` by 2026-10-02 (§9). Targets `next`.
+Status: drafted 2026-10-01, phases 0 to 5 shipped on `next` by 2026-10-02 (§9). Targets `next`.
 
 Sources:
 - Trackers #829 (custom components), #830 (layouts) and #831 (frontmatter).
@@ -531,7 +531,7 @@ The plugin builds the template and root parts of `CompileOptions` once per confi
 
 ## 9. Prerequisites and phasing
 
-Phases 0 to 4 have shipped on `next`, along with `@mdsvex/migrate` support for legacy layouts (#881). Phase 5 hasn't, and nested scopes stay deferred.
+Phases 0 to 5 have shipped on `next`, along with `@mdsvex/migrate` support for legacy layouts (#881). Nested scopes stay deferred.
 
 0. **Prerequisite: frontmatter → `metadata`** (#831). *Shipped.* This needs YAML parsing in core: our own subset parser plus an optional injected `parse` function (Q7). It also needs the `<script module>` export, and the existing module-script merge must be correct (#261). `compile()` returns the metadata too, so the plugin and template selection don't parse it again.
 1. **Templates.** Core: the selection plus wrapper plus hoisting rules in §3.2 and §4. Plugin: specifier resolution, `resolveId`, template export scan, HMR invalidation. *Shipped in #876.*
@@ -545,7 +545,13 @@ Phases 0 to 4 have shipped on `next`, along with `@mdsvex/migrate` support for l
 4. **Directives → components** (§6). *Shipped for the root fallback in #874 and per template in #877.*
 Deferred: **nested scopes** (§5.4). Pick these up only once the per-template sets are in use and #601-style demand is clear.
 
-5. **Language tools.** *Not shipped.* `mdsvex:*` ids need types. Option A: the plugin writes generated `paths` into a tsconfig, like `.svelte-kit/tsconfig.json`. Option B: `language-core` reads the plugin config. Until then, type them as `any`.
+5. **Language tools.** *Done, 2026-10-02.* The editor learns the config without running Vite, from the first of these found walking up from the document:
+   - **`node_modules/.mdsvex/manifest.json`.** The plugin writes it when its resolution or scan changes. It holds each `mdsvex:*` id resolved to a file, the scanned names, `component_mode`, `extensions`, whether a custom frontmatter parser, a parse plugin that handles directives, or `select_template` is configured, and the template `select_template` last picked for each document. It is stale until Vite has run once, like `.svelte-kit`.
+   - **`mdsvex.config.json`.** The playground's static config. language-core resolves its relative, `file:`, `#` subpath and package specifiers itself, without Vite aliases, and reads export names from the TypeScript syntax tree.
+
+   We rejected having `language-core` load the Vite config itself: it would run user code in the editor, it is slow, and the synchronous tsserver plugin can't await it. A config path option for the extension would be a second source of truth with no Vite resolution.
+
+   `pfm_to_svelte` now runs core `compile()` with `strict_directives: false`, a pure option added for editors, instead of a parallel converter. It then rewrites `mdsvex:*` imports to the resolved files, maps each replaced element and directive to its export for hover, maps directive args to their props, and checks the frontmatter against the template's props with `satisfies`. Compile errors become editor diagnostics. Without a config, nothing is replaced and unknown directives aren't reported. See `language-tools/ARCHITECTURE.md`.
 
 ## 10. Open questions
 

@@ -9,8 +9,8 @@ import Test from "./Test.svelte";
 import { lang, clamp } from './const';
 </script>
 
-# { title} {clamp(count, 0, 100)}
+# { metadata.title} {clamp(metadata.count, 0, 100)}
  
- {count + 1} 
+ {metadata.count + 1} 
 
-<Test value={count}    label={1}  /> 
+<Test value={metadata.count}    label={1}  /> 

@@ -33,6 +33,7 @@
 	"dependencies": {
 		"@mdsvex/parse": "workspace:*",
 		"@mdsvex/render": "workspace:*",
+		"mdsvex": "workspace:*",
 		"@jridgewell/trace-mapping": "^0.3.31"
 	},
 	"devDependencies": {
