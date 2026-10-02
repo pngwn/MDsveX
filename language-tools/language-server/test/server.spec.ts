@@ -49,7 +49,7 @@ const FILES: Record<string, string> = {
 	].join("\n"),
 };
 
-describe.skipIf(!existsSync(SERVER))("the language server", () => {
+describe.skipIf(!existsSync(SERVER))("the language server", { timeout: 30_000 }, () => {
 	let root: string;
 	let server: LanguageServerHandle;
 	let doc: TextDocument;
@@ -107,6 +107,8 @@ describe.skipIf(!existsSync(SERVER))("the language server", () => {
 			typescript: { tsdk: dirname(require.resolve("typescript")) },
 		});
 		doc = await server.openTextDocument(join(root, "src/doc.svx"), "pfm");
+		// the first request loads the typescript project, slow on windows
+		await server.sendHoverRequest(doc.uri, at("## Heading"));
 	}, 60_000);
 
 	afterAll(async () => {
