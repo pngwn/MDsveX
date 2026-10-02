@@ -290,6 +290,76 @@ describe('element replacement, markdown mode', () => {
 	});
 });
 
+describe('raw html attribute values', () => {
+	const cases: [string, string, string][] = [
+		[
+			'an entity renders as typed',
+			'<div title="a &amp; b">x</div>',
+			'<div title="a &amp; b">x</div>',
+		],
+		[
+			'bare ampersands and angle brackets render as typed',
+			'<div title="a & b < c > d">x</div>',
+			'<div title="a & b < c > d">x</div>',
+		],
+		[
+			'a quote from a single quoted value is escaped',
+			`<div title='say "hi" &amp; go'>x</div>`,
+			'<div title="say &quot;hi&quot; &amp; go">x</div>',
+		],
+		[
+			'an external script renders as typed',
+			'<script src="/a.js?x=1&amp;y=2"></script>',
+			'<svelte:element this={"script"} src="/a.js?x=1&amp;y=2"></svelte:element>',
+		],
+		[
+			'a self closing tag passes its source through',
+			'<img alt="a &amp; b" />',
+			'<img alt="a &amp; b" />',
+		],
+	];
+
+	for (const [name, raw, want] of cases) {
+		test(name, () => {
+			expect(body(compile_all(raw, []))).toBe(want);
+			expect(body(compile_all(raw, only(...ELEMENTS, 'div')))).toBe(want);
+		});
+	}
+
+	const plugin: ParsePlugin = {
+		paragraph: {
+			parse(node) {
+				node.append('html', {
+					tag: 'mark',
+					attributes: { title: 'a &amp; <b> "c"' },
+				});
+			},
+		},
+	};
+
+	test('a value a plugin set is escaped in full', () => {
+		const code = compile('text', { parse_plugins: [plugin] }).code;
+		expect(body(code)).toBe(
+			'<p><mark title="a &amp;amp; &lt;b&gt; &quot;c&quot;"></mark>text</p>'
+		);
+		const mapped = compile('text', {
+			parse_plugins: [plugin],
+			sourcemap: true,
+		});
+		expect(mapped.code).toBe(code);
+	});
+
+	test('a value a plugin set is escaped in full as a prop', () => {
+		const code = compile('text', {
+			components: only('mark'),
+			parse_plugins: [plugin],
+		}).code;
+		expect(body(code)).toBe(
+			'<p><Mark_MDSVEX_G title="a &amp;amp; &lt;b&gt; &quot;c&quot;"></Mark_MDSVEX_G>text</p>'
+		);
+	});
+});
+
 describe('imports', () => {
 	test('one named import per used replacement, unused names are not imported', () => {
 		const code = compile('# a\n\nb ![c](/c.png)', {
