@@ -148,6 +148,8 @@ compile(source, {
 
 The output imports from those specifiers exactly as written.
 
+A directive with no component is an error. For a preview or an editor, pass `strict_directives: false` to render it as its children instead.
+
 ## Options
 
 `mdsvex()` takes one object of options. They apply to every document.
