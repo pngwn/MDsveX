@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { readFileSync, rmSync } from 'node:fs';
+import { readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,6 +13,7 @@ const RENDERED = '<h1>Hello from svx</h1><p>Some <strong>markdown</strong>';
 const TEMPLATED =
 	'<article class="post" data-title="Templated"><h1 class="post-heading">Hello from a template</h1></article>';
 const TEMPLATED_HEAD = '<title>From the template route</title>';
+const STYLED = /<h1 class="(svelte-\w+)">Styled<\/h1>/;
 
 const [major, minor] = process.versions.node.split('.').map(Number);
 const kit_supported = major > 22 || (major === 22 && minor >= 17);
@@ -84,6 +85,21 @@ describe.skipIf(!kit_supported)('sveltekit 3', () => {
 			);
 			expect(templated.replace(/<!--[^]*?-->/g, '')).toContain(TEMPLATED);
 			expect(templated).toContain(TEMPLATED_HEAD);
+			const styled = readFileSync(
+				resolve(APP, '.svelte-kit/output/prerendered/pages/styled.html'),
+				'utf8'
+			);
+			const scope = styled.match(STYLED)?.[1];
+			expect(scope, styled).toBeDefined();
+			const assets = resolve(
+				APP,
+				'.svelte-kit/output/client/_app/immutable/assets'
+			);
+			const css = readdirSync(assets)
+				.filter((file) => file.endsWith('.css'))
+				.map((file) => readFileSync(resolve(assets, file), 'utf8'))
+				.join('\n');
+			expect(css).toContain(`h1.${scope}{color:red}`);
 		});
 
 		test('serves a +page.svx route in dev', { timeout: 60_000 }, async () => {
@@ -98,6 +114,20 @@ describe.skipIf(!kit_supported)('sveltekit 3', () => {
 			expect(html.replace(/<!--[^]*?-->/g, '')).toContain(TEMPLATED);
 			expect(html).toContain(TEMPLATED_HEAD);
 		});
+
+		test(
+			'serves a styled +page.svx route in dev',
+			{ timeout: 60_000 },
+			async () => {
+				const { status, html } = await dev_page('/styled', env);
+				expect(status).toBe(200);
+				const scope = html.match(STYLED)?.[1];
+				expect(scope, html).toBeDefined();
+				expect(html).toMatch(
+					new RegExp(`h1\\.${scope}\\s*\\{\\s*color:\\s*red`)
+				);
+			}
+		);
 	});
 });
 
