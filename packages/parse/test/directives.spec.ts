@@ -417,6 +417,29 @@ describe('container block directives', () => {
 		const directive = find_child(nodes, bq!.index, 'directive_container');
 		expect(directive).not.toBeNull();
 	});
+
+	describe('fence ending at eof keeps the container label', () => {
+		for (const input of [
+			':::q[lab]\n```\ncode',
+			':::q[lab]\n```\ncode\n',
+			':::q[lab]\n```\ncode\n```',
+			':::q[lab]\n```js',
+			':::q[lab]\n```js\n',
+		]) {
+			test(JSON.stringify(input), () => {
+				for (const nodes of [
+					parse_markdown_svelte(input).nodes,
+					parse_fed(input, 1),
+				]) {
+					const directive = find_child(nodes, 0, 'directive_container')!;
+					expect(get_content(nodes, directive.index, input).value).toBe('lab');
+					expect(directive.end).toBe(input.length);
+					const code = find_child(nodes, directive.index, 'code_fence')!;
+					expect(code.children).toEqual([]);
+				}
+			});
+		}
+	});
 });
 
 const shape_without_positions = (

@@ -353,11 +353,7 @@ describe('Block quotes', () => {
 		// >>> foo
 		// > bar
 		// >>baz
-		// PFM: each block_quote state frame only checks its own marker, so
-		// a shorter marker count on a continuation line does NOT close outer
-		// frames, it just opens a new paragraph inside the innermost. A
-		// future revision may change this, but it is out of scope for the
-		// no-lazy-continuation change.
+		// no lazy continuation, bar closes the inner quotes and baz opens a new one
 		const input = load_fixture('251');
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
@@ -366,8 +362,58 @@ describe('Block quotes', () => {
 		expect(children[0].kind).toBe('block_quote');
 
 		const bq1_children = non_breaks(nodes, children[0].index);
-		expect(bq1_children.length).toBe(1);
-		expect(bq1_children[0].kind).toBe('block_quote');
+		expect(bq1_children.map((n) => n.kind)).toEqual([
+			'block_quote',
+			'paragraph',
+			'block_quote',
+		]);
+
+		const bq2_children = non_breaks(nodes, bq1_children[0].index);
+		expect(bq2_children.length).toBe(1);
+		expect(bq2_children[0].kind).toBe('block_quote');
+
+		const baz = non_breaks(nodes, bq1_children[2].index);
+		expect(baz.length).toBe(1);
+		expect(baz[0].kind).toBe('paragraph');
+	});
+
+	test('pfm: leaf block inside nested quote keeps following line at depth', () => {
+		const input = '> > # h\n> > x';
+		const { nodes } = parse_markdown_svelte(input);
+		const bq1 = non_breaks(nodes);
+		expect(bq1.map((n) => n.kind)).toEqual(['block_quote']);
+		const bq2 = non_breaks(nodes, bq1[0].index);
+		expect(bq2.map((n) => n.kind)).toEqual(['block_quote']);
+		const inner = non_breaks(nodes, bq2[0].index);
+		expect(inner.map((n) => n.kind)).toEqual(['heading', 'paragraph']);
+	});
+
+	test('pfm: blank quoted line inside compact nested quote keeps depth', () => {
+		const input = '>> b\n>>\n>> c';
+		const { nodes } = parse_markdown_svelte(input);
+		const bq1 = non_breaks(nodes);
+		const bq2 = non_breaks(nodes, bq1[0].index);
+		expect(bq2.map((n) => n.kind)).toEqual(['block_quote']);
+		const inner = non_breaks(nodes, bq2[0].index);
+		expect(inner.map((n) => n.kind)).toEqual(['paragraph', 'paragraph']);
+	});
+
+	test('pfm: fewer markers after a leaf block close the inner quote', () => {
+		const input = '> > # h\n> c';
+		const { nodes } = parse_markdown_svelte(input);
+		const bq1 = non_breaks(nodes);
+		const outer = non_breaks(nodes, bq1[0].index);
+		expect(outer.map((n) => n.kind)).toEqual(['block_quote', 'paragraph']);
+		const inner = non_breaks(nodes, outer[0].index);
+		expect(inner.map((n) => n.kind)).toEqual(['heading']);
+	});
+
+	test('pfm: extra marker interrupts a paragraph inside a quote', () => {
+		const input = '> bar\n>> baz';
+		const { nodes } = parse_markdown_svelte(input);
+		const bq1 = non_breaks(nodes);
+		const outer = non_breaks(nodes, bq1[0].index);
+		expect(outer.map((n) => n.kind)).toEqual(['paragraph', 'block_quote']);
 	});
 
 	test('pfm: code fence opener without > continuation is paragraph text', () => {
@@ -410,6 +456,31 @@ describe('Block quotes', () => {
 		const bq_children = non_breaks(nodes, children[0].index);
 		expect(bq_children.length).toBe(1);
 		expect(bq_children[0].kind).toBe('code_fence');
+	});
+
+	test('pfm: code fence closes on a quoted closing line, its value keeps the markers', () => {
+		const input = '> ```\n> code\n> ```\n> after\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+		expect(children.length).toBe(1);
+
+		const bq_children = non_breaks(nodes, children[0].index);
+		expect(bq_children.map((n) => n.kind)).toEqual(['code_fence', 'paragraph']);
+		expect(get_value(nodes, bq_children[0].index, input)).toBe('> code');
+		const text = nodes.get_node(bq_children[1].children[0]);
+		expect(get_value(nodes, text.index, input)).toBe('after');
+	});
+
+	test('pfm: code fence in a nested blockquote closes on its markers', () => {
+		const input = '> > ```\n> > a\n> > ```\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const outer = non_breaks(nodes)[0];
+		const inner = non_breaks(nodes, outer.index)[0];
+		expect(inner.kind).toBe('block_quote');
+
+		const fence = non_breaks(nodes, inner.index);
+		expect(fence.map((n) => n.kind)).toEqual(['code_fence']);
+		expect(get_value(nodes, fence[0].index, input)).toBe('> > a');
 	});
 
 	test('pfm: cascade close through nested blockquotes then resume', () => {

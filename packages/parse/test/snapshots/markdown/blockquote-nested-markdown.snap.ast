@@ -12,4 +12,5 @@ root
     paragraph
       text "Here's some example code:"
     line_break
-    code_fence "> return shell_exec(\"echo $input | $markdown_script\");\n> ```\n"
+    code_fence "> return shell_exec(\"echo $input | $markdown_script\");"
+  line_break

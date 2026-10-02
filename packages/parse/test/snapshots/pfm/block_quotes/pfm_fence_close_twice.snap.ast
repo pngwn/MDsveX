@@ -1,0 +1,5 @@
+root
+  block_quote
+    code_fence "> a"
+    code_fence "> b"
+  line_break

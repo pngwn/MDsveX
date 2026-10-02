@@ -1,0 +1,8 @@
+root
+  block_quote
+    code_fence "> a"
+  line_break
+  line_break
+  paragraph
+    text "after"
+  line_break

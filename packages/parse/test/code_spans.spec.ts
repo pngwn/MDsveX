@@ -511,9 +511,9 @@ describe('code spans', () => {
 
 		const code_fence = nodes.get_node(root.children[0]);
 
-		// root(1) + code_fence(1) + line_break(1) = 3
-		expect(nodes.size).toBe(3);
+		expect(nodes.size).toBe(2);
 		expect(code_fence.kind).toBe('code_fence');
+		expect(code_fence.value).toEqual([input.length, input.length]);
 	});
 
 	test('pfm example 348', () => {

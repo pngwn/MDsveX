@@ -1,0 +1,6 @@
+root
+  block_quote
+    code_fence ">a"
+    paragraph
+      text "b"
+  line_break
