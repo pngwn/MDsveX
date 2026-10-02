@@ -101,7 +101,8 @@ describe.skipIf(!existsSync(SERVER))("the language server", () => {
 				documents: {},
 			}),
 		);
-		server = startLanguageServer(SERVER, root);
+		// windows can not remove a directory a live process works in
+		server = startLanguageServer(SERVER, HERE);
 		await server.initialize(URI.file(root).toString(), {
 			typescript: { tsdk: dirname(require.resolve("typescript")) },
 		});
@@ -109,8 +110,13 @@ describe.skipIf(!existsSync(SERVER))("the language server", () => {
 	}, 60_000);
 
 	afterAll(async () => {
-		await server?.shutdown();
-		rmSync(root, { recursive: true, force: true });
+		if (server) {
+			const exited = new Promise((done) => server.process.once("exit", done));
+			await server.shutdown();
+			server.process.kill();
+			await exited;
+		}
+		rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 	});
 
 	it("hovers and jumps straight to the component replacing a heading", async () => {
