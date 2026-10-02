@@ -43,3 +43,4 @@ packages/bench/perf/reports/
 
 # components plugin test apps
 packages/mdsvex/test/.tmp-*/
+language-tools/*/test/.tmp-*/

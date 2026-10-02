@@ -36,7 +36,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const clientOptions: LanguageClientOptions = {
 		documentSelector: [{ language: "pfm" }],
 		synchronize: {
-			fileEvents: vscode.workspace.createFileSystemWatcher("**/*.pfm"),
+			fileEvents: vscode.workspace.createFileSystemWatcher("**/*.{pfm,svx}"),
 		},
 		initializationOptions: {
 			typescript: {

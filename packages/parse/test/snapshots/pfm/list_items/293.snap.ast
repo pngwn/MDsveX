@@ -5,6 +5,6 @@ root
         block_quote
           paragraph
             text "Blockquote"
-          paragraph
-            text "continued here."
+    paragraph
+      text "continued here."
   line_break

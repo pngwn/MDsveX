@@ -6335,7 +6335,7 @@ export class PFMParser {
 								// unmarked line - close the paragraph. cursor stays
 								// on lf so enclosing block_quote state frames will
 								// cascade-close themselves via their own linefeed
-								// handlers (each calls skip_bq_markers(_, 1)).
+								// handlers, each strips block_quote_depth markers
 								this.emit_close(current_node, this.cursor);
 								this.states.pop();
 								truncate_stack(this.node_stack, node_stack_base);
@@ -6345,6 +6345,7 @@ export class PFMParser {
 							// markers present - check for block interrupt at stripped pos
 							if (
 								this.is_blank_at_pos(stripped) ||
+								this.is_block_quote_start(stripped) ||
 								this.is_heading_start(stripped) ||
 								this.is_thematic_break_start(stripped) ||
 								(char_code_at.call(source, stripped - base) === BACKTICK &&
@@ -9861,8 +9862,9 @@ export class PFMParser {
 				if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
 					return true;
 				}
+				// strip all enclosing markers, too few closes this frame and the outer one retries
 				const next_pos = this.cursor + 1;
-				const stripped = this.skip_bq_markers(next_pos, 1);
+				const stripped = this.skip_bq_markers(next_pos, this.block_quote_depth);
 
 				if (stripped !== -1) {
 					if (this.is_blank_at_pos(stripped)) {

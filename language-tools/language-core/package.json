@@ -21,6 +21,7 @@
 	"dependencies": {
 		"@mdsvex/source-map": "workspace:*",
 		"@mdsvex/render": "workspace:*",
+		"mdsvex": "workspace:*",
 		"@volar/language-core": "^2.4.28",
 		"@volar/typescript": "^2.4.28",
 		"svelte2tsx": "^0.7.53"
