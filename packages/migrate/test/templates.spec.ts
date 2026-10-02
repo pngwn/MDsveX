@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import { parse_markdown_svelte } from "@mdsvex/parse";
 
 import {
+	check_template,
 	migrate,
 	migrate_config,
 	migrate_frontmatter,
@@ -360,5 +361,60 @@ describe("frontmatter", () => {
 
 	test("migrate with only frontmatter", () => {
 		expect(migrate("---\nlayout: false\n---")).toBe("---\ntemplate: false\n---\n");
+	});
+});
+
+describe("template components", () => {
+	test("<slot /> is flagged", () => {
+		const notes = check_template(
+			"<script>\n\texport let title;\n</script>\n\n<h1>{title}</h1>\n<slot />\n",
+		);
+		expect(notes).toEqual([
+			{
+				kind: "slot",
+				message: expect.stringContaining("{@render children()}"),
+				line: 6,
+				column: 1,
+			},
+		]);
+	});
+
+	test("{...$$props} is flagged", () => {
+		const notes = check_template("<article {...$$props}>\n\t<slot></slot>\n</article>");
+		expect(notes).toEqual([
+			{
+				kind: "legacy_props",
+				message: expect.stringContaining("let { children, ...props } = $props()"),
+				line: 1,
+				column: 10,
+			},
+			{ kind: "slot", message: expect.any(String), line: 2, column: 2 },
+		]);
+	});
+
+	test("$$props and $$restProps in script are flagged", () => {
+		const notes = check_template(
+			"<script>\n\tconst { title } = $$props;\n\tconst rest = $$restProps;\n</script>",
+		);
+		expect(notes.map((n) => [n.kind, n.line, n.column])).toEqual([
+			["legacy_props", 2, 20],
+			["legacy_props", 3, 15],
+		]);
+		expect(notes[1].message).toContain("`$$restProps`");
+	});
+
+	test("comments, scripts and styles don't count", () => {
+		const notes = check_template(
+			"<!-- <slot /> {...$$props} -->\n<script>\n\t// $$props\n\tconst s = '<slot>';\n</script>\n<style>\n\tslot { color: red }\n</style>\n{@render children()}",
+		);
+		expect(notes).toEqual([]);
+	});
+
+	test("a runes template has nothing to flag", () => {
+		expect(
+			check_template(
+				"<script>\n\tlet { title, children } = $props();\n</script>\n\n<h1>{title}</h1>\n{@render children()}\n",
+			),
+		).toEqual([]);
 	});
 });
