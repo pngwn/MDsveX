@@ -101,10 +101,27 @@ export type TemplateSpec =
 	| { component: string | URL; components?: string | URL };
 
 /**
- * markdown replaces elements from markdown syntax and parse plugins, never
- * typed html, all is not implemented yet and behaves as markdown
+ * which elements a replacement takes, markdown takes those from markdown
+ * syntax and parse plugins, never html the author typed
+ *
+ * all also takes lowercase elements the author typed, so a warning export
+ * replaces <warning>, never svelte tags or capitalised components, an element
+ * with a bind, on, use, class, style, transition, in, out, animate or let
+ * directive stays an element as a component can not take one, and the
+ * compile warns about it, svelte:element is the escape hatch
+ *
+ * @example
+ * <svelte:element this="img" src="/a.png" />
  */
 export type ComponentMode = 'markdown' | 'all';
+
+/** an element component_mode all kept because a component can not take its directive */
+export interface CompileWarning {
+	code: 'element_directive';
+	message: string;
+	/** the element, line from 1 and column from 0, which hold in the raw source */
+	start: { line: number; column: number };
+}
 
 export interface CompileOptions extends TemplateOptions {
 	parse_plugins?: ParsePlugin[];
@@ -156,6 +173,8 @@ export interface CompileResult {
 	metadata?: Metadata;
 	/** the name of the template the document is wrapped in, undefined for none */
 	template?: string;
+	/** undefined when there are none */
+	warnings?: CompileWarning[];
 }
 
 export interface CompileV3Result {
@@ -166,6 +185,8 @@ export interface CompileV3Result {
 	metadata?: Metadata;
 	/** the name of the template the document is wrapped in, undefined for none */
 	template?: string;
+	/** undefined when there are none */
+	warnings?: CompileWarning[];
 }
 
 export interface CompileTraceResult {
@@ -178,6 +199,8 @@ export interface CompileTraceResult {
 	metadata?: Metadata;
 	/** the name of the template the document is wrapped in, undefined for none */
 	template?: string;
+	/** undefined when there are none */
+	warnings?: CompileWarning[];
 }
 
 // plugins keep one components array per config, so its scope is built once
@@ -558,6 +581,41 @@ function metadata_of(
 	);
 }
 
+/**
+ * the scope prepare left decides, so a template scope replaces typed html too,
+ * a render without one stores nothing
+ */
+function arm(renderer: CursorHTMLRenderer, mode: ComponentMode | undefined) {
+	if (renderer.scope !== null) renderer.replace_typed = mode === 'all';
+}
+
+/** only a render with a scope sets renderer warnings, the offsets index source */
+function add_warnings(
+	result: { warnings?: CompileWarning[] },
+	renderer: CursorHTMLRenderer,
+	source: string
+): void {
+	const scope = renderer.scope;
+	if (scope === null || scope.size === 0) return;
+	const list = renderer.warnings;
+	if (list.length === 0) return;
+	result.warnings = list.map(({ tag, directive, start }) => {
+		const line_start = source.lastIndexOf('\n', start - 1) + 1;
+		let line = 1;
+		for (
+			let i = source.indexOf('\n');
+			i !== -1 && i < start;
+			i = source.indexOf('\n', i + 1)
+		)
+			line++;
+		return {
+			code: 'element_directive',
+			message: `<${tag}> stays an element, a component can't take ${directive}`,
+			start: { line, column: start - line_start },
+		};
+	});
+}
+
 function module_code_of(metadata: Metadata | undefined): string | undefined {
 	return metadata === undefined ? undefined : metadata_export(metadata);
 }
@@ -584,6 +642,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 			throw e;
 		}
 	}
+	arm(renderer, options?.component_mode);
 
 	if (options?.sourcemap) {
 		// only a collapsed \r\n changes length, without one raw needs no \r\n scan
@@ -593,15 +652,22 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 			source.length === raw.length ? null : collapsed_of(raw),
 			module_code_of(metadata)
 		);
-		const code = renderer.html;
+		const done: CompileResult = {
+			code: renderer.html,
+			mappings: result.mappings,
+			metadata,
+			template,
+		};
+		add_warnings(done, renderer, source);
 		give_renderer(renderer);
-		return { code, mappings: result.mappings, metadata, template };
+		return done;
 	}
 
 	renderer.update(nodes, source, module_code_of(metadata));
-	const code = renderer.html;
+	const done: CompileResult = { code: renderer.html, metadata, template };
+	add_warnings(done, renderer, source);
 	give_renderer(renderer);
-	return { code, metadata, template };
+	return done;
 }
 
 function render_v3(
@@ -613,16 +679,25 @@ function render_v3(
 	parse: FrontmatterParse,
 	scope: ComponentScope | null,
 	directives: ComponentScope | null,
-	templates: TemplateOptions | undefined
+	templates: TemplateOptions | undefined,
+	mode: ComponentMode | undefined
 ): CompileV3Result {
 	const metadata = metadata_of(nodes, source, parse);
 	bind_scopes(renderer, scope, directives);
 	const template = prepare(renderer, scope, metadata, templates, nodes, source);
+	arm(renderer, mode);
 	const module_code = module_code_of(metadata);
 	// only a collapsed \r\n changes length, without one the records index raw
 	if (source.length === raw.length) {
 		const map = renderer.update_v3(nodes, source, raw, file, module_code);
-		return { code: renderer.html, map, metadata, template };
+		const done: CompileV3Result = {
+			code: renderer.html,
+			map,
+			metadata,
+			template,
+		};
+		add_warnings(done, renderer, source);
+		return done;
 	}
 	const result = renderer.update_mapped(
 		nodes,
@@ -631,12 +706,14 @@ function render_v3(
 		module_code
 	);
 	const code = renderer.html;
-	return {
+	const done: CompileV3Result = {
 		code,
 		map: mappings_to_v3(result.mappings, raw, code, file),
 		metadata,
 		template,
 	};
+	add_warnings(done, renderer, source);
+	return done;
 }
 
 function render_trace(
@@ -646,13 +723,23 @@ function render_trace(
 	parse: FrontmatterParse,
 	scope: ComponentScope | null,
 	directives: ComponentScope | null,
-	templates: TemplateOptions | undefined
+	templates: TemplateOptions | undefined,
+	mode: ComponentMode | undefined
 ): CompileTraceResult {
 	const metadata = metadata_of(nodes, source, parse);
 	bind_scopes(renderer, scope, directives);
 	const template = prepare(renderer, scope, metadata, templates, nodes, source);
+	arm(renderer, mode);
 	const trace = renderer.update_trace(nodes, source, module_code_of(metadata));
-	return { code: renderer.html, trace, source, metadata, template };
+	const done: CompileTraceResult = {
+		code: renderer.html,
+		trace,
+		source,
+		metadata,
+		template,
+	};
+	add_warnings(done, renderer, source);
+	return done;
 }
 
 /**
@@ -702,6 +789,7 @@ export class CompilerSession {
 			metadata === undefined && !picks_template(options)
 				? undefined
 				: prepare(this.renderer, scope, metadata, options, nodes, source);
+		arm(this.renderer, options?.component_mode);
 		if (options?.sourcemap) {
 			const result = this.renderer.update_mapped(
 				nodes,
@@ -709,16 +797,24 @@ export class CompilerSession {
 				source.length === raw.length ? null : collapsed_of(raw),
 				module_code_of(metadata)
 			);
-			return {
+			const done: CompileResult = {
 				code: this.renderer.html,
 				mappings: result.mappings,
 				metadata,
 				template,
 			};
+			add_warnings(done, this.renderer, source);
+			return done;
 		}
 
 		this.renderer.update(nodes, source, module_code_of(metadata));
-		return { code: this.renderer.html, metadata, template };
+		const done: CompileResult = {
+			code: this.renderer.html,
+			metadata,
+			template,
+		};
+		add_warnings(done, this.renderer, source);
+		return done;
 	}
 
 	/** @internal keeps only typed arrays so an idle session holds no document */
@@ -739,9 +835,10 @@ export class CompilerSession {
 		components?: ComponentSource[],
 		parse?: FrontmatterParse,
 		templates?: TemplateOptions,
-		directive_sources?: ComponentSource[]
+		directive_sources?: ComponentSource[],
+		mode?: ComponentMode
 	): CompileV3Result {
-		const scope = components === undefined ? null : scope_of(components);
+		const scope = components === undefined ? null : scope_of(components, mode);
 		const directives = directive_scope_of(directive_sources);
 		const source = normalize_newlines(raw);
 		if (parse_plugins && parse_plugins.length > 0) {
@@ -761,7 +858,8 @@ export class CompilerSession {
 				parse,
 				scope,
 				directives,
-				templates
+				templates,
+				mode
 			);
 		}
 		const nodes = this.parse(source);
@@ -774,7 +872,8 @@ export class CompilerSession {
 			parse,
 			scope,
 			directives,
-			templates
+			templates,
+			mode
 		);
 	}
 
@@ -789,9 +888,10 @@ export class CompilerSession {
 		components?: ComponentSource[],
 		parse?: FrontmatterParse,
 		templates?: TemplateOptions,
-		directive_sources?: ComponentSource[]
+		directive_sources?: ComponentSource[],
+		mode?: ComponentMode
 	): CompileTraceResult {
-		const scope = components === undefined ? null : scope_of(components);
+		const scope = components === undefined ? null : scope_of(components, mode);
 		const directives = directive_scope_of(directive_sources);
 		const source = normalize_newlines(raw);
 		if (parse_plugins && parse_plugins.length > 0) {
@@ -808,7 +908,8 @@ export class CompilerSession {
 				parse,
 				scope,
 				directives,
-				templates
+				templates,
+				mode
 			);
 		}
 		const nodes = this.parse(source);
@@ -819,7 +920,8 @@ export class CompilerSession {
 			parse,
 			scope,
 			directives,
-			templates
+			templates,
+			mode
 		);
 	}
 
@@ -834,9 +936,10 @@ export class CompilerSession {
 		components?: ComponentSource[],
 		parse?: FrontmatterParse,
 		templates?: TemplateOptions,
-		directive_sources?: ComponentSource[]
+		directive_sources?: ComponentSource[],
+		mode?: ComponentMode
 	): void {
-		const scope = components === undefined ? null : scope_of(components);
+		const scope = components === undefined ? null : scope_of(components, mode);
 		const directives = directive_scope_of(directive_sources);
 		const source = normalize_newlines(raw);
 		let renderer = this.renderer;
@@ -859,9 +962,12 @@ export class CompilerSession {
 			templates === undefined && metadata === undefined
 				? undefined
 				: prepare(renderer, scope, metadata, templates, nodes, source);
+		arm(renderer, mode);
 		renderer.update_trace_into(nodes, source, out, module_code_of(metadata));
 		out.source = source;
 		out.html = renderer.html;
+		// the caller clears warnings it took
+		add_warnings(out, renderer, source);
 	}
 }
 
@@ -871,6 +977,7 @@ interface TraceTarget extends MapTrace {
 	html: string;
 	metadata: Metadata | undefined;
 	template: string | undefined;
+	warnings: CompileWarning[] | undefined;
 }
 
 // a session keeps its arena at its largest document size, so large documents
@@ -2078,6 +2185,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	const no_templates = templates === null && select === undefined;
 
 	function compile_doc(
+		ctx: Rollup.TransformPluginContext,
 		code: string,
 		id: string,
 		components: ComponentSource[] | undefined,
@@ -2091,6 +2199,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				html: '',
 				metadata: undefined,
 				template: undefined,
+				warnings: undefined,
 				buf: no_records,
 				start: 0,
 				split: 0,
@@ -2108,9 +2217,14 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			options.frontmatter?.parse,
 			// without templates or a selector a query has nothing to pick
 			no_templates ? undefined : templates_for(templates, select, id),
-			directives
+			directives,
+			options.component_mode
 		);
 		doc.raw = code;
+		if (doc.warnings !== undefined) {
+			for (const w of doc.warnings) ctx.warn(w.message, w.start);
+			doc.warnings = undefined;
+		}
 
 		// return NO map, avoids poisoning getCombinedSourcemap()
 		return { code: doc.html };
@@ -2187,7 +2301,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			transform(code, id) {
 				if (!matches(id)) return;
 				if (tracker === null)
-					return compile_doc(code, id, undefined, undefined);
+					return compile_doc(this, code, id, undefined, undefined);
 
 				const finish = () => {
 					// a watch build compiles again when the exports change, in dev the virtual import is the edge
@@ -2198,6 +2312,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 							for (const file of templates.files()) this.addWatchFile(file);
 					}
 					const result = compile_doc(
+						this,
 						code,
 						id,
 						registry?.sources(),
