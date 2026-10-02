@@ -362,3 +362,66 @@ describe('svelte 5', () => {
 		}
 	});
 });
+
+describe('template directives', () => {
+	const templates = {
+		docs: {
+			specifier: 'mdsvex:template/docs',
+			directives: [
+				{ specifier: 'mdsvex:template-directives/docs', names: ['Callout'] },
+			],
+		},
+		post: { specifier: 'mdsvex:template/post' },
+	};
+	const directives = only('Callout', 'note');
+
+	test('chain in front of the root directives, closest first', () => {
+		const raw = '---\ntemplate: docs\n---\n\n::Callout[]\n\n::note[]';
+		const code = compile(raw, { templates, directives }).code;
+		expect(code).toContain(
+			"import { Callout as Callout_MDSVEX_D_T } from 'mdsvex:template-directives/docs';\n" +
+				"import { note as Note_MDSVEX_D_G } from 'mdsvex:directives';\n"
+		);
+		expect(code).toContain('<Callout_MDSVEX_D_T /><Note_MDSVEX_D_G />');
+		const session = new CompilerSession();
+		expect(
+			session.compile_trace(
+				raw,
+				undefined,
+				undefined,
+				undefined,
+				{ templates },
+				directives
+			).code
+		).toBe(code);
+	});
+
+	test('another template or none keeps only the root directives', () => {
+		for (const head of ['template: post', 'template: false']) {
+			const code = compile(`---\n${head}\n---\n\n::Callout[]`, {
+				templates,
+				directives,
+			}).code;
+			expect(code).toContain('<Callout_MDSVEX_D_G />');
+		}
+		expect(() =>
+			compile('---\ntemplate: post\n---\n\n::Callout[]', { templates })
+		).toThrow(DirectiveError);
+	});
+
+	test('a name any template registers never reaches a plugin', () => {
+		const seen: string[] = [];
+		const watch: ParsePlugin = {
+			directive_leaf: {
+				parse(node) {
+					return () => seen.push(node.attrs.name);
+				},
+			},
+		};
+		const raw = '---\ntemplate: docs\n---\n\n::Callout[]\n\n::other[]';
+		expect(() => compile(raw, { templates, parse_plugins: [watch] })).toThrow(
+			/::other/
+		);
+		expect(seen).toEqual(['other']);
+	});
+});
