@@ -1,5 +1,9 @@
 import * as acorn from 'acorn';
-import { compile, type CompileOptions, type ComponentMode } from 'mdsvex';
+import {
+	compile,
+	type CompileOptions,
+	type ComponentMode,
+} from 'mdsvex/compile';
 import { mappings_to_v3, type SourceMapV3 } from '@mdsvex/render/sourcemap';
 import { strip_types } from './typescript_strip_types';
 

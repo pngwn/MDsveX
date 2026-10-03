@@ -76,16 +76,11 @@ const config = {
 		},
 	},
 	optimizeDeps: {
-		// prebundling moves the rollup wasm away from the file that fetches it,
-		// and vite is only imported lazily by the mdsvex plugin, never in a browser
-		exclude: ["@rollup/browser", "vite"],
+		// prebundling moves the rollup wasm away from the file that fetches it
+		exclude: ["@rollup/browser"],
 	},
 	worker: {
 		format: "es",
-		rollupOptions: {
-			// the mdsvex plugin loads these lazily, compiling in a worker never does
-			external: ["vite", /^node:/],
-		},
 	},
 };
 

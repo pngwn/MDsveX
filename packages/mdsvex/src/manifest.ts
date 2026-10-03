@@ -3,7 +3,7 @@
  * not run vite to learn the templates and replacements a document compiles with
  */
 
-import type { ComponentMode } from './main';
+import type { ComponentMode } from './compile';
 
 /** where the plugin writes the manifest, relative to the vite root */
 export const MANIFEST_PATH = 'node_modules/.mdsvex/manifest.json';

@@ -8,6 +8,10 @@
 			"types": "./dist/main.d.ts",
 			"default": "./dist/main.js"
 		},
+		"./compile": {
+			"types": "./dist/compile.d.ts",
+			"default": "./dist/compile.js"
+		},
 		"./package.json": "./package.json",
 		"./globals": {
 			"types": "./globals.d.ts"

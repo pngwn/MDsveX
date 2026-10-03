@@ -7,6 +7,7 @@ export default defineConfig({
 		lib: {
 			entry: {
 				main: resolve(__dirname, "tsc/main.js"),
+				compile: resolve(__dirname, "tsc/compile.js"),
 			},
 			formats: ["es"],
 		},
