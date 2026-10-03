@@ -1,5 +1,12 @@
 # vscode-pfm
 
+## 0.0.2-next.1
+
+### Patch Changes
+
+- Updated dependencies [[`ffaf805`](https://github.com/pngwn/MDsveX/commit/ffaf805cd7ac2ebb07c1b5a33896c36e53dc6c67), [`ffaf805`](https://github.com/pngwn/MDsveX/commit/ffaf805cd7ac2ebb07c1b5a33896c36e53dc6c67)]:
+  - @mdsvex/typescript-plugin@0.1.0-next.1
+
 ## 0.0.2-next.0
 
 ### Patch Changes
