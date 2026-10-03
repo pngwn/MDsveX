@@ -32,6 +32,7 @@ import {
 import type { MapTrace, SourceMapV3 } from './sourcemap';
 import { ComponentScope, component_imports } from './scope';
 import type { ComponentImport, ReplaceWarning } from './scope';
+import { is_entity_name } from './entities';
 
 export type { Mapping, CodeInformation, MappingData } from './mappings';
 export { MapSink } from './mappings';
@@ -68,6 +69,68 @@ function escape_replace(ch: string): string {
 function escape_html(text: string): string {
 	if (!ESCAPE_TEST.test(text)) return text;
 	return text.replace(ESCAPE_MATCH, escape_replace);
+}
+
+/** the end of the character reference whose & is at m, or -1 */
+function reference_end(s: string, m: number, end: number): number {
+	let i = m + 1;
+	if (i >= end) return -1;
+	let ch = s.charCodeAt(i);
+	if (ch === 35) {
+		// a numeric reference, decimal or hex
+		i++;
+		let max = 7;
+		let hex = false;
+		if (i < end && (s.charCodeAt(i) | 32) === 120) {
+			i++;
+			max = 6;
+			hex = true;
+		}
+		const digits = i;
+		while (i < end && i - digits < max) {
+			ch = s.charCodeAt(i);
+			if (ch >= 48 && ch <= 57) i++;
+			else if (hex && (ch | 32) >= 97 && (ch | 32) <= 102) i++;
+			else break;
+		}
+		if (i === digits || i >= end || s.charCodeAt(i) !== 59) return -1;
+		return i + 1;
+	}
+	// a named reference, the longest html5 name has 31 characters
+	const name = i;
+	while (i < end && i - name < 32) {
+		ch = s.charCodeAt(i);
+		if (
+			((ch | 32) >= 97 && (ch | 32) <= 122) ||
+			(i > name && ch >= 48 && ch <= 57)
+		)
+			i++;
+		else break;
+	}
+	if (i - name < 2 || i >= end || s.charCodeAt(i) !== 59) return -1;
+	return is_entity_name(s.slice(name, i)) ? i + 1 : -1;
+}
+
+/** escape_html that keeps character references, as text and link attributes have them */
+function escape_text_html(text: string): string {
+	if (!ESCAPE_TEST.test(text)) return text;
+	let out = '';
+	let pos = 0;
+	const len = text.length;
+	for (let i = 0; i < len; i++) {
+		const ch = text.charCodeAt(i);
+		let rep: string;
+		if (ch === 38) {
+			if (reference_end(text, i, len) !== -1) continue;
+			rep = '&amp;';
+		} else if (ch === 60) rep = '&lt;';
+		else if (ch === 62) rep = '&gt;';
+		else if (ch === 34) rep = '&quot;';
+		else continue;
+		out += text.slice(pos, i) + rep;
+		pos = i + 1;
+	}
+	return pos === 0 ? text : out + text.slice(pos);
 }
 
 const QUOTE_MATCH = /"/g;
@@ -134,9 +197,17 @@ function esc_next(ch: string, from: number): number {
 	return i === -1 ? esc_len : i;
 }
 
-/** equals escape_html of c.text, reading source slices through the escape index */
+/**
+ * equals escape_text_html of c.text, reading source slices through the escape
+ * index, apart from an & a backslash escaped, which the slice no longer shows
+ */
 function escape_node_text(c: Cursor): string {
-	return escape_text_at(c, c.index, c.value_start, c.value_end);
+	return escape_text_at(c, c.index, c.value_start, c.value_end, false);
+}
+
+/** equals escape_html of c.text, code shows references as written */
+function escape_code_text(c: Cursor): string {
+	return escape_text_at(c, c.index, c.value_start, c.value_end, true);
 }
 
 function bq_depth(n: Uint32Array, i: number): number {
@@ -196,17 +267,23 @@ function fence_text(c: Cursor): string {
 /** equals escape_html of fence_text */
 function escape_fence_text(c: Cursor): string {
 	const depth = bq_depth(c.words, c.index);
-	if (depth === 0) return escape_node_text(c);
+	if (depth === 0) return escape_code_text(c);
 	return escape_html(strip_bq(c.text(), depth));
 }
 
-/** escape_node_text of node i, the cursor may sit elsewhere */
-function escape_text_at(c: Cursor, i: number, vs: number, ve: number): string {
+/** escape_node_text of node i, or escape_code_text for code, the cursor may sit elsewhere */
+function escape_text_at(
+	c: Cursor,
+	i: number,
+	vs: number,
+	ve: number,
+	code: boolean
+): string {
 	if (esc_prebuilt) {
 		const bits = esc_bits;
 		if (bits === null || (bits[i >>> 3] & (1 << (i & 7))) !== 0) {
 			const s = c.prebuilt_at(i);
-			if (s !== undefined) return escape_html(s);
+			if (s !== undefined) return code ? escape_html(s) : escape_text_html(s);
 		}
 	}
 	// empty cases must match Cursor.text
@@ -228,19 +305,39 @@ function escape_text_at(c: Cursor, i: number, vs: number, ve: number): string {
 	if (esc_gt < m) m = esc_gt;
 	if (esc_quot < m) m = esc_quot;
 	if (m >= ve) return src.slice(vs, ve);
-	return escape_hits(src, vs, ve, m);
+	return escape_hits(src, vs, ve, m, code);
+}
+
+/** a reference in text stays as written, unless a backslash escaped its & */
+function text_reference(
+	src: string,
+	vs: number,
+	ve: number,
+	m: number
+): boolean {
+	// an escape opens its text node at the escaped char
+	if (m === vs && m > 0 && src.charCodeAt(m - 1) === 92) return false;
+	return reference_end(src, m, ve) !== -1;
 }
 
 /** m is the first escapable char at or after vs */
-function escape_hits(src: string, vs: number, ve: number, m: number): string {
+function escape_hits(
+	src: string,
+	vs: number,
+	ve: number,
+	m: number,
+	code: boolean
+): string {
 	let text = '';
 	let pos = vs;
 	while (m < ve) {
 		const ch = src.charCodeAt(m);
 		text += src.slice(pos, m);
+		pos = m + 1;
 		if (ch === 38) {
-			text += '&amp;';
 			esc_amp = esc_next('&', m + 1);
+			if (!code && text_reference(src, vs, ve, m)) pos = m;
+			else text += '&amp;';
 		} else if (ch === 60) {
 			text += '&lt;';
 			esc_lt = esc_next('<', m + 1);
@@ -251,7 +348,6 @@ function escape_hits(src: string, vs: number, ve: number, m: number): string {
 			text += '&quot;';
 			esc_quot = esc_next('"', m + 1);
 		}
-		pos = m + 1;
 		m = esc_amp;
 		if (esc_lt < m) m = esc_lt;
 		if (esc_gt < m) m = esc_gt;
@@ -943,7 +1039,7 @@ function render_children(c: Cursor, sink?: MapSink): void {
 		if (k === K.TEXT) {
 			const vs = n[b + W.value_start];
 			const ve = n[b + W.value_end];
-			const t = escape_text_at(c, child, vs, ve);
+			const t = escape_text_at(c, child, vs, ve, false);
 			if (sink) {
 				if (vs !== Slot.NONE && ve > vs) {
 					const at = mo.length;
@@ -1062,7 +1158,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			const pre = mo.length;
 			_open(c, '<code', '<code>', '>');
 			const ao = mo.length;
-			let code = escape_node_text(c);
+			let code = escape_code_text(c);
 			if (string_index_of.call(code, '\n') !== -1)
 				code = code.replace(/\n/g, ' ');
 			if (sink) content_record(sink, c, code, Code.CODE_CONTENT);
@@ -1115,9 +1211,10 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			const pre = mo.length;
 			const meta = c.meta();
 			let s = '<a';
-			if (meta?.href) s += ' href="' + escape_html(meta.href as string) + '"';
+			if (meta?.href)
+				s += ' href="' + escape_text_html(meta.href as string) + '"';
 			if (meta?.title)
-				s += ' title="' + escape_html(meta.title as string) + '"';
+				s += ' title="' + escape_text_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, LINK_HANDLED) + '>';
 			const ao = mo.length;
 			render_children(c, sink);
@@ -1131,10 +1228,10 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			const pre = mo.length;
 			const meta = c.meta();
 			let s = '<img';
-			if (meta?.src) s += ' src="' + escape_html(meta.src as string) + '"';
-			s += ' alt="' + escape_html(_children_raw(c)) + '"';
+			if (meta?.src) s += ' src="' + escape_text_html(meta.src as string) + '"';
+			s += ' alt="' + escape_text_html(_children_raw(c)) + '"';
 			if (meta?.title)
-				s += ' title="' + escape_html(meta.title as string) + '"';
+				s += ' title="' + escape_text_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, IMAGE_HANDLED) + ' />';
 			// the syntax spans are empty, only the node is recorded
 			if (sink) put_record(sink, pre, mo.length, c.start, c.end, c.index, 0);
@@ -1812,7 +1909,10 @@ function fold_children(c: Cursor, p: number): number {
 					next = n[lb + W.next];
 				}
 			}
-			p = push_dyn(p, escape_text_at(c, first, n[b + W.value_start], ve));
+			p = push_dyn(
+				p,
+				escape_text_at(c, first, n[b + W.value_start], ve, false)
+			);
 		} else if (k !== K.LINE_BREAK) {
 			// line breaks render nothing, a fifth of visited nodes skip the call
 			c.move_to(child);
@@ -1903,7 +2003,7 @@ function fold_node(c: Cursor, p: number): number {
 
 		case K.CODE_SPAN: {
 			p = fold_open(c, p, S_CODE, S_CODE_OPEN, S_GT);
-			const code = escape_text(c);
+			const code = escape_code_text(c);
 			p = push_dyn(
 				p,
 				code.indexOf('\n') === -1 ? code : code.replace(/\n/g, ' ')
@@ -1963,7 +2063,7 @@ function fold_node(c: Cursor, p: number): number {
 		case K.TEXT:
 			return push_dyn(
 				p,
-				escape_text_at(c, c.index, c.value_start, c.value_end)
+				escape_text_at(c, c.index, c.value_start, c.value_end, false)
 			);
 
 		case K.IMPORT_STATEMENT:
@@ -2009,12 +2109,12 @@ function fold_link(c: Cursor, p: number): number {
 	p = push_static(p, S_A);
 	if (meta?.href) {
 		p = push_static(p, S_HREF);
-		p = push_dyn(p, escape(meta.href as string));
+		p = push_dyn(p, escape_text_html(meta.href as string));
 		p = push_static(p, S_QUOTE);
 	}
 	if (meta?.title) {
 		p = push_static(p, S_TITLE);
-		p = push_dyn(p, escape(meta.title as string));
+		p = push_dyn(p, escape_text_html(meta.title as string));
 		p = push_static(p, S_QUOTE);
 	}
 	p = fold_attrs(meta, p, LINK_HANDLED);
@@ -2028,15 +2128,15 @@ function fold_image(c: Cursor, p: number): number {
 	p = push_static(p, S_IMG);
 	if (meta?.src) {
 		p = push_static(p, S_SRC);
-		p = push_dyn(p, escape(meta.src as string));
+		p = push_dyn(p, escape_text_html(meta.src as string));
 		p = push_static(p, S_QUOTE);
 	}
 	p = push_static(p, S_ALT);
-	p = push_dyn(p, escape(_children_raw(c)));
+	p = push_dyn(p, escape_text_html(_children_raw(c)));
 	p = push_static(p, S_QUOTE);
 	if (meta?.title) {
 		p = push_static(p, S_TITLE);
-		p = push_dyn(p, escape(meta.title as string));
+		p = push_dyn(p, escape_text_html(meta.title as string));
 		p = push_static(p, S_QUOTE);
 	}
 	p = fold_attrs(meta, p, IMAGE_HANDLED);
@@ -2363,7 +2463,7 @@ function tr_children(c: Cursor, sink: MapSink, p: number): number {
 		if (k === K.TEXT) {
 			const vs = n[b + W.value_start];
 			const ve = n[b + W.value_end];
-			const t = escape_text_at(c, child, vs, ve);
+			const t = escape_text_at(c, child, vs, ve, false);
 			if (p !== 0) {
 				mo += FOLD_STR[p];
 				p = 0;
@@ -2427,7 +2527,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 		case K.CODE_SPAN: {
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_open(c, p, S_CODE, S_CODE_OPEN, S_GT);
-			let code = escape_node_text(c);
+			let code = escape_code_text(c);
 			if (string_index_of.call(code, '\n') !== -1)
 				code = code.replace(/\n/g, ' ');
 			tr_text(c, sink, p, code);
@@ -2494,9 +2594,10 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			if (p !== 0) mo += FOLD_STR[p];
 			const meta = c.meta();
 			let s = '<a';
-			if (meta?.href) s += ' href="' + escape_html(meta.href as string) + '"';
+			if (meta?.href)
+				s += ' href="' + escape_text_html(meta.href as string) + '"';
 			if (meta?.title)
-				s += ' title="' + escape_html(meta.title as string) + '"';
+				s += ' title="' + escape_text_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, LINK_HANDLED);
 			p = tr_children(c, sink, S_GT);
 			p = tr_push(p, S_A_CLOSE);
@@ -2509,10 +2610,10 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			if (p !== 0) mo += FOLD_STR[p];
 			const meta = c.meta();
 			let s = '<img';
-			if (meta?.src) s += ' src="' + escape_html(meta.src as string) + '"';
-			s += ' alt="' + escape_html(_children_raw(c)) + '"';
+			if (meta?.src) s += ' src="' + escape_text_html(meta.src as string) + '"';
+			s += ' alt="' + escape_text_html(_children_raw(c)) + '"';
 			if (meta?.title)
-				s += ' title="' + escape_html(meta.title as string) + '"';
+				s += ' title="' + escape_text_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, IMAGE_HANDLED);
 			// the syntax spans are empty, only the node is recorded
 			tr_point(sink, pre, c.start);
@@ -2773,7 +2874,7 @@ function mp_children(c: Cursor, sink: MapSink, p: number): number {
 		if (k === K.TEXT) {
 			const vs = n[b + W.value_start];
 			const ve = n[b + W.value_end];
-			const t = escape_text_at(c, child, vs, ve);
+			const t = escape_text_at(c, child, vs, ve, false);
 			if (p !== 0) {
 				mo += FOLD_STR[p];
 				p = 0;
@@ -2840,7 +2941,7 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_open(c, p, S_CODE, S_CODE_OPEN, S_GT);
 			const ao = mo.length + FOLD_LEN[p];
-			let code = escape_node_text(c);
+			let code = escape_code_text(c);
 			if (string_index_of.call(code, '\n') !== -1)
 				code = code.replace(/\n/g, ' ');
 			tr_content(c, sink, p, code, Code.CODE_CONTENT);
@@ -2934,9 +3035,10 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			if (p !== 0) mo += FOLD_STR[p];
 			const meta = c.meta();
 			let s = '<a';
-			if (meta?.href) s += ' href="' + escape_html(meta.href as string) + '"';
+			if (meta?.href)
+				s += ' href="' + escape_text_html(meta.href as string) + '"';
 			if (meta?.title)
-				s += ' title="' + escape_html(meta.title as string) + '"';
+				s += ' title="' + escape_text_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, LINK_HANDLED);
 			const ao = mo.length + FOLD_LEN[S_GT];
 			p = mp_children(c, sink, S_GT);
@@ -2951,10 +3053,10 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			if (p !== 0) mo += FOLD_STR[p];
 			const meta = c.meta();
 			let s = '<img';
-			if (meta?.src) s += ' src="' + escape_html(meta.src as string) + '"';
-			s += ' alt="' + escape_html(_children_raw(c)) + '"';
+			if (meta?.src) s += ' src="' + escape_text_html(meta.src as string) + '"';
+			s += ' alt="' + escape_text_html(_children_raw(c)) + '"';
 			if (meta?.title)
-				s += ' title="' + escape_html(meta.title as string) + '"';
+				s += ' title="' + escape_text_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, IMAGE_HANDLED);
 			// the syntax spans are empty, only the node is recorded
 			put_record(
@@ -3758,19 +3860,20 @@ function comp_node(
 		case K.LINK: {
 			const meta = c.meta();
 			if (meta?.href)
-				open += ' href="' + escape_html(meta.href as string) + '"';
+				open += ' href="' + escape_text_html(meta.href as string) + '"';
 			if (meta?.title)
-				open += ' title="' + escape_html(meta.title as string) + '"';
+				open += ' title="' + escape_text_html(meta.title as string) + '"';
 			open += _attrs(c, LINK_HANDLED);
 			break;
 		}
 
 		case K.IMAGE: {
 			const meta = c.meta();
-			if (meta?.src) open += ' src="' + escape_html(meta.src as string) + '"';
-			open += ' alt="' + escape_html(_children_raw(c)) + '"';
+			if (meta?.src)
+				open += ' src="' + escape_text_html(meta.src as string) + '"';
+			open += ' alt="' + escape_text_html(_children_raw(c)) + '"';
 			if (meta?.title)
-				open += ' title="' + escape_html(meta.title as string) + '"';
+				open += ' title="' + escape_text_html(meta.title as string) + '"';
 			p = cm_put(p, open + _attrs(c, IMAGE_HANDLED) + ' />');
 			cm_void(c, sink, pre, Preset.TEXT);
 			return p;
@@ -3822,7 +3925,7 @@ function comp_node(
 		case K.CODE_SPAN: {
 			p = cm_put(p, open + _attrs(c) + '>');
 			const ao = mo.length;
-			let code = escape_node_text(c);
+			let code = escape_code_text(c);
 			if (string_index_of.call(code, '\n') !== -1)
 				code = code.replace(/\n/g, ' ');
 			p = cm_text(c, sink, p, code);
@@ -4361,6 +4464,8 @@ function resolve_raw_mappings(
 // exported functions are module cells too, so the walk calls the locals
 export const escape = escape_html;
 export const escape_text = escape_node_text;
+export const _escape_code_text = escape_code_text;
+export const _escape_text_html = escape_text_html;
 export const _emit = emit_record;
 export const _children = render_children;
 export const _node = render_node;
@@ -4470,7 +4575,7 @@ function wrap_pass(
 					// the mapped walks render text in their children loops
 					const vs = n[b + W.value_start];
 					const ve = n[b + W.value_end];
-					const t = escape_text_at(c, child, vs, ve);
+					const t = escape_text_at(c, child, vs, ve, false);
 					if (p !== 0) mo += FOLD_STR[p];
 					p = 0;
 					if (vs !== Slot.NONE && ve > vs) {
