@@ -52,7 +52,62 @@ const TS_WRAPPERS = new Set([
 	"ParenthesizedExpression",
 ]);
 
-/** rewrite the legacy layout option in a js or ts config to templates, throws a SyntaxError when the source does not parse */
+/** where the migration guide explains the highlight changes */
+export const HIGHLIGHT_GUIDE = "https://mdsvex.com/docs#syntax-highlighting-in-0x";
+
+// twinkleplop languages and the aliases mdsvex has for them, alias targets
+// outside this list are prism languages that next can not highlight
+const LANGUAGES = new Set([
+	"bash",
+	"c",
+	"cpp",
+	"css",
+	"diff",
+	"dockerfile",
+	"dotenv",
+	"go",
+	"graphql",
+	"html",
+	"http",
+	"ini",
+	"javascript",
+	"json",
+	"jsonc",
+	"markdown",
+	"powershell",
+	"python",
+	"rust",
+	"shellsession",
+	"sql",
+	"svelte",
+	"toml",
+	"tsx",
+	"typescript",
+	"yaml",
+	"js",
+	"mjs",
+	"cjs",
+	"ts",
+	"mts",
+	"cts",
+	"jsx",
+	"sh",
+	"shell",
+	"zsh",
+	"console",
+	"shell-session",
+	"yml",
+	"md",
+	"env",
+	"patch",
+	"py",
+	"rs",
+]);
+
+/**
+ * rewrite the legacy layout and highlight options in a js or ts config, and
+ * flag escapeSvelte, throws a SyntaxError when the source does not parse
+ */
 export function migrate_config(source: string): MigrateResult {
 	const program = TSParser.parse(source, {
 		ecmaVersion: "latest",
@@ -74,6 +129,15 @@ export function migrate_config(source: string): MigrateResult {
 
 	let found = false;
 	walk(program, (node) => {
+		if (
+			node.type === "MemberExpression" &&
+			node.object.type === "Identifier" &&
+			ctx.namespaces.has(node.object.name) &&
+			key_name_of(node.property) === "escapeSvelte"
+		) {
+			escape_svelte_note(ctx, node);
+			return;
+		}
 		if (!is_mdsvex_call(ctx, node) || !node.arguments[0]) return;
 		const options = resolve(ctx, node.arguments[0]);
 		if (options.type !== "ObjectExpression") return;
@@ -100,6 +164,10 @@ function collect_top_level(ctx: Context, program: Node): void {
 				if (specifier.type === "ImportNamespaceSpecifier") {
 					ctx.namespaces.add(specifier.local.name);
 				} else {
+					if (key_name_of(specifier.imported) === "escapeSvelte") {
+						escape_svelte_note(ctx, specifier);
+						continue;
+					}
 					ctx.functions.add(specifier.local.name);
 				}
 			}
@@ -119,7 +187,9 @@ function collect_top_level(ctx: Context, program: Node): void {
 				if (id.type === "Identifier") ctx.namespaces.add(id.name);
 				if (id.type === "ObjectPattern") {
 					for (const p of id.properties as Node[]) {
-						if (p.type === "Property" && p.value.type === "Identifier") {
+						if (key_name(p) === "escapeSvelte") {
+							escape_svelte_note(ctx, p);
+						} else if (p.type === "Property" && p.value.type === "Identifier") {
 							ctx.functions.add(p.value.name);
 						}
 					}
@@ -193,10 +263,22 @@ function unwrap(node: Node): Node {
 
 function key_name(property: Node): string | undefined {
 	if (property.type !== "Property" || property.computed) return undefined;
-	const key = property.key as Node;
+	return key_name_of(property.key as Node);
+}
+
+function key_name_of(key: Node): string | undefined {
 	if (key.type === "Identifier") return key.name;
 	if (key.type === "Literal" && typeof key.value === "string") return key.value;
 	return undefined;
+}
+
+function escape_svelte_note(ctx: Context, node: Node): void {
+	note(
+		ctx,
+		node,
+		"escape_svelte",
+		`\`escapeSvelte\` is gone: mdsvex escapes whatever a highlighter returns. Return plain HTML and remove the import. See ${HIGHLIGHT_GUIDE}`,
+	);
 }
 
 function migrate_options(ctx: Context, options: Node): void {
@@ -215,6 +297,9 @@ function migrate_options(ctx: Context, options: Node): void {
 			"`layoutPropForwarding` is gone: templates always get the document's props through `$props()`. Remove the option.",
 		);
 	}
+
+	const highlight = find("highlight");
+	if (highlight) migrate_highlight(ctx, options, highlight);
 
 	const layout = find("layout");
 	if (!layout) return;
@@ -333,6 +418,104 @@ function migrate_layout_map(ctx: Context, map: Node, layout: Node): void {
 			"mdsvex 0.x applied a named layout to documents inside a folder with the same name. Templates aren't matched by folder. Choose them with `select_template(id, metadata)`, for example:\n\n" +
 				`select_template: (id) => (${selector}),`,
 		);
+	}
+}
+
+function migrate_highlight(ctx: Context, options: Node, highlight: Node): void {
+	const value = unwrap(highlight.value);
+	// false still turns highlighting off
+	if (value.type === "Literal" && value.value === false) return;
+
+	const target = resolve(ctx, value);
+	if (target.type !== "ObjectExpression") {
+		note(
+			ctx,
+			highlight,
+			"manual",
+			`Can't rewrite this \`highlight\` value. \`alias\` is now \`languages\`, \`optimise\` is gone, and a \`highlighter\` function becomes \`highlight\` itself. See ${HIGHLIGHT_GUIDE}`,
+		);
+		return;
+	}
+	if (ctx.seen.has(target)) return;
+	ctx.seen.add(target);
+
+	const properties = target.properties as Node[];
+	const find = (name: string) => properties.find((p) => key_name(p) === name);
+
+	const highlighter = find("highlighter");
+	const alias = find("alias");
+	const optimise = find("optimise");
+
+	if (alias) {
+		if (find("languages")) {
+			note(
+				ctx,
+				alias,
+				"manual",
+				"Both `alias` and `languages` are set. Merge the aliases into `languages` by hand.",
+			);
+		} else {
+			if (alias.shorthand) {
+				edit(ctx, alias.start, alias.end, "languages: alias");
+			} else {
+				edit(ctx, alias.key.start, alias.key.end, "languages");
+			}
+			check_aliases(ctx, resolve(ctx, alias.value));
+		}
+	}
+
+	if (optimise) {
+		// an object that only held optimise goes with it
+		if (properties.length === 1 && target === value) {
+			remove_property(ctx, options, highlight);
+			return;
+		}
+		remove_property(ctx, target, optimise);
+	}
+
+	if (highlighter) {
+		const message =
+			"`highlighter` is gone. `highlight` takes the function itself, `(code, { lang, meta, inline, filename }) => html`. It must be synchronous and return plain HTML, without `escapeSvelte` or `{@html}`. Return `null` to render the code plain.";
+		comment_before(
+			ctx,
+			highlighter,
+			`TODO(mdsvex-migrate): pass a synchronous highlighter as \`highlight\` itself, returning plain HTML without escapeSvelte or {@html}. See ${HIGHLIGHT_GUIDE}`,
+		);
+		note(ctx, highlighter, "highlighter", `${message} See ${HIGHLIGHT_GUIDE}`);
+	}
+}
+
+/** alias targets that are prism languages twinkleplop does not have */
+function check_aliases(ctx: Context, map: Node): void {
+	if (map.type !== "ObjectExpression") return;
+	const names = new Set<string>();
+	for (const property of map.properties as Node[]) {
+		const name = key_name(property);
+		if (name !== undefined) names.add(name);
+	}
+	for (const property of map.properties as Node[]) {
+		const value = property.type === "Property" ? unwrap(property.value) : null;
+		if (value?.type !== "Literal" || typeof value.value !== "string") continue;
+		const target = value.value;
+		if (LANGUAGES.has(target) || LANGUAGES.has(target.toLowerCase()) || names.has(target))
+			continue;
+		note(
+			ctx,
+			property,
+			"highlight_language",
+			`\`${target}\` is a Prism language. mdsvex highlights with twinkleplop, which has no \`${target}\`. Alias a twinkleplop language, or pass a twinkleplop language module. See ${HIGHLIGHT_GUIDE}`,
+		);
+	}
+}
+
+/** a line comment above the node when it starts its line, a block comment before it otherwise */
+function comment_before(ctx: Context, node: Node, text: string): void {
+	const line_start = ctx.source.lastIndexOf("\n", node.start - 1) + 1;
+	const indent = ctx.source.slice(line_start, node.start);
+	if (/^[ \t]*$/.test(indent)) {
+		edit(ctx, line_start, line_start, `${indent}// ${text}\n`);
+	} else {
+		edit(ctx, node.start, node.start, `/* ${text.replace(/\*\//g, "* /")} */ `);
 	}
 }
 
