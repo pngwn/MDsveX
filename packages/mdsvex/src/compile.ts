@@ -28,6 +28,12 @@ import {
 } from './frontmatter';
 import type { FrontmatterOptions } from './frontmatter';
 import { scope_of } from './root_scope';
+import { highlight_run } from './highlight_run';
+import type {
+	HighlightOption,
+	HighlightRun,
+	HighlightWarning,
+} from './highlight_run';
 
 export type { ParsePlugin } from '@mdsvex/parse';
 export type { Mapping, MappingData, SourceMapV3, MapTrace };
@@ -35,6 +41,13 @@ export type { ComponentSource };
 export type { FrontmatterOptions };
 export { FrontmatterError } from './frontmatter';
 export { DirectiveError } from '@mdsvex/render/html-cursor';
+export type {
+	CodeInfo,
+	Highlighter,
+	HighlightConfig,
+	HighlightOption,
+	HighlightWarning,
+} from './highlight_run';
 
 /**
  * which elements a replacement takes, markdown takes those from markdown
@@ -51,11 +64,14 @@ export { DirectiveError } from '@mdsvex/render/html-cursor';
  */
 export type ComponentMode = 'markdown' | 'all';
 
-/** an element component_mode all kept because a component can not take its directive */
+/**
+ * element_directive, an element component_mode all kept because a component
+ * can not take its directive, the rest come from highlighting
+ */
 export interface CompileWarning {
-	code: 'element_directive';
+	code: 'element_directive' | HighlightWarning;
 	message: string;
-	/** the element, line from 1 and column from 0, which hold in the raw source */
+	/** the element or code, line from 1 and column from 0, which hold in the raw source */
 	start: { line: number; column: number };
 }
 
@@ -76,6 +92,14 @@ export interface CompileOptions extends TemplateOptions {
 	 * than throwing a DirectiveError, as an editor wants while the author types
 	 */
 	strict_directives?: boolean;
+	/**
+	 * highlights fences and code spans with a #! hint, create_highlight from
+	 * mdsvex/highlight or a highlighter function, false renders code plain,
+	 * which is the default
+	 */
+	highlight?: HighlightOption;
+	/** the document, highlighters and highlight errors see it */
+	filename?: string;
 }
 
 /** a svelte component that wraps documents, its replacements chain in front of the root */
@@ -510,31 +534,69 @@ function arm(renderer: CursorHTMLRenderer, mode: ComponentMode | undefined) {
 	if (renderer.scope !== null) renderer.replace_typed = mode === 'all';
 }
 
-/** only a render with a scope sets renderer warnings, the offsets index source */
+function warning(
+	code: CompileWarning['code'],
+	message: string,
+	start: number,
+	source: string
+): CompileWarning {
+	const line_start = source.lastIndexOf('\n', start - 1) + 1;
+	let line = 1;
+	for (
+		let i = source.indexOf('\n');
+		i !== -1 && i < start;
+		i = source.indexOf('\n', i + 1)
+	)
+		line++;
+	return { code, message, start: { line, column: start - line_start } };
+}
+
+/**
+ * only a render with a scope sets renderer warnings, the offsets index
+ * source, the renderer lets go of the highlight run
+ */
 function add_warnings(
 	result: { warnings?: CompileWarning[] },
 	renderer: CursorHTMLRenderer,
-	source: string
+	source: string,
+	run: HighlightRun | null
 ): void {
+	if (run !== null) renderer.highlight = null;
 	const scope = renderer.scope;
-	if (scope === null || scope.size === 0) return;
-	const list = renderer.warnings;
-	if (list.length === 0) return;
-	result.warnings = list.map(({ tag, directive, start }) => {
-		const line_start = source.lastIndexOf('\n', start - 1) + 1;
-		let line = 1;
-		for (
-			let i = source.indexOf('\n');
-			i !== -1 && i < start;
-			i = source.indexOf('\n', i + 1)
-		)
-			line++;
-		return {
-			code: 'element_directive',
-			message: `<${tag}> stays an element, a component can't take ${directive}`,
-			start: { line, column: start - line_start },
-		};
-	});
+	const list = scope === null || scope.size === 0 ? null : renderer.warnings;
+	const highlights = run === null ? null : run.warnings;
+	if (
+		(list === null || list.length === 0) &&
+		(highlights === null || highlights.length === 0)
+	)
+		return;
+	const out: CompileWarning[] = [];
+	if (list !== null)
+		for (const { tag, directive, start } of list)
+			out.push(
+				warning(
+					'element_directive',
+					`<${tag}> stays an element, a component can't take ${directive}`,
+					start,
+					source
+				)
+			);
+	if (highlights !== null)
+		for (const { code, message, start } of highlights)
+			out.push(warning(code, message, start, source));
+	result.warnings = out;
+}
+
+/** the run the renderer highlights with, null for none */
+function bind_highlight(
+	renderer: CursorHTMLRenderer,
+	option: HighlightOption | undefined,
+	filename: string | undefined,
+	source: string
+): HighlightRun | null {
+	const run = highlight_run(option, filename, source);
+	renderer.highlight = run;
+	return run;
 }
 
 function module_code_of(metadata: Metadata | undefined): string | undefined {
@@ -564,6 +626,12 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		}
 	}
 	arm(renderer, options?.component_mode);
+	const run = bind_highlight(
+		renderer,
+		options?.highlight,
+		options?.filename,
+		source
+	);
 
 	if (options?.sourcemap) {
 		// only a collapsed \r\n changes length, without one raw needs no \r\n scan
@@ -579,14 +647,14 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 			metadata,
 			template,
 		};
-		add_warnings(done, renderer, source);
+		add_warnings(done, renderer, source, run);
 		give_renderer(renderer);
 		return done;
 	}
 
 	renderer.update(nodes, source, module_code_of(metadata));
 	const done: CompileResult = { code: renderer.html, metadata, template };
-	add_warnings(done, renderer, source);
+	add_warnings(done, renderer, source, run);
 	give_renderer(renderer);
 	return done;
 }
@@ -601,12 +669,14 @@ function render_v3(
 	scope: ComponentScope | null,
 	directives: ComponentScope | null,
 	templates: TemplateOptions | undefined,
-	mode: ComponentMode | undefined
+	mode: ComponentMode | undefined,
+	highlight: HighlightOption | undefined
 ): CompileV3Result {
 	const metadata = metadata_of(nodes, source, parse);
 	bind_scopes(renderer, scope, directives);
 	const template = prepare(renderer, scope, metadata, templates, nodes, source);
 	arm(renderer, mode);
+	const run = bind_highlight(renderer, highlight, file, source);
 	const module_code = module_code_of(metadata);
 	// only a collapsed \r\n changes length, without one the records index raw
 	if (source.length === raw.length) {
@@ -617,7 +687,7 @@ function render_v3(
 			metadata,
 			template,
 		};
-		add_warnings(done, renderer, source);
+		add_warnings(done, renderer, source, run);
 		return done;
 	}
 	const result = renderer.update_mapped(
@@ -633,7 +703,7 @@ function render_v3(
 		metadata,
 		template,
 	};
-	add_warnings(done, renderer, source);
+	add_warnings(done, renderer, source, run);
 	return done;
 }
 
@@ -645,12 +715,14 @@ function render_trace(
 	scope: ComponentScope | null,
 	directives: ComponentScope | null,
 	templates: TemplateOptions | undefined,
-	mode: ComponentMode | undefined
+	mode: ComponentMode | undefined,
+	highlight: HighlightOption | undefined
 ): CompileTraceResult {
 	const metadata = metadata_of(nodes, source, parse);
 	bind_scopes(renderer, scope, directives);
 	const template = prepare(renderer, scope, metadata, templates, nodes, source);
 	arm(renderer, mode);
+	const run = bind_highlight(renderer, highlight, undefined, source);
 	const trace = renderer.update_trace(nodes, source, module_code_of(metadata));
 	const done: CompileTraceResult = {
 		code: renderer.html,
@@ -659,7 +731,7 @@ function render_trace(
 		metadata,
 		template,
 	};
-	add_warnings(done, renderer, source);
+	add_warnings(done, renderer, source, run);
 	return done;
 }
 
@@ -711,6 +783,12 @@ export class CompilerSession {
 				? undefined
 				: prepare(this.renderer, scope, metadata, options, nodes, source);
 		arm(this.renderer, options?.component_mode);
+		const run = bind_highlight(
+			this.renderer,
+			options?.highlight,
+			options?.filename,
+			source
+		);
 		if (options?.sourcemap) {
 			const result = this.renderer.update_mapped(
 				nodes,
@@ -724,7 +802,7 @@ export class CompilerSession {
 				metadata,
 				template,
 			};
-			add_warnings(done, this.renderer, source);
+			add_warnings(done, this.renderer, source, run);
 			return done;
 		}
 
@@ -734,7 +812,7 @@ export class CompilerSession {
 			metadata,
 			template,
 		};
-		add_warnings(done, this.renderer, source);
+		add_warnings(done, this.renderer, source, run);
 		return done;
 	}
 
@@ -757,7 +835,8 @@ export class CompilerSession {
 		parse?: FrontmatterParse,
 		templates?: TemplateOptions,
 		directive_sources?: ComponentSource[],
-		mode?: ComponentMode
+		mode?: ComponentMode,
+		highlight?: HighlightOption
 	): CompileV3Result {
 		const scope = components === undefined ? null : scope_of(components, mode);
 		const directives = directive_scope_of(directive_sources);
@@ -780,7 +859,8 @@ export class CompilerSession {
 				scope,
 				directives,
 				templates,
-				mode
+				mode,
+				highlight
 			);
 		}
 		const nodes = this.parse(source);
@@ -794,7 +874,8 @@ export class CompilerSession {
 			scope,
 			directives,
 			templates,
-			mode
+			mode,
+			highlight
 		);
 	}
 
@@ -810,7 +891,8 @@ export class CompilerSession {
 		parse?: FrontmatterParse,
 		templates?: TemplateOptions,
 		directive_sources?: ComponentSource[],
-		mode?: ComponentMode
+		mode?: ComponentMode,
+		highlight?: HighlightOption
 	): CompileTraceResult {
 		const scope = components === undefined ? null : scope_of(components, mode);
 		const directives = directive_scope_of(directive_sources);
@@ -830,7 +912,8 @@ export class CompilerSession {
 				scope,
 				directives,
 				templates,
-				mode
+				mode,
+				highlight
 			);
 		}
 		const nodes = this.parse(source);
@@ -842,7 +925,8 @@ export class CompilerSession {
 			scope,
 			directives,
 			templates,
-			mode
+			mode,
+			highlight
 		);
 	}
 
@@ -858,7 +942,9 @@ export class CompilerSession {
 		parse?: FrontmatterParse,
 		templates?: TemplateOptions,
 		directive_sources?: ComponentSource[],
-		mode?: ComponentMode
+		mode?: ComponentMode,
+		highlight?: HighlightOption,
+		filename?: string
 	): void {
 		const scope = components === undefined ? null : scope_of(components, mode);
 		const directives = directive_scope_of(directive_sources);
@@ -884,11 +970,12 @@ export class CompilerSession {
 				? undefined
 				: prepare(renderer, scope, metadata, templates, nodes, source);
 		arm(renderer, mode);
+		const run = bind_highlight(renderer, highlight, filename, source);
 		renderer.update_trace_into(nodes, source, out, module_code_of(metadata));
 		out.source = source;
 		out.html = renderer.html;
 		// the caller clears warnings it took
-		add_warnings(out, renderer, source);
+		add_warnings(out, renderer, source, run);
 	}
 }
 

@@ -9,7 +9,8 @@ import type { SourceMapMappings } from '@jridgewell/sourcemap-codec';
 import { describe, expect, test } from 'vitest';
 
 import { CompilerSession, mdsvex } from '../src/main';
-import type { ParsePlugin } from '../src/main';
+import type { HighlightConfig, ParsePlugin } from '../src/main';
+import { create_highlight, load_default_languages } from '../src/highlight';
 import { directive_names } from './utils';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -79,13 +80,22 @@ function dense_map(encoded: boolean): MakeMap {
 }
 
 /** the post transform output if pre stored the whole map */
-function eager(raw: string, compile_map: CompileMap, plugins?: ParsePlugin[]) {
+function eager(
+	raw: string,
+	compile_map: CompileMap,
+	plugins?: ParsePlugin[],
+	highlight?: HighlightConfig
+) {
 	const { map } = new CompilerSession().compile_v3(
 		raw,
 		ID,
 		plugins,
 		undefined,
-		frontmatter.parse
+		frontmatter.parse,
+		undefined,
+		undefined,
+		undefined,
+		highlight
 	);
 	const chained = remapping([compile_map as never, map as never], () => null);
 	if (chained.sourcesContent) {
@@ -95,9 +105,7 @@ function eager(raw: string, compile_map: CompileMap, plugins?: ParsePlugin[]) {
 	return `JS\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${base64}\n`;
 }
 
-function transform(raw: string, make: MakeMap, plugins?: ParsePlugin[]) {
-	const [pre, post] = mdsvex({ parse_plugins: plugins, frontmatter }) as any[];
-	const html = pre.transform(raw, ID).code as string;
+function finish(post: any, html: string, make: MakeMap) {
 	const compile_map = make(html);
 	if (compile_map === null) return null;
 	const out = post.transform.call(
@@ -106,6 +114,22 @@ function transform(raw: string, make: MakeMap, plugins?: ParsePlugin[]) {
 		ID
 	);
 	return { out: out?.code as string | undefined, compile_map };
+}
+
+function transform(raw: string, make: MakeMap, plugins?: ParsePlugin[]) {
+	const [pre, post] = mdsvex({
+		parse_plugins: plugins,
+		frontmatter,
+		highlight: false,
+	}) as any[];
+	return finish(post, pre.transform(raw, ID).code as string, make);
+}
+
+/** transform with the default highlighting, which loads the languages first */
+async function transform_highlighted(raw: string, make: MakeMap) {
+	const [pre, post] = mdsvex({ frontmatter }) as any[];
+	const result = await pre.transform(raw, ID);
+	return finish(post, result.code as string, make);
 }
 
 const variants: [string, (s: string) => string][] = [
@@ -143,6 +167,30 @@ describe('vite plugin sourcemap', () => {
 			});
 		}
 	}
+
+	test('chains like the eager map with highlighted code', async () => {
+		const highlight = create_highlight({
+			languages: await load_default_languages(),
+		});
+		let chained = 0;
+		for (const file of files) {
+			const raw = readFileSync(file, 'utf8');
+			if (!raw.includes('```') || directive_names(raw).length !== 0) continue;
+			for (const [variant, to] of variants) {
+				for (const [name, make] of maps) {
+					const doc = to(raw);
+					const result = await transform_highlighted(doc, make);
+					if (result === null) continue;
+					expect(result.out, `${file} ${variant} ${name}`).toBe(
+						eager(doc, result.compile_map, undefined, highlight)
+					);
+					chained++;
+				}
+			}
+			if (chained > 150) break;
+		}
+		expect(chained).toBeGreaterThan(50);
+	});
 
 	test('chains like the eager map with parse plugins', () => {
 		const plugin: ParsePlugin = {

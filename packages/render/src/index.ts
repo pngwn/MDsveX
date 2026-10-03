@@ -1,5 +1,12 @@
 export { CursorHTMLRenderer } from './html_cursor';
-export type { CursorBlockEntry, TemplateWrapper } from './html_cursor';
+export type {
+	CursorBlockEntry,
+	TemplateWrapper,
+	CodeHighlighter,
+	HighlightedBlock,
+	HighlightedCode,
+	HighlightWarningCode,
+} from './html_cursor';
 export {
 	_emit,
 	_node,

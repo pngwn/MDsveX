@@ -44,6 +44,52 @@ export type {
 	ReplaceWarning,
 } from './scope';
 
+/**
+ * a fence the highlighter rendered, every string is markup svelte reads as
+ * static text, braces in it are entities
+ */
+export interface HighlightedBlock {
+	/** markup ahead of the <pre>, a figure and its title, a pre replacement drops it */
+	before: string;
+	/** the attribute text of the <pre> open tag, null when body is the whole block */
+	attributes: string | null;
+	/** what the <pre> holds */
+	body: string;
+	/** markup after the </pre>, a pre replacement drops it */
+	after: string;
+	/** the props a pre replacement takes ahead of code, title, caption and meta props */
+	props: string;
+	/** the text a reader sees, the code prop of a pre replacement */
+	code: string;
+	/** the messages of meta props a pre replacement drops */
+	dropped: string[] | null;
+}
+
+/** a code span the highlighter rendered, braces in it are entities */
+export interface HighlightedCode {
+	/** the attribute text of the <code> open tag, null when body is the whole span */
+	attributes: string | null;
+	body: string;
+}
+
+export type HighlightWarningCode =
+	| 'code_replacement_skipped'
+	| 'meta_prop_ignored';
+
+/** highlights the code of one render, start is the offset of the node in the source */
+export interface CodeHighlighter {
+	/** null renders the fence plain */
+	block(
+		code: string,
+		lang: string,
+		meta: string,
+		start: number
+	): HighlightedBlock | null;
+	/** a code span with a #! hint, null renders it plain */
+	inline(code: string, lang: string, start: number): HighlightedCode | null;
+	warn(code: HighlightWarningCode, message: string, start: number): void;
+}
+
 // must equal NONE in @mdsvex/parse
 const enum Slot {
 	NONE = 0xffffffff,
@@ -133,6 +179,36 @@ function escape_text_html(text: string): string {
 	return pos === 0 ? text : out + text.slice(pos);
 }
 
+// code shows braces as text, svelte would read them as expressions
+const CODE_TEST = /[&<>"{}]/;
+const CODE_MATCH = /[&<>"{}]/g;
+const CODE_TABLE: Record<string, string> = {
+	'&': '&amp;',
+	'<': '&lt;',
+	'>': '&gt;',
+	'"': '&quot;',
+	'{': '&#123;',
+	'}': '&#125;',
+};
+function code_replace(ch: string): string {
+	return CODE_TABLE[ch];
+}
+function escape_code(text: string): string {
+	if (!CODE_TEST.test(text)) return text;
+	return text.replace(CODE_MATCH, code_replace);
+}
+
+const BRACE_TEST = /[{}]/;
+const BRACE_MATCH = /[{}]/g;
+
+/** an info string is an attribute, braces as code has them */
+function escape_info(info: string): string {
+	if (!CODE_TEST.test(info)) return info;
+	const s = escape_html(info);
+	if (!BRACE_TEST.test(s)) return s;
+	return s.replace(BRACE_MATCH, code_replace);
+}
+
 const QUOTE_MATCH = /"/g;
 
 // a typed value is its source slice with entities as written, so only a
@@ -156,6 +232,9 @@ let esc_amp = -1;
 let esc_lt = -1;
 let esc_gt = -1;
 let esc_quot = -1;
+// only code reads the brace pointers, so prose never scans for braces
+let esc_lbrace = -1;
+let esc_rbrace = -1;
 // false for a buffer with no prebuilt strings, so text skips the lookup
 let esc_prebuilt = true;
 // only nodes whose bit is set hold a prebuilt string, a late repair can turn
@@ -190,6 +269,8 @@ function esc_reset(src: string): void {
 	esc_lt = -1;
 	esc_gt = -1;
 	esc_quot = -1;
+	esc_lbrace = -1;
+	esc_rbrace = -1;
 }
 
 function esc_next(ch: string, from: number): number {
@@ -203,11 +284,6 @@ function esc_next(ch: string, from: number): number {
  */
 function escape_node_text(c: Cursor): string {
 	return escape_text_at(c, c.index, c.value_start, c.value_end, false);
-}
-
-/** equals escape_html of c.text, code shows references as written */
-function escape_code_text(c: Cursor): string {
-	return escape_text_at(c, c.index, c.value_start, c.value_end, true);
 }
 
 function bq_depth(n: Uint32Array, i: number): number {
@@ -264,11 +340,75 @@ function fence_text(c: Cursor): string {
 	return depth === 0 ? c.text() : strip_bq(c.text(), depth);
 }
 
-/** equals escape_html of fence_text */
+/** equals escape_code of fence_text */
 function escape_fence_text(c: Cursor): string {
 	const depth = bq_depth(c.words, c.index);
 	if (depth === 0) return escape_code_text(c);
-	return escape_html(strip_bq(c.text(), depth));
+	return escape_code(strip_bq(c.text(), depth));
+}
+
+/** equals escape_code of c.text, reading source slices through the escape index */
+function escape_code_text(c: Cursor): string {
+	return escape_text_at(c, c.index, c.value_start, c.value_end, true);
+}
+
+/** m is the first of & < > " at or after vs */
+function escape_code_slice(
+	src: string,
+	vs: number,
+	ve: number,
+	m: number
+): string {
+	if (esc_lbrace < vs) esc_lbrace = esc_next('{', vs);
+	if (esc_rbrace < vs) esc_rbrace = esc_next('}', vs);
+	if (esc_lbrace < m) m = esc_lbrace;
+	if (esc_rbrace < m) m = esc_rbrace;
+	if (m >= ve) return src.slice(vs, ve);
+	return escape_code_hits(src, vs, ve, m);
+}
+
+/** escape_hits for code, m is the first escapable char at or after vs */
+function escape_code_hits(
+	src: string,
+	vs: number,
+	ve: number,
+	m: number
+): string {
+	let text = '';
+	let pos = vs;
+	while (m < ve) {
+		const ch = src.charCodeAt(m);
+		text += src.slice(pos, m);
+		if (ch === 38) {
+			text += '&amp;';
+			esc_amp = esc_next('&', m + 1);
+		} else if (ch === 60) {
+			text += '&lt;';
+			esc_lt = esc_next('<', m + 1);
+		} else if (ch === 62) {
+			text += '&gt;';
+			esc_gt = esc_next('>', m + 1);
+		} else if (ch === 34) {
+			text += '&quot;';
+			esc_quot = esc_next('"', m + 1);
+		} else if (ch === 123) {
+			text += '&#123;';
+			esc_lbrace = esc_next('{', m + 1);
+		} else {
+			text += '&#125;';
+			esc_rbrace = esc_next('}', m + 1);
+		}
+		pos = m + 1;
+		m = esc_amp;
+		if (esc_lt < m) m = esc_lt;
+		if (esc_gt < m) m = esc_gt;
+		if (esc_quot < m) m = esc_quot;
+		if (esc_lbrace < m) m = esc_lbrace;
+		if (esc_rbrace < m) m = esc_rbrace;
+	}
+	// every pointer is now at or past ve
+	esc_lo = ve;
+	return text + src.slice(pos, ve);
 }
 
 /** escape_node_text of node i, or escape_code_text for code, the cursor may sit elsewhere */
@@ -283,7 +423,7 @@ function escape_text_at(
 		const bits = esc_bits;
 		if (bits === null || (bits[i >>> 3] & (1 << (i & 7))) !== 0) {
 			const s = c.prebuilt_at(i);
-			if (s !== undefined) return code ? escape_html(s) : escape_text_html(s);
+			if (s !== undefined) return code ? escape_code(s) : escape_text_html(s);
 		}
 	}
 	// empty cases must match Cursor.text
@@ -304,8 +444,9 @@ function escape_text_at(
 	if (esc_lt < m) m = esc_lt;
 	if (esc_gt < m) m = esc_gt;
 	if (esc_quot < m) m = esc_quot;
+	if (code) return escape_code_slice(src, vs, ve, m);
 	if (m >= ve) return src.slice(vs, ve);
-	return escape_hits(src, vs, ve, m, code);
+	return escape_hits(src, vs, ve, m);
 }
 
 /** a reference in text stays as written, unless a backslash escaped its & */
@@ -321,13 +462,7 @@ function text_reference(
 }
 
 /** m is the first escapable char at or after vs */
-function escape_hits(
-	src: string,
-	vs: number,
-	ve: number,
-	m: number,
-	code: boolean
-): string {
+function escape_hits(src: string, vs: number, ve: number, m: number): string {
 	let text = '';
 	let pos = vs;
 	while (m < ve) {
@@ -336,7 +471,7 @@ function escape_hits(
 		pos = m + 1;
 		if (ch === 38) {
 			esc_amp = esc_next('&', m + 1);
-			if (!code && text_reference(src, vs, ve, m)) pos = m;
+			if (text_reference(src, vs, ve, m)) pos = m;
 			else text += '&amp;';
 		} else if (ch === 60) {
 			text += '&lt;';
@@ -1155,6 +1290,13 @@ function render_node(c: Cursor, sink?: MapSink): void {
 		}
 
 		case K.CODE_SPAN: {
+			if (hl !== null) {
+				const h = hl_span(c);
+				if (h !== null) {
+					render_hl(c, sink, hl_span_head(c, h), h.body, hl_span_tail(h));
+					break;
+				}
+			}
 			const pre = mo.length;
 			_open(c, '<code', '<code>', '>');
 			const ao = mo.length;
@@ -1170,18 +1312,17 @@ function render_node(c: Cursor, sink?: MapSink): void {
 		}
 
 		case K.CODE_FENCE: {
-			const pre = mo.length;
-			const meta = c.meta();
-			// wire path: resolved 'info' string. treebuilder path: info_start/info_end byte offsets.
-			let info = meta?.info as string | undefined;
-			if (!info) {
-				const info_start = meta?.info_start as number | undefined;
-				const info_end = meta?.info_end as number | undefined;
-				if (info_start != null && info_end != null)
-					info = c.slice(info_start, info_end);
+			const info = fence_info(c, c.meta());
+			if (hl !== null) {
+				const b = hl_block(c, info);
+				if (b !== null) {
+					render_hl(c, sink, hl_head(c, b), b.body, hl_tail(b));
+					break;
+				}
 			}
+			const pre = mo.length;
 			if (info) {
-				mo += '<pre><code class="language-' + escape_html(info);
+				mo += '<pre><code class="language-' + escape_info(info_lang(info));
 				_open(c, '"', '">', '>');
 			} else {
 				_open(c, '<pre><code', '<pre><code>', '>');
@@ -2002,6 +2143,11 @@ function fold_node(c: Cursor, p: number): number {
 		}
 
 		case K.CODE_SPAN: {
+			if (hl !== null) {
+				const h = hl_span(c);
+				if (h !== null)
+					return fold_hl(p, hl_span_head(c, h), h.body, hl_span_tail(h));
+			}
 			p = fold_open(c, p, S_CODE, S_CODE_OPEN, S_GT);
 			const code = escape_code_text(c);
 			p = push_dyn(
@@ -2084,18 +2230,14 @@ function fold_node(c: Cursor, p: number): number {
 }
 
 function fold_code_fence(c: Cursor, p: number): number {
-	const meta = c.meta();
-	// wire path: resolved 'info' string. treebuilder path: info_start/info_end byte offsets.
-	let info = meta?.info as string | undefined;
-	if (!info) {
-		const info_start = meta?.info_start as number | undefined;
-		const info_end = meta?.info_end as number | undefined;
-		if (info_start != null && info_end != null)
-			info = c.slice(info_start, info_end);
+	const info = fence_info(c, c.meta());
+	if (hl !== null) {
+		const b = hl_block(c, info);
+		if (b !== null) return fold_hl(p, hl_head(c, b), b.body, hl_tail(b));
 	}
 	if (info) {
 		p = push_static(p, S_PRE_CODE_LANG);
-		p = push_dyn(p, escape(info));
+		p = push_dyn(p, escape_info(info_lang(info)));
 		p = fold_open(c, p, S_QUOTE, S_QUOTE_GT, S_GT);
 	} else {
 		p = fold_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
@@ -2525,6 +2667,11 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 		}
 
 		case K.CODE_SPAN: {
+			if (hl !== null) {
+				const h = hl_span(c);
+				if (h !== null)
+					return tr_hl(c, sink, p, hl_span_head(c, h), h.body, hl_span_tail(h));
+			}
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_open(c, p, S_CODE, S_CODE_OPEN, S_GT);
 			let code = escape_code_text(c);
@@ -2666,19 +2813,15 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 }
 
 function tr_code_fence(c: Cursor, sink: MapSink, p: number): number {
-	const pre = mo.length + FOLD_LEN[p];
-	const meta = c.meta();
-	// wire path: resolved 'info' string. treebuilder path: info_start/info_end byte offsets.
-	let info = meta?.info as string | undefined;
-	if (!info) {
-		const info_start = meta?.info_start as number | undefined;
-		const info_end = meta?.info_end as number | undefined;
-		if (info_start != null && info_end != null)
-			info = c.slice(info_start, info_end);
+	const info = fence_info(c, c.meta());
+	if (hl !== null) {
+		const b = hl_block(c, info);
+		if (b !== null) return tr_hl(c, sink, p, hl_head(c, b), b.body, hl_tail(b));
 	}
+	const pre = mo.length + FOLD_LEN[p];
 	if (info) {
 		if (p !== 0) mo += FOLD_STR[p];
-		mo += '<pre><code class="language-' + escape_html(info);
+		mo += '<pre><code class="language-' + escape_info(info_lang(info));
 		p = tr_open(c, 0, S_QUOTE, S_QUOTE_GT, S_GT);
 	} else {
 		p = tr_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
@@ -2938,6 +3081,11 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 		}
 
 		case K.CODE_SPAN: {
+			if (hl !== null) {
+				const h = hl_span(c);
+				if (h !== null)
+					return mp_hl(c, sink, p, hl_span_head(c, h), h.body, hl_span_tail(h));
+			}
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_open(c, p, S_CODE, S_CODE_OPEN, S_GT);
 			const ao = mo.length + FOLD_LEN[p];
@@ -3126,19 +3274,15 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 }
 
 function mp_code_fence(c: Cursor, sink: MapSink, p: number): number {
-	const pre = mo.length + FOLD_LEN[p];
-	const meta = c.meta();
-	// wire path: resolved 'info' string. treebuilder path: info_start/info_end byte offsets.
-	let info = meta?.info as string | undefined;
-	if (!info) {
-		const info_start = meta?.info_start as number | undefined;
-		const info_end = meta?.info_end as number | undefined;
-		if (info_start != null && info_end != null)
-			info = c.slice(info_start, info_end);
+	const info = fence_info(c, c.meta());
+	if (hl !== null) {
+		const b = hl_block(c, info);
+		if (b !== null) return mp_hl(c, sink, p, hl_head(c, b), b.body, hl_tail(b));
 	}
+	const pre = mo.length + FOLD_LEN[p];
 	if (info) {
 		if (p !== 0) mo += FOLD_STR[p];
-		mo += '<pre><code class="language-' + escape_html(info);
+		mo += '<pre><code class="language-' + escape_info(info_lang(info));
 		p = tr_open(c, 0, S_QUOTE, S_QUOTE_GT, S_GT);
 	} else {
 		p = tr_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
@@ -3815,7 +3959,10 @@ function js_prop(key: string, value: string): string {
 	return ' ' + key + '={' + JSON.stringify(value) + '}';
 }
 
-/** the fence info string, see fold_code_fence */
+/**
+ * the info string of a fence or the #! hint of a code span, the wire path
+ * resolves it, the tree builder path keeps byte offsets
+ */
 function fence_info(c: Cursor, meta: Record<string, unknown> | undefined) {
 	let info = meta?.info as string | undefined;
 	if (!info) {
@@ -3923,6 +4070,10 @@ function comp_node(
 			break;
 
 		case K.CODE_SPAN: {
+			if (hl !== null) {
+				const h = hl_span(c);
+				if (h !== null) return comp_hl_code(c, sink, p, h, open, close);
+			}
 			p = cm_put(p, open + _attrs(c) + '>');
 			const ao = mo.length;
 			let code = escape_code_text(c);
@@ -3937,23 +4088,26 @@ function comp_node(
 
 		case K.CODE_FENCE: {
 			const info = fence_info(c, c.meta());
+			if (hl !== null) {
+				const b = hl_block(c, info);
+				if (b !== null) return comp_hl_pre(c, sink, p, b, info, open, close);
+			}
 			open += _attrs(c);
 			let inner = '<code>';
 			if (info) {
-				// split as remark does, the first word is the language and the rest is meta
-				const space = info.search(/\s/);
-				const lang = space === -1 ? info : info.slice(0, space);
-				const rest = space === -1 ? '' : info.slice(space).trim();
+				const lang = info_lang(info);
+				const rest = info_meta(info);
 				open += js_prop('lang', lang);
 				if (rest) open += js_prop('meta', rest);
-				inner = '<code class="language-' + escape_html(info) + '">';
+				inner = '<code class="language-' + escape_info(lang) + '">';
 			}
-			// children are the content of the element, code is the raw text
-			p = cm_put(p, open + js_prop('code', fence_text(c)) + '>' + inner);
+			// children are the element, svelte keeps whitespace only inside a <pre>
+			// it can see, code is the raw text
+			p = cm_put(p, open + js_prop('code', fence_text(c)) + '><pre>' + inner);
 			const ao = mo.length;
 			p = cm_text(c, sink, p, escape_fence_text(c));
 			const bc = mo.length;
-			p = cm_put(p, '</code>' + close);
+			p = cm_put(p, '</code></pre>' + close);
 			cm_spans(c, sink, pre, ao, bc, mo.length, Preset.CODE);
 			return p;
 		}
@@ -4464,6 +4618,7 @@ function resolve_raw_mappings(
 // exported functions are module cells too, so the walk calls the locals
 export const escape = escape_html;
 export const escape_text = escape_node_text;
+export const _escape_code = escape_code;
 export const _escape_code_text = escape_code_text;
 export const _escape_text_html = escape_text_html;
 export const _emit = emit_record;
@@ -4677,6 +4832,8 @@ export class CursorHTMLRenderer {
 	}
 	/** directive replacements, a namespace apart from scope */
 	directives: ComponentScope | null = null;
+	/** highlights fences and code spans with a #! hint, null renders them plain */
+	highlight: CodeHighlighter | null = null;
 	/**
 	 * a directive no scope replaces throws a DirectiveError, otherwise it
 	 * renders as its children, which suits a preview
@@ -4709,6 +4866,7 @@ export class CursorHTMLRenderer {
 		const c = this.cursor;
 		c.reset();
 		esc_reset(source);
+		hl = this.highlight;
 
 		// no caching, single-pass full render
 		if (!this.cache) {
@@ -4736,6 +4894,7 @@ export class CursorHTMLRenderer {
 				prebuilt_begin(buf);
 				this.html = render_folded(c);
 			} finally {
+				hl = null;
 				esc_prebuilt = true;
 				esc_bits = null;
 				if (dir_strict) dir_strict = false;
@@ -4750,6 +4909,7 @@ export class CursorHTMLRenderer {
 			if (code) module_begin(buf, code);
 			this.update_blocks(c);
 		} finally {
+			hl = null;
 			if (code) module_end();
 		}
 		return this.blocks;
@@ -4803,6 +4963,7 @@ export class CursorHTMLRenderer {
 		const c = this.cursor;
 		c.reset();
 		esc_reset(source);
+		hl = this.highlight;
 
 		if (this.template !== undefined) {
 			this.html = this.render_wrapped(c, buf, sink, trace, code);
@@ -4835,6 +4996,7 @@ export class CursorHTMLRenderer {
 			if (trace) p = tr_node(c, sink, 0);
 			else p = mp_node(c, sink, 0);
 		} finally {
+			hl = null;
 			esc_prebuilt = true;
 			esc_bits = null;
 			if (dir_strict) dir_strict = false;
@@ -4892,6 +5054,7 @@ export class CursorHTMLRenderer {
 				if (p !== 0) html += FOLD_STR[p];
 			}
 		} finally {
+			hl = null;
 			esc_prebuilt = true;
 			esc_bits = null;
 			if (dir_strict) dir_strict = false;
@@ -5009,6 +5172,7 @@ export class CursorHTMLRenderer {
 		this.cursor?.release();
 		this.scope = null;
 		this.directives = null;
+		this.highlight = null;
 		this.replace_typed = false;
 		// a tag is a slice that would keep the source alive
 		comp_last = NO_WARNINGS;
@@ -5049,4 +5213,204 @@ export function _resolve_offset_mappings(
 	sink: MapSink
 ): Mapping<MappingData>[] {
 	return resolve_mappings(sink);
+}
+
+// highlighting is cold beside the walks, so its bindings sit last
+
+/** the highlighter of the render in progress, null renders code plain */
+let hl: CodeHighlighter | null = null;
+
+/** the first space or tab of an info string, -1 for none */
+function info_space(info: string): number {
+	for (let i = 0; i < info.length; i++) {
+		const ch = info.charCodeAt(i);
+		if (ch === 32 || ch === 9) return i;
+	}
+	return -1;
+}
+
+/** the language of an info string, its first word */
+function info_lang(info: string): string {
+	const space = info_space(info);
+	return space === -1 ? info : info.slice(0, space);
+}
+
+/** the info string after the language */
+function info_meta(info: string): string {
+	const space = info_space(info);
+	return space === -1 ? '' : info.slice(space).trim();
+}
+
+/** the fence at c through the highlighter, null renders it plain */
+function hl_block(
+	c: Cursor,
+	info: string | undefined
+): HighlightedBlock | null {
+	return hl!.block(
+		fence_text(c),
+		info ? info_lang(info) : '',
+		info ? info_meta(info) : '',
+		c.start
+	);
+}
+
+/** the code span at c through the highlighter when it has a #! hint */
+function hl_span(c: Cursor): HighlightedCode | null {
+	const lang = fence_info(c, c.meta());
+	if (!lang) return null;
+	let code = c.text();
+	if (string_index_of.call(code, '\n') !== -1) code = code.replace(/\n/g, ' ');
+	return hl!.inline(code, lang, c.start);
+}
+
+/** a highlighted block up to its body, plugin attributes go on the <pre> */
+function hl_head(c: Cursor, b: HighlightedBlock): string {
+	if (b.attributes === null) return b.before;
+	return b.before + '<pre' + b.attributes + _attrs(c) + '>';
+}
+
+function hl_tail(b: HighlightedBlock): string {
+	return b.attributes === null ? b.after : '</pre>' + b.after;
+}
+
+function hl_span_head(c: Cursor, s: HighlightedCode): string {
+	return s.attributes === null ? '' : '<code' + s.attributes + _attrs(c) + '>';
+}
+
+function hl_span_tail(s: HighlightedCode): string {
+	return s.attributes === null ? '' : '</code>';
+}
+
+/** render_node for a highlighted fence or code span, the body is one content record */
+function render_hl(
+	c: Cursor,
+	sink: MapSink | undefined,
+	head: string,
+	body: string,
+	tail: string
+): void {
+	const pre = mo.length;
+	mo += head;
+	const ao = mo.length;
+	if (sink) content_record(sink, c, body, Code.CODE_CONTENT);
+	mo += body;
+	const bc = mo.length;
+	mo += tail;
+	if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.CODE);
+}
+
+/** fold_node for a highlighted fence or code span */
+function fold_hl(p: number, head: string, body: string, tail: string): number {
+	return push_dyn(p, head + body + tail);
+}
+
+/** tr_node for a highlighted fence or code span, a point as the body never copies the source */
+function tr_hl(
+	c: Cursor,
+	sink: MapSink,
+	p: number,
+	head: string,
+	body: string,
+	tail: string
+): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	const pre = mo.length;
+	mo += head;
+	if (body.length !== 0) tr_point(sink, mo.length, c.value_start);
+	mo += body + tail;
+	tr_point(sink, pre, c.start);
+	return 0;
+}
+
+/** mp_node for a highlighted fence or code span */
+function mp_hl(
+	c: Cursor,
+	sink: MapSink,
+	p: number,
+	head: string,
+	body: string,
+	tail: string
+): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	render_hl(c, sink, head, body, tail);
+	return 0;
+}
+
+/** the content of a highlighted fence or span, mapped as the code cases of the walks map it */
+function cm_hl(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	pre: number,
+	head: string,
+	body: string,
+	tail: string
+): number {
+	p = cm_put(p, head);
+	const ao = mo.length;
+	p = cm_text(c, sink, p, body);
+	const bc = mo.length;
+	p = cm_put(p, tail);
+	cm_spans(c, sink, pre, ao, bc, mo.length, Preset.CODE);
+	return p;
+}
+
+/**
+ * a highlighted fence as the pre replacement, the children are the <pre> as
+ * svelte keeps whitespace only inside a <pre> it can see, the replacement
+ * draws any figure
+ */
+function comp_hl_pre(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	b: HighlightedBlock,
+	info: string | undefined,
+	open: string,
+	close: string
+): number {
+	const pre = mo.length;
+	if (info) {
+		open += js_prop('lang', info_lang(info));
+		const meta = info_meta(info);
+		if (meta) open += js_prop('meta', meta);
+	}
+	const dropped = b.dropped;
+	if (dropped !== null)
+		for (let i = 0; i < dropped.length; i++)
+			hl!.warn('meta_prop_ignored', dropped[i], c.start);
+	open += b.props + js_prop('code', b.code) + _attrs(c) + '>';
+	if (b.attributes === null) return cm_hl(c, sink, p, pre, open, b.body, close);
+	return cm_hl(
+		c,
+		sink,
+		p,
+		pre,
+		open + '<pre' + b.attributes + '>',
+		b.body,
+		'</pre>' + close
+	);
+}
+
+/** a highlighted code span as the code replacement, which also takes lang */
+function comp_hl_code(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	h: HighlightedCode,
+	open: string,
+	close: string
+): number {
+	const pre = mo.length;
+	if (h.attributes === null) {
+		hl!.warn(
+			'code_replacement_skipped',
+			'the highlighter output is not a single <code> element, so the code component does not replace it',
+			c.start
+		);
+		return cm_hl(c, sink, p, pre, '', h.body, '');
+	}
+	open +=
+		js_prop('lang', fence_info(c, c.meta())!) + h.attributes + _attrs(c) + '>';
+	return cm_hl(c, sink, p, pre, open, h.body, close);
 }

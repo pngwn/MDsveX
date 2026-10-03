@@ -173,7 +173,7 @@ In mdsvex config the key is **`annotations`**, not `directives`, so it doesn't c
 
 ### 3.5 Inline code
 
-`` `#!ts const x = 1` `` is the PFM inline hint, and the parser already records it. It renders with twinkleplop's `structure: "inline"` as `<code class="twinkleplop-inline language-ts">…</code>` (#543, #554). A code span without a hint stays a plain `<code>`.
+`` `#!ts const x = 1` `` is the PFM inline hint, and the parser already records it. It renders with twinkleplop's `structure: "inline"` as `<code class="twinkleplop twinkleplop-inline language-ts">…</code>` (#543, #554). The `twinkleplop` class is there because themes only style tokens inside `.twinkleplop`. A code span without a hint stays a plain `<code>`.
 
 rehype-pretty-code's `` `code{:ts}` `` suffix is not accepted (Q5): one syntax is enough, and `{:ts}` reads like a Svelte expression in a `.svx` file. Inline code has no live values; `[!eval]` and the `eval` flag are fence-only.
 
@@ -345,13 +345,12 @@ mdsvex({
 
 ## 7. Code block components
 
-This extends templates design §5.3 now that a highlighter exists. A replaced `pre` replaces exactly the `<pre>` element:
+This extends templates design §5.3 now that a highlighter exists. A replaced `pre` wraps the whole `<pre>` element, which it gets as `children`:
 
 ```svelte
 <!-- what mdsvex emits for a replaced pre -->
-<Pre_MDSVEX lang="ts" meta={"title=\"math.ts\" {2}"} title="math.ts" code={`…`}
-  class="twinkleplop language-ts has-highlight" data-language="ts">
-  <code>…highlighted lines…</code>
+<Pre_MDSVEX lang="ts" meta={"title=\"math.ts\" {2}"} title="math.ts" code={`…`}>
+  <pre class="twinkleplop language-ts has-highlight" data-language="ts"><code>…highlighted lines…</code></pre>
 </Pre_MDSVEX>
 ```
 
@@ -360,30 +359,26 @@ This extends templates design §5.3 now that a highlighter exists. A replaced `p
 | `lang`, `meta` | split info string (as today) |
 | `code` | display text (§5.5) |
 | `title`, `caption` | from meta, when present |
-| `class`, `data-language`, … | the highlighter's own `<pre>` attributes |
-| `children` | the `<pre>`'s contents: the highlighted `<code>` |
+| `children` | the highlighted `<pre>`, or a custom highlighter's whole output |
+
+**Why `children` holds the `<pre>`.** Decided 2026-10-03 while implementing phase 2. Svelte 5 keeps whitespace only inside a `<pre>` or `<textarea>` it can see in the template. In component children it collapses the newline between line spans to a space and drops leading indentation, and character references don't help, because it decodes them first. Passing the `<code>` as children and the `<pre>` attributes as props would render every block on one line. Protecting each whitespace run with a literal `{"\n    "}` tag works, but it added about 10.7 KB of client JS to a 60-line block (+64%). So the `<pre>` stays in `children` and its attributes are not props. The plain (`highlight: false`) replacement has the same shape.
 
 **Title and caption.**
 - When `pre` is not replaced, a fence with a title or caption renders twinkleplop's `<figure class="twinkleplop-block">` with `figcaption`s.
 - When `pre` is replaced, no figure is emitted. The component gets `title` and `caption` and decides the chrome itself: copy button, filename tab, language badge.
-
-**Splitting the output.**
-- On the twinkleplop path mdsvex receives the `<pre>` attributes and the body separately (§8.3).
-- For a custom highlighter, mdsvex splits the output when it is a single top-level `<pre>` element.
-- Anything else, such as a wrapper `<div>`, is emitted as is, and mdsvex warns `pre_replacement_skipped`.
 
 Example (#100, #385, #437, #496):
 
 ```svelte
 <!-- #lib/markdown/Pre.svelte -->
 <script>
-  let { code, title, children, lang, meta, caption, ...attrs } = $props();
+  let { code, title, children } = $props();
 </script>
 
 <div class="code">
   {#if title}<span class="filename">{title}</span>{/if}
   <button onclick={() => navigator.clipboard.writeText(code)}>copy</button>
-  <pre {...attrs}>{@render children()}</pre>
+  {@render children()}
 </div>
 ```
 
@@ -428,7 +423,7 @@ The `[!eval]` plugin returns verbatim contributions:
 
 `to_parts(input, result, render)` returns `{ attributes, body }`, where `attributes` holds the `<pre>`'s class and attributes and `body` the `<code>…</code>` HTML.
 
-- **Why mdsvex wants it.** It needs `attributes` and `body` separately to pass the `<pre>`'s attributes as props and the `<code>` as children to a `pre` replacement (§7).
+- **Why mdsvex wants it.** It needs `attributes` and `body` separately to add plugin attributes to the `<pre>` and to leave the figure out for a `pre` replacement (§7).
 - **Fallback without it.** Twinkleplop documents its block structure, so splitting at the first `<code>` and the last `</code></pre>` works.
 
 ### 8.4 Display text (nice to have, pngwn/twinkleplop#154)
@@ -499,7 +494,7 @@ The zero-config case is `mdsvex()`. It gives every bundled language, the default
 | phase | work | depends on |
 |---|---|---|
 | 1 | twinkleplop 8.1–8.4: done, `@twinkleplop/core` 0.3.0 | — |
-| 2 | core + plugin highlighting: land the brace fix (`f084b62a`, #839); class carries `lang` only; `highlight` compile option; `mdsvex/highlight` (`create_highlight`, `load_default_languages`, aliases, case fallback, unknown → plain, meta conventions, inline `#!`, default annotations); custom highlighter + brace escaping; `pre` props/children split, title/caption figure, meta props (Q9), `code` prop; plugin lazy default load and twoslash opt-in; switch the docs site off refractor | 1 |
+| 2 | core + plugin highlighting: land the brace fix (`f084b62a`, #839); class carries `lang` only; `highlight` compile option; `mdsvex/highlight` (`create_highlight`, `load_default_languages`, aliases, case fallback, unknown → plain, meta conventions, inline `#!`, default annotations); custom highlighter + brace escaping; `pre` props and the `<pre>` as children, title/caption figure, meta props (Q9), `code` prop; plugin lazy default load and twoslash opt-in; switch the docs site off refractor | 1 |
 | 3 | `[!eval]` and the `eval` fence flag: annotation plugin, brace-group matching, verbatim emit, per-expression mappings, `code` template literal via `visible_text_map`, language-tools check | 2, pngwn/twinkleplop#159 |
 | 4 | docs (getting started with theme import, shiki recipe, copy-button component, annotations, live code), `@mdsvex/migrate` for `highlight`, REPL wiring | 2 (3 for the live-code docs) |
 
