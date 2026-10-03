@@ -293,6 +293,45 @@ describe('raw html attribute values', () => {
 	}
 });
 
+describe('character references', () => {
+	const cases: [string, string][] = [
+		['a &lt; b &copy;\n', '<p>a &lt; b &copy;</p>'],
+		['<div>a &mdash; b</div>\n', '<div>a &mdash; b</div>'],
+		[
+			'&#123; &#x7D; &MadeUp; &copy & \\&amp; `&amp; x`\n',
+			'<p>&#123; &#x7D; &amp;MadeUp; &amp;copy &amp; &amp;amp; <code>&amp;amp; x</code></p>',
+		],
+		[
+			'> ```\n> &lt; &copy;\n> ```\n',
+			'<blockquote>\n<pre><code>&amp;lt; &amp;copy;</code></pre>\n</blockquote>',
+		],
+		[
+			'[a &amp; b](/x?a&amp;b "&quot;t&quot;") ![&copy;](/i?a&b)\n',
+			'<p><a href="/x?a&amp;b" title="&quot;t&quot;">a &amp; b</a> <img src="/i?a&amp;b" alt="&copy;" /></p>',
+		],
+	];
+
+	for (const [input, expected] of cases) {
+		it(JSON.stringify(input), () => {
+			const tree = new TreeBuilder(128);
+			new PFMParser(tree).parse(input);
+			const buf = tree.get_buffer();
+			const folded = new CursorHTMLRenderer({ cache: false });
+			folded.update(buf, input);
+			expect(folded.html).toBe(expected);
+			const mapped = new CursorHTMLRenderer({ cache: false });
+			mapped.update_mapped(buf, input);
+			expect(mapped.html).toBe(expected);
+			const traced = new CursorHTMLRenderer({ cache: false });
+			traced.update_trace(buf, input);
+			expect(traced.html).toBe(expected);
+			const cached = new CursorHTMLRenderer();
+			cached.update(buf, input);
+			expect(cached.html).toBe(expected);
+		});
+	}
+});
+
 describe('paragraphs around tags and components', () => {
 	const cases: [string, string][] = [
 		['<X />\n', '<X />'],
