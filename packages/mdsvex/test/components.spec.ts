@@ -204,25 +204,25 @@ describe('element replacement, markdown mode', () => {
 			'```js title="x" {1}\nlet a = {b: "</script>"};\n```',
 			['pre'],
 			'<Pre_MDSVEX_G lang={"js"} meta={"title=\\"x\\" {1}"} code={"let a = {b: \\"</script>\\"};"}>' +
-				'<code class="language-js title=&quot;x&quot; &#123;1&#125;">let a = &#123;b: &quot;&lt;/script&gt;&quot;&#125;;</code></Pre_MDSVEX_G>',
+				'<pre><code class="language-js">let a = &#123;b: &quot;&lt;/script&gt;&quot;&#125;;</code></pre></Pre_MDSVEX_G>',
 		],
 		[
 			'fenced code with only a language has no meta',
 			'```ts\nx\n```',
 			['pre'],
-			'<Pre_MDSVEX_G lang={"ts"} code={"x"}><code class="language-ts">x</code></Pre_MDSVEX_G>',
+			'<Pre_MDSVEX_G lang={"ts"} code={"x"}><pre><code class="language-ts">x</code></pre></Pre_MDSVEX_G>',
 		],
 		[
 			'fenced code without info passes only code',
 			'```\nplain\n```',
 			['pre'],
-			'<Pre_MDSVEX_G code={"plain"}><code>plain</code></Pre_MDSVEX_G>',
+			'<Pre_MDSVEX_G code={"plain"}><pre><code>plain</code></pre></Pre_MDSVEX_G>',
 		],
 		[
 			'fenced code in a block quote passes the code without the markers',
 			'> ```\n> a\n>\n>   b\n> ```',
 			['pre'],
-			'<blockquote>\n<Pre_MDSVEX_G code={"a\\n\\n  b"}><code>a\n\n  b</code></Pre_MDSVEX_G>\n</blockquote>',
+			'<blockquote>\n<Pre_MDSVEX_G code={"a\\n\\n  b"}><pre><code>a\n\n  b</code></pre></Pre_MDSVEX_G>\n</blockquote>',
 		],
 		[
 			'fenced code does not use the inline code replacement',

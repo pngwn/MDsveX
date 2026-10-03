@@ -340,11 +340,15 @@ describe('braces in code', () => {
 		],
 		[
 			'```js {1}\nconst o = { a: 1 };\n```\n',
-			'<pre><code class="language-js &#123;1&#125;">const o = &#123; a: 1 &#125;;</code></pre>',
+			'<pre><code class="language-js">const o = &#123; a: 1 &#125;;</code></pre>',
 		],
 		[
 			'> ```\n> {a} &lt;\n> ```\n',
 			'<blockquote>\n<pre><code>&#123;a&#125; &amp;lt;</code></pre>\n</blockquote>',
+		],
+		[
+			'```sh title="shell" {1}\nls\n```\n',
+			'<pre><code class="language-sh">ls</code></pre>',
 		],
 	];
 

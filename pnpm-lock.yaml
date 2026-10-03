@@ -291,6 +291,93 @@ importers:
       '@mdsvex/render':
         specifier: workspace:*
         version: link:../render
+      '@twinkleplop/annotation':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/bash':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/c':
+        specifier: ^0.2.0
+        version: 0.2.0
+      '@twinkleplop/core':
+        specifier: ^0.3.0
+        version: 0.3.0
+      '@twinkleplop/cpp':
+        specifier: ^0.2.0
+        version: 0.2.0
+      '@twinkleplop/css':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/diff':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/dockerfile':
+        specifier: ^0.2.0
+        version: 0.2.0
+      '@twinkleplop/dotenv':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/go':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/graphql':
+        specifier: ^0.2.0
+        version: 0.2.0
+      '@twinkleplop/html':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/http':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/ini':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/javascript':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/json':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/jsonc':
+        specifier: ^0.1.3
+        version: 0.1.3
+      '@twinkleplop/markdown':
+        specifier: ^0.2.0
+        version: 0.2.0
+      '@twinkleplop/markdown-core':
+        specifier: ^0.2.0
+        version: 0.2.0
+      '@twinkleplop/powershell':
+        specifier: ^0.2.0
+        version: 0.2.0
+      '@twinkleplop/python':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/rust':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/shellsession':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/sql':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/svelte':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/toml':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/tsx':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/typescript':
+        specifier: ^0.1.6
+        version: 0.1.6
+      '@twinkleplop/yaml':
+        specifier: ^0.1.6
+        version: 0.1.6
       es-module-lexer:
         specifier: ^1.6.0
         version: 1.6.0
@@ -298,6 +385,12 @@ importers:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^6.2.4
         version: 6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
+      '@twinkleplop/twoslash':
+        specifier: ^0.3.0
+        version: 0.3.0(typescript@6.0.2)
+      '@twinkleplop/twoslash-svelte':
+        specifier: ^0.3.0
+        version: 0.3.0(@typescript-eslint/types@8.57.2)
       npm-run-all2:
         specifier: ^7.0.2
         version: 7.0.2
@@ -1992,6 +2085,99 @@ packages:
       svelte: ^5.46.4
       vite: ^8.0.0-beta.7 || ^8.0.0
 
+  '@twinkleplop/annotation@0.1.6':
+    resolution: {integrity: sha512-xK8PnK/BXmRb8zywEoU1jQsxxpKxlS/hfo5ggkAnPK/XJK5NXUySg2wGoLnL7uk+izSd+a5SSGbfhFJNPZvewQ==}
+
+  '@twinkleplop/bash@0.1.6':
+    resolution: {integrity: sha512-5XBx9EdbQePUEqUvM20b0g+KNEcwfGE7w04R0ZGs1LKWEUPJwYX99DSbHqC3oM8iiu37rDyRFyFdm8yoMNom3g==}
+
+  '@twinkleplop/c@0.2.0':
+    resolution: {integrity: sha512-2N99VPy72L6AMJcdrk/bPbvhwJ8hlX0QpyJZccqaSv5NQxuYNUiTGPdVR9CSrFPtBxQLoyan7K03lA/c2i0AYQ==}
+
+  '@twinkleplop/core@0.3.0':
+    resolution: {integrity: sha512-eAHXzXaBhcvLEfks5AeuLIUf/Hjy7A/X0ATO9FpEWeaurpbyjRK48EsMemnmldS2uRWWsM6qFFs9VwsdlhYfpA==}
+
+  '@twinkleplop/cpp@0.2.0':
+    resolution: {integrity: sha512-BMs7UmFq8eAG0+3pipD0KnmqbMqypW3JdVFBUjCgNQVZSfh0sSy68EkH+jWDH/ZSjU+UcBiDTnUse4b+kbgixw==}
+
+  '@twinkleplop/css@0.1.6':
+    resolution: {integrity: sha512-8Kuf2zujgezaPKp3TlN31HuRGvTtunMUvF2YnoPZftwFPlhEbCFuo7PlioycUdbmFElKuc/zkcQZJb/gYrtXQw==}
+
+  '@twinkleplop/diff@0.1.6':
+    resolution: {integrity: sha512-HfhY9KxxVxa8RZy7BWsP2QIfQqgy90eSpUOY6eeCfhdtBFXZd5wBggsCn/UVlH4l4dqOCmUm8DOoj5c9xYB2tw==}
+
+  '@twinkleplop/dockerfile@0.2.0':
+    resolution: {integrity: sha512-1rqdSXOM040Ezy8bFgDaXy/Q+ZKWEpWR0HGlcO2bOBrz4PMkQENbppw5ouNT28fT7hxLxw6HoWKA4mmRdb7u7g==}
+
+  '@twinkleplop/dotenv@0.1.6':
+    resolution: {integrity: sha512-oHgGxxXe4/F9UyPP5uqnS1tZXsLO8FFSO32esbzQQV0jwwSbegajC2wgkS9SEb2gaQFVHBngVfZfwghVWTSmVA==}
+
+  '@twinkleplop/go@0.1.6':
+    resolution: {integrity: sha512-AWeb1TMLjsR0k4Ll8TIjs67MqYvuv/uw51t971CdUvpURwwPn2sgx7G3pXNlTksdci25TV8QDhEHuhAHr1Jh7Q==}
+
+  '@twinkleplop/graphql@0.2.0':
+    resolution: {integrity: sha512-b9lL7ff/8X9OLzKhxPh4FnhLBxB1qI1J6a8s3wTJFasX8OTy/lEh6qtHtqzgI7a7HSoqSzORF6cmL9IOMpWvIg==}
+
+  '@twinkleplop/html@0.1.6':
+    resolution: {integrity: sha512-ARQraLcONwfqbxELQCYQwYO7y88M92tGRRZznjYCeuLwl12ru0leXA72HsvAuzptmbTo9RUxe4czKQvzkb2i1A==}
+
+  '@twinkleplop/http@0.1.6':
+    resolution: {integrity: sha512-z6xBPjm8hpB4vTC3DWYglGG+AF9pMVl2SUFWthSSha8y1/xtXXeP4z5yZZ+3z00hfId+GjnN/Dr43dLD6whTcg==}
+
+  '@twinkleplop/ini@0.1.6':
+    resolution: {integrity: sha512-/6t3ofX9BMWBdA99Ozytvw7GZnTALtdjA0p5iLEdTzagaMBpjKpvNKgzFpodvxzjWoD4pIx8o65kHvf91KK/aQ==}
+
+  '@twinkleplop/javascript@0.1.6':
+    resolution: {integrity: sha512-JnND/ev1IbqpuokF9H2f+GRjZ7KmBKWQUPdJ9uL6BJFrQ96eGm7m5F4gcRyLkOP5f/UeQHVMmRuFV+C681UHUA==}
+
+  '@twinkleplop/json@0.1.6':
+    resolution: {integrity: sha512-SFoRi4XZSTWzUew5pccsdqTCP1sBBBxZa0P+oN0kFQIG/WzrCOVf4jcCNNbvpU/AoBSFLRQ48M5CuLubiPZmTg==}
+
+  '@twinkleplop/jsonc@0.1.3':
+    resolution: {integrity: sha512-qL1ECMNyI8P/VBO5vJ81wMER01yqC4Y6EyDLX0W59MRwNXyLquCtzb25oRDi+e4MFQEAhL4xB30dp7LHtamDAQ==}
+
+  '@twinkleplop/markdown-core@0.2.0':
+    resolution: {integrity: sha512-hoyfuLQhlGBZ/i1jzw6gHK1eNIDIjZ7/0NeA8vMT+l3ps2c+leVDOMG0WFUhxs9bEDNgwckkY3je7IedsRWLXQ==}
+
+  '@twinkleplop/markdown@0.2.0':
+    resolution: {integrity: sha512-SInXQLcTCpcb/pU+aLmgoJ2L6oxPqxvRjM6ibqMl/CxAANon4U1npUv2SLfzZBJxjILPmImDL9nD+dT4wH4cNw==}
+
+  '@twinkleplop/powershell@0.2.0':
+    resolution: {integrity: sha512-OxDOWWNyFfkVIY8ndEJr7Q12FgfVNUtLyoFIq1GdZ7/B688cLR4xwN3kZ2Libo3ZV8dStylMJzWMcS+rgah73g==}
+
+  '@twinkleplop/python@0.1.6':
+    resolution: {integrity: sha512-7OWUAHnG/KlA3dnqZRd9uIjykbLfC3IDE+HMJOBIZgC1XVGQDlBcy/I8kJRLRN4mWtrJYIh4/Ly9qi7K1BjHEA==}
+
+  '@twinkleplop/rust@0.1.6':
+    resolution: {integrity: sha512-LY0dY4TapopdB0CaGnypwKFTuIvfULgT1C2TxsqyJw41FaFceQ0K+303Gw7o4S8YdINmb875o5EHgo1HAw6kIw==}
+
+  '@twinkleplop/shellsession@0.1.6':
+    resolution: {integrity: sha512-Kelqxvr4GGQ8wKaVThLaJMJvHKFqhyagIJztSFJeTT2zvgp2y3sf7Fq+8FhpXnPvVTguOuDNlzgAI2Ql4NwFrw==}
+
+  '@twinkleplop/sql@0.1.6':
+    resolution: {integrity: sha512-2t93ukoQK8eTNh9v3v7MlykDeVTTrphG2q6hNwz1/n18RXp5V/GM8MIwP+RhpQe8BHHXnx3BRgUJpeDNkmViPQ==}
+
+  '@twinkleplop/svelte@0.1.6':
+    resolution: {integrity: sha512-ZEfy6vRX2S7ENZ/aJCTjpSvkAUH2X1R3I24mfsks6uIc2zTNNwmwa2+XGASWVyA8fKW0VHziM3O+0l/7pEjUjQ==}
+
+  '@twinkleplop/toml@0.1.6':
+    resolution: {integrity: sha512-7mlwBxdoc70RUNvpS+ahyZpMs9N38y9mdhWL1rEQGwCyCb1y874OoFTJSbaN5JTuSOgbCqNTOCCGqWGhQ1ue3A==}
+
+  '@twinkleplop/tsx@0.1.6':
+    resolution: {integrity: sha512-Ln21IXc8RfECJnvczkVd8wEy4YjKsbLnuEepYUOtpRYJrwz1zZ3ew4UrOlU1FYEuJwB4lysPsCPY/ocDEWOkxw==}
+
+  '@twinkleplop/twoslash-svelte@0.3.0':
+    resolution: {integrity: sha512-KYfsXIa9KBaTHsL+I3OfYYC1iJz5PG3K0BSyLl16jBjq78PhTNcDctS8iRuP0uHoYmC+nqzUTORNutcs2wh/Cw==}
+
+  '@twinkleplop/twoslash@0.3.0':
+    resolution: {integrity: sha512-ut6U6GJ32PbDzUuptYegutPXstMcDCi/PinVknkt/8as9ehBUyUJlfa4voKmCtRz/cY7MLvj0Oc3ZCVdD8C19w==}
+
+  '@twinkleplop/typescript@0.1.6':
+    resolution: {integrity: sha512-JoTyStueQ+5MS5JYKxZz4xMHsfj+dcHFjWykEmoctmcw6Ulk7DSGE1uEIio5rJGtKRCqr7mvl9XVo8l4zEgdHw==}
+
+  '@twinkleplop/yaml@0.1.6':
+    resolution: {integrity: sha512-20XAtI0k64WQxqpeWvRYa0wQyRGTTF4X6sn3OjBeXGvObW1HX5kgnJm4ioSixer4QwC79BrI2FmjFAKM/j1rEg==}
+
   '@tybys/wasm-util@0.10.1':
     resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
 
@@ -2055,6 +2241,11 @@ packages:
   '@typescript-eslint/types@8.57.2':
     resolution: {integrity: sha512-/iZM6FnM4tnx9csuTxspMW4BOSegshwX5oBDznJ7S4WggL7Vczz5d2W11ecc4vRrQMQHXRSxzrCsyG5EsPPTbA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@typescript/vfs@1.6.5':
+    resolution: {integrity: sha512-gobLHQLmvQGJInFk31NvgMd1uYzRXsd8qgnOssyLD055R2QPnw1ubRbBQ4+T+5qC7IQVuYXdvNDE2G7tMDVHgw==}
+    peerDependencies:
+      typescript: '*'
 
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
@@ -4152,6 +4343,14 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
+  twoslash-protocol@0.3.9:
+    resolution: {integrity: sha512-9/iwp+CXOnjFMPQuPL5PkuRbZnDoNpBvtJCLs9t8kDYkL3YHujbvnHfZA1i5fApDftVEdBw+T/4F+dH5kIzpYQ==}
+
+  twoslash@0.3.9:
+    resolution: {integrity: sha512-rDclk+OtzuTX+tnea7DYLCkqGQ3eP0IyfD+kzUJ7t46X/NzlaxwrhecmEBNuSCuEn3V+n1PhcjUUQQ7gUJzX5Q==}
+    peerDependencies:
+      typescript: ^5.5.0 || ^6.0.0
+
   type-detect@4.1.0:
     resolution: {integrity: sha512-Acylog8/luQ8L7il+geoSxhEkazvkslg7PSNKOX59mbB9cOveP5aq9h74Y7YU8yDpJwetzQQrfIwtf4Wp4LKcw==}
     engines: {node: '>=4'}
@@ -5892,6 +6091,169 @@ snapshots:
       vite: 8.3.2(@types/node@24.7.1)(esbuild@0.27.4)(terser@5.44.0)
       vitefu: 1.1.3(vite@8.3.2(@types/node@24.7.1)(esbuild@0.27.4)(terser@5.44.0))
 
+  '@twinkleplop/annotation@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/bash@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/c@0.2.0':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/core@0.3.0': {}
+
+  '@twinkleplop/cpp@0.2.0':
+    dependencies:
+      '@twinkleplop/c': 0.2.0
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/css@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/diff@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/dockerfile@0.2.0':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/dotenv@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/go@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/graphql@0.2.0':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/html@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/css': 0.1.6
+      '@twinkleplop/javascript': 0.1.6
+
+  '@twinkleplop/http@0.1.6':
+    dependencies:
+      '@twinkleplop/bash': 0.1.6
+      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/html': 0.1.6
+      '@twinkleplop/javascript': 0.1.6
+      '@twinkleplop/json': 0.1.6
+
+  '@twinkleplop/ini@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/javascript@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/css': 0.1.6
+      '@twinkleplop/html': 0.1.6
+
+  '@twinkleplop/json@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/jsonc@0.1.3':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/markdown-core@0.2.0':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/markdown@0.2.0':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/powershell@0.2.0':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/python@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/rust@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/shellsession@0.1.6':
+    dependencies:
+      '@twinkleplop/bash': 0.1.6
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/sql@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/svelte@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/css': 0.1.6
+      '@twinkleplop/javascript': 0.1.6
+
+  '@twinkleplop/toml@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
+  '@twinkleplop/tsx@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/javascript': 0.1.6
+      '@twinkleplop/typescript': 0.1.6
+
+  '@twinkleplop/twoslash-svelte@0.3.0(@typescript-eslint/types@8.57.2)':
+    dependencies:
+      '@jridgewell/sourcemap-codec': 1.6.0
+      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/svelte': 0.1.6
+      '@twinkleplop/twoslash': 0.3.0(typescript@5.9.3)
+      '@volar/language-core': 2.4.28
+      svelte: 5.57.1(@typescript-eslint/types@8.57.2)
+      svelte2tsx: 0.7.53(svelte@5.57.1(@typescript-eslint/types@8.57.2))(typescript@5.9.3)
+      twoslash: 0.3.9(typescript@5.9.3)
+      twoslash-protocol: 0.3.9
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - '@typescript-eslint/types'
+      - supports-color
+
+  '@twinkleplop/twoslash@0.3.0(typescript@5.9.3)':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/typescript': 0.1.6
+      twoslash: 0.3.9(typescript@5.9.3)
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
+
+  '@twinkleplop/twoslash@0.3.0(typescript@6.0.2)':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/typescript': 0.1.6
+      twoslash: 0.3.9(typescript@6.0.2)
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
+
+  '@twinkleplop/typescript@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/javascript': 0.1.6
+
+  '@twinkleplop/yaml@0.1.6':
+    dependencies:
+      '@twinkleplop/core': 0.3.0
+
   '@tybys/wasm-util@0.10.1':
     dependencies:
       tslib: 2.8.1
@@ -5952,6 +6314,20 @@ snapshots:
   '@types/vscode@1.115.0': {}
 
   '@typescript-eslint/types@8.57.2': {}
+
+  '@typescript/vfs@1.6.5(typescript@5.9.3)':
+    dependencies:
+      debug: 4.4.3
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - supports-color
+
+  '@typescript/vfs@1.6.5(typescript@6.0.2)':
+    dependencies:
+      debug: 4.4.3
+      typescript: 6.0.2
+    transitivePeerDependencies:
+      - supports-color
 
   '@ungap/structured-clone@1.3.0': {}
 
@@ -8417,6 +8793,13 @@ snapshots:
       svelte: 5.55.1
       typescript: 5.9.3
 
+  svelte2tsx@0.7.53(svelte@5.57.1(@typescript-eslint/types@8.57.2))(typescript@5.9.3):
+    dependencies:
+      dedent-js: 1.0.1
+      scule: 1.3.0
+      svelte: 5.57.1(@typescript-eslint/types@8.57.2)
+      typescript: 5.9.3
+
   svelte@5.55.0:
     dependencies:
       '@jridgewell/remapping': 2.3.5
@@ -8571,6 +8954,24 @@ snapshots:
   trough@2.2.0: {}
 
   tslib@2.8.1: {}
+
+  twoslash-protocol@0.3.9: {}
+
+  twoslash@0.3.9(typescript@5.9.3):
+    dependencies:
+      '@typescript/vfs': 1.6.5(typescript@5.9.3)
+      twoslash-protocol: 0.3.9
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - supports-color
+
+  twoslash@0.3.9(typescript@6.0.2):
+    dependencies:
+      '@typescript/vfs': 1.6.5(typescript@6.0.2)
+      twoslash-protocol: 0.3.9
+      typescript: 6.0.2
+    transitivePeerDependencies:
+      - supports-color
 
   type-detect@4.1.0: {}
 

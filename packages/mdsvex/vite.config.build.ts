@@ -8,14 +8,16 @@ export default defineConfig({
 			entry: {
 				main: resolve(__dirname, "tsc/main.js"),
 				compile: resolve(__dirname, "tsc/compile.js"),
+				highlight: resolve(__dirname, "tsc/highlight.js"),
 			},
 			formats: ["es"],
 		},
 		outDir: "dist",
 		reportCompressedSize: true,
 		rollupOptions: {
-			// the plugin loads these on first use, a compile never does
-			external: ["vite", "es-module-lexer", /^node:/],
+			// the plugin loads these on first use, a compile never does, the
+			// highlight entry imports twinkleplop languages by package name
+			external: ["vite", "es-module-lexer", /^node:/, /^@twinkleplop\//],
 			output: {
 				entryFileNames: "[name].js",
 				plugins: [

@@ -26,6 +26,12 @@ import type {
 import { scope_of } from './root_scope';
 import { scan_exports_detail } from './scan_exports';
 import type { ScannedExports } from './scan_exports';
+import type {
+	HighlightConfig,
+	Highlighter,
+	HighlightOption,
+} from './highlight_run';
+import type { HighlightOptions, HtmlHighlighter } from './highlight';
 
 export * from './compile';
 export {
@@ -80,6 +86,27 @@ export interface MdsvexOptions {
 		id: string,
 		metadata: Record<string, unknown>
 	) => string | false | undefined;
+	/**
+	 * twinkleplop options, every twinkleplop language is loaded the first time
+	 * a document has code, a highlighter function, or false for plain code,
+	 * import a theme stylesheet such as @twinkleplop/theme-github yourself
+	 *
+	 * @example
+	 * highlight: { languages: { dockerfile: 'bash' }, twoslash: true }
+	 */
+	highlight?: PluginHighlightOptions | Highlighter | false;
+}
+
+export interface PluginHighlightOptions extends Omit<
+	HighlightOptions,
+	'twoslash'
+> {
+	/**
+	 * route ts, tsx, js and jsx fences marked twoslash through
+	 * @twinkleplop/twoslash, and svelte ones through
+	 * @twinkleplop/twoslash-svelte with { svelte: true }, install them yourself
+	 */
+	twoslash?: boolean | { svelte?: boolean };
 }
 
 /** a template module, or one with a module of replacements merged over its own */
@@ -1261,6 +1288,64 @@ function export_name(name: string): string {
  *    our HTML to markdown map using @ampproject/remapping, and injects
  *    the result as an inline sourceMappingURL in the output code.
  */
+/** a twoslash highlighter built on its first fence, each builds a typescript environment */
+function lazy_highlighter(make: () => HtmlHighlighter): HtmlHighlighter {
+	let made: HtmlHighlighter | null = null;
+	return (code, render) => (made ??= make())(code, render);
+}
+
+async function import_twoslash<T>(
+	load: () => Promise<T>,
+	name: string
+): Promise<T> {
+	try {
+		return await load();
+	} catch (e) {
+		const error = new Error(
+			`[mdsvex] highlight.twoslash needs ${name}, add it to your dependencies`
+		);
+		(error as { cause?: unknown }).cause = e;
+		throw error;
+	}
+}
+
+/** twinkleplop with every language, the async setup compile can not do */
+async function plugin_highlight(
+	options: PluginHighlightOptions
+): Promise<HighlightConfig> {
+	const { create_highlight, load_default_languages } =
+		await import('./highlight');
+	const languages = {
+		...(await load_default_languages()),
+		...options.languages,
+	};
+	let twoslash: Record<string, HtmlHighlighter> | false = false;
+	if (options.twoslash) {
+		const ts = await import_twoslash(
+			() => import('@twinkleplop/twoslash'),
+			'@twinkleplop/twoslash'
+		);
+		twoslash = {
+			typescript: lazy_highlighter(() => ts.create_highlighter({ lang: 'ts' })),
+			javascript: lazy_highlighter(() => ts.create_highlighter({ lang: 'js' })),
+			tsx: lazy_highlighter(() => ts.create_highlighter({ lang: 'tsx' })),
+		};
+		if (typeof options.twoslash === 'object' && options.twoslash.svelte) {
+			const svelte = await import_twoslash(
+				() => import('@twinkleplop/twoslash-svelte'),
+				'@twinkleplop/twoslash-svelte'
+			);
+			twoslash.svelte = lazy_highlighter(() => svelte.create_highlighter());
+		}
+	}
+	return create_highlight({ ...options, languages, twoslash });
+}
+
+/** true when a document may hold a fence or a code span with a #! hint */
+function has_code(code: string): boolean {
+	return code.includes('```') || code.includes('~~~') || code.includes('`#!');
+}
+
 export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	const extensions = (options.extensions ?? ['.svx']).map((ext) =>
 		ext.startsWith('.') ? ext : '.' + ext
@@ -1283,6 +1368,38 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	const stored = new Map<string, StoredDocument>();
 	const no_records = new Uint32Array(0);
 	const compiler = new CompilerSession();
+
+	const written_highlight = options.highlight;
+	if (
+		written_highlight !== undefined &&
+		written_highlight !== false &&
+		typeof written_highlight !== 'function' &&
+		(typeof written_highlight !== 'object' || written_highlight === null)
+	)
+		throw new Error(
+			'[mdsvex] highlight must be twinkleplop options, a highlighter function or false'
+		);
+	// twinkleplop loads with the first document that has code
+	let highlight: HighlightOption | undefined =
+		typeof written_highlight === 'function' || written_highlight === false
+			? written_highlight
+			: undefined;
+	let highlight_loading: Promise<void> | null = null;
+	function load_highlight(): Promise<void> {
+		return (highlight_loading ??= plugin_highlight(
+			(written_highlight as PluginHighlightOptions | undefined) ?? {}
+		).then(
+			(config) => {
+				highlight = config;
+			},
+			(e) => {
+				highlight_loading = null;
+				throw e;
+			}
+		));
+	}
+	// a language goes unknown once per file, not once per compile of it
+	const unknown_warned = new Set<string>();
 	if (options.component_mode !== undefined)
 		scope_of(undefined, options.component_mode);
 	const written = options.components;
@@ -1375,11 +1492,20 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			// without templates or a selector a query has nothing to pick
 			no_templates ? undefined : templates_for(templates, select, id),
 			directives,
-			options.component_mode
+			options.component_mode,
+			highlight,
+			clean_id(id)
 		);
 		doc.raw = code;
 		if (doc.warnings !== undefined) {
-			for (const w of doc.warnings) ctx.warn(w.message, w.start);
+			for (const w of doc.warnings) {
+				if (w.code === 'unknown_language') {
+					const key = clean_id(id) + '\0' + w.message;
+					if (unknown_warned.has(key)) continue;
+					unknown_warned.add(key);
+				}
+				ctx.warn(w.message, w.start);
+			}
 			doc.warnings = undefined;
 		}
 
@@ -1466,8 +1592,16 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 			transform(code, id) {
 				if (!matches(id)) return;
-				if (tracker === null)
-					return compile_doc(this, code, id, undefined, undefined);
+				const waits: Promise<unknown>[] = [];
+				if (highlight === undefined && has_code(code))
+					waits.push(load_highlight());
+				if (tracker === null) {
+					if (waits.length === 0)
+						return compile_doc(this, code, id, undefined, undefined);
+					return Promise.all(waits).then(() =>
+						compile_doc(this, code, id, undefined, undefined)
+					);
+				}
 
 				const finish = () => {
 					// a watch build compiles again when the exports change, in dev the virtual import is the edge
@@ -1505,7 +1639,6 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					);
 					return result;
 				};
-				const waits: Promise<unknown>[] = [];
 				if (registry !== null && !registry.ready())
 					waits.push(registry.ensure(this));
 				if (templates !== null && !templates.ready())

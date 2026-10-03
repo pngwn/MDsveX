@@ -5,19 +5,25 @@ import {
 import { describe, expect, test } from 'vitest';
 
 import { compile, CompilerSession } from '../src/main';
-import type { ComponentSource } from '../src/main';
+import type { ComponentSource, HighlightOption } from '../src/main';
+import { create_highlight, load_default_languages } from '../src/highlight';
 
 const DIRECTIVES: ComponentSource[] = [
 	{ specifier: 'mdsvex:directives', names: ['note'] },
 ];
 
 /** the code every walk renders, they must agree */
-function compile_all(raw: string, components?: ComponentSource[]): string {
-	const plain = compile(raw, { components, directives: DIRECTIVES });
+function compile_all(
+	raw: string,
+	components?: ComponentSource[],
+	highlight?: HighlightOption
+): string {
+	const plain = compile(raw, { components, directives: DIRECTIVES, highlight });
 	const mapped = compile(raw, {
 		components,
 		directives: DIRECTIVES,
 		sourcemap: true,
+		highlight,
 	});
 	const session = new CompilerSession();
 	const trace = session.compile_trace(
@@ -26,7 +32,9 @@ function compile_all(raw: string, components?: ComponentSource[]): string {
 		components,
 		undefined,
 		undefined,
-		DIRECTIVES
+		DIRECTIVES,
+		undefined,
+		highlight
 	);
 	const v3 = session.compile_v3(
 		raw,
@@ -35,7 +43,9 @@ function compile_all(raw: string, components?: ComponentSource[]): string {
 		components,
 		undefined,
 		undefined,
-		DIRECTIVES
+		DIRECTIVES,
+		undefined,
+		highlight
 	);
 	for (const other of [mapped, trace, v3]) expect(other.code).toBe(plain.code);
 	return plain.code;
@@ -96,8 +106,13 @@ function shown(node: SvelteNode): string {
 }
 
 /** the text of every element named tag, as svelte shows it */
-function shown_in(raw: string, tag: string, components?: ComponentSource[]) {
-	const nodes = svelte_nodes(compile_all(raw, components));
+function shown_in(
+	raw: string,
+	tag: string,
+	components?: ComponentSource[],
+	highlight?: HighlightOption
+) {
+	const nodes = svelte_nodes(compile_all(raw, components, highlight));
 	return find_all(nodes, tag).map(shown);
 }
 
@@ -223,13 +238,20 @@ describe('braces in code (#839)', () => {
 		});
 	}
 
-	test('an info string keeps its braces as text', () => {
-		const raw = '```js {1,3}\nx\n```';
+	test('the class carries the language, never the meta', () => {
+		const raw = '```js {1,3} title="a {b}"\nx\n```';
 		expect(compile_all(raw)).toBe(
-			'<pre><code class="language-js &#123;1,3&#125;">x</code></pre>'
+			'<pre><code class="language-js">x</code></pre>'
+		);
+	});
+
+	test('a language keeps its braces as text', () => {
+		const raw = '```{js}\nx\n```';
+		expect(compile_all(raw)).toBe(
+			'<pre><code class="language-&#123;js&#125;">x</code></pre>'
 		);
 		const [code] = find_all(svelte_nodes(compile_all(raw)), 'code');
-		expect(attr_value(code, 'class')).toBe('language-js {1,3}');
+		expect(attr_value(code, 'class')).toBe('language-{js}');
 	});
 
 	test('a pre replacement gets the raw code as a string prop', () => {
@@ -242,7 +264,7 @@ describe('braces in code (#839)', () => {
 		expect(body(code)).toBe(
 			'<Pre_MDSVEX_G lang={"js"} code={' +
 				JSON.stringify(source) +
-				'}><code class="language-js">const s = &quot;&amp;amp;&quot; + &#123;a: 1&#125; + `&lt;/script&gt;`;</code></Pre_MDSVEX_G>'
+				'}><pre><code class="language-js">const s = &quot;&amp;amp;&quot; + &#123;a: 1&#125; + `&lt;/script&gt;`;</code></pre></Pre_MDSVEX_G>'
 		);
 		const [node] = find_all(svelte_nodes(code), 'Pre_MDSVEX_G');
 		const prop = node.attributes!.find((a) => a.name === 'code')!;
@@ -257,5 +279,58 @@ describe('braces in code (#839)', () => {
 		expect(shown_in('`{a} &lt;`', 'Code_MDSVEX_G', code_only)).toEqual([
 			'{a} &lt;',
 		]);
+	});
+});
+
+describe('braces in highlighted code', async () => {
+	const twinkleplop = create_highlight({
+		languages: await load_default_languages(),
+	});
+	const custom: HighlightOption = (code, { inline }) =>
+		inline
+			? `<code class="x {i}">${code.replace(/</g, '&lt;')}</code>`
+			: `<pre class="x" data-x="{a}"><code>${code.replace(/</g, '&lt;')}</code></pre>`;
+	const both: [string, HighlightOption][] = [
+		['twinkleplop', twinkleplop],
+		['a custom highlighter', custom],
+	];
+	const pre_code: ComponentSource[] = [
+		{ specifier: 'mdsvex:components', names: ['pre', 'code'] },
+	];
+
+	for (const [name, highlight] of both) {
+		test(`a fence shows its braces as text, ${name}`, () => {
+			const raw = '```js\nconst o = { a: `${b}` };\nif (a < b) {}\n```';
+			expect(shown_in(raw, 'code', undefined, highlight)).toEqual([
+				'const o = { a: `${b}` };\nif (a < b) {}',
+			]);
+		});
+
+		test(`a #! code span shows its braces as text, ${name}`, () => {
+			const raw = 'Use `#!ts { a: 1 }` and `{b}`.';
+			expect(shown_in(raw, 'code', undefined, highlight)).toEqual([
+				'{ a: 1 }',
+				'{b}',
+			]);
+		});
+
+		test(`a replaced pre and code show braces as text, ${name}`, () => {
+			const raw =
+				'```svelte title="{t}" x="{y}"\n<p>{a}</p>\n```\n\n`#!js {c}`';
+			const nodes = svelte_nodes(compile_all(raw, pre_code, highlight));
+			const [pre] = find_all(nodes, 'Pre_MDSVEX_G');
+			expect(find_all(pre.fragment!.nodes, 'code').map(shown)).toEqual([
+				'<p>{a}</p>',
+			]);
+			const [code] = find_all(nodes, 'Code_MDSVEX_G');
+			expect(shown(code)).toBe('{c}');
+		});
+	}
+
+	test('the info string never reaches the markup', () => {
+		const raw = '```js {1} title="a {b}"\nx\n```';
+		const code = compile_all(raw, undefined, twinkleplop);
+		expect(code).not.toContain('{');
+		expect(code).toContain('a &#123;b&#125;');
 	});
 });
