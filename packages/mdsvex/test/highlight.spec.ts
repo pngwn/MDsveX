@@ -1,5 +1,4 @@
 import { parse_meta } from '@twinkleplop/markdown-core';
-import { shiki_notation } from '@twinkleplop/annotation/shiki';
 import { tokenize as json } from '@twinkleplop/json';
 import { describe, expect, test } from 'vitest';
 
@@ -13,7 +12,9 @@ import type {
 import {
 	create_highlight,
 	default_annotations,
+	language_loaders,
 	load_default_languages,
+	shiki_notation,
 } from '../src/highlight';
 import type { HighlightOptions } from '../src/highlight';
 import { meta_parts, read_meta, split_element } from '../src/code_meta';
@@ -156,6 +157,11 @@ describe('twinkleplop fences', () => {
 			annotations: [...default_annotations, shiki_notation()],
 		});
 		expect(html(raw, shiki)).not.toContain('[!code ++]');
+	});
+
+	test('each loader loads the language of its name', async () => {
+		expect(Object.keys(languages)).toEqual(Object.keys(language_loaders));
+		expect(await language_loaders.svelte()).toBe(languages.svelte);
 	});
 
 	test('an annotation issue is a warning at the fence', () => {

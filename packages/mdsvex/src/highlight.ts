@@ -1,5 +1,5 @@
-// mdsvex/highlight, twinkleplop as a synchronous highlight config, every
-// language loads in load_default_languages, the only asynchronous part
+// mdsvex/highlight, twinkleplop as a synchronous highlight config, the
+// language loaders are the only asynchronous part
 
 import { to_html, to_parts, visible_text } from '@twinkleplop/core';
 import type {
@@ -26,6 +26,7 @@ import {
 	mod,
 	warn,
 } from '@twinkleplop/annotation';
+export { shiki_notation } from '@twinkleplop/annotation/shiki';
 import type {
 	HighlightConfig,
 	HighlightContext,
@@ -117,95 +118,56 @@ export const default_aliases: Readonly<Record<string, string>> = {
 	rs: 'rust',
 };
 
+/**
+ * every bundled twinkleplop language by name, each loads its package, a
+ * browser compile can load only the languages its documents use
+ */
+export const language_loaders: Readonly<
+	Record<string, () => Promise<LanguageModule>>
+> = {
+	bash: () => import('@twinkleplop/bash'),
+	c: () => import('@twinkleplop/c'),
+	cpp: () => import('@twinkleplop/cpp'),
+	css: () => import('@twinkleplop/css'),
+	diff: () => import('@twinkleplop/diff'),
+	dockerfile: () => import('@twinkleplop/dockerfile'),
+	dotenv: () => import('@twinkleplop/dotenv'),
+	go: () => import('@twinkleplop/go'),
+	graphql: () => import('@twinkleplop/graphql'),
+	html: () => import('@twinkleplop/html'),
+	http: () => import('@twinkleplop/http'),
+	ini: () => import('@twinkleplop/ini'),
+	javascript: () => import('@twinkleplop/javascript'),
+	json: () => import('@twinkleplop/json'),
+	jsonc: () => import('@twinkleplop/jsonc'),
+	markdown: () => import('@twinkleplop/markdown'),
+	powershell: () => import('@twinkleplop/powershell'),
+	python: () => import('@twinkleplop/python'),
+	rust: () => import('@twinkleplop/rust'),
+	shellsession: () => import('@twinkleplop/shellsession'),
+	sql: () => import('@twinkleplop/sql'),
+	svelte: () => import('@twinkleplop/svelte'),
+	toml: () => import('@twinkleplop/toml'),
+	tsx: () => import('@twinkleplop/tsx'),
+	typescript: () => import('@twinkleplop/typescript'),
+	yaml: () => import('@twinkleplop/yaml'),
+};
+
 let loading: Promise<Record<string, LanguageModule>> | null = null;
 
 /** every twinkleplop language package by name, loaded once */
 export function load_default_languages(): Promise<
 	Record<string, LanguageModule>
 > {
-	return (loading ??= Promise.all([
-		import('@twinkleplop/bash'),
-		import('@twinkleplop/c'),
-		import('@twinkleplop/cpp'),
-		import('@twinkleplop/css'),
-		import('@twinkleplop/diff'),
-		import('@twinkleplop/dockerfile'),
-		import('@twinkleplop/dotenv'),
-		import('@twinkleplop/go'),
-		import('@twinkleplop/graphql'),
-		import('@twinkleplop/html'),
-		import('@twinkleplop/http'),
-		import('@twinkleplop/ini'),
-		import('@twinkleplop/javascript'),
-		import('@twinkleplop/json'),
-		import('@twinkleplop/jsonc'),
-		import('@twinkleplop/markdown'),
-		import('@twinkleplop/powershell'),
-		import('@twinkleplop/python'),
-		import('@twinkleplop/rust'),
-		import('@twinkleplop/shellsession'),
-		import('@twinkleplop/sql'),
-		import('@twinkleplop/svelte'),
-		import('@twinkleplop/toml'),
-		import('@twinkleplop/tsx'),
-		import('@twinkleplop/typescript'),
-		import('@twinkleplop/yaml'),
-	]).then(
-		([
-			bash,
-			c,
-			cpp,
-			css,
-			diff,
-			dockerfile,
-			dotenv,
-			go,
-			graphql,
-			html,
-			http,
-			ini,
-			javascript,
-			json,
-			jsonc,
-			markdown,
-			powershell,
-			python,
-			rust,
-			shellsession,
-			sql,
-			svelte,
-			toml,
-			tsx,
-			typescript,
-			yaml,
-		]) => ({
-			bash,
-			c,
-			cpp,
-			css,
-			diff,
-			dockerfile,
-			dotenv,
-			go,
-			graphql,
-			html,
-			http,
-			ini,
-			javascript,
-			json,
-			jsonc,
-			markdown,
-			powershell,
-			python,
-			rust,
-			shellsession,
-			sql,
-			svelte,
-			toml,
-			tsx,
-			typescript,
-			yaml,
-		}),
+	const names = Object.keys(language_loaders);
+	return (loading ??= Promise.all(
+		names.map((name) => language_loaders[name]())
+	).then(
+		(modules) => {
+			const languages: Record<string, LanguageModule> = {};
+			for (let i = 0; i < names.length; i++) languages[names[i]] = modules[i];
+			return languages;
+		},
 		(e) => {
 			// a later call tries again
 			loading = null;
