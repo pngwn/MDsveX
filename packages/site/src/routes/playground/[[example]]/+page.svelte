@@ -4,6 +4,8 @@ import { page } from "$app/state";
 import { untrack } from "svelte";
 import { Repl, decode_state, encode_state, type ReplState } from "@mdsvex/repl";
 import { examples } from "$lib/playground/examples";
+// mdsvex adds no css, the preview gets a theme the way a project imports one
+import code_theme from "@twinkleplop/theme-ayu?inline";
 
 let { data } = $props();
 
@@ -101,7 +103,7 @@ function onhashchange() {
 	</header>
 
 	<main>
-		<Repl bind:this={repl} theme="dark" {onchange} />
+		<Repl bind:this={repl} theme="dark" injected_css={code_theme} {onchange} />
 	</main>
 </div>
 
