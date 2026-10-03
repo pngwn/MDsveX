@@ -1,7 +1,7 @@
 # @mdsvex/migrate
 
 Migrate **CommonMark / GFM** markdown to **Penguin-Flavoured Markdown (PFM)**,
-and mdsvex 0.x layouts to templates.
+and mdsvex 0.x layouts and highlight options to mdsvex next.
 
 The source document is parsed with the [remark](https://github.com/remarkjs/remark)
 (unified) ecosystem into an `mdast` tree, then re-serialised under PFM's rules.
@@ -75,6 +75,29 @@ include a `select_template` to paste in:
 select_template: (id) => (id.includes('/blog/') ? 'blog' : undefined),
 ```
 
+### Highlight options
+
+`migrate_config` also rewrites the 0.x `highlight` option. mdsvex next
+highlights with twinkleplop instead of Prism, and escapes whatever a
+highlighter returns, so a few things go away.
+
+| mdsvex 0.x                              | mdsvex next                                     |
+| --------------------------------------- | ----------------------------------------------- |
+| `highlight: false`                      | kept                                            |
+| `highlight: { alias: { x: 'y' } }`      | `highlight: { languages: { x: 'y' } }`          |
+| `highlight: { optimise }`               | removed                                         |
+| `highlight: { highlighter }`            | a `// TODO(mdsvex-migrate)` comment and a note  |
+| `escapeSvelte` imported from `mdsvex`   | flagged                                         |
+
+A `highlighter` can't be rewritten safely. In next, `highlight` takes the
+function itself, `(code, { lang, meta, inline, filename }) => html`. It has to
+be synchronous and return plain HTML, with no `escapeSvelte` and no `{@html}`.
+The comment links to the
+[migration guide](https://mdsvex.com/docs#syntax-highlighting-in-0x).
+
+An alias to a Prism language that twinkleplop doesn't have, such as `markup`,
+gets a note too.
+
 ### Documents
 
 `migrate_frontmatter` renames a document's frontmatter `layout` key to
@@ -110,8 +133,8 @@ const notes = check_template(source);
 
 Every note has a `kind`, a `message`, and the 1 based `line` and `column` it
 refers to. The kinds are `select_template`, `layout_prop_forwarding`, `slot`,
-`legacy_props`, `template_key`, and `manual` for anything that couldn't be
-rewritten safely.
+`legacy_props`, `template_key`, `highlighter`, `highlight_language`,
+`escape_svelte`, and `manual` for anything that couldn't be rewritten safely.
 
 ## Notes
 

@@ -255,6 +255,137 @@ export default config;
 	});
 });
 
+describe("config: highlight", () => {
+	const head = "import { mdsvex } from 'mdsvex';\n";
+
+	test("highlight: false is kept", () => {
+		const source = head + "mdsvex({ highlight: false });";
+		expect(config_without_notes(source)).toBe(source);
+	});
+
+	test("alias becomes languages", () => {
+		expect(
+			config_without_notes(
+				head + "mdsvex({ highlight: { alias: { yavascript: 'javascript', sv: 'svelte' } } });",
+			),
+		).toBe(head + "mdsvex({ highlight: { languages: { yavascript: 'javascript', sv: 'svelte' } } });");
+	});
+
+	test("shorthand alias keeps its variable", () => {
+		expect(
+			config_without_notes(
+				head + "const alias = { yavascript: 'js' };\nmdsvex({ highlight: { alias } });",
+			),
+		).toBe(head + "const alias = { yavascript: 'js' };\nmdsvex({ highlight: { languages: alias } });");
+	});
+
+	test("an alias to a language twinkleplop lacks is flagged", () => {
+		const { code, notes } = migrate_config(
+			head + "mdsvex({ highlight: { alias: { vue: 'markup', x: 'vue', y: 'JSON' } } });",
+		);
+		expect(code).toBe(
+			head + "mdsvex({ highlight: { languages: { vue: 'markup', x: 'vue', y: 'JSON' } } });",
+		);
+		expect(kinds(notes)).toEqual(["highlight_language"]);
+		expect(notes[0].message).toContain("`markup` is a Prism language");
+	});
+
+	test("optimise is removed", () => {
+		expect(
+			config_without_notes(head + "mdsvex({ highlight: { optimise: false, alias: { a: 'ts' } } });"),
+		).toBe(head + "mdsvex({ highlight: { languages: { a: 'ts' } } });");
+	});
+
+	test("a highlight object that only held optimise is removed", () => {
+		expect(
+			config_without_notes(head + "mdsvex({ extensions: ['.svx'], highlight: { optimise: true } });"),
+		).toBe(head + "mdsvex({ extensions: ['.svx'] });");
+	});
+
+	test("a highlighter gets a todo comment above it", () => {
+		const source = `${head}mdsvex({
+	highlight: {
+		highlighter: async (code, lang) => \`{@html \\\`\${escapeSvelte(shiki(code, lang))}\\\`}\`,
+		optimise: false,
+	},
+});`;
+		const { code, notes } = migrate_config(source);
+		expect(code).toBe(`${head}mdsvex({
+	highlight: {
+		// TODO(mdsvex-migrate): pass a synchronous highlighter as \`highlight\` itself, returning plain HTML without escapeSvelte or {@html}. See https://mdsvex.com/docs#syntax-highlighting-in-0x
+		highlighter: async (code, lang) => \`{@html \\\`\${escapeSvelte(shiki(code, lang))}\\\`}\`,
+	},
+});`);
+		expect(kinds(notes)).toEqual(["highlighter"]);
+		expect(notes[0].line).toBe(4);
+		expect(notes[0].message).toContain("(code, { lang, meta, inline, filename }) => html");
+	});
+
+	test("a highlighter on the options line gets a block comment", () => {
+		const { code } = migrate_config(head + "mdsvex({ highlight: { highlighter } });");
+		expect(code).toBe(
+			head +
+				"mdsvex({ highlight: { /* TODO(mdsvex-migrate): pass a synchronous highlighter as `highlight` itself, returning plain HTML without escapeSvelte or {@html}. See https://mdsvex.com/docs#syntax-highlighting-in-0x */ highlighter } });",
+		);
+	});
+
+	test("highlight options in a variable are followed", () => {
+		expect(
+			config_without_notes(
+				head + "const highlight = { alias: { a: 'ts' }, optimise: false };\nmdsvex({ highlight });",
+			),
+		).toBe(head + "const highlight = { languages: { a: 'ts' } };\nmdsvex({ highlight });");
+	});
+
+	test("highlight and layout migrate together", () => {
+		expect(
+			config_without_notes(
+				head + "mdsvex({ layout: './L.svelte', highlight: { alias: { a: 'ts' } } });",
+			),
+		).toBe(
+			head + "mdsvex({ templates: { default: './L.svelte' }, highlight: { languages: { a: 'ts' } } });",
+		);
+	});
+
+	test("both alias and languages is left alone", () => {
+		const source = head + "mdsvex({ highlight: { alias: { a: 'ts' }, languages: {} } });";
+		const { code, notes } = migrate_config(source);
+		expect(code).toBe(source);
+		expect(kinds(notes)).toEqual(["manual"]);
+	});
+
+	test("a highlight value it can't read is a note", () => {
+		const source = head + "mdsvex({ highlight: make_highlight() });";
+		const { code, notes } = migrate_config(source);
+		expect(code).toBe(source);
+		expect(kinds(notes)).toEqual(["manual"]);
+	});
+
+	test("an escapeSvelte import is flagged", () => {
+		const source =
+			"import { mdsvex, escapeSvelte } from 'mdsvex';\nconst f = (c) => escapeSvelte(c);\nmdsvex({ extensions: ['.svx'] });";
+		const { code, notes } = migrate_config(source);
+		expect(code).toBe(source);
+		expect(kinds(notes)).toEqual(["escape_svelte"]);
+		expect(notes[0]).toMatchObject({ line: 1, column: 18 });
+	});
+
+	test("an escapeSvelte require is flagged", () => {
+		const { notes } = migrate_config(
+			"const { mdsvex, escapeSvelte } = require('mdsvex');\nmodule.exports = { extensions: ['.svx'] };",
+		);
+		expect(kinds(notes)).toEqual(["escape_svelte"]);
+	});
+
+	test("escapeSvelte through a namespace is flagged", () => {
+		const { notes } = migrate_config(
+			"import * as m from 'mdsvex';\nconst f = (c) => m.escapeSvelte(c);\nm.mdsvex({});",
+		);
+		expect(kinds(notes)).toEqual(["escape_svelte"]);
+		expect(notes[0].line).toBe(2);
+	});
+});
+
 describe("config: notes", () => {
 	test("layoutPropForwarding is flagged", () => {
 		const { code, notes } = migrate_config(

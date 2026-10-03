@@ -4,6 +4,17 @@ import {
 	type CompileOptions,
 	type ComponentMode,
 } from 'mdsvex/compile';
+import {
+	create_highlight,
+	default_aliases,
+	default_annotations,
+	language_loaders,
+	shiki_notation,
+	type AnnotationPlugin,
+	type HighlightConfig,
+	type LanguageModule,
+	type RenderOptions,
+} from 'mdsvex/highlight';
 import { mappings_to_v3, type SourceMapV3 } from '@mdsvex/render/sourcemap';
 import { strip_types } from './typescript_strip_types';
 
@@ -20,6 +31,33 @@ const DEFAULT_EXTENSIONS = ['.svx', '.md'];
 
 export type { ComponentMode };
 
+/** an annotation plugin by name, the built-in verbs and shiki_notation */
+export type AnnotationName =
+	| 'hl'
+	| 'em'
+	| 'focus'
+	| 'dim'
+	| 'add'
+	| 'del'
+	| 'mod'
+	| 'err'
+	| 'warn'
+	| 'info'
+	| 'shiki_notation';
+
+/**
+ * the vite plugin highlight options json can hold, every bundled language is
+ * available and languages only adds aliases
+ */
+export interface ReplHighlight {
+	languages?: Record<string, string>;
+	default_language?: string;
+	on_unknown_language?: 'plain' | 'throw';
+	line_numbers?: boolean | { start?: number };
+	annotations?: AnnotationName[] | false;
+	render?: RenderOptions;
+}
+
 /** the shape of mdsvex.config.json, mirroring the vite plugin options */
 export interface ReplConfig {
 	extensions?: string[];
@@ -29,6 +67,7 @@ export interface ReplConfig {
 	>;
 	components?: string;
 	component_mode?: ComponentMode;
+	highlight?: ReplHighlight | false;
 }
 
 interface TemplateTarget {
@@ -47,6 +86,7 @@ export interface ResolvedConfig {
 	/** directives modules by the virtual id documents import them from */
 	directives: Map<string, TemplateTarget>;
 	component_mode: ComponentMode;
+	highlight: ReplHighlight | false;
 }
 
 /** template options follow the design doc ahead of core, which ignores them for now */
@@ -89,6 +129,7 @@ function empty_config(): ResolvedConfig {
 		components: null,
 		directives: new Map(),
 		component_mode: 'markdown',
+		highlight: {},
 	};
 }
 
@@ -117,6 +158,8 @@ export function prepare(files: FileMap): Prepared {
 		}
 
 		if (parsed.component_mode) config.component_mode = parsed.component_mode;
+		if (parsed.highlight !== undefined)
+			config.highlight = check_highlight(parsed.highlight);
 
 		for (const [name, entry] of Object.entries(parsed.templates ?? {})) {
 			const { component, components } =
@@ -180,6 +223,148 @@ export function prepare(files: FileMap): Prepared {
 	}
 
 	return { config, options, error: null };
+}
+
+const PLUGIN_OPTIONS = ['twoslash', 'parse_meta'];
+
+function check_highlight(highlight: unknown): ReplHighlight | false {
+	if (highlight === false) return false;
+	if (typeof highlight !== 'object' || highlight === null)
+		throw new Error(`${CONFIG_FILE}: highlight must be an object or false`);
+	for (const key of PLUGIN_OPTIONS) {
+		if (key in highlight)
+			throw new Error(
+				`${CONFIG_FILE}: highlight.${key} is not available in the playground`
+			);
+	}
+	const { languages, annotations } = highlight as ReplHighlight;
+	for (const [name, target] of Object.entries(languages ?? {})) {
+		if (typeof target !== 'string')
+			throw new Error(
+				`${CONFIG_FILE}: highlight.languages.${name} must name another language, the playground has every bundled language`
+			);
+	}
+	if (annotations !== undefined && annotations !== false) {
+		if (!Array.isArray(annotations))
+			throw new Error(
+				`${CONFIG_FILE}: highlight.annotations must be a list of annotation names or false`
+			);
+		for (const name of annotations) annotation_plugin(name);
+	}
+	return highlight as ReplHighlight;
+}
+
+/** the built-in annotations by their verb */
+const ANNOTATIONS = new Map<string, AnnotationPlugin>(
+	default_annotations.map((plugin) => [plugin.verbs[0], plugin])
+);
+
+function annotation_plugin(name: string): AnnotationPlugin {
+	if (name === 'shiki_notation') return shiki_notation();
+	const plugin = ANNOTATIONS.get(name);
+	if (plugin === undefined)
+		throw new Error(
+			`${CONFIG_FILE}: highlight.annotations has no annotation named ${name}, use ${[...ANNOTATIONS.keys(), 'shiki_notation'].join(', ')}`
+		);
+	return plugin;
+}
+
+const FENCE_LANG = /(?:```+|~~~+)[ \t]*([^\s`{]+)/g;
+const INLINE_LANG = /`#!([^\s`]+)/g;
+
+/** the bundled language a name reaches through aliases, null for none */
+function bundled(name: string, aliases: Record<string, string>): string | null {
+	const seen = new Set<string>();
+	let at: string | undefined = name;
+	while (at !== undefined && !seen.has(at)) {
+		seen.add(at);
+		if (at in language_loaders) return at;
+		const lower = at.toLowerCase();
+		if (lower in language_loaders) return lower;
+		at =
+			aliases[at] ??
+			aliases[lower] ??
+			default_aliases[at] ??
+			default_aliases[lower];
+	}
+	return null;
+}
+
+/** the bundled languages a document names in fences and #! code spans */
+export function languages_used(
+	source: string,
+	highlight: ReplHighlight
+): Set<string> {
+	const aliases = highlight.languages ?? {};
+	const names = new Set<string>();
+	for (const match of source.matchAll(FENCE_LANG)) names.add(match[1]);
+	for (const match of source.matchAll(INLINE_LANG)) names.add(match[1]);
+	// aliases the config names must reach a loaded language to be valid
+	for (const target of Object.values(aliases)) names.add(target);
+	if (highlight.default_language) names.add(highlight.default_language);
+
+	const used = new Set<string>();
+	for (const name of names) {
+		const language = bundled(name, aliases);
+		if (language !== null) used.add(language);
+	}
+	// markdown highlights its front matter as yaml
+	if (used.has('markdown')) used.add('yaml');
+	return used;
+}
+
+const loaded = new Map<string, Promise<LanguageModule>>();
+let current: { key: string; config: HighlightConfig } | null = null;
+
+/**
+ * the highlight option for a document, loading only the languages it uses,
+ * the vite plugin loads every language once instead
+ */
+export async function highlight_for(
+	source: string,
+	config: ResolvedConfig
+): Promise<HighlightConfig | false> {
+	const options = config.highlight;
+	if (options === false) return false;
+
+	const names = [...languages_used(source, options)];
+	const modules = await Promise.all(
+		names.map((name) => {
+			let module = loaded.get(name);
+			if (module === undefined) {
+				module = language_loaders[name]();
+				loaded.set(name, module);
+				// a failed fetch is tried again by the next compile
+				module.catch(() => loaded.delete(name));
+			}
+			return module;
+		})
+	);
+
+	// every loaded language, so the config is rebuilt only when one is added
+	const languages: Record<string, LanguageModule | string> = {};
+	for (let i = 0; i < names.length; i++) languages[names[i]] = modules[i];
+	for (const [name, module] of loaded) {
+		if (!(name in languages)) {
+			const settled = await module.catch(() => null);
+			if (settled !== null) languages[name] = settled;
+		}
+	}
+	const key =
+		JSON.stringify(options) + '\0' + Object.keys(languages).sort().join();
+	if (current?.key === key) return current.config;
+
+	Object.assign(languages, options.languages);
+	const highlight = create_highlight({
+		...options,
+		languages,
+		annotations:
+			options.annotations === undefined || options.annotations === false
+				? options.annotations
+				: options.annotations.map(annotation_plugin),
+	});
+	current = { key, config: highlight };
+	return highlight;
 }
 
 function target_of(
