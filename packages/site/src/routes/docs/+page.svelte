@@ -19,6 +19,7 @@ const nav = [
 		[
 			["SvelteKit", "docs#sveltekit", false],
 			["Vite", "docs#vite-without-sveltekit", false],
+			["highlighting", "docs#highlighting-code", false],
 			["compile", "docs#compile", true],
 		],
 	],
@@ -33,6 +34,7 @@ const nav = [
 			["components", "docs#components", true],
 			["component_mode", "docs#component_mode", true],
 			["parse_plugins", "docs#parse_plugins", true],
+			["highlight", "docs#highlight", true],
 		],
 	],
 	[
@@ -78,12 +80,29 @@ const nav = [
 		],
 	],
 	[
+		"Highlighting",
+		"docs#syntax-highlighting",
+		[
+			["themes", "docs#themes", false],
+			["options", "docs#highlight-options", false],
+			["languages", "docs#languages", false],
+			["fence meta", "docs#fence-meta", false],
+			["code directives", "docs#code-directives", false],
+			["inline code", "docs#inline-code", false],
+			["code block components", "docs#code-block-components", false],
+			["custom highlighters", "docs#custom-highlighters", false],
+			["twoslash", "docs#twoslash", false],
+			["with compile", "docs#highlighting-with-compile", false],
+		],
+	],
+	[
 		"Migrating",
 		"docs#migrating-from-mdsvex-0x",
 		[
 			["run the migrator", "docs#run-the-migrator", false],
 			["what changes", "docs#what-changes", false],
 			["layout components", "docs#layout-components", false],
+			["syntax highlighting", "docs#syntax-highlighting-in-0x", false],
 		],
 	],
 	["Limitations", "docs#limitations"],
