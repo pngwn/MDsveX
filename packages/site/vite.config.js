@@ -1,19 +1,18 @@
 import { extname } from "node:path";
 import { sveltekit } from "@sveltejs/kit/vite";
 import { compile } from "mdsvex";
-import { refractor } from "refractor";
-import { toHtml } from "hast-util-to-html";
+import { create_highlight, load_default_languages } from "mdsvex/highlight";
 import GithubSlugger from "github-slugger";
 
-// prism-svelte extends the global Prism, and refractor is a Prism instance
-globalThis.Prism = refractor;
-await import("prism-svelte");
-delete globalThis.Prism;
-
-// prism markdown extends markup, so it covers the tags in svx too
-refractor.alias({
-	typescript: ["sig"],
-	markdown: ["mdx", "svx", "mdsvex"],
+// svx is markdown with svelte in it, sig fences hold typescript signatures
+const highlight = create_highlight({
+	languages: {
+		...(await load_default_languages()),
+		svx: "markdown",
+		mdsvex: "markdown",
+		mdx: "markdown",
+		sig: "typescript",
+	},
 });
 
 /** ids and anchors the docs nav links to and scroll tracking reads */
@@ -37,21 +36,6 @@ function heading_anchors() {
 	};
 }
 
-const entities = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"' };
-
-function highlight(html) {
-	return html.replace(
-		/<pre><code class="language-([^"]+)">([^]*?)<\/code><\/pre>/g,
-		(block, lang, escaped) => {
-			if (!refractor.registered(lang)) return block;
-			const code = escaped.replace(/&(?:amp|lt|gt|quot);/g, (e) => entities[e]);
-			const tokens = toHtml(refractor.highlight(code, lang));
-			// the docs style pre.language-*
-			return `<pre class="language-${lang}"><code class="language-${lang}">${tokens}</code></pre>`;
-		},
-	);
-}
-
 function mdsvex_transform() {
 	return {
 		name: "mdsvex-svtext",
@@ -60,8 +44,10 @@ function mdsvex_transform() {
 
 			const { code: html } = compile(code, {
 				parse_plugins: [heading_anchors()],
+				highlight,
+				filename: id,
 			});
-			return `export default ${JSON.stringify(highlight(html))};`;
+			return `export default ${JSON.stringify(html)};`;
 		},
 	};
 }

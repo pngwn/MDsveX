@@ -1,4 +1,5 @@
 <script>
+import "@twinkleplop/theme-ayu/dark";
 import { page } from "$app/state";
 import Nav from "../components/Nav.svelte";
 
