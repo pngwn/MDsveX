@@ -273,8 +273,9 @@ export function make_doc_run(arm, mode, src) {
 			return () => mappings_to_v3(mappings, src, code, VITE_ID);
 		}
 		case 'vite-transform': {
-			// the pre transform vite calls per svx file, the post transform needs a live svelte compile
-			const [pre] = arm.mdsvex();
+			// the pre transform vite calls per svx file, the post transform needs a live svelte compile,
+			// highlighting loads languages asynchronously and this loop never yields to let it finish
+			const [pre] = arm.mdsvex({ highlight: false });
 			return () => pre.transform(src, VITE_ID);
 		}
 		default:
