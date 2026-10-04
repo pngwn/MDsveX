@@ -7,7 +7,9 @@ import {
 	TEMPLATE_DIRECTIVES_PREFIX,
 	TEMPLATE_PREFIX,
 	compile_markdown,
+	highlight_for,
 	is_markdown,
+	languages_used,
 	prepare,
 	resolve_virtual,
 	scan_exports,
@@ -262,6 +264,75 @@ describe('compile_markdown', () => {
 		expect(chained.sources).toEqual(['App.svx']);
 		expect(decode(chained.mappings)[0].length).toBeGreaterThan(0);
 		expect(code).toContain('hello');
+	});
+});
+
+describe('highlight', () => {
+	const config_with = (highlight: unknown) =>
+		prepare(files({ 'mdsvex.config.json': JSON.stringify({ highlight }) }));
+
+	test('highlighting is on without a config, as in the vite plugin', async () => {
+		const { config, options } = prepare(files({}));
+		const source = '```js\nlet a = { b };\n```';
+		const highlight = await highlight_for(source, config);
+		const { code } = compile_markdown(source, 'App.svx', {
+			...options,
+			highlight,
+		});
+		expect(code).toContain('<pre class="twinkleplop language-js"');
+		expect(code).toContain('<span class="tok keyword">let</span>');
+		expect(code).toContain('&#123;');
+	});
+
+	test('only the languages a document names are loaded', () => {
+		const used = languages_used(
+			'```ts title="x"\na\n```\n\n~~~Dockerfile\nb\n~~~\n\n`#!sh ls`\n\n```nope\n```\n\n```\nplain\n```',
+			{}
+		);
+		expect([...used].sort()).toEqual(['bash', 'dockerfile', 'typescript']);
+	});
+
+	test('config aliases and markdown front matter are followed', () => {
+		const used = languages_used('```vue\n```\n\n```md\n```', {
+			languages: { vue: 'html' },
+		});
+		expect([...used].sort()).toEqual(['html', 'markdown', 'yaml']);
+	});
+
+	test('the options mirror the plugin ones', async () => {
+		const { config, error } = config_with({
+			languages: { vue: 'html' },
+			line_numbers: true,
+			annotations: ['hl', 'shiki_notation'],
+		});
+		expect(error).toBe(null);
+		const source = '```vue\n<p>a</p> <!-- [!code ++] -->\n```';
+		const highlight = await highlight_for(source, config);
+		const { code } = compile_markdown(source, 'App.svx', { highlight });
+		expect(code).toContain('language-vue');
+		expect(code).toContain('<span class="ln">1</span>');
+		expect(code).toContain('diff-add');
+		expect(code).not.toContain('[!code ++]');
+	});
+
+	test('highlight: false renders plain code', async () => {
+		const { config } = config_with(false);
+		const source = '```js\nlet a;\n```';
+		expect(await highlight_for(source, config)).toBe(false);
+		const { code } = compile_markdown(source, 'App.svx', { highlight: false });
+		expect(code).toBe('<pre><code class="language-js">let a;</code></pre>');
+	});
+
+	test('plugin only options are errors', () => {
+		expect(config_with({ twoslash: true }).error?.message).toBe(
+			'mdsvex.config.json: highlight.twoslash is not available in the playground'
+		);
+		expect(config_with({ annotations: ['nope'] }).error?.message).toContain(
+			'has no annotation named nope'
+		);
+		expect(
+			config_with({ languages: { zig: { tokenize: 1 } } }).error?.message
+		).toContain('highlight.languages.zig must name another language');
 	});
 });
 

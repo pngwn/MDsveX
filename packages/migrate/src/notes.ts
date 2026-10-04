@@ -5,6 +5,9 @@ export type NoteKind =
 	| "slot"
 	| "legacy_props"
 	| "template_key"
+	| "highlighter"
+	| "highlight_language"
+	| "escape_svelte"
 	| "manual";
 
 /** something the migration leaves for a person to change */

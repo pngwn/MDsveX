@@ -23,6 +23,22 @@ It started as a copy of the [Svelte playground](https://github.com/sveltejs/svel
   ```
 
   Templates and component modules are scanned for their export names without being evaluated. `<script module>` is scanned for components, the whole file for `.js` and `.ts`, and `export *` is followed through the workspace. The REPL then passes `compile()` the plain options from `design/templates-and-components.md` and resolves `mdsvex:template/<name>` and `mdsvex:components` to workspace files. Specifiers that aren't workspace files are treated as npm packages.
+- **Syntax highlighting.** Code is highlighted with twinkleplop, as in the Vite plugin. `highlight` in `mdsvex.config.json` takes the plugin's options that JSON can hold:
+
+  ```json
+  {
+  	"highlight": {
+  		"languages": { "vue": "html" },
+  		"default_language": "ts",
+  		"on_unknown_language": "plain",
+  		"line_numbers": true,
+  		"annotations": ["hl", "add", "del", "shiki_notation"],
+  		"render": { "indent_guides": true }
+  	}
+  }
+  ```
+
+  Every bundled language is available, so `languages` only holds aliases. `annotations` names the built-in annotations and `shiki_notation`. `false` turns highlighting off. `twoslash` and `parse_meta` aren't available. The worker loads only the languages a document names, the first time it sees them. mdsvex adds no CSS, so pass a theme stylesheet as `injected_css` to colour the preview.
 - **URL state.** `encode_state` and `decode_state` turn a whole playground into a gzipped base64url string for a URL hash.
 
 ## What it drops

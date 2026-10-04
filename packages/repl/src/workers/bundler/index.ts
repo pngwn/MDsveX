@@ -29,6 +29,7 @@ import {
 import { is_sveltekit_virtual_module } from '../sveltekit';
 import {
 	compile_markdown,
+	highlight_for,
 	is_markdown,
 	prepare,
 	resolve_virtual,
@@ -151,16 +152,17 @@ async function get_bundle(
 			// a package specifier, resolved as if the document imported it
 			return this.resolve(target.specifier, importer, { skipSelf: true });
 		},
-		transform(code, id) {
+		async transform(code, id) {
 			if (uid !== current_id) throw ABORT;
 			if (!id.startsWith(VIRTUAL) || !is_markdown(id, config)) return null;
 
 			const name = id.slice(VIRTUAL.length + 1);
-			const { code: svelte_code, map } = compile_markdown(
-				code,
-				name,
-				prepared.options
-			);
+			const highlight = await highlight_for(code, config);
+			if (uid !== current_id) throw ABORT;
+			const { code: svelte_code, map } = compile_markdown(code, name, {
+				...prepared.options,
+				highlight,
+			});
 			return { code: svelte_code, map: map as SourceMapInput };
 		},
 	};
