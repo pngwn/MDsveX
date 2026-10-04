@@ -175,6 +175,79 @@ describe("with a plugin manifest", () => {
 	});
 });
 
+describe("live expressions in code", () => {
+	const LIVE = [
+		"<script lang=\"ts\">",
+		"  let install_command = 'pnpm add';",
+		"  let count = 1;",
+		"  let unread = 2;",
+		"</script>",
+		"",
+		"```sh",
+		"{install_command} @pkg/my-pkg # [!eval]",
+		"{count.nope} # [!eval]",
+		"```",
+		"",
+		"```js eval",
+		"run({install_command})",
+		"```",
+		"",
+	].join("\n");
+	let p: Project;
+	beforeAll(() => {
+		p = project({ ...APP, "src/live.svx": LIVE });
+		p.write("node_modules/.mdsvex/manifest.json", manifest(p.root));
+	});
+	afterAll(() => p.dispose());
+
+	it("checks a live expression", () => {
+		expect(p.diagnostics("src/live.svx").map((d) => [d.text, d.message])).toEqual([
+			["nope", "Property 'nope' does not exist on type 'number'."],
+		]);
+	});
+
+	it("hovers a live expression", () => {
+		expect(p.hover("src/live.svx", "install_command} @")).toBe(
+			"let install_command: string",
+		);
+		expect(p.hover("src/live.svx", "install_command})")).toBe(
+			"let install_command: string",
+		);
+	});
+
+	it("renames through a live expression", () => {
+		const at = (needle: string) => LIVE.indexOf(needle);
+		expect(p.rename("src/live.svx", "install_command} @").sort()).toEqual(
+			[
+				["src/live.svx", at("install_command =")],
+				["src/live.svx", at("install_command} @")],
+				["src/live.svx", at("install_command})")],
+			].sort(),
+		);
+	});
+
+	it("counts a live expression as a read", () => {
+		const unread = p
+			.suggestions("src/live.svx")
+			.filter((d) => d.code === 6133)
+			.map((d) => d.text);
+		expect(unread).toEqual(["unread"]);
+	});
+
+	it("reads nothing live when the plugin renders code plain", () => {
+		const q = project({ ...APP, "src/live.svx": LIVE });
+		try {
+			q.write(
+				"node_modules/.mdsvex/manifest.json",
+				JSON.stringify({ ...JSON.parse(manifest(q.root)), highlight: false }),
+			);
+			expect(q.diagnostics("src/live.svx")).toEqual([]);
+		} finally {
+			q.dispose();
+		}
+	});
+});
+
 describe("without a config", () => {
 	let p: Project;
 	beforeAll(() => {

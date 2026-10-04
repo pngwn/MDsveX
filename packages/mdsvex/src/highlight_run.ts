@@ -8,10 +8,12 @@ import type {
 } from '@mdsvex/render/html-cursor';
 import {
 	escape_braces,
+	meta_parts,
 	pre_props,
 	read_meta,
 	split_element,
 } from './code_meta';
+import { has_eval_flag, LiveCodeError } from './live_code';
 
 export type { HighlightedBlock, HighlightedCode };
 
@@ -44,7 +46,8 @@ export type Highlighter = (
 export type HighlightWarning =
 	| HighlightWarningCode
 	| 'unknown_language'
-	| 'annotation';
+	| 'annotation'
+	| 'eval_unsupported';
 
 /** @internal what a highlight config tells the compile it runs in */
 export interface HighlightContext {
@@ -87,6 +90,17 @@ function returned(out: unknown): string | null {
 	return out;
 }
 
+/**
+ * the eval flag needs mdsvex to render through twinkleplop, a custom
+ * highlighter or twoslash renders the braces as text
+ */
+export function unsupported_eval(ctx: HighlightContext): void {
+	ctx.warn(
+		'eval_unsupported',
+		'the highlighter of this fence does not support the eval flag, its braces render as text'
+	);
+}
+
 /** a custom highlighter as a config, mdsvex escapes its braces and splits its <pre> */
 export function custom_config(highlight: Highlighter): HighlightConfig {
 	let config = custom_configs.get(highlight);
@@ -97,6 +111,11 @@ export function custom_config(highlight: Highlighter): HighlightConfig {
 				highlight(code, { lang, meta, inline: false, filename: ctx.filename })
 			);
 			if (out === null) return null;
+			if (
+				lang === 'eval' ||
+				(meta.indexOf('eval') !== -1 && has_eval_flag(meta_parts(meta)))
+			)
+				unsupported_eval(ctx);
 			const html = escape_braces(out);
 			const split = split_element(html, 'pre');
 			const attributes = split === null ? null : split.attributes;
@@ -108,6 +127,8 @@ export function custom_config(highlight: Highlighter): HighlightConfig {
 				after: '',
 				props,
 				code,
+				code_template: null,
+				live: null,
 				dropped,
 			};
 		},
@@ -196,22 +217,77 @@ export class HighlightRun implements CodeHighlighter, HighlightContext {
 		this.warnings.push({ code, message, start });
 	}
 
-	/** the error gains where its code is, as markdown-core words it */
+	/**
+	 * the error keeps its class and gains where its code is, as markdown-core
+	 * words it, highlight_error_at gives the position
+	 */
 	private located(e: unknown, what: string): unknown {
 		if (!(e instanceof Error)) return e;
-		let line = 1;
 		const src = this.source;
+		let line = 1;
+		let line_start = 0;
 		for (
 			let i = src.indexOf('\n');
 			i !== -1 && i < this.at;
 			i = src.indexOf('\n', i + 1)
-		)
+		) {
 			line++;
+			line_start = i + 1;
+		}
 		const where =
 			this.filename === undefined ? `line ${line}` : `${this.filename}:${line}`;
 		e.message += ` (${what} at ${where})`;
+		error_at.set(
+			e,
+			e instanceof LiveCodeError
+				? live_position(src, line, e)
+				: { line, column: this.at - line_start + 1 }
+		);
 		return e;
 	}
+}
+
+const error_at = new WeakMap<Error, { line: number; column: number }>();
+
+/**
+ * where in the source a highlight error is, line and column from 1, null
+ * for an error no highlighter threw
+ */
+export function highlight_error_at(
+	e: unknown
+): { line: number; column: number } | null {
+	return (e instanceof Error && error_at.get(e)) || null;
+}
+
+/**
+ * the position of a group in the fence opening on fence_line, a code line is
+ * the end of its source line once quote markers and indent go
+ */
+function live_position(
+	source: string,
+	fence_line: number,
+	e: LiveCodeError
+): { line: number; column: number } {
+	const { code, offset } = e;
+	let code_line = 0;
+	for (
+		let i = code.indexOf('\n');
+		i !== -1 && i < offset;
+		i = code.indexOf('\n', i + 1)
+	)
+		code_line++;
+	let code_end = code.indexOf('\n', offset);
+	if (code_end === -1) code_end = code.length;
+	const line = fence_line + 1 + code_line;
+	let start = 0;
+	for (let l = 1; l < line; l++) {
+		const nl = source.indexOf('\n', start);
+		if (nl === -1) return { line: fence_line, column: 1 };
+		start = nl + 1;
+	}
+	let end = source.indexOf('\n', start);
+	if (end === -1) end = source.length;
+	return { line, column: Math.max(1, end - start - (code_end - offset) + 1) };
 }
 
 /** null when the option highlights nothing */

@@ -29,6 +29,7 @@ import {
 import type { FrontmatterOptions } from './frontmatter';
 import { scope_of } from './root_scope';
 import { highlight_run } from './highlight_run';
+export { highlight_error_at } from './highlight_run';
 import type {
 	HighlightOption,
 	HighlightRun,

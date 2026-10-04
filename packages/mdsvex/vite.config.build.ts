@@ -9,6 +9,7 @@ export default defineConfig({
 				main: resolve(__dirname, "tsc/main.js"),
 				compile: resolve(__dirname, "tsc/compile.js"),
 				highlight: resolve(__dirname, "tsc/highlight.js"),
+				highlight_languages: resolve(__dirname, "tsc/highlight_languages.js"),
 			},
 			formats: ["es"],
 		},

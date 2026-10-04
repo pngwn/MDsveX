@@ -1,9 +1,16 @@
 // mdsvex/highlight, twinkleplop as a synchronous highlight config, every
 // language loads in load_default_languages, the only asynchronous part
 
-import { to_html, to_parts, visible_text } from '@twinkleplop/core';
+import {
+	OVERLAY_VERBATIM,
+	to_html,
+	to_parts,
+	visible_text,
+	visible_text_map,
+} from '@twinkleplop/core';
 import type {
 	AnnotationIssue,
+	AnnotationOutput,
 	AnnotationPlugin,
 	HookResult,
 	LanguageFn,
@@ -11,6 +18,8 @@ import type {
 	OverlayItem,
 	RenderOptions,
 	TokenizeResult,
+	VerbatimContribution,
+	VisibleText,
 } from '@twinkleplop/core';
 import { parse_meta } from '@twinkleplop/markdown-core';
 import type { ParsedMeta } from '@twinkleplop/markdown-core';
@@ -32,14 +41,24 @@ import type {
 	HighlightedBlock,
 	HighlightedCode,
 } from './highlight_run';
+import { unsupported_eval } from './highlight_run';
 import {
 	attribute_text,
 	escape_braces,
 	escape_text,
+	meta_parts,
 	pre_props,
 	read_meta,
 	split_element,
 } from './code_meta';
+import {
+	fence_groups,
+	group_expression,
+	has_eval_flag,
+	live_groups,
+	LiveCodeError,
+	template_text,
+} from './live_code';
 
 export type { HighlightConfig, CodeInfo, Highlighter } from './highlight_run';
 export type { AnnotationPlugin, RenderOptions } from '@twinkleplop/core';
@@ -81,6 +100,67 @@ export interface HighlightOptions {
 	twoslash?: false | Record<string, HtmlHighlighter>;
 }
 
+/** the fence being tokenized, the eval annotation reads its source */
+interface EvalRun {
+	source: string;
+	/** the eval fence flag makes every group live, markers add none */
+	flag: boolean;
+	/** the starts of the groups markers made live, a second marker adds none */
+	seen: Set<number>;
+	error: LiveCodeError | null;
+}
+
+let eval_run: EvalRun | null = null;
+
+function is_eval_marker(source: string, at: number): boolean {
+	if (!source.startsWith('[!eval', at)) return false;
+	const next = source.charCodeAt(at + 6);
+	// ] closes it, a space starts its args and # its id
+	return next === 93 || next === 32 || next === 35;
+}
+
+/**
+ * the [!eval] annotation of mdsvex, every top level {...} group in the range
+ * it selects becomes a live svelte expression, emitted verbatim
+ *
+ * @example
+ * console.log({ a: {some_val} }) // [!eval ="{some_val}"]
+ */
+export const eval_annotation: AnnotationPlugin = {
+	verbs: ['eval'],
+	handle({ range, marker }): AnnotationOutput | void {
+		const run = eval_run;
+		// markdown tokenizes its fences again with offsets into the fence and
+		// drops what they give, those offsets miss the marker in run.source
+		if (run === null || !is_eval_marker(run.source, marker.start)) return;
+		if (run.flag || run.error !== null) return;
+		const groups: number[] = [];
+		try {
+			live_groups(run.source, range.start, range.end, groups);
+		} catch (e) {
+			if (!(e instanceof LiveCodeError)) throw e;
+			run.error = e;
+			return;
+		}
+		if (groups.length === 0)
+			return {
+				issues: [
+					{
+						kind: 'anchor_not_found',
+						message: '[!eval] has no {...} group in its range',
+					},
+				],
+			};
+		const overlays: VerbatimContribution[] = [];
+		for (let i = 0; i < groups.length; i += 2) {
+			if (run.seen.has(groups[i])) continue;
+			run.seen.add(groups[i]);
+			overlays.push({ start: groups[i], end: groups[i + 1], verbatim: true });
+		}
+		return { overlays };
+	},
+};
+
 /** the twinkleplop annotation plugins mdsvex enables when annotations is not set */
 export const default_annotations: readonly AnnotationPlugin[] = [
 	hl,
@@ -93,6 +173,7 @@ export const default_annotations: readonly AnnotationPlugin[] = [
 	err,
 	warn,
 	info,
+	eval_annotation,
 ];
 
 /** aliases every highlight config has, for the languages it has */
@@ -123,89 +204,8 @@ let loading: Promise<Record<string, LanguageModule>> | null = null;
 export function load_default_languages(): Promise<
 	Record<string, LanguageModule>
 > {
-	return (loading ??= Promise.all([
-		import('@twinkleplop/bash'),
-		import('@twinkleplop/c'),
-		import('@twinkleplop/cpp'),
-		import('@twinkleplop/css'),
-		import('@twinkleplop/diff'),
-		import('@twinkleplop/dockerfile'),
-		import('@twinkleplop/dotenv'),
-		import('@twinkleplop/go'),
-		import('@twinkleplop/graphql'),
-		import('@twinkleplop/html'),
-		import('@twinkleplop/http'),
-		import('@twinkleplop/ini'),
-		import('@twinkleplop/javascript'),
-		import('@twinkleplop/json'),
-		import('@twinkleplop/jsonc'),
-		import('@twinkleplop/markdown'),
-		import('@twinkleplop/powershell'),
-		import('@twinkleplop/python'),
-		import('@twinkleplop/rust'),
-		import('@twinkleplop/shellsession'),
-		import('@twinkleplop/sql'),
-		import('@twinkleplop/svelte'),
-		import('@twinkleplop/toml'),
-		import('@twinkleplop/tsx'),
-		import('@twinkleplop/typescript'),
-		import('@twinkleplop/yaml'),
-	]).then(
-		([
-			bash,
-			c,
-			cpp,
-			css,
-			diff,
-			dockerfile,
-			dotenv,
-			go,
-			graphql,
-			html,
-			http,
-			ini,
-			javascript,
-			json,
-			jsonc,
-			markdown,
-			powershell,
-			python,
-			rust,
-			shellsession,
-			sql,
-			svelte,
-			toml,
-			tsx,
-			typescript,
-			yaml,
-		]) => ({
-			bash,
-			c,
-			cpp,
-			css,
-			diff,
-			dockerfile,
-			dotenv,
-			go,
-			graphql,
-			html,
-			http,
-			ini,
-			javascript,
-			json,
-			jsonc,
-			markdown,
-			powershell,
-			python,
-			rust,
-			shellsession,
-			sql,
-			svelte,
-			toml,
-			tsx,
-			typescript,
-			yaml,
-		}),
+	return (loading ??= import('./highlight_languages').then(
+		(m) => m.default_languages,
 		(e) => {
 			// a later call tries again
 			loading = null;
@@ -226,6 +226,8 @@ const NO_TOKENS: TokenizeResult = {
 	tokens: new Uint32Array(0),
 	token_types: [],
 };
+
+const NO_RANGES = new Uint32Array(0);
 
 const HIGHLIGHT_CLASS = 'highlight';
 const WORD_CLASS = 'highlighted-word';
@@ -367,6 +369,64 @@ function occurrences(source: string, text: string): number[] {
 		hits.push(at);
 		from = at + text.length;
 	}
+}
+
+/** the verbatim ranges of a tokenize result, start and end pairs in order */
+function verbatim_ranges(result: TokenizeResult): number[] {
+	const out: number[] = [];
+	const ranges = result.overlays?.ranges;
+	if (ranges === undefined) return out;
+	for (let r = 0; r < ranges.length; r += 4)
+		if ((ranges[r + 3] & OVERLAY_VERBATIM) !== 0)
+			out.push(ranges[r], ranges[r + 1]);
+	return out;
+}
+
+/** the offset in body, offset in code and length of each live group, null for none */
+function live_offsets(
+	code: string,
+	body: string,
+	groups: number[]
+): number[] | null {
+	const live: number[] = [];
+	let from = 0;
+	for (let i = 0; i < groups.length; i += 2) {
+		const start = groups[i];
+		const text = code.slice(start, groups[i + 1]);
+		// every other brace in body is a character reference
+		const at = body.indexOf('{', from);
+		if (at === -1 || !body.startsWith(text, at)) continue;
+		live.push(at, start, text.length);
+		from = at + text.length;
+	}
+	return live.length === 0 ? null : live;
+}
+
+/** the display text as a template literal with each live group interpolated */
+function code_template(
+	code: string,
+	visible: VisibleText,
+	groups: number[]
+): string {
+	const { text, segments } = visible;
+	let out = '`';
+	let last = 0;
+	let k = 0;
+	for (let i = 0; i < groups.length; i += 2) {
+		const start = groups[i];
+		const group = code.slice(start, groups[i + 1]);
+		while (k < segments.length && segments[k + 1] <= start) k += 3;
+		if (k >= segments.length || segments[k] > start) continue;
+		const at = segments[k + 2] + start - segments[k];
+		if (!text.startsWith(group, at)) continue;
+		out +=
+			template_text(text.slice(last, at)) +
+			'${' +
+			group_expression(group) +
+			'}';
+		last = at + group.length;
+	}
+	return out + template_text(text.slice(last)) + '`';
 }
 
 function merge_hook(theirs: HookResult | void, ours: HookResult): HookResult {
@@ -534,8 +594,13 @@ export function create_highlight(
 		meta: string,
 		ctx: HighlightContext
 	): HighlightedBlock {
-		const name = lang !== '' ? lang : (default_language ?? '');
+		// a fence with no language has no meta, so eval there is the flag
+		const bare_eval = lang === 'eval';
+		const name = lang !== '' && !bare_eval ? lang : (default_language ?? '');
 		const parsed = parse_meta(meta, fail);
+		const flag =
+			bare_eval ||
+			(meta.indexOf('eval') !== -1 && has_eval_flag(meta_parts(meta)));
 		let entry: Entry | null = null;
 		if (name !== '') {
 			entry = lookup(name) ?? null;
@@ -548,28 +613,85 @@ export function create_highlight(
 		let attributes: string | null;
 		let body: string;
 		let text = code;
+		let template: string | null = null;
+		let live: number[] | null = null;
 		const html = parsed.twoslash
 			? (entry?.twoslash ?? fail(`"${name}" has no twoslash highlighter`))
 			: entry?.html;
 		if (html) {
+			if (flag) unsupported_eval(ctx);
 			const out = escape_braces(html(code, render));
 			const split = split_element(out, 'pre');
 			attributes = split === null ? null : split.attributes;
 			body = split === null ? out : split.body;
 		} else {
 			const tokenize = entry?.tokenize;
-			const result = tokenize ? tokenize(code) : NO_TOKENS;
+			let result: TokenizeResult;
+			let groups: number[] | null = null;
+			// without a marker or the flag nothing in the fence is live
+			if (flag || code.indexOf('[!') !== -1) {
+				const prev = eval_run;
+				const run: EvalRun = {
+					source: code,
+					flag,
+					seen: new Set(),
+					error: null,
+				};
+				eval_run = run;
+				try {
+					result = tokenize ? tokenize(code) : NO_TOKENS;
+				} finally {
+					eval_run = prev;
+				}
+				if (run.error !== null) throw run.error;
+				if (flag) {
+					groups = fence_groups(
+						code,
+						result.overlays?.skip_ranges ?? NO_RANGES
+					);
+					if (groups.length !== 0) {
+						const items: OverlayItem[] = render.overlays
+							? [...render.overlays]
+							: [];
+						for (let i = 0; i < groups.length; i += 2)
+							items.push({
+								start: groups[i],
+								end: groups[i + 1],
+								verbatim: true,
+							});
+						// a parse_meta hook may hand back an object it keeps
+						render = { ...render, overlays: items };
+					}
+				} else groups = verbatim_ranges(result);
+				if (groups.length === 0) groups = null;
+			} else result = tokenize ? tokenize(code) : NO_TOKENS;
 			const parts = to_parts(code, result, render);
 			attributes = attribute_text(parts.attributes);
 			body = parts.body;
-			text = visible_text(code, result, render);
+			if (groups === null) text = visible_text(code, result, render);
+			else {
+				live = live_offsets(code, body, groups);
+				const visible = visible_text_map(code, result, render);
+				text = visible.text;
+				template = code_template(code, visible, groups);
+			}
 		}
 		const [before, after] = figure(name, parsed);
 		const info = read_meta(meta);
 		info.title = parsed.title;
 		info.caption = parsed.caption;
 		const { props, dropped } = pre_props(info);
-		return { before, attributes, body, after, props, code: text, dropped };
+		return {
+			before,
+			attributes,
+			body,
+			after,
+			props,
+			code: text,
+			code_template: template,
+			live,
+			dropped,
+		};
 	}
 
 	function inline(

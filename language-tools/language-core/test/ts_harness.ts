@@ -30,6 +30,10 @@ export interface Project {
 	hover(file: string, needle: string, delta?: number): string | undefined;
 	/** syntactic and semantic diagnostics of file, with the text they cover */
 	diagnostics(file: string): { text: string; message: string; code: number }[];
+	/** suggestion diagnostics of file, such as a declaration never read */
+	suggestions(file: string): { text: string; message: string; code: number }[];
+	/** where a rename at the first offset of needle in file edits, as file and offset */
+	rename(file: string, needle: string, delta?: number): [string, number][];
 	/** the program over the generated typescript, as the language server holds it */
 	program(): ts.Program;
 	dispose(): void;
@@ -136,6 +140,25 @@ export function project(files: Record<string, string>): Project {
 				message: ts.flattenDiagnosticMessageText(d.messageText, '\n'),
 				code: d.code,
 			}));
+		},
+		suggestions(file) {
+			const source = text(file);
+			return proxy.getSuggestionDiagnostics(join(root, file)).map((d) => ({
+				text: source.slice(d.start!, d.start! + d.length!),
+				message: ts.flattenDiagnosticMessageText(d.messageText, '\n'),
+				code: d.code,
+			}));
+		},
+		rename(file, needle, delta = 0) {
+			const at = text(file).indexOf(needle);
+			if (at < 0) throw new Error(`${needle} is not in ${file}`);
+			const found =
+				proxy.findRenameLocations(join(root, file), at + delta, false, false, {}) ??
+				[];
+			return found.map((l) => [
+				l.fileName.slice(root.length + 1),
+				l.textSpan.start,
+			]);
 		},
 		program: () => proxy.getProgram()!,
 		dispose() {

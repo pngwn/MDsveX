@@ -1453,6 +1453,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				components: root_modules?.components ?? [],
 				directives: root_modules?.directives ?? [],
 				documents: documents === null ? {} : Object.fromEntries(documents),
+				highlight:
+					written_highlight === false
+						? false
+						: typeof written_highlight === 'function'
+							? 'custom'
+							: 'twinkleplop',
 			};
 		},
 		(message) => log(message)
