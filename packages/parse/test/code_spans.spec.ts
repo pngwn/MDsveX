@@ -791,6 +791,10 @@ describe('unmatched code spans', () => {
 		],
 		['x ` c', 'root\n  paragraph\n    text "x "\n    text "`"\n    text " c"'],
 		[
+			'a ` \n\nb `',
+			'root\n  paragraph\n    text "a "\n    text "`"\n    text " "\n  line_break\n  line_break\n  paragraph\n    text "b "\n    text "`"',
+		],
+		[
 			'a ``b` c',
 			'root\n  paragraph\n    text "a "\n    text "``"\n    text "b"\n    text "`"\n    text " c"',
 		],

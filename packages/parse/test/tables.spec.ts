@@ -947,6 +947,9 @@ describe('unclosed delimiters revoked at a cell boundary', () => {
 		['| a |\n|---|\n| [2 |\n', '[2'],
 		['| a |\n|---|\n| x ^2 y |\n', 'x ^2 y'],
 		['| a |\n|---|\n| `2 |\n', '`2'],
+		['| a |\n|---|\n| x ` |\n', 'x `'],
+		['| a | b |\n|---|---|\n| ` x | y |\n', '` x|y'],
+		['| a |\n|---|\n| x ` \nfoo\n', 'x `|foo'],
 		['| a | b |\n|---|---|\n| ^2 | ~3\t|\n', '^2|~3'],
 	];
 
