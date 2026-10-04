@@ -1,8 +1,11 @@
 import { describe, test, expect } from 'vitest';
-import { parse_markdown_svelte, PFMParser } from '../src/main';
+import { parse_markdown_svelte, PFMParser, WireEmitter } from '../src/main';
 import { NodeKind } from '../src/utils';
 import type { NodeBuffer } from '../src/utils';
 import { TreeBuilder } from '../src/tree_builder';
+import { WireTreeBuilder } from '../src/wire_tree_builder';
+import { Cursor } from '../src/cursor';
+import { print_ast } from './print';
 
 function non_breaks(nodes: NodeBuffer, parent: number = 0) {
 	return nodes
@@ -659,5 +662,82 @@ describe('Tables (GFM)', () => {
 		const row_cells = get_children(nodes, table_children[1].index);
 		expect(cell_text(nodes, row_cells[0].index, input)).toBe('baz');
 		expect(cell_text(nodes, row_cells[1].index, input)).toBe('bim');
+	});
+});
+
+/** read by cursor so wire strings and source slices compare alike */
+function data_cell_texts(nodes: NodeBuffer, source: string): string[] {
+	const cursor = new Cursor(nodes, source);
+	const texts: string[] = [];
+	const table = non_breaks(nodes)[0];
+	for (const row of get_children(nodes, table.index)) {
+		if (row.kind !== 'table_row') continue;
+		for (const cell of get_children(nodes, row.index)) {
+			let text = '';
+			for (const child of cell.children) {
+				cursor.move_to(child);
+				if (cursor.kind === NodeKind.text) text += cursor.text();
+			}
+			texts.push(text);
+		}
+	}
+	return texts;
+}
+
+function parse_wire_bytewise(input: string): NodeBuffer {
+	const emitter = new WireEmitter();
+	const parser = new PFMParser(emitter);
+	const builder = new WireTreeBuilder();
+	parser.init();
+	for (let i = 0; i < input.length; i++) {
+		emitter.set_source(input.slice(0, i + 1));
+		parser.feed(input[i]);
+		builder.apply(emitter.flush());
+	}
+	emitter.set_source(input);
+	parser.finish();
+	builder.apply(emitter.flush());
+	return builder.get_buffer();
+}
+
+describe('unclosed delimiters revoked at a cell boundary', () => {
+	test('`^2` stays literal without the trailing space', () => {
+		const input = '| a |\n|---|\n| ^2 |\n';
+		expect(print_ast(parse_markdown_svelte(input).nodes, input)).toBe(
+			[
+				'root',
+				'  table alignments=["none"] col_count=1',
+				'    table_header',
+				'      table_cell',
+				'        text "a"',
+				'    table_row',
+				'      table_cell',
+				'        text "^2"',
+			].join('\n')
+		);
+	});
+
+	const cases: [string, string][] = [
+		['| a |\n|---|\n| ^2 |\n', '^2'],
+		['| a |\n|---|\n| ~2 |\n', '~2'],
+		['| a |\n|---|\n| *2 |\n', '*2'],
+		['| a |\n|---|\n| [2 |\n', '[2'],
+		['| a |\n|---|\n| x ^2 y |\n', 'x ^2 y'],
+		['| a |\n|---|\n| `2 |\n', '`2'],
+		['| a | b |\n|---|---|\n| ^2 | ~3\t|\n', '^2|~3'],
+	];
+
+	test.each(cases)('%j: batch, incremental and wire agree', (input, cells) => {
+		const expected = cells.split('|');
+		const batch = parse_markdown_svelte(input).nodes;
+		const batch_ast = print_ast(batch, input);
+		expect(data_cell_texts(batch, input)).toEqual(expected);
+		for (const size of [1, 2, 3, 5]) {
+			const inc = parse_incremental(input, size);
+			expect(print_ast(inc, input)).toBe(batch_ast);
+		}
+		expect(data_cell_texts(parse_wire_bytewise(input), input)).toEqual(
+			expected
+		);
 	});
 });
