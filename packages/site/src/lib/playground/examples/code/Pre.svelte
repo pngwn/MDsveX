@@ -36,7 +36,7 @@
 
 	.code :global(pre) {
 		margin: 0;
-		padding: 0 1em 1em;
+		padding: 0 0 0.75em;
 		overflow-x: auto;
 	}
 

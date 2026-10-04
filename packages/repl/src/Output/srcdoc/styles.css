@@ -56,6 +56,164 @@ pre {
 	tab-size: 2;
 }
 
+.twinkleplop-block {
+	margin: 1rem 0;
+}
+
+.twinkleplop-block > pre {
+	margin: 0;
+}
+
+.twinkleplop-title {
+	padding: 0.4rem 1rem;
+	border-radius: var(--border-radius) var(--border-radius) 0 0;
+	border-bottom: 1px solid var(--bg-3);
+	background: var(--twp-background, var(--bg-2));
+	font-family: var(--font-mono);
+	font-size: 0.8em;
+	color: var(--fg-3);
+}
+
+.twinkleplop-title + pre {
+	border-top-left-radius: 0;
+	border-top-right-radius: 0;
+}
+
+.twinkleplop-caption {
+	margin-top: 0.4rem;
+	font-size: 0.85em;
+	color: var(--fg-3);
+}
+
+pre.twinkleplop {
+	padding: 0.75rem 0;
+	border-radius: var(--border-radius);
+	background: var(--twp-background, var(--bg-2));
+	overflow-x: auto;
+}
+
+/* grid stretches each line to the scroll width so line backgrounds reach the edge */
+pre.twinkleplop > code {
+	display: grid;
+	min-width: 100%;
+	width: max-content;
+}
+
+.twinkleplop .l {
+	min-height: 1lh;
+	padding: 0 1rem;
+}
+
+.twinkleplop .ln {
+	display: inline-block;
+	min-width: 2ch;
+	margin-right: 1.5ch;
+	text-align: right;
+	opacity: 0.4;
+	user-select: none;
+}
+
+.twinkleplop .l.highlight,
+.twinkleplop .tok.highlight {
+	background: rgb(127 127 127 / 0.25);
+}
+
+.twinkleplop .l.emphasis,
+.twinkleplop .tok.emphasis {
+	background: color-mix(in srgb, var(--link) 18%, transparent);
+}
+
+.twinkleplop .l.emphasis {
+	box-shadow: inset 3px 0 var(--link);
+}
+
+.twinkleplop .tok.highlight,
+.twinkleplop .tok.emphasis {
+	border-radius: 3px;
+}
+
+.twinkleplop .subdued,
+.has-focus .l:not(.focus) {
+	opacity: 0.45;
+	transition: opacity 0.2s;
+}
+
+.has-focus:hover .l:not(.focus) {
+	opacity: 1;
+}
+
+.twinkleplop.has-diff-add .l::before,
+.twinkleplop.has-diff-del .l::before,
+.twinkleplop.has-diff-mod .l::before {
+	content: ' ';
+	display: inline-block;
+	width: 2ch;
+	user-select: none;
+}
+
+.twinkleplop .l.diff-add {
+	background: color-mix(in srgb, var(--twp-inserted, #3fb950) 15%, transparent);
+}
+
+.twinkleplop .l.diff-add::before {
+	content: '+';
+	color: var(--twp-inserted, #3fb950);
+}
+
+.twinkleplop .l.diff-del {
+	background: color-mix(in srgb, var(--twp-deleted, #f85149) 15%, transparent);
+}
+
+.twinkleplop .l.diff-del::before {
+	content: '-';
+	color: var(--twp-deleted, #f85149);
+}
+
+.twinkleplop .l.diff-mod {
+	background: color-mix(in srgb, var(--twp-changed, #d29922) 15%, transparent);
+}
+
+.twinkleplop .l.diff-mod::before {
+	content: '~';
+	color: var(--twp-changed, #d29922);
+}
+
+.twinkleplop .tok.diff-add {
+	background: color-mix(in srgb, var(--twp-inserted, #3fb950) 25%, transparent);
+}
+
+.twinkleplop .tok.diff-del {
+	background: color-mix(in srgb, var(--twp-deleted, #f85149) 25%, transparent);
+	text-decoration: line-through;
+}
+
+.twinkleplop .tok.diff-mod {
+	background: color-mix(in srgb, var(--twp-changed, #d29922) 25%, transparent);
+}
+
+.twinkleplop .error {
+	--diagnostic: #f85149;
+}
+
+.twinkleplop .warning {
+	--diagnostic: #d29922;
+}
+
+.twinkleplop .info {
+	--diagnostic: #58a6ff;
+}
+
+.twinkleplop .l:is(.error, .warning, .info) {
+	background: color-mix(in srgb, var(--diagnostic) 12%, transparent);
+	box-shadow: inset 3px 0 var(--diagnostic);
+}
+
+.twinkleplop .tok:is(.error, .warning, .info) {
+	text-decoration: underline wavy var(--diagnostic);
+	text-decoration-skip-ink: none;
+	text-underline-offset: 3px;
+}
+
 table {
 	border-collapse: collapse;
 	margin: 1rem 0;
