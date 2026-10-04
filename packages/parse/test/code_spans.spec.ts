@@ -826,3 +826,37 @@ describe('unmatched code spans', () => {
 		});
 	}
 });
+
+describe('code spans wrapped in delimiters', () => {
+	const print_incremental = (input: string, chunk_size: number): string => {
+		const tree = new TreeBuilder(input.length);
+		const parser = new PFMParser(tree);
+		parser.init();
+		for (let i = 0; i < input.length; i += chunk_size) {
+			parser.feed(input.slice(i, i + chunk_size));
+		}
+		parser.finish();
+		return print_ast(tree.get_buffer(), input);
+	};
+
+	const cases: [string, string][] = [
+		[
+			'*`x`* b',
+			'root\n  paragraph\n    strong_emphasis\n      code_span "x"\n    text " b"',
+		],
+		['_`` x ``_', 'root\n  paragraph\n    emphasis\n      code_span "x"'],
+	];
+
+	for (const [input, expected] of cases) {
+		test(`closes after the code span: ${JSON.stringify(input)}`, () => {
+			expect(print_ast(parse_markdown_svelte(input).nodes, input)).toBe(
+				expected
+			);
+			for (let size = 1; size <= 8; size++) {
+				expect(print_incremental(input, size), `chunk size ${size}`).toBe(
+					expected
+				);
+			}
+		});
+	}
+});

@@ -1,7 +1,6 @@
 root
   paragraph
-    text "_"
-    text "a "
-    code_span "_"
-    text "_"
+    emphasis
+      text "a "
+      code_span "_"
   line_break

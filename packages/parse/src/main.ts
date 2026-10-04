@@ -6746,6 +6746,16 @@ export class PFMParser {
 						case ASTERISK: {
 							// need to see the next char for flanking check
 							if (!this.finished && this.cursor + 1 >= length) break main_loop;
+							// after a mustache or code span inline stays on top, pop it so the parent sees its closer
+							if (
+								this.states[this.states.length - 2] ===
+									StateKind.strong_emphasis &&
+								this.prev_class() & (CharMask.word | CharMask.punctuation) &&
+								this.next_class() & (CharMask.whitespace | CharMask.punctuation)
+							) {
+								this.states.pop();
+								continue;
+							}
 							if (
 								this.prev_class() &
 									(CharMask.whitespace | CharMask.punctuation) &&
@@ -6795,6 +6805,15 @@ export class PFMParser {
 						case UNDERSCORE: {
 							// need to see the next char for flanking check
 							if (!this.finished && this.cursor + 1 >= length) break main_loop;
+							// same as the asterisk case
+							if (
+								this.states[this.states.length - 2] === StateKind.emphasis &&
+								this.prev_class() & (CharMask.word | CharMask.punctuation) &&
+								this.next_class() & (CharMask.whitespace | CharMask.punctuation)
+							) {
+								this.states.pop();
+								continue;
+							}
 							if (
 								this.prev_class() &
 									(CharMask.whitespace | CharMask.punctuation) &&
@@ -6850,6 +6869,21 @@ export class PFMParser {
 							) {
 								break main_loop;
 							}
+							// same as the asterisk case
+							const tilde_parent = this.states[this.states.length - 2];
+							if (
+								(tilde_parent === StateKind.strikethrough &&
+									char_code_at.call(source, this.cursor + 1 - base) === TILDE &&
+									this.prev_class() & (CharMask.word | CharMask.punctuation) &&
+									classify(char_code_at.call(source, this.cursor + 2 - base)) &
+										(CharMask.whitespace | CharMask.punctuation)) ||
+								(tilde_parent === StateKind.subscript &&
+									char_code_at.call(source, this.cursor + 1 - base) !== TILDE &&
+									this.prev_class() & (CharMask.word | CharMask.punctuation))
+							) {
+								this.states.pop();
+								continue;
+							}
 							// strikethrough: ~~ must be double tilde with flanking
 							if (
 								char_code_at.call(source, this.cursor + 1 - base) === TILDE &&
@@ -6899,6 +6933,14 @@ export class PFMParser {
 							// superscript: ^ opens if next char is word/punctuation
 							// (no left-flanking constraint - x^2^ is valid)
 							if (!this.finished && this.cursor + 1 >= length) break main_loop;
+							// same as the asterisk case
+							if (
+								this.states[this.states.length - 2] === StateKind.superscript &&
+								this.prev_class() & (CharMask.word | CharMask.punctuation)
+							) {
+								this.states.pop();
+								continue;
+							}
 							if (this.next_class() & (CharMask.word | CharMask.punctuation)) {
 								const n_id = this.emit_open_pending(
 									NodeKind.superscript,
