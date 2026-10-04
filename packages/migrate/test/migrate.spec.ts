@@ -154,6 +154,75 @@ describe("gfm", () => {
 	});
 });
 
+/** migrate then parse as pfm, the top level block kinds and each cell text with its spans */
+function pfm_tables(input: string): { blocks: string[]; cells: string[] } {
+	const out = migrate(input);
+	const { nodes, errors } = parse_markdown_svelte(out);
+	expect(errors.size, `PFM parse errors in:\n${out}`).toBe(0);
+	const kids = (i: number) =>
+		nodes.get_node(i).children.map((c) => nodes.get_node(c));
+	const blocks = kids(0)
+		.filter((n) => n.kind !== "line_break")
+		.map((n) => n.kind);
+	const cells: string[] = [];
+	for (const table of kids(0).filter((n) => n.kind === "table")) {
+		for (const row of kids(table.index)) {
+			for (const cell of kids(row.index)) {
+				let s = kids(cell.index)
+					.filter((n) => n.kind === "text")
+					.map((n) => out.slice(n.value[0], n.value[1]))
+					.join("");
+				if (cell.metadata?.colspan) s += `+c${cell.metadata.colspan}`;
+				if (cell.metadata?.rowspan) s += `+r${cell.metadata.rowspan}`;
+				cells.push(s);
+			}
+		}
+	}
+	return { blocks, cells };
+}
+
+describe("table merge markers stay literal", () => {
+	test("a lone > cell is escaped", () => {
+		const input = "| a | b |\n|---|---|\n| x | > |";
+		expect(m(input)).toBe("| a | b |\n| --- | --- |\n| x | \\> |");
+		expect(pfm_tables(input).cells).toEqual(["a", "b", "x", ">"]);
+	});
+
+	test("a lone > header cell is escaped", () => {
+		const input = "| a | > |\n|---|---|\n| x | y |";
+		expect(m(input)).toBe("| a | \\> |\n| --- | --- |\n| x | y |");
+		expect(pfm_tables(input).cells).toEqual(["a", ">", "x", "y"]);
+	});
+
+	test("a lone > with spaces around it is escaped", () => {
+		const input = "| a | b |\n|---|---|\n| x |   >   |";
+		expect(m(input)).toBe("| a | b |\n| --- | --- |\n| x | \\> |");
+		expect(pfm_tables(input).cells).toEqual(["a", "b", "x", ">"]);
+	});
+
+	test("a lone ^ cell is escaped", () => {
+		const input = "| a | b |\n|---|---|\n| x | y |\n| ^ | z |";
+		expect(m(input)).toBe(
+			"| a | b |\n| --- | --- |\n| x | y |\n| \\^ | z |",
+		);
+		expect(pfm_tables(input).cells).toEqual(["a", "b", "x", "y", "^", "z"]);
+	});
+
+	test("a cell with more than a > is left alone", () => {
+		const input = "| a | b |\n|---|---|\n| x | > quote |";
+		expect(m(input)).toBe("| a | b |\n| --- | --- |\n| x | > quote |");
+		expect(pfm_tables(input).cells).toEqual(["a", "b", "x", "> quote"]);
+	});
+
+	test("a || delimiter row was a paragraph and stays one", () => {
+		const input = "| || a | b |\n|---||---|---|\n| h || x | y |";
+		expect(m(input)).toBe(
+			"\\| || a | b |\n\\|---||---|---|\n\\| h || x | y |",
+		);
+		expect(pfm_tables(input).blocks).toEqual(["paragraph"]);
+	});
+});
+
 describe("escaping", () => {
 	test("literal asterisks are escaped", () => {
 		expect(m("1 * 2 * 3")).toBe("1 \\* 2 \\* 3");
