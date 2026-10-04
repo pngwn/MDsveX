@@ -246,7 +246,11 @@ Table {
 }
 ```
 
-Each `table_cell` contains inline content (text, emphasis, etc.).
+Each `table_cell` contains inline content (text, emphasis, etc.). A cell's `extra` is the grid column it starts in.
+
+Optional table attrs: `header_columns: [left, right]` counts the header columns at the start and end of every row, from a `||` in the delimiter row. `spans: true` says some cell in the table has a `colspan` or `rowspan` attr. Both are only present when they apply.
+
+A merged cell carries `colspan` and/or `rowspan` attrs, which can arrive after the cell closed: a `>` or `^` marker cell is revoked once it's known to merge, and its owner gets the new span. A row whose every column merged up has no cells.
 
 ## Example: Processing a Batch
 

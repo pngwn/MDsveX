@@ -3,6 +3,8 @@ import { parse_markdown_svelte, PFMParser } from '../src/main';
 import { NodeKind } from '../src/utils';
 import type { NodeBuffer } from '../src/utils';
 import { TreeBuilder } from '../src/tree_builder';
+import { WireEmitter } from '../src/wire_emitter';
+import { WireTreeBuilder } from '../src/wire_tree_builder';
 
 function non_breaks(nodes: NodeBuffer, parent: number = 0) {
 	return nodes
@@ -659,5 +661,243 @@ describe('Tables (GFM)', () => {
 		const row_cells = get_children(nodes, table_children[1].index);
 		expect(cell_text(nodes, row_cells[0].index, input)).toBe('baz');
 		expect(cell_text(nodes, row_cells[1].index, input)).toBe('bim');
+	});
+});
+
+/** one line per row, each cell as its column and text plus +cN or +rN spans, a wire tree holds its own text */
+function grid(nodes: NodeBuffer, source: string | null): string[] {
+	const table = non_breaks(nodes).find((n) => n.kind === 'table');
+	if (!table) return [];
+	return get_children(nodes, table.index).map((row) => {
+		const cells = get_children(nodes, row.index).map((cell) => {
+			const text = get_children(nodes, cell.index)
+				.filter((n) => n.kind === 'text')
+				.map((n) =>
+					source === null
+						? nodes._strings[n.index]
+						: source.slice(n.value[0], n.value[1])
+				)
+				.join('');
+			let s = `${nodes.extra_at(cell.index)}:${text}`;
+			if (cell.metadata?.colspan) s += `+c${cell.metadata.colspan}`;
+			if (cell.metadata?.rowspan) s += `+r${cell.metadata.rowspan}`;
+			return s;
+		});
+		return (row.kind === 'table_header' ? 'head ' : 'row  ') + cells.join(' ');
+	});
+}
+
+function table_meta(nodes: NodeBuffer) {
+	return non_breaks(nodes).find((n) => n.kind === 'table')?.metadata;
+}
+
+function parse_over_wire(source: string, chunk: number): NodeBuffer {
+	const emitter = new WireEmitter();
+	const parser = new PFMParser(emitter);
+	const builder = new WireTreeBuilder();
+	parser.init();
+	for (let i = 0; i < source.length; i += chunk) {
+		emitter.set_source(source.slice(0, i + chunk));
+		parser.feed(source.slice(i, i + chunk));
+		builder.apply(emitter.flush());
+	}
+	emitter.set_source(source);
+	parser.finish();
+	builder.apply(emitter.flush());
+	return builder.get_buffer();
+}
+
+/** the grid and table metadata of a batch parse, checked against every chunked and wire parse */
+function extended(input: string) {
+	const nodes = parse_markdown_svelte(input).nodes;
+	const g = grid(nodes, input);
+	const meta = table_meta(nodes);
+	for (let chunk = 1; chunk <= 7; chunk++) {
+		const inc = parse_incremental(input, chunk);
+		expect(grid(inc, input), `chunk ${chunk}`).toEqual(g);
+		expect(table_meta(inc), `chunk ${chunk}`).toEqual(meta);
+		const wire = parse_over_wire(input, chunk);
+		expect(grid(wire, null), `wire chunk ${chunk}`).toEqual(g);
+		expect(table_meta(wire), `wire chunk ${chunk}`).toEqual(meta);
+	}
+	return { grid: g, meta };
+}
+
+describe('Tables (header columns)', () => {
+	test('a || marks left header columns', () => {
+		const { grid, meta } = extended(
+			'| maybe || title | title 2 |\n|-------||-------|---------|\n| hello || text  | text 2  |\n'
+		);
+		expect(meta?.col_count).toBe(3);
+		expect(meta?.header_columns).toEqual([1, 0]);
+		expect(meta?.spans).toBeUndefined();
+		expect(grid).toEqual([
+			'head 0:maybe 1:title 2:title 2',
+			'row  0:hello 1:text 2:text 2',
+		]);
+	});
+
+	test('a || nearer the right marks right header columns', () => {
+		const { grid, meta } = extended(
+			'| title | title 2 || |\n|-------|---------||--------|\n| text | text 2 || head 1 |\n'
+		);
+		expect(meta?.header_columns).toEqual([0, 1]);
+		expect(grid).toEqual([
+			'head 0:title 1:title 2 2:',
+			'row  0:text 1:text 2 2:head 1',
+		]);
+	});
+
+	test('one || between equal sides heads the left', () => {
+		const { meta } = extended('| a | b || c | d |\n|---|---||---|---|\n');
+		expect(meta?.header_columns).toEqual([2, 0]);
+	});
+
+	test('two || mark both sides', () => {
+		const { grid, meta } = extended(
+			'| a || b || c |\n|---||---||---|\n| x || y || z |\n'
+		);
+		expect(meta?.header_columns).toEqual([1, 1]);
+		expect(grid).toEqual(['head 0:a 1:b 2:c', 'row  0:x 1:y 2:z']);
+	});
+
+	test('a body row may use a single pipe at the boundary', () => {
+		const { grid } = extended('| a || b |\n|---||---|\n| x | y |\n');
+		expect(grid).toEqual(['head 0:a 1:b', 'row  0:x 1:y']);
+	});
+
+	test('a || away from the boundary is an empty cell', () => {
+		const { grid } = extended(
+			'| a || b | c | d |\n|---||---|---|---|\n| x || y || z |\n'
+		);
+		expect(grid).toEqual(['head 0:a 1:b 2:c 3:d', 'row  0:x 1:y 2: 3:z']);
+	});
+
+	test('a || only in the header row is an empty cell', () => {
+		const { grid, meta } = extended('| a || b |\n|---|---|---|\n| x | | y |\n');
+		expect(meta?.header_columns).toBeUndefined();
+		expect(grid).toEqual(['head 0:a 1: 2:b', 'row  0:x 1: 2:y']);
+	});
+
+	test('a || only in the delimiter row is not a table', () => {
+		const { nodes } = parse_markdown_svelte('| a | b |\n|---||---|\n');
+		expect(non_breaks(nodes)[0].kind).toBe('paragraph');
+	});
+});
+
+describe('Tables (merged cells)', () => {
+	test('lone > cells widen the header cell before them', () => {
+		const { grid, meta } = extended(
+			'| title |>  |>  |\n|-------|---|---|\n| text  | b | c |\n'
+		);
+		expect(meta?.spans).toBe(true);
+		expect(grid).toEqual(['head 0:title+c3', 'row  0:text 1:b 2:c']);
+	});
+
+	test('a > with spaces around it merges in a body row', () => {
+		const { grid } = extended('| a | b | c |\n|---|---|---|\n| x | > | y |\n');
+		expect(grid).toEqual(['head 0:a 1:b 2:c', 'row  0:x+c2 2:y']);
+	});
+
+	test('lone ^ cells extend the cell above', () => {
+		const { grid } = extended(
+			'| title | B | C |\n|-------|---|---|\n| text  | b | c |\n|^      | b |^  |\n'
+		);
+		expect(grid).toEqual([
+			'head 0:title 1:B 2:C',
+			'row  0:text+r2 1:b 2:c+r2',
+			'row  1:b',
+		]);
+	});
+
+	test('a ^ chain spans three rows', () => {
+		const { grid } = extended('| a |\n|---|\n| x |\n| ^ |\n| ^ |\n| y |\n');
+		// a row every column of which merged up keeps its tr
+		expect(grid).toEqual([
+			'head 0:a',
+			'row  0:x+r3',
+			'row  ',
+			'row  ',
+			'row  0:y',
+		]);
+	});
+
+	test('> and ^ together merge a rectangle', () => {
+		const { grid } = extended(
+			'| a | b | c |\n|---|---|---|\n| x |>  | y |\n|^  |^  | z |\n'
+		);
+		expect(grid).toEqual([
+			'head 0:a 1:b 2:c',
+			'row  0:x+c2+r2 2:y',
+			'row  2:z',
+		]);
+	});
+
+	test('merges compose with header columns', () => {
+		const { grid, meta } = extended(
+			'| || spanning |> |\n|-----------||-----------|---|\n| left head || text | b |\n|^ || more |> |\n'
+		);
+		expect(meta?.header_columns).toEqual([1, 0]);
+		expect(grid).toEqual([
+			'head 0: 1:spanning+c2',
+			'row  0:left head+r2 1:text 2:b',
+			'row  1:more+c2',
+		]);
+	});
+
+	test('a marker as the last cell before a linefeed or the end merges', () => {
+		const { grid } = extended('| a | b |\n|---|---|\n| x |>');
+		expect(grid).toEqual(['head 0:a 1:b', 'row  0:x+c2']);
+	});
+
+	test('a > in the first column stays text', () => {
+		const { grid } = extended('| a | b |\n|---|---|\n| > | y |\n');
+		expect(grid).toEqual(['head 0:a 1:b', 'row  0:> 1:y']);
+	});
+
+	test('a > never crosses a header column boundary', () => {
+		const { grid } = extended('| a || b |>|\n|---||---|---|\n| x || > | y |\n');
+		expect(grid).toEqual(['head 0:a 1:b+c2', 'row  0:x 1:> 2:y']);
+	});
+
+	test('a ^ under the header row stays text', () => {
+		const { grid } = extended('| a | b |\n|---|---|\n| ^ | y |\n');
+		expect(grid).toEqual(['head 0:a 1:b', 'row  0:^ 1:y']);
+	});
+
+	test('a ^ in the header row stays text', () => {
+		const { grid } = extended('| a | ^ |\n|---|---|\n');
+		expect(grid).toEqual(['head 0:a 1:^']);
+	});
+
+	test('a cell with more than the marker stays text', () => {
+		const { grid } = extended(
+			'| a | b | c |\n|---|---|---|\n| x | > quote | >> |\n'
+		);
+		expect(grid[1]).toBe('row  0:x 1:> quote 2:>>');
+	});
+
+	test('an escaped marker stays text', () => {
+		const { grid } = extended(
+			'| a | b |\n|---|---|\n| x | \\> |\n| \\^ | y |\n'
+		);
+		expect(grid).toEqual(['head 0:a 1:b', 'row  0:x 1:>', 'row  0:^ 1:y']);
+	});
+
+	test('a ^ under part of a wide cell stays text', () => {
+		const { grid } = extended(
+			'| a | b |\n|---|---|\n| x |>  |\n|^  | q |\n| y | ^ |\n'
+		);
+		expect(grid).toEqual([
+			'head 0:a 1:b',
+			'row  0:x+c2',
+			'row  0:^ 1:q+r2',
+			'row  0:y',
+		]);
+	});
+
+	test('a > after a ^ stays text', () => {
+		const { grid } = extended('| a | b |\n|---|---|\n| x | y |\n|^  |>  |\n');
+		expect(grid).toEqual(['head 0:a 1:b', 'row  0:x+r2 1:y', 'row  1:>']);
 	});
 });

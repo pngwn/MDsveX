@@ -86,15 +86,17 @@ x~1~ -> x<sub>1</sub>
 
 **Tables**, GFM pipe tables as base, with three extensions. Whitespace alignment is insignificant; only structure matters.
 
-Left-side headers via `||` separator:
+Header columns via a `||` separator. The delimiter row decides: a `||` between two delimiter cells, with an empty `||` cell at the same place in the header row, splits the columns. One `||` makes the side with fewer columns the header columns, the left side on a tie. Two `||` make header columns on both sides. In body rows, the cells in header columns render as row headers (`<th scope="row">`). In body rows a `||` at the split is one separator and a single `|` there works too. A `||` anywhere else is an empty cell, as in GFM.
+
+Left-side headers:
 
 ```markdown
-| || title | title 2 |
-|-----------||-------|---------|
-| left head || text | text 2 |
+| maybe || title | title 2 |
+|-------||-------|---------|
+| hello || text | text 2 |
 ```
 
-Right-side headers via `||` on the right:
+Right-side headers:
 
 ```markdown
 | title | title 2 || |
@@ -102,13 +104,33 @@ Right-side headers via `||` on the right:
 | text | text 2 || head 1 |
 ```
 
-Horizontal cell merging via `|>` (content of `|>` cells must be empty, a non-empty `|>` cell is a parse error). Column count must remain consistent:
+Horizontal cell merging via `|>`. A cell whose only content is `>` merges into the cell to its left, in the header row or a body row. Column count stays consistent, a merged cell counts as the columns it covers:
 
 ```markdown
-| spanning three | >   | >   |
-| -------------- | --- | --- |
-| text           | b   | c   |
+| title | >   | >   |
+| ----- | --- | --- |
+| text  | b   | c   |
 ```
+
+Vertical cell merging via `|^`. A body cell whose only content is `^` merges into the cell above:
+
+```markdown
+| title | B   | C   |
+| ----- | --- | --- |
+| text  | b   | c   |
+| ^     | b   | ^   |
+```
+
+Merged cells must form rectangles. To merge a wide cell down, every column it covers needs a `^` in the row below:
+
+```markdown
+| a   | b   | c   |
+| --- | --- | --- |
+| x   | >   | y   |
+| ^   | ^   | z   |
+```
+
+A marker that cannot merge stays literal text: a `>` in the first column or straight after a `||`, a `>` after a `^`, a `^` in the header row or the first body row, or a `^` under only part of a wide cell. Escape a marker (`\>`, `\^`) to keep a lone `>` or `^` as text.
 
 Both extensions compose:
 
@@ -117,8 +139,6 @@ Both extensions compose:
 |-----------||-----------|---|
 | left head || text | b |
 ```
-
-Vertical merging (`|^`) is reserved for future use.
 
 **Generic directives**, First-class plugin syntax covering inline, leaf block, and container block cases. Replaces the need for most ad-hoc extensions:
 
