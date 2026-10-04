@@ -220,7 +220,7 @@ importers:
         version: 5.55.0
       svelte-check:
         specifier: ^4.4.2
-        version: 4.4.5(picomatch@4.0.3)(svelte@5.55.0)(typescript@5.9.3)
+        version: 4.4.5(picomatch@4.0.7)(svelte@5.55.0)(typescript@5.9.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -292,92 +292,92 @@ importers:
         specifier: workspace:*
         version: link:../render
       '@twinkleplop/annotation':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/bash':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/c':
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.2.1
+        version: 0.2.1
       '@twinkleplop/core':
-        specifier: ^0.3.0
-        version: 0.3.0
+        specifier: ^0.3.1
+        version: 0.3.1
       '@twinkleplop/cpp':
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.2.1
+        version: 0.2.1
       '@twinkleplop/css':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/diff':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/dockerfile':
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.2.1
+        version: 0.2.1
       '@twinkleplop/dotenv':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/go':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/graphql':
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.2.1
+        version: 0.2.1
       '@twinkleplop/html':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/http':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/ini':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/javascript':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/json':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/jsonc':
-        specifier: ^0.1.3
-        version: 0.1.3
+        specifier: ^0.1.4
+        version: 0.1.4
       '@twinkleplop/markdown':
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.2.1
+        version: 0.2.1
       '@twinkleplop/markdown-core':
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.2.1
+        version: 0.2.1
       '@twinkleplop/powershell':
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.2.1
+        version: 0.2.1
       '@twinkleplop/python':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/rust':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/shellsession':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/sql':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/svelte':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/toml':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/tsx':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/typescript':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       '@twinkleplop/yaml':
-        specifier: ^0.1.6
-        version: 0.1.6
+        specifier: ^0.1.7
+        version: 0.1.7
       es-module-lexer:
         specifier: ^1.6.0
         version: 1.6.0
@@ -386,11 +386,11 @@ importers:
         specifier: ^6.2.4
         version: 6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
       '@twinkleplop/twoslash':
-        specifier: ^0.3.0
-        version: 0.3.0(typescript@6.0.2)
+        specifier: ^0.3.1
+        version: 0.3.1(typescript@6.0.2)
       '@twinkleplop/twoslash-svelte':
-        specifier: ^0.3.0
-        version: 0.3.0(@typescript-eslint/types@8.57.2)
+        specifier: ^0.3.1
+        version: 0.3.1(@typescript-eslint/types@8.57.2)
       npm-run-all2:
         specifier: ^7.0.2
         version: 7.0.2
@@ -2079,101 +2079,104 @@ packages:
       svelte: ^5.46.4
       vite: ^8.0.0-beta.7 || ^8.0.0
 
-  '@twinkleplop/annotation@0.1.6':
-    resolution: {integrity: sha512-xK8PnK/BXmRb8zywEoU1jQsxxpKxlS/hfo5ggkAnPK/XJK5NXUySg2wGoLnL7uk+izSd+a5SSGbfhFJNPZvewQ==}
+  '@twinkleplop/annotation@0.1.7':
+    resolution: {integrity: sha512-A8AKXJZ8ax9Ausm2U9UJDgNKfQ36pGvn9wjDcsiGJrqhwrym56CjSzwfxDtSa69SYR3PODrnSIKw2L/pSVYaNQ==}
 
-  '@twinkleplop/bash@0.1.6':
-    resolution: {integrity: sha512-5XBx9EdbQePUEqUvM20b0g+KNEcwfGE7w04R0ZGs1LKWEUPJwYX99DSbHqC3oM8iiu37rDyRFyFdm8yoMNom3g==}
+  '@twinkleplop/bash@0.1.7':
+    resolution: {integrity: sha512-/cBFzqKcfffT6aaWlSeUhjoXJS3VhG4Tz1sg1oJILooVlbD3WX2Ke+zRWFLS+GmoXrl8hlQF/ZsMNmila41/Jw==}
 
-  '@twinkleplop/c@0.2.0':
-    resolution: {integrity: sha512-2N99VPy72L6AMJcdrk/bPbvhwJ8hlX0QpyJZccqaSv5NQxuYNUiTGPdVR9CSrFPtBxQLoyan7K03lA/c2i0AYQ==}
+  '@twinkleplop/c@0.2.1':
+    resolution: {integrity: sha512-6ci5JLOw6TppOaFemiC5GtojUpB1/4Iw6JF3DVQbXBFna2DeoewJ26QtyHm0Uh+iHmtpY0pfWY0fz5fpjeRTjA==}
 
   '@twinkleplop/core@0.3.0':
     resolution: {integrity: sha512-eAHXzXaBhcvLEfks5AeuLIUf/Hjy7A/X0ATO9FpEWeaurpbyjRK48EsMemnmldS2uRWWsM6qFFs9VwsdlhYfpA==}
 
-  '@twinkleplop/cpp@0.2.0':
-    resolution: {integrity: sha512-BMs7UmFq8eAG0+3pipD0KnmqbMqypW3JdVFBUjCgNQVZSfh0sSy68EkH+jWDH/ZSjU+UcBiDTnUse4b+kbgixw==}
+  '@twinkleplop/core@0.3.1':
+    resolution: {integrity: sha512-fMbce7NcJlVROsyI34tz3DCWkAWRWLRlBNCbgwz36mm6yoEO09eyafi8JRN5HJGQIzMr0qjXQ3t3asc7MFSh8Q==}
 
-  '@twinkleplop/css@0.1.6':
-    resolution: {integrity: sha512-8Kuf2zujgezaPKp3TlN31HuRGvTtunMUvF2YnoPZftwFPlhEbCFuo7PlioycUdbmFElKuc/zkcQZJb/gYrtXQw==}
+  '@twinkleplop/cpp@0.2.1':
+    resolution: {integrity: sha512-npIX8+BmvTzUI5XGbYFgfz3M9Q4TxdNu7wlzS+0rsxqnUXkusQ6iYEvtQh4vjXOQRQywgYrzbgp5A0euKZYLnA==}
 
-  '@twinkleplop/diff@0.1.6':
-    resolution: {integrity: sha512-HfhY9KxxVxa8RZy7BWsP2QIfQqgy90eSpUOY6eeCfhdtBFXZd5wBggsCn/UVlH4l4dqOCmUm8DOoj5c9xYB2tw==}
+  '@twinkleplop/css@0.1.7':
+    resolution: {integrity: sha512-eznre7EgC0IBE3/jqAUKXG2S4iWLczOSAxwLnknS+9BQQGuD82u2A2rCok94E+nMpjkeshhbSvnQxDSEo8YpUA==}
 
-  '@twinkleplop/dockerfile@0.2.0':
-    resolution: {integrity: sha512-1rqdSXOM040Ezy8bFgDaXy/Q+ZKWEpWR0HGlcO2bOBrz4PMkQENbppw5ouNT28fT7hxLxw6HoWKA4mmRdb7u7g==}
+  '@twinkleplop/diff@0.1.7':
+    resolution: {integrity: sha512-ubzYKJwtndkWPyDUSKIm9k5/cv/TEJt8qDe8HJcA/e9S+cxQJqMNWcIQ46hz7ASh+yhV0rAvHjytSROfA+xK+w==}
 
-  '@twinkleplop/dotenv@0.1.6':
-    resolution: {integrity: sha512-oHgGxxXe4/F9UyPP5uqnS1tZXsLO8FFSO32esbzQQV0jwwSbegajC2wgkS9SEb2gaQFVHBngVfZfwghVWTSmVA==}
+  '@twinkleplop/dockerfile@0.2.1':
+    resolution: {integrity: sha512-F+boDOGsbKiC4TbGqb8CE3VmvMdpyHgISJinUSPAP/iBPRxutax4fYztmvGSSysf67SQYXdiwarB9HcJVzJ8yA==}
 
-  '@twinkleplop/go@0.1.6':
-    resolution: {integrity: sha512-AWeb1TMLjsR0k4Ll8TIjs67MqYvuv/uw51t971CdUvpURwwPn2sgx7G3pXNlTksdci25TV8QDhEHuhAHr1Jh7Q==}
+  '@twinkleplop/dotenv@0.1.7':
+    resolution: {integrity: sha512-JJTjseZv0kLDakE8t/ZfOEAq9dKzF5dw8JwApjbYVRnYnEjKsYGMfL/GebroILCfSSY89yTg/D4DUo44Unxl8w==}
 
-  '@twinkleplop/graphql@0.2.0':
-    resolution: {integrity: sha512-b9lL7ff/8X9OLzKhxPh4FnhLBxB1qI1J6a8s3wTJFasX8OTy/lEh6qtHtqzgI7a7HSoqSzORF6cmL9IOMpWvIg==}
+  '@twinkleplop/go@0.1.7':
+    resolution: {integrity: sha512-Jc45EY94XcA8KyRhE4Pzy1OCU+2XNsIMx8AnRVNoLHuNwUQUjDVd7nOc/IdKp6siU2jTD+FpQz+IfyoG8e+2ow==}
 
-  '@twinkleplop/html@0.1.6':
-    resolution: {integrity: sha512-ARQraLcONwfqbxELQCYQwYO7y88M92tGRRZznjYCeuLwl12ru0leXA72HsvAuzptmbTo9RUxe4czKQvzkb2i1A==}
+  '@twinkleplop/graphql@0.2.1':
+    resolution: {integrity: sha512-hZeiawkMElrRICfncl5X4oW6lO+YXgwqIRMwvSHNzH/J7cpi6gHrZnwnDT5Ave4xJDTaPGj+93wB4jzW3OjTGg==}
 
-  '@twinkleplop/http@0.1.6':
-    resolution: {integrity: sha512-z6xBPjm8hpB4vTC3DWYglGG+AF9pMVl2SUFWthSSha8y1/xtXXeP4z5yZZ+3z00hfId+GjnN/Dr43dLD6whTcg==}
+  '@twinkleplop/html@0.1.7':
+    resolution: {integrity: sha512-tpc+I1OXR5UJYkIhna74rxxEBYUJMWTNkjAVH9sA6fKeWq9lmbLRhutb10PHeMuF6BTHuHgD9oyET7yKdZGeQA==}
 
-  '@twinkleplop/ini@0.1.6':
-    resolution: {integrity: sha512-/6t3ofX9BMWBdA99Ozytvw7GZnTALtdjA0p5iLEdTzagaMBpjKpvNKgzFpodvxzjWoD4pIx8o65kHvf91KK/aQ==}
+  '@twinkleplop/http@0.1.7':
+    resolution: {integrity: sha512-ZVbaNo+GyfrLOhwdV9m5pgnAleToGrkquGYR2WFI+8gVfMKs+D/f/QZ2EKjsbzrtqYV1f3DviEViweYGZLksag==}
 
-  '@twinkleplop/javascript@0.1.6':
-    resolution: {integrity: sha512-JnND/ev1IbqpuokF9H2f+GRjZ7KmBKWQUPdJ9uL6BJFrQ96eGm7m5F4gcRyLkOP5f/UeQHVMmRuFV+C681UHUA==}
+  '@twinkleplop/ini@0.1.7':
+    resolution: {integrity: sha512-+DZ5xzX1AA1y4KYTlxOwcvD5zbQsLCrl0ElEvAcsR7RaC+vVuZ4qYjPlYew6dd5BY9CH0cLOHTSG/4lkKSLSKA==}
 
-  '@twinkleplop/json@0.1.6':
-    resolution: {integrity: sha512-SFoRi4XZSTWzUew5pccsdqTCP1sBBBxZa0P+oN0kFQIG/WzrCOVf4jcCNNbvpU/AoBSFLRQ48M5CuLubiPZmTg==}
+  '@twinkleplop/javascript@0.1.7':
+    resolution: {integrity: sha512-qZDFx0bTM8YdKBTCxIS+6dZ1itaTnn1Udf2wFW5Uo+S6liGm40Lq2rlCk3PYa+Hm4lmX6HSzFeO4ZaDqk6Cn9Q==}
 
-  '@twinkleplop/jsonc@0.1.3':
-    resolution: {integrity: sha512-qL1ECMNyI8P/VBO5vJ81wMER01yqC4Y6EyDLX0W59MRwNXyLquCtzb25oRDi+e4MFQEAhL4xB30dp7LHtamDAQ==}
+  '@twinkleplop/json@0.1.7':
+    resolution: {integrity: sha512-3V2BmcvHCF7MTmDxNSk0sliZqwW1BDB29ZQY2W07auiOGyPQJVhYPiyeoIIN51Q02YnvSg+hxfXSRY9FptMJKg==}
 
-  '@twinkleplop/markdown-core@0.2.0':
-    resolution: {integrity: sha512-hoyfuLQhlGBZ/i1jzw6gHK1eNIDIjZ7/0NeA8vMT+l3ps2c+leVDOMG0WFUhxs9bEDNgwckkY3je7IedsRWLXQ==}
+  '@twinkleplop/jsonc@0.1.4':
+    resolution: {integrity: sha512-2YhnHDhvauUVzNoTopfV949Sc8xg0fELxrXGgG+R2L4PxHqbBrVu+FfMf3c1pYmC8dHswHXKREAzNs3qiAi3Hw==}
 
-  '@twinkleplop/markdown@0.2.0':
-    resolution: {integrity: sha512-SInXQLcTCpcb/pU+aLmgoJ2L6oxPqxvRjM6ibqMl/CxAANon4U1npUv2SLfzZBJxjILPmImDL9nD+dT4wH4cNw==}
+  '@twinkleplop/markdown-core@0.2.1':
+    resolution: {integrity: sha512-B8SBW5kKCwmVKTtm2r1hK0PyJk4qQYem33v7aIHQv0f2jNsuvnkhboM1p/oCNyt/Q8lau2yjygP4soSvTi+ALA==}
 
-  '@twinkleplop/powershell@0.2.0':
-    resolution: {integrity: sha512-OxDOWWNyFfkVIY8ndEJr7Q12FgfVNUtLyoFIq1GdZ7/B688cLR4xwN3kZ2Libo3ZV8dStylMJzWMcS+rgah73g==}
+  '@twinkleplop/markdown@0.2.1':
+    resolution: {integrity: sha512-uff5OXuSnlSWuPCYJWCQ+yMsOAvGCzljP8mIDQ4oj2ezkMAdhwh/McNXZ1odg4xpSp7hlwbu+UHbRl5FvG4kSQ==}
 
-  '@twinkleplop/python@0.1.6':
-    resolution: {integrity: sha512-7OWUAHnG/KlA3dnqZRd9uIjykbLfC3IDE+HMJOBIZgC1XVGQDlBcy/I8kJRLRN4mWtrJYIh4/Ly9qi7K1BjHEA==}
+  '@twinkleplop/powershell@0.2.1':
+    resolution: {integrity: sha512-649jGO8cxS8l8g+sYZAJlBVI2HLSt5Aw+5Iy15pOr/OzMts5V5ukIa9WTOGeKC+c2sGaPk/iOh1w7/I8kQNQAg==}
 
-  '@twinkleplop/rust@0.1.6':
-    resolution: {integrity: sha512-LY0dY4TapopdB0CaGnypwKFTuIvfULgT1C2TxsqyJw41FaFceQ0K+303Gw7o4S8YdINmb875o5EHgo1HAw6kIw==}
+  '@twinkleplop/python@0.1.7':
+    resolution: {integrity: sha512-C3DJhERSppC9qUoux4l+b88Jv0PXEkooSuYcbqTsQ3FKRALu+Ksy2ukqs9ncVkk/gVqgHT21xnR+udMR/3y+1g==}
 
-  '@twinkleplop/shellsession@0.1.6':
-    resolution: {integrity: sha512-Kelqxvr4GGQ8wKaVThLaJMJvHKFqhyagIJztSFJeTT2zvgp2y3sf7Fq+8FhpXnPvVTguOuDNlzgAI2Ql4NwFrw==}
+  '@twinkleplop/rust@0.1.7':
+    resolution: {integrity: sha512-xCSZtBzqrtg9ZTp4rBI/Wj+SezlQgC33JD5rokTpjiOJCgkCRudHvHqMpp8JUN+n1rN3evqe+HVRQNvuU5xhIw==}
 
-  '@twinkleplop/sql@0.1.6':
-    resolution: {integrity: sha512-2t93ukoQK8eTNh9v3v7MlykDeVTTrphG2q6hNwz1/n18RXp5V/GM8MIwP+RhpQe8BHHXnx3BRgUJpeDNkmViPQ==}
+  '@twinkleplop/shellsession@0.1.7':
+    resolution: {integrity: sha512-vMldBjO6bkteKly9n8Ut5MmqAzS7sAKfErkr/ajB3lnnAtAnQdfKxbjnq+FVe5ZNXPbkg8CB3PciwC7Z7VJ0NA==}
 
-  '@twinkleplop/svelte@0.1.6':
-    resolution: {integrity: sha512-ZEfy6vRX2S7ENZ/aJCTjpSvkAUH2X1R3I24mfsks6uIc2zTNNwmwa2+XGASWVyA8fKW0VHziM3O+0l/7pEjUjQ==}
+  '@twinkleplop/sql@0.1.7':
+    resolution: {integrity: sha512-H0KA5WVohc6IwEQce1S0CZQrt0eXnlkuuYlHxFa8GCj/q82mFg3YvtiPASUSmOKERWN52/yzdT6K0opvlVIT/A==}
+
+  '@twinkleplop/svelte@0.1.7':
+    resolution: {integrity: sha512-8Zz7WYm7ERGNTZeCjiceRWDB+spcrDA9ToUV/AtavMl68ZM28E1AIPOdo2ddKkBDnHim8Vs7tVlFr9T3Mq1NlA==}
 
   '@twinkleplop/theme-ayu@0.1.3':
     resolution: {integrity: sha512-WlCF/o8r+GUDKYI3emvPdedcI33S9EblXMJdXG3Tp11kacYXNzDgOrQ39gEMl9SKFJTwsOxtFdgzsj58AqXSpg==}
 
-  '@twinkleplop/toml@0.1.6':
-    resolution: {integrity: sha512-7mlwBxdoc70RUNvpS+ahyZpMs9N38y9mdhWL1rEQGwCyCb1y874OoFTJSbaN5JTuSOgbCqNTOCCGqWGhQ1ue3A==}
+  '@twinkleplop/toml@0.1.7':
+    resolution: {integrity: sha512-E7iCWjUHTEEtfSBOccvrO2dI0jR88Sktqf1ZCq3Sc22TMuj6QdLhOPtaNyIfwkIstUprdTd9NcFzNIZgXwvooQ==}
 
-  '@twinkleplop/tsx@0.1.6':
-    resolution: {integrity: sha512-Ln21IXc8RfECJnvczkVd8wEy4YjKsbLnuEepYUOtpRYJrwz1zZ3ew4UrOlU1FYEuJwB4lysPsCPY/ocDEWOkxw==}
+  '@twinkleplop/tsx@0.1.7':
+    resolution: {integrity: sha512-Vx7821K7/cciCZPpVj1gsxHp6pI75frlMVGoqtu8QjZH9l26DaiIM3wcv1NqvMDsNnQX7vOV1cTAXawJ9wyB5g==}
 
-  '@twinkleplop/twoslash-svelte@0.3.0':
-    resolution: {integrity: sha512-KYfsXIa9KBaTHsL+I3OfYYC1iJz5PG3K0BSyLl16jBjq78PhTNcDctS8iRuP0uHoYmC+nqzUTORNutcs2wh/Cw==}
+  '@twinkleplop/twoslash-svelte@0.3.1':
+    resolution: {integrity: sha512-fb8/YOoR4tw9l7/1b3xDdxvT38nclcBXW/EbgW3nIceinoylXbrWkHtB3gHrUCTqIUd7y1jiepP5FEqRHxy3rg==}
 
-  '@twinkleplop/twoslash@0.3.0':
-    resolution: {integrity: sha512-ut6U6GJ32PbDzUuptYegutPXstMcDCi/PinVknkt/8as9ehBUyUJlfa4voKmCtRz/cY7MLvj0Oc3ZCVdD8C19w==}
+  '@twinkleplop/twoslash@0.3.1':
+    resolution: {integrity: sha512-fM32qbnyUI7As3wRX0t2zBu2EOONKlhd74WEFP3nuG4EK7Bswr5kzjaTRe+YaxDijnT0wExQDxieC0wys5xhPA==}
 
-  '@twinkleplop/typescript@0.1.6':
-    resolution: {integrity: sha512-JoTyStueQ+5MS5JYKxZz4xMHsfj+dcHFjWykEmoctmcw6Ulk7DSGE1uEIio5rJGtKRCqr7mvl9XVo8l4zEgdHw==}
+  '@twinkleplop/typescript@0.1.7':
+    resolution: {integrity: sha512-3lVdFUnOc40QQUJPnmTsiyTf7+RSEoXhDnmMwkUQ5Kzgemkk6eeXQGietPjxro8k+QuTAY/aQuWOtR/nUgfENw==}
 
-  '@twinkleplop/yaml@0.1.6':
-    resolution: {integrity: sha512-20XAtI0k64WQxqpeWvRYa0wQyRGTTF4X6sn3OjBeXGvObW1HX5kgnJm4ioSixer4QwC79BrI2FmjFAKM/j1rEg==}
+  '@twinkleplop/yaml@0.1.7':
+    resolution: {integrity: sha512-GzsP3RuMYAnMx82pFUxICplG5s2GXxGst8dyxM7p1ONGp1f6NsFdc7OChtoIcT3PzXWQN/ctPJdv5rpr7tXs3w==}
 
   '@tybys/wasm-util@0.10.1':
     resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
@@ -6049,136 +6052,138 @@ snapshots:
       vite: 8.3.2(@types/node@24.7.1)(esbuild@0.27.4)(terser@5.44.0)
       vitefu: 1.1.3(vite@8.3.2(@types/node@24.7.1)(esbuild@0.27.4)(terser@5.44.0))
 
-  '@twinkleplop/annotation@0.1.6':
+  '@twinkleplop/annotation@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/bash@0.1.6':
+  '@twinkleplop/bash@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/c@0.2.0':
+  '@twinkleplop/c@0.2.1':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
   '@twinkleplop/core@0.3.0': {}
 
-  '@twinkleplop/cpp@0.2.0':
-    dependencies:
-      '@twinkleplop/c': 0.2.0
-      '@twinkleplop/core': 0.3.0
+  '@twinkleplop/core@0.3.1': {}
 
-  '@twinkleplop/css@0.1.6':
+  '@twinkleplop/cpp@0.2.1':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/c': 0.2.1
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/diff@0.1.6':
+  '@twinkleplop/css@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/dockerfile@0.2.0':
+  '@twinkleplop/diff@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/dotenv@0.1.6':
+  '@twinkleplop/dockerfile@0.2.1':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/go@0.1.6':
+  '@twinkleplop/dotenv@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/graphql@0.2.0':
+  '@twinkleplop/go@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/html@0.1.6':
+  '@twinkleplop/graphql@0.2.1':
     dependencies:
-      '@twinkleplop/core': 0.3.0
-      '@twinkleplop/css': 0.1.6
-      '@twinkleplop/javascript': 0.1.6
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/http@0.1.6':
+  '@twinkleplop/html@0.1.7':
     dependencies:
-      '@twinkleplop/bash': 0.1.6
-      '@twinkleplop/core': 0.3.0
-      '@twinkleplop/html': 0.1.6
-      '@twinkleplop/javascript': 0.1.6
-      '@twinkleplop/json': 0.1.6
+      '@twinkleplop/core': 0.3.1
+      '@twinkleplop/css': 0.1.7
+      '@twinkleplop/javascript': 0.1.7
 
-  '@twinkleplop/ini@0.1.6':
+  '@twinkleplop/http@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/bash': 0.1.7
+      '@twinkleplop/core': 0.3.1
+      '@twinkleplop/html': 0.1.7
+      '@twinkleplop/javascript': 0.1.7
+      '@twinkleplop/json': 0.1.7
 
-  '@twinkleplop/javascript@0.1.6':
+  '@twinkleplop/ini@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
-      '@twinkleplop/css': 0.1.6
-      '@twinkleplop/html': 0.1.6
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/json@0.1.6':
+  '@twinkleplop/javascript@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
+      '@twinkleplop/css': 0.1.7
+      '@twinkleplop/html': 0.1.7
 
-  '@twinkleplop/jsonc@0.1.3':
+  '@twinkleplop/json@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/markdown-core@0.2.0':
+  '@twinkleplop/jsonc@0.1.4':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/markdown@0.2.0':
+  '@twinkleplop/markdown-core@0.2.1':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/powershell@0.2.0':
+  '@twinkleplop/markdown@0.2.1':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/python@0.1.6':
+  '@twinkleplop/powershell@0.2.1':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/rust@0.1.6':
+  '@twinkleplop/python@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/shellsession@0.1.6':
+  '@twinkleplop/rust@0.1.7':
     dependencies:
-      '@twinkleplop/bash': 0.1.6
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/sql@0.1.6':
+  '@twinkleplop/shellsession@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/bash': 0.1.7
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/svelte@0.1.6':
+  '@twinkleplop/sql@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
-      '@twinkleplop/css': 0.1.6
-      '@twinkleplop/javascript': 0.1.6
+      '@twinkleplop/core': 0.3.1
+
+  '@twinkleplop/svelte@0.1.7':
+    dependencies:
+      '@twinkleplop/core': 0.3.1
+      '@twinkleplop/css': 0.1.7
+      '@twinkleplop/javascript': 0.1.7
 
   '@twinkleplop/theme-ayu@0.1.3':
     dependencies:
       '@twinkleplop/core': 0.3.0
 
-  '@twinkleplop/toml@0.1.6':
+  '@twinkleplop/toml@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
-  '@twinkleplop/tsx@0.1.6':
+  '@twinkleplop/tsx@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
-      '@twinkleplop/javascript': 0.1.6
-      '@twinkleplop/typescript': 0.1.6
+      '@twinkleplop/core': 0.3.1
+      '@twinkleplop/javascript': 0.1.7
+      '@twinkleplop/typescript': 0.1.7
 
-  '@twinkleplop/twoslash-svelte@0.3.0(@typescript-eslint/types@8.57.2)':
+  '@twinkleplop/twoslash-svelte@0.3.1(@typescript-eslint/types@8.57.2)':
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
-      '@twinkleplop/core': 0.3.0
-      '@twinkleplop/svelte': 0.1.6
-      '@twinkleplop/twoslash': 0.3.0(typescript@5.9.3)
+      '@twinkleplop/core': 0.3.1
+      '@twinkleplop/svelte': 0.1.7
+      '@twinkleplop/twoslash': 0.3.1(typescript@5.9.3)
       '@volar/language-core': 2.4.28
       svelte: 5.57.1(@typescript-eslint/types@8.57.2)
       svelte2tsx: 0.7.53(svelte@5.57.1(@typescript-eslint/types@8.57.2))(typescript@5.9.3)
@@ -6189,32 +6194,32 @@ snapshots:
       - '@typescript-eslint/types'
       - supports-color
 
-  '@twinkleplop/twoslash@0.3.0(typescript@5.9.3)':
+  '@twinkleplop/twoslash@0.3.1(typescript@5.9.3)':
     dependencies:
-      '@twinkleplop/core': 0.3.0
-      '@twinkleplop/typescript': 0.1.6
+      '@twinkleplop/core': 0.3.1
+      '@twinkleplop/typescript': 0.1.7
       twoslash: 0.3.9(typescript@5.9.3)
     transitivePeerDependencies:
       - supports-color
       - typescript
 
-  '@twinkleplop/twoslash@0.3.0(typescript@6.0.2)':
+  '@twinkleplop/twoslash@0.3.1(typescript@6.0.2)':
     dependencies:
-      '@twinkleplop/core': 0.3.0
-      '@twinkleplop/typescript': 0.1.6
+      '@twinkleplop/core': 0.3.1
+      '@twinkleplop/typescript': 0.1.7
       twoslash: 0.3.9(typescript@6.0.2)
     transitivePeerDependencies:
       - supports-color
       - typescript
 
-  '@twinkleplop/typescript@0.1.6':
+  '@twinkleplop/typescript@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
-      '@twinkleplop/javascript': 0.1.6
+      '@twinkleplop/core': 0.3.1
+      '@twinkleplop/javascript': 0.1.7
 
-  '@twinkleplop/yaml@0.1.6':
+  '@twinkleplop/yaml@0.1.7':
     dependencies:
-      '@twinkleplop/core': 0.3.0
+      '@twinkleplop/core': 0.3.1
 
   '@tybys/wasm-util@0.10.1':
     dependencies:
@@ -8672,11 +8677,11 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  svelte-check@4.4.5(picomatch@4.0.3)(svelte@5.55.0)(typescript@5.9.3):
+  svelte-check@4.4.5(picomatch@4.0.7)(svelte@5.55.0)(typescript@5.9.3):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       chokidar: 4.0.3
-      fdir: 6.5.0(picomatch@4.0.3)
+      fdir: 6.5.0(picomatch@4.0.7)
       picocolors: 1.1.1
       sade: 1.8.1
       svelte: 5.55.0
