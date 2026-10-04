@@ -203,8 +203,16 @@ describe('element replacement, markdown mode', () => {
 			'fenced code passes lang, meta and the raw code',
 			'```js title="x" {1}\nlet a = {b: "</script>"};\n```',
 			['pre'],
-			'<Pre_MDSVEX_G lang={"js"} meta={"title=\\"x\\" {1}"} code={"let a = {b: \\"</script>\\"};"}>' +
+			'<Pre_MDSVEX_G lang={"js"} meta={"title=\\"x\\" {1}"} title={"x"} code={"let a = {b: \\"</script>\\"};"}>' +
 				'<pre><code class="language-js">let a = &#123;b: &quot;&lt;/script&gt;&quot;&#125;;</code></pre></Pre_MDSVEX_G>',
+		],
+		[
+			'fenced code passes the title, caption and meta props without a highlighter',
+			'```ts [math.ts] caption="c" {1} playground height=300 theme="dark"\nx\n```',
+			['pre'],
+			'<Pre_MDSVEX_G lang={"ts"} meta={"[math.ts] caption=\\"c\\" {1} playground height=300 theme=\\"dark\\""}' +
+				' title={"math.ts"} caption={"c"} playground={true} height={"300"} theme={"dark"} code={"x"}>' +
+				'<pre><code class="language-ts">x</code></pre></Pre_MDSVEX_G>',
 		],
 		[
 			'fenced code with only a language has no meta',
@@ -260,6 +268,36 @@ describe('element replacement, markdown mode', () => {
 			expect(body(code)).toBe(want);
 		});
 	}
+
+	test('a meta prop never replaces a built in prop without a highlighter', () => {
+		const raw = 'a\n\n```ts code=1 lang playground\nx\n```';
+		const { code, warnings } = compile_warned(raw, only('pre'));
+		expect(body(code)).toBe(
+			'<p>a</p><Pre_MDSVEX_G lang={"ts"} meta={"code=1 lang playground"} playground={true} code={"x"}>' +
+				'<pre><code class="language-ts">x</code></pre></Pre_MDSVEX_G>'
+		);
+		expect(warnings).toEqual([
+			{
+				code: 'meta_prop_ignored',
+				message:
+					'the meta prop code is dropped, the pre component already takes code',
+				start: { line: 3, column: 0 },
+			},
+			{
+				code: 'meta_prop_ignored',
+				message:
+					'the meta prop lang is dropped, the pre component already takes lang',
+				start: { line: 3, column: 0 },
+			},
+		]);
+	});
+
+	test('an unreplaced fence drops meta props silently without a highlighter', () => {
+		const raw = '```ts code=1 playground\nx\n```';
+		const { code, warnings } = compile_warned(raw, only('p'));
+		expect(code).toBe('<pre><code class="language-ts">x</code></pre>');
+		expect(warnings).toBeUndefined();
+	});
 
 	test('html the author typed is never replaced', () => {
 		const raw =

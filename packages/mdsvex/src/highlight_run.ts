@@ -5,6 +5,7 @@ import type {
 	HighlightedBlock,
 	HighlightedCode,
 	HighlightWarningCode,
+	PreMeta,
 } from '@mdsvex/render/html-cursor';
 import {
 	escape_braces,
@@ -164,7 +165,9 @@ export interface RunWarning {
  * the highlighter of one compile, it renders each fence once however often
  * the walk asks, and collects warnings at the offsets of their code
  */
-export class HighlightRun implements CodeHighlighter, HighlightContext {
+export class HighlightRun
+	implements CodeHighlighter, PreMeta, HighlightContext
+{
 	warnings: RunWarning[] = [];
 	private blocks = new Map<number, HighlightedBlock | null>();
 	private unknown: Set<string> | null = null;
@@ -201,6 +204,14 @@ export class HighlightRun implements CodeHighlighter, HighlightContext {
 		} catch (e) {
 			throw this.located(e, `\`${lang}\` code span`);
 		}
+	}
+
+	pre_props(meta: string, start: number): string {
+		const { props, dropped } = pre_props(read_meta(meta));
+		if (dropped !== null)
+			for (let i = 0; i < dropped.length; i++)
+				this.warn('meta_prop_ignored', dropped[i], start);
+		return props;
 	}
 
 	unknown_language(lang: string): void {
@@ -288,6 +299,19 @@ function live_position(
 	let end = source.indexOf('\n', start);
 	if (end === -1) end = source.length;
 	return { line, column: Math.max(1, end - start - (code_end - offset) + 1) };
+}
+
+const PLAIN: HighlightConfig = {
+	block: () => null,
+	inline: () => null,
+};
+
+/** a run that highlights nothing, for the meta conventions of a plain pre replacement */
+export function plain_run(
+	filename: string | undefined,
+	source: string
+): HighlightRun {
+	return new HighlightRun(PLAIN, filename, source);
 }
 
 /** null when the option highlights nothing */

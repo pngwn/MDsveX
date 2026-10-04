@@ -28,7 +28,7 @@ import {
 } from './frontmatter';
 import type { FrontmatterOptions } from './frontmatter';
 import { scope_of } from './root_scope';
-import { highlight_run } from './highlight_run';
+import { highlight_run, plain_run } from './highlight_run';
 export { highlight_error_at } from './highlight_run';
 import type {
 	HighlightOption,
@@ -554,7 +554,7 @@ function warning(
 
 /**
  * only a render with a scope sets renderer warnings, the offsets index
- * source, the renderer lets go of the highlight run
+ * source, the renderer lets go of the run
  */
 function add_warnings(
 	result: { warnings?: CompileWarning[] },
@@ -562,7 +562,10 @@ function add_warnings(
 	source: string,
 	run: HighlightRun | null
 ): void {
-	if (run !== null) renderer.highlight = null;
+	if (run !== null) {
+		renderer.highlight = null;
+		renderer.pre_meta = null;
+	}
 	const scope = renderer.scope;
 	const list = scope === null || scope.size === 0 ? null : renderer.warnings;
 	const highlights = run === null ? null : run.warnings;
@@ -588,15 +591,21 @@ function add_warnings(
 	result.warnings = out;
 }
 
-/** the run the renderer highlights with, null for none */
+/**
+ * the run the renderer highlights with, a replaced pre reads the meta
+ * conventions without one too, null when neither needs a run
+ */
 function bind_highlight(
 	renderer: CursorHTMLRenderer,
 	option: HighlightOption | undefined,
 	filename: string | undefined,
 	source: string
 ): HighlightRun | null {
-	const run = highlight_run(option, filename, source);
+	let run = highlight_run(option, filename, source);
 	renderer.highlight = run;
+	if (run === null && renderer.scope?.get('pre') !== undefined)
+		run = plain_run(filename, source);
+	renderer.pre_meta = run;
 	return run;
 }
 

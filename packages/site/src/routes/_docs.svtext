@@ -924,7 +924,7 @@ export function add(a: number, b: number) {
 ```
 ````
 
-A fence with a title or caption renders inside a `<figure class="twinkleplop-block">`, with a `<figcaption class="twinkleplop-title">` above the code and a `<figcaption class="twinkleplop-caption">` below it. A [replaced `pre`](docs#code-block-components) gets them as props instead.
+A fence with a title or caption renders inside a `<figure class="twinkleplop-block">`, with a `<figcaption class="twinkleplop-title">` above the code and a `<figcaption class="twinkleplop-caption">` below it. A [replaced `pre`](docs#code-block-components) gets them as props instead. With `highlight: false` there's no figure, and the fence renders as a plain `<pre><code>`.
 
 A line range past the end of the fence fails the build, so a stale range doesn't silently highlight nothing. The `language-` class carries only the language, never the rest of the meta.
 
@@ -1029,7 +1029,7 @@ Meta that no convention claims becomes props. `key="value"`, `key='value'` and `
 ```
 ````
 
-That fence gives `playground={true}` and `height="300"`, as well as `title`. Expression values, `key={…}`, aren't read. A meta prop named `lang`, `meta`, `code`, `title`, `caption`, `class` or `children` is dropped with a warning. Meta props, `title` and `caption` come from the highlighter, so with `highlight: false` a `pre` only gets `lang`, `meta`, `code` and `children`.
+That fence gives `playground={true}` and `height="300"`, as well as `title`. Expression values, `key={…}`, aren't read. A meta prop named `lang`, `meta`, `code`, `title`, `caption`, `class` or `children` is dropped with a warning. Meta props, `title` and `caption` don't depend on the highlighter, so a `pre` gets them with `highlight: false` too.
 
 See the [code blocks playground example](/playground/code).
 
