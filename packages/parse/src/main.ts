@@ -11588,14 +11588,25 @@ export class PFMParser {
 				this.node_stack.pop();
 				this.states.pop();
 				const parent_id = this.node_stack[this.node_stack.length - 1];
-				this.emit_leaf(
-					NodeKind.text,
-					delim_end,
-					parent_id,
-					delim_end,
-					this.cursor,
-					this.cursor
-				);
+				let ve = this.cursor;
+				while (
+					ve > delim_end &&
+					(char_code_at.call(this.source, ve - 1 - this.source_base) ===
+						SPACE ||
+						char_code_at.call(this.source, ve - 1 - this.source_base) === TAB)
+				) {
+					ve--;
+				}
+				if (ve > delim_end) {
+					this.emit_leaf(
+						NodeKind.text,
+						delim_end,
+						parent_id,
+						delim_end,
+						ve,
+						this.cursor
+					);
+				}
 				// don't push to node_stack - this text node is immediately closed
 			} else {
 				// emphasis, strong, strikethrough, superscript, link_text

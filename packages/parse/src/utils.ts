@@ -906,12 +906,16 @@ export class NodeBuffer {
 			child = this.next_at(child);
 		}
 
-		// if exactly one child and it's text, merge the delimiter into it
+		// merge a lone text child into the delimiter, a cell text ends at the pipe past its value
 		if (
 			last_child === first_child &&
 			this.kind_at(first_child) === NodeKind.text
 		) {
-			this.set_value(index, this.start_at(index), this.end_at(first_child));
+			this.set_value(
+				index,
+				this.start_at(index),
+				this.value_end_at(first_child)
+			);
 			this.set_end(index, this.end_at(first_child));
 
 			// skip the child in the sibling chain
