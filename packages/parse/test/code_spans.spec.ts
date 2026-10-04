@@ -711,6 +711,52 @@ describe('code spans', () => {
 		expect(paragraph_kinds.length).toBe(1);
 		expect(code_span_kinds.length).toBe(1);
 	});
+
+	const hint_cases: [string, [string, string | undefined][]][] = [
+		['pfm_328_5', [['#!ts', undefined]]],
+		['pfm_328_6', [['#!', undefined]]],
+		['pfm_328_7', [['#!ts ', undefined]]],
+		[
+			'pfm_328_8',
+			[
+				['#!ts', undefined],
+				['c', 'js'],
+			],
+		],
+		[
+			'pfm_328_9',
+			[
+				['#!', undefined],
+				['d', undefined],
+			],
+		],
+	];
+
+	for (const [id, expected] of hint_cases) {
+		test(`pfm example ${id} keeps a bare #! as code`, () => {
+			const input = load_fixture(id);
+			const { nodes } = parse_markdown_svelte(input);
+			const spans = nodes
+				.get_kinds(NodeKind.code_span)
+				.map((i) => nodes.get_node(i));
+
+			expect(
+				spans.map((s) => {
+					const { info_start, info_end } = s.metadata ?? {};
+					return [
+						input.slice(s.value[0], s.value[1]),
+						info_start === undefined
+							? undefined
+							: input.slice(info_start, info_end),
+					];
+				})
+			).toEqual(expected);
+			for (const s of spans) {
+				const text = input.slice(s.start, s.end);
+				expect(text.startsWith('`') && text.endsWith('`')).toBe(true);
+			}
+		});
+	}
 });
 
 describe('unmatched code spans', () => {
@@ -747,6 +793,18 @@ describe('unmatched code spans', () => {
 		[
 			'a ``b` c',
 			'root\n  paragraph\n    text "a "\n    text "``"\n    text "b"\n    text "`"\n    text " c"',
+		],
+		[
+			'a `#!ts',
+			'root\n  paragraph\n    text "a "\n    text "`"\n    text "#"\n    text "!ts"',
+		],
+		[
+			'a `#!',
+			'root\n  paragraph\n    text "a "\n    text "`"\n    text "#"\n    text "!"',
+		],
+		[
+			'a `#!ts\n\nx',
+			'root\n  paragraph\n    text "a "\n    text "`"\n    text "#"\n    text "!ts"\n  line_break\n  line_break\n  paragraph\n    text "x"',
 		],
 	];
 
