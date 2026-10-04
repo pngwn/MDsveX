@@ -5,6 +5,9 @@
 [yaml]: https://eemeli.org/yaml/
 [smol-toml]: https://github.com/squirrelchat/smol-toml
 [sv-migrate]: https://svelte.dev/docs/cli/sv-migrate
+[twinkleplop]: https://twinkleplop.pngwn.at
+[twinkleplop-annotations]: https://twinkleplop.pngwn.at/docs/directives
+[shiki]: https://shiki.style
 
 # mdsvex
 
@@ -112,6 +115,27 @@ export default defineConfig({
 });
 ```
 
+### Highlighting code
+
+Fenced code is highlighted by default, with [twinkleplop][twinkleplop]. mdsvex adds no CSS, so install a theme and import it once, in your root layout:
+
+```bash
+npm i --save-dev @twinkleplop/theme-github
+```
+
+```svelte
+<!-- src/routes/+layout.svelte -->
+<script>
+	import '@twinkleplop/theme-github';
+
+	let { children } = $props();
+</script>
+
+{@render children()}
+```
+
+Without a theme, code renders in one colour. The theme gives light colours, and dark ones under a `.dark` class. To follow the reader's system setting instead, see [themes](docs#themes).
+
 ### `compile`
 
 `compile` turns one document into Svelte component source without Vite. It is synchronous and never touches the filesystem, so it also runs in a browser.
@@ -150,6 +174,8 @@ compile(source, {
 
 The output imports from those specifiers exactly as written.
 
+`compile` doesn't highlight code unless you pass `highlight`, see [highlighting with `compile`](docs#highlighting-with-compile).
+
 A directive with no component is an error. For a preview or an editor, pass `strict_directives: false` to render it as its children instead.
 
 ## Options
@@ -173,6 +199,7 @@ interface MdsvexOptions {
 	components?: string | URL | (string | URL)[];
 	component_mode?: 'markdown' | 'all';
 	parse_plugins?: ParsePlugin[];
+	highlight?: HighlightOptions | Highlighter | false;
 }
 ```
 
@@ -253,6 +280,14 @@ mdsvex({ parse_plugins: [heading_ids] });
 ```
 
 Elements a plugin creates count as markdown, so a [replacement](docs#custom-components) for `mark` also replaces the `<mark>` a highlight plugin adds.
+
+### `highlight`
+
+```ts
+highlight: HighlightOptions | Highlighter | false = {};
+```
+
+How code is highlighted. Options configure twinkleplop, a function replaces it, and `false` renders plain code. See [Syntax highlighting](docs#syntax-highlighting).
 
 ## Frontmatter
 
@@ -547,13 +582,13 @@ Every replacement gets the element's attributes as props, including any a parse 
 | `h1` to `h6` | `level`, a number from 1 to 6 |
 | `a` | `href`, `title` |
 | `img` | `src`, `alt`, `title`, and no `children` |
-| `pre` | `lang` and `meta` from the info string, `code`, the raw source text |
-| `code` | inline code only, its text as `children` |
+| `pre` | `lang`, `meta`, `code`, `title`, `caption` and meta props, see [code block components](docs#code-block-components) |
+| `code` | inline code only, its text as `children`, and `lang` when it is [highlighted](docs#inline-code) |
 | `ol` | `start` |
 | `li` | `checked`, when a task list plugin sets it |
 | `th`, `td` | `align`, `"left"`, `"right"` or `"center"` |
 
-`hr` and `br` are void too. For a fenced code block, `children` is the default rendering, a `<code>` element. The info string `js title="x"` gives `lang="js"` and `meta='title="x"'`. A block with no info string gets only `code`.
+`hr` and `br` are void too. For a fenced code block, `children` is the whole highlighted `<pre>` element.
 
 One component can serve several elements:
 
@@ -722,6 +757,387 @@ no component renders the directive :::Calout at 3:1. Export a component named "C
 
 A [parse plugin](docs#parse_plugins) can handle directives that have no component, through the `directive_inline`, `directive_leaf` and `directive_container` node types. A directive with a component never reaches a plugin.
 
+## Syntax highlighting
+
+The Vite plugin highlights fenced code and [inline code with a language](docs#inline-code) with [twinkleplop][twinkleplop], with no setup. Every bundled language loads the first time a document has code.
+
+Highlighted code is ordinary markup in your component, not `{@html}`. mdsvex escapes every `{` and `}` in it, so code is never read as a Svelte expression, whichever highlighter produced it.
+
+### Themes
+
+mdsvex adds no CSS. A twinkleplop theme is a stylesheet you import once, usually in your root layout:
+
+```js
+import '@twinkleplop/theme-github';
+```
+
+The themes are `@twinkleplop/theme-github`, `theme-atom-one`, `theme-ayu`, `theme-catppuccin`, `theme-material`, `theme-night-owl`, `theme-rose-pine` and `theme-solarized`. Each has three stylesheets:
+
+- the package itself, light colours by default and dark ones under a `.dark` ancestor, for sites that toggle a `dark` class;
+- `/light` and `/dark`, one variant each, for a fixed mode.
+
+To follow the reader's system setting, import the light variant and add the dark one under a media query:
+
+```svelte
+<!-- src/routes/+layout.svelte -->
+<script>
+	import '@twinkleplop/theme-github/light';
+	import '../app.css';
+
+	let { children } = $props();
+</script>
+
+{@render children()}
+```
+
+```css
+/* src/app.css */
+@import '@twinkleplop/theme-github/dark' (prefers-color-scheme: dark);
+```
+
+A theme only colours tokens. It sets `--twp-background` without applying it, and leaves the block's layout and the classes that [fence meta](docs#fence-meta) and [code directives](docs#code-directives) add to you:
+
+```css
+pre.twinkleplop {
+	padding: 1em;
+	overflow-x: auto;
+	background: var(--twp-background);
+}
+
+.twinkleplop .highlight,
+.twinkleplop .highlighted-word {
+	background: rgb(127 127 127 / 0.2);
+}
+
+.twinkleplop .diff-add {
+	background: rgb(0 200 0 / 0.15);
+}
+
+.twinkleplop .diff-del {
+	background: rgb(200 0 0 / 0.15);
+}
+
+.twinkleplop .ln {
+	display: inline-block;
+	width: 2em;
+	margin-right: 1em;
+	text-align: right;
+	opacity: 0.5;
+}
+
+.has-focus .l:not(.focus) {
+	opacity: 0.5;
+}
+```
+
+A highlighted block renders as below. Each line is a `span.l`, each token a `span.tok` with its type as a class, and a line number a `span.ln`:
+
+```html
+<pre class="twinkleplop language-ts has-highlight" data-language="ts"><code><span class="l highlight"><span class="tok keyword">const</span> …</span></code></pre>
+```
+
+### Highlight options
+
+`highlight` takes these options in `mdsvex()`:
+
+```ts
+interface HighlightOptions {
+	languages?: Record<string, LanguageModule | HtmlHighlighter | string>;
+	default_language?: string;
+	on_unknown_language?: 'plain' | 'throw';
+	line_numbers?: boolean | { start?: number };
+	annotations?: AnnotationPlugin[] | false;
+	render?: RenderOptions;
+	parse_meta?: (raw: string, parsed: RenderOptions) => RenderOptions | void;
+	twoslash?: boolean | { svelte?: boolean };
+}
+```
+
+- `languages` adds languages and aliases, merged over the bundled ones. See [languages](docs#languages).
+- `default_language` highlights fences that name no language.
+- `on_unknown_language` decides what happens to a language mdsvex doesn't have. `'plain'`, the default, renders it as plain code and warns once per file and language. `'throw'` fails the build.
+- `line_numbers` numbers every fence's lines, `{ start: 10 }` from 10. A fence's own meta overrides it.
+- `annotations` lists the [code directives](docs#code-directives). Leave it out for the defaults, or pass `false` for none.
+- `render` is twinkleplop's render options under every fence's own, such as `indent_guides`, `whitespace` or the `line` and `token` hooks. See [twinkleplop's render options](https://twinkleplop.pngwn.at/docs/render_options).
+- `parse_meta` gets a fence's raw meta and the render options the [meta conventions](docs#fence-meta) set, and returns the render options to use, for house conventions of your own.
+- `twoslash` turns on [twoslash](docs#twoslash).
+
+`highlight` also takes a [function](docs#custom-highlighters), or `false` to render every block as a plain `<pre><code class="language-js">`.
+
+### Languages
+
+These languages are bundled: `bash`, `c`, `cpp`, `css`, `diff`, `dockerfile`, `dotenv`, `go`, `graphql`, `html`, `http`, `ini`, `javascript`, `json`, `jsonc`, `markdown`, `powershell`, `python`, `rust`, `shellsession`, `sql`, `svelte`, `toml`, `tsx`, `typescript` and `yaml`. Fences inside a `markdown` block are highlighted too.
+
+These aliases are built in:
+
+| alias | language |
+| --- | --- |
+| `js`, `mjs`, `cjs` | `javascript` |
+| `ts`, `mts`, `cts` | `typescript` |
+| `jsx` | `tsx` |
+| `sh`, `shell`, `zsh` | `bash` |
+| `console`, `shell-session` | `shellsession` |
+| `yml` | `yaml` |
+| `md` | `markdown` |
+| `env` | `dotenv` |
+| `patch` | `diff` |
+| `py` | `python` |
+| `rs` | `rust` |
+
+A fence's language is looked up as written, then lowercased, so `Dockerfile` and `JSON` work. A language mdsvex doesn't have renders as plain code, in the same markup, so themes and line numbers still apply, with one warning per file. A fence with no language renders the same way, unless you set `default_language`.
+
+`languages` adds to these. A string is an alias. A twinkleplop language package is passed as its module namespace:
+
+```js
+import * as zig from '@acme/twinkleplop-zig';
+
+mdsvex({
+	highlight: {
+		languages: { zig, zg: 'zig', svx: 'markdown', vue: 'html' }
+	}
+});
+```
+
+A language can also be a function, `(code, render) => html`, that renders HTML itself. Code directives don't apply to it.
+
+### Fence meta
+
+The info string after the language takes the conventions of Shiki, VitePress and rehype-pretty-code:
+
+| meta | effect |
+| --- | --- |
+| `{1,3-4}` | highlights lines 1, 3 and 4 with the `highlight` class |
+| `{1,3-4}#id` | adds `data-highlighted-line-id="id"` to those lines |
+| `/word/` | highlights every `word` with the `highlighted-word` class |
+| `/word/2-3`, `/word/#id` | the second and third `word` only, or adds `data-chars-id="id"` |
+| `:line-numbers`, `:line-numbers=10`, `:no-line-numbers` | turns line numbers on, from 10, or off |
+| `showLineNumbers`, `showLineNumbers{10}` | turns line numbers on, from 10 |
+| `[math.ts]`, `title="math.ts"` | a title |
+| `caption="…"` | a caption |
+| `twoslash` | uses [twoslash](docs#twoslash) |
+
+````md
+```ts title="math.ts" {2} :line-numbers
+export function add(a: number, b: number) {
+	return a + b;
+}
+```
+````
+
+A fence with a title or caption renders inside a `<figure class="twinkleplop-block">`, with a `<figcaption class="twinkleplop-title">` above the code and a `<figcaption class="twinkleplop-caption">` below it. A [replaced `pre`](docs#code-block-components) gets them as props instead.
+
+A line range past the end of the fence fails the build, so a stale range doesn't silently highlight nothing. The `language-` class carries only the language, never the rest of the meta.
+
+### Code directives
+
+A code directive is a marker in a comment, `[!verb]`, that styles part of the code and disappears from the output. A line that holds only markers is dropped.
+
+```js
+const config = {
+	theme: 'light', // [!del]
+	theme: 'dark', // [!add]
+	lines: true // [!hl]
+};
+```
+
+These are on by default:
+
+| directive | class | for |
+| --- | --- | --- |
+| `[!hl]` | `highlight` | a highlighted line |
+| `[!em]` | `emphasis` | drawing attention |
+| `[!focus]` | `focus`, and `has-focus` on the `<pre>` | the lines to look at |
+| `[!dim]` | `subdued` | fading lines out |
+| `[!add]`, `[!del]`, `[!mod]` | `diff-add`, `diff-del`, `diff-mod` | diffs |
+| `[!err]`, `[!warn]`, `[!info]` | `error`, `warning`, `info` | diagnostics |
+| `[!eval]` | none | [live values](docs#live-code) |
+
+With no arguments, a directive applies to its own line. `[!hl +2]` applies to the two lines below the marker, `[!hl :3...5]` to lines 3 to 5, and `[!hl =total]` to every `total` on the marker's line. [Twinkleplop's directive docs][twinkleplop-annotations] have every form. The `<pre>` also gets a `has-` class for each class inside it, such as `has-diff-add`.
+
+`annotations` picks the directives. Content written for Shiki's transformers, `// [!code ++]`, works with `shiki_notation` added:
+
+```js
+import { default_annotations, shiki_notation } from 'mdsvex/highlight';
+
+mdsvex({
+	highlight: { annotations: [...default_annotations, shiki_notation()] }
+});
+```
+
+`annotations: false` turns directives off, and markers stay in the code as written.
+
+### Inline code
+
+A code span that starts with ` #! ` and a language is highlighted:
+
+```md
+Call `#!ts add(1, 2)` to add numbers.
+```
+
+It renders as `<code class="twinkleplop twinkleplop-inline language-ts">`, with token spans inside and no ` #!ts `. A code span without ` #! ` stays a plain `<code>`. A [`code` replacement](docs#element-props) gets highlighted spans as `children`, and the language as a `lang` prop.
+
+### Code block components
+
+A [`pre` replacement](docs#custom-components) wraps the highlighted block. It gets these props:
+
+| prop | value |
+| --- | --- |
+| `children` | the whole highlighted `<pre>` element |
+| `lang` | the fence's language |
+| `meta` | the rest of the info string, raw |
+| `code` | the text a reader sees, without directive markers, with [live values](docs#live-code) in place |
+| `title`, `caption` | from the [fence meta](docs#fence-meta), when it has them |
+| meta props | each part of the meta that no convention claims |
+
+`children` is the `<pre>` itself, not its `<code>`, because Svelte only keeps whitespace inside a `<pre>` it can see. Render it with `{@render children()}` inside your own markup, never inside another `<pre>`. A replaced `pre` gets no `<figure>`, so the title, caption and anything else around the code are up to the component.
+
+A copy button with a filename:
+
+```svelte
+<!-- src/lib/markdown/Pre.svelte -->
+<script>
+	let { code, title, children } = $props();
+
+	let copied = $state(false);
+
+	async function copy() {
+		await navigator.clipboard.writeText(code);
+		copied = true;
+		setTimeout(() => (copied = false), 1500);
+	}
+</script>
+
+<div class="code">
+	<div class="bar">
+		{#if title}<span>{title}</span>{/if}
+		<button onclick={copy}>{copied ? 'copied' : 'copy'}</button>
+	</div>
+	{@render children()}
+</div>
+```
+
+```js
+// src/lib/markdown.js
+export { default as pre } from './markdown/Pre.svelte';
+```
+
+Meta that no convention claims becomes props. `key="value"`, `key='value'` and `key=value` give a string, and a bare `key` gives `true`:
+
+````md
+```svelte title="App.svelte" playground height=300
+<h1>Hello</h1>
+```
+````
+
+That fence gives `playground={true}` and `height="300"`, as well as `title`. Expression values, `key={…}`, aren't read. A meta prop named `lang`, `meta`, `code`, `title`, `caption`, `class` or `children` is dropped with a warning. Meta props, `title` and `caption` come from the highlighter, so with `highlight: false` a `pre` only gets `lang`, `meta`, `code` and `children`.
+
+See the [code blocks playground example](/playground/code).
+
+### Custom highlighters
+
+`highlight` can be a function instead of options. It gets the code and what mdsvex knows about it, and returns HTML:
+
+```ts
+type Highlighter = (
+	code: string,
+	info: { lang: string; meta: string; inline: boolean; filename?: string }
+) => string | null | undefined;
+```
+
+- `lang` is the fence's language, `""` when it names none, and `meta` the rest of the info string.
+- `inline` is `true` for a [code span with ` #! `](docs#inline-code). Plain code spans never reach the highlighter.
+- It returns a whole `<pre>` for a fence, or a `<code>` for inline code. `null` or `undefined` renders that code plain.
+- It must be synchronous. Do any async setup before `mdsvex()` is called, with top-level `await` in your Vite config.
+- It returns ordinary HTML. Don't escape it for Svelte, with `escapeSvelte` or anything else, and don't wrap it in `{@html}`. mdsvex escapes every brace in what you return, so a `{@html …}` wrapper would show up as text.
+
+With [Shiki][shiki]:
+
+```js
+// vite.config.js
+import { sveltekit } from '@sveltejs/kit/vite';
+import { mdsvex } from 'mdsvex';
+import { createHighlighter } from 'shiki';
+import { defineConfig } from 'vite';
+
+const shiki = await createHighlighter({
+	themes: ['github-dark'],
+	langs: ['javascript', 'typescript', 'svelte']
+});
+
+export default defineConfig({
+	plugins: [
+		mdsvex({
+			highlight: (code, { lang, inline }) =>
+				inline || !shiki.getLoadedLanguages().includes(lang)
+					? null
+					: shiki.codeToHtml(code, { lang, theme: 'github-dark' })
+		}),
+		sveltekit()
+	]
+});
+```
+
+Shiki's transformers go in the `codeToHtml` call, as they would anywhere else. A [`pre` replacement](docs#code-block-components) wraps a custom highlighter's output too, and gets the same props.
+
+### Twoslash
+
+Twoslash shows type information from the TypeScript compiler in your code. It is opt-in, as it starts a TypeScript environment. Install it:
+
+```bash
+npm i --save-dev @twinkleplop/twoslash
+```
+
+Turn it on, and import its styles next to your theme:
+
+```js
+mdsvex({ highlight: { twoslash: true } });
+```
+
+```js
+import '@twinkleplop/twoslash/style.css';
+```
+
+Fences with `twoslash` in their meta then go through twoslash. `twoslash: true` covers `ts`, `js` and `tsx` fences. For Svelte fences too, install `@twinkleplop/twoslash-svelte` as well and use `twoslash: { svelte: true }`.
+
+````md
+```ts twoslash
+const total = [1, 2, 3].reduce((a, b) => a + b, 0);
+//    ^?
+```
+````
+
+Turning it on without the package installed is an error that names the package.
+
+### Highlighting with `compile`
+
+`compile` is synchronous and loads nothing, so it doesn't highlight unless you pass `highlight`. `mdsvex/highlight` builds the same configuration the plugin uses:
+
+```js
+import { compile } from 'mdsvex/compile';
+import { create_highlight, load_default_languages } from 'mdsvex/highlight';
+
+const highlight = create_highlight({
+	languages: await load_default_languages()
+});
+
+const { code } = compile(source, { highlight, filename: 'post.svx' });
+```
+
+`create_highlight` takes the [options](docs#highlight-options) above, apart from `twoslash`, which takes highlighters by language. `load_default_languages` loads every bundled language once. In a browser, `language_loaders` loads them one at a time, so you only fetch what you use:
+
+```js
+import { create_highlight, language_loaders } from 'mdsvex/highlight';
+
+const highlight = create_highlight({
+	languages: {
+		svelte: await language_loaders.svelte(),
+		typescript: await language_loaders.typescript()
+	}
+});
+```
+
+`compile` also takes a [highlighter function](docs#custom-highlighters), or `false`.
+
 ## Live code
 
 Braces in code blocks are text. To put a value from the document into a code block, mark it live with an `[!eval]` comment:
@@ -750,11 +1166,11 @@ function my_func() {
 
 Here the outer braces stay text and `{some_val}` is live.
 
-`[!eval]` is a twinkleplop annotation, so it is written in a comment of the fence's language: `//` or `/* */` in JavaScript, `#` in shell, `<!-- -->` in HTML and Svelte. It needs syntax highlighting, which the Vite plugin turns on by default.
+`[!eval]` is a [code directive](docs#code-directives), so it is written in a comment of the fence's language: `//` or `/* */` in JavaScript, `#` in shell, `<!-- -->` in HTML and Svelte. It needs syntax highlighting, which the Vite plugin turns on by default.
 
 ### Marker forms
 
-`[!eval]` takes the same arguments as the other annotations:
+`[!eval]` takes the same arguments as the other code directives:
 
 | marker | live groups |
 | --- | --- |
@@ -796,9 +1212,9 @@ The flag makes every top-level group in the block live. That suits commands, con
 
 ### Copying live code
 
-A [replaced](docs#custom-components) `pre` gets the code as its `code` prop, with live values in place. The prop is a template literal, such as ``code={`${install_command} @pkg/my-pkg`}``, so a copy button copies what the reader sees.
+A [replaced `pre`](docs#code-block-components) gets the code as its `code` prop, with live values in place. The prop is a template literal, such as ``code={`${install_command} @pkg/my-pkg`}``, so a copy button copies what the reader sees.
 
-A custom highlighter function doesn't support live code yet. A fence with the `eval` flag warns and its braces stay text.
+A [custom highlighter](docs#custom-highlighters) doesn't support live code yet. A fence with the `eval` flag warns and its braces stay text.
 
 ## Migrating from mdsvex 0.x
 
@@ -841,7 +1257,7 @@ for (const file of layouts) report(file, check_template(readFileSync(file, 'utf8
 node migrate.js
 ```
 
-- `migrate_config` rewrites the `layout` option into `templates`, in a JavaScript or TypeScript config.
+- `migrate_config` rewrites the `layout` option into `templates`, and the `highlight` option, in a JavaScript or TypeScript config.
 - `migrate_frontmatter` renames a document's `layout:` key to `template:`.
 - `check_template` lists what a layout component needs changed. It rewrites nothing.
 
@@ -902,6 +1318,54 @@ A layout needs two changes to work as a template:
 ```
 
 `check_template` finds `<slot />`, `$$props`, `$$restProps` and `{...$$props}`. [`npx sv migrate svelte-5`][sv-migrate] migrates the rest of the component. Element replacements stay in the module script, now `<script module>`, and keep working.
+
+### Syntax highlighting in 0.x
+
+0.x highlighted with Prism, through a `highlight.highlighter` that could be async and returned `{@html}`. Now twinkleplop highlights by default, and mdsvex escapes whatever a highlighter returns.
+
+| mdsvex 0.x | now |
+| --- | --- |
+| `highlight: false` | `highlight: false` |
+| `highlight: { alias: { x: 'y' } }` | `highlight: { languages: { x: 'y' } }` |
+| `highlight: { highlighter(code, lang, meta, filename) }`, sync or async | `highlight: (code, { lang, meta, inline, filename }) => html`, sync only |
+| a highlighter returns `` {@html `…`} `` | a highlighter returns plain HTML |
+| `highlight.optimise` | gone, highlighted code is always markup |
+| `escapeSvelte` | gone, mdsvex escapes braces itself |
+| Prism and `prism-svelte` | twinkleplop |
+| a Prism theme you add by hand | a [twinkleplop theme](docs#themes) you import |
+| a `pre` replacement doesn't apply to code blocks | it does, see [code block components](docs#code-block-components) |
+
+`migrate_config` renames `alias` to `languages` and removes `optimise`. Alias targets are now twinkleplop's [languages](docs#languages), so it flags Prism names twinkleplop doesn't have, such as `markup`. It can't rewrite a `highlighter`, so it leaves a `// TODO(mdsvex-migrate)` comment above it, and it flags every `escapeSvelte` import.
+
+A highlighter changes in three ways. It takes an object as its second argument, it returns HTML without escaping it, and it can't be async. A Shiki highlighter goes from this:
+
+```js
+import { escapeSvelte } from 'mdsvex';
+
+const shiki = await createHighlighter({ themes: ['github-dark'], langs: ['ts'] });
+
+const config = {
+	highlight: {
+		highlighter: async (code, lang = 'text') => {
+			const html = escapeSvelte(shiki.codeToHtml(code, { lang, theme: 'github-dark' }));
+			return `{@html \`${html}\` }`;
+		}
+	}
+};
+```
+
+to this:
+
+```js
+const shiki = await createHighlighter({ themes: ['github-dark'], langs: ['ts'] });
+
+mdsvex({
+	highlight: (code, { lang, inline }) =>
+		inline ? null : shiki.codeToHtml(code, { lang: lang || 'text', theme: 'github-dark' })
+});
+```
+
+Or drop the highlighter and use the default. Either way, import a theme: highlighted code has no colours without one.
 
 ## Limitations
 

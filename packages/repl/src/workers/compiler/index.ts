@@ -5,6 +5,7 @@ import { load_svelte } from '../npm';
 import { strip_types } from '../typescript_strip_types';
 import {
 	compile_markdown,
+	highlight_for,
 	is_markdown,
 	prepare,
 	type MarkdownResult,
@@ -73,7 +74,11 @@ addEventListener('message', async (event: MessageEvent<CompilerRequest>) => {
 
 		let source = file.contents;
 		if (markdown) {
-			md = compile_markdown(file.contents, file.name, prepared.options);
+			const highlight = await highlight_for(file.contents, prepared.config);
+			md = compile_markdown(file.contents, file.name, {
+				...prepared.options,
+				highlight,
+			});
 			source = md.code;
 			to_source = offset_mapper(md.map, md.code, file.contents);
 		}

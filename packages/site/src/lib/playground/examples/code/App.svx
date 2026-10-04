@@ -1,0 +1,33 @@
+# Code blocks
+
+Fenced code is highlighted with twinkleplop, and `pre` is replaced by
+`Pre.svelte`, which adds a filename and a copy button.
+
+```ts title="math.ts" {2}
+export function add(a: number, b: number) {
+	return a + b;
+}
+```
+
+Comments like `// [!add]` are code directives. They style a line and
+disappear from the output:
+
+```js
+const config = {
+	theme: 'light', // [!del]
+	theme: 'dark', // [!add]
+	lines: true, // [!hl]
+};
+```
+
+Meta that no convention claims becomes a prop, here `lines`:
+
+```svelte lines
+<script>
+	let count = $state(0);
+</script>
+
+<button onclick={() => count++}>{count}</button>
+```
+
+Inline code takes a language after `#!`: `#!js [1, 2, 3].map((n) => n * 2)`.

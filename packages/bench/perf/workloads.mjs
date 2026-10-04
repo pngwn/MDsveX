@@ -200,6 +200,13 @@ export function compile_options(arm, src, options) {
 	return { ...options, directives };
 }
 
+/** the pre transform vite calls per svx file, the post transform needs a live svelte compile */
+export function vite_pre(arm) {
+	// highlighting loads languages asynchronously and makes transform return a promise
+	const [pre] = arm.mdsvex({ highlight: false });
+	return pre;
+}
+
 /** one callable per mode, bound to one arm and one source */
 export function make_doc_run(arm, mode, src) {
 	const {
@@ -273,9 +280,7 @@ export function make_doc_run(arm, mode, src) {
 			return () => mappings_to_v3(mappings, src, code, VITE_ID);
 		}
 		case 'vite-transform': {
-			// the pre transform vite calls per svx file, the post transform needs a live svelte compile,
-			// highlighting loads languages asynchronously and this loop never yields to let it finish
-			const [pre] = arm.mdsvex({ highlight: false });
+			const pre = vite_pre(arm);
 			return () => pre.transform(src, VITE_ID);
 		}
 		default:

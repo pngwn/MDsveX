@@ -4,7 +4,8 @@ import { compile } from "mdsvex";
 import { create_highlight, load_default_languages } from "mdsvex/highlight";
 import GithubSlugger from "github-slugger";
 
-// svx is markdown with svelte in it, sig fences hold typescript signatures
+// svx is markdown with svelte in it, sig fences hold typescript signatures,
+// the docs show code directives as written, so none apply
 const highlight = create_highlight({
 	languages: {
 		...(await load_default_languages()),
@@ -13,6 +14,7 @@ const highlight = create_highlight({
 		mdx: "markdown",
 		sig: "typescript",
 	},
+	annotations: false,
 });
 
 /** ids and anchors the docs nav links to and scroll tracking reads */
