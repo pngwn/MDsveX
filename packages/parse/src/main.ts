@@ -7794,8 +7794,18 @@ export class PFMParser {
 							// applies until the closing backtick. the close handler
 							// sets both value_start and value_end with correct boundaries.
 
-							// a space at the end of the input leaves nothing to skip after it
-							this.chomp(this.cursor + 1 >= length ? 1 : 2);
+							// a space at the end of the input leaves nothing to skip after it,
+							// a line end or cell pipe after it is the next state's to see
+							const after_space =
+								this.cursor + 1 >= length
+									? LINEFEED
+									: char_code_at.call(source, this.cursor + 1 - base);
+							this.chomp(
+								after_space === LINEFEED ||
+									(after_space === PIPE && this.in_table)
+									? 1
+									: 2
+							);
 
 							continue;
 						}
@@ -7924,8 +7934,12 @@ export class PFMParser {
 						}
 						this.cursor++;
 						continue;
-					} else if (code === LINEFEED || code !== code) {
-						// code_span_end continues the span or fails it at a blank line or eof
+					} else if (
+						code === LINEFEED ||
+						code !== code ||
+						(code === PIPE && this.in_table)
+					) {
+						// code_span_end continues the span, fails it at a blank line or eof, or unwinds it at a cell pipe
 						this.out.set_value_start(current_node, this.checkpoint_cursor);
 						this.chomp(this.cursor, true);
 						this.states.pop();
