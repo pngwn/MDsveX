@@ -52,6 +52,7 @@ const DOCS = [
 	'```js\nconst a = 1;\nconst b = 2;\n```\n\n| a | b |\n| - | - |\n| 1 | 2 |\n',
 	'line one\r\nline two\rline three\n\ntext &amp; <b>html</b>\n',
 	'a  \nb\\\nc\n\n***\n\n<div>\n\nx\n\n</div>\n',
+	'| h || *a* | b || r |\n|---||:-:|---||--:|\n| 1 || `x` |> | 2 |\n|^ ||^ |^ | 3 |\n',
 ];
 
 function render(source: string) {
