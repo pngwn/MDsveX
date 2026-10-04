@@ -28,6 +28,7 @@ import {
 	load_arm,
 	MODES,
 	expand_modes,
+	vite_pre,
 } from '../workloads.mjs';
 import { parse_args } from './ab.mjs';
 
@@ -122,8 +123,7 @@ function output(arm, mode, src, session) {
 			return [JSON.stringify(arm.mappings_to_v3(mappings, src, code, VITE_ID))];
 		}
 		case 'vite-transform': {
-			const [pre] = arm.mdsvex();
-			return canonical_text(pre.transform(src, VITE_ID).code);
+			return canonical_text(vite_pre(arm).transform(src, VITE_ID).code);
 		}
 		default:
 			if (mode.startsWith('incremental-'))
