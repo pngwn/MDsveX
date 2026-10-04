@@ -56,6 +56,38 @@ pre {
 	tab-size: 2;
 }
 
+table {
+	border-collapse: collapse;
+	margin: 1rem 0;
+}
+
+th,
+td {
+	border: 1px solid var(--bg-3);
+	padding: 0.4rem 0.75rem;
+	vertical-align: top;
+}
+
+th {
+	background: var(--bg-2);
+	font-weight: 600;
+}
+
+blockquote {
+	margin: 1rem 0;
+	padding: 0.25rem 1rem;
+	border-left: 4px solid var(--bg-3);
+	color: var(--fg-3);
+}
+
+blockquote > :first-child {
+	margin-top: 0;
+}
+
+blockquote > :last-child {
+	margin-bottom: 0;
+}
+
 ul.todos {
 	padding: 0;
 }
