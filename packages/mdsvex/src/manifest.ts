@@ -55,6 +55,11 @@ export interface MdsvexManifest {
 	 * absolute file, only kept when select_template can pick one
 	 */
 	documents: Record<string, string | null>;
+	/**
+	 * how fences render, twinkleplop by default, custom for a highlighter
+	 * function, false for plain code, a manifest without it means twinkleplop
+	 */
+	highlight?: 'twinkleplop' | 'custom' | false;
 }
 
 /**

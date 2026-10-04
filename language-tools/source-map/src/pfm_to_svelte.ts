@@ -3,7 +3,12 @@
  * checks only an editor needs, compile errors become diagnostics
  */
 
-import { compile, DirectiveError, FrontmatterError } from 'mdsvex';
+import {
+	compile,
+	DirectiveError,
+	FrontmatterError,
+	highlight_error_at,
+} from 'mdsvex';
 import type { CompileOptions, CompileResult, TemplateEntry } from 'mdsvex';
 import { PFMParser } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
@@ -267,6 +272,19 @@ function compile_leniently(
 					opts = { ...opts, frontmatter: { parse: () => ({}) } };
 					metadata_known = false;
 				} else opts = { ...opts, template: false };
+				continue;
+			}
+			const at = highlight_error_at(e);
+			if (at !== null && opts.highlight) {
+				// a live expression half typed fails its fence, not the document
+				const start = offset_of(source, at.line, at.column);
+				diagnostics.push({
+					start,
+					end: Math.min(start + 1, source.length),
+					message: (e as Error).message,
+					severity: 'error',
+				});
+				opts = { ...opts, highlight: false };
 				continue;
 			}
 			throw e;

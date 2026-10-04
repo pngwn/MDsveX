@@ -198,12 +198,12 @@ export function read_meta(meta: string): MetaInfo {
 	return out;
 }
 
-/** the conventions that set render options, title and caption are read apart */
+/** the conventions that set render options or live code, title and caption are read apart */
 function claimed(part: string): boolean {
 	const first = part.charCodeAt(0);
 	if (first === BRACE_OPEN) return line_group(part);
 	if (first === SLASH) return word_group(part);
-	if (part === 'twoslash') return true;
+	if (part === 'twoslash' || part === 'eval') return true;
 	if (part === ':no-line-numbers' || part === ':line-numbers') return true;
 	if (part.startsWith(':line-numbers=')) return digits(part.slice(14));
 	if (part === 'showLineNumbers') return true;

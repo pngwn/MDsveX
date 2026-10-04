@@ -96,6 +96,16 @@ const nav = [
 		],
 	],
 	[
+		"Live code",
+		"docs#live-code",
+		[
+			["marker forms", "docs#marker-forms", false],
+			["what can be live", "docs#what-can-be-live", false],
+			["the eval flag", "docs#the-eval-flag", false],
+			["copying live code", "docs#copying-live-code", false],
+		],
+	],
+	[
 		"Migrating",
 		"docs#migrating-from-mdsvex-0x",
 		[

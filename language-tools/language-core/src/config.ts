@@ -12,11 +12,14 @@ import { MANIFEST_PATH, MANIFEST_VERSION, module_script } from 'mdsvex';
 import type {
 	CompileOptions,
 	ComponentMode,
+	HighlightConfig,
 	ManifestModule,
 	ManifestTemplate,
 	MdsvexManifest,
 	TemplateEntry,
 } from 'mdsvex';
+import { create_highlight } from 'mdsvex/highlight';
+import { default_languages } from 'mdsvex/highlight/languages';
 import type { PfmToSvelteOptions } from '@mdsvex/source-map/pfm-to-svelte';
 
 export const CONFIG_FILE = 'mdsvex.config.json';
@@ -35,6 +38,8 @@ export interface JsonConfig {
 	>;
 	components?: string | string[];
 	component_mode?: ComponentMode;
+	/** false renders code plain, as the highlight option of the plugin does */
+	highlight?: boolean;
 }
 
 export interface LoadedConfig {
@@ -173,6 +178,7 @@ export function document_options(
 		component_mode: manifest.component_mode,
 		components: sources(manifest.components),
 		directives: sources(manifest.directives),
+		highlight: highlight_of(manifest),
 	};
 	if (Object.keys(templates).length !== 0) compile.templates = templates;
 	if (manifest.select_template) {
@@ -191,6 +197,19 @@ export function document_options(
 		report_directives: !manifest.directive_plugins,
 		lenient_frontmatter: manifest.frontmatter_parse,
 	};
+}
+
+let twinkleplop: HighlightConfig | null = null;
+
+/**
+ * the highlighter documents compile with, twinkleplop as the plugin has it by
+ * default so live expressions in code are references, compile is synchronous
+ * so every language is loaded up front
+ */
+function highlight_of(manifest: MdsvexManifest): CompileOptions['highlight'] {
+	// a custom highlighter has no live expressions
+	if ((manifest.highlight ?? 'twinkleplop') !== 'twinkleplop') return undefined;
+	return (twinkleplop ??= create_highlight({ languages: default_languages }));
 }
 
 function union(a: readonly string[], b: readonly string[]): string[] {
@@ -220,6 +239,7 @@ export function from_json(
 		components: [],
 		directives: [],
 		documents: {},
+		highlight: config.highlight === false ? false : 'twinkleplop',
 	};
 	const from = path.join(dir, 'vite.config');
 	const scan = (file: string) => scan_exports(file, ts);

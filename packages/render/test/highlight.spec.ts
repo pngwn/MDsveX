@@ -33,8 +33,27 @@ function stub(): CodeHighlighter & {
 					after: '',
 					props: '',
 					code,
+					code_template: null,
+					live: null,
 					dropped: null,
 				};
+			if (lang === 'live') {
+				// the first {...} of the code stays live
+				const at = code.indexOf('{');
+				const end = code.indexOf('}', at) + 1;
+				const head = '<code>' + esc(code.slice(0, at));
+				return {
+					before: '',
+					attributes: '',
+					body: head + code.slice(at, end) + esc(code.slice(end)) + '</code>',
+					after: '',
+					props: '',
+					code,
+					code_template: '`live`',
+					live: [head.length, at, end - at],
+					dropped: null,
+				};
+			}
 			return {
 				before: '<figure>',
 				attributes: ` class="hl ${lang}"`,
@@ -42,6 +61,8 @@ function stub(): CodeHighlighter & {
 				after: '</figure>',
 				props: ' title={"t"}',
 				code: code.toUpperCase(),
+				code_template: null,
+				live: null,
 				dropped: meta.includes('drop') ? ['dropped one'] : null,
 			};
 		},
@@ -183,5 +204,39 @@ describe('highlighting', () => {
 				m.generatedOffsets[0] + m.generatedLengths![0]
 			)
 		).toBe('<code>let a</code>');
+	});
+
+	it('a live expression maps one to one as svelte content in every walk', () => {
+		const source = '> ```live\n> a {b.c} d\n> ```\n';
+		const scope = new ComponentScope([{ specifier: 'm', names: ['pre'] }], 'G');
+		expect(render_all(source, stub())).toContain(
+			'<pre><code>a {b.c} d</code></pre>'
+		);
+		expect(render_all(source, stub(), scope)).toContain(
+			'<Pre_MDSVEX_G lang={"live"} code={`live`}><pre><code>a {b.c} d</code></pre></Pre_MDSVEX_G>'
+		);
+		for (const s of [null, scope]) {
+			const tree = new TreeBuilder(128);
+			new PFMParser(tree).parse(source);
+			const r = new CursorHTMLRenderer({ cache: false });
+			r.highlight = stub();
+			if (s) r.scope = s;
+			const { mappings } = r.update_mapped(tree.get_buffer(), source);
+			const content = mappings
+				.filter((m) => m.data.role === 'content')
+				.map((m) => [
+					source.slice(m.sourceOffsets[0], m.sourceOffsets[0] + m.lengths[0]),
+					r.html.slice(
+						m.generatedOffsets[0],
+						m.generatedOffsets[0] + (m.generatedLengths?.[0] ?? m.lengths[0])
+					),
+					m.data.verification === true,
+				]);
+			expect(content).toEqual([
+				['> a ', '<code>a ', false],
+				['{b.c}', '{b.c}', true],
+				[' d', ' d</code>', false],
+			]);
+		}
 	});
 });

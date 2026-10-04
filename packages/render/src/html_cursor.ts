@@ -61,6 +61,16 @@ export interface HighlightedBlock {
 	props: string;
 	/** the text a reader sees, the code prop of a pre replacement */
 	code: string;
+	/**
+	 * a template literal holding code with its live expressions interpolated,
+	 * the code prop in place of code, null when the block has none
+	 */
+	code_template: string | null;
+	/**
+	 * the live expressions svelte reads in body, triples of their offset in
+	 * body, their offset in the fence text and their length, null for none
+	 */
+	live: number[] | null;
 	/** the messages of meta props a pre replacement drops */
 	dropped: string[] | null;
 }
@@ -1293,7 +1303,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			if (hl !== null) {
 				const h = hl_span(c);
 				if (h !== null) {
-					render_hl(c, sink, hl_span_head(c, h), h.body, hl_span_tail(h));
+					render_hl(c, sink, hl_span_head(c, h), h.body, hl_span_tail(h), null);
 					break;
 				}
 			}
@@ -1316,7 +1326,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			if (hl !== null) {
 				const b = hl_block(c, info);
 				if (b !== null) {
-					render_hl(c, sink, hl_head(c, b), b.body, hl_tail(b));
+					render_hl(c, sink, hl_head(c, b), b.body, hl_tail(b), b.live);
 					break;
 				}
 			}
@@ -2670,7 +2680,15 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			if (hl !== null) {
 				const h = hl_span(c);
 				if (h !== null)
-					return tr_hl(c, sink, p, hl_span_head(c, h), h.body, hl_span_tail(h));
+					return tr_hl(
+						c,
+						sink,
+						p,
+						hl_span_head(c, h),
+						h.body,
+						hl_span_tail(h),
+						null
+					);
 			}
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_open(c, p, S_CODE, S_CODE_OPEN, S_GT);
@@ -2816,7 +2834,8 @@ function tr_code_fence(c: Cursor, sink: MapSink, p: number): number {
 	const info = fence_info(c, c.meta());
 	if (hl !== null) {
 		const b = hl_block(c, info);
-		if (b !== null) return tr_hl(c, sink, p, hl_head(c, b), b.body, hl_tail(b));
+		if (b !== null)
+			return tr_hl(c, sink, p, hl_head(c, b), b.body, hl_tail(b), b.live);
 	}
 	const pre = mo.length + FOLD_LEN[p];
 	if (info) {
@@ -3084,7 +3103,15 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			if (hl !== null) {
 				const h = hl_span(c);
 				if (h !== null)
-					return mp_hl(c, sink, p, hl_span_head(c, h), h.body, hl_span_tail(h));
+					return mp_hl(
+						c,
+						sink,
+						p,
+						hl_span_head(c, h),
+						h.body,
+						hl_span_tail(h),
+						null
+					);
 			}
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_open(c, p, S_CODE, S_CODE_OPEN, S_GT);
@@ -3277,7 +3304,8 @@ function mp_code_fence(c: Cursor, sink: MapSink, p: number): number {
 	const info = fence_info(c, c.meta());
 	if (hl !== null) {
 		const b = hl_block(c, info);
-		if (b !== null) return mp_hl(c, sink, p, hl_head(c, b), b.body, hl_tail(b));
+		if (b !== null)
+			return mp_hl(c, sink, p, hl_head(c, b), b.body, hl_tail(b), b.live);
 	}
 	const pre = mo.length + FOLD_LEN[p];
 	if (info) {
@@ -5281,18 +5309,25 @@ function hl_span_tail(s: HighlightedCode): string {
 	return s.attributes === null ? '' : '</code>';
 }
 
-/** render_node for a highlighted fence or code span, the body is one content record */
+/**
+ * render_node for a highlighted fence or code span, the body is one content
+ * record, split around any live expressions
+ */
 function render_hl(
 	c: Cursor,
 	sink: MapSink | undefined,
 	head: string,
 	body: string,
-	tail: string
+	tail: string,
+	live: number[] | null
 ): void {
 	const pre = mo.length;
 	mo += head;
 	const ao = mo.length;
-	if (sink) content_record(sink, c, body, Code.CODE_CONTENT);
+	if (sink) {
+		if (live === null) content_record(sink, c, body, Code.CODE_CONTENT);
+		else hl_live_records(sink, c, ao, body, live);
+	}
 	mo += body;
 	const bc = mo.length;
 	mo += tail;
@@ -5311,12 +5346,14 @@ function tr_hl(
 	p: number,
 	head: string,
 	body: string,
-	tail: string
+	tail: string,
+	live: number[] | null
 ): number {
 	if (p !== 0) mo += FOLD_STR[p];
 	const pre = mo.length;
 	mo += head;
-	if (body.length !== 0) tr_point(sink, mo.length, c.value_start);
+	if (live !== null) hl_live_trace(sink, c, mo.length, body, live);
+	else if (body.length !== 0) tr_point(sink, mo.length, c.value_start);
 	mo += body + tail;
 	tr_point(sink, pre, c.start);
 	return 0;
@@ -5329,10 +5366,11 @@ function mp_hl(
 	p: number,
 	head: string,
 	body: string,
-	tail: string
+	tail: string,
+	live: number[] | null
 ): number {
 	if (p !== 0) mo += FOLD_STR[p];
-	render_hl(c, sink, head, body, tail);
+	render_hl(c, sink, head, body, tail, live);
 	return 0;
 }
 
@@ -5344,11 +5382,18 @@ function cm_hl(
 	pre: number,
 	head: string,
 	body: string,
-	tail: string
+	tail: string,
+	live: number[] | null
 ): number {
 	p = cm_put(p, head);
 	const ao = mo.length;
-	p = cm_text(c, sink, p, body);
+	if (live === null || comp_mode === CM.FOLD) p = cm_text(c, sink, p, body);
+	else {
+		// cm_put left nothing folded outside the fold walk
+		if (comp_mode === CM.TRACE) hl_live_trace(sink!, c, ao, body, live);
+		else hl_live_records(sink!, c, ao, body, live);
+		mo += body;
+	}
 	const bc = mo.length;
 	p = cm_put(p, tail);
 	cm_spans(c, sink, pre, ao, bc, mo.length, Preset.CODE);
@@ -5379,8 +5424,15 @@ function comp_hl_pre(
 	if (dropped !== null)
 		for (let i = 0; i < dropped.length; i++)
 			hl!.warn('meta_prop_ignored', dropped[i], c.start);
-	open += b.props + js_prop('code', b.code) + _attrs(c) + '>';
-	if (b.attributes === null) return cm_hl(c, sink, p, pre, open, b.body, close);
+	open +=
+		b.props +
+		(b.code_template === null
+			? js_prop('code', b.code)
+			: ' code={' + b.code_template + '}') +
+		_attrs(c) +
+		'>';
+	if (b.attributes === null)
+		return cm_hl(c, sink, p, pre, open, b.body, close, b.live);
 	return cm_hl(
 		c,
 		sink,
@@ -5388,7 +5440,8 @@ function comp_hl_pre(
 		pre,
 		open + '<pre' + b.attributes + '>',
 		b.body,
-		'</pre>' + close
+		'</pre>' + close,
+		b.live
 	);
 }
 
@@ -5408,9 +5461,94 @@ function comp_hl_code(
 			'the highlighter output is not a single <code> element, so the code component does not replace it',
 			c.start
 		);
-		return cm_hl(c, sink, p, pre, '', h.body, '');
+		return cm_hl(c, sink, p, pre, '', h.body, '', null);
 	}
 	open +=
 		js_prop('lang', fence_info(c, c.meta())!) + h.attributes + _attrs(c) + '>';
-	return cm_hl(c, sink, p, pre, open, h.body, close);
+	return cm_hl(c, sink, p, pre, open, h.body, close, null);
+}
+
+/**
+ * the source offset of the live expression at offset at of the fence text,
+ * a fence line is the end of its source line once quote markers and indent
+ * go, -1 when the source there holds other text
+ */
+function hl_source(c: Cursor, text: string, at: number, len: number): number {
+	const vs = c.value_start;
+	if (c.prebuilt === undefined && bq_depth(c.words, c.index) === 0)
+		return vs + at;
+	const src = c.source;
+	const ve = c.value_end;
+	let line_start = vs;
+	for (
+		let i = string_index_of.call(text, '\n');
+		i !== -1 && i < at;
+		i = string_index_of.call(text, '\n', i + 1)
+	) {
+		line_start = string_index_of.call(src, '\n', line_start) + 1;
+		if (line_start === 0 || line_start > ve) return -1;
+	}
+	let text_end = string_index_of.call(text, '\n', at);
+	if (text_end === -1) text_end = text.length;
+	let line_end = string_index_of.call(src, '\n', line_start);
+	if (line_end === -1 || line_end > ve) line_end = ve;
+	const s = line_end - (text_end - at);
+	if (s < line_start || src.slice(s, s + len) !== text.slice(at, at + len))
+		return -1;
+	return s;
+}
+
+/**
+ * the content records of a highlighted body with live expressions, each
+ * expression maps one to one as svelte content, the code between them as code
+ */
+function hl_live_records(
+	sink: MapSink,
+	c: Cursor,
+	at: number,
+	body: string,
+	live: number[]
+): void {
+	const text = fence_text(c);
+	const idx = c.index;
+	let gen = at;
+	let src = c.value_start;
+	for (let i = 0; i < live.length; i += 3) {
+		const len = live[i + 2];
+		const s = hl_source(c, text, live[i + 1], len);
+		if (s === -1 || s < src) continue;
+		const g = at + live[i];
+		if (g > gen) put_record(sink, gen, g, src, s, idx, Code.CODE_CONTENT);
+		put_record(sink, g, g + len, s, s + len, idx, Code.SVELTE_CONTENT);
+		gen = g + len;
+		src = s + len;
+	}
+	const end = at + body.length;
+	if (end > gen)
+		put_record(sink, gen, end, src, c.value_end, idx, Code.CODE_CONTENT);
+}
+
+/** hl_live_records for the trace walk, a record becomes what the v3 encoding keeps of it */
+function hl_live_trace(
+	sink: MapSink,
+	c: Cursor,
+	at: number,
+	body: string,
+	live: number[]
+): void {
+	const text = fence_text(c);
+	let gen = at;
+	let src = c.value_start;
+	for (let i = 0; i < live.length; i += 3) {
+		const len = live[i + 2];
+		const s = hl_source(c, text, live[i + 1], len);
+		if (s === -1 || s < src) continue;
+		const g = at + live[i];
+		if (g > gen) tr_run(sink, gen, g, src, s);
+		tr_run(sink, g, g + len, s, s + len);
+		gen = g + len;
+		src = s + len;
+	}
+	const end = at + body.length;
+	if (end > gen) tr_run(sink, gen, end, src, c.value_end);
 }

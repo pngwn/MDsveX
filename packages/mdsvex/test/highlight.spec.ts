@@ -138,7 +138,7 @@ describe('twinkleplop fences', () => {
 		const out = html('```ts\nlet a = 1; // [!hl]\n```');
 		expect(out).toContain('<span class="l highlight">');
 		expect(out).not.toContain('[!hl]');
-		expect(default_annotations).toHaveLength(10);
+		expect(default_annotations).toHaveLength(11);
 	});
 
 	test('annotations false keeps markers as code', () => {
