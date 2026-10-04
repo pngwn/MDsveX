@@ -201,7 +201,9 @@ function serialize_table_row(row: TableRow, ctx: Context): string {
 
 function serialize_table_cell(cell: TableCell, ctx: Context): string {
 	// Escape pipes so they don't break the cell boundary.
-	return serialize_inline(cell.children, ctx).replace(/\|/g, "\\|");
+	const text = serialize_inline(cell.children, ctx).replace(/\|/g, "\\|");
+	// a lone > merges left in pfm, escape_inline already escapes ^
+	return text.trim() === ">" ? "\\>" : text;
 }
 
 function serialize_definition(node: Definition): string {

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { PFMParser } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import { Cursor } from '@mdsvex/parse/cursor';
-import { CursorHTMLRenderer } from '../src/html_cursor';
+import { ComponentScope, CursorHTMLRenderer } from '../src/html_cursor';
 
 //  Helpers ��
 
@@ -476,5 +476,165 @@ describe('code fences inside block quotes', () => {
 		const traced = new CursorHTMLRenderer({ cache: false });
 		traced.update_trace(parse(), source);
 		expect(traced.html).toBe(html);
+	});
+});
+
+describe('extended tables', () => {
+	function parse(source: string) {
+		const tree = new TreeBuilder(source.length >> 3 || 128);
+		new PFMParser(tree).parse(source);
+		return tree.get_buffer();
+	}
+
+	/** the html every walk renders, the cached one only without replacements */
+	function every_walk(source: string, scope?: ComponentScope): string {
+		const walks: string[] = [];
+		const folded = new CursorHTMLRenderer({ cache: false });
+		const mapped = new CursorHTMLRenderer({ cache: false });
+		const traced = new CursorHTMLRenderer({ cache: false });
+		if (scope) folded.scope = mapped.scope = traced.scope = scope;
+		folded.update(parse(source), source);
+		mapped.update_mapped(parse(source), source);
+		traced.update_trace(parse(source), source);
+		walks.push(folded.html, mapped.html, traced.html);
+		if (!scope) {
+			const cached = new CursorHTMLRenderer();
+			cached.update(parse(source), source);
+			walks.push(cached.html);
+		}
+		for (const html of walks) expect(html).toBe(walks[0]);
+		return walks[0];
+	}
+
+	const table = (head: string, body: string) =>
+		`<table>\n<thead>\n<tr>\n${head}</tr>\n</thead>\n<tbody>\n${body}</tbody>\n</table>`;
+
+	const cases: [string, string, string][] = [
+		[
+			'left header columns',
+			'| h || a | b |\n|---||---|---|\n| 1 || 2 | 3 |\n',
+			table(
+				'<th>h</th>\n<th>a</th>\n<th>b</th>\n',
+				'<tr>\n<th scope="row">1</th>\n<td>2</td>\n<td>3</td>\n</tr>\n'
+			),
+		],
+		[
+			'right header columns',
+			'| a | b || r |\n|---|---||---|\n| 1 | 2 || 3 |\n',
+			table(
+				'<th>a</th>\n<th>b</th>\n<th>r</th>\n',
+				'<tr>\n<td>1</td>\n<td>2</td>\n<th scope="row">3</th>\n</tr>\n'
+			),
+		],
+		[
+			'header columns on both sides',
+			'| l || a || r |\n|:--||---||--:|\n| 1 || 2 || 3 |\n',
+			table(
+				'<th align="left">l</th>\n<th>a</th>\n<th align="right">r</th>\n',
+				'<tr>\n<th scope="row" align="left">1</th>\n<td>2</td>\n<th scope="row" align="right">3</th>\n</tr>\n'
+			),
+		],
+		[
+			'colspan in the header row',
+			'| a | b |> | c |\n|---|---|---|---|\n| 1 | 2 | 3 | 4 |\n',
+			table(
+				'<th>a</th>\n<th colspan="2">b</th>\n<th>c</th>\n',
+				'<tr>\n<td>1</td>\n<td>2</td>\n<td>3</td>\n<td>4</td>\n</tr>\n'
+			),
+		],
+		[
+			'colspan in body rows',
+			'| a | b | c |\n|---|---|---|\n| 1 | 2 |> |\n| x |> |> |\n',
+			table(
+				'<th>a</th>\n<th>b</th>\n<th>c</th>\n',
+				'<tr>\n<td>1</td>\n<td colspan="2">2</td>\n</tr>\n' +
+					'<tr>\n<td colspan="3">x</td>\n</tr>\n'
+			),
+		],
+		[
+			'rowspan',
+			'| a | b |\n|---|---|\n| 1 | 2 |\n|^ | 3 |\n|^ | 4 |\n',
+			table(
+				'<th>a</th>\n<th>b</th>\n',
+				'<tr>\n<td rowspan="3">1</td>\n<td>2</td>\n</tr>\n' +
+					'<tr>\n<td>3</td>\n</tr>\n<tr>\n<td>4</td>\n</tr>\n'
+			),
+		],
+		[
+			'a merged rectangle',
+			'| a | b | c |\n|---|---|---|\n| x |> | 1 |\n|^ |^ | 2 |\n',
+			table(
+				'<th>a</th>\n<th>b</th>\n<th>c</th>\n',
+				'<tr>\n<td colspan="2" rowspan="2">x</td>\n<td>1</td>\n</tr>\n' +
+					'<tr>\n<td>2</td>\n</tr>\n'
+			),
+		],
+		[
+			'cells after a merged cell keep their column alignment',
+			'| a | b | c | d |\n|:-:|---|--:|:--|\n| x |> | r | l |\n|^ |^ | s | m |\n',
+			table(
+				'<th align="center">a</th>\n<th>b</th>\n<th align="right">c</th>\n<th align="left">d</th>\n',
+				'<tr>\n<td align="center" colspan="2" rowspan="2">x</td>\n<td align="right">r</td>\n<td align="left">l</td>\n</tr>\n' +
+					'<tr>\n<td align="right">s</td>\n<td align="left">m</td>\n</tr>\n'
+			),
+		],
+		[
+			'spans next to header columns',
+			'| h || a | b |\n|---||---|---|\n| 1 || x |> |\n|^ || y | z |\n',
+			table(
+				'<th>h</th>\n<th>a</th>\n<th>b</th>\n',
+				'<tr>\n<th scope="row" rowspan="2">1</th>\n<td colspan="2">x</td>\n</tr>\n' +
+					'<tr>\n<td>y</td>\n<td>z</td>\n</tr>\n'
+			),
+		],
+	];
+
+	it.each(cases)('%s', (_, source, html) => {
+		expect(every_walk(source)).toBe(html);
+	});
+
+	it('markers with nothing to merge into stay text in a plain table', () => {
+		expect(every_walk('| a | b |\n|:--|--:|\n| > | ^ |\n| 1 | 2 |\n')).toBe(
+			table(
+				'<th align="left">a</th>\n<th align="right">b</th>\n',
+				'<tr>\n<td align="left">&gt;</td>\n<td align="right">^</td>\n</tr>\n' +
+					'<tr>\n<td align="left">1</td>\n<td align="right">2</td>\n</tr>\n'
+			)
+		);
+	});
+
+	it('replaced th and td take scope and spans as they take align', () => {
+		const scope = new ComponentScope(
+			[{ specifier: 'm', names: ['th', 'td'] }],
+			'G'
+		);
+		const html = every_walk(
+			'| h || a | b |\n|---||:-:|---|\n| 1 || x |> |\n|^ || y | z |\n',
+			scope
+		);
+		expect(html.replace(/^<script>[^]*?<\/script>/, '')).toBe(
+			table(
+				'<Th_MDSVEX_G>h</Th_MDSVEX_G>\n<Th_MDSVEX_G align="center">a</Th_MDSVEX_G>\n<Th_MDSVEX_G>b</Th_MDSVEX_G>\n',
+				'<tr>\n<Th_MDSVEX_G scope="row" rowspan="2">1</Th_MDSVEX_G>\n<Td_MDSVEX_G align="center" colspan="2">x</Td_MDSVEX_G>\n</tr>\n' +
+					'<tr>\n<Td_MDSVEX_G align="center">y</Td_MDSVEX_G>\n<Td_MDSVEX_G>z</Td_MDSVEX_G>\n</tr>\n'
+			)
+		);
+	});
+
+	it('a row header uses a replaced th even when no header cell is replaced', () => {
+		const scope = new ComponentScope([{ specifier: 'm', names: ['th'] }], 'G');
+		const html = every_walk('| a || b |\n|---||---|\n| 1 || 2 |\n', scope);
+		expect(html).toContain("import { th as Th_MDSVEX_G } from 'm';");
+		expect(html).toContain(
+			'<Th_MDSVEX_G scope="row">1</Th_MDSVEX_G>\n<td>2</td>'
+		);
+		const only_td = new ComponentScope(
+			[{ specifier: 'm', names: ['td'] }],
+			'G'
+		);
+		const td_html = every_walk('| a || b |\n|---||---|\n| 1 || 2 |\n', only_td);
+		expect(td_html).toContain(
+			'<th scope="row">1</th>\n<Td_MDSVEX_G>2</Td_MDSVEX_G>'
+		);
 	});
 });

@@ -805,6 +805,8 @@ const INTERNAL_KEYS = new Set([
 	// table internals
 	'alignments',
 	'col_count',
+	'header_columns',
+	'spans',
 	// image src (handled specially with alt ordering)
 	'src',
 ]);
@@ -1721,13 +1723,15 @@ function render_node(c: Cursor, sink?: MapSink): void {
 function _table_content(c: Cursor, sink?: MapSink): void {
 	const meta = c.meta();
 	const alignments = (meta?.alignments as string[]) ?? [];
+	const ext = ext_table(meta, alignments);
 	let in_body = false;
 
 	if (!c.goto_first_child()) return;
 	do {
 		if (c.kind === K.TABLE_HEADER) {
 			mo += '<thead>\n<tr>\n';
-			_table_cells(c, 'th', alignments, sink);
+			if (ext) _table_cells_ext(c, 'th', alignments, 0, ext_n, sink);
+			else _table_cells(c, 'th', alignments, sink);
 			mo += '</tr>\n</thead>\n';
 		} else if (c.kind === K.TABLE_ROW) {
 			if (!in_body) {
@@ -1735,13 +1739,83 @@ function _table_content(c: Cursor, sink?: MapSink): void {
 				in_body = true;
 			}
 			mo += '<tr>\n';
-			_table_cells(c, 'td', alignments, sink);
+			if (ext) _table_cells_ext(c, 'td', alignments, ext_l, ext_r, sink);
+			else _table_cells(c, 'td', alignments, sink);
 			mo += '</tr>\n';
 		}
 	} while (c.goto_next_sibling());
 	c.goto_parent();
 
 	if (in_body) mo += '</tbody>';
+}
+
+//  extended tables
+
+// plain tables never reach these walks so they keep the static opens
+
+// read by the cell walks of the table ext_table last saw, tables never nest
+/** body cells below this grid column are row headers */
+let ext_l = 0;
+/** body cells from this grid column on are row headers */
+let ext_r = 0;
+/** the grid width, header row cells are never row headers */
+let ext_n = 0;
+/** some cell carries a colspan or rowspan */
+let ext_spans = false;
+
+/** true when the table has header columns or spans, sets the ext_ registers */
+function ext_table(
+	meta: Record<string, unknown> | undefined,
+	alignments: string[]
+): boolean {
+	if (meta === undefined) return false;
+	const hc = meta.header_columns as number[] | undefined;
+	const spans = meta.spans === true;
+	if (hc === undefined && !spans) return false;
+	const n = (meta.col_count as number | undefined) ?? alignments.length;
+	ext_n = n;
+	ext_l = hc === undefined ? 0 : hc[0];
+	ext_r = hc === undefined ? n : n - hc[1];
+	ext_spans = spans;
+	return true;
+}
+
+/** align, colspan then rowspan of the cell at grid column col */
+function ext_attrs(c: Cursor, col: number, alignments: string[]): string {
+	const align = alignments[col];
+	let s = align && align !== 'none' ? ' align="' + align + '"' : '';
+	if (ext_spans) {
+		// only a merged cell carries metadata
+		const m = c.meta();
+		if (m !== undefined) {
+			if (m.colspan !== undefined) s += ' colspan="' + m.colspan + '"';
+			if (m.rowspan !== undefined) s += ' rowspan="' + m.rowspan + '"';
+		}
+	}
+	return s;
+}
+
+/** _table_cells for an extended table, l and r bound the row header columns */
+function _table_cells_ext(
+	c: Cursor,
+	tag: string,
+	alignments: string[],
+	l: number,
+	r: number,
+	sink?: MapSink
+): void {
+	if (!c.goto_first_child()) return;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const col = c.extra;
+			const head = col < l || col >= r;
+			const a = ext_attrs(c, col, alignments);
+			mo += head ? '<th scope="row"' + a + '>' : '<' + tag + a + '>';
+			render_children(c, sink);
+			mo += head || tag === 'th' ? '</th>\n' : '</td>\n';
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
 }
 
 /** open tags for none, left, center and right */
@@ -2437,13 +2511,16 @@ function fold_table_content(c: Cursor, p: number): number {
 	if (comp_table) return cm_table(c, undefined, p);
 	const meta = c.meta();
 	const alignments = (meta?.alignments as string[]) ?? [];
+	const ext = ext_table(meta, alignments);
 	let in_body = false;
 
 	if (!c.goto_first_child()) return p;
 	do {
 		if (c.kind === K.TABLE_HEADER) {
 			p = push_static(p, S_THEAD_OPEN);
-			p = fold_table_cells(c, TH_OPEN_ID, S_TH_CLOSE, 'th', alignments, p);
+			p = ext
+				? fold_table_cells_ext(c, 'th', alignments, 0, ext_n, p)
+				: fold_table_cells(c, TH_OPEN_ID, S_TH_CLOSE, 'th', alignments, p);
 			p = push_static(p, S_THEAD_CLOSE);
 		} else if (c.kind === K.TABLE_ROW) {
 			if (!in_body) {
@@ -2451,7 +2528,9 @@ function fold_table_content(c: Cursor, p: number): number {
 				in_body = true;
 			}
 			p = push_static(p, S_TR_OPEN);
-			p = fold_table_cells(c, TD_OPEN_ID, S_TD_CLOSE, 'td', alignments, p);
+			p = ext
+				? fold_table_cells_ext(c, 'td', alignments, ext_l, ext_r, p)
+				: fold_table_cells(c, TD_OPEN_ID, S_TD_CLOSE, 'td', alignments, p);
 			p = push_static(p, S_TR_CLOSE);
 		}
 	} while (c.goto_next_sibling());
@@ -2484,6 +2563,30 @@ function fold_table_cells(
 			p = fold_children(c, p);
 			p = push_static(p, close);
 			col++;
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return p;
+}
+
+/** fold_table_cells for an extended table, as _table_cells_ext */
+function fold_table_cells_ext(
+	c: Cursor,
+	tag: string,
+	alignments: string[],
+	l: number,
+	r: number,
+	p: number
+): number {
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const col = c.extra;
+			const head = col < l || col >= r;
+			const a = ext_attrs(c, col, alignments);
+			p = push_dyn(p, head ? '<th scope="row"' + a + '>' : '<' + tag + a + '>');
+			p = fold_children(c, p);
+			p = push_static(p, head || tag === 'th' ? S_TH_CLOSE : S_TD_CLOSE);
 		}
 	} while (c.goto_next_sibling());
 	c.goto_parent();
@@ -2972,13 +3075,16 @@ function tr_table_content(c: Cursor, sink: MapSink, p: number): number {
 	if (comp_table) return cm_table(c, sink, p);
 	const meta = c.meta();
 	const alignments = (meta?.alignments as string[]) ?? [];
+	const ext = ext_table(meta, alignments);
 	let in_body = false;
 
 	if (!c.goto_first_child()) return p;
 	do {
 		if (c.kind === K.TABLE_HEADER) {
 			p = tr_push(p, S_THEAD_OPEN);
-			p = tr_table_cells(c, sink, TH_OPEN_ID, S_TH_CLOSE, 'th', alignments, p);
+			p = ext
+				? tr_table_cells_ext(c, sink, 'th', alignments, 0, ext_n, p)
+				: tr_table_cells(c, sink, TH_OPEN_ID, S_TH_CLOSE, 'th', alignments, p);
 			p = tr_push(p, S_THEAD_CLOSE);
 		} else if (c.kind === K.TABLE_ROW) {
 			if (!in_body) {
@@ -2986,7 +3092,9 @@ function tr_table_content(c: Cursor, sink: MapSink, p: number): number {
 				in_body = true;
 			}
 			p = tr_push(p, S_TR_OPEN);
-			p = tr_table_cells(c, sink, TD_OPEN_ID, S_TD_CLOSE, 'td', alignments, p);
+			p = ext
+				? tr_table_cells_ext(c, sink, 'td', alignments, ext_l, ext_r, p)
+				: tr_table_cells(c, sink, TD_OPEN_ID, S_TD_CLOSE, 'td', alignments, p);
 			p = tr_push(p, S_TR_CLOSE);
 		}
 	} while (c.goto_next_sibling());
@@ -3022,6 +3130,32 @@ function tr_table_cells(
 			p = tr_children(c, sink, p);
 			p = tr_push(p, close);
 			col++;
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return p;
+}
+
+/** tr_table_cells for an extended table, as _table_cells_ext */
+function tr_table_cells_ext(
+	c: Cursor,
+	sink: MapSink,
+	tag: string,
+	alignments: string[],
+	l: number,
+	r: number,
+	p: number
+): number {
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const col = c.extra;
+			const head = col < l || col >= r;
+			const a = ext_attrs(c, col, alignments);
+			if (p !== 0) mo += FOLD_STR[p];
+			mo += head ? '<th scope="row"' + a + '>' : '<' + tag + a + '>';
+			p = tr_children(c, sink, 0);
+			p = tr_push(p, head || tag === 'th' ? S_TH_CLOSE : S_TD_CLOSE);
 		}
 	} while (c.goto_next_sibling());
 	c.goto_parent();
@@ -3479,13 +3613,16 @@ function mp_table_content(c: Cursor, sink: MapSink, p: number): number {
 	if (comp_table) return cm_table(c, sink, p);
 	const meta = c.meta();
 	const alignments = (meta?.alignments as string[]) ?? [];
+	const ext = ext_table(meta, alignments);
 	let in_body = false;
 
 	if (!c.goto_first_child()) return p;
 	do {
 		if (c.kind === K.TABLE_HEADER) {
 			p = tr_push(p, S_THEAD_OPEN);
-			p = mp_table_cells(c, sink, TH_OPEN_ID, S_TH_CLOSE, 'th', alignments, p);
+			p = ext
+				? mp_table_cells_ext(c, sink, 'th', alignments, 0, ext_n, p)
+				: mp_table_cells(c, sink, TH_OPEN_ID, S_TH_CLOSE, 'th', alignments, p);
 			p = tr_push(p, S_THEAD_CLOSE);
 		} else if (c.kind === K.TABLE_ROW) {
 			if (!in_body) {
@@ -3493,7 +3630,9 @@ function mp_table_content(c: Cursor, sink: MapSink, p: number): number {
 				in_body = true;
 			}
 			p = tr_push(p, S_TR_OPEN);
-			p = mp_table_cells(c, sink, TD_OPEN_ID, S_TD_CLOSE, 'td', alignments, p);
+			p = ext
+				? mp_table_cells_ext(c, sink, 'td', alignments, ext_l, ext_r, p)
+				: mp_table_cells(c, sink, TD_OPEN_ID, S_TD_CLOSE, 'td', alignments, p);
 			p = tr_push(p, S_TR_CLOSE);
 		}
 	} while (c.goto_next_sibling());
@@ -3529,6 +3668,32 @@ function mp_table_cells(
 			p = mp_children(c, sink, p);
 			p = tr_push(p, close);
 			col++;
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return p;
+}
+
+/** mp_table_cells for an extended table, as _table_cells_ext */
+function mp_table_cells_ext(
+	c: Cursor,
+	sink: MapSink,
+	tag: string,
+	alignments: string[],
+	l: number,
+	r: number,
+	p: number
+): number {
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const col = c.extra;
+			const head = col < l || col >= r;
+			const a = ext_attrs(c, col, alignments);
+			if (p !== 0) mo += FOLD_STR[p];
+			mo += head ? '<th scope="row"' + a + '>' : '<' + tag + a + '>';
+			p = mp_children(c, sink, 0);
+			p = tr_push(p, head || tag === 'th' ? S_TH_CLOSE : S_TD_CLOSE);
 		}
 	} while (c.goto_next_sibling());
 	c.goto_parent();
@@ -3710,6 +3875,14 @@ function comp_scan(c: Cursor): void {
 }
 
 function comp_scan_table(c: Cursor): void {
+	const meta = c.meta();
+	// a row header column renders body cells as th
+	let l = 0;
+	let r = 0x7fffffff;
+	if (ext_table(meta, (meta?.alignments as string[]) ?? [])) {
+		l = ext_l;
+		r = ext_r;
+	}
 	if (!c.goto_first_child()) return;
 	let body = false;
 	do {
@@ -3717,24 +3890,25 @@ function comp_scan_table(c: Cursor): void {
 		if (k === K.TABLE_HEADER) {
 			comp_use('thead');
 			comp_use('tr');
-			comp_scan_cells(c, 'th');
+			comp_scan_cells(c, 'th', 0, 0x7fffffff);
 		} else if (k === K.TABLE_ROW) {
 			if (!body) {
 				comp_use('tbody');
 				body = true;
 			}
 			comp_use('tr');
-			comp_scan_cells(c, 'td');
+			comp_scan_cells(c, 'td', l, r);
 		}
 	} while (c.goto_next_sibling());
 	c.goto_parent();
 }
 
-function comp_scan_cells(c: Cursor, tag: string): void {
+function comp_scan_cells(c: Cursor, tag: string, l: number, r: number): void {
 	if (!c.goto_first_child()) return;
 	do {
 		if (c.kind === K.TABLE_CELL) {
-			comp_use(tag);
+			const col = c.extra;
+			comp_use(col < l || col >= r ? 'th' : tag);
 			comp_scan(c);
 		}
 	} while (c.goto_next_sibling());
@@ -4393,6 +4567,7 @@ function dir_node(
 function cm_table(c: Cursor, sink: MapSink | undefined, p: number): number {
 	const meta = c.meta();
 	const alignments = (meta?.alignments as string[]) ?? [];
+	const ext = ext_table(meta, alignments);
 	const head = comp_scope!.get('thead');
 	const body = comp_scope!.get('tbody');
 	const row = comp_scope!.get('tr');
@@ -4404,7 +4579,9 @@ function cm_table(c: Cursor, sink: MapSink | undefined, p: number): number {
 	do {
 		if (c.kind === K.TABLE_HEADER) {
 			p = cm_put(p, (head ? '<' + head.local + '>\n' : '<thead>\n') + row_open);
-			p = cm_cells(c, sink, p, 'th', alignments);
+			p = ext
+				? cm_cells_ext(c, sink, p, 'th', alignments, 0, ext_n)
+				: cm_cells(c, sink, p, 'th', alignments);
 			p = cm_put(
 				p,
 				row_close + (head ? '</' + head.local + '>\n' : '</thead>\n')
@@ -4416,7 +4593,9 @@ function cm_table(c: Cursor, sink: MapSink | undefined, p: number): number {
 				in_body = true;
 			}
 			p = cm_put(p, s);
-			p = cm_cells(c, sink, p, 'td', alignments);
+			p = ext
+				? cm_cells_ext(c, sink, p, 'td', alignments, ext_l, ext_r)
+				: cm_cells(c, sink, p, 'td', alignments);
 			p = cm_put(p, row_close);
 		}
 	} while (c.goto_next_sibling());
@@ -4449,6 +4628,39 @@ function cm_cells(
 			p = cm_children(c, sink, p);
 			p = cm_put(p, '</' + name + '>\n');
 			col++;
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return p;
+}
+
+/** cm_cells for an extended table, a row header is a th, so a replaced th gets scope */
+function cm_cells_ext(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	tag: string,
+	alignments: string[],
+	l: number,
+	r: number
+): number {
+	const ref = comp_scope!.get(tag);
+	const name = ref ? ref.local : tag;
+	const th = tag === 'th' ? undefined : comp_scope!.get('th');
+	const th_name = th ? th.local : 'th';
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const col = c.extra;
+			const head = col < l || col >= r;
+			const a = ext_attrs(c, col, alignments);
+			const n = head ? th_name : name;
+			p = cm_put(
+				p,
+				head ? '<' + n + ' scope="row"' + a + '>' : '<' + n + a + '>'
+			);
+			p = cm_children(c, sink, p);
+			p = cm_put(p, '</' + n + '>\n');
 		}
 	} while (c.goto_next_sibling());
 	c.goto_parent();
