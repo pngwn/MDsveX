@@ -326,6 +326,16 @@ describe('inline code', () => {
 		);
 		expect(codes(out.warnings)).toEqual([['unknown_language', 1]]);
 	});
+
+	test('a #! with no code after it is plain code, not a hint', () => {
+		const out = compile('Write `#!ts` or `#!` then [docs](docs#inline-code).', {
+			highlight,
+		});
+		expect(out.code).toBe(
+			'<p>Write <code>#!ts</code> or <code>#!</code> then <a href="docs#inline-code">docs</a>.</p>'
+		);
+		expect(out.warnings).toBeUndefined();
+	});
 });
 
 describe('custom highlighters', () => {

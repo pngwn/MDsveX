@@ -2030,6 +2030,20 @@ export class PFMParser {
 		return true;
 	}
 
+	/** reparse a #! with no hint as an ordinary code span from the # */
+	private code_span_hint_revert(current_node: number): void {
+		this.chomp(this.info_start_pos - 2, true);
+		this.states.pop();
+		this.states.push(StateKind.code_span_end);
+		const cs_id = this.emit_open(
+			NodeKind.code_span,
+			this.cursor - this.extra,
+			current_node
+		);
+		this.node_stack.push(cs_id);
+		this.out.set_value_start(cs_id, this.cursor);
+	}
+
 	private open_text_run(p0: number, parent: number): void {
 		const source = this.source;
 		const base = this.source_base;
@@ -7787,8 +7801,24 @@ export class PFMParser {
 				case StateKind.code_span_info: {
 					switch (code) {
 						case SPACE: {
-							// need to see the next char to decide single vs double space
-							if (!this.finished && this.cursor + 1 >= length) break main_loop;
+							// a hint needs code after it, spaces then the closer leave an ordinary span
+							let p = this.cursor + 1;
+							while (
+								p < length &&
+								char_code_at.call(source, p - base) === SPACE
+							)
+								p++;
+							let q = p;
+							while (
+								q < length &&
+								char_code_at.call(source, q - base) === BACKTICK
+							)
+								q++;
+							if (!this.finished && q >= length) break main_loop;
+							if (q - p === this.extra) {
+								this.code_span_hint_revert(current_node);
+								continue;
+							}
 							this.info_end_pos = this.cursor;
 							this.checkpoint_cursor = this.cursor + 1;
 							this.states.pop();
@@ -7819,7 +7849,18 @@ export class PFMParser {
 
 							continue;
 						}
+						case BACKTICK:
+						case LINEFEED: {
+							// a backtick or line end before the space means no hint
+							this.code_span_hint_revert(current_node);
+							continue;
+						}
 						default: {
+							// so does eof
+							if (code !== code) {
+								this.code_span_hint_revert(current_node);
+								continue;
+							}
 							this.cursor++;
 							continue;
 						}

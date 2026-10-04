@@ -1,0 +1,10 @@
+root
+  paragraph
+    text "a "
+    code_span "#!"
+    text " b"
+    soft_break
+    text "c "
+    code_span "d"
+    text " e."
+  line_break
