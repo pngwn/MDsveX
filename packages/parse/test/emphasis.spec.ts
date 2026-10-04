@@ -1848,7 +1848,7 @@ describe('emphasis and strong emphasis', () => {
 		expect(kinds).not.toContain('emphasis');
 	});
 
-	// *a `*`*, code span takes precedence, prevents emphasis closing
+	// *a `*`*, code span takes precedence over the inner *
 	test('pfm example 478', () => {
 		const input = load_fixture('478');
 		const { nodes } = parse_markdown_svelte(input);
@@ -1857,10 +1857,13 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = paragraph.children.map((i) => nodes.get_node(i).kind);
-		expect(kinds).toContain('code_span');
+		expect(kinds).toEqual(['strong_emphasis']);
+		const wrapper = nodes.get_node(paragraph.children[0]);
+		const inner = wrapper.children.map((i) => nodes.get_node(i).kind);
+		expect(inner).toEqual(['text', 'code_span']);
 	});
 
-	// _a `_`_, code span takes precedence, prevents emphasis closing
+	// _a `_`_, code span takes precedence over the inner _
 	test('pfm example 479', () => {
 		const input = load_fixture('479');
 		const { nodes } = parse_markdown_svelte(input);
@@ -1869,7 +1872,10 @@ describe('emphasis and strong emphasis', () => {
 		const paragraph = nodes.get_node(root.children[0]);
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = paragraph.children.map((i) => nodes.get_node(i).kind);
-		expect(kinds).toContain('code_span');
+		expect(kinds).toEqual(['emphasis']);
+		const wrapper = nodes.get_node(paragraph.children[0]);
+		const inner = wrapper.children.map((i) => nodes.get_node(i).kind);
+		expect(inner).toEqual(['text', 'code_span']);
 	});
 
 	// **a<https://foo.bar/?q=**>, autolink takes precedence over strong

@@ -1,7 +1,6 @@
 root
   paragraph
-    text "*"
-    text "a "
-    code_span "*"
-    text "*"
+    strong_emphasis
+      text "a "
+      code_span "*"
   line_break

@@ -2,7 +2,9 @@ import { describe, expect, test } from 'vitest';
 
 import { get_all_child_kinds, get_content } from './utils';
 
-import { parse_markdown_svelte } from '../src/main';
+import { PFMParser, parse_markdown_svelte } from '../src/main';
+import { TreeBuilder } from '../src/tree_builder';
+import { print_ast } from './print';
 
 describe('svelte expressions - inline', () => {
 	test('simple expression in paragraph', () => {
@@ -140,6 +142,84 @@ describe('svelte expressions - inline', () => {
 		const kinds = get_all_child_kinds(nodes, paragraph.index);
 		expect(kinds).not.toContain('mustache');
 	});
+
+	test.each([
+		['hi *{name}*', 'strong_emphasis'],
+		['hi _{name}_', 'emphasis'],
+		['hi ~{name}~', 'subscript'],
+		['hi ^{name}^', 'superscript'],
+		['hi ~~{name}~~', 'strikethrough'],
+	])('expression wrapped in delimiters: %s', (input, kind) => {
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual(['text', kind]);
+
+		const wrapper = nodes.get_node(paragraph.children[1]);
+		expect(get_all_child_kinds(nodes, wrapper.index)).toEqual(['mustache']);
+	});
+
+	test('expression after text closes the delimiter', () => {
+		const input = '*a {name}* b';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		expect(get_all_child_kinds(nodes, paragraph.index)).toEqual([
+			'strong_emphasis',
+			'text',
+		]);
+		const strong = nodes.get_node(paragraph.children[0]);
+		expect(get_all_child_kinds(nodes, strong.index)).toEqual([
+			'text',
+			'mustache',
+		]);
+	});
+
+	test('nested delimiters around an expression', () => {
+		const input = '*_{name}_*';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		const strong = nodes.get_node(paragraph.children[0]);
+		expect(strong.kind).toBe('strong_emphasis');
+		const emphasis = nodes.get_node(strong.children[0]);
+		expect(emphasis.kind).toBe('emphasis');
+		expect(get_all_child_kinds(nodes, emphasis.index)).toEqual(['mustache']);
+	});
+
+	test('svelte tag wrapped in delimiters', () => {
+		const input = '*{@html x}*';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const root = nodes.get_node();
+		const paragraph = nodes.get_node(root.children[0]);
+		const strong = nodes.get_node(paragraph.children[0]);
+		expect(strong.kind).toBe('strong_emphasis');
+		expect(get_all_child_kinds(nodes, strong.index)).toEqual(['svelte_tag']);
+	});
+
+	test('delimiters around expressions match when fed in chunks', () => {
+		const input = '*{name}* b ~~{a}~~ ^{b}^ ~{c}~ _{d}_';
+		const expected = print_ast(parse_markdown_svelte(input).nodes, input);
+		expect(expected).toBe(
+			'root\n  paragraph\n    strong_emphasis\n      mustache "name"\n    text " b "\n    strikethrough\n      mustache "a"\n    text " "\n    superscript\n      mustache "b"\n    text " "\n    subscript\n      mustache "c"\n    text " "\n    emphasis\n      mustache "d"'
+		);
+		for (let size = 1; size <= 8; size++) {
+			const tree = new TreeBuilder(input.length);
+			const parser = new PFMParser(tree);
+			parser.init();
+			for (let i = 0; i < input.length; i += size) {
+				parser.feed(input.slice(i, i + size));
+			}
+			parser.finish();
+			expect(print_ast(tree.get_buffer(), input), `chunk size ${size}`).toBe(
+				expected
+			);
+		}
+	});
 });
 
 describe('svelte expressions - HTML attributes', () => {
@@ -151,7 +231,10 @@ describe('svelte expressions - HTML attributes', () => {
 		const html = nodes.get_node(root.children[0]);
 		expect(html.kind).toBe('html');
 		expect(html.metadata.tag).toBe('div');
-		expect(html.metadata.attributes.class).toEqual({ type: 'expression', value: 'styles' });
+		expect(html.metadata.attributes.class).toEqual({
+			type: 'expression',
+			value: 'styles',
+		});
 	});
 
 	test('expression attribute with complex value', () => {
@@ -160,7 +243,10 @@ describe('svelte expressions - HTML attributes', () => {
 
 		const root = nodes.get_node();
 		const html = nodes.get_node(root.children[0]);
-		expect(html.metadata.attributes.class).toEqual({ type: 'expression', value: 'active ? "on" : "off"' });
+		expect(html.metadata.attributes.class).toEqual({
+			type: 'expression',
+			value: 'active ? "on" : "off"',
+		});
 	});
 
 	test('shorthand expression attribute', () => {
@@ -170,6 +256,9 @@ describe('svelte expressions - HTML attributes', () => {
 		const root = nodes.get_node();
 		const html = nodes.get_node(root.children[0]);
 		expect(html.metadata.tag).toBe('div');
-		expect(html.metadata.attributes.class).toEqual({ type: 'expression', value: 'class' });
+		expect(html.metadata.attributes.class).toEqual({
+			type: 'expression',
+			value: 'class',
+		});
 	});
 });
