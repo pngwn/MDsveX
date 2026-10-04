@@ -733,7 +733,8 @@ export class NodeBuffer {
 			parent !== 0xffffffff ? this.kind_at(parent) : undefined;
 
 		// a revoked paragraph is a wrapper a tight list item or a paragraph of only tags does not need
-		if (kind === NodeKind.paragraph) {
+		// a revoked table cell was a merge marker, the cell it joined spans its column
+		if (kind === NodeKind.paragraph || kind === NodeKind.table_cell) {
 			this.unwrap_node(index);
 			return;
 		}

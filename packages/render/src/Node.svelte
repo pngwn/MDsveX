@@ -49,6 +49,7 @@
 	const K_TABLE = 22;
 	const K_TABLE_HEADER = 23;
 	const K_TABLE_ROW = 24;
+	// a cell extra is its grid column, merged cells leave gaps in a row
 	const K_TABLE_CELL = 25;
 	const K_HTML_COMMENT = 26;
 	const K_DIRECTIVE_LABEL = 35;
@@ -68,6 +69,8 @@
 		'self_closing',
 		'alignments',
 		'col_count',
+		'header_columns',
+		'spans',
 		'src',
 	]);
 	const LINK_SKIP = new Set(['href', 'title']);
@@ -124,15 +127,25 @@
 {#snippet table_body(table_idx: number)}
 	{@const meta = buf.metadata_at(table_idx)}
 	{@const alignments = (meta?.alignments as string[]) ?? []}
+	{@const header_columns = meta?.header_columns as number[] | undefined}
+	{@const spans = meta?.spans === true}
+	{@const col_count = (meta?.col_count as number | undefined) ?? alignments.length}
+	{@const row_l = header_columns ? header_columns[0] : 0}
+	{@const row_r = header_columns ? col_count - header_columns[1] : col_count}
 	{@const rows = buf_children(buf, table_idx)}
 	<table>
 		{#each rows as row_idx (row_idx)}
 			{#if buf.kind_at(row_idx) === K_TABLE_HEADER}
 				<thead>
 					<tr>
-						{#each buf_children(buf, row_idx).filter((c) => buf.kind_at(c) === K_TABLE_CELL) as cell_idx, col (cell_idx)}
-							{@const align = alignments[col]}
-							<th align={align && align !== 'none' ? align : undefined}>
+						{#each buf_children(buf, row_idx).filter((c) => buf.kind_at(c) === K_TABLE_CELL) as cell_idx (cell_idx)}
+							{@const align = alignments[buf.extra_at(cell_idx)]}
+							{@const cell_meta = spans ? buf.metadata_at(cell_idx) : undefined}
+							<th
+								align={align && align !== 'none' ? align : undefined}
+								colspan={cell_meta?.colspan as number | undefined}
+								rowspan={cell_meta?.rowspan as number | undefined}
+							>
 								{@render child_nodes(cell_idx)}
 							</th>
 						{/each}
@@ -144,11 +157,28 @@
 			{#each rows as row_idx (row_idx)}
 				{#if buf.kind_at(row_idx) === K_TABLE_ROW}
 					<tr>
-						{#each buf_children(buf, row_idx).filter((c) => buf.kind_at(c) === K_TABLE_CELL) as cell_idx, col (cell_idx)}
+						{#each buf_children(buf, row_idx).filter((c) => buf.kind_at(c) === K_TABLE_CELL) as cell_idx (cell_idx)}
+							{@const col = buf.extra_at(cell_idx)}
 							{@const align = alignments[col]}
-							<td align={align && align !== 'none' ? align : undefined}>
-								{@render child_nodes(cell_idx)}
-							</td>
+							{@const cell_meta = spans ? buf.metadata_at(cell_idx) : undefined}
+							{#if col < row_l || col >= row_r}
+								<th
+									scope="row"
+									align={align && align !== 'none' ? align : undefined}
+									colspan={cell_meta?.colspan as number | undefined}
+									rowspan={cell_meta?.rowspan as number | undefined}
+								>
+									{@render child_nodes(cell_idx)}
+								</th>
+							{:else}
+								<td
+									align={align && align !== 'none' ? align : undefined}
+									colspan={cell_meta?.colspan as number | undefined}
+									rowspan={cell_meta?.rowspan as number | undefined}
+								>
+									{@render child_nodes(cell_idx)}
+								</td>
+							{/if}
 						{/each}
 					</tr>
 				{/if}

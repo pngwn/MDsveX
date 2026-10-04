@@ -107,6 +107,19 @@ describe('WireTreeBuilder produces same HTML as TreeBuilder', () => {
 		assert_same(
 			'| left | center | right |\n| :--- | :---: | ---: |\n| a | b | c |\n'
 		));
+	describe('extended tables', () => {
+		const sources = [
+			'| h || a || r |\n|:--||---||--:|\n| 1 || 2 || 3 |\n',
+			'| a | b |> | c |\n|---|---|---|---|\n| 1 | 2 |> |> |\n',
+			'| a | b | c |\n|:-:|---|--:|\n| x |> | 1 |\n|^ |^ | 2 |\n|^ |^ | 3 |\n',
+			'| h || a | b |\n|---||---|---|\n| 1 || x |> |\n|^ || y | z |\n',
+		];
+		it.each(sources)('%j', (source) => {
+			assert_same(source);
+			assert_same_incremental(source);
+			expect(via_tree(source)).toMatch(/colspan|scope/);
+		});
+	});
 
 	it('html self-closing', () => assert_same('text <br /> more\n'));
 	it('html paired', () => assert_same('text <span>inside</span> end\n'));

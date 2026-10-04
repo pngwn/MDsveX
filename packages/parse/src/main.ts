@@ -162,6 +162,8 @@ const enum FeedWait {
 	code_span = 5,
 	// a block quote fence, a chunk with no backtick whose lines all carry the quote markers decides nothing
 	bq_fence = 6,
+	// a cell start at the input end may be a lone > or ^, the next chunk rereads it from wait_cursor
+	table_cell = 7,
 }
 
 // resumable brace probe states, one char at a time so a scan cut at the input end resumes exactly
@@ -729,6 +731,8 @@ interface ColdState {
 	kept_count: number;
 	// a table start's header cell bounds as start, end pairs, allocated by the first table start
 	table_bounds: Int32Array | null;
+	// rowspan of each cell a ^ merged into, key 0 marks the table as carrying spans
+	table_rowspans: Map<number, number> | null;
 	// pending html nodes of an incremental parse, the feed trim skips the kept html scan at none
 	pending_html: number;
 	// pending slots below it hold only paragraphs, see revoke_stale_pending
@@ -780,6 +784,7 @@ export class PFMParser {
 		kept_base: 0,
 		kept_count: 0,
 		table_bounds: null,
+		table_rowspans: null,
 		pending_html: 0,
 		np_floor: 0,
 	};
@@ -853,6 +858,11 @@ export class PFMParser {
 	private table_row_id: number = 0;
 	private table_cell_id: number = 0;
 	private table_cell_col: number = 0;
+	// the columns a || sits before or -1, parse_delimiter_row leaves its raw || columns here
+	private table_bound_l: number = -1;
+	private table_bound_r: number = -1;
+	// offset in table_bounds of the owning cell ids of the current body row, the previous row sits at the other of 0 and col_count
+	private table_cur: number = 0;
 
 	private in_table: boolean = false;
 	private in_heading: boolean = false;
@@ -1008,7 +1018,8 @@ export class PFMParser {
 			len = chunk.length;
 		}
 
-		if (this.wait_kind !== WAIT_NONE && this.skip_wait(chunk, len)) {
+		const wait = this.wait_kind;
+		if (wait !== WAIT_NONE && this.skip_wait(chunk, len)) {
 			this.out.cursor(this.cursor);
 			return;
 		}
@@ -1047,6 +1058,7 @@ export class PFMParser {
 		}
 		this.source = src;
 		this.source_end += len;
+		if (wait === FeedWait.table_cell) this.table_cell_resume();
 		this._run();
 		if (this.spec_para !== -1) this.spec_scan_to(this.cursor);
 		// the root trims between blocks itself, this trims inside paragraphs and containers
@@ -1526,6 +1538,7 @@ export class PFMParser {
 	private skip_wait(chunk: string, len: number): boolean {
 		const end = this.source_end;
 		const kind = this.wait_kind;
+		if (kind === FeedWait.table_cell) return false;
 		if (kind >= WAIT_BRACE) {
 			const pending = this.wait_chunks;
 			// the probe set the wait, it holds only if _run stopped there
@@ -1616,8 +1629,10 @@ export class PFMParser {
 			this.source_end++;
 			this.pending_cr = false;
 		}
+		const wait = this.wait_kind;
 		this.wait_kind = WAIT_NONE;
 		this.finished = true;
+		if (wait === FeedWait.table_cell) this.table_cell_resume();
 		this._run();
 		this._finalize();
 		const out = this.out;
@@ -1700,6 +1715,8 @@ export class PFMParser {
 		this.table_row_id = 0;
 		this.table_cell_id = 0;
 		this.table_cell_col = 0;
+		this.table_bound_l = -1;
+		this.table_bound_r = -1;
 		this.in_table = false;
 		this.inline_range_parse = false;
 		this.table_cell_has_content = false;
@@ -8111,6 +8128,7 @@ export class PFMParser {
 						this.table_row_id,
 						this.table_cell_col
 					);
+					this.cold.table_bounds![this.table_cur] = this.table_cell_id;
 					this.table_cell_has_content = false;
 					this.node_stack.push(this.table_cell_id);
 					this.states.push(StateKind.table_row_content);
@@ -8139,25 +8157,10 @@ export class PFMParser {
 					}
 
 					if (code === PIPE) {
-						if (this.table_cell_col < this.table_col_count) {
-							this.close_table_cell();
-						}
-						this.table_cell_col++;
-						this.cursor++;
-
 						// open next cell eagerly - don't push inline yet,
 						// let the fallthrough handle whitespace skipping first
-						if (this.table_cell_col < this.table_col_count) {
-							this.table_cell_id = this.emit_open(
-								NodeKind.table_cell,
-								this.cursor,
-								this.table_row_id,
-								this.table_cell_col
-							);
-							this.table_cell_has_content = false;
-							this.node_stack.push(this.table_cell_id);
-							this.table_cells();
-						}
+						if (!this.table_pipe()) break main_loop;
+						if (this.table_cell_col < this.table_col_count) this.table_cells();
 						continue;
 					}
 
@@ -10927,7 +10930,7 @@ export class PFMParser {
 			n += 4;
 		}
 		if (n === 0) return null;
-		const col_count = n >> 2;
+		const cell_count = n >> 2;
 
 		// find delimiter row
 		const delim_start = header_end + 1;
@@ -10947,19 +10950,57 @@ export class PFMParser {
 		const alignments = this.parse_delimiter_row(
 			delim_start,
 			delim_end,
-			col_count
+			cell_count
 		);
 		if (alignments === null) return null; // not a table
+		const col_count = alignments.length;
+
+		// the header row holds an empty cell at each ||, skipped below
+		const b1 = this.table_bound_l;
+		const b2 = this.table_bound_r;
+		this.table_bound_l = -1;
+		this.table_bound_r = -1;
+		let skip1 = -1;
+		let skip2 = -1;
+		let bound_l = -1;
+		let bound_r = -1;
+		if (b1 >= 0) {
+			skip1 = b1;
+			if (b1 >= col_count || bounds[skip1 << 2] !== bounds[(skip1 << 2) + 1])
+				return null;
+			if (b2 >= 0) {
+				skip2 = b2 + 1;
+				if (b2 >= col_count || bounds[skip2 << 2] !== bounds[(skip2 << 2) + 1])
+					return null;
+				bound_l = b1;
+				bound_r = b2;
+			} else if (b1 <= col_count - b1) {
+				// one || heads the side with fewer columns, the left on a tie
+				bound_l = b1;
+			} else {
+				bound_r = b1;
+			}
+		}
 
 		// confirmed table - emit structure
 		const table_id = this.emit_open(NodeKind.table, row_start, parent);
 		this.out.attr(table_id, 'alignments', alignments);
 		this.out.attr(table_id, 'col_count', col_count);
+		if (b1 >= 0) {
+			this.out.attr(table_id, 'header_columns', [
+				bound_l < 0 ? 0 : bound_l,
+				bound_r < 0 ? 0 : col_count - bound_r,
+			]);
+		}
 
 		// store table state
 		this.table_col_count = col_count;
 		this.table_node_id = table_id;
+		this.table_bound_l = bound_l;
+		this.table_bound_r = bound_r;
 		this.in_table = true;
+		const cold = this.cold;
+		if (cold.table_rowspans !== null) cold.table_rowspans.clear();
 
 		// emit header row using the inline state machinery:
 		// open header node, then parse each cell through inline
@@ -10968,7 +11009,9 @@ export class PFMParser {
 			row_start,
 			table_id
 		);
-		for (let i = 0; i < col_count; i++) {
+		let col = 0;
+		for (let i = 0; i < cell_count; i++) {
+			if (i === skip1 || i === skip2) continue;
 			const c_start = bounds[i << 2];
 			const c_end = bounds[(i << 2) + 1];
 			const s = bounds[(i << 2) + 2];
@@ -10977,8 +11020,26 @@ export class PFMParser {
 				NodeKind.table_cell,
 				c_start,
 				header_id,
-				i
+				col
 			);
+			// lone > cells after this one join it
+			let span = 1;
+			for (let j = i + 1; j < cell_count; j++) {
+				const next = col + span;
+				if (next >= col_count || next === bound_l || next === bound_r) break;
+				if (j === skip1 || j === skip2) break;
+				const ms = bounds[(j << 2) + 2];
+				if (
+					bounds[(j << 2) + 3] !== ms + 1 ||
+					char_code_at.call(source, ms - base) !== CLOSE_ANGLE_BRACKET
+				)
+					break;
+				span++;
+			}
+			if (span > 1) {
+				this.out.attr(this.table_cell_id, 'colspan', span);
+				this.table_spans();
+			}
 			if (e >= 0) {
 				if (s < e) {
 					this.emit_leaf(NodeKind.text, s, this.table_cell_id, s, e, e);
@@ -10992,9 +11053,22 @@ export class PFMParser {
 				this.parse_inline_range(s, e);
 				this.node_stack.pop();
 			}
+			if (span > 1) {
+				// the cell ends where its last marker does
+				i += span - 1;
+				this.emit_close(this.table_cell_id, bounds[(i << 2) + 1]);
+				col += span;
+				continue;
+			}
 			this.emit_close(this.table_cell_id, c_end);
+			col++;
 		}
 		this.emit_close(header_id, header_end);
+
+		// the spent header bounds hold both grid rows, four words a header cell
+		this.table_cur = 0;
+		// nothing merges down into the first body row
+		for (let i = col_count; i < col_count << 1; i++) bounds[i] = 0;
 
 		// push table node + state
 		this.node_stack.push(table_id);
@@ -11119,29 +11193,52 @@ export class PFMParser {
 				q++;
 			}
 			this.cursor = q;
-			if (q >= length) return;
+			if (q >= length) {
+				// the next chunk may open the cell with a lone > or ^
+				if (!this.finished) this.wait_table_cell(q);
+				return;
+			}
 			const c0 = char_code_at.call(source, q - base);
-			if (c0 === BACKTICK) {
-				if (!this.table_cell_code(q)) return;
-			} else {
-				if (c0 === 0 || (c0 < 128 && TEXT_BREAK[c0] !== 0)) return;
+			// a > may be a lone marker
+			if (
+				c0 >= 128 ||
+				(c0 !== 0 && TEXT_BREAK[c0] === 0 && c0 !== CLOSE_ANGLE_BRACKET)
+			) {
 				this.table_cell_has_content = true;
 				if (!this.table_cell_text(this.table_cell_id)) return;
-			}
+			} else if (c0 === BACKTICK) {
+				if (!this.table_cell_code(q)) return;
+			} else if (c0 === CLOSE_ANGLE_BRACKET || c0 === CARET) {
+				const merged = this.table_merge(c0);
+				if (merged === 2) {
+					this.wait_table_cell(q);
+					// table_row_content stops at the input end
+					this.cursor = length;
+					return;
+				}
+				if (merged === 0) {
+					// inline takes a ^
+					if (c0 === CARET) return;
+					this.table_cell_has_content = true;
+					if (!this.table_cell_text(this.table_cell_id)) return;
+				}
+			} else return;
 			if (char_code_at.call(source, this.cursor - base) !== PIPE) return;
-			// the pipe branch of table_row_content
+			// the pipe branch of table_row_content, as table_pipe
+			const col = this.table_cell_col + 1;
+			const bound = col === this.table_bound_l || col === this.table_bound_r;
+			if (bound && this.cursor + 1 >= length && !this.finished) return;
 			this.close_table_cell();
-			this.table_cell_col++;
-			this.cursor++;
-			if (this.table_cell_col >= this.table_col_count) return;
-			this.table_cell_id = this.emit_open(
-				NodeKind.table_cell,
-				this.cursor,
-				this.table_row_id,
-				this.table_cell_col
-			);
+			this.table_cell_col = col;
+			let p = this.cursor + 1;
+			if (bound && char_code_at.call(source, p - base) === PIPE) p++;
+			this.cursor = p;
+			if (col >= this.table_col_count) return;
+			const id = this.emit_open(NodeKind.table_cell, p, this.table_row_id, col);
+			this.table_cell_id = id;
+			this.cold.table_bounds![this.table_cur + col] = id;
 			this.table_cell_has_content = false;
-			this.node_stack.push(this.table_cell_id);
+			this.node_stack.push(id);
 		}
 	}
 
@@ -11153,6 +11250,43 @@ export class PFMParser {
 		let p = this.cursor + 1;
 		while (p < length && char_code_at.call(source, p - base) !== LINEFEED) p++;
 		this.cursor = p;
+	}
+
+	private wait_table_cell(pos: number): void {
+		this.wait_kind = FeedWait.table_cell;
+		this.cold.wait_cursor = pos;
+	}
+
+	/** reread a cell start a chunk end cut off */
+	private table_cell_resume(): void {
+		this.cursor = this.cold.wait_cursor;
+		this.table_cells();
+	}
+
+	/**
+	 * the pipe at the cursor ends the open cell and opens the next
+	 * @returns false to wait for the char after a pipe that may start a ||
+	 */
+	private table_pipe(): boolean {
+		const col = this.table_cell_col + 1;
+		// a || before a header column side is one separator
+		const bound = col === this.table_bound_l || col === this.table_bound_r;
+		if (bound && this.cursor + 1 >= this.source_end && !this.finished)
+			return false;
+		if (col <= this.table_col_count) this.close_table_cell();
+		this.table_cell_col = col;
+		let p = this.cursor + 1;
+		if (bound && char_code_at.call(this.source, p - this.source_base) === PIPE)
+			p++;
+		this.cursor = p;
+		if (col < this.table_col_count) {
+			const id = this.emit_open(NodeKind.table_cell, p, this.table_row_id, col);
+			this.table_cell_id = id;
+			this.cold.table_bounds![this.table_cur + col] = id;
+			this.table_cell_has_content = false;
+			this.node_stack.push(id);
+		}
+		return true;
 	}
 
 	/** a cell opening with a backtick at start, true when its content ended at a pipe or linefeed, false leaves inline pushed */
@@ -11275,6 +11409,11 @@ export class PFMParser {
 		}
 
 		const alignments: string[] = [];
+		// a || between delimiter cells marks header columns
+		let b1 = -1;
+		let b2 = -1;
+		// the header row counts an empty cell for each ||
+		let cap = col_count;
 		while (pos < end) {
 			while (c === SPACE) {
 				pos++;
@@ -11295,7 +11434,22 @@ export class PFMParser {
 				pos++;
 				c = pos < end ? char_code_at.call(source, pos - base) : -1;
 			}
-			if (pos === dashes) return null; // invalid delimiter cell
+			if (pos === dashes) {
+				// a cell that is nothing but the pipe straight after the last one is a ||
+				if (
+					c !== PIPE ||
+					alignments.length === 0 ||
+					char_code_at.call(source, pos - 1 - base) !== PIPE ||
+					b2 >= 0
+				)
+					return null; // invalid delimiter cell
+				if (b1 < 0) b1 = alignments.length;
+				else b2 = alignments.length;
+				cap--;
+				pos++;
+				c = pos < end ? char_code_at.call(source, pos - base) : -1;
+				continue;
+			}
 
 			let right_colon = false;
 			if (c === COLON) {
@@ -11316,14 +11470,17 @@ export class PFMParser {
 			}
 
 			// more cells than the header can never be a table
-			if (alignments.length === col_count) return null;
+			if (alignments.length === cap) return null;
 			if (left_colon && right_colon) alignments.push('center');
 			else if (right_colon) alignments.push('right');
 			else if (left_colon) alignments.push('left');
 			else alignments.push('none');
 		}
 
-		return alignments.length === col_count ? alignments : null;
+		if (alignments.length !== cap) return null;
+		this.table_bound_l = b1;
+		this.table_bound_r = b2;
+		return alignments;
 	}
 
 	/**
@@ -11482,8 +11639,11 @@ export class PFMParser {
 	 * close the current table cell. pops cell from node_stack.
 	 */
 	private close_table_cell(): void {
-		this.emit_close(this.table_cell_id, this.cursor);
-		if (this.node_stack[this.node_stack.length - 1] === this.table_cell_id) {
+		const id = this.table_cell_id;
+		// a merge marker left no cell open
+		if (id === 0) return;
+		this.emit_close(id, this.cursor);
+		if (this.node_stack[this.node_stack.length - 1] === id) {
 			this.node_stack.pop();
 		}
 	}
@@ -11492,6 +11652,8 @@ export class PFMParser {
 	 * pad remaining columns with empty cells and close the current row.
 	 */
 	private pad_and_close_row(): void {
+		const grid = this.cold.table_bounds!;
+		const cur = this.table_cur;
 		for (let i = this.table_cell_col; i < this.table_col_count; i++) {
 			const cell_id = this.emit_open(
 				NodeKind.table_cell,
@@ -11500,8 +11662,130 @@ export class PFMParser {
 				i
 			);
 			this.emit_close(cell_id, this.cursor);
+			grid[cur + i] = cell_id;
 		}
 		this.emit_close(this.table_row_id, this.cursor);
+		// this row is the one the next merges down into
+		this.table_cur = cur === 0 ? this.table_col_count : 0;
+	}
+
+	/**
+	 * the open cell starts with a > or ^ at the cursor and merges when that is all it holds
+	 * a > joins the cell to its left, a ^ the cell above, only while the cells stay rectangles
+	 * @returns 0 when it is content, 1 when merged with the cursor at the pipe or linefeed ending it, 2 to wait for more of the row
+	 */
+	private table_merge(ch: number): number {
+		if (this.inline_range_parse || this.table_cell_col >= this.table_col_count)
+			return 0;
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		let p = this.cursor + 1;
+		while (p < length) {
+			const c = char_code_at.call(source, p - base);
+			if (c !== SPACE && c !== TAB) break;
+			p++;
+		}
+		if (p >= length) {
+			if (!this.finished) return 2;
+		} else {
+			const c = char_code_at.call(source, p - base);
+			if (c !== PIPE && c !== LINEFEED) return 0;
+		}
+		const col = this.table_cell_col;
+		const cold = this.cold;
+		const grid = cold.table_bounds!;
+		const cur = this.table_cur;
+		const prev = cur === 0 ? this.table_col_count : 0;
+		let owner: number;
+		if (ch === CLOSE_ANGLE_BRACKET) {
+			if (col === 0 || col === this.table_bound_l || col === this.table_bound_r)
+				return 0;
+			owner = grid[cur + col - 1];
+			// a cell merged down from above takes no more columns
+			if (owner === grid[prev + col - 1]) return 0;
+			let k = col - 1;
+			while (k > 0 && grid[cur + k - 1] === owner) k--;
+			this.out.attr(owner, 'colspan', col - k + 1);
+		} else {
+			owner = grid[prev + col];
+			if (owner === 0) return 0;
+			let k = col;
+			while (k > 0 && grid[prev + k - 1] === owner) k--;
+			if (k < col) {
+				// a later column of a wide cell, the ^ in its first column took the row
+				if (grid[cur + col - 1] !== owner) return 0;
+			} else {
+				let w = col + 1;
+				while (w < this.table_col_count && grid[prev + w] === owner) w++;
+				// every column of a wide cell merges down or none does
+				if (w > col + 1) {
+					const rest = this.table_merge_rest(p, w - col - 1);
+					if (rest !== 1) return rest;
+				}
+				let rows = cold.table_rowspans;
+				if (rows === null) rows = cold.table_rowspans = new Map();
+				const n = (rows.get(owner) ?? 1) + 1;
+				rows.set(owner, n);
+				this.out.attr(owner, 'rowspan', n);
+			}
+		}
+		const id = this.table_cell_id;
+		this.out.revoke(id);
+		this.id_info[id] |= ID_CLOSED;
+		const stack = this.node_stack;
+		if (stack[stack.length - 1] === id) stack.pop();
+		this.table_cell_id = 0;
+		this.table_cell_has_content = true;
+		grid[cur + col] = owner;
+		this.table_spans();
+		this.cursor = p;
+		return 1;
+	}
+
+	/** the table carries spans once a cell merged */
+	private table_spans(): void {
+		const cold = this.cold;
+		let rows = cold.table_rowspans;
+		if (rows === null) rows = cold.table_rowspans = new Map();
+		if (rows.has(0)) return;
+		rows.set(0, 1);
+		this.out.attr(this.table_node_id, 'spans', true);
+	}
+
+	/**
+	 * the n cells after the one ending at p are each a lone ^
+	 * @returns 1 when they are, 0 when not, 2 to wait for more of the row
+	 */
+	private table_merge_rest(p: number, n: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		for (let i = 0; i < n; i++) {
+			if (p >= length) return this.finished ? 0 : 2;
+			if (char_code_at.call(source, p - base) !== PIPE) return 0;
+			p++;
+			while (p < length) {
+				const c = char_code_at.call(source, p - base);
+				if (c !== SPACE && c !== TAB) break;
+				p++;
+			}
+			if (p >= length) return this.finished ? 0 : 2;
+			if (char_code_at.call(source, p - base) !== CARET) return 0;
+			p++;
+			while (p < length) {
+				const c = char_code_at.call(source, p - base);
+				if (c !== SPACE && c !== TAB) break;
+				p++;
+			}
+			if (p >= length) {
+				if (!this.finished) return 2;
+				continue;
+			}
+			const c = char_code_at.call(source, p - base);
+			if (c !== PIPE && c !== LINEFEED) return 0;
+		}
+		return 1;
 	}
 
 	/**
@@ -11521,6 +11805,8 @@ export class PFMParser {
 		this.table_row_id = 0;
 		this.table_cell_id = 0;
 		this.table_cell_col = 0;
+		this.table_bound_l = -1;
+		this.table_bound_r = -1;
 		this.in_table = false;
 	}
 
