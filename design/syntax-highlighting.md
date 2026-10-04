@@ -298,6 +298,14 @@ The forms that matter most, all of which are standard twinkleplop arguments:
 - **Scope:** values come from the document's scope. That means its `<script>` and its `metadata`.
 - **Rendering:** at runtime the value is text, so Svelte escapes it. `{@html}` is the explicit route to markup.
 
+**As built (phase 3, 2026-10-04):**
+
+- The plugin uses twinkleplop's shared argument parsing, not `parse: "raw"`. `resolve_all()` in a raw plugin rejects half-open anchors, so raw parsing can't express pairs. Shared parsing resolves every form, pairs included, and hands the plugin each range. The token override (§5.3) would need raw parsing plus pair support in twinkleplop.
+- An annotation plugin isn't given the source, so mdsvex sets it in a module variable around its own `tokenize` call. Markdown tokenizes its embedded fences again with offsets into the inner fence and drops their overlays, so the plugin checks that its marker really is at the offset it was given and ignores the call otherwise.
+- The brace scanner passes over marker text (`[!verb …]`), so `[!eval ="{x}"]` on a line with a bare `[!eval]` adds no group from the marker itself. Blank groups (`{}`) stay text.
+- A fence whose language is `eval` is a fence with no language and the flag, since CommonMark gives a fence with no language no meta.
+- The rest of the fence is split into code records around each live group, rather than kept as one record that overlaps them. An overlapping non-identity record would compose with svelte2tsx's mapping of the expression and map the whole fence onto it.
+
 ### 5.3 Token type
 
 A live group takes the type of the source token that encloses it, when the whole group sits inside one token, such as a string literal or comment. Otherwise it has no token class and inherits the block's base colour.
@@ -440,9 +448,9 @@ All four shipped in `@twinkleplop/core` 0.3.0 (with `markdown-core` 0.2.0, `twos
 - Verbatim ranges have trailing whitespace trimmed, as the main render loop does.
 - `visible_text_map` provides the offset map that the `code` template literal needs (§5.5).
 
-Two open bugs on `main` affect this design:
-- **pngwn/twinkleplop#159.** A marker in a block comment leaves the closing `*/` or `-->` visible. `[!eval]` in Svelte, HTML and CSS blocks needs this fixed before phase 3 ships.
-- **pngwn/twinkleplop#160.** Rendering with overlays is quadratic in overlay count. It doesn't block anything, but every live expression adds an overlay.
+Two bugs found on `main` are fixed in `@twinkleplop/core` 0.3.1, which phase 3 depends on:
+- **pngwn/twinkleplop#159.** A marker in a block comment left the closing `*/` or `-->` visible.
+- **pngwn/twinkleplop#160.** Rendering with overlays was quadratic in overlay count.
 
 ## 9. Plugin config, all together
 

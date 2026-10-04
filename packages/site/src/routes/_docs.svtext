@@ -722,6 +722,84 @@ no component renders the directive :::Calout at 3:1. Export a component named "C
 
 A [parse plugin](docs#parse_plugins) can handle directives that have no component, through the `directive_inline`, `directive_leaf` and `directive_container` node types. A directive with a component never reaches a plugin.
 
+## Live code
+
+Braces in code blocks are text. To put a value from the document into a code block, mark it live with an `[!eval]` comment:
+
+````svx
+<script>
+	let install_command = 'pnpm add';
+</script>
+
+```sh
+{install_command} @pkg/my-pkg # [!eval]
+```
+````
+
+Every top-level `{...}` group on the marker's line becomes a Svelte expression, so readers see `pnpm add @pkg/my-pkg`. The marker itself is removed, and a line that holds only a marker is dropped.
+
+To make one group live and leave the rest as text, name it:
+
+````svx
+```js
+function my_func() {
+	console.log({ a: {some_val} }) // [!eval ="{some_val}"]
+}
+```
+````
+
+Here the outer braces stay text and `{some_val}` is live.
+
+`[!eval]` is a twinkleplop annotation, so it is written in a comment of the fence's language: `//` or `/* */` in JavaScript, `#` in shell, `<!-- -->` in HTML and Svelte. It needs syntax highlighting, which the Vite plugin turns on by default.
+
+### Marker forms
+
+`[!eval]` takes the same arguments as the other annotations:
+
+| marker | live groups |
+| --- | --- |
+| `[!eval]` | every top-level `{...}` on the marker's line |
+| `[!eval +N]` | every top-level `{...}` on the N lines below |
+| `[!eval :N..M]`, `[!eval :N...M]` | every top-level `{...}` on lines N to M, exclusive or inclusive |
+| `[!eval ="{x}"]` | each `{x}` on the marker's line |
+| `[!eval ="{x}" :*]` | each `{x}` in the code block |
+| `[!eval a...b]` | the top-level groups between the words `a` and `b` on the line |
+| `[!eval a...]` and `[!eval ...b]` | the top-level groups from `a` on one line to `b` on a later one |
+
+A marker whose range holds no group warns.
+
+### What can be live
+
+- **Values come from the document**: its `<script>`, and its frontmatter as `metadata`.
+- **A value renders as text.** Svelte escapes it, so markup in it shows as written. Write `{@html value}` to render markup.
+- **Only expression tags**, `{expr}` and `{@html expr}`. Block tags such as `{#if}` and `{:else}`, and tags such as `{@const}`, fail the build.
+- **One line each.** A group that runs onto the next line fails the build.
+- **Strings don't count.** Braces inside strings and template literals in a group are skipped, so `{a ? "}" : b}` is one group. A group that never closes fails the build with its line and column.
+- **Empty braces stay text**, so `{}` is never live.
+
+A live group keeps the colour of the token around it, so `"{base_url}/api"` stays string-coloured.
+
+### The `eval` flag
+
+`eval` in a fence's meta means `[!eval]` on every line:
+
+````svx
+```sh eval
+{install_command} @pkg/my-pkg
+{run_command} dev
+```
+````
+
+It works on any fence, including languages without comments, such as `json`. A fence with no language takes it as its language, ```` ```eval ````.
+
+The flag makes every top-level group in the block live. That suits commands, config and other brace-light code. In JavaScript or CSS every object literal and block would become an expression, so use markers there.
+
+### Copying live code
+
+A [replaced](docs#custom-components) `pre` gets the code as its `code` prop, with live values in place. The prop is a template literal, such as ``code={`${install_command} @pkg/my-pkg`}``, so a copy button copies what the reader sees.
+
+A custom highlighter function doesn't support live code yet. A fence with the `eval` flag warns and its braces stay text.
+
 ## Migrating from mdsvex 0.x
 
 Layouts are now [templates](docs#templates-1). The idea is the same, a component that wraps documents and replaces their elements, with new names and Svelte 5 components.
