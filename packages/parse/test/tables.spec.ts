@@ -3,6 +3,8 @@ import { parse_markdown_svelte, PFMParser } from '../src/main';
 import { NodeKind } from '../src/utils';
 import type { NodeBuffer } from '../src/utils';
 import { TreeBuilder } from '../src/tree_builder';
+import { WireEmitter } from '../src/wire_emitter';
+import { WireTreeBuilder } from '../src/wire_tree_builder';
 
 function non_breaks(nodes: NodeBuffer, parent: number = 0) {
 	return nodes
@@ -41,6 +43,22 @@ function parse_incremental(input: string, chunk_size: number = 1) {
 	}
 	parser.finish();
 	return tree.get_buffer();
+}
+
+function parse_wire_incremental(input: string, chunk_size: number = 1) {
+	const emitter = new WireEmitter();
+	const parser = new PFMParser(emitter);
+	const builder = new WireTreeBuilder();
+	parser.init();
+	for (let i = 0; i < input.length; i += chunk_size) {
+		emitter.set_source(input.slice(0, i + chunk_size));
+		parser.feed(input.slice(i, i + chunk_size));
+		builder.apply(emitter.flush());
+	}
+	emitter.set_source(input);
+	parser.finish();
+	builder.apply(emitter.flush());
+	return builder.get_buffer();
 }
 
 describe('Tables (GFM)', () => {
@@ -145,6 +163,33 @@ describe('Tables (GFM)', () => {
 		expect(row_cells.length).toBe(2);
 		expect(cell_text(nodes, row_cells[0].index, input)).toBe('1');
 		expect(cell_text(nodes, row_cells[1].index, input)).toBe('2');
+	});
+
+	test('cells past the header columns leave nothing in the table', () => {
+		const input =
+			'| a | b |\n|---|---|\n| x | y | z |\n| 1 | 2 | *e* [l](u) `c` \\| w |\n| p | q |   \n| m | n | o';
+		const parses = [
+			parse_markdown_svelte(input).nodes,
+			parse_incremental(input, 1),
+			parse_incremental(input, 3),
+			parse_wire_incremental(input, 1),
+			parse_wire_incremental(input, 4),
+		];
+		for (const nodes of parses) {
+			const table = non_breaks(nodes)[0];
+			const kinds = get_children(nodes, table.index).map((n) => n.kind);
+			expect(kinds).toEqual([
+				'table_header',
+				'table_row',
+				'table_row',
+				'table_row',
+				'table_row',
+			]);
+			for (const row of get_children(nodes, table.index).slice(1)) {
+				const cells = get_children(nodes, row.index);
+				expect(cells.map((c) => c.kind)).toEqual(['table_cell', 'table_cell']);
+			}
+		}
 	});
 
 	test('header/delimiter count mismatch is not a table', () => {

@@ -8172,6 +8172,12 @@ export class PFMParser {
 						continue;
 					}
 
+					// cells past the header columns are dropped, no cell is open to take them
+					if (this.table_cell_col >= this.table_col_count) {
+						this.skip_extra_cells();
+						continue;
+					}
+
 					// skip leading whitespace before cell content
 					if (
 						!this.table_cell_has_content &&
@@ -11137,6 +11143,16 @@ export class PFMParser {
 			this.table_cell_has_content = false;
 			this.node_stack.push(this.table_cell_id);
 		}
+	}
+
+	/** a row past its last column, moves the cursor to its linefeed or the end of what is fed */
+	private skip_extra_cells(): void {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		let p = this.cursor + 1;
+		while (p < length && char_code_at.call(source, p - base) !== LINEFEED) p++;
+		this.cursor = p;
 	}
 
 	/** a cell opening with a backtick at start, true when its content ended at a pipe or linefeed, false leaves inline pushed */
