@@ -100,6 +100,15 @@ export interface CodeHighlighter {
 	warn(code: HighlightWarningCode, message: string, start: number): void;
 }
 
+/** reads the fence meta conventions for a pre replacement the highlighter left plain */
+export interface PreMeta {
+	/**
+	 * the title, caption and meta props of a pre replacement as props text,
+	 * it warns about the meta props it drops, start is the offset of the fence
+	 */
+	pre_props(meta: string, start: number): string;
+}
+
 // must equal NONE in @mdsvex/parse
 const enum Slot {
 	NONE = 0xffffffff,
@@ -4126,7 +4135,10 @@ function comp_node(
 				const lang = info_lang(info);
 				const rest = info_meta(info);
 				open += js_prop('lang', lang);
-				if (rest) open += js_prop('meta', rest);
+				if (rest) {
+					open += js_prop('meta', rest);
+					if (pm !== null) open += pm.pre_props(rest, c.start);
+				}
 				inner = '<code class="language-' + escape_info(lang) + '">';
 			}
 			// children are the element, svelte keeps whitespace only inside a <pre>
@@ -4862,6 +4874,8 @@ export class CursorHTMLRenderer {
 	directives: ComponentScope | null = null;
 	/** highlights fences and code spans with a #! hint, null renders them plain */
 	highlight: CodeHighlighter | null = null;
+	/** title, caption and meta props for a pre replacement rendered plain, null gives it none */
+	pre_meta: PreMeta | null = null;
 	/**
 	 * a directive no scope replaces throws a DirectiveError, otherwise it
 	 * renders as its children, which suits a preview
@@ -4895,6 +4909,7 @@ export class CursorHTMLRenderer {
 		c.reset();
 		esc_reset(source);
 		hl = this.highlight;
+		pm = this.pre_meta;
 
 		// no caching, single-pass full render
 		if (!this.cache) {
@@ -4923,6 +4938,7 @@ export class CursorHTMLRenderer {
 				this.html = render_folded(c);
 			} finally {
 				hl = null;
+				pm = null;
 				esc_prebuilt = true;
 				esc_bits = null;
 				if (dir_strict) dir_strict = false;
@@ -4938,6 +4954,7 @@ export class CursorHTMLRenderer {
 			this.update_blocks(c);
 		} finally {
 			hl = null;
+			pm = null;
 			if (code) module_end();
 		}
 		return this.blocks;
@@ -4992,6 +5009,7 @@ export class CursorHTMLRenderer {
 		c.reset();
 		esc_reset(source);
 		hl = this.highlight;
+		pm = this.pre_meta;
 
 		if (this.template !== undefined) {
 			this.html = this.render_wrapped(c, buf, sink, trace, code);
@@ -5025,6 +5043,7 @@ export class CursorHTMLRenderer {
 			else p = mp_node(c, sink, 0);
 		} finally {
 			hl = null;
+			pm = null;
 			esc_prebuilt = true;
 			esc_bits = null;
 			if (dir_strict) dir_strict = false;
@@ -5083,6 +5102,7 @@ export class CursorHTMLRenderer {
 			}
 		} finally {
 			hl = null;
+			pm = null;
 			esc_prebuilt = true;
 			esc_bits = null;
 			if (dir_strict) dir_strict = false;
@@ -5201,6 +5221,7 @@ export class CursorHTMLRenderer {
 		this.scope = null;
 		this.directives = null;
 		this.highlight = null;
+		this.pre_meta = null;
 		this.replace_typed = false;
 		// a tag is a slice that would keep the source alive
 		comp_last = NO_WARNINGS;
@@ -5247,6 +5268,8 @@ export function _resolve_offset_mappings(
 
 /** the highlighter of the render in progress, null renders code plain */
 let hl: CodeHighlighter | null = null;
+/** the meta conventions of the render in progress for a plain pre replacement */
+let pm: PreMeta | null = null;
 
 /** the first space or tab of an info string, -1 for none */
 function info_space(info: string): number {

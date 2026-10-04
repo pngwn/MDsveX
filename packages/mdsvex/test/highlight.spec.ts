@@ -53,6 +53,14 @@ describe('compile without highlight', () => {
 		);
 	});
 
+	test('a title or caption draws no figure', () => {
+		const raw = '```ts title="a.ts" caption="c"\nx\n```';
+		expect(compile(raw).code).toBe(
+			'<pre><code class="language-ts">x</code></pre>'
+		);
+		expect(html(raw)).toMatch(/^<figure class="twinkleplop-block"/);
+	});
+
 	test('false and undefined render the same', () => {
 		const raw = '```ts\nx\n```\n\n`#!ts y`';
 		expect(compile(raw, { highlight: false }).code).toBe(compile(raw).code);
@@ -441,6 +449,28 @@ describe('a replaced pre', () => {
 		expect(new Set(codes(out.warnings).map(([c]) => c))).toEqual(
 			new Set(['meta_prop_ignored'])
 		);
+	});
+
+	test('the props and warnings do not depend on highlighting', () => {
+		const raw =
+			'```ts title="math.ts" caption="c" {1} playground height=300 code=1\nconst a = 1;\n```';
+		const options: [string, HighlightOption | undefined][] = [
+			['twinkleplop', highlight],
+			['a custom highlighter', (code) => `<pre><code>${code}</code></pre>`],
+			['a highlighter returning null', () => null],
+			['false', false],
+			['the default', undefined],
+		];
+		const open_tags = options.map(([name, option]) => {
+			const out = compile(raw, { highlight: option, components: PRE });
+			expect(codes(out.warnings), name).toEqual([['meta_prop_ignored', 1]]);
+			return [name, body(out.code).slice(0, body(out.code).indexOf('><'))];
+		});
+		for (const [name, open] of open_tags)
+			expect(open, name).toBe(
+				'<Pre_MDSVEX_G lang={"ts"} meta={"title=\\"math.ts\\" caption=\\"c\\" {1} playground height=300 code=1"}' +
+					' title={"math.ts"} caption={"c"} playground={true} height={"300"} code={"const a = 1;"}'
+			);
 	});
 
 	test('an unreplaced pre drops meta props silently', () => {

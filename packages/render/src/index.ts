@@ -6,6 +6,7 @@ export type {
 	HighlightedBlock,
 	HighlightedCode,
 	HighlightWarningCode,
+	PreMeta,
 } from './html_cursor';
 export {
 	_emit,

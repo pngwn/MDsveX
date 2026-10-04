@@ -272,6 +272,30 @@ describe('braces in code (#839)', () => {
 		expect(find_all(node.fragment!.nodes, 'code').map(shown)).toEqual([source]);
 	});
 
+	test('a pre replacement gets meta props as strings', () => {
+		const pre: ComponentSource[] = [
+			{ specifier: 'mdsvex:components', names: ['pre'] },
+		];
+		const raw = '```js title="{t}" caption="</script>" x="{y}" flag\na\n```';
+		const [node] = find_all(
+			svelte_nodes(compile_all(raw, pre)),
+			'Pre_MDSVEX_G'
+		);
+		const props: Record<string, unknown> = {};
+		for (const a of node.attributes!)
+			props[a.name] =
+				a.value === true ? true : (a.value as SvelteNode).expression!.value;
+		expect(props).toEqual({
+			lang: 'js',
+			meta: 'title="{t}" caption="</script>" x="{y}" flag',
+			title: '{t}',
+			caption: '</script>',
+			x: '{y}',
+			flag: true,
+			code: 'a',
+		});
+	});
+
 	test('a code replacement shows braces as text', () => {
 		const code_only: ComponentSource[] = [
 			{ specifier: 'mdsvex:components', names: ['code'] },
