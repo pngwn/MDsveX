@@ -50,7 +50,7 @@
 		"node-fetch": "^2.6.0",
 		"rehype-slug": "^3.0.0",
 		"rehype-toc": "^3.0.1",
-		"remark-autolink-headings": "^6.0.0",
+		"remark-autolink-headings": "^8.0.0",
 		"remark-containers": "^1.1.1",
 		"remark-external-links": "^6.0.0",
 		"remark-frontmatter": "^2.0.0",
