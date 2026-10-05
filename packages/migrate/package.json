@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/migrate",
-	"version": "0.2.0-next.0",
+	"version": "0.2.0-next.1",
 	"description": "Migrate CommonMark/GFM markdown to Penguin-Flavoured Markdown (PFM), and mdsvex 0.x layouts to templates",
 	"main": "src/main.ts",
 	"module": "src/main.ts",

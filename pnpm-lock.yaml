@@ -586,7 +586,7 @@ importers:
         specifier: ^0.1.3
         version: 0.1.3
       mdsvex:
-        specifier: 1.0.0-next.0
+        specifier: 1.0.0-next.1
         version: link:../mdsvex
     devDependencies:
       '@sveltejs/adapter-auto':
