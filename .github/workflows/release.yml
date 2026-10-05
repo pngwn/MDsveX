@@ -30,7 +30,7 @@ jobs:
 
       - name: Create Release Pull Request or Publish to npm
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
           # This expects you to have a script called release which does a build for your packages and calls changeset publish
           version: pnpm changeset:version
