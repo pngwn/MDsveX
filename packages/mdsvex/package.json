@@ -54,7 +54,7 @@
 		"remark-containers": "^1.1.1",
 		"remark-external-links": "^6.0.0",
 		"remark-frontmatter": "^2.0.0",
-		"remark-parse": "^8.0.2",
+		"remark-parse": "^11.0.0",
 		"remark-rehype": "^7.0.0",
 		"remark-slug": "^6.0.0",
 		"retext": "^7.0.1",
