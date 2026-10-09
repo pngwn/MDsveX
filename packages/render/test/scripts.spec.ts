@@ -48,6 +48,16 @@ describe('bare imports', () => {
 		);
 	});
 
+	it('keep every line of a multi-line import', () => {
+		expect(
+			render(
+				"import {\n  a,\n  b,\n} from 'x';\nimport C from './C.svelte'\n\n<C {a} />\n"
+			)
+		).toBe(
+			"<script>\nimport {\n  a,\n  b,\n} from 'x';\nimport C from './C.svelte'\n</script><C {a} />"
+		);
+	});
+
 	it('go into the instance script', () => {
 		expect(
 			render(

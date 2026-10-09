@@ -337,6 +337,17 @@ describe('the wrapper', () => {
 		);
 	});
 
+	test('a multi-line import starts the instance script whole', () => {
+		const code = compile_all(
+			"import {\n  A,\n  B,\n} from './AB.js';\n\n<A />\n",
+			{ templates }
+		);
+		expect(code).toMatch(
+			/^<script>\nimport \{\n {2}A,\n {2}B,\n\} from '\.\/AB\.js';\nimport Template_MDSVEX/
+		);
+		expect(() => svelte_compile(code, { generate: 'server' })).not.toThrow();
+	});
+
 	test('a document binding its own props forwards that binding', () => {
 		const code = compile_all(
 			'<script lang="ts">\n  let props: { a?: number } = $props();\n</script>\n\n{props.a}\n',

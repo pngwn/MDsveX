@@ -148,12 +148,55 @@ describe('import statements', () => {
 	});
 
 	test('imports with blank lines between them', () => {
-		const input =
-			'import A from "./A"\n\nimport B from "./B"\n\n# Hello';
+		const input = 'import A from "./A"\n\nimport B from "./B"\n\n# Hello';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const imps = nodes.get_kinds(NodeKind.import_statement);
 		expect(imps.length).toBe(2);
+	});
+
+	test('import over several lines', () => {
+		const input = 'import {\n  a,\n  b\n} from "x";\n\n# Hi';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const imp = nodes.get_node(1);
+		expect(imp.kind).toBe('import_statement');
+		expect(input.slice(imp.value[0], imp.value[1])).toBe(
+			'import {\n  a,\n  b\n} from "x";'
+		);
+		expect(nodes.get_kinds(NodeKind.paragraph).length).toBe(0);
+	});
+
+	test('braces in strings and comments do not hold the import open', () => {
+		const input =
+			'import { a, "}" as b } from "x" // {\nimport C from "{" /* { */\n\n# Hi';
+		const { nodes } = parse_markdown_svelte(input);
+
+		const imps = nodes.get_kinds(NodeKind.import_statement);
+		const values = imps.map((id) => {
+			const { value } = nodes.get_node(id);
+			return input.slice(value[0], value[1]);
+		});
+		expect(values).toEqual([
+			'import { a, "}" as b } from "x" // {',
+			'import C from "{" /* { */',
+		]);
+	});
+
+	test('unclosed import brace at EOF is not an import', () => {
+		const input = 'import {\n  a,\n  b';
+		const { nodes } = parse_markdown_svelte(input);
+
+		expect(nodes.get_kinds(NodeKind.import_statement).length).toBe(0);
+		expect(nodes.get_kinds(NodeKind.paragraph).length).toBe(1);
+	});
+
+	test('unclosed import brace stops at a blank line', () => {
+		const input = 'import {\n  a,\n\nimport B from "./B"\n\n# Hi';
+		const { nodes } = parse_markdown_svelte(input);
+
+		expect(nodes.get_kinds(NodeKind.import_statement).length).toBe(0);
+		expect(nodes.get_kinds(NodeKind.heading).length).toBe(1);
 	});
 
 	test('import not allowed after paragraph', () => {

@@ -1,0 +1,6 @@
+root
+  import_statement "import {\n  a,\n  b\n} from \"x\";"
+  line_break
+  heading depth=1 "Hi"
+    text "Hi"
+  line_break
