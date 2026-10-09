@@ -348,6 +348,17 @@ describe('the wrapper', () => {
 		expect(() => svelte_compile(code, { generate: 'server' })).not.toThrow();
 	});
 
+	test('a type import starts a ts instance script', () => {
+		const code = compile_all(
+			"import type { Snippet } from 'svelte';\n\n# Hi\n",
+			{ templates }
+		);
+		expect(code).toMatch(
+			/^<script lang="ts">\nimport type \{ Snippet \} from 'svelte';\nimport Template_MDSVEX/
+		);
+		expect(() => svelte_compile(code, { generate: 'server' })).not.toThrow();
+	});
+
 	test('a document binding its own props forwards that binding', () => {
 		const code = compile_all(
 			'<script lang="ts">\n  let props: { a?: number } = $props();\n</script>\n\n{props.a}\n',
