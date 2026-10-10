@@ -204,7 +204,7 @@ An open wrapper has the node in hand after it until that node's handlers return,
 
 **Redirects.**
 
-- A link is a per-node slot in the dispatcher: a `Uint32Array` indexed by buffer index that holds the open wrapper among a node's children, 0 for none. It is allocated on the first link. Lookup follows the slots to the innermost wrapper and reads no array at all while no link is live.
+- A link is a per-node slot in the dispatcher: a `Uint32Array` indexed by buffer index that holds the open wrapper among a node's children, 0 for none. Lookup follows the slots to the innermost wrapper and reads no array at all while no link is live. A dispatcher holds the array only while it has a link: when its last link goes the array is all zero again and is handed to the next dispatcher that needs one, so a dispatcher made for one document allocates none.
 - `wrap_inner`, `wrap_from` and `close()` reach the dispatcher directly and change the links at once. Collecting the wraps and linking them after the handlers could not order a `wrap_inner` and a `wrap_from` made in one handler.
 - `close()` removes the link to its wrapper and the links inside that wrapper. A link above it stays.
 - When a parent closes or is revoked, the whole chain below it is removed and its `wrap_from` wrappers are closed, because a wrapper never receives a parser close.

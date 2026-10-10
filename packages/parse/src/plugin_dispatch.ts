@@ -419,8 +419,17 @@ const NO_UNDO = new UndoLog();
 /** shared close callbacks until the first is set, never written */
 const NO_CLOSE_CBS = new CloseCallbackStore();
 
-/** shared redirect slots until the first wrapper, never written */
-const NO_SLOTS = new Uint32Array(0);
+/** redirect slots of a dispatcher with no live link, never written */
+const NO_SLOTS: Uint32Array = new Uint32Array(0);
+
+/**
+ * zeroed slots the last dispatcher with a link gave back, the next first
+ * link takes them, so a dispatcher made for one document allocates none
+ */
+let spare_slots = NO_SLOTS;
+
+/** a larger array is not kept, it would hold its memory for good */
+const SPARE_SLOTS_MAX = 65536;
 
 /** shared until the first wrap_from, never written */
 const NO_WRAPPERS: Set<number> = new Set();
@@ -443,10 +452,9 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	private text_source: TextSource;
 
 	/**
-	 * redirect links by buffer index: the wrapper among the children of a
-	 * node that takes its later children, 0 for none since the root is never
-	 * a wrapper. wrap_inner and wrap_from both add links, and a wrapper can
-	 * hold a link itself, so a lookup follows them to the innermost wrapper
+	 * by buffer index, the wrapper among the children of a node that takes its
+	 * later children, 0 for none as the root is never a wrapper, a wrapper can
+	 * hold a link too, so a lookup follows them to the innermost wrapper
 	 */
 	private slots: Uint32Array = NO_SLOTS;
 	/** slots set, at zero no lookup reads the array and the builders skip the dispatcher */
@@ -533,10 +541,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		return !!(this.has_handler[kind >> 5] & (1 << (kind & 31)));
 	}
 
-	/**
-	 * where a new child of this node goes: the node itself, or the innermost
-	 * open wrapper under it
-	 */
+	/** where a new child of this node goes, the node itself or the innermost open wrapper under it */
 	resolve(parent_idx: number): number {
 		if (this.links === 0) return parent_idx;
 		const slots = this.slots;
@@ -562,14 +567,19 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 
 	private set_link(from: number, to: number): void {
 		let slots = this.slots;
+		if (this.links === 0) {
+			slots = this.slots = spare_slots;
+			spare_slots = NO_SLOTS;
+			this.open_wants = ALL_WANTS;
+		}
 		if (from >= slots.length) {
-			let size = slots.length === 0 ? 256 : slots.length;
+			let size = slots.length === 0 ? 1024 : slots.length;
 			while (size <= from) size <<= 1;
 			const grown = new Uint32Array(size);
 			grown.set(slots);
 			slots = this.slots = grown;
 		}
-		if (slots[from] === 0 && this.links++ === 0) this.open_wants = ALL_WANTS;
+		if (slots[from] === 0) this.links++;
 		slots[from] = to;
 	}
 
@@ -577,8 +587,17 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		const slots = this.slots;
 		if (from >= slots.length || slots[from] === 0) return;
 		slots[from] = 0;
-		// the last link gone, opens of unhandled kinds skip the dispatcher again
-		if (--this.links === 0) this.open_wants = this.handled;
+		if (--this.links === 0) this.release_slots();
+	}
+
+	/** every slot is zero, opens of unhandled kinds skip the dispatcher again */
+	private release_slots(): void {
+		const slots = this.slots;
+		if (slots.length > spare_slots.length && slots.length <= SPARE_SLOTS_MAX) {
+			spare_slots = slots;
+		}
+		this.slots = NO_SLOTS;
+		this.open_wants = this.handled;
 	}
 
 	/** a node that still takes children, a wrapper does while its parent links to it */
@@ -636,8 +655,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			return wrapper;
 		}
 
-		// the wrapper goes where a new child of the parent would, which nests
-		// it in a wrapper that is still open
+		// placed where a new child of the parent would go, which nests it in an open wrapper
 		const slots = this.slots;
 		let at = parent;
 		while (at < slots.length) {
@@ -669,18 +687,27 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			return;
 		}
 		// only this link and the ones inside the wrapper, a link above it stays
-		this.undo.record_close_wrapper(this.drop_chain(buf, parent));
+		this.undo.record_close_wrapper(this.drop_chain(buf, parent)!);
 	}
 
 	/**
 	 * remove every link from this node down, ending the wrap_from wrappers
 	 * among them, returns the links as UndoEntryCloseWrapper holds them
 	 */
-	private drop_chain(buf: NodeBuffer, from: number): number[] {
-		const links: number[] = [];
+	private drop_chain(buf: NodeBuffer, from: number): number[] | null {
 		const open_from = this.open_from;
 		let key = from;
 		let wrapper = this.slot(key);
+		// only wrap_inner wrappers below, which have no end to set
+		if (open_from.size === 0) {
+			while (wrapper !== 0) {
+				this.clear_link(key);
+				key = wrapper;
+				wrapper = this.slot(key);
+			}
+			return null;
+		}
+		const links: number[] = [];
 		while (wrapper !== 0) {
 			links.push(key, wrapper, open_from.has(wrapper) ? 1 : 0);
 			this.clear_link(key);
@@ -721,8 +748,8 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	}
 
 	/**
-	 * the end is the start, a renderer caches a top level block once it has
-	 * an end, and the wrappers waiting on this one close with it
+	 * the end is the start, a renderer caches a top level block once it has an
+	 * end, the wrappers waiting on this one close with it
 	 */
 	private set_closed(buf: NodeBuffer, node: number): void {
 		for (;;) {
@@ -1045,6 +1072,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		if (this.links !== 0) {
 			this.slots.fill(0);
 			this.links = 0;
+			this.release_slots();
 		}
 		this.open_from.clear();
 		this.close_with = null;
