@@ -53,10 +53,10 @@ function pfm_autolink(): ParsePlugin {
 	return {
 		heading: {
 			parse(node) {
-				const link = node.wrapInner("link");
+				const link = node.wrap_inner("link");
 
 				return () => {
-					const slug = slugify(node.textContent);
+					const slug = slugify(node.text_content);
 					node.attrs.id = slug;
 					link.attrs.href = `#${slug}`;
 				};
