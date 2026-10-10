@@ -745,12 +745,24 @@ function render_trace(
 	return done;
 }
 
+/** the tree, parser and dispatcher a session keeps for one plugins array */
+interface PluginArena {
+	plugins: ParsePlugin[];
+	/** the reserved directives the plugins were guarded with */
+	reserved: ComponentScope | null;
+	text: SourceTextSource;
+	dispatcher: PluginDispatcher;
+	tree: TreeBuilder;
+	parser: PFMParser;
+}
+
 /**
- * Reusable no-plugin compiler for sequential documents.
+ * reusable compiler for sequential documents
  *
- * The arena remains private so resetting it can never mutate an AST held by a
- * caller. Parse plugins retain the one-shot path because their dispatcher owns
- * a source-specific text view.
+ * the arena stays private so a reset never mutates an ast a caller holds,
+ * documents with parse plugins get an arena of their own that is kept while
+ * parse_plugins is the same array, the plugins are read when it is built, a
+ * NodeView a plugin keeps throws once the session starts the next document
  */
 export class CompilerSession {
 	private tree: TreeBuilder | null = null;
@@ -758,6 +770,11 @@ export class CompilerSession {
 	private renderer = new CursorHTMLRenderer({ cache: false });
 	// release already reset the arena, so the next compile can skip it
 	private released = false;
+	// apart from the plain arena, so a compile without plugins started in a
+	// plugin handler never meets a parser that is mid document
+	private plugin_arena: PluginArena | null = null;
+	// true while plugin handlers can run, a compile they start uses render_once
+	private plugin_busy = false;
 
 	/** @internal */
 	get capacity(): number {
@@ -777,15 +794,77 @@ export class CompilerSession {
 		return this.tree.get_buffer();
 	}
 
+	/** callers check plugin_busy first, the arena holds one document at a time */
+	private parse_plugged(
+		source: string,
+		plugins: ParsePlugin[],
+		reserved: ComponentScope | null
+	): NodeBuffer {
+		let arena = this.plugin_arena;
+		if (
+			arena === null ||
+			arena.plugins !== plugins ||
+			arena.reserved !== reserved
+		) {
+			const text = new SourceTextSource(source);
+			const dispatcher = new PluginDispatcher(
+				guard_plugins(plugins, reserved),
+				text
+			);
+			const tree = new TreeBuilder(source.length >> 3 || 16, dispatcher);
+			// the parser outlives the plugins, options that alternate rebuild often
+			let parser: PFMParser;
+			if (arena === null) parser = new PFMParser(tree);
+			else {
+				parser = arena.parser;
+				parser.bind(tree);
+			}
+			arena = this.plugin_arena = {
+				plugins,
+				reserved,
+				text,
+				dispatcher,
+				tree,
+				parser,
+			};
+		} else {
+			arena.text.set_source(source);
+			arena.tree.reset();
+		}
+
+		this.plugin_busy = true;
+		let done = false;
+		try {
+			arena.parser.parse_normalized(source);
+			const nodes = arena.tree.get_buffer();
+			arena.dispatcher.run_sequential(nodes);
+			done = true;
+			return nodes;
+		} finally {
+			this.plugin_busy = false;
+			// a throw can leave the parser or the dispatcher half written
+			if (!done) this.plugin_arena = null;
+		}
+	}
+
 	compile(raw: string, options?: CompileOptions): CompileResult {
-		if (options?.parse_plugins && options.parse_plugins.length > 0) {
+		const plugins = options?.parse_plugins;
+		// started in a plugin handler, the session holds the outer document
+		if (this.plugin_busy && plugins && plugins.length > 0) {
 			return render_once(raw, options);
 		}
 
 		const scope = scope_of(options?.components, options?.component_mode);
 		const directives = directive_scope_of(options?.directives);
 		const source = normalize_newlines(raw);
-		const nodes = this.parse(source);
+		const nodes =
+			plugins && plugins.length > 0
+				? this.parse_plugged(
+						source,
+						plugins,
+						reserved_directives(directives, options)
+					)
+				: this.parse(source);
 		const metadata = metadata_of(nodes, source, options?.frontmatter?.parse);
 		bind_scopes(this.renderer, scope, directives, options?.strict_directives);
 		const template =
@@ -833,6 +912,8 @@ export class CompilerSession {
 			this.parser!.release();
 			this.released = true;
 		}
+		// its dispatcher holds the last source and what the plugins left on it
+		if (this.plugin_arena !== null) this.plugin_arena = null;
 		this.renderer.release();
 	}
 
@@ -852,16 +933,26 @@ export class CompilerSession {
 		const directives = directive_scope_of(directive_sources);
 		const source = normalize_newlines(raw);
 		if (parse_plugins && parse_plugins.length > 0) {
-			// the dispatcher holds this source, so plugins get their own tree
-			const nodes = parse_once(
-				source,
-				parse_plugins,
-				reserved_directives(directives, templates)
-			);
-			const renderer = new CursorHTMLRenderer({ cache: false });
+			const reserved = reserved_directives(directives, templates);
+			if (this.plugin_busy) {
+				// started in a plugin handler, the session holds the outer document
+				return render_v3(
+					new CursorHTMLRenderer({ cache: false }),
+					parse_once(source, parse_plugins, reserved),
+					source,
+					raw,
+					file,
+					parse,
+					scope,
+					directives,
+					templates,
+					mode,
+					highlight
+				);
+			}
 			return render_v3(
-				renderer,
-				nodes,
+				this.renderer,
+				this.parse_plugged(source, parse_plugins, reserved),
 				source,
 				raw,
 				file,
@@ -908,15 +999,24 @@ export class CompilerSession {
 		const directives = directive_scope_of(directive_sources);
 		const source = normalize_newlines(raw);
 		if (parse_plugins && parse_plugins.length > 0) {
-			const nodes = parse_once(
-				source,
-				parse_plugins,
-				reserved_directives(directives, templates)
-			);
-			const renderer = new CursorHTMLRenderer({ cache: false });
+			const reserved = reserved_directives(directives, templates);
+			if (this.plugin_busy) {
+				// started in a plugin handler, the session holds the outer document
+				return render_trace(
+					new CursorHTMLRenderer({ cache: false }),
+					parse_once(source, parse_plugins, reserved),
+					source,
+					parse,
+					scope,
+					directives,
+					templates,
+					mode,
+					highlight
+				);
+			}
 			return render_trace(
-				renderer,
-				nodes,
+				this.renderer,
+				this.parse_plugged(source, parse_plugins, reserved),
 				source,
 				parse,
 				scope,
@@ -962,12 +1062,12 @@ export class CompilerSession {
 		let renderer = this.renderer;
 		let nodes: NodeBuffer;
 		if (parse_plugins && parse_plugins.length > 0) {
-			nodes = parse_once(
-				source,
-				parse_plugins,
-				reserved_directives(directives, templates)
-			);
-			renderer = new CursorHTMLRenderer({ cache: false });
+			const reserved = reserved_directives(directives, templates);
+			if (this.plugin_busy) {
+				// started in a plugin handler, the session holds the outer document
+				nodes = parse_once(source, parse_plugins, reserved);
+				renderer = new CursorHTMLRenderer({ cache: false });
+			} else nodes = this.parse_plugged(source, parse_plugins, reserved);
 		} else {
 			nodes = this.parse(source);
 		}

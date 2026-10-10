@@ -10,6 +10,9 @@ import { type UndoLog, ATTR_DID_NOT_EXIST } from './undo_log';
 
 const NONE = 0xffffffff;
 
+const STALE_VIEW =
+	'a NodeView was used after its document, a view is only valid during the parse that made it';
+
 /**
  * abstracts text resolution between batch mode (source string slicing)
  * and wire mode (pre-materialized _strings).
@@ -63,6 +66,8 @@ export class ViewCache {
 	private buf: NodeBuffer;
 	private text_source: TextSource;
 	private undo: UndoLog;
+	/** @internal the document the views are made for, a view of an earlier one throws */
+	gen = 0;
 
 	constructor(buf: NodeBuffer, text_source: TextSource, undo: UndoLog) {
 		this.buf = buf;
@@ -98,6 +103,15 @@ export class ViewCache {
 		if (this.views !== null) this.views.clear();
 	}
 
+	/**
+	 * the buffer is about to hold another document, a view kept from this one
+	 * would read and write its nodes
+	 */
+	invalidate(): void {
+		this.clear();
+		this.gen++;
+	}
+
 	/** views made from here on read this buffer and text source */
 	rebind(buf: NodeBuffer, text_source: TextSource): void {
 		this.buf = buf;
@@ -109,17 +123,18 @@ export class ViewCache {
  * attrs proxy target fields, symbol keyed so reflection through the traps
  * never meets them, one handler serves every proxy
  */
-const BUF: unique symbol = Symbol('buf');
+const VIEW: unique symbol = Symbol('view');
 const IDX: unique symbol = Symbol('idx');
 const UNDO: unique symbol = Symbol('undo');
 
 class AttrsTarget {
-	[BUF]: NodeBuffer;
+	/** the buffer is read through the view, which throws once it is stale */
+	[VIEW]: NodeView;
 	[IDX]: number;
 	[UNDO]: UndoLog;
 
-	constructor(buf: NodeBuffer, idx: number, undo: UndoLog) {
-		this[BUF] = buf;
+	constructor(view: NodeView, idx: number, undo: UndoLog) {
+		this[VIEW] = view;
 		this[IDX] = idx;
 		this[UNDO] = undo;
 	}
@@ -127,12 +142,12 @@ class AttrsTarget {
 
 const ATTRS_HANDLER: ProxyHandler<AttrsTarget> = {
 	get(target, prop: string): any {
-		const meta = target[BUF].metadata_at(target[IDX]);
+		const meta = target[VIEW]._live().metadata_at(target[IDX]);
 		return meta ? meta[prop] : undefined;
 	},
 
 	set(target, prop: string, value: any): boolean {
-		const buf = target[BUF];
+		const buf = target[VIEW]._live();
 		const idx = target[IDX];
 		const meta = buf.metadata_at(idx);
 		const undo = target[UNDO];
@@ -150,7 +165,7 @@ const ATTRS_HANDLER: ProxyHandler<AttrsTarget> = {
 	},
 
 	deleteProperty(target, prop: string): boolean {
-		const buf = target[BUF];
+		const buf = target[VIEW]._live();
 		const idx = target[IDX];
 		const meta = buf.metadata_at(idx);
 		if (!meta || !(prop in meta)) return true;
@@ -163,17 +178,17 @@ const ATTRS_HANDLER: ProxyHandler<AttrsTarget> = {
 	},
 
 	has(target, prop: string): boolean {
-		const meta = target[BUF].metadata_at(target[IDX]);
+		const meta = target[VIEW]._live().metadata_at(target[IDX]);
 		return meta ? prop in meta : false;
 	},
 
 	ownKeys(target): string[] {
-		const meta = target[BUF].metadata_at(target[IDX]);
+		const meta = target[VIEW]._live().metadata_at(target[IDX]);
 		return meta ? Object.keys(meta) : [];
 	},
 
 	getOwnPropertyDescriptor(target, prop: string) {
-		const meta = target[BUF].metadata_at(target[IDX]);
+		const meta = target[VIEW]._live().metadata_at(target[IDX]);
 		if (meta && prop in meta) {
 			return {
 				configurable: true,
@@ -206,6 +221,8 @@ export class NodeView {
 	private _cache: ViewCache;
 	/** @internal undo log for recording mutations. */
 	private _undo: UndoLog;
+	/** @internal the generation of the cache when this view was made */
+	private _gen: number;
 	/** lazily created attrs proxy. */
 	private _attrs: Record<string, any> | null = null;
 
@@ -221,42 +238,53 @@ export class NodeView {
 		this._text_source = text_source;
 		this._cache = cache;
 		this._undo = undo;
+		this._gen = cache.gen;
+	}
+
+	/**
+	 * @internal the buffer, a view kept past its document throws here instead
+	 * of touching the next one
+	 */
+	_live(): NodeBuffer {
+		if (this._gen !== this._cache.gen) throw new Error(STALE_VIEW);
+		return this._buf;
 	}
 
 	get type(): string {
-		return kind_to_string(this._buf.kind_at(this._index) as NodeKind);
+		return kind_to_string(this._live().kind_at(this._index) as NodeKind);
 	}
 
 	set type(value: string) {
 		const numeric = string_to_kind(value);
 		if (numeric === undefined) return;
-		const prior = this._buf.kind_at(this._index);
+		const buf = this._live();
+		const prior = buf.kind_at(this._index);
 		this._undo.record_type_change(this._index, prior);
-		this._buf.set_kind(this._index, numeric);
+		buf.set_kind(this._index, numeric);
 	}
 
 	get parent(): NodeView | null {
-		return this._cache.get(this._buf.parent_at(this._index));
+		return this._cache.get(this._live().parent_at(this._index));
 	}
 
 	get first_child(): NodeView | null {
-		return this._cache.get(this._buf.first_child_at(this._index));
+		return this._cache.get(this._live().first_child_at(this._index));
 	}
 
 	get last_child(): NodeView | null {
-		return this._cache.get(this._buf.last_child_at(this._index));
+		return this._cache.get(this._live().last_child_at(this._index));
 	}
 
 	get next(): NodeView | null {
-		const n = this._buf.next_at(this._index);
+		const buf = this._live();
+		const n = buf.next_at(this._index);
 		if (n === NONE) return null;
-		if (this._buf.parent_at(n) !== this._buf.parent_at(this._index))
-			return null;
+		if (buf.parent_at(n) !== buf.parent_at(this._index)) return null;
 		return this._cache.get(n);
 	}
 
 	get prev(): NodeView | null {
-		const p = this._buf.prev_at(this._index);
+		const p = this._live().prev_at(this._index);
 		if (p === NONE) return null;
 		return this._cache.get(p);
 	}
@@ -266,6 +294,7 @@ export class NodeView {
 	 * only guaranteed complete in the close callback.
 	 */
 	get text_content(): string {
+		this._live();
 		return this._collect_text(this._index);
 	}
 
@@ -324,15 +353,17 @@ export class NodeView {
 
 	/** heading depth (1-6). only meaningful when type === 'heading'. */
 	get depth(): number | undefined {
-		if (this._buf.kind_at(this._index) !== NodeKind.heading) return undefined;
-		return this._buf.extra_at(this._index);
+		const buf = this._live();
+		if (buf.kind_at(this._index) !== NodeKind.heading) return undefined;
+		return buf.extra_at(this._index);
 	}
 
 	/** code block language/info string. */
 	get lang(): string | undefined {
-		const kind = this._buf.kind_at(this._index);
+		const buf = this._live();
+		const kind = buf.kind_at(this._index);
 		if (kind !== NodeKind.code_fence) return undefined;
-		const meta = this._buf.metadata_at(this._index);
+		const meta = buf.metadata_at(this._index);
 		if (!meta) return undefined;
 		if (meta.info) return meta.info as string;
 		if (meta.info_start != null && meta.info_end != null) {
@@ -343,38 +374,38 @@ export class NodeView {
 
 	/** link/image href. */
 	get href(): string | undefined {
-		const meta = this._buf.metadata_at(this._index);
+		const meta = this._live().metadata_at(this._index);
 		return meta?.href as string | undefined;
 	}
 
 	/** link/image title. */
 	get title(): string | undefined {
-		const meta = this._buf.metadata_at(this._index);
+		const meta = this._live().metadata_at(this._index);
 		return meta?.title as string | undefined;
 	}
 
 	/** list: ordered flag. */
 	get ordered(): boolean | undefined {
-		const meta = this._buf.metadata_at(this._index);
+		const meta = this._live().metadata_at(this._index);
 		return meta?.ordered as boolean | undefined;
 	}
 
 	/** list: start number. */
 	get start(): number | undefined {
-		const meta = this._buf.metadata_at(this._index);
+		const meta = this._live().metadata_at(this._index);
 		return meta?.start as number | undefined;
 	}
 
 	/** list: tight flag. */
 	get tight(): boolean | undefined {
-		const meta = this._buf.metadata_at(this._index);
+		const meta = this._live().metadata_at(this._index);
 		return meta?.tight as boolean | undefined;
 	}
 
 	get attrs(): Record<string, any> {
 		if (this._attrs !== null) return this._attrs;
 		return (this._attrs = new Proxy(
-			new AttrsTarget(this._buf, this._index, this._undo) as any,
+			new AttrsTarget(this, this._index, this._undo) as any,
 			ATTRS_HANDLER
 		));
 	}
@@ -388,7 +419,7 @@ export class NodeView {
 		const kind_num = string_to_kind(type);
 		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
-		const buf = this._buf;
+		const buf = this._live();
 		const idx = this._index;
 
 		// capture prior state
@@ -417,7 +448,7 @@ export class NodeView {
 		const kind_num = string_to_kind(type);
 		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
-		const buf = this._buf;
+		const buf = this._live();
 		const idx = this._index;
 		const prior_first_child = buf.first_child_at(idx);
 
@@ -447,7 +478,7 @@ export class NodeView {
 		const kind_num = string_to_kind(type);
 		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
-		const buf = this._buf;
+		const buf = this._live();
 		const idx = this._index;
 		const prior_last_child = buf.last_child_at(idx);
 

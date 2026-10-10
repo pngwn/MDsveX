@@ -431,6 +431,8 @@ export class PluginDispatcher {
 	private fused: HandlersTable;
 	private has_handler: Uint32Array;
 	private sequential: { plugin: ParsePlugin; handlers: HandlersTable }[];
+	/** open_wants of the registration, before any redirect */
+	private handled: Uint8Array;
 	private undo: UndoLog = NO_UNDO;
 	private close_cbs: CloseCallbackStore = NO_CLOSE_CBS;
 	private ctx: PluginContext | null = null;
@@ -464,7 +466,7 @@ export class PluginDispatcher {
 		this.has_handler = reg.has_handler;
 		this.sequential = reg.sequential;
 		this.text_source = text_source;
-		this.open_wants = reg.open_wants;
+		this.open_wants = this.handled = reg.open_wants;
 	}
 
 	/** cleared since a callback view may have filled it after the last dispatch */
@@ -527,10 +529,9 @@ export class PluginDispatcher {
 
 	private own_redirects(): Map<number, number> {
 		let redirects = this.redirects;
-		if (redirects === NO_REDIRECTS) {
-			redirects = this.redirects = new Map();
-			this.open_wants = ALL_WANTS;
-		}
+		if (redirects === NO_REDIRECTS) redirects = this.redirects = new Map();
+		// every time, a reset keeps the map and restores the mask
+		this.open_wants = ALL_WANTS;
 		return redirects;
 	}
 
@@ -791,11 +792,21 @@ export class PluginDispatcher {
 		}
 	}
 
-	/** reset all state. */
+	/**
+	 * forget one document so the builder can take another, the handler tables
+	 * stay, views of the old document throw from here on
+	 */
 	reset(): void {
 		if (this.undo !== NO_UNDO) this.undo.clear();
 		this.close_cbs.reset();
 		this.redirects.clear();
+		// a throw in a handler leaves its wraps behind
+		this.wraps.length = 0;
+		// a redirect switched this to every kind
+		this.open_wants = this.handled;
 		this.next_synthetic_id = SYNTHETIC_ID_BASE;
+		// plugins keep per document state on it
+		this.ctx = null;
+		if (this.cache !== null) this.cache.invalidate();
 	}
 }

@@ -75,6 +75,8 @@ Views are cached by node ID within a single dispatch. If two handlers both read 
 
 The cache is short-lived — it exists for the duration of plugin dispatch on a single node and is discarded afterward. Views are cheap to create, so this isn't an optimization concern, it's a correctness requirement.
 
+A view belongs to the document it was made for. A close callback can hold the views its open handler made, as the examples below do. Once the builder is reset for another document (`TreeBuilder.reset()`, `WireTreeBuilder.reset()`, or the next compile of a `CompilerSession`) every earlier view throws on use, because the buffer it points into now holds other nodes. Copy what you need out of a view (`text_content`, attrs) rather than keeping the view. The `ctx` object is new for each document too.
+
 ## Handler Lifecycle
 
 ### Open-Time Execution

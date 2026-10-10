@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
+import { NodeKind, PFMParser, WireEmitter } from '../src/main';
+import { SourceTextSource, WireTextSource } from '../src/node_view';
 import type { NodeView } from '../src/node_view';
+import { PluginDispatcher } from '../src/plugin_dispatch';
 import type { ParsePlugin } from '../src/plugin_types';
+import { TreeBuilder } from '../src/tree_builder';
+import { WireTreeBuilder } from '../src/wire_tree_builder';
 import {
 	PATHS,
+	expect_linked,
 	expect_parity,
 	expect_parity_logged,
+	run_batch,
+	run_wire,
 	shape,
 } from './plugin_harness';
 
@@ -765,4 +773,271 @@ describe('parse plugins: undo logs of closed pending nodes', () => {
 			expect(out.dispatcher!.quiet()).toBe(true);
 		}
 	);
+});
+
+describe('parse plugins: a builder reset for the next document', () => {
+	const documents = [
+		'# One *a* b\n\ntext *open\n',
+		'plain `code`\n',
+		'- tight\n- list\n\n## Two\n',
+		'<div>\n\n# Inside\n\nnever closed *x*\n',
+		'_open *closed* rest\n\n| a *b | c |\n| - | - |\n',
+		'',
+		'# Last\n',
+	];
+
+	/** a wrap_inner, a close callback, attrs on another node and a sequential pass */
+	const plugins = (): ParsePlugin[] => [
+		{
+			heading: {
+				parse(node, ctx: { headings?: number }) {
+					ctx.headings = (ctx.headings ?? 0) + 1;
+					const count = ctx.headings;
+					const link = node.wrap_inner('link');
+					return () => {
+						node.attrs.id = 'h' + count;
+						link.attrs.href = '#' + node.text_content;
+					};
+				},
+			},
+			strong_emphasis: {
+				parse(node) {
+					node.attrs.id = 'strong';
+					node.parent!.attrs.keep = 1;
+					node.prepend('emphasis');
+				},
+			},
+		},
+		sequential('paragraph', (node) => {
+			node.attrs.seen = 1;
+		}),
+	];
+
+	const OPTS = { ...ATTRS, merge_text: true };
+
+	it('a batch builder matches a fresh one on every document', () => {
+		const text = new SourceTextSource('');
+		const dispatcher = new PluginDispatcher(plugins(), text);
+		const tree = new TreeBuilder(16, dispatcher);
+		const parser = new PFMParser(tree);
+		for (let pass = 0; pass < 3; pass++) {
+			for (const source of documents) {
+				tree.reset();
+				text.set_source(source);
+				parser.parse(source);
+				const nodes = tree.get_buffer();
+				dispatcher.run_sequential(nodes);
+				expect_linked(nodes);
+				const fresh = run_batch(source, plugins());
+				expect(shape(nodes, source, 0, OPTS)).toEqual(
+					shape(fresh.nodes, source, 0, OPTS)
+				);
+			}
+		}
+	});
+
+	it('a wire builder matches a fresh one on every document', () => {
+		const dispatcher = new PluginDispatcher(plugins(), new WireTextSource([]));
+		const builder = new WireTreeBuilder(128, dispatcher);
+		for (let pass = 0; pass < 3; pass++) {
+			for (const source of documents) {
+				builder.reset();
+				const emitter = new WireEmitter();
+				const parser = new PFMParser(emitter);
+				parser.init();
+				for (let i = 0; i < source.length; i += 3) {
+					emitter.set_source(source.slice(0, i + 3));
+					parser.feed(source.slice(i, i + 3));
+					builder.apply(emitter.flush());
+				}
+				emitter.set_source(source);
+				parser.finish();
+				builder.apply(emitter.flush());
+				const nodes = builder.get_buffer();
+				dispatcher.run_sequential(nodes);
+				expect_linked(nodes);
+				const fresh = run_wire(source, plugins(), 3);
+				expect(shape(nodes, null, 0, OPTS)).toEqual(
+					shape(fresh.nodes, null, 0, OPTS)
+				);
+			}
+		}
+	});
+
+	it('restores the kinds that need the dispatcher', () => {
+		const source = '# a\n';
+		const text = new SourceTextSource(source);
+		const dispatcher = new PluginDispatcher([on('heading', wrap)], text);
+		const tree = new TreeBuilder(16, dispatcher);
+		const handled = dispatcher.open_wants;
+		expect(Array.from(handled).filter((w) => w === 1)).toHaveLength(1);
+
+		for (let i = 0; i < 3; i++) {
+			new PFMParser(tree).parse(source);
+			// the redirect of the wrap sent every open through the dispatcher
+			expect(dispatcher.open_wants).not.toBe(handled);
+			expect(dispatcher.open_wants.every((w) => w === 1)).toBe(true);
+			tree.reset();
+			expect(dispatcher.open_wants).toBe(handled);
+			expect(dispatcher.quiet()).toBe(true);
+			expect(dispatcher.wants_open(NodeKind.paragraph)).toBe(false);
+		}
+	});
+
+	it('forgets the kinds a revoke rewrote', () => {
+		const dispatcher = new PluginDispatcher(
+			[on('link', () => {})],
+			new SourceTextSource('*a\n\n# abc')
+		);
+		const tree = new TreeBuilder(16, dispatcher);
+		// a strong at index 2 is revoked, its kind at open stays on record
+		tree.open(1, NodeKind.paragraph, 0, 0, 0, false);
+		tree.open(2, NodeKind.strong_emphasis, 0, 1, 0, true);
+		tree.revoke(2);
+		tree.text(2, 1, 2);
+		expect(tree.get_buffer().get_node(2).kind).toBe('text');
+
+		tree.reset();
+		// a heading takes index 2, a text without a kind must read it as one
+		tree.open(1, NodeKind.paragraph, 0, 0, 0, false);
+		tree.open(2, NodeKind.heading, 4, 0, 1, false);
+		tree.text(2, 6, 9);
+		const nodes = tree.get_buffer();
+		expect(nodes.get_node(2).kind).toBe('heading');
+		expect(nodes.get_node(2).value).toEqual([6, 9]);
+		expect(nodes.get_node(2).children).toEqual([]);
+	});
+
+	it('gives the next document a fresh context', () => {
+		const seen: unknown[] = [];
+		const text = new SourceTextSource('# a\n');
+		const dispatcher = new PluginDispatcher(
+			[
+				on('heading', (_node, ctx: { first?: boolean }) => {
+					seen.push(ctx.first);
+					ctx.first = false;
+				}),
+			],
+			text
+		);
+		const tree = new TreeBuilder(16, dispatcher);
+		new PFMParser(tree).parse('# a\n\n# b\n');
+		tree.reset();
+		new PFMParser(tree).parse('# a\n');
+		expect(seen).toEqual([undefined, false, undefined]);
+	});
+
+	it('is usable after a handler threw mid document', () => {
+		const source = 'a *b* c\n\n# d\n';
+		const make = (armed: { on: boolean }): ParsePlugin[] => [
+			on('paragraph', wrap),
+			on('strong_emphasis', (node) => {
+				node.parent!.wrap_inner('emphasis');
+				node.attrs.id = 'strong';
+				if (armed.on) throw new Error('handler');
+				return () => {
+					node.attrs.seen = 1;
+				};
+			}),
+		];
+		const armed = { on: true };
+		const text = new SourceTextSource(source);
+		const dispatcher = new PluginDispatcher(make(armed), text);
+		const tree = new TreeBuilder(16, dispatcher);
+		expect(() => new PFMParser(tree).parse(source)).toThrow('handler');
+
+		armed.on = false;
+		tree.reset();
+		new PFMParser(tree).parse(source);
+		const fresh = run_batch(source, make(armed));
+		expect(shape(tree.get_buffer(), source, 0, OPTS)).toEqual(
+			shape(fresh.nodes, source, 0, OPTS)
+		);
+		expect_linked(tree.get_buffer());
+	});
+
+	const stale = /NodeView was used after its document/;
+
+	it('a view kept from the last document throws, batch', () => {
+		const kept: NodeView[] = [];
+		const text = new SourceTextSource('# first\n');
+		const dispatcher = new PluginDispatcher(
+			[
+				on('heading', (node) => {
+					kept.push(node);
+				}),
+			],
+			text
+		);
+		const tree = new TreeBuilder(16, dispatcher);
+		new PFMParser(tree).parse('# first\n');
+		const view = kept[0];
+		const attrs = view.attrs;
+		// its own document is still in the buffer
+		expect(view.text_content).toBe('first');
+		expect(view.parent!.type).toBe('root');
+
+		tree.reset();
+		text.set_source('para\n\n# second\n');
+		new PFMParser(tree).parse('para\n\n# second\n');
+
+		expect(() => view.type).toThrow(stale);
+		expect(() => view.text_content).toThrow(stale);
+		expect(() => view.parent).toThrow(stale);
+		expect(() => view.first_child).toThrow(stale);
+		expect(() => view.last_child).toThrow(stale);
+		expect(() => view.next).toThrow(stale);
+		expect(() => view.prev).toThrow(stale);
+		expect(() => view.depth).toThrow(stale);
+		expect(() => view.lang).toThrow(stale);
+		expect(() => view.href).toThrow(stale);
+		expect(() => view.title).toThrow(stale);
+		expect(() => view.ordered).toThrow(stale);
+		expect(() => view.start).toThrow(stale);
+		expect(() => view.tight).toThrow(stale);
+		expect(() => view.attrs).not.toThrow();
+		expect(() => attrs.id).toThrow(stale);
+		expect(() => (attrs.id = 'late')).toThrow(stale);
+		expect(() => delete attrs.id).toThrow(stale);
+		expect(() => 'id' in attrs).toThrow(stale);
+		expect(() => Object.keys(attrs)).toThrow(stale);
+		expect(() => (view.type = 'paragraph')).toThrow(stale);
+		expect(() => view.wrap_inner('link')).toThrow(stale);
+		expect(() => view.prepend('link')).toThrow(stale);
+		expect(() => view.append('link')).toThrow(stale);
+
+		const nodes = tree.get_buffer();
+		expect(shape(nodes, 'para\n\n# second\n', 0, OPTS)).toEqual([
+			'root',
+			['paragraph', 'text:para'],
+			['heading', 'text:second'],
+		]);
+		expect(kept[1].text_content).toBe('second');
+	});
+
+	it('a view kept from the last document throws, wire', () => {
+		const kept: NodeView[] = [];
+		const dispatcher = new PluginDispatcher(
+			[
+				on('heading', (node) => {
+					kept.push(node);
+				}),
+			],
+			new WireTextSource([])
+		);
+		const builder = new WireTreeBuilder(128, dispatcher);
+		const feed = (source: string) => {
+			const emitter = new WireEmitter();
+			emitter.set_source(source);
+			new PFMParser(emitter).parse(source);
+			builder.apply(emitter.flush());
+		};
+		feed('# first\n');
+		expect(kept[0].text_content).toBe('first');
+		builder.reset();
+		expect(() => kept[0].text_content).toThrow(stale);
+		feed('# second\n');
+		expect(() => kept[0].type).toThrow(stale);
+		expect(kept[1].text_content).toBe('second');
+	});
 });
