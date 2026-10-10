@@ -2913,37 +2913,31 @@ export class PFMParser {
 	}
 
 	/**
-	 * check if there's enough input after a linefeed at `pos` to make
-	 * a block-level decision. in block quote contexts we need to see the
-	 * complete next line (its `>` markers and content). outside of block
-	 * quotes we decide eagerly for any first non-whitespace char that
-	 * unambiguously continues a paragraph or unambiguously starts a known
-	 * block - only genuinely ambiguous leading chars (`-`, `*`, `_`, `[`,
-	 * `|`, `:`, `<`, digits) still wait for the full next line.
+	 * true once enough input follows the linefeed at `pos` for a block level decision,
+	 * a first char that may start a block waits for its whole line, in a block quote
+	 * the line is read after its markers and an unmarked line decides at once
 	 */
 	private can_decide_after_lf(pos: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
 
-		// inside a block quote the paragraph boundary depends on the `>`
-		// markers and the space that follows them. until the full prefix
-		// is visible, skip_bq_markers can mis-strip. require the complete
-		// next line to avoid under-reading the continuation prefix.
-		// the window runs to exactly length, so any lf found lies within it
-		if (this.block_quote_depth > 0) {
-			if (
-				pos + 1 < length &&
-				string_index_of.call(source, '\n', pos + 1 - base) !== -1
-			)
-				return true;
-			// hold chunks for a long partial line instead of rescanning it every feed, a short one ends within a chunk or two
-			if (length - pos > 128) this.wait_for('\n');
-			return false;
-		}
-
 		let p = pos + 1;
-		// skip leading whitespace on the next line.
+		const depth = this.block_quote_depth;
+		// skip_bq_markers reads a marker and its space, both must be visible or it strips short
+		for (let i = 0; i < depth; i++) {
+			while (p < length) {
+				const ch = char_code_at.call(source, p - base);
+				if (ch !== SPACE && ch !== TAB) break;
+				p++;
+			}
+			if (p >= length) return this.finished;
+			// an unmarked line ends the quote whatever it holds
+			if (char_code_at.call(source, p - base) !== CLOSE_ANGLE_BRACKET)
+				return true;
+			p++;
+		}
+		// the space of the last marker goes with the leading whitespace
 		while (p < length) {
 			const ch = char_code_at.call(source, p - base);
 			if (ch !== SPACE && ch !== TAB) break;
@@ -3020,9 +3014,15 @@ export class PFMParser {
 				// start a block - the paragraph continues.
 				return true;
 		}
-		return (
-			p + 1 < length && string_index_of.call(source, '\n', p + 1 - base) !== -1
-		);
+		// the window runs to exactly length, so any lf found lies within it
+		if (
+			p + 1 < length &&
+			string_index_of.call(source, '\n', p + 1 - base) !== -1
+		)
+			return true;
+		// hold chunks for a long partial line instead of rescanning it every feed, a short one ends within a chunk or two
+		if (depth > 0 && length - pos > 128) this.wait_for('\n');
+		return false;
 	}
 
 	private is_heading_start(pos: number): boolean {
@@ -10331,14 +10331,7 @@ export class PFMParser {
 			case ASTERISK:
 			case DASH:
 			case UNDERSCORE: {
-				// need a complete line to distinguish thematic break
-				// from list marker from paragraph.
-				if (
-					!this.finished &&
-					string_index_of.call(source, '\n', this.cursor - base) === -1
-				) {
-					return true;
-				}
+				if (this.could_be_thematic_break(this.cursor, code)) return true;
 				if (this.is_thematic_break_start(this.cursor)) {
 					let line_end = this.cursor;
 					while (
