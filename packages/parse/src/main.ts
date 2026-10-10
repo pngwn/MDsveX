@@ -100,6 +100,15 @@ const is_unicode_whitespace = (code: number): boolean =>
 	code === 0x205f ||
 	code === 0x3000;
 
+// cjk prose has no spaces, so beside a delimiter these are a boundary as well as a word char
+const is_cjk = (code: number): boolean =>
+	(code >= 0x1100 && code <= 0x11ff) ||
+	(code >= 0x2e80 && code <= 0xa4cf) ||
+	(code >= 0xa960 && code <= 0xa97f) ||
+	(code >= 0xac00 && code <= 0xd7ff) ||
+	(code >= 0xf900 && code <= 0xfaff) ||
+	(code >= 0xff00 && code <= 0xffef);
+
 const classify = (code: number): CharMask =>
 	// common case first: ascii (code < 128). nan < 128 is false, so
 	// nan falls through to the second branch where code !== code catches it.
@@ -114,7 +123,9 @@ const classify = (code: number): CharMask =>
 				? CharMask.whitespace
 				: is_unicode_punctuation(code)
 					? CharMask.punctuation
-					: CharMask.word;
+					: is_cjk(code)
+						? CharMask.word | CharMask.punctuation
+						: CharMask.word;
 
 /**
  * lookup table for characters that break out of text scanning.

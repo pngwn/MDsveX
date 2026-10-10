@@ -129,12 +129,17 @@ describe('strikethrough beside non-ascii characters', () => {
 		['（~~重要~~）', `"（" ${D('重要')} "）"`],
 		['~~重要~~！', `${D('重要')} "！"`],
 		['前\u3000~~重要~~\u3000後', `"前\u3000" ${D('重要')} "\u3000後"`],
-		// between word characters the pipe gives the boundary
+		['这是~~重要~~的', `"这是" ${D('重要')} "的"`],
+		['これは~~重要~~です', `"これは" ${D('重要')} "です"`],
+		['이것은~~중요~~합니다', `"이것은" ${D('중요')} "합니다"`],
+		['x ~~重要~~的', `"x " ${D('重要')} "的"`],
+		['这是~~~~重要~~~~的', `"这是" strikethrough(${D('重要')}) "的"`],
+		['caf|~~é~~|s', `"caf" ${D('é')} "s"`],
 		['这是|~~重要~~|的', `"这是" ${D('重要')} "的"`],
-		// without it a word character before stops the opener, the second tilde then opens a subscript
-		['这是~~重要~~的', `"这是" "~" subscript("重要" "~") "的"`],
+		// without the pipe a word character before stops the opener, the second tilde then opens a subscript
+		['caf~~é~~s', `"caf" "~" subscript("é" "~") "s"`],
 		// and a word character after stops the closer
-		['x ~~重要~~的', `"x " "~~" "重要" "~" "~的"`],
+		['x ~~é~~s', `"x " "~~" "é" "~" "~s"`],
 	])('%s', (input, shape) => {
 		expect(inline_shape(input)).toBe(shape);
 		expect(inline_shape(input, 1)).toBe(shape);

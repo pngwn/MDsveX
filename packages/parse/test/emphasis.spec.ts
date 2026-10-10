@@ -1940,33 +1940,63 @@ describe('emphasis and strong beside non-ascii characters', () => {
 		['*\u3000重要*', `"*\u3000重要" "*"`],
 	];
 
-	// a delimiter between two word characters neither opens nor closes
+	const cjk: [string, string][] = [
+		['这是*重要*的', `"这是" ${S('重要')} "的"`],
+		['这是_重要_的', `"这是" ${E('重要')} "的"`],
+		['これは*重要*です', `"これは" ${S('重要')} "です"`],
+		['これは_重要_です', `"これは" ${E('重要')} "です"`],
+		['サーバー*重要*です', `"サーバー" ${S('重要')} "です"`],
+		['이것은*중요*합니다', `"이것은" ${S('중요')} "합니다"`],
+		['이것은_중요_합니다', `"이것은" ${E('중요')} "합니다"`],
+		['これは*「重要」*です', `"これは" strong_emphasis("「重要」") "です"`],
+		['x *重要*的', `"x " ${S('重要')} "的"`],
+		['长*宽*高', `"长" ${S('宽')} "高"`],
+		['文件_名称_列表', `"文件" ${E('名称')} "列表"`],
+		['ＡＢ*重要*ＣＤ', `"ＡＢ" ${S('重要')} "ＣＤ"`],
+		['ｶﾀｶﾅ*x*ｶﾀｶﾅ', `"ｶﾀｶﾅ" ${S('x')} "ｶﾀｶﾅ"`],
+		['这是*important*的', `"这是" ${S('important')} "的"`],
+		['这是_important_的', `"这是" ${E('important')} "的"`],
+		['这是**重要**的', `"这是" strong_emphasis(strong_emphasis("重要")) "的"`],
+		['这是__重要__的', `"这是" emphasis(emphasis("重要")) "的"`],
+		['**重要**', `strong_emphasis(strong_emphasis("重要"))`],
+		['__重要__', `emphasis(emphasis("重要"))`],
+		[
+			'これは**「重要」**です',
+			`"これは" strong_emphasis(strong_emphasis("「重要」")) "です"`,
+		],
+		// inside a run the delimiter closes before it opens
+		['*重*要*', `${S('重')} "要" "*"`],
+		['abc*重要*的', `"abc" "*重要" "*的"`],
+		['这是*重要*abc', `"这是" "*" "重要" "*abc"`],
+		['这是*重要 的', `"这是" "*重要 的"`],
+	];
+
 	const intraword: [string, string][] = [
-		['这是*重要*的', `"这是" "*重要" "*的"`],
-		['这是_重要_的', `"这是" "_重要" "_的"`],
-		['これは*重要*です', `"これは" "*重要" "*です"`],
-		['これは_重要_です', `"これは" "_重要" "_です"`],
-		['이것은*중요*합니다', `"이것은" "*중요" "*합니다"`],
-		['これは*「重要」*です', `"これは" "*「重要」" "*です"`],
-		['x *重要*的', `"x " "*" "重要" "*的"`],
+		['abc*重要*def', `"abc" "*重要" "*def"`],
 		['пристаням*стремятся*вот', `"пристаням" "*стремятся" "*вот"`],
 		['caf*é*s', `"caf" "*é" "*s"`],
 		['naïve_é_s', `"naïve" "_é" "_s"`],
+		['นี่*สำคัญ*มาก', `"นี่" "*สำคัญ" "*มาก"`],
 		// astral code points are still word characters
 		['😀*x*😀', `"😀" "*x" "*😀"`],
+		['𠀀*x*𠀀', `"𠀀" "*x" "*𠀀"`],
 	];
 
-	// the transparent pipe gives the boundary where the text has none
 	const pipe: [string, string][] = [
+		['caf|*é*|s', `"caf" ${S('é')} "s"`],
+		['นี่|*สำคัญ*|มาก', `"นี่" ${S('สำคัญ')} "มาก"`],
 		['这是|*重要*|的', `"这是" ${S('重要')} "的"`],
 		['这是|_重要_|的', `"这是" ${E('重要')} "的"`],
 		['これは|*「重要」*|です', `"これは" strong_emphasis("「重要」") "です"`],
 	];
 
-	test.each([...punctuation, ...intraword, ...pipe])('%s', (input, shape) => {
-		expect(inline_shape(input)).toBe(shape);
-		expect(inline_shape(input, 1)).toBe(shape);
-	});
+	test.each([...punctuation, ...cjk, ...intraword, ...pipe])(
+		'%s',
+		(input, shape) => {
+			expect(inline_shape(input)).toBe(shape);
+			expect(inline_shape(input, 1)).toBe(shape);
+		}
+	);
 });
 
 describe('doubled delimiters', () => {
