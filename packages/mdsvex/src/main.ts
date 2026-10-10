@@ -8,12 +8,8 @@ import type { FrontmatterOptions } from './frontmatter';
 import { MANIFEST_VERSION, manifest_writer } from './manifest';
 import type { MdsvexManifest } from './manifest';
 import { scope_of } from './root_scope';
-import type {
-	HighlightConfig,
-	Highlighter,
-	HighlightOption,
-} from './highlight_run';
-import type { HighlightOptions, HtmlHighlighter } from './highlight';
+import type { Highlighter, HighlightOption } from './highlight_run';
+import type { HighlightOptions } from './highlight';
 import { base64_utf8, chained_base64, pfm_map } from './sourcemap_chain';
 import type { StoredDocument } from './sourcemap_chain';
 import {
@@ -32,6 +28,7 @@ import {
 	template_registry,
 	templates_for,
 } from './template_registry';
+import { has_code, plugin_highlight } from './plugin_highlight';
 
 export * from './compile';
 export {
@@ -144,64 +141,6 @@ function api_extensions(plugin: Plugin | undefined): string[] | undefined {
  *    our HTML to markdown map using @ampproject/remapping, and injects
  *    the result as an inline sourceMappingURL in the output code.
  */
-/** a twoslash highlighter built on its first fence, each builds a typescript environment */
-function lazy_highlighter(make: () => HtmlHighlighter): HtmlHighlighter {
-	let made: HtmlHighlighter | null = null;
-	return (code, render) => (made ??= make())(code, render);
-}
-
-async function import_twoslash<T>(
-	load: () => Promise<T>,
-	name: string
-): Promise<T> {
-	try {
-		return await load();
-	} catch (e) {
-		const error = new Error(
-			`[mdsvex] highlight.twoslash needs ${name}, add it to your dependencies`
-		);
-		(error as { cause?: unknown }).cause = e;
-		throw error;
-	}
-}
-
-/** twinkleplop with every language, the async setup compile can not do */
-async function plugin_highlight(
-	options: PluginHighlightOptions
-): Promise<HighlightConfig> {
-	const { create_highlight, load_default_languages } =
-		await import('./highlight');
-	const languages = {
-		...(await load_default_languages()),
-		...options.languages,
-	};
-	let twoslash: Record<string, HtmlHighlighter> | false = false;
-	if (options.twoslash) {
-		const ts = await import_twoslash(
-			() => import('@twinkleplop/twoslash'),
-			'@twinkleplop/twoslash'
-		);
-		twoslash = {
-			typescript: lazy_highlighter(() => ts.create_highlighter({ lang: 'ts' })),
-			javascript: lazy_highlighter(() => ts.create_highlighter({ lang: 'js' })),
-			tsx: lazy_highlighter(() => ts.create_highlighter({ lang: 'tsx' })),
-		};
-		if (typeof options.twoslash === 'object' && options.twoslash.svelte) {
-			const svelte = await import_twoslash(
-				() => import('@twinkleplop/twoslash-svelte'),
-				'@twinkleplop/twoslash-svelte'
-			);
-			twoslash.svelte = lazy_highlighter(() => svelte.create_highlighter());
-		}
-	}
-	return create_highlight({ ...options, languages, twoslash });
-}
-
-/** true when a document may hold a fence or a code span with a #! hint */
-function has_code(code: string): boolean {
-	return code.includes('```') || code.includes('~~~') || code.includes('`#!');
-}
-
 export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	const extensions = (options.extensions ?? ['.svx']).map((ext) =>
 		ext.startsWith('.') ? ext : '.' + ext
