@@ -227,6 +227,7 @@ An open wrapper has the node in hand after it until that node's handlers return,
 - **Not from the handler of a pending node.** `wrap_from` and `close()` throw there in this version.
 - **The undo is still reachable.** The parser revokes a few nodes it opened as committed: a table cell that is a merge marker, a code span that never closes, frontmatter with no closing fence. A handler for one of those may call both, and the tests cover the table cell and code span cases on all six paths.
 - **Plugin variables are not rolled back.** After such a revoke a plugin can hold a wrapper that was removed. `close()` on it does nothing. Logged `ctx.state` (§7.3) is what fixes this for bound handlers.
+- **Where a global plugin keeps its open wrapper.** On `ctx`, which is new for each document. A closure outlives the document under a reused `CompilerSession`, and the wrapper view in it is then stale and throws. The timing script for this change hit exactly that.
 
 **Tests.** `packages/parse/test/wrap_from.spec.ts` runs every case down six paths (batch and wire, whole and fed in chunks of 7 and 1) and expects one tree, sound child lists and a dispatcher with nothing left over. A random-document test also checks that removing the plugin-made nodes gives the tree the parser builds with no plugin. `packages/render/test/wrap_from.spec.ts` checks the cached render against a fresh one after every chunk.
 

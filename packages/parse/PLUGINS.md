@@ -96,23 +96,24 @@ wrapper.close();
 The steps shape, each heading directly inside `:::steps[]` starting a `step` with the heading as its label:
 
 ```js
-function steps() {
-  const open = new Map();
-  return {
-    heading: {
-      parse(node) {
-        const parent = node.parent;
-        if (parent?.type !== 'directive_container' || parent.attrs.name !== 'steps') return;
-        open.get(parent._index)?.close();
-        open.set(parent._index, node.wrap_from('directive_container', { name: 'step' }));
-        node.wrap_from('directive_label').close();
-      }
+const steps = {
+  heading: {
+    parse(node, ctx) {
+      const parent = node.parent;
+      if (parent?.type !== 'directive_container' || parent.attrs.name !== 'steps') return;
+      // one open step per steps directive, by its buffer index
+      const open = (ctx.steps ??= new Map());
+      open.get(parent._index)?.close();
+      open.set(parent._index, node.wrap_from('directive_container', { name: 'step' }));
+      node.wrap_from('directive_label').close();
     }
-  };
-}
+  }
+};
 ```
 
 Content before the first heading stays a direct child of `steps`, the last step closes with it, and a heading inside a nested blockquote is left alone because its parent is the blockquote.
+
+**Keep the open wrapper on `ctx`.** A plugin object serves every document a compiler session parses, and a view only lives for the document it was made in. A wrapper kept in a closure is still there when the next document starts, and calling `close()` on it throws like any stale view. `ctx` is a new object for each document, so what is kept there starts empty.
 
 ### Node View Identity
 
