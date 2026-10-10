@@ -66,6 +66,11 @@ export class Cursor {
 		return this.n[this.b + NodeField.end] !== NONE;
 	}
 
+	/** if a parse plugin made the current node, the author typed every other one */
+	get synthetic(): boolean {
+		return (this.n[this.b + NodeField.pending] & 2) !== 0;
+	}
+
 	/** if the current node is pending (speculative, may be revoked). */
 	get pending(): boolean {
 		return this.n[this.b + NodeField.pending] === 1;

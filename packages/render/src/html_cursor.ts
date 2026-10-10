@@ -1120,7 +1120,7 @@ function is_embed_script(c: Cursor, tag: string): boolean {
 function embed_html(c: Cursor): string {
 	let s = '<svelte:element this={"script"}';
 	const attrs = c.meta()!.attributes as Record<string, string | boolean>;
-	const typed = c.end !== Slot.NONE;
+	const typed = !c.synthetic;
 	for (const k in attrs) {
 		const v = attrs[k];
 		if (v === true) s += ' ' + k;
@@ -1594,7 +1594,9 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			// (e.g. wire/streaming renderer with empty source).
 			const self_closing = !!meta?.self_closing;
 			const passthrough =
-				self_closing && c.end > c.start ? c.slice(c.start, c.end) : '';
+				self_closing && !c.synthetic && c.end > c.start
+					? c.slice(c.start, c.end)
+					: '';
 			if (passthrough) {
 				mo += passthrough;
 			} else {
@@ -1603,7 +1605,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 					| Record<string, string | boolean>
 					| undefined;
 				if (html_attrs) {
-					const typed = c.end !== Slot.NONE;
+					const typed = !c.synthetic;
 					for (const k in html_attrs) {
 						const v = html_attrs[k];
 						if (v === true) {
@@ -2537,17 +2539,18 @@ function fold_html(c: Cursor, p: number): number {
 	if (meta?.self_closing) {
 		// source passthrough as in _node, decided before any push because a
 		// pending register cannot be truncated back
-		const passthrough = c.end > c.start ? c.slice(c.start, c.end) : '';
+		const passthrough =
+			!c.synthetic && c.end > c.start ? c.slice(c.start, c.end) : '';
 		if (passthrough) return push_dyn(p, passthrough);
 		p = push_static(p, S_LT);
 		p = push_dyn(p, tag);
-		if (html_attrs) p = fold_html_attrs(html_attrs, c.end !== Slot.NONE, p);
+		if (html_attrs) p = fold_html_attrs(html_attrs, !c.synthetic, p);
 		return push_static(p, S_SELF_CLOSE);
 	}
 
 	p = push_static(p, S_LT);
 	p = push_dyn(p, tag);
-	if (html_attrs) p = fold_html_attrs(html_attrs, c.end !== Slot.NONE, p);
+	if (html_attrs) p = fold_html_attrs(html_attrs, !c.synthetic, p);
 	p = push_static(p, S_GT);
 	// raw text elements keep their content as the node value range, see _node
 	if (tag === 'script' || tag === 'style') {
@@ -3123,7 +3126,9 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 	// source passthrough and reconstruction exactly as render_node
 	const self_closing = !!meta?.self_closing;
 	const passthrough =
-		self_closing && c.end > c.start ? c.slice(c.start, c.end) : '';
+		self_closing && !c.synthetic && c.end > c.start
+			? c.slice(c.start, c.end)
+			: '';
 	if (passthrough) {
 		mo += passthrough;
 	} else {
@@ -3132,7 +3137,7 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 			| Record<string, string | boolean>
 			| undefined;
 		if (html_attrs) {
-			const typed = c.end !== Slot.NONE;
+			const typed = !c.synthetic;
 			for (const k in html_attrs) {
 				const v = html_attrs[k];
 				if (v === true) {
@@ -3681,7 +3686,9 @@ function mp_html(c: Cursor, sink: MapSink, p: number): number {
 	// source passthrough and reconstruction exactly as render_node
 	const self_closing = !!meta?.self_closing;
 	const passthrough =
-		self_closing && c.end > c.start ? c.slice(c.start, c.end) : '';
+		self_closing && !c.synthetic && c.end > c.start
+			? c.slice(c.start, c.end)
+			: '';
 	if (passthrough) {
 		mo += passthrough;
 	} else {
@@ -3690,7 +3697,7 @@ function mp_html(c: Cursor, sink: MapSink, p: number): number {
 			| Record<string, string | boolean>
 			| undefined;
 		if (html_attrs) {
-			const typed = c.end !== Slot.NONE;
+			const typed = !c.synthetic;
 			for (const k in html_attrs) {
 				const v = html_attrs[k];
 				if (v === true) {
@@ -3963,10 +3970,9 @@ function comp_name(c: Cursor): string {
 /** lowercase elements only, never svelte tags or components */
 const ELEMENT_NAME = /^[a-z][a-z0-9-]*$/;
 
-/** the tag of an element a parse plugin created, empty for typed html, which has a source span */
+/** the tag of an element a parse plugin created, empty for typed html */
 function plugin_tag(c: Cursor): string {
-	const e = c.end;
-	return e !== Slot.NONE && e > c.start ? '' : html_tag(c);
+	return c.synthetic ? html_tag(c) : '';
 }
 
 /** the tag of an element, typed or from a plugin */
@@ -4527,7 +4533,7 @@ function comp_node(
 			const meta = c.meta()!;
 			const tag = meta.tag as string;
 			const attrs = meta.attributes as Record<string, unknown> | undefined;
-			const typed = c.end !== Slot.NONE && c.end > c.start;
+			const typed = !c.synthetic;
 			const end = typed ? open_tag_end(c, tag, attrs) : -1;
 			// a typed tag keeps its attributes as written, they map as identity
 			const from = c.start + 1 + tag.length;

@@ -873,8 +873,7 @@ describe('parse plugins: a builder reset for the next document', () => {
 		expect(Array.from(handled).filter((w) => w === 1)).toHaveLength(1);
 
 		for (let i = 0; i < 3; i++) {
-			new PFMParser(tree).parse(source);
-			// the redirect of the wrap sent every open through the dispatcher
+			tree.open(1, NodeKind.heading, 0, 0, 1, false);
 			expect(dispatcher.open_wants).not.toBe(handled);
 			expect(dispatcher.open_wants.every((w) => w === 1)).toBe(true);
 			tree.reset();
@@ -882,6 +881,9 @@ describe('parse plugins: a builder reset for the next document', () => {
 			expect(dispatcher.quiet()).toBe(true);
 			expect(dispatcher.wants_open(NodeKind.paragraph)).toBe(false);
 		}
+		new PFMParser(tree).parse(source);
+		expect(dispatcher.open_wants).toBe(handled);
+		expect(dispatcher.wants_open(NodeKind.paragraph)).toBe(false);
 	});
 
 	it('forgets the kinds a revoke rewrote', () => {

@@ -34,7 +34,7 @@ export const enum NodeField {
 	prev = 7,
 	first_child = 8,
 	last_child = 9,
-	/** one while the node may still be revoked */
+	/** bit 0 while the node may still be revoked, bit 1 for a node a plugin made */
 	pending = 10,
 	/** one plus the slot in NodeBuffer._meta, zero without metadata */
 	meta = 11,
@@ -630,6 +630,24 @@ export class NodeBuffer {
 		return n;
 	}
 
+	/** a node a plugin made, the flag tells it from one the author typed whatever its span */
+	push_synthetic(
+		kind: NodeKind,
+		cursor: number,
+		parent: number,
+		extra = 0,
+		metadata?: any
+	): number {
+		const index = this.push_node(kind, cursor, parent, extra, false);
+		this._n[index * NodeField.stride + NodeField.pending] = 2;
+		if (metadata !== undefined) this.set_metadata(index, metadata);
+		return index;
+	}
+
+	synthetic_at(index: number): boolean {
+		return (this._n[index * NodeField.stride + NodeField.pending] & 2) !== 0;
+	}
+
 	/**
 	 * allocate a node slot without linking it into any parent's child list.
 	 * the caller is responsible for setting the parent and linking into the
@@ -674,7 +692,13 @@ export class NodeBuffer {
 		this.set_last_child(parent_idx, 0xffffffff);
 
 		// push wrapper as sole child of parent (auto-links via push)
-		const wrapper_idx = this.push(new_kind, 0, parent_idx, extra, metadata);
+		const wrapper_idx = this.push_synthetic(
+			new_kind,
+			0,
+			parent_idx,
+			extra,
+			metadata
+		);
 
 		// reattach old children to wrapper
 		if (first_child !== 0xffffffff) {
@@ -692,15 +716,112 @@ export class NodeBuffer {
 		return wrapper_idx;
 	}
 
+	/**
+	 * wrap one node in a new synthetic node that takes its place among its siblings
+	 * @returns buffer index of the wrapper
+	 */
+	wrap_node(
+		index: number,
+		new_kind: NodeKind,
+		cursor = 0,
+		extra = 0,
+		metadata?: any
+	): number {
+		const parent = this.parent_at(index);
+		const first =
+			parent !== 0xffffffff && this.first_child_at(parent) === index;
+		const prev = first ? 0xffffffff : this.prev_at(index);
+		let next = this.next_at(index);
+		if (next !== 0xffffffff && this.parent_at(next) !== parent)
+			next = 0xffffffff;
+
+		const wrapper = this.push_synthetic(
+			new_kind,
+			cursor,
+			0xffffffff,
+			extra,
+			metadata
+		);
+		this.set_parent(wrapper, parent);
+		this.set_prev(wrapper, prev);
+		this.set_next(wrapper, next);
+		if (first) this.set_first_child(parent, wrapper);
+		else if (prev !== 0xffffffff) this.set_next(prev, wrapper);
+		if (next !== 0xffffffff) this.set_prev(next, wrapper);
+		if (parent !== 0xffffffff && this.last_child_at(parent) === index)
+			this.set_last_child(parent, wrapper);
+
+		this.set_parent(index, wrapper);
+		this.set_prev(index, 0xffffffff);
+		this.set_next(index, 0xffffffff);
+		this.set_first_child(wrapper, index);
+		this.set_last_child(wrapper, index);
+		return wrapper;
+	}
+
+	/** unlink a node, subtree and all, and make it the last child of another parent */
+	move_to_end(index: number, new_parent: number): void {
+		const parent = this.parent_at(index);
+		if (parent !== 0xffffffff) {
+			const first = this.first_child_at(parent) === index;
+			const prev = first ? 0xffffffff : this.prev_at(index);
+			let next = this.next_at(index);
+			if (next !== 0xffffffff && this.parent_at(next) !== parent)
+				next = 0xffffffff;
+			if (first) this.set_first_child(parent, next);
+			else if (prev !== 0xffffffff) this.set_next(prev, next);
+			if (next !== 0xffffffff) this.set_prev(next, prev);
+			if (this.last_child_at(parent) === index)
+				this.set_last_child(parent, prev);
+		}
+		const last = this.last_child_at(new_parent);
+		this.set_parent(index, new_parent);
+		this.set_next(index, 0xffffffff);
+		this.set_prev(index, last);
+		if (last === 0xffffffff) this.set_first_child(new_parent, index);
+		else this.set_next(last, index);
+		this.set_last_child(new_parent, index);
+	}
+
+	/** every later sibling of a node becomes its last children, the mirror of unwrap_node */
+	absorb_following(index: number): void {
+		const parent = this.parent_at(index);
+		const first = this.next_at(index);
+		if (parent === 0xffffffff || first === 0xffffffff) return;
+		if (this.parent_at(first) !== parent) return;
+		let last = first;
+		for (
+			let scan = first;
+			scan !== 0xffffffff && this.parent_at(scan) === parent;
+			scan = this.next_at(scan)
+		) {
+			this.set_parent(scan, index);
+			last = scan;
+		}
+		const tail = this.last_child_at(index);
+		if (tail === 0xffffffff) {
+			this.set_first_child(index, first);
+			this.set_prev(first, 0xffffffff);
+		} else {
+			this.set_next(tail, first);
+			this.set_prev(first, tail);
+		}
+		this.set_last_child(index, last);
+		this.set_next(last, 0xffffffff);
+		this.set_next(index, 0xffffffff);
+		this.set_last_child(parent, index);
+	}
+
+	/** clears the pending bit, a synthetic node keeps its flag */
 	commit_node(index: number): void {
-		this._n[index * NodeField.stride + NodeField.pending] = 0;
+		this._n[index * NodeField.stride + NodeField.pending] &= 2;
 	}
 
 	get_pending(): number[] {
 		const result: number[] = [];
 		const n = this._n;
 		for (let i = 0; i < this._size; i++) {
-			if (n[i * NodeField.stride + NodeField.pending] !== 0) {
+			if (n[i * NodeField.stride + NodeField.pending] === 1) {
 				result.push(i);
 			}
 		}
@@ -734,8 +855,14 @@ export class NodeBuffer {
 	): void {
 		const parent = this.parent_at(index);
 		const kind = this.kind_at(index);
+		// a plugin wrapper holds children of the nearest node the parser made,
+		// which is the parent the repair is chosen for, the node stays where it is
+		let source_parent = parent;
+		while (source_parent !== 0xffffffff && this.synthetic_at(source_parent)) {
+			source_parent = this.parent_at(source_parent);
+		}
 		const parent_kind =
-			parent !== 0xffffffff ? this.kind_at(parent) : undefined;
+			source_parent !== 0xffffffff ? this.kind_at(source_parent) : undefined;
 
 		// a revoked paragraph is a wrapper a tight list item or a paragraph of only tags does not need
 		// a revoked table cell was a merge marker, the cell it joined spans its column
@@ -964,7 +1091,7 @@ export class NodeBuffer {
 	repair(): void {
 		const n = this._n;
 		for (let i = 0; i < this._size; i++) {
-			if (n[i * NodeField.stride + NodeField.pending] !== 0) {
+			if (n[i * NodeField.stride + NodeField.pending] === 1) {
 				this.handle_repair(i);
 			}
 		}
@@ -1186,7 +1313,7 @@ export class NodeBuffer {
 	}
 
 	pending_at(index: number): number {
-		return this._n[index * NodeField.stride + NodeField.pending];
+		return this._n[index * NodeField.stride + NodeField.pending] & 1;
 	}
 
 	/** pre-grow to avoid repeated resizes when the final size is estimable. */

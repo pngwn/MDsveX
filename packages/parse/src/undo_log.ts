@@ -13,6 +13,16 @@ export const enum UndoEntryKind {
 	WrapInner = 3,
 	Prepend = 4,
 	Append = 5,
+	WrapFrom = 6,
+	CloseWrapper = 7,
+}
+
+/** the dispatcher owns the redirect links, so undoing a wrap or a close goes through it */
+export interface RedirectHost {
+	/** a wrapper is about to be unwrapped, its link and any wait for a close go */
+	unlink(buf: NodeBuffer, wrapper: number): void;
+	/** a close is undone, see UndoEntryCloseWrapper for links */
+	reopen(buf: NodeBuffer, links: number[]): void;
 }
 
 export interface UndoEntryAttrSet {
@@ -66,7 +76,24 @@ export interface UndoEntryAppend {
 	prior_last_child: number;
 }
 
+export interface UndoEntryWrapFrom {
+	kind: UndoEntryKind.WrapFrom;
+	/** the synthetic wrapper node */
+	wrapper: number;
+}
+
+export interface UndoEntryCloseWrapper {
+	kind: UndoEntryKind.CloseWrapper;
+	/**
+	 * the links the close removed, outermost first, three numbers each, the
+	 * parent, its wrapper, and 1 when the close ended that wrap_from wrapper
+	 */
+	links: number[];
+}
+
 export type UndoEntry =
+	| UndoEntryWrapFrom
+	| UndoEntryCloseWrapper
 	| UndoEntryAttrSet
 	| UndoEntryAttrDelete
 	| UndoEntryTypeChange
@@ -136,12 +163,6 @@ export class UndoLog {
 	 */
 	kind_changes: number[] | null = null;
 
-	/**
-	 * parent and wrapper of each wrap_inner while the dispatcher collects them,
-	 * a wrap needs a redirect whether or not anything records it
-	 */
-	wraps: number[] | null = null;
-
 	log_kind(target: number, prior_kind: number): void {
 		const log = this.kind_changes;
 		if (log === null) this.kind_changes = [target, prior_kind];
@@ -198,8 +219,6 @@ export class UndoLog {
 		prior_first_child: number,
 		prior_last_child: number
 	): void {
-		const wraps = this.wraps;
-		if (wraps !== null) wraps.push(parent, wrapper);
 		this._append({
 			kind: UndoEntryKind.WrapInner,
 			parent,
@@ -207,6 +226,14 @@ export class UndoLog {
 			prior_first_child,
 			prior_last_child,
 		});
+	}
+
+	record_wrap_from(wrapper: number): void {
+		this._append({ kind: UndoEntryKind.WrapFrom, wrapper });
+	}
+
+	record_close_wrapper(links: number[]): void {
+		this._append({ kind: UndoEntryKind.CloseWrapper, links });
 	}
 
 	record_prepend(
@@ -252,7 +279,7 @@ export class UndoLog {
 	 * revoke all mutations attributed to the given handler node.
 	 * walks the undo log in reverse order, restoring prior state.
 	 */
-	revoke(handler_node: number, buf: NodeBuffer): void {
+	revoke(handler_node: number, buf: NodeBuffer, host?: RedirectHost): void {
 		const log = this.logs.get(handler_node);
 		if (log === undefined) return;
 
@@ -288,10 +315,27 @@ export class UndoLog {
 					// unwrap: reparent wrapper's CURRENT children back to
 					// parent (not just the originals, new children may have
 					// arrived via redirect since the wrap) and remove wrapper.
-					const parent = entry.parent;
 					const wrapper = entry.wrapper;
+					if (host !== undefined) host.unlink(buf, wrapper);
 					buf.unwrap_node(wrapper);
 					buf.set_parent(wrapper, NONE);
+					break;
+				}
+
+				case UndoEntryKind.WrapFrom: {
+					// the wrapped node and every sibling that joined it since go
+					// back to the parent of the wrapper, in its place
+					const wrapper = entry.wrapper;
+					// an earlier undo already took it out of the tree
+					if (buf.parent_at(wrapper) === NONE) break;
+					if (host !== undefined) host.unlink(buf, wrapper);
+					buf.unwrap_node(wrapper);
+					buf.set_parent(wrapper, NONE);
+					break;
+				}
+
+				case UndoEntryKind.CloseWrapper: {
+					if (host !== undefined) host.reopen(buf, entry.links);
 					break;
 				}
 
@@ -329,17 +373,10 @@ export class UndoLog {
 		return this.logs.has(handler_node);
 	}
 
-	/** get undo entries for a node (for redirect detection). */
-	get_entries(handler_node: number): UndoEntry[] | undefined {
-		if (this.logs.size === 0) return undefined;
-		return this.logs.get(handler_node);
-	}
-
 	/** discard all logs. */
 	clear(): void {
 		this.logs.clear();
 		this.kind_changes = null;
-		this.wraps = null;
 		this.active_node = NONE;
 	}
 }

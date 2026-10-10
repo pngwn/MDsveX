@@ -2,6 +2,8 @@ export interface Snippet {
 	name: string;
 	slug: string;
 	markdown: string;
+	/** a key of PLUGIN_SETS, the default set when left out */
+	plugins?: string;
 }
 
 export interface Section {
@@ -241,6 +243,26 @@ Final paragraph with a [link](/url).
 				slug: "large-document",
 				markdown:
 					"# How to Make Cheese\n\nCheese-making is an ancient process that transforms milk into a preserved, flavourful food. Here's a general overview:\n\n## Basic Ingredients\n\n- *Milk* (cow, goat, sheep, etc.)\n- *Starter culture* (bacteria that acidify the milk)\n- *Rennet* (an enzyme that causes coagulation)\n- *Salt*\n\n---\n\n## The Basic Steps\n\n1. *Heat the milk* to a specific temperature depending on the cheese type (e.g. ~30–32°C for many soft cheeses).\n\n2. *Add starter culture*, beneficial bacteria convert lactose into lactic acid, lowering the pH and beginning to sour the milk.\n\n3. *Add rennet*, this causes the milk proteins (casein) to clump together, forming a semi-solid _curd_ and separating from the liquid _whey_.\n\n4. *Cut the curd*, the size of the cut affects the final texture. Smaller cuts = harder cheese; larger cuts = softer cheese.\n\n5. *Cook and stir*, heating the curds further firms them up and expels more whey.\n\n6. *Drain the whey*, curds are separated from the liquid whey, often using cheesecloth.\n\n7. *Press the curds*, applying pressure removes more moisture and shapes the cheese.\n\n8. *Salt the cheese*, either by rubbing, brining, or mixing salt in directly. This adds flavour and acts as a preservative.\n\n9. *Age (ripen) the cheese*, from days (fresh cheeses like ricotta) to years (aged cheddars, parmesan). During this time, enzymes and bacteria develop complex flavours.\n\n---\n\n## Simple Beginner Cheese: Paneer or Ricotta\n\nIf you want to start simple, *acid-set cheeses* like ricotta require no rennet or cultures, just milk, heat, and an acid like lemon juice or vinegar. Great for first-timers!\n\n---\n\n## Key Variables That Affect the Result\n\n- Type of milk and its fat content\n- Temperature at each stage\n- Type of bacteria/culture used\n- How long and how it's aged\n- Humidity and environment during ageing\n\nCheese-making can go from a simple 30-minute kitchen project to a months-long craft, it's a wonderfully deep rabbit hole!",
+			},
+		],
+	},
+	{
+		name: "Plugins",
+		slug: "plugins",
+		snippets: [
+			{
+				name: "Steps",
+				slug: "steps",
+				plugins: "steps",
+				markdown:
+					":::steps[]\nEach heading starts a step.\n\n## Install\n\nAdd the package.\n\n```sh\npnpm add mdsvex\n```\n\n## Configure\n\nAdd it to the *config*.\n\n> ## Not a step\n>\n> A heading in a quote stays where it is.\n\n## Profit!\n\nWrite markdown.\n:::\n\nAfter the steps.\n",
+			},
+			{
+				name: "Sectionize",
+				slug: "sectionize",
+				plugins: "sectionize",
+				markdown:
+					"Before any heading.\n\n## First\n\nOne paragraph.\n\nAnother one.\n\n## Second\n\n- a list\n- inside the section\n\n## Third\n\nLast words.\n",
 			},
 		],
 	},

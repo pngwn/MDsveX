@@ -192,9 +192,8 @@ describe('CompilerSession with parse plugins', () => {
 			expect((compiler as any).renderer).toBe(renderer);
 		}
 
-		// a wrap_inner redirect switches open_wants to every kind
 		compiler.compile('# heading\n', options);
-		expect(dispatcher.open_wants).not.toBe(wants);
+		expect(dispatcher.open_wants).toBe(wants);
 		compiler.compile('plain\n', options);
 		expect(dispatcher.open_wants).toBe(wants);
 	});
