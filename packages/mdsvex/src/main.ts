@@ -1,17 +1,16 @@
 import type { ParsePlugin, SyntaxOptions } from '@mdsvex/parse';
-import type { ComponentSource } from '@mdsvex/render/html-cursor';
 import type { Plugin, PluginOption, Rollup } from 'vite';
 import remapping from '@ampproject/remapping';
 // ahead of compile, so @mdsvex/render/sourcemap stays first in the chunk they share
 import { base64_utf8, chained_base64, pfm_map } from './sourcemap_chain';
 import type { StoredDocument } from './sourcemap_chain';
-import { CompilerSession } from './compile';
+import { CompilerSession, compile_inputs } from './compile';
 import type { ComponentMode } from './compile';
 import type { FrontmatterOptions } from './frontmatter';
 import { MANIFEST_VERSION, manifest_writer } from './manifest';
 import type { MdsvexManifest } from './manifest';
 import { scope_of } from './root_scope';
-import type { Highlighter, HighlightOption } from './highlight_run';
+import type { Highlighter } from './highlight_run';
 import type { HighlightOptions } from './highlight';
 import {
 	COMPONENTS_ID,
@@ -168,6 +167,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	const stored = new Map<string, StoredDocument>();
 	const no_records = new Uint32Array(0);
 	const compiler = new CompilerSession();
+	// one for every document, only the fields a document can change are stored again
+	const inputs = compile_inputs();
+	inputs.parse_plugins = options.parse_plugins;
+	inputs.component_mode = options.component_mode;
+	inputs.frontmatter_parse = options.frontmatter?.parse;
+	inputs.unwrap_images = options.unwrap_images;
 
 	const written_highlight = options.highlight;
 	if (
@@ -180,17 +185,15 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			'[mdsvex] highlight must be twinkleplop options, a highlighter function or false'
 		);
 	// twinkleplop loads with the first document that has code
-	let highlight: HighlightOption | undefined =
-		typeof written_highlight === 'function' || written_highlight === false
-			? written_highlight
-			: undefined;
+	if (typeof written_highlight === 'function' || written_highlight === false)
+		inputs.highlight = written_highlight;
 	let highlight_loading: Promise<void> | null = null;
 	function load_highlight(): Promise<void> {
 		return (highlight_loading ??= plugin_highlight(
 			(written_highlight as PluginHighlightOptions | undefined) ?? {}
 		).then(
 			(config) => {
-				highlight = config;
+				inputs.highlight = config;
 			},
 			(e) => {
 				highlight_loading = null;
@@ -278,9 +281,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	function compile_doc(
 		ctx: Rollup.TransformPluginContext,
 		code: string,
-		id: string,
-		components: ComponentSource[] | undefined,
-		directives: ComponentSource[] | undefined
+		id: string
 	): { code: string } {
 		let doc = stored.get(id);
 		if (doc === undefined) {
@@ -300,21 +301,10 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		}
 		// raw last, so a compile that throws leaves no document for post
 		doc.raw = '';
-		compiler.compile_trace_into(
-			code,
-			options.parse_plugins,
-			doc,
-			components,
-			options.frontmatter?.parse,
-			// without templates or a selector a query has nothing to pick
-			no_templates ? undefined : templates_for(templates, select, id),
-			directives,
-			options.component_mode,
-			highlight,
-			clean_id(id),
-			// the parser reads its own options from the plugin options
-			options
-		);
+		// without templates or a selector a query has nothing to pick
+		if (!no_templates) inputs.templates = templates_for(templates, select, id);
+		inputs.filename = clean_id(id);
+		compiler.compile_into(code, inputs, doc);
 		doc.raw = code;
 		if (doc.warnings !== undefined) {
 			for (const w of doc.warnings) {
@@ -423,14 +413,11 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			transform(code, id) {
 				if (!matches(id)) return;
 				const waits: Promise<unknown>[] = [];
-				if (highlight === undefined && has_code(code))
+				if (inputs.highlight === undefined && has_code(code))
 					waits.push(load_highlight());
 				if (tracker === null) {
-					if (waits.length === 0)
-						return compile_doc(this, code, id, undefined, undefined);
-					return Promise.all(waits).then(() =>
-						compile_doc(this, code, id, undefined, undefined)
-					);
+					if (waits.length === 0) return compile_doc(this, code, id);
+					return Promise.all(waits).then(() => compile_doc(this, code, id));
 				}
 
 				const finish = () => {
@@ -441,13 +428,10 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 						if (templates !== null)
 							for (const file of templates.files()) this.addWatchFile(file);
 					}
-					const result = compile_doc(
-						this,
-						code,
-						id,
-						registry?.sources(),
-						registry?.directive_sources()
-					);
+					// the registry gives new arrays when a module changes its exports
+					inputs.components = registry?.sources();
+					inputs.directives = registry?.directive_sources();
+					const result = compile_doc(this, code, id);
 					const picked = stored.get(id)!.template;
 					// a query picks for one import, not for the file
 					if (documents !== null && id.indexOf('?') < 0) {

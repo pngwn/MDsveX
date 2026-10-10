@@ -169,6 +169,130 @@ export interface CompileTraceResult {
 	warnings?: CompileWarning[];
 }
 
+/**
+ * @internal what a compile reads apart from the document, a caller with
+ * many documents keeps one and stores the fields that change, never while
+ * a compile runs
+ */
+export interface CompileInputs {
+	parse_plugins: ParsePlugin[] | undefined;
+	components: ComponentSource[] | undefined;
+	directives: ComponentSource[] | undefined;
+	component_mode: ComponentMode | undefined;
+	frontmatter_parse: FrontmatterParse;
+	/** undefined when nothing but frontmatter can pick a template */
+	templates: TemplateOptions | undefined;
+	strict_directives: boolean;
+	highlight: HighlightOption | undefined;
+	filename: string | undefined;
+	/** the parsers take the inputs as their SyntaxOptions */
+	unwrap_images: boolean | undefined;
+}
+
+/** @internal every inputs object comes from here, so they share one shape */
+export function compile_inputs(): CompileInputs {
+	return {
+		parse_plugins: undefined,
+		components: undefined,
+		directives: undefined,
+		component_mode: undefined,
+		frontmatter_parse: undefined,
+		templates: undefined,
+		strict_directives: true,
+		highlight: undefined,
+		filename: undefined,
+		unwrap_images: undefined,
+	};
+}
+
+// what a compile without options reads, never written
+const no_inputs = compile_inputs();
+
+/** the one place compile options become inputs */
+function inputs_of(options: CompileOptions): CompileInputs {
+	const mode = options.component_mode;
+	// a mode that is neither throws before the parse, with or without components
+	scope_of(undefined, mode);
+	const strict = options.strict_directives;
+	const plugins = options.parse_plugins;
+	const components = options.components;
+	const directives = options.directives;
+	const parse = options.frontmatter?.parse;
+	const templates = picks_template(options) ? options : undefined;
+	const highlight = options.highlight;
+	const filename = options.filename;
+	const unwrap_images = options.unwrap_images;
+	// options that set none need no inputs of their own
+	if (
+		plugins === undefined &&
+		components === undefined &&
+		directives === undefined &&
+		mode === undefined &&
+		parse === undefined &&
+		templates === undefined &&
+		strict === undefined &&
+		highlight === undefined &&
+		filename === undefined &&
+		unwrap_images === undefined
+	)
+		return no_inputs;
+	const inputs = compile_inputs();
+	inputs.parse_plugins = plugins;
+	inputs.components = components;
+	inputs.directives = directives;
+	inputs.component_mode = mode;
+	inputs.frontmatter_parse = parse;
+	inputs.templates = templates;
+	inputs.strict_directives = strict === undefined ? true : strict;
+	inputs.highlight = highlight;
+	inputs.filename = filename;
+	inputs.unwrap_images = unwrap_images;
+	return inputs;
+}
+
+/** inputs for the positional entry points, which are always strict */
+function inputs_from(
+	parse_plugins: ParsePlugin[] | undefined,
+	components: ComponentSource[] | undefined,
+	parse: FrontmatterParse,
+	templates: TemplateOptions | undefined,
+	directives: ComponentSource[] | undefined,
+	mode: ComponentMode | undefined,
+	highlight: HighlightOption | undefined,
+	filename: string | undefined,
+	syntax: SyntaxOptions | undefined
+): CompileInputs {
+	const inputs = compile_inputs();
+	inputs.parse_plugins = parse_plugins;
+	inputs.components = components;
+	inputs.directives = directives;
+	inputs.component_mode = mode;
+	inputs.frontmatter_parse = parse;
+	inputs.templates = templates;
+	inputs.highlight = highlight;
+	inputs.filename = filename;
+	if (syntax !== undefined) inputs.unwrap_images = syntax.unwrap_images;
+	return inputs;
+}
+
+/** the root scope, the positional entry points check the mode only beside components */
+function root_scope(inputs: CompileInputs): ComponentScope | null {
+	const components = inputs.components;
+	return components === undefined
+		? null
+		: scope_of(components, inputs.component_mode);
+}
+
+const index_of = String.prototype.indexOf;
+
+/**
+ * normalize_newlines starts with the same check, made here it keeps the
+ * splitter out of what v8 inlines into every compile
+ */
+function normalized(raw: string): string {
+	return index_of.call(raw, '\r') === -1 ? raw : normalize_newlines(raw);
+}
+
 const directive_scopes = new WeakMap<ComponentSource[], ComponentScope>();
 
 /** the scope chain for root directives, its locals apart from the elements */
@@ -182,18 +306,6 @@ function directive_scope_of(
 		directive_scopes.set(directives, scope);
 	}
 	return scope;
-}
-
-/** a compile renders every directive as a component or throws, unless strict is false */
-function bind_scopes(
-	renderer: CursorHTMLRenderer,
-	scope: ComponentScope | null,
-	directives: ComponentScope | null,
-	strict = true
-): void {
-	renderer.scope = scope;
-	renderer.directives = directives;
-	renderer.strict_directives = strict;
 }
 
 const DIRECTIVE_KINDS = [
@@ -529,14 +641,6 @@ function metadata_of(
 	);
 }
 
-/**
- * the scope prepare left decides, so a template scope replaces typed html too,
- * a render without one stores nothing
- */
-function arm(renderer: CursorHTMLRenderer, mode: ComponentMode | undefined) {
-	if (renderer.scope !== null) renderer.replace_typed = mode === 'all';
-}
-
 function warning(
 	code: CompileWarning['code'],
 	message: string,
@@ -555,15 +659,59 @@ function warning(
 }
 
 /**
- * only a render with a scope sets renderer warnings, the offsets index
- * source, the renderer lets go of the run
+ * the one place inputs reach the renderer, it stores every field it owns so
+ * a kept renderer carries nothing over, returns the name of the template
  */
-function add_warnings(
+function bind(
+	renderer: CursorHTMLRenderer,
+	inputs: CompileInputs,
+	scope: ComponentScope | null,
+	directives: ComponentScope | null,
+	metadata: Metadata | undefined,
+	nodes: NodeBuffer,
+	source: string
+): string | undefined {
+	renderer.scope = scope;
+	renderer.directives = directives;
+	renderer.strict_directives = inputs.strict_directives;
+	const templates = inputs.templates;
+	// only options or frontmatter pick a template
+	const template =
+		templates === undefined && metadata === undefined
+			? undefined
+			: prepare(renderer, scope, metadata, templates, nodes, source);
+	// the scope prepare left decides, so a template scope replaces typed html
+	// too, a render without one stores nothing
+	if (renderer.scope !== null)
+		renderer.replace_typed = inputs.component_mode === 'all';
+	const filename = inputs.filename;
+	const highlight = inputs.highlight;
+	// highlight_run gives null for both too, unasked it stays out of the code
+	// v8 inlines here, which keeps bind small enough to inline into run
+	let run =
+		highlight === undefined || highlight === false
+			? null
+			: highlight_run(highlight, filename, source);
+	renderer.highlight = run;
+	// a replaced pre reads the meta conventions without a highlighter too
+	if (run === null && renderer.scope?.get('pre') !== undefined)
+		run = plain_run(filename, source);
+	renderer.pre_meta = run;
+	return template;
+}
+
+/**
+ * drops the run bind made and gives the result its warnings, the scopes
+ * stay for the next bind or a release, only a render with a scope sets
+ * renderer warnings
+ */
+function unbind(
 	result: { warnings?: CompileWarning[] },
 	renderer: CursorHTMLRenderer,
-	source: string,
-	run: HighlightRun | null
+	source: string
 ): void {
+	// bind left the run here, null when no code needs one
+	const run = renderer.pre_meta as HighlightRun | null;
 	if (run !== null) {
 		renderer.highlight = null;
 		renderer.pre_meta = null;
@@ -576,6 +724,18 @@ function add_warnings(
 		(highlights === null || highlights.length === 0)
 	)
 		return;
+	result.warnings = warnings_of(list, highlights, source);
+}
+
+/**
+ * apart from unbind, which most documents leave before here, so unbind stays
+ * small enough to inline, the offsets index source
+ */
+function warnings_of(
+	list: CursorHTMLRenderer['warnings'] | null,
+	highlights: HighlightRun['warnings'] | null,
+	source: string
+): CompileWarning[] {
 	const out: CompileWarning[] = [];
 	if (list !== null)
 		for (const { tag, directive, start } of list)
@@ -590,25 +750,7 @@ function add_warnings(
 	if (highlights !== null)
 		for (const { code, message, start } of highlights)
 			out.push(warning(code, message, start, source));
-	result.warnings = out;
-}
-
-/**
- * the run the renderer highlights with, a replaced pre reads the meta
- * conventions without one too, null when neither needs a run
- */
-function bind_highlight(
-	renderer: CursorHTMLRenderer,
-	option: HighlightOption | undefined,
-	filename: string | undefined,
-	source: string
-): HighlightRun | null {
-	let run = highlight_run(option, filename, source);
-	renderer.highlight = run;
-	if (run === null && renderer.scope?.get('pre') !== undefined)
-		run = plain_run(filename, source);
-	renderer.pre_meta = run;
-	return run;
+	return out;
 }
 
 function module_code_of(metadata: Metadata | undefined): string | undefined {
@@ -616,35 +758,34 @@ function module_code_of(metadata: Metadata | undefined): string | undefined {
 }
 
 function render_once(raw: string, options?: CompileOptions): CompileResult {
+	const inputs = options === undefined ? no_inputs : inputs_of(options);
 	// parser offsets index the normalized string, so render and plugins read it too
-	const source = normalize_newlines(raw);
-	const scope = scope_of(options?.components, options?.component_mode);
-	const directives = directive_scope_of(options?.directives);
+	const source = normalized(raw);
+	const scope = root_scope(inputs);
+	const directives = directive_scope_of(inputs.directives);
 	const nodes = parse_once(
 		source,
-		options?.parse_plugins,
-		reserved_directives(directives, options),
-		options
+		inputs.parse_plugins,
+		reserved_directives(directives, inputs.templates),
+		inputs
 	);
-	const metadata = metadata_of(nodes, source, options?.frontmatter?.parse);
+	const metadata = metadata_of(nodes, source, inputs.frontmatter_parse);
 	const renderer = take_renderer();
-	bind_scopes(renderer, scope, directives, options?.strict_directives);
 	let template: string | undefined;
-	if (metadata !== undefined || picks_template(options)) {
-		try {
-			template = prepare(renderer, scope, metadata, options, nodes, source);
-		} catch (e) {
-			give_renderer(renderer);
-			throw e;
-		}
+	try {
+		template = bind(
+			renderer,
+			inputs,
+			scope,
+			directives,
+			metadata,
+			nodes,
+			source
+		);
+	} catch (e) {
+		give_renderer(renderer);
+		throw e;
 	}
-	arm(renderer, options?.component_mode);
-	const run = bind_highlight(
-		renderer,
-		options?.highlight,
-		options?.filename,
-		source
-	);
 
 	if (options?.sourcemap) {
 		// only a collapsed \r\n changes length, without one raw needs no \r\n scan
@@ -660,92 +801,25 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 			metadata,
 			template,
 		};
-		add_warnings(done, renderer, source, run);
+		unbind(done, renderer, source);
 		give_renderer(renderer);
 		return done;
 	}
 
 	renderer.update(nodes, source, module_code_of(metadata));
 	const done: CompileResult = { code: renderer.html, metadata, template };
-	add_warnings(done, renderer, source, run);
+	unbind(done, renderer, source);
 	give_renderer(renderer);
 	return done;
 }
 
-function render_v3(
-	renderer: CursorHTMLRenderer,
-	nodes: NodeBuffer,
-	source: string,
-	raw: string,
-	file: string | undefined,
-	parse: FrontmatterParse,
-	scope: ComponentScope | null,
-	directives: ComponentScope | null,
-	templates: TemplateOptions | undefined,
-	mode: ComponentMode | undefined,
-	highlight: HighlightOption | undefined
-): CompileV3Result {
-	const metadata = metadata_of(nodes, source, parse);
-	bind_scopes(renderer, scope, directives);
-	const template = prepare(renderer, scope, metadata, templates, nodes, source);
-	arm(renderer, mode);
-	const run = bind_highlight(renderer, highlight, file, source);
-	const module_code = module_code_of(metadata);
-	// only a collapsed \r\n changes length, without one the records index raw
-	if (source.length === raw.length) {
-		const map = renderer.update_v3(nodes, source, raw, file, module_code);
-		const done: CompileV3Result = {
-			code: renderer.html,
-			map,
-			metadata,
-			template,
-		};
-		add_warnings(done, renderer, source, run);
-		return done;
-	}
-	const result = renderer.update_mapped(
-		nodes,
-		source,
-		collapsed_of(raw),
-		module_code
-	);
-	const code = renderer.html;
-	const done: CompileV3Result = {
-		code,
-		map: mappings_to_v3(result.mappings, raw, code, file),
-		metadata,
-		template,
-	};
-	add_warnings(done, renderer, source, run);
-	return done;
-}
-
-function render_trace(
-	renderer: CursorHTMLRenderer,
-	nodes: NodeBuffer,
-	source: string,
-	parse: FrontmatterParse,
-	scope: ComponentScope | null,
-	directives: ComponentScope | null,
-	templates: TemplateOptions | undefined,
-	mode: ComponentMode | undefined,
-	highlight: HighlightOption | undefined
-): CompileTraceResult {
-	const metadata = metadata_of(nodes, source, parse);
-	bind_scopes(renderer, scope, directives);
-	const template = prepare(renderer, scope, metadata, templates, nodes, source);
-	arm(renderer, mode);
-	const run = bind_highlight(renderer, highlight, undefined, source);
-	const trace = renderer.update_trace(nodes, source, module_code_of(metadata));
-	const done: CompileTraceResult = {
-		code: renderer.html,
-		trace,
-		source,
-		metadata,
-		template,
-	};
-	add_warnings(done, renderer, source, run);
-	return done;
+// what a session compile hands back, local so the cases of run build to literals
+const enum Kind {
+	PLAIN,
+	MAPPED,
+	V3,
+	TRACE,
+	INTO,
 }
 
 /** the tree, parser and dispatcher a session keeps for one plugins array */
@@ -855,62 +929,19 @@ export class CompilerSession {
 	}
 
 	compile(raw: string, options?: CompileOptions): CompileResult {
-		const plugins = options?.parse_plugins;
+		if (options === undefined)
+			return this.run(raw, no_inputs, Kind.PLAIN, undefined);
+		const plugins = options.parse_plugins;
 		// started in a plugin handler, the session holds the outer document
 		if (this.plugin_busy && plugins && plugins.length > 0) {
 			return render_once(raw, options);
 		}
-
-		const scope = scope_of(options?.components, options?.component_mode);
-		const directives = directive_scope_of(options?.directives);
-		const source = normalize_newlines(raw);
-		const nodes =
-			plugins && plugins.length > 0
-				? this.parse_plugged(
-						source,
-						plugins,
-						reserved_directives(directives, options),
-						options
-					)
-				: this.parse(source, options);
-		const metadata = metadata_of(nodes, source, options?.frontmatter?.parse);
-		bind_scopes(this.renderer, scope, directives, options?.strict_directives);
-		const template =
-			metadata === undefined && !picks_template(options)
-				? undefined
-				: prepare(this.renderer, scope, metadata, options, nodes, source);
-		arm(this.renderer, options?.component_mode);
-		const run = bind_highlight(
-			this.renderer,
-			options?.highlight,
-			options?.filename,
-			source
+		return this.run(
+			raw,
+			inputs_of(options),
+			options.sourcemap ? Kind.MAPPED : Kind.PLAIN,
+			undefined
 		);
-		if (options?.sourcemap) {
-			const result = this.renderer.update_mapped(
-				nodes,
-				source,
-				source.length === raw.length ? null : collapsed_of(raw),
-				module_code_of(metadata)
-			);
-			const done: CompileResult = {
-				code: this.renderer.html,
-				mappings: result.mappings,
-				metadata,
-				template,
-			};
-			add_warnings(done, this.renderer, source, run);
-			return done;
-		}
-
-		this.renderer.update(nodes, source, module_code_of(metadata));
-		const done: CompileResult = {
-			code: this.renderer.html,
-			metadata,
-			template,
-		};
-		add_warnings(done, this.renderer, source, run);
-		return done;
 	}
 
 	/** @internal keeps only typed arrays so an idle session holds no document */
@@ -938,54 +969,21 @@ export class CompilerSession {
 		highlight?: HighlightOption,
 		syntax?: SyntaxOptions
 	): CompileV3Result {
-		const scope = components === undefined ? null : scope_of(components, mode);
-		const directives = directive_scope_of(directive_sources);
-		const source = normalize_newlines(raw);
-		if (parse_plugins && parse_plugins.length > 0) {
-			const reserved = reserved_directives(directives, templates);
-			if (this.plugin_busy) {
-				// started in a plugin handler, the session holds the outer document
-				return render_v3(
-					new CursorHTMLRenderer({ cache: false }),
-					parse_once(source, parse_plugins, reserved, syntax),
-					source,
-					raw,
-					file,
-					parse,
-					scope,
-					directives,
-					templates,
-					mode,
-					highlight
-				);
-			}
-			return render_v3(
-				this.renderer,
-				this.parse_plugged(source, parse_plugins, reserved, syntax),
-				source,
-				raw,
-				file,
-				parse,
-				scope,
-				directives,
-				templates,
-				mode,
-				highlight
-			);
-		}
-		const nodes = this.parse(source, syntax);
-		return render_v3(
-			this.renderer,
-			nodes,
-			source,
+		return this.run(
 			raw,
-			file,
-			parse,
-			scope,
-			directives,
-			templates,
-			mode,
-			highlight
+			inputs_from(
+				parse_plugins,
+				components,
+				parse,
+				templates,
+				directive_sources,
+				mode,
+				highlight,
+				file,
+				syntax
+			),
+			Kind.V3,
+			undefined
 		);
 	}
 
@@ -1005,53 +1003,36 @@ export class CompilerSession {
 		highlight?: HighlightOption,
 		syntax?: SyntaxOptions
 	): CompileTraceResult {
-		const scope = components === undefined ? null : scope_of(components, mode);
-		const directives = directive_scope_of(directive_sources);
-		const source = normalize_newlines(raw);
-		if (parse_plugins && parse_plugins.length > 0) {
-			const reserved = reserved_directives(directives, templates);
-			if (this.plugin_busy) {
-				// started in a plugin handler, the session holds the outer document
-				return render_trace(
-					new CursorHTMLRenderer({ cache: false }),
-					parse_once(source, parse_plugins, reserved, syntax),
-					source,
-					parse,
-					scope,
-					directives,
-					templates,
-					mode,
-					highlight
-				);
-			}
-			return render_trace(
-				this.renderer,
-				this.parse_plugged(source, parse_plugins, reserved, syntax),
-				source,
+		return this.run(
+			raw,
+			// a trace names no file, so the highlighter sees none
+			inputs_from(
+				parse_plugins,
+				components,
 				parse,
-				scope,
-				directives,
 				templates,
+				directive_sources,
 				mode,
-				highlight
-			);
-		}
-		const nodes = this.parse(source, syntax);
-		return render_trace(
-			this.renderer,
-			nodes,
-			source,
-			parse,
-			scope,
-			directives,
-			templates,
-			mode,
-			highlight
+				highlight,
+				undefined,
+				syntax
+			),
+			Kind.TRACE,
+			undefined
 		);
 	}
 
 	/**
-	 * compile_trace without result objects, the trace goes into out
+	 * compile_trace without result objects, the trace goes into out, the vite
+	 * plugin keeps one inputs object for every document
+	 * @internal
+	 */
+	compile_into(raw: string, inputs: CompileInputs, out: TraceTarget): void {
+		this.run(raw, inputs, Kind.INTO, out);
+	}
+
+	/**
+	 * compile_into with its inputs spelled out
 	 * @internal
 	 */
 	compile_trace_into(
@@ -1067,37 +1048,165 @@ export class CompilerSession {
 		filename?: string,
 		syntax?: SyntaxOptions
 	): void {
-		const scope = components === undefined ? null : scope_of(components, mode);
-		const directives = directive_scope_of(directive_sources);
-		const source = normalize_newlines(raw);
+		this.run(
+			raw,
+			inputs_from(
+				parse_plugins,
+				components,
+				parse,
+				templates,
+				directive_sources,
+				mode,
+				highlight,
+				filename,
+				syntax
+			),
+			Kind.INTO,
+			out
+		);
+	}
+
+	private run(
+		raw: string,
+		inputs: CompileInputs,
+		kind: Kind.PLAIN | Kind.MAPPED,
+		out: undefined
+	): CompileResult;
+	private run(
+		raw: string,
+		inputs: CompileInputs,
+		kind: Kind.V3,
+		out: undefined
+	): CompileV3Result;
+	private run(
+		raw: string,
+		inputs: CompileInputs,
+		kind: Kind.TRACE,
+		out: undefined
+	): CompileTraceResult;
+	private run(
+		raw: string,
+		inputs: CompileInputs,
+		kind: Kind.INTO,
+		out: TraceTarget
+	): TraceTarget;
+	/**
+	 * every compile of the session, kind picks the render and what comes
+	 * back, out takes an into compile, at this size v8 never inlines it, so
+	 * its inline budget goes to the parse and bind calls and the entry points
+	 * above inline into their callers
+	 */
+	private run(
+		raw: string,
+		inputs: CompileInputs,
+		kind: Kind,
+		out: TraceTarget | undefined
+	): CompileResult | CompileV3Result | CompileTraceResult | TraceTarget {
+		const scope = root_scope(inputs);
+		const directives = directive_scope_of(inputs.directives);
+		// parser offsets index the normalized string, so render and plugins read it too
+		const source = normalized(raw);
+		const plugins = inputs.parse_plugins;
 		let renderer = this.renderer;
 		let nodes: NodeBuffer;
-		if (parse_plugins && parse_plugins.length > 0) {
-			const reserved = reserved_directives(directives, templates);
+		if (plugins && plugins.length > 0) {
+			const reserved = reserved_directives(directives, inputs.templates);
 			if (this.plugin_busy) {
 				// started in a plugin handler, the session holds the outer document
-				nodes = parse_once(source, parse_plugins, reserved, syntax);
+				nodes = parse_once(source, plugins, reserved, inputs);
 				renderer = new CursorHTMLRenderer({ cache: false });
-			} else
-				nodes = this.parse_plugged(source, parse_plugins, reserved, syntax);
+			} else nodes = this.parse_plugged(source, plugins, reserved, inputs);
 		} else {
-			nodes = this.parse(source, syntax);
+			nodes = this.parse(source, inputs);
 		}
-		const metadata = metadata_of(nodes, source, parse);
-		out.metadata = metadata;
-		bind_scopes(renderer, scope, directives);
-		// only options or frontmatter pick a template
-		out.template =
-			templates === undefined && metadata === undefined
-				? undefined
-				: prepare(renderer, scope, metadata, templates, nodes, source);
-		arm(renderer, mode);
-		const run = bind_highlight(renderer, highlight, filename, source);
-		renderer.update_trace_into(nodes, source, out, module_code_of(metadata));
-		out.source = source;
-		out.html = renderer.html;
-		// the caller clears warnings it took
-		add_warnings(out, renderer, source, run);
+		const metadata = metadata_of(nodes, source, inputs.frontmatter_parse);
+		if (out !== undefined) out.metadata = metadata;
+		const template = bind(
+			renderer,
+			inputs,
+			scope,
+			directives,
+			metadata,
+			nodes,
+			source
+		);
+
+		let done:
+			| CompileResult
+			| CompileV3Result
+			| CompileTraceResult
+			| TraceTarget;
+		switch (kind) {
+			case Kind.INTO: {
+				out!.template = template;
+				renderer.update_trace_into(
+					nodes,
+					source,
+					out!,
+					module_code_of(metadata)
+				);
+				out!.source = source;
+				out!.html = renderer.html;
+				// the caller clears warnings it took
+				done = out!;
+				break;
+			}
+			case Kind.MAPPED: {
+				// only a collapsed \r\n changes length, without one raw needs no \r\n scan
+				const result = renderer.update_mapped(
+					nodes,
+					source,
+					source.length === raw.length ? null : collapsed_of(raw),
+					module_code_of(metadata)
+				);
+				done = {
+					code: renderer.html,
+					mappings: result.mappings,
+					metadata,
+					template,
+				};
+				break;
+			}
+			case Kind.V3: {
+				const file = inputs.filename;
+				const module_code = module_code_of(metadata);
+				// without a collapsed \r\n the records index raw
+				if (source.length === raw.length) {
+					const map = renderer.update_v3(nodes, source, raw, file, module_code);
+					done = { code: renderer.html, map, metadata, template };
+					break;
+				}
+				const result = renderer.update_mapped(
+					nodes,
+					source,
+					collapsed_of(raw),
+					module_code
+				);
+				const code = renderer.html;
+				done = {
+					code,
+					map: mappings_to_v3(result.mappings, raw, code, file),
+					metadata,
+					template,
+				};
+				break;
+			}
+			case Kind.TRACE: {
+				const trace = renderer.update_trace(
+					nodes,
+					source,
+					module_code_of(metadata)
+				);
+				done = { code: renderer.html, trace, source, metadata, template };
+				break;
+			}
+			default:
+				renderer.update(nodes, source, module_code_of(metadata));
+				done = { code: renderer.html, metadata, template };
+		}
+		// one call site for every kind, each more is another callee to inline
+		unbind(done, renderer, source);
+		return done;
 	}
 }
 
