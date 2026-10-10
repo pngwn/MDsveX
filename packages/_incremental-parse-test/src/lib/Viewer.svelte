@@ -3,7 +3,6 @@ import { untrack } from "svelte";
 import { page } from "$app/state";
 import { goto } from "$app/navigation";
 import { PFMParser, WireEmitter, PluginDispatcher, WireTextSource } from "@mdsvex/parse";
-import type { ParsePlugin } from "@mdsvex/parse";
 import { WireTreeBuilder } from "@mdsvex/parse/wire-tree-builder";
 import { CursorHTMLRenderer } from "@mdsvex/render/html-cursor";
 import type { CursorBlockEntry } from "@mdsvex/render/html-cursor";
@@ -11,7 +10,7 @@ import { ComponentRenderer } from "@mdsvex/render/component";
 import type { ComponentBlock } from "@mdsvex/render/component";
 import Node from "@mdsvex/render/Node.svelte";
 import { RecordingEmitter, type Op } from "$lib/recorder";
-import { autolink } from "@mdsvex/plugin-autolink";
+import { PLUGIN_SETS } from "$lib/plugins";
 import { Play, Pause, SkipForward, SkipBackward, FastForward } from "$lib";
 import Widget from "$lib/components/Widget.svelte";
 import AlertBox from "$lib/components/AlertBox.svelte";
@@ -23,21 +22,13 @@ function slugify(text: string): string {
 		.replace(/^-+|-+$/g, "");
 }
 
-export function wrap_parent(): ParsePlugin {
-	return {
-		strong_emphasis: {
-			parse(node) {
-				node.type = "link";
-				node.attrs.href = "HELLO";
-				// node.parent.attrs.style = "background: red;";
-			},
-		},
-	};
-}
 const customComponents = { Widget, AlertBox };
-const parsePlugins = [autolink(), wrap_parent()];
 
-let { markdown }: { markdown: string } = $props();
+let { markdown, plugins }: { markdown: string; plugins?: string } = $props();
+
+let make_plugins = $derived(
+	PLUGIN_SETS[plugins ?? "default"] ?? PLUGIN_SETS.default,
+);
 
 // query param helpers
 const VALID_CHUNKS = [1, 2, 5, 10, 9999];
@@ -184,7 +175,7 @@ let wire_step_batches: unknown[][][] = $derived.by(() => {
 
 let html_blocks: CursorBlockEntry[] = $derived.by(() => {
 	const text_source = new WireTextSource([]);
-	const dispatcher = new PluginDispatcher(parsePlugins, text_source);
+	const dispatcher = new PluginDispatcher(make_plugins(), text_source);
 	const builder = new WireTreeBuilder(128, dispatcher);
 	const renderer = new CursorHTMLRenderer();
 
@@ -204,7 +195,7 @@ let html_blocks: CursorBlockEntry[] = $derived.by(() => {
 
 let dom_renderer = $derived.by(() => {
 	const text_source = new WireTextSource([]);
-	const dispatcher = new PluginDispatcher(parsePlugins, text_source);
+	const dispatcher = new PluginDispatcher(make_plugins(), text_source);
 	const builder = new WireTreeBuilder(128, dispatcher);
 	const renderer = new ComponentRenderer();
 

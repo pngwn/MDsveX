@@ -248,6 +248,25 @@ pre code {
 	background: var(--bg-tertiary);
 }
 
+/* a node a parse plugin made, labelled with what the plugin calls it */
+.prose [data-made] {
+	border: 1px dashed var(--accent);
+	border-radius: var(--radius-sm);
+	padding: 0.75rem;
+	margin-bottom: 0.75rem;
+	position: relative;
+}
+.prose [data-made]::before {
+	content: attr(data-made);
+	position: absolute;
+	top: -0.65rem;
+	left: 0.5rem;
+	background: var(--bg-secondary);
+	padding: 0 0.35rem;
+	font-size: 0.65rem;
+	color: var(--accent);
+}
+
 .prose .wrapper {
 	border-color: var(--accent);
 	border-style: dashed;
