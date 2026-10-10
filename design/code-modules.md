@@ -1,6 +1,6 @@
 # Code blocks as modules: design
 
-Status: draft, 2026-10-09. Targets `next`. Nothing here is decided yet; the open questions are in §9.
+Status: draft, 2026-10-09. Corrected against the Vite plugin and renderer code on 2026-10-10. Targets `next`. Nothing here is decided yet; the open questions are in §9.
 
 Sources:
 - #832 (dynamic and executable code blocks), #52, #432, #608 (runnable and demo blocks).
@@ -13,7 +13,10 @@ Sources:
 - **File names already have a convention.** `[math.ts]` or `title="math.ts"` names a block. Nothing reads `file=` or `src=`; today both would reach a replaced `pre` as plain props.
 - **No code block runs.** `eval` makes `{…}` groups inside displayed code live against the page's scope (syntax highlighting §5). It never runs the block itself.
 - **The syntax highlighting design ruled demo blocks out of scope.** §11 says executable and demo blocks "belong to directives (`:::example`)". This design keeps directives as the layout tool (§6) and adds the piece they were missing: a way to get the block's code as a module.
-- **mdsvex is already a Vite plugin.** `main.ts` has `resolveId`, `load` and `hotUpdate`, and serves components and templates as virtual modules. In dev, `export_tracker().track(doc, files)` records which files a document read, and `hotUpdate` invalidates those documents when a file changes. Snippet modules and `src=` files fit the same machinery.
+- **mdsvex is already a Vite plugin.** `main.ts` has `resolveId`, `load` and `hotUpdate`, and serves components and templates as virtual modules. Vite 6 is the minimum since #929.
+- **Its file tracking doesn't cover this yet.** `export_tracker` only exists when `components` or `templates` are configured, and `hotUpdate` returns early for any file outside those registries. `src=` files need tracking of their own (§3.3).
+- **Nothing scans a document before compiling it.** The plugin's only pre-check is a string test, `has_code`. The reusable compiler's parse is private and its arena is reused, so there is no tree to inspect between parsing and rendering.
+- **Imports are hoisted only when a component replacement is used.** The renderer's `hoist_begin` returns early otherwise.
 - **Compile is synchronous and pure.** Anything async (resolving, reading files) happens in the plugin before `compile()` is called. That principle comes from syntax highlighting §1.2 and stays.
 
 ## 1. Principles
@@ -63,23 +66,35 @@ Why `src` and not `file`: `src` reads like HTML's `src`, meaning "the content co
 
 ### 3.2 Pipeline
 
-`compile()` can't do I/O, so the plugin does it first:
+`compile()` can't do I/O, so the plugin does it between two phases of the compile:
 
 ```
-plugin transform (async)                           compile() (sync)
-────────────────────────                           ────────────────
-scan fences for src= specs (cheap parse) ─┐
-this.resolve(spec, md_id) for each        ├──► sources: Map<spec, { id, text }>
-read each resolved file                   ┘       → slice, highlight, render as if inline
-tracker.track(md_id, [...files])                  → unresolved spec: compile error with position
+phase 1, sync    parse the document, with its parse plugins
+                 → the src= specs it uses
+
+async, only when there are specs
+                 this.resolve(spec, md_id) for each
+                 read each resolved file
+                 record the files for this document (§3.3)
+
+phase 2, sync    render with sources: Map<spec, { id, text }>
+                 → slice, highlight, render as if inline
+                 → unresolved spec: a typed compile error with a position
 ```
 
-`compile()` gets a `sources` option, which is plain data. Outside Vite, the REPL fills it from its in-memory files, and anyone calling `compile()` directly fills it themselves.
+- **This needs a two-phase compile,** parse then render, which doesn't exist today (§0, Q7).
+- **A document with no `src=` stays synchronous.** The plugin's unit tests assert that `transform` returns no promise when nothing is async.
+- **`sources` is plain data.** Outside Vite, the REPL fills it from its in-memory files, and anyone calling `compile()` directly fills it themselves.
+- **The text is substituted at the renderer's `fence_text`,** which all five render walks and the highlighter read. Substituting inside the highlighter would miss the plain, unhighlighted paths.
+- **Source mappings need care.** A fence with `src=` has an empty source range for its body.
+- **The highlighter sees the meta too.** twinkleplop's own meta parser receives the whole string. How it treats `src=…#L5-L20` and `run` is unchecked (Q8).
 
 ### 3.3 HMR
 
-- **In dev:** add each resolved `src` file to `tracker.track(md_id, files)`, next to registry and template files. `hotUpdate` already invalidates `docs_using(file)`; it gains a branch for `src` files that skips the export rescan.
+- **A document-to-files map of its own.** The existing tracker is absent without registries, and its `track` overwrites a document's list. The new map is cleared when a document drops its last `src=`.
+- **In dev:** a `hotUpdate` branch ahead of the existing early return. It skips the export rescan and invalidates every document that reads the changed file, on any content change. It runs once per environment, because the client and SSR module graphs are separate.
 - **In a watch build:** `this.addWatchFile(file)`, as for registry files.
+- **Paths** are compared after `clean_id` or `normalizePath`. CI includes Windows.
 - **When the block also runs:** the real import is an ordinary graph edge, and normal HMR propagation applies on top.
 
 ## 4. Run: snippet modules
@@ -104,7 +119,9 @@ The shape follows three rules:
 - **It has no `\0` prefix,** because other plugins skip `\0` ids by convention.
 - **It sits in the document's directory,** so relative imports inside the snippet resolve the same way they would in the document.
 
-The query form (`guide.md?snippet=3fa9c1&lang.svelte`) is shorter, but it depends on vite-plugin-svelte's id filter accepting it. That's unverified, so the sibling path is preferred.
+The query form (`guide.md?snippet=3fa9c1&lang.svelte`) doesn't work. vite-plugin-svelte's id filter tests the path before the query, and mdsvex's own `matches()` strips the query, so both would take that id for the document itself. The sibling path ends in `.svelte`, which the filter accepts. That comes from reading the filter; a dev-server test should confirm it.
+
+A snippet id must not start with `mdsvex:`. The REPL resolves every such id itself and throws on the ones it doesn't know.
 
 ### 4.3 Content hashes
 
@@ -117,7 +134,7 @@ The id carries a hash of the block's language and raw text, not its position.
 ### 4.4 Loading
 
 - `resolveId` recognises `*.md.snippet-<hash>.<ext>` (or whichever extensions the plugin handles) and returns it as is.
-- `load` reads the snippet's text from the document's transform cache (`stored`). On a miss it re-reads and parses the document from disk and finds the block by hash. Parsing is fast, and the fallback matters because SSR, the client, cold starts and build workers can each ask for a snippet before that environment has transformed the document.
+- `load` reads the snippet's text from a per-document snippet map that `transform` fills. The plugin's existing `stored` map can't serve, because its entries are wiped after each transform. On a miss, `load` re-reads and parses the document from disk and finds the block by hash. Parsing is fast, and the fallback matters because SSR, the client, cold starts and build workers can each ask for a snippet before that environment has transformed the document.
 - A hash that's no longer in the document can show up during an HMR race. `load` returns an empty module that logs a warning, not an error overlay.
 - `load` returns a source map into the `.md` file. Errors and stack traces from a snippet then point at the document's lines.
 
@@ -128,12 +145,17 @@ The id carries a hash of the block's language and raw text, not its position.
   import * as __snippet_3fa9c1 from './guide.md.snippet-3fa9c1.svelte';
 </script>
 
-<Pre_MDSVEX lang="svelte" code={`…`} module={__snippet_3fa9c1}>
+<Pre_MDSVEX_G lang="svelte" code={`…`} module={__snippet_3fa9c1}>
   <pre class="twinkleplop language-svelte">…</pre>
-</Pre_MDSVEX>
+</Pre_MDSVEX_G>
 ```
 
-`module` joins the built-in `pre` props (`BUILT_IN_PROPS` in `code_meta.ts`). With `src=… run`, the import is the real file and `src` is passed as a prop too.
+`module`, `load` and `src` join the built-in `pre` props (`BUILT_IN_PROPS` in `code_meta.ts`), so a meta prop with one of those names is dropped with a warning. With `src=… run`, the import is the real file and `src` is passed as a prop too.
+
+Two renderer changes have to land first:
+
+- **An extra-imports path.** The snippet import has to be hoisted whether or not a component replacement is used.
+- **Extra props on a replaced `pre`,** on both the highlighted and the plain path.
 
 **Without a replaced `pre`,** a run block has nowhere to go: plain markup can't run a module. Q4 asks whether that's a compile error or a sensible default.
 
@@ -144,7 +166,7 @@ The id carries a hash of the block's language and raw text, not its position.
 
 ## 5. The component contract
 
-A replaced `pre` gains two props:
+A replaced `pre` gains three props:
 
 | prop | when | value |
 |---|---|---|
@@ -185,7 +207,9 @@ Q2 is how the directive component gets at the module. The simplest answer is tha
 
 ## 7. Tooling
 
-- **language-tools:** snippet ids map to ranges of the `.md` file, so the TS service could check code blocks as virtual files. That's out of scope for v1, but the id scheme shouldn't block it.
+- **language-tools:** snippet ids map to ranges of the `.md` file, so the TS service could check code blocks as virtual files. That's out of scope for v1, but the id scheme shouldn't block it. Until then the snippet import lines pass through language-tools untouched and TypeScript will try to resolve them (Q9).
+- **Errors:** new compile errors are typed and carry a position. language-tools recovers from the errors it knows about and may lose the document on any other.
+- **No change when unused:** with no `sources` and no `run` block, compile emits exactly what it does today.
 - **REPL:** implements `sources` for `src=` and the resolve/load pair for snippet ids, against its in-memory files.
 - **`@mdsvex/migrate`:** rewrites remark-code-import's `file=` to `src=`. Its `#L5-L20` slice syntax already matches.
 
@@ -193,8 +217,9 @@ Q2 is how the directive component gets at the module. The simplest answer is tha
 
 | phase | work | depends on |
 |---|---|---|
-| 1 | `src=`: claimed key, slice syntax, `sources` compile option, plugin pre-scan with `this.resolve`, tracker and `hotUpdate` branch, `src` prop, errors | — |
-| 2 | `run`: claimed flag, language-to-extension table, hashed sibling ids, plugin `resolveId`/`load` with cache and disk fallback, source maps, `module` prop | 1 for `src=… run`, otherwise none |
+| 0 | groundwork: an extra-imports path in the renderer, fence text and `pre` props from a per-document map, one compile-inputs object, two-phase compile | — |
+| 1 | `src=`: claimed key, slice syntax, `sources` compile option, the phase-1 scan with `this.resolve`, the document-to-files map and `hotUpdate` branch, `src` prop, errors | 0 |
+| 2 | `run`: claimed flag, language-to-extension table, hashed sibling ids, plugin `resolveId`/`load` with a snippet map and disk fallback, source maps, `module` prop | 0; 1 for `src=… run` |
 | 3 | `run=client` lazy form, REPL resolve/load, docs (demo `Pre` recipe, `:::example` recipe) | 2 |
 | 4 | language-tools checking of snippet modules | 2 |
 
@@ -206,4 +231,6 @@ Q2 is how the directive component gets at the module. The simplest answer is tha
 - **Q4. A run block with no replaced `pre`.** Compile error, or a built-in fallback (for example rendering `module.default` for Svelte blocks)?
 - **Q5. Non-script languages.** Should `css` (injects styles) and `json` run blocks be allowed?
 - **Q6. Named regions.** Should slices accept `#region-name` markers in the file as well as `#L5-L20`?
-- **Q7. Double parse.** The plugin's pre-scan for `src=` parses the document, then `compile()` parses it again. Should compile accept the parsed tree, or is the cost (fast parser, few documents use `src=`) not worth the API?
+- **Q7. Two-phase compile.** `src=` needs the document parsed, with its parse plugins, before its files are read. Should compile expose parse and render as two calls, or take the parsed tree back? What does it cost on the hot path for documents that use neither feature?
+- **Q8. The highlighter and the new meta.** How does twinkleplop's meta parser treat `src=…#L5-L20` and `run`? Do they need stripping before the meta reaches it?
+- **Q9. Snippet imports in the editor.** A module declaration for snippet ids, or should language-tools drop those import lines?
