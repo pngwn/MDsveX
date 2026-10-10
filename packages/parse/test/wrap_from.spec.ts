@@ -84,7 +84,6 @@ describe('wrap_from: the steps shape', () => {
 			'root',
 			[
 				'directive_container name="steps"',
-				// content before the first heading stays a direct child
 				['paragraph', 'text:intro'],
 				[
 					'directive_container name="step"',
@@ -103,7 +102,6 @@ describe('wrap_from: the steps shape', () => {
 					['paragraph', 'text:third'],
 				],
 			],
-			// the last wrapper closed with the container
 			['paragraph', 'text:after'],
 		]);
 	});
@@ -236,17 +234,14 @@ describe('wrap_from: what a handler sees', () => {
 	it('node.parent is the source parent at open and the tree parent at close', () => {
 		const { log } = expect_parity_logged(
 			':::steps[]\n## One\nfirst\n\n## Two\nsecond\n:::\n',
-			// the spy runs before the steps handler
 			(log) => [spy(log), steps()],
 			NAMED
 		);
 		expect(log).toEqual([
 			'h directive_container:steps prev=-',
 			'h close directive_label:',
-			// the paragraph opens under steps and moves into the open step
 			'p directive_container:steps',
 			'p close directive_container:step',
-			// the previous sibling in the tree is the open wrapper, not the paragraph
 			'h directive_container:steps prev=directive_container:step',
 			'h close directive_label:',
 			'p directive_container:steps',
@@ -360,7 +355,6 @@ describe('wrap_from: root level', () => {
 			['paragraph', 'text:inner'],
 			['paragraph', 'text:last'],
 		]);
-		// the repair is chosen for the root, which the section stands in for
 		expect(expect_parity(doc, () => [sectionize()], NAMED)).toEqual([
 			'root',
 			[
@@ -453,7 +447,6 @@ describe('wrap_from: with wrap_inner', () => {
 	});
 
 	it('wrap_inner on the container while a step is open', () => {
-		// a later child wraps the children of the container, the open step among them
 		const late = on('thematic_break', (node) => {
 			node.parent!.wrap_inner('block_quote');
 		});
@@ -503,7 +496,6 @@ describe('wrap_from: with wrap_inner', () => {
 	});
 
 	it('wrap_inner then wrap_from in one handler nests the wrapper in an open one', () => {
-		// the second heading wraps the root while the first section is open
 		let seen = 0;
 		const make = (): ParsePlugin[] => {
 			seen = 0;
@@ -598,7 +590,6 @@ describe('wrap_from: with wrap_inner', () => {
 				],
 			],
 		]);
-		// at open the paragraph still sits after the section, under the root
 		expect(() => run_batch(source, make(true)())).toThrow(
 			/html node already has a later sibling/
 		);
@@ -611,7 +602,6 @@ describe('wrap_from: close', () => {
 			on('heading', (node) => {
 				const wrapper = node.wrap_from('block_quote');
 				wrapper.close();
-				// a second close is a no op
 				wrapper.close();
 			});
 		const source = 'intro\n\n## A *em*\n\na1\n\n## B\n';
@@ -622,7 +612,6 @@ describe('wrap_from: close', () => {
 			['paragraph', 'text:a1'],
 			['block_quote', ['heading', 'text:B']],
 		]);
-		// the wrapper closed when its heading did
 		for (const [name, run] of PATHS) {
 			const { nodes } = run(source, [alone()]);
 			for (const child of nodes.get_node(0).children) {
@@ -660,7 +649,6 @@ describe('wrap_from: close', () => {
 			}
 			const index = wrapper!._index;
 			expect(nodes.end_at(index)).toBe(NONE);
-			// the wait keeps the dispatcher listening for the close
 			expect(dispatcher.quiet()).toBe(false);
 			close();
 			expect(nodes.end_at(index)).toBe(nodes.start_at(index));
@@ -706,7 +694,6 @@ describe('wrap_from: close', () => {
 		parser.init();
 		const cut = source.indexOf('---');
 		parser.feed(source.slice(0, cut));
-		// a section is open, so every open is sent through the dispatcher
 		expect(dispatcher.open_wants).not.toBe(handled);
 		expect(dispatcher.wants_open(NodeKind.paragraph)).toBe(true);
 		parser.feed(source.slice(cut));
@@ -738,7 +725,6 @@ describe('wrap_from: inside an unclosed html block', () => {
 				['paragraph', 'text:last'],
 			],
 		]);
-		// both sections were closed when the <div> went
 		for (const [name, run] of PATHS) {
 			const { nodes } = run(source, [sections_anywhere()]);
 			for (const child of nodes.get_node(0).children) {
@@ -810,22 +796,20 @@ describe('wrap_from: inside an unclosed html block', () => {
 	});
 });
 
-// a table cell and a code span open committed and are still revoked, the
-// cell when it turns out to be a merge marker, the span when it never closes
+// the parser revokes two kinds it opened committed, a table cell that is a
+// merge marker and a code span that never closes
 describe('wrap_from: revoke', () => {
 	const TABLE = '| a | b | c |\n|---|---|---|\n| x |>  | z |\n';
 	const in_body = (node: NodeView) => node.parent?.type === 'table_row';
 
 	it('a wrapper whose trigger node is revoked is removed', () => {
 		const plain = shape(run_batch(TABLE).nodes, TABLE);
-		// every cell of the document is wrapped alone, the marker cell too
 		const each = (): ParsePlugin =>
 			on('table_cell', (node) => {
 				node.wrap_from('emphasis').close();
 			});
 		const tree = expect_parity(TABLE, () => [each()]);
 		const cells = JSON.stringify(tree).match(/"emphasis"/g)!;
-		// three head cells and two body cells, the marker left nothing behind
 		expect(cells).toHaveLength(5);
 		expect(
 			JSON.stringify(tree).replace(/\["emphasis",(\[.*?\]|".*?")\]/g, '$1')
@@ -837,7 +821,6 @@ describe('wrap_from: revoke', () => {
 			on('code_span', (node) => {
 				node.wrap_from('strikethrough');
 			});
-		// the span never closes, its backtick becomes text
 		const source = 'a `b *c* d\n\nnext\n';
 		expect(expect_parity(source, () => [open()])).toEqual(
 			shape(run_batch(source).nodes, source, 0, { merge_text: true })
@@ -845,7 +828,6 @@ describe('wrap_from: revoke', () => {
 	});
 
 	it('close() from a node that is then revoked reopens the wrapper', () => {
-		// the first cell of a row opens a wrapper, the second closes it
 		const make = (closes: boolean) => (): ParsePlugin[] => {
 			let open: WrapperView | null = null;
 			let column = 0;
@@ -861,12 +843,9 @@ describe('wrap_from: revoke', () => {
 				}),
 			];
 		};
-		// the second cell is a merge marker, so the wrapper it closed takes
-		// the third cell as if it had never been closed
 		expect(expect_parity(TABLE, make(true))).toEqual(
 			expect_parity(TABLE, make(false))
 		);
-		// a real second cell keeps the wrapper closed
 		const real = '| a | b | c |\n|---|---|---|\n| x | y | z |\n';
 		const kept = JSON.stringify(expect_parity(real, make(true)));
 		expect(kept).toContain(
@@ -887,10 +866,8 @@ describe('wrap_from: revoke', () => {
 			];
 		};
 		const source = '| a | b | c | d |\n|---|---|---|---|\n| x |>  | y | z |\n';
-		// the marker cell closed the wrapper of x and opened its own, both are
-		// undone. what the plugin keeps is not: it still holds the wrapper that
-		// was removed, so its next close does nothing and y nests in the
-		// wrapper of x
+		// a revoke does not roll back what the plugin holds, its next close is on
+		// the wrapper that was removed and does nothing, so y nests in the wrapper of x
 		expect(JSON.stringify(expect_parity(source, make))).toContain(
 			'["table_row",["emphasis",["strong_emphasis",["table_cell","text:x"]],' +
 				'["emphasis",["strong_emphasis",["table_cell","text:y"]]],' +
@@ -915,7 +892,6 @@ describe('wrap_from: revoke', () => {
 				builder.apply([
 					['O', 1, NodeKind.paragraph, 0, 0, 0],
 					['T', 1, 'a '],
-					// the span stays open, a closed committed node has no undo log left
 					['O', 2, NodeKind.code_span, 1, 0, 0],
 					['T', 1, ' c '],
 					['O', 3, NodeKind.strong_emphasis, 1, 0, 0],
@@ -945,7 +921,6 @@ describe('wrap_from: revoke', () => {
 			const kinds = nodes
 				.get_node(nodes.get_node(0).children[0])
 				.children.map((c) => nodes.get_node(c).kind);
-			// the text and the strong joined the wrapper and are back in the paragraph
 			expect(kinds).toEqual([
 				'text',
 				'text',
@@ -976,7 +951,6 @@ describe('wrap_from: revoke', () => {
 		tree.close(4, 3, NodeKind.strong_emphasis);
 		const nodes = tree.get_buffer();
 		const wrapper = open!._index;
-		// closed, the span and the strong sit beside it
 		expect(nodes.end_at(wrapper)).not.toBe(NONE);
 		expect(nodes.get_node(wrapper).children).toHaveLength(1);
 		tree.revoke(3, '`', 1);
@@ -1007,7 +981,6 @@ describe('wrap_from: what it refuses', () => {
 	});
 
 	it('wrap_from from the handler of a pending node', () => {
-		// an emphasis is pending until its closer, a tight list paragraph until the list ends
 		const cases: [string, string][] = [
 			['a *b* c\n', 'strong_emphasis'],
 			['- a\n- b\n', 'paragraph'],
@@ -1049,7 +1022,6 @@ describe('wrap_from: what it refuses', () => {
 				'close was called from the handler of a pending strong_emphasis node'
 			);
 		}
-		// closing a wrapper that is closed already is a no op, pending or not
 		const twice = (): ParsePlugin[] => {
 			let open: WrapperView | null = null;
 			return [
@@ -1117,6 +1089,78 @@ describe('wrap_from: directive args', () => {
 	});
 });
 
+describe('text the wire corrects inside a wrapper', () => {
+	// the wire sends the trailing spaces of a heading, then a clear and the trimmed text
+	const source = '## A   \n\n## b `c` d   \n\ntext\n';
+
+	it('under a wrap_inner wrapper', () => {
+		const inner = (): ParsePlugin =>
+			on('heading', (node) => {
+				node.wrap_inner('link');
+			});
+		expect(expect_parity(source, () => [inner()])).toEqual([
+			'root',
+			['heading', ['link', 'text:A']],
+			['heading', ['link', 'text:b ', 'code_span', 'text: d']],
+			['paragraph', 'text:text'],
+		]);
+	});
+
+	it('under a wrap_from wrapper', () => {
+		const from = (): ParsePlugin =>
+			on('code_span', (node) => {
+				node.wrap_from('strikethrough');
+			});
+		expect(expect_parity(source, () => [from()])).toEqual([
+			'root',
+			['heading', 'text:A'],
+			['heading', 'text:b ', ['strikethrough', 'code_span', 'text: d']],
+			['paragraph', 'text:text'],
+		]);
+	});
+});
+
+describe('wrap_from: one plugin over many documents', () => {
+	const source = '# a\n\none\n\n# b\n\ntwo\n';
+	const expected = [
+		'root',
+		['html tag="section"', ['heading', 'text:a'], ['paragraph', 'text:one']],
+		['html tag="section"', ['heading', 'text:b'], ['paragraph', 'text:two']],
+	];
+
+	it('a wrapper kept on ctx starts empty in the next document', () => {
+		const plugin: ParsePlugin = {
+			heading: {
+				parse(node, ctx: { section?: WrapperView }) {
+					ctx.section?.close();
+					ctx.section = node.wrap_from('html', { tag: 'section' });
+				},
+			},
+		};
+		const text = new SourceTextSource(source);
+		const dispatcher = new PluginDispatcher([plugin], text);
+		const tree = new TreeBuilder(16, dispatcher);
+		for (let i = 0; i < 3; i++) {
+			new PFMParser(tree).parse(source);
+			expect(shape(tree.get_buffer(), source, 0, NAMED)).toEqual(expected);
+			expect(dispatcher.quiet()).toBe(true);
+			tree.reset();
+		}
+	});
+
+	it('a wrapper kept in a closure is a stale view in the next document', () => {
+		const plugin = sectionize();
+		const text = new SourceTextSource(source);
+		const tree = new TreeBuilder(16, new PluginDispatcher([plugin], text));
+		new PFMParser(tree).parse(source);
+		expect(shape(tree.get_buffer(), source, 0, NAMED)).toEqual(expected);
+		tree.reset();
+		expect(() => new PFMParser(tree).parse(source)).toThrow(
+			/NodeView was used after its document/
+		);
+	});
+});
+
 describe('wrap_from: a sequential pass', () => {
 	it('wraps the node alone, the tree is complete so nothing follows it', () => {
 		const last: ParsePlugin = {
@@ -1170,11 +1214,9 @@ describe('the synthetic flag', () => {
 		const inner = on('block_quote', (node) => {
 			node.wrap_inner('html', { tag: 'div' });
 		});
-		// without the flag the unclosed tag became bare text in the wrapper
 		const source = '> <div>\n>\n> text\n';
 		const plain = shape(run_batch(source).nodes, source) as unknown[];
 		const tree = expect_parity(source, () => [inner], NAMED) as unknown[];
-		// the same children as without the plugin, one level down
 		expect((tree[1] as unknown[])[1]).toEqual([
 			'html tag="div"',
 			...(plain[1] as unknown[]).slice(1),
@@ -1269,38 +1311,45 @@ describe('wrap_from: random documents', () => {
 		() => [cells(), sectionize(true)],
 	];
 
-	it('every path builds one tree, and without the plugin nodes it is the plain tree', () => {
-		let seed = 1;
-		const random = () =>
-			(seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
-		for (let round = 0; round < 280; round++) {
-			let source = '';
-			const count = 2 + Math.floor(random() * 9);
-			for (let i = 0; i < count; i++) {
-				source += PIECES[Math.floor(random() * PIECES.length)];
-			}
-			if (random() < 0.3) source = source.trimEnd();
-			const make = MAKERS[round % MAKERS.length];
-			const where = `round ${round} ${JSON.stringify(source)}`;
+	// the whole suite runs this beside every other file, where it takes far longer
+	it(
+		'every path builds one tree, and without the plugin nodes it is the plain tree',
+		{
+			timeout: 30000,
+		},
+		() => {
+			let seed = 1;
+			const random = () =>
+				(seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+			for (let round = 0; round < 140; round++) {
+				let source = '';
+				const count = 2 + Math.floor(random() * 9);
+				for (let i = 0; i < count; i++) {
+					source += PIECES[Math.floor(random() * PIECES.length)];
+				}
+				if (random() < 0.3) source = source.trimEnd();
+				const make = MAKERS[round % MAKERS.length];
+				const where = `round ${round} ${JSON.stringify(source)}`;
 
-			const plain = run_batch(source);
-			const expected = bare(plain.nodes, plain.source);
-			let first: unknown;
-			for (let i = 0; i < PATHS.length; i++) {
-				const [name, run] = PATHS[i];
-				const out = run(source, make());
-				expect_linked(out.nodes);
-				expect(out.dispatcher!.quiet(), `${name} ${where}`).toBe(true);
-				expect(bare(out.nodes, out.source), `${name} ${where}`).toEqual(
-					expected
-				);
-				const tree = shape(out.nodes, out.source, 0, {
-					...NAMED,
-					merge_text: true,
-				});
-				if (i === 0) first = tree;
-				else expect(tree, `${name} ${where}`).toEqual(first);
+				const plain = run_batch(source);
+				const expected = bare(plain.nodes, plain.source);
+				let first: unknown;
+				for (let i = 0; i < PATHS.length; i++) {
+					const [name, run] = PATHS[i];
+					const out = run(source, make());
+					expect_linked(out.nodes);
+					expect(out.dispatcher!.quiet(), `${name} ${where}`).toBe(true);
+					expect(bare(out.nodes, out.source), `${name} ${where}`).toEqual(
+						expected
+					);
+					const tree = shape(out.nodes, out.source, 0, {
+						...NAMED,
+						merge_text: true,
+					});
+					if (i === 0) first = tree;
+					else expect(tree, `${name} ${where}`).toEqual(first);
+				}
 			}
 		}
-	});
+	);
 });

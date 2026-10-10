@@ -310,8 +310,10 @@ export class WireTreeBuilder {
 	}
 
 	private _clear(id: number): void {
-		const idx = this.id_to_index[id];
+		let idx = this.id_to_index[id];
 		if (idx === undefined) return;
+		// the text went to the innermost open wrapper, see _text
+		if (this.dispatcher) idx = this.dispatcher.resolve(idx);
 
 		// content leaves store text on the node itself, drop it.
 		delete this.buf._strings[idx];
