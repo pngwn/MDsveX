@@ -200,6 +200,7 @@ interface MdsvexOptions {
 	component_mode?: 'markdown' | 'all';
 	parse_plugins?: ParsePlugin[];
 	highlight?: HighlightOptions | Highlighter | false;
+	unwrap_images?: boolean;
 }
 ```
 
@@ -288,6 +289,55 @@ highlight: HighlightOptions | Highlighter | false = {};
 ```
 
 How code is highlighted. Options configure twinkleplop, a function replaces it, and `false` renders plain code. See [Syntax highlighting](docs#syntax-highlighting).
+
+### `unwrap_images`
+
+```ts
+unwrap_images: boolean = false;
+```
+
+An image on a line of its own is a paragraph, so it renders as `<p><img /></p>`. That is a problem once an `img` [replacement](docs#custom-components) renders a block element, because a `<figure>` is not allowed inside a `<p>`:
+
+```svelte
+<!-- src/lib/Figure.svelte -->
+<script>
+	let { src, alt, title } = $props();
+</script>
+
+<figure>
+	<img {src} {alt} />
+	{#if title}<figcaption>{title}</figcaption>{/if}
+</figure>
+```
+
+```js
+// src/lib/markdown.js
+export { default as img } from './Figure.svelte';
+```
+
+```js
+mdsvex({ components: '#lib/markdown.js', unwrap_images: true });
+```
+
+With `unwrap_images`, a paragraph that holds only images gets no `<p>`, so the figure stands on its own:
+
+```svx
+Sales grew all year.
+
+![A chart](/chart.png "Sales by month")
+```
+
+```html
+<p>Sales grew all year.</p>
+<figure>
+	<img src="/chart.png" alt="A chart" />
+	<figcaption>Sales by month</figcaption>
+</figure>
+```
+
+Several images in one paragraph are all unwrapped, on one line or on lines of their own. So is an image inside a link, such as `[![A chart](/chart.png)](/full.png)`, where the link stays around the image. A paragraph with any text beside the image keeps its `<p>`, and so does one with a hard line break between two images. It works the same inside block quotes, list items, directives and HTML elements.
+
+`compile()` takes the option too, and the editor reads it from the manifest the plugin writes, or from `unwrap_images` in an `mdsvex.config.json`.
 
 ## Frontmatter
 

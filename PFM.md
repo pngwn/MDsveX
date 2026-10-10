@@ -88,6 +88,30 @@ bar
 
 -> blockquote containing `foo`, followed by a separate root-level paragraph `bar`.
 
+**Paragraphs**, A paragraph of only HTML tags, components, `{@...}` tags and whitespace gets no `<p>`, and any text outside the tags wraps the whole paragraph in one. A paragraph holding a block level element such as `<div>` is never wrapped:
+
+```markdown
+<Chart />
+<Legend />            -> <Chart />\n<Legend />
+
+<Badge /> new today   -> <p><Badge /> new today</p>
+```
+
+An image is text by default, so a paragraph of one image is `<p><img /></p>`. The `unwrap_images` option, off by default, makes an image count as a tag does here. A paragraph of only images and whitespace then has no paragraph node, and the images are children of whatever held it: the document, a block quote, a list item, a container directive or an HTML element.
+
+```markdown
+![a chart](/chart.png)                -> <img src="/chart.png" alt="a chart" />
+
+![one](/1.png)
+![two](/2.png)                        -> <img ... />\n<img ... />
+
+[![a chart](/chart.png)](/full.png)   -> <a href="/full.png"><img ... /></a>
+
+![a chart](/chart.png) Figure 1       -> <p><img ... /> Figure 1</p>
+```
+
+A link that holds only images counts as its images, so a linked image or a row of badges is unwrapped too. Anything else keeps the paragraph: text before or after an image or inside its link, a hard break between two images, emphasis around an image, or a `[` whose link never closes. Images and tags mix, `<Badge /> ![a chart](/chart.png)` has no `<p>` either. A tight list item never has a `<p>`, and with the option a loose item of only images has none while its siblings keep theirs.
+
 **Superscript**, Added, via `^`:
 
 ```markdown
