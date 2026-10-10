@@ -47,7 +47,7 @@ The view exposes:
 - `type` — yes, writable. Changing the type rewrites the type slot in the SoA. The renderer will read the new type when rendering. No validation — if you set heading `type` to `paragraph`, `depth` becomes meaningless but the system doesn't care.
 
 **Structural methods**
-- `wrapInner(type, attrs?)` — inserts a new node between this node and its current children, returns the new node's view
+- `wrap_inner(type, attrs?)` — inserts a new node between this node and its current children, returns the new node's view
 - `prepend(type, attrs?)` — inserts a new node as the first child, returns the new node's view
 - `append(type, attrs?)` — inserts a new node as the last child, returns the new node's view
 
