@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { parse_markdown_svelte } from '../src/main';
 import type { NodeBuffer } from '../src/utils';
-import { get_all_child_kinds } from './utils';
+import { get_all_child_kinds, inline_shape } from './utils';
 
 function non_breaks(nodes: NodeBuffer, parent: number = 0) {
 	return nodes
@@ -128,5 +128,29 @@ describe('Subscript (~)', () => {
 		const kinds = get_all_child_kinds(nodes, para.index);
 		expect(kinds).toContain('subscript');
 		expect(kinds).toContain('superscript');
+	});
+});
+
+describe('subscript beside non-ascii characters', () => {
+	const B = (inner: string) => `subscript("${inner}")`;
+
+	// the tilde only looks for whitespace, so punctuation and word characters behave alike
+	test.each([
+		['“~quoted~”', `"“" ${B('quoted')} "”"`],
+		['word—~aside~ more', `"word—" ${B('aside')} " more"`],
+		['a ~aside~—more', `"a " ${B('aside')} "—more"`],
+		['«~cité~»', `"«" ${B('cité')} "»"`],
+		['a ~wait~…', `"a " ${B('wait')} "…"`],
+		['~重要~。', `${B('重要')} "。"`],
+		['「~重要~」', `"「" ${B('重要')} "」"`],
+		['（~重要~）', `"（" ${B('重要')} "）"`],
+		['~重要~！', `${B('重要')} "！"`],
+		['这是~重要~的', `"这是" ${B('重要')} "的"`],
+		['これは~「重要」~です', `"これは" subscript("「重要」") "です"`],
+		// the ideographic space is whitespace
+		['x~\u30002~', `"x" "~\u30002" "~"`],
+	])('%s', (input, shape) => {
+		expect(inline_shape(input)).toBe(shape);
+		expect(inline_shape(input, 1)).toBe(shape);
 	});
 });

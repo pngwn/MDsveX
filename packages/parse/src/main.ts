@@ -39,6 +39,7 @@ import { NodeBuffer, ErrorCollector } from './utils';
 import { TreeBuilder } from './tree_builder';
 import { PluginDispatcher } from './plugin_dispatch';
 import { SourceTextSource } from './node_view';
+import { is_unicode_punctuation } from './unicode_punctuation';
 export type { ParseOptions, ParseResult } from './types';
 export type { ParsePlugin } from './plugin_types';
 export { NodeKind, NodeBuffer } from './utils';
@@ -99,6 +100,15 @@ const is_unicode_whitespace = (code: number): boolean =>
 	code === 0x205f ||
 	code === 0x3000;
 
+// cjk prose has no spaces, so beside a delimiter these are a boundary as well as a word char
+const is_cjk = (code: number): boolean =>
+	(code >= 0x1100 && code <= 0x11ff) ||
+	(code >= 0x2e80 && code <= 0xa4cf) ||
+	(code >= 0xa960 && code <= 0xa97f) ||
+	(code >= 0xac00 && code <= 0xd7ff) ||
+	(code >= 0xf900 && code <= 0xfaff) ||
+	(code >= 0xff00 && code <= 0xffef);
+
 const classify = (code: number): CharMask =>
 	// common case first: ascii (code < 128). nan < 128 is false, so
 	// nan falls through to the second branch where code !== code catches it.
@@ -111,7 +121,11 @@ const classify = (code: number): CharMask =>
 				CharMask.whitespace | CharMask.punctuation | CharMask.word
 			: is_unicode_whitespace(code)
 				? CharMask.whitespace
-				: CharMask.word;
+				: is_unicode_punctuation(code)
+					? CharMask.punctuation
+					: is_cjk(code)
+						? CharMask.word | CharMask.punctuation
+						: CharMask.word;
 
 /**
  * lookup table for characters that break out of text scanning.
@@ -1967,6 +1981,26 @@ export class PFMParser {
 		this.emphasis_has_content = true;
 		this.states.push(StateKind.inline);
 		this.open_text_run(p, n_id);
+		return true;
+	}
+
+	/**
+	 * outer is empty and its own delimiter is at the cursor again, anything but whitespace after it
+	 * opens the inner node as open_inner_strong does, false leaves outer to be revoked
+	 */
+	private open_inner_doubled(
+		outer: number,
+		kind: NodeKind.strong_emphasis | NodeKind.emphasis,
+		state: StateKind.strong_emphasis | StateKind.emphasis
+	): boolean {
+		// whitespace, or the nan wildcard at the end of the input
+		if (this.next_class() & CharMask.whitespace) return false;
+		this.states.push(StateKind.inline);
+		const n_id = this.emit_open_pending(kind, this.cursor, outer);
+		this.out.set_value_start(n_id, this.cursor + 1);
+		this.node_stack.push(n_id);
+		this.states.push(state);
+		this.cursor++;
 		return true;
 	}
 
@@ -6654,6 +6688,14 @@ export class PFMParser {
 						// no empty emphasis: if the node has no children, revoke it.
 						// detect empty by checking if cursor is at value_start (nothing consumed).
 						if (!this.emphasis_has_content) {
+							if (
+								this.open_inner_doubled(
+									n_id,
+									NodeKind.strong_emphasis,
+									StateKind.strong_emphasis
+								)
+							)
+								continue;
 							this.out.revoke(n_id);
 							this.pending_remove(n_id);
 							this.states.pop();
@@ -8862,6 +8904,10 @@ export class PFMParser {
 
 			// no empty emphasis: if the node has no children, revoke it.
 			if (!this.emphasis_has_content) {
+				if (
+					this.open_inner_doubled(n_id, NodeKind.emphasis, StateKind.emphasis)
+				)
+					return false;
 				this.out.revoke(n_id);
 				this.pending_remove(n_id);
 				this.states.pop();
@@ -8918,6 +8964,45 @@ export class PFMParser {
 				(CharMask.whitespace | CharMask.punctuation)
 		) {
 			const n_id = this.node_stack[this.node_stack.length - 1];
+
+			// no empty strikethrough, the tildes at the cursor follow the opener
+			if (this.cursor === this.pending_starts[this.id_slots[n_id]] + 2) {
+				// anything but whitespace or the nan wildcard after them opens the inner node
+				if (
+					!(
+						classify(char_code_at.call(source, this.cursor + 2 - base)) &
+						CharMask.whitespace
+					)
+				) {
+					this.states.push(StateKind.inline);
+					const inner = this.emit_open_pending(
+						NodeKind.strikethrough,
+						this.cursor,
+						n_id
+					);
+					this.out.set_value_start(inner, this.cursor + 2);
+					this.node_stack.push(inner);
+					this.states.push(StateKind.strikethrough);
+					this.chomp(2);
+					return false;
+				}
+				// revoke it and each strikethrough it was the only content of, the parent rereads the tildes
+				const states = this.states;
+				const node_stack = this.node_stack;
+				for (let id = n_id; ; ) {
+					const start = this.pending_starts[this.id_slots[id]];
+					this.out.revoke(id);
+					this.pending_remove(id);
+					states.pop();
+					node_stack.pop();
+					if (states[states.length - 1] === StateKind.inline) states.pop();
+					if (states[states.length - 1] !== StateKind.strikethrough) break;
+					id = node_stack[node_stack.length - 1];
+					if (start !== this.pending_starts[this.id_slots[id]] + 2) break;
+				}
+				return false;
+			}
+
 			this.out.set_value_end(n_id, this.cursor);
 			this.emit_close(n_id, this.cursor + 2);
 			this.pending_remove(n_id);

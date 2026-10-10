@@ -2,7 +2,6 @@ root
   paragraph
     text "Foo"
     soft_break
-    text "*"
-    text "*"
+    text "**"
     text "*"
   line_break

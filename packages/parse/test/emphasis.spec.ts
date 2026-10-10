@@ -4,7 +4,12 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'vitest';
 
-import { get_all_child_kinds, get_child_range, get_content } from './utils';
+import {
+	get_all_child_kinds,
+	get_child_range,
+	get_content,
+	inline_shape,
+} from './utils';
 
 import { parse_markdown_svelte } from '../src/main';
 import { NodeKind } from '../src/utils';
@@ -1888,5 +1893,180 @@ describe('emphasis and strong emphasis', () => {
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = paragraph.children.map((i) => nodes.get_node(i).kind);
 		expect(kinds).not.toContain('strong_emphasis');
+	});
+});
+
+describe('emphasis and strong beside non-ascii characters', () => {
+	const S = (inner: string) => `strong_emphasis("${inner}")`;
+	const E = (inner: string) => `emphasis("${inner}")`;
+
+	const punctuation: [string, string][] = [
+		['“*quoted*”', `"“" ${S('quoted')} "”"`],
+		['“_quoted_”', `"“" ${E('quoted')} "”"`],
+		['‘*quoted*’', `"‘" ${S('quoted')} "’"`],
+		['‘_quoted_’', `"‘" ${E('quoted')} "’"`],
+		['*“quoted”* x', `strong_emphasis("“quoted”") " x"`],
+		['_“quoted”_ x', `emphasis("“quoted”") " x"`],
+		['word—*aside* more', `"word—" ${S('aside')} " more"`],
+		['word—_aside_ more', `"word—" ${E('aside')} " more"`],
+		['a *aside*—more', `"a " ${S('aside')} "—more"`],
+		['a _aside_—more', `"a " ${E('aside')} "—more"`],
+		['1–*2*–3', `"1–" ${S('2')} "–3"`],
+		['1–_2_–3', `"1–" ${E('2')} "–3"`],
+		['«*cité*»', `"«" ${S('cité')} "»"`],
+		['«_cité_»', `"«" ${E('cité')} "»"`],
+		['a *wait*…', `"a " ${S('wait')} "…"`],
+		['a _wait_…', `"a " ${E('wait')} "…"`],
+		['…*wait* b', `"…" ${S('wait')} " b"`],
+		['…_wait_ b', `"…" ${E('wait')} " b"`],
+		['¿*qué*?', `"¿" ${S('qué')} "?"`],
+		['€*5*€', `"€" ${S('5')} "€"`],
+		['©_x_©', `"©" ${E('x')} "©"`],
+		['*重要*。', `${S('重要')} "。"`],
+		['_重要_。', `${E('重要')} "。"`],
+		['*重要*、次', `${S('重要')} "、次"`],
+		['_重要_、次', `${E('重要')} "、次"`],
+		['前文。*重要* x', `"前文。" ${S('重要')} " x"`],
+		['前文。_重要_ x', `"前文。" ${E('重要')} " x"`],
+		['「*重要*」', `"「" ${S('重要')} "」"`],
+		['「_重要_」', `"「" ${E('重要')} "」"`],
+		['（*重要*）', `"（" ${S('重要')} "）"`],
+		['（_重要_）', `"（" ${E('重要')} "）"`],
+		['*重要*！', `${S('重要')} "！"`],
+		['_重要_！', `${E('重要')} "！"`],
+		['*「重要」*。', `strong_emphasis("「重要」") "。"`],
+		// the ideographic space is whitespace
+		['前\u3000*重要*\u3000後', `"前\u3000" ${S('重要')} "\u3000後"`],
+		['*\u3000重要*', `"*\u3000重要" "*"`],
+	];
+
+	const cjk: [string, string][] = [
+		['这是*重要*的', `"这是" ${S('重要')} "的"`],
+		['这是_重要_的', `"这是" ${E('重要')} "的"`],
+		['これは*重要*です', `"これは" ${S('重要')} "です"`],
+		['これは_重要_です', `"これは" ${E('重要')} "です"`],
+		['サーバー*重要*です', `"サーバー" ${S('重要')} "です"`],
+		['이것은*중요*합니다', `"이것은" ${S('중요')} "합니다"`],
+		['이것은_중요_합니다', `"이것은" ${E('중요')} "합니다"`],
+		['これは*「重要」*です', `"これは" strong_emphasis("「重要」") "です"`],
+		['x *重要*的', `"x " ${S('重要')} "的"`],
+		['长*宽*高', `"长" ${S('宽')} "高"`],
+		['文件_名称_列表', `"文件" ${E('名称')} "列表"`],
+		['ＡＢ*重要*ＣＤ', `"ＡＢ" ${S('重要')} "ＣＤ"`],
+		['ｶﾀｶﾅ*x*ｶﾀｶﾅ', `"ｶﾀｶﾅ" ${S('x')} "ｶﾀｶﾅ"`],
+		['这是*important*的', `"这是" ${S('important')} "的"`],
+		['这是_important_的', `"这是" ${E('important')} "的"`],
+		['这是**重要**的', `"这是" strong_emphasis(strong_emphasis("重要")) "的"`],
+		['这是__重要__的', `"这是" emphasis(emphasis("重要")) "的"`],
+		['**重要**', `strong_emphasis(strong_emphasis("重要"))`],
+		['__重要__', `emphasis(emphasis("重要"))`],
+		[
+			'これは**「重要」**です',
+			`"これは" strong_emphasis(strong_emphasis("「重要」")) "です"`,
+		],
+		// inside a run the delimiter closes before it opens
+		['*重*要*', `${S('重')} "要" "*"`],
+		['abc*重要*的', `"abc" "*重要" "*的"`],
+		['这是*重要*abc', `"这是" "*" "重要" "*abc"`],
+		['这是*重要 的', `"这是" "*重要 的"`],
+	];
+
+	const intraword: [string, string][] = [
+		['abc*重要*def', `"abc" "*重要" "*def"`],
+		['пристаням*стремятся*вот', `"пристаням" "*стремятся" "*вот"`],
+		['caf*é*s', `"caf" "*é" "*s"`],
+		['naïve_é_s', `"naïve" "_é" "_s"`],
+		['นี่*สำคัญ*มาก', `"นี่" "*สำคัญ" "*มาก"`],
+		// astral code points are still word characters
+		['😀*x*😀', `"😀" "*x" "*😀"`],
+		['𠀀*x*𠀀', `"𠀀" "*x" "*𠀀"`],
+	];
+
+	const pipe: [string, string][] = [
+		['caf|*é*|s', `"caf" ${S('é')} "s"`],
+		['นี่|*สำคัญ*|มาก', `"นี่" ${S('สำคัญ')} "มาก"`],
+		['这是|*重要*|的', `"这是" ${S('重要')} "的"`],
+		['这是|_重要_|的', `"这是" ${E('重要')} "的"`],
+		['これは|*「重要」*|です', `"これは" strong_emphasis("「重要」") "です"`],
+	];
+
+	test.each([...punctuation, ...cjk, ...intraword, ...pipe])(
+		'%s',
+		(input, shape) => {
+			expect(inline_shape(input)).toBe(shape);
+			expect(inline_shape(input, 1)).toBe(shape);
+		}
+	);
+});
+
+describe('doubled delimiters', () => {
+	const SS = (inner: string) => `strong_emphasis(strong_emphasis(${inner}))`;
+	const EE = (inner: string) => `emphasis(emphasis(${inner}))`;
+
+	const nested: [string, string][] = [
+		['**word**', SS('"word"')],
+		['__word__', EE('"word"')],
+		['**(x)**', SS('"(x)"')],
+		['__(x)__', EE('"(x)"')],
+		['**"quoted"**', SS('"\\"quoted\\""')],
+		['__"quoted"__', EE('"\\"quoted\\""')],
+		['**.**', SS('"."')],
+		['**\\*x**', SS('"*x"')],
+		['**“quoted”**', SS('"“quoted”"')],
+		['__“quoted”__', EE('"“quoted”"')],
+		['**「重要」**', SS('"「重要」"')],
+		['__「重要」__', EE('"「重要」"')],
+		['**…x**', SS('"…x"')],
+		['**[a](b)**', SS('link("a")')],
+		['__[a](b)__', EE('link("a")')],
+		['**![a](b)**', SS('image("a")')],
+		['**`code`**', SS('code_span()')],
+		['__`code`__', EE('code_span()')],
+		['**{expr}**', SS('mustache()')],
+		['__{expr}__', EE('mustache()')],
+		['**<b>x</b>**', SS('html("x")')],
+		['**_x_**', SS('emphasis("x")')],
+		['__*x*__', EE('strong_emphasis("x")')],
+		['**~~x~~**', SS('strikethrough("x")')],
+		['**^x^**', SS('superscript("x")')],
+		['a **(x)** b', `"a " ${SS('"(x)"')} " b"`],
+		['a __(x)__ b', `"a " ${EE('"(x)"')} " b"`],
+		['a **(x)**.', `"a " ${SS('"(x)"')} "."`],
+		['(**(x)**)', `"(" ${SS('"(x)"')} ")"`],
+		['**(a)** and **(b)**', `${SS('"(a)"')} " and " ${SS('"(b)"')}`],
+		['**a** **(b)**', `${SS('"a"')} " " ${SS('"(b)"')}`],
+		['**(a *b* c)**', SS('"(a " strong_emphasis("b") " c)"')],
+		['__(a _b_ c)__', EE('"(a " emphasis("b") " c)"')],
+		['*a **(b)** c*', `strong_emphasis("a " ${SS('"(b)"')} " c")`],
+		['_a __(b)__ c_', `emphasis("a " ${EE('"(b)"')} " c")`],
+		['***x***', `strong_emphasis(${SS('"x"')})`],
+		['***(x)***', `strong_emphasis(${SS('"(x)"')})`],
+		['___x___', `emphasis(${EE('"x"')})`],
+		['___(x)___', `emphasis(${EE('"(x)"')})`],
+		['****x****', SS(SS('"x"'))],
+	];
+
+	const unclosed: [string, string][] = [
+		['**(x)*', `"*" strong_emphasis("(x)")`],
+		['__(x)_', `"_" emphasis("(x)")`],
+		['*(x)**', `strong_emphasis("(x)") "*"`],
+		['_(x)__', `emphasis("(x)") "_"`],
+		['**(x)', `"*" "*(x)"`],
+		['__(x)', `"_" "_(x)"`],
+		['**(x) **', `"*" "*" "(x) " "*" "*"`],
+		['**) x', `"*" "*) x"`],
+		['** x', `"*" "* x"`],
+		['__ x', `"_" "_ x"`],
+		['a ** b ** c', `"a " "*" "* b " "*" "* c"`],
+		['a **** b', `"a " "***" "* b"`],
+		['a ____ b', `"a " "___" "_ b"`],
+		['**(x)** **', `${SS('"(x)"')} " " "*" "*"`],
+	];
+
+	test.each([...nested, ...unclosed])('%s', (input, shape) => {
+		expect(inline_shape(input)).toBe(shape);
+		expect(inline_shape(input, 1)).toBe(shape);
+		expect(inline_shape(input, 2)).toBe(shape);
+		expect(inline_shape(input, 3)).toBe(shape);
 	});
 });

@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest';
 import { parse_markdown_svelte } from '../src/main';
 import { NodeKind } from '../src/utils';
 import type { NodeBuffer } from '../src/utils';
-import { get_content, get_all_child_kinds } from './utils';
+import { get_content, get_all_child_kinds, inline_shape } from './utils';
 
 function non_breaks(nodes: NodeBuffer, parent: number = 0) {
 	return nodes
@@ -110,5 +110,79 @@ describe('Strikethrough (~~)', () => {
 		const para = children[0];
 		const para_kinds = get_all_child_kinds(nodes, para.index);
 		expect(para_kinds).not.toContain('strikethrough');
+	});
+});
+
+describe('strikethrough beside non-ascii characters', () => {
+	const D = (inner: string) => `strikethrough("${inner}")`;
+
+	test.each([
+		['“~~quoted~~”', `"“" ${D('quoted')} "”"`],
+		['word—~~aside~~ more', `"word—" ${D('aside')} " more"`],
+		['a ~~aside~~—more', `"a " ${D('aside')} "—more"`],
+		['1–~~2~~–3', `"1–" ${D('2')} "–3"`],
+		['«~~cité~~»', `"«" ${D('cité')} "»"`],
+		['a ~~wait~~…', `"a " ${D('wait')} "…"`],
+		['~~重要~~。', `${D('重要')} "。"`],
+		['~~重要~~、次', `${D('重要')} "、次"`],
+		['「~~重要~~」', `"「" ${D('重要')} "」"`],
+		['（~~重要~~）', `"（" ${D('重要')} "）"`],
+		['~~重要~~！', `${D('重要')} "！"`],
+		['前\u3000~~重要~~\u3000後', `"前\u3000" ${D('重要')} "\u3000後"`],
+		['这是~~重要~~的', `"这是" ${D('重要')} "的"`],
+		['これは~~重要~~です', `"これは" ${D('重要')} "です"`],
+		['이것은~~중요~~합니다', `"이것은" ${D('중요')} "합니다"`],
+		['x ~~重要~~的', `"x " ${D('重要')} "的"`],
+		['这是~~~~重要~~~~的', `"这是" strikethrough(${D('重要')}) "的"`],
+		['caf|~~é~~|s', `"caf" ${D('é')} "s"`],
+		['这是|~~重要~~|的', `"这是" ${D('重要')} "的"`],
+		// without the pipe a word character before stops the opener, the second tilde then opens a subscript
+		['caf~~é~~s', `"caf" "~" subscript("é" "~") "s"`],
+		// and a word character after stops the closer
+		['x ~~é~~s', `"x " "~~" "é" "~" "~s"`],
+	])('%s', (input, shape) => {
+		expect(inline_shape(input)).toBe(shape);
+		expect(inline_shape(input, 1)).toBe(shape);
+	});
+});
+
+describe('doubled strikethrough', () => {
+	const DD = (inner: string) => `strikethrough(strikethrough(${inner}))`;
+
+	const nested: [string, string][] = [
+		['~~~~x~~~~', DD('"x"')],
+		['~~~~(x)~~~~', DD('"(x)"')],
+		['~~~~"q"~~~~', DD('"\\"q\\""')],
+		['~~~~「重要」~~~~', DD('"「重要」"')],
+		['~~~~[a](b)~~~~', DD('link("a")')],
+		['~~~~`code`~~~~', DD('code_span()')],
+		['~~~~{expr}~~~~', DD('mustache()')],
+		['~~~~*x*~~~~', DD('strong_emphasis("x")')],
+		['a ~~~~(x)~~~~ b', `"a " ${DD('"(x)"')} " b"`],
+		['a ~~~~(x)~~~~.', `"a " ${DD('"(x)"')} "."`],
+		['~~a ~~~~(b)~~~~ c~~', `strikethrough("a " ${DD('"(b)"')} " c")`],
+		['~~~~~~x~~~~~~', `strikethrough(${DD('"x"')})`],
+		['~~~~~~(x)~~~~~~', `strikethrough(${DD('"(x)"')})`],
+		['**~~~~(x)~~~~**', `strong_emphasis(strong_emphasis(${DD('"(x)"')}))`],
+		['~~~~**(x)**~~~~', DD('strong_emphasis(strong_emphasis("(x)"))')],
+	];
+
+	const unclosed: [string, string][] = [
+		['a ~~~~ b', `"a " "~~" "~" "~ b"`],
+		['a ~~~~', `"a " "~~" "~" "~"`],
+		['~~~~ x', `"~~" "~" "~ x"`],
+		['a ~~~~~~ b', `"a " "~~~~" "~" "~ b"`],
+		['a ~~~~~~~~ b', `"a " "~~~~~~" "~" "~ b"`],
+		['~~~~(x)', `"~~" "~~(x)"`],
+		['~~~~(x)~~', `"~~" strikethrough("(x)")`],
+		['~~(x)~~~~', `strikethrough("(x)") "~" "~"`],
+		['a ~~ b ~~ c', `"a " "~" "~ b " "~" "~ c"`],
+	];
+
+	test.each([...nested, ...unclosed])('%s', (input, shape) => {
+		expect(inline_shape(input)).toBe(shape);
+		expect(inline_shape(input, 1)).toBe(shape);
+		expect(inline_shape(input, 2)).toBe(shape);
+		expect(inline_shape(input, 3)).toBe(shape);
 	});
 });

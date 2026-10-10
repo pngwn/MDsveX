@@ -1,3 +1,5 @@
+import { PFMParser, parse_markdown_svelte } from '../src/main';
+import { TreeBuilder } from '../src/tree_builder';
 import { NodeBuffer } from '../src/utils';
 
 /** Get the range of all children of the given parent */
@@ -55,4 +57,41 @@ export function get_all_child_kinds(nodes: NodeBuffer, parent: number) {
 		kinds.push(nodes.get_node(child).kind);
 	}
 	return kinds;
+}
+
+function node_shape(nodes: NodeBuffer, source: string, index: number): string {
+	const node = nodes.get_node(index);
+	if (node.kind === 'text') {
+		return JSON.stringify(source.slice(node.value[0], node.value[1]));
+	}
+	const children = (node.children || []).map((child) =>
+		node_shape(nodes, source, child)
+	);
+	return `${node.kind}(${children.join(' ')})`;
+}
+
+/**
+ * the inline children of the first paragraph on one line with text as quoted strings, a chunk size
+ * feeds the source in pieces
+ * @example inline_shape('a *b*') // "a " strong_emphasis("b")
+ */
+export function inline_shape(input: string, chunk_size?: number): string {
+	const source = input + '\n';
+	let nodes: NodeBuffer;
+	if (chunk_size === undefined) {
+		nodes = parse_markdown_svelte(source).nodes;
+	} else {
+		const tree = new TreeBuilder(source.length);
+		const parser = new PFMParser(tree);
+		parser.init();
+		for (let i = 0; i < source.length; i += chunk_size) {
+			parser.feed(source.slice(i, i + chunk_size));
+		}
+		parser.finish();
+		nodes = tree.get_buffer();
+	}
+	const paragraph = nodes.get_node(nodes.get_node().children[0]);
+	return paragraph.children
+		.map((child) => node_shape(nodes, source, child))
+		.join(' ');
 }
