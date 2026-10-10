@@ -132,10 +132,14 @@ export class WireTreeBuilder {
 
 		let parent_idx = parent === -1 ? NONE : (this.id_to_index[parent] ?? NONE);
 
-		// plugin redirect: if parent has a wrap_inner wrapper, children go there
-		if (this.dispatcher && parent_idx !== NONE) {
-			const redirect = this.dispatcher.get_redirect(parent_idx);
-			if (redirect !== undefined) parent_idx = redirect;
+		// a handled node opens under its source parent, the dispatcher moves it
+		// into an open wrapper after its handlers ran, any other node goes
+		// straight to the innermost open wrapper
+		const dispatcher = this.dispatcher;
+		const handled =
+			dispatcher !== null && dispatcher.has_handlers(kind as NodeKind);
+		if (dispatcher !== null && !handled && parent_idx !== NONE) {
+			parent_idx = dispatcher.resolve(parent_idx);
 		}
 
 		const idx = pending
@@ -143,10 +147,7 @@ export class WireTreeBuilder {
 			: this.buf.push(kind as NodeKind, 0, parent_idx, extra);
 		this.id_to_index[id] = idx;
 
-		// plugin dispatch
-		if (this.dispatcher && this.dispatcher.has_handlers(kind as NodeKind)) {
-			this.dispatcher.dispatch_open(idx, kind as NodeKind, this.buf);
-		}
+		if (handled) dispatcher!.dispatch_open(idx, kind as NodeKind, this.buf);
 	}
 
 	private _close(id: number): void {
@@ -210,11 +211,8 @@ export class WireTreeBuilder {
 		let idx = this.id_to_index[id];
 		if (idx === undefined) return;
 
-		// plugin redirect: text targeting a wrapped parent goes to the wrapper
-		if (this.dispatcher) {
-			const redirect = this.dispatcher.get_redirect(idx);
-			if (redirect !== undefined) idx = redirect;
-		}
+		// text of a wrapped parent goes to its innermost open wrapper
+		if (this.dispatcher) idx = this.dispatcher.resolve(idx);
 
 		const kind = this.buf.kind_at(idx);
 		const strings = this.buf._strings;

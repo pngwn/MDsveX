@@ -5,10 +5,11 @@ import {
 	kind_to_string,
 	string_to_kind,
 } from './utils';
-import { UndoLog, UndoEntryKind } from './undo_log';
+import { UndoLog, type RedirectHost } from './undo_log';
 import {
 	NodeView,
 	ViewCache,
+	type StructureHost,
 	type TextSource,
 	SourceTextSource,
 	WireTextSource,
@@ -418,16 +419,19 @@ const NO_UNDO = new UndoLog();
 /** shared close callbacks until the first is set, never written */
 const NO_CLOSE_CBS = new CloseCallbackStore();
 
-/** shared redirects until the first wrap_inner, never written */
-const NO_REDIRECTS: Map<number, number> = new Map();
+/** shared redirect slots until the first wrapper, never written */
+const NO_SLOTS = new Uint32Array(0);
+
+/** shared until the first wrap_from, never written */
+const NO_WRAPPERS: Set<number> = new Set();
 
 /**
  * orchestrates plugin dispatch for both TreeBuilder and WireTreeBuilder.
  *
- * holds the handler tables, undo log, close callbacks, redirect map,
+ * holds the handler tables, undo log, close callbacks, redirect links,
  * and synthetic id counter. both builders compose this in.
  */
-export class PluginDispatcher {
+export class PluginDispatcher implements StructureHost, RedirectHost {
 	private fused: HandlersTable;
 	private has_handler: Uint32Array;
 	private sequential: { plugin: ParsePlugin; handlers: HandlersTable }[];
@@ -439,24 +443,36 @@ export class PluginDispatcher {
 	private text_source: TextSource;
 
 	/**
-	 * redirect map: when wrap_inner is called, subsequent children
-	 * targeting the parent should land in the wrapper instead.
-	 * a wrapper holding another maps to it, so a chain ends at the innermost
+	 * redirect links by buffer index: the wrapper among the children of a
+	 * node that takes its later children, 0 for none since the root is never
+	 * a wrapper. wrap_inner and wrap_from both add links, and a wrapper can
+	 * hold a link itself, so a lookup follows them to the innermost wrapper
 	 */
-	private redirects: Map<number, number> = NO_REDIRECTS;
+	private slots: Uint32Array = NO_SLOTS;
+	/** slots set, at zero no lookup reads the array and the builders skip the dispatcher */
+	private links = 0;
+
+	/** wrap_from wrappers that still take siblings, they get an end when they stop */
+	private open_from: Set<number> = NO_WRAPPERS;
+
+	/** a closed wrap_from wrapper whose last child was still open, keyed by that child */
+	private close_with: Map<number, number> | null = null;
+
+	/** the node whose handler or close callback is running */
+	private running = NONE;
+
+	/** the tree is complete, a wrapper has no later children to take */
+	private sequential_pass = false;
 
 	private next_synthetic_id = SYNTHETIC_ID_BASE;
-
-	/** parent and wrapper of each wrap_inner in the running dispatch */
-	private wraps: number[] = [];
 
 	/** one cache serves every dispatch, a view only holds an index */
 	private cache: ViewCache | null = null;
 
 	/**
-	 * 1 for each kind whose open needs the dispatcher, every kind once a redirect
-	 * exists, redirects only start in dispatch_open and dispatch_close so builders
-	 * reread it after either
+	 * 1 for each kind whose open needs the dispatcher, every kind while a
+	 * redirect link exists, links come and go in dispatch_open, dispatch_close
+	 * and dispatch_revoke so builders reread it after each
 	 */
 	open_wants: Uint8Array;
 
@@ -475,7 +491,7 @@ export class PluginDispatcher {
 		if (cache === null) {
 			let undo = this.undo;
 			if (undo === NO_UNDO) undo = this.undo = new UndoLog();
-			return (this.cache = new ViewCache(buf, this.text_source, undo));
+			return (this.cache = new ViewCache(buf, this.text_source, undo, this));
 		}
 		cache.clear();
 		cache.rebind(buf, this.text_source);
@@ -498,14 +514,17 @@ export class PluginDispatcher {
 	wants_open(kind: NodeKind): boolean {
 		return (
 			(this.has_handler[kind >> 5] & (1 << (kind & 31))) !== 0 ||
-			this.redirects.size !== 0
+			this.links !== 0
 		);
 	}
 
 	/** a close needs no dispatch */
 	quiet(): boolean {
 		return (
-			this.close_cbs.live === 0 && this.redirects.size === 0 && this.undo.empty
+			this.close_cbs.live === 0 &&
+			this.links === 0 &&
+			this.undo.empty &&
+			this.close_with === null
 		);
 	}
 
@@ -514,75 +533,288 @@ export class PluginDispatcher {
 		return !!(this.has_handler[kind >> 5] & (1 << (kind & 31)));
 	}
 
-	/** the innermost wrapper of a parent index, if wrap_inner gave it any */
+	/**
+	 * where a new child of this node goes: the node itself, or the innermost
+	 * open wrapper under it
+	 */
+	resolve(parent_idx: number): number {
+		if (this.links === 0) return parent_idx;
+		const slots = this.slots;
+		const length = slots.length;
+		while (parent_idx < length) {
+			const next = slots[parent_idx];
+			if (next === 0) break;
+			parent_idx = next;
+		}
+		return parent_idx;
+	}
+
+	/** the innermost open wrapper under a node, undefined when it has none */
 	get_redirect(parent_idx: number): number | undefined {
-		const redirects = this.redirects;
-		if (redirects.size === 0) return undefined;
-		let wrapper = redirects.get(parent_idx);
-		if (wrapper === undefined) return undefined;
-		for (;;) {
-			const inner = redirects.get(wrapper);
-			if (inner === undefined) return wrapper;
-			wrapper = inner;
+		const target = this.resolve(parent_idx);
+		return target === parent_idx ? undefined : target;
+	}
+
+	private slot(idx: number): number {
+		const slots = this.slots;
+		return idx < slots.length ? slots[idx] : 0;
+	}
+
+	private set_link(from: number, to: number): void {
+		let slots = this.slots;
+		if (from >= slots.length) {
+			let size = slots.length === 0 ? 256 : slots.length;
+			while (size <= from) size <<= 1;
+			const grown = new Uint32Array(size);
+			grown.set(slots);
+			slots = this.slots = grown;
+		}
+		if (slots[from] === 0 && this.links++ === 0) this.open_wants = ALL_WANTS;
+		slots[from] = to;
+	}
+
+	private clear_link(from: number): void {
+		const slots = this.slots;
+		if (from >= slots.length || slots[from] === 0) return;
+		slots[from] = 0;
+		// the last link gone, opens of unhandled kinds skip the dispatcher again
+		if (--this.links === 0) this.open_wants = this.handled;
+	}
+
+	/** a node that still takes children, a wrapper does while its parent links to it */
+	private takes_children(buf: NodeBuffer, node: number): boolean {
+		if (!buf.synthetic_at(node)) return buf.end_at(node) === NONE;
+		const parent = buf.parent_at(node);
+		return parent !== NONE && this.slot(parent) === node;
+	}
+
+	link_inner(buf: NodeBuffer, parent: number, wrapper: number): void {
+		// a closed node gets no more children, in a sequential pass none does
+		if (this.sequential_pass || !this.takes_children(buf, parent)) return;
+		// wrap_children put an open wrapper of this parent inside the new one
+		const inner = this.slot(parent);
+		this.set_link(parent, wrapper);
+		if (inner !== 0) this.set_link(wrapper, inner);
+	}
+
+	/** wrap_from and close move nodes when undone, a pending node is revoked often */
+	private refuse_pending(buf: NodeBuffer, method: string): void {
+		const running = this.running;
+		if (running !== NONE && buf.pending_at(running) !== 0) {
+			throw new Error(
+				`${method} was called from the handler of a pending ` +
+					`${kind_to_string(buf.kind_at(running))} node, which may still be ` +
+					`revoked, this is not supported yet`
+			);
 		}
 	}
 
-	private own_redirects(): Map<number, number> {
-		let redirects = this.redirects;
-		if (redirects === NO_REDIRECTS) redirects = this.redirects = new Map();
-		// every time, a reset keeps the map and restores the mask
-		this.open_wants = ALL_WANTS;
-		return redirects;
+	wrap_from(
+		buf: NodeBuffer,
+		node: number,
+		kind: NodeKind,
+		attrs: Record<string, any> | undefined
+	): number {
+		const parent = buf.parent_at(node);
+		if (parent === NONE) {
+			throw new Error('wrap_from: the node has no parent to hold the wrapper');
+		}
+		// a later sibling is already downstream and is never moved
+		if (buf.last_child_at(parent) !== node) {
+			throw new Error(
+				`wrap_from: the ${kind_to_string(buf.kind_at(node))} node already has ` +
+					`a later sibling, call it before the next sibling opens`
+			);
+		}
+		this.refuse_pending(buf, 'wrap_from');
+
+		// it starts where the node does and gets an end when it closes
+		const wrapper = buf.wrap_node(node, kind, buf.start_at(node), 0, attrs);
+		this.undo.record_wrap_from(wrapper);
+		if (this.sequential_pass || !this.takes_children(buf, parent)) {
+			buf.set_end(wrapper, buf.start_at(wrapper));
+			return wrapper;
+		}
+
+		// the wrapper goes where a new child of the parent would, which nests
+		// it in a wrapper that is still open
+		const slots = this.slots;
+		let at = parent;
+		while (at < slots.length) {
+			const next = slots[at];
+			if (next === 0 || next === node) break;
+			at = next;
+		}
+		if (this.slot(at) === node) {
+			// the node is an open wrapper itself and stays linked below the new one
+			this.set_link(at, wrapper);
+			this.set_link(wrapper, node);
+		} else {
+			if (at !== parent) buf.move_to_end(wrapper, at);
+			this.set_link(at, wrapper);
+		}
+		let open_from = this.open_from;
+		if (open_from === NO_WRAPPERS) open_from = this.open_from = new Set();
+		open_from.add(wrapper);
+		return wrapper;
 	}
 
-	/** the new wrapper goes between the parent and the wrapper it pointed at */
-	private add_redirect(parent: number, wrapper: number): void {
-		const redirects = this.own_redirects();
-		const inner = redirects.get(parent);
-		redirects.set(parent, wrapper);
-		if (inner !== undefined) redirects.set(wrapper, inner);
+	close_wrapper(buf: NodeBuffer, wrapper: number): void {
+		if (!this.open_from.has(wrapper)) return;
+		this.refuse_pending(buf, 'close');
+		const parent = buf.parent_at(wrapper);
+		// a repair moved the wrapper out of its chain
+		if (parent === NONE || this.slot(parent) !== wrapper) {
+			this.finish(buf, wrapper);
+			return;
+		}
+		// only this link and the ones inside the wrapper, a link above it stays
+		this.undo.record_close_wrapper(this.drop_chain(buf, parent));
 	}
 
 	/**
-	 * redirects for the wraps just made, a node with an end is closed and gets
-	 * no more children, a wrapper never has one and goes with the chain it is in
+	 * remove every link from this node down, ending the wrap_from wrappers
+	 * among them, returns the links as UndoEntryCloseWrapper holds them
 	 */
-	private take_wraps(buf: NodeBuffer): void {
-		const wraps = this.wraps;
-		for (let i = 0; i < wraps.length; i += 2) {
-			if (buf.end_at(wraps[i]) === NONE)
-				this.add_redirect(wraps[i], wraps[i + 1]);
+	private drop_chain(buf: NodeBuffer, from: number): number[] {
+		const links: number[] = [];
+		const open_from = this.open_from;
+		let key = from;
+		let wrapper = this.slot(key);
+		while (wrapper !== 0) {
+			links.push(key, wrapper, open_from.has(wrapper) ? 1 : 0);
+			this.clear_link(key);
+			key = wrapper;
+			wrapper = this.slot(key);
 		}
-		wraps.length = 0;
+		// innermost first, so an outer wrapper sees its inner one closed
+		for (let i = links.length - 3; i >= 0; i -= 3) {
+			if (links[i + 2] === 1) this.finish(buf, links[i + 1]);
+		}
+		return links;
 	}
 
-	/** drop the chain of a closed or revoked node */
-	private drop_redirects(parent: number): void {
-		const redirects = this.redirects;
-		let at: number | undefined = parent;
-		while (at !== undefined) {
-			const next = redirects.get(at);
-			if (next === undefined) return;
-			redirects.delete(at);
-			at = next;
+	/** a wrap_from wrapper takes no more children */
+	private finish(buf: NodeBuffer, wrapper: number): void {
+		this.open_from.delete(wrapper);
+		// a child the parser still has open keeps the wrapper open until it closes
+		const last = buf.last_child_at(wrapper);
+		if (last !== NONE && this.still_open(buf, last)) {
+			let close_with = this.close_with;
+			if (close_with === null) close_with = this.close_with = new Map();
+			close_with.set(last, wrapper);
+			return;
 		}
+		this.set_closed(buf, wrapper);
 	}
 
-	/** take one wrapper out of a chain, a no op once the parent closed */
-	private remove_redirect(parent: number, wrapper: number): void {
-		const redirects = this.redirects;
-		let at = parent;
+	/** a parser node with no end, or a wrapper waiting on a child of its own */
+	private still_open(buf: NodeBuffer, node: number): boolean {
+		if (buf.end_at(node) !== NONE) return false;
+		if (!buf.synthetic_at(node)) return true;
+		const close_with = this.close_with;
+		if (close_with === null) return false;
+		for (const waiting of close_with.values()) {
+			if (waiting === node) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * the end is the start, a renderer caches a top level block once it has
+	 * an end, and the wrappers waiting on this one close with it
+	 */
+	private set_closed(buf: NodeBuffer, node: number): void {
 		for (;;) {
-			const next = redirects.get(at);
-			if (next === undefined) return;
-			if (next === wrapper) break;
-			at = next;
+			if (buf.end_at(node) === NONE) buf.set_end(node, buf.start_at(node));
+			const close_with = this.close_with;
+			if (close_with === null) return;
+			const outer = close_with.get(node);
+			if (outer === undefined) return;
+			close_with.delete(node);
+			if (close_with.size === 0) this.close_with = null;
+			node = outer;
 		}
-		const inner = redirects.get(wrapper);
-		if (inner === undefined) redirects.delete(at);
-		else {
-			redirects.set(at, inner);
-			redirects.delete(wrapper);
+	}
+
+	/** a node closed or went, the wrapper that waited on it closes or waits on a child */
+	private release(buf: NodeBuffer, node: number, revoked: boolean): void {
+		const close_with = this.close_with;
+		if (close_with === null) return;
+		const wrapper = close_with.get(node);
+		if (wrapper === undefined) return;
+		close_with.delete(node);
+		if (close_with.size === 0) this.close_with = null;
+		if (revoked) {
+			// the repair leaves the children of the node after it in the wrapper
+			const last = buf.last_child_at(node);
+			if (last !== NONE && this.still_open(buf, last)) {
+				(this.close_with ?? (this.close_with = new Map())).set(last, wrapper);
+				return;
+			}
+		}
+		this.set_closed(buf, wrapper);
+	}
+
+	private forget_wait(wrapper: number): boolean {
+		const close_with = this.close_with;
+		if (close_with === null) return false;
+		let found = false;
+		for (const [child, waiting] of close_with) {
+			if (waiting === wrapper) {
+				close_with.delete(child);
+				found = true;
+			}
+		}
+		if (close_with.size === 0) this.close_with = null;
+		return found;
+	}
+
+	unlink(buf: NodeBuffer, wrapper: number): void {
+		// an open wrapper inside this one becomes a child of the parent
+		const inner = this.slot(wrapper);
+		if (inner !== 0) this.clear_link(wrapper);
+		const parent = buf.parent_at(wrapper);
+		if (parent !== NONE && this.slot(parent) === wrapper) {
+			if (inner !== 0) this.set_link(parent, inner);
+			else this.clear_link(parent);
+		}
+		this.open_from.delete(wrapper);
+		this.forget_wait(wrapper);
+		// a wrapper that waited on this one waits on what it leaves behind
+		if (this.close_with !== null) this.release(buf, wrapper, true);
+	}
+
+	reopen(buf: NodeBuffer, links: number[]): void {
+		for (let i = 0; i < links.length; i += 3) {
+			const parent = links[i];
+			const wrapper = links[i + 1];
+			const from = links[i + 2] === 1;
+			// a repair moved the wrapper, the link no longer describes the tree
+			if (buf.parent_at(wrapper) !== parent) return;
+			// whatever came after the wrapper while it was closed would have
+			// gone into it, and a later child must not land ahead of that
+			buf.absorb_following(wrapper);
+			if (from) {
+				this.forget_wait(wrapper);
+				buf.set_end(wrapper, NONE);
+			}
+			// a parent that closed since takes no more children
+			if (i === 0 && !this.takes_children(buf, parent)) {
+				if (from) this.finish(buf, wrapper);
+				return;
+			}
+			// a wrapper opened since is among the absorbed and nests in this one
+			const inner = this.slot(parent);
+			this.set_link(parent, wrapper);
+			if (inner !== 0 && inner !== wrapper && this.slot(wrapper) === 0) {
+				this.set_link(wrapper, inner);
+			}
+			if (from) {
+				let open_from = this.open_from;
+				if (open_from === NO_WRAPPERS) open_from = this.open_from = new Set();
+				open_from.add(wrapper);
+			}
 		}
 	}
 
@@ -604,9 +836,11 @@ export class PluginDispatcher {
 		const cache = this.views(buf);
 		const view = cache.get(buf_idx)!;
 
+		// the builder pushed the node under its source parent, so the handlers
+		// see that parent and can close a wrapper before opening the next
 		const undo = this.undo;
-		undo.wraps = this.wraps;
 		undo.set_active_node(buf_idx);
+		this.running = buf_idx;
 		const callbacks = dispatch_open(
 			kind,
 			view,
@@ -615,9 +849,17 @@ export class PluginDispatcher {
 			this.has_handler
 		);
 		undo.clear_active_node();
-		undo.wraps = null;
-		// the wrapped node may be the handler node or one reached by traversal
-		if (this.wraps.length !== 0) this.take_wraps(buf);
+		this.running = NONE;
+
+		// the node goes where a new child of its parent goes now, a handler
+		// that wrapped it left it under a wrapper with no link below
+		if (this.links !== 0) {
+			const parent = buf.parent_at(buf_idx);
+			if (parent !== NONE) {
+				const target = this.resolve(parent);
+				if (target !== parent) buf.move_to_end(buf_idx, target);
+			}
+		}
 
 		if (callbacks) {
 			let close_cbs = this.close_cbs;
@@ -643,21 +885,23 @@ export class PluginDispatcher {
 		const pending = buf.pending_at(buf_idx) !== 0;
 		if (cbs) {
 			const undo = this.undo;
-			undo.wraps = this.wraps;
 			// a node no longer pending commits right after its callbacks, so
 			// anything they recorded would be dropped unread
 			if (pending) undo.set_active_node(buf_idx);
+			this.running = buf_idx;
 			for (let i = 0; i < cbs.length; i++) {
 				cbs[i]();
 			}
 			undo.clear_active_node();
-			undo.wraps = null;
-			// a callback can wrap a node that is still open, such as the parent
-			if (this.wraps.length !== 0) this.take_wraps(buf);
+			this.running = NONE;
 		}
 
-		// after the callbacks, which may have wrapped a wrapper of this node
-		if (this.redirects.size !== 0) this.drop_redirects(buf_idx);
+		// after the callbacks, which may still wrap, no child comes after the
+		// close so every wrapper below closes with the node
+		if (this.links !== 0 && this.slot(buf_idx) !== 0) {
+			this.drop_chain(buf, buf_idx);
+		}
+		if (this.close_with !== null) this.release(buf, buf_idx, false);
 
 		// only commit if the node is no longer pending.
 		// pending nodes can still be revoked after close.
@@ -682,30 +926,25 @@ export class PluginDispatcher {
 	dispatch_revoke(buf_idx: number, buf: NodeBuffer): void {
 		// nothing recorded, so nothing to undo
 		if (
-			this.redirects.size === 0 &&
+			this.links === 0 &&
 			this.close_cbs.live === 0 &&
-			this.undo.empty
+			this.undo.empty &&
+			this.close_with === null
 		)
 			return;
-		this.drop_redirects(buf_idx);
 		this.close_cbs.discard(buf_idx);
-
-		// clean up redirects from any cross-node WrapInner entries
-		// before the undo log is consumed.
-		// only the wrappers of this node go, the wrapped node may hold others
-		const entries = this.undo.get_entries(buf_idx);
-		if (entries) {
-			for (let i = 0; i < entries.length; i++) {
-				const e = entries[i];
-				if (e.kind === UndoEntryKind.WrapInner) {
-					this.remove_redirect(e.parent, e.wrapper);
-				}
-			}
-		}
 
 		// the repair keeps the children in the tree and the parser revokes each
 		// one it gives up on, so their plugin state is left alone
-		this.undo.revoke(buf_idx, buf);
+		// each entry takes out or restores its own links through the host, only
+		// the wrappers this node made go, a node it wrapped may hold others
+		this.undo.revoke(buf_idx, buf, this);
+
+		// what is left under the node goes with it, as it would on a close
+		if (this.links !== 0 && this.slot(buf_idx) !== 0) {
+			this.drop_chain(buf, buf_idx);
+		}
+		if (this.close_with !== null) this.release(buf, buf_idx, true);
 	}
 
 	/**
@@ -713,6 +952,8 @@ export class PluginDispatcher {
 	 * each sequential plugin gets its own tree walk.
 	 */
 	run_sequential(buf: NodeBuffer): void {
+		if (this.sequential.length === 0) return;
+		this.sequential_pass = true;
 		for (const pass of this.sequential) {
 			const handlers = pass.handlers;
 
@@ -790,6 +1031,7 @@ export class PluginDispatcher {
 				idx = next;
 			}
 		}
+		this.sequential_pass = false;
 	}
 
 	/**
@@ -799,10 +1041,17 @@ export class PluginDispatcher {
 	reset(): void {
 		if (this.undo !== NO_UNDO) this.undo.clear();
 		this.close_cbs.reset();
-		this.redirects.clear();
-		// a throw in a handler leaves its wraps behind
-		this.wraps.length = 0;
-		// a redirect switched this to every kind
+		// a document that ended whole dropped every link when its root closed
+		if (this.links !== 0) {
+			this.slots.fill(0);
+			this.links = 0;
+		}
+		this.open_from.clear();
+		this.close_with = null;
+		// a throw in a handler leaves these set
+		this.running = NONE;
+		this.sequential_pass = false;
+		// a link switched this to every kind
 		this.open_wants = this.handled;
 		this.next_synthetic_id = SYNTHETIC_ID_BASE;
 		// plugins keep per document state on it

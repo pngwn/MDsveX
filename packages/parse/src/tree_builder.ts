@@ -142,16 +142,17 @@ export class TreeBuilder implements Emitter {
 				nodes.push_node(kind, start, parent_idx, extra, pending);
 				return;
 			}
-			// children of a wrap_inner parent go to its wrapper
-			if (parent_idx !== NONE) {
-				const redirect = dispatcher.get_redirect(parent_idx);
-				if (redirect !== undefined) parent_idx = redirect;
-			}
-			const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
+			// a handled node opens under its source parent, the dispatcher moves
+			// it into an open wrapper after its handlers ran
 			if (dispatcher.has_handlers(kind)) {
+				const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
 				dispatcher.dispatch_open(idx, kind, nodes);
 				this.wants = dispatcher.open_wants;
+				return;
 			}
+			// any other child of a wrapped parent goes to its innermost open wrapper
+			if (parent_idx !== NONE) parent_idx = dispatcher.resolve(parent_idx);
+			nodes.push_node(kind, start, parent_idx, extra, pending);
 			return;
 		}
 		this.open_mapped(id, kind, start, parent, extra, pending);
@@ -172,19 +173,18 @@ export class TreeBuilder implements Emitter {
 
 		let parent_idx = parent === -1 ? NONE : (map[parent] ?? NONE);
 
-		// plugin redirect: if parent has a wrap_inner wrapper, children go there
-		if (dispatcher !== null && parent_idx !== NONE) {
-			const redirect = dispatcher.get_redirect(parent_idx);
-			if (redirect !== undefined) parent_idx = redirect;
+		// see open_slow
+		if (dispatcher !== null) {
+			if (dispatcher.has_handlers(kind)) {
+				const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
+				map[id] = idx;
+				dispatcher.dispatch_open(idx, kind, nodes);
+				this.wants = dispatcher.open_wants;
+				return;
+			}
+			if (parent_idx !== NONE) parent_idx = dispatcher.resolve(parent_idx);
 		}
-
-		const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
-		map[id] = idx;
-
-		if (dispatcher !== null && dispatcher.has_handlers(kind)) {
-			dispatcher.dispatch_open(idx, kind, nodes);
-			this.wants = dispatcher.open_wants;
-		}
+		map[id] = nodes.push_node(kind, start, parent_idx, extra, pending);
 	}
 
 	close(id: number, end: number, kind?: NodeKind): void {
@@ -212,7 +212,7 @@ export class TreeBuilder implements Emitter {
 		const dispatcher = this.dispatcher;
 		if (dispatcher !== null && !dispatcher.quiet()) {
 			dispatcher.dispatch_close(idx, nodes);
-			// a callback may have made the first redirect
+			// a callback may have made the first link, the close dropped the last
 			this.wants = dispatcher.open_wants;
 		}
 
@@ -270,9 +270,8 @@ export class TreeBuilder implements Emitter {
 
 		if (this.dispatcher !== null) {
 			if (parent_kind === undefined) parent_kind = this.opened_kind(parent_idx);
-			// plugin redirect: text targeting a wrapped parent goes to the wrapper
-			const redirect = this.dispatcher.get_redirect(parent_idx);
-			if (redirect !== undefined) parent_idx = redirect;
+			// text of a wrapped parent goes to its innermost open wrapper
+			parent_idx = this.dispatcher.resolve(parent_idx);
 		} else if (parent_kind === undefined) {
 			parent_kind = this.opened_kind(parent_idx);
 		}
@@ -362,6 +361,8 @@ export class TreeBuilder implements Emitter {
 		// plugin revoke: undo mutations before handle_repair
 		if (this.dispatcher !== null) {
 			this.dispatcher.dispatch_revoke(idx, nodes);
+			// an undone close restores its link, an undone wrap may drop the last
+			this.wants = this.dispatcher.open_wants;
 			const kind = nodes.kind_at(idx);
 			nodes.handle_repair(idx, source_text, text_start);
 			if (nodes.kind_at(idx) !== kind) this.dispatcher.log_kind(idx, kind);

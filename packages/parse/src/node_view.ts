@@ -54,6 +54,47 @@ export class WireTextSource implements TextSource {
 	}
 }
 
+/** what the structural methods need from the dispatcher, which owns the redirect links */
+export interface StructureHost {
+	/** later children of parent go to the wrapper wrap_inner just made */
+	link_inner(buf: NodeBuffer, parent: number, wrapper: number): void;
+	/** wrap a node and send its later siblings into the wrapper, returns the wrapper */
+	wrap_from(
+		buf: NodeBuffer,
+		node: number,
+		kind: NodeKind,
+		attrs: Record<string, any> | undefined
+	): number;
+	/** no later sibling joins the wrapper */
+	close_wrapper(buf: NodeBuffer, wrapper: number): void;
+}
+
+/** a directive arg reaches its component as a string prop, the renderer reads it as one */
+function check_args(kind: NodeKind, args: unknown): void {
+	if (args == null) return;
+	if (
+		kind !== NodeKind.directive_container &&
+		kind !== NodeKind.directive_leaf &&
+		kind !== NodeKind.directive_inline
+	)
+		return;
+	if (typeof args !== 'object' || Array.isArray(args)) {
+		throw new TypeError(
+			'the args of a directive must be an object of strings, got ' +
+				(Array.isArray(args) ? 'an array' : typeof args)
+		);
+	}
+	for (const key in args) {
+		const value = (args as Record<string, unknown>)[key];
+		if (typeof value !== 'string') {
+			throw new TypeError(
+				`the args of a directive must be strings, "${key}" is ` +
+					(value === null ? 'null' : typeof value)
+			);
+		}
+	}
+}
+
 /**
  * per-dispatch identity cache for node views.
  * ensures two handlers accessing the same node get the same view object.
@@ -66,13 +107,40 @@ export class ViewCache {
 	private buf: NodeBuffer;
 	private text_source: TextSource;
 	private undo: UndoLog;
+	/** @internal null for a cache with no dispatcher behind it, as in unit tests */
+	host: StructureHost | null;
 	/** @internal the document the views are made for, a view of an earlier one throws */
 	gen = 0;
 
-	constructor(buf: NodeBuffer, text_source: TextSource, undo: UndoLog) {
+	constructor(
+		buf: NodeBuffer,
+		text_source: TextSource,
+		undo: UndoLog,
+		host: StructureHost | null = null
+	) {
 		this.buf = buf;
 		this.text_source = text_source;
 		this.undo = undo;
+		this.host = host;
+	}
+
+	/** the view of a wrap_from wrapper, it replaces a plain view of the same node */
+	wrapper(index: number): WrapperView {
+		const view = new WrapperView(
+			index,
+			this.buf,
+			this.text_source,
+			this,
+			this.undo
+		);
+		const first = this.first;
+		if (first === null || first._index === index) this.first = view;
+		else {
+			let views = this.views;
+			if (views === null) views = this.views = new Map();
+			views.set(index, view);
+		}
+		return view;
 	}
 
 	/** get or create a NodeView for the given buffer index. */
@@ -149,6 +217,7 @@ const ATTRS_HANDLER: ProxyHandler<AttrsTarget> = {
 	set(target, prop: string, value: any): boolean {
 		const buf = target[VIEW]._live();
 		const idx = target[IDX];
+		if (prop === 'args') check_args(buf.kind_at(idx), value);
 		const meta = buf.metadata_at(idx);
 		const undo = target[UNDO];
 		if (undo.recording) {
@@ -218,7 +287,7 @@ export class NodeView {
 	/** @internal text resolution strategy. */
 	private _text_source: TextSource;
 	/** @internal identity cache for this dispatch. */
-	private _cache: ViewCache;
+	protected _cache: ViewCache;
 	/** @internal undo log for recording mutations. */
 	private _undo: UndoLog;
 	/** @internal the generation of the cache when this view was made */
@@ -421,6 +490,7 @@ export class NodeView {
 
 		const buf = this._live();
 		const idx = this._index;
+		if (attrs !== undefined) check_args(kind_num, attrs.args);
 
 		// capture prior state
 		const prior_first_child = buf.first_child_at(idx);
@@ -436,8 +506,27 @@ export class NodeView {
 			prior_first_child,
 			prior_last_child
 		);
+		// linked at once, a wrap_from later in this handler places its wrapper by the links
+		const host = this._cache.host;
+		if (host !== null) host.link_inner(buf, idx, wrapper_idx);
 
 		return this._cache.get(wrapper_idx)!;
+	}
+
+	/**
+	 * wrap this node and every sibling after it in a new node, until close is
+	 * called on the result or the parent closes, this node must be the last
+	 * child of its parent
+	 */
+	wrap_from(type: string, attrs?: Record<string, any>): WrapperView {
+		const kind_num = string_to_kind(type);
+		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
+		const buf = this._live();
+		if (attrs !== undefined) check_args(kind_num, attrs.args);
+		const host = this._cache.host;
+		if (host === null) throw new Error('wrap_from needs a plugin dispatcher');
+		const wrapper_idx = host.wrap_from(buf, this._index, kind_num, attrs);
+		return this._cache.wrapper(wrapper_idx);
 	}
 
 	/**
@@ -450,17 +539,18 @@ export class NodeView {
 
 		const buf = this._live();
 		const idx = this._index;
+		if (attrs !== undefined) check_args(kind_num, attrs.args);
 		const prior_first_child = buf.first_child_at(idx);
 
 		if (prior_first_child === NONE) {
 			// no existing children: push is equivalent to prepend
-			const new_idx = buf.push(kind_num, 0, idx, 0, attrs);
+			const new_idx = buf.push_synthetic(kind_num, 0, idx, 0, attrs);
 			this._undo.record_prepend(idx, new_idx, prior_first_child);
 			return this._cache.get(new_idx)!;
 		}
 
 		// allocate unlinked and manually wire as first child
-		const new_idx = buf.push_unlinked(kind_num, 0, 0, attrs);
+		const new_idx = buf.push_synthetic(kind_num, 0, NONE, 0, attrs);
 		buf.set_parent(new_idx, idx);
 		buf.set_next(new_idx, prior_first_child);
 		buf.set_prev(prior_first_child, new_idx);
@@ -480,12 +570,25 @@ export class NodeView {
 
 		const buf = this._live();
 		const idx = this._index;
+		if (attrs !== undefined) check_args(kind_num, attrs.args);
 		const prior_last_child = buf.last_child_at(idx);
 
-		// push() already appends as last child
-		const new_idx = buf.push(kind_num, 0, idx, 0, attrs);
+		const new_idx = buf.push_synthetic(kind_num, 0, idx, 0, attrs);
 
 		this._undo.record_append(idx, new_idx, prior_last_child);
 		return this._cache.get(new_idx)!;
+	}
+}
+
+/** the view wrap_from returns */
+export class WrapperView extends NodeView {
+	/**
+	 * no later sibling joins this wrapper, a child that is still open keeps it
+	 * open until that child closes, a no op once the wrapper is closed
+	 */
+	close(): void {
+		const buf = this._live();
+		const host = this._cache.host;
+		if (host !== null) host.close_wrapper(buf, this._index);
 	}
 }
