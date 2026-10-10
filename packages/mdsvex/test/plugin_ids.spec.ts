@@ -29,6 +29,30 @@ describe('vite plugin ids', () => {
 		expect(post.transform(CSS, id)).toBeUndefined();
 	});
 
+	test.each([
+		'/doc.svx?raw',
+		'/doc.svx?url',
+		'/doc.svx?url&inline',
+		'/doc.svx?worker',
+		'/doc.svx?sharedworker',
+		'/doc.svx?template=false&raw',
+		'/doc.svx?t=1&url',
+	])('leaves a vite query alone: %s', (id) => {
+		const [pre, post] = mdsvex() as any[];
+		const code = 'export default "# Hi\\n"';
+		expect(pre.transform(code, id)).toBeUndefined();
+		expect(post.transform(code, id)).toBeUndefined();
+	});
+
+	test.each([
+		'/doc.svx?template=raw',
+		'/doc.svx?template=url',
+		'/raw&url/doc.svx?t=1',
+	])('compiles a document whose query only looks like a vite one: %s', (id) => {
+		const [pre] = mdsvex() as any[];
+		expect(pre.transform('# Hi\n', id).code).toBe('<h1>Hi</h1>');
+	});
+
 	test('leaves other extensions alone', () => {
 		const [pre] = mdsvex() as any[];
 		expect(pre.transform(CSS, '/style.css?svx')).toBeUndefined();
