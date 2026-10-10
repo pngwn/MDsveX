@@ -6,7 +6,7 @@ on:
       - main
       - next
     paths-ignore:
-      - 'site/**'
+      - 'packages/site/**'
 
 jobs:
   preview:

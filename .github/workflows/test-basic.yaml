@@ -6,13 +6,13 @@ on:
       - main
       - next
     paths-ignore:
-      - 'site/**'
+      - 'packages/site/**'
   pull_request:
     branches:
       - main
       - next
     paths-ignore:
-      - 'site/**'
+      - 'packages/site/**'
 
 jobs:
   # lint:
