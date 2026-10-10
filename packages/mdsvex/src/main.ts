@@ -1258,6 +1258,9 @@ function svelte_request(id: string, q: number): boolean {
 	return new URLSearchParams(id.slice(q + 1)).has('svelte');
 }
 
+/** vite loads these as a js module of its own, not as the document */
+const VITE_QUERY = /[?&](?:raw|url|worker|sharedworker)\b/;
+
 type TemplateRegistry = ReturnType<typeof template_registry>;
 
 function union(a: readonly string[], b: readonly string[]): string[] {
@@ -1356,7 +1359,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	const only = extensions.length === 1 ? extensions[0] : null;
 	function matches(id: string): boolean {
 		const q = id.indexOf('?');
-		if (q >= 0 && svelte_request(id, q)) return false;
+		// only the query is tested, a path may hold an ampersand
+		if (q >= 0 && (svelte_request(id, q) || VITE_QUERY.test(id.slice(q))))
+			return false;
 		const clean = q < 0 ? id : id.slice(0, q);
 		if (only !== null) return clean.endsWith(only);
 		for (let i = 0; i < extensions.length; i++) {
