@@ -2328,14 +2328,75 @@ export class PFMParser {
 		const after_import = char_code_at.call(source, pos + 6 - base);
 		if (after_import !== SPACE && after_import !== OPEN_BRACE) return null;
 
-		// scan to end of line
+		// the statement ends at the first line break outside braces
 		let p = pos + 6;
-		while (p < length && char_code_at.call(source, p - base) !== LINEFEED) {
+		let depth = 0;
+		while (p < length) {
+			const c = char_code_at.call(source, p - base);
+			if (c === LINEFEED) {
+				if (depth === 0) break;
+				// a blank line inside braces is not an import, an unclosed brace must not swallow the document
+				p++;
+				while (
+					p < length &&
+					(char_code_at.call(source, p - base) === SPACE ||
+						char_code_at.call(source, p - base) === TAB)
+				)
+					p++;
+				if (p >= length) return this.finished ? null : false;
+				if (char_code_at.call(source, p - base) === LINEFEED) return null;
+				continue;
+			}
+			if (c === OPEN_BRACE) depth++;
+			else if (c === CLOSE_BRACE) {
+				if (depth > 0) depth--;
+			} else if (c === QUOTE || c === APOSTROPHE) {
+				// a string ends at its quote or the end of the line
+				p++;
+				while (p < length) {
+					const s = char_code_at.call(source, p - base);
+					if (s === c) {
+						p++;
+						break;
+					}
+					if (s === LINEFEED) break;
+					if (
+						s === BACKSLASH &&
+						char_code_at.call(source, p + 1 - base) !== LINEFEED
+					)
+						p++;
+					p++;
+				}
+				continue;
+			} else if (c === SLASH) {
+				const next = char_code_at.call(source, p + 1 - base);
+				if (next === SLASH || next === ASTERISK) {
+					// an unclosed block comment ends at the line break
+					p += 2;
+					while (p < length) {
+						const s = char_code_at.call(source, p - base);
+						if (s === LINEFEED) break;
+						p++;
+						if (
+							next === ASTERISK &&
+							s === ASTERISK &&
+							char_code_at.call(source, p - base) === SLASH
+						) {
+							p++;
+							break;
+						}
+					}
+					continue;
+				}
+			}
 			p++;
 		}
 
 		// stall if at end of buffer without newline and not finished
-		if (p >= length && !this.finished) return false;
+		if (p >= length) {
+			if (!this.finished) return false;
+			if (depth > 0) return null;
+		}
 
 		const value_start = pos;
 		const value_end = p; // exclude newline from value

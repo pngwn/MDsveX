@@ -928,10 +928,13 @@ const hoist_nodes: number[] = [];
 let module_code = '';
 /** the module script the module code goes into, -1 renders a new one in place of the frontmatter */
 let hoist_module = -1;
+/** the open tag of an instance script the render starts, ts for type imports or a ts module script */
+let hoist_open = '<script>\n';
 
 function hoist_reset(): void {
 	hoist_script = -1;
 	hoist_at = -1;
+	hoist_open = '<script>\n';
 	if (hoist_nodes.length !== 0) hoist_nodes.length = 0;
 }
 
@@ -939,41 +942,13 @@ function hoist_reset(): void {
  * find the import statements and, when there are some or replacements need
  * importing, the instance script
  */
-function hoist_begin(buf: NodeBuffer): void {
-	hoist_reset();
-	const n = buf._n;
-	let child = n[W.first_child];
-	// imports come first, after any frontmatter and blank lines
-	while (child !== Slot.NONE) {
-		const b = child * W.stride;
-		if (n[b + W.parent] !== 0) break;
-		const kind = n[b] & 0xff;
-		if (kind === K.IMPORT_STATEMENT) hoist_nodes.push(child);
-		else if (kind !== K.LINE_BREAK && kind !== K.FRONTMATTER) break;
-		child = n[b + W.next];
-	}
+function hoist_begin(c: Cursor, buf: NodeBuffer): void {
+	const child = hoist_imports(buf);
 	if (hoist_nodes.length === 0 && !has_components) return;
-	while (child !== Slot.NONE) {
-		const b = child * W.stride;
-		if (n[b + W.parent] !== 0) break;
-		if ((n[b] & 0xff) === K.HTML) {
-			const slot = n[b + W.meta];
-			const meta = slot === 0 ? undefined : buf._meta[slot - 1];
-			if (
-				meta !== undefined &&
-				meta.tag === 'script' &&
-				!meta.self_closing &&
-				!is_other_script(meta.attributes as Record<string, unknown> | undefined)
-			) {
-				hoist_script = child;
-				return;
-			}
-		}
-		child = n[b + W.next];
-	}
-	if (hoist_nodes.length !== 0) hoist_at = hoist_nodes[0];
+	hoist_script_from(c, buf, child);
 	// no script and no import to start one, the render starts with one
-	else comp_prefix = '<script>\n' + comp_lines + '</script>';
+	if (hoist_script === -1 && hoist_at === -1)
+		comp_prefix = hoist_open + comp_lines + '</script>';
 }
 
 /** the import statements, returns the root child after them */
@@ -994,35 +969,44 @@ function hoist_imports(buf: NodeBuffer): number {
 }
 
 /** the instance script from child on, or the first import that starts one */
-function hoist_script_from(buf: NodeBuffer, child: number): void {
+function hoist_script_from(c: Cursor, buf: NodeBuffer, child: number): void {
 	const n = buf._n;
+	let ts = false;
 	while (child !== Slot.NONE) {
 		const b = child * W.stride;
 		if (n[b + W.parent] !== 0) break;
 		if ((n[b] & 0xff) === K.HTML) {
 			const slot = n[b + W.meta];
 			const meta = slot === 0 ? undefined : buf._meta[slot - 1];
-			if (
-				meta !== undefined &&
-				meta.tag === 'script' &&
-				!meta.self_closing &&
-				!is_other_script(meta.attributes as Record<string, unknown> | undefined)
-			) {
-				hoist_script = child;
-				return;
+			if (meta !== undefined && meta.tag === 'script' && !meta.self_closing) {
+				const attrs = meta.attributes as Record<string, unknown> | undefined;
+				if (!is_other_script(attrs)) {
+					hoist_script = child;
+					return;
+				}
+				if (attrs!.src === undefined && attrs!.lang === 'ts') ts = true;
 			}
 		}
 		child = n[b + W.next];
 	}
 	if (hoist_nodes.length !== 0) hoist_at = hoist_nodes[0];
+	for (let i = 0; !ts && i < hoist_nodes.length; i++) {
+		const b = hoist_nodes[i] * W.stride;
+		ts = TYPE_IMPORT.test(c.slice(n[b + W.value_start], n[b + W.value_end]));
+	}
+	if (ts) hoist_open = '<script lang="ts">\n';
 }
+
+/** a type import or a type specifier, svelte only parses them in a ts component */
+const TYPE_IMPORT =
+	/^import\s+type(?:\s*[{*]|\s+(?!from\b)[\w$])|[{,]\s*type\s+(?!as\b)[\w$]/;
 
 /**
  * hoist_begin for a wrapped render, the instance script starts with the
  * replacement imports, the template import and the props it forwards
  */
 function wrap_hoist_begin(c: Cursor, buf: NodeBuffer): void {
-	hoist_script_from(buf, hoist_imports(buf));
+	hoist_script_from(c, buf, hoist_imports(buf));
 	let props = WRAP_PROPS;
 	let declare = true;
 	if (hoist_script !== -1) {
@@ -1049,7 +1033,7 @@ function wrap_hoist_begin(c: Cursor, buf: NodeBuffer): void {
 		'>';
 	// no script and no import to start one, the render starts with one
 	if (hoist_script === -1 && hoist_at === -1)
-		comp_prefix = '<script>\n' + comp_lines + '</script>';
+		comp_prefix = hoist_open + comp_lines + '</script>';
 }
 
 /**
@@ -1703,7 +1687,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 
 		case K.IMPORT_STATEMENT:
 			if (c.index === hoist_at) {
-				mo += '<script>\n';
+				mo += hoist_open;
 				mo_imports(c, sink, false);
 				mo += '</script>';
 			}
@@ -2307,7 +2291,7 @@ function fold_node(c: Cursor, p: number): number {
 
 		case K.IMPORT_STATEMENT:
 			if (c.index !== hoist_at) return p;
-			return push_dyn(p, '<script>\n' + import_lines(c) + '</script>');
+			return push_dyn(p, hoist_open + import_lines(c) + '</script>');
 
 		case K.FRONTMATTER:
 			if (module_code === '') return p;
@@ -2928,7 +2912,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 		case K.IMPORT_STATEMENT:
 			if (c.index !== hoist_at) return p;
 			if (p !== 0) mo += FOLD_STR[p];
-			mo += '<script>\n';
+			mo += hoist_open;
 			mo_imports(c, sink, true);
 			mo += '</script>';
 			return 0;
@@ -3429,7 +3413,7 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 		case K.IMPORT_STATEMENT:
 			if (c.index !== hoist_at) return p;
 			if (p !== 0) mo += FOLD_STR[p];
-			mo += '<script>\n';
+			mo += hoist_open;
 			mo_imports(c, sink, false);
 			mo += '</script>';
 			return 0;
@@ -5144,7 +5128,7 @@ export class CursorHTMLRenderer {
 						this.replace_typed
 					);
 				if (this.strict_directives) dir_strict = true;
-				hoist_begin(buf);
+				hoist_begin(c, buf);
 				if (code) module_begin(buf, code);
 				prebuilt_begin(buf);
 				this.html = render_folded(c);
@@ -5161,7 +5145,7 @@ export class CursorHTMLRenderer {
 		}
 
 		try {
-			hoist_begin(buf);
+			hoist_begin(c, buf);
 			if (code) module_begin(buf, code);
 			this.update_blocks(c);
 		} finally {
@@ -5243,7 +5227,7 @@ export class CursorHTMLRenderer {
 					this.replace_typed
 				);
 			if (this.strict_directives) dir_strict = true;
-			hoist_begin(buf);
+			hoist_begin(c, buf);
 			mo = comp_prefix;
 			if (code) {
 				module_begin(buf, code);

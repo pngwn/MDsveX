@@ -48,6 +48,16 @@ describe('bare imports', () => {
 		);
 	});
 
+	it('keep every line of a multi-line import', () => {
+		expect(
+			render(
+				"import {\n  a,\n  b,\n} from 'x';\nimport C from './C.svelte'\n\n<C {a} />\n"
+			)
+		).toBe(
+			"<script>\nimport {\n  a,\n  b,\n} from 'x';\nimport C from './C.svelte'\n</script><C {a} />"
+		);
+	});
+
 	it('go into the instance script', () => {
 		expect(
 			render(
@@ -74,6 +84,51 @@ describe('bare imports', () => {
 		).toBe(
 			'<script>\nimport A from \'a\'\n</script><script context="module">\n</script>'
 		);
+	});
+
+	it('make a ts script for a type import', () => {
+		for (const imp of [
+			"import type { T } from 't'",
+			"import type{ T } from 't'",
+			"import type * as t from 't'",
+			"import type T from 't'",
+			"import { a, type T } from 't'",
+			"import {\n  type T,\n  a,\n} from 't'",
+		])
+			expect(render(imp + "\nimport A from 'a'\n\n<A />\n")).toBe(
+				'<script lang="ts">\n' + imp + "\nimport A from 'a'\n</script><A />"
+			);
+	});
+
+	it('keep a plain script for imports named type', () => {
+		for (const imp of [
+			"import type from 't'",
+			"import type, { a } from 't'",
+			"import { type } from 't'",
+			"import { a, type } from 't'",
+			"import { type as t } from 't'",
+		])
+			expect(render(imp + '\n\n# Hi\n')).toBe(
+				'<script>\n' + imp + '\n</script><h1>Hi</h1>'
+			);
+	});
+
+	it('make a ts script beside a ts module script', () => {
+		expect(
+			render(
+				'import A from \'a\'\n\n<script module lang="ts">\n  export const m: number = 1;\n</script>\n'
+			)
+		).toBe(
+			'<script lang="ts">\nimport A from \'a\'\n</script><script module lang="ts">\n  export const m: number = 1;\n</script>'
+		);
+	});
+
+	it('leave the lang of the instance script they join', () => {
+		expect(
+			render(
+				"import type { T } from 't'\n\n<script>\n  let x = 1;\n</script>\n"
+			)
+		).toBe("<script>\nimport type { T } from 't'\n\n  let x = 1;\n</script>");
 	});
 
 	it('map to their source', () => {
