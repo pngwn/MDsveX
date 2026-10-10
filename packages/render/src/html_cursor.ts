@@ -909,7 +909,7 @@ const comp_warnings: ReplaceWarning[] = [];
 const NO_WARNINGS: readonly ReplaceWarning[] = Object.freeze([]);
 /** what the last comp_begin handed out */
 let comp_last = NO_WARNINGS;
-/** import lines of the used replacements, they join the instance script */
+/** import lines of the used replacements and the extra lines, they join the instance script */
 let comp_lines = '';
 /** a script of comp_lines when the document has no script and no import to start one */
 let comp_prefix = '';
@@ -942,12 +942,14 @@ function hoist_reset(): void {
 }
 
 /**
- * find the import statements and, when there are some or replacements need
- * importing, the instance script
+ * find the import statements and, when there are some or the render has
+ * replacements or extra lines to import, the instance script, extra is passed
+ * so a render with none reads no state for them
  */
-function hoist_begin(c: Cursor, buf: NodeBuffer): void {
+function hoist_begin(c: Cursor, buf: NodeBuffer, extra: boolean): void {
 	const child = hoist_imports(buf);
-	if (hoist_nodes.length === 0 && !has_components) return;
+	if (hoist_nodes.length === 0 && !has_components && !extra) return;
+	if (extra) comp_lines += extra_lines;
 	hoist_script_from(c, buf, child);
 	// no script and no import to start one, the render starts with one
 	if (hoist_script === -1 && hoist_at === -1)
@@ -1006,7 +1008,8 @@ const TYPE_IMPORT =
 
 /**
  * hoist_begin for a wrapped render, the instance script starts with the
- * replacement imports, the template import and the props it forwards
+ * replacement imports, the template import, the extra lines and the props it
+ * forwards
  */
 function wrap_hoist_begin(c: Cursor, buf: NodeBuffer): void {
 	hoist_script_from(c, buf, hoist_imports(buf));
@@ -1023,10 +1026,11 @@ function wrap_hoist_begin(c: Cursor, buf: NodeBuffer): void {
 			props = named === null ? '' : named[1];
 		}
 	}
-	comp_lines = component_imports(comp_used, {
-		specifier: wrap_spec,
-		local: WRAP_LOCAL,
-	});
+	comp_lines =
+		component_imports(comp_used, {
+			specifier: wrap_spec,
+			local: WRAP_LOCAL,
+		}) + extra_lines;
 	if (declare) comp_lines += 'let ' + WRAP_PROPS + ' = $props();\n';
 	wrap_open =
 		'<' +
@@ -5297,6 +5301,11 @@ export class CursorHTMLRenderer {
 	 */
 	// declared, so a renderer that never wraps builds and keeps no field
 	declare template?: TemplateWrapper;
+	/**
+	 * import statements the next renders add to the instance script, with or
+	 * without a replacement, the cached render of update ignores them
+	 */
+	declare imports?: readonly string[];
 
 	constructor(opts?: { cache?: boolean }) {
 		this.cache = opts?.cache ?? true;
@@ -5328,6 +5337,8 @@ export class CursorHTMLRenderer {
 				this.html = this.render_wrapped(c, buf, null, false, code);
 				return this.blocks;
 			}
+			const imports = this.imports;
+			const extra = imports !== undefined && imports.length !== 0;
 			try {
 				if (
 					(scope !== null && scope.size !== 0) ||
@@ -5340,8 +5351,9 @@ export class CursorHTMLRenderer {
 						CM.FOLD,
 						this.replace_typed
 					);
+				if (extra) extra_begin(imports);
 				if (this.strict_directives) dir_strict = true;
-				hoist_begin(c, buf);
+				hoist_begin(c, buf, extra);
 				if (code) module_begin(buf, code);
 				prebuilt_begin(buf);
 				this.html = render_folded(c);
@@ -5352,13 +5364,14 @@ export class CursorHTMLRenderer {
 				esc_bits = null;
 				if (dir_strict) dir_strict = false;
 				if (comp_scope !== null) comp_end();
+				if (extra) extra_end();
 				if (code) module_end();
 			}
 			return this.blocks;
 		}
 
 		try {
-			hoist_begin(c, buf);
+			hoist_begin(c, buf, false);
 			if (code) module_begin(buf, code);
 			this.update_blocks(c);
 		} finally {
@@ -5426,6 +5439,8 @@ export class CursorHTMLRenderer {
 		}
 		const scope = this.scope;
 		const directives = this.directives;
+		const imports = this.imports;
+		const extra = imports !== undefined && imports.length !== 0;
 		let p = 0;
 		try {
 			if (
@@ -5439,8 +5454,9 @@ export class CursorHTMLRenderer {
 					trace ? CM.TRACE : CM.MAPPED,
 					this.replace_typed
 				);
+			if (extra) extra_begin(imports);
 			if (this.strict_directives) dir_strict = true;
-			hoist_begin(c, buf);
+			hoist_begin(c, buf, extra);
 			mo = comp_prefix;
 			if (code) {
 				module_begin(buf, code);
@@ -5457,6 +5473,7 @@ export class CursorHTMLRenderer {
 			esc_bits = null;
 			if (dir_strict) dir_strict = false;
 			if (comp_scope !== null) comp_end();
+			if (extra) extra_end();
 			if (code) module_end();
 		}
 		// the module string would keep the document alive
@@ -5481,6 +5498,8 @@ export class CursorHTMLRenderer {
 	): string {
 		const scope = this.scope;
 		const directives = this.directives;
+		const imports = this.imports;
+		const extra = imports !== undefined && imports.length !== 0;
 		const mode = sink === null ? CM.FOLD : trace ? CM.TRACE : CM.MAPPED;
 		let html: string;
 		try {
@@ -5489,6 +5508,7 @@ export class CursorHTMLRenderer {
 				(directives !== null && directives.size !== 0)
 			)
 				comp_last = comp_begin(c, scope, directives, mode, this.replace_typed);
+			if (extra) extra_begin(imports);
 			if (this.strict_directives) dir_strict = true;
 			wrap_begin(this.template!, mode);
 			wrap_hoist_begin(c, buf);
@@ -5516,6 +5536,7 @@ export class CursorHTMLRenderer {
 			esc_bits = null;
 			if (dir_strict) dir_strict = false;
 			if (comp_scope !== null) comp_end();
+			if (extra) extra_end();
 			wrap_end();
 			if (code) module_end();
 			this.template = undefined;
@@ -5635,6 +5656,7 @@ export class CursorHTMLRenderer {
 		// a tag is a slice that would keep the source alive
 		comp_last = NO_WARNINGS;
 		if (this.template !== undefined) this.template = undefined;
+		if (this.imports !== undefined) this.imports = undefined;
 		// the escape index is module state and would keep the source alive,
 		// every render resets it, a zero length clamps any text of '' to empty
 		esc_src = '';
@@ -5679,6 +5701,23 @@ export function _resolve_offset_mappings(
 let hl: CodeHighlighter | null = null;
 /** the meta conventions of the render in progress for a plain pre replacement */
 let pm: PreMeta | null = null;
+
+/** the extra import lines of the render in progress, '' for none, hoist_begin adds them to comp_lines */
+let extra_lines = '';
+
+/** extra_end follows it, in a finally */
+function extra_begin(lines: readonly string[]): void {
+	let s = '';
+	for (let i = 0; i < lines.length; i++) s = s + lines[i] + '\n';
+	extra_lines = s;
+}
+
+function extra_end(): void {
+	extra_lines = '';
+	// a render with no replacement never reaches comp_end
+	comp_lines = '';
+	comp_prefix = '';
+}
 
 /** the first space or tab of an info string, -1 for none */
 function info_space(info: string): number {
