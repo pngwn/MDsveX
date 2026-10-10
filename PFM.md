@@ -33,15 +33,22 @@ The definition must appear **before** the reference is used. Forward references 
 
 **Lists**, Non-sequential numbers supported (`11.`, `27.` etc.). Tight vs. loose is determined locally and per-list: no blank lines between items = tight (no `<p>` wrappers), all items separated by blank lines = loose (with `<p>` wrappers). Mixed blank lines are treated as loose. No cascade behaviour, a blank line in one list never affects another.
 
-**Emphasis**, `_` for emphasis, `*` for strong. These are **distinct and non-interchangeable**. Intraword emphasis via special syntax:
+**Emphasis**, `_` for emphasis, `*` for strong. These are **distinct and non-interchangeable**. Intraword emphasis via a `|` marker, which is not rendered:
 
 ```markdown
 _emphasis_
-_strong emphasis_
-_*emphasis inside strong*_
+*strong emphasis*
+*_emphasis inside strong_*
 _*strong inside emphasis*_
-intraword: fan~_tas_~tic
+intraword: fan|_tas_|tic
 ```
+
+A delimiter opens after whitespace or punctuation, and closes before whitespace or punctuation. This applies to `_`, `*` and `~~`:
+
+- Punctuation includes Unicode punctuation and symbols, so curly quotes, dashes, ellipses, guillemets and CJK punctuation work like ASCII punctuation: `“*quoted*”`, `word—_aside_`, `*重要*。`.
+- Han, kana and hangul characters count as a boundary on the outer side of a delimiter, so CJK prose needs no marker: `这是*重要*的`. Other scripts written without spaces, such as Thai, still need `|`.
+- Emoji and other characters outside the Basic Multilingual Plane count as word characters.
+- A doubled delimiter nests: `**(x)**` is strong inside strong, and `~~~~(x)~~~~` is strikethrough inside strikethrough. Delimiters with nothing between them stay literal text.
 
 **Line breaks**, Soft breaks supported as-is. Hard breaks (`<br>`) via backslash only, trailing-space syntax removed:
 
@@ -61,7 +68,7 @@ world
 
 ```markdown
 > foo
-> bar
+bar
 ```
 
 -> blockquote containing `foo`, followed by a separate root-level paragraph `bar`.
@@ -72,7 +79,7 @@ world
 Coming Soon ^TM^ -> Coming Soon <sup>TM</sup>
 ```
 
-**Subscript**, Added, syntax TBD, likely `~`:
+**Subscript**, Added, via `~`:
 
 ```markdown
 x~1~ -> x<sub>1</sub>
@@ -82,6 +89,12 @@ x~1~ -> x<sub>1</sub>
 
 ```markdown
 ~~word~~
+```
+
+**Autolinks**, Only the angle-bracket form with a URI scheme. Bare URLs, `www.` addresses and email addresses are not linked: the shorthand is ambiguous, and the explicit form already exists.
+
+```markdown
+<https://example.com>
 ```
 
 **Tables**, GFM pipe tables as base, with three extensions. Whitespace alignment is insignificant; only structure matters.
@@ -164,6 +177,18 @@ An optional argument list may follow the brackets immediately (no space). Argume
 ```
 
 Keys start with a letter or underscore, then `[a-zA-Z0-9_-]`. Values are bare (no whitespace, commas, parens, quotes, or backslashes) or single/double quoted (backslash escapes the delimiter; values are kept raw). Spaces and tabs are allowed around `=` and `,`. Duplicate keys, trailing commas, empty values, and newlines make the list malformed: an inline directive then closes at `]` and the `(...)` stays literal text, a block directive line falls back to a paragraph. Attribute syntax (`{key=val}` from the upstream proposal) is not viable in mdsvex since `{}` is reserved — the parenthesised argument list above replaces it.
+
+**Math**, Planned, not implemented yet. Display math is a fenced code block with the language `math`. Inline math is a code span wrapped in dollars:
+
+````markdown
+```math
+\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
+```
+
+Euler's identity, $`e^{i\pi} + 1 = 0`$, links five constants.
+````
+
+Both forms keep the LaTeX raw, so `{}`, `\`, `_` and `^` need no escaping, and both render as math on GitHub and GitLab. A `$` that is not followed by a backtick is plain text, so prices need no escaping. Plain `$…$` and `$$…$$` are not math. A `latex` fence stays an ordinary code block that shows the source.
 
 ---
 
