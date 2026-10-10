@@ -1,6 +1,7 @@
 import type {
 	EnvironmentModuleGraph,
 	EnvironmentModuleNode,
+	ResolvedConfig,
 	Rollup,
 } from 'vite';
 import { metadata_export, parse_frontmatter } from './frontmatter';
@@ -14,7 +15,16 @@ const SUFFIX = '.js';
 const QUERY = /[?&]metadata(?:&|$)/;
 
 /** vite sets environment, the rollup type has none */
-type Context = Rollup.PluginContext & { environment?: { name: string } };
+type Context = Rollup.PluginContext & {
+	environment?: { name: string; config?: { consumer?: string } };
+};
+
+/** what load takes from a dev server */
+export interface MetadataDev {
+	config: ResolvedConfig;
+	/** vite watches its root, a document outside it needs adding */
+	watch(file: string): void;
+}
 
 /**
  * the end of the frontmatter value of a normalized source, which starts at 4,
@@ -61,6 +71,24 @@ export function metadata_query(
 	const loaded = new Map<string, string>();
 	const key_of = (environment: string | undefined, file: string) =>
 		(environment ?? '') + '\0' + file;
+	const is_document = (path: string) =>
+		extensions.some((ext) => path.endsWith(ext));
+
+	async function may_serve(
+		ctx: Context,
+		dev: MetadataDev,
+		file: string
+	): Promise<boolean> {
+		// vite reads any file for a server environment, only its own process asks
+		if (ctx.environment?.config?.consumer === 'server') return true;
+		const [vite, path] = await Promise.all([
+			import('vite'),
+			import('node:path'),
+		]);
+		// the check of vite is a prefix test, it takes .. segments as written
+		if (vite.normalizePath(path.resolve(file)) !== file) return false;
+		return vite.isFileLoadingAllowed(dev.config, file);
+	}
 
 	return {
 		/** undefined unless id is a document imported with ?metadata */
@@ -72,7 +100,7 @@ export function metadata_query(
 			const q = id.indexOf('?');
 			if (q < 0 || !QUERY.test(id.slice(q))) return;
 			const path = id.slice(0, q);
-			if (!extensions.some((ext) => path.endsWith(ext))) return;
+			if (!is_document(path)) return;
 			return ctx
 				.resolve(path, importer, { skipSelf: true })
 				.then((resolved) =>
@@ -86,17 +114,20 @@ export function metadata_query(
 			return id.startsWith(VIRTUAL);
 		},
 
-		/** watch is the dev watcher, a build has none and watches through rollup */
+		/** undefined for a path that is not a document or that dev may not serve, as for an id nothing loads */
 		async load(
 			ctx: Context,
 			id: string,
-			watch: ((file: string) => void) | null
-		): Promise<string> {
+			dev: MetadataDev | null
+		): Promise<string | undefined> {
 			const file = id.slice(VIRTUAL.length, -SUFFIX.length);
+			// a request can name any id, resolve need not have made this one
+			if (!id.endsWith(SUFFIX) || !is_document(file)) return;
+			if (dev !== null && !(await may_serve(ctx, dev, file))) return;
 			// in dev addWatchFile makes this module an importer of the document, so an
 			// edit of its body would reach the importers of the metadata
-			if (watch === null) ctx.addWatchFile(file);
-			else watch(file);
+			if (dev === null) ctx.addWatchFile(file);
+			else dev.watch(file);
 			const fs = await import('node:fs/promises');
 			const raw = await fs.readFile(file, 'utf8');
 			const key = key_of(ctx.environment?.name, file);
@@ -113,7 +144,7 @@ export function metadata_query(
 				}
 				throw e;
 			}
-			if (watch !== null) loaded.set(key, code);
+			if (dev !== null) loaded.set(key, code);
 			return code;
 		},
 

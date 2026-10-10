@@ -261,6 +261,24 @@ describe('?metadata load', () => {
 		expect(pre.load.call({}, '\0mdsvex:template/docs')).toBeUndefined();
 	});
 
+	test('reads only a document, whatever the id names', async () => {
+		const [pre] = mdsvex() as any[];
+		const read: string[] = [];
+		const ctx = { addWatchFile: (file: string) => read.push(file) };
+		writeFileSync(join(dir, 'config.yaml'), '---\nkey: secret\n---\n');
+		writeFileSync(join(dir, 'plain.svx.js'), '---\nkey: secret\n---\n');
+		for (const id of [
+			PREFIX + path('config.yaml') + '.js',
+			PREFIX + path('config.yaml'),
+			// the .js of the id is not part of the path
+			PREFIX + path('plain.svx.js') + '.js',
+			PREFIX + path('a.svx'),
+			PREFIX,
+		])
+			expect(await pre.load.call(ctx, id), id).toBeUndefined();
+		expect(read).toEqual([]);
+	});
+
 	test('uses frontmatter.parse', async () => {
 		const [pre] = mdsvex({ frontmatter: { parse: keep } }) as any[];
 		const id = write('toml.svx', '---\ntitle = "x"\n---\n');
