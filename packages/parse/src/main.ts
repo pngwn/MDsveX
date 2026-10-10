@@ -39,6 +39,7 @@ import { NodeBuffer, ErrorCollector } from './utils';
 import { TreeBuilder } from './tree_builder';
 import { PluginDispatcher } from './plugin_dispatch';
 import { SourceTextSource } from './node_view';
+import { is_unicode_punctuation } from './unicode_punctuation';
 export type { ParseOptions, ParseResult } from './types';
 export type { ParsePlugin } from './plugin_types';
 export { NodeKind, NodeBuffer } from './utils';
@@ -111,7 +112,9 @@ const classify = (code: number): CharMask =>
 				CharMask.whitespace | CharMask.punctuation | CharMask.word
 			: is_unicode_whitespace(code)
 				? CharMask.whitespace
-				: CharMask.word;
+				: is_unicode_punctuation(code)
+					? CharMask.punctuation
+					: CharMask.word;
 
 /**
  * lookup table for characters that break out of text scanning.

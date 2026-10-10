@@ -1,11 +1,11 @@
 root
   paragraph
     text "Foo "
-    text "*"
-    text "bar"
-    soft_break
-    text "baz"
-    text "*→"
+    strong_emphasis
+      text "bar"
+      soft_break
+      text "baz"
+    text "→"
     soft_break
     text "===="
   line_break

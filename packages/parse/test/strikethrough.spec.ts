@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest';
 import { parse_markdown_svelte } from '../src/main';
 import { NodeKind } from '../src/utils';
 import type { NodeBuffer } from '../src/utils';
-import { get_content, get_all_child_kinds } from './utils';
+import { get_content, get_all_child_kinds, inline_shape } from './utils';
 
 function non_breaks(nodes: NodeBuffer, parent: number = 0) {
 	return nodes
@@ -110,5 +110,33 @@ describe('Strikethrough (~~)', () => {
 		const para = children[0];
 		const para_kinds = get_all_child_kinds(nodes, para.index);
 		expect(para_kinds).not.toContain('strikethrough');
+	});
+});
+
+describe('strikethrough beside non-ascii characters', () => {
+	const D = (inner: string) => `strikethrough("${inner}")`;
+
+	test.each([
+		['“~~quoted~~”', `"“" ${D('quoted')} "”"`],
+		['word—~~aside~~ more', `"word—" ${D('aside')} " more"`],
+		['a ~~aside~~—more', `"a " ${D('aside')} "—more"`],
+		['1–~~2~~–3', `"1–" ${D('2')} "–3"`],
+		['«~~cité~~»', `"«" ${D('cité')} "»"`],
+		['a ~~wait~~…', `"a " ${D('wait')} "…"`],
+		['~~重要~~。', `${D('重要')} "。"`],
+		['~~重要~~、次', `${D('重要')} "、次"`],
+		['「~~重要~~」', `"「" ${D('重要')} "」"`],
+		['（~~重要~~）', `"（" ${D('重要')} "）"`],
+		['~~重要~~！', `${D('重要')} "！"`],
+		['前\u3000~~重要~~\u3000後', `"前\u3000" ${D('重要')} "\u3000後"`],
+		// between word characters the pipe gives the boundary
+		['这是|~~重要~~|的', `"这是" ${D('重要')} "的"`],
+		// without it a word character before stops the opener, the second tilde then opens a subscript
+		['这是~~重要~~的', `"这是" "~" subscript("重要" "~") "的"`],
+		// and a word character after stops the closer
+		['x ~~重要~~的', `"x " "~~" "重要" "~" "~的"`],
+	])('%s', (input, shape) => {
+		expect(inline_shape(input)).toBe(shape);
+		expect(inline_shape(input, 1)).toBe(shape);
 	});
 });

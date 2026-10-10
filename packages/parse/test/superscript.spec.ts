@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest';
 import { parse_markdown_svelte } from '../src/main';
 import { NodeKind } from '../src/utils';
 import type { NodeBuffer } from '../src/utils';
-import { get_all_child_kinds } from './utils';
+import { get_all_child_kinds, inline_shape } from './utils';
 
 function non_breaks(nodes: NodeBuffer, parent: number = 0) {
 	return nodes
@@ -135,5 +135,29 @@ describe('Superscript (^)', () => {
 			.find((n) => n.kind === 'strong_emphasis')!;
 		const emph_kinds = get_all_child_kinds(nodes, emph.index);
 		expect(emph_kinds).toContain('superscript');
+	});
+});
+
+describe('superscript beside non-ascii characters', () => {
+	const P = (inner: string) => `superscript("${inner}")`;
+
+	// the caret only looks for whitespace, so punctuation and word characters behave alike
+	test.each([
+		['“^quoted^”', `"“" ${P('quoted')} "”"`],
+		['word—^aside^ more', `"word—" ${P('aside')} " more"`],
+		['a ^aside^—more', `"a " ${P('aside')} "—more"`],
+		['«^cité^»', `"«" ${P('cité')} "»"`],
+		['a ^wait^…', `"a " ${P('wait')} "…"`],
+		['^重要^。', `${P('重要')} "。"`],
+		['「^重要^」', `"「" ${P('重要')} "」"`],
+		['（^重要^）', `"（" ${P('重要')} "）"`],
+		['^重要^！', `${P('重要')} "！"`],
+		['这是^重要^的', `"这是" ${P('重要')} "的"`],
+		['これは^「重要」^です', `"これは" superscript("「重要」") "です"`],
+		// the ideographic space is whitespace
+		['x^\u30002^', `"x" "^\u30002" "^"`],
+	])('%s', (input, shape) => {
+		expect(inline_shape(input)).toBe(shape);
+		expect(inline_shape(input, 1)).toBe(shape);
 	});
 });

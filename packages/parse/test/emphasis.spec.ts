@@ -4,7 +4,12 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'vitest';
 
-import { get_all_child_kinds, get_child_range, get_content } from './utils';
+import {
+	get_all_child_kinds,
+	get_child_range,
+	get_content,
+	inline_shape,
+} from './utils';
 
 import { parse_markdown_svelte } from '../src/main';
 import { NodeKind } from '../src/utils';
@@ -1888,5 +1893,78 @@ describe('emphasis and strong emphasis', () => {
 		expect(paragraph.kind).toBe('paragraph');
 		const kinds = paragraph.children.map((i) => nodes.get_node(i).kind);
 		expect(kinds).not.toContain('strong_emphasis');
+	});
+});
+
+describe('emphasis and strong beside non-ascii characters', () => {
+	const S = (inner: string) => `strong_emphasis("${inner}")`;
+	const E = (inner: string) => `emphasis("${inner}")`;
+
+	const punctuation: [string, string][] = [
+		['“*quoted*”', `"“" ${S('quoted')} "”"`],
+		['“_quoted_”', `"“" ${E('quoted')} "”"`],
+		['‘*quoted*’', `"‘" ${S('quoted')} "’"`],
+		['‘_quoted_’', `"‘" ${E('quoted')} "’"`],
+		['*“quoted”* x', `strong_emphasis("“quoted”") " x"`],
+		['_“quoted”_ x', `emphasis("“quoted”") " x"`],
+		['word—*aside* more', `"word—" ${S('aside')} " more"`],
+		['word—_aside_ more', `"word—" ${E('aside')} " more"`],
+		['a *aside*—more', `"a " ${S('aside')} "—more"`],
+		['a _aside_—more', `"a " ${E('aside')} "—more"`],
+		['1–*2*–3', `"1–" ${S('2')} "–3"`],
+		['1–_2_–3', `"1–" ${E('2')} "–3"`],
+		['«*cité*»', `"«" ${S('cité')} "»"`],
+		['«_cité_»', `"«" ${E('cité')} "»"`],
+		['a *wait*…', `"a " ${S('wait')} "…"`],
+		['a _wait_…', `"a " ${E('wait')} "…"`],
+		['…*wait* b', `"…" ${S('wait')} " b"`],
+		['…_wait_ b', `"…" ${E('wait')} " b"`],
+		['¿*qué*?', `"¿" ${S('qué')} "?"`],
+		['€*5*€', `"€" ${S('5')} "€"`],
+		['©_x_©', `"©" ${E('x')} "©"`],
+		['*重要*。', `${S('重要')} "。"`],
+		['_重要_。', `${E('重要')} "。"`],
+		['*重要*、次', `${S('重要')} "、次"`],
+		['_重要_、次', `${E('重要')} "、次"`],
+		['前文。*重要* x', `"前文。" ${S('重要')} " x"`],
+		['前文。_重要_ x', `"前文。" ${E('重要')} " x"`],
+		['「*重要*」', `"「" ${S('重要')} "」"`],
+		['「_重要_」', `"「" ${E('重要')} "」"`],
+		['（*重要*）', `"（" ${S('重要')} "）"`],
+		['（_重要_）', `"（" ${E('重要')} "）"`],
+		['*重要*！', `${S('重要')} "！"`],
+		['_重要_！', `${E('重要')} "！"`],
+		['*「重要」*。', `strong_emphasis("「重要」") "。"`],
+		// the ideographic space is whitespace
+		['前\u3000*重要*\u3000後', `"前\u3000" ${S('重要')} "\u3000後"`],
+		['*\u3000重要*', `"*\u3000重要" "*"`],
+	];
+
+	// a delimiter between two word characters neither opens nor closes
+	const intraword: [string, string][] = [
+		['这是*重要*的', `"这是" "*重要" "*的"`],
+		['这是_重要_的', `"这是" "_重要" "_的"`],
+		['これは*重要*です', `"これは" "*重要" "*です"`],
+		['これは_重要_です', `"これは" "_重要" "_です"`],
+		['이것은*중요*합니다', `"이것은" "*중요" "*합니다"`],
+		['これは*「重要」*です', `"これは" "*「重要」" "*です"`],
+		['x *重要*的', `"x " "*" "重要" "*的"`],
+		['пристаням*стремятся*вот', `"пристаням" "*стремятся" "*вот"`],
+		['caf*é*s', `"caf" "*é" "*s"`],
+		['naïve_é_s', `"naïve" "_é" "_s"`],
+		// astral code points are still word characters
+		['😀*x*😀', `"😀" "*x" "*😀"`],
+	];
+
+	// the transparent pipe gives the boundary where the text has none
+	const pipe: [string, string][] = [
+		['这是|*重要*|的', `"这是" ${S('重要')} "的"`],
+		['这是|_重要_|的', `"这是" ${E('重要')} "的"`],
+		['これは|*「重要」*|です', `"これは" strong_emphasis("「重要」") "です"`],
+	];
+
+	test.each([...punctuation, ...intraword, ...pipe])('%s', (input, shape) => {
+		expect(inline_shape(input)).toBe(shape);
+		expect(inline_shape(input, 1)).toBe(shape);
 	});
 });
