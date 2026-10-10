@@ -1,4 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer as create_http } from 'node:http';
+import type { AddressInfo, Server } from 'node:net';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -93,7 +96,8 @@ function plugins_for(options?: MdsvexOptions): Plugin[][] {
 
 async function serve(
 	root: string,
-	plugins: Plugin[][]
+	plugins: Plugin[][],
+	fs?: { strict?: boolean; allow?: string[] }
 ): Promise<ViteDevServer> {
 	return createServer({
 		root,
@@ -102,7 +106,7 @@ async function serve(
 		appType: 'custom',
 		cacheDir: join(root, '.vite'),
 		optimizeDeps: { noDiscovery: true, include: [] },
-		server: { middlewareMode: true, hmr: false, watch: null },
+		server: { middlewareMode: true, hmr: false, watch: null, fs },
 		plugins,
 	});
 }
@@ -434,6 +438,168 @@ describe('?metadata imports', () => {
 			(mod) => mod.metadata
 		);
 		expect(metadata).toEqual({ title: 'ok', tags: ['a'] });
+	});
+});
+
+describe('?metadata and the files a dev server may serve', () => {
+	let root: string;
+	let outside: string;
+	let server: ViteDevServer;
+	let http: Server;
+	let origin: string;
+	const SECRET = 'hunter2';
+	const fenced = (key: string) => `---\n${key}: ${SECRET}\n---\n`;
+
+	async function get(path: string) {
+		const res = await fetch(origin + path);
+		return { status: res.status, body: await res.text() };
+	}
+
+	const url_of = (id: string) => '/@id/__x00__' + id.slice(1);
+
+	async function refusal(env: 'client' | 'ssr', id: string) {
+		try {
+			await server.environments[env].transformRequest(id);
+		} catch (e: any) {
+			return { code: e.code, message: String(e.message) };
+		}
+	}
+
+	beforeAll(async () => {
+		root = write_app();
+		// the workspace is what vite serves by default, the system temp is not in it
+		outside = mkdtempSync(join(tmpdir(), 'mdsvex-metadata-outside-'));
+		writeFileSync(join(outside, 'secret.svx'), fenced('token'));
+		writeFileSync(join(root, 'config.yaml'), fenced('api_key'));
+		writeFileSync(join(root, '.env.md'), fenced('password'));
+		server = await serve(root, plugins_for());
+		http = create_http(server.middlewares);
+		await new Promise<void>((done) => http.listen(0, '127.0.0.1', done));
+		origin = 'http://127.0.0.1:' + (http.address() as AddressInfo).port;
+	});
+
+	afterAll(async () => {
+		await new Promise((done) => http?.close(done));
+		await server?.close();
+		rmSync(root, { recursive: true, force: true });
+		rmSync(outside, { recursive: true, force: true });
+	});
+
+	test('serves the metadata of a document, asked for by its id alone', async () => {
+		const { status, body } = await get(
+			url_of(metadata_id(root, 'src/posts/a.svx'))
+		);
+		expect(status).toBe(200);
+		expect(body).toContain('"title":"A"');
+	});
+
+	test('reads no file outside the directories the server may serve', async () => {
+		const id = metadata_id(outside, 'secret.svx');
+		const over_http = await get(url_of(id));
+		expect(over_http.status).not.toBe(200);
+		expect(over_http.body).not.toContain(SECRET);
+		const through_fs = await get(
+			'/@fs' +
+				vite_path(outside, 'secret.svx').replace(/^(?!\/)/, '/') +
+				'?metadata&import'
+		);
+		expect(through_fs.status).not.toBe(200);
+		expect(through_fs.body).not.toContain(SECRET);
+
+		const refused = await refusal('client', id);
+		expect(refused?.code).toBe('ERR_LOAD_URL');
+		const missing = await refusal('client', metadata_id(outside, 'no.svx'));
+		expect(missing?.code).toBe('ERR_LOAD_URL');
+		expect(missing?.message.replaceAll('no.svx', 'secret.svx')).toBe(
+			refused?.message
+		);
+	});
+
+	test('reads no file that is not a document', async () => {
+		const id = metadata_id(root, 'config.yaml');
+		const { status, body } = await get(url_of(id));
+		expect(status).not.toBe(200);
+		expect(body).not.toContain(SECRET);
+		expect((await refusal('client', id))?.code).toBe('ERR_LOAD_URL');
+		// vite reads the id itself for a server environment, which is no path
+		const in_ssr = await refusal('ssr', id);
+		expect(in_ssr).toBeDefined();
+		expect(in_ssr?.message).not.toContain(SECRET);
+	});
+
+	test('reads no document that server.fs.deny matches', async () => {
+		const id = metadata_id(root, '.env.md');
+		const { status, body } = await get(url_of(id));
+		expect(status).not.toBe(200);
+		expect(body).not.toContain(SECRET);
+		expect((await refusal('client', id))?.code).toBe('ERR_LOAD_URL');
+	});
+
+	test('loads a document outside the root that the server may serve', async () => {
+		// beside the root, so inside the workspace
+		const beside = root + '-beside';
+		mkdirSync(beside);
+		try {
+			writeFileSync(join(beside, 'near.svx'), '---\ntitle: Near\n---\n');
+			const result = await server.environments.client.transformRequest(
+				metadata_id(beside, 'near.svx')
+			);
+			expect(result?.code).toContain('"title":"Near"');
+		} finally {
+			rmSync(beside, { recursive: true, force: true });
+		}
+	});
+
+	test('a server environment loads any document, as vite does for it', async () => {
+		const result = await server.environments.ssr.transformRequest(
+			metadata_id(outside, 'secret.svx')
+		);
+		expect(result?.code).toContain(SECRET);
+	});
+
+	test('follows server.fs.strict', async () => {
+		const loose = await serve(root, plugins_for(), { strict: false });
+		try {
+			const result = await loose.environments.client.transformRequest(
+				metadata_id(outside, 'secret.svx')
+			);
+			expect(result?.code).toContain(SECRET);
+			await expect(
+				loose.environments.client.transformRequest(
+					metadata_id(root, 'config.yaml')
+				)
+			).rejects.not.toThrow(SECRET);
+		} finally {
+			await loose.close();
+		}
+	});
+
+	test('follows server.fs.allow, .. segments do not get around it', async () => {
+		writeFileSync(join(root, 'top.svx'), fenced('token'));
+		const narrow = await serve(root, plugins_for(), {
+			allow: [join(root, 'src')],
+		});
+		try {
+			const client = narrow.environments.client;
+			const allowed = await client.transformRequest(
+				metadata_id(root, 'src/posts/a.svx')
+			);
+			expect(allowed?.code).toContain('"title":"A"');
+			for (const path of [
+				vite_path(root, 'top.svx'),
+				vite_path(root, 'src') + '/../top.svx',
+				vite_path(root, 'src') + '/posts/../../top.svx',
+				vite_path(root, 'src') + '//../top.svx',
+				'src/../top.svx',
+			]) {
+				await expect(
+					client.transformRequest(PREFIX + path + '.js'),
+					path
+				).rejects.toMatchObject({ code: 'ERR_LOAD_URL' });
+			}
+		} finally {
+			await narrow.close();
+		}
 	});
 });
 

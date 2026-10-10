@@ -31,6 +31,7 @@ import {
 } from './template_registry';
 import { has_code, plugin_highlight } from './plugin_highlight';
 import { metadata_query } from './metadata_query';
+import type { MetadataDev } from './metadata_query';
 
 export * from './compile';
 export {
@@ -223,8 +224,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 	const no_templates = templates === null && select === undefined;
 	const metadata = metadata_query(extensions, options.frontmatter?.parse);
-	// vite watches a file outside the root once it is a module, a document read for its metadata never is
-	let watch: ((file: string) => void) | null = null;
+	let dev: MetadataDev | null = null;
 
 	// what select_template picked, only it can not be worked out from the source
 	const documents =
@@ -367,9 +367,13 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			},
 
 			configureServer(server) {
-				watch = (file) => {
-					if (!file.startsWith(root.replace(/\/$/, '') + '/'))
-						server.watcher.add(file);
+				dev = {
+					config: server.config,
+					// vite watches a file outside the root once it is a module, a document read for its metadata never is
+					watch(file) {
+						if (!file.startsWith(root.replace(/\/$/, '') + '/'))
+							server.watcher.add(file);
+					},
 				};
 			},
 
@@ -399,7 +403,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			},
 
 			load(id) {
-				if (metadata.is(id)) return metadata.load(this, id, watch);
+				if (metadata.is(id)) return metadata.load(this, id, dev);
 				// only templates with extra replacements load a module
 				if (templates !== null && id.startsWith('\0' + TEMPLATE_ID))
 					return templates.load(this, id);
