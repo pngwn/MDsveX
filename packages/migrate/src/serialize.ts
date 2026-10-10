@@ -160,7 +160,7 @@ function serialize_list_item(
 	// its blocks adjacent; a spread item separates them with a blank line.
 	let body = blocks.join(item.spread === true ? "\n\n" : "\n");
 
-	// GFM task-list checkbox, preserved for graceful degradation.
+	// pfm reads the gfm task marker as written
 	if (item.checked === true) body = "[x] " + body;
 	else if (item.checked === false) body = "[ ] " + body;
 

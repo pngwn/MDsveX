@@ -585,7 +585,7 @@ Every replacement gets the element's attributes as props, including any a parse 
 | `pre` | `lang`, `meta`, `code`, `title`, `caption` and meta props, see [code block components](docs#code-block-components) |
 | `code` | inline code only, its text as `children`, and `lang` when it is [highlighted](docs#inline-code) |
 | `ol` | `start` |
-| `li` | `checked`, when a task list plugin sets it |
+| `li` | `checked`, `true` or `false` on a task list item (`- [x] done`), and no checkbox in its `children` |
 | `th`, `td` | `align`, `"left"`, `"right"` or `"center"` |
 
 `hr` and `br` are void too. For a fenced code block, `children` is the whole highlighted `<pre>` element.

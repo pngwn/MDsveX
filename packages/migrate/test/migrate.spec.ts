@@ -110,6 +110,45 @@ describe("lists", () => {
 	test("task list checkbox is preserved", () => {
 		expect(m("- [x] done\n- [ ] todo")).toBe("- [x] done\n- [ ] todo");
 	});
+
+	/** the checked attr of every list item pfm reads in the migrated output */
+	function checked_of(input: string): unknown[] {
+		const { nodes } = parse_markdown_svelte(migrate(input));
+		const out: unknown[] = [];
+		const walk = (index: number): void => {
+			const node = nodes.get_node(index);
+			if (node.kind === "list_item") out.push(node.metadata?.checked);
+			node.children.forEach(walk);
+		};
+		walk(0);
+		return out;
+	}
+
+	test("a task item is still a task item in PFM", () => {
+		expect(checked_of("- [x] done\n- [ ] todo\n- plain")).toEqual([
+			true,
+			false,
+			undefined,
+		]);
+		expect(checked_of("1. [X] a\n\n   b\n\n2. [ ] c\n   * [x] d")).toEqual([
+			true,
+			false,
+			true,
+		]);
+	});
+
+	test("a task item keeps block-like text after its marker as text", () => {
+		expect(m("- [x] # a\n- [ ] - b")).toBe("- [x] \\# a\n- [ ] \\- b");
+		expect(checked_of("- [x] # a\n- [ ] - b")).toEqual([true, false]);
+	});
+
+	test("a marker GFM does not read as a task stays text in PFM", () => {
+		const inputs = ["- \\[x] a", "- [ ]", "- [x]a", "- a [x] b"];
+		for (const input of inputs) {
+			expect(checked_of(input), input).toEqual([undefined]);
+		}
+		expect(m("- \\[x] a")).toBe("- \\[x\\] a");
+	});
 });
 
 describe("reference links", () => {
