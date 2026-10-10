@@ -47,7 +47,7 @@ The view exposes:
 - `type` — yes, writable. Changing the type rewrites the type slot in the SoA. The renderer will read the new type when rendering. No validation — if you set heading `type` to `paragraph`, `depth` becomes meaningless but the system doesn't care.
 
 **Structural methods**
-- `wrapInner(type, attrs?)` — inserts a new node between this node and its current children, returns the new node's view
+- `wrap_inner(type, attrs?)` — inserts a new node between this node and its current children, returns the new node's view
 - `prepend(type, attrs?)` — inserts a new node as the first child, returns the new node's view
 - `append(type, attrs?)` — inserts a new node as the last child, returns the new node's view
 
@@ -146,14 +146,14 @@ If multiple plugins return close callbacks for the same node, they all fire on c
 
 ### Structural Mutations Compose via Nesting
 
-If two plugins both call `wrap_inner` on the same node, the wrappers nest in registration order:
+If two plugins both call `wrap_inner` on the same node, the wrappers nest, with the later plugin's wrapper on the outside:
 
 ```js
 // Plugin A: wrap_inner('link')
 // Plugin B: wrap_inner('span')
 
 // Result in SoA:
-// heading → link → span → [original children]
+// heading → span → link → [original children]
 ```
 
 Each `wrap_inner` is its own structural operation on the current state of the tree. The second one wraps whatever the first one produced.

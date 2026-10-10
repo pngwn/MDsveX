@@ -35,16 +35,21 @@ export class WireTreeBuilder {
 
 	constructor(capacity = 128, dispatcher?: PluginDispatcher) {
 		this.buf = new NodeBuffer(capacity);
-		// this builder writes strings in place and its text source holds the array
-		this.buf.own_strings();
 		this.id_to_index = [0]; // root id 0 -> buffer index 0
 		this.schema = null;
 		this.dispatcher = dispatcher ?? null;
+		this.bind_strings();
+	}
+
+	/** a new buffer shares the empty strings every buffer starts with */
+	private bind_strings(): void {
+		// this builder writes strings in place and its text source holds the array
+		const strings = this.buf.own_strings();
 
 		// wire mode: point the dispatcher's text source at the buffer's
 		// _strings array so NodeView.text_content resolves correctly.
 		if (this.dispatcher) {
-			this.dispatcher.set_text_source(new WireTextSource(this.buf._strings));
+			this.dispatcher.set_text_source(new WireTextSource(strings));
 		}
 	}
 
@@ -108,6 +113,9 @@ export class WireTreeBuilder {
 		this.buf = new NodeBuffer(128);
 		this.id_to_index = [0];
 		this.schema = null;
+		// redirects, undo logs and close callbacks hold indices of the old buffer
+		if (this.dispatcher) this.dispatcher.reset();
+		this.bind_strings();
 	}
 
 	// internal opcode handlers
