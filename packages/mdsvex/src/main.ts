@@ -1,4 +1,4 @@
-import type { ParsePlugin } from '@mdsvex/parse';
+import type { ParsePlugin, SyntaxOptions } from '@mdsvex/parse';
 import type { ComponentSource } from '@mdsvex/render/html-cursor';
 import type { Plugin, PluginOption, Rollup } from 'vite';
 import remapping from '@ampproject/remapping';
@@ -47,7 +47,7 @@ export type {
 	MdsvexManifest,
 } from './manifest';
 
-export interface MdsvexOptions {
+export interface MdsvexOptions extends SyntaxOptions {
 	extensions?: string[];
 	/** parse plugins that hook into tree construction. */
 	parse_plugins?: ParsePlugin[];
@@ -202,6 +202,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	const unknown_warned = new Set<string>();
 	if (options.component_mode !== undefined)
 		scope_of(undefined, options.component_mode);
+	// the parser only takes true, anything else would be off without a word
+	if (
+		options.unwrap_images !== undefined &&
+		typeof options.unwrap_images !== 'boolean'
+	)
+		throw new Error('[mdsvex] unwrap_images must be true or false');
 	const written = options.components;
 	const list =
 		written === undefined ? [] : Array.isArray(written) ? written : [written];
@@ -238,7 +244,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			if (registry?.resolved() === false || templates?.resolved() === false)
 				return null;
 			const root_modules = registry?.describe();
-			return {
+			const out: MdsvexManifest = {
 				version: MANIFEST_VERSION,
 				root,
 				extensions,
@@ -262,6 +268,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 							? 'custom'
 							: 'twinkleplop',
 			};
+			// left out when off, as a manifest from before the option has it
+			if (options.unwrap_images === true) out.unwrap_images = true;
+			return out;
 		},
 		(message) => log(message)
 	);
@@ -302,7 +311,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			directives,
 			options.component_mode,
 			highlight,
-			clean_id(id)
+			clean_id(id),
+			// the parser reads its own options from the plugin options
+			options
 		);
 		doc.raw = code;
 		if (doc.warnings !== undefined) {

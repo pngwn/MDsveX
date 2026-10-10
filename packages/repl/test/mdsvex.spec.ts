@@ -336,6 +336,46 @@ describe('highlight', () => {
 	});
 });
 
+describe('unwrap_images', () => {
+	const config_with = (unwrap_images: unknown) =>
+		prepare(files({ 'mdsvex.config.json': JSON.stringify({ unwrap_images }) }));
+
+	test('is off without the key and on when the config says so', () => {
+		const source = '![cat](/cat.png)\n';
+		const off = prepare(files({ 'mdsvex.config.json': '{}' }));
+		expect(off.config.unwrap_images).toBe(false);
+		expect('unwrap_images' in off.options).toBe(false);
+		expect(compile_markdown(source, 'App.svx', off.options).code).toBe(
+			'<p><img src="/cat.png" alt="cat" /></p>'
+		);
+
+		const on = config_with(true);
+		expect(on.error).toBeNull();
+		expect(on.config.unwrap_images).toBe(true);
+		expect(on.options.unwrap_images).toBe(true);
+		expect(compile_markdown(source, 'App.svx', on.options).code).toBe(
+			'<img src="/cat.png" alt="cat" />'
+		);
+		expect('unwrap_images' in config_with(false).options).toBe(false);
+	});
+
+	test('anything but a boolean is an error', () => {
+		expect(config_with('yes').error?.message).toBe(
+			'mdsvex.config.json: unwrap_images must be true or false'
+		);
+	});
+
+	test('the ast view shows the tree the compile renders', () => {
+		const source = '![cat](/cat.png)\n';
+		const kinds = (root: ReturnType<typeof pfm_ast>) =>
+			root.children!.map((n) => n.type).filter((t) => t !== 'line_break');
+		expect(kinds(pfm_ast(source))).toEqual(['paragraph']);
+		expect(kinds(pfm_ast(source, config_with(true).options))).toEqual([
+			'image',
+		]);
+	});
+});
+
 describe('pfm_ast', () => {
 	test('rebuilds the arena as plain nodes with source offsets', () => {
 		const source = '# hi\n\nsome *text*';

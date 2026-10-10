@@ -1,18 +1,26 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { createServer, createServerModuleRunner, normalizePath } from 'vite';
 import type { Plugin, ViteDevServer } from 'vite';
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import {
+	MANIFEST_PATH,
 	mdsvex,
 	module_script,
 	scan_exports,
 	scan_exports_detail,
 } from '../src/main';
+import type { MdsvexManifest } from '../src/main';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -338,6 +346,64 @@ describe('components option', () => {
 			}
 		);
 		expect(other).toBeUndefined();
+	});
+});
+
+describe('unwrap_images option', () => {
+	const FIGURE =
+		'<figure><img src="/cat.png" alt="cat"/><figcaption>cat</figcaption></figure>';
+	const components = (root: string) => [
+		new URL('./src/lib/Defaults.svelte', pathToFileURL(root + '/')),
+	];
+
+	test('renders a figure replacement outside a p and tells the editor', async () => {
+		const root = write_app();
+		const server = await serve(
+			root,
+			mdsvex({ components: components(root), unwrap_images: true })
+		);
+		try {
+			const html = await ssr(server, '/src/doc.svx');
+			expect(html).toContain(FIGURE);
+			expect(html).not.toContain('<p>' + FIGURE);
+			expect(await ssr(server, '/src/plain.svx')).toContain(
+				'<p>no replacement here</p>'
+			);
+			await vi.waitFor(() => {
+				const manifest: MdsvexManifest = JSON.parse(
+					readFileSync(join(root, MANIFEST_PATH), 'utf8')
+				);
+				expect(manifest.unwrap_images).toBe(true);
+				expect(manifest.version).toBe(1);
+			});
+		} finally {
+			await server.close();
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	test('anything but a boolean throws when the plugin is made', () => {
+		expect(() => mdsvex({ unwrap_images: 'yes' as any })).toThrow(
+			'[mdsvex] unwrap_images must be true or false'
+		);
+		expect(() => mdsvex({ unwrap_images: false })).not.toThrow();
+	});
+
+	test('off, the figure sits in the p and the manifest has no field', async () => {
+		const root = write_app();
+		const server = await serve(root, mdsvex({ components: components(root) }));
+		try {
+			expect(await ssr(server, '/src/doc.svx')).toContain('<p>' + FIGURE);
+			await vi.waitFor(() => {
+				const manifest: MdsvexManifest = JSON.parse(
+					readFileSync(join(root, MANIFEST_PATH), 'utf8')
+				);
+				expect('unwrap_images' in manifest).toBe(false);
+			});
+		} finally {
+			await server.close();
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });
 

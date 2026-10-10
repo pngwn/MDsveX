@@ -804,3 +804,125 @@ describe('task lists', () => {
 		);
 	});
 });
+
+describe('unwrap_images', () => {
+	function parse(source: string, unwrap_images: boolean) {
+		const tree = new TreeBuilder(source.length >> 3 || 128);
+		new PFMParser(tree, 2, { unwrap_images }).parse(source);
+		return tree.get_buffer();
+	}
+
+	/** the html every walk renders, without the script a replacement adds */
+	function every_walk(
+		source: string,
+		unwrap_images: boolean,
+		scope?: ComponentScope
+	): string {
+		const folded = new CursorHTMLRenderer({ cache: false });
+		const mapped = new CursorHTMLRenderer({ cache: false });
+		const fused = new CursorHTMLRenderer({ cache: false });
+		const traced = new CursorHTMLRenderer({ cache: false });
+		if (scope) {
+			folded.scope = mapped.scope = fused.scope = traced.scope = scope;
+		}
+		folded.update(parse(source, unwrap_images), source);
+		mapped.update_mapped(parse(source, unwrap_images), source);
+		fused.update_v3(parse(source, unwrap_images), source, source);
+		traced.update_trace(parse(source, unwrap_images), source);
+		const walks = [folded.html, mapped.html, fused.html, traced.html];
+		if (!scope) {
+			const cached = new CursorHTMLRenderer();
+			cached.update(parse(source, unwrap_images), source);
+			walks.push(cached.html);
+		}
+		for (const html of walks) expect(html).toBe(walks[0]);
+		return walks[0].replace(/^<script>[^]*?<\/script>/, '').replace(/\n+$/, '');
+	}
+
+	const A = '<img src="/a.png" alt="a" />';
+	const B = '<img src="/b.png" alt="b" />';
+
+	// input, with the option off, with it on
+	const cases: [string, string, string][] = [
+		['![a](/a.png)\n', `<p>${A}</p>`, A],
+		[
+			'before\n\n![a](/a.png)\n\nafter\n',
+			`<p>before</p><p>${A}</p><p>after</p>`,
+			`<p>before</p>${A}<p>after</p>`,
+		],
+		['![a](/a.png) ![b](/b.png)\n', `<p>${A} ${B}</p>`, `${A} ${B}`],
+		['![a](/a.png)\n![b](/b.png)\n', `<p>${A}\n${B}</p>`, `${A}\n${B}`],
+		[
+			'[![a](/a.png)](/c)\n',
+			`<p><a href="/c">${A}</a></p>`,
+			`<a href="/c">${A}</a>`,
+		],
+		['![a](/a.png) text\n', `<p>${A} text</p>`, `<p>${A} text</p>`],
+		['text ![a](/a.png)\n', `<p>text ${A}</p>`, `<p>text ${A}</p>`],
+		[
+			'> ![a](/a.png)\n',
+			`<blockquote>\n<p>${A}</p>\n</blockquote>`,
+			`<blockquote>\n${A}\n</blockquote>`,
+		],
+		[
+			'- ![a](/a.png)\n- b\n',
+			`<ul>\n<li>${A}</li>\n<li>b</li>\n\n</ul>`,
+			`<ul>\n<li>${A}</li>\n<li>b</li>\n\n</ul>`,
+		],
+		[
+			'- ![a](/a.png)\n\n- b\n',
+			`<ul>\n<li><p>${A}</p></li>\n<li><p>b</p></li>\n\n</ul>`,
+			`<ul>\n<li>${A}</li>\n<li><p>b</p></li>\n\n</ul>`,
+		],
+		[':::note[]\n![a](/a.png)\n:::\n', `<p>${A}</p>`, A],
+		[
+			'<div>\n\n![a](/a.png)\n\n</div>\n',
+			`<div><p>${A}</p></div>`,
+			`<div>${A}</div>`,
+		],
+		['<X /> ![a](/a.png)\n', `<p><X /> ${A}</p>`, `<X /> ${A}`],
+	];
+
+	for (const [input, off, on] of cases) {
+		it(`${JSON.stringify(input)} off`, () => {
+			expect(every_walk(input, false)).toBe(off);
+		});
+		it(`${JSON.stringify(input)} on`, () => {
+			expect(every_walk(input, true)).toBe(on);
+		});
+	}
+
+	describe('with an img component, a figure for one', () => {
+		const scope = () =>
+			new ComponentScope([{ specifier: 'm', names: ['img', 'p'] }], 'G');
+		const FIGURE = '<Img_MDSVEX_G src="/a.png" alt="a" title="t" />';
+
+		it('sits in the paragraph with the option off', () => {
+			expect(every_walk('![a](/a.png "t")\n', false, scope())).toBe(
+				`<P_MDSVEX_G>${FIGURE}</P_MDSVEX_G>`
+			);
+		});
+
+		it('has no paragraph around it with the option on', () => {
+			expect(every_walk('![a](/a.png "t")\n', true, scope())).toBe(FIGURE);
+		});
+
+		it('has none in a loose list item, a block quote or a link', () => {
+			expect(every_walk('- ![a](/a.png "t")\n\n- b\n', true, scope())).toBe(
+				`<ul>\n<li>${FIGURE}</li>\n<li><P_MDSVEX_G>b</P_MDSVEX_G></li>\n\n</ul>`
+			);
+			expect(every_walk('> ![a](/a.png "t")\n', true, scope())).toBe(
+				`<blockquote>\n${FIGURE}\n</blockquote>`
+			);
+			expect(every_walk('[![a](/a.png "t")](/c)\n', true, scope())).toBe(
+				`<a href="/c">${FIGURE}</a>`
+			);
+		});
+
+		it('keeps the paragraph of an image with text', () => {
+			expect(every_walk('![a](/a.png "t") text\n', true, scope())).toBe(
+				`<P_MDSVEX_G>${FIGURE} text</P_MDSVEX_G>`
+			);
+		});
+	});
+});

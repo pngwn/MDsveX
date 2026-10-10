@@ -1,0 +1,12 @@
+root
+  paragraph
+    text "before"
+  line_break
+  line_break
+  image src="/chart.png"
+    text "a chart"
+  line_break
+  line_break
+  paragraph
+    text "after"
+  line_break

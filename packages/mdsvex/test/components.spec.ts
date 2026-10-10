@@ -1121,3 +1121,154 @@ describe('svelte 5', () => {
 		).toThrow(/component_mode/);
 	});
 });
+
+describe('unwrap_images', () => {
+	const IMG = '<Img_MDSVEX_G src="/i.png" alt="al" />';
+
+	/** every entry point must render the same html */
+	function compile_every(
+		raw: string,
+		components: ComponentSource[],
+		unwrap_images?: boolean,
+		parse_plugins?: ParsePlugin[]
+	): string {
+		const options = { components, unwrap_images, parse_plugins };
+		const plain = compile(raw, options);
+		const session = new CompilerSession();
+		const into = {
+			source: '',
+			html: '',
+			metadata: undefined,
+			template: undefined,
+			warnings: undefined,
+			buf: new Uint32Array(0),
+			start: 0,
+			split: 0,
+			end: 0,
+		};
+		session.compile_trace_into(
+			raw,
+			parse_plugins,
+			into,
+			components,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			options
+		);
+		const others = [
+			compile(raw, { ...options, sourcemap: true }).code,
+			session.compile(raw, options).code,
+			session.compile_trace(
+				raw,
+				parse_plugins,
+				components,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				options
+			).code,
+			session.compile_v3(
+				raw,
+				'doc.svx',
+				parse_plugins,
+				components,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				options
+			).code,
+			into.html,
+		];
+		for (const code of others) expect(code).toBe(plain.code);
+		return body(plain.code);
+	}
+
+	test('off by default, the image sits in its paragraph', () => {
+		expect(compile_every('![al](/i.png)', only('img'))).toBe(`<p>${IMG}</p>`);
+		expect(compile_every('![al](/i.png)', only('img'), false)).toBe(
+			`<p>${IMG}</p>`
+		);
+		expect(body(compile('![al](/i.png)').code)).toBe(
+			'<p><img src="/i.png" alt="al" /></p>'
+		);
+	});
+
+	test('on, a paragraph of only an image has no p', () => {
+		expect(compile_every('![al](/i.png)', only('img'), true)).toBe(IMG);
+		expect(body(compile('![al](/i.png)', { unwrap_images: true }).code)).toBe(
+			'<img src="/i.png" alt="al" />'
+		);
+	});
+
+	test('on, the p replacement is not used for it', () => {
+		expect(
+			compile_every('text\n\n![al](/i.png)\n', only('img', 'p'), true)
+		).toBe(`<P_MDSVEX_G>text</P_MDSVEX_G>${IMG}`);
+	});
+
+	test('on, a link around the image stays and text keeps the p', () => {
+		expect(compile_every('[![al](/i.png)](/u)', only('img', 'a'), true)).toBe(
+			`<A_MDSVEX_G href="/u">${IMG}</A_MDSVEX_G>`
+		);
+		expect(compile_every('![al](/i.png) text', only('img'), true)).toBe(
+			`<p>${IMG} text</p>`
+		);
+	});
+
+	test('on, a loose list item of only an image has no p', () => {
+		expect(compile_every('- ![al](/i.png)\n\n- b', only('img'), true)).toBe(
+			`<ul>\n<li>${IMG}</li>\n<li><p>b</p></li>\n\n</ul>`
+		);
+	});
+
+	test('the same with parse plugins, which have a parser of their own', () => {
+		const plugins: ParsePlugin[] = [{ heading: { parse() {} } }];
+		expect(compile_every('![al](/i.png)', only('img'), true, plugins)).toBe(
+			IMG
+		);
+		expect(compile_every('![al](/i.png)', only('img'), false, plugins)).toBe(
+			`<p>${IMG}</p>`
+		);
+	});
+
+	test('a session follows the option from one document to the next', () => {
+		const raw = '![al](/i.png)';
+		const components = only('img');
+		const plugins: ParsePlugin[] = [{ heading: { parse() {} } }];
+		const session = new CompilerSession();
+		for (const parse_plugins of [undefined, plugins]) {
+			const run = (unwrap_images?: boolean) =>
+				body(
+					session.compile(raw, { components, parse_plugins, unwrap_images })
+						.code
+				);
+			expect(run(true)).toBe(IMG);
+			expect(run()).toBe(`<p>${IMG}</p>`);
+			expect(run(true)).toBe(IMG);
+			expect(run(false)).toBe(`<p>${IMG}</p>`);
+			expect(
+				body(session.compile_trace(raw, parse_plugins, components).code)
+			).toBe(`<p>${IMG}</p>`);
+		}
+	});
+
+	test('compile follows it too, small documents share one session', () => {
+		const raw = '![al](/i.png)';
+		const on = () => body(compile(raw, { unwrap_images: true }).code);
+		const off = () => body(compile(raw).code);
+		expect([on(), off(), on(), off()]).toEqual([
+			'<img src="/i.png" alt="al" />',
+			'<p><img src="/i.png" alt="al" /></p>',
+			'<img src="/i.png" alt="al" />',
+			'<p><img src="/i.png" alt="al" /></p>',
+		]);
+	});
+});

@@ -527,3 +527,79 @@ describe('directive args over the wire', () => {
 		expect(attr![3]).toEqual({ key: 'value' });
 	});
 });
+
+describe('unwrap_images over the wire', () => {
+	// no flag makes the parser as every other test here does
+	const run = (source: string, unwrap_images?: boolean, chunk_size = 0) => {
+		const emitter = new WireEmitter();
+		const parser =
+			unwrap_images === undefined
+				? new PFMParser(emitter)
+				: new PFMParser(emitter, 2, { unwrap_images });
+		if (chunk_size === 0) {
+			emitter.set_source(source);
+			parser.parse(source);
+			return emitter.flush();
+		}
+		parser.init();
+		const ops: unknown[][] = [];
+		for (let i = 0; i < source.length; i += chunk_size) {
+			emitter.set_source(source.slice(0, i + chunk_size));
+			parser.feed(source.slice(i, i + chunk_size));
+			ops.push(...emitter.flush());
+		}
+		emitter.set_source(source);
+		parser.finish();
+		ops.push(...emitter.flush());
+		return ops;
+	};
+	const paragraphs = (ops: unknown[][]) =>
+		ops.filter(
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.paragraph
+		) as unknown[][];
+	const revoked = (ops: unknown[][], id: unknown) =>
+		ops.filter((op) => op[0] === WireOp.Revoke && op[1] === id).length;
+
+	for (const size of [0, 1, 2, 3]) {
+		const fed = size === 0 ? 'one parse' : `fed ${size}`;
+
+		it(`opens the paragraph of an image pending and revokes it, ${fed}`, () => {
+			const ops = run('![alt](/a.png)\n', true, size);
+			const paras = paragraphs(ops);
+			expect(paras).toHaveLength(1);
+			// [op, id, kind, parent, pending]
+			expect(paras[0][4]).toBe(1);
+			expect(revoked(ops, paras[0][1])).toBe(1);
+			const image = ops.find(
+				(op) => op[0] === WireOp.Open && op[2] === NodeKind.image
+			)!;
+			expect(revoked(ops, image[1])).toBe(0);
+		});
+
+		it(`keeps the paragraph of an image and text, ${fed}`, () => {
+			const ops = run('![alt](/a.png) text\n', true, size);
+			const paras = paragraphs(ops);
+			expect(paras).toHaveLength(1);
+			expect(revoked(ops, paras[0][1])).toBe(0);
+		});
+
+		it(`sends the same ops as before with the option off, ${fed}`, () => {
+			const source = '![alt](/a.png)\n\n[![b](/b.png)](/c)\n\n- ![d](/d.png)\n';
+			const off = run(source, false, size);
+			const ops = run(source, undefined, size);
+			expect(JSON.stringify(off)).toBe(JSON.stringify(ops));
+			expect(paragraphs(off)[0][4]).toBe(0);
+		});
+	}
+
+	it('revokes the paragraph of a linked image and keeps the link', () => {
+		const ops = run('[![alt](/a.png)](/b)\n', true);
+		const para = paragraphs(ops)[0];
+		expect(revoked(ops, para[1])).toBe(1);
+		const link = ops.find(
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.link
+		)!;
+		expect(revoked(ops, link[1])).toBe(0);
+		expect(link[3]).toBe(para[1]);
+	});
+});

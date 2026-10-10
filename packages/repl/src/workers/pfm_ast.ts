@@ -1,4 +1,5 @@
 import { parse_markdown_svelte } from '@mdsvex/parse';
+import type { SyntaxOptions } from '@mdsvex/parse';
 
 export interface PfmNode {
 	type: string;
@@ -10,9 +11,12 @@ export interface PfmNode {
 	[key: string]: unknown;
 }
 
-/** the arena is not cloneable, so the tree is rebuilt as plain objects the ast view can walk */
-export function pfm_ast(input: string): PfmNode {
-	const { nodes, source } = parse_markdown_svelte(input);
+/**
+ * the arena is not cloneable, so the tree is rebuilt as plain objects the ast view can walk,
+ * syntax is the config, so the tree is the one the compile renders
+ */
+export function pfm_ast(input: string, syntax?: SyntaxOptions): PfmNode {
+	const { nodes, source } = parse_markdown_svelte(input, syntax);
 
 	function build(index: number): PfmNode {
 		const node = nodes.get_node(index);

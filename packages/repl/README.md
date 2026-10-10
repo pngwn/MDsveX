@@ -18,11 +18,12 @@ It started as a copy of the [Svelte playground](https://github.com/sveltejs/svel
   		"docs": { "component": "./Docs.svelte", "components": "./docs.js" }
   	},
   	"components": "./components.js",
-  	"component_mode": "markdown"
+  	"component_mode": "markdown",
+  	"unwrap_images": false
   }
   ```
 
-  Templates and component modules are scanned for their export names without being evaluated. `<script module>` is scanned for components, the whole file for `.js` and `.ts`, and `export *` is followed through the workspace. The REPL then passes `compile()` the plain options from `design/templates-and-components.md` and resolves `mdsvex:template/<name>` and `mdsvex:components` to workspace files. Specifiers that aren't workspace files are treated as npm packages.
+  Templates and component modules are scanned for their export names without being evaluated. `<script module>` is scanned for components, the whole file for `.js` and `.ts`, and `export *` is followed through the workspace. The REPL then passes `compile()` the plain options from `design/templates-and-components.md` and resolves `mdsvex:template/<name>` and `mdsvex:components` to workspace files. Specifiers that aren't workspace files are treated as npm packages. `unwrap_images` is the plugin's option of that name, and the AST tab shows the tree it gives.
 - **Syntax highlighting.** Code is highlighted with twinkleplop, as in the Vite plugin. `highlight` in `mdsvex.config.json` takes the plugin's options that JSON can hold:
 
   ```json

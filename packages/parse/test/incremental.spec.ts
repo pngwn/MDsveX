@@ -607,6 +607,90 @@ describe('directive incremental behavior', () => {
 	});
 });
 
+describe('unwrap_images matches batch at every chunk size', () => {
+	const opens_of = (rec: OpRecorder, kind: string) =>
+		rec.ops.filter((o) => o.op === 'open' && (o as any).kind === kind) as any[];
+	const cases: [string, string][] = [
+		['one image', '![a](/a.png)\n'],
+		['no final linefeed', '![a](/a.png)'],
+		['images on one line', '![a](/a.png) ![b](/b.png)\n'],
+		['images on two lines', '![a](/a.png)\n![b](/b.png)\n\nafter\n'],
+		['image in a link', '[![a](/a.png)](/b)\n'],
+		['two images in a link', '[ ![a](/a.png) ![b](/b.png) ](/c)\n'],
+		['text after', '![a](/a.png) text\n'],
+		['text on the next line', '![a](/a.png)\ntext\n'],
+		['link with text', '[![a](/a.png) text](/b)\n'],
+		['link that never closes', '[![a](/a.png)\n![b](/b.png)\n'],
+		['near misses', '!a\n\n![a\n\n![a](/a.png\n\n[!a](/b)\n'],
+		['ends at the bang', '!'],
+		['ends inside a linked image', '[!'],
+		['with a component', '![a](/a.png) <Badge />\n\n<Badge /> ![a](/a.png)\n'],
+		['block quote', '> ![a](/a.png)\n> ![b](/b.png)\n\n> ![c](/c.png) text\n'],
+		['tight list', '- ![a](/a.png)\n- ![b](/b.png) text\n- [x] ![c](/c.png)\n'],
+		[
+			'loose list',
+			'- ![a](/a.png)\n\n- ![b](/b.png) text\n\n- [x] ![c](/c.png)\n\n- [![d](/d.png)](/e)\n',
+		],
+		['container', ':::note[]\n![a](/a.png)\n\n![b](/b.png) text\n:::\n'],
+		['html block', '<div>\n\n![a](/a.png)\n\n</div>\n'],
+		[
+			'svelte block',
+			'{#if x}\n![a](/a.png)\n{:else}\n![b](/b.png) text\n{/if}\n',
+		],
+		['reference', '[r]: /r.png\n\n![a][r]\n\n![r][]\n\n![a][none]\n'],
+	];
+	const feed = (input: string, size: number, unwrap_images: boolean) => {
+		const tree = new TreeBuilder(input.length || 16);
+		const parser = new PFMParser(tree, 2, { unwrap_images });
+		parser.init();
+		for (let i = 0; i < input.length; i += size) {
+			parser.feed(input.slice(i, i + size));
+		}
+		parser.finish();
+		return tree.get_buffer();
+	};
+	for (const [name, input] of cases) {
+		for (const unwrap_images of [true, false]) {
+			for (const size of [1, 2, 3]) {
+				it(`${name}, ${unwrap_images ? 'on' : 'off'}, chunk size ${size}`, () => {
+					const batch = parse_markdown_svelte(input, { unwrap_images }).nodes;
+					const incr = feed(input, size, unwrap_images);
+					expect(tree_diff(batch, incr, input)).toEqual([]);
+					expect(print_ast(incr, input)).toBe(print_ast(batch, input));
+				});
+			}
+		}
+	}
+
+	it('holds a paragraph back until an image can be ruled in or out', () => {
+		const rec = new OpRecorder();
+		const p = new PFMParser(rec, 2, { unwrap_images: true });
+		p.init();
+		p.feed('!');
+		expect(opens_of(rec, 'paragraph')).toEqual([]);
+		p.feed('[');
+		const para = opens_of(rec, 'paragraph')[0];
+		expect(para.pending).toBe(true);
+		p.feed('a](/a.png)');
+		p.finish();
+		expect(
+			rec.ops.filter((o) => o.op === 'revoke' && (o as any).id === para.id)
+		).toHaveLength(1);
+	});
+
+	it('opens a plain paragraph at once with the option off', () => {
+		const rec = new OpRecorder();
+		const p = new PFMParser(rec);
+		p.init();
+		p.feed('!');
+		const para = opens_of(rec, 'paragraph')[0];
+		expect(para.pending).toBe(false);
+		p.feed('[a](/a.png)');
+		p.finish();
+		expect(rec.ops.filter((o) => o.op === 'revoke')).toEqual([]);
+	});
+});
+
 describe('retained source window', () => {
 	const lines = (n: number, f: (i: number) => string) =>
 		Array.from({ length: n }, (_, i) => f(i)).join('\n') + '\n';

@@ -1,0 +1,17 @@
+root
+  list ordered=false start=0 tight=true
+    list_item
+      image src="/1.png"
+        text "one"
+    list_item
+      image src="/2.png"
+        text "two"
+      text " text"
+    list_item
+      link href="/b"
+        image src="/3.png"
+          text "three"
+    list_item checked=true
+      image src="/4.png"
+        text "four"
+  line_break

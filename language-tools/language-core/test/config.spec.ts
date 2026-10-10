@@ -181,6 +181,18 @@ describe("document options from a manifest", () => {
 		});
 	});
 
+	it("passes unwrap_images on only when the manifest has it", () => {
+		expect("unwrap_images" in document_options(m, "/app/a.svx").compile!).toBe(false);
+		expect(
+			"unwrap_images" in
+				document_options({ ...m, unwrap_images: false }, "/app/a.svx").compile!,
+		).toBe(false);
+		expect(
+			document_options({ ...m, unwrap_images: true }, "/app/a.svx").compile!
+				.unwrap_images,
+		).toBe(true);
+	});
+
 	it("resolves each virtual id from the document, the extra module winning", () => {
 		const { resolve } = document_options(m, "/app/src/blog/a.svx");
 		expect(resolve!("mdsvex:template/theme", "default")).toBe(
@@ -292,6 +304,37 @@ describe("mdsvex.config.json", () => {
 				names: ["box"],
 			},
 		]);
+	});
+
+	it("takes unwrap_images, a manifest without the field when it is off", () => {
+		const root = tree({ "doc.svx": "![a](/a.png)" });
+		expect(from_json({ unwrap_images: true }, root, ts).unwrap_images).toBe(true);
+		expect("unwrap_images" in from_json({ unwrap_images: false }, root, ts)).toBe(false);
+		expect("unwrap_images" in from_json({}, root, ts)).toBe(false);
+	});
+
+	it("compiles a document with the unwrap_images of its config", () => {
+		const root = tree({
+			"on/mdsvex.config.json": '{ "unwrap_images": true }',
+			"on/doc.svx": "![a](/a.png)",
+			"off/mdsvex.config.json": "{}",
+			"off/doc.svx": "![a](/a.png)",
+		});
+		const loader = create_config_loader({ typescript: ts });
+		const on = loader.options_for(join(root, "on/doc.svx")).options;
+		const off = loader.options_for(join(root, "off/doc.svx")).options;
+		expect(on.compile?.unwrap_images).toBe(true);
+		expect(off.compile?.unwrap_images).toBeUndefined();
+	});
+
+	it("reads unwrap_images from a manifest the plugin wrote", () => {
+		const root = tree({ [MANIFEST]: manifest("/r", { unwrap_images: true }) });
+		const loader = create_config_loader();
+		const doc = join(root, "doc.svx");
+		expect(loader.options_for(doc).options.compile?.unwrap_images).toBe(true);
+		writeFileSync(join(root, MANIFEST), manifest("/r"));
+		utimesSync(join(root, MANIFEST), new Date(), new Date(Date.now() + 5000));
+		expect(loader.options_for(doc).options.compile?.unwrap_images).toBeUndefined();
 	});
 
 	it("scans nothing without typescript, so nothing is replaced", () => {

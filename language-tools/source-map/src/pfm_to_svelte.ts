@@ -11,6 +11,7 @@ import {
 } from 'mdsvex';
 import type { CompileOptions, CompileResult, TemplateEntry } from 'mdsvex';
 import { PFMParser } from '@mdsvex/parse';
+import type { SyntaxOptions } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import { Cursor } from '@mdsvex/parse/cursor';
 import {
@@ -147,10 +148,10 @@ interface Regions {
 	styles: { valueStart: number; valueEnd: number }[];
 }
 
-/** the regions of root nodes the markdown and css codes need */
-function classify(source: string): Regions {
+/** the regions of root nodes the markdown and css codes need, parsed as compile parses */
+function classify(source: string, syntax: SyntaxOptions | undefined): Regions {
 	const tree = new TreeBuilder(source.length >> 3 || 128);
-	new PFMParser(tree).parse(source);
+	new PFMParser(tree, 2, syntax).parse(source);
 	const cursor = new Cursor(tree.get_buffer(), source);
 	cursor.reset();
 	const regions: Regions = { frontmatter: null, excluded: [], styles: [] };
@@ -656,7 +657,7 @@ export function pfmToSvelte(
 	source: string,
 	options: PfmToSvelteOptions = {}
 ): PfmToSvelteResult {
-	const regions = classify(source);
+	const regions = classify(source, options.compile);
 	const diagnostics: PfmDiagnostic[] = [];
 	const { result, metadata_known } = compile_leniently(
 		source,

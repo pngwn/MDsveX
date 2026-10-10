@@ -1,0 +1,5 @@
+root
+  link href="/full.png"
+    image src="/chart.png"
+      text "a chart"
+  line_break

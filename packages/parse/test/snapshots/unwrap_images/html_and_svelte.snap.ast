@@ -1,0 +1,29 @@
+root
+  html tag="div"
+    line_break
+    line_break
+    image src="/a.png"
+      text "a"
+    line_break
+    line_break
+    paragraph
+      image src="/b.png"
+        text "b"
+      text " text"
+    line_break
+    line_break
+  line_break
+  line_break
+  svelte_block tag="if"
+    svelte_branch tag="if" "x"
+      line_break
+      image src="/c.png"
+        text "c"
+      line_break
+    svelte_branch tag="else"
+      line_break
+      link href="/e"
+        image src="/d.png"
+          text "d"
+      line_break
+  line_break

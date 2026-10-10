@@ -1,0 +1,21 @@
+root
+  line_break
+  image src="/r.png" title="ref"
+    text "a"
+  line_break
+  line_break
+  image src="/r.png" title="ref"
+    text "r"
+  line_break
+  line_break
+  link href="/r.png" title="ref"
+    image src="/r.png" title="ref"
+      text "a"
+  line_break
+  line_break
+  paragraph
+    text "![a"
+    text "]"
+    text "[missing"
+    text "]"
+  line_break

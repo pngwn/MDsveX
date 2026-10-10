@@ -363,7 +363,7 @@ Plus the following per-kind extras, so one component can serve several tags:
 
 Svelte 5 doesn't warn about unknown props, so the extras cost nothing for components that ignore them (#510).
 
-**Paragraphs around component images.** Per #430, a paragraph that contains only tags or components isn't wrapped in `<p>`. That rule (`60da6831`) already covers `![]()` → `<Img_MDSVEX>`.
+**Paragraphs around component images.** Per #430, a paragraph that contains only tags or components isn't wrapped in `<p>` (`60da6831`). That rule reads the source, so it covers an `<img>` or a component the author typed but not `![]()`: a markdown image is text to it, and a lone image renders `<p><Img_MDSVEX /></p>`, which is invalid once the replacement renders a `<figure>`. The `unwrap_images` option, off by default, makes an image count as a tag in that rule, so a paragraph of only images (alone, several, or inside a link) has no `<p>`. It is a parser option, the renderers are unchanged.
 
 ### 5.4 Nested scopes: deferred, kept possible
 

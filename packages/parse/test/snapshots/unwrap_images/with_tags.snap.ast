@@ -1,0 +1,44 @@
+root
+  image src="/a.png"
+    text "a"
+  text " "
+  html tag="Badge" self_closing=true
+  line_break
+  line_break
+  html tag="Badge" self_closing=true
+  text " "
+  image src="/a.png"
+    text "a"
+  line_break
+  line_break
+  image src="/a.png"
+    text "a"
+  text " "
+  html tag="span"
+    text "in a tag"
+  line_break
+  line_break
+  image src="/a.png"
+    text "a"
+  text " "
+  svelte_tag tag="html" "x"
+  line_break
+  line_break
+  paragraph
+    image src="/a.png"
+      text "a"
+    text " "
+    mustache "x"
+  line_break
+  line_break
+  image src="/a.png"
+    text "a"
+  text " "
+  html tag="div"
+    text "block"
+  line_break
+  line_break
+  html tag="span"
+    image src="/a.png"
+      text "a"
+  line_break
