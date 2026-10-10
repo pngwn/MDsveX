@@ -31,7 +31,7 @@ import {
 	COMMA,
 } from './constants';
 
-import type { ParseOptions } from './types';
+import type { ParseOptions, SyntaxOptions } from './types';
 
 import type { Emitter } from './opcodes';
 import { NodeKind } from './utils';
@@ -40,7 +40,7 @@ import { TreeBuilder } from './tree_builder';
 import { PluginDispatcher } from './plugin_dispatch';
 import { SourceTextSource } from './node_view';
 import { is_unicode_punctuation } from './unicode_punctuation';
-export type { ParseOptions, ParseResult } from './types';
+export type { ParseOptions, ParseResult, SyntaxOptions } from './types';
 export type { ParsePlugin } from './plugin_types';
 export { NodeKind, NodeBuffer } from './utils';
 export { PluginDispatcher } from './plugin_dispatch';
@@ -900,6 +900,10 @@ export class PFMParser {
 	private spec_block: boolean = false;
 	// in a phrasing element, the wrapper always goes
 	private spec_never: boolean = false;
+	// a link right under the paragraph that holds an image, text unless it closes
+	private spec_link: number = -1;
+	// opened in a list item, a paragraph that keeps its wrapper goes back to the list
+	private spec_item: boolean = false;
 
 	// svelte block state
 	private svelte_block_depth: number = 0;
@@ -944,10 +948,20 @@ export class PFMParser {
 
 	private tab_size: number;
 
-	constructor(emitter: Emitter, tab_size: number = 2) {
+	// syntax options, set_options writes every one
+	private unwrap_images: boolean = false;
+
+	constructor(emitter: Emitter, tab_size: number = 2, options?: SyntaxOptions) {
 		this.out = emitter;
 		this.errors = EMPTY_ERRORS;
 		this.tab_size = tab_size;
+		if (options !== undefined) this.set_options(options);
+	}
+
+	/** the syntax options for the documents that follow, one left out is off again */
+	set_options(options?: SyntaxOptions): void {
+		this.unwrap_images =
+			options !== undefined && options.unwrap_images === true;
 	}
 
 	/**
@@ -1077,7 +1091,7 @@ export class PFMParser {
 		this.source_end += len;
 		if (wait === FeedWait.table_cell) this.table_cell_resume();
 		this._run();
-		if (this.spec_para !== -1) this.spec_scan_to(this.cursor);
+		if (this.spec_para !== -1) this.spec_scan_to(this.cursor, false);
 		// the root trims between blocks itself, this trims inside paragraphs and containers
 		if (this.cursor - this.trim_point > TRIM_GAP) this.trim_at_stall();
 		// a fence stall leaves the cursor at its content start while its scan line moves on
@@ -4437,8 +4451,77 @@ export class PFMParser {
 		this.spec_text = false;
 		this.spec_block = false;
 		this.spec_never = never;
+		this.spec_link = -1;
+		this.spec_item = false;
 		this.states.push(StateKind.paragraph);
 		this.node_stack.push(id);
+	}
+
+	/** 1 for an image at pos or a link that opens at one, 0 for neither, -1 when a feed has to wait */
+	private image_start(pos: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const short = this.finished ? 0 : -1;
+		let p = pos;
+		if (char_code_at.call(source, p - base) === OPEN_SQUARE_BRACKET) p++;
+		if (p >= length) return short;
+		if (char_code_at.call(source, p - base) !== EXCLAMATION_MARK) return 0;
+		if (p + 1 >= length) return short;
+		return char_code_at.call(source, p + 1 - base) === OPEN_SQUARE_BRACKET
+			? 1
+			: 0;
+	}
+
+	/** opens the pending paragraph of an image at the cursor, returns what image_start gave */
+	private open_image_para(parent: number, in_item: boolean): number {
+		const image = this.image_start(this.cursor);
+		if (image > 0) {
+			this.open_spec_para(parent, false);
+			this.spec_item = in_item;
+		}
+		return image;
+	}
+
+	/**
+	 * a pending link or image about to close at end, an image right under the spec
+	 * paragraph is no text, nor is a link there that holds only images
+	 */
+	private spec_image(id: number, end: number): void {
+		const stack = this.node_stack;
+		const top = stack.length - 1;
+		const para = this.spec_para;
+		if (stack[top] !== id || !this.pending_has(id)) return;
+		if (this.kind_of(id) !== NodeKind.image) {
+			if (id !== this.spec_link) return;
+			// its ] is at the cursor, the destination is no text
+			this.spec_scan_to(this.cursor, true);
+			this.spec_scan = end;
+			this.spec_link = -1;
+			return;
+		}
+		const parent = stack[top - 1];
+		if (parent !== para) {
+			if (
+				stack[top - 2] !== para ||
+				this.kind_of(parent) !== NodeKind.link ||
+				!this.pending_has(parent)
+			)
+				return;
+			if (parent !== this.spec_link) {
+				// an earlier link that never closed left its [ as text
+				if (this.spec_link !== -1) this.spec_text = true;
+				const open = this.pending_starts[this.id_slots[parent]];
+				if (open < this.spec_scan) return;
+				this.spec_scan_to(open, true);
+				this.spec_scan = open + 1;
+				this.spec_link = parent;
+			}
+		}
+		const start = this.pending_starts[this.id_slots[id]];
+		if (start < this.spec_scan) return;
+		this.spec_scan_to(start, true);
+		this.spec_scan = end;
 	}
 
 	/**
@@ -4516,19 +4599,25 @@ export class PFMParser {
 	private end_spec_para(end: number): void {
 		const id = this.spec_para;
 		this.spec_para = -1;
-		this.spec_scan_to(end);
-		// an element still open becomes its literal open tag
-		if (this.spec_depth > 0) this.spec_text = true;
+		this.spec_scan_to(end, true);
+		// an element still open becomes its literal open tag, a link its [
+		if (this.spec_depth > 0 || this.spec_link !== -1) this.spec_text = true;
+		const drop = this.spec_never || !this.spec_text || this.spec_block;
+		if (this.spec_item && !drop) {
+			// tight or loose decides it from here, as for any list paragraph
+			this.track_list_pending_para(id);
+			return;
+		}
 		this.pending_remove(id);
-		if (this.spec_never || !this.spec_text || this.spec_block)
-			this.out.revoke(id);
+		if (drop) this.out.revoke(id);
 	}
 
 	/**
 	 * scan the spec paragraph up to limit for text outside tags and block level tags,
-	 * stopping before a construct that is not whole below limit
+	 * stopping before a construct that is not whole below limit, settled when no
+	 * link or image below limit can still close
 	 */
-	private spec_scan_to(limit: number): void {
+	private spec_scan_to(limit: number, settled: boolean): void {
 		// either decides the paragraph already
 		if (this.spec_never || this.spec_block) return;
 		const source = this.source;
@@ -4609,6 +4698,22 @@ export class PFMParser {
 				case BACKSLASH:
 					if (this.spec_depth === 0) this.spec_text = true;
 					p = p + 2 < limit ? p + 2 : limit;
+					break;
+				case EXCLAMATION_MARK:
+				case OPEN_SQUARE_BRACKET:
+					if (this.spec_depth === 0) {
+						// spec_image moves the scan past one that closes, a rescan here is text
+						if (
+							!settled &&
+							this.unwrap_images &&
+							(ch === OPEN_SQUARE_BRACKET ||
+								p + 1 >= limit ||
+								char_code_at.call(source, p + 1 - base) === OPEN_SQUARE_BRACKET)
+						)
+							break scan;
+						this.spec_text = true;
+					}
+					p++;
 					break;
 				default:
 					if (this.spec_depth === 0) this.spec_text = true;
@@ -6392,6 +6497,11 @@ export class PFMParser {
 								this.chomp(def_end, true);
 								continue;
 							}
+							if (this.unwrap_images) {
+								const image = this.open_image_para(current_node, false);
+								if (image < 0) break main_loop;
+								if (image > 0) continue;
+							}
 							this.states.push(StateKind.paragraph);
 							const ref_para = this.emit_open(
 								NodeKind.paragraph,
@@ -6419,6 +6529,23 @@ export class PFMParser {
 								current_node
 							);
 							this.node_stack.push(colon_para);
+							continue;
+						}
+
+						// its own case keeps the option off the default path
+						case EXCLAMATION_MARK: {
+							if (this.unwrap_images) {
+								const image = this.open_image_para(current_node, false);
+								if (image < 0) break main_loop;
+								if (image > 0) continue;
+							}
+							this.states.push(StateKind.paragraph);
+							const bang_para = this.emit_open(
+								NodeKind.paragraph,
+								this.cursor,
+								current_node
+							);
+							this.node_stack.push(bang_para);
 							continue;
 						}
 
@@ -9320,6 +9447,8 @@ export class PFMParser {
 						);
 					}
 					this.out.set_value_end(n_id, this.cursor);
+					if (this.spec_para !== -1 && this.unwrap_images)
+						this.spec_image(n_id, p);
 					this.pending_remove(n_id);
 					this.emit_close(n_id, p);
 					this.node_stack.pop();
@@ -9369,6 +9498,8 @@ export class PFMParser {
 						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
 						if (def.title) this.out.attr(current_node, 'title', def.title);
 						this.out.set_value_end(current_node, this.cursor);
+						if (this.spec_para !== -1 && this.unwrap_images)
+							this.spec_image(current_node, ref_p + 1);
 						this.pending_remove(current_node);
 						this.emit_close(current_node, ref_p + 1);
 						this.node_stack.pop();
@@ -9422,6 +9553,8 @@ export class PFMParser {
 						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
 						if (def.title) this.out.attr(current_node, 'title', def.title);
 						this.out.set_value_end(current_node, this.cursor);
+						if (this.spec_para !== -1 && this.unwrap_images)
+							this.spec_image(current_node, ref_p + 1);
 						this.pending_remove(current_node);
 						this.emit_close(current_node, ref_p + 1);
 						this.node_stack.pop();
@@ -9853,6 +9986,11 @@ export class PFMParser {
 			this.open_spec_para(current_node, phrasing);
 			return false;
 		}
+		if (this.unwrap_images) {
+			const image = this.open_image_para(current_node, false);
+			if (image < 0) return true;
+			if (image > 0) return false;
+		}
 		this.states.push(StateKind.paragraph);
 		const blk_html_para = this.emit_open(
 			NodeKind.paragraph,
@@ -10111,6 +10249,11 @@ export class PFMParser {
 			this.open_spec_para(current_node, false);
 			return false;
 		}
+		if (this.unwrap_images) {
+			const image = this.open_image_para(current_node, false);
+			if (image < 0) return true;
+			if (image > 0) return false;
+		}
 		this.states.push(StateKind.paragraph);
 		const svelte_para = this.emit_open(
 			NodeKind.paragraph,
@@ -10270,6 +10413,11 @@ export class PFMParser {
 					this.chomp(def_end, true);
 					return false;
 				}
+				if (this.unwrap_images) {
+					const image = this.open_image_para(current_node, false);
+					if (image < 0) return true;
+					if (image > 0) return false;
+				}
 				this.states.push(StateKind.paragraph);
 				const bq_ref_para = this.emit_open(
 					NodeKind.paragraph,
@@ -10297,6 +10445,22 @@ export class PFMParser {
 					current_node
 				);
 				this.node_stack.push(bq_colon_para);
+				return false;
+			}
+
+			case EXCLAMATION_MARK: {
+				if (this.unwrap_images) {
+					const image = this.open_image_para(current_node, false);
+					if (image < 0) return true;
+					if (image > 0) return false;
+				}
+				this.states.push(StateKind.paragraph);
+				const bq_bang_para = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(bq_bang_para);
 				return false;
 			}
 
@@ -10703,12 +10867,18 @@ export class PFMParser {
 					const task_end = this.task_marker_end(this.cursor);
 					if (task_end === -2) return true;
 					if (task_end >= 0) {
+						const image = this.unwrap_images ? this.image_start(task_end) : 0;
+						if (image < 0) return true;
 						this.out.attr(
 							current_node,
 							'checked',
 							char_code_at.call(source, this.cursor + 1 - base) !== SPACE
 						);
 						this.chomp(task_end, true);
+						if (image > 0) {
+							this.open_image_para(current_node, true);
+							return false;
+						}
 						// gfm reads the marker inside a paragraph, so the rest of the line is one
 						this.states.push(StateKind.paragraph);
 						const task_para = this.emit_open_pending(
@@ -10726,6 +10896,11 @@ export class PFMParser {
 				if (def_end >= 0) {
 					this.chomp(def_end, true);
 					return false;
+				}
+				if (this.unwrap_images) {
+					const image = this.open_image_para(current_node, true);
+					if (image < 0) return true;
+					if (image > 0) return false;
 				}
 				this.states.push(StateKind.paragraph);
 				const li_ref_para = this.emit_open_pending(
@@ -10790,6 +10965,11 @@ export class PFMParser {
 						this.end_list();
 					}
 					return false;
+				}
+				if (code === EXCLAMATION_MARK && this.unwrap_images) {
+					const image = this.open_image_para(current_node, true);
+					if (image < 0) return true;
+					if (image > 0) return false;
 				}
 				this.states.push(StateKind.paragraph);
 				const para_id = this.emit_open_pending(
@@ -11029,6 +11209,11 @@ export class PFMParser {
 					this.chomp(def_end, true);
 					return false;
 				}
+				if (this.unwrap_images) {
+					const image = this.open_image_para(current_node, false);
+					if (image < 0) return true;
+					if (image > 0) return false;
+				}
 				this.states.push(StateKind.paragraph);
 				const dc_ref_para = this.emit_open(
 					NodeKind.paragraph,
@@ -11036,6 +11221,22 @@ export class PFMParser {
 					current_node
 				);
 				this.node_stack.push(dc_ref_para);
+				return false;
+			}
+
+			case EXCLAMATION_MARK: {
+				if (this.unwrap_images) {
+					const image = this.open_image_para(current_node, false);
+					if (image < 0) return true;
+					if (image > 0) return false;
+				}
+				this.states.push(StateKind.paragraph);
+				const dc_bang_para = this.emit_open(
+					NodeKind.paragraph,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(dc_bang_para);
 				return false;
 			}
 
@@ -12161,7 +12362,7 @@ export function parse_markdown_svelte(
 	let errors: ErrorCollector;
 	if (spare_parser_busy) {
 		// a plugin or emitter reentered parse, the spare holds the outer document
-		errors = new PFMParser(tree, tab_size).parse_normalized(source);
+		errors = new PFMParser(tree, tab_size, options).parse_normalized(source);
 	} else {
 		spare_parser_busy = true;
 		let keep = false;
@@ -12171,6 +12372,7 @@ export function parse_markdown_svelte(
 				spare_parser = new PFMParser(idle_tree);
 			}
 			spare_parser.bind(tree, tab_size);
+			spare_parser.set_options(options);
 			errors = spare_parser.parse_normalized(source);
 			keep = true;
 		} finally {

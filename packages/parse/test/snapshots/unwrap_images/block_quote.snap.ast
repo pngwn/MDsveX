@@ -1,0 +1,22 @@
+root
+  block_quote
+    image src="/1.png"
+      text "one"
+    soft_break
+    image src="/2.png"
+      text "two"
+  line_break
+  line_break
+  block_quote
+    paragraph
+      image src="/a.png"
+        text "a"
+      text " text"
+  line_break
+  line_break
+  block_quote
+    block_quote
+      link href="/b"
+        image src="/a.png"
+          text "a"
+  line_break

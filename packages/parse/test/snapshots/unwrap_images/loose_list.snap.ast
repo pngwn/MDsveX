@@ -1,0 +1,42 @@
+root
+  list ordered=false start=0 tight=false
+    list_item
+      image src="/1.png"
+        text "one"
+    list_item
+      paragraph
+        image src="/2.png"
+          text "two"
+        text " text"
+    list_item
+      link href="/b"
+        image src="/3.png"
+          text "three"
+    list_item checked=true
+      image src="/4.png"
+        text "four"
+    list_item
+      paragraph
+        text "text"
+      image src="/5.png"
+        text "five"
+    list_item
+      image src="/6.png"
+        text "six"
+      soft_break
+      image src="/7.png"
+        text "seven"
+  line_break
+  line_break
+  list ordered=true start=1 tight=false
+    list_item
+      image src="/8.png"
+        text "eight"
+      list ordered=false start=0 tight=false
+        list_item
+          image src="/9.png"
+            text "nine"
+        list_item
+          paragraph
+            text "nested"
+  line_break

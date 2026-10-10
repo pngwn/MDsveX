@@ -1,8 +1,21 @@
 import type { NodeBuffer, ErrorCollector } from "./utils";
 import type { ParsePlugin } from "./plugin_types";
 
+/** syntax choices the parser reads, every one off by default */
+export interface SyntaxOptions {
+	/**
+	 * a paragraph of only images and whitespace gets no paragraph node, the
+	 * images are children of what held it, an image counts as a tag does in a
+	 * paragraph of tags and may sit in a link that holds nothing else
+	 *
+	 * @example
+	 * ![a chart](/chart.png)
+	 */
+	unwrap_images?: boolean;
+}
+
 /** options for controlling the markdown parser. */
-export interface ParseOptions {
+export interface ParseOptions extends SyntaxOptions {
 	token_capacity?: number;
 	error_capacity?: number;
 

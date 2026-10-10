@@ -1,0 +1,59 @@
+root
+  paragraph
+    image src="/a.png"
+      text "a"
+    text " text after"
+  line_break
+  line_break
+  paragraph
+    text "text before "
+    image src="/a.png"
+      text "a"
+  line_break
+  line_break
+  paragraph
+    image src="/a.png"
+      text "a"
+    text " "
+    link href="/b"
+      text "a link"
+  line_break
+  line_break
+  paragraph
+    image src="/a.png"
+      text "a"
+    text " "
+    strong_emphasis
+      image src="/b.png"
+        text "b"
+  line_break
+  line_break
+  paragraph
+    image src="/a.png"
+      text "a"
+    hard_break
+    image src="/b.png"
+      text "b"
+  line_break
+  line_break
+  paragraph
+    image src="/a.png"
+      text "a"
+    text " "
+    code_span "code"
+  line_break
+  line_break
+  paragraph
+    image src="/a.png"
+      text "a"
+    text " &amp;"
+  line_break
+  line_break
+  paragraph
+    image src="/a.png"
+      text "a"
+    text " "
+    text "!"
+    link href="/b.png"
+      text "b"
+  line_break

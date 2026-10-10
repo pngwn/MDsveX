@@ -1,0 +1,18 @@
+root
+  link href="/ci"
+    image src="/build.svg"
+      text "build"
+  soft_break
+  link href="/pkg"
+    image src="/npm.svg"
+      text "npm"
+  text " "
+  link href="/both"
+    text " "
+    image src="/1.png"
+      text "one"
+    text " "
+    image src="/2.png"
+      text "two"
+    text " "
+  line_break
