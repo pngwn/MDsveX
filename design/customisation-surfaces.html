@@ -1,0 +1,562 @@
+<title>mdsvex Customisation Surfaces</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #f2f5f8;
+  --surface: #ffffff;
+  --ink: #142231;
+  --muted: #5a6b7c;
+  --line: #d7dfe7;
+  --accent: #e2551b;
+  --accent-soft: #fde7dc;
+  --have: #0f8a7a;   --have-bg: #dcf3ef;
+  --prop: #b06a00;   --prop-bg: #fbeed5;
+  --syn: #6b4fd8;    --syn-bg: #ece8fc;
+  --code-bg: #e8eef4;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1720; --surface: #16212c; --ink: #e6edf3; --muted: #9aabbb; --line: #2a3846;
+    --accent: #ff7a42; --accent-soft: #3a2218;
+    --have: #4fd1bd; --have-bg: #133a35; --prop: #f0b04a; --prop-bg: #3a2c12;
+    --syn: #a996ff; --syn-bg: #2a2447; --code-bg: #1f2c39;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1720; --surface: #16212c; --ink: #e6edf3; --muted: #9aabbb; --line: #2a3846;
+  --accent: #ff7a42; --accent-soft: #3a2218;
+  --have: #4fd1bd; --have-bg: #133a35; --prop: #f0b04a; --prop-bg: #3a2c12;
+  --syn: #a996ff; --syn-bg: #2a2447; --code-bg: #1f2c39;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 16px/1.6 var(--font-body);
+  padding-inline: 16px; padding-block: 40px 72px;
+}
+.wrap { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 64px; }
+h1, h2, h3, h4 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); line-height: 1.02; font-weight: 800; }
+h2 { font-size: 1.7rem; line-height: 1.15; font-weight: 700; }
+h3 { font-size: 1.15rem; line-height: 1.25; font-weight: 700; }
+h4 { font: 600 0.75rem/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+p { margin: 0; max-width: 65ch; }
+ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 6px; max-width: 65ch; }
+.lede { font-size: 1.12rem; color: var(--muted); }
+.eyebrow { font: 600 0.75rem/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); }
+code { font-family: var(--font-mono); font-size: 0.86em; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 4px; }
+pre { margin: 0; font: 400 0.82rem/1.55 var(--font-mono); background: var(--code-bg); border-radius: 8px; padding: 14px 16px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: inherit; }
+section { display: flex; flex-direction: column; gap: 20px; }
+.head { display: flex; flex-direction: column; gap: 10px; }
+.note { font-size: 0.85rem; color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.status { display: inline-flex; align-self: flex-start; align-items: center; font: 600 0.72rem/1 var(--font-mono); padding: 4px 8px; border-radius: 4px; white-space: nowrap; }
+.s-have { background: var(--have-bg); color: var(--have); }
+.s-prop { background: var(--prop-bg); color: var(--prop); }
+
+.hero { display: flex; flex-direction: column; gap: 18px; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.key { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 0.9rem; color: var(--muted); align-items: center; }
+.key span { display: inline-flex; align-items: center; gap: 8px; }
+
+.pipe { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; counter-reset: stage; }
+.stage { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 10px; position: relative; min-width: 0; }
+.stage::before { counter-increment: stage; content: counter(stage); font: 800 0.9rem/1 var(--font-display); color: var(--accent); }
+.stage:not(:last-child)::after { content: "→"; position: absolute; right: -11px; top: 14px; color: var(--muted); font-size: 0.9rem; z-index: 1; }
+.stage p { font-size: 0.88rem; color: var(--muted); }
+.stage .acts { display: flex; flex-direction: column; gap: 6px; margin-top: auto; padding-top: 6px; }
+.act { font-size: 0.8rem; line-height: 1.35; padding: 6px 8px; border-radius: 6px; }
+.a-have { background: var(--have-bg); color: var(--have); }
+.a-prop { background: var(--prop-bg); color: var(--prop); }
+@media (max-width: 760px) {
+  .pipe { grid-template-columns: minmax(0, 1fr); }
+  .stage:not(:last-child)::after { content: "↓"; right: auto; left: 50%; top: auto; bottom: -15px; }
+}
+
+.surface { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px; gap: 22px; }
+.surface > .head { gap: 8px; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.two > div, .three > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+@media (max-width: 760px) { .two, .three { grid-template-columns: minmax(0, 1fr); } }
+.cando { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 620px) { .cando { grid-template-columns: minmax(0, 1fr); } }
+.cando > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cando ul { font-size: 0.92rem; }
+
+.tbl-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+thead th { font: 600 0.75rem/1.2 var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border-bottom: 2px solid var(--line); }
+tbody tr:last-child td, tbody tr:last-child th { border-bottom: 0; }
+tbody th { font-weight: 600; }
+.forms { min-width: 520px; }
+.matrix { min-width: 760px; }
+.yes { color: var(--have); font-weight: 600; }
+.no { color: var(--muted); }
+
+.shells { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: center; }
+.shells .arrow { color: var(--muted); font-size: 1.2rem; }
+@media (max-width: 620px) { .shells { grid-template-columns: minmax(0, 1fr); } .shells .arrow { justify-self: center; transform: rotate(90deg); } }
+.shell { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.aside-mock { border: 1px solid var(--prop); background: var(--prop-bg); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 0.92rem; }
+.aside-mock strong { font-weight: 600; }
+.hole { border: 1.5px dashed var(--syn); color: var(--syn); background: var(--syn-bg); border-radius: 4px; padding: 1px 8px; font: 500 0.78rem/1.6 var(--font-mono); display: inline-block; }
+.filled { background: var(--syn-bg); border-radius: 4px; padding: 1px 6px; }
+
+.tree { color: var(--ink); }
+.tree .syn { color: var(--syn); font-weight: 500; }
+.tree .dim { color: var(--muted); }
+
+.mock-steps { list-style: none; margin: 0; padding: 4px 0 0 0; counter-reset: step; display: flex; flex-direction: column; max-width: none; gap: 0; }
+.mock-step { position: relative; padding: 0 0 18px 40px; border-left: 1px solid var(--line); margin-left: 13px; display: flex; flex-direction: column; gap: 6px; }
+.mock-step:last-child { padding-bottom: 0; }
+.mock-step::before { counter-increment: step; content: counter(step); position: absolute; left: -14px; top: -2px; width: 27px; height: 27px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); display: grid; place-items: center; font: 600 0.75rem/1 var(--font-body); }
+.mock-step:last-child::before { content: "✓"; }
+.mock-step b { font: 700 0.98rem/1.3 var(--font-display); }
+.mock-step span { font-size: 0.85rem; color: var(--muted); }
+.mock-step pre { font-size: 0.75rem; padding: 8px 10px; }
+
+.reach { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; max-width: none; gap: 0; }
+.reach li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 20px; padding: 12px 0; border-top: 1px solid var(--line); align-items: baseline; }
+.reach li:first-child { border-top: 0; }
+.reach .want { font-weight: 600; }
+.reach .use { color: var(--muted); font-size: 0.95rem; }
+@media (max-width: 620px) { .reach li { grid-template-columns: minmax(0, 1fr); } }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.mini { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.mini p { font-size: 0.92rem; color: var(--muted); }
+.q { background: var(--accent-soft); border: 0; }
+.q p { color: var(--ink); }
+footer { font-size: 0.85rem; color: var(--muted); }
+</style>
+
+<main class="wrap">
+
+  <header class="hero">
+    <span class="eyebrow">mdsvex · design overview · 10 Oct 2026</span>
+    <h1>Four ways to <em>extend</em> a document</h1>
+    <p class="lede">mdsvex has two customisation surfaces today, directives and parse plugins. Two more are proposed: static directives, and plugins that own a directive. This page puts all four side by side: what each one is, where it acts, and what it can't do.</p>
+    <div class="key">
+      <span><i class="status s-have">exists</i> on <code>next</code> today</span>
+      <span><i class="status s-prop">proposed</i> in <code>design/plugin-directives.md</code>, nothing decided</span>
+    </div>
+  </header>
+
+  <section aria-labelledby="pipe-h">
+    <div class="head">
+      <span class="eyebrow">Where each one acts</span>
+      <h2 id="pipe-h">One document, four stages</h2>
+    </div>
+    <ol class="pipe">
+      <li class="stage">
+        <h3>You write markdown</h3>
+        <p>Directives are the only extension syntax. Everything else works on plain markdown.</p>
+        <div class="acts"><span class="act a-have"><code>:::name[label](args)</code></span></div>
+      </li>
+      <li class="stage">
+        <h3>The parser builds the tree</h3>
+        <p>Handlers run as each node opens and closes, in the parser's single pass.</p>
+        <div class="acts">
+          <span class="act a-have">Parse plugins annotate, retag and add nodes</span>
+          <span class="act a-prop">Handlers bound to a directive rewrite its children</span>
+        </div>
+      </li>
+      <li class="stage">
+        <h3>Compile writes Svelte</h3>
+        <p>Each directive resolves to a component by name.</p>
+        <div class="acts">
+          <span class="act a-have">Live: a component instance</span>
+          <span class="act a-prop">Static: the component's HTML, rendered at build time</span>
+        </div>
+      </li>
+      <li class="stage">
+        <h3>The page runs</h3>
+        <p>What reaches the browser.</p>
+        <div class="acts">
+          <span class="act a-have">Live directives hydrate and can hold state</span>
+          <span class="act a-prop">Static directives are plain HTML, with no code shipped</span>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section class="surface" aria-labelledby="s1-h">
+    <div class="head">
+      <span class="status s-have">exists</span>
+      <h2 id="s1-h">Directives</h2>
+      <p>A name in the markdown that renders a Svelte component. This is how an author asks for something markdown doesn't have.</p>
+    </div>
+    <div class="tbl-scroll">
+      <table class="forms">
+        <thead><tr><th>Form</th><th>Markdown</th><th>The component gets</th></tr></thead>
+        <tbody>
+          <tr><th>Inline</th><td><code>:abbr[HTML](title=HyperText)</code></td><td>args, and the bracket text as <code>children</code></td></tr>
+          <tr><th>Leaf</th><td><code>::youtube[A talk](id=dQw4w9WgXcQ)</code></td><td>args, and the bracket text as <code>label</code></td></tr>
+          <tr><th>Container</th><td><code>:::Callout[Heads up](kind=warn)</code> … <code>:::</code></td><td>args, <code>label</code>, and the body as <code>children</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="two">
+      <div>
+        <h4>Register it</h4>
+<pre><code>// src/lib/markdown.js
+export * as directives from './directives.js';
+
+// src/lib/directives.js
+export { default as Callout } from './Callout.svelte';</code></pre>
+      </div>
+      <div>
+        <h4>Write it</h4>
+<pre><code>&lt;script&gt;
+  let { kind = 'note', label, children } = $props();
+&lt;/script&gt;
+
+&lt;aside class="callout {kind}"&gt;
+  {#if label}&lt;strong&gt;{@render label()}&lt;/strong&gt;{/if}
+  {@render children?.()}
+&lt;/aside&gt;</code></pre>
+      </div>
+    </div>
+    <div class="cando">
+      <div>
+        <h4>What it can do</h4>
+        <ul>
+          <li>Anything a Svelte component can: state, effects, context, transitions.</li>
+          <li>Render the label and body wherever it likes.</li>
+          <li>Come from a template, which takes precedence over the root modules.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>What it can't do</h4>
+        <ul>
+          <li>See or reshape its children. They arrive as one opaque snippet.</li>
+          <li>Take expressions as args. Values are always strings.</li>
+          <li>Go unregistered. An unknown directive is a compile error with its line and column.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="surface" aria-labelledby="s2-h">
+    <div class="head">
+      <span class="status s-prop">proposed</span>
+      <h2 id="s2-h">Static directives</h2>
+      <p>The same directive and the same component, rendered once at build time. Many directive components exist only because a component is a nicer way to write HTML. A callout has no state, yet every instance is imported, created and hydrated. Static mode writes its HTML straight into the page.</p>
+    </div>
+    <div class="head">
+      <h3>A shell with holes</h3>
+      <p>A directive's body is markdown, and it can hold live content like <code>{gap}</code>. So the component is rendered as a shell, with a hole where each snippet goes. The document's own markup fills the holes and stays live.</p>
+    </div>
+    <div class="shells">
+      <div class="shell">
+        <h4>Rendered at build time: <code>Callout</code> + <code>kind=warn</code></h4>
+        <div class="aside-mock">
+          <strong><span class="hole">label</span></strong>
+          <span><span class="hole">children</span></span>
+        </div>
+      </div>
+      <span class="arrow" aria-hidden="true">→</span>
+      <div class="shell">
+        <h4>Written into the page</h4>
+        <div class="aside-mock">
+          <strong><span class="filled">Heads up</span></strong>
+          <span><span class="filled">Mind the <code>{gap}</code>.</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="two">
+      <div>
+        <h4>Opt in where it's registered</h4>
+<pre><code>// a site's own directives
+mdsvex({ static_directives: ['Callout', 'badge'] })
+
+// a plugin's directives
+directives: {
+  steps: { static: true, children: { … } },
+  step: { static: true },
+}</code></pre>
+      </div>
+      <div>
+        <h4>How it runs</h4>
+        <ul>
+          <li>The Vite plugin renders one shell per component and set of args, before compile.</li>
+          <li><code>compile()</code> stays synchronous. It gets the shells as data, like <code>src=</code> files.</li>
+          <li>Outside Vite there are no shells, so every directive compiles live. Static never changes what a document means.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="cando">
+      <div>
+        <h4>What it gives you</h4>
+        <ul>
+          <li>No component code shipped for that directive.</li>
+          <li>No hydration work for it.</li>
+          <li>Static directives nest: a static <code>steps</code> holds static <code>step</code> shells.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>What the component gives up</h4>
+        <ul>
+          <li>State, effects, event handlers and transitions.</li>
+          <li>Context. It's rendered alone, so a parent and child can't coordinate. Tabs stays live.</li>
+          <li>Freedom with snippets. Each must render exactly once, unconditionally.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="surface" aria-labelledby="s3-h">
+    <div class="head">
+      <span class="status s-have">exists</span>
+      <h2 id="s3-h">Parse plugins</h2>
+      <p>Handlers keyed by node type that run while the tree is built. This is how you change what plain markdown produces, without the author writing anything.</p>
+    </div>
+    <div class="two">
+      <div>
+        <h4>Write it</h4>
+<pre><code>const heading_ids = {
+  heading: {
+    parse(node, ctx) {          // the node opens
+      return () => {            // the node closes
+        node.attrs.id = slug(node.text_content);
+      };
+    },
+  },
+};</code></pre>
+      </div>
+      <div>
+        <h4>Register it</h4>
+<pre><code>mdsvex({ parse_plugins: [heading_ids] })</code></pre>
+        <p class="note">All plugins are fused into the builder's one pass. <code>sequential: true</code> gives a plugin its own pass afterwards, when it needs the whole document.</p>
+      </div>
+    </div>
+    <div class="cando">
+      <div>
+        <h4>What it can do</h4>
+        <ul>
+          <li>Read any node it can reach: <code>parent</code>, <code>first_child</code>, <code>next</code>, <code>text_content</code>.</li>
+          <li>Write <code>attrs</code> and <code>type</code> on those nodes.</li>
+          <li>Add nodes inside a node: <code>wrap_inner</code>, <code>prepend</code>, <code>append</code>.</li>
+          <li>Handle a directive that has no component.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>What it can't do</h4>
+        <ul>
+          <li>Add syntax, remove nodes, or walk the tree.</li>
+          <li>Group siblings under a new parent.</li>
+          <li>Supply a component.</li>
+          <li>See a directive that has a component.</li>
+          <li>Rewrite text, read frontmatter, write metadata, or report a warning.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">Grouping siblings is proposed for every plugin, as <code>wrap_from</code>. Supplying a component and reaching inside a directive that has one are what the next surface adds. The last line of the list is tracked in the plugin audit (<code>plugins/PLUGIN_AUDIT.md</code> §4).</p>
+  </section>
+
+  <section class="surface" aria-labelledby="s4-h">
+    <div class="head">
+      <span class="status s-prop">proposed</span>
+      <h2 id="s4-h">Plugins that own a directive</h2>
+      <p>One package that claims a directive name, supplies its component, and reshapes what the author wrote inside it. The plugin rewrites the children into ordinary directives, so the renderer needs nothing new.</p>
+    </div>
+    <div class="three">
+      <div>
+        <h4>The author writes</h4>
+<pre><code>:::steps
+
+## Install dependencies
+
+First, install the
+required packages:
+
+```bash
+npm install layerchart
+```
+
+## Configure
+
+Do something else
+
+## Profit!
+
+Start using directives!
+:::</code></pre>
+      </div>
+      <div>
+        <h4>The plugin produces</h4>
+<pre class="tree"><code>steps
+├─ <span class="syn">step</span>
+│  ├─ <span class="syn">label</span>
+│  │  └─ heading
+│  ├─ paragraph
+│  └─ code_fence
+├─ <span class="syn">step</span>
+│  ├─ <span class="syn">label</span>
+│  │  └─ heading
+│  └─ paragraph
+└─ <span class="syn">step</span>
+   ├─ <span class="syn">label</span>
+   │  └─ heading
+   └─ paragraph
+
+<span class="syn">■</span> <span class="dim">added by the plugin</span></code></pre>
+      </div>
+      <div>
+        <h4>The components render</h4>
+        <ol class="mock-steps">
+          <li class="mock-step"><b>Install dependencies</b><span>First, install the required packages:</span><pre><code>npm install layerchart</code></pre></li>
+          <li class="mock-step"><b>Configure</b><span>Do something else</span></li>
+          <li class="mock-step"><b>Profit!</b><span>Start using directives!</span></li>
+        </ol>
+      </div>
+    </div>
+    <p>Each <code>step</code> is a normal container directive. <code>Step.svelte</code> gets the heading as <code>label</code> and the rest as <code>children</code>. The heading is still a heading, so it keeps its id and its place in the table of contents, and the source reads as plain headings on GitHub.</p>
+
+    <div class="head">
+      <h3>Three additions make it possible</h3>
+    </div>
+    <div class="cards">
+      <div class="mini">
+        <h3>A bundle</h3>
+        <p>A new <code>plugins</code> option takes one package: the module its components are exported from, and an entry for each directive name it owns.</p>
+      </div>
+      <div class="mini">
+        <h3>Handlers bound to the directive</h3>
+        <p>An entry's <code>children</code> handlers are called only for nodes written directly inside that directive, so they never check a parent. Each call gets an <code>index</code> (0 for the first) and a <code>state</code> object that is fresh for every directive.</p>
+      </div>
+      <div class="mini">
+        <h3><code>wrap_from</code></h3>
+        <p>One new tree method, available to every plugin. It wraps a node and the siblings after it in a new parent, which stays open until <code>close()</code> or until the enclosing node closes. Sectionize is a global plugin that needs it too.</p>
+      </div>
+    </div>
+    <div class="two">
+      <div>
+        <h4>The plugin</h4>
+<pre><code>export function steps() {
+  return {
+    name: 'steps',
+    module: '@mdsvex/kit/steps/directives',
+    directives: {
+      steps: {
+        static: true,
+        children: {
+          // only headings directly inside :::steps
+          heading(node, ctx) {
+            ctx.state.step?.close();
+            ctx.state.step = node.wrap_from(
+              'directive_container', { name: 'step' });
+            node.wrap_from('directive_label').close();
+          },
+        },
+      },
+      step: { static: true },
+    },
+  };
+}</code></pre>
+        <p class="note"><code>ctx</code> carries <code>directive</code>, <code>index</code> and <code>state</code>. A <code>:::steps</code> nested in another gets its own. Global plugins still see these headings, so they keep their ids.</p>
+      </div>
+      <div>
+        <h4>The site</h4>
+<pre><code>mdsvex({ plugins: [steps()] })</code></pre>
+        <h4>The components</h4>
+<pre><code>&lt;!-- Steps.svelte --&gt;
+&lt;ol class="steps"&gt;{@render children()}&lt;/ol&gt;
+
+&lt;!-- Step.svelte --&gt;
+&lt;li&gt;
+  {@render label()}
+  {@render children?.()}
+&lt;/li&gt;</code></pre>
+        <p class="note">A site can replace either component by exporting its own <code>steps</code> or <code>step</code>. The rewrite still runs, so the replacement gets the same <code>label</code> and <code>children</code>.</p>
+      </div>
+    </div>
+    <p class="note">This is the same rewrite tabs, accordions and code groups need, where the labels render apart from the panels. Live or static is a separate choice for each directive in the result: <code>steps</code> can be static, <code>tabs</code> has to be live.</p>
+  </section>
+
+  <section aria-labelledby="mx-h">
+    <div class="head">
+      <span class="eyebrow">Side by side</span>
+      <h2 id="mx-h">What each surface can do</h2>
+    </div>
+    <div class="tbl-scroll" tabindex="0" role="region" aria-label="Comparison of the four surfaces, scrolls sideways">
+      <table class="matrix">
+        <thead>
+          <tr><th></th><th>Directive</th><th>Static directive</th><th>Parse plugin</th><th>Plugin-owned directive</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>Status</th><td><span class="status s-have">exists</span></td><td><span class="status s-prop">proposed</span></td><td><span class="status s-have">exists</span></td><td><span class="status s-prop">proposed</span></td></tr>
+          <tr><th>The author writes</th><td><code>:::name[…](…)</code></td><td><code>:::name[…](…)</code></td><td>nothing extra</td><td><code>:::name</code> around plain markdown</td></tr>
+          <tr><th>You write</th><td>a component</td><td>a self-contained component</td><td>handlers by node type</td><td>components, and handlers bound to the directive</td></tr>
+          <tr><th>Handlers run for</th><td class="no">none</td><td class="no">none</td><td>every node of a type in the document</td><td>only the nodes inside its directive</td></tr>
+          <tr><th>Sees the tree</th><td class="no">no</td><td class="no">no</td><td class="yes">yes</td><td class="yes">yes</td></tr>
+          <tr><th>Reshapes children</th><td class="no">no</td><td class="no">no</td><td>today only adds inside a node; <code>wrap_from</code> is proposed for every plugin</td><td class="yes">yes, with <code>wrap_from</code></td></tr>
+          <tr><th>Supplies markup</th><td class="yes">yes</td><td class="yes">yes</td><td class="no">synthetic nodes only</td><td class="yes">yes</td></tr>
+          <tr><th>State at runtime</th><td class="yes">yes</td><td class="no">no</td><td class="no">none of its own</td><td>if the directive is live</td></tr>
+          <tr><th>Code shipped to the browser</th><td>the component</td><td class="yes">none</td><td class="yes">none</td><td>only for live directives</td></tr>
+          <tr><th>Without Vite</th><td class="yes">works</td><td>compiles live</td><td class="yes">works</td><td class="yes">works</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="reach-h">
+    <div class="head">
+      <span class="eyebrow">In practice</span>
+      <h2 id="reach-h">Which one to reach for</h2>
+    </div>
+    <ul class="reach">
+      <li><span class="want">A callout, a badge, a keyboard key</span><span class="use">A directive, set to static. It's HTML with a nicer authoring interface.</span></li>
+      <li><span class="want">A video embed, a chart, anything with state</span><span class="use">A directive, live.</span></li>
+      <li><span class="want">Steps, an accordion, a code group from plain headings</span><span class="use">A plugin-owned directive. Steps can be static.</span></li>
+      <li><span class="want">Tabs</span><span class="use">A plugin-owned directive, live. The tab list and panels coordinate at runtime.</span></li>
+      <li><span class="want">Heading ids, <code>rel</code> on external links, a class on every table</span><span class="use">A parse plugin. The author writes nothing.</span></li>
+      <li><span class="want">A different <code>&lt;table&gt;</code> or <code>&lt;img&gt;</code> everywhere</span><span class="use">An element component, below.</span></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="nb-h">
+    <div class="head">
+      <span class="eyebrow">Neighbours</span>
+      <h2 id="nb-h">Surfaces this page doesn't cover</h2>
+    </div>
+    <div class="cards">
+      <div class="mini"><span class="status s-have">exists</span><h3>Element components</h3><p>Export <code>table</code>, <code>img</code> or <code>pre</code> from a <code>components</code> module to replace that element. <code>component_mode: 'all'</code> includes raw HTML.</p></div>
+      <div class="mini"><span class="status s-have">exists</span><h3>Templates</h3><p>The page around the document. A template's module exports replace elements and directives for the documents that use it.</p></div>
+      <div class="mini"><span class="status s-have">exists</span><h3>Fence meta</h3><p><code>title=</code>, line highlights, and any other <code>key=value</code> as a prop on a replaced <code>pre</code>.</p></div>
+      <div class="mini"><span class="status s-prop">proposed</span><h3>Code modules</h3><p><code>src=</code> fills a block from a file, and <code>run</code> turns a block into a module. See <code>design/code-modules.md</code>.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="q-h">
+    <div class="head">
+      <span class="eyebrow">Not settled</span>
+      <h2 id="q-h">Open questions on the two proposals</h2>
+    </div>
+    <div class="cards">
+      <div class="mini q"><h3>Overrides</h3><p>If a site replaces a plugin's component, does the plugin's rewrite still run? The draft says yes.</p></div>
+      <div class="mini q"><h3>Compiler reuse</h3><p>The reusable compiler falls back to a one-shot path whenever plugins are set. A common kit would cost every document that fast path.</p></div>
+      <div class="mini q"><h3>Which headings split</h3><p>The shallowest level among the direct children, a fixed level, or an arg?</p></div>
+      <div class="mini q"><h3>Blocks inside a label</h3><p>A label holds inline content today. The rewrite puts a heading in it.</p></div>
+      <div class="mini q"><h3>Styles for static directives</h3><p>The page no longer imports the component's code, which is what brings in its scoped CSS.</p></div>
+      <div class="mini q"><h3>Rendering during a build</h3><p>The dev server can load a component for server rendering. A production build has no dev server.</p></div>
+      <div class="mini q"><h3>Where static is declared</h3><p>On the registration, by a marker the component exports, or both?</p></div>
+      <div class="mini q"><h3><code>wrap_from</code> is unproven</h3><p>It looks feasible next to how <code>wrap_inner</code> redirects children, but nobody has prototyped it.</p></div>
+    </div>
+  </section>
+
+  <footer>Sources: <code>design/plugin-directives.md</code>, <code>packages/parse/PLUGINS.md</code>, <code>design/templates-and-components.md</code>, and the docs for directives and parse plugins.</footer>
+
+</main>
