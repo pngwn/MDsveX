@@ -113,6 +113,8 @@ const steps = {
 
 Content before the first heading stays a direct child of `steps`, the last step closes with it, and a heading inside a nested blockquote is left alone because its parent is the blockquote.
 
+The same plugin is shorter as a handler bound to the directive, see [Handlers Bound to a Directive](#handlers-bound-to-a-directive).
+
 **Keep the open wrapper on `ctx`.** A plugin object serves every document a compiler session parses, and a view only lives for the document it was made in. A wrapper kept in a closure is still there when the next document starts, and calling `close()` on it throws like any stale view. `ctx` is a new object for each document, so what is kept there starts empty.
 
 ### Node View Identity
@@ -252,6 +254,109 @@ Sequential plugins run their own pass after the main fused pass completes. In st
 
 Fused is the fast path. Sequential is the escape hatch for plugins that genuinely need it — ToC generators, cross-reference resolvers, things that depend on having seen the whole document.
 
+## Handlers Bound to a Directive
+
+A plugin above is global: its `heading` handler runs for every heading in the document, and one that only cares about headings inside `:::steps[]` has to check the parent itself. A handler can be bound to a directive name instead. It is then called only for nodes inside a directive of that name.
+
+Bound handlers are registered apart from plugins, in tables keyed by directive name:
+
+```js
+const bound = {
+  steps: {
+    children: {
+      heading(node, ctx) {
+        ctx.state.step?.close();
+        ctx.state.step = node.wrap_from('directive_container', { name: 'step' });
+        node.wrap_from('directive_label').close();
+      }
+    }
+  }
+};
+
+parse_markdown_svelte(source, { directive_handlers: [bound] });
+// or new PluginDispatcher(plugins, text_source, [bound]) for a builder of your own
+```
+
+This is the steps plugin from [Grouping siblings](#grouping-siblings-wrap_from) with no parent check and no map of open wrappers.
+
+An entry can hold three keys. Any other key is ignored, so a layer above can keep its own settings beside them.
+
+| key | what it is |
+|---|---|
+| `children` | handlers by node type, for nodes written directly inside a container directive of this name |
+| `descendants` | the same, for nodes at any depth inside it |
+| `parse` | a handler for the directive itself |
+
+A handler is a function, not a `{ parse }` object. Like a plugin handler it may return a function, which runs when the node closes. A key that is not a node type throws when the tables are first used, and so does `text`: neither builder dispatches text nodes.
+
+`directive_handlers` is an array of tables. When two tables have an entry for the same name the later one replaces the earlier one whole. The tables are read once per array, so pass the same array for every document and build a new one to change a handler.
+
+### The context
+
+A bound handler gets its own context in place of the plugin `ctx`:
+
+- **`ctx.directive`** is the view of the directive the handler is bound to.
+- **`ctx.index`** is how many times this handler has already run in this directive, 0 for the first call. `children.heading` and `descendants.heading` of one entry count apart.
+- **`ctx.state`** is an empty object, new for each directive in the document. Every handler of the entry sees the same one, so the heading handler above keeps its open step there and the directive's own `parse` can read what the others left.
+
+A nested directive of the same name is a new scope with a new `state` and its own counts.
+
+### Which nodes
+
+- **`children` means written directly inside, in the source.** After the first `wrap_from` the later nodes sit inside a `step` wrapper in the tree, and they are still children of `steps`. A heading inside a nested block quote, a list or another directive is not, and is not passed to `children` handlers.
+- **`descendants` handlers fire at any depth**, including inside a nested directive that has a scope of its own.
+- **The label of a container is inside it.** Its `directive_label` node is a child, and what the label holds are descendants.
+- **Only container directives have children.** The label of a leaf directive (`::name[label]`) or an inline one (`:name[text]`) is not passed to the `children` or `descendants` handlers of that name. Handlers of a container around them still see those nodes as descendants.
+
+### Order
+
+For one node, the innermost open directive goes first: its `children` handler when the node is a child, then its `descendants` handler, then the `descendants` handlers of each directive further out. Global plugins run after all of them, so a global `heading` handler sees the wrapper a bound handler made. Close callbacks fire in the same order.
+
+### The directive's own `parse`
+
+`parse(directive, ctx)` runs once for each directive of the name, of any of the three forms, and the function it returns runs when the directive closes. `ctx.index` is 0 and `ctx.directive` is the node itself.
+
+```js
+tabs: {
+  parse(tabs, ctx) {
+    const sync = tabs.attrs.args?.sync;
+    return () => {
+      tabs.attrs.args = { ...tabs.attrs.args, count: String(ctx.state.count ?? 0) };
+    };
+  },
+  children: {
+    heading(node, ctx) {
+      ctx.state.count = ctx.index + 1;
+    }
+  }
+}
+```
+
+- **It runs when the name is known**, which is after the directive's open. A global `directive_container` handler has already run by then, without a name to read. The close callback of `parse` runs ahead of the callbacks those handlers left.
+- **A block directive has its args by then.** The parser emits `args` and then `name`, and the scope starts at the name.
+- **An inline directive does not.** Its `(key=val)` list follows the closing bracket, so `parse` sees no args and its close callback sees them.
+- **`node.parent` is the parent in the tree**, such as an open wrapper, since the node was placed before its name arrived.
+- **An inline directive is pending** until its bracket closes. If it never does, what `parse` wrote is undone and its close callback never runs.
+
+### Revocation
+
+What a bound handler does is logged against the node it ran for, like any plugin mutation, and two more things are undone when that node is revoked:
+
+- **A write to `ctx.state`** is taken back. The log is shallow, as it is for `attrs`: assign a new value to change one, and don't mutate an object held in the state. Revokes do not arrive in the reverse order of the writes (a tight list revokes its paragraphs first to last), so each key keeps what its last surviving write put there.
+- **The `index` it used** is given back, so the count goes down by one. The handlers that ran since keep the index they were given.
+
+This helps while the directive is still open. A link with no destination, a delimiter cut off by a table cell, a code span that never closes and the paragraphs of a tight list are all revoked before their container closes. An emphasis delimiter or an html tag that never closes is different: inside a container directive the parser revokes it only after the outermost container around it has closed. The state is still rolled back, but the directive's close callback has already read it, so a count kept in the state can include such a node.
+
+### Scopes and cost
+
+A container with `children` or `descendants` handlers opens a scope when its name arrives and ends it when the container closes, at the end of input if it was never closed, or on a revoke.
+
+- With no scope open, dispatch costs what it does without bound handlers.
+- While a scope is open, the builders send the dispatcher the kinds the open scopes have handlers for, on top of the kinds global plugins handle. Other kinds keep the builder's fast path unless a wrapper is open.
+- A scope keeps the dispatcher awake, so every close inside it reaches the dispatcher.
+
+Bound handlers run in the fused pass only. A sequential plugin sees the tree they left.
+
 ## Dirty Tracking
 
 Every mutation through the node view marks the affected node dirty. This is how the system knows what to re-render after parse plugins have run.
@@ -329,6 +434,8 @@ For each mutation, the builder records enough information to reverse it:
 **`wrap_from` and `close()`.** Revoking a node whose handler called `wrap_from` removes the wrapper, and the node and any siblings that joined it return to the wrapper's parent in its place. Revoking a node whose handler called `close()` reopens the wrapper: it takes back every sibling that arrived while it was closed and keeps taking later ones. Pending nodes cannot call either (see above), but the parser also revokes a few nodes it opened as committed: a table cell that turns out to be a merge marker, a code span that never closes, frontmatter with no closing fence.
 
 Only the tree is restored. What a plugin keeps in its own variables is not, so a plugin that remembers "the wrapper I opened last" from a `table_cell` or `code_span` handler may hold a wrapper that no longer exists. Calling `close()` on it does nothing.
+
+**Bound handler state.** A write to `ctx.state` and the `index` a bound handler used are logged the same way, see [Handlers Bound to a Directive](#revocation).
 
 **Cross-node mutations.** When a plugin reaches through traversal to modify a different node (say, setting an attr on `node.parent`), that mutation is captured in the undo log of the node whose handler is running, not the node that was modified. This is because the revocation boundary is the handler's node — if the parser revokes the parent later, that's a separate revocation event with its own undo log.
 

@@ -1,5 +1,5 @@
 import type { NodeBuffer, ErrorCollector } from "./utils";
-import type { ParsePlugin } from "./plugin_types";
+import type { DirectiveHandlers, ParsePlugin } from "./plugin_types";
 
 /** syntax choices the parser reads, every one off by default */
 export interface SyntaxOptions {
@@ -24,6 +24,12 @@ export interface ParseOptions extends SyntaxOptions {
 
 	/** parse plugins that hook into tree construction. */
 	plugins?: ParsePlugin[];
+
+	/**
+	 * handlers bound to directive names, a later table replaces the entry an
+	 * earlier one has for a name, read once per array
+	 */
+	directive_handlers?: DirectiveHandlers[];
 }
 
 /** structured output produced by the markdown parser. */

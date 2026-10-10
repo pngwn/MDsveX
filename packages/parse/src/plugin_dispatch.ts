@@ -5,7 +5,7 @@ import {
 	kind_to_string,
 	string_to_kind,
 } from './utils';
-import { UndoLog, type RedirectHost } from './undo_log';
+import { UndoLog, ATTR_DID_NOT_EXIST, type RedirectHost } from './undo_log';
 import {
 	NodeView,
 	ViewCache,
@@ -19,6 +19,10 @@ import type {
 	NodeHandler,
 	ComposedHandler,
 	PluginContext,
+	DirectiveContext,
+	DirectiveEntry,
+	DirectiveHandler,
+	DirectiveHandlers,
 } from './plugin_types';
 
 const NONE = 0xffffffff;
@@ -272,6 +276,162 @@ function registration_for(plugins: ParsePlugin[]): RegistrationResult {
 	return reg;
 }
 
+/** a handler by node kind, null for none */
+type BoundTable = (DirectiveHandler | null)[];
+
+/** the handlers of one directive name, built once per array of tables */
+interface BoundEntry {
+	children: BoundTable | null;
+	descendants: BoundTable | null;
+	parse: DirectiveHandler | null;
+	/** the kinds children and descendants hold a handler for */
+	child_kinds: number[];
+	descendant_kinds: number[];
+}
+
+type BoundRegistration = Map<string, BoundEntry>;
+
+function bound_table(
+	handlers: DirectiveEntry['children'],
+	name: string,
+	key: string,
+	kinds: number[]
+): BoundTable | null {
+	if (handlers == null) return null;
+	if (typeof handlers !== 'object') {
+		throw new TypeError(
+			`the ${key} of directive "${name}" must be an object of handlers by node type`
+		);
+	}
+	let table: BoundTable | null = null;
+	for (const type of Object.keys(handlers)) {
+		const handler = handlers[type];
+		if (handler == null) continue;
+		const kind = string_to_kind(type);
+		// neither builder dispatches a text node, and a typo would never run
+		if (
+			kind === undefined ||
+			kind === NodeKind.text ||
+			kind === NodeKind.root
+		) {
+			throw new Error(
+				kind === undefined
+					? `unknown node type "${type}" in the ${key} handlers of directive "${name}"`
+					: `the ${key} handlers of directive "${name}" can not take ${type} nodes`
+			);
+		}
+		if (typeof handler !== 'function') {
+			throw new TypeError(
+				`the ${key}.${type} handler of directive "${name}" must be a function`
+			);
+		}
+		if (table === null) table = new Array(NODE_KIND_COUNT).fill(null);
+		table[kind] = handler;
+		kinds.push(kind);
+	}
+	return table;
+}
+
+/** null when no entry has a handler, so nothing needs a dispatcher */
+function register_bound(tables: DirectiveHandlers[]): BoundRegistration | null {
+	let bound: BoundRegistration | null = null;
+	for (const table of tables) {
+		for (const name of Object.keys(table)) {
+			const entry = table[name];
+			if (entry == null || typeof entry !== 'object') continue;
+			const child_kinds: number[] = [];
+			const descendant_kinds: number[] = [];
+			const children = bound_table(
+				entry.children,
+				name,
+				'children',
+				child_kinds
+			);
+			const descendants = bound_table(
+				entry.descendants,
+				name,
+				'descendants',
+				descendant_kinds
+			);
+			const parse = entry.parse ?? null;
+			if (parse !== null && typeof parse !== 'function') {
+				throw new TypeError(
+					`the parse handler of directive "${name}" must be a function`
+				);
+			}
+			if (bound === null) bound = new Map();
+			// a later table takes the name whole, as its component does
+			if (children === null && descendants === null && parse === null) {
+				bound.delete(name);
+				continue;
+			}
+			bound.set(name, {
+				children,
+				descendants,
+				parse,
+				child_kinds,
+				descendant_kinds,
+			});
+		}
+	}
+	return bound !== null && bound.size !== 0 ? bound : null;
+}
+
+// by array, a caller with many documents passes the same one
+const bound_registrations = new WeakMap<
+	DirectiveHandlers[],
+	BoundRegistration | null
+>();
+
+function bound_for(
+	tables: DirectiveHandlers[] | undefined
+): BoundRegistration | null {
+	if (tables === undefined || tables.length === 0) return null;
+	let bound = bound_registrations.get(tables);
+	if (bound === undefined) {
+		bound = register_bound(tables);
+		bound_registrations.set(tables, bound);
+	}
+	return bound;
+}
+
+/** true when a table binds a handler, without one a parse needs no dispatcher for them */
+export function has_directive_handlers(
+	tables: DirectiveHandlers[] | undefined
+): boolean {
+	return bound_for(tables) !== null;
+}
+
+/** an open container directive with children or descendants handlers */
+class Scope {
+	directive: number;
+	entry: BoundEntry;
+	/** the proxy the handlers write through, made for the first that runs */
+	state: Record<string, any> | null = null;
+	/** runs of each handler by kind, children then descendants, made at the first run */
+	counts: Int32Array | null = null;
+
+	constructor(directive: number, entry: BoundEntry) {
+		this.directive = directive;
+		this.entry = entry;
+	}
+}
+
+class BoundContext implements DirectiveContext {
+	directive: NodeView;
+	index: number;
+	state: Record<string, any>;
+
+	constructor(directive: NodeView, index: number, state: Record<string, any>) {
+		this.directive = directive;
+		this.index = index;
+		this.state = state;
+	}
+}
+
+/** the registration of a dispatcher that only has bound handlers, never written */
+const NO_REGISTRATION = register_plugins([]);
+
 /**
  * a Map since handled nodes can sit over 1024 indices apart, and an array
  * written past such a gap falls back to dictionary elements
@@ -298,6 +458,13 @@ class CloseCallbackStore {
 			this.live = store.size;
 		}
 		return cbs;
+	}
+
+	/** a callback that fires ahead of the ones the node already has */
+	add_first(idx: number, callback: () => void): void {
+		const cbs = this.live === 0 ? undefined : this.store!.get(idx);
+		if (cbs !== undefined) cbs.unshift(callback);
+		else this.set(idx, [callback]);
 	}
 
 	/** fire close callbacks for a node, removing the entry. */
@@ -438,14 +605,30 @@ const NO_WRAPPERS: Set<number> = new Set();
  * orchestrates plugin dispatch for both TreeBuilder and WireTreeBuilder.
  *
  * holds the handler tables, undo log, close callbacks, redirect links,
- * and synthetic id counter. both builders compose this in.
+ * directive scopes and synthetic id counter. both builders compose this in.
  */
 export class PluginDispatcher implements StructureHost, RedirectHost {
 	private fused: HandlersTable;
 	private has_handler: Uint32Array;
 	private sequential: { plugin: ParsePlugin; handlers: HandlersTable }[];
-	/** open_wants of the registration, before any redirect */
+	/** open_wants of the registration, before any redirect or scope */
 	private handled: Uint8Array;
+	/**
+	 * 1 for each kind a handler may take now, handled with no scope open, else
+	 * scope_wants
+	 */
+	private handles: Uint8Array;
+
+	/** handlers bound to directive names, null for none */
+	private bound: BoundRegistration | null;
+	/** open containers with bound handlers, outermost first */
+	private scopes: Scope[] | null = null;
+	/** the innermost of scopes, null with none open */
+	private scope: Scope | null = null;
+	/** handled and the kinds the open scopes take, rewritten in place as they change */
+	private scope_wants: Uint8Array | null = null;
+	/** traps of every state proxy, they log to the undo log of this dispatcher */
+	private state_traps: ProxyHandler<Record<string | symbol, any>> | null = null;
 	private undo: UndoLog = NO_UNDO;
 	private close_cbs: CloseCallbackStore = NO_CLOSE_CBS;
 	private ctx: PluginContext | null = null;
@@ -479,18 +662,32 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 
 	/**
 	 * 1 for each kind whose open needs the dispatcher, every kind while a
-	 * redirect link exists, links come and go in dispatch_open, dispatch_close
-	 * and dispatch_revoke so builders reread it after each
+	 * redirect link exists, links and scopes come and go in dispatch_open,
+	 * dispatch_name, dispatch_close and dispatch_revoke so builders reread it
+	 * after each
 	 */
 	open_wants: Uint8Array;
 
-	constructor(plugins: ParsePlugin[], text_source: TextSource) {
-		const reg = registration_for(plugins);
+	/** true when a directive name may have handlers, builders then report each name */
+	readonly binds: boolean;
+
+	constructor(
+		plugins: ParsePlugin[] | undefined,
+		text_source: TextSource,
+		directive_handlers?: DirectiveHandlers[]
+	) {
+		// bound handlers alone leave the cached registration to the next plugins
+		const reg =
+			plugins === undefined || plugins.length === 0
+				? NO_REGISTRATION
+				: registration_for(plugins);
 		this.fused = reg.fused;
 		this.has_handler = reg.has_handler;
 		this.sequential = reg.sequential;
 		this.text_source = text_source;
-		this.open_wants = this.handled = reg.open_wants;
+		this.open_wants = this.handled = this.handles = reg.open_wants;
+		this.bound = bound_for(directive_handlers);
+		this.binds = this.bound !== null;
 	}
 
 	/** cleared since a callback view may have filled it after the last dispatch */
@@ -520,10 +717,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 
 	/** an open of this kind needs a handler call or a redirect lookup */
 	wants_open(kind: NodeKind): boolean {
-		return (
-			(this.has_handler[kind >> 5] & (1 << (kind & 31))) !== 0 ||
-			this.links !== 0
-		);
+		return this.handles[kind] !== 0 || this.links !== 0;
 	}
 
 	/** a close needs no dispatch */
@@ -532,13 +726,17 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			this.close_cbs.live === 0 &&
 			this.links === 0 &&
 			this.undo.empty &&
-			this.close_with === null
+			this.close_with === null &&
+			this.scope === null
 		);
 	}
 
-	/** check whether any fused handlers exist for this kind. */
+	/**
+	 * a fused handler exists for this kind, or an open scope may hold one, such
+	 * a node opens under its source parent and goes through dispatch_open
+	 */
 	has_handlers(kind: NodeKind): boolean {
-		return !!(this.has_handler[kind >> 5] & (1 << (kind & 31)));
+		return this.handles[kind] !== 0;
 	}
 
 	/** where a new child of this node goes, the node itself or the innermost open wrapper under it */
@@ -597,7 +795,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			spare_slots = slots;
 		}
 		this.slots = NO_SLOTS;
-		this.open_wants = this.handled;
+		this.open_wants = this.handles;
 	}
 
 	/** a node that still takes children, a wrapper does while its parent links to it */
@@ -868,25 +1066,23 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		const undo = this.undo;
 		undo.set_active_node(buf_idx);
 		this.running = buf_idx;
-		const callbacks = dispatch_open(
+		// bound handlers first, a global handler sees the wrapper one made
+		let callbacks =
+			this.scope === null ? null : this.run_bound(kind, view, buf_idx, buf);
+		const global = dispatch_open(
 			kind,
 			view,
 			this.ctx ?? (this.ctx = {}),
 			this.fused,
 			this.has_handler
 		);
+		if (global !== null) {
+			callbacks = callbacks === null ? global : callbacks.concat(global);
+		}
 		undo.clear_active_node();
 		this.running = NONE;
 
-		// the node goes where a new child of its parent goes now, a handler
-		// that wrapped it left it under a wrapper with no link below
-		if (this.links !== 0) {
-			const parent = buf.parent_at(buf_idx);
-			if (parent !== NONE) {
-				const target = this.resolve(parent);
-				if (target !== parent) buf.move_to_end(buf_idx, target);
-			}
-		}
+		this.adopt(buf_idx, buf);
 
 		if (callbacks) {
 			let close_cbs = this.close_cbs;
@@ -896,6 +1092,208 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		}
 
 		cache.clear();
+	}
+
+	/**
+	 * the node goes where a new child of its parent goes now, a handler that
+	 * wrapped it left it under a wrapper with no link below
+	 */
+	private adopt(buf_idx: number, buf: NodeBuffer): void {
+		if (this.links === 0) return;
+		const parent = buf.parent_at(buf_idx);
+		if (parent === NONE) return;
+		const target = this.resolve(parent);
+		if (target !== parent) buf.move_to_end(buf_idx, target);
+	}
+
+	/**
+	 * the handlers the open scopes hold for a node, innermost scope first, its
+	 * children handler when the node was written directly inside it, then the
+	 * descendants handlers of every scope outwards
+	 */
+	private run_bound(
+		kind: NodeKind,
+		view: NodeView,
+		buf_idx: number,
+		buf: NodeBuffer
+	): (() => void)[] | null {
+		const scopes = this.scopes!;
+		// read before a handler wraps the node, a new node always opens inside
+		// the innermost open container, so no outer scope can be its parent
+		const parent = buf.parent_at(buf_idx);
+		let callbacks: (() => void)[] | null = null;
+		for (let i = scopes.length - 1; i >= 0; i--) {
+			const scope = scopes[i];
+			const entry = scope.entry;
+			if (parent === scope.directive && entry.children !== null) {
+				const handler = entry.children[kind];
+				if (handler != null) {
+					callbacks = this.call_bound(handler, view, scope, kind, callbacks);
+				}
+			}
+			if (entry.descendants !== null) {
+				const handler = entry.descendants[kind];
+				if (handler != null) {
+					callbacks = this.call_bound(
+						handler,
+						view,
+						scope,
+						NODE_KIND_COUNT + kind,
+						callbacks
+					);
+				}
+			}
+		}
+		return callbacks;
+	}
+
+	private call_bound(
+		handler: DirectiveHandler,
+		view: NodeView,
+		scope: Scope,
+		slot: number,
+		callbacks: (() => void)[] | null
+	): (() => void)[] | null {
+		let counts = scope.counts;
+		if (counts === null) {
+			counts = scope.counts = new Int32Array(NODE_KIND_COUNT * 2);
+		}
+		const index = counts[slot]++;
+		// the index goes back with the node, as the state it wrote does
+		this.undo.record_count(counts, slot);
+		const callback = handler(
+			view,
+			new BoundContext(
+				this.cache!.get(scope.directive)!,
+				index,
+				scope.state ?? (scope.state = this.make_state())
+			)
+		);
+		if (callback) {
+			if (callbacks === null) callbacks = [callback];
+			else callbacks.push(callback);
+		}
+		return callbacks;
+	}
+
+	/** a state object behind a proxy that logs each write, the undo log must be its own by now */
+	private make_state(): Record<string, any> {
+		let traps = this.state_traps;
+		if (traps === null) {
+			const undo = this.undo;
+			traps = this.state_traps = {
+				set(state, key, value) {
+					undo.record_state(
+						state,
+						key,
+						key in state ? state[key] : ATTR_DID_NOT_EXIST
+					);
+					state[key] = value;
+					return true;
+				},
+				deleteProperty(state, key) {
+					if (key in state) {
+						undo.record_state(state, key, state[key]);
+						delete state[key];
+					}
+					return true;
+				},
+			};
+		}
+		return new Proxy({}, traps);
+	}
+
+	/**
+	 * the name of a directive arrived, after its open handlers ran, a container
+	 * with children or descendants handlers opens a scope and the parse handler
+	 * of the name runs for any directive
+	 */
+	dispatch_name(buf_idx: number, name: unknown, buf: NodeBuffer): void {
+		const bound = this.bound;
+		if (bound === null || typeof name !== 'string') return;
+		const entry = bound.get(name);
+		if (entry === undefined) return;
+		const kind = buf.kind_at(buf_idx);
+		let scope: Scope | null = null;
+		if (kind === NodeKind.directive_container) {
+			if (entry.children !== null || entry.descendants !== null) {
+				scope = new Scope(buf_idx, entry);
+				let scopes = this.scopes;
+				if (scopes === null) scopes = this.scopes = [];
+				scopes.push(scope);
+				this.scopes_changed();
+			}
+		} else if (
+			// the label of a leaf or inline directive gets no bound handlers
+			kind !== NodeKind.directive_leaf &&
+			kind !== NodeKind.directive_inline
+		) {
+			return;
+		}
+		const parse = entry.parse;
+		if (parse === null) return;
+
+		const cache = this.views(buf);
+		const view = cache.get(buf_idx)!;
+		const undo = this.undo;
+		// a scope shares its state with its children and descendants handlers
+		let state: Record<string, any>;
+		if (scope === null) state = this.make_state();
+		else state = scope.state = this.make_state();
+		undo.set_active_node(buf_idx);
+		this.running = buf_idx;
+		const callback = parse(view, new BoundContext(view, 0, state));
+		undo.clear_active_node();
+		this.running = NONE;
+
+		this.adopt(buf_idx, buf);
+
+		if (callback) {
+			let close_cbs = this.close_cbs;
+			if (close_cbs === NO_CLOSE_CBS)
+				close_cbs = this.close_cbs = new CloseCallbackStore();
+			// ahead of the callbacks the open handlers left, bound runs first
+			close_cbs.add_first(buf_idx, callback);
+		}
+
+		cache.clear();
+	}
+
+	/** a scope opened or ended, the kinds an open needs the dispatcher for follow */
+	private scopes_changed(): void {
+		const scopes = this.scopes!;
+		const depth = scopes.length;
+		if (depth === 0) {
+			this.scope = null;
+			this.handles = this.handled;
+		} else {
+			const top = (this.scope = scopes[depth - 1]);
+			let wants = this.scope_wants;
+			if (wants === null) wants = this.scope_wants = new Uint8Array(64);
+			wants.set(this.handled);
+			for (let i = 0; i < depth; i++) {
+				const kinds = scopes[i].entry.descendant_kinds;
+				for (let k = 0; k < kinds.length; k++) wants[kinds[k]] = 1;
+			}
+			// only the innermost scope can have a new child
+			const kinds = top.entry.child_kinds;
+			for (let k = 0; k < kinds.length; k++) wants[kinds[k]] = 1;
+			this.handles = wants;
+		}
+		// a redirect link keeps every kind
+		if (this.links === 0) this.open_wants = this.handles;
+	}
+
+	/** the scope of a revoked directive ends, wherever it sits */
+	private end_scope(directive: number): void {
+		const scopes = this.scopes!;
+		for (let i = scopes.length - 1; i >= 0; i--) {
+			if (scopes[i].directive === directive) {
+				scopes.splice(i, 1);
+				this.scopes_changed();
+				return;
+			}
+		}
 	}
 
 	/**
@@ -929,6 +1327,13 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			this.drop_chain(buf, buf_idx);
 		}
 		if (this.close_with !== null) this.release(buf, buf_idx, false);
+		// after the callbacks, which read the state of the scope, containers
+		// close innermost first, so only the innermost scope can end here
+		const scope = this.scope;
+		if (scope !== null && scope.directive === buf_idx) {
+			this.scopes!.pop();
+			this.scopes_changed();
+		}
 
 		// only commit if the node is no longer pending.
 		// pending nodes can still be revoked after close.
@@ -956,7 +1361,8 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			this.links === 0 &&
 			this.close_cbs.live === 0 &&
 			this.undo.empty &&
-			this.close_with === null
+			this.close_with === null &&
+			this.scope === null
 		)
 			return;
 		this.close_cbs.discard(buf_idx);
@@ -972,6 +1378,8 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			this.drop_chain(buf, buf_idx);
 		}
 		if (this.close_with !== null) this.release(buf, buf_idx, true);
+		// no block directive is revoked today, a dead scope must not stay
+		if (this.scope !== null) this.end_scope(buf_idx);
 	}
 
 	/**
@@ -1079,8 +1487,13 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		// a throw in a handler leaves these set
 		this.running = NONE;
 		this.sequential_pass = false;
-		// a link switched this to every kind
-		this.open_wants = this.handled;
+		// a document that ended whole closed every scope
+		if (this.scope !== null) {
+			this.scopes!.length = 0;
+			this.scope = null;
+		}
+		// a link switched this to every kind, a scope to its own
+		this.open_wants = this.handles = this.handled;
 		this.next_synthetic_id = SYNTHETIC_ID_BASE;
 		// plugins keep per document state on it
 		this.ctx = null;

@@ -338,9 +338,19 @@ export class TreeBuilder implements Emitter {
 				} else {
 					nodes.set_metadata(idx, make_meta(key, value));
 				}
+				if (this.dispatcher !== null && key === 'name') this.named(idx, value);
 				break;
 			}
 		}
+	}
+
+	/** only a directive gets a name, the handlers bound to it start here */
+	private named(idx: number, name: unknown): void {
+		const dispatcher = this.dispatcher!;
+		if (!dispatcher.binds) return;
+		dispatcher.dispatch_name(idx, name, this.nodes);
+		// a scope opened, or the parse handler of the directive made a link
+		this.wants = dispatcher.open_wants;
 	}
 
 	set_value_start(id: number, pos: number): void {

@@ -286,6 +286,12 @@ export class WireTreeBuilder {
 		} else {
 			this.buf.set_metadata(idx, make_meta(key, value));
 		}
+
+		// only a directive gets a name, the handlers bound to it start here
+		const dispatcher = this.dispatcher;
+		if (dispatcher !== null && key === 'name' && dispatcher.binds) {
+			dispatcher.dispatch_name(idx, value, this.buf);
+		}
 	}
 
 	private _revoke(id: number, delimiter: string): void {

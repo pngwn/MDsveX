@@ -37,13 +37,22 @@ import type { Emitter } from './opcodes';
 import { NodeKind } from './utils';
 import { NodeBuffer, ErrorCollector } from './utils';
 import { TreeBuilder } from './tree_builder';
-import { PluginDispatcher } from './plugin_dispatch';
+import { PluginDispatcher, has_directive_handlers } from './plugin_dispatch';
 import { SourceTextSource } from './node_view';
 import { is_unicode_punctuation } from './unicode_punctuation';
 export type { ParseOptions, ParseResult, SyntaxOptions } from './types';
-export type { ParsePlugin } from './plugin_types';
+export type {
+	ParsePlugin,
+	PluginContext,
+	NodeHandler,
+	DirectiveContext,
+	DirectiveEntry,
+	DirectiveHandler,
+	DirectiveHandlers,
+} from './plugin_types';
+export type { NodeView, WrapperView } from './node_view';
 export { NodeKind, NodeBuffer } from './utils';
-export { PluginDispatcher } from './plugin_dispatch';
+export { PluginDispatcher, has_directive_handlers } from './plugin_dispatch';
 export { SourceTextSource, WireTextSource } from './node_view';
 
 export { WireEmitter, WireOp } from './wire_emitter';
@@ -2663,8 +2672,9 @@ export class PFMParser {
 			this.cursor,
 			parent
 		);
-		this.out.attr(d_id, 'name', dir.name);
+		// the name comes last, the handlers bound to it start there and read the args
 		if (dir.args) this.out.attr(d_id, 'args', dir.args);
+		this.out.attr(d_id, 'name', dir.name);
 		if (dir.content_start >= 0) {
 			this.out.set_value_start(d_id, dir.content_start);
 			this.out.set_value_end(d_id, dir.content_end);
@@ -12340,9 +12350,10 @@ export function parse_markdown_svelte(
 	if (options !== undefined) {
 		tab_size = options.tab_size;
 		const plugins = options.plugins;
-		if (plugins && plugins.length > 0) {
+		const bound = options.directive_handlers;
+		if ((plugins && plugins.length > 0) || has_directive_handlers(bound)) {
 			const text_source = new SourceTextSource(source);
-			dispatcher = new PluginDispatcher(plugins, text_source);
+			dispatcher = new PluginDispatcher(plugins, text_source, bound);
 		}
 	}
 
