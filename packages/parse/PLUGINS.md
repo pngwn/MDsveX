@@ -50,6 +50,7 @@ The view exposes:
 - `wrap_inner(type, attrs?)` — inserts a new node between this node and its current children, returns the new node's view
 - `prepend(type, attrs?)` — inserts a new node as the first child, returns the new node's view
 - `append(type, attrs?)` — inserts a new node as the last child, returns the new node's view
+- `wrap_from(type, attrs?)` — inserts a new node as the parent of this node and of every sibling after it, returns a view of the new node with a `close()` method (see [Grouping siblings](#grouping-siblings-wrap_from))
 
 ### Mutation Semantics
 
@@ -67,7 +68,51 @@ parse(node, ctx) {
 
 The parent is a view over the same backing store. Writing `attrs.class` on it updates the heading's attrs slot directly. The dirty marking machinery handles re-rendering automatically.
 
-Structural mutations (`wrap_inner`, `prepend`, `append`) can also be called on any node reached via traversal, not just the handler's own node. The builder handles the consequences — updating SoA pointers, emitting synthetic opcodes where appropriate, marking the affected subtree dirty.
+Structural mutations (`wrap_inner`, `prepend`, `append`, `wrap_from`) can also be called on any node reached via traversal, not just the handler's own node. The builder handles the consequences — updating SoA pointers, emitting synthetic opcodes where appropriate, marking the affected subtree dirty.
+
+A node made by a structural method is flagged as synthetic in the buffer (`NodeBuffer.synthetic_at(index)`, `Cursor.synthetic`). The renderer reads the flag to tell an element a plugin made from one the author typed, and a revoke repair reads it to find the parent the parser made.
+
+When the new node is a directive, its `args` must be an object of strings, which is how the parser sets them and how they reach a component as props. A value of any other type throws a `TypeError` where it is set, in the `attrs` passed to a structural method or in a later `node.attrs.args = ...`.
+
+### Grouping siblings: `wrap_from`
+
+`wrap_inner`, `prepend` and `append` add nodes inside a node. `wrap_from` groups a node with the siblings that follow it:
+
+```js
+const wrapper = node.wrap_from('html', { tag: 'section' });
+// ...
+wrapper.close();
+```
+
+- **What it does.** The wrapper takes the node's place under its parent and the node becomes its first child. Every later child of that parent goes into the wrapper, until `close()` is called or the parent closes.
+- **`close()`.** No later sibling joins the wrapper. A child that is still open keeps the wrapper open until that child closes, so `node.wrap_from(type).close()` in the node's open handler wraps that node alone. Closing a closed wrapper does nothing. `close()` removes only this wrapper's hold on later siblings: a wrapper around it, or a `wrap_inner` wrapper of the parent, keeps taking them.
+- **The node must be the last child of its parent.** A later sibling may already have been rendered, and nothing moves a node that has gone downstream, so `wrap_from` throws for a node that has one. In an open handler the node in hand always qualifies. An earlier sibling does not, and neither does an open wrapper: the node in hand sits after it until its handlers return.
+- **Nesting.** A wrapper opened while another is open goes inside it. Closing the outer one closes the inner ones. To get siblings, close the open wrapper first.
+- **With `wrap_inner`.** A `wrap_inner` wrapper of the parent holds the `wrap_from` wrappers like any other child, whichever came first.
+- **Not from the handler of a pending node.** `wrap_from` and `close()` throw when the node whose handler or close callback is running is pending (an emphasis before its closer, a tight list paragraph, an unclosed html element). Undoing them moves nodes, and pending nodes are revoked often. Headings and block directives are never pending.
+- **In a sequential pass** the tree is complete, so the wrapper holds that node alone and is closed at once.
+- **Spans.** The wrapper starts where the node it wrapped starts. It has no source of its own, so it ends there too once it is closed. The renderers cache a top level block once it has an end, so a closed wrapper at the root is not rendered again.
+
+The steps shape, each heading directly inside `:::steps[]` starting a `step` with the heading as its label:
+
+```js
+function steps() {
+  const open = new Map();
+  return {
+    heading: {
+      parse(node) {
+        const parent = node.parent;
+        if (parent?.type !== 'directive_container' || parent.attrs.name !== 'steps') return;
+        open.get(parent._index)?.close();
+        open.set(parent._index, node.wrap_from('directive_container', { name: 'step' }));
+        node.wrap_from('directive_label').close();
+      }
+    }
+  };
+}
+```
+
+Content before the first heading stays a direct child of `steps`, the last step closes with it, and a heading inside a nested blockquote is left alone because its parent is the blockquote.
 
 ### Node View Identity
 
@@ -89,6 +134,27 @@ The `parse` function fires when the builder encounters a node's open opcode. At 
 - `text_content` is empty (or partial, if content is streaming in)
 
 This is the window for structural mutations. `wrap_inner` works because the children haven't been emitted downstream yet — the builder can inject the synthetic node's open opcode immediately, and subsequent children stream through it naturally.
+
+### Where a Node Is Placed
+
+A parent can have an open wrapper that takes its later children, from `wrap_inner` or `wrap_from`. A node whose type has a handler is placed in three steps:
+
+1. It is added under its **source parent**, the node it was written inside.
+2. Its handlers run.
+3. It moves to wherever a new child of its current parent goes: into the innermost open wrapper, or nowhere if a handler wrapped it.
+
+A node whose type has no handler, and text, goes straight to the innermost open wrapper.
+
+So what a handler sees depends on when it looks:
+
+| | in the open handler | in the close callback |
+|---|---|---|
+| `node.parent` | the source parent, whatever wrappers it has | the parent in the tree, such as the wrapper |
+| `node.prev` | the last child of the source parent, which is the open wrapper if there is one | the previous sibling in the tree |
+
+A handler that asks "is this heading directly inside `:::steps[]`" reads `node.parent` at open and gets the same answer for the first heading and the fifth.
+
+This changed with `wrap_from`. Before, a child of a parent that had a `wrap_inner` wrapper saw that wrapper as `node.parent` in its open handler. It now sees the parent, and the wrapper in its close callback.
 
 ### Close-Time Execution
 
@@ -160,6 +226,8 @@ If two plugins both call `wrap_inner` on the same node, the wrappers nest, with 
 
 Each `wrap_inner` is its own structural operation on the current state of the tree. The second one wraps whatever the first one produced.
 
+`wrap_from` composes the same way. Two plugins that both call `node.wrap_from` in a heading handler nest their wrappers around the heading, the later plugin's inside. A plugin that wraps the heading's content with `wrap_inner` and one that groups the heading with `wrap_from` do not interfere, in either order.
+
 ## Execution Model
 
 By default, all parse handlers are **fused** into the single pass the builder is already making. When a node opens, the builder looks up all registered handlers for that node type and calls them in order. No separate tree walks, no per-plugin traversals.
@@ -192,7 +260,7 @@ Two levels of dirty state:
 - **attrs dirty** — the node's own output needs re-rendering, children are fine
 - **children dirty** — the node's subtree structure has changed, full subtree needs re-rendering
 
-Attribute setters flip the first bit. Structural methods (`wrap_inner`, `prepend`, `append`) and type changes flip the second.
+Attribute setters flip the first bit. Structural methods (`wrap_inner`, `prepend`, `append`, `wrap_from`) and type changes flip the second.
 
 In streaming mode, dirty marking drives incremental re-rendering — only the changed subtrees get re-rendered and patched into the output. In batch mode, dirty marking is moot because rendering happens once after parse completes, so the dirty state just gets consumed by the initial render.
 
@@ -210,12 +278,13 @@ Multiple plugins on the same node type are composed into a single function at re
 - Read any property on any node reachable via traversal
 - Write attrs, type, and type-specific properties on any reachable node
 - Inject synthetic children via `wrap_inner`/`prepend`/`append` on any reachable node
+- Group a node and the siblings after it under a synthetic parent via `wrap_from`
 - Register close callbacks via return value
 - Capture state in closures between open and close
 
 **What parse plugins cannot do:**
 - Walk the tree during their own handler (no `walk`, `querySelectorAll`, etc.) — they react to what the builder sends them
-- Reparent existing nodes across unrelated parts of the tree (structural methods only add, not move)
+- Reparent existing nodes across unrelated parts of the tree (structural methods only add, `wrap_from` puts later siblings under the wrapper as they arrive and never moves one that came before)
 - Remove nodes
 - Modify the parser itself or affect how tokens become nodes
 - Do work outside their registered node types — if a plugin only has a `heading` entry, it never sees other node types
@@ -255,6 +324,10 @@ For each mutation, the builder records enough information to reverse it:
 **Type changes.** When a plugin sets `node.type = 'paragraph'`, the setter captures the original type. Revocation restores it. Type-specific properties that became meaningful or meaningless as a result of the change are handled the same way — whatever the plugin touched, the builder has a record of the prior state.
 
 **Structural mutations.** `wrap_inner`, `prepend`, and `append` each create synthetic nodes. The builder records the IDs of the created nodes and the SoA pointer state before the mutation. Revocation deletes the synthetic nodes and restores the original parent-child relationships.
+
+**`wrap_from` and `close()`.** Revoking a node whose handler called `wrap_from` removes the wrapper, and the node and any siblings that joined it return to the wrapper's parent in its place. Revoking a node whose handler called `close()` reopens the wrapper: it takes back every sibling that arrived while it was closed and keeps taking later ones. Pending nodes cannot call either (see above), but the parser also revokes a few nodes it opened as committed: a table cell that turns out to be a merge marker, a code span that never closes, frontmatter with no closing fence.
+
+Only the tree is restored. What a plugin keeps in its own variables is not, so a plugin that remembers "the wrapper I opened last" from a `table_cell` or `code_span` handler may hold a wrapper that no longer exists. Calling `close()` on it does nothing.
 
 **Cross-node mutations.** When a plugin reaches through traversal to modify a different node (say, setting an attr on `node.parent`), that mutation is captured in the undo log of the node whose handler is running, not the node that was modified. This is because the revocation boundary is the handler's node — if the parser revokes the parent later, that's a separate revocation event with its own undo log.
 

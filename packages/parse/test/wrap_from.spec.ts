@@ -482,6 +482,26 @@ describe('wrap_from: with wrap_inner', () => {
 		]);
 	});
 
+	it('two plugins that wrap_from one node nest, the later one inside', () => {
+		const wrap = (tag: string) => (): ParsePlugin =>
+			on('heading', (node) => {
+				node.wrap_from('html', { tag });
+			});
+		expect(
+			expect_parity(
+				'# a\n\none\n',
+				() => [wrap('outer')(), wrap('inner')()],
+				NAMED
+			)
+		).toEqual([
+			'root',
+			[
+				'html tag="outer"',
+				['html tag="inner"', ['heading', 'text:a'], ['paragraph', 'text:one']],
+			],
+		]);
+	});
+
 	it('wrap_inner then wrap_from in one handler nests the wrapper in an open one', () => {
 		// the second heading wraps the root while the first section is open
 		let seen = 0;
@@ -1150,7 +1170,8 @@ describe('the synthetic flag', () => {
 		const inner = on('block_quote', (node) => {
 			node.wrap_inner('html', { tag: 'div' });
 		});
-		const source = '> <span>\n>\n> text\n';
+		// without the flag the unclosed tag became bare text in the wrapper
+		const source = '> <div>\n>\n> text\n';
 		const plain = shape(run_batch(source).nodes, source) as unknown[];
 		const tree = expect_parity(source, () => [inner], NAMED) as unknown[];
 		// the same children as without the plugin, one level down

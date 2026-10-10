@@ -169,7 +169,7 @@ interface DirectiveContext {
 
 ### 3.3 `wrap_from`
 
-One new structural method on the node view:
+One new structural method on the node view. Built in both builders, documented for plugin authors in `packages/parse/PLUGINS.md`.
 
 ```ts
 wrap_from(type: string, attrs?: Record<string, any>): WrapperView
@@ -177,11 +177,12 @@ wrap_from(type: string, attrs?: Record<string, any>): WrapperView
 ```
 
 - **What it does:** inserts a new node as the parent of this node and of every sibling after it, until `close()` is called or the original parent closes.
-- **When:** in the open handler only, on a node that has no later sibling yet. This matches `wrap_inner`.
-- **`close()`:** no later sibling joins the wrapper. If a child is still open, the wrapper closes when that child closes, which needs a deferred close keyed by that child. So `node.wrap_from(type).close()`, called in the node's open handler, wraps that node alone.
+- **When:** on a node that is the last child of its parent. In an open handler that is the node in hand. A close callback may call it too, and the wrapper then takes the siblings that follow. A node with a later sibling throws.
+- **`close()`:** no later sibling joins the wrapper. If its last child is still open, the wrapper closes when that child closes, through a deferred close keyed by that child. So `node.wrap_from(type).close()`, called in the node's open handler, wraps that node alone. A second `close()` does nothing.
 - **Available to every plugin.** Sectionize (audit §3.1) is a global plugin that uses the same method, with a stack of open wrappers by heading depth.
+- **In a sequential pass** the tree is complete: the wrapper holds that node alone and is closed at once.
 
-**Placement: dispatch under the source parent, then adopt.** Both builders apply redirects and push a node before any handler runs. Under the old order, the second heading of `:::steps[]` would already be inside the first step when its handler ran, and the second step would nest in the first. So the order changes:
+**Placement: dispatch under the source parent, then adopt.** Both builders used to apply redirects and push a node before any handler ran. Under that order, the second heading of `:::steps[]` would already be inside the first step when its handler ran, and the second step would nest in the first. So the order is:
 
 1. A node whose kind has a handler is pushed under its source parent.
 2. Its handlers run.
@@ -197,27 +198,39 @@ Kinds with no handler, and text, still go straight to the redirect target.
 | `node.parent` | the source parent, even under an open wrapper | the real tree parent, such as the step wrapper |
 | `node.prev` | the open wrapper, not the previous sibling in the source | the previous sibling in the tree |
 
-`node.parent` at open is a behaviour change: today a child of a `wrap_inner` parent sees the wrapper. Bound handlers need the source parent for the "directly inside" test.
+`node.parent` at open is a behaviour change for every plugin: a child of a `wrap_inner` parent saw the wrapper before. Bound handlers need the source parent for the "directly inside" test. No test in the repository and nothing in the autolink plugin depended on the old value.
+
+An open wrapper has the node in hand after it until that node's handlers return, so an open handler cannot call `wrap_from` on the open wrapper itself. A close callback can.
 
 **Redirects.**
 
-- Lookup follows the chain to the innermost wrapper. That is on `next` since #928.
-- `wrap_from` and `close()` reach the dispatcher directly. The current route, scanning undo entries after dispatch, can't order a `close()` and a `wrap_from` made in one handler.
-- When a parent closes or is revoked, the whole chain below it is removed, because a wrapper never receives a parser close.
-- The real implementation should use a per-node redirect slot, an array read, in place of the Map, and restore the builder's fast-path mask when the last link goes.
+- A link is a per-node slot in the dispatcher: a `Uint32Array` indexed by buffer index that holds the open wrapper among a node's children, 0 for none. It is allocated on the first link. Lookup follows the slots to the innermost wrapper and reads no array at all while no link is live.
+- `wrap_inner`, `wrap_from` and `close()` reach the dispatcher directly and change the links at once. Collecting the wraps and linking them after the handlers could not order a `wrap_inner` and a `wrap_from` made in one handler.
+- `close()` removes the link to its wrapper and the links inside that wrapper. A link above it stays.
+- When a parent closes or is revoked, the whole chain below it is removed and its `wrap_from` wrappers are closed, because a wrapper never receives a parser close.
+- A count of live links drives the builders' fast path. The first link switches `open_wants` to every kind, the last one to go restores the registration's mask, and `quiet()` is true again. Links change in `dispatch_open`, `dispatch_close` and `dispatch_revoke`, and the batch builder rereads the mask after each.
 
-**Wrapper spans.** A synthetic node has `start = 0` and `end = NONE`.
+**The synthetic flag.** Every node a structural method makes has bit 1 of its `pending` word set (bit 0 is "pending"). No field was added to the node layout. `NodeBuffer.synthetic_at()` and `Cursor.synthetic` read it.
 
-- The block cache keeps a top-level block only once it is closed, so `close()` has to set `end`. Setting `end = start` does that.
-- Six sites in `html_cursor.ts` read any set `end` as author-typed HTML and would write a closed wrapper's attributes unescaped. They need to test `end > start`.
-- A synthetic flag on nodes is the better fix. It replaces the renderer's guess from `end`, and it lets block repair tell a wrapper from a real parent (the gap below).
-- An error on a synthetic directive reports position 0 today.
+- **The renderer** tests the flag where it used to guess "the author typed this" from `end`: attribute escaping, the source passthrough of a self-closing element, and which elements a component may replace. A self-closing element made by a plugin used to be sliced from the source. An element the author typed is now read as typed while it is still open.
+- **Block repair** (`handle_repair`) chooses block or inline repair from the kind of the nearest ancestor the parser made. A pending root-level `<div>` inside a root-level wrapper is repaired as a paragraph, as it is without the plugin. The same holds under a `wrap_inner` wrapper of a blockquote, where an unclosed `<div>` used to become bare text.
 
-**Prototype result.** The placement rule gives the steps shape with identical trees from the batch builder, the batch builder fed in chunks, and the wire builder whole and in chunks. With the `end > start` change, the cached render matches a fresh one at every step.
+**Wrapper spans.** A `wrap_from` wrapper starts where the node it wrapped starts, and `close()` sets `end = start`.
 
-**Known gap.** A pending root-level `<div>` inside a root-level wrapper is repaired as bare text, not a paragraph. `handle_repair` chooses block or inline repair from the tree parent's kind, which is now the wrapper.
+- The block caches keep a top-level block only once it has an end, so a closed root-level wrapper is cached.
+- An error on a synthetic directive reports the position of the node it wrapped. Other synthetic nodes still have `start = 0` and no end.
 
-**Cost.** With no redirect live, dispatch does slightly less than today. While a wrapper is open, every open, close and text goes through the dispatcher with a lookup per link. For `:::steps[]` that lasts until the container closes. For a root-level sectionize it is the whole document.
+**Directive args.** When a structural method makes a directive, or a plugin sets `attrs.args` on one, every value must be a string. Anything else throws a `TypeError` at the write. `args: null` is accepted.
+
+**Undo.** Both are logged against the node whose handler ran and unwound on its revoke: an undone `wrap_from` removes the wrapper and returns what it held to its parent, an undone `close()` reopens the wrapper and pulls every later sibling back into it.
+
+- **Not from the handler of a pending node.** `wrap_from` and `close()` throw there in this version.
+- **The undo is still reachable.** The parser revokes a few nodes it opened as committed: a table cell that is a merge marker, a code span that never closes, frontmatter with no closing fence. A handler for one of those may call both, and the tests cover the table cell and code span cases on all six paths.
+- **Plugin variables are not rolled back.** After such a revoke a plugin can hold a wrapper that was removed. `close()` on it does nothing. Logged `ctx.state` (§7.3) is what fixes this for bound handlers.
+
+**Tests.** `packages/parse/test/wrap_from.spec.ts` runs every case down six paths (batch and wire, whole and fed in chunks of 7 and 1) and expects one tree, sound child lists and a dispatcher with nothing left over. A random-document test also checks that removing the plugin-made nodes gives the tree the parser builds with no plugin. `packages/render/test/wrap_from.spec.ts` checks the cached render against a fresh one after every chunk.
+
+**Cost.** With no link live, dispatch does what it did plus one count check. While a wrapper is open, every open, close and text goes through the dispatcher with one array read per link. For `:::steps[]` that lasts until the container closes. For a root-level sectionize it is the whole document.
 
 It doesn't remove nodes and doesn't reparent across unrelated parts of the tree, so the constraints in `PLUGINS.md` still hold.
 
@@ -256,7 +269,7 @@ export function steps() {
 }
 ```
 
-- **Content before the first heading** stays a direct child of `steps`. The prototype confirms this, and that a heading inside a nested blockquote does not start a step.
+- **Content before the first heading** stays a direct child of `steps`, and a heading inside a nested blockquote does not start a step. Both are tested.
 - **The last step closes** when `steps` closes.
 - **Which headings split** is Q2. With `ctx.state`, the first heading's depth can set the level for the rest.
 
@@ -285,7 +298,7 @@ tabs: {
 },
 ```
 
-A directive's args are its `args` attr, an object of strings, which is how the parser sets them (`start_block_directive` in `packages/parse/src/main.ts`). A plugin sets the same attr, and the values reach the component as string props. Every value must be a string: the renderer calls `indexOf` on each one and throws on anything else, so `wrap_from` should validate args when they are set. `args: null` is harmless. `Tabs.svelte` renders every `label` in a tab list and every `children` in a panel, which is why it needs the parts separated. Tabs is live, not static.
+A directive's args are its `args` attr, an object of strings, which is how the parser sets them (`start_block_directive` in `packages/parse/src/main.ts`). A plugin sets the same attr, and the values reach the component as string props. Every value must be a string: the renderer calls `indexOf` on each one and throws on anything else, so the node view checks args when they are set (§3.3). `args: null` is harmless. `Tabs.svelte` renders every `label` in a tab list and every `children` in a panel, which is why it needs the parts separated. Tabs is live, not static.
 
 ## 5. Static directives
 
@@ -390,7 +403,7 @@ A site can also turn a plugin's static directive back to live, which it needs wh
 - **The name is known before any child.** `start_block_directive` emits the open, then `name`, then `args`, then the label, before any body child. The scope starts on the `name` attr, so a batch boundary between the open and the attr is harmless.
 - **`args` arrives after `name`.** A scope started on `name` can't read the args yet. The fix is to emit `args` first in the parser, a one-line change. An inline directive gets its `args` only at its closing bracket.
 - **Neither builder calls the dispatcher from `attr` today.** Starting a scope on `name` adds that call. `name` is only ever emitted for directives.
-- **`wrap_from` is a pointer change the renderer never sees half-done.** A handler runs straight after its node is pushed, when the node has no children. Rendering happens after the whole `feed`. The prototype confirms the cached render matches a fresh one at every step (§3.3).
+- **`wrap_from` is a pointer change the renderer never sees half-done.** A handler runs straight after its node is pushed, when the node has no children. Rendering happens after the whole `feed`. The render tests check the cached render against a fresh one after every chunk (§3.3).
 
 ### 7.3 What has to be reversible
 
@@ -405,12 +418,12 @@ A node can be revoked after its handler ran. Everything that handler did has to 
 
 - **`state` is a logged proxy,** like `attrs`. It is shallow: replace a value to change it, and don't mutate an object held in it.
 - **`index` belongs to the builder,** which rolls it back.
-- **Which nodes can be revoked.** Tight-list paragraphs, paragraphs opened at a tag, HTML nodes and speculative inline constructs open as pending. Headings and block directives are emitted committed.
-- **Undoing `close()` moves nodes.** The prototype found that reopening alone is not enough: later children would land ahead of the revoked node's remains. So undo has to pull every later sibling back into the wrapper.
-- **First version: no `wrap_from` and no `close()` from the handler of a pending node.** That removes both rows that move nodes. The prototype's undo did hold for a pending `<div>`, a tight-list paragraph and a revoked link, so this is caution, not a known failure.
+- **Which nodes can be revoked.** Tight-list paragraphs, paragraphs opened at a tag, HTML nodes and speculative inline constructs open as pending. Headings and block directives are emitted committed. Three kinds open committed and can still be revoked: a table cell that is a merge marker, a code span that never closes, and frontmatter with no closing fence.
+- **Undoing `close()` moves nodes.** Reopening alone is not enough: later children would land ahead of the revoked node's remains. So undo pulls every later sibling back into the wrapper.
+- **First version: no `wrap_from` and no `close()` from the handler of a pending node.** Both throw. This does not remove the two rows that move nodes, because of the three committed kinds above, so both undos are built and tested. For pending nodes it is caution, not a known failure: the prototype's undo held for a pending `<div>`, a tight-list paragraph and a revoked link.
 - **State and `descendants`.** Restoring `state` from a snapshot isn't safe when `descendants` handlers interleave their writes under a long-lived pending HTML block. Log each write.
-- **The buffer moves nodes without telling the dispatcher.** `handle_repair`, `unwrap_node` and tight-list unwrap reparent nodes while redirects stay keyed by the old parent. The prototype covered wrappers opened inside a pending `<div>`, which move to the root on revoke. A container directive inside a pending root `<div>` can't occur today, because the parser reads no block directive there.
-- **Existing gaps the prototype found:** a `wrap_inner` made in a close callback registers no redirect, and `dispatch_revoke` recurses into children that block repair keeps in the tree, which would drop a still-open child's uncommitted plugin work.
+- **The buffer moves nodes without telling the dispatcher.** `handle_repair`, `unwrap_node` and tight-list unwrap reparent nodes while redirects stay keyed by the old parent. A revoke drops the chain below the revoked node first, so wrappers opened inside a pending `<div>` are closed and then move to the root with its other children. That case is tested. A container directive inside a pending root `<div>` can't occur today, because the parser reads no block directive there.
+- **Gaps the prototype found, fixed in #936:** a `wrap_inner` made in a close callback registered no redirect, and `dispatch_revoke` recursed into children that block repair keeps in the tree.
 
 ### 7.4 Scope lifetime
 
@@ -440,7 +453,7 @@ A bound handler may change only nodes inside its own directive.
 | 0 | plugin test harness (batch and wire parity, the missing revoke tests), compiler reuse with plugins | — |
 | 1 | `plugins` option, bundle shape, plugin component sources, precedence, manifest entries | 0 |
 | 2 | bound handlers: `args` before `name` in the parser, the scope stack and its lifetime, the per-directive fast-path mask, `children`, `descendants`, `parse`, `DirectiveContext`, logged `state` | 1 |
-| 3 | `wrap_from` in both builders, from the prototype: the placement rule, a per-node redirect slot, a synthetic flag on nodes, the pending-node refusal, string-only args, revocation tests | 0 |
+| 3 | done: `wrap_from` in both builders, the placement rule, a per-node redirect slot, a synthetic flag on nodes, the pending-node refusal, string-only args, revocation tests (§3.3) | 0 |
 | 4 | kit plugins on 2 and 3: steps, tabs, accordion, code group; sectionize as a global plugin | 2, 3 |
 | 5 | static directives: scan, SSR shells, marker fill, styles, HMR tracking, `static` on entries and `static_directives` | 1, two-phase compile, Q4 and Q6 answered |
 
@@ -448,7 +461,6 @@ A bound handler may change only nodes inside its own directive.
 
 - **Q1. Overrides.** Do a plugin's handlers still run when the user replaces its component? This draft says yes (§3.2). The alternative is that an override takes the directive over completely.
 - **Q2. Which headings split.** The shallowest heading level among the direct children, the level of the first heading, a fixed level, or an arg such as `:::steps[](level=3)`?
-- **Q3. The `node.parent` change.** Under the placement rule, `node.parent` in an open handler is the source parent (§3.3). Accept that for every plugin, or only inside bound handlers?
 - **Q4. Styles for static directives.** Importing vite-plugin-svelte's style module alone is fragile (§5.5). Compile the component in the plugin to get its CSS, ask upstream for a sanctioned way to import a component's CSS alone, or require static components to use global styles?
 - **Q5. Where static is declared.** On the registration (§5.6), by a marker the component exports from `<script module>`, or both?
 - **Q6. Loading components at build time.** The dev server can load a module through its SSR environment. A production build has no dev server. What loads and renders the component there?
@@ -463,3 +475,4 @@ Answered by reading the code and by the prototype (2026-10-10):
 - **Args on synthetic directives.** They are the `args` attr, an object of strings (§4, Tabs).
 - **Blocks inside a label.** A `heading` inside a `directive_label` renders inside the label snippet. Checked by the prototype on the uncached render with a directive scope.
 - **Is `wrap_from` feasible?** Yes, with the placement rule in §3.3.
+- **Q3, the `node.parent` change.** Accepted for every plugin: `node.parent` in an open handler is the source parent (§3.3).
