@@ -5,6 +5,8 @@ export const DIRECTIVES_ID = 'mdsvex:directives';
 export const DIRECTIVES_EXPORT = 'directives';
 export const TEMPLATE_ID = 'mdsvex:template/';
 export const TEMPLATE_DIRECTIVES_ID = 'mdsvex:template-directives/';
+/** a document imported with ?metadata, the path of the document and .js follow */
+export const METADATA_ID = 'mdsvex:metadata:';
 
 /** a URL as a path, a string as written */
 export async function spec_of(entry: string | URL): Promise<string> {

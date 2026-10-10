@@ -30,6 +30,7 @@ import {
 	templates_for,
 } from './template_registry';
 import { has_code, plugin_highlight } from './plugin_highlight';
+import { metadata_query } from './metadata_query';
 
 export * from './compile';
 export {
@@ -221,6 +222,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	let command: 'build' | 'serve' = 'serve';
 
 	const no_templates = templates === null && select === undefined;
+	const metadata = metadata_query(extensions, options.frontmatter?.parse);
+	// vite watches a file outside the root once it is a module, a document read for its metadata never is
+	let watch: ((file: string) => void) | null = null;
 
 	// what select_template picked, only it can not be worked out from the source
 	const documents =
@@ -362,6 +366,13 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				);
 			},
 
+			configureServer(server) {
+				watch = (file) => {
+					if (!file.startsWith(root.replace(/\/$/, '') + '/'))
+						server.watcher.add(file);
+				};
+			},
+
 			async buildStart() {
 				// one clear error at startup rather than one per document
 				if (registry !== null) await registry.ensure(this);
@@ -373,7 +384,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				await manifest.flush();
 			},
 
-			resolveId(id) {
+			resolveId(id, importer) {
+				const queried = metadata.resolve(this, id, importer);
+				if (queried !== undefined) return queried;
 				if (
 					registry !== null &&
 					(id.startsWith(COMPONENTS_ID) || id.startsWith(DIRECTIVES_ID))
@@ -385,14 +398,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					return templates.resolve_directives(this, id);
 			},
 
-			// only templates with extra replacements load a module
-			load:
-				templates === null
-					? undefined
-					: function (id) {
-							if (id.startsWith('\0' + TEMPLATE_ID))
-								return templates.load(this, id);
-						},
+			load(id) {
+				if (metadata.is(id)) return metadata.load(this, id, watch);
+				// only templates with extra replacements load a module
+				if (templates !== null && id.startsWith('\0' + TEMPLATE_ID))
+					return templates.load(this, id);
+			},
 
 			transform(code, id) {
 				if (!matches(id)) return;
@@ -471,7 +482,10 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				const in_root = registry !== null && registry.files().includes(file);
 				const in_templates =
 					templates !== null && templates.files().includes(file);
-				if (!in_root && !in_templates) return;
+				const queried = await metadata.hot(this.environment, update);
+				const with_queried =
+					queried === undefined ? undefined : [...update.modules, queried];
+				if (!in_root && !in_templates) return with_queried;
 				const warn = (m: string) =>
 					this.environment.logger.warn('[mdsvex] ' + m);
 				const code = await update.read();
@@ -482,12 +496,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					changed =
 						(await templates!.rescan(file, update.timestamp, warn, code)) ||
 						changed;
-				if (!changed) return;
+				if (!changed) return with_queried;
 				manifest.schedule();
 
 				// names changed, documents compiled against the old set compile again
 				const graph = this.environment.moduleGraph;
-				const modules = update.modules.slice();
+				const modules = with_queried ?? update.modules.slice();
 				if (in_templates) {
 					// a merging template module lists the names it exports
 					for (const name of templates!.names_using(file)) {
