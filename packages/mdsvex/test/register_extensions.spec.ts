@@ -14,6 +14,9 @@ const TEMPLATED =
 	'<article class="post" data-title="Templated"><h1 class="post-heading">Hello from a template</h1></article>';
 const TEMPLATED_HEAD = '<title>From the template route</title>';
 const STYLED = /<h1 class="(svelte-\w+)">Styled<\/h1>/;
+// a +page.js that globs the routes with ?metadata, only one has frontmatter
+const LISTED =
+	'<li>doc: untitled</li><li>styled: untitled</li><li>templated: Templated</li>';
 
 const [major, minor] = process.versions.node.split('.').map(Number);
 const kit_supported = major > 22 || (major === 22 && minor >= 17);
@@ -100,6 +103,11 @@ describe.skipIf(!kit_supported)('sveltekit 3', () => {
 				.map((file) => readFileSync(resolve(assets, file), 'utf8'))
 				.join('\n');
 			expect(css).toContain(`h1.${scope}{color:red}`);
+			const list = readFileSync(
+				resolve(APP, '.svelte-kit/output/prerendered/pages/list.html'),
+				'utf8'
+			);
+			expect(list.replace(/<!--[^]*?-->/g, '')).toContain(LISTED);
 		});
 
 		test('serves a +page.svx route in dev', { timeout: 60_000 }, async () => {
@@ -113,6 +121,12 @@ describe.skipIf(!kit_supported)('sveltekit 3', () => {
 			expect(status).toBe(200);
 			expect(html.replace(/<!--[^]*?-->/g, '')).toContain(TEMPLATED);
 			expect(html).toContain(TEMPLATED_HEAD);
+		});
+
+		test('lists ?metadata imports in dev', { timeout: 60_000 }, async () => {
+			const { status, html } = await dev_page('/list', env);
+			expect(status).toBe(200);
+			expect(html.replace(/<!--[^]*?-->/g, '')).toContain(LISTED);
 		});
 
 		test(
