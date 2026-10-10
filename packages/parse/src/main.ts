@@ -8953,6 +8953,45 @@ export class PFMParser {
 				(CharMask.whitespace | CharMask.punctuation)
 		) {
 			const n_id = this.node_stack[this.node_stack.length - 1];
+
+			// no empty strikethrough, the tildes at the cursor follow the opener
+			if (this.cursor === this.pending_starts[this.id_slots[n_id]] + 2) {
+				// anything but whitespace or the nan wildcard after them opens the inner node
+				if (
+					!(
+						classify(char_code_at.call(source, this.cursor + 2 - base)) &
+						CharMask.whitespace
+					)
+				) {
+					this.states.push(StateKind.inline);
+					const inner = this.emit_open_pending(
+						NodeKind.strikethrough,
+						this.cursor,
+						n_id
+					);
+					this.out.set_value_start(inner, this.cursor + 2);
+					this.node_stack.push(inner);
+					this.states.push(StateKind.strikethrough);
+					this.chomp(2);
+					return false;
+				}
+				// revoke it and each strikethrough it was the only content of, the parent rereads the tildes
+				const states = this.states;
+				const node_stack = this.node_stack;
+				for (let id = n_id; ; ) {
+					const start = this.pending_starts[this.id_slots[id]];
+					this.out.revoke(id);
+					this.pending_remove(id);
+					states.pop();
+					node_stack.pop();
+					if (states[states.length - 1] === StateKind.inline) states.pop();
+					if (states[states.length - 1] !== StateKind.strikethrough) break;
+					id = node_stack[node_stack.length - 1];
+					if (start !== this.pending_starts[this.id_slots[id]] + 2) break;
+				}
+				return false;
+			}
+
 			this.out.set_value_end(n_id, this.cursor);
 			this.emit_close(n_id, this.cursor + 2);
 			this.pending_remove(n_id);

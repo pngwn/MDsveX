@@ -140,3 +140,44 @@ describe('strikethrough beside non-ascii characters', () => {
 		expect(inline_shape(input, 1)).toBe(shape);
 	});
 });
+
+describe('doubled strikethrough', () => {
+	const DD = (inner: string) => `strikethrough(strikethrough(${inner}))`;
+
+	const nested: [string, string][] = [
+		['~~~~x~~~~', DD('"x"')],
+		['~~~~(x)~~~~', DD('"(x)"')],
+		['~~~~"q"~~~~', DD('"\\"q\\""')],
+		['~~~~「重要」~~~~', DD('"「重要」"')],
+		['~~~~[a](b)~~~~', DD('link("a")')],
+		['~~~~`code`~~~~', DD('code_span()')],
+		['~~~~{expr}~~~~', DD('mustache()')],
+		['~~~~*x*~~~~', DD('strong_emphasis("x")')],
+		['a ~~~~(x)~~~~ b', `"a " ${DD('"(x)"')} " b"`],
+		['a ~~~~(x)~~~~.', `"a " ${DD('"(x)"')} "."`],
+		['~~a ~~~~(b)~~~~ c~~', `strikethrough("a " ${DD('"(b)"')} " c")`],
+		['~~~~~~x~~~~~~', `strikethrough(${DD('"x"')})`],
+		['~~~~~~(x)~~~~~~', `strikethrough(${DD('"(x)"')})`],
+		['**~~~~(x)~~~~**', `strong_emphasis(strong_emphasis(${DD('"(x)"')}))`],
+		['~~~~**(x)**~~~~', DD('strong_emphasis(strong_emphasis("(x)"))')],
+	];
+
+	const unclosed: [string, string][] = [
+		['a ~~~~ b', `"a " "~~" "~" "~ b"`],
+		['a ~~~~', `"a " "~~" "~" "~"`],
+		['~~~~ x', `"~~" "~" "~ x"`],
+		['a ~~~~~~ b', `"a " "~~~~" "~" "~ b"`],
+		['a ~~~~~~~~ b', `"a " "~~~~~~" "~" "~ b"`],
+		['~~~~(x)', `"~~" "~~(x)"`],
+		['~~~~(x)~~', `"~~" strikethrough("(x)")`],
+		['~~(x)~~~~', `strikethrough("(x)") "~" "~"`],
+		['a ~~ b ~~ c', `"a " "~" "~ b " "~" "~ c"`],
+	];
+
+	test.each([...nested, ...unclosed])('%s', (input, shape) => {
+		expect(inline_shape(input)).toBe(shape);
+		expect(inline_shape(input, 1)).toBe(shape);
+		expect(inline_shape(input, 2)).toBe(shape);
+		expect(inline_shape(input, 3)).toBe(shape);
+	});
+});
