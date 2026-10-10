@@ -1,5 +1,12 @@
 # @mdsvex/typescript-plugin
 
+## 0.1.0-next.2
+
+### Patch Changes
+
+- Updated dependencies [[`3ca3b52`](https://github.com/pngwn/MDsveX/commit/3ca3b525050c5874ac9ff7130033fe00d0112cba)]:
+  - @mdsvex/language-core@0.1.0-next.2
+
 ## 0.1.0-next.1
 
 ### Minor Changes

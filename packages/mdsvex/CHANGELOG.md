@@ -1,5 +1,76 @@
 # mdsvex
 
+## 1.0.0-next.2
+
+### Minor Changes
+
+- [#937](https://github.com/pngwn/MDsveX/pull/937) [`9842f87`](https://github.com/pngwn/MDsveX/commit/9842f872de3f911bbaf54a56a1529d6a1445dccc) Thanks [@pngwn](https://github.com/pngwn)! - A document imported with `?metadata` gives its frontmatter without its component. Use it to list posts, so the list does not load every page:
+
+  ```js
+  const posts = import.meta.glob('./*/+page.svx', {
+  	query: '?metadata',
+  	import: 'metadata',
+  	eager: true,
+  });
+  ```
+
+  ```js
+  import { metadata } from './article.svx?metadata';
+  ```
+
+  The module exports the same `metadata` as the compiled document, also as its default export, and `frontmatter.parse` applies. A document without frontmatter exports `undefined`. In dev, editing the frontmatter updates whatever imported it, and an edit below the frontmatter does not. For TypeScript, add `mdsvex/globals` to `compilerOptions.types` to type direct imports.
+
+- [#934](https://github.com/pngwn/MDsveX/pull/934) [`aa06e2f`](https://github.com/pngwn/MDsveX/commit/aa06e2fdd972cfef890313d15a8a22b95d31bd2e) Thanks [@pngwn](https://github.com/pngwn)! - Task lists. A list item that starts with `[ ]`, `[x]` or `[X]`, then a space and some text, is a task item. It renders with a disabled checkbox before its text, and the marker is no longer part of the text. A replaced `li` component gets a boolean `checked` prop instead of the checkbox.
+
+  ```md
+  - [ ] to do
+  - [x] done
+  ```
+
+  ```html
+  <li><input type="checkbox" disabled /> to do</li>
+  <li><input type="checkbox" checked disabled /> done</li>
+  ```
+
+  A marker with nothing after it (`- [ ]`) or with no space after it (`- [x]done`) stays text. To start an item with those characters, escape the bracket: `- \[x] text`.
+
+- [#939](https://github.com/pngwn/MDsveX/pull/939) [`3ca3b52`](https://github.com/pngwn/MDsveX/commit/3ca3b525050c5874ac9ff7130033fe00d0112cba) Thanks [@pngwn](https://github.com/pngwn)! - `unwrap_images`, off by default, renders a paragraph that holds only images without its `<p>`. An `img` replacement that renders a block element such as `<figure>` is then no longer inside one.
+
+  ```js
+  mdsvex({ components: '#lib/markdown.js', unwrap_images: true });
+  ```
+
+  ```md
+  ![A chart](/chart.png)
+  ```
+
+  ```html
+  <!-- off -->
+  <p><img src="/chart.png" alt="A chart" /></p>
+  <!-- on -->
+  <img src="/chart.png" alt="A chart" />
+  ```
+
+  Several images in one paragraph are all unwrapped, and so is an image inside a link, which keeps its link. Any text beside the image keeps the `<p>`. It works the same in block quotes, list items, directives and HTML elements. `compile()` takes the option too, and the parser takes it as a parse option.
+
+### Patch Changes
+
+- [#938](https://github.com/pngwn/MDsveX/pull/938) [`a8473b4`](https://github.com/pngwn/MDsveX/commit/a8473b453958c8619744cb0d8c8c694f515961bc) Thanks [@pngwn](https://github.com/pngwn)! - A `?metadata` request to the dev server only reads documents the server may serve. The path has to end in one of the configured extensions and pass Vite's `server.fs` rules (`allow`, `deny` and `strict`), as a request for the file itself would. A document outside `server.fs.allow` that is imported with `?metadata` in the browser needs its directory added to that option. Server rendering and builds read documents as before.
+
+- [#936](https://github.com/pngwn/MDsveX/pull/936) [`0462e67`](https://github.com/pngwn/MDsveX/commit/0462e678afdb484b031e7ddb4c7086fdee273f27) Thanks [@pngwn](https://github.com/pngwn)! - `CompilerSession` and the vite plugin keep their tree, plugin dispatcher and renderer from one document to the next when parse plugins are configured, as they already did without plugins. They are rebuilt when `parse_plugins` is a different array, so pass a new array to change the plugins.
+
+  A plugin that keeps a `NodeView` after its document has compiled now gets an error when it uses the view once the next document has started. It would otherwise read and write the nodes of that document. `TreeBuilder.reset()` works on a builder with plugins, and resets its dispatcher.
+
+- [#926](https://github.com/pngwn/MDsveX/pull/926) [`fc56ba8`](https://github.com/pngwn/MDsveX/commit/fc56ba892e7068b378e350c29cfb52be6c5d48b1) Thanks [@pngwn](https://github.com/pngwn)! - A document imported with `?raw`, `?url`, `?worker` or `?sharedworker` is left to Vite instead of being compiled as markdown.
+
+- [#923](https://github.com/pngwn/MDsveX/pull/923) [`6985317`](https://github.com/pngwn/MDsveX/commit/6985317ea53b10f5cf99d6a5d6142dd6bcb31e41) Thanks [@pngwn](https://github.com/pngwn)! - The script that bare imports start is `lang="ts"` when an import is a type import or the module script is `lang="ts"`.
+
+- [#929](https://github.com/pngwn/MDsveX/pull/929) [`19fc058`](https://github.com/pngwn/MDsveX/commit/19fc05846c53942ec53ca75baabecd02ed5da076) Thanks [@pngwn](https://github.com/pngwn)! - Vite 6 or later is required. The dev server picks up a changed component or template file through a hook that Vite 5 never calls, so on Vite 5 documents kept the old components and templates until a restart.
+
+- Updated dependencies [[`1c5c5ef`](https://github.com/pngwn/MDsveX/commit/1c5c5ef99483ac86ac52f434fe34b9237c27f12c), [`7900bf2`](https://github.com/pngwn/MDsveX/commit/7900bf24137c24de5ff749e65bf98e5f5fa18ec9), [`0462e67`](https://github.com/pngwn/MDsveX/commit/0462e678afdb484b031e7ddb4c7086fdee273f27), [`bcb377f`](https://github.com/pngwn/MDsveX/commit/bcb377f43e310fee0f1280c0e509a81fc109c532), [`7900bf2`](https://github.com/pngwn/MDsveX/commit/7900bf24137c24de5ff749e65bf98e5f5fa18ec9), [`7900bf2`](https://github.com/pngwn/MDsveX/commit/7900bf24137c24de5ff749e65bf98e5f5fa18ec9), [`bcb377f`](https://github.com/pngwn/MDsveX/commit/bcb377f43e310fee0f1280c0e509a81fc109c532), [`6985317`](https://github.com/pngwn/MDsveX/commit/6985317ea53b10f5cf99d6a5d6142dd6bcb31e41), [`bcb377f`](https://github.com/pngwn/MDsveX/commit/bcb377f43e310fee0f1280c0e509a81fc109c532), [`bcb377f`](https://github.com/pngwn/MDsveX/commit/bcb377f43e310fee0f1280c0e509a81fc109c532), [`bcb377f`](https://github.com/pngwn/MDsveX/commit/bcb377f43e310fee0f1280c0e509a81fc109c532), [`0462e67`](https://github.com/pngwn/MDsveX/commit/0462e678afdb484b031e7ddb4c7086fdee273f27), [`0462e67`](https://github.com/pngwn/MDsveX/commit/0462e678afdb484b031e7ddb4c7086fdee273f27), [`bcb377f`](https://github.com/pngwn/MDsveX/commit/bcb377f43e310fee0f1280c0e509a81fc109c532), [`aa06e2f`](https://github.com/pngwn/MDsveX/commit/aa06e2fdd972cfef890313d15a8a22b95d31bd2e), [`6985317`](https://github.com/pngwn/MDsveX/commit/6985317ea53b10f5cf99d6a5d6142dd6bcb31e41), [`7900bf2`](https://github.com/pngwn/MDsveX/commit/7900bf24137c24de5ff749e65bf98e5f5fa18ec9), [`3ca3b52`](https://github.com/pngwn/MDsveX/commit/3ca3b525050c5874ac9ff7130033fe00d0112cba), [`cc7aef8`](https://github.com/pngwn/MDsveX/commit/cc7aef8c239cfc876e80fc9340a1fb8e56818e4d), [`bcb377f`](https://github.com/pngwn/MDsveX/commit/bcb377f43e310fee0f1280c0e509a81fc109c532), [`bcb377f`](https://github.com/pngwn/MDsveX/commit/bcb377f43e310fee0f1280c0e509a81fc109c532), [`cc7aef8`](https://github.com/pngwn/MDsveX/commit/cc7aef8c239cfc876e80fc9340a1fb8e56818e4d)]:
+  - @mdsvex/parse@1.0.0-next.2
+  - @mdsvex/render@1.0.0-next.2
+
 ## 1.0.0-next.1
 
 ### Minor Changes

@@ -1,5 +1,112 @@
 # parse
 
+## 1.0.0-next.2
+
+### Minor Changes
+
+- [#931](https://github.com/pngwn/MDsveX/pull/931) [`7900bf2`](https://github.com/pngwn/MDsveX/commit/7900bf24137c24de5ff749e65bf98e5f5fa18ec9) Thanks [@pngwn](https://github.com/pngwn)! - Han, kana and hangul characters count as a boundary on the outer side of a delimiter, so emphasis, strong and strikethrough work in CJK prose, which has no spaces, without the `|` marker. Other scripts written without spaces, such as Thai, still need the marker.
+
+  ```md
+  这是*重要*的, これは*重要*です and 이것은~~중요~~합니다
+  ```
+
+- [#940](https://github.com/pngwn/MDsveX/pull/940) [`bcb377f`](https://github.com/pngwn/MDsveX/commit/bcb377f43e310fee0f1280c0e509a81fc109c532) Thanks [@pngwn](https://github.com/pngwn)! - In a plugin's open handler, `node.parent` is the node the author wrote it inside, whatever wrappers a plugin has put there. A child of a node that had a `wrap_inner` wrapper used to see that wrapper as its parent at open. It now sees the wrapper only in its close callback, where `node.parent` is the parent in the tree.
+
+- [#934](https://github.com/pngwn/MDsveX/pull/934) [`aa06e2f`](https://github.com/pngwn/MDsveX/commit/aa06e2fdd972cfef890313d15a8a22b95d31bd2e) Thanks [@pngwn](https://github.com/pngwn)! - Task lists. A list item that starts with `[ ]`, `[x]` or `[X]`, then a space and some text, is a task item. It renders with a disabled checkbox before its text, and the marker is no longer part of the text. A replaced `li` component gets a boolean `checked` prop instead of the checkbox.
+
+  ```md
+  - [ ] to do
+  - [x] done
+  ```
+
+  ```html
+  <li><input type="checkbox" disabled /> to do</li>
+  <li><input type="checkbox" checked disabled /> done</li>
+  ```
+
+  A marker with nothing after it (`- [ ]`) or with no space after it (`- [x]done`) stays text. To start an item with those characters, escape the bracket: `- \[x] text`.
+
+- [#939](https://github.com/pngwn/MDsveX/pull/939) [`3ca3b52`](https://github.com/pngwn/MDsveX/commit/3ca3b525050c5874ac9ff7130033fe00d0112cba) Thanks [@pngwn](https://github.com/pngwn)! - `unwrap_images`, off by default, renders a paragraph that holds only images without its `<p>`. An `img` replacement that renders a block element such as `<figure>` is then no longer inside one.
+
+  ```js
+  mdsvex({ components: '#lib/markdown.js', unwrap_images: true });
+  ```
+
+  ```md
+  ![A chart](/chart.png)
+  ```
+
+  ```html
+  <!-- off -->
+  <p><img src="/chart.png" alt="A chart" /></p>
+  <!-- on -->
+  <img src="/chart.png" alt="A chart" />
+  ```
+
+  Several images in one paragraph are all unwrapped, and so is an image inside a link, which keeps its link. Any text beside the image keeps the `<p>`. It works the same in block quotes, list items, directives and HTML elements. `compile()` takes the option too, and the parser takes it as a parse option.
+
+- [#940](https://github.com/pngwn/MDsveX/pull/940) [`bcb377f`](https://github.com/pngwn/MDsveX/commit/bcb377f43e310fee0f1280c0e509a81fc109c532) Thanks [@pngwn](https://github.com/pngwn)! - Parse plugins can group a node with the siblings that follow it. `node.wrap_from(type, attrs?)` puts a new node around the node and sends every later sibling into it, until `close()` is called on the view it returns or the parent closes:
+
+  ```js
+  const sectionize = {
+  	heading: {
+  		parse(node, ctx) {
+  			if (node.parent?.type !== 'root') return;
+  			ctx.section?.close();
+  			ctx.section = node.wrap_from('html', { tag: 'section' });
+  		},
+  	},
+  };
+  ```
+
+  Keep the open wrapper on `ctx`, which is new for each document. The node must be the last child of its parent, which the node in an open handler always is. Both methods throw when called from the handler of a pending node, such as an emphasis or a tight list paragraph.
+
+### Patch Changes
+
+- [#941](https://github.com/pngwn/MDsveX/pull/941) [`1c5c5ef`](https://github.com/pngwn/MDsveX/commit/1c5c5ef99483ac86ac52f434fe34b9237c27f12c) Thanks [@pngwn](https://github.com/pngwn)! - When a document is parsed incrementally, content inside a block quote is emitted as it arrives. A quoted line opens as soon as the first character after its `>` marker shows what it is, instead of when its newline arrives. The parsed document is unchanged.
+
+- [#936](https://github.com/pngwn/MDsveX/pull/936) [`0462e67`](https://github.com/pngwn/MDsveX/commit/0462e678afdb484b031e7ddb4c7086fdee273f27) Thanks [@pngwn](https://github.com/pngwn)! - A `wrap_inner` called from a plugin's close callback on a node that is still open, such as the parent, takes that node's later children. They used to land beside the wrapper.
+
+- [#940](https://github.com/pngwn/MDsveX/pull/940) [`bcb377f`](https://github.com/pngwn/MDsveX/commit/bcb377f43e310fee0f1280c0e509a81fc109c532) Thanks [@pngwn](https://github.com/pngwn)! - A plugin that gives a directive node `args` that are not strings gets a `TypeError` where it sets them, in the `attrs` of `wrap_inner`, `prepend`, `append` or `wrap_from`, or in `node.attrs.args = ...`. Such a node used to fail later in the renderer, or render with the args ignored.
+
+- [#931](https://github.com/pngwn/MDsveX/pull/931) [`7900bf2`](https://github.com/pngwn/MDsveX/commit/7900bf24137c24de5ff749e65bf98e5f5fa18ec9) Thanks [@pngwn](https://github.com/pngwn)! - A doubled `**` or `__` opens two nested nodes before punctuation, a link, a code span or an expression, as it does before a letter. The outer pair is no longer left as literal text.
+
+  ```md
+  **(x)**, **[a](b)**, **`code`** and **"quoted"**
+  ```
+
+- [#931](https://github.com/pngwn/MDsveX/pull/931) [`7900bf2`](https://github.com/pngwn/MDsveX/commit/7900bf24137c24de5ff749e65bf98e5f5fa18ec9) Thanks [@pngwn](https://github.com/pngwn)! - A doubled `~~~~` nests two strikethroughs before punctuation, a link or a code span, as it does before a letter, and tildes with nothing between them stay literal text. Neither produces an empty strikethrough any more.
+
+  ```md
+  ```(x)~~~~ and a ~~~~ b
+
+  ```
+  ```
+
+- [#923](https://github.com/pngwn/MDsveX/pull/923) [`6985317`](https://github.com/pngwn/MDsveX/commit/6985317ea53b10f5cf99d6a5d6142dd6bcb31e41) Thanks [@pngwn](https://github.com/pngwn)! - An import statement can span several lines, `import {` runs until its braces close.
+
+- [#940](https://github.com/pngwn/MDsveX/pull/940) [`bcb377f`](https://github.com/pngwn/MDsveX/commit/bcb377f43e310fee0f1280c0e509a81fc109c532) Thanks [@pngwn](https://github.com/pngwn)! - An unclosed html tag inside a wrapper a parse plugin made becomes a paragraph of its literal text, as it does without the wrapper. Inside a blockquote whose content a plugin had wrapped it became bare text.
+
+- [#936](https://github.com/pngwn/MDsveX/pull/936) [`0462e67`](https://github.com/pngwn/MDsveX/commit/0462e678afdb484b031e7ddb4c7086fdee273f27) Thanks [@pngwn](https://github.com/pngwn)! - `CompilerSession` and the vite plugin keep their tree, plugin dispatcher and renderer from one document to the next when parse plugins are configured, as they already did without plugins. They are rebuilt when `parse_plugins` is a different array, so pass a new array to change the plugins.
+
+  A plugin that keeps a `NodeView` after its document has compiled now gets an error when it uses the view once the next document has started. It would otherwise read and write the nodes of that document. `TreeBuilder.reset()` works on a builder with plugins, and resets its dispatcher.
+
+- [#936](https://github.com/pngwn/MDsveX/pull/936) [`0462e67`](https://github.com/pngwn/MDsveX/commit/0462e678afdb484b031e7ddb4c7086fdee273f27) Thanks [@pngwn](https://github.com/pngwn)! - What a plugin did to a node survives when an ancestor of that node is revoked. In `_a *b* c` the unclosed `_` is revoked and the `*b*` inside it stays, and it now keeps the attrs and nodes a plugin gave it and still fires its close callbacks.
+
+- [#940](https://github.com/pngwn/MDsveX/pull/940) [`bcb377f`](https://github.com/pngwn/MDsveX/commit/bcb377f43e310fee0f1280c0e509a81fc109c532) Thanks [@pngwn](https://github.com/pngwn)! - Nodes made by a parse plugin are flagged. `NodeBuffer.synthetic_at(index)` and `Cursor.synthetic` are true for them and false for every node the parser made.
+
+- [#931](https://github.com/pngwn/MDsveX/pull/931) [`7900bf2`](https://github.com/pngwn/MDsveX/commit/7900bf24137c24de5ff749e65bf98e5f5fa18ec9) Thanks [@pngwn](https://github.com/pngwn)! - Unicode punctuation and symbols count as punctuation beside emphasis, strong and strikethrough delimiters, as ASCII punctuation does. Curly quotes, dashes, ellipses, guillemets and CJK punctuation no longer leave the delimiters as literal text.
+
+  ```md
+  “_quoted_”, word—_aside_ and _重要_。
+  ```
+
+- [#928](https://github.com/pngwn/MDsveX/pull/928) [`cc7aef8`](https://github.com/pngwn/MDsveX/commit/cc7aef8c239cfc876e80fc9340a1fb8e56818e4d) Thanks [@pngwn](https://github.com/pngwn)! - `WireTreeBuilder.reset()` gives the next document its own strings and clears the plugin state of the last one. Text written after a reset used to go into an array shared by every buffer, and plugins kept reading the text of the document before the reset.
+
+- [#940](https://github.com/pngwn/MDsveX/pull/940) [`bcb377f`](https://github.com/pngwn/MDsveX/commit/bcb377f43e310fee0f1280c0e509a81fc109c532) Thanks [@pngwn](https://github.com/pngwn)! - Over the wire, a heading with trailing spaces whose content a plugin wrapped, as the autolink plugin does, shows its text once. `## A   ` rendered as `A   A`.
+
+- [#928](https://github.com/pngwn/MDsveX/pull/928) [`cc7aef8`](https://github.com/pngwn/MDsveX/commit/cc7aef8c239cfc876e80fc9340a1fb8e56818e4d) Thanks [@pngwn](https://github.com/pngwn)! - A node wrapped more than once with `wrap_inner` sends its later children to the innermost wrapper. They used to land beside an empty wrapper when two plugins wrapped the same node or a plugin wrapped its own wrapper, and revoking one wrapper dropped the redirect of the others.
+
 ## 1.0.0-next.1
 
 ### Minor Changes

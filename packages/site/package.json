@@ -15,7 +15,7 @@
 	"dependencies": {
 		"@mdsvex/repl": "workspace:*",
 		"@twinkleplop/theme-ayu": "^0.1.3",
-		"mdsvex": "1.0.0-next.1"
+		"mdsvex": "1.0.0-next.2"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^6.1.1",

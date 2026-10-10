@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/repl",
-	"version": "0.0.1-next.0",
+	"version": "0.0.1-next.1",
 	"private": true,
 	"description": "Browser REPL for mdsvex, adapted from the Svelte playground",
 	"type": "module",
