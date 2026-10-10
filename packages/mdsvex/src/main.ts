@@ -20,6 +20,19 @@ import type {
 	HighlightOption,
 } from './highlight_run';
 import type { HighlightOptions, HtmlHighlighter } from './highlight';
+import {
+	COMPONENTS_ID,
+	DIRECTIVES_EXPORT,
+	DIRECTIVES_ID,
+	TEMPLATE_DIRECTIVES_ID,
+	TEMPLATE_ID,
+	VITE_QUERY,
+	clean_id,
+	importer_in,
+	shown,
+	spec_of,
+	svelte_request,
+} from './ids';
 import { base64_utf8, chained_base64, pfm_map } from './sourcemap_chain';
 import type { StoredDocument } from './sourcemap_chain';
 
@@ -124,37 +137,6 @@ async function flat_plugins(
 function api_extensions(plugin: Plugin | undefined): string[] | undefined {
 	const extensions = plugin?.api?.options?.extensions;
 	return Array.isArray(extensions) ? extensions : undefined;
-}
-
-// documents import these virtual ids, so output holds no paths and the graph edge is the real file
-const COMPONENTS_ID = 'mdsvex:components';
-const DIRECTIVES_ID = 'mdsvex:directives';
-/** the namespace export of a replacement module that holds its directives */
-const DIRECTIVES_EXPORT = 'directives';
-const TEMPLATE_ID = 'mdsvex:template/';
-const TEMPLATE_DIRECTIVES_ID = 'mdsvex:template-directives/';
-
-/** a URL as a path, a string as written */
-async function spec_of(entry: string | URL): Promise<string> {
-	const spec = typeof entry === 'string' ? entry : entry.href;
-	if (!spec.startsWith('file:')) return spec;
-	const url = await import('node:url');
-	return url.fileURLToPath(spec);
-}
-
-function shown(entry: string | URL): string {
-	return JSON.stringify(typeof entry === 'string' ? entry : entry.href);
-}
-
-/** the directory documents resolve configured specifiers from */
-function importer_in(root: string): string {
-	const base = root || (globalThis as any).process?.cwd?.() || '';
-	return base.replace(/\/$/, '') + '/vite.config';
-}
-
-function clean_id(id: string): string {
-	const q = id.indexOf('?');
-	return q < 0 ? id : id.slice(0, q);
 }
 
 function same_names(a: readonly string[], b: readonly string[]): boolean {
@@ -859,14 +841,6 @@ function query_template(id: string): string | false | undefined {
 	if (value === null) return undefined;
 	return value === 'false' ? false : value;
 }
-
-/** a vite-plugin-svelte sub-request of a document, ?svelte&type=style holds its css */
-function svelte_request(id: string, q: number): boolean {
-	return new URLSearchParams(id.slice(q + 1)).has('svelte');
-}
-
-/** vite loads these as a js module of its own, not as the document */
-const VITE_QUERY = /[?&](?:raw|url|worker|sharedworker)\b/;
 
 type TemplateRegistry = ReturnType<typeof template_registry>;
 
