@@ -109,6 +109,15 @@ export interface PreMeta {
 	pre_props(meta: string, start: number): string;
 }
 
+/** a string is escaped as a url of the source is, '' leaves the attribute out, an expression goes in braces */
+export type UrlSource = string | { type: 'expression'; value: string };
+
+/** what replaces the src of an image or the href of a link, url is never empty, null or undefined keeps it */
+export type UrlLookup = (
+	url: string,
+	image: boolean
+) => UrlSource | null | undefined;
+
 // must equal NONE in @mdsvex/parse
 const enum Slot {
 	NONE = 0xffffffff,
@@ -1423,8 +1432,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			const pre = mo.length;
 			const meta = c.meta();
 			let s = '<a';
-			if (meta?.href)
-				s += ' href="' + escape_text_html(meta.href as string) + '"';
+			if (meta?.href) s += url_attr(meta.href as string, false);
 			if (meta?.title)
 				s += ' title="' + escape_text_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, LINK_HANDLED) + '>';
@@ -1440,7 +1448,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			const pre = mo.length;
 			const meta = c.meta();
 			let s = '<img';
-			if (meta?.src) s += ' src="' + escape_text_html(meta.src as string) + '"';
+			if (meta?.src) s += url_attr(meta.src as string, true);
 			s += ' alt="' + escape_text_html(_children_raw(c)) + '"';
 			if (meta?.title)
 				s += ' title="' + escape_text_html(meta.title as string) + '"';
@@ -2446,11 +2454,7 @@ function fold_code_fence(c: Cursor, p: number): number {
 function fold_link(c: Cursor, p: number): number {
 	const meta = c.meta();
 	p = push_static(p, S_A);
-	if (meta?.href) {
-		p = push_static(p, S_HREF);
-		p = push_dyn(p, escape_text_html(meta.href as string));
-		p = push_static(p, S_QUOTE);
-	}
+	if (meta?.href) p = fold_url(p, meta.href as string, false);
 	if (meta?.title) {
 		p = push_static(p, S_TITLE);
 		p = push_dyn(p, escape_text_html(meta.title as string));
@@ -2465,11 +2469,7 @@ function fold_link(c: Cursor, p: number): number {
 function fold_image(c: Cursor, p: number): number {
 	const meta = c.meta();
 	p = push_static(p, S_IMG);
-	if (meta?.src) {
-		p = push_static(p, S_SRC);
-		p = push_dyn(p, escape_text_html(meta.src as string));
-		p = push_static(p, S_QUOTE);
-	}
+	if (meta?.src) p = fold_url(p, meta.src as string, true);
 	p = push_static(p, S_ALT);
 	p = push_dyn(p, escape_text_html(_children_raw(c)));
 	p = push_static(p, S_QUOTE);
@@ -2987,8 +2987,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			if (p !== 0) mo += FOLD_STR[p];
 			const meta = c.meta();
 			let s = '<a';
-			if (meta?.href)
-				s += ' href="' + escape_text_html(meta.href as string) + '"';
+			if (meta?.href) s += url_attr(meta.href as string, false);
 			if (meta?.title)
 				s += ' title="' + escape_text_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, LINK_HANDLED);
@@ -3003,7 +3002,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			if (p !== 0) mo += FOLD_STR[p];
 			const meta = c.meta();
 			let s = '<img';
-			if (meta?.src) s += ' src="' + escape_text_html(meta.src as string) + '"';
+			if (meta?.src) s += url_attr(meta.src as string, true);
 			s += ' alt="' + escape_text_html(_children_raw(c)) + '"';
 			if (meta?.title)
 				s += ' title="' + escape_text_html(meta.title as string) + '"';
@@ -3515,8 +3514,7 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			if (p !== 0) mo += FOLD_STR[p];
 			const meta = c.meta();
 			let s = '<a';
-			if (meta?.href)
-				s += ' href="' + escape_text_html(meta.href as string) + '"';
+			if (meta?.href) s += url_attr(meta.href as string, false);
 			if (meta?.title)
 				s += ' title="' + escape_text_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, LINK_HANDLED);
@@ -3533,7 +3531,7 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			if (p !== 0) mo += FOLD_STR[p];
 			const meta = c.meta();
 			let s = '<img';
-			if (meta?.src) s += ' src="' + escape_text_html(meta.src as string) + '"';
+			if (meta?.src) s += url_attr(meta.src as string, true);
 			s += ' alt="' + escape_text_html(_children_raw(c)) + '"';
 			if (meta?.title)
 				s += ' title="' + escape_text_html(meta.title as string) + '"';
@@ -4412,8 +4410,7 @@ function comp_node(
 
 		case K.LINK: {
 			const meta = c.meta();
-			if (meta?.href)
-				open += ' href="' + escape_text_html(meta.href as string) + '"';
+			if (meta?.href) open += url_attr(meta.href as string, false);
 			if (meta?.title)
 				open += ' title="' + escape_text_html(meta.title as string) + '"';
 			open += _attrs(c, LINK_HANDLED);
@@ -4422,8 +4419,7 @@ function comp_node(
 
 		case K.IMAGE: {
 			const meta = c.meta();
-			if (meta?.src)
-				open += ' src="' + escape_text_html(meta.src as string) + '"';
+			if (meta?.src) open += url_attr(meta.src as string, true);
 			open += ' alt="' + escape_text_html(_children_raw(c)) + '"';
 			if (meta?.title)
 				open += ' title="' + escape_text_html(meta.title as string) + '"';
@@ -5306,6 +5302,8 @@ export class CursorHTMLRenderer {
 	 * without a replacement, the cached render of update ignores them
 	 */
 	declare imports?: readonly string[];
+	/** replaces the src of images and the href of links in the next renders, unset keeps every url */
+	declare urls?: UrlLookup;
 
 	constructor(opts?: { cache?: boolean }) {
 		this.cache = opts?.cache ?? true;
@@ -5328,6 +5326,8 @@ export class CursorHTMLRenderer {
 		esc_reset(source);
 		hl = this.highlight;
 		pm = this.pre_meta;
+		const urls = this.urls;
+		if (urls !== undefined) ul = urls;
 
 		// no caching, single-pass full render
 		if (!this.cache) {
@@ -5360,6 +5360,7 @@ export class CursorHTMLRenderer {
 			} finally {
 				hl = null;
 				pm = null;
+				if (urls !== undefined) ul = null;
 				esc_prebuilt = true;
 				esc_bits = null;
 				if (dir_strict) dir_strict = false;
@@ -5377,6 +5378,7 @@ export class CursorHTMLRenderer {
 		} finally {
 			hl = null;
 			pm = null;
+			if (urls !== undefined) ul = null;
 			if (code) module_end();
 		}
 		return this.blocks;
@@ -5432,6 +5434,8 @@ export class CursorHTMLRenderer {
 		esc_reset(source);
 		hl = this.highlight;
 		pm = this.pre_meta;
+		const urls = this.urls;
+		if (urls !== undefined) ul = urls;
 
 		if (this.template !== undefined) {
 			this.html = this.render_wrapped(c, buf, sink, trace, code);
@@ -5469,6 +5473,7 @@ export class CursorHTMLRenderer {
 		} finally {
 			hl = null;
 			pm = null;
+			if (urls !== undefined) ul = null;
 			esc_prebuilt = true;
 			esc_bits = null;
 			if (dir_strict) dir_strict = false;
@@ -5532,6 +5537,7 @@ export class CursorHTMLRenderer {
 		} finally {
 			hl = null;
 			pm = null;
+			ul = null;
 			esc_prebuilt = true;
 			esc_bits = null;
 			if (dir_strict) dir_strict = false;
@@ -5657,6 +5663,7 @@ export class CursorHTMLRenderer {
 		comp_last = NO_WARNINGS;
 		if (this.template !== undefined) this.template = undefined;
 		if (this.imports !== undefined) this.imports = undefined;
+		if (this.urls !== undefined) this.urls = undefined;
 		// the escape index is module state and would keep the source alive,
 		// every render resets it, a zero length clamps any text of '' to empty
 		esc_src = '';
@@ -5670,12 +5677,14 @@ export class CursorHTMLRenderer {
 export function _mapped_begin(
 	buf: NodeBuffer,
 	source: string,
-	html: string
+	html: string,
+	urls: UrlLookup | null = null
 ): void {
 	esc_reset(source);
 	prebuilt_begin(buf);
 	// callers render parts, they place imports and scripts themselves
 	hoist_reset();
+	ul = urls;
 	mo = html;
 }
 
@@ -5683,6 +5692,7 @@ export function _mapped_begin(
 export function _mapped_end(): string {
 	esc_prebuilt = true;
 	esc_bits = null;
+	ul = null;
 	const html = mo;
 	mo = '';
 	return html;
@@ -5717,6 +5727,34 @@ function extra_end(): void {
 	// a render with no replacement never reaches comp_end
 	comp_lines = '';
 	comp_prefix = '';
+}
+
+/** the url lookup of the render in progress, null keeps every url */
+let ul: UrlLookup | null = null;
+
+/** the src or href attribute of an image or link, every walk writes it here or in the fold twin */
+function url_attr(url: string, image: boolean): string {
+	if (ul === null)
+		return (image ? ' src="' : ' href="') + escape_text_html(url) + '"';
+	return url_swap(url, image);
+}
+
+/** fold twin of url_attr, without a lookup the statics stay in the register */
+function fold_url(p: number, url: string, image: boolean): number {
+	if (ul !== null) return push_dyn(p, url_swap(url, image));
+	p = push_static(p, image ? S_SRC : S_HREF);
+	p = push_dyn(p, escape_text_html(url));
+	return push_static(p, S_QUOTE);
+}
+
+/** url_attr of a render with a lookup */
+function url_swap(url: string, image: boolean): string {
+	const name = image ? ' src=' : ' href=';
+	let to = ul!(url, image);
+	if (to == null) to = url;
+	if (typeof to !== 'string') return name + '{' + to.value + '}';
+	// an empty url of the source has no attribute either
+	return to === '' ? '' : name + '"' + escape_text_html(to) + '"';
 }
 
 /** the first space or tab of an info string, -1 for none */
