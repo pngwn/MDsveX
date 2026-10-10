@@ -323,21 +323,27 @@ import { metadata } from './article.svx';
 
 Keys are not separate variables, so write `{metadata.title}` rather than `{title}`. [Templates](docs#template-props) get every key as its own prop.
 
-To list posts in SvelteKit, import their metadata with `import.meta.glob`:
+To list posts in SvelteKit, import their metadata with `import.meta.glob` and the `?metadata` query:
 
 ```js
 // src/routes/blog/+page.js
-const posts = import.meta.glob('./*/+page.svx', { eager: true });
+const posts = import.meta.glob('./*/+page.svx', {
+	query: '?metadata',
+	import: 'metadata',
+	eager: true
+});
 
 export function load() {
 	return {
-		posts: Object.entries(posts).map(([path, post]) => ({
+		posts: Object.entries(posts).map(([path, metadata]) => ({
 			slug: path.split('/')[1],
-			...post.metadata
+			...metadata
 		}))
 	};
 }
 ```
+
+A `?metadata` import reads only the frontmatter, so the list does not load the component of every page.
 
 ### Supported YAML
 
