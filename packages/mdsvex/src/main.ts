@@ -2,6 +2,9 @@ import type { ParsePlugin } from '@mdsvex/parse';
 import type { ComponentSource } from '@mdsvex/render/html-cursor';
 import type { Plugin, PluginOption, Rollup } from 'vite';
 import remapping from '@ampproject/remapping';
+// ahead of compile, so @mdsvex/render/sourcemap stays first in the chunk they share
+import { base64_utf8, chained_base64, pfm_map } from './sourcemap_chain';
+import type { StoredDocument } from './sourcemap_chain';
 import { CompilerSession } from './compile';
 import type { ComponentMode } from './compile';
 import type { FrontmatterOptions } from './frontmatter';
@@ -10,8 +13,6 @@ import type { MdsvexManifest } from './manifest';
 import { scope_of } from './root_scope';
 import type { Highlighter, HighlightOption } from './highlight_run';
 import type { HighlightOptions } from './highlight';
-import { base64_utf8, chained_base64, pfm_map } from './sourcemap_chain';
-import type { StoredDocument } from './sourcemap_chain';
 import {
 	COMPONENTS_ID,
 	DIRECTIVES_ID,
