@@ -181,6 +181,48 @@ function pfm_tables(input: string): { blocks: string[]; cells: string[] } {
 	return { blocks, cells };
 }
 
+describe("footnotes stay as literal text", () => {
+	test("a reference and its definition", () => {
+		expect(m("Hello[^1] world.\n\n[^1]: The note.")).toBe(
+			"Hello\\[\\^1\\] world.\n\n\\[\\^1\\]: The note.",
+		);
+	});
+
+	test("the label keeps its case and is escaped", () => {
+		expect(m("x[^My_Note]\n\n[^My_Note]: y")).toBe(
+			"x\\[\\^My\\_Note\\]\n\n\\[\\^My\\_Note\\]: y",
+		);
+	});
+
+	test("inline content of a definition is migrated", () => {
+		expect(m("x[^a]\n\n[^a]: some **strong** and `code`")).toBe(
+			"x\\[\\^a\\]\n\n\\[\\^a\\]: some *strong* and `code`",
+		);
+	});
+
+	test("later blocks of a definition follow it", () => {
+		expect(m("x[^a]\n\n[^a]: one\n\n    two\n\n    - three")).toBe(
+			"x\\[\\^a\\]\n\n\\[\\^a\\]: one\n\ntwo\n\n- three",
+		);
+	});
+
+	test("a definition that opens with a block keeps the label on its own line", () => {
+		expect(m("x[^a]\n\n[^a]:\n    - one\n    - two")).toBe(
+			"x\\[\\^a\\]\n\n\\[\\^a\\]:\n\n- one\n- two",
+		);
+	});
+
+	test("a definition in a blockquote", () => {
+		expect(m("> quote[^a]\n>\n> [^a]: in quote")).toBe(
+			"> quote\\[\\^a\\]\n>\n> \\[\\^a\\]: in quote",
+		);
+	});
+
+	test("a definition with no content", () => {
+		expect(m("x[^a]\n\n[^a]:")).toBe("x\\[\\^a\\]\n\n\\[\\^a\\]:");
+	});
+});
+
 describe("table merge markers stay literal", () => {
 	test("a lone > cell is escaped", () => {
 		const input = "| a | b |\n|---|---|\n| x | > |";
@@ -263,6 +305,7 @@ describe("valid PFM output (round-trip through @mdsvex/parse)", () => {
 		mixed:
 			"# Doc\n\nSome *text* with `code` and a [link](/a).\n\n> a quote\n\n- list a\n- list b",
 		frontmatter: "---\nlayout: blog\ntitle: Hi\n---\n\n# Hi\n\nSome *text*.",
+		footnote: "A claim[^1] and another[^note].\n\n[^1]: The source.\n\n[^note]: A *longer* note.\n\n    With a second paragraph.\n\n    - and a list",
 	};
 
 	for (const [name, input] of Object.entries(cases)) {

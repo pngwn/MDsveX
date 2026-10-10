@@ -2,6 +2,8 @@ import type {
 	Blockquote,
 	Code,
 	Definition,
+	FootnoteDefinition,
+	FootnoteReference,
 	Heading,
 	Image,
 	ImageReference,
@@ -88,9 +90,10 @@ function serialize_block(node: RootContent, ctx: Context): string {
 			return node.value;
 		case "definition":
 			return serialize_definition(node);
+		case "footnoteDefinition":
+			return serialize_footnote_definition(node, ctx);
 		default:
-			// footnoteDefinition, yaml/frontmatter and anything unrecognised pass
-			// through via their raw value when available.
+			// yaml, frontmatter and anything unrecognised pass through as their raw value
 			return "value" in node && typeof node.value === "string"
 				? node.value
 				: serialize_inline(
@@ -212,6 +215,26 @@ function serialize_definition(node: Definition): string {
 	return `[${node.identifier}]: ${url}${title}`;
 }
 
+// pfm has no footnotes yet, so both halves stay in the document as escaped text
+function footnote_marker(node: FootnoteReference | FootnoteDefinition): string {
+	return escape_inline(`[^${node.label ?? node.identifier}]`);
+}
+
+function serialize_footnote_definition(
+	node: FootnoteDefinition,
+	ctx: Context,
+): string {
+	const marker = footnote_marker(node) + ":";
+	const blocks = node.children
+		.map((c) => serialize_block(c, ctx))
+		.filter((b) => b.length > 0);
+	// a list or fence on the marker line would stop being a block
+	if (node.children[0]?.type === "paragraph" && blocks.length > 0)
+		blocks[0] = marker + " " + blocks[0];
+	else blocks.unshift(marker);
+	return blocks.join("\n\n");
+}
+
 function serialize_inline(nodes: PhrasingContent[], ctx: Context): string {
 	return nodes.map((n) => serialize_phrasing(n, ctx)).join("");
 }
@@ -243,8 +266,10 @@ function serialize_phrasing(node: PhrasingContent, ctx: Context): string {
 			return serialize_image_reference(node);
 		case "html":
 			return node.value;
+		case "footnoteReference":
+			return footnote_marker(node);
 		default:
-			// footnoteReference and friends: emit raw value if present.
+			// anything unrecognised emits its raw value
 			return "value" in node && typeof (node as { value?: unknown }).value === "string"
 				? (node as { value: string }).value
 				: "";
