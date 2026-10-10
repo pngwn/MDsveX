@@ -52,6 +52,18 @@ describe('line ending normalization', () => {
 			expect(source.slice(heading.value[0], heading.value[1])).toBe('hello');
 		});
 
+		test('task items read the same with CRLF and bare CR line ends', () => {
+			const lf = '- [x] done\n- [ ] todo\n- [ ]\n- [x] \n\n- [X] loose\n';
+			const want = print_ast(parse_markdown_svelte(lf).nodes, lf);
+			expect(want).toContain('list_item checked=true');
+			expect(want).toContain('list_item checked=false');
+			for (const eol of ['\r\n', '\r']) {
+				const { nodes, source } = parse_markdown_svelte(lf.replace(/\n/g, eol));
+				expect(source).toBe(lf);
+				expect(print_ast(nodes, source)).toBe(want);
+			}
+		});
+
 		test('CRLF blank line is detected as a blank line', () => {
 			const { nodes } = parse_markdown_svelte('aaa\r\n\r\nbbb\r\n');
 			const root = nodes.get_node();
@@ -115,6 +127,24 @@ describe('line ending normalization', () => {
 			p.feed('abc\r\ndef\r\n');
 			p.finish();
 			expect(get_source(p)).toBe('abc\ndef\n');
+		});
+
+		test('a task marker split around a \\r\\n matches the LF parse', () => {
+			const lf = '- [x] done\n- [ ]\n- [ ] todo\n';
+			const want = print_ast(parse_markdown_svelte(lf).nodes, lf);
+			const crlf = lf.replace(/\n/g, '\r\n');
+			for (const size of [1, 2, 3]) {
+				const tree = new TreeBuilder(128);
+				const p = new PFMParser(tree);
+				p.init();
+				for (let i = 0; i < crlf.length; i += size) {
+					p.feed(crlf.slice(i, i + size));
+				}
+				p.finish();
+				expect(print_ast(tree.get_buffer(), lf), `chunks of ${size}`).toBe(
+					want
+				);
+			}
 		});
 
 		test('empty feed() chunks do not disturb pending_cr state', () => {

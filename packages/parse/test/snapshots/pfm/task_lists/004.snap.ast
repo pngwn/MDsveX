@@ -1,0 +1,16 @@
+root
+  block_quote
+    list ordered=false start=0 tight=true
+      list_item checked=true
+        text "quoted"
+      list_item checked=false
+        text "also quoted"
+  line_break
+  line_break
+  directive_container name="note"
+    list ordered=false start=0 tight=true
+      list_item checked=true
+        text "in a container"
+      list_item checked=false
+        text "still in it"
+    line_break

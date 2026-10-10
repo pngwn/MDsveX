@@ -1,0 +1,15 @@
+root
+  list ordered=false start=0 tight=false
+    list_item checked=false
+      paragraph
+        text "todo"
+    list_item checked=true
+      paragraph
+        text "done"
+      paragraph
+        text "second paragraph"
+      code_fence info="js" "  let x = 1;"
+    list_item
+      paragraph
+        text "plain"
+  line_break

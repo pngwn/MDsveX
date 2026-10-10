@@ -6,6 +6,7 @@ import { kind_to_string } from '../src/utils';
 import type { NodeBuffer } from '../src/utils';
 import fs from 'node:fs';
 import path from 'node:path';
+import { print_ast } from './print';
 
 //  Helpers
 
@@ -558,6 +559,34 @@ describe('directive incremental behavior', () => {
 					const batch = parse_batch(input);
 					const diffs = tree_diff(batch, parse_incremental(input, size), input);
 					expect(diffs).toEqual([]);
+				});
+			}
+		}
+	});
+
+	describe('task items match batch at every chunk size', () => {
+		const cases: [string, string][] = [
+			['tight', '- [ ] a\n- [x] b\n- [X] c\n- d\n'],
+			['ordered and nested', '1. [x] a\n2. [ ] b\n   - [x] c\n3. d\n'],
+			['loose', '- [ ] a\n\n- [x] b\n\n  c\n'],
+			['in a block quote', '> - [x] a\n> - [ ] b\n'],
+			['spaces around the marker', '-   [x] a\n- [ ]   b\n- [x]\tc\n'],
+			['marker with no content', '- [ ]\n- [x] \n- [ ]  \n- a\n'],
+			['near misses', '- [x]a\n- [y] b\n- [  ] c\n- [] d\n- [x\n'],
+			['block starts after the marker', '- [ ] - a\n- [x] # b\n- [ ] > c\n'],
+			['ends inside the marker', '- [x'],
+			['ends after the marker', '- [x]'],
+			['ends after the space', '- [x] '],
+			['ends at the content', '- [x] a'],
+		];
+		for (const [name, input] of cases) {
+			for (const size of [1, 2, 3]) {
+				it(`${name} chunk size ${size}`, () => {
+					const batch = parse_batch(input);
+					const incr = parse_incremental(input, size);
+					expect(tree_diff(batch, incr, input)).toEqual([]);
+					// tree_diff leaves metadata out, and checked is metadata
+					expect(print_ast(incr, input)).toBe(print_ast(batch, input));
 				});
 			}
 		}

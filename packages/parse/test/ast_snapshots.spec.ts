@@ -83,6 +83,7 @@ const PFM_CATEGORIES = [
 	'links',
 	'list_items',
 	'lists',
+	'task_lists',
 	'paragraphs',
 	'soft_line_breaks',
 	'thematic_breaks',

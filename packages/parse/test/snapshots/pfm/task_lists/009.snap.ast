@@ -1,0 +1,16 @@
+root
+  list ordered=false start=0 tight=false
+    list_item checked=false
+      paragraph
+        text "first"
+        soft_break
+        text "  "
+        text "[x"
+        text "] a continuation line stays text"
+    list_item
+      paragraph
+        text "item"
+      paragraph
+        text "[ "
+        text "] a second paragraph stays text"
+  line_break

@@ -322,6 +322,48 @@ describe('wire format: lists', () => {
 		expect(ordered_attr).toBeDefined();
 		expect(ordered_attr![3]).toBe(false);
 	});
+
+	it('a task item carries checked and no marker text', () => {
+		const ops = parse_wire('- [x] done\n- [ ] todo\n- plain\n');
+		const items = ops.filter(
+			(op) => op[0] === WireOp.Open && op[2] === NodeKind.list_item
+		);
+		expect(items.length).toBe(3);
+		const checked = items.map(
+			(item) =>
+				ops.find(
+					(op) =>
+						op[0] === WireOp.Attr && op[1] === item[1] && op[2] === 'checked'
+				)?.[3]
+		);
+		expect(checked).toEqual([true, false, undefined]);
+		const text = ops
+			.filter((op) => op[0] === WireOp.Text)
+			.map((op) => op[2])
+			.join('|');
+		expect(text).toBe('done|todo|plain');
+	});
+
+	it('a task item fed in small chunks sends the same attrs and text', () => {
+		const source = '1. [x] done\n2. [ ] todo\n   - [X] in\n';
+		const want = parse_wire(source).filter(
+			(op) => op[0] === WireOp.Attr || op[0] === WireOp.Text
+		);
+		for (const size of [1, 2, 3]) {
+			const ops = parse_wire_incremental(source, size).flat();
+			const attrs = ops.filter(
+				(op) => op[0] === WireOp.Attr && op[2] === 'checked'
+			);
+			expect(attrs, `chunks of ${size}`).toEqual(
+				want.filter((op) => op[2] === 'checked')
+			);
+			const text = ops
+				.filter((op) => op[0] === WireOp.Text)
+				.map((op) => op[2])
+				.join('');
+			expect(text, `chunks of ${size}`).toBe('donetodoin');
+		}
+	});
 });
 
 describe('wire format: attrs', () => {
