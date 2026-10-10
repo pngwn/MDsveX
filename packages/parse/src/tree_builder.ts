@@ -207,6 +207,8 @@ export class TreeBuilder implements Emitter {
 		const dispatcher = this.dispatcher;
 		if (dispatcher !== null && !dispatcher.quiet()) {
 			dispatcher.dispatch_close(idx, nodes);
+			// a callback may have made the first redirect
+			this.wants = dispatcher.open_wants;
 		}
 
 		// pending paragraphs inside list_items are tight-list speculation

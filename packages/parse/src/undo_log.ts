@@ -136,6 +136,12 @@ export class UndoLog {
 	 */
 	kind_changes: number[] | null = null;
 
+	/**
+	 * parent and wrapper of each wrap_inner while the dispatcher collects them,
+	 * a wrap needs a redirect whether or not anything records it
+	 */
+	wraps: number[] | null = null;
+
 	log_kind(target: number, prior_kind: number): void {
 		const log = this.kind_changes;
 		if (log === null) this.kind_changes = [target, prior_kind];
@@ -192,6 +198,8 @@ export class UndoLog {
 		prior_first_child: number,
 		prior_last_child: number
 	): void {
+		const wraps = this.wraps;
+		if (wraps !== null) wraps.push(parent, wrapper);
 		this._append({
 			kind: UndoEntryKind.WrapInner,
 			parent,
@@ -331,6 +339,7 @@ export class UndoLog {
 	clear(): void {
 		this.logs.clear();
 		this.kind_changes = null;
+		this.wraps = null;
 		this.active_node = NONE;
 	}
 }
