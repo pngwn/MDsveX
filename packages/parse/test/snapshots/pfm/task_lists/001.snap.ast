@@ -1,0 +1,11 @@
+root
+  list ordered=false start=0 tight=true
+    list_item checked=false
+      text "todo"
+    list_item checked=true
+      text "done"
+    list_item checked=true
+      text "also done"
+    list_item
+      text "plain"
+  line_break

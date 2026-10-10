@@ -1,0 +1,11 @@
+root
+  list ordered=false start=0 tight=true
+    list_item checked=true
+      text "spaces before"
+    list_item checked=false
+      text "spaces after"
+    list_item checked=true
+      text "tab after"
+    list_item checked=false
+      text "tab before"
+  line_break

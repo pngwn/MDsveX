@@ -33,6 +33,21 @@ The definition must appear **before** the reference is used. Forward references 
 
 **Lists**, Non-sequential numbers supported (`11.`, `27.` etc.). Tight vs. loose is determined locally and per-list: no blank lines between items = tight (no `<p>` wrappers), all items separated by blank lines = loose (with `<p>` wrappers). Mixed blank lines are treated as loose. No cascade behaviour, a blank line in one list never affects another.
 
+**Task lists**, Added, as in GFM. A list item whose content starts with `[ ]`, `[x]` or `[X]`, then a space or tab, then more content on the same line is a task item. The marker is not part of the item's text. It works in ordered and unordered lists at any depth.
+
+```markdown
+- [ ] to do
+- [x] done
+```
+
+The rest of the line after the marker is paragraph text and never opens a block, so `- [ ] # title` is a task item with the text `# title`. Anything else stays literal text: a marker with no space after it (`[x]done`), a marker later in the item, on a continuation line or in a later paragraph, and a marker with nothing after it on its line (`- [ ]`), which like a bare list marker is not syntax. Escape the bracket (`- \[x] text`) to start an item with those characters.
+
+A task item renders with a disabled checkbox before its text, inside the first paragraph when the list is loose:
+
+```html
+<li><input type="checkbox" checked disabled /> done</li>
+```
+
 **Emphasis**, `_` for emphasis, `*` for strong. These are **distinct and non-interchangeable**. Intraword emphasis via a `|` marker, which is not rendered:
 
 ```markdown

@@ -117,6 +117,7 @@ Sets an attribute on a node. Common attributes:
 | `code_fence` | `info`       | `string`   | Info string (language identifier)                                  |
 | `list`       | `ordered`    | `boolean`  | `true` for ordered lists                                           |
 | `list`       | `start`      | `number`   | Start number for ordered lists                                     |
+| `list_item`  | `checked`    | `boolean`  | Task item state, absent on an item with no task marker             |
 | `table`      | `alignments` | `string[]` | Per-column alignment: `"left"`, `"center"`, `"right"`, or `"none"` |
 
 ### R, Revoke
@@ -209,7 +210,7 @@ These appear as direct children of root:
 | `code_fence`     | backtick count | `info`: language   | raw text              | Content is raw (no inline parsing)                     |
 | `block_quote`    | ,              | ,                  | block children        | Contains paragraphs, etc.                              |
 | `list`           | ,              | `ordered`, `start` | list_item children    |                                                        |
-| `list_item`      | ,              | ,                  | block/inline content  |                                                        |
+| `list_item`      | ,              | `checked`          | block/inline content  | `checked` only on a task item, the marker is not text  |
 | `thematic_break` | ,              | ,                  | empty                 | Render as `<hr>`                                       |
 | `table`          | ,              | `alignments[]`     | header + row children |                                                        |
 | `line_break`     | ,              | ,                  | ,                     | Structural separator between blocks; skip in rendering |

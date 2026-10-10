@@ -373,6 +373,30 @@ describe('Mapping collection', () => {
 
 // ── line starts tests ──
 
+describe('task list mappings', () => {
+	it.each([
+		['tight', '- [x] done\n- [ ] *todo* now\n'],
+		['loose', '- [x] done\n\n- [ ] *todo* now\n'],
+	])('%s items map their text past the checkbox', (_name, input) => {
+		const { html, mappings, source } = renderMapped(input);
+		assertMappingsValid(source, html, mappings);
+		expect(html.match(/<input type="checkbox"/g)!.length).toBe(2);
+
+		const contents = byRole(mappings, 'content');
+		expect(contents.map((m) => srcSlice(source, m))).toEqual([
+			'done',
+			'todo',
+			' now',
+		]);
+		for (const m of contents) {
+			expect(genSlice(html, m)).toBe(srcSlice(source, m));
+		}
+		for (const m of [...contents, ...byRole(mappings, 'open_syntax')]) {
+			expect(genSlice(html, m)).not.toContain('<input');
+		}
+	});
+});
+
 describe('build_line_starts', () => {
 	it('single line', () => {
 		const ls = build_line_starts('hello');
@@ -571,6 +595,7 @@ const RECORD_DOCS = [
 	'```js\nlet x = 1 < 2;\n```\n\n| a | b |\n| :- | -: |\n| 1 | {x} |\n',
 	'<script>\nlet a = 1;\n</script>\n\n{#if a}\n_y_ {@html z}\n{:else}\nno\n{/if}\n\n<Foo bar={1} />\n',
 	'![alt *x*](src "t") [link](href) <!-- c --> a & b < c "q"\n\n---\n',
+	'- [x] done\n- [ ] *todo*\n\n1. [ ] loose\n\n   more\n\n2. [X] `code`\n   - [x] nested\n',
 	'',
 ];
 

@@ -751,6 +751,8 @@ interface ColdState {
 	pending_html: number;
 	// pending slots below it hold only paragraphs, see revoke_stale_pending
 	np_floor: number;
+	// where the content of the last opened list item starts, a task marker is only read there
+	task_pos: number;
 }
 
 /**
@@ -801,6 +803,7 @@ export class PFMParser {
 		table_rowspans: null,
 		pending_html: 0,
 		np_floor: 0,
+		task_pos: -1,
 	};
 	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
 	private wait_kind: number = 0;
@@ -1687,6 +1690,7 @@ export class PFMParser {
 		cold.raw_node = 0;
 		cold.raw_needle = '';
 		cold.raw_scan = 0;
+		cold.task_pos = -1;
 		this.wait_kind = WAIT_NONE;
 		this.cursor = 0;
 		this.finished = false;
@@ -3470,6 +3474,30 @@ export class PFMParser {
 		return null;
 	}
 
+	/** where the content after a task marker at pos starts, -1 for no marker, -2 when a feed has to wait */
+	private task_marker_end(pos: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const short = this.finished ? -1 : -2;
+		let p = pos + 1;
+		if (p >= length) return short;
+		let c = char_code_at.call(source, p - base);
+		// x and X
+		if (c !== SPACE && c !== 120 && c !== 88) return -1;
+		if (++p >= length) return short;
+		if (char_code_at.call(source, p - base) !== CLOSE_SQUARE_BRACKET) return -1;
+		if (++p >= length) return short;
+		c = char_code_at.call(source, p - base);
+		if (c !== SPACE && c !== TAB) return -1;
+		do {
+			if (++p >= length) return short;
+			c = char_code_at.call(source, p - base);
+		} while (c === SPACE || c === TAB);
+		// a marker with nothing after it is text, as a bare list marker is
+		return c === LINEFEED ? -1 : p;
+	}
+
 	private is_list_item_start_interrupt(pos: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
@@ -3532,6 +3560,7 @@ export class PFMParser {
 
 		this.states.push(StateKind.list_item);
 		this.chomp(marker.content_start, true);
+		this.cold.task_pos = marker.content_start;
 		this.item_para(item_id);
 	}
 
@@ -10457,6 +10486,7 @@ export class PFMParser {
 								this.node_stack.push(new_item_id);
 								this.list_content_offset = marker_after.content_offset;
 								this.chomp(marker_after.content_start, true);
+								this.cold.task_pos = marker_after.content_start;
 								return false;
 							}
 							this.end_list();
@@ -10512,6 +10542,7 @@ export class PFMParser {
 						this.node_stack.push(new_item_id);
 						this.list_content_offset = marker.content_offset;
 						this.chomp(marker.content_start, true);
+						this.cold.task_pos = marker.content_start;
 						this.item_para(new_item_id);
 						return false;
 					}
@@ -10555,6 +10586,8 @@ export class PFMParser {
 
 			case SPACE:
 			case TAB: {
+				// a task marker may follow more spaces after the list marker
+				if (this.cold.task_pos === this.cursor) this.cold.task_pos++;
 				this.cursor++;
 				return false;
 			}
@@ -10616,6 +10649,7 @@ export class PFMParser {
 							this.node_stack.push(new_item_id);
 							this.list_content_offset = nested.content_offset;
 							this.chomp(nested.content_start, true);
+							this.cold.task_pos = nested.content_start;
 						} else {
 							// marker at outer list level - end this list
 							this.end_list();
@@ -10665,6 +10699,28 @@ export class PFMParser {
 			}
 
 			case OPEN_SQUARE_BRACKET: {
+				if (this.cold.task_pos === this.cursor) {
+					const task_end = this.task_marker_end(this.cursor);
+					if (task_end === -2) return true;
+					if (task_end >= 0) {
+						this.out.attr(
+							current_node,
+							'checked',
+							char_code_at.call(source, this.cursor + 1 - base) !== SPACE
+						);
+						this.chomp(task_end, true);
+						// gfm reads the marker inside a paragraph, so the rest of the line is one
+						this.states.push(StateKind.paragraph);
+						const task_para = this.emit_open_pending(
+							NodeKind.paragraph,
+							this.cursor,
+							current_node
+						);
+						this.track_list_pending_para(task_para);
+						this.node_stack.push(task_para);
+						return false;
+					}
+				}
 				const def_end = this.try_parse_link_ref_definition(this.cursor);
 				if (def_end === -2) return true;
 				if (def_end >= 0) {
@@ -10729,6 +10785,7 @@ export class PFMParser {
 						this.node_stack.push(new_item_id);
 						this.list_content_offset = nested.content_offset;
 						this.chomp(nested.content_start, true);
+						this.cold.task_pos = nested.content_start;
 					} else {
 						this.end_list();
 					}

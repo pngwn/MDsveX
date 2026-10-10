@@ -309,6 +309,8 @@ export function make_meta(key: string, value: any): Record<string, any> {
 			return { args: value };
 		case 'col_count':
 			return { col_count: value };
+		case 'checked':
+			return { checked: value };
 		default: {
 			// a set would change the prototype, a literal defines an own property
 			if (key === '__proto__') return { [key]: value };
@@ -370,6 +372,9 @@ export function merge_meta(
 			return;
 		case 'alignments':
 			meta.alignments = value;
+			return;
+		case 'checked':
+			meta.checked = value;
 			return;
 		default:
 			meta[key] = value;

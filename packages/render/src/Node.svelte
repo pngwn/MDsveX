@@ -61,6 +61,7 @@
 		'ordered',
 		'tight',
 		'start',
+		'checked',
 		'info',
 		'info_start',
 		'info_end',
@@ -109,7 +110,42 @@
 			buf.pending_at(idx) === 1 &&
 			buf.kind_at(buf.parent_at(idx)) === K_LIST_ITEM
 	);
+
+	/** true when the checkbox of a task item goes inside its first paragraph, as github renders a loose list */
+	function box_in_paragraph(item: number): boolean {
+		const first = buf.first_child_at(item);
+		return (
+			first !== NONE &&
+			buf.kind_at(first) === K_PARAGRAPH &&
+			buf.pending_at(first) !== 1
+		);
+	}
+
+	// the checkbox state this node renders, undefined for no checkbox
+	let checked = $derived.by(() => {
+		if (kind === K_LIST_ITEM) {
+			return box_in_paragraph(idx) ? undefined : meta?.checked;
+		}
+		if (kind !== K_PARAGRAPH || skip_list_item_paragraph_wrapper) {
+			return undefined;
+		}
+		const parent = buf.parent_at(idx);
+		if (
+			parent === NONE ||
+			buf.kind_at(parent) !== K_LIST_ITEM ||
+			buf.first_child_at(parent) !== idx
+		) {
+			return undefined;
+		}
+		return buf.metadata_at(parent)?.checked;
+	});
 </script>
+
+{#snippet task_box()}
+	{#if typeof checked === 'boolean'}
+		<input type="checkbox" disabled {checked} />{' '}
+	{/if}
+{/snippet}
 
 {#snippet child_nodes(parent_idx: number)}
 	{#each buf_children(buf, parent_idx) as child_idx (child_idx)}
@@ -197,7 +233,7 @@
 	{#if skip_list_item_paragraph_wrapper}
 		{@render child_nodes(idx)}
 	{:else}
-		<p {...get_attrs(meta)}>{@render child_nodes(idx)}</p>
+		<p {...get_attrs(meta)}>{@render task_box()}{@render child_nodes(idx)}</p>
 	{/if}
 {:else if kind === K_EMPHASIS}
 	<em {...get_attrs(meta)}>{@render child_nodes(idx)}</em>
@@ -246,7 +282,7 @@
 		<ul {...get_attrs(meta)}>{@render child_nodes(idx)}</ul>
 	{/if}
 {:else if kind === K_LIST_ITEM}
-	<li {...get_attrs(meta)}>{@render child_nodes(idx)}</li>
+	<li {...get_attrs(meta)}>{@render task_box()}{@render child_nodes(idx)}</li>
 {:else if kind === K_THEMATIC_BREAK}
 	<hr {...get_attrs(meta)} />
 {:else if kind === K_HARD_BREAK}
