@@ -60,6 +60,8 @@ export interface MdsvexManifest {
 	 * function, false for plain code, a manifest without it means twinkleplop
 	 */
 	highlight?: 'twinkleplop' | 'custom' | false;
+	/** the unwrap_images option, a manifest without it means false */
+	unwrap_images?: boolean;
 }
 
 /**

@@ -8,7 +8,7 @@ import {
 	raw_offsets,
 	take_collapsed,
 } from '@mdsvex/parse';
-import type { ParsePlugin } from '@mdsvex/parse';
+import type { ParsePlugin, SyntaxOptions } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import {
@@ -36,7 +36,7 @@ import type {
 	HighlightWarning,
 } from './highlight_run';
 
-export type { ParsePlugin } from '@mdsvex/parse';
+export type { ParsePlugin, SyntaxOptions } from '@mdsvex/parse';
 export type { Mapping, MappingData, SourceMapV3, MapTrace };
 export type { ComponentSource };
 export type { FrontmatterOptions };
@@ -76,7 +76,7 @@ export interface CompileWarning {
 	start: { line: number; column: number };
 }
 
-export interface CompileOptions extends TemplateOptions {
+export interface CompileOptions extends TemplateOptions, SyntaxOptions {
 	parse_plugins?: ParsePlugin[];
 	sourcemap?: boolean;
 	/** root fallback replacements, lowest precedence first, each specifier is imported as written */
@@ -469,7 +469,8 @@ function give_renderer(renderer: CursorHTMLRenderer): void {
 function parse_once(
 	source: string,
 	plugins: ParsePlugin[] | undefined,
-	directives: ComponentScope | null
+	directives: ComponentScope | null,
+	syntax: SyntaxOptions | undefined
 ): NodeBuffer {
 	let dispatcher: PluginDispatcher | undefined;
 	if (plugins && plugins.length > 0) {
@@ -493,6 +494,7 @@ function parse_once(
 		spare_parser = null;
 		parser.bind(tree);
 	}
+	parser.set_options(syntax);
 	parser.parse_normalized(source);
 	// a throw above drops the parser, it may be half written
 	parser.release();
@@ -621,7 +623,8 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	const nodes = parse_once(
 		source,
 		options?.parse_plugins,
-		reserved_directives(directives, options)
+		reserved_directives(directives, options),
+		options
 	);
 	const metadata = metadata_of(nodes, source, options?.frontmatter?.parse);
 	const renderer = take_renderer();
@@ -781,7 +784,8 @@ export class CompilerSession {
 		return this.tree === null ? 0 : this.tree.get_buffer()._capacity;
 	}
 
-	private parse(source: string): NodeBuffer {
+	// the parser is kept, so every document sets the syntax options again
+	private parse(source: string, syntax: SyntaxOptions | undefined): NodeBuffer {
 		if (this.tree === null) {
 			this.tree = new TreeBuilder(source.length >> 3 || 16);
 			this.parser = new PFMParser(this.tree);
@@ -790,6 +794,7 @@ export class CompilerSession {
 		}
 		this.released = false;
 
+		this.parser!.set_options(syntax);
 		this.parser!.parse_normalized(source);
 		return this.tree.get_buffer();
 	}
@@ -798,7 +803,8 @@ export class CompilerSession {
 	private parse_plugged(
 		source: string,
 		plugins: ParsePlugin[],
-		reserved: ComponentScope | null
+		reserved: ComponentScope | null,
+		syntax: SyntaxOptions | undefined
 	): NodeBuffer {
 		let arena = this.plugin_arena;
 		if (
@@ -835,6 +841,7 @@ export class CompilerSession {
 		this.plugin_busy = true;
 		let done = false;
 		try {
+			arena.parser.set_options(syntax);
 			arena.parser.parse_normalized(source);
 			const nodes = arena.tree.get_buffer();
 			arena.dispatcher.run_sequential(nodes);
@@ -862,9 +869,10 @@ export class CompilerSession {
 				? this.parse_plugged(
 						source,
 						plugins,
-						reserved_directives(directives, options)
+						reserved_directives(directives, options),
+						options
 					)
-				: this.parse(source);
+				: this.parse(source, options);
 		const metadata = metadata_of(nodes, source, options?.frontmatter?.parse);
 		bind_scopes(this.renderer, scope, directives, options?.strict_directives);
 		const template =
@@ -927,7 +935,8 @@ export class CompilerSession {
 		templates?: TemplateOptions,
 		directive_sources?: ComponentSource[],
 		mode?: ComponentMode,
-		highlight?: HighlightOption
+		highlight?: HighlightOption,
+		syntax?: SyntaxOptions
 	): CompileV3Result {
 		const scope = components === undefined ? null : scope_of(components, mode);
 		const directives = directive_scope_of(directive_sources);
@@ -938,7 +947,7 @@ export class CompilerSession {
 				// started in a plugin handler, the session holds the outer document
 				return render_v3(
 					new CursorHTMLRenderer({ cache: false }),
-					parse_once(source, parse_plugins, reserved),
+					parse_once(source, parse_plugins, reserved, syntax),
 					source,
 					raw,
 					file,
@@ -952,7 +961,7 @@ export class CompilerSession {
 			}
 			return render_v3(
 				this.renderer,
-				this.parse_plugged(source, parse_plugins, reserved),
+				this.parse_plugged(source, parse_plugins, reserved, syntax),
 				source,
 				raw,
 				file,
@@ -964,7 +973,7 @@ export class CompilerSession {
 				highlight
 			);
 		}
-		const nodes = this.parse(source);
+		const nodes = this.parse(source, syntax);
 		return render_v3(
 			this.renderer,
 			nodes,
@@ -993,7 +1002,8 @@ export class CompilerSession {
 		templates?: TemplateOptions,
 		directive_sources?: ComponentSource[],
 		mode?: ComponentMode,
-		highlight?: HighlightOption
+		highlight?: HighlightOption,
+		syntax?: SyntaxOptions
 	): CompileTraceResult {
 		const scope = components === undefined ? null : scope_of(components, mode);
 		const directives = directive_scope_of(directive_sources);
@@ -1004,7 +1014,7 @@ export class CompilerSession {
 				// started in a plugin handler, the session holds the outer document
 				return render_trace(
 					new CursorHTMLRenderer({ cache: false }),
-					parse_once(source, parse_plugins, reserved),
+					parse_once(source, parse_plugins, reserved, syntax),
 					source,
 					parse,
 					scope,
@@ -1016,7 +1026,7 @@ export class CompilerSession {
 			}
 			return render_trace(
 				this.renderer,
-				this.parse_plugged(source, parse_plugins, reserved),
+				this.parse_plugged(source, parse_plugins, reserved, syntax),
 				source,
 				parse,
 				scope,
@@ -1026,7 +1036,7 @@ export class CompilerSession {
 				highlight
 			);
 		}
-		const nodes = this.parse(source);
+		const nodes = this.parse(source, syntax);
 		return render_trace(
 			this.renderer,
 			nodes,
@@ -1054,7 +1064,8 @@ export class CompilerSession {
 		directive_sources?: ComponentSource[],
 		mode?: ComponentMode,
 		highlight?: HighlightOption,
-		filename?: string
+		filename?: string,
+		syntax?: SyntaxOptions
 	): void {
 		const scope = components === undefined ? null : scope_of(components, mode);
 		const directives = directive_scope_of(directive_sources);
@@ -1065,11 +1076,12 @@ export class CompilerSession {
 			const reserved = reserved_directives(directives, templates);
 			if (this.plugin_busy) {
 				// started in a plugin handler, the session holds the outer document
-				nodes = parse_once(source, parse_plugins, reserved);
+				nodes = parse_once(source, parse_plugins, reserved, syntax);
 				renderer = new CursorHTMLRenderer({ cache: false });
-			} else nodes = this.parse_plugged(source, parse_plugins, reserved);
+			} else
+				nodes = this.parse_plugged(source, parse_plugins, reserved, syntax);
 		} else {
-			nodes = this.parse(source);
+			nodes = this.parse(source, syntax);
 		}
 		const metadata = metadata_of(nodes, source, parse);
 		out.metadata = metadata;
