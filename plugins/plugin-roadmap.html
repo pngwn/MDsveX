@@ -1,0 +1,560 @@
+<title>mdsvex Plugin Roadmap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #f2f5f8;
+  --surface: #ffffff;
+  --ink: #142231;
+  --muted: #5a6b7c;
+  --line: #d7dfe7;
+  --accent: #e2551b;
+  --accent-soft: #fde7dc;
+  --core: #6b4fd8;   --core-bg: #ece8fc;
+  --vite: #b8306f;   --vite-bg: #fbe3ee;
+  --plug: #0f8a7a;   --plug-bg: #dcf3ef;
+  --api: #b06a00;    --api-bg: #fbeed5;
+  --comp: #2f6fd0;   --comp-bg: #e0ebfb;
+  --tool: #4f6b2a;   --tool-bg: #e7f0da;
+  --code-bg: #e8eef4;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1720; --surface: #16212c; --ink: #e6edf3; --muted: #9aabbb; --line: #2a3846;
+    --accent: #ff7a42; --accent-soft: #3a2218;
+    --core: #a996ff; --core-bg: #2a2447; --vite: #f27bb0; --vite-bg: #3d1a2b;
+    --plug: #4fd1bd; --plug-bg: #133a35; --api: #f0b04a; --api-bg: #3a2c12;
+    --comp: #7fb0ff; --comp-bg: #1a2c48; --tool: #a9cf7c; --tool-bg: #24331a;
+    --code-bg: #1f2c39;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1720; --surface: #16212c; --ink: #e6edf3; --muted: #9aabbb; --line: #2a3846;
+  --accent: #ff7a42; --accent-soft: #3a2218;
+  --core: #a996ff; --core-bg: #2a2447; --vite: #f27bb0; --vite-bg: #3d1a2b;
+  --plug: #4fd1bd; --plug-bg: #133a35; --api: #f0b04a; --api-bg: #3a2c12;
+  --comp: #7fb0ff; --comp-bg: #1a2c48; --tool: #a9cf7c; --tool-bg: #24331a;
+  --code-bg: #1f2c39;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 16px/1.6 var(--font-body);
+  padding-inline: 16px; padding-block: 40px 72px;
+}
+.wrap { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 64px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); line-height: 1.02; font-weight: 800; }
+h2 { font-size: 1.7rem; line-height: 1.15; font-weight: 700; }
+h3 { font-size: 1.2rem; line-height: 1.25; font-weight: 700; }
+p { margin: 0; max-width: 65ch; }
+.lede { font-size: 1.12rem; color: var(--muted); }
+.eyebrow { font: 600 0.75rem/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); }
+code { font-family: var(--font-mono); font-size: 0.86em; background: var(--code-bg); padding: 0.1em 0.4em; border-radius: 4px; }
+section { display: flex; flex-direction: column; gap: 20px; }
+.head { display: flex; flex-direction: column; gap: 10px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.note { font-size: 0.85rem; color: var(--muted); }
+
+.hero { display: flex; flex-direction: column; gap: 18px; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+
+.funnel { display: flex; flex-direction: column; gap: 10px; }
+.stack { display: flex; height: 44px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.stack > div { display: flex; align-items: center; padding-inline: 10px; font: 600 0.82rem/1 var(--font-body); white-space: nowrap; overflow: hidden; min-width: 0; }
+.s-covered { background: var(--plug-bg); color: var(--plug); }
+.s-skip { background: repeating-linear-gradient(135deg, var(--surface) 0 6px, var(--code-bg) 6px 12px); color: var(--muted); }
+.s-keep { background: var(--accent); color: #fff; }
+.funnel-legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 0.9rem; color: var(--muted); }
+.funnel-legend b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+
+.tags { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 20px; }
+.tagdef { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; color: var(--muted); }
+.tag { display: inline-flex; align-items: center; align-self: flex-start; font: 600 0.72rem/1 var(--font-mono); padding: 4px 7px; border-radius: 4px; letter-spacing: 0.02em; white-space: nowrap; }
+.t-core { background: var(--core-bg); color: var(--core); }
+.t-vite { background: var(--vite-bg); color: var(--vite); }
+.t-plug { background: var(--plug-bg); color: var(--plug); }
+.t-api { background: var(--api-bg); color: var(--api); }
+.t-comp { background: var(--comp-bg); color: var(--comp); }
+.t-tool { background: var(--tool-bg); color: var(--tool); }
+
+.matrix-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.matrix { border-collapse: collapse; width: 100%; min-width: 880px; font-size: 0.82rem; }
+.matrix th, .matrix td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+.matrix tr:last-child th, .matrix tr:last-child td { border-bottom: 0; }
+.matrix thead th { background: var(--surface); border-bottom: 2px solid var(--line); }
+.matrix tbody th { width: 11rem; }
+.matrix tbody th b { display: block; font: 700 0.95rem/1.2 var(--font-display); }
+.matrix tbody th span { display: block; color: var(--muted); font-weight: 400; font-size: 0.78rem; line-height: 1.35; margin-top: 3px; }
+.cell { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { display: inline-block; padding: 3px 7px; border-radius: 4px; line-height: 1.3; }
+.c-core { background: var(--core-bg); color: var(--core); }
+.c-vite { background: var(--vite-bg); color: var(--vite); }
+.c-plug { background: var(--plug-bg); color: var(--plug); }
+.c-api { background: var(--api-bg); color: var(--api); }
+.c-comp { background: var(--comp-bg); color: var(--comp); }
+.c-tool { background: var(--tool-bg); color: var(--tool); }
+.empty { color: var(--line); }
+
+.bars { display: flex; flex-direction: column; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 14rem) minmax(0, 1fr); gap: 4px 16px; align-items: center; }
+.bar-label { font-weight: 600; font-size: 0.95rem; }
+.bar-track { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.bar { height: 14px; background: var(--api); border-radius: 3px; min-width: 3px; flex: none; }
+.bar-val { font: 500 0.85rem/1 var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar-unlocks { grid-column: 2; font-size: 0.82rem; color: var(--muted); }
+@media (max-width: 560px) {
+  .bar-row { grid-template-columns: minmax(0, 1fr); }
+  .bar-unlocks { grid-column: 1; }
+}
+
+.route { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 28px; position: relative; }
+.route::before { content: ""; position: absolute; left: 19px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
+.stop { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 16px; position: relative; }
+.dot { width: 40px; height: 40px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); color: var(--accent); display: grid; place-items: center; font: 800 0.95rem/1 var(--font-display); z-index: 1; }
+.stop.first .dot { background: var(--accent); color: #fff; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.card-head { display: flex; flex-direction: column; gap: 6px; }
+.card-head .why { color: var(--muted); font-size: 0.95rem; }
+.needs { display: flex; flex-wrap: wrap; gap: 6px; }
+.items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.item { display: grid; grid-template-columns: 2.4rem minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--line); align-items: baseline; }
+.item:first-child { border-top: 0; padding-top: 2px; }
+.rank { font: 500 0.8rem/1.6 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.item-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.item-name { font-weight: 600; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.concern { font: 500 0.7rem/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 3px 7px; }
+.item-meta { font-size: 0.85rem; color: var(--muted); overflow-wrap: anywhere; }
+.dl { font: 500 0.8rem/1.6 var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.dl small { display: block; color: var(--muted); font-size: 0.72rem; }
+.flag { color: var(--accent); font-weight: 600; }
+
+.decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.decision { background: var(--accent-soft); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.decision h3 { font-size: 1.05rem; }
+.decision.done { background: var(--surface); border: 1px solid var(--line); }
+.decision p { font-size: 0.92rem; }
+
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+summary { cursor: pointer; padding: 14px 18px; font-weight: 600; display: flex; justify-content: space-between; gap: 12px; }
+summary span { color: var(--muted); font-weight: 400; font-size: 0.9rem; }
+.skip-list { list-style: none; margin: 0; padding: 0 18px 16px; display: flex; flex-direction: column; gap: 10px; }
+.skip-list li { display: grid; grid-template-columns: minmax(0, 12rem) minmax(0, 1fr); gap: 4px 16px; font-size: 0.9rem; padding-top: 10px; border-top: 1px solid var(--line); }
+.skip-list span { color: var(--muted); }
+@media (max-width: 560px) { .skip-list li { grid-template-columns: minmax(0, 1fr); } }
+
+footer { font-size: 0.85rem; color: var(--muted); }
+</style>
+
+<main class="wrap">
+
+  <header class="hero">
+    <span class="eyebrow">mdsvex · after remark &amp; rehype</span>
+    <h1>From 293 plugins to <em>43 features</em> across twelve concerns</h1>
+    <p class="lede">mdsvex no longer runs on unified, so its plugin ecosystem starts from zero. We surveyed every plugin on the remark and rehype lists, dropped what PFM already does and what makes no sense for Svelte, grouped the rest by the job a user is doing, and ordered the work so nothing waits on something later.</p>
+  </header>
+
+  <section aria-labelledby="funnel-h">
+    <div class="head">
+      <span class="eyebrow">The survey</span>
+      <h2 id="funnel-h">Most of the list is already handled or irrelevant</h2>
+    </div>
+    <div class="funnel">
+      <div class="stack" role="img" aria-label="293 plugins: about 63 already covered, about 98 pointless, about 130 kept, which reduce to 43 features">
+        <div class="s-covered" style="flex: 63">~63 covered</div>
+        <div class="s-skip" style="flex: 98">~98 pointless</div>
+        <div class="s-keep" style="flex: 130">~130 kept → 43 features</div>
+      </div>
+      <div class="funnel-legend">
+        <span><i class="swatch s-covered"></i><b>~63</b> covered by directives, extended tables, sub/sup, frontmatter, highlighting, templates and component replacement</span>
+        <span><i class="swatch s-skip" style="border:1px solid var(--line)"></i><b>~98</b> pointless: other output formats, markdown formatters, README generators, HTML minifiers</span>
+        <span><i class="swatch s-keep"></i><b>~130</b> kept, many doing the same job, merged into <b>43</b> features</span>
+      </div>
+    </div>
+    <p class="note">Sources: the official remark and rehype plugin lists, plus about 25 popular plugins those lists miss. Downloads are npm, last month, to 9 Oct 2026.</p>
+  </section>
+
+  <section aria-labelledby="map-h">
+    <div class="head">
+      <span class="eyebrow">The map</span>
+      <h2 id="map-h">Twelve concerns, six ways to build them</h2>
+      <p>A concern is the job a user is doing, like getting around a page or turning paths into routes. It isn't the node a feature touches. One concern often needs several kinds of work: footnotes need parser syntax, while numbering needs plugin API work.</p>
+    </div>
+    <div class="tags">
+      <div class="tagdef"><span class="tag t-core">core</span>Parser syntax or a renderer default. Plugins can't add syntax.</div>
+      <div class="tagdef"><span class="tag t-vite">vite</span>The compiler and Vite plugin: anything that joins the module graph.</div>
+      <div class="tagdef"><span class="tag t-plug">plugin</span>A parse plugin that today's API supports.</div>
+      <div class="tagdef"><span class="tag t-api">plugin + API</span>A parse plugin that needs API capability we don't have yet.</div>
+      <div class="tagdef"><span class="tag t-comp">component</span>A directive or replaced element does it. Ship components and docs.</div>
+      <div class="tagdef"><span class="tag t-tool">tooling</span>language-tools or a CLI: diagnostics and lint.</div>
+    </div>
+    <div class="matrix-scroll" tabindex="0" role="region" aria-label="Concerns by delivery, scrolls sideways">
+      <table class="matrix">
+        <thead>
+          <tr><th scope="col">Concern</th><th scope="col"><span class="tag t-core">core</span></th><th scope="col"><span class="tag t-vite">vite</span></th><th scope="col"><span class="tag t-plug">plugin</span></th><th scope="col"><span class="tag t-api">plugin + API</span></th><th scope="col"><span class="tag t-comp">component</span></th><th scope="col"><span class="tag t-tool">tooling</span></th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row"><b>Navigation</b><span>one slug registry</span></th>
+            <td><div class="cell"><span class="chip c-core">heading ids (option)</span><span class="chip c-core">id syntax (deferred)</span></div></td>
+            <td><span class="empty">·</span></td>
+            <td><div class="cell"><span class="chip c-plug">anchors</span></div></td>
+            <td><div class="cell"><span class="chip c-api">TOC as data</span><span class="chip c-api">sectionize</span></div></td>
+            <td><span class="empty">·</span></td><td><span class="empty">·</span></td></tr>
+          <tr><th scope="row"><b>Resolution</b><span>file path, resolver, internal or external</span></th>
+            <td><span class="empty">·</span></td>
+            <td><div class="cell"><span class="chip c-vite">images as imports</span><span class="chip c-vite">size &amp; loading</span><span class="chip c-vite">routes &amp; base path</span></div></td>
+            <td><div class="cell"><span class="chip c-plug">external link policy</span></div></td>
+            <td><span class="empty">·</span></td><td><span class="empty">·</span></td><td><span class="empty">·</span></td></tr>
+          <tr><th scope="row"><b>Composition</b><span>shared slugs, footnotes, TOC</span></th>
+            <td><div class="cell"><span class="chip c-core">include syntax (last)</span></div></td>
+            <td><div class="cell"><span class="chip c-vite">transclusion</span><span class="chip c-vite">heading shift</span></div></td>
+            <td><span class="empty">·</span></td><td><span class="empty">·</span></td><td><span class="empty">·</span></td><td><span class="empty">·</span></td></tr>
+          <tr><th scope="row"><b>Presentation</b><span>the component layer</span></th>
+            <td><div class="cell"><span class="chip c-core">task lists</span><span class="chip c-core">alert syntax (deferred)</span><span class="chip c-core">unwrap images (option)</span><span class="chip c-core">definition lists</span><span class="chip c-core">mark &amp; insert</span></div></td>
+            <td><span class="empty">·</span></td>
+            <td><div class="cell"><span class="chip c-plug">styling hooks</span></div></td>
+            <td><span class="empty">·</span></td>
+            <td><div class="cell"><span class="chip c-comp">callouts</span><span class="chip c-comp">figure</span><span class="chip c-comp">details</span><span class="chip c-comp">tabs</span><span class="chip c-comp">kbd</span><span class="chip c-comp">ruby</span><span class="chip c-comp">badges</span><span class="chip c-comp">embeds</span><span class="chip c-comp">media links</span></div></td>
+            <td><span class="empty">·</span></td></tr>
+          <tr><th scope="row"><b>Code</b><span>fence meta, snippet modules</span></th>
+            <td><span class="empty">·</span></td>
+            <td><div class="cell"><span class="chip c-vite">src=</span><span class="chip c-vite">run</span><span class="chip c-vite">TS → JS</span></div></td>
+            <td><div class="cell"><span class="chip c-plug">color chips</span></div></td>
+            <td><span class="empty">·</span></td>
+            <td><div class="cell"><span class="chip c-comp">copy button</span><span class="chip c-comp">code tabs</span></div></td>
+            <td><div class="cell"><span class="chip c-tool">doc tests</span></div></td></tr>
+          <tr><th scope="row"><b>Diagrams</b><span>language → renderer</span></th>
+            <td><span class="empty">·</span></td><td><span class="empty">·</span></td><td><span class="empty">·</span></td>
+            <td><div class="cell"><span class="chip c-api">build-time render</span></div></td>
+            <td><div class="cell"><span class="chip c-comp">mermaid</span><span class="chip c-comp">kroki</span><span class="chip c-comp">plantuml</span><span class="chip c-comp">graphviz</span></div></td>
+            <td><span class="empty">·</span></td></tr>
+          <tr><th scope="row"><b>Typography</b><span>one text pass, document language</span></th>
+            <td><div class="cell"><span class="chip c-core">smart punctuation (option)</span><span class="chip c-core">CJK check</span></div></td>
+            <td><span class="empty">·</span></td><td><span class="empty">·</span></td>
+            <td><div class="cell"><span class="chip c-api">emoji</span><span class="chip c-api">typographic details</span></div></td>
+            <td><span class="empty">·</span></td><td><span class="empty">·</span></td></tr>
+          <tr><th scope="row"><b>Cross-references</b><span>patterns and resolvers</span></th>
+            <td><div class="cell"><span class="chip c-core">wiki links (last)</span></div></td>
+            <td><span class="empty">·</span></td><td><span class="empty">·</span></td>
+            <td><div class="cell"><span class="chip c-api">GitHub refs</span><span class="chip c-api">mentions</span><span class="chip c-api">linkify</span></div></td>
+            <td><span class="empty">·</span></td><td><span class="empty">·</span></td></tr>
+          <tr><th scope="row"><b>Reference apparatus</b><span>counters, labels, citation keys</span></th>
+            <td><div class="cell"><span class="chip c-core">footnotes</span><span class="chip c-core">math</span><span class="chip c-core">citation syntax</span></div></td>
+            <td><span class="empty">·</span></td><td><span class="empty">·</span></td>
+            <td><div class="cell"><span class="chip c-api">numbering &amp; cross-refs</span><span class="chip c-api">bibliography</span></div></td>
+            <td><div class="cell"><span class="chip c-comp">abbreviations</span><span class="chip c-comp">glossary</span></div></td>
+            <td><span class="empty">·</span></td></tr>
+          <tr><th scope="row"><b>Document data</b><span>metadata</span></th>
+            <td><div class="cell"><span class="chip c-core">frontmatter transforms</span></div></td>
+            <td><span class="empty">·</span></td><td><span class="empty">·</span></td>
+            <td><div class="cell"><span class="chip c-api">reading time</span><span class="chip c-api">excerpt</span><span class="chip c-api">title</span><span class="chip c-api">source info</span></div></td>
+            <td><div class="cell"><span class="chip c-comp">head tags</span></div></td>
+            <td><span class="empty">·</span></td></tr>
+          <tr><th scope="row"><b>Collections</b><span>many documents at once</span></th>
+            <td><span class="empty">·</span></td>
+            <td><div class="cell"><span class="chip c-vite">?metadata imports</span><span class="chip c-vite">plain text</span></div></td>
+            <td><span class="empty">·</span></td><td><span class="empty">·</span></td><td><span class="empty">·</span></td><td><span class="empty">·</span></td></tr>
+          <tr><th scope="row"><b>Quality</b><span>diagnostics, cross-doc index</span></th>
+            <td><span class="empty">·</span></td><td><span class="empty">·</span></td><td><span class="empty">·</span></td>
+            <td><div class="cell"><span class="chip c-api">link validation</span></div></td>
+            <td><span class="empty">·</span></td>
+            <td><div class="cell"><span class="chip c-tool">PFM lint</span><span class="chip c-tool">prose lint</span></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Three concerns are new since the first pass: Composition (heading shift was misfiled under headings), Collections and Quality. Styling hooks, lint and prose lint came back from the filtered lists.</p>
+  </section>
+
+  <section aria-labelledby="api-h">
+    <div class="head">
+      <span class="eyebrow">The bottleneck</span>
+      <h2 id="api-h">The plugin API blocks more than effort does</h2>
+      <p>Plugins can annotate, retag, wrap and append nodes. They can't rewrite text, remove nodes, or read and write document data. Each bar is the monthly downloads of the remark/rehype plugins a missing capability would unblock.</p>
+    </div>
+    <div class="bars">
+      <div class="bar-row">
+        <span class="bar-label">Rewrite or split text</span>
+        <span class="bar-track"><span class="bar" style="width: calc((100% - 4.5rem) * 1)"></span><span class="bar-val">13.1M</span></span>
+        <span class="bar-unlocks">emoji, typographic details, GitHub refs, mentions, numbering</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Remove or move nodes</span>
+        <span class="bar-track"><span class="bar" style="width: calc((100% - 4.5rem) * 0.336)"></span><span class="bar-val">4.4M</span></span>
+        <span class="bar-unlocks">GitHub alerts as a plugin, sectionize</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Frontmatter, metadata, file path</span>
+        <span class="bar-track"><span class="bar" style="width: calc((100% - 4.5rem) * 0.237)"></span><span class="bar-val">3.1M</span></span>
+        <span class="bar-unlocks">TOC data, Document data, citations, per-page options such as <code>toc: false</code></span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Async hooks</span>
+        <span class="bar-track"><span class="bar" style="width: calc((100% - 4.5rem) * 0.191)"></span><span class="bar-val">2.5M</span></span>
+        <span class="bar-unlocks">build-time diagrams, bibliographies, oEmbed</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Diagnostics channel</span>
+        <span class="bar-track"><span class="bar" style="width: calc((100% - 4.5rem) * 0.049)"></span><span class="bar-val">0.64M</span></span>
+        <span class="bar-unlocks">link validation, plugin warnings with positions</span>
+      </div>
+      <p class="note">A plugin can need more than one capability, so the bars overlap. Resolution, Composition, Code and Collections moved to the Vite plugin, so they don't depend on this API. Smart punctuation (17.7M) is now a core option, so it left this chart too.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="route-h">
+    <div class="head">
+      <span class="eyebrow">The route</span>
+      <h2 id="route-h">Ten stops, in order</h2>
+      <p>The order follows the priority ranking (#1–#43), adjusted so nothing waits on work that comes later. Each feature is labelled with its concern.</p>
+    </div>
+
+    <ol class="route">
+
+      <li class="stop first">
+        <span class="dot" aria-hidden="true">1</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="eyebrow">No blockers</span>
+            <h3>Ship what works today</h3>
+            <p class="why">Ids and anchors already exist inside the private <code>@mdsvex/plugin-autolink</code>, which becomes the first Navigation plugin. Heading ids and unwrapping images move into core behind options. The rest fits today's API.</p>
+            <div class="needs"><span class="tag t-plug">plugin</span><span class="tag t-core">core</span></div>
+          </div>
+          <ul class="items">
+            <li class="item"><span class="rank">#1</span><span class="item-main"><span class="item-name">Heading ids <span class="concern">Navigation</span></span><span class="item-meta"><code>## Install</code> → <code>id="install"</code>. A core option, off by default.</span></span><span class="dl">17.6M<small>rehype-slug</small></span></li>
+            <li class="item"><span class="rank">#2</span><span class="item-main"><span class="item-name">Heading anchors <span class="concern">Navigation</span></span><span class="item-meta">Wrap the content, or prepend an <code>aria-hidden</code> anchor.</span></span><span class="dl">9.9M<small>rehype-autolink-headings</small></span></li>
+            <li class="item"><span class="rank">#3</span><span class="item-main"><span class="item-name">External link policy <span class="concern">Resolution</span></span><span class="item-meta"><code>rel</code>, <code>target</code>, an icon, "opens in a new tab" for screen readers. Becomes a Vite option at stop 3.</span></span><span class="dl">10M<small>rehype-external-links</small></span></li>
+            <li class="item"><span class="rank">#12</span><span class="item-main"><span class="item-name">Styling hooks <span class="concern">Presentation</span></span><span class="item-meta"><code>table: { class: 'table' }</code> without writing a component.</span></span><span class="dl">1.4M<small>rehype-class-names</small></span></li>
+            <li class="item"><span class="rank">#18</span><span class="item-main"><span class="item-name">Unwrap lone images <span class="concern">Presentation</span></span><span class="item-meta">A core option. A <code>&lt;figure&gt;</code> can't sit inside a <code>&lt;p&gt;</code>, so this comes before the figure component.</span></span><span class="dl">540k<small>unwrap-images ×2</small></span></li>
+            <li class="item"><span class="rank">#41</span><span class="item-main"><span class="item-name">Color chips <span class="concern">Code</span></span><span class="item-meta"><code>`#e2551b`</code> gets a swatch.</span></span><span class="dl">19k<small>rehype-color-chips</small></span></li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="stop">
+        <span class="dot" aria-hidden="true">2</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="eyebrow">Parser</span>
+            <h3>GFM parity, math and smart punctuation</h3>
+            <p class="why">remark-gfm has 181M monthly downloads. People expect footnotes and task lists, and the migrator currently passes footnotes through raw.</p>
+            <div class="needs"><span class="tag t-core">core</span></div>
+          </div>
+          <ul class="items">
+            <li class="item"><span class="rank">#4</span><span class="item-main"><span class="item-name">Footnotes <span class="concern">Reference apparatus</span></span><span class="item-meta"><code>text[^1]</code> … <code>[^1]: note</code></span></span><span class="dl">181M<small>remark-gfm</small></span></li>
+            <li class="item"><span class="rank">#5</span><span class="item-main"><span class="item-name">Task lists <span class="concern">Presentation</span></span><span class="item-meta"><code>- [x] done</code>. The renderer already passes <code>checked</code> to a replaced <code>li</code>.</span></span><span class="dl">181M<small>remark-gfm</small></span></li>
+            <li class="item"><span class="rank">#6</span><span class="item-main"><span class="item-name">Math <span class="concern">Reference apparatus</span></span><span class="item-meta">Temml (MathML) by default; KaTeX as an optional peer dependency. Syntax: a <code>```math</code> fence for display, and <code>$`e^{i\pi}`$</code> inline. Both stay raw and render natively on GitHub and GitLab. Issue #302.</span></span><span class="dl">36M<small>remark-math</small></span></li>
+            <li class="item"><span class="rank">#9</span><span class="item-main"><span class="item-name">Smart punctuation <span class="concern">Typography</span></span><span class="item-meta"><code>"quotes" -- ...</code> → “quotes” – … A core option you can toggle. Issue #825.</span></span><span class="dl">17.7M<small>remark-smartypants</small></span></li>
+            <li class="item"><span class="rank">#26</span><span class="item-main"><span class="item-name">CJK check <span class="concern">Typography</span></span><span class="item-meta">Emphasis next to CJK punctuation; soft breaks between CJK characters.</span></span><span class="dl">12.8M<small>remark-cjk-friendly</small></span></li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="stop">
+        <span class="dot" aria-hidden="true">3</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="eyebrow">Vite plugin</span>
+            <h3>Paths join the module graph</h3>
+            <p class="why">Images, links, <code>src=</code> files and <code>run</code> snippets all do the same thing: a path becomes a module or a route, with HMR. Doing it in the Vite plugin, not the plugin API, unblocks Resolution, Code and Collections at once. See <code>design/code-modules.md</code>.</p>
+            <div class="needs"><span class="tag t-vite">vite</span></div>
+          </div>
+          <ul class="items">
+            <li class="item"><span class="rank">#8</span><span class="item-main"><span class="item-name">Images as imports <span class="concern">Resolution</span></span><span class="item-meta"><code>![](./a.png)</code> → <code>import a from './a.png'</code>, plus intrinsic size and lazy loading (#611). Pairs with <code>@sveltejs/enhanced-img</code>.</span></span><span class="dl">Svelte<small>no remark equivalent</small></span></li>
+            <li class="item"><span class="rank">#14</span><span class="item-main"><span class="item-name">Routes and base path <span class="concern">Resolution</span></span><span class="item-meta"><code>./guide.md</code> → <code>/guide</code>, SvelteKit <code>base</code>, trailing slashes (#389).</span></span><span class="dl">~150k<small>7 plugins</small></span></li>
+            <li class="item"><span class="rank">#15</span><span class="item-main"><span class="item-name">Metadata-only imports <span class="concern">Collections</span></span><span class="item-meta"><code>import.meta.glob('./*.md', { query: '?metadata' })</code>. List pages without loading their components.</span></span><span class="dl">new<small>every listing</small></span></li>
+            <li class="item"><span class="rank">#19</span><span class="item-main"><span class="item-name">Code from a file <span class="concern">Code</span></span><span class="item-meta"><code>```ts src=./math.ts#L5-L20 [math.ts]</code>. Editing the file hot reloads the page.</span></span><span class="dl">156k<small>remark-code-import</small></span></li>
+            <li class="item"><span class="rank">#20</span><span class="item-main"><span class="item-name">Runnable blocks <span class="concern">Code</span></span><span class="item-meta"><code>```svelte run</code> becomes a virtual module, passed to the replaced <code>pre</code> as <code>module</code>.</span></span><span class="dl">#832<small>#52, #432, #608</small></span></li>
+            <li class="item"><span class="rank">#33</span><span class="item-main"><span class="item-name">Plain text for search and feeds <span class="concern">Collections</span></span><span class="item-meta">Text by section for FlexSearch, RSS bodies and <code>llms.txt</code>.</span></span><span class="dl">new</span></li>
+            <li class="item"><span class="rank">#43</span><span class="item-main"><span class="item-name">TS → JS view <span class="concern">Code</span></span><span class="item-meta">Snippet modules already have the compiled output.</span></span><span class="dl">niche</span></li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="stop">
+        <span class="dot" aria-hidden="true">4</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="eyebrow">No parser or API work</span>
+            <h3>A component starter kit</h3>
+            <p class="why">About fifteen plugins become one set of Svelte components and docs. It's cheap, it shows off directives, and <code>run</code> blocks from stop 3 give the demo components something to render.</p>
+            <div class="needs"><span class="tag t-comp">component</span></div>
+          </div>
+          <ul class="items">
+            <li class="item"><span class="rank">#10</span><span class="item-main"><span class="item-name">Callouts <span class="concern">Presentation</span></span><span class="item-meta"><code>:::note</code>, <code>:::warning</code>. The GitHub alert syntax is deferred (stop 7).</span></span><span class="dl">~4.2M<small>7 plugins</small></span></li>
+            <li class="item"><span class="rank">#16</span><span class="item-main"><span class="item-name">Details, tabs, kbd, ruby, badges, embeds <span class="concern">Presentation</span></span><span class="item-meta"><code>:::details</code> <code>:::tabs</code> <code>:kbd[Ctrl]</code> <code>:ruby[漢字](rt=かんじ)</code> <code>::youtube[](id=…)</code></span></span><span class="dl">~10<small>plugins replaced</small></span></li>
+            <li class="item"><span class="rank">#17</span><span class="item-main"><span class="item-name">Mermaid <span class="concern">Diagrams</span></span><span class="item-meta">Replace <code>pre</code> when the language is <code>mermaid</code>; render on the client.</span></span><span class="dl">2.3M<small>rehype-mermaid</small></span></li>
+            <li class="item"><span class="rank">#18</span><span class="item-main"><span class="item-name">Figure and caption <span class="concern">Presentation</span></span><span class="item-meta">A replaced <code>img</code>, now that lone images aren't in a <code>&lt;p&gt;</code>.</span></span><span class="dl">~90k<small>rehype-figure ×2</small></span></li>
+            <li class="item"><span class="rank">#22</span><span class="item-main"><span class="item-name">Copy button and code tabs <span class="concern">Code</span></span><span class="item-meta">A reference <code>Pre.svelte</code>, and <code>:::tabs</code> around fences.</span></span><span class="dl">5.4M<small>expressive-code</small></span></li>
+            <li class="item"><span class="rank">#38</span><span class="item-main"><span class="item-name">Abbreviations and glossary <span class="concern">Reference apparatus</span></span><span class="item-meta"><code>:abbr[HTML](title="HyperText Markup Language")</code></span></span><span class="dl">12k<small>remark-abbr, terms</small></span></li>
+            <li class="item"><span class="rank">#39</span><span class="item-main"><span class="item-name">Media links <span class="concern">Presentation</span></span><span class="item-meta">A link to <code>.mp4</code> renders <code>&lt;video&gt;</code>, through a replaced <code>a</code>.</span></span><span class="dl">180k<small>rehype-video</small></span></li>
+            <li class="item"><span class="rank">#42</span><span class="item-main"><span class="item-name">Other diagram engines <span class="concern">Diagrams</span></span><span class="item-meta">Kroki, PlantUML, Graphviz: same pattern as mermaid.</span></span><span class="dl">low</span></li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="stop">
+        <span class="dot" aria-hidden="true">5</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="eyebrow">Plugin API, part 1</span>
+            <h3>Document data</h3>
+            <p class="why">Let plugins read frontmatter, write <code>metadata</code>, and see the file path. Navigation's TOC and all of Document data follow, and so do per-page options like <code>toc: false</code>.</p>
+            <div class="needs"><span class="tag t-api">plugin + API</span><span class="tag t-core">core</span></div>
+          </div>
+          <ul class="items">
+            <li class="item"><span class="rank">#7</span><span class="item-main"><span class="item-name">TOC as data <span class="concern">Navigation</span></span><span class="item-meta"><code>metadata.headings</code> as a tree, for a template to render.</span></span><span class="dl">~1.9M<small>5 plugins</small></span></li>
+            <li class="item"><span class="rank">#13</span><span class="item-main"><span class="item-name">Reading time <span class="concern">Document data</span></span><span class="item-meta"><code>metadata.reading_time</code>, word count.</span></span><span class="dl">1M<small>remark-reading-time</small></span></li>
+            <li class="item"><span class="rank">#21</span><span class="item-main"><span class="item-name">Excerpt, title, source info <span class="concern">Document data</span></span><span class="item-meta">Description up to <code>&lt;!-- more --&gt;</code>; first <code>h1</code> as title; last modified from git and the source path for "Edit this page".</span></span><span class="dl">64k+<small>rehype-infer-*</small></span></li>
+            <li class="item"><span class="rank">—</span><span class="item-main"><span class="item-name">Frontmatter transforms <span class="concern">Document data</span></span><span class="item-meta">The core hook the plugins above write through (#831).</span></span><span class="dl">#831</span></li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="stop">
+        <span class="dot" aria-hidden="true">6</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="eyebrow">Plugin API, part 2</span>
+            <h3>Text rewriting</h3>
+            <p class="why">Still the biggest API unlock by downloads, even with smart punctuation moved to core. Text nodes are source ranges today, so plugins need a way to replace a range with new text or nodes. Typography and Cross-references each become one plugin with options.</p>
+            <div class="needs"><span class="tag t-api">plugin + API</span></div>
+          </div>
+          <ul class="items">
+            <li class="item"><span class="rank">#11</span><span class="item-main"><span class="item-name">Emoji shortcodes <span class="concern">Typography</span></span><span class="item-meta"><code>:tada:</code> → 🎉 with <code>role="img"</code> and a label. Emoji data loads only when the option is on.</span></span><span class="dl">9.7M<small>remark-emoji, gemoji</small></span></li>
+            <li class="item"><span class="rank">#25</span><span class="item-main"><span class="item-name">GitHub refs, mentions, linkify <span class="concern">Cross-references</span></span><span class="item-meta"><code>#123</code> <code>@user</code> <code>a1b2c3d</code> from one pattern table.</span></span><span class="dl">3.2M<small>remark-github</small></span></li>
+            <li class="item"><span class="rank">#36</span><span class="item-main"><span class="item-name">Typographic details <span class="concern">Typography</span></span><span class="item-meta"><code>-&gt;</code> → →, guillemets, non-breaking spaces, widows. Locale from frontmatter <code>lang</code>.</span></span><span class="dl">~200k<small>6 plugins</small></span></li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="stop">
+        <span class="dot" aria-hidden="true">7</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="eyebrow">Parser, deferred</span>
+            <h3>The remaining syntax</h3>
+            <p class="why">Syntax that waits until the need is clear. GitHub alerts will probably be supported properly. Custom heading ids would use square brackets, like directives.</p>
+            <div class="needs"><span class="tag t-core">core</span></div>
+          </div>
+          <ul class="items">
+            <li class="item"><span class="rank">#10</span><span class="item-main"><span class="item-name">GitHub alert syntax <span class="concern">Presentation</span></span><span class="item-meta"><code>&gt; [!NOTE]</code> rendering through the stop 4 callout. <span class="flag">Deferred, probably yes.</span></span></span><span class="dl">~4.2M<small>7 plugins</small></span></li>
+            <li class="item"><span class="rank">#23</span><span class="item-main"><span class="item-name">Definition lists <span class="concern">Presentation</span></span><span class="item-meta">Parser syntax, or a <code>:::dl</code> component.</span></span><span class="dl">818k<small>remark-definition-list</small></span></li>
+            <li class="item"><span class="rank">#29</span><span class="item-main"><span class="item-name">Mark and insert <span class="concern">Presentation</span></span><span class="item-meta"><code>==mark==</code>, <code>++ins++</code>. Related: issue #721.</span></span><span class="dl">~350k<small>3 plugins</small></span></li>
+            <li class="item"><span class="rank">#31</span><span class="item-main"><span class="item-name">Custom heading ids <span class="concern">Navigation</span></span><span class="item-meta"><code>{#id}</code> is out because <code>{}</code> is Svelte's. <span class="flag">Deferred until clearly needed.</span></span></span><span class="dl">~300k<small>3 plugins</small></span></li>
+            <li class="item"><span class="rank">#34</span><span class="item-main"><span class="item-name">Citation syntax <span class="concern">Reference apparatus</span></span><span class="item-meta"><code>[@key]</code>. The bibliography comes at stop 8.</span></span><span class="dl">170k<small>rehype-citation</small></span></li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="stop">
+        <span class="dot" aria-hidden="true">8</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="eyebrow">Plugin API, part 3</span>
+            <h3>Long documents</h3>
+            <p class="why">Books, specs and papers: numbered figures, equations and sections, and a bibliography. Needs node moving, async hooks, and the Navigation and Reference apparatus state from earlier stops.</p>
+            <div class="needs"><span class="tag t-api">plugin + API</span></div>
+          </div>
+          <ul class="items">
+            <li class="item"><span class="rank">#30</span><span class="item-main"><span class="item-name">Sectionize <span class="concern">Navigation</span></span><span class="item-meta">Wrap each heading and its content in <code>&lt;section&gt;</code>.</span></span><span class="dl">184k<small>remark-sectionize</small></span></li>
+            <li class="item"><span class="rank">#34</span><span class="item-main"><span class="item-name">Bibliography <span class="concern">Reference apparatus</span></span><span class="item-meta">Load BibTeX or CSL, render references for <code>[@key]</code>.</span></span><span class="dl">170k<small>rehype-citation</small></span></li>
+            <li class="item"><span class="rank">#35</span><span class="item-main"><span class="item-name">Numbering and cross-references <span class="concern">Reference apparatus</span></span><span class="item-meta">"Figure 3", numbered equations and sections, <code>@fig:chart</code> references.</span></span><span class="dl">new<small>pandoc-crossref</small></span></li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="stop">
+        <span class="dot" aria-hidden="true">9</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="eyebrow">Diagnostics and language-tools</span>
+            <h3>Quality</h3>
+            <p class="why">Catching mistakes in the editor and at build time. It comes late because it reads the state the other concerns build: slugs, resolved routes, snippet modules.</p>
+            <div class="needs"><span class="tag t-api">plugin + API</span><span class="tag t-tool">tooling</span></div>
+          </div>
+          <ul class="items">
+            <li class="item"><span class="rank">#24</span><span class="item-main"><span class="item-name">Link validation <span class="concern">Quality</span></span><span class="item-meta">Broken <code>#anchors</code> and file links, from Navigation's slugs and Resolution's resolver.</span></span><span class="dl">639k<small>remark-validate-links</small></span></li>
+            <li class="item"><span class="rank">#28</span><span class="item-main"><span class="item-name">PFM lint <span class="concern">Quality</span></span><span class="item-meta">One <code>h1</code>, heading order, missing alt text, empty links. Shown in the editor.</span></span><span class="dl">1.5M<small>remark-lint</small></span></li>
+            <li class="item"><span class="rank">#37</span><span class="item-main"><span class="item-name">Prose lint <span class="concern">Quality</span></span><span class="item-meta">Spelling, readability, inclusive language, from the retext ecosystem.</span></span><span class="dl">~860k<small>remark/rehype-retext</small></span></li>
+            <li class="item"><span class="rank">#40</span><span class="item-main"><span class="item-name">Doc tests <span class="concern">Code</span></span><span class="item-meta">Snippet modules are real modules, so a test runner can import every <code>run</code> block.</span></span><span class="dl">new</span></li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="stop">
+        <span class="dot" aria-hidden="true">10</span>
+        <div class="card">
+          <div class="card-head">
+            <span class="eyebrow">Last</span>
+            <h3>Transclusion and wiki links</h3>
+            <p class="why">Both tie documents to each other, and both may need new syntax. Decided: these go last, and transclusion reuses existing constructs unless new syntax clearly earns its place.</p>
+            <div class="needs"><span class="tag t-vite">vite</span><span class="tag t-core">core</span></div>
+          </div>
+          <ul class="items">
+            <li class="item"><span class="rank">#27</span><span class="item-main"><span class="item-name">Transclusion with heading shift <span class="concern">Composition</span></span><span class="item-meta">Splice a <code>.md</code> fragment in at compile time, so its headings join the page's TOC, slugs and footnotes. A component import stays the isolated option.</span></span><span class="dl">25k<small>behead, shift-heading</small></span></li>
+            <li class="item"><span class="rank">#32</span><span class="item-main"><span class="item-name">Wiki links <span class="concern">Cross-references</span></span><span class="item-meta"><code>[[Page]]</code>, resolved by stop 3's route resolver. Validated by stop 9.</span></span><span class="dl">108k<small>remark-wiki-link</small></span></li>
+          </ul>
+        </div>
+      </li>
+
+    </ol>
+  </section>
+
+  <section aria-labelledby="dec-h">
+    <div class="head">
+      <span class="eyebrow">Decided 10 Oct 2026</span>
+      <h2 id="dec-h">Eight decisions</h2>
+    </div>
+    <div class="decisions">
+      <div class="decision done"><h3>Core defaults</h3><p>Heading ids and unwrapping lone images go into core, each behind an option. Probably off by default.</p></div>
+      <div class="decision done"><h3>GitHub alerts</h3><p>Deferred for now. They will probably be supported properly.</p></div>
+      <div class="decision done"><h3>Heading id syntax</h3><p>Deferred until it's certain it's needed. It would use square brackets, like everything else.</p></div>
+      <div class="decision done"><h3>Transclusion and wiki links</h3><p>Last. Reuse existing constructs; add syntax only if the value is very strong.</p></div>
+      <div class="decision done"><h3>Autolink literals</h3><p>Not supported. <code>&lt;https://…&gt;</code> already exists and the shorthand adds little.</p></div>
+      <div class="decision done"><h3>Smart punctuation</h3><p>A core feature that can be toggled.</p></div>
+      <div class="decision done"><h3>Math output</h3><p>Temml by default. KaTeX as an option, an optional peer dependency the user installs.</p></div>
+      <div class="decision done"><h3>Math syntax</h3><p>A <code>```math</code> fence for display and <code>$`…`$</code> inline. No <code>$…$</code>, no <code>$$</code>, no directives.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="skip-h">
+    <div class="head">
+      <span class="eyebrow">Left behind</span>
+      <h2 id="skip-h">What we're not building</h2>
+    </div>
+    <details>
+      <summary>Already covered <span>~63 plugins</span></summary>
+      <ul class="skip-list">
+        <li><b>Directives</b><span>remark-directive and its relatives, admonitions, containers, custom blocks, shortcodes, remark-mdc, remark-attr (replaced by <code>(k=v)</code> args)</span></li>
+        <li><b>Tables</b><span>GFM tables, extended tables, grid tables, merged cells</span></li>
+        <li><b>Inline syntax</b><span>strikethrough, sub/super</span></li>
+        <li><b>Frontmatter</b><span>remark-frontmatter, extract-frontmatter, parse-yaml (swap the parser with <code>frontmatter.parse</code>)</span></li>
+        <li><b>Highlighting</b><span>Shiki, Prism, highlight.js, starry-night, pretty-code, code titles, line highlights, twoslash: all built into twinkleplop</span></li>
+        <li><b>Structure</b><span>rehype-rewrite, wrap, components, document, templates: done by templates and component replacement</span></li>
+        <li><b>By design</b><span>remark-breaks (PFM uses <code>\</code> for hard breaks); bare-URL autolinks (<code>&lt;https://…&gt;</code> already exists)</span></li>
+      </ul>
+    </details>
+    <details>
+      <summary>Pointless for mdsvex <span>~98 plugins</span></summary>
+      <ul class="skip-list">
+        <li><b>Other outputs</b><span>man, docx, pdf, Slate, ProseMirror, VDOM, React</span></li>
+        <li><b>Markdown formatting</b><span>reference sorting, heading gaps, prettier: a PFM formatter is a tooling job</span></li>
+        <li><b>README generators</b><span>license, contributors, usage, API, badges</span></li>
+        <li><b>HTML minification</b><span>about 25 rehype-minify packages, format, concat, sort attributes: Svelte and Vite own the output</span></li>
+        <li><b>Stripping and sanitizing</b><span>remove comments, unlink, strip HTML, redact, rehype-sanitize (compiling to Svelte already runs code)</span></li>
+        <li><b>One-offs</b><span>code screenshots, CodeSandbox, drop caps, ad injection, scroll-to-top, crypto-address linkers</span></li>
+      </ul>
+    </details>
+  </section>
+
+  <footer>Full audit with every plugin name: <code>plugins/PLUGIN_AUDIT.md</code>. Code modules design: <code>design/code-modules.md</code>.</footer>
+
+</main>
