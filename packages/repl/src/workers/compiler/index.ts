@@ -62,7 +62,7 @@ addEventListener('message', async (event: MessageEvent<CompilerRequest>) => {
 	let pfm: PfmNode | null = null;
 	if (markdown) {
 		try {
-			pfm = pfm_ast(file.contents);
+			pfm = pfm_ast(file.contents, prepared.options);
 		} catch {}
 	}
 

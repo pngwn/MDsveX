@@ -40,6 +40,8 @@ export interface JsonConfig {
 	component_mode?: ComponentMode;
 	/** false renders code plain, as the highlight option of the plugin does */
 	highlight?: boolean;
+	/** a paragraph of only images gets no <p>, as the option of the plugin does */
+	unwrap_images?: boolean;
 }
 
 export interface LoadedConfig {
@@ -181,6 +183,7 @@ export function document_options(
 		highlight: highlight_of(manifest),
 	};
 	if (Object.keys(templates).length !== 0) compile.templates = templates;
+	if (manifest.unwrap_images === true) compile.unwrap_images = true;
 	if (manifest.select_template) {
 		// what the selector picked when the plugin last compiled the file
 		const picked = manifest.documents[posix(doc)];
@@ -241,6 +244,7 @@ export function from_json(
 		documents: {},
 		highlight: config.highlight === false ? false : 'twinkleplop',
 	};
+	if (config.unwrap_images === true) manifest.unwrap_images = true;
 	const from = path.join(dir, 'vite.config');
 	const scan = (file: string) => scan_exports(file, ts);
 

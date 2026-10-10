@@ -82,6 +82,21 @@ describe("pfmToSvelte with a config", () => {
 		expect(r.diagnostics).toEqual([]);
 	});
 
+	it("unwraps a paragraph of only images when the config says so", () => {
+		const source = "text\n\n![cat](/c.png)\n";
+		const compile = { components: docs.compile!.components };
+		const off = pfmToSvelte(source, { ...docs, compile });
+		expect(off.code).toContain('<p><Img_MDSVEX_G src="/c.png" alt="cat" /></p>');
+		const on = pfmToSvelte(source, {
+			...docs,
+			compile: { ...compile, unwrap_images: true },
+		});
+		valid(source, on);
+		expect(on.code).toContain('<p>text</p><Img_MDSVEX_G src="/c.png" alt="cat" />');
+		expect(on.code).not.toContain("<p><Img_MDSVEX_G");
+		expect(on.diagnostics).toEqual([]);
+	});
+
 	it("keeps the virtual id of an import it can not resolve", () => {
 		const source = "## Two\n\n![cat](/c.png)\n";
 		const r = pfmToSvelte(source, {

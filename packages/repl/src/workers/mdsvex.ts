@@ -68,6 +68,7 @@ export interface ReplConfig {
 	components?: string;
 	component_mode?: ComponentMode;
 	highlight?: ReplHighlight | false;
+	unwrap_images?: boolean;
 }
 
 interface TemplateTarget {
@@ -87,6 +88,7 @@ export interface ResolvedConfig {
 	directives: Map<string, TemplateTarget>;
 	component_mode: ComponentMode;
 	highlight: ReplHighlight | false;
+	unwrap_images: boolean;
 }
 
 /** template options follow the design doc ahead of core, which ignores them for now */
@@ -130,6 +132,7 @@ function empty_config(): ResolvedConfig {
 		directives: new Map(),
 		component_mode: 'markdown',
 		highlight: {},
+		unwrap_images: false,
 	};
 }
 
@@ -158,6 +161,11 @@ export function prepare(files: FileMap): Prepared {
 		}
 
 		if (parsed.component_mode) config.component_mode = parsed.component_mode;
+		if (parsed.unwrap_images !== undefined) {
+			if (typeof parsed.unwrap_images !== 'boolean')
+				throw new Error(`${CONFIG_FILE}: unwrap_images must be true or false`);
+			config.unwrap_images = parsed.unwrap_images;
+		}
 		if (parsed.highlight !== undefined)
 			config.highlight = check_highlight(parsed.highlight);
 
@@ -191,6 +199,7 @@ export function prepare(files: FileMap): Prepared {
 	const options: MdsvexCompileOptions = {
 		component_mode: config.component_mode,
 	};
+	if (config.unwrap_images) options.unwrap_images = true;
 
 	if (config.templates.size > 0) {
 		options.templates = {};
