@@ -439,6 +439,7 @@ export class PluginDispatcher {
 	/**
 	 * redirect map: when wrap_inner is called, subsequent children
 	 * targeting the parent should land in the wrapper instead.
+	 * a wrapper holding another maps to it, so a chain ends at the innermost
 	 */
 	private redirects: Map<number, number> = NO_REDIRECTS;
 
@@ -507,10 +508,17 @@ export class PluginDispatcher {
 		return !!(this.has_handler[kind >> 5] & (1 << (kind & 31)));
 	}
 
-	/** check if a parent index has a redirect (wrap_inner). */
+	/** the innermost wrapper of a parent index, if wrap_inner gave it any */
 	get_redirect(parent_idx: number): number | undefined {
-		if (this.redirects.size === 0) return undefined;
-		return this.redirects.get(parent_idx);
+		const redirects = this.redirects;
+		if (redirects.size === 0) return undefined;
+		let wrapper = redirects.get(parent_idx);
+		if (wrapper === undefined) return undefined;
+		for (;;) {
+			const inner = redirects.get(wrapper);
+			if (inner === undefined) return wrapper;
+			wrapper = inner;
+		}
 	}
 
 	private own_redirects(): Map<number, number> {
@@ -520,6 +528,44 @@ export class PluginDispatcher {
 			this.open_wants = ALL_WANTS;
 		}
 		return redirects;
+	}
+
+	/** the new wrapper goes between the parent and the wrapper it pointed at */
+	private add_redirect(parent: number, wrapper: number): void {
+		const redirects = this.own_redirects();
+		const inner = redirects.get(parent);
+		redirects.set(parent, wrapper);
+		if (inner !== undefined) redirects.set(wrapper, inner);
+	}
+
+	/** drop the chain of a closed or revoked node */
+	private drop_redirects(parent: number): void {
+		const redirects = this.redirects;
+		let at: number | undefined = parent;
+		while (at !== undefined) {
+			const next = redirects.get(at);
+			if (next === undefined) return;
+			redirects.delete(at);
+			at = next;
+		}
+	}
+
+	/** take one wrapper out of a chain, a no op once the parent closed */
+	private remove_redirect(parent: number, wrapper: number): void {
+		const redirects = this.redirects;
+		let at = parent;
+		for (;;) {
+			const next = redirects.get(at);
+			if (next === undefined) return;
+			if (next === wrapper) break;
+			at = next;
+		}
+		const inner = redirects.get(wrapper);
+		if (inner === undefined) redirects.delete(at);
+		else {
+			redirects.set(at, inner);
+			redirects.delete(wrapper);
+		}
 	}
 
 	/** allocate a new synthetic node id. */
@@ -558,7 +604,7 @@ export class PluginDispatcher {
 			for (let i = 0; i < entries.length; i++) {
 				const e = entries[i];
 				if (e.kind === UndoEntryKind.WrapInner) {
-					this.own_redirects().set(e.parent, e.wrapper);
+					this.add_redirect(e.parent, e.wrapper);
 				}
 			}
 		}
@@ -581,7 +627,7 @@ export class PluginDispatcher {
 	 * speculation, inline emphasis).
 	 */
 	dispatch_close(buf_idx: number, buf: NodeBuffer): void {
-		if (this.redirects.size !== 0) this.redirects.delete(buf_idx);
+		if (this.redirects.size !== 0) this.drop_redirects(buf_idx);
 
 		// take and fire close callbacks with undo attribution
 		const cbs = this.close_cbs.take(buf_idx);
@@ -625,17 +671,18 @@ export class PluginDispatcher {
 			this.undo.empty
 		)
 			return;
-		this.redirects.delete(buf_idx);
+		this.drop_redirects(buf_idx);
 		this.close_cbs.discard(buf_idx);
 
 		// clean up redirects from any cross-node WrapInner entries
 		// before the undo log is consumed.
+		// only the wrappers of this node go, the wrapped node may hold others
 		const entries = this.undo.get_entries(buf_idx);
 		if (entries) {
 			for (let i = 0; i < entries.length; i++) {
 				const e = entries[i];
 				if (e.kind === UndoEntryKind.WrapInner) {
-					this.redirects.delete(e.parent);
+					this.remove_redirect(e.parent, e.wrapper);
 				}
 			}
 		}

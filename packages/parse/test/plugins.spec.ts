@@ -877,3 +877,157 @@ describe('parse plugins: wire path (WireEmitter → WireTreeBuilder)', () => {
 		expect(buf.kind_at(para.children[0])).toBe(NodeKind.text);
 	});
 });
+
+describe('parse plugins: wrap_inner chains', () => {
+	type Run = (
+		source: string,
+		plugins: ParsePlugin[]
+	) => { buf: NodeBuffer; dispatcher: PluginDispatcher };
+
+	const batch: Run = (source, plugins) => {
+		const dispatcher = new PluginDispatcher(
+			plugins,
+			new SourceTextSource(source)
+		);
+		const tree = new TreeBuilder(64, dispatcher);
+		new PFMParser(tree).parse(source);
+		return { buf: tree.get_buffer(), dispatcher };
+	};
+
+	// fed a character at a time so a revoke arrives after its open was built
+	const wire: Run = (source, plugins) => {
+		const emitter = new WireEmitter();
+		const parser = new PFMParser(emitter);
+		parser.init();
+		const dispatcher = new PluginDispatcher(plugins, new WireTextSource([]));
+		const builder = new WireTreeBuilder(128, dispatcher);
+		let fed = '';
+		for (let i = 0; i < source.length; i++) {
+			fed += source[i];
+			emitter.set_source(fed);
+			parser.feed(source[i]);
+			builder.apply(emitter.flush());
+		}
+		emitter.set_source(fed);
+		parser.finish();
+		builder.apply(emitter.flush());
+		return { buf: builder.get_buffer(), dispatcher };
+	};
+
+	/** the tree under a node as nested kind names */
+	function outline(buf: NodeBuffer, idx: number): string {
+		const name = kind_to_string(buf.kind_at(idx));
+		const children = buf.get_node(idx).children;
+		if (children.length === 0) return name;
+		return `${name}(${children.map((c) => outline(buf, c)).join(' ')})`;
+	}
+
+	function paragraphs(buf: NodeBuffer): string[] {
+		return buf
+			.get_node(0)
+			.children.filter((i) => buf.kind_at(i) === NodeKind.paragraph)
+			.map((i) => outline(buf, i));
+	}
+
+	const wrap_in = (type: string): ParsePlugin => ({
+		paragraph: {
+			parse(node) {
+				node.wrap_inner(type);
+			},
+		},
+	});
+
+	describe.each([
+		['batch', batch],
+		['wire', wire],
+	])('%s path', (_, run) => {
+		it('two plugins wrapping one node nest, the later one outside', () => {
+			const { buf, dispatcher } = run('This *works* fine\n\nAnd `this`\n', [
+				wrap_in('link'),
+				wrap_in('emphasis'),
+			]);
+			expect(paragraphs(buf)).toEqual([
+				'paragraph(emphasis(link(text strong_emphasis(text) text)))',
+				'paragraph(emphasis(link(text code_span)))',
+			]);
+			expect(dispatcher.quiet()).toBe(true);
+		});
+
+		it('a wrapper that is wrapped again takes the children', () => {
+			const plugin: ParsePlugin = {
+				paragraph: {
+					parse(node) {
+						node.wrap_inner('link').wrap_inner('emphasis');
+					},
+				},
+			};
+			const { buf, dispatcher } = run('This *works* fine\n\nAnd `this`\n', [
+				plugin,
+			]);
+			expect(paragraphs(buf)).toEqual([
+				'paragraph(link(emphasis(text strong_emphasis(text) text)))',
+				'paragraph(link(emphasis(text code_span)))',
+			]);
+			expect(dispatcher.quiet()).toBe(true);
+		});
+
+		it('three wrappers on one node', () => {
+			const { buf } = run('a *b* c\n', [
+				wrap_in('link'),
+				wrap_in('emphasis'),
+				wrap_in('subscript'),
+			]);
+			expect(paragraphs(buf)).toEqual([
+				'paragraph(subscript(emphasis(link(text strong_emphasis(text) text))))',
+			]);
+		});
+
+		it('a revoked node takes only its own wrapper out of the chain', () => {
+			// a table cell revokes its open strong before the row gets the next cell
+			const header: ParsePlugin = {
+				table_header: {
+					parse(node) {
+						node.wrap_inner('link');
+					},
+				},
+			};
+			const from_strong: ParsePlugin = {
+				strong_emphasis: {
+					parse(node) {
+						let row = node.parent;
+						while (row !== null && row.type !== 'table_header')
+							row = row.parent;
+						row?.wrap_inner('subscript');
+					},
+				},
+			};
+			const { buf, dispatcher } = run('| a *b | c |\n| - | - |\n', [
+				header,
+				from_strong,
+			]);
+			const table = buf
+				.get_node(0)
+				.children.find((i) => buf.kind_at(i) === NodeKind.table)!;
+			const row = outline(buf, buf.get_node(table).children[0]);
+			expect(row).not.toContain('subscript');
+			expect(row).toMatch(
+				/^table_header\(link\(table_cell\((text ?)+\) table_cell\(text\)\)\)$/
+			);
+			expect(dispatcher.quiet()).toBe(true);
+		});
+
+		it('a revoked node with a chain of its own leaves nothing behind', () => {
+			const plugin: ParsePlugin = {
+				strong_emphasis: {
+					parse(node) {
+						node.wrap_inner('link').wrap_inner('subscript');
+					},
+				},
+			};
+			const { buf, dispatcher } = run('a *b c\n\nd\n', [plugin]);
+			for (const para of paragraphs(buf))
+				expect(para).toMatch(/^paragraph\((text ?)+\)$/);
+			expect(dispatcher.quiet()).toBe(true);
+		});
+	});
+});
