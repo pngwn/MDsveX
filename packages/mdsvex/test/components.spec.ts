@@ -342,6 +342,57 @@ describe('element replacement, markdown mode', () => {
 		);
 	});
 
+	test('a task item gives a replaced li checked and no checkbox', () => {
+		const code = compile('- [x] a\n- [ ] b\n- c\n\n1. [X] d\n\n   e', {
+			components: only('li'),
+		}).code;
+		expect(body(code)).toBe(
+			'<ul>\n<Li_MDSVEX_G checked={true}>a</Li_MDSVEX_G>\n<Li_MDSVEX_G checked={false}>b</Li_MDSVEX_G>\n<Li_MDSVEX_G>c</Li_MDSVEX_G>\n\n</ul>' +
+				'<ol>\n<Li_MDSVEX_G checked={true}><p>d</p><p>e</p></Li_MDSVEX_G>\n\n</ol>'
+		);
+		expect(code).not.toContain('<input');
+	});
+
+	test('a task item with no replacement renders a disabled checkbox', () => {
+		const code = compile('- [x] a\n- [ ] b\n- c\n\n1. [X] d\n\n   e').code;
+		expect(code).toBe(
+			'<ul>\n<li><input type="checkbox" checked disabled /> a</li>\n<li><input type="checkbox" disabled /> b</li>\n<li>c</li>\n\n</ul>' +
+				'<ol>\n<li><p><input type="checkbox" checked disabled /> d</p><p>e</p></li>\n\n</ol>'
+		);
+		for (const generate of ['client', 'server'] as const) {
+			const out = svelte_compile(code, { generate, filename: 'doc.svelte' });
+			expect(out.warnings).toEqual([]);
+		}
+	});
+
+	test('other replacements leave the checkbox in place', () => {
+		const code = compile('- [x] *a*\n\n- [ ] b', {
+			components: only('ul', 'p', 'strong'),
+		}).code;
+		expect(body(code)).toBe(
+			'<Ul_MDSVEX_G>\n' +
+				'<li><P_MDSVEX_G><input type="checkbox" checked disabled /> <Strong_MDSVEX_G>a</Strong_MDSVEX_G></P_MDSVEX_G></li>\n' +
+				'<li><P_MDSVEX_G><input type="checkbox" disabled /> b</P_MDSVEX_G></li>\n' +
+				'\n</Ul_MDSVEX_G>'
+		);
+	});
+
+	test('checked from a plugin renders the checkbox and never an attribute', () => {
+		let n = 0;
+		const plugin: ParsePlugin = {
+			list_item: {
+				parse(node) {
+					node.attrs.checked = n === 0;
+					node.attrs.id = 'item-' + n++;
+				},
+			},
+		};
+		const code = compile('- a\n- b', { parse_plugins: [plugin] }).code;
+		expect(code).toBe(
+			'<ul>\n<li id="item-0"><input type="checkbox" checked disabled /> a</li>\n<li id="item-1"><input type="checkbox" disabled /> b</li>\n\n</ul>'
+		);
+	});
+
 	test('elements a parse plugin creates are replaced, typed ones are not', () => {
 		const plugin: ParsePlugin = {
 			paragraph: {

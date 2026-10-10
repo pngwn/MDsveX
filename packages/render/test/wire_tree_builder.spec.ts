@@ -97,6 +97,13 @@ describe('WireTreeBuilder produces same HTML as TreeBuilder', () => {
 	it('unordered list', () => assert_same('- one\n- two\n'));
 	it('ordered list', () => assert_same('1. one\n2. two\n'));
 
+	it('task list', () => {
+		const source = '- [x] done\n- [ ] todo\n\n1. [X] loose\n\n   more\n';
+		assert_same(source);
+		assert_same_incremental(source);
+		expect(via_wire(source).match(/<input type="checkbox"/g)!.length).toBe(3);
+	});
+
 	it('thematic break', () => assert_same('---\n'));
 	it('strikethrough', () => assert_same('~~deleted~~\n'));
 	it('superscript', () => assert_same('^super^\n'));

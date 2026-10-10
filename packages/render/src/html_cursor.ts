@@ -794,6 +794,8 @@ const INTERNAL_KEYS = new Set([
 	'ordered',
 	'tight',
 	'start',
+	// a task item, rendered as a checkbox or passed to a replacement as a prop
+	'checked',
 	// code fence info (transformed into class="language-X")
 	'info',
 	'info_start',
@@ -876,6 +878,7 @@ const enum W {
 	parent = 5,
 	next = 6,
 	first_child = 8,
+	pending = 10,
 	meta = 11,
 	stride = 12,
 }
@@ -1167,6 +1170,65 @@ const LINK_HANDLED = new Set(['href', 'title']);
 const IMAGE_HANDLED = new Set(['title']);
 
 /** render children of the current cursor position, collecting escaped text and recursive node output. */
+//  task items
+
+const TASK_OFF = '<input type="checkbox" disabled /> ';
+const TASK_ON = '<input type="checkbox" checked disabled /> ';
+
+/** the replaced paragraph that takes a checkbox as its first child, -1 for none */
+let task_at = -1;
+let task_box = '';
+
+/** the first paragraph of a loose task item, which takes the checkbox as on github, else NONE */
+function task_para(c: Cursor): number {
+	const n = c.words;
+	const item = c.index;
+	const first = n[item * W.stride + W.first_child];
+	if (first === Slot.NONE) return Slot.NONE;
+	const b = first * W.stride;
+	// a pending wrapper renders as its children
+	if ((n[b] & 0xff) !== K.PARAGRAPH || n[b + W.pending] === 1) return Slot.NONE;
+	// the walks render text only through its parent, so a text sibling sends the checkbox to the item start
+	for (
+		let next = n[b + W.next];
+		next !== Slot.NONE && n[next * W.stride + W.parent] === item;
+		next = n[next * W.stride + W.next]
+	) {
+		if ((n[next * W.stride] & 0xff) === K.TEXT) return Slot.NONE;
+	}
+	return first;
+}
+
+/** the children of a task item with its checkbox, c stays on the item */
+function render_task(c: Cursor, sink: MapSink | undefined, on: boolean): void {
+	const box = on ? TASK_ON : TASK_OFF;
+	const para = task_para(c);
+	if (para === Slot.NONE) {
+		mo += box;
+		render_children(c, sink);
+		return;
+	}
+	const n = c.words;
+	const item = c.index;
+	c.move_to(para);
+	const pre = mo.length;
+	_open(c, '<p', '<p>', '>');
+	const ao = mo.length;
+	mo += box;
+	render_children(c, sink);
+	const bc = mo.length;
+	mo += '</p>';
+	if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
+	let next = n[para * W.stride + W.next];
+	while (next !== Slot.NONE && n[next * W.stride + W.parent] === item) {
+		const after = n[next * W.stride + W.next];
+		c.move_to(next);
+		render_node(c, sink);
+		next = after;
+	}
+	c.move_to(item);
+}
+
 function render_children(c: Cursor, sink?: MapSink): void {
 	const n = c.words;
 	let child = n[c.index * W.stride + W.first_child];
@@ -1409,7 +1471,9 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			const pre = mo.length;
 			_open(c, '<li', '<li>', '>');
 			const ao = mo.length;
-			render_children(c, sink);
+			const checked = c.meta()?.checked;
+			if (typeof checked === 'boolean') render_task(c, sink, checked);
+			else render_children(c, sink);
 			const bc = mo.length;
 			mo += '</li>\n';
 			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
@@ -1924,6 +1988,14 @@ const S_TR_OPEN = fold_base('<tr>\n');
 const S_TR_CLOSE = fold_base('</tr>\n');
 const S_TH_CLOSE = fold_base('</th>\n');
 const S_TD_CLOSE = fold_base('</td>\n');
+const S_P = fold_base('<p');
+const S_P_OPEN = fold_base('<p>');
+const S_P_CLOSE = fold_base('</p>');
+const S_LI = fold_base('<li');
+const S_LI_OPEN = fold_base('<li>');
+const S_LI_CLOSE = fold_base('</li>\n');
+const S_TASK_OFF = fold_base(TASK_OFF);
+const S_TASK_ON = fold_base(TASK_ON);
 
 /** indexed by alignment none, left, center, right */
 function fold_cell_opens(tag: string): Uint8Array {
@@ -1965,7 +2037,6 @@ wrap_row(K.STRONG, '<strong', '<strong>', '>', '</strong>');
 wrap_row(K.STRIKETHROUGH, '<del', '<del>', '>', '</del>');
 wrap_row(K.SUPERSCRIPT, '<sup', '<sup>', '>', '</sup>');
 wrap_row(K.SUBSCRIPT, '<sub', '<sub>', '>', '</sub>');
-wrap_row(K.LIST_ITEM, '<li', '<li>', '>', '</li>\n');
 wrap_row(
 	K.BLOCK_QUOTE,
 	'<blockquote',
@@ -2206,7 +2277,6 @@ function fold_node(c: Cursor, p: number): number {
 		case K.EMPHASIS:
 		case K.STRONG:
 		case K.BLOCK_QUOTE:
-		case K.LIST_ITEM:
 		case K.STRIKETHROUGH:
 		case K.SUPERSCRIPT:
 		case K.SUBSCRIPT: {
@@ -2217,6 +2287,18 @@ function fold_node(c: Cursor, p: number): number {
 			p = fold_open(c, p, WRAP_HEAD[row], WRAP_FOLDED[row], WRAP_END[row]);
 			p = fold_children(c, p);
 			return push_static(p, WRAP_CLOSE[row]);
+		}
+
+		case K.LIST_ITEM: {
+			const meta = c.meta();
+			if (meta === undefined) p = push_static(p, S_LI_OPEN);
+			else {
+				p = fold_open(c, p, S_LI, S_LI_OPEN, S_GT);
+				if (typeof meta.checked === 'boolean')
+					return fold_task(c, p, meta.checked);
+			}
+			p = fold_children(c, p);
+			return push_static(p, S_LI_CLOSE);
 		}
 
 		case K.CODE_SPAN: {
@@ -2304,6 +2386,40 @@ function fold_node(c: Cursor, p: number): number {
 			if (dir_strict) dir_check(c);
 			return fold_children(c, p);
 	}
+}
+
+/** render_task for the fold walk, after the open tag */
+function fold_task(c: Cursor, p: number, on: boolean): number {
+	const box = on ? S_TASK_ON : S_TASK_OFF;
+	const para = task_para(c);
+	if (para === Slot.NONE) {
+		p = push_static(p, box);
+		p = fold_children(c, p);
+		return push_static(p, S_LI_CLOSE);
+	}
+	const n = c.words;
+	const item = c.index;
+	c.move_to(para);
+	if (has_components && comp_ref(c) !== null) {
+		task_at = para;
+		task_box = FOLD_STR[box];
+		p = fold_node(c, p);
+		task_at = -1;
+	} else {
+		p = fold_open(c, p, S_P, S_P_OPEN, S_GT);
+		p = push_static(p, box);
+		p = fold_children(c, p);
+		p = push_static(p, S_P_CLOSE);
+	}
+	let next = n[para * W.stride + W.next];
+	while (next !== Slot.NONE && n[next * W.stride + W.parent] === item) {
+		const after = n[next * W.stride + W.next];
+		c.move_to(next);
+		p = fold_node(c, p);
+		next = after;
+	}
+	c.move_to(item);
+	return push_static(p, S_LI_CLOSE);
 }
 
 function fold_code_fence(c: Cursor, p: number): number {
@@ -2756,7 +2872,6 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 		case K.EMPHASIS:
 		case K.STRONG:
 		case K.BLOCK_QUOTE:
-		case K.LIST_ITEM:
 		case K.STRIKETHROUGH:
 		case K.SUPERSCRIPT:
 		case K.SUBSCRIPT: {
@@ -2768,6 +2883,19 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			p = tr_open(c, p, WRAP_HEAD[row], WRAP_FOLDED[row], WRAP_END[row]);
 			p = tr_children(c, sink, p);
 			p = tr_push(p, WRAP_CLOSE[row]);
+			tr_point(sink, pre, c.start);
+			return p;
+		}
+
+		case K.LIST_ITEM: {
+			const pre = mo.length + FOLD_LEN[p];
+			const meta = c.meta();
+			if (meta === undefined) p = tr_push(p, S_LI_OPEN);
+			else p = tr_open(c, p, S_LI, S_LI_OPEN, S_GT);
+			if (meta !== undefined && typeof meta.checked === 'boolean')
+				p = tr_task(c, sink, p, meta.checked);
+			else p = tr_children(c, sink, p);
+			p = tr_push(p, S_LI_CLOSE);
 			tr_point(sink, pre, c.start);
 			return p;
 		}
@@ -2924,6 +3052,38 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			if (dir_strict) dir_check(c);
 			return tr_children(c, sink, p);
 	}
+}
+
+/** render_task for the trace walk */
+function tr_task(c: Cursor, sink: MapSink, p: number, on: boolean): number {
+	const box = on ? S_TASK_ON : S_TASK_OFF;
+	const para = task_para(c);
+	if (para === Slot.NONE) return tr_children(c, sink, tr_push(p, box));
+	const n = c.words;
+	const item = c.index;
+	c.move_to(para);
+	if (has_components && comp_ref(c) !== null) {
+		task_at = para;
+		task_box = FOLD_STR[box];
+		p = tr_node(c, sink, p);
+		task_at = -1;
+	} else {
+		const pre = mo.length + FOLD_LEN[p];
+		p = tr_open(c, p, S_P, S_P_OPEN, S_GT);
+		p = tr_push(p, box);
+		p = tr_children(c, sink, p);
+		p = tr_push(p, S_P_CLOSE);
+		tr_point(sink, pre, c.start);
+	}
+	let next = n[para * W.stride + W.next];
+	while (next !== Slot.NONE && n[next * W.stride + W.parent] === item) {
+		const after = n[next * W.stride + W.next];
+		c.move_to(next);
+		p = tr_node(c, sink, p);
+		next = after;
+	}
+	c.move_to(item);
+	return p;
 }
 
 function tr_code_fence(c: Cursor, sink: MapSink, p: number): number {
@@ -3208,7 +3368,6 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 		case K.EMPHASIS:
 		case K.STRONG:
 		case K.BLOCK_QUOTE:
-		case K.LIST_ITEM:
 		case K.STRIKETHROUGH:
 		case K.SUPERSCRIPT:
 		case K.SUBSCRIPT: {
@@ -3222,6 +3381,21 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			p = mp_children(c, sink, p);
 			const bc = mo.length + FOLD_LEN[p];
 			p = tr_push(p, WRAP_CLOSE[row]);
+			_spans(sink, pre, ao, bc, mo.length + FOLD_LEN[p], c, Preset.TEXT);
+			return p;
+		}
+
+		case K.LIST_ITEM: {
+			const pre = mo.length + FOLD_LEN[p];
+			const meta = c.meta();
+			if (meta === undefined) p = tr_push(p, S_LI_OPEN);
+			else p = tr_open(c, p, S_LI, S_LI_OPEN, S_GT);
+			const ao = mo.length + FOLD_LEN[p];
+			if (meta !== undefined && typeof meta.checked === 'boolean')
+				p = mp_task(c, sink, p, meta.checked);
+			else p = mp_children(c, sink, p);
+			const bc = mo.length + FOLD_LEN[p];
+			p = tr_push(p, S_LI_CLOSE);
 			_spans(sink, pre, ao, bc, mo.length + FOLD_LEN[p], c, Preset.TEXT);
 			return p;
 		}
@@ -3425,6 +3599,40 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			if (dir_strict) dir_check(c);
 			return mp_children(c, sink, p);
 	}
+}
+
+/** render_task for the mapped walk */
+function mp_task(c: Cursor, sink: MapSink, p: number, on: boolean): number {
+	const box = on ? S_TASK_ON : S_TASK_OFF;
+	const para = task_para(c);
+	if (para === Slot.NONE) return mp_children(c, sink, tr_push(p, box));
+	const n = c.words;
+	const item = c.index;
+	c.move_to(para);
+	if (has_components && comp_ref(c) !== null) {
+		task_at = para;
+		task_box = FOLD_STR[box];
+		p = mp_node(c, sink, p);
+		task_at = -1;
+	} else {
+		const pre = mo.length + FOLD_LEN[p];
+		p = tr_open(c, p, S_P, S_P_OPEN, S_GT);
+		const ao = mo.length + FOLD_LEN[p];
+		p = tr_push(p, box);
+		p = mp_children(c, sink, p);
+		const bc = mo.length + FOLD_LEN[p];
+		p = tr_push(p, S_P_CLOSE);
+		_spans(sink, pre, ao, bc, mo.length + FOLD_LEN[p], c, Preset.TEXT);
+	}
+	let next = n[para * W.stride + W.next];
+	while (next !== Slot.NONE && n[next * W.stride + W.parent] === item) {
+		const after = n[next * W.stride + W.next];
+		c.move_to(next);
+		p = mp_node(c, sink, p);
+		next = after;
+	}
+	c.move_to(item);
+	return p;
 }
 
 function mp_code_fence(c: Cursor, sink: MapSink, p: number): number {
@@ -3701,7 +3909,6 @@ function render_folded(c: Cursor): string {
 // one walker below serves the fold, trace and mapped renders
 
 const H_NAME = ['', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
-const CHECKED = new Set(['checked']);
 const TABLE_PARTS = ['thead', 'tbody', 'tr', 'th', 'td'];
 
 /** the element a markdown node renders as, empty when it is not replaceable */
@@ -4229,6 +4436,12 @@ function comp_node(
 		case K.HARD_BREAK:
 			return cm_put(p, open + _attrs(c) + ' />\n');
 
+		case K.PARAGRAPH:
+			open += _attrs(c);
+			// the first paragraph of a task item, see task_para
+			if (c.index === task_at) lead = task_box;
+			break;
+
 		case K.LIST: {
 			const meta = c.meta();
 			open += _attrs(c);
@@ -4244,9 +4457,9 @@ function comp_node(
 
 		case K.LIST_ITEM: {
 			const checked = c.meta()?.checked;
-			if (typeof checked === 'boolean')
-				open += _attrs(c, CHECKED) + ' checked={' + checked + '}';
-			else open += _attrs(c);
+			open += _attrs(c);
+			// the replacement draws its own checkbox
+			if (typeof checked === 'boolean') open += ' checked={' + checked + '}';
 			close += '\n';
 			break;
 		}

@@ -2,7 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { PFMParser } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import { Cursor } from '@mdsvex/parse/cursor';
-import { ComponentScope, CursorHTMLRenderer } from '../src/html_cursor';
+import {
+	ComponentScope,
+	CursorHTMLRenderer,
+	_mapped_begin,
+	_mapped_end,
+	_node,
+} from '../src/html_cursor';
 
 //  Helpers ��
 
@@ -635,6 +641,166 @@ describe('extended tables', () => {
 		const td_html = every_walk('| a || b |\n|---||---|\n| 1 || 2 |\n', only_td);
 		expect(td_html).toContain(
 			'<th scope="row">1</th>\n<Td_MDSVEX_G>2</Td_MDSVEX_G>'
+		);
+	});
+});
+
+describe('task lists', () => {
+	const OFF = '<input type="checkbox" disabled /> ';
+	const ON = '<input type="checkbox" checked disabled /> ';
+
+	function parse(source: string) {
+		const tree = new TreeBuilder(source.length >> 3 || 128);
+		new PFMParser(tree).parse(source);
+		return tree.get_buffer();
+	}
+
+	/** the html every walk renders, the cached and unfolded ones only without replacements */
+	function every_walk(source: string, scope?: ComponentScope): string {
+		const walks: string[] = [];
+		const folded = new CursorHTMLRenderer({ cache: false });
+		const mapped = new CursorHTMLRenderer({ cache: false });
+		const fused = new CursorHTMLRenderer({ cache: false });
+		const traced = new CursorHTMLRenderer({ cache: false });
+		if (scope) {
+			folded.scope = mapped.scope = fused.scope = traced.scope = scope;
+		}
+		folded.update(parse(source), source);
+		mapped.update_mapped(parse(source), source);
+		fused.update_v3(parse(source), source, source);
+		traced.update_trace(parse(source), source);
+		walks.push(folded.html, mapped.html, fused.html, traced.html);
+		if (!scope) {
+			const cached = new CursorHTMLRenderer();
+			cached.update(parse(source), source);
+			walks.push(cached.html);
+			const buf = parse(source);
+			_mapped_begin(buf, source, '');
+			_node(new Cursor(buf, source));
+			walks.push(_mapped_end());
+		}
+		for (const html of walks) expect(html).toBe(walks[0]);
+		return walks[0];
+	}
+
+	const body = (html: string) => html.replace(/^<script>[^]*?<\/script>/, '');
+
+	it('a tight item starts with a disabled checkbox', () => {
+		expect(every_walk('- [ ] todo\n- [x] done\n- [X] also\n- plain\n')).toBe(
+			'<ul>\n' +
+				`<li>${OFF}todo</li>\n` +
+				`<li>${ON}done</li>\n` +
+				`<li>${ON}also</li>\n` +
+				'<li>plain</li>\n' +
+				'\n</ul>'
+		);
+	});
+
+	it('a loose item has the checkbox inside its first paragraph', () => {
+		expect(every_walk('- [ ] todo\n\n- [x] done\n\n  more\n\n- plain\n')).toBe(
+			'<ul>\n' +
+				`<li><p>${OFF}todo</p></li>\n` +
+				`<li><p>${ON}done</p><p>more</p></li>\n` +
+				'<li><p>plain</p></li>\n' +
+				'\n</ul>'
+		);
+	});
+
+	it('a loose item keeps the blocks after its first paragraph', () => {
+		expect(
+			every_walk('- [x] a\n\n  ```js\n  b\n  ```\n\n  - [ ] c\n\n  > d\n')
+		).toBe(
+			'<ul>\n' +
+				`<li><p>${ON}a</p>` +
+				'<pre><code class="language-js">  b</code></pre>' +
+				`<ul>\n<li>${OFF}c</li>\n\n</ul>` +
+				'<blockquote>\n<p>d</p>\n</blockquote></li>\n' +
+				'\n</ul>'
+		);
+	});
+
+	it('ordered and nested lists', () => {
+		expect(every_walk('1. [x] a\n2. [ ] b\n   - [x] c\n')).toBe(
+			'<ol>\n' +
+				`<li>${ON}a</li>\n` +
+				`<li>${OFF}b<ul>\n<li>${ON}c</li>\n\n</ul></li>\n` +
+				'\n</ol>'
+		);
+	});
+
+	it('inside a block quote, with inline content', () => {
+		expect(every_walk('> - [x] *a* `b`\n')).toBe(
+			'<blockquote>\n<ul>\n' +
+				`<li>${ON}<strong>a</strong> <code>b</code></li>\n` +
+				'\n</ul>\n</blockquote>'
+		);
+	});
+
+	it('checked never renders as an attribute of the li', () => {
+		const html = every_walk('- [x] a\n- [ ] b\n\n1. [x] c\n\n   d\n');
+		expect(html).not.toMatch(/<li[^>]+>/);
+		expect(html.match(/<input /g)!.length).toBe(3);
+	});
+
+	it('a marker that is not one renders as text', () => {
+		expect(every_walk('- [ ]\n- [x]no\n- a [x] b\n')).toBe(
+			'<ul>\n<li>[ ]</li>\n<li>[x]no</li>\n<li>a [x] b</li>\n\n</ul>'
+		);
+	});
+
+	it('a list still open renders the checkbox before the pending paragraph', () => {
+		const source = '- [x] done\n\n- [ ] todo\n';
+		const tree = new TreeBuilder(128);
+		const parser = new PFMParser(tree);
+		parser.init();
+		parser.feed(source);
+		const renderer = new CursorHTMLRenderer({ cache: false });
+		renderer.update(tree.get_buffer(), source);
+		// the last line is held until the parser knows how it ends, its checkbox is not
+		expect(renderer.html).toBe(
+			`<ul>\n<li>${ON}done</li>\n<li>${OFF}</li>\n\n</ul>`
+		);
+		parser.finish();
+		renderer.update(tree.get_buffer(), source);
+		expect(renderer.html).toBe(
+			`<ul>\n<li><p>${ON}done</p></li>\n<li><p>${OFF}todo</p></li>\n\n</ul>`
+		);
+	});
+
+	it('a replaced li takes checked as a prop and no checkbox', () => {
+		const scope = new ComponentScope([{ specifier: 'm', names: ['li'] }], 'G');
+		const html = every_walk(
+			'- [x] a\n- [ ] b\n- c\n\n1. [x] d\n\n   e\n',
+			scope
+		);
+		expect(body(html)).toBe(
+			'<ul>\n' +
+				'<Li_MDSVEX_G checked={true}>a</Li_MDSVEX_G>\n' +
+				'<Li_MDSVEX_G checked={false}>b</Li_MDSVEX_G>\n' +
+				'<Li_MDSVEX_G>c</Li_MDSVEX_G>\n' +
+				'\n</ul>' +
+				'<ol>\n' +
+				'<Li_MDSVEX_G checked={true}><p>d</p><p>e</p></Li_MDSVEX_G>\n' +
+				'\n</ol>'
+		);
+	});
+
+	it('a replaced p in a loose item takes the checkbox as its first child', () => {
+		const scope = new ComponentScope([{ specifier: 'm', names: ['p'] }], 'G');
+		const html = every_walk('- [x] a\n\n  b\n\n- [ ] c\n', scope);
+		expect(body(html)).toBe(
+			'<ul>\n' +
+				`<li><P_MDSVEX_G>${ON}a</P_MDSVEX_G><P_MDSVEX_G>b</P_MDSVEX_G></li>\n` +
+				`<li><P_MDSVEX_G>${OFF}c</P_MDSVEX_G></li>\n` +
+				'\n</ul>'
+		);
+	});
+
+	it('a replaced ul keeps the checkboxes of its items', () => {
+		const scope = new ComponentScope([{ specifier: 'm', names: ['ul'] }], 'G');
+		const html = every_walk('- [x] a\n- b\n', scope);
+		expect(body(html)).toBe(
+			`<Ul_MDSVEX_G>\n<li>${ON}a</li>\n<li>b</li>\n\n</Ul_MDSVEX_G>`
 		);
 	});
 });

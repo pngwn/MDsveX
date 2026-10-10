@@ -53,6 +53,7 @@ const DOCS = [
 	'line one\r\nline two\rline three\n\ntext &amp; <b>html</b>\n',
 	'a  \nb\\\nc\n\n***\n\n<div>\n\nx\n\n</div>\n',
 	'| h || *a* | b || r |\n|---||:-:|---||--:|\n| 1 || `x` |> | 2 |\n|^ ||^ |^ | 3 |\n',
+	'- [x] done\n- [ ] *todo*\n\n1. [ ] loose\n\n   more\n\n2. [X] `code`\n   - [x] nested\n',
 ];
 
 function render(source: string) {
