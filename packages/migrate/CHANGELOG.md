@@ -1,5 +1,11 @@
 # @mdsvex/migrate
 
+## 0.2.0-next.2
+
+### Patch Changes
+
+- [#927](https://github.com/pngwn/MDsveX/pull/927) [`eb03822`](https://github.com/pngwn/MDsveX/commit/eb038221945a2db6e97d73e8a7cd8a1ed70872ff) Thanks [@pngwn](https://github.com/pngwn)! - Footnotes are kept as literal text. A reference becomes `\[\^label\]` and a definition becomes `\[\^label\]: ...` followed by the rest of its blocks, where both used to be dropped from the output.
+
 ## 0.2.0-next.1
 
 ### Minor Changes

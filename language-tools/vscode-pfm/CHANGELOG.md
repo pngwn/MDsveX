@@ -1,5 +1,12 @@
 # vscode-pfm
 
+## 0.0.2-next.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @mdsvex/typescript-plugin@0.1.0-next.2
+
 ## 0.0.2-next.1
 
 ### Patch Changes
