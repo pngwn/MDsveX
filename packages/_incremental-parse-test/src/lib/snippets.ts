@@ -75,6 +75,11 @@ export const SECTIONS: Section[] = [
 				slug: "block-quote",
 				markdown: "> To be or not to be,\\\n> that is\n> the question.\n",
 			},
+			{
+				name: "Block quote with heading",
+				slug: "block-quote-heading",
+				markdown: "> # Foo\n> bar\n> baz\n",
+			},
 		],
 	},
 	{
