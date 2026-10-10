@@ -1,7 +1,6 @@
 root
   paragraph
     text "foo "
-    text "_"
-    text "_"
+    text "__"
     text "_"
   line_break

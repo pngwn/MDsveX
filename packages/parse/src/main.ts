@@ -1973,6 +1973,26 @@ export class PFMParser {
 		return true;
 	}
 
+	/**
+	 * outer is empty and its own delimiter is at the cursor again, anything but whitespace after it
+	 * opens the inner node as open_inner_strong does, false leaves outer to be revoked
+	 */
+	private open_inner_doubled(
+		outer: number,
+		kind: NodeKind.strong_emphasis | NodeKind.emphasis,
+		state: StateKind.strong_emphasis | StateKind.emphasis
+	): boolean {
+		// whitespace, or the nan wildcard at the end of the input
+		if (this.next_class() & CharMask.whitespace) return false;
+		this.states.push(StateKind.inline);
+		const n_id = this.emit_open_pending(kind, this.cursor, outer);
+		this.out.set_value_start(n_id, this.cursor + 1);
+		this.node_stack.push(n_id);
+		this.states.push(state);
+		this.cursor++;
+		return true;
+	}
+
 	/** close the strong n_id at the cursor, and the enclosing strong too when its closing asterisk follows */
 	private close_strong(n_id: number): void {
 		const states = this.states;
@@ -6657,6 +6677,14 @@ export class PFMParser {
 						// no empty emphasis: if the node has no children, revoke it.
 						// detect empty by checking if cursor is at value_start (nothing consumed).
 						if (!this.emphasis_has_content) {
+							if (
+								this.open_inner_doubled(
+									n_id,
+									NodeKind.strong_emphasis,
+									StateKind.strong_emphasis
+								)
+							)
+								continue;
 							this.out.revoke(n_id);
 							this.pending_remove(n_id);
 							this.states.pop();
@@ -8865,6 +8893,10 @@ export class PFMParser {
 
 			// no empty emphasis: if the node has no children, revoke it.
 			if (!this.emphasis_has_content) {
+				if (
+					this.open_inner_doubled(n_id, NodeKind.emphasis, StateKind.emphasis)
+				)
+					return false;
 				this.out.revoke(n_id);
 				this.pending_remove(n_id);
 				this.states.pop();

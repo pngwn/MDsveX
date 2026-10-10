@@ -1968,3 +1968,75 @@ describe('emphasis and strong beside non-ascii characters', () => {
 		expect(inline_shape(input, 1)).toBe(shape);
 	});
 });
+
+describe('doubled delimiters', () => {
+	const SS = (inner: string) => `strong_emphasis(strong_emphasis(${inner}))`;
+	const EE = (inner: string) => `emphasis(emphasis(${inner}))`;
+
+	const nested: [string, string][] = [
+		['**word**', SS('"word"')],
+		['__word__', EE('"word"')],
+		['**(x)**', SS('"(x)"')],
+		['__(x)__', EE('"(x)"')],
+		['**"quoted"**', SS('"\\"quoted\\""')],
+		['__"quoted"__', EE('"\\"quoted\\""')],
+		['**.**', SS('"."')],
+		['**\\*x**', SS('"*x"')],
+		['**“quoted”**', SS('"“quoted”"')],
+		['__“quoted”__', EE('"“quoted”"')],
+		['**「重要」**', SS('"「重要」"')],
+		['__「重要」__', EE('"「重要」"')],
+		['**…x**', SS('"…x"')],
+		['**[a](b)**', SS('link("a")')],
+		['__[a](b)__', EE('link("a")')],
+		['**![a](b)**', SS('image("a")')],
+		['**`code`**', SS('code_span()')],
+		['__`code`__', EE('code_span()')],
+		['**{expr}**', SS('mustache()')],
+		['__{expr}__', EE('mustache()')],
+		['**<b>x</b>**', SS('html("x")')],
+		['**_x_**', SS('emphasis("x")')],
+		['__*x*__', EE('strong_emphasis("x")')],
+		['**~~x~~**', SS('strikethrough("x")')],
+		['**^x^**', SS('superscript("x")')],
+		['a **(x)** b', `"a " ${SS('"(x)"')} " b"`],
+		['a __(x)__ b', `"a " ${EE('"(x)"')} " b"`],
+		['a **(x)**.', `"a " ${SS('"(x)"')} "."`],
+		['(**(x)**)', `"(" ${SS('"(x)"')} ")"`],
+		['**(a)** and **(b)**', `${SS('"(a)"')} " and " ${SS('"(b)"')}`],
+		['**a** **(b)**', `${SS('"a"')} " " ${SS('"(b)"')}`],
+		['**(a *b* c)**', SS('"(a " strong_emphasis("b") " c)"')],
+		['__(a _b_ c)__', EE('"(a " emphasis("b") " c)"')],
+		['*a **(b)** c*', `strong_emphasis("a " ${SS('"(b)"')} " c")`],
+		['_a __(b)__ c_', `emphasis("a " ${EE('"(b)"')} " c")`],
+		['***x***', `strong_emphasis(${SS('"x"')})`],
+		['***(x)***', `strong_emphasis(${SS('"(x)"')})`],
+		['___x___', `emphasis(${EE('"x"')})`],
+		['___(x)___', `emphasis(${EE('"(x)"')})`],
+		['****x****', SS(SS('"x"'))],
+	];
+
+	const unclosed: [string, string][] = [
+		['**(x)*', `"*" strong_emphasis("(x)")`],
+		['__(x)_', `"_" emphasis("(x)")`],
+		['*(x)**', `strong_emphasis("(x)") "*"`],
+		['_(x)__', `emphasis("(x)") "_"`],
+		['**(x)', `"*" "*(x)"`],
+		['__(x)', `"_" "_(x)"`],
+		['**(x) **', `"*" "*" "(x) " "*" "*"`],
+		['**) x', `"*" "*) x"`],
+		['** x', `"*" "* x"`],
+		['__ x', `"_" "_ x"`],
+		['a ** b ** c', `"a " "*" "* b " "*" "* c"`],
+		['a **** b', `"a " "***" "* b"`],
+		['a ____ b', `"a " "___" "_ b"`],
+		['**(x)** **', `${SS('"(x)"')} " " "*" "*"`],
+	];
+
+	test.each([...nested, ...unclosed])('%s', (input, shape) => {
+		expect(inline_shape(input)).toBe(shape);
+		expect(inline_shape(input, 1)).toBe(shape);
+		expect(inline_shape(input, 2)).toBe(shape);
+		expect(inline_shape(input, 3)).toBe(shape);
+	});
+});
