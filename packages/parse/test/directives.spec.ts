@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { get_content, get_all_child_kinds } from './utils';
+import { run_batch, run_wire, shape } from './plugin_harness';
 import { print_ast } from './print';
 import {
 	NodeKind,
@@ -10,10 +11,7 @@ import {
 } from '../src/main';
 import type { Emitter } from '../src/opcodes';
 import type { ParsePlugin } from '../src/plugin_types';
-import { TreeBuilder } from '../src/tree_builder';
 import { kind_to_string } from '../src/utils';
-import type { NodeBuffer } from '../src/utils';
-import { WireTreeBuilder } from '../src/wire_tree_builder';
 
 /** Find first child of a given kind under a node. */
 const find_child = (
@@ -1003,48 +1001,11 @@ const ast = (input: string) => {
 	return print_ast(nodes, source).split('\n').slice(1).join('\n');
 };
 
-/** kinds and text of a buffer, text read from the source or a wire string */
-function shape(nodes: NodeBuffer, source: string | null, index = 0): unknown {
-	const node = nodes.get_node(index);
-	if (node.kind === 'text') {
-		const text =
-			source === null
-				? nodes._strings[index]
-				: source.slice(node.value[0], node.value[1]);
-		return 'text:' + text;
-	}
-	const kids = node.children
-		.filter((c) => nodes.get_node(c).kind !== 'line_break')
-		.map((c) => shape(nodes, source, c));
-	return kids.length === 0 ? node.kind : [node.kind, ...kids];
-}
+const parse_fed = (source: string, chunk: number) =>
+	run_batch(source, undefined, chunk).nodes;
 
-function parse_fed(source: string, chunk: number): NodeBuffer {
-	const tree = new TreeBuilder(source.length);
-	const parser = new PFMParser(tree);
-	parser.init();
-	for (let i = 0; i < source.length; i += chunk) {
-		parser.feed(source.slice(i, i + chunk));
-	}
-	parser.finish();
-	return tree.get_buffer();
-}
-
-function parse_over_wire(source: string, chunk: number): NodeBuffer {
-	const emitter = new WireEmitter();
-	const parser = new PFMParser(emitter);
-	const builder = new WireTreeBuilder();
-	parser.init();
-	for (let i = 0; i < source.length; i += chunk) {
-		emitter.set_source(source.slice(0, i + chunk));
-		parser.feed(source.slice(i, i + chunk));
-		builder.apply(emitter.flush());
-	}
-	emitter.set_source(source);
-	parser.finish();
-	builder.apply(emitter.flush());
-	return builder.get_buffer();
-}
+const parse_over_wire = (source: string, chunk: number) =>
+	run_wire(source, undefined, chunk).nodes;
 
 describe('block directive labels', () => {
 	test('a leaf label is a directive_label child holding inline nodes', () => {

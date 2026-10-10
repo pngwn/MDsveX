@@ -75,6 +75,8 @@ Views are cached by node ID within a single dispatch. If two handlers both read 
 
 The cache is short-lived — it exists for the duration of plugin dispatch on a single node and is discarded afterward. Views are cheap to create, so this isn't an optimization concern, it's a correctness requirement.
 
+A view belongs to the document it was made for. A close callback can hold the views its open handler made, as the examples below do. Once the builder is reset for another document (`TreeBuilder.reset()`, `WireTreeBuilder.reset()`, or the next compile of a `CompilerSession`) every earlier view throws on use, because the buffer it points into now holds other nodes. Copy what you need out of a view (`text_content`, attrs) rather than keeping the view. The `ctx` object is new for each document too.
+
 ## Handler Lifecycle
 
 ### Open-Time Execution
@@ -221,7 +223,7 @@ Multiple plugins on the same node type are composed into a single function at re
 **Guarantees:**
 - Property mutations never have non-local effects beyond dirty marking
 - Synthetic nodes behave identically to parser-produced nodes (traversal, rendering, revocation)
-- Revocation of a parent node revokes all its synthetic descendants automatically
+- Revocation of a node removes the synthetic nodes its handlers made
 - Plugin code is mode-agnostic — same code works in streaming and batch
 - Fused plugins add zero additional tree walks
 - Close callbacks fire exactly once per node, in registration order
@@ -262,8 +264,10 @@ The undo log is keyed by node ID. Each node has an associated log of mutations m
 
 1. Walks the undo log for that node in reverse order
 2. Applies each undo entry (restoring prior attr values, deleting synthetic children, reverting type changes)
-3. Recurses into descendants, doing the same for each
-4. Removes the node from the SoA
+3. Discards the node's close callbacks if they have not fired
+4. Repairs the node: it becomes literal text (or a paragraph of it, for a block) and its children move up to its parent
+
+A revoke covers one node. The repair keeps the node's children in the tree, and the parser sends a separate revoke for each descendant it also gives up on. A child that stays keeps what its handlers did: in `_a *b* c` the unclosed `_` is revoked, the `*b*` inside it is not, and a plugin's changes to that strong node survive.
 
 Because plugin mutations on traversal-reached nodes are logged against the handler's node, revoking node A automatically unwinds any mutations A's handlers made to unrelated nodes. This prevents the scenario where revoking a link leaves behind an attr change the link's handler made on its parent heading.
 
@@ -271,7 +275,7 @@ Because plugin mutations on traversal-reached nodes are logged against the handl
 
 The close callback runs later, potentially well after the open handler. Its mutations are captured the same way — through the view setters, into the same undo log for the node being mutated. Revocation between open and close is handled by the builder discarding the close callback entirely (it's held in a per-node registration) and running the undo log.
 
-If revocation happens after close has fired, the close callback's mutations are already in the undo log alongside the open handler's mutations, and they get unwound together in reverse order.
+If revocation happens after close has fired, the close callback's mutations are already in the undo log alongside the open handler's mutations, and they get unwound together in reverse order. This is the usual order for an inline delimiter that never closes and for the paragraphs of a tight list: the parser closes the node where its block ends and revokes it afterwards. Only writes through the node view are unwound, so a callback that also writes somewhere else (a list it collects into, say) should not assume its node is final.
 
 ## Implementation Notes
 
@@ -289,8 +293,8 @@ Commit is the inverse of revoke: when a node is committed (its close opcode is p
 
 **Mutations are fully reversible.** Any property or structural change made by a plugin can be undone if the node is later revoked. The undo log captures prior state at mutation time, not revocation time, so there's no race between plugin execution and revocation arriving.
 
-**Revocation cascades.** Revoking a node revokes all its descendants — parser-produced and plugin-synthesized alike. The undo log walks the subtree and restores each node's pre-plugin state before removing the nodes from the SoA.
+**Revocation is per node.** Revoking a node undoes everything its own handlers did, including the synthetic nodes they made and changes they made to other nodes. Descendants the parser keeps are left as they are; descendants it gives up on get their own revoke.
 
-**Close callbacks are cancelable.** If revocation happens between open and close, the registered close callback is discarded and never runs. Plugins don't need to check whether their node still exists — if the callback fires, the node is real.
+**Close callbacks are cancelable.** If revocation happens between open and close, the registered close callback is discarded and never runs. If it happens after the close, the callback has run and its mutations are undone with the rest.
 
 **Zero cost for unhandled nodes.** Nodes of types with no registered plugins pay nothing for the undo machinery. The log is only allocated when a handler actually mutates the node.

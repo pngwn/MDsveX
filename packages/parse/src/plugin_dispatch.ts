@@ -431,6 +431,8 @@ export class PluginDispatcher {
 	private fused: HandlersTable;
 	private has_handler: Uint32Array;
 	private sequential: { plugin: ParsePlugin; handlers: HandlersTable }[];
+	/** open_wants of the registration, before any redirect */
+	private handled: Uint8Array;
 	private undo: UndoLog = NO_UNDO;
 	private close_cbs: CloseCallbackStore = NO_CLOSE_CBS;
 	private ctx: PluginContext | null = null;
@@ -445,12 +447,16 @@ export class PluginDispatcher {
 
 	private next_synthetic_id = SYNTHETIC_ID_BASE;
 
+	/** parent and wrapper of each wrap_inner in the running dispatch */
+	private wraps: number[] = [];
+
 	/** one cache serves every dispatch, a view only holds an index */
 	private cache: ViewCache | null = null;
 
 	/**
 	 * 1 for each kind whose open needs the dispatcher, every kind once a redirect
-	 * exists, redirects only start in dispatch_open so builders reread it after one
+	 * exists, redirects only start in dispatch_open and dispatch_close so builders
+	 * reread it after either
 	 */
 	open_wants: Uint8Array;
 
@@ -460,7 +466,7 @@ export class PluginDispatcher {
 		this.has_handler = reg.has_handler;
 		this.sequential = reg.sequential;
 		this.text_source = text_source;
-		this.open_wants = reg.open_wants;
+		this.open_wants = this.handled = reg.open_wants;
 	}
 
 	/** cleared since a callback view may have filled it after the last dispatch */
@@ -523,10 +529,9 @@ export class PluginDispatcher {
 
 	private own_redirects(): Map<number, number> {
 		let redirects = this.redirects;
-		if (redirects === NO_REDIRECTS) {
-			redirects = this.redirects = new Map();
-			this.open_wants = ALL_WANTS;
-		}
+		if (redirects === NO_REDIRECTS) redirects = this.redirects = new Map();
+		// every time, a reset keeps the map and restores the mask
+		this.open_wants = ALL_WANTS;
 		return redirects;
 	}
 
@@ -536,6 +541,19 @@ export class PluginDispatcher {
 		const inner = redirects.get(parent);
 		redirects.set(parent, wrapper);
 		if (inner !== undefined) redirects.set(wrapper, inner);
+	}
+
+	/**
+	 * redirects for the wraps just made, a node with an end is closed and gets
+	 * no more children, a wrapper never has one and goes with the chain it is in
+	 */
+	private take_wraps(buf: NodeBuffer): void {
+		const wraps = this.wraps;
+		for (let i = 0; i < wraps.length; i += 2) {
+			if (buf.end_at(wraps[i]) === NONE)
+				this.add_redirect(wraps[i], wraps[i + 1]);
+		}
+		wraps.length = 0;
 	}
 
 	/** drop the chain of a closed or revoked node */
@@ -586,7 +604,9 @@ export class PluginDispatcher {
 		const cache = this.views(buf);
 		const view = cache.get(buf_idx)!;
 
-		this.undo.set_active_node(buf_idx);
+		const undo = this.undo;
+		undo.wraps = this.wraps;
+		undo.set_active_node(buf_idx);
 		const callbacks = dispatch_open(
 			kind,
 			view,
@@ -594,20 +614,10 @@ export class PluginDispatcher {
 			this.fused,
 			this.has_handler
 		);
-		this.undo.clear_active_node();
-
-		// check if the handler called wrap_inner and register redirects.
-		// the wrapped node may be the handler's own node or a node
-		// reached via traversal (e.g. node.parent.wrap_inner(...)).
-		const entries = this.undo.get_entries(buf_idx);
-		if (entries) {
-			for (let i = 0; i < entries.length; i++) {
-				const e = entries[i];
-				if (e.kind === UndoEntryKind.WrapInner) {
-					this.add_redirect(e.parent, e.wrapper);
-				}
-			}
-		}
+		undo.clear_active_node();
+		undo.wraps = null;
+		// the wrapped node may be the handler node or one reached by traversal
+		if (this.wraps.length !== 0) this.take_wraps(buf);
 
 		if (callbacks) {
 			let close_cbs = this.close_cbs;
@@ -627,21 +637,27 @@ export class PluginDispatcher {
 	 * speculation, inline emphasis).
 	 */
 	dispatch_close(buf_idx: number, buf: NodeBuffer): void {
-		if (this.redirects.size !== 0) this.drop_redirects(buf_idx);
-
 		// take and fire close callbacks with undo attribution
 		const cbs = this.close_cbs.take(buf_idx);
 		// callbacks cannot change the pending flag
 		const pending = buf.pending_at(buf_idx) !== 0;
 		if (cbs) {
+			const undo = this.undo;
+			undo.wraps = this.wraps;
 			// a node no longer pending commits right after its callbacks, so
 			// anything they recorded would be dropped unread
-			if (pending) this.undo.set_active_node(buf_idx);
+			if (pending) undo.set_active_node(buf_idx);
 			for (let i = 0; i < cbs.length; i++) {
 				cbs[i]();
 			}
-			this.undo.clear_active_node();
+			undo.clear_active_node();
+			undo.wraps = null;
+			// a callback can wrap a node that is still open, such as the parent
+			if (this.wraps.length !== 0) this.take_wraps(buf);
 		}
+
+		// after the callbacks, which may have wrapped a wrapper of this node
+		if (this.redirects.size !== 0) this.drop_redirects(buf_idx);
 
 		// only commit if the node is no longer pending.
 		// pending nodes can still be revoked after close.
@@ -659,8 +675,8 @@ export class PluginDispatcher {
 	}
 
 	/**
-	 * revoke all plugin mutations for a node.
-	 * walks undo log in reverse, discards close callbacks.
+	 * revoke the plugin mutations of one node, walks its undo log in reverse
+	 * and discards its close callbacks
 	 * must be called BEFORE handle_repair().
 	 */
 	dispatch_revoke(buf_idx: number, buf: NodeBuffer): void {
@@ -687,14 +703,9 @@ export class PluginDispatcher {
 			}
 		}
 
+		// the repair keeps the children in the tree and the parser revokes each
+		// one it gives up on, so their plugin state is left alone
 		this.undo.revoke(buf_idx, buf);
-
-		// recurse into children to revoke their plugin state too
-		let child = buf.first_child_at(buf_idx);
-		while (child !== NONE && buf.parent_at(child) === buf_idx) {
-			this.dispatch_revoke(child, buf);
-			child = buf.next_at(child);
-		}
 	}
 
 	/**
@@ -781,11 +792,21 @@ export class PluginDispatcher {
 		}
 	}
 
-	/** reset all state. */
+	/**
+	 * forget one document so the builder can take another, the handler tables
+	 * stay, views of the old document throw from here on
+	 */
 	reset(): void {
 		if (this.undo !== NO_UNDO) this.undo.clear();
 		this.close_cbs.reset();
 		this.redirects.clear();
+		// a throw in a handler leaves its wraps behind
+		this.wraps.length = 0;
+		// a redirect switched this to every kind
+		this.open_wants = this.handled;
 		this.next_synthetic_id = SYNTHETIC_ID_BASE;
+		// plugins keep per document state on it
+		this.ctx = null;
+		if (this.cache !== null) this.cache.invalidate();
 	}
 }

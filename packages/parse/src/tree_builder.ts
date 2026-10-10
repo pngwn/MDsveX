@@ -47,19 +47,24 @@ export class TreeBuilder implements Emitter {
 	}
 
 	/**
-	 * Reset a no-plugin builder for another complete document.
+	 * reset the builder for another complete document
 	 *
-	 * A plugin dispatcher owns a source-specific TextSource, so those builders
-	 * cannot be safely reused for a different document.
+	 * a plugin dispatcher is reset too, its text source still reads the last
+	 * document until a batch caller points it at the new one with set_source
 	 */
 	reset(): void {
-		if (this.dispatcher !== null) {
-			throw new Error('TreeBuilder with plugins cannot be reset');
-		}
 		this.nodes.reset();
 		this.nodes.push(NodeKind.root, 0);
 		this.id_to_index = null;
-		if (this.revoked !== null) {
+		const dispatcher = this.dispatcher;
+		if (dispatcher !== null) {
+			dispatcher.reset();
+			// a redirect had switched the mask to every kind
+			this.wants = dispatcher.open_wants;
+			// filled from the kind log of the dispatcher, revoked stays null
+			this.revoked_map = null;
+			this.revoked_mapped = 0;
+		} else if (this.revoked !== null) {
 			this.revoked = null;
 			this.revoked_map = null;
 			this.revoked_mapped = 0;
@@ -207,6 +212,8 @@ export class TreeBuilder implements Emitter {
 		const dispatcher = this.dispatcher;
 		if (dispatcher !== null && !dispatcher.quiet()) {
 			dispatcher.dispatch_close(idx, nodes);
+			// a callback may have made the first redirect
+			this.wants = dispatcher.open_wants;
 		}
 
 		// pending paragraphs inside list_items are tight-list speculation

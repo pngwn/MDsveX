@@ -1,14 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { parse_markdown_svelte, NodeKind } from '../src/main';
 import type { ParsePlugin } from '../src/plugin_types';
-import { TreeBuilder } from '../src/tree_builder';
-import { PluginDispatcher } from '../src/plugin_dispatch';
-import { SourceTextSource, WireTextSource } from '../src/node_view';
-import { PFMParser, WireEmitter } from '../src/main';
-import { WireTreeBuilder } from '../src/wire_tree_builder';
 import { NodeBuffer, kind_to_string, string_to_kind } from '../src/utils';
-import { UndoLog, UndoEntryKind, ATTR_DID_NOT_EXIST } from '../src/undo_log';
-import { NodeView, ViewCache } from '../src/node_view';
+import { UndoLog, ATTR_DID_NOT_EXIST } from '../src/undo_log';
+import { PATHS, run_wire, type RunPath } from './plugin_harness';
 
 describe('string_to_kind', () => {
 	it('maps all known node types', () => {
@@ -566,18 +561,7 @@ describe('parse plugins: wire path (WireEmitter → WireTreeBuilder)', () => {
 			},
 		};
 
-		const source = 'hello *world*\n';
-		const emitter = new WireEmitter();
-		const parser = new PFMParser(emitter);
-		emitter.set_source(source);
-		parser.parse(source);
-		const batches = emitter.flush();
-
-		const dispatcher = new PluginDispatcher([plugin], new WireTextSource([]));
-		const builder = new WireTreeBuilder(128, dispatcher);
-		builder.apply(batches);
-
-		const buf = builder.get_buffer();
+		const buf = run_wire('hello *world*\n', [plugin]).nodes;
 
 		// find strong_emphasis
 		let strong_idx = -1;
@@ -605,22 +589,7 @@ describe('parse plugins: wire path (WireEmitter → WireTreeBuilder)', () => {
 			},
 		};
 
-		const source = '# Hello World\n';
-
-		// wire pipeline: parser → WireEmitter → batches → WireTreeBuilder
-		const emitter = new WireEmitter();
-		const parser = new PFMParser(emitter);
-		emitter.set_source(source);
-		parser.parse(source);
-		const batches = emitter.flush();
-
-		// build tree with plugin dispatcher
-		const dispatcher = new PluginDispatcher([plugin], new WireTextSource([]));
-		const builder = new WireTreeBuilder(128, dispatcher);
-		builder.apply(batches);
-		dispatcher.run_sequential(builder.get_buffer());
-
-		const buf = builder.get_buffer();
+		const buf = run_wire('# Hello World\n', [plugin]).nodes;
 		const root = buf.get_node(0);
 
 		// find heading
@@ -653,33 +622,7 @@ describe('parse plugins: wire path (WireEmitter → WireTreeBuilder)', () => {
 			},
 		};
 
-		const source = '# Hello World\n';
-
-		// incremental wire pipeline: feed char by char
-		const emitter = new WireEmitter();
-		const parser = new PFMParser(emitter);
-		parser.init();
-
-		const dispatcher = new PluginDispatcher([plugin], new WireTextSource([]));
-		const builder = new WireTreeBuilder(128, dispatcher);
-
-		let accumulated = '';
-		for (let i = 0; i < source.length; i++) {
-			accumulated += source[i];
-			emitter.set_source(accumulated);
-			parser.feed(source[i]);
-			const batch = emitter.flush();
-			if (batch.length > 0) builder.apply(batch);
-		}
-
-		emitter.set_source(accumulated);
-		parser.finish();
-		const final_batch = emitter.flush();
-		if (final_batch.length > 0) builder.apply(final_batch);
-
-		dispatcher.run_sequential(builder.get_buffer());
-
-		const buf = builder.get_buffer();
+		const buf = run_wire('# Hello World\n', [plugin], 1).nodes;
 		const root = buf.get_node(0);
 
 		const heading_idx = root.children.find(
@@ -705,31 +648,8 @@ describe('parse plugins: wire path (WireEmitter → WireTreeBuilder)', () => {
 		// "*h" opens strong_emphasis (pending), plugin prepends a link.
 		// "*hello\n\n" causes revocation, the * was not valid emphasis.
 		// the prepended link must be cleaned up.
-		const source = '*hello\n\n';
-
-		const emitter = new WireEmitter();
-		const parser = new PFMParser(emitter);
-		parser.init();
-
-		const dispatcher = new PluginDispatcher([plugin], new WireTextSource([]));
-		const builder = new WireTreeBuilder(128, dispatcher);
-
-		// feed char by char to trigger incremental open → revoke
-		let accumulated = '';
-		for (let i = 0; i < source.length; i++) {
-			accumulated += source[i];
-			emitter.set_source(accumulated);
-			parser.feed(source[i]);
-			const batch = emitter.flush();
-			if (batch.length > 0) builder.apply(batch);
-		}
-
-		emitter.set_source(accumulated);
-		parser.finish();
-		const final_batch = emitter.flush();
-		if (final_batch.length > 0) builder.apply(final_batch);
-
-		const buf = builder.get_buffer();
+		// fed a character at a time so the revoke arrives after the open was built
+		const buf = run_wire('*hello\n\n', [plugin], 1).nodes;
 		const root = buf.get_node(0);
 
 		// should have a paragraph with text "*hello", no orphaned link nodes
@@ -772,30 +692,7 @@ describe('parse plugins: wire path (WireEmitter → WireTreeBuilder)', () => {
 			},
 		};
 
-		const source = 'This *works* fine\n';
-
-		const emitter = new WireEmitter();
-		const parser = new PFMParser(emitter);
-		parser.init();
-
-		const dispatcher = new PluginDispatcher([plugin], new WireTextSource([]));
-		const builder = new WireTreeBuilder(128, dispatcher);
-
-		let accumulated = '';
-		for (let i = 0; i < source.length; i++) {
-			accumulated += source[i];
-			emitter.set_source(accumulated);
-			parser.feed(source[i]);
-			const batch = emitter.flush();
-			if (batch.length > 0) builder.apply(batch);
-		}
-
-		emitter.set_source(accumulated);
-		parser.finish();
-		const final_batch = emitter.flush();
-		if (final_batch.length > 0) builder.apply(final_batch);
-
-		const buf = builder.get_buffer();
+		const buf = run_wire('This *works* fine\n', [plugin], 1).nodes;
 		const root = buf.get_node(0);
 
 		// find paragraph
@@ -831,30 +728,7 @@ describe('parse plugins: wire path (WireEmitter → WireTreeBuilder)', () => {
 		};
 
 		// "*hello\n\n", strong_emphasis is revoked (unclosed)
-		const source = '*hello\n\n';
-
-		const emitter = new WireEmitter();
-		const parser = new PFMParser(emitter);
-		parser.init();
-
-		const dispatcher = new PluginDispatcher([plugin], new WireTextSource([]));
-		const builder = new WireTreeBuilder(128, dispatcher);
-
-		let accumulated = '';
-		for (let i = 0; i < source.length; i++) {
-			accumulated += source[i];
-			emitter.set_source(accumulated);
-			parser.feed(source[i]);
-			const batch = emitter.flush();
-			if (batch.length > 0) builder.apply(batch);
-		}
-
-		emitter.set_source(accumulated);
-		parser.finish();
-		const final_batch = emitter.flush();
-		if (final_batch.length > 0) builder.apply(final_batch);
-
-		const buf = builder.get_buffer();
+		const buf = run_wire('*hello\n\n', [plugin], 1).nodes;
 		const root = buf.get_node(0);
 
 		// no link wrapper should remain in the tree
@@ -879,40 +753,11 @@ describe('parse plugins: wire path (WireEmitter → WireTreeBuilder)', () => {
 });
 
 describe('parse plugins: wrap_inner chains', () => {
-	type Run = (
-		source: string,
-		plugins: ParsePlugin[]
-	) => { buf: NodeBuffer; dispatcher: PluginDispatcher };
-
-	const batch: Run = (source, plugins) => {
-		const dispatcher = new PluginDispatcher(
-			plugins,
-			new SourceTextSource(source)
-		);
-		const tree = new TreeBuilder(64, dispatcher);
-		new PFMParser(tree).parse(source);
-		return { buf: tree.get_buffer(), dispatcher };
-	};
-
-	// fed a character at a time so a revoke arrives after its open was built
-	const wire: Run = (source, plugins) => {
-		const emitter = new WireEmitter();
-		const parser = new PFMParser(emitter);
-		parser.init();
-		const dispatcher = new PluginDispatcher(plugins, new WireTextSource([]));
-		const builder = new WireTreeBuilder(128, dispatcher);
-		let fed = '';
-		for (let i = 0; i < source.length; i++) {
-			fed += source[i];
-			emitter.set_source(fed);
-			parser.feed(source[i]);
-			builder.apply(emitter.flush());
-		}
-		emitter.set_source(fed);
-		parser.finish();
-		builder.apply(emitter.flush());
-		return { buf: builder.get_buffer(), dispatcher };
-	};
+	const run_with =
+		(run: RunPath) => (source: string, plugins: ParsePlugin[]) => {
+			const out = run(source, plugins);
+			return { buf: out.nodes, dispatcher: out.dispatcher! };
+		};
 
 	/** the tree under a node as nested kind names */
 	function outline(buf: NodeBuffer, idx: number): string {
@@ -937,10 +782,9 @@ describe('parse plugins: wrap_inner chains', () => {
 		},
 	});
 
-	describe.each([
-		['batch', batch],
-		['wire', wire],
-	])('%s path', (_, run) => {
+	describe.each(PATHS)('%s path', (_, path) => {
+		const run = run_with(path);
+
 		it('two plugins wrapping one node nest, the later one outside', () => {
 			const { buf, dispatcher } = run('This *works* fine\n\nAnd `this`\n', [
 				wrap_in('link'),
