@@ -394,6 +394,25 @@ describe('padding before the end of a table cell', () => {
 		);
 	});
 
+	test('after a span that escapes a pipe is no text node', () => {
+		expect(every_path('| a |\n|-|\n| `b\\|c` |\n| d `e\\|f` \t\n')).toBe(
+			lines(
+				'root',
+				'  table alignments=["none"] col_count=1',
+				'    table_header',
+				'      table_cell',
+				'        text "a"',
+				'    table_row',
+				'      table_cell',
+				'        code_span "b|c"',
+				'    table_row',
+				'      table_cell',
+				'        text "d "',
+				'        code_span "e|f"'
+			)
+		);
+	});
+
 	test('at the end of the input is no text node', () => {
 		expect(every_path('| a |\n|-|\n| <b>c</b>  ')).toBe(
 			lines(
