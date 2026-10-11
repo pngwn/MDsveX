@@ -6264,6 +6264,17 @@ export class PFMParser {
 		);
 	}
 
+	/** true when the next line goes on with the block, a backslash before any other linefeed is text */
+	private lf_continues(lf: number): boolean {
+		// a directive label ends at its bracket, no line in it ends a block
+		if (this.inline_range_parse) return true;
+		if (this.in_heading || this.in_table) return false;
+		const depth = this.block_quote_depth;
+		if (depth === 0) return !this.lf_ends_inline(lf);
+		const stripped = this.skip_bq_markers(lf + 1, depth);
+		return stripped !== -1 && !this.bq_line_ends_para(stripped);
+	}
+
 	// returns true when a linefeed inside a delimiter state (emphasis,
 	// strong, strikethrough, superscript, subscript) was consumed by a
 	// block interrupt or blockquote boundary. caller should `continue
@@ -6857,42 +6868,11 @@ export class PFMParser {
 								continue;
 							}
 
-							// markers present - check for block interrupt at stripped pos
-							if (
-								this.is_blank_at_pos(stripped) ||
-								this.is_block_quote_start(stripped) ||
-								this.is_heading_start(stripped) ||
-								this.is_thematic_break_start(stripped) ||
-								(char_code_at.call(source, stripped - base) === BACKTICK &&
-									char_code_at.call(source, stripped + 1 - base) === BACKTICK &&
-									char_code_at.call(source, stripped + 2 - base) ===
-										BACKTICK) ||
-								(this.directive_colon_counts.length !== 0 &&
-									this.is_directive_close_line(stripped))
-							) {
+							if (this.bq_line_ends_para(stripped)) {
 								this.emit_close(current_node, this.cursor);
 								this.states.pop();
 								truncate_stack(this.node_stack, node_stack_base);
 								continue;
-							}
-							// inside a list inside a blockquote: a list marker on the
-							// continuation line interrupts the paragraph (same as the
-							// non-bq list path below).
-							if (this.list_depth > 0) {
-								const { columns: ind } = this.count_indent(stripped);
-								const marker_pos =
-									ind >= this.list_content_offset
-										? this.skip_columns(stripped, this.list_content_offset)
-										: stripped;
-								if (
-									marker_pos < length &&
-									this.try_parse_list_marker(marker_pos) !== null
-								) {
-									this.emit_close(current_node, this.cursor);
-									this.states.pop();
-									truncate_stack(this.node_stack, node_stack_base);
-									continue;
-								}
 							}
 							// continuation line inside block quote - emit soft break
 							this.emit_bare_leaf(
@@ -7517,51 +7497,32 @@ export class PFMParser {
 								) {
 									break main_loop;
 								}
-								// pfm: in a blockquote, the continuation line must
-								// have `>` markers. if absent, emit the hard_break
-								// but leave the cursor on the lf so the paragraph
-								// state's strict-markers path cascade-closes the
-								// enclosing block_quote frames.
-								if (this.block_quote_depth > 0) {
-									const peek = this.skip_bq_markers(
-										this.cursor + 2,
-										this.block_quote_depth
-									);
-									if (peek === -1) {
-										this.emit_bare_leaf(
-											NodeKind.hard_break,
-											this.cursor,
-											current_node,
-											this.cursor + 2
-										);
-										this.cursor++; // leave the cursor on the lf
-										this.states.pop(); // pop inline; paragraph will see the lf
-										continue;
-									}
-								}
-								this.emit_bare_leaf(
-									NodeKind.hard_break,
-									this.cursor,
-									current_node,
-									this.cursor + 2
-								);
-								this.chomp(2);
-								// strip block quote markers
-								if (this.block_quote_depth > 0) {
-									const stripped = this.skip_bq_markers(
+								if (this.lf_continues(this.cursor + 1)) {
+									this.emit_bare_leaf(
+										NodeKind.hard_break,
 										this.cursor,
-										this.block_quote_depth
+										current_node,
+										this.cursor + 2
 									);
-									if (stripped !== -1) this.chomp(stripped, true);
+									this.chomp(2);
+									// strip block quote markers
+									if (this.block_quote_depth > 0) {
+										const stripped = this.skip_bq_markers(
+											this.cursor,
+											this.block_quote_depth
+										);
+										if (stripped !== -1) this.chomp(stripped, true);
+									}
+									// skip leading spaces
+									while (
+										this.cursor < length &&
+										char_code_at.call(source, this.cursor - base) === SPACE
+									) {
+										this.cursor++;
+									}
+									continue;
 								}
-								// skip leading spaces
-								while (
-									this.cursor < length &&
-									char_code_at.call(source, this.cursor - base) === SPACE
-								) {
-									this.cursor++;
-								}
-								continue;
+								// the block ends here, the backslash opens text below
 							}
 							if (this.is_ascii_punctuation(next_code)) {
 								// escape: start text node after the backslash
@@ -8072,66 +8033,38 @@ export class PFMParser {
 							) {
 								break main_loop;
 							}
-							// pfm: in a blockquote, the continuation line must
-							// have `>` markers. if absent, emit the hard_break
-							// but leave the cursor on the lf so the paragraph
-							// state's strict-markers path cascade-closes the
-							// enclosing block_quote frames.
-							if (this.block_quote_depth > 0) {
-								const peek = this.skip_bq_markers(
-									this.cursor + 2,
-									this.block_quote_depth
-								);
-								if (peek === -1) {
-									this.emit_close(current_node, this.cursor);
-									this.out.set_value_end(current_node, this.cursor);
-									this.node_stack.pop();
-									this.states.pop(); // pop text
-									const parent_id_bq =
-										this.node_stack[this.node_stack.length - 1];
-									this.emit_bare_leaf(
-										NodeKind.hard_break,
-										this.cursor,
-										parent_id_bq,
-										this.cursor + 2
-									);
-									this.cursor++; // leave the cursor on the lf
-									// pop inline (under text) so paragraph sees the lf directly.
-									if (
-										this.states[this.states.length - 1] === StateKind.inline
-									) {
-										this.states.pop();
-									}
-									continue;
-								}
-							}
-							this.emit_close(current_node, this.cursor);
-							this.out.set_value_end(current_node, this.cursor);
-							this.node_stack.pop();
-							this.states.pop(); // pop text
-							const parent_id = this.node_stack[this.node_stack.length - 1];
-							this.emit_bare_leaf(
-								NodeKind.hard_break,
-								this.cursor,
-								parent_id,
-								this.cursor + 2
-							);
-							this.chomp(2);
-							// strip block quote markers
-							if (this.block_quote_depth > 0) {
-								const stripped = this.skip_bq_markers(
+							if (this.lf_continues(this.cursor + 1)) {
+								this.emit_close(current_node, this.cursor);
+								this.out.set_value_end(current_node, this.cursor);
+								this.node_stack.pop();
+								this.states.pop(); // pop text
+								const parent_id = this.node_stack[this.node_stack.length - 1];
+								this.emit_bare_leaf(
+									NodeKind.hard_break,
 									this.cursor,
-									this.block_quote_depth
+									parent_id,
+									this.cursor + 2
 								);
-								if (stripped !== -1) this.chomp(stripped, true);
+								this.chomp(2);
+								// strip block quote markers
+								if (this.block_quote_depth > 0) {
+									const stripped = this.skip_bq_markers(
+										this.cursor,
+										this.block_quote_depth
+									);
+									if (stripped !== -1) this.chomp(stripped, true);
+								}
+								// skip leading spaces
+								while (
+									this.cursor < length &&
+									char_code_at.call(source, this.cursor - base) === SPACE
+								) {
+									this.cursor++;
+								}
+								continue;
 							}
-							// skip leading spaces
-							while (
-								this.cursor < length &&
-								char_code_at.call(source, this.cursor - base) === SPACE
-							) {
-								this.cursor++;
-							}
+							// the block ends here, the backslash stays in the text
+							this.cursor++;
 							continue;
 						}
 						if (this.is_ascii_punctuation(next_code)) {
@@ -8428,8 +8361,13 @@ export class PFMParser {
 							continue;
 						}
 						default: {
-							// so does eof
-							if (code !== code) {
+							// so does eof, and a pipe that ends a table cell
+							if (
+								code !== code ||
+								(code === PIPE &&
+									this.in_table &&
+									!this.pipe_escaped(this.cursor))
+							) {
 								this.code_span_hint_revert(current_node);
 								continue;
 							}
@@ -8536,8 +8474,11 @@ export class PFMParser {
 						);
 						this.node_stack.pop();
 					} else {
+						// not the closer, the next state reads the char after it
 						this.states.pop();
 						this.states.push(StateKind.code_span_content_leading_space);
+						this.cursor++;
+						continue;
 					}
 					this.chomp(this.extra);
 					continue;
@@ -9919,6 +9860,20 @@ export class PFMParser {
 			char_code_at.call(source, pos - base) === BACKTICK &&
 			char_code_at.call(source, pos + 1 - base) === BACKTICK &&
 			char_code_at.call(source, pos + 2 - base) === BACKTICK
+		);
+	}
+
+	/** true when the marked line at `stripped` ends a paragraph in a block quote */
+	private bq_line_ends_para(stripped: number): boolean {
+		return (
+			this.is_blank_at_pos(stripped) ||
+			this.is_block_quote_start(stripped) ||
+			this.is_heading_start(stripped) ||
+			this.is_thematic_break_start(stripped) ||
+			this.is_fence_start(stripped) ||
+			(this.directive_colon_counts.length !== 0 &&
+				this.is_directive_close_line(stripped)) ||
+			(this.list_depth > 0 && this.bq_list_marker(stripped))
 		);
 	}
 

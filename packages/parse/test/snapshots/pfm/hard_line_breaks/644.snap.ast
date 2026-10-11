@@ -1,4 +1,4 @@
 root
   paragraph
-    text "foo"
-    hard_break
+    text "foo\\"
+  line_break
