@@ -347,6 +347,32 @@ TEXT_BREAK[PIPE] = 1;
 TEXT_BREAK[OPEN_BRACE] = 1;
 TEXT_BREAK[COLON] = 1;
 
+/**
+ * a run the inline state reads with no construct that could hold a tag as text,
+ * that is text with no break char but emphasis marks, close tags, and open tags
+ * whose attributes hold no < and end where scan_open_tag ends them
+ */
+const SURE_RUN = ((): RegExp => {
+	// the states take a nul for the end of the input
+	let breaks = '\\x00';
+	for (let i = 1; i < 128; i++) {
+		if (TEXT_BREAK[i] === 1 && i !== ASTERISK && i !== UNDERSCORE) {
+			breaks += '\\x' + (i < 16 ? '0' : '') + i.toString(16);
+		}
+	}
+	const name = '[A-Za-z_][\\w.\\-]*';
+	// an expression find_matching_brace ends at its first }
+	const braces = '\\{[^{}<\\n"\'`/]*\\}';
+	const value = `"[^"<\\n]*"|'[^'<\\n]*'|${braces}|[^\\s"'=<>\`{]+`;
+	const attr = `${braces}|[^\\s=<>/"'\`{]+(?:[ \\t]*=[ \\t]*(?:${value}))?`;
+	// raw text elements hold their close tag as text
+	const open = `<(?!(?:script|style)[\\s/>])${name}(?:[ \\t]+(?:${attr}))*[ \\t]*/?>`;
+	return new RegExp(`(?:[^${breaks}]+|</${name}[ \\t]*>|${open})*`, 'y');
+})();
+
+// set by closes_on_line, an element of the same name opens before the close tag it found
+let close_nested = false;
+
 export const enum StateKind {
 	root = 0,
 	text = 1,
@@ -764,6 +790,11 @@ interface ColdState {
 	np_floor: number;
 	// where the content of the last opened list item starts, a task marker is only read there
 	task_pos: number;
+	// the element a tag paragraph opened at, -1 for none, and whether it is block level
+	spec_el: number;
+	spec_el_block: boolean;
+	// while the scan has that element open, its tag name and those of the elements open in it
+	spec_names: string[] | null;
 }
 
 /**
@@ -815,6 +846,9 @@ export class PFMParser {
 		pending_html: 0,
 		np_floor: 0,
 		task_pos: -1,
+		spec_el: -1,
+		spec_el_block: false,
+		spec_names: null,
 	};
 	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
 	private wait_kind: number = 0;
@@ -4571,6 +4605,10 @@ export class PFMParser {
 		this.spec_never = never;
 		this.spec_link = -1;
 		this.spec_item = false;
+		const cold = this.cold;
+		cold.spec_el = -1;
+		const names = cold.spec_names;
+		if (names !== null && names.length !== 0) names.length = 0;
 		this.states.push(StateKind.paragraph);
 		this.node_stack.push(id);
 	}
@@ -4643,8 +4681,8 @@ export class PFMParser {
 	}
 
 	/**
-	 * open a spec paragraph at a tag the caller parsed, whose element closes at
-	 * close_end on its line, and the tag in it as the inline state would
+	 * open a spec paragraph at a tag the caller parsed, whose element closes_on_line
+	 * saw close at close_end, and the tag in it as the inline state would
 	 */
 	private open_spec_tag(
 		tag: {
@@ -4659,15 +4697,31 @@ export class PFMParser {
 		never: boolean
 	): void {
 		const leaf = tag.self_closing || this.is_void_tag(tag.tag);
-		// a paragraph of just this element keeps no wrapper, so it gets none
-		const alone = this.line_ends_block(close_end);
+		const ends = this.line_ends_block(close_end);
+		// unknown until asked, the answer is a long switch
+		let block = -1;
+		// an element that may not close at close_end may yet be literal text
+		let sure = leaf;
+		if (!leaf) {
+			if (!ends) block = this.is_block_html_tag(tag.tag) ? 1 : 0;
+			// a block level one that is not alone decides its paragraph when it closes, wherever that is
+			if (block !== 1) sure = this.sure_to_close(tag.end, close_end);
+		}
+		// a paragraph of just this element keeps no wrapper, so it gets none, literal text needs one to hold it
+		const alone = sure && ends;
 		let para = parent;
 		if (!alone) {
 			this.open_spec_para(parent, never);
 			para = this.spec_para;
-			// the scan skips the element, a block level one cannot sit in a <p>
-			this.spec_scan = close_end;
-			if (this.is_block_html_tag(tag.tag)) this.spec_block = true;
+			// a block level element cannot sit in a <p>
+			if (block === -1 ? this.is_block_html_tag(tag.tag) : block === 1)
+				this.spec_block = true;
+			// the scan skips the element, or reads what it holds to find where it closes
+			if (sure) this.spec_scan = close_end;
+			else {
+				this.spec_scan = tag.end;
+				this.spec_open(tag.tag);
+			}
 		}
 		if (leaf) {
 			const html_id = this.emit_open(NodeKind.html, this.cursor, para);
@@ -4685,7 +4739,35 @@ export class PFMParser {
 		this.html_tag_stack.push({ id: html_id, tag: tag.tag });
 		this.node_stack.push(html_id);
 		this.states.push(StateKind.html_element);
+		if (!alone) {
+			this.cold.spec_el = html_id;
+			this.cold.spec_el_block = this.spec_block;
+		}
 		this.chomp(tag.end, true);
+	}
+
+	/** start the scan inside the element of tag, which a tag paragraph opens at */
+	private spec_open(tag: string): void {
+		const cold = this.cold;
+		let names = cold.spec_names;
+		if (names === null) names = cold.spec_names = [];
+		else names.length = 0;
+		names.push(tag);
+		this.spec_depth = 1;
+	}
+
+	/**
+	 * whether the inline state is sure to close at close_end the element closes_on_line
+	 * scanned from from, nothing before its close tag could hold a close tag as
+	 * text or close it early, false is always safe
+	 */
+	private sure_to_close(from: number, close_end: number): boolean {
+		// a close tag of another name may close one of the same name with its own
+		if (close_nested) return false;
+		const base = this.source_base;
+		SURE_RUN.lastIndex = from - base;
+		SURE_RUN.test(this.source);
+		return SURE_RUN.lastIndex + base >= close_end;
 	}
 
 	/**
@@ -4712,9 +4794,21 @@ export class PFMParser {
 	private end_spec_para(end: number): void {
 		const id = this.spec_para;
 		this.spec_para = -1;
+		const cold = this.cold;
+		const el = cold.spec_el;
+		// the element it opened at never closed, it is its literal open tag and no block
+		const literal = el !== -1 && this.pending_has(el);
+		if (literal && cold.spec_el_block) this.spec_block = false;
 		this.spec_scan_to(end, true);
-		// an element still open becomes its literal open tag, a link its [
-		if (this.spec_depth > 0 || this.spec_link !== -1) this.spec_text = true;
+		// any other element still open is its literal open tag too, a link its [
+		// with the first one open in the scan and not pending, a close tag of its container closed them all
+		const names = cold.spec_names;
+		if (
+			literal ||
+			this.spec_link !== -1 ||
+			(this.spec_depth > 0 && (names === null || names.length === 0))
+		)
+			this.spec_text = true;
 		const drop = this.spec_never || !this.spec_text || this.spec_block;
 		if (this.spec_item && !drop) {
 			// tight or loose decides it from here, as for any list paragraph
@@ -4857,7 +4951,17 @@ export class PFMParser {
 			const close = this.try_parse_html_close_tag(p + 1);
 			if (close === null) return -2;
 			if (close.end > limit) return -1;
-			if (this.spec_depth > 0) this.spec_depth--;
+			const names = this.cold.spec_names;
+			if (names === null || names.length === 0) {
+				if (this.spec_depth > 0) this.spec_depth--;
+			} else {
+				// as the inline state, close the last open element of that name and all it holds
+				const at = names.lastIndexOf(close.tag);
+				if (at !== -1) {
+					names.length = at;
+					this.spec_depth = at;
+				}
+			}
 			return close.end;
 		}
 		if (!this.is_tag_name_start(c1)) return -2;
@@ -4881,6 +4985,8 @@ export class PFMParser {
 			if (gt === -1 || gt + base + 1 > limit) return -1;
 			return gt + base + 1;
 		}
+		const names = this.cold.spec_names;
+		if (names !== null && names.length !== 0) names.push(tag);
 		this.spec_depth++;
 		return end;
 	}
@@ -4898,6 +5004,7 @@ export class PFMParser {
 		const n = tag.length;
 		let depth = 1;
 		let p = from;
+		close_nested = false;
 		for (;;) {
 			const i = string_index_of.call(source, '<', p - base);
 			if (i === -1) return 0;
@@ -4917,8 +5024,10 @@ export class PFMParser {
 					after === SLASH ||
 					after === LINEFEED
 				) {
-					if (!closing) depth++;
-					else if (--depth === 0) {
+					if (!closing) {
+						depth++;
+						close_nested = true;
+					} else if (--depth === 0) {
 						const gt = string_index_of.call(source, '>', name + n - base);
 						return gt === -1 || gt + base >= line_end ? 0 : gt + base + 1;
 					}
