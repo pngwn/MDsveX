@@ -8,6 +8,9 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { corpus } from './corpus.mjs';
+import { perf_root } from './paths.mjs';
+// only what holds no handler, each arm runs the plugins of its own instance
+import { PLUGIN_MODES, steps_source } from './plugins.mjs';
 
 export const DIST_FILES = {
 	parse: 'packages/parse/dist/main.js',
@@ -35,6 +38,8 @@ export function missing_dist(root) {
 		.filter((p) => !existsSync(p));
 }
 
+let arms_loaded = 0;
+
 export async function load_arm(root, label) {
 	root = realpathSync(resolve(root));
 	const missing = missing_dist(root);
@@ -48,10 +53,15 @@ export async function load_arm(root, label) {
 	for (const [key, file] of Object.entries(DIST_FILES)) {
 		modules[key] = await import(pathToFileURL(join(root, file)).href);
 	}
+	// a query makes a module instance of its own, with its own handler functions
+	const plugins = await import(
+		`${pathToFileURL(join(perf_root, 'plugins.mjs')).href}?arm=${arms_loaded++}`
+	);
 	return {
 		label,
 		root,
 		modules,
+		plugins,
 		parse_markdown_svelte: modules.parse.parse_markdown_svelte,
 		PFMParser: modules.parse.PFMParser,
 		TreeBuilder: modules.tree_builder.TreeBuilder,
@@ -97,6 +107,7 @@ export const DOC_MODES = [
 	'compile-reused-mapped',
 	'sourcemap-v3',
 	'vite-transform',
+	...PLUGIN_MODES,
 ];
 
 export const SETUP_MODES = ['setup'];
@@ -123,6 +134,7 @@ export const HUGE_MODES = [
 	'compile-reused-mapped',
 	'sourcemap-v3',
 	'vite-transform',
+	...PLUGIN_MODES,
 ];
 
 export const SUITES = {
@@ -151,6 +163,11 @@ export const SUITES = {
 		families: ['micro', 'fixtures', 'real', 'sized', 'huge'],
 		modes: DOC_MODES,
 		setup: true,
+	},
+	// what parse plugins cost, apart from core so its rows and calibration stay as they were
+	plugins: {
+		families: ['real'],
+		modes: ['parse', 'compile-reused', ...PLUGIN_MODES],
 	},
 	// how cost grows with input length
 	scale: {
@@ -283,8 +300,22 @@ export function make_doc_run(arm, mode, src) {
 			const pre = vite_pre(arm);
 			return () => pre.transform(src, VITE_ID);
 		}
-		default:
-			throw new Error(`unknown mode "${mode}"`);
+		case 'compile-plugins': {
+			const session = new CompilerSession();
+			const options = arm.plugins.plugin_compile_options(
+				compile_options(arm, src, undefined)
+			);
+			return () => session.compile(src, options);
+		}
+		default: {
+			const options = arm.plugins.plugin_options(mode);
+			const plugged = plugin_source(mode, src);
+			if (plugged === null) {
+				throw new Error(`${mode} has no row for this document`);
+			}
+			// the one shot entry, as a reused bare TreeBuilder never trims its slab
+			return () => parse_markdown_svelte(plugged, options);
+		}
 	}
 }
 
@@ -296,6 +327,28 @@ export function make_setup_runs(arm) {
 		session: () => new CompilerSession(),
 		plugin: () => arm.mdsvex(),
 	};
+}
+
+const steps_sources = new Map();
+
+/**
+ * what a plugin mode parses, null for a document the mode skips
+ *
+ * one string per document for both arms, an arm with a string of its own can keep a slower representation of it
+ */
+export function plugin_source(mode, src) {
+	if (mode !== 'plugin-steps') return src;
+	let wrapped = steps_sources.get(src);
+	if (wrapped === undefined) {
+		wrapped = steps_source(src, DIRECTIVE);
+		steps_sources.set(src, wrapped);
+	}
+	return wrapped;
+}
+
+/** a document a steps container would not hold whole has no plugin-steps row */
+export function skips_plugin_mode(mode, src) {
+	return plugin_source(mode, src) === null;
 }
 
 /** workload ids, families, modes and sources with no arm bound, both arms instantiate the same plan */
@@ -325,6 +378,7 @@ export function plan_workloads(suite_name = 'core', filter = {}) {
 				if (family === 'huge' && !HUGE_MODES.includes(mode)) continue;
 				// the plugin cannot register directives, see compile_options
 				if (mode === 'vite-transform' && DIRECTIVE.test(entry.source)) continue;
+				if (skips_plugin_mode(mode, entry.source)) continue;
 				plan.push({
 					id: `${entry.id}:${mode}`,
 					family,
@@ -350,22 +404,36 @@ export function plan_workloads(suite_name = 'core', filter = {}) {
 	return plan;
 }
 
-/** binds each workload just before it is measured, alternating which arm is built first, so no heap state accumulates across workloads */
+/**
+ * binds each workload just before it is measured, so no heap state accumulates across workloads
+ *
+ * b_leads names the arm that goes first in a workload, when its run is built and all through compare_one
+ * it alternates down the rows of a mode and across the modes of a document, by plan index a mode keeps one lead
+ * when documents have an even count of modes
+ */
 export function bind_workloads(plan, a, b) {
-	return plan.map((w, i) => ({
-		...w,
-		bind() {
-			const b_first = i % 2 === 1;
-			const make = (arm) =>
-				w.mode === 'setup'
-					? make_setup_runs(arm)[w.doc]
-					: make_doc_run(arm, w.mode, w.entry.source);
-			if (b_first) {
-				const run_b = make(b);
-				return { a: make(a), b: run_b };
-			}
-			const run_a = make(a);
-			return { a: run_a, b: make(b) };
-		},
-	}));
+	const rows_of = new Map();
+	const modes = [];
+	return plan.map((w) => {
+		const nth = rows_of.get(w.mode) ?? 0;
+		rows_of.set(w.mode, nth + 1);
+		if (nth === 0) modes.push(w.mode);
+		const b_leads = (nth + modes.indexOf(w.mode)) % 2 === 1;
+		return {
+			...w,
+			b_leads,
+			bind(b_first = b_leads) {
+				const make = (arm) =>
+					w.mode === 'setup'
+						? make_setup_runs(arm)[w.doc]
+						: make_doc_run(arm, w.mode, w.entry.source);
+				if (b_first) {
+					const run_b = make(b);
+					return { a: make(a), b: run_b };
+				}
+				const run_a = make(a);
+				return { a: run_a, b: make(b) };
+			},
+		};
+	});
 }
