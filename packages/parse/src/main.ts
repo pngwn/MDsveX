@@ -2128,8 +2128,29 @@ export class PFMParser {
 		return true;
 	}
 
-	/** a body cell ends in a code span, the span fails as at a blank line and inline reads its content again */
-	private code_span_in_cell(): void {
+	/**
+	 * the pipe at pos follows a backslash that is not itself escaped, as the header row scan of try_start_table reads it
+	 * the count stops at the opening backticks, a table row keeps its whole line in the window
+	 */
+	private pipe_escaped(pos: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const floor = this.code_span_open_pos + this.extra;
+		let p = pos;
+		while (p > floor && char_code_at.call(source, p - 1 - base) === BACKSLASH)
+			p--;
+		return ((pos - p) & 1) === 1;
+	}
+
+	/**
+	 * a pipe or linefeed in a code span in a table cell, an escaped pipe stays in the span
+	 * anything else ends the cell, so the span fails as at a blank line and inline reads its content again
+	 */
+	private code_span_in_cell(code: number): void {
+		if (code === PIPE && this.pipe_escaped(this.cursor)) {
+			this.cursor++;
+			return;
+		}
 		// handle_repair turns the revoked code_span into text for the backticks
 		const open = this.code_span_open_pos;
 		const delim_end = open + this.extra;
@@ -8302,7 +8323,7 @@ export class PFMParser {
 					} else if (
 						code === LINEFEED ||
 						code !== code ||
-						(code === PIPE && this.in_table && !this.inline_range_parse)
+						(code === PIPE && this.in_table && !this.pipe_escaped(this.cursor))
 					) {
 						// code_span_end continues the span, or fails it at a blank line, eof or the end of a cell
 						this.out.set_value_start(current_node, this.checkpoint_cursor);
@@ -8355,14 +8376,9 @@ export class PFMParser {
 				}
 
 				case StateKind.code_span_end: {
-					// in table cells, | breaks through code spans
-					// a header cell range holds no cell boundary, a pipe in it is escaped and stays in the span
-					if (
-						this.in_table &&
-						(code === PIPE || code === LINEFEED) &&
-						!this.inline_range_parse
-					) {
-						this.code_span_in_cell();
+					// a cell ends at a pipe that is not escaped, and at its line end
+					if (this.in_table && (code === PIPE || code === LINEFEED)) {
+						this.code_span_in_cell(code);
 						continue;
 					}
 					if (code === BACKTICK) {

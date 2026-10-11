@@ -65,3 +65,68 @@ describe('a code span with no closer in a table cell', () => {
 		both('` a|b', ['text "`"', 'text " a"'], ['text "b"']);
 	});
 });
+
+describe('an escaped pipe in a code span in a table cell', () => {
+	test('stays in the span, with its backslash', () => {
+		both('`a\\|b`', ['code_span "a\\\\|b"']);
+		both('`\\|`', ['code_span "\\\\|"']);
+		both('`\\|\\|`', ['code_span "\\\\|\\\\|"']);
+	});
+
+	test('with two backticks and text around it', () => {
+		both('``a\\|b`` c', ['code_span "a\\\\|b"', 'text " c"']);
+		both('x ``a\\|`b`` c', ['text "x "', 'code_span "a\\\\|`b"', 'text " c"']);
+	});
+
+	test('the span still loses its padding spaces', () => {
+		both('` a\\|b `', ['code_span "a\\\\|b"']);
+		both('` \\| `', ['code_span "\\\\|"']);
+		both('`` \\|a ``', ['code_span "\\\\|a"']);
+	});
+
+	test('after a hint, and in one', () => {
+		both('`#!js a\\|b`', ['code_span info="js" "a\\\\|b"']);
+		both('`#!js  a\\|b `', ['code_span info="js" "a\\\\|b"']);
+		both('`#!a\\|b c`', ['code_span info="a\\\\|b" "c"']);
+	});
+
+	test('inside emphasis, with a cell after it', () => {
+		both(
+			'*`a\\|b`*|`c\\|d`',
+			['strong_emphasis', '  code_span "a\\\\|b"'],
+			['code_span "c\\\\|d"']
+		);
+	});
+
+	test('a pipe after the span still ends the cell', () => {
+		both('`a\\|`|`b`', ['code_span "a\\\\|"'], ['code_span "b"']);
+		both('`a\\|b` \\| c', ['code_span "a\\\\|b"', 'text " "', 'text "| c"']);
+	});
+
+	test('a backslash that is itself escaped escapes no pipe', () => {
+		both(
+			'`a\\\\|b`',
+			['text "`"', 'text "a"', 'text "\\\\"'],
+			['text "b"', 'text "`"']
+		);
+		both('`a\\\\\\|b`', ['code_span "a\\\\\\\\\\\\|b"']);
+	});
+
+	test('a span with no closer is text and the pipe stays in the cell', () => {
+		both('`\\|', ['text "`"', 'text "|"']);
+		both('` \\|', ['text "`"', 'text " "', 'text "|"']);
+		both('`a\\|b', ['text "`"', 'text "a"', 'text "|b"']);
+		both('``a\\|b', ['text "``"', 'text "a"', 'text "|b"']);
+		both('` a\\|b', ['text "`"', 'text " a"', 'text "|b"']);
+		both('`a\\|b|c', ['text "`"', 'text "a"', 'text "|b"'], ['text "c"']);
+	});
+
+	test('a hint with no closer', () => {
+		both('`#!js a\\|b', [
+			'text info="js" "`"',
+			'text "#"',
+			'text "!js a"',
+			'text "|b"',
+		]);
+	});
+});
