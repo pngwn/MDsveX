@@ -299,6 +299,178 @@ describe('a close tag in a header cell', () => {
 	});
 });
 
+describe('padding before the end of a table cell', () => {
+	test('after an element in a body cell is no text node', () => {
+		expect(every_path('| a | b |\n|-|-|\n| <b>c</b> | d |\n')).toBe(
+			lines(
+				'root',
+				'  table alignments=["none","none"] col_count=2',
+				'    table_header',
+				'      table_cell',
+				'        text "a"',
+				'      table_cell',
+				'        text "b"',
+				'    table_row',
+				'      table_cell',
+				'        html tag="b"',
+				'          text "c"',
+				'      table_cell',
+				'        text "d"'
+			)
+		);
+	});
+
+	test('after an element in a header cell is no text node', () => {
+		expect(every_path('| <b>c</b> | <i>d</i>\t\n|-|-|\n')).toBe(
+			lines(
+				'root',
+				'  table alignments=["none","none"] col_count=2',
+				'    table_header',
+				'      table_cell',
+				'        html tag="b"',
+				'          text "c"',
+				'      table_cell',
+				'        html tag="i"',
+				'          text "d"'
+			)
+		);
+	});
+
+	test('after a span, a link, an expression or a directive is no text node', () => {
+		expect(
+			every_path(
+				'| a | b |\n|-|-|\n| `c` | *d* \t|\n| [e](u)  | {f} |\n| :g[h](i=j)  | _k_ \n'
+			)
+		).toBe(
+			lines(
+				'root',
+				'  table alignments=["none","none"] col_count=2',
+				'    table_header',
+				'      table_cell',
+				'        text "a"',
+				'      table_cell',
+				'        text "b"',
+				'    table_row',
+				'      table_cell',
+				'        code_span "c"',
+				'      table_cell',
+				'        strong_emphasis',
+				'          text "d"',
+				'    table_row',
+				'      table_cell',
+				'        link href="u"',
+				'          text "e"',
+				'      table_cell',
+				'        mustache "f"',
+				'    table_row',
+				'      table_cell',
+				'        directive_inline name="g" args.i="j"',
+				'          text "h"',
+				'      table_cell',
+				'        emphasis',
+				'          text "k"'
+			)
+		);
+	});
+
+	test('after a span that follows text is no text node', () => {
+		expect(every_path('| a |\n|-|\n| b, `c` |\n| *d* `e`\t\n')).toBe(
+			lines(
+				'root',
+				'  table alignments=["none"] col_count=1',
+				'    table_header',
+				'      table_cell',
+				'        text "a"',
+				'    table_row',
+				'      table_cell',
+				'        text "b, "',
+				'        code_span "c"',
+				'    table_row',
+				'      table_cell',
+				'        strong_emphasis',
+				'          text "d"',
+				'        text " "',
+				'        code_span "e"'
+			)
+		);
+	});
+
+	test('at the end of the input is no text node', () => {
+		expect(every_path('| a |\n|-|\n| <b>c</b>  ')).toBe(
+			lines(
+				'root',
+				'  table alignments=["none"] col_count=1',
+				'    table_header',
+				'      table_cell',
+				'        text "a"',
+				'    table_row',
+				'      table_cell',
+				'        html tag="b"',
+				'          text "c"'
+			)
+		);
+	});
+
+	test('inside a delimiter left open is no text node', () => {
+		expect(every_path('| a |\n|-|\n| *_b_ |\n| [ *c* \t|\n')).toBe(
+			lines(
+				'root',
+				'  table alignments=["none"] col_count=1',
+				'    table_header',
+				'      table_cell',
+				'        text "a"',
+				'    table_row',
+				'      table_cell',
+				'        text "*"',
+				'        emphasis',
+				'          text "b"',
+				'    table_row',
+				'      table_cell',
+				'        text "["',
+				'        text " "',
+				'        strong_emphasis',
+				'          text "c"'
+			)
+		);
+	});
+
+	test('after an open bracket is no text node', () => {
+		expect(every_path('| a |\n|-|\n| b [\t|\n| :y[ \n')).toBe(
+			lines(
+				'root',
+				'  table alignments=["none"] col_count=1',
+				'    table_header',
+				'      table_cell',
+				'        text "a"',
+				'    table_row',
+				'      table_cell',
+				'        text "b "',
+				'        text "["',
+				'    table_row',
+				'      table_cell',
+				'        text name="y" ":y["'
+			)
+		);
+	});
+
+	test('before more text is kept', () => {
+		expect(every_path('| a |\n|-|\n| <b>c</b> d |\n')).toBe(
+			lines(
+				'root',
+				'  table alignments=["none"] col_count=1',
+				'    table_header',
+				'      table_cell',
+				'        text "a"',
+				'    table_row',
+				'      table_cell',
+				'        html tag="b"',
+				'          text "c"',
+				'        text " d"'
+			)
+		);
+	});
+});
+
 describe('a bracket that is no link', () => {
 	test('is revoked once in a header cell', () => {
 		revoked_once('| <span>- [ ] \n---\n');
@@ -354,9 +526,14 @@ const CELL_PIECES = [
 	'<b>',
 	'</b>',
 	'<img src="i.png">',
+	'`c`',
+	'*d*',
+	'[e](u)',
 	'a',
 	'b c',
 	' ',
+	' ',
+	'\t',
 	'[',
 	']',
 	'](u)',
@@ -376,6 +553,9 @@ const CELL_PIECES = [
 	'\\|',
 	'|',
 	'|',
+	' |',
+	' |',
+	'\t|',
 ];
 
 const DELIMITER_ROWS = ['---', '|-|', '|-|-|', '-|-'];
@@ -395,7 +575,8 @@ function table(rand: () => number): string {
 	source += `${cells(rand)}\n${pick(rand, DELIMITER_ROWS)}\n`;
 	const rows = Math.floor(rand() * 4);
 	for (let r = 0; r < rows; r++) {
-		source += `${rand() < 0.7 ? '|' : ''}${cells(rand)}\n`;
+		const padding = rand() < 0.3 ? ' ' : '';
+		source += `${rand() < 0.7 ? '|' : ''}${cells(rand)}${padding}\n`;
 	}
 	if (rand() < 0.5) source += `\n${cells(rand).replace(/\|/g, '')}\n`;
 	return rand() < 0.3 ? source.slice(0, -1) : source;
@@ -408,7 +589,7 @@ describe('random tables with html in their cells', () => {
 		const rand = random(1);
 		for (let i = 0; i < 4000; i++) {
 			const source = table(rand);
-			for (const chunk of [0, 3]) {
+			for (const chunk of [0, 1, 3]) {
 				const label = `${JSON.stringify(source)} fed ${chunk}`;
 				expect(broken(source, chunk), label).toEqual([]);
 				const ids = wire_revokes(source, chunk);

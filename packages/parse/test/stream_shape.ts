@@ -18,6 +18,8 @@ const enum Seen {
 class Stream implements Emitter {
 	private kinds: NodeKind[] = [];
 	private seen: Seen[] = [];
+	private value_starts: number[] = [];
+	private value_ends: number[] = [];
 	broken: string[] = [];
 
 	private fail(what: string, id: number): void {
@@ -37,8 +39,17 @@ class Stream implements Emitter {
 	open(id: number, kind: NodeKind, _start: number, parent: number): void {
 		this.add(id, kind, parent, Seen.open);
 	}
-	leaf(id: number, kind: NodeKind, _start: number, parent: number): void {
+	leaf(
+		id: number,
+		kind: NodeKind,
+		_start: number,
+		parent: number,
+		value_start: number,
+		value_end: number
+	): void {
 		this.add(id, kind, parent, Seen.closed);
+		this.value_starts[id] = value_start;
+		this.value_ends[id] = value_end;
 	}
 	close(id: number): void {
 		if (this.seen[id] === undefined) this.fail('closed but never opened', id);
@@ -53,15 +64,27 @@ class Stream implements Emitter {
 		this.seen[id] = Seen.revoked;
 	}
 	commit(): void {}
-	text(): void {}
+	text(parent: number, start: number, end: number): void {
+		if (end <= start) this.fail('empty text under', parent);
+	}
 	attr(): void {}
-	set_value_start(): void {}
-	set_value_end(): void {}
+	set_value_start(id: number, pos: number): void {
+		this.value_starts[id] = pos;
+	}
+	set_value_end(id: number, pos: number): void {
+		this.value_ends[id] = pos;
+	}
 	cursor(): void {}
 
 	finish(): string[] {
 		for (let id = 0; id < this.seen.length; id++) {
 			if (this.seen[id] === Seen.open) this.fail('never closed', id);
+			if (
+				this.kinds[id] === NodeKind.text &&
+				!(this.value_ends[id] > this.value_starts[id])
+			) {
+				this.fail('empty', id);
+			}
 		}
 		return this.broken;
 	}
