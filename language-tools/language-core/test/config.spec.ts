@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import ts from "typescript";
 import { afterEach, describe, expect, it } from "vitest";
+import { compile } from "mdsvex";
 import type { MdsvexManifest } from "mdsvex";
 
 import {
@@ -203,6 +204,24 @@ describe("document options from a manifest", () => {
 			document_options({ ...m, heading_ids: true }, "/app/a.svx").compile!
 				.heading_ids,
 		).toBe(true);
+	});
+
+	it("compiles math as the build does when it can, else shows the latex", () => {
+		const math = (extra: Partial<MdsvexManifest>, latex = "x") =>
+			compile("```math\n" + latex + "\n```", document_options({ ...m, ...extra }, "/app/a.svx").compile).code;
+		// a manifest from before the option, the plugin default
+		expect(math({})).toContain('<math display="block"');
+		expect(math({ math: { renderer: "temml" } })).toContain('<math display="block"');
+		expect(
+			math({ math: { renderer: "temml", options: { macros: { "\\RR": "\\mathbb{R}" } } } }, "\\RR"),
+		).toContain("<mi>ℝ</mi>");
+		// katex and a function are not here, an option json lost is unknown
+		const shown = '<div class="math math-display" translate="no"><code class="language-math">\\nope</code></div>';
+		expect(math({ math: { renderer: "katex" } }, "\\nope")).toBe(shown);
+		expect(math({ math: { renderer: "custom" } }, "\\nope")).toBe(shown);
+		expect(math({ math: { renderer: "temml", options: null } }, "\\nope")).toBe(shown);
+		expect(math({ math: false })).toContain('class="twinkleplop language-math"');
+		expect(() => math({}, "\\nope")).toThrow(/Unsupported function name/);
 	});
 
 	it("resolves each virtual id from the document, the extra module winning", () => {
@@ -406,6 +425,20 @@ describe("mdsvex.config.json", () => {
 		expect(from_json({ unwrap_images: true }, root, ts).unwrap_images).toBe(true);
 		expect("unwrap_images" in from_json({ unwrap_images: false }, root, ts)).toBe(false);
 		expect("unwrap_images" in from_json({}, root, ts)).toBe(false);
+	});
+
+	it("takes math, a manifest without the field for the default", () => {
+		const root = tree({ "doc.svx": "x" });
+		expect("math" in from_json({}, root, ts)).toBe(false);
+		expect("math" in from_json({ math: {} }, root, ts)).toBe(false);
+		expect(from_json({ math: false }, root, ts).math).toBe(false);
+		expect(from_json({ math: { renderer: "katex" } }, root, ts).math).toEqual({
+			renderer: "katex",
+		});
+		expect(from_json({ math: { options: { annotate: true } } }, root, ts).math).toEqual({
+			renderer: "temml",
+			options: { annotate: true },
+		});
 	});
 
 	it("compiles a document with the unwrap_images of its config", () => {

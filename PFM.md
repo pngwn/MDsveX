@@ -217,17 +217,23 @@ An optional argument list may follow the brackets immediately (no space). Argume
 
 Keys start with a letter or underscore, then `[a-zA-Z0-9_-]`. Values are bare (no whitespace, commas, parens, quotes, or backslashes) or single/double quoted (backslash escapes the delimiter; values are kept raw). Spaces and tabs are allowed around `=` and `,`. Duplicate keys, trailing commas, empty values, and newlines make the list malformed: an inline directive then closes at `]` and the `(...)` stays literal text, a block directive line falls back to a paragraph. Attribute syntax (`{key=val}` from the upstream proposal) is not viable in mdsvex since `{}` is reserved — the parenthesised argument list above replaces it.
 
-**Math**, Planned, not implemented yet. Display math is a fenced code block with the language `math`. Inline math is a code span wrapped in dollars:
+**Math**. Display math is a fenced code block with the language `math`:
 
 ````markdown
 ```math
 \int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
 ```
-
-Euler's identity, $`e^{i\pi} + 1 = 0`$, links five constants.
 ````
 
-Both forms keep the LaTeX raw, so `{}`, `\`, `_` and `^` need no escaping, and both render as math on GitHub and GitLab. A `$` that is not followed by a backtick is plain text, so prices need no escaping. Plain `$…$` and `$$…$$` are not math. A `latex` fence stays an ordinary code block that shows the source.
+The fence keeps the LaTeX raw, so `{}`, `\`, `_` and `^` need no escaping, and it renders as math on GitHub and GitLab. In mdsvex it renders as display math through a math renderer, Temml by default, with no `<pre>` or `<code>` around it; with math turned off it is an ordinary code block. Only the language `math` is math: a `latex` or `tex` fence stays an ordinary code block that shows the source. Anything after `math` in the info string is kept and reserved for later use, such as equation labels.
+
+Inline math is planned, not implemented yet. It will be a code span wrapped in dollars:
+
+```markdown
+Euler's identity, $`e^{i\pi} + 1 = 0`$, links five constants.
+```
+
+A `$` that is not followed by a backtick is plain text, so prices need no escaping. Plain `$…$` and `$$…$$` are not math. A code span with the language hint `` `#!math …` `` is not math either, it stays inline code.
 
 ---
 

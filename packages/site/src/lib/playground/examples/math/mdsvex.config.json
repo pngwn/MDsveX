@@ -1,0 +1,8 @@
+{
+	"components": "./components.js",
+	"math": {
+		"options": {
+			"macros": { "\\RR": "\\mathbb{R}" }
+		}
+	}
+}

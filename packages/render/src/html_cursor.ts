@@ -100,6 +100,11 @@ export interface CodeHighlighter {
 	/** a code span with a #! hint, null renders it plain */
 	inline(code: string, lang: string, start: number): HighlightedCode | null;
 	warn(code: HighlightWarningCode, message: string, start: number): void;
+	/**
+	 * true when block renders a math fence as display math, the fence then
+	 * takes the math replacement and never pre, its block has no <pre>
+	 */
+	readonly math?: boolean;
 }
 
 /** reads the fence meta conventions for a pre replacement the highlighter left plain */
@@ -231,8 +236,25 @@ function escape_code(text: string): string {
 const BRACE_TEST = /[{}]/;
 const BRACE_MATCH = /[{}]/g;
 
-/** an info string is an attribute, braces as code has them */
+let plain_math = false;
+
+/**
+ * @internal true once when a math fence rendered as code since the last
+ * call, a compile with a math renderer and no highlighter then knows to
+ * render again with one, no document is searched for math up front
+ */
+export function take_plain_math(): boolean {
+	if (!plain_math) return false;
+	plain_math = false;
+	return true;
+}
+
+/**
+ * the language of a fence that renders plain, as an attribute, braces as
+ * code has them, every such fence passes here so it notes a math one
+ */
 function escape_info(info: string): string {
+	if (info === 'math') plain_math = true;
 	if (!CODE_TEST.test(info)) return info;
 	const s = escape_html(info);
 	if (!BRACE_TEST.test(s)) return s;
@@ -3951,7 +3973,7 @@ function comp_name(c: Cursor): string {
 		case K.CODE_SPAN:
 			return 'code';
 		case K.CODE_FENCE:
-			return 'pre';
+			return hl !== null && hl.math === true && is_math(c) ? 'math' : 'pre';
 		case K.LINK:
 			return 'a';
 		case K.IMAGE:
@@ -4506,7 +4528,11 @@ function comp_node(
 			const info = fence_info(c, c.meta());
 			if (hl !== null) {
 				const b = hl_block(c, info);
-				if (b !== null) return comp_hl_pre(c, sink, p, b, info, open, close);
+				if (b !== null)
+					// comp_name picked the replacement, math or pre
+					return ref.name === 'math'
+						? comp_hl_math(c, sink, p, b, info!, open, close)
+						: comp_hl_pre(c, sink, p, b, info, open, close);
 			}
 			open += _attrs(c);
 			let inner = '<code>';
@@ -5786,6 +5812,12 @@ function info_meta(info: string): string {
 	return space === -1 ? '' : info.slice(space).trim();
 }
 
+/** true for a fence whose language is math */
+function is_math(c: Cursor): boolean {
+	const info = fence_info(c, c.meta());
+	return info !== undefined && info_lang(info) === 'math';
+}
+
 /** the fence at c through the highlighter, null renders it plain */
 function hl_block(
 	c: Cursor,
@@ -5960,6 +5992,26 @@ function comp_hl_pre(
 		'</pre>' + close,
 		b.live
 	);
+}
+
+/**
+ * display math as the math replacement, the children are what renders
+ * without one, the block gives the props that say which math it is
+ */
+function comp_hl_math(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	b: HighlightedBlock,
+	info: string,
+	open: string,
+	close: string
+): number {
+	const pre = mo.length;
+	const meta = info_meta(info);
+	open += b.props + js_prop('code', b.code);
+	if (meta) open += js_prop('meta', meta);
+	return cm_hl(c, sink, p, pre, open + _attrs(c) + '>', b.body, close, null);
 }
 
 /** a highlighted code span as the code replacement, which also takes lang */

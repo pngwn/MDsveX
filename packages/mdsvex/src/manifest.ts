@@ -79,6 +79,20 @@ export interface MdsvexManifest {
 	plugins?: ManifestPlugin[];
 	/** true when heading_ids is on in any form, a manifest without it means off */
 	heading_ids?: boolean;
+	/**
+	 * how math fences render, false leaves them code blocks, custom is a
+	 * renderer function, a manifest without it means temml with no options
+	 */
+	math?: ManifestMath | false;
+}
+
+export interface ManifestMath {
+	renderer: 'temml' | 'katex' | 'custom';
+	/**
+	 * the options of the renderer, left out when it has none, null when json
+	 * can not hold them all, so an editor can not render as the build does
+	 */
+	options?: Record<string, unknown> | null;
 }
 
 /**

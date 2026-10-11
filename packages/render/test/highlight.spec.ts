@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { PFMParser } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
-import { ComponentScope, CursorHTMLRenderer } from '../src/html_cursor';
+import {
+	ComponentScope,
+	CursorHTMLRenderer,
+	take_plain_math,
+} from '../src/html_cursor';
 import type {
 	CodeHighlighter,
 	HighlightedBlock,
@@ -238,5 +242,111 @@ describe('highlighting', () => {
 				[' d', ' d</code>', false],
 			]);
 		}
+	});
+
+	describe('a highlighter that renders math', () => {
+		/** the stub, with a math fence as a block that has no <pre> */
+		function math_stub(on = true) {
+			const h = stub();
+			const block = h.block;
+			return Object.assign(h, {
+				math: on,
+				block(code: string, lang: string, meta: string, start: number) {
+					if (lang !== 'math' || !on)
+						return block.call(h, code, lang, meta, start);
+					h.calls.push(`math ${meta}|${start}`);
+					return {
+						before: '',
+						attributes: null,
+						body: `<div><math>${code.trim()}</math></div>`,
+						after: '',
+						props: ' display',
+						code: code.trim(),
+						code_template: null,
+						live: null,
+						dropped: null,
+					};
+				},
+			});
+		}
+		const scope = (...names: string[]) =>
+			new ComponentScope([{ specifier: 'm', names }], 'G');
+
+		it('a math fence renders its body alone, in every walk', () => {
+			expect(render_all('```math\nx\n```\n', math_stub())).toBe(
+				'<div><math>x</math></div>'
+			);
+		});
+
+		it('the math replacement takes it, with display, code and meta', () => {
+			const h = math_stub();
+			expect(
+				render_all(
+					'```math label=a\nx\n```\n\n```ts\ny\n```\n',
+					h,
+					scope('math')
+				)
+			).toBe(
+				"<script>\nimport { math as Math_MDSVEX_G } from 'm';\n</script>" +
+					'<Math_MDSVEX_G display code={"x"} meta={"label=a"}><div><math>x</math></div></Math_MDSVEX_G>' +
+					'<figure><pre class="hl ts"><code>y</code></pre></figure>'
+			);
+			expect(h.warned).toEqual([]);
+		});
+
+		it('pre never takes it, and takes every other fence', () => {
+			expect(
+				render_all(
+					'```math title="t"\nx\n```\n\n```ts\ny\n```\n',
+					math_stub(),
+					scope('pre', 'code')
+				)
+			).toBe(
+				"<script>\nimport { pre as Pre_MDSVEX_G } from 'm';\n</script>" +
+					'<div><math>x</math></div>' +
+					'<Pre_MDSVEX_G lang={"ts"} title={"t"} code={"Y"}><pre class="hl ts"><code>y</code></pre></Pre_MDSVEX_G>'
+			);
+		});
+
+		it('a document of only math uses no pre replacement', () => {
+			expect(render_all('```math\nx\n```\n', math_stub(), scope('pre'))).toBe(
+				'<div><math>x</math></div>'
+			);
+		});
+
+		it('a math fence that renders as code is noted once, in every walk', () => {
+			take_plain_math();
+			for (const [name, walk, cache] of WALKS) {
+				for (const [source, seen] of [
+					['```math a\nx\n```\n', true],
+					['> - ```math\n>   x\n>   ```\n', true],
+					['```js\nmath\n```\n\n```mathml\nx\n```\n\n`#!math x`\n', false],
+				] as const) {
+					const tree = new TreeBuilder(128);
+					new PFMParser(tree).parse(source);
+					const r = new CursorHTMLRenderer({ cache });
+					walk(r, tree.get_buffer(), source);
+					expect(r.html).toContain('<pre><code class="language-');
+					expect(take_plain_math(), name + ' ' + source).toBe(seen);
+					expect(take_plain_math()).toBe(false);
+				}
+			}
+			// under a pre replacement as well, and never when a highlighter took it
+			const tree = new TreeBuilder(128);
+			new PFMParser(tree).parse('```math\nx\n```\n');
+			const r = new CursorHTMLRenderer({ cache: false });
+			r.scope = scope('pre');
+			r.update(tree.get_buffer(), '```math\nx\n```\n');
+			expect(r.html).toContain('<Pre_MDSVEX_G lang={"math"}');
+			expect(take_plain_math()).toBe(true);
+			render_all('```math\nx\n```\n', math_stub());
+			expect(take_plain_math()).toBe(false);
+		});
+
+		it('without the flag a math fence is a fence like any other', () => {
+			expect(
+				render_all('```math\nx\n```\n', math_stub(false), scope('pre', 'math'))
+			).toContain('<Pre_MDSVEX_G lang={"math"} title={"t"} code={"X"}>');
+		});
 	});
 });

@@ -69,6 +69,9 @@ importers:
       svelte2tsx:
         specifier: ^0.7.53
         version: 0.7.53(svelte@5.55.1)(typescript@5.9.3)
+      temml:
+        specifier: ^0.14.0
+        version: 0.14.0
     devDependencies:
       svelte:
         specifier: ^5.0.0
@@ -141,6 +144,9 @@ importers:
       svelte2tsx:
         specifier: ^0.7.53
         version: 0.7.53(svelte@5.55.1)(typescript@5.9.3)
+      temml:
+        specifier: ^0.14.0
+        version: 0.14.0
       typescript:
         specifier: ^5.0.0
         version: 5.9.3
@@ -381,6 +387,9 @@ importers:
       es-module-lexer:
         specifier: ^1.6.0
         version: 1.6.0
+      temml:
+        specifier: ^0.14.0
+        version: 0.14.0
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^6.2.4
@@ -394,6 +403,9 @@ importers:
       github-slugger:
         specifier: ^2.0.0
         version: 2.0.0
+      katex:
+        specifier: ^0.19.0
+        version: 0.19.0
       npm-run-all2:
         specifier: ^7.0.2
         version: 7.0.2
@@ -2515,6 +2527,10 @@ packages:
   comma-separated-tokens@2.0.3:
     resolution: {integrity: sha512-Fu4hJdvzeylCfQPp9SGWidpzrMs7tTrlu6Vb8XGaRGck8QSNZJJp538Wrb60Lax4fPwR64ViY468OIUTbRlGZg==}
 
+  commander@15.0.0:
+    resolution: {integrity: sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==}
+    engines: {node: '>=22.12.0'}
+
   commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
 
@@ -3198,6 +3214,10 @@ packages:
 
   jsonfile@4.0.0:
     resolution: {integrity: sha512-m6F1R3z8jjlf2imQHS2Qez5sjKWQzbuuhuJ/FKYFRZvPE3PuHcSMVZzfsLhGVOkfd20obL5SWEBew5ShlquNxg==}
+
+  katex@0.19.0:
+    resolution: {integrity: sha512-v6Tznz3zJ7u3niRCoDTsumM2+HA2XXcCu+WAacCeHD2z3p9A9Ks987o5FzfTGBN0e8A0vjEgIDvLbICrXpdw/Q==}
+    hasBin: true
 
   kleur@4.1.5:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
@@ -4220,6 +4240,10 @@ packages:
 
   tarparser@0.0.5:
     resolution: {integrity: sha512-uuLT1g5szuj3MjXpVNRhy/XjJ+kVVqkV0xn1F0luXC4kHrDxHb+shezdDN3Xzng9vbtRZlRxk7An0SnoVhmD0w==}
+
+  temml@0.14.0:
+    resolution: {integrity: sha512-tz1LW/5IZpThK8c7ZpdTSH/n56eAj+ThirLieErtKxYC3EKCIiB4sKdRUehAgH+fQmvIKqMfP3gqTLBdLpy9zw==}
+    engines: {node: '>=18.13.0'}
 
   term-size@2.2.1:
     resolution: {integrity: sha512-wK0Ri4fOGjv/XPy8SBHZChl8CM7uMc5VML7SqiQ0zG7+J5Vr+RMQDoHa2CNT6KHUnTGIXH34UDMkPzAUyapBZg==}
@@ -6602,6 +6626,8 @@ snapshots:
 
   comma-separated-tokens@2.0.3: {}
 
+  commander@15.0.0: {}
+
   commander@2.20.3:
     optional: true
 
@@ -7471,6 +7497,10 @@ snapshots:
   jsonfile@4.0.0:
     optionalDependencies:
       graceful-fs: 4.2.6
+
+  katex@0.19.0:
+    dependencies:
+      commander: 15.0.0
 
   kleur@4.1.5: {}
 
@@ -8796,6 +8826,8 @@ snapshots:
     optional: true
 
   tarparser@0.0.5: {}
+
+  temml@0.14.0: {}
 
   term-size@2.2.1: {}
 

@@ -9,6 +9,7 @@ import {
 	TEMPLATE_PREFIX,
 	compile_markdown,
 	highlight_for,
+	math_for,
 	is_markdown,
 	languages_used,
 	prepare,
@@ -319,6 +320,64 @@ describe('compile_markdown', () => {
 		expect(chained.sources).toEqual(['App.svx']);
 		expect(decode(chained.mappings)[0].length).toBeGreaterThan(0);
 		expect(code).toContain('hello');
+	});
+});
+
+describe('math', () => {
+	const config_with = (math: unknown) =>
+		prepare(files({ 'mdsvex.config.json': JSON.stringify({ math }) }));
+	const SOURCE = '```math\n\\RR\n```';
+
+	test('math is on without a config, temml loads for a document with a math fence', async () => {
+		const { config, options } = prepare(files({}));
+		expect(await math_for('# no math\n\n```js\nmath\n```', config)).toBe(false);
+		const source = '```math\nx\n```';
+		const math = await math_for(source, config);
+		const { code } = compile_markdown(source, 'App.svx', { ...options, math });
+		expect(code).toContain(
+			'<div class="math math-display" translate="no"><math display="block"'
+		);
+	});
+
+	test('the options mirror the plugin ones', async () => {
+		const { config, error } = config_with({
+			options: { macros: { '\\RR': '\\mathbb{R}' } },
+		});
+		expect(error).toBe(null);
+		const math = await math_for(SOURCE, config);
+		expect(compile_markdown(SOURCE, 'App.svx', { math }).code).toContain(
+			'<mi>ℝ</mi>'
+		);
+		// the same options give the same renderer
+		expect(await math_for(SOURCE, config)).toBe(math);
+	});
+
+	test('katex is not bundled, its math shows as written', async () => {
+		const { config, error } = config_with({ renderer: 'katex' });
+		expect(error).toBe(null);
+		const math = await math_for(SOURCE, config);
+		expect(compile_markdown(SOURCE, 'App.svx', { math }).code).toBe(
+			'<div class="math math-display" translate="no"><code class="language-math">\\RR</code></div>'
+		);
+	});
+
+	test('math: false leaves the fence a code block', async () => {
+		const { config } = config_with(false);
+		expect(await math_for(SOURCE, config)).toBe(false);
+		const { code } = compile_markdown(SOURCE, 'App.svx', { math: false });
+		expect(code).toBe('<pre><code class="language-math">\\RR</code></pre>');
+	});
+
+	test('options of the wrong shape are errors', () => {
+		expect(config_with(true).error?.message).toBe(
+			'mdsvex.config.json: math must be an object or false'
+		);
+		expect(config_with({ renderer: 'mathjax' }).error?.message).toBe(
+			`mdsvex.config.json: math.renderer must be 'temml' or 'katex', it is "mathjax"`
+		);
+		expect(config_with({ options: 1 }).error?.message).toBe(
+			'mdsvex.config.json: math.options must be an object'
+		);
 	});
 });
 

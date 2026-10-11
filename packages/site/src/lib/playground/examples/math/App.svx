@@ -1,0 +1,30 @@
+# Math
+
+A fence with the language `math` is display math. The LaTeX becomes MathML
+when the document compiles, so the page loads no script for it:
+
+```math
+\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
+```
+
+Braces, backslashes and underscores need no escaping:
+
+```math
+\begin{aligned}
+	\nabla \cdot \mathbf{E} &= \frac{\rho}{\varepsilon_0} \\
+	\nabla \times \mathbf{B} &= \mu_0 \mathbf{J} + \mu_0 \varepsilon_0 \frac{\partial \mathbf{E}}{\partial t}
+\end{aligned}
+```
+
+`\RR` is a macro from `mdsvex.config.json`:
+
+```math
+f \colon \RR \to \RR, \quad f(x) = x^2
+```
+
+`math` is replaced by `Math.svelte`, which adds a button that copies the
+LaTeX. Only `math` is math, a `latex` fence shows its source:
+
+```latex
+\frac{a}{b}
+```

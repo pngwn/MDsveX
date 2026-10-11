@@ -15,6 +15,7 @@ import {
 	type LanguageModule,
 	type RenderOptions,
 } from 'mdsvex/highlight';
+import { load_math, source_math, type MathRenderer } from 'mdsvex/math';
 import { mappings_to_v3, type SourceMapV3 } from '@mdsvex/render/sourcemap';
 import { strip_types } from './typescript_strip_types';
 
@@ -77,6 +78,13 @@ export interface ReplConfig {
 	plugins?: { name?: string; module: string; directives: string[] }[];
 	/** json holds no slug function, so only the default slug */
 	heading_ids?: boolean;
+	math?: ReplMath | false;
+}
+
+/** the vite plugin math options json can hold, only temml is bundled, katex math shows its latex */
+export interface ReplMath {
+	renderer?: 'temml' | 'katex';
+	options?: Record<string, unknown>;
 }
 
 interface TemplateTarget {
@@ -98,6 +106,7 @@ export interface ResolvedConfig {
 	highlight: ReplHighlight | false;
 	unwrap_images: boolean;
 	heading_ids: boolean;
+	math: ReplMath | false;
 }
 
 /** template options follow the design doc ahead of core, which ignores them for now */
@@ -143,6 +152,7 @@ function empty_config(): ResolvedConfig {
 		highlight: {},
 		unwrap_images: false,
 		heading_ids: false,
+		math: {},
 	};
 }
 
@@ -184,6 +194,7 @@ export function prepare(files: FileMap): Prepared {
 		}
 		if (parsed.highlight !== undefined)
 			config.highlight = check_highlight(parsed.highlight);
+		if (parsed.math !== undefined) config.math = check_math(parsed.math);
 
 		for (const [name, entry] of Object.entries(parsed.templates ?? {})) {
 			const { component, components } =
@@ -313,6 +324,23 @@ function check_highlight(highlight: unknown): ReplHighlight | false {
 	return highlight as ReplHighlight;
 }
 
+function check_math(math: unknown): ReplMath | false {
+	if (math === false) return false;
+	if (typeof math !== 'object' || math === null)
+		throw new Error(`${CONFIG_FILE}: math must be an object or false`);
+	const { renderer, options } = math as ReplMath;
+	if (renderer !== undefined && renderer !== 'temml' && renderer !== 'katex')
+		throw new Error(
+			`${CONFIG_FILE}: math.renderer must be 'temml' or 'katex', it is ${JSON.stringify(renderer)}`
+		);
+	if (
+		options !== undefined &&
+		(typeof options !== 'object' || options === null)
+	)
+		throw new Error(`${CONFIG_FILE}: math.options must be an object`);
+	return math as ReplMath;
+}
+
 /** the built-in annotations by their verb */
 const ANNOTATIONS = new Map<string, AnnotationPlugin>(
 	default_annotations.map((plugin) => [plugin.verbs[0], plugin])
@@ -424,6 +452,32 @@ export async function highlight_for(
 	});
 	current = { key, config: highlight };
 	return highlight;
+}
+
+const MATH_FENCE = /(?:```+|~~~+)[ \t]*math(?=\s|$)/;
+let math_current: { key: string; render: Promise<MathRenderer> } | null = null;
+
+/**
+ * the math option for a document, temml is fetched with the first one that
+ * has a math fence, katex is not bundled, so its math shows as written
+ */
+export async function math_for(
+	source: string,
+	config: ResolvedConfig
+): Promise<MathRenderer | false> {
+	const options = config.math;
+	if (options === false || !MATH_FENCE.test(source)) return false;
+	if (options.renderer === 'katex') return source_math;
+	const key = JSON.stringify(options.options ?? null);
+	if (math_current?.key !== key) {
+		const render = load_math({ options: options.options });
+		math_current = { key, render };
+		// a failed fetch is tried again by the next compile
+		render.catch(() => {
+			if (math_current?.render === render) math_current = null;
+		});
+	}
+	return math_current.render;
 }
 
 function target_of(
