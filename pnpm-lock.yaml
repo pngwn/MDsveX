@@ -694,10 +694,19 @@ importers:
         version: 8.0.5(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@24.7.1)(esbuild@0.27.4)(terser@5.44.0)
 
   plugins/autolink:
-    dependencies:
+    devDependencies:
       '@mdsvex/parse':
         specifier: workspace:*
         version: link:../../packages/parse
+      mdsvex:
+        specifier: workspace:*
+        version: link:../../packages/mdsvex
+      npm-run-all2:
+        specifier: ^7.0.2
+        version: 7.0.2
+      shx:
+        specifier: ^0.3.4
+        version: 0.3.4
 
 packages:
 

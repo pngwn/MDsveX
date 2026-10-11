@@ -1,6 +1,15 @@
+import { rmSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
 import { describe, it, expect } from "vitest";
-import { parse_markdown_svelte } from "../../../packages/parse/src/main";
-import { autolink } from "../src/index";
+import { parse_markdown_svelte } from "@mdsvex/parse";
+import { autolink } from "@mdsvex/plugin-autolink";
+
+import { write_app } from "../../test/app";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 function get_nodes_by_kind(
 	nodes: ReturnType<typeof parse_markdown_svelte>["nodes"],
@@ -115,5 +124,33 @@ describe("@mdsvex/plugin-autolink", () => {
 		const link = nodes.get_node(headings[0].children[0]);
 		expect(link.kind).toBe("link");
 		expect(link.children.length).toBeGreaterThan(0);
+	});
+});
+
+describe("as published", () => {
+	it("publishes the files its exports name", async () => {
+		const root = write_app(HERE, {}, [dirname(HERE)]);
+		try {
+			const entry = createRequire(join(root, "index.js")).resolve(
+				"@mdsvex/plugin-autolink",
+			);
+			expect(entry).toBe(
+				join(
+					root,
+					"node_modules",
+					"@mdsvex",
+					"plugin-autolink",
+					"dist",
+					"index.js",
+				),
+			);
+			const installed = await import(pathToFileURL(entry).href);
+			const { nodes } = parse_markdown_svelte("# Hello\n", {
+				plugins: [installed.autolink()],
+			});
+			expect(nodes.get_node(1).metadata.id).toBe("hello");
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });

@@ -8,6 +8,7 @@ updates:
   - package-ecosystem: 'npm'
     directories:
       - 'packages/*'
+      - 'plugins/*'
     schedule:
       interval: 'weekly'
     commit-message:

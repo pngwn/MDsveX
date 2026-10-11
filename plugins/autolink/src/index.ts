@@ -1,4 +1,4 @@
-import type { ParsePlugin } from "@mdsvex/parse";
+import type { ParsePlugin } from "mdsvex";
 
 /**
  * slugify a string for use as a url fragment.
