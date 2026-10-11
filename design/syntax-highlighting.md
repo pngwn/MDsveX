@@ -573,7 +573,7 @@ The parser has to notice `` $` `` without slowing down prose that has dollars in
 
 **B. No break; look back from the backtick.** A backtick already ends a text run. When the text state stops at one, it reads the character before it, and only a `$` there starts the scan.
 
-A was built as a throwaway stub on `d3138024` that does the check and then falls back to text. `parity.mjs` found its output identical to the baseline's on all 1182 checks.
+Both were built as throwaway stubs on `d3138024` that do the check and then fall back to text. `parity.mjs` found the output of each identical to the baseline's on all 1182 checks.
 
 **A, measured** with `ab.mjs --suite core --repeat 2` against a private baseline of the same commit:
 
@@ -594,9 +594,21 @@ A was built as a throwaway stub on `d3138024` that does the check and then falls
 - **The corpus cannot show more than that.** It has 293 dollars in 4 MB, and all but 4 are inside fences and code spans, which the text fast path never reads. So the table above measures what the table entry and the extra arm in `_run` cost a document with no dollars, which is nothing that this run can see.
 - **Scaled:** the real family parses at 4.3 ns a byte, so a dollar in prose costs what 6 to 10 bytes of text cost. A page with a price every 500 bytes pays 1 to 2% of its parse. A document without dollars pays nothing this run could measure.
 
-**B, by construction,** costs prose with dollars nothing, and costs one character read for each backtick that ends a text run (the real family has about 480 code spans in 125 KB). Its difficulty is not speed. The `$` is already inside the open text node when the backtick is reached, so that node has to end one character short, and when the `$` is the node's only character (a paragraph or an emphasis that starts with math) the node is empty. Avoiding the empty node means every place that opens a text run checks for `` $` `` first, and that is the hot path the break table exists to keep clear.
+**Both, timed again in fresh processes.** The run above was too noisy to compare the two, so the parse modes were repeated once the machine was quieter: one workload per process, the minimum of 4000 short alternating samples for each arm, and an A/A of the two baseline builds beside every row.
 
-**Recommendation: A.** It is the pattern the parser already uses twice, one table entry routes every fast path to the same place, and its cost falls only on documents full of prices, at a few tens of nanoseconds each. Before it merges, the `quick` A/B should be run again on a quiet machine to confirm the `micro/heading` row is noise.
+| workload | A/A | A, break | B, look back |
+|---|---|---|---|
+| 7 real documents, parse | -0.01% | -0.12% | -0.54% |
+| the same, incremental-1024 | +0.01% | -0.01% | -0.10% |
+| a `$` before every tenth word, 2 documents | -0.5%, +0.0% | -1.6%, -2.2% | +0.2%, -0.6% |
+| every paragraph starts `$5 `, 2 documents | -0.3%, -0.4% | -1.1%, -2.2% | +0.1%, -0.3% |
+
+- **A costs 30 to 40 ns for a dollar inside a text run and about 15 ns for one that starts a paragraph.** That agrees with the fixture row above.
+- **Neither costs a document without dollars anything.** B's -0.54% is one document (`site-src-components-cheatsheet`, -2.8%, 40 ns). The other six average -0.2%, which is the spread of the A/A.
+
+**B** costs prose with dollars nothing, and costs one character read for each backtick that ends a text run (the real family has about 480 code spans in 125 KB). Its difficulty is not speed. The `$` is already inside the open text node when the backtick is reached, so that node has to end one character short, and when the `$` is the node's only character (a paragraph or an emphasis that starts with math) the node is empty. Avoiding the empty node means every place that opens a text run checks for `` $` `` first, and that is the hot path the break table exists to keep clear.
+
+**Recommendation: A.** It is the pattern the parser already uses twice, one table entry routes every fast path to the same place, and its cost falls only on documents full of prices, at a few tens of nanoseconds each. Before it merges, the `quick` A/B should be run again on a quiet machine to confirm the `micro/heading:compile-mapped` row is noise.
 
 ### 14.4 The node
 
