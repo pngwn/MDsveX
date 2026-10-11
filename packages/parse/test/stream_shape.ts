@@ -348,6 +348,39 @@ export function lines(...rows: string[]): string {
 	return rows.join('\n');
 }
 
+function row(kind: string, cells: string[][]): string[] {
+	const out = [`    ${kind}`];
+	for (const cell of cells) {
+		out.push('      table_cell');
+		for (const child of cell) out.push(`        ${child}`);
+	}
+	return out;
+}
+
+/** the row as the header of one table and as the body row of another, each cell with the same children */
+export function both(source: string, ...cells: string[][]): void {
+	const cols = cells.length;
+	const delimiters = `${'|-'.repeat(cols)}|\n`;
+	const table = `  table alignments=[${Array(cols).fill('"none"').join(',')}] col_count=${cols}`;
+	expect(checked_tree(`|${source}|\n${delimiters}`), 'header').toBe(
+		lines('root', table, ...row('table_header', cells))
+	);
+	const titles = cells.map(() => ['text "x"']);
+	for (const end of ['|\n', '\n', '']) {
+		expect(
+			checked_tree(`${'|x'.repeat(cols)}|\n${delimiters}|${source}${end}`),
+			`body ${JSON.stringify(end)}`
+		).toBe(
+			lines(
+				'root',
+				table,
+				...row('table_header', titles),
+				...row('table_row', cells)
+			)
+		);
+	}
+}
+
 export function random(seed: number): () => number {
 	return () => {
 		seed = (seed + 0x6d2b79f5) | 0;
