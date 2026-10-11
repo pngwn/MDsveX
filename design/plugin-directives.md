@@ -1,6 +1,6 @@
 # Plugin directives: design
 
-Status: draft, 2026-10-10. Corrected the same day against the dispatcher, builders and renderer code, and against a `wrap_from` prototype (local branch `p/dreamy-gates-d9ddce`, unmerged). Targets `next`. Nothing here is decided yet; the open questions are in §9.
+Status: phases 0 to 3 are built (2026-10-11): the `plugins` option, bundles, bound handlers and `wrap_from`. §3.1, §3.2, §3.4 and §7 describe what was built. Static directives (§5) and the kit plugins are not started. Two points are implemented as drafted and not yet ruled on, Q1 and Q10 in §9.
 
 Sources:
 - The plugin audit (`plugins/PLUGIN_AUDIT.md`): the Presentation concern, and the directive rows in its §4.
@@ -29,7 +29,9 @@ Start using `::component` and `:::component` syntax in your markdown files!
 :::
 ````
 
-## 0. Where we are
+## 0. Where we were
+
+This is the state the design started from. Bundles (§3.1) now let a plugin supply components, bound handlers (§3.2) reach a directive that has a component, and `wrap_from` (§3.3) groups siblings. The last point, that every directive component is live, still holds.
 
 - **Directive components come from modules only.** A name resolves through `export * as directives` modules, which reach `compile()` as `ComponentSource` data (`{ specifier, names }`, `packages/render/src/scope.ts`).
 - **A plugin can't supply a component.** Parse plugins are node handlers and nothing else.
@@ -95,7 +97,7 @@ directive_container  steps
 
 ### 3.1 The bundle
 
-A new `plugins` option takes bundles. `parse_plugins` stays as the low-level option for global handlers alone. The parse package's own `ParseOptions.plugins` already means `ParsePlugin[]`, so the name is Q10.
+A `plugins` option takes bundles, on `mdsvex()` and on `compile()`. `parse_plugins` stays as the low-level option for global handlers alone. The parse package's own `ParseOptions.plugins` already means `ParsePlugin[]`, so the name is Q10.
 
 ```js
 // @mdsvex/kit/steps
@@ -126,15 +128,33 @@ A directive's entry can hold:
 |---|---|
 | `children` | handlers for the nodes written directly inside the directive, keyed by node type (§3.2) |
 | `descendants` | the same, for nodes at any depth inside the directive |
-| `parse` | a handler for the directive node itself, with the usual open and close shape |
-| `static` | render this directive's component at build time (§5) |
+| `parse` | a handler for the directive node itself |
+| `static` | render this directive's component at build time (§5). Accepted and ignored for now |
 
-- **Components.** `module` and the keys of `directives` make a `ComponentSource`. The plugin author knows the names, so nothing is scanned. It reaches `compile()` with the other directive sources.
-- **Precedence.** Plugin sources sit below the `components` modules, which sit below template directives. A user's own `steps` export replaces the plugin's component.
-- **Global work.** A bundle can also carry `parse`, an ordinary `ParsePlugin` for document-wide handlers, and `components`, a `ComponentSource` of element replacements.
-- **The manifest lists them** (`node_modules/.mdsvex/manifest.json`), so language-tools knows `:::steps[]` is valid. A manifest module needs an absolute file, so a bare `module` specifier has to be resolved first.
-- **Bundle keys are not node kinds.** Plugin registration silently skips keys it doesn't recognise as a kind, so bundles are unpacked before they reach it.
-- **Derived arrays are memoized.** The guard and the registration cache are both keyed by the identity of the plugins array. An array rebuilt from bundles on every compile would miss both caches every time.
+A bundle can also carry `parse`, an ordinary `ParsePlugin` for document-wide handlers, and `components`, a `ComponentSource` of element replacements. `module` is required only when `directives` has an entry.
+
+**Unpacking** (`unpack` in `packages/mdsvex/src/compile.ts`). Bundles never reach the parser as they are. One pass per bundles array turns them into the inputs a compile already had, plus one new one:
+
+| from | becomes | order |
+|---|---|---|
+| `module` and the keys of `directives` | a directive `ComponentSource` | ahead of the `directives` option, so the option wins a name |
+| `components` | an element `ComponentSource` | ahead of the `components` option |
+| `parse` | a global parse plugin | ahead of `parse_plugins`, so those run last |
+| `directives` itself | a table of bound handlers (`directive_handlers` in the parse package) | in bundle order |
+
+- **Precedence.** Bundle sources sit below the `components` modules, which sit below template directives. A user's own `steps` export replaces the plugin's component. Among bundles a later one wins a name, its handlers along with its component.
+- **Nothing is scanned.** The plugin author names the directives, so the names come from the keys.
+- **The parse package ignores keys it does not know in an entry,** so `bundle.directives` is passed to it as it is and `static` rides along.
+- **Derived arrays are memoized.** The unpacked result is cached by the identity of the bundles array, and each merge with an option's array is kept for the next compile that gives the same array. The directive scope, the guard, the dispatcher's registrations and the session's plugin arena are all keyed by array identity, and all still hit across documents.
+- **Bundles with no handler and no `parse` build no dispatcher.** A kit of plain components costs a document nothing at parse time.
+- **Validation.** A bundle that is not an object, has no name, has directives without a module, or has a malformed `components` or `parse` throws an error that names it by index and name. A handler keyed by something that is not a node type, or by `text`, throws when the tables are first used.
+
+**In the Vite plugin** (`packages/mdsvex/src/plugin_registry.ts`):
+
+- **Virtual ids.** Documents import a bundle's directives from `mdsvex:plugin/<index>` and its element replacements from `mdsvex:plugin-components/<index>`, never from a path. Each id resolves the bundle's specifier as an import from the Vite root would, in the environment that asks.
+- **A module that does not resolve stops the server at start,** with one error naming the specifier and the plugin.
+- **The manifest lists them** (`node_modules/.mdsvex/manifest.json`) in an optional `plugins` field: each plugin's name, and its directives and components module with id, absolute file and names. The version stays 1. `directive_plugins` is also true when a bundle's `parse` has a directive handler.
+- **Editors.** language-core puts a manifest plugin's modules below the config's own when it builds compile options, so a bundle directive is accepted, resolves to its file and gets arg completions. `mdsvex.config.json`, which the playground reads too, takes `plugins: [{ name, module, directives: [names] }]`, since JSON can't hold handlers. Neither runs the handlers: the editor and the playground see the tree as written, not the rewritten one.
 
 ### 3.2 Bound handlers
 
@@ -155,17 +175,21 @@ interface DirectiveContext {
 }
 ```
 
+At the parse level they are registered apart from plugins, as `directive_handlers` on the parse options or the third argument of `PluginDispatcher`: an array of tables keyed by directive name. A later table replaces an earlier one's entry for a name. Documented for plugin authors in `packages/parse/PLUGINS.md`.
+
 - **No parent checks.** The handler can assume it is inside its own directive. A global `heading` handler would run for every heading in the document; this one runs only inside `:::steps[]`.
-- **"Directly inside" means in the source.** After the first `wrap_from`, later nodes sit inside a `step` wrapper in the tree. They still count as children of `steps`. A heading inside a nested blockquote, or inside another directive, is not a child and is not passed to `children` handlers. The test is the node's source parent, which both builders already compute before applying any redirect. The buffer has no depth field.
-- **`descendants`** is the opt-in for plugins that want every node of a type at any depth, such as a gallery that collects images. An outer directive's `descendants` handlers must still fire inside a nested directive, so they can't be a single check against the innermost scope.
-- **`index`** tells a handler whether this is its first call (`index === 0`), and gives a running number for step numbers or for marking the first tab selected.
-- **`state`** holds what the handler needs between calls, such as the wrapper it opened last. It replaces closures and `WeakMap`s, and the handler table is built once at registration.
+- **"Directly inside" means in the source.** After the first `wrap_from`, later nodes sit inside a `step` wrapper in the tree. They still count as children of `steps`. A heading inside a nested blockquote, or inside another directive, is not a child and is not passed to `children` handlers. The test is the node's source parent, which both builders have at the open, before any redirect.
+- **`descendants`** is the opt-in for plugins that want every node of a type at any depth, such as a gallery that collects images. An outer directive's `descendants` handlers still fire inside a nested directive that has a scope of its own.
+- **The label of a container is inside it.** Its `directive_label` is a child and what the label holds are descendants.
+- **`index`** tells a handler whether this is its first call (`index === 0`), and gives a running number for step numbers or for marking the first tab selected. `children.heading` and `descendants.heading` of one entry count apart.
+- **`state`** holds what the handler needs between calls, such as the wrapper it opened last. It replaces closures and `WeakMap`s. All handlers of an entry share it, the directive's own `parse` included.
 - **Nesting.** A `:::steps[]` inside a `:::steps[]` gets its own scope, with fresh `state` and its own `index`.
-- **The directive itself.** `parse(directive, ctx)` runs when the directive opens, and the function it returns runs when it closes. Tabs would count its panels there. For it to read the directive's args, the parser has to emit `args` before `name` (§7.2).
-- **Global plugins still see these nodes.** A heading inside `:::steps[]` still gets its id from a heading-ids plugin. Bound handlers run first, so a global plugin's handler sees any wrapper the bound handler made.
-- **The guard doesn't change.** Global directive handlers still never see a directive that has a component. Bound handlers are how the owning plugin reaches it, and no other plugin can.
-- **Overrides.** The handlers run even when the user replaces the component (principle 3). A user who exports their own `step` gets the same `label` and `children`.
-- **No `text` handlers.** The wire emitter suppresses text opens and neither builder dispatches for text, so a `text` entry would not behave the same in both modes. Rewriting text needs its own design.
+- **Order.** For one node the innermost open directive goes first: its `children` handler, then its `descendants` handler, then the `descendants` handlers of each directive further out. Global plugins run after all of them, so a heading-ids plugin still gives a heading inside `:::steps[]` its id and sees the wrapper the bound handler made. Close callbacks fire in the same order.
+- **The directive itself.** `parse(directive, ctx)` runs once for each directive of the name, in any of the three forms, and the function it returns runs when the directive closes, ahead of the other close callbacks of that node. It runs when the name arrives, which is after the node's open, so global `directive_*` open handlers have already run (without a name to read) and `node.parent` is the parent in the tree. A block directive has its args by then (§7.2). An inline directive gets them at its closing bracket, so its `parse` reads them in the close callback.
+- **Leaf and inline directives get `parse` only** (Q7). The nodes inside their label are not passed to the `children` or `descendants` handlers of that name. A container around them still sees those nodes as descendants. An inline directive is pending until its bracket closes, and a `children` handler that had run inside one that is then revoked would leave its work behind, so this stays out until there is a use for it.
+- **The guard doesn't change.** Global directive handlers still never see a directive that has a component. Bound handlers are how the owning plugin reaches it. A bound `children` or `descendants` handler for a directive kind does see the directives inside its own, whoever owns them, which is what the long form of tabs needs.
+- **Overrides.** The handlers run even when the user replaces the component (principle 3). A user who exports their own `step` gets the same `label` and `children`. This is Q1.
+- **No `text` handlers.** The wire emitter suppresses text opens and neither builder dispatches for text, so a `text` entry throws at registration. Rewriting text needs its own design.
 
 ### 3.3 `wrap_from`
 
@@ -237,12 +261,15 @@ It doesn't remove nodes and doesn't reparent across unrelated parts of the tree,
 
 ### 3.4 Dispatch
 
-- **A scope stack.** When the `name` attr of a directive with bound handlers arrives, straight after its open, the builder pushes the handler table and a new `state`. When the directive closes, the builder pops (§7.4).
-- **One check per node.** While the stack is not empty, a node is a child of the top scope when its source parent is that scope's directive. `descendants` handlers need a cumulative mask per frame, or a walk up the stack.
-- **No cost elsewhere.** With an empty stack, dispatch is what it is today.
-- **The builder fast path has to know.** The batch builder skips the dispatcher for kinds nothing handles, from a mask it re-reads only after an open dispatch. A scope push or pop swaps in a per-directive mask, and the builder re-reads it after `attr` and `close`.
-- **The stack keeps the dispatcher awake.** The builder only calls `dispatch_close` when the dispatcher isn't quiet, so it must not report quiet while a scope is open. `reset()` clears the stack.
-- **Tables are built at registration,** one per directive entry. Nothing is allocated per directive except `state`. The existing dispatch switch takes its table as a parameter, so scope tables can reuse it, at the price of each arm seeing more than one target.
+Built in `packages/parse/src/plugin_dispatch.ts`.
+
+- **A scope stack.** Both builders call `dispatch_name` when a `name` attr arrives, which only a directive gets. For a container whose name has `children` or `descendants` handlers the dispatcher pushes a scope: the directive's index, its handler tables, and a `state` and counts made on first use. It then runs the name's own `parse`, for any form of directive.
+- **One check per node.** While a scope is open, a node is a child of the innermost scope when its source parent is that scope's directive. A new node always opens inside the innermost open container, so no outer scope is checked for `children`. `descendants` walks the stack, which is as deep as the directives nest.
+- **No cost elsewhere.** With no scope open, `dispatch_open` does what it did plus one null check, and `attr` in the batch builder does one more compare when it has a dispatcher.
+- **The fast path knows.** `open_wants` is the registration's mask with no scope, and with one it is a per-dispatcher mask of the global kinds, the innermost scope's `children` kinds and every open scope's `descendants` kinds, rewritten in place when a scope opens or ends. A redirect link still switches it to every kind. The builders reread it after `attr`, `close` and `revoke`.
+- **The stack keeps the dispatcher awake.** `quiet()` is false while a scope is open, so the batch builder sends every close inside it to the dispatcher, which is where the scope ends. `reset()` clears the stack.
+- **Tables are built once per array of tables,** cached by its identity. Per directive the dispatcher allocates the scope, and the `state` proxy and a counts array when a handler first runs. A bound handler call allocates its context.
+- **Bound handlers run in the fused pass only.** A sequential plugin sees the tree they left.
 
 ## 4. Examples
 
@@ -270,7 +297,7 @@ export function steps() {
 }
 ```
 
-- **Content before the first heading** stays a direct child of `steps`, and a heading inside a nested blockquote does not start a step. Both are tested.
+- **Content before the first heading** stays a direct child of `steps`, and a heading inside a nested blockquote does not start a step. Both are tested, on all six harness paths in `packages/parse/test/bound_handlers.spec.ts` and end to end in `packages/mdsvex/test/plugins.spec.ts`.
 - **The last step closes** when `steps` closes.
 - **Which headings split** is Q2. With `ctx.state`, the first heading's depth can set the level for the rest.
 
@@ -401,9 +428,10 @@ A site can also turn a plugin's static directive back to live, which it needs wh
 
 - **A container directive is one top-level block,** or sits inside one, and that block stays open until the directive closes. Every wrapper, attr and state change a bound handler makes is inside a block that is rendered again anyway.
 - **The directive's close handler runs before the block is cached.** It fires on the close opcode, in the same `feed`, before the renderer's update.
-- **The name is known before any child.** `start_block_directive` emits the open, then `name`, then `args`, then the label, before any body child. The scope starts on the `name` attr, so a batch boundary between the open and the attr is harmless.
-- **`args` arrives after `name`.** A scope started on `name` can't read the args yet. The fix is to emit `args` first in the parser, a one-line change. An inline directive gets its `args` only at its closing bracket.
-- **Neither builder calls the dispatcher from `attr` today.** Starting a scope on `name` adds that call. `name` is only ever emitted for directives.
+- **The name is known before any child.** `start_block_directive` emits the open, then `args`, then `name`, then the label, before any body child, all in one call, so they are in one batch over the wire too.
+- **`args` now arrives before `name`.** The parser used to emit the name first. A scope started on `name` reads the args. To keep one key order for every directive's metadata, `make_meta` gives the object made for `args` a `name` slot first.
+- **An inline directive gets its `args` only at its closing bracket,** after its name. Its `parse` runs at the name and reads the args in its close callback.
+- **Both builders call the dispatcher from `attr`** for a `name`, when the dispatcher has bound handlers.
 - **`wrap_from` is a pointer change the renderer never sees half-done.** A handler runs straight after its node is pushed, when the node has no children. Rendering happens after the whole `feed`. The render tests check the cached render against a fresh one after every chunk (§3.3).
 
 ### 7.3 What has to be reversible
@@ -418,7 +446,9 @@ A node can be revoked after its handler ran. Everything that handler did has to 
 | consumed an `index` | the count goes back by one |
 
 - **`state` is a logged proxy,** like `attrs`. It is shallow: replace a value to change it, and don't mutate an object held in it.
-- **`index` belongs to the builder,** which rolls it back.
+- **Revokes do not come in reverse order.** A tight list revokes its paragraphs first to last. Putting each write's prior value back in that order would resurrect a value a revoked node wrote. So the writes of one key form a chain: undoing the last one restores what it replaced, and undoing an earlier one hands what it replaced to the write after it. Each key ends with what its last surviving write put there. A write made while nothing records (a close callback of a committed node) joins the chain too and is never undone.
+- **`index` belongs to the dispatcher,** which counts runs per handler and scope and gives one back on a revoke. Handlers that ran since keep the index they were given.
+- **When the rollback helps.** A link with no destination, a delimiter cut off by a table cell, a code span that never closes, an unclosed inline directive and the paragraphs of a tight list are revoked while their container is open, and later handlers and the directive's close callback see the corrected state. An emphasis delimiter or an html tag that never closes is not: inside a container directive the parser revokes it only after the outermost container has closed. The state is rolled back then, but the directive's close callback has already read it, so a count it wrote to an arg can include that node. Fixing this needs the parser to revoke at the paragraph, as it does at the root.
 - **Which nodes can be revoked.** Tight-list paragraphs, paragraphs opened at a tag, HTML nodes and speculative inline constructs open as pending. Headings and block directives are emitted committed. Three kinds open committed and can still be revoked: a table cell that is a merge marker, a code span that never closes, and frontmatter with no closing fence.
 - **Undoing `close()` moves nodes.** Reopening alone is not enough: later children would land ahead of the revoked node's remains. So undo pulls every later sibling back into the wrapper.
 - **First version: no `wrap_from` and no `close()` from the handler of a pending node.** Both throw. This does not remove the two rows that move nodes, because of the three committed kinds above, so both undos are built and tested. For pending nodes it is caution, not a known failure: the prototype's undo held for a pending `<div>`, a tight-list paragraph and a revoked link.
@@ -428,9 +458,9 @@ A node can be revoked after its handler ran. Everything that handler did has to 
 
 ### 7.4 Scope lifetime
 
-- **Pushed** when the `name` attr arrives.
-- **Popped** when the directive closes, including at the end of input.
-- **Popped on revoke.** Block directives aren't pending today, so this isn't expected, but the stack must not be left holding a dead scope.
+- **Pushed** when the `name` attr of a container arrives, if its entry has `children` or `descendants` handlers.
+- **Popped** when the directive closes, after its close callbacks, including at the end of input, where the parser closes what is still open.
+- **Popped on revoke,** wherever the scope sits in the stack. Block directives aren't pending today, so this isn't expected, but the stack must not be left holding a dead scope.
 - **Open wrappers close with the directive.** A wrapper that is still open when its directive closes is closed then.
 
 ### 7.5 The inside-only rule
@@ -444,31 +474,31 @@ A bound handler may change only nodes inside its own directive.
 ### 7.6 Costs
 
 - **An open container is rendered again on every update,** including its children that finished long ago. This is true today of any open blockquote or list, and is fine for now. Caching the finished children of an open container would fix it, but it would also need the inside-only rule to cover finished siblings, or real dirty tracking.
-- **Any plugin turns off compiler reuse.** `CompilerSession` falls back to the one-shot path when `parse_plugins` is set, because the dispatcher owns a per-document text view (`packages/mdsvex/src/compile.ts`). A common kit would cost every document that fast path, whether or not it uses the directive. Reuse needs `TreeBuilder.reset()` to accept a dispatcher, the dispatcher's reset to restore its fast-path mask and clear the scope stack, a rebuild when the plugins array changes, and a guard against re-entrant compiles. See Q8.
+- **A plugin no longer turns off compiler reuse.** `CompilerSession` keeps a plugin arena (#936), keyed by the identity of the global plugins array, the bound handler tables and the reserved-directive scope. All three are stable across documents with bundles (§3.1). A document that uses no bundle directive pays for the dispatcher being there: the builder's slower `leaf` and `close` paths, as with any parse plugin.
 - **Static directives don't interact with any of this.** Shells are a Vite-plugin step, and a streaming preview compiles every directive live.
 
 ## 8. Phasing
 
 | phase | work | depends on |
 |---|---|---|
-| 0 | plugin test harness (batch and wire parity, the missing revoke tests), compiler reuse with plugins | — |
-| 1 | `plugins` option, bundle shape, plugin component sources, precedence, manifest entries | 0 |
-| 2 | bound handlers: `args` before `name` in the parser, the scope stack and its lifetime, the per-directive fast-path mask, `children`, `descendants`, `parse`, `DirectiveContext`, logged `state` | 1 |
+| 0 | done: plugin test harness (batch and wire parity, the missing revoke tests), compiler reuse with plugins | — |
+| 1 | done: `plugins` option, bundle shape, plugin component sources, precedence, manifest entries | 0 |
+| 2 | done: bound handlers: `args` before `name` in the parser, the scope stack and its lifetime, the per-directive fast-path mask, `children`, `descendants`, `parse`, `DirectiveContext`, logged `state` | 1 |
 | 3 | done: `wrap_from` in both builders, the placement rule, a per-node redirect slot, a synthetic flag on nodes, the pending-node refusal, string-only args, revocation tests (§3.3) | 0 |
 | 4 | kit plugins on 2 and 3: steps, tabs, accordion, code group; sectionize as a global plugin | 2, 3 |
 | 5 | static directives: scan, SSR shells, marker fill, styles, HMR tracking, `static` on entries and `static_directives` | 1, two-phase compile, Q4 and Q6 answered |
 
 ## 9. Open questions
 
-- **Q1. Overrides.** Do a plugin's handlers still run when the user replaces its component? This draft says yes (§3.2). The alternative is that an override takes the directive over completely.
+- **Q1. Overrides.** Do a plugin's handlers still run when the user replaces its component? Built as yes (§3.2), not ruled on. The alternative is that an override takes the directive over completely.
 - **Q2. Which headings split.** The shallowest heading level among the direct children, the level of the first heading, a fixed level, or an arg such as `:::steps[](level=3)`?
 - **Q4. Styles for static directives.** Importing vite-plugin-svelte's style module alone is fragile (§5.5). Compile the component in the plugin to get its CSS, ask upstream for a sanctioned way to import a component's CSS alone, or require static components to use global styles?
 - **Q5. Where static is declared.** On the registration (§5.6), by a marker the component exports from `<script module>`, or both?
 - **Q6. Loading components at build time.** The dev server can load a module through its SSR environment. A production build has no dev server. What loads and renders the component there?
-- **Q7. Leaf and inline directives.** Their bracket text is parsed into a label. Should `children` handlers also run for the nodes inside a label?
-- **Q8. Compiler reuse.** Teach `CompilerSession` to reset a dispatcher between documents, or keep the fast path for documents that use no claimed directive?
+- **Q7. Leaf and inline directives.** Their bracket text is parsed into a label. Should `children` handlers also run for the nodes inside a label? Built as no: they get the directive's own `parse` and nothing for the label (§3.2). Adding it later breaks nothing.
 - **Q9. Enforcing the inside-only rule.** Document it only, or check in development that a bound handler's writes land inside its directive?
-- **Q10. The bundle option's name.** `plugins` at the mdsvex level, although the parse package's `ParseOptions.plugins` means something else, or another name?
+- **Q10. The bundle option's name.** `plugins` at the mdsvex level, although the parse package's `ParseOptions.plugins` means something else, or another name? Built as `plugins`, not ruled on. The parse-level option for bound handlers is `directive_handlers`.
+- **Q11. Late revokes inside a container.** An unclosed emphasis or html tag inside a container directive is revoked after the container closed, so a directive's close callback can count a node that then goes (§7.3). Move the revoke to the paragraph end in the parser?
 
 Answered by reading the code and by the prototype (2026-10-10):
 
@@ -477,3 +507,4 @@ Answered by reading the code and by the prototype (2026-10-10):
 - **Blocks inside a label.** A `heading` inside a `directive_label` renders inside the label snippet. Checked by the prototype on the uncached render with a directive scope.
 - **Is `wrap_from` feasible?** Yes, with the placement rule in §3.3.
 - **Q3, the `node.parent` change.** Accepted for every plugin: `node.parent` in an open handler is the source parent (§3.3).
+- **Q8, compiler reuse.** `CompilerSession` resets a dispatcher between documents (#936), and bundles keep its keys stable (§7.6).

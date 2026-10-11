@@ -198,6 +198,7 @@ interface MdsvexOptions {
 	) => string | false | undefined;
 	components?: string | URL | (string | URL)[];
 	component_mode?: 'markdown' | 'all';
+	plugins?: Bundle[];
 	parse_plugins?: ParsePlugin[];
 	highlight?: HighlightOptions | Highlighter | false;
 	unwrap_images?: boolean;
@@ -257,6 +258,114 @@ component_mode: 'markdown' | 'all' = 'markdown';
 ```
 
 Which elements can be replaced. `'markdown'` only replaces elements written as markdown, `'all'` also replaces HTML you type. See [`component_mode: 'all'`](docs#component_mode-all).
+
+### `plugins`
+
+```ts
+plugins: Bundle[];
+```
+
+A plugin brings directives: the components that render them and the handlers that reshape what is written inside them. A package exports a function that returns one, and you call it:
+
+```js
+import { steps } from '@acme/steps';
+
+mdsvex({ plugins: [steps()] });
+```
+
+````svx
+:::steps[]
+
+## Install
+
+```sh
+pnpm add mdsvex
+```
+
+## Configure
+
+Add it to the config.
+:::
+````
+
+Here each heading inside `:::steps[]` starts a step. The plugin wraps the heading and what follows it in a `step` directive with the heading as its label, so the page renders the plugin's `steps` and `step` components.
+
+A plugin is an object:
+
+```js
+export function steps() {
+	return {
+		name: 'steps',
+		// exports a component for each directive below, under its name
+		module: '@acme/steps/directives',
+		directives: {
+			steps: {
+				children: {
+					heading(node, ctx) {
+						ctx.state.step?.close();
+						ctx.state.step = node.wrap_from('directive_container', { name: 'step' });
+						node.wrap_from('directive_label').close();
+					}
+				}
+			},
+			step: {}
+		}
+	};
+}
+```
+
+| key | what it is |
+| --- | --- |
+| `name` | names the plugin in errors and in the editor manifest |
+| `module` | the module that exports the directive components. It resolves as an import from the Vite root would |
+| `directives` | one entry per directive name the plugin owns |
+| `parse` | a [parse plugin](docs#parse_plugins) for the whole document |
+| `components` | element replacements, as `{ specifier, names }` |
+
+An entry of `directives` can hold handlers. They are bound to that directive, so they never run anywhere else in the document:
+
+| key | called for |
+| --- | --- |
+| `children` | nodes written directly inside a container directive of this name, by node type |
+| `descendants` | nodes at any depth inside it, by node type |
+| `parse` | the directive itself, in any of its three forms |
+
+Each handler gets the node and a context:
+
+- `ctx.directive` is the directive it is bound to.
+- `ctx.index` counts the calls of this handler in this directive, from 0.
+- `ctx.state` is an empty object, new for each directive in the document. Keep what a handler needs between calls there, such as the step it opened last.
+
+A handler can return a function, which runs when the node closes. The directive's own `parse` can read its args when it opens and write them when it closes:
+
+```js
+tabs: {
+	parse(tabs, ctx) {
+		return () => {
+			tabs.attrs.args = { ...tabs.attrs.args, count: String(ctx.state.count ?? 0) };
+		};
+	},
+	children: {
+		heading(node, ctx) {
+			ctx.state.count = ctx.index + 1;
+		}
+	}
+}
+```
+
+Args are always strings, since they reach the component as string props.
+
+Things to know:
+
+- **A nested blockquote or list is not a child.** `children` means written directly inside the directive. Use `descendants` for every node of a type at any depth.
+- **Only containers have children.** The bracket text of a leaf or inline directive is not passed to `children` or `descendants` handlers. Their own `parse` still runs, though an inline directive gets its args after it, so read them in the function `parse` returns.
+- **Your own export wins.** A `directives` export of the same name from a [`components` module](docs#declaring-directives) or a template replaces the plugin's component. The plugin's handlers still run, so your `step` gets the same `label` and `children`.
+- **A later plugin wins a name.** When two plugins have an entry for the same directive, the later one's component and handlers are used.
+- **Other plugins still see the nodes.** A heading inside `:::steps[]` reaches the `heading` handlers of `parse_plugins` too, after the bound handler ran. A plugin's `parse` runs ahead of `parse_plugins`.
+
+`compile()` takes `plugins` as well. It writes `module` as the import specifier exactly as given.
+
+The node API, `wrap_from` and what happens when the parser takes a node back are described in [`PLUGINS.md`](https://github.com/pngwn/MDsveX/blob/next/packages/parse/PLUGINS.md).
 
 ### `parse_plugins`
 
@@ -811,7 +920,11 @@ A directive with no component is an error that names it and its line and column:
 no component renders the directive :::Calout at 3:1. Export a component named "Calout" from a directives module (export * as directives from './directives.ts'), or replace the directive_container node in a parse plugin
 ```
 
-A [parse plugin](docs#parse_plugins) can handle directives that have no component, through the `directive_inline`, `directive_leaf` and `directive_container` node types. A directive with a component never reaches a plugin.
+A [parse plugin](docs#parse_plugins) can handle directives that have no component, through the `directive_inline`, `directive_leaf` and `directive_container` node types. A directive with a component never reaches those handlers.
+
+### Directives from a plugin
+
+A [plugin](docs#plugins) can bring directives of its own, with the components that render them. They sit below everything above: an export of the same name from a `components` module or a template replaces the plugin's component.
 
 ## Syntax highlighting
 
