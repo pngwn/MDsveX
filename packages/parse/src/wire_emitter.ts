@@ -37,9 +37,8 @@ import { NodeKind } from "./utils";
  *                delimiter is the literal text for the opening marker ("_", "*", etc.).
  *
  *   X  Clear     ["X", id]
- *                clears all children/text of a node. used when content is
- *                restructured (e.g., raw paragraph text replaced by inline-parsed
- *                structure). reserved for future use.
+ *                clears all children/text of a node. sent when the text of
+ *                a content leaf went out past where it ends.
  *
  * Design:
  *   - optimistic: speculative nodes are sent immediately, revocation is the rare path
@@ -393,7 +392,7 @@ export class WireEmitter implements Emitter {
 		// for everything else: use the parser cursor as boundary
 		// (the parser advances through confirmed content).
 		const fed_end = this.source.length;
-		for (const [, state] of this.text_state) {
+		for (const [id, state] of this.text_state) {
 			if (state.done) continue;
 
 			let end: number;
@@ -427,6 +426,15 @@ export class WireEmitter implements Emitter {
 				}
 			} else {
 				end = this.parser_cursor;
+				// the parser trims a run that ends in spaces or tabs, and a clear
+				// of a parent would drop its earlier runs with them, so they wait
+				if (state.target !== id) {
+					while (end > state.sent) {
+						const last = this.source.charCodeAt(end - 1);
+						if (last !== 0x20 && last !== 0x09) break;
+						end--;
+					}
+				}
 			}
 
 			if (end > state.sent) {

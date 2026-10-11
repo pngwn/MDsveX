@@ -124,6 +124,8 @@ A paragraph in a blockquote ends at a marked line that is blank or starts anothe
 <Badge /> new today   -> <p><Badge /> new today</p>
 ```
 
+A tag that stays literal text counts as text here: an open tag whose element never closes, as in `<Badge /> <b>new`, and a close tag that closes nothing, as in `<Badge /></b>`. A block level tag that never closes is literal text too, so it does not unwrap the paragraph. A close tag closes the last open element of its name and every element opened inside it, so `<Badge /><b><i></b>` leaves nothing open and gets no `<p>`.
+
 An image is text by default, so a paragraph of one image is `<p><img /></p>`. The `unwrap_images` option, off by default, makes an image count as a tag does here. A paragraph of only images and whitespace then has no paragraph node, and the images are children of whatever held it: the document, a block quote, a list item, a container directive or an HTML element.
 
 ```markdown

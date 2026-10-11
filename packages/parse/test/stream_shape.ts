@@ -360,3 +360,138 @@ export function random(seed: number): () => number {
 export function pick(rand: () => number, from: string[]): string {
 	return from[Math.floor(rand() * from.length)];
 }
+
+/** the tree a whole parse, a feed in chunks and the wire each build, by name */
+export function every_tree(source: string): [string, NodeBuffer][] {
+	const out: [string, NodeBuffer][] = [
+		['whole', parse_markdown_svelte(source).nodes],
+	];
+	for (const chunk of [1, 2, 3]) {
+		const tree = new TreeBuilder(source.length || 16);
+		const parser = new PFMParser(tree);
+		parser.init();
+		for (let i = 0; i < source.length; i += chunk) {
+			parser.feed(source.slice(i, i + chunk));
+		}
+		parser.finish();
+		out.push([`fed ${chunk}`, tree.get_buffer()]);
+	}
+	for (const chunk of [0, 1, 3]) {
+		const emitter = new WireEmitter();
+		const parser = new PFMParser(emitter);
+		const builder = new WireTreeBuilder();
+		if (chunk === 0) {
+			emitter.set_source(source);
+			parser.parse(source);
+		} else {
+			parser.init();
+			for (let i = 0; i < source.length; i += chunk) {
+				emitter.set_source(source.slice(0, i + chunk));
+				parser.feed(source.slice(i, i + chunk));
+				builder.apply(emitter.flush());
+			}
+			parser.finish();
+		}
+		builder.apply(emitter.flush());
+		out.push([
+			chunk === 0 ? 'wire' : `wire fed ${chunk}`,
+			builder.get_buffer(),
+		]);
+	}
+	return out;
+}
+
+/** text of a node, a builder with no source keeps the string */
+function text_of(nodes: NodeBuffer, index: number, source: string): string {
+	const kept = nodes._strings[index];
+	if (kept !== undefined) return kept;
+	return source.slice(nodes.value_start_at(index), nodes.value_end_at(index));
+}
+
+/** kind per line with text runs joined, the wire splits text where a feed does */
+export function joined_tree(nodes: NodeBuffer, source: string): string {
+	const rows: string[] = [];
+	const walk = (index: number, depth: number): void => {
+		const indent = '  '.repeat(depth);
+		let text: string | null = null;
+		for (const child of nodes.get_node(index).children) {
+			const kind = kind_to_string(nodes.kind_at(child));
+			if (kind === 'text') {
+				text = (text ?? '') + text_of(nodes, child, source);
+				continue;
+			}
+			if (text !== null) rows.push(indent + JSON.stringify(text));
+			text = null;
+			const tag = nodes.metadata_at(child)?.tag;
+			rows.push(indent + (tag === undefined ? kind : `${kind} ${tag}`));
+			walk(child, depth + 1);
+		}
+		if (text !== null) rows.push(indent + JSON.stringify(text));
+	};
+	walk(0, 0);
+	return rows.join('\n');
+}
+
+// inline content that a paragraph has to hold
+const INLINE = new Set([
+	'text',
+	'code_span',
+	'emphasis',
+	'strong_emphasis',
+	'strikethrough',
+	'superscript',
+	'subscript',
+	'link',
+]);
+
+/**
+ * what is wrong with a tree, text that repeats or is out of source order and
+ * inline content right under root, a block quote or a loose list item
+ */
+export function misplaced_text(nodes: NodeBuffer, source: string): string[] {
+	const out: string[] = [];
+	let text = '';
+	const walk = (index: number): void => {
+		const node = nodes.get_node(index);
+		if (node.kind === 'text') text += text_of(nodes, index, source);
+		let needs_paragraph = node.kind === 'root' || node.kind === 'block_quote';
+		if (node.kind === 'list_item') {
+			needs_paragraph = nodes.get_node(node.parent!).metadata.tight === false;
+		}
+		for (const child of node.children) {
+			const kind = kind_to_string(nodes.kind_at(child));
+			// the space after a line of only tags stays where it is
+			const blank =
+				kind === 'text' && text_of(nodes, child, source).trim() === '';
+			if (needs_paragraph && INLINE.has(kind) && !blank) {
+				out.push(`${kind} right under ${node.kind}`);
+			}
+			walk(child);
+		}
+	};
+	walk(0);
+	// every char of the text is in the source, in order and once
+	let at = 0;
+	for (let i = 0; i < text.length; i++) {
+		at = source.indexOf(text[i], at) + 1;
+		if (at === 0) {
+			out.push(`text is not the source in order: ${JSON.stringify(text)}`);
+			break;
+		}
+	}
+	return out;
+}
+
+/** the joined tree of a whole parse, after checking every other path builds the same sound tree */
+export function sound_tree(source: string): string {
+	let whole = '';
+	for (const [name, nodes] of every_tree(source)) {
+		expect(misplaced_text(nodes, source), name).toEqual([]);
+		const from = name.startsWith('wire') ? null : source;
+		expect(unsound(nodes, from), name).toEqual([]);
+		const tree = joined_tree(nodes, source);
+		if (name === 'whole') whole = tree;
+		else expect(tree, name).toBe(whole);
+	}
+	return whole;
+}

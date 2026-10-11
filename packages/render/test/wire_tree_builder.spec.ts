@@ -161,3 +161,79 @@ describe('WireTreeBuilder produces same HTML as TreeBuilder', () => {
 				'---\n'
 		));
 });
+
+describe('a tag left open at the start of a line', () => {
+	/** fed a char at a time, a cached renderer has to follow each repair */
+	function via_wire_cached(source: string): string {
+		const emitter = new WireEmitter();
+		const parser = new PFMParser(emitter);
+		const builder = new WireTreeBuilder();
+		const cached = new CursorHTMLRenderer();
+		parser.init();
+		for (let i = 0; i <= source.length; i++) {
+			emitter.set_source(source.slice(0, i + 1));
+			if (i < source.length) parser.feed(source[i]);
+			else parser.finish();
+			builder.apply(emitter.flush());
+			const fresh = new CursorHTMLRenderer({ cache: false });
+			fresh.update(builder.get_buffer(), '');
+			cached.update(builder.get_buffer(), '');
+			expect(cached.html, JSON.stringify(source.slice(0, i + 1))).toBe(
+				fresh.html
+			);
+		}
+		return cached.html;
+	}
+
+	const cases: [string, string, string][] = [
+		[
+			'is text in the paragraph of its line',
+			'<span>a b\n',
+			'<p>&lt;span&gt;a b</p>',
+		],
+		[
+			'keeps the text after an unclosed delimiter once',
+			'<span>*a b\n',
+			'<p>&lt;span&gt;*a b</p>',
+		],
+		[
+			'keeps the text after two delimiters and a bracket once',
+			'<span>**[a\n',
+			'<p>&lt;span&gt;**[a</p>',
+		],
+		[
+			'gives a later line of text its paragraph',
+			'<span>a b\n\nc\n',
+			'<p>&lt;span&gt;a b</p><p>c</p>',
+		],
+		[
+			'joins the paragraph a block level tag already had',
+			'<div>a b\n',
+			'<p>&lt;div&gt;a b</p>',
+		],
+		[
+			'takes a second unclosed tag into the same paragraph',
+			'<span><b>a\n',
+			'<p>&lt;span&gt;&lt;b&gt;a</p>',
+		],
+		[
+			'keeps the lines of a block quote in one paragraph',
+			'> <div>\n> [a] b\n\nc\n',
+			'<blockquote>\n<p>&lt;div&gt;\n[a] b</p>\n</blockquote><p>c</p>',
+		],
+		[
+			'leaves the blocks after it as they were',
+			'<span>\n\n# h\n\n- a\n- b\n\ntail\n',
+			'<p>&lt;span&gt;</p><h1>h</h1><ul>\n<li>a</li>\n<li>b</li>\n\n</ul><p>tail</p>',
+		],
+	];
+
+	for (const [name, source, html] of cases) {
+		it(name, () => {
+			expect(via_tree(source)).toBe(html);
+			expect(via_wire(source)).toBe(html);
+			expect(via_wire_incremental(source)).toBe(html);
+			expect(via_wire_cached(source)).toBe(html);
+		});
+	}
+});

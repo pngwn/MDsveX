@@ -33,5 +33,6 @@ root
     paragraph
       text "text"
     line_break
-    text "</Counter>"
+    paragraph
+      text "</Counter>"
   line_break

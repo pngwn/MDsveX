@@ -143,6 +143,16 @@ When a node is revoked:
 
 **Example:** The parser sees `_` and opens a pending emphasis node. Later, it determines the `_` is not closed, so it revokes the emphasis. The `_` character becomes literal text in the parent, and any children of the emphasis are moved up.
 
+**An html element with no close tag** is revoked with its open tag as the `delimiter`. When its parent is the root, a block quote or a list item, that parent holds blocks, so the text needs a paragraph and the steps above change:
+
+1. The `delimiter` and the inline nodes of its line share one paragraph. Those nodes are the inline siblings next to the element on either side (a revoked paragraph left them there) and the element's children up to its first block child. If that block child is a paragraph, it takes them all at its start. If not, the element's node becomes the paragraph.
+2. The element's other children move up to the parent, after that paragraph. A `line_break` counts as a block here.
+3. A run of inline children between two blocks was a paragraph the parser revoked because it sat in an element such as `<span>` or `<p>`. It gets a new paragraph, unless it holds only html elements, html comments, `{@...}` tags and breaks.
+
+`<span>a *b*` followed by a blank line and `c` ends as two paragraphs, `<span>a <strong>b</strong>` and `c`.
+
+Before the `R` of an html element the parser sends the `R` of every pending node inside it, so the element holds no pending node when it is repaired.
+
 ### K, Commit
 
 ```
@@ -159,7 +169,9 @@ Two kinds of paragraph are opened pending. A paragraph in a list item is pending
 ["X", id: int]
 ```
 
-Clears all children and text of a node. Remove child subtrees from the node map and empty the content array. Reserved for future use.
+Clears all children and text of a node. Remove child subtrees from the node map and empty the content array.
+
+Sent when text was emitted past where the node's content turned out to end, the right text follows in a `T`. Only a node whose content is its own text gets one (a code fence, a code span, an html comment, a `script` or `style` element), never a node with children.
 
 ## Document Tree
 
@@ -563,6 +575,7 @@ The `WireEmitter` uses the parser's cursor position (reported via `cursor()`) to
 The `WireEmitter.flush()` method does more than just return buffered opcodes, it also eagerly emits text for nodes that are still being streamed:
 
 - **For most nodes:** Text is emitted up to the parser cursor position. This is the boundary of confirmed content.
+- **For text inside a node with children:** Spaces and tabs at the end of the run wait for the next character or the end of the run. The parser trims a run that ends in them, and taking them back would need an `X` on the parent.
 - **For code fences:** Text is emitted up to the end of the fed source, except the last line is held back if it starts with backticks (potential closing fence).
 
 This means the client sees progressive text content even before nodes are closed:
