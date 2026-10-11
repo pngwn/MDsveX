@@ -193,6 +193,18 @@ describe("document options from a manifest", () => {
 		).toBe(true);
 	});
 
+	it("passes heading_ids on only when the manifest has it", () => {
+		expect("heading_ids" in document_options(m, "/app/a.svx").compile!).toBe(false);
+		expect(
+			"heading_ids" in
+				document_options({ ...m, heading_ids: false }, "/app/a.svx").compile!,
+		).toBe(false);
+		expect(
+			document_options({ ...m, heading_ids: true }, "/app/a.svx").compile!
+				.heading_ids,
+		).toBe(true);
+	});
+
 	it("resolves each virtual id from the document, the extra module winning", () => {
 		const { resolve } = document_options(m, "/app/src/blog/a.svx");
 		expect(resolve!("mdsvex:template/theme", "default")).toBe(
@@ -335,6 +347,40 @@ describe("mdsvex.config.json", () => {
 		writeFileSync(join(root, MANIFEST), manifest("/r"));
 		utimesSync(join(root, MANIFEST), new Date(), new Date(Date.now() + 5000));
 		expect(loader.options_for(doc).options.compile?.unwrap_images).toBeUndefined();
+	});
+
+	it("takes heading_ids, a manifest without the field when it is off", () => {
+		const root = tree({ "doc.svx": "# a" });
+		expect(from_json({ heading_ids: true }, root, ts).heading_ids).toBe(true);
+		expect("heading_ids" in from_json({ heading_ids: false }, root, ts)).toBe(false);
+		expect("heading_ids" in from_json({}, root, ts)).toBe(false);
+		expect(
+			"heading_ids" in from_json({ heading_ids: {} as never }, root, ts),
+		).toBe(false);
+	});
+
+	it("compiles a document with the heading_ids of its config", () => {
+		const root = tree({
+			"on/mdsvex.config.json": '{ "heading_ids": true }',
+			"on/doc.svx": "# a",
+			"off/mdsvex.config.json": "{}",
+			"off/doc.svx": "# a",
+		});
+		const loader = create_config_loader({ typescript: ts });
+		const on = loader.options_for(join(root, "on/doc.svx")).options;
+		const off = loader.options_for(join(root, "off/doc.svx")).options;
+		expect(on.compile?.heading_ids).toBe(true);
+		expect(off.compile?.heading_ids).toBeUndefined();
+	});
+
+	it("reads heading_ids from a manifest the plugin wrote", () => {
+		const root = tree({ [MANIFEST]: manifest("/r", { heading_ids: true }) });
+		const loader = create_config_loader();
+		const doc = join(root, "doc.svx");
+		expect(loader.options_for(doc).options.compile?.heading_ids).toBe(true);
+		writeFileSync(join(root, MANIFEST), manifest("/r"));
+		utimesSync(join(root, MANIFEST), new Date(), new Date(Date.now() + 5000));
+		expect(loader.options_for(doc).options.compile?.heading_ids).toBeUndefined();
 	});
 
 	it("scans nothing without typescript, so nothing is replaced", () => {

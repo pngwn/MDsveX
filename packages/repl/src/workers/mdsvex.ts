@@ -69,6 +69,8 @@ export interface ReplConfig {
 	component_mode?: ComponentMode;
 	highlight?: ReplHighlight | false;
 	unwrap_images?: boolean;
+	/** json holds no slug function, so only the default slug */
+	heading_ids?: boolean;
 }
 
 interface TemplateTarget {
@@ -89,6 +91,7 @@ export interface ResolvedConfig {
 	component_mode: ComponentMode;
 	highlight: ReplHighlight | false;
 	unwrap_images: boolean;
+	heading_ids: boolean;
 }
 
 /** template options follow the design doc ahead of core, which ignores them for now */
@@ -133,6 +136,7 @@ function empty_config(): ResolvedConfig {
 		component_mode: 'markdown',
 		highlight: {},
 		unwrap_images: false,
+		heading_ids: false,
 	};
 }
 
@@ -165,6 +169,11 @@ export function prepare(files: FileMap): Prepared {
 			if (typeof parsed.unwrap_images !== 'boolean')
 				throw new Error(`${CONFIG_FILE}: unwrap_images must be true or false`);
 			config.unwrap_images = parsed.unwrap_images;
+		}
+		if (parsed.heading_ids !== undefined) {
+			if (typeof parsed.heading_ids !== 'boolean')
+				throw new Error(`${CONFIG_FILE}: heading_ids must be true or false`);
+			config.heading_ids = parsed.heading_ids;
 		}
 		if (parsed.highlight !== undefined)
 			config.highlight = check_highlight(parsed.highlight);
@@ -200,6 +209,7 @@ export function prepare(files: FileMap): Prepared {
 		component_mode: config.component_mode,
 	};
 	if (config.unwrap_images) options.unwrap_images = true;
+	if (config.heading_ids) options.heading_ids = true;
 
 	if (config.templates.size > 0) {
 		options.templates = {};
