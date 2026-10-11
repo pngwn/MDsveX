@@ -8283,7 +8283,7 @@ export class PFMParser {
 					} else if (
 						code === LINEFEED ||
 						code !== code ||
-						(code === PIPE && this.in_table)
+						(code === PIPE && this.in_table && !this.inline_range_parse)
 					) {
 						// code_span_end continues the span, fails it at a blank line or eof, or unwinds it at a cell pipe
 						this.out.set_value_start(current_node, this.checkpoint_cursor);
@@ -8337,7 +8337,12 @@ export class PFMParser {
 
 				case StateKind.code_span_end: {
 					// in table cells, | breaks through code spans
-					if (this.in_table && (code === PIPE || code === LINEFEED)) {
+					// a header cell range holds no cell boundary, a pipe in it is escaped and stays in the span
+					if (
+						this.in_table &&
+						(code === PIPE || code === LINEFEED) &&
+						!this.inline_range_parse
+					) {
 						this.unwind_inline_for_table();
 						continue;
 					}

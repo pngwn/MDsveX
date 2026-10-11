@@ -237,7 +237,6 @@ describe('a close tag in a header cell', () => {
 	});
 });
 
-// an escaped pipe in a cell breaks the stream another way
 const CELL_PIECES = [
 	'<span>',
 	'</span>',
@@ -264,6 +263,8 @@ const CELL_PIECES = [
 	'~~',
 	'~',
 	'^',
+	'\\',
+	'\\|',
 	'|',
 	'|',
 ];
