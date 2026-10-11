@@ -3,6 +3,14 @@ import { describe, expect, test, vi } from 'vitest';
 import { PFMParser, parse_markdown_svelte } from '../src/main';
 import { TreeBuilder } from '../src/tree_builder';
 import type { NodeBuffer } from '../src/utils';
+import {
+	every_path,
+	every_tree,
+	fed_mismatch,
+	lines,
+	pick,
+	random,
+} from './stream_shape';
 
 type Shape = string | [string, ...Shape[]];
 
@@ -442,4 +450,137 @@ describe('paragraphs that start with a tag', () => {
 			expect(shape(parse_incremental(input, size), source)).toEqual(batch);
 		}
 	});
+});
+
+describe('a close tag line for an element around the one left open', () => {
+	const div = (...rows: string[]) =>
+		lines('root', '  html tag="div"', ...rows, '  line_break');
+
+	test('closes both and leaves no paragraph', () => {
+		expect(every_path('<div>\n<n>\n</div>\n')).toBe(
+			div('    line_break', '    html tag="n"', '      line_break')
+		);
+		expect(every_path('<span>\n<n>\n</span>\n')).toBe(
+			lines(
+				'root',
+				'  html tag="span"',
+				'    line_break',
+				'    html tag="n"',
+				'      line_break',
+				'  line_break'
+			)
+		);
+	});
+
+	test('after text, a list and a blank line in the inner element', () => {
+		expect(every_path('<div>\n<n>\nx\n</div>\n')).toBe(
+			div(
+				'    line_break',
+				'    html tag="n"',
+				'      line_break',
+				'      paragraph',
+				'        text "x"',
+				'      line_break'
+			)
+		);
+		expect(every_path('<div>\n<n>\n- a\n</div>\n')).toBe(
+			div(
+				'    line_break',
+				'    html tag="n"',
+				'      line_break',
+				'      list ordered=false start=0 tight=true',
+				'        list_item',
+				'          text "a"',
+				'      line_break'
+			)
+		);
+		expect(every_path('<div>\n<n>\n\n</div>\n')).toBe(
+			div(
+				'    line_break',
+				'    html tag="n"',
+				'      line_break',
+				'      line_break'
+			)
+		);
+	});
+
+	test('through two elements left open, and after an indent', () => {
+		expect(every_path('<div>\n<n>\n<m>\n  </div>\n')).toBe(
+			div(
+				'    line_break',
+				'    html tag="n"',
+				'      line_break',
+				'      html tag="m"',
+				'        line_break'
+			)
+		);
+	});
+
+	test('text after the close tag is a paragraph outside', () => {
+		expect(every_path('<div>\n<n>\n</div> x\n')).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    html tag="n"',
+				'      line_break',
+				'  paragraph',
+				'    text "x"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a close tag of no open element is still text', () => {
+		expect(every_path('<div>\n<n>\n</m>\n</n>\n</div>\n')).toBe(
+			div(
+				'    line_break',
+				'    html tag="n"',
+				'      line_break',
+				'      paragraph',
+				'        text "</m>"',
+				'      line_break',
+				'    line_break'
+			)
+		);
+	});
+
+	test('random nested elements hold no empty paragraph', () => {
+		const rand = random(978);
+		const rows = [
+			'<div>',
+			'<div>',
+			'<n>',
+			'<section>',
+			'<span>',
+			'</div>',
+			'</div>',
+			'</n>',
+			'</section>',
+			'</span>',
+			'x',
+			'- a',
+			'',
+			'  </div>',
+			'</div> y',
+			'# h',
+		];
+		for (let i = 0; i < 1500; i++) {
+			let source = '<div>\n';
+			const count = 1 + Math.floor(rand() * 6);
+			for (let k = 0; k < count; k++) source += `${pick(rand, rows)}\n`;
+			const label = JSON.stringify(source);
+			expect(fed_mismatch(source), label).toBe('');
+			for (const [name, nodes] of every_tree(source)) {
+				const walk = (index: number): void => {
+					const node = nodes.get_node(index);
+					if (node.kind === 'paragraph' && node.children.length === 0) {
+						expect.fail(`${label} ${name}: paragraph ${index} is empty`);
+					}
+					for (const child of node.children) walk(child);
+				};
+				walk(0);
+			}
+		}
+	}, 30_000);
 });

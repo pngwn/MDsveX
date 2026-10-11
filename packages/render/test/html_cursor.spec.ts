@@ -362,6 +362,19 @@ describe('a delimiter that never closes', () => {
 	}
 });
 
+describe('an element left open inside an element', () => {
+	const cases: [string, string][] = [
+		['<div>\n<n>\n</div>\n', '<div><n></n></div>'],
+		['<div>\n<n>\nx\n</div>\n', '<div><n><p>x</p></n></div>'],
+	];
+
+	for (const [input, expected] of cases) {
+		it(JSON.stringify(input), () => {
+			expect(render(input)).toBe(expected);
+		});
+	}
+});
+
 describe('a code span in a block quote', () => {
 	const cases: [string, string][] = [
 		[
