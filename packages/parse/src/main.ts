@@ -8302,8 +8302,13 @@ export class PFMParser {
 							continue;
 						}
 						default: {
-							// so does eof
-							if (code !== code) {
+							// so does eof, and a pipe that ends a table cell
+							if (
+								code !== code ||
+								(code === PIPE &&
+									this.in_table &&
+									!this.pipe_escaped(this.cursor))
+							) {
 								this.code_span_hint_revert(current_node);
 								continue;
 							}

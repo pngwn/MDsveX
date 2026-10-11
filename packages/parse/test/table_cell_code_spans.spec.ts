@@ -178,6 +178,39 @@ describe('a lone backtick in a padded two backtick span in a table cell', () => 
 	});
 });
 
+describe('a pipe in the hint of a code span in a table cell', () => {
+	test('ends the cell', () => {
+		both(
+			'`#!a|b c`',
+			['text "`"', 'text "#"', 'text "!a"'],
+			['text "b c"', 'text "`"']
+		);
+		both(
+			'``#!a|b c``',
+			['text "``"', 'text "#"', 'text "!a"'],
+			['text "b c"', 'text "``"']
+		);
+		both('`#!|`', ['text "`"', 'text "#"', 'text "!"'], ['text "`"']);
+		both(
+			'x `#!a|b` c',
+			['text "x "', 'text "`"', 'text "#"', 'text "!a"'],
+			['text "b"', 'text "`"', 'text " c"']
+		);
+	});
+
+	test('after a backslash that is itself escaped', () => {
+		both(
+			'`#!a\\\\|b c`',
+			['text "`"', 'text "#"', 'text "!a"', 'text "\\\\"'],
+			['text "b c"', 'text "`"']
+		);
+	});
+
+	test('an escaped one stays in the hint', () => {
+		both('`#!a\\|b c`|d', ['code_span info="a\\\\|b" "c"'], ['text "d"']);
+	});
+});
+
 /** the text of each code span, a tree built over the wire has no source to slice */
 function code_texts(nodes: NodeBuffer, source: string): string[] {
 	const out: string[] = [];
