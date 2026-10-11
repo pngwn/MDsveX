@@ -1,0 +1,47 @@
+{
+	"name": "@mdsvex/plugin-anchors",
+	"version": "0.0.1",
+	"description": "Heading anchors for mdsvex, a link on every heading that has an id",
+	"type": "module",
+	"scripts": {
+		"build": "run-s build:tsc build:vite build:copy-dts",
+		"build:tsc": "tsc",
+		"build:vite": "vite build --config vite.config.build.ts",
+		"build:copy-dts": "shx cp tsc/*.d.ts dist/",
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": false,
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "plugins/anchors"
+	},
+	"keywords": [
+		"mdsvex",
+		"mdsvex-plugin",
+		"markdown",
+		"headings",
+		"anchors"
+	],
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT",
+	"peerDependencies": {
+		"mdsvex": "^1.0.0-next.2"
+	},
+	"devDependencies": {
+		"mdsvex": "workspace:^",
+		"npm-run-all2": "^7.0.2",
+		"shx": "^0.3.4"
+	}
+}

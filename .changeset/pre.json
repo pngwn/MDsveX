@@ -24,7 +24,6 @@
     "@mdsvex/parse": "0.1.1",
     "@mdsvex/render": "0.1.0",
     "mdsvex-demo": "0.0.1",
-    "@mdsvex/plugin-autolink": "0.0.1",
     "mdsvex-kit3-fixture": "0.0.0",
     "@mdsvex/repl": "0.0.0"
   },

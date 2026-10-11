@@ -1,16 +1,15 @@
 {
 	"include": ["src/**/*"],
+
 	"compilerOptions": {
-		"declaration": false,
+		"rootDir": "src",
+		"declaration": true,
 		"target": "es2020",
 		"module": "esnext",
 		"moduleResolution": "bundler",
 		"forceConsistentCasingInFileNames": true,
 		"esModuleInterop": true,
 		"strict": true,
-		"noEmit": true,
-		"paths": {
-			"@mdsvex/parse": ["../../packages/parse/src/main.ts"]
-		}
+		"outDir": "tsc"
 	}
 }

@@ -300,6 +300,8 @@ Add it to the config.
 
 Here each heading inside `:::steps` starts a step. The plugin wraps the heading and what follows it in a `step` directive with the heading as its label, so the page renders the plugin's `steps` and `step` components.
 
+The first-party plugins are listed under [Plugins](docs#plugins-1).
+
 A plugin is an object:
 
 ```js
@@ -574,6 +576,8 @@ const anchors = {
 
 mdsvex({ heading_ids: true, parse_plugins: [anchors] });
 ```
+
+[`@mdsvex/plugin-anchors`](docs#anchors) is that plugin, with a choice of where the link goes.
 
 A [replacement](docs#custom-components) for a heading gets the `id` as a prop. `compile()` takes the option too. The ids belong to the compile, so `@mdsvex/parse` used on its own, for a streaming render, makes none. The editor reads the option from the manifest the plugin writes, or from `heading_ids: true` in an `mdsvex.config.json`, which can't hold a `slug` function.
 
@@ -1057,7 +1061,159 @@ A [parse plugin](docs#parse_plugins) can handle directives that have no componen
 
 ### Directives from a plugin
 
-A [plugin](docs#plugins) can bring directives of its own, with the components that render them. They sit below everything above: an export of the same name from a `components` module or a template replaces the plugin's component.
+A [plugin](docs#plugins) can bring directives of its own, with the components that render them. They sit below everything above: an export of the same name from a `components` module or a template replaces the plugin's component. [`@mdsvex/plugin-steps`](docs#steps) is one.
+
+## Plugins
+
+The first-party plugins are packages of their own, named `@mdsvex/plugin-*`. Each exports a function, and what it returns goes in the [`plugins`](docs#plugins) option:
+
+```js
+import { mdsvex } from 'mdsvex';
+import { anchors } from '@mdsvex/plugin-anchors';
+import { steps } from '@mdsvex/plugin-steps';
+
+mdsvex({ heading_ids: true, plugins: [steps(), anchors()] });
+```
+
+| package | what it adds |
+| --- | --- |
+| [`@mdsvex/plugin-steps`](docs#steps) | numbered steps, one for each heading inside `:::steps` |
+| [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
+
+### Steps
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-steps@next
+```
+
+```js
+import { steps } from '@mdsvex/plugin-steps';
+
+mdsvex({ plugins: [steps()] });
+```
+
+Each heading written directly inside `:::steps` starts a step. The heading is its title, and what follows, up to the next such heading, is its body:
+
+````svx
+:::steps
+
+## Install
+
+```sh
+pnpm add mdsvex
+```
+
+## Configure
+
+Add it to the config.
+
+:::
+````
+
+```html
+<ol class="steps" role="list">
+	<li class="step">
+		<div class="step-title"><h2>Install</h2></div>
+		<div class="step-body"><pre>...</pre></div>
+	</li>
+	<li class="step">
+		<div class="step-title"><h2>Configure</h2></div>
+		<div class="step-body"><p>Add it to the config.</p></div>
+	</li>
+</ol>
+```
+
+- **The first heading sets the depth.** If it is a `##`, every `##` written directly inside the container starts a step. A heading of any other depth is content of the step it is in.
+- **`(level=3)` names the depth instead**, as in `:::steps(level=3)`, whatever the first heading is.
+- **Only headings written directly inside count.** One in a block quote, a list or another directive starts no step.
+- **Content before the first heading is in no step.** It stays at the top of the list, where only list items belong, so put an introduction above the container or in its brackets: `:::steps[Set up a project]` renders that text in a `<p class="steps-label">` ahead of the list.
+- **Steps nest** when the outer container uses more colons, and the inner list counts from 1.
+- **A step can be written out** as `:::step[Its title]` inside the container, beside the ones headings make.
+
+The titles are still headings, so [`heading_ids`](docs#heading_ids) and [anchors](docs#anchors) reach them.
+
+The numbers are drawn by a small stylesheet that comes with the components, from a CSS counter. Its selectors have no specificity, so any rule of yours wins, and it reads these custom properties from `.steps`:
+
+| property | default |
+| --- | --- |
+| `--steps-marker-size` | `1.75rem` |
+| `--steps-gap` | `0.75rem` |
+| `--steps-marker-color` | `inherit` |
+| `--steps-marker-background` | the text colour at 12% |
+| `--steps-line` | the text colour at 20% |
+
+`steps({ css: false })` leaves the stylesheet out and keeps the markup, which is then a plain numbered list. Write your own from there, or start from a copy of `@mdsvex/plugin-steps/steps.css`.
+
+To change the markup, export your own `steps` or `step` from a [directives module](docs#declaring-directives). It replaces the plugin's component and gets the same props, `label` (the title, or the bracket text of the container) and `children`:
+
+```svelte
+<!-- src/lib/Step.svelte -->
+<script>
+	let { label, children } = $props();
+</script>
+
+<li class="step">
+	<header>{@render label?.()}</header>
+	{@render children?.()}
+</li>
+```
+
+```js
+// src/lib/directives.js
+export { default as step } from './Step.svelte';
+```
+
+The plugin's own components can be imported from `@mdsvex/plugin-steps/Steps.svelte` and `@mdsvex/plugin-steps/Step.svelte`, to wrap one in yours.
+
+### Anchors
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-anchors@next
+```
+
+```js
+import { anchors } from '@mdsvex/plugin-anchors';
+
+mdsvex({ heading_ids: true, plugins: [anchors()] });
+```
+
+Puts a link to itself on every heading that has an id:
+
+```html
+<h2 id="getting-started"><a href="#getting-started">Getting started</a></h2>
+```
+
+**It needs [`heading_ids`](docs#heading_ids).** The plugin makes no ids of its own. It links the id each heading has once `heading_ids` has run, so with the option off no heading has one and nothing is linked. A heading left without an id, such as `## {title}`, gets no link either. An id a [parse plugin](docs#parse_plugins) set is linked like any other.
+
+```ts
+anchors({
+	position: 'wrap' | 'prepend' | 'append' = 'wrap',
+	attrs: Record<string, string>
+});
+```
+
+- **`'wrap'`** puts the content of the heading inside the link. A heading that already holds a link is left as it is, since a link can't hold another.
+- **`'prepend'`** and **`'append'`** add an empty link before or after the content, with `aria-hidden="true"` and `tabindex="-1"`, for a stylesheet to draw:
+
+```js
+anchors({ position: 'prepend', attrs: { class: 'anchor' } });
+```
+
+```html
+<h2 id="getting-started">
+	<a href="#getting-started" aria-hidden="true" tabindex="-1" class="anchor"></a>Getting started
+</h2>
+```
+
+```css
+.anchor::before {
+	content: '#';
+}
+```
+
+- **`attrs`** are more attributes for the link. One named as a default replaces it.
+
+`compile()` takes both plugins the same way, through its `plugins` option.
 
 ## Syntax highlighting
 
@@ -1757,6 +1913,7 @@ To also convert CommonMark documents to mdsvex's markdown, use `migrate`, which 
 | `{title}` in a document | `{metadata.title}` |
 | `remarkPlugins`, `rehypePlugins` | [`parse_plugins`](docs#parse_plugins) |
 | `rehype-slug` | [`heading_ids: true`](docs#heading_ids) |
+| `rehype-autolink-headings` | [`@mdsvex/plugin-anchors`](docs#anchors) |
 | `mdsvex-relative-images` | built in, see [`import_images`](docs#import_images) |
 | `![alt](./a.png)` served from the page's url | imported from beside the document, write `/a.png` for a file in `static`, or set [`import_images: false`](docs#import_images) |
 

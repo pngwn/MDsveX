@@ -33,6 +33,7 @@ const nav = [
 			["select_template", "docs#select_template", true],
 			["components", "docs#components", true],
 			["component_mode", "docs#component_mode", true],
+			["plugins", "docs#plugins", true],
 			["parse_plugins", "docs#parse_plugins", true],
 			["highlight", "docs#highlight", true],
 			["math", "docs#math", true],
@@ -79,6 +80,14 @@ const nav = [
 			["the three forms", "docs#the-three-forms", false],
 			["directive props", "docs#directive-props", false],
 			["unknown directives", "docs#unknown-directives", false],
+		],
+	],
+	[
+		"Plugins",
+		"docs#plugins-1",
+		[
+			["steps", "docs#steps", false],
+			["anchors", "docs#anchors", false],
 		],
 	],
 	[

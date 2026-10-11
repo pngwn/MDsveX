@@ -44,3 +44,7 @@ packages/bench/perf/reports/
 # components plugin test apps
 packages/mdsvex/test/.tmp-*/
 language-tools/*/test/.tmp-*/
+
+# plugin test apps and what svelte-package leaves behind
+plugins/*/test/.tmp-*/
+plugins/*/.svelte-kit/

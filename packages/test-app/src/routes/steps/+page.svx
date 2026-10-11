@@ -1,0 +1,33 @@
+# Steps
+
+::::steps[Set up a project]
+
+## Install
+
+Add the packages:
+
+```sh
+pnpm add -D mdsvex @mdsvex/plugin-steps
+```
+
+## Configure
+
+Call the plugin in `vite.config.js`.
+
+### A deeper heading
+
+It stays in the body of its step.
+
+## Write
+
+:::steps
+
+#### Open a container
+
+Nested steps count on their own.
+
+#### Add headings
+
+:::
+
+::::

@@ -2,8 +2,23 @@ import { describe, it, expect } from 'vitest';
 import { PFMParser, PluginDispatcher, WireEmitter } from '@mdsvex/parse';
 import type { ParsePlugin } from '@mdsvex/parse';
 import { WireTreeBuilder } from '@mdsvex/parse/wire-tree-builder';
-import { autolink } from '../../../plugins/autolink/src/index';
 import { CursorHTMLRenderer } from '../src/html_cursor';
+
+/** a fused plugin that wraps at the open and writes attrs at the close */
+function autolink(): ParsePlugin {
+	return {
+		heading: {
+			parse(node) {
+				const link = node.wrap_inner('link');
+				return () => {
+					const slug = node.text_content.toLowerCase().replace(/\W+/g, '-');
+					node.attrs.id = slug;
+					link.attrs.href = `#${slug}`;
+				};
+			},
+		},
+	};
+}
 
 /**
  * the preview html after each char over the wire, keyed by what was fed,
@@ -53,7 +68,7 @@ describe('block quote preview while streaming', () => {
 		);
 	});
 
-	it('shows it under a heading the autolink plugin wrapped', () => {
+	it('shows it under a heading a plugin wrapped in a link', () => {
 		const html = html_steps('> # Foo\n> bar\n> baz\n', [autolink()]);
 		expect(html.get('> # Foo\n> bar')).toBe(
 			'<blockquote>\n<h1 id="foo"><a href="#foo">Foo</a></h1><p>bar</p>\n</blockquote>'
