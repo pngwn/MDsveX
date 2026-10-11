@@ -1,4 +1,4 @@
-import type { Emitter } from './opcodes';
+import type { Emitter, IdSource } from './opcodes';
 import {
 	NodeBuffer,
 	NodeField,
@@ -18,10 +18,10 @@ const NO_WANTS = new Uint8Array(64);
  * this is the backward-compatibility layer: the opcode stream is the
  * primary output, but existing tests and consumers expect a NodeBuffer.
  *
- * ids are dense so each id is its own buffer index, an id that misses the next
- * free slot, as after a revoke pushes a repair node, switches to an id map for
- * the rest of the document, plugins always use the map since they push
- * synthetic nodes
+ * ids are dense so each id is its own buffer index, when a plugin or a repair
+ * pushes a node the parser has no id for, the parser skips that slot and ids
+ * stay indices, with another source of opcodes the next id misses its slot
+ * and an id map takes over for the rest of the document
  */
 export class TreeBuilder implements Emitter {
 	private nodes: NodeBuffer;
@@ -39,6 +39,8 @@ export class TreeBuilder implements Emitter {
 	/** optional plugin dispatcher. null when no plugins registered. */
 	private dispatcher: PluginDispatcher | null;
 	private wants: Uint8Array;
+	/** the parser emitting here, null for another source of opcodes */
+	private ids: IdSource | null = null;
 
 	constructor(capacity: number, dispatcher?: PluginDispatcher) {
 		this.nodes = new NodeBuffer(capacity);
@@ -68,6 +70,21 @@ export class TreeBuilder implements Emitter {
 			this.revoked = null;
 			this.revoked_map = null;
 			this.revoked_mapped = 0;
+		}
+	}
+
+	follow(ids: IdSource): void {
+		this.ids = ids;
+	}
+
+	/**
+	 * nodes were pushed that the parser has no id for, it skips their slots so
+	 * the next id is the next slot, once the map is in use ids need not match
+	 */
+	private pushed(): void {
+		const ids = this.ids;
+		if (ids !== null && this.id_to_index === null) {
+			ids.skip_ids(this, this.nodes._size);
 		}
 	}
 
@@ -148,6 +165,7 @@ export class TreeBuilder implements Emitter {
 				const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
 				dispatcher.dispatch_open(idx, kind, nodes);
 				this.wants = dispatcher.open_wants;
+				if (nodes._size !== idx + 1) this.pushed();
 				return;
 			}
 			// any other child of a wrapped parent goes to its innermost open wrapper
@@ -211,9 +229,11 @@ export class TreeBuilder implements Emitter {
 		// fire close callbacks before committing, a quiet dispatcher has none
 		const dispatcher = this.dispatcher;
 		if (dispatcher !== null && !dispatcher.quiet()) {
+			const size = nodes._size;
 			dispatcher.dispatch_close(idx, nodes);
 			// a callback may have made the first link, the close dropped the last
 			this.wants = dispatcher.open_wants;
+			if (nodes._size !== size) this.pushed();
 		}
 
 		// pending paragraphs inside list_items are tight-list speculation
@@ -348,9 +368,12 @@ export class TreeBuilder implements Emitter {
 	private named(idx: number, name: unknown): void {
 		const dispatcher = this.dispatcher!;
 		if (!dispatcher.binds) return;
-		dispatcher.dispatch_name(idx, name, this.nodes);
+		const nodes = this.nodes;
+		const size = nodes._size;
+		dispatcher.dispatch_name(idx, name, nodes);
 		// a scope opened, or the parse handler of the directive made a link
 		this.wants = dispatcher.open_wants;
+		if (nodes._size !== size) this.pushed();
 	}
 
 	set_value_start(id: number, pos: number): void {
@@ -367,6 +390,7 @@ export class TreeBuilder implements Emitter {
 		const idx = this.index_of(id);
 		if (idx === undefined) return;
 		const nodes = this.nodes;
+		const size = nodes._size;
 
 		// plugin revoke: undo mutations before handle_repair
 		if (this.dispatcher !== null) {
@@ -376,11 +400,14 @@ export class TreeBuilder implements Emitter {
 			const kind = nodes.kind_at(idx);
 			nodes.handle_repair(idx, source_text, text_start);
 			if (nodes.kind_at(idx) !== kind) this.dispatcher.log_kind(idx, kind);
+			// a block repair pushes the text of the open tag
+			if (nodes._size !== size) this.pushed();
 			return;
 		}
 
 		const kind = nodes.kind_at(idx);
 		nodes.handle_repair(idx, source_text, text_start);
+		if (nodes._size !== size) this.pushed();
 		// close and text act on the kind at open, callers that omit it read it here
 		if (nodes.kind_at(idx) !== kind) {
 			const revoked = this.revoked;

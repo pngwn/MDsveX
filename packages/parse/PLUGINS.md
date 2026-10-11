@@ -468,6 +468,10 @@ For nodes with handlers, the log accumulates as the handler runs. The setters on
 
 Commit is the inverse of revoke: when a node is committed (its close opcode is processed and no revoke followed), the undo log is simply discarded. The mutations become permanent, and the memory is freed.
 
+### Node ids and plugin nodes
+
+The parser numbers its nodes densely and the batch builder stores each one in the slot of its id, which is what keeps it from needing an id table. A node a plugin adds takes the next slot. The builder then tells the parser to skip that id (`skip_ids`), so the next parser node still lands on its own slot and a plugin that adds nodes does not slow down the nodes after them. A builder gets its parser from `new PFMParser(builder)` or `parser.bind(builder)`. With an emitter of your own in between the builder has no parser to tell, and it falls back to an id table from the first added node on, which builds the same tree more slowly.
+
 ## Guarantees
 
 **Type changes preserve identity.** Changing a node's type doesn't affect opcode routing. Close and revoke opcodes continue to target the correct node by ID.
