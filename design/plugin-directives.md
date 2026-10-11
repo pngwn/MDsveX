@@ -139,8 +139,8 @@ A bundle can also carry `parse`, an ordinary `ParsePlugin` for document-wide han
 |---|---|---|
 | `module` and the keys of `directives` | a directive `ComponentSource` | ahead of the `directives` option, so the option wins a name |
 | `components` | an element `ComponentSource` | ahead of the `components` option |
-| `parse` | a global parse plugin | ahead of `parse_plugins`, so those run last |
-| `directives` itself | a table of bound handlers (`directive_handlers` in the parse package) | in bundle order |
+| `parse` | a global parse plugin, under the bundle's `name` | ahead of `parse_plugins`, so those run last |
+| `directives` itself | a table of bound handlers with the bundle's `name` (`directive_handlers` in the parse package) | in bundle order |
 
 - **Precedence.** Bundle sources sit below the `components` modules, which sit below template directives. A user's own `steps` export replaces the plugin's component. Among bundles a later one wins a name, its handlers along with its component.
 - **Nothing is scanned.** The plugin author names the directives, so the names come from the keys.
@@ -172,6 +172,16 @@ interface DirectiveContext {
   index: number;
   /** an empty object, fresh for each directive in the document */
   state: Record<string, any>;
+
+  // what every handler has, global or bound
+  /** the path of the document, the id without its query in the Vite plugin */
+  readonly filename: string | undefined;
+  /** the parsed frontmatter, read when first asked for */
+  readonly frontmatter: Record<string, unknown> | undefined;
+  /** a warning of the compile, at the node when given */
+  warn(code: string, message: string, node?: NodeView): void;
+  /** what the plugin hands back, `compile()` returns it as `data[plugin name]` */
+  readonly data: Record<string, any>;
 }
 ```
 
@@ -183,6 +193,7 @@ At the parse level they are registered apart from plugins, as `directive_handler
 - **The label of a container is inside it.** Its `directive_label` is a child and what the label holds are descendants.
 - **`index`** tells a handler whether this is its first call (`index === 0`), and gives a running number for step numbers or for marking the first tab selected. `children.heading` and `descendants.heading` of one entry count apart.
 - **`state`** holds what the handler needs between calls, such as the wrapper it opened last. It replaces closures and `WeakMap`s. All handlers of an entry share it, the directive's own `parse` included.
+- **`filename`, `frontmatter`, `warn` and `data`** are the document half of the context, the same for a global handler (`packages/parse/PLUGINS.md`, The Context). `data` is one object per plugin for each document, shared by a plugin's `parse` and its bound handlers, and `compile()` returns it under the plugin's `name`. A warning and a write to a key of `data` are logged like `state` (§7.3), so a revoke takes them back. How `data` reaches the page is Q12.
 - **Nesting.** A `:::steps` inside a `:::steps` gets its own scope, with fresh `state` and its own `index`.
 - **Order.** For one node the innermost open directive goes first: its `children` handler, then its `descendants` handler, then the `descendants` handlers of each directive further out. Global plugins run after all of them, so a heading-ids plugin still gives a heading inside `:::steps` its id and sees the wrapper the bound handler made. Close callbacks fire in the same order.
 - **The directive itself.** `parse(directive, ctx)` runs once for each directive of the name, in any of the three forms, and the function it returns runs when the directive closes, ahead of the other close callbacks of that node. It runs when the name arrives, which is after the node's open, so global `directive_*` open handlers have already run (without a name to read) and `node.parent` is the parent in the tree. A block directive has its args by then (§7.2). An inline directive gets them at its closing bracket, so its `parse` reads them in the close callback.
@@ -443,9 +454,11 @@ A node can be revoked after its handler ran. Everything that handler did has to 
 | `wrap_from` | the wrapper is removed, and any siblings already inside return to the original parent |
 | `wrapper.close()` | the wrapper reopens and takes back every sibling that arrived after it closed |
 | wrote `ctx.state` | the previous value comes back |
+| wrote a key of `ctx.data` | the previous value comes back |
+| called `ctx.warn` | the warning is dropped |
 | consumed an `index` | the count goes back by one |
 
-- **`state` is a logged proxy,** like `attrs`. It is shallow: replace a value to change it, and don't mutate an object held in it.
+- **`state` is a logged proxy,** like `attrs`. It is shallow: replace a value to change it, and don't mutate an object held in it. `data` is logged by the same proxy, with the same limit.
 - **Revokes do not come in reverse order.** A tight list revokes its paragraphs first to last. Putting each write's prior value back in that order would resurrect a value a revoked node wrote. So the writes of one key form a chain: undoing the last one restores what it replaced, and undoing an earlier one hands what it replaced to the write after it. Each key ends with what its last surviving write put there. A write made while nothing records (a close callback of a committed node) joins the chain too and is never undone.
 - **`index` belongs to the dispatcher,** which counts runs per handler and scope and gives one back on a revoke. Handlers that ran since keep the index they were given.
 - **When the rollback helps.** A link with no destination, a delimiter cut off by a table cell, a code span that never closes, an unclosed inline directive and the paragraphs of a tight list are revoked while their container is open, and later handlers and the directive's close callback see the corrected state. So is an emphasis delimiter that never closes, the parser revokes it when its paragraph ends, as it does at the root. An html tag that never closes is not: inside a container directive the parser revokes it only after the outermost container has closed. The state is rolled back then, but the directive's close callback has already read it, so a count it wrote to an arg can include that node. Fixing this needs the parser to revoke the tag at the paragraph too.
@@ -499,6 +512,8 @@ A bound handler may change only nodes inside its own directive.
 - **Q9. Enforcing the inside-only rule.** Document it only, or check in development that a bound handler's writes land inside its directive?
 - **Q10. The bundle option's name.** `plugins` at the mdsvex level, although the parse package's `ParseOptions.plugins` means something else, or another name? Built as `plugins`, not ruled on. The parse-level option for bound handlers is `directive_handlers`.
 - **Q11. Late revokes inside a container.** An unclosed emphasis or html tag inside a container directive is revoked after the container closed, so a directive's close callback can count a node that then goes (§7.3). Move the revoke to the paragraph end in the parser?
+- **Q12. How `ctx.data` reaches the page.** Built: `compile()` returns it as `data`, and the Vite plugin has it for each document. Not built: any way for a page or a template to read it. The options are a named export of the compiled module beside `metadata`, keys merged into `metadata`, or nothing more. Recommended: a named export, and the same object as one prop of a template. Merging into `metadata` lets a plugin collide with a frontmatter key and makes `?metadata` disagree with the document unless Q13 is yes.
+- **Q13. Plugin data in `?metadata` imports.** They read the frontmatter and never parse. Giving them plugin data means a parse with plugins for every such import, and a new module for the importers on every edit of the body instead of only on an edit of the frontmatter. Recommended: leave `?metadata` as it is and add a separate query that parses without rendering.
 
 Answered by reading the code and by the prototype (2026-10-10):
 
