@@ -3,7 +3,7 @@ root
     list_item
       text "This line spans"
       soft_break
-      text " more than one line and is lazy"
+      text "more than one line and is lazy"
     list_item
       text "Similar to this line"
   line_break
