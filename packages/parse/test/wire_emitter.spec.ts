@@ -539,6 +539,89 @@ describe('directive args over the wire', () => {
 	});
 });
 
+describe('block directives without brackets over the wire', () => {
+	/** opens by kind name and attrs by key, in order */
+	const summary = (ops: unknown[][]) => {
+		const schema = first_op(ops, WireOp.Schema)![1] as string[];
+		return ops
+			.filter((op) => op[0] === WireOp.Open || op[0] === WireOp.Attr)
+			.map((op) =>
+				op[0] === WireOp.Open
+					? `open ${schema[op[2] as number]}`
+					: `attr ${op[2]}=${JSON.stringify(op[3])}`
+			);
+	};
+
+	it('a bare leaf is an open with its name and no text', () => {
+		const ops = parse_wire('::toc\n');
+		expect(summary(ops)).toEqual([
+			'open root',
+			'open directive_leaf',
+			'attr name="toc"',
+		]);
+		expect(ops_of(ops, WireOp.Text)).toEqual([]);
+	});
+
+	it('a bare container carries its args, the body follows', () => {
+		const ops = parse_wire(':::note(kind=warn, title="a b")\nbody\n:::\n');
+		expect(summary(ops)).toEqual([
+			'open root',
+			'open directive_container',
+			'attr args={"kind":"warn","title":"a b"}',
+			'attr name="note"',
+			'open paragraph',
+			'open line_break',
+		]);
+		const box = ops_of(ops, WireOp.Open)[1];
+		expect(ops_of(ops, WireOp.Close).map((op) => op[1])).toContain(box[1]);
+	});
+
+	it('a near miss keeps its line as text', () => {
+		for (const line of [
+			'::name some text',
+			'::name:',
+			':::name (k=v)',
+			'::name(k)',
+		]) {
+			const ops = parse_wire(line + '\n');
+			expect(summary(ops), line).toEqual([
+				'open root',
+				'open paragraph',
+				'open line_break',
+			]);
+			const para = ops_of(ops, WireOp.Open)[1];
+			expect(text_for(ops, para[1] as number), line).toBe(line);
+		}
+	});
+
+	const cases = [
+		'::toc\n',
+		'::toc',
+		'::toc(a=1, b="two words")  \nafter\n',
+		':::note\nbody\n:::\nafter\n',
+		':::note(kind=warn)\n:::inner\nx\n:::\n::leaf\n:::\n',
+		'> :::note\n> body\n> :::\n',
+		'- ::toc\n- :::note\n  x\n  :::\n',
+		'{#if a}\n::toc\n:::note\nx\n:::\n{/if}\n',
+		'::before is a pseudo-element\n',
+		'::name(k=v) x\n',
+	];
+	for (const input of cases) {
+		for (const size of [1, 2, 3]) {
+			it(`${JSON.stringify(input)} in chunks of ${size} sends the batch opens and attrs`, () => {
+				const fed = parse_wire_incremental(input, size).flat();
+				expect(summary(fed)).toEqual(summary(parse_wire(input)));
+				const text = (ops: unknown[][]) =>
+					ops
+						.filter((op) => op[0] === WireOp.Text)
+						.map((op) => op[2])
+						.join('');
+				expect(text(fed)).toBe(text(parse_wire(input)));
+			});
+		}
+	}
+});
+
 describe('unwrap_images over the wire', () => {
 	// no flag makes the parser as every other test here does
 	const run = (source: string, unwrap_images?: boolean, chunk_size = 0) => {

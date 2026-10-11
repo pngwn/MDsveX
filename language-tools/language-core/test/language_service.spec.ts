@@ -131,6 +131,23 @@ describe("with a plugin manifest", () => {
 				"{title}",
 				"",
 			].join("\n"),
+			"src/bare.svx": [
+				"---",
+				"title: x",
+				"template: docs",
+				"---",
+				"",
+				":::Callout(kind=warning)",
+				"body",
+				":::",
+				"",
+				":::Callout(kind=info)",
+				"fine",
+				":::",
+				"",
+				"::before is text",
+				"",
+			].join("\n"),
 		});
 		p.write("node_modules/.mdsvex/manifest.json", manifest(p.root));
 	});
@@ -150,6 +167,15 @@ describe("with a plugin manifest", () => {
 			// frontmatter is metadata, as compile makes it
 			["title", "Cannot find name 'title'."],
 		]);
+	});
+
+	it("checks and hovers a directive written without brackets", () => {
+		const doc = "src/bare.svx";
+		expect(p.diagnostics(doc).map((d) => [d.text, d.message])).toEqual([
+			["kind", `Type '"warning"' is not assignable to type '"info" | "warn"'.`],
+		]);
+		expect(p.hover(doc, "Callout(", 1)).toContain("const Callout: Component<");
+		expect(p.hover(doc, "kind=info")).toBe('(property) kind: "info" | "warn"');
 	});
 
 	it("hovers the replacement of a markdown element, typed element and directive", () => {

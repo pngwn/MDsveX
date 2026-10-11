@@ -283,7 +283,7 @@ mdsvex({ plugins: [steps()] });
 ```
 
 ````svx
-:::steps[]
+:::steps
 
 ## Install
 
@@ -297,7 +297,7 @@ Add it to the config.
 :::
 ````
 
-Here each heading inside `:::steps[]` starts a step. The plugin wraps the heading and what follows it in a `step` directive with the heading as its label, so the page renders the plugin's `steps` and `step` components.
+Here each heading inside `:::steps` starts a step. The plugin wraps the heading and what follows it in a `step` directive with the heading as its label, so the page renders the plugin's `steps` and `step` components.
 
 A plugin is an object:
 
@@ -370,7 +370,7 @@ Things to know:
 - **Only containers have children.** The bracket text of a leaf or inline directive is not passed to `children` or `descendants` handlers. Their own `parse` still runs, though an inline directive gets its args after it, so read them in the function `parse` returns.
 - **Your own export wins.** A `directives` export of the same name from a [`components` module](docs#declaring-directives) or a template replaces the plugin's component. The plugin's handlers still run, so your `step` gets the same `label` and `children`.
 - **A later plugin wins a name.** When two plugins have an entry for the same directive, the later one's component and handlers are used.
-- **Other plugins still see the nodes.** A heading inside `:::steps[]` reaches the `heading` handlers of `parse_plugins` too, after the bound handler ran. A plugin's `parse` runs ahead of `parse_plugins`.
+- **Other plugins still see the nodes.** A heading inside `:::steps` reaches the `heading` handlers of `parse_plugins` too, after the bound handler ran. A plugin's `parse` runs ahead of `parse_plugins`.
 
 `compile()` takes `plugins` as well. It writes `module` as the import specifier exactly as given.
 
@@ -965,17 +965,21 @@ A template's directives come before those of the `components` modules, in the sa
 | form | example | props |
 | --- | --- | --- |
 | inline | `:abbr[HTML](title=HyperText)` | args, and the text in brackets as `children` |
-| leaf | `::youtube[A talk](id=dQw4w9WgXcQ)` | args, and the text in brackets as `label` |
-| container | `:::Callout[Heads up](kind=warn)` ... `:::` | args, the text in brackets as `label` and the body as `children` |
+| leaf | `::youtube[A talk](id=dQw4w9WgXcQ)`, `::toc` | args, and the text in brackets as `label` |
+| container | `:::Callout[Heads up](kind=warn)` ... `:::`, `:::note` ... `:::` | args, the text in brackets as `label` and the body as `children` |
 
-The brackets are required, and can be empty: `::toc[]`. A leaf or container takes a line of its own, and a container ends at a line of colons. Containers nest when the outer one uses more colons. The bracket text can hold emphasis, strong, code and other directives, but links and images in it stay plain text.
+A leaf or container takes a line of its own, and a container ends at a line of colons. Its brackets are optional: `::toc` is the same as `::toc[]`, and args can follow the name directly, as in `::toc(depth=2)`. Nothing else can follow on the line, so `::toc is here` is a paragraph. A line that is only `::word` or `:::word` is a directive and needs a component, write `\::word` to keep it as text.
+
+An inline directive always needs its brackets, which can be empty: `:icon[]`. Without them a `:tada:` or `std::vector` in a sentence would be a directive.
+
+Containers nest when the outer one uses more colons. The bracket text can hold emphasis, strong, code and other directives, but links and images in it stay plain text.
 
 A name starts with a letter, then letters, digits, `_` or `-`. A name that isn't a JavaScript identifier, such as `info-box`, matches a string export: `export { default as 'info-box' } from './InfoBox.svelte'`.
 
 ### Directive props
 
 - Args in parentheses become string props: `(kind=warn, title="A title")` gives `kind="warn"` and `title="A title"`. Values are never Svelte expressions.
-- `label` is a snippet of the bracket text of a leaf or container. Its inline markdown is rendered, and empty brackets pass no `label`.
+- `label` is a snippet of the bracket text of a leaf or container. Its inline markdown is rendered, and empty or missing brackets pass no `label`.
 - `children` is a snippet of an inline directive's bracket text, or of a container's body.
 
 ```svelte

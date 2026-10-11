@@ -75,6 +75,30 @@ describe('line ending normalization', () => {
 				.filter((n) => n.kind === 'paragraph');
 			expect(paragraphs.length).toBe(2);
 		});
+
+		test('block directives without brackets read the same with CRLF and bare CR line ends', () => {
+			const lf =
+				'::toc\n:::note(k=v)\nbody\n:::\n::toc  \n::name some text\n> :::q\n> x\n> :::\n';
+			const want = print_ast(parse_markdown_svelte(lf).nodes, lf);
+			expect(want.match(/directive_leaf/g)!.length).toBe(2);
+			expect(want.match(/directive_container/g)!.length).toBe(2);
+			for (const eol of ['\r\n', '\r']) {
+				const r = parse_markdown_svelte(lf.replace(/\n/g, eol));
+				expect(r.source).toBe(lf);
+				expect(print_ast(r.nodes, r.source), JSON.stringify(eol)).toBe(want);
+			}
+			for (const input of [
+				'::toc\r\n',
+				'::toc\r',
+				':::note\r\n',
+				':::note\r',
+			]) {
+				const r = parse_markdown_svelte(input);
+				expect(print_ast(r.nodes, r.source), JSON.stringify(input)).toMatch(
+					/^root\n {2}directive_(leaf|container) name="(toc|note)"$/
+				);
+			}
+		});
 	});
 
 	describe('streaming mode', () => {
@@ -145,6 +169,40 @@ describe('line ending normalization', () => {
 					want
 				);
 			}
+		});
+
+		test('a bare block directive split around a \\r\\n matches the LF parse', () => {
+			const lf =
+				'::toc\n:::note(k=v)\nbody\n:::\n::toc \n::name some text\n::name:\n- ::toc\n';
+			const want = print_ast(parse_markdown_svelte(lf).nodes, lf);
+			for (const eol of ['\r\n', '\r']) {
+				const input = lf.replace(/\n/g, eol);
+				for (const size of [1, 2, 3]) {
+					const tree = new TreeBuilder(128);
+					const p = new PFMParser(tree);
+					p.init();
+					for (let i = 0; i < input.length; i += size) {
+						p.feed(input.slice(i, i + size));
+					}
+					p.finish();
+					expect(
+						print_ast(tree.get_buffer(), lf),
+						`${JSON.stringify(eol)} chunks of ${size}`
+					).toBe(want);
+				}
+			}
+		});
+
+		test('a bare opener waits for the \\n that may follow a \\r', () => {
+			const tree = new TreeBuilder(128);
+			const p = new PFMParser(tree);
+			p.init();
+			p.feed('::toc\r');
+			p.feed('\nafter');
+			p.finish();
+			expect(print_ast(tree.get_buffer(), '::toc\nafter')).toBe(
+				'root\n  directive_leaf name="toc"\n  paragraph\n    text "after"'
+			);
 		});
 
 		test('empty feed() chunks do not disturb pending_cr state', () => {

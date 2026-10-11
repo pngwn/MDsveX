@@ -564,6 +564,177 @@ describe('directive incremental behavior', () => {
 		}
 	});
 
+	describe('block directives without brackets', () => {
+		const open_kinds = (rec: OpRecorder) =>
+			rec.ops.filter((o) => o.op === 'open').map((o) => (o as any).kind);
+
+		it('a bare leaf stalls through its line and opens at the line end', () => {
+			const rec = new OpRecorder();
+			const p = new PFMParser(rec);
+			p.init();
+			for (const chunk of [':', ':', 'to', 'c', ' ', '\t']) {
+				p.feed(chunk);
+				expect(open_kinds(rec), JSON.stringify(chunk)).toEqual(['root']);
+			}
+			p.feed('\n');
+			const leaf = opens_of(rec, 'directive_leaf')[0];
+			expect(leaf).toBeDefined();
+			expect(attrs_for(rec, leaf.id)).toEqual(['name']);
+			expect(closes_for(rec, leaf.id).length).toBe(1);
+			expect(opens_of(rec, 'paragraph').length).toBe(0);
+		});
+
+		it('a bare container stalls inside its args, the body streams eagerly', () => {
+			const rec = new OpRecorder();
+			const p = new PFMParser(rec);
+			p.init();
+			for (const chunk of [
+				':::',
+				'box',
+				'(',
+				'k',
+				'=',
+				'"a ',
+				'b"',
+				', l=m',
+				')',
+				'  ',
+			]) {
+				p.feed(chunk);
+				expect(open_kinds(rec), JSON.stringify(chunk)).toEqual(['root']);
+			}
+			p.feed('\n');
+			const box = opens_of(rec, 'directive_container')[0];
+			expect(box).toBeDefined();
+			expect(attrs_for(rec, box.id)).toEqual(['args', 'name']);
+			expect(closes_for(rec, box.id).length).toBe(0);
+
+			p.feed('body');
+			expect(opens_of(rec, 'paragraph').length).toBe(1);
+			p.feed('\n:::\n');
+			expect(closes_for(rec, box.id).length).toBe(1);
+		});
+
+		it('a bare opener at the end of the input opens at finish', () => {
+			for (const [input, kind] of [
+				['::toc', 'directive_leaf'],
+				['::toc ', 'directive_leaf'],
+				['::toc(a=1)', 'directive_leaf'],
+				[':::note', 'directive_container'],
+			]) {
+				const rec = new OpRecorder();
+				const p = new PFMParser(rec);
+				p.init();
+				p.feed(input);
+				expect(open_kinds(rec), input).toEqual(['root']);
+				p.finish();
+				expect(opens_of(rec, kind).length, input).toBe(1);
+				expect(opens_of(rec, 'paragraph').length, input).toBe(0);
+			}
+		});
+
+		it('prose after the name opens a paragraph at its first character', () => {
+			const rec = new OpRecorder();
+			const p = new PFMParser(rec);
+			p.init();
+			p.feed('::before');
+			expect(open_kinds(rec)).toEqual(['root']);
+			// trailing whitespace is still a directive, the next character decides
+			p.feed(' ');
+			expect(open_kinds(rec)).toEqual(['root']);
+			p.feed('i');
+			expect(open_kinds(rec)).toEqual(['root', 'paragraph', 'text', 'text']);
+			p.feed('s a pseudo-element\n');
+			p.finish();
+			expect(opens_of(rec, 'directive_leaf').length).toBe(0);
+		});
+
+		it('a character that cannot follow the name opens a paragraph at once', () => {
+			for (const tail of [':', '.', ',', '!', '{', '<', '*']) {
+				const rec = new OpRecorder();
+				const p = new PFMParser(rec);
+				p.init();
+				p.feed('::name');
+				expect(open_kinds(rec), tail).toEqual(['root']);
+				p.feed(tail);
+				expect(open_kinds(rec)[1], tail).toBe('paragraph');
+			}
+		});
+
+		it('malformed args open a paragraph where they go wrong', () => {
+			const rec = new OpRecorder();
+			const p = new PFMParser(rec);
+			p.init();
+			p.feed(':::note(k');
+			expect(open_kinds(rec)).toEqual(['root']);
+			p.feed(' ');
+			expect(open_kinds(rec)).toEqual(['root']);
+			// a key needs its =
+			p.feed('v');
+			expect(open_kinds(rec)[1]).toBe('paragraph');
+		});
+
+		const cases: [string, string][] = [
+			['leaf', '::toc\n'],
+			['leaf at the end of the input', '::toc'],
+			['leaf with trailing whitespace', '::toc \t \nafter\n'],
+			['leaf with args', '::toc(depth=2, title="On this page")\nafter\n'],
+			['leaf with args at the end of the input', '::toc(a=1)'],
+			['leaf with empty args', '::toc()\n'],
+			['container', ':::note\nbody *x*\n:::\nafter\n'],
+			['container with args', ':::note(kind=warn)  \nbody\n:::\n'],
+			['container at the end of the input', ':::note'],
+			['unclosed container', ':::note\nbody\n'],
+			['empty container', ':::note\n:::\n'],
+			['nested', ':::a\n:::b\nx\n:::\ny\n:::\n'],
+			['nested by colon count', '::::a\n:::b\nx\n:::\n::leaf\n::::\n'],
+			['after a paragraph line', 'text\n::toc\nmore\n:::note\nx\n:::\n'],
+			['block quote', '> ::toc\n>\n> :::note(k=v)\n> x\n> :::\nafter\n'],
+			['block quote, unmarked body', '> :::note\nbody\n'],
+			['list item', '- ::toc\n- :::note\n  x\n  :::\n- b\n'],
+			[
+				'svelte block',
+				'{#if a}\n::toc\n:::note(k=v)\nx\n:::\n{:else}\n::toc\n{/if}\n',
+			],
+			['prose', '::before is a pseudo-element\n'],
+			['prose after a paragraph line', 'text\n::before is\nmore\n'],
+			['name then punctuation', '::name:\n::name.\n::name::\n'],
+			['space before the brackets', ':::name [x]\nbody\n:::\n'],
+			['space before the args', '::name (k=v)\n'],
+			['args then brackets', '::name(k=v)[x]\n'],
+			['text after the args', '::name(k=v) x\n'],
+			['malformed args', '::name(k)\n::name(k=v\n::name(k=v,)\n::name(k="v\n'],
+			['unclosed args at the end of the input', '::name(k=v'],
+			['closing lines alone', ':::\n\n::\n\n::::\n'],
+			['fence in a container', ':::note\n```\n:::\n```\n:::\n'],
+		];
+		for (const [name, input] of cases) {
+			for (const size of [1, 2, 3]) {
+				it(`${name} chunk size ${size}`, () => {
+					const batch = parse_batch(input);
+					const incr = parse_incremental(input, size);
+					expect(tree_diff(batch, incr, input)).toEqual([]);
+					// tree_diff leaves metadata out, and the name and args are metadata
+					expect(print_ast(incr, input)).toBe(print_ast(batch, input));
+				});
+			}
+			it(`${name} split at every offset`, () => {
+				const want = print_ast(parse_batch(input), input);
+				for (let i = 0; i <= input.length; i++) {
+					const tree = new TreeBuilder(input.length);
+					const parser = new PFMParser(tree);
+					parser.init();
+					parser.feed(input.slice(0, i));
+					parser.feed(input.slice(i));
+					parser.finish();
+					expect(print_ast(tree.get_buffer(), input), `split at ${i}`).toBe(
+						want
+					);
+				}
+			});
+		}
+	});
+
 	describe('task items match batch at every chunk size', () => {
 		const cases: [string, string][] = [
 			['tight', '- [ ] a\n- [x] b\n- [X] c\n- d\n'],

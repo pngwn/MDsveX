@@ -1,0 +1,4 @@
+root
+  directive_container name="section"
+    directive_leaf name="toc"
+    directive_leaf name="toc" args.depth="2"

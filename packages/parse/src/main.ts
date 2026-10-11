@@ -2468,12 +2468,12 @@ export class PFMParser {
 
 	/**
 	 * try to parse a block-level directive at `pos`. the `[content]`
-	 * brackets are required - empty text must be explicit (`::name[]`).
-	 * an optional argument list may follow the brackets immediately:
-	 * `::name[content](key=val, key2=val2)`.
+	 * brackets are optional. an optional argument list may follow the
+	 * brackets or the name immediately:
+	 * `::name[content](key=val, key2=val2)`, `::name(key=val)`.
 	 * returns:
 	 *   - `{ kind: 'leaf' | 'container', colons, name, content_start, content_end, args, end }`
-	 *     on success
+	 *     on success, both content offsets -1 without brackets
 	 *   - `null` if not a directive
 	 *   - `false` if we need more input (stall)
 	 */
@@ -2530,43 +2530,43 @@ export class PFMParser {
 		const name = string_slice.call(source, name_start - base, p - base);
 		const kind = colon_count >= 3 ? ('container' as const) : ('leaf' as const);
 
-		// [content] is required - empty text must be explicit
+		// both stay -1 without brackets, anything but args then fails the line end check
+		let content_start = -1;
+		let content_end = -1;
 		if (
-			p >= length ||
-			char_code_at.call(source, p - base) !== OPEN_SQUARE_BRACKET
+			p < length &&
+			char_code_at.call(source, p - base) === OPEN_SQUARE_BRACKET
 		) {
-			return null;
-		}
-
-		p++; // skip [
-		const content_start = p;
-		let bracket_depth = 1;
-		while (p < length && bracket_depth > 0) {
-			const ch = char_code_at.call(source, p - base);
-			if (ch === OPEN_SQUARE_BRACKET) bracket_depth++;
-			else if (ch === CLOSE_SQUARE_BRACKET) bracket_depth--;
-			else if (ch === BACKSLASH && p + 1 < length) {
-				p++;
-			} // skip escaped char
-			else if (ch === BACKTICK) {
-				// brackets in a code span are code, as in inline directive text
-				const span_end = this.label_code_span_end(p);
-				if (span_end === -2) return false;
-				p = span_end;
-				continue;
-			} else if (ch === LINEFEED) break; // no line breaks in content bracket
-			if (bracket_depth > 0) p++;
-		}
-		if (bracket_depth !== 0) {
+			p++; // skip [
+			content_start = p;
+			let bracket_depth = 1;
+			while (p < length && bracket_depth > 0) {
+				const ch = char_code_at.call(source, p - base);
+				if (ch === OPEN_SQUARE_BRACKET) bracket_depth++;
+				else if (ch === CLOSE_SQUARE_BRACKET) bracket_depth--;
+				else if (ch === BACKSLASH && p + 1 < length) {
+					p++;
+				} // skip escaped char
+				else if (ch === BACKTICK) {
+					// brackets in a code span are code, as in inline directive text
+					const span_end = this.label_code_span_end(p);
+					if (span_end === -2) return false;
+					p = span_end;
+					continue;
+				} else if (ch === LINEFEED) break; // no line breaks in content bracket
+				if (bracket_depth > 0) p++;
+			}
+			if (bracket_depth !== 0) {
+				if (p >= length && !this.finished) return false;
+				// unmatched bracket - not a valid directive
+				return null;
+			}
+			content_end = p;
+			p++; // skip ]
 			if (p >= length && !this.finished) return false;
-			// unmatched bracket - not a valid directive
-			return null;
 		}
-		const content_end = p;
-		p++; // skip ]
 
-		// optional argument list must follow the brackets immediately
-		if (p >= length && !this.finished) return false;
+		// optional argument list must follow the brackets or the name immediately
 		let args: Record<string, string> | null = null;
 		if (p < length && char_code_at.call(source, p - base) === OPEN_PAREN) {
 			const parsed = this.try_parse_directive_args(p);
