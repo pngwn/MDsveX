@@ -389,7 +389,8 @@ export class NodeView {
 			kind === NodeKind.code_span ||
 			kind === NodeKind.html_comment
 		) {
-			const s = this._text_source.get_string(idx);
+			// read from the buffer, a source tree stores a string too when the text is not a source range
+			const s = buf._strings[idx];
 			if (s !== undefined) return s;
 			const vs = buf.value_start_at(idx);
 			const ve = buf.value_end_at(idx);

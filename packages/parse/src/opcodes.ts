@@ -88,6 +88,9 @@ export interface Emitter {
 	/**
 	 * set or update an attribute on a node.
 	 * used for metadata (href, title, info), value ranges, and list properties.
+	 * the key text is the whole text of a node whose value range does not hold
+	 * it as written, a code span in a table cell that escapes a pipe, and comes
+	 * before the value end and the close
 	 * @param id id of the node.
 	 * @param key attribute key.
 	 * @param value attribute value.
