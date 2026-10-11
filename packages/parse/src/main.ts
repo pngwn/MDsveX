@@ -2684,11 +2684,11 @@ export class PFMParser {
 		}
 		if (dir.kind === 'leaf') {
 			if (
-				this.block_quote_depth > 0 &&
+				(this.block_quote_depth > 0 || this.list_depth > 0) &&
 				char_code_at.call(this.source, dir.end - 1 - this.source_base) ===
 					LINEFEED
 			) {
-				// the lf stays for the enclosing frame, it strips the next line's markers or ends the quote
+				// the lf stays for the enclosing frame, the next line continues the quote or list item or ends it
 				this.emit_close(d_id, dir.end - 1);
 				this.chomp(dir.end - 1, true);
 				return;

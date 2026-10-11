@@ -592,21 +592,8 @@ describe('directive incremental behavior', () => {
 		}
 	});
 
-	describe('a leaf in a block quote matches batch however it is fed', () => {
-		const cases: [string, string][] = [
-			['quoted line', '> ::toc[]\n> text\n'],
-			['two leaves', '> ::toc[x]\n> ::toc[y]\n'],
-			['two levels', '> > ::toc[]\n> > text\n'],
-			['unmarked line', '> ::toc[]\ntext\n'],
-			['blank quoted line', '> ::toc[]\n>\n> text\n'],
-			['one marker fewer', '> > ::toc[]\n> text\n'],
-			['one marker more', '> ::toc[]\n> > text\n'],
-			['args', '> ::toc[x](a=1)  \n> text\n'],
-			['list item', '> - ::toc[]\n>   text\n> - b\n'],
-			['container', '> :::box[]\n> ::toc[]\n> text\n> :::\n> after\n'],
-			['no linefeed', '> ::toc[]'],
-			['ends at the marker', '> ::toc[]\n>'],
-		];
+	/** against batch with positions, at chunk sizes 1, 2 and 3 and split in two at every offset */
+	const fed_cases = (cases: [string, string][]) => {
 		for (const [name, input] of cases) {
 			for (const size of [1, 2, 3]) {
 				it(`${name} chunk size ${size}`, () => {
@@ -632,6 +619,43 @@ describe('directive incremental behavior', () => {
 				}
 			});
 		}
+	};
+
+	describe('a leaf in a block quote matches batch however it is fed', () => {
+		fed_cases([
+			['quoted line', '> ::toc[]\n> text\n'],
+			['two leaves', '> ::toc[x]\n> ::toc[y]\n'],
+			['two levels', '> > ::toc[]\n> > text\n'],
+			['unmarked line', '> ::toc[]\ntext\n'],
+			['blank quoted line', '> ::toc[]\n>\n> text\n'],
+			['one marker fewer', '> > ::toc[]\n> text\n'],
+			['one marker more', '> ::toc[]\n> > text\n'],
+			['args', '> ::toc[x](a=1)  \n> text\n'],
+			['list item', '> - ::toc[]\n>   text\n> - b\n'],
+			['container', '> :::box[]\n> ::toc[]\n> text\n> :::\n> after\n'],
+			['no linefeed', '> ::toc[]'],
+			['ends at the marker', '> ::toc[]\n>'],
+		]);
+	});
+
+	describe('a leaf in a list item matches batch however it is fed', () => {
+		fed_cases([
+			['line at the marker', '- ::toc[]\ntext\n'],
+			['indented line', '- ::toc[]\n  text\n- b\n'],
+			['sibling items', '- ::toc[x]\n- ::toc[y]\n'],
+			['heading', '- ::toc[]\n# h\n'],
+			['quote', '- ::toc[]\n> q\n'],
+			['thematic break', '- ::toc[]\n---\n'],
+			['leaf at the marker', '- ::toc[]\n::toc[]\n'],
+			['blank then indented', '- ::toc[]\n\n  text\n'],
+			['blank then at the marker', '- ::toc[]\n\ntext\n'],
+			['loose item', '- a\n\n  ::toc[]\nout\n'],
+			['ordered with args', '1. ::toc[x](a=1)  \n   text\n2. b\n'],
+			['nested list', '- a\n  - ::toc[]\n  b\n- c\n'],
+			['container fence', ':::box[]\n- ::toc[]\n:::\nafter\n'],
+			['no linefeed', '- ::toc[]'],
+			['ends at the linefeed', '- ::toc[]\n'],
+		]);
 	});
 
 	it('closes a quoted leaf at its linefeed and opens the next line in the same quote', () => {
@@ -654,6 +678,27 @@ describe('directive incremental behavior', () => {
 		p.feed('xt\n');
 		p.finish();
 		expect(opens_of(rec, 'block_quote').length).toBe(1);
+	});
+
+	it('closes a leaf in a list item at its linefeed and ends the list at an unindented line', () => {
+		const rec = new OpRecorder();
+		const p = new PFMParser(rec);
+		p.init();
+
+		p.feed('- ::toc[]\n');
+		const leaf = opens_of(rec, 'directive_leaf')[0];
+		expect(leaf).toBeDefined();
+		expect(closes_for(rec, leaf.id).length).toBe(1);
+		const list = opens_of(rec, 'list')[0];
+		expect(closes_for(rec, list.id).length).toBe(0);
+
+		p.feed('te');
+		expect(closes_for(rec, list.id).length).toBe(1);
+		const para = opens_of(rec, 'paragraph')[0];
+		expect(para).toBeDefined();
+		expect(rec.ops.indexOf(para)).toBeGreaterThan(
+			rec.ops.findIndex((o) => o.op === 'close' && o.id === list.id)
+		);
 	});
 
 	it('revokes an unclosed directive at a paragraph boundary', () => {

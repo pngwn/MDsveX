@@ -10,3 +10,4 @@ root
       directive_leaf name="y"
         directive_label
           code_span "c"
+  line_break
