@@ -306,7 +306,9 @@ export function make_meta(key: string, value: any): Record<string, any> {
 		case 'info_end':
 			return { info_end: value };
 		case 'args':
-			return { args: value };
+			// a block directive gets its args ahead of its name, the name slot
+			// first keeps one key order and shape for every directive
+			return { name: undefined, args: value };
 		case 'col_count':
 			return { col_count: value };
 		case 'checked':

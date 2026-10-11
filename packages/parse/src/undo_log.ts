@@ -15,6 +15,8 @@ export const enum UndoEntryKind {
 	Append = 5,
 	WrapFrom = 6,
 	CloseWrapper = 7,
+	State = 8,
+	Count = 9,
 }
 
 /** the dispatcher owns the redirect links, so undoing a wrap or a close goes through it */
@@ -91,7 +93,28 @@ export interface UndoEntryCloseWrapper {
 	links: number[];
 }
 
+export interface UndoEntryState {
+	kind: UndoEntryKind.State;
+	/** the state object of a directive scope, behind its proxy */
+	state: Record<string | symbol, any>;
+	key: string | symbol;
+	/** what the key held before this write, or before the earlier writes undone since */
+	prior_value: any;
+	/** the writes of the same key around this one, in order */
+	prev: UndoEntryState | null;
+	next: UndoEntryState | null;
+}
+
+export interface UndoEntryCount {
+	kind: UndoEntryKind.Count;
+	/** the handler runs of a directive scope */
+	counts: Int32Array;
+	slot: number;
+}
+
 export type UndoEntry =
+	| UndoEntryState
+	| UndoEntryCount
 	| UndoEntryWrapFrom
 	| UndoEntryCloseWrapper
 	| UndoEntryAttrSet
@@ -156,6 +179,15 @@ export class UndoLog {
 	 * attribute their entries to this node.
 	 */
 	private active_node: number = NONE;
+
+	/**
+	 * the last write of each key of a scope state, weak as a state goes with
+	 * its directive, made at the first write
+	 */
+	private state_tails: WeakMap<
+		object,
+		Map<string | symbol, UndoEntryState>
+	> | null = null;
 
 	/**
 	 * buffer index and prior kind of every kind rewrite, recorded or not, in
@@ -234,6 +266,69 @@ export class UndoLog {
 
 	record_close_wrapper(links: number[]): void {
 		this._append({ kind: UndoEntryKind.CloseWrapper, links });
+	}
+
+	/**
+	 * a write to the state of a directive scope, ATTR_DID_NOT_EXIST for a new
+	 * key, every write joins the chain of its key, one made while nothing
+	 * records is never undone and keeps an earlier undo from reaching past it
+	 */
+	record_state(
+		state: Record<string | symbol, any>,
+		key: string | symbol,
+		prior_value: any
+	): void {
+		let all = this.state_tails;
+		if (all === null) all = this.state_tails = new WeakMap();
+		let tails = all.get(state);
+		if (tails === undefined) {
+			tails = new Map();
+			all.set(state, tails);
+		}
+		const prev = tails.get(key) ?? null;
+		const entry: UndoEntryState = {
+			kind: UndoEntryKind.State,
+			state,
+			key,
+			prior_value,
+			prev,
+			next: null,
+		};
+		if (prev !== null) prev.next = entry;
+		tails.set(key, entry);
+		if (this.active_node !== NONE) this._append(entry);
+	}
+
+	/**
+	 * revokes come in any order, a tight list revokes its paragraphs first to
+	 * last, so only the last write of a key puts the value back, an earlier
+	 * one hands what it replaced to the write after it
+	 */
+	private undo_state(entry: UndoEntryState): void {
+		const prev = entry.prev;
+		const next = entry.next;
+		if (next !== null) {
+			next.prior_value = entry.prior_value;
+			next.prev = prev;
+		} else {
+			if (entry.prior_value === ATTR_DID_NOT_EXIST) {
+				delete entry.state[entry.key];
+			} else {
+				entry.state[entry.key] = entry.prior_value;
+			}
+			const tails = this.state_tails?.get(entry.state);
+			if (tails !== undefined) {
+				if (prev !== null) tails.set(entry.key, prev);
+				else tails.delete(entry.key);
+			}
+		}
+		if (prev !== null) prev.next = next;
+	}
+
+	/** a bound handler ran, its index goes back with the node it ran for */
+	record_count(counts: Int32Array, slot: number): void {
+		if (this.active_node === NONE) return;
+		this._append({ kind: UndoEntryKind.Count, counts, slot });
 	}
 
 	record_prepend(
@@ -336,6 +431,16 @@ export class UndoLog {
 
 				case UndoEntryKind.CloseWrapper: {
 					if (host !== undefined) host.reopen(buf, entry.links);
+					break;
+				}
+
+				case UndoEntryKind.State: {
+					this.undo_state(entry);
+					break;
+				}
+
+				case UndoEntryKind.Count: {
+					entry.counts[entry.slot]--;
 					break;
 				}
 

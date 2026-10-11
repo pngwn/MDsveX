@@ -175,7 +175,12 @@ let wire_step_batches: unknown[][][] = $derived.by(() => {
 
 let html_blocks: CursorBlockEntry[] = $derived.by(() => {
 	const text_source = new WireTextSource([]);
-	const dispatcher = new PluginDispatcher(make_plugins(), text_source);
+	const set = make_plugins();
+	const dispatcher = new PluginDispatcher(
+		set.plugins,
+		text_source,
+		set.directive_handlers,
+	);
 	const builder = new WireTreeBuilder(128, dispatcher);
 	const renderer = new CursorHTMLRenderer();
 
@@ -195,7 +200,12 @@ let html_blocks: CursorBlockEntry[] = $derived.by(() => {
 
 let dom_renderer = $derived.by(() => {
 	const text_source = new WireTextSource([]);
-	const dispatcher = new PluginDispatcher(make_plugins(), text_source);
+	const set = make_plugins();
+	const dispatcher = new PluginDispatcher(
+		set.plugins,
+		text_source,
+		set.directive_handlers,
+	);
 	const builder = new WireTreeBuilder(128, dispatcher);
 	const renderer = new ComponentRenderer();
 

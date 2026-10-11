@@ -3,7 +3,7 @@ import { expect } from 'vitest';
 import { PFMParser, WireEmitter } from '../src/main';
 import { SourceTextSource, WireTextSource } from '../src/node_view';
 import { PluginDispatcher } from '../src/plugin_dispatch';
-import type { ParsePlugin } from '../src/plugin_types';
+import type { DirectiveHandlers, ParsePlugin } from '../src/plugin_types';
 import { TreeBuilder } from '../src/tree_builder';
 import type { NodeBuffer } from '../src/utils';
 import { WireTreeBuilder } from '../src/wire_tree_builder';
@@ -80,22 +80,39 @@ export interface PluginRun {
 	dispatcher: PluginDispatcher | null;
 }
 
+/** global plugins and handlers bound to directive names */
+export interface PluginSetup {
+	plugins?: ParsePlugin[];
+	directive_handlers?: DirectiveHandlers[];
+}
+
+/** a plain array is the global plugins alone */
+export type Plugins = ParsePlugin[] | PluginSetup;
+
 function dispatcher_for(
-	plugins: ParsePlugin[] | undefined,
+	setup: Plugins | undefined,
 	wire: boolean,
 	source: string
 ): PluginDispatcher | undefined {
-	if (plugins === undefined || plugins.length === 0) return undefined;
+	if (setup === undefined) return undefined;
+	const plugins = Array.isArray(setup) ? setup : setup.plugins;
+	const bound = Array.isArray(setup) ? undefined : setup.directive_handlers;
+	if (
+		(plugins === undefined || plugins.length === 0) &&
+		(bound === undefined || bound.length === 0)
+	)
+		return undefined;
 	return new PluginDispatcher(
 		plugins,
-		wire ? new WireTextSource([]) : new SourceTextSource(source)
+		wire ? new WireTextSource([]) : new SourceTextSource(source),
+		bound
 	);
 }
 
 /** the batch builder, a chunk size feeds the source in pieces */
 export function run_batch(
 	source: string,
-	plugins?: ParsePlugin[],
+	plugins?: Plugins,
 	chunk = 0
 ): PluginRun {
 	const dispatcher = dispatcher_for(plugins, false, source);
@@ -120,7 +137,7 @@ export function run_batch(
  */
 export function run_wire(
 	source: string,
-	plugins?: ParsePlugin[],
+	plugins?: Plugins,
 	chunk = 0
 ): PluginRun {
 	const emitter = new WireEmitter();
@@ -146,7 +163,7 @@ export function run_wire(
 	return { nodes, source: null, dispatcher: dispatcher ?? null };
 }
 
-export type RunPath = (source: string, plugins?: ParsePlugin[]) => PluginRun;
+export type RunPath = (source: string, plugins?: Plugins) => PluginRun;
 
 /** both builders, whole and fed in chunks of 7 and 1 */
 export const PATHS: [string, RunPath][] = [
@@ -171,7 +188,7 @@ export interface ParityOptions extends ShapeOptions {
  */
 export function expect_parity(
 	source: string,
-	make_plugins: () => ParsePlugin[],
+	make_plugins: () => Plugins,
 	options?: ParityOptions
 ): unknown {
 	const opts = { ...options, merge_text: true };
@@ -193,7 +210,7 @@ export function expect_parity(
 /** expect_parity for plugins that write a log, every path must write the same one */
 export function expect_parity_logged(
 	source: string,
-	make_plugins: (log: string[]) => ParsePlugin[],
+	make_plugins: (log: string[]) => Plugins,
 	options?: ParityOptions
 ): { tree: unknown; log: string[] } {
 	const logs: string[][] = [];

@@ -4,6 +4,7 @@ import { decode } from '@jridgewell/sourcemap-codec';
 import {
 	COMPONENTS_ID,
 	DIRECTIVES_ID,
+	PLUGIN_PREFIX,
 	TEMPLATE_DIRECTIVES_PREFIX,
 	TEMPLATE_PREFIX,
 	compile_markdown,
@@ -207,6 +208,60 @@ export * as directives from './directives.js';`,
 			'lib/directives.js'
 		);
 		expect(resolve_virtual(docs, config).file).toBe('lib/docs-directives.js');
+	});
+
+	test('a plugin entry names its directives, below those of the components module', () => {
+		const { options, config, error } = prepare(
+			files({
+				'mdsvex.config.json': JSON.stringify({
+					components: './lib/markdown.js',
+					plugins: [
+						{
+							name: 'steps',
+							module: './lib/steps.js',
+							directives: ['steps', 'step'],
+						},
+						{ module: '@acme/tabs/directives', directives: ['tabs'] },
+					],
+				}),
+				'lib/markdown.js': `export * as directives from './directives.js';`,
+				'lib/directives.js': `export { default as step } from './Step.svelte';`,
+				'lib/steps.js': `export { default as steps } from './Steps.svelte';`,
+			})
+		);
+
+		expect(error).toBeNull();
+		expect(options.directives).toEqual([
+			{ specifier: PLUGIN_PREFIX + 0, names: ['steps', 'step'] },
+			{ specifier: PLUGIN_PREFIX + 1, names: ['tabs'] },
+			{ specifier: DIRECTIVES_ID, names: ['step'] },
+		]);
+		expect(resolve_virtual(PLUGIN_PREFIX + 0, config).file).toBe(
+			'lib/steps.js'
+		);
+		// a package specifier is left to the bundler
+		expect(resolve_virtual(PLUGIN_PREFIX + 1, config)).toMatchObject({
+			file: null,
+			specifier: '@acme/tabs/directives',
+		});
+		const { code } = compile_markdown(
+			':::steps[]\ntext\n:::\n',
+			'doc.svx',
+			options
+		);
+		expect(code).toContain(`from '${PLUGIN_PREFIX}0'`);
+	});
+
+	test('a plugin entry without a module or names is an error', () => {
+		const { error } = prepare(
+			files({
+				'mdsvex.config.json': '{ "plugins": [{ "module": "./steps.js" }] }',
+				'steps.js': '',
+			})
+		);
+		expect(error?.message).toBe(
+			'mdsvex.config.json: plugins[0] needs a module and a list of directive names'
+		);
 	});
 
 	test('a directives export that is not a namespace re-export is an error', () => {

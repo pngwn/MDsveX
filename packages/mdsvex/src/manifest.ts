@@ -33,6 +33,15 @@ export interface ManifestTemplate {
 	directives: ManifestModule[];
 }
 
+/** an entry of the plugins option that brings components */
+export interface ManifestPlugin {
+	name: string;
+	/** the module its directive components come from, mdsvex:plugin/<index>, null without directives */
+	directives: ManifestModule | null;
+	/** its element replacements, mdsvex:plugin-components/<index>, null without any */
+	components: ManifestModule | null;
+}
+
 export interface MdsvexManifest {
 	version: typeof MANIFEST_VERSION;
 	/** the vite root, absolute */
@@ -41,7 +50,7 @@ export interface MdsvexManifest {
 	component_mode: ComponentMode;
 	/** a frontmatter.parse replaces the built in yaml parser */
 	frontmatter_parse: boolean;
-	/** a parse plugin handles directives, so one no component takes may still render */
+	/** a parse plugin or the parse of a plugin handles directives, so one no component takes may still render */
 	directive_plugins: boolean;
 	/** select_template picks templates, documents holds what it picked */
 	select_template: boolean;
@@ -62,6 +71,12 @@ export interface MdsvexManifest {
 	highlight?: 'twinkleplop' | 'custom' | false;
 	/** the unwrap_images option, a manifest without it means false */
 	unwrap_images?: boolean;
+	/**
+	 * the plugins that bring components, lowest precedence first, their
+	 * directives sit below directives and their components below components,
+	 * a manifest without it has none
+	 */
+	plugins?: ManifestPlugin[];
 	/** true when heading_ids is on in any form, a manifest without it means off */
 	heading_ids?: boolean;
 }
