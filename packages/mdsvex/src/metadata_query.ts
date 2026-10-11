@@ -26,21 +26,30 @@ export interface MetadataDev {
 	watch(file: string): void;
 }
 
+/** the offset after any spaces and tabs from at */
+function skip_blanks(source: string, at: number): number {
+	let code = source.charCodeAt(at);
+	while (code === 32 || code === 9) code = source.charCodeAt(++at);
+	return at;
+}
+
 /**
- * the end of the frontmatter value of a normalized source, which starts at 4,
- * -1 without frontmatter, these are the bounds the parser gives the node
+ * the start and end of the frontmatter value of a normalized source, null
+ * without frontmatter, these are the bounds the parser gives the node
  */
-export function frontmatter_end(source: string): number {
-	if (!source.startsWith('---\n')) return -1;
+export function frontmatter_bounds(source: string): [number, number] | null {
+	if (!source.startsWith('---')) return null;
+	const open = skip_blanks(source, 3);
+	if (source.charCodeAt(open) !== 10) return null;
 	// the newline that ends the opening fence also opens a closing one
-	let close = source.indexOf('\n---', 3);
+	let close = source.indexOf('\n---', open);
 	while (close !== -1) {
-		const after = source.charCodeAt(close + 4);
+		const after = source.charCodeAt(skip_blanks(source, close + 4));
 		// nan is the end of the source
-		if (after === 10 || after !== after) return close + 1;
+		if (after === 10 || after !== after) return [open + 1, close + 1];
 		close = source.indexOf('\n---', close + 4);
 	}
-	return -1;
+	return null;
 }
 
 /**
@@ -53,12 +62,12 @@ export function metadata_module(
 ): string {
 	// the parser reads \r\n and a lone \r as \n, and so do its offsets
 	const source = raw.indexOf('\r') === -1 ? raw : raw.replace(/\r\n?/g, '\n');
-	const end = frontmatter_end(source);
+	const bounds = frontmatter_bounds(source);
 	// a compiled document has no export then, this one stays so a named import links
 	const named =
-		end === -1
+		bounds === null
 			? 'export const metadata = undefined;'
-			: metadata_export(parse_frontmatter(source, 4, end, parse));
+			: metadata_export(parse_frontmatter(source, bounds[0], bounds[1], parse));
 	return named + '\nexport default metadata;\n';
 }
 
