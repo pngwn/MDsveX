@@ -699,7 +699,7 @@ importers:
   plugins/anchors:
     devDependencies:
       mdsvex:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/mdsvex
       npm-run-all2:
         specifier: ^7.0.2
@@ -717,7 +717,7 @@ importers:
         specifier: ^6.2.4
         version: 6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
       mdsvex:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/mdsvex
       npm-run-all2:
         specifier: ^7.0.2

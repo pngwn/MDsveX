@@ -37,10 +37,10 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {
-		"mdsvex": "workspace:^"
+		"mdsvex": "^1.0.0-next.2"
 	},
 	"devDependencies": {
-		"mdsvex": "workspace:*",
+		"mdsvex": "workspace:^",
 		"npm-run-all2": "^7.0.2",
 		"shx": "^0.3.4"
 	}

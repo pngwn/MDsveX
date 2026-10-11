@@ -16,7 +16,7 @@ Copy [`anchors`](./anchors) for a plugin that is only handlers, or [`steps`](./s
 ### What every plugin package has
 
 - **`src/index.ts`** exports one function named after the plugin, which takes an options object and returns a `Bundle`.
-- **`mdsvex` is a peer dependency**, `workspace:^`, and a dev dependency, `workspace:*`. Types come from `mdsvex` (`Bundle`, `NodeView`, `DirectiveContext`, `ParsePlugin`), never from a path into another package's `src`, and never from `@mdsvex/parse` directly, which the user did not install.
+- **`mdsvex` is a peer dependency with an explicit range**, such as `^1.0.0-next.2`, and a dev dependency, `workspace:^`. The floor of the range is the first mdsvex release that has what the plugin uses, and is raised by hand when the plugin starts needing a newer mdsvex feature. It is not `workspace:^` because changesets gives a package a major bump whenever a workspace peer of it gets a minor, and with `bumpVersionsWithWorkspaceProtocolOnly` it leaves a range written out alone. Types come from `mdsvex` (`Bundle`, `NodeView`, `DirectiveContext`, `ParsePlugin`), never from a path into another package's `src`, and never from `@mdsvex/parse` directly, which the user did not install.
 - **`exports` points into `dist`**, and `files` is `["dist"]`. The root entry has a `default` condition, because a `vite.config.js` imports it in Node.
 - **Tests import the package by its name**, which resolves through `exports` to `dist`, so build before testing. `pnpm test:run` at the root does both. To run one package:
 
