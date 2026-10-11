@@ -308,18 +308,13 @@ describe('unclosed inline directive', () => {
 	const cases: [string, string[]][] = [
 		[
 			':x[\n#',
-			[
-				'  paragraph',
-				'    text name="x" ":x["',
-				'  line_break',
-				'  heading depth=1',
-			],
+			['  paragraph', '    text ":x["', '  line_break', '  heading depth=1'],
 		],
 		[
 			':abc[\n> a',
 			[
 				'  paragraph',
-				'    text name="abc" ":abc["',
+				'    text ":abc["',
 				'  line_break',
 				'  block_quote',
 				'    paragraph',
@@ -331,7 +326,7 @@ describe('unclosed inline directive', () => {
 			[
 				'  paragraph',
 				'    text "a "',
-				'    text name="x" ":x["',
+				'    text ":x["',
 				'  line_break',
 				'  line_break',
 				'  paragraph',
@@ -416,12 +411,12 @@ describe('list marker with no content at the end of a fed chunk', () => {
 
 describe('trailing whitespace in a heading', () => {
 	const cases: [string, string[]][] = [
-		['# <b> ', ['  heading depth=1 "<b>"', '    text tag="b" "<b>"']],
+		['# <b> ', ['  heading depth=1 "<b>"', '    text "<b>"']],
 		[
 			'# <b> \t\na',
 			[
 				'  heading depth=1 "<b>"',
-				'    text tag="b" "<b>"',
+				'    text "<b>"',
 				'  line_break',
 				'  paragraph',
 				'    text "a"',
@@ -441,7 +436,7 @@ describe('trailing whitespace in a heading', () => {
 			[
 				'  heading depth=1 "a <b> b"',
 				'    text "a "',
-				'    text tag="b" "<b>"',
+				'    text "<b>"',
 				'    text " b"',
 			],
 		],

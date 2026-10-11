@@ -452,6 +452,8 @@ The undo log is keyed by node ID. Each node has an associated log of mutations m
 
 A revoke covers one node. The repair keeps the node's children in the tree, and the parser sends a separate revoke for each descendant it also gives up on. A child that stays keeps what its handlers did: in `_a *b* c` the unclosed `_` is revoked, the `*b*` inside it is not, and a plugin's changes to that strong node survive.
 
+The repaired node keeps none of its attributes. The text or paragraph left in its place is not the tag, link or directive the parser first took it for, so the `tag`, `name` or `href` the parser gave it goes, and so does anything a plugin wrote on it, whichever handler wrote it. The undo log has already taken back what the node's own handlers wrote. An attribute another node's handler put there (a paragraph marking each of its children, say) cannot be told from the parser's, because a plugin may write `title` or `href` as well, so the repair drops the lot. Undoing that other handler later leaves the repaired node as it is.
+
 Because plugin mutations on traversal-reached nodes are logged against the handler's node, revoking node A automatically unwinds any mutations A's handlers made to unrelated nodes. This prevents the scenario where revoking a link leaves behind an attr change the link's handler made on its parent heading.
 
 ### Close Callback Captures Are Not Special

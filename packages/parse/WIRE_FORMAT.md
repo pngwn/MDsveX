@@ -132,7 +132,7 @@ Sets an attribute on a node. Common attributes:
 ["R", id: int, delimiter: string]
 ```
 
-Revokes a speculative (pending) node. This means the parser initially thought it found an inline construct (emphasis, link, etc.) but later determined it was just literal text.
+Revokes a speculative (pending) node. This means the parser initially thought it found an inline construct (emphasis, link, etc.) but later determined it was just literal text. A node is revoked at most once.
 
 When a node is revoked:
 
