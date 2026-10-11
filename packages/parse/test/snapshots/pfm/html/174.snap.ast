@@ -1,7 +1,7 @@
 root
   block_quote
     paragraph
-      text tag="div" "<div>"
+      text "<div>"
       soft_break
       text "foo"
   line_break

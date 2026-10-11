@@ -2166,8 +2166,13 @@ export class PFMParser {
 		this.extra = run_n;
 		this.code_span_open_pos = this.cursor;
 		// the inline default text run, r is below length here
+		// in a table cell a space or tab may be padding, which inline decides
 		const c = char_code_at.call(source, r - base);
-		if (c !== 0 && (c >= 128 || TEXT_BREAK[c] === 0))
+		if (
+			c !== 0 &&
+			(c >= 128 || TEXT_BREAK[c] === 0) &&
+			(c > SPACE || cs_pipe === LINEFEED)
+		)
 			this.open_text_run(r, current_node);
 		else this.cursor = r;
 		return true;
@@ -7165,10 +7170,17 @@ export class PFMParser {
 				}
 
 				case StateKind.inline: {
-					// in table cells, | and \n break through all inline content
-					if (this.in_table && (code === PIPE || code === LINEFEED || !code)) {
-						this.states.pop(); // pop inline
-						continue; // let table_row_content handle it
+					if (this.in_table) {
+						// in table cells, | and \n break through all inline content
+						if (code === PIPE || code === LINEFEED || !code) {
+							this.states.pop(); // pop inline
+							continue; // let table_row_content handle it
+						}
+						if (code === SPACE || code === TAB) {
+							const padding = this.table_cell_padding();
+							if (padding === 2) break main_loop;
+							if (padding === 1) continue;
+						}
 					}
 					// in headings, \n and eof terminate - pop back to heading_marker
 					if (this.in_heading && (code === LINEFEED || !code)) {
@@ -7607,12 +7619,13 @@ export class PFMParser {
 							this.link_text_start = this.cursor + 1;
 							{
 								// a plain char next, do here what link_text then inline would
+								// a space or tab goes that way round, in a table cell it may be padding
 								const c_next =
 									this.cursor + 1 < length
 										? char_code_at.call(source, this.cursor + 1 - base)
 										: 0;
 								if (
-									c_next !== 0 &&
+									c_next > SPACE &&
 									(c_next >= 128 || TEXT_BREAK[c_next] === 0)
 								) {
 									this.states.push(StateKind.inline);
@@ -9775,6 +9788,7 @@ export class PFMParser {
 					}
 					// no definition found - revoke
 					this.out.revoke(current_node);
+					this.pending_remove(current_node);
 					this.node_stack.pop();
 					this.states.pop();
 					return false;
@@ -9832,7 +9846,9 @@ export class PFMParser {
 			}
 
 			// definitively not a link/reference. revoke.
+			// off the pending list too, or the block end revokes it again
 			this.out.revoke(current_node);
+			this.pending_remove(current_node);
 			this.node_stack.pop();
 			this.states.pop();
 			return false;
@@ -9847,6 +9863,7 @@ export class PFMParser {
 		}
 		if (code === LINEFEED && this.link_text_lf_ends(current_node)) {
 			this.out.revoke(current_node);
+			this.pending_remove(current_node);
 			this.directive_text_pop(current_node);
 			this.node_stack.pop();
 			this.states.pop();
@@ -12082,9 +12099,23 @@ export class PFMParser {
 		}
 		if (p < length && (ch === PIPE || ch === LINEFEED)) {
 			if (ve === start) ve = this.blank_run_end(start + 1);
-			this.emit_leaf(NodeKind.text, start, parent, start, ve, p);
+			// padding after an element or a span trims to nothing and gets no node
+			if (ve > start)
+				this.emit_leaf(NodeKind.text, start, parent, start, ve, p);
 			this.cursor = p;
 			return true;
+		}
+		if (ve === start && p >= length) {
+			const c0 = char_code_at.call(source, start - base);
+			if (c0 === SPACE || c0 === TAB) {
+				// only padding so far, inline waits for what follows it
+				if (!this.finished) {
+					this.states.push(StateKind.inline);
+					return false;
+				}
+				this.cursor = p;
+				return true;
+			}
 		}
 		const t_id = this.emit_open(NodeKind.text, start, parent);
 		this.out.set_value_start(t_id, start);
@@ -12093,6 +12124,30 @@ export class PFMParser {
 		this.states.push(StateKind.text);
 		this.cursor = p;
 		return false;
+	}
+
+	/**
+	 * spaces and tabs at the cursor that run to the end of a table cell are trimmed, so they get no text node
+	 * @returns 1 when the cursor moved past them to the cell end, 2 to wait for more of the row, 0 when text follows
+	 */
+	private table_cell_padding(): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		let p = this.cursor + 1;
+		while (p < length) {
+			const ch = char_code_at.call(source, p - base);
+			if (ch !== SPACE && ch !== TAB) break;
+			p++;
+		}
+		if (p >= length) {
+			if (!this.finished) return 2;
+		} else {
+			const ch = char_code_at.call(source, p - base);
+			if (ch !== PIPE && ch !== LINEFEED) return 0;
+		}
+		this.cursor = p;
+		return 1;
 	}
 
 	private blank_run_end(end: number): number {
@@ -12312,7 +12367,15 @@ export class PFMParser {
 				if (this.pending_has(node_id)) {
 					// speculative node never closed - revoke it now
 					// so the delimiter becomes literal text
-					this.out.revoke(node_id);
+					if (this.kind_of(node_id) === NodeKind.html) {
+						// its delimiter is the whole open tag, as where a paragraph ends
+						const start = this.pending_starts[this.id_slots[node_id]];
+						this.out.revoke(
+							node_id,
+							this.html_open_tag_text(start),
+							this.one_shot ? start : undefined
+						);
+					} else this.out.revoke(node_id);
 					this.pending_remove(node_id);
 				} else {
 					// already committed (closed normally) - just close

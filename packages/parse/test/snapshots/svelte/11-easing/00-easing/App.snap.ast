@@ -15,7 +15,7 @@ root
           html tag="Grid" x=[object Object] y=[object Object] self_closing=true
           soft_break
           text "			"
-          text tag="g" class="graph" "<g class=\"graph\">"
+          text "<g class=\"graph\">"
           soft_break
           text "				"
           html tag="path" d=[object Object] stroke="#333" stroke-width="2" fill="none" self_closing=true

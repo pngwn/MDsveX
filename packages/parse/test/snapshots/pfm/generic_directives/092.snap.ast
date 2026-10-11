@@ -11,6 +11,5 @@ root
       table_cell
         directive_inline name="f" args.b="2"
           text "z"
-        text
       table_cell
         text "w"

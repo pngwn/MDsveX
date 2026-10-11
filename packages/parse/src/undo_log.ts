@@ -399,9 +399,12 @@ export class UndoLog {
 				}
 
 				case UndoEntryKind.AttrDelete: {
-					const meta = buf.metadata_at(entry.target) ?? {};
-					meta[entry.key] = entry.prior_value;
-					buf.set_metadata(entry.target, meta);
+					// a delete keeps the object, so none means a repair dropped it since
+					const meta = buf.metadata_at(entry.target);
+					if (meta) {
+						meta[entry.key] = entry.prior_value;
+						buf.set_metadata(entry.target, meta);
+					}
 					break;
 				}
 

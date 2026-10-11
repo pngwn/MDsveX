@@ -6,6 +6,6 @@ root
     strong_emphasis
       text "hello"
     soft_break
-    text tag="foo" "<foo>"
-    text tag="a" "<a>"
+    text "<foo>"
+    text "<a>"
   line_break

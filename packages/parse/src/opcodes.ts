@@ -108,6 +108,9 @@ export interface Emitter {
 	 * - if it has no children: simply removed.
 	 * - if it has children: children reparent to grandparent,
 	 *   opening delimiter becomes literal text.
+	 *
+	 * a node is revoked at most once, a builder repairs whatever the id is by
+	 * then, so a second revoke would unwrap or rewrap what the first left
 	 * @param id id of the node to revoke.
 	 * @param source_text optional raw source text for the revoked node.
 	 *   used for block-level revocations where the content must be

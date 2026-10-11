@@ -394,9 +394,8 @@ describe('wire format: revoke', () => {
 			const revokes = ops_of(parse_wire(input), WireOp.Revoke).filter(
 				(op) => typeof op[2] === 'string' && op[2].startsWith(':')
 			);
-			// the parser repeats the revoke when the block ends
-			expect(revokes.length).toBe(2);
-			for (const revoke of revokes) expect(revoke[2]).toBe(':tabs[');
+			expect(revokes.length).toBe(1);
+			expect(revokes[0][2]).toBe(':tabs[');
 		}
 	});
 

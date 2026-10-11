@@ -277,7 +277,7 @@ export class WireTreeBuilder {
 			last = next;
 		}
 		if (this.buf.kind_at(last) !== NodeKind.text) return NONE;
-		// a repeated revoke rewrites the whole string of a repaired node
+		// a repaired node is only its delimiter, as the batch builder has it
 		if (this.repaired !== null && this.repaired.has(last)) return NONE;
 		return last;
 	}

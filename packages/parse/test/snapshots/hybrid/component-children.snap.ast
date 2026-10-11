@@ -25,7 +25,7 @@ root
   line_break
   block_quote
     paragraph
-      text tag="Counter" "<Counter>"
+      text "<Counter>"
     line_break
     heading depth=1 "hello"
       text "hello"
