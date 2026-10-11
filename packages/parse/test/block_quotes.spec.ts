@@ -791,7 +791,7 @@ describe('a line that ends a paragraph in a block quote, with something open', (
 			quote(
 				'    block_quote',
 				'      paragraph',
-				'        code_span " a\\nb "',
+				'        code_span "a\\nb"',
 				'  line_break'
 			)
 		);
