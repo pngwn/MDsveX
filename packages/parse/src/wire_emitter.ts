@@ -150,6 +150,8 @@ export class WireEmitter implements Emitter {
 	private info_starts: Map<number, number> = new Map();
 	/** tags for html nodes whose content is delivered as value range (script, style). */
 	private raw_html_ids: Set<number> = new Set();
+	/** inline directive names by id, kept past a revoke as the parser repeats it at the block end */
+	private directive_names: Map<number, string> = new Map();
 	/** parser cursor position, updated via cursor(). */
 	private parser_cursor = 0;
 
@@ -306,6 +308,10 @@ export class WireEmitter implements Emitter {
 
 		if (this.kinds.get(id) === NodeKind.text) return;
 
+		if (key === "name" && this.kinds.get(id) === NodeKind.directive_inline) {
+			this.directive_names.set(id, value as string);
+		}
+
 		//  pass through all other attrs
 
 		this.batch.push([WireOp.Attr, id, key, value]);
@@ -327,7 +333,11 @@ export class WireEmitter implements Emitter {
 		const kind = this.kinds.get(id);
 		// use source_text if provided (block-level revocations),
 		// otherwise derive delimiter from kind (inline revocations).
-		const content = source_text ?? get_delimiter(kind);
+		const content =
+			source_text ??
+			(kind === NodeKind.directive_inline
+				? `:${this.directive_names.get(id)}[`
+				: get_delimiter(kind));
 		this.batch.push([WireOp.Revoke, id, content]);
 
 		// clean up
@@ -444,6 +454,7 @@ export class WireEmitter implements Emitter {
 		this.pending_starts.clear();
 		this.info_starts.clear();
 		this.raw_html_ids.clear();
+		this.directive_names.clear();
 		this.parser_cursor = 0;
 	}
 }
