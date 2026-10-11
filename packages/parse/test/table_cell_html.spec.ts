@@ -45,7 +45,8 @@ describe('an html element left open in a table cell', () => {
 				'      table_cell',
 				'        text "*"',
 				'        text "</span>"',
-				'        text "~~"'
+				'        text "~"',
+				'        text "~"'
 			)
 		);
 	});
