@@ -8,6 +8,7 @@ import {
 	normalize_newlines,
 	raw_offsets,
 	take_collapsed,
+	take_src,
 } from '@mdsvex/parse';
 import type {
 	DirectiveEntry,
@@ -46,6 +47,8 @@ import type {
 } from './highlight_run';
 import { assign_heading_ids, slug_of } from './heading_ids';
 import type { HeadingOptions, HeadingSlug } from './heading_ids';
+import { image_imports } from './image_imports';
+import type { ImageImports, ImageNeed } from './image_imports';
 
 export type {
 	DirectiveContext,
@@ -72,6 +75,7 @@ export type {
 	MathRenderer,
 } from './highlight_run';
 export { heading_slug } from './heading_ids';
+export type { ImageNeed } from './image_imports';
 export type {
 	HeadingIdsOptions,
 	HeadingInfo,
@@ -175,9 +179,22 @@ export interface CompileOptions
 	 * false leaves the fence a code block, which is the default
 	 */
 	math?: MathOption;
+	/**
+	 * imports every image with a relative url and gives the image what the
+	 * import gives, so a bundler hashes and optimises the file, ![a](./a.png)
+	 * and ![a](a.png) import ./a.png, off by default as it takes a bundler
+	 * that imports images, the vite plugin has it on
+	 */
+	import_images?: boolean;
 	/** the document, highlighters, math renderers and their errors see it */
 	filename?: string;
 }
+
+/**
+ * something a parsed document asks for before it renders, a render answers
+ * an image itself, with the import
+ */
+export type Need = ImageNeed;
 
 /** a svelte component that wraps documents, its replacements chain in front of the root */
 export interface TemplateEntry {
@@ -270,6 +287,8 @@ export interface CompileInputs {
 	/** the slug of the heading_ids option, undefined when it is off */
 	heading_ids: HeadingSlug | undefined;
 	math: MathOption | undefined;
+	/** true imports relative images, anything else leaves every url */
+	import_images: boolean | undefined;
 }
 
 /** @internal every inputs object comes from here, so they share one shape */
@@ -289,6 +308,7 @@ export function compile_inputs(): CompileInputs {
 		unwrap_images: undefined,
 		heading_ids: undefined,
 		math: undefined,
+		import_images: undefined,
 	};
 }
 
@@ -312,6 +332,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	const unwrap_images = options.unwrap_images;
 	const heading_ids = options.heading_ids;
 	const math = options.math;
+	const import_images = options.import_images;
 	// options that set none need no inputs of their own
 	if (
 		bundles === undefined &&
@@ -326,7 +347,8 @@ function inputs_of(options: CompileOptions): CompileInputs {
 		filename === undefined &&
 		unwrap_images === undefined &&
 		heading_ids === undefined &&
-		math === undefined
+		math === undefined &&
+		import_images === undefined
 	)
 		return no_inputs;
 	const inputs = compile_inputs();
@@ -343,8 +365,14 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	inputs.unwrap_images = unwrap_images;
 	if (heading_ids !== undefined) inputs.heading_ids = slug_of(heading_ids);
 	inputs.math = math;
+	inputs.import_images = import_images;
 	return inputs;
 }
+
+/** the options the positional entry points take as one trailing object */
+type PositionalOptions = SyntaxOptions &
+	HeadingOptions &
+	Pick<CompileOptions, 'import_images'>;
 
 /** inputs for the positional entry points, which are always strict */
 function inputs_from(
@@ -356,7 +384,7 @@ function inputs_from(
 	mode: ComponentMode | undefined,
 	highlight: HighlightOption | undefined,
 	filename: string | undefined,
-	syntax: (SyntaxOptions & HeadingOptions) | undefined
+	syntax: PositionalOptions | undefined
 ): CompileInputs {
 	const inputs = compile_inputs();
 	inputs.parse_plugins = parse_plugins;
@@ -370,6 +398,7 @@ function inputs_from(
 	if (syntax !== undefined) {
 		inputs.unwrap_images = syntax.unwrap_images;
 		inputs.heading_ids = slug_of(syntax.heading_ids);
+		inputs.import_images = syntax.import_images;
 	}
 	return inputs;
 }
@@ -1047,6 +1076,13 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		inputs
 	);
 	const metadata = metadata_of(nodes, source, inputs.frontmatter_parse);
+	const images =
+		inputs.import_images === true &&
+		(take_src() ||
+			inputs.parse_plugins !== undefined ||
+			inputs.directive_handlers !== undefined)
+			? image_imports(nodes, source)
+			: null;
 	const renderer = take_renderer();
 	const math = inputs.math;
 	const mathy = math !== undefined && math !== false;
@@ -1067,6 +1103,11 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	}
 	if (mathy && renderer.highlight !== null)
 		(renderer.highlight as HighlightRun).with_math(math);
+	// give_renderer clears both, a throw drops the renderer
+	if (images !== null) {
+		renderer.imports = images.lines;
+		renderer.urls = images.lookup;
+	}
 
 	if (options?.sourcemap) {
 		let result;
@@ -1152,6 +1193,14 @@ export class Parsed {
 	readonly source: string;
 	/** the parsed frontmatter, undefined when the document has none */
 	readonly metadata: Metadata | undefined;
+	/**
+	 * what the document asks for before it renders, in document order,
+	 * undefined for nothing, only what the inputs of the parse turned on is
+	 * looked for
+	 */
+	needs: readonly Need[] | undefined = undefined;
+	/** @internal the imports the needs of type image render with */
+	_images: ImageImports | null = null;
 	/** @internal null once a render took them */
 	_nodes: NodeBuffer | null;
 	/** @internal the plain arena of the session, lent until the render */
@@ -1364,10 +1413,18 @@ export class CompilerSession {
 		// a compile a plugin handler started parsed outside the session
 		if (tree == null)
 			throw new Error('[mdsvex] the session holds no document to keep');
-		return this.lend(
-			new Parsed(raw, normalized(raw), metadata, tree.get_buffer()),
-			plugged
-		);
+		const source = normalized(raw);
+		const nodes = tree.get_buffer();
+		const parsed = new Parsed(raw, source, metadata, nodes);
+		if (inputs.import_images === true)
+			this.need_images(parsed, image_imports(nodes, source));
+		return this.lend(parsed, plugged);
+	}
+
+	private need_images(parsed: Parsed, images: ImageImports | null): void {
+		if (images === null) return;
+		parsed._images = images;
+		parsed.needs = images.needs;
 	}
 
 	/** the arena that holds the document goes to its Parsed, the next parse builds one or gets one back */
@@ -1424,7 +1481,7 @@ export class CompilerSession {
 		directive_sources?: ComponentSource[],
 		mode?: ComponentMode,
 		highlight?: HighlightOption,
-		syntax?: SyntaxOptions & HeadingOptions
+		syntax?: PositionalOptions
 	): CompileV3Result {
 		return this.run(
 			raw,
@@ -1459,7 +1516,7 @@ export class CompilerSession {
 		directive_sources?: ComponentSource[],
 		mode?: ComponentMode,
 		highlight?: HighlightOption,
-		syntax?: SyntaxOptions & HeadingOptions
+		syntax?: PositionalOptions
 	): CompileTraceResult {
 		return this.run(
 			raw,
@@ -1505,7 +1562,7 @@ export class CompilerSession {
 		mode?: ComponentMode,
 		highlight?: HighlightOption,
 		filename?: string,
-		syntax?: SyntaxOptions & HeadingOptions
+		syntax?: PositionalOptions
 	): void {
 		this.run(
 			raw,
@@ -1592,12 +1649,15 @@ export class CompilerSession {
 		let source: string;
 		let nodes: NodeBuffer;
 		let metadata: Metadata | undefined;
+		let images: ImageImports | null = null;
 		if (parsed === undefined) {
 			// parser offsets index the normalized string, so render and plugins read it too
 			source = normalized(raw);
 			const plugins = inputs.parse_plugins;
 			const bound = inputs.directive_handlers;
-			if ((plugins && plugins.length > 0) || bound !== undefined) {
+			const plugged =
+				(plugins !== undefined && plugins.length > 0) || bound !== undefined;
+			if (plugged) {
 				const reserved = reserved_directives(directives, inputs.templates);
 				if (this.plugin_busy) {
 					// started in a plugin handler, the session holds the outer document
@@ -1615,16 +1675,18 @@ export class CompilerSession {
 				first === NONE || (nodes.kind_at(first) as number) !== K_FRONTMATTER
 					? undefined
 					: metadata_of(nodes, source, inputs.frontmatter_parse);
+			// the parser notes each image it makes, so only a document with one
+			// is walked, with plugins the walk decides, they make images unseen
+			// and a compile a handler starts takes the note
+			if (inputs.import_images === true && (take_src() || plugged))
+				images = image_imports(nodes, source);
 			if (kind === Kind.PARSE) {
 				const waiting = new Parsed(raw, source, metadata, nodes);
+				this.need_images(waiting, images);
 				// parse_once made its own nodes, no arena of the session holds them
 				return renderer !== this.renderer
 					? waiting
-					: this.lend(
-							waiting,
-							(plugins !== undefined && plugins.length > 0) ||
-								bound !== undefined
-						);
+					: this.lend(waiting, plugged);
 			}
 		} else {
 			const waited = parsed._nodes;
@@ -1635,6 +1697,7 @@ export class CompilerSession {
 			nodes = waited;
 			source = parsed.source;
 			metadata = parsed.metadata;
+			images = parsed._images;
 			// a plugin handler renders it, the session renderer has the outer document to come
 			if (this.plugin_busy) renderer = new CursorHTMLRenderer({ cache: false });
 		}
@@ -1660,90 +1723,103 @@ export class CompilerSession {
 			| CompileV3Result
 			| CompileTraceResult
 			| TraceTarget;
-		// again only when a math fence rendered as code for want of a run
-		do {
-			switch (kind) {
-				case Kind.INTO: {
-					out!.template = template;
-					renderer.update_trace_into(
-						nodes,
-						source,
-						out!,
-						module_code_of(metadata)
-					);
-					out!.source = source;
-					out!.html = renderer.html;
-					// the caller clears warnings it took
-					done = out!;
-					break;
-				}
-				case Kind.MAPPED: {
-					// only a collapsed \r\n changes length, without one raw needs no \r\n scan
-					const result = renderer.update_mapped(
-						nodes,
-						source,
-						source.length === raw.length ? null : collapsed_of(raw),
-						module_code_of(metadata)
-					);
-					done = {
-						code: renderer.html,
-						mappings: result.mappings,
-						metadata,
-						template,
-					};
-					break;
-				}
-				case Kind.V3: {
-					const file = inputs.filename;
-					const module_code = module_code_of(metadata);
-					// without a collapsed \r\n the records index raw
-					if (source.length === raw.length) {
-						const map = renderer.update_v3(
+		if (images !== null) {
+			renderer.imports = images.lines;
+			renderer.urls = images.lookup;
+		}
+		// the session keeps its renderer, a render that throws must not leave
+		// the imports of this document for the next
+		try {
+			// again only when a math fence rendered as code for want of a run
+			do {
+				switch (kind) {
+					case Kind.INTO: {
+						out!.template = template;
+						renderer.update_trace_into(
 							nodes,
 							source,
-							raw,
-							file,
-							module_code
+							out!,
+							module_code_of(metadata)
 						);
-						done = { code: renderer.html, map, metadata, template };
+						out!.source = source;
+						out!.html = renderer.html;
+						// the caller clears warnings it took
+						done = out!;
 						break;
 					}
-					const result = renderer.update_mapped(
-						nodes,
-						source,
-						collapsed_of(raw),
-						module_code
-					);
-					const code = renderer.html;
-					done = {
-						code,
-						map: mappings_to_v3(result.mappings, raw, code, file),
-						metadata,
-						template,
-					};
-					break;
+					case Kind.MAPPED: {
+						// only a collapsed \r\n changes length, without one raw needs no \r\n scan
+						const result = renderer.update_mapped(
+							nodes,
+							source,
+							source.length === raw.length ? null : collapsed_of(raw),
+							module_code_of(metadata)
+						);
+						done = {
+							code: renderer.html,
+							mappings: result.mappings,
+							metadata,
+							template,
+						};
+						break;
+					}
+					case Kind.V3: {
+						const file = inputs.filename;
+						const module_code = module_code_of(metadata);
+						// without a collapsed \r\n the records index raw
+						if (source.length === raw.length) {
+							const map = renderer.update_v3(
+								nodes,
+								source,
+								raw,
+								file,
+								module_code
+							);
+							done = { code: renderer.html, map, metadata, template };
+							break;
+						}
+						const result = renderer.update_mapped(
+							nodes,
+							source,
+							collapsed_of(raw),
+							module_code
+						);
+						const code = renderer.html;
+						done = {
+							code,
+							map: mappings_to_v3(result.mappings, raw, code, file),
+							metadata,
+							template,
+						};
+						break;
+					}
+					case Kind.TRACE: {
+						const trace = renderer.update_trace(
+							nodes,
+							source,
+							module_code_of(metadata)
+						);
+						done = { code: renderer.html, trace, source, metadata, template };
+						break;
+					}
+					default:
+						renderer.update(nodes, source, module_code_of(metadata));
+						done = { code: renderer.html, metadata, template };
 				}
-				case Kind.TRACE: {
-					const trace = renderer.update_trace(
-						nodes,
-						source,
-						module_code_of(metadata)
-					);
-					done = { code: renderer.html, trace, source, metadata, template };
-					break;
-				}
-				default:
-					renderer.update(nodes, source, module_code_of(metadata));
-					done = { code: renderer.html, metadata, template };
+			} while (
+				mathy &&
+				renderer.highlight === null &&
+				take_plain_math() &&
+				math_run(renderer, math, inputs.filename, source)
+			);
+		} finally {
+			if (images !== null) {
+				renderer.imports = undefined;
+				renderer.urls = undefined;
 			}
-		} while (
-			mathy &&
-			renderer.highlight === null &&
-			take_plain_math() &&
-			math_run(renderer, math, inputs.filename, source)
-		);
+		}
 		// one call site for every kind, each more is another callee to inline
-		unbind(done, renderer, source);
+		unbind(done!, renderer, source);
 		if (parsed !== undefined) this.take_back(parsed);
 		return done;
 	}

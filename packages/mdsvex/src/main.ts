@@ -125,6 +125,18 @@ export interface MdsvexOptions extends SyntaxOptions, HeadingOptions {
 	 * math: { options: { macros: { '\\RR': '\\mathbb{R}' } } }
 	 */
 	math?: MathOptions | MathRenderer | false;
+	/**
+	 * imports every markdown image with a relative url, so vite hashes and
+	 * optimises the file and a missing one fails the build, on by default,
+	 * ./a.png, ../a.png and a.png are relative to the document, $lib/a.png,
+	 * #lib/a.png, @/a.png and ~/a.png go to vite as written, a query stays on
+	 * the import, /a.png, a url with a scheme and a src with a svelte
+	 * expression are never imported, false leaves every url as written
+	 *
+	 * @example
+	 * ![a diagram](./diagram.png?url)
+	 */
+	import_images?: boolean;
 }
 
 export interface PluginHighlightOptions extends Omit<
@@ -218,6 +230,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	inputs.unwrap_images = options.unwrap_images;
 	// throws here for a value that is neither, not at the first document
 	inputs.heading_ids = slug_of(options.heading_ids);
+	if (
+		options.import_images !== undefined &&
+		typeof options.import_images !== 'boolean'
+	)
+		throw new Error('[mdsvex] import_images must be true or false');
+	inputs.import_images = options.import_images !== false;
 
 	const written_highlight = options.highlight;
 	if (

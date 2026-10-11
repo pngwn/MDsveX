@@ -51,7 +51,7 @@ export type {
 	DirectiveHandlers,
 } from './plugin_types';
 export type { NodeView, WrapperView } from './node_view';
-export { NodeKind, NodeBuffer } from './utils';
+export { NodeKind, NodeBuffer, take_src } from './utils';
 export { PluginDispatcher, has_directive_handlers } from './plugin_dispatch';
 export { SourceTextSource, WireTextSource } from './node_view';
 
