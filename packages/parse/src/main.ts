@@ -11205,13 +11205,17 @@ export class PFMParser {
 					)
 						line_end++;
 					const break_end = line_end < length ? line_end + 1 : line_end;
+					const bq_lf = this.block_quote_depth > 0 && line_end < length;
+					// bq_line_start needs the whole next line
+					if (bq_lf && !this.finished && !this.can_decide_after_lf(line_end))
+						return true;
 					this.emit_bare_leaf(
 						NodeKind.thematic_break,
 						this.cursor,
 						current_node,
 						break_end
 					);
-					this.chomp(break_end, true);
+					this.chomp(bq_lf ? this.bq_line_start(break_end) : break_end, true);
 					return false;
 				}
 				if (code !== UNDERSCORE) {

@@ -982,8 +982,6 @@ describe('a line that ends a paragraph in a block quote, with something open', (
 				rows.push(row + '\n');
 			}
 			const plain = rows.join('');
-			// a thematic break in a quoted list item takes the next marker for a nested quote
-			if (/^(\S+ +)?([-*_]) *(\2 *){2,}$/m.test(plain)) continue;
 			// the value of a quoted fence covers its markers
 			if (plain.includes('```')) continue;
 			const quoted = rows.map((row) => '> ' + row).join('');
@@ -1001,6 +999,139 @@ describe('a line that ends a paragraph in a block quote, with something open', (
 		);
 		expect(checked_tree('> x <b>a\\\n> > b</b>\n')).toBe(
 			checked_tree('> x <b>a\n> > b</b>\n').replace('"a"', '"a\\\\"')
+		);
+	});
+});
+
+describe('a thematic break in a quoted list item', () => {
+	/** the tree of the lines in a quote, its blocks are those of the lines alone one level down */
+	function quoted(...rows: string[]): string {
+		const plain = rows.map((row) => row + '\n').join('');
+		const source = rows.map((row) => '> ' + row + '\n').join('');
+		const blocks = (tree: string) =>
+			tree.split('\n').filter((row) => row.trim() !== 'line_break');
+		const outside = blocks(checked_tree(plain))
+			.slice(1)
+			.map((row) => '  ' + row);
+		const tree = every_path(source);
+		expect(blocks(tree).join('\n'), JSON.stringify(source)).toBe(
+			lines('root', '  block_quote', ...outside)
+		);
+		return tree;
+	}
+
+	test('the next marker starts no nested quote', () => {
+		expect(quoted('* ---', '- a')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        text "a"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('text on the next line is text of the item', () => {
+		expect(quoted('+ ***', 'b c')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break',
+				'        text "b c"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('with each break and marker', () => {
+		for (const rule of ['***', '---', '___', '* * *', '- - -']) {
+			for (const marker of ['+', '*', '-', '1.']) {
+				quoted(`${marker} ${rule}`, `${marker} a`);
+				quoted(`${marker} ${rule}`, 'b');
+				quoted(`${marker} ${rule}`, '  b', `${marker} c`);
+				quoted(`${marker} x`, `${marker} ${rule}`, '# h');
+			}
+		}
+	});
+
+	test('an unmarked line after it ends the quote', () => {
+		expect(every_path('> * ---\n- a\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break',
+				'  line_break',
+				'  list ordered=false start=0 tight=true',
+				'    list_item',
+				'      text "a"',
+				'  line_break'
+			)
+		);
+		expect(every_path('> * ---\n\nb\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "b"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a marked blank line and a nested quote after it', () => {
+		quoted('* ---', '', 'b');
+		expect(every_path('> * ---\n> > b\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break',
+				'        block_quote',
+				'          paragraph',
+				'            text "b"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('in a nested quote and at the end of the input', () => {
+		expect(every_path('> > * ---\n> > - a\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    block_quote',
+				'      list ordered=false start=0 tight=true',
+				'        list_item',
+				'          thematic_break',
+				'      list ordered=false start=0 tight=true',
+				'        list_item',
+				'          text "a"',
+				'  line_break'
+			)
+		);
+		expect(every_path('> * ---')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break'
+			)
 		);
 	});
 });
