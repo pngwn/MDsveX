@@ -1,9 +1,11 @@
 import { expect } from 'vitest';
 
 import { PFMParser, parse_markdown_svelte } from '../src/main';
+import type { SyntaxOptions } from '../src/main';
 import type { Emitter } from '../src/opcodes';
 import { TreeBuilder } from '../src/tree_builder';
 import { NodeKind, kind_to_string } from '../src/utils';
+import type { NodeBuffer } from '../src/utils';
 import { print_ast } from './print';
 
 const enum Seen {
@@ -98,6 +100,55 @@ export function checked_tree(source: string): string {
 		expect(fed(source, chunk), `fed ${chunk}`).toBe(whole);
 	}
 	return whole;
+}
+
+/** the printed tree, then every node with its positions, which print_ast leaves out */
+function shape(nodes: NodeBuffer, source: string): string {
+	const rows = [print_ast(nodes, source)];
+	const walk = (index: number): void => {
+		const node = nodes.get_node(index);
+		rows.push(`${node.kind} ${node.start} ${node.end} ${node.value}`);
+		for (const child of node.children) walk(child);
+	};
+	walk(0);
+	return rows.join('\n');
+}
+
+function shape_fed(
+	source: string,
+	cuts: number[],
+	options?: SyntaxOptions
+): string {
+	const tree = new TreeBuilder(source.length);
+	const parser = new PFMParser(tree, 2, options);
+	parser.init();
+	let from = 0;
+	for (const cut of cuts) {
+		parser.feed(source.slice(from, cut));
+		from = cut;
+	}
+	parser.feed(source.slice(from));
+	parser.finish();
+	return shape(tree.get_buffer(), source);
+}
+
+/**
+ * the first feeding of source whose tree is not the one a whole parse builds, in
+ * chunks of 1, 2 and 3 then cut in two at each offset, '' when they all match
+ */
+export function fed_mismatch(source: string, options?: SyntaxOptions): string {
+	const tree = new TreeBuilder(source.length);
+	new PFMParser(tree, 2, options).parse(source);
+	const whole = shape(tree.get_buffer(), source);
+	for (const size of [1, 2, 3]) {
+		const cuts: number[] = [];
+		for (let at = size; at < source.length; at += size) cuts.push(at);
+		if (shape_fed(source, cuts, options) !== whole) return `chunks of ${size}`;
+	}
+	for (let at = 1; at < source.length; at++) {
+		if (shape_fed(source, [at], options) !== whole) return `cut at ${at}`;
+	}
+	return '';
 }
 
 export function lines(...rows: string[]): string {

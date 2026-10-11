@@ -99,6 +99,35 @@ function parse_incremental(source: string, chunk_size: number): NodeBuffer {
 	return tree.get_buffer();
 }
 
+/** against batch with positions, at chunk sizes 1, 2 and 3 and split in two at every offset */
+const fed_cases = (cases: [string, string][]) => {
+	for (const [name, input] of cases) {
+		for (const size of [1, 2, 3]) {
+			it(`${name} chunk size ${size}`, () => {
+				const batch = parse_batch(input);
+				const incr = parse_incremental(input, size);
+				expect(tree_diff(batch, incr, input)).toEqual([]);
+				expect(print_ast(incr, input)).toBe(print_ast(batch, input));
+			});
+		}
+		it(`${name} at every split offset`, () => {
+			const batch = parse_batch(input);
+			const printed = print_ast(batch, input);
+			for (let at = 1; at < input.length; at++) {
+				const tree = new TreeBuilder(input.length);
+				const parser = new PFMParser(tree);
+				parser.init();
+				parser.feed(input.slice(0, at));
+				parser.feed(input.slice(at));
+				parser.finish();
+				const incr = tree.get_buffer();
+				expect(tree_diff(batch, incr, input), `split at ${at}`).toEqual([]);
+				expect(print_ast(incr, input), `split at ${at}`).toBe(printed);
+			}
+		});
+	}
+};
+
 //  Tests
 
 describe('Incremental parsing', () => {
@@ -763,35 +792,6 @@ describe('directive incremental behavior', () => {
 		}
 	});
 
-	/** against batch with positions, at chunk sizes 1, 2 and 3 and split in two at every offset */
-	const fed_cases = (cases: [string, string][]) => {
-		for (const [name, input] of cases) {
-			for (const size of [1, 2, 3]) {
-				it(`${name} chunk size ${size}`, () => {
-					const batch = parse_batch(input);
-					const incr = parse_incremental(input, size);
-					expect(tree_diff(batch, incr, input)).toEqual([]);
-					expect(print_ast(incr, input)).toBe(print_ast(batch, input));
-				});
-			}
-			it(`${name} at every split offset`, () => {
-				const batch = parse_batch(input);
-				const printed = print_ast(batch, input);
-				for (let at = 1; at < input.length; at++) {
-					const tree = new TreeBuilder(input.length);
-					const parser = new PFMParser(tree);
-					parser.init();
-					parser.feed(input.slice(0, at));
-					parser.feed(input.slice(at));
-					parser.finish();
-					const incr = tree.get_buffer();
-					expect(tree_diff(batch, incr, input), `split at ${at}`).toEqual([]);
-					expect(print_ast(incr, input), `split at ${at}`).toBe(printed);
-				}
-			});
-		}
-	};
-
 	describe('a leaf in a block quote matches batch however it is fed', () => {
 		fed_cases([
 			['quoted line', '> ::toc[]\n> text\n'],
@@ -1139,5 +1139,55 @@ describe('feeds skipped while a fence or raw text block waits for its close', ()
 		parser.finish();
 		const full = '```\nabc\nx\n```\nafter\n';
 		expect(tree_diff(parse_batch(full), tree.get_buffer(), full)).toEqual([]);
+	});
+});
+
+describe('a tag at the start of a line matches batch however it is fed', () => {
+	fed_cases([
+		['backtick in an element before a block', '<b>`</b>\n---\n'],
+		['backtick in an element with a sibling', '<b>`</b> <i></i>\n---\n'],
+		['space after a void element', '<img src="i.png"> '],
+		['space after an element', '<div></div> \n'],
+		['tab after a component', '<Chart />\t\n\ntext\n'],
+		['space after an element in an element', '<div>\n<b>x</b> \n</div>\n'],
+		['tag in a block quote', '> {@html x}'],
+		['tag then text in a block quote', '> {@html x} a\n'],
+		['expression in a block quote', '> {x}\n'],
+	]);
+
+	it('keeps the spaces after a tag alone on its line, as after a row of tags', () => {
+		const printed = (input: string) => print_ast(parse_batch(input), input);
+		expect(printed('<Chart /> \n')).toBe(
+			[
+				'root',
+				'  html tag="Chart" self_closing=true',
+				'  text " "',
+				'  line_break',
+			].join('\n')
+		);
+		expect(printed('<Chart /> <Legend /> \n')).toBe(
+			[
+				'root',
+				'  html tag="Chart" self_closing=true',
+				'  text " "',
+				'  html tag="Legend" self_closing=true',
+				'  text " "',
+				'  line_break',
+			].join('\n')
+		);
+	});
+
+	it('a { in a block quote opens no paragraph until it can be a {@tag', () => {
+		const rec = new OpRecorder();
+		const p = new PFMParser(rec);
+		p.init();
+		p.feed('> {');
+		p.feed('@');
+		const opened = () =>
+			rec.ops.filter((o) => o.op === 'open').map((o) => (o as any).kind);
+		expect(opened()).toEqual(['root', 'block_quote']);
+		p.feed('h');
+		expect(opened()).toEqual(['root', 'block_quote', 'paragraph']);
+		expect((rec.ops[rec.ops.length - 1] as any).pending).toBe(true);
 	});
 });
