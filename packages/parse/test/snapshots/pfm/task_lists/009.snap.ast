@@ -4,7 +4,6 @@ root
       paragraph
         text "first"
         soft_break
-        text "  "
         text "[x"
         text "] a continuation line stays text"
     list_item

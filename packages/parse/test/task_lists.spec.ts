@@ -229,7 +229,7 @@ describe('task lists', () => {
 
 		test('a continuation line or a later paragraph that starts with one', () => {
 			expect(items('- a\n  [x] b\n- c\n\n  [ ] d')).toEqual([
-				[undefined, 'a  [x] b'],
+				[undefined, 'a[x] b'],
 				[undefined, 'c[ ] d'],
 			]);
 		});

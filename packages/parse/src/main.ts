@@ -3362,6 +3362,16 @@ export class PFMParser {
 		);
 	}
 
+	/** the position after the spaces at pos, the indent of a continuation line is no text */
+	private skip_spaces(pos: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		while (pos < length && char_code_at.call(source, pos - base) === SPACE)
+			pos++;
+		return pos;
+	}
+
 	private skip_bq_markers(pos: number, depth: number): number {
 		const source = this.source;
 		const base = this.source_base;
@@ -6961,8 +6971,8 @@ export class PFMParser {
 								current_node,
 								this.cursor + 1
 							);
-							this.chomp(stripped, true);
-							const bq_c = char_code_at.call(source, stripped - base);
+							this.chomp(this.skip_spaces(stripped), true);
+							const bq_c = char_code_at.call(source, this.cursor - base);
 							if (bq_c >= 128 || (bq_c !== 0 && TEXT_BREAK[bq_c] === 0))
 								this.para_text(current_node);
 							else this.states.push(StateKind.inline);
@@ -7273,23 +7283,6 @@ export class PFMParser {
 							if (this.lf_ends_inline(this.cursor)) {
 								this.inline_lf_end();
 								continue;
-							} else if (this.list_depth > 0) {
-								// soft line break - emit soft_break node
-								this.emit_bare_leaf(
-									NodeKind.soft_break,
-									this.cursor,
-									current_node,
-									this.cursor + 1
-								);
-								const li_c = char_code_at.call(source, ++this.cursor - base);
-								if (
-									(li_c >= 128 || (li_c !== 0 && TEXT_BREAK[li_c] === 0)) &&
-									this.states[this.states.length - 2] === StateKind.paragraph
-								) {
-									this.states.pop();
-									this.para_text(current_node);
-								}
-								continue;
 							} else {
 								// soft line break - emit soft_break node
 								this.emit_bare_leaf(
@@ -7305,6 +7298,16 @@ export class PFMParser {
 									char_code_at.call(source, this.cursor - base) === SPACE
 								) {
 									this.cursor++;
+								}
+								if (this.list_depth > 0) {
+									const li_c = char_code_at.call(source, this.cursor - base);
+									if (
+										(li_c >= 128 || (li_c !== 0 && TEXT_BREAK[li_c] === 0)) &&
+										this.states[this.states.length - 2] === StateKind.paragraph
+									) {
+										this.states.pop();
+										this.para_text(current_node);
+									}
 								}
 								continue;
 							}
@@ -9979,7 +9982,7 @@ export class PFMParser {
 			current_node,
 			this.cursor + 1
 		);
-		this.chomp(stripped, true);
+		this.chomp(this.skip_spaces(stripped), true);
 		return true;
 	}
 
@@ -11965,11 +11968,8 @@ export class PFMParser {
 					}
 					this.emit_bare_leaf(NodeKind.soft_break, p, para_id, p + 1);
 					let q = p + 1;
-					// the root strips leading spaces of the continuation line, a list keeps them
-					if (this.list_depth === 0) {
-						while (q < length && char_code_at.call(source, q - base) === SPACE)
-							q++;
-					}
+					while (q < length && char_code_at.call(source, q - base) === SPACE)
+						q++;
 					const c0 = q < length ? char_code_at.call(source, q - base) : 0;
 					if (!(c0 >= 128 || (c0 !== 0 && TEXT_BREAK[c0] === 0))) {
 						this.states.push(StateKind.inline);
