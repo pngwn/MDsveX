@@ -1153,7 +1153,174 @@ describe('a tag at the start of a line matches batch however it is fed', () => {
 		['tag in a block quote', '> {@html x}'],
 		['tag then text in a block quote', '> {@html x} a\n'],
 		['expression in a block quote', '> {x}\n'],
+		['escaped close tag before a block', '<b>\\</b>\n---\n'],
+		['escaped close tag at the end', '<b>\\</b>'],
+		['escaped close tag then text', '<b>\\</b> x\n\nb\n'],
+		['escaped close tag then the real one', '<b>\\</b> x </b>\n\nb\n'],
+		['escaped close tag of a block level tag', '<div>\\</div>\n\nb\n'],
+		['escaped close tag after an open tag', '<b><i>\\</b>\n---\n'],
+		['escaped close tag in a link', '<span>[\\</span>\n\nb\n'],
+		['close tag in a script', '<b><script></b>\n---\n'],
+		['close tag in a code span', '<span>[`</span>\n<div></div>`\n'],
+		['close tag in an expression', '<b>{"</b>"}\n\nb\n'],
+		['close tag in a comment', '<b><!-- </b> -->\n\nb\n'],
+		['close tag in an attribute', '<b><i title="</b>">\n\nb\n'],
+		['close tag in a link destination', '<b>[x](</b>)\n\nb\n'],
+		['escaped close tag in a list item', '- <b>\\</b>\n- c\n'],
+		['escaped close tag in a block quote', '> <b>\\</b>\n\nb\n'],
+		['escaped close tag in an element', '<div>\n<b>\\</b>\n</div>\n'],
+		['close tag with an attribute', '<b>x</b foo>\n\nb\n'],
+		['self closing close tag', '<b>x</b/>\n\nb\n'],
+		['close tag with a space', '<b>x</b >\n\nb\n'],
+		['escaped open tag of the same name', '<b>\\<b></b> x </b>\n\nb\n'],
+		['close tag of another element first', '<b></i>x</b>\n\nb\n'],
+		[
+			'open tag of the same name in an attribute',
+			'<b><i title="<b>">x</b></b>\n',
+		],
+		['element of the same name closed with another', '<b><i><b></i></b>h\n'],
+		['odd open tag of the same name', '<b><i><b"></i></b>h\n'],
+		['element closed by a container close tag', '<div>\n<b>x</div>y</b>\n'],
+		['tags closed by a container close tag', '<div>\n<Chart /> <b>x</div>\n'],
+		['open tag closed by a later element', '<Chart /><b><i></b>\n\nb\n'],
+		['element another close tag leaves open', '<Chart /> <b>x</i>\n\nb\n'],
+		['emphasis in an element', '<Button on:click={save}>Save _now_</Button>\n'],
+		['elements in an element', '<a href="https://x.y/z"><b>x</b></a>\n\nb\n'],
+		['element in a script in an element', '<b><script></b></script></b>\n'],
+		['open tag closed by the element', '<b><i></b>\n\nb\n'],
 	]);
+
+	it('keeps the paragraph of an element whose close tag is not one', () => {
+		const printed = (input: string) => print_ast(parse_batch(input), input);
+		// as `x <b>\</b>` builds it, the literal open tag is text outside tags
+		expect(printed('<b>\\</b>\n---\n')).toBe(
+			[
+				'root',
+				'  paragraph',
+				'    text "<b>"',
+				'    text "</b>"',
+				'  line_break',
+				'  thematic_break',
+			].join('\n')
+		);
+		expect(printed('<b><i>\\</b>\n---\n')).toBe(
+			[
+				'root',
+				'  paragraph',
+				'    text "<b>"',
+				'    text "<i>"',
+				'    text "</b>"',
+				'  line_break',
+				'  thematic_break',
+			].join('\n')
+		);
+		expect(printed('<span>[\\</span>\n\nb\n')).toBe(
+			[
+				'root',
+				'  paragraph',
+				'    text "<span>"',
+				'    text "["',
+				'    text "</span>"',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "b"',
+				'  line_break',
+			].join('\n')
+		);
+		expect(printed('<b><script></b>\n---\n')).toBe(
+			['root', '  paragraph', '    text "<b>"', '    html tag="script"'].join(
+				'\n'
+			)
+		);
+		expect(printed('<span>[`</span>\n<div></div>`\n')).toBe(
+			[
+				'root',
+				'  paragraph',
+				'    text "<span>"',
+				'    text "["',
+				'    code_span "</span>\\n<div></div>"',
+				'  line_break',
+			].join('\n')
+		);
+		// closes_on_line takes this for a close tag, the inline state does not
+		expect(printed('<b>x</b foo>\n\nb\n')).toBe(
+			[
+				'root',
+				'  paragraph',
+				'    text "<b>"',
+				'    text "x"',
+				'    text "</b foo>"',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "b"',
+				'  line_break',
+			].join('\n')
+		);
+		// a block level tag that is literal text is no block
+		expect(printed('<div>\\</div>\n\nb\n')).toBe(
+			[
+				'root',
+				'  paragraph',
+				'    text "<div>"',
+				'    text "</div>"',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "b"',
+				'  line_break',
+			].join('\n')
+		);
+	});
+
+	it('gives an element no paragraph when a close tag of its container closes it', () => {
+		const printed = (input: string) => print_ast(parse_batch(input), input);
+		expect(printed('<div>\n<b>x</div>y</b>\n')).toBe(
+			[
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    html tag="b"',
+				'      text "x"',
+				'  paragraph',
+				'    text "y"',
+				'    text "</b>"',
+				'  line_break',
+			].join('\n')
+		);
+	});
+
+	it('scans past an element that closes before or after the close tag found by text', () => {
+		const printed = (input: string) => print_ast(parse_batch(input), input);
+		expect(printed('<b>\\<b></b> x </b>\n\nb\n')).toBe(
+			[
+				'root',
+				'  paragraph',
+				'    html tag="b"',
+				'      text "<b>"',
+				'    text " x "',
+				'    text "</b>"',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "b"',
+				'  line_break',
+			].join('\n')
+		);
+		expect(printed('<b>\\</b> x </b>\n\nb\n')).toBe(
+			[
+				'root',
+				'  html tag="b"',
+				'    text "</b> x "',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "b"',
+				'  line_break',
+			].join('\n')
+		);
+	});
 
 	it('keeps the spaces after a tag alone on its line, as after a row of tags', () => {
 		const printed = (input: string) => print_ast(parse_batch(input), input);

@@ -128,12 +128,7 @@ describe('an escaped pipe in a code span in a table cell', () => {
 	});
 
 	test('a hint with no closer', () => {
-		both('`#!js a\\|b', [
-			'text info="js" "`"',
-			'text "#"',
-			'text "!js a"',
-			'text "|b"',
-		]);
+		both('`#!js a\\|b', ['text "`"', 'text "#"', 'text "!js a"', 'text "|b"']);
 	});
 });
 
