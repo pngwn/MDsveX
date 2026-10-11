@@ -86,12 +86,54 @@ refuses to run if the arms share a module instance or if the candidate drops
 an export. In twinkleplop, runs in separate processes differed by 5 to 11%
 from thermal and CPU speed effects alone.
 
+**One input string for both arms.** Both arms of a workload parse the same
+string object, and it is a sequential string, as a file read gives.
+`plugin-steps` used to build its wrapped document once per arm with a template
+literal, which makes a cons string. V8 flattens a cons string at its first
+read, and the next scavenge swaps each reference to it for the flat copy, but
+only while the cons string is still young. The first arm warms up for 120 ms
+before the second arm runs. So the first arm's string was read at once and
+became a flat string, while the second arm's was promoted unread and stayed a
+cons string for the rest of the workload, where every character read takes one
+more hop (2.0 ns against 1.4 ns for a `charCodeAt` loop). An A/A of the mode
+on its own read the second arm 9% slow on all 15 rows. Swapping the arms'
+places in the protocol moved the slowdown to the other build, and a flat
+string removed it.
+
 **Paired rounds.** Each round times A B B A (or B A A B) and sums the time for
 each arm. Each sample combines one A first round with one B first round, so
 both arms are measured in both positions, and an odd round count is rounded up
 (15 becomes 16). The reported figure is the median of the per sample ratios,
 with a bootstrap 95% CI. Alternating the order across an odd number of rounds
 once produced a 2% bias.
+
+**The lead alternates.** In each workload one arm leads. Its run is built
+first, and it warms up, is sized and is timed first. The lead alternates down
+the rows of a mode and across the modes of a document, and with `--repeat 2`
+the second pass gives every row the other lead. Each row of a report records
+which arm led it, as `b_leads` per pass. Going first is not neutral and the
+harness cannot make it so, which is why it measures both ways round. The first
+version always led with the reference, and two effects of that were measured:
+
+- Within a workload, the cons string above: 9% on every row of one mode.
+- Within a process, the arm that leads the first workload keeps an advantage
+  for the life of the process. With `plugin-attr` run on its own
+  (`--suite plugins --modes plugin-attr`) the candidate read 0.6 to 3.6% slow
+  over the eight documents that are steady between processes, in 18 of 18 A/A
+  processes. That held whichever of the two identical builds was the
+  candidate, with the candidate sized first, and with the result sink emptied
+  before the forced GC. With the candidate warmed first it read between level
+  and 2.1% fast in 4 of 4. Alternating the lead by row did not remove it: the
+  candidate still read slow in 9 of 10 processes (from 3.5% slow to 0.9%
+  fast), on the rows it led as much as on the rest, which is how the first
+  workload was found to be what matters. In four two-pass A/As the first pass
+  read 0.9 to 2.6% slow and the second, which starts with the candidate in the
+  lead, 0.5 to 2.4% fast. No row was slower past a 2.7% floor and one of 80
+  was faster. What V8 does differently for the arm that runs hot first is not
+  known.
+
+So one pass can lean towards the arm that led its first workload. A lean that
+changes sign between the passes of a `--repeat 2` is this effect.
 
 **GC and rewarm in every round.** Each round starts with a forced full `gc()`,
 followed by 20 ms of untimed rewarm for both arms and then a minor gc, before
@@ -100,6 +142,27 @@ A/A row 102% off. The forced GC drops optimised code that feedback vectors
 hold only weakly. Without the rewarm, the numbers measured V8 reoptimising the
 code rather than the code itself. The minor GC empties the nursery that the
 rewarm filled, and it leaves optimised code alone.
+
+For some modes 20 ms of rewarm is not enough. A `--trace-deopt` run of
+`plugin-steps` marked about 55 functions `embedded weak objects cleared` at
+the forced GC of every round: the plugin dispatcher, the builder's open, close
+and leaf, and the node views. The parser's `_run` was optimised three times in
+the whole run. The likely reading is that the code of those functions checks
+for classes whose instances are made per parse and are all dead by the GC.
+Timing each of the four windows of a round on its own, on `real/readme`:
+
+- `parse`, `compile-reused`, `compile-mapped` and `vite-transform` are flat.
+- The first window is 4 to 9% slow in `plugin-inline` and `plugin-sectionize`,
+  15 to 20% in `plugin-attr` and `plugin-autolink`, and 33% in `plugin-steps`.
+  All of them are flat at `--rewarm-ms 60`.
+- The first window takes 1.6 to 2 times as long in `incremental-64` and
+  `parse-direct`, which build a parser and a builder per call.
+  `incremental-64` is flat at `--rewarm-ms 120`.
+
+Both arms get each position equally often, so this does not favour an arm. But
+those rows time V8 bringing code back as well as the code, and a change that
+only moves how fast code comes back would show in them. Pass a longer
+`--rewarm-ms` when such a row matters. The default has not been changed.
 
 **Iterations are calibrated after warmup.** Each arm warms for 120 ms and then
 rewarms just before its iteration count is sized. Sizing an arm right after
@@ -119,7 +182,8 @@ process. In one A/A calibration, `sourcemap-v3` came out 3.8% off on all 30
 rows, from two builds of the same commit. Two passes in that process would
 have agreed with each other, and the bias would have passed the agreement
 rule. A fresh process per pass makes agreement mean that the result replicated
-across independent JIT outcomes.
+across independent JIT outcomes. The second pass also gives every row the
+other lead (see The lead alternates), so a result has to hold both ways round.
 
 The parent `ab.mjs` holds the machine lock for the whole run. It starts each
 pass with the same node binary, the same node flags and the same arguments
@@ -210,7 +274,10 @@ floor. Do not read a `setup` group verdict on its own.
 ## Calibration on the machine that built this
 
 These numbers are from an Apple M1 Max (10 cores, 64GB) on Node 20.20.2, on a
-laptop in normal desktop use rather than an idle machine. The load average
+laptop in normal desktop use rather than an idle machine. They were measured
+before the lead alternated and before the plugin modes, so a floor measured
+today will differ. `ab.mjs` warns when `calibration.json` was written by
+another version of the harness. The load average
 was around 3 to 5 from the browser, the Claude app and WindowServer.
 `calibration.json` is not committed. The figures are here so that a later
 calibration has something to compare against. They were measured on corpus
@@ -233,7 +300,9 @@ whole run. It calibrated at a 5.7% floor (p95 4.05%, worst 13.3%), and in an
 A/A through `ab.mjs` the `vite-transform` mode came out 1% slower on arm B,
 past its group p99. Binding each workload just before it is measured,
 dropping it afterwards and alternating which arm is constructed first halved
-the floor.
+the floor. That alternation went by plan index, which in a suite with an even
+number of modes per document gives a mode the same order on nearly every
+document. It now follows the lead (see The lead alternates).
 
 Validation, all from a worktree at the reference commit, whose `dist` is
 byte-identical to the reference builds:
@@ -280,18 +349,36 @@ the plugin modes below. It is not part of `core`, so `core` keeps its rows and
 `calibrate.mjs`, which measures `core` by default, says nothing about the
 plugin rows. Calibrate with `--suite plugins` before judging one.
 
-Two A/A runs of this suite (`ab.mjs --suite plugins --candidate
-.perf/baseline-mirror`, one pass each, the two builds byte identical) gave:
+An A/A of this suite (`ab.mjs --suite plugins --repeat 2 --candidate
+.perf/baseline-mirror`, the two builds byte identical, Node 24.21.0) moved no
+row past a 2.7% floor. Over all 155 rows the geomean was -0.16% and the
+|deviation| was 0.4% at the median, 1.4% at p95, 2.0% at p99 and 4.0% at
+worst.
 
-- The rows of every mode but `plugin-steps`: p95 of |deviation| 2.7% and 2.6%,
-  worst row 3.9% and 4.5%, mode geomeans between +0.4% and -1.2%.
-- `plugin-steps`: mode geomean -4.5% and -3.3%, and the same six small
-  documents 6 to 14% slow on the second arm in both runs.
+| mode                | rows | geomean |  p95 | worst |
+| ------------------- | ---: | ------: | ---: | ----: |
+| `parse`             |   20 |  +0.10% | 1.3% |  1.3% |
+| `compile-reused`    |   20 |  -0.55% | 1.8% |  1.9% |
+| `plugin-attr`       |   20 |  +0.01% | 1.4% |  2.0% |
+| `plugin-autolink`   |   20 |  +0.07% | 1.3% |  2.2% |
+| `plugin-sectionize` |   20 |  -0.23% | 1.3% |  2.0% |
+| `plugin-inline`     |   20 |  -0.11% | 0.7% |  1.0% |
+| `plugin-steps`      |   15 |  -0.56% | 1.5% |  4.0% |
+| `compile-plugins`   |   20 |  -0.09% | 1.0% |  1.1% |
 
-So the second arm reads slow on `plugin-steps`, and a `slower` verdict there is
-not a result. Check such a row by timing each arm alone in its own process.
-Giving each arm its own instance of the handlers (see `load_arm`) did not
-remove it, and the cause is not known.
+The 4.0% row is `real/bench-benchmarks-fixture-short:plugin-steps`, a
+document of about 100 characters. It read the candidate 4% slow in both passes
+without counting as a result, and the same document read 2 to 7% slow under
+`plugin-attr` in ten single passes. It is not explained.
+
+One pass on its own moves more than this. Every mode of this suite runs the
+same parser instance of each arm, so the modes of a pass tend to lean together
+(see Independent passes). Over twelve A/A passes the geomean of the seven modes
+other than `plugin-steps` ran from +0.40% to -0.96%, and one mode of one pass
+read 3.8% off. Their mean is -0.26%, so the candidate may still read about a
+quarter of a percent slow for a reason that is not the lead. Loading the
+candidate first, and calling it first in the cold run before the timing, were
+each tried on `plugin-attr` alone and changed nothing.
 
 `core` runs `micro` and `real` through one mode per distinct code path:
 `parse`, `incremental-64`, `render`, `render-mapped`, `compile-mapped`,
