@@ -197,23 +197,34 @@ Both extensions compose:
 ```markdown
 :name[content] ← inline
 ::name[content] ← leaf block
+::name ← leaf block without text
 :::name[content]
 children
 ::: ← container block
+:::name
+children
+::: ← container block without text
 ```
 
-Handlers are user-supplied functions keyed by name. The `[content]` brackets are required for every directive form — empty text is explicit (`:name[]`, `::name[]`), a bare `::name` is just a paragraph. Names start with a letter, then `[a-zA-Z0-9_-]`.
+Handlers are user-supplied functions keyed by name. Names start with a letter, then `[a-zA-Z0-9_-]`.
+
+The `[content]` brackets are optional on the leaf and container forms and required on the inline form. A leaf or container directive is alone on its line, so the colons and the name already tell it from prose: `::name` and `:::name` are directives with no text, exactly as `::name[]` and `:::name[]` are. After the name only an argument list and trailing spaces or tabs may follow. Anything else keeps the line a paragraph: `::name some text`, `::name:`, `::name.`, and `:::name [text]` with a space before the bracket. A line that is only `::word` or `:::word` is therefore a directive, write `\::word` to keep it as text.
+
+The inline form keeps its brackets, with empty text written out (`:name[]`). A bare `:name` in running text is far too common to claim: emoji shortcodes (`:tada:`), `std::vector` and any `word:word` would all become directives.
 
 Directive text accepts simple inline constructs — emphasis, strong, code spans, strikethrough, superscript, subscript, escapes — but not links, images, or autolinks; those stay literal text. Unescaped square brackets inside the text must balance. Directives may nest: `:outer[has :inner[x] inside]`. In the leaf and container forms the brackets are matched first, with brackets inside a code span left out, and nothing in the text reaches past the closing `]`: `::name[*a](k=v)` keeps `*a` literal.
 
-An optional argument list may follow the brackets immediately (no space). Arguments are named only — no positional values:
+An optional argument list may follow the brackets immediately (no space), or the name of a leaf or container written without brackets. Arguments are named only — no positional values:
 
 ```markdown
-:name[] ← empty text is explicit
+:name[] ← empty text is explicit on the inline form
 :name[text] ← args are optional
 :name[text](arg_one=val_one, arg_two=val_two) ← key=value pairs, comma separated
 :name[text]() ← empty args are allowed but ignored
+::name(arg_one=val_one) ← a leaf or container may leave the brackets out
 ```
+
+When a leaf or container has both, the brackets come first: `::name(k=v)[text]` is a paragraph.
 
 Keys start with a letter or underscore, then `[a-zA-Z0-9_-]`. Values are bare (no whitespace, commas, parens, quotes, or backslashes) or single/double quoted (backslash escapes the delimiter; values are kept raw). Spaces and tabs are allowed around `=` and `,`. Duplicate keys, trailing commas, empty values, and newlines make the list malformed: an inline directive then closes at `]` and the `(...)` stays literal text, a block directive line falls back to a paragraph. Attribute syntax (`{key=val}` from the upstream proposal) is not viable in mdsvex since `{}` is reserved — the parenthesised argument list above replaces it.
 

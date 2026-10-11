@@ -6,10 +6,10 @@ Sources:
 - The plugin audit (`plugins/PLUGIN_AUDIT.md`): the Presentation concern, and the directive rows in its §4.
 - `packages/parse/PLUGINS.md`: the parse-plugin model, which this extends.
 - `design/templates-and-components.md` §5: directives as components.
-- The motivating case, a `:::steps[]` container whose headings become numbered steps. The brackets are required: without them the line is a paragraph.
+- The motivating case, a `:::steps` container whose headings become numbered steps.
 
 ````md
-:::steps[]
+:::steps
 
 ## Install dependencies
 
@@ -40,7 +40,7 @@ This is the state the design started from. Bundles (§3.1) now let a plugin supp
 - **Handlers are global.** A `heading` handler runs for every heading in the document. A plugin that only cares about headings inside its own directive has to check the parent itself.
 - **Every directive component is live.** It is imported, instantiated and hydrated, even when it only produces fixed HTML.
 
-So a plugin can't do what `:::steps[]` needs: claim the name, provide the component, and reshape the children.
+So a plugin can't do what `:::steps` needs: claim the name, provide the component, and reshape the children.
 
 ## 1. Principles
 
@@ -177,14 +177,14 @@ interface DirectiveContext {
 
 At the parse level they are registered apart from plugins, as `directive_handlers` on the parse options or the third argument of `PluginDispatcher`: an array of tables keyed by directive name. A later table replaces an earlier one's entry for a name. Documented for plugin authors in `packages/parse/PLUGINS.md`.
 
-- **No parent checks.** The handler can assume it is inside its own directive. A global `heading` handler would run for every heading in the document; this one runs only inside `:::steps[]`.
+- **No parent checks.** The handler can assume it is inside its own directive. A global `heading` handler would run for every heading in the document; this one runs only inside `:::steps`.
 - **"Directly inside" means in the source.** After the first `wrap_from`, later nodes sit inside a `step` wrapper in the tree. They still count as children of `steps`. A heading inside a nested blockquote, or inside another directive, is not a child and is not passed to `children` handlers. The test is the node's source parent, which both builders have at the open, before any redirect.
 - **`descendants`** is the opt-in for plugins that want every node of a type at any depth, such as a gallery that collects images. An outer directive's `descendants` handlers still fire inside a nested directive that has a scope of its own.
 - **The label of a container is inside it.** Its `directive_label` is a child and what the label holds are descendants.
 - **`index`** tells a handler whether this is its first call (`index === 0`), and gives a running number for step numbers or for marking the first tab selected. `children.heading` and `descendants.heading` of one entry count apart.
 - **`state`** holds what the handler needs between calls, such as the wrapper it opened last. It replaces closures and `WeakMap`s. All handlers of an entry share it, the directive's own `parse` included.
-- **Nesting.** A `:::steps[]` inside a `:::steps[]` gets its own scope, with fresh `state` and its own `index`.
-- **Order.** For one node the innermost open directive goes first: its `children` handler, then its `descendants` handler, then the `descendants` handlers of each directive further out. Global plugins run after all of them, so a heading-ids plugin still gives a heading inside `:::steps[]` its id and sees the wrapper the bound handler made. Close callbacks fire in the same order.
+- **Nesting.** A `:::steps` inside a `:::steps` gets its own scope, with fresh `state` and its own `index`.
+- **Order.** For one node the innermost open directive goes first: its `children` handler, then its `descendants` handler, then the `descendants` handlers of each directive further out. Global plugins run after all of them, so a heading-ids plugin still gives a heading inside `:::steps` its id and sees the wrapper the bound handler made. Close callbacks fire in the same order.
 - **The directive itself.** `parse(directive, ctx)` runs once for each directive of the name, in any of the three forms, and the function it returns runs when the directive closes, ahead of the other close callbacks of that node. It runs when the name arrives, which is after the node's open, so global `directive_*` open handlers have already run (without a name to read) and `node.parent` is the parent in the tree. A block directive has its args by then (§7.2). An inline directive gets them at its closing bracket, so its `parse` reads them in the close callback.
 - **Leaf and inline directives get `parse` only** (Q7). The nodes inside their label are not passed to the `children` or `descendants` handlers of that name. A container around them still sees those nodes as descendants. An inline directive is pending until its bracket closes, and a `children` handler that had run inside one that is then revoked would leave its work behind, so this stays out until there is a use for it.
 - **The guard doesn't change.** Global directive handlers still never see a directive that has a component. Bound handlers are how the owning plugin reaches it. A bound `children` or `descendants` handler for a directive kind does see the directives inside its own, whoever owns them, which is what the long form of tabs needs.
@@ -206,7 +206,7 @@ wrap_from(type: string, attrs?: Record<string, any>): WrapperView
 - **Available to every plugin.** Sectionize (audit §3.1) is a global plugin that uses the same method, with a stack of open wrappers by heading depth.
 - **In a sequential pass** the tree is complete: the wrapper holds that node alone and is closed at once.
 
-**Placement: dispatch under the source parent, then adopt.** Both builders used to apply redirects and push a node before any handler ran. Under that order, the second heading of `:::steps[]` would already be inside the first step when its handler ran, and the second step would nest in the first. So the order is:
+**Placement: dispatch under the source parent, then adopt.** Both builders used to apply redirects and push a node before any handler ran. Under that order, the second heading of `:::steps` would already be inside the first step when its handler ran, and the second step would nest in the first. So the order is:
 
 1. A node whose kind has a handler is pushed under its source parent.
 2. Its handlers run.
@@ -255,7 +255,7 @@ An open wrapper has the node in hand after it until that node's handlers return,
 
 **Tests.** `packages/parse/test/wrap_from.spec.ts` runs every case down six paths (batch and wire, whole and fed in chunks of 7 and 1) and expects one tree, sound child lists and a dispatcher with nothing left over. A random-document test also checks that removing the plugin-made nodes gives the tree the parser builds with no plugin. `packages/render/test/wrap_from.spec.ts` checks the cached render against a fresh one after every chunk.
 
-**Cost.** With no link live, dispatch does what it did plus one count check. While a wrapper is open, every open, close and text goes through the dispatcher with one array read per link. For `:::steps[]` that lasts until the container closes. For a root-level sectionize it is the whole document.
+**Cost.** With no link live, dispatch does what it did plus one count check. While a wrapper is open, every open, close and text goes through the dispatcher with one array read per link. For `:::steps` that lasts until the container closes. For a root-level sectionize it is the whole document.
 
 It doesn't remove nodes and doesn't reparent across unrelated parts of the tree, so the constraints in `PLUGINS.md` still hold.
 
@@ -491,7 +491,7 @@ A bound handler may change only nodes inside its own directive.
 ## 9. Open questions
 
 - **Q1. Overrides.** Do a plugin's handlers still run when the user replaces its component? Built as yes (§3.2), not ruled on. The alternative is that an override takes the directive over completely.
-- **Q2. Which headings split.** The shallowest heading level among the direct children, the level of the first heading, a fixed level, or an arg such as `:::steps[](level=3)`?
+- **Q2. Which headings split.** The shallowest heading level among the direct children, the level of the first heading, a fixed level, or an arg such as `:::steps(level=3)`?
 - **Q4. Styles for static directives.** Importing vite-plugin-svelte's style module alone is fragile (§5.5). Compile the component in the plugin to get its CSS, ask upstream for a sanctioned way to import a component's CSS alone, or require static components to use global styles?
 - **Q5. Where static is declared.** On the registration (§5.6), by a marker the component exports from `<script module>`, or both?
 - **Q6. Loading components at build time.** The dev server can load a module through its SSR environment. A production build has no dev server. What loads and renders the component there?

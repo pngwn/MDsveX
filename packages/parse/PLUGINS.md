@@ -93,7 +93,7 @@ wrapper.close();
 - **In a sequential pass** the tree is complete, so the wrapper holds that node alone and is closed at once.
 - **Spans.** The wrapper starts where the node it wrapped starts. It has no source of its own, so it ends there too once it is closed. The renderers cache a top level block once it has an end, so a closed wrapper at the root is not rendered again.
 
-The steps shape, each heading directly inside `:::steps[]` starting a `step` with the heading as its label:
+The steps shape, each heading directly inside `:::steps` starting a `step` with the heading as its label:
 
 ```js
 const steps = {
@@ -155,7 +155,7 @@ So what a handler sees depends on when it looks:
 | `node.parent` | the source parent, whatever wrappers it has | the parent in the tree, such as the wrapper |
 | `node.prev` | the last child of the source parent, which is the open wrapper if there is one | the previous sibling in the tree |
 
-A handler that asks "is this heading directly inside `:::steps[]`" reads `node.parent` at open and gets the same answer for the first heading and the fifth.
+A handler that asks "is this heading directly inside `:::steps`" reads `node.parent` at open and gets the same answer for the first heading and the fifth.
 
 This changed with `wrap_from`. Before, a child of a parent that had a `wrap_inner` wrapper saw that wrapper as `node.parent` in its open handler. It now sees the parent, and the wrapper in its close callback.
 
@@ -256,7 +256,7 @@ Fused is the fast path. Sequential is the escape hatch for plugins that genuinel
 
 ## Handlers Bound to a Directive
 
-A plugin above is global: its `heading` handler runs for every heading in the document, and one that only cares about headings inside `:::steps[]` has to check the parent itself. A handler can be bound to a directive name instead. It is then called only for nodes inside a directive of that name.
+A plugin above is global: its `heading` handler runs for every heading in the document, and one that only cares about headings inside `:::steps` has to check the parent itself. A handler can be bound to a directive name instead. It is then called only for nodes inside a directive of that name.
 
 Bound handlers are registered apart from plugins, in tables keyed by directive name:
 
