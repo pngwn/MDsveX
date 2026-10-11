@@ -72,6 +72,16 @@ hello\
 world
 ```
 
+The backslash is a break only between two lines of one paragraph. Before a blank line, a line that starts another block, or the end of the input it is a literal backslash, as it is at the end of a heading or a table row:
+
+```markdown
+hello\
+
+world
+```
+
+-> two paragraphs, `hello\` and `world`.
+
 **Blockquotes**, No lazy continuation. Every line inside a blockquote must be explicitly prefixed with `>`. The first line without a `>` prefix terminates the blockquote; there is no implicit inheritance of blockquote context from a previous line. This enables line-local parsing decisions without tracking open paragraphs in parent containers.
 
 ```markdown
