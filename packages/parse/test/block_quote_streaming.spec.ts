@@ -224,14 +224,13 @@ const cases: Case[] = [
 			['> a\n> - b', quote(['paragraph', 'text:a'])],
 			[
 				'> a\n> - b\n> c',
-				quote([
-					'paragraph',
-					'text:a',
-					'soft_break',
-					'text:- b',
-					'soft_break',
-					'text:c',
-				]),
+				quote(
+					['paragraph', 'text:a'],
+					[
+						'list',
+						['list_item', ['paragraph', 'text:b', 'soft_break', 'text:c']],
+					]
+				),
 			],
 		],
 	],

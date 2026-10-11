@@ -362,6 +362,14 @@ describe('a delimiter that never closes', () => {
 	}
 });
 
+describe('a list item after a paragraph in a block quote', () => {
+	it('starts a list', () => {
+		expect(render('> x\n> - a\n')).toBe(
+			'<blockquote>\n<p>x</p><ul>\n<li>a</li>\n\n</ul>\n</blockquote>'
+		);
+	});
+});
+
 describe('an element left open inside an element', () => {
 	const cases: [string, string][] = [
 		['<div>\n<n>\n</div>\n', '<div><n></n></div>'],
