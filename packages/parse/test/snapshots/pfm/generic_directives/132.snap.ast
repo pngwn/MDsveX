@@ -1,0 +1,6 @@
+root
+  directive_container name="outer"
+    directive_container name="inner"
+      paragraph
+        text "Content."
+      line_break

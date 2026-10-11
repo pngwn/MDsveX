@@ -220,6 +220,20 @@ describe.skipIf(!existsSync(SERVER))("the language server", { timeout: 30_000 },
 		).toEqual([]);
 	});
 
+	it("completes the args of a directive written without brackets", async () => {
+		const head = "---\ntemplate: docs\n---\n\n";
+		expect(await complete("bare-keys.svx", head + ":::Callout(|)\n:::\n")).toEqual([
+			["tone", "tone="],
+		]);
+		expect(
+			await complete("bare-values.svx", head + ":::Callout(tone=|)\n:::\n"),
+		).toEqual([
+			["info", "info"],
+			["warn", "warn"],
+		]);
+		expect(await complete("bare-inline.svx", head + "see :Callout(|) here\n")).toEqual([]);
+	});
+
 	it("does not link directive args as urls", async () => {
 		const links = (await server.sendDocumentLinkRequest(doc.uri)) ?? [];
 		const text = doc.getText();

@@ -1,0 +1,2 @@
+root
+  directive_leaf name="toc" args.depth="2" args.title="On this page"

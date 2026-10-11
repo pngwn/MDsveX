@@ -25,6 +25,6 @@ The body of a container is `children`, and it can hold any markdown:
 - with _emphasis_
 :::
 
-:::Callout[]
-Empty brackets pass no label.
+:::Callout
+The brackets are optional on a leaf or container, without them there is no label.
 :::

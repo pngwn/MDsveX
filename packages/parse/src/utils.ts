@@ -273,6 +273,22 @@ const extra_to_string = (kind: NodeKind): string | undefined => {
 	}
 };
 
+// only an image gets a src from the parser, so the src arms of make_meta and
+// merge_meta see every one and no other node pays for the note
+let src_made = false;
+
+/**
+ * @internal true once when a node got a src since the last call, so a
+ * compile that imports images only looks through a tree that has one, the
+ * note is not kept per document, a compile started inside a plugin handler
+ * takes it from the outer document, which therefore looks either way
+ */
+export function take_src(): boolean {
+	if (!src_made) return false;
+	src_made = false;
+	return true;
+}
+
 /**
  * a computed key literal takes a slow generic define, so known keys get
  * constant key literals and other keys a store into an empty literal
@@ -284,6 +300,7 @@ export function make_meta(key: string, value: any): Record<string, any> {
 		case 'href':
 			return { href: value };
 		case 'src':
+			src_made = true;
 			return { src: value };
 		case 'ordered':
 			return { ordered: value };
@@ -361,6 +378,7 @@ export function merge_meta(
 			meta.href = value;
 			return;
 		case 'src':
+			src_made = true;
 			meta.src = value;
 			return;
 		case 'ordered':

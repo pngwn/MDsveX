@@ -93,7 +93,7 @@ wrapper.close();
 - **In a sequential pass** the tree is complete, so the wrapper holds that node alone and is closed at once.
 - **Spans.** The wrapper starts where the node it wrapped starts. It has no source of its own, so it ends there too once it is closed. The renderers cache a top level block once it has an end, so a closed wrapper at the root is not rendered again.
 
-The steps shape, each heading directly inside `:::steps[]` starting a `step` with the heading as its label:
+The steps shape, each heading directly inside `:::steps` starting a `step` with the heading as its label:
 
 ```js
 const steps = {
@@ -155,7 +155,7 @@ So what a handler sees depends on when it looks:
 | `node.parent` | the source parent, whatever wrappers it has | the parent in the tree, such as the wrapper |
 | `node.prev` | the last child of the source parent, which is the open wrapper if there is one | the previous sibling in the tree |
 
-A handler that asks "is this heading directly inside `:::steps[]`" reads `node.parent` at open and gets the same answer for the first heading and the fifth.
+A handler that asks "is this heading directly inside `:::steps`" reads `node.parent` at open and gets the same answer for the first heading and the fifth.
 
 This changed with `wrap_from`. Before, a child of a parent that had a `wrap_inner` wrapper saw that wrapper as `node.parent` in its open handler. It now sees the parent, and the wrapper in its close callback.
 
@@ -256,7 +256,7 @@ Fused is the fast path. Sequential is the escape hatch for plugins that genuinel
 
 ## Handlers Bound to a Directive
 
-A plugin above is global: its `heading` handler runs for every heading in the document, and one that only cares about headings inside `:::steps[]` has to check the parent itself. A handler can be bound to a directive name instead. It is then called only for nodes inside a directive of that name.
+A plugin above is global: its `heading` handler runs for every heading in the document, and one that only cares about headings inside `:::steps` has to check the parent itself. A handler can be bound to a directive name instead. It is then called only for nodes inside a directive of that name.
 
 Bound handlers are registered apart from plugins, in tables keyed by directive name:
 
@@ -353,7 +353,7 @@ A container with `children` or `descendants` handlers opens a scope when its nam
 
 - With no scope open, dispatch costs what it does without bound handlers.
 - While a scope is open, the builders send the dispatcher the kinds the open scopes have handlers for, on top of the kinds global plugins handle. Other kinds keep the builder's fast path unless a wrapper is open.
-- A scope keeps the dispatcher awake, so every close inside it reaches the dispatcher.
+- A scope keeps the dispatcher awake, so every close inside it asks the dispatcher whether it has anything for that node, which is a few compares for a node no handler touched.
 
 Bound handlers run in the fused pass only. A sequential plugin sees the tree they left.
 
@@ -456,7 +456,7 @@ Because plugin mutations on traversal-reached nodes are logged against the handl
 
 The close callback runs later, potentially well after the open handler. Its mutations are captured the same way — through the view setters, into the same undo log for the node being mutated. Revocation between open and close is handled by the builder discarding the close callback entirely (it's held in a per-node registration) and running the undo log.
 
-If revocation happens after close has fired, the close callback's mutations are already in the undo log alongside the open handler's mutations, and they get unwound together in reverse order. This is the usual order for an inline delimiter that never closes and for the paragraphs of a tight list: the parser closes the node where its block ends and revokes it afterwards. Only writes through the node view are unwound, so a callback that also writes somewhere else (a list it collects into, say) should not assume its node is final.
+If revocation happens after close has fired, the close callback's mutations are already in the undo log alongside the open handler's mutations, and they get unwound together in reverse order. This is the usual order for an inline delimiter that never closes and for the paragraphs of a tight list: the parser closes the node where its block ends and revokes it afterwards. A paragraph that starts with a tag or an image and holds nothing else is revoked right after its close as well. Any other pending node that has closed is final. Only writes through the node view are unwound, so a callback that also writes somewhere else (a list it collects into, say) should not assume its node is final.
 
 ## Implementation Notes
 
@@ -466,7 +466,16 @@ For nodes with no plugin activity, the undo log is never allocated. This is the 
 
 For nodes with handlers, the log accumulates as the handler runs. The setters on the node view check whether a log exists for the current node and append to it. Structural methods write their own entries. The log is a simple array of records, each describing one mutation and how to reverse it.
 
-Commit is the inverse of revoke: when a node is committed (its close opcode is processed and no revoke followed), the undo log is simply discarded. The mutations become permanent, and the memory is freed.
+Commit is the inverse of revoke: when a node is committed, the undo log is simply discarded. The mutations become permanent, and the memory is freed. A node is committed when it closes, with two exceptions the parser settles afterwards:
+
+- **A delimiter with no closer.** The parser closes it where its block ends and revokes it once it is back at block level. It marks that close (`close_pending` on an emitter, a flag on the wire's `C`), and the log is kept for the revoke.
+- **A pending paragraph**, in a list item or one that starts with a tag or an image. The parser sends a commit or a revoke for it by id.
+
+Once no node holds a log, a callback, an open wrapper or a scope, the builders stop calling the dispatcher for closes, until the next node of a handled type opens.
+
+### Node ids and plugin nodes
+
+The parser numbers its nodes densely and the batch builder stores each one in the slot of its id, which is what keeps it from needing an id table. A node a plugin adds takes the next slot. The builder then tells the parser to skip that id (`skip_ids`), so the next parser node still lands on its own slot and a plugin that adds nodes does not slow down the nodes after them. A builder gets its parser from `new PFMParser(builder)` or `parser.bind(builder)`. With an emitter of your own in between the builder has no parser to tell, and it falls back to an id table from the first added node on, which builds the same tree more slowly.
 
 ## Guarantees
 

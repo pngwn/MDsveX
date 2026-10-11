@@ -1,0 +1,9 @@
+root
+  paragraph
+    text "::1name"
+  line_break
+  line_break
+  paragraph
+    text "::"
+    text "_name"
+  line_break

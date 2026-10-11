@@ -15,7 +15,7 @@ Sources:
 - **The syntax highlighting design ruled demo blocks out of scope.** §11 says executable and demo blocks "belong to directives (`:::example`)". This design keeps directives as the layout tool (§6) and adds the piece they were missing: a way to get the block's code as a module.
 - **mdsvex is already a Vite plugin.** `main.ts` has `resolveId`, `load` and `hotUpdate`, and serves components and templates as virtual modules. Vite 6 is the minimum since #929.
 - **Its file tracking doesn't cover this yet.** `export_tracker` only exists when `components` or `templates` are configured, and `hotUpdate` returns early for any file outside those registries. `src=` files need tracking of their own (§3.3).
-- **Nothing scans a document before compiling it.** The plugin's only pre-check is a string test, `has_code`. The reusable compiler's parse is private and its arena is reused, so there is no tree to inspect between parsing and rendering.
+- **A compile can stop between its parse and its render.** `CompilerSession.parse(raw, inputs)` returns a `Parsed`, `render(parsed, inputs)` and `render_into(parsed, inputs, out)` finish it, and `keep(raw, inputs, metadata)` takes the document a compile just parsed. See §3.2. The plugin's string test, `has_code`, is still its only check on the source text.
 - **Imports are hoisted only when a component replacement is used.** The renderer's `hoist_begin` returns early otherwise.
 - **Compile is synchronous and pure.** Anything async (resolving, reading files) happens in the plugin before `compile()` is called. That principle comes from syntax highlighting §1.2 and stays.
 
@@ -82,7 +82,15 @@ phase 2, sync    render with sources: Map<spec, { id, text }>
                  → unresolved spec: a typed compile error with a position
 ```
 
-- **This needs a two-phase compile,** parse then render, which doesn't exist today (§0, Q7).
+- **The two-phase compile exists** (2026-10-11), on `CompilerSession` in `packages/mdsvex/src/compile.ts`. What `src=` builds on:
+  - **`parse(raw, inputs)` runs phase 1 and returns a `Parsed`.** It holds `raw`, `source`, `metadata` and `needs`. Parse plugins and syntax options are applied here, so the specs of a fence a plugin made are seen.
+  - **A `Parsed` owns its nodes.** The session's arena goes with it and comes back when it renders, so documents that take turns still share one arena, and a document that waits on I/O is never overwritten by the next parse. The Vite plugin transforms many documents at once, and its client and SSR environments share one session.
+  - **`render(parsed, inputs)` and `render_into(parsed, inputs, out)` run phase 2.** They read `inputs` again, so the plugin stores the per-document fields (`filename`, `templates`, `components`, and here `sources`) before it calls. A `Parsed` renders once.
+  - **`keep(raw, inputs, metadata)` takes the document a compile just parsed.** The plugin uses it for the first document with a math fence: the render finds the renderer is not loaded, the document keeps its parse while it loads, and only renders again.
+  - **`Parsed.needs` is where the specs go.** It is a list of `{ type, … }` in document order, `undefined` when there are none. Today its one member is `{ type: 'image', url, specifier, name }` from `import_images`. `src=` adds `{ type: 'source', spec, … }`.
+  - **Finding needs must not cost a document that has none.** A scan of node kinds measured 1ns a node, 0.5 to 1% of every transform. Images avoid it: the parser's `make_meta` already branches on the key `src`, which only an image gets, so that arm sets a note (`take_src()` in `@mdsvex/parse`) and only a document with an image is walked. A fence with an info string passes the `info_start` arm the same way, so `src=` can note "has a fence with meta" there and read the meta of those documents alone.
+  - **The one-call path stays.** `compile_into` does both phases in one call when nothing has to be fetched, which is how image imports work: what they need is worked out between the phases, synchronously. For `src=`, `compile_into` would stop after phase 1 when a spec has no entry in `sources`, and the plugin would `keep` the document, read the files and call `render_into`.
+  - **Public `compile()` is unchanged.** It has no two-phase form yet. The REPL can use a `CompilerSession` directly when it implements `sources`.
 - **A document with no `src=` stays synchronous.** The plugin's unit tests assert that `transform` returns no promise when nothing is async.
 - **`sources` is plain data.** Outside Vite, the REPL fills it from its in-memory files, and anyone calling `compile()` directly fills it themselves.
 - **The text is substituted at the renderer's `fence_text`,** which all five render walks and the highlighter read. Substituting inside the highlighter would miss the plain, unhighlighted paths.
@@ -217,7 +225,7 @@ Q2 is how the directive component gets at the module. The simplest answer is tha
 
 | phase | work | depends on |
 |---|---|---|
-| 0 | groundwork: an extra-imports path in the renderer, fence text and `pre` props from a per-document map, one compile-inputs object, two-phase compile | — |
+| 0 | groundwork: an extra-imports path in the renderer (done), fence text and `pre` props from a per-document map, one compile-inputs object (done), two-phase compile (done) | — |
 | 1 | `src=`: claimed key, slice syntax, `sources` compile option, the phase-1 scan with `this.resolve`, the document-to-files map and `hotUpdate` branch, `src` prop, errors | 0 |
 | 2 | `run`: claimed flag, language-to-extension table, hashed sibling ids, plugin `resolveId`/`load` with a snippet map and disk fallback, source maps, `module` prop | 0; 1 for `src=… run` |
 | 3 | `run=client` lazy form, REPL resolve/load, docs (demo `Pre` recipe, `:::example` recipe) | 2 |
@@ -231,6 +239,6 @@ Q2 is how the directive component gets at the module. The simplest answer is tha
 - **Q4. A run block with no replaced `pre`.** Compile error, or a built-in fallback (for example rendering `module.default` for Svelte blocks)?
 - **Q5. Non-script languages.** Should `css` (injects styles) and `json` run blocks be allowed?
 - **Q6. Named regions.** Should slices accept `#region-name` markers in the file as well as `#L5-L20`?
-- **Q7. Two-phase compile.** `src=` needs the document parsed, with its parse plugins, before its files are read. Should compile expose parse and render as two calls, or take the parsed tree back? What does it cost on the hot path for documents that use neither feature?
+- **Q7. Two-phase compile.** Answered 2026-10-11, see §3.2. Two calls on `CompilerSession`, with a handle that owns its nodes. Documents that need nothing compile in one call as before and measured no slower.
 - **Q8. The highlighter and the new meta.** How does twinkleplop's meta parser treat `src=…#L5-L20` and `run`? Do they need stripping before the meta reaches it?
 - **Q9. Snippet imports in the editor.** A module declaration for snippet ids, or should language-tools drop those import lines?

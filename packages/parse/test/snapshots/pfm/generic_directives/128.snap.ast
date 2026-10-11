@@ -1,0 +1,5 @@
+root
+  directive_container name="note" args.kind="warn"
+    paragraph
+      text "Body content."
+    line_break

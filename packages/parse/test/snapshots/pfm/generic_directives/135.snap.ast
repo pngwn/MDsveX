@@ -1,0 +1,3 @@
+root
+  directive_container name="a"
+  directive_container name="b"

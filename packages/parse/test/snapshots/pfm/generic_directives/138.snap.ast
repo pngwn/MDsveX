@@ -1,0 +1,8 @@
+root
+  paragraph
+    text "hello"
+  line_break
+  directive_leaf name="toc"
+  paragraph
+    text "world"
+  line_break

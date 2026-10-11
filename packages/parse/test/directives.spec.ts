@@ -171,7 +171,7 @@ describe('inline directives', () => {
 });
 
 // ===========================================================
-// Leaf block directives: ::name[content]
+// Leaf block directives: ::name[content], ::name
 // ===========================================================
 
 describe('leaf block directives', () => {
@@ -188,15 +188,16 @@ describe('leaf block directives', () => {
 		expect(value).toBe('Table of Contents');
 	});
 
-	test('leaf directive without brackets is not a directive', () => {
+	test('leaf directive without brackets', () => {
 		const input = '::toc\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
 		const directive = find_child(nodes, root.index, 'directive_leaf');
-		expect(directive).toBeNull();
-		const paragraph = find_child(nodes, root.index, 'paragraph');
-		expect(paragraph).not.toBeNull();
+		expect(directive).not.toBeNull();
+		expect(directive!.metadata.name).toBe('toc');
+		expect(directive!.children).toEqual([]);
+		expect(find_child(nodes, root.index, 'paragraph')).toBeNull();
 	});
 
 	test('leaf directive with empty brackets', () => {
@@ -255,7 +256,7 @@ describe('leaf block directives', () => {
 });
 
 // ===========================================================
-// Container block directives: :::name[content] ... :::
+// Container block directives: :::name[content] ... :::, :::name ... :::
 // ===========================================================
 
 describe('container block directives', () => {
@@ -276,15 +277,18 @@ describe('container block directives', () => {
 		expect(paragraph).not.toBeNull();
 	});
 
-	test('container directive without brackets is not a directive', () => {
+	test('container directive without brackets', () => {
 		const input = ':::note\nSome text.\n:::\n';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
 		const directive = find_child(nodes, root.index, 'directive_container');
-		expect(directive).toBeNull();
-		const paragraph = find_child(nodes, root.index, 'paragraph');
+		expect(directive).not.toBeNull();
+		expect(directive!.metadata.name).toBe('note');
+		expect(find_child(nodes, directive!.index, 'directive_label')).toBeNull();
+		const paragraph = find_child(nodes, directive!.index, 'paragraph');
 		expect(paragraph).not.toBeNull();
+		expect(find_child(nodes, root.index, 'paragraph')).toBeNull();
 	});
 
 	test('container directive with multiple block children', () => {
@@ -1364,5 +1368,368 @@ describe('block directive labels', () => {
 		const box = find_child(nodes, 0, 'directive_container')!;
 		const label = find_child(nodes, box.index, 'directive_label')!;
 		expect(label.metadata).toEqual({ role: 'caption' });
+	});
+});
+
+describe('block directives without brackets', () => {
+	const ATTRS = { attrs: ['name', 'args'] };
+	const tree = (input: string) => {
+		const { nodes, source } = parse_markdown_svelte(input);
+		return shape(nodes, source, 0, ATTRS);
+	};
+	/** the same document with empty brackets after every opener name */
+	const bracketed = (input: string) =>
+		input.replace(
+			/^([ >\t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?:{2,}[a-zA-Z][\w-]*)/gm,
+			'$1[]'
+		);
+
+	test('a leaf with args', () => {
+		expect(tree('::toc(depth=2, title="On this page")\n')).toEqual([
+			'root',
+			'directive_leaf name="toc" args={"depth":"2","title":"On this page"}',
+		]);
+	});
+
+	test('a container with args', () => {
+		expect(tree(':::note(kind=warn)\nbody\n:::\n')).toEqual([
+			'root',
+			[
+				'directive_container name="note" args={"kind":"warn"}',
+				['paragraph', 'text:body'],
+			],
+		]);
+	});
+
+	test('empty args are allowed but ignored', () => {
+		expect(tree('::toc()\n')).toEqual(['root', 'directive_leaf name="toc"']);
+		expect(tree(':::note()\n:::\n')).toEqual([
+			'root',
+			'directive_container name="note"',
+		]);
+	});
+
+	test('trailing spaces and tabs are allowed', () => {
+		for (const tail of [' ', '\t', '  \t ']) {
+			expect(tree(`::toc${tail}\n`), JSON.stringify(tail)).toEqual([
+				'root',
+				'directive_leaf name="toc"',
+			]);
+			expect(
+				tree(`:::note(k=v)${tail}\nx\n:::\n`),
+				JSON.stringify(tail)
+			).toEqual([
+				'root',
+				[
+					'directive_container name="note" args={"k":"v"}',
+					['paragraph', 'text:x'],
+				],
+			]);
+		}
+	});
+
+	test('the end of the input ends the opener line', () => {
+		expect(tree('::toc')).toEqual(['root', 'directive_leaf name="toc"']);
+		expect(tree('::toc(a=1)')).toEqual([
+			'root',
+			'directive_leaf name="toc" args={"a":"1"}',
+		]);
+		expect(tree(':::note')).toEqual([
+			'root',
+			'directive_container name="note"',
+		]);
+		expect(tree(':::note  ')).toEqual([
+			'root',
+			'directive_container name="note"',
+		]);
+	});
+
+	test('the node spans the line, with no value range and no label', () => {
+		const input = '::toc\n:::note(k=v)\nx\n:::\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const leaf = find_child(nodes, 0, 'directive_leaf')!;
+		expect(input.slice(leaf.start, leaf.end)).toBe('::toc\n');
+		expect(leaf.children).toEqual([]);
+		const box = find_child(nodes, 0, 'directive_container')!;
+		expect(input.slice(box.start, box.end)).toBe(':::note(k=v)\nx\n:::\n');
+		expect(find_child(nodes, box.index, 'directive_label')).toBeNull();
+	});
+
+	describe('empty brackets and no brackets make the same tree', () => {
+		const pairs: [string, string][] = [
+			['::toc\n', '::toc[]\n'],
+			['::toc', '::toc[]'],
+			['::toc(a=1)\n', '::toc[](a=1)\n'],
+			['::toc \t\n', '::toc[] \t\n'],
+			[':::note\nbody\n:::\n', ':::note[]\nbody\n:::\n'],
+			[
+				':::note(k=v, w="x y")\nbody\n:::\n',
+				':::note[](k=v, w="x y")\nbody\n:::\n',
+			],
+			[':::note', ':::note[]'],
+			[
+				':::note\n\n# h\n\n- a\n- b\n\n:::\nafter\n',
+				':::note[]\n\n# h\n\n- a\n- b\n\n:::\nafter\n',
+			],
+		];
+		for (const [bare, with_brackets] of pairs) {
+			test(JSON.stringify(bare), () => {
+				expect(bracketed(bare)).toBe(with_brackets);
+				const a = parse_markdown_svelte(bare);
+				const b = parse_markdown_svelte(with_brackets);
+				expect(shape(a.nodes, a.source, 0, ATTRS)).toEqual(
+					shape(b.nodes, b.source, 0, ATTRS)
+				);
+				const kind = bare.startsWith(':::')
+					? 'directive_container'
+					: 'directive_leaf';
+				const x = find_child(a.nodes, 0, kind)!;
+				const y = find_child(b.nodes, 0, kind)!;
+				expect(x.metadata).toEqual(y.metadata);
+				expect(Object.keys(x.metadata)).toEqual(Object.keys(y.metadata));
+				expect(find_child(a.nodes, x.index, 'directive_label')).toBeNull();
+				expect(find_child(b.nodes, y.index, 'directive_label')).toBeNull();
+				expect(x.value[1] - x.value[0]).toBe(0);
+				expect(y.value[1] - y.value[0]).toBe(0);
+			});
+		}
+	});
+
+	describe('anything else after the name keeps the line a paragraph', () => {
+		const lines = [
+			'::name some text',
+			'::before is a pseudo-element',
+			'::name:',
+			'::name::',
+			'::name.',
+			'::name,',
+			'::name!',
+			'::name/',
+			'::name{x}',
+			'::name<b>',
+			'::name*',
+			'::name\\',
+			'::name [x]',
+			':::name [x]',
+			':::name []',
+			':::name (k=v)',
+			// the brackets come first when both are written
+			'::name(k=v)[x]',
+			':::name(k=v)[]',
+			'::name(k=v) x',
+			':::name(k=v) [x]',
+			'::name(k)',
+			'::name(k=)',
+			'::name(k=v,)',
+			'::name(k=v, k=w)',
+			'::name(k=v',
+			'::name(k="v)',
+			':::name(k=v))',
+			':::name(k=v)(l=w)',
+			':: name',
+			'::: name',
+			'::1name',
+			'::_name',
+			'::-name',
+			'::',
+			':::',
+		];
+		for (const line of lines) {
+			test(JSON.stringify(line), () => {
+				for (const input of [line + '\n', line, line + '\nnext\n']) {
+					const { nodes } = parse_markdown_svelte(input);
+					expect(get_all_child_kinds(nodes, 0)).not.toContain('directive_leaf');
+					expect(get_all_child_kinds(nodes, 0)).not.toContain(
+						'directive_container'
+					);
+					const para = find_child(nodes, 0, 'paragraph')!;
+					expect(input.slice(para.start, para.start + line.length)).toBe(line);
+				}
+			});
+		}
+	});
+
+	test('a backslash before the colons keeps the line text', () => {
+		for (const input of [
+			'\\::toc\n',
+			'\\:::note\nbody\n:::\n',
+			'text\n\\::toc\n',
+		]) {
+			const printed = print_ast(parse_markdown_svelte(input).nodes, input);
+			expect(printed, JSON.stringify(input)).not.toContain('directive');
+		}
+	});
+
+	describe('the inline form still needs its brackets', () => {
+		const cases: [string, string][] = [
+			['one colon at the line start', ':name\n'],
+			['one colon with args', ':name(k=v)\n'],
+			['in running text', 'a :name b\n'],
+			['an emoji shortcode', 'ship it :tada:\n'],
+			['a time', 'at 10:30 sharp\n'],
+			['a scope operator', 'std::vector is a type\n'],
+			['two colons after text', 'see ::toc\n'],
+			['three colons after text', 'see :::note\n'],
+			['in a heading', '# ::toc\n'],
+			['in a table cell', '| ::toc |\n|---|\n'],
+		];
+		for (const [name, input] of cases) {
+			test(name, () => {
+				const printed = print_ast(parse_markdown_svelte(input).nodes, input);
+				expect(printed).not.toContain('directive');
+			});
+		}
+	});
+
+	describe('closing lines and nesting are unchanged', () => {
+		test('a line of colons is never an opener', () => {
+			for (const input of [':::\n', '::\n', '::::\n', ':::  \n', ':::']) {
+				const printed = print_ast(parse_markdown_svelte(input).nodes, input);
+				expect(printed, JSON.stringify(input)).not.toContain('directive');
+			}
+		});
+
+		test('a closing line closes, the opener after it is a sibling', () => {
+			expect(tree(':::a\n:::\n:::b\n:::\n')).toEqual([
+				'root',
+				'directive_container name="a"',
+				'directive_container name="b"',
+			]);
+		});
+
+		test('a named line inside an open container nests', () => {
+			expect(tree(':::a\n:::b\nx\n:::\ny\n:::\n')).toEqual([
+				'root',
+				[
+					'directive_container name="a"',
+					['directive_container name="b"', ['paragraph', 'text:x']],
+					['paragraph', 'text:y'],
+				],
+			]);
+		});
+
+		test('a leaf inside a container does not close it', () => {
+			expect(tree(':::a\n::toc\n::toc(k=v)\nx\n:::\n')).toEqual([
+				'root',
+				[
+					'directive_container name="a"',
+					'directive_leaf name="toc"',
+					'directive_leaf name="toc" args={"k":"v"}',
+					['paragraph', 'text:x'],
+				],
+			]);
+		});
+
+		test('a longer fence closes the innermost container only', () => {
+			expect(tree('::::a\n:::b\nx\n::::\nafter\n')).toEqual([
+				'root',
+				[
+					'directive_container name="a"',
+					['directive_container name="b"', ['paragraph', 'text:x']],
+					['paragraph', 'text:after'],
+				],
+			]);
+		});
+
+		test('a shorter fence does not close a longer inner container', () => {
+			expect(tree(':::a\n::::b\nx\n:::\n::::\ny\n:::\n')).toEqual([
+				'root',
+				[
+					'directive_container name="a"',
+					[
+						'directive_container name="b"',
+						['paragraph', 'text:x'],
+						['paragraph', 'text::::'],
+					],
+					['paragraph', 'text:y'],
+				],
+			]);
+		});
+
+		const docs = [
+			':::a\n:::b\nx\n:::\ny\n:::\n',
+			'::::a\n:::b\nx\n:::\ny\n::::\n',
+			':::a\n::::b\nx\n:::\ny\n::::\nz\n:::\n',
+			':::a\n:::b\n:::c\n:::\n:::\n:::\nafter\n',
+			':::a\n:::b\nx\n',
+			':::a\n::leaf\n:::\n::leaf\n',
+			':::a\n```\n:::b\n:::\n```\n:::\n',
+			':::::a\nx\n:::\n:::::\n',
+		];
+		for (const doc of docs) {
+			test(`nests and closes as with brackets: ${JSON.stringify(doc)}`, () => {
+				expect(bracketed(doc)).not.toBe(doc);
+				expect(tree(doc)).toEqual(tree(bracketed(doc)));
+			});
+		}
+	});
+
+	describe('every block start takes the bare forms', () => {
+		const sites: [string, string, string[]][] = [
+			['root', '::toc\n\n:::note(k=v)\nx\n:::\n', ['root']],
+			[
+				'after a paragraph line',
+				'text\n::toc\ntext\n:::note\nx\n:::\n',
+				['root'],
+			],
+			[
+				'block quote',
+				'> ::toc\n>\n> :::note(k=v)\n> x\n> :::\n',
+				['block_quote'],
+			],
+			[
+				'nested block quote',
+				'> > ::toc\n> >\n> > :::note\n> > x\n> > :::\n',
+				['block_quote', 'block_quote'],
+			],
+			[
+				'list item',
+				'- ::toc\n- :::note(k=v)\n  x\n  :::\n',
+				['list', 'list_item'],
+			],
+			[
+				'ordered list item',
+				'1. ::toc(a=1)\n2. :::note\n   x\n   :::\n',
+				['list', 'list_item'],
+			],
+			[
+				'container',
+				':::outer\n::toc\n:::note(k=v)\nx\n:::\n:::\n',
+				['directive_container'],
+			],
+			[
+				'svelte block',
+				'{#if a}\n::toc\n:::note(k=v)\nx\n:::\n{:else}\n::toc(a=1)\n{/if}\n',
+				['svelte_block', 'svelte_branch'],
+			],
+			[
+				'each block',
+				'{#each xs as x}\n:::note\n{x}\n:::\n::toc\n{/each}\n',
+				['svelte_block', 'svelte_branch'],
+			],
+		];
+		for (const [name, input, path] of sites) {
+			test(name, () => {
+				const { nodes } = parse_markdown_svelte(input);
+				let at = 0;
+				for (const kind of path) {
+					if (kind === 'root') continue;
+					at = find_child(nodes, at, kind)!.index;
+				}
+				const leaf = find_children(nodes, at, 'directive_leaf');
+				const box = find_children(nodes, at, 'directive_container');
+				// a list holds one directive an item
+				const count =
+					path[0] === 'list'
+						? print_ast(nodes, input).match(/directive_(leaf|container)/g)!
+								.length
+						: leaf.length + box.length;
+				expect(count).toBeGreaterThanOrEqual(2);
+				expect(print_ast(nodes, input)).not.toMatch(/text ":+(toc|note)/);
+				const all = expect_parity(input, () => [], ATTRS);
+				expect(all).toEqual(tree(bracketed(input)));
+				expect(bracketed(input)).not.toBe(input);
+			});
+		}
 	});
 });
