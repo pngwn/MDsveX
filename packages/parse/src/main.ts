@@ -1101,7 +1101,16 @@ export class PFMParser {
 		this.source_end += len;
 		if (wait === FeedWait.table_cell) this.table_cell_resume();
 		this._run();
-		if (this.spec_para !== -1) this.spec_scan_to(this.cursor, false);
+		if (this.spec_para !== -1) {
+			// a code span that fails goes back to its backticks, the lines it took may belong to a later block
+			const top = this.states[this.states.length - 1];
+			this.spec_scan_to(
+				top >= StateKind.code_span_start && top <= StateKind.code_span_end
+					? this.code_span_open_pos
+					: this.cursor,
+				false
+			);
+		}
 		// the root trims between blocks itself, this trims inside paragraphs and containers
 		if (this.cursor - this.trim_point > TRIM_GAP) this.trim_at_stall();
 		// a fence stall leaves the cursor at its content start while its scan line moves on
@@ -4611,22 +4620,17 @@ export class PFMParser {
 	}
 
 	/**
-	 * only whitespace follows pos on its line and the next line is blank, starts a
-	 * block or is missing, false when that line is not whole yet
+	 * pos ends its line and the next line is blank, starts a block or is missing,
+	 * false when that line is not whole yet
 	 */
 	private line_ends_block(pos: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
-		let p = pos;
-		while (p < length) {
-			const ch = char_code_at.call(source, p - base);
-			if (ch === LINEFEED) break;
-			if (ch !== SPACE && ch !== TAB) return false;
-			p++;
-		}
-		if (p >= length) return this.finished;
-		p++;
+		if (pos >= length) return this.finished;
+		// spaces before the line end are text of the paragraph, it has to open to hold them
+		if (char_code_at.call(source, pos - base) !== LINEFEED) return false;
+		const p = pos + 1;
 		if (
 			!this.finished &&
 			(p >= length || string_index_of.call(source, '\n', p - base) === -1)
@@ -10539,6 +10543,9 @@ export class PFMParser {
 						return false;
 					}
 				}
+				// the two chars after a { tell a {@tag from an expression
+				if (code === OPEN_BRACE && !this.finished && this.cursor + 2 >= length)
+					return true;
 				if (code === OPEN_ANGLE_BRACKET || this.at_svelte_tag(code)) {
 					this.open_spec_para(current_node, false);
 					return false;
