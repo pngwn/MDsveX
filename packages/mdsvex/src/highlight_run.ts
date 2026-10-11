@@ -80,6 +80,52 @@ export interface HighlightConfig {
 
 export type HighlightOption = HighlightConfig | Highlighter | false;
 
+/** what a math renderer knows about the latex it renders */
+export interface MathInfo {
+	/** display math, a math fence, always true until inline math exists */
+	display: boolean;
+	/** the info string of the fence after math, raw, reserved for labels */
+	meta: string;
+	/** the compile filename option, the module id in the vite plugin */
+	filename?: string;
+}
+
+/**
+ * markup for a piece of latex, mathml or html, load_math from mdsvex/math
+ * gives one for temml or katex, it must be synchronous, must throw on latex
+ * it can not render and must not escape for svelte, mdsvex escapes every brace
+ *
+ * @example
+ * math: (latex, { display }) => mathjax.tex2svg(latex, { display })
+ */
+export type MathRenderer = (latex: string, info: MathInfo) => string;
+
+export type MathOption = MathRenderer | false;
+
+/** latex the math renderer can not render, or a renderer that failed */
+export class MathError extends Error {
+	/** 1 based line in the document, of the latex when the renderer says where */
+	line: number;
+	/** 1 based column */
+	column: number;
+
+	/** what the renderer threw */
+	cause: unknown;
+
+	constructor(message: string, line: number, column: number, cause: unknown) {
+		super(message);
+		this.name = 'MathError';
+		this.line = line;
+		this.column = column;
+		this.cause = cause;
+	}
+}
+
+// classes remark-math made the convention, mathml takes no translate
+// attribute of its own so an html element carries it
+const MATH_OPEN = '<div class="math math-display" translate="no">';
+const MATH_CLOSE = '</div>';
+
 const custom_configs = new WeakMap<Highlighter, HighlightConfig>();
 
 function returned(out: unknown): string | null {
@@ -172,12 +218,26 @@ export class HighlightRun
 	private blocks = new Map<number, HighlightedBlock | null>();
 	private unknown: Set<string> | null = null;
 	private at = 0;
+	/** a math fence is display math, the render asks before it picks a replacement */
+	math = false;
+	private render_math: MathRenderer | null = null;
 
 	constructor(
 		private config: HighlightConfig,
 		readonly filename: string | undefined,
 		private source: string
 	) {}
+
+	/** math fences render through render from here on, never through the config */
+	with_math(render: MathRenderer): this {
+		if (typeof render !== 'function')
+			throw new TypeError(
+				'[mdsvex] math must be a math renderer, load_math() from mdsvex/math gives one, or false'
+			);
+		this.render_math = render;
+		this.math = true;
+		return this;
+	}
 
 	block(
 		code: string,
@@ -188,16 +248,57 @@ export class HighlightRun
 		let b = this.blocks.get(start);
 		if (b !== undefined) return b;
 		this.at = start;
-		try {
-			b = this.config.block(code, lang, meta, this);
-		} catch (e) {
-			throw this.located(e, `\`${lang || 'plain'}\` fence`);
-		}
+		if (lang === 'math' && this.render_math !== null)
+			b = this.math_block(this.render_math, code, meta);
+		else
+			try {
+				b = this.config.block(code, lang, meta, this);
+			} catch (e) {
+				throw this.located(e, `\`${lang || 'plain'}\` fence`);
+			}
 		this.blocks.set(start, b);
 		return b;
 	}
 
+	/**
+	 * display math as a block with no <pre>, the same markup is the children
+	 * of a math replacement, which takes display, code and meta as props
+	 */
+	private math_block(
+		render: MathRenderer,
+		code: string,
+		meta: string
+	): HighlightedBlock {
+		let html: unknown;
+		try {
+			html = render(code, { display: true, meta, filename: this.filename });
+		} catch (e) {
+			throw this.math_error(e, code);
+		}
+		if (typeof html !== 'string')
+			throw this.located(
+				new TypeError(
+					`[mdsvex] a math renderer must return a string, it returned ${html === null ? 'null' : typeof html}`
+				),
+				'`math` fence'
+			);
+		return {
+			before: '',
+			attributes: null,
+			body: MATH_OPEN + escape_braces(html) + MATH_CLOSE,
+			after: '',
+			props: ' display',
+			code,
+			code_template: null,
+			live: null,
+			dropped: null,
+		};
+	}
+
 	inline(code: string, lang: string, start: number): HighlightedCode | null {
+		// a math hint is no language to highlight and no math either, inline
+		// math is a later syntax, so the span is plain code and nothing warns
+		if (lang === 'math' && this.math) return null;
 		this.at = start;
 		try {
 			return this.config.inline(code, lang, this);
@@ -228,12 +329,8 @@ export class HighlightRun
 		this.warnings.push({ code, message, start });
 	}
 
-	/**
-	 * the error keeps its class and gains where its code is, as markdown-core
-	 * words it, highlight_error_at gives the position
-	 */
-	private located(e: unknown, what: string): unknown {
-		if (!(e instanceof Error)) return e;
+	/** the line of the code the run is at, from 1, and the offset that line starts at */
+	private line_at(): { line: number; line_start: number } {
 		const src = this.source;
 		let line = 1;
 		let line_start = 0;
@@ -245,16 +342,50 @@ export class HighlightRun
 			line++;
 			line_start = i + 1;
 		}
-		const where =
-			this.filename === undefined ? `line ${line}` : `${this.filename}:${line}`;
-		e.message += ` (${what} at ${where})`;
+		return { line, line_start };
+	}
+
+	private where(line: number): string {
+		return this.filename === undefined
+			? `line ${line}`
+			: `${this.filename}:${line}`;
+	}
+
+	/**
+	 * the error keeps its class and gains where its code is, as markdown-core
+	 * words it, highlight_error_at gives the position
+	 */
+	private located(e: unknown, what: string): unknown {
+		if (!(e instanceof Error)) return e;
+		const { line, line_start } = this.line_at();
+		e.message += ` (${what} at ${this.where(line)})`;
 		error_at.set(
 			e,
 			e instanceof LiveCodeError
-				? live_position(src, line, e)
+				? code_position(this.source, line, e.code, e.offset)
 				: { line, column: this.at - line_start + 1 }
 		);
 		return e;
+	}
+
+	/**
+	 * whatever a math renderer threw as a MathError, at the latex when the
+	 * error has a position in it as temml and katex errors do, else at the fence
+	 */
+	private math_error(e: unknown, code: string): MathError {
+		const { line, line_start } = this.line_at();
+		const offset = (e as { position?: unknown } | null)?.position;
+		const at =
+			typeof offset === 'number' && offset >= 0 && offset <= code.length
+				? code_position(this.source, line, code, offset)
+				: { line, column: this.at - line_start + 1 };
+		const said = e instanceof Error ? e.message : String(e);
+		return new MathError(
+			`${said.trim()} (\`math\` fence at ${this.where(line)})`,
+			at.line,
+			at.column,
+			e
+		);
 	}
 }
 
@@ -271,15 +402,15 @@ export function highlight_error_at(
 }
 
 /**
- * the position of a group in the fence opening on fence_line, a code line is
- * the end of its source line once quote markers and indent go
+ * the position of an offset in the code of the fence opening on fence_line,
+ * a code line is the end of its source line once quote markers and indent go
  */
-function live_position(
+function code_position(
 	source: string,
 	fence_line: number,
-	e: LiveCodeError
+	code: string,
+	offset: number
 ): { line: number; column: number } {
-	const { code, offset } = e;
 	let code_line = 0;
 	for (
 		let i = code.indexOf('\n');

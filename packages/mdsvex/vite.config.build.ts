@@ -9,6 +9,7 @@ export default defineConfig({
 				main: resolve(__dirname, "tsc/main.js"),
 				compile: resolve(__dirname, "tsc/compile.js"),
 				highlight: resolve(__dirname, "tsc/highlight.js"),
+				math: resolve(__dirname, "tsc/math.js"),
 				highlight_languages: resolve(__dirname, "tsc/highlight_languages.js"),
 			},
 			formats: ["es"],
@@ -17,8 +18,16 @@ export default defineConfig({
 		reportCompressedSize: true,
 		rollupOptions: {
 			// the plugin loads these on first use, a compile never does, the
-			// highlight entry imports twinkleplop languages by package name
-			external: ["vite", "es-module-lexer", /^node:/, /^@twinkleplop\//],
+			// highlight entry imports twinkleplop languages by package name and
+			// the math entry imports temml and katex the same way
+			external: [
+				"vite",
+				"es-module-lexer",
+				/^node:/,
+				/^@twinkleplop\//,
+				"temml",
+				"katex",
+			],
 			output: {
 				entryFileNames: "[name].js",
 				plugins: [

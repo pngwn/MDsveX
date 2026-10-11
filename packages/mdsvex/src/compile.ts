@@ -15,6 +15,7 @@ import {
 	ComponentScope,
 	CursorHTMLRenderer,
 	K_FRONTMATTER,
+	take_plain_math,
 } from '@mdsvex/render/html-cursor';
 import type { ComponentSource } from '@mdsvex/render/html-cursor';
 import { mappings_to_v3 } from '@mdsvex/render/sourcemap';
@@ -29,11 +30,13 @@ import {
 import type { FrontmatterOptions } from './frontmatter';
 import { scope_of } from './root_scope';
 import { highlight_run, plain_run } from './highlight_run';
-export { highlight_error_at } from './highlight_run';
+export { highlight_error_at, MathError } from './highlight_run';
 import type {
 	HighlightOption,
 	HighlightRun,
 	HighlightWarning,
+	MathOption,
+	MathRenderer,
 } from './highlight_run';
 
 export type { ParsePlugin, SyntaxOptions } from '@mdsvex/parse';
@@ -48,6 +51,9 @@ export type {
 	HighlightConfig,
 	HighlightOption,
 	HighlightWarning,
+	MathInfo,
+	MathOption,
+	MathRenderer,
 } from './highlight_run';
 
 /**
@@ -99,7 +105,13 @@ export interface CompileOptions extends TemplateOptions, SyntaxOptions {
 	 * which is the default
 	 */
 	highlight?: HighlightOption;
-	/** the document, highlighters and highlight errors see it */
+	/**
+	 * renders a math fence as display math, load_math from mdsvex/math gives
+	 * a renderer for temml or katex, any function from latex to markup is one,
+	 * false leaves the fence a code block, which is the default
+	 */
+	math?: MathOption;
+	/** the document, highlighters, math renderers and their errors see it */
 	filename?: string;
 }
 
@@ -187,6 +199,7 @@ export interface CompileInputs {
 	filename: string | undefined;
 	/** the parsers take the inputs as their SyntaxOptions */
 	unwrap_images: boolean | undefined;
+	math: MathOption | undefined;
 }
 
 /** @internal every inputs object comes from here, so they share one shape */
@@ -202,6 +215,7 @@ export function compile_inputs(): CompileInputs {
 		highlight: undefined,
 		filename: undefined,
 		unwrap_images: undefined,
+		math: undefined,
 	};
 }
 
@@ -222,6 +236,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	const highlight = options.highlight;
 	const filename = options.filename;
 	const unwrap_images = options.unwrap_images;
+	const math = options.math;
 	// options that set none need no inputs of their own
 	if (
 		plugins === undefined &&
@@ -233,7 +248,8 @@ function inputs_of(options: CompileOptions): CompileInputs {
 		strict === undefined &&
 		highlight === undefined &&
 		filename === undefined &&
-		unwrap_images === undefined
+		unwrap_images === undefined &&
+		math === undefined
 	)
 		return no_inputs;
 	const inputs = compile_inputs();
@@ -247,6 +263,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	inputs.highlight = highlight;
 	inputs.filename = filename;
 	inputs.unwrap_images = unwrap_images;
+	inputs.math = math;
 	return inputs;
 }
 
@@ -753,6 +770,23 @@ function warnings_of(
 	return out;
 }
 
+/**
+ * with no run a document renders plain first, a math fence that came out
+ * as code says it has math, so one without math pays for neither a run nor
+ * a search, this gives the renderer a run for math to render again with
+ */
+function math_run(
+	renderer: CursorHTMLRenderer,
+	math: MathRenderer,
+	filename: string | undefined,
+	source: string
+): true {
+	const run = plain_run(filename, source).with_math(math);
+	renderer.highlight = run;
+	renderer.pre_meta = run;
+	return true;
+}
+
 function module_code_of(metadata: Metadata | undefined): string | undefined {
 	return metadata === undefined ? undefined : metadata_export(metadata);
 }
@@ -771,6 +805,8 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	);
 	const metadata = metadata_of(nodes, source, inputs.frontmatter_parse);
 	const renderer = take_renderer();
+	const math = inputs.math;
+	const mathy = math !== undefined && math !== false;
 	let template: string | undefined;
 	try {
 		template = bind(
@@ -786,14 +822,24 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		give_renderer(renderer);
 		throw e;
 	}
+	if (mathy && renderer.highlight !== null)
+		(renderer.highlight as HighlightRun).with_math(math);
 
 	if (options?.sourcemap) {
-		// only a collapsed \r\n changes length, without one raw needs no \r\n scan
-		const result = renderer.update_mapped(
-			nodes,
-			source,
-			source.length === raw.length ? null : collapsed_of(raw),
-			module_code_of(metadata)
+		let result;
+		do {
+			// only a collapsed \r\n changes length, without one raw needs no \r\n scan
+			result = renderer.update_mapped(
+				nodes,
+				source,
+				source.length === raw.length ? null : collapsed_of(raw),
+				module_code_of(metadata)
+			);
+		} while (
+			mathy &&
+			renderer.highlight === null &&
+			take_plain_math() &&
+			math_run(renderer, math, inputs.filename, source)
 		);
 		const done: CompileResult = {
 			code: renderer.html,
@@ -806,7 +852,13 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		return done;
 	}
 
-	renderer.update(nodes, source, module_code_of(metadata));
+	do renderer.update(nodes, source, module_code_of(metadata));
+	while (
+		mathy &&
+		renderer.highlight === null &&
+		take_plain_math() &&
+		math_run(renderer, math, inputs.filename, source)
+	);
 	const done: CompileResult = { code: renderer.html, metadata, template };
 	unbind(done, renderer, source);
 	give_renderer(renderer);
@@ -1131,79 +1183,99 @@ export class CompilerSession {
 			source
 		);
 
+		const math = inputs.math;
+		const mathy = math !== undefined && math !== false;
+		// the run of a highlighter renders math fences too
+		if (mathy && renderer.highlight !== null)
+			(renderer.highlight as HighlightRun).with_math(math);
+
 		let done:
 			| CompileResult
 			| CompileV3Result
 			| CompileTraceResult
 			| TraceTarget;
-		switch (kind) {
-			case Kind.INTO: {
-				out!.template = template;
-				renderer.update_trace_into(
-					nodes,
-					source,
-					out!,
-					module_code_of(metadata)
-				);
-				out!.source = source;
-				out!.html = renderer.html;
-				// the caller clears warnings it took
-				done = out!;
-				break;
-			}
-			case Kind.MAPPED: {
-				// only a collapsed \r\n changes length, without one raw needs no \r\n scan
-				const result = renderer.update_mapped(
-					nodes,
-					source,
-					source.length === raw.length ? null : collapsed_of(raw),
-					module_code_of(metadata)
-				);
-				done = {
-					code: renderer.html,
-					mappings: result.mappings,
-					metadata,
-					template,
-				};
-				break;
-			}
-			case Kind.V3: {
-				const file = inputs.filename;
-				const module_code = module_code_of(metadata);
-				// without a collapsed \r\n the records index raw
-				if (source.length === raw.length) {
-					const map = renderer.update_v3(nodes, source, raw, file, module_code);
-					done = { code: renderer.html, map, metadata, template };
+		// again only when a math fence rendered as code for want of a run
+		do {
+			switch (kind) {
+				case Kind.INTO: {
+					out!.template = template;
+					renderer.update_trace_into(
+						nodes,
+						source,
+						out!,
+						module_code_of(metadata)
+					);
+					out!.source = source;
+					out!.html = renderer.html;
+					// the caller clears warnings it took
+					done = out!;
 					break;
 				}
-				const result = renderer.update_mapped(
-					nodes,
-					source,
-					collapsed_of(raw),
-					module_code
-				);
-				const code = renderer.html;
-				done = {
-					code,
-					map: mappings_to_v3(result.mappings, raw, code, file),
-					metadata,
-					template,
-				};
-				break;
+				case Kind.MAPPED: {
+					// only a collapsed \r\n changes length, without one raw needs no \r\n scan
+					const result = renderer.update_mapped(
+						nodes,
+						source,
+						source.length === raw.length ? null : collapsed_of(raw),
+						module_code_of(metadata)
+					);
+					done = {
+						code: renderer.html,
+						mappings: result.mappings,
+						metadata,
+						template,
+					};
+					break;
+				}
+				case Kind.V3: {
+					const file = inputs.filename;
+					const module_code = module_code_of(metadata);
+					// without a collapsed \r\n the records index raw
+					if (source.length === raw.length) {
+						const map = renderer.update_v3(
+							nodes,
+							source,
+							raw,
+							file,
+							module_code
+						);
+						done = { code: renderer.html, map, metadata, template };
+						break;
+					}
+					const result = renderer.update_mapped(
+						nodes,
+						source,
+						collapsed_of(raw),
+						module_code
+					);
+					const code = renderer.html;
+					done = {
+						code,
+						map: mappings_to_v3(result.mappings, raw, code, file),
+						metadata,
+						template,
+					};
+					break;
+				}
+				case Kind.TRACE: {
+					const trace = renderer.update_trace(
+						nodes,
+						source,
+						module_code_of(metadata)
+					);
+					done = { code: renderer.html, trace, source, metadata, template };
+					break;
+				}
+				default:
+					renderer.update(nodes, source, module_code_of(metadata));
+					done = { code: renderer.html, metadata, template };
 			}
-			case Kind.TRACE: {
-				const trace = renderer.update_trace(
-					nodes,
-					source,
-					module_code_of(metadata)
-				);
-				done = { code: renderer.html, trace, source, metadata, template };
-				break;
-			}
-			default:
-				renderer.update(nodes, source, module_code_of(metadata));
-				done = { code: renderer.html, metadata, template };
-		}
+		} while (
+			mathy &&
+			renderer.highlight === null &&
+			take_plain_math() &&
+			math_run(renderer, math, inputs.filename, source)
+		);
 		// one call site for every kind, each more is another callee to inline
 		unbind(done, renderer, source);
 		return done;

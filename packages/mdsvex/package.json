@@ -16,6 +16,10 @@
 			"types": "./dist/highlight.d.ts",
 			"default": "./dist/highlight.js"
 		},
+		"./math": {
+			"types": "./dist/math.d.ts",
+			"default": "./dist/math.js"
+		},
 		"./highlight/languages": {
 			"types": "./dist/highlight_languages.d.ts",
 			"default": "./dist/highlight_languages.js"
@@ -85,12 +89,14 @@
 		"@twinkleplop/tsx": "^0.1.7",
 		"@twinkleplop/typescript": "^0.1.7",
 		"@twinkleplop/yaml": "^0.1.7",
-		"es-module-lexer": "^1.6.0"
+		"es-module-lexer": "^1.6.0",
+		"temml": "^0.14.0"
 	},
 	"peerDependencies": {
 		"vite": ">=6.0.0",
 		"@twinkleplop/twoslash": "^0.3.1",
-		"@twinkleplop/twoslash-svelte": "^0.3.1"
+		"@twinkleplop/twoslash-svelte": "^0.3.1",
+		"katex": ">=0.16.0"
 	},
 	"peerDependenciesMeta": {
 		"vite": {
@@ -101,12 +107,16 @@
 		},
 		"@twinkleplop/twoslash-svelte": {
 			"optional": true
+		},
+		"katex": {
+			"optional": true
 		}
 	},
 	"devDependencies": {
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@twinkleplop/twoslash": "^0.3.1",
 		"@twinkleplop/twoslash-svelte": "^0.3.1",
+		"katex": "^0.19.0",
 		"npm-run-all2": "^7.0.2",
 		"shx": "^0.3.4",
 		"svelte": "^5.55.0",

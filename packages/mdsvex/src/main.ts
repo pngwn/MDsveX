@@ -10,7 +10,8 @@ import type { FrontmatterOptions } from './frontmatter';
 import { MANIFEST_VERSION, manifest_writer } from './manifest';
 import type { MdsvexManifest } from './manifest';
 import { scope_of } from './root_scope';
-import type { Highlighter } from './highlight_run';
+import type { Highlighter, MathRenderer } from './highlight_run';
+import type { MathOptions } from './math';
 import type { HighlightOptions } from './highlight';
 import {
 	COMPONENTS_ID,
@@ -29,6 +30,7 @@ import {
 	templates_for,
 } from './template_registry';
 import { has_code, plugin_highlight } from './plugin_highlight';
+import { check_math, manifest_math } from './plugin_math';
 import { metadata_query } from './metadata_query';
 import type { MetadataDev } from './metadata_query';
 
@@ -41,10 +43,12 @@ export {
 export type { ScanKind, ScannedExports } from './scan_exports';
 export { MANIFEST_PATH, MANIFEST_VERSION } from './manifest';
 export type {
+	ManifestMath,
 	ManifestModule,
 	ManifestTemplate,
 	MdsvexManifest,
 } from './manifest';
+export type { MathOptions } from './math';
 
 export interface MdsvexOptions extends SyntaxOptions {
 	extensions?: string[];
@@ -94,6 +98,17 @@ export interface MdsvexOptions extends SyntaxOptions {
 	 * highlight: { languages: { dockerfile: 'bash' }, twoslash: true }
 	 */
 	highlight?: PluginHighlightOptions | Highlighter | false;
+	/**
+	 * how a math fence renders, temml by default, which is loaded the first
+	 * time a document has one, { renderer: 'katex' } needs katex installed,
+	 * options go to the renderer, a function is a renderer of your own and
+	 * false leaves the fence a code block, import the stylesheet of the
+	 * renderer yourself, temml/dist/Temml-Local.css or katex/dist/katex.min.css
+	 *
+	 * @example
+	 * math: { options: { macros: { '\\RR': '\\mathbb{R}' } } }
+	 */
+	math?: MathOptions | MathRenderer | false;
 }
 
 export interface PluginHighlightOptions extends Omit<
@@ -107,6 +122,9 @@ export interface PluginHighlightOptions extends Omit<
 	 */
 	twoslash?: boolean | { svelte?: boolean };
 }
+
+/** what a transform gives, later when it had to load the math renderer first */
+type Compiled = { code: string } | Promise<{ code: string }>;
 
 /** a template module, or one with a module of replacements merged over its own */
 export type TemplateSpec =
@@ -201,6 +219,35 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			}
 		));
 	}
+	const written_math = options.math;
+	check_math(written_math);
+	// the renderer loads with the first math fence a compile meets, until
+	// then one that only says so stands in, no document is searched for math
+	let math_needed = false;
+	const math_pending: MathRenderer = () => {
+		math_needed = true;
+		return '';
+	};
+	inputs.math =
+		written_math === false || typeof written_math === 'function'
+			? written_math
+			: math_pending;
+	let math_loading: Promise<void> | null = null;
+	/** loads the renderer, then compiles what met a math fence without it again */
+	function load_math(compile: () => Compiled): Promise<{ code: string }> {
+		math_needed = false;
+		return (math_loading ??= import('./math')
+			.then((m) => m.load_math(written_math as MathOptions | undefined))
+			.then(
+				(renderer) => {
+					inputs.math = renderer;
+				},
+				(e) => {
+					math_loading = null;
+					throw e;
+				}
+			)).then(compile);
+	}
 	// a language goes unknown once per file, not once per compile of it
 	const unknown_warned = new Set<string>();
 	if (options.component_mode !== undefined)
@@ -273,6 +320,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			};
 			// left out when off, as a manifest from before the option has it
 			if (options.unwrap_images === true) out.unwrap_images = true;
+			// left out for temml without options, the default
+			const math = manifest_math(written_math);
+			if (math !== undefined) out.math = math;
 			return out;
 		},
 		(message) => log(message)
@@ -320,6 +370,15 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 		// return NO map, avoids poisoning getCombinedSourcemap()
 		return { code: doc.html };
+	}
+
+	/** for a document that met a math fence before the renderer was loaded */
+	function recompile(
+		ctx: Rollup.TransformPluginContext,
+		code: string,
+		id: string
+	): Promise<{ code: string }> {
+		return load_math(() => compile_doc(ctx, code, id));
 	}
 
 	return [
@@ -416,11 +475,17 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				if (inputs.highlight === undefined && has_code(code))
 					waits.push(load_highlight());
 				if (tracker === null) {
-					if (waits.length === 0) return compile_doc(this, code, id);
-					return Promise.all(waits).then(() => compile_doc(this, code, id));
+					if (waits.length === 0) {
+						const result = compile_doc(this, code, id);
+						return math_needed ? recompile(this, code, id) : result;
+					}
+					return Promise.all(waits).then(() => {
+						const result = compile_doc(this, code, id);
+						return math_needed ? recompile(this, code, id) : result;
+					});
 				}
 
-				const finish = () => {
+				const finish = (): Compiled => {
 					// a watch build compiles again when the exports change, in dev the virtual import is the edge
 					if (command === 'build') {
 						if (registry !== null)
@@ -432,6 +497,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					inputs.components = registry?.sources();
 					inputs.directives = registry?.directive_sources();
 					const result = compile_doc(this, code, id);
+					// it met a math fence before the renderer was loaded
+					if (math_needed) return load_math(finish);
 					const picked = stored.get(id)!.template;
 					// a query picks for one import, not for the file
 					if (documents !== null && id.indexOf('?') < 0) {
