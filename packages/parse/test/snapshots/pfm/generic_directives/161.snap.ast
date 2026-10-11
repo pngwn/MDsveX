@@ -1,0 +1,9 @@
+root
+  block_quote
+    directive_leaf name="toc"
+      directive_label
+        text "x"
+    directive_leaf name="toc"
+      directive_label
+        text "y"
+  line_break

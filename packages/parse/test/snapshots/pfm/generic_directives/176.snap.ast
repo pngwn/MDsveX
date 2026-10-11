@@ -1,0 +1,10 @@
+root
+  list ordered=true start=1 tight=true
+    list_item
+      directive_leaf name="toc" args.a="1"
+        directive_label
+          text "x"
+      text "text"
+    list_item
+      text "b"
+  line_break

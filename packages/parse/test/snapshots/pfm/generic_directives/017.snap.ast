@@ -3,3 +3,4 @@ root
     directive_leaf name="note"
       directive_label
         text "inside quote"
+  line_break

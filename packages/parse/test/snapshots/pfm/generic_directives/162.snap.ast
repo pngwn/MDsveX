@@ -1,0 +1,7 @@
+root
+  block_quote
+    block_quote
+      directive_leaf name="toc"
+      paragraph
+        text "text"
+  line_break

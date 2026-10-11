@@ -1,0 +1,9 @@
+root
+  directive_container name="box"
+    list ordered=false start=0 tight=true
+      list_item
+        directive_leaf name="toc"
+    line_break
+  paragraph
+    text "after"
+  line_break
