@@ -338,6 +338,26 @@ describe('character references', () => {
 	}
 });
 
+describe('a delimiter that never closes', () => {
+	const cases: [string, string][] = [
+		['[\\*a\n', '<p>[*a</p>'],
+		['*\\_a\n', '<p>*_a</p>'],
+		['# ~~\\*a\n', '<h1>~~*a</h1>'],
+		['[\\&amp;a\n', '<p>[&amp;amp;a</p>'],
+		[
+			'| h |\n|-|\n| [\\*b |\n',
+			'<table>\n<thead>\n<tr>\n<th>h</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>[*b</td>\n</tr>\n</tbody>\n</table>',
+		],
+		['[|a\n', '<p>[a</p>'],
+	];
+
+	for (const [input, expected] of cases) {
+		it(JSON.stringify(input), () => {
+			expect(render(input)).toBe(expected);
+		});
+	}
+});
+
 describe('braces in code', () => {
 	const cases: [string, string][] = [
 		[
