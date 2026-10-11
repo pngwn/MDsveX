@@ -218,6 +218,44 @@ describe("document options from a manifest", () => {
 		expect(pick("/app/src/new.svx")).toBeUndefined();
 	});
 
+	it("puts the components of a plugin below the modules of the config", () => {
+		const with_plugins: MdsvexManifest = {
+			...m,
+			plugins: [
+				{
+					name: "steps",
+					directives: {
+						id: "mdsvex:plugin/0",
+						file: "/app/node_modules/@acme/steps/directives.js",
+						names: ["steps", "step", "box"],
+					},
+					components: {
+						id: "mdsvex:plugin-components/0",
+						file: "/app/node_modules/@acme/steps/elements.js",
+						names: ["hr"],
+					},
+				},
+				{ name: "bare", directives: null, components: null },
+			],
+		};
+		const { compile, resolve } = document_options(with_plugins, "/app/src/blog/a.svx");
+		// the config modules come later, so they win a name both have
+		expect(compile!.directives).toEqual([
+			{ specifier: "mdsvex:plugin/0", names: ["steps", "step", "box"] },
+			{ specifier: "mdsvex:directives", names: ["box"] },
+		]);
+		expect(compile!.components).toEqual([
+			{ specifier: "mdsvex:plugin-components/0", names: ["hr"] },
+			{ specifier: "mdsvex:components", names: ["a"] },
+		]);
+		expect(resolve!("mdsvex:plugin/0", "steps")).toBe(
+			"../../node_modules/@acme/steps/directives.js",
+		);
+		expect(resolve!("mdsvex:plugin-components/0", "hr")).toBe(
+			"../../node_modules/@acme/steps/elements.js",
+		);
+	});
+
 	it("reports directives and frontmatter only when nothing at build could handle them", () => {
 		const opts = document_options(m, "/app/a.svx");
 		expect(opts.report_directives).toBe(true);
@@ -304,6 +342,51 @@ describe("mdsvex.config.json", () => {
 				names: ["box"],
 			},
 		]);
+	});
+
+	it("takes the directive names of a plugin, which json can not hold whole", () => {
+		const root = tree({
+			"package.json": JSON.stringify({ imports: { "#lib/*": "./src/lib/*" } }),
+			"src/lib/steps.js": "export { default as steps } from './Steps.svelte';\n",
+			"src/doc.svx": ":::steps[]\ntext\n:::\n",
+		});
+		const m = from_json(
+			{
+				plugins: [
+					{ name: "steps", module: "#lib/steps.js", directives: ["steps", "step"] },
+					{ module: "#lib/missing.js", directives: ["gone"] },
+				],
+			},
+			root,
+			ts,
+		);
+		expect(m.plugins).toEqual([
+			{
+				name: "steps",
+				directives: {
+					id: "mdsvex:plugin/0",
+					file: root + "/src/lib/steps.js",
+					names: ["steps", "step"],
+				},
+				components: null,
+			},
+		]);
+		expect(from_json({}, root, ts).plugins).toBeUndefined();
+
+		writeFileSync(
+			join(root, "mdsvex.config.json"),
+			JSON.stringify({
+				plugins: [{ module: "#lib/steps.js", directives: ["steps", "step"] }],
+			}),
+		);
+		const { options } = create_config_loader({ typescript: ts }).options_for(
+			root + "/src/doc.svx",
+		);
+		expect(options.report_directives).toBe(true);
+		expect(options.compile!.directives).toEqual([
+			{ specifier: "mdsvex:plugin/0", names: ["steps", "step"] },
+		]);
+		expect(options.resolve!("mdsvex:plugin/0", "steps")).toBe("./lib/steps.js");
 	});
 
 	it("takes unwrap_images, a manifest without the field when it is off", () => {

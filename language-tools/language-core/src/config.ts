@@ -27,6 +27,7 @@ const COMPONENTS_ID = 'mdsvex:components';
 const DIRECTIVES_ID = 'mdsvex:directives';
 const TEMPLATE_ID = 'mdsvex:template/';
 const TEMPLATE_DIRECTIVES_ID = 'mdsvex:template-directives/';
+const PLUGIN_ID = 'mdsvex:plugin/';
 const DIRECTIVES_EXPORT = 'directives';
 
 /** the shape of mdsvex.config.json, the vite plugin options that are data */
@@ -42,6 +43,11 @@ export interface JsonConfig {
 	highlight?: boolean;
 	/** a paragraph of only images gets no <p>, as the option of the plugin does */
 	unwrap_images?: boolean;
+	/**
+	 * the directives of each entry of the plugins option, json can not hold
+	 * its handlers, so only the names and the module that exports them
+	 */
+	plugins?: { name?: string; module: string; directives: string[] }[];
 }
 
 export interface LoadedConfig {
@@ -173,13 +179,21 @@ export function document_options(
 		);
 		for (const d of t.directives) files.set(d.id, () => d.file);
 	}
-	for (const m of [...manifest.components, ...manifest.directives])
-		files.set(m.id, () => m.file);
+	// plugin modules first, so the modules of the config win a name
+	const components: ManifestModule[] = [];
+	const directives: ManifestModule[] = [];
+	for (const p of manifest.plugins ?? []) {
+		if (p.components) components.push(p.components);
+		if (p.directives) directives.push(p.directives);
+	}
+	components.push(...manifest.components);
+	directives.push(...manifest.directives);
+	for (const m of [...components, ...directives]) files.set(m.id, () => m.file);
 
 	const compile: CompileOptions = {
 		component_mode: manifest.component_mode,
-		components: sources(manifest.components),
-		directives: sources(manifest.directives),
+		components: sources(components),
+		directives: sources(directives),
 		highlight: highlight_of(manifest),
 	};
 	if (Object.keys(templates).length !== 0) compile.templates = templates;
@@ -267,6 +281,22 @@ export function from_json(
 		});
 		const d = directives_of(own, file, DIRECTIVES_ID + suffix, scan);
 		if (d !== null) manifest.directives.push(d);
+	});
+
+	(config.plugins ?? []).forEach((plugin, i) => {
+		if (
+			typeof plugin?.module !== 'string' ||
+			!Array.isArray(plugin.directives) ||
+			plugin.directives.length === 0
+		)
+			return;
+		const file = resolve_specifier(plugin.module, from);
+		if (file === null) return;
+		(manifest.plugins ??= []).push({
+			name: plugin.name ?? plugin.module,
+			directives: { id: PLUGIN_ID + i, file, names: plugin.directives },
+			components: null,
+		});
 	});
 
 	for (const [name, entry] of Object.entries(config.templates ?? {})) {

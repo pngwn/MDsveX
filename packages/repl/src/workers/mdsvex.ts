@@ -23,6 +23,7 @@ export const TEMPLATE_PREFIX = 'mdsvex:template/';
 export const COMPONENTS_ID = 'mdsvex:components';
 export const DIRECTIVES_ID = 'mdsvex:directives';
 export const TEMPLATE_DIRECTIVES_PREFIX = 'mdsvex:template-directives/';
+export const PLUGIN_PREFIX = 'mdsvex:plugin/';
 
 /** the namespace export of a replacement module that holds its directives */
 const DIRECTIVES_EXPORT = 'directives';
@@ -69,6 +70,11 @@ export interface ReplConfig {
 	component_mode?: ComponentMode;
 	highlight?: ReplHighlight | false;
 	unwrap_images?: boolean;
+	/**
+	 * the directives of each entry of the plugins option, json can not hold
+	 * its handlers, so only the names and the module that exports them
+	 */
+	plugins?: { name?: string; module: string; directives: string[] }[];
 }
 
 interface TemplateTarget {
@@ -141,6 +147,7 @@ export function prepare(files: FileMap): Prepared {
 	const config = empty_config();
 	const raw = files.get(CONFIG_FILE);
 	if (raw === undefined) return { config, options: {}, error: null };
+	const plugins: { id: string; target: TemplateTarget }[] = [];
 
 	let parsed: ReplConfig;
 	try {
@@ -192,6 +199,28 @@ export function prepare(files: FileMap): Prepared {
 		if (parsed.components) {
 			config.components = target_of(parsed.components, files, 'components');
 		}
+
+		if (parsed.plugins !== undefined) {
+			if (!Array.isArray(parsed.plugins))
+				throw new Error(`${CONFIG_FILE}: plugins must be a list`);
+			parsed.plugins.forEach((plugin, i) => {
+				const key = `plugins[${i}]`;
+				if (
+					typeof plugin?.module !== 'string' ||
+					!Array.isArray(plugin.directives) ||
+					plugin.directives.some((name) => typeof name !== 'string')
+				)
+					throw new Error(
+						`${CONFIG_FILE}: ${key} needs a module and a list of directive names`
+					);
+				const target = target_of(plugin.module, files, `${key}.module`);
+				// the plugin names its directives, the exports of the module are not scanned for them
+				plugins.push({
+					id: PLUGIN_PREFIX + i,
+					target: { ...target, components: plugin.directives, directives: [] },
+				});
+			});
+		}
 	} catch (e) {
 		return { config, options: {}, error: e as Error };
 	}
@@ -229,6 +258,17 @@ export function prepare(files: FileMap): Prepared {
 				{ specifier: DIRECTIVES_ID, names: directives.components },
 			];
 		}
+	}
+
+	if (plugins.length !== 0) {
+		// below the directives of the components module, which come later and win a name
+		options.directives = [
+			...plugins.map(({ id, target }) => {
+				config.directives.set(id, target);
+				return { specifier: id, names: target.components };
+			}),
+			...(options.directives ?? []),
+		];
 	}
 
 	return { config, options, error: null };
