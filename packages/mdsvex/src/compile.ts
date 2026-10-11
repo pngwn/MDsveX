@@ -12,7 +12,7 @@ import {
 } from '@mdsvex/parse';
 import type {
 	DirectiveEntry,
-	DirectiveHandlers,
+	ParseOptions,
 	ParsePlugin,
 	SyntaxOptions,
 } from '@mdsvex/parse';
@@ -56,6 +56,7 @@ export type {
 	DirectiveHandler,
 	NodeView,
 	ParsePlugin,
+	PluginContext,
 	SyntaxOptions,
 	WrapperView,
 } from '@mdsvex/parse';
@@ -100,14 +101,27 @@ export type ComponentMode = 'markdown' | 'all';
 
 /**
  * element_directive, an element component_mode all kept because a component
- * can not take its directive, the rest come from highlighting
+ * can not take its directive, the rest come from highlighting, or from a
+ * plugin, which picks its own code
  */
 export interface CompileWarning {
-	code: 'element_directive' | HighlightWarning;
+	code: 'element_directive' | HighlightWarning | (string & {});
 	message: string;
-	/** the element or code, line from 1 and column from 0, which hold in the raw source */
+	/**
+	 * the element, code or node, line from 1 and column from 0, which hold in
+	 * the raw source, the start of the document for a plugin warning that
+	 * names no node
+	 */
 	start: { line: number; column: number };
+	/** the name of the plugin that reported it with ctx.warn, when it has one */
+	plugin?: string;
 }
+
+/** what plugins left in ctx.data, each under the name of its plugin */
+export type PluginData = Record<string, Record<string, unknown>>;
+
+/** tables of bound handlers, each with the name of its plugin */
+type BoundTables = NonNullable<ParseOptions['directive_handlers']>;
 
 /** one directive a plugin owns, its handlers run only inside that directive */
 export interface BundleDirective extends DirectiveEntry {
@@ -234,6 +248,8 @@ export interface CompileResult {
 	template?: string;
 	/** undefined when there are none */
 	warnings?: CompileWarning[];
+	/** what plugins left in ctx.data, by plugin name, undefined when none left any */
+	data?: PluginData;
 }
 
 export interface CompileV3Result {
@@ -246,6 +262,8 @@ export interface CompileV3Result {
 	template?: string;
 	/** undefined when there are none */
 	warnings?: CompileWarning[];
+	/** what plugins left in ctx.data, by plugin name, undefined when none left any */
+	data?: PluginData;
 }
 
 export interface CompileTraceResult {
@@ -260,6 +278,8 @@ export interface CompileTraceResult {
 	template?: string;
 	/** undefined when there are none */
 	warnings?: CompileWarning[];
+	/** what plugins left in ctx.data, by plugin name, undefined when none left any */
+	data?: PluginData;
 }
 
 /**
@@ -271,7 +291,7 @@ export interface CompileInputs {
 	/** unpacked into the four fields below before a compile reads them */
 	plugins: Bundle[] | undefined;
 	/** handlers bound to directive names, only ever set from plugins */
-	directive_handlers: DirectiveHandlers[] | undefined;
+	directive_handlers: BoundTables | undefined;
 	parse_plugins: ParsePlugin[] | undefined;
 	components: ComponentSource[] | undefined;
 	directives: ComponentSource[] | undefined;
@@ -450,8 +470,8 @@ class Merge<T> {
 
 /** what one plugins array holds, built once, so the arrays keep their identity */
 interface Unpacked {
-	/** the directives of each bundle, undefined when none binds a handler */
-	handlers: DirectiveHandlers[] | undefined;
+	/** the directives of each bundle with its name, undefined when none binds a handler */
+	handlers: BoundTables | undefined;
 	/** the directive components of each bundle that has any */
 	directives: Merge<ComponentSource>;
 	components: Merge<ComponentSource>;
@@ -487,7 +507,7 @@ function unpack(bundles: Bundle[]): Unpacked {
 	if (hit !== undefined) return hit;
 	if (!Array.isArray(bundles))
 		throw new Error('[mdsvex] plugins must be an array of plugins');
-	const tables: DirectiveHandlers[] = [];
+	const tables: BoundTables = [];
 	const directives: ComponentSource[] = [];
 	const components: ComponentSource[] = [];
 	const parse: ParsePlugin[] = [];
@@ -518,8 +538,9 @@ function unpack(bundles: Bundle[]): Unpacked {
 						'needs a module, the specifier its directive components are exported from'
 					);
 				directives.push({ specifier: bundle.module, names });
-				// the parser reads children, descendants and parse and ignores the rest
-				tables.push(own);
+				// the parser reads children, descendants and parse and ignores the
+				// rest, the name keys what the handlers write to ctx.data
+				tables.push({ name: bundle.name, directives: own });
 			}
 		}
 		const replaced = bundle.components;
@@ -539,7 +560,12 @@ function unpack(bundles: Bundle[]): Unpacked {
 		if (bundle.parse !== undefined) {
 			if (!is_record(bundle.parse))
 				throw bundle_error(i, bundle, 'parse must be a parse plugin');
-			parse.push(bundle.parse);
+			// under the name of its bundle, so ctx.data is one object for both
+			parse.push(
+				bundle.parse.name === bundle.name
+					? bundle.parse
+					: { ...bundle.parse, name: bundle.name }
+			);
 		}
 	}
 	const out: Unpacked = {
@@ -858,32 +884,130 @@ function give_renderer(renderer: CursorHTMLRenderer): void {
 	spare_renderer = renderer;
 }
 
-function parse_once(
-	source: string,
-	plugins: ParsePlugin[] | undefined,
-	bound: DirectiveHandlers[] | undefined,
-	directives: ComponentScope | null,
-	inputs: CompileInputs
-): NodeBuffer {
-	let dispatcher: PluginDispatcher | undefined;
-	const plugged = plugins !== undefined && plugins.length > 0;
-	if (plugged || bound !== undefined) {
-		const text_source = new SourceTextSource(source);
-		// bound handlers go unguarded, they are how a plugin reaches its own directives
-		dispatcher = new PluginDispatcher(
-			plugged ? guard_plugins(plugins, directives) : undefined,
-			text_source,
-			bound
-		);
+/**
+ * what the handlers of a document read through their context and what they
+ * left for its result, one per dispatcher, which takes it as its document
+ */
+class PluginHost {
+	readonly dispatcher: PluginDispatcher;
+	filename: string | undefined = undefined;
+	/** the dispatcher calls it bare, when a handler reads ctx.frontmatter */
+	readonly frontmatter: () => Metadata | undefined;
+	/** the tree the dispatcher builds into, set by whoever made it */
+	tree: TreeBuilder | null = null;
+	private source = '';
+	private parse: FrontmatterParse = undefined;
+	private read = false;
+	private metadata: Metadata | undefined = undefined;
+
+	constructor(dispatcher: PluginDispatcher) {
+		this.dispatcher = dispatcher;
+		this.frontmatter = () => this.read_frontmatter();
 	}
 
+	/** before each parse, after a reset, which makes the dispatcher forget its document */
+	start(source: string, inputs: CompileInputs): void {
+		this.source = source;
+		this.filename = inputs.filename;
+		this.parse = inputs.frontmatter_parse;
+		this.read = false;
+		this.metadata = undefined;
+		this.dispatcher.set_document(this);
+	}
+
+	/** parsed once, for the first handler that asks or for the compile after the parse */
+	private read_frontmatter(): Metadata | undefined {
+		if (this.read) return this.metadata;
+		const nodes = this.tree!.get_buffer();
+		// frontmatter can only be the first node, and only its own open
+		// handler runs before it has an end
+		const first = nodes.first_child_at(0);
+		if (
+			first === NONE ||
+			(nodes.kind_at(first) as number) !== K_FRONTMATTER ||
+			nodes.end_at(first) === NONE
+		)
+			return undefined;
+		const metadata = parse_frontmatter(
+			this.source,
+			nodes.value_start_at(first),
+			nodes.value_end_at(first),
+			this.parse
+		);
+		this.read = true;
+		return (this.metadata = metadata);
+	}
+
+	/** a document that waits for its render, the dispatcher holds what they left until then */
+	wait(parsed: Parsed): void {
+		parsed._host = this;
+		parsed.data = this.dispatcher.data();
+	}
+
+	/**
+	 * gives a result what the handlers left, their warnings ahead of those of
+	 * the render, a target that is kept loses the data of its last document
+	 */
+	leave(
+		result: { warnings?: CompileWarning[]; data?: PluginData },
+		kept: boolean
+	): void {
+		const data = this.dispatcher.data();
+		if (data !== undefined || kept) result.data = data;
+		const warned = this.dispatcher.warnings;
+		if (warned === undefined) return;
+		const source = this.source;
+		const warnings: CompileWarning[] = [];
+		for (const { plugin, code, message, start } of warned) {
+			// one that names no node points at the start of the document
+			const w: CompileWarning =
+				start === undefined
+					? { code, message, start: { line: 1, column: 0 } }
+					: warning(code, message, start, source);
+			if (plugin !== undefined) w.plugin = plugin;
+			warnings.push(w);
+		}
+		const rendered = result.warnings;
+		result.warnings =
+			rendered === undefined ? warnings : warnings.concat(rendered);
+	}
+}
+
+/** the host of a parse outside any session, null when no handler can run */
+function host_once(
+	source: string,
+	plugins: ParsePlugin[] | undefined,
+	bound: BoundTables | undefined,
+	directives: ComponentScope | null
+): PluginHost | null {
+	const plugged = plugins !== undefined && plugins.length > 0;
+	if (!plugged && bound === undefined) return null;
+	// bound handlers go unguarded, they are how a plugin reaches its own directives
+	return new PluginHost(
+		new PluginDispatcher(
+			plugged ? guard_plugins(plugins, directives) : undefined,
+			new SourceTextSource(source),
+			bound
+		)
+	);
+}
+
+function parse_once(
+	source: string,
+	host: PluginHost | null,
+	inputs: CompileInputs
+): NodeBuffer {
 	// short documents are denser in nodes and a small buffer is only a slab
 	// carve, so size generously to skip a resize
 	const len = source.length;
 	const tree = new TreeBuilder(
 		len < 512 ? (len >> 2) + 16 : len >> 3,
-		dispatcher
+		host === null ? undefined : host.dispatcher
 	);
+	if (host !== null) {
+		host.tree = tree;
+		host.start(source, inputs);
+	}
 	let parser = spare_parser;
 	if (parser === null) parser = new PFMParser(tree);
 	else {
@@ -900,8 +1024,8 @@ function parse_once(
 	// fused plugins set their ids before this, sequential ones read them after
 	const slug = inputs.heading_ids;
 	if (slug !== undefined) assign_heading_ids(nodes, source, slug);
-	if (dispatcher) {
-		dispatcher.run_sequential(nodes);
+	if (host !== null) {
+		host.dispatcher.run_sequential(nodes);
 	}
 	nodes.trim();
 	return nodes;
@@ -1068,14 +1192,18 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	const source = normalized(raw);
 	const scope = root_scope(inputs);
 	const directives = directive_scope_of(inputs.directives);
-	const nodes = parse_once(
+	const host = host_once(
 		source,
 		inputs.parse_plugins,
 		inputs.directive_handlers,
-		reserved_directives(directives, inputs.templates),
-		inputs
+		reserved_directives(directives, inputs.templates)
 	);
-	const metadata = metadata_of(nodes, source, inputs.frontmatter_parse);
+	const nodes = parse_once(source, host, inputs);
+	// a handler that read the frontmatter already parsed it
+	const metadata =
+		host === null
+			? metadata_of(nodes, source, inputs.frontmatter_parse)
+			: host.frontmatter();
 	const images =
 		inputs.import_images === true &&
 		(take_src() ||
@@ -1132,6 +1260,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 			template,
 		};
 		unbind(done, renderer, source);
+		if (host !== null) host.leave(done, false);
 		give_renderer(renderer);
 		return done;
 	}
@@ -1145,6 +1274,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	);
 	const done: CompileResult = { code: renderer.html, metadata, template };
 	unbind(done, renderer, source);
+	if (host !== null) host.leave(done, false);
 	give_renderer(renderer);
 	return done;
 }
@@ -1172,13 +1302,14 @@ const enum Kind {
 interface PluginArena {
 	plugins: ParsePlugin[] | undefined;
 	/** the bound handlers the dispatcher was built with */
-	bound: DirectiveHandlers[] | undefined;
+	bound: BoundTables | undefined;
 	/** the reserved directives the plugins were guarded with */
 	reserved: ComponentScope | null;
 	text: SourceTextSource;
 	dispatcher: PluginDispatcher;
 	tree: TreeBuilder;
 	parser: PFMParser;
+	host: PluginHost;
 }
 
 /**
@@ -1207,6 +1338,10 @@ export class Parsed {
 	_tree: TreeBuilder | null = null;
 	/** @internal the plugin arena of the session, lent until the render */
 	_arena: PluginArena | null = null;
+	/** what plugins left in ctx.data, by plugin name, undefined when none left any */
+	data: PluginData | undefined = undefined;
+	/** @internal what its plugin handlers left, null when none could run and once a render took it */
+	_host: PluginHost | null = null;
 
 	/** @internal */
 	constructor(
@@ -1281,7 +1416,7 @@ export class CompilerSession {
 	private parse_plugged(
 		source: string,
 		plugins: ParsePlugin[] | undefined,
-		bound: DirectiveHandlers[] | undefined,
+		bound: BoundTables | undefined,
 		reserved: ComponentScope | null,
 		inputs: CompileInputs
 	): NodeBuffer {
@@ -1301,6 +1436,8 @@ export class CompilerSession {
 				bound
 			);
 			const tree = new TreeBuilder(source.length >> 3 || 16, dispatcher);
+			const host = new PluginHost(dispatcher);
+			host.tree = tree;
 			// the parser outlives the plugins, options that alternate rebuild often
 			let parser: PFMParser;
 			if (arena === null) parser = new PFMParser(tree);
@@ -1316,11 +1453,13 @@ export class CompilerSession {
 				dispatcher,
 				tree,
 				parser,
+				host,
 			};
 		} else {
 			arena.text.set_source(source);
 			arena.tree.reset();
 		}
+		arena.host.start(source, inputs);
 
 		this.plugin_busy = true;
 		let done = false;
@@ -1416,6 +1555,7 @@ export class CompilerSession {
 		const source = normalized(raw);
 		const nodes = tree.get_buffer();
 		const parsed = new Parsed(raw, source, metadata, nodes);
+		if (plugged) this.plugin_arena!.host.wait(parsed);
 		if (inputs.import_images === true)
 			this.need_images(parsed, image_imports(nodes, source));
 		return this.lend(parsed, plugged);
@@ -1650,6 +1790,8 @@ export class CompilerSession {
 		let nodes: NodeBuffer;
 		let metadata: Metadata | undefined;
 		let images: ImageImports | null = null;
+		// set when plugin handlers could run, a document without plugins never has one
+		let host: PluginHost | null = null;
 		if (parsed === undefined) {
 			// parser offsets index the normalized string, so render and plugins read it too
 			source = normalized(raw);
@@ -1661,20 +1803,24 @@ export class CompilerSession {
 				const reserved = reserved_directives(directives, inputs.templates);
 				if (this.plugin_busy) {
 					// started in a plugin handler, the session holds the outer document
-					nodes = parse_once(source, plugins, bound, reserved, inputs);
+					host = host_once(source, plugins, bound, reserved)!;
+					nodes = parse_once(source, host, inputs);
 					renderer = new CursorHTMLRenderer({ cache: false });
 				} else {
 					nodes = this.parse_plugged(source, plugins, bound, reserved, inputs);
+					host = this.plugin_arena!.host;
 				}
+				// a handler that read the frontmatter already parsed it
+				metadata = host.frontmatter();
 			} else {
 				nodes = this.parse_plain(source, inputs);
+				// frontmatter can only be the first node
+				const first = nodes.first_child_at(0);
+				metadata =
+					first === NONE || (nodes.kind_at(first) as number) !== K_FRONTMATTER
+						? undefined
+						: metadata_of(nodes, source, inputs.frontmatter_parse);
 			}
-			// frontmatter can only be the first node
-			const first = nodes.first_child_at(0);
-			metadata =
-				first === NONE || (nodes.kind_at(first) as number) !== K_FRONTMATTER
-					? undefined
-					: metadata_of(nodes, source, inputs.frontmatter_parse);
 			// the parser notes each image it makes, so only a document with one
 			// is walked, with plugins the walk decides, they make images unseen
 			// and a compile a handler starts takes the note
@@ -1682,6 +1828,7 @@ export class CompilerSession {
 				images = image_imports(nodes, source);
 			if (kind === Kind.PARSE) {
 				const waiting = new Parsed(raw, source, metadata, nodes);
+				if (host !== null) host.wait(waiting);
 				this.need_images(waiting, images);
 				// parse_once made its own nodes, no arena of the session holds them
 				return renderer !== this.renderer
@@ -1698,6 +1845,9 @@ export class CompilerSession {
 			source = parsed.source;
 			metadata = parsed.metadata;
 			images = parsed._images;
+			// the next document of the session resets it
+			host = parsed._host;
+			parsed._host = null;
 			// a plugin handler renders it, the session renderer has the outer document to come
 			if (this.plugin_busy) renderer = new CursorHTMLRenderer({ cache: false });
 		}
@@ -1820,6 +1970,7 @@ export class CompilerSession {
 		}
 		// one call site for every kind, each more is another callee to inline
 		unbind(done!, renderer, source);
+		if (host !== null) host.leave(done!, out !== undefined);
 		if (parsed !== undefined) this.take_back(parsed);
 		return done;
 	}
@@ -1832,6 +1983,8 @@ export interface TraceTarget extends MapTrace {
 	metadata: Metadata | undefined;
 	template: string | undefined;
 	warnings: CompileWarning[] | undefined;
+	/** what plugins left in ctx.data, set by every compile that has plugins */
+	data?: PluginData;
 }
 
 // a session keeps its arena at its largest document size, so large documents

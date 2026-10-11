@@ -426,6 +426,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				metadata: undefined,
 				template: undefined,
 				warnings: undefined,
+				data: undefined,
 				buf: no_records,
 				start: 0,
 				split: 0,
@@ -745,6 +746,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					doc.html = '';
 					doc.metadata = undefined;
 					doc.template = undefined;
+					doc.data = undefined;
 					doc.buf = no_records;
 					doc.start = 0;
 					doc.split = 0;

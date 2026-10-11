@@ -13,6 +13,21 @@ const NONE = 0xffffffff;
 const STALE_VIEW =
 	'a NodeView was used after its document, a view is only valid during the parse that made it';
 
+/** a place in the source, the offset indexes it with every newline a \n */
+export interface Point {
+	offset: number;
+	/** from 1 */
+	line: number;
+	/** from 0, line and column hold in the document as it was written too */
+	column: number;
+}
+
+/** where a node is in the source, end is undefined while the node is open */
+export interface Position {
+	start: Point;
+	end: Point | undefined;
+}
+
 /**
  * abstracts text resolution between batch mode (source string slicing)
  * and wire mode (pre-materialized _strings).
@@ -20,11 +35,15 @@ const STALE_VIEW =
 export interface TextSource {
 	slice(start: number, end: number): string;
 	get_string(index: number): string | undefined;
+	/** the line and column of an offset, only a source that has offsets has it */
+	point?(offset: number): Point;
 }
 
 /** treebuilder text source: slices from the source string. */
 export class SourceTextSource implements TextSource {
 	private source: string;
+	/** the offset each line starts at, built for the first point asked */
+	private lines: number[] | null = null;
 	constructor(source: string) {
 		this.source = source;
 	}
@@ -37,6 +56,29 @@ export class SourceTextSource implements TextSource {
 	/** update source for incremental parsing. */
 	set_source(source: string): void {
 		this.source = source;
+		this.lines = null;
+	}
+	point(offset: number): Point {
+		let lines = this.lines;
+		if (lines === null) {
+			lines = this.lines = [0];
+			const source = this.source;
+			for (
+				let i = source.indexOf('\n');
+				i !== -1;
+				i = source.indexOf('\n', i + 1)
+			)
+				lines.push(i + 1);
+		}
+		// the last line that starts at or before the offset
+		let low = 0;
+		let high = lines.length - 1;
+		while (low < high) {
+			const mid = (low + high + 1) >> 1;
+			if (lines[mid] <= offset) low = mid;
+			else high = mid - 1;
+		}
+		return { offset, line: low + 1, column: offset - lines[low] };
 	}
 }
 
@@ -470,6 +512,31 @@ export class NodeView {
 	get tight(): boolean | undefined {
 		const meta = this._live().metadata_at(this._index);
 		return meta?.tight as boolean | undefined;
+	}
+
+	/**
+	 * where the node is in the source, undefined for a node a plugin made and
+	 * for a tree built from the wire, which carries no offsets
+	 */
+	get position(): Position | undefined {
+		const buf = this._live();
+		const idx = this._index;
+		const source = this._text_source;
+		if (source.point === undefined || buf.synthetic_at(idx)) return undefined;
+		const end = buf.end_at(idx);
+		return {
+			start: source.point(buf.start_at(idx)),
+			end: end === NONE ? undefined : source.point(end),
+		};
+	}
+
+	/** @internal the offsets a warning about this node carries, NONE for those it has none of */
+	_span(): [number, number] {
+		const buf = this._live();
+		const idx = this._index;
+		if (this._text_source.point === undefined || buf.synthetic_at(idx))
+			return [NONE, NONE];
+		return [buf.start_at(idx), buf.end_at(idx)];
 	}
 
 	get attrs(): Record<string, any> {

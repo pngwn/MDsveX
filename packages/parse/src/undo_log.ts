@@ -17,6 +17,7 @@ export const enum UndoEntryKind {
 	CloseWrapper = 7,
 	State = 8,
 	Count = 9,
+	Warn = 10,
 }
 
 /** the dispatcher owns the redirect links, so undoing a wrap or a close goes through it */
@@ -112,9 +113,17 @@ export interface UndoEntryCount {
 	slot: number;
 }
 
+export interface UndoEntryWarn {
+	kind: UndoEntryKind.Warn;
+	/** the warnings of the document, in the order they were reported */
+	list: object[];
+	warning: object;
+}
+
 export type UndoEntry =
 	| UndoEntryState
 	| UndoEntryCount
+	| UndoEntryWarn
 	| UndoEntryWrapFrom
 	| UndoEntryCloseWrapper
 	| UndoEntryAttrSet
@@ -334,6 +343,12 @@ export class UndoLog {
 		this._append({ kind: UndoEntryKind.Count, counts, slot });
 	}
 
+	/** a handler reported a warning, it is dropped with the node it ran for */
+	record_warn(list: object[], warning: object): void {
+		if (this.active_node === NONE) return;
+		this._append({ kind: UndoEntryKind.Warn, list, warning });
+	}
+
 	record_prepend(
 		parent: number,
 		created: number,
@@ -448,6 +463,12 @@ export class UndoLog {
 
 				case UndoEntryKind.Count: {
 					entry.counts[entry.slot]--;
+					break;
+				}
+
+				case UndoEntryKind.Warn: {
+					const at = entry.list.lastIndexOf(entry.warning);
+					if (at !== -1) entry.list.splice(at, 1);
 					break;
 				}
 

@@ -1,7 +1,65 @@
-import type { NodeView } from "./node_view";
+import type { NodeView } from './node_view';
 
-/** context passed to plugin handlers. extension point for future use. */
-export interface PluginContext {}
+/** a problem a plugin reported with ctx.warn */
+export interface PluginWarning {
+	/** the name of the plugin that warned, undefined when it has none */
+	plugin: string | undefined;
+	code: string;
+	message: string;
+	/**
+	 * the offsets of the node the warning is about, undefined without a node,
+	 * for a node a plugin made and over the wire, which carries no offsets
+	 */
+	start: number | undefined;
+	end: number | undefined;
+}
+
+/** what plugins left in ctx.data, by plugin name */
+export type PluginData = Record<string, Record<string, any>>;
+
+/** what whoever runs a parse tells its handlers about the document */
+export interface PluginDocument {
+	/** the path of the document */
+	filename?: string;
+	/**
+	 * the parsed frontmatter, called each time a handler reads ctx.frontmatter,
+	 * so it caches what is costly and gives undefined until the frontmatter is
+	 * complete
+	 */
+	frontmatter?: () => Record<string, unknown> | undefined;
+}
+
+/** what every handler learns about its document and can hand back */
+export interface DocumentContext {
+	/** the path of the document, undefined when whoever runs the parse gave none */
+	readonly filename: string | undefined;
+	/**
+	 * the parsed frontmatter, undefined for a document without any and when
+	 * nothing parses it, it is the first node, so only its own open handler
+	 * runs before it is complete, do not write to it
+	 */
+	readonly frontmatter: Record<string, unknown> | undefined;
+	/**
+	 * report a problem, at the node when one is given, it is dropped when the
+	 * node whose handler reported it is revoked
+	 */
+	warn(code: string, message: string, node?: NodeView): void;
+	/**
+	 * what the plugin hands back from the parse, one object per plugin name
+	 * for each document, a write is undone when the node whose handler made it
+	 * is revoked, shallow as attrs are, reading it throws for a plugin without
+	 * a name
+	 */
+	readonly data: Record<string, any>;
+}
+
+/**
+ * context passed to plugin handlers, new for each document and each plugin,
+ * a plugin keeps what it needs between its handlers on it
+ */
+export interface PluginContext extends DocumentContext {
+	[key: string]: any;
+}
 
 /** a single handler entry for a node type. */
 export interface NodeHandler {
@@ -19,12 +77,18 @@ export interface NodeHandler {
  * ```
  */
 export interface ParsePlugin {
+	/** keys what the plugin writes to ctx.data and is named in its warnings */
+	name?: string;
 	sequential?: boolean;
-	[nodeType: string]: { parse: NodeHandler["parse"] } | boolean | undefined;
+	[nodeType: string]:
+		| { parse: NodeHandler['parse'] }
+		| boolean
+		| string
+		| undefined;
 }
 
 /** what a handler bound to a directive gets in place of the plugin context */
-export interface DirectiveContext {
+export interface DirectiveContext extends DocumentContext {
 	/** the directive the handler is bound to */
 	directive: NodeView;
 	/** how many times this handler already ran in this directive, 0 for the first */
@@ -39,7 +103,7 @@ export interface DirectiveContext {
 /** a handler bound to a directive, a function it returns runs when the node closes */
 export type DirectiveHandler = (
 	node: NodeView,
-	ctx: DirectiveContext,
+	ctx: DirectiveContext
 ) => (() => void) | void;
 
 /** the handlers of one directive name, any other key is ignored */
@@ -66,12 +130,30 @@ export interface DirectiveHandlers {
 }
 
 /**
+ * a table of bound handlers with the name of the plugin they belong to, which
+ * keys what they write to ctx.data and is named in their warnings
+ *
+ * ```js
+ * { name: 'steps', directives: { steps: { children: { heading(node, ctx) {} } } } }
+ * ```
+ */
+export interface NamedDirectiveHandlers {
+	name: string;
+	directives: DirectiveHandlers;
+}
+
+/** an entry of directive_handlers, a table or a table with a plugin name */
+export type DirectiveTable = DirectiveHandlers | NamedDirectiveHandlers;
+
+/**
  * composed handler: calls all registered handlers for a kind and
  * collects close callbacks. returns null if no callbacks were returned.
+ * each handler gets the context of its own plugin, by the place of the
+ * plugin in the array the handlers were registered from
  */
 export type ComposedHandler = (
 	view: NodeView,
-	ctx: PluginContext,
+	contexts: PluginContext[]
 ) => (() => void)[] | null;
 
 /** callback a builder provides so the dispatcher can register synthetic node ids. */
