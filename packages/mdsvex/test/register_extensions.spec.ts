@@ -16,7 +16,10 @@ const TEMPLATED_HEAD = '<title>From the template route</title>';
 const STYLED = /<h1 class="(svelte-\w+)">Styled<\/h1>/;
 // a +page.js that globs the routes with ?metadata, only one has frontmatter
 const LISTED =
-	'<li>doc: untitled</li><li>styled: untitled</li><li>templated: Templated</li>';
+	'<li>doc: untitled</li><li>pictured: untitled</li><li>styled: untitled</li><li>templated: Templated</li>';
+// a relative image, vite hashes the file and, without the query, inlines one this small
+const PICTURED =
+	/<img src="\/_app\/immutable\/assets\/(dot\.[\w-]+\.png)" alt="a dot"\/> and <img src="data:image\/png;base64,[^"]+" alt="the same dot"\/>/;
 
 const [major, minor] = process.versions.node.split('.').map(Number);
 const kit_supported = major > 22 || (major === 22 && minor >= 17);
@@ -103,6 +106,13 @@ describe.skipIf(!kit_supported)('sveltekit 3', () => {
 				.map((file) => readFileSync(resolve(assets, file), 'utf8'))
 				.join('\n');
 			expect(css).toContain(`h1.${scope}{color:red}`);
+			const pictured = readFileSync(
+				resolve(APP, '.svelte-kit/output/prerendered/pages/pictured.html'),
+				'utf8'
+			);
+			const hashed = pictured.match(PICTURED)?.[1];
+			expect(hashed, pictured).toBeDefined();
+			expect(readdirSync(assets)).toContain(hashed);
 			const list = readFileSync(
 				resolve(APP, '.svelte-kit/output/prerendered/pages/list.html'),
 				'utf8'
@@ -121,6 +131,14 @@ describe.skipIf(!kit_supported)('sveltekit 3', () => {
 			expect(status).toBe(200);
 			expect(html.replace(/<!--[^]*?-->/g, '')).toContain(TEMPLATED);
 			expect(html).toContain(TEMPLATED_HEAD);
+		});
+
+		test('serves a relative image in dev', { timeout: 60_000 }, async () => {
+			const { status, html } = await dev_page('/pictured', env);
+			expect(status).toBe(200);
+			expect(html).toContain(
+				'<img src="/src/routes/pictured/dot.png?no-inline" alt="a dot"/> and <img src="/src/routes/pictured/dot.png" alt="the same dot"/>'
+			);
 		});
 
 		test('lists ?metadata imports in dev', { timeout: 60_000 }, async () => {
