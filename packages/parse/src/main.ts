@@ -965,6 +965,7 @@ export class PFMParser {
 		this.errors = EMPTY_ERRORS;
 		this.tab_size = tab_size;
 		if (options !== undefined) this.set_options(options);
+		if (emitter.follow !== undefined) emitter.follow(this);
 	}
 
 	/** the syntax options for the documents that follow, one left out is off again */
@@ -1685,6 +1686,15 @@ export class PFMParser {
 	bind(emitter: Emitter, tab_size: number = 2): void {
 		this.out = emitter;
 		this.tab_size = tab_size;
+		if (emitter.follow !== undefined) emitter.follow(this);
+	}
+
+	/**
+	 * @internal the emitter put nodes of its own in the slots of the next ids,
+	 * ids go on after them, an emitter this parser has left is ignored
+	 */
+	skip_ids(emitter: Emitter, next: number): void {
+		if (emitter === this.out && next > this.next_id) this.next_id = next;
 	}
 
 	/** drop strings of the last document so a reused parser does not pin them */
@@ -1903,6 +1913,16 @@ export class PFMParser {
 		this.out.close(id, end, (info & ID_KIND_MASK) as NodeKind);
 		this.id_info[id] = info | ID_CLOSED;
 		if (id === this.spec_para) this.end_spec_para(end);
+	}
+
+	/** close of a delimiter with no closer, it stays pending until its revoke */
+	private emit_close_pending(id: number, end: number): void {
+		const info = this.id_info[id];
+		const kind = (info & ID_KIND_MASK) as NodeKind;
+		const out = this.out;
+		if (out.close_pending !== undefined) out.close_pending(id, end, kind);
+		else out.close(id, end, kind);
+		this.id_info[id] = info | ID_CLOSED;
 	}
 
 	/** open writes an id state before any read, so spare tables need no clearing */
@@ -4620,6 +4640,8 @@ export class PFMParser {
 		}
 		this.pending_remove(id);
 		if (drop) this.out.revoke(id);
+		// no list decides on it later, so say now that it stays
+		else this.out.commit(id);
 	}
 
 	/**
@@ -6078,7 +6100,7 @@ export class PFMParser {
 			}
 		}
 		this.states.pop();
-		this.emit_close(current_node, this.cursor);
+		this.emit_close_pending(current_node, this.cursor);
 		this.out.set_value_end(current_node, this.cursor);
 		this.node_stack.pop();
 		return true;

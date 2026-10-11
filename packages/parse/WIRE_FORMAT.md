@@ -86,9 +86,15 @@ Creates a new node and appends it to the parent's content.
 
 ```
 ["C", id: int]
+["C", id: int, 1]
 ```
 
-Finalizes a node. After close, the node's content will not change. If the node was pending, close implicitly commits it. Use this signal to cache rendered output, closed blocks never need re-rendering.
+Finalizes a node. After close, the node's content will not change. If the node was pending, close implicitly commits it, with two exceptions:
+
+- **A pending paragraph** is not final at its close. A `K` or an `R` for it follows, see [K, Commit](#k-commit).
+- **A close with a third element of `1`** closes an inline delimiter (`*`, `_`, `~~`, `~`, `^`) that reached the end of its block with no closing delimiter. The node is not final: an `R` for it follows once the parser is back at block level, which inside a container directive, an html block or a svelte block is after that container has closed.
+
+A consumer that reads only `op[1]` treats the flagged close as any other close, which is how every close of that kind was sent before the flag existed. Use the unflagged close as the signal to cache rendered output, closed blocks never need re-rendering.
 
 ### T, Text
 
@@ -136,6 +142,16 @@ When a node is revoked:
 4. Delete the node from the node map.
 
 **Example:** The parser sees `_` and opens a pending emphasis node. Later, it determines the `_` is not closed, so it revokes the emphasis. The `_` character becomes literal text in the parent, and any children of the emphasis are moved up.
+
+### K, Commit
+
+```
+["K", id: int]
+```
+
+Clears the pending flag of a paragraph that closed while it was still pending. Nothing else about the node changes.
+
+Two kinds of paragraph are opened pending. A paragraph in a list item is pending until the list knows whether it is tight: a loose list sends `K` for each one, a tight list sends `R`, which removes the paragraph and leaves its content in the list item. A paragraph that starts with an html tag or an image is pending until it closes: `K` follows the close when it holds text of its own, `R` when it holds only tags or images.
 
 ### X, Clear
 

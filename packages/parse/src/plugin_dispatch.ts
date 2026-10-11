@@ -732,6 +732,21 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	}
 
 	/**
+	 * the close of this node has nothing to dispatch, no callback, no wrapper
+	 * below it, no wrapper waiting on it, no scope and no undo log of its own
+	 */
+	plain_close(buf_idx: number): boolean {
+		const scope = this.scope;
+		return (
+			this.close_cbs.live === 0 &&
+			(this.links === 0 || this.slot(buf_idx) === 0) &&
+			this.close_with === null &&
+			(scope === null || scope.directive !== buf_idx) &&
+			(this.undo.empty || !this.undo.has(buf_idx))
+		);
+	}
+
+	/**
 	 * a fused handler exists for this kind, or an open scope may hold one, such
 	 * a node opens under its source parent and goes through dispatch_open
 	 */
@@ -1299,19 +1314,19 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	/**
 	 * dispatch close callbacks for a node.
 	 * fires callbacks with undo attribution.
-	 * only commits the undo log if the node is no longer pending,
-	 * pending nodes may still be revoked after close (e.g. tight-list
-	 * speculation, inline emphasis).
+	 * a close is final and commits the undo log, but for a pending node the
+	 * builder says to hold, a delimiter the parser gave up on, whose revoke
+	 * follows, or a paragraph, which a commit or a revoke settles later
 	 */
-	dispatch_close(buf_idx: number, buf: NodeBuffer): void {
+	dispatch_close(buf_idx: number, buf: NodeBuffer, hold = false): void {
 		// take and fire close callbacks with undo attribution
 		const cbs = this.close_cbs.take(buf_idx);
 		// callbacks cannot change the pending flag
-		const pending = buf.pending_at(buf_idx) !== 0;
+		const pending = hold && buf.pending_at(buf_idx) !== 0;
 		if (cbs) {
 			const undo = this.undo;
-			// a node no longer pending commits right after its callbacks, so
-			// anything they recorded would be dropped unread
+			// a final node commits right after its callbacks, so anything they
+			// recorded would be dropped unread
 			if (pending) undo.set_active_node(buf_idx);
 			this.running = buf_idx;
 			for (let i = 0; i < cbs.length; i++) {
@@ -1335,8 +1350,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			this.scopes_changed();
 		}
 
-		// only commit if the node is no longer pending.
-		// pending nodes can still be revoked after close.
+		// a held node can still be revoked after its close
 		if (!pending) {
 			this.undo.commit(buf_idx);
 		}

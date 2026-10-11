@@ -3,9 +3,10 @@ import { expect } from 'vitest';
 import { PFMParser, WireEmitter } from '../src/main';
 import { SourceTextSource, WireTextSource } from '../src/node_view';
 import { PluginDispatcher } from '../src/plugin_dispatch';
+import type { Emitter } from '../src/opcodes';
 import type { DirectiveHandlers, ParsePlugin } from '../src/plugin_types';
 import { TreeBuilder } from '../src/tree_builder';
-import type { NodeBuffer } from '../src/utils';
+import type { NodeBuffer, NodeKind } from '../src/utils';
 import { WireTreeBuilder } from '../src/wire_tree_builder';
 
 const NONE = 0xffffffff;
@@ -109,15 +110,78 @@ function dispatcher_for(
 	);
 }
 
-/** the batch builder, a chunk size feeds the source in pieces */
+/**
+ * passes every opcode on, the builder behind it has no parser to follow, so
+ * once a plugin pushes a node its ids miss their slots and it maps them
+ */
+class Relay implements Emitter {
+	constructor(private out: TreeBuilder) {}
+	open(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		extra: number,
+		pending: boolean
+	): void {
+		this.out.open(id, kind, start, parent, extra, pending);
+	}
+	close(id: number, end: number, kind?: NodeKind): void {
+		this.out.close(id, end, kind);
+	}
+	close_pending(id: number, end: number, kind: NodeKind): void {
+		this.out.close_pending(id, end, kind);
+	}
+	text(parent: number, start: number, end: number, kind?: NodeKind): void {
+		this.out.text(parent, start, end, kind);
+	}
+	leaf(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		value_start: number,
+		value_end: number,
+		end: number
+	): void {
+		this.out.leaf(id, kind, start, parent, value_start, value_end, end);
+	}
+	attr(id: number, key: string, value: any): void {
+		this.out.attr(id, key, value);
+	}
+	set_value_start(id: number, pos: number): void {
+		this.out.set_value_start(id, pos);
+	}
+	set_value_end(id: number, pos: number): void {
+		this.out.set_value_end(id, pos);
+	}
+	revoke(id: number, source_text?: string, text_start?: number): void {
+		this.out.revoke(id, source_text, text_start);
+	}
+	commit(id: number): void {
+		this.out.commit(id);
+	}
+	cursor(pos: number): void {
+		this.out.cursor(pos);
+	}
+	end(): void {
+		this.out.end();
+	}
+}
+
+/**
+ * the batch builder, a chunk size feeds the source in pieces, relayed puts an
+ * emitter between the parser and the builder
+ */
 export function run_batch(
 	source: string,
 	plugins?: Plugins,
-	chunk = 0
+	chunk = 0,
+	relayed = false
 ): PluginRun {
 	const dispatcher = dispatcher_for(plugins, false, source);
 	const tree = new TreeBuilder(source.length || 16, dispatcher);
-	const parser = new PFMParser(tree);
+	const parser = new PFMParser(relayed ? new Relay(tree) : tree);
 	if (chunk === 0) parser.parse(source);
 	else {
 		parser.init();
@@ -165,11 +229,15 @@ export function run_wire(
 
 export type RunPath = (source: string, plugins?: Plugins) => PluginRun;
 
-/** both builders, whole and fed in chunks of 7 and 1 */
+/**
+ * both builders, whole and fed in chunks of 7 and 1, and the batch builder
+ * with its id map, which a parser it follows never needs
+ */
 export const PATHS: [string, RunPath][] = [
 	['batch', (s, p) => run_batch(s, p)],
 	['batch fed 7', (s, p) => run_batch(s, p, 7)],
 	['batch fed 1', (s, p) => run_batch(s, p, 1)],
+	['batch by id map', (s, p) => run_batch(s, p, 0, true)],
 	['wire', (s, p) => run_wire(s, p)],
 	['wire fed 7', (s, p) => run_wire(s, p, 7)],
 	['wire fed 1', (s, p) => run_wire(s, p, 1)],
