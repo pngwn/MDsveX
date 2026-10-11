@@ -595,22 +595,25 @@ interface Arg {
 	value: KeyRange;
 }
 
-/** the args of the directive at start, after its name and label */
+/** the args of the directive at start, after its name and any label */
 function directive_args(source: string, start: number, end: number): Arg[] {
 	let i = start;
 	while (i < end && source[i] === ':') i++;
 	while (i < end && /[\w-]/.test(source[i])) i++;
-	if (source[i] !== '[') return [];
-	let depth = 0;
-	for (; i < end; i++) {
-		const c = source[i];
-		if (c === '\\') i++;
-		else if (c === '[') depth++;
-		else if (c === ']' && --depth === 0) break;
+	// a leaf or container may leave the label out
+	if (source[i] === '[') {
+		let depth = 0;
+		for (; i < end; i++) {
+			const c = source[i];
+			if (c === '\\') i++;
+			else if (c === '[') depth++;
+			else if (c === ']' && --depth === 0) break;
+		}
+		i++;
 	}
-	if (source[i + 1] !== '(') return [];
+	if (source[i] !== '(') return [];
 	const args: Arg[] = [];
-	i += 2;
+	i++;
 	const ARG =
 		/\s*([A-Za-z_][\w-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^,)\s]*))\s*(,|\))/y;
 	ARG.lastIndex = i;

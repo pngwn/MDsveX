@@ -181,6 +181,32 @@ describe("pfmToSvelte with a config", () => {
 		]);
 	});
 
+	it("maps the args of a directive written without brackets", () => {
+		const source =
+			'---\ntemplate: docs\n---\n\n:::Callout(kind=warn, title="a b")\nbody\n:::\n';
+		const r = pfmToSvelte(source, docs);
+		valid(source, r);
+		expect(r.code).toContain('<Callout_MDSVEX_D_T kind="warn" title="a b">');
+		const args = added(source, r).filter(([, , caps]) => caps === "vsn");
+		expect(args).toEqual([
+			["kind", "kind", "vsn"],
+			["warn", "warn", "vsn"],
+			["title", "title", "vsn"],
+			["a b", "a b", "vsn"],
+		]);
+		expect(added(source, r)).toContainEqual(["Callout", "Callout", "sn"]);
+	});
+
+	it("reports an unknown directive written without brackets at its colons and name", () => {
+		const source = "---\ntemplate: docs\n---\n\ntext\n\n:::Calout(kind=warn)\nbody\n:::\n";
+		const r = pfmToSvelte(source, { ...docs, report_directives: true });
+		expect(r.diagnostics).toHaveLength(1);
+		const d = r.diagnostics[0];
+		expect(source.slice(d.start, d.end)).toBe(":::Calout");
+		expect(d.message).toContain(":::Calout at 7:1");
+		expect(r.code).toContain("<p>body</p>");
+	});
+
 	it("checks typed attribute values of a replaced element but not their names", () => {
 		const source = '<script>\nlet u = "/a.png";\n</script>\n\n<img src={u} loading="lazy" />\n';
 		const r = pfmToSvelte(source, {

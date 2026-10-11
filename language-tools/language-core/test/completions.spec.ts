@@ -81,6 +81,48 @@ describe('completion_context', () => {
 		expect(at(':::No|te[x](tone=info)')).toBeNull();
 		expect(at('[link](/ur|l)')).toBeNull();
 	});
+
+	it('finds the args of a leaf or container written without brackets', () => {
+		expect(at(':::Note(tone=info, si|)')).toEqual({
+			kind: 'arg_key',
+			directive: 'Note',
+			inline: false,
+			text: 'si',
+			existing: ['tone'],
+		});
+		expect(at('::toc(|)')).toMatchObject({
+			kind: 'arg_key',
+			directive: 'toc',
+			inline: false,
+		});
+		expect(at(':::Note(to|')).toMatchObject({
+			kind: 'arg_key',
+			directive: 'Note',
+			text: 'to',
+		});
+		expect(at(':::Note(tone="in|fo", x=y)')).toEqual({
+			kind: 'arg_value',
+			directive: 'Note',
+			key: 'tone',
+			text: '"info"',
+		});
+		expect(at('> :::Note(to|)')).toMatchObject({ directive: 'Note' });
+		expect(at('- ::toc(depth=|)')).toMatchObject({
+			kind: 'arg_value',
+			directive: 'toc',
+			key: 'depth',
+		});
+		expect(at('  1. > ::toc(|)')).toMatchObject({ directive: 'toc' });
+	});
+
+	it('offers nothing where a missing label makes it text', () => {
+		expect(at('see :kbd(|) here')).toBeNull();
+		expect(at(':kbd(|)')).toBeNull();
+		expect(at('see ::toc(|)')).toBeNull();
+		expect(at('# :::Note(to|)')).toBeNull();
+		expect(at('std::vector(|)')).toBeNull();
+		expect(at(':::No|te(tone=info)')).toBeNull();
+	});
 });
 
 describe('template_named', () => {

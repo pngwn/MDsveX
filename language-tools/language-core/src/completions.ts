@@ -53,7 +53,9 @@ function value_end(source: string, start: number, stop: RegExp): number {
 
 // a directive name and label, then the open paren of its args
 const DIRECTIVE =
-	/(?<![\w:])(:{1,3})([A-Za-z_][\w-]*)\[(?:[^[\]\n\\]|\\.|\[[^[\]\n]*\])*\]\(/g;
+	/(?<![\w:])(:{1,3})([A-Za-z_][\w-]*)(\[(?:[^[\]\n\\]|\\.|\[[^[\]\n]*\])*\])?\(/g;
+// the quote and list markers a leaf or container may follow on its line
+const BLOCK_PREFIX = /^[ \t]*(?:>[ \t]*|(?:[-*+]|\d+[.)])[ \t]+)*$/;
 
 /** what the offset completes, null for nothing this module offers */
 export function completion_context(
@@ -105,6 +107,12 @@ export function completion_context(
 	DIRECTIVE.lastIndex = 0;
 	let m: RegExpExecArray | null;
 	while ((m = DIRECTIVE.exec(text)) !== null) {
+		// only a leaf or container opening its line may leave the label out
+		if (
+			m[3] === undefined &&
+			(m[1].length === 1 || !BLOCK_PREFIX.test(text.slice(0, m.index)))
+		)
+			continue;
 		const args_start = line.start + m.index + m[0].length;
 		const close = text.indexOf(')', args_start - line.start);
 		const args_end = close < 0 ? line.end : line.start + close;

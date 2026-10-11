@@ -13,6 +13,7 @@
 		{ "include": "#html-comment" },
 		{ "include": "#heading" },
 		{ "include": "#thematic-break" },
+		{ "include": "#directive-block" },
 		{ "include": "#blockquote" },
 		{ "include": "#list-item" },
 		{ "include": "#inline" }
@@ -412,6 +413,25 @@
 				"6": { "name": "punctuation.definition.directive.args.begin.pfm" },
 				"7": { "name": "meta.directive.args.pfm", "patterns": [{ "include": "#directive-arg" }] },
 				"8": { "name": "punctuation.definition.directive.args.end.pfm" }
+			}
+		},
+
+		"directive-block": {
+			"comment": "a leaf or container directive without brackets, alone on its line after any quote and list markers",
+			"match": "^([ \\t]*(?:>[ \\t]*|(?:[-*+]|\\d+[.)])[ \\t]+)*)((:{2,})([A-Za-z][\\w-]*)(?:(\\()([^)\\n]*)(\\)))?)[ \\t]*$",
+			"captures": {
+				"1": {
+					"patterns": [
+						{ "match": ">", "name": "punctuation.definition.quote.begin.pfm" },
+						{ "match": "[-*+]|\\d+[.)]", "name": "punctuation.definition.list.begin.pfm" }
+					]
+				},
+				"2": { "name": "meta.directive.pfm" },
+				"3": { "name": "punctuation.definition.directive.pfm" },
+				"4": { "name": "entity.name.tag.directive.pfm" },
+				"5": { "name": "punctuation.definition.directive.args.begin.pfm" },
+				"6": { "name": "meta.directive.args.pfm", "patterns": [{ "include": "#directive-arg" }] },
+				"7": { "name": "punctuation.definition.directive.args.end.pfm" }
 			}
 		},
 
