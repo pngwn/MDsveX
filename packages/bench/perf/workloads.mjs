@@ -404,22 +404,36 @@ export function plan_workloads(suite_name = 'core', filter = {}) {
 	return plan;
 }
 
-/** binds each workload just before it is measured, alternating which arm is built first, so no heap state accumulates across workloads */
+/**
+ * binds each workload just before it is measured, so no heap state accumulates across workloads
+ *
+ * b_leads names the arm that goes first in a workload, when its run is built and all through compare_one
+ * it alternates down the rows of a mode and across the modes of a document, by plan index a mode keeps one lead
+ * when documents have an even count of modes
+ */
 export function bind_workloads(plan, a, b) {
-	return plan.map((w, i) => ({
-		...w,
-		bind() {
-			const b_first = i % 2 === 1;
-			const make = (arm) =>
-				w.mode === 'setup'
-					? make_setup_runs(arm)[w.doc]
-					: make_doc_run(arm, w.mode, w.entry.source);
-			if (b_first) {
-				const run_b = make(b);
-				return { a: make(a), b: run_b };
-			}
-			const run_a = make(a);
-			return { a: run_a, b: make(b) };
-		},
-	}));
+	const rows_of = new Map();
+	const modes = [];
+	return plan.map((w) => {
+		const nth = rows_of.get(w.mode) ?? 0;
+		rows_of.set(w.mode, nth + 1);
+		if (nth === 0) modes.push(w.mode);
+		const b_leads = (nth + modes.indexOf(w.mode)) % 2 === 1;
+		return {
+			...w,
+			b_leads,
+			bind(b_first = b_leads) {
+				const make = (arm) =>
+					w.mode === 'setup'
+						? make_setup_runs(arm)[w.doc]
+						: make_doc_run(arm, w.mode, w.entry.source);
+				if (b_first) {
+					const run_b = make(b);
+					return { a: make(a), b: run_b };
+				}
+				const run_a = make(a);
+				return { a: run_a, b: make(b) };
+			},
+		};
+	});
 }

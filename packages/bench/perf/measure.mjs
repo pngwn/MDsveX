@@ -130,57 +130,70 @@ export function even_rounds(rounds) {
 	return rounds + (rounds % 2);
 }
 
-/** `a` is the reference and `b` the candidate, a speedup above 1 means the candidate is faster */
+/**
+ * `a` is the reference and `b` the candidate, a speedup above 1 means the candidate is faster
+ *
+ * the lead arm warms up, is sized and is timed first, b_leads gives the candidate the lead
+ * the trailing arm reads slow, so the caller alternates the lead
+ */
 export function compare_one(a, b, options = {}) {
 	const {
 		target_ms = 20,
 		warmup_ms = 120,
 		rewarm_ms = 20,
 		seed = 0x5eed,
+		b_leads = false,
 	} = options;
 	const rounds = even_rounds(options.rounds ?? 15);
+	const lead = b_leads ? b : a;
+	const trail = b_leads ? a : b;
 
-	const warm_a = warm_for(a, warmup_ms);
-	const warm_b = warm_for(b, warmup_ms);
+	const warm_lead = warm_for(lead, warmup_ms);
+	const warm_trail = warm_for(trail, warmup_ms);
 
 	// each arm is cold again after the other warms up, so it rewarms before its iterations are sized
-	rewarm(a, warm_a, rewarm_ms);
-	const ca = calibrate(a, target_ms);
-	rewarm(b, warm_b, rewarm_ms);
-	const cb = calibrate(b, target_ms);
+	rewarm(lead, warm_lead, rewarm_ms);
+	const c_lead = calibrate(lead, target_ms);
+	rewarm(trail, warm_trail, rewarm_ms);
+	const c_trail = calibrate(trail, target_ms);
 	// one shared count, from the slower arm, so the loop shape is identical
-	const iterations = Math.max(1, Math.min(ca.iterations, cb.iterations));
+	const iterations = Math.max(
+		1,
+		Math.min(c_lead.iterations, c_trail.iterations)
+	);
 
-	const round_a = [];
-	const round_b = [];
+	const round_lead = [];
+	const round_trail = [];
 	for (let r = 0; r < rounds; r++) {
 		gc_full();
-		const a_first = r % 2 === 0;
+		const lead_first = r % 2 === 0;
 		// the arm timed first rewarms last so it is the most recently run
-		if (a_first) {
-			rewarm(b, cb.per_op_ns, rewarm_ms);
-			rewarm(a, ca.per_op_ns, rewarm_ms);
+		if (lead_first) {
+			rewarm(trail, c_trail.per_op_ns, rewarm_ms);
+			rewarm(lead, c_lead.per_op_ns, rewarm_ms);
 		} else {
-			rewarm(a, ca.per_op_ns, rewarm_ms);
-			rewarm(b, cb.per_op_ns, rewarm_ms);
+			rewarm(lead, c_lead.per_op_ns, rewarm_ms);
+			rewarm(trail, c_trail.per_op_ns, rewarm_ms);
 		}
 		gc_minor();
-		let ta;
-		let tb;
-		if (a_first) {
-			ta = time_ns(a, iterations);
-			tb = time_ns(b, iterations);
-			tb += time_ns(b, iterations);
-			ta += time_ns(a, iterations);
+		let t_lead;
+		let t_trail;
+		if (lead_first) {
+			t_lead = time_ns(lead, iterations);
+			t_trail = time_ns(trail, iterations);
+			t_trail += time_ns(trail, iterations);
+			t_lead += time_ns(lead, iterations);
 		} else {
-			tb = time_ns(b, iterations);
-			ta = time_ns(a, iterations);
-			ta += time_ns(a, iterations);
-			tb += time_ns(b, iterations);
+			t_trail = time_ns(trail, iterations);
+			t_lead = time_ns(lead, iterations);
+			t_lead += time_ns(lead, iterations);
+			t_trail += time_ns(trail, iterations);
 		}
-		round_a.push(ta / (2 * iterations));
-		round_b.push(tb / (2 * iterations));
+		round_lead.push(t_lead / (2 * iterations));
+		round_trail.push(t_trail / (2 * iterations));
 	}
+	const round_a = b_leads ? round_trail : round_lead;
+	const round_b = b_leads ? round_lead : round_trail;
 
 	const a_ns = [];
 	const b_ns = [];
@@ -226,14 +239,16 @@ export function time_one(
 	return median(per);
 }
 
+/** flip_leads gives every workload the other lead, a second pass sets it so a row is measured both ways round */
 export function compare_all(workloads, options = {}) {
-	const { on_progress = null } = options;
+	const { on_progress = null, flip_leads = false } = options;
 	const results = [];
 	for (let i = 0; i < workloads.length; i++) {
 		const w = workloads[i];
-		const { a, b } = w.bind();
-		const r = compare_one(a, b, options);
-		results.push({ id: w.id, ...r });
+		const b_leads = w.b_leads !== flip_leads;
+		const { a, b } = w.bind(b_leads);
+		const r = compare_one(a, b, { ...options, b_leads });
+		results.push({ id: w.id, b_leads, ...r });
 		on_progress?.(i + 1, workloads.length, w.id);
 	}
 	return results;

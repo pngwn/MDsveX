@@ -124,6 +124,7 @@ export function combine_passes(rows, passes) {
 			a: pick.a,
 			b: pick.b,
 			iterations: pick.iterations,
+			b_leads: per_pass.map((p) => p.b_leads),
 			ratios: per_pass.map((p) => p.ratios),
 		};
 	});
@@ -189,6 +190,8 @@ export async function run_comparison({
 					target_ms,
 					rewarm_ms,
 					seed: 0x5eed + first_pass + pass,
+					// each pass swaps every lead, so an effect of leading fails the agreement of the passes
+					flip_leads: (first_pass + pass) % 2 === 1,
 					on_progress: progress(
 						pass_tag
 							? `pass ${pass_tag} `
@@ -436,6 +439,11 @@ async function main() {
 	if (calibration && calibration.corpus_hash !== CORPUS_HASH) {
 		console.log(
 			'  calibration was measured on a different corpus; recalibrate before trusting the floor.'
+		);
+	}
+	if (calibration && calibration.harness_hash !== meta.harness_hash) {
+		console.log(
+			'  calibration was measured with a different harness; recalibrate before trusting the floor.'
 		);
 	}
 
