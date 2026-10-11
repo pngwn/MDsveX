@@ -1549,6 +1549,17 @@ describe('block directives without brackets', () => {
 		}
 	});
 
+	test('a backslash before the colons keeps the line text', () => {
+		for (const input of [
+			'\\::toc\n',
+			'\\:::note\nbody\n:::\n',
+			'text\n\\::toc\n',
+		]) {
+			const printed = print_ast(parse_markdown_svelte(input).nodes, input);
+			expect(printed, JSON.stringify(input)).not.toContain('directive');
+		}
+	});
+
 	describe('the inline form still needs its brackets', () => {
 		const cases: [string, string][] = [
 			['one colon at the line start', ':name\n'],
