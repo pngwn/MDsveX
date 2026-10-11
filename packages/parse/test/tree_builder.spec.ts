@@ -438,6 +438,63 @@ describe('TreeBuilder ids as indices', () => {
 	});
 });
 
+describe('parser ids an emitter moves', () => {
+	function recorder() {
+		const ids: number[] = [];
+		const followed: unknown[] = [];
+		const emitter: Emitter = {
+			open: (id) => void ids.push(id),
+			close() {},
+			text() {},
+			attr() {},
+			set_value_start() {},
+			set_value_end() {},
+			revoke() {},
+			commit() {},
+			cursor() {},
+			follow: (parser) => void followed.push(parser),
+		};
+		return { emitter, ids, followed };
+	}
+
+	it('tells an emitter which parser it gets, when made and when bound', () => {
+		const first = recorder();
+		const second = recorder();
+		const parser = new PFMParser(first.emitter);
+		expect(first.followed).toEqual([parser]);
+		parser.bind(second.emitter);
+		expect(first.followed).toEqual([parser]);
+		expect(second.followed).toEqual([parser]);
+	});
+
+	it('goes on from the id its emitter skipped to', () => {
+		const { emitter, ids } = recorder();
+		const parser = new PFMParser(emitter);
+		emitter.open = (id) => {
+			ids.push(id);
+			// as a builder that put eight nodes of its own after the paragraph
+			if (id === 1) parser.skip_ids(emitter, 10);
+			// never back
+			if (id === 10) parser.skip_ids(emitter, 3);
+		};
+		parser.parse('a\n\nb\n');
+		expect(ids.slice(0, 4)).toEqual([0, 1, 10, 11]);
+	});
+
+	it('ignores an emitter it has left', () => {
+		const first = recorder();
+		const second = recorder();
+		const parser = new PFMParser(first.emitter);
+		parser.bind(second.emitter);
+		second.emitter.open = (id) => {
+			second.ids.push(id);
+			parser.skip_ids(first.emitter, 100);
+		};
+		parser.parse('a\n');
+		expect(second.ids.slice(0, 3)).toEqual([0, 1, 2]);
+	});
+});
+
 describe('parser id tables', () => {
 	const docs = [
 		'- tight\n- list\n\n1. loose\n\n2. list\n\n> quote **strong\n',

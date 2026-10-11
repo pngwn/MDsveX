@@ -1,5 +1,11 @@
 import type { NodeKind } from './utils';
 
+/** the parser as an emitter that keeps ids equal to its slots sees it */
+export interface IdSource {
+	/** the next id is at least next, a call from an emitter the parser left does nothing */
+	skip_ids(emitter: Emitter, next: number): void;
+}
+
 /**
  * emitter interface for pfm parser opcodes.
  *
@@ -120,4 +126,11 @@ export interface Emitter {
 
 	/** the incremental finish emitted the last opcode, reserved storage can go */
 	end?(): void;
+
+	/**
+	 * the parser that emits here from now on, called when it is made or bound,
+	 * an emitter that puts nodes of its own in id slots moves the next id past
+	 * them with skip_ids so ids stay dense for it
+	 */
+	follow?(ids: IdSource): void;
 }

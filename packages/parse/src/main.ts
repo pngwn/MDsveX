@@ -965,6 +965,7 @@ export class PFMParser {
 		this.errors = EMPTY_ERRORS;
 		this.tab_size = tab_size;
 		if (options !== undefined) this.set_options(options);
+		if (emitter.follow !== undefined) emitter.follow(this);
 	}
 
 	/** the syntax options for the documents that follow, one left out is off again */
@@ -1685,6 +1686,15 @@ export class PFMParser {
 	bind(emitter: Emitter, tab_size: number = 2): void {
 		this.out = emitter;
 		this.tab_size = tab_size;
+		if (emitter.follow !== undefined) emitter.follow(this);
+	}
+
+	/**
+	 * @internal the emitter put nodes of its own in the slots of the next ids,
+	 * ids go on after them, an emitter this parser has left is ignored
+	 */
+	skip_ids(emitter: Emitter, next: number): void {
+		if (emitter === this.out && next > this.next_id) this.next_id = next;
 	}
 
 	/** drop strings of the last document so a reused parser does not pin them */
