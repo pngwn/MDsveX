@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import temml from "temml";
+import { temml_math } from "mdsvex/math";
 import { pfmToSvelte, template_value_at } from "../src/pfm_to_svelte";
 import type {
 	EditorMappingData,
@@ -281,6 +283,33 @@ describe("pfmToSvelte compile diagnostics", () => {
 		expect(r.diagnostics).toHaveLength(1);
 		expect(r.diagnostics[0].message).toContain("children");
 		expect(r.code).toContain("<h1>after</h1>");
+	});
+
+	it("reports invalid latex at the latex and shows the math as written", () => {
+		const source = "# t\n\n```math\nx + \\frac{a}{\n```\n\n```math\ny\n```\n\n## after\n";
+		const r = pfmToSvelte(source, {
+			compile: {
+				math: temml_math(temml),
+				components: [{ specifier: "mdsvex:components", names: ["math"] }],
+			},
+			resolve: (id) => FILES[id],
+		});
+		expect(r.diagnostics).toHaveLength(1);
+		const [d] = r.diagnostics;
+		expect(d.severity).toBe("error");
+		expect(d.message).toContain("(`math` fence at line 3)");
+		// the end of the fourth line, where the argument should close
+		expect(d.start).toBe(source.indexOf("\n```\n\n```math"));
+		// the replacement keeps its props, so they still check
+		expect(r.code).toContain('<Math_MDSVEX_G display code={"x + \\\\frac{a}{"}>');
+		expect(r.code).toContain('<code class="language-math">y</code>');
+		expect(r.code).toContain("<h2>after</h2>");
+	});
+
+	it("valid math compiles as the config has it, with no diagnostic", () => {
+		const r = pfmToSvelte("```math\nx\n```\n", { compile: { math: temml_math(temml) } });
+		expect(r.diagnostics).toEqual([]);
+		expect(r.code).toContain('<math display="block"');
 	});
 
 	it("reports an unknown template at its line and renders without one", () => {

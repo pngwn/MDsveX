@@ -30,6 +30,7 @@ import { is_sveltekit_virtual_module } from '../sveltekit';
 import {
 	compile_markdown,
 	highlight_for,
+	math_for,
 	is_markdown,
 	prepare,
 	resolve_virtual,
@@ -158,10 +159,12 @@ async function get_bundle(
 
 			const name = id.slice(VIRTUAL.length + 1);
 			const highlight = await highlight_for(code, config);
+			const math = await math_for(code, config);
 			if (uid !== current_id) throw ABORT;
 			const { code: svelte_code, map } = compile_markdown(code, name, {
 				...prepared.options,
 				highlight,
+				math,
 			});
 			return { code: svelte_code, map: map as SourceMapInput };
 		},

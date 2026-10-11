@@ -31,14 +31,15 @@
 		}
 	},
 	"dependencies": {
+		"@jridgewell/trace-mapping": "^0.3.31",
 		"@mdsvex/parse": "workspace:*",
 		"@mdsvex/render": "workspace:*",
-		"mdsvex": "workspace:*",
-		"@jridgewell/trace-mapping": "^0.3.31"
+		"mdsvex": "workspace:*"
 	},
 	"devDependencies": {
 		"svelte": "^5.0.0",
 		"svelte2tsx": "^0.7.53",
+		"temml": "^0.14.0",
 		"typescript": "^5.0.0"
 	},
 	"author": "pngwn <hello@pngwn.io>",

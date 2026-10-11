@@ -8,7 +8,9 @@ import {
 	DirectiveError,
 	FrontmatterError,
 	highlight_error_at,
+	MathError,
 } from 'mdsvex';
+import { source_math } from 'mdsvex/math';
 import type { CompileOptions, CompileResult, TemplateEntry } from 'mdsvex';
 import { PFMParser } from '@mdsvex/parse';
 import type { SyntaxOptions } from '@mdsvex/parse';
@@ -273,6 +275,19 @@ function compile_leniently(
 					opts = { ...opts, frontmatter: { parse: () => ({}) } };
 					metadata_known = false;
 				} else opts = { ...opts, template: false };
+				continue;
+			}
+			if (e instanceof MathError && opts.math !== source_math) {
+				// latex half typed fails its fence, not the document, the
+				// math then shows as written so a math replacement keeps its props
+				const start = offset_of(source, e.line, e.column);
+				diagnostics.push({
+					start,
+					end: Math.min(start + 1, source.length),
+					message: e.message,
+					severity: 'error',
+				});
+				opts = { ...opts, math: source_math };
 				continue;
 			}
 			const at = highlight_error_at(e);

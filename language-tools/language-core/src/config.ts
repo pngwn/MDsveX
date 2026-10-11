@@ -8,18 +8,22 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type * as TS from 'typescript';
 
+import temml from 'temml';
 import { MANIFEST_PATH, MANIFEST_VERSION, module_script } from 'mdsvex';
 import type {
 	CompileOptions,
 	ComponentMode,
 	HighlightConfig,
+	ManifestMath,
 	ManifestModule,
 	ManifestTemplate,
+	MathRenderer,
 	MdsvexManifest,
 	TemplateEntry,
 } from 'mdsvex';
 import { create_highlight } from 'mdsvex/highlight';
 import { default_languages } from 'mdsvex/highlight/languages';
+import { source_math, temml_math } from 'mdsvex/math';
 import type { PfmToSvelteOptions } from '@mdsvex/source-map/pfm-to-svelte';
 
 export const CONFIG_FILE = 'mdsvex.config.json';
@@ -42,6 +46,10 @@ export interface JsonConfig {
 	highlight?: boolean;
 	/** a paragraph of only images gets no <p>, as the option of the plugin does */
 	unwrap_images?: boolean;
+	/** false leaves a math fence a code block, else the renderer and its options as the plugin takes them */
+	math?:
+		| false
+		| { renderer?: 'temml' | 'katex'; options?: Record<string, unknown> };
 }
 
 export interface LoadedConfig {
@@ -184,6 +192,8 @@ export function document_options(
 	};
 	if (Object.keys(templates).length !== 0) compile.templates = templates;
 	if (manifest.unwrap_images === true) compile.unwrap_images = true;
+	const math = math_of(manifest);
+	if (math !== undefined) compile.math = math;
 	if (manifest.select_template) {
 		// what the selector picked when the plugin last compiled the file
 		const picked = manifest.documents[posix(doc)];
@@ -213,6 +223,41 @@ function highlight_of(manifest: MdsvexManifest): CompileOptions['highlight'] {
 	// a custom highlighter has no live expressions
 	if ((manifest.highlight ?? 'twinkleplop') !== 'twinkleplop') return undefined;
 	return (twinkleplop ??= create_highlight({ languages: default_languages }));
+}
+
+let temml_default: MathRenderer | null = null;
+
+/**
+ * the renderer math fences compile with, temml as the build has it so
+ * invalid latex is a diagnostic, katex is not bundled and json can not
+ * hold a function, there the latex shows as written and is never checked
+ */
+function math_of(manifest: MdsvexManifest): MathRenderer | undefined {
+	const math = manifest.math;
+	if (math === false) return undefined;
+	if (math === undefined) return (temml_default ??= temml_math(temml));
+	const options = math.options;
+	if (math.renderer !== 'temml' || options === null) return source_math;
+	return options === undefined
+		? (temml_default ??= temml_math(temml))
+		: temml_math(temml, options);
+}
+
+/** the math of a json config as a manifest holds it, undefined for the default */
+function math_from_json(
+	math: JsonConfig['math']
+): ManifestMath | false | undefined {
+	if (math === false) return false;
+	if (typeof math !== 'object' || math === null) return undefined;
+	const renderer = math.renderer === 'katex' ? 'katex' : 'temml';
+	const options = math.options;
+	if (
+		typeof options !== 'object' ||
+		options === null ||
+		Object.keys(options).length === 0
+	)
+		return renderer === 'temml' ? undefined : { renderer };
+	return { renderer, options };
 }
 
 function union(a: readonly string[], b: readonly string[]): string[] {
@@ -245,6 +290,8 @@ export function from_json(
 		highlight: config.highlight === false ? false : 'twinkleplop',
 	};
 	if (config.unwrap_images === true) manifest.unwrap_images = true;
+	const math = math_from_json(config.math);
+	if (math !== undefined) manifest.math = math;
 	const from = path.join(dir, 'vite.config');
 	const scan = (file: string) => scan_exports(file, ts);
 
