@@ -637,6 +637,39 @@ export function load() {
 
 A `?metadata` import reads only the frontmatter, so the list does not load the component of every page.
 
+A SvelteKit layout can read the frontmatter of the page it wraps the same way. Without `eager`, each page's metadata loads on its own, and the id of the route picks it:
+
+```js
+// src/routes/+layout.js
+const pages = import.meta.glob('./**/+page.svx', {
+	query: '?metadata',
+	import: 'metadata'
+});
+
+export async function load({ route }) {
+	// the root route is `/`, every other id has no trailing slash
+	const dir = route.id === '/' ? '' : route.id;
+	const metadata = await pages[`.${dir}/+page.svx`]?.();
+
+	return { metadata: metadata ?? null };
+}
+```
+
+```svelte
+<!-- src/routes/+layout.svelte -->
+<script>
+	let { data, children } = $props();
+</script>
+
+<svelte:head>
+	<title>{data.metadata?.title ?? 'My site'}</title>
+</svelte:head>
+
+{@render children()}
+```
+
+`data.metadata` is `null` on a route that isn't a document, and on a document with no frontmatter. The same `load` works in a `+layout.server.js`.
+
 ### Supported YAML
 
 mdsvex parses frontmatter itself, with no dependency, so `compile` still runs anywhere. It understands the YAML that frontmatter tends to use:
