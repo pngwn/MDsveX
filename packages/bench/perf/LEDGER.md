@@ -66,13 +66,13 @@ delete it.
 
 ### open inline nodes at a quoted line end
 
-- **Source:** `bq_soft_break` in `packages/parse/src/main.ts`, which link
+- **Source:** #970, `bq_soft_break` in `packages/parse/src/main.ts`, which link
   text, the delimiter states and the inline element state call at a linefeed
   in a block quote.
 - **Measured:** a synthetic document, nothing in the corpus has the shape:
   300 quoted paragraphs whose link and image text runs over a line, `parse`
   -3.2% to -5.0% over six runs in both arm orders. The same with emphasis
-  reads -0.2% to -2.4%. Against 93d9d5c5, one workload per process with
+  reads -0.2% to -2.4%. Against the branch point, one workload per process with
   `compare_one`, where a document of plain quoted lines read -0.7% to +1.3%.
   `quick` reads -0.04% with no row past the default 3.0% floor.
 - **Cause:** not isolated with a stub. A linefeed inside link text or a
