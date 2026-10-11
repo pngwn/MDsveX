@@ -1031,19 +1031,22 @@ export class NodeBuffer {
 
 		// source-based fallback, derive the delimiter byte range from
 		// the node's own start offset.
+		const delimiter_end = this.delimiter_end_at(index, kind);
 		if (first_child === 0xffffffff) {
 			this.set_first_child(index, 0xffffffff);
 			this.set_last_child(index, 0xffffffff);
 			const start = this.start_at(index);
 			if (this.end_at(index) === 0xffffffff) {
-				// an opener that records where its content starts ends there
-				const content_start = this.value_start_at(index);
-				const end = content_start > start ? content_start : start + 1;
+				const end = delimiter_end === 0xffffffff ? start + 1 : delimiter_end;
 				this.set_value(index, start, end);
 				this.set_end(index, end);
 			} else {
+				// closed at the end of its block, which is past a pipe that prints nothing
 				this.set_value_start(index, start);
-				this.set_value_end(index, this.end_at(index));
+				this.set_value_end(
+					index,
+					delimiter_end === 0xffffffff ? this.end_at(index) : delimiter_end
+				);
 			}
 			return;
 		}
@@ -1059,9 +1062,12 @@ export class NodeBuffer {
 		}
 
 		// merge a lone text child into the delimiter, a cell text ends at the pipe past its value
+		// text that starts later skipped a backslash, joined by range it would take that back in
 		if (
 			last_child === first_child &&
-			this.kind_at(first_child) === NodeKind.text
+			this.kind_at(first_child) === NodeKind.text &&
+			(delimiter_end === 0xffffffff ||
+				this.value_start_at(first_child) === delimiter_end)
 		) {
 			this.set_value(
 				index,
@@ -1101,11 +1107,23 @@ export class NodeBuffer {
 		this.set_first_child(index, 0xffffffff);
 		this.set_last_child(index, 0xffffffff);
 
-		// use start, a soft_break child has no value range
+		// with no known length use the start of the child, a soft_break has no value range
 		const value_start = this.start_at(index);
-		const value_end = this.start_at(first_child);
+		const value_end =
+			delimiter_end === 0xffffffff ? this.start_at(first_child) : delimiter_end;
 		this.set_value(index, value_start, value_end);
 		this.set_end(index, value_end);
+	}
+
+	/** where the delimiter of a revoked inline node ends, none when only the parser knows its length */
+	private delimiter_end_at(index: number, kind: NodeKind): number {
+		const start = this.start_at(index);
+		// an opener that records where its content starts ends there
+		const content_start = this.value_start_at(index);
+		if (content_start > start) return content_start;
+		if (kind === NodeKind.link) return start + 1;
+		if (kind === NodeKind.image) return start + 2;
+		return 0xffffffff;
 	}
 
 	repair(): void {
