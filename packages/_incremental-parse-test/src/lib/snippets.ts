@@ -263,6 +263,13 @@ Final paragraph with a [link](/url).
 					":::steps[]\nEach heading starts a step.\n\n## Install\n\nAdd the package.\n\n```sh\npnpm add mdsvex\n```\n\n## Configure\n\nAdd it to the *config*.\n\n> ## Not a step\n>\n> A heading in a quote stays where it is.\n\n## Profit!\n\nWrite markdown.\n:::\n\nAfter the steps.\n",
 			},
 			{
+				name: "Steps, bound handler",
+				slug: "bound-steps",
+				plugins: "bound-steps",
+				markdown:
+					"## Not a step\n\nA heading outside the directive is never passed to the handler.\n\n::::steps[]\nEach heading starts a step, numbered by `ctx.index`.\n\n## Install\n\nAdd the package.\n\n```sh\npnpm add mdsvex\n```\n\n## Configure\n\nAdd it to the *config*.\n\n> ## Not a step\n>\n> A heading in a quote is not a child of the directive.\n\n:::steps[]\n### Inner one\n\nA nested directive has its own state and count.\n\n### Inner two\n\nSo this is step 2 again.\n:::\n\n## Profit!\n\nWrite markdown.\n::::\n\nAfter the steps.\n",
+			},
+			{
 				name: "Sectionize",
 				slug: "sectionize",
 				plugins: "sectionize",

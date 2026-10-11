@@ -1,4 +1,4 @@
-import type { ParsePlugin } from "@mdsvex/parse";
+import type { DirectiveHandlers, ParsePlugin } from "@mdsvex/parse";
 import { autolink } from "@mdsvex/plugin-autolink";
 
 type Wrapper = { close(): void };
@@ -44,6 +44,28 @@ export function steps(): ParsePlugin {
 	};
 }
 
+/**
+ * the same steps as handlers bound to the directive, they are only called
+ * for a heading written directly inside it, so there is no parent check, the
+ * open step lives in the state of that directive and the index numbers it
+ */
+export function bound_steps(): DirectiveHandlers {
+	return {
+		steps: {
+			children: {
+				heading(node, ctx) {
+					ctx.state.step?.close();
+					ctx.state.step = node.wrap_from(
+						"html",
+						made("section", "step " + (ctx.index + 1)),
+					);
+					node.wrap_from("html", made("header", "label")).close();
+				},
+			},
+		},
+	};
+}
+
 /** each top level heading and what follows it in a section */
 export function sectionize(): ParsePlugin {
 	return {
@@ -57,9 +79,16 @@ export function sectionize(): ParsePlugin {
 	};
 }
 
+/** global plugins and handlers bound to directive names */
+export interface PluginSet {
+	plugins?: ParsePlugin[];
+	directive_handlers?: DirectiveHandlers[];
+}
+
 /** plugins by the name a snippet asks for */
-export const PLUGIN_SETS: Record<string, () => ParsePlugin[]> = {
-	default: () => [autolink(), wrap_parent()],
-	steps: () => [steps()],
-	sectionize: () => [sectionize()],
+export const PLUGIN_SETS: Record<string, () => PluginSet> = {
+	default: () => ({ plugins: [autolink(), wrap_parent()] }),
+	steps: () => ({ plugins: [steps()] }),
+	"bound-steps": () => ({ directive_handlers: [bound_steps()] }),
+	sectionize: () => ({ plugins: [sectionize()] }),
 };
