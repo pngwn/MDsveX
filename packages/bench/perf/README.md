@@ -68,6 +68,10 @@ if any row is slower past the floor.
 `parity.mjs` checks that the two arms produce identical output. A speedup that
 changes output does not count as a speedup.
 
+A change that is not about performance still gets one `quick` run. If a row
+moves, record it in [LEDGER.md](LEDGER.md) and carry on. The ledger says when
+to stop instead.
+
 Other options: `--families`, `--modes` (where `incremental` means both chunk
 sizes), `--rounds` (default 15), `--repeat` (default 1), `--target-ms`,
 `--rewarm-ms`, `--noise-floor <pct>` and `--verbose`.

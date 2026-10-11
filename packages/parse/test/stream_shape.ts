@@ -1,12 +1,14 @@
 import { expect } from 'vitest';
 
 import { PFMParser, WireEmitter, parse_markdown_svelte } from '../src/main';
+import type { SyntaxOptions } from '../src/main';
 import type { Emitter } from '../src/opcodes';
 import { TreeBuilder } from '../src/tree_builder';
-import { type NodeBuffer, NodeKind, kind_to_string } from '../src/utils';
+import { NodeKind, kind_to_string } from '../src/utils';
+import type { NodeBuffer } from '../src/utils';
 import { WireOp } from '../src/wire_emitter';
 import { WireTreeBuilder } from '../src/wire_tree_builder';
-import { run_batch, run_wire, shape } from './plugin_harness';
+import { run_batch, run_wire, shape as joined_shape } from './plugin_harness';
 import { print_ast } from './print';
 
 const enum Seen {
@@ -243,12 +245,13 @@ export function every_path(source: string): string {
 	const whole = checked_tree(source);
 	revoked_once(source);
 	const options = { merge_text: true };
-	const tree = shape(run_batch(source).nodes, source, 0, options);
+	const tree = joined_shape(run_batch(source).nodes, source, 0, options);
 	for (const chunk of [0, 1, 2, 3]) {
 		const wire = run_wire(source, undefined, chunk);
-		expect(shape(wire.nodes, null, 0, options), `wire fed ${chunk}`).toEqual(
-			tree
-		);
+		expect(
+			joined_shape(wire.nodes, null, 0, options),
+			`wire fed ${chunk}`
+		).toEqual(tree);
 	}
 	return whole;
 }
@@ -290,6 +293,55 @@ export function unsound(nodes: NodeBuffer, source: string | null): string[] {
 	};
 	walk(0);
 	return out;
+}
+
+/** the printed tree, then every node with its positions, which print_ast leaves out */
+function shape(nodes: NodeBuffer, source: string): string {
+	const rows = [print_ast(nodes, source)];
+	const walk = (index: number): void => {
+		const node = nodes.get_node(index);
+		rows.push(`${node.kind} ${node.start} ${node.end} ${node.value}`);
+		for (const child of node.children) walk(child);
+	};
+	walk(0);
+	return rows.join('\n');
+}
+
+function shape_fed(
+	source: string,
+	cuts: number[],
+	options?: SyntaxOptions
+): string {
+	const tree = new TreeBuilder(source.length);
+	const parser = new PFMParser(tree, 2, options);
+	parser.init();
+	let from = 0;
+	for (const cut of cuts) {
+		parser.feed(source.slice(from, cut));
+		from = cut;
+	}
+	parser.feed(source.slice(from));
+	parser.finish();
+	return shape(tree.get_buffer(), source);
+}
+
+/**
+ * the first feeding of source whose tree is not the one a whole parse builds, in
+ * chunks of 1, 2 and 3 then cut in two at each offset, '' when they all match
+ */
+export function fed_mismatch(source: string, options?: SyntaxOptions): string {
+	const tree = new TreeBuilder(source.length);
+	new PFMParser(tree, 2, options).parse(source);
+	const whole = shape(tree.get_buffer(), source);
+	for (const size of [1, 2, 3]) {
+		const cuts: number[] = [];
+		for (let at = size; at < source.length; at += size) cuts.push(at);
+		if (shape_fed(source, cuts, options) !== whole) return `chunks of ${size}`;
+	}
+	for (let at = 1; at < source.length; at++) {
+		if (shape_fed(source, [at], options) !== whole) return `cut at ${at}`;
+	}
+	return '';
 }
 
 export function lines(...rows: string[]): string {
