@@ -17,5 +17,5 @@ root
   paragraph
     text "This one shouldn't be "
     text "\\"
-    text tag="escaped" "<escaped>"
+    text "<escaped>"
   line_break

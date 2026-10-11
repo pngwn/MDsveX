@@ -990,6 +990,8 @@ export class NodeBuffer {
 		// they are reparented to the grandparent so the streamed
 		// content is preserved after revocation.
 		this.set_kind(index, NodeKind.text);
+		// a tag, a directive name or what a plugin wrote described the node that is gone
+		this.delete_metadata(index);
 
 		if (delimiter_text !== undefined) {
 			const start = this.start_at(index);

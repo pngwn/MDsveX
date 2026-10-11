@@ -193,7 +193,7 @@ describe('WireTreeBuilder text after a revoked link', () => {
 		]);
 	});
 
-	it('builds one tree when the repeat finds the link at block level', () => {
+	it('builds one tree when the link ends up at block level', () => {
 		expect_parity('<b>[] y\n', () => []);
 	});
 });

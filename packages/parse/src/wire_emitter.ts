@@ -152,7 +152,7 @@ export class WireEmitter implements Emitter {
 	private info_starts: Map<number, number> = new Map();
 	/** tags for html nodes whose content is delivered as value range (script, style). */
 	private raw_html_ids: Set<number> = new Set();
-	/** inline directive names by id, kept past a revoke as the parser repeats it at the block end */
+	/** inline directive names by id, a revoke sends the name back as text */
 	private directive_names: Map<number, string> = new Map();
 	/** parser cursor position, updated via cursor(). */
 	private parser_cursor = 0;
@@ -363,6 +363,7 @@ export class WireEmitter implements Emitter {
 		this.text_state.delete(id);
 		this.pending_starts.delete(id);
 		this.raw_html_ids.delete(id);
+		this.directive_names.delete(id);
 	}
 
 	commit(id: number): void {
