@@ -4,7 +4,7 @@ import remapping from '@ampproject/remapping';
 // ahead of compile, so @mdsvex/render/sourcemap stays first in the chunk they share
 import { base64_utf8, chained_base64, pfm_map } from './sourcemap_chain';
 import type { StoredDocument } from './sourcemap_chain';
-import { CompilerSession, compile_inputs } from './compile';
+import { CompilerSession, check_plugins, compile_inputs } from './compile';
 import type { Bundle, ComponentMode } from './compile';
 import type { FrontmatterOptions } from './frontmatter';
 import { MANIFEST_VERSION, manifest_writer } from './manifest';
@@ -184,8 +184,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	// one for every document, only the fields a document can change are stored again
 	const inputs = compile_inputs();
 	const written_plugins = options.plugins;
-	if (written_plugins !== undefined && !Array.isArray(written_plugins))
-		throw new Error('[mdsvex] plugins must be an array of plugins');
+	// one clear error when the plugin is made rather than one per document
+	if (written_plugins !== undefined) check_plugins(written_plugins);
 	const plugins =
 		written_plugins === undefined || written_plugins.length === 0
 			? null

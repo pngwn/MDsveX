@@ -487,6 +487,11 @@ function unpack(bundles: Bundle[]): Unpacked {
 	return out;
 }
 
+/** @internal throws for a malformed plugin, so a config fails before its first document */
+export function check_plugins(bundles: Bundle[]): void {
+	unpack(bundles);
+}
+
 /**
  * the inputs with their plugins unpacked into the fields a compile reads, a
  * copy as the caller keeps its own

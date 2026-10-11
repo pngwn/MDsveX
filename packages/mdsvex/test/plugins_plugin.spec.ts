@@ -293,9 +293,18 @@ describe('plugins option errors', () => {
 		}
 	});
 
-	test('plugins that are not an array throw when the plugin is made', () => {
+	test('a malformed plugins option throws when the plugin is made', () => {
 		expect(() => mdsvex({ plugins: steps() as any })).toThrow(
 			'[mdsvex] plugins must be an array of plugins'
+		);
+		// the function was passed, not what it returns
+		expect(() => mdsvex({ plugins: [steps as any] })).toThrow(
+			'[mdsvex] plugins[0] must be an object, call the plugin'
+		);
+		const no_module = steps();
+		delete no_module.module;
+		expect(() => mdsvex({ plugins: [no_module] })).toThrow(
+			'[mdsvex] plugins[0] (steps) needs a module'
 		);
 	});
 
