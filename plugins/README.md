@@ -4,13 +4,14 @@ Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a 
 
 | package                   | directory                | what it adds                                                                                           |
 | ------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `@mdsvex/plugin-steps`    | [`steps`](./steps)       | numbered steps, one for each heading inside `:::steps[]`                                               |
 | `@mdsvex/plugin-autolink` | [`autolink`](./autolink) | an id and a link on every heading. Private, and older than bundles, so it still returns a parse plugin |
 
 The other files in this directory are the audit of the remark and rehype plugins these replace.
 
 ## Adding a plugin
 
-Copy [`autolink`](./autolink) for a plugin that is only handlers. One that ships Svelte components is built as the last part of this section describes. Change the name, description, `repository.directory` and keywords in `package.json`, set the version to `0.0.1`, and add a row above. The workspace, the root build, the root test run, preview builds, dependabot and the release already cover `plugins/*`, so nothing outside the new directory needs wiring.
+Copy [`autolink`](./autolink) for a plugin that is only handlers, or [`steps`](./steps) for one that ships Svelte components. Change the name, description, `repository.directory` and keywords in `package.json`, set the version to `0.0.1`, and add a row above and a section to the Plugins part of `packages/site/src/routes/_docs.svtext`. The workspace, the root build, the root test run, preview builds, dependabot and the release already cover `plugins/*`, so nothing outside the new directory needs wiring.
 
 ### What every plugin package has
 
@@ -40,7 +41,7 @@ Built like `@mdsvex/parse` and `mdsvex`: `tsc` into `tsc/`, then `vite build --c
 Built with [`svelte-package`](https://svelte.dev/docs/kit/packaging), after `tsc` has checked the types. It writes each file of `src` to `dist`: TypeScript becomes JavaScript with declarations, and `.svelte` and `.css` files are copied as they are, with a `.svelte.d.ts` beside each component. The components are compiled by the Svelte of the app that uses them.
 
 - **`svelte` is a peer dependency.**
-- **The bundle's `module` is a subpath of the package**, such as `@mdsvex/plugin-name/directives`. That file exports one component for each directive, under the directive's name. In `exports` it has a `svelte` condition and no `default`, as the Svelte packaging guide asks, so vite-plugin-svelte treats the package as a component library and compiles it for the server too. The Vite plugin resolves `module` from the Vite root, so the user's install is the one used.
+- **The bundle's `module` is a subpath of the package**, such as `@mdsvex/plugin-steps/directives`. That file exports one component for each directive, under the directive's name. In `exports` it has a `svelte` condition and no `default`, as the Svelte packaging guide asks, so vite-plugin-svelte treats the package as a component library and compiles it for the server too. The Vite plugin resolves `module` from the Vite root, so the user's install is the one used.
 - **Write components in JavaScript with JSDoc types.** `svelte-package` only strips TypeScript from a component when a preprocessor is configured, and there is none.
 - **Relative imports carry their extension**, `./unstyled.js` and `./Steps.svelte`, since the files are not bundled.
 - **Styles go in a `.css` file the module imports**, not in a `<style>` block, so a user can leave them out or replace them. List it in `sideEffects`, with the module that imports it.
@@ -55,11 +56,11 @@ npm login
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-name
+node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-steps
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-name
+node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-steps
 ```
 
 The dry run lists what it would do. The real run publishes a `0.0.0` placeholder of each package that is not on npm, then registers `pngwn/MDsveX` with `release.yml` as its trusted publisher. Run it with `node`, not through `pnpm run`, so the 2FA prompt reaches the terminal. It finds packages with `pnpm -r ls`, which covers `plugins/*`, and skips private ones, so a new package must not be `private` and must have a version other than `0.0.0`.

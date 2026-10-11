@@ -16,6 +16,7 @@ let {children} = $props()
 	<div class="inner">
 		<a href="/preprocess">preprocess</a>
 		<a href="/template">template</a>
+		<a href="/steps">steps</a>
 
 	</div>
 </nav>
