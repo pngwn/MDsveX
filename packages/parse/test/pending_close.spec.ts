@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { PFMParser } from '../src/main';
+import { PFMParser, WireEmitter } from '../src/main';
 import type { Emitter } from '../src/opcodes';
 import { NodeKind, kind_to_string } from '../src/utils';
 
@@ -254,6 +254,20 @@ describe('pending nodes: what a close means', () => {
 			'open paragraph 1',
 			'close 1',
 			'revoke 1',
+		]);
+	});
+
+	it('the wire flags the close of a delimiter with no closer', () => {
+		const emitter = new WireEmitter();
+		const source = 'a *b* c *d\n';
+		emitter.set_source(source);
+		new PFMParser(emitter).parse(source);
+		// 3 the strong that closed, 6 the one left open
+		const ops = emitter.flush().filter((op) => op[1] === 3 || op[1] === 6);
+		expect(ops.filter((op) => op[0] === 'C' || op[0] === 'R')).toEqual([
+			['C', 3],
+			['C', 6, 1],
+			['R', 6, '*'],
 		]);
 	});
 });

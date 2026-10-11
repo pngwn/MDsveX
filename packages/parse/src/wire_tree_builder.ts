@@ -80,7 +80,7 @@ export class WireTreeBuilder {
 					);
 					break;
 				case 'C':
-					this._close(op[1] as number);
+					this._close(op[1] as number, op[2] === 1);
 					break;
 				case 'T':
 					this._text(op[1] as number, op[2] as string);
@@ -154,25 +154,29 @@ export class WireTreeBuilder {
 		if (handled) dispatcher!.dispatch_open(idx, kind as NodeKind, this.buf);
 	}
 
-	private _close(id: number): void {
+	/** gave_up is the flag of a delimiter closed with no closer, its revoke follows */
+	private _close(id: number, gave_up: boolean): void {
 		const idx = this.id_to_index[id];
 		if (idx === undefined) return;
 		this.buf.set_end(idx, 1);
 
-		// capture pending state BEFORE close dispatch / commit.
-		// pending nodes may still be revoked after close, so their
-		// undo logs must be preserved until explicit commit or revoke.
-		const was_pending = this.buf.pending_at(idx) === 1;
+		const kind = this.buf.kind_at(idx);
 
-		// plugin close dispatch
-		if (this.dispatcher) {
-			this.dispatcher.dispatch_close(idx, this.buf);
+		// plugin close dispatch, the parser settles a pending paragraph with a
+		// commit or a revoke, any other close it did not give up on is final
+		// and commits the undo log
+		const dispatcher = this.dispatcher;
+		if (dispatcher !== null) {
+			dispatcher.dispatch_close(
+				idx,
+				this.buf,
+				gave_up || kind === NodeKind.paragraph
+			);
 		}
 
 		// pending paragraphs inside list_items are tight-list speculation
 		// wrappers, they stay pending after close until the list closes
 		// and the parser either revokes (tight) or commits (loose) them.
-		const kind = this.buf.kind_at(idx);
 		const parent_kind = this.buf.kind_at(this.buf.parent_at(idx));
 		if (
 			!(
@@ -182,11 +186,6 @@ export class WireTreeBuilder {
 			)
 		) {
 			this.buf.commit_node(idx);
-			// only commit undo log if the node was NOT pending at close time.
-			// pending nodes keep their undo logs until explicit commit/revoke.
-			if (this.dispatcher && !was_pending) {
-				this.dispatcher.dispatch_commit(idx);
-			}
 		}
 
 		// tight list unwrapping, walk sibling chains directly. safe no-op

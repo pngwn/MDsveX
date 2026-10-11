@@ -254,8 +254,7 @@ describe('bound handlers: descendants', () => {
 		const { tree, log } = expect_parity_logged(
 			'![o](o.png)\n\n:::gallery[]\n![a](a.png)\n\n> ![b](b.png)\n\n- x ![c](c.png)\n:::\n\n![p](p.png)\n',
 			(log) => bound(gallery(log)),
-			// an image is pending, its log stays until the document ends
-			{ attrs: ['i'], quiet: false }
+			{ attrs: ['i'] }
 		);
 		expect(log).toEqual(['gallery 0', 'gallery 1', 'gallery 2']);
 		expect(tree).toEqual([
@@ -286,7 +285,7 @@ describe('bound handlers: descendants', () => {
 						},
 					},
 				}),
-			{ ...NAMED, quiet: false }
+			NAMED
 		);
 		expect(log).toEqual([
 			'gallery 0',
@@ -338,7 +337,7 @@ describe('bound handlers: descendants', () => {
 						},
 					},
 				}),
-			{ ...NAMED, quiet: false }
+			NAMED
 		);
 		expect(log).toEqual(['label', 'strong']);
 	});
@@ -446,8 +445,7 @@ describe('bound handlers: revokes roll state and index back', () => {
 		const { tree, log } = expect_parity_logged(
 			':::box[]\na [b](u) c [d] e\n\n[f](u)\n:::\n',
 			(log) => bound(counting(log)),
-			// the log of a closed pending node stays until the document ends
-			{ ...NAMED, quiet: false }
+			NAMED
 		);
 		// the revoked link gave its index back, the next one takes it again
 		expect(log).toEqual([
@@ -593,7 +591,7 @@ describe('bound handlers: revokes roll state and index back', () => {
 		const { tree, log } = expect_parity_logged(
 			':::box[]\na *b* c *d\n:::\n\nafter\n',
 			(log) => bound(counting(log, 'strong_emphasis')),
-			{ ...NAMED, quiet: false }
+			NAMED
 		);
 		expect(log).toEqual([
 			'strong_emphasis 0',
@@ -688,8 +686,7 @@ describe("bound handlers: the directive's own parse", () => {
 		const { tree, log } = expect_parity_logged(
 			'x :tabs[y](sync=os) z\n',
 			(log) => bound(own(log)),
-			// the directive is pending, its log stays until the document ends
-			{ ...NAMED, quiet: false }
+			NAMED
 		);
 		expect(log).toEqual(['open directive_inline null 0', 'close']);
 		expect(tree).toEqual([

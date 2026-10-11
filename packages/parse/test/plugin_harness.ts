@@ -129,6 +129,9 @@ class Relay implements Emitter {
 	close(id: number, end: number, kind?: NodeKind): void {
 		this.out.close(id, end, kind);
 	}
+	close_pending(id: number, end: number, kind: NodeKind): void {
+		this.out.close_pending(id, end, kind);
+	}
 	text(parent: number, start: number, end: number, kind?: NodeKind): void {
 		this.out.text(parent, start, end, kind);
 	}

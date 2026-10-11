@@ -224,13 +224,34 @@ export class TreeBuilder implements Emitter {
 		this.close_rest(idx, b, kind);
 	}
 
-	private close_rest(idx: number, b: number, kind: NodeKind | undefined): void {
+	/** a delimiter the parser gave up on, closed but not final, its revoke follows */
+	close_pending(id: number, end: number, kind: NodeKind): void {
+		const idx = this.index_of(id);
+		if (idx === undefined) return;
+		const b = idx * NodeField.stride;
+		this.nodes._n[b + NodeField.end] = end;
+		this.close_rest(idx, b, kind, true);
+	}
+
+	private close_rest(
+		idx: number,
+		b: number,
+		kind: NodeKind | undefined,
+		gave_up = false
+	): void {
 		const nodes = this.nodes;
 		// fire close callbacks before committing, a quiet dispatcher has none
 		const dispatcher = this.dispatcher;
 		if (dispatcher !== null && !dispatcher.quiet()) {
+			if (kind === undefined) kind = this.opened_kind(idx);
 			const size = nodes._size;
-			dispatcher.dispatch_close(idx, nodes);
+			// the parser settles a pending paragraph with a commit or a revoke,
+			// any other close it did not give up on is final
+			dispatcher.dispatch_close(
+				idx,
+				nodes,
+				gave_up || kind === NodeKind.paragraph
+			);
 			// a callback may have made the first link, the close dropped the last
 			this.wants = dispatcher.open_wants;
 			if (nodes._size !== size) this.pushed();
@@ -239,7 +260,6 @@ export class TreeBuilder implements Emitter {
 		// pending paragraphs inside list_items are tight-list speculation
 		// wrappers, they stay pending after close until the list closes
 		// and the parser either revokes (tight) or commits (loose) them.
-		// dispatch_close already committed the undo log of a node not pending
 		if (kind === undefined) kind = this.opened_kind(idx);
 		const n = nodes._n;
 		if (

@@ -456,7 +456,7 @@ Because plugin mutations on traversal-reached nodes are logged against the handl
 
 The close callback runs later, potentially well after the open handler. Its mutations are captured the same way — through the view setters, into the same undo log for the node being mutated. Revocation between open and close is handled by the builder discarding the close callback entirely (it's held in a per-node registration) and running the undo log.
 
-If revocation happens after close has fired, the close callback's mutations are already in the undo log alongside the open handler's mutations, and they get unwound together in reverse order. This is the usual order for an inline delimiter that never closes and for the paragraphs of a tight list: the parser closes the node where its block ends and revokes it afterwards. Only writes through the node view are unwound, so a callback that also writes somewhere else (a list it collects into, say) should not assume its node is final.
+If revocation happens after close has fired, the close callback's mutations are already in the undo log alongside the open handler's mutations, and they get unwound together in reverse order. This is the usual order for an inline delimiter that never closes and for the paragraphs of a tight list: the parser closes the node where its block ends and revokes it afterwards. A paragraph that starts with a tag or an image and holds nothing else is revoked right after its close as well. Any other pending node that has closed is final. Only writes through the node view are unwound, so a callback that also writes somewhere else (a list it collects into, say) should not assume its node is final.
 
 ## Implementation Notes
 
@@ -466,7 +466,12 @@ For nodes with no plugin activity, the undo log is never allocated. This is the 
 
 For nodes with handlers, the log accumulates as the handler runs. The setters on the node view check whether a log exists for the current node and append to it. Structural methods write their own entries. The log is a simple array of records, each describing one mutation and how to reverse it.
 
-Commit is the inverse of revoke: when a node is committed (its close opcode is processed and no revoke followed), the undo log is simply discarded. The mutations become permanent, and the memory is freed.
+Commit is the inverse of revoke: when a node is committed, the undo log is simply discarded. The mutations become permanent, and the memory is freed. A node is committed when it closes, with two exceptions the parser settles afterwards:
+
+- **A delimiter with no closer.** The parser closes it where its block ends and revokes it once it is back at block level. It marks that close (`close_pending` on an emitter, a flag on the wire's `C`), and the log is kept for the revoke.
+- **A pending paragraph**, in a list item or one that starts with a tag or an image. The parser sends a commit or a revoke for it by id.
+
+Once no node holds a log, a callback, an open wrapper or a scope, the builders stop calling the dispatcher for closes, until the next node of a handled type opens.
 
 ### Node ids and plugin nodes
 

@@ -27,8 +27,6 @@ const sequential = (kind: string, parse: Parse): ParsePlugin => ({
 });
 
 const ATTRS = { attrs: ['id', 'href', 'keep', 'seen'] };
-// a closed pending node keeps its undo log, see the it.fails below
-const LOGGED = { ...ATTRS, quiet: false };
 
 const wrap: Parse = (node) => {
 	node.wrap_inner('link', { id: 'W' });
@@ -130,7 +128,7 @@ describe('parse plugins: structural methods build one tree on every path', () =>
 			expect_parity(
 				'a *b* c\n\n<div>\n\nx\n\n</div>\n',
 				() => [on('strong_emphasis', all), on('html', all)],
-				LOGGED
+				ATTRS
 			)
 		).toEqual([
 			'root',
@@ -208,12 +206,10 @@ describe('parse plugins: a revoke undoes the node on every path', () => {
 	});
 
 	it('an attr delete stays once the node does', () => {
-		expect(expect_parity('a *b* c\n', () => [keep, drop_keep], LOGGED)).toEqual(
-			[
-				'root',
-				['paragraph', 'text:a ', ['strong_emphasis', 'text:b'], 'text: c'],
-			]
-		);
+		expect(expect_parity('a *b* c\n', () => [keep, drop_keep], ATTRS)).toEqual([
+			'root',
+			['paragraph', 'text:a ', ['strong_emphasis', 'text:b'], 'text: c'],
+		]);
 	});
 
 	it('an attr set then deleted on the node itself', () => {
@@ -302,7 +298,7 @@ describe('parse plugins: close callbacks and revokes', () => {
 	];
 
 	it('a node that closes fires its callback once', () => {
-		const { tree, log } = expect_parity_logged('a *b* c\n', logging, LOGGED);
+		const { tree, log } = expect_parity_logged('a *b* c\n', logging, ATTRS);
 		expect(log).toEqual(['open', 'close']);
 		expect(tree).toEqual([
 			'root',
@@ -459,7 +455,7 @@ describe('parse plugins: a revoked parent leaves a child that stays alone', () =
 		const { tree, log } = expect_parity_logged(
 			'_x *b* y\n',
 			(log) => [on('strong_emphasis', mark(log))],
-			LOGGED
+			ATTRS
 		);
 		expect(tree).toEqual([
 			'root',
@@ -472,7 +468,7 @@ describe('parse plugins: a revoked parent leaves a child that stays alone', () =
 		const { tree } = expect_parity_logged(
 			'[a *b* c\n',
 			(log) => [on('strong_emphasis', mark(log))],
-			LOGGED
+			ATTRS
 		);
 		expect(tree).toEqual([
 			'root',
@@ -484,7 +480,7 @@ describe('parse plugins: a revoked parent leaves a child that stays alone', () =
 		const { tree } = expect_parity_logged(
 			'<div>\n\n# h *a* b\n',
 			(log) => [on('strong_emphasis', mark(log))],
-			LOGGED
+			ATTRS
 		);
 		expect(tree).toEqual([
 			'root',
@@ -497,7 +493,7 @@ describe('parse plugins: a revoked parent leaves a child that stays alone', () =
 		const { tree, log } = expect_parity_logged(
 			'*a <span>b</span> c\n',
 			(log) => [on('html', mark(log))],
-			LOGGED
+			ATTRS
 		);
 		expect(tree).toEqual([
 			'root',
@@ -540,7 +536,7 @@ describe('parse plugins: wrap_inner in a close callback', () => {
 
 	it('from a pending node that stays', () => {
 		expect(
-			expect_parity('a *b* c\n', () => [wrap_parent('strong_emphasis')], LOGGED)
+			expect_parity('a *b* c\n', () => [wrap_parent('strong_emphasis')], ATTRS)
 		).toEqual([
 			'root',
 			[
@@ -755,8 +751,8 @@ describe('parse plugins: a sequential pass that changes structure', () => {
 });
 
 describe('parse plugins: undo logs of closed pending nodes', () => {
-	// the parser sends no commit for a pending node it closes, so its log stays
-	it.fails.each(PATHS)(
+	// a close the parser did not give up on is final, so the log goes with it
+	it.each(PATHS)(
 		'%s: a delimiter that closed leaves the dispatcher quiet',
 		(_, run) => {
 			const out = run('a *b* c\n\nd\n', [on('strong_emphasis', wrap)]);
