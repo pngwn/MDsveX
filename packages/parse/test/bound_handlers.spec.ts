@@ -585,9 +585,7 @@ describe('bound handlers: revokes roll state and index back', () => {
 		expect(log).toEqual(['paragraph']);
 	});
 
-	it('an unclosed delimiter is revoked after its container closed', () => {
-		// the revoke comes once the outermost container closed, after the
-		// close callback of the directive read the state
+	it('an unclosed delimiter is revoked before the close callback of its directive', () => {
 		const { tree, log } = expect_parity_logged(
 			':::box[]\na *b* c *d\n:::\n\nafter\n',
 			(log) => bound(counting(log, 'strong_emphasis')),
@@ -596,12 +594,12 @@ describe('bound handlers: revokes roll state and index back', () => {
 		expect(log).toEqual([
 			'strong_emphasis 0',
 			'strong_emphasis 1',
-			'keys count,seen 0,seen 1',
+			'keys count,seen 0',
 		]);
 		expect(tree).toEqual([
 			'root',
 			[
-				'directive_container name="box" args={"count":"2"}',
+				'directive_container name="box" args={"count":"1"}',
 				[
 					'paragraph',
 					'text:a ',
@@ -611,6 +609,18 @@ describe('bound handlers: revokes roll state and index back', () => {
 			],
 			['paragraph', 'text:after'],
 		]);
+	});
+
+	it('an unclosed tag is revoked after the close callback of its directive', () => {
+		const { tree, log } = expect_parity_logged(
+			':::box[]\na <b>b</b> c <i>d\n:::\n\nafter\n',
+			(log) => bound(counting(log, 'html')),
+			NAMED
+		);
+		expect(log).toEqual(['html 0', 'html 1', 'keys count,seen 0,seen 1']);
+		expect((tree as any)[1][0]).toBe(
+			'directive_container name="box" args={"count":"2"}'
+		);
 	});
 });
 

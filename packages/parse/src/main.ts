@@ -1453,8 +1453,9 @@ export class PFMParser {
 	/**
 	 * revoke pending nodes that will never close, keeping tight list paragraphs and nodes on the node stack
 	 * slots below np_floor hold only paragraphs while the paragraph count agrees, a swap remove can break that
+	 * keep_html leaves elements pending, an open container is one, so the test before that call counts the other kinds
 	 */
-	private revoke_stale_pending(): void {
+	private revoke_stale_pending(keep_html: boolean): void {
 		const cold = this.cold;
 		const count = this.pending_count;
 		let write = cold.np_floor;
@@ -1478,8 +1479,11 @@ export class PFMParser {
 				write++;
 				continue;
 			}
-			if (this.node_stack.indexOf(pid) !== -1) {
-				// still on the node stack - this frame is open above us.
+			if (
+				(keep_html && pkind === NodeKind.html) ||
+				this.node_stack.indexOf(pid) !== -1
+			) {
+				// still on the node stack so its frame is open above us, or an element left for later
 				if (floor < 0) floor = write;
 				this.pending_ids[write] = pid;
 				this.pending_starts[write] = this.pending_starts[pi];
@@ -2908,7 +2912,7 @@ export class PFMParser {
 		this.emit_close(l_id, end + 1);
 		// an inline left open at the range end becomes literal text now
 		if (this.pending_count > this.pending_para_count) {
-			this.revoke_stale_pending();
+			this.revoke_stale_pending(false);
 		}
 	}
 
@@ -6386,7 +6390,15 @@ export class PFMParser {
 					st === StateKind.block_quote ||
 					st === StateKind.list_item
 				) {
-					this.revoke_stale_pending();
+					this.revoke_stale_pending(false);
+				} else if (
+					// the element, branch and directive containers, adjacent states
+					st >= StateKind.html_block_element &&
+					st <= StateKind.directive_container &&
+					this.pending_count - this.pending_para_count > this.cold.pending_html
+				) {
+					// a feed and a whole parse reach a later revoke at different turns, and the order of revokes decides where the text splits
+					this.revoke_stale_pending(true);
 				}
 			}
 
