@@ -54,8 +54,6 @@ function header_cell(...children: unknown[]): unknown {
 const DERIVED = ['[', '![', '_', '*', '~~', '^', '~', ':x['];
 // a code span and a tag are revoked with their text
 const ALL = [...DERIVED, '`', '``', '<span>'];
-// a pipe straight after one of these is the intraword marker and prints nothing
-const MARKS = ['_', '*', '~~', '~'];
 
 describe('the first thing after a delimiter that never closes', () => {
 	describe.each(ALL)('%s in a paragraph', (delimiter) => {
@@ -132,9 +130,8 @@ describe('the first thing after a delimiter that never closes', () => {
 	});
 
 	test.each(DERIVED)('%s before a pipe outside a table', (delimiter) => {
-		const pipe = MARKS.includes(delimiter) ? '' : '|';
 		expect(joined(`x ${delimiter}|a\n`)).toEqual(
-			paragraph(`text:x ${delimiter}${pipe}a`)
+			paragraph(`text:x ${delimiter}|a`)
 		);
 	});
 
@@ -151,10 +148,9 @@ describe('the first thing after a delimiter that never closes', () => {
 			);
 		});
 
-		test('ends before a pipe that prints nothing, or keeps one that is text', () => {
-			const pipe = MARKS.includes(delimiter) ? '' : '|';
+		test('keeps the pipe after it', () => {
 			expect(joined(`x ${delimiter}|\n`)).toEqual(
-				paragraph(`text:x ${delimiter}${pipe}`)
+				paragraph(`text:x ${delimiter}|`)
 			);
 		});
 	});

@@ -58,7 +58,7 @@ _*strong inside emphasis*_
 intraword: fan|_tas_|tic
 ```
 
-The `|` is the marker only directly before or after a `_`, `*` or `~`. Any other `|` outside a table is literal text, so `a | b` and `a || b` render as written.
+The `|` is the marker only directly before a `_`, `*` or `~` that opens, or directly after one that closes. Any other `|` outside a table is literal text, so `a | b`, `a || b` and `x |* y` render as written, and so does the `|` before a mark that is never closed (`fan|_tas tic`).
 
 A delimiter opens after whitespace or punctuation, and closes before whitespace or punctuation. This applies to `_`, `*` and `~~`:
 

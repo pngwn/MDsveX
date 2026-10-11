@@ -39,16 +39,16 @@ describe('an image left open', () => {
 });
 
 describe('a pipe outside a table after an emphasis mark left open', () => {
-	it('is not text when the line ends at it', () => {
-		expect(tree('*|\n')).toEqual(['root', ['paragraph', 'text:*']]);
-		expect(tree('x ~~|\n')).toEqual(['root', ['paragraph', 'text:x ~~']]);
-		expect(tree('_|')).toEqual(['root', ['paragraph', 'text:_']]);
+	it('is text when the line ends at it', () => {
+		expect(tree('*|\n')).toEqual(['root', ['paragraph', 'text:*|']]);
+		expect(tree('x ~~|\n')).toEqual(['root', ['paragraph', 'text:x ~~|']]);
+		expect(tree('_|')).toEqual(['root', ['paragraph', 'text:_|']]);
 	});
 
-	it('is not text before a line end inside the delimiter', () => {
+	it('is text before a line end inside the delimiter', () => {
 		expect(tree('x *|\nb')).toEqual([
 			'root',
-			['paragraph', 'text:x *', 'soft_break', 'text:b'],
+			['paragraph', 'text:x *|', 'soft_break', 'text:b'],
 		]);
 	});
 
@@ -78,8 +78,15 @@ describe('trailing space trimmed after an earlier text run', () => {
 		expect(tree('# a\\*b \n')).toEqual(['root', ['heading', 'text:a*b']]);
 	});
 
+	it('keeps the text before a pipe after a mark in a heading', () => {
+		expect(tree('# a*|b ')).toEqual(['root', ['heading', 'text:a*|b']]);
+	});
+
 	it('keeps the text before a marker pipe in a heading', () => {
-		expect(tree('# a*|b ')).toEqual(['root', ['heading', 'text:a*b']]);
+		expect(tree('# a|*b* ')).toEqual([
+			'root',
+			['heading', 'text:a', ['strong_emphasis', 'text:b']],
+		]);
 	});
 
 	it('keeps a pipe that is text in a heading', () => {

@@ -351,8 +351,25 @@ describe('a delimiter that never closes', () => {
 		['an image ![\n', '<p>an image ![</p>'],
 		['![]\n', '<p>![]</p>'],
 		['[|a\n', '<p>[|a</p>'],
-		['*|a\n', '<p>*a</p>'],
-		['*|\n', '<p>*</p>'],
+		['*|a\n', '<p>*|a</p>'],
+		['*|\n', '<p>*|</p>'],
+		['fan|_tas tic\n', '<p>fan|_tas tic</p>'],
+	];
+
+	for (const [input, expected] of cases) {
+		it(JSON.stringify(input), () => {
+			expect(render(input)).toBe(expected);
+		});
+	}
+});
+
+describe('a pipe next to an emphasis mark', () => {
+	const cases: [string, string][] = [
+		['fan|_tas_|tic\n', '<p>fan<em>tas</em>tic</p>'],
+		['x |* y\n', '<p>x |* y</p>'],
+		['a_|b\n', '<p>a_|b</p>'],
+		['x ~| y\n', '<p>x ~| y</p>'],
+		['|*a*|\n', '<p><strong>a</strong></p>'],
 	];
 
 	for (const [input, expected] of cases) {

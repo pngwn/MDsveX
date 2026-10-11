@@ -351,11 +351,20 @@ export class WireEmitter implements Emitter {
 		const kind = this.kinds.get(id);
 		// use source_text if provided (block-level revocations),
 		// otherwise derive delimiter from kind (inline revocations).
-		const content =
+		let content =
 			source_text ??
 			(kind === NodeKind.directive_inline
 				? `:${this.directive_names.get(id)}[`
 				: get_delimiter(kind));
+		// a node that starts at a pipe was led by the intraword marker, the pipe is text again
+		const start = this.pending_starts.get(id);
+		if (
+			source_text === undefined &&
+			start !== undefined &&
+			this.source.charCodeAt(start) === 0x7c
+		) {
+			content = `|${content}`;
+		}
 		this.batch.push([WireOp.Revoke, id, content]);
 
 		// clean up
