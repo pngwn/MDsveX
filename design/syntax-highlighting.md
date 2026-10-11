@@ -1,6 +1,6 @@
 # Syntax highlighting: design
 
-Status: drafted and agreed 2026-10-03 (decisions in §13). Targets `next`.
+Status: drafted and agreed 2026-10-03 (decisions in §13). Targets `next`. §14, inline math, was added 2026-10-12 and is a draft with open decisions (§14.8).
 
 Sources:
 - Trackers #827 (highlighter pipeline), #826 (code block contents mangled), #832 (dynamic and executable code blocks), #824 (Svelte-significant characters) and #829 (custom components).
@@ -523,4 +523,136 @@ Decided 2026-10-03:
 - **Q5. Inline code:** PFM's `` `#!ts code` `` only; no `{:ts}` suffix and no live values in inline code (§3.5).
 - **Q6. The `code` prop:** always passed to a replaced `pre`. It repeats the block's text as a JS string (13–24% of the highlighted block's size on two 40-line TypeScript samples), but it is available during SSR and is already display text. Reading `textContent` instead would pick up line numbers.
 
-No questions are open.
+No questions are open on §0 to §12. §14 has its own.
+
+## 14. Inline math
+
+Draft, 2026-10-12. Nothing here is built. Display math shipped as the `math` fence. It has no design doc of its own, and it is rendered by the highlight run this document describes, so the inline form is specified here. The syntax was decided on 2026-10-10 (`plugins/PLUGIN_AUDIT.md` §6): a code span wrapped in dollars, and nothing else.
+
+```md
+Euler's identity, $`e^{i\pi} + 1 = 0`$, links five constants.
+```
+
+### 14.1 Where we are
+
+- **A `math` fence goes through the highlight run.** `HighlightRun.with_math` takes a `MathRenderer`, and `block` hands it any fence whose language is `math`. The result has no `<pre>`. `comp_name` answers `math` for that fence when the run says `math === true`.
+- **A `MathRenderer` already takes `{ display }`.** It is always `true` today.
+- **`` `#!math x` `` is plain code, by decision.** `HighlightRun.inline` returns `null` for the hint.
+- **`` $`x`$ `` is a dollar, a code span and a dollar today.**
+- **`$` means nothing to the parser.** It is not in `TEXT_BREAK`, so a price in prose never leaves the text fast path.
+- **A document with a math fence and no highlighter renders twice.** `escape_info` notes the fence while it renders as code, and `take_plain_math()` tells the compile to render again with a math run.
+
+### 14.2 Grammar
+
+Inline math is a `$`, a code span, and a `$`, with nothing between them, all on one line.
+
+- **The code span is any code span:** one or two backticks, read as a code span is, padding included. In a table cell `\|` is a bar, as in any code span there, so the LaTeX `\|` has to be written `\Vert`.
+- **The LaTeX is raw.** A leading `#!` is not a language hint inside dollars.
+- **No flanking rule.** `` a$`x`$b `` is math. The backticks already mark both ends.
+- **Both dollars are required, and an escaped one does not count.** Everything else is what it is today:
+
+| source | result |
+|---|---|
+| `` $`x`$ `` | math |
+| `` $`x` `` | a literal `$`, then a code span |
+| `` `x`$ `` | a code span, then a literal `$` |
+| `` \$`x`$ `` | a literal `$`, a code span, a literal `$` |
+| `` $ `x`$ `` | the same: a space is not nothing |
+| `$5`, `a $ b`, `$x$`, `$$x$$` | text |
+| `` $$`x`$$ `` | a literal `$`, math, a literal `$` |
+| `` $`x `` with no closing backtick | text, as an unclosed backtick is |
+
+- **One line.** A code span may run over a line end; inline math may not. The decision "is this math" is made at the opening `$` by scanning to the closing `` `$ ``, and the line bounds that scan, in a fed parse too. It also keeps blockquote markers out of the LaTeX. A formula too long for a line is what the fence is for.
+- **Where it is allowed:** wherever a code span is, which includes headings, table cells, link text and directive text.
+
+### 14.3 Finding the dollar
+
+The parser has to notice `` $` `` without slowing down prose that has dollars in it and no math. There are two ways.
+
+**A. `$` joins `TEXT_BREAK`.** A text run stops at every `$`. The text state looks one character ahead: a backtick ends the text node and hands over to the inline state, anything else carries on. This is how `:` (a directive needs a letter next) and `!` (an image needs `[` next) work today.
+
+**B. No break; look back from the backtick.** A backtick already ends a text run. When the text state stops at one, it reads the character before it, and only a `$` there starts the scan.
+
+Both were built as throwaway stubs on `d3138024` that do the check and then fall back to text. `parity.mjs` found the output of each identical to the baseline's on all 1182 checks.
+
+**A, measured** with `ab.mjs --suite core --repeat 2` against a private baseline of the same commit:
+
+| mode | geomean | n |
+|---|---|---|
+| parse | -0.21% | 56 |
+| incremental-64 | +0.19% | 30 |
+| render | -0.15% | 30 |
+| render-mapped | -0.11% | 30 |
+| compile-mapped | +0.46% | 30 |
+| sourcemap-v3 | +0.25% | 30 |
+| vite-transform | +0.00% | 28 |
+| overall | +0.03% | 238 |
+
+- **Read these as "no structural cost", not as a precise zero.** Other sessions were running tests on the machine. The calibration in this checkout gave a floor of 41%, and single passes disagreed with each other by several percent per mode. The render rows are a control, since they never run the parser, and one of them read -2.0% and -4.1% in the two passes.
+- **Worst rows:** `real/template-readme:compile-mapped` -11.8% (+20.5% in the other pass), `fixtures/textual_content:parse` -5.6% and -8.2%, `micro/import:render-mapped` -4.1% (+32.4% in the other pass), `micro/heading:compile-mapped` -4.0% and -4.9%.
+- **One of those is real.** `fixtures/textual_content` is 52 bytes and holds the line `hello $.;'there`. It went from 505 ns to 529 ns: about 24 ns for one dollar, 41 ns by the other pass.
+- **The corpus cannot show more than that.** It has 293 dollars in 4 MB, and all but 4 are inside fences and code spans, which the text fast path never reads. So the table above measures what the table entry and the extra arm in `_run` cost a document with no dollars, which is nothing that this run can see.
+- **Scaled:** the real family parses at 4.3 ns a byte, so a dollar in prose costs what 6 to 10 bytes of text cost. A page with a price every 500 bytes pays 1 to 2% of its parse. A document without dollars pays nothing this run could measure.
+
+**Both, timed again in fresh processes.** The run above was too noisy to compare the two, so the parse modes were repeated once the machine was quieter: one workload per process, the minimum of 4000 short alternating samples for each arm, and an A/A of the two baseline builds beside every row.
+
+| workload | A/A | A, break | B, look back |
+|---|---|---|---|
+| 7 real documents, parse | -0.01% | -0.12% | -0.54% |
+| the same, incremental-1024 | +0.01% | -0.01% | -0.10% |
+| a `$` before every tenth word, 2 documents | -0.5%, +0.0% | -1.6%, -2.2% | +0.2%, -0.6% |
+| every paragraph starts `$5 `, 2 documents | -0.3%, -0.4% | -1.1%, -2.2% | +0.1%, -0.3% |
+
+- **A costs 30 to 40 ns for a dollar inside a text run and about 15 ns for one that starts a paragraph.** That agrees with the fixture row above.
+- **Neither costs a document without dollars anything.** B's -0.54% is one document (`site-src-components-cheatsheet`, -2.8%, 40 ns). The other six average -0.2%, which is the spread of the A/A.
+
+**B** costs prose with dollars nothing, and costs one character read for each backtick that ends a text run (the real family has about 480 code spans in 125 KB). Its difficulty is not speed. The `$` is already inside the open text node when the backtick is reached, so that node has to end one character short, and when the `$` is the node's only character (a paragraph or an emphasis that starts with math) the node is empty. Avoiding the empty node means every place that opens a text run checks for `` $` `` first, and that is the hot path the break table exists to keep clear.
+
+**Recommendation: A.** It is the pattern the parser already uses twice, one table entry routes every fast path to the same place, and its cost falls only on documents full of prices, at a few tens of nanoseconds each. Before it merges, the `quick` A/B should be run again on a quiet machine to confirm the `micro/heading:compile-mapped` row is noise.
+
+### 14.4 The node
+
+A `code_span` whose `extra` is 1. It starts at the opening `$` and ends after the closing one, and its value is the code.
+
+- **Why not a new kind.** A kind is added in `NodeKind`, `kind_to_string`, `repair_level`, `NODE_KIND_COUNT`, the wire's `KIND_NAMES` and its four lists of content leaves, the `K` enum and a case or a default check in each of the five walks, `comp_name`, `Node.svelte`, and `heading_ids`. A flag is read in two functions (§14.5).
+- **Anything that does not know the flag shows the LaTeX as inline code.** That is the right fallback everywhere it happens: `Node.svelte`, a plugin's `code_span` handler, a heading slug (which takes the code as its text), an older wire client.
+- **Why `extra` and not an attribute.** A code span leaves `extra` at 0, it travels in the wire's open op already, and reading it is one load. An attribute would allocate a metadata object for each span and would have to be added to both `INTERNAL_KEYS` lists, or it would be written out as an HTML attribute.
+- **The emitter's `leaf` takes no `extra`,** so a math span is emitted as an open, a value and a close, or `leaf` gains a parameter.
+- **It is never pending.** The scan in §14.2 has decided before anything is emitted, so there is nothing to revoke.
+
+### 14.5 Rendering
+
+```html
+<span class="math math-inline" translate="no"><math>…</math></span>
+```
+
+- **The highlighter interface gets `inline_math(code, start)`.** It can't be `inline(code, 'math', start)`, which is what the `#!math` hint calls. `HighlightRun` implements it with the same `MathRenderer` and `{ display: false }`, wraps the result in the `<span>`, and makes braces safe as it does for a fence.
+- **`hl_span` is the one place the walks ask.** Every walk's code span case calls it already. For a span with the flag it returns `inline_math` when the run has math, and `null` otherwise. The result has `attributes: null`, which the walks already render with no `<code>` around it. No walk changes.
+- **`comp_name` answers `math`** for a flagged span when the run has math, so the `math` replacement gets inline math too. Its props are the fence's without `display` and `meta`: `children` and `code`. A `code` replacement never gets math.
+- **The parser notes that it emitted a math span,** as `take_src()` notes an image. The compile reads the note before it renders and gives the renderer a math run. That avoids the second render a math fence needs when there is no highlighter. The plugin's lazy load of Temml works as it does for a fence: the pending renderer is asked, and the document compiles again once the real one has loaded.
+- **Errors** are `MathError`s that name "inline math" and the line.
+
+### 14.6 Without math, and streaming
+
+- **With math off, it is a code span and the dollars are not shown:** `<code>e^&#123;i\pi&#125; + 1 = 0</code>`. `compile()` has math off by default, and the plugin has `math: false`. This is the fence's rule: with math off, a `math` fence is a code block. The parser does not know the option, and it should not: one grammar for every configuration is what lets the editor and the migrator agree with the compiler.
+- **`Node.svelte` shows the code span.** It ignores `extra`. Rendering math there needs a renderer in the browser, which for Temml is about 400 KB that most streams never use. Later it can accept a `math` entry in its `components` map.
+- **A fed parse waits at `` $` ``** for the closing dollar or the end of the line, so the reader never sees a dollar turn into math.
+- **The incremental HTML renderer** renders math whenever it is given a math run.
+
+### 14.7 Around it
+
+- **`PFM.md`:** the "planned" paragraph becomes the grammar in §14.2.
+- **GitHub and GitLab** render `` $`…`$ `` as math, so the source degrades to the same thing.
+- **TextMate grammar:** one rule ahead of `#code-span`.
+- **Editor:** Temml is already bundled for fences, so invalid inline LaTeX is a diagnostic the same way.
+- **Plugins:** a `code_span` handler sees math spans. The node view should expose the flag.
+- **`@mdsvex/migrate`:** it does nothing for math today, and its escaping damages LaTeX (`x_1^2` becomes `x\_1\^2`, and `a*b*c` loses its asterisks to emphasis). With an option that says the project used remark-math, it parses with remark-math and writes `$x$` as `` $`x`$ `` and `$$…$$` as a fence, raw. Without the option a dollar stays a dollar.
+
+### 14.8 Decisions for the maintainer
+
+1. **How the parser finds it.** `$` in `TEXT_BREAK` (my pick). Or the look back from the backtick, which is free for prose with dollars and leaves an empty text node to deal with (§14.3).
+2. **Lines.** Inline math stays on one line (my pick). Or it may run over a line end as a code span does, which needs the node to be pending until its close and the blockquote markers stripped from the LaTeX.
+3. **The node.** A `code_span` with `extra` set to 1 (my pick). Or a `math_span` kind, which is cleaner for plugins and touches every table in §14.4.
+4. **With math off.** A code span without the dollars (my pick). Or the dollars shown as text around it, which is what the source looks like on a renderer with no math support.
+5. **`#!` inside dollars.** Not a hint, the LaTeX is raw (my pick). Or a hinted span is never math.
+6. **Streaming (D7).** `Node.svelte` shows the LaTeX as inline code and math rendering is compile only (my pick). Or a `math` component slot in `Node.svelte` now.
