@@ -100,7 +100,7 @@ bar
 
 -> blockquote containing `foo`, followed by a separate root-level paragraph `bar`.
 
-A paragraph in a blockquote ends at a marked line that is blank or starts another block: a nested blockquote, a heading, a thematic break, a fence, the close of a container directive, or a list item when the paragraph is in a list. Emphasis, link text or an inline HTML element still open at that line ends there too and its opening marker is literal text. Over any other marked line it carries on, as it does over a line outside a blockquote:
+A paragraph in a blockquote ends at a marked line that is blank or starts another block: a nested blockquote, a heading, a thematic break, a fence, the close of a container directive, or a list item when the paragraph is in a list. Emphasis, link text, an inline HTML element or a code span still open at that line ends there too and its opening marker is literal text. Over any other marked line it carries on, as it does over a line outside a blockquote, and the `>` markers of the lines a code span runs over are not part of its code:
 
 ```markdown
 > some _emphasis

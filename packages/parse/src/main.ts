@@ -2218,8 +2218,28 @@ export class PFMParser {
 
 	private span_close(id: number, value_end: number, end: number): void {
 		if (this.in_table) this.cell_span_text(id, value_end);
+		else if (this.block_quote_depth > 0) this.quote_span_text(id, value_end);
 		this.out.set_value_end(id, value_end);
 		this.emit_close(id, end);
+	}
+
+	/** the markers of the quoted lines a span runs over are not code, so the text goes out as a string before the close */
+	private quote_span_text(id: number, value_end: number): void {
+		const source = this.source;
+		const base = this.source_base;
+		const to = value_end - base;
+		let from = this.span_vs - base;
+		let lf = string_index_of.call(source, '\n', from);
+		if (lf === -1 || lf >= to) return;
+		const depth = this.block_quote_depth;
+		let text = '';
+		while (lf !== -1 && lf < to) {
+			text += string_slice.call(source, from, lf + 1);
+			const stripped = this.skip_bq_markers(lf + 1 + base, depth);
+			from = stripped === -1 ? lf + 1 : stripped - base;
+			lf = string_index_of.call(source, '\n', from);
+		}
+		this.out.attr(id, 'text', text + string_slice.call(source, from, to));
 	}
 
 	/** the backslash of an escaped pipe is not code, so the text goes out as a string before the close */
@@ -8609,7 +8629,11 @@ export class PFMParser {
 						break main_loop;
 					}
 					if (
-						(code === LINEFEED && this.is_blank_line_after(this.cursor)) ||
+						(code === LINEFEED &&
+							(this.is_blank_line_after(this.cursor) ||
+								// a quoted paragraph ends at more lines than a blank one
+								(this.block_quote_depth > 0 &&
+									!this.lf_continues(this.cursor)))) ||
 						code !== code
 					) {
 						// handle_repair turns the revoked code_span into text for the backticks

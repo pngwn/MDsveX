@@ -7,7 +7,9 @@ import { describe, expect, test } from 'vitest';
 import { parse_markdown_svelte } from '../src/main';
 import type { NodeBuffer } from '../src/utils';
 import { print_ast } from './print';
-import { checked_tree, lines, pick, random } from './stream_shape';
+import { NodeKind } from '../src/utils';
+import { run_batch, run_wire } from './plugin_harness';
+import { checked_tree, every_path, lines, pick, random } from './stream_shape';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(this_dir, 'fixtures/pfm/block_quotes');
@@ -534,6 +536,29 @@ describe('Block quotes', () => {
 	});
 });
 
+function code_texts(nodes: NodeBuffer, source: string | null): string[] {
+	return nodes.get_kinds(NodeKind.code_span).map((index) => {
+		const stored = nodes._strings[index];
+		if (stored !== undefined || source === null) return String(stored);
+		const [start, end] = nodes.get_node(index).value;
+		return source.slice(start, end);
+	});
+}
+
+/** the code of each span, the same from a whole parse, a fed one and the wire */
+function code_of(source: string): string[] {
+	const whole = code_texts(parse_markdown_svelte(source).nodes, source);
+	for (const chunk of [1, 2, 3]) {
+		const fed = run_batch(source, undefined, chunk);
+		expect(code_texts(fed.nodes, source), `fed ${chunk}`).toEqual(whole);
+	}
+	for (const chunk of [0, 1, 2, 3]) {
+		const wire = run_wire(source, undefined, chunk);
+		expect(code_texts(wire.nodes, null), `wire ${chunk}`).toEqual(whole);
+	}
+	return whole;
+}
+
 describe('a line that ends a paragraph in a block quote, with something open', () => {
 	const openers: [string, string][] = [
 		['emphasis', '_'],
@@ -684,10 +709,124 @@ describe('a line that ends a paragraph in a block quote, with something open', (
 		);
 	});
 
-	// no backtick, a code span keeps the markers of the lines it spans in its value
+	test('a code span over a marked line keeps no marker in its code', () => {
+		expect(every_path('> x `a\n> b` c\n')).toBe(
+			quote(
+				'    paragraph',
+				'      text "x "',
+				'      code_span "a\\nb"',
+				'      text " c"',
+				'  line_break'
+			)
+		);
+		expect(every_path('> ``a\n>b\n>  c`` d\n')).toBe(
+			quote(
+				'    paragraph',
+				'      code_span "a\\nb\\n c"',
+				'      text " d"',
+				'  line_break'
+			)
+		);
+		expect(every_path('> > ` a\n> > b `\n')).toBe(
+			quote(
+				'    block_quote',
+				'      paragraph',
+				'        code_span " a\\nb "',
+				'  line_break'
+			)
+		);
+		expect(every_path('- > `#!js a\n  > b`\n')).toBe(
+			lines(
+				'root',
+				'  list ordered=false start=0 tight=true',
+				'    list_item',
+				'      block_quote',
+				'        paragraph',
+				'          code_span info="js" "a\\nb"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('the value of such a span still covers the source as written', () => {
+		const source = '> x `a\n> b` c\n';
+		const { nodes } = parse_markdown_svelte(source);
+		const span = nodes.get_node(nodes.get_kinds(NodeKind.code_span)[0]);
+		expect(source.slice(span.value[0], span.value[1])).toBe('a\n> b');
+		expect(source.slice(span.start, span.end)).toBe('`a\n> b`');
+	});
+
+	test('the code is the same fed in chunks and over the wire', () => {
+		for (const [source, code] of [
+			['> x `a\n> b` c\n', ['a\nb']],
+			['> ``a\n>b\n>  c`` d `e`\n', ['a\nb\n c', 'e']],
+			['> > `a\n> > b`\n> > `c\n>  >   d`', ['a\nb', 'c\n  d']],
+			['- > `#!js a\n  > b`\n', ['a\nb']],
+		] as [string, string[]][]) {
+			expect(code_of(source), JSON.stringify(source)).toEqual(code);
+		}
+	});
+
+	test('a code span on one line of a quote is not touched', () => {
+		const source = '> x `a > b` c\n> `d`\n';
+		const { nodes } = parse_markdown_svelte(source);
+		expect(nodes._strings.length).toBe(0);
+		expect(every_path(source)).toContain('code_span "a > b"');
+	});
+
+	test('a code span does not reach into a nested quote', () => {
+		expect(every_path('> `a\n> > b`\n')).toBe(
+			quote(
+				'    paragraph',
+				'      text "`"',
+				'      text "a"',
+				'    block_quote',
+				'      paragraph',
+				'        text "b"',
+				'        text "`"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a code span does not reach past the quote', () => {
+		expect(every_path('> `a\nb`\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    paragraph',
+				'      text "`"',
+				'      text "a"',
+				'  line_break',
+				'  paragraph',
+				'    text "b"',
+				'    text "`"',
+				'  line_break'
+			)
+		);
+	});
+
+	for (const [name, source] of enders) {
+		for (const ticks of ['`', '``', '` ', '`#!js ']) {
+			test(`a code span opened with ${JSON.stringify(ticks)} ends before ${name}`, () => {
+				const close = ticks.trimEnd().replace('#!js', '');
+				const tree = every_path(
+					`${source.replace('%s', `x ${ticks}`)}> c${close}\n`
+				);
+				expect(tree).not.toContain('code_span');
+				expect(blocks(tree)).toBe(
+					blocks(checked_tree(`${source.replace('%s', 'x ')}> c\n`))
+				);
+			});
+		}
+	}
+
 	const PIECES = [
 		' ',
 		' ',
+		'`',
+		'`',
+		'``',
 		'a',
 		'*',
 		'**',
@@ -739,6 +878,26 @@ describe('a line that ends a paragraph in a block quote, with something open', (
 				differ.push(JSON.stringify(quoted));
 		}
 		expect(differ).toEqual([]);
+	});
+
+	test('random quoted code spans hold the code they hold outside a quote', () => {
+		const rand = random(969);
+		const pieces = ['`', '`', '``', 'a', 'b c', ' ', '>', '*', '\\', '#!js '];
+		for (let i = 0; i < 600; i++) {
+			const rows: string[] = [];
+			const count = 2 + Math.floor(rand() * 2);
+			for (let l = 0; l < count; l++) {
+				let row = pick(rand, ['a', 'b c', 'x ']);
+				const length = Math.floor(rand() * 5);
+				for (let k = 0; k < length; k++) row += pick(rand, pieces);
+				rows.push(row + '\n');
+			}
+			const plain = rows.join('');
+			const quoted = rows.map((row) => '> ' + row).join('');
+			expect(code_of(quoted), JSON.stringify(quoted)).toEqual(
+				code_texts(parse_markdown_svelte(plain).nodes, plain)
+			);
+		}
 	});
 
 	test('an inline element ends at the same line after a hard break and a linefeed', () => {
