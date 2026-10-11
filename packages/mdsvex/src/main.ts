@@ -6,6 +6,8 @@ import { base64_utf8, chained_base64, pfm_map } from './sourcemap_chain';
 import type { StoredDocument } from './sourcemap_chain';
 import { CompilerSession, compile_inputs } from './compile';
 import type { ComponentMode } from './compile';
+import { slug_of } from './heading_ids';
+import type { HeadingOptions } from './heading_ids';
 import type { FrontmatterOptions } from './frontmatter';
 import { MANIFEST_VERSION, manifest_writer } from './manifest';
 import type { MdsvexManifest } from './manifest';
@@ -46,7 +48,7 @@ export type {
 	MdsvexManifest,
 } from './manifest';
 
-export interface MdsvexOptions extends SyntaxOptions {
+export interface MdsvexOptions extends SyntaxOptions, HeadingOptions {
 	extensions?: string[];
 	/** parse plugins that hook into tree construction. */
 	parse_plugins?: ParsePlugin[];
@@ -173,6 +175,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	inputs.component_mode = options.component_mode;
 	inputs.frontmatter_parse = options.frontmatter?.parse;
 	inputs.unwrap_images = options.unwrap_images;
+	// throws here for a value that is neither, not at the first document
+	inputs.heading_ids = slug_of(options.heading_ids);
 
 	const written_highlight = options.highlight;
 	if (
@@ -273,6 +277,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			};
 			// left out when off, as a manifest from before the option has it
 			if (options.unwrap_images === true) out.unwrap_images = true;
+			// a slug function can not be written, an editor slugs as the default does
+			if (inputs.heading_ids !== undefined) out.heading_ids = true;
 			return out;
 		},
 		(message) => log(message)

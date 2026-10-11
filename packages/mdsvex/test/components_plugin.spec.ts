@@ -407,6 +407,77 @@ describe('unwrap_images option', () => {
 	});
 });
 
+describe('heading_ids option', () => {
+	const manifest_of = (root: string): MdsvexManifest =>
+		JSON.parse(readFileSync(join(root, MANIFEST_PATH), 'utf8'));
+
+	test('a replaced heading gets its id and the editor is told', async () => {
+		const root = write_app();
+		const server = await serve(
+			root,
+			mdsvex({ components: '#lib/markdown.ts', heading_ids: true })
+		);
+		try {
+			expect(await ssr(server, '/src/doc.svx')).toContain(
+				'<h1 class="custom" data-level="1" id="title">Title</h1>'
+			);
+			await vi.waitFor(() => {
+				expect(manifest_of(root).heading_ids).toBe(true);
+				expect(manifest_of(root).version).toBe(1);
+			});
+		} finally {
+			await server.close();
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	test('a slug function makes the ids, the manifest holds true for it', async () => {
+		const root = write_app();
+		writeFileSync(join(root, 'src/two.svx'), '## Same\n\n## Same\n');
+		const server = await serve(
+			root,
+			mdsvex({
+				heading_ids: { slug: (text, { depth }) => `h${depth}-${text}` },
+			})
+		);
+		try {
+			const html = await ssr(server, '/src/two.svx');
+			expect(html).toContain('<h2 id="h2-Same">Same</h2>');
+			expect(html).toContain('<h2 id="h2-Same-1">Same</h2>');
+			await vi.waitFor(() => {
+				expect(manifest_of(root).heading_ids).toBe(true);
+			});
+		} finally {
+			await server.close();
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	test('off, a heading has no id and the manifest no field', async () => {
+		const root = write_app();
+		const server = await serve(root, mdsvex({ heading_ids: false }));
+		try {
+			expect(await ssr(server, '/src/doc.svx')).toContain('<h1>Title</h1>');
+			await vi.waitFor(() => {
+				expect('heading_ids' in manifest_of(root)).toBe(false);
+			});
+		} finally {
+			await server.close();
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	test('anything else throws when the plugin is made', () => {
+		const message =
+			'[mdsvex] heading_ids must be true, false or an object with a slug function';
+		expect(() => mdsvex({ heading_ids: 'github' as any })).toThrow(message);
+		expect(() => mdsvex({ heading_ids: { slug: true } as any })).toThrow(
+			message
+		);
+		expect(() => mdsvex({ heading_ids: {} })).not.toThrow();
+	});
+});
+
 describe('component_mode all', () => {
 	let root: string;
 	let server: ViteDevServer;

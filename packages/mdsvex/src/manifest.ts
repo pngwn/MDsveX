@@ -62,6 +62,8 @@ export interface MdsvexManifest {
 	highlight?: 'twinkleplop' | 'custom' | false;
 	/** the unwrap_images option, a manifest without it means false */
 	unwrap_images?: boolean;
+	/** true when heading_ids is on in any form, a manifest without it means off */
+	heading_ids?: boolean;
 }
 
 /**
