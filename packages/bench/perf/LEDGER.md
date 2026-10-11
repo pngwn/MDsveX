@@ -64,6 +64,31 @@ delete it.
   - Measured and rejected: a dry run with the real tag parsers (-19.5%) and a
     hand-written walk (-8.7%).
 
+### tag paragraph open elements
+
+- **Source:** #964, the scan of a paragraph that starts at a tag
+  (`spec_tag`), and `is_block_html_tag`.
+- **Measured:** against 5db2f9d3 with the default 3.0% floor. No corpus row
+  is slower past the floor: `quick` geomean +0.03%, fed parse of the real
+  documents +0.50%. The corpus has almost no such paragraphs, so the numbers
+  are from one line repeated 300 times, one workload per fresh process, both
+  arm orders. `<Badge /> <b>new</b> in <i>this</i> release <Chart a={b} />`
+  reads -1.5% to -2.2% in `parse` and -0.1% to -0.8% in `incremental-64`.
+  `<Chart /><b><i><span>x</b> <em>y</em> z` reads -7.0% to -8.1% in both
+  modes, and -4.6% to -4.9% in `parse` with `<s>` in place of `<em>`.
+- **Cause:** the scan keeps the names of the open elements where it kept a
+  count, one store for an open tag and one string compare for a close tag.
+  After a close tag that closes several elements its depth is now 0, where
+  the count read 2, so the next open tag is asked whether it is block level.
+  That question is a string `switch` of about 60 cases on a name sliced from
+  the source. The split between the two is read off the rows above, it was
+  not isolated with a stub.
+- **Ideas:** test the first character before the `switch`, a name that
+  starts with an upper case letter is never block level. Guess, not
+  measured. Measured and fixed in the PR: cutting the name array back with
+  `length = n` made the next open tag allocate, 6 to 8% on the first line
+  above.
+
 ### parse plugins: what a document still pays
 
 - **Source:** #950 and #956, `PluginDispatcher` and `TreeBuilder`.
@@ -144,3 +169,7 @@ again.
   each cost documents that never use the feature. Diagnose with
   `node --trace-turbo-inlining`, not by bisecting lines.
 - **Fed modes.** `quick` has none. Use `--suite core --modes incremental`.
+- **`real/bench-benchmarks-fixture-code:incremental-64` reads fast.** It read
+  +5.5% and +4.8%, both passes, for two changes that do not reach fence code.
+- **Tag paragraphs.** The corpus has almost none, so a change to their scan
+  reads level in `quick`. Time a document made of them as well.

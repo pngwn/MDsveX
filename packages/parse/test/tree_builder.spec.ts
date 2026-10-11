@@ -497,7 +497,8 @@ describe('TreeBuilder ids as indices with nodes the parser did not make', () => 
 	}
 
 	it('a repair that pushes a node mid document leaves ids equal to slots', () => {
-		const doc = '> <div>\n> a\n\nafter *the* quote\n\n- b\n';
+		// the <div></div> drops the paragraph, the <b> that never closes is revoked under the quote
+		const doc = '> <div></div> <b>\n> a\n\nafter *the* quote\n\n- b\n';
 		const direct = new TreeBuilder(8);
 		new PFMParser(direct).parse(doc);
 		expect(id_map(direct)).toBe(null);
