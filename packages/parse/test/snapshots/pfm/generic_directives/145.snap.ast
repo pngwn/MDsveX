@@ -1,0 +1,5 @@
+root
+  paragraph
+    text ":"
+    text ":before is a pseudo-element"
+  line_break

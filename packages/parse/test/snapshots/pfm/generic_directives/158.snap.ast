@@ -1,0 +1,8 @@
+root
+  paragraph
+    text "see :"
+    text ":toc and ::"
+    text ":note in text, "
+    text ":tada: at 10:30 with std:"
+    text ":vector"
+  line_break
