@@ -40,7 +40,8 @@ describe('an html element left open in a table cell', () => {
 				'        text "]"',
 				'    table_row',
 				'      table_cell',
-				'        text tag="span" "<span>:::"',
+				'        text tag="span" "<span>"',
+				'        text ":::"',
 				'    table_row',
 				'      table_cell',
 				'        text "*"',
@@ -57,7 +58,8 @@ describe('an html element left open in a table cell', () => {
 				'  table alignments=["none"] col_count=1',
 				'    table_header',
 				'      table_cell',
-				'        text tag="div" "<div>```"',
+				'        text tag="div" "<div>"',
+				'        text "```"',
 				'    table_row',
 				'      table_cell',
 				'        text "[</div>b c"'
@@ -73,7 +75,8 @@ describe('an html element left open in a table cell', () => {
 				'    table_header',
 				'      table_cell',
 				'        text "a "',
-				'        text tag="span" "<span>b"',
+				'        text tag="span" "<span>"',
+				'        text "b"',
 				'      table_cell',
 				'        text "c"',
 				'        text "</span>"'
@@ -89,7 +92,8 @@ describe('an html element left open in a table cell', () => {
 				'    table_header',
 				'      table_cell',
 				'        text "a "',
-				'        text tag="i" "<i>b"',
+				'        text tag="i" "<i>"',
+				'        text "b"',
 				'  line_break',
 				'  paragraph',
 				'    text "c"',
@@ -110,7 +114,8 @@ describe('an html element left open in a table cell', () => {
 				'          text "---"',
 				'      table_row',
 				'        table_cell',
-				'          text tag="div" "<div>:::"',
+				'          text tag="div" "<div>"',
+				'          text ":::"',
 				'      table_row',
 				'        table_cell',
 				'  paragraph',
@@ -131,7 +136,8 @@ describe('an html element left open in a table cell', () => {
 				'        html tag="b"',
 				'          text "a"',
 				'      table_cell',
-				'        text tag="i" "<i>b"',
+				'        text tag="i" "<i>"',
+				'        text "b"',
 				'    table_row',
 				'      table_cell',
 				'        text "c"',
@@ -139,6 +145,53 @@ describe('an html element left open in a table cell', () => {
 				'      table_cell',
 				'        html tag="b"',
 				'          text "d"'
+			)
+		);
+	});
+});
+
+describe('the open tag of an element left open in a table cell', () => {
+	test('is whole when it ends a body cell', () => {
+		expect(every_path('| a |\n|-|\n| <span>|\n')).toBe(
+			lines(
+				'root',
+				'  table alignments=["none"] col_count=1',
+				'    table_header',
+				'      table_cell',
+				'        text "a"',
+				'    table_row',
+				'      table_cell',
+				'        text tag="span" "<span>"'
+			)
+		);
+	});
+
+	test('is whole when it ends a header cell', () => {
+		expect(every_path('|<span>|\n|-|\n')).toBe(
+			lines(
+				'root',
+				'  table alignments=["none"] col_count=1',
+				'    table_header',
+				'      table_cell',
+				'        text tag="span" "<span>"'
+			)
+		);
+	});
+
+	test('is whole over the wire before text', () => {
+		expect(every_path('| <span>a |\n|-|\n| x <a href="u">y | \n')).toBe(
+			lines(
+				'root',
+				'  table alignments=["none"] col_count=1',
+				'    table_header',
+				'      table_cell',
+				'        text tag="span" "<span>"',
+				'        text "a"',
+				'    table_row',
+				'      table_cell',
+				'        text "x "',
+				'        text tag="a" href="u" "<a href=\\"u\\">"',
+				'        text "y"'
 			)
 		);
 	});

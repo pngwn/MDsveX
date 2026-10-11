@@ -12161,7 +12161,15 @@ export class PFMParser {
 				if (this.pending_has(node_id)) {
 					// speculative node never closed - revoke it now
 					// so the delimiter becomes literal text
-					this.out.revoke(node_id);
+					if (this.kind_of(node_id) === NodeKind.html) {
+						// its delimiter is the whole open tag, as where a paragraph ends
+						const start = this.pending_starts[this.id_slots[node_id]];
+						this.out.revoke(
+							node_id,
+							this.html_open_tag_text(start),
+							this.one_shot ? start : undefined
+						);
+					} else this.out.revoke(node_id);
 					this.pending_remove(node_id);
 				} else {
 					// already committed (closed normally) - just close
