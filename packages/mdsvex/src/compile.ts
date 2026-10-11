@@ -35,6 +35,8 @@ import type {
 	HighlightRun,
 	HighlightWarning,
 } from './highlight_run';
+import { assign_heading_ids, slug_of } from './heading_ids';
+import type { HeadingOptions, HeadingSlug } from './heading_ids';
 
 export type { ParsePlugin, SyntaxOptions } from '@mdsvex/parse';
 export type { Mapping, MappingData, SourceMapV3, MapTrace };
@@ -49,6 +51,13 @@ export type {
 	HighlightOption,
 	HighlightWarning,
 } from './highlight_run';
+export { heading_slug } from './heading_ids';
+export type {
+	HeadingIdsOptions,
+	HeadingInfo,
+	HeadingOptions,
+	HeadingSlug,
+} from './heading_ids';
 
 /**
  * which elements a replacement takes, markdown takes those from markdown
@@ -76,7 +85,8 @@ export interface CompileWarning {
 	start: { line: number; column: number };
 }
 
-export interface CompileOptions extends TemplateOptions, SyntaxOptions {
+export interface CompileOptions
+	extends TemplateOptions, SyntaxOptions, HeadingOptions {
 	parse_plugins?: ParsePlugin[];
 	sourcemap?: boolean;
 	/** root fallback replacements, lowest precedence first, each specifier is imported as written */
@@ -187,6 +197,8 @@ export interface CompileInputs {
 	filename: string | undefined;
 	/** the parsers take the inputs as their SyntaxOptions */
 	unwrap_images: boolean | undefined;
+	/** the slug of the heading_ids option, undefined when it is off */
+	heading_ids: HeadingSlug | undefined;
 }
 
 /** @internal every inputs object comes from here, so they share one shape */
@@ -202,6 +214,7 @@ export function compile_inputs(): CompileInputs {
 		highlight: undefined,
 		filename: undefined,
 		unwrap_images: undefined,
+		heading_ids: undefined,
 	};
 }
 
@@ -222,6 +235,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	const highlight = options.highlight;
 	const filename = options.filename;
 	const unwrap_images = options.unwrap_images;
+	const heading_ids = options.heading_ids;
 	// options that set none need no inputs of their own
 	if (
 		plugins === undefined &&
@@ -233,7 +247,8 @@ function inputs_of(options: CompileOptions): CompileInputs {
 		strict === undefined &&
 		highlight === undefined &&
 		filename === undefined &&
-		unwrap_images === undefined
+		unwrap_images === undefined &&
+		heading_ids === undefined
 	)
 		return no_inputs;
 	const inputs = compile_inputs();
@@ -247,6 +262,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	inputs.highlight = highlight;
 	inputs.filename = filename;
 	inputs.unwrap_images = unwrap_images;
+	if (heading_ids !== undefined) inputs.heading_ids = slug_of(heading_ids);
 	return inputs;
 }
 
@@ -260,7 +276,7 @@ function inputs_from(
 	mode: ComponentMode | undefined,
 	highlight: HighlightOption | undefined,
 	filename: string | undefined,
-	syntax: SyntaxOptions | undefined
+	syntax: (SyntaxOptions & HeadingOptions) | undefined
 ): CompileInputs {
 	const inputs = compile_inputs();
 	inputs.parse_plugins = parse_plugins;
@@ -271,7 +287,10 @@ function inputs_from(
 	inputs.templates = templates;
 	inputs.highlight = highlight;
 	inputs.filename = filename;
-	if (syntax !== undefined) inputs.unwrap_images = syntax.unwrap_images;
+	if (syntax !== undefined) {
+		inputs.unwrap_images = syntax.unwrap_images;
+		inputs.heading_ids = slug_of(syntax.heading_ids);
+	}
 	return inputs;
 }
 
@@ -582,7 +601,7 @@ function parse_once(
 	source: string,
 	plugins: ParsePlugin[] | undefined,
 	directives: ComponentScope | null,
-	syntax: SyntaxOptions | undefined
+	inputs: CompileInputs
 ): NodeBuffer {
 	let dispatcher: PluginDispatcher | undefined;
 	if (plugins && plugins.length > 0) {
@@ -606,13 +625,16 @@ function parse_once(
 		spare_parser = null;
 		parser.bind(tree);
 	}
-	parser.set_options(syntax);
+	parser.set_options(inputs);
 	parser.parse_normalized(source);
 	// a throw above drops the parser, it may be half written
 	parser.release();
 	spare_parser = parser;
 
 	const nodes = tree.get_buffer();
+	// fused plugins set their ids before this, sequential ones read them after
+	const slug = inputs.heading_ids;
+	if (slug !== undefined) assign_heading_ids(nodes, source, slug);
 	if (dispatcher) {
 		dispatcher.run_sequential(nodes);
 	}
@@ -859,7 +881,7 @@ export class CompilerSession {
 	}
 
 	// the parser is kept, so every document sets the syntax options again
-	private parse(source: string, syntax: SyntaxOptions | undefined): NodeBuffer {
+	private parse(source: string, inputs: CompileInputs): NodeBuffer {
 		if (this.tree === null) {
 			this.tree = new TreeBuilder(source.length >> 3 || 16);
 			this.parser = new PFMParser(this.tree);
@@ -868,9 +890,12 @@ export class CompilerSession {
 		}
 		this.released = false;
 
-		this.parser!.set_options(syntax);
+		this.parser!.set_options(inputs);
 		this.parser!.parse_normalized(source);
-		return this.tree.get_buffer();
+		const nodes = this.tree.get_buffer();
+		const slug = inputs.heading_ids;
+		if (slug !== undefined) assign_heading_ids(nodes, source, slug);
+		return nodes;
 	}
 
 	/** callers check plugin_busy first, the arena holds one document at a time */
@@ -878,7 +903,7 @@ export class CompilerSession {
 		source: string,
 		plugins: ParsePlugin[],
 		reserved: ComponentScope | null,
-		syntax: SyntaxOptions | undefined
+		inputs: CompileInputs
 	): NodeBuffer {
 		let arena = this.plugin_arena;
 		if (
@@ -915,9 +940,11 @@ export class CompilerSession {
 		this.plugin_busy = true;
 		let done = false;
 		try {
-			arena.parser.set_options(syntax);
+			arena.parser.set_options(inputs);
 			arena.parser.parse_normalized(source);
 			const nodes = arena.tree.get_buffer();
+			const slug = inputs.heading_ids;
+			if (slug !== undefined) assign_heading_ids(nodes, source, slug);
 			arena.dispatcher.run_sequential(nodes);
 			done = true;
 			return nodes;
@@ -967,7 +994,7 @@ export class CompilerSession {
 		directive_sources?: ComponentSource[],
 		mode?: ComponentMode,
 		highlight?: HighlightOption,
-		syntax?: SyntaxOptions
+		syntax?: SyntaxOptions & HeadingOptions
 	): CompileV3Result {
 		return this.run(
 			raw,
@@ -1001,7 +1028,7 @@ export class CompilerSession {
 		directive_sources?: ComponentSource[],
 		mode?: ComponentMode,
 		highlight?: HighlightOption,
-		syntax?: SyntaxOptions
+		syntax?: SyntaxOptions & HeadingOptions
 	): CompileTraceResult {
 		return this.run(
 			raw,
@@ -1046,7 +1073,7 @@ export class CompilerSession {
 		mode?: ComponentMode,
 		highlight?: HighlightOption,
 		filename?: string,
-		syntax?: SyntaxOptions
+		syntax?: SyntaxOptions & HeadingOptions
 	): void {
 		this.run(
 			raw,

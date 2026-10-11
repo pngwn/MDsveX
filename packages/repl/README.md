@@ -19,11 +19,12 @@ It started as a copy of the [Svelte playground](https://github.com/sveltejs/svel
   	},
   	"components": "./components.js",
   	"component_mode": "markdown",
-  	"unwrap_images": false
+  	"unwrap_images": false,
+  	"heading_ids": false
   }
   ```
 
-  Templates and component modules are scanned for their export names without being evaluated. `<script module>` is scanned for components, the whole file for `.js` and `.ts`, and `export *` is followed through the workspace. The REPL then passes `compile()` the plain options from `design/templates-and-components.md` and resolves `mdsvex:template/<name>` and `mdsvex:components` to workspace files. Specifiers that aren't workspace files are treated as npm packages. `unwrap_images` is the plugin's option of that name, and the AST tab shows the tree it gives.
+  Templates and component modules are scanned for their export names without being evaluated. `<script module>` is scanned for components, the whole file for `.js` and `.ts`, and `export *` is followed through the workspace. The REPL then passes `compile()` the plain options from `design/templates-and-components.md` and resolves `mdsvex:template/<name>` and `mdsvex:components` to workspace files. Specifiers that aren't workspace files are treated as npm packages. `unwrap_images` is the plugin's option of that name, and the AST tab shows the tree it gives. `heading_ids` takes `true` or `false`, a slug function has no JSON form. The ids are added by `compile()` after the parse, so they are in the output and not in the AST tab.
 - **Syntax highlighting.** Code is highlighted with twinkleplop, as in the Vite plugin. `highlight` in `mdsvex.config.json` takes the plugin's options that JSON can hold:
 
   ```json

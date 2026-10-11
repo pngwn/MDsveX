@@ -42,6 +42,8 @@ export interface JsonConfig {
 	highlight?: boolean;
 	/** a paragraph of only images gets no <p>, as the option of the plugin does */
 	unwrap_images?: boolean;
+	/** every heading gets an id, as the option of the plugin does with true */
+	heading_ids?: boolean;
 }
 
 export interface LoadedConfig {
@@ -184,6 +186,8 @@ export function document_options(
 	};
 	if (Object.keys(templates).length !== 0) compile.templates = templates;
 	if (manifest.unwrap_images === true) compile.unwrap_images = true;
+	// the id is a prop of a replaced heading, the default slug stands in for a function
+	if (manifest.heading_ids === true) compile.heading_ids = true;
 	if (manifest.select_template) {
 		// what the selector picked when the plugin last compiled the file
 		const picked = manifest.documents[posix(doc)];
@@ -245,6 +249,7 @@ export function from_json(
 		highlight: config.highlight === false ? false : 'twinkleplop',
 	};
 	if (config.unwrap_images === true) manifest.unwrap_images = true;
+	if (config.heading_ids === true) manifest.heading_ids = true;
 	const from = path.join(dir, 'vite.config');
 	const scan = (file: string) => scan_exports(file, ts);
 
