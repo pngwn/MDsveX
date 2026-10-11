@@ -732,6 +732,21 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	}
 
 	/**
+	 * the close of this node has nothing to dispatch, no callback, no wrapper
+	 * below it, no wrapper waiting on it, no scope and no undo log of its own
+	 */
+	plain_close(buf_idx: number): boolean {
+		const scope = this.scope;
+		return (
+			this.close_cbs.live === 0 &&
+			(this.links === 0 || this.slot(buf_idx) === 0) &&
+			this.close_with === null &&
+			(scope === null || scope.directive !== buf_idx) &&
+			(this.undo.empty || !this.undo.has(buf_idx))
+		);
+	}
+
+	/**
 	 * a fused handler exists for this kind, or an open scope may hold one, such
 	 * a node opens under its source parent and goes through dispatch_open
 	 */

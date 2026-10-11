@@ -166,7 +166,7 @@ export class WireTreeBuilder {
 		// commit or a revoke, any other close it did not give up on is final
 		// and commits the undo log
 		const dispatcher = this.dispatcher;
-		if (dispatcher !== null) {
+		if (dispatcher !== null && !dispatcher.plain_close(idx)) {
 			dispatcher.dispatch_close(
 				idx,
 				this.buf,

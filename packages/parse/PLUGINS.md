@@ -353,7 +353,7 @@ A container with `children` or `descendants` handlers opens a scope when its nam
 
 - With no scope open, dispatch costs what it does without bound handlers.
 - While a scope is open, the builders send the dispatcher the kinds the open scopes have handlers for, on top of the kinds global plugins handle. Other kinds keep the builder's fast path unless a wrapper is open.
-- A scope keeps the dispatcher awake, so every close inside it reaches the dispatcher.
+- A scope keeps the dispatcher awake, so every close inside it asks the dispatcher whether it has anything for that node, which is a few compares for a node no handler touched.
 
 Bound handlers run in the fused pass only. A sequential plugin sees the tree they left.
 

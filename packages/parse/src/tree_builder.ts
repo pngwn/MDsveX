@@ -39,6 +39,8 @@ export class TreeBuilder implements Emitter {
 	/** optional plugin dispatcher. null when no plugins registered. */
 	private dispatcher: PluginDispatcher | null;
 	private wants: Uint8Array;
+	/** no close has anything for the dispatcher, true without one, read again after each call into it */
+	private plain = true;
 	/** the parser emitting here, null for another source of opcodes */
 	private ids: IdSource | null = null;
 
@@ -62,7 +64,7 @@ export class TreeBuilder implements Emitter {
 		if (dispatcher !== null) {
 			dispatcher.reset();
 			// a redirect had switched the mask to every kind
-			this.wants = dispatcher.open_wants;
+			this.refresh(dispatcher);
 			// filled from the kind log of the dispatcher, revoked stays null
 			this.revoked_map = null;
 			this.revoked_mapped = 0;
@@ -71,6 +73,12 @@ export class TreeBuilder implements Emitter {
 			this.revoked_map = null;
 			this.revoked_mapped = 0;
 		}
+	}
+
+	/** a call into the dispatcher can change the kinds it wants and whether closes need it */
+	private refresh(dispatcher: PluginDispatcher): void {
+		this.wants = dispatcher.open_wants;
+		this.plain = dispatcher.quiet();
 	}
 
 	follow(ids: IdSource): void {
@@ -164,7 +172,7 @@ export class TreeBuilder implements Emitter {
 			if (dispatcher.has_handlers(kind)) {
 				const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
 				dispatcher.dispatch_open(idx, kind, nodes);
-				this.wants = dispatcher.open_wants;
+				this.refresh(dispatcher);
 				if (nodes._size !== idx + 1) this.pushed();
 				return;
 			}
@@ -197,7 +205,7 @@ export class TreeBuilder implements Emitter {
 				const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
 				map[id] = idx;
 				dispatcher.dispatch_open(idx, kind, nodes);
-				this.wants = dispatcher.open_wants;
+				this.refresh(dispatcher);
 				return;
 			}
 			if (parent_idx !== NONE) parent_idx = dispatcher.resolve(parent_idx);
@@ -213,7 +221,7 @@ export class TreeBuilder implements Emitter {
 		n[b + NodeField.end] = end;
 		// the rare closes go to a call so close inlines cheaply at every emit site
 		if (
-			this.dispatcher === null &&
+			this.plain &&
 			kind !== undefined &&
 			kind !== NodeKind.list &&
 			(kind !== NodeKind.paragraph || n[b + NodeField.pending] === 0)
@@ -240,9 +248,10 @@ export class TreeBuilder implements Emitter {
 		gave_up = false
 	): void {
 		const nodes = this.nodes;
-		// fire close callbacks before committing, a quiet dispatcher has none
+		// fire close callbacks before committing, a quiet dispatcher has none,
+		// and a busy one may have nothing for this node
 		const dispatcher = this.dispatcher;
-		if (dispatcher !== null && !dispatcher.quiet()) {
+		if (!this.plain && dispatcher !== null && !dispatcher.plain_close(idx)) {
 			if (kind === undefined) kind = this.opened_kind(idx);
 			const size = nodes._size;
 			// the parser settles a pending paragraph with a commit or a revoke,
@@ -253,7 +262,7 @@ export class TreeBuilder implements Emitter {
 				gave_up || kind === NodeKind.paragraph
 			);
 			// a callback may have made the first link, the close dropped the last
-			this.wants = dispatcher.open_wants;
+			this.refresh(dispatcher);
 			if (nodes._size !== size) this.pushed();
 		}
 
@@ -340,13 +349,45 @@ export class TreeBuilder implements Emitter {
 		end: number
 	): void {
 		const nodes = this.nodes;
-		const dispatcher = this.dispatcher;
+		// a leaf of a kind no handler takes has no callback, wrapper or undo
+		// log, so a busy dispatcher has nothing for it either
 		if (
 			this.id_to_index === null &&
 			id === nodes._size &&
-			(dispatcher === null || (!this.wants[kind] && dispatcher.quiet()))
+			(this.dispatcher === null || !this.wants[kind])
 		) {
 			nodes.push_leaf(kind, start, value_start, value_end, end, parent);
+			return;
+		}
+		this.leaf_rest(id, kind, start, parent, value_start, value_end, end);
+	}
+
+	private leaf_rest(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		value_start: number,
+		value_end: number,
+		end: number
+	): void {
+		const nodes = this.nodes;
+		const dispatcher = this.dispatcher;
+		// only an open wrapper made every kind wanted, the leaf goes into it
+		if (
+			dispatcher !== null &&
+			this.id_to_index === null &&
+			id === nodes._size &&
+			!dispatcher.has_handlers(kind)
+		) {
+			nodes.push_leaf(
+				kind,
+				start,
+				value_start,
+				value_end,
+				end,
+				dispatcher.resolve(parent)
+			);
 			return;
 		}
 		this.open(id, kind, start, parent, 0, false);
@@ -392,7 +433,7 @@ export class TreeBuilder implements Emitter {
 		const size = nodes._size;
 		dispatcher.dispatch_name(idx, name, nodes);
 		// a scope opened, or the parse handler of the directive made a link
-		this.wants = dispatcher.open_wants;
+		this.refresh(dispatcher);
 		if (nodes._size !== size) this.pushed();
 	}
 
@@ -416,7 +457,7 @@ export class TreeBuilder implements Emitter {
 		if (this.dispatcher !== null) {
 			this.dispatcher.dispatch_revoke(idx, nodes);
 			// an undone close restores its link, an undone wrap may drop the last
-			this.wants = this.dispatcher.open_wants;
+			this.refresh(this.dispatcher);
 			const kind = nodes.kind_at(idx);
 			nodes.handle_repair(idx, source_text, text_start);
 			if (nodes.kind_at(idx) !== kind) this.dispatcher.log_kind(idx, kind);
@@ -442,6 +483,8 @@ export class TreeBuilder implements Emitter {
 		this.nodes.commit_node(idx);
 		if (this.dispatcher) {
 			this.dispatcher.dispatch_commit(idx);
+			// the last undo log may have gone
+			this.plain = this.dispatcher.quiet();
 		}
 	}
 

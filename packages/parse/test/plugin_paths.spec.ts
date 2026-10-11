@@ -6,6 +6,7 @@ import type { NodeView } from '../src/node_view';
 import { PluginDispatcher } from '../src/plugin_dispatch';
 import type { ParsePlugin } from '../src/plugin_types';
 import { TreeBuilder } from '../src/tree_builder';
+import { kind_to_string } from '../src/utils';
 import { WireTreeBuilder } from '../src/wire_tree_builder';
 import {
 	PATHS,
@@ -1037,5 +1038,72 @@ describe('parse plugins: a builder reset for the next document', () => {
 		feed('# second\n');
 		expect(() => kept[0].type).toThrow(stale);
 		expect(kept[1].text_content).toBe('second');
+	});
+});
+
+describe('parse plugins: closes the dispatcher has nothing for', () => {
+	/** the kinds whose close reached the dispatcher */
+	function dispatched(source: string, plugins: ParsePlugin[]) {
+		const dispatcher = new PluginDispatcher(
+			plugins,
+			new SourceTextSource(source)
+		);
+		const closes: string[] = [];
+		const dispatch_close = dispatcher.dispatch_close.bind(dispatcher);
+		dispatcher.dispatch_close = (index, buf, hold) => {
+			closes.push(kind_to_string(buf.kind_at(index)));
+			dispatch_close(index, buf, hold);
+		};
+		const tree = new TreeBuilder(16, dispatcher);
+		new PFMParser(tree).parse(source);
+		return { closes, dispatcher, nodes: tree.get_buffer() };
+	}
+
+	it('skip it between the nodes a plugin handles', () => {
+		const { closes, dispatcher } = dispatched('a *b* c\n\n# d\n\n- e\n- f\n', [
+			on('heading', (node) => {
+				node.attrs.id = 'h';
+			}),
+		]);
+		expect(closes).toEqual(['heading']);
+		expect(dispatcher.quiet()).toBe(true);
+	});
+
+	it('skip it while a wrapper is open', () => {
+		const source = '# a\n\nb *c* `d`\n\n- e\n- f\n';
+		const { closes, dispatcher, nodes } = dispatched(source, [
+			on('heading', (node) => {
+				node.wrap_from('html', { tag: 'section' });
+			}),
+		]);
+		// the heading ran a handler and the root holds the wrapper
+		expect(closes).toEqual(['heading', 'root']);
+		expect(dispatcher.quiet()).toBe(true);
+		expect(shape(nodes, source)).toEqual([
+			'root',
+			[
+				'html',
+				['heading', 'text:a'],
+				[
+					'paragraph',
+					'text:b ',
+					['strong_emphasis', 'text:c'],
+					'text: ',
+					'code_span',
+				],
+				['list', ['list_item', 'text:e'], ['list_item', 'text:f']],
+			],
+		]);
+	});
+
+	it('reach it for a pending node a plugin changed, once', () => {
+		const { closes, dispatcher } = dispatched('a *b* c *d\n\ne\n', [
+			on('strong_emphasis', (node) => {
+				node.attrs.keep = '1';
+			}),
+		]);
+		// the one left open is closed, held and revoked
+		expect(closes).toEqual(['strong_emphasis', 'strong_emphasis']);
+		expect(dispatcher.quiet()).toBe(true);
 	});
 });
