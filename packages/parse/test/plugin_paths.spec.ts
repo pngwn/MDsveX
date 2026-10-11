@@ -4,7 +4,7 @@ import { NodeKind, PFMParser, WireEmitter } from '../src/main';
 import { SourceTextSource, WireTextSource } from '../src/node_view';
 import type { NodeView } from '../src/node_view';
 import { PluginDispatcher } from '../src/plugin_dispatch';
-import type { ParsePlugin } from '../src/plugin_types';
+import type { DirectiveHandlers, ParsePlugin } from '../src/plugin_types';
 import { TreeBuilder } from '../src/tree_builder';
 import { kind_to_string } from '../src/utils';
 import { WireTreeBuilder } from '../src/wire_tree_builder';
@@ -867,20 +867,22 @@ describe('parse plugins: a builder reset for the next document', () => {
 		const dispatcher = new PluginDispatcher([on('heading', wrap)], text);
 		const tree = new TreeBuilder(16, dispatcher);
 		const handled = dispatcher.open_wants;
-		expect(Array.from(handled).filter((w) => w === 1)).toHaveLength(1);
+		expect(Array.from(handled).filter((w) => w !== 0)).toHaveLength(1);
 
 		for (let i = 0; i < 3; i++) {
 			tree.open(1, NodeKind.heading, 0, 0, 1, false);
 			expect(dispatcher.open_wants).not.toBe(handled);
-			expect(dispatcher.open_wants.every((w) => w === 1)).toBe(true);
+			// the heading at index 1 has the wrapper, only its children go there
+			expect(dispatcher.open_wants[NodeKind.paragraph]).toBe(2);
+			expect(dispatcher.open_wants[NodeKind.heading]).toBeGreaterThan(2);
 			tree.reset();
 			expect(dispatcher.open_wants).toBe(handled);
 			expect(dispatcher.quiet()).toBe(true);
-			expect(dispatcher.wants_open(NodeKind.paragraph)).toBe(false);
+			expect(dispatcher.open_wants[NodeKind.paragraph]).toBe(0);
 		}
 		new PFMParser(tree).parse(source);
 		expect(dispatcher.open_wants).toBe(handled);
-		expect(dispatcher.wants_open(NodeKind.paragraph)).toBe(false);
+		expect(dispatcher.open_wants[NodeKind.paragraph]).toBe(0);
 	});
 
 	it('forgets the kinds a revoke rewrote', () => {
@@ -1105,5 +1107,223 @@ describe('parse plugins: closes the dispatcher has nothing for', () => {
 		// the one left open is closed, held and revoked
 		expect(closes).toEqual(['strong_emphasis', 'strong_emphasis']);
 		expect(dispatcher.quiet()).toBe(true);
+	});
+});
+
+describe('parse plugins: nodes around an open wrapper', () => {
+	/** the kinds whose open and whose close asked the dispatcher anything */
+	function asked(
+		source: string,
+		plugins: ParsePlugin[],
+		bound?: DirectiveHandlers[]
+	) {
+		const dispatcher = new PluginDispatcher(
+			plugins,
+			new SourceTextSource(source),
+			bound
+		);
+		const opens: string[] = [];
+		const closes: string[] = [];
+		// every open and leaf that leaves the inline path of the builder asks this
+		const has_handlers = dispatcher.has_handlers.bind(dispatcher);
+		dispatcher.has_handlers = (kind) => {
+			// the line breaks between blocks are children of the same parent
+			if (kind !== NodeKind.line_break) opens.push(kind_to_string(kind));
+			return has_handlers(kind);
+		};
+		const plain_close = dispatcher.plain_close.bind(dispatcher);
+		dispatcher.plain_close = (index) => {
+			closes.push(kind_to_string(tree.get_buffer().kind_at(index)));
+			return plain_close(index);
+		};
+		const tree = new TreeBuilder(16, dispatcher);
+		new PFMParser(tree).parse(source);
+		expect(dispatcher.quiet()).toBe(true);
+		return { opens, closes };
+	}
+
+	const section: Parse = (node) => {
+		node.wrap_from('html', { tag: 'section' });
+	};
+	const div: Parse = (node) => {
+		node.wrap_inner('html', { tag: 'div' });
+	};
+
+	it('only the children of the wrapped node go through the dispatcher', () => {
+		const source = '# a\n\nb *c* `d`\n\n- e\n- f\n\n> g\n>\n> h **i**\n';
+		const { opens, closes } = asked(source, [on('heading', section)]);
+		expect(opens).toEqual(['heading', 'paragraph', 'list', 'block_quote']);
+		expect(closes).toEqual(['heading', 'root']);
+	});
+
+	it('a wrapper inside an open node costs the nodes after it nothing', () => {
+		const source = '> a *b*\n>\n> - c\n\nd *e*\n\n- f\n';
+		const { opens, closes } = asked(source, [on('block_quote', div)]);
+		expect(opens).toEqual(['block_quote', 'paragraph', 'list']);
+		expect(closes).toEqual(['block_quote']);
+	});
+
+	it('a link that went leaves the parents below it on the slow path, not wrong', () => {
+		const source = '# a\n\n- b\n\n  > c\n\n  d *e*\n\n  f\n\ng\n';
+		const plugins = () => [on('heading', section), on('block_quote', div)];
+		const { opens } = asked(source, plugins());
+		expect(opens).toEqual([
+			'heading',
+			'list',
+			'block_quote',
+			'paragraph',
+			// children of the item, which opened before the quote
+			'paragraph',
+			'paragraph',
+			'paragraph',
+		]);
+		expect(expect_parity(source, plugins)).toEqual([
+			'root',
+			[
+				'html',
+				['heading', 'text:a'],
+				[
+					'list',
+					[
+						'list_item',
+						['paragraph', 'text:b'],
+						['block_quote', ['html', ['paragraph', 'text:c']]],
+						['paragraph', 'text:d ', ['strong_emphasis', 'text:e']],
+						['paragraph', 'text:f'],
+					],
+				],
+				['paragraph', 'text:g'],
+			],
+		]);
+	});
+
+	it('nested wrappers each take the children of their own parent', () => {
+		const source = '# a\n\n> b\n>\n> c *d*\n\ne\n';
+		const plugins = () => [on('heading', section), on('block_quote', div)];
+		expect(expect_parity(source, plugins)).toEqual([
+			'root',
+			[
+				'html',
+				['heading', 'text:a'],
+				[
+					'block_quote',
+					[
+						'html',
+						['paragraph', 'text:b'],
+						['paragraph', 'text:c ', ['strong_emphasis', 'text:d']],
+					],
+				],
+				['paragraph', 'text:e'],
+			],
+		]);
+		const { opens, closes } = asked(source, plugins());
+		expect(opens).toEqual([
+			'heading',
+			'block_quote',
+			'paragraph',
+			'paragraph',
+			'paragraph',
+		]);
+		expect(closes).toEqual(['heading', 'block_quote', 'root']);
+	});
+
+	it('a scope only costs the children of its directive', () => {
+		const source =
+			':::steps[]\n# a\n\nb *c*\n\n- d\n\n# e\n\nf `g`\n:::\n\nh *i*\n';
+		const { opens, closes } = asked(
+			source,
+			[],
+			[
+				{
+					steps: {
+						children: {
+							heading(node, ctx) {
+								ctx.state.step?.close();
+								ctx.state.step = node.wrap_from('directive_container');
+							},
+						},
+					},
+				},
+			]
+		);
+		expect(opens).toEqual([
+			'heading',
+			'paragraph',
+			'list',
+			'heading',
+			'paragraph',
+		]);
+		expect(closes).toEqual(['heading', 'heading', 'directive_container']);
+	});
+
+	it('a close callback that waits keeps every close going through', () => {
+		const source = '> a *b*\n\nc *d*\n';
+		const { closes } = asked(source, [on('block_quote', () => () => {})]);
+		expect(closes.filter((kind) => kind !== 'text')).toEqual([
+			'strong_emphasis',
+			'paragraph',
+			'block_quote',
+		]);
+	});
+
+	it('a document parsed inside a handler does not share the mask', () => {
+		const inner = '# x\n\n> y *z*\n\nw\n';
+		const outer = '# a\n\nb *c*\n\n# d\n\n> e _f_\n\ng\n';
+		const alone = () => [on('heading', section), on('block_quote', div)];
+		let nested: unknown;
+		let headings = 0;
+		const tree = run_batch(outer, [
+			on('heading', (node) => {
+				section(node);
+				// the first section of the outer document is open while this one runs
+				if (++headings === 2) {
+					nested = shape(run_batch(inner, alone()).nodes, inner);
+				}
+			}),
+			on('block_quote', div),
+		]);
+		expect(nested).toEqual(shape(run_batch(inner, alone()).nodes, inner));
+		expect(shape(tree.nodes, outer)).toEqual(
+			shape(run_batch(outer, alone()).nodes, outer)
+		);
+	});
+
+	it('a dispatcher made for one document takes its masks from the last', () => {
+		const source = ':::box[]\na\n\n# b\n\nc\n:::\n';
+		/** the mask at each paragraph, of the scope alone and then with a link */
+		const masks = (): Int32Array[] => {
+			const seen: Int32Array[] = [];
+			const dispatcher: PluginDispatcher = new PluginDispatcher(
+				[
+					on('paragraph', () => {
+						seen.push(dispatcher.open_wants);
+					}),
+				],
+				new SourceTextSource(source),
+				[{ box: { children: { heading: section } } }]
+			);
+			new PFMParser(new TreeBuilder(16, dispatcher)).parse(source);
+			expect(dispatcher.quiet()).toBe(true);
+			return seen;
+		};
+		const first = masks();
+		expect(first).toHaveLength(2);
+		expect(first[0]).not.toBe(first[1]);
+		// the directive is node 1 and has the link, the heading is handled
+		expect(first[1][NodeKind.list]).toBe(2);
+		expect(first[1][NodeKind.heading]).toBeGreaterThan(2);
+		const second = masks();
+		expect(second).toContain(first[0]);
+		expect(second).toContain(first[1]);
+	});
+
+	it('a log on a pending node is below the nodes inside it', () => {
+		const source = '*a _b_ `c`* d _e_\n';
+		const { closes } = asked(source, [
+			on('strong_emphasis', (node) => {
+				node.attrs.keep = '1';
+			}),
+		]);
+		expect(closes).toEqual(['strong_emphasis']);
 	});
 });

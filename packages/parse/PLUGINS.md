@@ -148,6 +148,8 @@ A parent can have an open wrapper that takes its later children, from `wrap_inne
 
 A node whose type has no handler, and text, goes straight to the innermost open wrapper.
 
+An open wrapper costs the rest of the document very little. The batch builder only looks up the direct children of the node that has the wrapper, so that they land inside it. A node deeper down, such as the inline content of a paragraph in a section, or anything inside a list in a step, is built as it is in a document without plugins.
+
 So what a handler sees depends on when it looks:
 
 | | in the open handler | in the close callback |
@@ -352,8 +354,8 @@ This helps while the directive is still open. A link with no destination, a deli
 A container with `children` or `descendants` handlers opens a scope when its name arrives and ends it when the container closes, at the end of input if it was never closed, or on a revoke.
 
 - With no scope open, dispatch costs what it does without bound handlers.
-- While a scope is open, the builders send the dispatcher the kinds the open scopes have handlers for, on top of the kinds global plugins handle. Other kinds keep the builder's fast path unless a wrapper is open.
-- A scope keeps the dispatcher awake, so every close inside it asks the dispatcher whether it has anything for that node, which is a few compares for a node no handler touched.
+- While a scope is open, the builders send the dispatcher the kinds the open scopes have handlers for, on top of the kinds global plugins handle. Other kinds keep the builder's fast path, except for the direct children of a node with an open wrapper.
+- A scope ends when its directive closes, so that close goes through the dispatcher. The closes of the nodes inside it do not, unless a handler left something on them. The wire builder asks the dispatcher at every close, which is a few compares for a node no handler touched.
 
 Bound handlers run in the fused pass only. A sequential plugin sees the tree they left.
 
@@ -471,7 +473,7 @@ Commit is the inverse of revoke: when a node is committed, the undo log is simpl
 - **A delimiter with no closer.** The parser closes it where its block ends and revokes it once it is back at block level. It marks that close (`close_pending` on an emitter, a flag on the wire's `C`), and the log is kept for the revoke.
 - **A pending paragraph**, in a list item or one that starts with a tag or an image. The parser sends a commit or a revoke for it by id.
 
-Once no node holds a log, a callback, an open wrapper or a scope, the builders stop calling the dispatcher for closes, until the next node of a handled type opens.
+The batch builder only calls the dispatcher for a close that can have something waiting. A log, an open wrapper and a scope each belong to one node, and a node that opened after all of those closes without the dispatcher. So a section that stays open to the end of the document, or a scope around a long container, does not slow down the closes inside it. Two things send every close through the dispatcher for as long as they last: a close callback that has not run yet, and a `wrap_from` wrapper that was closed while its last child was still open.
 
 ### Node ids and plugin nodes
 

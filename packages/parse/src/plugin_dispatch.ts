@@ -134,12 +134,12 @@ interface RegistrationResult {
 	fused: HandlersTable;
 	sequential: { plugin: ParsePlugin; handlers: HandlersTable }[];
 	has_handler: Uint32Array;
-	/** 1 for each kind with a fused handler, shared, never written */
-	open_wants: Uint8Array;
+	/** PAST_END for each kind with a fused handler, shared, never written */
+	open_wants: Int32Array;
 }
 
-/** open_wants once a redirect exists, any open may need retargeting */
-const ALL_WANTS = new Uint8Array(64).fill(1);
+/** above every buffer index, a small integer with all low bits set so an or with an index keeps it */
+const PAST_END = 0x3fffffff;
 
 function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 	const fused_plugins: ParsePlugin[] = [];
@@ -196,6 +196,11 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 		return { plugin, handlers: table };
 	});
 
+	const open_wants = new Int32Array(64);
+	for (let k = 0; k < 64; k++) {
+		if (has_handler[k >> 5] & (1 << (k & 31))) open_wants[k] = PAST_END;
+	}
+
 	// a pass with no handler would do nothing
 	return {
 		fused,
@@ -203,16 +208,8 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 			pass.handlers.some((h) => h !== null)
 		),
 		has_handler,
-		open_wants: wants_of(has_handler),
+		open_wants,
 	};
-}
-
-function wants_of(has_handler: Uint32Array): Uint8Array {
-	const wants = new Uint8Array(64);
-	for (let k = 0; k < 64; k++) {
-		if (has_handler[k >> 5] & (1 << (k & 31))) wants[k] = 1;
-	}
-	return wants;
 }
 
 /** parse_of for an entry the registration skips */
@@ -598,6 +595,13 @@ let spare_slots = NO_SLOTS;
 /** a larger array is not kept, it would hold its memory for good */
 const SPARE_SLOTS_MAX = 65536;
 
+/** kind masks dispatchers gave back, a typed array of this size is off the heap and slow to make */
+const spare_masks: Int32Array[] = [];
+
+function take_mask(): Int32Array {
+	return spare_masks.pop() ?? new Int32Array(64);
+}
+
 /** shared until the first wrap_from, never written */
 const NO_WRAPPERS: Set<number> = new Set();
 
@@ -611,13 +615,13 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	private fused: HandlersTable;
 	private has_handler: Uint32Array;
 	private sequential: { plugin: ParsePlugin; handlers: HandlersTable }[];
-	/** open_wants of the registration, before any redirect or scope */
-	private handled: Uint8Array;
+	/** PAST_END for each kind with a fused handler, before any scope */
+	private handled: Int32Array;
 	/**
-	 * 1 for each kind a handler may take now, handled with no scope open, else
-	 * scope_wants
+	 * PAST_END for each kind a handler may take now, handled with no scope
+	 * open, else scope_wants
 	 */
-	private handles: Uint8Array;
+	private handles: Int32Array;
 
 	/** handlers bound to directive names, null for none */
 	private bound: BoundRegistration | null;
@@ -626,7 +630,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	/** the innermost of scopes, null with none open */
 	private scope: Scope | null = null;
 	/** handled and the kinds the open scopes take, rewritten in place as they change */
-	private scope_wants: Uint8Array | null = null;
+	private scope_wants: Int32Array | null = null;
 	/** traps of every state proxy, they log to the undo log of this dispatcher */
 	private state_traps: ProxyHandler<Record<string | symbol, any>> | null = null;
 	private undo: UndoLog = NO_UNDO;
@@ -642,6 +646,8 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	private slots: Uint32Array = NO_SLOTS;
 	/** slots set, at zero no lookup reads the array and the builders skip the dispatcher */
 	private links = 0;
+	/** above every link, 0 with none, it only rises while one exists so it can sit above the highest left */
+	private floor = 0;
 
 	/** wrap_from wrappers that still take siblings, they get an end when they stop */
 	private open_from: Set<number> = NO_WRAPPERS;
@@ -660,13 +666,10 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	/** one cache serves every dispatch, a view only holds an index */
 	private cache: ViewCache | null = null;
 
-	/**
-	 * 1 for each kind whose open needs the dispatcher, every kind while a
-	 * redirect link exists, links and scopes come and go in dispatch_open,
-	 * dispatch_name, dispatch_close and dispatch_revoke so builders reread it
-	 * after each
-	 */
-	open_wants: Uint8Array;
+	/** open_wants while a link exists, handles with the floor in every other kind */
+	private own_wants: Int32Array | null = null;
+	/** the floor own_wants was written for, -1 once the handled kinds changed */
+	private wants_floor = -1;
 
 	/** true when a directive name may have handlers, builders then report each name */
 	readonly binds: boolean;
@@ -685,7 +688,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		this.has_handler = reg.has_handler;
 		this.sequential = reg.sequential;
 		this.text_source = text_source;
-		this.open_wants = this.handled = this.handles = reg.open_wants;
+		this.handled = this.handles = reg.open_wants;
 		this.bound = bound_for(directive_handlers);
 		this.binds = this.bound !== null;
 	}
@@ -715,9 +718,36 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		undo.log_kind(buf_idx, prior_kind);
 	}
 
-	/** an open of this kind needs a handler call or a redirect lookup */
-	wants_open(kind: NodeKind): boolean {
-		return this.handles[kind] !== 0 || this.links !== 0;
+	/**
+	 * by kind, the lowest parent whose new child needs no dispatcher, PAST_END
+	 * for a kind a handler may take, else the floor, builders reread it after
+	 * each dispatch and it is only brought up to date then
+	 */
+	get open_wants(): Int32Array {
+		// kept small to inline, builders read this after every dispatch
+		return this.floor === 0 && this.own_wants === null
+			? this.handles
+			: this.linked_wants();
+	}
+
+	private linked_wants(): Int32Array {
+		const handles = this.handles;
+		const floor = this.floor;
+		let wants = this.own_wants;
+		if (floor === 0) {
+			spare_masks.push(wants!);
+			this.own_wants = null;
+			return handles;
+		}
+		if (wants === null) {
+			wants = this.own_wants = take_mask();
+			this.wants_floor = -1;
+		}
+		if (this.wants_floor !== floor) {
+			for (let k = 0; k < NODE_KIND_COUNT; k++) wants[k] = handles[k] | floor;
+			this.wants_floor = floor;
+		}
+		return wants;
 	}
 
 	/** a close needs no dispatch */
@@ -729,6 +759,21 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			this.close_with === null &&
 			this.scope === null
 		);
+	}
+
+	/**
+	 * closes of nodes from this index on have nothing to dispatch, a close
+	 * callback or a wrapper that waits on a child can sit anywhere
+	 */
+	plain_from(): number {
+		if (this.close_cbs.live !== 0 || this.close_with !== null) return PAST_END;
+		let from = this.floor;
+		const scope = this.scope;
+		// scopes nest, so the innermost has the highest directive
+		if (scope !== null && scope.directive >= from) from = scope.directive + 1;
+		const undo = this.undo;
+		if (!undo.empty && undo.top > from) from = undo.top;
+		return from;
 	}
 
 	/**
@@ -783,7 +828,6 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		if (this.links === 0) {
 			slots = this.slots = spare_slots;
 			spare_slots = NO_SLOTS;
-			this.open_wants = ALL_WANTS;
 		}
 		if (from >= slots.length) {
 			let size = slots.length === 0 ? 1024 : slots.length;
@@ -794,6 +838,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		}
 		if (slots[from] === 0) this.links++;
 		slots[from] = to;
+		if (from >= this.floor) this.floor = from + 1;
 	}
 
 	private clear_link(from: number): void {
@@ -810,7 +855,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			spare_slots = slots;
 		}
 		this.slots = NO_SLOTS;
-		this.open_wants = this.handles;
+		this.floor = 0;
 	}
 
 	/** a node that still takes children, a wrapper does while its parent links to it */
@@ -1281,22 +1326,24 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		if (depth === 0) {
 			this.scope = null;
 			this.handles = this.handled;
+			// a batch builder still holds it, and rereads before its next open
+			spare_masks.push(this.scope_wants!);
+			this.scope_wants = null;
 		} else {
 			const top = (this.scope = scopes[depth - 1]);
 			let wants = this.scope_wants;
-			if (wants === null) wants = this.scope_wants = new Uint8Array(64);
+			if (wants === null) wants = this.scope_wants = take_mask();
 			wants.set(this.handled);
 			for (let i = 0; i < depth; i++) {
 				const kinds = scopes[i].entry.descendant_kinds;
-				for (let k = 0; k < kinds.length; k++) wants[kinds[k]] = 1;
+				for (let k = 0; k < kinds.length; k++) wants[kinds[k]] = PAST_END;
 			}
 			// only the innermost scope can have a new child
 			const kinds = top.entry.child_kinds;
-			for (let k = 0; k < kinds.length; k++) wants[kinds[k]] = 1;
+			for (let k = 0; k < kinds.length; k++) wants[kinds[k]] = PAST_END;
 			this.handles = wants;
 		}
-		// a redirect link keeps every kind
-		if (this.links === 0) this.open_wants = this.handles;
+		this.wants_floor = -1;
 	}
 
 	/** the scope of a revoked directive ends, wherever it sits */
@@ -1506,8 +1553,9 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			this.scopes!.length = 0;
 			this.scope = null;
 		}
-		// a link switched this to every kind, a scope to its own
-		this.open_wants = this.handles = this.handled;
+		// a scope switched these to its own kinds
+		this.handles = this.handled;
+		this.wants_floor = -1;
 		this.next_synthetic_id = SYNTHETIC_ID_BASE;
 		// plugins keep per document state on it
 		this.ctx = null;

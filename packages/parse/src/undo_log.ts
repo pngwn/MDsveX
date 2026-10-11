@@ -180,6 +180,9 @@ export class UndoLog {
 	 */
 	private active_node: number = NONE;
 
+	/** every node with a log is below this index, read only while a log exists */
+	top = 0;
+
 	/**
 	 * the last write of each key of a scope state, weak as a state goes with
 	 * its directive, made at the first write
@@ -365,6 +368,7 @@ export class UndoLog {
 		let log = logs.get(node);
 		if (log === undefined) {
 			log = [];
+			if (logs.size === 0 || node >= this.top) this.top = node + 1;
 			logs.set(node, log);
 		}
 		log.push(entry);
