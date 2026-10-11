@@ -10166,6 +10166,15 @@ export class PFMParser {
 		return false;
 	}
 
+	/** a close tag for an element around the block being read closes it from the block state, a paragraph opened for the tag would stay empty */
+	private close_outer_html(opener_idx: number, end: number): void {
+		while (this.html_tag_stack.length > opener_idx + 1) {
+			this.close_html_inline(this.html_tag_stack.pop()!.id, this.cursor);
+		}
+		this.close_html_inline(this.html_tag_stack.pop()!.id, end);
+		this.chomp(end, true);
+	}
+
 	private _run_html_block_element(code: number, current_node: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
@@ -10222,13 +10231,8 @@ export class PFMParser {
 					this.chomp(close.end, true);
 					return false;
 				}
-				// the tag closes an element around this one, a paragraph opened for it would stay empty
 				if (opener_idx !== -1) {
-					while (this.html_tag_stack.length > opener_idx + 1) {
-						this.close_html_inline(this.html_tag_stack.pop()!.id, this.cursor);
-					}
-					this.close_html_inline(this.html_tag_stack.pop()!.id, close.end);
-					this.chomp(close.end, true);
+					this.close_outer_html(opener_idx, close.end);
 					return false;
 				}
 			}
@@ -10608,6 +10612,14 @@ export class PFMParser {
 					this.chomp(blk_tag.end, true);
 				}
 				return false;
+			}
+			const close = this.try_parse_html_close_tag(this.cursor + 1);
+			if (close) {
+				const opener_idx = this.find_html_opener(close.tag);
+				if (opener_idx !== -1) {
+					this.close_outer_html(opener_idx, close.end);
+					return false;
+				}
 			}
 		}
 
