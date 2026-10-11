@@ -46,6 +46,10 @@ describe('an escaped pipe in a code span in a table cell', () => {
 		both('`\\|\\|`', ['code_span "||"']);
 	});
 
+	test('in a padded cell after another cell', () => {
+		both(' Foo | `A \\| B` ', ['text "Foo"'], ['code_span "A | B"']);
+	});
+
 	test('with two backticks and text around it', () => {
 		both('``a\\|b`` c', ['code_span "a|b"', 'text " c"']);
 		both('x ``a\\|`b`` c', ['text "x "', 'code_span "a|`b"', 'text " c"']);

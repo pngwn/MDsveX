@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { compile, mdsvex } from '../src/main';
-import { frontmatter_end, metadata_module } from '../src/metadata_query';
+import { frontmatter_bounds, metadata_module } from '../src/metadata_query';
 
 const PREFIX = '\0mdsvex:metadata:';
 const DEFAULT = '\nexport default metadata;\n';
@@ -25,31 +25,37 @@ function from_compile(raw: string, parse?: (raw: string) => any): string {
 	return code.slice(open.length, code.indexOf('\n</script>')) + DEFAULT;
 }
 
-describe('frontmatter_end', () => {
+describe('frontmatter_bounds', () => {
 	test.each([
-		['---\ntitle: a\n---\n# hi\n', 13],
-		['---\ntitle: a\n---', 13],
-		['---\n---\n', 4],
-		['---\n---', 4],
-		['---\n\n---\n', 5],
-		['---\na: 1\n----\nb: 2\n---\n', 19],
-		['---\na: 1\n--- \nb: 2\n---\n', 19],
-	])('bounds the value of %j', (source, end) => {
-		expect(frontmatter_end(source)).toBe(end);
+		['---\ntitle: a\n---\n# hi\n', 4, 13],
+		['---\ntitle: a\n---', 4, 13],
+		['---\n---\n', 4, 4],
+		['---\n---', 4, 4],
+		['---\n\n---\n', 4, 5],
+		['---\na: 1\n----\nb: 2\n---\n', 4, 19],
+		['---\na: 1\n--- x\nb: 2\n---\n', 4, 20],
+		['--- \ntitle: a\n---\n', 5, 14],
+		['---\t \ntitle: a\n---\n', 6, 15],
+		['---\ntitle: a\n--- \n', 4, 13],
+		['---\ntitle: a\n---\t', 4, 13],
+		['--- \n--- \n', 5, 5],
+	])('bounds the value of %j', (source, start, end) => {
+		expect(frontmatter_bounds(source)).toEqual([start, end]);
 	});
 
 	test.each([
 		'',
 		'# hi\n',
 		'---',
-		'--- \ntitle: a\n---\n',
+		'--- ',
+		'--- x\ntitle: a\n---\n',
 		'---\ntitle: a\n',
-		'---\ntitle: a\n--- \n',
+		'---\ntitle: a\n--- x\n',
 		'\n---\ntitle: a\n---\n',
 		' ---\ntitle: a\n---\n',
 		'\uFEFF---\ntitle: a\n---\n',
 	])('finds none in %j', (source) => {
-		expect(frontmatter_end(source)).toBe(-1);
+		expect(frontmatter_bounds(source)).toBe(null);
 	});
 });
 
@@ -62,7 +68,11 @@ describe('metadata_module', () => {
 		'---\ntitle: a\n---',
 		'---\nhtml: "</script><style>a{}</style><SCRIPT>"\n---\n',
 		'# no frontmatter\n',
-		'---\ntitle: a\n--- \nnot closed\n',
+		'---\ntitle: a\n--- x\nnot closed\n',
+		'---\ntitle: a\n--- \nafter\n',
+		'--- \ntitle: a\n---\t\n\n# hi\n',
+		'---\t\r\ntitle: a\r\n--- \r\n# hi\r\n',
+		'---  \n---  ',
 		'',
 	])('exports what the compiled document exports: %j', (raw) => {
 		expect(metadata_module(raw, undefined)).toBe(from_compile(raw));
@@ -113,7 +123,8 @@ describe('metadata_module', () => {
 		let with_frontmatter = 0;
 		for (let i = 0; i < 4000; i++) {
 			// most open like frontmatter, about half of those also close like it
-			let raw = next() < 0.8 ? '---' + pick(newlines) : '';
+			let raw =
+				next() < 0.8 ? '---' + pick(['', '', ' ', '\t']) + pick(newlines) : '';
 			const n = Math.floor(next() * 8);
 			for (let j = 0; j < n; j++) raw += pick(pieces);
 			if (next() < 0.5) raw += pick(newlines) + '---' + pick(['', ...pieces]);

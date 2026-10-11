@@ -6451,10 +6451,14 @@ export class PFMParser {
 						char_code_at.call(source, 1 - base) === DASH &&
 						char_code_at.call(source, 2 - base) === DASH
 					) {
-						const ch3 = char_code_at.call(source, 3 - base);
-						if (ch3 === LINEFEED || ch3 !== ch3 /* nan = eof */) {
-							// need at least the opening `---\n` before we commit
-							if (!this.finished && length < 4) break main_loop;
+						let fence_end = 3;
+						let after = char_code_at.call(source, fence_end - base);
+						while (after === SPACE || after === TAB) {
+							after = char_code_at.call(source, ++fence_end - base);
+						}
+						if (after === LINEFEED || after !== after /* nan = eof */) {
+							// need the whole opening line before we commit
+							if (!this.finished && after !== LINEFEED) break main_loop;
 							this.states.push(StateKind.frontmatter);
 							const fm_id = this.emit_open(
 								NodeKind.frontmatter,
@@ -6462,8 +6466,9 @@ export class PFMParser {
 								current_node
 							);
 							this.node_stack.push(fm_id);
-							// advance past `---\n`
-							const content_start = ch3 === LINEFEED ? 4 : 3;
+							// advance past the opening line
+							const content_start =
+								after === LINEFEED ? fence_end + 1 : fence_end;
 							this.out.set_value_start(fm_id, content_start);
 							this.chomp(content_start, true);
 							continue;
@@ -11544,14 +11549,18 @@ export class PFMParser {
 			return false;
 		}
 
-		// `\n---` found - check that nothing follows except optional newline/eof
+		// `\n---` found, only spaces and tabs may follow up to the newline or eof
 		const after_fence = fm_close + 4; // position after `\n---`
+		let line_end = after_fence;
+		let ch_after = char_code_at.call(source, line_end - base);
+		while (ch_after === SPACE || ch_after === TAB) {
+			ch_after = char_code_at.call(source, ++line_end - base);
+		}
 		// in incremental mode, stall until we can see what follows `---`
-		if (after_fence >= length && !this.finished) return true;
-		const ch_after = char_code_at.call(source, after_fence - base);
+		if (line_end >= length && !this.finished) return true;
 		if (ch_after === LINEFEED || ch_after !== ch_after /* nan = eof */) {
 			const fm_id = current_node;
-			const end = ch_after === LINEFEED ? after_fence + 1 : after_fence;
+			const end = ch_after === LINEFEED ? line_end + 1 : line_end;
 			this.out.set_value_end(fm_id, fm_close + 1); // value ends at the \n before ---
 			this.emit_close(fm_id, end);
 			this.node_stack.pop();
