@@ -9582,6 +9582,7 @@ export class PFMParser {
 					}
 					// no definition found - revoke
 					this.out.revoke(current_node);
+					this.pending_remove(current_node);
 					this.node_stack.pop();
 					this.states.pop();
 					return false;
@@ -9639,7 +9640,9 @@ export class PFMParser {
 			}
 
 			// definitively not a link/reference. revoke.
+			// off the pending list too, or the block end revokes it again
 			this.out.revoke(current_node);
+			this.pending_remove(current_node);
 			this.node_stack.pop();
 			this.states.pop();
 			return false;
@@ -9654,6 +9657,7 @@ export class PFMParser {
 		}
 		if (code === LINEFEED && this.link_text_lf_ends(current_node)) {
 			this.out.revoke(current_node);
+			this.pending_remove(current_node);
 			this.directive_text_pop(current_node);
 			this.node_stack.pop();
 			this.states.pop();

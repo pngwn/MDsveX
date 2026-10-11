@@ -1,6 +1,15 @@
 import { describe, expect, test, vi } from 'vitest';
 
-import { broken, checked_tree, lines, pick, random } from './stream_shape';
+import {
+	broken,
+	checked_tree,
+	every_path,
+	lines,
+	pick,
+	random,
+	revoked_once,
+	wire_revokes,
+} from './stream_shape';
 
 describe('an html element left open in a table cell', () => {
 	test('a close tag in a later row is text', () => {
@@ -237,6 +246,53 @@ describe('a close tag in a header cell', () => {
 	});
 });
 
+describe('a bracket that is no link', () => {
+	test('is revoked once in a header cell', () => {
+		revoked_once('| <span>- [ ] \n---\n');
+	});
+
+	test('is revoked once in a body cell', () => {
+		revoked_once('| a |\n|-|\n| [b] c | \n');
+	});
+
+	test('is revoked once in a paragraph', () => {
+		expect(every_path('[a *b* c\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "["',
+				'    text "a "',
+				'    strong_emphasis',
+				'      text "b"',
+				'    text " c"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('with a reference that has no definition is revoked once', () => {
+		revoked_once('[a][b] c\n\n[d][] e\n');
+	});
+
+	test('of an inline directive that ends at its line is revoked once', () => {
+		revoked_once('a :y[b\n\nc\n');
+	});
+
+	// the text after an unclosed tag has no paragraph, with a bracket or without
+	test('adds no paragraph after an unclosed tag', () => {
+		expect(every_path('<span>[a] b\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "<span>"',
+				'  text "[a"',
+				'  text "] b"',
+				'  line_break'
+			)
+		);
+	});
+});
+
 const CELL_PIECES = [
 	'<span>',
 	'</span>',
@@ -302,6 +358,8 @@ describe('random tables with html in their cells', () => {
 			for (const chunk of [0, 3]) {
 				const label = `${JSON.stringify(source)} fed ${chunk}`;
 				expect(broken(source, chunk), label).toEqual([]);
+				const ids = wire_revokes(source, chunk);
+				expect(new Set(ids).size, `${label} over the wire`).toBe(ids.length);
 				expect(loops.mock.calls, label).toEqual([]);
 			}
 		}
