@@ -584,3 +584,179 @@ describe('a close tag line for an element around the one left open', () => {
 		}
 	}, 30_000);
 });
+
+describe('a close tag line for an element around an open svelte block', () => {
+	const div = (...rows: string[]) =>
+		lines('root', '  html tag="div"', ...rows, '  line_break');
+
+	test('closes the block and the element and leaves no paragraph', () => {
+		expect(every_path('<div>\n{#if x}\n</div>\n')).toBe(
+			div(
+				'    line_break',
+				'    svelte_block tag="if"',
+				'      svelte_branch tag="if" "x"',
+				'        line_break'
+			)
+		);
+	});
+
+	test('after text, a list and a blank line in the branch', () => {
+		expect(every_path('<div>\n{#if x}\ny\n</div>\n')).toBe(
+			div(
+				'    line_break',
+				'    svelte_block tag="if"',
+				'      svelte_branch tag="if" "x"',
+				'        line_break',
+				'        paragraph',
+				'          text "y"',
+				'        line_break'
+			)
+		);
+		expect(every_path('<div>\n{#if x}\n- a\n</div>\n')).toBe(
+			div(
+				'    line_break',
+				'    svelte_block tag="if"',
+				'      svelte_branch tag="if" "x"',
+				'        line_break',
+				'        list ordered=false start=0 tight=true',
+				'          list_item',
+				'            text "a"',
+				'        line_break'
+			)
+		);
+		expect(every_path('<div>\n{#if x}\n\n</div>\n')).toBe(
+			div(
+				'    line_break',
+				'    svelte_block tag="if"',
+				'      svelte_branch tag="if" "x"',
+				'        line_break',
+				'        line_break'
+			)
+		);
+	});
+
+	test('in a later branch, a nested block and after an indent', () => {
+		expect(every_path('<div>\n{#if x}\n{:else}\n</div>\n')).toBe(
+			div(
+				'    line_break',
+				'    svelte_block tag="if"',
+				'      svelte_branch tag="if" "x"',
+				'        line_break',
+				'      svelte_branch tag="else"',
+				'        line_break'
+			)
+		);
+		expect(every_path('<div>\n{#if x}\n{#each y as z}\n  </div>\n')).toBe(
+			div(
+				'    line_break',
+				'    svelte_block tag="if"',
+				'      svelte_branch tag="if" "x"',
+				'        line_break',
+				'        svelte_block tag="each"',
+				'          svelte_branch tag="each" "y as z"',
+				'            line_break'
+			)
+		);
+	});
+
+	test('through an element left open in the block', () => {
+		expect(every_path('<div>\n{#if x}\n<n>\n</div>\n')).toBe(
+			div(
+				'    line_break',
+				'    svelte_block tag="if"',
+				'      svelte_branch tag="if" "x"',
+				'        line_break',
+				'        html tag="n"',
+				'          line_break'
+			)
+		);
+	});
+
+	test('what follows the close tag is outside the element', () => {
+		expect(every_path('<div>\n{#if x}\n</div>\n\nafter\n')).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    svelte_block tag="if"',
+				'      svelte_branch tag="if" "x"',
+				'        line_break',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "after"',
+				'  line_break'
+			)
+		);
+		expect(every_path('<div>\n{#if x}\n</div> y\n')).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    svelte_block tag="if"',
+				'      svelte_branch tag="if" "x"',
+				'        line_break',
+				'  paragraph',
+				'    text "y"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('random elements and svelte blocks hold no empty paragraph', () => {
+		const rand = random(981);
+		const rows = [
+			'<div>',
+			'<n>',
+			'<span>',
+			'</div>',
+			'</div>',
+			'</n>',
+			'</span>',
+			'{#if x}',
+			'{#if x}',
+			'{:else}',
+			'{/if}',
+			'{#each y as z}',
+			'{/each}',
+			'x',
+			'- a',
+			'',
+			'  </div>',
+			'</div> y',
+			'# h',
+		];
+		for (let i = 0; i < 1000; i++) {
+			let source = '<div>\n';
+			const count = 1 + Math.floor(rand() * 6);
+			for (let k = 0; k < count; k++) source += `${pick(rand, rows)}\n`;
+			const label = JSON.stringify(source);
+			expect(fed_mismatch(source), label).toBe('');
+			for (const [name, nodes] of every_tree(source)) {
+				const walk = (index: number): void => {
+					const node = nodes.get_node(index);
+					if (node.kind === 'paragraph' && node.children.length === 0) {
+						expect.fail(`${label} ${name}: paragraph ${index} is empty`);
+					}
+					for (const child of node.children) walk(child);
+				};
+				walk(0);
+			}
+		}
+	}, 30_000);
+
+	test('a close tag of no open element is still text', () => {
+		expect(every_path('{#if x}\n</div>\n{/if}\n')).toBe(
+			lines(
+				'root',
+				'  svelte_block tag="if"',
+				'    svelte_branch tag="if" "x"',
+				'      line_break',
+				'      paragraph',
+				'        text "</div>"',
+				'      line_break',
+				'  line_break'
+			)
+		);
+	});
+});
