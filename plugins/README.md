@@ -2,10 +2,10 @@
 
 Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a function returning a plugin for the `plugins` option of `mdsvex()` and `compile()`.
 
-| package                  | directory              | what it adds                                             |
-| ------------------------ | ---------------------- | -------------------------------------------------------- |
-| `@mdsvex/plugin-steps`   | [`steps`](./steps)     | numbered steps, one for each heading inside `:::steps[]` |
-| `@mdsvex/plugin-anchors` | [`anchors`](./anchors) | a link to itself on every heading that has an id         |
+| package                  | directory              | what it adds                                           |
+| ------------------------ | ---------------------- | ------------------------------------------------------ |
+| `@mdsvex/plugin-steps`   | [`steps`](./steps)     | numbered steps, one for each heading inside `:::steps` |
+| `@mdsvex/plugin-anchors` | [`anchors`](./anchors) | a link to itself on every heading that has an id       |
 
 The other files in this directory are the audit of the remark and rehype plugins these replace.
 

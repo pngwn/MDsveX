@@ -30,7 +30,7 @@ describe('tree', () => {
 		expect(
 			tree(
 				[
-					':::steps[]',
+					':::steps',
 					'',
 					'## Install',
 					'',
@@ -72,7 +72,7 @@ describe('tree', () => {
 		expect(
 			tree(
 				[
-					':::steps[]',
+					':::steps',
 					'### One',
 					'',
 					'#### Deeper',
@@ -102,7 +102,7 @@ describe('tree', () => {
 		expect(
 			tree(
 				[
-					':::steps[](level=3)',
+					':::steps(level=3)',
 					'## Before',
 					'',
 					'### One',
@@ -128,7 +128,7 @@ describe('tree', () => {
 	test('a level that is no heading depth is ignored', () => {
 		for (const level of ['0', '7', 'two', '']) {
 			expect(
-				tree(`:::steps[](level="${level}")\n## One\n\n### Sub\n\n## Two\n:::\n`)
+				tree(`:::steps(level="${level}")\n## One\n\n### Sub\n\n## Two\n:::\n`)
 			).toEqual([
 				'root',
 				[
@@ -142,9 +142,7 @@ describe('tree', () => {
 
 	test('content before the first heading stays outside any step', () => {
 		expect(
-			tree(
-				':::steps[]\nBefore you start.\n\n> a quote\n\n## One\n\nbody\n:::\n'
-			)
+			tree(':::steps\nBefore you start.\n\n> a quote\n\n## One\n\nbody\n:::\n')
 		).toEqual([
 			'root',
 			[
@@ -157,9 +155,17 @@ describe('tree', () => {
 	});
 
 	test('a container with no headings is left as the parser built it', () => {
-		const source = ':::steps[]\nJust text.\n\n- a\n- b\n:::\n';
+		const source = ':::steps\nJust text.\n\n- a\n- b\n:::\n';
 		expect(tree(source)).toEqual(plain(source));
-		expect(tree(':::steps[]\n:::\n')).toEqual(plain(':::steps[]\n:::\n'));
+		expect(tree(':::steps\n:::\n')).toEqual(plain(':::steps\n:::\n'));
+	});
+
+	test('empty brackets are the same as none', () => {
+		const bare = ':::steps\n## One\n\nbody\n\n## Two\n:::\n';
+		expect(tree(bare.replace(':::steps', ':::steps[]'))).toEqual(tree(bare));
+		expect(tree(':::steps[](level=2)\n## One\n:::\n')).toEqual(
+			tree(':::steps(level=2)\n## One\n:::\n')
+		);
 	});
 
 	test('the label of the container stays its label', () => {
@@ -177,10 +183,10 @@ describe('tree', () => {
 		expect(
 			tree(
 				[
-					'::::steps[]',
+					'::::steps',
 					'## Outer one',
 					'',
-					':::steps[]',
+					':::steps',
 					'#### Inner one',
 					'',
 					'inner body',
@@ -219,14 +225,14 @@ describe('tree', () => {
 		expect(
 			tree(
 				[
-					'::::steps[]',
+					'::::steps',
 					'## One',
 					'',
 					'> ## Quoted',
 					'',
 					'- ## Listed',
 					'',
-					':::note[]',
+					':::note',
 					'## Noted',
 					':::',
 					'',
@@ -254,7 +260,7 @@ describe('tree', () => {
 		expect(
 			tree(
 				[
-					'::::steps[]',
+					'::::steps',
 					':::step[By *hand*]',
 					'first',
 					':::',
@@ -281,12 +287,12 @@ describe('tree', () => {
 	});
 
 	test('a heading outside the container is left alone', () => {
-		const source = '## Out\n\n:::other[]\n## In\n:::\n';
+		const source = '## Out\n\n:::other\n## In\n:::\n';
 		expect(tree(source)).toEqual(plain(source));
 	});
 
 	test('an unclosed container closes its last step at the end of input', () => {
-		expect(tree(':::steps[]\n## One\n\nbody')).toEqual([
+		expect(tree(':::steps\n## One\n\nbody')).toEqual([
 			'root',
 			[STEPS, step(['heading', 'text:One'], ['paragraph', 'text:body'])],
 		]);
@@ -295,7 +301,7 @@ describe('tree', () => {
 
 describe('compile', () => {
 	const SOURCE = [
-		':::steps[]',
+		':::steps',
 		'## Install',
 		'',
 		'Run `pnpm i`.',

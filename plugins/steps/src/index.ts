@@ -15,7 +15,7 @@ function level_of(arg: unknown): number | undefined {
 }
 
 /**
- * numbered steps, each heading written directly inside `:::steps[]` starts a
+ * numbered steps, each heading written directly inside `:::steps` starts a
  * `step` that holds the heading as its label and what follows it as its body
  *
  * the first such heading sets the depth that splits, `(level=3)` names it

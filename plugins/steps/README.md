@@ -1,6 +1,6 @@
 # @mdsvex/plugin-steps
 
-Numbered steps for [mdsvex](https://mdsvex.pngwn.io). Each heading inside a `:::steps[]` container starts a step.
+Numbered steps for [mdsvex](https://mdsvex.pngwn.io). Each heading inside a `:::steps` container starts a step.
 
 ```bash
 pnpm add --save-dev @mdsvex/plugin-steps@next
@@ -17,7 +17,7 @@ export default {
 ```
 
 ````md
-:::steps[]
+:::steps
 
 ## Install
 
@@ -48,7 +48,7 @@ Add it to the config.
 ## Which headings start a step
 
 - **The first heading written directly inside the container sets the depth.** If it is a `##`, every `##` directly inside starts a step. A heading of any other depth, deeper or shallower, is content of the step it is in.
-- **`(level=3)` names the depth instead**: `:::steps[](level=3)` splits on `###` whatever the first heading is. A value that is not 1 to 6 is ignored.
+- **`(level=3)` names the depth instead**: `:::steps(level=3)` splits on `###` whatever the first heading is. A value that is not 1 to 6 is ignored.
 - **Only headings written directly inside count.** A heading in a block quote, a list or another directive starts no step.
 - **Content before the first heading is in no step.** It stays at the top of the list, where only list items belong. Put an introduction above the container, or in its brackets: `:::steps[Set up a project]` renders the text in a `<p class="steps-label">` ahead of the list.
 - **A container with no headings** is a list with no steps in it.
@@ -56,11 +56,11 @@ Add it to the config.
 Steps nest when the outer container uses more colons, and each container has its own depth and its own count:
 
 ```md
-::::steps[]
+::::steps
 
 ## Write
 
-:::steps[]
+:::steps
 
 ### Open a container
 
@@ -74,7 +74,7 @@ Steps nest when the outer container uses more colons, and each container has its
 A step can also be written out, beside the ones headings make:
 
 ```md
-::::steps[]
+::::steps
 
 :::step[Install]
 Run the installer.

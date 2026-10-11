@@ -20,7 +20,7 @@ It stays in the body of its step.
 
 ## Write
 
-:::steps[]
+:::steps
 
 #### Open a container
 

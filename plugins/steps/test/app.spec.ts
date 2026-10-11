@@ -26,17 +26,17 @@ const DOC = [
 ].join('\n');
 
 const NESTED = [
-	'::::steps[]',
+	'::::steps',
 	'Before you start.',
 	'',
 	'## Outer',
 	'',
-	':::steps[]',
+	':::steps',
 	'### Inner',
 	':::',
 	'::::',
 	'',
-	':::steps[]',
+	':::steps',
 	'No headings.',
 	':::',
 	'',
