@@ -1123,6 +1123,8 @@ const enum Kind {
 	V3,
 	TRACE,
 	INTO,
+	/** stops after the parse and hands back a Parsed */
+	PARSE,
 }
 
 /** the tree, parser and dispatcher a session keeps for one plugins array */
@@ -1139,12 +1141,49 @@ interface PluginArena {
 }
 
 /**
+ * @internal a document between its parse and its render, it owns its nodes,
+ * so the session compiles other documents while this one waits, a render
+ * uses it up
+ */
+export class Parsed {
+	/** the document as it was given */
+	readonly raw: string;
+	/** raw with its newlines normalized, the string every offset indexes */
+	readonly source: string;
+	/** the parsed frontmatter, undefined when the document has none */
+	readonly metadata: Metadata | undefined;
+	/** @internal null once a render took them */
+	_nodes: NodeBuffer | null;
+	/** @internal the plain arena of the session, lent until the render */
+	_tree: TreeBuilder | null = null;
+	/** @internal the plugin arena of the session, lent until the render */
+	_arena: PluginArena | null = null;
+
+	/** @internal */
+	constructor(
+		raw: string,
+		source: string,
+		metadata: Metadata | undefined,
+		nodes: NodeBuffer
+	) {
+		this.raw = raw;
+		this.source = source;
+		this.metadata = metadata;
+		this._nodes = nodes;
+	}
+}
+
+/**
  * reusable compiler for sequential documents
  *
  * the arena stays private so a reset never mutates an ast a caller holds,
  * documents with parse plugins get an arena of their own that is kept while
  * parse_plugins is the same array, the plugins are read when it is built, a
  * NodeView a plugin keeps throws once the session starts the next document
+ *
+ * parse and render split a compile in two for a caller that has to fetch
+ * something between them, the arena goes with the Parsed and comes back when
+ * it renders, so documents that take turns still share one
  */
 export class CompilerSession {
 	private tree: TreeBuilder | null = null;
@@ -1164,21 +1203,29 @@ export class CompilerSession {
 	}
 
 	// the parser is kept, so every document sets the syntax options again
-	private parse(source: string, inputs: CompileInputs): NodeBuffer {
-		if (this.tree === null) {
-			this.tree = new TreeBuilder(source.length >> 3 || 16);
-			this.parser = new PFMParser(this.tree);
-		} else if (!this.released) {
-			this.tree.reset();
-		}
+	private parse_plain(source: string, inputs: CompileInputs): NodeBuffer {
+		let tree = this.tree;
+		if (tree === null) tree = this.plant(source);
+		else if (!this.released) tree.reset();
 		this.released = false;
 
 		this.parser!.set_options(inputs);
 		this.parser!.parse_normalized(source);
-		const nodes = this.tree.get_buffer();
+		const nodes = tree.get_buffer();
 		const slug = inputs.heading_ids;
 		if (slug !== undefined) assign_heading_ids(nodes, source, slug);
 		return nodes;
+	}
+
+	/**
+	 * a plain arena for a session without one, the parser stays when a Parsed
+	 * took the last, kept out of parse_plain so v8 still inlines that into run
+	 */
+	private plant(source: string): TreeBuilder {
+		const tree = (this.tree = new TreeBuilder(source.length >> 3 || 16));
+		if (this.parser === null) this.parser = new PFMParser(tree);
+		else this.parser.bind(tree);
+		return tree;
 	}
 
 	/** callers check plugin_busy first, the arena holds one document at a time */
@@ -1246,7 +1293,7 @@ export class CompilerSession {
 
 	compile(raw: string, options?: CompileOptions): CompileResult {
 		if (options === undefined)
-			return this.run(raw, no_inputs, Kind.PLAIN, undefined);
+			return this.run(raw, no_inputs, Kind.PLAIN, undefined, undefined);
 		// started in a plugin handler, the session holds the outer document
 		if (this.plugin_busy && has_plugins(options)) {
 			return render_once(raw, options);
@@ -1255,8 +1302,103 @@ export class CompilerSession {
 			raw,
 			inputs_of(options),
 			options.sourcemap ? Kind.MAPPED : Kind.PLAIN,
+			undefined,
 			undefined
 		);
+	}
+
+	/**
+	 * @internal the first half of a compile, the parse plugins and syntax
+	 * options of inputs apply here, the document then waits in the Parsed
+	 * while its caller fetches what the render needs
+	 */
+	parse(raw: string, inputs: CompileInputs): Parsed {
+		return this.run(raw, inputs, Kind.PARSE, undefined, undefined);
+	}
+
+	/**
+	 * @internal the second half, inputs are read again, so a caller that
+	 * shares one inputs object between documents stores the fields of this
+	 * document before it calls, as it does before a compile
+	 */
+	render(
+		parsed: Parsed,
+		inputs: CompileInputs,
+		sourcemap?: boolean
+	): CompileResult {
+		return this.run(
+			parsed.raw,
+			inputs,
+			sourcemap ? Kind.MAPPED : Kind.PLAIN,
+			undefined,
+			parsed
+		);
+	}
+
+	/** @internal render as compile_into gives it */
+	render_into(parsed: Parsed, inputs: CompileInputs, out: TraceTarget): void {
+		this.run(parsed.raw, inputs, Kind.INTO, out, parsed);
+	}
+
+	/**
+	 * @internal the document the compile that just returned parsed, as a
+	 * Parsed, for a caller that learned from the render what it lacked, raw
+	 * and inputs are what that compile was given and metadata what it gave,
+	 * nothing else may run on the session in between
+	 */
+	keep(
+		raw: string,
+		inputs: CompileInputs,
+		metadata: Metadata | undefined
+	): Parsed {
+		if (inputs.plugins !== undefined) inputs = unbundled(inputs);
+		const plugins = inputs.parse_plugins;
+		const plugged =
+			(plugins !== undefined && plugins.length > 0) ||
+			inputs.directive_handlers !== undefined;
+		const tree = plugged
+			? this.plugin_arena?.tree
+			: this.released
+				? null
+				: this.tree;
+		// a compile a plugin handler started parsed outside the session
+		if (tree == null)
+			throw new Error('[mdsvex] the session holds no document to keep');
+		return this.lend(
+			new Parsed(raw, normalized(raw), metadata, tree.get_buffer()),
+			plugged
+		);
+	}
+
+	/** the arena that holds the document goes to its Parsed, the next parse builds one or gets one back */
+	private lend(parsed: Parsed, plugged: boolean): Parsed {
+		if (plugged) {
+			parsed._arena = this.plugin_arena;
+			this.plugin_arena = null;
+		} else {
+			parsed._tree = this.tree;
+			this.tree = null;
+		}
+		return parsed;
+	}
+
+	/** a rendered Parsed returns its arena unless the session built another meanwhile */
+	private take_back(parsed: Parsed): void {
+		const tree = parsed._tree;
+		if (tree !== null) {
+			parsed._tree = null;
+			if (this.tree === null) {
+				this.tree = tree;
+				this.parser!.bind(tree);
+				// it holds the document that just rendered
+				this.released = false;
+			}
+		}
+		const arena = parsed._arena;
+		if (arena !== null) {
+			parsed._arena = null;
+			if (this.plugin_arena === null) this.plugin_arena = arena;
+		}
 	}
 
 	/** @internal keeps only typed arrays so an idle session holds no document */
@@ -1298,6 +1440,7 @@ export class CompilerSession {
 				syntax
 			),
 			Kind.V3,
+			undefined,
 			undefined
 		);
 	}
@@ -1333,6 +1476,7 @@ export class CompilerSession {
 				syntax
 			),
 			Kind.TRACE,
+			undefined,
 			undefined
 		);
 	}
@@ -1343,7 +1487,7 @@ export class CompilerSession {
 	 * @internal
 	 */
 	compile_into(raw: string, inputs: CompileInputs, out: TraceTarget): void {
-		this.run(raw, inputs, Kind.INTO, out);
+		this.run(raw, inputs, Kind.INTO, out, undefined);
 	}
 
 	/**
@@ -1377,7 +1521,8 @@ export class CompilerSession {
 				syntax
 			),
 			Kind.INTO,
-			out
+			out,
+			undefined
 		);
 	}
 
@@ -1385,60 +1530,114 @@ export class CompilerSession {
 		raw: string,
 		inputs: CompileInputs,
 		kind: Kind.PLAIN | Kind.MAPPED,
-		out: undefined
+		out: undefined,
+		parsed: Parsed | undefined
 	): CompileResult;
 	private run(
 		raw: string,
 		inputs: CompileInputs,
 		kind: Kind.V3,
-		out: undefined
+		out: undefined,
+		parsed: undefined
 	): CompileV3Result;
 	private run(
 		raw: string,
 		inputs: CompileInputs,
 		kind: Kind.TRACE,
-		out: undefined
+		out: undefined,
+		parsed: undefined
 	): CompileTraceResult;
 	private run(
 		raw: string,
 		inputs: CompileInputs,
 		kind: Kind.INTO,
-		out: TraceTarget
+		out: TraceTarget,
+		parsed: Parsed | undefined
 	): TraceTarget;
+	private run(
+		raw: string,
+		inputs: CompileInputs,
+		kind: Kind.PARSE,
+		out: undefined,
+		parsed: undefined
+	): Parsed;
 	/**
 	 * every compile of the session, kind picks the render and what comes
-	 * back, out takes an into compile, at this size v8 never inlines it, so
-	 * its inline budget goes to the parse and bind calls and the entry points
-	 * above inline into their callers
+	 * back, out takes an into compile, parsed is a document that already has
+	 * its parse, at this size v8 never inlines it, so its inline budget goes to
+	 * the parse and bind calls and the entry points above inline into their
+	 * callers
 	 */
 	private run(
 		raw: string,
 		inputs: CompileInputs,
 		kind: Kind,
-		out: TraceTarget | undefined
-	): CompileResult | CompileV3Result | CompileTraceResult | TraceTarget {
+		out: TraceTarget | undefined,
+		parsed: Parsed | undefined
+	):
+		| CompileResult
+		| CompileV3Result
+		| CompileTraceResult
+		| TraceTarget
+		| Parsed {
 		if (inputs.plugins !== undefined) inputs = unbundled(inputs);
 		const scope = root_scope(inputs);
-		const directives = directive_scope_of(inputs.directives);
-		// parser offsets index the normalized string, so render and plugins read it too
-		const source = normalized(raw);
-		const plugins = inputs.parse_plugins;
-		const bound = inputs.directive_handlers;
+		// asked here and for the frontmatter below, a document with neither
+		// then calls neither function, which leaves v8 their share of what it
+		// inlines into run for the parse and the bind
+		const written = inputs.directives;
+		const directives =
+			written === undefined ? null : directive_scope_of(written);
 		let renderer = this.renderer;
+		let source: string;
 		let nodes: NodeBuffer;
-		if ((plugins && plugins.length > 0) || bound !== undefined) {
-			const reserved = reserved_directives(directives, inputs.templates);
-			if (this.plugin_busy) {
-				// started in a plugin handler, the session holds the outer document
-				nodes = parse_once(source, plugins, bound, reserved, inputs);
-				renderer = new CursorHTMLRenderer({ cache: false });
+		let metadata: Metadata | undefined;
+		if (parsed === undefined) {
+			// parser offsets index the normalized string, so render and plugins read it too
+			source = normalized(raw);
+			const plugins = inputs.parse_plugins;
+			const bound = inputs.directive_handlers;
+			if ((plugins && plugins.length > 0) || bound !== undefined) {
+				const reserved = reserved_directives(directives, inputs.templates);
+				if (this.plugin_busy) {
+					// started in a plugin handler, the session holds the outer document
+					nodes = parse_once(source, plugins, bound, reserved, inputs);
+					renderer = new CursorHTMLRenderer({ cache: false });
+				} else {
+					nodes = this.parse_plugged(source, plugins, bound, reserved, inputs);
+				}
 			} else {
-				nodes = this.parse_plugged(source, plugins, bound, reserved, inputs);
+				nodes = this.parse_plain(source, inputs);
+			}
+			// frontmatter can only be the first node
+			const first = nodes.first_child_at(0);
+			metadata =
+				first === NONE || (nodes.kind_at(first) as number) !== K_FRONTMATTER
+					? undefined
+					: metadata_of(nodes, source, inputs.frontmatter_parse);
+			if (kind === Kind.PARSE) {
+				const waiting = new Parsed(raw, source, metadata, nodes);
+				// parse_once made its own nodes, no arena of the session holds them
+				return renderer !== this.renderer
+					? waiting
+					: this.lend(
+							waiting,
+							(plugins !== undefined && plugins.length > 0) ||
+								bound !== undefined
+						);
 			}
 		} else {
-			nodes = this.parse(source, inputs);
+			const waited = parsed._nodes;
+			if (waited === null)
+				throw new Error('[mdsvex] a parsed document renders once');
+			// taken first, so a render that throws leaves no half used document
+			parsed._nodes = null;
+			nodes = waited;
+			source = parsed.source;
+			metadata = parsed.metadata;
+			// a plugin handler renders it, the session renderer has the outer document to come
+			if (this.plugin_busy) renderer = new CursorHTMLRenderer({ cache: false });
 		}
-		const metadata = metadata_of(nodes, source, inputs.frontmatter_parse);
 		if (out !== undefined) out.metadata = metadata;
 		const template = bind(
 			renderer,
@@ -1545,6 +1744,7 @@ export class CompilerSession {
 		);
 		// one call site for every kind, each more is another callee to inline
 		unbind(done, renderer, source);
+		if (parsed !== undefined) this.take_back(parsed);
 		return done;
 	}
 }

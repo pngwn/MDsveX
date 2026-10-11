@@ -78,6 +78,47 @@ describe('vite plugin math', () => {
 		expect((await second).code).toContain('<mi>y</mi>');
 	});
 
+	test('the document that loads the renderer parses once and renders again', async () => {
+		const parsed: string[] = [];
+		const { transform } = plugin({
+			highlight: false,
+			parse_plugins: [
+				{
+					heading: {
+						parse(node) {
+							return () => void parsed.push(node.text_content);
+						},
+					},
+				},
+			],
+		});
+		const first = transform('# a\n\n' + MATH);
+		const second = transform('# b\n\n```math\ny\n```\n');
+		// larger than both, a kept parse must not share its arena
+		const big = transform('# c\n\n' + '- item *a* [b](c)\n'.repeat(200));
+		expect(big).not.toBeInstanceOf(Promise);
+		expect(parsed).toEqual(['a', 'b', 'c']);
+		expect((await first).code).toBe(
+			'<h1>a</h1>' +
+				OPEN +
+				'<math display="block" class="tml-display" style="display:block math;"><mi>x</mi></math></div>'
+		);
+		expect((await second).code).toContain('<h1>b</h1>' + OPEN);
+		expect((await second).code).toContain('<mi>y</mi>');
+		expect(parsed).toEqual(['a', 'b', 'c']);
+		expect(transform('# d\n\n' + MATH).code).toContain('<h1>d</h1>' + OPEN);
+		expect(parsed).toEqual(['a', 'b', 'c', 'd']);
+	});
+
+	test('a kept parse waits out other documents without parse plugins too', async () => {
+		const { transform } = plugin({ highlight: false });
+		const first = transform('# a\n\n' + MATH);
+		const big = '- item *a* [b](c)\n'.repeat(200);
+		expect(transform(big).code).toContain('<li>item <strong>a</strong>');
+		expect(transform('short\n').code).toBe('<p>short</p>');
+		expect((await first).code).toContain('<h1>a</h1>' + OPEN + '<math');
+	});
+
 	test('math and twinkleplop load together and nothing warns', async () => {
 		const { transform, warned } = plugin();
 		const out = await transform(MATH + '\n```ts\nlet a\n```\n\n`#!math x`\n');
@@ -98,7 +139,7 @@ describe('vite plugin math', () => {
 		const doc = MATH + '\n```ts\na\n```\n';
 		const out = await transform(doc);
 		expect(out.code).toContain('<math display="block"');
-		// the document that loads the renderer compiles a second time
+		// the document that loads the renderer renders a second time
 		expect(langs).toEqual(['ts', 'ts']);
 		expect(transform(doc).code).toBe(out.code);
 		expect(langs).toEqual(['ts', 'ts', 'ts']);

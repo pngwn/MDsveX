@@ -5,7 +5,7 @@ import remapping from '@ampproject/remapping';
 import { base64_utf8, chained_base64, pfm_map } from './sourcemap_chain';
 import type { StoredDocument } from './sourcemap_chain';
 import { CompilerSession, check_plugins, compile_inputs } from './compile';
-import type { Bundle, ComponentMode } from './compile';
+import type { Bundle, ComponentMode, Parsed } from './compile';
 import { slug_of } from './heading_ids';
 import type { HeadingOptions } from './heading_ids';
 import type { FrontmatterOptions } from './frontmatter';
@@ -260,7 +260,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			? written_math
 			: math_pending;
 	let math_loading: Promise<void> | null = null;
-	/** loads the renderer, then compiles what met a math fence without it again */
+	/** loads the renderer, then renders what met a math fence without it again */
 	function load_math(compile: () => Compiled): Promise<{ code: string }> {
 		math_needed = false;
 		return (math_loading ??= import('./math')
@@ -367,10 +367,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		(message) => log(message)
 	);
 
+	/** parsed is a document that only has to render again */
 	function compile_doc(
 		ctx: Rollup.TransformPluginContext,
 		code: string,
-		id: string
+		id: string,
+		parsed: Parsed | undefined
 	): { code: string } {
 		let doc = stored.get(id);
 		if (doc === undefined) {
@@ -393,7 +395,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		// without templates or a selector a query has nothing to pick
 		if (!no_templates) inputs.templates = templates_for(templates, select, id);
 		inputs.filename = clean_id(id);
-		compiler.compile_into(code, inputs, doc);
+		if (parsed === undefined) compiler.compile_into(code, inputs, doc);
+		else compiler.render_into(parsed, inputs, doc);
 		doc.raw = code;
 		if (doc.warnings !== undefined) {
 			for (const w of doc.warnings) {
@@ -411,13 +414,27 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		return { code: doc.html };
 	}
 
-	/** for a document that met a math fence before the renderer was loaded */
+	/**
+	 * for a document that met a math fence before the renderer was loaded,
+	 * called straight after its compile, so the session still holds its parse,
+	 * which is kept and renders again once the renderer is there
+	 */
+	function rerender(
+		code: string,
+		id: string,
+		again: (parsed: Parsed) => Compiled
+	): Promise<{ code: string }> {
+		const parsed = compiler.keep(code, inputs, stored.get(id)!.metadata);
+		return load_math(() => again(parsed));
+	}
+
+	/** rerender for a config without replacements or templates */
 	function recompile(
 		ctx: Rollup.TransformPluginContext,
 		code: string,
 		id: string
 	): Promise<{ code: string }> {
-		return load_math(() => compile_doc(ctx, code, id));
+		return rerender(code, id, (parsed) => compile_doc(ctx, code, id, parsed));
 	}
 
 	return [
@@ -522,16 +539,16 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					waits.push(load_highlight());
 				if (tracker === null) {
 					if (waits.length === 0) {
-						const result = compile_doc(this, code, id);
+						const result = compile_doc(this, code, id, undefined);
 						return math_needed ? recompile(this, code, id) : result;
 					}
 					return Promise.all(waits).then(() => {
-						const result = compile_doc(this, code, id);
+						const result = compile_doc(this, code, id, undefined);
 						return math_needed ? recompile(this, code, id) : result;
 					});
 				}
 
-				const finish = (): Compiled => {
+				const finish = (parsed?: Parsed): Compiled => {
 					// a watch build compiles again when the exports change, in dev the virtual import is the edge
 					if (command === 'build') {
 						if (registry !== null)
@@ -542,9 +559,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					// the registry gives new arrays when a module changes its exports
 					inputs.components = registry?.sources();
 					inputs.directives = registry?.directive_sources();
-					const result = compile_doc(this, code, id);
+					const result = compile_doc(this, code, id, parsed);
 					// it met a math fence before the renderer was loaded
-					if (math_needed) return load_math(finish);
+					if (math_needed) return rerender(code, id, finish);
 					const picked = stored.get(id)!.template;
 					// a query picks for one import, not for the file
 					if (documents !== null && id.indexOf('?') < 0) {
