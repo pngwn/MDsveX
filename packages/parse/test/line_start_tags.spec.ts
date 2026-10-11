@@ -31,7 +31,6 @@ const STARTS = [
 	'a',
 ];
 
-// no backslash, an element whose close tag is escaped loses its paragraph in both modes
 const PIECES = [
 	' ',
 	' ',
@@ -39,6 +38,7 @@ const PIECES = [
 	'\t',
 	'a',
 	'`',
+	'\\',
 	'*',
 	'[',
 	'](u)',
@@ -53,6 +53,14 @@ const PIECES = [
 	'<!-- c -->',
 	'{x}',
 	'{@html y}',
+	// what can hold a close tag as text, or a tag the line scan counts
+	'<a href="u">',
+	'</a>',
+	'<b>',
+	'<i title="</b>">',
+	'<b x="<b>">',
+	'<span a={x}>',
+	'{"</span>"}',
 ];
 
 const ENDS = ['\n', '\n', ' \n', '\n\n', '\n---\n', '\n# h\n', ''];
