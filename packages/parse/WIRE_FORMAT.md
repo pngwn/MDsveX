@@ -143,6 +143,16 @@ When a node is revoked:
 
 **Example:** The parser sees `_` and opens a pending emphasis node. Later, it determines the `_` is not closed, so it revokes the emphasis. The `_` character becomes literal text in the parent, and any children of the emphasis are moved up.
 
+**An html element with no close tag** is revoked with its open tag as the `delimiter`. When its parent is the root, a block quote or a list item, that parent holds blocks, so the text needs a paragraph and the steps above change:
+
+1. The `delimiter` and the inline nodes of its line share one paragraph. Those nodes are the inline siblings next to the element on either side (a revoked paragraph left them there) and the element's children up to its first block child. If that block child is a paragraph, it takes them all at its start. If not, the element's node becomes the paragraph.
+2. The element's other children move up to the parent, after that paragraph. A `line_break` counts as a block here.
+3. A run of inline children between two blocks was a paragraph the parser revoked because it sat in an element such as `<span>` or `<p>`. It gets a new paragraph, unless it holds only html elements, html comments, `{@...}` tags and breaks.
+
+`<span>a *b*` followed by a blank line and `c` ends as two paragraphs, `<span>a <strong>b</strong>` and `c`.
+
+Before the `R` of an html element the parser sends the `R` of every pending node inside it, so the element holds no pending node when it is repaired.
+
 ### K, Commit
 
 ```

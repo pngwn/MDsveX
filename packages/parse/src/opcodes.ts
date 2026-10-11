@@ -111,6 +111,8 @@ export interface Emitter {
 	 *
 	 * a node is revoked at most once, a builder repairs whatever the id is by
 	 * then, so a second revoke would unwrap or rewrap what the first left
+	 *
+	 * an html element is revoked after every pending node inside it
 	 * @param id id of the node to revoke.
 	 * @param source_text optional raw source text for the revoked node.
 	 *   used for block-level revocations where the content must be

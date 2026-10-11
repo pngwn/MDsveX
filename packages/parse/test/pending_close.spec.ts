@@ -24,12 +24,14 @@ const enum Pending {
 /**
  * what a builder relies on to drop the plugin undo log of a pending node,
  * a close is final, a close_pending is revoked later, a pending paragraph
- * gets a commit or a revoke
+ * gets a commit or a revoke, and what its repair of an unclosed tag relies
+ * on, the delimiters and tags inside it are revoked first
  */
 class Contract implements Emitter {
 	private kinds: NodeKind[] = [NodeKind.root];
 	private state: Pending[] = [Pending.no];
 	private revoked: boolean[] = [];
+	private parents: number[] = [-1];
 	broken: string[] = [];
 
 	private fail(what: string, id: number): void {
@@ -40,16 +42,18 @@ class Contract implements Emitter {
 		id: number,
 		kind: NodeKind,
 		_start: number,
-		_parent: number,
+		parent: number,
 		_extra: number,
 		pending: boolean
 	): void {
 		this.kinds[id] = kind;
 		this.state[id] = pending ? Pending.open : Pending.no;
+		this.parents[id] = parent;
 	}
-	leaf(id: number, kind: NodeKind): void {
+	leaf(id: number, kind: NodeKind, _start: number, parent: number): void {
 		this.kinds[id] = kind;
 		this.state[id] = Pending.no;
+		this.parents[id] = parent;
 	}
 	close(id: number): void {
 		if (this.state[id] !== Pending.open) return;
@@ -71,6 +75,24 @@ class Contract implements Emitter {
 			this.fail('revoked after a commit', id);
 		}
 		this.state[id] = Pending.no;
+		// the repair of a tag regroups what it holds, so that has to be settled
+		if (this.kinds[id] === NodeKind.html) this.settled_inside(id);
+	}
+
+	/** a node opened inside id has a later id */
+	private settled_inside(id: number): void {
+		for (let inner = id + 1; inner < this.state.length; inner++) {
+			const state = this.state[inner];
+			if (
+				state !== Pending.open &&
+				state !== Pending.held &&
+				state !== Pending.paragraph
+			)
+				continue;
+			let up = this.parents[inner];
+			while (up > id) up = this.parents[up];
+			if (up === id) this.fail('revoked around a pending node', id);
+		}
 	}
 	commit(id: number): void {
 		this.state[id] = Pending.committed;

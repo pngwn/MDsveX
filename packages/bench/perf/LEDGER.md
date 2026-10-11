@@ -59,8 +59,8 @@ delete it.
     Estimated to bring the document to about -4.5%, for roughly 30 lines plus
     feed invalidation. Not built.
   - Have `handle_repair` keep a revoked element's inline children in the
-    paragraph it makes. Needs no check at all, but changes the repair for
-    every consumer. Not built.
+    paragraph it makes. The repair does this now. Whether the check can go is
+    not tested, a fed parse still has to match a whole one.
   - Measured and rejected: a dry run with the real tag parsers (-19.5%) and a
     hand-written walk (-8.7%).
 
