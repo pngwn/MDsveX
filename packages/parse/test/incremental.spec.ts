@@ -1579,3 +1579,104 @@ describe('a tag at the start of a line matches batch however it is fed', () => {
 		expect((rec.ops[rec.ops.length - 1] as any).pending).toBe(true);
 	});
 });
+
+describe('a delimiter left open in a container matches batch however it is fed', () => {
+	fed_cases([
+		['list after an element and a delimiter', '<span>x<n>*y\n- a</span>\n'],
+		['list after a stray angle bracket', '<span>><n>*>\n- a</span>\n'],
+		['list in a later container', '<n><b>*>\n\n<d><span>\n- a</span>'],
+		[
+			'list after a comment and a tag',
+			'<span>[<!-- c --><span>{@html y}*</i>\n\n- a</span> \n',
+		],
+		[
+			'heading and list after a component',
+			'<span><b x="<b>">*</i>\n\n  <Chart a={b} c="d"><span a={x}> \n# h\n- a</span>\t \n',
+		],
+		['paragraph after a delimiter', '<span>x *y\n\nb</span>\n'],
+		['lines after a delimiter', '<span>\nsome *text\n\nmore\n</span>\n'],
+		[
+			'paragraph after a block level tag',
+			'<div>\n<Chart /><p>*y\n\nb\n</div>\n',
+		],
+		['list after a paragraph that stays', '<div>\nx ~z **w\n- a</div>\n'],
+		['list after a delimiter then a tag', '<div>\nx *<i>\n- a</div>\n'],
+		['heading with delimiters', '<div>\n\n# ~z **w\n\ny\n</div>\n'],
+		[
+			'paragraph in a svelte block',
+			'{#if a}\n{@html x}<div>*y ~z\n\nb\n{/if}\n',
+		],
+		['list in a directive', ':::note\nx ~z **w\n- a\n:::\n'],
+		['container that never closes', '<b> *y\n'],
+		['bracket in a container that never closes', '<a href="u">['],
+	]);
+
+	const printed = (input: string) => print_ast(parse_batch(input), input);
+
+	it('keeps the blocks after it', () => {
+		expect(printed('<span>x<n>*y\n- a</span>\n')).toBe(
+			[
+				'root',
+				'  html tag="span"',
+				'    text "x"',
+				'    text "<n>"',
+				'    text "*y"',
+				'    line_break',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        text "a"',
+				'  line_break',
+			].join('\n')
+		);
+		expect(printed('<span>x *y\n\nb</span>\n')).toBe(
+			[
+				'root',
+				'  html tag="span"',
+				'    text "x "',
+				'    text "*y"',
+				'    line_break',
+				'    line_break',
+				'    text "b"',
+				'  line_break',
+			].join('\n')
+		);
+	});
+
+	it('splits its text as a paragraph under the root does', () => {
+		const para = [
+			'paragraph',
+			'  text "x "',
+			'  text "~"',
+			'  text "z "',
+			'  text "*"',
+			'  text "*w"',
+		];
+		const indent = (rows: string[], by: string) => rows.map((row) => by + row);
+		expect(printed('x ~z **w\n')).toBe(
+			['root', ...indent(para, '  '), '  line_break'].join('\n')
+		);
+		expect(printed('<div>\nx ~z **w\n- a</div>\n')).toBe(
+			[
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				...indent(para, '    '),
+				'    line_break',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        text "a"',
+				'  line_break',
+			].join('\n')
+		);
+		expect(printed('<div>\nx ~z **w\n</div>\n')).toBe(
+			[
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				...indent(para, '    '),
+				'    line_break',
+				'  line_break',
+			].join('\n')
+		);
+	});
+});

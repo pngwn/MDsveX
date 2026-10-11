@@ -347,7 +347,7 @@ What a bound handler does is logged against the node it ran for, like any plugin
 - **A write to `ctx.state`** is taken back. The log is shallow, as it is for `attrs`: assign a new value to change one, and don't mutate an object held in the state. Revokes do not arrive in the reverse order of the writes (a tight list revokes its paragraphs first to last), so each key keeps what its last surviving write put there.
 - **The `index` it used** is given back, so the count goes down by one. The handlers that ran since keep the index they were given.
 
-This helps while the directive is still open. A link with no destination, a delimiter cut off by a table cell, a code span that never closes and the paragraphs of a tight list are all revoked before their container closes. An emphasis delimiter or an html tag that never closes is different: inside a container directive the parser revokes it only after the outermost container around it has closed. The state is still rolled back, but the directive's close callback has already read it, so a count kept in the state can include such a node.
+This helps while the directive is still open. A link with no destination, a delimiter cut off by a table cell, a code span that never closes and the paragraphs of a tight list are all revoked before their container closes, and so is an emphasis delimiter that never closes, when its paragraph ends. An html tag that never closes is different: inside a container directive the parser revokes it only after the outermost container around it has closed. The state is still rolled back, but the directive's close callback has already read it, so a count kept in the state can include such a node.
 
 ### Scopes and cost
 
