@@ -15,25 +15,25 @@ function header_cell(...children: string[]): string {
 describe('an escaped pipe in a code span in a header cell', () => {
 	test('stays in the span', () => {
 		expect(checked_tree('|`a\\|b`|\n|-|\n')).toBe(
-			header_cell('code_span "a\\\\|b"')
+			header_cell('code_span "a|b"')
 		);
 	});
 
 	test('with two backticks and text after it', () => {
 		expect(checked_tree('| ``a\\|b`` c |\n|-|\n')).toBe(
-			header_cell('code_span "a\\\\|b"', 'text " c"')
+			header_cell('code_span "a|b"', 'text " c"')
 		);
 	});
 
 	test('the span still loses its padding spaces', () => {
 		expect(checked_tree('| ` a\\|b ` |\n|-|\n')).toBe(
-			header_cell('code_span "a\\\\|b"')
+			header_cell('code_span "a|b"')
 		);
 	});
 
 	test('after a hint', () => {
 		expect(checked_tree('|`#!js a\\|b`|\n|-|\n')).toBe(
-			header_cell('code_span info="js" "a\\\\|b"')
+			header_cell('code_span info="js" "a|b"')
 		);
 	});
 
@@ -45,7 +45,7 @@ describe('an escaped pipe in a code span in a header cell', () => {
 				'    table_header',
 				'      table_cell',
 				'        strong_emphasis',
-				'          code_span "a\\\\|b"',
+				'          code_span "a|b"',
 				'      table_cell',
 				'        code_span "c"'
 			)
@@ -54,7 +54,7 @@ describe('an escaped pipe in a code span in a header cell', () => {
 
 	test('an escaped pipe after the span is text', () => {
 		expect(checked_tree('|`a\\|b` \\| c|\n|-|\n')).toBe(
-			header_cell('code_span "a\\\\|b"', 'text " "', 'text "| c"')
+			header_cell('code_span "a|b"', 'text " "', 'text "| c"')
 		);
 	});
 

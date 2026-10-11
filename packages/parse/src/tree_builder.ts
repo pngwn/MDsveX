@@ -410,6 +410,10 @@ export class TreeBuilder implements Emitter {
 			case 'value':
 				this.nodes.set_value(idx, value[0], value[1]);
 				break;
+			case 'text':
+				// the value range stays, it is where the text is in the source
+				this.nodes.own_strings()[idx] = value;
+				break;
 			case 'value_start':
 				this.nodes.set_value_start(idx, value);
 				break;
