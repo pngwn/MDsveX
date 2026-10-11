@@ -450,6 +450,8 @@ The undo log is keyed by node ID. Each node has an associated log of mutations m
 3. Discards the node's close callbacks if they have not fired
 4. Repairs the node: it becomes literal text (or a paragraph of it, for a block) and its children move up to its parent
 
+An html element with no close tag that sits under the root, a block quote or a list item is the block case. Its open tag becomes text in the paragraph of its line, and children on later lines that had lost their paragraph get a new one (`WIRE_FORMAT.md` has the steps under `R`). No handler runs for a paragraph the repair makes, and a paragraph that takes the tag text has already run its handlers without it.
+
 A revoke covers one node. The repair keeps the node's children in the tree, and the parser sends a separate revoke for each descendant it also gives up on. A child that stays keeps what its handlers did: in `_a *b* c` the unclosed `_` is revoked, the `*b*` inside it is not, and a plugin's changes to that strong node survive.
 
 The repaired node keeps none of its attributes. The text or paragraph left in its place is not the tag, link or directive the parser first took it for, so the `tag`, `name` or `href` the parser gave it goes, and so does anything a plugin wrote on it, whichever handler wrote it. The undo log has already taken back what the node's own handlers wrote. An attribute another node's handler put there (a paragraph marking each of its children, say) cannot be told from the parser's, because a plugin may write `title` or `href` as well, so the repair drops the lot. Undoing that other handler later leaves the repaired node as it is.

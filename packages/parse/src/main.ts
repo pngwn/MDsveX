@@ -788,6 +788,8 @@ interface ColdState {
 	pending_html: number;
 	// pending slots below it hold only paragraphs, see revoke_stale_pending
 	np_floor: number;
+	// id and start of each html node a sweep is about to revoke, see revoke_stale_html
+	stale_html: number[];
 	// where the content of the last opened list item starts, a task marker is only read there
 	task_pos: number;
 	// the element a tag paragraph opened at, -1 for none, and whether it is block level
@@ -845,6 +847,7 @@ export class PFMParser {
 		table_rowspans: null,
 		pending_html: 0,
 		np_floor: 0,
+		stale_html: [],
 		task_pos: -1,
 		spec_el: -1,
 		spec_el_block: false,
@@ -1487,12 +1490,7 @@ export class PFMParser {
 			}
 			if (pkind === NodeKind.html) {
 				cold.pending_html--;
-				const pstart = this.pending_starts[pi];
-				this.out.revoke(
-					pid,
-					this.html_open_tag_text(pstart),
-					this.one_shot ? pstart : undefined
-				);
+				cold.stale_html.push(pid, this.pending_starts[pi]);
 			} else {
 				this.out.revoke(pid);
 				if (pkind === NodeKind.directive_inline) {
@@ -1502,6 +1500,35 @@ export class PFMParser {
 		}
 		this.pending_count = write;
 		cold.np_floor = floor < 0 ? write : floor;
+		if (cold.stale_html.length !== 0) this.revoke_stale_html();
+	}
+
+	/** html nodes go last and innermost first, the repair of a tag must find no pending node inside it */
+	private revoke_stale_html(): void {
+		const stale = this.cold.stale_html;
+		const length = stale.length;
+		// ids rise along the pending list unless a swap remove moved one
+		for (let i = 2; i < length; i += 2) {
+			const id = stale[i];
+			const start = stale[i + 1];
+			let j = i;
+			while (j > 0 && stale[j - 2] > id) {
+				stale[j] = stale[j - 2];
+				stale[j + 1] = stale[j - 1];
+				j -= 2;
+			}
+			stale[j] = id;
+			stale[j + 1] = start;
+		}
+		for (let i = length - 2; i >= 0; i -= 2) {
+			const start = stale[i + 1];
+			this.out.revoke(
+				stale[i],
+				this.html_open_tag_text(start),
+				this.one_shot ? start : undefined
+			);
+		}
+		stale.length = 0;
 	}
 
 	/** the first pending slot that may hold a non paragraph, feed trims scan pending nodes from it */
@@ -12539,21 +12566,17 @@ export class PFMParser {
 		}
 
 		// revoke any remaining pending nodes (unclosed html, unclosed emphasis, etc.)
+		const stale_html = this.cold.stale_html;
 		for (let pi = 0; pi < this.pending_count; pi++) {
 			const id = this.pending_ids[pi];
-			const kind = this.kind_of(id);
-			// block-level revocations (html) need the source text for repair
-			if (kind === NodeKind.html) {
-				const start = this.pending_starts[pi];
-				this.out.revoke(
-					id,
-					this.html_open_tag_text(start),
-					this.one_shot ? start : undefined
-				);
+			// an html node goes after what it holds
+			if (this.kind_of(id) === NodeKind.html) {
+				stale_html.push(id, this.pending_starts[pi]);
 			} else {
 				this.out.revoke(id);
 			}
 		}
+		if (stale_html.length !== 0) this.revoke_stale_html();
 		this.pending_count = 0;
 		this.pending_para_count = 0;
 		this.give_back_ids();

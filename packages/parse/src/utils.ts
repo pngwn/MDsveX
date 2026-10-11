@@ -401,6 +401,46 @@ export function merge_meta(
 	}
 }
 
+/** how a child of a revoked element sits in a line, see repair_block_html */
+const enum RepairLevel {
+	block,
+	paragraph,
+	/** inline but no text, tags and breaks */
+	inline,
+	text,
+}
+
+function repair_level(kind: NodeKind): RepairLevel {
+	switch (kind) {
+		case NodeKind.paragraph:
+			return RepairLevel.paragraph;
+		case NodeKind.text:
+		case NodeKind.mustache:
+		case NodeKind.code_span:
+		case NodeKind.emphasis:
+		case NodeKind.strong_emphasis:
+		case NodeKind.link:
+		case NodeKind.image:
+		case NodeKind.strikethrough:
+		case NodeKind.superscript:
+		case NodeKind.subscript:
+		case NodeKind.directive_inline:
+			return RepairLevel.text;
+		case NodeKind.html:
+		case NodeKind.html_comment:
+		case NodeKind.svelte_tag:
+		case NodeKind.hard_break:
+		case NodeKind.soft_break:
+			return RepairLevel.inline;
+		default:
+			return RepairLevel.block;
+	}
+}
+
+function push_all(to: number[], from: number[]): void {
+	for (let i = 0; i < from.length; i++) to.push(from[i]);
+}
+
 export class NodeBuffer {
 	// v8 sizes in-object slots from constructor stores, so every field is
 	// initialized here, not only in alloc, or the tail fields spill out of line
@@ -857,9 +897,9 @@ export class NodeBuffer {
 	 * **inline revocation** (parent is paragraph, emphasis, link, etc.):
 	 *   convert the node to text (the delimiter), reparent children to grandparent.
 	 *
-	 * **block-level revocation** (parent is root, block_quote, list_item):
-	 *   convert the node to a paragraph, create a text child with the raw source.
-	 *   existing children (e.g. line_breaks from html block parsing) are discarded.
+	 * **block level revocation** of an html element under root, block_quote or list_item,
+	 *   its open tag is text in the paragraph of its line and its children
+	 *   move up to the parent, see repair_block_html
 	 *
 	 * @param index buffer index of the node to repair.
 	 * @param delimiter_text optional pre-resolved delimiter string (wire path).
@@ -891,93 +931,20 @@ export class NodeBuffer {
 			return;
 		}
 
-		// block-level repair
-		// if the parent is a block container, the revoked node (typically an
-		// unclosed html block) is replaced by a paragraph containing the literal
-		// open-tag text. children that were parsed inside are reparented to the
-		// grandparent so already-recognized structure is preserved.
-		if (
+		const at_block_level =
 			parent_kind === NodeKind.root ||
 			parent_kind === NodeKind.block_quote ||
-			parent_kind === NodeKind.list_item
-		) {
-			const start = this.start_at(index);
-			let end: number;
+			parent_kind === NodeKind.list_item;
 
-			if (delimiter_text !== undefined) {
-				// wire path: delimiter_text is the literal open-tag source
-				end = start + delimiter_text.length;
-			} else {
-				// source path: prefer the node's recorded end; fall back to the
-				// nearest meaningful child position so we never collapse to start.
-				end = this.end_at(index);
-				if (end === 0xffffffff) {
-					let child = this.first_child_at(index);
-					while (child !== 0xffffffff && this.parent_at(child) === index) {
-						if (this.kind_at(child) === NodeKind.line_break) {
-							const lb_start = this.start_at(child);
-							if (lb_start > 0 && (end === 0xffffffff || lb_start > end)) {
-								end = lb_start;
-							}
-						} else {
-							const child_end = this.end_at(child);
-							if (
-								child_end !== 0xffffffff &&
-								(end === 0xffffffff || child_end > end)
-							) {
-								end = child_end;
-							}
-						}
-						child = this.next_at(child);
-					}
-				}
-				if (end === 0xffffffff || end <= start) {
-					this.unwrap_node(index);
-					return;
-				}
-			}
+		// frontmatter with no closing fence, the parser reads its lines again as blocks
+		if (kind === NodeKind.frontmatter && at_block_level) {
+			this.unwrap_node(index);
+			return;
+		}
 
-			// reparent children to the grandparent so trailing parsed content
-			// (e.g. block elements that followed the unclosed open tag) is kept.
-			const child_chain = this.first_child_at(index);
-			this.set_first_child(index, 0xffffffff);
-			this.set_last_child(index, 0xffffffff);
-
-			// convert this node into a paragraph holding the literal open-tag text.
-			this.set_kind(index, NodeKind.paragraph);
-			this.delete_metadata(index);
-			this.set_end(index, end);
-
-			const text_idx = this.push(NodeKind.text, start, index);
-			this.set_value(text_idx, start, end);
-			this.set_end(text_idx, end);
-			if (delimiter_text !== undefined && text_start !== start) {
-				this.own_strings()[text_idx] = delimiter_text;
-			}
-
-			// splice the original children in after the rewritten node so they
-			// appear as siblings under the parent.
-			if (child_chain !== 0xffffffff) {
-				const original_next = this.next_at(index);
-				let last_child = child_chain;
-				let scan = child_chain;
-				while (scan !== 0xffffffff && this.parent_at(scan) === index) {
-					this.set_parent(scan, parent);
-					last_child = scan;
-					scan = this.next_at(scan);
-				}
-				this.set_next(last_child, original_next);
-				if (original_next !== 0xffffffff) {
-					this.set_prev(original_next, last_child);
-				} else if (
-					parent !== 0xffffffff &&
-					this.last_child_at(parent) === index
-				) {
-					this.set_last_child(parent, last_child);
-				}
-				this.set_next(index, child_chain);
-				this.set_prev(child_chain, index);
-			}
+		// only an element holds blocks, any other node here lost its paragraph and is its delimiter
+		if (kind === NodeKind.html && at_block_level) {
+			this.repair_block_html(index, delimiter_text, text_start);
 			return;
 		}
 
@@ -1078,13 +1045,7 @@ export class NodeBuffer {
 			);
 			this.set_end(index, this.end_at(first_child));
 
-			// skip the child in the sibling chain
-			const after = this.next_at(first_child);
-			this.set_next(index, after);
-			if (after !== 0xffffffff) {
-				this.set_prev(after, index);
-			}
-
+			// the child drops out, the node keeps the siblings it has
 			this.set_first_child(index, 0xffffffff);
 			this.set_last_child(index, 0xffffffff);
 			return;
@@ -1092,6 +1053,8 @@ export class NodeBuffer {
 
 		// insert converted node as sibling before first_child, reparent rest
 		const first_child_prev = this.prev_at(first_child);
+		// a paragraph that lost its wrapper leaves a sibling after the node
+		const node_next = this.sibling(index, parent, true);
 
 		this.set_next(index, first_child);
 		this.set_prev(first_child, index);
@@ -1101,7 +1064,10 @@ export class NodeBuffer {
 			this.set_prev(index, first_child_prev);
 		}
 
-		if (this.last_child_at(parent) === index) {
+		this.set_next(last_child, node_next);
+		if (node_next !== 0xffffffff) {
+			this.set_prev(node_next, last_child);
+		} else if (this.last_child_at(parent) === index) {
 			this.set_last_child(parent, last_child);
 		}
 
@@ -1126,6 +1092,204 @@ export class NodeBuffer {
 		if (kind === NodeKind.link) return start + 1;
 		if (kind === NodeKind.image) return start + 2;
 		return 0xffffffff;
+	}
+
+	/**
+	 * an element revoked under a block container is the text of its open tag
+	 * that text shares one paragraph with the inline nodes of its line, the
+	 * bare siblings around it and its children up to the first block
+	 * a later run of inline children lost its paragraph inside a phrasing
+	 * element, it gets one again when it holds text
+	 */
+	private repair_block_html(
+		index: number,
+		delimiter_text?: string,
+		text_start?: number
+	): void {
+		const parent = this.parent_at(index);
+		const start = this.start_at(index);
+		const first = this.first_child_at(index);
+
+		let end: number;
+		if (delimiter_text !== undefined) {
+			end = start + delimiter_text.length;
+		} else {
+			// no tag text, it runs to the first child or to the recorded end
+			end = first !== 0xffffffff ? this.start_at(first) : this.end_at(index);
+			if (end === 0xffffffff || end <= start) {
+				this.unwrap_node(index);
+				return;
+			}
+		}
+
+		// inline nodes since the last block, the first run is the line of the tag
+		let run: number[] = [];
+		let before = this.sibling(index, parent, false);
+		while (
+			before !== 0xffffffff &&
+			repair_level(this.kind_at(before)) >= RepairLevel.inline
+		) {
+			run.push(before);
+			before = this.sibling(before, parent, false);
+		}
+		run.reverse();
+		const tag_at = run.length;
+		run.push(index);
+		let has_text = true;
+		let lead = true;
+
+		// what takes the place of the element and those siblings under the parent
+		const moved: number[] = [];
+		let after = this.sibling(index, parent, true);
+		this.set_first_child(index, 0xffffffff);
+		this.set_last_child(index, 0xffffffff);
+		this.delete_metadata(index);
+
+		let child = first;
+		while (child !== 0xffffffff && this.parent_at(child) === index) {
+			const next = this.next_at(child);
+			const level = repair_level(this.kind_at(child));
+			if (level >= RepairLevel.inline) {
+				run.push(child);
+				if (level === RepairLevel.text) has_text = true;
+			} else {
+				if (level === RepairLevel.paragraph && run.length !== 0) {
+					// no line break since the run, so it is the start of this paragraph
+					if (lead)
+						this.tag_text(index, start, end, delimiter_text, text_start);
+					this.set_start(child, this.start_at(run[0]));
+					this.adopt(child, run, true);
+				} else {
+					if (lead)
+						this.tag_paragraph(run, tag_at, end, delimiter_text, text_start);
+					else this.run_paragraph(run, has_text);
+					push_all(moved, run);
+				}
+				moved.push(child);
+				run = [];
+				has_text = false;
+				lead = false;
+			}
+			child = next;
+		}
+		// the rest of the paragraph the tag opened in
+		while (
+			after !== 0xffffffff &&
+			repair_level(this.kind_at(after)) >= RepairLevel.inline
+		) {
+			if (repair_level(this.kind_at(after)) === RepairLevel.text)
+				has_text = true;
+			run.push(after);
+			after = this.sibling(after, parent, true);
+		}
+		if (lead) this.tag_paragraph(run, tag_at, end, delimiter_text, text_start);
+		else this.run_paragraph(run, has_text);
+		push_all(moved, run);
+
+		for (let i = 0; i < moved.length; i++) {
+			const node = moved[i];
+			this.set_parent(node, parent);
+			this.set_prev(node, i === 0 ? before : moved[i - 1]);
+			this.set_next(node, i + 1 < moved.length ? moved[i + 1] : after);
+		}
+		const last = moved[moved.length - 1];
+		if (before === 0xffffffff) this.set_first_child(parent, moved[0]);
+		else this.set_next(before, moved[0]);
+		if (after === 0xffffffff) this.set_last_child(parent, last);
+		else this.set_prev(after, last);
+	}
+
+	/** the next or previous sibling under parent, a stale link is none */
+	private sibling(index: number, parent: number, forward: boolean): number {
+		if (forward) {
+			const next = this.next_at(index);
+			if (next !== 0xffffffff && this.parent_at(next) !== parent) {
+				return 0xffffffff;
+			}
+			return next;
+		}
+		if (this.first_child_at(parent) === index) return 0xffffffff;
+		const prev = this.prev_at(index);
+		if (prev !== 0xffffffff && this.parent_at(prev) !== parent) {
+			return 0xffffffff;
+		}
+		return prev;
+	}
+
+	/**
+	 * the element at run[tag_at] becomes the paragraph of its line and a new
+	 * node holds its tag text, on return the run is that paragraph
+	 */
+	private tag_paragraph(
+		run: number[],
+		tag_at: number,
+		tag_end: number,
+		delimiter_text?: string,
+		text_start?: number
+	): void {
+		const para = run[tag_at];
+		const start = this.start_at(para);
+		this.set_kind(para, NodeKind.paragraph);
+		this.set_start(para, this.start_at(run[0]));
+		const text = this.push(NodeKind.text, start);
+		this.tag_text(text, start, tag_end, delimiter_text, text_start);
+		run[tag_at] = text;
+		this.wrap_run(para, run);
+	}
+
+	/** a run with text gets a paragraph, on return it is what goes under the parent */
+	private run_paragraph(run: number[], has_text: boolean): void {
+		// only tags, a paragraph of those keeps no wrapper
+		if (run.length === 0 || !has_text) return;
+		this.wrap_run(this.push(NodeKind.paragraph, this.start_at(run[0])), run);
+	}
+
+	/** the run becomes the children of para and para takes its place in the run */
+	private wrap_run(para: number, run: number[]): void {
+		// a break has no end of its own
+		let end = this.start_at(run[run.length - 1]);
+		for (let i = 0; i < run.length; i++) {
+			const node_end = this.end_at(run[i]);
+			if (node_end !== 0xffffffff && node_end > end) end = node_end;
+		}
+		this.set_end(para, end);
+		this.adopt(para, run, false);
+		run.length = 1;
+		run[0] = para;
+	}
+
+	/** make a node the text of an open tag */
+	private tag_text(
+		index: number,
+		start: number,
+		end: number,
+		delimiter_text?: string,
+		text_start?: number
+	): void {
+		this.set_kind(index, NodeKind.text);
+		this.set_value(index, start, end);
+		this.set_end(index, end);
+		if (delimiter_text !== undefined && text_start !== start) {
+			this.own_strings()[index] = delimiter_text;
+		}
+	}
+
+	/** link nodes, in order, as the first or the last children of a parent */
+	private adopt(parent: number, nodes: number[], at_start: boolean): void {
+		const count = nodes.length;
+		if (count === 0) return;
+		const before = at_start ? 0xffffffff : this.last_child_at(parent);
+		const after = at_start ? this.first_child_at(parent) : 0xffffffff;
+		for (let i = 0; i < count; i++) {
+			const node = nodes[i];
+			this.set_parent(node, parent);
+			this.set_prev(node, i === 0 ? before : nodes[i - 1]);
+			this.set_next(node, i + 1 < count ? nodes[i + 1] : after);
+		}
+		if (before === 0xffffffff) this.set_first_child(parent, nodes[0]);
+		else this.set_next(before, nodes[0]);
+		if (after === 0xffffffff) this.set_last_child(parent, nodes[count - 1]);
+		else this.set_prev(after, nodes[count - 1]);
 	}
 
 	repair(): void {
@@ -1261,6 +1425,10 @@ export class NodeBuffer {
 
 	start_at(index: number): number {
 		return this._n[index * NodeField.stride + NodeField.start];
+	}
+
+	set_start(index: number, start: number): void {
+		this._n[index * NodeField.stride + NodeField.start] = start >>> 0;
 	}
 
 	/** 0xffffffff while open */

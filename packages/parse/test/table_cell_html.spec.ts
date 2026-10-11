@@ -521,15 +521,14 @@ describe('a bracket that is no link', () => {
 		revoked_once('a :y[b\n\nc\n');
 	});
 
-	// the text after an unclosed tag has no paragraph, with a bracket or without
 	test('adds no paragraph after an unclosed tag', () => {
 		expect(every_path('<span>[a] b\n')).toBe(
 			lines(
 				'root',
 				'  paragraph',
 				'    text "<span>"',
-				'  text "[a"',
-				'  text "] b"',
+				'    text "[a"',
+				'    text "] b"',
 				'  line_break'
 			)
 		);
