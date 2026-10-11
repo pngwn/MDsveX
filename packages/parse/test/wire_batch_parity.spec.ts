@@ -38,7 +38,7 @@ describe('an image left open', () => {
 	});
 });
 
-describe('a pipe outside a table after a delimiter left open', () => {
+describe('a pipe outside a table after an emphasis mark left open', () => {
 	it('is not text when the line ends at it', () => {
 		expect(tree('*|\n')).toEqual(['root', ['paragraph', 'text:*']]);
 		expect(tree('x ~~|\n')).toEqual(['root', ['paragraph', 'text:x ~~']]);
@@ -46,20 +46,29 @@ describe('a pipe outside a table after a delimiter left open', () => {
 	});
 
 	it('is not text before a line end inside the delimiter', () => {
-		expect(tree('x [|\nb')).toEqual([
-			'root',
-			['paragraph', 'text:x [', 'soft_break', 'text:b'],
-		]);
 		expect(tree('x *|\nb')).toEqual([
 			'root',
 			['paragraph', 'text:x *', 'soft_break', 'text:b'],
 		]);
 	});
 
-	it('is not text before a node inside the delimiter', () => {
+	it('is not text before a node inside a bracket left open', () => {
 		expect(tree('[|*a* b')).toEqual([
 			'root',
 			['paragraph', 'text:[', ['strong_emphasis', 'text:a'], 'text: b'],
+		]);
+	});
+});
+
+describe('a pipe outside a table after a bracket left open', () => {
+	it('is text', () => {
+		expect(tree('x [|\nb')).toEqual([
+			'root',
+			['paragraph', 'text:x [|', 'soft_break', 'text:b'],
+		]);
+		expect(tree('[| *a* b')).toEqual([
+			'root',
+			['paragraph', 'text:[| ', ['strong_emphasis', 'text:a'], 'text: b'],
 		]);
 	});
 });
@@ -69,8 +78,12 @@ describe('trailing space trimmed after an earlier text run', () => {
 		expect(tree('# a\\*b \n')).toEqual(['root', ['heading', 'text:a*b']]);
 	});
 
-	it('keeps the text before a pipe in a heading', () => {
-		expect(tree('# a|b ')).toEqual(['root', ['heading', 'text:ab']]);
+	it('keeps the text before a marker pipe in a heading', () => {
+		expect(tree('# a*|b ')).toEqual(['root', ['heading', 'text:a*b']]);
+	});
+
+	it('keeps a pipe that is text in a heading', () => {
+		expect(tree('# a|b ')).toEqual(['root', ['heading', 'text:a|b']]);
 	});
 
 	it('keeps both tildes of a heading', () => {
