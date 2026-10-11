@@ -1155,6 +1155,28 @@ describe('a tag at the start of a line matches batch however it is fed', () => {
 		['expression in a block quote', '> {x}\n'],
 	]);
 
+	it('keeps the spaces after a tag alone on its line, as after a row of tags', () => {
+		const printed = (input: string) => print_ast(parse_batch(input), input);
+		expect(printed('<Chart /> \n')).toBe(
+			[
+				'root',
+				'  html tag="Chart" self_closing=true',
+				'  text " "',
+				'  line_break',
+			].join('\n')
+		);
+		expect(printed('<Chart /> <Legend /> \n')).toBe(
+			[
+				'root',
+				'  html tag="Chart" self_closing=true',
+				'  text " "',
+				'  html tag="Legend" self_closing=true',
+				'  text " "',
+				'  line_break',
+			].join('\n')
+		);
+	});
+
 	it('a { in a block quote opens no paragraph until it can be a {@tag', () => {
 		const rec = new OpRecorder();
 		const p = new PFMParser(rec);
