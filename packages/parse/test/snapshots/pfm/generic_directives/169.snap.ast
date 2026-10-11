@@ -1,0 +1,11 @@
+root
+  block_quote
+    directive_leaf name="toc" args.a="1"
+      directive_label
+        text "x"
+    heading depth=1 "h"
+      text "h"
+    directive_leaf name="toc"
+    thematic_break
+    directive_leaf name="toc"
+  line_break

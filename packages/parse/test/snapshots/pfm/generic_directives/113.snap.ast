@@ -5,3 +5,4 @@ root
         strong_emphasis
           text "quoted"
         text " text"
+  line_break

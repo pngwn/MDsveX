@@ -592,6 +592,70 @@ describe('directive incremental behavior', () => {
 		}
 	});
 
+	describe('a leaf in a block quote matches batch however it is fed', () => {
+		const cases: [string, string][] = [
+			['quoted line', '> ::toc[]\n> text\n'],
+			['two leaves', '> ::toc[x]\n> ::toc[y]\n'],
+			['two levels', '> > ::toc[]\n> > text\n'],
+			['unmarked line', '> ::toc[]\ntext\n'],
+			['blank quoted line', '> ::toc[]\n>\n> text\n'],
+			['one marker fewer', '> > ::toc[]\n> text\n'],
+			['one marker more', '> ::toc[]\n> > text\n'],
+			['args', '> ::toc[x](a=1)  \n> text\n'],
+			['list item', '> - ::toc[]\n>   text\n> - b\n'],
+			['container', '> :::box[]\n> ::toc[]\n> text\n> :::\n> after\n'],
+			['no linefeed', '> ::toc[]'],
+			['ends at the marker', '> ::toc[]\n>'],
+		];
+		for (const [name, input] of cases) {
+			for (const size of [1, 2, 3]) {
+				it(`${name} chunk size ${size}`, () => {
+					const batch = parse_batch(input);
+					const incr = parse_incremental(input, size);
+					expect(tree_diff(batch, incr, input)).toEqual([]);
+					expect(print_ast(incr, input)).toBe(print_ast(batch, input));
+				});
+			}
+			it(`${name} at every split offset`, () => {
+				const batch = parse_batch(input);
+				const printed = print_ast(batch, input);
+				for (let at = 1; at < input.length; at++) {
+					const tree = new TreeBuilder(input.length);
+					const parser = new PFMParser(tree);
+					parser.init();
+					parser.feed(input.slice(0, at));
+					parser.feed(input.slice(at));
+					parser.finish();
+					const incr = tree.get_buffer();
+					expect(tree_diff(batch, incr, input), `split at ${at}`).toEqual([]);
+					expect(print_ast(incr, input), `split at ${at}`).toBe(printed);
+				}
+			});
+		}
+	});
+
+	it('closes a quoted leaf at its linefeed and opens the next line in the same quote', () => {
+		const rec = new OpRecorder();
+		const p = new PFMParser(rec);
+		p.init();
+
+		p.feed('> ::toc[]');
+		expect(opens_of(rec, 'directive_leaf').length).toBe(0);
+
+		p.feed('\n');
+		const leaf = opens_of(rec, 'directive_leaf')[0];
+		expect(leaf).toBeDefined();
+		expect(closes_for(rec, leaf.id).length).toBe(1);
+
+		p.feed('> te');
+		expect(opens_of(rec, 'block_quote').length).toBe(1);
+		expect(opens_of(rec, 'paragraph').length).toBe(1);
+
+		p.feed('xt\n');
+		p.finish();
+		expect(opens_of(rec, 'block_quote').length).toBe(1);
+	});
+
 	it('revokes an unclosed directive at a paragraph boundary', () => {
 		const rec = new OpRecorder();
 		const p = new PFMParser(rec);

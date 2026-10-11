@@ -11,7 +11,9 @@ import {
 } from '../src/main';
 import type { Emitter } from '../src/opcodes';
 import type { ParsePlugin } from '../src/plugin_types';
+import { TreeBuilder } from '../src/tree_builder';
 import { kind_to_string } from '../src/utils';
+import { WireTreeBuilder } from '../src/wire_tree_builder';
 
 /** Find first child of a given kind under a node. */
 const find_child = (
@@ -251,6 +253,181 @@ describe('leaf block directives', () => {
 		const directive = find_child(nodes, bq!.index, 'directive_leaf');
 		expect(directive).not.toBeNull();
 		expect(directive!.metadata.name).toBe('note');
+	});
+
+	describe('the line after a leaf in a block quote', () => {
+		const MERGE = { merge_text: true };
+		const leaf = (text?: string) =>
+			text === undefined
+				? 'directive_leaf'
+				: ['directive_leaf', ['directive_label', 'text:' + text]];
+		const para = (text: string) => ['paragraph', 'text:' + text];
+
+		/** both builders fed the source as the two pieces around `at` */
+		const split_trees = (source: string, at: number) => {
+			const tree = new TreeBuilder(source.length);
+			const batch = new PFMParser(tree);
+			batch.init();
+			batch.feed(source.slice(0, at));
+			batch.feed(source.slice(at));
+			batch.finish();
+
+			const emitter = new WireEmitter();
+			const wire = new PFMParser(emitter);
+			const builder = new WireTreeBuilder(128);
+			wire.init();
+			emitter.set_source(source.slice(0, at));
+			wire.feed(source.slice(0, at));
+			builder.apply(emitter.flush());
+			emitter.set_source(source);
+			wire.feed(source.slice(at));
+			wire.finish();
+			builder.apply(emitter.flush());
+			return [
+				shape(tree.get_buffer(), source, 0, MERGE),
+				shape(builder.get_buffer(), null, 0, MERGE),
+			];
+		};
+
+		const cases: [string, string, unknown][] = [
+			[
+				'a quoted line stays in the quote',
+				'> ::toc[]\n> text\n',
+				['root', ['block_quote', leaf(), para('text')]],
+			],
+			[
+				'two leaves are siblings',
+				'> ::toc[x]\n> ::toc[y]\n',
+				['root', ['block_quote', leaf('x'), leaf('y')]],
+			],
+			[
+				'two levels deep',
+				'> > ::toc[]\n> > text\n',
+				['root', ['block_quote', ['block_quote', leaf(), para('text')]]],
+			],
+			[
+				'an unmarked line ends the quote',
+				'> ::toc[]\ntext\n',
+				['root', ['block_quote', leaf()], para('text')],
+			],
+			[
+				'a blank quoted line opens nothing',
+				'> ::toc[]\n>\n> text\n',
+				['root', ['block_quote', leaf(), para('text')]],
+			],
+			[
+				'one marker fewer ends the inner quote',
+				'> > ::toc[]\n> text\n',
+				['root', ['block_quote', ['block_quote', leaf()], para('text')]],
+			],
+			[
+				'one marker more opens one quote',
+				'> ::toc[]\n> > text\n',
+				['root', ['block_quote', leaf(), ['block_quote', para('text')]]],
+			],
+			[
+				'a marker with no space',
+				'>::toc[]\n>text\n',
+				['root', ['block_quote', leaf(), para('text')]],
+			],
+			[
+				'args and trailing spaces',
+				'> ::toc[x](a=1)  \n> text\n',
+				['root', ['block_quote', leaf('x'), para('text')]],
+			],
+			[
+				'other blocks follow',
+				'> ::toc[]\n> # h\n> ::toc[]\n> ---\n> ::toc[]\n',
+				[
+					'root',
+					[
+						'block_quote',
+						leaf(),
+						['heading', 'text:h'],
+						leaf(),
+						'thematic_break',
+						leaf(),
+					],
+				],
+			],
+			[
+				'in a list item',
+				'> - ::toc[]\n>   text\n> - b\n',
+				[
+					'root',
+					[
+						'block_quote',
+						[
+							'list',
+							['list_item', leaf(), 'text:text'],
+							['list_item', 'text:b'],
+						],
+					],
+				],
+			],
+			[
+				'a line at the list marker ends the list',
+				'> - ::toc[]\n> text\n',
+				[
+					'root',
+					['block_quote', ['list', ['list_item', leaf()]], para('text')],
+				],
+			],
+			[
+				'in a container',
+				'> :::box[]\n> ::toc[]\n> text\n> :::\n> after\n',
+				[
+					'root',
+					[
+						'block_quote',
+						['directive_container', leaf(), para('text')],
+						para('after'),
+					],
+				],
+			],
+			[
+				'an unmarked line ends a container too',
+				'> :::box[]\n> ::toc[]\nout\n',
+				['root', ['block_quote', ['directive_container', leaf()]], para('out')],
+			],
+			[
+				'a quote inside a list item',
+				'- > ::toc[]\n  > text\n',
+				[
+					'root',
+					['list', ['list_item', ['block_quote', leaf(), para('text')]]],
+				],
+			],
+			['ends at the marker', '> ::toc[]\n>', ['root', ['block_quote', leaf()]]],
+		];
+
+		for (const [name, input, tree] of cases) {
+			test(`${name}: ${JSON.stringify(input)}`, () => {
+				// batch and wire, whole and fed 7 and 1
+				expect(expect_parity(input, () => [])).toEqual(tree);
+				for (const chunk of [2, 3]) {
+					const fed = run_batch(input, undefined, chunk);
+					expect(shape(fed.nodes, input, 0, MERGE)).toEqual(tree);
+					const wire = run_wire(input, undefined, chunk);
+					expect(shape(wire.nodes, null, 0, MERGE)).toEqual(tree);
+				}
+				for (let at = 1; at < input.length; at++) {
+					const [batch, wire] = split_trees(input, at);
+					expect(batch, `batch split at ${at}`).toEqual(tree);
+					expect(wire, `wire split at ${at}`).toEqual(tree);
+				}
+			});
+		}
+
+		test('the leaf ends before its linefeed, as its siblings in the quote do', () => {
+			const input = '> ::toc[]\n> ---\n';
+			const { nodes } = parse_markdown_svelte(input);
+			const bq = find_child(nodes, nodes.get_node().index, 'block_quote')!;
+			const leaf_node = find_child(nodes, bq.index, 'directive_leaf')!;
+			const rule = find_child(nodes, bq.index, 'thematic_break')!;
+			expect(input.slice(leaf_node.start, leaf_node.end)).toBe('::toc[]');
+			expect(input.slice(rule.start, rule.end)).toBe('---');
+		});
 	});
 });
 

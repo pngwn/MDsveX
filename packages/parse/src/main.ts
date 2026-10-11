@@ -2683,6 +2683,16 @@ export class PFMParser {
 			this.directive_label(d_id, dir.content_start, dir.content_end);
 		}
 		if (dir.kind === 'leaf') {
+			if (
+				this.block_quote_depth > 0 &&
+				char_code_at.call(this.source, dir.end - 1 - this.source_base) ===
+					LINEFEED
+			) {
+				// the lf stays for the enclosing frame, it strips the next line's markers or ends the quote
+				this.emit_close(d_id, dir.end - 1);
+				this.chomp(dir.end - 1, true);
+				return;
+			}
 			this.emit_close(d_id, dir.end);
 		} else {
 			this.node_stack.push(d_id);

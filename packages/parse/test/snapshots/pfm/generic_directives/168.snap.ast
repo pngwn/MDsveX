@@ -1,0 +1,11 @@
+root
+  block_quote
+    directive_container name="box"
+      directive_leaf name="toc"
+      line_break
+      paragraph
+        text "text"
+      line_break
+    paragraph
+      text "after"
+  line_break
