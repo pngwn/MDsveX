@@ -809,6 +809,38 @@ describe('directive incremental behavior', () => {
 		]);
 	});
 
+	describe('a backslash at a line end matches batch however it is fed', () => {
+		fed_cases([
+			['blank line', 'x\\\n\ny\n'],
+			['heading', 'x\\\n# h\n'],
+			['thematic break', 'x\\\n---\n'],
+			['code fence', 'x\\\n```\ncode\n```\n'],
+			['list', 'x\\\n- a\n'],
+			['next list item', '- a\\\n- b\n'],
+			['blank line in a list item', '- a\\\n\n  b\n'],
+			['strong emphasis over a blank line', '**x\\\n\ny**\n'],
+			['quote then unmarked blank line', '> a\\\n\nb\n'],
+			['quote then blank marked line', '> a\\\n>\n> b\n'],
+			['quote then heading', '> a\\\n> # h\n'],
+			['quote then marked text', '> a\\\n> b\n'],
+			['heading line', '# h\\\ny\n'],
+			['table row', '| a |\n| - |\n| b\\\n| c |\n'],
+			['svelte block close', '{#if a}\nx\\\n{/if}\n'],
+			['after a code span', '`a`\\\n# h\n'],
+			['text', 'x\\\ny\n'],
+			['two breaks', 'x\\\n\\\ny\n'],
+			['block directive label', '::toc[a\\\n# b]\n'],
+			['label then the container close', ':::box[x\\\n:::]\n'],
+			['ends at the linefeed', 'x\\\n'],
+			['ends at the backslash', 'x\\'],
+			['tag paragraph over a blank line', '<br>`\\\n\na<div>`'],
+			[
+				'tag paragraph from the fuzz',
+				'<br></i>`\\\n\n</Tabs>\\a<div> \n<Chart />[\\`\n',
+			],
+		]);
+	});
+
 	describe('a leaf in a list item matches batch however it is fed', () => {
 		fed_cases([
 			['line at the marker', '- ::toc[]\ntext\n'],
