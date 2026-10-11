@@ -72,6 +72,59 @@ describe('a steps bundle', () => {
 		expect(session.compile(DOC, { plugins, sourcemap: true }).code).toBe(plain);
 	});
 
+	test('the handlers fire for the container written without brackets', () => {
+		const bare = DOC.replace(':::steps[]', ':::steps');
+		expect(bare).not.toBe(DOC);
+		const log: string[] = [];
+		const { code } = compile(bare, { plugins: [steps(log)] });
+		expect(log).toEqual(['heading 0', 'heading 1']);
+		expect(imports_of(code)).toBe(
+			`import { steps as Steps_MDSVEX_D_G, step as Step_MDSVEX_D_G } from '${STEPS_MODULE}';\n`
+		);
+		expect(body(code)).toBe(STEPS_BODY);
+		svelte_compile(code, { generate: 'client' });
+
+		const plugins = [steps()];
+		expect(compile(bare, { plugins, sourcemap: true }).code).toBe(code);
+		const session = new CompilerSession();
+		expect(session.compile(bare, { plugins }).code).toBe(code);
+		expect(session.compile(bare, { plugins, sourcemap: true }).code).toBe(code);
+	});
+
+	test('bare containers scope the handlers as bracketed ones do', () => {
+		const pairs = [
+			':::steps[]\n## Only\n:::\n',
+			'::::steps[]\n## A\n\n:::steps[]\n## A1\n:::\n\n## B\n::::\n',
+			':::steps[]\n## Unclosed\n\ntext',
+			'## Out\n\n:::steps[]\n> ## Quoted\n\n## In\n:::\n',
+			':::steps[](a=1)\n## One\n:::\n\n## After\n',
+		];
+		for (const bracketed of pairs) {
+			const bare = bracketed.replaceAll('[]', '');
+			const a: string[] = [];
+			const b: string[] = [];
+			expect(compile(bare, { plugins: [steps(a)] }).code, bare).toBe(
+				compile(bracketed, { plugins: [steps(b)] }).code
+			);
+			expect(a, bare).toEqual(b);
+			expect(a.length, bare).toBeGreaterThan(0);
+		}
+	});
+
+	test('an unknown bare directive beside a bundle is still an error', () => {
+		const e = (() => {
+			try {
+				compile('text\n\n:::other\nbody\n:::\n', { plugins: [steps()] });
+			} catch (err) {
+				return err as DirectiveError;
+			}
+			throw new Error('did not throw');
+		})();
+		expect(e).toBeInstanceOf(DirectiveError);
+		expect(e.directive).toBe(':::other');
+		expect([e.line, e.column]).toEqual([3, 1]);
+	});
+
 	test('the long form gives the same tree without the handlers', () => {
 		const long =
 			':::::steps[]\n\nintro\n\n::::step[## One]\nfirst\n::::\n\n::::step[## Two]\nsecond\n::::\n:::::\n\nafter\n';
