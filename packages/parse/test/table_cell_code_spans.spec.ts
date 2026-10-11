@@ -146,13 +146,13 @@ describe('a lone backtick in a padded two backtick span in a table cell', () => 
 	test('after a hint too', () => {
 		both('b``#!js   `', [
 			'text "b"',
-			'text info="js" "``"',
+			'text "``"',
 			'text "#"',
 			'text "!js   "',
 			'text "`"',
 		]);
 		both('``#!js  a `', [
-			'text info="js" "``"',
+			'text "``"',
 			'text "#"',
 			'text "!js  a "',
 			'text "`"',
