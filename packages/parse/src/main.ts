@@ -12035,12 +12035,16 @@ export class PFMParser {
 		this.source = string_slice.call(this.source, 0, end - this.source_base);
 		this.source_end = this.source_base + this.source.length;
 		this.inline_range_parse = true;
+		// a close tag in the range would close an element opened before it and the cell around the range
+		const save_tags = this.html_tag_stack;
+		if (save_tags.length !== 0) this.html_tag_stack = [];
 
 		this._run();
 
 		this.source = save_source;
 		this.source_end = save_end;
 		this.inline_range_parse = false;
+		this.html_tag_stack = save_tags;
 
 		// unwind anything left above the sentinel
 		while (this.states.length > sentinel) {

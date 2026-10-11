@@ -135,6 +135,108 @@ describe('an html element left open in a table cell', () => {
 	});
 });
 
+describe('a close tag in a header cell', () => {
+	test('for an element opened before the table is text', () => {
+		expect(checked_tree('<div>\n|</div>\n-')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "<div>"',
+				'  line_break',
+				'  table alignments=["none"] col_count=1',
+				'    table_header',
+				'      table_cell',
+				'        text "</div>"'
+			)
+		);
+	});
+
+	test('for an element opened on the header line before the first pipe', () => {
+		expect(checked_tree('<span>|<span>|</span>\n-|-')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "<span>"',
+				'  table alignments=["none","none"] col_count=2',
+				'    table_header',
+				'      table_cell',
+				'        text tag="span" "<span>"',
+				'      table_cell',
+				'        text "</span>"'
+			)
+		);
+	});
+
+	test('the element still closes after the table', () => {
+		expect(
+			checked_tree('<div>\n| a </div> b |\n|---|\n| c |\n</div>\n\nd\n')
+		).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    table alignments=["none"] col_count=1',
+				'      table_header',
+				'        table_cell',
+				'          text "a "',
+				'          text "</div> b"',
+				'      table_row',
+				'        table_cell',
+				'          text "c"',
+				'      table_row',
+				'        table_cell',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "d"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('the element still closes from a body row', () => {
+		expect(checked_tree('<span>|<span>|</span>\n-|-\n|</span> x\n')).toBe(
+			lines(
+				'root',
+				'  html tag="span"',
+				'    table alignments=["none","none"] col_count=2',
+				'      table_header',
+				'        table_cell',
+				'          text tag="span" "<span>"',
+				'        table_cell',
+				'          text "</span>"',
+				'      table_row',
+				'        table_cell',
+				'        table_cell',
+				'  paragraph',
+				'    text "x"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('an element opened in the cell closes in it', () => {
+		expect(
+			checked_tree('<div>\n\n| <b>x</b> </div> |\n|---|\n\n</div>\n')
+		).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    line_break',
+				'    table alignments=["none"] col_count=1',
+				'      table_header',
+				'        table_cell',
+				'          html tag="b"',
+				'            text "x"',
+				'          text "</div>"',
+				'    line_break',
+				'  line_break'
+			)
+		);
+	});
+});
+
 // an escaped pipe in a cell breaks the stream another way
 const CELL_PIECES = [
 	'<span>',
@@ -168,6 +270,8 @@ const CELL_PIECES = [
 
 const DELIMITER_ROWS = ['---', '|-|', '|-|-|', '-|-'];
 
+const LEADS = ['', '', '', '', '<span>', '<div>\n', '<b>\n'];
+
 function cells(rand: () => number): string {
 	let row = '';
 	const length = Math.floor(rand() * 7);
@@ -176,8 +280,9 @@ function cells(rand: () => number): string {
 }
 
 function table(rand: () => number): string {
-	// a leading pipe, a tag before it would open an element around the table
-	let source = `|${cells(rand)}\n${pick(rand, DELIMITER_ROWS)}\n`;
+	let source = pick(rand, LEADS);
+	if (rand() < 0.7) source += '|';
+	source += `${cells(rand)}\n${pick(rand, DELIMITER_ROWS)}\n`;
 	const rows = Math.floor(rand() * 4);
 	for (let r = 0; r < rows; r++) {
 		source += `${rand() < 0.7 ? '|' : ''}${cells(rand)}\n`;
