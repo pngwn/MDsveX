@@ -5,7 +5,7 @@ import { PluginDispatcher } from '../src/plugin_dispatch';
 import { WireTextSource } from '../src/node_view';
 import { WireTreeBuilder } from '../src/wire_tree_builder';
 import { NodeBuffer, kind_to_string } from '../src/utils';
-import { expect_parity, run_wire, shape } from './plugin_harness';
+import { expect_parity } from './plugin_harness';
 
 /** the batches of a document fed a character at a time, without the finish when cut short */
 function batches_of(source: string, finish = true): unknown[][][] {
@@ -183,11 +183,8 @@ describe('WireTreeBuilder text after a revoked link', () => {
 		]);
 	});
 
-	// the batch builder loses the bracket of the image, so only the wire is read
-	it.each([0, 7, 1])('keeps the text after an image fed %i', (chunk) => {
-		const out = run_wire('x ![] more\n', undefined, chunk);
-
-		expect(shape(out.nodes, out.source, 0, { merge_text: true })).toEqual([
+	it('keeps the text after an image', () => {
+		expect(expect_parity('x ![] more\n', () => [])).toEqual([
 			'root',
 			['paragraph', 'text:x ![] more'],
 		]);
