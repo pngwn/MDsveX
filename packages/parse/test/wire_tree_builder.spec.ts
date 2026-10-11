@@ -5,6 +5,7 @@ import { PluginDispatcher } from '../src/plugin_dispatch';
 import { WireTextSource } from '../src/node_view';
 import { WireTreeBuilder } from '../src/wire_tree_builder';
 import { NodeBuffer, kind_to_string } from '../src/utils';
+import { expect_parity, run_wire, shape } from './plugin_harness';
 
 /** the batches of a document fed a character at a time, without the finish when cut short */
 function batches_of(source: string, finish = true): unknown[][][] {
@@ -67,6 +68,17 @@ describe('WireTreeBuilder reset', () => {
 		expect(untouched._strings.length).toBe(0);
 	});
 
+	it('text joins a node at the index a revoke repaired before the reset', () => {
+		const builder = new WireTreeBuilder();
+		apply(builder, '[] y\n');
+		expect(paragraphs(builder.get_buffer())).toEqual(['paragraph("[" "] y")']);
+
+		builder.reset();
+		apply(builder, 'second\n');
+
+		expect(paragraphs(builder.get_buffer())).toEqual(['paragraph("second")']);
+	});
+
 	it('plugins read the text of the document after the reset', () => {
 		const seen: string[] = [];
 		const plugin: ParsePlugin = {
@@ -112,5 +124,76 @@ describe('WireTreeBuilder reset', () => {
 		]);
 		expect(closed).toEqual(['x y z']);
 		expect(dispatcher.quiet()).toBe(true);
+	});
+});
+
+describe('WireTreeBuilder text after a revoked link', () => {
+	it('keeps the text in a node of its own', () => {
+		const builder = new WireTreeBuilder();
+		apply(builder, 'x [] more\n');
+
+		expect(paragraphs(builder.get_buffer())).toEqual([
+			'paragraph("x " "[" "] more")',
+		]);
+	});
+
+	it('keeps the text to the end of the paragraph', () => {
+		expect(expect_parity('x [] more\n', () => [])).toEqual([
+			'root',
+			['paragraph', 'text:x [] more'],
+		]);
+	});
+
+	it('keeps the bracket that ends the paragraph', () => {
+		expect(expect_parity('x []\n', () => [])).toEqual([
+			'root',
+			['paragraph', 'text:x []'],
+		]);
+	});
+
+	it('keeps the text before an inline node', () => {
+		expect(expect_parity('x [] *b* c\n', () => [])).toEqual([
+			'root',
+			['paragraph', 'text:x [] ', ['strong_emphasis', 'text:b'], 'text: c'],
+		]);
+	});
+
+	it('keeps the text after each of two links', () => {
+		expect(expect_parity('x [] y [] z\n', () => [])).toEqual([
+			'root',
+			['paragraph', 'text:x [] y [] z'],
+		]);
+	});
+
+	it('keeps the text inside emphasis', () => {
+		expect(expect_parity('*x [] y*\n', () => [])).toEqual([
+			'root',
+			['paragraph', ['strong_emphasis', 'text:x [] y']],
+		]);
+	});
+
+	it('keeps the text inside a table cell', () => {
+		expect(expect_parity('| a [] b |\n| - |\n| c [] d |\n', () => [])).toEqual([
+			'root',
+			[
+				'table',
+				['table_header', ['table_cell', 'text:a [] b']],
+				['table_row', ['table_cell', 'text:c [] d']],
+			],
+		]);
+	});
+
+	// the batch builder loses the bracket of the image, so only the wire is read
+	it.each([0, 7, 1])('keeps the text after an image fed %i', (chunk) => {
+		const out = run_wire('x ![] more\n', undefined, chunk);
+
+		expect(shape(out.nodes, out.source, 0, { merge_text: true })).toEqual([
+			'root',
+			['paragraph', 'text:x ![] more'],
+		]);
+	});
+
+	it('builds one tree when the repeat finds the link at block level', () => {
+		expect_parity('<b>[] y\n', () => []);
 	});
 });

@@ -32,12 +32,15 @@ export class WireTreeBuilder {
 	private schema: string[] | null;
 	/** optional plugin dispatcher. null when no plugins registered. */
 	private dispatcher: PluginDispatcher | null;
+	/** text nodes a revoke left in place of its node, null until the first one */
+	private repaired: Set<number> | null;
 
 	constructor(capacity = 128, dispatcher?: PluginDispatcher) {
 		this.buf = new NodeBuffer(capacity);
 		this.id_to_index = [0]; // root id 0 -> buffer index 0
 		this.schema = null;
 		this.dispatcher = dispatcher ?? null;
+		this.repaired = null;
 		this.bind_strings();
 	}
 
@@ -113,6 +116,7 @@ export class WireTreeBuilder {
 		this.buf = new NodeBuffer(128);
 		this.id_to_index = [0];
 		this.schema = null;
+		this.repaired = null;
 		// redirects, undo logs and close callbacks hold indices of the old buffer
 		if (this.dispatcher) this.dispatcher.reset();
 		this.bind_strings();
@@ -261,8 +265,8 @@ export class WireTreeBuilder {
 
 	/**
 	 * return the buffer index of the last child of `idx` if and only if that
-	 * child is a text node. returns none otherwise. used by _text (coalesce)
-	 * and _clear (discard in-progress text).
+	 * child is a text node made by _text. returns none otherwise. used by
+	 * _text (coalesce) and _clear (discard in-progress text).
 	 */
 	private _last_text_child(idx: number): number {
 		let child = this.buf.first_child_at(idx);
@@ -273,7 +277,10 @@ export class WireTreeBuilder {
 			if (next === NONE || this.buf.parent_at(next) !== idx) break;
 			last = next;
 		}
-		return this.buf.kind_at(last) === NodeKind.text ? last : NONE;
+		if (this.buf.kind_at(last) !== NodeKind.text) return NONE;
+		// a repeated revoke rewrites the whole string of a repaired node
+		if (this.repaired !== null && this.repaired.has(last)) return NONE;
+		return last;
 	}
 
 	private _attr(id: number, key: string, value: unknown): void {
@@ -298,6 +305,10 @@ export class WireTreeBuilder {
 		}
 
 		this.buf.handle_repair(idx, delimiter || undefined);
+		if (this.buf.kind_at(idx) === NodeKind.text) {
+			if (this.repaired === null) this.repaired = new Set();
+			this.repaired.add(idx);
+		}
 	}
 
 	private _commit(id: number): void {
