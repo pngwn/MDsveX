@@ -2128,6 +2128,25 @@ export class PFMParser {
 		return true;
 	}
 
+	/** a body cell ends in a code span, the span fails as at a blank line and inline reads its content again */
+	private code_span_in_cell(): void {
+		// handle_repair turns the revoked code_span into text for the backticks
+		const open = this.code_span_open_pos;
+		const delim_end = open + this.extra;
+		this.chomp(delim_end, true);
+		this.out.revoke(
+			this.node_stack[this.node_stack.length - 1],
+			string_slice.call(
+				this.source,
+				open - this.source_base,
+				delim_end - this.source_base
+			),
+			this.one_shot ? open : undefined
+		);
+		this.node_stack.pop();
+		this.states.pop();
+	}
+
 	/** reparse a #! with no hint as an ordinary code span from the # */
 	private code_span_hint_revert(current_node: number): void {
 		this.chomp(this.info_start_pos - 2, true);
@@ -8285,7 +8304,7 @@ export class PFMParser {
 						code !== code ||
 						(code === PIPE && this.in_table && !this.inline_range_parse)
 					) {
-						// code_span_end continues the span, fails it at a blank line or eof, or unwinds it at a cell pipe
+						// code_span_end continues the span, or fails it at a blank line, eof or the end of a cell
 						this.out.set_value_start(current_node, this.checkpoint_cursor);
 						this.chomp(this.cursor, true);
 						this.states.pop();
@@ -8343,7 +8362,7 @@ export class PFMParser {
 						(code === PIPE || code === LINEFEED) &&
 						!this.inline_range_parse
 					) {
-						this.unwind_inline_for_table();
+						this.code_span_in_cell();
 						continue;
 					}
 					if (code === BACKTICK) {
@@ -12110,47 +12129,6 @@ export class PFMParser {
 				this.states.pop();
 			} else if (top === StateKind.inline) {
 				this.states.pop();
-			} else if (
-				top === StateKind.code_span_end ||
-				top === StateKind.code_span_start ||
-				top === StateKind.code_span_content_leading_space ||
-				top === StateKind.code_span_leading_space_end ||
-				top === StateKind.code_span_info
-			) {
-				const cs_id = this.node_stack[this.node_stack.length - 1];
-				const delim_end = this.code_span_open_pos + this.extra;
-				this.out.revoke(
-					cs_id,
-					string_slice.call(
-						this.source,
-						this.code_span_open_pos - this.source_base,
-						delim_end - this.source_base
-					),
-					this.one_shot ? this.code_span_open_pos : undefined
-				);
-				this.node_stack.pop();
-				this.states.pop();
-				const parent_id = this.node_stack[this.node_stack.length - 1];
-				let ve = this.cursor;
-				while (
-					ve > delim_end &&
-					(char_code_at.call(this.source, ve - 1 - this.source_base) ===
-						SPACE ||
-						char_code_at.call(this.source, ve - 1 - this.source_base) === TAB)
-				) {
-					ve--;
-				}
-				if (ve > delim_end) {
-					this.emit_leaf(
-						NodeKind.text,
-						delim_end,
-						parent_id,
-						delim_end,
-						ve,
-						this.cursor
-					);
-				}
-				// don't push to node_stack - this text node is immediately closed
 			} else {
 				// emphasis, strong, strikethrough, superscript, link_text
 				const node_id = this.node_stack[this.node_stack.length - 1];
