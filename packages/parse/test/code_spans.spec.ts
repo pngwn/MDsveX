@@ -11,6 +11,7 @@ import { print_ast } from './print';
 import {
 	checked_tree,
 	every_path,
+	fed_mismatch,
 	lines,
 	pick,
 	problems,
@@ -1070,5 +1071,231 @@ describe('a padded code span that runs over a line', () => {
 			expect(problems(over, 0), label).toEqual([]);
 			expect(problems(over, 1), label).toEqual([]);
 		}
+	});
+});
+
+describe('a code span ends where its paragraph ends', () => {
+	test('at a heading line', () => {
+		expect(every_path('x `a\n# b`\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "x "',
+				'    text "`"',
+				'    text "a"',
+				'  line_break',
+				'  heading depth=1 "b`"',
+				'    text "b"',
+				'    text "`"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('at the end of a heading', () => {
+		expect(every_path('# `a\nb`\n')).toBe(
+			lines(
+				'root',
+				'  heading depth=1 "`a"',
+				'    text "`"',
+				'    text "a"',
+				'  line_break',
+				'  paragraph',
+				'    text "b"',
+				'    text "`"',
+				'  line_break'
+			)
+		);
+		expect(every_path('# ` a\nb `\n')).toBe(
+			lines(
+				'root',
+				'  heading depth=1 "` a"',
+				'    text "`"',
+				'    text " a"',
+				'  line_break',
+				'  paragraph',
+				'    text "b "',
+				'    text "`"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('at a list item', () => {
+		expect(every_path('- x `a\n- b`\n')).toBe(
+			lines(
+				'root',
+				'  list ordered=false start=0 tight=true',
+				'    list_item',
+				'      text "x "',
+				'      text "`"',
+				'      text "a"',
+				'    list_item',
+				'      text "b"',
+				'      text "`"',
+				'  line_break'
+			)
+		);
+		expect(every_path('x `a\n- b`\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "x "',
+				'    text "`"',
+				'    text "a"',
+				'  line_break',
+				'  list ordered=false start=0 tight=true',
+				'    list_item',
+				'      text "b"',
+				'      text "`"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('at a thematic break', () => {
+		expect(every_path('x `a\n---\nb`\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "x "',
+				'    text "`"',
+				'    text "a"',
+				'  line_break',
+				'  thematic_break',
+				'  paragraph',
+				'    text "b"',
+				'    text "`"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('at a fence', () => {
+		expect(every_path('x `a\n```\nb`\n```\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "x "',
+				'    text "`"',
+				'    text "a"',
+				'  line_break',
+				'  code_fence "b`"'
+			)
+		);
+	});
+
+	test('at the close of a container directive', () => {
+		expect(every_path(':::x[]\n`a\n:::\nb`\n')).toBe(
+			lines(
+				'root',
+				'  directive_container name="x"',
+				'    paragraph',
+				'      text "`"',
+				'      text "a"',
+				'    line_break',
+				'  paragraph',
+				'    text "b"',
+				'    text "`"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('with a language hint or padding', () => {
+		expect(every_path('x `#!js a\n# b`\n')).toContain('heading depth=1 "b`"');
+		expect(every_path('x ` a\n# b `\n')).toContain('heading depth=1 "b `"');
+		expect(every_path('x ``a\n# b``\n')).toContain('heading depth=1 "b``"');
+	});
+
+	test('inside another inline node', () => {
+		expect(every_path('*x `a\n# b`*\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "*"',
+				'    text "x "',
+				'    text "`"',
+				'    text "a"',
+				'  line_break',
+				'  heading depth=1 "b`*"',
+				'    text "b"',
+				'    text "`"',
+				'    text "*"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a line that goes on with the paragraph stays in the span', () => {
+		expect(every_path('x `a\nb` c\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "x "',
+				'    code_span "a\\nb"',
+				'    text " c"',
+				'  line_break'
+			)
+		);
+		expect(every_path('x `a\n#b\n-c\n1.d` e\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "x "',
+				'    code_span "a\\n#b\\n-c\\n1.d"',
+				'    text " e"',
+				'  line_break'
+			)
+		);
+		expect(every_path('- x `a\n  b` c\n')).toBe(
+			lines(
+				'root',
+				'  list ordered=false start=0 tight=true',
+				'    list_item',
+				'      text "x "',
+				'      code_span "a\\n  b"',
+				'      text " c"',
+				'  line_break'
+			)
+		);
+	});
+
+	/** the blocks of a tree, a line per node with its depth */
+	function blocks(source: string): string {
+		const inline =
+			/^ *(text|code_span|soft_break|hard_break|line_break|emphasis|strong_emphasis)\b/;
+		return print_ast(parse_markdown_svelte(source).nodes, source)
+			.split('\n')
+			.filter((row) => !inline.test(row))
+			.map((row) => row.replace(/ ".*$/, ''))
+			.join('\n');
+	}
+
+	test('random lines build the blocks they build with a letter for each backtick', () => {
+		const rand = random(979);
+		const starts = ['a', 'b c', 'x `', '# ', '- ', '1. ', '> ', '---', '  '];
+		const pieces = ['`', '`', '``', 'a', 'b c', ' ', '*', '-', '#'];
+		const differ: string[] = [];
+		for (let i = 0; i < 1500; i++) {
+			let source = '';
+			const count = 2 + Math.floor(rand() * 3);
+			for (let l = 0; l < count; l++) {
+				let row = pick(rand, starts);
+				const length = Math.floor(rand() * 4);
+				for (let k = 0; k < length; k++) row += pick(rand, pieces);
+				source += row + '\n';
+			}
+			// three backticks may be a fence, which no letters are
+			if (source.includes('```')) continue;
+			if (blocks(source) !== blocks(source.replaceAll('`', 'q')))
+				differ.push(JSON.stringify(source));
+			if (i % 5 === 0) {
+				expect(problems(source, 0), JSON.stringify(source)).toEqual([]);
+				expect(problems(source, 1), JSON.stringify(source)).toEqual([]);
+				expect(fed_mismatch(source), JSON.stringify(source)).toBe('');
+			}
+		}
+		expect(differ).toEqual([]);
 	});
 });

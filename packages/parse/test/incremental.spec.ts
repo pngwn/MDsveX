@@ -1216,6 +1216,7 @@ describe('a tag at the start of a line matches batch however it is fed', () => {
 		['escaped close tag in a link', '<span>[\\</span>\n\nb\n'],
 		['close tag in a script', '<b><script></b>\n---\n'],
 		['close tag in a code span', '<span>[`</span>\n<div></div>`\n'],
+		['close tag in a code span over a line', '<span>[`</span>\nx y`\n'],
 		['close tag in an expression', '<b>{"</b>"}\n\nb\n'],
 		['close tag in a comment', '<b><!-- </b> -->\n\nb\n'],
 		['close tag in an attribute', '<b><i title="</b>">\n\nb\n'],
@@ -1307,13 +1308,13 @@ describe('a tag at the start of a line matches batch however it is fed', () => {
 				'\n'
 			)
 		);
-		expect(printed('<span>[`</span>\n<div></div>`\n')).toBe(
+		expect(printed('<span>[`</span>\nx y`\n')).toBe(
 			[
 				'root',
 				'  paragraph',
 				'    text "<span>"',
 				'    text "["',
-				'    code_span "</span>\\n<div></div>"',
+				'    code_span "</span>\\nx y"',
 				'  line_break',
 			].join('\n')
 		);

@@ -8656,9 +8656,8 @@ export class PFMParser {
 					if (
 						(code === LINEFEED &&
 							(this.is_blank_line_after(this.cursor) ||
-								// a quoted paragraph ends at more lines than a blank one
-								(this.block_quote_depth > 0 &&
-									!this.lf_continues(this.cursor)))) ||
+								// a paragraph ends at more lines than a blank one
+								!this.lf_continues(this.cursor))) ||
 						code !== code
 					) {
 						// handle_repair turns the revoked code_span into text for the backticks

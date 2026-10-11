@@ -963,7 +963,7 @@ describe('a line that ends a paragraph in a block quote, with something open', (
 	test('random lines with list markers build the blocks they build outside a quote', () => {
 		const rand = random(978);
 		const starts = ['a', 'b c', '- ', '- ', '1. ', '2. ', '+ ', '* ', '-'];
-		const pieces = [' ', 'a', '*', '_', '[', '](u)', '-', '1.'];
+		const pieces = [' ', 'a', '*', '_', '[', '](u)', '-', '1.', '`'];
 		const blocks = (source: string, drop: number) =>
 			print_ast(parse_markdown_svelte(source).nodes, source)
 				.split('\n')
@@ -984,6 +984,8 @@ describe('a line that ends a paragraph in a block quote, with something open', (
 			const plain = rows.join('');
 			// a thematic break in a quoted list item takes the next marker for a nested quote
 			if (/^(\S+ +)?([-*_]) *(\2 *){2,}$/m.test(plain)) continue;
+			// the value of a quoted fence covers its markers
+			if (plain.includes('```')) continue;
 			const quoted = rows.map((row) => '> ' + row).join('');
 			if (blocks(quoted, 2) !== blocks(plain, 1))
 				differ.push(JSON.stringify(quoted));
