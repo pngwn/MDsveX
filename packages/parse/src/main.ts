@@ -2166,12 +2166,13 @@ export class PFMParser {
 		this.extra = run_n;
 		this.code_span_open_pos = this.cursor;
 		// the inline default text run, r is below length here
-		// in a table cell a space or tab may be padding, which inline decides
+		// in a table cell a space or tab may be padding, in a heading it may
+		// run to the line end, inline decides both
 		const c = char_code_at.call(source, r - base);
 		if (
 			c !== 0 &&
 			(c >= 128 || TEXT_BREAK[c] === 0) &&
-			(c > SPACE || cs_pipe === LINEFEED)
+			(c > SPACE || (cs_pipe === LINEFEED && !this.in_heading))
 		)
 			this.open_text_run(r, current_node);
 		else this.cursor = r;
@@ -6987,7 +6988,11 @@ export class PFMParser {
 					}
 					// dispatch to inline parsing for heading content
 					this.states.push(StateKind.inline);
-					if (!this.in_table && (code >= 128 || TEXT_BREAK[code] === 0)) {
+					// a space or tab may run to the line end, which inline trims
+					if (
+						!this.in_table &&
+						(code >= 128 || (TEXT_BREAK[code] === 0 && code > SPACE))
+					) {
 						// take the plain run inline then text would, closing the text node at the linefeed
 						const t_id = this.emit_open(
 							NodeKind.text,

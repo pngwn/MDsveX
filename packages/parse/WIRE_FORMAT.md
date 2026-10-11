@@ -159,7 +159,9 @@ Two kinds of paragraph are opened pending. A paragraph in a list item is pending
 ["X", id: int]
 ```
 
-Clears all children and text of a node. Remove child subtrees from the node map and empty the content array. Reserved for future use.
+Clears all children and text of a node. Remove child subtrees from the node map and empty the content array.
+
+Sent when text was emitted past where the node's content turned out to end, the right text follows in a `T`. Only a node whose content is its own text gets one (a code fence, a code span, an html comment, a `script` or `style` element), never a node with children.
 
 ## Document Tree
 
@@ -563,6 +565,7 @@ The `WireEmitter` uses the parser's cursor position (reported via `cursor()`) to
 The `WireEmitter.flush()` method does more than just return buffered opcodes, it also eagerly emits text for nodes that are still being streamed:
 
 - **For most nodes:** Text is emitted up to the parser cursor position. This is the boundary of confirmed content.
+- **For text inside a node with children:** Spaces and tabs at the end of the run wait for the next character or the end of the run. The parser trims a run that ends in them, and taking them back would need an `X` on the parent.
 - **For code fences:** Text is emitted up to the end of the fed source, except the last line is held back if it starts with backticks (potential closing fence).
 
 This means the client sees progressive text content even before nodes are closed:
