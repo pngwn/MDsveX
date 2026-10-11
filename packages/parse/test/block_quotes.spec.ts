@@ -579,6 +579,8 @@ describe('a line that ends a paragraph in a block quote, with something open', (
 		['a thematic break', '> %sa\n> ---\n'],
 		['a code fence', '> %sa\n> ```\n> b\n> ```\n'],
 		['the close of a container directive', '> :::box\n> %sa\n> :::\n> b\n'],
+		['a list item', '> %sa\n> - b\n'],
+		['an ordered list item', '> %sa\n> 1. b\n'],
 		['the next item of a quoted list', '> - %sa\n> - b\n'],
 		['a nested list in a quoted list', '> - %sa\n>   - b\n'],
 	];
@@ -603,6 +605,64 @@ describe('a line that ends a paragraph in a block quote, with something open', (
 	}
 
 	const quote = (...rest: string[]) => lines('root', '  block_quote', ...rest);
+
+	test('a list item ends the paragraph as it does outside a quote', () => {
+		for (const marker of ['-', '+', '*', '1.']) {
+			expect(every_path(`> x\n> ${marker} a\n>\n> y\n`), marker).toBe(
+				quote(
+					'    paragraph',
+					'      text "x"',
+					`    list ordered=${marker === '1.'} start=${marker === '1.' ? 1 : 0} tight=true`,
+					'      list_item',
+					'        text "a"',
+					'    line_break',
+					'    paragraph',
+					'      text "y"',
+					'  line_break'
+				)
+			);
+		}
+		expect(every_path('> > x\n> > - a\n')).toBe(
+			quote(
+				'    block_quote',
+				'      paragraph',
+				'        text "x"',
+				'      list ordered=false start=0 tight=true',
+				'        list_item',
+				'          text "a"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a marker that starts no list outside a quote starts none in one', () => {
+		for (const marker of ['2.', '-', '1.']) {
+			const row = marker === '2.' ? '2. a' : marker;
+			expect(every_path(`> x\n> ${row}\n`), row).toBe(
+				quote(
+					'    paragraph',
+					'      text "x"',
+					'      soft_break',
+					`      text "${row}"`,
+					'  line_break'
+				)
+			);
+		}
+	});
+
+	test('emphasis open at the list item is literal text', () => {
+		expect(every_path('> *x\n> - a*\n')).toBe(
+			quote(
+				'    paragraph',
+				'      text "*x"',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        text "a"',
+				'        text "*"',
+				'  line_break'
+			)
+		);
+	});
 
 	test('emphasis does not reach into a nested quote', () => {
 		expect(checked_tree('> *a\n> > b*\n')).toBe(
@@ -898,6 +958,37 @@ describe('a line that ends a paragraph in a block quote, with something open', (
 				code_texts(parse_markdown_svelte(plain).nodes, plain)
 			);
 		}
+	});
+
+	test('random lines with list markers build the blocks they build outside a quote', () => {
+		const rand = random(978);
+		const starts = ['a', 'b c', '- ', '- ', '1. ', '2. ', '+ ', '* ', '-'];
+		const pieces = [' ', 'a', '*', '_', '[', '](u)', '-', '1.'];
+		const blocks = (source: string, drop: number) =>
+			print_ast(parse_markdown_svelte(source).nodes, source)
+				.split('\n')
+				.slice(drop)
+				.filter((row) => row.trim() !== 'line_break')
+				.map((row) => row.slice(drop * 2 - 2))
+				.join('\n');
+		const differ: string[] = [];
+		for (let i = 0; i < 2000; i++) {
+			const rows: string[] = [];
+			const count = 2 + Math.floor(rand() * 3);
+			for (let l = 0; l < count; l++) {
+				let row = pick(rand, starts);
+				const length = Math.floor(rand() * 4);
+				for (let k = 0; k < length; k++) row += pick(rand, pieces);
+				rows.push(row + '\n');
+			}
+			const plain = rows.join('');
+			// a thematic break in a quoted list item takes the next marker for a nested quote
+			if (/^(\S+ +)?([-*_]) *(\2 *){2,}$/m.test(plain)) continue;
+			const quoted = rows.map((row) => '> ' + row).join('');
+			if (blocks(quoted, 2) !== blocks(plain, 1))
+				differ.push(JSON.stringify(quoted));
+		}
+		expect(differ).toEqual([]);
 	});
 
 	test('an inline element ends at the same line after a hard break and a linefeed', () => {

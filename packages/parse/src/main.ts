@@ -9957,7 +9957,9 @@ export class PFMParser {
 			this.is_fence_start(stripped) ||
 			(this.directive_colon_counts.length !== 0 &&
 				this.is_directive_close_line(stripped)) ||
-			(this.list_depth > 0 && this.bq_list_marker(stripped))
+			(this.list_depth > 0
+				? this.bq_list_marker(stripped)
+				: this.is_list_item_start_interrupt(stripped))
 		);
 	}
 
