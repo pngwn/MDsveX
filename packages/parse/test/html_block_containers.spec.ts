@@ -760,3 +760,158 @@ describe('a close tag line for an element around an open svelte block', () => {
 		);
 	});
 });
+
+describe('a block directive inside an html element', () => {
+	const blocks = (tree: string) =>
+		tree.split('\n').filter((row) => row.trim() !== 'line_break');
+
+	/** the tree of the lines in an element, its blocks are those of the lines alone one level down */
+	function inside(tag: string, ...rows: string[]): string {
+		const plain = rows.map((row) => row + '\n').join('');
+		const source = `<${tag}>\n${plain}</${tag}>\n`;
+		const outside = blocks(every_path(plain))
+			.slice(1)
+			.map((row) => '  ' + row);
+		const tree = every_path(source);
+		expect(blocks(tree).join('\n'), JSON.stringify(source)).toBe(
+			lines('root', `  html tag="${tag}"`, ...outside)
+		);
+		return tree;
+	}
+
+	test('a container opens and closes', () => {
+		expect(inside('div', ':::x[]', 'a', ':::')).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    directive_container name="x"',
+				'      paragraph',
+				'        text "a"',
+				'      line_break',
+				'  line_break'
+			)
+		);
+		expect(every_path('<div>\n\n:::x[]\na\n:::\n\n</div>\n')).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    line_break',
+				'    directive_container name="x"',
+				'      paragraph',
+				'        text "a"',
+				'      line_break',
+				'    line_break',
+				'  line_break'
+			)
+		);
+	});
+
+	test('with a label, arguments and blocks in it', () => {
+		inside('div', ':::note[*t*](k=v)', '# h', '', '- a', '- b', ':::');
+		inside('div', '::::x[]', ':::y[]', 'a', ':::', '::::');
+		inside('div', ':::x', 'a', ':::');
+	});
+
+	test('a leaf directive opens', () => {
+		expect(inside('div', '::y[z]')).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    directive_leaf name="y"',
+				'      directive_label',
+				'        text "z"',
+				'  line_break'
+			)
+		);
+		inside('div', 'a', '::y[z]', 'b');
+	});
+
+	test('after a paragraph and before one', () => {
+		inside('div', 'a', ':::x[]', 'b', ':::', 'c');
+	});
+
+	test('in a nested and a phrasing element', () => {
+		inside('section', ':::x[]', 'a', ':::');
+		inside('span', ':::x[]', 'a', ':::');
+		expect(
+			every_path('<div>\n<section>\n:::x[]\na\n:::\n</section>\n</div>\n')
+		).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    html tag="section"',
+				'      line_break',
+				'      directive_container name="x"',
+				'        paragraph',
+				'          text "a"',
+				'        line_break',
+				'    line_break',
+				'  line_break'
+			)
+		);
+	});
+
+	test('what is no block directive stays in a paragraph', () => {
+		inside('div', ':x[a] b');
+		inside('div', ':::');
+		inside('div', '::: x');
+		inside('div', ': a');
+	});
+
+	test('a container left open ends at the close tag of the element', () => {
+		expect(every_path('<div>\n:::x[]\na\n</div>\n\nafter\n')).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    directive_container name="x"',
+				'      paragraph',
+				'        text "a"',
+				'      line_break',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "after"',
+				'  line_break'
+			)
+		);
+		expect(every_path('<div>\n:::x[]\n</div>\n')).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    directive_container name="x"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('random lines build the blocks they build outside the element', () => {
+		const rand = random(982);
+		const rows = [
+			':::x[]',
+			':::x[]',
+			':::',
+			':::',
+			'::::y[l](k=v)',
+			'::::',
+			'::z[a]',
+			':w[b] c',
+			'a',
+			'b c',
+			'',
+			'- d',
+			'# h',
+		];
+		for (let i = 0; i < 400; i++) {
+			const picked: string[] = [];
+			const count = 1 + Math.floor(rand() * 6);
+			for (let k = 0; k < count; k++) picked.push(pick(rand, rows));
+			inside(pick(rand, ['div', 'div', 'section']), ...picked);
+		}
+	}, 30_000);
+});

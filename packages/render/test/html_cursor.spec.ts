@@ -382,6 +382,15 @@ describe('an element left open in a svelte block', () => {
 	}
 });
 
+describe('a container directive in an element', () => {
+	it('renders as it does outside one', () => {
+		const directive = ':::x[]\na\n:::\n';
+		expect(render(`<div>\n\n${directive}\n</div>\n`)).toBe(
+			`<div>${render(directive)}</div>`
+		);
+	});
+});
+
 describe('a pipe next to an emphasis mark', () => {
 	const cases: [string, string][] = [
 		['fan|_tas_|tic\n', '<p>fan<em>tas</em>tic</p>'],
